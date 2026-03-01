@@ -1,4 +1,5 @@
 import { Toast } from "maps_maplibre/components/toast"
+import { gatedToggle } from "maps_maplibre/utils/layer_gate"
 import { lazyLoader } from "maps_maplibre/utils/lazy_loader"
 import { SettingsManager } from "maps_maplibre/utils/settings_manager"
 
@@ -238,14 +239,30 @@ export class RoutesManager {
    * Toggle heatmap visibility
    */
   async toggleHeatmap(event) {
-    const enabled = event.target.checked
+    const toggle = event.target
+    const heatmapLayer = this.layerManager.getLayer("heatmap")
+
+    const intercepted = gatedToggle({
+      layerName: "Heatmap",
+      userPlan: this.controller.userPlanValue,
+      toggle,
+      showFn: async () => {
+        await this.controller.mapDataManager.ensurePointsLoaded()
+        if (heatmapLayer) heatmapLayer.show()
+      },
+      hideFn: () => {
+        if (heatmapLayer) heatmapLayer.hide()
+      },
+    })
+    if (intercepted) return
+
+    const enabled = toggle.checked
     SettingsManager.updateSetting("heatmapEnabled", enabled)
 
     if (enabled) {
       await this.controller.mapDataManager.ensurePointsLoaded()
     }
 
-    const heatmapLayer = this.layerManager.getLayer("heatmap")
     if (heatmapLayer) {
       if (enabled) {
         heatmapLayer.show()
@@ -259,14 +276,30 @@ export class RoutesManager {
    * Toggle fog of war layer
    */
   async toggleFog(event) {
-    const enabled = event.target.checked
+    const toggle = event.target
+    const fogLayer = this.layerManager.getLayer("fog")
+
+    const intercepted = gatedToggle({
+      layerName: "Fog of War",
+      userPlan: this.controller.userPlanValue,
+      toggle,
+      showFn: async () => {
+        await this.controller.mapDataManager.ensurePointsLoaded()
+        if (fogLayer) fogLayer.toggle(true)
+      },
+      hideFn: () => {
+        if (fogLayer) fogLayer.toggle(false)
+      },
+    })
+    if (intercepted) return
+
+    const enabled = toggle.checked
     SettingsManager.updateSetting("fogEnabled", enabled)
 
     if (enabled) {
       await this.controller.mapDataManager.ensurePointsLoaded()
     }
 
-    const fogLayer = this.layerManager.getLayer("fog")
     if (fogLayer) {
       fogLayer.toggle(enabled)
     } else {
@@ -278,12 +311,11 @@ export class RoutesManager {
    * Toggle scratch map layer
    */
   async toggleScratch(event) {
-    const enabled = event.target.checked
-    SettingsManager.updateSetting("scratchEnabled", enabled)
+    const toggle = event.target
 
-    try {
+    const showScratch = async () => {
       const scratchLayer = this.layerManager.getLayer("scratch")
-      if (!scratchLayer && enabled) {
+      if (!scratchLayer) {
         await this.controller.mapDataManager.ensurePointsLoaded()
         const ScratchLayer = await lazyLoader.loadLayer("scratch")
         const newScratchLayer = new ScratchLayer(this.map, {
@@ -297,12 +329,33 @@ export class RoutesManager {
         }
         await newScratchLayer.add(pointsData)
         this.layerManager.layers.scratchLayer = newScratchLayer
-      } else if (scratchLayer) {
-        if (enabled) {
-          scratchLayer.show()
-        } else {
-          scratchLayer.hide()
-        }
+      } else {
+        scratchLayer.show()
+      }
+    }
+
+    const hideScratch = () => {
+      const scratchLayer = this.layerManager.getLayer("scratch")
+      if (scratchLayer) scratchLayer.hide()
+    }
+
+    const intercepted = gatedToggle({
+      layerName: "Scratch Map",
+      userPlan: this.controller.userPlanValue,
+      toggle,
+      showFn: showScratch,
+      hideFn: hideScratch,
+    })
+    if (intercepted) return
+
+    const enabled = toggle.checked
+    SettingsManager.updateSetting("scratchEnabled", enabled)
+
+    try {
+      if (enabled) {
+        await showScratch()
+      } else {
+        hideScratch()
       }
     } catch (error) {
       console.error("Failed to toggle scratch layer:", error)

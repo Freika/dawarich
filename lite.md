@@ -666,8 +666,8 @@ Each item below maps to a separate feature branch merging into `feature/lite`.
 - [ ] Add archival warning jobs (11-month notification, 11.5-month email, 12-month banner) — `feature/lite-archival-jobs`
 
 **Map & visualization:**
-- [ ] Gate map layers in frontend (lock UI for heatmap, fog-of-war, globe, scratch map) — `feature/lite-map-layers`
-- [ ] Implement live preview on gated layer click (15-30s timer) — `feature/lite-map-layers`
+- [x] Gate map layers in frontend (lock UI for heatmap, fog-of-war, globe, scratch map) — `feature/lite-map-layers`
+- [x] Implement live preview on gated layer click (15-30s timer) — `feature/lite-map-layers`
 
 **Insights:**
 - [ ] Implement limited vs full year-in-review — `feature/lite-insights`
