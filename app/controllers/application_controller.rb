@@ -66,6 +66,25 @@ class ApplicationController < ActionController::Base
     end
   end
 
+  def require_pro!
+    return if DawarichSettings.self_hosted?
+    return if current_user&.pro?
+
+    respond_to do |format|
+      format.html do
+        redirect_back fallback_location: root_path,
+                      alert: 'This feature requires a Pro plan.',
+                      status: :see_other
+      end
+      format.json { render json: { error: 'This feature requires a Pro plan.' }, status: :forbidden }
+      format.turbo_stream do
+        redirect_back fallback_location: root_path,
+                      alert: 'This feature requires a Pro plan.',
+                      status: :see_other
+      end
+    end
+  end
+
   def ensure_family_feature_enabled!
     return if DawarichSettings.family_feature_enabled?
 

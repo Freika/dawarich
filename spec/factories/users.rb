@@ -39,6 +39,14 @@ FactoryBot.define do
       active_until { 7.days.from_now }
     end
 
+    trait :lite_plan do
+      plan { :lite }
+    end
+
+    trait :pro_plan do
+      plan { :pro }
+    end
+
     trait :with_immich_integration do
       settings do
         {

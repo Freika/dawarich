@@ -29,6 +29,7 @@ export default class extends Controller {
     startDate: String,
     endDate: String,
     timezone: String,
+    userPlan: { type: String, default: "pro" },
   }
 
   static targets = [
