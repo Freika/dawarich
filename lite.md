@@ -663,7 +663,7 @@ Each item below maps to a separate feature branch merging into `feature/lite`.
 - [x] Implement archived data visual treatment on map (semi-transparent + lock on tap) — `feature/lite-data-retention`
 
 **Archival warnings:**
-- [ ] Add archival warning jobs (11-month notification, 11.5-month email, 12-month banner) — `feature/lite-archival-jobs`
+- [x] Add archival warning jobs (11-month notification, 11.5-month email, 12-month banner) — `feature/lite-archival-jobs`
 
 **Map & visualization:**
 - [ ] Gate map layers in frontend (lock UI for heatmap, fog-of-war, globe, scratch map) — `feature/lite-map-layers`
