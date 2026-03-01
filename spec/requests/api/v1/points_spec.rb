@@ -307,4 +307,92 @@ RSpec.describe 'Api::V1::Points', type: :request do
       end
     end
   end
+
+  describe 'GET /index (archived param for data retention)' do
+    context 'when user is on lite plan' do
+      let!(:lite_user) do
+        u = create(:user)
+        u.update_columns(plan: User.plans[:lite])
+        u
+      end
+
+      let!(:recent_point) do
+        create(:point, user: lite_user, timestamp: 1.month.ago.to_i)
+      end
+
+      let!(:old_point) do
+        create(:point, user: lite_user, timestamp: 13.months.ago.to_i)
+      end
+
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      end
+
+      it 'returns only archived points when archived=true' do
+        get api_v1_points_url(api_key: lite_user.api_key, archived: 'true')
+
+        expect(response).to have_http_status(:ok)
+
+        json_response = JSON.parse(response.body)
+        returned_ids = json_response.map { |p| p['id'] }
+
+        expect(returned_ids).to include(old_point.id)
+        expect(returned_ids).not_to include(recent_point.id)
+      end
+
+      it 'returns only recent points when archived is not set' do
+        get api_v1_points_url(api_key: lite_user.api_key)
+
+        expect(response).to have_http_status(:ok)
+
+        json_response = JSON.parse(response.body)
+        returned_ids = json_response.map { |p| p['id'] }
+
+        expect(returned_ids).to include(recent_point.id)
+        expect(returned_ids).not_to include(old_point.id)
+      end
+    end
+
+    context 'when user is on pro plan' do
+      let!(:pro_user) do
+        u = create(:user)
+        u.update_columns(plan: User.plans[:pro])
+        u
+      end
+
+      let!(:recent_point) do
+        create(:point, user: pro_user, timestamp: 1.month.ago.to_i)
+      end
+
+      let!(:old_point) do
+        create(:point, user: pro_user, timestamp: 13.months.ago.to_i)
+      end
+
+      it 'returns empty array when archived=true (no archived concept for Pro)' do
+        get api_v1_points_url(api_key: pro_user.api_key, archived: 'true')
+
+        expect(response).to have_http_status(:ok)
+
+        json_response = JSON.parse(response.body)
+        expect(json_response).to eq([])
+      end
+    end
+
+    context 'when user is a self-hoster' do
+      let!(:self_hoster) { create(:user) }
+
+      let!(:old_point) do
+        create(:point, user: self_hoster, timestamp: 13.months.ago.to_i)
+      end
+
+      it 'returns empty array when archived=true (no archived concept for self-hosters)' do
+        get api_v1_points_url(api_key: self_hoster.api_key, archived: 'true')
+
+        expect(response).to have_http_status(:ok)
+
+        json_response = JSON.parse(response.body)
+        expect(json_response).to eq([])
+      end
+    end
+  end
 end

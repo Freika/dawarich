@@ -659,8 +659,8 @@ Each item below maps to a separate feature branch merging into `feature/lite`.
 - [ ] Implement API rate limiting per plan using `rack-attack` — `feature/lite-api-gating`
 
 **Data retention:**
-- [ ] Add data retention archival logic (application-level filter by `created_at`) — `feature/lite-data-retention`
-- [ ] Implement archived data visual treatment on map (semi-transparent + lock on tap) — `feature/lite-data-retention`
+- [x] Add data retention archival logic (application-level filter by `created_at`) — `feature/lite-data-retention`
+- [x] Implement archived data visual treatment on map (semi-transparent + lock on tap) — `feature/lite-data-retention`
 
 **Archival warnings:**
 - [ ] Add archival warning jobs (11-month notification, 11.5-month email, 12-month banner) — `feature/lite-archival-jobs`

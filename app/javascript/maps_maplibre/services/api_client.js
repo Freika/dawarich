@@ -41,6 +41,54 @@ export class ApiClient {
   }
 
   /**
+   * Fetch archived points for Lite plan users (older than 12 months).
+   * Returns slim point data for map rendering at reduced opacity.
+   * @param {Object} options - { page, per_page }
+   * @returns {Promise<Object>} { points, currentPage, totalPages }
+   */
+  async fetchArchivedPoints({ page = 1, per_page = 1000 } = {}) {
+    const params = new URLSearchParams({
+      archived: "true",
+      page: page.toString(),
+      per_page: per_page.toString(),
+      slim: "true",
+      order: "asc",
+    })
+
+    const response = await fetch(`${this.baseURL}/points?${params}`, {
+      headers: this.getHeaders(),
+    })
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch archived points: ${response.statusText}`)
+    }
+
+    const points = await response.json()
+
+    return {
+      points,
+      currentPage: parseInt(response.headers.get("X-Current-Page") || "1", 10),
+      totalPages: parseInt(response.headers.get("X-Total-Pages") || "1", 10),
+    }
+  }
+
+  /**
+   * Fetch ALL archived points (handles pagination).
+   * @returns {Promise<Array>} All archived points
+   */
+  async fetchAllArchivedPoints() {
+    const firstPage = await this.fetchArchivedPoints({ page: 1 })
+    const allPoints = [...firstPage.points]
+
+    for (let page = 2; page <= firstPage.totalPages; page++) {
+      const result = await this.fetchArchivedPoints({ page })
+      allPoints.push(...result.points)
+    }
+
+    return allPoints
+  }
+
+  /**
    * Fetch all points for date range (handles pagination with parallel requests)
    * @param {Object} options - { start_at, end_at, onProgress, onBatch, maxConcurrent }
    * @param {Function} options.onBatch - Called with accumulated points array after each batch
