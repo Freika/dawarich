@@ -64,3 +64,8 @@ rails_pulse_clean_up_job:
   cron: "0 1 * * *" # every day at 01:00
   class: "RailsPulse::CleanupJob"
   queue: default
+
+lite_archival_warning_job:
+  cron: "0 3 * * *" # every day at 03:00
+  class: "Lite::ArchivalWarningJob"
+  queue: archival
