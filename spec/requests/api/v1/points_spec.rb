@@ -159,6 +159,7 @@ RSpec.describe 'Api::V1::Points', type: :request do
     context 'when user is on lite plan' do
       before do
         allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        # update_columns bypasses the activate callback that resets plan to :pro
         user.update_column(:plan, User.plans[:lite])
       end
 
@@ -198,6 +199,7 @@ RSpec.describe 'Api::V1::Points', type: :request do
     context 'when user is on lite plan' do
       before do
         allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        # update_columns bypasses the activate callback that resets plan to :pro
         user.update_column(:plan, User.plans[:lite])
       end
 
@@ -233,6 +235,7 @@ RSpec.describe 'Api::V1::Points', type: :request do
     context 'when user is on lite plan' do
       before do
         allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        # update_columns bypasses the activate callback that resets plan to :pro
         user.update_column(:plan, User.plans[:lite])
       end
 
@@ -356,6 +359,7 @@ RSpec.describe 'Api::V1::Points', type: :request do
     context 'when user is on lite plan' do
       before do
         allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        # update_columns bypasses the activate callback that resets plan to :pro
         user.update_column(:plan, User.plans[:lite])
       end
 
@@ -399,6 +403,18 @@ RSpec.describe 'Api::V1::Points', type: :request do
 
       it 'returns only points within the 12-month window' do
         get api_v1_points_url(api_key: lite_user.api_key)
+
+        expect(response).to have_http_status(:ok)
+
+        json_response = JSON.parse(response.body)
+        returned_ids = json_response.map { |p| p['id'] }
+
+        expect(returned_ids).to include(recent_point.id)
+        expect(returned_ids).not_to include(old_point.id)
+      end
+
+      it 'cannot bypass the 12-month window via start_at param' do
+        get api_v1_points_url(api_key: lite_user.api_key, start_at: 0)
 
         expect(response).to have_http_status(:ok)
 
