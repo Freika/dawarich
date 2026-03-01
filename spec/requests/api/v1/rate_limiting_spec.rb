@@ -3,9 +3,15 @@
 require 'rails_helper'
 
 RSpec.describe 'API Rate Limiting', type: :request do
+  let(:original_limits) { Rack::Attack.api_rate_limits.dup }
+
   before do
     Rack::Attack.cache.store = ActiveSupport::Cache::MemoryStore.new
     Rack::Attack.reset!
+  end
+
+  after do
+    Rack::Attack.api_rate_limits = original_limits
   end
 
   describe 'rate limit headers' do
@@ -36,6 +42,10 @@ RSpec.describe 'API Rate Limiting', type: :request do
         u
       end
 
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      end
+
       it 'includes rate limit headers with a limit of 1000' do
         get api_v1_points_url(api_key: user.api_key)
 
@@ -45,8 +55,8 @@ RSpec.describe 'API Rate Limiting', type: :request do
       end
     end
 
-    context 'when user is a self-hoster' do
-      let!(:user) { create(:user) } # default plan is self_hoster
+    context 'when on a self-hosted instance' do
+      let!(:user) { create(:user) }
 
       it 'does not include rate limit headers' do
         get api_v1_points_url(api_key: user.api_key)
@@ -66,8 +76,7 @@ RSpec.describe 'API Rate Limiting', type: :request do
 
       before do
         allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
-        # Override the rate limit to a low number for testing
-        stub_const('API_RATE_LIMITS', { 'lite' => 3, 'pro' => 5 })
+        Rack::Attack.api_rate_limits = { 'lite' => 3, 'pro' => 5 }
       end
 
       it 'returns 429 with Retry-After header after exceeding limit' do
@@ -94,7 +103,8 @@ RSpec.describe 'API Rate Limiting', type: :request do
       end
 
       before do
-        stub_const('API_RATE_LIMITS', { 'lite' => 3, 'pro' => 5 })
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        Rack::Attack.api_rate_limits = { 'lite' => 3, 'pro' => 5 }
       end
 
       it 'returns 429 after exceeding limit' do
@@ -105,8 +115,8 @@ RSpec.describe 'API Rate Limiting', type: :request do
       end
     end
 
-    context 'when self-hoster user makes requests' do
-      let!(:user) { create(:user) } # default plan is self_hoster
+    context 'when on a self-hosted instance' do
+      let!(:user) { create(:user) }
 
       it 'is not rate limited' do
         get api_v1_points_url(api_key: user.api_key)

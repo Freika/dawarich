@@ -4,7 +4,7 @@ require 'rails_helper'
 
 RSpec.describe ApplicationController, type: :controller do
   controller do
-    before_action :require_pro_or_self_hosted!
+    before_action :require_pro!
 
     def index
       render plain: 'ok'
@@ -15,7 +15,7 @@ RSpec.describe ApplicationController, type: :controller do
     routes.draw { get 'index' => 'anonymous#index' }
   end
 
-  describe '#require_pro_or_self_hosted!' do
+  describe '#require_pro!' do
     context 'when user is on pro plan' do
       let(:user) { create(:user, plan: :pro) }
 
@@ -29,12 +29,12 @@ RSpec.describe ApplicationController, type: :controller do
       end
     end
 
-    context 'when user is self_hoster' do
-      let(:user) { create(:user, plan: :self_hoster) }
+    context 'when on a self-hosted instance' do
+      let(:user) { create(:user) } # default plan is pro
 
       before { sign_in user }
 
-      it 'allows access' do
+      it 'allows access regardless of plan' do
         get :index
 
         expect(response).to have_http_status(:ok)

@@ -147,6 +147,37 @@ RSpec.describe '/api/v1/tracks/:track_id/points', type: :request do
       end
     end
 
+    context 'when user is on lite plan' do
+      let(:lite_user) do
+        u = create(:user)
+        u.update_columns(plan: User.plans[:lite])
+        u
+      end
+      let(:lite_headers) { { 'Authorization' => "Bearer #{lite_user.api_key}" } }
+      let(:lite_track) { create(:track, user: lite_user) }
+
+      let!(:recent_track_point) do
+        create(:point, user: lite_user, track: lite_track, timestamp: 1.month.ago.to_i)
+      end
+      let!(:old_track_point) do
+        create(:point, user: lite_user, track: lite_track, timestamp: 13.months.ago.to_i)
+      end
+
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      end
+
+      it 'returns only track points within the 12-month window' do
+        get api_v1_track_points_url(lite_track), headers: lite_headers
+
+        json = JSON.parse(response.body)
+        returned_ids = json.map { |p| p['id'] }
+
+        expect(returned_ids).to include(recent_track_point.id)
+        expect(returned_ids).not_to include(old_track_point.id)
+      end
+    end
+
     context 'fallback excludes other users' do
       let(:other_user) { create(:user) }
       let(:fallback_track) do
