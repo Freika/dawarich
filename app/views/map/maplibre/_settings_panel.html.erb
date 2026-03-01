@@ -170,6 +170,11 @@
                      data-maps--maplibre-target="heatmapToggle"
                      data-action="change->maps--maplibre#toggleHeatmap" />
               <span class="label-text font-medium">Heatmap</span>
+              <% if current_user.lite? %>
+                <span class="badge badge-sm badge-outline gap-1" title="Available on Pro — click to preview">
+                  <%= icon 'lock', class: 'w-3 h-3' %> Pro
+                </span>
+              <% end %>
             </label>
             <p class="text-sm text-base-content/60 ml-14">Show density heatmap</p>
           </div>
@@ -307,6 +312,11 @@
                      data-maps--maplibre-target="fogToggle"
                      data-action="change->maps--maplibre#toggleFog" />
               <span class="label-text font-medium">Fog of War</span>
+              <% if current_user.lite? %>
+                <span class="badge badge-sm badge-outline gap-1" title="Available on Pro — click to preview">
+                  <%= icon 'lock', class: 'w-3 h-3' %> Pro
+                </span>
+              <% end %>
             </label>
             <p class="text-sm text-base-content/60 ml-14">Show explored areas</p>
           </div>
@@ -321,6 +331,11 @@
                      data-maps--maplibre-target="scratchToggle"
                      data-action="change->maps--maplibre#toggleScratch" />
               <span class="label-text font-medium">Scratch Map</span>
+              <% if current_user.lite? %>
+                <span class="badge badge-sm badge-outline gap-1" title="Available on Pro — click to preview">
+                  <%= icon 'lock', class: 'w-3 h-3' %> Pro
+                </span>
+              <% end %>
             </label>
             <p class="text-sm text-base-content/60 ml-14">Show scratched countries</p>
           </div>
@@ -382,6 +397,11 @@
                      data-maps--maplibre-target="globeToggle"
                      data-action="change->maps--maplibre#toggleGlobe" />
               <span class="label-text font-medium">Globe View</span>
+              <% if current_user.lite? %>
+                <span class="badge badge-sm badge-outline gap-1" title="Available on Pro — click to preview">
+                  <%= icon 'lock', class: 'w-3 h-3' %> Pro
+                </span>
+              <% end %>
             </label>
             <p class="text-sm text-base-content/60 mt-1">Render map as a 3D globe (requires page reload)</p>
           </div>

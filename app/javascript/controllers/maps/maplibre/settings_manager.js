@@ -1,4 +1,5 @@
 import { Toast } from "maps_maplibre/components/toast"
+import { isGatedPlan } from "maps_maplibre/utils/layer_gate"
 import { SettingsManager } from "maps_maplibre/utils/settings_manager"
 import { getMapStyle } from "maps_maplibre/utils/style_manager"
 
@@ -64,11 +65,26 @@ export class SettingsController {
       tracksToggle: "tracksEnabled",
     }
 
+    // Gated layer toggles that Lite users cannot persist
+    const gatedToggles = new Set([
+      "heatmapToggle",
+      "fogToggle",
+      "scratchToggle",
+    ])
+
     Object.entries(toggleMap).forEach(([targetName, settingKey]) => {
       const target = `${targetName}Target`
       const hasTarget = `has${targetName.charAt(0).toUpperCase()}${targetName.slice(1)}Target`
       if (controller[hasTarget]) {
-        controller[target].checked = this.settings[settingKey]
+        // Force gated layers off for Lite users on page load
+        if (
+          gatedToggles.has(targetName) &&
+          isGatedPlan(controller.userPlanValue)
+        ) {
+          controller[target].checked = false
+        } else {
+          controller[target].checked = this.settings[settingKey]
+        }
       }
     })
 
@@ -114,10 +130,13 @@ export class SettingsController {
       mapStyleSelect.value = this.settings.mapStyle || "light"
     }
 
-    // Sync globe projection toggle
+    // Sync globe projection toggle (force off for Lite users)
     if (controller.hasGlobeToggleTarget) {
-      controller.globeToggleTarget.checked =
-        this.settings.globeProjection || false
+      controller.globeToggleTarget.checked = isGatedPlan(
+        controller.userPlanValue,
+      )
+        ? false
+        : this.settings.globeProjection || false
     }
 
     // Sync fog of war settings
@@ -1006,7 +1025,18 @@ export class SettingsController {
    * Requires page reload to apply since projection is set at map initialization
    */
   async toggleGlobe(event) {
-    const enabled = event.target.checked
+    const toggle = event.target
+    const enabled = toggle.checked
+
+    if (isGatedPlan(this.controller.userPlanValue)) {
+      // Globe can't do a timed preview (requires reload), so just show upgrade prompt
+      toggle.checked = false
+      Toast.info(
+        'Globe View is a Pro feature. <a href="https://dawarich.app/pricing" target="_blank" class="link link-primary">Upgrade to Pro</a> to enable it.',
+      )
+      return
+    }
+
     await SettingsManager.updateSetting("globeProjection", enabled)
 
     Toast.info("Globe view will be applied after page reload")
