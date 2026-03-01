@@ -38,8 +38,9 @@ class ApiController < ApplicationController
     true
   end
 
-  def require_pro_or_self_hosted_api!
-    return if current_api_user&.pro_or_self_hosted?
+  def require_pro_api!
+    return if DawarichSettings.self_hosted?
+    return if current_api_user&.pro?
 
     render json: {
       error: 'pro_plan_required',
@@ -49,7 +50,8 @@ class ApiController < ApplicationController
   end
 
   def require_write_api!
-    return if current_api_user&.pro_or_self_hosted?
+    return if DawarichSettings.self_hosted?
+    return if current_api_user&.pro?
 
     render json: {
       error: 'write_api_restricted',
@@ -59,7 +61,7 @@ class ApiController < ApplicationController
   end
 
   # Returns points scoped to the user's plan data window.
-  # Lite users see only 12 months; Pro/self_hoster see everything.
+  # Lite users see only the last 12 months; Pro users see everything.
   def scoped_points(user = current_api_user)
     points = user.points
     points = points.where('timestamp >= ?', 12.months.ago.to_i) if user.lite?
@@ -114,7 +116,7 @@ class ApiController < ApplicationController
 
   def set_rate_limit_headers
     return unless current_api_user
-    return if current_api_user.self_hoster?
+    return if DawarichSettings.self_hosted?
 
     throttle_data = request.env['rack.attack.throttle_data']&.dig('api/token')
     return unless throttle_data

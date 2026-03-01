@@ -437,5 +437,29 @@ RSpec.describe 'Api::V1::Points', type: :request do
         expect(returned_ids).to include(old_point.id)
       end
     end
+
+    context 'when on a self-hosted instance' do
+      let!(:self_hosted_user) { create(:user) } # default plan is pro
+
+      let!(:recent_point) do
+        create(:point, user: self_hosted_user, timestamp: 1.month.ago.to_i)
+      end
+
+      let!(:old_point) do
+        create(:point, user: self_hosted_user, timestamp: 13.months.ago.to_i)
+      end
+
+      it 'returns all points regardless of age' do
+        get api_v1_points_url(api_key: self_hosted_user.api_key)
+
+        expect(response).to have_http_status(:ok)
+
+        json_response = JSON.parse(response.body)
+        returned_ids = json_response.map { |p| p['id'] }
+
+        expect(returned_ids).to include(recent_point.id)
+        expect(returned_ids).to include(old_point.id)
+      end
+    end
   end
 end
