@@ -29,12 +29,12 @@ services:
     networks:
       - dawarich
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
-      POSTGRES_DB: ${POSTGRES_DB:-dawarich_development}
+      POSTGRES_USER: ${DATABASE_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-password}
+      POSTGRES_DB: ${DATABASE_NAME:-dawarich_development}
     restart: always
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-dawarich_development}" ]
+      test: [ "CMD-SHELL", "pg_isready -U ${DATABASE_USERNAME:-postgres} -d ${DATABASE_NAME:-dawarich_development}" ]
       interval: 10s
       retries: 5
       start_period: 30s
@@ -126,7 +126,7 @@ services:
       APPLICATION_HOSTS: ${APPLICATION_HOSTS:-localhost,::1,127.0.0.1}
       BACKGROUND_PROCESSING_CONCURRENCY: ${BACKGROUND_PROCESSING_CONCURRENCY:-10}
       APPLICATION_PROTOCOL: ${APPLICATION_PROTOCOL:-http}
-      PROMETHEUS_EXPORTER_ENABLED: ${PROMETHEUS_EXPORTER_ENABLED:-false}
+      PROMETHEUS_EXPORTER_ENABLED: "false"
       PROMETHEUS_EXPORTER_HOST: ${PROMETHEUS_EXPORTER_HOST_SIDEKIQ:-dawarich_app}
       PROMETHEUS_EXPORTER_PORT: ${PROMETHEUS_EXPORTER_PORT:-9394}
       SECRET_KEY_BASE: ${SECRET_KEY_BASE:-"CHANGE_ME"}
