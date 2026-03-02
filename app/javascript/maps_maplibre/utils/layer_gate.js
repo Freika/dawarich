@@ -9,7 +9,7 @@
 import { Toast } from "maps_maplibre/components/toast"
 
 const PREVIEW_SECONDS = 20
-const UPGRADE_URL = "https://dawarich.app/pricing"
+export const UPGRADE_URL = "https://dawarich.app/pricing"
 
 // Track active preview timers so we can cancel them on manual toggle-off
 const activeTimers = {}
