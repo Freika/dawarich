@@ -1,5 +1,5 @@
 import { Toast } from "maps_maplibre/components/toast"
-import { isGatedPlan } from "maps_maplibre/utils/layer_gate"
+import { isGatedPlan, UPGRADE_URL } from "maps_maplibre/utils/layer_gate"
 import { SettingsManager } from "maps_maplibre/utils/settings_manager"
 import { getMapStyle } from "maps_maplibre/utils/style_manager"
 
@@ -1032,7 +1032,7 @@ export class SettingsController {
       // Globe can't do a timed preview (requires reload), so just show upgrade prompt
       toggle.checked = false
       Toast.info(
-        'Globe View is a Pro feature. <a href="https://dawarich.app/pricing" target="_blank" class="link link-primary">Upgrade to Pro</a> to enable it.',
+        `Globe View is a Pro feature. <a href="${UPGRADE_URL}" target="_blank" class="link link-primary">Upgrade to Pro</a> to enable it.`,
       )
       return
     }

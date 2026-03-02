@@ -242,17 +242,21 @@ export class RoutesManager {
     const toggle = event.target
     const heatmapLayer = this.layerManager.getLayer("heatmap")
 
+    const showHeatmap = async () => {
+      await this.controller.mapDataManager.ensurePointsLoaded()
+      if (heatmapLayer) heatmapLayer.show()
+    }
+
+    const hideHeatmap = () => {
+      if (heatmapLayer) heatmapLayer.hide()
+    }
+
     const intercepted = gatedToggle({
       layerName: "Heatmap",
       userPlan: this.controller.userPlanValue,
       toggle,
-      showFn: async () => {
-        await this.controller.mapDataManager.ensurePointsLoaded()
-        if (heatmapLayer) heatmapLayer.show()
-      },
-      hideFn: () => {
-        if (heatmapLayer) heatmapLayer.hide()
-      },
+      showFn: showHeatmap,
+      hideFn: hideHeatmap,
     })
     if (intercepted) return
 
@@ -260,15 +264,9 @@ export class RoutesManager {
     SettingsManager.updateSetting("heatmapEnabled", enabled)
 
     if (enabled) {
-      await this.controller.mapDataManager.ensurePointsLoaded()
-    }
-
-    if (heatmapLayer) {
-      if (enabled) {
-        heatmapLayer.show()
-      } else {
-        heatmapLayer.hide()
-      }
+      await showHeatmap()
+    } else {
+      hideHeatmap()
     }
   }
 
@@ -279,17 +277,21 @@ export class RoutesManager {
     const toggle = event.target
     const fogLayer = this.layerManager.getLayer("fog")
 
+    const showFog = async () => {
+      await this.controller.mapDataManager.ensurePointsLoaded()
+      if (fogLayer) fogLayer.toggle(true)
+    }
+
+    const hideFog = () => {
+      if (fogLayer) fogLayer.toggle(false)
+    }
+
     const intercepted = gatedToggle({
       layerName: "Fog of War",
       userPlan: this.controller.userPlanValue,
       toggle,
-      showFn: async () => {
-        await this.controller.mapDataManager.ensurePointsLoaded()
-        if (fogLayer) fogLayer.toggle(true)
-      },
-      hideFn: () => {
-        if (fogLayer) fogLayer.toggle(false)
-      },
+      showFn: showFog,
+      hideFn: hideFog,
     })
     if (intercepted) return
 
@@ -297,13 +299,9 @@ export class RoutesManager {
     SettingsManager.updateSetting("fogEnabled", enabled)
 
     if (enabled) {
-      await this.controller.mapDataManager.ensurePointsLoaded()
-    }
-
-    if (fogLayer) {
-      fogLayer.toggle(enabled)
+      await showFog()
     } else {
-      console.warn("Fog layer not yet initialized")
+      hideFog()
     }
   }
 
