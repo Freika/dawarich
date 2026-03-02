@@ -46,7 +46,7 @@ class User < ApplicationRecord
   end
 
   def safe_settings
-    Users::SafeSettings.new(settings)
+    Users::SafeSettings.new(settings, plan: plan)
   end
 
   def countries_visited
