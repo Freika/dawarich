@@ -132,7 +132,6 @@ class ApiController < ApplicationController
     user.points.where('timestamp < ?', 12.months.ago.to_i)
   end
 
-
   def set_rate_limit_headers
     return unless current_api_user
     return if DawarichSettings.self_hosted?

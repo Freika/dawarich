@@ -112,7 +112,7 @@ RSpec.describe Users::TransportationThresholdsUpdater do
       end
 
       it 'strips gated layers from enabled_map_layers before saving' do
-        params = { 'enabled_map_layers' => %w[Tracks Heatmap Fog\ of\ War Scratch\ map Points] }
+        params = { 'enabled_map_layers' => ['Tracks', 'Heatmap', 'Fog of War', 'Scratch map', 'Points'] }
         described_class.new(user, params).call
 
         expect(user.reload.settings['enabled_map_layers']).to eq(%w[Tracks Points])
@@ -151,10 +151,10 @@ RSpec.describe Users::TransportationThresholdsUpdater do
       end
 
       it 'preserves all layers including gated ones' do
-        params = { 'enabled_map_layers' => %w[Tracks Heatmap Fog\ of\ War Scratch\ map] }
+        params = { 'enabled_map_layers' => ['Tracks', 'Heatmap', 'Fog of War', 'Scratch map'] }
         described_class.new(user, params).call
 
-        expect(user.reload.settings['enabled_map_layers']).to eq(%w[Tracks Heatmap Fog\ of\ War Scratch\ map])
+        expect(user.reload.settings['enabled_map_layers']).to eq(['Tracks', 'Heatmap', 'Fog of War', 'Scratch map'])
       end
 
       it 'preserves globe_projection as true' do

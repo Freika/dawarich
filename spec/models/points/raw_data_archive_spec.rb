@@ -58,30 +58,30 @@ RSpec.describe Points::RawDataArchive, type: :model do
   describe 'metadata validation' do
     it 'allows format_version 1 archives without count fields' do
       archive = build(:points_raw_data_archive, user: user, metadata: {
-                         'format_version' => 1,
+                        'format_version' => 1,
                          'compression' => 'gzip'
-                       })
+                      })
       expect(archive).to be_valid
     end
 
     it 'rejects format_version 2 archives missing count fields' do
       archive = build(:points_raw_data_archive, user: user, metadata: {
-                         'format_version' => 2,
+                        'format_version' => 2,
                          'compression' => 'gzip',
                          'encryption' => 'aes-256-gcm'
-                       })
+                      })
       expect(archive).not_to be_valid
       expect(archive.errors[:metadata]).to include('must contain expected_count and actual_count')
     end
 
     it 'allows format_version 2 archives with count fields' do
       archive = build(:points_raw_data_archive, user: user, metadata: {
-                         'format_version' => 2,
+                        'format_version' => 2,
                          'compression' => 'gzip',
                          'encryption' => 'aes-256-gcm',
                          'expected_count' => 100,
                          'actual_count' => 100
-                       })
+                      })
       expect(archive).to be_valid
     end
 

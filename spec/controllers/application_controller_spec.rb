@@ -59,6 +59,10 @@ RSpec.describe ApplicationController, type: :controller do
     end
 
     context 'when user is not signed in' do
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      end
+
       it 'redirects back with alert' do
         get :index
 

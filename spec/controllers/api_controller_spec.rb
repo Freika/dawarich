@@ -12,7 +12,11 @@ RSpec.describe ApiController, type: :controller do
   end
 
   before do
-    routes.draw { get 'index' => 'anonymous#index' }
+    routes.draw do
+      devise_for :users
+      get 'index' => 'anonymous#index'
+      get 'index' => 'api#index'
+    end
   end
 
   describe '#require_pro_api!' do
