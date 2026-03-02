@@ -65,11 +65,16 @@ class ApiController < ApplicationController
   # Returns points scoped to the user's plan data window.
   # Lite users see only the last 12 months; Pro users see everything.
   def scoped_points(user = current_api_user)
-    points = user.points
-    return points if DawarichSettings.self_hosted?
+    apply_plan_scope(user.points, user)
+  end
 
-    points = points.where('timestamp >= ?', 12.months.ago.to_i) if user.lite?
-    points
+  # Applies the 12-month plan window to any point relation.
+  # Use this when scoping points that don't start from user.points (e.g. track.points).
+  def apply_plan_scope(relation, user = current_api_user)
+    return relation if DawarichSettings.self_hosted?
+    return relation unless user&.lite?
+
+    relation.where('timestamp >= ?', 12.months.ago.to_i)
   end
 
   def authenticate_active_api_user!
