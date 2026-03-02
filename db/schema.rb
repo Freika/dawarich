@@ -530,7 +530,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_01_202147) do
     t.string "provider"
     t.string "uid"
     t.datetime "deleted_at"
-    t.integer "plan", default: 0, null: false
+    t.integer "plan", default: 1, null: false
     t.index ["api_key"], name: "index_users_on_api_key"
     t.index ["deleted_at"], name: "index_users_on_deleted_at"
     t.index ["email"], name: "index_users_on_email", unique: true

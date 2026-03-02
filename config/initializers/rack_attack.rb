@@ -6,7 +6,7 @@
 
 Rack::Attack.cache.store = ActiveSupport::Cache::RedisCacheStore.new(
   url: ENV['REDIS_URL'],
-  db: ENV.fetch('RACK_ATTACK_REDIS_DB', 3) # dbs 0-2 are reserved for app caching, sidekiq and ws.
+  db: ENV.fetch('RACK_ATTACK_REDIS_DB', '3').to_i # dbs 0-2 are reserved for app caching, sidekiq and ws.
 )
 
 # Configurable per-plan limits. Override in tests via Rack::Attack.api_rate_limits=
@@ -29,12 +29,12 @@ Rack::Attack.throttle('api/token',
   api_key = req.params['api_key'] || req.get_header('HTTP_AUTHORIZATION')&.split(' ')&.last
   next if api_key.blank?
 
-  user = Rails.cache.fetch("rack_attack/user/#{api_key}", expires_in: 2.minutes) do
-    User.find_by(api_key: api_key)
+  user_plan = Rails.cache.fetch("rack_attack/plan/#{api_key}", expires_in: 2.minutes) do
+    User.where(api_key: api_key).pick(:plan)
   end
-  next if user.nil?
+  next if user_plan.nil?
 
-  req.env['rack.attack.api_rate_limit'] = Rack::Attack.api_rate_limits[user.plan] || 1_000
+  req.env['rack.attack.api_rate_limit'] = Rack::Attack.api_rate_limits[user_plan] || 1_000
   api_key
 end
 

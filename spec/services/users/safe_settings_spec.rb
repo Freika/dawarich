@@ -370,9 +370,9 @@ RSpec.describe Users::SafeSettings do
         end
       end
 
-      context 'when plan is self_hoster' do
+      context 'when plan is pro (self-hosted users always have pro)' do
         let(:settings) { { 'enabled_map_layers' => %w[Tracks Heatmap Fog\ of\ War] } }
-        let(:safe_settings) { described_class.new(settings, plan: :self_hoster) }
+        let(:safe_settings) { described_class.new(settings, plan: :pro) }
 
         it 'returns all layers as stored' do
           expect(safe_settings.enabled_map_layers).to eq(%w[Tracks Heatmap Fog\ of\ War])
