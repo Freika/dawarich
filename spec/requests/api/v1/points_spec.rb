@@ -414,7 +414,7 @@ RSpec.describe 'Api::V1::Points', type: :request do
       end
 
       it 'cannot bypass the 12-month window via start_at param' do
-        get api_v1_points_url(api_key: lite_user.api_key, start_at: 0)
+        get api_v1_points_url(api_key: lite_user.api_key, start_at: 2.years.ago.strftime('%Y-%m-%d'))
 
         expect(response).to have_http_status(:ok)
 

@@ -1,6 +1,6 @@
 import maplibregl from "maplibre-gl"
 import { Toast } from "maps_maplibre/components/toast"
-import { isGatedPlan } from "maps_maplibre/utils/layer_gate"
+import { isGatedPlan, UPGRADE_URL } from "maps_maplibre/utils/layer_gate"
 import { performanceMonitor } from "maps_maplibre/utils/performance_monitor"
 
 const EMPTY_GEOJSON = { type: "FeatureCollection", features: [] }
@@ -429,7 +429,7 @@ export class MapDataManager {
     // Click handler for upgrade prompt
     map.on("click", "archived-points-layer", () => {
       Toast.info(
-        'This data is archived. <a href="https://dawarich.app/pricing" target="_blank" class="link link-primary">Upgrade to Pro</a> to explore your full history.',
+        `This data is archived. <a href="${UPGRADE_URL}" target="_blank" class="link link-primary">Upgrade to Pro</a> to explore your full history.`,
       )
     })
 

@@ -73,19 +73,48 @@ export class ApiClient {
   }
 
   /**
-   * Fetch ALL archived points (handles pagination).
-   * @returns {Promise<Array>} All archived points
+   * Fetch ALL archived points (handles pagination with parallel requests).
+   * @param {Object} options - { maxConcurrent, maxPoints }
+   * @returns {Promise<Array>} All archived points (capped at maxPoints)
    */
-  async fetchAllArchivedPoints() {
-    const firstPage = await this.fetchArchivedPoints({ page: 1 })
-    const allPoints = [...firstPage.points]
+  async fetchAllArchivedPoints({ maxConcurrent = 3, maxPoints = 50_000 } = {}) {
+    const firstPage = await this.fetchArchivedPoints({
+      page: 1,
+      per_page: 5000,
+    })
+    const totalPages = firstPage.totalPages
 
-    for (let page = 2; page <= firstPage.totalPages; page++) {
-      const result = await this.fetchArchivedPoints({ page })
-      allPoints.push(...result.points)
+    if (totalPages <= 1) return firstPage.points.slice(0, maxPoints)
+
+    const pageResults = [{ page: 1, points: firstPage.points }]
+    let totalCollected = firstPage.points.length
+
+    const remainingPages = Array.from(
+      { length: totalPages - 1 },
+      (_, i) => i + 2,
+    )
+
+    for (let i = 0; i < remainingPages.length; i += maxConcurrent) {
+      if (totalCollected >= maxPoints) break
+
+      const batch = remainingPages.slice(i, i + maxConcurrent)
+      const batchResults = await Promise.all(
+        batch.map((page) =>
+          this.fetchArchivedPoints({ page, per_page: 5000 }).then((result) => ({
+            page,
+            points: result.points,
+          })),
+        ),
+      )
+
+      for (const result of batchResults) {
+        pageResults.push(result)
+        totalCollected += result.points.length
+      }
     }
 
-    return allPoints
+    pageResults.sort((a, b) => a.page - b.page)
+    return pageResults.flatMap((r) => r.points).slice(0, maxPoints)
   }
 
   /**

@@ -46,7 +46,7 @@ class ApiController < ApplicationController
     render json: {
       error: 'pro_plan_required',
       message: 'This feature requires a Pro plan.',
-      upgrade_url: 'https://dawarich.app/pricing'
+      upgrade_url: DawarichSettings::UPGRADE_URL
     }, status: :forbidden
   end
 
@@ -58,7 +58,7 @@ class ApiController < ApplicationController
     render json: {
       error: 'write_api_restricted',
       message: 'Write API access requires a Pro plan. Your data was not modified.',
-      upgrade_url: 'https://dawarich.app/pricing'
+      upgrade_url: DawarichSettings::UPGRADE_URL
     }, status: :forbidden
   end
 
@@ -123,17 +123,10 @@ class ApiController < ApplicationController
     render json: { error: 'Points limit exceeded' }, status: :unauthorized if limit_exceeded
   end
 
-  # Returns points scoped to the user's plan data window.
-  # Lite users see only 12 months; Pro/self_hoster see everything.
-  def scoped_points(user = current_api_user)
-    points = user.points
-    points = points.where('timestamp >= ?', 12.months.ago.to_i) if user.lite?
-    points
-  end
-
   # Returns only archived points (older than 12 months) for Lite users.
-  # Pro and self-hoster users have no archived concept — returns none.
+  # Self-hosted and Pro users have no archived concept — returns none.
   def archived_points(user = current_api_user)
+    return user.points.none if DawarichSettings.self_hosted?
     return user.points.none unless user.lite?
 
     user.points.where('timestamp < ?', 12.months.ago.to_i)
