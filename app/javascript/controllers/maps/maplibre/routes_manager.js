@@ -338,7 +338,7 @@ export class RoutesManager {
     }
 
     const intercepted = gatedToggle({
-      layerName: "Scratch Map",
+      layerName: "Scratch map",
       userPlan: this.controller.userPlanValue,
       toggle,
       showFn: showScratch,

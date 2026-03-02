@@ -131,6 +131,16 @@ RSpec.describe Users::TransportationThresholdsUpdater do
 
         expect(user.reload.settings['enabled_map_layers']).to eq(%w[Tracks Points Areas])
       end
+
+      it 'does not reset globe_projection when not in params' do
+        user.settings['globe_projection'] = true
+        user.save!
+
+        params = { 'route_opacity' => 80 }
+        described_class.new(user, params).call
+
+        expect(user.reload.settings['globe_projection']).to be true
+      end
     end
 
     context 'when user is on pro plan' do

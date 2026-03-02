@@ -25,7 +25,7 @@ export function isGatedPlan(userPlan) {
 /**
  * Wraps a layer toggle with preview gating.
  *
- * @param {string}   layerName   - Human-readable name (e.g. "Heatmap")
+ * @param {string}   layerName   - Display name matching GATED_MAP_LAYERS (e.g. "Heatmap", "Scratch map")
  * @param {string}   userPlan    - Current user plan string
  * @param {HTMLInputElement} toggle - The checkbox element
  * @param {Function} showFn      - Async function that shows/enables the layer
