@@ -82,3 +82,15 @@ function cancelPreview(layerName) {
     delete activeTimers[layerName]
   }
 }
+
+/**
+ * Cancel all active preview timers.
+ * Call this from a Stimulus controller's disconnect() to prevent
+ * stale timers firing after Turbo Drive navigation.
+ */
+export function cancelAllPreviews() {
+  for (const layerName of Object.keys(activeTimers)) {
+    clearTimeout(activeTimers[layerName])
+    delete activeTimers[layerName]
+  }
+}

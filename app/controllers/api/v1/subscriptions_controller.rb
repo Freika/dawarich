@@ -19,6 +19,9 @@ class Api::V1::SubscriptionsController < ApiController
 
     user.update!(attrs)
 
+    # Bust rate-limit plan cache so new limits take effect immediately
+    Rails.cache.delete("rack_attack/plan/#{user.api_key}") if attrs.key?(:plan)
+
     render json: { message: 'Subscription updated successfully' }
   rescue JWT::DecodeError => e
     ExceptionReporter.call(e)
