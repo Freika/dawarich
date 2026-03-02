@@ -104,6 +104,57 @@ RSpec.describe Users::TransportationThresholdsUpdater do
       end
     end
 
+    context 'when user is on lite plan' do
+      let(:user) do
+        u = create(:user)
+        u.update_column(:plan, User.plans[:lite])
+        u.reload
+      end
+
+      it 'strips gated layers from enabled_map_layers before saving' do
+        params = { 'enabled_map_layers' => %w[Tracks Heatmap Fog\ of\ War Scratch\ map Points] }
+        described_class.new(user, params).call
+
+        expect(user.reload.settings['enabled_map_layers']).to eq(%w[Tracks Points])
+      end
+
+      it 'forces globe_projection to false before saving' do
+        params = { 'globe_projection' => true }
+        described_class.new(user, params).call
+
+        expect(user.reload.settings['globe_projection']).to be false
+      end
+
+      it 'preserves non-gated layers' do
+        params = { 'enabled_map_layers' => %w[Tracks Points Areas] }
+        described_class.new(user, params).call
+
+        expect(user.reload.settings['enabled_map_layers']).to eq(%w[Tracks Points Areas])
+      end
+    end
+
+    context 'when user is on pro plan' do
+      let(:user) do
+        u = create(:user)
+        u.update_column(:plan, User.plans[:pro])
+        u.reload
+      end
+
+      it 'preserves all layers including gated ones' do
+        params = { 'enabled_map_layers' => %w[Tracks Heatmap Fog\ of\ War Scratch\ map] }
+        described_class.new(user, params).call
+
+        expect(user.reload.settings['enabled_map_layers']).to eq(%w[Tracks Heatmap Fog\ of\ War Scratch\ map])
+      end
+
+      it 'preserves globe_projection as true' do
+        params = { 'globe_projection' => true }
+        described_class.new(user, params).call
+
+        expect(user.reload.settings['globe_projection']).to be true
+      end
+    end
+
     context 'when save fails' do
       let(:params) { { 'route_opacity' => 0.5 } }
 

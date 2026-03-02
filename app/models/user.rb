@@ -42,7 +42,7 @@ class User < ApplicationRecord
   enum :plan, { lite: 0, pro: 1 }, default: :pro
 
   def safe_settings
-    Users::SafeSettings.new(settings)
+    Users::SafeSettings.new(settings, plan: plan)
   end
 
   def countries_visited
