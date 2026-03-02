@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: #f59e0b; color: white; padding: 20px; text-align: center; }
+    .content { padding: 20px; background: #f9fafb; }
+    .cta { background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; margin: 20px 0; }
+    .notice { background: #fef3c7; border: 1px solid #f59e0b; padding: 15px; border-radius: 6px; margin: 20px 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Your data history is filling up</h1>
+    </div>
+    <div class="content">
+      <p>Hi <%= @user.email %>, this is Evgenii from Dawarich.</p>
+
+      <div class="notice">
+        <p><strong>Heads up:</strong> Your oldest location data will be archived in about <strong>2 weeks</strong>.</p>
+      </div>
+
+      <p>On the Lite plan, your most recent 12 months of data remain fully searchable and interactive. Older data is archived — it stays visible on your map at reduced opacity and can always be exported, but it won't appear in search, stats, or timeline replay.</p>
+
+      <h3>Upgrade to Pro to keep your full history:</h3>
+      <ul>
+        <li>Unlimited searchable history — every month, every year</li>
+        <li>Heatmap, Fog of War, and Globe view</li>
+        <li>Full Write API access</li>
+        <li>Immich and PhotoPrism integrations</li>
+      </ul>
+
+      <a href="https://dawarich.app/pricing?utm_source=email&utm_medium=email&utm_campaign=archival_approaching&utm_content=upgrade" class="cta">Upgrade to Pro</a>
+
+      <p>Your data is always yours — Pro simply makes all of it searchable and interactive in-app.</p>
+
+      <p>Questions? Drop me a message at hi@dawarich.app or just reply to this email.</p>
+
+      <p>Best regards,<br>
+      Evgenii from Dawarich</p>
+    </div>
+  </div>
+</body>
+</html>
