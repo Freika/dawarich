@@ -3,8 +3,11 @@
 class Settings::IntegrationsController < ApplicationController
   before_action :authenticate_user!
   before_action :authenticate_active_user!, only: %i[update]
+  before_action :require_pro!, only: %i[update]
 
-  def index; end
+  def index
+    @pro_required = !DawarichSettings.self_hosted? && !current_user.pro?
+  end
 
   def update
     result = Settings::Update.new(
