@@ -63,12 +63,12 @@ RSpec.describe ApplicationController, type: :controller do
         allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
       end
 
-      it 'redirects back with alert' do
+      it 'redirects to sign in page' do
         get :index
 
         expect(response).to have_http_status(:see_other)
-        expect(response).to redirect_to(root_path)
-        expect(flash[:alert]).to eq('This feature requires a Pro plan.')
+        expect(response).to redirect_to(new_user_session_path)
+        expect(flash[:alert]).to eq('Please sign in to continue.')
       end
     end
   end

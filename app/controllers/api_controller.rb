@@ -123,15 +123,6 @@ class ApiController < ApplicationController
     render json: { error: 'Points limit exceeded' }, status: :unauthorized if limit_exceeded
   end
 
-  # Returns only archived points (older than 12 months) for Lite users.
-  # Self-hosted and Pro users have no archived concept — returns none.
-  def archived_points(user = current_api_user)
-    return user.points.none if DawarichSettings.self_hosted?
-    return user.points.none unless user.lite?
-
-    user.points.where('timestamp < ?', 12.months.ago.to_i)
-  end
-
   def set_rate_limit_headers
     return unless current_api_user
     return if DawarichSettings.self_hosted?

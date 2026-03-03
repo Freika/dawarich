@@ -54,17 +54,22 @@ class Lite::ArchivalWarningJob < ApplicationJob
       kind: :warning,
       title: 'Data has been archived',
       content: '1 month of location data has been archived. ' \
-               'Your archived data is still visible on the map and can be exported at any time. ' \
-               'Upgrade to Pro to make it fully searchable and interactive again.'
+               'Your archived data can be exported at any time. ' \
+               'Upgrade to Pro to make it visible and interactive in-app again.'
     )
   end
 
   def mark_warning_sent(user, key)
-    warnings = user.settings&.dig('archival_warnings') || {}
-    warnings[key] = Time.zone.now.iso8601
-    user.update_column(
-      :settings,
-      (user.settings || {}).merge('archival_warnings' => warnings)
+    # Atomic JSONB merge at the SQL level to avoid read-modify-write race conditions
+    # when multiple job workers process the same user concurrently.
+    User.where(id: user.id).update_all(
+      Arel.sql(
+        "settings = COALESCE(settings, '{}'::jsonb) || " \
+        "jsonb_build_object('archival_warnings', " \
+        "COALESCE(settings->'archival_warnings', '{}'::jsonb) || " \
+        "jsonb_build_object(#{ActiveRecord::Base.connection.quote(key)}, #{ActiveRecord::Base.connection.quote(Time.zone.now.iso8601)}))"
+      )
     )
+    user.reload
   end
 end

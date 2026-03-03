@@ -79,9 +79,9 @@ export class MapDataManager {
       // 4. Store data for replay and other features
       this.lastLoadedData = data
 
-      // 5. Load archived data for Lite users (renders at reduced opacity)
+      // 5. Show upsell banner for Lite users with data outside the 12-month window
       if (isGatedPlan(this.controller.userPlanValue)) {
-        this._loadArchivedData()
+        this._showDataWindowBanner()
       }
 
       // 6. Fit bounds if requested — use the first available data source
@@ -366,94 +366,13 @@ export class MapDataManager {
   }
 
   /**
-   * Load archived data for Lite users and render at reduced opacity.
-   * Runs in the background after main data loads — does not block the UI.
+   * Show an upsell banner for Lite users informing them that data outside the
+   * 12-month window is not displayed. No archived data is fetched or rendered.
    * @private
    */
-  async _loadArchivedData() {
-    try {
-      const archivedPoints = await this.controller.api.fetchAllArchivedPoints()
-      if (!archivedPoints.length) return
-
-      const archivedGeoJSON = {
-        type: "FeatureCollection",
-        features: archivedPoints.map((p) => ({
-          type: "Feature",
-          geometry: {
-            type: "Point",
-            coordinates: [p.longitude, p.latitude],
-          },
-          properties: { id: p.id, timestamp: p.timestamp },
-        })),
-      }
-
-      this._addArchivedLayers(archivedGeoJSON)
-    } catch (error) {
-      console.warn("[MapDataManager] Failed to load archived data:", error)
-    }
-  }
-
-  /**
-   * Add archived points and routes as semi-transparent MapLibre layers.
-   * @private
-   */
-  _addArchivedLayers(archivedGeoJSON) {
-    const map = this.map
-    const sourceId = "archived-points"
-
-    if (map.getSource(sourceId)) {
-      map.getSource(sourceId).setData(archivedGeoJSON)
-      return
-    }
-
-    map.addSource(sourceId, { type: "geojson", data: archivedGeoJSON })
-
-    // Archived points layer at 30% opacity
-    map.addLayer(
-      {
-        id: "archived-points-layer",
-        type: "circle",
-        source: sourceId,
-        paint: {
-          "circle-radius": 4,
-          "circle-color": "#94a3b8",
-          "circle-opacity": 0.3,
-          "circle-stroke-width": 1,
-          "circle-stroke-color": "#64748b",
-          "circle-stroke-opacity": 0.3,
-        },
-      },
-      this._findFirstLayerId(),
+  _showDataWindowBanner() {
+    Toast.info(
+      `Your plan includes 12 months of searchable history. <a href="${UPGRADE_URL}" target="_blank" class="link link-primary">Upgrade to Pro</a> for unlimited.`,
     )
-
-    // Click handler for upgrade prompt
-    map.on("click", "archived-points-layer", () => {
-      Toast.info(
-        `This data is archived. <a href="${UPGRADE_URL}" target="_blank" class="link link-primary">Upgrade to Pro</a> to explore your full history.`,
-      )
-    })
-
-    // Change cursor on hover
-    map.on("mouseenter", "archived-points-layer", () => {
-      map.getCanvas().style.cursor = "pointer"
-    })
-    map.on("mouseleave", "archived-points-layer", () => {
-      map.getCanvas().style.cursor = ""
-    })
-  }
-
-  /**
-   * Find the first existing layer ID to insert archived layers below all active layers.
-   * @private
-   */
-  _findFirstLayerId() {
-    const layers = this.map.getStyle().layers
-    for (const layer of layers) {
-      if (layer.id.startsWith("archived-")) continue
-      if (layer.source && !layer.id.includes("background")) {
-        return layer.id
-      }
-    }
-    return undefined
   }
 }
