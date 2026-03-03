@@ -124,7 +124,6 @@ class Users::ImportData::Notifications
     total_created = 0
 
     notifications.each_slice(BATCH_SIZE) do |batch|
-      # rubocop:disable Rails/SkipsModelValidations
       result = Notification.upsert_all(
         batch,
         returning: %w[id],

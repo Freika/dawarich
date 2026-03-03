@@ -114,7 +114,7 @@ module Users
         country_minutes = Hash.new(0)
 
         # Group by date to process multi-country days
-        daily_country_stats.group_by { |row| row['point_date'] }.each do |_date, day_rows|
+        daily_country_stats.group_by { |row| row['point_date'] }.each_value do |day_rows|
           if day_rows.size == 1
             # Single country day - assign full day
             country_minutes[day_rows.first['country_name']] += MINUTES_PER_DAY

@@ -21,7 +21,7 @@ class Imports::SecureFileDownloader
     begin
       Timeout.timeout(DOWNLOAD_TIMEOUT) do
         temp_file = create_temp_file
-        
+
         # Download directly to temp file
         storage_attachment.download do |chunk|
           temp_file.write(chunk)
@@ -29,7 +29,7 @@ class Imports::SecureFileDownloader
         temp_file.rewind
 
         # If file is empty, try alternative download method
-        if temp_file.size == 0
+        if temp_file.size.zero? # rubocop:disable Style/ZeroLengthPredicate -- Tempfile has no .empty?
           Rails.logger.warn('No content received from block download, trying alternative method')
           temp_file.write(storage_attachment.blob.download)
           temp_file.rewind
@@ -52,11 +52,11 @@ class Imports::SecureFileDownloader
       raise
     end
 
-    raise 'Download completed but no content was received' if temp_file.size == 0
+    raise 'Download completed but no content was received' if temp_file.size.zero? # rubocop:disable Style/ZeroLengthPredicate -- Tempfile has no .empty?
 
     verify_temp_file_integrity(temp_file)
     temp_file.path
-  ensure
+
     # Keep temp file open so it can be read by other processes
     # Caller is responsible for cleanup
   end
@@ -86,7 +86,7 @@ class Imports::SecureFileDownloader
         end
 
         # If we didn't get any content but no error occurred, try a different approach
-        if file_content.nil? || file_content.empty?
+        if file_content.blank?
           Rails.logger.warn('No content received from block download, trying alternative method')
           # Some ActiveStorage attachments may work differently, try direct access if possible
           file_content = storage_attachment.blob.download
@@ -106,7 +106,7 @@ class Imports::SecureFileDownloader
       raise
     end
 
-    raise 'Download completed but no content was received' if file_content.nil? || file_content.empty?
+    raise 'Download completed but no content was received' if file_content.blank?
 
     file_content
   end
@@ -127,7 +127,7 @@ class Imports::SecureFileDownloader
   end
 
   def verify_file_integrity(file_content)
-    return if file_content.nil? || file_content.empty?
+    return if file_content.blank?
 
     # Verify file size
     expected_size = storage_attachment.blob.byte_size
@@ -147,7 +147,7 @@ class Imports::SecureFileDownloader
   end
 
   def verify_temp_file_integrity(temp_file)
-    return if temp_file.nil? || temp_file.size == 0
+    return if temp_file.nil? || temp_file.size.zero? # rubocop:disable Style/ZeroLengthPredicate -- Tempfile has no .empty?
 
     # Verify file size
     expected_size = storage_attachment.blob.byte_size

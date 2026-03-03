@@ -1,0 +1,24 @@
+<%
+  start_time = Time.zone.parse(entry[:started_at]).strftime('%H:%M')
+  duration = format_duration_short(entry[:duration])
+  place_name = entry[:name].presence || 'Unknown Location'
+  location = entry[:place] ? [entry[:place][:city], entry[:place][:country]].compact.join(', ') : nil
+%>
+<div class="timeline-visit-wrapper"
+     data-action="mouseenter->timeline-feed#entryHover mouseleave->timeline-feed#entryUnhover"
+     data-entry-type="visit"
+     data-started-at="<%= entry[:started_at] %>"
+     data-ended-at="<%= entry[:ended_at] %>">
+  <div class="timeline-timestamp"><%= start_time %></div>
+  <div class="timeline-node-line">
+    <div class="timeline-node"></div>
+    <div class="timeline-node-rule"></div>
+  </div>
+  <div class="timeline-visit-card">
+    <div class="font-medium text-sm break-words"><%= place_name %></div>
+    <% if location.present? %>
+      <div class="text-xs text-base-content/50 break-words"><%= location %></div>
+    <% end %>
+    <div class="text-xs text-base-content/40 mt-0.5"><%= duration %></div>
+  </div>
+</div>

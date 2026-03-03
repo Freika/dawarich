@@ -2,6 +2,10 @@ name: RuboCop
 on:
   push:
   pull_request:
+
+permissions:
+  contents: read
+
 jobs:
   rubocop:
     runs-on: ubuntu-latest

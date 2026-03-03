@@ -1,26 +1,6 @@
 # frozen_string_literal: true
 
 module ApplicationHelper
-  def flash_alert_class(type)
-    case type.to_sym
-    when :notice, :success then 'alert-success'
-    when :alert, :error then 'alert-error'
-    when :warning then 'alert-warning'
-    when :info then 'alert-info'
-    else 'alert-info'
-    end
-  end
-
-  def flash_icon(type)
-    case type.to_sym
-    when :notice, :success then icon 'circle-check'
-    when :alert, :error then icon 'circle-x'
-    when :warning then icon 'circle-alert'
-    else
-      icon 'info'
-    end
-  end
-
   def year_timespan(year)
     start_at = DateTime.new(year).beginning_of_year.strftime('%Y-%m-%dT%H:%M')
     end_at = DateTime.new(year).end_of_year.strftime('%Y-%m-%dT%H:%M')
@@ -63,32 +43,6 @@ module ApplicationHelper
     'text-blue-600'
   end
 
-  def human_date(date)
-    date.strftime('%e %B %Y')
-  end
-
-  def human_datetime(datetime)
-    return unless datetime
-
-    content_tag(
-      :span,
-      datetime.strftime('%e %b %Y, %H:%M'),
-      class: 'tooltip',
-      data: { tip: datetime.iso8601 }
-    )
-  end
-
-  def human_datetime_with_seconds(datetime)
-    return unless datetime
-
-    content_tag(
-      :span,
-      datetime.strftime('%e %b %Y, %H:%M:%S'),
-      class: 'tooltip',
-      data: { tip: datetime.iso8601 }
-    )
-  end
-
   def speed_text_color(speed)
     return 'text-default' if speed.to_i >= 0
 
@@ -99,19 +53,6 @@ module ApplicationHelper
     return speed if speed.to_i <= 0
 
     speed * 3.6
-  end
-
-  def days_left(active_until)
-    return unless active_until
-
-    time_words = distance_of_time_in_words(Time.zone.now, active_until)
-
-    content_tag(
-      :span,
-      time_words,
-      class: 'tooltip',
-      data: { tip: "Expires on #{active_until.iso8601}" }
-    )
   end
 
   def onboarding_modal_showable?(user)
@@ -133,7 +74,7 @@ module ApplicationHelper
 
   def trial_days_remaining_compact(user)
     expiry = user.active_until
-    return "Expired" if expiry.blank? || expiry.past?
+    return 'Expired' if expiry.blank? || expiry.past?
 
     days_left = [(expiry.to_date - Time.zone.today).to_i, 0].max
     "#{days_left}d left"
@@ -152,37 +93,34 @@ module ApplicationHelper
   end
 
   def email_password_login_enabled?
-    # If OIDC is enabled and email/password registration is disabled,
-    # also disable email/password login (OIDC-only mode)
     return true unless DawarichSettings.oidc_enabled?
 
     ALLOW_EMAIL_PASSWORD_REGISTRATION
   end
 
-  def preferred_map_path
-    return map_v2_path unless user_signed_in?
+  def preferred_map_path(params = {})
+    return map_v2_path(params) unless user_signed_in?
 
     preferred_version = current_user.safe_settings.maps&.dig('preferred_version')
-    preferred_version == 'v1' ? map_v1_path : map_v2_path
+    preferred_version == 'v1' ? map_v1_path(params) : map_v2_path(params)
   end
 
-  def format_duration_short(seconds)
-    return '0m' if seconds.nil? || seconds.to_i.zero?
+  def sortable_column(title, column, path_helper, **path_params)
+    current_sort = params[:sort_by] || 'created_at'
+    current_dir  = params[:order_by] || 'desc'
+    is_active    = current_sort == column.to_s
+    next_dir     = is_active && current_dir == 'asc' ? 'desc' : 'asc'
 
-    duration = ActiveSupport::Duration.build(seconds.to_i)
-    parts = duration.parts
+    sort_icon = if is_active
+                  icon(current_dir == 'asc' ? 'chevron-up' : 'chevron-down', class: 'w-4 h-4 inline-block')
+                else
+                  icon('arrow-down-up', class: 'w-4 h-4 inline-block opacity-30')
+                end
 
-    weeks = parts[:weeks] || 0
-    days = (parts[:days] || 0) + (weeks * 7)
-    hours = parts[:hours] || 0
-    minutes = parts[:minutes] || 0
-
-    if days.positive?
-      hours.positive? ? "#{days}d #{hours}h" : "#{days}d"
-    elsif hours.positive?
-      "#{hours}h #{minutes}m"
-    else
-      "#{minutes}m"
+    link_to send(path_helper, **path_params.merge(sort_by: column, order_by: next_dir)),
+            class: "inline-flex items-center gap-1 link link-hover#{' font-bold' if is_active}" do
+      concat title
+      concat sort_icon
     end
   end
 end

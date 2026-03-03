@@ -69,7 +69,7 @@ module Visits
 
     def reassign_points(base_visit, visits)
       visits[1..].each do |visit|
-        visit.points.update_all(visit_id: base_visit.id) # rubocop:disable Rails/SkipsModelValidations
+        visit.points.update_all(visit_id: base_visit.id)
       end
     end
   end

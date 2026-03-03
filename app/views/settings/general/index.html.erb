@@ -55,7 +55,11 @@
                     <span class="label-text font-medium">Your timezone</span>
                   </label>
                   <%= f.select :timezone,
-                               ActiveSupport::TimeZone.all.map { |tz| ["(GMT#{tz.formatted_offset}) #{tz.name}", tz.name] },
+                               ActiveSupport::TimeZone.all
+                                 .map { |tz| [tz.tzinfo.name, tz.formatted_offset, tz.utc_offset] }
+                                 .uniq(&:first)
+                                 .sort_by { |_, _, seconds| seconds }
+                                 .map { |iana, offset, _| ["(GMT#{offset}) #{iana}", iana] },
                                { selected: current_user.timezone },
                                class: "select select-bordered w-full" %>
                   <p class="text-sm text-base-content/70 mt-1">

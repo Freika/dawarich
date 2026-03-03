@@ -31,29 +31,28 @@ class Tracks::BoundaryDetector
   def find_boundary_track_candidates
     # Get recent tracks that might have boundary issues
     recent_tracks = user.tracks
-                       .where('created_at > ?', 1.hour.ago)
-                       .includes(:points)
-                       .order(:start_at)
+                        .where('created_at > ?', 1.hour.ago)
+                        .includes(:points)
+                        .order(:start_at)
 
     return [] if recent_tracks.empty?
 
     # Group tracks that might be connected
-    boundary_groups = []
     potential_groups = []
 
     recent_tracks.each do |track|
       # Look for tracks that end close to where another begins
       connected_tracks = find_connected_tracks(track, recent_tracks)
 
-      if connected_tracks.any?
-        # Create or extend a boundary group
-        existing_group = potential_groups.find { |group| group.include?(track) }
+      next unless connected_tracks.any?
 
-        if existing_group
-          existing_group.concat(connected_tracks).uniq!
-        else
-          potential_groups << ([track] + connected_tracks).uniq
-        end
+      # Create or extend a boundary group
+      existing_group = potential_groups.find { |group| group.include?(track) }
+
+      if existing_group
+        existing_group.concat(connected_tracks).uniq!
+      else
+        potential_groups << ([track] + connected_tracks).uniq
       end
     end
 
@@ -77,14 +76,11 @@ class Tracks::BoundaryDetector
       candidate_end = candidate.end_at.to_i
 
       # Check if tracks are temporally adjacent
-      if (candidate_start - track_end_time).abs <= time_window ||
-         (track_start_time - candidate_end).abs <= time_window
+      next unless (candidate_start - track_end_time).abs <= time_window ||
+                  (track_start_time - candidate_end).abs <= time_window
 
-        # Check if they're spatially connected
-        if tracks_spatially_connected?(track, candidate)
-          connected << candidate
-        end
-      end
+      # Check if they're spatially connected
+      connected << candidate if tracks_spatially_connected?(track, candidate)
     end
 
     connected

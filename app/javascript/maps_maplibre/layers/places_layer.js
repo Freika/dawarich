@@ -1,4 +1,4 @@
-import { BaseLayer } from './base_layer'
+import { BaseLayer } from "./base_layer"
 
 /**
  * Places layer showing user-created places with tags
@@ -6,16 +6,16 @@ import { BaseLayer } from './base_layer'
  */
 export class PlacesLayer extends BaseLayer {
   constructor(map, options = {}) {
-    super(map, { id: 'places', ...options })
+    super(map, { id: "places", ...options })
   }
 
   getSourceConfig() {
     return {
-      type: 'geojson',
+      type: "geojson",
       data: this.data || {
-        type: 'FeatureCollection',
-        features: []
-      }
+        type: "FeatureCollection",
+        features: [],
+      },
     }
   }
 
@@ -24,39 +24,39 @@ export class PlacesLayer extends BaseLayer {
       // Place circles
       {
         id: this.id,
-        type: 'circle',
+        type: "circle",
         source: this.sourceId,
         paint: {
-          'circle-radius': 10,
-          'circle-color': [
-            'coalesce',
-            ['get', 'color'], //  Use tag color if available
-            '#6366f1' // Default indigo color
+          "circle-radius": 10,
+          "circle-color": [
+            "coalesce",
+            ["get", "color"], //  Use tag color if available
+            "#6366f1", // Default indigo color
           ],
-          'circle-stroke-width': 2,
-          'circle-stroke-color': '#ffffff',
-          'circle-opacity': 0.85
-        }
+          "circle-stroke-width": 2,
+          "circle-stroke-color": "#ffffff",
+          "circle-opacity": 0.85,
+        },
       },
 
       // Place labels
       {
         id: `${this.id}-labels`,
-        type: 'symbol',
+        type: "symbol",
         source: this.sourceId,
         layout: {
-          'text-field': ['get', 'name'],
-          'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
-          'text-size': 11,
-          'text-offset': [0, 1.3],
-          'text-anchor': 'top'
+          "text-field": ["get", "name"],
+          "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
+          "text-size": 11,
+          "text-offset": [0, 1.3],
+          "text-anchor": "top",
         },
         paint: {
-          'text-color': '#111827',
-          'text-halo-color': '#ffffff',
-          'text-halo-width': 2
-        }
-      }
+          "text-color": "#111827",
+          "text-halo-color": "#ffffff",
+          "text-halo-width": 2,
+        },
+      },
     ]
   }
 

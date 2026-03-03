@@ -118,8 +118,9 @@ RSpec.describe User, 'family methods', type: :model do
         create(:family_invitation, family: family, invited_by: user)
       end
 
-      it 'destroys associated invitations when user is destroyed' do
-        expect { user.destroy }.to change(Family::Invitation, :count).by(-1)
+      it 'soft-deletes user but keeps invitations' do
+        expect { user.destroy }.not_to change(Family::Invitation, :count)
+        expect(user.deleted?).to be true
       end
     end
 
@@ -128,8 +129,9 @@ RSpec.describe User, 'family methods', type: :model do
         create(:family_membership, user: user, family: family)
       end
 
-      it 'destroys associated membership when user is destroyed' do
-        expect { user.destroy }.to change(Family::Membership, :count).by(-1)
+      it 'soft-deletes user but keeps membership' do
+        expect { user.destroy }.not_to change(Family::Membership, :count)
+        expect(user.deleted?).to be true
       end
     end
   end

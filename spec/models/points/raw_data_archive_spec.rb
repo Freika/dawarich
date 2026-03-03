@@ -21,7 +21,6 @@ RSpec.describe Points::RawDataArchive, type: :model do
     it { is_expected.to validate_numericality_of(:year).is_greater_than(1970).is_less_than(2100) }
     it { is_expected.to validate_numericality_of(:month).is_greater_than_or_equal_to(1).is_less_than_or_equal_to(12) }
     it { is_expected.to validate_numericality_of(:chunk_number).is_greater_than(0) }
-
   end
 
   describe 'scopes' do

@@ -5,6 +5,7 @@ class Users::SafeSettings
 
   DEFAULT_VALUES = {
     'fog_of_war_meters' => 50,
+    'fog_of_war_threshold' => 50,
     'meters_between_routes' => 500,
     'preferred_map_layer' => 'OpenStreetMap',
     'speed_colored_routes' => false,
@@ -22,7 +23,7 @@ class Users::SafeSettings
     'photoprism_skip_ssl_verification' => false,
     'maps' => { 'distance_unit' => 'km' },
     'visits_suggestions_enabled' => 'true',
-    'enabled_map_layers' => %w[Routes Heatmap],
+    'enabled_map_layers' => %w[Tracks Heatmap],
     'maps_maplibre_style' => 'light',
     'digest_emails_enabled' => true,
     'news_emails_enabled' => true,

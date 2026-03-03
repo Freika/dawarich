@@ -1,0 +1,45 @@
+<%
+  unit = local_assigns[:distance_unit] || @distance_unit || 'km'
+  mode_label = track.dominant_mode&.titleize || 'Unknown'
+  distance_val = Stat.convert_distance(track.distance, unit).round(1)
+  speed_kmh = track.avg_speed.to_f
+  avg_speed = unit == 'mi' ? (speed_kmh * 0.621371).round(1) : speed_kmh.round(1)
+  speed_label = unit == 'mi' ? 'mph' : 'km/h'
+  elev_gain = track.elevation_gain
+  elev_loss = track.elevation_loss
+%>
+<div class="bg-base-100 rounded-lg p-3 mt-2 text-xs space-y-2 border border-base-300">
+  <div class="grid grid-cols-2 gap-2">
+    <div>
+      <div class="text-base-content/60">Distance</div>
+      <div class="font-semibold"><%= distance_val %> <%= unit %></div>
+    </div>
+    <div>
+      <div class="text-base-content/60">Avg Speed</div>
+      <div class="font-semibold"><%= avg_speed %> <%= speed_label %></div>
+    </div>
+    <% if elev_gain.present? && elev_gain > 0 %>
+      <div>
+        <div class="text-base-content/60">Elevation Gain</div>
+        <div class="font-semibold"><%= elev_gain.round %> m</div>
+      </div>
+    <% end %>
+    <% if elev_loss.present? && elev_loss > 0 %>
+      <div>
+        <div class="text-base-content/60">Elevation Loss</div>
+        <div class="font-semibold"><%= elev_loss.round %> m</div>
+      </div>
+    <% end %>
+  </div>
+  <div class="flex items-center justify-between pt-1 border-t border-base-300">
+    <span class="badge badge-sm badge-outline capitalize"><%= mode_label %></span>
+    <button type="button"
+            class="btn btn-xs btn-ghost gap-1"
+            data-action="click->maps--maplibre#replayTrack"
+            data-track-start="<%= track.start_at.iso8601 %>">
+      <svg id="track-replay-play-icon" class="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21"/></svg>
+      <svg id="track-replay-pause-icon" class="w-3 h-3 hidden" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+      <span id="track-replay-label">Replay</span>
+    </button>
+  </div>
+</div>

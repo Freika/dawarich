@@ -18,12 +18,18 @@ class Notification < ApplicationRecord
   private
 
   def broadcast_notification
-    NotificationsChannel.broadcast_to(
-      user, {
-        title: title,
-        id: id,
-        kind: kind
-      }
+    broadcast_prepend_to(
+      [user, :notifications],
+      target: 'notifications-list',
+      partial: 'notifications/navbar_item',
+      locals: { notification: self }
+    )
+
+    broadcast_replace_to(
+      [user, :notifications],
+      target: 'notifications-badge',
+      partial: 'notifications/badge',
+      locals: { count: user.notifications.unread.count }
     )
   end
 end

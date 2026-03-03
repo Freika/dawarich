@@ -27,7 +27,6 @@ class GoogleMaps::SemanticHistoryImporter
   def process_batch(batch)
     records = batch.map { |point_data| prepare_point_data(point_data) }
 
-    # rubocop:disable Rails/SkipsModelValidations
     Point.upsert_all(
       records,
       unique_by: %i[lonlat timestamp user_id],

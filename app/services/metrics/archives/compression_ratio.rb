@@ -2,7 +2,7 @@
 
 class Metrics::Archives::CompressionRatio
   def initialize(original_size:, compressed_size:)
-    @ratio = compressed_size.to_f / original_size.to_f
+    @ratio = compressed_size.to_f / original_size
   end
 
   def call

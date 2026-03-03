@@ -6,12 +6,12 @@ require 'oj'
 
 RSpec.describe Users::ImportData, type: :service do
   let(:user) { create(:user) }
-  let(:archive_path) { Rails.root.join('tmp', 'test_export.zip') }
+  let(:archive_path) { Rails.root.join('tmp/test_export.zip') }
   let(:service) { described_class.new(user, archive_path) }
   let(:import_directory) { Rails.root.join('tmp', "import_#{user.email.gsub(/[^0-9A-Za-z._-]/, '_')}_1234567890") }
 
   before do
-    allow(Time).to receive(:current).and_return(Time.zone.at(1234567890))
+    allow(Time).to receive(:current).and_return(Time.zone.at(1_234_567_890))
     allow(FileUtils).to receive(:mkdir_p)
     allow(FileUtils).to receive(:rm_rf)
     allow_any_instance_of(Pathname).to receive(:exist?).and_return(true)
@@ -96,7 +96,8 @@ RSpec.describe Users::ImportData, type: :service do
         expect(::Notifications::Create).to receive(:new).with(
           user: user,
           title: 'Data import failed',
-          content: "Your data import failed with error: #{error_message}. Please check the archive format and try again.",
+          content: "Your data import failed with error: #{error_message}. " \
+                   'Please check the archive format and try again.',
           kind: :error
         )
 

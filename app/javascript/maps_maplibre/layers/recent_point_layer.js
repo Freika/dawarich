@@ -1,4 +1,4 @@
-import { BaseLayer } from './base_layer'
+import { BaseLayer } from "./base_layer"
 
 /**
  * Recent point layer for displaying the most recent location in live mode
@@ -6,16 +6,16 @@ import { BaseLayer } from './base_layer'
  */
 export class RecentPointLayer extends BaseLayer {
   constructor(map, options = {}) {
-    super(map, { id: 'recent-point', visible: true, ...options })
+    super(map, { id: "recent-point", visible: true, ...options })
   }
 
   getSourceConfig() {
     return {
-      type: 'geojson',
+      type: "geojson",
       data: this.data || {
-        type: 'FeatureCollection',
-        features: []
-      }
+        type: "FeatureCollection",
+        features: [],
+      },
     }
   }
 
@@ -24,38 +24,26 @@ export class RecentPointLayer extends BaseLayer {
       // Pulsing outer circle (animation effect)
       {
         id: `${this.id}-pulse`,
-        type: 'circle',
+        type: "circle",
         source: this.sourceId,
         paint: {
-          'circle-color': '#ef4444',
-          'circle-radius': [
-            'interpolate',
-            ['linear'],
-            ['zoom'],
-            0, 8,
-            20, 40
-          ],
-          'circle-opacity': 0.3
-        }
+          "circle-color": "#ef4444",
+          "circle-radius": ["interpolate", ["linear"], ["zoom"], 0, 8, 20, 40],
+          "circle-opacity": 0.3,
+        },
       },
       // Main point circle
       {
         id: this.id,
-        type: 'circle',
+        type: "circle",
         source: this.sourceId,
         paint: {
-          'circle-color': '#ef4444',
-          'circle-radius': [
-            'interpolate',
-            ['linear'],
-            ['zoom'],
-            0, 6,
-            20, 20
-          ],
-          'circle-stroke-width': 2,
-          'circle-stroke-color': '#ffffff'
-        }
-      }
+          "circle-color": "#ef4444",
+          "circle-radius": ["interpolate", ["linear"], ["zoom"], 0, 6, 20, 20],
+          "circle-stroke-width": 2,
+          "circle-stroke-color": "#ffffff",
+        },
+      },
     ]
   }
 
@@ -67,17 +55,17 @@ export class RecentPointLayer extends BaseLayer {
    */
   updateRecentPoint(lon, lat, properties = {}) {
     const data = {
-      type: 'FeatureCollection',
+      type: "FeatureCollection",
       features: [
         {
-          type: 'Feature',
+          type: "Feature",
           geometry: {
-            type: 'Point',
-            coordinates: [lon, lat]
+            type: "Point",
+            coordinates: [lon, lat],
           },
-          properties
-        }
-      ]
+          properties,
+        },
+      ],
     }
     this.update(data)
   }
@@ -87,8 +75,8 @@ export class RecentPointLayer extends BaseLayer {
    */
   clear() {
     this.update({
-      type: 'FeatureCollection',
-      features: []
+      type: "FeatureCollection",
+      features: [],
     })
   }
 }

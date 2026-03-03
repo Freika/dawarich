@@ -132,9 +132,8 @@ module Points
           { id: id, raw_data: raw_data, raw_data_archived: false, raw_data_archive_id: nil }
         end
 
-        # rubocop:disable Rails/SkipsModelValidations
         Point.upsert_all(updates, unique_by: :id,
-                                  update_only: %i[raw_data raw_data_archived raw_data_archive_id])
+                          update_only: %i[raw_data raw_data_archived raw_data_archive_id])
         # rubocop:enable Rails/SkipsModelValidations
       end
 

@@ -12,11 +12,10 @@ module LocationSearch
       # Use sanitize_sql_array to safely execute the parameterized query
       safe_query = ActiveRecord::Base.sanitize_sql_array([query_sql] + bind_values)
 
-
       ActiveRecord::Base.connection.exec_query(safe_query)
-        .map { |row| format_point_result(row) }
-        .sort_by { |point| point[:timestamp] }
-        .reverse # Most recent first
+                        .map { |row| format_point_result(row) }
+                        .sort_by { |point| point[:timestamp] }
+                        .reverse # Most recent first
     end
 
     private
@@ -68,14 +67,14 @@ module LocationSearch
 
       if date_options[:date_from]
         timestamp_from = date_options[:date_from].to_time.to_i
-        filters << "p.timestamp >= ?"
+        filters << 'p.timestamp >= ?'
         bind_values << timestamp_from
       end
 
       if date_options[:date_to]
         # Add one day to include the entire end date
         timestamp_to = (date_options[:date_to] + 1.day).to_time.to_i
-        filters << "p.timestamp < ?"
+        filters << 'p.timestamp < ?'
         bind_values << timestamp_to
       end
 

@@ -1,0 +1,17 @@
+<div data-controller="removals"
+     data-removals-timeout-value="<%= type.to_sym.in?([:notice, :success]) ? 5000 : 0 %>"
+     role="alert"
+     class="alert <%= flash_alert_class(type) %> shadow-lg z-[6000]">
+  <div class="flex items-center gap-2">
+    <%= flash_icon(type) %>
+    <span><%= message %></span>
+  </div>
+  <button type="button"
+          data-action="click->removals#remove"
+          class="btn btn-sm btn-circle btn-ghost"
+          aria-label="Close">
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+    </svg>
+  </button>
+</div>

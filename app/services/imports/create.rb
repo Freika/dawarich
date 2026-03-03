@@ -30,16 +30,14 @@ class Imports::Create
     update_import_points_count(import)
     User.reset_counters(user.id, :points)
   rescue StandardError => e
-    import.update!(status: :failed)
+    import.update!(status: :failed, error_message: e.message)
     broadcast_status_update
 
     ExceptionReporter.call(e, 'Import failed')
 
     create_import_failed_notification(import, user, e)
   ensure
-    if temp_file_path && File.exist?(temp_file_path)
-      File.unlink(temp_file_path)
-    end
+    File.unlink(temp_file_path) if temp_file_path && File.exist?(temp_file_path)
 
     if import.processing?
       import.update!(status: :completed)
@@ -79,7 +77,7 @@ class Imports::Create
   def schedule_visit_suggesting(user_id, import)
     return unless user.safe_settings.visits_suggestions_enabled?
 
-    min_max = import.points.pluck('MIN(timestamp), MAX(timestamp)').first
+    min_max = import.points.pick('MIN(timestamp), MAX(timestamp)')
     return if min_max.compact.empty?
 
     start_at = Time.zone.at(min_max[0])

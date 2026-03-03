@@ -267,7 +267,7 @@ Devise.setup do |config|
   # up on your models and hooks.
 
   # Cloud version: only GitHub, Google (when env vars present)
-  if !SELF_HOSTED
+  unless SELF_HOSTED
     if ENV['GITHUB_OAUTH_CLIENT_ID'].present? && ENV['GITHUB_OAUTH_CLIENT_SECRET'].present?
       config.omniauth :github, ENV['GITHUB_OAUTH_CLIENT_ID'], ENV['GITHUB_OAUTH_CLIENT_SECRET'], scope: 'user:email'
       Rails.logger.info 'OAuth: GitHub configured'

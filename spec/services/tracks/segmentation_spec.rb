@@ -43,7 +43,8 @@ RSpec.describe Tracks::Segmentation do
         build(:point, timestamp: base_time, latitude: 0, longitude: 0, lonlat: 'POINT(0 0)'),
         build(:point, timestamp: base_time + 5.minutes.to_i, latitude: 0.1, longitude: 0.1, lonlat: 'POINT(0.1 0.1)'),
         build(:point, timestamp: base_time + 2.hours.to_i, latitude: 1, longitude: 1, lonlat: 'POINT(1 1)'),
-        build(:point, timestamp: base_time + 2.hours.to_i + 10.minutes.to_i, latitude: 1.1, longitude: 1.1, lonlat: 'POINT(1.1 1.1)')
+        build(:point, timestamp: base_time + 2.hours.to_i + 10.minutes.to_i, latitude: 1.1, longitude: 1.1,
+lonlat: 'POINT(1.1 1.1)')
       ]
 
       segments = segmenter.send(:split_points_into_segments_geocoder, points)

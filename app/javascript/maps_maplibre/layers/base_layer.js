@@ -22,17 +22,23 @@ export class BaseLayer {
     if (!this.map.getSource(this.sourceId)) {
       this.map.addSource(this.sourceId, this.getSourceConfig())
     } else {
-      console.log(`[BaseLayer:${this.id}] Source already exists:`, this.sourceId)
+      console.log(
+        `[BaseLayer:${this.id}] Source already exists:`,
+        this.sourceId,
+      )
     }
 
     // Add layers
     const layers = this.getLayerConfigs()
     console.log(`[BaseLayer:${this.id}] Adding ${layers.length} layer(s)`)
-    layers.forEach(layerConfig => {
+    layers.forEach((layerConfig) => {
       if (!this.map.getLayer(layerConfig.id)) {
         this.map.addLayer(layerConfig)
       } else {
-        console.log(`[BaseLayer:${this.id}] Layer already exists:`, layerConfig.id)
+        console.log(
+          `[BaseLayer:${this.id}] Layer already exists:`,
+          layerConfig.id,
+        )
       }
     })
 
@@ -46,7 +52,7 @@ export class BaseLayer {
   update(data) {
     this.data = data
     const source = this.map.getSource(this.sourceId)
-    if (source && source.setData) {
+    if (source?.setData) {
       source.setData(data)
     }
   }
@@ -55,7 +61,7 @@ export class BaseLayer {
    * Remove layer from map
    */
   remove() {
-    this.getLayerIds().forEach(layerId => {
+    this.getLayerIds().forEach((layerId) => {
       if (this.map.getLayer(layerId)) {
         this.map.removeLayer(layerId)
       }
@@ -98,10 +104,10 @@ export class BaseLayer {
    * @param {boolean} visible
    */
   setVisibility(visible) {
-    const visibility = visible ? 'visible' : 'none'
-    this.getLayerIds().forEach(layerId => {
+    const visibility = visible ? "visible" : "none"
+    this.getLayerIds().forEach((layerId) => {
       if (this.map.getLayer(layerId)) {
-        this.map.setLayoutProperty(layerId, 'visibility', visibility)
+        this.map.setLayoutProperty(layerId, "visibility", visibility)
       }
     })
   }
@@ -111,7 +117,7 @@ export class BaseLayer {
    * @returns {Object} MapLibre source config
    */
   getSourceConfig() {
-    throw new Error('Must implement getSourceConfig()')
+    throw new Error("Must implement getSourceConfig()")
   }
 
   /**
@@ -119,7 +125,7 @@ export class BaseLayer {
    * @returns {Array<Object>} Array of MapLibre layer configs
    */
   getLayerConfigs() {
-    throw new Error('Must implement getLayerConfigs()')
+    throw new Error("Must implement getLayerConfigs()")
   }
 
   /**
@@ -127,6 +133,6 @@ export class BaseLayer {
    * @returns {Array<string>}
    */
   getLayerIds() {
-    return this.getLayerConfigs().map(config => config.id)
+    return this.getLayerConfigs().map((config) => config.id)
   }
 }

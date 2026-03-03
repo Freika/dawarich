@@ -7,13 +7,13 @@ export default class extends Controller {
   connect() {
     if (this.showableValue) {
       // Listen for Turbo page load events to show modal after navigation completes
-      document.addEventListener('turbo:load', this.handleTurboLoad.bind(this))
+      document.addEventListener("turbo:load", this.handleTurboLoad.bind(this))
     }
   }
 
   disconnect() {
     // Clean up event listener when controller is removed
-    document.removeEventListener('turbo:load', this.handleTurboLoad.bind(this))
+    document.removeEventListener("turbo:load", this.handleTurboLoad.bind(this))
   }
 
   handleTurboLoad() {
@@ -23,7 +23,7 @@ export default class extends Controller {
   }
 
   checkAndShowModal() {
-    const MODAL_STORAGE_KEY = 'dawarich_onboarding_shown'
+    const MODAL_STORAGE_KEY = "dawarich_onboarding_shown"
     const hasShownModal = localStorage.getItem(MODAL_STORAGE_KEY)
 
     if (!hasShownModal && this.hasModalTarget) {
@@ -31,10 +31,10 @@ export default class extends Controller {
       this.modalTarget.showModal()
 
       // Mark as shown in local storage
-      localStorage.setItem(MODAL_STORAGE_KEY, 'true')
+      localStorage.setItem(MODAL_STORAGE_KEY, "true")
 
       // Add event listener to handle when modal is closed
-      this.modalTarget.addEventListener('close', () => {
+      this.modalTarget.addEventListener("close", () => {
         // Modal closed - state already saved
       })
     }

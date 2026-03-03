@@ -1,4 +1,4 @@
-<!-- Supported Formats Info Card -->
+<%# Supported Formats Info Card %>
 <div class="card bg-base-200 w-full max-w-md mb-5 mt-5">
   <div class="card-body p-4">
     <h3 class="card-title text-sm">Supported Import Formats</h3>
@@ -23,11 +23,14 @@
 </div>
 
 <%= form_with model: import, class: "contents", data: {
-  controller: "direct-upload",
-  direct_upload_url_value: rails_direct_uploads_url,
-  direct_upload_user_trial_value: current_user.trial?,
-  direct_upload_current_imports_count_value: current_user.imports.count,
-  direct_upload_target: "form"
+  controller: "upload",
+  upload_url_value: rails_direct_uploads_url,
+  upload_field_name_value: "import[files][]",
+  upload_multiple_value: true,
+  upload_user_trial_value: current_user.trial?,
+  upload_max_imports_value: 5,
+  upload_current_imports_count_value: current_user.imports.count,
+  upload_target: "form"
 } do |form| %>
   <label class="form-control w-full max-w-xs my-5">
     <div class="label">
@@ -37,7 +40,7 @@
         multiple: true,
         direct_upload: true,
         class: "file-input file-input-bordered w-full max-w-xs",
-        data: { direct_upload_target: "input" } %>
+        data: { upload_target: "input" } %>
     <div class="text-sm text-gray-500 mt-2">
       Files will be uploaded directly to storage. Please be patient during upload.
     </div>
@@ -45,6 +48,6 @@
 
   <div class="inline">
     <%= form.submit class: "rounded-lg py-3 px-5 bg-blue-600 text-white inline-block font-medium cursor-pointer",
-        data: { direct_upload_target: "submit" } %>
+        data: { upload_target: "submit" } %>
   </div>
 <% end %>

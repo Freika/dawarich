@@ -13,7 +13,8 @@
       "!!**/node_modules",
       "!!**/vendor",
       "!!app/assets/builds",
-      "!!app/assets/stylesheets/maplibre-gl.css"
+      "!!app/assets/stylesheets/maplibre-gl.css",
+      "!!app/javascript/posthog.js"
     ]
   },
   "formatter": {
@@ -77,6 +78,23 @@
           },
           "correctness": {
             "noInvalidPositionAtImportRule": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": [
+        "app/assets/stylesheets/leaflet_theme.css",
+        "app/assets/stylesheets/leaflet.control.layers.tree.css",
+        "app/assets/stylesheets/application.css",
+        "app/assets/stylesheets/actiontext.css",
+        "app/assets/stylesheets/maps_maplibre_panel.css",
+        "app/javascript/styles/visits.css"
+      ],
+      "linter": {
+        "rules": {
+          "complexity": {
+            "noImportantStyles": "off"
           }
         }
       }

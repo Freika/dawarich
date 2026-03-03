@@ -47,7 +47,7 @@ module Archivable
   def check_temporary_restore_cache
     return nil unless respond_to?(:timestamp)
 
-    recorded_time = Time.at(timestamp)
+    recorded_time = Time.zone.at(timestamp)
     cache_key = "raw_data:temp:#{user_id}:#{recorded_time.year}:#{recorded_time.month}:#{id}"
     Rails.cache.read(cache_key)
   end

@@ -89,7 +89,7 @@ namespace :demo do
     family_members = create_family_with_members(user)
     puts "✅ Created family with #{family_members.count} members"
 
-    puts "\n" + '=' * 60
+    puts "\n#{'=' * 60}"
     puts '🎉 Demo data generation complete!'
     puts '=' * 60
     puts "\n📊 Summary:"
@@ -178,10 +178,10 @@ namespace :demo do
       end
 
       created_count += 1
-      print '.' if (index + 1) % 10 == 0
+      print '.' if ((index + 1) % 10).zero?
     end
 
-    puts '' if created_count > 0
+    puts '' if created_count.positive?
     created_count
   end
 
@@ -388,7 +388,7 @@ namespace :demo do
       end
 
       # Calculate average speed (m/s)
-      avg_speed = duration > 0 ? (total_distance / duration.to_f) : 0
+      avg_speed = duration.positive? ? (total_distance / duration.to_f) : 0
 
       # Calculate elevation data
       elevations = track_points.map(&:altitude).compact
@@ -400,7 +400,7 @@ namespace :demo do
       if elevations.length > 1
         elevations.each_cons(2) do |alt1, alt2|
           diff = alt2 - alt1
-          if diff > 0
+          if diff.positive?
             elevation_gain += diff
           else
             elevation_loss += diff.abs
@@ -429,10 +429,10 @@ namespace :demo do
       create_track_segments(track, track_points)
 
       created_count += 1
-      print '.' if (index + 1) % 5 == 0
+      print '.' if ((index + 1) % 5).zero?
     end
 
-    puts '' if created_count > 0
+    puts '' if created_count.positive?
     created_count
   end
 

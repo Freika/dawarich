@@ -30,7 +30,7 @@ class Metrics::Archives::Verification
         name: 'dawarich_archive_verification_failures_total',
         value: 1,
         labels: {
-          check: @check_name  # e.g., 'count_mismatch', 'checksum_mismatch'
+          check: @check_name # e.g., 'count_mismatch', 'checksum_mismatch'
         }
       }
 

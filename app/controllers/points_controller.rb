@@ -22,9 +22,11 @@ class PointsController < ApplicationController
   def bulk_destroy
     point_ids = params[:point_ids]&.compact&.reject(&:blank?)
 
-    redirect_to points_url(preserved_params),
-                alert: 'No points selected.',
-                status: :see_other and return if point_ids.blank?
+    if point_ids.blank?
+      redirect_to points_url(preserved_params),
+                  alert: 'No points selected.',
+                  status: :see_other and return
+    end
 
     current_user.points.where(id: point_ids).destroy_all
 

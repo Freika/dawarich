@@ -89,7 +89,6 @@ class Users::ImportData::Points
     normalized_batch = normalize_point_keys(@buffer)
 
     begin
-      # rubocop:disable Rails/SkipsModelValidations
       result = Point.upsert_all(
         normalized_batch,
         unique_by: %i[lonlat timestamp user_id],

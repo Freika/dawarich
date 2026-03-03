@@ -25,7 +25,7 @@ RSpec.describe Api::V1::LocationsController, type: :request do
                 last_visit: '2024-03-20T18:45:00Z',
                 visits: [
                   {
-                    timestamp: 1711814700,
+                    timestamp: 1_711_814_700,
                     date: '2024-03-20T18:45:00Z',
                     coordinates: [52.5201, 13.4051],
                     distance_meters: 45.5,
@@ -75,13 +75,13 @@ RSpec.describe Api::V1::LocationsController, type: :request do
           expect(LocationSearch::PointFinder)
             .to receive(:new)
             .with(user, hash_including(
-              latitude: latitude,
-              longitude: longitude,
-              limit: 50,
-              date_from: nil,
-              date_to: nil,
-              radius_override: nil
-            ))
+                          latitude: latitude,
+                          longitude: longitude,
+                          limit: 50,
+                          date_from: nil,
+                          date_to: nil,
+                          radius_override: nil
+                        ))
             .and_return(double(call: mock_search_result))
 
           get '/api/v1/locations', params: { lat: latitude, lon: longitude }, headers: headers
@@ -103,13 +103,13 @@ RSpec.describe Api::V1::LocationsController, type: :request do
             expect(LocationSearch::PointFinder)
               .to receive(:new)
               .with(user, hash_including(
-                latitude: latitude,
-                longitude: longitude,
-                limit: 20,
-                date_from: Date.parse('2024-01-01'),
-                date_to: Date.parse('2024-03-31'),
-                radius_override: 200
-              ))
+                            latitude: latitude,
+                            longitude: longitude,
+                            limit: 20,
+                            date_from: Date.parse('2024-01-01'),
+                            date_to: Date.parse('2024-03-31'),
+                            radius_override: 200
+                          ))
               .and_return(double(call: mock_search_result))
 
             get '/api/v1/locations', params: params, headers: headers
@@ -118,17 +118,19 @@ RSpec.describe Api::V1::LocationsController, type: :request do
 
         context 'with invalid date parameters' do
           it 'handles invalid date_from gracefully' do
-            expect {
-              get '/api/v1/locations', params: { lat: latitude, lon: longitude, date_from: 'invalid-date' }, headers: headers
-            }.not_to raise_error
+            expect do
+              get '/api/v1/locations', params: { lat: latitude, lon: longitude, date_from: 'invalid-date' },
+headers: headers
+            end.not_to raise_error
 
             expect(response).to have_http_status(:ok)
           end
 
           it 'handles invalid date_to gracefully' do
-            expect {
-              get '/api/v1/locations', params: { lat: latitude, lon: longitude, date_to: 'invalid-date' }, headers: headers
-            }.not_to raise_error
+            expect do
+              get '/api/v1/locations', params: { lat: latitude, lon: longitude, date_to: 'invalid-date' },
+headers: headers
+            end.not_to raise_error
 
             expect(response).to have_http_status(:ok)
           end
@@ -190,7 +192,7 @@ RSpec.describe Api::V1::LocationsController, type: :request do
           expect(response).to have_http_status(:bad_request)
 
           json_response = JSON.parse(response.body)
-          expect(json_response['error']).to eq('Invalid coordinates: latitude must be between -90 and 90, longitude between -180 and 180')
+          expect(json_response['error']).to eq('Invalid coordinates: lat must be -90..90, lon must be -180..180')
         end
 
         it 'returns bad request error for invalid longitude' do
@@ -199,7 +201,7 @@ RSpec.describe Api::V1::LocationsController, type: :request do
           expect(response).to have_http_status(:bad_request)
 
           json_response = JSON.parse(response.body)
-          expect(json_response['error']).to eq('Invalid coordinates: latitude must be between -90 and 90, longitude between -180 and 180')
+          expect(json_response['error']).to eq('Invalid coordinates: lat must be -90..90, lon must be -180..180')
         end
       end
 
@@ -250,7 +252,7 @@ RSpec.describe Api::V1::LocationsController, type: :request do
 
         # Mock service to verify user isolation
         allow(LocationSearch::PointFinder).to receive(:new) do |user, _params|
-          expect(user).to eq(user1)  # Should only be called with user1
+          expect(user).to eq(user1) # Should only be called with user1
           double(call: { query: nil, locations: [], total_locations: 0, search_metadata: {} })
         end
       end

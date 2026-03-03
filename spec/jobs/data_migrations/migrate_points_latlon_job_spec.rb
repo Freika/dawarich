@@ -7,7 +7,7 @@ RSpec.describe DataMigrations::MigratePointsLatlonJob, type: :job do
     it 'updates the lonlat column for all tracked points' do
       user = create(:user)
       point = create(:point, latitude: 2.0, longitude: 1.0, user: user)
-      
+
       # Clear the lonlat to simulate points that need migration
       point.update_column(:lonlat, nil)
 

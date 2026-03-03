@@ -24,7 +24,7 @@ module DistanceConvertible
   extend ActiveSupport::Concern
 
   def distance_in_unit(unit)
-    return 0.0 unless distance.present?
+    return 0.0 if distance.blank?
 
     unit_sym = unit.to_sym
     conversion_factor = ::DISTANCE_UNITS[unit_sym]
@@ -39,7 +39,7 @@ module DistanceConvertible
 
   module ClassMethods
     def convert_distance(distance_meters, unit)
-      return 0.0 unless distance_meters.present?
+      return 0.0 if distance_meters.blank?
 
       unit_sym = unit.to_sym
       conversion_factor = ::DISTANCE_UNITS[unit_sym]

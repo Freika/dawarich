@@ -6,21 +6,27 @@ export default class extends BaseController {
 
   connect() {
     this.parentTarget.checked = false
-    this.childTargets.map(x => x.checked = false)
+    this.childTargets.forEach((x) => {
+      x.checked = false
+    })
     this.updateDeleteButtonVisibility()
   }
 
   toggleChildren() {
     if (this.parentTarget.checked) {
-      this.childTargets.map(x => x.checked = true)
+      this.childTargets.forEach((x) => {
+        x.checked = true
+      })
     } else {
-      this.childTargets.map(x => x.checked = false)
+      this.childTargets.forEach((x) => {
+        x.checked = false
+      })
     }
     this.updateDeleteButtonVisibility()
   }
 
   toggleParent() {
-    if (this.childTargets.map(x => x.checked).includes(false)) {
+    if (this.childTargets.map((x) => x.checked).includes(false)) {
       this.parentTarget.checked = false
     } else {
       this.parentTarget.checked = true
@@ -29,10 +35,12 @@ export default class extends BaseController {
   }
 
   updateDeleteButtonVisibility() {
-    const hasCheckedItems = this.childTargets.some(target => target.checked)
+    const hasCheckedItems = this.childTargets.some((target) => target.checked)
 
     if (this.hasDeleteButtonTarget) {
-      this.deleteButtonTarget.style.display = hasCheckedItems ? 'inline-block' : 'none'
+      this.deleteButtonTarget.style.display = hasCheckedItems
+        ? "inline-block"
+        : "none"
     }
   }
 }

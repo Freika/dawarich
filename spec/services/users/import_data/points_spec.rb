@@ -12,10 +12,10 @@ RSpec.describe Users::ImportData::Points, type: :service do
       let(:points_data) do
         [
           {
-            'timestamp' => 1640995200,
+            'timestamp' => 1_640_995_200,
             'lonlat' => 'POINT(13.4050 52.5200)',
             'city' => 'Berlin',
-            'country' => 'Germany',  # String field from export
+            'country' => 'Germany', # String field from export
             'country_info' => {
               'name' => 'Germany',
               'iso_a2' => 'DE',
@@ -52,7 +52,7 @@ RSpec.describe Users::ImportData::Points, type: :service do
       let(:points_data) do
         [
           {
-            'timestamp' => 1640995200,
+            'timestamp' => 1_640_995_200,
             'lonlat' => 'POINT(13.4050 52.5200)',
             'city' => 'Berlin',
             'country' => 'NewCountry',
@@ -94,20 +94,20 @@ RSpec.describe Users::ImportData::Points, type: :service do
       let(:points_data) do
         [
           {
-            'timestamp' => 1640995200,
+            'timestamp' => 1_640_995_200,
             'lonlat' => 'POINT(13.4050 52.5200)',
             'city' => 'Berlin'
           },
           {
             # Missing lonlat but has longitude/latitude (should be reconstructed)
-            'timestamp' => 1640995220,
+            'timestamp' => 1_640_995_220,
             'longitude' => 11.5820,
             'latitude' => 48.1351,
             'city' => 'Munich'
           },
           {
             # Missing lonlat and coordinates
-            'timestamp' => 1640995260,
+            'timestamp' => 1_640_995_260,
             'city' => 'Hamburg'
           },
           {
@@ -117,7 +117,7 @@ RSpec.describe Users::ImportData::Points, type: :service do
           },
           {
             # Invalid lonlat format
-            'timestamp' => 1640995320,
+            'timestamp' => 1_640_995_320,
             'lonlat' => 'invalid format',
             'city' => 'Frankfurt'
           }
@@ -125,7 +125,7 @@ RSpec.describe Users::ImportData::Points, type: :service do
       end
 
       it 'imports valid points and reconstructs lonlat when needed' do
-        expect(service.call).to eq(2)  # Two valid points (original + reconstructed)
+        expect(service.call).to eq(2) # Two valid points (original + reconstructed)
         expect(user.points.count).to eq(2)
 
         # Check that lonlat was reconstructed properly

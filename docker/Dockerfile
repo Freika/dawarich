@@ -84,4 +84,6 @@ RUN chmod +x /usr/local/bin/sidekiq-entrypoint.sh
 
 EXPOSE $RAILS_PORT
 
+STOPSIGNAL SIGINT
+
 ENTRYPOINT [ "bundle", "exec" ]

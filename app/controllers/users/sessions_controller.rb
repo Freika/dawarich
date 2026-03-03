@@ -18,7 +18,7 @@ class Users::SessionsController < Devise::SessionsController
   end
 
   def load_invitation_context
-    return unless invitation_token.present?
+    return if invitation_token.blank?
 
     @invitation = Family::Invitation.find_by(token: invitation_token)
     # Store token in session so it persists through the sign-in process

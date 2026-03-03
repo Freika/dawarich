@@ -44,7 +44,7 @@ class Geojson::Params
       accuracy:           accuracy(feature),
       vertical_accuracy:  feature[:properties][:vertical_accuracy],
       motion_data:        Points::MotionDataExtractor.from_overland_properties(feature[:properties]),
-      raw_data:           {}
+      raw_data:           feature
     }
   end
 
@@ -66,7 +66,7 @@ class Geojson::Params
     {
       lonlat: "POINT(#{point[0]} #{point[1]})",
       timestamp: timestamp(point),
-      raw_data:  {}
+      raw_data:  point
     }
   end
 

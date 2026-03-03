@@ -16,7 +16,7 @@ class Users::ImportData::Settings
 
     user.update!(settings: updated_settings)
 
-    Rails.logger.info "Settings import completed"
+    Rails.logger.info 'Settings import completed'
     true
   end
 

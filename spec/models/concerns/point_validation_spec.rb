@@ -122,7 +122,7 @@ RSpec.describe PointValidation do
         skip 'Skipping integration tests' unless ENV['RUN_INTEGRATION_TESTS']
 
         # Create a point in the database
-        existing_point = Point.create!(
+        Point.create!(
           lonlat: "POINT(#{existing_point_params[:longitude]} #{existing_point_params[:latitude]})",
           timestamp: existing_timestamp,
           user_id: user.id

@@ -50,7 +50,7 @@ gem 'rswag-ui'
 gem 'rubyzip', '~> 3.2'
 gem 'sentry-rails', '>= 5.27.0'
 gem 'sentry-ruby'
-gem 'sidekiq', '8.0.10' # Pin to 8.0.x - sidekiq 8.1+ requires connection_pool 3.0+ which has breaking changes with Rails
+gem 'sidekiq', '8.0.10' # Pin to 8.0.x - sidekiq 8.1+ requires connection_pool 3.0+ breaking Rails
 gem 'sidekiq-cron', '>= 2.3.1'
 gem 'sidekiq-limit_fetch'
 gem 'sprockets-rails'

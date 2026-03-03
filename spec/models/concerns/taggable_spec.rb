@@ -107,16 +107,16 @@ RSpec.describe Taggable do
 
     describe '#add_tag' do
       it 'adds a tag to the record' do
-        expect {
+        expect do
           place.add_tag(tag1)
-        }.to change { place.tags.count }.by(1)
+        end.to change { place.tags.count }.by(1)
       end
 
       it 'does not add duplicate tags' do
         place.add_tag(tag1)
-        expect {
+        expect do
           place.add_tag(tag1)
-        }.not_to change { place.tags.count }
+        end.not_to(change { place.tags.count })
       end
 
       it 'adds the correct tag' do
@@ -137,9 +137,9 @@ RSpec.describe Taggable do
       end
 
       it 'removes a tag from the record' do
-        expect {
+        expect do
           place.remove_tag(tag1)
-        }.to change { place.tags.count }.by(-1)
+        end.to change { place.tags.count }.by(-1)
       end
 
       it 'removes the correct tag' do
@@ -149,9 +149,9 @@ RSpec.describe Taggable do
       end
 
       it 'does nothing when tag is not present' do
-        expect {
+        expect do
           place.remove_tag(tag3)
-        }.not_to change { place.tags.count }
+        end.not_to(change { place.tags.count })
       end
     end
 

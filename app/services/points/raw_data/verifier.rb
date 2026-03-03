@@ -39,7 +39,8 @@ module Points
       end
 
       def verify_archive(archive)
-        Rails.logger.info("Verifying archive #{archive.id} (#{archive.month_display}, chunk #{archive.chunk_number})...")
+        msg = "Verifying archive #{archive.id} (#{archive.month_display}, chunk #{archive.chunk_number})..."
+        Rails.logger.info(msg)
         start_time = Time.current
 
         verification_result = perform_verification(archive)
@@ -85,17 +86,28 @@ module Points
       end
 
       def perform_verification(archive)
+        result = download_and_verify_content(archive)
+        return result unless result[:success]
+
+        compressed_content = result[:compressed_content]
+        result = parse_and_verify_points(archive, compressed_content)
+        return result unless result[:success]
+
+        verify_existing_points(archive, result[:point_ids], result[:sampled_data])
+      end
+
+      def download_and_verify_content(archive)
         return { success: false, error: 'File not attached' } unless archive.file.attached?
 
-        begin
-          raw_content = archive.file.blob.download
-        rescue StandardError => e
-          return { success: false, error: "File download failed: #{e.message}" }
-        end
-
+        raw_content = archive.file.blob.download
         return { success: false, error: 'File is empty' } if raw_content.bytesize.zero?
 
-        # Verify SHA256 content checksum (replaces MD5 blob check for encrypted archives)
+        verify_content_integrity(raw_content, archive)
+      rescue StandardError => e
+        { success: false, error: "File download failed: #{e.message}" }
+      end
+
+      def verify_content_integrity(raw_content, archive)
         stored_checksum = archive.metadata&.dig('content_checksum')
         if stored_checksum.present?
           actual_checksum = Digest::SHA256.hexdigest(raw_content)
@@ -103,15 +115,11 @@ module Points
         end
 
         compressed_content = Encryption.decrypt_if_needed(raw_content, archive)
+        { success: true, compressed_content: compressed_content }
+      end
 
-        # Phase 1: Stream-parse JSONL to collect point IDs (lightweight — no raw_data in memory).
-        # Also collect raw_data only for sampled indices to verify data integrity.
-        begin
-          parse_result = stream_parse_archive(compressed_content, archive.point_count)
-        rescue StandardError => e
-          return { success: false, error: "Decompression/parsing failed: #{e.message}" }
-        end
-
+      def parse_and_verify_points(archive, compressed_content)
+        parse_result = stream_parse_archive(compressed_content, archive.point_count)
         point_ids = parse_result[:point_ids]
 
         if point_ids.count != archive.point_count
@@ -124,7 +132,12 @@ module Points
         id_checksum = calculate_checksum(point_ids)
         return { success: false, error: 'Point IDs checksum mismatch' } if id_checksum != archive.point_ids_checksum
 
-        # Phase 2: Check how many points still exist in DB
+        { success: true, point_ids: point_ids, sampled_data: parse_result[:sampled_data] }
+      rescue StandardError => e
+        { success: false, error: "Decompression/parsing failed: #{e.message}" }
+      end
+
+      def verify_existing_points(archive, point_ids, sampled_data)
         existing_count = Point.where(id: point_ids).count
         if existing_count != point_ids.count
           Rails.logger.info(
@@ -133,9 +146,8 @@ module Points
           )
         end
 
-        # Phase 3: Verify raw_data matches for sampled points
         if existing_count.positive?
-          verification_result = verify_raw_data_matches(parse_result[:sampled_data])
+          verification_result = verify_raw_data_matches(sampled_data)
           return verification_result unless verification_result[:success]
         else
           Rails.logger.info(

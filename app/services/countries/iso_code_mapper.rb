@@ -387,8 +387,6 @@ class Countries::IsoCodeMapper
     COUNTRIES.values
   end
 
-  private
-
   def self.find_country_by_name(name)
     return nil if name.blank?
 

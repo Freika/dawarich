@@ -19,7 +19,7 @@ export class ProgressiveLoader {
     const {
       batchSize = 1000,
       maxConcurrent = 3,
-      maxPoints = 100000 // Limit for safety
+      maxPoints = 100000, // Limit for safety
     } = options
 
     this.abortController = new AbortController()
@@ -32,7 +32,7 @@ export class ProgressiveLoader {
       do {
         // Check abort
         if (this.abortController.signal.aborted) {
-          throw new Error('Load cancelled')
+          throw new Error("Load cancelled")
         }
 
         // Check max points limit
@@ -49,8 +49,8 @@ export class ProgressiveLoader {
         const requestPromise = fetchFn({
           page,
           per_page: batchSize,
-          signal: this.abortController.signal
-        }).then(result => {
+          signal: this.abortController.signal,
+        }).then((result) => {
           allData.push(...result.data)
 
           if (result.totalPages) {
@@ -62,7 +62,7 @@ export class ProgressiveLoader {
             total: Math.min(totalPages * batchSize, maxPoints),
             currentPage: page,
             totalPages,
-            progress: page / totalPages
+            progress: page / totalPages,
           })
 
           // Remove from active
@@ -74,7 +74,6 @@ export class ProgressiveLoader {
 
         activeRequests.push(requestPromise)
         page++
-
       } while (page <= totalPages && allData.length < maxPoints)
 
       // Wait for remaining
@@ -82,10 +81,9 @@ export class ProgressiveLoader {
 
       this.onComplete?.(allData)
       return allData
-
     } catch (error) {
-      if (error.name === 'AbortError' || error.message === 'Load cancelled') {
-        console.log('Progressive load cancelled')
+      if (error.name === "AbortError" || error.message === "Load cancelled") {
+        console.log("Progressive load cancelled")
         return allData // Return partial data
       }
       throw error

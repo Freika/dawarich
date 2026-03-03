@@ -59,7 +59,8 @@ RSpec.describe Tracks::IncrementalGenerator do
         # Gap of 2 hours (exceeds 30 minute threshold)
         # Second segment - 1 hour ago
         create(:point, user: user, timestamp: base_time + 2.hours.to_i, lonlat: 'POINT(-75.006 41.7128)')
-        create(:point, user: user, timestamp: base_time + 2.hours.to_i + 5.minutes.to_i, lonlat: 'POINT(-75.007 41.7138)')
+        create(:point, user: user, timestamp: base_time + 2.hours.to_i + 5.minutes.to_i,
+lonlat: 'POINT(-75.007 41.7138)')
       end
 
       it 'creates tracks for separate segments' do

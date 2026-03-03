@@ -21,7 +21,7 @@ RSpec.describe GoogleMaps::RecordsImporter do
           'velocity' => 15,
           'batteryCharging' => true,
           'source' => 'GPS',
-          'deviceTag' => 1234567890,
+          'deviceTag' => 1_234_567_890,
           'platformType' => 'ANDROID',
           'activity' => [
             {
@@ -132,7 +132,7 @@ RSpec.describe GoogleMaps::RecordsImporter do
             'velocity' => 10,
             'batteryCharging' => true,
             'source' => 'WIFI',
-            'deviceTag' => 1234567890,
+            'deviceTag' => 1_234_567_890,
             'platformType' => 'ANDROID'
           }
         ]
@@ -155,7 +155,7 @@ RSpec.describe GoogleMaps::RecordsImporter do
         created_point = Point.last
 
         expect(created_point.raw_data['source']).to eq('WIFI')
-        expect(created_point.raw_data['deviceTag']).to eq(1234567890)
+        expect(created_point.raw_data['deviceTag']).to eq(1_234_567_890)
         expect(created_point.raw_data['platformType']).to eq('ANDROID')
       end
     end

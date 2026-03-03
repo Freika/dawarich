@@ -152,7 +152,8 @@ RSpec.describe Photoprism::RequestPhotos do
       before do
         stub_request(
           :any,
-          "#{user.settings['photoprism_url']}/api/v1/photos?after=#{start_date}&before=#{end_date}&count=1000&public=true&q=&quality=3"
+          "#{user.settings['photoprism_url']}/api/v1/photos?" \
+            "after=#{start_date}&before=#{end_date}&count=1000&public=true&q=&quality=3"
         ).with(
           headers: {
             'Accept' => 'application/json',
@@ -169,7 +170,8 @@ RSpec.describe Photoprism::RequestPhotos do
 
         stub_request(
           :any,
-          "#{user.settings['photoprism_url']}/api/v1/photos?after=#{start_date}&before=#{end_date}&count=1000&public=true&q=&quality=3&offset=1000"
+          "#{user.settings['photoprism_url']}/api/v1/photos?" \
+            "after=#{start_date}&before=#{end_date}&count=1000&public=true&q=&quality=3&offset=1000"
         ).to_return(status: 200, body: [].to_json, headers: { 'Content-Type' => 'application/json' })
       end
 
@@ -199,7 +201,8 @@ RSpec.describe Photoprism::RequestPhotos do
       before do
         stub_request(
           :get,
-          "#{user.settings['photoprism_url']}/api/v1/photos?after=#{start_date}&before=#{end_date}&count=1000&public=true&q=&quality=3"
+          "#{user.settings['photoprism_url']}/api/v1/photos?" \
+            "after=#{start_date}&before=#{end_date}&count=1000&public=true&q=&quality=3"
         ).to_return(status: 400, body: { status: 400, error: 'Unable to do that' }.to_json)
       end
 

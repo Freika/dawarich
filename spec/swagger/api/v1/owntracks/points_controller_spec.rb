@@ -47,7 +47,8 @@ describe 'OwnTracks Points API', type: :request do
           BSSID: { type: :string, description: 'Connected WiFi access point MAC address' },
           SSID: { type: :string, description: 'Connected WiFi network name' },
           vac: { type: :number, description: 'Vertical accuracy in meters' },
-          inregions: { type: :array, items: { type: :string }, description: 'Array of region names device is currently in' },
+          inregions: { type: :array, items: { type: :string },
+description: 'Array of region names device is currently in' },
           lat: { type: :number, description: 'Latitude coordinate' },
           topic: { type: :string, description: 'MQTT topic in format owntracks/user/device' },
           t: { type: :string, description: 'Type of message (p=position, c=circle, etc)' },
@@ -74,6 +75,8 @@ describe 'OwnTracks Points API', type: :request do
         let(:json) { OwnTracks::RecParser.new(file).call }
         let(:point) { json.first }
         let(:api_key) { create(:user).api_key }
+
+        after { |example| SwaggerResponseExample.capture(example, response) }
 
         run_test!
       end

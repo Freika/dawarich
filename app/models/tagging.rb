@@ -6,5 +6,5 @@ class Tagging < ApplicationRecord
 
   validates :taggable, presence: true
   validates :tag, presence: true
-  validates :tag_id, uniqueness: { scope: [:taggable_type, :taggable_id] }
+  validates :tag_id, uniqueness: { scope: %i[taggable_type taggable_id] }
 end

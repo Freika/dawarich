@@ -6,7 +6,8 @@ RSpec.describe 'Api::V1::Countries::VisitedCities', type: :request do
   path '/api/v1/countries/visited_cities' do
     get 'Get visited cities by date range' do
       tags 'Countries'
-      description 'Returns a list of visited cities and countries based on tracked points within the specified date range'
+      description 'Returns a list of visited cities and countries based on tracked points ' \
+                  'within the specified date range'
       produces 'application/json'
 
       parameter name: :api_key,
@@ -113,6 +114,17 @@ RSpec.describe 'Api::V1::Countries::VisitedCities', type: :request do
         let(:start_at) { '2023-01-01' }
         let(:end_at) { '2023-12-31' }
         let(:api_key) { create(:user).api_key }
+
+        after { |example| SwaggerResponseExample.capture(example, response) }
+
+        run_test!
+      end
+
+      response '401', 'unauthorized' do
+        let(:api_key) { 'invalid' }
+        let(:start_at) { '2023-01-01' }
+        let(:end_at) { '2023-12-31' }
+
         run_test!
       end
 

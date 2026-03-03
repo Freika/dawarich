@@ -19,7 +19,10 @@ class Areas::Visits::Create
 
   def area_visits(area)
     months = distinct_months_for_area(area)
-    Rails.logger.debug("[Areas::Visits::Create] distinct_months_for_area area_id=#{area.id} months=#{months.inspect} count=#{months.size}")
+    Rails.logger.debug(
+      '[Areas::Visits::Create] distinct_months_for_area ' \
+        "area_id=#{area.id} months=#{months.inspect} count=#{months.size}"
+    )
 
     months.each do |month|
       points = area_points_for_month(area, month)

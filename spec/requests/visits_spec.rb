@@ -99,5 +99,33 @@ RSpec.describe '/visits', type: :request do
         expect(response).to redirect_to(visits_url(status: :suggested))
       end
     end
+
+    context 'with turbo_stream format' do
+      let(:visit) { create(:visit, user:, status: :suggested) }
+
+      it 'updates status and returns turbo_stream replacing visit name' do
+        patch visit_url(visit), params: { visit: { status: :confirmed } }, as: :turbo_stream
+
+        expect(visit.reload.status).to eq('confirmed')
+        expect_turbo_stream_response
+        expect_turbo_stream_action('replace', "visit_name_#{visit.id}")
+      end
+
+      it 'sets visit name from place when place_id is provided' do
+        place = create(:place, user:, name: 'Coffee Shop')
+        patch visit_url(visit), params: { visit: { place_id: place.id } }, as: :turbo_stream
+
+        expect(visit.reload.name).to eq('Coffee Shop')
+        expect_turbo_stream_response
+        expect_turbo_stream_action('replace', "visit_name_#{visit.id}")
+      end
+
+      it 'returns turbo_stream replace even on failure' do
+        patch visit_url(visit), params: { visit: { status: :confirmed } }, as: :turbo_stream
+
+        expect_turbo_stream_response
+        expect_turbo_stream_action('replace', "visit_name_#{visit.id}")
+      end
+    end
   end
 end

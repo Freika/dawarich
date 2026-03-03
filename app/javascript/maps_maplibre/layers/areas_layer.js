@@ -1,20 +1,20 @@
-import { BaseLayer } from './base_layer'
+import { BaseLayer } from "./base_layer"
 
 /**
  * Areas layer for user-defined regions
  */
 export class AreasLayer extends BaseLayer {
   constructor(map, options = {}) {
-    super(map, { id: 'areas', ...options })
+    super(map, { id: "areas", ...options })
   }
 
   getSourceConfig() {
     return {
-      type: 'geojson',
+      type: "geojson",
       data: this.data || {
-        type: 'FeatureCollection',
-        features: []
-      }
+        type: "FeatureCollection",
+        features: [],
+      },
     }
   }
 
@@ -23,41 +23,41 @@ export class AreasLayer extends BaseLayer {
       // Area fills
       {
         id: `${this.id}-fill`,
-        type: 'fill',
+        type: "fill",
         source: this.sourceId,
         paint: {
-          'fill-color': '#ff0000',
-          'fill-opacity': 0.4
-        }
+          "fill-color": "#ff0000",
+          "fill-opacity": 0.4,
+        },
       },
 
       // Area outlines
       {
         id: `${this.id}-outline`,
-        type: 'line',
+        type: "line",
         source: this.sourceId,
         paint: {
-          'line-color': '#ff0000',
-          'line-width': 3
-        }
+          "line-color": "#ff0000",
+          "line-width": 3,
+        },
       },
 
       // Area labels
       {
         id: `${this.id}-labels`,
-        type: 'symbol',
+        type: "symbol",
         source: this.sourceId,
         layout: {
-          'text-field': ['get', 'name'],
-          'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
-          'text-size': 14
+          "text-field": ["get", "name"],
+          "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
+          "text-size": 14,
         },
         paint: {
-          'text-color': '#111827',
-          'text-halo-color': '#ffffff',
-          'text-halo-width': 2
-        }
-      }
+          "text-color": "#111827",
+          "text-halo-color": "#ffffff",
+          "text-halo-width": 2,
+        },
+      },
     ]
   }
 

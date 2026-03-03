@@ -5,7 +5,7 @@ import { Controller } from "@hotwired/stimulus"
 export default class extends Controller {
   static targets = ["picker", "display", "displayText", "input", "swatch"]
   static values = {
-    default: { type: String, default: "#6ab0a4" }
+    default: { type: String, default: "#6ab0a4" },
   }
 
   connect() {
@@ -66,13 +66,13 @@ export default class extends Controller {
     if (!this.hasSwatchTarget) return
 
     // Remove active state from all swatches
-    this.swatchTargets.forEach(swatch => {
+    this.swatchTargets.forEach((swatch) => {
       swatch.classList.remove("ring-2", "ring-primary", "ring-offset-2")
     })
 
     // Find and activate matching swatch
     const matchingSwatch = this.swatchTargets.find(
-      swatch => swatch.dataset.color?.toLowerCase() === color.toLowerCase()
+      (swatch) => swatch.dataset.color?.toLowerCase() === color.toLowerCase(),
     )
 
     if (matchingSwatch) {

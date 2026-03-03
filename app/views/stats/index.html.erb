@@ -50,7 +50,7 @@
           <h2 class="card-title justify-between text-<%= header_colors[year % header_colors.size] %>">
             <div>
               <%= link_to year, "/stats/#{year}", class: 'underline hover:no-underline' %>
-              <%= link_to '[Map]', map_url(year_timespan(year)), class: 'underline hover:no-underline' %>
+              <%= link_to '[Map]', preferred_map_path(year_timespan(year)), class: 'underline hover:no-underline' %>
             </div>
             <div class="flex items-center gap-2">
               <span class='text-xs text-gray-500'>Last update: <%= human_date(stats.first.updated_at) %></span>

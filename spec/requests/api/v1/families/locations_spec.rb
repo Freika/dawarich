@@ -65,5 +65,4 @@ RSpec.describe 'Api::V1::Families::Locations', type: :request do
       end
     end
   end
-
 end

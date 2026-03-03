@@ -3,7 +3,7 @@
 module Api
   module V1
     class PlacesController < ApiController
-      before_action :set_place, only: [:show, :update, :destroy]
+      before_action :set_place, only: %i[show update destroy]
 
       def index
         @places = current_api_user.places.includes(:tags, :visits)
@@ -35,9 +35,7 @@ module Api
         per_page = [params[:per_page]&.to_i || 100, 500].min
 
         # Apply pagination only if page param is explicitly provided
-        if params[:page].present?
-          @places = @places.page(page).per(per_page)
-        end
+        @places = @places.page(page).per(per_page) if params[:page].present?
 
         # Always set pagination headers for consistency
         if @places.respond_to?(:current_page)

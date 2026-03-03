@@ -1,3 +1,5 @@
+import { formatTimestamp } from "../utils/geojson_transformers"
+
 /**
  * Factory for creating photo popups
  */
@@ -5,11 +7,11 @@ export class PhotoPopupFactory {
   /**
    * Create popup for a photo
    * @param {Object} properties - Photo properties
+   * @param {string} timezone - IANA timezone string (e.g. "Europe/London")
    * @returns {string} HTML for popup
    */
-  static createPhotoPopup(properties) {
+  static createPhotoPopup(properties, timezone = "UTC") {
     const {
-      id,
       thumbnail_url,
       taken_at,
       filename,
@@ -17,12 +19,13 @@ export class PhotoPopupFactory {
       state,
       country,
       type,
-      source
+      source,
     } = properties
 
-    const takenDate = taken_at ? new Date(taken_at).toLocaleString() : 'Unknown'
-    const location = [city, state, country].filter(Boolean).join(', ') || 'Unknown location'
-    const mediaType = type === 'VIDEO' ? '🎥 Video' : '📷 Photo'
+    const takenDate = taken_at ? formatTimestamp(taken_at, timezone) : "Unknown"
+    const location =
+      [city, state, country].filter(Boolean).join(", ") || "Unknown location"
+    const mediaType = type === "VIDEO" ? "🎥 Video" : "📷 Photo"
 
     return `
       <div class="photo-popup">

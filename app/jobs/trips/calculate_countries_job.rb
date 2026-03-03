@@ -17,8 +17,8 @@ class Trips::CalculateCountriesJob < ApplicationJob
   def broadcast_update(trip, distance_unit)
     Turbo::StreamsChannel.broadcast_update_to(
       "trip_#{trip.id}",
-      target: "trip_countries",
-      partial: "trips/countries",
+      target: 'trip_countries',
+      partial: 'trips/countries',
       locals: { trip: trip, distance_unit: distance_unit }
     )
   end

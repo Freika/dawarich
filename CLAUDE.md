@@ -267,6 +267,102 @@ bundle exec bundle-audit             # Dependency security
 - The `noStaticOnlyClass` warning is acceptable and does not fail CI
 - Tailwind CSS files (`*.tailwind.css`) have `@import` position rules disabled in `biome.json` because `@tailwind` directives must come first
 
+## Frontend: Hotwire-First Approach
+
+**Always prefer Turbo + Stimulus over custom JavaScript.** This project uses the Hotwire stack (Turbo Drive, Turbo Frames, Turbo Streams, Stimulus) as its primary frontend architecture. Direct `fetch()` calls, manual DOM manipulation, and standalone JS modules should only be used when Hotwire cannot handle the use case (e.g., map rendering with Leaflet/MapLibre).
+
+### Decision Hierarchy
+
+When adding frontend behavior, follow this order of preference:
+
+1. **Turbo Drive** — Default. Links and forms work as SPAs with zero JS.
+2. **Turbo Frames** — Partial page updates. Wrap a section in `<turbo-frame>` and target it from links/forms.
+3. **Turbo Streams** — Server-pushed DOM updates. Use for CRUD operations that need to update multiple page sections. Respond with `turbo_stream` format from controllers.
+4. **Stimulus controller** — Client-side behavior that Turbo can't handle (toggles, form validation, UI interactions). Keep controllers thin.
+5. **Direct JS** — Last resort. Only for complex map interactions, canvas rendering, or third-party library integration (Leaflet, MapLibre, Chartkick).
+
+### Turbo Stream Responses
+
+For CRUD actions (create, update, destroy), respond with Turbo Streams instead of redirects or JSON:
+
+```ruby
+# Controller
+def create
+  @area = current_user.areas.new(area_params)
+  if @area.save
+    respond_to do |format|
+      format.turbo_stream
+      format.html { redirect_to areas_path }
+    end
+  end
+end
+
+# app/views/areas/create.turbo_stream.erb
+<%= turbo_stream.prepend "areas-list", partial: "areas/area", locals: { area: @area } %>
+<%= stream_flash(:notice, "Area created successfully") %>
+```
+
+Use the `FlashStreamable` concern (included in controllers) to send flash messages via Turbo Streams:
+
+```ruby
+include FlashStreamable
+
+# In turbo_stream responses:
+stream_flash(:notice, "Success message")
+stream_flash(:error, "Error message")
+```
+
+### Flash Messages
+
+- **Server-side (Turbo Stream):** Use `stream_flash` from the `FlashStreamable` concern. This appends a flash partial to the `#flash-messages` container.
+- **Client-side (Stimulus/JS):** Import `Flash` from `flash_controller.js` and call `Flash.show(type, message)`:
+  ```javascript
+  import Flash from "./flash_controller"
+  Flash.show("notice", "Operation completed")
+  Flash.show("error", "Something went wrong")
+  ```
+- **Never** use raw `alert()`, `console.log` for user-facing messages, or create ad-hoc notification DOM elements.
+
+### Stimulus Controllers
+
+- Location: `app/javascript/controllers/`
+- Naming: `<name>_controller.js` maps to `data-controller="<name>"` in HTML
+- Use `static targets` for DOM references, `static values` for data from HTML attributes
+- Always clean up in `disconnect()` (event listeners, timers, subscriptions)
+- Prefer `data-action` attributes in HTML over `addEventListener` in JS
+- For forms, prefer `this.formTarget.requestSubmit()` over manual `fetch()` calls — this preserves Turbo form handling, CSRF tokens, and Turbo Stream responses
+
+### File Uploads
+
+Use the unified `upload` controller (`upload_controller.js`) for all file upload forms. Configure via `data-upload-*-value` attributes:
+
+```erb
+<%= form_with data: {
+  controller: "upload",
+  upload_url_value: rails_direct_uploads_url,
+  upload_field_name_value: "import[files][]",
+  upload_multiple_value: true,
+  upload_target: "form"
+} do |f| %>
+```
+
+### What NOT to Do
+
+- **No `fetch()` for form submissions** — Use `form_with` with Turbo. If you need custom headers (API key), use Stimulus to submit the form via `requestSubmit()`.
+- **No `document.getElementById()` for updates** — Use Turbo Frames/Streams to replace DOM sections server-side.
+- **No `showFlashMessage()` or ad-hoc flash functions** — Use `Flash.show()` (client) or `stream_flash` (server).
+- **No ActionCable subscriptions for CRUD updates** — Use Turbo Stream broadcasts from models/controllers instead.
+- **No separate upload controllers per form** — Use the unified `upload` controller with value attributes for configuration.
+
+### When Direct JS Is Acceptable
+
+- **Map rendering**: Leaflet (Maps v1) and MapLibre GL JS (Maps v2) require imperative JS for layers, markers, and interactions.
+- **Chart rendering**: Chartkick handles its own DOM.
+- **Third-party integrations**: Libraries that don't have Hotwire adapters.
+- **Complex client-side computation**: Haversine distance, coordinate transforms, etc.
+
+Even in these cases, wrap the integration in a Stimulus controller and connect it to the DOM via `data-controller`.
+
 ## Important Notes for Development
 
 1. **Location Data**: Always handle location data with appropriate precision and privacy considerations

@@ -45,7 +45,7 @@ module Points
     end
 
     def count_mismatch?
-      return false unless metadata.present?
+      return false if metadata.blank?
 
       expected = metadata['expected_count']
       actual = metadata['actual_count']
@@ -62,9 +62,9 @@ module Points
       return if metadata['format_version'].blank?
 
       # All archives must contain both expected_count and actual_count for data integrity
-      if metadata['expected_count'].blank? || metadata['actual_count'].blank?
-        errors.add(:metadata, 'must contain expected_count and actual_count')
-      end
+      return unless metadata['expected_count'].blank? || metadata['actual_count'].blank?
+
+      errors.add(:metadata, 'must contain expected_count and actual_count')
     end
   end
 end

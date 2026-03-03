@@ -21,11 +21,14 @@ class Family::MembershipsController < ApplicationController
       redirect_to root_path, alert: service.error_message || 'Unable to accept invitation'
     end
   rescue Pundit::NotAuthorizedError
-    alert = case
-            when @invitation.expired? then 'This invitation is no longer valid or has expired'
-            when !@invitation.pending? then 'This invitation has already been processed'
-            when @invitation.email != current_user.email then 'This invitation is not for your email address'
-            else 'You are not authorized to accept this invitation'
+    alert = if @invitation.expired?
+              'This invitation is no longer valid or has expired'
+            elsif !@invitation.pending?
+              'This invitation has already been processed'
+            elsif @invitation.email != current_user.email
+              'This invitation is not for your email address'
+            else
+              'You are not authorized to accept this invitation'
             end
 
     redirect_to root_path, alert: alert

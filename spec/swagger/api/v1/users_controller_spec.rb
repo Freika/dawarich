@@ -44,7 +44,7 @@ describe 'Users API', type: :request do
                          photoprism_url: { type: :string, nullable: true },
                          visits_suggestions_enabled: { type: :boolean },
                          speed_color_scale: { type: :string, nullable: true },
-                         fog_of_war_threshold: { type: :string, nullable: true }
+                         fog_of_war_threshold: { type: :integer }
                        }
                      },
                      admin: { type: :boolean }
@@ -52,13 +52,13 @@ describe 'Users API', type: :request do
                  }
                }
 
-        after do |example|
-          example.metadata[:response][:content] = {
-            'application/json' => {
-              example: JSON.parse(response.body)
-            }
-          }
-        end
+        after { |example| SwaggerResponseExample.capture(example, response) }
+
+        run_test!
+      end
+
+      response '401', 'unauthorized' do
+        let(:Authorization) { 'Bearer invalid-token' }
 
         run_test!
       end

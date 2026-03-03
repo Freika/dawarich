@@ -14,8 +14,8 @@ class Families::UpdateLocationSharing
     return success_result if update_location_sharing
 
     failure_result('Failed to update location sharing setting', :unprocessable_content)
-  rescue => error
-    ExceptionReporter.call(error, "Error in Families::UpdateLocationSharing: #{error.message}")
+  rescue StandardError => e
+    ExceptionReporter.call(e, "Error in Families::UpdateLocationSharing: #{e.message}")
 
     failure_result('An error occurred while updating location sharing', :internal_server_error)
   end
@@ -62,7 +62,11 @@ class Families::UpdateLocationSharing
     when '24h' then 'Location sharing enabled for 24 hours'
     when 'permanent', nil then 'Location sharing enabled'
     else
-      duration_param.to_i.positive? ? "Location sharing enabled for #{duration_param.to_i} hours" : 'Location sharing enabled'
+      if duration_param.to_i.positive?
+        "Location sharing enabled for #{duration_param.to_i} hours"
+      else
+        'Location sharing enabled'
+      end
     end
   end
 end

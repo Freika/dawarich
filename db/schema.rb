@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_02_18_000000) do
+ActiveRecord::Schema[8.0].define(version: 2026_02_22_215414) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
@@ -170,6 +170,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_18_000000) do
     t.integer "points_count", default: 0
     t.integer "status", default: 0, null: false
     t.datetime "processing_started_at"
+    t.text "error_message"
     t.index ["source"], name: "index_imports_on_source"
     t.index ["status"], name: "index_imports_on_status"
     t.index ["user_id"], name: "index_imports_on_user_id"
@@ -528,7 +529,9 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_18_000000) do
     t.string "utm_content"
     t.string "provider"
     t.string "uid"
+    t.datetime "deleted_at"
     t.index ["api_key"], name: "index_users_on_api_key"
+    t.index ["deleted_at"], name: "index_users_on_deleted_at"
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["provider", "uid"], name: "index_users_on_provider_and_uid", unique: true
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true

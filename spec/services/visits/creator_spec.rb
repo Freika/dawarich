@@ -25,7 +25,10 @@ RSpec.describe Visits::Creator do
     end
 
     context 'when a confirmed visit already exists at the same location' do
-      let(:place) { create(:place, lonlat: 'POINT(-74.0060 40.7128)', name: 'Existing Place', latitude: 40.7128, longitude: -74.0060, user_id: nil) }
+      let(:place) do
+        create(:place, lonlat: 'POINT(-74.0060 40.7128)', name: 'Existing Place',
+                      latitude: 40.7128, longitude: -74.0060, user_id: nil)
+      end
       let!(:existing_visit) do
         create(
           :visit,
@@ -61,7 +64,10 @@ RSpec.describe Visits::Creator do
     end
 
     context 'when a confirmed visit exists but at a different location' do
-      let(:different_place) { create(:place, lonlat: 'POINT(-73.9000 41.0000)', name: 'Different Place', latitude: 41.0000, longitude: -73.9000) }
+      let(:different_place) do
+        create(:place, lonlat: 'POINT(-73.9000 41.0000)', name: 'Different Place', latitude: 41.0000,
+longitude: -73.9000)
+      end
       let!(:existing_visit) do
         create(
           :visit,
@@ -73,7 +79,9 @@ RSpec.describe Visits::Creator do
           duration: 45
         )
       end
-      let(:place) { create(:place, lonlat: 'POINT(-74.0060 40.7128)', name: 'New Place', latitude: 40.7128, longitude: -74.0060) }
+      let(:place) do
+        create(:place, lonlat: 'POINT(-74.0060 40.7128)', name: 'New Place', latitude: 40.7128, longitude: -74.0060)
+      end
       let(:place_finder) { instance_double(Visits::PlaceFinder) }
 
       before do
@@ -286,7 +294,7 @@ RSpec.describe Visits::Creator do
 
     it 'finds areas within radius' do
       area_within = create(:area, user: user, latitude: 40.7129, longitude: -74.0061, radius: 100)
-      area_outside = create(:area, user: user, latitude: 40.7500, longitude: -74.0500, radius: 100)
+      create(:area, user: user, latitude: 40.7500, longitude: -74.0500, radius: 100)
 
       result = subject.send(:find_matching_area, visit_data)
       expect(result).to eq(area_within)
@@ -300,7 +308,7 @@ RSpec.describe Visits::Creator do
     end
 
     it 'only considers user areas' do
-      area_other_user = create(:area, latitude: 40.7128, longitude: -74.0060, radius: 100)
+      create(:area, latitude: 40.7128, longitude: -74.0060, radius: 100)
       area_user = create(:area, user: user, latitude: 40.7128, longitude: -74.0060, radius: 100)
 
       result = subject.send(:find_matching_area, visit_data)

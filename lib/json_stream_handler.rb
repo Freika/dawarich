@@ -3,7 +3,7 @@
 # Streaming JSON handler relays sections and streamed values back to the importer instance.
 
 class JsonStreamHandler < Oj::Saj
-  HashState = Struct.new(:hash, :root, :key)
+  HashState = Struct.new(:data, :root, :key)
   ArrayState = Struct.new(:array, :key)
   StreamState = Struct.new(:key)
 
@@ -20,7 +20,7 @@ class JsonStreamHandler < Oj::Saj
 
   def hash_end(key = nil, *_)
     state = @stack.pop
-    value = state.hash
+    value = state.data
     parent = @stack.last
 
     dispatch_to_parent(parent, value, normalize_key(key) || state.key)
@@ -68,7 +68,7 @@ class JsonStreamHandler < Oj::Saj
       if parent.root && @stack.size == 1
         @processor.send(:handle_section, key, value)
       else
-        parent.hash[key] = value
+        parent.data[key] = value
       end
     when ArrayState
       parent.array << value

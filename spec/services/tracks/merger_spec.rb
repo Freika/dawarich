@@ -30,7 +30,8 @@ RSpec.describe Tracks::Merger do
         [
           create(:point, user: user, track: newer_track, timestamp: 50.minutes.ago.to_i,
                          lonlat: 'POINT(-74.008 40.7148)'),
-          create(:point, user: user, track: newer_track, timestamp: 30.minutes.ago.to_i, lonlat: 'POINT(-74.009 40.7158)')
+          create(:point, user: user, track: newer_track, timestamp: 30.minutes.ago.to_i,
+lonlat: 'POINT(-74.009 40.7158)')
         ]
       end
 
@@ -75,7 +76,7 @@ RSpec.describe Tracks::Merger do
         create(:track_segment, track: older_track, start_index: 0, end_index: 1)
         create(:track_segment, track: newer_track, start_index: 0, end_index: 1)
 
-        expect { merger.call }.to change { TrackSegment.count }
+        expect { merger.call }.to(change { TrackSegment.count })
         expect(Track.exists?(newer_track.id)).to be false
         expect(older_track.reload.track_segments.count).to be >= 0
       end

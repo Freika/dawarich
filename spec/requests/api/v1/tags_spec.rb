@@ -14,7 +14,7 @@ RSpec.describe 'Api::V1::Tags', type: :request do
   describe 'GET /api/v1/tags/privacy_zones' do
     context 'when authenticated' do
       before do
-        user.create_api_key unless user.api_key.present?
+        user.create_api_key if user.api_key.blank?
         get privacy_zones_api_v1_tags_path, params: { api_key: user.api_key }
       end
 

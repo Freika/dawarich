@@ -7,7 +7,7 @@ class AreaVisitsCalculatingJob < ApplicationJob
   sidekiq_options retry: false
 
   def perform(user_id)
-    user = User.find(user_id)
+    user = find_user_or_skip(user_id) || return
 
     with_user_timezone(user) do
       areas = user.areas

@@ -94,6 +94,17 @@ RSpec.describe Points::RawData::ChunkCompressor do
       expect(result[:count]).to eq(2500)
     end
 
+    it 'returns uncompressed_size matching the actual JSONL byte size' do
+      result = compressor.compress
+
+      io = StringIO.new(result[:data])
+      gz = Zlib::GzipReader.new(io)
+      decompressed = gz.read
+      gz.close
+
+      expect(result[:uncompressed_size]).to eq(decompressed.bytesize)
+    end
+
     it 'produces smaller compressed output than uncompressed' do
       result = compressor.compress
       compressed = result[:data]

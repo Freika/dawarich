@@ -1,0 +1,14 @@
+<%# Link showing page number
+  - available local variables
+    page:          a page object for "this" page
+    url:           url to this page
+    current_page:  a page object for the currently displayed page
+    total_pages:   total number of pages
+    per_page:      number of items to fetch per page
+    remote:        data-remote
+-%>
+<% if page.current? -%>
+  <button class="join-item btn btn-active"><%= page %></button>
+<% else -%>
+  <%= link_to page, url, remote: remote, rel: page.rel, class: "join-item btn" %>
+<% end -%>

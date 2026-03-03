@@ -1,23 +1,27 @@
-<span class="text-lg font-black <%= 'underline decoration-dotted' if visit.suggested? %>"
-      data-controller="visit-name"
-      data-api_key="<%= current_user.api_key %>"
-      data-id="<%= visit.id %>">
-  <!-- Visit Name Display -->
-  <span
-    data-visit-name="<%= visit.id %>"
-    data-visit-name-target="name"
-    data-action="click->visit-name#edit"
-    data-tip="Click to change visit name"
-    class='hover:cursor-pointer tooltip'>
-    <%= visit.default_name %>
-  </span>
+<%= turbo_frame_tag "visit_name_#{visit.id}" do %>
+  <span class="text-lg font-black <%= 'underline decoration-dotted' if visit.suggested? %>"
+        data-controller="visit-name"
+        data-visit-name-target="wrapper">
+    <%# Visit Name Display %>
+    <span
+      data-visit-name="<%= visit.id %>"
+      data-visit-name-target="name"
+      data-action="click->visit-name#edit"
+      data-tip="Click to change visit name"
+      class='hover:cursor-pointer tooltip'>
+      <%= visit.default_name %>
+    </span>
 
-  <!-- Visit Name Input -->
-  <input
-    type="text"
-    value="<%= visit.default_name %>"
-    data-visit-name-target="input"
-    data-action="blur->visit-name#save keydown->visit-name#handleEnter"
-    class="hidden input input-sm input-bordered w-full max-w-xs"
-  />
-</span>
+    <%# Visit Name Inline Edit Form %>
+    <%= form_with(model: visit, url: visit_path(visit), method: :patch,
+                  class: "hidden inline",
+                  data: { visit_name_target: "form" }) do |f| %>
+      <%= f.text_field :name, value: visit.default_name,
+          data: {
+            visit_name_target: "input",
+            action: "blur->visit-name#save keydown->visit-name#handleEnter"
+          },
+          class: "input input-sm input-bordered w-full max-w-xs" %>
+    <% end %>
+  </span>
+<% end %>

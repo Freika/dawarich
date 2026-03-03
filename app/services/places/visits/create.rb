@@ -21,7 +21,10 @@ class Places::Visits::Create
 
   def place_visits(place)
     months = distinct_months_for_place(place)
-    Rails.logger.debug("[Places::Visits::Create] distinct_months_for_place place_id=#{place.id} months=#{months.inspect} count=#{months.size}")
+    Rails.logger.debug(
+      '[Places::Visits::Create] distinct_months_for_place ' \
+        "place_id=#{place.id} months=#{months.inspect} count=#{months.size}"
+    )
 
     months.each do |month|
       points = place_points_for_month(place, month)

@@ -9,14 +9,14 @@ export function calculateDistance(point1, point2) {
   const [lng2, lat2] = point2
 
   const R = 6371000 // Earth radius in meters
-  const φ1 = lat1 * Math.PI / 180
-  const φ2 = lat2 * Math.PI / 180
-  const Δφ = (lat2 - lat1) * Math.PI / 180
-  const Δλ = (lng2 - lng1) * Math.PI / 180
+  const φ1 = (lat1 * Math.PI) / 180
+  const φ2 = (lat2 * Math.PI) / 180
+  const Δφ = ((lat2 - lat1) * Math.PI) / 180
+  const Δλ = ((lng2 - lng1) * Math.PI) / 180
 
-  const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-            Math.cos(φ1) * Math.cos(φ2) *
-            Math.sin(Δλ / 2) * Math.sin(Δλ / 2)
+  const a =
+    Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+    Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2)
 
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 
@@ -34,7 +34,7 @@ export function createCircle(center, radiusInMeters, points = 64) {
   const [lng, lat] = center
   const coords = []
 
-  const distanceX = radiusInMeters / (111320 * Math.cos(lat * Math.PI / 180))
+  const distanceX = radiusInMeters / (111320 * Math.cos((lat * Math.PI) / 180))
   const distanceY = radiusInMeters / 110540
 
   for (let i = 0; i < points; i++) {
@@ -63,7 +63,7 @@ export function createRectangle(bounds) {
       [maxLng, minLat],
       [maxLng, maxLat],
       [minLng, maxLat],
-      [minLng, minLat]
-    ]
+      [minLng, minLat],
+    ],
   ]
 }

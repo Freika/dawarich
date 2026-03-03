@@ -20,7 +20,9 @@
 .visit-popup .leaflet-popup-content-wrapper {
   border-radius: 0.5rem;
   border: none;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  box-shadow:
+    0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05);
   padding: 0;
   overflow: hidden;
 }
@@ -34,6 +36,7 @@
   border-top-color: hsl(var(--b1));
 }
 
+/* !important needed to override .leaflet-container a.leaflet-popup-close-button (higher specificity) */
 .visit-popup .leaflet-popup-close-button {
   color: hsl(var(--bc)) !important;
   font-size: 18px !important;

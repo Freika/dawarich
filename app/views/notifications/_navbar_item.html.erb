@@ -1,0 +1,7 @@
+<div class="divider p-0 m-0"></div>
+<li class="notification-item">
+  <%= link_to notification do %>
+    <%= notification.title %>
+    <div class="badge badge-xs justify-self-end badge-<%= notification.kind %>"></div>
+  <% end %>
+</li>

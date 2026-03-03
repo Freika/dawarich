@@ -1,8 +1,12 @@
-import { test, expect } from '@playwright/test'
-import { closeOnboardingModal } from '../../../helpers/navigation.js'
-import { navigateToMapsV2, waitForMapLibre, waitForLoadingComplete } from '../../helpers/setup.js'
+import { expect, test } from "@playwright/test"
+import { closeOnboardingModal } from "../../../helpers/navigation.js"
+import {
+  navigateToMapsV2,
+  waitForLoadingComplete,
+  waitForMapLibre,
+} from "../../helpers/setup.js"
 
-test.describe('Photos Layer', () => {
+test.describe("Photos Layer", () => {
   test.beforeEach(async ({ page }) => {
     await navigateToMapsV2(page)
     await closeOnboardingModal(page)
@@ -11,24 +15,30 @@ test.describe('Photos Layer', () => {
     await page.waitForTimeout(1500)
   })
 
-  test.describe('Toggle', () => {
-    test('photos layer toggle exists', async ({ page }) => {
+  test.describe("Toggle", () => {
+    test("photos layer toggle exists", async ({ page }) => {
       await page.click('button[title="Open map settings"]')
       await page.waitForTimeout(400)
       await page.click('button[data-tab="layers"]')
       await page.waitForTimeout(300)
 
-      const photosToggle = page.locator('label:has-text("Photos")').first().locator('input.toggle')
+      const photosToggle = page
+        .locator('label:has-text("Photos")')
+        .first()
+        .locator("input.toggle")
       await expect(photosToggle).toBeVisible()
     })
 
-    test('can toggle photos layer', async ({ page }) => {
+    test("can toggle photos layer", async ({ page }) => {
       await page.click('button[title="Open map settings"]')
       await page.waitForTimeout(400)
       await page.click('button[data-tab="layers"]')
       await page.waitForTimeout(300)
 
-      const photosToggle = page.locator('label:has-text("Photos")').first().locator('input.toggle')
+      const photosToggle = page
+        .locator('label:has-text("Photos")')
+        .first()
+        .locator("input.toggle")
       await photosToggle.check()
       await page.waitForTimeout(500)
 

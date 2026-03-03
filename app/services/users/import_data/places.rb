@@ -55,7 +55,7 @@ class Users::ImportData::Places
     logger.debug "Processing places batch of #{@buffer.size}"
     @buffer.each do |place_data|
       place = find_or_create_place_for_import(place_data)
-      @created += 1 if place&.respond_to?(:previously_new_record?) && place.previously_new_record?
+      @created += 1 if place.respond_to?(:previously_new_record?) && place.previously_new_record?
     end
 
     @buffer.clear
@@ -66,9 +66,7 @@ class Users::ImportData::Places
     latitude = place_data['latitude']&.to_f
     longitude = place_data['longitude']&.to_f
 
-    unless name.present? && latitude.present? && longitude.present?
-      return nil
-    end
+    return nil unless name.present? && latitude.present? && longitude.present?
 
     existing_place = Place.where(
       name: name,
@@ -93,7 +91,7 @@ class Users::ImportData::Places
       place.define_singleton_method(:previously_new_record?) { true }
 
       place
-    rescue ActiveRecord::RecordInvalid => e
+    rescue ActiveRecord::RecordInvalid
       nil
     end
   end
