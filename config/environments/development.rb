@@ -90,7 +90,6 @@ Rails.application.configure do
   config.action_controller.raise_on_missing_callback_actions = true
 
   hosts = ENV.fetch('APPLICATION_HOSTS', 'localhost').split(',').map(&:strip)
-  hosts << '7d6d-178-25-154-142.ngrok-free.app'
 
   config.action_mailer.default_url_options = { host: ENV['DOMAIN'] || hosts.first, port: ENV.fetch('PORT', 3000) }
 

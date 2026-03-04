@@ -7,6 +7,10 @@ RSpec.describe Api::V1::VideoExportsController do
   let(:api_key) { user.api_key }
   let(:headers) { { 'Authorization' => "Bearer #{api_key}" } }
 
+  before do
+    allow(DawarichSettings).to receive(:video_service_enabled?).and_return(true)
+  end
+
   describe 'POST /api/v1/video_exports' do
     let(:params) do
       {
@@ -116,7 +120,7 @@ RSpec.describe Api::V1::VideoExportsController do
 
   describe 'POST /api/v1/video_exports/:id/callback' do
     let(:video_export) { create(:video_export, :processing, user: user) }
-    let(:token) { VideoExports::CallbackToken.generate(video_export.id) }
+    let(:token) { VideoExports::CallbackToken.generate(video_export.id, video_export.callback_nonce) }
 
     context 'with a successful render' do
       let(:video_file) do

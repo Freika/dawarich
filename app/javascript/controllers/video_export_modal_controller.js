@@ -1,5 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 import consumer from "../channels/consumer"
+import Flash from "./flash_controller"
 
 const LANDSCAPE_LAYOUTS = [
   { value: "bottom_bar", label: "Bottom Bar" },
@@ -193,20 +194,20 @@ export default class extends Controller {
       })
 
       if (response.ok) {
-        this._showToast(
-          "Video export started. You'll be notified when it's ready.",
+        Flash.show(
           "success",
+          "Video export started. You'll be notified when it's ready.",
         )
         this.close()
       } else {
         const data = await response.json()
-        this._showToast(
-          data.errors?.join(", ") || "Failed to start video export",
+        Flash.show(
           "error",
+          data.errors?.join(", ") || "Failed to start video export",
         )
       }
     } catch (error) {
-      this._showToast(`Error: ${error.message}`, "error")
+      Flash.show("error", `Error: ${error.message}`)
     } finally {
       this._setLoading(false)
     }
@@ -299,38 +300,16 @@ export default class extends Controller {
 
   _handleStatusUpdate(data) {
     const name = data.name || "Unknown"
-    if (data.status === "completed" && data.download_url) {
-      const span = this._showToast(
-        `Video "${name}" is ready! `,
+    if (data.status === "completed") {
+      Flash.show(
         "success",
-        10000,
+        `Video "${name}" is ready! Visit Video Exports to download.`,
       )
-      const link = document.createElement("a")
-      link.href = data.download_url
-      link.className = "underline font-bold"
-      link.download = ""
-      link.textContent = "Download"
-      span.appendChild(link)
     } else if (data.status === "failed") {
-      this._showToast(
-        `Video "${name}" failed: ${data.error_message || "Unknown error"}`,
+      Flash.show(
         "error",
-        10000,
+        `Video "${name}" failed: ${data.error_message || "Unknown error"}`,
       )
     }
-  }
-
-  _showToast(message, type, duration = 5000) {
-    const toast = document.createElement("div")
-    toast.className = "toast toast-top toast-end z-50"
-    const alertDiv = document.createElement("div")
-    alertDiv.className = `alert alert-${type === "success" ? "success" : "error"}`
-    const span = document.createElement("span")
-    span.textContent = message
-    alertDiv.appendChild(span)
-    toast.appendChild(alertDiv)
-    document.body.appendChild(toast)
-    setTimeout(() => toast.remove(), duration)
-    return span
   }
 }

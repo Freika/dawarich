@@ -133,5 +133,33 @@ RSpec.describe VideoExports::RequestRender do
           end)
       end
     end
+
+    context 'when coordinate count exceeds MAX_COORDINATES' do
+      before do
+        stub_request(:post, "#{video_service_url}/api/render")
+          .to_return(status: 200, body: { id: 'render-123', status: 'queued' }.to_json)
+
+        # Stub the constant to a small value for testing
+        stub_const('VideoExports::RequestRender::MAX_COORDINATES', 10)
+
+        # Create 25 points (exceeds the stubbed limit of 10)
+        25.times do |i|
+          create(:point, user: user,
+                         timestamp: (24.hours.ago + i.minutes).to_i,
+                         longitude: 13.4 + (i * 0.001),
+                         latitude: 52.5 + (i * 0.001))
+        end
+      end
+
+      it 'downsamples coordinates to MAX_COORDINATES' do
+        service.call
+
+        expect(WebMock).to(have_requested(:post, "#{video_service_url}/api/render")
+          .with do |req|
+            coords = JSON.parse(req.body)['coordinates']
+            coords.length <= 10
+          end)
+      end
+    end
   end
 end

@@ -4,6 +4,8 @@ module VideoExports
   class RequestRender
     class RenderError < StandardError; end
 
+    MAX_COORDINATES = 50_000
+
     def initialize(video_export:)
       @video_export = video_export
     end
@@ -70,11 +72,13 @@ module VideoExports
 
       # Fall back to the lonlat geography column when the longitude/latitude
       # decimal columns are NULL (happens for some import sources)
-      points.pluck(
+      coords = points.pluck(
         Arel.sql('COALESCE(longitude, ST_X(lonlat::geometry))'),
         Arel.sql('COALESCE(latitude, ST_Y(lonlat::geometry))'),
         :timestamp
       ).filter_map { |lon, lat, ts| [lon.to_f, lat.to_f, ts] if lon && lat }
+
+      downsample(coords)
     end
 
     # Matches the fallback pattern from Api::V1::Tracks::PointsController:
@@ -94,8 +98,18 @@ module VideoExports
                   .order(:timestamp)
     end
 
+    # Evenly downsample coordinates to MAX_COORDINATES, preserving first and last
+    def downsample(coords)
+      return coords if coords.length <= MAX_COORDINATES
+
+      step = coords.length.to_f / (MAX_COORDINATES - 1)
+      result = (0...MAX_COORDINATES - 1).map { |i| coords[(i * step).round] }
+      result << coords.last
+      result.uniq
+    end
+
     def callback_url
-      token = VideoExports::CallbackToken.generate(video_export.id)
+      token = VideoExports::CallbackToken.generate(video_export.id, video_export.callback_nonce)
       app_url = ENV.fetch('APPLICATION_HOST', 'http://localhost:3000')
       "#{app_url}/api/v1/video_exports/#{video_export.id}/callback?token=#{token}"
     end

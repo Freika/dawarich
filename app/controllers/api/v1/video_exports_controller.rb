@@ -12,6 +12,15 @@ class Api::V1::VideoExportsController < ApiController
   def index
     video_exports = current_api_user.video_exports.order(created_at: :desc)
 
+    if params[:page].present?
+      per_page = [params[:per_page]&.to_i || 25, 100].min
+      video_exports = video_exports.page(params[:page]).per(per_page)
+
+      response.set_header('X-Current-Page', video_exports.current_page.to_s)
+      response.set_header('X-Total-Pages', video_exports.total_pages.to_s)
+      response.set_header('X-Total-Count', video_exports.total_count.to_s)
+    end
+
     render json: video_exports.map { |ve| serialize(ve) }
   end
 
@@ -38,7 +47,7 @@ class Api::V1::VideoExportsController < ApiController
     video_export = VideoExport.find(params[:id])
     token = params[:token]
 
-    unless VideoExports::CallbackToken.verify(token, video_export.id)
+    unless VideoExports::CallbackToken.verify(token, video_export.id, video_export.callback_nonce)
       return render json: { error: 'Invalid token' }, status: :unauthorized
     end
 

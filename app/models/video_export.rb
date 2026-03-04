@@ -10,6 +10,7 @@ class VideoExport < ApplicationRecord
 
   has_one_attached :file
 
+  before_validation :generate_callback_nonce, on: :create
   before_save :set_processing_started_at, if: :status_changed_to_processing?
 
   after_commit -> { VideoExportJob.perform_later(id) }, on: :create
@@ -35,6 +36,10 @@ class VideoExport < ApplicationRecord
 
   def url_helpers
     Rails.application.routes.url_helpers
+  end
+
+  def generate_callback_nonce
+    self.callback_nonce ||= SecureRandom.urlsafe_base64(32)
   end
 
   def set_processing_started_at

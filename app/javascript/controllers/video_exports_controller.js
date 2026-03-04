@@ -110,7 +110,11 @@ export default class extends BaseController {
 
     const statusCell = document.createElement("td")
     statusCell.dataset.status = ""
-    statusCell.innerHTML = STATUS_BADGES[data.status] || data.status
+    if (STATUS_BADGES[data.status]) {
+      statusCell.innerHTML = STATUS_BADGES[data.status]
+    } else {
+      statusCell.textContent = data.status
+    }
     row.appendChild(statusCell)
 
     const actionsCell = document.createElement("td")

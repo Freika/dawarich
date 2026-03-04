@@ -40,6 +40,22 @@ RSpec.describe VideoExport do
       expect { create(:video_export) }.to have_enqueued_job(VideoExportJob)
     end
 
+    it 'generates a callback_nonce on create' do
+      video_export = create(:video_export)
+
+      expect(video_export.callback_nonce).to be_present
+      expect(video_export.callback_nonce.length).to be >= 32
+    end
+
+    it 'does not overwrite an existing callback_nonce' do
+      video_export = create(:video_export)
+      original_nonce = video_export.callback_nonce
+
+      video_export.update!(status: :processing)
+
+      expect(video_export.reload.callback_nonce).to eq(original_nonce)
+    end
+
     it 'purges attached file on destroy' do
       video_export = create(:video_export)
       video_export.file.attach(

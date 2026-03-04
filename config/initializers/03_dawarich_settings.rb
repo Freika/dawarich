@@ -62,9 +62,9 @@ class DawarichSettings
     end
 
     def video_service_enabled?
-      # Rails.cache.fetch('video_service_enabled', expires_in: 5.minutes) do
-      video_service_healthy?
-      # end
+      Rails.cache.fetch('video_service_enabled', expires_in: 5.minutes) do
+        video_service_healthy?
+      end
     end
 
     private

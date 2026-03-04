@@ -12,9 +12,14 @@ RSpec.describe 'Video Export Flow', type: :request do
   let(:video_service_url) { 'http://dawarich_video:3100' }
 
   before do
+    allow(DawarichSettings).to receive(:video_service_enabled?).and_return(true)
     allow(ENV).to receive(:fetch).and_call_original
     allow(ENV).to receive(:fetch).with('VIDEO_SERVICE_URL', anything).and_return(video_service_url)
     allow(ENV).to receive(:fetch).with('APPLICATION_HOST', anything).and_return('http://localhost:3000')
+
+    # Create points within the date range so RequestRender has coordinates to send
+    create(:point, user: user, timestamp: 12.hours.ago.to_i, longitude: 13.4, latitude: 52.5)
+    create(:point, user: user, timestamp: 6.hours.ago.to_i, longitude: 13.41, latitude: 52.51)
   end
 
   describe 'happy path: create → process → callback → download' do
@@ -51,7 +56,7 @@ RSpec.describe 'Video Export Flow', type: :request do
         .with { |req| JSON.parse(req.body)['video_export_id'] == video_export.id }
 
       # Step 3: Simulate callback from video service
-      token = VideoExports::CallbackToken.generate(video_export.id)
+      token = VideoExports::CallbackToken.generate(video_export.id, video_export.callback_nonce)
       video_file = Rack::Test::UploadedFile.new(
         StringIO.new('fake mp4 content'),
         'video/mp4',
@@ -103,7 +108,7 @@ RSpec.describe 'Video Export Flow', type: :request do
       perform_enqueued_jobs { VideoExportJob.perform_now(video_export.id) }
 
       # Simulate error callback
-      token = VideoExports::CallbackToken.generate(video_export.id)
+      token = VideoExports::CallbackToken.generate(video_export.id, video_export.callback_nonce)
       post "/api/v1/video_exports/#{video_export.id}/callback",
            params: { token: token, status: 'failed', error_message: 'Out of memory during render' }
 

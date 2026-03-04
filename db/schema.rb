@@ -532,6 +532,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_22_215414) do
     t.integer "status", default: 0, null: false
     t.jsonb "config", default: {}, null: false
     t.string "error_message"
+    t.string "callback_nonce", null: false
     t.datetime "processing_started_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
