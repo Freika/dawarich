@@ -20,6 +20,7 @@ RSpec.describe User, type: :model do
 
   describe 'enums' do
     it { is_expected.to define_enum_for(:status).with_values(inactive: 0, active: 1, trial: 2) }
+    it { is_expected.to define_enum_for(:plan).with_values(lite: 0, pro: 1) }
   end
 
   describe 'callbacks' do
@@ -42,6 +43,10 @@ RSpec.describe User, type: :model do
         it 'activates user after creation' do
           expect(user.active?).to be_truthy
           expect(user.active_until).to be_within(1.minute).of(1000.years.from_now)
+        end
+
+        it 'sets plan to pro' do
+          expect(user.pro?).to be true
         end
       end
 

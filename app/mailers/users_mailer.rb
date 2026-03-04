@@ -42,4 +42,10 @@ class UsersMailer < ApplicationMailer
 
     mail(to: @user.email, subject: '📍 Your location data is waiting - Subscribe to Dawarich')
   end
+
+  def archival_approaching
+    @user = params[:user]
+
+    mail(to: @user.email, subject: 'Keep your full history — upgrade to Pro')
+  end
 end

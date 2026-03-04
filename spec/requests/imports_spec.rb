@@ -187,6 +187,22 @@ RSpec.describe 'Imports', type: :request do
         end
       end
     end
+
+    context 'when user is inactive' do
+      let(:user) { create(:user) }
+
+      before do
+        user.update(status: :inactive, active_until: 1.day.ago)
+        sign_in user
+      end
+
+      it 'blocks import creation' do
+        post imports_path, params: { import: { source: 'owntracks', files: [] } }
+
+        expect(response).to redirect_to(root_path)
+        expect(flash[:notice]).to eq('Your account is not active.')
+      end
+    end
   end
 
   describe 'GET /imports/new' do

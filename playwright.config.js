@@ -44,12 +44,28 @@ export default defineConfig({
 
     {
       name: "chromium",
+      testIgnore: /.*\/lite\/.*/,
       use: {
         ...devices["Desktop Chrome"],
         // Use saved authentication state
         storageState: "e2e/temp/.auth/user.json",
       },
       dependencies: ["setup"],
+    },
+
+    // Lite user setup and tests
+    {
+      name: "lite-setup",
+      testMatch: /.*\/setup\/auth-lite\.setup\.js/,
+    },
+    {
+      name: "lite",
+      testMatch: /.*\/lite\/.*/,
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: "e2e/temp/.auth/lite-user.json",
+      },
+      dependencies: ["lite-setup"],
     },
   ],
 

@@ -90,7 +90,7 @@ RSpec.describe Api::UserSerializer do
 
         it 'includes subscription data' do
           expect(serializer).to have_key(:subscription)
-          expect(serializer[:subscription]).to include(:status, :active_until)
+          expect(serializer[:subscription]).to include(:status, :active_until, :plan)
         end
 
         it 'returns correct subscription values' do
@@ -115,9 +115,10 @@ RSpec.describe Api::UserSerializer do
             serializer_result = described_class.new(test_user).call
             subscription = serializer_result[:subscription]
 
-            expect(subscription).to include(:status, :active_until)
+            expect(subscription).to include(:status, :active_until, :plan)
             expect(subscription[:status]).to be_a(String)
             expect(subscription[:active_until]).to be_a(ActiveSupport::TimeWithZone)
+            expect(subscription[:plan]).to be_a(String)
           end
         end
       end

@@ -1,5 +1,6 @@
 import maplibregl from "maplibre-gl"
 import { Toast } from "maps_maplibre/components/toast"
+import { isGatedPlan, UPGRADE_URL } from "maps_maplibre/utils/layer_gate"
 import { performanceMonitor } from "maps_maplibre/utils/performance_monitor"
 
 const EMPTY_GEOJSON = { type: "FeatureCollection", features: [] }
@@ -78,7 +79,12 @@ export class MapDataManager {
       // 4. Store data for replay and other features
       this.lastLoadedData = data
 
-      // 5. Fit bounds if requested — use the first available data source
+      // 5. Show upsell banner for Lite users with data outside the 12-month window
+      if (isGatedPlan(this.controller.userPlanValue)) {
+        this._showDataWindowBanner()
+      }
+
+      // 6. Fit bounds if requested — use the first available data source
       if (fitBounds) {
         this._hasFittedBounds = this._fitToFirstAvailable([
           data.pointsGeoJSON,
@@ -357,5 +363,16 @@ export class MapDataManager {
         animate: false,
       })
     }
+  }
+
+  /**
+   * Show an upsell banner for Lite users informing them that data outside the
+   * 12-month window is not displayed. No archived data is fetched or rendered.
+   * @private
+   */
+  _showDataWindowBanner() {
+    Toast.info(
+      `Your plan includes 12 months of searchable history. <a href="${UPGRADE_URL}" target="_blank" class="link link-primary">Upgrade to Pro</a> for unlimited.`,
+    )
   }
 }
