@@ -63,7 +63,14 @@ class Api::V1::VideoExportsController < ApiController
 
   def video_export_params
     permitted = params.permit(:track_id, :start_at, :end_at)
-    permitted[:config] = params[:config].permit!.to_h if params[:config].present?
+    if params[:config].present?
+      permitted[:config] = params[:config].permit(
+        :orientation, :overlay_layout, :map_style, :target_duration,
+        :map_behavior, :fit_full_route, :route_color, :route_width,
+        :marker_style, :marker_color, :track_name,
+        overlays: %i[time speed distance track_name]
+      ).to_h
+    end
     permitted
   end
 

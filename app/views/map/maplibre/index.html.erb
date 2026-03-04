@@ -1,5 +1,11 @@
 <% content_for :title, 'Map' %>
 
+<% content_for :modals do %>
+  <% if DawarichSettings.video_service_enabled? %>
+    <%= render 'map/maplibre/video_export_modal' %>
+  <% end %>
+<% end %>
+
 <%= render 'shared/map/date_navigation_v2', start_at: @start_at, end_at: @end_at %>
 
 <div id="maps-maplibre-container"

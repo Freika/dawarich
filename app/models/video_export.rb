@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 class VideoExport < ApplicationRecord
-  include Rails.application.routes.url_helpers
-
   belongs_to :user
   belongs_to :track, optional: true
 
@@ -16,24 +14,28 @@ class VideoExport < ApplicationRecord
 
   after_commit -> { VideoExportJob.perform_later(id) }, on: :create
   after_commit -> { file.purge_later }, on: :destroy
-  after_commit :broadcast_status, on: %i[create update]
+  after_commit :broadcast_status, on: %i[create update], if: :saved_change_to_status?
 
   def display_name
-    config&.dig('track_name').presence || "#{start_at.strftime('%Y-%m-%d')} — #{end_at.strftime('%Y-%m-%d')}"
+    config&.dig('track_name').presence || "#{start_at&.strftime('%Y-%m-%d')} — #{end_at&.strftime('%Y-%m-%d')}"
   end
 
   def download_filename
-    base = config&.dig('track_name').presence || "route-#{start_at.strftime('%Y-%m-%d')}"
+    base = config&.dig('track_name').presence || "route-#{start_at&.strftime('%Y-%m-%d')}"
     "#{base.parameterize}.mp4"
   end
 
   def preview_path
     return unless completed? && file.attached?
 
-    rails_blob_path(file, disposition: 'inline', only_path: true)
+    url_helpers.rails_blob_path(file, disposition: 'inline', only_path: true)
   end
 
   private
+
+  def url_helpers
+    Rails.application.routes.url_helpers
+  end
 
   def set_processing_started_at
     self.processing_started_at = Time.current
@@ -53,12 +55,19 @@ class VideoExport < ApplicationRecord
       name: display_name,
       status:,
       error_message:,
+      created_at: created_at&.strftime('%e %b %Y, %H:%M'),
+      file_size: completed? && file.attached? ? human_file_size : nil,
       download_url: completed? && file.attached? ? download_path : nil,
-      preview_url: preview_path
+      preview_url: preview_path,
+      delete_url: url_helpers.video_export_path(self, only_path: true)
     }
   end
 
+  def human_file_size
+    ActiveSupport::NumberHelper.number_to_human_size(file.byte_size)
+  end
+
   def download_path
-    rails_blob_path(file, disposition: 'attachment', only_path: true)
+    url_helpers.rails_blob_path(file, disposition: 'attachment', only_path: true)
   end
 end

@@ -67,6 +67,7 @@ services:
       DATABASE_USERNAME: ${DATABASE_USERNAME:-postgres}
       DATABASE_PASSWORD: ${DATABASE_PASSWORD:-password}
       DATABASE_NAME: ${DATABASE_NAME:-dawarich_development}
+      APPLICATION_HOST: ${APPLICATION_HOST:-http://localhost:3000}
       APPLICATION_HOSTS: ${APPLICATION_HOSTS:-localhost,::1,127.0.0.1}
       TIME_ZONE: ${TIME_ZONE:-Europe/London}
       APPLICATION_PROTOCOL: ${APPLICATION_PROTOCOL:-http}
@@ -78,6 +79,7 @@ services:
       SELF_HOSTED: ${SELF_HOSTED:-true}
       STORE_GEODATA: ${STORE_GEODATA:-true}
       VIDEO_SERVICE_URL: ${VIDEO_SERVICE_URL:-}
+      VIDEO_SERVICE_AUTH_TOKEN: ${VIDEO_SERVICE_AUTH_TOKEN:-}
     logging:
       driver: "json-file"
       options:
@@ -124,6 +126,7 @@ services:
       DATABASE_USERNAME: ${DATABASE_USERNAME:-postgres}
       DATABASE_PASSWORD: ${DATABASE_PASSWORD:-password}
       DATABASE_NAME: ${DATABASE_NAME:-dawarich_development}
+      APPLICATION_HOST: ${APPLICATION_HOST:-http://localhost:3000}
       APPLICATION_HOSTS: ${APPLICATION_HOSTS:-localhost,::1,127.0.0.1}
       BACKGROUND_PROCESSING_CONCURRENCY: ${BACKGROUND_PROCESSING_CONCURRENCY:-10}
       APPLICATION_PROTOCOL: ${APPLICATION_PROTOCOL:-http}
@@ -135,6 +138,7 @@ services:
       SELF_HOSTED: ${SELF_HOSTED:-true}
       STORE_GEODATA: ${STORE_GEODATA:-true}
       VIDEO_SERVICE_URL: ${VIDEO_SERVICE_URL:-}
+      VIDEO_SERVICE_AUTH_TOKEN: ${VIDEO_SERVICE_AUTH_TOKEN:-}
     logging:
       driver: "json-file"
       options:

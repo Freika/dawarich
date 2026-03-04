@@ -26,12 +26,16 @@ module VideoExports
     attr_reader :video_export
 
     def post_render_request(payload)
-      uri = URI.parse("#{video_service_url}/api/render")
+      uri = URI.parse("#{video_service_url.chomp('/')}/api/render")
       http = Net::HTTP.new(uri.host, uri.port)
+      http.use_ssl = uri.scheme == 'https'
       http.open_timeout = 10
       http.read_timeout = 30
 
-      request = Net::HTTP::Post.new(uri.path, 'Content-Type' => 'application/json')
+      headers = { 'Content-Type' => 'application/json' }
+      token = ENV['VIDEO_SERVICE_AUTH_TOKEN']
+      headers['Authorization'] = "Bearer #{token}" if token.present?
+      request = Net::HTTP::Post.new(uri.path, headers)
       request.body = payload.to_json
 
       http.request(request)
@@ -64,7 +68,13 @@ module VideoExports
                  points_for_date_range
                end
 
-      points.pluck(:longitude, :latitude, :timestamp)
+      # Fall back to the lonlat geography column when the longitude/latitude
+      # decimal columns are NULL (happens for some import sources)
+      points.pluck(
+        Arel.sql('COALESCE(longitude, ST_X(lonlat::geometry))'),
+        Arel.sql('COALESCE(latitude, ST_Y(lonlat::geometry))'),
+        :timestamp
+      ).filter_map { |lon, lat, ts| [lon.to_f, lat.to_f, ts] if lon && lat }
     end
 
     # Matches the fallback pattern from Api::V1::Tracks::PointsController:

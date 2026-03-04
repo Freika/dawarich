@@ -38,7 +38,7 @@
             <% @video_exports.each do |video_export| %>
               <tr data-video-export-id="<%= video_export.id %>">
                 <td><%= video_export.display_name %></td>
-                <td><%= video_export.completed? && video_export.file.attached? ? number_to_human_size(video_export.file.byte_size) : 'N/A' %></td>
+                <td data-file-size><%= video_export.completed? && video_export.file.attached? ? number_to_human_size(video_export.file.byte_size) : 'N/A' %></td>
                 <td><%= human_datetime(video_export.created_at) %></td>
                 <td data-status>
                   <% case video_export.status %>
@@ -52,7 +52,7 @@
                     <span class="badge badge-error" title="<%= video_export.error_message %>">Failed</span>
                   <% end %>
                 </td>
-                <td class="whitespace-nowrap" data-actions>
+                <td class="whitespace-nowrap flex items-center gap-2" data-actions>
                   <% if video_export.completed? && video_export.file.attached? %>
                     <button
                       type="button"
@@ -75,15 +75,15 @@
   </div>
 
   <dialog id="video-preview-modal" class="modal" data-video-exports-target="modal">
-    <div class="modal-box w-11/12 max-w-3xl">
+    <div class="modal-box w-11/12 max-w-3xl max-h-[90vh] flex flex-col">
       <form method="dialog">
         <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
       </form>
-      <h3 class="font-bold text-lg mb-4" data-video-exports-target="modalTitle">Video Preview</h3>
+      <h3 class="font-bold text-lg mb-4 shrink-0" data-video-exports-target="modalTitle">Video Preview</h3>
       <video
         controls
         playsinline
-        class="w-full rounded-lg bg-black"
+        class="w-full rounded-lg bg-black min-h-0"
         data-video-exports-target="videoPlayer"
       >
         Your browser does not support video playback.

@@ -176,22 +176,6 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_22_215414) do
     t.index ["user_id"], name: "index_imports_on_user_id"
   end
 
-  create_table "notes", force: :cascade do |t|
-    t.bigint "user_id", null: false
-    t.string "title"
-    t.geography "lonlat", limit: {srid: 4326, type: "st_point", geographic: true}
-    t.string "attachable_type"
-    t.bigint "attachable_id"
-    t.datetime "noted_at"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index "attachable_type, attachable_id, ((noted_at)::date)", name: "index_notes_on_attachable_and_noted_date", unique: true, where: "(attachable_id IS NOT NULL)"
-    t.index ["attachable_type", "attachable_id"], name: "index_notes_on_attachable_type_and_attachable_id"
-    t.index ["lonlat"], name: "index_notes_on_lonlat", using: :gist
-    t.index ["user_id", "noted_at"], name: "index_notes_on_user_id_and_noted_at"
-    t.index ["user_id"], name: "index_notes_on_user_id"
-  end
-
   create_table "notifications", force: :cascade do |t|
     t.string "title", null: false
     t.text "content", null: false
@@ -278,7 +262,6 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_22_215414) do
     t.index ["lonlat", "timestamp", "user_id"], name: "index_points_on_lonlat_timestamp_user_id", unique: true
     t.index ["lonlat"], name: "index_points_on_lonlat", using: :gist
     t.index ["raw_data_archive_id"], name: "index_points_on_raw_data_archive_id"
-    t.index ["raw_data_archived", "user_id", "timestamp"], name: "index_points_on_archivable", where: "((raw_data_archived = false) AND (raw_data IS NOT NULL) AND (raw_data <> '{}'::jsonb))"
     t.index ["raw_data_archived"], name: "index_points_on_archived_true", where: "(raw_data_archived = true)"
     t.index ["timestamp"], name: "index_points_on_timestamp"
     t.index ["track_id"], name: "index_points_on_track_id"
@@ -465,6 +448,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_22_215414) do
     t.string "source"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.index ["track_id", "start_index", "end_index"], name: "index_track_segments_on_track_and_indices"
     t.index ["track_id", "transportation_mode"], name: "index_track_segments_on_track_id_and_transportation_mode"
     t.index ["track_id"], name: "index_track_segments_on_track_id"
     t.index ["transportation_mode"], name: "index_track_segments_on_transportation_mode"
@@ -583,7 +567,6 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_22_215414) do
   add_foreign_key "family_invitations", "users", column: "invited_by_id"
   add_foreign_key "family_memberships", "families"
   add_foreign_key "family_memberships", "users"
-  add_foreign_key "notes", "users"
   add_foreign_key "notifications", "users"
   add_foreign_key "place_visits", "places"
   add_foreign_key "place_visits", "visits"

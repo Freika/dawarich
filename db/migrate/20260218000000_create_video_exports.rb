@@ -2,19 +2,21 @@
 
 class CreateVideoExports < ActiveRecord::Migration[8.0]
   def change
-    create_table :video_exports do |t|
-      t.references :user, null: false, foreign_key: true
-      t.references :track, null: true, foreign_key: true
-      t.datetime :start_at, null: false
-      t.datetime :end_at, null: false
-      t.integer :status, default: 0, null: false
-      t.jsonb :config, default: {}, null: false
-      t.string :error_message
-      t.datetime :processing_started_at
-      t.timestamps
+    unless table_exists?(:video_exports)
+      create_table :video_exports do |t|
+        t.references :user, null: false, foreign_key: true
+        t.references :track, null: true, foreign_key: true
+        t.datetime :start_at, null: false
+        t.datetime :end_at, null: false
+        t.integer :status, default: 0, null: false
+        t.jsonb :config, default: {}, null: false
+        t.string :error_message
+        t.datetime :processing_started_at
+        t.timestamps
+      end
     end
 
-    add_index :video_exports, :status
-    add_index :video_exports, %i[user_id status]
+    add_index :video_exports, :status unless index_exists?(:video_exports, :status)
+    add_index :video_exports, %i[user_id status] unless index_exists?(:video_exports, %i[user_id status])
   end
 end

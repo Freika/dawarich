@@ -17,7 +17,6 @@ import { MapInitializer } from "./maplibre/map_initializer"
 import { PlacesManager } from "./maplibre/places_manager"
 import { RoutesManager } from "./maplibre/routes_manager"
 import { SettingsController } from "./maplibre/settings_manager"
-import { VideoExportModal } from "./maplibre/video_export_modal"
 import { VisitsManager } from "./maplibre/visits_manager"
 
 /**
@@ -1612,19 +1611,14 @@ export default class extends Controller {
    * Open the video export configuration modal for a track
    */
   openVideoExportModal(event) {
-    const trackId = event.currentTarget.dataset.trackId
-    const trackStart = event.currentTarget.dataset.trackStart
-    const trackEnd = event.currentTarget.dataset.trackEnd
-
-    if (!this._videoExportModal) {
-      this._videoExportModal = new VideoExportModal(this.apiKeyValue)
+    const detail = {
+      trackId: event.currentTarget.dataset.trackId
+        ? parseInt(event.currentTarget.dataset.trackId, 10)
+        : null,
+      startAt: event.currentTarget.dataset.trackStart,
+      endAt: event.currentTarget.dataset.trackEnd,
     }
-
-    this._videoExportModal.open({
-      trackId: trackId ? parseInt(trackId, 10) : null,
-      startAt: trackStart,
-      endAt: trackEnd,
-    })
+    document.dispatchEvent(new CustomEvent("videoExport:open", { detail }))
   }
 
   /**

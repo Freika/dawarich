@@ -62,9 +62,9 @@ class DawarichSettings
     end
 
     def video_service_enabled?
-      return @video_service_enabled if defined?(@video_service_enabled)
-
-      @video_service_enabled = video_service_healthy?
+      # Rails.cache.fetch('video_service_enabled', expires_in: 5.minutes) do
+      video_service_healthy?
+      # end
     end
 
     private
@@ -73,10 +73,12 @@ class DawarichSettings
       url = ENV['VIDEO_SERVICE_URL']
       return false if url.blank?
 
-      uri = URI.parse("#{url}/health")
-      response = Net::HTTP.start(uri.host, uri.port, open_timeout: 3, read_timeout: 3) do |http|
-        http.get(uri.path)
-      end
+      uri = URI.parse("#{url.chomp('/')}/health")
+      response = Net::HTTP.start(
+        uri.host, uri.port,
+        use_ssl: uri.scheme == 'https',
+        open_timeout: 3, read_timeout: 3
+      ) { |http| http.get(uri.path) }
 
       return false unless response.is_a?(Net::HTTPSuccess)
 

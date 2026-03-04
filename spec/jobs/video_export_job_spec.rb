@@ -7,7 +7,8 @@ RSpec.describe VideoExportJob do
 
   describe '#perform' do
     it 'updates status to processing and calls RequestRender' do
-      allow(VideoExports::RequestRender).to receive_message_chain(:new, :call)
+      render_service = instance_double(VideoExports::RequestRender, call: nil)
+      allow(VideoExports::RequestRender).to receive(:new).and_return(render_service)
 
       described_class.perform_now(video_export.id)
 
