@@ -43,12 +43,24 @@
         </button>
       </div>
 
+      <!-- Screen Presets (thumbnails expand per category) -->
+      <div data-video-export-modal-target="screenPresetsContainer" class="mb-4"></div>
+
+      <!-- Map Preview -->
+      <div class="mb-4 relative" data-video-export-modal-target="mapPreviewWrapper">
+        <div class="badge badge-neutral badge-sm absolute top-2 left-2 z-10 opacity-80">Preview</div>
+        <div data-video-export-modal-target="mapPreview"
+             class="w-full rounded-lg border border-base-300 overflow-hidden"
+             style="aspect-ratio: 16 / 9"></div>
+      </div>
+
       <form data-video-export-modal-target="form"
             data-action="submit->video-export-modal#submit">
         <!-- Hidden inputs for track context -->
         <input type="hidden" name="track_id" data-video-export-modal-target="trackIdInput">
         <input type="hidden" name="start_at" data-video-export-modal-target="startAtInput">
         <input type="hidden" name="end_at" data-video-export-modal-target="endAtInput">
+        <input type="hidden" name="screen_preset" data-video-export-modal-target="screenPresetInput">
 
         <div class="space-y-4">
           <!-- Video Settings -->
@@ -63,7 +75,8 @@
                 <label class="label py-1"><span class="label-text text-xs font-medium text-base-content/70">Title</span></label>
                 <input type="text" name="track_name" placeholder="e.g. Morning Run, Weekend Hike"
                        class="input input-bordered input-sm w-full"
-                       data-video-export-modal-target="trackName">
+                       data-video-export-modal-target="trackName"
+                       data-action="input->video-export-modal#updateTrackNamePreview">
               </div>
 
               <div class="grid grid-cols-3 gap-3">
@@ -71,7 +84,7 @@
                   <label class="label py-1"><span class="label-text text-xs font-medium text-base-content/70">Orientation</span></label>
                   <select name="orientation" class="select select-bordered select-sm text-xs w-full"
                           data-video-export-modal-target="orientation"
-                          data-action="change->video-export-modal#updateOrientation">
+                          data-action="change->video-export-modal#updateOrientation change->video-export-modal#updateMapPreview">
                     <option value="landscape">Landscape (16:9)</option>
                     <option value="portrait">Portrait (9:16)</option>
                   </select>
@@ -79,7 +92,8 @@
                 <div class="form-control">
                   <label class="label py-1"><span class="label-text text-xs font-medium text-base-content/70">Duration</span></label>
                   <select name="target_duration" class="select select-bordered select-sm text-xs w-full"
-                          data-video-export-modal-target="targetDuration">
+                          data-video-export-modal-target="targetDuration"
+                          data-action="change->video-export-modal#updateMapPreview">
                     <option value="15">15 seconds</option>
                     <option value="30" selected>30 seconds</option>
                     <option value="60">1 minute</option>
@@ -90,10 +104,10 @@
                 <div class="form-control">
                   <label class="label py-1"><span class="label-text text-xs font-medium text-base-content/70">Overlay Layout</span></label>
                   <select name="overlay_layout" class="select select-bordered select-sm text-xs w-full"
-                          data-video-export-modal-target="overlayLayout">
+                          data-video-export-modal-target="overlayLayout"
+                          data-action="change->video-export-modal#updateMapPreview">
                     <option value="bottom_bar">Bottom Bar</option>
                     <option value="corner_hud">Corner HUD</option>
-                    <option value="left_rail">Left Rail</option>
                     <option value="bottom_left">Bottom-Left</option>
                     <option value="cinematic_strip">Cinematic Strip</option>
                   </select>
@@ -114,7 +128,8 @@
                 <div class="form-control">
                   <label class="label py-1"><span class="label-text text-xs font-medium text-base-content/70">Map Style</span></label>
                   <select name="map_style" class="select select-bordered select-sm text-xs w-full"
-                          data-video-export-modal-target="mapStyle">
+                          data-video-export-modal-target="mapStyle"
+                          data-action="change->video-export-modal#updateMapPreview">
                     <option value="dark">Dark</option>
                     <option value="light">Light</option>
                     <option value="white">White</option>
@@ -125,7 +140,8 @@
                 <div class="form-control">
                   <label class="label py-1"><span class="label-text text-xs font-medium text-base-content/70">Marker Style</span></label>
                   <select name="marker_style" class="select select-bordered select-sm text-xs w-full"
-                          data-video-export-modal-target="markerStyle">
+                          data-video-export-modal-target="markerStyle"
+                          data-action="change->video-export-modal#updateMapPreview">
                     <option value="dot" selected>Dot</option>
                     <option value="arrow">Arrow</option>
                   </select>
@@ -133,7 +149,8 @@
                 <div class="form-control">
                   <label class="label py-1"><span class="label-text text-xs font-medium text-base-content/70">Line Width</span></label>
                   <select name="route_width" class="select select-bordered select-sm text-xs w-full"
-                          data-video-export-modal-target="routeWidth">
+                          data-video-export-modal-target="routeWidth"
+                          data-action="change->video-export-modal#updateMapPreview">
                     <option value="2">Thin</option>
                     <option value="4" selected>Medium</option>
                     <option value="6">Thick</option>
@@ -142,7 +159,8 @@
                 <div class="form-control">
                   <label class="label py-1"><span class="label-text text-xs font-medium text-base-content/70">Camera</span></label>
                   <select name="map_behavior" class="select select-bordered select-sm text-xs w-full"
-                          data-video-export-modal-target="mapBehavior">
+                          data-video-export-modal-target="mapBehavior"
+                          data-action="change->video-export-modal#updateMapPreview">
                     <option value="north_up">North Up</option>
                     <option value="follow_direction">Follow</option>
                   </select>
@@ -153,7 +171,8 @@
               <div class="flex items-center justify-between gap-4 py-1">
                 <label class="flex items-center gap-2 cursor-pointer">
                   <input type="checkbox" name="fit_full_route" class="toggle toggle-sm toggle-primary"
-                         data-video-export-modal-target="fitFullRoute">
+                         data-video-export-modal-target="fitFullRoute"
+                         data-action="change->video-export-modal#updateMapPreview">
                   <span class="label-text text-sm">Fit full route in view</span>
                 </label>
 
@@ -162,7 +181,7 @@
                   <input type="color" name="route_color" value="#3b82f6"
                          class="w-8 h-8 cursor-pointer rounded-lg border-2 border-base-300 p-0.5"
                          data-video-export-modal-target="routeColor"
-                         data-action="input->video-export-modal#updateColorLabel">
+                         data-action="input->video-export-modal#updateColorLabel input->video-export-modal#updateMapPreview">
                   <span class="text-xs text-base-content/50 font-mono"
                         data-video-export-modal-target="colorHexLabel">#3b82f6</span>
                 </div>
@@ -171,7 +190,7 @@
                   <input type="color" name="marker_color" value="#ef4444"
                          class="w-8 h-8 cursor-pointer rounded-lg border-2 border-base-300 p-0.5"
                          data-video-export-modal-target="markerColor"
-                         data-action="input->video-export-modal#updateMarkerColorLabel">
+                         data-action="input->video-export-modal#updateMarkerColorLabel input->video-export-modal#updateMapPreview">
                   <span class="text-xs text-base-content/50 font-mono"
                         data-video-export-modal-target="markerColorHexLabel">#ef4444</span>
                 </div>
@@ -190,22 +209,26 @@
               <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 <label class="flex items-center gap-2 cursor-pointer rounded-lg border border-base-300 px-3 py-2 hover:bg-base-200 transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary/5">
                   <input type="checkbox" name="overlay_time" checked class="checkbox checkbox-xs checkbox-primary"
-                         data-video-export-modal-target="overlayTime">
+                         data-video-export-modal-target="overlayTime"
+                         data-action="change->video-export-modal#updateOverlays">
                   <span class="label-text text-xs">Time</span>
                 </label>
                 <label class="flex items-center gap-2 cursor-pointer rounded-lg border border-base-300 px-3 py-2 hover:bg-base-200 transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary/5">
                   <input type="checkbox" name="overlay_speed" checked class="checkbox checkbox-xs checkbox-primary"
-                         data-video-export-modal-target="overlaySpeed">
+                         data-video-export-modal-target="overlaySpeed"
+                         data-action="change->video-export-modal#updateOverlays">
                   <span class="label-text text-xs">Speed</span>
                 </label>
                 <label class="flex items-center gap-2 cursor-pointer rounded-lg border border-base-300 px-3 py-2 hover:bg-base-200 transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary/5">
                   <input type="checkbox" name="overlay_distance" checked class="checkbox checkbox-xs checkbox-primary"
-                         data-video-export-modal-target="overlayDistance">
+                         data-video-export-modal-target="overlayDistance"
+                         data-action="change->video-export-modal#updateOverlays">
                   <span class="label-text text-xs">Distance</span>
                 </label>
                 <label class="flex items-center gap-2 cursor-pointer rounded-lg border border-base-300 px-3 py-2 hover:bg-base-200 transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary/5">
                   <input type="checkbox" name="overlay_track_name" checked class="checkbox checkbox-xs checkbox-primary"
-                         data-video-export-modal-target="overlayTrackName">
+                         data-video-export-modal-target="overlayTrackName"
+                         data-action="change->video-export-modal#updateOverlays">
                   <span class="label-text text-xs">Track Name</span>
                 </label>
               </div>

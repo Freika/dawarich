@@ -1,89 +1,13 @@
 import { Controller } from "@hotwired/stimulus"
 import consumer from "../channels/consumer"
 import Flash from "./flash_controller"
-
-const LANDSCAPE_LAYOUTS = [
-  { value: "bottom_bar", label: "Bottom Bar" },
-  { value: "corner_hud", label: "Corner HUD" },
-  { value: "left_rail", label: "Left Rail" },
-  { value: "bottom_left", label: "Bottom-Left" },
-  { value: "cinematic_strip", label: "Cinematic Strip" },
-]
-
-const PORTRAIT_LAYOUTS = [
-  { value: "bottom_stack", label: "Bottom Stack" },
-  { value: "bottom_row_card", label: "Bottom Row" },
-  { value: "split_bands", label: "Split Bands" },
-  { value: "right_rail", label: "Right Rail" },
-  { value: "floating_pills", label: "Floating Pills" },
-]
-
-const PRESETS = {
-  sporty: {
-    orientation: "landscape",
-    overlay_layout: "bottom_bar",
-    map_style: "dark",
-    target_duration: "30",
-    map_behavior: "follow_direction",
-    fit_full_route: false,
-    route_color: "#3b82f6",
-    route_width: "4",
-    marker_style: "dot",
-    marker_color: "#ef4444",
-    overlay_time: true,
-    overlay_speed: true,
-    overlay_distance: true,
-    overlay_track_name: true,
-  },
-  minimal: {
-    orientation: "landscape",
-    overlay_layout: "cinematic_strip",
-    map_style: "white",
-    target_duration: "30",
-    map_behavior: "north_up",
-    fit_full_route: false,
-    route_color: "#1a1a2e",
-    route_width: "4",
-    marker_style: "dot",
-    marker_color: "#374151",
-    overlay_time: false,
-    overlay_speed: false,
-    overlay_distance: true,
-    overlay_track_name: false,
-  },
-  social: {
-    orientation: "portrait",
-    overlay_layout: "bottom_row_card",
-    map_style: "dark",
-    target_duration: "15",
-    map_behavior: "follow_direction",
-    fit_full_route: false,
-    route_color: "#3b82f6",
-    route_width: "4",
-    marker_style: "dot",
-    marker_color: "#ef4444",
-    overlay_time: true,
-    overlay_speed: true,
-    overlay_distance: true,
-    overlay_track_name: true,
-  },
-  cinematic: {
-    orientation: "landscape",
-    overlay_layout: "corner_hud",
-    map_style: "grayscale",
-    target_duration: "60",
-    map_behavior: "follow_direction",
-    fit_full_route: true,
-    route_color: "#f97316",
-    route_width: "4",
-    marker_style: "arrow",
-    marker_color: "#f97316",
-    overlay_time: true,
-    overlay_speed: false,
-    overlay_distance: true,
-    overlay_track_name: false,
-  },
-}
+import { MapPreview } from "./video_export_map_preview"
+import {
+  LANDSCAPE_LAYOUTS,
+  PORTRAIT_LAYOUTS,
+  PRESETS,
+  SCREEN_PRESETS,
+} from "./video_export_presets"
 
 export default class extends Controller {
   static targets = [
@@ -113,6 +37,10 @@ export default class extends Controller {
     "submitText",
     "submitLoading",
     "submitIcon",
+    "screenPresetsContainer",
+    "screenPresetInput",
+    "mapPreview",
+    "mapPreviewWrapper",
   ]
 
   static values = { apiKey: String }
@@ -125,6 +53,8 @@ export default class extends Controller {
 
     this._boundOpen = (e) => this.open(e)
     document.addEventListener("videoExport:open", this._boundOpen)
+
+    this._renderScreenPresetRows()
   }
 
   disconnect() {
@@ -144,6 +74,7 @@ export default class extends Controller {
     this.endAtInputTarget.value = endAt || ""
 
     this.modalTarget.classList.add("modal-open")
+    this._showMapPreview(trackId)
   }
 
   close() {
@@ -156,31 +87,38 @@ export default class extends Controller {
 
     this._setLoading(true)
 
+    const config = {
+      orientation: this.orientationTarget.value,
+      overlay_layout: this.overlayLayoutTarget.value,
+      map_style: this.mapStyleTarget.value,
+      target_duration: parseInt(this.targetDurationTarget.value, 10),
+      map_behavior: this.mapBehaviorTarget.value,
+      fit_full_route: this.fitFullRouteTarget.checked,
+      route_color: this.routeColorTarget.value,
+      route_width: parseInt(this.routeWidthTarget.value, 10),
+      marker_style: this.markerStyleTarget.value,
+      marker_color: this.markerColorTarget.value,
+      track_name: this.trackNameTarget.value || "",
+      overlays: {
+        time: this.overlayTimeTarget.checked,
+        speed: this.overlaySpeedTarget.checked,
+        distance: this.overlayDistanceTarget.checked,
+        track_name: this.overlayTrackNameTarget.checked,
+      },
+    }
+
+    const screenPreset = this.screenPresetInputTarget.value
+    if (screenPreset) {
+      config.screen_preset = screenPreset
+    }
+
     const payload = {
       track_id: this.trackIdInputTarget.value
         ? parseInt(this.trackIdInputTarget.value, 10)
         : null,
       start_at: this.startAtInputTarget.value,
       end_at: this.endAtInputTarget.value,
-      config: {
-        orientation: this.orientationTarget.value,
-        overlay_layout: this.overlayLayoutTarget.value,
-        map_style: this.mapStyleTarget.value,
-        target_duration: parseInt(this.targetDurationTarget.value, 10),
-        map_behavior: this.mapBehaviorTarget.value,
-        fit_full_route: this.fitFullRouteTarget.checked,
-        route_color: this.routeColorTarget.value,
-        route_width: parseInt(this.routeWidthTarget.value, 10),
-        marker_style: this.markerStyleTarget.value,
-        marker_color: this.markerColorTarget.value,
-        track_name: this.trackNameTarget.value || "",
-        overlays: {
-          time: this.overlayTimeTarget.checked,
-          speed: this.overlaySpeedTarget.checked,
-          distance: this.overlayDistanceTarget.checked,
-          track_name: this.overlayTrackNameTarget.checked,
-        },
-      },
+      config,
     }
 
     try {
@@ -243,6 +181,50 @@ export default class extends Controller {
     this.overlaySpeedTarget.checked = preset.overlay_speed
     this.overlayDistanceTarget.checked = preset.overlay_distance
     this.overlayTrackNameTarget.checked = preset.overlay_track_name
+
+    // Expand matching screen preset row, collapse others
+    this._expandScreenPresetRow(presetName)
+
+    // Update map preview with new preset values
+    if (this.preview) {
+      this.preview.updateOrientation(preset.orientation)
+      this.preview.applyAll({
+        style: preset.map_style,
+        routeColor: preset.route_color,
+        routeWidth: Number.parseInt(preset.route_width, 10),
+        markerColor: preset.marker_color,
+        markerStyle: preset.marker_style,
+        layout: preset.overlay_layout,
+        duration: Number.parseInt(preset.target_duration, 10),
+        mapBehavior: preset.map_behavior,
+        fitFullRoute: preset.fit_full_route,
+        overlays: {
+          time: preset.overlay_time,
+          speed: preset.overlay_speed,
+          distance: preset.overlay_distance,
+          track_name: preset.overlay_track_name,
+        },
+      })
+    }
+  }
+
+  selectScreenPreset(event) {
+    const card = event.currentTarget
+    const key = card.dataset.screenPresetKey
+
+    // Remove selection from all cards
+    for (const el of this.screenPresetsContainerTarget.querySelectorAll(
+      "[data-screen-preset-key]",
+    )) {
+      el.classList.remove("border-primary", "ring-2", "ring-primary/30")
+      el.classList.add("border-base-300")
+    }
+
+    // Highlight selected card
+    card.classList.remove("border-base-300")
+    card.classList.add("border-primary", "ring-2", "ring-primary/30")
+
+    this.screenPresetInputTarget.value = key
   }
 
   updateOrientation() {
@@ -257,7 +239,158 @@ export default class extends Controller {
     this.markerColorHexLabelTarget.textContent = this.markerColorTarget.value
   }
 
+  updateMapPreview(event) {
+    if (!this.preview) return
+
+    const name = event.target.name
+    const value = event.target.value
+
+    switch (name) {
+      case "map_style":
+        this.preview.updateStyle(value)
+        break
+      case "route_color":
+        this.preview.updateRouteColor(value)
+        break
+      case "route_width":
+        this.preview.updateRouteWidth(Number.parseInt(value, 10))
+        break
+      case "marker_color":
+        this.preview.updateMarkerColor(value)
+        break
+      case "orientation":
+        this.preview.updateOrientation(value)
+        break
+      case "overlay_layout":
+        this.preview.updateLayout(value)
+        break
+      case "marker_style":
+        this.preview.updateMarkerStyle(value)
+        break
+    }
+  }
+
+  updateOverlays() {
+    if (!this.preview) return
+    this.preview.updateOverlayVisibility({
+      time: this.overlayTimeTarget.checked,
+      speed: this.overlaySpeedTarget.checked,
+      distance: this.overlayDistanceTarget.checked,
+      track_name: this.overlayTrackNameTarget.checked,
+    })
+  }
+
+  updateTrackNamePreview() {
+    if (!this.preview) return
+    this.preview.updateTrackName(this.trackNameTarget.value)
+  }
+
   // Private methods
+
+  _showMapPreview(trackId) {
+    if (this.preview) {
+      this.preview.destroy()
+      this.preview = null
+    }
+
+    this.preview = new MapPreview(
+      this.mapPreviewTarget,
+      this.mapPreviewWrapperTarget,
+      this.apiKeyValue,
+    )
+    this.preview.show(trackId || null, {
+      style: this.mapStyleTarget.value,
+      routeColor: this.routeColorTarget.value,
+      routeWidth: Number.parseInt(this.routeWidthTarget.value, 10),
+      markerColor: this.markerColorTarget.value,
+      markerStyle: this.markerStyleTarget.value,
+      layout: this.overlayLayoutTarget.value,
+      duration: Number.parseInt(this.targetDurationTarget.value, 10),
+      mapBehavior: this.mapBehaviorTarget.value,
+      fitFullRoute: this.fitFullRouteTarget.checked,
+      trackName: this.trackNameTarget.value,
+      overlays: {
+        time: this.overlayTimeTarget.checked,
+        speed: this.overlaySpeedTarget.checked,
+        distance: this.overlayDistanceTarget.checked,
+        track_name: this.overlayTrackNameTarget.checked,
+      },
+    })
+  }
+
+  _renderScreenPresetRows() {
+    const container = this.screenPresetsContainerTarget
+    container.innerHTML = ""
+
+    for (const [category, { portrait, presets }] of Object.entries(
+      SCREEN_PRESETS,
+    )) {
+      const row = document.createElement("div")
+      row.dataset.screenPresetCategory = category
+      row.className = "overflow-hidden transition-all duration-300 ease-in-out"
+      row.style.maxHeight = "0"
+      row.style.opacity = "0"
+
+      const inner = document.createElement("div")
+      inner.className = "grid grid-cols-5 gap-2 py-2"
+
+      const aspectClass = portrait ? "aspect-[9/16]" : "aspect-video"
+
+      for (const preset of presets) {
+        const card = document.createElement("div")
+        card.dataset.screenPresetKey = preset.key
+        card.dataset.action = "click->video-export-modal#selectScreenPreset"
+        card.className =
+          "cursor-pointer rounded-lg border-2 border-base-300 p-1 text-center transition-colors hover:border-primary/50"
+
+        card.innerHTML = `
+          <img src="/video_presets/${preset.key}.png"
+               alt="${preset.label}"
+               class="w-full rounded ${aspectClass} object-cover bg-base-300"
+               loading="lazy"
+               onerror="this.style.display='none'">
+          <div class="text-xs mt-1 text-base-content/70 truncate">${preset.label}</div>
+        `
+
+        inner.appendChild(card)
+      }
+
+      row.appendChild(inner)
+      container.appendChild(row)
+    }
+  }
+
+  _expandScreenPresetRow(category) {
+    const rows = this.screenPresetsContainerTarget.querySelectorAll(
+      "[data-screen-preset-category]",
+    )
+
+    for (const row of rows) {
+      if (row.dataset.screenPresetCategory === category) {
+        // Temporarily remove overflow and max-height to measure true content height
+        row.style.transition = "none"
+        row.style.maxHeight = "none"
+        row.style.overflow = "visible"
+        const fullHeight = row.scrollHeight
+        row.style.maxHeight = "0"
+        row.style.overflow = "hidden"
+        // Force reflow before re-enabling transition
+        row.offsetHeight // eslint-disable-line no-unused-expressions
+        row.style.transition = ""
+        row.style.maxHeight = `${fullHeight}px`
+        row.style.opacity = "1"
+
+        // Auto-select the first preset in the expanded row
+        const firstCard = row.querySelector("[data-screen-preset-key]")
+        if (firstCard && !this.screenPresetInputTarget.value) {
+          this.selectScreenPreset({ currentTarget: firstCard })
+        }
+      } else {
+        row.style.maxHeight = "0"
+        row.style.opacity = "0"
+      }
+    }
+  }
 
   _updateLayoutOptions(orientation) {
     const layouts =
@@ -282,6 +415,11 @@ export default class extends Controller {
   }
 
   _resetForm() {
+    if (this.preview) {
+      this.preview.destroy()
+      this.preview = null
+    }
+
     this.formTarget.reset()
 
     // Reset preset button styling
@@ -296,6 +434,23 @@ export default class extends Controller {
     // Reset color hex labels
     this.colorHexLabelTarget.textContent = "#3b82f6"
     this.markerColorHexLabelTarget.textContent = "#ef4444"
+
+    // Reset screen preset selection
+    this.screenPresetInputTarget.value = ""
+    for (const el of this.screenPresetsContainerTarget.querySelectorAll(
+      "[data-screen-preset-key]",
+    )) {
+      el.classList.remove("border-primary", "ring-2", "ring-primary/30")
+      el.classList.add("border-base-300")
+    }
+
+    // Collapse all screen preset rows
+    for (const row of this.screenPresetsContainerTarget.querySelectorAll(
+      "[data-screen-preset-category]",
+    )) {
+      row.style.maxHeight = "0"
+      row.style.opacity = "0"
+    }
   }
 
   _handleStatusUpdate(data) {
