@@ -3,6 +3,50 @@
 require 'rails_helper'
 
 RSpec.describe ApplicationHelper, type: :helper do
+  describe '#pro_badge_tag' do
+    context 'when user is not lite' do
+      before do
+        allow(helper).to receive(:current_user).and_return(double(lite?: false))
+      end
+
+      it 'returns nil' do
+        expect(helper.pro_badge_tag).to be_nil
+      end
+    end
+
+    context 'when user is lite' do
+      before do
+        allow(helper).to receive(:current_user).and_return(double(lite?: true))
+        # Stub icon helper used inside pro_badge_tag
+        allow(helper).to receive(:icon).and_return('🔒'.html_safe)
+      end
+
+      it 'renders a DaisyUI tooltip with data-tip attribute' do
+        result = helper.pro_badge_tag
+        expect(result).to include('tooltip')
+        expect(result).to include('tooltip-bottom')
+        expect(result).to include('data-tip=')
+      end
+
+      it 'includes preview text when preview is true' do
+        result = helper.pro_badge_tag(preview: true)
+        expect(result).to include('Available on Pro')
+        expect(result).to include('click to preview')
+      end
+
+      it 'excludes preview text when preview is false' do
+        result = helper.pro_badge_tag(preview: false)
+        expect(result).to include('Available on Pro')
+        expect(result).not_to include('click to preview')
+      end
+
+      it 'does not use native title attribute' do
+        result = helper.pro_badge_tag
+        expect(result).not_to include(' title=')
+      end
+    end
+  end
+
   describe '#oauth_provider_name' do
     context 'when provider is openid_connect' do
       it 'returns the custom OIDC provider name' do

@@ -109,7 +109,7 @@ module ApplicationHelper
     return unless current_user&.lite?
 
     tooltip = preview ? 'Available on Pro — click to preview' : 'Available on Pro'
-    tag.span(class: 'badge badge-sm badge-outline gap-1', title: tooltip) do
+    tag.span(class: 'badge badge-sm badge-outline gap-1 tooltip tooltip-bottom', 'data-tip': tooltip) do
       concat icon('lock', class: 'w-3 h-3')
       concat ' Pro'
     end

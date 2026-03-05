@@ -14,6 +14,17 @@ async function waitForToast(page, substring, timeout = 5000) {
   return toast.filter({ hasText: substring }).first()
 }
 
+/**
+ * Wait for the upgrade banner containing the expected substring.
+ */
+async function waitForBanner(page, substring, timeout = 5000) {
+  const banner = page.locator(".map-upgrade-banner")
+  await expect(banner.filter({ hasText: substring }).first()).toBeVisible({
+    timeout,
+  })
+  return banner.filter({ hasText: substring }).first()
+}
+
 // ---------------------------------------------------------------------------
 // Map Layer Gating
 // ---------------------------------------------------------------------------
@@ -51,13 +62,14 @@ test.describe("Map Layer Gating", () => {
     await waitForToast(page, "Previewing Scratch")
   })
 
-  test("Globe toggle shows immediate upgrade prompt", async ({ page }) => {
+  test("Globe toggle shows upgrade banner", async ({ page }) => {
     await openSettingsTab(page, "settings")
 
     const toggle = page.locator('[data-maps--maplibre-target="globeToggle"]')
     await toggle.check({ force: true })
 
-    await waitForToast(page, "Globe View is a Pro feature")
+    const banner = await waitForBanner(page, "Globe View is a Pro feature")
+    await expect(banner.locator(".map-upgrade-banner-cta")).toBeVisible()
 
     // Toggle should be unchecked after the gate rejects it
     await expect(toggle).not.toBeChecked()
@@ -72,7 +84,25 @@ test.describe("Data Retention", () => {
     await page.goto("/map/v2", { waitUntil: "domcontentloaded" })
     await waitForMapLibre(page)
 
-    await waitForToast(page, "12 months of searchable history")
+    const banner = await waitForBanner(
+      page,
+      "12 months of searchable history",
+      10000,
+    )
+    await expect(banner.locator(".map-upgrade-banner-cta")).toBeVisible()
+  })
+
+  test("banner can be dismissed", async ({ page }) => {
+    await page.goto("/map/v2", { waitUntil: "domcontentloaded" })
+    await waitForMapLibre(page)
+
+    const banner = await waitForBanner(
+      page,
+      "12 months of searchable history",
+      10000,
+    )
+    await banner.locator(".map-upgrade-banner-dismiss").click()
+    await expect(page.locator(".map-upgrade-banner")).not.toBeVisible()
   })
 
   test("API excludes points older than 12 months", async ({ page }) => {

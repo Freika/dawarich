@@ -1,5 +1,6 @@
 import maplibregl from "maplibre-gl"
 import { Toast } from "maps_maplibre/components/toast"
+import { UpgradeBanner } from "maps_maplibre/components/upgrade_banner"
 import { isGatedPlan, UPGRADE_URL } from "maps_maplibre/utils/layer_gate"
 import { performanceMonitor } from "maps_maplibre/utils/performance_monitor"
 
@@ -81,7 +82,7 @@ export class MapDataManager {
 
       // 5. Show upsell banner for Lite users with data outside the 12-month window
       if (isGatedPlan(this.controller.userPlanValue)) {
-        this._showDataWindowBanner()
+        this._showDataWindowBanner(data.totalPointsInRange, data.points.length)
       }
 
       // 6. Fit bounds if requested — use the first available data source
@@ -366,13 +367,25 @@ export class MapDataManager {
   }
 
   /**
-   * Show an upsell banner for Lite users informing them that data outside the
-   * 12-month window is not displayed. No archived data is fetched or rendered.
+   * Show a persistent upgrade banner for Lite users informing them about
+   * data outside the 12-month window.
+   * @param {number} totalInRange - Total points in the queried date range (unscoped)
+   * @param {number} loadedCount - Points actually loaded (scoped to 12-month window)
    * @private
    */
-  _showDataWindowBanner() {
-    Toast.info(
-      `Your plan includes 12 months of searchable history. <a href="${UPGRADE_URL}" target="_blank" class="link link-primary">Upgrade to Pro</a> for unlimited.`,
-    )
+  _showDataWindowBanner(totalInRange, loadedCount) {
+    if (totalInRange > loadedCount) {
+      UpgradeBanner.show({
+        message: `Showing ${loadedCount.toLocaleString()} of ${totalInRange.toLocaleString()} points.`,
+        upgradeUrl: UPGRADE_URL,
+        utmContent: "data_retention",
+      })
+    } else {
+      UpgradeBanner.show({
+        message: "Your plan includes 12 months of searchable history.",
+        upgradeUrl: UPGRADE_URL,
+        utmContent: "data_retention",
+      })
+    }
   }
 }

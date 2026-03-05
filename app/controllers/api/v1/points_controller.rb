@@ -39,6 +39,14 @@ class Api::V1::PointsController < ApiController
     response.set_header('X-Current-Page', points.current_page.to_s)
     response.set_header('X-Total-Pages', points.total_pages.to_s)
 
+    # For Lite users on Cloud: include the unscoped count so the frontend
+    # can show how many points fall outside the 12-month data window.
+    if !DawarichSettings.self_hosted? && current_api_user.lite?
+      total_in_range = current_api_user.points.without_raw_data
+                                       .where(timestamp: start_at..end_at).count
+      response.set_header('X-Total-Points', total_in_range.to_s)
+    end
+
     render json: serialized_points
   end
 

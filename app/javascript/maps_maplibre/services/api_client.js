@@ -37,6 +37,7 @@ export class ApiClient {
       points,
       currentPage: parseInt(response.headers.get("X-Current-Page") || "1", 10),
       totalPages: parseInt(response.headers.get("X-Total-Pages") || "1", 10),
+      totalPoints: parseInt(response.headers.get("X-Total-Points") || "0", 10),
     }
   }
 
@@ -71,6 +72,7 @@ export class ApiClient {
       per_page: 1000,
     })
     const totalPages = firstPage.totalPages
+    const totalPointsInRange = firstPage.totalPoints
 
     // If only one page, return immediately
     if (totalPages === 1) {
@@ -85,7 +87,7 @@ export class ApiClient {
       if (onBatch) {
         onBatch(firstPage.points)
       }
-      return firstPage.points
+      return { points: firstPage.points, totalPointsInRange }
     }
 
     // Initialize results array with first page
@@ -148,7 +150,10 @@ export class ApiClient {
     pageResults.sort((a, b) => a.page - b.page)
 
     // Flatten into single array
-    return pageResults.flatMap((r) => r.points)
+    return {
+      points: pageResults.flatMap((r) => r.points),
+      totalPointsInRange,
+    }
   }
 
   /**

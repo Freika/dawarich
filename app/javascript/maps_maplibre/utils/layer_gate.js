@@ -7,6 +7,7 @@
  * prompt.
  */
 import { Toast } from "maps_maplibre/components/toast"
+import { UpgradeBanner } from "maps_maplibre/components/upgrade_banner"
 
 const PREVIEW_SECONDS = 20
 export const UPGRADE_URL = "https://dawarich.app/pricing"
@@ -53,9 +54,7 @@ async function startPreview({ layerName, toggle, showFn, hideFn }) {
   // Cancel any existing preview for this layer
   cancelPreview(layerName)
 
-  Toast.info(
-    `Previewing ${layerName} for ${PREVIEW_SECONDS} seconds. Upgrade to Pro to keep it.`,
-  )
+  Toast.info(`Previewing ${layerName} for ${PREVIEW_SECONDS} seconds.`)
 
   try {
     await showFn()
@@ -70,9 +69,11 @@ async function startPreview({ layerName, toggle, showFn, hideFn }) {
     toggle.checked = false
     delete activeTimers[layerName]
 
-    Toast.info(
-      `${layerName} preview ended. <a href="${UPGRADE_URL}" target="_blank" class="link link-primary">Upgrade to Pro</a> to keep it.`,
-    )
+    UpgradeBanner.show({
+      message: `${layerName} preview ended.`,
+      upgradeUrl: UPGRADE_URL,
+      utmContent: `layer_preview_${layerName.toLowerCase().replace(/ /g, "_")}`,
+    })
   }, PREVIEW_SECONDS * 1000)
 }
 
