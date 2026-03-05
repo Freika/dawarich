@@ -109,9 +109,12 @@ module ApplicationHelper
     return unless current_user&.lite?
 
     tooltip = preview ? 'Available on Pro — click to preview' : 'Available on Pro'
-    tag.span(class: 'badge badge-sm badge-outline gap-1 tooltip tooltip-bottom', 'data-tip': tooltip) do
-      concat icon('lock', class: 'w-3 h-3')
-      concat ' Pro'
+    link_to DawarichSettings::UPGRADE_URL, target: '_blank', rel: 'noopener noreferrer',
+            class: 'tooltip tooltip-bottom', 'data-tip': tooltip, tabindex: '0' do
+      tag.span(class: 'badge badge-sm badge-outline gap-1') do
+        concat icon('lock', class: 'w-3 h-3')
+        concat ' Pro'
+      end
     end
   end
 

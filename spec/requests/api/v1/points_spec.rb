@@ -163,14 +163,13 @@ RSpec.describe 'Api::V1::Points', type: :request do
         user.update_column(:plan, User.plans[:lite])
       end
 
-      it 'returns 403 with write_api_restricted error' do
+      it 'allows point creation (Lite users can create points)' do
         post "/api/v1/points?api_key=#{user.api_key}", params: point_params
 
-        expect(response).to have_http_status(:forbidden)
+        expect(response).to have_http_status(:ok)
 
-        json_response = JSON.parse(response.body)
-        expect(json_response['error']).to eq('write_api_restricted')
-        expect(json_response['upgrade_url']).to be_present
+        json_response = JSON.parse(response.body)['data']
+        expect(json_response.size).to be_positive
       end
     end
   end
@@ -411,6 +410,18 @@ RSpec.describe 'Api::V1::Points', type: :request do
 
         expect(returned_ids).to include(recent_point.id)
         expect(returned_ids).not_to include(old_point.id)
+      end
+
+      it 'returns X-Total-Points-In-Range header with the unscoped count' do
+        get api_v1_points_url(
+          api_key: lite_user.api_key,
+          start_at: 14.months.ago.to_i,
+          end_at: Time.current.to_i
+        )
+
+        expect(response).to have_http_status(:ok)
+        expect(response.headers['X-Total-Points-In-Range']).to eq('2')
+        expect(response.headers['X-Scoped-Points']).to eq('1')
       end
 
       it 'cannot bypass the 12-month window via start_at param' do

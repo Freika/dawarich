@@ -6,12 +6,14 @@ class Lite::ArchivalWarningJob < ApplicationJob
   # Thresholds checked daily for all Lite users.
   # Each threshold defines the cutoff duration and a dedup key.
   THRESHOLDS = [
-    { duration: 11.months,            key: '11mo',   action: :notify_approaching },
-    { duration: 11.months + 15.days,  key: '11_5mo', action: :notify_email },
-    { duration: 12.months,            key: '12mo',   action: :notify_archived }
+    { duration: DawarichSettings::LITE_DATA_WINDOW - 1.month,            key: '11mo',   action: :notify_approaching },
+    { duration: DawarichSettings::LITE_DATA_WINDOW - 1.month + 15.days,  key: '11_5mo', action: :notify_email },
+    { duration: DawarichSettings::LITE_DATA_WINDOW,                      key: '12mo',   action: :notify_archived }
   ].freeze
 
   def perform
+    return if DawarichSettings.self_hosted?
+
     User.where(plan: :lite).find_each do |user|
       check_thresholds(user)
     end

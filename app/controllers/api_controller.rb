@@ -74,7 +74,7 @@ class ApiController < ApplicationController
     return relation if DawarichSettings.self_hosted?
     return relation unless user&.lite?
 
-    relation.where('timestamp >= ?', 12.months.ago.to_i)
+    relation.where('timestamp >= ?', DawarichSettings::LITE_DATA_WINDOW.ago.to_i)
   end
 
   def authenticate_active_api_user!

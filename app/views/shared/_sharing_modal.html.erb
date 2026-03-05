@@ -9,7 +9,7 @@
       <%= icon 'link' %> Sharing Settings
     </h3>
 
-    <% if local_assigns[:sharing_allowed] == false %>
+    <% unless local_assigns.fetch(:sharing_allowed, true) %>
       <%# Upgrade prompt for Lite users %>
       <div class="text-center py-4">
         <p class="text-gray-600 mb-4">

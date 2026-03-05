@@ -31,6 +31,7 @@ export default class extends Controller {
     endDate: String,
     timezone: String,
     userPlan: { type: String, default: "pro" },
+    upgradeUrl: { type: String, default: "https://dawarich.app/pricing" },
   }
 
   static targets = [

@@ -14,6 +14,17 @@ RSpec.describe Lite::ArchivalWarningJob, type: :job do
       allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
     end
 
+    context 'when running on a self-hosted instance' do
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+        create(:point, user: lite_user, timestamp: 12.months.ago.to_i)
+      end
+
+      it 'is a no-op and does not create any notifications' do
+        expect { described_class.perform_now }.not_to change(Notification, :count)
+      end
+    end
+
     context 'when there are no Lite users' do
       before { lite_user.destroy }
 

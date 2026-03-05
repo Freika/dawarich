@@ -37,7 +37,14 @@ export class ApiClient {
       points,
       currentPage: parseInt(response.headers.get("X-Current-Page") || "1", 10),
       totalPages: parseInt(response.headers.get("X-Total-Pages") || "1", 10),
-      totalPoints: parseInt(response.headers.get("X-Total-Points") || "0", 10),
+      totalPointsInRange: parseInt(
+        response.headers.get("X-Total-Points-In-Range") || "0",
+        10,
+      ),
+      scopedPoints: parseInt(
+        response.headers.get("X-Scoped-Points") || "0",
+        10,
+      ),
     }
   }
 
@@ -45,7 +52,7 @@ export class ApiClient {
    * Fetch all points for date range (handles pagination with parallel requests)
    * @param {Object} options - { start_at, end_at, onProgress, onBatch, maxConcurrent }
    * @param {Function} options.onBatch - Called with accumulated points array after each batch
-   * @returns {Promise<Array>} All points
+   * @returns {Promise<{points: Array, totalPointsInRange: number}>}
    */
   async fetchAllPoints({
     start_at,
@@ -72,7 +79,7 @@ export class ApiClient {
       per_page: 1000,
     })
     const totalPages = firstPage.totalPages
-    const totalPointsInRange = firstPage.totalPoints
+    const totalPointsInRange = firstPage.totalPointsInRange
 
     // If only one page, return immediately
     if (totalPages === 1) {

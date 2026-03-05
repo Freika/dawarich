@@ -1,6 +1,6 @@
 import { Toast } from "maps_maplibre/components/toast"
 import { UpgradeBanner } from "maps_maplibre/components/upgrade_banner"
-import { isGatedPlan, UPGRADE_URL } from "maps_maplibre/utils/layer_gate"
+import { isGatedPlan } from "maps_maplibre/utils/layer_gate"
 import { SettingsManager } from "maps_maplibre/utils/settings_manager"
 import { getMapStyle } from "maps_maplibre/utils/style_manager"
 
@@ -1029,12 +1029,12 @@ export class SettingsController {
     const toggle = event.target
     const enabled = toggle.checked
 
-    if (isGatedPlan(this.controller.userPlanValue)) {
+    if (enabled && isGatedPlan(this.controller.userPlanValue)) {
       // Globe can't do a timed preview (requires reload), so just show upgrade prompt
       toggle.checked = false
       UpgradeBanner.show({
         message: "Globe View is a Pro feature.",
-        upgradeUrl: UPGRADE_URL,
+        upgradeUrl: this.controller.upgradeUrlValue,
         utmContent: "globe_view",
       })
       return

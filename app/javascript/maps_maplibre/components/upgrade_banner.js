@@ -16,15 +16,20 @@ export class UpgradeBanner {
    * @returns {HTMLElement} The banner element
    */
   static show({ message, upgradeUrl, utmContent }) {
+    if (sessionStorage.getItem("upgrade_banner_dismissed")) return null
+
     UpgradeBanner.dismiss()
 
     const url = `${upgradeUrl}?utm_source=app&utm_medium=map_banner&utm_content=${encodeURIComponent(utmContent)}`
 
     const banner = document.createElement("div")
     banner.className = "map-upgrade-banner"
+    banner.setAttribute("role", "status")
+    banner.setAttribute("aria-live", "polite")
 
     const infoIcon = document.createElement("span")
     infoIcon.className = "map-upgrade-banner-icon"
+    infoIcon.setAttribute("aria-hidden", "true")
     infoIcon.textContent = "\u2139"
 
     const text = document.createElement("span")
@@ -40,6 +45,7 @@ export class UpgradeBanner {
 
     const dismissBtn = document.createElement("button")
     dismissBtn.className = "map-upgrade-banner-dismiss"
+    dismissBtn.setAttribute("aria-label", "Dismiss")
     dismissBtn.textContent = "\u2715"
     dismissBtn.addEventListener("click", () => UpgradeBanner.dismiss())
 
@@ -61,6 +67,7 @@ export class UpgradeBanner {
     if (UpgradeBanner.activeBanner) {
       UpgradeBanner.activeBanner.remove()
       UpgradeBanner.activeBanner = null
+      sessionStorage.setItem("upgrade_banner_dismissed", "1")
     }
   }
 }

@@ -249,7 +249,10 @@ html.dark .maplibregl-popup-tip {
   font-size: 13px;
   font-weight: 500;
   color: #1e40af;
-  white-space: nowrap;
+  white-space: normal;
+  max-width: calc(100% - 32px);
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
 .map-upgrade-banner-icon {
@@ -272,7 +275,9 @@ html.dark .maplibregl-popup-tip {
   cursor: pointer;
   font-size: 14px;
   color: #1e40af;
-  padding: 0 2px;
+  padding: 4px 8px;
+  min-width: 24px;
+  min-height: 24px;
   line-height: 1;
   opacity: 0.6;
 }

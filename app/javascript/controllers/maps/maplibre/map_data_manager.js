@@ -1,7 +1,7 @@
 import maplibregl from "maplibre-gl"
 import { Toast } from "maps_maplibre/components/toast"
 import { UpgradeBanner } from "maps_maplibre/components/upgrade_banner"
-import { isGatedPlan, UPGRADE_URL } from "maps_maplibre/utils/layer_gate"
+import { isGatedPlan } from "maps_maplibre/utils/layer_gate"
 import { performanceMonitor } from "maps_maplibre/utils/performance_monitor"
 
 const EMPTY_GEOJSON = { type: "FeatureCollection", features: [] }
@@ -377,13 +377,7 @@ export class MapDataManager {
     if (totalInRange > loadedCount) {
       UpgradeBanner.show({
         message: `Showing ${loadedCount.toLocaleString()} of ${totalInRange.toLocaleString()} points.`,
-        upgradeUrl: UPGRADE_URL,
-        utmContent: "data_retention",
-      })
-    } else {
-      UpgradeBanner.show({
-        message: "Your plan includes 12 months of searchable history.",
-        upgradeUrl: UPGRADE_URL,
+        upgradeUrl: this.controller.upgradeUrlValue,
         utmContent: "data_retention",
       })
     }

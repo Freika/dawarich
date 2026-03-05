@@ -10,7 +10,6 @@ import { Toast } from "maps_maplibre/components/toast"
 import { UpgradeBanner } from "maps_maplibre/components/upgrade_banner"
 
 const PREVIEW_SECONDS = 20
-export const UPGRADE_URL = "https://dawarich.app/pricing"
 
 // Track active preview timers so we can cancel them on manual toggle-off
 const activeTimers = {}
@@ -31,9 +30,17 @@ export function isGatedPlan(userPlan) {
  * @param {HTMLInputElement} toggle - The checkbox element
  * @param {Function} showFn      - Async function that shows/enables the layer
  * @param {Function} hideFn      - Function that hides/disables the layer
+ * @param {string}   upgradeUrl  - URL for the upgrade page
  * @returns {boolean} true if the toggle was intercepted (Lite preview), false if normal flow
  */
-export function gatedToggle({ layerName, userPlan, toggle, showFn, hideFn }) {
+export function gatedToggle({
+  layerName,
+  userPlan,
+  toggle,
+  showFn,
+  hideFn,
+  upgradeUrl,
+}) {
   if (!isGatedPlan(userPlan)) return false
 
   const enabled = toggle.checked
@@ -46,41 +53,63 @@ export function gatedToggle({ layerName, userPlan, toggle, showFn, hideFn }) {
   }
 
   // Show the layer as a timed preview
-  startPreview({ layerName, toggle, showFn, hideFn })
+  startPreview({ layerName, toggle, showFn, hideFn, upgradeUrl })
   return true
 }
 
-async function startPreview({ layerName, toggle, showFn, hideFn }) {
+async function startPreview({ layerName, toggle, showFn, hideFn, upgradeUrl }) {
   // Cancel any existing preview for this layer
   cancelPreview(layerName)
 
-  Toast.info(`Previewing ${layerName} for ${PREVIEW_SECONDS} seconds.`)
+  const toast = Toast.info(
+    `Previewing ${layerName} for ${PREVIEW_SECONDS} seconds.`,
+    0,
+  )
+
+  let remaining = PREVIEW_SECONDS
+  const countdownInterval = setInterval(() => {
+    remaining -= 5
+    if (remaining > 0 && toast?.parentNode) {
+      toast.textContent = `Previewing ${layerName} — ${remaining}s remaining.`
+    }
+  }, 5000)
 
   try {
     await showFn()
   } catch (error) {
     console.error(`Failed to show ${layerName} preview:`, error)
+    clearInterval(countdownInterval)
+    Toast.dismiss(toast)
     toggle.checked = false
     return
   }
 
   activeTimers[layerName] = setTimeout(() => {
+    clearInterval(countdownInterval)
+    Toast.dismiss(toast)
     hideFn()
     toggle.checked = false
     delete activeTimers[layerName]
+    delete activeTimers[`${layerName}_countdown`]
 
     UpgradeBanner.show({
       message: `${layerName} preview ended.`,
-      upgradeUrl: UPGRADE_URL,
+      upgradeUrl,
       utmContent: `layer_preview_${layerName.toLowerCase().replace(/ /g, "_")}`,
     })
   }, PREVIEW_SECONDS * 1000)
+
+  activeTimers[`${layerName}_countdown`] = countdownInterval
 }
 
 function cancelPreview(layerName) {
   if (activeTimers[layerName]) {
     clearTimeout(activeTimers[layerName])
     delete activeTimers[layerName]
+  }
+  if (activeTimers[`${layerName}_countdown`]) {
+    clearInterval(activeTimers[`${layerName}_countdown`])
+    delete activeTimers[`${layerName}_countdown`]
   }
 }
 
@@ -91,7 +120,11 @@ function cancelPreview(layerName) {
  */
 export function cancelAllPreviews() {
   for (const layerName of Object.keys(activeTimers)) {
-    clearTimeout(activeTimers[layerName])
+    if (layerName.endsWith("_countdown")) {
+      clearInterval(activeTimers[layerName])
+    } else {
+      clearTimeout(activeTimers[layerName])
+    }
     delete activeTimers[layerName]
   }
 }

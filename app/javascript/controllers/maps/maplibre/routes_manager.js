@@ -257,6 +257,7 @@ export class RoutesManager {
       toggle,
       showFn: showHeatmap,
       hideFn: hideHeatmap,
+      upgradeUrl: this.controller.upgradeUrlValue,
     })
     if (intercepted) return
 
@@ -292,6 +293,7 @@ export class RoutesManager {
       toggle,
       showFn: showFog,
       hideFn: hideFog,
+      upgradeUrl: this.controller.upgradeUrlValue,
     })
     if (intercepted) return
 
@@ -343,6 +345,7 @@ export class RoutesManager {
       toggle,
       showFn: showScratch,
       hideFn: hideScratch,
+      upgradeUrl: this.controller.upgradeUrlValue,
     })
     if (intercepted) return
 

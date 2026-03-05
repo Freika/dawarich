@@ -19,6 +19,10 @@ RSpec.describe ApplicationHelper, type: :helper do
         allow(helper).to receive(:current_user).and_return(double(lite?: true))
         # Stub icon helper used inside pro_badge_tag
         allow(helper).to receive(:icon).and_return('🔒'.html_safe)
+        # Provide a controller context for rails_pulse's link_to override
+        allow(helper).to receive(:controller).and_return(
+          double(class: double(name: 'ApplicationController'))
+        )
       end
 
       it 'renders a DaisyUI tooltip with data-tip attribute' do
@@ -43,6 +47,14 @@ RSpec.describe ApplicationHelper, type: :helper do
       it 'does not use native title attribute' do
         result = helper.pro_badge_tag
         expect(result).not_to include(' title=')
+      end
+
+      it 'renders as a link to the pricing page' do
+        result = helper.pro_badge_tag
+        expect(result).to include('<a ')
+        expect(result).to include(DawarichSettings::UPGRADE_URL)
+        expect(result).to include('target="_blank"')
+        expect(result).to include('tabindex="0"')
       end
     end
   end
