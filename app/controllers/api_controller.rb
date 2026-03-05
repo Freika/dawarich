@@ -4,6 +4,7 @@ class ApiController < ApplicationController
   skip_before_action :verify_authenticity_token
   before_action :set_version_header
   before_action :authenticate_api_key
+  after_action :set_rate_limit_headers
 
   rescue_from ActiveRecord::RecordNotFound, with: :record_not_found
 
@@ -35,6 +36,45 @@ class ApiController < ApplicationController
     return head :unauthorized unless current_api_user
 
     true
+  end
+
+  def require_pro_api!
+    return unless current_api_user # auth already handled by authenticate_api_key
+    return if DawarichSettings.self_hosted?
+    return if current_api_user.pro?
+
+    render json: {
+      error: 'pro_plan_required',
+      message: 'This feature requires a Pro plan.',
+      upgrade_url: DawarichSettings::UPGRADE_URL
+    }, status: :forbidden
+  end
+
+  def require_write_api!
+    return unless current_api_user # auth already handled by authenticate_api_key
+    return if DawarichSettings.self_hosted?
+    return if current_api_user.pro?
+
+    render json: {
+      error: 'write_api_restricted',
+      message: 'Write API access requires a Pro plan. Your data was not modified.',
+      upgrade_url: DawarichSettings::UPGRADE_URL
+    }, status: :forbidden
+  end
+
+  # Returns points scoped to the user's plan data window.
+  # Lite users see only the last 12 months; Pro users see everything.
+  def scoped_points(user = current_api_user)
+    apply_plan_scope(user.points, user)
+  end
+
+  # Applies the 12-month plan window to any point relation.
+  # Use this when scoping points that don't start from user.points (e.g. track.points).
+  def apply_plan_scope(relation, user = current_api_user)
+    return relation if DawarichSettings.self_hosted?
+    return relation unless user&.lite?
+
+    relation.where('timestamp >= ?', DawarichSettings::LITE_DATA_WINDOW.ago.to_i)
   end
 
   def authenticate_active_api_user!
@@ -81,5 +121,22 @@ class ApiController < ApplicationController
     limit_exceeded = PointsLimitExceeded.new(current_api_user).call
 
     render json: { error: 'Points limit exceeded' }, status: :unauthorized if limit_exceeded
+  end
+
+  def set_rate_limit_headers
+    return unless current_api_user
+    return if DawarichSettings.self_hosted?
+
+    throttle_data = request.env['rack.attack.throttle_data']&.dig('api/token')
+    return unless throttle_data
+
+    limit = throttle_data[:limit]
+    count = throttle_data[:count]
+    period = throttle_data[:period]
+    now = Time.zone.now.to_i
+
+    response.set_header('X-RateLimit-Limit', limit.to_s)
+    response.set_header('X-RateLimit-Remaining', [limit - count, 0].max.to_s)
+    response.set_header('X-RateLimit-Reset', (now + (period - (now % period))).to_s)
   end
 end

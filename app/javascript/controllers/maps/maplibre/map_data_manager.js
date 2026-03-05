@@ -1,5 +1,7 @@
 import maplibregl from "maplibre-gl"
 import { Toast } from "maps_maplibre/components/toast"
+import { UpgradeBanner } from "maps_maplibre/components/upgrade_banner"
+import { isGatedPlan } from "maps_maplibre/utils/layer_gate"
 import { performanceMonitor } from "maps_maplibre/utils/performance_monitor"
 
 const EMPTY_GEOJSON = { type: "FeatureCollection", features: [] }
@@ -78,7 +80,12 @@ export class MapDataManager {
       // 4. Store data for replay and other features
       this.lastLoadedData = data
 
-      // 5. Fit bounds if requested — use the first available data source
+      // 5. Show upsell banner for Lite users with data outside the 12-month window
+      if (isGatedPlan(this.controller.userPlanValue)) {
+        this._showDataWindowBanner(data.totalPointsInRange, data.points.length)
+      }
+
+      // 6. Fit bounds if requested — use the first available data source
       if (fitBounds) {
         this._hasFittedBounds = this._fitToFirstAvailable([
           data.pointsGeoJSON,
@@ -355,6 +362,23 @@ export class MapDataManager {
         padding: 50,
         maxZoom: 15,
         animate: false,
+      })
+    }
+  }
+
+  /**
+   * Show a persistent upgrade banner for Lite users informing them about
+   * data outside the 12-month window.
+   * @param {number} totalInRange - Total points in the queried date range (unscoped)
+   * @param {number} loadedCount - Points actually loaded (scoped to 12-month window)
+   * @private
+   */
+  _showDataWindowBanner(totalInRange, loadedCount) {
+    if (totalInRange > loadedCount) {
+      UpgradeBanner.show({
+        message: `Showing ${loadedCount.toLocaleString()} of ${totalInRange.toLocaleString()} points.`,
+        upgradeUrl: this.controller.upgradeUrlValue,
+        utmContent: "data_retention",
       })
     }
   }

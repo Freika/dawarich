@@ -105,6 +105,19 @@ module ApplicationHelper
     preferred_version == 'v1' ? map_v1_path(params) : map_v2_path(params)
   end
 
+  def pro_badge_tag(preview: true)
+    return unless current_user&.lite?
+
+    tooltip = preview ? 'Available on Pro — click to preview' : 'Available on Pro'
+    link_to DawarichSettings::UPGRADE_URL, target: '_blank', rel: 'noopener noreferrer',
+            class: 'tooltip tooltip-bottom', 'data-tip': tooltip, tabindex: '0' do
+      tag.span(class: 'badge badge-sm badge-outline gap-1') do
+        concat icon('lock', class: 'w-3 h-3')
+        concat ' Pro'
+      end
+    end
+  end
+
   def sortable_column(title, column, path_helper, **path_params)
     current_sort = params[:sort_by] || 'created_at'
     current_dir  = params[:order_by] || 'desc'

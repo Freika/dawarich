@@ -114,6 +114,8 @@ export class Toast {
    * @param {HTMLElement} toast - Toast element to dismiss
    */
   static dismiss(toast) {
+    if (!toast?.parentNode) return
+
     toast.classList.add("removing")
     setTimeout(() => {
       toast.remove()

@@ -10,6 +10,9 @@ class Api::V1::SettingsController < ApiController
     }, status: :ok
   end
 
+  # NOTE: For Lite plan users, Pro-only settings (gated map layers, globe_projection)
+  # are silently stripped before persistence by TransportationThresholdsUpdater.
+  # The response reflects the filtered state via safe_settings.config.
   def update
     result = Users::TransportationThresholdsUpdater.new(current_api_user, settings_params).call
 

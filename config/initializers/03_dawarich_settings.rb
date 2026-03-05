@@ -2,6 +2,8 @@
 
 class DawarichSettings
   BASIC_PAID_PLAN_LIMIT = 10_000_000 # 10 million points
+  UPGRADE_URL = 'https://dawarich.app/pricing'
+  LITE_DATA_WINDOW = 12.months
 
   class << self
     def reverse_geocoding_enabled?

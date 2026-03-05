@@ -7,6 +7,7 @@ class ImportsController < ApplicationController
   SORTABLE_COLUMNS = %w[name status created_at processed byte_size].freeze
 
   before_action :authenticate_user!
+  before_action :authenticate_active_user!, only: %i[create]
   before_action :set_import, only: %i[show edit update destroy]
   before_action :authorize_import, only: %i[show edit update destroy]
   before_action :validate_points_limit, only: %i[new create]

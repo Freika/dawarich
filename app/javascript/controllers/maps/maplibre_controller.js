@@ -3,6 +3,7 @@ import { Toast } from "maps_maplibre/components/toast"
 import { ReplayManager } from "maps_maplibre/managers/replay_manager"
 import { ApiClient } from "maps_maplibre/services/api_client"
 import { CleanupHelper } from "maps_maplibre/utils/cleanup_helper"
+import { cancelAllPreviews } from "maps_maplibre/utils/layer_gate"
 import { performanceMonitor } from "maps_maplibre/utils/performance_monitor"
 import { SearchManager } from "maps_maplibre/utils/search_manager"
 import { SettingsManager } from "maps_maplibre/utils/settings_manager"
@@ -29,6 +30,8 @@ export default class extends Controller {
     startDate: String,
     endDate: String,
     timezone: String,
+    userPlan: { type: String, default: "pro" },
+    upgradeUrl: { type: String, default: "https://dawarich.app/pricing" },
   }
 
   static targets = [
@@ -314,6 +317,7 @@ export default class extends Controller {
     this._stopReplayPlayback()
     this.settingsController?.stopRecalculationPolling()
     this.searchManager?.destroy()
+    cancelAllPreviews()
     this.cleanup.cleanup()
     this.map?.remove()
     performanceMonitor.logReport()

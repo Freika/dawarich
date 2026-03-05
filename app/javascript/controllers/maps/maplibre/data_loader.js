@@ -77,10 +77,11 @@ export class DataLoader {
    * Used by ensurePointsLoaded() for lazy-loading point-dependent layers.
    */
   async fetchPointsData(startDate, endDate) {
-    const points = await this.api.fetchAllPoints({
+    const result = await this.api.fetchAllPoints({
       start_at: startDate,
       end_at: endDate,
     })
+    const points = result.points
     const pointsGeoJSON = pointsToGeoJSON(points)
     let routesGeoJSON = RoutesLayer.pointsToRoutes(points, {
       distanceThresholdMeters: this.settings.metersBetweenRoutes || 500,
@@ -158,7 +159,7 @@ export class DataLoader {
               }
             : null,
         })
-      : Promise.resolve([])
+      : Promise.resolve({ points: [], totalPointsInRange: 0 })
 
     const visitsPromise = this.settings.visitsEnabled
       ? this.api
@@ -224,12 +225,14 @@ export class DataLoader {
       : Promise.resolve([])
 
     // Wait for all core data
-    const [points, visits, areas, places] = await Promise.all([
+    const [pointsResult, visits, areas, places] = await Promise.all([
       pointsPromise,
       visitsPromise,
       areasPromise,
       placesPromise,
     ])
+    const points = pointsResult.points
+    const totalPointsInRange = pointsResult.totalPointsInRange || 0
     performanceMonitor.measure("fetch-points")
 
     const emptyGeoJSON = { type: "FeatureCollection", features: [] }
@@ -283,6 +286,7 @@ export class DataLoader {
       data.routesBaseGeoJSON = emptyGeoJSON
     }
 
+    data.totalPointsInRange = totalPointsInRange
     data.visits = visits
     data.visitsGeoJSON = this.visitsToGeoJSON(data.visits)
     data.areas = areas

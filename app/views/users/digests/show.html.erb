@@ -57,161 +57,180 @@
     </div>
   </div>
 
-  <!-- First Time Visits -->
-  <% if @digest.first_time_countries.any? || @digest.first_time_cities.any? %>
-    <div class="card bg-base-200 shadow-xl mb-8">
-      <div class="card-body text-center items-center">
-        <h2 class="card-title">
-          <%= icon 'star' %> First Time Visits
-        </h2>
+  <% if @full_digest %>
+    <!-- First Time Visits (Pro / self-hosted only) -->
+    <% if @digest.first_time_countries.any? || @digest.first_time_cities.any? %>
+      <div class="card bg-base-200 shadow-xl mb-8">
+        <div class="card-body text-center items-center">
+          <h2 class="card-title">
+            <%= icon 'star' %> First Time Visits
+          </h2>
 
-        <% if @digest.first_time_countries.any? %>
-          <div class="mb-4">
-            <h3 class="font-semibold mb-2">New Countries</h3>
-            <div class="flex flex-wrap gap-2 justify-center">
-              <% @digest.first_time_countries.each do |country| %>
-                <span class="badge badge-success badge-lg"><%= country %></span>
-              <% end %>
+          <% if @digest.first_time_countries.any? %>
+            <div class="mb-4">
+              <h3 class="font-semibold mb-2">New Countries</h3>
+              <div class="flex flex-wrap gap-2 justify-center">
+                <% @digest.first_time_countries.each do |country| %>
+                  <span class="badge badge-success badge-lg"><%= country %></span>
+                <% end %>
+              </div>
             </div>
-          </div>
-        <% end %>
+          <% end %>
 
-        <% if @digest.first_time_cities.any? %>
-          <div>
-            <h3 class="font-semibold mb-2">New Cities</h3>
-            <div class="flex flex-wrap gap-2 justify-center">
-              <% @digest.first_time_cities.take(10).each do |city| %>
-                <span class="badge badge-outline"><%= city %></span>
-              <% end %>
-              <% if @digest.first_time_cities.count > 10 %>
-                <span class="badge badge-ghost">+<%= @digest.first_time_cities.count - 10 %> more</span>
-              <% end %>
+          <% if @digest.first_time_cities.any? %>
+            <div>
+              <h3 class="font-semibold mb-2">New Cities</h3>
+              <div class="flex flex-wrap gap-2 justify-center">
+                <% @digest.first_time_cities.take(10).each do |city| %>
+                  <span class="badge badge-outline"><%= city %></span>
+                <% end %>
+                <% if @digest.first_time_cities.count > 10 %>
+                  <span class="badge badge-ghost">+<%= @digest.first_time_cities.count - 10 %> more</span>
+                <% end %>
+              </div>
             </div>
-          </div>
-        <% end %>
-      </div>
-    </div>
-  <% end %>
-
-  <!-- Monthly Distance Chart -->
-  <% if @digest.monthly_distances.present? %>
-    <div class="card bg-base-200 shadow-xl mb-8">
-      <div class="card-body text-center items-center">
-        <h2 class="card-title">
-          <%= icon 'activity' %> Your Year, Month by Month
-        </h2>
-        <div class="w-full h-64 bg-base-100 rounded-lg p-4">
-          <%= column_chart(
-            @digest.monthly_distances.sort_by { |month, _| month.to_i }.map { |month, distance_meters|
-              [Date::ABBR_MONTHNAMES[month.to_i], Users::Digest.convert_distance(distance_meters.to_i, @distance_unit).round]
-            },
-            height: '250px',
-            suffix: " #{@distance_unit}",
-            xtitle: 'Month',
-            ytitle: 'Distance',
-            colors: [
-              '#397bb5', '#5A4E9D', '#3B945E',
-              '#7BC96F', '#FFD54F', '#FFA94D',
-              '#FF6B6B', '#FF8C42', '#C97E4F',
-              '#8B4513', '#5A2E2E', '#265d7d'
-            ]
-          ) %>
+          <% end %>
         </div>
       </div>
-    </div>
-  <% end %>
+    <% end %>
 
-  <!-- Top Countries by Time Spent -->
-  <% if @digest.top_countries_by_time.any? %>
+    <!-- Monthly Distance Chart (Pro / self-hosted only) -->
+    <% if @digest.monthly_distances.present? %>
+      <div class="card bg-base-200 shadow-xl mb-8">
+        <div class="card-body text-center items-center">
+          <h2 class="card-title">
+            <%= icon 'activity' %> Your Year, Month by Month
+          </h2>
+          <div class="w-full h-64 bg-base-100 rounded-lg p-4">
+            <%= column_chart(
+              @digest.monthly_distances.sort_by { |month, _| month.to_i }.map { |month, distance_meters|
+                [Date::ABBR_MONTHNAMES[month.to_i], Users::Digest.convert_distance(distance_meters.to_i, @distance_unit).round]
+              },
+              height: '250px',
+              suffix: " #{@distance_unit}",
+              xtitle: 'Month',
+              ytitle: 'Distance',
+              colors: [
+                '#397bb5', '#5A4E9D', '#3B945E',
+                '#7BC96F', '#FFD54F', '#FFA94D',
+                '#FF6B6B', '#FF8C42', '#C97E4F',
+                '#8B4513', '#5A2E2E', '#265d7d'
+              ]
+            ) %>
+          </div>
+        </div>
+      </div>
+    <% end %>
+
+    <!-- Top Countries by Time Spent (Pro / self-hosted only) -->
+    <% if @digest.top_countries_by_time.any? %>
+      <div class="card bg-base-200 shadow-xl mb-8">
+        <div class="card-body text-center items-center">
+          <h2 class="card-title">
+            <%= icon 'map-pin' %> Where You Spent the Most Time
+          </h2>
+          <div class="space-y-4 w-full">
+            <% @digest.top_countries_by_time.take(5).each_with_index do |country, index| %>
+              <div class="flex justify-between items-center p-3 bg-base-100 rounded-lg">
+                <div class="flex items-center gap-3">
+                  <span class="badge badge-lg <%= ['badge-primary', 'badge-secondary', 'badge-accent', 'badge-info', 'badge-success'][index] %>">
+                    <%= index + 1 %>
+                  </span>
+                  <span class="font-semibold">
+                    <span class="mr-1"><%= country_flag(country['name']) %></span>
+                    <%= country['name'] %>
+                  </span>
+                </div>
+                <span class="text-gray-600"><%= format_time_spent(country['minutes']) %></span>
+              </div>
+            <% end %>
+
+            <% if @digest.untracked_days > 0 %>
+              <div class="flex justify-between items-center p-3 bg-base-100 rounded-lg border-2 border-dashed border-gray-200">
+                <div class="flex items-center gap-3">
+                  <span class="badge badge-lg badge-ghost">?</span>
+                  <span class="text-gray-500 italic">No tracking data</span>
+                </div>
+                <span class="text-gray-500"><%= pluralize(@digest.untracked_days.round, 'day') %></span>
+              </div>
+              <p class="text-sm text-gray-500 mt-2 flex items-center justify-center gap-2">
+                <%= icon 'lightbulb' %> Track more in <%= @digest.year + 1 %> to see a fuller picture of your travels!
+              </p>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    <% end %>
+
+    <!-- All Countries & Cities (Pro / self-hosted only) -->
     <div class="card bg-base-200 shadow-xl mb-8">
       <div class="card-body text-center items-center">
         <h2 class="card-title">
-          <%= icon 'map-pin' %> Where You Spent the Most Time
+          <%= icon 'earth' %> Countries & Cities
         </h2>
         <div class="space-y-4 w-full">
-          <% @digest.top_countries_by_time.take(5).each_with_index do |country, index| %>
-            <div class="flex justify-between items-center p-3 bg-base-100 rounded-lg">
-              <div class="flex items-center gap-3">
-                <span class="badge badge-lg <%= ['badge-primary', 'badge-secondary', 'badge-accent', 'badge-info', 'badge-success'][index] %>">
-                  <%= index + 1 %>
-                </span>
-                <span class="font-semibold">
-                  <span class="mr-1"><%= country_flag(country['name']) %></span>
-                  <%= country['name'] %>
-                </span>
+          <% if @digest.toponyms.present? %>
+            <% @digest.toponyms.each_with_index do |country, index| %>
+              <div class="space-y-2">
+                <div class="flex justify-between items-center">
+                  <span class="font-semibold">
+                    <span class="mr-1"><%= country_flag(country['country']) %></span>
+                    <%= country['country'] %>
+                  </span>
+                  <span class="text-sm">
+                    <%= pluralize(country['cities']&.length || 0, 'city') %>
+                  </span>
+                </div>
+                <progress class="progress <%= progress_color_for_index(index) %> w-full" value="<%= city_progress_value(country['cities']&.length || 0, max_cities_count(@digest.toponyms)) %>" max="100"></progress>
               </div>
-              <span class="text-gray-600"><%= format_time_spent(country['minutes']) %></span>
-            </div>
-          <% end %>
-
-          <% if @digest.untracked_days > 0 %>
-            <div class="flex justify-between items-center p-3 bg-base-100 rounded-lg border-2 border-dashed border-gray-200">
-              <div class="flex items-center gap-3">
-                <span class="badge badge-lg badge-ghost">?</span>
-                <span class="text-gray-500 italic">No tracking data</span>
-              </div>
-              <span class="text-gray-500"><%= pluralize(@digest.untracked_days.round, 'day') %></span>
-            </div>
-            <p class="text-sm text-gray-500 mt-2 flex items-center justify-center gap-2">
-              <%= icon 'lightbulb' %> Track more in <%= @digest.year + 1 %> to see a fuller picture of your travels!
-            </p>
+            <% end %>
+          <% else %>
+            <p class="text-gray-500">No location data available</p>
           <% end %>
         </div>
+      </div>
+    </div>
+
+    <!-- All-Time Stats Footer (Pro / self-hosted only) -->
+    <div class="card bg-slate-800 text-white shadow-xl mb-8">
+      <div class="card-body text-center items-center">
+        <h2 class="card-title text-white">
+          <%= icon 'trophy' %> All-Time Stats
+        </h2>
+        <div class="grid grid-cols-2 gap-4 mt-4">
+          <div class="stat place-items-center">
+            <div class="stat-title text-gray-400">Countries visited</div>
+            <div class="stat-value text-white"><%= @digest.total_countries_all_time %></div>
+          </div>
+          <div class="stat place-items-center">
+            <div class="stat-title text-gray-400">Cities explored</div>
+            <div class="stat-value text-white"><%= @digest.total_cities_all_time %></div>
+          </div>
+        </div>
+        <div class="stat place-items-center mt-2">
+          <div class="stat-title text-gray-400">Total distance</div>
+          <div class="stat-value text-white"><%= distance_with_unit(@digest.total_distance_all_time, @distance_unit) %></div>
+        </div>
+      </div>
+    </div>
+  <% else %>
+    <!-- Upgrade Prompt (Lite users only) -->
+    <div class="card bg-base-200 shadow-xl mb-8 border border-primary/20">
+      <div class="card-body text-center items-center">
+        <h2 class="card-title">
+          <%= icon 'sparkles' %> Want more insights?
+        </h2>
+        <p class="text-gray-600 mb-4">
+          Upgrade to Pro to see your full year-in-review with monthly breakdowns,
+          detailed city and country rankings, transportation analysis, and all-time stats.
+        </p>
+        <a href="https://dawarich.app/pricing?utm_source=app&utm_medium=digest&utm_campaign=lite_upgrade"
+           class="btn btn-primary">
+          Upgrade to Pro
+        </a>
       </div>
     </div>
   <% end %>
-
-  <!-- All Countries & Cities -->
-  <div class="card bg-base-200 shadow-xl mb-8">
-    <div class="card-body text-center items-center">
-      <h2 class="card-title">
-        <%= icon 'earth' %> Countries & Cities
-      </h2>
-      <div class="space-y-4 w-full">
-        <% if @digest.toponyms.present? %>
-          <% @digest.toponyms.each_with_index do |country, index| %>
-            <div class="space-y-2">
-              <div class="flex justify-between items-center">
-                <span class="font-semibold">
-                  <span class="mr-1"><%= country_flag(country['country']) %></span>
-                  <%= country['country'] %>
-                </span>
-                <span class="text-sm">
-                  <%= pluralize(country['cities']&.length || 0, 'city') %>
-                </span>
-              </div>
-              <progress class="progress <%= progress_color_for_index(index) %> w-full" value="<%= city_progress_value(country['cities']&.length || 0, max_cities_count(@digest.toponyms)) %>" max="100"></progress>
-            </div>
-          <% end %>
-        <% else %>
-          <p class="text-gray-500">No location data available</p>
-        <% end %>
-      </div>
-    </div>
-  </div>
-
-  <!-- All-Time Stats Footer -->
-  <div class="card bg-slate-800 text-white shadow-xl mb-8">
-    <div class="card-body text-center items-center">
-      <h2 class="card-title text-white">
-        <%= icon 'trophy' %> All-Time Stats
-      </h2>
-      <div class="grid grid-cols-2 gap-4 mt-4">
-        <div class="stat place-items-center">
-          <div class="stat-title text-gray-400">Countries visited</div>
-          <div class="stat-value text-white"><%= @digest.total_countries_all_time %></div>
-        </div>
-        <div class="stat place-items-center">
-          <div class="stat-title text-gray-400">Cities explored</div>
-          <div class="stat-value text-white"><%= @digest.total_cities_all_time %></div>
-        </div>
-      </div>
-      <div class="stat place-items-center mt-2">
-        <div class="stat-title text-gray-400">Total distance</div>
-        <div class="stat-value text-white"><%= distance_with_unit(@digest.total_distance_all_time, @distance_unit) %></div>
-      </div>
-    </div>
-  </div>
 
   <!-- Action Buttons -->
   <div class="flex flex-wrap gap-4 justify-center">

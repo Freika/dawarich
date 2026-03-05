@@ -22,6 +22,7 @@ class StatsController < ApplicationController
     @stat = current_user.stats.find_by(year: @year, month: @month)
     @previous_stat = current_user.stats.find_by(year: @year, month: @month - 1) if @month > 1
     @average_distance_this_year = current_user.stats.where(year: @year).average(:distance).to_i / 1000
+    @sharing_allowed = DawarichSettings.self_hosted? || current_user.pro?
   end
 
   def update
