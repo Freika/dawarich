@@ -60,5 +60,32 @@ class DawarichSettings
     def archive_raw_data_enabled?
       @archive_raw_data_enabled ||= ARCHIVE_RAW_DATA
     end
+
+    def video_service_enabled?
+      Rails.cache.fetch('video_service_enabled', expires_in: 5.minutes) do
+        video_service_healthy?
+      end
+    end
+
+    private
+
+    def video_service_healthy?
+      url = ENV['VIDEO_SERVICE_URL']
+      return false if url.blank?
+
+      uri = URI.parse("#{url.chomp('/')}/health")
+      response = Net::HTTP.start(
+        uri.host, uri.port,
+        use_ssl: uri.scheme == 'https',
+        open_timeout: 3, read_timeout: 3
+      ) { |http| http.get(uri.path) }
+
+      return false unless response.is_a?(Net::HTTPSuccess)
+
+      body = JSON.parse(response.body)
+      body['status'] == 'ok'
+    rescue StandardError
+      false
+    end
   end
 end

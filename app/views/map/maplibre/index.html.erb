@@ -1,5 +1,11 @@
 <% content_for :title, 'Map' %>
 
+<% content_for :modals do %>
+  <% if DawarichSettings.video_service_enabled? %>
+    <%= render 'map/maplibre/video_export_modal' %>
+  <% end %>
+<% end %>
+
 <%= render 'shared/map/date_navigation_v2', start_at: @start_at, end_at: @end_at %>
 
 <div id="maps-maplibre-container"
@@ -8,6 +14,7 @@
      data-maps--maplibre-start-date-value="<%= @start_at.iso8601 %>"
      data-maps--maplibre-end-date-value="<%= @end_at.iso8601 %>"
      data-maps--maplibre-timezone-value="<%= current_user.timezone %>"
+     data-maps--maplibre-video-service-enabled-value="<%= DawarichSettings.video_service_enabled? %>"
      data-maps--maplibre-realtime-enabled-value="true"
      data-maps--maplibre-realtime-live-mode-value="<%= current_user.safe_settings.live_map_enabled %>"
      style="width: 100%; height: 100%; position: relative;">
