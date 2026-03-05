@@ -65,12 +65,13 @@ class Lite::ArchivalWarningJob < ApplicationJob
     # Atomic JSONB merge at the SQL level to avoid read-modify-write race conditions
     # when multiple job workers process the same user concurrently.
     User.where(id: user.id).update_all(
-      Arel.sql(
-        "settings = COALESCE(settings, '{}'::jsonb) || " \
-        "jsonb_build_object('archival_warnings', " \
-        "COALESCE(settings->'archival_warnings', '{}'::jsonb) || " \
-        "jsonb_build_object(#{ActiveRecord::Base.connection.quote(key)}, #{ActiveRecord::Base.connection.quote(Time.zone.now.iso8601)}))"
-      )
+      ActiveRecord::Base.sanitize_sql_array([
+                                              "settings = COALESCE(settings, '{}'::jsonb) || " \
+                                              "jsonb_build_object('archival_warnings', " \
+                                              "COALESCE(settings->'archival_warnings', '{}'::jsonb) || " \
+                                              'jsonb_build_object(?, ?))',
+                                              key, Time.zone.now.iso8601
+                                            ])
     )
     user.reload
   end

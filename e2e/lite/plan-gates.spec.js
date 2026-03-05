@@ -80,15 +80,15 @@ test.describe("Map Layer Gating", () => {
 // Data Retention
 // ---------------------------------------------------------------------------
 test.describe("Data Retention", () => {
-  test("shows data window upsell banner on map load", async ({ page }) => {
+  test("shows data window upsell banner when data is truncated", async ({
+    page,
+  }) => {
     await page.goto("/map/v2", { waitUntil: "domcontentloaded" })
     await waitForMapLibre(page)
 
-    const banner = await waitForBanner(
-      page,
-      "12 months of searchable history",
-      10000,
-    )
+    // Banner appears when the Lite user has points outside the 12-month window
+    const banner = await waitForBanner(page, "Showing", 10000)
+    await expect(banner).toContainText("points")
     await expect(banner.locator(".map-upgrade-banner-cta")).toBeVisible()
   })
 
@@ -96,11 +96,7 @@ test.describe("Data Retention", () => {
     await page.goto("/map/v2", { waitUntil: "domcontentloaded" })
     await waitForMapLibre(page)
 
-    const banner = await waitForBanner(
-      page,
-      "12 months of searchable history",
-      10000,
-    )
+    const banner = await waitForBanner(page, "Showing", 10000)
     await banner.locator(".map-upgrade-banner-dismiss").click()
     await expect(page.locator(".map-upgrade-banner")).not.toBeVisible()
   })
@@ -157,7 +153,7 @@ test.describe("Settings Gating", () => {
 // API Write Gating
 // ---------------------------------------------------------------------------
 test.describe("API Write Gating", () => {
-  test("POST points returns 403 for Lite user", async ({ page }) => {
+  test("POST points is allowed for Lite user", async ({ page }) => {
     const response = await page.request.post("/api/v1/points", {
       headers: {
         Authorization: `Bearer ${API_KEYS.LITE_USER}`,
@@ -175,6 +171,76 @@ test.describe("API Write Gating", () => {
             },
           },
         ],
+      },
+    })
+
+    expect(response.status()).toBe(200)
+  })
+
+  test("PUT points returns 403 for Lite user", async ({ page }) => {
+    // First create a point to get its ID
+    const createResponse = await page.request.post("/api/v1/points", {
+      headers: {
+        Authorization: `Bearer ${API_KEYS.LITE_USER}`,
+        "Content-Type": "application/json",
+      },
+      data: {
+        locations: [
+          {
+            type: "Feature",
+            geometry: { type: "Point", coordinates: [13.41, 52.53] },
+            properties: {
+              timestamp: Math.floor(Date.now() / 1000) - 60,
+              altitude: 40,
+              speed: 0,
+            },
+          },
+        ],
+      },
+    })
+    const created = await createResponse.json()
+    const pointId = created.data[0].id
+
+    const response = await page.request.put(`/api/v1/points/${pointId}`, {
+      headers: {
+        Authorization: `Bearer ${API_KEYS.LITE_USER}`,
+        "Content-Type": "application/json",
+      },
+      data: { point: { latitude: 52.54 } },
+    })
+
+    expect(response.status()).toBe(403)
+    const body = await response.json()
+    expect(body.error).toBe("write_api_restricted")
+  })
+
+  test("DELETE points returns 403 for Lite user", async ({ page }) => {
+    // First create a point to get its ID
+    const createResponse = await page.request.post("/api/v1/points", {
+      headers: {
+        Authorization: `Bearer ${API_KEYS.LITE_USER}`,
+        "Content-Type": "application/json",
+      },
+      data: {
+        locations: [
+          {
+            type: "Feature",
+            geometry: { type: "Point", coordinates: [13.42, 52.54] },
+            properties: {
+              timestamp: Math.floor(Date.now() / 1000) - 120,
+              altitude: 45,
+              speed: 0,
+            },
+          },
+        ],
+      },
+    })
+    const created = await createResponse.json()
+    const pointId = created.data[0].id
+
+    const response = await page.request.delete(`/api/v1/points/${pointId}`, {
+      headers: {
+        Authorization: `Bearer ${API_KEYS.LITE_USER}`,
       },
     })
 
