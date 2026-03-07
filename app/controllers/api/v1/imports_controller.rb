@@ -10,7 +10,7 @@ class Api::V1::ImportsController < ApiController
               .select(:id, :name, :source, :status, :created_at, :processed, :points_count, :error_message)
               .order(created_at: :desc)
               .page(params[:page])
-              .per(params[:per_page] || 25)
+              .per([params.fetch(:per_page, 25).to_i, 100].min)
 
     response.set_header('X-Current-Page', imports.current_page.to_s)
     response.set_header('X-Total-Pages', imports.total_pages.to_s)
@@ -44,10 +44,12 @@ class Api::V1::ImportsController < ApiController
     else
       render json: { error: import.errors.full_messages.join(', ') }, status: :unprocessable_entity
     end
+  rescue ActiveRecord::RecordInvalid => e
+    render json: { error: e.record.errors.full_messages.join(', ') }, status: :unprocessable_entity
   rescue StandardError => e
     Rails.logger.error "API Import error: #{e.message}"
     ExceptionReporter.call(e)
-    render json: { error: e.message }, status: :unprocessable_entity
+    render json: { error: 'An error occurred while processing the import' }, status: :internal_server_error
   end
 
   private
