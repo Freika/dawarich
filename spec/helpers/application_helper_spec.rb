@@ -59,6 +59,77 @@ RSpec.describe ApplicationHelper, type: :helper do
     end
   end
 
+  describe '#oauth_button_config' do
+    context 'when provider is google_oauth2' do
+      subject(:config) { helper.oauth_button_config(:google_oauth2) }
+
+      it 'returns Google label' do
+        expect(config[:label]).to eq('Sign in with Google')
+      end
+
+      it 'returns Google brand CSS classes' do
+        expect(config[:css_class]).to include('bg-white')
+        expect(config[:css_class]).to include('text-gray-700')
+      end
+
+      it 'returns an SVG icon' do
+        expect(config[:icon]).to include('<svg')
+        expect(config[:icon]).to include('</svg>')
+      end
+    end
+
+    context 'when provider is github' do
+      subject(:config) { helper.oauth_button_config(:github) }
+
+      it 'returns GitHub label' do
+        expect(config[:label]).to eq('Sign in with GitHub')
+      end
+
+      it 'returns GitHub brand CSS classes' do
+        expect(config[:css_class]).to include('bg-[#24292f]')
+        expect(config[:css_class]).to include('text-white')
+      end
+
+      it 'returns an SVG icon' do
+        expect(config[:icon]).to include('<svg')
+      end
+    end
+
+    context 'when provider is openid_connect' do
+      subject(:config) { helper.oauth_button_config(:openid_connect) }
+
+      before { stub_const('OIDC_PROVIDER_NAME', 'Authentik') }
+
+      it 'returns label using OIDC provider name' do
+        expect(config[:label]).to eq('Sign in with Authentik')
+      end
+
+      it 'returns primary CSS class' do
+        expect(config[:css_class]).to include('btn-primary')
+      end
+
+      it 'returns no icon' do
+        expect(config[:icon]).to be_nil
+      end
+    end
+
+    context 'when provider is unknown' do
+      subject(:config) { helper.oauth_button_config(:some_provider) }
+
+      it 'returns generic label' do
+        expect(config[:label]).to eq('Sign in with SomeProvider')
+      end
+
+      it 'returns primary CSS class' do
+        expect(config[:css_class]).to include('btn-primary')
+      end
+
+      it 'returns no icon' do
+        expect(config[:icon]).to be_nil
+      end
+    end
+  end
+
   describe '#oauth_provider_name' do
     context 'when provider is openid_connect' do
       it 'returns the custom OIDC provider name' do

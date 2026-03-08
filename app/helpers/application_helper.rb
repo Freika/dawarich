@@ -86,6 +86,37 @@ module ApplicationHelper
     OmniAuth::Utils.camelize(provider)
   end
 
+  OAUTH_PROVIDERS = {
+    google_oauth2: {
+      icon_name: 'google',
+      label: 'Sign in with Google',
+      css_class: 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+    },
+    github: {
+      icon_name: 'github',
+      label: 'Sign in with GitHub',
+      css_class: 'bg-[#24292f] text-white hover:bg-[#383f47] border-[#24292f]'
+    }
+  }.freeze
+
+  def oauth_button_config(provider)
+    config = OAUTH_PROVIDERS[provider.to_sym]
+
+    if config
+      {
+        icon: icon(config[:icon_name], library: 'brands', class: 'size-5'),
+        label: config[:label],
+        css_class: config[:css_class]
+      }
+    else
+      {
+        icon: nil,
+        label: "Sign in with #{oauth_provider_name(provider)}",
+        css_class: 'btn-primary'
+      }
+    end
+  end
+
   def email_password_registration_enabled?
     return true unless DawarichSettings.self_hosted?
 
