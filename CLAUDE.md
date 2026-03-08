@@ -372,7 +372,8 @@ Even in these cases, wrap the integration in a Stimulus controller and connect i
 4. **Testing**: Include both unit and integration tests for location-based features
 5. **Performance**: Consider database indexes for geographic queries
 6. **Security**: Never log or expose user location data inappropriately
-7. **Public Sharing**: When implementing features that interact with stats, consider public sharing access patterns:
+7. **Migrations**: Put all migrations (schema and data) in `db/migrate/`, not `db/data/`. Data manipulation migrations use the same `ActiveRecord::Migration` class and should run in the standard migration sequence.
+8. **Public Sharing**: When implementing features that interact with stats, consider public sharing access patterns:
    - Use `public_accessible?` method to check if a stat can be publicly accessed
    - Support UUID-based access in API endpoints when appropriate
    - Respect expiration settings and disable sharing when expired
@@ -418,6 +419,62 @@ Both Map v1 (Leaflet) and Map v2 (MapLibre) contain an **intentional unit mismat
 - **Distance threshold**: 500 meters (default) - currently non-functional due to unit bug
 - **Sorting**: Map v2 sorts points by timestamp client-side; v1 relies on backend ASC order
 - **API ordering**: Map v2 must request `order: 'asc'` to match v1's chronological data flow
+
+## Plan System (Lite vs Pro)
+
+Dawarich Cloud has a two-tier plan system. Self-hosted instances bypass all plan restrictions (`DawarichSettings.self_hosted?` returns true, all users effectively have Pro).
+
+### Plans
+
+- **Pro** (`plan: :pro`, enum value `1`) — Full access to all features, no data window
+- **Lite** (`plan: :lite`, enum value `0`) — Free tier with restricted feature set
+
+Plan is stored as an integer enum on the `users` table. New cloud users start on Lite via trial flow.
+
+### Lite Plan Restrictions
+
+**Data visibility window (12 months):**
+- Lite users only see data from the last 12 months (`DawarichSettings::LITE_DATA_WINDOW`)
+- Implemented as a query-time filter in `PlanScopable` concern (`app/models/concerns/plan_scopable.rb`)
+- Scoped methods: `scoped_points`, `scoped_tracks`, `scoped_visits`, `scoped_stats`
+- Data is **never deleted** — only filtered from UI and API reads. Export uses unscoped `user.points` etc.
+- `plan_restricted?` returns `true` only when `!self_hosted? && lite?`
+
+**Disabled map layers (Pro-only):**
+- Heatmap, Fog of War, Scratch Map, Globe View
+- Lite users get a 20-second timed preview, then auto-hide with upgrade prompt
+- Gating logic: `app/javascript/maps_maplibre/utils/layer_gate.js`
+- UI components: `Toast` (countdown) and `UpgradeBanner` (post-preview CTA)
+
+**API restrictions:**
+- Write API returns 403 (`require_write_api!` in `ApiController`)
+- Read API scopes results to 12-month window (`apply_plan_scope` in `ApiController`)
+- Rate limit: 200 req/hr (Lite) vs 1,000 req/hr (Pro) via `rack-attack` (`config/initializers/rack_attack.rb`)
+
+**Disabled features:**
+- Integrations (Immich, Photoprism)
+- Public sharing of stats
+- Full digest view
+
+**Plan endpoint:** `GET /api/v1/plan` returns current plan and feature flags (`Api::V1::PlanController`)
+
+### Archival Warning System
+
+`Lite::ArchivalWarningJob` runs daily for Lite users and sends warnings at three thresholds:
+1. **11 months** — In-app notification warning data will archive in 30 days
+2. **11.5 months** — Email notification
+3. **12 months** — In-app notification that data has been archived (hidden from view)
+
+Warnings are deduped via `settings['archival_warnings']` JSONB on the user record.
+
+### Development Guidelines for Plan Gating
+
+- Use `user.plan_restricted?` to check if restrictions apply (returns false for self-hosted)
+- Use `user.scoped_*` methods instead of `user.points`/`user.tracks` etc. for plan-aware queries
+- Use `require_pro_api!` or `require_write_api!` before_actions in API controllers
+- Use `apply_plan_scope(relation)` when scoping points that don't start from `user.points`
+- Frontend: use `isGatedPlan(userPlan)` and `gatedToggle()` from `layer_gate.js` for map layer toggling
+- Export must always use unscoped relations — users can export all their data regardless of plan
 
 ## Contributing
 

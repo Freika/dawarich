@@ -138,6 +138,44 @@ RSpec.describe 'Shared::Stats', type: :request do
         end
       end
 
+      context 'when user is on Lite plan (Cloud)' do
+        let!(:stat_to_share) { create(:stat, user:, year: 2024, month: 6) }
+
+        before do
+          sign_in user
+          allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+          user.update_column(:plan, User.plans[:lite])
+        end
+
+        it 'rejects sharing update with 403' do
+          patch sharing_stats_path(year: 2024, month: 6),
+                params: { enabled: '1' },
+                as: :json
+
+          expect(response).to have_http_status(:forbidden)
+          json_response = JSON.parse(response.body)
+          expect(json_response['error']).to include('Pro plan')
+        end
+      end
+
+      context 'when self-hosted Lite user (bypasses gate)' do
+        let!(:stat_to_share) { create(:stat, user:, year: 2024, month: 6) }
+
+        before do
+          sign_in user
+          allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+          user.update_column(:plan, User.plans[:lite])
+        end
+
+        it 'allows sharing update' do
+          patch sharing_stats_path(year: 2024, month: 6),
+                params: { enabled: '1' },
+                as: :json
+
+          expect(response).to have_http_status(:success)
+        end
+      end
+
       context 'when user is not signed in' do
         it 'returns unauthorized' do
           patch sharing_stats_path(year: 2024, month: 6),

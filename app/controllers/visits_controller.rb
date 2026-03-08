@@ -9,12 +9,12 @@ class VisitsController < ApplicationController
     status   = params[:status]   || 'confirmed'
 
     visits = current_user
-             .visits
+             .scoped_visits
              .where(status:)
              .includes(%i[suggested_places area points place])
              .order(started_at: order_by)
 
-    @suggested_visits_count = current_user.visits.suggested.count
+    @suggested_visits_count = current_user.scoped_visits.suggested.count
     @visits = visits.page(params[:page]).per(10)
   end
 

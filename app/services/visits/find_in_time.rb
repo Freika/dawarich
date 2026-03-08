@@ -9,11 +9,10 @@ module Visits
     end
 
     def call
-      Visit
-        .includes(:place, :area)
-        .where(user:)
-        .where('started_at >= ? AND ended_at <= ?', start_at, end_at)
-        .order(started_at: :desc)
+      user.scoped_visits
+          .includes(:place, :area)
+          .where('started_at >= ? AND ended_at <= ?', start_at, end_at)
+          .order(started_at: :desc)
     end
 
     private

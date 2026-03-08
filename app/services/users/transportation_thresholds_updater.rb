@@ -42,6 +42,15 @@ module Users
 
         @user.settings[key] = value
       end
+
+      sanitize_gated_layers if @user.lite?
+    end
+
+    def sanitize_gated_layers
+      if @user.settings.key?('enabled_map_layers')
+        @user.settings['enabled_map_layers'] -= Users::SafeSettings::GATED_MAP_LAYERS
+      end
+      @user.settings['globe_projection'] = false if @settings_params.key?('globe_projection')
     end
 
     def trigger_recalculation_if_needed

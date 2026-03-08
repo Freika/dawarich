@@ -64,8 +64,14 @@
         </div>
         <% if devise_mapping.omniauthable? %>
           <% resource_class.omniauth_providers.each do |provider| %>
+            <% config = oauth_button_config(provider) %>
             <div class="form-control mt-2">
-              <%= button_to "Sign in with #{oauth_provider_name(provider)}", omniauth_authorize_path(resource_name, provider), class: 'btn btn-primary w-full', data: { turbo: false } %>
+              <%= button_to omniauth_authorize_path(resource_name, provider),
+                  class: "btn w-full gap-2 #{config[:css_class]}",
+                  data: { turbo: false } do %>
+                <%= config[:icon] %>
+                <%= config[:label] %>
+              <% end %>
             </div>
           <% end %>
         <% end %>

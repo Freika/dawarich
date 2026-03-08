@@ -5,6 +5,7 @@
 
 export const API_KEYS = {
   DEMO_USER: "demo_api_key_001",
+  LITE_USER: "lite_demo_api_key_001",
   FAMILY_MEMBER_1: "family_member_1_api_key",
   FAMILY_MEMBER_2: "family_member_2_api_key",
   FAMILY_MEMBER_3: "family_member_3_api_key",
@@ -15,6 +16,11 @@ export const TEST_USERS = {
     email: "demo@dawarich.app",
     password: "password",
     apiKey: API_KEYS.DEMO_USER,
+  },
+  LITE: {
+    email: "lite@dawarich.app",
+    password: "password",
+    apiKey: API_KEYS.LITE_USER,
   },
   FAMILY_1: {
     email: "family.member1@dawarich.app",
