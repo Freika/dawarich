@@ -26,14 +26,14 @@ module Timeline
     attr_reader :user, :start_at, :end_at, :distance_unit
 
     def fetch_visits
-      user.visits
+      user.scoped_visits
           .includes(:place, :area)
           .where(started_at: start_at..end_at)
           .order(started_at: :asc)
     end
 
     def fetch_tracks
-      user.tracks
+      user.scoped_tracks
           .where(start_at: start_at..end_at)
           .order(start_at: :asc)
     end

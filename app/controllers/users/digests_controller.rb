@@ -15,6 +15,7 @@ class Users::DigestsController < ApplicationController
 
   def show
     @distance_unit = current_user.safe_settings.distance_unit || 'km'
+    @full_digest = DawarichSettings.self_hosted? || current_user.pro?
   end
 
   def create

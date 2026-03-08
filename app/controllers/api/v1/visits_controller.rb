@@ -22,7 +22,7 @@ class Api::V1::VisitsController < ApiController
   end
 
   def show
-    visit = current_api_user.visits.find(params[:id])
+    visit = current_api_user.scoped_visits.find(params[:id])
     render json: Api::VisitSerializer.new(visit).call
   end
 

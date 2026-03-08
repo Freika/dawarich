@@ -8,20 +8,22 @@ class StatsController < ApplicationController
     @stats = build_stats
     assign_points_statistics
     @year_distances = precompute_year_distances
+    @locked_years = locked_years
   end
 
   def show
     @year = params[:year].to_i
-    @stats = current_user.stats.where(year: @year).order(:month)
+    @stats = current_user.scoped_stats.where(year: @year).order(:month)
     @year_distances = { @year => Stat.year_distance(@year, current_user) }
   end
 
   def month
     @year = params[:year].to_i
     @month = params[:month].to_i
-    @stat = current_user.stats.find_by(year: @year, month: @month)
-    @previous_stat = current_user.stats.find_by(year: @year, month: @month - 1) if @month > 1
-    @average_distance_this_year = current_user.stats.where(year: @year).average(:distance).to_i / 1000
+    @stat = current_user.scoped_stats.find_by(year: @year, month: @month)
+    @previous_stat = current_user.scoped_stats.find_by(year: @year, month: @month - 1) if @month > 1
+    @average_distance_this_year = current_user.scoped_stats.where(year: @year).average(:distance).to_i / 1000
+    @sharing_allowed = DawarichSettings.self_hosted? || current_user.pro?
   end
 
   def update
@@ -79,11 +81,19 @@ class StatsController < ApplicationController
     year_distances
   end
 
+  def locked_years
+    return [] unless current_user.plan_restricted?
+
+    all_years = current_user.stats.distinct.pluck(:year)
+    scoped_years = @stats.keys
+    (all_years - scoped_years).sort.reverse
+  end
+
   def build_stats
     columns = %i[id year month distance updated_at user_id]
     columns << :toponyms if DawarichSettings.reverse_geocoding_enabled?
 
-    current_user.stats
+    current_user.scoped_stats
                 .select(columns)
                 .order(year: :desc, updated_at: :desc)
                 .group_by(&:year)

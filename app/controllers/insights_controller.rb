@@ -6,11 +6,14 @@ class InsightsController < ApplicationController
   def index
     authorize :insights, :index?
 
-    @available_years = current_user.stats.distinct.pluck(:year).sort.reverse
+    set_available_years
     @selected_year = params[:year] || @available_years.first&.to_s || Time.current.year.to_s
     @all_time = @selected_year == 'all'
+    @year_locked = year_locked?
 
     load_year_stats
+    return if @year_locked
+
     load_year_totals
     load_activity_heatmap
   end
@@ -18,11 +21,14 @@ class InsightsController < ApplicationController
   def details
     authorize :insights, :details?
 
-    @available_years = current_user.stats.distinct.pluck(:year).sort.reverse
+    set_available_years
     @selected_year = params[:year] || @available_years.first&.to_s || Time.current.year.to_s
     @all_time = @selected_year == 'all'
+    @year_locked = year_locked?
 
     load_year_stats
+    return if @year_locked || current_user.plan_restricted?
+
     load_year_totals
     load_comparison_data if @previous_year_stats&.any?
 
@@ -36,16 +42,28 @@ class InsightsController < ApplicationController
 
   private
 
+  def set_available_years
+    @available_years = current_user.stats.distinct.pluck(:year).sort.reverse
+    scoped_years = current_user.scoped_stats.distinct.pluck(:year)
+    @locked_years = current_user.plan_restricted? ? (@available_years - scoped_years).to_set : Set.new
+  end
+
+  def year_locked?
+    return false if @all_time || !current_user.plan_restricted?
+
+    @locked_years.include?(@selected_year.to_i)
+  end
+
   def load_year_stats
     if @all_time
-      @year_stats = current_user.stats.order(year: :desc, month: :desc)
+      @year_stats = current_user.scoped_stats.order(year: :desc, month: :desc)
       @previous_year_stats = Stat.none
       @display_label = 'All Time'
     else
       @selected_year = @selected_year.to_i
       @previous_year = @selected_year - 1
-      @year_stats = current_user.stats.where(year: @selected_year).order(:month)
-      @previous_year_stats = current_user.stats.where(year: @previous_year).order(:month)
+      @year_stats = current_user.scoped_stats.where(year: @selected_year).order(:month)
+      @previous_year_stats = current_user.scoped_stats.where(year: @previous_year).order(:month)
       @display_label = "#{@selected_year} Overview"
     end
   end
@@ -126,7 +144,7 @@ class InsightsController < ApplicationController
     return true if digest.travel_patterns.blank?
 
     # Check if stats have been updated since digest was last calculated
-    latest_stat_update = current_user.stats.where(year: @selected_year).maximum(:updated_at)
+    latest_stat_update = current_user.scoped_stats.where(year: @selected_year).maximum(:updated_at)
     return false if latest_stat_update.nil?
 
     digest.updated_at < latest_stat_update
@@ -153,7 +171,7 @@ class InsightsController < ApplicationController
     start_time = Time.zone.local(@selected_year, 1, 1)
     end_time = Time.zone.local(@selected_year, 12, 31).end_of_year
 
-    current_user.visits.confirmed.where(started_at: start_time..end_time).group(:name)
+    current_user.scoped_visits.confirmed.where(started_at: start_time..end_time).group(:name)
                 .select('name, COUNT(*) as visit_count, SUM(duration) as total_duration')
                 .order('visit_count DESC, total_duration DESC').limit(5)
                 .map { |v| { name: v.name, visit_count: v.visit_count, total_duration: v.total_duration } }
@@ -161,7 +179,7 @@ class InsightsController < ApplicationController
 
   def load_monthly_digest
     @selected_month = determine_selected_month
-    @available_months = current_user.stats
+    @available_months = current_user.scoped_stats
                                     .where(year: @selected_year)
                                     .pluck(:month)
                                     .sort
@@ -181,9 +199,9 @@ class InsightsController < ApplicationController
     if params[:month].present?
       params[:month].to_i
     elsif @selected_year == Time.current.year
-      current_user.stats.where(year: @selected_year).maximum(:month) || Time.current.month
+      current_user.scoped_stats.where(year: @selected_year).maximum(:month) || Time.current.month
     else
-      current_user.stats.where(year: @selected_year).maximum(:month) || 12
+      current_user.scoped_stats.where(year: @selected_year).maximum(:month) || 12
     end
   end
 

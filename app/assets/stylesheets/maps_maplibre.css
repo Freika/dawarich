@@ -230,3 +230,71 @@ html.dark .maplibregl-popup-tip {
     opacity: 0.5;
   }
 }
+
+/* Upgrade Banner */
+.map-upgrade-banner {
+  position: absolute;
+  top: 56px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  font-size: 13px;
+  font-weight: 500;
+  color: #1e40af;
+  white-space: normal;
+  max-width: calc(100% - 32px);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.map-upgrade-banner-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.map-upgrade-banner-text {
+  flex: 1;
+}
+
+.map-upgrade-banner-cta {
+  flex-shrink: 0;
+}
+
+.map-upgrade-banner-dismiss {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  color: #1e40af;
+  padding: 4px 8px;
+  min-width: 24px;
+  min-height: 24px;
+  line-height: 1;
+  opacity: 0.6;
+}
+
+.map-upgrade-banner-dismiss:hover {
+  opacity: 1;
+}
+
+/* Dark theme support for upgrade banner */
+html[data-theme="dark"] .map-upgrade-banner,
+html.dark .map-upgrade-banner {
+  background: rgba(30, 41, 59, 0.92);
+  border-color: rgba(59, 130, 246, 0.4);
+  color: #e2e8f0;
+}
+
+html[data-theme="dark"] .map-upgrade-banner-dismiss,
+html.dark .map-upgrade-banner-dismiss {
+  color: #e2e8f0;
+}

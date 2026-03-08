@@ -19,7 +19,12 @@
           <li class="menu-title"><span class='p-2'>By Year</span></li>
           <% @available_years.each do |year| %>
             <li>
-              <%= link_to "#{year} Overview", insights_path(year: year), class: (!@all_time && year == @selected_year) ? 'active' : '' %>
+              <%= link_to insights_path(year: year), class: (!@all_time && year == @selected_year) ? 'active' : '' do %>
+                <%= year %> Overview
+                <% if @locked_years.include?(year) %>
+                  <%= icon 'lock', class: 'w-3 h-3 inline opacity-50' %>
+                <% end %>
+              <% end %>
             </li>
           <% end %>
         </ul>
