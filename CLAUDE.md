@@ -420,6 +420,62 @@ Both Map v1 (Leaflet) and Map v2 (MapLibre) contain an **intentional unit mismat
 - **Sorting**: Map v2 sorts points by timestamp client-side; v1 relies on backend ASC order
 - **API ordering**: Map v2 must request `order: 'asc'` to match v1's chronological data flow
 
+## Plan System (Lite vs Pro)
+
+Dawarich Cloud has a two-tier plan system. Self-hosted instances bypass all plan restrictions (`DawarichSettings.self_hosted?` returns true, all users effectively have Pro).
+
+### Plans
+
+- **Pro** (`plan: :pro`, enum value `1`) — Full access to all features, no data window
+- **Lite** (`plan: :lite`, enum value `0`) — Free tier with restricted feature set
+
+Plan is stored as an integer enum on the `users` table. New cloud users start on Lite via trial flow.
+
+### Lite Plan Restrictions
+
+**Data visibility window (12 months):**
+- Lite users only see data from the last 12 months (`DawarichSettings::LITE_DATA_WINDOW`)
+- Implemented as a query-time filter in `PlanScopable` concern (`app/models/concerns/plan_scopable.rb`)
+- Scoped methods: `scoped_points`, `scoped_tracks`, `scoped_visits`, `scoped_stats`
+- Data is **never deleted** — only filtered from UI and API reads. Export uses unscoped `user.points` etc.
+- `plan_restricted?` returns `true` only when `!self_hosted? && lite?`
+
+**Disabled map layers (Pro-only):**
+- Heatmap, Fog of War, Scratch Map, Globe View
+- Lite users get a 20-second timed preview, then auto-hide with upgrade prompt
+- Gating logic: `app/javascript/maps_maplibre/utils/layer_gate.js`
+- UI components: `Toast` (countdown) and `UpgradeBanner` (post-preview CTA)
+
+**API restrictions:**
+- Write API returns 403 (`require_write_api!` in `ApiController`)
+- Read API scopes results to 12-month window (`apply_plan_scope` in `ApiController`)
+- Rate limit: 200 req/hr (Lite) vs 1,000 req/hr (Pro) via `rack-attack` (`config/initializers/rack_attack.rb`)
+
+**Disabled features:**
+- Integrations (Immich, Photoprism)
+- Public sharing of stats
+- Full digest view
+
+**Plan endpoint:** `GET /api/v1/plan` returns current plan and feature flags (`Api::V1::PlanController`)
+
+### Archival Warning System
+
+`Lite::ArchivalWarningJob` runs daily for Lite users and sends warnings at three thresholds:
+1. **11 months** — In-app notification warning data will archive in 30 days
+2. **11.5 months** — Email notification
+3. **12 months** — In-app notification that data has been archived (hidden from view)
+
+Warnings are deduped via `settings['archival_warnings']` JSONB on the user record.
+
+### Development Guidelines for Plan Gating
+
+- Use `user.plan_restricted?` to check if restrictions apply (returns false for self-hosted)
+- Use `user.scoped_*` methods instead of `user.points`/`user.tracks` etc. for plan-aware queries
+- Use `require_pro_api!` or `require_write_api!` before_actions in API controllers
+- Use `apply_plan_scope(relation)` when scoping points that don't start from `user.points`
+- Frontend: use `isGatedPlan(userPlan)` and `gatedToggle()` from `layer_gate.js` for map layer toggling
+- Export must always use unscoped relations — users can export all their data regardless of plan
+
 ## Contributing
 
 - **Main Branch**: `master`
