@@ -140,11 +140,21 @@ module ApplicationHelper
     preferred_version == 'v1' ? map_v1_path(params) : map_v2_path(params)
   end
 
+  # Generates a user-specific upgrade URL that authenticates the user
+  # with the subscription manager via JWT token.
+  # Accepts optional UTM parameters for tracking.
+  def upgrade_url(utm_source: 'app', utm_medium: nil, utm_campaign: 'lite_upgrade', utm_content: nil)
+    base = "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}"
+    utm = { utm_source:, utm_medium:, utm_campaign:, utm_content: }.compact
+    utm.any? ? "#{base}&#{utm.to_query}" : base
+  end
+
   def pro_badge_tag(preview: true)
     return unless current_user&.lite?
 
     tooltip = preview ? 'Available on Pro — click to preview' : 'Available on Pro'
-    link_to DawarichSettings::UPGRADE_URL, target: '_blank', rel: 'noopener noreferrer',
+    link_to upgrade_url(utm_medium: 'badge', utm_content: 'pro_badge'),
+            target: '_blank', rel: 'noopener noreferrer',
             class: 'tooltip tooltip-bottom', 'data-tip': tooltip, tabindex: '0' do
       tag.span(class: 'badge badge-sm badge-outline gap-1') do
         concat icon('lock', class: 'w-3 h-3')

@@ -104,7 +104,7 @@ class Api::V1::InsightsController < ApiController
   def plan_metadata
     {
       planRestricted: current_api_user.plan_restricted?,
-      upgradeUrl: DawarichSettings::UPGRADE_URL
+      upgradeUrl: upgrade_url_for(current_api_user)
     }
   end
 end

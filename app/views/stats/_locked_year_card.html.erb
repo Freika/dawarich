@@ -26,7 +26,7 @@
       <div class="absolute inset-0 flex flex-col items-center justify-center">
         <%= icon 'lock', class: 'w-6 h-6 opacity-30' %>
         <p class="text-sm text-base-content/50 mt-1">Available on Pro</p>
-        <a href="<%= DawarichSettings::UPGRADE_URL %>?utm_source=app&utm_medium=stats&utm_campaign=lite_upgrade&utm_content=stats_year_<%= year %>"
+        <a href="<%= upgrade_url(utm_medium: 'stats', utm_content: "stats_year_#{year}") %>"
            class="btn btn-sm btn-primary mt-2" target="_blank" rel="noopener">
           Upgrade to Pro
         </a>

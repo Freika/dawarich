@@ -6,7 +6,7 @@
     <span class="map-upgrade-banner-text">
       Your Lite plan includes the last 12 months of data.
     </span>
-    <a href="<%= DawarichSettings::UPGRADE_URL %>?utm_source=app&utm_medium=data_window&utm_campaign=lite_upgrade&utm_content=<%= local_assigns[:utm_content] || 'map' %>"
+    <a href="<%= upgrade_url(utm_medium: 'data_window', utm_content: local_assigns[:utm_content] || 'map') %>"
        class="btn btn-sm btn-primary map-upgrade-banner-cta" target="_blank" rel="noopener">
       Upgrade to Pro
     </a>

@@ -45,6 +45,8 @@ class UsersMailer < ApplicationMailer
 
   def archival_approaching
     @user = params[:user]
+    @upgrade_url = "#{MANAGER_URL}/auth/dawarich?token=#{@user.generate_subscription_token}" \
+                   '&utm_source=email&utm_medium=email&utm_campaign=archival_approaching&utm_content=upgrade'
 
     mail(to: @user.email, subject: 'Keep your full history — upgrade to Pro')
   end

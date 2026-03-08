@@ -51,7 +51,7 @@ Rack::Attack.throttled_responder = lambda do |request|
   body = {
     error: 'rate_limit_exceeded',
     message: 'API rate limit exceeded. Please wait before making more requests.',
-    upgrade_url: DawarichSettings::UPGRADE_URL
+    upgrade_url: "#{MANAGER_URL}/pricing"
   }.to_json
 
   [429, headers, [body]]

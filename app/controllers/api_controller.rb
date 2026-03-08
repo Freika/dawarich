@@ -46,7 +46,7 @@ class ApiController < ApplicationController
     render json: {
       error: 'pro_plan_required',
       message: 'This feature requires a Pro plan.',
-      upgrade_url: DawarichSettings::UPGRADE_URL
+      upgrade_url: upgrade_url_for(current_api_user)
     }, status: :forbidden
   end
 
@@ -58,7 +58,7 @@ class ApiController < ApplicationController
     render json: {
       error: 'write_api_restricted',
       message: 'Write API access requires a Pro plan. Your data was not modified.',
-      upgrade_url: DawarichSettings::UPGRADE_URL
+      upgrade_url: upgrade_url_for(current_api_user)
     }, status: :forbidden
   end
 
@@ -75,6 +75,10 @@ class ApiController < ApplicationController
     return relation unless user&.lite?
 
     relation.where('timestamp >= ?', DawarichSettings::LITE_DATA_WINDOW.ago.to_i)
+  end
+
+  def upgrade_url_for(user)
+    "#{MANAGER_URL}/auth/dawarich?token=#{user.generate_subscription_token}"
   end
 
   def authenticate_active_api_user!
