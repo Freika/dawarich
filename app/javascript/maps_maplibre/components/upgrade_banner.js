@@ -21,9 +21,9 @@ export class UpgradeBanner {
     UpgradeBanner.dismiss()
 
     // Remove any server-rendered banner so only one is visible at a time
-    document
-      .querySelectorAll(".map-upgrade-banner")
-      .forEach((el) => el.remove())
+    document.querySelectorAll(".map-upgrade-banner").forEach((el) => {
+      el.remove()
+    })
 
     const url = `${upgradeUrl}?utm_source=app&utm_medium=map_banner&utm_content=${encodeURIComponent(utmContent)}`
 
