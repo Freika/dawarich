@@ -1,6 +1,10 @@
 # frozen_string_literal: true
 
 module ApplicationHelper
+  def show_plan_data_window_alert?
+    !DawarichSettings.self_hosted? && current_user&.lite?
+  end
+
   def year_timespan(year)
     start_at = DateTime.new(year).beginning_of_year.strftime('%Y-%m-%dT%H:%M')
     end_at = DateTime.new(year).end_of_year.strftime('%Y-%m-%dT%H:%M')

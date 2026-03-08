@@ -2,5 +2,6 @@
 <%= render 'shared/chartkick_scripts' %>
 
 <div class="w-full my-5">
+  <%= render 'shared/plan_data_window_alert', utm_content: 'stats_year' %>
   <%= render partial: 'stats/year', locals: { year: @year, stats: @stats } %>
 </div>

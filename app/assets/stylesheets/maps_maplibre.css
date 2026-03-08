@@ -237,7 +237,7 @@ html.dark .maplibregl-popup-tip {
   top: 56px;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 20;
+  z-index: 1000;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -289,12 +289,12 @@ html.dark .maplibregl-popup-tip {
 /* Dark theme support for upgrade banner */
 html[data-theme="dark"] .map-upgrade-banner,
 html.dark .map-upgrade-banner {
-  background: rgba(30, 58, 138, 0.3);
-  border-color: rgba(59, 130, 246, 0.3);
-  color: #93c5fd;
+  background: rgba(30, 41, 59, 0.92);
+  border-color: rgba(59, 130, 246, 0.4);
+  color: #e2e8f0;
 }
 
 html[data-theme="dark"] .map-upgrade-banner-dismiss,
 html.dark .map-upgrade-banner-dismiss {
-  color: #93c5fd;
+  color: #e2e8f0;
 }

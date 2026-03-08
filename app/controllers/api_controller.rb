@@ -63,9 +63,9 @@ class ApiController < ApplicationController
   end
 
   # Returns points scoped to the user's plan data window.
-  # Lite users see only the last 12 months; Pro users see everything.
+  # Delegates to PlanScopable concern on User model.
   def scoped_points(user = current_api_user)
-    apply_plan_scope(user.points, user)
+    user.scoped_points
   end
 
   # Applies the 12-month plan window to any point relation.

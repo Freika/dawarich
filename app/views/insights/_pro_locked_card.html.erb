@@ -1,0 +1,27 @@
+<div class="card bg-base-200 shadow-xl">
+  <div class="card-body p-5">
+    <h2 class="card-title text-base-content/80">
+      <%= title %>
+      <%= pro_badge_tag(preview: false) %>
+    </h2>
+    <div class="relative mt-2">
+      <%# Blurred placeholder lines %>
+      <div class="opacity-15 blur-[3px] pointer-events-none select-none space-y-3" aria-hidden="true">
+        <div class="h-3 bg-base-content/20 rounded w-3/4"></div>
+        <div class="h-3 bg-base-content/20 rounded w-1/2"></div>
+        <div class="h-3 bg-base-content/20 rounded w-5/6"></div>
+        <div class="h-3 bg-base-content/20 rounded w-2/3"></div>
+      </div>
+
+      <%# Lock overlay %>
+      <div class="absolute inset-0 flex flex-col items-center justify-center">
+        <%= icon 'lock', class: 'w-6 h-6 opacity-30' %>
+        <p class="text-sm text-base-content/50 mt-1">Available on Pro</p>
+        <a href="<%= DawarichSettings::UPGRADE_URL %>?utm_source=app&utm_medium=insights&utm_campaign=lite_upgrade&utm_content=<%= utm_content %>"
+           class="btn btn-sm btn-primary mt-2" target="_blank" rel="noopener">
+          Upgrade to Pro
+        </a>
+      </div>
+    </div>
+  </div>
+</div>

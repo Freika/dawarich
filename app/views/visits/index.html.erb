@@ -46,6 +46,7 @@
     <div class="hero min-h-80 bg-base-200">
       <div class="hero-content text-center">
         <div class="max-w-md">
+          <%= render 'shared/plan_data_window_alert', utm_content: 'visits' %>
           <h1 class="text-5xl font-bold">Hello there!</h1>
           <p class="py-6">
             Here you'll find your <%= params[:status] %> visits, but now there are none. Create some areas on your map and pretty soon you'll see visit suggestions on this page!
