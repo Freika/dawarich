@@ -7,46 +7,28 @@ RSpec.describe Api::DigestListSerializer do
   let(:digest) { create(:users_digest, user: user, distance: 500_000) }
 
   describe '#call' do
-    context 'with km unit' do
-      subject(:result) do
-        described_class.new(digests: [digest], available_years: [2023], distance_unit: 'km').call
-      end
-
-      it 'returns converted distance in km' do
-        distance = result[:digests].first[:distance]
-        expect(distance[:converted]).to eq(500)
-        expect(distance[:unit]).to eq('km')
-        expect(distance[:meters]).to eq(500_000)
-      end
-
-      it 'includes available years' do
-        expect(result[:availableYears]).to eq([2023])
-      end
+    subject(:result) do
+      described_class.new(digests: [digest], available_years: [2023]).call
     end
 
-    context 'with mi unit' do
-      subject(:result) do
-        described_class.new(digests: [digest], available_years: [], distance_unit: 'mi').call
-      end
-
-      it 'returns converted distance in miles' do
-        distance = result[:digests].first[:distance]
-        expect(distance[:converted]).to eq(311)
-        expect(distance[:unit]).to eq('mi')
-        expect(distance[:meters]).to eq(500_000)
-      end
+    it 'returns raw distance value' do
+      expect(result[:digests].first[:distance]).to eq(500_000)
     end
 
-    context 'with default unit' do
-      subject(:result) do
-        described_class.new(digests: [digest], available_years: []).call
-      end
+    it 'includes available years' do
+      expect(result[:availableYears]).to eq([2023])
+    end
 
-      it 'defaults to km' do
-        distance = result[:digests].first[:distance]
-        expect(distance[:unit]).to eq('km')
-        expect(distance[:converted]).to eq(500)
-      end
+    it 'serializes all digest fields' do
+      serialized = result[:digests].first
+
+      expect(serialized).to include(
+        year: digest.year,
+        distance: digest.distance,
+        countriesCount: digest.countries_count,
+        citiesCount: digest.cities_count
+      )
+      expect(serialized[:createdAt]).to eq(digest.created_at.iso8601)
     end
   end
 end
