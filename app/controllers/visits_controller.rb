@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class VisitsController < ApplicationController
+  include FlashStreamable
+
   before_action :authenticate_user!
   before_action :set_visit, only: %i[update]
 
@@ -24,20 +26,26 @@ class VisitsController < ApplicationController
     if @visit.update(visit_params)
       respond_to do |format|
         format.turbo_stream do
-          render turbo_stream: turbo_stream.replace(
-            "visit_name_#{@visit.id}",
-            partial: 'visits/name', locals: { visit: @visit }
-          )
+          render turbo_stream: [
+            turbo_stream.replace("visit_name_#{@visit.id}",
+                                 partial: 'visits/name', locals: { visit: @visit }),
+            turbo_stream.replace("visit_buttons_#{@visit.id}",
+                                 partial: 'visits/buttons', locals: { visit: @visit }),
+            stream_flash(:notice, "Visit #{@visit.status}.")
+          ]
         end
         format.html { redirect_back(fallback_location: visits_path(status: :suggested)) }
       end
     else
       respond_to do |format|
         format.turbo_stream do
-          render turbo_stream: turbo_stream.replace(
-            "visit_name_#{@visit.id}",
-            partial: 'visits/name', locals: { visit: @visit }
-          )
+          render turbo_stream: [
+            turbo_stream.replace("visit_name_#{@visit.id}",
+                                 partial: 'visits/name', locals: { visit: @visit }),
+            turbo_stream.replace("visit_buttons_#{@visit.id}",
+                                 partial: 'visits/buttons', locals: { visit: @visit }),
+            stream_flash(:error, 'Failed to update visit.')
+          ]
         end
         format.html { render :edit, status: :unprocessable_content }
       end

@@ -380,29 +380,31 @@ export class DataLoader {
   photosToGeoJSON(photos) {
     return {
       type: "FeatureCollection",
-      features: photos.map((photo) => {
-        // Construct thumbnail URL
-        const thumbnailUrl = `/api/v1/photos/${photo.id}/thumbnail.jpg?api_key=${this.apiKey}&source=${photo.source}`
+      features: photos
+        .filter((photo) => photo.latitude !== 0 || photo.longitude !== 0)
+        .map((photo) => {
+          // Construct thumbnail URL
+          const thumbnailUrl = `/api/v1/photos/${photo.id}/thumbnail.jpg?api_key=${this.apiKey}&source=${photo.source}`
 
-        return {
-          type: "Feature",
-          geometry: {
-            type: "Point",
-            coordinates: [photo.longitude, photo.latitude],
-          },
-          properties: {
-            id: photo.id,
-            thumbnail_url: thumbnailUrl,
-            taken_at: photo.localDateTime,
-            filename: photo.originalFileName,
-            city: photo.city,
-            state: photo.state,
-            country: photo.country,
-            type: photo.type,
-            source: photo.source,
-          },
-        }
-      }),
+          return {
+            type: "Feature",
+            geometry: {
+              type: "Point",
+              coordinates: [photo.longitude, photo.latitude],
+            },
+            properties: {
+              id: photo.id,
+              thumbnail_url: thumbnailUrl,
+              taken_at: photo.localDateTime,
+              filename: photo.originalFileName,
+              city: photo.city,
+              state: photo.state,
+              country: photo.country,
+              type: photo.type,
+              source: photo.source,
+            },
+          }
+        }),
     }
   }
 

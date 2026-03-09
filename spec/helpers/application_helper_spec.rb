@@ -261,6 +261,50 @@ RSpec.describe ApplicationHelper, type: :helper do
     end
   end
 
+  describe '#point_speed' do
+    context 'when speed is zero or negative' do
+      it 'returns the original value for zero' do
+        expect(helper.point_speed(0)).to eq(0)
+      end
+
+      it 'returns the original value for negative' do
+        expect(helper.point_speed(-1)).to eq(-1)
+      end
+    end
+
+    context 'when speed is positive (m/s)' do
+      it 'converts m/s to km/h by default' do
+        expect(helper.point_speed(10)).to eq(36.0)
+      end
+
+      it 'converts m/s to km/h when unit is km' do
+        expect(helper.point_speed(10, 'km')).to eq(36.0)
+      end
+
+      it 'converts m/s to mph when unit is mi' do
+        expect(helper.point_speed(10, 'mi')).to eq(22.4)
+      end
+
+      it 'handles string input' do
+        expect(helper.point_speed('10', 'km')).to eq(36.0)
+      end
+    end
+  end
+
+  describe '#speed_label' do
+    it 'returns km/h by default' do
+      expect(helper.speed_label).to eq('km/h')
+    end
+
+    it 'returns km/h when unit is km' do
+      expect(helper.speed_label('km')).to eq('km/h')
+    end
+
+    it 'returns mph when unit is mi' do
+      expect(helper.speed_label('mi')).to eq('mph')
+    end
+  end
+
   describe '#preferred_map_path' do
     context 'when user is not signed in' do
       before do

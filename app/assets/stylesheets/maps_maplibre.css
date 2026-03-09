@@ -234,10 +234,10 @@ html.dark .maplibregl-popup-tip {
 /* Upgrade Banner */
 .map-upgrade-banner {
   position: absolute;
-  top: 56px;
+  top: 16px;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 1000;
+  z-index: 20;
   display: flex;
   align-items: center;
   gap: 10px;

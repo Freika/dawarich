@@ -53,10 +53,15 @@ module ApplicationHelper
     'text-red-500'
   end
 
-  def point_speed(speed)
-    return speed if speed.to_i <= 0
+  def point_speed(speed, unit = 'km')
+    return speed if speed.to_f <= 0
 
-    speed * 3.6
+    kmh = speed.to_f * 3.6
+    unit == 'mi' ? (kmh * 0.621371).round(1) : kmh.round(1)
+  end
+
+  def speed_label(unit = 'km')
+    unit == 'mi' ? 'mph' : 'km/h'
   end
 
   def onboarding_modal_showable?(user)

@@ -80,9 +80,9 @@ export class MapDataManager {
       // 4. Store data for replay and other features
       this.lastLoadedData = data
 
-      // 5. Show upsell banner for Lite users with data outside the 12-month window
+      // 5. Show upsell banner for Lite users when searching outside the 12-month window
       if (isGatedPlan(this.controller.userPlanValue)) {
-        this._showDataWindowBanner(data.totalPointsInRange, data.points.length)
+        this._showDataWindowBanner()
       }
 
       // 6. Fit bounds if requested — use the first available data source
@@ -367,16 +367,18 @@ export class MapDataManager {
   }
 
   /**
-   * Show a persistent upgrade banner for Lite users informing them about
-   * data outside the 12-month window.
-   * @param {number} totalInRange - Total points in the queried date range (unscoped)
-   * @param {number} loadedCount - Points actually loaded (scoped to 12-month window)
+   * Show a persistent upgrade banner for Lite users when the queried date
+   * range extends beyond the 12-month data window.
    * @private
    */
-  _showDataWindowBanner(totalInRange, loadedCount) {
-    if (totalInRange > loadedCount) {
+  _showDataWindowBanner() {
+    const startDate = new Date(this.controller.startDateValue)
+    const twelveMonthsAgo = new Date()
+    twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12)
+
+    if (startDate < twelveMonthsAgo) {
       UpgradeBanner.show({
-        message: `Showing ${loadedCount.toLocaleString()} of ${totalInRange.toLocaleString()} points.`,
+        message: "Your Lite plan includes the last 12 months of data.",
         upgradeUrl: this.controller.upgradeUrlValue,
         utmContent: "data_retention",
       })

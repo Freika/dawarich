@@ -11,6 +11,9 @@
     data-points-target="map"
     data-api_key="<%= current_user.api_key %>"
     data-self_hosted="<%= @self_hosted %>"
+    data-user_plan="<%= current_user.plan %>"
+    data-start_date="<%= @start_at.iso8601 %>"
+    data-upgrade_url="<%= upgrade_url(utm_medium: 'map', utm_content: 'leaflet') %>"
     data-user_settings='<%= current_user.safe_settings.settings.to_json %>'
     data-user_theme="<%= current_user&.theme || 'dark' %>"
     data-coordinates='<%= @coordinates.to_json.html_safe %>'
@@ -27,7 +30,6 @@
     <div data-maps-target="container" class="w-full h-full">
       <div id="fog" class="fog"></div>
     </div>
-    <%= render 'shared/map/upgrade_banner', utm_content: 'leaflet_map' %>
   </div>
 </div>
 
