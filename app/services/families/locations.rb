@@ -31,7 +31,7 @@ class Families::Locations
 
   def build_family_locations(sharing_members)
     latest_points =
-      sharing_members.map { _1.points.last }.compact
+      sharing_members.map { _1.points.order(timestamp: :desc).first }.compact
 
     latest_points.map do |point|
       {

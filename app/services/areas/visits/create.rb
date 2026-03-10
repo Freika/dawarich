@@ -86,7 +86,7 @@ class Areas::Visits::Create
 
       visit.save!
 
-      visit_points.each { _1.update!(visit_id: visit.id) }
+      Point.where(id: visit_points.map(&:id)).update_all(visit_id: visit.id)
     end
   end
 
