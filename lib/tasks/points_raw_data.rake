@@ -313,6 +313,15 @@ namespace :points do
         next
       end
 
+      unless ENV['CONFIRM'] == 'true'
+        print 'This is a destructive operation. Continue? (y/N) '
+        input = $stdin.gets
+        unless input&.strip&.downcase == 'y'
+          puts 'Aborted.'
+          next
+        end
+      end
+
       # Step 1: Restore cleared points from archives
       if cleared_points.positive?
         puts '▸ Step 1/3: Restoring cleared raw_data from archives...'

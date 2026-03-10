@@ -262,6 +262,31 @@ RSpec.describe Visits::PlaceFinder do
     end
   end
 
+  describe 'suggested places limit' do
+    it 'limits suggested places to MAX_SUGGESTED_PLACES' do
+      # Create more places than the limit, all within search radius
+      30.times do |i|
+        tiny_offset = i * 0.00001 # ~1m apart, all within 100m radius
+        create(:place,
+               name: "Place #{i}",
+               latitude: latitude + tiny_offset,
+               longitude: longitude + tiny_offset,
+               lonlat: "POINT(#{longitude + tiny_offset} #{latitude + tiny_offset})")
+      end
+
+      visit_data = {
+        center_lat: latitude,
+        center_lon: longitude,
+        suggested_name: 'Test',
+        points: []
+      }
+
+      result = subject.find_or_create_place(visit_data)
+
+      expect(result[:suggested_places].size).to be <= described_class::MAX_SUGGESTED_PLACES
+    end
+  end
+
   describe 'private methods' do
     context '#build_place_name' do
       it 'combines name components correctly' do
