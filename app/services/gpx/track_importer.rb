@@ -46,7 +46,7 @@ class Gpx::TrackImporter
       altitude: point['ele'].to_i,
       timestamp: Time.parse(point['time']).utc.to_i,
       import_id: import.id,
-      velocity: speed(point),
+      speed: speed(point),
       raw_data: point,
       user_id: user_id,
       created_at: Time.current,

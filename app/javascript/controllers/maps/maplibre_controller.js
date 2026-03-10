@@ -156,7 +156,7 @@ export default class extends Controller {
     "replayPauseIcon",
     "replaySpeedSlider",
     "replaySpeedLabel",
-    // Replay speed display (velocity)
+    // Replay speed display
     "replaySpeedDisplay",
     // WebGL error
     "webglError",
@@ -1736,7 +1736,7 @@ export default class extends Controller {
     this._showReplayMarker(point)
 
     // Update speed display
-    this._updateReplaySpeedDisplay(this._getPointVelocity(point))
+    this._updateReplaySpeedDisplay(this._getPointSpeed(point))
 
     // Move map to point (use faster animation during replay)
     this._flyToReplayPoint(point, this.replayActive)
@@ -1854,7 +1854,7 @@ export default class extends Controller {
     const point = this.replayManager.getPointAtPosition(minute)
     if (point) {
       this._showReplayMarker(point)
-      this._updateReplaySpeedDisplay(this._getPointVelocity(point))
+      this._updateReplaySpeedDisplay(this._getPointSpeed(point))
       this._flyToReplayPoint(point)
       this._highlightReplayRouteSegment(point)
       this._updateReplayCycleControls(minute)
@@ -1873,7 +1873,7 @@ export default class extends Controller {
     const point = this.replayManager.getPointAtPosition(minute)
     if (point) {
       this._showReplayMarker(point)
-      this._updateReplaySpeedDisplay(this._getPointVelocity(point))
+      this._updateReplaySpeedDisplay(this._getPointSpeed(point))
       this._flyToReplayPoint(point)
       this._highlightReplayRouteSegment(point)
       this._updateReplayCycleControls(minute)
@@ -1930,37 +1930,37 @@ export default class extends Controller {
   }
 
   /**
-   * Get velocity from point object (handles GeoJSON and raw formats)
+   * Get speed from point object (handles GeoJSON and raw formats)
    * @private
    * @param {Object} point - Point object (GeoJSON or raw)
-   * @returns {string|null} Velocity value or null
+   * @returns {number|null} Speed value or null
    */
-  _getPointVelocity(point) {
+  _getPointSpeed(point) {
     if (!point) return null
     // GeoJSON format
-    if (point.properties?.velocity !== undefined) {
-      return point.properties.velocity
+    if (point.properties?.speed !== undefined) {
+      return point.properties.speed
     }
     // Raw format
-    if (point.velocity !== undefined) {
-      return point.velocity
+    if (point.speed !== undefined) {
+      return point.speed
     }
     return null
   }
 
   /**
-   * Update speed display based on point velocity
+   * Update speed display based on point speed
    * @private
-   * @param {string|number|null} velocity - Velocity value in m/s (from API)
+   * @param {number|null} speed - Speed value in m/s (from API)
    */
-  _updateReplaySpeedDisplay(velocity) {
+  _updateReplaySpeedDisplay(speed) {
     if (!this.hasReplaySpeedDisplayTarget) return
 
     const distanceUnit = this.settings?.distance_unit || "km"
     const unit = distanceUnit === "mi" ? "mph" : "km/h"
 
-    if (velocity !== null && velocity !== undefined && velocity !== "") {
-      const speedMs = parseFloat(velocity)
+    if (speed !== null && speed !== undefined && speed !== "") {
+      const speedMs = parseFloat(speed)
       if (!Number.isNaN(speedMs) && speedMs > 0) {
         // Convert m/s to km/h (multiply by 3.6)
         const speedKmh = speedMs * 3.6
@@ -2285,7 +2285,7 @@ export default class extends Controller {
         : this.replayCurrentCoords
 
       // Update speed display for current point
-      this._updateReplaySpeedDisplay(this._getPointVelocity(currentPoint))
+      this._updateReplaySpeedDisplay(this._getPointSpeed(currentPoint))
 
       // Get minute for this point to update scrubber
       const timestamp = this.replayManager._getTimestamp(currentPoint)

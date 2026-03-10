@@ -4,13 +4,13 @@ class DropRedundantIndexes < ActiveRecord::Migration[8.0]
   disable_ddl_transaction!
 
   def change
-    # index_points_on_user_id (629 MB) is redundant:
+    # index_points_on_user_id is redundant:
     # Leading column covered by index_points_on_user_id_and_timestamp,
     # idx_points_track_generation, idx_points_user_visit_null_timestamp,
     # and idx_points_user_country_name.
     remove_index :points, column: :user_id, algorithm: :concurrently, if_exists: true
 
-    # index_points_on_timestamp (1,338 MB) is redundant:
+    # index_points_on_timestamp is redundant:
     # Every query filtering on timestamp is already scoped to a user,
     # so the composite (user_id, timestamp) index covers all use cases.
     remove_index :points, column: :timestamp, algorithm: :concurrently, if_exists: true

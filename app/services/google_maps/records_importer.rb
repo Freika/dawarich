@@ -30,7 +30,7 @@ class GoogleMaps::RecordsImporter
       lonlat: "POINT(#{location['longitudeE7'].to_f / 10**7} #{location['latitudeE7'].to_f / 10**7})",
       timestamp: parse_timestamp(location),
       altitude: location['altitude'],
-      velocity: location['velocity'],
+      speed: location['velocity']&.to_f,
       accuracy: location['accuracy'],
       vertical_accuracy: location['verticalAccuracy'],
       course: location['heading'],

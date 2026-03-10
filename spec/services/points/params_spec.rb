@@ -16,7 +16,7 @@ RSpec.describe Points::Params do
         timestamp:          DateTime.parse('2025-01-17T21:03:01Z'),
         altitude:           0,
         tracker_id:         '8D5D4197-245B-4619-A88B-2049100ADE46',
-        velocity:           92.088,
+        speed:              92.088,
         ssid:               nil,
         accuracy:           5,
         vertical_accuracy:  -1,

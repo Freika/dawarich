@@ -69,7 +69,7 @@ class GoogleMaps::PhoneTakeoutImporter
       raw_data:,
       accuracy: raw_data['accuracyMeters'],
       altitude: raw_data['altitudeMeters'],
-      velocity: raw_data['speedMetersPerSecond']
+      speed: raw_data['speedMetersPerSecond']&.to_f
     }
   end
 

@@ -90,7 +90,7 @@ class Points::GpxSerializer
   def add_speed_to_trackpoint(trkpt_xml, point)
     return trkpt_xml unless should_include_speed?(point)
 
-    trkpt_xml.sub(%r{(<ele>[^<]*</ele>)}, "\\1\n        <speed>#{point.velocity.to_f}</speed>")
+    trkpt_xml.sub(%r{(<ele>[^<]*</ele>)}, "\\1\n        <speed>#{point.speed.to_f}</speed>")
   end
 
   def add_course_to_trackpoint(trkpt_xml, point)
@@ -101,7 +101,7 @@ class Points::GpxSerializer
   end
 
   def should_include_speed?(point)
-    point.velocity.present? && point.velocity.to_f.positive?
+    point.speed.present? && point.speed.positive?
   end
 
   def should_include_course?(point)

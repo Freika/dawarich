@@ -8,7 +8,7 @@ RSpec.describe Points::GpxSerializer do
 
     let(:points) do
       (1..3).map do |i|
-        create(:point, timestamp: 1.day.ago + i.minutes, velocity: i * 10.5, course: i * 45.2)
+        create(:point, timestamp: 1.day.ago + i.minutes, speed: i * 10.5, course: i * 45.2)
       end
     end
 
@@ -33,7 +33,7 @@ RSpec.describe Points::GpxSerializer do
     it 'includes speed and course data in the GPX XML output' do
       gpx_xml = serializer.to_s
 
-      # Check that speed is included in XML for points with velocity
+      # Check that speed is included in XML for points with speed value
       expect(gpx_xml).to include('<speed>10.5</speed>')
       expect(gpx_xml).to include('<speed>21.0</speed>')
       expect(gpx_xml).to include('<speed>31.5</speed>')
@@ -44,19 +44,19 @@ RSpec.describe Points::GpxSerializer do
       expect(gpx_xml).to include('<course>135.6</course>')
     end
 
-    context 'when points have nil velocity or course' do
+    context 'when points have nil speed or course' do
       let(:points) do
         [
-          create(:point, timestamp: 1.day.ago, velocity: nil, course: nil),
-          create(:point, timestamp: 1.day.ago + 1.minute, velocity: 15.5, course: nil),
-          create(:point, timestamp: 1.day.ago + 2.minutes, velocity: nil, course: 90.0)
+          create(:point, timestamp: 1.day.ago, speed: nil, course: nil),
+          create(:point, timestamp: 1.day.ago + 1.minute, speed: 15.5, course: nil),
+          create(:point, timestamp: 1.day.ago + 2.minutes, speed: nil, course: 90.0)
         ]
       end
 
       it 'handles nil values gracefully in XML output' do
         gpx_xml = serializer.to_s
 
-        # Should only include speed for the point with velocity
+        # Should only include speed for the point with speed value
         expect(gpx_xml).to include('<speed>15.5</speed>')
         expect(gpx_xml).not_to include('<speed>0</speed>') # Should not include zero/nil speeds
 

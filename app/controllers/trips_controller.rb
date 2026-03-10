@@ -57,7 +57,7 @@ class TripsController < ApplicationController
 
   def set_coordinates
     @coordinates = @trip.points.pluck(
-      :latitude, :longitude, :battery, :altitude, :timestamp, :velocity, :id,
+      :latitude, :longitude, :battery, :altitude, :timestamp, :speed, :id,
       :country
     ).map { [_1.to_f, _2.to_f, _3.to_s, _4.to_s, _5.to_s, _6.to_s, _7.to_s, _8.to_s] }
   end

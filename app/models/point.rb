@@ -32,8 +32,6 @@ class Point < ApplicationRecord
   scope :visited, -> { where.not(visit_id: nil) }
   scope :not_visited, -> { where(visit_id: nil) }
 
-  before_save :sync_speed_from_velocity, if: -> { velocity_changed? && !speed_changed? }
-
   after_create :async_reverse_geocode, if: -> { DawarichSettings.store_geodata? && !reverse_geocoded? }
   after_create :set_country
   after_create_commit :broadcast_coordinates
@@ -74,12 +72,6 @@ class Point < ApplicationRecord
     read_attribute(:country_name) || country&.name || self[:country] || ''
   end
 
-  # Unified speed accessor: prefers the float `speed` column,
-  # falls back to the legacy string `velocity` column during migration.
-  def effective_speed
-    read_attribute(:speed) || velocity&.to_f
-  end
-
   private
 
   # Metrics/AbcSize
@@ -93,7 +85,7 @@ class Point < ApplicationRecord
           battery.to_s,
           altitude.to_s,
           timestamp.to_s,
-          velocity.to_s,
+          speed.to_s,
           id.to_s,
           country_name.to_s
         ]
@@ -129,10 +121,6 @@ class Point < ApplicationRecord
   def set_country
     self.country_id = found_in_country&.id
     save! if changed?
-  end
-
-  def sync_speed_from_velocity
-    self.speed = velocity.to_f if velocity.present? && velocity.match?(/\A-?\d+\.?\d*\z/)
   end
 
   def recalculate_track

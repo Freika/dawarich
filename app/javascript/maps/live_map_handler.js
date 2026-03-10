@@ -71,7 +71,7 @@ export class LiveMapHandler {
   /**
    * Append a new GPS point to the live map (memory-efficient implementation)
    *
-   * @param {Array} data - Point data [lat, lng, battery, altitude, timestamp, velocity, id, country]
+   * @param {Array} data - Point data [lat, lng, battery, altitude, timestamp, speed, id, country]
    */
   appendPoint(data) {
     if (!this.isEnabled) {

@@ -20,7 +20,7 @@ class Overland::Params
         battery:            battery_level(point[:properties][:battery_level]),
         timestamp:          DateTime.parse(point[:properties][:timestamp]),
         altitude:           point[:properties][:altitude],
-        velocity:           point[:properties][:speed],
+        speed:              point[:properties][:speed]&.to_f,
         tracker_id:         point[:properties][:device_id],
         ssid:               point[:properties][:wifi],
         accuracy:           point[:properties][:horizontal_accuracy],

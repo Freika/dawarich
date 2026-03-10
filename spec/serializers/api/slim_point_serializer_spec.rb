@@ -13,7 +13,7 @@ RSpec.describe Api::SlimPointSerializer do
         latitude:     point.lat.to_s,
         longitude:    point.lon.to_s,
         timestamp:    point.timestamp,
-        velocity:     point.velocity,
+        speed:        point.speed,
         country_name: point.country_name
       }
     end

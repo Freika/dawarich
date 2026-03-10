@@ -33,7 +33,7 @@ RSpec.describe OwnTracks::Importer do
           'altitude' => 36,
           'accuracy' => 10,
           'vertical_accuracy' => 4,
-          'velocity' => '1.4',
+          'speed' => 1.4,
           'connection' => 'wifi',
           'ssid' => 'Home Wifi',
           'bssid' => 'b0:f2:8:45:94:33',
@@ -76,7 +76,7 @@ RSpec.describe OwnTracks::Importer do
       it 'correctly converts speed' do
         parser
 
-        expect(user.points.first.velocity).to eq('1.4')
+        expect(user.points.first.speed).to eq(1.4)
       end
 
       it 'updates the import processed counter' do

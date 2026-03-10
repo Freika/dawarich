@@ -18,7 +18,7 @@ class AddCompositeIndexesAndDropLowSelectivity < ActiveRecord::Migration[8.0]
               algorithm: :concurrently,
               if_not_exists: true
 
-    # Drop low-selectivity partial index (2 GB):
+    # Drop low-selectivity partial index:
     # 97.7% of points have reverse_geocoded_at IS NOT NULL, making this
     # partial index nearly full-size with no filtering benefit.
     # Queries using .reverse_geocoded scope are always user-scoped and

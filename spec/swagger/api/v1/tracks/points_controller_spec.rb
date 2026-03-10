@@ -27,7 +27,7 @@ RSpec.describe 'Track Points API', type: :request do
                    latitude: { type: :string, nullable: true, description: 'Latitude coordinate' },
                    longitude: { type: :string, nullable: true, description: 'Longitude coordinate' },
                    timestamp: { type: :number, description: 'Unix timestamp' },
-                   velocity: { type: :number, nullable: true, description: 'Velocity in km/h' },
+                   speed: { type: :number, nullable: true, description: 'Speed in m/s' },
                    country_name: { type: :string, nullable: true, description: 'Country name from reverse geocoding' }
                  }
                }

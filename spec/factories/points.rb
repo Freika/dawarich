@@ -9,6 +9,7 @@ FactoryBot.define do
     altitude        { 1 }
     longitude       { FFaker::Geolocation.lng }
     velocity        { 0 }
+    speed           { 0.0 }
     trigger         { 1 }
     bssid           { 'MyString' }
     ssid            { 'MyString' }
