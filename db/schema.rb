@@ -478,7 +478,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_10_000006) do
     t.bigint "user_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.geometry "path", limit: {srid: 3857, type: "line_string"}
+    t.geometry "path", limit: {srid: 4326, type: "line_string"}
     t.jsonb "visited_countries", default: {}, null: false
     t.index ["user_id"], name: "index_trips_on_user_id"
   end
