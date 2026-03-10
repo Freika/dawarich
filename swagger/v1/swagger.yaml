@@ -2159,11 +2159,7 @@ paths:
                     velocity:
                       type: number
                       nullable: true
-                      description: Legacy speed field (use speed instead)
-                    speed:
-                      type: number
-                      nullable: true
-                      description: Speed in m/s
+                      description: Velocity in km/h
                     trigger:
                       type: string
                       nullable: true
@@ -3038,10 +3034,10 @@ paths:
                     timestamp:
                       type: number
                       description: Unix timestamp
-                    speed:
+                    velocity:
                       type: number
                       nullable: true
-                      description: Speed in m/s
+                      description: Velocity in km/h
                     country_name:
                       type: string
                       nullable: true

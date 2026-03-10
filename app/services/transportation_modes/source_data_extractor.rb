@@ -382,11 +382,11 @@ module TransportationModes
 
     def calculate_max_speed(points)
       velocities = points.map do |p|
-        v = p.speed
+        v = p.velocity
         next nil unless v
 
-        # Speed is stored as float in m/s
-        v * 3.6 # Convert to km/h
+        # Velocity is stored as string in m/s
+        v.to_f * 3.6 # Convert to km/h
       end.compact
 
       velocities.max&.round(2)

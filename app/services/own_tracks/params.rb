@@ -17,7 +17,7 @@ class OwnTracks::Params
       altitude:           params[:alt],
       accuracy:           params[:acc],
       vertical_accuracy:  params[:vac],
-      speed:              speed.to_f,
+      velocity:           speed,
       ssid:               params[:SSID],
       bssid:              params[:BSSID],
       tracker_id:         params[:tid],

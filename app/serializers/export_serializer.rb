@@ -30,7 +30,7 @@ class ExportSerializer
       alt:        point.altitude,
       acc:        point.accuracy,
       vac:        point.vertical_accuracy,
-      vel:        point.speed,
+      vel:        point.velocity,
       conn:       connection(point),
       SSID:       point.ssid,
       BSSID:      point.bssid,

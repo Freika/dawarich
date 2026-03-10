@@ -38,7 +38,7 @@ class Geojson::Params
       battery:            battery_level(feature[:properties][:battery_level]),
       timestamp:          timestamp(feature),
       altitude:           altitude(feature),
-      speed:              speed(feature),
+      velocity:           speed(feature),
       tracker_id:         feature[:properties][:device_id],
       ssid:               feature[:properties][:wifi],
       accuracy:           accuracy(feature),

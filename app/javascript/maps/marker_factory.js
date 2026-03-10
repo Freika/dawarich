@@ -6,7 +6,7 @@ const MARKER_DATA_INDICES = {
   BATTERY: 2,
   ALTITUDE: 3,
   TIMESTAMP: 4,
-  SPEED: 5,
+  VELOCITY: 5,
   ID: 6,
   COUNTRY: 7,
 }
@@ -41,14 +41,14 @@ export function createStandardIcon(color = "blue", size = 4) {
  * Create a basic marker for live streaming (no drag handlers, minimal features)
  * Memory-efficient for high-frequency creation/destruction
  *
- * @param {Array} point - Point data [lat, lng, battery, altitude, timestamp, speed, id, country]
+ * @param {Array} point - Point data [lat, lng, battery, altitude, timestamp, velocity, id, country]
  * @param {Object} options - Optional marker configuration
  * @returns {L.Marker} Leaflet marker instance
  */
 export function createLiveMarker(point, options = {}) {
   const [lat, lng] = point
-  const speed = point[5] || 0 // speed is at index 5
-  const markerColor = speed < 0 ? "orange" : "blue"
+  const velocity = point[5] || 0 // velocity is at index 5
+  const markerColor = velocity < 0 ? "orange" : "blue"
   const size = options.size || 8
 
   return L.marker([lat, lng], {
@@ -66,7 +66,7 @@ export function createLiveMarker(point, options = {}) {
  * Create a full-featured marker with drag handlers and popups
  * Used for static map display where full interactivity is needed
  *
- * @param {Array} point - Point data [lat, lng, battery, altitude, timestamp, speed, id, country]
+ * @param {Array} point - Point data [lat, lng, battery, altitude, timestamp, velocity, id, country]
  * @param {number} index - Marker index in the array
  * @param {Object} userSettings - User configuration
  * @param {string} apiKey - API key for backend operations
@@ -82,8 +82,8 @@ export function createInteractiveMarker(
 ) {
   const [lat, lng] = point
   const pointId = point[6] // ID is at index 6
-  const speed = point[5] || 0 // speed is at index 5
-  const markerColor = speed < 0 ? "orange" : "blue"
+  const velocity = point[5] || 0 // velocity is at index 5
+  const markerColor = velocity < 0 ? "orange" : "blue"
 
   const marker = L.marker([lat, lng], {
     icon: createStandardIcon(markerColor),
@@ -112,14 +112,14 @@ export function createInteractiveMarker(
  * Create a simplified marker with minimal features
  * Used for simplified rendering mode
  *
- * @param {Array} point - Point data [lat, lng, battery, altitude, timestamp, speed, id, country]
+ * @param {Array} point - Point data [lat, lng, battery, altitude, timestamp, velocity, id, country]
  * @param {Object} userSettings - User configuration (optional)
  * @returns {L.Marker} Leaflet marker with basic drag support
  */
 export function createSimplifiedMarker(point, userSettings = {}) {
   const [lat, lng] = point
-  const speed = point[5] || 0
-  const markerColor = speed < 0 ? "orange" : "blue"
+  const velocity = point[5] || 0
+  const markerColor = velocity < 0 ? "orange" : "blue"
 
   const marker = L.marker([lat, lng], {
     icon: createStandardIcon(markerColor),
@@ -263,7 +263,7 @@ function addDragHandlers(marker, apiKey, userSettings) {
           originalMarkerData[MARKER_DATA_INDICES.BATTERY],
           originalMarkerData[MARKER_DATA_INDICES.ALTITUDE],
           originalMarkerData[MARKER_DATA_INDICES.TIMESTAMP],
-          originalMarkerData[MARKER_DATA_INDICES.SPEED],
+          originalMarkerData[MARKER_DATA_INDICES.VELOCITY],
           data.id,
           originalMarkerData[MARKER_DATA_INDICES.COUNTRY],
         ]

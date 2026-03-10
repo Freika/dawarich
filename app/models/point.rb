@@ -85,7 +85,7 @@ class Point < ApplicationRecord
           battery.to_s,
           altitude.to_s,
           timestamp.to_s,
-          speed.to_s,
+          velocity.to_s,
           id.to_s,
           country_name.to_s
         ]

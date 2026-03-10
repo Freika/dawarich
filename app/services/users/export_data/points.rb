@@ -105,7 +105,7 @@ class Users::ExportData::Points
   def build_full_query
     <<-SQL
       SELECT
-        p.id, p.battery_status, p.battery, p.timestamp, p.altitude, p.speed, p.accuracy,
+        p.id, p.battery_status, p.battery, p.timestamp, p.altitude, p.velocity, p.accuracy,
         p.ping, p.tracker_id, p.topic, p.trigger, p.bssid, p.ssid, p.connection,
         p.vertical_accuracy, p.mode, p.inrids, p.in_regions, p.raw_data,
         p.city, p.country, p.geodata, p.reverse_geocoded_at, p.course,
@@ -134,7 +134,7 @@ class Users::ExportData::Points
   def build_batch_query
     <<-SQL
       SELECT
-        p.id, p.battery_status, p.battery, p.timestamp, p.altitude, p.speed, p.accuracy,
+        p.id, p.battery_status, p.battery, p.timestamp, p.altitude, p.velocity, p.accuracy,
         p.ping, p.tracker_id, p.topic, p.trigger, p.bssid, p.ssid, p.connection,
         p.vertical_accuracy, p.mode, p.inrids, p.in_regions, p.raw_data,
         p.city, p.country, p.geodata, p.reverse_geocoded_at, p.course,
@@ -174,7 +174,7 @@ class Users::ExportData::Points
       'battery' => row['battery'],
       'timestamp' => row['timestamp'],
       'altitude' => row['altitude'],
-      'velocity' => row['speed'],
+      'velocity' => row['velocity'],
       'accuracy' => row['accuracy'],
       'ping' => row['ping'],
       'tracker_id' => row['tracker_id'],

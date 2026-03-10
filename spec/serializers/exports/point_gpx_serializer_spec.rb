@@ -9,7 +9,7 @@ RSpec.describe Exports::PointGpxSerializer do
     let!(:points) do
       5.times.map do |i|
         create(:point, :with_known_location, user: user, timestamp: start_time + i,
-               speed: 10.5, course: 180.0)
+               velocity: '10.5', course: 180.0)
       end
     end
     let(:scope) { user.points.where(timestamp: start_time..(start_time + 10)) }
@@ -64,8 +64,8 @@ RSpec.describe Exports::PointGpxSerializer do
       expect(content).to include('<course>')
     end
 
-    it 'omits speed when speed is zero' do
-      create(:point, :with_known_location, user: user, timestamp: start_time + 100, speed: 0.0)
+    it 'omits speed when velocity is zero' do
+      create(:point, :with_known_location, user: user, timestamp: start_time + 100, velocity: '0')
       scope = user.points.where(timestamp: (start_time + 100)..(start_time + 101))
       result = described_class.new(scope, 'test').call
       content = result.read

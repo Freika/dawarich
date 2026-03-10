@@ -13,7 +13,7 @@ RSpec.describe Points::LiveBroadcaster do
 
   let(:payloads) do
     [
-      { timestamp: 1_700_000_000, battery: 85, altitude: 100, speed: 5.0 }
+      { timestamp: 1_700_000_000, battery: 85, altitude: 100, velocity: '5.0' }
     ]
   end
 
@@ -73,8 +73,8 @@ RSpec.describe Points::LiveBroadcaster do
 
       let(:payloads) do
         [
-          { timestamp: 1_700_000_000, battery: 85, altitude: 100, speed: 5.0 },
-          { timestamp: 1_700_000_060, battery: 80, altitude: 110, speed: 10.0 }
+          { timestamp: 1_700_000_000, battery: 85, altitude: 100, velocity: '5.0' },
+          { timestamp: 1_700_000_060, battery: 80, altitude: 110, velocity: '10.0' }
         ]
       end
 
@@ -96,7 +96,7 @@ RSpec.describe Points::LiveBroadcaster do
         user.save!
       end
 
-      let(:payloads) { [{ timestamp: 9_999_999_999, battery: 50, altitude: 0, speed: 0 }] }
+      let(:payloads) { [{ timestamp: 9_999_999_999, battery: 50, altitude: 0, velocity: '0' }] }
 
       it 'broadcasts with empty strings for missing fields' do
         expect(PointsChannel).to receive(:broadcast_to).with(

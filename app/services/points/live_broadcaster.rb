@@ -38,7 +38,7 @@ class Points::LiveBroadcaster
           payload[:battery].to_s,
           payload[:altitude].to_s,
           result['timestamp'].to_s,
-          (payload[:speed] || payload[:velocity]).to_s,
+          payload[:velocity].to_s,
           result['id'].to_s,
           '' # country_name not yet available (async geocoding)
         ]

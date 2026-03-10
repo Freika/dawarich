@@ -18,7 +18,7 @@ export function pointsToGeoJSON(points) {
         altitude: point.altitude,
         battery: point.battery,
         accuracy: point.accuracy,
-        speed: point.speed,
+        velocity: point.velocity,
         country_name: point.country_name,
       },
     })),

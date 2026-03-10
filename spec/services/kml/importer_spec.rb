@@ -88,12 +88,12 @@ RSpec.describe Kml::Importer do
     context 'when file has ExtendedData with speed' do
       let(:file_path) { Rails.root.join('spec/fixtures/files/kml/extended_data.kml').to_s }
 
-      it 'creates points with speed from ExtendedData' do
+      it 'creates points with velocity from ExtendedData' do
         parser
 
         point = user.points.first
 
-        expect(point.speed).to eq(5.5)
+        expect(point.velocity).to eq('5.5')
       end
 
       it 'stores extended data in raw_data' do

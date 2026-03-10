@@ -17,7 +17,7 @@ RSpec.describe Overland::Params do
         altitude: 0,
         accuracy: 30,
         vertical_accuracy: -1,
-        speed: 4.0,
+        velocity: 4,
         ssid: 'launchpad',
         tracker_id: '',
         timestamp: DateTime.parse('2015-10-01T08:00:00-0700'),
@@ -39,7 +39,7 @@ RSpec.describe Overland::Params do
           altitude
           accuracy
           vertical_accuracy
-          speed
+          velocity
           ssid
           tracker_id
           timestamp

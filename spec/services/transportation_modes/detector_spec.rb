@@ -23,8 +23,8 @@ RSpec.describe TransportationModes::Detector do
     context 'when track duration is very short' do
       let(:points) do
         [
-          build(:point, user: user, timestamp: 1000, speed: 10.0),
-          build(:point, user: user, timestamp: 1010, speed: 10.0) # 10 seconds
+          build(:point, user: user, timestamp: 1000, velocity: '10'),
+          build(:point, user: user, timestamp: 1010, velocity: '10') # 10 seconds
         ]
       end
 
@@ -62,11 +62,11 @@ RSpec.describe TransportationModes::Detector do
     context 'when points have no source activity data' do
       let(:points) do
         [
-          build(:point, user: user, timestamp: 1000, speed: 1.5,
+          build(:point, user: user, timestamp: 1000, velocity: '1.5',
             lonlat: 'POINT(13.404954 52.520008)'),
-          build(:point, user: user, timestamp: 1060, speed: 1.5,
+          build(:point, user: user, timestamp: 1060, velocity: '1.5',
             lonlat: 'POINT(13.405054 52.520108)'),
-          build(:point, user: user, timestamp: 1120, speed: 1.5,
+          build(:point, user: user, timestamp: 1120, velocity: '1.5',
             lonlat: 'POINT(13.405154 52.520208)')
         ]
       end
@@ -86,7 +86,7 @@ RSpec.describe TransportationModes::Detector do
         walking_points = (0..5).map do |i|
           build(:point, user: user,
             timestamp: 1000 + (i * 60),
-            speed: 1.5, # ~5.4 km/h
+            velocity: '1.5', # ~5.4 km/h
             lonlat: "POINT(13.#{404_954 + i} 52.#{520_008 + i})",
             raw_data: { 'properties' => { 'motion' => ['walking'] } })
         end
@@ -94,7 +94,7 @@ RSpec.describe TransportationModes::Detector do
         driving_points = (6..15).map do |i|
           build(:point, user: user,
             timestamp: 1000 + (i * 60),
-            speed: 15.0, # ~54 km/h
+            velocity: '15', # ~54 km/h
             lonlat: "POINT(13.#{404_954 + i * 10} 52.#{520_008 + i * 10})",
             raw_data: { 'properties' => { 'motion' => ['driving'] } })
         end

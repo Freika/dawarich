@@ -23,7 +23,7 @@ RSpec.describe TransportationModes::MovementAnalyzer do
           build(:point,
                 user: user,
                 timestamp: 1000 + (i * 60),
-                speed: 1.4, # ~5 km/h
+                velocity: '1.4', # ~5 km/h
                 lonlat: "POINT(13.404954 #{52.520008 + (i * 0.0001)})")
         end
       end
@@ -45,7 +45,7 @@ RSpec.describe TransportationModes::MovementAnalyzer do
           build(:point,
                 user: user,
                 timestamp: 1000 + (i * 60),
-                speed: 16.7, # ~60 km/h
+                velocity: '16.7', # ~60 km/h
                 lonlat: "POINT(#{13.404954 + (i * 0.01)} 52.520008)")
         end
       end
@@ -66,7 +66,7 @@ RSpec.describe TransportationModes::MovementAnalyzer do
           build(:point,
                 user: user,
                 timestamp: 1000 + (i * 60),
-                speed: 1.4,
+                velocity: '1.4',
                 lonlat: "POINT(13.404954 #{52.520008 + (i * 0.0001)})")
         end
 
@@ -74,7 +74,7 @@ RSpec.describe TransportationModes::MovementAnalyzer do
         gap_point = build(:point,
                           user: user,
                           timestamp: 1000 + (6 * 60) + 300, # 5 minute gap
-                          speed: 16.7,
+                          velocity: '16.7',
                           lonlat: 'POINT(13.414954 52.520008)')
 
         # Second half: fast (driving speed)
@@ -82,7 +82,7 @@ RSpec.describe TransportationModes::MovementAnalyzer do
           build(:point,
                 user: user,
                 timestamp: 1000 + (i * 60) + 300,
-                speed: 16.7,
+                velocity: '16.7',
                 lonlat: "POINT(#{13.414954 + (i * 0.01)} 52.520008)")
         end
 
@@ -103,7 +103,7 @@ RSpec.describe TransportationModes::MovementAnalyzer do
           build(:point,
                 user: user,
                 timestamp: 1000 + (i * 60),
-                speed: 10.0, # ~36 km/h
+                velocity: '10', # ~36 km/h
                 lonlat: "POINT(#{13.404954 + (i * 0.001)} 52.520008)")
         end
       end
@@ -123,12 +123,12 @@ RSpec.describe TransportationModes::MovementAnalyzer do
 
     context 'with stationary points' do
       let(:points) do
-        # Points at the same location with zero speed
+        # Points at the same location with zero velocity
         (0..10).map do |i|
           build(:point,
                 user: user,
                 timestamp: 1000 + (i * 60),
-                speed: 0.0,
+                velocity: '0',
                 lonlat: 'POINT(13.404954 52.520008)')
         end
       end

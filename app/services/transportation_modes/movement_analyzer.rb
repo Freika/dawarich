@@ -85,7 +85,7 @@ module TransportationModes
         # Calculate distance between points
         distance = calculate_distance(p1, p2)
 
-        # Calculate speed (prefer stored speed, fall back to calculated)
+        # Calculate speed (prefer stored velocity, fall back to calculated)
         speed_mps = get_speed(p1, p2, distance, time_diff)
         speed_kmh = speed_mps * 3.6
 
@@ -145,9 +145,9 @@ module TransportationModes
     end
 
     def get_speed(_point1, point2, distance, time_diff)
-      # Prefer stored speed from GPS
-      if point2.speed.present?
-        stored_speed = point2.speed
+      # Prefer stored velocity from GPS
+      if point2.velocity.present?
+        stored_speed = point2.velocity.to_f
         return stored_speed if stored_speed >= 0
       end
 

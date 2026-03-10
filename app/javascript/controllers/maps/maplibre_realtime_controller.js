@@ -169,7 +169,7 @@ export default class extends Controller {
 
   /**
    * Handle new point
-   * Point data is broadcast as: [lat, lon, battery, altitude, timestamp, speed, id, country_name]
+   * Point data is broadcast as: [lat, lon, battery, altitude, timestamp, velocity, id, country_name]
    */
   handleNewPoint(pointData) {
     const mapsController = this.mapsV2Controller
@@ -180,7 +180,7 @@ export default class extends Controller {
 
     console.log("[Realtime Controller] Received point data:", pointData)
 
-    const [lat, lon, battery, altitude, timestamp, speed, id, countryName] =
+    const [lat, lon, battery, altitude, timestamp, velocity, id, countryName] =
       pointData
 
     const pointsLayer = mapsController.layerManager?.getLayer("points")
@@ -208,7 +208,7 @@ export default class extends Controller {
         battery: parseFloat(battery) || null,
         altitude: parseFloat(altitude) || null,
         timestamp: timestamp,
-        speed: parseFloat(speed) || null,
+        velocity: parseFloat(velocity) || null,
         country_name: countryName || null,
       },
     })
@@ -225,7 +225,7 @@ export default class extends Controller {
       battery: parseFloat(battery) || null,
       altitude: parseFloat(altitude) || null,
       timestamp: timestamp,
-      speed: parseFloat(speed) || null,
+      velocity: parseFloat(velocity) || null,
       country_name: countryName || null,
     })
 

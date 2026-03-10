@@ -63,7 +63,7 @@ RSpec.describe Gpx::TrackImporter do
         expect(point.lon).to eq(-3.55468)
         expect(point.altitude).to eq(1066)
         expect(point.timestamp).to eq(Time.zone.parse('2024-04-21T10:19:55Z').to_i)
-        expect(point.speed).to eq(2.9)
+        expect(point.velocity).to eq('2.9')
       end
 
       it 'stores raw_data from GPX point' do
@@ -85,7 +85,7 @@ RSpec.describe Gpx::TrackImporter do
         expect(point.lon).to eq(106.64234449272531)
         expect(point.altitude).to eq(17)
         expect(point.timestamp).to eq(1_730_626_211)
-        expect(point.speed).to eq(2.8)
+        expect(point.velocity).to eq('2.8')
       end
     end
 

@@ -146,7 +146,7 @@ RSpec.describe GoogleMaps::RecordsImporter do
         expect(created_point.altitude).to eq(150)
         expect(created_point.vertical_accuracy).to eq(10)
         expect(created_point.course).to eq(270)
-        expect(created_point.speed).to eq(10.0)
+        expect(created_point.velocity).to eq('10')
         expect(created_point.battery).to eq(1) # true -> 1
       end
 

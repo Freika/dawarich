@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_03_10_000007) do
+ActiveRecord::Schema[8.0].define(version: 2026_03_10_000006) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
@@ -256,7 +256,6 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_10_000007) do
     t.boolean "raw_data_archived", default: false, null: false
     t.bigint "raw_data_archive_id"
     t.jsonb "motion_data", default: {}, null: false
-    t.float "speed"
     t.index ["country_id"], name: "index_points_on_country_id"
     t.index ["id"], name: "index_points_on_not_reverse_geocoded", where: "(reverse_geocoded_at IS NULL)"
     t.index ["import_id"], name: "index_points_on_import_id"

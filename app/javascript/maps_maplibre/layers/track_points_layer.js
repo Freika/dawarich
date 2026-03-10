@@ -109,7 +109,7 @@ export class TrackPointsLayer extends BaseLayer {
           timestamp: point.timestamp,
           altitude: point.altitude,
           battery: point.battery,
-          speed: point.speed,
+          velocity: point.velocity,
           accuracy: point.accuracy,
           country_name: point.country_name,
           track_id: this.trackId,

@@ -20,7 +20,7 @@ class Points::Params
         timestamp:          DateTime.parse(point[:properties][:timestamp]),
         altitude:           point[:properties][:altitude],
         tracker_id:         point[:properties][:device_id],
-        speed:              point[:properties][:speed]&.to_f,
+        velocity:           point[:properties][:speed],
         ssid:               point[:properties][:wifi],
         accuracy:           point[:properties][:horizontal_accuracy],
         vertical_accuracy:  point[:properties][:vertical_accuracy],
