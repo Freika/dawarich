@@ -183,6 +183,7 @@ Rails.application.routes.draw do
           post 'bulk_update', to: 'visits#bulk_update'
         end
       end
+      resource :plan, only: [:show], controller: 'plan'
       resources :stats, only: :index
       resources :insights, only: :index do
         collection do

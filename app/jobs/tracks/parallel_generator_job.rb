@@ -6,8 +6,7 @@ class Tracks::ParallelGeneratorJob < ApplicationJob
   queue_as :tracks
 
   def perform(user_id, start_at: nil, end_at: nil, mode: :bulk, chunk_size: 1.day)
-    user = find_non_deleted_user(user_id)
-    return unless user
+    user = find_user_or_skip(user_id) || return
 
     Tracks::ParallelGenerator.new(
       user,

@@ -1,6 +1,10 @@
 import { expect, test } from "@playwright/test"
 import { closeOnboardingModal } from "../../../helpers/navigation.js"
-import { resetMapSettings, sendOwnTracksPoint } from "../../helpers/api.js"
+import {
+  enableFamilyInSettings,
+  resetMapSettings,
+  sendOwnTracksPoint,
+} from "../../helpers/api.js"
 import { API_KEYS, TEST_LOCATIONS } from "../../helpers/constants.js"
 import {
   getMapCenter,
@@ -608,6 +612,97 @@ test.describe("Family Members Layer", () => {
         }
       }
       // If no content after timeout, API may not have returned data - skip gracefully
+    })
+  })
+
+  test.describe("Auto-load on page init (#2250)", () => {
+    // This tests the fix for the bug where family members were not loaded
+    // when the layer was saved as enabled and the page was refreshed.
+    // Previously, the user had to toggle the layer off and back on.
+
+    test.beforeAll(async ({ request }) => {
+      // Seed family member location data
+      const timestamp = Math.floor(Date.now() / 1000)
+      await sendOwnTracksPoint(
+        request,
+        API_KEYS.FAMILY_MEMBER_1,
+        TEST_LOCATIONS.BERLIN_CENTER.lat,
+        TEST_LOCATIONS.BERLIN_CENTER.lon,
+        timestamp,
+      )
+    })
+
+    test("loads family members automatically when saved as enabled", async ({
+      page,
+      request,
+    }) => {
+      test.setTimeout(60000)
+
+      // Step 1: Enable family in settings via API BEFORE navigating
+      await enableFamilyInSettings(request)
+
+      // Step 2: Navigate fresh — no manual toggle interaction
+      await navigateToMapsV2(page)
+      await closeOnboardingModal(page)
+      await waitForMapLibre(page)
+      await waitForLoadingComplete(page)
+
+      // Step 3: Wait for family members to appear in the DOM
+      // (the fix calls loadFamilyMembers on init, which renders the list)
+      const familyLoaded = await page
+        .waitForFunction(
+          () => {
+            const container = document.querySelector(
+              '[data-maps--maplibre-target="familyMembersContainer"]',
+            )
+            if (!container) return false
+            return (
+              container.querySelectorAll(
+                'div[data-action*="centerOnFamilyMember"]',
+              ).length > 0
+            )
+          },
+          { timeout: 15000 },
+        )
+        .then(() => true)
+        .catch(() => false)
+
+      expect(familyLoaded).toBe(true)
+
+      // Step 4: Verify the family members list is visible without toggling
+      const familyMembersList = page.locator(
+        '[data-maps--maplibre-target="familyMembersList"]',
+      )
+      const isListVisible = await familyMembersList.evaluate(
+        (el) => el.style.display === "block",
+      )
+      expect(isListVisible).toBe(true)
+
+      // Step 5: Verify the family layer has features on the map (not just DOM)
+      const hasMapFeatures = await page.evaluate(() => {
+        const element = document.querySelector(
+          '[data-controller*="maps--maplibre"]',
+        )
+        const app = window.Stimulus || window.Application
+        const controller = app?.getControllerForElementAndIdentifier(
+          element,
+          "maps--maplibre",
+        )
+        const familyLayer = controller?.layerManager?.getLayer("family")
+        return familyLayer?.data?.features?.length > 0
+      })
+      expect(hasMapFeatures).toBe(true)
+
+      // Step 6: Verify the progress badge counted family members
+      const badgeText = await page
+        .locator('[data-maps--maplibre-target="progressBadgeText"]')
+        .textContent()
+      expect(badgeText).toContain("family")
+    })
+
+    test.afterAll(async ({ request }) => {
+      // Reset settings to defaults for test isolation
+      await resetMapSettings(request)
     })
   })
 })

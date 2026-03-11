@@ -8,8 +8,7 @@ class Tracks::BoundaryResolverJob < ApplicationJob
   MAX_RETRIES = 5
 
   def perform(user_id, session_id, retry_count = 0)
-    @user = find_non_deleted_user(user_id)
-    return unless @user
+    @user = find_user_or_skip(user_id) || return
 
     @session_manager = Tracks::SessionManager.new(user_id, session_id)
     @retry_count = retry_count

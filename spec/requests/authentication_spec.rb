@@ -175,8 +175,9 @@ RSpec.describe 'Authentication', type: :request do
           user: { email: user.email, password: 'password123' }
         }
 
-        expect(response).to redirect_to(new_user_session_path)
-        expect(flash[:alert]).to include('deleted')
+        # With default scope, Devise can't find the user at all,
+        # so it treats it as invalid credentials (422)
+        expect(response).to have_http_status(:unprocessable_content)
       end
 
       it 'signs out already signed-in deleted users' do

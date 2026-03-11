@@ -12,18 +12,17 @@ module Visits
     end
 
     def call
-      Visit
-        .includes(:place, :area)
-        .where(user:)
-        .joins(:place)
-        .where(
-          'ST_Contains(ST_MakeEnvelope(?, ?, ?, ?, 4326), ST_SetSRID(places.lonlat::geometry, 4326))',
-          sw_lng,
-          sw_lat,
-          ne_lng,
-          ne_lat
-        )
-        .order(started_at: :desc)
+      user.scoped_visits
+          .includes(:place, :area)
+          .joins(:place)
+          .where(
+            'ST_Contains(ST_MakeEnvelope(?, ?, ?, ?, 4326), ST_SetSRID(places.lonlat::geometry, 4326))',
+            sw_lng,
+            sw_lat,
+            ne_lng,
+            ne_lat
+          )
+          .order(started_at: :desc)
     end
 
     private

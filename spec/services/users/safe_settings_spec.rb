@@ -341,6 +341,84 @@ RSpec.describe Users::SafeSettings do
     end
   end
 
+  describe 'plan-aware filtering' do
+    describe '#enabled_map_layers' do
+      context 'when plan is lite' do
+        let(:settings) { { 'enabled_map_layers' => ['Tracks', 'Heatmap', 'Fog of War', 'Scratch map', 'Points'] } }
+        let(:safe_settings) { described_class.new(settings, plan: :lite) }
+
+        it 'excludes gated layers' do
+          expect(safe_settings.enabled_map_layers).to eq(%w[Tracks Points])
+        end
+      end
+
+      context 'when plan is lite and only gated layers are enabled' do
+        let(:settings) { { 'enabled_map_layers' => ['Heatmap', 'Fog of War', 'Scratch map'] } }
+        let(:safe_settings) { described_class.new(settings, plan: :lite) }
+
+        it 'returns empty array' do
+          expect(safe_settings.enabled_map_layers).to eq([])
+        end
+      end
+
+      context 'when plan is pro' do
+        let(:settings) { { 'enabled_map_layers' => ['Tracks', 'Heatmap', 'Fog of War', 'Scratch map'] } }
+        let(:safe_settings) { described_class.new(settings, plan: :pro) }
+
+        it 'returns all layers as stored' do
+          expect(safe_settings.enabled_map_layers).to eq(['Tracks', 'Heatmap', 'Fog of War', 'Scratch map'])
+        end
+      end
+
+      context 'when plan is pro (self-hosted users always have pro)' do
+        let(:settings) { { 'enabled_map_layers' => ['Tracks', 'Heatmap', 'Fog of War'] } }
+        let(:safe_settings) { described_class.new(settings, plan: :pro) }
+
+        it 'returns all layers as stored' do
+          expect(safe_settings.enabled_map_layers).to eq(['Tracks', 'Heatmap', 'Fog of War'])
+        end
+      end
+
+      context 'when plan is nil (backward compat)' do
+        let(:settings) { { 'enabled_map_layers' => ['Tracks', 'Heatmap', 'Fog of War'] } }
+        let(:safe_settings) { described_class.new(settings) }
+
+        it 'returns all layers as stored' do
+          expect(safe_settings.enabled_map_layers).to eq(['Tracks', 'Heatmap', 'Fog of War'])
+        end
+      end
+    end
+
+    describe '#globe_projection' do
+      context 'when plan is lite' do
+        let(:settings) { { 'globe_projection' => true } }
+        let(:safe_settings) { described_class.new(settings, plan: :lite) }
+
+        it 'returns false regardless of stored value' do
+          expect(safe_settings.globe_projection).to be false
+        end
+      end
+
+      context 'when plan is pro' do
+        let(:settings) { { 'globe_projection' => true } }
+        let(:safe_settings) { described_class.new(settings, plan: :pro) }
+
+        it 'returns the stored value' do
+          expect(safe_settings.globe_projection).to be true
+        end
+      end
+
+      context 'when plan is nil (backward compat)' do
+        let(:settings) { { 'globe_projection' => true } }
+        let(:safe_settings) { described_class.new(settings) }
+
+        it 'returns the stored value' do
+          expect(safe_settings.globe_projection).to be true
+        end
+      end
+    end
+  end
+
   describe 'transportation threshold settings' do
     let(:safe_settings) { described_class.new(settings) }
 

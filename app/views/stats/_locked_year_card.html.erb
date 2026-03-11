@@ -1,0 +1,36 @@
+<div class="card w-full bg-base-200 shadow-xl">
+  <div class="card-body">
+    <h2 class="card-title justify-between text-<%= header_colors[year % header_colors.size] %>">
+      <div><%= year %></div>
+      <%= pro_badge_tag(preview: false) %>
+    </h2>
+
+    <%# Chart area with overlay %>
+    <div class="relative">
+      <%# Blurred placeholder chart %>
+      <div class="opacity-20 blur-[3px] pointer-events-none select-none" aria-hidden="true">
+        <%= column_chart(
+          (1..12).map { |m| [Date::MONTHNAMES[m], rand(5_000..80_000)] },
+          height: '200px',
+          suffix: " #{current_user.safe_settings.distance_unit}",
+          colors: [
+            '#397bb5', '#5A4E9D', '#3B945E',
+            '#7BC96F', '#FFD54F', '#FFA94D',
+            '#FF6B6B', '#FF8C42', '#C97E4F',
+            '#8B4513', '#5A2E2E', '#265d7d'
+          ]
+        ) %>
+      </div>
+
+      <%# Centered lock overlay — only covers chart area %>
+      <div class="absolute inset-0 flex flex-col items-center justify-center">
+        <%= icon 'lock', class: 'w-6 h-6 opacity-30' %>
+        <p class="text-sm text-base-content/50 mt-1">Available on Pro</p>
+        <a href="<%= upgrade_url(utm_medium: 'stats', utm_content: "stats_year_#{year}") %>"
+           class="btn btn-sm btn-primary mt-2" target="_blank" rel="noopener">
+          Upgrade to Pro
+        </a>
+      </div>
+    </div>
+  </div>
+</div>

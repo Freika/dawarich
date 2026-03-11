@@ -13,7 +13,7 @@ RSpec.describe Users::Destroy do
 
     context 'with minimal user data' do
       it 'hard deletes the user record' do
-        expect { service.call }.to change(User, :count).by(-1)
+        expect { service.call }.to change { User.unscoped.count }.by(-1)
       end
 
       it 'returns true on success' do
@@ -297,6 +297,26 @@ RSpec.describe Users::Destroy do
         service.call
 
         expect(ActiveStorage::Blob.exists?(blob.id)).to be false
+      end
+
+      context 'when attachment purging fails' do
+        before do
+          allow(ActiveStorage::Attachment).to receive(:where).and_raise(StandardError, 'S3 unavailable')
+        end
+
+        it 'reports the exception and continues deletion' do
+          allow(Rails.logger).to receive(:warn)
+          allow(Rails.logger).to receive(:info)
+          allow(ExceptionReporter).to receive(:call)
+
+          expect { service.call }.not_to raise_error
+
+          expect(Rails.logger).to have_received(:warn).with(/Failed to purge Import attachments/)
+          expect(ExceptionReporter).to have_received(:call).with(
+            instance_of(StandardError),
+            /Failed to purge Import attachments/
+          )
+        end
       end
     end
 

@@ -4,8 +4,7 @@ class Users::Digests::EmailSendingJob < ApplicationJob
   queue_as :mailers
 
   def perform(user_id, year)
-    user = find_non_deleted_user(user_id)
-    return unless user
+    user = find_user_or_skip(user_id) || return
 
     digest = user.digests.yearly.find_by(year: year)
 

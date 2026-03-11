@@ -2,6 +2,7 @@
 
 import Flash from "controllers/flash_controller"
 import L from "leaflet"
+import { formatDate } from "./helpers"
 
 export async function fetchAndDisplayPhotos(
   { map, photoMarkers, apiKey, startDate, endDate, userSettings },
@@ -185,7 +186,7 @@ export function createPhotoMarker(photo, userSettings, photoMarkers, apiKey) {
             alt="${photo.originalFileName}">
       </a>
       <h3 class="font-bold">${photo.originalFileName}</h3>
-      <p>Taken: ${new Date(photo.localDateTime).toLocaleString()}</p>
+      <p>Taken: ${formatDate(photo.localDateTime, userSettings.timezone)}</p>
       <p>Location: ${photo.city}, ${photo.state}, ${photo.country}</p>
       <p>Source: <a href="${source_url}" target="_blank">${photo.source}</a></p>
       ${photo.type === "VIDEO" ? "🎥 Video" : "📷 Photo"}

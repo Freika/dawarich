@@ -5,6 +5,7 @@ class Shared::StatsController < ApplicationController
 
   before_action :authenticate_user!, except: [:show]
   before_action :authenticate_active_user!, only: [:update]
+  before_action :require_pro!, only: [:update]
 
   def show
     @stat = Stat.find_by(sharing_uuid: params[:uuid])

@@ -5,8 +5,7 @@ class Import::PhotoprismGeodataJob < ApplicationJob
   sidekiq_options retry: false
 
   def perform(user_id)
-    user = find_non_deleted_user(user_id)
-    return unless user
+    user = find_user_or_skip(user_id) || return
 
     Photoprism::ImportGeodata.new(user).call
   end

@@ -4,8 +4,7 @@ class Import::ImmichGeodataJob < ApplicationJob
   queue_as :imports
 
   def perform(user_id)
-    user = find_non_deleted_user(user_id)
-    return unless user
+    user = find_user_or_skip(user_id) || return
 
     Immich::ImportGeodata.new(user).call
   end

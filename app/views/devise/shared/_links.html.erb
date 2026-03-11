@@ -31,7 +31,15 @@
 
   <% if devise_mapping.omniauthable? %>
     <% resource_class.omniauth_providers.each do |provider| %>
-      <%= button_to "Sign in with #{oauth_provider_name(provider)}", omniauth_authorize_path(resource_name, provider), data: { turbo: false } %><br />
+      <% config = oauth_button_config(provider) %>
+      <div class="my-2">
+        <%= button_to omniauth_authorize_path(resource_name, provider),
+            class: "btn w-full gap-2 #{config[:css_class]}",
+            data: { turbo: false } do %>
+          <%= config[:icon] %>
+          <%= config[:label] %>
+        <% end %>
+      </div>
     <% end %>
   <% end %>
 </div>

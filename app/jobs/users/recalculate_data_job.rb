@@ -9,8 +9,7 @@ class Users::RecalculateDataJob < ApplicationJob
   queue_as :default
 
   def perform(user_id, year: nil)
-    @user = find_non_deleted_user(user_id)
-    return unless @user
+    @user = find_user_or_skip(user_id) || return
 
     @year = year&.to_i
 

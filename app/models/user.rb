@@ -3,7 +3,8 @@
 class User < ApplicationRecord
   include UserFamily
   include Omniauthable
-  include SoftDeletable
+  include PlanScopable
+  include SoftDeletable # introduces default_scope and soft-delete methods
 
   devise :database_authenticatable, :registerable,
          :recoverable, :rememberable, :validatable, :trackable,
@@ -39,9 +40,10 @@ class User < ApplicationRecord
   scope :active_or_trial, -> { where(status: %i[active trial]) }
 
   enum :status, { inactive: 0, active: 1, trial: 2 }
+  enum :plan, { lite: 0, pro: 1 }, default: :pro
 
   def safe_settings
-    Users::SafeSettings.new(settings)
+    Users::SafeSettings.new(settings, plan: plan)
   end
 
   def countries_visited
@@ -212,7 +214,7 @@ class User < ApplicationRecord
   end
 
   def activate
-    update(status: :active, active_until: 1000.years.from_now)
+    update(status: :active, active_until: 1000.years.from_now, plan: :pro)
   end
 
   def sanitize_input

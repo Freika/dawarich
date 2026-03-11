@@ -7,10 +7,14 @@ class ApplicationJob < ActiveJob::Base
   # Most jobs are safe to ignore if the underlying records are no longer available
   # discard_on ActiveJob::DeserializationError
 
-  def find_non_deleted_user(user_id)
-    user = User.find_by(id: user_id)
-    return nil if user.nil? || user.deleted?
+  private
 
-    user
+  # Look up a user by ID, returning nil (and logging) if not found.
+  # Respects the default scope, so soft-deleted users are excluded.
+  # Use in perform methods: `user = find_user_or_skip(user_id) || return`
+  def find_user_or_skip(user_id)
+    User.find_by(id: user_id).tap do |user|
+      Rails.logger.info "#{self.class.name}: User #{user_id} not found, skipping" unless user
+    end
   end
 end

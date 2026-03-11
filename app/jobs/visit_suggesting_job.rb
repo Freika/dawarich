@@ -8,8 +8,7 @@ class VisitSuggestingJob < ApplicationJob
 
   # Passing timespan of more than 3 years somehow results in duplicated Places
   def perform(user_id:, start_at:, end_at:)
-    user = find_non_deleted_user(user_id)
-    return unless user
+    user = find_user_or_skip(user_id) || return
 
     with_user_timezone(user) do
       start_time = parse_date(start_at)

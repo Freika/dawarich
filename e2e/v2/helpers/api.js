@@ -31,6 +31,29 @@ export async function resetMapSettings(request, apiKey) {
 }
 
 /**
+ * Enable family members layer in map settings via API
+ * Sets enabled_map_layers to include "Family Members" alongside defaults
+ * @param {import('@playwright/test').APIRequestContext} request - Playwright request context
+ * @param {string} [apiKey] - User's API key (defaults to DEMO_USER key)
+ * @returns {Promise<import('@playwright/test').APIResponse>}
+ */
+export async function enableFamilyInSettings(request, apiKey) {
+  const key = apiKey || API_KEYS.DEMO_USER
+  const response = await request.patch(`${BASE_URL}/api/v1/settings`, {
+    headers: {
+      Authorization: `Bearer ${key}`,
+      "Content-Type": "application/json",
+    },
+    data: {
+      settings: {
+        enabled_map_layers: ["Points", "Routes", "Family Members"],
+      },
+    },
+  })
+  return response
+}
+
+/**
  * Send a location point via OwnTracks API
  * @param {import('@playwright/test').APIRequestContext} request - Playwright request context
  * @param {string} apiKey - User's API key

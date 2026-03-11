@@ -5,8 +5,7 @@ class PlaceVisitsCalculatingJob < ApplicationJob
   sidekiq_options retry: false
 
   def perform(user_id)
-    user = find_non_deleted_user(user_id)
-    return unless user
+    user = find_user_or_skip(user_id) || return
 
     places = user.places # Only user-owned places (with user_id)
 

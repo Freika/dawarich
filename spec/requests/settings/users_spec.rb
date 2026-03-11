@@ -118,7 +118,7 @@ RSpec.describe '/settings/users', type: :request do
               user # force creation before count check
               expect do
                 delete settings_user_url(user)
-              end.not_to change(User, :count)
+              end.to change(User, :count).by(-1)
 
               expect(user.reload.deleted?).to be true
             end
@@ -177,16 +177,15 @@ RSpec.describe '/settings/users', type: :request do
           end
 
           context 'concurrent deletion attempts' do
-            it 'handles multiple deletion requests gracefully' do
+            it 'returns not found for second deletion of already-deleted user' do
               # First deletion
               delete settings_user_url(user)
               expect(user.reload.deleted?).to be true
 
-              # Second deletion attempt on already-deleted user
+              # Second deletion attempt — default scope excludes the soft-deleted user,
+              # so User.find raises RecordNotFound, which Rails rescues as 404
               delete settings_user_url(user)
-
-              # Should not raise error, user still deleted
-              expect(user.reload.deleted?).to be true
+              expect(response).to have_http_status(:not_found)
             end
           end
         end

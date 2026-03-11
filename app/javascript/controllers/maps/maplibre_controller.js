@@ -3,6 +3,7 @@ import { Toast } from "maps_maplibre/components/toast"
 import { ReplayManager } from "maps_maplibre/managers/replay_manager"
 import { ApiClient } from "maps_maplibre/services/api_client"
 import { CleanupHelper } from "maps_maplibre/utils/cleanup_helper"
+import { cancelAllPreviews } from "maps_maplibre/utils/layer_gate"
 import { performanceMonitor } from "maps_maplibre/utils/performance_monitor"
 import { SearchManager } from "maps_maplibre/utils/search_manager"
 import { SettingsManager } from "maps_maplibre/utils/settings_manager"
@@ -29,6 +30,8 @@ export default class extends Controller {
     startDate: String,
     endDate: String,
     timezone: String,
+    userPlan: { type: String, default: "pro" },
+    upgradeUrl: { type: String, default: "" },
   }
 
   static targets = [
@@ -172,6 +175,7 @@ export default class extends Controller {
     this.settingsController = new SettingsController(this)
     await this.settingsController.loadSettings()
     this.settings = this.settingsController.settings
+    this.settings.timezone = this.timezoneValue
 
     // Sync toggle states with loaded settings
     this.settingsController.syncToggleStates()
@@ -297,13 +301,23 @@ export default class extends Controller {
       new Date(this.endDateValue),
     )
 
-    this.loadMapData()
+    this.loadMapData().then(() => {
+      if (this.settings?.familyEnabled) {
+        this.loadFamilyMembers()
+      }
+    })
+
+    // Show family members list immediately (doesn't depend on layer)
+    if (this.settings?.familyEnabled && this.hasFamilyMembersListTarget) {
+      this.familyMembersListTarget.style.display = "block"
+    }
   }
 
   disconnect() {
     this._stopReplayPlayback()
     this.settingsController?.stopRecalculationPolling()
     this.searchManager?.destroy()
+    cancelAllPreviews()
     this.cleanup.cleanup()
     this.map?.remove()
     performanceMonitor.logReport()
@@ -445,7 +459,7 @@ export default class extends Controller {
     // Append family count if family layer is enabled
     if (this.settings?.familyEnabled) {
       const familyCount = this._familyMemberCount || 0
-      parts.push(`${familyCount.toLocaleString()} family`)
+      parts.push(`${familyCount.toLocaleString()} family members`)
     }
 
     // Detect when a new data source appears and trigger a pop animation

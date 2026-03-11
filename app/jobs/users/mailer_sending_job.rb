@@ -4,8 +4,7 @@ class Users::MailerSendingJob < ApplicationJob
   queue_as :mailers
 
   def perform(user_id, email_type, **options)
-    user = find_non_deleted_user(user_id)
-    return unless user
+    user = find_user_or_skip(user_id) || return
 
     return if should_skip_email?(user, email_type)
 

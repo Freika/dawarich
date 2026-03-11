@@ -6,7 +6,7 @@
 <div class="w-full h-full">
   <div
     id='map'
-    class="w-full h-full"
+    class="w-full h-full relative"
     data-controller="maps points add-visit family-members"
     data-points-target="map"
     data-api_key="<%= current_user.api_key %>"
@@ -27,6 +27,7 @@
     <div data-maps-target="container" class="w-full h-full">
       <div id="fog" class="fog"></div>
     </div>
+    <%= render 'shared/map/upgrade_banner', utm_content: 'leaflet_map' %>
   </div>
 </div>
 

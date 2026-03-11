@@ -4,7 +4,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [1.3.1] - Unreleased
+## [1.3.2] - 2026-03-08
+
+**Important**: Self-hosters are not limited in any way. All features remain fully available regardless of plan. The new Lite plan and related limitations apply only to Dawarich Cloud users. If you're self-hosting, you can ignore the Lite plan details below. Self-hosted instances will continue to have access to all features without any restrictions.
+
+### Added
+
+- Lite plan for Dawarich Cloud. Lite includes core tracking, map visualization (routes, points), stats, and the read API. Data view is limited to the last 12 months — older data is archived but can always be exported. Pro-only features: Heatmap, Fog of War, Scratch Map, Globe View, Immich/Photoprism integrations, public stats sharing, and write API (update/delete). Lite users can still create points via the API. Self-hosted instances are unaffected — all features remain fully available regardless of plan.
+- Timed layer previews for Lite users on the map. Toggling a Pro-only layer (Heatmap, Fog of War, Scratch Map) shows it for 20 seconds with a countdown, then auto-hides with an upgrade prompt.
+- Per-plan API rate limiting via `rack-attack`. Lite: 200 requests/hour, Pro: 1,000 requests/hour. Self-hosted instances are exempt. Rate-limited responses return 429 with `Retry-After` header.
+- Archival warning notifications for Lite users approaching the 12-month data window: in-app notification at 11 months, email at 11.5 months, archived confirmation at 12 months.
+- `GET /api/v1/plan` endpoint returning the user's current plan and feature availability.
+- `X-Total-Points-In-Range` and `X-Scoped-Points` response headers on the points API, allowing clients to detect when data is being windowed.
+- Branded OAuth buttons for Google and GitHub on the login page.
+
+### Changed
+
+- Numeric-only strings passed to timestamp API parameters (e.g. `start_at`, `end_at`) are now treated as Unix timestamps directly. Previously they were passed through `Time.zone.parse`, which could return unexpected results. If you were relying on the old behavior for numeric strings, update your API calls accordingly.
+- The user serializer now includes `plan` in the `subscription` object.
+
+## [1.3.1] - 2026-02-27
 
 ### Changed
 
@@ -13,6 +32,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 - Point speed in Map V2 is now correctly calculated from m/s to km/h or mph based on user preference. #2308
+- Family members are now being loaded correctly on Map V2 when family layer is enabled. #2250
+- Photos popups on Map V2 now show the photo timestamp in user's timezone. #2310
+- Fix the issue preventing fresh app from starting. #2304
 
 ## [1.3.0] - 2026-02-25
 

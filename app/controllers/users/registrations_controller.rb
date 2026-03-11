@@ -33,11 +33,9 @@ class Users::RegistrationsController < Devise::RegistrationsController
       return
     end
 
-    resource.mark_as_deleted!
+    Users::DestroyJob.perform_later(resource.id) if resource.mark_as_deleted_atomically!
 
     Devise.sign_out_all_scopes ? sign_out : sign_out(resource_name)
-
-    Users::DestroyJob.perform_later(resource.id)
 
     set_flash_message! :notice, :destroyed
     yield resource if block_given?

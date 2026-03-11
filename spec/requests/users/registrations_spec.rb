@@ -446,7 +446,7 @@ RSpec.describe 'Users::Registrations', type: :request do
       it 'soft deletes the user' do
         expect do
           delete user_registration_path
-        end.not_to change(User, :count)
+        end.to change(User, :count).by(-1)
 
         expect(user.reload.deleted?).to be true
       end
@@ -537,7 +537,7 @@ RSpec.describe 'Users::Registrations', type: :request do
       it 'allows deletion' do
         expect do
           delete user_registration_path
-        end.not_to change(User, :count)
+        end.to change(User, :count).by(-1)
 
         expect(user.reload.deleted?).to be true
       end
