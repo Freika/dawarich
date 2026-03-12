@@ -49,7 +49,7 @@
     </div>
 
     <!-- Lazy-loaded below-the-fold details -->
-    <%= turbo_frame_tag "insights_details", src: details_insights_path(year: @selected_year), loading: :lazy do %>
+    <%= turbo_frame_tag "insights_details", src: details_insights_path(year: @selected_year, month: params[:month]), loading: :lazy do %>
       <%= render 'details_skeleton' %>
     <% end %>
   <% end %>

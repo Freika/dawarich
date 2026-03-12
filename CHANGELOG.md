@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.3.3] - Unreleased
+
+### Fixed
+
+- Points table now converts speed from m/s to km/h (or mph) using the user's distance unit preference. Previously raw m/s values were displayed with a "km/h" label. #2337
+- Digest list API (`GET /api/v1/digests`) now returns distance as a structured object with `meters`, `converted`, and `unit` fields, matching the detail endpoint. Previously it returned raw meters, causing clients to display incorrect values. **Breaking change**: the `distance` field changed from an integer to an object. #2336
+- Dead documentation links in v0.26.0 changelog entry now point to the correct URLs. #2344
+- Filter out Immich and Photoprism api keys from logs to prevent accidental exposure. #2368
+- Fix foreign key violation when deleting users with place_visits referencing visits.
+- Fix reverse geocoding job failing on points with nil timestamp or lonlat.
+- Fix unsupported archive format generating Sentry noise instead of a user-friendly notification.
+- Fix deadlock in reverse geocoding places upsert under concurrent Sidekiq workers.
+- Reduce Redis disk I/O by relaxing RDB snapshot frequency. Previously the default `save 60 10000` rule caused a snapshot every ~60 seconds due to Sidekiq polling, generating tens of terabytes of disk writes over weeks. New defaults: snapshots every 15 minutes (10+ changes) or 5 minutes (100+ changes).
+- Reduce default Sidekiq concurrency from 10 to 5 threads. Most self-hosted instances don't need 10 workers and the extra threads increase Redis polling traffic.
+- Migration bug for version skippers. #2362
+
 ## [1.3.2] - 2026-03-08
 
 **Important**: Self-hosters are not limited in any way. All features remain fully available regardless of plan. The new Lite plan and related limitations apply only to Dawarich Cloud users. If you're self-hosting, you can ignore the Lite plan details below. Self-hosted instances will continue to have access to all features without any restrictions.
@@ -1303,9 +1319,9 @@ Also, after updating to this version, Dawarich will start a huge background job 
 
 ⚠️ This release includes a breaking change. ⚠️
 
-Starting this version, Dawarich requires PostgreSQL 17 with PostGIS 3.5. If you haven't updated your database image yet, please consider doing so as suggested in the [docs on the website](https://dawarich.app/docs/tutorials/update-postgresql/). Simply replacing the image in the `docker-compose.yml` unfortunately doesn't work, as PostgreSQL 17 is not backwards compatible with 14 (which was used in previous versions).
+Starting this version, Dawarich requires PostgreSQL 17 with PostGIS 3.5. If you haven't updated your database image yet, please consider doing so as suggested in the [docs on the website](https://dawarich.app/docs/self-hosting/maintenance/update-postgresql). Simply replacing the image in the `docker-compose.yml` unfortunately doesn't work, as PostgreSQL 17 is not backwards compatible with 14 (which was used in previous versions).
 
-If you have encountered problems with moving to a PostGIS image while still on Postgres 14, I collected a selection of compatible docker images for different CPU architectures, which you can also find in the [docs](https://dawarich.app/docs/tutorials/moving-to-postgis/). New users will be automatically provisioned with PostgreSQL 17 with PostGIS 3.5 with default `docker-compose.yml` file.
+If you have encountered problems with moving to a PostGIS image while still on Postgres 14, I collected a selection of compatible docker images for different CPU architectures, which you can also find in the [docs](https://dawarich.app/docs/self-hosting/maintenance/moving-to-postgis). New users will be automatically provisioned with PostgreSQL 17 with PostGIS 3.5 with default `docker-compose.yml` file.
 
 **You still may use PostgreSQL 14, but no support will be provided for it starting this version. It's strongly recommended to update to PostgreSQL 17.**
 

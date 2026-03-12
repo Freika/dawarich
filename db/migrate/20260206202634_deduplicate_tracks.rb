@@ -16,8 +16,11 @@ class DeduplicateTracks < ActiveRecord::Migration[8.0]
 
   private
 
+  # NOTE: Uses raw SQL instead of User model to avoid loading model classes
+  # whose enum declarations may reference columns that don't exist yet.
+  # See: https://github.com/Freika/dawarich/issues/2362
   def enqueue_deduplication_jobs
-    user_ids = User.pluck(:id)
+    user_ids = execute('SELECT id FROM users WHERE deleted_at IS NULL').map { |row| row['id'] }
     return if user_ids.empty?
 
     Rails.logger.info "[Migration] Enqueuing Tracks::DeduplicationJob for #{user_ids.size} users"

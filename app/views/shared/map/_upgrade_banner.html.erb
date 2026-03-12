@@ -1,4 +1,4 @@
-<% if show_plan_data_window_alert? %>
+<% if show_plan_data_window_alert? && local_assigns[:start_at].present? && start_at < DawarichSettings::LITE_DATA_WINDOW.ago %>
   <div data-controller="removals" data-removals-timeout-value="0"
        class="map-upgrade-banner"
        role="status" style="pointer-events: auto;">

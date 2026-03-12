@@ -12,7 +12,9 @@ class ReverseGeocoding::Points::FetchData
   end
 
   def call
+    return if point.blank?
     return if point.reverse_geocoded?
+    return unless point.timestamp.present? && point.lonlat.present?
 
     update_point_with_geocoding_data
   end

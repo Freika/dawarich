@@ -75,7 +75,7 @@
                 <% end %>
                 </div>
               </th>
-              <th>Speed, km/h</th>
+              <th>Speed, <%= speed_label(current_user.safe_settings.distance_unit) %></th>
               <th>Recorded At</th>
               <th>Coordinates</th>
             </tr>

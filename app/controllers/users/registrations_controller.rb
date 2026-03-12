@@ -121,7 +121,7 @@ class Users::RegistrationsController < Devise::RegistrationsController
   end
 
   def email_password_registration_allowed?
-    ALLOW_EMAIL_PASSWORD_REGISTRATION
+    DawarichSettings.registration_enabled?
   end
 
   def oidc_only_mode?

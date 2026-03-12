@@ -41,6 +41,9 @@ class Users::Destroy
       user.exports.delete_all
       user.notifications.delete_all
 
+      # Delete place_visits BEFORE visits (place_visits has FK to visits)
+      PlaceVisit.where(visit_id: user.visits.select(:id)).delete_all
+
       # Delete visits BEFORE areas (visits has FK to areas)
       user.visits.delete_all
       user.areas.delete_all

@@ -28,6 +28,8 @@ require 'oj'
 # Files are restored to their original locations and properly attached to records.
 
 class Users::ImportData
+  class UnsupportedFormatError < StandardError; end
+
   STREAM_BATCH_SIZE = 5000
   STREAMED_SECTIONS = %w[places visits points].freeze
   MAX_ENTRY_SIZE = 10.gigabytes # Maximum size for a single file in the archive
@@ -66,6 +68,9 @@ class Users::ImportData
 
       @import_stats
     end
+  rescue UnsupportedFormatError => e
+    create_failure_notification(e)
+    nil
   rescue StandardError => e
     ExceptionReporter.call(e, 'Data import failed')
     create_failure_notification(e)
@@ -162,7 +167,7 @@ class Users::ImportData
     elsif File.exist?(data_json_path)
       1 # Legacy format
     else
-      raise StandardError, 'Unknown export format: neither manifest.json nor data.json found'
+      raise UnsupportedFormatError, 'Unknown export format: neither manifest.json nor data.json found'
     end
   end
 

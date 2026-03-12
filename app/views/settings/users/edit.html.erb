@@ -6,6 +6,7 @@
   <div class="flex w-full my-10 space-x-4">
     <div class="overflow-x-auto w-4/12 mx-auto">
       <h1 class="text-2xl font-bold">Editing user</h1>
+      <p class="text-base-content/70 mb-4"><%= @user.email %></p>
       <%= form_for @user, url: settings_user_path(@user), method: :put, data: { turbo_method: :put, turbo: false } do |f| %>
         <div class="form-control">
           <%= f.label :email do %>
@@ -13,11 +14,23 @@
           <% end %>
           <%= f.email_field :email, value: @user.email, class: "input input-bordered" %>
         </div>
-        <div class="form-control">
+        <div class="form-control mt-4">
           <%= f.label :password do %>
-            Password
+            Password <span class="text-base-content/50 text-sm">(leave blank to keep current)</span>
           <% end %>
-          <%= f.password_field :password, autofocus: true, autocomplete: "new-password", class: "input input-bordered" %>
+          <%= f.password_field :password, autocomplete: "new-password", class: "input input-bordered" %>
+        </div>
+        <div class="form-control mt-4">
+          <label class="label cursor-pointer justify-start gap-4">
+            <%= f.check_box :admin, class: "toggle toggle-primary" %>
+            <span class="label-text">Admin</span>
+          </label>
+        </div>
+        <div class="form-control mt-4">
+          <%= f.label :status do %>
+            Status
+          <% end %>
+          <%= f.select :status, User.statuses.keys.map { |s| [s.capitalize, s] }, {}, class: "select select-bordered w-full" %>
         </div>
         <div class="form-control mt-5">
           <%= f.submit "Update", class: "btn btn-primary" %>

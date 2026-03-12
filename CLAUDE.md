@@ -35,6 +35,18 @@ This file contains essential information for Claude to work effectively with the
 - **Maps**: Leaflet.js
 - **Charts**: Chartkick
 
+## Conventions
+- **Enums over strings:** Prefer Rails enums (integer columns) over string columns for status/type fields. Use `enum :field_name, { ... }, prefix: :field_name` to get scoped predicate methods and avoid name collisions.
+- **Turbo first:** Follow Rails 8 conventions — use Turbo Frames and Turbo Streams/broadcasts wherever appropriate to avoid full page reloads and provide smooth, in-place UI updates.
+- **SVGs as files:** Never inline SVG markup in views. Instead, save SVGs to `app/assets/svg/icons` and use `inline_svg_tag "name.svg"` to render them. This keeps views clean and SVGs reusable. Use `rails_icons` to manage SVG assets and ensure consistent styling.
+
+## Code Style
+
+- Follow rubocop conventions (see `.rubocop.yml`)
+- Rails defaults: convention over configuration
+- Prefer Hotwire (Turbo Frames/Streams + Stimulus) over custom JS
+- Use importmap for JS dependencies — no npm/yarn
+
 ### Key Gems
 - `activerecord-postgis-adapter` - PostgreSQL PostGIS support
 - `geocoder` - Geocoding services

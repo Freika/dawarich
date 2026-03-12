@@ -118,6 +118,8 @@ class ReverseGeocoding::Places::FetchData
     place.lonlat = build_point_coordinates(data['geometry']['coordinates'])
   end
 
+  DEADLOCK_MAX_RETRIES = 3
+
   def save_places(places_to_create, places_to_update)
     if places_to_create.any?
       place_attributes = places_to_create.map do |place|
@@ -134,7 +136,7 @@ class ReverseGeocoding::Places::FetchData
           updated_at: Time.current
         }
       end
-      Place.insert_all(place_attributes) # rubocop:disable Rails/SkipsModelValidations
+      with_deadlock_retry { Place.insert_all(place_attributes) }
     end
 
     return unless places_to_update.any?
@@ -153,8 +155,20 @@ class ReverseGeocoding::Places::FetchData
         updated_at: Time.current
       }
     end
-    Place.upsert_all(update_attributes, unique_by: :id)
-    # rubocop:enable Rails/SkipsModelValidations
+    with_deadlock_retry { Place.upsert_all(update_attributes, unique_by: :id) }
+  end
+
+  def with_deadlock_retry
+    retries = 0
+    begin
+      yield
+    rescue ActiveRecord::Deadlocked => e
+      retries += 1
+      raise e if retries > DEADLOCK_MAX_RETRIES
+
+      sleep(0.1 * retries)
+      retry
+    end
   end
 
   def build_point_coordinates(coordinates)
