@@ -109,7 +109,14 @@
           <div class="card-body">
             <h3 class="card-title">API key</h3>
             <div class="flex items-center gap-2">
-              <code class="bg-base-300 px-3 py-2 rounded-lg text-sm flex-1 break-all"><%= @user.api_key %></code>
+              <code class="bg-base-300 px-3 py-2 rounded-lg text-sm flex-1 break-all"><%= @user.api_key.first(8) %><%= '•' * 24 %></code>
+              <button class="btn btn-ghost btn-sm"
+                      data-controller="clipboard"
+                      data-clipboard-text-value="<%= @user.api_key %>"
+                      data-action="click->clipboard#copy">
+                <%= icon 'copy', class: "inline-block w-4" %>
+                Copy
+              </button>
             </div>
             <div class="card-actions mt-4">
               <%= button_to 'Regenerate API key',

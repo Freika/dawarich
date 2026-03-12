@@ -3,7 +3,7 @@
 class DropRedundantIndexes < ActiveRecord::Migration[8.0]
   disable_ddl_transaction!
 
-  def change
+  def up
     # index_points_on_user_id is redundant:
     # Leading column covered by index_points_on_user_id_and_timestamp,
     # idx_points_track_generation, idx_points_user_visit_null_timestamp,
@@ -24,5 +24,12 @@ class DropRedundantIndexes < ActiveRecord::Migration[8.0]
     # Only 11 enum values, rarely queried alone. All queries are
     # already covered by (track_id, transportation_mode) composite.
     remove_index :track_segments, column: :transportation_mode, algorithm: :concurrently, if_exists: true
+  end
+
+  def down
+    add_index :points, :user_id, algorithm: :concurrently, if_not_exists: true
+    add_index :points, :timestamp, algorithm: :concurrently, if_not_exists: true
+    add_index :track_segments, :track_id, algorithm: :concurrently, if_not_exists: true
+    add_index :track_segments, :transportation_mode, algorithm: :concurrently, if_not_exists: true
   end
 end

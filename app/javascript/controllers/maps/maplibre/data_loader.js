@@ -381,7 +381,7 @@ export class DataLoader {
     return {
       type: "FeatureCollection",
       features: photos
-        .filter((photo) => photo.latitude !== 0 || photo.longitude !== 0)
+        .filter((photo) => photo.latitude !== 0 && photo.longitude !== 0)
         .map((photo) => {
           // Construct thumbnail URL
           const thumbnailUrl = `/api/v1/photos/${photo.id}/thumbnail.jpg?api_key=${this.apiKey}&source=${photo.source}`

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_03_01_202147) do
+ActiveRecord::Schema[8.0].define(version: 2026_03_10_000006) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
@@ -194,7 +194,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_01_202147) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["place_id"], name: "index_place_visits_on_place_id"
-    t.index ["visit_id"], name: "index_place_visits_on_visit_id"
+    t.index ["visit_id", "place_id"], name: "idx_place_visits_visit_id_place_id", unique: true
   end
 
   create_table "places", force: :cascade do |t|
@@ -263,15 +263,13 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_01_202147) do
     t.index ["lonlat"], name: "index_points_on_lonlat", using: :gist
     t.index ["raw_data_archive_id"], name: "index_points_on_raw_data_archive_id"
     t.index ["raw_data_archived"], name: "index_points_on_archived_true", where: "(raw_data_archived = true)"
-    t.index ["timestamp"], name: "index_points_on_timestamp"
+    t.index ["track_id", "timestamp"], name: "idx_points_track_id_timestamp"
     t.index ["track_id"], name: "index_points_on_track_id"
     t.index ["user_id", "country_name"], name: "idx_points_user_country_name"
     t.index ["user_id", "geodata"], name: "index_points_on_user_id_and_empty_geodata", where: "(geodata = '{}'::jsonb)"
-    t.index ["user_id", "reverse_geocoded_at"], name: "index_points_on_user_id_and_reverse_geocoded_at", where: "(reverse_geocoded_at IS NOT NULL)"
     t.index ["user_id", "timestamp", "track_id"], name: "idx_points_track_generation"
     t.index ["user_id", "timestamp"], name: "idx_points_user_visit_null_timestamp", where: "(visit_id IS NULL)"
     t.index ["user_id", "timestamp"], name: "index_points_on_user_id_and_timestamp", order: { timestamp: :desc }
-    t.index ["user_id"], name: "index_points_on_user_id"
     t.index ["visit_id"], name: "index_points_on_visit_id"
   end
 
@@ -449,15 +447,13 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_01_202147) do
     t.datetime "updated_at", null: false
     t.index ["track_id", "start_index", "end_index"], name: "index_track_segments_on_track_and_indices"
     t.index ["track_id", "transportation_mode"], name: "index_track_segments_on_track_id_and_transportation_mode"
-    t.index ["track_id"], name: "index_track_segments_on_track_id"
-    t.index ["transportation_mode"], name: "index_track_segments_on_transportation_mode"
   end
 
   create_table "tracks", force: :cascade do |t|
     t.datetime "start_at", null: false
     t.datetime "end_at", null: false
     t.bigint "user_id", null: false
-    t.geometry "original_path", limit: {srid: 0, type: "line_string"}, null: false
+    t.geometry "original_path", limit: {srid: 4326, type: "line_string"}, null: false
     t.bigint "distance"
     t.float "avg_speed"
     t.integer "duration"
@@ -469,6 +465,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_01_202147) do
     t.datetime "updated_at", null: false
     t.integer "dominant_mode", default: 0
     t.index ["dominant_mode"], name: "index_tracks_on_dominant_mode"
+    t.index ["user_id", "start_at"], name: "idx_tracks_user_id_start_at"
     t.index ["user_id"], name: "index_tracks_on_user_id"
   end
 
@@ -480,7 +477,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_01_202147) do
     t.bigint "user_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.geometry "path", limit: {srid: 3857, type: "line_string"}
+    t.geometry "path", limit: {srid: 4326, type: "line_string"}
     t.jsonb "visited_countries", default: {}, null: false
     t.index ["user_id"], name: "index_trips_on_user_id"
   end

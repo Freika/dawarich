@@ -52,7 +52,7 @@
             <tr>
               <td>
                 <div>
-                  <%= link_to user.email, edit_settings_user_path(user), class: 'font-bold underline hover:no-underline' %>
+                  <%= link_to user.email, settings_user_path(user), class: 'font-bold underline hover:no-underline' %>
                 </div>
               </td>
               <td>
@@ -84,7 +84,8 @@
               <td>
                 <%= human_datetime(user.created_at) %>
               </td>
-              <td>
+              <td class="flex gap-2">
+                <%= link_to 'Edit', edit_settings_user_path(user), class: 'btn btn-ghost btn-sm' %>
                 <% unless user == current_user %>
                   <button class="btn btn-error btn-sm" onclick="delete_user_<%= user.id %>.showModal()">Delete</button>
                 <% end %>
