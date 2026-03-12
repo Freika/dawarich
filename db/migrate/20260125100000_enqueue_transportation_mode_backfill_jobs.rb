@@ -19,8 +19,11 @@ class EnqueueTransportationModeBackfillJobs < ActiveRecord::Migration[8.0]
 
   private
 
+  # NOTE: Uses raw SQL instead of User/Import models to avoid loading model
+  # classes whose enum declarations may reference columns that don't exist yet.
+  # See: https://github.com/Freika/dawarich/issues/2362
   def enqueue_user_backfill_jobs
-    user_ids = User.pluck(:id)
+    user_ids = execute('SELECT id FROM users WHERE deleted_at IS NULL').map { |row| row['id'] }
     return if user_ids.empty?
 
     Rails.logger.info "[Migration] Enqueuing BackfillJob for #{user_ids.size} users"
@@ -45,13 +48,15 @@ class EnqueueTransportationModeBackfillJobs < ActiveRecord::Migration[8.0]
       geojson
     ]
 
-    import_ids = Import.where(source: supported_sources).pluck(:id)
+    placeholders = supported_sources.map { |s| "'#{s}'" }.join(', ')
+    import_ids = execute("SELECT id FROM imports WHERE source IN (#{placeholders})").map { |row| row['id'] }
     return if import_ids.empty?
 
     Rails.logger.info "[Migration] Enqueuing ImportBackfillJob for #{import_ids.size} imports"
 
     # Start import jobs after user jobs have a head start
-    base_delay = INITIAL_DELAY_MINUTES.minutes + (User.count * USER_DELAY_SECONDS).seconds
+    user_count = execute('SELECT COUNT(*) AS cnt FROM users WHERE deleted_at IS NULL').first['cnt'].to_i
+    base_delay = INITIAL_DELAY_MINUTES.minutes + (user_count * USER_DELAY_SECONDS).seconds
 
     import_ids.each_with_index do |import_id, index|
       delay = base_delay + (index * IMPORT_DELAY_SECONDS).seconds

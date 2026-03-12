@@ -439,6 +439,32 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
       it 'handles empty arrays gracefully' do
         expect { service.send(:save_places, [], []) }.not_to raise_error
       end
+
+      context 'when a deadlock occurs' do
+        let(:new_place) { build(:place) }
+
+        it 'retries on ActiveRecord::Deadlocked and succeeds' do
+          call_count = 0
+          allow(Place).to receive(:insert_all).and_wrap_original do |method, *args|
+            call_count += 1
+            raise ActiveRecord::Deadlocked, 'deadlock detected' if call_count == 1
+
+            method.call(*args)
+          end
+          allow(service).to receive(:sleep)
+
+          expect { service.send(:save_places, [new_place], []) }.to change { Place.count }.by(1)
+          expect(service).to have_received(:sleep).with(0.1).once
+        end
+
+        it 'raises after exhausting retries' do
+          allow(Place).to receive(:insert_all).and_raise(ActiveRecord::Deadlocked, 'deadlock detected')
+          allow(service).to receive(:sleep)
+
+          expect { service.send(:save_places, [new_place], []) }.to raise_error(ActiveRecord::Deadlocked)
+          expect(service).to have_received(:sleep).exactly(3).times
+        end
+      end
     end
   end
 

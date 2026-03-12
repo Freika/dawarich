@@ -44,10 +44,15 @@ Rails.application.routes.draw do
 
     resources :background_jobs, only: %i[index create]
     patch 'background_jobs', to: 'background_jobs#update'
-    resources :users, only: %i[index create destroy edit update] do
+    resources :users, only: %i[index show create destroy edit update] do
+      member do
+        post 'regenerate_api_key'
+        post 'send_password_reset'
+      end
       collection do
         get 'export'
         post 'import'
+        patch 'update_registration_settings'
       end
     end
 

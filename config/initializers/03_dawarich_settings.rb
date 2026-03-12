@@ -61,5 +61,13 @@ class DawarichSettings
     def archive_raw_data_enabled?
       @archive_raw_data_enabled ||= ARCHIVE_RAW_DATA
     end
+
+    def registration_enabled?
+      Rails.cache.fetch('dawarich/registration_enabled') { ALLOW_EMAIL_PASSWORD_REGISTRATION }
+    end
+
+    def set_registration_enabled(enabled)
+      Rails.cache.write('dawarich/registration_enabled', enabled)
+    end
   end
 end

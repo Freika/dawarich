@@ -129,13 +129,13 @@ module ApplicationHelper
   def email_password_registration_enabled?
     return true unless DawarichSettings.self_hosted?
 
-    ALLOW_EMAIL_PASSWORD_REGISTRATION
+    DawarichSettings.registration_enabled?
   end
 
   def email_password_login_enabled?
     return true unless DawarichSettings.oidc_enabled?
 
-    ALLOW_EMAIL_PASSWORD_REGISTRATION
+    DawarichSettings.registration_enabled?
   end
 
   def preferred_map_path(params = {})
