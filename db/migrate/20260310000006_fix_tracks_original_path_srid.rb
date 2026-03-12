@@ -6,37 +6,15 @@ class FixTracksOriginalPathSrid < ActiveRecord::Migration[8.0]
     # (lat/lon from points.lonlat) but were created with incorrect SRIDs.
     # The BuildPath service also used srid: 3857 (Web Mercator), now fixed to 4326.
     #
-    # ST_SetSRID is a metadata-only change — it doesn't transform coordinates,
-    # just tags them with the correct SRID. This is safe because the actual
-    # coordinate values are already WGS84 (EPSG:4326).
-    execute <<~SQL.squish
-      ALTER TABLE tracks
-      ALTER COLUMN original_path
-      TYPE geometry(LineString, 4326)
-      USING ST_SetSRID(original_path, 4326)
-    SQL
-
-    execute <<~SQL.squish
-      ALTER TABLE trips
-      ALTER COLUMN path
-      TYPE geometry(LineString, 4326)
-      USING ST_SetSRID(path, 4326)
-    SQL
+    # UpdateGeometrySRID updates the geometry_columns catalog and column type
+    # constraint without rewriting the table — safe for large tables with no
+    # downtime. The actual coordinate values are already WGS84 (EPSG:4326).
+    execute "SELECT UpdateGeometrySRID('tracks', 'original_path', 4326)"
+    execute "SELECT UpdateGeometrySRID('trips', 'path', 4326)"
   end
 
   def down
-    execute <<~SQL.squish
-      ALTER TABLE tracks
-      ALTER COLUMN original_path
-      TYPE geometry(LineString, 0)
-      USING ST_SetSRID(original_path, 0)
-    SQL
-
-    execute <<~SQL.squish
-      ALTER TABLE trips
-      ALTER COLUMN path
-      TYPE geometry(LineString, 3857)
-      USING ST_SetSRID(path, 3857)
-    SQL
+    execute "SELECT UpdateGeometrySRID('tracks', 'original_path', 0)"
+    execute "SELECT UpdateGeometrySRID('trips', 'path', 3857)"
   end
 end
