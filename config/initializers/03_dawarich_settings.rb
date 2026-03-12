@@ -63,9 +63,6 @@ class DawarichSettings
     end
 
     def registration_enabled?
-      cached = Rails.cache.read('dawarich/registration_enabled')
-      return cached unless cached.nil?
-
       ALLOW_EMAIL_PASSWORD_REGISTRATION
     end
 
