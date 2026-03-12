@@ -63,7 +63,7 @@ class DawarichSettings
     end
 
     def registration_enabled?
-      ALLOW_EMAIL_PASSWORD_REGISTRATION
+      Rails.cache.fetch('dawarich/registration_enabled') { ALLOW_EMAIL_PASSWORD_REGISTRATION }
     end
 
     def set_registration_enabled(enabled)
