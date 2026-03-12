@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Fix deadlock in reverse geocoding places upsert under concurrent Sidekiq workers.
 - Reduce Redis disk I/O by relaxing RDB snapshot frequency. Previously the default `save 60 10000` rule caused a snapshot every ~60 seconds due to Sidekiq polling, generating tens of terabytes of disk writes over weeks. New defaults: snapshots every 15 minutes (10+ changes) or 5 minutes (100+ changes).
 - Reduce default Sidekiq concurrency from 10 to 5 threads. Most self-hosted instances don't need 10 workers and the extra threads increase Redis polling traffic.
+- Migration bug for version skippers. #2362
 
 ## [1.3.2] - 2026-03-08
 
