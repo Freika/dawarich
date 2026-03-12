@@ -26,12 +26,12 @@ module Stats
       end_ts = Time.current.to_i
 
       sql = Point.sanitize_sql_array([
-        "SELECT DISTINCT " \
-        "EXTRACT(YEAR FROM to_timestamp(timestamp) AT TIME ZONE ?)::int AS year, " \
-        "EXTRACT(MONTH FROM to_timestamp(timestamp) AT TIME ZONE ?)::int AS month " \
-        "FROM points WHERE user_id = ? AND timestamp BETWEEN ? AND ?",
-        user.timezone, user.timezone, user_id, start_ts, end_ts
-      ])
+                                       'SELECT DISTINCT ' \
+                                       'EXTRACT(YEAR FROM to_timestamp(timestamp) AT TIME ZONE ?)::int AS year, ' \
+                                       'EXTRACT(MONTH FROM to_timestamp(timestamp) AT TIME ZONE ?)::int AS month ' \
+                                       'FROM points WHERE user_id = ? AND timestamp BETWEEN ? AND ?',
+                                       user.timezone, user.timezone, user_id, start_ts, end_ts
+                                     ])
 
       Point.connection.select_rows(sql).map { |y, m| [y.to_i, m.to_i] }
     end
