@@ -16,6 +16,6 @@ class Tracks::BuildPath
   attr_reader :coordinates
 
   def factory
-    @factory ||= RGeo::Geographic.spherical_factory(srid: 3857)
+    @factory ||= RGeo::Geographic.spherical_factory(srid: 4326)
   end
 end

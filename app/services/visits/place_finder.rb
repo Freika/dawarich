@@ -7,6 +7,7 @@ module Visits
 
     SEARCH_RADIUS = 100 # meters
     SIMILARITY_RADIUS = 50 # meters
+    MAX_SUGGESTED_PLACES = 25
 
     def initialize(user)
       @user = user
@@ -38,7 +39,7 @@ module Visits
 
       {
         main_place: main_place,
-        suggested_places: all_suggested_places.uniq(&:name)
+        suggested_places: all_suggested_places.uniq(&:name).first(MAX_SUGGESTED_PLACES)
       }
     end
 
@@ -223,7 +224,7 @@ module Visits
 
     # Step 9: Find suggested places
     def find_suggested_places(lat, lon)
-      Place.near([lat, lon], SEARCH_RADIUS, :m).with_distance([lat, lon], :m)
+      Place.near([lat, lon], SEARCH_RADIUS, :m).with_distance([lat, lon], :m).limit(MAX_SUGGESTED_PLACES)
     end
 
     # Helper methods
