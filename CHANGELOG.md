@@ -11,6 +11,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Points table now converts speed from m/s to km/h (or mph) using the user's distance unit preference. Previously raw m/s values were displayed with a "km/h" label. #2337
 - Digest list API (`GET /api/v1/digests`) now returns distance as a structured object with `meters`, `converted`, and `unit` fields, matching the detail endpoint. Previously it returned raw meters, causing clients to display incorrect values. **Breaking change**: the `distance` field changed from an integer to an object. #2336
 - Dead documentation links in v0.26.0 changelog entry now point to the correct URLs. #2344
+- Filter out Immich and Photoprism api keys from logs to prevent accidental exposure. #2368
+- Fix foreign key violation when deleting users with place_visits referencing visits.
+- Fix reverse geocoding job failing on points with nil timestamp or lonlat.
+- Fix unsupported archive format generating Sentry noise instead of a user-friendly notification.
+- Fix deadlock in reverse geocoding places upsert under concurrent Sidekiq workers.
+- Reduce Redis disk I/O by relaxing RDB snapshot frequency. Previously the default `save 60 10000` rule caused a snapshot every ~60 seconds due to Sidekiq polling, generating tens of terabytes of disk writes over weeks. New defaults: snapshots every 15 minutes (10+ changes) or 5 minutes (100+ changes).
+- Reduce default Sidekiq concurrency from 10 to 5 threads. Most self-hosted instances don't need 10 workers and the extra threads increase Redis polling traffic.
 
 ## [1.3.2] - 2026-03-08
 

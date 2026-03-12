@@ -118,10 +118,35 @@ class ReverseGeocoding::Places::FetchData
     place.lonlat = build_point_coordinates(data['geometry']['coordinates'])
   end
 
+  DEADLOCK_MAX_RETRIES = 3
+
   def save_places(places_to_create, places_to_update)
-    if places_to_create.any?
-      place_attributes = places_to_create.map do |place|
+    retries = 0
+
+    begin
+      if places_to_create.any?
+        place_attributes = places_to_create.map do |place|
+          {
+            name: place.name,
+            latitude: place.latitude,
+            longitude: place.longitude,
+            lonlat: place.lonlat,
+            city: place.city,
+            country: place.country,
+            geodata: place.geodata,
+            source: place.source,
+            created_at: Time.current,
+            updated_at: Time.current
+          }
+        end
+        Place.insert_all(place_attributes)
+      end
+
+      return unless places_to_update.any?
+
+      update_attributes = places_to_update.uniq(&:id).map do |place|
         {
+          id: place.id,
           name: place.name,
           latitude: place.latitude,
           longitude: place.longitude,
@@ -130,31 +155,18 @@ class ReverseGeocoding::Places::FetchData
           country: place.country,
           geodata: place.geodata,
           source: place.source,
-          created_at: Time.current,
           updated_at: Time.current
         }
       end
-      Place.insert_all(place_attributes) # rubocop:disable Rails/SkipsModelValidations
+      Place.upsert_all(update_attributes, unique_by: :id)
+    rescue ActiveRecord::Deadlocked => e
+      retries += 1
+      if retries <= DEADLOCK_MAX_RETRIES
+        sleep(0.1 * retries) # exponential-ish backoff: 100ms, 200ms, 300ms
+        retry
+      end
+      raise e
     end
-
-    return unless places_to_update.any?
-
-    update_attributes = places_to_update.uniq(&:id).map do |place|
-      {
-        id: place.id,
-        name: place.name,
-        latitude: place.latitude,
-        longitude: place.longitude,
-        lonlat: place.lonlat,
-        city: place.city,
-        country: place.country,
-        geodata: place.geodata,
-        source: place.source,
-        updated_at: Time.current
-      }
-    end
-    Place.upsert_all(update_attributes, unique_by: :id)
-    # rubocop:enable Rails/SkipsModelValidations
   end
 
   def build_point_coordinates(coordinates)

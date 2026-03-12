@@ -104,6 +104,29 @@ RSpec.describe Users::ImportData, type: :service do
         expect { service.import }.to raise_error(StandardError, error_message)
       end
     end
+
+    context 'when archive has unsupported format' do
+      before do
+        allow(service).to receive(:extract_archive)
+        allow(service).to receive(:detect_format_version).and_raise(
+          Users::ImportData::UnsupportedFormatError,
+          'Unknown export format: neither manifest.json nor data.json found'
+        )
+      end
+
+      it 'creates a failure notification without reporting to Sentry' do
+        expect(ExceptionReporter).not_to receive(:call)
+        expect(::Notifications::Create).to receive(:new).with(
+          user: user,
+          title: 'Data import failed',
+          content: /Unknown export format/,
+          kind: :error
+        ).and_return(notification_double)
+
+        result = service.import
+        expect(result).to be_nil
+      end
+    end
   end
 
   describe '#process_archive_data' do

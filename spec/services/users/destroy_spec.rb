@@ -175,6 +175,23 @@ RSpec.describe Users::Destroy do
       end
     end
 
+    context 'with place_visits referencing visits (foreign key constraint)' do
+      let!(:area) { create(:area, user:) }
+      let!(:place) { create(:place, user:) }
+      let!(:visit) { create(:visit, user:, area:) }
+      let!(:place_visit) { create(:place_visit, place:, visit:) }
+
+      it 'deletes place_visits before visits to respect foreign key constraints' do
+        place_visit_id = place_visit.id
+        visit_id = visit.id
+
+        service.call
+
+        expect(PlaceVisit.where(id: place_visit_id).count).to eq(0)
+        expect(Visit.where(id: visit_id).count).to eq(0)
+      end
+    end
+
     context 'with family associations' do
       context 'when user owns a family with other members' do
         let(:family) { create(:family, creator: user) }
