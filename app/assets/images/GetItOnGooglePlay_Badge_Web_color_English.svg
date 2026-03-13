@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="134.95" height="40" viewBox="0 0 134.95 40">
+  <path d="M130,0H5A5,5,0,0,0,0,5V35a5,5,0,0,0,5,5H130a5,5,0,0,0,5-5V5A5,5,0,0,0,130,0Z" fill="#a6a6a6"/>
+  <path d="M130,.8A4.2,4.2,0,0,1,134.15,5V35a4.2,4.2,0,0,1-4.15,4.2H5A4.2,4.2,0,0,1,.8,35V5A4.2,4.2,0,0,1,5,.8H130m0-.8H5A5,5,0,0,0,0,5V35a5,5,0,0,0,5,5H130a5,5,0,0,0,5-5V5a5,5,0,0,0-5-5Z" fill="#a6a6a6"/>
+  <path d="M130,.8A4.2,4.2,0,0,1,134.15,5V35a4.2,4.2,0,0,1-4.15,4.2H5A4.2,4.2,0,0,1,.8,35V5A4.2,4.2,0,0,1,5,.8H130" fill="#000"/>
+  <!-- Google Play triangle -->
+  <path d="M10.44,7.54a2,2,0,0,0-.46,1.4V31.06a2,2,0,0,0,.46,1.4l.07.07L22.6,20.44v-.27L10.51,7.47Z" fill="#00d2ff"/>
+  <path d="M26.63,24.48,22.6,20.44v-.27l4.03-4.04.09.05,4.78,2.71c1.36.77,1.36,2.04,0,2.82l-4.78,2.71Z" fill="#ffbc00"/>
+  <path d="M26.72,24.43,22.6,20.31,10.44,32.46a1.63,1.63,0,0,0,2.08.06l14.2-8.09" fill="#ff3a44"/>
+  <path d="M26.72,16.18,12.52,8.09a1.63,1.63,0,0,0-2.08.06L22.6,20.31Z" fill="#00e886"/>
+  <!-- GET IT ON text -->
+  <text x="68.48" y="13" fill="#fff" font-family="'Segoe UI','Roboto','Helvetica Neue',Arial,sans-serif" font-size="7.4" letter-spacing=".7" text-anchor="middle">GET IT ON</text>
+  <!-- Google Play text -->
+  <text x="68.48" y="30" fill="#fff" font-family="'Segoe UI','Roboto','Helvetica Neue',Arial,sans-serif" font-size="16" font-weight="600" text-anchor="middle">Google Play</text>
+</svg>

@@ -215,12 +215,12 @@
                 <span class="indicator-item badge badge-secondary badge-xs"></span>
               <% end %>
               <% if current_user.admin? %>
-                <span class='tooltip tooltip-bottom' data-tip="You're an admin, Harry!">
+                <span class='tooltip tooltip-left' data-tip="You're an admin, Harry!">
                   <%= icon 'star' %>
                 </span>
               <% end %>
               <% if current_user.supporter? && current_user.safe_settings.show_supporter_badge? %>
-                <span class='tooltip tooltip-bottom' data-tip="Dawarich Supporter">
+                <span class='tooltip tooltip-left' data-tip="Dawarich Supporter">
                   <span class="text-sky-400 inline-block animate-[supporter-rainbow-glow_8s_linear_infinite]">
                     <%= icon 'gem' %>
                   </span>

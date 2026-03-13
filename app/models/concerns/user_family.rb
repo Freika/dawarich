@@ -13,6 +13,10 @@ module UserFamily
     has_one :created_family, class_name: 'Family', foreign_key: 'creator_id', inverse_of: :creator, dependent: :destroy
     has_many :sent_family_invitations, class_name: 'Family::Invitation', foreign_key: 'invited_by_id',
              inverse_of: :invited_by, dependent: :destroy
+    has_many :sent_location_requests, class_name: 'Family::LocationRequest', foreign_key: 'requester_id',
+             inverse_of: :requester, dependent: :destroy
+    has_many :received_location_requests, class_name: 'Family::LocationRequest', foreign_key: 'target_user_id',
+             inverse_of: :target_user, dependent: :destroy
   end
 
   def in_family?
@@ -48,7 +52,9 @@ module UserFamily
     current_settings['family'] ||= {}
 
     if enabled
+      existing_started_at = current_settings.dig('family', 'location_sharing', 'started_at')
       sharing_config = { 'enabled' => true }
+      sharing_config['started_at'] = existing_started_at || Time.current.iso8601
 
       if duration.present?
         expiration_time = case duration
@@ -84,6 +90,34 @@ module UserFamily
 
   def family_sharing_duration
     settings.dig('family', 'location_sharing', 'duration') || 'permanent'
+  end
+
+  def family_sharing_started_at
+    started_at = settings.dig('family', 'location_sharing', 'started_at')
+    return nil if started_at.blank?
+
+    Time.zone.parse(started_at)
+  rescue ArgumentError
+    nil
+  end
+
+  # Returns points within the given date range, scoped by sharing start time
+  # and capped at 1 year maximum. Points are ordered by timestamp ascending.
+  def family_history_points(start_at:, end_at:)
+    return Point.none unless family_sharing_enabled?
+
+    started_at = family_sharing_started_at
+    return Point.none unless started_at
+
+    # Cap history at 1 year maximum
+    one_year_ago = 1.year.ago
+    effective_start = [start_at, started_at, one_year_ago].max
+
+    return Point.none if effective_start >= end_at
+
+    scoped_points
+      .where('timestamp >= ? AND timestamp <= ?', effective_start.to_i, end_at.to_i)
+      .order(timestamp: :asc)
   end
 
   def latest_location_for_family

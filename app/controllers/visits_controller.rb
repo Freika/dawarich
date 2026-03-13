@@ -26,13 +26,21 @@ class VisitsController < ApplicationController
     if @visit.update(visit_params)
       respond_to do |format|
         format.turbo_stream do
-          render turbo_stream: [
-            turbo_stream.replace("visit_name_#{@visit.id}",
-                                 partial: 'visits/name', locals: { visit: @visit }),
-            turbo_stream.replace("visit_buttons_#{@visit.id}",
-                                 partial: 'visits/buttons', locals: { visit: @visit }),
-            stream_flash(:notice, "Visit #{@visit.status}.")
-          ]
+          streams = if @visit.saved_change_to_status?
+                      [
+                        turbo_stream.remove("visit_item_#{@visit.id}"),
+                        stream_flash(:notice, "Visit #{@visit.status}.")
+                      ]
+                    else
+                      [
+                        turbo_stream.replace("visit_name_#{@visit.id}",
+                                             partial: 'visits/name', locals: { visit: @visit }),
+                        turbo_stream.replace("visit_buttons_#{@visit.id}",
+                                             partial: 'visits/buttons', locals: { visit: @visit }),
+                        stream_flash(:notice, 'Visit updated.')
+                      ]
+                    end
+          render turbo_stream: streams
         end
         format.html { redirect_back(fallback_location: visits_path(status: :suggested)) }
       end

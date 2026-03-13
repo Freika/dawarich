@@ -86,7 +86,12 @@ export class FamilyLayer extends BaseLayer {
   }
 
   getLayerIds() {
-    return [this.id, `${this.id}-labels`, `${this.id}-pulse`]
+    return [
+      this.id,
+      `${this.id}-labels`,
+      `${this.id}-pulse`,
+      `${this.id}-history`,
+    ]
   }
 
   /**
@@ -189,6 +194,70 @@ export class FamilyLayer extends BaseLayer {
       type: "FeatureCollection",
       features,
     })
+  }
+
+  /**
+   * Load history polylines for family members
+   * @param {Array} historyData - Array of { user_id, points: [[lat, lon, ts], ...] }
+   */
+  loadMemberHistory(historyData) {
+    if (!Array.isArray(historyData)) return
+
+    const historySourceId = `${this.sourceId}-history`
+
+    const features = historyData
+      .filter((member) => member.points && member.points.length >= 2)
+      .map((member) => ({
+        type: "Feature",
+        geometry: {
+          type: "LineString",
+          coordinates: member.points.map((p) => [p[1], p[0]]), // [lon, lat]
+        },
+        properties: {
+          userId: member.user_id,
+          color: member.color || this.getMemberColor(member.user_id),
+        },
+      }))
+
+    const geojson = { type: "FeatureCollection", features }
+
+    if (this.map.getSource(historySourceId)) {
+      this.map.getSource(historySourceId).setData(geojson)
+    } else {
+      this.map.addSource(historySourceId, { type: "geojson", data: geojson })
+      this.map.addLayer(
+        {
+          id: `${this.id}-history`,
+          type: "line",
+          source: historySourceId,
+          paint: {
+            "line-color": ["get", "color"],
+            "line-width": 3,
+            "line-opacity": 0.7,
+          },
+          layout: {
+            "line-join": "round",
+            "line-cap": "round",
+          },
+        },
+        this.id,
+      ) // Insert below member points
+    }
+  }
+
+  /**
+   * Clear history polylines
+   */
+  clearHistory() {
+    const historyLayerId = `${this.id}-history`
+    const historySourceId = `${this.sourceId}-history`
+
+    if (this.map.getLayer(historyLayerId)) {
+      this.map.removeLayer(historyLayerId)
+    }
+    if (this.map.getSource(historySourceId)) {
+      this.map.removeSource(historySourceId)
+    }
   }
 
   /**

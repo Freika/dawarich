@@ -61,7 +61,7 @@
 
     <ul class="timeline timeline-snap-icon max-md:timeline-compact timeline-vertical">
       <% @visits.each do |visit| %>
-        <li>
+        <li id="visit_item_<%= visit.id %>">
           <div class="timeline-middle">
             <svg
               xmlns="http://www.w3.org/2000/svg"

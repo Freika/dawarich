@@ -4,7 +4,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [1.3.3] - Unreleased
+## [1.3.4] - 2026-03-13
+
+### Changed
+
+- Redesigned onboarding modal with two paths: "I have data" (inline file import) and "Start tracking" (app download + QR code). New users with existing location data can now start importing within 2 clicks of signing up.
+- Onboarding completion is now persisted server-side (`settings.onboarding_completed`) instead of relying solely on localStorage, preventing the modal from reappearing after browser data clears.
+- Onboarding modal is now shown to all new users, not just trial users with zero points.
+
+### Fixed
+
+- Fix admin and supporter tooltip overflowing the page on narrow screens. #1449
+- Fix date navigation arrow tooltips overlapping with the navbar on map pages. #2229 #2100
+- Fix infinite loading spinner when a trip has no points in its date range. #2293
+- Fix Insights monthly digest panels disappearing when switching months. #2305
+- Fix suggested visit confirm/decline not removing the visit from the list. #2307
+- Fix Stats page reloading when clicking "countries, cities" link. #2270
+- Fix map base layer selection not being restored after page reload (Maps v1). #2093
+- Fix duplicate country names in stats caused by geocoder returning different spellings. #2044
+- Fix total distance display overlapping layer picker when distance is in miles. #2017
+- Fix default route opacity displaying as 6000% for new users. #1891
+- Fix shared month stats map missing hexagons from the last day of the month. #1934
+- Fix Nominatim reverse geocoder producing all places named "Suggested place" instead of actual place names. #2182
+
+## [1.3.3] - 2026-03-12
+
+### Added
+
+- Better user management with pagination, search, and filtering in the admin panel. Admins can now easily find and manage users based on email, registration date, and activity status.
 
 ### Fixed
 

@@ -19,6 +19,12 @@
               data-trip-map-user-settings-value="<%= current_user.safe_settings.settings.to_json %>"
               data-trip-map-timezone-value="<%= trip.user.timezone %>">
         </div>
+      <% elsif trip.distance.present? %>
+        <div style="width: 100%; aspect-ratio: 1/1;" class="flex items-center justify-center rounded-lg bg-base-300">
+          <div class="text-center">
+            <p class="text-base-content/60">No points found for this trip</p>
+          </div>
+        </div>
       <% else %>
         <div style="width: 100%; aspect-ratio: 1/1;" class="flex items-center justify-center rounded-lg bg-base-300">
           <div class="text-center">

@@ -113,6 +113,18 @@
                         <% else %>
                           <div class="w-3 h-3 bg-base-300 rounded-full"></div>
                           <span class="text-xs opacity-50">Disabled</span>
+
+                          <% pending_req = @pending_requests[member.id] %>
+                          <% if pending_req %>
+                            <span class="text-xs text-info">
+                              Requested <%= time_ago_in_words(pending_req.created_at) %> ago
+                            </span>
+                          <% else %>
+                            <%= button_to "Request Location",
+                                family_location_requests_path(target_user_id: member.id),
+                                method: :post,
+                                class: "btn btn-outline btn-info btn-xs ml-2" %>
+                          <% end %>
                         <% end %>
                       </div>
                     <% end %>
