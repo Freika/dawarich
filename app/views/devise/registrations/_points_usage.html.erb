@@ -1,6 +1,6 @@
-<p class="py-6">
-  <p class='py-2'>
-    You have used <%= number_with_delimiter(current_user.points_count.to_i) %> points of <%= number_with_delimiter(DawarichSettings::BASIC_PAID_PLAN_LIMIT) %> available.
+<div class="space-y-3">
+  <p class='text-sm text-base-content/70'>
+    You have used <span class="font-medium text-base-content"><%= number_with_delimiter(current_user.points_count.to_i) %></span> points of <span class="font-medium text-base-content"><%= number_with_delimiter(DawarichSettings::BASIC_PAID_PLAN_LIMIT) %></span> available.
   </p>
-  <progress class="progress progress-primary w-1/2 h-5" value="<%= current_user.points_count.to_i %>" max="<%= DawarichSettings::BASIC_PAID_PLAN_LIMIT %>"></progress>
-</p>
+  <progress class="progress progress-primary h-5 w-full" value="<%= current_user.points_count.to_i %>" max="<%= DawarichSettings::BASIC_PAID_PLAN_LIMIT %>"></progress>
+</div>
