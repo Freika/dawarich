@@ -88,10 +88,11 @@ RSpec.describe 'Api::V1::Imports', type: :request do
       let(:file) { fixture_file_upload('gpx/gpx_track_single_segment.gpx', 'application/gpx+xml') }
 
       it 'creates an import and enqueues processing' do
-        expect {
+        expect do
           post api_v1_imports_url(api_key: api_key), params: { file: file }
-        }.to change(user.imports, :count).by(1)
-           .and have_enqueued_job(Import::ProcessJob).on_queue('imports')
+        end.to change(user.imports, :count)
+          .by(1)
+          .and have_enqueued_job(Import::ProcessJob).on_queue('imports')
 
         expect(response).to have_http_status(:created)
 
@@ -109,6 +110,27 @@ RSpec.describe 'Api::V1::Imports', type: :request do
 
         json = JSON.parse(response.body)
         expect(json['name']).to match(/gpx_track_single_segment_\d{8}_\d{6}\.gpx/)
+      end
+    end
+
+    context 'with an unsupported file type' do
+      it 'returns unprocessable entity with file type error' do
+        tmpfile = Tempfile.new(['malicious', '.exe'])
+        tmpfile.write('not a valid import file')
+        tmpfile.rewind
+
+        file = Rack::Test::UploadedFile.new(tmpfile.path, 'application/octet-stream')
+
+        post api_v1_imports_url(api_key: api_key), params: { file: file }
+
+        expect(response).to have_http_status(:unprocessable_entity)
+
+        json = JSON.parse(response.body)
+        expect(json['error']).to include('Unsupported file type')
+        expect(json['error']).to include('.exe')
+      ensure
+        tmpfile&.close
+        tmpfile&.unlink
       end
     end
 

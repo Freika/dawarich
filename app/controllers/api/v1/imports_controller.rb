@@ -1,8 +1,12 @@
 # frozen_string_literal: true
 
 class Api::V1::ImportsController < ApiController
+  ALLOWED_EXTENSIONS = %w[.gpx .geojson .json .kml .kmz .rec .csv].freeze
+
   before_action :authenticate_active_api_user!, only: %i[create]
+  before_action :require_write_api!, only: %i[create]
   before_action :validate_points_limit, only: %i[create]
+  before_action :validate_file_type, only: %i[create]
 
   def index
     imports = current_api_user
@@ -47,7 +51,7 @@ class Api::V1::ImportsController < ApiController
   rescue ActiveRecord::RecordInvalid => e
     render json: { error: e.record.errors.full_messages.join(', ') }, status: :unprocessable_entity
   rescue StandardError => e
-    Rails.logger.error "API Import error: #{e.message}"
+    Rails.logger.error "API Import error: #{e.message}\n#{e.backtrace&.first(5)&.join("\n")}"
     ExceptionReporter.call(e)
     render json: { error: 'An error occurred while processing the import' }, status: :internal_server_error
   end
@@ -61,6 +65,17 @@ class Api::V1::ImportsController < ApiController
     extension = File.extname(original_name)
     timestamp = Time.current.strftime('%Y%m%d_%H%M%S')
     "#{basename}_#{timestamp}#{extension}"
+  end
+
+  def validate_file_type
+    return unless params[:file].is_a?(ActionDispatch::Http::UploadedFile)
+
+    ext = File.extname(params[:file].original_filename).downcase
+    return if ALLOWED_EXTENSIONS.include?(ext)
+
+    render json: {
+      error: "Unsupported file type '#{ext}'. Allowed: #{ALLOWED_EXTENSIONS.join(', ')}"
+    }, status: :unprocessable_entity
   end
 
   def serialize_import(import)
