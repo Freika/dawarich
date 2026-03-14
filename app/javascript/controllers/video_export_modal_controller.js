@@ -134,7 +134,7 @@ export default class extends Controller {
       if (response.ok) {
         Flash.show(
           "success",
-          "Video export started. You'll be notified when it's ready.",
+          "Video export started! You'll be notified when it's ready. Visit Video Exports to download.",
         )
         this.close()
       } else {

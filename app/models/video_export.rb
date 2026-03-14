@@ -7,6 +7,10 @@ class VideoExport < ApplicationRecord
   enum :status, { created: 0, processing: 1, completed: 2, failed: 3 }
 
   validates :start_at, :end_at, presence: true
+  validate :track_belongs_to_user, if: -> { track_id.present? && track_id_changed? }
+  validate :concurrent_exports_limit, on: :create
+  validate :end_at_after_start_at
+  validate :config_values_valid, if: -> { config.present? }
 
   has_one_attached :file
 
@@ -47,7 +51,39 @@ class VideoExport < ApplicationRecord
   end
 
   def status_changed_to_processing?
-    status_changed? && processing?
+    will_save_change_to_status? && processing?
+  end
+
+  def track_belongs_to_user
+    return if user&.tracks&.exists?(id: track_id)
+
+    errors.add(:track_id, 'does not belong to this user')
+  end
+
+  def concurrent_exports_limit
+    return unless user
+
+    active_count = user.video_exports.where(status: %i[created processing]).count
+    return unless active_count >= 3
+
+    errors.add(:base, 'Too many concurrent video exports (max 3)')
+  end
+
+  def end_at_after_start_at
+    return unless start_at && end_at
+
+    errors.add(:end_at, 'must be after start date') if end_at <= start_at
+  end
+
+  def config_values_valid
+    if config['target_duration'].present?
+      duration = config['target_duration'].to_i
+      errors.add(:config, 'target_duration must be between 5 and 300') unless duration.between?(5, 300)
+    end
+    return if config['orientation'].blank?
+    return if %w[landscape portrait].include?(config['orientation'])
+
+    errors.add(:config, 'orientation must be landscape or portrait')
   end
 
   def broadcast_status

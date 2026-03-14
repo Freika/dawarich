@@ -1,5 +1,6 @@
 import consumer from "../channels/consumer"
 import BaseController from "./base_controller"
+import Flash from "./flash_controller"
 
 const STATUS_BADGES = {
   created: '<span class="badge badge-info">Created</span>',
@@ -10,6 +11,7 @@ const STATUS_BADGES = {
 
 export default class extends BaseController {
   static targets = ["table", "modal", "modalTitle", "videoPlayer"]
+  static values = { apiKey: String }
 
   connect() {
     this.channel = consumer.subscriptions.create(
@@ -27,6 +29,48 @@ export default class extends BaseController {
   disconnect() {
     if (this.channel) {
       this.channel.unsubscribe()
+    }
+  }
+
+  async retry(event) {
+    const btn = event.currentTarget
+    const config = JSON.parse(btn.dataset.retryConfig || "{}")
+    const trackId = btn.dataset.retryTrackId || null
+    const startAt = btn.dataset.retryStartAt || null
+    const endAt = btn.dataset.retryEndAt || null
+
+    btn.disabled = true
+    btn.textContent = "Retrying..."
+
+    try {
+      const response = await fetch("/api/v1/video_exports", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${this.apiKeyValue}`,
+        },
+        body: JSON.stringify({
+          track_id: trackId ? parseInt(trackId, 10) : null,
+          start_at: startAt,
+          end_at: endAt,
+          config,
+        }),
+      })
+
+      if (response.ok) {
+        Flash.show("success", "Video export retry started!")
+      } else {
+        const data = await response.json()
+        Flash.show(
+          "error",
+          data.errors?.join(", ") || "Failed to retry video export",
+        )
+      }
+    } catch (error) {
+      Flash.show("error", `Error: ${error.message}`)
+    } finally {
+      btn.disabled = false
+      btn.textContent = "Retry"
     }
   }
 
@@ -169,6 +213,20 @@ export default class extends BaseController {
       downloadLink.textContent = "Download"
       downloadLink.download = ""
       cell.appendChild(downloadLink)
+    }
+
+    if (data.status === "failed") {
+      const retryBtn = document.createElement("button")
+      retryBtn.type = "button"
+      retryBtn.className = "px-4 py-2 bg-amber-500 text-white rounded-md"
+      retryBtn.dataset.action = "click->video-exports#retry"
+      retryBtn.dataset.retryConfig = JSON.stringify(data.config || {})
+      retryBtn.dataset.retryTrackId = data.track_id || ""
+      retryBtn.dataset.retryStartAt = data.start_at || ""
+      retryBtn.dataset.retryEndAt = data.end_at || ""
+      retryBtn.dataset.retryLink = ""
+      retryBtn.textContent = "Retry"
+      cell.appendChild(retryBtn)
     }
 
     if (data.delete_url) {

@@ -1,6 +1,6 @@
 <% content_for :title, "Video Exports" %>
 
-<div class="w-full my-5" data-controller="video-exports">
+<div class="w-full my-5" data-controller="video-exports" data-video-exports-api-key-value="<%= current_user.api_key %>">
   <div class="flex justify-center">
     <h1 class="font-bold text-4xl">Video Exports</h1>
   </div>
@@ -63,6 +63,18 @@
                       data-preview-link
                     >Preview</button>
                     <%= link_to 'Download', rails_blob_path(video_export.file, disposition: 'attachment'), class: "px-4 py-2 bg-blue-500 text-white rounded-md", data: { download_link: "" }, download: video_export.download_filename %>
+                  <% end %>
+                  <% if video_export.failed? %>
+                    <button
+                      type="button"
+                      class="px-4 py-2 bg-amber-500 text-white rounded-md"
+                      data-action="click->video-exports#retry"
+                      data-retry-config="<%= video_export.config.to_json %>"
+                      data-retry-track-id="<%= video_export.track_id %>"
+                      data-retry-start-at="<%= video_export.start_at&.iso8601 %>"
+                      data-retry-end-at="<%= video_export.end_at&.iso8601 %>"
+                      data-retry-link
+                    >Retry</button>
                   <% end %>
                   <%= link_to 'Delete', video_export_path(video_export), data: { turbo_confirm: "Are you sure?", turbo_method: :delete, delete_link: "" }, method: :delete, class: "px-4 py-2 bg-red-500 text-white rounded-md" %>
                 </td>

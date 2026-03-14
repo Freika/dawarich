@@ -10,10 +10,10 @@ class Api::V1::VideoExportsController < ApiController
   before_action :set_video_export, only: %i[show destroy]
 
   def index
-    video_exports = current_api_user.video_exports.order(created_at: :desc)
+    video_exports = current_api_user.video_exports.with_attached_file.order(created_at: :desc)
 
     if params[:page].present?
-      per_page = [params[:per_page]&.to_i || 25, 100].min
+      per_page = (params[:per_page].presence&.to_i || 25).clamp(1, 100)
       video_exports = video_exports.page(params[:page]).per(per_page)
 
       response.set_header('X-Current-Page', video_exports.current_page.to_s)
@@ -44,15 +44,28 @@ class Api::V1::VideoExportsController < ApiController
   end
 
   def callback
-    video_export = VideoExport.find(params[:id])
+    video_export = VideoExport.includes(:user).find_by(id: params[:id])
+
+    return render json: { error: 'Unauthorized' }, status: :unauthorized unless video_export
+
     token = params[:token]
 
     unless VideoExports::CallbackToken.verify(token, video_export.id, video_export.callback_nonce)
-      return render json: { error: 'Invalid token' }, status: :unauthorized
+      return render json: { error: 'Unauthorized' }, status: :unauthorized
+    end
+
+    if video_export.completed? || video_export.failed?
+      return render json: { status: 'already_processed' }, status: :conflict
     end
 
     if params[:status] == 'completed' && params[:file].present?
-      video_export.file.attach(params[:file])
+      file = params[:file]
+      unless file.content_type&.start_with?('video/')
+        return render json: { error: 'Invalid file type' }, status: :unprocessable_content
+      end
+      return render json: { error: 'File too large' }, status: :unprocessable_content if file.size > 500.megabytes
+
+      video_export.file.attach(file)
       video_export.update!(status: :completed)
       notify_user(video_export, :info, 'Video export ready', 'Your video export is ready for download.')
     else
@@ -99,11 +112,7 @@ class Api::V1::VideoExportsController < ApiController
   end
 
   def notify_user(video_export, kind, title, content)
-    video_export.user.notifications.create!(
-      title: title,
-      content: content,
-      kind: kind
-    )
+    Notifications::Create.new(user: video_export.user, kind:, title:, content:).call
   end
 
   def require_video_service

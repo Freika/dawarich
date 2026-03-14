@@ -85,17 +85,19 @@ module VideoExports
     # first try points linked via track_id, then fall back to time range
     def track_points_for(track)
       points = track.points.order(:timestamp)
-      return points if points.exists?
+      return points.limit(MAX_COORDINATES * 2) if points.exists?
 
       video_export.user.points
                   .where(timestamp: track.start_at.to_i..track.end_at.to_i)
                   .order(:timestamp)
+                  .limit(MAX_COORDINATES * 2)
     end
 
     def points_for_date_range
       video_export.user.points
                   .where(timestamp: video_export.start_at.to_i..video_export.end_at.to_i)
                   .order(:timestamp)
+                  .limit(MAX_COORDINATES * 2)
     end
 
     # Evenly downsample coordinates to MAX_COORDINATES, preserving first and last
@@ -111,6 +113,7 @@ module VideoExports
     def callback_url
       token = VideoExports::CallbackToken.generate(video_export.id, video_export.callback_nonce)
       app_url = ENV.fetch('APPLICATION_HOST', 'http://localhost:3000')
+      app_url = "https://#{app_url}" unless app_url.start_with?('http://', 'https://')
       "#{app_url}/api/v1/video_exports/#{video_export.id}/callback?token=#{token}"
     end
 

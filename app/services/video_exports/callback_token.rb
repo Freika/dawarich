@@ -29,7 +29,7 @@ module VideoExports
     end
 
     def self.secret_key
-      Rails.application.secret_key_base
+      Rails.application.key_generator.generate_key('video_export_callback', 32)
     end
 
     private_class_method :secret_key

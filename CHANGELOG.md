@@ -4,6 +4,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Video export retry button on the Video Exports page for failed exports
+- Stale video export recovery in `StaleJobsRecoveryJob` — exports stuck in `processing` or `created` are automatically marked as failed after 30 minutes
+
+### Changed
+
+- Video service health check cache extended from 5 to 15 minutes with reduced timeouts (1s) to minimize blocking on cold cache
+- Callback token now uses derived key (`key_generator`) instead of raw `secret_key_base`
+- `APPLICATION_HOST` auto-prefixed with `https://` if scheme is missing
+- Video export success flash now includes a link to the Video Exports page
+
+### Fixed
+
+- **Security**: Video export callback endpoint now returns uniform 401 for both missing and invalid records, preventing ID enumeration
+- **Security**: Track ownership validated on video export creation — users can no longer generate videos from other users' tracks
+- **Security**: Callback file upload now validates content type (`video/*` only) and enforces 500 MB size limit
+- Callback endpoint now guards against duplicate processing (returns 409 if already completed/failed)
+- Per-user concurrent video export limit enforced (max 3 active exports)
+- Video export now validates `end_at` must be after `start_at`
+- Video export config values validated (duration 5-300s, orientation must be landscape/portrait)
+- API index endpoint now uses `with_attached_file` to prevent N+1 queries on ActiveStorage
+- Callback action now eagerly loads user association to prevent N+1 on broadcast
+- `per_page` parameter now has lower bound of 1 (prevents 0 or negative values), uses `.clamp()` pattern
+- Database query in `RequestRender` now applies `LIMIT` before plucking coordinates, preventing full table scans on large date ranges
+- `track_belongs_to_user` validation only runs when `track_id` actually changes, avoiding unnecessary queries on status updates
+- Replaced deprecated `status_changed?` with `will_save_change_to_status?` in VideoExport model
+
 ## [1.3.1] - 2026-02-27
 
 ### Changed
