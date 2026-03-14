@@ -63,13 +63,12 @@ class Families::Locations
   def build_family_history(sharing_members, start_at:, end_at:)
     sharing_members.filter_map do |member|
       points = member.family_history_points(start_at: start_at, end_at: end_at)
-      next if points.empty?
+      total = points.count
+      next if total.zero?
 
-      sampled = if points.count > MAX_POINTS_PER_MEMBER
-                  nth = (points.count.to_f / MAX_POINTS_PER_MEMBER).ceil
-                  ids = points.pluck(:id)
-                  sampled_ids = ids.each_slice(nth).map(&:first)
-                  Point.where(id: sampled_ids).order(timestamp: :asc)
+      sampled = if total > MAX_POINTS_PER_MEMBER
+                  nth = (total.to_f / MAX_POINTS_PER_MEMBER).ceil
+                  points.where("id IN (SELECT id FROM (#{numbered_rows_sql(points)}) numbered WHERE mod(row_num, #{nth}) = 0)")
                 else
                   points
                 end
@@ -82,5 +81,9 @@ class Families::Locations
         points: sampled.pluck(:latitude, :longitude, :timestamp)
       }
     end
+  end
+
+  def numbered_rows_sql(scope)
+    scope.select('id, ROW_NUMBER() OVER (ORDER BY timestamp ASC) - 1 AS row_num').to_sql
   end
 end

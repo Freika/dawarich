@@ -8,7 +8,13 @@ class Family::LocationRequestsController < ApplicationController
   before_action :authorize_target_user!, only: %i[show accept decline]
 
   def create
-    target = User.find(params[:target_user_id])
+    target = current_user.family&.members&.find_by(id: params[:target_user_id])
+
+    unless target
+      redirect_to family_path, alert: 'User not found in your family'
+      return
+    end
+
     result = Families::CreateLocationRequest.new(requester: current_user, target_user: target).call
 
     if result.success?
