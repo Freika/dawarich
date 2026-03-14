@@ -6,7 +6,7 @@ class StaleJobsRecoveryJob < ApplicationJob
 
   EXPORT_TIMEOUT = 2.hours
   IMPORT_TIMEOUT = 6.hours
-  VIDEO_EXPORT_TIMEOUT = 30.minutes
+  VIDEO_EXPORT_TIMEOUT = 1.hour
 
   def perform
     recover_stale_exports
@@ -54,7 +54,8 @@ class StaleJobsRecoveryJob < ApplicationJob
         user: video_export.user,
         kind: :error,
         title: 'Video export failed',
-        content: "Video export \"#{video_export.display_name}\" was stuck in processing and has been marked as failed."
+        content: "Video export \"#{video_export.display_name}\" " \
+                 'was stuck before processing started and has been marked as failed.'
       ).call
     rescue StandardError => e
       Rails.logger.error("Failed to recover stale video export #{video_export.id}: #{e.message}")

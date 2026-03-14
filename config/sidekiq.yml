@@ -8,7 +8,6 @@
   - families
   - imports
   - exports
-  - video_exports
   - stats
   - trips
   - tracks
@@ -19,4 +18,5 @@
   - cache
   - archival
   - digests
+  - video_exports
   - low_priority

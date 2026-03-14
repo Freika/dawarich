@@ -2,11 +2,23 @@ import consumer from "../channels/consumer"
 import BaseController from "./base_controller"
 import Flash from "./flash_controller"
 
-const STATUS_BADGES = {
-  created: '<span class="badge badge-info">Created</span>',
-  processing: '<span class="badge badge-warning">Processing</span>',
-  completed: '<span class="badge badge-success">Completed</span>',
-  failed: '<span class="badge badge-error">Failed</span>',
+const STATUS_CONFIG = {
+  created: { label: "Created", className: "badge badge-info" },
+  processing: { label: "Processing", className: "badge badge-warning" },
+  completed: { label: "Completed", className: "badge badge-success" },
+  failed: { label: "Failed", className: "badge badge-error" },
+}
+
+function createStatusBadge(status) {
+  const config = STATUS_CONFIG[status]
+  const span = document.createElement("span")
+  if (config) {
+    span.className = config.className
+    span.textContent = config.label
+  } else {
+    span.textContent = status
+  }
+  return span
 }
 
 export default class extends BaseController {
@@ -21,14 +33,21 @@ export default class extends BaseController {
       },
     )
 
+    this._boundCloseHandler = () => this._stopVideo()
     if (this.hasModalTarget) {
-      this.modalTarget.addEventListener("close", () => this._stopVideo())
+      this.modalTarget.addEventListener("close", this._boundCloseHandler)
     }
   }
 
   disconnect() {
     if (this.channel) {
       this.channel.unsubscribe()
+      this.channel = null
+    }
+
+    if (this._boundCloseHandler && this.hasModalTarget) {
+      this.modalTarget.removeEventListener("close", this._boundCloseHandler)
+      this._boundCloseHandler = null
     }
   }
 
@@ -50,7 +69,7 @@ export default class extends BaseController {
           Authorization: `Bearer ${this.apiKeyValue}`,
         },
         body: JSON.stringify({
-          track_id: trackId ? parseInt(trackId, 10) : null,
+          track_id: trackId ? Number.parseInt(trackId, 10) : null,
           start_at: startAt,
           end_at: endAt,
           config,
@@ -60,11 +79,14 @@ export default class extends BaseController {
       if (response.ok) {
         Flash.show("success", "Video export retry started!")
       } else {
-        const data = await response.json()
-        Flash.show(
-          "error",
-          data.errors?.join(", ") || "Failed to retry video export",
-        )
+        let message = "Failed to retry video export"
+        try {
+          const data = await response.json()
+          message = data.errors?.join(", ") || message
+        } catch {
+          // Non-JSON error response
+        }
+        Flash.show("error", message)
       }
     } catch (error) {
       Flash.show("error", `Error: ${error.message}`)
@@ -104,11 +126,9 @@ export default class extends BaseController {
   _updateRow(row, data) {
     const statusCell = row.querySelector("[data-status]")
     if (statusCell) {
-      if (STATUS_BADGES[data.status]) {
-        statusCell.innerHTML = STATUS_BADGES[data.status]
-      } else {
-        statusCell.textContent = data.status
-      }
+      statusCell.textContent = ""
+      statusCell.appendChild(createStatusBadge(data.status))
+
       if (data.status === "failed" && data.error_message) {
         const badge = statusCell.querySelector(".badge")
         if (badge) badge.title = data.error_message
@@ -154,11 +174,7 @@ export default class extends BaseController {
 
     const statusCell = document.createElement("td")
     statusCell.dataset.status = ""
-    if (STATUS_BADGES[data.status]) {
-      statusCell.innerHTML = STATUS_BADGES[data.status]
-    } else {
-      statusCell.textContent = data.status
-    }
+    statusCell.appendChild(createStatusBadge(data.status))
     row.appendChild(statusCell)
 
     const actionsCell = document.createElement("td")
@@ -174,22 +190,36 @@ export default class extends BaseController {
     const container = this.element.querySelector("#video_exports")
     if (!container) return
 
-    container.innerHTML = `
-      <div class="overflow-x-auto">
-        <table class="table overflow-x-auto" data-video-exports-target="table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>File size</th>
-              <th>Created at</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    `
+    container.textContent = ""
+
+    const wrapper = document.createElement("div")
+    wrapper.className = "overflow-x-auto"
+
+    const table = document.createElement("table")
+    table.className = "table overflow-x-auto"
+    table.dataset.videoExportsTarget = "table"
+
+    const thead = document.createElement("thead")
+    const headerRow = document.createElement("tr")
+    for (const heading of [
+      "Name",
+      "File size",
+      "Created at",
+      "Status",
+      "Actions",
+    ]) {
+      const th = document.createElement("th")
+      th.textContent = heading
+      headerRow.appendChild(th)
+    }
+    thead.appendChild(headerRow)
+    table.appendChild(thead)
+
+    const tbody = document.createElement("tbody")
+    table.appendChild(tbody)
+
+    wrapper.appendChild(table)
+    container.appendChild(wrapper)
   }
 
   _buildActions(cell, data) {

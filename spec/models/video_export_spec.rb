@@ -13,6 +13,117 @@ RSpec.describe VideoExport do
   describe 'validations' do
     it { is_expected.to validate_presence_of(:start_at) }
     it { is_expected.to validate_presence_of(:end_at) }
+
+    describe 'end_at_after_start_at' do
+      it 'rejects end_at equal to start_at' do
+        now = Time.current
+        ve = build(:video_export, start_at: now, end_at: now)
+
+        expect(ve).not_to be_valid
+        expect(ve.errors[:end_at]).to include('must be after start date')
+      end
+
+      it 'rejects end_at before start_at' do
+        ve = build(:video_export, start_at: Time.current, end_at: 1.hour.ago)
+
+        expect(ve).not_to be_valid
+        expect(ve.errors[:end_at]).to include('must be after start date')
+      end
+    end
+
+    describe 'concurrent_exports_limit' do
+      let(:user) { create(:user) }
+
+      it 'rejects a 4th concurrent export' do
+        create_list(:video_export, 3, user: user, status: :created)
+
+        ve = build(:video_export, user: user)
+
+        expect(ve).not_to be_valid
+        expect(ve.errors[:base]).to include('Too many concurrent video exports (max 3)')
+      end
+
+      it 'allows creation when existing exports are completed or failed' do
+        create(:video_export, :completed, user: user)
+        create(:video_export, :failed, user: user)
+        create(:video_export, user: user, status: :created)
+
+        ve = build(:video_export, user: user)
+
+        expect(ve).to be_valid
+      end
+    end
+
+    describe 'track_belongs_to_user' do
+      it 'rejects a track belonging to another user' do
+        other_user = create(:user)
+        track = create(:track, user: other_user)
+
+        ve = build(:video_export, track: track)
+
+        expect(ve).not_to be_valid
+        expect(ve.errors[:track_id]).to include('does not belong to this user')
+      end
+
+      it 'accepts a track belonging to the same user' do
+        user = create(:user)
+        track = create(:track, user: user)
+
+        ve = build(:video_export, user: user, track: track)
+
+        expect(ve).to be_valid
+      end
+    end
+
+    describe 'config_values_valid' do
+      it 'rejects target_duration below 5' do
+        ve = build(:video_export, config: { 'target_duration' => 2 })
+
+        expect(ve).not_to be_valid
+        expect(ve.errors[:config]).to include('target_duration must be between 5 and 300')
+      end
+
+      it 'rejects target_duration above 300' do
+        ve = build(:video_export, config: { 'target_duration' => 500 })
+
+        expect(ve).not_to be_valid
+        expect(ve.errors[:config]).to include('target_duration must be between 5 and 300')
+      end
+
+      it 'rejects invalid orientation' do
+        ve = build(:video_export, config: { 'orientation' => 'diagonal' })
+
+        expect(ve).not_to be_valid
+        expect(ve.errors[:config]).to include('orientation must be landscape or portrait')
+      end
+
+      it 'rejects invalid route_width' do
+        ve = build(:video_export, config: { 'route_width' => -1 })
+
+        expect(ve).not_to be_valid
+        expect(ve.errors[:config]).to include('route_width must be between 1 and 20')
+      end
+
+      it 'rejects route_width above 20' do
+        ve = build(:video_export, config: { 'route_width' => 999 })
+
+        expect(ve).not_to be_valid
+        expect(ve.errors[:config]).to include('route_width must be between 1 and 20')
+      end
+
+      it 'rejects invalid route_color format' do
+        ve = build(:video_export, config: { 'route_color' => 'not-a-color' })
+
+        expect(ve).not_to be_valid
+        expect(ve.errors[:config]).to include('route_color must be a valid hex color (e.g. #ff0000)')
+      end
+
+      it 'accepts valid route_color' do
+        ve = build(:video_export, config: { 'route_color' => '#3b82f6' })
+
+        expect(ve).to be_valid
+      end
+    end
   end
 
   describe 'enums' do

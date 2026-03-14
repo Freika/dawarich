@@ -5,49 +5,69 @@ class DawarichSettings
 
   class << self
     def reverse_geocoding_enabled?
-      @reverse_geocoding_enabled ||= photon_enabled? || geoapify_enabled? || nominatim_enabled?
+      return @reverse_geocoding_enabled if defined?(@reverse_geocoding_enabled)
+
+      @reverse_geocoding_enabled = photon_enabled? || geoapify_enabled? || nominatim_enabled?
     end
 
     def photon_enabled?
-      @photon_enabled ||= PHOTON_API_HOST.present?
+      return @photon_enabled if defined?(@photon_enabled)
+
+      @photon_enabled = PHOTON_API_HOST.present?
     end
 
     def photon_uses_komoot_io?
-      @photon_uses_komoot_io ||= PHOTON_API_HOST == 'photon.komoot.io'
+      return @photon_uses_komoot_io if defined?(@photon_uses_komoot_io)
+
+      @photon_uses_komoot_io = PHOTON_API_HOST == 'photon.komoot.io'
     end
 
     def geoapify_enabled?
-      @geoapify_enabled ||= GEOAPIFY_API_KEY.present?
+      return @geoapify_enabled if defined?(@geoapify_enabled)
+
+      @geoapify_enabled = GEOAPIFY_API_KEY.present?
     end
 
     def self_hosted?
-      @self_hosted ||= SELF_HOSTED
+      return @self_hosted if defined?(@self_hosted)
+
+      @self_hosted = SELF_HOSTED
     end
 
     def prometheus_exporter_enabled?
-      @prometheus_exporter_enabled ||=
+      return @prometheus_exporter_enabled if defined?(@prometheus_exporter_enabled)
+
+      @prometheus_exporter_enabled =
         ENV['PROMETHEUS_EXPORTER_ENABLED'].to_s == 'true' &&
         ENV['PROMETHEUS_EXPORTER_HOST'].present? &&
         ENV['PROMETHEUS_EXPORTER_PORT'].present?
     end
 
     def nominatim_enabled?
-      @nominatim_enabled ||= NOMINATIM_API_HOST.present?
+      return @nominatim_enabled if defined?(@nominatim_enabled)
+
+      @nominatim_enabled = NOMINATIM_API_HOST.present?
     end
 
     def store_geodata?
-      @store_geodata ||= STORE_GEODATA
+      return @store_geodata if defined?(@store_geodata)
+
+      @store_geodata = STORE_GEODATA
     end
 
     def family_feature_enabled?
-      @family_feature_enabled ||= self_hosted?
+      return @family_feature_enabled if defined?(@family_feature_enabled)
+
+      @family_feature_enabled = self_hosted?
     end
 
     # Returns true only for self-hosted OIDC (OpenID Connect) setups.
     # Cloud mode OAuth (GitHub, Google) is always supplementary to email/password
     # and should not trigger OIDC-only mode restrictions.
     def oidc_enabled?
-      @oidc_enabled ||= self_hosted? && OMNIAUTH_PROVIDERS.include?(:openid_connect)
+      return @oidc_enabled if defined?(@oidc_enabled)
+
+      @oidc_enabled = self_hosted? && OMNIAUTH_PROVIDERS.include?(:openid_connect)
     end
 
     def features
@@ -58,7 +78,9 @@ class DawarichSettings
     end
 
     def archive_raw_data_enabled?
-      @archive_raw_data_enabled ||= ARCHIVE_RAW_DATA
+      return @archive_raw_data_enabled if defined?(@archive_raw_data_enabled)
+
+      @archive_raw_data_enabled = ARCHIVE_RAW_DATA
     end
 
     def video_service_enabled?

@@ -3,6 +3,8 @@ import consumer from "../channels/consumer"
 import Flash from "./flash_controller"
 import { MapPreview } from "./video_export_map_preview"
 import {
+  DEFAULT_MARKER_COLOR,
+  DEFAULT_ROUTE_COLOR,
   LANDSCAPE_LAYOUTS,
   PORTRAIT_LAYOUTS,
   PRESETS,
@@ -91,11 +93,11 @@ export default class extends Controller {
       orientation: this.orientationTarget.value,
       overlay_layout: this.overlayLayoutTarget.value,
       map_style: this.mapStyleTarget.value,
-      target_duration: parseInt(this.targetDurationTarget.value, 10),
+      target_duration: Number.parseInt(this.targetDurationTarget.value, 10),
       map_behavior: this.mapBehaviorTarget.value,
       fit_full_route: this.fitFullRouteTarget.checked,
       route_color: this.routeColorTarget.value,
-      route_width: parseInt(this.routeWidthTarget.value, 10),
+      route_width: Number.parseInt(this.routeWidthTarget.value, 10),
       marker_style: this.markerStyleTarget.value,
       marker_color: this.markerColorTarget.value,
       track_name: this.trackNameTarget.value || "",
@@ -114,7 +116,7 @@ export default class extends Controller {
 
     const payload = {
       track_id: this.trackIdInputTarget.value
-        ? parseInt(this.trackIdInputTarget.value, 10)
+        ? Number.parseInt(this.trackIdInputTarget.value, 10)
         : null,
       start_at: this.startAtInputTarget.value,
       end_at: this.endAtInputTarget.value,
@@ -138,11 +140,14 @@ export default class extends Controller {
         )
         this.close()
       } else {
-        const data = await response.json()
-        Flash.show(
-          "error",
-          data.errors?.join(", ") || "Failed to start video export",
-        )
+        let message = "Failed to start video export"
+        try {
+          const data = await response.json()
+          message = data.errors?.join(", ") || message
+        } catch {
+          // Non-JSON error response
+        }
+        Flash.show("error", message)
       }
     } catch (error) {
       Flash.show("error", `Error: ${error.message}`)
@@ -343,15 +348,20 @@ export default class extends Controller {
         card.className =
           "cursor-pointer rounded-lg border-2 border-base-300 p-1 text-center transition-colors hover:border-primary/50"
 
-        card.innerHTML = `
-          <img src="/video_presets/${preset.key}.png"
-               alt="${preset.label}"
-               class="w-full rounded ${aspectClass} object-cover bg-base-300"
-               loading="lazy"
-               onerror="this.style.display='none'">
-          <div class="text-xs mt-1 text-base-content/70 truncate">${preset.label}</div>
-        `
+        const img = document.createElement("img")
+        img.src = `/video_presets/${preset.key}.png`
+        img.alt = preset.label
+        img.className = `w-full rounded ${aspectClass} object-cover bg-base-300`
+        img.loading = "lazy"
+        img.addEventListener("error", () => {
+          img.style.display = "none"
+        })
 
+        const labelEl = document.createElement("div")
+        labelEl.className = "text-xs mt-1 text-base-content/70 truncate"
+        labelEl.textContent = preset.label
+
+        card.append(img, labelEl)
         inner.appendChild(card)
       }
 
@@ -395,9 +405,13 @@ export default class extends Controller {
   _updateLayoutOptions(orientation) {
     const layouts =
       orientation === "portrait" ? PORTRAIT_LAYOUTS : LANDSCAPE_LAYOUTS
-    this.overlayLayoutTarget.innerHTML = layouts
-      .map((l) => `<option value="${l.value}">${l.label}</option>`)
-      .join("")
+    this.overlayLayoutTarget.textContent = ""
+    for (const l of layouts) {
+      const option = document.createElement("option")
+      option.value = l.value
+      option.textContent = l.label
+      this.overlayLayoutTarget.appendChild(option)
+    }
   }
 
   _setLoading(loading) {
@@ -432,8 +446,8 @@ export default class extends Controller {
     this._updateLayoutOptions("landscape")
 
     // Reset color hex labels
-    this.colorHexLabelTarget.textContent = "#3b82f6"
-    this.markerColorHexLabelTarget.textContent = "#ef4444"
+    this.colorHexLabelTarget.textContent = DEFAULT_ROUTE_COLOR
+    this.markerColorHexLabelTarget.textContent = DEFAULT_MARKER_COLOR
 
     // Reset screen preset selection
     this.screenPresetInputTarget.value = ""

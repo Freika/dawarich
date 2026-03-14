@@ -47,6 +47,9 @@ export function interpolatePosition(coords, progress) {
 }
 
 export function getRouteUpToProgress(coords, progress) {
+  if (coords.length === 0) return []
+  if (coords.length === 1) return [[coords[0].lon, coords[0].lat]]
+
   const totalSegments = coords.length - 1
   const exactIndex = progress * totalSegments
   const floorIdx = Math.floor(exactIndex)

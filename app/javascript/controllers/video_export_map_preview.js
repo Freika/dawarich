@@ -1,6 +1,10 @@
 import maplibregl from "maplibre-gl"
 import { getMapStyle } from "maps_maplibre/utils/style_manager"
 import {
+  DEFAULT_MARKER_COLOR,
+  DEFAULT_ROUTE_COLOR,
+} from "./video_export_presets"
+import {
   addArrowMarker,
   addDotLayers,
   addRouteLayers,
@@ -28,17 +32,19 @@ export class MapPreview {
     this.markerStyle = "dot"
     this.arrowMarker = null
     this.overlays = new PreviewOverlays(wrapperEl)
-    this._routeColor = "#3b82f6"
+    this._routeColor = DEFAULT_ROUTE_COLOR
     this._routeWidth = 4
-    this._markerColor = "#ef4444"
+    this._markerColor = DEFAULT_MARKER_COLOR
     this._style = "dark"
+    this._destroyed = false
   }
 
   async show(trackId, options = {}) {
+    this._destroyed = false
     this._style = options.style || "dark"
-    this._routeColor = options.routeColor || "#3b82f6"
+    this._routeColor = options.routeColor || DEFAULT_ROUTE_COLOR
     this._routeWidth = options.routeWidth || 4
-    this._markerColor = options.markerColor || "#ef4444"
+    this._markerColor = options.markerColor || DEFAULT_MARKER_COLOR
     this.markerStyle = options.markerStyle || "dot"
 
     this.coords = await this._loadCoords(trackId)
@@ -210,6 +216,7 @@ export class MapPreview {
   }
 
   destroy() {
+    this._destroyed = true
     this.overlays.destroy()
     if (this.arrowMarker) {
       this.arrowMarker.remove()
@@ -231,15 +238,24 @@ export class MapPreview {
       const res = await fetch(`/api/v1/tracks/${trackId}`, {
         headers: { Authorization: `Bearer ${this.apiKey}` },
       })
-      if (!res.ok) return null
+      if (!res.ok) {
+        console.warn(
+          `[VideoExport] Failed to load track ${trackId}: ${res.status}`,
+        )
+        return null
+      }
       return extractCoordsFromGeoJSON(await res.json())
-    } catch {
+    } catch (err) {
+      console.warn(`[VideoExport] Error loading track ${trackId}:`, err)
       return null
     }
   }
 
   _reloadStyle() {
     getMapStyle(this._style).then((style) => {
+      // Guard: if destroyed while the async style fetch was in flight, bail out
+      if (this._destroyed || !this.map) return
+
       // Recreate the map instead of using setStyle() — avoids timing issues
       // in MapLibre v5 where layers added during style.load can be lost.
       this.map.remove()

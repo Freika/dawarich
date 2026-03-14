@@ -8,6 +8,8 @@ class VideoExportJob < ApplicationJob
     video_export.update!(status: :processing)
 
     VideoExports::RequestRender.new(video_export:).call
+  rescue ActiveRecord::RecordNotFound
+    Rails.logger.info("[VideoExportJob] VideoExport #{video_export_id} not found, skipping")
   rescue StandardError => e
     video_export&.update!(status: :failed, error_message: e.message)
     ExceptionReporter.call(e)

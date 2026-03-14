@@ -1,3 +1,6 @@
+export const DEFAULT_ROUTE_COLOR = "#3b82f6"
+export const DEFAULT_MARKER_COLOR = "#ef4444"
+
 export const LANDSCAPE_LAYOUTS = [
   { value: "bottom_bar", label: "Bottom Bar" },
   { value: "corner_hud", label: "Corner HUD" },

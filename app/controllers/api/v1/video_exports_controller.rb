@@ -54,24 +54,28 @@ class Api::V1::VideoExportsController < ApiController
       return render json: { error: 'Unauthorized' }, status: :unauthorized
     end
 
-    if video_export.completed? || video_export.failed?
-      return render json: { status: 'already_processed' }, status: :conflict
-    end
-
-    if params[:status] == 'completed' && params[:file].present?
-      file = params[:file]
-      unless file.content_type&.start_with?('video/')
-        return render json: { error: 'Invalid file type' }, status: :unprocessable_content
+    video_export.with_lock do
+      if video_export.completed? || video_export.failed?
+        return render json: { status: 'already_processed' }, status: :conflict
       end
-      return render json: { error: 'File too large' }, status: :unprocessable_content if file.size > 500.megabytes
 
-      video_export.file.attach(file)
-      video_export.update!(status: :completed)
-      notify_user(video_export, :info, 'Video export ready', 'Your video export is ready for download.')
-    else
-      video_export.update!(status: :failed, error_message: params[:error_message])
-      notify_user(video_export, :error, 'Video export failed',
-                  "Video export failed: #{params[:error_message]}")
+      if params[:status] == 'completed' && params[:file].present?
+        file = params[:file]
+        unless file.content_type&.start_with?('video/')
+          return render json: { error: 'Invalid file type' }, status: :unprocessable_content
+        end
+        return render json: { error: 'File too large' }, status: :unprocessable_content if file.size > 500.megabytes
+        return render json: { error: 'File is empty' }, status: :unprocessable_content if file.size.zero? # rubocop:disable Style/ZeroLengthPredicate
+
+        video_export.file.attach(file)
+        video_export.update!(status: :completed)
+        notify_user(video_export, :info, 'Video export ready', 'Your video export is ready for download.')
+      else
+        error_msg = params[:error_message].to_s.truncate(500)
+        video_export.update!(status: :failed, error_message: error_msg)
+        notify_user(video_export, :error, 'Video export failed',
+                    "Video export failed: #{error_msg}")
+      end
     end
 
     render json: { status: 'ok' }

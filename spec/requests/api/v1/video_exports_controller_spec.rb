@@ -29,7 +29,8 @@ RSpec.describe Api::V1::VideoExportsController do
     it 'creates a video export and enqueues a job' do
       expect do
         post '/api/v1/video_exports', params: params, headers: headers, as: :json
-      end.to change(VideoExport, :count).by(1)
+      end.to change(VideoExport, :count)
+        .by(1)
         .and have_enqueued_job(VideoExportJob)
 
       expect(response).to have_http_status(:created)
@@ -182,6 +183,122 @@ RSpec.describe Api::V1::VideoExportsController do
              params: { token: 'invalid', status: 'completed' }
 
         expect(response).to have_http_status(:unauthorized)
+      end
+    end
+
+    context 'with a nil token' do
+      it 'returns unauthorized' do
+        post "/api/v1/video_exports/#{video_export.id}/callback",
+             params: { status: 'completed' }
+
+        expect(response).to have_http_status(:unauthorized)
+      end
+    end
+
+    context 'when already completed' do
+      let(:video_export) { create(:video_export, :completed, user: user) }
+
+      it 'returns conflict' do
+        post "/api/v1/video_exports/#{video_export.id}/callback",
+             params: { token: token, status: 'completed' }
+
+        expect(response).to have_http_status(:conflict)
+        expect(response.parsed_body['status']).to eq('already_processed')
+      end
+    end
+
+    context 'with a non-video file type' do
+      let(:text_file) do
+        Rack::Test::UploadedFile.new(
+          StringIO.new('not a video'),
+          'text/plain',
+          true,
+          original_filename: 'hack.txt'
+        )
+      end
+
+      it 'returns unprocessable content' do
+        post "/api/v1/video_exports/#{video_export.id}/callback",
+             params: { token: token, status: 'completed', file: text_file }
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(response.parsed_body['error']).to eq('Invalid file type')
+      end
+    end
+
+    context 'with a zero-byte file' do
+      let(:empty_file) do
+        Rack::Test::UploadedFile.new(
+          StringIO.new(''),
+          'video/mp4',
+          true,
+          original_filename: 'empty.mp4'
+        )
+      end
+
+      it 'returns unprocessable content' do
+        post "/api/v1/video_exports/#{video_export.id}/callback",
+             params: { token: token, status: 'completed', file: empty_file }
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(response.parsed_body['error']).to eq('File is empty')
+      end
+    end
+
+    context 'with an error_message exceeding 500 characters' do
+      it 'truncates the error message' do
+        long_message = 'x' * 1000
+
+        post "/api/v1/video_exports/#{video_export.id}/callback",
+             params: { token: token, status: 'failed', error_message: long_message }
+
+        expect(response).to have_http_status(:ok)
+        video_export.reload
+        expect(video_export.error_message.length).to be <= 500
+      end
+    end
+  end
+
+  describe 'video_service_enabled? gate' do
+    before do
+      allow(DawarichSettings).to receive(:video_service_enabled?).and_return(false)
+    end
+
+    it 'returns not found for index when disabled' do
+      get '/api/v1/video_exports', headers: headers
+
+      expect(response).to have_http_status(:not_found)
+    end
+
+    it 'returns not found for create when disabled' do
+      post '/api/v1/video_exports',
+           params: { start_at: 1.day.ago.iso8601, end_at: Time.current.iso8601 },
+           headers: headers, as: :json
+
+      expect(response).to have_http_status(:not_found)
+    end
+
+    it 'still allows callback when disabled' do
+      allow(DawarichSettings).to receive(:video_service_enabled?).and_call_original
+
+      video_export = create(:video_export, :processing, user: user)
+      token = VideoExports::CallbackToken.generate(video_export.id, video_export.callback_nonce)
+
+      post "/api/v1/video_exports/#{video_export.id}/callback",
+           params: { token: token, status: 'failed', error_message: 'test' }
+
+      expect(response).to have_http_status(:ok)
+    end
+  end
+
+  describe 'DELETE /api/v1/video_exports/:id' do
+    context 'with another user export' do
+      it 'returns not found' do
+        other_export = create(:video_export)
+
+        delete "/api/v1/video_exports/#{other_export.id}", headers: headers
+
+        expect(response).to have_http_status(:not_found)
       end
     end
   end

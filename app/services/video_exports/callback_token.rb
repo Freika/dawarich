@@ -11,6 +11,8 @@ module VideoExports
     end
 
     def self.verify(token, video_export_id, nonce)
+      return false if token.blank?
+
       decoded = Base64.urlsafe_decode64(token)
       parts = decoded.split(':')
       return false unless parts.length == 4
@@ -24,7 +26,7 @@ module VideoExports
       return false unless ActiveSupport::SecurityUtils.secure_compare(digest, expected_digest)
 
       Time.zone.at(timestamp.to_i) > EXPIRY.ago
-    rescue ArgumentError
+    rescue ArgumentError, TypeError
       false
     end
 

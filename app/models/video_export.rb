@@ -80,10 +80,20 @@ class VideoExport < ApplicationRecord
       duration = config['target_duration'].to_i
       errors.add(:config, 'target_duration must be between 5 and 300') unless duration.between?(5, 300)
     end
-    return if config['orientation'].blank?
-    return if %w[landscape portrait].include?(config['orientation'])
 
-    errors.add(:config, 'orientation must be landscape or portrait')
+    if config['orientation'].present? && !%w[landscape portrait].include?(config['orientation'])
+      errors.add(:config, 'orientation must be landscape or portrait')
+    end
+
+    if config['route_width'].present?
+      width = config['route_width'].to_i
+      errors.add(:config, 'route_width must be between 1 and 20') unless width.between?(1, 20)
+    end
+
+    return if config['route_color'].blank?
+    return if config['route_color'].to_s.match?(/\A#[0-9a-fA-F]{6}\z/)
+
+    errors.add(:config, 'route_color must be a valid hex color (e.g. #ff0000)')
   end
 
   def broadcast_status
