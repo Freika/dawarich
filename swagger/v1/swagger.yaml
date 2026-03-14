@@ -744,6 +744,203 @@ paths:
                     type: string
                     example: ok
                     description: Application health status
+  "/api/v1/imports":
+    get:
+      summary: Lists imports
+      tags:
+      - Imports
+      description: Returns all imports for the authenticated user, ordered by creation
+        date (newest first)
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      - name: page
+        in: query
+        required: false
+        description: Page number
+        schema:
+          type: integer
+      - name: per_page
+        in: query
+        required: false
+        description: 'Items per page (default: 25)'
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: imports found
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                      description: Import ID
+                    name:
+                      type: string
+                      description: Import filename
+                    source:
+                      type: string
+                      nullable: true
+                      description: Detected source type (gpx, geojson, kml, owntracks,
+                        etc.)
+                    status:
+                      type: string
+                      description: Processing status (created, processing, completed,
+                        failed)
+                    created_at:
+                      type: string
+                      format: date-time
+                    points_count:
+                      type: integer
+                      description: Number of points imported
+                    processed:
+                      type: integer
+                      description: Number of points processed so far
+                    error_message:
+                      type: string
+                      nullable: true
+                      description: Error message if import failed
+                  required:
+                  - id
+                  - name
+                  - status
+                  - created_at
+        '401':
+          description: unauthorized
+    post:
+      summary: Creates an import
+      tags:
+      - Imports
+      description: Uploads a file (GPX, GeoJSON, KML, OwnTracks, etc.) and queues
+        it for import processing. Source type is auto-detected from the file content.
+        Processing happens asynchronously in the background.
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      responses:
+        '201':
+          description: import created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: Import ID
+                  name:
+                    type: string
+                    description: Import filename
+                  source:
+                    type: string
+                    nullable: true
+                    description: Detected source type
+                  status:
+                    type: string
+                    description: Processing status
+                  created_at:
+                    type: string
+                    format: date-time
+                  points_count:
+                    type: integer
+                    description: Number of points imported
+                  processed:
+                    type: integer
+                    description: Number of points processed so far
+                  error_message:
+                    type: string
+                    nullable: true
+                required:
+                - id
+                - name
+                - status
+                - created_at
+        '422':
+          description: missing file or validation error
+        '401':
+          description: unauthorized
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: file
+        required: true
+        description: The file to import (GPX, GeoJSON, KML, OwnTracks JSON, etc.)
+  "/api/v1/imports/{id}":
+    parameters:
+    - name: id
+      in: path
+      required: true
+      description: Import ID
+      schema:
+        type: integer
+    get:
+      summary: Retrieves an import
+      tags:
+      - Imports
+      description: Returns details of a specific import including processing status
+        and point count
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      responses:
+        '200':
+          description: import found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: Import ID
+                  name:
+                    type: string
+                    description: Import filename
+                  source:
+                    type: string
+                    nullable: true
+                    description: Detected source type
+                  status:
+                    type: string
+                    description: Processing status
+                  created_at:
+                    type: string
+                    format: date-time
+                  points_count:
+                    type: integer
+                    description: Number of points imported
+                  processed:
+                    type: integer
+                    description: Number of points processed so far
+                  error_message:
+                    type: string
+                    nullable: true
+                required:
+                - id
+                - name
+                - status
+                - created_at
+        '404':
+          description: import not found
+        '401':
+          description: unauthorized
   "/api/v1/insights":
     get:
       summary: Retrieves insights overview for a year

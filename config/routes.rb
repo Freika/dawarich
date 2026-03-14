@@ -174,6 +174,7 @@ Rails.application.routes.draw do
       get   'users/me', to: 'users#me'
 
       resources :areas,     only: %i[index show create update destroy]
+      resources :imports,   only: %i[index show create]
       resources :places,    only: %i[index show create update destroy] do
         collection do
           get 'nearby'
