@@ -67,6 +67,20 @@
         </div>
 
         <% if !DawarichSettings.self_hosted? %>
+          <% unless @invitation %>
+            <div class="form-control">
+              <%= label_tag 'user[signup_intent]', class: 'label' do %>
+                <span class="label-text">How do you plan to use Dawarich?</span>
+              <% end %>
+              <%= select_tag 'user[signup_intent]',
+                    options_for_select([
+                      ["I want to use the cloud version", "cloud"],
+                      ["I'm self-hosting and exploring the demo", "self_hosted_demo"]
+                    ]),
+                    class: 'select select-bordered w-full' %>
+            </div>
+          <% end %>
+
           <div class="cf-turnstile" data-sitekey="<%= ENV['TURNSTILE_SITE_KEY'] %>" data-theme="dark"></div>
         <% end %>
 
