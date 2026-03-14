@@ -1,0 +1,9 @@
+<%= turbo_frame_tag "family-navbar-indicator" do %>
+  <div data-controller="family-navbar-indicator"
+       data-family-navbar-indicator-enabled-value="<%= user.family_sharing_enabled? %>">
+    <div data-family-navbar-indicator-target="indicator"
+         class="tooltip tooltip-bottom w-2 h-2 <%= user.family_sharing_enabled? ? 'bg-green-500 animate-pulse' : 'bg-gray-400' %> rounded-full"
+         data-tip="<%= user.family_sharing_enabled? ? 'Location is being shared with your family' : 'Location is not being shared with your family' %>">
+    </div>
+  </div>
+<% end %>

@@ -45,7 +45,7 @@ module UserFamily
     expires_at.blank? || Time.zone.parse(expires_at).future?
   end
 
-  def update_family_location_sharing!(enabled, duration: nil)
+  def update_family_location_sharing!(enabled, duration: nil, share_history: nil, history_window: nil)
     return false unless in_family?
 
     current_settings = settings || {}
@@ -53,8 +53,13 @@ module UserFamily
 
     if enabled
       existing_started_at = current_settings.dig('family', 'location_sharing', 'started_at')
+      existing_share_history = current_settings.dig('family', 'location_sharing', 'share_history')
+      existing_history_window = current_settings.dig('family', 'location_sharing', 'history_window')
+
       sharing_config = { 'enabled' => true }
       sharing_config['started_at'] = existing_started_at || Time.current.iso8601
+      sharing_config['share_history'] = share_history.nil? ? (existing_share_history || false) : share_history
+      sharing_config['history_window'] = history_window || existing_history_window || '24h'
 
       if duration.present?
         expiration_time = case duration
@@ -101,17 +106,34 @@ module UserFamily
     nil
   end
 
-  # Returns points within the given date range, scoped by sharing start time
-  # and capped at 1 year maximum. Points are ordered by timestamp ascending.
+  def family_share_history?
+    settings.dig('family', 'location_sharing', 'share_history') == true
+  end
+
+  def family_history_window
+    settings.dig('family', 'location_sharing', 'history_window') || '24h'
+  end
+
+  # Returns points within the given date range, scoped by sharing start time,
+  # history window preference, and capped at 1 year maximum.
+  # Points are ordered by timestamp ascending.
   def family_history_points(start_at:, end_at:)
     return Point.none unless family_sharing_enabled?
+    return Point.none unless family_share_history?
 
     started_at = family_sharing_started_at
     return Point.none unless started_at
 
-    # Cap history at 1 year maximum
-    one_year_ago = 1.year.ago
-    effective_start = [start_at, started_at, one_year_ago].max
+    # Apply history window preference
+    window_start = case family_history_window
+                   when '24h' then 24.hours.ago
+                   when '7d' then 7.days.ago
+                   when '30d' then 30.days.ago
+                   when 'all' then 1.year.ago
+                   else 24.hours.ago
+                   end
+
+    effective_start = [start_at, started_at, window_start].max
 
     return Point.none if effective_start >= end_at
 

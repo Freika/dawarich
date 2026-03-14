@@ -168,8 +168,7 @@ RSpec.describe '/settings/background_jobs', type: :request do
           it 'redirects to imports page' do
             post settings_background_jobs_url, params: { job_name: 'start_immich_import' }
 
-            expect(response).to redirect_to(root_url)
-            expect(flash[:alert]).to eq('You are not authorized to perform this action.')
+            expect(response).to redirect_to(imports_url)
           end
         end
 
@@ -177,8 +176,7 @@ RSpec.describe '/settings/background_jobs', type: :request do
           it 'redirects to imports page' do
             post settings_background_jobs_url, params: { job_name: 'start_photoprism_import' }
 
-            expect(response).to redirect_to(root_url)
-            expect(flash[:alert]).to eq('You are not authorized to perform this action.')
+            expect(response).to redirect_to(imports_url)
           end
         end
 

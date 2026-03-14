@@ -37,7 +37,7 @@ RSpec.describe '/trips', type: :request do
     end
 
     context 'when trip path is not yet calculated' do
-      let!(:trip_without_path) { create(:trip, user:, path: nil) }
+      let!(:trip_without_path) { create(:trip, user:, path: nil, distance: nil) }
 
       it 'renders a successful response with loading state' do
         get trips_url

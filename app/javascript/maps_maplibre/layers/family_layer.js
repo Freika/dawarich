@@ -100,20 +100,24 @@ export class FamilyLayer extends BaseLayer {
    */
   updateMember(member) {
     const features = this.data?.features || []
+    const memberId = member.user_id || member.id
+    const coords = [member.longitude, member.latitude]
+    const color = member.color || this.getMemberColor(memberId)
 
     // Find existing or add new
-    const index = features.findIndex((f) => f.properties.id === member.id)
+    const index = features.findIndex((f) => f.properties.id === memberId)
 
     const feature = {
       type: "Feature",
       geometry: {
         type: "Point",
-        coordinates: [member.longitude, member.latitude],
+        coordinates: coords,
       },
       properties: {
-        id: member.id,
-        name: member.name,
-        color: member.color || this.getMemberColor(member.id),
+        id: memberId,
+        name: member.email || member.name,
+        email: member.email,
+        color: color,
         lastUpdate: Date.now(),
       },
     }
@@ -128,6 +132,62 @@ export class FamilyLayer extends BaseLayer {
       type: "FeatureCollection",
       features,
     })
+
+    // Extend the history polyline with the new point
+    this.appendToHistory(memberId, coords, color)
+  }
+
+  /**
+   * Append a coordinate to the history polyline for a member.
+   * Creates the polyline if it doesn't exist yet.
+   */
+  appendToHistory(memberId, coords, color) {
+    const historySourceId = `${this.sourceId}-history`
+    const source = this.map.getSource(historySourceId)
+    if (!source) return
+
+    const data = source._data || { type: "FeatureCollection", features: [] }
+    const features = [...(data.features || [])]
+
+    const index = features.findIndex(
+      (f) => f.properties.userId === memberId,
+    )
+
+    if (index >= 0) {
+      // Append coordinate to existing polyline
+      features[index] = {
+        ...features[index],
+        geometry: {
+          type: "LineString",
+          coordinates: [...features[index].geometry.coordinates, coords],
+        },
+      }
+    } else {
+      // No existing polyline — store the point so the next update creates a line
+      // A LineString needs at least 2 coordinates, so track pending starts
+      if (!this._pendingHistoryStarts) this._pendingHistoryStarts = {}
+
+      if (this._pendingHistoryStarts[memberId]) {
+        // We have a previous point, create the polyline
+        features.push({
+          type: "Feature",
+          geometry: {
+            type: "LineString",
+            coordinates: [this._pendingHistoryStarts[memberId], coords],
+          },
+          properties: {
+            userId: memberId,
+            color: color,
+          },
+        })
+        delete this._pendingHistoryStarts[memberId]
+      } else {
+        this._pendingHistoryStarts[memberId] = coords
+        return // Don't update source yet — need 2 points for a LineString
+      }
+    }
+
+    source.setData({ type: "FeatureCollection", features })
   }
 
   /**

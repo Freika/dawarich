@@ -77,7 +77,7 @@ RSpec.describe UserFamily do
 
     before do
       travel_to(now)
-      user.update_family_location_sharing!(true, duration: 'permanent')
+      user.update_family_location_sharing!(true, duration: 'permanent', share_history: true, history_window: 'all')
       # Set started_at to well in the past so general tests can find their points.
       # The "does not return points from before sharing was enabled" test overrides this.
       user.update!(
