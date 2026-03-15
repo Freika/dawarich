@@ -11,7 +11,7 @@ class VideoExportJob < ApplicationJob
   rescue ActiveRecord::RecordNotFound
     Rails.logger.info("[VideoExportJob] VideoExport #{video_export_id} not found, skipping")
   rescue StandardError => e
-    video_export&.update!(status: :failed, error_message: e.message)
+    video_export&.update!(status: :failed, error_message: e.message.truncate(500))
     ExceptionReporter.call(e)
   end
 end

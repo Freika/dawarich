@@ -12,7 +12,7 @@ module VideoExports
 
     def call
       payload = render_payload
-      Rails.logger.info "[VideoExports::RequestRender] Sending render request: " \
+      Rails.logger.info '[VideoExports::RequestRender] Sending render request: ' \
                         "coordinates=#{payload[:coordinates].length}, " \
                         "callback_url=#{payload[:callback_url].present?}, " \
                         "config=#{payload[:config].present?}"
@@ -33,6 +33,11 @@ module VideoExports
       http.use_ssl = uri.scheme == 'https'
       http.open_timeout = 10
       http.read_timeout = 30
+      begin
+        http.ipaddr = Resolv::DNS.open { |dns| dns.getresource(uri.host, Resolv::DNS::Resource::IN::A).address.to_s }
+      rescue Resolv::ResolvError
+        # Fall back to default resolution (e.g. Docker internal hostnames)
+      end
 
       headers = { 'Content-Type' => 'application/json' }
       token = ENV['VIDEO_SERVICE_AUTH_TOKEN']
@@ -55,9 +60,11 @@ module VideoExports
     end
 
     def render_payload
+      urls = callback_urls
       {
         video_export_id: video_export.id,
-        callback_url: callback_url,
+        callback_url: urls.first,
+        callback_urls: urls,
         config: video_export.config,
         coordinates: track_coordinates
       }
@@ -110,11 +117,24 @@ module VideoExports
       result.uniq
     end
 
-    def callback_url
+    def callback_urls
       token = VideoExports::CallbackToken.generate(video_export.id, video_export.callback_nonce)
-      app_url = ENV.fetch('APPLICATION_HOST', 'http://localhost:3000')
-      app_url = "https://#{app_url}" unless app_url.start_with?('http://', 'https://')
-      "#{app_url}/api/v1/video_exports/#{video_export.id}/callback?token=#{token}"
+      callback_path = "/api/v1/video_exports/#{video_export.id}/callback?token=#{token}"
+      protocol = ENV.fetch('APPLICATION_PROTOCOL', 'http')
+      hosts = ENV.fetch('APPLICATION_HOSTS', 'localhost').split(',').map(&:strip).reject(&:blank?)
+      hosts.reject! { |h| h.match?(/\Alocalhost(:\d+)?\z/) || h.match?(/\A127\.0\.0\.1(:\d+)?\z/) }
+
+      # Build a URL for each configured host
+      urls = hosts.map { |host| "#{protocol}://#{host}#{callback_path}" }
+
+      # Fall back to APPLICATION_HOST for backwards compatibility
+      if urls.empty?
+        app_url = ENV.fetch('APPLICATION_HOST', 'http://localhost:3000')
+        app_url = "https://#{app_url}" unless app_url.start_with?('http://', 'https://')
+        urls = ["#{app_url}#{callback_path}"]
+      end
+
+      urls
     end
 
     def video_service_url

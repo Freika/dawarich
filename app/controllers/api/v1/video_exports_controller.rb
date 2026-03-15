@@ -44,6 +44,10 @@ class Api::V1::VideoExportsController < ApiController
   end
 
   def callback
+    if callback_rate_limited?(request.remote_ip)
+      return render json: { error: 'Too many requests' }, status: :too_many_requests
+    end
+
     video_export = VideoExport.includes(:user).find_by(id: params[:id])
 
     return render json: { error: 'Unauthorized' }, status: :unauthorized unless video_export
@@ -61,7 +65,8 @@ class Api::V1::VideoExportsController < ApiController
 
       if params[:status] == 'completed' && params[:file].present?
         file = params[:file]
-        unless file.content_type&.start_with?('video/')
+        detected_type = Marcel::MimeType.for(file.tempfile, name: file.original_filename)
+        unless detected_type.start_with?('video/')
           return render json: { error: 'Invalid file type' }, status: :unprocessable_content
         end
         return render json: { error: 'File too large' }, status: :unprocessable_content if file.size > 500.megabytes
@@ -117,6 +122,12 @@ class Api::V1::VideoExportsController < ApiController
 
   def notify_user(video_export, kind, title, content)
     Notifications::Create.new(user: video_export.user, kind:, title:, content:).call
+  end
+
+  def callback_rate_limited?(ip)
+    key = "video_export_callback:#{ip}"
+    count = Rails.cache.increment(key, 1, expires_in: 1.minute, initial: 0)
+    count > 30
   end
 
   def require_video_service

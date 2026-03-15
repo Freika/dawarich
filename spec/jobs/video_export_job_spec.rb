@@ -16,16 +16,34 @@ RSpec.describe VideoExportJob do
     end
 
     context 'when an error occurs during rendering' do
-      it 'marks the export as failed with error message' do
-        render_service = instance_double(VideoExports::RequestRender)
+      let(:render_service) { instance_double(VideoExports::RequestRender) }
+
+      before do
         allow(VideoExports::RequestRender).to receive(:new).and_return(render_service)
         allow(render_service).to receive(:call).and_raise(StandardError, 'Connection refused')
+        allow(ExceptionReporter).to receive(:call)
+      end
 
+      it 'marks the export as failed with error message' do
         described_class.perform_now(video_export.id)
 
         video_export.reload
         expect(video_export).to be_failed
         expect(video_export.error_message).to eq('Connection refused')
+      end
+
+      it 'reports the exception' do
+        described_class.perform_now(video_export.id)
+
+        expect(ExceptionReporter).to have_received(:call).with(instance_of(StandardError))
+      end
+
+      it 'truncates long error messages to 500 characters' do
+        allow(render_service).to receive(:call).and_raise(StandardError, 'x' * 1000)
+
+        described_class.perform_now(video_export.id)
+
+        expect(video_export.reload.error_message.length).to be <= 500
       end
     end
 

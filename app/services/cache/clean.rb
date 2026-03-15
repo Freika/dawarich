@@ -6,6 +6,7 @@ class Cache::Clean
       Rails.logger.info('Cleaning cache...')
       delete_control_flag
       delete_version_cache
+      delete_video_service_enabled_cache
 
       User.find_each do |user|
         delete_years_tracked_cache(user)
@@ -49,6 +50,10 @@ class Cache::Clean
       return unless Rails.cache.respond_to?(:delete_matched)
 
       Rails.cache.delete_matched("insights/yearly_digest/#{user.id}/*")
+    end
+
+    def delete_video_service_enabled_cache
+      Rails.cache.delete('video_service_enabled')
     end
   end
 end

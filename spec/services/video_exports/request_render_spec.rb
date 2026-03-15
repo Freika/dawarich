@@ -114,22 +114,105 @@ RSpec.describe VideoExports::RequestRender do
       end
     end
 
-    context 'when APPLICATION_HOST is set' do
-      let(:app_host) { 'https://dawarich.example.com' }
-
+    context 'when APPLICATION_HOSTS is set' do
       before do
-        allow(ENV).to receive(:fetch).with('APPLICATION_HOST', anything).and_return(app_host)
+        allow(ENV).to receive(:fetch).with('APPLICATION_HOSTS', anything)
+                                     .and_return('app.example.com,192.168.1.10')
+        allow(ENV).to receive(:fetch).with('APPLICATION_PROTOCOL', anything)
+                                     .and_return('https')
         stub_request(:post, "#{video_service_url}/api/render")
           .to_return(status: 200, body: { id: 'render-123', status: 'queued' }.to_json)
       end
 
-      it 'uses APPLICATION_HOST in the callback URL' do
+      it 'sends callback_urls for each host' do
         service.call
 
         expect(WebMock).to(have_requested(:post, "#{video_service_url}/api/render")
           .with do |req|
-            callback = JSON.parse(req.body)['callback_url']
-            callback.start_with?(app_host)
+            body = JSON.parse(req.body)
+            urls = body['callback_urls']
+            urls.length == 2 &&
+              urls[0].start_with?('https://app.example.com') &&
+              urls[1].start_with?('https://192.168.1.10')
+          end)
+      end
+
+      it 'sets callback_url to the first host for backwards compatibility' do
+        service.call
+
+        expect(WebMock).to(have_requested(:post, "#{video_service_url}/api/render")
+          .with do |req|
+            body = JSON.parse(req.body)
+            body['callback_url'].start_with?('https://app.example.com')
+          end)
+      end
+    end
+
+    context 'when no coordinates exist for the date range' do
+      let(:video_export) do
+        create(:video_export, user: user, start_at: 1.year.ago, end_at: 11.months.ago)
+      end
+
+      before do
+        # Remove the point created in the outer before block by scoping the export
+        # to a date range with no points
+      end
+
+      it 'raises RenderError with descriptive message' do
+        expect { service.call }.to raise_error(
+          VideoExports::RequestRender::RenderError,
+          'No coordinates found for the given date range'
+        )
+      end
+    end
+
+    context 'when using a track with associated points' do
+      let(:track) { create(:track, user: user) }
+      let(:video_export) { create(:video_export, user: user, track: track) }
+
+      before do
+        create(:point, user: user, track: track, timestamp: 8.hours.ago.to_i,
+                       longitude: 13.5, latitude: 52.6)
+        create(:point, user: user, track: track, timestamp: 7.hours.ago.to_i,
+                       longitude: 13.51, latitude: 52.61)
+
+        stub_request(:post, "#{video_service_url}/api/render")
+          .to_return(status: 200, body: { id: 'render-123', status: 'queued' }.to_json)
+      end
+
+      it 'uses track points for coordinates' do
+        service.call
+
+        expect(WebMock).to(have_requested(:post, "#{video_service_url}/api/render")
+          .with do |req|
+            coords = JSON.parse(req.body)['coordinates']
+            coords.length >= 2
+          end)
+      end
+    end
+
+    context 'when using a track with no associated points' do
+      let(:track) do
+        create(:track, user: user, start_at: 12.hours.ago, end_at: 6.hours.ago)
+      end
+      let(:video_export) { create(:video_export, user: user, track: track) }
+
+      before do
+        # Points are in the user's time range but NOT linked to the track via track_id
+        create(:point, user: user, timestamp: 10.hours.ago.to_i,
+                       longitude: 13.4, latitude: 52.5)
+
+        stub_request(:post, "#{video_service_url}/api/render")
+          .to_return(status: 200, body: { id: 'render-123', status: 'queued' }.to_json)
+      end
+
+      it 'falls back to time-range query using track start_at/end_at' do
+        service.call
+
+        expect(WebMock).to(have_requested(:post, "#{video_service_url}/api/render")
+          .with do |req|
+            coords = JSON.parse(req.body)['coordinates']
+            coords.length >= 1
           end)
       end
     end

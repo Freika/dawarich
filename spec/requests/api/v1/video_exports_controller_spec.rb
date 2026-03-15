@@ -84,6 +84,26 @@ RSpec.describe Api::V1::VideoExportsController do
       json = response.parsed_body
       expect(json.length).to eq(3)
     end
+
+    it 'includes display name in serialized output' do
+      get '/api/v1/video_exports', headers: headers
+
+      json = response.parsed_body
+      expect(json.first).to have_key('name')
+      expect(json.first['name']).to be_present
+    end
+
+    context 'with pagination' do
+      it 'returns pagination headers' do
+        get '/api/v1/video_exports', params: { page: 1, per_page: 2 }, headers: headers
+
+        expect(response).to have_http_status(:ok)
+        expect(response.headers['X-Current-Page']).to eq('1')
+        expect(response.headers['X-Total-Pages']).to be_present
+        expect(response.headers['X-Total-Count']).to eq('3')
+        expect(response.parsed_body.length).to eq(2)
+      end
+    end
   end
 
   describe 'GET /api/v1/video_exports/:id' do
@@ -255,6 +275,47 @@ RSpec.describe Api::V1::VideoExportsController do
         expect(response).to have_http_status(:ok)
         video_export.reload
         expect(video_export.error_message.length).to be <= 500
+      end
+    end
+
+    context 'with a file exceeding 500 MB' do
+      it 'returns unprocessable content' do
+        large_file = Rack::Test::UploadedFile.new(
+          StringIO.new('video data'),
+          'video/mp4',
+          true,
+          original_filename: 'huge.mp4'
+        )
+
+        allow_any_instance_of(ActionDispatch::Http::UploadedFile)
+          .to receive(:size).and_return(501.megabytes)
+
+        post "/api/v1/video_exports/#{video_export.id}/callback",
+             params: { token: token, status: 'completed', file: large_file }
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(response.parsed_body['error']).to eq('File too large')
+      end
+    end
+
+    context 'with a nonexistent video export id' do
+      it 'returns unauthorized' do
+        post '/api/v1/video_exports/0/callback',
+             params: { token: 'any', status: 'completed' }
+
+        expect(response).to have_http_status(:unauthorized)
+      end
+    end
+
+    context 'when already failed' do
+      let(:video_export) { create(:video_export, :failed, user: user) }
+
+      it 'returns conflict' do
+        post "/api/v1/video_exports/#{video_export.id}/callback",
+             params: { token: token, status: 'completed' }
+
+        expect(response).to have_http_status(:conflict)
+        expect(response.parsed_body['status']).to eq('already_processed')
       end
     end
   end

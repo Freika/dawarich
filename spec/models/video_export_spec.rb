@@ -198,6 +198,49 @@ RSpec.describe VideoExport do
     end
   end
 
+  describe '#display_name' do
+    it 'returns track_name from config when present' do
+      ve = build(:video_export, config: { 'track_name' => 'Morning Run' })
+
+      expect(ve.display_name).to eq('Morning Run')
+    end
+
+    it 'returns date range when track_name is absent' do
+      ve = build(:video_export,
+                 start_at: Time.zone.parse('2026-01-15 10:00'),
+                 end_at: Time.zone.parse('2026-01-15 11:00'),
+                 config: {})
+
+      expect(ve.display_name).to include('2026-01-15')
+    end
+  end
+
+  describe '#download_filename' do
+    it 'returns parameterized track_name with .mp4 extension' do
+      ve = build(:video_export, config: { 'track_name' => 'Morning Run' })
+
+      expect(ve.download_filename).to eq('morning-run.mp4')
+    end
+
+    it 'returns date-based filename when track_name is absent' do
+      ve = build(:video_export,
+                 start_at: Time.zone.parse('2026-01-15 10:00'),
+                 config: {})
+
+      expect(ve.download_filename).to eq('route-2026-01-15.mp4')
+    end
+  end
+
+  describe '#broadcast_status' do
+    it 'broadcasts to VideoExportsChannel on status change' do
+      ve = create(:video_export, status: :created)
+
+      expect(VideoExportsChannel).to receive(:broadcast_to).with(ve.user, hash_including(:id, :status))
+
+      ve.update!(status: :processing)
+    end
+  end
+
   describe 'status transitions' do
     it 'can transition from created to processing' do
       video_export = create(:video_export, status: :created)

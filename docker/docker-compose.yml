@@ -168,7 +168,7 @@ services:
   # Optional: Video rendering service for route replay video exports
   # Enable by setting VIDEO_SERVICE_URL=http://dawarich_video:3100 in your .env
   dawarich_video:
-    build: ../video-service
+    image: ghcr.io/zeitflow/dawarich-video:latest
     container_name: dawarich_video
     networks:
       - dawarich

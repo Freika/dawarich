@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'resolv'
+
 class DawarichSettings
   BASIC_PAID_PLAN_LIMIT = 10_000_000 # 10 million points
   LITE_DATA_WINDOW = 12.months
@@ -89,9 +91,12 @@ class DawarichSettings
     end
 
     def video_service_enabled?
-      Rails.cache.fetch('video_service_enabled', expires_in: 15.minutes) do
-        video_service_healthy?
-      end
+      cached = Rails.cache.read('video_service_enabled')
+      return cached unless cached.nil?
+
+      healthy = video_service_healthy?
+      Rails.cache.write('video_service_enabled', healthy, expires_in: healthy ? 15.minutes : 2.minutes)
+      healthy
     end
 
     private
@@ -101,11 +106,16 @@ class DawarichSettings
       return false if url.blank?
 
       uri = URI.parse("#{url.chomp('/')}/health")
-      response = Net::HTTP.start(
-        uri.host, uri.port,
-        use_ssl: uri.scheme == 'https',
-        open_timeout: 1, read_timeout: 1
-      ) { |http| http.get(uri.path) }
+      http = Net::HTTP.new(uri.host, uri.port)
+      http.use_ssl = uri.scheme == 'https'
+      http.open_timeout = 2
+      http.read_timeout = 2
+      begin
+        http.ipaddr = Resolv::DNS.open { |dns| dns.getresource(uri.host, Resolv::DNS::Resource::IN::A).address.to_s }
+      rescue Resolv::ResolvError
+        # Fall back to default resolution (e.g. Docker internal hostnames)
+      end
+      response = http.get(uri.path)
 
       return false unless response.is_a?(Net::HTTPSuccess)
 
