@@ -37,7 +37,6 @@ class Families::Locations
 
   def family_members_with_sharing_enabled
     user.family.members
-        .where.not(id: user.id)
         .select(&:family_sharing_enabled?)
   end
 

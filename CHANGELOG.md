@@ -4,13 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [1.3.4] - 2026-03-13
+## [1.3.4] - 2026-03-15
 
 ### Changed
 
 - Redesigned onboarding modal with two paths: "I have data" (inline file import) and "Start tracking" (app download + QR code). New users with existing location data can now start importing within 2 clicks of signing up.
 - Onboarding completion is now persisted server-side (`settings.onboarding_completed`) instead of relying solely on localStorage, preventing the modal from reappearing after browser data clears.
-- Onboarding modal is now shown to all new users, not just trial users with zero points.
+- Route opacity data migration now runs as a background job instead of inline during migration, improving deployment reliability for large instances.
 
 ### Fixed
 
@@ -26,6 +26,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Fix default route opacity displaying as 6000% for new users. #1891
 - Fix shared month stats map missing hexagons from the last day of the month. #1934
 - Fix Nominatim reverse geocoder producing all places named "Suggested place" instead of actual place names. #2182
+- Fix IDL-crossing route segmenter returning inconsistent coordinate types. `unwrapCoordinates` now always returns a uniform array-of-arrays structure. #2038
+- Fix a migration taking too long. #2375
+- Fix family sharing not including the requesting user's own location. #2153
 
 ## [1.3.3] - 2026-03-12
 

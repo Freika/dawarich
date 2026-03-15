@@ -35,6 +35,19 @@ RSpec.describe 'Api::V1::Families::Locations', type: :request do
         json_response = JSON.parse(response.body)
         expect(json_response['sharing_enabled']).to be true
       end
+
+      it 'includes the requesting user own location when they have sharing enabled' do
+        user.update_family_location_sharing!(true, duration: 'permanent')
+        create(:point, user: user, timestamp: 1.hour.ago.to_i)
+        create(:point, user: other_user, timestamp: 2.hours.ago.to_i)
+
+        get '/api/v1/families/locations', params: { api_key: user.api_key }
+
+        json_response = JSON.parse(response.body)
+        user_ids = json_response['locations'].map { |l| l['user_id'] }
+        expect(user_ids).to include(user.id)
+        expect(user_ids).to include(other_user.id)
+      end
     end
 
     context 'without API key' do
@@ -75,7 +88,7 @@ RSpec.describe 'Api::V1::Families::Locations', type: :request do
       other_user.update_family_location_sharing!(true, duration: 'permanent')
       other_user.update!(
         settings: other_user.settings.deep_merge(
-          'family' => { 'location_sharing' => { 'started_at' => 1.week.ago.iso8601 } }
+          'family' => { 'location_sharing' => { 'started_at' => 1.week.ago.iso8601, 'share_history' => true } }
         )
       )
     end

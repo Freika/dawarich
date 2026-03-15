@@ -235,10 +235,6 @@ export default class extends Controller {
     const familyLayer = mapsController.layerManager?.getLayer("family")
     if (familyLayer) {
       familyLayer.updateMember(member)
-      console.log(
-        "[Realtime Controller] Updated family member location:",
-        member.email,
-      )
     }
   }
 
@@ -265,11 +261,6 @@ export default class extends Controller {
     if (this.liveModeEnabled) {
       recentPointLayer.show()
       recentPointLayer.updateRecentPoint(longitude, latitude, properties)
-      console.log(
-        "[Realtime Controller] Updated recent point marker:",
-        longitude,
-        latitude,
-      )
     }
   }
 
