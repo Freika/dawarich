@@ -70,7 +70,7 @@ class Families::Locations
                   nth = (total.to_f / MAX_POINTS_PER_MEMBER).ceil
                   numbered = numbered_rows_sql(points)
                   points.where(
-                    "id IN (SELECT id FROM (#{numbered}) numbered WHERE mod(row_num, #{nth}) = 0)"
+                    "id IN (SELECT id FROM (#{numbered}) numbered WHERE mod(row_num, ?) = 0)", nth
                   )
                 else
                   points

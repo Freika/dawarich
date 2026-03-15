@@ -83,6 +83,8 @@ export default class extends Controller {
             ?.content,
           "Content-Type": "application/json",
         },
+      }).catch((error) => {
+        console.warn("[Onboarding] Failed to persist completion:", error)
       })
     }
   }

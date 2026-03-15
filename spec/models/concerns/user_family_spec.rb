@@ -147,4 +147,29 @@ RSpec.describe UserFamily do
       expect(result.pluck(:id)).to eq([p1.id, p3.id, p2.id])
     end
   end
+
+  describe '#update_family_location_sharing! history_window validation' do
+    it 'accepts valid history_window values' do
+      %w[24h 7d 30d all].each do |window|
+        user.update_family_location_sharing!(true, duration: 'permanent', history_window: window)
+        expect(user.family_history_window).to eq(window)
+      end
+    end
+
+    it 'rejects invalid history_window and falls back to 24h' do
+      user.update_family_location_sharing!(true, duration: 'permanent', history_window: 'invalid')
+      expect(user.family_history_window).to eq('24h')
+    end
+
+    it 'rejects XSS payloads in history_window' do
+      user.update_family_location_sharing!(true, duration: 'permanent', history_window: '<script>alert(1)</script>')
+      expect(user.family_history_window).to eq('24h')
+    end
+
+    it 'preserves existing valid window when nil is passed' do
+      user.update_family_location_sharing!(true, duration: 'permanent', history_window: '30d')
+      user.update_family_location_sharing!(true, duration: 'permanent', history_window: nil)
+      expect(user.family_history_window).to eq('30d')
+    end
+  end
 end

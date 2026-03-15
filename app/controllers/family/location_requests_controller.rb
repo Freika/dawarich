@@ -35,8 +35,10 @@ class Family::LocationRequestsController < ApplicationController
     end
 
     duration = params[:duration] || @request.suggested_duration
-    current_user.update_family_location_sharing!(true, duration: duration)
-    @request.update!(status: :accepted, responded_at: Time.current)
+    ActiveRecord::Base.transaction do
+      current_user.update_family_location_sharing!(true, duration: duration)
+      @request.update!(status: :accepted, responded_at: Time.current)
+    end
 
     redirect_to family_path, notice: 'Location sharing enabled'
   end
@@ -55,7 +57,7 @@ class Family::LocationRequestsController < ApplicationController
   private
 
   def set_request
-    @request = Family::LocationRequest.find(params[:id])
+    @request = Family::LocationRequest.where(family: current_user.family).find(params[:id])
   end
 
   def authorize_target_user!

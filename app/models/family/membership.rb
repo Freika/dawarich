@@ -30,7 +30,7 @@ class Family::Membership < ApplicationRecord
     Family::LocationRequest
       .pending
       .where('requester_id = ? OR target_user_id = ?', user_id, user_id)
-      .update_all(status: :expired, updated_at: Time.current)
+      .update_all(status: Family::LocationRequest.statuses[:expired], updated_at: Time.current)
   rescue StandardError => e
     ExceptionReporter.call(e, "Error cleaning up on family departure: #{e.message}")
   end

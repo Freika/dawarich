@@ -59,7 +59,8 @@ module UserFamily
       sharing_config = { 'enabled' => true }
       sharing_config['started_at'] = existing_started_at || Time.current.iso8601
       sharing_config['share_history'] = share_history.nil? ? (existing_share_history || false) : share_history
-      sharing_config['history_window'] = history_window || existing_history_window || '24h'
+      validated_window = validate_history_window(history_window || existing_history_window)
+      sharing_config['history_window'] = validated_window
 
       if duration.present?
         expiration_time = case duration
@@ -142,6 +143,8 @@ module UserFamily
       .order(timestamp: :asc)
   end
 
+  VALID_HISTORY_WINDOWS = %w[24h 7d 30d all].freeze
+
   def latest_location_for_family
     return nil unless family_sharing_enabled?
 
@@ -161,5 +164,11 @@ module UserFamily
       timestamp: latest_point.timestamp,
       updated_at: Time.zone.at(latest_point.timestamp)
     }
+  end
+
+  private
+
+  def validate_history_window(window)
+    VALID_HISTORY_WINDOWS.include?(window) ? window : '24h'
   end
 end

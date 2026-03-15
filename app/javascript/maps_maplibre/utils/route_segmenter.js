@@ -99,7 +99,7 @@ export class RouteSegmenter {
    * Unwrap coordinates to handle International Date Line (IDL) crossings
    * This ensures routes draw the short way across IDL instead of wrapping around globe
    * @param {Array} segment - Array of points with longitude and latitude properties
-   * @returns {Array} Array of [lon, lat] coordinate pairs, or an array of such arrays if the IDL is crossed
+   * @returns {Array<Array<[number, number]>>} Always returns an array of coordinate arrays (MultiLineString-compatible)
    */
   static unwrapCoordinates(segment) {
     const crossingIndices = RouteSegmenter.findIDLCrossings(segment)
@@ -138,10 +138,10 @@ export class RouteSegmenter {
           safeInterpLat,
         ])
       }
-      return coordsList
-    } else {
-      return coordsList[0]
     }
+
+    // Always return array-of-arrays for consistent MultiLineString-compatible type
+    return coordsList
   }
 
   /**
@@ -223,14 +223,15 @@ export class RouteSegmenter {
 
     // Generate a stable, unique route ID based on start/end times
     const routeId = `route-${startTime}-${endTime}`
-    const isMultiPath =
-      coordinates.length > 0 && Array.isArray(coordinates[0]?.[0])
+
+    // unwrapCoordinates always returns array-of-arrays; use LineString for single segments
+    const isMultiPath = coordinates.length > 1
 
     return {
       type: "Feature",
       geometry: {
         type: isMultiPath ? "MultiLineString" : "LineString",
-        coordinates,
+        coordinates: isMultiPath ? coordinates : coordinates[0],
       },
       properties: {
         id: routeId,

@@ -49,10 +49,6 @@ RSpec.describe 'Family::LocationRequests', type: :request do
       it 'shows the request detail page' do
         get family_location_request_path(request_record)
         expect(response).to have_http_status(:ok)
-      rescue ActionView::Template::Error
-        # Pre-existing icon issue in application layout - skip template rendering check
-        # The controller action itself works correctly (no redirect = 200 intent)
-        expect(true).to be true
       end
     end
 
@@ -62,6 +58,33 @@ RSpec.describe 'Family::LocationRequests', type: :request do
       it 'redirects with error' do
         get family_location_request_path(request_record)
         expect(response).to redirect_to(family_path)
+      end
+    end
+  end
+
+  describe 'GET /family/location_requests/:id (non-family member)' do
+    let!(:request_record) do
+      create(:family_location_request,
+             requester: owner, target_user: target_user, family: family)
+    end
+    let(:outsider) { create(:user) }
+
+    context 'when signed in as a user not in any family' do
+      before { sign_in outsider }
+
+      it 'redirects with error' do
+        get family_location_request_path(request_record)
+        expect(response).to redirect_to(root_path)
+      end
+    end
+
+    context 'when signed in as target user requesting non-existent record' do
+      before { sign_in target_user }
+
+      it 'raises ActiveRecord::RecordNotFound' do
+        expect do
+          get family_location_request_path(id: 999_999)
+        end.to raise_error(ActiveRecord::RecordNotFound)
       end
     end
   end

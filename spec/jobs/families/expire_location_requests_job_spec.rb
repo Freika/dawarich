@@ -53,6 +53,17 @@ RSpec.describe Families::ExpireLocationRequestsJob, type: :job do
       expect(declined.reload).to be_declined
     end
 
+    it 'writes correct integer enum value for expired status' do
+      expired = create(:family_location_request,
+                       requester: requester, target_user: target_user, family: family,
+                       status: :pending, expires_at: 1.hour.ago)
+
+      described_class.perform_now
+
+      raw_status = Family::LocationRequest.where(id: expired.id).pick(:status)
+      expect(raw_status).to eq('expired')
+    end
+
     it 'is idempotent' do
       expired = create(:family_location_request,
                        requester: requester, target_user: target_user, family: family,

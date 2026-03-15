@@ -8,6 +8,7 @@ export class FamilyLayer extends BaseLayer {
   constructor(map, options = {}) {
     super(map, { id: "family", ...options })
     this.memberColors = {}
+    this._historyFeatures = []
   }
 
   getSourceConfig() {
@@ -146,8 +147,7 @@ export class FamilyLayer extends BaseLayer {
     const source = this.map.getSource(historySourceId)
     if (!source) return
 
-    const data = source._data || { type: "FeatureCollection", features: [] }
-    const features = [...(data.features || [])]
+    const features = [...this._historyFeatures]
 
     const index = features.findIndex((f) => f.properties.userId === memberId)
 
@@ -185,6 +185,7 @@ export class FamilyLayer extends BaseLayer {
       }
     }
 
+    this._historyFeatures = features
     source.setData({ type: "FeatureCollection", features })
   }
 
@@ -277,6 +278,7 @@ export class FamilyLayer extends BaseLayer {
         },
       }))
 
+    this._historyFeatures = features
     const geojson = { type: "FeatureCollection", features }
 
     if (this.map.getSource(historySourceId)) {

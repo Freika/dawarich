@@ -7,6 +7,6 @@ class Families::ExpireLocationRequestsJob < ApplicationJob
     Family::LocationRequest
       .pending
       .where('expires_at <= ?', Time.current)
-      .update_all(status: :expired, updated_at: Time.current)
+      .update_all(status: Family::LocationRequest.statuses[:expired], updated_at: Time.current)
   end
 end
