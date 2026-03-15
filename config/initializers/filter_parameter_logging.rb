@@ -20,7 +20,7 @@ Rails.application.config.filter_parameters += [
       parsed[sensitive_key] = '[FILTERED]' if parsed[sensitive_key].present?
     end
     value.replace(parsed.to_json)
-  rescue JSON::ParseError, TypeError
+  rescue JSON::ParserError, TypeError
     # Not valid JSON — leave the value untouched
   end
 ]

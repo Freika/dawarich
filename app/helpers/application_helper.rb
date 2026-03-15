@@ -65,7 +65,7 @@ module ApplicationHelper
   end
 
   def onboarding_modal_showable?(user)
-    user.trial_state?
+    !user.settings&.dig('onboarding_completed')
   end
 
   def trial_button_class(user)

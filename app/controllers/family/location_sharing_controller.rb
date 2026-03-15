@@ -11,7 +11,9 @@ class Family::LocationSharingController < ApplicationController
     result = Families::UpdateLocationSharing.new(
       user: current_user,
       enabled: params[:enabled],
-      duration: params[:duration]
+      duration: params[:duration],
+      share_history: params[:share_history],
+      history_window: params[:history_window]
     ).call
 
     respond_to do |format|
@@ -22,6 +24,11 @@ class Family::LocationSharingController < ApplicationController
             "location-sharing-#{current_user.id}",
             partial: 'families/location_sharing_toggle',
             locals: { member: current_user }
+          ),
+          turbo_stream.replace(
+            'family-navbar-indicator',
+            partial: 'families/navbar_indicator',
+            locals: { user: current_user }
           ),
           stream_flash(result.success? ? :success : :error, result.payload[:message])
         ]

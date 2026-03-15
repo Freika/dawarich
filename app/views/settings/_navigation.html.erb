@@ -1,9 +1,11 @@
-<div class="tabs tabs-boxed mb-6">
-  <%= link_to 'General', settings_general_index_path, role: 'tab', class: "tab tab-lg #{active_tab?(settings_general_index_path)}" %>
-  <%= link_to 'Integrations', settings_integrations_path, role: 'tab', class: "tab tab-lg #{active_tab?(settings_integrations_path)}" %>
-  <%= link_to 'Map', settings_maps_path, role: 'tab', class: "tab tab-lg #{active_tab?(settings_maps_path)}" %>
-  <% if DawarichSettings.self_hosted? && current_user.admin? %>
-    <%= link_to 'Users', settings_users_path, role: 'tab', class: "tab tab-lg #{controller_path == 'settings/users' ? 'tab-active' : ''}" %>
-    <%= link_to 'Background Jobs', settings_background_jobs_path, role: 'tab', class: "tab tab-lg #{active_tab?(settings_background_jobs_path)}" %>
-  <% end %>
+<div class="mb-6 overflow-x-auto pb-1">
+  <div class="tabs tabs-boxed inline-flex min-w-max flex-nowrap">
+    <%= link_to 'General', settings_general_index_path, role: 'tab', class: "tab tab-lg #{active_tab?(settings_general_index_path)}" %>
+    <%= link_to 'Integrations', settings_integrations_path, role: 'tab', class: "tab tab-lg #{active_tab?(settings_integrations_path)}" %>
+    <%= link_to 'Map', settings_maps_path, role: 'tab', class: "tab tab-lg #{active_tab?(settings_maps_path)}" %>
+    <% if DawarichSettings.self_hosted? && current_user.admin? %>
+      <%= link_to 'Users', settings_users_path, role: 'tab', class: "tab tab-lg #{controller_path == 'settings/users' ? 'tab-active' : ''}" %>
+      <%= link_to 'Background Jobs', settings_background_jobs_path, role: 'tab', class: "tab tab-lg #{active_tab?(settings_background_jobs_path)}" %>
+    <% end %>
+  </div>
 </div>

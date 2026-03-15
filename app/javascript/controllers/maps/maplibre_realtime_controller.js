@@ -241,9 +241,13 @@ export default class extends Controller {
     const mapsController = this.mapsV2Controller
     if (!mapsController) return
 
-    const familyLayer = mapsController.familyLayer
+    const familyLayer = mapsController.layerManager?.getLayer("family")
     if (familyLayer) {
       familyLayer.updateMember(member)
+      console.log(
+        "[Realtime Controller] Updated family member location:",
+        member.email,
+      )
     }
   }
 

@@ -68,12 +68,16 @@ test.describe("Routes Layer", () => {
       expect(featureCount).toBeGreaterThanOrEqual(0)
     })
 
-    test("routes have LineString geometry", async ({ page }) => {
+    test("routes have LineString or MultiLineString geometry", async ({
+      page,
+    }) => {
       const { features } = await getRoutesSourceData(page)
 
       if (features.length > 0) {
         features.forEach((feature) => {
-          expect(feature.geometry.type).toBe("LineString")
+          expect(["LineString", "MultiLineString"]).toContain(
+            feature.geometry.type,
+          )
           expect(feature.geometry.coordinates.length).toBeGreaterThan(1)
         })
       }

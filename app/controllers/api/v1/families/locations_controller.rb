@@ -14,6 +14,29 @@ class Api::V1::Families::LocationsController < ApiController
     }
   end
 
+  def history
+    start_at = params[:start_at]
+    end_at = params[:end_at]
+
+    if start_at.blank? || end_at.blank?
+      return render json: { error: 'start_at and end_at are required' }, status: :bad_request
+    end
+
+    parsed_start = Time.zone.parse(start_at)
+    parsed_end = Time.zone.parse(end_at)
+
+    return render json: { error: 'Invalid date format' }, status: :bad_request if parsed_start.nil? || parsed_end.nil?
+
+    members = Families::Locations.new(current_api_user).history(
+      start_at: parsed_start,
+      end_at: parsed_end
+    )
+
+    render json: { members: members }
+  rescue ArgumentError
+    render json: { error: 'Invalid date format' }, status: :bad_request
+  end
+
   private
 
   def ensure_user_in_family!

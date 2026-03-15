@@ -4,7 +4,10 @@ module Calculateable
   extend ActiveSupport::Concern
 
   def calculate_path
-    updated_path = build_path_from_coordinates
+    coords = path_coordinates
+    return set_path_attributes(nil) if coords.size < 2
+
+    updated_path = Tracks::BuildPath.new(coords).call
     set_path_attributes(updated_path)
   end
 
@@ -34,10 +37,6 @@ module Calculateable
 
   def path_coordinates
     points.order(:timestamp).pluck(:lonlat)
-  end
-
-  def build_path_from_coordinates
-    Tracks::BuildPath.new(path_coordinates).call
   end
 
   def set_path_attributes(updated_path)

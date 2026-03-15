@@ -152,6 +152,54 @@ RSpec.describe CountriesAndCities do
           )
         end
       end
+
+      context 'when points have different country_name spellings but same country_id' do
+        let(:kwargs) { { min_minutes_spent_in_city: 5 } }
+
+        let(:country) do
+          Country.find_or_create_by!(name: 'Tanzania') do |c|
+            c.iso_a2 = 'TZ'
+            c.iso_a3 = 'TZA'
+            c.geom = 'MULTIPOLYGON (((0 0, 1 0, 1 1, 0 1, 0 0)))'
+          end
+        end
+
+        let(:points) do
+          [
+            create(:point, city: 'Dar es Salaam', country: country, timestamp:),
+            create(:point, city: 'Dar es Salaam', country: country, timestamp: timestamp + 10.minutes),
+            create(:point, city: 'Dar es Salaam', country: country, timestamp: timestamp + 20.minutes)
+          ].tap do |pts|
+            # Simulate geocoder returning a different spelling for the same country
+            pts.last.update_column(:country_name, 'United Republic of Tanzania')
+          end
+        end
+
+        it 'groups them under the canonical country name' do
+          result = countries_and_cities
+          country_names = result.map(&:country)
+
+          expect(country_names).to eq(['Tanzania'])
+          expect(result.size).to eq(1)
+        end
+      end
+
+      context 'when points have no country_id' do
+        let(:kwargs) { { min_minutes_spent_in_city: 5 } }
+
+        let(:points) do
+          (0..3).map do |i|
+            create(:point, city: 'Unknown City', timestamp: timestamp + (i * 10).minutes).tap do |p|
+              p.update_columns(country_name: 'Somewhere', country_id: nil)
+            end
+          end
+        end
+
+        it 'falls back to raw country_name' do
+          result = countries_and_cities
+          expect(result.map(&:country)).to eq(['Somewhere'])
+        end
+      end
     end
   end
 end
