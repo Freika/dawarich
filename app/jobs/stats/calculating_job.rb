@@ -12,7 +12,7 @@ class Stats::CalculatingJob < ApplicationJob
   private
 
   def create_stats_update_failed_notification(user_id, error)
-    user = User.find(user_id)
+    user = find_user_or_skip(user_id) || return
 
     Notifications::Create.new(
       user:,

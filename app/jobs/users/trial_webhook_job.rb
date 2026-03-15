@@ -4,7 +4,7 @@ class Users::TrialWebhookJob < ApplicationJob
   queue_as :default
 
   def perform(user_id)
-    user = User.find(user_id)
+    user = find_user_or_skip(user_id) || return
 
     payload = {
       user_id: user.id,

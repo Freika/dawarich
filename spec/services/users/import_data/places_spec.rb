@@ -172,7 +172,7 @@ RSpec.describe Users::ImportData::Places, type: :service do
       let(:places_data) { nil }
 
       it 'does not create any places' do
-        expect { service.call }.not_to change { Place.count }
+        expect { service.call }.not_to(change { Place.count })
       end
 
       it 'returns 0' do
@@ -185,7 +185,7 @@ RSpec.describe Users::ImportData::Places, type: :service do
       let(:places_data) { 'invalid_data' }
 
       it 'does not create any places' do
-        expect { service.call }.not_to change { Place.count }
+        expect { service.call }.not_to(change { Place.count })
       end
 
       it 'returns 0' do
@@ -198,7 +198,7 @@ RSpec.describe Users::ImportData::Places, type: :service do
       let(:places_data) { [] }
 
       it 'does not create any places' do
-        expect { service.call }.not_to change { Place.count }
+        expect { service.call }.not_to(change { Place.count })
       end
 
       it 'returns 0' do

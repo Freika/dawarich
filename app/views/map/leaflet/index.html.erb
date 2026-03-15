@@ -6,11 +6,14 @@
 <div class="w-full h-full">
   <div
     id='map'
-    class="w-full h-full"
+    class="w-full h-full relative"
     data-controller="maps points add-visit family-members"
     data-points-target="map"
     data-api_key="<%= current_user.api_key %>"
     data-self_hosted="<%= @self_hosted %>"
+    data-user_plan="<%= current_user.plan %>"
+    data-start_date="<%= @start_at.iso8601 %>"
+    data-upgrade_url="<%= upgrade_url(utm_medium: 'map', utm_content: 'leaflet') %>"
     data-user_settings='<%= current_user.safe_settings.settings.to_json %>'
     data-user_theme="<%= current_user&.theme || 'dark' %>"
     data-coordinates='<%= @coordinates.to_json.html_safe %>'

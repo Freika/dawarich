@@ -6,20 +6,20 @@
  * @returns {Object} Object containing CSS properties for the theme
  */
 export function getThemeStyles(userTheme) {
-  if (userTheme === 'light') {
+  if (userTheme === "light") {
     return {
-      backgroundColor: '#ffffff',
-      color: '#000000',
-      borderColor: '#e5e7eb',
-      shadowColor: 'rgba(0, 0, 0, 0.1)'
-    };
+      backgroundColor: "#ffffff",
+      color: "#000000",
+      borderColor: "#e5e7eb",
+      shadowColor: "rgba(0, 0, 0, 0.1)",
+    }
   } else {
     return {
-      backgroundColor: '#374151',
-      color: '#ffffff',
-      borderColor: '#4b5563',
-      shadowColor: 'rgba(0, 0, 0, 0.3)'
-    };
+      backgroundColor: "#374151",
+      color: "#ffffff",
+      borderColor: "#4b5563",
+      shadowColor: "rgba(0, 0, 0, 0.3)",
+    }
   }
 }
 
@@ -30,16 +30,16 @@ export function getThemeStyles(userTheme) {
  * @param {Object} additionalStyles - Optional additional CSS properties
  */
 export function applyThemeToControl(element, userTheme, additionalStyles = {}) {
-  const themeStyles = getThemeStyles(userTheme);
+  const themeStyles = getThemeStyles(userTheme)
 
   // Apply base theme styles
-  element.style.backgroundColor = themeStyles.backgroundColor;
-  element.style.color = themeStyles.color;
-  element.style.border = `1px solid ${themeStyles.borderColor}`;
-  element.style.boxShadow = `0 1px 4px ${themeStyles.shadowColor}`;
+  element.style.backgroundColor = themeStyles.backgroundColor
+  element.style.color = themeStyles.color
+  element.style.border = `1px solid ${themeStyles.borderColor}`
+  element.style.boxShadow = `0 1px 4px ${themeStyles.shadowColor}`
 
   // Apply any additional styles
-  Object.assign(element.style, additionalStyles);
+  Object.assign(element.style, additionalStyles)
 }
 
 /**
@@ -49,21 +49,21 @@ export function applyThemeToControl(element, userTheme, additionalStyles = {}) {
  */
 export function applyThemeToButton(button, userTheme) {
   applyThemeToControl(button, userTheme, {
-    border: 'none',
-    cursor: 'pointer'
-  });
+    border: "none",
+    cursor: "pointer",
+  })
 
   // Add hover effects
-  const themeStyles = getThemeStyles(userTheme);
-  const hoverBg = userTheme === 'light' ? '#f3f4f6' : '#4b5563';
+  const themeStyles = getThemeStyles(userTheme)
+  const hoverBg = userTheme === "light" ? "#f3f4f6" : "#4b5563"
 
-  button.addEventListener('mouseenter', () => {
-    button.style.backgroundColor = hoverBg;
-  });
+  button.addEventListener("mouseenter", () => {
+    button.style.backgroundColor = hoverBg
+  })
 
-  button.addEventListener('mouseleave', () => {
-    button.style.backgroundColor = themeStyles.backgroundColor;
-  });
+  button.addEventListener("mouseleave", () => {
+    button.style.backgroundColor = themeStyles.backgroundColor
+  })
 }
 
 /**
@@ -73,7 +73,6 @@ export function applyThemeToButton(button, userTheme) {
  */
 export function applyThemeToPanel(panel, userTheme) {
   applyThemeToControl(panel, userTheme, {
-    borderRadius: '4px'
-  });
+    borderRadius: "4px",
+  })
 }
-

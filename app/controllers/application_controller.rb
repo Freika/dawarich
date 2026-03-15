@@ -5,6 +5,8 @@ class ApplicationController < ActionController::Base
 
   rescue_from Pundit::NotAuthorizedError, with: :user_not_authorized
 
+  before_action :sign_out_deleted_users
+  around_action :set_user_time_zone
   before_action :unread_notifications, :set_self_hosted_status, :store_client_header
 
   protected
@@ -64,6 +66,37 @@ class ApplicationController < ActionController::Base
     end
   end
 
+  def require_pro!
+    return if DawarichSettings.self_hosted?
+
+    unless current_user
+      respond_to do |format|
+        format.html { redirect_to new_user_session_path, alert: 'Please sign in to continue.', status: :see_other }
+        format.json { render json: { error: 'You need to sign in first.' }, status: :unauthorized }
+        format.turbo_stream do
+          redirect_to new_user_session_path, alert: 'Please sign in to continue.', status: :see_other
+        end
+      end
+      return
+    end
+
+    return if current_user.pro?
+
+    respond_to do |format|
+      format.html do
+        redirect_back fallback_location: root_path,
+                      alert: 'This feature requires a Pro plan.',
+                      status: :see_other
+      end
+      format.json { render json: { error: 'This feature requires a Pro plan.' }, status: :forbidden }
+      format.turbo_stream do
+        redirect_back fallback_location: root_path,
+                      alert: 'This feature requires a Pro plan.',
+                      status: :see_other
+      end
+    end
+  end
+
   def ensure_family_feature_enabled!
     return if DawarichSettings.family_feature_enabled?
 
@@ -71,6 +104,24 @@ class ApplicationController < ActionController::Base
   end
 
   private
+
+  def sign_out_deleted_users
+    return unless current_user&.deleted?
+
+    sign_out current_user
+    redirect_to root_path, alert: 'Your account has been deleted.'
+  end
+
+  def set_user_time_zone(&block)
+    if current_user
+      timezone = current_user.timezone
+      Time.use_zone(timezone, &block)
+    else
+      yield
+    end
+  rescue ArgumentError
+    yield
+  end
 
   def set_self_hosted_status
     @self_hosted = DawarichSettings.self_hosted?

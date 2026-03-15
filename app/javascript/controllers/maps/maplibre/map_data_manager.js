@@ -1,5 +1,7 @@
 import maplibregl from "maplibre-gl"
 import { Toast } from "maps_maplibre/components/toast"
+import { UpgradeBanner } from "maps_maplibre/components/upgrade_banner"
+import { isGatedPlan } from "maps_maplibre/utils/layer_gate"
 import { performanceMonitor } from "maps_maplibre/utils/performance_monitor"
 
 const EMPTY_GEOJSON = { type: "FeatureCollection", features: [] }
@@ -27,6 +29,7 @@ export class MapDataManager {
    */
   async loadMapData(startDate, endDate, options = {}) {
     const { showLoading = true, fitBounds = true } = options
+    this._hasFittedBounds = false
 
     performanceMonitor.mark("load-map-data")
 
@@ -58,6 +61,10 @@ export class MapDataManager {
             "[MapDataManager] Updating tracks layer from background load",
           )
           this._updateTracksLayer(tracksGeoJSON)
+          // Fit bounds to tracks if no other data triggered it
+          if (fitBounds && !this._hasFittedBounds) {
+            this._hasFittedBounds = this._fitToFirstAvailable([tracksGeoJSON])
+          }
         },
         onPhotosLoaded: (photosGeoJSON) => {
           console.log(
@@ -70,12 +77,21 @@ export class MapDataManager {
       // 3. Store visits for filtering
       this.filterManager.setAllVisits(data.visits)
 
-      // 4. Store data for timeline and other features
+      // 4. Store data for replay and other features
       this.lastLoadedData = data
 
-      // 5. Fit bounds if requested
-      if (fitBounds && data.points.length > 0) {
-        this._fitMapToBounds(data.pointsGeoJSON)
+      // 5. Show upsell banner for Lite users when searching outside the 12-month window
+      if (isGatedPlan(this.controller.userPlanValue)) {
+        this._showDataWindowBanner()
+      }
+
+      // 6. Fit bounds if requested — use the first available data source
+      if (fitBounds) {
+        this._hasFittedBounds = this._fitToFirstAvailable([
+          data.pointsGeoJSON,
+          data.routesGeoJSON,
+          data.visitsGeoJSON,
+        ])
       }
 
       return data
@@ -301,24 +317,71 @@ export class MapDataManager {
   }
 
   /**
-   * Fit map to data bounds
+   * Try each GeoJSON source in order; fit map to the first one that has features.
+   * @returns {boolean} true if bounds were fitted
+   * @private
+   */
+  _fitToFirstAvailable(geojsonSources) {
+    for (const geojson of geojsonSources) {
+      if (geojson?.features?.length > 0) {
+        this._fitMapToBounds(geojson)
+        return true
+      }
+    }
+    return false
+  }
+
+  /**
+   * Fit map to data bounds. Handles Point, LineString, and Polygon geometries.
    * @private
    */
   _fitMapToBounds(geojson) {
-    if (!geojson?.features?.length) {
-      return
+    if (!geojson?.features?.length) return
+
+    const bounds = new maplibregl.LngLatBounds()
+
+    for (const feature of geojson.features) {
+      const { type, coordinates } = feature.geometry
+      if (type === "Point") {
+        bounds.extend(coordinates)
+      } else if (type === "LineString") {
+        for (const coord of coordinates) {
+          bounds.extend(coord)
+        }
+      } else if (type === "Polygon" || type === "MultiLineString") {
+        for (const ring of coordinates) {
+          for (const coord of ring) {
+            bounds.extend(coord)
+          }
+        }
+      }
     }
 
-    const coordinates = geojson.features.map((f) => f.geometry.coordinates)
+    if (!bounds.isEmpty()) {
+      this.map.fitBounds(bounds, {
+        padding: 50,
+        maxZoom: 15,
+        animate: false,
+      })
+    }
+  }
 
-    const bounds = coordinates.reduce((bounds, coord) => {
-      return bounds.extend(coord)
-    }, new maplibregl.LngLatBounds(coordinates[0], coordinates[0]))
+  /**
+   * Show a persistent upgrade banner for Lite users when the queried date
+   * range extends beyond the 12-month data window.
+   * @private
+   */
+  _showDataWindowBanner() {
+    const startDate = new Date(this.controller.startDateValue)
+    const twelveMonthsAgo = new Date()
+    twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12)
 
-    this.map.fitBounds(bounds, {
-      padding: 50,
-      maxZoom: 15,
-      animate: false,
-    })
+    if (startDate < twelveMonthsAgo) {
+      UpgradeBanner.show({
+        message: "Your Lite plan includes the last 12 months of data.",
+        upgradeUrl: this.controller.upgradeUrlValue,
+        utmContent: "data_retention",
+      })
+    }
   }
 }

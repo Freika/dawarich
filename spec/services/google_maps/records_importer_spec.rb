@@ -21,7 +21,7 @@ RSpec.describe GoogleMaps::RecordsImporter do
           'velocity' => 15,
           'batteryCharging' => true,
           'source' => 'GPS',
-          'deviceTag' => 1234567890,
+          'deviceTag' => 1_234_567_890,
           'platformType' => 'ANDROID',
           'activity' => [
             {
@@ -132,7 +132,7 @@ RSpec.describe GoogleMaps::RecordsImporter do
             'velocity' => 10,
             'batteryCharging' => true,
             'source' => 'WIFI',
-            'deviceTag' => 1234567890,
+            'deviceTag' => 1_234_567_890,
             'platformType' => 'ANDROID'
           }
         ]
@@ -155,8 +155,31 @@ RSpec.describe GoogleMaps::RecordsImporter do
         created_point = Point.last
 
         expect(created_point.raw_data['source']).to eq('WIFI')
-        expect(created_point.raw_data['deviceTag']).to eq(1234567890)
+        expect(created_point.raw_data['deviceTag']).to eq(1_234_567_890)
         expect(created_point.raw_data['platformType']).to eq('ANDROID')
+      end
+    end
+
+    context 'with activity data' do
+      let(:locations) do
+        [
+          {
+            'timestamp' => time.iso8601,
+            'latitudeE7' => 123_456_789,
+            'longitudeE7' => 123_456_789,
+            'activity' => [
+              { 'timestampMs' => (time.to_f * 1000).to_i.to_s,
+                'activity' => [{ 'type' => 'STILL', 'confidence' => 100 }] }
+            ]
+          }
+        ]
+      end
+
+      it 'extracts motion_data from activity field' do
+        parser
+        created_point = Point.last
+
+        expect(created_point.motion_data).to include('activity')
       end
     end
 

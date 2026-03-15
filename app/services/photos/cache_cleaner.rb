@@ -11,10 +11,6 @@ class Photos::CacheCleaner
     @user = user
   end
 
-  def self.call(user)
-    new(user).call
-  end
-
   def call
     return unless Rails.cache.respond_to?(:delete_matched)
 

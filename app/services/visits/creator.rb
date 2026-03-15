@@ -68,7 +68,6 @@ module Visits
             start: start_time, end: end_time
           )
           .find_each do |visit|
-
         visit_lat, visit_lon = visit.center
         next unless visit_lat && visit_lon
 

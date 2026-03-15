@@ -11,4 +11,13 @@ RailsIcons.configure do |config|
   # config.libraries.lucide.outline.default.css = "size-6"
   # config.libraries.lucide.outline.default.stroke_width = "1.5"
   # config.libraries.lucide.outline.default.data = {}
+
+  # Custom brand icons (Google, GitHub, etc.)
+  config.libraries.merge!(
+    brands: {
+      default: {
+        css: 'size-5'
+      }
+    }
+  )
 end

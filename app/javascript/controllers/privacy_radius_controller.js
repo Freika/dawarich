@@ -6,10 +6,10 @@ export default class extends Controller {
   toggleRadius(event) {
     if (event.target.checked) {
       // Enable privacy zone
-      this.radiusInputTarget.classList.remove('hidden')
+      this.radiusInputTarget.classList.remove("hidden")
 
       // Set default value if not already set
-      if (!this.fieldTarget.value || this.fieldTarget.value === '') {
+      if (!this.fieldTarget.value || this.fieldTarget.value === "") {
         const defaultValue = 1000
         this.fieldTarget.value = defaultValue
         this.sliderTarget.value = defaultValue
@@ -17,8 +17,8 @@ export default class extends Controller {
       }
     } else {
       // Disable privacy zone
-      this.radiusInputTarget.classList.add('hidden')
-      this.fieldTarget.value = ''
+      this.radiusInputTarget.classList.add("hidden")
+      this.fieldTarget.value = ""
     }
   }
 

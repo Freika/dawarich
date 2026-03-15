@@ -29,7 +29,7 @@ module InsightsHelper
     # Check if previous month exists in available months (same year only for simplicity)
     return unless month > 1 && available_months.include?(prev_date.month)
 
-    insights_path(year: prev_date.year, month: prev_date.month)
+    details_insights_path(year: prev_date.year, month: prev_date.month)
   end
 
   def next_month_link(year, month, available_months)
@@ -38,7 +38,7 @@ module InsightsHelper
     # Check if next month exists in available months (same year only for simplicity)
     return unless month < 12 && available_months.include?(next_date.month)
 
-    insights_path(year: next_date.year, month: next_date.month)
+    details_insights_path(year: next_date.year, month: next_date.month)
   end
 
   def weekly_pattern_chart_data(digest, user)
@@ -220,10 +220,10 @@ module InsightsHelper
     end_date = Date.new(year, 12, 31)
 
     # Adjust to start from the Monday of the week containing Jan 1
-    start_of_grid = start_date - (start_date.wday == 0 ? 6 : start_date.wday - 1)
+    start_of_grid = start_date - (start_date.wday.zero? ? 6 : start_date.wday - 1)
 
     # Adjust to end at the Sunday of the week containing Dec 31
-    end_of_grid = end_date + (end_date.wday == 0 ? 0 : 7 - end_date.wday)
+    end_of_grid = end_date + (end_date.wday.zero? ? 0 : 7 - end_date.wday)
 
     weeks = []
     current_week_start = start_of_grid

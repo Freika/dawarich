@@ -5,10 +5,7 @@
       "type": "Feature",
       "geometry": {
         "type": "Point",
-        "coordinates": [
-          14.3439906,
-          50.0506312
-        ]
+        "coordinates": [14.3439906, 50.0506312]
       },
       "properties": {
         "timestamp": "2023-01-01T08:00:00Z"
@@ -18,10 +15,7 @@
       "type": "Feature",
       "geometry": {
         "type": "Point",
-        "coordinates": [
-          14.3439906,
-          50.0506312
-        ]
+        "coordinates": [14.3439906, 50.0506312]
       },
       "properties": {
         "timestamp": "2023-01-01T10:00:00Z"
@@ -31,10 +25,7 @@
       "type": "Feature",
       "geometry": {
         "type": "Point",
-        "coordinates": [
-          14.42076,
-          50.08804
-        ]
+        "coordinates": [14.42076, 50.08804]
       },
       "properties": {
         "timestamp": "2023-01-02T12:00:00Z"
@@ -44,10 +35,7 @@
       "type": "Feature",
       "geometry": {
         "type": "Point",
-        "coordinates": [
-          14.42076,
-          50.08804
-        ]
+        "coordinates": [14.42076, 50.08804]
       },
       "properties": {
         "timestamp": "2023-01-02T14:00:00Z"
@@ -57,10 +45,7 @@
       "type": "Feature",
       "geometry": {
         "type": "Point",
-        "coordinates": [
-          14.42076,
-          50.08804
-        ]
+        "coordinates": [14.42076, 50.08804]
       },
       "properties": {
         "timestamp": "2023-01-02T16:00:00Z"

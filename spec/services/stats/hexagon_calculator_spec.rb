@@ -62,6 +62,25 @@ RSpec.describe Stats::HexagonCalculator do
         expect(total_points).to eq(2)
       end
 
+      context 'when points are on the last day of the month' do
+        let(:last_day_timestamp) { DateTime.new(year, month, 31, 18, 30, 0).to_i }
+        let!(:last_day_point) do
+          create(:point,
+                 user:,
+                 import:,
+                 timestamp: last_day_timestamp,
+                 lonlat: 'POINT(14.454712811406352 52.109902115161316)')
+        end
+
+        it 'includes points from the last day of the month' do
+          result = calculate_hexagons
+
+          total_points = result.sum { |record| record[1] }
+          expect(total_points).to eq(3)
+          expect(result.any? { |record| record[3] >= last_day_timestamp }).to be true
+        end
+      end
+
       context 'when there are too many hexagons' do
         let(:h3_resolution) { 15 } # Very high resolution to trigger MAX_HEXAGONS
 
@@ -69,11 +88,11 @@ RSpec.describe Stats::HexagonCalculator do
           # Stub to simulate too many hexagons on first call, then acceptable on second
           allow_any_instance_of(described_class).to receive(:calculate_h3_indexes).and_call_original
           call_count = 0
-          allow_any_instance_of(described_class).to receive(:calculate_h3_indexes) do |instance, points, resolution|
+          allow_any_instance_of(described_class).to receive(:calculate_h3_indexes) do |_instance, _points, _resolution|
             call_count += 1
             if call_count == 1
               # First call: return too many hexagons
-              Hash.new.tap do |hash|
+              {}.tap do |hash|
                 (described_class::MAX_HEXAGONS + 1).times do |i|
                   hash[i.to_s(16)] = [1, timestamp1, timestamp1]
                 end

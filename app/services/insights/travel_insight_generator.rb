@@ -31,7 +31,7 @@ module Insights
       insights.compact!
       return nil if insights.empty?
 
-      base_insight = insights.join('. ') + '.'
+      base_insight = "#{insights.join('. ')}."
       suggestion = generate_suggestion
 
       suggestion ? "#{base_insight} #{suggestion}" : base_insight
@@ -86,7 +86,7 @@ module Insights
     end
 
     def time_based_suggestion
-      return nil unless time_of_day.present?
+      return nil if time_of_day.blank?
 
       peak_time = time_of_day.max_by { |_, v| v.to_i }&.first
 

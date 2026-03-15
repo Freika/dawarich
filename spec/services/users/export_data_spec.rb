@@ -11,212 +11,156 @@ RSpec.describe Users::ExportData, type: :service do
 
   before do
     allow(Time).to receive(:current).and_return(Time.zone.local(2024, 12, 1, 12, 30, 0))
-    allow(FileUtils).to receive(:mkdir_p)
-    allow(FileUtils).to receive(:rm_rf)
-    allow(File).to receive(:open).and_call_original
-    allow(File).to receive(:directory?).and_return(true)
   end
 
   describe '#export' do
     context 'when export is successful' do
-      let(:zip_file_path) { export_directory.join('export.zip') }
-      let(:zip_file_double) { double('ZipFile') }
-      let(:export_record) do
-        double('Export', id: 1, name: 'test.zip', update!: true, file: double('File', attach: true))
-      end
-      let(:notification_service_double) { double('Notifications::Create', call: true) }
-
       before do
-        # Mock all the export data services
-        allow(Users::ExportData::Areas).to receive(:new).and_return(double(call: []))
+        # Mock export services that need file directories to return empty arrays
         allow(Users::ExportData::Imports).to receive(:new).and_return(double(call: []))
         allow(Users::ExportData::Exports).to receive(:new).and_return(double(call: []))
-        allow(Users::ExportData::Trips).to receive(:new).and_return(double(call: []))
-        allow(Users::ExportData::Stats).to receive(:new).and_return(double(call: []))
-        allow(Users::ExportData::Notifications).to receive(:new).and_return(double(call: []))
-        allow(Users::ExportData::Points).to receive(:new).and_return(double(call: []))
-        allow(Users::ExportData::Visits).to receive(:new).and_return(double(call: []))
-        allow(Users::ExportData::Places).to receive(:new).and_return(double(call: []))
 
-        # Mock user settings
-        allow(user).to receive(:safe_settings).and_return(double(settings: { theme: 'dark' }))
+        # Mock notifications service
+        allow(Notifications::Create).to receive(:new).and_return(double(call: true))
+      end
 
-        # Mock user associations for counting (needed before error occurs)
-        allow(user).to receive(:areas).and_return(double(count: 5))
-        allow(user).to receive(:imports).and_return(double(count: 12))
-        allow(user).to receive(:trips).and_return(double(count: 8))
-        allow(user).to receive(:stats).and_return(double(count: 24))
-        allow(user).to receive(:notifications).and_return(double(count: 10))
-        allow(user).to receive(:points_count).and_return(15_000)
-        allow(user).to receive(:visits).and_return(double(count: 45))
-        allow(user).to receive(:visited_places).and_return(double(count: 20))
-
-        # Mock Export creation and file attachment
-        exports_double = double('Exports', count: 3)
-        allow(user).to receive(:exports).and_return(exports_double)
-        allow(exports_double).to receive(:create!).and_return(export_record)
-        allow(export_record).to receive(:update!)
-
-        # Mock Zip file creation
-        allow(Zip::File).to receive(:open).with(zip_file_path, create: true).and_yield(zip_file_double)
-        allow(zip_file_double).to receive(:default_compression=)
-        allow(zip_file_double).to receive(:default_compression_level=)
-        allow(zip_file_double).to receive(:add)
-        allow(Dir).to receive(:glob).and_return([export_directory.join('data.json').to_s])
-
-        # Mock file operations - return a File instance for the zip file
-        allow(File).to receive(:open).with(export_directory.join('data.json'), 'w').and_yield(StringIO.new)
-        zip_file_io = File.new(__FILE__) # Use current file as a placeholder
-        allow(File).to receive(:open).with(zip_file_path).and_return(zip_file_io)
-
-        # Mock notifications service - prevent actual notification creation
-        allow(service).to receive(:create_success_notification)
-
-        # Mock cleanup to verify it's called
-        allow(service).to receive(:cleanup_temporary_files)
-        allow_any_instance_of(Pathname).to receive(:exist?).and_return(true)
+      after do
+        # Cleanup test files
+        FileUtils.rm_rf(export_directory) if File.directory?(export_directory)
       end
 
       it 'creates an Export record with correct attributes' do
-        expect(user.exports).to receive(:create!).with(
-          name: "user_data_export_#{timestamp}.zip",
-          file_format: :archive,
-          file_type: :user_data,
-          status: :processing
-        )
+        result = service.export
 
-        service.export
+        expect(result).to be_a(Export)
+        expect(result.name).to eq("user_data_export_#{timestamp}.zip")
+        expect(result.file_format).to eq('archive')
+        expect(result.file_type).to eq('user_data')
+        expect(result.status).to eq('completed')
       end
 
-      it 'creates the export directory structure' do
-        expect(FileUtils).to receive(:mkdir_p).with(files_directory)
+      it 'creates a manifest.json file in the archive' do
+        result = service.export
 
-        service.export
+        # Download and extract the archive to check contents
+        temp_dir = Rails.root.join('tmp/test_extract')
+        FileUtils.mkdir_p(temp_dir)
+
+        begin
+          archive_content = result.file.download
+          temp_zip = temp_dir.join('test.zip')
+          File.binwrite(temp_zip, archive_content)
+
+          Zip::File.open(temp_zip) do |zip_file|
+            manifest_entry = zip_file.find_entry('manifest.json')
+            expect(manifest_entry).not_to be_nil
+
+            manifest = JSON.parse(manifest_entry.get_input_stream.read)
+            expect(manifest['format_version']).to eq(2)
+            expect(manifest['counts']).to be_a(Hash)
+            expect(manifest['files']).to be_a(Hash)
+            expect(manifest['files']['points']).to be_an(Array)
+            expect(manifest['files']['visits']).to be_an(Array)
+            expect(manifest['files']['stats']).to be_an(Array)
+            expect(manifest['files']['tracks']).to be_an(Array)
+            expect(manifest['files']['digests']).to be_an(Array)
+          end
+        ensure
+          FileUtils.rm_rf(temp_dir)
+        end
       end
 
-      it 'calls all export data services with correct parameters' do
-        expect(Users::ExportData::Areas).to receive(:new).with(user)
-        expect(Users::ExportData::Imports).to receive(:new).with(user, files_directory)
-        expect(Users::ExportData::Exports).to receive(:new).with(user, files_directory)
-        expect(Users::ExportData::Trips).to receive(:new).with(user)
-        expect(Users::ExportData::Stats).to receive(:new).with(user)
-        expect(Users::ExportData::Notifications).to receive(:new).with(user)
-        expect(Users::ExportData::Points).to receive(:new).with(user, an_instance_of(StringIO))
-        expect(Users::ExportData::Visits).to receive(:new).with(user)
-        expect(Users::ExportData::Places).to receive(:new).with(user)
+      it 'creates JSONL files in the archive' do
+        result = service.export
 
-        service.export
-      end
+        temp_dir = Rails.root.join('tmp/test_extract')
+        FileUtils.mkdir_p(temp_dir)
 
-      it 'creates a zip file with proper compression settings' do
-        expect(Zip::File).to receive(:open).with(zip_file_path, create: true)
-        expect(Zip).to receive(:default_compression).and_return(-1) # Mock original compression
-        expect(Zip).to receive(:default_compression=).with(Zip::Entry::DEFLATED)
-        expect(Zip).to receive(:default_compression=).with(-1) # Restoration
+        begin
+          archive_content = result.file.download
+          temp_zip = temp_dir.join('test.zip')
+          File.binwrite(temp_zip, archive_content)
 
-        service.export
-      end
-
-      it 'attaches the zip file to the export record' do
-        expect(export_record.file).to receive(:attach).with(
-          io: an_instance_of(File),
-          filename: export_record.name,
-          content_type: 'application/zip'
-        )
-
-        service.export
+          Zip::File.open(temp_zip) do |zip_file|
+            expect(zip_file.find_entry('settings.jsonl')).not_to be_nil
+            expect(zip_file.find_entry('areas.jsonl')).not_to be_nil
+            expect(zip_file.find_entry('places.jsonl')).not_to be_nil
+            expect(zip_file.find_entry('trips.jsonl')).not_to be_nil
+            expect(zip_file.find_entry('notifications.jsonl')).not_to be_nil
+            expect(zip_file.find_entry('imports.jsonl')).not_to be_nil
+            expect(zip_file.find_entry('exports.jsonl')).not_to be_nil
+            expect(zip_file.find_entry('tags.jsonl')).not_to be_nil
+            expect(zip_file.find_entry('taggings.jsonl')).not_to be_nil
+            expect(zip_file.find_entry('raw_data_archives.jsonl')).not_to be_nil
+          end
+        ensure
+          FileUtils.rm_rf(temp_dir)
+        end
       end
 
       it 'marks the export as completed' do
-        expect(export_record).to receive(:update!).with(status: :completed)
+        result = service.export
 
-        service.export
+        expect(result.status).to eq('completed')
       end
 
       it 'creates a success notification' do
-        expect(service).to receive(:create_success_notification)
-
-        service.export
-      end
-
-      it 'cleans up temporary files' do
-        expect(service).to receive(:cleanup_temporary_files).with(export_directory)
+        expect(Notifications::Create).to receive(:new).with(
+          user: user,
+          title: 'Export completed',
+          content: /Your data export has been processed successfully/,
+          kind: :info
+        ).and_return(double(call: true))
 
         service.export
       end
 
       it 'returns the export record' do
         result = service.export
-        expect(result).to eq(export_record)
+
+        expect(result).to be_a(Export)
+        expect(result.user).to eq(user)
       end
 
-      it 'calculates entity counts correctly' do
-        counts = service.send(:calculate_entity_counts)
+      it 'attaches the zip file to the export record' do
+        result = service.export
 
-        expect(counts).to eq({
-                               areas: 5,
-          imports: 12,
-          exports: 3,
-          trips: 8,
-          stats: 24,
-          notifications: 10,
-          points: 15_000,
-          visits: 45,
-          places: 20
-                             })
+        expect(result.file).to be_attached
+        expect(result.file.content_type).to eq('application/zip')
+      end
+
+      it 'has correct format version constant' do
+        expect(Users::ExportData::FORMAT_VERSION).to eq(2)
       end
     end
 
     context 'when an error occurs during export' do
-      let(:export_record) { double('Export', id: 1, name: 'test.zip', update!: true) }
-      let(:error_message) { 'Something went wrong' }
+      let(:error_message) { 'Something went wrong during export' }
 
       before do
-        # Mock Export creation first
-        exports_double = double('Exports', count: 3)
-        allow(user).to receive(:exports).and_return(exports_double)
-        allow(exports_double).to receive(:create!).and_return(export_record)
-        allow(export_record).to receive(:update!)
+        # Mock export services that need file directories
+        allow(Users::ExportData::Imports).to receive(:new).and_return(double(call: []))
+        allow(Users::ExportData::Exports).to receive(:new).and_return(double(call: []))
 
-        # Mock user settings and other dependencies that are needed before the error
-        allow(user).to receive(:safe_settings).and_return(double(settings: { theme: 'dark' }))
-
-        # Mock user associations for counting
-        allow(user).to receive(:areas).and_return(double(count: 5))
-        allow(user).to receive(:imports).and_return(double(count: 12))
-        # exports already mocked above
-        allow(user).to receive(:trips).and_return(double(count: 8))
-        allow(user).to receive(:stats).and_return(double(count: 24))
-        allow(user).to receive(:notifications).and_return(double(count: 10))
-        allow(user).to receive(:points_count).and_return(15_000)
-        allow(user).to receive(:visits).and_return(double(count: 45))
-        allow(user).to receive(:places).and_return(double(count: 20))
-
-        # Then set up the error condition - make it happen during the JSON writing step
-        allow(File).to receive(:open).with(export_directory.join('data.json'), 'w').and_raise(StandardError,
-                                                                                              error_message)
-
+        # Make the write_manifest method fail to simulate an error after export record is created
+        allow(service).to receive(:write_manifest).and_raise(StandardError, error_message)
         allow(ExceptionReporter).to receive(:call)
+      end
 
-        # Mock cleanup method and pathname existence
-        allow(service).to receive(:cleanup_temporary_files)
-        allow_any_instance_of(Pathname).to receive(:exist?).and_return(true)
+      after do
+        FileUtils.rm_rf(export_directory) if File.directory?(export_directory)
       end
 
       it 'marks the export as failed' do
-        expect(export_record).to receive(:update!).with(status: :failed)
-
         expect { service.export }.to raise_error(StandardError, error_message)
+
+        export_record = user.exports.last
+        expect(export_record).not_to be_nil
+        expect(export_record.status).to eq('failed')
       end
 
       it 'reports the error via ExceptionReporter' do
         expect(ExceptionReporter).to receive(:call).with(an_instance_of(StandardError), 'Export failed')
-
-        expect { service.export }.to raise_error(StandardError, error_message)
-      end
-
-      it 'still cleans up temporary files' do
-        expect(service).to receive(:cleanup_temporary_files)
 
         expect { service.export }.to raise_error(StandardError, error_message)
       end
@@ -228,117 +172,71 @@ RSpec.describe Users::ExportData, type: :service do
 
     context 'when export record creation fails' do
       before do
-        exports_double = double('Exports', count: 3)
-        allow(user).to receive(:exports).and_return(exports_double)
-        allow(exports_double).to receive(:create!).and_raise(ActiveRecord::RecordInvalid)
+        allow(user).to receive_message_chain(:exports, :create!).and_raise(ActiveRecord::RecordInvalid)
       end
 
-      it 'does not try to mark export as failed when export_record is nil' do
+      it 'raises the error without marking export as failed' do
         expect { service.export }.to raise_error(ActiveRecord::RecordInvalid)
-      end
-    end
-
-    context 'with file compression scenarios' do
-      let(:export_record) do
-        double('Export', id: 1, name: 'test.zip', update!: true, file: double('File', attach: true))
-      end
-
-      before do
-        # Mock Export creation
-        exports_double = double('Exports', count: 3)
-        allow(user).to receive(:exports).and_return(exports_double)
-        allow(exports_double).to receive(:create!).and_return(export_record)
-        allow(export_record).to receive(:update!)
-
-        # Mock all export services to prevent actual calls
-        allow(Users::ExportData::Areas).to receive(:new).and_return(double(call: []))
-        allow(Users::ExportData::Imports).to receive(:new).and_return(double(call: []))
-        allow(Users::ExportData::Exports).to receive(:new).and_return(double(call: []))
-        allow(Users::ExportData::Trips).to receive(:new).and_return(double(call: []))
-        allow(Users::ExportData::Stats).to receive(:new).and_return(double(call: []))
-        allow(Users::ExportData::Notifications).to receive(:new).and_return(double(call: []))
-        allow(Users::ExportData::Points).to receive(:new).and_return(double(call: []))
-        allow(Users::ExportData::Visits).to receive(:new).and_return(double(call: []))
-        allow(Users::ExportData::Places).to receive(:new).and_return(double(call: []))
-
-        allow(user).to receive(:safe_settings).and_return(double(settings: {}))
-
-        # Mock user associations for counting
-        allow(user).to receive(:areas).and_return(double(count: 5))
-        allow(user).to receive(:imports).and_return(double(count: 12))
-        # exports already mocked above
-        allow(user).to receive(:trips).and_return(double(count: 8))
-        allow(user).to receive(:stats).and_return(double(count: 24))
-        allow(user).to receive(:notifications).and_return(double(count: 10))
-        allow(user).to receive(:points_count).and_return(15_000)
-        allow(user).to receive(:visits).and_return(double(count: 45))
-        allow(user).to receive(:places).and_return(double(count: 20))
-
-        allow(File).to receive(:open).and_call_original
-        allow(File).to receive(:open).with(export_directory.join('data.json'), 'w').and_yield(StringIO.new)
-
-        # Use current file as placeholder for zip file
-        zip_file_io = File.new(__FILE__)
-        allow(File).to receive(:open).with(export_directory.join('export.zip')).and_return(zip_file_io)
-
-        # Mock notifications service
-        allow(service).to receive(:create_success_notification)
-
-        # Mock cleanup
-        allow(service).to receive(:cleanup_temporary_files)
-        allow_any_instance_of(Pathname).to receive(:exist?).and_return(true)
-      end
-
-      it 'calls create_zip_archive with correct parameters' do
-        expect(service).to receive(:create_zip_archive).with(export_directory, export_directory.join('export.zip'))
-
-        service.export
       end
     end
   end
 
   describe 'private methods' do
-    describe '#export_directory' do
-      it 'generates correct directory path' do
-        # Time.current is already stubbed in the parent before block to Time.new(2024, 12, 1, 12, 30, 0)
-        # Call export to initialize the directory paths
-        service.instance_variable_set(:@export_directory,
-                                      Rails.root.join('tmp', "#{user.email.gsub(/[^0-9A-Za-z._-]/, '_')}_#{timestamp}"))
-
-        expect(service.send(:export_directory).to_s).to include(user.email.gsub(/[^0-9A-Za-z._-]/, '_'))
-        expect(service.send(:export_directory).to_s).to include(timestamp)
+    describe '#calculate_entity_counts' do
+      before do
+        allow(Rails.logger).to receive(:info)
       end
-    end
 
-    describe '#files_directory' do
-      it 'returns files subdirectory of export directory' do
-        # Initialize the export directory first
-        service.instance_variable_set(:@export_directory, Rails.root.join('tmp/test_export'))
-        service.instance_variable_set(:@files_directory,
-                                      service.instance_variable_get(:@export_directory).join('files'))
+      it 'returns correct counts for all entity types' do
+        # Create some test data
+        create_list(:area, 2, user: user)
+        create(:import, user: user)
+        create(:trip, user: user)
+        create(:stat, user: user)
+        create(:notification, user: user)
+        create(:point, user: user)
 
-        files_dir = service.send(:files_directory)
-        expect(files_dir.to_s).to end_with('files')
+        counts = service.send(:calculate_entity_counts)
+
+        expect(counts[:areas]).to eq(2)
+        expect(counts[:imports]).to eq(1)
+        expect(counts[:trips]).to eq(1)
+        expect(counts[:stats]).to eq(1)
+        expect(counts[:notifications]).to eq(1)
+        expect(counts[:points]).to eq(1)
+      end
+
+      it 'logs the calculation process' do
+        expect(Rails.logger).to receive(:info).with('Calculating entity counts for export')
+        expect(Rails.logger).to receive(:info).with(/Entity counts:/)
+
+        service.send(:calculate_entity_counts)
       end
     end
 
     describe '#cleanup_temporary_files' do
       context 'when directory exists' do
+        let(:temp_dir) { Rails.root.join('tmp/test_cleanup') }
+
         before do
-          allow(File).to receive(:directory?).and_return(true)
+          FileUtils.mkdir_p(temp_dir)
           allow(Rails.logger).to receive(:info)
         end
 
-        it 'removes the directory' do
-          expect(FileUtils).to receive(:rm_rf).with(export_directory)
+        after do
+          FileUtils.rm_rf(temp_dir) if File.directory?(temp_dir)
+        end
 
-          service.send(:cleanup_temporary_files, export_directory)
+        it 'removes the directory' do
+          service.send(:cleanup_temporary_files, temp_dir)
+
+          expect(File.directory?(temp_dir)).to be false
         end
 
         it 'logs the cleanup' do
-          expect(Rails.logger).to receive(:info).with("Cleaning up temporary export directory: #{export_directory}")
+          expect(Rails.logger).to receive(:info).with("Cleaning up temporary export directory: #{temp_dir}")
 
-          service.send(:cleanup_temporary_files, export_directory)
+          service.send(:cleanup_temporary_files, temp_dir)
         end
       end
 
@@ -370,42 +268,15 @@ RSpec.describe Users::ExportData, type: :service do
       end
     end
 
-    describe '#calculate_entity_counts' do
-      before do
-        # Mock user associations for counting
-        allow(user).to receive(:areas).and_return(double(count: 5))
-        allow(user).to receive(:imports).and_return(double(count: 12))
-        allow(user).to receive(:exports).and_return(double(count: 3))
-        allow(user).to receive(:trips).and_return(double(count: 8))
-        allow(user).to receive(:stats).and_return(double(count: 24))
-        allow(user).to receive(:notifications).and_return(double(count: 10))
-        allow(user).to receive(:points_count).and_return(15_000)
-        allow(user).to receive(:visits).and_return(double(count: 45))
-        allow(user).to receive(:visited_places).and_return(double(count: 20))
-        allow(Rails.logger).to receive(:info)
+    describe '#dawarich_version' do
+      it 'returns APP_VERSION if defined' do
+        stub_const('APP_VERSION', '1.2.3')
+        expect(service.send(:dawarich_version)).to eq('1.2.3')
       end
 
-      it 'returns correct counts for all entity types' do
-        counts = service.send(:calculate_entity_counts)
-
-        expect(counts).to eq({
-                               areas: 5,
-          imports: 12,
-          exports: 3,
-          trips: 8,
-          stats: 24,
-          notifications: 10,
-          points: 15_000,
-          visits: 45,
-          places: 20
-                             })
-      end
-
-      it 'logs the calculation process' do
-        expect(Rails.logger).to receive(:info).with('Calculating entity counts for export')
-        expect(Rails.logger).to receive(:info).with(/Entity counts:/)
-
-        service.send(:calculate_entity_counts)
+      it 'returns unknown if APP_VERSION is not defined' do
+        hide_const('APP_VERSION')
+        expect(service.send(:dawarich_version)).to eq('unknown')
       end
     end
   end

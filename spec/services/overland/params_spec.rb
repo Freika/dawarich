@@ -21,6 +21,10 @@ RSpec.describe Overland::Params do
         ssid: 'launchpad',
         tracker_id: '',
         timestamp: DateTime.parse('2015-10-01T08:00:00-0700'),
+        motion_data: {
+          'motion' => %w[driving stationary],
+          'activity' => 'other_navigation'
+        },
         raw_data: json['locations'][0]
       }
     end
@@ -39,6 +43,7 @@ RSpec.describe Overland::Params do
           ssid
           tracker_id
           timestamp
+          motion_data
           raw_data
           lonlat
         ]

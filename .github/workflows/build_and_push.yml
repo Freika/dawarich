@@ -10,6 +10,8 @@ on:
   release:
     types: [created]
 
+permissions: {}
+
 jobs:
   prepare:
     runs-on: ubuntu-22.04
@@ -41,6 +43,8 @@ jobs:
           echo "matrix=${MATRIX}" >> $GITHUB_OUTPUT
 
   build-and-push-docker:
+    permissions:
+      contents: read
     needs: prepare
     strategy:
       fail-fast: false
@@ -123,6 +127,8 @@ jobs:
           retention-days: 1
 
   merge:
+    permissions:
+      contents: read
     needs: [prepare, build-and-push-docker]
     runs-on: ubuntu-22.04
     steps:

@@ -16,8 +16,7 @@ module TransportationModes
     DEFAULT_BATCH_SIZE = 100
 
     def perform(user_id, batch_size: DEFAULT_BATCH_SIZE)
-      @user = User.find_by(id: user_id)
-      return unless @user
+      @user = find_user_or_skip(user_id) || return
 
       # Extract user thresholds once for all tracks
       @user_thresholds, @expert_thresholds = extract_user_thresholds

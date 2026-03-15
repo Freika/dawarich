@@ -37,7 +37,8 @@ RSpec.describe PointSerializer do
         'track_id' => point.track_id,
         'country_name' => point.read_attribute(:country_name),
         'raw_data_archived' => point.raw_data_archived,
-        'raw_data_archive_id' => point.raw_data_archive_id
+        'raw_data_archive_id' => point.raw_data_archive_id,
+        'motion_data' => point.motion_data
       }
     end
 

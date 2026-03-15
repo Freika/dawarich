@@ -52,11 +52,28 @@ RSpec.describe ReverseGeocoding::Points::FetchData do
 
         expect(Geocoder).to have_received(:search).with([point.lat, point.lon])
       end
+
+      context 'when store_geodata? is disabled' do
+        before do
+          allow(DawarichSettings).to receive(:store_geodata?).and_return(false)
+        end
+
+        it 'does not store geodata' do
+          expect { fetch_data }.not_to(change { point.reload.geodata })
+        end
+
+        it 'still updates city and country' do
+          expect { fetch_data }.to change { point.reload.city }
+            .from(nil).to('Berlin')
+        end
+      end
     end
 
     context 'when point has city and country' do
       let(:country) { create(:country, name: 'Test Country') }
-      let(:point) { create(:point, :with_geodata, city: 'Test City', country_id: country.id, reverse_geocoded_at: Time.current) }
+      let(:point) do
+        create(:point, :with_geodata, city: 'Test City', country_id: country.id, reverse_geocoded_at: Time.current)
+      end
 
       before do
         allow(Geocoder).to receive(:search).and_return(
@@ -105,6 +122,35 @@ RSpec.describe ReverseGeocoding::Points::FetchData do
         .from(nil).to('Paris')
 
       expect(point.reload.country_id).to be_nil
+    end
+  end
+
+  context 'when point has nil timestamp' do
+    let(:point) { create(:point) }
+
+    before do
+      # Bypass validations to simulate legacy data with nil timestamp
+      point.update_column(:timestamp, nil)
+    end
+
+    it 'skips geocoding without raising' do
+      expect(Geocoder).not_to receive(:search)
+
+      expect { fetch_data }.not_to raise_error
+    end
+  end
+
+  context 'when point has nil lonlat' do
+    let(:point) { create(:point) }
+
+    before do
+      point.update_column(:lonlat, nil)
+    end
+
+    it 'skips geocoding without raising' do
+      expect(Geocoder).not_to receive(:search)
+
+      expect { fetch_data }.not_to raise_error
     end
   end
 

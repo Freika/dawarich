@@ -6,7 +6,11 @@ class Settings::UsersController < ApplicationController
   before_action :authenticate_admin!, except: %i[export import]
 
   def index
-    @users = User.order(created_at: :desc)
+    @users = filtered_users.order(created_at: :desc).page(params[:page]).per(25)
+  end
+
+  def show
+    @user = User.find(params[:id])
   end
 
   def edit
@@ -16,7 +20,11 @@ class Settings::UsersController < ApplicationController
   def update
     @user = User.find(params[:id])
 
-    if @user.update(user_params)
+    return redirect_to settings_users_url, alert: last_admin_alert_message if last_admin_protection_needed?
+
+    update_params = filtered_user_params
+
+    if @user.update(update_params)
       redirect_to settings_users_url, notice: 'User was successfully updated.'
     else
       redirect_to settings_users_url, notice: 'User could not be updated.', status: :unprocessable_content
@@ -40,11 +48,39 @@ class Settings::UsersController < ApplicationController
   def destroy
     @user = User.find(params[:id])
 
-    if @user.destroy
-      redirect_to settings_users_url, notice: 'User was successfully deleted.'
-    else
-      redirect_to settings_users_url, notice: 'User could not be deleted.', status: :unprocessable_content
+    unless @user.can_delete_account?
+      redirect_to settings_users_url,
+                  alert: 'Cannot delete account while being owner of a family which has other members.',
+                  status: :unprocessable_content
+      return
     end
+
+    Users::DestroyJob.perform_later(@user.id) if @user.mark_as_deleted_atomically!
+
+    redirect_to settings_users_url,
+                notice: 'User deletion has been initiated. The account will be fully removed shortly.'
+  end
+
+  def regenerate_api_key
+    @user = User.find(params[:id])
+    @user.update!(api_key: SecureRandom.hex(16))
+
+    redirect_to settings_user_url(@user), notice: 'API key has been regenerated.'
+  end
+
+  def send_password_reset
+    @user = User.find(params[:id])
+    @user.send_reset_password_instructions
+
+    redirect_to settings_user_url(@user), notice: 'Password reset email has been sent.'
+  end
+
+  def update_registration_settings
+    enabled = ActiveModel::Type::Boolean.new.cast(params[:registration_enabled])
+    DawarichSettings.set_registration_enabled(enabled)
+
+    status = enabled ? 'enabled' : 'disabled'
+    redirect_to settings_users_url, notice: "User registration has been #{status}."
   end
 
   def export
@@ -77,8 +113,46 @@ class Settings::UsersController < ApplicationController
 
   private
 
+  def filtered_users
+    return User.all if params[:search].blank?
+
+    User.where('email ILIKE ?', "%#{User.sanitize_sql_like(params[:search])}%")
+  end
+
   def user_params
-    params.require(:user).permit(:email, :password)
+    params.require(:user).permit(:email, :password, :admin, :status)
+  end
+
+  def filtered_user_params
+    up = user_params.to_h
+    up.delete('password') if up['password'].blank?
+    up
+  end
+
+  def last_admin_protection_needed?
+    return false unless @user.admin? && sole_admin?
+
+    removing_admin_role? || disabling_user?
+  end
+
+  def removing_admin_role?
+    user_params.key?(:admin) && user_params[:admin].to_s == '0'
+  end
+
+  def disabling_user?
+    user_params.key?(:status) && user_params[:status] != 'active'
+  end
+
+  def sole_admin?
+    User.where(admin: true).count == 1
+  end
+
+  def last_admin_alert_message
+    if removing_admin_role?
+      'Cannot remove admin role from the last admin user.'
+    else
+      'Cannot disable the last admin user.'
+    end
   end
 
   def create_import_from_signed_archive_id(signed_id)

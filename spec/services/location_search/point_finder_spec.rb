@@ -13,7 +13,7 @@ RSpec.describe LocationSearch::PointFinder do
         [
           {
             id: 1,
-            timestamp: 1711814700,
+            timestamp: 1_711_814_700,
             coordinates: [52.5201, 13.4051],
             distance_meters: 45.5,
             date: '2024-03-20T18:45:00Z'
@@ -24,7 +24,7 @@ RSpec.describe LocationSearch::PointFinder do
       let(:mock_visits) do
         [
           {
-            timestamp: 1711814700,
+            timestamp: 1_711_814_700,
             date: '2024-03-20T18:45:00Z',
             coordinates: [52.5201, 13.4051],
             distance_meters: 45.5,
@@ -86,9 +86,9 @@ RSpec.describe LocationSearch::PointFinder do
           expect_any_instance_of(LocationSearch::SpatialMatcher)
             .to receive(:find_points_near)
             .with(user, anything, anything, anything, {
-              date_from: Date.parse('2024-01-01'),
+                    date_from: Date.parse('2024-01-01'),
               date_to: Date.parse('2024-03-31')
-            })
+                  })
 
           service.call
         end
@@ -96,7 +96,7 @@ RSpec.describe LocationSearch::PointFinder do
 
       context 'with limit parameter' do
         let(:search_params) { { latitude: 52.5200, longitude: 13.4050, limit: 10 } }
-        let(:many_visits) { Array.new(15) { |i| { timestamp: i, date: "2024-01-#{i+1}T12:00:00Z" } } }
+        let(:many_visits) { Array.new(15) { |i| { timestamp: i, date: "2024-01-#{i + 1}T12:00:00Z" } } }
 
         before do
           allow_any_instance_of(LocationSearch::SpatialMatcher)

@@ -178,5 +178,41 @@ RSpec.describe Trip, type: :model do
         expect(trip.path).not_to eq(original_path)
       end
     end
+
+    describe '#calculate_path' do
+      context 'when trip has no points' do
+        let(:empty_user) { create(:user) }
+        let(:empty_trip) do
+          create(:trip, user: empty_user,
+                        started_at: 1.year.ago,
+                        ended_at: 1.year.ago + 1.day)
+        end
+
+        it 'sets path to nil without raising' do
+          expect { empty_trip.calculate_path }.not_to raise_error
+          expect(empty_trip.path).to be_nil
+        end
+      end
+
+      context 'when trip has only one point' do
+        let(:single_user) { create(:user) }
+        let(:single_trip) do
+          create(:trip, user: single_user,
+                        started_at: 2.years.ago,
+                        ended_at: 2.years.ago + 1.day)
+        end
+
+        before do
+          create(:point, user: single_user,
+                         lonlat: 'POINT(10.0 50.0)',
+                         timestamp: single_trip.started_at.to_i + 3600)
+        end
+
+        it 'sets path to nil without raising' do
+          expect { single_trip.calculate_path }.not_to raise_error
+          expect(single_trip.path).to be_nil
+        end
+      end
+    end
   end
 end

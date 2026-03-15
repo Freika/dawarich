@@ -21,7 +21,6 @@ RSpec.describe Points::RawDataArchive, type: :model do
     it { is_expected.to validate_numericality_of(:year).is_greater_than(1970).is_less_than(2100) }
     it { is_expected.to validate_numericality_of(:month).is_greater_than_or_equal_to(1).is_less_than_or_equal_to(12) }
     it { is_expected.to validate_numericality_of(:chunk_number).is_greater_than(0) }
-
   end
 
   describe 'scopes' do
@@ -53,6 +52,42 @@ RSpec.describe Points::RawDataArchive, type: :model do
         expect(result).to include(june_archive, june_archive_2)
         expect(result).not_to include(july_archive)
       end
+    end
+  end
+
+  describe 'metadata validation' do
+    it 'allows format_version 1 archives without count fields' do
+      archive = build(:points_raw_data_archive, user: user, metadata: {
+                        'format_version' => 1,
+                         'compression' => 'gzip'
+                      })
+      expect(archive).to be_valid
+    end
+
+    it 'rejects format_version 2 archives missing count fields' do
+      archive = build(:points_raw_data_archive, user: user, metadata: {
+                        'format_version' => 2,
+                         'compression' => 'gzip',
+                         'encryption' => 'aes-256-gcm'
+                      })
+      expect(archive).not_to be_valid
+      expect(archive.errors[:metadata]).to include('must contain expected_count and actual_count')
+    end
+
+    it 'allows format_version 2 archives with count fields' do
+      archive = build(:points_raw_data_archive, user: user, metadata: {
+                        'format_version' => 2,
+                         'compression' => 'gzip',
+                         'encryption' => 'aes-256-gcm',
+                         'expected_count' => 100,
+                         'actual_count' => 100
+                      })
+      expect(archive).to be_valid
+    end
+
+    it 'allows archives with empty metadata' do
+      archive = build(:points_raw_data_archive, user: user, metadata: {})
+      expect(archive).to be_valid
     end
   end
 

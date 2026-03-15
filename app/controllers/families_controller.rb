@@ -13,6 +13,9 @@ class FamiliesController < ApplicationController
 
     @member_count = @family.member_count
     @can_invite = @family.can_add_members?
+    @pending_requests = current_user.sent_location_requests.pending
+                                    .where('expires_at > ?', Time.current)
+                                    .index_by(&:target_user_id)
   end
 
   def new
@@ -42,9 +45,7 @@ class FamiliesController < ApplicationController
         end
       end
 
-      if service.error_message.present?
-        @family.errors.add(:base, service.error_message)
-      end
+      @family.errors.add(:base, service.error_message) if service.error_message.present?
 
       flash.now[:alert] = service.error_message || 'Failed to create family'
       render :new, status: :unprocessable_content

@@ -4,17 +4,21 @@ class Users::ExportData::Points
   BATCH_SIZE = 10_000
   PROGRESS_LOG_INTERVAL = 50_000
 
-  def initialize(user, output_file = nil)
+  # @param user [User] the user whose points to export
+  # @param output_directory [Pathname] directory where monthly files will be written (e.g., tmp/export/points)
+  def initialize(user, output_directory = nil)
     @user = user
-    @output_file = output_file
+    @output_directory = output_directory
+    @monthly_writers = {}
+    @monthly_file_paths = []
   end
 
-  # For backward compatibility: returns array when no output_file provided
-  # For streaming mode: writes directly to file when output_file provided
+  # Exports points to monthly JSONL files
+  # @return [Array<String>] relative paths to the created monthly files (e.g., ["points/2024/2024-01.jsonl"])
   def call
-    if @output_file
-      stream_to_file
-      nil # Don't return array in streaming mode
+    if @output_directory
+      stream_to_monthly_files
+      @monthly_file_paths.sort
     else
       # Legacy mode: load all into memory (deprecated for large datasets)
       load_all_points
@@ -23,42 +27,72 @@ class Users::ExportData::Points
 
   private
 
-  attr_reader :user, :output_file
+  attr_reader :user, :output_directory
 
-  def stream_to_file
+  def stream_to_monthly_files
     total_count = user.points.count
     processed = 0
-    first_record = true
 
-    Rails.logger.info "Streaming #{total_count} points to file..."
-    puts "Starting export of #{total_count} points..."
-
-    output_file.write('[')
+    Rails.logger.info "Streaming #{total_count} points to monthly files..."
+    Rails.logger.debug "Starting export of #{total_count} points..."
 
     user.points.find_in_batches(batch_size: BATCH_SIZE).with_index do |batch, _batch_index|
-      batch_sql = build_batch_query(batch.map(&:id))
+      point_ids = batch.map(&:id)
+      batch_sql = ActiveRecord::Base.sanitize_sql_array([build_batch_query, point_ids])
       result = ActiveRecord::Base.connection.exec_query(batch_sql, 'Points Export Batch')
 
       result.each do |row|
         point_hash = build_point_hash(row)
         next unless point_hash # Skip points without coordinates
 
-        output_file.write(',') unless first_record
-        output_file.write(point_hash.to_json)
-        first_record = false
-        processed += 1
+        month_key = extract_month_key(row)
+        writer = monthly_writer_for(month_key)
+        writer.puts(point_hash.to_json)
 
+        processed += 1
         log_progress(processed, total_count) if (processed % PROGRESS_LOG_INTERVAL).zero?
       end
 
       # Show progress after each batch
       percentage = (processed.to_f / total_count * 100).round(1)
-      puts "Exported #{processed}/#{total_count} points (#{percentage}%)"
+      Rails.logger.debug "Exported #{processed}/#{total_count} points (#{percentage}%)"
     end
 
-    output_file.write(']')
-    Rails.logger.info "Completed streaming #{processed} points to file"
-    puts "Export completed: #{processed} points written"
+    Rails.logger.info "Completed streaming #{processed} points to #{@monthly_file_paths.size} monthly files"
+    Rails.logger.debug "Export completed: #{processed} points written to #{@monthly_file_paths.size} files"
+  ensure
+    close_all_writers
+  end
+
+  def extract_month_key(row)
+    timestamp = row['timestamp']
+    return 'unknown' if timestamp.blank?
+
+    # Handle both integer timestamps and already-parsed times
+    time = timestamp.is_a?(Integer) ? Time.at(timestamp).utc : timestamp.to_time.utc
+    time.strftime('%Y-%m')
+  rescue StandardError => e
+    Rails.logger.warn "Failed to extract month from timestamp #{timestamp}: #{e.message}"
+    'unknown'
+  end
+
+  def monthly_writer_for(month_key)
+    @monthly_writers[month_key] ||= begin
+      year = month_key == 'unknown' ? 'unknown' : month_key.split('-').first
+      year_dir = output_directory.join(year)
+      FileUtils.mkdir_p(year_dir)
+
+      file_path = year_dir.join("#{month_key}.jsonl")
+      relative_path = "points/#{year}/#{month_key}.jsonl"
+      @monthly_file_paths << relative_path
+
+      File.open(file_path, 'w')
+    end
+  end
+
+  def close_all_writers
+    @monthly_writers.each_value(&:close)
+    @monthly_writers.clear
   end
 
   def load_all_points
@@ -97,7 +131,7 @@ class Users::ExportData::Points
     SQL
   end
 
-  def build_batch_query(point_ids)
+  def build_batch_query
     <<-SQL
       SELECT
         p.id, p.battery_status, p.battery, p.timestamp, p.altitude, p.velocity, p.accuracy,
@@ -121,7 +155,7 @@ class Users::ExportData::Points
       LEFT JOIN imports i ON p.import_id = i.id
       LEFT JOIN countries c ON p.country_id = c.id
       LEFT JOIN visits v ON p.visit_id = v.id
-      WHERE p.id IN (#{point_ids.join(',')})
+      WHERE p.id IN (?)
       ORDER BY p.id
     SQL
   end

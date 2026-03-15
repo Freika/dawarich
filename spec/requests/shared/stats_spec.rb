@@ -138,6 +138,44 @@ RSpec.describe 'Shared::Stats', type: :request do
         end
       end
 
+      context 'when user is on Lite plan (Cloud)' do
+        let!(:stat_to_share) { create(:stat, user:, year: 2024, month: 6) }
+
+        before do
+          sign_in user
+          allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+          user.update_column(:plan, User.plans[:lite])
+        end
+
+        it 'rejects sharing update with 403' do
+          patch sharing_stats_path(year: 2024, month: 6),
+                params: { enabled: '1' },
+                as: :json
+
+          expect(response).to have_http_status(:forbidden)
+          json_response = JSON.parse(response.body)
+          expect(json_response['error']).to include('Pro plan')
+        end
+      end
+
+      context 'when self-hosted Lite user (bypasses gate)' do
+        let!(:stat_to_share) { create(:stat, user:, year: 2024, month: 6) }
+
+        before do
+          sign_in user
+          allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+          user.update_column(:plan, User.plans[:lite])
+        end
+
+        it 'allows sharing update' do
+          patch sharing_stats_path(year: 2024, month: 6),
+                params: { enabled: '1' },
+                as: :json
+
+          expect(response).to have_http_status(:success)
+        end
+      end
+
       context 'when user is not signed in' do
         it 'returns unauthorized' do
           patch sharing_stats_path(year: 2024, month: 6),
@@ -145,6 +183,60 @@ RSpec.describe 'Shared::Stats', type: :request do
                 as: :json
 
           expect(response).to have_http_status(:unauthorized)
+        end
+      end
+
+      context 'with turbo_stream format' do
+        before { sign_in user }
+
+        let!(:stat_to_share) { create(:stat, user:, year: 2024, month: 8) }
+
+        it 'enables sharing and returns turbo_stream with replace and flash' do
+          patch sharing_stats_path(year: 2024, month: 8),
+                params: { enabled: '1' },
+                as: :turbo_stream
+
+          expect_turbo_stream_response
+          expect_turbo_stream_action('replace', 'sharing-link-display')
+          expect_flash_stream('Auto-saved')
+
+          stat_to_share.reload
+          expect(stat_to_share.sharing_enabled?).to be(true)
+        end
+
+        it 'includes sharing UUID in the response' do
+          patch sharing_stats_path(year: 2024, month: 8),
+                params: { enabled: '1' },
+                as: :turbo_stream
+
+          stat_to_share.reload
+          expect(response.body).to include(stat_to_share.sharing_uuid)
+        end
+
+        it 'disables sharing and returns turbo_stream' do
+          stat_to_share.enable_sharing!(expiration: '24h')
+
+          patch sharing_stats_path(year: 2024, month: 8),
+                params: { enabled: '0' },
+                as: :turbo_stream
+
+          expect_turbo_stream_response
+          expect_turbo_stream_action('replace', 'sharing-link-display')
+          expect_flash_stream('Auto-saved')
+
+          stat_to_share.reload
+          expect(stat_to_share.sharing_enabled?).to be(false)
+        end
+
+        it 'returns turbo_stream flash error on failure' do
+          allow_any_instance_of(Stat).to receive(:enable_sharing!).and_raise(StandardError)
+
+          patch sharing_stats_path(year: 2024, month: 8),
+                params: { enabled: '1' },
+                as: :turbo_stream
+
+          expect_turbo_stream_response
+          expect_flash_stream('Failed to update sharing settings')
         end
       end
     end

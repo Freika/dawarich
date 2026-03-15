@@ -19,7 +19,7 @@ class Api::V1::Maps::HexagonsController < ApiController
     render json: { error: "Missing required parameter: #{e.param}" }, status: :bad_request
   rescue ActionController::BadRequest => e
     render json: { error: e.message }, status: :bad_request
-  rescue ActiveRecord::RecordNotFound => e
+  rescue ActiveRecord::RecordNotFound
     render json: { error: 'Shared stats not found or no longer available' }, status: :not_found
   rescue Stats::CalculateMonth::PostGISError => e
     render json: { error: e.message }, status: :bad_request
@@ -44,7 +44,7 @@ class Api::V1::Maps::HexagonsController < ApiController
         point_count: result[:point_count]
       }, status: :not_found
     end
-  rescue ActiveRecord::RecordNotFound => e
+  rescue ActiveRecord::RecordNotFound
     render json: { error: 'Shared stats not found or no longer available' }, status: :not_found
   rescue ArgumentError => e
     render json: { error: e.message }, status: :bad_request

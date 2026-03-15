@@ -1,0 +1,147 @@
+<% content_for :title, "User: #{@user.email}" %>
+
+<div class="min-h-content w-full my-5">
+  <h1 class="text-3xl font-bold mb-6">User details</h1>
+  <%= render 'settings/navigation' %>
+
+  <div class="flex flex-col w-full my-10">
+    <div class="w-10/12 mx-auto space-y-6">
+      <!-- User Header -->
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-2xl font-bold"><%= @user.email %></h2>
+          <div class="flex gap-2 mt-2">
+            <% if @user.admin? %>
+              <span class="badge badge-primary">Admin</span>
+            <% else %>
+              <span class="badge badge-ghost">User</span>
+            <% end %>
+            <% if @user.active? %>
+              <span class="badge badge-success">Active</span>
+            <% elsif @user.inactive? %>
+              <span class="badge badge-error">Inactive</span>
+            <% elsif @user.trial? %>
+              <span class="badge badge-warning">Trial</span>
+            <% end %>
+          </div>
+        </div>
+        <div class="flex gap-2">
+          <%= link_to 'Edit', edit_settings_user_path(@user), class: 'btn btn-primary btn-sm' %>
+          <%= link_to 'Back to users', settings_users_path, class: 'btn btn-ghost btn-sm' %>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Data Overview -->
+        <div class="card bg-base-200">
+          <div class="card-body">
+            <h3 class="card-title">Data overview</h3>
+            <div class="overflow-x-auto">
+              <table class="table">
+                <tbody>
+                  <tr>
+                    <td class="font-semibold">Points</td>
+                    <td><%= number_with_delimiter @user.points_count.to_i %></td>
+                  </tr>
+                  <tr>
+                    <td class="font-semibold">Tracks</td>
+                    <td><%= number_with_delimiter @user.tracks.count %></td>
+                  </tr>
+                  <tr>
+                    <td class="font-semibold">Imports</td>
+                    <td><%= number_with_delimiter @user.imports.count %></td>
+                  </tr>
+                  <tr>
+                    <td class="font-semibold">Exports</td>
+                    <td><%= number_with_delimiter @user.exports.count %></td>
+                  </tr>
+                  <tr>
+                    <td class="font-semibold">Areas</td>
+                    <td><%= number_with_delimiter @user.areas.count %></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sign-in History -->
+        <div class="card bg-base-200">
+          <div class="card-body">
+            <h3 class="card-title">Sign-in history</h3>
+            <div class="overflow-x-auto">
+              <table class="table">
+                <tbody>
+                  <tr>
+                    <td class="font-semibold">Total sign-ins</td>
+                    <td><%= @user.sign_in_count %></td>
+                  </tr>
+                  <tr>
+                    <td class="font-semibold">Last sign-in</td>
+                    <td>
+                      <% if @user.last_sign_in_at.present? %>
+                        <%= human_datetime(@user.last_sign_in_at) %>
+                      <% else %>
+                        <span class="text-base-content/50">Never</span>
+                      <% end %>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="font-semibold">Last sign-in IP</td>
+                    <td><%= @user.last_sign_in_ip || '—' %></td>
+                  </tr>
+                  <tr>
+                    <td class="font-semibold">Current sign-in IP</td>
+                    <td><%= @user.current_sign_in_ip || '—' %></td>
+                  </tr>
+                  <tr>
+                    <td class="font-semibold">Account created</td>
+                    <td><%= human_datetime(@user.created_at) %></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- API Key -->
+        <div class="card bg-base-200">
+          <div class="card-body">
+            <h3 class="card-title">API key</h3>
+            <div class="flex items-center gap-2">
+              <code class="bg-base-300 px-3 py-2 rounded-lg text-sm flex-1 break-all"><%= @user.api_key.first(8) %><%= '•' * 24 %></code>
+              <button class="btn btn-ghost btn-sm"
+                      data-controller="clipboard"
+                      data-clipboard-text-value="<%= @user.api_key %>"
+                      data-action="click->clipboard#copy">
+                <%= icon 'copy', class: "inline-block w-4" %>
+                Copy
+              </button>
+            </div>
+            <div class="card-actions mt-4">
+              <%= button_to 'Regenerate API key',
+                    regenerate_api_key_settings_user_path(@user),
+                    method: :post,
+                    class: 'btn btn-warning btn-sm',
+                    data: { turbo_confirm: 'Are you sure? This will invalidate the current API key.' } %>
+            </div>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="card bg-base-200">
+          <div class="card-body">
+            <h3 class="card-title">Actions</h3>
+            <div class="flex flex-col gap-3">
+              <%= button_to 'Send password reset email',
+                    send_password_reset_settings_user_path(@user),
+                    method: :post,
+                    class: 'btn btn-outline btn-sm' %>
+              <%= link_to 'Edit user', edit_settings_user_path(@user), class: 'btn btn-primary btn-sm' %>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -41,8 +41,8 @@ export class LazyLoader {
 
   async #load(name) {
     const paths = {
-      'fog': () => import('../layers/fog_layer.js'),
-      'scratch': () => import('../layers/scratch_layer.js')
+      fog: () => import("../layers/fog_layer.js"),
+      scratch: () => import("../layers/scratch_layer.js"),
     }
 
     const loader = paths[name]
@@ -56,7 +56,7 @@ export class LazyLoader {
 
   #getClassName(name) {
     // fog -> FogLayer, scratch -> ScratchLayer
-    return name.charAt(0).toUpperCase() + name.slice(1) + 'Layer'
+    return `${name.charAt(0).toUpperCase() + name.slice(1)}Layer`
   }
 
   /**
@@ -64,7 +64,7 @@ export class LazyLoader {
    * @param {string[]} names
    */
   async preload(names) {
-    return Promise.all(names.map(name => this.loadLayer(name)))
+    return Promise.all(names.map((name) => this.loadLayer(name)))
   }
 
   clear() {

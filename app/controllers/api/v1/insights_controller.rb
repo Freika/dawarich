@@ -12,7 +12,7 @@ class Api::V1::InsightsController < ApiController
       totals: @totals,
       heatmap: @heatmap,
       distance_unit: distance_unit
-    ).call
+    ).call.merge(plan_metadata)
 
     expires_in 5.minutes, public: false
     render json: result
@@ -28,7 +28,7 @@ class Api::V1::InsightsController < ApiController
       year: @selected_year,
       comparison: @comparison,
       travel_patterns: @travel_patterns
-    ).call
+    ).call.merge(plan_metadata)
 
     expires_in 5.minutes, public: false
     render json: result
@@ -37,9 +37,9 @@ class Api::V1::InsightsController < ApiController
   private
 
   def load_year_data
-    @available_years = current_api_user.stats.distinct.pluck(:year).sort.reverse
+    @available_years = current_api_user.scoped_stats.distinct.pluck(:year).sort.reverse
     @selected_year = (params[:year] || @available_years.first || Time.current.year).to_i
-    @year_stats = current_api_user.stats.where(year: @selected_year).order(:month)
+    @year_stats = current_api_user.scoped_stats.where(year: @selected_year).order(:month)
   end
 
   def load_totals
@@ -51,7 +51,7 @@ class Api::V1::InsightsController < ApiController
   end
 
   def load_comparison
-    previous_year_stats = current_api_user.stats.where(year: @selected_year - 1).order(:month)
+    previous_year_stats = current_api_user.scoped_stats.where(year: @selected_year - 1).order(:month)
     @comparison = if previous_year_stats.any?
                     Insights::YearComparisonCalculator.new(
                       @totals, previous_year_stats, distance_unit: distance_unit
@@ -75,7 +75,7 @@ class Api::V1::InsightsController < ApiController
   def calculate_yearly_day_of_week
     digests = current_api_user.digests.monthly
                               .where(year: @selected_year)
-                              .select(:id, :year, :month, :daily_distances)
+                              .select(:id, :year, :month, :monthly_distances)
 
     digests.each_with_object(Array.new(7, 0)) do |digest, weekly_totals|
       pattern = digest.weekly_pattern
@@ -91,7 +91,7 @@ class Api::V1::InsightsController < ApiController
     start_time = Time.zone.local(@selected_year, 1, 1)
     end_time = Time.zone.local(@selected_year, 12, 31).end_of_year
 
-    current_api_user.visits.confirmed.where(started_at: start_time..end_time).group(:name)
+    current_api_user.scoped_visits.confirmed.where(started_at: start_time..end_time).group(:name)
                     .select('name, COUNT(*) as visit_count, SUM(duration) as total_duration')
                     .order('visit_count DESC, total_duration DESC').limit(5)
                     .map { |v| { name: v.name, visitCount: v.visit_count, totalDuration: v.total_duration } }
@@ -99,5 +99,12 @@ class Api::V1::InsightsController < ApiController
 
   def distance_unit
     params[:distance_unit].presence || current_api_user.safe_settings.distance_unit || 'km'
+  end
+
+  def plan_metadata
+    {
+      planRestricted: current_api_user.plan_restricted?,
+      upgradeUrl: upgrade_url_for(current_api_user)
+    }
   end
 end

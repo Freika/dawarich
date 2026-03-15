@@ -1,4 +1,4 @@
-import { BaseLayer } from './base_layer'
+import { BaseLayer } from "./base_layer"
 
 /**
  * Scratch map layer
@@ -9,7 +9,7 @@ import { BaseLayer } from './base_layer'
  */
 export class ScratchLayer extends BaseLayer {
   constructor(map, options = {}) {
-    super(map, { id: 'scratch', ...options })
+    super(map, { id: "scratch", ...options })
     this.visitedCountries = new Set()
     this.countriesData = null
     this.loadingCountries = null // Promise for loading countries
@@ -52,10 +52,10 @@ export class ScratchLayer extends BaseLayer {
     const visitedCountries = new Set()
 
     // Extract unique country names from points
-    points.forEach(point => {
+    points.forEach((point) => {
       const countryName = point.properties?.country_name
 
-      if (countryName && countryName !== 'Unknown') {
+      if (countryName && countryName !== "Unknown") {
         visitedCountries.add(countryName)
       }
     })
@@ -83,22 +83,27 @@ export class ScratchLayer extends BaseLayer {
         // Use internal API endpoint with authentication
         const headers = {}
         if (this.apiClient) {
-          headers['Authorization'] = `Bearer ${this.apiClient.apiKey}`
+          headers.Authorization = `Bearer ${this.apiClient.apiKey}`
         }
 
-        const response = await fetch('/api/v1/countries/borders.json', {
-          headers: headers
+        const response = await fetch("/api/v1/countries/borders.json", {
+          headers: headers,
         })
 
         if (!response.ok) {
-          throw new Error(`Failed to load country borders: ${response.statusText}`)
+          throw new Error(
+            `Failed to load country borders: ${response.statusText}`,
+          )
         }
 
         this.countriesData = await response.json()
       } catch (error) {
-        console.error('[ScratchLayer] Failed to load country boundaries:', error)
+        console.error(
+          "[ScratchLayer] Failed to load country boundaries:",
+          error,
+        )
         // Fallback to empty data
-        this.countriesData = { type: 'FeatureCollection', features: [] }
+        this.countriesData = { type: "FeatureCollection", features: [] }
       }
     })()
 
@@ -113,36 +118,37 @@ export class ScratchLayer extends BaseLayer {
   createCountriesGeoJSON() {
     if (!this.countriesData || this.visitedCountries.size === 0) {
       return {
-        type: 'FeatureCollection',
-        features: []
+        type: "FeatureCollection",
+        features: [],
       }
     }
 
     // Filter country features by matching name field to visited country names
-    const visitedFeatures = this.countriesData.features.filter(country => {
+    const visitedFeatures = this.countriesData.features.filter((country) => {
       const countryName = country.properties.name || country.properties.NAME
 
       if (!countryName) return false
 
       // Case-insensitive exact match
-      return Array.from(this.visitedCountries).some(visitedName =>
-        countryName.toLowerCase() === visitedName.toLowerCase()
+      return Array.from(this.visitedCountries).some(
+        (visitedName) =>
+          countryName.toLowerCase() === visitedName.toLowerCase(),
       )
     })
 
     return {
-      type: 'FeatureCollection',
-      features: visitedFeatures
+      type: "FeatureCollection",
+      features: visitedFeatures,
     }
   }
 
   getSourceConfig() {
     return {
-      type: 'geojson',
+      type: "geojson",
       data: this.data || {
-        type: 'FeatureCollection',
-        features: []
-      }
+        type: "FeatureCollection",
+        features: [],
+      },
     }
   }
 
@@ -151,24 +157,24 @@ export class ScratchLayer extends BaseLayer {
       // Country fill
       {
         id: this.id,
-        type: 'fill',
+        type: "fill",
         source: this.sourceId,
         paint: {
-          'fill-color': '#fbbf24', // Amber/gold color
-          'fill-opacity': 0.3
-        }
+          "fill-color": "#fbbf24", // Amber/gold color
+          "fill-opacity": 0.3,
+        },
       },
       // Country outline
       {
         id: `${this.id}-outline`,
-        type: 'line',
+        type: "line",
         source: this.sourceId,
         paint: {
-          'line-color': '#f59e0b',
-          'line-width': 1,
-          'line-opacity': 0.6
-        }
-      }
+          "line-color": "#f59e0b",
+          "line-width": 1,
+          "line-opacity": 0.6,
+        },
+      },
     ]
   }
 

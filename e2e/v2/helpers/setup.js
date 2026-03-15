@@ -444,15 +444,15 @@ export async function waitForLayerVisibility(
 }
 
 // ============================================================
-// Timeline Panel Helpers
+// Replay Panel Helpers
 // ============================================================
 
 /**
- * Open the timeline panel via Tools tab
+ * Open the replay panel via the Tools tab Replay button
  * @param {Page} page - Playwright page object
- * @param {boolean} closeSettingsPanel - Whether to close the settings panel after opening timeline (default: false)
+ * @param {boolean} closeSettingsPanel - Whether to close the settings panel after opening replay (default: false)
  */
-export async function openTimelinePanel(page, closeSettingsPanel = false) {
+export async function openReplayPanel(page, closeSettingsPanel = false) {
   // Open settings panel
   const settingsButton = page.locator('button[title="Open map settings"]')
   await settingsButton.click()
@@ -463,11 +463,11 @@ export async function openTimelinePanel(page, closeSettingsPanel = false) {
   await toolsTab.click()
   await page.waitForTimeout(300)
 
-  // Click the Timeline button
-  const timelineButton = page.locator(
-    '[data-tab-content="tools"] button:has-text("Timeline")',
+  // Click the Replay button
+  const replayButton = page.locator(
+    '[data-tab-content="tools"] button:has-text("Replay")',
   )
-  await timelineButton.click()
+  await replayButton.click()
   await page.waitForTimeout(300)
 
   // Optionally close settings panel to avoid click interception
@@ -479,15 +479,15 @@ export async function openTimelinePanel(page, closeSettingsPanel = false) {
 }
 
 /**
- * Wait for timeline panel to be visible
+ * Wait for replay panel to be visible
  * @param {Page} page - Playwright page object
  * @param {number} timeout - Timeout in milliseconds (default: 5000)
  */
-export async function waitForTimelinePanel(page, timeout = 5000) {
+export async function waitForReplayPanel(page, timeout = 5000) {
   await page.waitForFunction(
     () => {
       const panel = document.querySelector(
-        '[data-maps--maplibre-target="timelinePanel"]',
+        '[data-maps--maplibre-target="replayPanel"]',
       )
       return panel && !panel.classList.contains("hidden")
     },
@@ -496,42 +496,42 @@ export async function waitForTimelinePanel(page, timeout = 5000) {
 }
 
 /**
- * Check if the timeline panel is visible
+ * Check if the replay panel is visible
  * @param {Page} page - Playwright page object
  * @returns {Promise<boolean>}
  */
-export async function isTimelinePanelVisible(page) {
+export async function isReplayPanelVisible(page) {
   return await page.evaluate(() => {
     const panel = document.querySelector(
-      '[data-maps--maplibre-target="timelinePanel"]',
+      '[data-maps--maplibre-target="replayPanel"]',
     )
     return panel && !panel.classList.contains("hidden")
   })
 }
 
 /**
- * Get the current scrubber value
+ * Get the current replay scrubber value
  * @param {Page} page - Playwright page object
  * @returns {Promise<number>}
  */
-export async function getScrubberValue(page) {
+export async function getReplayScrubberValue(page) {
   return await page.evaluate(() => {
     const scrubber = document.querySelector(
-      '[data-maps--maplibre-target="timelineScrubber"]',
+      '[data-maps--maplibre-target="replayScrubber"]',
     )
     return scrubber ? parseInt(scrubber.value, 10) : -1
   })
 }
 
 /**
- * Set the scrubber value and trigger input event
+ * Set the replay scrubber value and trigger input event
  * @param {Page} page - Playwright page object
  * @param {number} minute - Minute value (0-1439)
  */
-export async function setScrubberValue(page, minute) {
+export async function setReplayScrubberValue(page, minute) {
   await page.evaluate((min) => {
     const scrubber = document.querySelector(
-      '[data-maps--maplibre-target="timelineScrubber"]',
+      '[data-maps--maplibre-target="replayScrubber"]',
     )
     if (scrubber) {
       scrubber.value = min
@@ -541,7 +541,7 @@ export async function setScrubberValue(page, minute) {
 }
 
 /**
- * Check if replay is currently active
+ * Check if replay playback is currently active
  * @param {Page} page - Playwright page object
  * @returns {Promise<boolean>}
  */
@@ -557,16 +557,16 @@ export async function isReplayActive(page) {
       element,
       "maps--maplibre",
     )
-    return controller?.timelineReplayActive === true
+    return controller?.replayActive === true
   })
 }
 
 /**
- * Get timeline manager state from controller
+ * Get replay manager state from controller
  * @param {Page} page - Playwright page object
  * @returns {Promise<{hasData: boolean, dayCount: number, currentDayIndex: number, currentDayPointCount: number} | null>}
  */
-export async function getTimelineState(page) {
+export async function getReplayState(page) {
   return await page.evaluate(() => {
     const element = document.querySelector(
       '[data-controller*="maps--maplibre"]',
@@ -578,42 +578,14 @@ export async function getTimelineState(page) {
       element,
       "maps--maplibre",
     )
-    if (!controller?.timelineManager) return null
+    if (!controller?.replayManager) return null
 
-    const tm = controller.timelineManager
+    const rm = controller.replayManager
     return {
-      hasData: tm.hasData(),
-      dayCount: tm.getDayCount(),
-      currentDayIndex: tm.currentDayIndex,
-      currentDayPointCount: tm.getCurrentDayPointCount(),
-    }
-  })
-}
-
-/**
- * Get the timeline marker layer visibility and position
- * @param {Page} page - Playwright page object
- * @returns {Promise<{visible: boolean, coordinates: [number, number] | null}>}
- */
-export async function getTimelineMarkerState(page) {
-  return await page.evaluate(() => {
-    const element = document.querySelector(
-      '[data-controller*="maps--maplibre"]',
-    )
-    if (!element) return { visible: false, coordinates: null }
-    const app = window.Stimulus || window.Application
-    if (!app) return { visible: false, coordinates: null }
-    const controller = app.getControllerForElementAndIdentifier(
-      element,
-      "maps--maplibre",
-    )
-    if (!controller?.timelineMarkerLayer)
-      return { visible: false, coordinates: null }
-
-    const layer = controller.timelineMarkerLayer
-    return {
-      visible: layer.isVisible(),
-      coordinates: layer.currentPosition || null,
+      hasData: rm.hasData(),
+      dayCount: rm.getDayCount(),
+      currentDayIndex: rm.currentDayIndex,
+      currentDayPointCount: rm.getCurrentDayPointCount(),
     }
   })
 }

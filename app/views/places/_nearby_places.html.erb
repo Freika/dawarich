@@ -1,0 +1,45 @@
+<%= turbo_frame_tag "nearby-places" do %>
+  <div class="space-y-2 max-h-48 overflow-y-auto">
+    <% if places.blank? %>
+      <p class="text-sm text-gray-500">No nearby places found</p>
+    <% else %>
+      <% places.each_with_index do |place, index| %>
+        <div class="card card-compact bg-base-200 cursor-pointer hover:bg-base-300 transition"
+             data-action="click->place-creation#selectNearby"
+             data-place-name="<%= place[:name] %>"
+             data-place-latitude="<%= place[:latitude] %>"
+             data-place-longitude="<%= place[:longitude] %>">
+          <div class="card-body">
+            <div class="flex gap-2">
+              <span class="badge badge-primary badge-sm">#<%= index + 1 %></span>
+              <div class="flex-1">
+                <h4 class="font-semibold"><%= place[:name] %></h4>
+                <% if place[:street].present? %>
+                  <p class="text-sm"><%= place[:street] %></p>
+                <% end %>
+                <% if place[:city].present? %>
+                  <p class="text-xs text-gray-500"><%= place[:city] %><%= ", #{place[:country]}" if place[:country].present? %></p>
+                <% end %>
+              </div>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    <% end %>
+  </div>
+
+  <% if radius < max_radius %>
+    <div class="mt-2 text-center">
+      <% next_radius = [radius + 0.5, max_radius].min %>
+      <%= link_to "Load More (search up to #{(next_radius * 1000).round}m)",
+            nearby_places_path(
+              latitude: params[:latitude],
+              longitude: params[:longitude],
+              radius: next_radius,
+              limit: 5
+            ),
+            data: { turbo_frame: "nearby-places" },
+            class: "btn btn-sm btn-ghost" %>
+    </div>
+  <% end %>
+<% end %>

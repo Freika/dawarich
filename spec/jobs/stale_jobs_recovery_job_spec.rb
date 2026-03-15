@@ -63,6 +63,12 @@ RSpec.describe StaleJobsRecoveryJob do
         expect(stale_import.reload.status).to eq('failed')
       end
 
+      it 'sets error_message on stale imports' do
+        described_class.new.perform
+
+        expect(stale_import.reload.error_message).to include('stuck in processing')
+      end
+
       it 'does not affect recent imports' do
         described_class.new.perform
 

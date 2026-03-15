@@ -12,17 +12,17 @@ module LocationSearch
       # Use sanitize_sql_array to safely execute the parameterized query
       safe_query = ActiveRecord::Base.sanitize_sql_array([query_sql] + bind_values)
 
-
       ActiveRecord::Base.connection.exec_query(safe_query)
-        .map { |row| format_point_result(row) }
-        .sort_by { |point| point[:timestamp] }
-        .reverse # Most recent first
+                        .map { |row| format_point_result(row) }
+                        .sort_by { |point| point[:timestamp] }
+                        .reverse # Most recent first
     end
 
     private
 
     def build_spatial_query(user, latitude, longitude, radius_meters, date_options = {})
       date_filter_sql, date_bind_values = build_date_filter(date_options)
+      plan_filter_sql, plan_bind_values = build_plan_filter(user)
 
       # Build parameterized query with proper SRID using ? placeholders
       # Use a CTE to avoid duplicating the point calculation
@@ -45,10 +45,11 @@ module LocationSearch
         WHERE p.user_id = ?
           AND ST_DWithin(p.lonlat, search_point.geom, ?)
           #{date_filter_sql}
+          #{plan_filter_sql}
         ORDER BY p.timestamp DESC
       SQL
 
-      # Combine bind values: longitude, latitude, user_id, radius, then date filters
+      # Combine bind values: longitude, latitude, user_id, radius, then date filters, then plan filter
       bind_values = [
         longitude.to_f,    # longitude for search point
         latitude.to_f,     # latitude for search point
@@ -56,8 +57,15 @@ module LocationSearch
         radius_meters.to_f # radius_meters
       ]
       bind_values.concat(date_bind_values)
+      bind_values.concat(plan_bind_values)
 
       [base_sql, bind_values]
+    end
+
+    def build_plan_filter(user)
+      return ['', []] unless user.plan_restricted?
+
+      ['AND p.timestamp >= ?', [user.data_window_start.to_i]]
     end
 
     def build_date_filter(date_options)
@@ -68,14 +76,14 @@ module LocationSearch
 
       if date_options[:date_from]
         timestamp_from = date_options[:date_from].to_time.to_i
-        filters << "p.timestamp >= ?"
+        filters << 'p.timestamp >= ?'
         bind_values << timestamp_from
       end
 
       if date_options[:date_to]
         # Add one day to include the entire end date
         timestamp_to = (date_options[:date_to] + 1.day).to_time.to_i
-        filters << "p.timestamp < ?"
+        filters << 'p.timestamp < ?'
         bind_values << timestamp_to
       end
 

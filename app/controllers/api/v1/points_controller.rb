@@ -4,6 +4,7 @@ class Api::V1::PointsController < ApiController
   include SafeTimestampParser
 
   before_action :authenticate_active_api_user!, only: %i[create update destroy bulk_destroy]
+  before_action :require_write_api!, only: %i[update destroy bulk_destroy]
   before_action :validate_points_limit, only: %i[create]
 
   def index
@@ -11,8 +12,7 @@ class Api::V1::PointsController < ApiController
     end_at   = params[:end_at].present? ? safe_timestamp(params[:end_at]) : Time.zone.now.to_i
     order    = params[:order] || 'desc'
 
-    points = current_api_user
-             .points
+    points = scoped_points
              .without_raw_data
              .where(timestamp: start_at..end_at)
 
@@ -39,6 +39,16 @@ class Api::V1::PointsController < ApiController
     response.set_header('X-Current-Page', points.current_page.to_s)
     response.set_header('X-Total-Pages', points.total_pages.to_s)
 
+    # For Lite users on Cloud: include the unscoped count and scoped count
+    # so the frontend can show how many points fall outside the 12-month data window.
+    if !DawarichSettings.self_hosted? && current_api_user.lite?
+      total_in_range = current_api_user.points
+                                       .where(timestamp: start_at..end_at).count
+      scoped_count = points.except(:select, :order).count
+      response.set_header('X-Total-Points-In-Range', total_in_range.to_s)
+      response.set_header('X-Scoped-Points', scoped_count.to_s)
+    end
+
     render json: serialized_points
   end
 
@@ -53,7 +63,9 @@ class Api::V1::PointsController < ApiController
 
     if point.update(lonlat: "POINT(#{point_params[:longitude]} #{point_params[:latitude]})")
       if point.track_id.present?
-        Rails.logger.info "[PointsController] Point #{point.id} updated, enqueuing Tracks::RecalculateJob for track #{point.track_id}"
+        Rails.logger.info(
+          "[PointsController] Point #{point.id} updated, enqueuing Tracks::RecalculateJob for track #{point.track_id}"
+        )
         Tracks::RecalculateJob.perform_later(point.track_id)
       end
 

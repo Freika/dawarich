@@ -135,7 +135,7 @@ RSpec.describe Points::RawData::Clearer do
 
       # Unverified month should still have raw_data
       unverified_points = Point.where(user: user)
-                               .where("timestamp >= ? AND timestamp < ?",
+                               .where('timestamp >= ? AND timestamp < ?',
                                       new_date.to_i,
                                       (new_date + 1.month).to_i)
       expect(unverified_points.pluck(:raw_data)).to all(eq({ 'lon' => 14.0, 'lat' => 53.0 }))
@@ -160,6 +160,22 @@ RSpec.describe Points::RawData::Clearer do
 
       expect(result[:cleared]).to eq(5)
       expect(Point.where(raw_data: {}).count).to eq(5)
+    end
+
+    it 'does not clear points whose raw_data_archived was set to false' do
+      # Pick one of the 5 archived+verified points and simulate a restore:
+      # set raw_data_archived to false and give it new raw_data directly in DB.
+      restored_point = Point.where(user: user, raw_data_archived: true).first
+      restored_point.update_columns(raw_data_archived: false, raw_data: { 'restored' => true })
+
+      clearer.call
+
+      restored_point.reload
+      expect(restored_point.raw_data).to eq({ 'restored' => true })
+
+      # The other 4 points should have been cleared
+      other_points = Point.where(user: user).where.not(id: restored_point.id)
+      expect(other_points.pluck(:raw_data)).to all(eq({}))
     end
   end
 end

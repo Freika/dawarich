@@ -1,9 +1,11 @@
 <% content_for :title, "Places" %>
 
 <div class="w-full my-5">
-  <div role="tablist" class="tabs tabs-lifted tabs-lg">
-    <%= link_to 'Visits', visits_path(status: :confirmed), role: 'tab', class: "tab font-bold text-xl #{active_visit_places_tab?('visits')}" %>
-    <%= link_to 'Places', places_path, role: 'tab', class: "tab font-bold text-xl #{active_visit_places_tab?('places')}" %>
+  <div class="overflow-x-auto pb-1">
+    <div role="tablist" class="tabs tabs-lifted tabs-lg inline-flex min-w-max flex-nowrap">
+      <%= link_to 'Visits', visits_path(status: :confirmed), role: 'tab', class: "tab font-bold text-xl #{active_visit_places_tab?('visits')}" %>
+      <%= link_to 'Places', places_path, role: 'tab', class: "tab font-bold text-xl #{active_visit_places_tab?('places')}" %>
+    </div>
   </div>
 
   <div id="places" class="min-w-full">
@@ -20,9 +22,7 @@
       </div>
     <% else %>
       <div class="flex justify-center my-5">
-        <div class='flex'>
-          <%= paginate @places %>
-        </div>
+        <%= paginate @places %>
       </div>
       <div class="overflow-x-auto">
         <table class="table">

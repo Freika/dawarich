@@ -1,5 +1,5 @@
-import { formatTimestamp } from '../utils/geojson_transformers'
-import { getCurrentTheme, getThemeColors } from '../utils/popup_theme'
+import { formatTimestamp } from "../utils/geojson_transformers"
+import { getCurrentTheme, getThemeColors } from "../utils/popup_theme"
 
 /**
  * Factory for creating visit popups
@@ -11,12 +11,14 @@ export class VisitPopupFactory {
    * @returns {string} HTML for popup
    */
   static createVisitPopup(properties) {
-    const { id, name, status, started_at, ended_at, duration, place_name } = properties
+    const { id, name, status, started_at, ended_at, duration, place_name } =
+      properties
 
     const startTime = formatTimestamp(started_at)
     const endTime = formatTimestamp(ended_at)
     const durationHours = Math.round(duration / 3600)
-    const durationDisplay = durationHours >= 1 ? `${durationHours}h` : `${Math.round(duration / 60)}m`
+    const durationDisplay =
+      durationHours >= 1 ? `${durationHours}h` : `${Math.round(duration / 60)}m`
 
     // Get theme colors
     const theme = getCurrentTheme()
@@ -25,7 +27,7 @@ export class VisitPopupFactory {
     return `
       <div class="visit-popup">
         <div class="popup-header">
-          <strong>${name || place_name || 'Unknown Place'}</strong>
+          <strong>${name || place_name || "Unknown Place"}</strong>
           <span class="visit-badge ${status}">${status}</span>
         </div>
         <div class="popup-body">

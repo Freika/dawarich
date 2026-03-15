@@ -27,6 +27,9 @@ describe 'Points Tracked Months API', type: :request do
                }]
 
         let(:api_key) { create(:user).api_key }
+
+        after { |example| SwaggerResponseExample.capture(example, response) }
+
         run_test!
       end
 

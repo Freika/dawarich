@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_02_06_202634) do
+ActiveRecord::Schema[8.0].define(version: 2026_03_15_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
@@ -147,6 +147,22 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_06_202634) do
     t.index ["token"], name: "index_family_invitations_on_token", unique: true
   end
 
+  create_table "family_location_requests", force: :cascade do |t|
+    t.bigint "requester_id", null: false
+    t.bigint "target_user_id", null: false
+    t.bigint "family_id", null: false
+    t.integer "status", default: 0, null: false
+    t.string "suggested_duration", default: "24h", null: false
+    t.datetime "expires_at", null: false
+    t.datetime "responded_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["expires_at", "status"], name: "idx_family_loc_requests_expires_status"
+    t.index ["family_id"], name: "index_family_location_requests_on_family_id"
+    t.index ["requester_id", "target_user_id", "status"], name: "idx_family_loc_requests_requester_target_status"
+    t.index ["target_user_id", "status"], name: "idx_family_loc_requests_target_status"
+  end
+
   create_table "family_memberships", force: :cascade do |t|
     t.bigint "family_id", null: false
     t.bigint "user_id", null: false
@@ -170,6 +186,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_06_202634) do
     t.integer "points_count", default: 0
     t.integer "status", default: 0, null: false
     t.datetime "processing_started_at"
+    t.text "error_message"
     t.index ["source"], name: "index_imports_on_source"
     t.index ["status"], name: "index_imports_on_status"
     t.index ["user_id"], name: "index_imports_on_user_id"
@@ -193,7 +210,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_06_202634) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["place_id"], name: "index_place_visits_on_place_id"
-    t.index ["visit_id"], name: "index_place_visits_on_visit_id"
+    t.index ["visit_id", "place_id"], name: "idx_place_visits_visit_id_place_id", unique: true
   end
 
   create_table "places", force: :cascade do |t|
@@ -254,23 +271,21 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_06_202634) do
     t.string "country_name"
     t.boolean "raw_data_archived", default: false, null: false
     t.bigint "raw_data_archive_id"
+    t.jsonb "motion_data", default: {}, null: false
     t.index ["country_id"], name: "index_points_on_country_id"
+    t.index ["id"], name: "index_points_on_not_reverse_geocoded", where: "(reverse_geocoded_at IS NULL)"
     t.index ["import_id"], name: "index_points_on_import_id"
     t.index ["lonlat", "timestamp", "user_id"], name: "index_points_on_lonlat_timestamp_user_id", unique: true
     t.index ["lonlat"], name: "index_points_on_lonlat", using: :gist
     t.index ["raw_data_archive_id"], name: "index_points_on_raw_data_archive_id"
     t.index ["raw_data_archived"], name: "index_points_on_archived_true", where: "(raw_data_archived = true)"
-    t.index ["reverse_geocoded_at"], name: "index_points_on_reverse_geocoded_at"
-    t.index ["timestamp"], name: "index_points_on_timestamp"
+    t.index ["track_id", "timestamp"], name: "idx_points_track_id_timestamp"
     t.index ["track_id"], name: "index_points_on_track_id"
-    t.index ["user_id", "city"], name: "idx_points_user_city"
     t.index ["user_id", "country_name"], name: "idx_points_user_country_name"
     t.index ["user_id", "geodata"], name: "index_points_on_user_id_and_empty_geodata", where: "(geodata = '{}'::jsonb)"
-    t.index ["user_id", "reverse_geocoded_at"], name: "index_points_on_user_id_and_reverse_geocoded_at", where: "(reverse_geocoded_at IS NOT NULL)"
     t.index ["user_id", "timestamp", "track_id"], name: "idx_points_track_generation"
     t.index ["user_id", "timestamp"], name: "idx_points_user_visit_null_timestamp", where: "(visit_id IS NULL)"
     t.index ["user_id", "timestamp"], name: "index_points_on_user_id_and_timestamp", order: { timestamp: :desc }
-    t.index ["user_id"], name: "index_points_on_user_id"
     t.index ["visit_id"], name: "index_points_on_visit_id"
   end
 
@@ -287,6 +302,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_06_202634) do
     t.datetime "updated_at", null: false
     t.datetime "verified_at"
     t.index ["archived_at"], name: "index_points_raw_data_archives_on_archived_at"
+    t.index ["user_id", "year", "month", "chunk_number"], name: "index_raw_data_archives_uniqueness", unique: true
     t.index ["user_id", "year", "month"], name: "index_points_raw_data_archives_on_user_id_and_year_and_month"
     t.index ["user_id"], name: "index_points_raw_data_archives_on_user_id"
   end
@@ -400,7 +416,6 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_06_202634) do
     t.uuid "sharing_uuid"
     t.jsonb "h3_hex_ids", default: {}
     t.index ["distance"], name: "index_stats_on_distance"
-    t.index ["h3_hex_ids"], name: "index_stats_on_h3_hex_ids", where: "((h3_hex_ids IS NOT NULL) AND (h3_hex_ids <> '{}'::jsonb))", using: :gin
     t.index ["month"], name: "index_stats_on_month"
     t.index ["sharing_uuid"], name: "index_stats_on_sharing_uuid", unique: true
     t.index ["user_id", "year", "month"], name: "index_stats_on_user_id_year_month", unique: true
@@ -446,16 +461,15 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_06_202634) do
     t.string "source"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.index ["track_id", "start_index", "end_index"], name: "index_track_segments_on_track_and_indices"
     t.index ["track_id", "transportation_mode"], name: "index_track_segments_on_track_id_and_transportation_mode"
-    t.index ["track_id"], name: "index_track_segments_on_track_id"
-    t.index ["transportation_mode"], name: "index_track_segments_on_transportation_mode"
   end
 
   create_table "tracks", force: :cascade do |t|
     t.datetime "start_at", null: false
     t.datetime "end_at", null: false
     t.bigint "user_id", null: false
-    t.geometry "original_path", limit: {srid: 0, type: "line_string"}, null: false
+    t.geometry "original_path", limit: {srid: 4326, type: "line_string"}, null: false
     t.bigint "distance"
     t.float "avg_speed"
     t.integer "duration"
@@ -467,6 +481,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_06_202634) do
     t.datetime "updated_at", null: false
     t.integer "dominant_mode", default: 0
     t.index ["dominant_mode"], name: "index_tracks_on_dominant_mode"
+    t.index ["user_id", "start_at"], name: "idx_tracks_user_id_start_at"
     t.index ["user_id"], name: "index_tracks_on_user_id"
   end
 
@@ -478,7 +493,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_06_202634) do
     t.bigint "user_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.geometry "path", limit: {srid: 3857, type: "line_string"}
+    t.geometry "path", limit: {srid: 4326, type: "line_string"}
     t.jsonb "visited_countries", default: {}, null: false
     t.index ["user_id"], name: "index_trips_on_user_id"
   end
@@ -503,15 +518,19 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_06_202634) do
     t.integer "status", default: 0
     t.datetime "active_until"
     t.integer "points_count", default: 0, null: false
+    t.string "provider"
+    t.string "uid"
     t.string "utm_source"
     t.string "utm_medium"
     t.string "utm_campaign"
     t.string "utm_term"
     t.string "utm_content"
-    t.string "provider"
-    t.string "uid"
+    t.datetime "deleted_at", precision: nil
+    t.integer "plan", default: 1, null: false
     t.index ["api_key"], name: "index_users_on_api_key"
+    t.index ["deleted_at"], name: "index_users_on_deleted_at"
     t.index ["email"], name: "index_users_on_email", unique: true
+    t.index ["plan"], name: "index_users_on_plan"
     t.index ["provider", "uid"], name: "index_users_on_provider_and_uid", unique: true
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
     t.index ["status"], name: "index_users_on_status"
@@ -543,15 +562,18 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_06_202634) do
   add_foreign_key "families", "users", column: "creator_id"
   add_foreign_key "family_invitations", "families"
   add_foreign_key "family_invitations", "users", column: "invited_by_id"
+  add_foreign_key "family_location_requests", "families"
+  add_foreign_key "family_location_requests", "users", column: "requester_id"
+  add_foreign_key "family_location_requests", "users", column: "target_user_id"
   add_foreign_key "family_memberships", "families"
   add_foreign_key "family_memberships", "users"
   add_foreign_key "notifications", "users"
   add_foreign_key "place_visits", "places"
   add_foreign_key "place_visits", "visits"
-  add_foreign_key "points", "points_raw_data_archives", column: "raw_data_archive_id", on_delete: :nullify
+  add_foreign_key "points", "points_raw_data_archives", column: "raw_data_archive_id", name: "fk_rails_points_raw_data_archives", on_delete: :nullify, validate: false
   add_foreign_key "points", "users"
   add_foreign_key "points", "visits"
-  add_foreign_key "points_raw_data_archives", "users"
+  add_foreign_key "points_raw_data_archives", "users", validate: false
   add_foreign_key "rails_pulse_operations", "rails_pulse_queries", column: "query_id"
   add_foreign_key "rails_pulse_operations", "rails_pulse_requests", column: "request_id"
   add_foreign_key "rails_pulse_requests", "rails_pulse_routes", column: "route_id"

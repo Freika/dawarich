@@ -39,22 +39,22 @@
     </div>
   <% end %>
 
-  <div class='text-center my-5'>
+  <div class="flex justify-center my-5">
     <%= paginate @points %>
   </div>
 
   <div id="points" class="min-w-full">
     <div data-controller='checkbox-select-all'>
       <%= form_with url: bulk_destroy_points_path(params.permit!), method: :delete, id: :bulk_destroy_form do |f| %>
-        <div class="flex justify-between my-5">
-          <%= f.submit "Delete Selected", class: "px-4 py-2 bg-red-500 text-white rounded-md", data: { turbo_confirm: "Are you sure?", checkbox_select_all_target: "deleteButton" }, style: "display: none;" %>
+        <div class="my-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <%= f.submit "Delete Selected", class: "self-start rounded-md bg-red-500 px-4 py-2 text-white md:self-auto", data: { turbo_confirm: "Are you sure?", checkbox_select_all_target: "deleteButton" }, style: "display: none;" %>
           <div>
             <%= page_entries_info @points, entry_name: 'point' %>
           </div>
-          <div class="flex justify-end">
-            <span class="mr-2">Order by:</span>
-            <%= link_to 'Newest', points_path(order_by: :desc, import_id: params[:import_id], start_at: params[:start_at], end_at: params[:end_at]), class: 'btn btn-xs btn-primary mx-1' %>
-            <%= link_to 'Oldest', points_path(order_by: :asc, import_id: params[:import_id], start_at: params[:start_at], end_at: params[:end_at]), class: 'btn btn-xs btn-primary mx-1' %>
+          <div class="flex flex-wrap items-center gap-2 md:justify-end">
+            <span class="w-full text-sm font-medium md:w-auto">Order by:</span>
+            <%= link_to 'Newest', points_path(order_by: :desc, import_id: params[:import_id], start_at: params[:start_at], end_at: params[:end_at]), class: 'btn btn-xs btn-primary' %>
+            <%= link_to 'Oldest', points_path(order_by: :asc, import_id: params[:import_id], start_at: params[:start_at], end_at: params[:end_at]), class: 'btn btn-xs btn-primary' %>
           </div>
         </div>
 
@@ -75,7 +75,7 @@
                 <% end %>
                 </div>
               </th>
-              <th>Speed, km/h</th>
+              <th>Speed, <%= speed_label(current_user.safe_settings.distance_unit) %></th>
               <th>Recorded At</th>
               <th>Coordinates</th>
             </tr>
@@ -90,7 +90,7 @@
     </div>
   </div>
 
-  <div class='text-center my-5'>
+  <div class="flex justify-center my-5">
     <%= paginate @points %>
   </div>
 </div>

@@ -71,6 +71,79 @@ RSpec.describe Families::UpdateLocationSharing do
       end
     end
 
+    context 'when enabling with share_history and history_window' do
+      let(:user) { create(:user) }
+      let!(:family_membership) { create(:family_membership, user: user) }
+      let(:enabled) { true }
+
+      subject(:call_service) do
+        described_class.new(
+          user: user, enabled: enabled, duration: duration,
+          share_history: share_history, history_window: history_window
+        ).call
+      end
+
+      context 'with share_history true and history_window 7d' do
+        let(:share_history) { 'true' }
+        let(:history_window) { '7d' }
+
+        it 'persists share_history as boolean true' do
+          call_service
+          user.reload
+          expect(user.family_share_history?).to be true
+        end
+
+        it 'persists history_window as 7d' do
+          call_service
+          user.reload
+          expect(user.family_history_window).to eq('7d')
+        end
+      end
+
+      context 'with share_history false' do
+        let(:share_history) { 'false' }
+        let(:history_window) { '30d' }
+
+        it 'persists share_history as boolean false' do
+          call_service
+          user.reload
+          expect(user.family_share_history?).to be false
+        end
+      end
+
+      context 'with invalid history_window' do
+        let(:share_history) { nil }
+        let(:history_window) { 'invalid_value' }
+
+        it 'falls back to 24h' do
+          call_service
+          user.reload
+          expect(user.family_history_window).to eq('24h')
+        end
+      end
+
+      context 'with nil share_history preserves existing value' do
+        let(:share_history) { nil }
+        let(:history_window) { nil }
+
+        before do
+          user.update_family_location_sharing!(true, duration: 'permanent', share_history: true, history_window: '30d')
+        end
+
+        it 'preserves existing share_history' do
+          call_service
+          user.reload
+          expect(user.family_share_history?).to be true
+        end
+
+        it 'preserves existing history_window' do
+          call_service
+          user.reload
+          expect(user.family_history_window).to eq('30d')
+        end
+      end
+    end
+
     context 'when the user is not in a family' do
       let(:user) { create(:user) }
       let(:enabled) { true }

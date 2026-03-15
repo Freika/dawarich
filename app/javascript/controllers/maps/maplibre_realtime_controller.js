@@ -16,10 +16,7 @@ export default class extends Controller {
   }
 
   connect() {
-    console.log("[Realtime Controller] Connecting...")
-
     if (!this.enabledValue) {
-      console.log("[Realtime Controller] Disabled, skipping setup")
       return
     }
 
@@ -58,14 +55,12 @@ export default class extends Controller {
    */
   setupChannels() {
     try {
-      console.log("[Realtime Controller] Setting up channels...")
       this.channels = createMapChannel({
         connected: this.handleConnected.bind(this),
         disconnected: this.handleDisconnected.bind(this),
         received: this.handleReceived.bind(this),
         enableLiveMode: this.liveModeEnabled,
       })
-      console.log("[Realtime Controller] Channels setup complete")
     } catch (error) {
       console.error("[Realtime Controller] Failed to setup channels:", error)
       console.error("[Realtime Controller] Error stack:", error.stack)
@@ -178,8 +173,6 @@ export default class extends Controller {
       return
     }
 
-    console.log("[Realtime Controller] Received point data:", pointData)
-
     const [lat, lon, battery, altitude, timestamp, velocity, id, countryName] =
       pointData
 
@@ -218,8 +211,6 @@ export default class extends Controller {
       features,
     })
 
-    console.log("[Realtime Controller] Added new point to map:", id)
-
     this.updateRecentPoint(parseFloat(lon), parseFloat(lat), {
       id: parseInt(id, 10),
       battery: parseFloat(battery) || null,
@@ -241,7 +232,7 @@ export default class extends Controller {
     const mapsController = this.mapsV2Controller
     if (!mapsController) return
 
-    const familyLayer = mapsController.familyLayer
+    const familyLayer = mapsController.layerManager?.getLayer("family")
     if (familyLayer) {
       familyLayer.updateMember(member)
     }
@@ -270,11 +261,6 @@ export default class extends Controller {
     if (this.liveModeEnabled) {
       recentPointLayer.show()
       recentPointLayer.updateRecentPoint(longitude, latitude, properties)
-      console.log(
-        "[Realtime Controller] Updated recent point marker:",
-        longitude,
-        latitude,
-      )
     }
   }
 
@@ -296,8 +282,6 @@ export default class extends Controller {
       duration: 2000,
       essential: true,
     })
-
-    console.log("[Realtime Controller] Zoomed to point:", longitude, latitude)
   }
 
   /**

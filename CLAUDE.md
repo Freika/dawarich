@@ -35,6 +35,18 @@ This file contains essential information for Claude to work effectively with the
 - **Maps**: Leaflet.js
 - **Charts**: Chartkick
 
+## Conventions
+- **Enums over strings:** Prefer Rails enums (integer columns) over string columns for status/type fields. Use `enum :field_name, { ... }, prefix: :field_name` to get scoped predicate methods and avoid name collisions.
+- **Turbo first:** Follow Rails 8 conventions — use Turbo Frames and Turbo Streams/broadcasts wherever appropriate to avoid full page reloads and provide smooth, in-place UI updates.
+- **SVGs as files:** Never inline SVG markup in views. Instead, save SVGs to `app/assets/svg/icons` and use `inline_svg_tag "name.svg"` to render them. This keeps views clean and SVGs reusable. Use `rails_icons` to manage SVG assets and ensure consistent styling.
+
+## Code Style
+
+- Follow rubocop conventions (see `.rubocop.yml`)
+- Rails defaults: convention over configuration
+- Prefer Hotwire (Turbo Frames/Streams + Stimulus) over custom JS
+- Use importmap for JS dependencies — no npm/yarn
+
 ### Key Gems
 - `activerecord-postgis-adapter` - PostgreSQL PostGIS support
 - `geocoder` - Geocoding services
@@ -267,6 +279,102 @@ bundle exec bundle-audit             # Dependency security
 - The `noStaticOnlyClass` warning is acceptable and does not fail CI
 - Tailwind CSS files (`*.tailwind.css`) have `@import` position rules disabled in `biome.json` because `@tailwind` directives must come first
 
+## Frontend: Hotwire-First Approach
+
+**Always prefer Turbo + Stimulus over custom JavaScript.** This project uses the Hotwire stack (Turbo Drive, Turbo Frames, Turbo Streams, Stimulus) as its primary frontend architecture. Direct `fetch()` calls, manual DOM manipulation, and standalone JS modules should only be used when Hotwire cannot handle the use case (e.g., map rendering with Leaflet/MapLibre).
+
+### Decision Hierarchy
+
+When adding frontend behavior, follow this order of preference:
+
+1. **Turbo Drive** — Default. Links and forms work as SPAs with zero JS.
+2. **Turbo Frames** — Partial page updates. Wrap a section in `<turbo-frame>` and target it from links/forms.
+3. **Turbo Streams** — Server-pushed DOM updates. Use for CRUD operations that need to update multiple page sections. Respond with `turbo_stream` format from controllers.
+4. **Stimulus controller** — Client-side behavior that Turbo can't handle (toggles, form validation, UI interactions). Keep controllers thin.
+5. **Direct JS** — Last resort. Only for complex map interactions, canvas rendering, or third-party library integration (Leaflet, MapLibre, Chartkick).
+
+### Turbo Stream Responses
+
+For CRUD actions (create, update, destroy), respond with Turbo Streams instead of redirects or JSON:
+
+```ruby
+# Controller
+def create
+  @area = current_user.areas.new(area_params)
+  if @area.save
+    respond_to do |format|
+      format.turbo_stream
+      format.html { redirect_to areas_path }
+    end
+  end
+end
+
+# app/views/areas/create.turbo_stream.erb
+<%= turbo_stream.prepend "areas-list", partial: "areas/area", locals: { area: @area } %>
+<%= stream_flash(:notice, "Area created successfully") %>
+```
+
+Use the `FlashStreamable` concern (included in controllers) to send flash messages via Turbo Streams:
+
+```ruby
+include FlashStreamable
+
+# In turbo_stream responses:
+stream_flash(:notice, "Success message")
+stream_flash(:error, "Error message")
+```
+
+### Flash Messages
+
+- **Server-side (Turbo Stream):** Use `stream_flash` from the `FlashStreamable` concern. This appends a flash partial to the `#flash-messages` container.
+- **Client-side (Stimulus/JS):** Import `Flash` from `flash_controller.js` and call `Flash.show(type, message)`:
+  ```javascript
+  import Flash from "./flash_controller"
+  Flash.show("notice", "Operation completed")
+  Flash.show("error", "Something went wrong")
+  ```
+- **Never** use raw `alert()`, `console.log` for user-facing messages, or create ad-hoc notification DOM elements.
+
+### Stimulus Controllers
+
+- Location: `app/javascript/controllers/`
+- Naming: `<name>_controller.js` maps to `data-controller="<name>"` in HTML
+- Use `static targets` for DOM references, `static values` for data from HTML attributes
+- Always clean up in `disconnect()` (event listeners, timers, subscriptions)
+- Prefer `data-action` attributes in HTML over `addEventListener` in JS
+- For forms, prefer `this.formTarget.requestSubmit()` over manual `fetch()` calls — this preserves Turbo form handling, CSRF tokens, and Turbo Stream responses
+
+### File Uploads
+
+Use the unified `upload` controller (`upload_controller.js`) for all file upload forms. Configure via `data-upload-*-value` attributes:
+
+```erb
+<%= form_with data: {
+  controller: "upload",
+  upload_url_value: rails_direct_uploads_url,
+  upload_field_name_value: "import[files][]",
+  upload_multiple_value: true,
+  upload_target: "form"
+} do |f| %>
+```
+
+### What NOT to Do
+
+- **No `fetch()` for form submissions** — Use `form_with` with Turbo. If you need custom headers (API key), use Stimulus to submit the form via `requestSubmit()`.
+- **No `document.getElementById()` for updates** — Use Turbo Frames/Streams to replace DOM sections server-side.
+- **No `showFlashMessage()` or ad-hoc flash functions** — Use `Flash.show()` (client) or `stream_flash` (server).
+- **No ActionCable subscriptions for CRUD updates** — Use Turbo Stream broadcasts from models/controllers instead.
+- **No separate upload controllers per form** — Use the unified `upload` controller with value attributes for configuration.
+
+### When Direct JS Is Acceptable
+
+- **Map rendering**: Leaflet (Maps v1) and MapLibre GL JS (Maps v2) require imperative JS for layers, markers, and interactions.
+- **Chart rendering**: Chartkick handles its own DOM.
+- **Third-party integrations**: Libraries that don't have Hotwire adapters.
+- **Complex client-side computation**: Haversine distance, coordinate transforms, etc.
+
+Even in these cases, wrap the integration in a Stimulus controller and connect it to the DOM via `data-controller`.
+
 ## Important Notes for Development
 
 1. **Location Data**: Always handle location data with appropriate precision and privacy considerations
@@ -276,7 +384,8 @@ bundle exec bundle-audit             # Dependency security
 4. **Testing**: Include both unit and integration tests for location-based features
 5. **Performance**: Consider database indexes for geographic queries
 6. **Security**: Never log or expose user location data inappropriately
-7. **Public Sharing**: When implementing features that interact with stats, consider public sharing access patterns:
+7. **Migrations**: Put all migrations (schema and data) in `db/migrate/`, not `db/data/`. Data manipulation migrations use the same `ActiveRecord::Migration` class and should run in the standard migration sequence.
+8. **Public Sharing**: When implementing features that interact with stats, consider public sharing access patterns:
    - Use `public_accessible?` method to check if a stat can be publicly accessed
    - Support UUID-based access in API endpoints when appropriate
    - Respect expiration settings and disable sharing when expired
@@ -322,6 +431,62 @@ Both Map v1 (Leaflet) and Map v2 (MapLibre) contain an **intentional unit mismat
 - **Distance threshold**: 500 meters (default) - currently non-functional due to unit bug
 - **Sorting**: Map v2 sorts points by timestamp client-side; v1 relies on backend ASC order
 - **API ordering**: Map v2 must request `order: 'asc'` to match v1's chronological data flow
+
+## Plan System (Lite vs Pro)
+
+Dawarich Cloud has a two-tier plan system. Self-hosted instances bypass all plan restrictions (`DawarichSettings.self_hosted?` returns true, all users effectively have Pro).
+
+### Plans
+
+- **Pro** (`plan: :pro`, enum value `1`) — Full access to all features, no data window
+- **Lite** (`plan: :lite`, enum value `0`) — Free tier with restricted feature set
+
+Plan is stored as an integer enum on the `users` table. New cloud users start on Lite via trial flow.
+
+### Lite Plan Restrictions
+
+**Data visibility window (12 months):**
+- Lite users only see data from the last 12 months (`DawarichSettings::LITE_DATA_WINDOW`)
+- Implemented as a query-time filter in `PlanScopable` concern (`app/models/concerns/plan_scopable.rb`)
+- Scoped methods: `scoped_points`, `scoped_tracks`, `scoped_visits`, `scoped_stats`
+- Data is **never deleted** — only filtered from UI and API reads. Export uses unscoped `user.points` etc.
+- `plan_restricted?` returns `true` only when `!self_hosted? && lite?`
+
+**Disabled map layers (Pro-only):**
+- Heatmap, Fog of War, Scratch Map, Globe View
+- Lite users get a 20-second timed preview, then auto-hide with upgrade prompt
+- Gating logic: `app/javascript/maps_maplibre/utils/layer_gate.js`
+- UI components: `Toast` (countdown) and `UpgradeBanner` (post-preview CTA)
+
+**API restrictions:**
+- Write API returns 403 (`require_write_api!` in `ApiController`)
+- Read API scopes results to 12-month window (`apply_plan_scope` in `ApiController`)
+- Rate limit: 200 req/hr (Lite) vs 1,000 req/hr (Pro) via `rack-attack` (`config/initializers/rack_attack.rb`)
+
+**Disabled features:**
+- Integrations (Immich, Photoprism)
+- Public sharing of stats
+- Full digest view
+
+**Plan endpoint:** `GET /api/v1/plan` returns current plan and feature flags (`Api::V1::PlanController`)
+
+### Archival Warning System
+
+`Lite::ArchivalWarningJob` runs daily for Lite users and sends warnings at three thresholds:
+1. **11 months** — In-app notification warning data will archive in 30 days
+2. **11.5 months** — Email notification
+3. **12 months** — In-app notification that data has been archived (hidden from view)
+
+Warnings are deduped via `settings['archival_warnings']` JSONB on the user record.
+
+### Development Guidelines for Plan Gating
+
+- Use `user.plan_restricted?` to check if restrictions apply (returns false for self-hosted)
+- Use `user.scoped_*` methods instead of `user.points`/`user.tracks` etc. for plan-aware queries
+- Use `require_pro_api!` or `require_write_api!` before_actions in API controllers
+- Use `apply_plan_scope(relation)` when scoping points that don't start from `user.points`
+- Frontend: use `isGatedPlan(userPlan)` and `gatedToggle()` from `layer_gate.js` for map layer toggling
+- Export must always use unscoped relations — users can export all their data regardless of plan
 
 ## Contributing
 

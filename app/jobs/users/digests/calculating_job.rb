@@ -19,7 +19,7 @@ class Users::Digests::CalculatingJob < ApplicationJob
   end
 
   def create_digest_failed_notification(user_id, error)
-    user = User.find(user_id)
+    user = find_user_or_skip(user_id) || return
 
     Notifications::Create.new(
       user:,

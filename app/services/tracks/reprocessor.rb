@@ -52,7 +52,7 @@ module Tracks
 
       if points_count > LARGE_TRACK_THRESHOLD
         Rails.logger.warn "[Reprocessor] Track #{track.id} has #{points_count} points, " \
-                          "which may use significant memory during reprocessing"
+                          'which may use significant memory during reprocessing'
       end
 
       points = track.points.order(:timestamp).to_a

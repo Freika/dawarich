@@ -11,6 +11,8 @@
     <% end %>
   </div>
 
+  <%= render 'shared/plan_data_window_alert', utm_content: 'stats_index' %>
+
   <% cache [current_user.id, "stats_summary", current_user.stats.maximum(:updated_at), @points_total, current_user.safe_settings.distance_unit, DawarichSettings.reverse_geocoding_enabled?], expires_in: 24.hours do %>
     <div class="stats stats-vertical lg:stats-horizontal shadow w-full bg-base-200 relative">
       <div class="stat text-center">
@@ -50,7 +52,7 @@
           <h2 class="card-title justify-between text-<%= header_colors[year % header_colors.size] %>">
             <div>
               <%= link_to year, "/stats/#{year}", class: 'underline hover:no-underline' %>
-              <%= link_to '[Map]', map_url(year_timespan(year)), class: 'underline hover:no-underline' %>
+              <%= link_to '[Map]', preferred_map_path(year_timespan(year)), class: 'underline hover:no-underline' %>
             </div>
             <div class="flex items-center gap-2">
               <span class='text-xs text-gray-500'>Last update: <%= human_date(stats.first.updated_at) %></span>
@@ -64,9 +66,10 @@
             <div class="card-actions justify-end">
               <% location_data = countries_and_cities_stat_for_year(year, stats) %>
               <%= link_to "#{location_data[:countries_count]} countries, #{location_data[:cities_count]} cities",
-                         "##{location_data[:modal_id]}",
+                         "#",
                          class: "link link-primary",
-                         onclick: "document.getElementById('#{location_data[:modal_id]}').checked = true" %>
+                         data: { turbo: false },
+                         onclick: "event.preventDefault(); document.getElementById('#{location_data[:modal_id]}').checked = true" %>
 
               <!-- Modal structure -->
               <div>
@@ -117,6 +120,9 @@
         </div>
       </div>
       <% end %>
+    <% end %>
+    <% @locked_years.each do |year| %>
+      <%= render 'stats/locked_year_card', year: year %>
     <% end %>
   </div>
 </div>

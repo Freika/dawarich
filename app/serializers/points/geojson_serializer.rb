@@ -5,7 +5,6 @@ class Points::GeojsonSerializer
     @points = points
   end
 
-  # rubocop:disable Metrics/MethodLength
   def call
     {
       type: 'FeatureCollection',

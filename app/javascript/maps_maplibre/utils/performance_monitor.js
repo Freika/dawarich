@@ -34,7 +34,7 @@ export class PerformanceMonitor {
     this.metrics.push({
       name,
       duration,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     })
 
     return duration
@@ -63,7 +63,7 @@ export class PerformanceMonitor {
         count: durations.length,
         avg: Math.round(avg),
         min: Math.round(min),
-        max: Math.round(max)
+        max: Math.round(max),
       }
     }
 
@@ -80,7 +80,7 @@ export class PerformanceMonitor {
     return {
       used: Math.round(performance.memory.usedJSHeapSize / 1048576),
       total: Math.round(performance.memory.totalJSHeapSize / 1048576),
-      limit: Math.round(performance.memory.jsHeapSizeLimit / 1048576)
+      limit: Math.round(performance.memory.jsHeapSizeLimit / 1048576),
     }
   }
 
@@ -88,12 +88,14 @@ export class PerformanceMonitor {
    * Log report to console
    */
   logReport() {
-    console.group('Performance Report')
+    console.group("Performance Report")
     console.table(this.getReport())
 
     const memory = this.getMemoryUsage()
     if (memory) {
-      console.log(`Memory: ${memory.used}MB / ${memory.total}MB (limit: ${memory.limit}MB)`)
+      console.log(
+        `Memory: ${memory.used}MB / ${memory.total}MB (limit: ${memory.limit}MB)`,
+      )
     }
 
     console.groupEnd()

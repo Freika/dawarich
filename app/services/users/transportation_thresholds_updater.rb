@@ -33,11 +33,24 @@ module Users
     end
 
     def capture_current_thresholds
-      THRESHOLD_KEYS.to_h { |key| [key, @user.settings[key]&.dup] }
+      THRESHOLD_KEYS.index_with { |key| @user.settings[key]&.dup }
     end
 
     def apply_settings
-      @settings_params.each { |key, value| @user.settings[key] = value }
+      @settings_params.each do |key, value|
+        next if key.to_s == 'timezone' && !ActiveSupport::TimeZone[value]
+
+        @user.settings[key] = value
+      end
+
+      sanitize_gated_layers if @user.lite?
+    end
+
+    def sanitize_gated_layers
+      if @user.settings.key?('enabled_map_layers')
+        @user.settings['enabled_map_layers'] -= Users::SafeSettings::GATED_MAP_LAYERS
+      end
+      @user.settings['globe_projection'] = false if @settings_params.key?('globe_projection')
     end
 
     def trigger_recalculation_if_needed

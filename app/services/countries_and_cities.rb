@@ -13,7 +13,7 @@ class CountriesAndCities
   def call
     points
       .reject { |point| point[:country_name].nil? || point[:city].nil? }
-      .group_by { |point| point[:country_name] }
+      .group_by { |point| canonical_country_name(point) }
       .transform_values { |country_points| process_country_points(country_points) }
       .map { |country, cities| CountryData.new(country: country, cities: cities) }
   end
@@ -21,6 +21,20 @@ class CountriesAndCities
   private
 
   attr_reader :points, :min_minutes_spent_in_city, :max_gap_minutes
+
+  def canonical_country_name(point)
+    country_id = point[:country_id]
+    return point[:country_name] if country_id.blank?
+
+    country_names_by_id[country_id] || point[:country_name]
+  end
+
+  def country_names_by_id
+    @country_names_by_id ||= begin
+      ids = points.filter_map { |p| p[:country_id] }.uniq
+      ids.any? ? Country.where(id: ids).pluck(:id, :name).to_h : {}
+    end
+  end
 
   def process_country_points(country_points)
     country_points

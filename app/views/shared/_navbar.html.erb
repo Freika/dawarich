@@ -12,15 +12,10 @@
         <% if user_signed_in? && DawarichSettings.family_feature_enabled? %>
           <li>
             <% if current_user.in_family? %>
-              <div data-controller="family-navbar-indicator"
-                   data-family-navbar-indicator-enabled-value="<%= current_user.family_sharing_enabled? %>">
-                <%= link_to family_path, class: "#{active_class?(family_path)} flex items-center space-x-2" do %>
-                  <span>Family</span>
-                  <div data-family-navbar-indicator-target="indicator"
-                       class="w-2 h-2 <%= current_user.family_sharing_enabled? ? 'bg-green-500 animate-pulse' : 'bg-gray-400' %> rounded-full"
-                       title="<%= current_user.family_sharing_enabled? ? 'Location sharing enabled' : 'Location sharing disabled' %>"></div>
-                <% end %>
-              </div>
+              <%= link_to family_path, class: "#{active_class?(family_path)} flex items-center space-x-2" do %>
+                <span>Family</span>
+                <%= render 'families/navbar_indicator', user: current_user %>
+              <% end %>
             <% else %>
               <%= link_to 'Family<sup>α</sup>'.html_safe, new_family_path, class: "#{active_class?(new_family_path)}" %>
             <% end %>
@@ -85,14 +80,10 @@
       <% if user_signed_in? && DawarichSettings.family_feature_enabled? %>
         <li>
           <% if current_user.in_family? %>
-            <div data-controller="family-navbar-indicator"
-                 data-family-navbar-indicator-enabled-value="<%= current_user.family_sharing_enabled? %>"
-                 class="<%= active_class?(family_path) %>">
+            <div class="<%= active_class?(family_path) %>">
               <%= link_to family_path, class: "mx-1 flex items-center space-x-2" do %>
                 <span>Family<sup>α</sup></span>
-                <div data-family-navbar-indicator-target="indicator"
-                     class="w-2 h-2 <%= current_user.family_sharing_enabled? ? 'bg-green-500 animate-pulse' : 'bg-gray-400' %> rounded-full"
-                     title="<%= current_user.family_sharing_enabled? ? 'Location sharing enabled' : 'Location sharing disabled' %>"></div>
+                <%= render 'families/navbar_indicator', user: current_user %>
               <% end %>
             </div>
           <% else %>
@@ -184,27 +175,17 @@
           </div>
         <% end %>
 
-        <li data-controller="notifications"
-            data-notifications-user-id-value="<%= current_user.id %>">
+        <%= turbo_stream_from current_user, :notifications %>
+        <li data-controller="notifications">
           <details>
             <summary class="relative">
               <%= icon 'bell' %>
-              <% if @unread_notifications.present? %>
-                <span class="badge badge-xs badge-primary absolute top-0 right-0" data-notifications-target="badge">
-                  <%= @unread_notifications.size %>
-                </span>
-              <% end %>
+              <%= render 'notifications/badge', count: @unread_notifications&.size || 0 %>
             </summary>
-            <ul class="p-2 bg-base-100 rounded-t-none z-10 min-w-52" data-notifications-target="list">
+            <ul class="p-2 bg-base-100 rounded-t-none z-10 min-w-52" id="notifications-list">
               <li><%= link_to 'See all', notifications_path %></li>
-              <% @unread_notifications.first(10).each do |notification| %>
-                <div class="divider p-0 m-0"></div>
-                <li class='notification-item'>
-                  <%= link_to notification do %>
-                    <%= notification.title %>
-                    <div class="badge badge-xs justify-self-end badge-<%= notification.kind %>"></div>
-                  <% end %>
-                </li>
+              <% @unread_notifications&.first(10)&.each do |notification| %>
+                <%= render 'notifications/navbar_item', notification: notification %>
               <% end %>
             </ul>
           </details>
@@ -225,12 +206,12 @@
                 <span class="indicator-item badge badge-secondary badge-xs"></span>
               <% end %>
               <% if current_user.admin? %>
-                <span class='tooltip tooltip-bottom' data-tip="You're an admin, Harry!">
+                <span class='tooltip tooltip-left' data-tip="You're an admin, Harry!">
                   <%= icon 'star' %>
                 </span>
               <% end %>
               <% if current_user.supporter? && current_user.safe_settings.show_supporter_badge? %>
-                <span class='tooltip tooltip-bottom' data-tip="Dawarich Supporter">
+                <span class='tooltip tooltip-left' data-tip="Dawarich Supporter">
                   <span class="text-sky-400 inline-block animate-[supporter-rainbow-glow_8s_linear_infinite]">
                     <%= icon 'gem' %>
                   </span>

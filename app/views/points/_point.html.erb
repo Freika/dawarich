@@ -13,7 +13,7 @@
       }
     %>
   </td>
-  <td class='<%= speed_text_color(point.velocity) %>'><%= point.velocity %></td>
+  <td class='<%= speed_text_color(point.velocity) %>'><%= point_speed(point.velocity, current_user.safe_settings.distance_unit) %></td>
   <td><%= human_datetime_with_seconds(point.recorded_at) %></td>
   <td><%= point.lat %>, <%= point.lon %></td>
   <td></td>

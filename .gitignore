@@ -87,3 +87,4 @@ node_modules/
 /e2e/temp/
 
 .claude
+.worktrees/

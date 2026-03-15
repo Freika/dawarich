@@ -1,0 +1,16 @@
+<% if show_plan_data_window_alert? && local_assigns[:start_at].present? && start_at < DawarichSettings::LITE_DATA_WINDOW.ago %>
+  <div data-controller="removals" data-removals-timeout-value="0"
+       class="map-upgrade-banner"
+       role="status" style="pointer-events: auto;">
+    <span class="map-upgrade-banner-icon" aria-hidden="true"><%= icon 'info', class: 'w-4 h-4' %></span>
+    <span class="map-upgrade-banner-text">
+      Your Lite plan includes the last 12 months of data.
+    </span>
+    <a href="<%= upgrade_url(utm_medium: 'data_window', utm_content: local_assigns[:utm_content] || 'map') %>"
+       class="btn btn-sm btn-primary map-upgrade-banner-cta" target="_blank" rel="noopener">
+      Upgrade to Pro
+    </a>
+    <button data-action="click->removals#remove"
+            class="map-upgrade-banner-dismiss" aria-label="Dismiss">✕</button>
+  </div>
+<% end %>

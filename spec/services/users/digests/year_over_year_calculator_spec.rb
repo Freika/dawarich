@@ -23,22 +23,22 @@ RSpec.describe Users::Digests::YearOverYearCalculator do
       let!(:previous_year_stats) do
         [
           create(:stat, user: user, year: 2023, month: 1, distance: 50_000, toponyms: [
-            { 'country' => 'Germany', 'cities' => [{ 'city' => 'Berlin' }] }
-          ]),
+                   { 'country' => 'Germany', 'cities' => [{ 'city' => 'Berlin' }] }
+                 ]),
           create(:stat, user: user, year: 2023, month: 2, distance: 50_000, toponyms: [
-            { 'country' => 'France', 'cities' => [{ 'city' => 'Paris' }] }
-          ])
+                   { 'country' => 'France', 'cities' => [{ 'city' => 'Paris' }] }
+                 ])
         ]
       end
 
       let!(:current_year_stats) do
         [
           create(:stat, user: user, year: 2024, month: 1, distance: 75_000, toponyms: [
-            { 'country' => 'Germany', 'cities' => [{ 'city' => 'Berlin' }, { 'city' => 'Munich' }] }
-          ]),
+                   { 'country' => 'Germany', 'cities' => [{ 'city' => 'Berlin' }, { 'city' => 'Munich' }] }
+                 ]),
           create(:stat, user: user, year: 2024, month: 2, distance: 75_000, toponyms: [
-            { 'country' => 'Spain', 'cities' => [{ 'city' => 'Madrid' }] }
-          ])
+                   { 'country' => 'Spain', 'cities' => [{ 'city' => 'Madrid' }] }
+                 ])
         ]
       end
 
@@ -93,15 +93,15 @@ RSpec.describe Users::Digests::YearOverYearCalculator do
     context 'when countries and cities decreased' do
       let!(:previous_year_stats) do
         create(:stat, user: user, year: 2023, month: 1, distance: 100_000, toponyms: [
-          { 'country' => 'Germany', 'cities' => [{ 'city' => 'Berlin' }, { 'city' => 'Munich' }] },
-          { 'country' => 'France', 'cities' => [{ 'city' => 'Paris' }] }
-        ])
+                 { 'country' => 'Germany', 'cities' => [{ 'city' => 'Berlin' }, { 'city' => 'Munich' }] },
+                 { 'country' => 'France', 'cities' => [{ 'city' => 'Paris' }] }
+               ])
       end
 
       let!(:current_year_stats) do
         create(:stat, user: user, year: 2024, month: 1, distance: 100_000, toponyms: [
-          { 'country' => 'Germany', 'cities' => [{ 'city' => 'Berlin' }] }
-        ])
+                 { 'country' => 'Germany', 'cities' => [{ 'city' => 'Berlin' }] }
+               ])
       end
 
       it 'returns negative countries change' do

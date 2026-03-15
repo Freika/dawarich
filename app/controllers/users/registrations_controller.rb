@@ -21,9 +21,26 @@ class Users::RegistrationsController < Devise::RegistrationsController
     super do |resource|
       if resource.persisted?
         assign_utm_params(resource)
+        store_signup_intent(resource)
         accept_invitation_for_user(resource) if @invitation
       end
     end
+  end
+
+  def destroy
+    unless resource.can_delete_account?
+      set_flash_message! :alert, :cannot_delete
+      redirect_to edit_user_registration_path, status: :unprocessable_content
+      return
+    end
+
+    Users::DestroyJob.perform_later(resource.id) if resource.mark_as_deleted_atomically!
+
+    Devise.sign_out_all_scopes ? sign_out : sign_out(resource_name)
+
+    set_flash_message! :notice, :destroyed
+    yield resource if block_given?
+    respond_with_navigational(resource) { redirect_to after_sign_out_path_for(resource_name) }
   end
 
   protected
@@ -104,8 +121,19 @@ class Users::RegistrationsController < Devise::RegistrationsController
     super
   end
 
+  def store_signup_intent(user)
+    return if DawarichSettings.self_hosted?
+
+    intent = params.dig(:user, :signup_intent)
+    return unless intent.in?(%w[cloud self_hosted_demo])
+
+    user.update_columns(
+      settings: user.settings.merge('signup_intent' => intent)
+    )
+  end
+
   def email_password_registration_allowed?
-    ALLOW_EMAIL_PASSWORD_REGISTRATION
+    DawarichSettings.registration_enabled?
   end
 
   def oidc_only_mode?

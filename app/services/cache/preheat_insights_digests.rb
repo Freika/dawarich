@@ -30,9 +30,7 @@ class Cache::PreheatInsightsDigests
     digest = user.digests.yearly.find_by(year: year)
 
     # Calculate digest if it doesn't exist or is stale
-    if digest.nil? || digest_stale?(digest, year)
-      digest = Users::Digests::CalculateYear.new(user.id, year).call
-    end
+    digest = Users::Digests::CalculateYear.new(user.id, year).call if digest.nil? || digest_stale?(digest, year)
 
     return unless digest
 

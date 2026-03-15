@@ -50,7 +50,9 @@ namespace :points do
       puts ''
       puts 'You can now run your data migration.'
       puts 'Example:'
-      puts "  rails runner \"Point.where(user_id: #{user_id}, timestamp_year: #{year}, timestamp_month: #{month}).find_each { |p| p.fix_coordinates_from_raw_data }\""
+      puts '  rails runner "Point.where(user_id: ' \
+           "#{user_id}, timestamp_year: #{year}, timestamp_month: #{month}" \
+           ').find_each { |p| p.fix_coordinates_from_raw_data }"'
       puts ''
       puts 'Cache will expire in 1 hour automatically.'
     end
@@ -113,7 +115,10 @@ namespace :points do
 
       # Storage size via ActiveStorage
       total_blob_size = ActiveStorage::Blob
-                        .joins('INNER JOIN active_storage_attachments ON active_storage_attachments.blob_id = active_storage_blobs.id')
+                        .joins(
+                          'INNER JOIN active_storage_attachments ' \
+                          'ON active_storage_attachments.blob_id = active_storage_blobs.id'
+                        )
                         .where("active_storage_attachments.record_type = 'Points::RawDataArchive'")
                         .sum(:byte_size)
 
@@ -134,9 +139,12 @@ namespace :points do
                             .order('archive_count DESC')
                             .limit(10)
                             .each_with_index do |stat, idx|
-        user = User.find(stat.user_id)
-        puts "#{idx + 1}. #{user.email.ljust(30)} #{stat.archive_count.to_s.rjust(3)} archives, #{stat.total_points.to_s.rjust(8)} points"
-      end
+                              user = User.find(stat.user_id)
+                              email = user.email.ljust(30)
+                              archives = stat.archive_count.to_s.rjust(3)
+                              points = stat.total_points.to_s.rjust(8)
+                              puts "#{idx + 1}. #{email} #{archives} archives, #{points} points"
+                            end
 
       puts ''
     end
@@ -266,7 +274,7 @@ namespace :points do
         puts ''
         puts '⚠ Some archives failed verification. Data NOT cleared for safety.'
         puts 'Please investigate failed archives before running clear_verified.'
-        exit 1
+        raise "Verification failed for #{verifier_stats[:failed]} archives. Aborting to prevent data loss."
       end
       puts ''
 
@@ -281,6 +289,94 @@ namespace :points do
       puts '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
       puts ''
       puts 'Run VACUUM ANALYZE points; to reclaim space.'
+    end
+
+    desc 'Reset all archives: restore cleared data, reset flags, delete archive records'
+    task reset_all: :environment do
+      puts '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+      puts '  RESET: Remove All Archives'
+      puts '  Points will be restored as if never archived'
+      puts '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+      puts ''
+
+      total_archives = Points::RawDataArchive.count
+      archived_points = Point.where(raw_data_archived: true).count
+      cleared_points = Point.where(raw_data_archived: true, raw_data: {}).count
+
+      puts "Archives to delete: #{total_archives}"
+      puts "Points flagged as archived: #{archived_points}"
+      puts "Points with cleared raw_data: #{cleared_points}"
+      puts ''
+
+      if total_archives.zero? && archived_points.zero?
+        puts 'Nothing to reset.'
+        next
+      end
+
+      unless ENV['CONFIRM'] == 'true'
+        print 'This is a destructive operation. Continue? (y/N) '
+        input = $stdin.gets
+        unless input&.strip&.downcase == 'y'
+          puts 'Aborted.'
+          next
+        end
+      end
+
+      # Step 1: Restore cleared points from archives
+      if cleared_points.positive?
+        puts '▸ Step 1/3: Restoring cleared raw_data from archives...'
+
+        user_ids = Points::RawDataArchive.distinct.pluck(:user_id)
+        restorer = Points::RawData::Restorer.new
+
+        user_ids.each do |user_id|
+          months = Points::RawDataArchive.where(user_id: user_id)
+                                         .select(:year, :month)
+                                         .distinct
+                                         .order(:year, :month)
+
+          months.each do |m|
+            # Only restore if there are cleared points for this archive
+            archive_ids = Points::RawDataArchive.where(user_id: user_id, year: m.year, month: m.month).pluck(:id)
+            needs_restore = Point.where(raw_data_archive_id: archive_ids, raw_data: {}).exists?
+
+            next unless needs_restore
+
+            puts "  Restoring user #{user_id}, #{m.year}-#{format('%02d', m.month)}..."
+            restorer.restore_to_database(user_id, m.year, m.month)
+          end
+        end
+
+        puts '  Done restoring.'
+      else
+        puts '▸ Step 1/3: No cleared points to restore (skipped).'
+      end
+      puts ''
+
+      # Step 2: Reset archival flags on all points
+      puts '▸ Step 2/3: Resetting archival flags on points...'
+      reset_count = Point.where(raw_data_archived: true).update_all(
+        raw_data_archived: false,
+        raw_data_archive_id: nil
+      )
+      puts "  Reset #{reset_count} points."
+      puts ''
+
+      # Step 3: Delete all archive records (cascades to ActiveStorage blobs)
+      puts '▸ Step 3/3: Deleting archive records and files...'
+      Points::RawDataArchive.find_each do |archive|
+        archive.file.purge if archive.file.attached?
+        archive.destroy!
+      end
+      puts "  Deleted #{total_archives} archive records."
+      puts ''
+
+      puts '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+      puts '  Reset Complete!'
+      puts '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+      puts ''
+      puts 'All points are now as if archival never happened.'
+      puts 'Run VACUUM ANALYZE points; to reclaim space and update statistics.'
     end
 
     # Alias for backward compatibility

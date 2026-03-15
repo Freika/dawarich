@@ -4,8 +4,8 @@ module TransportationModes
   # Extracts transportation mode data from source-provided activity information.
   # Supports Overland API motion/activity fields and Google Takeout activity types.
   #
-  # This extractor checks the raw_data field of points to find activity information
-  # that was provided by the original data source (phone sensors, Google, etc.)
+  # This extractor checks the motion_data field of points first (new data),
+  # falling back to raw_data for backward compatibility with existing points.
   #
   class SourceDataExtractor
     # Overland API motion values mapping
@@ -80,9 +80,9 @@ module TransportationModes
 
     def extract_modes_from_points
       @points.map.with_index do |point, index|
-        raw_data = point.raw_data || {}
-        mode = extract_mode_from_raw_data(raw_data)
-        source = detect_source(raw_data)
+        data = point.motion_data.presence || point.raw_data || {}
+        mode = extract_mode_from_raw_data(data)
+        source = detect_source(data)
 
         {
           index: index,

@@ -49,7 +49,6 @@ RSpec.describe Maps::HexagonCenterManager do
       end
     end
 
-
     context 'with no stat' do
       let(:stat) { nil }
 

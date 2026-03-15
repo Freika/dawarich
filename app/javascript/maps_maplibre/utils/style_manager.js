@@ -3,7 +3,7 @@
  * Loads and configures local map styles with dynamic tile source
  */
 
-const TILE_SOURCE_URL = 'https://tyles.dwri.xyz/planet/{z}/{x}/{y}.mvt'
+const TILE_SOURCE_URL = "https://tyles.dwri.xyz/planet/{z}/{x}/{y}.mvt"
 
 // Cache for loaded styles
 const styleCache = {}
@@ -12,11 +12,11 @@ const styleCache = {}
  * Available map styles
  */
 export const MAP_STYLES = {
-  dark: 'dark',
-  light: 'light',
-  white: 'white',
-  black: 'black',
-  grayscale: 'grayscale'
+  dark: "dark",
+  light: "light",
+  white: "white",
+  black: "black",
+  grayscale: "grayscale",
 }
 
 /**
@@ -46,7 +46,7 @@ async function loadStyleFile(styleName) {
  * @param {string} styleName - Name of the style (dark, light, white, black, grayscale)
  * @returns {Promise<Object>} MapLibre style object
  */
-export async function getMapStyle(styleName = 'light') {
+export async function getMapStyle(styleName = "light") {
   try {
     // Load the style file
     const style = await loadStyleFile(styleName)
@@ -55,14 +55,15 @@ export async function getMapStyle(styleName = 'light') {
     const clonedStyle = JSON.parse(JSON.stringify(style))
 
     // Update the tile source URL
-    if (clonedStyle.sources && clonedStyle.sources.protomaps) {
+    if (clonedStyle.sources?.protomaps) {
       clonedStyle.sources.protomaps = {
-        type: 'vector',
+        type: "vector",
         tiles: [TILE_SOURCE_URL],
         minzoom: 0,
         maxzoom: 14,
-        attribution: clonedStyle.sources.protomaps.attribution ||
-          '<a href="https://github.com/protomaps/basemaps">Protomaps</a> © <a href="https://openstreetmap.org">OpenStreetMap</a>'
+        attribution:
+          clonedStyle.sources.protomaps.attribution ||
+          '<a href="https://github.com/protomaps/basemaps">Protomaps</a> © <a href="https://openstreetmap.org">OpenStreetMap</a>',
       }
     }
 
@@ -70,9 +71,9 @@ export async function getMapStyle(styleName = 'light') {
   } catch (error) {
     console.error(`Error loading style '${styleName}':`, error)
     // Fall back to light style if the requested style fails
-    if (styleName !== 'light') {
+    if (styleName !== "light") {
       console.warn(`Falling back to 'light' style`)
-      return getMapStyle('light')
+      return getMapStyle("light")
     }
     throw error
   }
@@ -93,13 +94,16 @@ export function getAvailableStyles() {
  */
 export function getStyleDisplayName(styleName) {
   const displayNames = {
-    dark: 'Dark',
-    light: 'Light',
-    white: 'White',
-    black: 'Black',
-    grayscale: 'Grayscale'
+    dark: "Dark",
+    light: "Light",
+    white: "White",
+    black: "Black",
+    grayscale: "Grayscale",
   }
-  return displayNames[styleName] || styleName.charAt(0).toUpperCase() + styleName.slice(1)
+  return (
+    displayNames[styleName] ||
+    styleName.charAt(0).toUpperCase() + styleName.slice(1)
+  )
 }
 
 /**
@@ -108,6 +112,6 @@ export function getStyleDisplayName(styleName) {
  */
 export async function preloadAllStyles() {
   const styleNames = getAvailableStyles()
-  await Promise.all(styleNames.map(name => loadStyleFile(name)))
-  console.log('All map styles preloaded')
+  await Promise.all(styleNames.map((name) => loadStyleFile(name)))
+  console.log("All map styles preloaded")
 }

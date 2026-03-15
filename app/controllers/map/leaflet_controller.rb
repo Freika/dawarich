@@ -110,6 +110,6 @@ class Map::LeafletController < ApplicationController
   end
 
   def points_from_user
-    current_user.points.without_raw_data.order(timestamp: :asc)
+    current_user.scoped_points.without_raw_data.order(timestamp: :asc)
   end
 end

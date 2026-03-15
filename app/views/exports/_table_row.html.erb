@@ -1,0 +1,23 @@
+<tr id="<%= dom_id(export) %>" class="hover">
+  <td><%= export.name %></td>
+  <td><%= number_to_human_size(export.file&.byte_size) || 'N/A' %></td>
+  <td>
+    <%= export.status %>
+    <% if export.failed? %>
+      <span class="tooltip tooltip-left cursor-help inline-flex items-center" data-tip="<%= export.error_message.presence || 'Export failed' %>">
+        <%= icon('circle-alert', class: ['w-4', 'h-4', 'text-red-500']) %>
+      </span>
+    <% end %>
+  </td>
+  <td><%= human_datetime(export.created_at) %></td>
+  <td class="whitespace-nowrap">
+    <% if export.completed? %>
+      <% if export.file.present? %>
+        <%= link_to 'Download', rails_blob_path(export.file, disposition: 'attachment'), class: "btn btn-outline btn-sm btn-info", download: export.name %>
+      <% elsif export.url.present? %>
+        <%= link_to 'Download', export.url, class: "btn btn-outline btn-sm btn-info", download: export.name %>
+      <% end %>
+    <% end %>
+    <%= link_to 'Delete', export, data: { turbo_confirm: "Are you sure?", turbo_method: :delete }, method: :delete, class: "btn btn-outline btn-sm btn-error" %>
+  </td>
+</tr>

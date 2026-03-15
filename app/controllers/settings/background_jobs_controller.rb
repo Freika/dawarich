@@ -1,7 +1,10 @@
 # frozen_string_literal: true
 
 class Settings::BackgroundJobsController < ApplicationController
-  before_action :authenticate_self_hosted!
+  before_action :authenticate_self_hosted!, unless: lambda {
+    action_name == 'create' &&
+      %w[start_immich_import start_photoprism_import].include?(params[:job_name])
+  }
   before_action :authenticate_admin!, unless: lambda {
     action_name == 'create' &&
       %w[start_immich_import start_photoprism_import].include?(params[:job_name])

@@ -27,6 +27,7 @@ class Api::UserSerializer
 
   def settings
     {
+      timezone: user.timezone,
       maps: user.safe_settings.maps,
       fog_of_war_meters: user.safe_settings.fog_of_war_meters.to_i,
       meters_between_routes: user.safe_settings.meters_between_routes.to_i,
@@ -50,7 +51,8 @@ class Api::UserSerializer
   def subscription
     {
       status: user.status,
-      active_until: user.active_until
+      active_until: user.active_until,
+      plan: user.plan
     }
   end
 end

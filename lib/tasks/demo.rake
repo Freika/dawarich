@@ -89,7 +89,49 @@ namespace :demo do
     family_members = create_family_with_members(user)
     puts "✅ Created family with #{family_members.count} members"
 
-    puts "\n" + '=' * 60
+    # 8. Create Lite demo user
+    puts "\n📝 Creating Lite demo user..."
+    lite_user = User.find_or_initialize_by(email: 'lite@dawarich.app')
+    if lite_user.new_record?
+      lite_user.password = 'password'
+      lite_user.password_confirmation = 'password'
+      lite_user.save!
+      puts "✅ Lite user created: #{lite_user.email}"
+    else
+      puts "ℹ️  Lite user already exists: #{lite_user.email}"
+    end
+
+    # Bypass after_commit callbacks that override plan
+    lite_user.update_columns(
+      api_key: 'lite_demo_api_key_001',
+      plan: User.plans[:lite],
+      status: User.statuses[:active],
+      active_until: 1000.years.from_now
+    )
+    lite_user.update!(settings: (lite_user.settings || {}).merge('live_map_enabled' => true))
+    puts "   API Key: #{lite_user.api_key}"
+    puts '   Plan: lite'
+
+    # 8a. Create recent points for Lite user (within 12-month window)
+    puts "\n📍 Creating recent points for Lite user..."
+    recent_points_count = create_lite_recent_points(lite_user)
+    puts "✅ Created #{recent_points_count} recent points"
+
+    # 8b. Create old points for Lite user (outside 12-month window)
+    puts "\n📍 Creating old points for Lite user..."
+    old_points_count = create_lite_old_points(lite_user)
+    puts "✅ Created #{old_points_count} old points"
+
+    # 8c. Create visits and areas for Lite user
+    puts "\n🏠 Creating visits for Lite user..."
+    lite_confirmed = create_visits(lite_user, 3, :confirmed)
+    puts "✅ Created #{lite_confirmed} confirmed visits"
+
+    puts "\n📍 Creating areas for Lite user..."
+    lite_areas = create_areas(lite_user, 2)
+    puts "✅ Created #{lite_areas} areas"
+
+    puts "\n#{'=' * 60}"
     puts '🎉 Demo data generation complete!'
     puts '=' * 60
     puts "\n📊 Summary:"
@@ -102,9 +144,18 @@ namespace :demo do
     puts "   Tracks: #{user.tracks.count}"
     puts "   Track Segments: #{TrackSegment.joins(:track).where(tracks: { user_id: user.id }).count}"
     puts "   Family Members: #{family_members.count}"
+    puts "\n   Lite User: #{lite_user.email}"
+    puts "   Lite Points: #{Point.where(user_id: lite_user.id).count}"
+    lite_points = Point.where(user_id: lite_user.id)
+    puts "   Lite Recent Points: #{lite_points.where('timestamp >= ?', 12.months.ago.to_i).count}"
+    puts "   Lite Old Points: #{lite_points.where('timestamp < ?', 12.months.ago.to_i).count}"
+    puts "   Lite Visits: #{lite_user.visits.count}"
+    puts "   Lite Areas: #{lite_user.areas.count}"
     puts "\n🔐 Login credentials:"
     puts '   Email: demo@dawarich.app'
     puts '   Password: password'
+    puts "\n   Lite Email: lite@dawarich.app"
+    puts '   Lite Password: password'
     puts "\n👨‍👩‍👧‍👦 Family member credentials:"
     family_members.each_with_index do |member, index|
       puts "   Member #{index + 1}: #{member.email} / password / API Key: #{member.api_key}"
@@ -178,10 +229,10 @@ namespace :demo do
       end
 
       created_count += 1
-      print '.' if (index + 1) % 10 == 0
+      print '.' if ((index + 1) % 10).zero?
     end
 
-    puts '' if created_count > 0
+    puts '' if created_count.positive?
     created_count
   end
 
@@ -388,7 +439,7 @@ namespace :demo do
       end
 
       # Calculate average speed (m/s)
-      avg_speed = duration > 0 ? (total_distance / duration.to_f) : 0
+      avg_speed = duration.positive? ? (total_distance / duration.to_f) : 0
 
       # Calculate elevation data
       elevations = track_points.map(&:altitude).compact
@@ -400,7 +451,7 @@ namespace :demo do
       if elevations.length > 1
         elevations.each_cons(2) do |alt1, alt2|
           diff = alt2 - alt1
-          if diff > 0
+          if diff.positive?
             elevation_gain += diff
           else
             elevation_loss += diff.abs
@@ -429,10 +480,10 @@ namespace :demo do
       create_track_segments(track, track_points)
 
       created_count += 1
-      print '.' if (index + 1) % 5 == 0
+      print '.' if ((index + 1) % 5).zero?
     end
 
-    puts '' if created_count > 0
+    puts '' if created_count.positive?
     created_count
   end
 
@@ -536,5 +587,62 @@ namespace :demo do
     c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 
     rm * c # Distance in meters
+  end
+
+  # Berlin area coordinates matching e2e/v2/helpers/constants.js
+  BERLIN_BASE = { lat: 52.52, lon: 13.405 }.freeze
+
+  def create_lite_recent_points(user)
+    created = 0
+    20.times do |i|
+      # Spread across last 6 months
+      months_ago = (i % 6) + 1
+      day_offset = (i * 3) % 28 + 1
+      timestamp = (months_ago.months.ago + day_offset.days).to_i
+
+      lat = BERLIN_BASE[:lat] + rand(-0.03..0.03)
+      lon = BERLIN_BASE[:lon] + rand(-0.05..0.05)
+
+      Point.create!(
+        user: user,
+        latitude: lat,
+        longitude: lon,
+        lonlat: "POINT(#{lon} #{lat})",
+        timestamp: timestamp,
+        altitude: rand(30..80),
+        velocity: rand(0..30),
+        battery: rand(30..100),
+        tracker_id: "lite_demo_#{user.id}"
+      )
+      created += 1
+    end
+    created
+  end
+
+  def create_lite_old_points(user)
+    created = 0
+    10.times do |i|
+      # 13-14 months ago (outside the 12-month retention window)
+      months_ago = 13 + (i % 2)
+      day_offset = (i * 2) % 28 + 1
+      timestamp = (months_ago.months.ago + day_offset.days).to_i
+
+      lat = BERLIN_BASE[:lat] + rand(-0.03..0.03)
+      lon = BERLIN_BASE[:lon] + rand(-0.05..0.05)
+
+      Point.create!(
+        user: user,
+        latitude: lat,
+        longitude: lon,
+        lonlat: "POINT(#{lon} #{lat})",
+        timestamp: timestamp,
+        altitude: rand(30..80),
+        velocity: rand(0..30),
+        battery: rand(30..100),
+        tracker_id: "lite_demo_#{user.id}"
+      )
+      created += 1
+    end
+    created
   end
 end

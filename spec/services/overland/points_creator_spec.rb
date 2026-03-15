@@ -25,7 +25,7 @@ RSpec.describe Overland::PointsCreator do
     it 'does not duplicate existing points' do
       call_service
 
-      expect { call_service }.not_to change { Point.where(user:).count }
+      expect { call_service }.not_to(change { Point.where(user:).count })
     end
   end
 

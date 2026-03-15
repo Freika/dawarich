@@ -6,7 +6,7 @@ module Auth
       # If token is provided, this is the final callback for ASWebAuthenticationSession
       if params[:token].present?
         # ASWebAuthenticationSession will capture this URL and extract the token
-        render plain: "Authentication successful! You can close this window.", status: :ok
+        render plain: 'Authentication successful! You can close this window.', status: :ok
       else
         # This should not happen with our current flow, but keeping for safety
         render json: {
@@ -16,6 +16,5 @@ module Auth
         }, status: :ok
       end
     end
-
   end
 end

@@ -28,7 +28,7 @@ RSpec.describe 'Family::LocationSharing', type: :request do
         expect(json_response['enabled']).to be true
         expect(json_response['duration']).to eq('1h')
         expect(json_response['message']).to eq('Location sharing enabled for 1 hour')
-        expect(json_response['expires_at']).to eq(1.hour.from_now.iso8601)
+        expect(json_response['expires_at']).to eq(1.hour.from_now.utc.iso8601)
       end
 
       it 'enables location sharing permanently' do
@@ -42,6 +42,29 @@ RSpec.describe 'Family::LocationSharing', type: :request do
         expect(json_response['enabled']).to be true
         expect(json_response['duration']).to eq('permanent')
         expect(json_response).not_to have_key('expires_at')
+      end
+    end
+
+    context 'when enabling with share_history and history_window' do
+      it 'persists share_history and history_window' do
+        patch '/family/location_sharing',
+              params: { enabled: true, duration: 'permanent', share_history: true, history_window: '7d' },
+              as: :json
+
+        expect(response).to have_http_status(:ok)
+        user.reload
+        expect(user.family_share_history?).to be true
+        expect(user.family_history_window).to eq('7d')
+      end
+
+      it 'rejects invalid history_window values' do
+        patch '/family/location_sharing',
+              params: { enabled: true, duration: 'permanent', history_window: '<script>alert(1)</script>' },
+              as: :json
+
+        expect(response).to have_http_status(:ok)
+        user.reload
+        expect(user.family_history_window).to eq('24h')
       end
     end
 
@@ -111,6 +134,53 @@ RSpec.describe 'Family::LocationSharing', type: :request do
         expect(response).to have_http_status(:unauthorized)
         json_response = JSON.parse(response.body)
         expect(json_response['error']).to eq('You need to sign in or sign up before continuing.')
+      end
+    end
+
+    context 'with turbo_stream format' do
+      it 'enables sharing with duration and returns turbo_stream' do
+        patch '/family/location_sharing',
+              params: { enabled: true, duration: '1h' },
+              as: :turbo_stream
+
+        expect_turbo_stream_response
+        expect_turbo_stream_action('replace', "location-sharing-#{user.id}")
+        expect_flash_stream('Location sharing enabled for 1 hour')
+      end
+
+      it 'enables sharing permanently and returns turbo_stream' do
+        patch '/family/location_sharing',
+              params: { enabled: true, duration: 'permanent' },
+              as: :turbo_stream
+
+        expect_turbo_stream_response
+        expect_turbo_stream_action('replace', "location-sharing-#{user.id}")
+      end
+
+      it 'disables sharing and returns turbo_stream with flash' do
+        user.update_family_location_sharing!(true, duration: '1h')
+
+        patch '/family/location_sharing',
+              params: { enabled: false },
+              as: :turbo_stream
+
+        expect_turbo_stream_response
+        expect_turbo_stream_action('replace', "location-sharing-#{user.id}")
+        expect_flash_stream('Location sharing disabled')
+      end
+
+      it 'returns turbo_stream flash error when user is not in a family' do
+        solo_user = create(:user)
+        sign_out user
+        sign_in solo_user
+
+        patch '/family/location_sharing',
+              params: { enabled: true, duration: '1h' },
+              as: :turbo_stream
+
+        expect(response).to have_http_status(:forbidden)
+        expect_turbo_stream_response
+        expect_flash_stream('User is not part of a family')
       end
     end
   end

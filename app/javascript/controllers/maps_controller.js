@@ -4,7 +4,6 @@ import "leaflet.control.layers.tree"
 import consumer from "../channels/consumer"
 import { fetchAndDrawAreas, handleAreaCreated } from "../maps/areas"
 import { countryCodesMap } from "../maps/country_codes"
-import { showFlashMessage } from "../maps/helpers"
 import { LiveMapHandler } from "../maps/live_map_handler"
 import { LocationSearch } from "../maps/location_search"
 import { createMarkersArray } from "../maps/markers"
@@ -28,8 +27,11 @@ import {
   toggleTracksVisibility,
 } from "../maps/tracks"
 import { VisitsManager } from "../maps/visits"
+import Flash from "./flash_controller"
 
 import "leaflet-draw"
+import { UpgradeBanner } from "maps_maplibre/components/upgrade_banner"
+import { isGatedPlan } from "maps_maplibre/utils/layer_gate"
 import {
   createFogOverlay,
   drawFogCanvas,
@@ -172,7 +174,7 @@ export default class extends BaseController {
 
         // Convert distance to miles if user prefers miles (assuming backend sends km)
         if (this.distanceUnit === "mi") {
-          distance = distance * 0.621371 // km to miles conversion
+          distance = Math.round(distance * 0.621371) // km to miles conversion
         }
 
         const unit = this.distanceUnit === "km" ? "km" : "mi"
@@ -332,6 +334,26 @@ export default class extends BaseController {
 
     // Initialize Location Search
     this.initializeLocationSearch()
+
+    // Show upgrade banner for Lite users when searching outside the 12-month window
+    this.showDataWindowBanner()
+  }
+
+  showDataWindowBanner() {
+    const userPlan = this.element.dataset.user_plan
+    if (!isGatedPlan(userPlan)) return
+
+    const startDate = new Date(this.element.dataset.start_date)
+    const twelveMonthsAgo = new Date()
+    twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12)
+
+    if (startDate < twelveMonthsAgo) {
+      UpgradeBanner.show({
+        message: "Your Lite plan includes the last 12 months of data.",
+        upgradeUrl: this.element.dataset.upgrade_url,
+        utmContent: "data_retention",
+      })
+    }
   }
 
   disconnect() {
@@ -841,12 +863,12 @@ export default class extends BaseController {
       .then((response) => response.json())
       .then((data) => {
         if (data.status === "success") {
-          showFlashMessage(
+          Flash.show(
             "notice",
             `Preferred map layer updated to: ${selectedLayerName}`,
           )
         } else {
-          showFlashMessage("error", data.message)
+          Flash.show("error", data.message)
         }
       })
   }
@@ -918,10 +940,10 @@ export default class extends BaseController {
       .then((data) => {
         if (data.status === "success") {
           console.log("Enabled layers saved:", enabledLayers)
-          // showFlashMessage('notice', 'Map layer preferences saved');
+          // Flash.show('notice', 'Map layer preferences saved');
         } else {
           console.error("Failed to save enabled layers:", data.message)
-          showFlashMessage(
+          Flash.show(
             "error",
             `Failed to save layer preferences: ${data.message}`,
           )
@@ -929,7 +951,7 @@ export default class extends BaseController {
       })
       .catch((error) => {
         console.error("Error saving enabled layers:", error)
-        showFlashMessage("error", "Error saving layer preferences")
+        Flash.show("error", "Error saving layer preferences")
       })
   }
 
@@ -996,11 +1018,11 @@ export default class extends BaseController {
         }
 
         // Show success message
-        showFlashMessage("notice", "Point deleted successfully")
+        Flash.show("notice", "Point deleted successfully")
       })
       .catch((error) => {
         console.error("There was a problem with the delete request:", error)
-        showFlashMessage("error", "Failed to delete point")
+        Flash.show("error", "Failed to delete point")
       })
   }
 
@@ -1463,7 +1485,7 @@ export default class extends BaseController {
       .then((data) => {
         console.log("Settings update response:", data)
         if (data.status === "success") {
-          showFlashMessage("notice", data.message)
+          Flash.show("notice", data.message)
           this.updateMapWithNewSettings(data.settings)
 
           if (data.settings.live_map_enabled) {
@@ -1477,12 +1499,12 @@ export default class extends BaseController {
             }
           }
         } else {
-          showFlashMessage("error", data.message)
+          Flash.show("error", data.message)
         }
       })
       .catch((error) => {
         console.error("Settings update error:", error)
-        showFlashMessage("error", "Failed to update settings")
+        Flash.show("error", "Failed to update settings")
       })
   }
 
@@ -2070,14 +2092,9 @@ export default class extends BaseController {
             layer.addTo(this.map)
             console.log("Enabled layer: Family Members (from ready event)")
 
-            // Refresh family locations
-            if (
-              window.familyMembersController &&
-              typeof window.familyMembersController.refreshFamilyLocations ===
-                "function"
-            ) {
-              window.familyMembersController.refreshFamilyLocations()
-            }
+            // No explicit refreshFamilyLocations() call needed here —
+            // layer.addTo() fires Leaflet's overlayadd event, which
+            // triggers refreshFamilyLocations() in the family controller.
 
             // Reset flag after a short delay to allow all events to complete
             setTimeout(() => {
@@ -2545,7 +2562,7 @@ export default class extends BaseController {
         if (gradientContainer.childElementCount > 1) {
           gradientContainer.removeChild(row)
         } else {
-          showFlashMessage("error", "At least one gradient stop is required.")
+          Flash.show("error", "At least one gradient stop is required.")
         }
       })
 

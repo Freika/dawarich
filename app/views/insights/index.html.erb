@@ -5,21 +5,53 @@
 
 <div class="w-full my-5">
   <%= render 'header' %>
-  <%= render 'stats_row' %>
+  <%= render 'shared/plan_data_window_alert', utm_content: 'insights' %>
 
-  <!-- Heatmap and Streak Row -->
-  <div class="flex flex-col lg:flex-row gap-6">
-    <% cache insights_cache_key + ["activity_heatmap"], expires_in: 24.hours do %>
-      <%= render 'activity_heatmap' %>
+  <% if @year_locked %>
+    <div class="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
+      <% %w[Total\ Distance Countries Cities Days\ Traveling].each do |title| %>
+        <%= render 'pro_locked_card', title: title, utm_content: "insights_#{title.parameterize}" %>
+      <% end %>
+    </div>
+    <div class="flex flex-col lg:flex-row gap-6">
+      <div class="w-full lg:w-3/4 mb-6">
+        <%= render 'pro_locked_card', title: 'Activity Heatmap', utm_content: 'activity_heatmap' %>
+      </div>
+      <div class="w-full lg:w-1/4 mb-6">
+        <%= render 'pro_locked_card', title: 'Activity Streak', utm_content: 'activity_streak' %>
+      </div>
+    </div>
+    <%= turbo_frame_tag "insights_details" do %>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6 mt-6">
+        <div class="space-y-6">
+          <%= render 'pro_locked_card', title: 'Year Comparison', utm_content: 'year_comparison' %>
+          <%= render 'pro_locked_card', title: 'Activity Breakdown', utm_content: 'activity_breakdown' %>
+          <%= render 'pro_locked_card', title: 'Location Clusters', utm_content: 'location_clusters' %>
+        </div>
+        <div class="space-y-6">
+          <%= render 'pro_locked_card', title: 'Monthly Digest', utm_content: 'monthly_digest' %>
+          <%= render 'pro_locked_card', title: 'Travel Patterns', utm_content: 'travel_patterns' %>
+        </div>
+      </div>
+      <%= render 'pro_locked_card', title: 'Movement & Wellness', utm_content: 'movement_wellness' %>
     <% end %>
-    <% cache insights_cache_key + ["activity_streak"], expires_in: 24.hours do %>
-      <%= render 'activity_streak' %>
-    <% end %>
-  </div>
+  <% else %>
+    <%= render 'stats_row' %>
 
-  <!-- Lazy-loaded below-the-fold details -->
-  <%= turbo_frame_tag "insights_details", src: details_insights_path(year: @selected_year), loading: :lazy do %>
-    <%= render 'details_skeleton' %>
+    <!-- Heatmap and Streak Row -->
+    <div class="flex flex-col lg:flex-row gap-6">
+      <% cache insights_cache_key + ["activity_heatmap"], expires_in: 24.hours do %>
+        <%= render 'activity_heatmap' %>
+      <% end %>
+      <% cache insights_cache_key + ["activity_streak"], expires_in: 24.hours do %>
+        <%= render 'activity_streak' %>
+      <% end %>
+    </div>
+
+    <!-- Lazy-loaded below-the-fold details -->
+    <%= turbo_frame_tag "insights_details", src: details_insights_path(year: @selected_year, month: params[:month]), loading: :lazy do %>
+      <%= render 'details_skeleton' %>
+    <% end %>
   <% end %>
 
   <!-- Footer -->

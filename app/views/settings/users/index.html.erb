@@ -4,15 +4,47 @@
   <h1 class="text-3xl font-bold mb-6">Users management</h1>
   <%= render 'settings/navigation' %>
 
+  <!-- Registration Settings -->
+  <div class="w-10/12 mx-auto my-6">
+    <div class="card bg-base-200 compact">
+      <div class="card-body flex-row items-center justify-between">
+        <div>
+          <h3 class="font-semibold">User registration</h3>
+          <p class="text-sm text-base-content/70">Allow new users to register via email and password</p>
+        </div>
+        <%= form_with url: update_registration_settings_settings_users_path, method: :patch, data: { turbo: false }, class: 'flex items-center gap-3' do %>
+          <input type="hidden" name="registration_enabled" value="0" />
+          <input type="checkbox" name="registration_enabled" value="1"
+                 class="toggle toggle-primary"
+                 <%= 'checked' if DawarichSettings.registration_enabled? %>
+                 onchange="this.form.submit()" />
+        <% end %>
+      </div>
+    </div>
+  </div>
+
   <div class="flex flex-col lg:flex-row w-full my-10 space-x-4">
     <div class="overflow-x-auto w-10/12 mx-auto">
-      <button class="btn" onclick="create_user.showModal()">Add new user</button>
+      <div class="flex items-center justify-between mb-4">
+        <button class="btn" onclick="create_user.showModal()">Add new user</button>
+        <%= form_with url: settings_users_path, method: :get, data: { turbo: false }, class: 'flex gap-2' do %>
+          <input type="text" name="search" value="<%= params[:search] %>" placeholder="Search by email..." class="input input-bordered input-sm w-64" />
+          <button type="submit" class="btn btn-sm btn-ghost">Search</button>
+          <% if params[:search].present? %>
+            <%= link_to 'Clear', settings_users_path, class: 'btn btn-sm btn-ghost' %>
+          <% end %>
+        <% end %>
+      </div>
       <table class="table w-full">
         <thead>
           <tr>
             <th>Email</th>
+            <th>Role</th>
+            <th>Status</th>
             <th>Points</th>
+            <th>Last sign in</th>
             <th>Created at</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
@@ -20,26 +52,59 @@
             <tr>
               <td>
                 <div>
-                  <%= link_to user.email, edit_settings_user_path(user), class: 'font-bold underline hover:no-underline' %>
+                  <%= link_to user.email, settings_user_path(user), class: 'font-bold underline hover:no-underline' %>
                 </div>
+              </td>
+              <td>
+                <% if user.admin? %>
+                  <span class="badge badge-primary">Admin</span>
+                <% else %>
+                  <span class="badge badge-ghost">User</span>
+                <% end %>
+              </td>
+              <td>
+                <% if user.active? %>
+                  <span class="badge badge-success">Active</span>
+                <% elsif user.inactive? %>
+                  <span class="badge badge-error">Inactive</span>
+                <% elsif user.trial? %>
+                  <span class="badge badge-warning">Trial</span>
+                <% end %>
               </td>
               <td>
                 <%= number_with_delimiter user.points_count.to_i %>
               </td>
               <td>
+                <% if user.last_sign_in_at.present? %>
+                  <%= human_datetime(user.last_sign_in_at) %>
+                <% else %>
+                  <span class="text-base-content/50">Never</span>
+                <% end %>
+              </td>
+              <td>
                 <%= human_datetime(user.created_at) %>
+              </td>
+              <td class="flex gap-2">
+                <%= link_to 'Edit', edit_settings_user_path(user), class: 'btn btn-ghost btn-sm' %>
+                <% unless user == current_user %>
+                  <button class="btn btn-error btn-sm" onclick="delete_user_<%= user.id %>.showModal()">Delete</button>
+                <% end %>
               </td>
             </tr>
           <% end %>
         </tbody>
       </table>
+
+      <div class="mt-4">
+        <%= paginate @users %>
+      </div>
     </div>
   </div>
 </div>
 
 <dialog id="create_user" class="modal">
   <div class="modal-box">
-    <h2 class="text-2xl font-bold">Create a new user!</h1>
+    <h2 class="text-2xl font-bold">Create a new user!</h2>
     <%= form_for :user, url: settings_users_path, method: :post, data: { turbo_method: :post, turbo: false } do |f| %>
       <div class="form-control">
         <%= f.label :email do %>
@@ -62,3 +127,27 @@
     <button>close</button>
   </form>
 </dialog>
+
+<% @users.each do |user| %>
+  <% unless user == current_user %>
+    <dialog id="delete_user_<%= user.id %>" class="modal">
+      <div class="modal-box">
+        <h3 class="text-lg font-bold">Delete user</h3>
+        <p class="py-4">
+          Are you sure you want to delete <strong><%= user.email %></strong>?
+          This will permanently remove their account and all associated data.
+          This action cannot be undone.
+        </p>
+        <div class="modal-action">
+          <form method="dialog">
+            <button class="btn">Cancel</button>
+          </form>
+          <%= button_to "Delete", settings_user_path(user), method: :delete, class: "btn btn-error", data: { turbo: false } %>
+        </div>
+      </div>
+      <form method="dialog" class="modal-backdrop">
+        <button>close</button>
+      </form>
+    </dialog>
+  <% end %>
+<% end %>

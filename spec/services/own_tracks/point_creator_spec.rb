@@ -22,7 +22,7 @@ RSpec.describe OwnTracks::PointCreator do
   it 'avoids duplicate points' do
     call_service
 
-    expect { call_service }.not_to change { Point.where(user:).count }
+    expect { call_service }.not_to(change { Point.where(user:).count })
   end
 
   context 'when params are invalid' do

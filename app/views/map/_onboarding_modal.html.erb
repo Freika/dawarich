@@ -1,91 +1,191 @@
 <% if user_signed_in? %>
 <div data-controller="onboarding-modal"
-     data-onboarding-modal-showable-value="true">
+     data-onboarding-modal-showable-value="<%= onboarding_modal_showable?(current_user) %>"
+     data-onboarding-modal-onboarding-url-value="<%= settings_onboarding_path %>"
+     data-onboarding-modal-user-trial-value="<%= current_user.trial? %>"
+     data-onboarding-modal-imports-count-value="<%= current_user.imports.count %>">
   <dialog id="getting_started" class="modal" data-onboarding-modal-target="modal">
     <div class="modal-box max-w-2xl bg-base-200">
-      <!-- Header -->
-      <div class="text-center mb-6">
-        <h3 class="text-2xl font-bold text-primary mb-2 flex items-center justify-center gap-2">
-          <%= icon 'goal' %> Start Tracking Your Location!</h3>
-        <p class="text-base-content/70">
-          Welcome to Dawarich! Let's get you set up to start tracking and visualizing your location data.
-        </p>
+
+      <%# ═══ Choice Screen ═══ %>
+      <div data-onboarding-modal-target="choiceScreen">
+        <div class="text-center mb-6">
+          <h3 class="text-2xl font-bold text-primary mb-2">Welcome to Dawarich!</h3>
+          <p class="text-base-content/70">
+            Let's get your location data on the map.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <%# Path A: Import %>
+          <button class="card bg-base-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer text-left border-2 border-transparent hover:border-primary"
+                  data-action="onboarding-modal#showImport">
+            <div class="card-body p-5">
+              <div class="flex items-center gap-2 mb-2">
+                <%= icon 'file-up', class: 'w-6 h-6 text-primary' %>
+                <h4 class="text-lg font-semibold">I have data</h4>
+              </div>
+              <p class="text-sm text-base-content/70">
+                Import Google Takeout, GPX, KML, GeoJSON, or OwnTracks files.
+              </p>
+            </div>
+          </button>
+
+          <%# Path B: Track %>
+          <button class="card bg-base-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer text-left border-2 border-transparent hover:border-secondary"
+                  data-action="onboarding-modal#showTrack">
+            <div class="card-body p-5">
+              <div class="flex items-center gap-2 mb-2">
+                <%= icon 'smartphone', class: 'w-6 h-6 text-secondary' %>
+                <h4 class="text-lg font-semibold">Start tracking</h4>
+              </div>
+              <p class="text-sm text-base-content/70">
+                Download the app and connect it to start recording your location.
+              </p>
+            </div>
+          </button>
+        </div>
+
+        <div class="text-center mt-6">
+          <button class="btn btn-ghost btn-sm" data-action="onboarding-modal#dismiss">
+            Skip for now
+          </button>
+        </div>
       </div>
 
-      <!-- Steps -->
-      <div class="space-y-6">
-        <!-- Step 1: Download App -->
-        <div class="card bg-base-100 shadow-sm">
-          <div class="card-body p-4">
-            <div class="flex items-center gap-3 mb-3">
-              <div class="badge badge-primary badge-lg">1</div>
-              <h4 class="text-lg font-semibold">Download the Official App</h4>
-            </div>
-            <p class="text-sm text-base-content/80 mb-4">
-              Get the official Dawarich app from the App Store to start tracking your location.
-            </p>
-            <div class="flex justify-center">
-              <%= link_to 'https://apps.apple.com/de/app/dawarich/id6739544999?itscg=30200&itsct=apps_box_badge&mttnsubad=6739544999',
-                  class: 'inline-block rounded-lg border-2 border-transparent hover:border-primary hover:shadow-lg hover:shadow-primary/20 transition-all duration-300 ease-in-out transform hover:scale-105' do %>
-                <%= image_tag 'Download_on_the_App_Store_Badge_US-UK_RGB_blk_092917.svg',
-                    class: 'h-12 transition-opacity duration-300' %>
-              <% end %>
-            </div>
-          </div>
+      <%# ═══ Import Screen ═══ %>
+      <div data-onboarding-modal-target="importScreen" class="hidden">
+        <div class="flex items-center gap-2 mb-4">
+          <button class="btn btn-ghost btn-sm btn-circle" data-action="onboarding-modal#showChoice">
+            <%= icon 'arrow-left', class: 'w-4 h-4' %>
+          </button>
+          <h3 class="text-xl font-bold">Import your data</h3>
+        </div>
 
+        <div class="card bg-base-100 shadow-sm mb-4">
           <div class="card-body p-4">
-            <div class="flex items-center gap-3 mb-3">
-              <div class="badge badge-primary badge-lg">2</div>
-              <h4 class="text-lg font-semibold">Scan QR Code to Connect</h4>
+            <h4 class="card-title text-sm">Supported formats</h4>
+            <ul class="text-xs space-y-1">
+              <li><strong>Google Maps:</strong> Records.json, Semantic History, Phone Takeout (.json)</li>
+              <li><strong>GPX:</strong> Track files (.gpx)</li>
+              <li><strong>GeoJSON:</strong> Feature collections (.json)</li>
+              <li><strong>OwnTracks:</strong> Recorder files (.rec)</li>
+              <li><strong>KML:</strong> KML files (.kml, .kmz)</li>
+            </ul>
+            <div class="text-xs text-base-content/60 mt-2">
+              File format is automatically detected during upload.
             </div>
-            <p class="text-sm text-base-content/80 mb-4">
-              Scan this QR code with the Dawarich app to automatically configure your connection.
-            </p>
-            <div class="flex justify-center">
-              <div class="bg-white p-3 rounded-lg shadow-inner">
-                <%= api_key_qr_code(current_user, size: 3) %>
+            <% if current_user.trial? %>
+              <div class="text-xs text-warning mt-2 font-medium">
+                Trial limitations: Max 5 imports, 10MB per file.
+                Current imports: <%= current_user.imports.count %>/5
+              </div>
+            <% end %>
+          </div>
+        </div>
+
+        <%= form_with url: imports_path, class: "contents", data: {
+          controller: "upload",
+          upload_url_value: rails_direct_uploads_url,
+          upload_field_name_value: "import[files][]",
+          upload_multiple_value: true,
+          upload_user_trial_value: current_user.trial?,
+          upload_max_imports_value: 5,
+          upload_current_imports_count_value: current_user.imports.count,
+          upload_target: "form"
+        } do |form| %>
+          <label class="form-control w-full mb-4">
+            <div class="label">
+              <span class="label-text">Select one or multiple files</span>
+            </div>
+            <%= form.file_field :files,
+                multiple: true,
+                direct_upload: true,
+                name: "import[files][]",
+                class: "file-input file-input-bordered w-full",
+                data: { upload_target: "input" } %>
+            <div class="text-xs text-base-content/60 mt-2">
+              Files will be uploaded directly to storage. Please be patient during upload.
+            </div>
+          </label>
+
+          <div class="flex justify-end">
+            <%= form.submit "Import files", class: "btn btn-primary",
+                data: { upload_target: "submit" } %>
+          </div>
+        <% end %>
+      </div>
+
+      <%# ═══ Track Screen ═══ %>
+      <div data-onboarding-modal-target="trackScreen" class="hidden">
+        <div class="flex items-center gap-2 mb-4">
+          <button class="btn btn-ghost btn-sm btn-circle" data-action="onboarding-modal#showChoice">
+            <%= icon 'arrow-left', class: 'w-4 h-4' %>
+          </button>
+          <h3 class="text-xl font-bold">Start tracking</h3>
+        </div>
+
+        <div class="card bg-base-100 shadow-sm">
+          <div class="card-body p-4 space-y-4">
+            <%# Step 1: Download %>
+            <div>
+              <div class="flex items-center gap-2 mb-2">
+                <div class="badge badge-primary badge-sm">1</div>
+                <h4 class="font-semibold">Download the app</h4>
+              </div>
+              <div class="flex justify-center items-center gap-3 flex-wrap">
+                <%= link_to 'https://apps.apple.com/de/app/dawarich/id6739544999?itscg=30200&itsct=apps_box_badge&mttnsubad=6739544999',
+                    class: 'inline-block rounded-lg border-2 border-transparent hover:border-primary hover:shadow-lg hover:shadow-primary/20 transition-all duration-300 ease-in-out transform hover:scale-105' do %>
+                  <%= image_tag 'Download_on_the_App_Store_Badge_US-UK_RGB_blk_092917.svg',
+                      class: 'h-[40px] transition-opacity duration-300' %>
+                <% end %>
+                <%= link_to 'https://play.google.com/store/apps/details?id=com.zeitflow.dawarich',
+                    class: 'inline-block rounded-lg border-2 border-transparent hover:border-primary hover:shadow-lg hover:shadow-primary/20 transition-all duration-300 ease-in-out transform hover:scale-105',
+                    target: '_blank', rel: 'noopener' do %>
+                  <%= image_tag 'GetItOnGooglePlay_Badge_Web_color_English.svg',
+                      class: 'h-[40px] transition-opacity duration-300' %>
+                <% end %>
               </div>
             </div>
-          </div>
 
-          <div class="card-body p-4">
-            <div class="flex items-center gap-3 mb-3">
-              <div class="badge badge-secondary badge-lg">3</div>
-              <h4 class="text-lg font-semibold">Manual Setup (Alternative)</h4>
+            <%# Step 2: Connect %>
+            <div>
+              <div class="flex items-center gap-2 mb-2">
+                <div class="badge badge-primary badge-sm">2</div>
+                <h4 class="font-semibold">Scan QR code to connect</h4>
+              </div>
+              <p class="text-sm text-base-content/70 mb-3">
+                Scan this QR code with the Dawarich app to automatically configure your connection.
+              </p>
+              <div class="flex justify-center">
+                <div class="bg-white p-3 rounded-lg shadow-inner">
+                  <%= api_key_qr_code(current_user, size: 3) %>
+                </div>
+              </div>
             </div>
-            <p class="text-sm text-base-content/80">
-              Alternatively, you can manually grab your API key from
+
+            <%# Manual alternative %>
+            <div class="divider text-xs">OR</div>
+            <p class="text-sm text-base-content/70">
+              Grab your API key from
               <%= link_to 'Settings', settings_general_index_path, class: 'link link-primary font-medium' %>
-              and follow the setup instructions in our
-              <%= link_to 'documentation', 'https://dawarich.app/docs/tutorials/track-your-location?utm_source=app&utm_medium=referral&utm_campaign=onboarding',
+              and follow the
+              <%= link_to 'setup guide', 'https://dawarich.app/docs/tutorials/track-your-location?utm_source=app&utm_medium=referral&utm_campaign=onboarding',
                   class: 'link link-primary font-medium', target: '_blank', rel: 'noopener' %>.
             </p>
           </div>
         </div>
-      </div>
 
-      <!-- Footer -->
-      <div class="modal-action mt-8">
-        <div class="text-center flex-1">
-          <p class="text-xs text-base-content/60 mb-4">
-            Need help? Check out our
-            <%= link_to 'documentation', 'https://dawarich.app/docs/category/tutorials?utm_source=app&utm_medium=referral&utm_campaign=onboarding',
-                class: 'link link-primary text-xs', target: '_blank', rel: 'noopener' %>
-            for more guidance.
-          </p>
-        </div>
-        <form method="dialog">
-          <button class="btn btn-primary btn-wide">
-            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-            </svg>
+        <div class="flex justify-end mt-4">
+          <button class="btn btn-primary" data-action="onboarding-modal#dismiss">
             Got it, let's start!
           </button>
-        </form>
+        </div>
       </div>
+
     </div>
 
-    <!-- Modal backdrop -->
+    <%# Modal backdrop %>
     <form method="dialog" class="modal-backdrop">
       <button>close</button>
     </form>

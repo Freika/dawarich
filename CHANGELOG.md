@@ -4,6 +4,128 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.3.4] - 2026-03-15
+
+### Changed
+
+- Redesigned onboarding modal with two paths: "I have data" (inline file import) and "Start tracking" (app download + QR code). New users with existing location data can now start importing within 2 clicks of signing up.
+- Onboarding completion is now persisted server-side (`settings.onboarding_completed`) instead of relying solely on localStorage, preventing the modal from reappearing after browser data clears.
+- Route opacity data migration now runs as a background job instead of inline during migration, improving deployment reliability for large instances.
+
+### Fixed
+
+- Fix admin and supporter tooltip overflowing the page on narrow screens. #1449
+- Fix date navigation arrow tooltips overlapping with the navbar on map pages. #2229 #2100
+- Fix infinite loading spinner when a trip has no points in its date range. #2293
+- Fix Insights monthly digest panels disappearing when switching months. #2305
+- Fix suggested visit confirm/decline not removing the visit from the list. #2307
+- Fix Stats page reloading when clicking "countries, cities" link. #2270
+- Fix map base layer selection not being restored after page reload (Maps v1). #2093
+- Fix duplicate country names in stats caused by geocoder returning different spellings. #2044
+- Fix total distance display overlapping layer picker when distance is in miles. #2017
+- Fix default route opacity displaying as 6000% for new users. #1891
+- Fix shared month stats map missing hexagons from the last day of the month. #1934
+- Fix Nominatim reverse geocoder producing all places named "Suggested place" instead of actual place names. #2182
+- Fix IDL-crossing route segmenter returning inconsistent coordinate types. `unwrapCoordinates` now always returns a uniform array-of-arrays structure. #2038
+- Fix a migration taking too long. #2375
+- Fix family sharing not including the requesting user's own location. #2153
+- The "Destroy" button on the trip page is now orange. #2348
+
+## [1.3.3] - 2026-03-12
+
+### Added
+
+- Better user management with pagination, search, and filtering in the admin panel. Admins can now easily find and manage users based on email, registration date, and activity status.
+
+### Fixed
+
+- Points table now converts speed from m/s to km/h (or mph) using the user's distance unit preference. Previously raw m/s values were displayed with a "km/h" label. #2337
+- Digest list API (`GET /api/v1/digests`) now returns distance as a structured object with `meters`, `converted`, and `unit` fields, matching the detail endpoint. Previously it returned raw meters, causing clients to display incorrect values. **Breaking change**: the `distance` field changed from an integer to an object. #2336
+- Dead documentation links in v0.26.0 changelog entry now point to the correct URLs. #2344
+- Filter out Immich and Photoprism api keys from logs to prevent accidental exposure. #2368
+- Fix foreign key violation when deleting users with place_visits referencing visits.
+- Fix reverse geocoding job failing on points with nil timestamp or lonlat.
+- Fix unsupported archive format generating Sentry noise instead of a user-friendly notification.
+- Fix deadlock in reverse geocoding places upsert under concurrent Sidekiq workers.
+- Reduce Redis disk I/O by relaxing RDB snapshot frequency. Previously the default `save 60 10000` rule caused a snapshot every ~60 seconds due to Sidekiq polling, generating tens of terabytes of disk writes over weeks. New defaults: snapshots every 15 minutes (10+ changes) or 5 minutes (100+ changes).
+- Reduce default Sidekiq concurrency from 10 to 5 threads. Most self-hosted instances don't need 10 workers and the extra threads increase Redis polling traffic.
+- Migration bug for version skippers. #2362
+
+## [1.3.2] - 2026-03-08
+
+**Important**: Self-hosters are not limited in any way. All features remain fully available regardless of plan. The new Lite plan and related limitations apply only to Dawarich Cloud users. If you're self-hosting, you can ignore the Lite plan details below. Self-hosted instances will continue to have access to all features without any restrictions.
+
+### Added
+
+- Lite plan for Dawarich Cloud. Lite includes core tracking, map visualization (routes, points), stats, and the read API. Data view is limited to the last 12 months — older data is archived but can always be exported. Pro-only features: Heatmap, Fog of War, Scratch Map, Globe View, Immich/Photoprism integrations, public stats sharing, and write API (update/delete). Lite users can still create points via the API. Self-hosted instances are unaffected — all features remain fully available regardless of plan.
+- Timed layer previews for Lite users on the map. Toggling a Pro-only layer (Heatmap, Fog of War, Scratch Map) shows it for 20 seconds with a countdown, then auto-hides with an upgrade prompt.
+- Per-plan API rate limiting via `rack-attack`. Lite: 200 requests/hour, Pro: 1,000 requests/hour. Self-hosted instances are exempt. Rate-limited responses return 429 with `Retry-After` header.
+- Archival warning notifications for Lite users approaching the 12-month data window: in-app notification at 11 months, email at 11.5 months, archived confirmation at 12 months.
+- `GET /api/v1/plan` endpoint returning the user's current plan and feature availability.
+- `X-Total-Points-In-Range` and `X-Scoped-Points` response headers on the points API, allowing clients to detect when data is being windowed.
+- Branded OAuth buttons for Google and GitHub on the login page.
+
+### Changed
+
+- Numeric-only strings passed to timestamp API parameters (e.g. `start_at`, `end_at`) are now treated as Unix timestamps directly. Previously they were passed through `Time.zone.parse`, which could return unexpected results. If you were relying on the old behavior for numeric strings, update your API calls accordingly.
+- The user serializer now includes `plan` in the `subscription` object.
+
+## [1.3.1] - 2026-02-27
+
+### Changed
+
+- User deletion now being done in the background to prevent request timeouts for users with large amount of data.
+
+### Fixed
+
+- Point speed in Map V2 is now correctly calculated from m/s to km/h or mph based on user preference. #2308
+- Family members are now being loaded correctly on Map V2 when family layer is enabled. #2250
+- Photos popups on Map V2 now show the photo timestamp in user's timezone. #2310
+- Fix the issue preventing fresh app from starting. #2304
+
+## [1.3.0] - 2026-02-25
+
+The Storage & Timeline Interaction Release
+
+This release adds a dedicated `motion_data` column for transportation-relevant fields alongside the existing `raw_data`. Users can now set their timezone for accurate date/time display across the app. The Timeline feed in Map v2 gains richer map interaction: hovering a journey highlights its track with an animated border, clicking zooms to fit and selects it, and expanding a day shows visit markers even when the Visits layer is off. User data export/import is enhanced with a new v2 format using JSONL files and monthly splitting for large datasets, while remaining backward-compatible with the old format.
+
+### Added
+
+- Per-user timezone setting. Users can now select their timezone from Settings > General, and all dates/times across the app (including background jobs and API responses) will respect it. Defaults to the server's `TIME_ZONE` environment variable for existing users.
+- `motion_data` JSONB column on the `points` table for storing transportation-relevant fields separately from `raw_data`.
+- Background job (`DataMigrations::BackfillMotionDataJob`) to backfill `motion_data` from `raw_data` for existing points.
+- New Timeline feed in Map v2 Tools panel for browsing daily location history. Distances and speeds respect the user's distance unit preference (km/mi).
+- Clicking a track point (when "Show Points" is enabled) now displays point info (timestamp, battery, altitude, speed) in the track info panel instead of triggering a position update. Dragging a point still updates its position and triggers track recalculation.
+- Timeline-map interaction: hovering a journey entry in the Timeline feed now highlights the matching track on the map with the animated border and flow effect. Clicking a journey entry zooms the map to fit the track and keeps it selected. Expanding a day in the Timeline now temporarily shows visit markers for that day, even if the Visits layer is disabled.
+- AES-256-GCM encryption for raw data archives (format version 2). Set `ARCHIVE_ENCRYPTION_KEY` to use a custom key; otherwise derives from `SECRET_KEY_BASE`. Existing unencrypted archives (format version 1) are read transparently.
+- v2 export/import format with JSONL files and monthly splitting for large entities (points, visits, stats, tracks, digests). The new format streams data to avoid memory issues with large datasets, while remaining backward-compatible with v1 archives (`data.json`).
+- User data export now includes Tags, Taggings, Tracks (with embedded TrackSegments), Digests, and Raw Data Archives — previously missing from export/import, meaning users who exported and re-imported would lose these entities.
+- Tracks are exported with their `original_path` serialized as WKT and `track_segments` embedded as a nested array, preserving transportation mode detection data across export/import cycles.
+- Digests get a fresh `sharing_uuid` on import for security — old share links from the original user won't work for the importing user.
+- Raw Data Archives are exported with their attached gzip files, enabling full data restoration.
+- Failed imports now will have an error message shown to the user.
+- Pagination now looks nicer and more informative, indicating current page. #2279
+- Imports and exports now can be sorted by name, file size, number of points, and creation date. #2279
+- Lots of missing Swagger specs for the API endpoints have been added, improving API documentation and enabling better client generation. swagger.yaml is updated.
+
+### Changed
+
+- Transportation-relevant fields (motion, activity, action) are now stored in a dedicated `motion_data` column alongside `raw_data`, enabling efficient transportation mode detection.
+- All import sources now write both `raw_data` (full original payload) and `motion_data` (transportation-relevant fields).
+- The `STORE_GEODATA` setting now correctly controls whether geodata is written during reverse geocoding.
+- Dropped unused `idx_points_user_city` database index (304 MB) and replaced the full `reverse_geocoded_at` index (1,149 MB) with a smaller partial index covering only un-geocoded rows.
+- Selecting a track on Map v2 now always dims other tracks, regardless of whether the track has transportation mode segments.
+- Default map layers for new users changed from Routes + Heatmap to Tracks + Heatmap. Existing users' settings are unaffected.
+- Renamed the bottom-panel "Timeline" feature to "Replay" to avoid naming collision with the new Timeline feed sidebar.
+- Default value for `RAILS_ENV` in `docker-compose.yml` is now `production` instead of `development`
+
+### Fixed
+
+- Stats queries (daily distance, time of day) now correctly handle timezone conversion without double-converting from UTC.
+- Timezone validation in stats queries now properly resolves Rails timezone names to IANA identifiers.
+- Clicking on [Map] on Stats page now correctly respects the user's preferred map version (v1 or v2) instead of always linking to Map v1. #2281
+
+
 ## [1.2.0] - 2026-02-15
 
 ### Changed
@@ -1228,9 +1350,9 @@ Also, after updating to this version, Dawarich will start a huge background job 
 
 ⚠️ This release includes a breaking change. ⚠️
 
-Starting this version, Dawarich requires PostgreSQL 17 with PostGIS 3.5. If you haven't updated your database image yet, please consider doing so as suggested in the [docs on the website](https://dawarich.app/docs/tutorials/update-postgresql/). Simply replacing the image in the `docker-compose.yml` unfortunately doesn't work, as PostgreSQL 17 is not backwards compatible with 14 (which was used in previous versions).
+Starting this version, Dawarich requires PostgreSQL 17 with PostGIS 3.5. If you haven't updated your database image yet, please consider doing so as suggested in the [docs on the website](https://dawarich.app/docs/self-hosting/maintenance/update-postgresql). Simply replacing the image in the `docker-compose.yml` unfortunately doesn't work, as PostgreSQL 17 is not backwards compatible with 14 (which was used in previous versions).
 
-If you have encountered problems with moving to a PostGIS image while still on Postgres 14, I collected a selection of compatible docker images for different CPU architectures, which you can also find in the [docs](https://dawarich.app/docs/tutorials/moving-to-postgis/). New users will be automatically provisioned with PostgreSQL 17 with PostGIS 3.5 with default `docker-compose.yml` file.
+If you have encountered problems with moving to a PostGIS image while still on Postgres 14, I collected a selection of compatible docker images for different CPU architectures, which you can also find in the [docs](https://dawarich.app/docs/self-hosting/maintenance/moving-to-postgis). New users will be automatically provisioned with PostgreSQL 17 with PostGIS 3.5 with default `docker-compose.yml` file.
 
 **You still may use PostgreSQL 14, but no support will be provided for it starting this version. It's strongly recommended to update to PostgreSQL 17.**
 

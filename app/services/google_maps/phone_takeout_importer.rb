@@ -65,6 +65,7 @@ class GoogleMaps::PhoneTakeoutImporter
     {
       lonlat: "POINT(#{lon.to_f} #{lat.to_f})",
       timestamp:,
+      motion_data: Points::MotionDataExtractor.from_google_phone_takeout(raw_data),
       raw_data:,
       accuracy: raw_data['accuracyMeters'],
       altitude: raw_data['altitudeMeters'],
@@ -174,7 +175,6 @@ class GoogleMaps::PhoneTakeoutImporter
   def bulk_insert_points(batch)
     unique_batch = batch.uniq { |record| [record[:lonlat], record[:timestamp], record[:user_id]] }
 
-    # rubocop:disable Rails/SkipsModelValidations
     Point.upsert_all(
       unique_batch,
       unique_by: %i[lonlat timestamp user_id],

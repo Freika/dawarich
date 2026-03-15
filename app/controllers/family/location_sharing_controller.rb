@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Family::LocationSharingController < ApplicationController
+  include FlashStreamable
+
   before_action :authenticate_user!
   before_action :ensure_family_feature_enabled!
   before_action :ensure_user_in_family!
@@ -9,10 +11,31 @@ class Family::LocationSharingController < ApplicationController
     result = Families::UpdateLocationSharing.new(
       user: current_user,
       enabled: params[:enabled],
-      duration: params[:duration]
+      duration: params[:duration],
+      share_history: params[:share_history],
+      history_window: params[:history_window]
     ).call
 
-    render json: result.payload, status: result.status
+    respond_to do |format|
+      format.turbo_stream do
+        current_user.reload
+        streams = [
+          turbo_stream.replace(
+            "location-sharing-#{current_user.id}",
+            partial: 'families/location_sharing_toggle',
+            locals: { member: current_user }
+          ),
+          turbo_stream.replace(
+            'family-navbar-indicator',
+            partial: 'families/navbar_indicator',
+            locals: { user: current_user }
+          ),
+          stream_flash(result.success? ? :success : :error, result.payload[:message])
+        ]
+        render turbo_stream: streams
+      end
+      format.json { render json: result.payload, status: result.status }
+    end
   end
 
   private
@@ -20,6 +43,11 @@ class Family::LocationSharingController < ApplicationController
   def ensure_user_in_family!
     return if current_user.in_family?
 
-    render json: { error: 'User is not part of a family' }, status: :forbidden
+    respond_to do |format|
+      format.turbo_stream do
+        render turbo_stream: stream_flash(:error, 'User is not part of a family'), status: :forbidden
+      end
+      format.json { render json: { error: 'User is not part of a family' }, status: :forbidden }
+    end
   end
 end

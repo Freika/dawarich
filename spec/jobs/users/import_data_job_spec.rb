@@ -5,7 +5,7 @@ require 'rails_helper'
 RSpec.describe Users::ImportDataJob, type: :job do
   let(:user) { create(:user) }
   let(:import) { create(:import, user: user, source: :user_data_archive, name: 'test_export.zip') }
-  let(:archive_path) { Rails.root.join('tmp', 'test_export.zip') }
+  let(:archive_path) { Rails.root.join('tmp/test_export.zip') }
   let(:job) { described_class.new }
 
   before do
@@ -13,10 +13,9 @@ RSpec.describe Users::ImportDataJob, type: :job do
 
     allow(import).to receive(:file).and_return(
       double('ActiveStorage::Attached::One',
-        download: proc { |&block|
-          File.read(archive_path).each_char { |c| block.call(c) }
-        }
-      )
+             download: proc { |&block|
+               File.read(archive_path).each_char { |c| block.call(c) }
+             })
     )
   end
 
@@ -30,7 +29,7 @@ RSpec.describe Users::ImportDataJob, type: :job do
         import_service = instance_double(Users::ImportData)
         allow(Users::ImportData).to receive(:new).and_return(import_service)
         allow(import_service).to receive(:import).and_return({
-          settings_updated: true,
+                                                               settings_updated: true,
           areas_created: 2,
           places_created: 3,
           imports_created: 1,
@@ -41,7 +40,7 @@ RSpec.describe Users::ImportDataJob, type: :job do
           visits_created: 4,
           points_created: 1000,
           files_restored: 7
-        })
+                                                             })
 
         allow(File).to receive(:exist?).and_return(true)
         allow(File).to receive(:delete)
@@ -110,7 +109,8 @@ RSpec.describe Users::ImportDataJob, type: :job do
         expect(::Notifications::Create).to receive(:new).with(
           user: user,
           title: 'Data import failed',
-          content: "Your data import failed with error: #{error_message}. Please check the archive format and try again.",
+          content: "Your data import failed with error: #{error_message}. " \
+                   'Please check the archive format and try again.',
           kind: :error
         )
 
@@ -123,7 +123,7 @@ RSpec.describe Users::ImportDataJob, type: :job do
     end
 
     context 'when import does not exist' do
-      let(:non_existent_import_id) { 999999 }
+      let(:non_existent_import_id) { 999_999 }
 
       it 'raises ActiveRecord::RecordNotFound' do
         expect { job.perform(non_existent_import_id) }.to raise_error(ActiveRecord::RecordNotFound)
@@ -154,7 +154,9 @@ RSpec.describe Users::ImportDataJob, type: :job do
         expect(::Notifications::Create).to receive(:new).with(
           user: user,
           title: 'Data import failed',
-          content: a_string_matching(/Your data import failed with error:.*Please check the archive format and try again\./),
+          content: a_string_matching(
+            /Your data import failed with error:.*Please check the archive format and try again\./
+          ),
           kind: :error
         ).and_return(notification_service)
 

@@ -10,6 +10,9 @@ class Api::V1::SettingsController < ApiController
     }, status: :ok
   end
 
+  # NOTE: For Lite plan users, Pro-only settings (gated map layers, globe_projection)
+  # are silently stripped before persistence by TransportationThresholdsUpdater.
+  # The response reflects the filtered state via safe_settings.config.
   def update
     result = Users::TransportationThresholdsUpdater.new(current_api_user, settings_params).call
 
@@ -47,6 +50,7 @@ class Api::V1::SettingsController < ApiController
 
   def settings_params
     params.require(:settings).permit(
+      :timezone,
       :meters_between_routes, :minutes_between_routes, :fog_of_war_meters,
       :time_threshold_minutes, :merge_threshold_minutes, :route_opacity,
       :preferred_map_layer, :points_rendering_mode, :live_map_enabled,

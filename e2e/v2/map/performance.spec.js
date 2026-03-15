@@ -1,12 +1,12 @@
-import { test, expect } from '@playwright/test'
-import { closeOnboardingModal } from '../../helpers/navigation.js'
-import { waitForMapLibre, waitForLoadingComplete } from '../helpers/setup.js'
+import { expect, test } from "@playwright/test"
+import { closeOnboardingModal } from "../../helpers/navigation.js"
+import { waitForLoadingComplete, waitForMapLibre } from "../helpers/setup.js"
 
-test.describe('Map Performance', () => {
-  test('map loads within acceptable time', async ({ page }) => {
+test.describe("Map Performance", () => {
+  test("map loads within acceptable time", async ({ page }) => {
     const startTime = Date.now()
 
-    await page.goto('/map/v2?start_at=2025-10-15T00:00&end_at=2025-10-15T23:59')
+    await page.goto("/map/v2?start_at=2025-10-15T00:00&end_at=2025-10-15T23:59")
     await closeOnboardingModal(page)
     await waitForMapLibre(page)
     await waitForLoadingComplete(page)
@@ -18,8 +18,8 @@ test.describe('Map Performance', () => {
     expect(loadTime).toBeLessThan(15000)
   })
 
-  test('handles large datasets efficiently', async ({ page }) => {
-    await page.goto('/map/v2?start_at=2025-10-01T00:00&end_at=2025-10-31T23:59')
+  test("handles large datasets efficiently", async ({ page }) => {
+    await page.goto("/map/v2?start_at=2025-10-01T00:00&end_at=2025-10-31T23:59")
     await closeOnboardingModal(page)
 
     const startTime = Date.now()

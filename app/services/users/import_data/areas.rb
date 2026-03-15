@@ -97,7 +97,6 @@ class Users::ImportData::Areas
     total_created = 0
 
     areas.each_slice(BATCH_SIZE) do |batch|
-      # rubocop:disable Rails/SkipsModelValidations
       result = Area.upsert_all(
         batch,
         returning: %w[id],

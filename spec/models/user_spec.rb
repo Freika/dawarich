@@ -20,6 +20,7 @@ RSpec.describe User, type: :model do
 
   describe 'enums' do
     it { is_expected.to define_enum_for(:status).with_values(inactive: 0, active: 1, trial: 2) }
+    it { is_expected.to define_enum_for(:plan).with_values(lite: 0, pro: 1) }
   end
 
   describe 'callbacks' do
@@ -42,6 +43,10 @@ RSpec.describe User, type: :model do
         it 'activates user after creation' do
           expect(user.active?).to be_truthy
           expect(user.active_until).to be_within(1.minute).of(1000.years.from_now)
+        end
+
+        it 'sets plan to pro' do
+          expect(user.pro?).to be true
         end
       end
 
@@ -340,8 +345,26 @@ RSpec.describe User, type: :model do
     end
 
     describe '#timezone' do
-      it 'returns the app timezone' do
-        expect(user.timezone).to eq(Time.zone.name)
+      context 'when timezone is not set in settings' do
+        it 'returns UTC as default' do
+          expect(user.timezone).to eq('UTC')
+        end
+      end
+
+      context 'when timezone is set in settings' do
+        let(:user) { create(:user, settings: { 'timezone' => 'Europe/Berlin' }) }
+
+        it 'returns the user timezone from settings' do
+          expect(user.timezone).to eq('Europe/Berlin')
+        end
+      end
+
+      context 'when timezone is set to America/New_York' do
+        let(:user) { create(:user, settings: { 'timezone' => 'America/New_York' }) }
+
+        it 'returns the configured timezone' do
+          expect(user.timezone).to eq('America/New_York')
+        end
       end
     end
   end

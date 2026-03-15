@@ -41,7 +41,7 @@ module LocationSearch
         )
 
         if matching_points.empty?
-          wider_search = spatial_matcher.find_points_near(
+          spatial_matcher.find_points_near(
             @user,
             location[:lat],
             location[:lon],

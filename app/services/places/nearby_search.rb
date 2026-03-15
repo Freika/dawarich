@@ -61,11 +61,11 @@ module Places
 
     def extract_name(data)
       properties = data['properties'] || {}
-      
+
       properties['name'] ||
-      [properties['street'], properties['housenumber']].compact.join(' ').presence ||
-      properties['city'] ||
-      'Unknown Place'
+        [properties['street'], properties['housenumber']].compact.join(' ').presence ||
+        properties['city'] ||
+        'Unknown Place'
     end
   end
 end

@@ -5,12 +5,12 @@
 
 const DEFAULT_SETTINGS = {
   mapStyle: "light",
-  enabledMapLayers: ["Points", "Routes"],
+  enabledMapLayers: ["Heatmap", "Tracks"],
   routeOpacity: 0.6,
-  fogOfWarRadius: 100,
-  fogOfWarThreshold: 1,
+  fogOfWarRadius: 50,
+  fogOfWarThreshold: 50,
   metersBetweenRoutes: 500,
-  minutesBetweenRoutes: 60,
+  minutesBetweenRoutes: 30,
   pointsRenderingMode: "raw",
   speedColoredRoutes: false,
   speedColorScale: "0:#00ff00|15:#00ffff|30:#ff00ff|50:#ffff00|100:#ff3300",

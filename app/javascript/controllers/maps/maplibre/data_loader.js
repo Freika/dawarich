@@ -77,10 +77,11 @@ export class DataLoader {
    * Used by ensurePointsLoaded() for lazy-loading point-dependent layers.
    */
   async fetchPointsData(startDate, endDate) {
-    const points = await this.api.fetchAllPoints({
+    const result = await this.api.fetchAllPoints({
       start_at: startDate,
       end_at: endDate,
     })
+    const points = result.points
     const pointsGeoJSON = pointsToGeoJSON(points)
     let routesGeoJSON = RoutesLayer.pointsToRoutes(points, {
       distanceThresholdMeters: this.settings.metersBetweenRoutes || 500,
@@ -158,7 +159,7 @@ export class DataLoader {
               }
             : null,
         })
-      : Promise.resolve([])
+      : Promise.resolve({ points: [], totalPointsInRange: 0 })
 
     const visitsPromise = this.settings.visitsEnabled
       ? this.api
@@ -224,12 +225,14 @@ export class DataLoader {
       : Promise.resolve([])
 
     // Wait for all core data
-    const [points, visits, areas, places] = await Promise.all([
+    const [pointsResult, visits, areas, places] = await Promise.all([
       pointsPromise,
       visitsPromise,
       areasPromise,
       placesPromise,
     ])
+    const points = pointsResult.points
+    const totalPointsInRange = pointsResult.totalPointsInRange || 0
     performanceMonitor.measure("fetch-points")
 
     const emptyGeoJSON = { type: "FeatureCollection", features: [] }
@@ -283,6 +286,7 @@ export class DataLoader {
       data.routesBaseGeoJSON = emptyGeoJSON
     }
 
+    data.totalPointsInRange = totalPointsInRange
     data.visits = visits
     data.visitsGeoJSON = this.visitsToGeoJSON(data.visits)
     data.areas = areas
@@ -376,29 +380,31 @@ export class DataLoader {
   photosToGeoJSON(photos) {
     return {
       type: "FeatureCollection",
-      features: photos.map((photo) => {
-        // Construct thumbnail URL
-        const thumbnailUrl = `/api/v1/photos/${photo.id}/thumbnail.jpg?api_key=${this.apiKey}&source=${photo.source}`
+      features: photos
+        .filter((photo) => photo.latitude !== 0 && photo.longitude !== 0)
+        .map((photo) => {
+          // Construct thumbnail URL
+          const thumbnailUrl = `/api/v1/photos/${photo.id}/thumbnail.jpg?api_key=${this.apiKey}&source=${photo.source}`
 
-        return {
-          type: "Feature",
-          geometry: {
-            type: "Point",
-            coordinates: [photo.longitude, photo.latitude],
-          },
-          properties: {
-            id: photo.id,
-            thumbnail_url: thumbnailUrl,
-            taken_at: photo.localDateTime,
-            filename: photo.originalFileName,
-            city: photo.city,
-            state: photo.state,
-            country: photo.country,
-            type: photo.type,
-            source: photo.source,
-          },
-        }
-      }),
+          return {
+            type: "Feature",
+            geometry: {
+              type: "Point",
+              coordinates: [photo.longitude, photo.latitude],
+            },
+            properties: {
+              id: photo.id,
+              thumbnail_url: thumbnailUrl,
+              taken_at: photo.localDateTime,
+              filename: photo.originalFileName,
+              city: photo.city,
+              state: photo.state,
+              country: photo.country,
+              type: photo.type,
+              source: photo.source,
+            },
+          }
+        }),
     }
   }
 

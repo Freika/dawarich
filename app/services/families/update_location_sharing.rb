@@ -3,10 +3,12 @@
 class Families::UpdateLocationSharing
   Result = Struct.new(:success?, :payload, :status, keyword_init: true)
 
-  def initialize(user:, enabled:, duration:)
+  def initialize(user:, enabled:, duration:, share_history: nil, history_window: nil)
     @user = user
     @enabled_param = enabled
     @duration_param = duration
+    @share_history_param = share_history
+    @history_window_param = history_window
     @boolean_caster = ActiveModel::Type::Boolean.new
   end
 
@@ -14,18 +16,23 @@ class Families::UpdateLocationSharing
     return success_result if update_location_sharing
 
     failure_result('Failed to update location sharing setting', :unprocessable_content)
-  rescue => error
-    ExceptionReporter.call(error, "Error in Families::UpdateLocationSharing: #{error.message}")
+  rescue StandardError => e
+    ExceptionReporter.call(e, "Error in Families::UpdateLocationSharing: #{e.message}")
 
     failure_result('An error occurred while updating location sharing', :internal_server_error)
   end
 
   private
 
-  attr_reader :user, :enabled_param, :duration_param, :boolean_caster
+  attr_reader :user, :enabled_param, :duration_param, :share_history_param, :history_window_param, :boolean_caster
 
   def update_location_sharing
-    user.update_family_location_sharing!(enabled?, duration: duration_param)
+    user.update_family_location_sharing!(
+      enabled?,
+      duration: duration_param,
+      share_history: share_history_param.nil? ? nil : boolean_caster.cast(share_history_param),
+      history_window: history_window_param
+    )
   end
 
   def enabled?
@@ -62,7 +69,11 @@ class Families::UpdateLocationSharing
     when '24h' then 'Location sharing enabled for 24 hours'
     when 'permanent', nil then 'Location sharing enabled'
     else
-      duration_param.to_i.positive? ? "Location sharing enabled for #{duration_param.to_i} hours" : 'Location sharing enabled'
+      if duration_param.to_i.positive?
+        "Location sharing enabled for #{duration_param.to_i} hours"
+      else
+        'Location sharing enabled'
+      end
     end
   end
 end

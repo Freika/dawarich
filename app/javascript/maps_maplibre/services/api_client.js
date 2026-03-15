@@ -37,6 +37,14 @@ export class ApiClient {
       points,
       currentPage: parseInt(response.headers.get("X-Current-Page") || "1", 10),
       totalPages: parseInt(response.headers.get("X-Total-Pages") || "1", 10),
+      totalPointsInRange: parseInt(
+        response.headers.get("X-Total-Points-In-Range") || "0",
+        10,
+      ),
+      scopedPoints: parseInt(
+        response.headers.get("X-Scoped-Points") || "0",
+        10,
+      ),
     }
   }
 
@@ -44,7 +52,7 @@ export class ApiClient {
    * Fetch all points for date range (handles pagination with parallel requests)
    * @param {Object} options - { start_at, end_at, onProgress, onBatch, maxConcurrent }
    * @param {Function} options.onBatch - Called with accumulated points array after each batch
-   * @returns {Promise<Array>} All points
+   * @returns {Promise<{points: Array, totalPointsInRange: number}>}
    */
   async fetchAllPoints({
     start_at,
@@ -71,6 +79,7 @@ export class ApiClient {
       per_page: 1000,
     })
     const totalPages = firstPage.totalPages
+    const totalPointsInRange = firstPage.totalPointsInRange
 
     // If only one page, return immediately
     if (totalPages === 1) {
@@ -85,7 +94,7 @@ export class ApiClient {
       if (onBatch) {
         onBatch(firstPage.points)
       }
-      return firstPage.points
+      return { points: firstPage.points, totalPointsInRange }
     }
 
     // Initialize results array with first page
@@ -148,7 +157,10 @@ export class ApiClient {
     pageResults.sort((a, b) => a.page - b.page)
 
     // Flatten into single array
-    return pageResults.flatMap((r) => r.points)
+    return {
+      points: pageResults.flatMap((r) => r.points),
+      totalPointsInRange,
+    }
   }
 
   /**
@@ -734,6 +746,25 @@ export class ApiClient {
 
     pageResults.sort((a, b) => a.page - b.page)
     return pageResults.flatMap((r) => r.points)
+  }
+
+  /**
+   * Fetch timeline day feed for date range
+   * @param {Object} options - { start_at, end_at }
+   * @returns {Promise<Object>} { days: [...] }
+   */
+  async fetchTimeline({ start_at, end_at }) {
+    const params = new URLSearchParams({ start_at, end_at })
+
+    const response = await fetch(`${this.baseURL}/timeline?${params}`, {
+      headers: this.getHeaders(),
+    })
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch timeline: ${response.statusText}`)
+    }
+
+    return response.json()
   }
 
   getHeaders() {

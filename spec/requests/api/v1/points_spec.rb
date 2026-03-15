@@ -155,6 +155,23 @@ RSpec.describe 'Api::V1::Points', type: :request do
         expect(response).to have_http_status(:unauthorized)
       end
     end
+
+    context 'when user is on lite plan' do
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        # update_columns bypasses the activate callback that resets plan to :pro
+        user.update_column(:plan, User.plans[:lite])
+      end
+
+      it 'allows point creation (Lite users can create points)' do
+        post "/api/v1/points?api_key=#{user.api_key}", params: point_params
+
+        expect(response).to have_http_status(:ok)
+
+        json_response = JSON.parse(response.body)['data']
+        expect(json_response.size).to be_positive
+      end
+    end
   end
 
   describe 'PUT /update' do
@@ -177,6 +194,22 @@ RSpec.describe 'Api::V1::Points', type: :request do
         expect(response).to have_http_status(:unauthorized)
       end
     end
+
+    context 'when user is on lite plan' do
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        # update_columns bypasses the activate callback that resets plan to :pro
+        user.update_column(:plan, User.plans[:lite])
+      end
+
+      it 'returns 403 with write_api_restricted error' do
+        put "/api/v1/points/#{points.first.id}?api_key=#{user.api_key}",
+            params: { point: { latitude: 1.0, longitude: 1.1 } }
+
+        expect(response).to have_http_status(:forbidden)
+        expect(JSON.parse(response.body)['error']).to eq('write_api_restricted')
+      end
+    end
   end
 
   describe 'DELETE /destroy' do
@@ -195,6 +228,21 @@ RSpec.describe 'Api::V1::Points', type: :request do
         delete "/api/v1/points/#{points.first.id}?api_key=#{user.api_key}"
 
         expect(response).to have_http_status(:unauthorized)
+      end
+    end
+
+    context 'when user is on lite plan' do
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        # update_columns bypasses the activate callback that resets plan to :pro
+        user.update_column(:plan, User.plans[:lite])
+      end
+
+      it 'returns 403 with write_api_restricted error' do
+        delete "/api/v1/points/#{points.first.id}?api_key=#{user.api_key}"
+
+        expect(response).to have_http_status(:forbidden)
+        expect(JSON.parse(response.body)['error']).to eq('write_api_restricted')
       end
     end
   end
@@ -304,6 +352,174 @@ RSpec.describe 'Api::V1::Points', type: :request do
 
         json_response = JSON.parse(response.body)
         expect(json_response['count']).to eq(5)
+      end
+    end
+
+    context 'when user is on lite plan' do
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        # update_columns bypasses the activate callback that resets plan to :pro
+        user.update_column(:plan, User.plans[:lite])
+      end
+
+      it 'returns 403 with write_api_restricted error' do
+        delete "/api/v1/points/bulk_destroy?api_key=#{user.api_key}",
+               params: { point_ids: }
+
+        expect(response).to have_http_status(:forbidden)
+        expect(JSON.parse(response.body)['error']).to eq('write_api_restricted')
+      end
+
+      it 'does not delete any points' do
+        expect do
+          delete "/api/v1/points/bulk_destroy?api_key=#{user.api_key}",
+                 params: { point_ids: }
+        end.not_to(change { user.points.count })
+      end
+    end
+  end
+
+  describe 'GET /index (read API scoping for lite plan)' do
+    context 'when user is on lite plan' do
+      let!(:lite_user) do
+        u = create(:user)
+        # Bypass the activate callback that overrides plan
+        u.update_columns(plan: User.plans[:lite])
+        u
+      end
+
+      let!(:recent_point) do
+        create(:point, user: lite_user, timestamp: 1.month.ago.to_i)
+      end
+
+      let!(:old_point) do
+        create(:point, user: lite_user, timestamp: 13.months.ago.to_i)
+      end
+
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      end
+
+      it 'returns only points within the 12-month window' do
+        get api_v1_points_url(api_key: lite_user.api_key)
+
+        expect(response).to have_http_status(:ok)
+
+        json_response = JSON.parse(response.body)
+        returned_ids = json_response.map { |p| p['id'] }
+
+        expect(returned_ids).to include(recent_point.id)
+        expect(returned_ids).not_to include(old_point.id)
+      end
+
+      it 'returns X-Total-Points-In-Range header with the unscoped count' do
+        get api_v1_points_url(
+          api_key: lite_user.api_key,
+          start_at: 14.months.ago.to_i,
+          end_at: Time.current.to_i
+        )
+
+        expect(response).to have_http_status(:ok)
+        expect(response.headers['X-Total-Points-In-Range']).to eq('2')
+        expect(response.headers['X-Scoped-Points']).to eq('1')
+      end
+
+      it 'cannot bypass the 12-month window via start_at param' do
+        get api_v1_points_url(api_key: lite_user.api_key, start_at: 0)
+
+        expect(response).to have_http_status(:ok)
+
+        json_response = JSON.parse(response.body)
+        returned_ids = json_response.map { |p| p['id'] }
+
+        expect(returned_ids).to include(recent_point.id)
+        expect(returned_ids).not_to include(old_point.id)
+      end
+    end
+
+    context 'when user is on pro plan' do
+      let!(:pro_user) do
+        u = create(:user)
+        u.update_columns(plan: User.plans[:pro])
+        u
+      end
+
+      let!(:recent_point) do
+        create(:point, user: pro_user, timestamp: 1.month.ago.to_i)
+      end
+
+      let!(:old_point) do
+        create(:point, user: pro_user, timestamp: 13.months.ago.to_i)
+      end
+
+      it 'returns all points regardless of age' do
+        get api_v1_points_url(api_key: pro_user.api_key)
+
+        expect(response).to have_http_status(:ok)
+
+        json_response = JSON.parse(response.body)
+        returned_ids = json_response.map { |p| p['id'] }
+
+        expect(returned_ids).to include(recent_point.id)
+        expect(returned_ids).to include(old_point.id)
+      end
+    end
+
+    context 'when on a self-hosted instance' do
+      let!(:self_hosted_user) { create(:user) } # default plan is pro
+
+      let!(:recent_point) do
+        create(:point, user: self_hosted_user, timestamp: 1.month.ago.to_i)
+      end
+
+      let!(:old_point) do
+        create(:point, user: self_hosted_user, timestamp: 13.months.ago.to_i)
+      end
+
+      it 'returns all points regardless of age' do
+        get api_v1_points_url(api_key: self_hosted_user.api_key)
+
+        expect(response).to have_http_status(:ok)
+
+        json_response = JSON.parse(response.body)
+        returned_ids = json_response.map { |p| p['id'] }
+
+        expect(returned_ids).to include(recent_point.id)
+        expect(returned_ids).to include(old_point.id)
+      end
+    end
+  end
+
+  describe 'GET /index (archived param is ignored)' do
+    context 'when user is on lite plan and passes archived=true' do
+      let!(:lite_user) do
+        u = create(:user)
+        u.update_columns(plan: User.plans[:lite])
+        u
+      end
+
+      let!(:recent_point) do
+        create(:point, user: lite_user, timestamp: 1.month.ago.to_i)
+      end
+
+      let!(:old_point) do
+        create(:point, user: lite_user, timestamp: 13.months.ago.to_i)
+      end
+
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      end
+
+      it 'ignores archived param and returns only recent points' do
+        get api_v1_points_url(api_key: lite_user.api_key, archived: 'true')
+
+        expect(response).to have_http_status(:ok)
+
+        json_response = JSON.parse(response.body)
+        returned_ids = json_response.map { |p| p['id'] }
+
+        expect(returned_ids).to include(recent_point.id)
+        expect(returned_ids).not_to include(old_point.id)
       end
     end
   end

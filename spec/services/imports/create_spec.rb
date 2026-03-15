@@ -35,7 +35,6 @@ RSpec.describe Imports::Create do
         expect(User).to have_received(:reset_counters).with(user.id, :points)
       end
 
-
       context 'when import succeeds' do
         it 'sets status to completed' do
           service.call
@@ -51,6 +50,11 @@ RSpec.describe Imports::Create do
         it 'sets status to failed' do
           service.call
           expect(import.reload.status).to eq('failed')
+        end
+
+        it 'sets the error message' do
+          service.call
+          expect(import.reload.error_message).to eq('StandardError')
         end
       end
     end

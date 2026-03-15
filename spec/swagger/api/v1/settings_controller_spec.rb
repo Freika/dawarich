@@ -117,6 +117,15 @@ describe 'Settings API', type: :request do
         let(:settings) { { settings: { route_opacity: 60 } } }
         let(:api_key)  { create(:user).api_key }
 
+        after { |example| SwaggerResponseExample.capture(example, response) }
+
+        run_test!
+      end
+
+      response '401', 'unauthorized' do
+        let(:api_key) { 'invalid' }
+        let(:settings) { { settings: { route_opacity: 60 } } }
+
         run_test!
       end
     end
@@ -252,6 +261,48 @@ describe 'Settings API', type: :request do
         let(:user)     { create(:user) }
         let(:settings) { { settings: user.settings } }
         let(:api_key)  { user.api_key }
+
+        after { |example| SwaggerResponseExample.capture(example, response) }
+
+        run_test!
+      end
+
+      response '401', 'unauthorized' do
+        let(:api_key) { 'invalid' }
+
+        run_test!
+      end
+    end
+  end
+
+  path '/api/v1/settings/transportation_recalculation_status' do
+    get 'Retrieves transportation mode recalculation status' do
+      tags 'Settings'
+      description 'Returns the current status of transportation mode recalculation for all tracks'
+      produces 'application/json'
+      parameter name: :api_key, in: :query, type: :string, required: true, description: 'API Key'
+
+      response '200', 'status found' do
+        schema type: :object,
+               properties: {
+                 status: { type: :string, nullable: true, description: 'Current recalculation status' },
+                 total_tracks: { type: :integer, nullable: true, description: 'Total number of tracks to process' },
+                 processed_tracks: { type: :integer, nullable: true, description: 'Number of tracks processed so far' },
+                 started_at: { type: :string, nullable: true, description: 'When recalculation started' },
+                 completed_at: { type: :string, nullable: true, description: 'When recalculation completed' },
+                 error_message: { type: :string, nullable: true, description: 'Error message if recalculation failed' }
+               }
+
+        let(:user) { create(:user) }
+        let(:api_key) { user.api_key }
+
+        after { |example| SwaggerResponseExample.capture(example, response) }
+
+        run_test!
+      end
+
+      response '401', 'unauthorized' do
+        let(:api_key) { 'invalid' }
 
         run_test!
       end

@@ -85,18 +85,19 @@ module Families
     end
 
     def send_notification
-      message =
-        if DawarichSettings.self_hosted?
-          "Family invitation sent to #{email} if SMTP is configured properly. If you're not using SMTP, copy the invitation link from the family page and share it manually."
-        else
-          "Family invitation sent to #{email}"
-        end
+      content = if DawarichSettings.self_hosted?
+                  "Family invitation sent to #{email} if SMTP is configured properly. " \
+                    "If you're not using SMTP, copy the invitation link from the family page " \
+                    'and share it manually.'
+                else
+                  "Family invitation sent to #{email}"
+                end
 
       Notification.create!(
         user: invited_by,
         kind: :info,
         title: 'Invitation Sent',
-        content: "Family invitation sent to #{email}"
+        content: content
       )
     rescue StandardError => e
       # Don't fail the entire operation if notification fails

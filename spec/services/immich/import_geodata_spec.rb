@@ -92,6 +92,62 @@ RSpec.describe Immich::ImportGeodata do
       expect { service }.to have_enqueued_job(Import::ProcessJob)
     end
 
+    context 'when photo has zero coordinates' do
+      let(:immich_data) do
+        {
+          "albums": { "total": 0, "count": 0, "items": [], "facets": [] },
+          "assets": {
+            "total": 1,
+            "count": 1,
+            "items": [
+              {
+                "id": 'zero-coords-asset',
+                "type": 'IMAGE',
+                "localDateTime": '2023-06-08T09:58:45.637Z',
+                "exifInfo": {
+                  "dateTimeOriginal": '2023-06-08T07:58:45.637Z',
+                  "latitude": 0,
+                  "longitude": 0
+                }
+              }
+            ]
+          }
+        }.to_json
+      end
+
+      it 'does not create import' do
+        expect { service }.not_to(change { Import.count })
+      end
+    end
+
+    context 'when photo has zero latitude only' do
+      let(:immich_data) do
+        {
+          "albums": { "total": 0, "count": 0, "items": [], "facets": [] },
+          "assets": {
+            "total": 1,
+            "count": 1,
+            "items": [
+              {
+                "id": 'zero-lat-asset',
+                "type": 'IMAGE',
+                "localDateTime": '2023-06-08T09:58:45.637Z',
+                "exifInfo": {
+                  "dateTimeOriginal": '2023-06-08T07:58:45.637Z',
+                  "latitude": 0,
+                  "longitude": 13.22
+                }
+              }
+            ]
+          }
+        }.to_json
+      end
+
+      it 'does not create import' do
+        expect { service }.not_to(change { Import.count })
+      end
+    end
+
     context 'when import already exists' do
       before { service }
 

@@ -39,7 +39,6 @@ module Visits
         return false
       end
 
-      # rubocop:disable Rails/SkipsModelValidations
       updated_count = visits.update_all(status: status)
       # rubocop:enable Rails/SkipsModelValidations
 

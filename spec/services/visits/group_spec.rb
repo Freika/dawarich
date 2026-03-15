@@ -33,7 +33,7 @@ RSpec.describe Visits::Group do
         expect(group.call(points)).to \
           eq({
                "#{time_formatter(1.day.ago)} - #{time_formatter(1.day.ago + 55.minutes)}" => points[0..11],
-            "#{time_formatter(1.day.ago + 95.minutes)} - #{time_formatter(1.day.ago + 105.minutes)}" => points[12..-1]
+            "#{time_formatter(1.day.ago + 95.minutes)} - #{time_formatter(1.day.ago + 105.minutes)}" => points[12..]
              })
       end
     end

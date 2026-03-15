@@ -7,8 +7,8 @@ export class LocationSearchService {
   constructor(apiKey) {
     this.apiKey = apiKey
     this.baseHeaders = {
-      'Authorization': `Bearer ${this.apiKey}`,
-      'Content-Type': 'application/json'
+      Authorization: `Bearer ${this.apiKey}`,
+      "Content-Type": "application/json",
     }
   }
 
@@ -26,9 +26,9 @@ export class LocationSearchService {
       const response = await fetch(
         `/api/v1/locations/suggestions?q=${encodeURIComponent(query)}`,
         {
-          method: 'GET',
-          headers: this.baseHeaders
-        }
+          method: "GET",
+          headers: this.baseHeaders,
+        },
       )
 
       if (!response.ok) {
@@ -39,17 +39,17 @@ export class LocationSearchService {
 
       // Transform suggestions to expected format
       // API returns coordinates as [lat, lon], we need { lat, lon }
-      const suggestions = (data.suggestions || []).map(suggestion => ({
+      const suggestions = (data.suggestions || []).map((suggestion) => ({
         name: suggestion.name,
         address: suggestion.address,
         lat: suggestion.coordinates?.[0],
         lon: suggestion.coordinates?.[1],
-        type: suggestion.type
+        type: suggestion.type,
       }))
 
       return suggestions
     } catch (error) {
-      console.error('LocationSearchService: Suggestion fetch error:', error)
+      console.error("LocationSearchService: Suggestion fetch error:", error)
       throw error
     }
   }
@@ -63,18 +63,18 @@ export class LocationSearchService {
    * @param {string} params.address - Location address
    * @returns {Promise<Object>} Search results with locations and visits
    */
-  async searchVisits({ lat, lon, name, address = '' }) {
+  async searchVisits({ lat, lon, name, address = "" }) {
     try {
       const params = new URLSearchParams({
         lat: lat.toString(),
         lon: lon.toString(),
         name,
-        address
+        address,
       })
 
       const response = await fetch(`/api/v1/locations?${params}`, {
-        method: 'GET',
-        headers: this.baseHeaders
+        method: "GET",
+        headers: this.baseHeaders,
       })
 
       if (!response.ok) {
@@ -84,7 +84,7 @@ export class LocationSearchService {
       const data = await response.json()
       return data
     } catch (error) {
-      console.error('LocationSearchService: Visit search error:', error)
+      console.error("LocationSearchService: Visit search error:", error)
       throw error
     }
   }
@@ -96,21 +96,21 @@ export class LocationSearchService {
    */
   async createVisit(visitData) {
     try {
-      const response = await fetch('/api/v1/visits', {
-        method: 'POST',
+      const response = await fetch("/api/v1/visits", {
+        method: "POST",
         headers: this.baseHeaders,
-        body: JSON.stringify({ visit: visitData })
+        body: JSON.stringify({ visit: visitData }),
       })
 
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.error || data.message || 'Failed to create visit')
+        throw new Error(data.error || data.message || "Failed to create visit")
       }
 
       return data
     } catch (error) {
-      console.error('LocationSearchService: Create visit error:', error)
+      console.error("LocationSearchService: Create visit error:", error)
       throw error
     }
   }

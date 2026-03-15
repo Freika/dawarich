@@ -439,6 +439,32 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
       it 'handles empty arrays gracefully' do
         expect { service.send(:save_places, [], []) }.not_to raise_error
       end
+
+      context 'when a deadlock occurs' do
+        let(:new_place) { build(:place) }
+
+        it 'retries on ActiveRecord::Deadlocked and succeeds' do
+          call_count = 0
+          allow(Place).to receive(:insert_all).and_wrap_original do |method, *args|
+            call_count += 1
+            raise ActiveRecord::Deadlocked, 'deadlock detected' if call_count == 1
+
+            method.call(*args)
+          end
+          allow(service).to receive(:sleep)
+
+          expect { service.send(:save_places, [new_place], []) }.to change { Place.count }.by(1)
+          expect(service).to have_received(:sleep).with(0.1).once
+        end
+
+        it 'raises after exhausting retries' do
+          allow(Place).to receive(:insert_all).and_raise(ActiveRecord::Deadlocked, 'deadlock detected')
+          allow(service).to receive(:sleep)
+
+          expect { service.send(:save_places, [new_place], []) }.to raise_error(ActiveRecord::Deadlocked)
+          expect(service).to have_received(:sleep).exactly(3).times
+        end
+      end
     end
   end
 
@@ -558,6 +584,103 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
         # The service should handle cases where a place might be created
         # between the existence check and the actual creation
         expect { service.call }.not_to raise_error
+      end
+    end
+
+    context 'when using Nominatim geocoder response format' do
+      let(:nominatim_place) do
+        double(
+          data: {
+            'place_id' => 123_456,
+            'osm_type' => 'way',
+            'osm_id' => 78_901,
+            'lat' => '54.2905245',
+            'lon' => '13.0948638',
+            'type' => 'restaurant',
+            'class' => 'amenity',
+            'display_name' => 'Test Restaurant, Test Street 1, Berlin, Germany',
+            'address' => {
+              'restaurant' => 'Test Restaurant',
+              'road' => 'Test Street',
+              'house_number' => '1',
+              'postcode' => '10115',
+              'city' => 'Berlin',
+              'country' => 'Germany'
+            }
+          }
+        )
+      end
+
+      let(:second_nominatim_place) do
+        double(
+          data: {
+            'osm_id' => 78_902,
+            'lat' => '54.3',
+            'lon' => '13.1',
+            'type' => 'cafe',
+            'class' => 'amenity',
+            'display_name' => 'Nice Cafe, Oak Street, Hamburg, Germany',
+            'address' => {
+              'cafe' => 'Nice Cafe',
+              'road' => 'Oak Street',
+              'city' => 'Hamburg',
+              'country' => 'Germany'
+            }
+          }
+        )
+      end
+
+      before do
+        allow(Geocoder).to receive(:search).and_return([nominatim_place, second_nominatim_place])
+      end
+
+      it 'normalizes Nominatim data and updates the original place' do
+        service.call
+
+        place.reload
+        expect(place.name).to include('Test Restaurant')
+        expect(place.city).to eq('Berlin')
+        expect(place.country).to eq('Germany')
+      end
+
+      it 'creates additional places from Nominatim results' do
+        place # Force creation
+        expect { service.call }.to change { Place.count }.by(1)
+
+        created_place = Place.global.where.not(id: place.id).first
+        expect(created_place.name).to include('Nice Cafe')
+        expect(created_place.city).to eq('Hamburg')
+      end
+
+      it 'extracts coordinates from lat/lon fields' do
+        service.call
+
+        place.reload
+        expect(place.lonlat.x).to be_within(0.001).of(13.0948638)
+        expect(place.lonlat.y).to be_within(0.001).of(54.2905245)
+      end
+
+      it 'uses display_name first part when address type key is missing' do
+        nominatim_without_type_key = double(
+          data: {
+            'osm_id' => 78_903,
+            'lat' => '54.29',
+            'lon' => '13.09',
+            'type' => 'house',
+            'display_name' => '123 Main Street, Berlin, Germany',
+            'address' => {
+              'road' => 'Main Street',
+              'city' => 'Berlin',
+              'country' => 'Germany'
+            }
+          }
+        )
+
+        allow(Geocoder).to receive(:search).and_return([nominatim_without_type_key])
+        service.call
+
+        place.reload
+        expect(place.name).to include('123 Main Street')
       end
     end
 

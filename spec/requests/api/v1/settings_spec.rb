@@ -6,6 +6,24 @@ RSpec.describe 'Api::V1::Settings', type: :request do
   let!(:user) { create(:user) }
   let!(:api_key) { user.api_key }
 
+  describe 'GET /index' do
+    it 'returns settings including timezone' do
+      get "/api/v1/settings?api_key=#{api_key}"
+
+      expect(response).to have_http_status(:success)
+      expect(response.parsed_body['settings']['timezone']).to eq('UTC')
+    end
+
+    it 'returns custom timezone when set' do
+      user.settings['timezone'] = 'America/New_York'
+      user.save!
+
+      get "/api/v1/settings?api_key=#{api_key}"
+
+      expect(response.parsed_body['settings']['timezone']).to eq('America/New_York')
+    end
+  end
+
   describe 'PATCH /update' do
     context 'with valid request' do
       it 'returns http success' do
@@ -24,6 +42,26 @@ RSpec.describe 'Api::V1::Settings', type: :request do
         patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { route_opacity: 0.3 } }
 
         expect(response.parsed_body['settings']['route_opacity'].to_f).to eq(0.3)
+      end
+
+      it 'updates timezone' do
+        patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { timezone: 'Europe/Berlin' } }
+
+        expect(response).to have_http_status(:success)
+        expect(user.reload.timezone).to eq('Europe/Berlin')
+      end
+
+      it 'returns updated timezone in response' do
+        patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { timezone: 'Asia/Tokyo' } }
+
+        expect(response.parsed_body['settings']['timezone']).to eq('Asia/Tokyo')
+      end
+
+      it 'rejects invalid timezone values' do
+        patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { timezone: 'Invalid/Zone' } }
+
+        expect(response).to have_http_status(:success)
+        expect(user.reload.timezone).to eq('UTC')
       end
 
       context 'when user is inactive' do

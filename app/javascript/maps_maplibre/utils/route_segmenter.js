@@ -13,52 +13,135 @@ export class RouteSegmenter {
    */
   static haversineDistance(lat1, lon1, lat2, lon2) {
     const R = 6371 // Earth's radius in kilometers
-    const dLat = (lat2 - lat1) * Math.PI / 180
-    const dLon = (lon2 - lon1) * Math.PI / 180
-    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-              Math.sin(dLon / 2) * Math.sin(dLon / 2)
+    const dLat = ((lat2 - lat1) * Math.PI) / 180
+    const dLon = ((lon2 - lon1) * Math.PI) / 180
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2)
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
     return R * c
+  }
+
+  /**
+   * Calculates the interpolated latitude for a given longitude on a Great Circle path.
+   * Unlike linear interpolation, this accounts for the Earth's spherical shape.
+   * @param {number} lat1 - Latitude of the first point.
+   * @param {number} lon1 - Longitude of the first point.
+   * @param {number} lat2 - Latitude of the second point.
+   * @param {number} lon2 - Longitude of the second point.
+   * @param {number} interpLon - The longitude at which to find the latitude.
+   * @returns {number|null} - The interpolated latitude or null if inputs are invalid.
+   */
+  static getInterpolatedLat(lat1, lon1, lat2, lon2, interpLon) {
+    const nLat1 = Number(lat1)
+    const nLon1 = Number(lon1)
+    const nLat2 = Number(lat2)
+    const nLon2 = Number(lon2)
+    const nInterpLon = Number(interpLon)
+
+    if ([nLat1, nLon1, nLat2, nLon2, nInterpLon].some(Number.isNaN)) {
+      return null
+    }
+
+    // Same longitude — can't interpolate latitude based on longitude
+    if (Math.abs(nLon1 - nLon2) < 0.0000001) {
+      return nLat1
+    }
+
+    const toRad = (deg) => (deg * Math.PI) / 180
+    const toDeg = (rad) => (rad * 180) / Math.PI
+
+    const φ1 = toRad(nLat1)
+    const λ1 = toRad(nLon1)
+    const φ2 = toRad(nLat2)
+    const λ2 = toRad(nLon2)
+    const λ3 = toRad(nInterpLon)
+
+    // Spherical interpolation: intersection of great circle and meridian
+    // tan(φ) = [tan(φ1) * sin(λ2 - λ3) + tan(φ2) * sin(λ3 - λ1)] / sin(λ2 - λ1)
+    const sinDeltaL = Math.sin(λ2 - λ1)
+    const term1 = Math.tan(φ1) * Math.sin(λ2 - λ3)
+    const term2 = Math.tan(φ2) * Math.sin(λ3 - λ1)
+    const tanPhi = (term1 + term2) / sinDeltaL
+    const result = toDeg(Math.atan(tanPhi))
+
+    return Number.isFinite(result) ? result : null
+  }
+
+  /**
+   * Detects indices where the path crosses the International Date Line.
+   * @param {Array<Object>} coords - Array of objects with 'latitude' and 'longitude' properties.
+   * @returns {Array<number>} Indices of the elements that represent the start of a crossing.
+   */
+  static findIDLCrossings(coords) {
+    const crossings = [0]
+
+    for (let i = 0; i < coords.length - 1; i++) {
+      const currentLng = parseFloat(coords[i].longitude)
+      const nextLng = parseFloat(coords[i + 1].longitude)
+
+      if (Number.isNaN(currentLng) || Number.isNaN(nextLng)) continue
+
+      // A jump of more than 180 degrees indicates a wrap-around
+      if (Math.abs(currentLng - nextLng) > 180) {
+        crossings.push(i + 1)
+      }
+    }
+    crossings.push(coords.length)
+
+    return crossings
   }
 
   /**
    * Unwrap coordinates to handle International Date Line (IDL) crossings
    * This ensures routes draw the short way across IDL instead of wrapping around globe
    * @param {Array} segment - Array of points with longitude and latitude properties
-   * @returns {Array} Array of [lon, lat] coordinate pairs with IDL unwrapping applied
+   * @returns {Array<Array<[number, number]>>} Always returns an array of coordinate arrays (MultiLineString-compatible)
    */
   static unwrapCoordinates(segment) {
-    const coordinates = []
-    let offset = 0 // Cumulative longitude offset for unwrapping
+    const crossingIndices = RouteSegmenter.findIDLCrossings(segment)
+    const coordsList = []
 
-    for (let i = 0; i < segment.length; i++) {
-      const point = segment[i]
-      let lon = point.longitude + offset
-
-      // Check for IDL crossing between consecutive points
-      if (i > 0) {
-        const prevLon = coordinates[i - 1][0]
-        const lonDiff = lon - prevLon
-
-        // If longitude jumps more than 180°, we crossed the IDL
-        if (lonDiff > 180) {
-          // Crossed from east to west (e.g., 170° to -170°)
-          // Subtract 360° to make it continuous
-          offset -= 360
-          lon -= 360
-        } else if (lonDiff < -180) {
-          // Crossed from west to east (e.g., -170° to 170°)
-          // Add 360° to make it continuous
-          offset += 360
-          lon += 360
-        }
-      }
-
-      coordinates.push([lon, point.latitude])
+    for (let i = 0; i < crossingIndices.length - 1; i++) {
+      const subsegment = segment.slice(
+        crossingIndices[i],
+        crossingIndices[i + 1],
+      )
+      const coords = subsegment.map((p) => [
+        parseFloat(p.longitude),
+        parseFloat(p.latitude),
+      ])
+      coordsList.push(coords)
     }
 
-    return coordinates
+    if (coordsList.length > 1) {
+      // Stitch segments at ±180° with interpolated latitude for seamless rendering
+      for (let i = 0; i < coordsList.length - 1; i++) {
+        const lastPoint = coordsList[i].at(-1)
+        const nextPoint = coordsList[i + 1][0]
+        const interpLat = RouteSegmenter.getInterpolatedLat(
+          lastPoint[1],
+          lastPoint[0],
+          nextPoint[1],
+          nextPoint[0],
+          180,
+        )
+        const safeInterpLat = Number.isFinite(interpLat)
+          ? interpLat
+          : lastPoint[1]
+        coordsList[i].push([180 * Math.sign(lastPoint[0]), safeInterpLat])
+        coordsList[i + 1].unshift([
+          180 * Math.sign(nextPoint[0]),
+          safeInterpLat,
+        ])
+      }
+    }
+
+    // Always return array-of-arrays for consistent MultiLineString-compatible type
+    return coordsList
   }
 
   /**
@@ -69,9 +152,11 @@ export class RouteSegmenter {
   static calculateSegmentDistance(segment) {
     let totalDistance = 0
     for (let i = 0; i < segment.length - 1; i++) {
-      totalDistance += this.haversineDistance(
-        segment[i].latitude, segment[i].longitude,
-        segment[i + 1].latitude, segment[i + 1].longitude
+      totalDistance += RouteSegmenter.haversineDistance(
+        segment[i].latitude,
+        segment[i].longitude,
+        segment[i + 1].latitude,
+        segment[i + 1].longitude,
       )
     }
     return totalDistance
@@ -96,9 +181,11 @@ export class RouteSegmenter {
       const curr = points[i]
 
       // Calculate distance between consecutive points
-      const distance = this.haversineDistance(
-        prev.latitude, prev.longitude,
-        curr.latitude, curr.longitude
+      const distance = RouteSegmenter.haversineDistance(
+        prev.latitude,
+        prev.longitude,
+        curr.latitude,
+        curr.longitude,
       )
 
       // Calculate time difference in minutes
@@ -123,34 +210,36 @@ export class RouteSegmenter {
   }
 
   /**
-   * Convert a segment to a GeoJSON LineString feature
+   * Convert a segment to a GeoJSON LineString (or MultiLineString if the IDL is crossed) feature
    * @param {Array} segment - Array of points
    * @returns {Object} GeoJSON Feature
    */
   static segmentToFeature(segment) {
-    const coordinates = this.unwrapCoordinates(segment)
-    const totalDistance = this.calculateSegmentDistance(segment)
+    const coordinates = RouteSegmenter.unwrapCoordinates(segment)
+    const totalDistance = RouteSegmenter.calculateSegmentDistance(segment)
 
     const startTime = segment[0].timestamp
     const endTime = segment[segment.length - 1].timestamp
 
     // Generate a stable, unique route ID based on start/end times
-    // This ensures the same route always has the same ID across re-renders
     const routeId = `route-${startTime}-${endTime}`
 
+    // unwrapCoordinates always returns array-of-arrays; use LineString for single segments
+    const isMultiPath = coordinates.length > 1
+
     return {
-      type: 'Feature',
+      type: "Feature",
       geometry: {
-        type: 'LineString',
-        coordinates
+        type: isMultiPath ? "MultiLineString" : "LineString",
+        coordinates: isMultiPath ? coordinates : coordinates[0],
       },
       properties: {
         id: routeId,
-        pointCount: segment.length,
-        startTime: startTime,
-        endTime: endTime,
-        distance: totalDistance
-      }
+        pointCount: isMultiPath ? coordinates.flat().length : segment.length,
+        startTime,
+        endTime,
+        distance: totalDistance,
+      },
     }
   }
 
@@ -166,7 +255,7 @@ export class RouteSegmenter {
    */
   static pointsToRoutes(points, options = {}) {
     if (points.length < 2) {
-      return { type: 'FeatureCollection', features: [] }
+      return { type: "FeatureCollection", features: [] }
     }
 
     // Default thresholds (matching V1 defaults from polylines.js)
@@ -179,17 +268,19 @@ export class RouteSegmenter {
     const sorted = points.slice().sort((a, b) => a.timestamp - b.timestamp)
 
     // Split into segments based on distance and time gaps
-    const segments = this.splitIntoSegments(sorted, {
+    const segments = RouteSegmenter.splitIntoSegments(sorted, {
       distanceThresholdKm,
-      timeThresholdMinutes
+      timeThresholdMinutes,
     })
 
     // Convert segments to LineStrings
-    const features = segments.map(segment => this.segmentToFeature(segment))
+    const features = segments.map((segment) =>
+      RouteSegmenter.segmentToFeature(segment),
+    )
 
     return {
-      type: 'FeatureCollection',
-      features
+      type: "FeatureCollection",
+      features,
     }
   }
 }

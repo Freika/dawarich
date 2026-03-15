@@ -368,6 +368,102 @@ RSpec.describe 'Users::Registrations', type: :request do
     end
   end
 
+  describe 'Signup Intent Tracking' do
+    context 'when self-hosted mode is disabled' do
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      end
+
+      it 'shows signup intent dropdown on registration page' do
+        get new_user_registration_path
+
+        expect(response.body).to include('How do you plan to use Dawarich?')
+        expect(response.body).to include('cloud')
+        expect(response.body).to include('self_hosted_demo')
+      end
+
+      it 'does not show signup intent dropdown for family invitations' do
+        get new_user_registration_path(invitation_token: invitation.token)
+
+        expect(response.body).not_to include('How do you plan to use Dawarich?')
+      end
+
+      it 'stores cloud intent in user settings' do
+        unique_email = "intent-cloud-#{Time.current.to_i}@example.com"
+        post user_registration_path, params: {
+          user: {
+            email: unique_email,
+            password: 'password123',
+            password_confirmation: 'password123',
+            signup_intent: 'cloud'
+          }
+        }
+
+        user = User.find_by(email: unique_email)
+        expect(user.settings['signup_intent']).to eq('cloud')
+      end
+
+      it 'stores self_hosted_demo intent in user settings' do
+        unique_email = "intent-demo-#{Time.current.to_i}@example.com"
+        post user_registration_path, params: {
+          user: {
+            email: unique_email,
+            password: 'password123',
+            password_confirmation: 'password123',
+            signup_intent: 'self_hosted_demo'
+          }
+        }
+
+        user = User.find_by(email: unique_email)
+        expect(user.settings['signup_intent']).to eq('self_hosted_demo')
+      end
+
+      it 'ignores invalid intent values' do
+        unique_email = "intent-invalid-#{Time.current.to_i}@example.com"
+        post user_registration_path, params: {
+          user: {
+            email: unique_email,
+            password: 'password123',
+            password_confirmation: 'password123',
+            signup_intent: 'hacker'
+          }
+        }
+
+        user = User.find_by(email: unique_email)
+        expect(user.settings['signup_intent']).to be_nil
+      end
+    end
+
+    context 'when self-hosted mode is enabled' do
+      before do
+        allow(ENV).to receive(:[]).and_call_original
+        allow(ENV).to receive(:[]).with('SELF_HOSTED').and_return('true')
+        stub_const('ALLOW_EMAIL_PASSWORD_REGISTRATION', true)
+      end
+
+      it 'does not show signup intent dropdown' do
+        get new_user_registration_path
+
+        expect(response.body).not_to include('How do you plan to use Dawarich?')
+      end
+
+      it 'does not store signup intent even if param is sent' do
+        unique_email = "intent-selfhosted-#{Time.current.to_i}@example.com"
+        post user_registration_path, params: {
+          user: {
+            email: unique_email,
+            password: 'password123',
+            password_confirmation: 'password123',
+            signup_intent: 'cloud'
+          }
+        }
+
+        user = User.find_by(email: unique_email)
+        expect(user.settings['signup_intent']).to be_nil
+      end
+    end
+  end
+
   describe 'Validation Error Handling' do
     # Allow email/password registration for these tests
     before do
@@ -433,6 +529,113 @@ RSpec.describe 'Users::Registrations', type: :request do
         expect(response).to have_http_status(:unprocessable_content)
         expect(response.body).to include('Password confirmation doesn')
         expect(response.body).to include('error_explanation')
+      end
+    end
+  end
+
+  describe 'Account Deletion' do
+    let(:user) { create(:user, password: 'password123') }
+
+    before { sign_in user }
+
+    context 'when user deletes their own account' do
+      it 'soft deletes the user' do
+        expect do
+          delete user_registration_path
+        end.to change(User, :count).by(-1)
+
+        expect(user.reload.deleted?).to be true
+      end
+
+      it 'enqueues a background deletion job' do
+        expect do
+          delete user_registration_path
+        end.to have_enqueued_job(Users::DestroyJob).with(user.id)
+      end
+
+      it 'signs out the user' do
+        delete user_registration_path
+
+        expect(controller.current_user).to be_nil
+      end
+
+      it 'redirects with success message' do
+        delete user_registration_path
+
+        expect(response).to redirect_to(root_path)
+        expect(flash[:notice]).to eq('Your account has been scheduled for deletion. Goodbye!')
+      end
+
+      it 'immediately marks user as deleted' do
+        delete user_registration_path
+
+        expect(user.reload.deleted_at).to be_present
+      end
+    end
+
+    context 'when user is a family owner with members' do
+      let(:user_family) { create(:family, creator: user) }
+      let(:member) { create(:user) }
+
+      before do
+        create(:family_membership, user: user, family: user_family, role: :owner)
+        create(:family_membership, user: member, family: user_family, role: :member)
+      end
+
+      it 'does not delete the account' do
+        expect do
+          delete user_registration_path
+        end.not_to(change { user.reload.deleted_at })
+      end
+
+      it 'returns unprocessable content with error message' do
+        delete user_registration_path
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(response.location).to eq(edit_user_registration_url)
+        expect(flash[:alert]).to eq('Cannot delete your account while you own a family with other members.')
+      end
+
+      it 'does not sign out the user' do
+        delete user_registration_path
+
+        expect(controller.current_user).to eq(user)
+      end
+
+      it 'does not enqueue deletion job' do
+        expect do
+          delete user_registration_path
+        end.not_to have_enqueued_job(Users::DestroyJob)
+      end
+    end
+
+    context 'concurrent deletion attempts' do
+      it 'handles multiple deletion requests gracefully' do
+        # First deletion
+        delete user_registration_path
+        expect(user.reload.deleted?).to be true
+
+        # User is now signed out, try to delete again (should be unauthorized)
+        delete user_registration_path
+
+        # Should redirect to sign in
+        expect(response).to redirect_to(new_user_session_path)
+      end
+    end
+
+    context 'when user can delete (family owner with no other members)' do
+      let(:user_family) { create(:family, creator: user) }
+
+      before do
+        create(:family_membership, user: user, family: user_family, role: :owner)
+      end
+
+      it 'allows deletion' do
+        expect do
+          delete user_registration_path
+        end.to change(User, :count).by(-1)
+
+        expect(user.reload.deleted?).to be true
       end
     end
   end

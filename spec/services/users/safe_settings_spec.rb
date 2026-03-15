@@ -20,7 +20,7 @@ RSpec.describe Users::SafeSettings do
             time_threshold_minutes: 30,
             merge_threshold_minutes: 15,
             live_map_enabled: true,
-            route_opacity: 60,
+            route_opacity: 0.6,
             immich_url: nil,
             immich_api_key: nil,
             photoprism_url: nil,
@@ -29,8 +29,8 @@ RSpec.describe Users::SafeSettings do
             distance_unit: 'km',
             visits_suggestions_enabled: true,
             speed_color_scale: nil,
-            fog_of_war_threshold: nil,
-            enabled_map_layers: %w[Routes Heatmap],
+            fog_of_war_threshold: 50,
+            enabled_map_layers: %w[Tracks Heatmap],
             maps_maplibre_style: 'light',
             globe_projection: false,
             transportation_thresholds: {
@@ -50,7 +50,8 @@ RSpec.describe Users::SafeSettings do
             },
             transportation_expert_mode: false,
             min_minutes_spent_in_city: 60,
-            max_gap_minutes_in_city: 120
+            max_gap_minutes_in_city: 120,
+            timezone: 'UTC'
           }
         )
       end
@@ -84,6 +85,7 @@ RSpec.describe Users::SafeSettings do
         expect(safe_settings.settings).to eq(
           {
             'fog_of_war_meters' => 100,
+            'fog_of_war_threshold' => 50,
             'meters_between_routes' => 1000,
             'preferred_map_layer' => 'Satellite',
             'speed_colored_routes' => true,
@@ -125,7 +127,8 @@ RSpec.describe Users::SafeSettings do
             },
             'transportation_expert_mode' => false,
             'min_minutes_spent_in_city' => 60,
-            'max_gap_minutes_in_city' => 120
+            'max_gap_minutes_in_city' => 120,
+            'timezone' => 'UTC'
           }
         )
       end
@@ -151,7 +154,7 @@ RSpec.describe Users::SafeSettings do
             distance_unit: 'km',
             visits_suggestions_enabled: false,
             speed_color_scale: nil,
-            fog_of_war_threshold: nil,
+            fog_of_war_threshold: 50,
             enabled_map_layers: %w[Points Routes Areas Photos],
             maps_maplibre_style: 'light',
             globe_projection: false,
@@ -172,9 +175,38 @@ RSpec.describe Users::SafeSettings do
             },
             transportation_expert_mode: false,
             min_minutes_spent_in_city: 60,
-            max_gap_minutes_in_city: 120
+            max_gap_minutes_in_city: 120,
+            timezone: 'UTC'
           }
         )
+      end
+    end
+  end
+
+  describe '#timezone' do
+    let(:safe_settings) { described_class.new(settings) }
+
+    context 'when timezone is not set' do
+      let(:settings) { {} }
+
+      it 'returns default UTC timezone' do
+        expect(safe_settings.timezone).to eq('UTC')
+      end
+    end
+
+    context 'when timezone is explicitly set' do
+      let(:settings) { { 'timezone' => 'America/New_York' } }
+
+      it 'returns the custom timezone' do
+        expect(safe_settings.timezone).to eq('America/New_York')
+      end
+    end
+
+    context 'when timezone is set to Tokyo' do
+      let(:settings) { { 'timezone' => 'Asia/Tokyo' } }
+
+      it 'returns the Tokyo timezone' do
+        expect(safe_settings.timezone).to eq('Asia/Tokyo')
       end
     end
   end
@@ -195,14 +227,15 @@ RSpec.describe Users::SafeSettings do
         expect(safe_settings.time_threshold_minutes).to eq(30)
         expect(safe_settings.merge_threshold_minutes).to eq(15)
         expect(safe_settings.live_map_enabled).to be true
-        expect(safe_settings.route_opacity).to eq(60)
+        expect(safe_settings.route_opacity).to eq(0.6)
         expect(safe_settings.immich_url).to be_nil
         expect(safe_settings.immich_api_key).to be_nil
         expect(safe_settings.photoprism_url).to be_nil
         expect(safe_settings.photoprism_api_key).to be_nil
         expect(safe_settings.maps).to eq({ 'distance_unit' => 'km' })
         expect(safe_settings.visits_suggestions_enabled?).to be true
-        expect(safe_settings.enabled_map_layers).to eq(%w[Routes Heatmap])
+        expect(safe_settings.enabled_map_layers).to eq(%w[Tracks Heatmap])
+        expect(safe_settings.timezone).to eq('UTC')
       end
     end
 
@@ -304,6 +337,84 @@ RSpec.describe Users::SafeSettings do
 
       it 'returns false' do
         expect(safe_settings.news_emails_enabled?).to be false
+      end
+    end
+  end
+
+  describe 'plan-aware filtering' do
+    describe '#enabled_map_layers' do
+      context 'when plan is lite' do
+        let(:settings) { { 'enabled_map_layers' => ['Tracks', 'Heatmap', 'Fog of War', 'Scratch map', 'Points'] } }
+        let(:safe_settings) { described_class.new(settings, plan: :lite) }
+
+        it 'excludes gated layers' do
+          expect(safe_settings.enabled_map_layers).to eq(%w[Tracks Points])
+        end
+      end
+
+      context 'when plan is lite and only gated layers are enabled' do
+        let(:settings) { { 'enabled_map_layers' => ['Heatmap', 'Fog of War', 'Scratch map'] } }
+        let(:safe_settings) { described_class.new(settings, plan: :lite) }
+
+        it 'returns empty array' do
+          expect(safe_settings.enabled_map_layers).to eq([])
+        end
+      end
+
+      context 'when plan is pro' do
+        let(:settings) { { 'enabled_map_layers' => ['Tracks', 'Heatmap', 'Fog of War', 'Scratch map'] } }
+        let(:safe_settings) { described_class.new(settings, plan: :pro) }
+
+        it 'returns all layers as stored' do
+          expect(safe_settings.enabled_map_layers).to eq(['Tracks', 'Heatmap', 'Fog of War', 'Scratch map'])
+        end
+      end
+
+      context 'when plan is pro (self-hosted users always have pro)' do
+        let(:settings) { { 'enabled_map_layers' => ['Tracks', 'Heatmap', 'Fog of War'] } }
+        let(:safe_settings) { described_class.new(settings, plan: :pro) }
+
+        it 'returns all layers as stored' do
+          expect(safe_settings.enabled_map_layers).to eq(['Tracks', 'Heatmap', 'Fog of War'])
+        end
+      end
+
+      context 'when plan is nil (backward compat)' do
+        let(:settings) { { 'enabled_map_layers' => ['Tracks', 'Heatmap', 'Fog of War'] } }
+        let(:safe_settings) { described_class.new(settings) }
+
+        it 'returns all layers as stored' do
+          expect(safe_settings.enabled_map_layers).to eq(['Tracks', 'Heatmap', 'Fog of War'])
+        end
+      end
+    end
+
+    describe '#globe_projection' do
+      context 'when plan is lite' do
+        let(:settings) { { 'globe_projection' => true } }
+        let(:safe_settings) { described_class.new(settings, plan: :lite) }
+
+        it 'returns false regardless of stored value' do
+          expect(safe_settings.globe_projection).to be false
+        end
+      end
+
+      context 'when plan is pro' do
+        let(:settings) { { 'globe_projection' => true } }
+        let(:safe_settings) { described_class.new(settings, plan: :pro) }
+
+        it 'returns the stored value' do
+          expect(safe_settings.globe_projection).to be true
+        end
+      end
+
+      context 'when plan is nil (backward compat)' do
+        let(:settings) { { 'globe_projection' => true } }
+        let(:safe_settings) { described_class.new(settings) }
+
+        it 'returns the stored value' do
+          expect(safe_settings.globe_projection).to be true
+        end
       end
     end
   end
