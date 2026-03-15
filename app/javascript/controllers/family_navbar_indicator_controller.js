@@ -48,14 +48,15 @@ export default class extends Controller {
     if (!this.hasIndicatorTarget) return
 
     if (this.enabledValue) {
-      // Green pulsing indicator for enabled
       this.indicatorTarget.className =
-        "w-2 h-2 bg-green-500 rounded-full animate-pulse"
-      this.indicatorTarget.title = "Location sharing enabled"
+        "tooltip tooltip-bottom w-2 h-2 bg-green-500 rounded-full animate-pulse"
+      this.indicatorTarget.dataset.tip =
+        "Location is being shared with your family"
     } else {
-      // Gray indicator for disabled
-      this.indicatorTarget.className = "w-2 h-2 bg-gray-400 rounded-full"
-      this.indicatorTarget.title = "Location sharing disabled"
+      this.indicatorTarget.className =
+        "tooltip tooltip-bottom w-2 h-2 bg-gray-400 rounded-full"
+      this.indicatorTarget.dataset.tip =
+        "Location is not being shared with your family"
     }
   }
 }

@@ -21,6 +21,7 @@ class Users::RegistrationsController < Devise::RegistrationsController
     super do |resource|
       if resource.persisted?
         assign_utm_params(resource)
+        store_signup_intent(resource)
         accept_invitation_for_user(resource) if @invitation
       end
     end
@@ -118,6 +119,17 @@ class Users::RegistrationsController < Devise::RegistrationsController
 
   def sign_up_params
     super
+  end
+
+  def store_signup_intent(user)
+    return if DawarichSettings.self_hosted?
+
+    intent = params.dig(:user, :signup_intent)
+    return unless intent.in?(%w[cloud self_hosted_demo])
+
+    user.update_columns(
+      settings: user.settings.merge('signup_intent' => intent)
+    )
   end
 
   def email_password_registration_allowed?

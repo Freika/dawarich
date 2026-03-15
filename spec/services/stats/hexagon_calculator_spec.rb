@@ -62,6 +62,25 @@ RSpec.describe Stats::HexagonCalculator do
         expect(total_points).to eq(2)
       end
 
+      context 'when points are on the last day of the month' do
+        let(:last_day_timestamp) { DateTime.new(year, month, 31, 18, 30, 0).to_i }
+        let!(:last_day_point) do
+          create(:point,
+                 user:,
+                 import:,
+                 timestamp: last_day_timestamp,
+                 lonlat: 'POINT(14.454712811406352 52.109902115161316)')
+        end
+
+        it 'includes points from the last day of the month' do
+          result = calculate_hexagons
+
+          total_points = result.sum { |record| record[1] }
+          expect(total_points).to eq(3)
+          expect(result.any? { |record| record[3] >= last_day_timestamp }).to be true
+        end
+      end
+
       context 'when there are too many hexagons' do
         let(:h3_resolution) { 15 } # Very high resolution to trigger MAX_HEXAGONS
 

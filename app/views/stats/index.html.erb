@@ -66,9 +66,10 @@
             <div class="card-actions justify-end">
               <% location_data = countries_and_cities_stat_for_year(year, stats) %>
               <%= link_to "#{location_data[:countries_count]} countries, #{location_data[:cities_count]} cities",
-                         "##{location_data[:modal_id]}",
+                         "#",
                          class: "link link-primary",
-                         onclick: "document.getElementById('#{location_data[:modal_id]}').checked = true" %>
+                         data: { turbo: false },
+                         onclick: "event.preventDefault(); document.getElementById('#{location_data[:modal_id]}').checked = true" %>
 
               <!-- Modal structure -->
               <div>

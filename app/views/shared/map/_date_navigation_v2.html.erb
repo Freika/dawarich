@@ -21,7 +21,7 @@
       <div class="flex flex-col space-y-4 lg:flex-row lg:space-y-0 lg:space-x-4 lg:items-end">
         <div class="w-full lg:w-1/12">
           <div class="flex flex-col space-y-2">
-            <span class="tooltip" data-tip="<%= human_date(start_at - 1.day) %>">
+            <span class="tooltip tooltip-bottom" data-tip="<%= human_date(start_at - 1.day) %>">
               <%= link_to map_v2_path(start_at: (start_at - 1.day).iso8601, end_at: (end_at - 1.day).iso8601, import_id: params[:import_id]), class: "btn btn-sm border border-base-300 hover:btn-ghost w-full" do %>
                 <%= icon 'chevron-left' %>
               <% end %>
@@ -36,7 +36,7 @@
         </div>
         <div class="w-full lg:w-1/12">
           <div class="flex flex-col space-y-2">
-            <span class="tooltip" data-tip="<%= human_date(start_at + 1.day) %>">
+            <span class="tooltip tooltip-bottom" data-tip="<%= human_date(start_at + 1.day) %>">
               <%= link_to map_v2_path(start_at: (start_at + 1.day).iso8601, end_at: (end_at + 1.day).iso8601, import_id: params[:import_id]), class: "btn btn-sm border border-base-300 hover:btn-ghost w-full" do %>
                 <%= icon 'chevron-right' %>
               <% end %>

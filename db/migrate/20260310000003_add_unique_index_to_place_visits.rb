@@ -4,13 +4,23 @@ class AddUniqueIndexToPlaceVisits < ActiveRecord::Migration[8.0]
   disable_ddl_transaction!
 
   def up
-    # Remove duplicate (visit_id, place_id) rows, keeping the oldest
+    # Remove duplicate (visit_id, place_id) rows, keeping the oldest.
+    # Uses ROW_NUMBER() window function instead of NOT IN subquery —
+    # NOT IN materializes all keeper IDs and does O(N*M) comparison,
+    # which takes 12+ hours on tables with millions of rows.
+    # ROW_NUMBER() does a single scan + sort, completing in minutes.
     execute <<~SQL.squish
       DELETE FROM place_visits
-      WHERE id NOT IN (
-        SELECT MIN(id)
-        FROM place_visits
-        GROUP BY visit_id, place_id
+      WHERE id IN (
+        SELECT id FROM (
+          SELECT id,
+                 ROW_NUMBER() OVER (
+                   PARTITION BY visit_id, place_id
+                   ORDER BY id
+                 ) AS rn
+          FROM place_visits
+        ) duplicates
+        WHERE rn > 1
       )
     SQL
 

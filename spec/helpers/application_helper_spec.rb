@@ -62,6 +62,32 @@ RSpec.describe ApplicationHelper, type: :helper do
     end
   end
 
+  describe '#onboarding_modal_showable?' do
+    context 'when onboarding is not completed' do
+      let(:user) { build(:user, settings: {}) }
+
+      it 'returns true' do
+        expect(helper.onboarding_modal_showable?(user)).to be true
+      end
+    end
+
+    context 'when onboarding is completed' do
+      let(:user) { build(:user, settings: { 'onboarding_completed' => true }) }
+
+      it 'returns false' do
+        expect(helper.onboarding_modal_showable?(user)).to be false
+      end
+    end
+
+    context 'when settings is nil' do
+      let(:user) { build(:user, settings: nil) }
+
+      it 'returns true' do
+        expect(helper.onboarding_modal_showable?(user)).to be true
+      end
+    end
+  end
+
   describe '#oauth_button_config' do
     context 'when provider is google_oauth2' do
       subject(:config) { helper.oauth_button_config(:google_oauth2) }

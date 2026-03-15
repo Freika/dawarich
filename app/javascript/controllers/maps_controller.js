@@ -174,7 +174,7 @@ export default class extends BaseController {
 
         // Convert distance to miles if user prefers miles (assuming backend sends km)
         if (this.distanceUnit === "mi") {
-          distance = distance * 0.621371 // km to miles conversion
+          distance = Math.round(distance * 0.621371) // km to miles conversion
         }
 
         const unit = this.distanceUnit === "km" ? "km" : "mi"

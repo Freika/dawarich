@@ -314,6 +314,7 @@ export default class extends Controller {
   }
 
   disconnect() {
+    if (this._familyHistoryTimer) clearTimeout(this._familyHistoryTimer)
     this._stopReplayPlayback()
     this.settingsController?.stopRecalculationPolling()
     this.searchManager?.destroy()
@@ -396,6 +397,12 @@ export default class extends Controller {
     this._clearDayHighlight()
     this.loadMapData()
     this.refreshTimelineFeedIfActive()
+    this.debouncedLoadFamilyHistory()
+  }
+
+  debouncedLoadFamilyHistory() {
+    if (this._familyHistoryTimer) clearTimeout(this._familyHistoryTimer)
+    this._familyHistoryTimer = setTimeout(() => this.loadFamilyHistory(), 300)
   }
 
   /**
@@ -1201,9 +1208,81 @@ export default class extends Controller {
       this.renderFamilyMembersList(locations)
 
       Toast.success(`Loaded ${locations.length} family member(s)`)
+
+      // Load history polylines
+      this.loadFamilyHistory()
     } catch (error) {
       console.error("[Maps V2] Failed to load family members:", error)
       Toast.error("Failed to load family members")
+    }
+  }
+
+  async loadFamilyHistory() {
+    try {
+      const startAt = this.startDateValue
+      const endAt = this.endDateValue
+      if (!startAt || !endAt) return
+
+      const params = new URLSearchParams({ start_at: startAt, end_at: endAt })
+      const response = await fetch(
+        `/api/v1/families/locations/history?${params}`,
+        {
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${this.apiKeyValue}`,
+          },
+        },
+      )
+
+      if (!response.ok) return
+
+      const data = await response.json()
+      const members = data.members || []
+
+      const familyLayer = this.layerManager.getLayer("family")
+      if (familyLayer) {
+        if (members.length > 0) {
+          // Assign colors consistent with member markers
+          for (const member of members) {
+            member.color = this.getFamilyMemberColor(member.user_id)
+          }
+          familyLayer.loadMemberHistory(members)
+        } else {
+          familyLayer.clearHistory()
+        }
+      }
+
+      // Update member info lines with sharing_since data
+      this._familyHistoryData = members
+      this.updateFamilyInfoLines(members)
+    } catch (error) {
+      console.error("[Maps V2] Failed to load family history:", error)
+    }
+  }
+
+  updateFamilyInfoLines(historyMembers) {
+    if (!this.hasFamilyMembersContainerTarget) return
+
+    for (const member of historyMembers) {
+      const infoEl = this.familyMembersContainerTarget.querySelector(
+        `[data-member-info="${member.user_id}"]`,
+      )
+      if (!infoEl || !member.sharing_since) continue
+
+      const sharingDate = new Date(member.sharing_since)
+      const daysSharing = Math.min(
+        365,
+        Math.floor(
+          (Date.now() - sharingDate.getTime()) / (1000 * 60 * 60 * 24),
+        ),
+      )
+      const formattedDate = sharingDate.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+      })
+
+      infoEl.textContent = `Sharing since ${formattedDate} (${daysSharing} day${daysSharing !== 1 ? "s" : ""} of history)`
     }
   }
 
@@ -1218,8 +1297,8 @@ export default class extends Controller {
       return
     }
 
-    container.innerHTML = locations
-      .map((location) => {
+    container.replaceChildren(
+      ...locations.map((location) => {
         const emailInitial = location.email?.charAt(0)?.toUpperCase() || "?"
         const color = this.getFamilyMemberColor(location.user_id)
         const lastSeen = new Date(location.updated_at).toLocaleString("en-US", {
@@ -1230,21 +1309,48 @@ export default class extends Controller {
           minute: "2-digit",
         })
 
-        return `
-        <div class="flex items-center gap-2 p-2 hover:bg-base-200 rounded-lg cursor-pointer transition-colors"
-             data-action="click->maps--maplibre#centerOnFamilyMember"
-             data-member-id="${location.user_id}">
-          <div style="background-color: ${color}; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; flex-shrink: 0;">
-            ${emailInitial}
-          </div>
-          <div class="flex-1 min-w-0">
-            <div class="text-sm font-medium truncate">${location.email || "Unknown"}</div>
-            <div class="text-xs text-base-content/60">${lastSeen}</div>
-          </div>
-        </div>
-      `
-      })
-      .join("")
+        const row = document.createElement("div")
+        row.className =
+          "flex items-center gap-2 p-2 hover:bg-base-200 rounded-lg cursor-pointer transition-colors"
+        row.dataset.action = "click->maps--maplibre#centerOnFamilyMember"
+        row.dataset.memberId = location.user_id
+
+        const avatar = document.createElement("div")
+        Object.assign(avatar.style, {
+          backgroundColor: color,
+          color: "white",
+          borderRadius: "50%",
+          width: "24px",
+          height: "24px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: "12px",
+          fontWeight: "bold",
+          flexShrink: "0",
+        })
+        avatar.textContent = emailInitial
+
+        const info = document.createElement("div")
+        info.className = "flex-1 min-w-0"
+
+        const emailDiv = document.createElement("div")
+        emailDiv.className = "text-sm font-medium truncate"
+        emailDiv.textContent = location.email || "Unknown"
+
+        const timeDiv = document.createElement("div")
+        timeDiv.className = "text-xs text-base-content/60"
+        timeDiv.textContent = lastSeen
+
+        const statusDiv = document.createElement("div")
+        statusDiv.className = "text-xs text-info/70"
+        statusDiv.dataset.memberInfo = location.user_id
+
+        info.append(emailDiv, timeDiv, statusDiv)
+        row.append(avatar, info)
+        return row
+      }),
+    )
   }
 
   getFamilyMemberColor(userId) {

@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-# This class uses Komoot's Photon API
 class ReverseGeocoding::Places::FetchData
   attr_reader :place
 
@@ -35,7 +34,7 @@ class ReverseGeocoding::Places::FetchData
   def update_place(reverse_geocoded_place)
     return if reverse_geocoded_place.nil?
 
-    data = reverse_geocoded_place.data
+    data = normalize_geocoder_data(reverse_geocoded_place.data)
 
     place.update!(
       name:       place_name(data),
@@ -76,7 +75,7 @@ class ReverseGeocoding::Places::FetchData
   end
 
   def extract_osm_ids(places)
-    places.map { |place| place.data['properties']['osm_id'].to_s }
+    places.map { |p| normalize_geocoder_data(p.data).dig('properties', 'osm_id').to_s }
   end
 
   def find_existing_places(osm_ids)
@@ -91,7 +90,7 @@ class ReverseGeocoding::Places::FetchData
     places_to_update = []
 
     places.each do |reverse_geocoded_place|
-      data = reverse_geocoded_place.data
+      data = normalize_geocoder_data(reverse_geocoded_place.data)
       new_place = find_place(data, existing_places)
 
       populate_place_attributes(new_place, data)
@@ -187,5 +186,38 @@ class ReverseGeocoding::Places::FetchData
     Rails.logger.error("Reverse geocoding error for place #{place.id}: #{e.message}")
     ExceptionReporter.call(e)
     []
+  end
+
+  # Normalizes Nominatim/LocationIQ response format to the GeoJSON-like
+  # structure (geometry + properties) that the rest of this service expects.
+  # Photon and Geoapify already return GeoJSON and pass through unchanged.
+  def normalize_geocoder_data(data)
+    return data if data.key?('geometry')
+    return data unless data['lat'] && data['lon']
+
+    address = data['address'] || {}
+
+    {
+      'geometry' => {
+        'coordinates' => [data['lon'].to_f, data['lat'].to_f]
+      },
+      'properties' => {
+        'osm_id' => data['osm_id'],
+        'name' => extract_nominatim_name(data, address),
+        'osm_value' => data['type'],
+        'city' => address['city'] || address['town'] || address['village'] || address['hamlet'],
+        'country' => address['country'],
+        'postcode' => address['postcode'],
+        'street' => address['road'] || address['pedestrian'] || address['highway'],
+        'housenumber' => address['house_number']
+      }
+    }
+  end
+
+  def extract_nominatim_name(data, address)
+    # Try the place type key first (e.g., address['restaurant'] for type=restaurant)
+    name = address[data['type']] if data['type']
+    # Fall back to first part of display_name (the most specific part)
+    name || data['display_name']&.split(',')&.first&.strip
   end
 end

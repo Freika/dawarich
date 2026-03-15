@@ -29,7 +29,7 @@ module InsightsHelper
     # Check if previous month exists in available months (same year only for simplicity)
     return unless month > 1 && available_months.include?(prev_date.month)
 
-    insights_path(year: prev_date.year, month: prev_date.month)
+    details_insights_path(year: prev_date.year, month: prev_date.month)
   end
 
   def next_month_link(year, month, available_months)
@@ -38,7 +38,7 @@ module InsightsHelper
     # Check if next month exists in available months (same year only for simplicity)
     return unless month < 12 && available_months.include?(next_date.month)
 
-    insights_path(year: next_date.year, month: next_date.month)
+    details_insights_path(year: next_date.year, month: next_date.month)
   end
 
   def weekly_pattern_chart_data(digest, user)
