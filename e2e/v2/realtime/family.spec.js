@@ -221,9 +221,7 @@ test.describe("Realtime Family Tracking", () => {
         const markerSource = controller.map.getSource("family-source")
         const markerFeatures = markerSource?._data?.features || []
         const markerColor =
-          markerFeatures.length > 0
-            ? markerFeatures[0].properties?.color
-            : null
+          markerFeatures.length > 0 ? markerFeatures[0].properties?.color : null
 
         // Get polyline color from history source
         const historySource = controller.map.getSource("family-source-history")

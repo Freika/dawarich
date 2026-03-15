@@ -71,7 +71,7 @@ RSpec.describe Families::Locations do
       end
 
       it 'returns points as [lat, lon, timestamp] arrays' do
-        point = create(:point, user: other_user, timestamp: 1.hour.ago.to_i)
+        create(:point, user: other_user, timestamp: 1.hour.ago.to_i)
 
         result = described_class.new(user).history(start_at: 1.day.ago, end_at: Time.current)
         point_data = result.first[:points].first

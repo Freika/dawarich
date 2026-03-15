@@ -68,7 +68,10 @@ class Families::Locations
 
       sampled = if total > MAX_POINTS_PER_MEMBER
                   nth = (total.to_f / MAX_POINTS_PER_MEMBER).ceil
-                  points.where("id IN (SELECT id FROM (#{numbered_rows_sql(points)}) numbered WHERE mod(row_num, #{nth}) = 0)")
+                  numbered = numbered_rows_sql(points)
+                  points.where(
+                    "id IN (SELECT id FROM (#{numbered}) numbered WHERE mod(row_num, #{nth}) = 0)"
+                  )
                 else
                   points
                 end

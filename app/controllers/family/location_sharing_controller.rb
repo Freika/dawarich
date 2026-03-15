@@ -26,7 +26,7 @@ class Family::LocationSharingController < ApplicationController
             locals: { member: current_user }
           ),
           turbo_stream.replace(
-            "family-navbar-indicator",
+            'family-navbar-indicator',
             partial: 'families/navbar_indicator',
             locals: { user: current_user }
           ),

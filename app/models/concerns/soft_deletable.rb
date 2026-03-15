@@ -16,7 +16,6 @@ module SoftDeletable
     def inactive_message
       deleted? ? :deleted : super
     end
-
   end
 
   included do

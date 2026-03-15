@@ -149,9 +149,7 @@ export class FamilyLayer extends BaseLayer {
     const data = source._data || { type: "FeatureCollection", features: [] }
     const features = [...(data.features || [])]
 
-    const index = features.findIndex(
-      (f) => f.properties.userId === memberId,
-    )
+    const index = features.findIndex((f) => f.properties.userId === memberId)
 
     if (index >= 0) {
       // Append coordinate to existing polyline

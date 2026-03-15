@@ -19,9 +19,9 @@ RSpec.describe 'Family::LocationRequests', type: :request do
     before { sign_in owner }
 
     it 'creates a location request' do
-      expect {
+      expect do
         post family_location_requests_path, params: { target_user_id: target_user.id }
-      }.to change(Family::LocationRequest, :count).by(1)
+      end.to change(Family::LocationRequest, :count).by(1)
     end
 
     it 'redirects with flash on success' do

@@ -26,7 +26,8 @@ RSpec.describe Family::LocationRequest, type: :model do
     it { is_expected.to validate_presence_of(:family_id) }
 
     it 'sets expires_at via before_validation if not provided' do
-      request = build(:family_location_request, requester: requester, target_user: target_user, family: family, expires_at: nil)
+      request = build(:family_location_request, requester: requester, target_user: target_user, family: family,
+expires_at: nil)
       request.valid?
       expect(request.expires_at).to be_present
     end
@@ -57,9 +58,12 @@ RSpec.describe Family::LocationRequest, type: :model do
   describe 'scopes' do
     describe '.pending' do
       it 'returns only pending requests' do
-        pending_request = create(:family_location_request, requester: requester, target_user: target_user, family: family, status: :pending)
-        create(:family_location_request, requester: requester, target_user: target_user, family: family, status: :accepted)
-        create(:family_location_request, requester: requester, target_user: target_user, family: family, status: :expired)
+        pending_request = create(:family_location_request, requester: requester, target_user: target_user,
+family: family, status: :pending)
+        create(:family_location_request, requester: requester, target_user: target_user, family: family,
+status: :accepted)
+        create(:family_location_request, requester: requester, target_user: target_user, family: family,
+status: :expired)
 
         expect(described_class.pending).to contain_exactly(pending_request)
       end

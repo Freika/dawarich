@@ -633,7 +633,6 @@ test.describe("Family Members Layer", () => {
     })
 
     test("family history API returns member history data", async ({
-      page,
       request,
     }) => {
       // Call the history API directly
@@ -642,13 +641,17 @@ test.describe("Family Members Layer", () => {
         today.getFullYear(),
         today.getMonth(),
         today.getDate(),
-        0, 0, 0,
+        0,
+        0,
+        0,
       ).toISOString()
       const endAt = new Date(
         today.getFullYear(),
         today.getMonth(),
         today.getDate(),
-        23, 59, 59,
+        23,
+        59,
+        59,
       ).toISOString()
 
       const response = await request.get(
@@ -726,7 +729,8 @@ test.describe("Family Members Layer", () => {
           element,
           "maps--maplibre",
         )
-        if (!controller?.map) return { hasLayer: false, hasSource: false, featureCount: 0 }
+        if (!controller?.map)
+          return { hasLayer: false, hasSource: false, featureCount: 0 }
 
         const hasLayer = controller.map.getLayer("family-history") !== undefined
         const source = controller.map.getSource("family-source-history")
@@ -883,8 +887,7 @@ test.describe("Family Members Layer", () => {
           userId: f.properties.userId,
           polylineColor: f.properties.color,
           markerColor: markerColors[f.properties.userId] || null,
-          match:
-            markerColors[f.properties.userId] === f.properties.color,
+          match: markerColors[f.properties.userId] === f.properties.color,
         }))
       })
 
@@ -958,7 +961,9 @@ test.describe("Family Members Layer", () => {
       })
 
       if (memberInfos.length > 0) {
-        const visibleInfos = memberInfos.filter((info) => info.visible && info.text)
+        const visibleInfos = memberInfos.filter(
+          (info) => info.visible && info.text,
+        )
         if (visibleInfos.length > 0) {
           // Info should contain sharing-related text (e.g., "Sharing since" or date)
           console.log(
