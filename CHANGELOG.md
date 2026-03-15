@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+
 ## [Unreleased]
 
 ### Added
@@ -33,6 +34,74 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Database query in `RequestRender` now applies `LIMIT` before plucking coordinates, preventing full table scans on large date ranges
 - `track_belongs_to_user` validation only runs when `track_id` actually changes, avoiding unnecessary queries on status updates
 - Replaced deprecated `status_changed?` with `will_save_change_to_status?` in VideoExport model
+
+
+## [1.3.4] - 2026-03-15
+
+### Changed
+
+- Redesigned onboarding modal with two paths: "I have data" (inline file import) and "Start tracking" (app download + QR code). New users with existing location data can now start importing within 2 clicks of signing up.
+- Onboarding completion is now persisted server-side (`settings.onboarding_completed`) instead of relying solely on localStorage, preventing the modal from reappearing after browser data clears.
+- Route opacity data migration now runs as a background job instead of inline during migration, improving deployment reliability for large instances.
+
+### Fixed
+
+- Fix admin and supporter tooltip overflowing the page on narrow screens. #1449
+- Fix date navigation arrow tooltips overlapping with the navbar on map pages. #2229 #2100
+- Fix infinite loading spinner when a trip has no points in its date range. #2293
+- Fix Insights monthly digest panels disappearing when switching months. #2305
+- Fix suggested visit confirm/decline not removing the visit from the list. #2307
+- Fix Stats page reloading when clicking "countries, cities" link. #2270
+- Fix map base layer selection not being restored after page reload (Maps v1). #2093
+- Fix duplicate country names in stats caused by geocoder returning different spellings. #2044
+- Fix total distance display overlapping layer picker when distance is in miles. #2017
+- Fix default route opacity displaying as 6000% for new users. #1891
+- Fix shared month stats map missing hexagons from the last day of the month. #1934
+- Fix Nominatim reverse geocoder producing all places named "Suggested place" instead of actual place names. #2182
+- Fix IDL-crossing route segmenter returning inconsistent coordinate types. `unwrapCoordinates` now always returns a uniform array-of-arrays structure. #2038
+- Fix a migration taking too long. #2375
+- Fix family sharing not including the requesting user's own location. #2153
+- The "Destroy" button on the trip page is now orange. #2348
+
+## [1.3.3] - 2026-03-12
+
+### Added
+
+- Better user management with pagination, search, and filtering in the admin panel. Admins can now easily find and manage users based on email, registration date, and activity status.
+
+### Fixed
+
+- Points table now converts speed from m/s to km/h (or mph) using the user's distance unit preference. Previously raw m/s values were displayed with a "km/h" label. #2337
+- Digest list API (`GET /api/v1/digests`) now returns distance as a structured object with `meters`, `converted`, and `unit` fields, matching the detail endpoint. Previously it returned raw meters, causing clients to display incorrect values. **Breaking change**: the `distance` field changed from an integer to an object. #2336
+- Dead documentation links in v0.26.0 changelog entry now point to the correct URLs. #2344
+- Filter out Immich and Photoprism api keys from logs to prevent accidental exposure. #2368
+- Fix foreign key violation when deleting users with place_visits referencing visits.
+- Fix reverse geocoding job failing on points with nil timestamp or lonlat.
+- Fix unsupported archive format generating Sentry noise instead of a user-friendly notification.
+- Fix deadlock in reverse geocoding places upsert under concurrent Sidekiq workers.
+- Reduce Redis disk I/O by relaxing RDB snapshot frequency. Previously the default `save 60 10000` rule caused a snapshot every ~60 seconds due to Sidekiq polling, generating tens of terabytes of disk writes over weeks. New defaults: snapshots every 15 minutes (10+ changes) or 5 minutes (100+ changes).
+- Reduce default Sidekiq concurrency from 10 to 5 threads. Most self-hosted instances don't need 10 workers and the extra threads increase Redis polling traffic.
+- Migration bug for version skippers. #2362
+
+## [1.3.2] - 2026-03-08
+
+**Important**: Self-hosters are not limited in any way. All features remain fully available regardless of plan. The new Lite plan and related limitations apply only to Dawarich Cloud users. If you're self-hosting, you can ignore the Lite plan details below. Self-hosted instances will continue to have access to all features without any restrictions.
+
+### Added
+
+- Lite plan for Dawarich Cloud. Lite includes core tracking, map visualization (routes, points), stats, and the read API. Data view is limited to the last 12 months — older data is archived but can always be exported. Pro-only features: Heatmap, Fog of War, Scratch Map, Globe View, Immich/Photoprism integrations, public stats sharing, and write API (update/delete). Lite users can still create points via the API. Self-hosted instances are unaffected — all features remain fully available regardless of plan.
+- Timed layer previews for Lite users on the map. Toggling a Pro-only layer (Heatmap, Fog of War, Scratch Map) shows it for 20 seconds with a countdown, then auto-hides with an upgrade prompt.
+- Per-plan API rate limiting via `rack-attack`. Lite: 200 requests/hour, Pro: 1,000 requests/hour. Self-hosted instances are exempt. Rate-limited responses return 429 with `Retry-After` header.
+- Archival warning notifications for Lite users approaching the 12-month data window: in-app notification at 11 months, email at 11.5 months, archived confirmation at 12 months.
+- `GET /api/v1/plan` endpoint returning the user's current plan and feature availability.
+- `X-Total-Points-In-Range` and `X-Scoped-Points` response headers on the points API, allowing clients to detect when data is being windowed.
+- Branded OAuth buttons for Google and GitHub on the login page.
+
+### Changed
+
+- Numeric-only strings passed to timestamp API parameters (e.g. `start_at`, `end_at`) are now treated as Unix timestamps directly. Previously they were passed through `Time.zone.parse`, which could return unexpected results. If you were relying on the old behavior for numeric strings, update your API calls accordingly.
+- The user serializer now includes `plan` in the `subscription` object.
+
 
 ## [1.3.1] - 2026-02-27
 
@@ -1314,9 +1383,9 @@ Also, after updating to this version, Dawarich will start a huge background job 
 
 ⚠️ This release includes a breaking change. ⚠️
 
-Starting this version, Dawarich requires PostgreSQL 17 with PostGIS 3.5. If you haven't updated your database image yet, please consider doing so as suggested in the [docs on the website](https://dawarich.app/docs/tutorials/update-postgresql/). Simply replacing the image in the `docker-compose.yml` unfortunately doesn't work, as PostgreSQL 17 is not backwards compatible with 14 (which was used in previous versions).
+Starting this version, Dawarich requires PostgreSQL 17 with PostGIS 3.5. If you haven't updated your database image yet, please consider doing so as suggested in the [docs on the website](https://dawarich.app/docs/self-hosting/maintenance/update-postgresql). Simply replacing the image in the `docker-compose.yml` unfortunately doesn't work, as PostgreSQL 17 is not backwards compatible with 14 (which was used in previous versions).
 
-If you have encountered problems with moving to a PostGIS image while still on Postgres 14, I collected a selection of compatible docker images for different CPU architectures, which you can also find in the [docs](https://dawarich.app/docs/tutorials/moving-to-postgis/). New users will be automatically provisioned with PostgreSQL 17 with PostGIS 3.5 with default `docker-compose.yml` file.
+If you have encountered problems with moving to a PostGIS image while still on Postgres 14, I collected a selection of compatible docker images for different CPU architectures, which you can also find in the [docs](https://dawarich.app/docs/self-hosting/maintenance/moving-to-postgis). New users will be automatically provisioned with PostgreSQL 17 with PostGIS 3.5 with default `docker-compose.yml` file.
 
 **You still may use PostgreSQL 14, but no support will be provided for it starting this version. It's strongly recommended to update to PostgreSQL 17.**
 

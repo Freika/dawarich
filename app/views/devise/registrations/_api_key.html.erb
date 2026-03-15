@@ -1,33 +1,46 @@
-<p class="py-6">
-  <p class='py-2'>Use this API key to authenticate your requests.</p>
-  <code><%= current_user.api_key %></code>
+<div class="space-y-4">
+  <div class="rounded-2xl bg-base-200/70 p-4 sm:p-5">
+    <p class="text-sm font-medium text-base-content/70">Current API key</p>
+    <div class="mt-2 rounded-xl bg-base-300/70 p-3">
+      <code class="block break-all text-sm sm:text-base"><%= current_user.api_key %></code>
+    </div>
+    <p class="mt-3 text-sm text-base-content/70">Docs: <%= link_to "API documentation", '/api-docs', class: 'underline hover:no-underline' %></p>
+  </div>
 
-  <p class='py-2'>
-    Or you can scan it in your Dawarich iOS app:
-    <%= api_key_qr_code(current_user) %>
-  </p>
+  <div class="rounded-2xl border border-base-300/70 bg-base-200/40 p-4 text-center">
+    <p class="text-sm font-medium text-base-content/70">Scan in the Dawarich iOS app</p>
+    <div class="mt-4 mx-auto max-w-xs overflow-hidden rounded-2xl bg-white p-2 shadow-lg">
+      <%= api_key_qr_code(current_user) %>
+    </div>
+  </div>
 
-  <p class='py-2'>
-    <p>Docs: <%= link_to "API documentation", '/api-docs', class: 'underline hover:no-underline' %></p>
+  <div class="space-y-3">
+    <div tabindex="0" class="collapse collapse-arrow rounded-2xl border border-base-300/70 bg-base-200/40">
+      <div class="collapse-title text-lg font-semibold">Usage examples</div>
+      <div class="collapse-content space-y-4">
+        <section class="rounded-2xl border border-base-300/70 bg-base-100/40 p-4">
+          <h4 class='text-lg font-bold'>Dawarich iOS app</h4>
+          <p class="mt-2 text-sm text-base-content/70">Provide your instance URL:</p>
+          <code class="mt-2 block break-all rounded-xl bg-base-300/70 p-3 text-sm"><%= root_url %></code>
 
-    <h3 class='text-xl font-bold mt-4'>Usage examples</h3>
+          <p class="mt-3 text-sm text-base-content/70">And provide your API key:</p>
+          <code class="mt-2 block break-all rounded-xl bg-base-300/70 p-3 text-sm"><%= current_user.api_key %></code>
+        </section>
 
-    <h3 class='text-lg font-bold mt-4'>Dawarich iOS app</h3>
-    <p>Provide your instance URL:</p>
-    <p class='mb-2'><code><%= root_url %></code></p>
+        <section class="rounded-2xl border border-base-300/70 bg-base-100/40 p-4">
+          <h4 class='text-lg font-bold'>OwnTracks</h4>
+          <code class="mt-2 block break-all rounded-xl bg-base-300/70 p-3 text-sm"><%= api_v1_owntracks_points_url(api_key: current_user.api_key) %></code>
+        </section>
 
-    <p>And provide your API key:</p>
-    <p><code><%= current_user.api_key %></code></p>
-    <div class='divider'>OR</div>
+        <section class="rounded-2xl border border-base-300/70 bg-base-100/40 p-4">
+          <h4 class='text-lg font-bold'>Overland</h4>
+          <code class="mt-2 block break-all rounded-xl bg-base-300/70 p-3 text-sm"><%= api_v1_overland_batches_url(api_key: current_user.api_key) %></code>
+        </section>
+      </div>
+    </div>
+  </div>
 
-    <h3 class='text-lg font-bold mt-4'>OwnTracks</h3>
-    <p><code><%= api_v1_owntracks_points_url(api_key: current_user.api_key) %></code></p>
-
-    <div class='divider'>OR</div>
-    <h3 class='text-lg font-bold mt-4'>Overland</h3>
-    <p><code><%= api_v1_overland_batches_url(api_key: current_user.api_key) %></code></p>
-  </p>
-  <p class='py-2'>
-    <%= link_to "Generate new API key", generate_api_key_path, data: { turbo_confirm: "Are you sure? This will invalidate the current API key.", turbo_method: :post }, class: 'btn btn-primary' %>
-  </p>
-</p>
+  <div>
+    <%= link_to "Generate new API key", generate_api_key_path, data: { turbo_confirm: "Are you sure? This will invalidate the current API key.", turbo_method: :post }, class: 'btn btn-primary w-full sm:w-auto' %>
+  </div>
+</div>

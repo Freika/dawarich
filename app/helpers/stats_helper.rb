@@ -76,7 +76,7 @@ module StatsHelper
 
     year_stats.each do |stat|
       toponyms = stat.toponyms.flatten
-      countries.concat(toponyms.map { |t| t['country'] }.compact)
+      countries.concat(toponyms.map { |t| normalize_country_name(t['country']) }.compact)
       cities.concat(toponyms.flat_map { |t| (t['cities'] || []).map { |c| c['city'] } }.compact)
     end
 
@@ -88,7 +88,7 @@ module StatsHelper
 
     year_stats.each do |stat|
       stat.toponyms.flatten.each do |toponym|
-        country = toponym['country']
+        country = normalize_country_name(toponym['country'])
         next if country.blank?
 
         (toponym['cities'] || []).each do |city_data|
@@ -99,6 +99,19 @@ module StatsHelper
     end
 
     grouped.transform_values!(&:uniq)
+  end
+
+  def normalize_country_name(name)
+    return nil if name.blank?
+
+    iso_code = Country.names_to_iso_a2[name]
+    return name unless iso_code
+
+    canonical_names[iso_code] || name
+  end
+
+  def canonical_names
+    @canonical_names ||= Country.names_to_iso_a2.invert
   end
 
   def build_distance_by_date_hash(stat)

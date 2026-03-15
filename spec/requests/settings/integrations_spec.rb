@@ -81,6 +81,40 @@ RSpec.describe 'Settings::Integrations', type: :request do
       end
     end
 
+    context 'when user is on Lite plan (Cloud)' do
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        user.update_column(:plan, User.plans[:lite])
+      end
+
+      it 'redirects with pro required alert on update' do
+        patch '/settings/integrations', params: params
+
+        expect(response).to redirect_to(root_path)
+        expect(flash[:alert]).to include('Pro plan')
+      end
+
+      it 'shows upgrade prompt on index page' do
+        get '/settings/integrations'
+
+        expect(response.body).to include('Upgrade to Pro')
+        expect(response.body).to include('Immich')
+      end
+    end
+
+    context 'when self-hosted Lite user (bypasses gate)' do
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+        user.update_column(:plan, User.plans[:lite])
+      end
+
+      it 'allows integration settings update' do
+        patch '/settings/integrations', params: params
+
+        expect(response).to redirect_to(settings_integrations_path)
+      end
+    end
+
     context 'when user is inactive' do
       before do
         user.update(status: :inactive, active_until: 1.day.ago)

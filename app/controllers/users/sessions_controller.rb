@@ -12,7 +12,7 @@ class Users::SessionsController < Devise::SessionsController
 
   def check_email_password_login_allowed
     return unless DawarichSettings.oidc_enabled?
-    return if ALLOW_EMAIL_PASSWORD_REGISTRATION
+    return if DawarichSettings.registration_enabled?
 
     redirect_to root_path, alert: 'Email/password login is disabled. Please use OIDC to sign in.'
   end

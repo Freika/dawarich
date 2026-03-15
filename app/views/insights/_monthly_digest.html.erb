@@ -24,7 +24,7 @@
             <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-base-200 rounded-box w-40">
               <% @available_months.each do |m| %>
                 <li>
-                  <%= link_to Date::MONTHNAMES[m], insights_path(year: @selected_year, month: m),
+                  <%= link_to Date::MONTHNAMES[m], details_insights_path(year: @selected_year, month: m),
                       class: m == @selected_month ? 'active' : '' %>
                 </li>
               <% end %>
@@ -181,7 +181,7 @@
       <p class="text-base-content/60">Select a month to view its digest:</p>
       <div class="flex flex-wrap gap-2 mt-2">
         <% @available_months.each do |m| %>
-          <%= link_to Date::MONTHNAMES[m], insights_path(year: @selected_year, month: m), class: 'btn btn-sm btn-outline' %>
+          <%= link_to Date::MONTHNAMES[m], details_insights_path(year: @selected_year, month: m), class: 'btn btn-sm btn-outline' %>
         <% end %>
       </div>
     </div>

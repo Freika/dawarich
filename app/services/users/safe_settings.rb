@@ -3,6 +3,8 @@
 class Users::SafeSettings
   attr_reader :settings
 
+  GATED_MAP_LAYERS = ['Heatmap', 'Fog of War', 'Scratch map'].freeze
+
   DEFAULT_VALUES = {
     'fog_of_war_meters' => 50,
     'fog_of_war_threshold' => 50,
@@ -14,7 +16,7 @@ class Users::SafeSettings
     'time_threshold_minutes' => 30,
     'merge_threshold_minutes' => 15,
     'live_map_enabled' => true,
-    'route_opacity' => 60,
+    'route_opacity' => 0.6,
     'immich_url' => nil,
     'immich_api_key' => nil,
     'immich_skip_ssl_verification' => false,
@@ -52,8 +54,9 @@ class Users::SafeSettings
     'timezone' => ENV.fetch('TIME_ZONE', 'UTC')
   }.freeze
 
-  def initialize(settings = {})
+  def initialize(settings = {}, plan: nil)
     @settings = DEFAULT_VALUES.deep_dup.deep_merge(settings)
+    @plan = plan
   end
 
   def config
@@ -174,7 +177,8 @@ class Users::SafeSettings
   end
 
   def enabled_map_layers
-    settings['enabled_map_layers']
+    layers = settings['enabled_map_layers']
+    lite? ? layers - GATED_MAP_LAYERS : layers
   end
 
   def maps_maplibre_style
@@ -182,6 +186,8 @@ class Users::SafeSettings
   end
 
   def globe_projection
+    return false if lite?
+
     ActiveModel::Type::Boolean.new.cast(settings['globe_projection'])
   end
 
@@ -232,5 +238,11 @@ class Users::SafeSettings
 
   def timezone
     settings['timezone'] || DEFAULT_VALUES['timezone']
+  end
+
+  private
+
+  def lite?
+    @plan&.to_sym == :lite
   end
 end

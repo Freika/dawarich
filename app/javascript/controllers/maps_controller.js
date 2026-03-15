@@ -30,6 +30,8 @@ import { VisitsManager } from "../maps/visits"
 import Flash from "./flash_controller"
 
 import "leaflet-draw"
+import { UpgradeBanner } from "maps_maplibre/components/upgrade_banner"
+import { isGatedPlan } from "maps_maplibre/utils/layer_gate"
 import {
   createFogOverlay,
   drawFogCanvas,
@@ -172,7 +174,7 @@ export default class extends BaseController {
 
         // Convert distance to miles if user prefers miles (assuming backend sends km)
         if (this.distanceUnit === "mi") {
-          distance = distance * 0.621371 // km to miles conversion
+          distance = Math.round(distance * 0.621371) // km to miles conversion
         }
 
         const unit = this.distanceUnit === "km" ? "km" : "mi"
@@ -332,6 +334,26 @@ export default class extends BaseController {
 
     // Initialize Location Search
     this.initializeLocationSearch()
+
+    // Show upgrade banner for Lite users when searching outside the 12-month window
+    this.showDataWindowBanner()
+  }
+
+  showDataWindowBanner() {
+    const userPlan = this.element.dataset.user_plan
+    if (!isGatedPlan(userPlan)) return
+
+    const startDate = new Date(this.element.dataset.start_date)
+    const twelveMonthsAgo = new Date()
+    twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12)
+
+    if (startDate < twelveMonthsAgo) {
+      UpgradeBanner.show({
+        message: "Your Lite plan includes the last 12 months of data.",
+        upgradeUrl: this.element.dataset.upgrade_url,
+        utmContent: "data_retention",
+      })
+    }
   }
 
   disconnect() {

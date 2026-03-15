@@ -71,7 +71,7 @@ class Stats::HexagonCalculator
   end
 
   def end_timestamp
-    DateTime.new(year, month, -1).to_i # -1 returns last day of month
+    DateTime.new(year, month, -1, 23, 59, 59).to_i
   end
 
   def points

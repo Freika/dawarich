@@ -103,12 +103,12 @@ RSpec.describe '/visits', type: :request do
     context 'with turbo_stream format' do
       let(:visit) { create(:visit, user:, status: :suggested) }
 
-      it 'updates status and returns turbo_stream replacing visit name' do
+      it 'updates status and returns turbo_stream removing visit item' do
         patch visit_url(visit), params: { visit: { status: :confirmed } }, as: :turbo_stream
 
         expect(visit.reload.status).to eq('confirmed')
         expect_turbo_stream_response
-        expect_turbo_stream_action('replace', "visit_name_#{visit.id}")
+        expect_turbo_stream_action('remove', "visit_item_#{visit.id}")
       end
 
       it 'sets visit name from place when place_id is provided' do
@@ -120,8 +120,8 @@ RSpec.describe '/visits', type: :request do
         expect_turbo_stream_action('replace', "visit_name_#{visit.id}")
       end
 
-      it 'returns turbo_stream replace even on failure' do
-        patch visit_url(visit), params: { visit: { status: :confirmed } }, as: :turbo_stream
+      it 'returns turbo_stream replace on non-status update' do
+        patch visit_url(visit), params: { visit: { name: 'New Name' } }, as: :turbo_stream
 
         expect_turbo_stream_response
         expect_turbo_stream_action('replace', "visit_name_#{visit.id}")

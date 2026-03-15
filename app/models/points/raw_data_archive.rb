@@ -59,9 +59,10 @@ module Points
 
     def metadata_contains_expected_and_actual_counts
       return if metadata.blank?
-      return if metadata['format_version'].blank?
 
-      # All archives must contain both expected_count and actual_count for data integrity
+      # Count fields were introduced in format_version 2; don't enforce on older archives
+      return if metadata['format_version'].blank? || metadata['format_version'].to_i < 2
+
       return unless metadata['expected_count'].blank? || metadata['actual_count'].blank?
 
       errors.add(:metadata, 'must contain expected_count and actual_count')

@@ -42,5 +42,56 @@ RSpec.describe Stats::BulkCalculator do
         expect { subject.call }.not_to have_enqueued_job(Stats::CalculatingJob)
       end
     end
+
+    context 'when stats already exist' do
+      let(:user) { create(:user) }
+
+      subject { described_class.new(user.id) }
+
+      let!(:old_point) do
+        create(:point, user: user, timestamp: DateTime.new(2020, 6, 15, 12, 0, 0).to_i)
+      end
+
+      let!(:new_point) do
+        create(:point, user: user, timestamp: DateTime.new(2021, 3, 10, 12, 0, 0).to_i)
+      end
+
+      before do
+        create(:stat, user: user, year: 2020, month: 6, updated_at: DateTime.new(2020, 7, 1))
+      end
+
+      it 'only schedules calculations for months with points after last calculation' do
+        subject.call
+
+        expect(Stats::CalculatingJob).not_to have_been_enqueued.with(user.id, 2020, 6)
+        expect(Stats::CalculatingJob).to have_been_enqueued.with(user.id, 2021, 3)
+      end
+    end
+
+    context 'with points spanning multiple months' do
+      let(:user) { create(:user) }
+
+      subject { described_class.new(user.id) }
+
+      let!(:jan_point) do
+        create(:point, user: user, timestamp: DateTime.new(2021, 1, 15, 12, 0, 0).to_i)
+      end
+
+      let!(:mar_point) do
+        create(:point, user: user, timestamp: DateTime.new(2021, 3, 10, 12, 0, 0).to_i)
+      end
+
+      let!(:mar_point2) do
+        create(:point, user: user, timestamp: DateTime.new(2021, 3, 20, 12, 0, 0).to_i)
+      end
+
+      it 'schedules one job per distinct month' do
+        subject.call
+
+        expect(Stats::CalculatingJob).to have_been_enqueued.with(user.id, 2021, 1).once
+        expect(Stats::CalculatingJob).to have_been_enqueued.with(user.id, 2021, 3).once
+        expect(Stats::CalculatingJob).to have_been_enqueued.exactly(2).times
+      end
+    end
   end
 end

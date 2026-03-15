@@ -58,61 +58,70 @@
           <% @members.each do |member| %>
             <div class="card bg-base-200 shadow-sm">
               <div class="card-body p-4">
-                <div class="flex items-center justify-between">
-                  <div class="flex-grow">
-                    <!-- Member Info -->
-                    <div class="flex items-center gap-3">
-                      <div class="avatar placeholder">
-                        <div class="bg-primary text-primary-content rounded-full w-12">
-                          <span class="text-lg font-semibold">
-                            <%= member.email&.first&.upcase || '?' %>
-                          </span>
-                        </div>
+                <div class="flex flex-col lg:flex-row lg:items-center gap-4">
+                  <!-- Member Info -->
+                  <div class="flex items-center gap-3 min-w-0">
+                    <div class="avatar placeholder flex-shrink-0">
+                      <div class="bg-primary text-primary-content rounded-full w-12">
+                        <span class="text-lg font-semibold">
+                          <%= member.email&.first&.upcase || '?' %>
+                        </span>
                       </div>
+                    </div>
 
-                      <div>
-                        <h3 class="card-title text-base"><%= member.email %></h3>
-                        <div class="flex items-center gap-2 mt-1">
-                          <% if member.family_membership.role == 'owner' %>
-                            <div class="badge badge-warning badge-sm">
-                              <%= t('families.show.owner_badge', default: 'Owner') %>
-                            </div>
-                          <% else %>
-                            <span class="text-sm opacity-60">
-                              <%= member.family_membership.role.humanize %>
-                            </span>
-                          <% end %>
-                        </div>
-                        <div class="text-xs opacity-50 mt-1">
+                    <div class="min-w-0">
+                      <h3 class="card-title text-base truncate"><%= member.email %></h3>
+                      <div class="flex items-center gap-2 mt-0.5">
+                        <% if member.family_membership.role == 'owner' %>
+                          <div class="badge badge-warning badge-sm">
+                            <%= t('families.show.owner_badge', default: 'Owner') %>
+                          </div>
+                        <% else %>
+                          <span class="text-sm text-base-content/60">
+                            <%= member.family_membership.role.humanize %>
+                          </span>
+                        <% end %>
+                        <span class="text-xs text-base-content/40">
                           <%= t('families.show.joined_on', default: 'Joined') %>
                           <%= member.family_membership.created_at.strftime('%b %d, %Y') %>
-                        </div>
+                        </span>
                       </div>
                     </div>
                   </div>
 
-                  <!-- Location Sharing Controls - More Compact -->
-                  <div class="ml-auto flex items-center gap-4">
+                  <!-- Sharing Controls -->
+                  <div class="lg:ml-auto flex-shrink-0">
                     <% if member == current_user %>
                       <%= render 'families/location_sharing_toggle', member: member %>
-
                     <% else %>
-                      <!-- Other member's status - read-only indicator -->
+                      <!-- Other member's status - read-only -->
                       <div class="flex items-center gap-2">
-                        <span class="text-sm opacity-60">Location sharing:</span>
                         <% if member.family_sharing_enabled? %>
-                          <div class="w-3 h-3 bg-success rounded-full animate-pulse"></div>
-                          <span class="text-xs text-success font-medium">
-                            <%= member.family_sharing_duration == 'permanent' ? 'Always' : member.family_sharing_duration&.upcase %>
+                          <div class="w-2.5 h-2.5 bg-success rounded-full animate-pulse"></div>
+                          <span class="text-sm text-success font-medium">
+                            Sharing
+                            <%= member.family_sharing_duration == 'permanent' ? 'always' : "for #{member.family_sharing_duration}" %>
                           </span>
                           <% if member.family_sharing_expires_at.present? %>
-                            <span class="text-xs opacity-50">
-                              • Expires <%= time_ago_in_words(member.family_sharing_expires_at) %> from now
+                            <span class="text-xs text-base-content/50">
+                              &middot; expires in <%= time_ago_in_words(member.family_sharing_expires_at) %>
                             </span>
                           <% end %>
                         <% else %>
-                          <div class="w-3 h-3 bg-base-300 rounded-full"></div>
-                          <span class="text-xs opacity-50">Disabled</span>
+                          <div class="w-2.5 h-2.5 bg-base-300 rounded-full"></div>
+                          <span class="text-sm text-base-content/50">Not sharing</span>
+
+                          <% pending_req = @pending_requests[member.id] %>
+                          <% if pending_req %>
+                            <span class="text-xs text-info">
+                              Requested <%= time_ago_in_words(pending_req.created_at) %> ago
+                            </span>
+                          <% else %>
+                            <%= button_to "Request Location",
+                                family_location_requests_path(target_user_id: member.id),
+                                method: :post,
+                                class: "btn btn-outline btn-info btn-xs ml-1" %>
+                          <% end %>
                         <% end %>
                       </div>
                     <% end %>

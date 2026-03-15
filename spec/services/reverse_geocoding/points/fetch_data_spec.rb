@@ -125,6 +125,35 @@ RSpec.describe ReverseGeocoding::Points::FetchData do
     end
   end
 
+  context 'when point has nil timestamp' do
+    let(:point) { create(:point) }
+
+    before do
+      # Bypass validations to simulate legacy data with nil timestamp
+      point.update_column(:timestamp, nil)
+    end
+
+    it 'skips geocoding without raising' do
+      expect(Geocoder).not_to receive(:search)
+
+      expect { fetch_data }.not_to raise_error
+    end
+  end
+
+  context 'when point has nil lonlat' do
+    let(:point) { create(:point) }
+
+    before do
+      point.update_column(:lonlat, nil)
+    end
+
+    it 'skips geocoding without raising' do
+      expect(Geocoder).not_to receive(:search)
+
+      expect { fetch_data }.not_to raise_error
+    end
+  end
+
   context 'when Geocoder returns an error' do
     before do
       allow(Geocoder).to receive(:search).and_return([double(city: nil, country: nil, data: { 'error' => 'Error' })])

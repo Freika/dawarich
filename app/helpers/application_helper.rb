@@ -1,6 +1,10 @@
 # frozen_string_literal: true
 
 module ApplicationHelper
+  def show_plan_data_window_alert?
+    !DawarichSettings.self_hosted? && current_user&.lite?
+  end
+
   def year_timespan(year)
     start_at = DateTime.new(year).beginning_of_year.strftime('%Y-%m-%dT%H:%M')
     end_at = DateTime.new(year).end_of_year.strftime('%Y-%m-%dT%H:%M')
@@ -49,14 +53,19 @@ module ApplicationHelper
     'text-red-500'
   end
 
-  def point_speed(speed)
-    return speed if speed.to_i <= 0
+  def point_speed(speed, unit = 'km')
+    return speed if speed.to_f <= 0
 
-    speed * 3.6
+    kmh = speed.to_f * 3.6
+    unit == 'mi' ? (kmh * 0.621371).round(1) : kmh.round(1)
+  end
+
+  def speed_label(unit = 'km')
+    unit == 'mi' ? 'mph' : 'km/h'
   end
 
   def onboarding_modal_showable?(user)
-    user.trial_state?
+    !user.settings&.dig('onboarding_completed')
   end
 
   def trial_button_class(user)
@@ -86,16 +95,47 @@ module ApplicationHelper
     OmniAuth::Utils.camelize(provider)
   end
 
+  OAUTH_PROVIDERS = {
+    google_oauth2: {
+      icon_name: 'google',
+      label: 'Sign in with Google',
+      css_class: 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+    },
+    github: {
+      icon_name: 'github',
+      label: 'Sign in with GitHub',
+      css_class: 'bg-[#24292f] text-white hover:bg-[#383f47] border-[#24292f]'
+    }
+  }.freeze
+
+  def oauth_button_config(provider)
+    config = OAUTH_PROVIDERS[provider.to_sym]
+
+    if config
+      {
+        icon: icon(config[:icon_name], library: 'brands', class: 'size-5'),
+        label: config[:label],
+        css_class: config[:css_class]
+      }
+    else
+      {
+        icon: nil,
+        label: "Sign in with #{oauth_provider_name(provider)}",
+        css_class: 'btn-primary'
+      }
+    end
+  end
+
   def email_password_registration_enabled?
     return true unless DawarichSettings.self_hosted?
 
-    ALLOW_EMAIL_PASSWORD_REGISTRATION
+    DawarichSettings.registration_enabled?
   end
 
   def email_password_login_enabled?
     return true unless DawarichSettings.oidc_enabled?
 
-    ALLOW_EMAIL_PASSWORD_REGISTRATION
+    DawarichSettings.registration_enabled?
   end
 
   def preferred_map_path(params = {})
@@ -103,6 +143,29 @@ module ApplicationHelper
 
     preferred_version = current_user.safe_settings.maps&.dig('preferred_version')
     preferred_version == 'v1' ? map_v1_path(params) : map_v2_path(params)
+  end
+
+  # Generates a user-specific upgrade URL that authenticates the user
+  # with the subscription manager via JWT token.
+  # Accepts optional UTM parameters for tracking.
+  def upgrade_url(utm_source: 'app', utm_medium: nil, utm_campaign: 'lite_upgrade', utm_content: nil)
+    base = "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}"
+    utm = { utm_source:, utm_medium:, utm_campaign:, utm_content: }.compact
+    utm.any? ? "#{base}&#{utm.to_query}" : base
+  end
+
+  def pro_badge_tag(preview: true)
+    return unless current_user&.lite?
+
+    tooltip = preview ? 'Available on Pro — click to preview' : 'Available on Pro'
+    link_to upgrade_url(utm_medium: 'badge', utm_content: 'pro_badge'),
+            target: '_blank', rel: 'noopener noreferrer',
+            class: 'tooltip tooltip-bottom', 'data-tip': tooltip, tabindex: '0' do
+      tag.span(class: 'badge badge-sm badge-outline gap-1') do
+        concat icon('lock', class: 'w-3 h-3')
+        concat ' Pro'
+      end
+    end
   end
 
   def sortable_column(title, column, path_helper, **path_params)

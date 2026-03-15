@@ -44,15 +44,22 @@ Rails.application.routes.draw do
 
     resources :background_jobs, only: %i[index create]
     patch 'background_jobs', to: 'background_jobs#update'
-    resources :users, only: %i[index create destroy edit update] do
+    resources :users, only: %i[index show create destroy edit update] do
+      member do
+        post 'regenerate_api_key'
+        post 'send_password_reset'
+      end
       collection do
         get 'export'
         post 'import'
+        patch 'update_registration_settings'
       end
     end
 
     resources :maps, only: %i[index]
     patch 'maps', to: 'maps#update'
+
+    resource :onboarding, only: [:update]
   end
 
   get 'settings/theme', to: 'settings#theme'
@@ -76,6 +83,12 @@ Rails.application.routes.draw do
     resource :family, only: %i[show new create edit update destroy] do
       resources :invitations, except: %i[edit update], controller: 'family/invitations'
       resources :members, only: %i[destroy], controller: 'family/memberships'
+      resources :location_requests, only: %i[show create], controller: 'family/location_requests' do
+        member do
+          patch :accept
+          patch :decline
+        end
+      end
 
       patch 'location_sharing', to: 'family/location_sharing#update', as: :location_sharing
     end
@@ -162,6 +175,7 @@ Rails.application.routes.draw do
       get   'users/me', to: 'users#me'
 
       resources :areas,     only: %i[index show create update destroy]
+      resources :imports,   only: %i[index show create]
       resources :places,    only: %i[index show create update destroy] do
         collection do
           get 'nearby'
@@ -184,6 +198,7 @@ Rails.application.routes.draw do
           post 'bulk_update', to: 'visits#bulk_update'
         end
       end
+      resource :plan, only: [:show], controller: 'plan'
       resources :stats, only: :index
       resources :insights, only: :index do
         collection do
@@ -236,7 +251,11 @@ Rails.application.routes.draw do
       end
 
       namespace :families do
-        resources :locations, only: [:index]
+        resources :locations, only: [:index] do
+          collection do
+            get :history
+          end
+        end
       end
 
       post 'subscriptions/callback', to: 'subscriptions#callback'

@@ -13,6 +13,9 @@ class FamiliesController < ApplicationController
 
     @member_count = @family.member_count
     @can_invite = @family.can_add_members?
+    @pending_requests = current_user.sent_location_requests.pending
+                                    .where('expires_at > ?', Time.current)
+                                    .index_by(&:target_user_id)
   end
 
   def new

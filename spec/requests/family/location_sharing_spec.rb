@@ -45,6 +45,29 @@ RSpec.describe 'Family::LocationSharing', type: :request do
       end
     end
 
+    context 'when enabling with share_history and history_window' do
+      it 'persists share_history and history_window' do
+        patch '/family/location_sharing',
+              params: { enabled: true, duration: 'permanent', share_history: true, history_window: '7d' },
+              as: :json
+
+        expect(response).to have_http_status(:ok)
+        user.reload
+        expect(user.family_share_history?).to be true
+        expect(user.family_history_window).to eq('7d')
+      end
+
+      it 'rejects invalid history_window values' do
+        patch '/family/location_sharing',
+              params: { enabled: true, duration: 'permanent', history_window: '<script>alert(1)</script>' },
+              as: :json
+
+        expect(response).to have_http_status(:ok)
+        user.reload
+        expect(user.family_history_window).to eq('24h')
+      end
+    end
+
     context 'when disabling location sharing' do
       before do
         user.update_family_location_sharing!(true, duration: '1h')

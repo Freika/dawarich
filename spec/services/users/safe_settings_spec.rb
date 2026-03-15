@@ -20,7 +20,7 @@ RSpec.describe Users::SafeSettings do
             time_threshold_minutes: 30,
             merge_threshold_minutes: 15,
             live_map_enabled: true,
-            route_opacity: 60,
+            route_opacity: 0.6,
             immich_url: nil,
             immich_api_key: nil,
             photoprism_url: nil,
@@ -227,7 +227,7 @@ RSpec.describe Users::SafeSettings do
         expect(safe_settings.time_threshold_minutes).to eq(30)
         expect(safe_settings.merge_threshold_minutes).to eq(15)
         expect(safe_settings.live_map_enabled).to be true
-        expect(safe_settings.route_opacity).to eq(60)
+        expect(safe_settings.route_opacity).to eq(0.6)
         expect(safe_settings.immich_url).to be_nil
         expect(safe_settings.immich_api_key).to be_nil
         expect(safe_settings.photoprism_url).to be_nil
@@ -337,6 +337,84 @@ RSpec.describe Users::SafeSettings do
 
       it 'returns false' do
         expect(safe_settings.news_emails_enabled?).to be false
+      end
+    end
+  end
+
+  describe 'plan-aware filtering' do
+    describe '#enabled_map_layers' do
+      context 'when plan is lite' do
+        let(:settings) { { 'enabled_map_layers' => ['Tracks', 'Heatmap', 'Fog of War', 'Scratch map', 'Points'] } }
+        let(:safe_settings) { described_class.new(settings, plan: :lite) }
+
+        it 'excludes gated layers' do
+          expect(safe_settings.enabled_map_layers).to eq(%w[Tracks Points])
+        end
+      end
+
+      context 'when plan is lite and only gated layers are enabled' do
+        let(:settings) { { 'enabled_map_layers' => ['Heatmap', 'Fog of War', 'Scratch map'] } }
+        let(:safe_settings) { described_class.new(settings, plan: :lite) }
+
+        it 'returns empty array' do
+          expect(safe_settings.enabled_map_layers).to eq([])
+        end
+      end
+
+      context 'when plan is pro' do
+        let(:settings) { { 'enabled_map_layers' => ['Tracks', 'Heatmap', 'Fog of War', 'Scratch map'] } }
+        let(:safe_settings) { described_class.new(settings, plan: :pro) }
+
+        it 'returns all layers as stored' do
+          expect(safe_settings.enabled_map_layers).to eq(['Tracks', 'Heatmap', 'Fog of War', 'Scratch map'])
+        end
+      end
+
+      context 'when plan is pro (self-hosted users always have pro)' do
+        let(:settings) { { 'enabled_map_layers' => ['Tracks', 'Heatmap', 'Fog of War'] } }
+        let(:safe_settings) { described_class.new(settings, plan: :pro) }
+
+        it 'returns all layers as stored' do
+          expect(safe_settings.enabled_map_layers).to eq(['Tracks', 'Heatmap', 'Fog of War'])
+        end
+      end
+
+      context 'when plan is nil (backward compat)' do
+        let(:settings) { { 'enabled_map_layers' => ['Tracks', 'Heatmap', 'Fog of War'] } }
+        let(:safe_settings) { described_class.new(settings) }
+
+        it 'returns all layers as stored' do
+          expect(safe_settings.enabled_map_layers).to eq(['Tracks', 'Heatmap', 'Fog of War'])
+        end
+      end
+    end
+
+    describe '#globe_projection' do
+      context 'when plan is lite' do
+        let(:settings) { { 'globe_projection' => true } }
+        let(:safe_settings) { described_class.new(settings, plan: :lite) }
+
+        it 'returns false regardless of stored value' do
+          expect(safe_settings.globe_projection).to be false
+        end
+      end
+
+      context 'when plan is pro' do
+        let(:settings) { { 'globe_projection' => true } }
+        let(:safe_settings) { described_class.new(settings, plan: :pro) }
+
+        it 'returns the stored value' do
+          expect(safe_settings.globe_projection).to be true
+        end
+      end
+
+      context 'when plan is nil (backward compat)' do
+        let(:settings) { { 'globe_projection' => true } }
+        let(:safe_settings) { described_class.new(settings) }
+
+        it 'returns the stored value' do
+          expect(safe_settings.globe_projection).to be true
+        end
       end
     end
   end

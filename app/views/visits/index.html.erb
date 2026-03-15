@@ -1,29 +1,33 @@
 <% content_for :title, "Visits" %>
 
 <div class="w-full my-5">
-  <div role="tablist" class="tabs tabs-lifted tabs-lg">
-    <%= link_to 'Visits', visits_path(status: :confirmed), role: 'tab', class: "tab font-bold text-xl #{active_visit_places_tab?('visits')}" %>
-    <%= link_to 'Places', places_path, role: 'tab', class: "tab font-bold text-xl #{active_visit_places_tab?('places')}" %>
+  <div class="overflow-x-auto pb-1">
+    <div role="tablist" class="tabs tabs-lifted tabs-lg inline-flex min-w-max flex-nowrap">
+      <%= link_to 'Visits', visits_path(status: :confirmed), role: 'tab', class: "tab font-bold text-xl #{active_visit_places_tab?('visits')}" %>
+      <%= link_to 'Places', places_path, role: 'tab', class: "tab font-bold text-xl #{active_visit_places_tab?('places')}" %>
+    </div>
   </div>
 
-  <div class="flex justify-between">
-    <div role="tablist" class="tabs tabs-boxed">
-      <%= link_to 'Confirmed', visits_path(status: :confirmed), role: 'tab',
-          class: "tab #{active_tab?(visits_path(status: :confirmed))}" %>
-      <%= link_to visits_path(status: :suggested), role: 'tab',
-          class: "tab #{active_tab?(visits_path(status: :suggested))}" do %>
-          Suggested
-          <% if @suggested_visits_count.positive? %>
-            <span class="badge badge-sm badge-primary mx-1"><%= @suggested_visits_count %></span>
-          <% end %>
-      <% end %>
-      <%= link_to 'Declined', visits_path(status: :declined), role: 'tab',
-          class: "tab #{active_tab?(visits_path(status: :declined))}" %>
+  <div class="mt-3 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+    <div class="w-full overflow-x-auto md:w-auto">
+      <div role="tablist" class="tabs tabs-boxed inline-flex min-w-max flex-nowrap">
+        <%= link_to 'Confirmed', visits_path(status: :confirmed), role: 'tab',
+            class: "tab #{active_tab?(visits_path(status: :confirmed))}" %>
+        <%= link_to visits_path(status: :suggested), role: 'tab',
+            class: "tab #{active_tab?(visits_path(status: :suggested))}" do %>
+            Suggested
+            <% if @suggested_visits_count.positive? %>
+              <span class="badge badge-sm badge-primary mx-1"><%= @suggested_visits_count %></span>
+            <% end %>
+        <% end %>
+        <%= link_to 'Declined', visits_path(status: :declined), role: 'tab',
+            class: "tab #{active_tab?(visits_path(status: :declined))}" %>
+      </div>
     </div>
-    <div class="flex items-center">
-      <span class="mr-2">Order by:</span>
-      <%= link_to 'Newest', visits_path(order_by: :desc, status: params[:status]), class: 'btn btn-xs btn-primary mx-1' %>
-      <%= link_to 'Oldest', visits_path(order_by: :asc, status: params[:status]), class: 'btn btn-xs btn-primary mx-1' %>
+    <div class="flex flex-wrap items-center gap-2 md:justify-end">
+      <span class="w-full text-sm font-medium md:w-auto">Order by:</span>
+      <%= link_to 'Newest', visits_path(order_by: :desc, status: params[:status]), class: 'btn btn-xs btn-primary' %>
+      <%= link_to 'Oldest', visits_path(order_by: :asc, status: params[:status]), class: 'btn btn-xs btn-primary' %>
     </div>
   </div>
 
@@ -46,6 +50,7 @@
     <div class="hero min-h-80 bg-base-200">
       <div class="hero-content text-center">
         <div class="max-w-md">
+          <%= render 'shared/plan_data_window_alert', utm_content: 'visits' %>
           <h1 class="text-5xl font-bold">Hello there!</h1>
           <p class="py-6">
             Here you'll find your <%= params[:status] %> visits, but now there are none. Create some areas on your map and pretty soon you'll see visit suggestions on this page!
@@ -60,7 +65,7 @@
 
     <ul class="timeline timeline-snap-icon max-md:timeline-compact timeline-vertical">
       <% @visits.each do |visit| %>
-        <li>
+        <li id="visit_item_<%= visit.id %>">
           <div class="timeline-middle">
             <svg
               xmlns="http://www.w3.org/2000/svg"

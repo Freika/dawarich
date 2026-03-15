@@ -1,5 +1,7 @@
 import maplibregl from "maplibre-gl"
 import { Toast } from "maps_maplibre/components/toast"
+import { UpgradeBanner } from "maps_maplibre/components/upgrade_banner"
+import { isGatedPlan } from "maps_maplibre/utils/layer_gate"
 import { performanceMonitor } from "maps_maplibre/utils/performance_monitor"
 
 const EMPTY_GEOJSON = { type: "FeatureCollection", features: [] }
@@ -78,7 +80,12 @@ export class MapDataManager {
       // 4. Store data for replay and other features
       this.lastLoadedData = data
 
-      // 5. Fit bounds if requested — use the first available data source
+      // 5. Show upsell banner for Lite users when searching outside the 12-month window
+      if (isGatedPlan(this.controller.userPlanValue)) {
+        this._showDataWindowBanner()
+      }
+
+      // 6. Fit bounds if requested — use the first available data source
       if (fitBounds) {
         this._hasFittedBounds = this._fitToFirstAvailable([
           data.pointsGeoJSON,
@@ -355,6 +362,25 @@ export class MapDataManager {
         padding: 50,
         maxZoom: 15,
         animate: false,
+      })
+    }
+  }
+
+  /**
+   * Show a persistent upgrade banner for Lite users when the queried date
+   * range extends beyond the 12-month data window.
+   * @private
+   */
+  _showDataWindowBanner() {
+    const startDate = new Date(this.controller.startDateValue)
+    const twelveMonthsAgo = new Date()
+    twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12)
+
+    if (startDate < twelveMonthsAgo) {
+      UpgradeBanner.show({
+        message: "Your Lite plan includes the last 12 months of data.",
+        upgradeUrl: this.controller.upgradeUrlValue,
+        utmContent: "data_retention",
       })
     }
   }

@@ -329,6 +329,14 @@
   border-radius: 50%;
 }
 
+/* Prevent stats control from overlapping layer picker */
+.leaflet-control-stats {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* Fix bottom controls being cut off */
 .leaflet-bottom {
   padding-bottom: 10px !important;

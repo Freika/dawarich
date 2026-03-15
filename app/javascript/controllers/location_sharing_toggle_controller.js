@@ -10,6 +10,12 @@ export default class extends Controller {
     "durationContainer",
     "durationSelect",
     "expirationInfo",
+    "shareHistoryField",
+    "historyWindowField",
+    "historyContainer",
+    "historyCheckbox",
+    "historyWindowContainer",
+    "historyWindowSelect",
   ]
   static values = {
     memberId: Number,
@@ -29,7 +35,6 @@ export default class extends Controller {
     const newState = !this.enabledValue
     this.enabledFieldTarget.value = newState ? "true" : "false"
 
-    // Update duration field from select if available
     if (this.hasDurationSelectTarget) {
       this.durationFieldTarget.value = this.durationSelectTarget.value
     }
@@ -42,6 +47,34 @@ export default class extends Controller {
 
     this.durationFieldTarget.value = this.durationSelectTarget.value
     this.enabledFieldTarget.value = "true"
+    this.formTarget.requestSubmit()
+  }
+
+  toggleHistory() {
+    if (!this.enabledValue) return
+
+    const newState = this.historyCheckboxTarget.checked
+    this.shareHistoryFieldTarget.value = newState ? "true" : "false"
+    this.enabledFieldTarget.value = "true"
+
+    if (this.hasDurationSelectTarget) {
+      this.durationFieldTarget.value = this.durationSelectTarget.value
+    }
+
+    this.formTarget.requestSubmit()
+  }
+
+  changeHistoryWindow() {
+    if (!this.enabledValue) return
+
+    this.historyWindowFieldTarget.value = this.historyWindowSelectTarget.value
+    this.shareHistoryFieldTarget.value = "true"
+    this.enabledFieldTarget.value = "true"
+
+    if (this.hasDurationSelectTarget) {
+      this.durationFieldTarget.value = this.durationSelectTarget.value
+    }
+
     this.formTarget.requestSubmit()
   }
 
@@ -62,6 +95,8 @@ export default class extends Controller {
       if (this.hasCheckboxTarget) this.checkboxTarget.checked = false
       if (this.hasDurationContainerTarget)
         this.durationContainerTarget.classList.add("hidden")
+      if (this.hasHistoryContainerTarget)
+        this.historyContainerTarget.classList.add("hidden")
       Flash.show("info", "Location sharing has expired")
 
       document.dispatchEvent(

@@ -2,12 +2,13 @@
 
 class DawarichSettings
   BASIC_PAID_PLAN_LIMIT = 10_000_000 # 10 million points
+  LITE_DATA_WINDOW = 12.months
 
   class << self
     def reverse_geocoding_enabled?
       return @reverse_geocoding_enabled if defined?(@reverse_geocoding_enabled)
 
-      @reverse_geocoding_enabled = photon_enabled? || geoapify_enabled? || nominatim_enabled?
+      @reverse_geocoding_enabled ||= photon_enabled? || geoapify_enabled? || nominatim_enabled? || locationiq_enabled?
     end
 
     def photon_enabled?
@@ -26,6 +27,10 @@ class DawarichSettings
       return @geoapify_enabled if defined?(@geoapify_enabled)
 
       @geoapify_enabled = GEOAPIFY_API_KEY.present?
+    end
+
+    def locationiq_enabled?
+      @locationiq_enabled ||= LOCATIONIQ_API_KEY.present?
     end
 
     def self_hosted?
@@ -108,6 +113,14 @@ class DawarichSettings
       body['status'] == 'ok'
     rescue StandardError
       false
+    end
+
+    def registration_enabled?
+      Rails.cache.fetch('dawarich/registration_enabled') { ALLOW_EMAIL_PASSWORD_REGISTRATION }
+    end
+
+    def set_registration_enabled(enabled)
+      Rails.cache.write('dawarich/registration_enabled', enabled)
     end
   end
 end

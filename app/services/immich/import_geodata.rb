@@ -14,7 +14,10 @@ class Immich::ImportGeodata
 
     return log_no_data if immich_data.blank?
 
-    immich_data_json  = parse_immich_data(immich_data)
+    immich_data_json = parse_immich_data(immich_data)
+
+    return log_no_data if immich_data_json.blank?
+
     file_name         = file_name(immich_data_json)
     import            = user.imports.find_or_initialize_by(name: file_name, source: :immich_api)
 
@@ -47,7 +50,9 @@ class Immich::ImportGeodata
 
   def valid?(asset)
     asset.dig('exifInfo', 'latitude') &&
+      asset.dig('exifInfo', 'latitude') != 0 &&
       asset.dig('exifInfo', 'longitude') &&
+      asset.dig('exifInfo', 'longitude') != 0 &&
       asset.dig('exifInfo', 'dateTimeOriginal')
   end
 

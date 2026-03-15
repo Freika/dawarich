@@ -86,6 +86,74 @@ RSpec.describe '/digests', type: :request do
         expect(response).to redirect_to(users_digests_path)
         expect(flash[:alert]).to eq('Digest not found')
       end
+
+      context 'when user is on Pro plan' do
+        before { user.update_column(:plan, User.plans[:pro]) }
+
+        it 'shows full digest with monthly chart and detailed stats' do
+          get users_digest_url(year: 2024)
+
+          expect(response.body).to include('Your Year, Month by Month')
+          expect(response.body).to include('First Time Visits')
+          expect(response.body).to include('All-Time Stats')
+          expect(response.body).to include('Countries & Cities')
+        end
+      end
+
+      context 'when user is on Lite plan' do
+        before do
+          allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+          user.update_column(:plan, User.plans[:lite])
+        end
+
+        it 'shows limited digest without monthly chart' do
+          get users_digest_url(year: 2024)
+
+          expect(response.body).to include('Distance Traveled')
+          expect(response.body).to include('Countries')
+          expect(response.body).to include('Cities')
+          expect(response.body).not_to include('Your Year, Month by Month')
+        end
+
+        it 'does not show first time visits detail' do
+          get users_digest_url(year: 2024)
+
+          expect(response.body).not_to include('First Time Visits')
+        end
+
+        it 'does not show all-time stats' do
+          get users_digest_url(year: 2024)
+
+          expect(response.body).not_to include('All-Time Stats')
+        end
+
+        it 'does not show detailed countries and cities list' do
+          get users_digest_url(year: 2024)
+
+          expect(response.body).not_to include('Countries & Cities')
+        end
+
+        it 'shows an upgrade prompt' do
+          get users_digest_url(year: 2024)
+
+          expect(response.body).to include('Upgrade to Pro')
+          expect(response.body).to include('full year-in-review')
+        end
+      end
+
+      context 'when self-hosted (bypasses plan gates)' do
+        before do
+          allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+          user.update_column(:plan, User.plans[:lite])
+        end
+
+        it 'shows full digest regardless of plan' do
+          get users_digest_url(year: 2024)
+
+          expect(response.body).to include('Your Year, Month by Month')
+          expect(response.body).to include('All-Time Stats')
+        end
+      end
     end
 
     describe 'POST /create' do
