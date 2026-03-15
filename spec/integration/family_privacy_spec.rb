@@ -22,7 +22,7 @@ RSpec.describe 'Family Privacy Enforcement', type: :model do
   describe 'sharing lifecycle' do
     it 'exposes location and history when sharing is enabled, hides when disabled' do
       # User A enables sharing
-      user_a.update_family_location_sharing!(true, duration: 'permanent')
+      user_a.update_family_location_sharing!(true, duration: 'permanent', share_history: true)
       user_a.update!(
         settings: user_a.settings.deep_merge(
           'family' => { 'location_sharing' => { 'started_at' => 1.week.ago.iso8601 } }
@@ -46,9 +46,10 @@ RSpec.describe 'Family Privacy Enforcement', type: :model do
       # User A disables sharing
       user_a.update_family_location_sharing!(false)
 
-      # User B sees NOTHING
-      expect(locations_service.call).to be_empty
-      expect(locations_service.history(start_at: 1.day.ago, end_at: Time.current)).to be_empty
+      # User B sees NOTHING (fresh service to avoid cached associations)
+      fresh_service = Families::Locations.new(user_b.reload)
+      expect(fresh_service.call).to be_empty
+      expect(fresh_service.history(start_at: 1.day.ago, end_at: Time.current)).to be_empty
     end
 
     it 'resets sharing_started_at on re-enable, hiding pre-disable history' do
@@ -82,7 +83,7 @@ RSpec.describe 'Family Privacy Enforcement', type: :model do
 
   describe '1-year cap enforcement' do
     it 'caps history at 1 year even when sharing has been on longer' do
-      user_a.update_family_location_sharing!(true, duration: 'permanent')
+      user_a.update_family_location_sharing!(true, duration: 'permanent', share_history: true, history_window: 'all')
       user_a.update!(
         settings: user_a.settings.deep_merge(
           'family' => { 'location_sharing' => { 'started_at' => 2.years.ago.iso8601 } }

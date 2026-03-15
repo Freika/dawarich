@@ -51,7 +51,7 @@ RSpec.describe Families::Locations do
 
     context 'when family member has sharing enabled' do
       before do
-        other_user.update_family_location_sharing!(true, duration: 'permanent')
+        other_user.update_family_location_sharing!(true, duration: 'permanent', share_history: true)
         other_user.update!(
           settings: other_user.settings.deep_merge(
             'family' => { 'location_sharing' => { 'started_at' => 1.week.ago.iso8601 } }

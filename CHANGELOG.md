@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Fix IDL-crossing route segmenter returning inconsistent coordinate types. `unwrapCoordinates` now always returns a uniform array-of-arrays structure. #2038
 - Fix a migration taking too long. #2375
 - Fix family sharing not including the requesting user's own location. #2153
+- The "Destroy" button on the trip page is now orange. #2348
 
 ## [1.3.3] - 2026-03-12
 

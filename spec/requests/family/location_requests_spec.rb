@@ -81,10 +81,9 @@ RSpec.describe 'Family::LocationRequests', type: :request do
     context 'when signed in as target user requesting non-existent record' do
       before { sign_in target_user }
 
-      it 'raises ActiveRecord::RecordNotFound' do
-        expect do
-          get family_location_request_path(id: 999_999)
-        end.to raise_error(ActiveRecord::RecordNotFound)
+      it 'returns 404 for non-existent record' do
+        get family_location_request_path(id: 999_999)
+        expect(response).to have_http_status(:not_found)
       end
     end
   end
