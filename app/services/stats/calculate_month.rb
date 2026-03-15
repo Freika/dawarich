@@ -56,7 +56,7 @@ class Stats::CalculateMonth
               .points
               .without_raw_data
               .where(timestamp: start_timestamp..end_timestamp)
-              .select(:lonlat, :timestamp, :city, :country_name)
+              .select(:lonlat, :timestamp, :city, :country_name, :country_id)
               .order(timestamp: :asc)
   end
 

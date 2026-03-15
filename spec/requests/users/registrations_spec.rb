@@ -368,6 +368,102 @@ RSpec.describe 'Users::Registrations', type: :request do
     end
   end
 
+  describe 'Signup Intent Tracking' do
+    context 'when self-hosted mode is disabled' do
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      end
+
+      it 'shows signup intent dropdown on registration page' do
+        get new_user_registration_path
+
+        expect(response.body).to include('How do you plan to use Dawarich?')
+        expect(response.body).to include('cloud')
+        expect(response.body).to include('self_hosted_demo')
+      end
+
+      it 'does not show signup intent dropdown for family invitations' do
+        get new_user_registration_path(invitation_token: invitation.token)
+
+        expect(response.body).not_to include('How do you plan to use Dawarich?')
+      end
+
+      it 'stores cloud intent in user settings' do
+        unique_email = "intent-cloud-#{Time.current.to_i}@example.com"
+        post user_registration_path, params: {
+          user: {
+            email: unique_email,
+            password: 'password123',
+            password_confirmation: 'password123',
+            signup_intent: 'cloud'
+          }
+        }
+
+        user = User.find_by(email: unique_email)
+        expect(user.settings['signup_intent']).to eq('cloud')
+      end
+
+      it 'stores self_hosted_demo intent in user settings' do
+        unique_email = "intent-demo-#{Time.current.to_i}@example.com"
+        post user_registration_path, params: {
+          user: {
+            email: unique_email,
+            password: 'password123',
+            password_confirmation: 'password123',
+            signup_intent: 'self_hosted_demo'
+          }
+        }
+
+        user = User.find_by(email: unique_email)
+        expect(user.settings['signup_intent']).to eq('self_hosted_demo')
+      end
+
+      it 'ignores invalid intent values' do
+        unique_email = "intent-invalid-#{Time.current.to_i}@example.com"
+        post user_registration_path, params: {
+          user: {
+            email: unique_email,
+            password: 'password123',
+            password_confirmation: 'password123',
+            signup_intent: 'hacker'
+          }
+        }
+
+        user = User.find_by(email: unique_email)
+        expect(user.settings['signup_intent']).to be_nil
+      end
+    end
+
+    context 'when self-hosted mode is enabled' do
+      before do
+        allow(ENV).to receive(:[]).and_call_original
+        allow(ENV).to receive(:[]).with('SELF_HOSTED').and_return('true')
+        stub_const('ALLOW_EMAIL_PASSWORD_REGISTRATION', true)
+      end
+
+      it 'does not show signup intent dropdown' do
+        get new_user_registration_path
+
+        expect(response.body).not_to include('How do you plan to use Dawarich?')
+      end
+
+      it 'does not store signup intent even if param is sent' do
+        unique_email = "intent-selfhosted-#{Time.current.to_i}@example.com"
+        post user_registration_path, params: {
+          user: {
+            email: unique_email,
+            password: 'password123',
+            password_confirmation: 'password123',
+            signup_intent: 'cloud'
+          }
+        }
+
+        user = User.find_by(email: unique_email)
+        expect(user.settings['signup_intent']).to be_nil
+      end
+    end
+  end
+
   describe 'Validation Error Handling' do
     # Allow email/password registration for these tests
     before do

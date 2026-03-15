@@ -1,0 +1,40 @@
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
+  <div style="background-color: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+    <h2 style="color: #1f2937; margin-bottom: 20px; text-align: center;">Location Request</h2>
+
+    <p style="color: #374151; line-height: 1.6;">Hi there!</p>
+
+    <p style="color: #374151; line-height: 1.6;">
+      <strong><%= @requester.email %></strong> is requesting your location on Dawarich.
+    </p>
+
+    <div style="background-color: #f3f4f6; padding: 20px; border-radius: 6px; margin: 20px 0;">
+      <p style="color: #374151; margin: 0;">
+        You can review this request and choose to accept or decline it.
+        If you accept, you can select how long to share your location (1 hour, 6 hours, 12 hours, 24 hours, or permanently).
+      </p>
+    </div>
+
+    <div style="text-align: center; margin: 30px 0;">
+      <%= link_to "View Request", @request_url,
+          style: "background-color: #4f46e5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600;" %>
+    </div>
+
+    <div style="background-color: #fef3cd; border: 1px solid #f59e0b; border-radius: 6px; padding: 15px; margin: 20px 0;">
+      <p style="margin: 0; color: #92400e; font-size: 14px;">
+        <strong>⏰ Important:</strong> This request will expire in 24 hours if not acted upon.
+      </p>
+    </div>
+
+    <p style="color: #6b7280; font-size: 14px; line-height: 1.6;">
+      If you don't want to share your location, simply ignore this request or decline it.
+    </p>
+
+    <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
+
+    <p style="color: #6b7280; font-size: 14px; line-height: 1.6; text-align: center;">
+      Best regards,<br>
+      Evgenii from Dawarich
+    </p>
+  </div>
+</div>

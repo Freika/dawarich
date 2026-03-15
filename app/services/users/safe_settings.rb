@@ -16,7 +16,7 @@ class Users::SafeSettings
     'time_threshold_minutes' => 30,
     'merge_threshold_minutes' => 15,
     'live_map_enabled' => true,
-    'route_opacity' => 60,
+    'route_opacity' => 0.6,
     'immich_url' => nil,
     'immich_api_key' => nil,
     'immich_skip_ssl_verification' => false,

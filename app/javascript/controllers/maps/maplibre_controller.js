@@ -396,6 +396,12 @@ export default class extends Controller {
     this._clearDayHighlight()
     this.loadMapData()
     this.refreshTimelineFeedIfActive()
+    this.debouncedLoadFamilyHistory()
+  }
+
+  debouncedLoadFamilyHistory() {
+    if (this._familyHistoryTimer) clearTimeout(this._familyHistoryTimer)
+    this._familyHistoryTimer = setTimeout(() => this.loadFamilyHistory(), 300)
   }
 
   /**
@@ -1201,9 +1207,81 @@ export default class extends Controller {
       this.renderFamilyMembersList(locations)
 
       Toast.success(`Loaded ${locations.length} family member(s)`)
+
+      // Load history polylines
+      this.loadFamilyHistory()
     } catch (error) {
       console.error("[Maps V2] Failed to load family members:", error)
       Toast.error("Failed to load family members")
+    }
+  }
+
+  async loadFamilyHistory() {
+    try {
+      const startAt = this.startDateValue
+      const endAt = this.endDateValue
+      if (!startAt || !endAt) return
+
+      const params = new URLSearchParams({ start_at: startAt, end_at: endAt })
+      const response = await fetch(
+        `/api/v1/families/locations/history?${params}`,
+        {
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${this.apiKeyValue}`,
+          },
+        },
+      )
+
+      if (!response.ok) return
+
+      const data = await response.json()
+      const members = data.members || []
+
+      const familyLayer = this.layerManager.getLayer("family")
+      if (familyLayer) {
+        if (members.length > 0) {
+          // Assign colors consistent with member markers
+          for (const member of members) {
+            member.color = this.getFamilyMemberColor(member.user_id)
+          }
+          familyLayer.loadMemberHistory(members)
+        } else {
+          familyLayer.clearHistory()
+        }
+      }
+
+      // Update member info lines with sharing_since data
+      this._familyHistoryData = members
+      this.updateFamilyInfoLines(members)
+    } catch (error) {
+      console.error("[Maps V2] Failed to load family history:", error)
+    }
+  }
+
+  updateFamilyInfoLines(historyMembers) {
+    if (!this.hasFamilyMembersContainerTarget) return
+
+    for (const member of historyMembers) {
+      const infoEl = this.familyMembersContainerTarget.querySelector(
+        `[data-member-info="${member.user_id}"]`,
+      )
+      if (!infoEl || !member.sharing_since) continue
+
+      const sharingDate = new Date(member.sharing_since)
+      const daysSharing = Math.min(
+        365,
+        Math.floor(
+          (Date.now() - sharingDate.getTime()) / (1000 * 60 * 60 * 24),
+        ),
+      )
+      const formattedDate = sharingDate.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+      })
+
+      infoEl.textContent = `Sharing since ${formattedDate} (${daysSharing} day${daysSharing !== 1 ? "s" : ""} of history)`
     }
   }
 
@@ -1240,6 +1318,7 @@ export default class extends Controller {
           <div class="flex-1 min-w-0">
             <div class="text-sm font-medium truncate">${location.email || "Unknown"}</div>
             <div class="text-xs text-base-content/60">${lastSeen}</div>
+            <div class="text-xs text-info/70" data-member-info="${location.user_id}"></div>
           </div>
         </div>
       `

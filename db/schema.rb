@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_03_10_000006) do
+ActiveRecord::Schema[8.0].define(version: 2026_03_14_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
@@ -145,6 +145,22 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_10_000006) do
     t.index ["status", "expires_at"], name: "index_family_invitations_on_status_and_expires_at"
     t.index ["status", "updated_at"], name: "index_family_invitations_on_status_and_updated_at"
     t.index ["token"], name: "index_family_invitations_on_token", unique: true
+  end
+
+  create_table "family_location_requests", force: :cascade do |t|
+    t.bigint "requester_id", null: false
+    t.bigint "target_user_id", null: false
+    t.bigint "family_id", null: false
+    t.integer "status", default: 0, null: false
+    t.string "suggested_duration", default: "24h", null: false
+    t.datetime "expires_at", null: false
+    t.datetime "responded_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["expires_at", "status"], name: "idx_family_loc_requests_expires_status"
+    t.index ["family_id"], name: "index_family_location_requests_on_family_id"
+    t.index ["requester_id", "target_user_id", "status"], name: "idx_family_loc_requests_requester_target_status"
+    t.index ["target_user_id", "status"], name: "idx_family_loc_requests_target_status"
   end
 
   create_table "family_memberships", force: :cascade do |t|
@@ -546,6 +562,9 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_10_000006) do
   add_foreign_key "families", "users", column: "creator_id"
   add_foreign_key "family_invitations", "families"
   add_foreign_key "family_invitations", "users", column: "invited_by_id"
+  add_foreign_key "family_location_requests", "families"
+  add_foreign_key "family_location_requests", "users", column: "requester_id"
+  add_foreign_key "family_location_requests", "users", column: "target_user_id"
   add_foreign_key "family_memberships", "families"
   add_foreign_key "family_memberships", "users"
   add_foreign_key "notifications", "users"

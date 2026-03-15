@@ -10,9 +10,9 @@ export function formatDistance(distance, unit = "km") {
     // If the distance is less than 1 mile, return it in feet
     if (distance < 1) {
       distance *= 5280 // Convert miles to feet
-      return `${distance.toFixed(2)} ${smallUnit}`
+      return `${Math.round(distance)} ${smallUnit}`
     } else {
-      return `${distance.toFixed(2)} ${bigUnit}`
+      return `${distance < 10 ? distance.toFixed(1) : Math.round(distance)} ${bigUnit}`
     }
   } else {
     smallUnit = "m"
@@ -21,9 +21,9 @@ export function formatDistance(distance, unit = "km") {
     // If the distance is less than 1 km, return it in meters
     if (distance < 1) {
       distance *= 1000 // Convert km to meters
-      return `${distance.toFixed(2)} ${smallUnit}`
+      return `${Math.round(distance)} ${smallUnit}`
     } else {
-      return `${distance.toFixed(2)} ${bigUnit}`
+      return `${distance < 10 ? distance.toFixed(1) : Math.round(distance)} ${bigUnit}`
     }
   }
 }
