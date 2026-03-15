@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.4.0] - Unreleased
+
+## Added
+
+- Video service integration. Users can now connect Dawarich to a video service (self-hosted or cloud) to automatically generate videos from their tracks.
+
+
+
 ## [1.3.4] - 2026-03-15
 
 ### Changed
@@ -69,6 +77,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Numeric-only strings passed to timestamp API parameters (e.g. `start_at`, `end_at`) are now treated as Unix timestamps directly. Previously they were passed through `Time.zone.parse`, which could return unexpected results. If you were relying on the old behavior for numeric strings, update your API calls accordingly.
 - The user serializer now includes `plan` in the `subscription` object.
+
 
 ## [1.3.1] - 2026-02-27
 

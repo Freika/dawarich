@@ -1,0 +1,127 @@
+export const DEFAULT_ROUTE_COLOR = "#3b82f6"
+export const DEFAULT_MARKER_COLOR = "#ef4444"
+
+export const LANDSCAPE_LAYOUTS = [
+  { value: "bottom_bar", label: "Bottom Bar" },
+  { value: "corner_hud", label: "Corner HUD" },
+  { value: "bottom_left", label: "Bottom-Left" },
+  { value: "cinematic_strip", label: "Cinematic Strip" },
+]
+
+export const PORTRAIT_LAYOUTS = [
+  { value: "bottom_stack", label: "Bottom Stack" },
+  { value: "bottom_row_card", label: "Bottom Row" },
+  { value: "split_bands", label: "Split Bands" },
+  { value: "right_rail", label: "Right Rail" },
+  { value: "floating_pills", label: "Floating Pills" },
+]
+
+export const PRESETS = {
+  sporty: {
+    orientation: "landscape",
+    overlay_layout: "bottom_bar",
+    map_style: "dark",
+    target_duration: "30",
+    map_behavior: "follow_direction",
+    fit_full_route: false,
+    route_color: "#3b82f6",
+    route_width: "4",
+    marker_style: "dot",
+    marker_color: "#ef4444",
+    overlay_time: true,
+    overlay_speed: true,
+    overlay_distance: true,
+    overlay_track_name: true,
+  },
+  minimal: {
+    orientation: "landscape",
+    overlay_layout: "cinematic_strip",
+    map_style: "white",
+    target_duration: "30",
+    map_behavior: "north_up",
+    fit_full_route: false,
+    route_color: "#1a1a2e",
+    route_width: "4",
+    marker_style: "dot",
+    marker_color: "#374151",
+    overlay_time: false,
+    overlay_speed: false,
+    overlay_distance: true,
+    overlay_track_name: false,
+  },
+  social: {
+    orientation: "portrait",
+    overlay_layout: "bottom_row_card",
+    map_style: "dark",
+    target_duration: "15",
+    map_behavior: "follow_direction",
+    fit_full_route: false,
+    route_color: "#3b82f6",
+    route_width: "4",
+    marker_style: "dot",
+    marker_color: "#ef4444",
+    overlay_time: true,
+    overlay_speed: true,
+    overlay_distance: true,
+    overlay_track_name: true,
+  },
+  cinematic: {
+    orientation: "landscape",
+    overlay_layout: "corner_hud",
+    map_style: "grayscale",
+    target_duration: "60",
+    map_behavior: "follow_direction",
+    fit_full_route: true,
+    route_color: "#f97316",
+    route_width: "4",
+    marker_style: "arrow",
+    marker_color: "#f97316",
+    overlay_time: true,
+    overlay_speed: false,
+    overlay_distance: true,
+    overlay_track_name: false,
+  },
+}
+
+export const SCREEN_PRESETS = {
+  sporty: {
+    portrait: false,
+    presets: [
+      { key: "sporty_neon_pulse", label: "Neon Pulse" },
+      { key: "sporty_volt", label: "Volt" },
+      { key: "sporty_blaze", label: "Blaze" },
+      { key: "sporty_apex", label: "Apex" },
+      { key: "sporty_midnight_run", label: "Midnight Run" },
+    ],
+  },
+  minimal: {
+    portrait: false,
+    presets: [
+      { key: "minimal_paper", label: "Paper" },
+      { key: "minimal_ink", label: "Ink" },
+      { key: "minimal_fog", label: "Fog" },
+      { key: "minimal_mono", label: "Mono" },
+      { key: "minimal_breath", label: "Breath" },
+    ],
+  },
+  social: {
+    portrait: true,
+    presets: [
+      { key: "social_coral_sunset", label: "Coral Sunset" },
+      { key: "social_electric_teal", label: "Electric Teal" },
+      { key: "social_golden_hour", label: "Golden Hour" },
+      { key: "social_ultraviolet", label: "Ultraviolet" },
+      { key: "social_neon_candy", label: "Neon Candy" },
+    ],
+  },
+  cinematic: {
+    portrait: false,
+    presets: [
+      { key: "cinematic_amber", label: "Amber" },
+      { key: "cinematic_slate", label: "Slate" },
+      { key: "cinematic_noir", label: "Noir" },
+      { key: "cinematic_burgundy", label: "Burgundy" },
+      { key: "cinematic_deep_blue", label: "Deep Blue" },
+    ],
+  },
+}

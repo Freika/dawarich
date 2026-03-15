@@ -538,6 +538,24 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_15_000001) do
 
   add_check_constraint "users", "admin IS NOT NULL", name: "users_admin_null", validate: false
 
+  create_table "video_exports", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "track_id"
+    t.datetime "start_at", null: false
+    t.datetime "end_at", null: false
+    t.integer "status", default: 0, null: false
+    t.jsonb "config", default: {}, null: false
+    t.string "error_message"
+    t.string "callback_nonce", null: false
+    t.datetime "processing_started_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["status"], name: "index_video_exports_on_status"
+    t.index ["track_id"], name: "index_video_exports_on_track_id"
+    t.index ["user_id", "status"], name: "index_video_exports_on_user_id_and_status"
+    t.index ["user_id"], name: "index_video_exports_on_user_id"
+  end
+
   create_table "visits", force: :cascade do |t|
     t.bigint "area_id"
     t.bigint "user_id", null: false

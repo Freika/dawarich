@@ -30,6 +30,7 @@ export default class extends Controller {
     startDate: String,
     endDate: String,
     timezone: String,
+    videoServiceEnabled: Boolean,
     userPlan: { type: String, default: "pro" },
     upgradeUrl: { type: String, default: "" },
   }
@@ -1714,6 +1715,20 @@ export default class extends Controller {
     // Start replay and update card button to Pause
     this._startReplayPlayback()
     this._updateTrackReplayButton(true)
+  }
+
+  /**
+   * Open the video export configuration modal for a track
+   */
+  openVideoExportModal(event) {
+    const detail = {
+      trackId: event.currentTarget.dataset.trackId
+        ? parseInt(event.currentTarget.dataset.trackId, 10)
+        : null,
+      startAt: event.currentTarget.dataset.trackStart,
+      endAt: event.currentTarget.dataset.trackEnd,
+    }
+    document.dispatchEvent(new CustomEvent("videoExport:open", { detail }))
   }
 
   /**
