@@ -9,6 +9,8 @@ module Points
 
     has_one_attached :file
 
+    after_commit :remove_attached_file, on: :destroy
+
     validates :year, :month, :chunk_number, :point_count, presence: true
     validates :year, numericality: { greater_than: 1970, less_than: 2100 }
     validates :month, numericality: { greater_than_or_equal_to: 1, less_than_or_equal_to: 12 }
@@ -66,6 +68,10 @@ module Points
       return unless metadata['expected_count'].blank? || metadata['actual_count'].blank?
 
       errors.add(:metadata, 'must contain expected_count and actual_count')
+    end
+
+    def remove_attached_file
+      file.purge_later
     end
   end
 end

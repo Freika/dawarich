@@ -27,7 +27,7 @@ class Points::Create
     end
 
     if created_points.any?
-      User.reset_counters(user.id, :points)
+      Users::ResetPointsCounterJob.perform_later(user.id)
       Tracks::RealtimeDebouncer.new(user.id).trigger
       Points::LiveBroadcaster.new(user.id, created_points, deduplicated_data).call
     end

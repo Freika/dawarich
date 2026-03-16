@@ -4,7 +4,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Fix intermittent 502/504 errors caused by `User.reset_counters(:points)` running synchronously during OwnTracks, Overland, and API point creation. The full `COUNT(*)` query blocked web workers for 60–500+ seconds on large accounts, starving all other requests. Counter reset now runs as a background job.
+
 ## [1.3.4] - 2026-03-15
+
+### Added
+
+- Family members can now share their location with each other. In the family settings, you can send a location sharing request to any family member. Once they accept it, you will be able to see their location on the map and they will be able to see yours. You can also revoke location sharing at any time. Location sharing is disabled by default for all existing families, so you need to enable it in the family settings if you want to use this feature.
 
 ### Changed
 

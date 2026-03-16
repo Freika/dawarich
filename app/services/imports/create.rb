@@ -28,7 +28,7 @@ class Imports::Create
     schedule_stats_creating(user.id)
     schedule_visit_suggesting(user.id, import)
     update_import_points_count(import)
-    User.reset_counters(user.id, :points)
+    Users::ResetPointsCounterJob.perform_later(user.id)
   rescue StandardError => e
     import.update!(status: :failed, error_message: e.message)
     broadcast_status_update

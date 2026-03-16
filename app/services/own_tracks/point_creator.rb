@@ -19,7 +19,7 @@ class OwnTracks::PointCreator
 
     result = upsert_points([payload])
     if result.any?
-      User.reset_counters(user_id, :points)
+      Users::ResetPointsCounterJob.perform_later(user_id)
       Tracks::RealtimeDebouncer.new(user_id).trigger
       Points::LiveBroadcaster.new(user_id, result, [payload]).call
     end
