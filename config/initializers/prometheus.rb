@@ -1,12 +1,14 @@
 # frozen_string_literal: true
 
+require_relative '../prometheus_helper'
+
 # Initialize Prometheus exporter for web processes, but exclude console, rake tasks, and tests
 should_initialize = DawarichSettings.prometheus_exporter_enabled? &&
                     !Rails.env.test? &&
                     !defined?(Rails::Console) &&
                     !File.basename($PROGRAM_NAME).include?('rake')
 
-if should_initialize
+if should_initialize && PrometheusHelper.ensure_reachable!
   require 'prometheus_exporter/middleware'
   require 'prometheus_exporter/instrumentation'
 

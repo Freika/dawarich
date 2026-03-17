@@ -46,16 +46,21 @@ plugin :tmp_restart
 # Prometheus exporter
 if ENV['PROMETHEUS_EXPORTER_ENABLED'].to_s == 'true'
   require 'prometheus_exporter/instrumentation'
+  require_relative 'prometheus_helper'
 
   before_fork do
-    PrometheusExporter::Client.default = PrometheusExporter::Client.new(
-      host: ENV.fetch('PROMETHEUS_EXPORTER_HOST', 'ANY'),
-      port: ENV.fetch('PROMETHEUS_EXPORTER_PORT', 9394)
-    )
+    if PrometheusHelper.ensure_reachable!
+      PrometheusExporter::Client.default = PrometheusExporter::Client.new(
+        host: ENV.fetch('PROMETHEUS_EXPORTER_HOST', 'ANY'),
+        port: ENV.fetch('PROMETHEUS_EXPORTER_PORT', 9394)
+      )
+    end
   end
 
   on_worker_boot do
-    require 'prometheus_exporter/instrumentation'
-    PrometheusExporter::Instrumentation::Puma.start
+    if PrometheusHelper.ensure_reachable!
+      require 'prometheus_exporter/instrumentation'
+      PrometheusExporter::Instrumentation::Puma.start
+    end
   end
 end

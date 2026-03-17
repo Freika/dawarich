@@ -21,7 +21,7 @@ class Overland::PointsCreator
 
     result = upsert_points(payload)
     if result.any?
-      Users::ResetPointsCounterJob.perform_later(user_id)
+      User.update_counters(user_id, points_count: result.size)
       Tracks::RealtimeDebouncer.new(user_id).trigger
       Points::LiveBroadcaster.new(user_id, result, payload).call
     end

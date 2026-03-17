@@ -1,52 +1,71 @@
 <% content_for :title, 'Imports' %>
 
 <div class="w-full my-5">
-  <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-    <h1 class="font-bold text-4xl">Imports</h1>
+  <% has_immich = current_user.safe_settings.immich_url.present? && current_user.safe_settings.immich_api_key.present? %>
+  <% has_photoprism = current_user.safe_settings.photoprism_url.present? && current_user.safe_settings.photoprism_api_key.present? %>
+  <% has_integrations = has_immich || has_photoprism %>
 
-    <div class="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap md:w-auto md:justify-end">
-      <%= link_to "New import", new_import_path, class: "rounded-lg bg-blue-600 px-5 py-3 text-center font-medium text-white" %>
-
-      <% if current_user.safe_settings.immich_url && current_user.safe_settings.immich_api_key %>
-        <%= link_to 'Import Immich data', settings_background_jobs_path(job_name: 'start_immich_import'), method: :post, data: { turbo_confirm: 'Are you sure?', turbo_method: :post }, class: 'rounded-lg bg-blue-600 px-5 py-3 text-center font-medium text-white' %>
-      <% else %>
-        <a href='' class="tooltip cursor-not-allowed rounded-lg bg-blue-900 px-5 py-3 text-center font-medium text-gray-500" data-tip="You need to provide your Immich instance data in the Settings">Import Immich data</a>
+  <%= render layout: 'shared/page_header', locals: { title: 'Imports' } do %>
+    <% if has_integrations %>
+      <div class="join">
+        <%= link_to new_import_path, class: "btn btn-primary btn-sm join-item" do %>
+          <%= icon 'circle-plus', class: 'w-4 h-4' %> New import
+        <% end %>
+        <div class="dropdown dropdown-end">
+          <label tabindex="0" class="btn btn-primary btn-sm join-item">
+            <%= icon 'chevron-down', class: 'w-4 h-4' %>
+          </label>
+          <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow-lg bg-base-100 rounded-lg w-52 mt-1 border border-base-300">
+            <% if has_immich %>
+              <li>
+                <%= link_to settings_background_jobs_path(job_name: 'start_immich_import'), method: :post, data: { turbo_confirm: 'Are you sure?', turbo_method: :post } do %>
+                  <%= icon 'camera', class: 'w-4 h-4' %> Import from Immich
+                <% end %>
+              </li>
+            <% end %>
+            <% if has_photoprism %>
+              <li>
+                <%= link_to settings_background_jobs_path(job_name: 'start_photoprism_import'), method: :post, data: { turbo_confirm: 'Are you sure?', turbo_method: :post } do %>
+                  <%= icon 'camera', class: 'w-4 h-4' %> Import from Photoprism
+                <% end %>
+              </li>
+            <% end %>
+          </ul>
+        </div>
+      </div>
+    <% else %>
+      <%= link_to new_import_path, class: "btn btn-primary btn-sm" do %>
+        <%= icon 'circle-plus', class: 'w-4 h-4' %> New import
       <% end %>
-      <% if current_user.safe_settings.photoprism_url && current_user.safe_settings.photoprism_api_key %>
-        <%= link_to 'Import Photoprism data', settings_background_jobs_path(job_name: 'start_photoprism_import'), method: :post, data: { turbo_confirm: 'Are you sure?', turbo_method: :post }, class: 'rounded-lg bg-blue-600 px-5 py-3 text-center font-medium text-white' %>
-      <% else %>
-        <a href='' class="tooltip cursor-not-allowed rounded-lg bg-blue-900 px-5 py-3 text-center font-medium text-gray-500" data-tip="You need to provide your Photoprism instance data in the Settings">Import Photoprism data</a>
-      <% end %>
-    </div>
-  </div>
+    <% end %>
+  <% end %>
 
   <%= turbo_stream_from current_user, :imports %>
   <div id="imports" class="min-w-full">
     <% if @imports.empty? %>
-      <div class="hero min-h-80 bg-base-200 my-5">
-        <div class="hero-content text-center">
-          <div class="max-w-md">
-            <h1 class="text-5xl font-bold">Hello there!</h1>
-            <p class="py-6">
-              Here you'll find your imports, but now there are none. Let's <%= link_to 'create one', new_import_path, class: 'link' %>!
-            </p>
-          </div>
-        </div>
+      <div class="text-center py-16 px-8 bg-base-200 rounded-xl border-2 border-dashed border-base-300">
+        <h3 class="text-xl font-bold mb-3">No imports yet</h3>
+        <p class="text-base-content/50 mb-6 max-w-sm mx-auto">
+          Import your location data from Google Maps Timeline, GPX files, OwnTracks, or other sources to start tracking.
+        </p>
+        <%= link_to new_import_path, class: 'btn btn-primary' do %>
+          <%= icon 'circle-plus', class: 'w-4 h-4' %> Create your first import
+        <% end %>
       </div>
     <% else %>
-      <div class="flex justify-center my-5">
+      <div class="flex justify-center mb-4">
         <%= paginate @imports %>
       </div>
-      <div class="overflow-x-auto">
-        <table class="table table-zebra overflow-x-auto">
-          <thead>
+      <div class="border border-base-300 rounded-xl overflow-hidden">
+        <table class="table w-full">
+          <thead class="bg-base-200">
             <tr>
-              <th><%= sortable_column 'Name', :name, :imports_path %></th>
-              <th><%= sortable_column 'File size', :byte_size, :imports_path %></th>
-              <th><%= sortable_column 'Imported points', :processed, :imports_path %></th>
-              <th><%= sortable_column 'Status', :status, :imports_path %></th>
-              <th><%= sortable_column 'Created at', :created_at, :imports_path %></th>
-              <th>Actions</th>
+              <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50"><%= sortable_column 'Name', :name, :imports_path %></th>
+              <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50"><%= sortable_column 'File size', :byte_size, :imports_path %></th>
+              <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50 text-right"><%= sortable_column 'Points', :processed, :imports_path %></th>
+              <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50"><%= sortable_column 'Status', :status, :imports_path %></th>
+              <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50"><%= sortable_column 'Created', :created_at, :imports_path %></th>
+              <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50 text-right">Actions</th>
             </tr>
           </thead>
           <tbody
@@ -60,7 +79,7 @@
           </tbody>
         </table>
       </div>
-      <div class="flex justify-center my-5">
+      <div class="flex justify-center mt-4">
         <%= paginate @imports %>
       </div>
     <% end %>

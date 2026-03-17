@@ -1,7 +1,7 @@
 <% content_for :title, 'Settings' %>
 
 <div class="min-h-content w-full my-5">
-  <h1 class="text-3xl font-bold mb-6">User Settings</h1>
+  <%= render 'shared/page_header', title: 'User Settings' %>
   <%= render 'settings/navigation' %>
 
   <% if @pro_required %>

@@ -1,0 +1,14 @@
+<% badge_class = case import.status
+  when 'completed' then 'bg-success/10 text-success'
+  when 'processing' then 'bg-info/10 text-info'
+  when 'created' then 'bg-warning/10 text-warning'
+  when 'failed' then 'bg-error/10 text-error'
+  when 'deleting' then 'bg-warning/10 text-warning'
+  else 'bg-base-200 text-base-content/50'
+  end %>
+<span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium <%= badge_class %>"><%= import.status.capitalize %></span>
+<% if import.failed? && import.error_message.present? %>
+  <span class="tooltip tooltip-left cursor-help inline-flex items-center ml-1" data-tip="<%= import.error_message %>">
+    <%= icon('circle-alert', class: ['w-3.5', 'h-3.5', 'text-error']) %>
+  </span>
+<% end %>

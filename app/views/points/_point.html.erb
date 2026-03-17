@@ -1,11 +1,12 @@
-<tr id="<%= dom_id point %>" class='hover'>
-  <td>
+<tr id="<%= dom_id point %>" class="hover:bg-base-200/50 transition-colors">
+  <td class="px-3 py-2 w-10">
     <%= check_box_tag "point_ids[]",
       point.id,
       nil,
       {
         multiple: true,
         form: :bulk_destroy_form,
+        class: 'checkbox checkbox-xs',
         data: {
           checkbox_select_all_target: 'child',
           action: 'change->checkbox-select-all#toggleParent'
@@ -13,8 +14,18 @@
       }
     %>
   </td>
-  <td class='<%= speed_text_color(point.velocity) %>'><%= point_speed(point.velocity, current_user.safe_settings.distance_unit) %></td>
-  <td><%= human_datetime_with_seconds(point.recorded_at) %></td>
-  <td><%= point.lat %>, <%= point.lon %></td>
-  <td></td>
+  <td class="px-3 py-2 text-sm tabular-nums whitespace-nowrap"><%= human_datetime_with_seconds(point.recorded_at) %></td>
+  <td class="px-3 py-2 text-sm tabular-nums text-base-content/50 whitespace-nowrap"><%= point.lat %>, <%= point.lon %></td>
+  <% if DawarichSettings.reverse_geocoding_enabled? %>
+    <td class="px-3 py-2 text-sm text-base-content/60 max-w-48 truncate">
+      <% if point.geodata.present? && point.geodata.is_a?(Hash) %>
+        <% props = point.geodata['properties'] || {} %>
+        <% parts = [props['street'], props['city'], props['country']].compact_blank %>
+        <%= parts.join(', ') if parts.any? %>
+      <% end %>
+    </td>
+  <% end %>
+  <td class="px-3 py-2 text-sm text-right tabular-nums font-medium whitespace-nowrap <%= speed_text_color(point.velocity) %>">
+    <%= point_speed(point.velocity, current_user.safe_settings.distance_unit) %>
+  </td>
 </tr>

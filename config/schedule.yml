@@ -70,6 +70,11 @@ family_location_requests_expiry_job:
   class: "Families::ExpireLocationRequestsJob"
   queue: default
 
+points_counter_correction_job:
+  cron: "0 */6 * * *" # every 6 hours
+  class: "Users::PointsCounterCorrectionJob"
+  queue: default
+
 lite_archival_warning_job:
   cron: "0 3 * * *" # every day at 03:00
   class: "Lite::ArchivalWarningJob"

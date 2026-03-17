@@ -16,6 +16,8 @@ class FamiliesController < ApplicationController
     @pending_requests = current_user.sent_location_requests.pending
                                     .where('expires_at > ?', Time.current)
                                     .index_by(&:target_user_id)
+
+    @member_locations = @members.filter_map(&:latest_location_for_family)
   end
 
   def new

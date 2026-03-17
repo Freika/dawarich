@@ -1,0 +1,13 @@
+<%# Inline skeleton lines for compact lazy-loaded content
+  Usage:
+    render 'shared/skeleton_lines'
+    render 'shared/skeleton_lines', lines: 2, gap: 'gap-2'
+%>
+<% lines ||= 3 %>
+<% gap ||= 'gap-2' %>
+<% line_widths = %w[w-full w-3/4 w-5/6 w-2/3 w-4/5] %>
+<div class="space-y-2 p-3">
+  <% lines.times do |i| %>
+    <div class="h-3 <%= line_widths[i % line_widths.size] %> bg-base-300 rounded animate-pulse"></div>
+  <% end %>
+</div>

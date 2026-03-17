@@ -21,7 +21,7 @@ module ApplicationHelper
   end
 
   def app_theme
-    current_user&.theme == 'light' ? 'light' : 'dark'
+    current_user&.theme == 'light' ? 'dawarich' : 'dawarich-dark'
   end
 
   def active_class?(link_path)

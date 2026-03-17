@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- The point counting was changed to be more efficient on bigger accounts.
+
 ### Fixed
 
 - Fix intermittent 502/504 errors caused by `User.reset_counters(:points)` running synchronously during OwnTracks, Overland, and API point creation. The full `COUNT(*)` query blocked web workers for 60–500+ seconds on large accounts, starving all other requests. Counter reset now runs as a background job.

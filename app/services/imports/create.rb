@@ -23,12 +23,14 @@ class Imports::Create
              end
 
     import.update!(source: source)
+    count_before = user.points_count
     importer(source).new(import, user.id, temp_file_path).call
+    new_count = user.points.count
+    User.update_counters(user.id, points_count: new_count - count_before)
 
     schedule_stats_creating(user.id)
     schedule_visit_suggesting(user.id, import)
     update_import_points_count(import)
-    Users::ResetPointsCounterJob.perform_later(user.id)
   rescue StandardError => e
     import.update!(status: :failed, error_message: e.message)
     broadcast_status_update

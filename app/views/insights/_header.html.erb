@@ -1,9 +1,9 @@
 <!-- Header -->
 <div class="mb-6">
-  <div class="flex items-center gap-2 mb-1 inline-block align-baseline">
-    <%= icon 'compass', class: 'w-8 h-8 text-primary' %>
+  <div class="flex items-center gap-2 mb-1">
+    <%= icon 'compass', class: 'w-7 h-7 text-primary' %>
     <h1 class="text-3xl font-bold">Insights</h1>
-    <p class="text-base-content/60">Your personal movement analytics and travel patterns</p>
+    <p class="text-base-content/60 hidden sm:inline">Your personal movement analytics and travel patterns</p>
   </div>
   <div class="flex gap-2 mt-2">
     <% if @available_years.any? %>
