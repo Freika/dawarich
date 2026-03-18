@@ -77,7 +77,9 @@ export default class extends Controller {
       if (chevron) chevron.style.transform = "rotate(180deg)"
 
       // Dispatch click event for the map controller
-      const connector = target.closest('.timeline-entry[data-entry-type="journey"]')
+      const connector = target.closest(
+        '.timeline-entry[data-entry-type="journey"]',
+      )
       if (connector) {
         const { startedAt, endedAt } = connector.dataset
         document.dispatchEvent(
@@ -105,14 +107,27 @@ export default class extends Controller {
    */
   entryHover(event) {
     const el = event.currentTarget
-    const { entryType, startedAt, endedAt, trackId, visitName, visitLat, visitLng } = el.dataset
+    const {
+      entryType,
+      startedAt,
+      endedAt,
+      trackId,
+      visitName,
+      visitLat,
+      visitLng,
+    } = el.dataset
     if (!startedAt || !endedAt) return
 
     document.dispatchEvent(
       new CustomEvent("timeline-feed:entry-hover", {
         detail: {
-          entryType, startedAt, endedAt, trackId,
-          visitName, visitLat, visitLng,
+          entryType,
+          startedAt,
+          endedAt,
+          trackId,
+          visitName,
+          visitLat,
+          visitLng,
         },
       }),
     )

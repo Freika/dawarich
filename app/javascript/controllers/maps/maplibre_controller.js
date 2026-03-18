@@ -676,7 +676,15 @@ export default class extends Controller {
    * Highlights the matching route/visit on the map by dimming everything else.
    */
   handleEntryHover(event) {
-    const { entryType, startedAt, endedAt, trackId, visitName, visitLat, visitLng } = event.detail
+    const {
+      entryType,
+      startedAt,
+      endedAt,
+      trackId,
+      visitName,
+      visitLat,
+      visitLng,
+    } = event.detail
     if (!this.map || !startedAt || !endedAt) return
 
     this._entryHighlightActive = true
@@ -761,7 +769,7 @@ export default class extends Controller {
     if (entryType === "visit" && visitLat && visitLng) {
       const lat = parseFloat(visitLat)
       const lng = parseFloat(visitLng)
-      if (!isNaN(lat) && !isNaN(lng)) {
+      if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
         this._removeHoverPopup()
         this._hoverPopup = new maplibregl.Popup({
           closeButton: false,
@@ -770,7 +778,9 @@ export default class extends Controller {
           className: "timeline-hover-popup",
         })
           .setLngLat([lng, lat])
-          .setHTML(`<div style="font-size:13px;font-weight:500;padding:2px 0">${visitName || "Visit"}</div>`)
+          .setHTML(
+            `<div style="font-size:13px;font-weight:500;padding:2px 0">${visitName || "Visit"}</div>`,
+          )
           .addTo(this.map)
       }
     }

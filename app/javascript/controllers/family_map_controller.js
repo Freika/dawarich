@@ -3,7 +3,12 @@ import maplibregl from "maplibre-gl"
 import { getMapStyle } from "maps_maplibre/utils/style_manager"
 
 const MEMBER_COLORS = [
-  "#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899",
+  "#3b82f6",
+  "#10b981",
+  "#f59e0b",
+  "#ef4444",
+  "#8b5cf6",
+  "#ec4899",
 ]
 
 export default class extends Controller {
@@ -151,7 +156,7 @@ export default class extends Controller {
 
     // Fit bounds
     const bounds = new maplibregl.LngLatBounds()
-    locations.forEach((l) => bounds.extend([l.longitude, l.latitude]))
+    for (const l of locations) bounds.extend([l.longitude, l.latitude])
     this.map.fitBounds(bounds, { padding: 60, maxZoom: 14 })
   }
 
@@ -161,7 +166,7 @@ export default class extends Controller {
     const row = event.currentTarget
     const lon = parseFloat(row.dataset.lon)
     const lat = parseFloat(row.dataset.lat)
-    if (isNaN(lon) || isNaN(lat)) return
+    if (Number.isNaN(lon) || Number.isNaN(lat)) return
 
     this.map.flyTo({
       center: [lon, lat],

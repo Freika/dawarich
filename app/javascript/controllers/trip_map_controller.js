@@ -82,7 +82,7 @@ export default class extends Controller {
 
     // Fit bounds to route
     const bounds = new maplibregl.LngLatBounds()
-    coordinates.forEach((coord) => bounds.extend(coord))
+    for (const coord of coordinates) bounds.extend(coord)
     this.map.fitBounds(bounds, { padding: 30, maxZoom: 15, duration: 0 })
   }
 

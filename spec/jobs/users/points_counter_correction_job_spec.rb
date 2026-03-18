@@ -19,7 +19,7 @@ RSpec.describe Users::PointsCounterCorrectionJob do
       create_list(:point, 2, user: user)
       user.update_column(:points_count, 2)
 
-      expect { described_class.new.perform }.not_to change { user.reload.updated_at }
+      expect { described_class.new.perform }.not_to(change { user.reload.updated_at })
 
       expect(user.reload.points_count).to eq(2)
     end
