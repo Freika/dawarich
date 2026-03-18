@@ -19,7 +19,9 @@ RSpec.describe Points::RawData::VerifyRandomJob, type: :job do
     context 'when there are unverified archives' do
       let(:user) { create(:user) }
       let!(:archives) do
-        create_list(:points_raw_data_archive, 3, user: user, verified_at: nil)
+        3.times.map do |i|
+          create(:points_raw_data_archive, user: user, verified_at: nil, chunk_number: i + 1)
+        end
       end
 
       it 'verifies unverified archives' do

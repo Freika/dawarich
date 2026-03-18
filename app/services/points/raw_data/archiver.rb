@@ -45,7 +45,7 @@ module Points
 
         lock_acquired = ActiveRecord::Base.with_advisory_lock(lock_key, timeout_seconds: 0) do
           point_ids = find_month_point_ids(user_id, year, month)
-          return if point_ids.empty?
+          next true if point_ids.empty?
 
           # Process in chunks for large months
           point_ids.each_slice(CHUNK_SIZE) do |chunk_ids|
@@ -68,7 +68,7 @@ module Points
         encrypted = Encryption.encrypt(compressed[:data])
 
         first_ts = Point.where(id: point_ids.first).pick(:timestamp)
-        time = Time.zone.at(first_ts)
+        time = Time.at(first_ts).utc
 
         archive = create_archive_record(user_id, time, point_ids, encrypted, compressed)
         flag_points_batched(point_ids, archive.id)
@@ -94,6 +94,17 @@ module Points
       def validate_count!(user_id, point_ids, actual_count)
         expected_count = point_ids.size
         return if actual_count == expected_count
+
+        first_ts = Point.where(id: point_ids.first).pick(:timestamp)
+        time = first_ts ? Time.at(first_ts).utc : Time.current.utc
+
+        Metrics::Archives::CountMismatch.new(
+          user_id: user_id,
+          year: time.year,
+          month: time.month,
+          expected: expected_count,
+          actual: actual_count
+        ).call
 
         error_msg = "Archive count mismatch for user #{user_id}: " \
                     "expected #{expected_count}, got #{actual_count}"
