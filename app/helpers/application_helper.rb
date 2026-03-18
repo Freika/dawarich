@@ -186,4 +186,28 @@ module ApplicationHelper
       concat sort_icon
     end
   end
+
+  STATUS_BADGE_CLASSES = {
+    'completed' => 'bg-success/10 text-success',
+    'processing' => 'bg-info/10 text-info',
+    'created' => 'bg-warning/10 text-warning',
+    'failed' => 'bg-error/10 text-error',
+    'deleting' => 'bg-warning/10 text-warning'
+  }.freeze
+
+  def status_badge(record)
+    badge_class = STATUS_BADGE_CLASSES[record.status] || 'bg-base-200 text-base-content/50'
+
+    badge = content_tag(:span, record.status.capitalize,
+                        class: "inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium #{badge_class}")
+
+    if record.failed? && record.respond_to?(:error_message) && record.error_message.present?
+      error_icon = content_tag(:span, icon('circle-alert', class: %w[w-3.5 h-3.5 text-error]),
+                               class: 'tooltip tooltip-left cursor-help inline-flex items-center ml-1',
+                               data: { tip: record.error_message })
+      safe_join([badge, error_icon])
+    else
+      badge
+    end
+  end
 end

@@ -20,7 +20,7 @@
     <%= number_with_delimiter import.processed %>
   </td>
   <td class="px-4 py-3" data-status-display>
-    <%= render 'imports/status_badge', import: import %>
+    <%= status_badge(import) %>
   </td>
   <td class="px-4 py-3 text-sm text-base-content/50"><%= human_datetime(import.created_at) %></td>
   <td class="px-4 py-3 text-right">

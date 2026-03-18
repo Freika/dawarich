@@ -12,7 +12,7 @@
   </td>
   <td class="px-4 py-3 text-sm tabular-nums"><%= number_to_human_size(export.file&.byte_size) || 'N/A' %></td>
   <td class="px-4 py-3">
-    <%= render 'exports/status_badge', export: export %>
+    <%= status_badge(export) %>
   </td>
   <td class="px-4 py-3 text-sm text-base-content/50"><%= human_datetime(export.created_at) %></td>
   <td class="px-4 py-3 text-right">
