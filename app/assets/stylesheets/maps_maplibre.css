@@ -110,14 +110,16 @@
 }
 
 /* Dark theme support for progress badge */
-html[data-theme="dark"] .map-progress-badge,
+html[data-theme="dark"],
+html[data-theme="dawarich-dark"] .map-progress-badge,
 html.dark .map-progress-badge {
   background: rgba(31, 41, 55, 0.95);
   color: #d1d5db;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
-html[data-theme="dark"] .map-progress-badge-dot,
+html[data-theme="dark"],
+html[data-theme="dawarich-dark"] .map-progress-badge-dot,
 html.dark .map-progress-badge-dot {
   border-color: #4b5563;
   border-top-color: #60a5fa;
@@ -198,25 +200,29 @@ html.dark .map-progress-badge-dot {
 }
 
 /* Dark theme */
-html[data-theme="dark"] .maplibregl-popup-content,
+html[data-theme="dark"],
+html[data-theme="dawarich-dark"] .maplibregl-popup-content,
 html.dark .maplibregl-popup-content {
   background-color: #1f2937;
   color: #f9fafb;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
-html[data-theme="dark"] .maplibregl-popup-close-button,
+html[data-theme="dark"],
+html[data-theme="dawarich-dark"] .maplibregl-popup-close-button,
 html.dark .maplibregl-popup-close-button {
   color: #d1d5db;
 }
 
-html[data-theme="dark"] .maplibregl-popup-close-button:hover,
+html[data-theme="dark"],
+html[data-theme="dawarich-dark"] .maplibregl-popup-close-button:hover,
 html.dark .maplibregl-popup-close-button:hover {
   background-color: #374151;
   color: #f9fafb;
 }
 
-html[data-theme="dark"] .maplibregl-popup-tip,
+html[data-theme="dark"],
+html[data-theme="dawarich-dark"] .maplibregl-popup-tip,
 html.dark .maplibregl-popup-tip {
   border-top-color: #1f2937;
 }
@@ -287,14 +293,16 @@ html.dark .maplibregl-popup-tip {
 }
 
 /* Dark theme support for upgrade banner */
-html[data-theme="dark"] .map-upgrade-banner,
+html[data-theme="dark"],
+html[data-theme="dawarich-dark"] .map-upgrade-banner,
 html.dark .map-upgrade-banner {
   background: rgba(30, 41, 59, 0.92);
   border-color: rgba(59, 130, 246, 0.4);
   color: #e2e8f0;
 }
 
-html[data-theme="dark"] .map-upgrade-banner-dismiss,
+html[data-theme="dark"],
+html[data-theme="dawarich-dark"] .map-upgrade-banner-dismiss,
 html.dark .map-upgrade-banner-dismiss {
   color: #e2e8f0;
 }

@@ -13,39 +13,44 @@
   }
   mode = entry[:dominant_mode].presence || 'unknown'
   config = mode_config[mode] || mode_config['unknown']
+  start_time = Time.zone.parse(entry[:started_at]).strftime('%H:%M')
   duration = format_duration_short(entry[:duration])
   distance_text = entry[:distance] > 0 ? "#{entry[:distance]} #{entry[:distance_unit]}" : nil
   track_id = entry[:track_id]
   frame_id = "track-info-#{track_id}"
 %>
-<div class="timeline-journey-connector"
+<div class="timeline-entry"
      data-action="mouseenter->timeline-feed#entryHover mouseleave->timeline-feed#entryUnhover"
      data-entry-type="journey"
      data-started-at="<%= entry[:started_at] %>"
      data-ended-at="<%= entry[:ended_at] %>"
      data-track-id="<%= track_id %>">
-  <div class="timeline-journey-content<%= ' cursor-pointer' if track_id %>"
-       <% if track_id %>
-         data-action="click->timeline-feed#toggleTrackInfo"
-         data-track-id="<%= track_id %>"
-         data-frame-id="<%= frame_id %>"
-         data-track-start="<%= entry[:started_at] %>"
-       <% end %>>
-    <span><%= config[:emoji] %></span>
-    <span class="journey-mode"><%= config[:verb] %></span>
-    <% if distance_text %>
-      <span>&middot; <%= distance_text %></span>
-    <% end %>
-    <span>&middot; <%= duration %></span>
+  <div class="timeline-entry-time"><%= start_time %></div>
+  <div class="timeline-entry-content">
+    <div class="timeline-journey-content<%= ' cursor-pointer' if track_id %>"
+         <% if track_id %>
+           data-action="click->timeline-feed#toggleTrackInfo"
+           data-track-id="<%= track_id %>"
+           data-frame-id="<%= frame_id %>"
+           data-track-start="<%= entry[:started_at] %>"
+         <% end %>>
+      <span><%= config[:emoji] %></span>
+      <span class="journey-mode"><%= config[:verb] %></span>
+      <% if distance_text %>
+        <span>&middot; <%= distance_text %></span>
+      <% end %>
+      <span>&middot; <%= duration %></span>
+      <% if track_id %>
+        <svg class="w-3 h-3 transition-transform duration-200 track-info-chevron ml-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+      <% end %>
+    </div>
     <% if track_id %>
-      <svg class="w-3 h-3 transition-transform duration-200 track-info-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+      <turbo-frame id="<%= frame_id %>"
+                   class="hidden track-info-panel"
+                   data-timeline-feed-target="trackInfoFrame"
+                   loading="lazy">
+        <%= render 'shared/skeleton_lines', lines: 3 %>
+      </turbo-frame>
     <% end %>
   </div>
-  <% if track_id %>
-    <turbo-frame id="<%= frame_id %>"
-                 class="hidden track-info-panel"
-                 data-timeline-feed-target="trackInfoFrame"
-                 loading="lazy">
-    </turbo-frame>
-  <% end %>
 </div>

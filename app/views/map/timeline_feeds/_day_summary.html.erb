@@ -7,9 +7,9 @@
 %>
 <div class="space-y-2 py-1">
   <div class="timeline-summary-stats">
-    <span class="badge badge-sm badge-ghost"><%= summary[:total_distance] %> <%= summary[:distance_unit] %></span>
-    <span class="badge badge-sm badge-ghost"><%= summary[:places_visited] %> places</span>
-    <span class="badge badge-sm badge-ghost"><%= format_duration_short(moving * 60) %> moving</span>
+    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-primary/10 text-primary"><%= summary[:total_distance] %> <%= summary[:distance_unit] %></span>
+    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-secondary/10 text-secondary"><%= summary[:places_visited] %> places</span>
+    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-base-content/5 text-base-content/60"><%= format_duration_short(moving * 60) %> moving</span>
   </div>
   <% if total_minutes > 0 %>
     <div class="timeline-summary-bar" title="<%= moving_pct %>% moving · <%= stationary_pct %>% stationary">

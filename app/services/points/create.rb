@@ -21,13 +21,12 @@ class Points::Create
         unique_by: %i[lonlat timestamp user_id],
         returning: Arel.sql('id, timestamp, ST_X(lonlat::geometry) AS longitude, ST_Y(lonlat::geometry) AS latitude')
       )
-      # rubocop:enable Rails/SkipsModelValidations
-
       created_points.concat(result)
     end
 
     if created_points.any?
-      Users::ResetPointsCounterJob.perform_later(user.id)
+      User.update_counters(user.id, points_count: created_points.size)
+      # rubocop:enable Rails/SkipsModelValidations
       Tracks::RealtimeDebouncer.new(user.id).trigger
       Points::LiveBroadcaster.new(user.id, created_points, deduplicated_data).call
     end

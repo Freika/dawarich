@@ -1,7 +1,8 @@
 /* Leaflet Theme Styles - Light and Dark mode support */
 
 /* CSS Custom Properties for Light Theme */
-[data-theme="light"] {
+[data-theme="light"],
+[data-theme="dawarich"] {
   --leaflet-bg-color: #ffffff;
   --leaflet-text-color: #000000;
   --leaflet-border-color: #e5e7eb;
@@ -12,7 +13,8 @@
 }
 
 /* CSS Custom Properties for Dark Theme */
-[data-theme="dark"] {
+[data-theme="dark"],
+[data-theme="dawarich-dark"] {
   --leaflet-bg-color: #374151;
   --leaflet-text-color: #ffffff;
   --leaflet-border-color: #4b5563;

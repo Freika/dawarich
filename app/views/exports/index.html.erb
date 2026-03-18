@@ -1,35 +1,32 @@
 <% content_for :title, "Exports" %>
 
 <div class="w-full my-5">
-  <div class="flex justify-between items-center">
-    <h1 class="font-bold text-4xl">Exports</h1>
-  </div>
+  <%= render 'shared/page_header', title: 'Exports' %>
 
   <div id="exports" class="min-w-full">
     <% if @exports.empty? %>
-      <div class="hero min-h-80 bg-base-200 my-5">
-        <div class="hero-content text-center">
-          <div class="max-w-md">
-            <h1 class="text-5xl font-bold">Hello there!</h1>
-            <p class="py-6">
-              Here you'll find your exports, created on <%= link_to 'Points', points_url, class: 'link' %> page. But now there are none.
-            </p>
-          </div>
-        </div>
+      <div class="text-center py-16 px-8 bg-base-200 rounded-xl border-2 border-dashed border-base-300">
+        <h3 class="text-xl font-bold mb-3">No exports yet</h3>
+        <p class="text-base-content/50 mb-6 max-w-sm mx-auto">
+          Exports are created from the <%= link_to 'Points', points_url, class: 'link link-primary' %> page. Select a date range and export to GeoJSON or GPX.
+        </p>
+        <%= link_to points_url, class: 'btn btn-primary' do %>
+          <%= icon 'map-pin', class: 'w-4 h-4' %> Go to Points
+        <% end %>
       </div>
     <% else %>
-      <div class="flex justify-center my-5">
+      <div class="flex justify-center mb-4">
         <%= paginate @exports %>
       </div>
-      <div class="overflow-x-auto">
-        <table class="table table-zebra overflow-x-auto">
-          <thead>
+      <div class="border border-base-300 rounded-xl overflow-hidden">
+        <table class="table w-full">
+          <thead class="bg-base-200">
             <tr>
-              <th><%= sortable_column 'Name', :name, :exports_path %></th>
-              <th><%= sortable_column 'File size', :byte_size, :exports_path %></th>
-              <th><%= sortable_column 'Status', :status, :exports_path %></th>
-              <th><%= sortable_column 'Created at', :created_at, :exports_path %></th>
-              <th>Actions</th>
+              <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50 w-[40%]"><%= sortable_column 'Name', :name, :exports_path %></th>
+              <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50 w-[12%]"><%= sortable_column 'File size', :byte_size, :exports_path %></th>
+              <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50 w-[15%]"><%= sortable_column 'Status', :status, :exports_path %></th>
+              <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50 w-[20%]"><%= sortable_column 'Created', :created_at, :exports_path %></th>
+              <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50 text-right w-[13%]">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -39,7 +36,7 @@
           </tbody>
         </table>
       </div>
-      <div class="flex justify-center my-5">
+      <div class="flex justify-center mt-4">
         <%= paginate @exports %>
       </div>
     <% end %>

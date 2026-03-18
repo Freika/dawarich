@@ -125,7 +125,7 @@ export default class extends Controller {
   getTheme() {
     // Detect dark mode from document
     if (
-      document.documentElement.getAttribute("data-theme") === "dark" ||
+      document.documentElement.getAttribute("data-theme")?.includes("dark") ||
       document.documentElement.classList.contains("dark")
     ) {
       return "dark"

@@ -42,7 +42,7 @@ RSpec.describe '/trips', type: :request do
       it 'renders a successful response with loading state' do
         get trips_url
         expect(response).to be_successful
-        expect(response.body).to include('Trip path is being calculated...')
+        expect(response.body).to include('Calculating...')
       end
     end
   end

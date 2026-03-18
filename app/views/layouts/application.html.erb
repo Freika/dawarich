@@ -28,16 +28,16 @@
     <% end %>
   </head>
 
-  <body class='min-h-screen'>
-    <div class='container mx-auto'>
+  <body class='min-h-screen flex flex-col'>
+    <div class='container mx-auto flex flex-col flex-1'>
       <%= render 'shared/navbar' %>
       <%= render 'shared/flash' %>
-      <div class="w-full px-4 sm:px-5">
+      <div class="w-full px-4 sm:px-5 flex-1">
         <div class="flex w-full min-w-0 gap-5">
           <%= yield %>
         </div>
       </div>
-      <div class="px-4 sm:px-5">
+      <div class="px-4 sm:px-5 mt-auto">
         <%= render DawarichSettings.self_hosted? ? 'shared/footer' : 'shared/legal_footer' %>
       </div>
     </div>

@@ -1,144 +1,106 @@
 // This controller is being used on:
-// - trips/index
+// - trips/index (card thumbnails)
 
-import L from "leaflet"
-import { createAllMapLayers } from "../maps/layers"
-import BaseController from "./base_controller"
+import { Controller } from "@hotwired/stimulus"
+import maplibregl from "maplibre-gl"
+import { getMapStyle } from "maps_maplibre/utils/style_manager"
 
-export default class extends BaseController {
+export default class extends Controller {
   static values = {
     tripId: Number,
     path: String,
     apiKey: String,
     userSettings: Object,
     timezone: String,
-    distanceUnit: String,
   }
 
   connect() {
-    console.log("TripMap controller connected")
-
-    setTimeout(() => {
-      this.initializeMap()
-    }, 100)
+    requestAnimationFrame(() => this.initializeMap())
   }
 
-  initializeMap() {
-    // Initialize map with basic configuration
-    this.map = L.map(this.element, {
-      zoomControl: false,
-      dragging: false,
-      scrollWheelZoom: false,
-      attributionControl: true,
-    })
-
-    // Add base map layer
-    const selectedLayerName = this.hasUserSettingsValue
-      ? this.userSettingsValue.preferred_map_layer || "OpenStreetMap"
-      : "OpenStreetMap"
-    const maps = this.baseMaps()
-    const defaultLayer = maps[selectedLayerName] || Object.values(maps)[0]
-    defaultLayer.addTo(this.map)
-
-    // If we have coordinates, show the route
-    if (this.hasPathValue && this.pathValue) {
-      this.showRoute()
-    } else {
-      console.log("No path value available")
-    }
-  }
-
-  baseMaps() {
-    const selectedLayerName = this.hasUserSettingsValue
-      ? this.userSettingsValue.preferred_map_layer || "OpenStreetMap"
-      : "OpenStreetMap"
-
-    const maps = createAllMapLayers(
-      this.map,
-      selectedLayerName,
-      "false",
-      "dark",
-    )
-
-    // Add custom map if it exists in settings
-    if (
-      this.hasUserSettingsValue &&
-      this.userSettingsValue.maps &&
-      this.userSettingsValue.maps.url
-    ) {
-      const customLayer = L.tileLayer(this.userSettingsValue.maps.url, {
-        maxZoom: 19,
-        attribution: "&copy; OpenStreetMap contributors",
-      })
-
-      // If this is the preferred layer, add it to the map immediately
-      if (selectedLayerName === this.userSettingsValue.maps.name) {
-        customLayer.addTo(this.map)
-        // Remove any other base layers that might be active
-        Object.values(maps).forEach((layer) => {
-          if (this.map.hasLayer(layer)) {
-            this.map.removeLayer(layer)
-          }
-        })
+  async initializeMap() {
+    try {
+      const container = this.element
+      if (!container || container.clientHeight < 20) {
+        setTimeout(() => this.initializeMap(), 200)
+        return
       }
 
-      maps[this.userSettingsValue.maps.name] = customLayer
-    }
+      const isDark = document.documentElement
+        .getAttribute("data-theme")
+        ?.includes("dark")
+      const style = await getMapStyle(isDark ? "dark" : "light")
 
-    return maps
+      this.map = new maplibregl.Map({
+        container,
+        style,
+        center: [0, 0],
+        zoom: 1,
+        attributionControl: false,
+        interactive: false,
+      })
+
+      this.map.on("load", () => {
+        if (this.hasPathValue && this.pathValue) {
+          this.showRoute()
+        }
+      })
+    } catch (error) {
+      console.error("TripMap init failed:", error)
+    }
   }
 
   showRoute() {
-    const points = this.getCoordinates(this.pathValue)
+    const coordinates = this.getCoordinates(this.pathValue)
+    if (coordinates.length < 2) return
 
-    // Only create polyline if we have points
-    if (points.length > 0) {
-      const polyline = L.polyline(points, {
-        color: "blue",
-        opacity: 0.8,
-        weight: 3,
-        zIndexOffset: 400,
-      })
+    this.map.addSource("trip-route", {
+      type: "geojson",
+      data: {
+        type: "Feature",
+        geometry: {
+          type: "LineString",
+          coordinates,
+        },
+      },
+    })
 
-      // Add the polyline to the map
-      polyline.addTo(this.map)
+    this.map.addLayer({
+      id: "trip-route-line",
+      type: "line",
+      source: "trip-route",
+      paint: {
+        "line-color": "#3B82F6",
+        "line-width": 3,
+        "line-opacity": 0.8,
+      },
+      layout: {
+        "line-join": "round",
+        "line-cap": "round",
+      },
+    })
 
-      // Fit the map bounds
-      this.map.fitBounds(polyline.getBounds(), {
-        padding: [20, 20],
-      })
-    } else {
-      console.error("No valid points to create polyline")
-    }
+    // Fit bounds to route
+    const bounds = new maplibregl.LngLatBounds()
+    for (const coord of coordinates) bounds.extend(coord)
+    this.map.fitBounds(bounds, { padding: 30, maxZoom: 15, duration: 0 })
   }
 
   getCoordinates(pathData) {
     try {
-      // Parse the path data if it's a string
       let coordinates = pathData
       if (typeof pathData === "string") {
-        try {
-          coordinates = JSON.parse(pathData)
-        } catch (e) {
-          console.error("Error parsing path data as JSON:", e)
-          return []
-        }
+        coordinates = JSON.parse(pathData)
       }
 
-      // Handle array format - convert from [lng, lat] to [lat, lng] for Leaflet
-      return coordinates
-        .map((coord) => {
-          const [lng, lat] = coord
-
-          // Validate the coordinates
-          if (Number.isNaN(lat) || Number.isNaN(lng) || !lat || !lng) {
-            console.error("Invalid coordinates:", coord)
-            return null
-          }
-
-          return [lat, lng] // Leaflet uses [lat, lng] order
-        })
-        .filter((point) => point !== null)
+      // Coordinates are already [lng, lat] from PostGIS — MapLibre uses the same order
+      return coordinates.filter(
+        (coord) =>
+          Array.isArray(coord) &&
+          coord.length >= 2 &&
+          !Number.isNaN(coord[0]) &&
+          !Number.isNaN(coord[1]),
+      )
     } catch (error) {
       console.error("Error processing coordinates:", error)
       return []
@@ -148,6 +110,7 @@ export default class extends BaseController {
   disconnect() {
     if (this.map) {
       this.map.remove()
+      this.map = null
     }
   }
 }

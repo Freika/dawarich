@@ -1,23 +1,42 @@
-<tr id="<%= dom_id(export) %>" class="hover">
-  <td><%= export.name %></td>
-  <td><%= number_to_human_size(export.file&.byte_size) || 'N/A' %></td>
-  <td>
-    <%= export.status %>
-    <% if export.failed? %>
-      <span class="tooltip tooltip-left cursor-help inline-flex items-center" data-tip="<%= export.error_message.presence || 'Export failed' %>">
-        <%= icon('circle-alert', class: ['w-4', 'h-4', 'text-red-500']) %>
-      </span>
-    <% end %>
+<tr id="<%= dom_id(export) %>" class="hover:bg-base-200/50 transition-colors">
+  <td class="px-4 py-3">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 <%= export_format_icon_class(export.file_format) %>">
+        <%= export_format_icon(export.file_format) %>
+      </div>
+      <div>
+        <div class="font-medium"><%= export.name %></div>
+        <div class="text-xs text-base-content/50"><%= export.file_format&.upcase %> &middot; <%= export.file_type&.humanize %></div>
+      </div>
+    </div>
   </td>
-  <td><%= human_datetime(export.created_at) %></td>
-  <td class="whitespace-nowrap">
-    <% if export.completed? %>
-      <% if export.file.present? %>
-        <%= link_to 'Download', rails_blob_path(export.file, disposition: 'attachment'), class: "btn btn-outline btn-sm btn-info", download: export.name %>
-      <% elsif export.url.present? %>
-        <%= link_to 'Download', export.url, class: "btn btn-outline btn-sm btn-info", download: export.name %>
+  <td class="px-4 py-3 text-sm tabular-nums"><%= number_to_human_size(export.file&.byte_size) || 'N/A' %></td>
+  <td class="px-4 py-3">
+    <%= status_badge(export) %>
+  </td>
+  <td class="px-4 py-3 text-sm text-base-content/50"><%= human_datetime(export.created_at) %></td>
+  <td class="px-4 py-3 text-right">
+    <div class="flex items-center gap-1 justify-end">
+      <% if export.completed? %>
+        <% if export.file.present? %>
+          <div class="tooltip" data-tip="Download file">
+            <%= link_to rails_blob_path(export.file, disposition: 'attachment'), class: "btn btn-ghost btn-xs", download: export.name do %>
+              <%= icon 'arrow-big-down', class: 'w-4 h-4' %>
+            <% end %>
+          </div>
+        <% elsif export.url.present? %>
+          <div class="tooltip" data-tip="Download file">
+            <%= link_to export.url, class: "btn btn-ghost btn-xs", download: export.name do %>
+              <%= icon 'arrow-big-down', class: 'w-4 h-4' %>
+            <% end %>
+          </div>
+        <% end %>
       <% end %>
-    <% end %>
-    <%= link_to 'Delete', export, data: { turbo_confirm: "Are you sure?", turbo_method: :delete }, method: :delete, class: "btn btn-outline btn-sm btn-error" %>
+      <div class="tooltip" data-tip="Delete export">
+        <%= link_to export, data: { turbo_confirm: "Are you sure?", turbo_method: :delete }, method: :delete, class: "btn btn-ghost btn-xs text-error hover:bg-error/10" do %>
+          <%= icon 'trash-2', class: 'w-4 h-4' %>
+        <% end %>
+      </div>
+    </div>
   </td>
 </tr>

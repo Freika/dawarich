@@ -9,7 +9,7 @@
  */
 export function getCurrentTheme() {
   if (
-    document.documentElement.getAttribute("data-theme") === "dark" ||
+    document.documentElement.getAttribute("data-theme")?.includes("dark") ||
     document.documentElement.classList.contains("dark")
   ) {
     return "dark"

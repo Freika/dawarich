@@ -1,20 +1,17 @@
 <% content_for :title, "Notifications" %>
-<div class="flex flex-col items-center w-full">
-  <div class="text-center mb-6">
-    <h1 class="font-bold text-4xl mb-4">Notifications</h1>
-    <div class="flex items-center justify-center mb-4">
-      <% if @notifications.unread.any? %>
-        <%= link_to "Mark all as read", mark_notifications_as_read_path, method: :post, data: { turbo_method: :post }, class: "btn btn-sm btn-primary" %>&nbsp;
-      <% end %>
-      <% if @notifications.any? %>
-        <%= link_to "Delete all", delete_all_notifications_path, method: :post, data: { turbo_method: :post, turbo_confirm: 'Are you sure you want to delete all notifications?' }, class: "btn btn-sm btn-warning" %>
-      <% end %>
-    </div>
-    <div class="mb-4">
-      <%= paginate @notifications %>
-    </div>
+<div class="w-full my-5">
+  <%= render layout: 'shared/page_header', locals: { title: 'Notifications' } do %>
+    <% if @notifications.unread.any? %>
+      <%= link_to "Mark all as read", mark_notifications_as_read_path, method: :post, data: { turbo_method: :post }, class: "btn btn-sm btn-primary" %>
+    <% end %>
+    <% if @notifications.any? %>
+      <%= link_to "Delete all", delete_all_notifications_path, method: :post, data: { turbo_method: :post, turbo_confirm: 'Are you sure you want to delete all notifications?' }, class: "btn btn-sm btn-warning" %>
+    <% end %>
+  <% end %>
+  <div class="flex justify-center mb-4">
+    <%= paginate @notifications %>
   </div>
-  <div id="notifications" class="w-full max-w-2xl">
+  <div id="notifications" class="w-full max-w-2xl mx-auto">
     <% @notifications.each do |notification| %>
       <%= render notification %>
     <% end %>

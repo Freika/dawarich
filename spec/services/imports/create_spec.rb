@@ -27,10 +27,10 @@ RSpec.describe Imports::Create do
         expect(import.reload.source).to eq('owntracks')
       end
 
-      it 'enqueues points counter reset job' do
+      it 'increments points counter by delta' do
         service.call
 
-        expect(Users::ResetPointsCounterJob).to have_been_enqueued.with(user.id)
+        expect(user.reload.points_count).to eq(user.points.count)
       end
 
       context 'when import succeeds' do

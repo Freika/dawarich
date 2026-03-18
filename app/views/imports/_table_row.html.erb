@@ -1,37 +1,57 @@
 <tr data-import-id="<%= import.id %>"
     id="<%= dom_id(import) %>"
     data-points-total="<%= import.processed %>"
-    class="hover">
-  <td>
-    <%= link_to import.name, import, class: 'underline hover:no-underline' %>
-    (<%= import.source %>)
-    &nbsp;
-    <%= link_to '🗺️', map_path(import_id: import.id) %>
-    &nbsp;
-    <%= link_to '📋', points_path(import_id: import.id) %>
+    class="hover:bg-base-200/50 transition-colors">
+  <td class="px-4 py-3">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 <%= import_source_icon_class(import.source) %>">
+        <%= import_source_icon(import.source) %>
+      </div>
+      <div>
+        <div class="font-medium">
+          <%= link_to import.name, import, class: 'link link-hover' %>
+        </div>
+        <div class="text-xs text-base-content/50"><%= import.source&.humanize %></div>
+      </div>
+    </div>
   </td>
-  <td><%= number_to_human_size(import.file&.byte_size) || 'N/A' %></td>
-  <td data-points-count>
+  <td class="px-4 py-3 text-sm"><%= number_to_human_size(import.file&.byte_size) || 'N/A' %></td>
+  <td class="px-4 py-3 text-right tabular-nums font-medium" data-points-count>
     <%= number_with_delimiter import.processed %>
   </td>
-  <td data-status-display>
-    <%= import.status %>
-    <% if import.failed? %>
-      <span class="tooltip tooltip-left cursor-help inline-flex items-center" data-tip="<%= import.error_message.presence || 'Import failed' %>">
-        <%= icon('circle-alert', class: ['w-4', 'h-4', 'text-red-500']) %>
-      </span>
-    <% end %>
+  <td class="px-4 py-3" data-status-display>
+    <%= status_badge(import) %>
   </td>
-  <td><%= human_datetime(import.created_at) %></td>
-  <td class="whitespace-nowrap">
-    <% if import.deleting? %>
-      <span class="loading loading-spinner loading-sm"></span>
-      <span class="text-sm text-gray-500">Deleting...</span>
-    <% else %>
-      <% if import.file.present? %>
-        <%= link_to 'Download', rails_blob_path(import.file, disposition: 'attachment'), class: "btn btn-outline btn-sm btn-info", download: import.name %>
+  <td class="px-4 py-3 text-sm text-base-content/50"><%= human_datetime(import.created_at) %></td>
+  <td class="px-4 py-3 text-right">
+    <div class="flex items-center gap-1 justify-end">
+      <% if import.deleting? %>
+        <span class="loading loading-spinner loading-sm"></span>
+        <span class="text-xs text-base-content/50">Deleting...</span>
+      <% else %>
+        <div class="tooltip" data-tip="View on map">
+          <%= link_to map_path(import_id: import.id), class: 'btn btn-ghost btn-xs' do %>
+            <%= icon 'map', class: 'w-4 h-4' %>
+          <% end %>
+        </div>
+        <div class="tooltip" data-tip="View points">
+          <%= link_to points_path(import_id: import.id), class: 'btn btn-ghost btn-xs' do %>
+            <%= icon 'grid-3x3', class: 'w-4 h-4' %>
+          <% end %>
+        </div>
+        <% if import.file.present? %>
+          <div class="tooltip" data-tip="Download file">
+            <%= link_to rails_blob_path(import.file, disposition: 'attachment'), class: "btn btn-ghost btn-xs", download: import.name do %>
+              <%= icon 'arrow-big-down', class: 'w-4 h-4' %>
+            <% end %>
+          </div>
+        <% end %>
+        <div class="tooltip" data-tip="Delete import">
+          <%= link_to import, data: { turbo_confirm: "Are you sure?", turbo_method: :delete }, method: :delete, class: "btn btn-ghost btn-xs text-error hover:bg-error/10" do %>
+            <%= icon 'trash-2', class: 'w-4 h-4' %>
+          <% end %>
+        </div>
       <% end %>
-      <%= link_to 'Delete', import, data: { turbo_confirm: "Are you sure?", turbo_method: :delete }, method: :delete, class: "btn btn-outline btn-sm btn-error" %>
-    <% end %>
+    </div>
   </td>
 </tr>

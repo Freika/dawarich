@@ -2,66 +2,65 @@
 
 <%= turbo_stream_from "trip_#{@trip.id}" %>
 
-<div class="container mx-auto px-4 my-5">
-  <div class="bg-base-100 p-4">
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <div class="w-full block" id="trip_path">
-        <%= render "trips/path", trip: @trip, current_user: current_user %>
-      </div>
-      <div class="w-full">
-        <div class="text-center mb-8">
-          <h1 class="text-4xl font-bold mb-2"><%= @trip.name %></h1>
-          <p class="text-md text-base-content/60 mb-4">
-            <%= human_date(@trip.started_at) %> - <%= human_date(@trip.ended_at) %>
-          </p>
+<div class="w-full my-5">
+  <%# Header %>
+  <%= render layout: 'shared/page_header', locals: { title: @trip.name } do %>
+    <div class="flex items-center gap-2">
+      <%= link_to edit_trip_path(@trip), class: "btn btn-outline btn-sm" do %>
+        <%= icon 'square-pen', class: 'w-4 h-4' %> Edit
+      <% end %>
+      <%= link_to trip_path(@trip),
+          data: { turbo_confirm: "Are you sure?", turbo_method: :delete },
+          class: "btn btn-ghost btn-sm text-error hover:bg-error/10" do %>
+        <%= icon 'trash-2', class: 'w-4 h-4' %> Delete
+      <% end %>
+      <%= link_to trips_path, class: "btn btn-ghost btn-sm" do %>
+        <%= icon 'arrow-left', class: 'w-4 h-4' %> Back
+      <% end %>
+    </div>
+  <% end %>
 
-          <%= render "trips/countries", trip: @trip, current_user: current_user, distance_unit: current_user.safe_settings.distance_unit %>
-        </div>
+  <p class="text-sm text-base-content/50 -mt-4 mb-6">
+    <%= human_date(@trip.started_at) %> &ndash; <%= human_date(@trip.ended_at) %>
+  </p>
 
-        <div>
+  <%# Stats row %>
+  <%= render "trips/countries", trip: @trip, current_user: current_user, distance_unit: current_user.safe_settings.distance_unit %>
+
+  <%# Map + Details %>
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <%# Map %>
+    <div class="border border-base-300 rounded-xl overflow-hidden" id="trip_path">
+      <%= render "trips/path", trip: @trip, current_user: current_user %>
+    </div>
+
+    <%# Details %>
+    <div>
+      <% if @trip.notes.body.present? %>
+        <div class="border border-base-300 rounded-xl p-5 mb-6 prose prose-sm max-w-none">
           <%= @trip.notes.body %>
         </div>
+      <% end %>
 
-        <!-- Photos Grid Section -->
-        <% if @photo_previews.any? %>
-          <% @photo_previews.each_slice(3) do |slice| %>
-            <div class="h-48 flex gap-4 mt-4 justify-center">
-              <% slice.each do |photo| %>
-                <div class="flex-1 h-full overflow-hidden rounded-lg transition-transform duration-300 hover:scale-105 hover:shadow-lg">
-                  <img
-                    src="<%= photo[:url] %>"
-                    loading='lazy'
-                    class="h-full w-full object-cover"
-                  >
-                </div>
-              <% end %>
+      <% if @photo_previews.any? %>
+        <div class="grid grid-cols-3 gap-3 mb-6">
+          <% @photo_previews.each do |photo| %>
+            <div class="aspect-square overflow-hidden rounded-xl transition-transform duration-200 hover:scale-105 hover:shadow-lg">
+              <img src="<%= photo[:url] %>" loading="lazy" class="h-full w-full object-cover">
             </div>
           <% end %>
-        <% end %>
+        </div>
 
         <% if @photo_sources.any? %>
-          <div class="text-center mt-6">
+          <div class="flex flex-wrap gap-2 mb-6">
             <% @photo_sources.each do |source| %>
-              <%= link_to "More photos on #{source}", photo_search_url(source, current_user.settings, @trip.started_at, @trip.ended_at), class: "btn btn-primary mt-2", target: '_blank' %>
+              <%= link_to photo_search_url(source, current_user.settings, @trip.started_at, @trip.ended_at), class: "btn btn-outline btn-sm", target: '_blank' do %>
+                <%= icon 'camera', class: 'w-4 h-4' %> More on <%= source %>
+              <% end %>
             <% end %>
           </div>
         <% end %>
-      </div>
-    </div>
-  </div>
-
-  <!-- Action Buttons Section -->
-  <div class="bg-base-100 items-center">
-    <div class="flex flex-wrap gap-2 justify-center">
-      <%= link_to "Edit this trip", edit_trip_path(@trip), class: "btn" %>
-      <%= link_to "Destroy this trip",
-          trip_path(@trip),
-          data: {
-            turbo_confirm: "Are you sure?",
-            turbo_method: :delete
-          },
-          class: "btn btn-warning btn-outline" %>
-      <%= link_to "Back to trips", trips_path, class: "btn" %>
+      <% end %>
     </div>
   </div>
 </div>
