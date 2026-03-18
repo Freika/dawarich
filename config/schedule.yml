@@ -74,3 +74,18 @@ lite_archival_warning_job:
   cron: "0 3 * * *" # every day at 03:00
   class: "Lite::ArchivalWarningJob"
   queue: archival
+
+# raw_data_archive_job:
+#   cron: "0 3 1 * *" # 1st of month at 03:00
+#   class: "Points::RawData::ArchiveJob"
+#   queue: archival
+
+# raw_data_verify_job:
+#   cron: "0 5 * * *" # every day at 05:00
+#   class: "Points::RawData::VerifyRandomJob"
+#   queue: archival
+
+# raw_data_clear_job:
+#   cron: "0 3 8 * *" # 8th of month at 03:00 (7 days after archival for verification)
+#   class: "Points::RawData::ClearJob"
+#   queue: archival

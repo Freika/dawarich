@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- Redesigned raw data archival system for large instances (10M+ points). Archival now runs per-user via Sidekiq jobs instead of a single sequential process, uses PK cursor-based queries instead of full table scans, and processes in 50K-point chunks with 5K-batch flag updates to minimize DB lock contention. Inline verification removed in favor of daily spot-checks. FK constraint changed from `ON DELETE nullify` to `ON DELETE RESTRICT` to prevent cascading updates on large tables.
+
 ### Fixed
 
 - Fix intermittent 502/504 errors caused by `User.reset_counters(:points)` running synchronously during OwnTracks, Overland, and API point creation. The full `COUNT(*)` query blocked web workers for 60–500+ seconds on large accounts, starving all other requests. Counter reset now runs as a background job.
