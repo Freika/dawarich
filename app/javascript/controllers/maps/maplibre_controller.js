@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import maplibregl from "maplibre-gl"
 import { Toast } from "maps_maplibre/components/toast"
 import { ReplayManager } from "maps_maplibre/managers/replay_manager"
 import { ApiClient } from "maps_maplibre/services/api_client"
@@ -500,7 +501,15 @@ export default class extends Controller {
    */
   toggleSettings() {
     if (this.hasSettingsPanelTarget) {
+      const isOpening = !this.settingsPanelTarget.classList.contains("open")
       this.settingsPanelTarget.classList.toggle("open")
+
+      // Shrink/expand map container
+      if (this.hasContainerTarget) {
+        this.containerTarget.classList.toggle("panel-open", isOpening)
+        // Tell MapLibre to recalculate after the CSS transition
+        setTimeout(() => this.map?.resize(), 350)
+      }
     }
   }
 
@@ -667,7 +676,7 @@ export default class extends Controller {
    * Highlights the matching route/visit on the map by dimming everything else.
    */
   handleEntryHover(event) {
-    const { entryType, startedAt, endedAt, trackId } = event.detail
+    const { entryType, startedAt, endedAt, trackId, visitName, visitLat, visitLng } = event.detail
     if (!this.map || !startedAt || !endedAt) return
 
     this._entryHighlightActive = true
@@ -699,25 +708,32 @@ export default class extends Controller {
     this._safeSetPaint("points", "circle-opacity", pointExpr)
     this._safeSetPaint("points", "circle-stroke-opacity", pointExpr)
 
-    // Visits: started_at is ISO 8601 string
-    const visitExpr = this._dayRangeExpr(
-      "started_at",
-      startedAt,
-      endedAt,
-      0.9,
-      DIM,
-    )
-    this._safeSetPaint("visits", "circle-opacity", visitExpr)
-    this._safeSetPaint("visits", "circle-stroke-opacity", visitExpr)
+    // Visits: for visit hovers, keep all visits visible (popup highlights the specific one);
+    // for journey hovers, dim non-matching visits
+    if (entryType === "visit") {
+      this._safeSetPaint("visits", "circle-opacity", 0.9)
+      this._safeSetPaint("visits", "circle-stroke-opacity", 1)
+      this._safeSetPaint("visits-labels", "text-opacity", 1)
+    } else {
+      const visitExpr = this._dayRangeExpr(
+        "started_at",
+        startedAt,
+        endedAt,
+        0.9,
+        DIM,
+      )
+      this._safeSetPaint("visits", "circle-opacity", visitExpr)
+      this._safeSetPaint("visits", "circle-stroke-opacity", visitExpr)
 
-    const labelExpr = this._dayRangeExpr(
-      "started_at",
-      startedAt,
-      endedAt,
-      1,
-      DIM,
-    )
-    this._safeSetPaint("visits-labels", "text-opacity", labelExpr)
+      const labelExpr = this._dayRangeExpr(
+        "started_at",
+        startedAt,
+        endedAt,
+        1,
+        DIM,
+      )
+      this._safeSetPaint("visits-labels", "text-opacity", labelExpr)
+    }
 
     // Tracks: start_at is ISO 8601 string
     const trackExpr = this._dayRangeExpr(
@@ -740,6 +756,24 @@ export default class extends Controller {
         }
       }
     }
+
+    // Show popup for visit entries with coordinates
+    if (entryType === "visit" && visitLat && visitLng) {
+      const lat = parseFloat(visitLat)
+      const lng = parseFloat(visitLng)
+      if (!isNaN(lat) && !isNaN(lng)) {
+        this._removeHoverPopup()
+        this._hoverPopup = new maplibregl.Popup({
+          closeButton: false,
+          closeOnClick: false,
+          offset: 12,
+          className: "timeline-hover-popup",
+        })
+          .setLngLat([lng, lat])
+          .setHTML(`<div style="font-size:13px;font-weight:500;padding:2px 0">${visitName || "Visit"}</div>`)
+          .addTo(this.map)
+      }
+    }
   }
 
   /**
@@ -748,6 +782,8 @@ export default class extends Controller {
   handleEntryUnhover() {
     if (!this.map) return
     this._entryHighlightActive = false
+
+    this._removeHoverPopup()
 
     // Clear track hover highlight unless a track is click-selected
     if (this._hoverHighlightedTrack && !this._timelineSelectedTrack) {
@@ -858,6 +894,13 @@ export default class extends Controller {
     }
   }
 
+  _removeHoverPopup() {
+    if (this._hoverPopup) {
+      this._hoverPopup.remove()
+      this._hoverPopup = null
+    }
+  }
+
   /**
    * Show visit markers for the given day, even if the Visits layer is globally disabled.
    * @param {string} day - Date string "YYYY-MM-DD"
@@ -869,8 +912,8 @@ export default class extends Controller {
 
     const wasHidden = !visitsLayer.visible
 
-    // Only override if the layer is currently hidden
-    if (!wasHidden) return
+    // Clear any hover popup from previous day
+    this._removeHoverPopup()
 
     // Get visits for this day
     let dayVisits = []
@@ -892,14 +935,16 @@ export default class extends Controller {
 
     if (dayVisits.length === 0) return
 
-    // Store override state for restoration
-    const source = this.map.getSource(visitsLayer.sourceId)
-    this._visitsOverride = {
-      wasHidden,
-      previousData: source?._data || {
-        type: "FeatureCollection",
-        features: [],
-      },
+    // Store override state for restoration (only on first override)
+    if (!this._visitsOverride) {
+      const source = this.map.getSource(visitsLayer.sourceId)
+      this._visitsOverride = {
+        wasHidden,
+        previousData: source?._data || {
+          type: "FeatureCollection",
+          features: [],
+        },
+      }
     }
 
     // Update the visits source with the day's visits and show the layer

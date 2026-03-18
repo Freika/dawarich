@@ -31,6 +31,7 @@
   background: oklch(var(--b1) / 0.75) !important;
   backdrop-filter: blur(16px) saturate(1.5);
   -webkit-backdrop-filter: blur(16px) saturate(1.5);
+  border-bottom: 1px solid oklch(var(--bc) / 0.1);
   z-index: 40;
 }
 
@@ -48,12 +49,14 @@ table tfoot th {
   z-index: auto !important;
 }
 
-/* Card lift on hover */
-.card {
+/* Card lift on hover — only for cards that are links */
+a .card,
+a.card {
   transition: transform 200ms ease, box-shadow 200ms ease;
 }
 
-.card:hover {
+a .card:hover,
+a.card:hover {
   transform: translateY(-3px);
   box-shadow: 0 8px 20px oklch(var(--bc) / 0.05);
 }

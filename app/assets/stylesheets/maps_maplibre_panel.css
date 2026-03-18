@@ -3,26 +3,36 @@
 .map-control-panel {
   position: absolute;
   top: 0;
-  right: -480px; /* Hidden by default */
+  left: -480px; /* Hidden off-screen to the left */
   width: 480px;
   height: 100%;
   background: oklch(var(--b1));
-  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.15);
+  border-right: 1px solid oklch(var(--bc) / 0.1);
   z-index: 9999;
-  transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
+  flex-direction: row-reverse; /* Tabs on right, content on left */
   overflow: hidden;
 }
 
 .map-control-panel.open {
-  right: 0;
+  left: 0;
 }
 
-/* Vertical Tab Bar */
+/* Shrink map when panel is open */
+.maps-maplibre-container {
+  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.maps-maplibre-container.panel-open {
+  margin-left: 480px;
+}
+
+/* Vertical Tab Bar (now on the right side of the panel) */
 .panel-tabs {
   width: 64px;
   background: oklch(var(--b2));
-  border-right: 1px solid oklch(var(--bc) / 0.1);
+  border-left: 1px solid oklch(var(--bc) / 0.1);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -57,15 +67,7 @@
 }
 
 .tab-btn.active::after {
-  content: "";
-  position: absolute;
-  right: -1px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 3px;
-  height: 24px;
-  background: oklch(var(--p));
-  border-radius: 2px 0 0 2px;
+  display: none;
 }
 
 .tab-icon {
@@ -73,7 +75,7 @@
   height: 24px;
 }
 
-/* Panel Content */
+/* Panel Content (now on the left side) */
 .panel-content {
   flex: 1;
   display: flex;
@@ -84,8 +86,8 @@
 
 .panel-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 8px;
   padding: 20px 24px;
   border-bottom: 1px solid oklch(var(--bc) / 0.1);
   background: oklch(var(--b1));
@@ -185,7 +187,10 @@
 @media (max-width: 1280px) {
   .map-control-panel {
     width: 420px;
-    right: -420px;
+    left: -420px;
+  }
+  .maps-maplibre-container.panel-open {
+    margin-left: 420px;
   }
 }
 
@@ -193,9 +198,11 @@
 @media (max-width: 1024px) {
   .map-control-panel {
     width: 380px;
-    right: -380px;
+    left: -380px;
   }
-
+  .maps-maplibre-container.panel-open {
+    margin-left: 380px;
+  }
   .panel-body {
     padding: 20px;
   }
@@ -205,18 +212,19 @@
 @media (max-width: 768px) {
   .map-control-panel {
     width: 95%;
-    right: -95%;
+    left: -95%;
     max-width: 480px;
   }
-
+  /* On mobile, overlay instead of shrink */
+  .maps-maplibre-container.panel-open {
+    margin-left: 0;
+  }
   .panel-header {
     padding: 16px 20px;
   }
-
   .panel-title {
     font-size: 1.125rem;
   }
-
   .panel-body {
     padding: 16px 20px;
   }
@@ -226,7 +234,7 @@
 @media (max-width: 640px) {
   .map-control-panel {
     width: 100%;
-    right: -100%;
+    left: -100%;
     max-width: none;
   }
 

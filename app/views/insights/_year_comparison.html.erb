@@ -37,7 +37,9 @@
         </div>
         <div class="flex items-center gap-2 text-sm mb-1">
           <span class="w-10 text-base-content/60"><%= @previous_year %></span>
-          <progress class="progress progress-primary flex-1 h-3" value="<%= prev_distance_pct %>" max="100"></progress>
+          <div class="flex-1 h-3 bg-base-300 rounded-full overflow-hidden">
+            <div class="h-full rounded-full bg-base-content/25" style="width: <%= prev_distance_pct %>%"></div>
+          </div>
           <span class="w-24 text-right"><%= number_with_delimiter(@prev_total_distance) %> <%= current_user.safe_settings.distance_unit %></span>
         </div>
         <div class="flex items-center gap-2 text-sm">
@@ -59,7 +61,9 @@
         </div>
         <div class="flex items-center gap-2 text-sm mb-1">
           <span class="w-10 text-base-content/60"><%= @previous_year %></span>
-          <progress class="progress progress-secondary flex-1 h-3" value="<%= prev_countries_pct %>" max="100"></progress>
+          <div class="flex-1 h-3 bg-base-300 rounded-full overflow-hidden">
+            <div class="h-full rounded-full bg-base-content/25" style="width: <%= prev_countries_pct %>%"></div>
+          </div>
           <span class="w-24 text-right"><%= @prev_countries_count %></span>
         </div>
         <div class="flex items-center gap-2 text-sm">
@@ -82,7 +86,9 @@
         </div>
         <div class="flex items-center gap-2 text-sm mb-1">
           <span class="w-10 text-base-content/60"><%= @previous_year %></span>
-          <progress class="progress progress-accent flex-1 h-3" value="<%= prev_days_pct %>" max="100"></progress>
+          <div class="flex-1 h-3 bg-base-300 rounded-full overflow-hidden">
+            <div class="h-full rounded-full bg-base-content/25" style="width: <%= prev_days_pct %>%"></div>
+          </div>
           <span class="w-24 text-right"><%= @prev_days_traveling %> days</span>
         </div>
         <div class="flex items-center gap-2 text-sm">

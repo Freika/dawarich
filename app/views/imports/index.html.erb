@@ -60,12 +60,12 @@
         <table class="table w-full">
           <thead class="bg-base-200">
             <tr>
-              <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50"><%= sortable_column 'Name', :name, :imports_path %></th>
-              <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50"><%= sortable_column 'File size', :byte_size, :imports_path %></th>
-              <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50 text-right"><%= sortable_column 'Points', :processed, :imports_path %></th>
-              <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50"><%= sortable_column 'Status', :status, :imports_path %></th>
-              <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50"><%= sortable_column 'Created', :created_at, :imports_path %></th>
-              <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50 text-right">Actions</th>
+              <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50 w-[35%]"><%= sortable_column 'Name', :name, :imports_path %></th>
+              <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50 w-[10%]"><%= sortable_column 'File size', :byte_size, :imports_path %></th>
+              <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50 text-right w-[10%]"><%= sortable_column 'Points', :processed, :imports_path %></th>
+              <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50 w-[12%]"><%= sortable_column 'Status', :status, :imports_path %></th>
+              <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50 w-[18%]"><%= sortable_column 'Created', :created_at, :imports_path %></th>
+              <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50 text-right w-[15%]">Actions</th>
             </tr>
           </thead>
           <tbody

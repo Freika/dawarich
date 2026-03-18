@@ -14,18 +14,23 @@
       }
     %>
   </td>
-  <td class="px-3 py-2 text-sm tabular-nums whitespace-nowrap"><%= human_datetime_with_seconds(point.recorded_at) %></td>
-  <td class="px-3 py-2 text-sm tabular-nums text-base-content/50 whitespace-nowrap"><%= point.lat %>, <%= point.lon %></td>
   <% if DawarichSettings.reverse_geocoding_enabled? %>
-    <td class="px-3 py-2 text-sm text-base-content/60 max-w-48 truncate">
+    <td class="px-3 py-2 text-sm text-left text-base-content/60" style="overflow: visible;">
       <% if point.geodata.present? && point.geodata.is_a?(Hash) %>
         <% props = point.geodata['properties'] || {} %>
         <% parts = [props['street'], props['city'], props['country']].compact_blank %>
-        <%= parts.join(', ') if parts.any? %>
+        <% if parts.any? %>
+          <% address = parts.join(', ') %>
+          <span class="tooltip tooltip-bottom cursor-help" data-tip="<%= address %>">
+            <span class="block"><%= address %></span>
+          </span>
+        <% end %>
       <% end %>
     </td>
   <% end %>
   <td class="px-3 py-2 text-sm text-right tabular-nums font-medium whitespace-nowrap <%= speed_text_color(point.velocity) %>">
     <%= point_speed(point.velocity, current_user.safe_settings.distance_unit) %>
   </td>
+  <td class="px-3 py-2 text-sm tabular-nums text-base-content/50 whitespace-nowrap"><%= point.lat %>, <%= point.lon %></td>
+  <td class="px-3 py-2 text-sm tabular-nums whitespace-nowrap"><%= human_datetime_with_seconds(point.recorded_at) %></td>
 </tr>

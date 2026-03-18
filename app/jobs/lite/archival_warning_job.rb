@@ -26,14 +26,18 @@ class Lite::ArchivalWarningJob < ApplicationJob
     oldest_timestamp = user.points.minimum(:timestamp)
     return unless oldest_timestamp
 
-    THRESHOLDS.each do |threshold|
+    # Find all crossed thresholds that haven't been sent yet
+    unsent_crossed = THRESHOLDS.select do |threshold|
       cutoff = threshold[:duration].ago.to_i
-      next if oldest_timestamp > cutoff
-      next if warnings_sent[threshold[:key]].present?
-
-      send(threshold[:action], user)
-      mark_warning_sent(user, threshold[:key])
+      oldest_timestamp <= cutoff && warnings_sent[threshold[:key]].blank?
     end
+
+    return if unsent_crossed.empty?
+
+    # Only send the most severe (last in the ordered list), mark all as sent
+    most_severe = unsent_crossed.last
+    send(most_severe[:action], user)
+    unsent_crossed.each { |threshold| mark_warning_sent(user, threshold[:key]) }
   end
 
   def notify_approaching(user)

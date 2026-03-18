@@ -22,11 +22,11 @@
         <table class="table w-full">
           <thead class="bg-base-200">
             <tr>
-              <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50"><%= sortable_column 'Name', :name, :exports_path %></th>
-              <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50"><%= sortable_column 'File size', :byte_size, :exports_path %></th>
-              <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50"><%= sortable_column 'Status', :status, :exports_path %></th>
-              <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50"><%= sortable_column 'Created', :created_at, :exports_path %></th>
-              <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50 text-right">Actions</th>
+              <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50 w-[40%]"><%= sortable_column 'Name', :name, :exports_path %></th>
+              <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50 w-[12%]"><%= sortable_column 'File size', :byte_size, :exports_path %></th>
+              <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50 w-[15%]"><%= sortable_column 'Status', :status, :exports_path %></th>
+              <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50 w-[20%]"><%= sortable_column 'Created', :created_at, :exports_path %></th>
+              <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50 text-right w-[13%]">Actions</th>
             </tr>
           </thead>
           <tbody>

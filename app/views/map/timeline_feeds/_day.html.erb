@@ -13,7 +13,7 @@
     <div class="flex justify-between items-center">
       <span class="text-sm"><%= day_label %></span>
       <% if distance_badge %>
-        <span class="badge badge-sm badge-ghost"><%= distance_badge %></span>
+        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-primary/10 text-primary"><%= distance_badge %></span>
       <% end %>
     </div>
   </summary>
@@ -21,7 +21,7 @@
     <%= render partial: 'map/timeline_feeds/day_summary', locals: { summary: day[:summary] } %>
     <div class="divider my-1"></div>
     <% if day[:entries].present? %>
-      <div class="timeline-rail">
+      <div class="timeline-entries">
         <% day[:entries].each do |entry| %>
           <% if entry[:type] == 'visit' %>
             <%= render partial: 'map/timeline_feeds/visit_entry', locals: { entry: entry } %>

@@ -30,10 +30,6 @@
       <%= page_entries_info @points, entry_name: 'point' %>
     </div>
     <div class="flex flex-wrap items-center gap-2">
-      <span class="text-xs font-medium text-base-content/50 uppercase tracking-wider">Order:</span>
-      <%= link_to 'Newest', points_path(order_by: :desc, import_id: params[:import_id], start_at: params[:start_at], end_at: params[:end_at]), class: "btn btn-xs #{params[:order_by] != 'asc' ? 'btn-primary' : 'btn-outline'}" %>
-      <%= link_to 'Oldest', points_path(order_by: :asc, import_id: params[:import_id], start_at: params[:start_at], end_at: params[:end_at]), class: "btn btn-xs #{params[:order_by] == 'asc' ? 'btn-primary' : 'btn-outline'}" %>
-      <span class="w-px h-5 bg-base-300 mx-1 hidden md:block"></span>
       <div class="dropdown dropdown-end">
         <label tabindex="0" class="btn btn-outline btn-xs gap-1">
           <%= icon 'arrow-big-down', class: 'w-3.5 h-3.5' %> Export
@@ -68,7 +64,7 @@
         <table class="table table-sm w-full">
           <thead class="bg-base-200">
             <tr>
-              <th class="px-3 py-2.5 w-10">
+              <th class="px-3 py-2.5 w-1/12">
                 <%= check_box_tag 'Select all',
                   id: :select_all_points,
                   data: {
@@ -78,12 +74,19 @@
                   class: 'checkbox checkbox-xs'
                 %>
               </th>
-              <th class="px-3 py-2.5 text-xs uppercase tracking-wider text-base-content/50">Recorded at</th>
-              <th class="px-3 py-2.5 text-xs uppercase tracking-wider text-base-content/50">Coordinates</th>
               <% if DawarichSettings.reverse_geocoding_enabled? %>
-                <th class="px-3 py-2.5 text-xs uppercase tracking-wider text-base-content/50">Address</th>
+                <th class="px-3 py-2.5 text-xs uppercase tracking-wider text-left text-base-content/50 w-4/12">Address</th>
               <% end %>
-              <th class="px-3 py-2.5 text-xs uppercase tracking-wider text-base-content/50 text-right">Speed</th>
+              <th class="px-3 py-2.5 text-xs uppercase tracking-wider text-base-content/50 text-right w-1/12">Speed</th>
+              <th class="px-3 py-2.5 text-xs uppercase tracking-wider text-base-content/50 w-3/12">Coordinates</th>
+              <th class="px-3 py-2.5 text-xs uppercase tracking-wider text-base-content/50 w-3/12">
+                <% next_order = params[:order_by] == 'asc' ? 'desc' : 'asc' %>
+                <%= link_to points_path(order_by: next_order, import_id: params[:import_id], start_at: params[:start_at], end_at: params[:end_at]),
+                    class: "inline-flex items-center gap-1 link link-hover font-bold" do %>
+                  Recorded at
+                  <%= icon(params[:order_by] == 'asc' ? 'chevron-up' : 'chevron-down', class: 'w-4 h-4 inline-block') %>
+                <% end %>
+              </th>
             </tr>
           </thead>
           <tbody>
