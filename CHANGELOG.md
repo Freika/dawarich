@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Updated looks and feels
 - The point counting was changed to be more efficient on bigger accounts.
 
+### Changed
+
+- Redesigned raw data archival system for large instances (10M+ points). Archival now runs per-user via Sidekiq jobs instead of a single sequential process, uses PK cursor-based queries instead of full table scans, and processes in 50K-point chunks with 5K-batch flag updates to minimize DB lock contention. Inline verification removed in favor of daily spot-checks. FK constraint changed from `ON DELETE nullify` to `ON DELETE RESTRICT` to prevent cascading updates on large tables.
+
 ### Fixed
 
 - Fix Lite plan archival warnings sending all three notifications (11-month, 11.5-month, and 12-month) simultaneously when a user's oldest data already exceeds all thresholds. Now only the most severe warning is sent, and lower thresholds are marked as already notified.

@@ -4,42 +4,41 @@ require 'rails_helper'
 
 RSpec.describe Points::RawData::ArchiveJob, type: :job do
   describe '#perform' do
-    let(:archiver) { instance_double(Points::RawData::Archiver) }
-
     before do
-      # Enable archival for tests
       allow(ENV).to receive(:[]).and_call_original
       allow(ENV).to receive(:[]).with('ARCHIVE_RAW_DATA').and_return('true')
-
-      allow(Points::RawData::Archiver).to receive(:new).and_return(archiver)
-      allow(archiver).to receive(:call).and_return({ processed: 5, archived: 100, failed: 0 })
     end
 
-    it 'calls the archiver service' do
-      expect(archiver).to receive(:call)
+    it 'enqueues an ArchiveUserJob for each user' do
+      users = create_list(:user, 3)
 
-      described_class.perform_now
+      expect { described_class.perform_now }.to have_enqueued_job(Points::RawData::ArchiveUserJob).exactly(3).times
+
+      users.each do |user|
+        expect(Points::RawData::ArchiveUserJob).to have_been_enqueued.with(user.id)
+      end
     end
 
-    context 'when archiver raises an error' do
-      let(:error) { StandardError.new('Archive failed') }
-
+    context 'when ARCHIVE_RAW_DATA is not true' do
       before do
-        allow(archiver).to receive(:call).and_raise(error)
+        allow(ENV).to receive(:[]).with('ARCHIVE_RAW_DATA').and_return('false')
       end
 
-      it 're-raises the error' do
-        expect do
-          described_class.perform_now
-        end.to raise_error(StandardError, 'Archive failed')
+      it 'does not enqueue any jobs' do
+        create(:user)
+
+        expect { described_class.perform_now }.not_to have_enqueued_job(Points::RawData::ArchiveUserJob)
+      end
+    end
+
+    context 'when an error occurs' do
+      before do
+        allow(User).to receive(:find_each).and_raise(StandardError, 'DB error')
       end
 
-      it 'reports the error before re-raising' do
-        expect(ExceptionReporter).to receive(:call).with(error, 'Points raw data archival job failed')
-
-        expect do
-          described_class.perform_now
-        end.to raise_error(StandardError)
+      it 'reports and re-raises the error' do
+        expect(ExceptionReporter).to receive(:call)
+        expect { described_class.perform_now }.to raise_error(StandardError, 'DB error')
       end
     end
   end

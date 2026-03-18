@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_03_15_000001) do
+ActiveRecord::Schema[8.0].define(version: 2026_03_18_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
@@ -570,7 +570,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_15_000001) do
   add_foreign_key "notifications", "users"
   add_foreign_key "place_visits", "places"
   add_foreign_key "place_visits", "visits"
-  add_foreign_key "points", "points_raw_data_archives", column: "raw_data_archive_id", name: "fk_rails_points_raw_data_archives", on_delete: :nullify, validate: false
+  add_foreign_key "points", "points_raw_data_archives", column: "raw_data_archive_id", on_delete: :restrict, validate: false
   add_foreign_key "points", "users"
   add_foreign_key "points", "visits"
   add_foreign_key "points_raw_data_archives", "users", validate: false
