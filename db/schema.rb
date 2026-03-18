@@ -416,7 +416,6 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_18_000001) do
     t.uuid "sharing_uuid"
     t.jsonb "h3_hex_ids", default: {}
     t.index ["distance"], name: "index_stats_on_distance"
-    t.index ["h3_hex_ids"], name: "index_stats_on_h3_hex_ids", where: "((h3_hex_ids IS NOT NULL) AND (h3_hex_ids <> '{}'::jsonb))", using: :gin
     t.index ["month"], name: "index_stats_on_month"
     t.index ["sharing_uuid"], name: "index_stats_on_sharing_uuid", unique: true
     t.index ["user_id", "year", "month"], name: "index_stats_on_user_id_year_month", unique: true
@@ -519,14 +518,14 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_18_000001) do
     t.integer "status", default: 0
     t.datetime "active_until"
     t.integer "points_count", default: 0, null: false
+    t.string "provider"
+    t.string "uid"
     t.string "utm_source"
     t.string "utm_medium"
     t.string "utm_campaign"
     t.string "utm_term"
     t.string "utm_content"
-    t.string "provider"
-    t.string "uid"
-    t.datetime "deleted_at"
+    t.datetime "deleted_at", precision: nil
     t.integer "plan", default: 1, null: false
     t.index ["api_key"], name: "index_users_on_api_key"
     t.index ["deleted_at"], name: "index_users_on_deleted_at"
@@ -574,7 +573,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_18_000001) do
   add_foreign_key "points", "points_raw_data_archives", column: "raw_data_archive_id", on_delete: :restrict, validate: false
   add_foreign_key "points", "users"
   add_foreign_key "points", "visits"
-  add_foreign_key "points_raw_data_archives", "users"
+  add_foreign_key "points_raw_data_archives", "users", validate: false
   add_foreign_key "rails_pulse_operations", "rails_pulse_queries", column: "query_id"
   add_foreign_key "rails_pulse_operations", "rails_pulse_requests", column: "request_id"
   add_foreign_key "rails_pulse_requests", "rails_pulse_routes", column: "route_id"
