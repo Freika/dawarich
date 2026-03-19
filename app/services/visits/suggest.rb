@@ -12,12 +12,15 @@ class Visits::Suggest
 
   def call
     visits = Visits::SmartDetect.new(user, start_at:, end_at:).call
+    return visits if visits.empty?
 
-    create_visits_notification(user) if visits.any?
+    create_visits_notification(user)
+    if DawarichSettings.reverse_geocoding_enabled?
+      visits.filter_map(&:place_id).uniq.each do |place_id|
+        ReverseGeocodingJob.perform_later('place', place_id)
+      end
+    end
 
-    return nil unless DawarichSettings.reverse_geocoding_enabled?
-
-    visits.each(&:async_reverse_geocode)
     visits
   rescue StandardError => e
     # create a notification with stacktrace and what arguments were used
