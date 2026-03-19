@@ -29,13 +29,13 @@ export class EventHandlers {
   }
 
   /**
-   * Handle point click
+   * Handle point click — shows instant info from GeoJSON, address loaded via Turbo Frame
    */
   handlePointClick(e) {
-    const properties = e.features[0].properties
+    const feature = e.features[0]
     this.controller.showInfo(
       "Location Point",
-      this._buildPointInfoContent(properties),
+      this._buildPointInfoContent(feature.properties, feature.geometry),
     )
   }
 
@@ -52,25 +52,38 @@ export class EventHandlers {
     const container = document.getElementById("track-point-info-container")
     if (!container) return
 
-    const properties = e.features[0].properties
+    const feature = e.features[0]
     container.innerHTML = `
       <div class="mt-3 pt-3 border-t border-base-300">
         <div class="text-sm font-semibold mb-1">Selected Point</div>
-        ${this._buildPointInfoContent(properties)}
+        ${this._buildPointInfoContent(feature.properties, feature.geometry)}
       </div>
     `
   }
 
   /**
    * Build HTML content for point info display (shared by regular and track points)
+   * Address is loaded asynchronously via a Turbo Frame.
    * @param {Object} properties - GeoJSON feature properties
+   * @param {Object} geometry - GeoJSON geometry with coordinates
    * @returns {string} HTML content string
    * @private
    */
-  _buildPointInfoContent(properties) {
+  _buildPointInfoContent(properties, geometry) {
     const distanceUnit = this.controller.settings.distance_unit || "km"
+    const coords = geometry?.coordinates
+    const coordStr =
+      coords && coords.length >= 2
+        ? `${coords[1].toFixed(6)}, ${coords[0].toFixed(6)}`
+        : null
+    const pointId = properties.id
+    const addressFrame = pointId
+      ? `<turbo-frame id="point-address-${pointId}" src="/points/${pointId}/address" loading="lazy"></turbo-frame>`
+      : ""
     return `
       <div class="space-y-2">
+        ${addressFrame}
+        ${coordStr ? `<div><span class="font-semibold">Coordinates:</span> ${coordStr}</div>` : ""}
         <div><span class="font-semibold">Time:</span> ${formatTimestamp(properties.timestamp, this.controller.timezoneValue)}</div>
         ${properties.battery ? `<div><span class="font-semibold">Battery:</span> ${properties.battery}%</div>` : ""}
         ${properties.altitude ? `<div><span class="font-semibold">Altitude:</span> ${Math.round(properties.altitude)}m</div>` : ""}

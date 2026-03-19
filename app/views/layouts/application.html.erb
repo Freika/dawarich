@@ -25,6 +25,11 @@
     <%= Sentry.get_trace_propagation_meta.html_safe if Sentry.initialized? %>
     <% if !DawarichSettings.self_hosted? %>
       <script async src="https://scripts.simpleanalyticscdn.com/latest.js"></script>
+      <script src="https://cdn.paddle.com/paddle/v2/paddle.js"></script>
+      <script>
+        Paddle.Environment.set("<%= ENV.fetch('PADDLE_BILLING_ENVIRONMENT', 'production') %>");
+        Paddle.Initialize({ token: "<%= ENV['PADDLE_BILLING_CLIENT_TOKEN'] %>" });
+      </script>
     <% end %>
   </head>
 

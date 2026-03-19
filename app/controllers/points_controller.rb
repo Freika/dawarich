@@ -19,6 +19,10 @@ class PointsController < ApplicationController
     @imports = current_user.imports.order(created_at: :desc)
   end
 
+  def address
+    @point = current_user.points.select(:id, :city, :country, :geodata, :lonlat).find(params[:id])
+  end
+
   def bulk_destroy
     point_ids = params[:point_ids]&.compact&.reject(&:blank?)
 

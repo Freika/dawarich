@@ -21,11 +21,14 @@
 
 /* Shrink map when panel is open */
 .maps-maplibre-container {
-  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition:
+    width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .maps-maplibre-container.panel-open {
   margin-left: 480px;
+  width: calc(100% - 480px) !important;
 }
 
 /* Vertical Tab Bar (now on the right side of the panel) */
@@ -191,6 +194,7 @@
   }
   .maps-maplibre-container.panel-open {
     margin-left: 420px;
+    width: calc(100% - 420px) !important;
   }
 }
 
@@ -202,6 +206,7 @@
   }
   .maps-maplibre-container.panel-open {
     margin-left: 380px;
+    width: calc(100% - 380px) !important;
   }
   .panel-body {
     padding: 20px;
@@ -218,6 +223,7 @@
   /* On mobile, overlay instead of shrink */
   .maps-maplibre-container.panel-open {
     margin-left: 0;
+    width: 100% !important;
   }
   .panel-header {
     padding: 16px 20px;

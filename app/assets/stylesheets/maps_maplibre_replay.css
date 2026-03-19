@@ -15,7 +15,13 @@
   padding: 8px 14px;
   transition:
     opacity 0.2s ease-in-out,
-    transform 0.2s ease-in-out;
+    transform 0.2s ease-in-out,
+    left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Shift replay panel right when side panel is open so it stays visible */
+.maps-maplibre-container.panel-open ~ .replay-panel {
+  left: calc(50% + 240px);
 }
 
 .replay-panel.hidden {
@@ -415,6 +421,26 @@
 .replay-close:hover {
   background: oklch(var(--b2));
   color: oklch(var(--bc) / 0.8);
+}
+
+/* Responsive: adjust replay panel shift for narrower side panels */
+@media (max-width: 1280px) {
+  .maps-maplibre-container.panel-open ~ .replay-panel {
+    left: calc(50% + 210px);
+  }
+}
+
+@media (max-width: 1024px) {
+  .maps-maplibre-container.panel-open ~ .replay-panel {
+    left: calc(50% + 190px);
+  }
+}
+
+/* On mobile, side panel overlays instead of shrinking map — no shift needed */
+@media (max-width: 768px) {
+  .maps-maplibre-container.panel-open ~ .replay-panel {
+    left: 50%;
+  }
 }
 
 /* Responsive styles */

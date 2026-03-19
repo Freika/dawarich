@@ -1,0 +1,11 @@
+<%= turbo_frame_tag "point-address-#{@point.id}" do %>
+  <% if @point.geodata.present? && @point.geodata.is_a?(Hash) %>
+    <% props = @point.geodata['properties'] || {} %>
+    <% parts = [props['street'], props['city'], props['country']].compact_blank %>
+    <% if parts.any? %>
+      <div>
+        <span class="font-semibold">Address:</span> <%= parts.join(', ') %>
+      </div>
+    <% end %>
+  <% end %>
+<% end %>

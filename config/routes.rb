@@ -100,6 +100,9 @@ Rails.application.routes.draw do
     collection do
       delete :bulk_destroy
     end
+    member do
+      get :address
+    end
   end
   resources :notifications, only: %i[index show destroy]
   post 'notifications/mark_as_read', to: 'notifications#mark_as_read', as: :mark_notifications_as_read
