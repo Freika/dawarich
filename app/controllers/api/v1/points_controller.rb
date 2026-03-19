@@ -78,6 +78,7 @@ class Api::V1::PointsController < ApiController
   def destroy
     point = current_api_user.points.find(params[:id])
     point.destroy
+    User.update_counters(current_api_user.id, points_count: -1)
 
     render json: { message: 'Point deleted successfully' }
   end
@@ -88,6 +89,7 @@ class Api::V1::PointsController < ApiController
     render json: { error: 'No points selected' }, status: :unprocessable_entity and return if point_ids.blank?
 
     deleted_count = current_api_user.points.where(id: point_ids).destroy_all.count
+    User.update_counters(current_api_user.id, points_count: -deleted_count) if deleted_count.positive?
 
     render json: { message: 'Points were successfully destroyed', count: deleted_count }, status: :ok
   end

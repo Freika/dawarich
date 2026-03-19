@@ -25,11 +25,10 @@
     <%= Sentry.get_trace_propagation_meta.html_safe if Sentry.initialized? %>
     <% if !DawarichSettings.self_hosted? %>
       <script async src="https://scripts.simpleanalyticscdn.com/latest.js"></script>
-      <script src="https://cdn.paddle.com/paddle/v2/paddle.js"></script>
-      <script>
-        Paddle.Environment.set("<%= ENV.fetch('PADDLE_BILLING_ENVIRONMENT', 'production') %>");
-        Paddle.Initialize({ token: "<%= ENV['PADDLE_BILLING_CLIENT_TOKEN'] %>" });
-      </script>
+      <script async src="https://cdn.paddle.com/paddle/v2/paddle.js" onload="
+        Paddle.Environment.set(<%= ENV.fetch('PADDLE_BILLING_ENVIRONMENT', 'production').to_json.html_safe %>);
+        Paddle.Initialize({ token: <%= (ENV['PADDLE_BILLING_CLIENT_TOKEN'] || '').to_json.html_safe %> });
+      "></script>
     <% end %>
   </head>
 

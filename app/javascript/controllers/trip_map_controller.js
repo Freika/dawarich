@@ -24,7 +24,7 @@ export default class extends Controller {
       if (!container || container.clientHeight < 20) {
         this._initRetries = (this._initRetries || 0) + 1
         if (this._initRetries < 25) {
-          setTimeout(() => this.initializeMap(), 200)
+          this._initTimer = setTimeout(() => this.initializeMap(), 200)
         }
         return
       }
@@ -111,6 +111,10 @@ export default class extends Controller {
   }
 
   disconnect() {
+    if (this._initTimer) {
+      clearTimeout(this._initTimer)
+      this._initTimer = null
+    }
     if (this.map) {
       this.map.remove()
       this.map = null

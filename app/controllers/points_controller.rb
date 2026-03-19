@@ -32,7 +32,8 @@ class PointsController < ApplicationController
                   status: :see_other and return
     end
 
-    current_user.points.where(id: point_ids).destroy_all
+    deleted_count = current_user.points.where(id: point_ids).destroy_all.count
+    User.update_counters(current_user.id, points_count: -deleted_count) if deleted_count.positive?
 
     redirect_to points_url(preserved_params),
                 notice: 'Points were successfully destroyed.',

@@ -43,6 +43,10 @@ FactoryBot.define do
       point.user.reload
     end
 
+    after(:destroy) do |point|
+      User.update_counters(point.user_id, points_count: -1)
+    end
+
     # Handle country string assignment by creating Country objects
     after(:create) do |point, evaluator|
       if evaluator.country.is_a?(String)

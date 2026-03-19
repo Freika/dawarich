@@ -73,9 +73,14 @@ module Points
         archive = nil
         ActiveRecord::Base.transaction do
           archive = create_archive_record(user_id, time, point_ids, encrypted, compressed)
-          verify_archive_readable!(archive, point_ids)
-          flag_points_batched(point_ids, archive.id)
         end
+
+        # Full verification OUTSIDE transaction to avoid holding DB connection during I/O.
+        # Downloads the archive, decrypts, decompresses, and verifies point count + checksum.
+        verify_archive_full!(archive, point_ids)
+
+        # Only flag points after verification succeeds
+        flag_points_batched(point_ids, archive.id)
 
         report_metrics(archive, point_ids.size, compressed)
 
@@ -118,20 +123,64 @@ module Points
         raise StandardError, error_msg
       end
 
-      def verify_archive_readable!(archive, _point_ids)
+      # Full round-trip verification: download → decrypt → decompress → parse → count + checksum.
+      # Runs OUTSIDE the transaction so network I/O doesn't hold DB connections.
+      # On failure, destroys the archive record and raises to prevent flagging points.
+      def verify_archive_full!(archive, point_ids)
         raise StandardError, "Archive #{archive.id} has no attached file" unless archive.file.attached?
 
-        blob = archive.file.blob
-        raise StandardError, "Archive #{archive.id} has zero-byte file" if blob.byte_size.zero?
+        raw_content = archive.file.download
+        raise StandardError, "Archive #{archive.id} has zero-byte file" if raw_content.bytesize.zero?
 
-        expected_checksum = Digest::SHA256.hexdigest(archive.file.download)
+        # Verify content checksum (catches storage-layer corruption)
         stored_checksum = archive.metadata&.dig('content_checksum')
+        if stored_checksum.present?
+          actual_checksum = Digest::SHA256.hexdigest(raw_content)
+          if actual_checksum != stored_checksum
+            cleanup_failed_archive!(archive)
+            raise StandardError,
+                  "Archive #{archive.id} content checksum mismatch"
+          end
+        end
 
-        return unless stored_checksum.present? && expected_checksum != stored_checksum
+        # Decrypt and decompress to verify data integrity
+        decrypted = Encryption.decrypt_if_needed(raw_content, archive)
+        io = StringIO.new(decrypted)
+        gz = Zlib::GzipReader.new(io)
+        verified_ids = []
+        gz.each_line do |line|
+          data = JSON.parse(line)
+          verified_ids << data['id']
+        end
+        gz.close
 
+        # Verify point count matches
+        if verified_ids.size != point_ids.size
+          cleanup_failed_archive!(archive)
+          raise StandardError,
+                "Archive #{archive.id} point count mismatch: " \
+                "expected #{point_ids.size}, got #{verified_ids.size}"
+        end
+
+        # Verify point IDs checksum matches
+        verified_checksum = Digest::SHA256.hexdigest(verified_ids.sort.join(','))
+        expected_checksum = archive.point_ids_checksum
+        return if verified_checksum == expected_checksum
+
+        cleanup_failed_archive!(archive)
         raise StandardError,
-              "Archive #{archive.id} content checksum mismatch: " \
-              "expected #{stored_checksum}, got #{expected_checksum}"
+              "Archive #{archive.id} point IDs checksum mismatch"
+      rescue Zlib::GzipFile::Error, JSON::ParserError, OpenSSL::Cipher::CipherError => e
+        cleanup_failed_archive!(archive)
+        raise StandardError,
+              "Archive #{archive.id} decrypt/decompress failed: #{e.message}"
+      end
+
+      def cleanup_failed_archive!(archive)
+        archive.file.purge if archive.file.attached?
+        archive.destroy!
+      rescue StandardError => e
+        Rails.logger.error("Failed to clean up archive #{archive.id}: #{e.message}")
       end
 
       def flag_points_batched(point_ids, archive_id)

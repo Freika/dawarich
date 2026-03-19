@@ -105,6 +105,26 @@ RSpec.describe Points::RawDataArchive, type: :model do
     end
   end
 
+  describe 'FK ON DELETE RESTRICT' do
+    it 'prevents deletion of archive that has linked points' do
+      archive = create(:points_raw_data_archive, user: user)
+      point = create(:point, user: user, raw_data_archive_id: archive.id, raw_data_archived: true)
+
+      expect { archive.destroy! }.to raise_error(ActiveRecord::InvalidForeignKey)
+
+      # Point still exists and still references the archive
+      expect(Point.exists?(point.id)).to be true
+      expect(Points::RawDataArchive.exists?(archive.id)).to be true
+    end
+
+    it 'allows deletion of archive with no linked points' do
+      archive = create(:points_raw_data_archive, user: user)
+
+      expect { archive.destroy! }.not_to raise_error
+      expect(Points::RawDataArchive.exists?(archive.id)).to be false
+    end
+  end
+
   describe '#size_mb' do
     it 'returns 0 when no file attached' do
       archive = build(:points_raw_data_archive)
