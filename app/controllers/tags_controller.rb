@@ -5,7 +5,7 @@ class TagsController < ApplicationController
   before_action :set_tag, only: %i[edit update destroy]
 
   def index
-    @tags = policy_scope(Tag).ordered
+    @tags = policy_scope(Tag).ordered.includes(:places)
 
     authorize Tag
   end

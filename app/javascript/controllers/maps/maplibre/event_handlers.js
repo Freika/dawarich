@@ -298,16 +298,12 @@ export class EventHandlers {
     // Try multiple ways to access the data
     let sourceData = null
 
-    // Method 1: Internal _data property (most common)
-    if (source._data) {
-      sourceData = source._data
-    }
-    // Method 2: Serialize and deserialize (fallback)
-    else if (source.serialize) {
+    // Method 1: Serialize via public API (preferred)
+    if (source.serialize) {
       const serialized = source.serialize()
       sourceData = serialized.data
     }
-    // Method 3: Use cached data from layer
+    // Method 2: Use cached data from layer
     else if (routesLayer.data) {
       sourceData = routesLayer.data
     }
@@ -911,8 +907,8 @@ export class EventHandlers {
     if (!source) return null
 
     let sourceData = null
-    if (source._data) {
-      sourceData = source._data
+    if (source.serialize) {
+      sourceData = source.serialize().data
     } else if (tracksLayer.data) {
       sourceData = tracksLayer.data
     }

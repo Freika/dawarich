@@ -70,8 +70,13 @@ module Points
         first_ts = Point.where(id: point_ids.first).pick(:timestamp)
         time = Time.at(first_ts).utc
 
-        archive = create_archive_record(user_id, time, point_ids, encrypted, compressed)
-        flag_points_batched(point_ids, archive.id)
+        archive = nil
+        ActiveRecord::Base.transaction do
+          archive = create_archive_record(user_id, time, point_ids, encrypted, compressed)
+          verify_archive_readable!(archive, point_ids)
+          flag_points_batched(point_ids, archive.id)
+        end
+
         report_metrics(archive, point_ids.size, compressed)
 
         Rails.logger.info(
@@ -111,6 +116,22 @@ module Points
         Rails.logger.error(error_msg)
         ExceptionReporter.call(StandardError.new(error_msg), error_msg)
         raise StandardError, error_msg
+      end
+
+      def verify_archive_readable!(archive, _point_ids)
+        raise StandardError, "Archive #{archive.id} has no attached file" unless archive.file.attached?
+
+        blob = archive.file.blob
+        raise StandardError, "Archive #{archive.id} has zero-byte file" if blob.byte_size.zero?
+
+        expected_checksum = Digest::SHA256.hexdigest(archive.file.download)
+        stored_checksum = archive.metadata&.dig('content_checksum')
+
+        return unless stored_checksum.present? && expected_checksum != stored_checksum
+
+        raise StandardError,
+              "Archive #{archive.id} content checksum mismatch: " \
+              "expected #{stored_checksum}, got #{expected_checksum}"
       end
 
       def flag_points_batched(point_ids, archive_id)

@@ -4,6 +4,7 @@ import { Toast } from "maps_maplibre/components/toast"
 import { ReplayManager } from "maps_maplibre/managers/replay_manager"
 import { ApiClient } from "maps_maplibre/services/api_client"
 import { CleanupHelper } from "maps_maplibre/utils/cleanup_helper"
+import { escapeHtml } from "maps_maplibre/utils/geojson_transformers"
 import { cancelAllPreviews } from "maps_maplibre/utils/layer_gate"
 import { performanceMonitor } from "maps_maplibre/utils/performance_monitor"
 import { SearchManager } from "maps_maplibre/utils/search_manager"
@@ -779,7 +780,7 @@ export default class extends Controller {
         })
           .setLngLat([lng, lat])
           .setHTML(
-            `<div style="font-size:13px;font-weight:500;padding:2px 0">${visitName || "Visit"}</div>`,
+            `<div style="font-size:13px;font-weight:500;padding:2px 0">${escapeHtml(visitName || "Visit")}</div>`,
           )
           .addTo(this.map)
       }

@@ -22,7 +22,10 @@ export default class extends Controller {
     try {
       const container = this.element
       if (!container || container.clientHeight < 20) {
-        setTimeout(() => this.initializeMap(), 200)
+        this._initRetries = (this._initRetries || 0) + 1
+        if (this._initRetries < 25) {
+          setTimeout(() => this.initializeMap(), 200)
+        }
         return
       }
 

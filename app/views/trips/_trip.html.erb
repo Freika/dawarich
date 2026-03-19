@@ -45,7 +45,7 @@
             </span>
           <% end %>
           <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-primary/10 text-primary">
-            <%= pluralize(((trip.ended_at - trip.started_at) / 1.day).ceil, 'day') %>
+            <%= pluralize([((trip.ended_at - trip.started_at) / 1.day).ceil, 1].max, 'day') %>
           </span>
         </div>
       </div>

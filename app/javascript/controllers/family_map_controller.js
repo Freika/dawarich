@@ -1,5 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 import maplibregl from "maplibre-gl"
+import { escapeHtml } from "maps_maplibre/utils/geojson_transformers"
 import { getMapStyle } from "maps_maplibre/utils/style_manager"
 
 const MEMBER_COLORS = [
@@ -32,7 +33,10 @@ export default class extends Controller {
     try {
       const container = this.mapTarget
       if (!container || container.clientHeight < 50) {
-        setTimeout(() => this.initMap(), 200)
+        this._initRetries = (this._initRetries || 0) + 1
+        if (this._initRetries < 25) {
+          setTimeout(() => this.initMap(), 200)
+        }
         return
       }
 
@@ -140,8 +144,8 @@ export default class extends Controller {
         .setLngLat(coords)
         .setHTML(
           `<div style="font-size:13px;line-height:1.5">
-            <div style="font-weight:600">${props.name}</div>
-            <div style="opacity:0.6;font-size:11px">${this.timeAgo(props.lastUpdate)}</div>
+            <div style="font-weight:600">${escapeHtml(props.name)}</div>
+            <div style="opacity:0.6;font-size:11px">${escapeHtml(this.timeAgo(props.lastUpdate))}</div>
           </div>`,
         )
         .addTo(this.map)

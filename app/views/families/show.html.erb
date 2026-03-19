@@ -24,7 +24,7 @@
   <%# Main layout: Map + Sidebar %>
   <div class="flex flex-col lg:flex-row gap-4" style="min-height: 500px;"
        data-controller="family-map"
-       data-family-map-locations-value="<%= @member_locations.to_json %>">
+       data-family-map-locations-value="<%= j(@member_locations.to_json) %>">
 
     <%# Left: Map %>
     <div class="w-full lg:w-3/5 min-h-full">

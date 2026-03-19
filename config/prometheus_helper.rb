@@ -61,7 +61,16 @@ module PrometheusHelper
       true
     rescue IO::WaitWritable
       # Connection in progress, wait with timeout
-      IO.select(nil, [socket], nil, CONNECT_TIMEOUT) ? true : false
+      if IO.select(nil, [socket], nil, CONNECT_TIMEOUT)
+        # Verify the connection actually succeeded (not just writable due to error)
+        socket.connect_nonblock(sockaddr)
+        true
+      else
+        false
+      end
+    rescue Errno::EISCONN
+      # Already connected — IO.select returned and connect_nonblock confirms success
+      true
     rescue Errno::ECONNREFUSED, Errno::EHOSTUNREACH, Errno::ENETUNREACH,
            Errno::ETIMEDOUT, SocketError, Errno::EADDRNOTAVAIL
       false
@@ -70,7 +79,7 @@ module PrometheusHelper
     end
 
     def local_address?(host)
-      %w[localhost 127.0.0.1 0.0.0.0 :: ANY].include?(host) || host.blank?
+      %w[localhost 127.0.0.1 0.0.0.0 :: ANY].include?(host) || host.nil? || host.empty?
     end
 
     def log_retry(host, port, attempt)
