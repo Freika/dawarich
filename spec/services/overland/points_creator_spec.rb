@@ -34,7 +34,10 @@ RSpec.describe Overland::PointsCreator do
       count_after_first = user.points_count
 
       # Second call with same data should not change the counter
-      expect { call_service; user.reload }.not_to(change { user.points_count })
+      expect do
+        call_service
+        user.reload
+      end.not_to(change { user.points_count })
       expect(user.points_count).to eq(count_after_first)
     end
 

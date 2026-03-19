@@ -23,10 +23,8 @@ class Imports::Create
              end
 
     import.update!(source: source)
-    count_before = user.points_count
     importer(source).new(import, user.id, temp_file_path).call
-    new_count = user.points.count
-    User.update_counters(user.id, points_count: new_count - count_before)
+    User.where(id: user.id).update_all(points_count: user.points.count)
 
     schedule_stats_creating(user.id)
     schedule_visit_suggesting(user.id, import)

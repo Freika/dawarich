@@ -19,12 +19,9 @@ class Overland::PointsCreator
               .reject { |location| location[:lonlat].nil? || location[:timestamp].nil? }
               .map { |location| location.merge(user_id:) }
 
-    count_before = Point.where(user_id: user_id).count
     result = upsert_points(payload)
     if result.any?
-      count_after = Point.where(user_id: user_id).count
-      inserted_count = count_after - count_before
-      User.update_counters(user_id, points_count: inserted_count) if inserted_count.positive?
+      User.where(id: user_id).update_all(points_count: Point.where(user_id: user_id).count)
       Tracks::RealtimeDebouncer.new(user_id).trigger
       Points::LiveBroadcaster.new(user_id, result, payload).call
     end

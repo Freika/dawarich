@@ -33,7 +33,7 @@ module Points
     end
 
     def filename
-      "raw_data_archives/#{user_id}/#{year}/#{format('%02d', month)}/#{format('%03d', chunk_number)}.jsonl.gz"
+      "raw_data_archives/#{user_id}/#{year}/#{format('%02d', month)}/#{format('%03d', chunk_number)}.jsonl.gz.enc"
     end
 
     def size_mb
