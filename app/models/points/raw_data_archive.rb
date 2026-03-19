@@ -5,7 +5,7 @@ module Points
     self.table_name = 'points_raw_data_archives'
 
     belongs_to :user
-    has_many :points, dependent: :nullify
+    has_many :points, dependent: :restrict_with_exception
 
     has_one_attached :file
 

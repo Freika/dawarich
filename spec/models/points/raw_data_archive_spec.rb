@@ -8,7 +8,7 @@ RSpec.describe Points::RawDataArchive, type: :model do
 
   describe 'associations' do
     it { is_expected.to belong_to(:user) }
-    it { is_expected.to have_many(:points).dependent(:nullify) }
+    it { is_expected.to have_many(:points).dependent(:restrict_with_exception) }
   end
 
   describe 'validations' do
@@ -105,12 +105,12 @@ RSpec.describe Points::RawDataArchive, type: :model do
     end
   end
 
-  describe 'FK ON DELETE RESTRICT' do
+  describe 'deletion restriction' do
     it 'prevents deletion of archive that has linked points' do
       archive = create(:points_raw_data_archive, user: user)
       point = create(:point, user: user, raw_data_archive_id: archive.id, raw_data_archived: true)
 
-      expect { archive.destroy! }.to raise_error(ActiveRecord::InvalidForeignKey)
+      expect { archive.destroy! }.to raise_error(ActiveRecord::DeleteRestrictionError)
 
       # Point still exists and still references the archive
       expect(Point.exists?(point.id)).to be true

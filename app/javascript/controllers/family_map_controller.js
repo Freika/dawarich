@@ -27,6 +27,10 @@ export default class extends Controller {
       clearTimeout(this._initTimer)
       this._initTimer = null
     }
+    if (this._popup) {
+      this._popup.remove()
+      this._popup = null
+    }
     if (this.map) {
       this.map.remove()
       this.map = null
@@ -144,7 +148,8 @@ export default class extends Controller {
       const props = e.features[0].properties
       const coords = e.features[0].geometry.coordinates.slice()
 
-      new maplibregl.Popup({ offset: 16, closeButton: false })
+      if (this._popup) this._popup.remove()
+      this._popup = new maplibregl.Popup({ offset: 16, closeButton: false })
         .setLngLat(coords)
         .setHTML(
           `<div style="font-size:13px;line-height:1.5">

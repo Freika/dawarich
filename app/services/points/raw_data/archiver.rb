@@ -31,9 +31,18 @@ module Points
 
           break if point_ids.empty?
 
-          archive_chunk(user_id, point_ids)
-          @stats[:processed] += 1
-          @stats[:archived] += point_ids.size
+          begin
+            archive_chunk(user_id, point_ids)
+            @stats[:processed] += 1
+            @stats[:archived] += point_ids.size
+          rescue StandardError => e
+            @stats[:failed] += 1
+            Rails.logger.error(
+              "Failed to archive chunk for user #{user_id} " \
+              "(IDs #{point_ids.first}..#{point_ids.last}): #{e.message}"
+            )
+            ExceptionReporter.call(e, "Archive chunk failed for user #{user_id}")
+          end
         end
 
         @stats

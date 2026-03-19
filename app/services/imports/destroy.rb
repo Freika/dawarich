@@ -13,7 +13,8 @@ class Imports::Destroy
   def call
     points_count = @import.points_count.to_i
 
-    delete_points_in_batches
+    total_deleted = delete_points_in_batches
+    User.update_counters(@user.id, points_count: -total_deleted) if total_deleted.positive?
 
     @import.destroy!
 
@@ -25,11 +26,15 @@ class Imports::Destroy
   private
 
   def delete_points_in_batches
+    total_deleted = 0
+
     loop do
       ids = @import.points.limit(BATCH_SIZE).pluck(:id)
       break if ids.empty?
 
-      Point.where(id: ids).delete_all
+      total_deleted += Point.where(id: ids).delete_all
     end
+
+    total_deleted
   end
 end
