@@ -42,6 +42,7 @@ module Points
               "(IDs #{point_ids.first}..#{point_ids.last}): #{e.message}"
             )
             ExceptionReporter.call(e, "Archive chunk failed for user #{user_id}")
+            break # Stop processing — failed points stay unarchived and would be re-fetched infinitely
           end
         end
 
