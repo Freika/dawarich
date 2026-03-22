@@ -66,6 +66,28 @@ RSpec.describe Point, type: :model do
         expect(result).not_to include(point)
       end
     end
+
+    describe '.not_outlier' do
+      let(:user) { create(:user) }
+      let!(:normal_point) { create(:point, user: user, outlier: false) }
+      let!(:outlier_point) { create(:point, user: user, outlier: true) }
+
+      it 'excludes points flagged as outliers' do
+        expect(Point.not_outlier).to include(normal_point)
+        expect(Point.not_outlier).not_to include(outlier_point)
+      end
+    end
+
+    describe '.outlier' do
+      let(:user) { create(:user) }
+      let!(:normal_point) { create(:point, user: user, outlier: false) }
+      let!(:outlier_point) { create(:point, user: user, outlier: true) }
+
+      it 'returns only points flagged as outliers' do
+        expect(Point.outlier).to include(outlier_point)
+        expect(Point.outlier).not_to include(normal_point)
+      end
+    end
   end
 
   describe 'methods' do

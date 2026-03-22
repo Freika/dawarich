@@ -31,6 +31,8 @@ class Point < ApplicationRecord
   scope :not_reverse_geocoded, -> { where(reverse_geocoded_at: nil) }
   scope :visited, -> { where.not(visit_id: nil) }
   scope :not_visited, -> { where(visit_id: nil) }
+  scope :not_outlier, -> { where(outlier: false) }
+  scope :outlier, -> { where(outlier: true) }
 
   after_create :async_reverse_geocode, if: -> { DawarichSettings.store_geodata? && !reverse_geocoded? }
   after_create :set_country
