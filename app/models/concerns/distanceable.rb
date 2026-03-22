@@ -110,6 +110,7 @@ module Distanceable
             lonlat,
             LAG(lonlat) OVER (ORDER BY timestamp) as prev_lonlat
           FROM (#{to_sql}) AS points
+          WHERE outlier = false
         )
         SELECT COALESCE(
           SUM(

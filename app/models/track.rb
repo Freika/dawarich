@@ -53,9 +53,9 @@ class Track < ApplicationRecord
     time_threshold_seconds = time_threshold_minutes * 60
 
     where_clause = if untracked_only
-                     'WHERE user_id = $1 AND timestamp BETWEEN $2 AND $3 AND track_id IS NULL'
+                     'WHERE user_id = $1 AND timestamp BETWEEN $2 AND $3 AND track_id IS NULL AND outlier = false'
                    else
-                     'WHERE user_id = $1 AND timestamp BETWEEN $2 AND $3'
+                     'WHERE user_id = $1 AND timestamp BETWEEN $2 AND $3 AND outlier = false'
                    end
 
     sql = <<~SQL
