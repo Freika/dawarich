@@ -15,9 +15,18 @@ class Points::OutlierDetector
   # Returns the number of points newly flagged as outliers
   def call
     total_flagged = 0
+    prev_last_point = nil
 
     points_scope.find_in_batches(batch_size: BATCH_SIZE) do |batch|
-      outlier_ids = detect_outliers_in_batch(batch)
+      # Prepend last point from previous batch to detect outliers at batch boundaries
+      working_batch = prev_last_point ? [prev_last_point] + batch : batch
+      outlier_ids = detect_outliers_in_batch(working_batch)
+
+      # Don't re-flag the carried-over point (it was already processed)
+      outlier_ids.delete(prev_last_point.id) if prev_last_point
+
+      prev_last_point = batch.last
+
       next if outlier_ids.empty?
 
       Point.where(id: outlier_ids).update_all(outlier: true)
@@ -34,10 +43,10 @@ class Points::OutlierDetector
   end
 
   def points_scope
-    scope = user.points.where(outlier: false).order(:timestamp)
+    scope = user.points.where(outlier: false)
     scope = scope.where('timestamp >= ?', start_at.to_i) if start_at
     scope = scope.where('timestamp <= ?', end_at.to_i) if end_at
-    scope.select(:id, :lonlat, :timestamp)
+    scope.select(:id, :lonlat, :timestamp).order(:timestamp, :id)
   end
 
   def detect_outliers_in_batch(points)

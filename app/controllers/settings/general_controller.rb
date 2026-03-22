@@ -78,6 +78,6 @@ class Settings::GeneralController < ApplicationController
     end
     return unless params.key?(:max_speed_kmh)
 
-    current_user.settings['max_speed_kmh'] = params[:max_speed_kmh].to_i
+    current_user.settings['max_speed_kmh'] = params[:max_speed_kmh].to_i.clamp(10, 2000)
   end
 end

@@ -23,7 +23,7 @@ RSpec.describe Points::OutlierDetectionJob, type: :job do
 
       detector = instance_double(Points::OutlierDetector, call: 0)
       allow(Points::OutlierDetector).to receive(:new)
-        .with(user, start_at: Time.parse(start_at), end_at: Time.parse(end_at))
+        .with(user, start_at: Time.zone.parse(start_at), end_at: Time.zone.parse(end_at))
         .and_return(detector)
 
       described_class.new.perform(user.id, start_at, end_at)

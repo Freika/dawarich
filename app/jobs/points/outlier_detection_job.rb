@@ -7,8 +7,8 @@ class Points::OutlierDetectionJob < ApplicationJob
     user = find_user_or_skip(user_id) || return
     return unless user.safe_settings.outlier_detection_enabled?
 
-    parsed_start = start_at ? Time.parse(start_at.to_s) : nil
-    parsed_end = end_at ? Time.parse(end_at.to_s) : nil
+    parsed_start = start_at ? Time.zone.parse(start_at.to_s) : nil
+    parsed_end = end_at ? Time.zone.parse(end_at.to_s) : nil
 
     count = Points::OutlierDetector.new(user, start_at: parsed_start, end_at: parsed_end).call
 
