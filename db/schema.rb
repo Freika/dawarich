@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_03_18_000001) do
+ActiveRecord::Schema[8.0].define(version: 2026_03_20_000002) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
@@ -283,9 +283,12 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_18_000001) do
     t.index ["track_id"], name: "index_points_on_track_id"
     t.index ["user_id", "country_name"], name: "idx_points_user_country_name"
     t.index ["user_id", "geodata"], name: "index_points_on_user_id_and_empty_geodata", where: "(geodata = '{}'::jsonb)"
+    t.index ["user_id", "id"], name: "index_points_on_archived_uncleared", where: "((raw_data_archived = true) AND (raw_data <> '{}'::jsonb))"
+    t.index ["user_id", "id"], name: "index_points_on_unarchived", where: "((raw_data_archived = false) AND (raw_data <> '{}'::jsonb))"
     t.index ["user_id", "timestamp", "track_id"], name: "idx_points_track_generation"
     t.index ["user_id", "timestamp"], name: "idx_points_user_visit_null_timestamp", where: "(visit_id IS NULL)"
     t.index ["user_id", "timestamp"], name: "index_points_on_user_id_and_timestamp", order: { timestamp: :desc }
+    t.index ["user_id"], name: "index_points_on_user_id"
     t.index ["visit_id"], name: "index_points_on_visit_id"
   end
 
@@ -416,6 +419,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_18_000001) do
     t.uuid "sharing_uuid"
     t.jsonb "h3_hex_ids", default: {}
     t.index ["distance"], name: "index_stats_on_distance"
+    t.index ["h3_hex_ids"], name: "index_stats_on_h3_hex_ids", where: "((h3_hex_ids IS NOT NULL) AND (h3_hex_ids <> '{}'::jsonb))", using: :gin
     t.index ["month"], name: "index_stats_on_month"
     t.index ["sharing_uuid"], name: "index_stats_on_sharing_uuid", unique: true
     t.index ["user_id", "year", "month"], name: "index_stats_on_user_id_year_month", unique: true
@@ -518,14 +522,14 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_18_000001) do
     t.integer "status", default: 0
     t.datetime "active_until"
     t.integer "points_count", default: 0, null: false
-    t.string "provider"
-    t.string "uid"
     t.string "utm_source"
     t.string "utm_medium"
     t.string "utm_campaign"
     t.string "utm_term"
     t.string "utm_content"
-    t.datetime "deleted_at", precision: nil
+    t.string "provider"
+    t.string "uid"
+    t.datetime "deleted_at"
     t.integer "plan", default: 1, null: false
     t.index ["api_key"], name: "index_users_on_api_key"
     t.index ["deleted_at"], name: "index_users_on_deleted_at"
@@ -537,6 +541,24 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_18_000001) do
   end
 
   add_check_constraint "users", "admin IS NOT NULL", name: "users_admin_null", validate: false
+
+  create_table "video_exports", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "track_id"
+    t.datetime "start_at", null: false
+    t.datetime "end_at", null: false
+    t.integer "status", default: 0, null: false
+    t.jsonb "config", default: {}, null: false
+    t.string "error_message"
+    t.string "callback_nonce", null: false
+    t.datetime "processing_started_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["status"], name: "index_video_exports_on_status"
+    t.index ["track_id"], name: "index_video_exports_on_track_id"
+    t.index ["user_id", "status"], name: "index_video_exports_on_user_id_and_status"
+    t.index ["user_id"], name: "index_video_exports_on_user_id"
+  end
 
   create_table "visits", force: :cascade do |t|
     t.bigint "area_id"
@@ -573,7 +595,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_18_000001) do
   add_foreign_key "points", "points_raw_data_archives", column: "raw_data_archive_id", on_delete: :restrict, validate: false
   add_foreign_key "points", "users"
   add_foreign_key "points", "visits"
-  add_foreign_key "points_raw_data_archives", "users", validate: false
+  add_foreign_key "points_raw_data_archives", "users"
   add_foreign_key "rails_pulse_operations", "rails_pulse_queries", column: "query_id"
   add_foreign_key "rails_pulse_operations", "rails_pulse_requests", column: "request_id"
   add_foreign_key "rails_pulse_requests", "rails_pulse_routes", column: "route_id"
@@ -583,6 +605,8 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_18_000001) do
   add_foreign_key "track_segments", "tracks"
   add_foreign_key "tracks", "users"
   add_foreign_key "trips", "users"
+  add_foreign_key "video_exports", "tracks"
+  add_foreign_key "video_exports", "users"
   add_foreign_key "visits", "areas"
   add_foreign_key "visits", "places"
   add_foreign_key "visits", "users"

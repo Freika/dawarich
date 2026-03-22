@@ -66,7 +66,11 @@ Rails.application.routes.draw do
   post 'settings/generate_api_key', to: 'settings#generate_api_key', as: :generate_api_key
 
   resources :imports
-  resources :visits, only: %i[index update]
+  resources :visits, only: %i[index update] do
+    collection do
+      patch :bulk_update
+    end
+  end
   resources :areas, only: [:create]
   resources :places, only: %i[index destroy create update] do
     collection do

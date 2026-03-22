@@ -20,6 +20,21 @@ class VisitsController < ApplicationController
     @visits = visits.page(params[:page]).per(10)
   end
 
+  def bulk_update
+    status = params[:status]
+    source_status = params[:source_status] || 'suggested'
+    visit_ids = current_user.scoped_visits.where(status: source_status).pluck(:id)
+
+    result = Visits::BulkUpdate.new(current_user, visit_ids, status).call
+
+    if result
+      redirect_to visits_path(status: source_status),
+                  notice: "#{result[:count]} #{'visit'.pluralize(result[:count])} #{status}."
+    else
+      redirect_to visits_path(status: source_status), alert: 'Failed to update visits.'
+    end
+  end
+
   def update
     update_visit_name_from_place if visit_params[:place_id].present?
 

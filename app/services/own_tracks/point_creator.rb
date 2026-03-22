@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class OwnTracks::PointCreator
-  RETURNING_COLUMNS = 'id, timestamp, ST_X(lonlat::geometry) AS longitude, ST_Y(lonlat::geometry) AS latitude'
+  RETURNING_COLUMNS = 'id, xmax, timestamp, ST_X(lonlat::geometry) AS longitude, ST_Y(lonlat::geometry) AS latitude'
 
   attr_reader :params, :user_id
 
@@ -17,11 +17,9 @@ class OwnTracks::PointCreator
     payload = parsed_params.merge(user_id:)
     return [] if payload[:timestamp].nil? || payload[:lonlat].nil?
 
-    count_before = Point.where(user_id: user_id).count
     result = upsert_points([payload])
     if result.any?
-      count_after = Point.where(user_id: user_id).count
-      inserted_count = count_after - count_before
+      inserted_count = result.count { |row| row['xmax'].to_i.zero? }
       User.update_counters(user_id, points_count: inserted_count) if inserted_count.positive?
       Tracks::RealtimeDebouncer.new(user_id).trigger
       Points::LiveBroadcaster.new(user_id, result, [payload]).call

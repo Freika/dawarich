@@ -77,6 +77,35 @@ RSpec.describe '/visits', type: :request do
     end
   end
 
+  describe 'PATCH /bulk_update' do
+    let!(:suggested_visits) { create_list(:visit, 3, user:, status: :suggested) }
+
+    it 'confirms all suggested visits' do
+      patch bulk_update_visits_url, params: { status: 'confirmed', source_status: 'suggested' }
+
+      expect(suggested_visits.each(&:reload).map(&:status)).to all(eq('confirmed'))
+      expect(response).to redirect_to(visits_path(status: 'suggested'))
+      follow_redirect!
+      expect(response.body).to include('3 visits confirmed.')
+    end
+
+    it 'declines all suggested visits' do
+      patch bulk_update_visits_url, params: { status: 'declined', source_status: 'suggested' }
+
+      expect(suggested_visits.each(&:reload).map(&:status)).to all(eq('declined'))
+      expect(response).to redirect_to(visits_path(status: 'suggested'))
+    end
+
+    it 'does not affect visits of other users' do
+      other_user = create(:user)
+      other_visit = create(:visit, user: other_user, status: :suggested)
+
+      patch bulk_update_visits_url, params: { status: 'confirmed', source_status: 'suggested' }
+
+      expect(other_visit.reload.status).to eq('suggested')
+    end
+  end
+
   describe 'PATCH /update' do
     context 'with valid parameters' do
       let(:visit) { create(:visit, user:, status: :suggested) }

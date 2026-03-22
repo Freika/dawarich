@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 
 - Family page now contains a map with family members markers on it.
+- Visits page now have "Confirm all" and "Decline all" buttons to quickly confirm or decline all visit suggestions at once.
 
 ### Changed
 
@@ -21,6 +22,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Fix Lite plan archival warnings sending all three notifications (11-month, 11.5-month, and 12-month) simultaneously when a user's oldest data already exceeds all thresholds. Now only the most severe warning is sent, and lower thresholds are marked as already notified.
 - Fix intermittent 502/504 errors caused by `User.reset_counters(:points)` running synchronously during OwnTracks, Overland, and API point creation. The full `COUNT(*)` query blocked web workers for 60–500+ seconds on large accounts, starving all other requests. Counter reset now runs as a background job.
 - Misconfigured Prometheus settings will no longer litter logs with error messages, it will make multiple attempts to connect instead and then stop.
+- One of previous versions removed a database index making points upload very slow. The index is now added back to fix the issue.
 
 ## [1.3.4] - 2026-03-15
 

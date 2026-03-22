@@ -14,22 +14,22 @@ class Points::Create
     deduplicated_data = data.uniq { |point| [point[:lonlat], point[:timestamp].to_i, point[:user_id]] }
 
     created_points = []
-    count_before = Point.where(user_id: user.id).count
+    inserted_count = 0
 
     deduplicated_data.each_slice(1000) do |location_batch|
       result = Point.upsert_all(
         location_batch,
         unique_by: %i[lonlat timestamp user_id],
-        returning: Arel.sql('id, timestamp, ST_X(lonlat::geometry) AS longitude, ST_Y(lonlat::geometry) AS latitude')
+        returning: Arel.sql(
+          'id, xmax, timestamp, ST_X(lonlat::geometry) AS longitude, ST_Y(lonlat::geometry) AS latitude'
+        )
       )
+      inserted_count += result.count { |row| row['xmax'].to_i.zero? }
       created_points.concat(result)
     end
 
     if created_points.any?
-      count_after = Point.where(user_id: user.id).count
-      inserted_count = count_after - count_before
       User.update_counters(user.id, points_count: inserted_count) if inserted_count.positive?
-      # rubocop:enable Rails/SkipsModelValidations
       Tracks::RealtimeDebouncer.new(user.id).trigger
       Points::LiveBroadcaster.new(user.id, created_points, deduplicated_data).call
     end

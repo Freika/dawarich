@@ -65,7 +65,7 @@ RSpec.describe Points::Create do
             processed_data,
             unique_by: %i[lonlat timestamp user_id],
             returning: Arel.sql(
-              'id, timestamp, ST_X(lonlat::geometry) AS longitude, ST_Y(lonlat::geometry) AS latitude'
+              'id, xmax, timestamp, ST_X(lonlat::geometry) AS longitude, ST_Y(lonlat::geometry) AS latitude'
             )
           )
           .and_return(upsert_result)
@@ -178,7 +178,7 @@ RSpec.describe Points::Create do
         it 'uses the correct returning clause' do
           expect(Point).to receive(:upsert_all) do |_data, options|
             expect(options[:returning]).to eq(
-              Arel.sql('id, timestamp, ST_X(lonlat::geometry) AS longitude, ST_Y(lonlat::geometry) AS latitude')
+              Arel.sql('id, xmax, timestamp, ST_X(lonlat::geometry) AS longitude, ST_Y(lonlat::geometry) AS latitude')
             )
             deduplicated_upsert_result
           end
@@ -353,7 +353,7 @@ RSpec.describe Points::Create do
             all_processed_data,
             unique_by: %i[lonlat timestamp user_id],
             returning: Arel.sql(
-              'id, timestamp, ST_X(lonlat::geometry) AS longitude, ST_Y(lonlat::geometry) AS latitude'
+              'id, xmax, timestamp, ST_X(lonlat::geometry) AS longitude, ST_Y(lonlat::geometry) AS latitude'
             )
           )
           .and_return(expected_results)
