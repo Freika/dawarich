@@ -70,7 +70,30 @@ family_location_requests_expiry_job:
   class: "Families::ExpireLocationRequestsJob"
   queue: default
 
+points_counter_correction_job:
+  cron: "0 */6 * * *" # every 6 hours
+  class: "Users::PointsCounterCorrectionJob"
+  queue: default
+
 lite_archival_warning_job:
   cron: "0 3 * * *" # every day at 03:00
   class: "Lite::ArchivalWarningJob"
   queue: archival
+
+# Raw data archival pipeline — enable when ready for production use.
+# Pipeline: archive (1st) → verify (daily) → clear (8th, 7 days after archive).
+# See https://github.com/Freika/dawarich/issues/XXXX for tracking.
+# raw_data_archive_job:
+#   cron: "0 3 1 * *" # 1st of month at 03:00
+#   class: "Points::RawData::ArchiveJob"
+#   queue: archival
+
+# raw_data_verify_job:
+#   cron: "0 5 * * *" # every day at 05:00
+#   class: "Points::RawData::VerifyRandomJob"
+#   queue: archival
+
+# raw_data_clear_job:
+#   cron: "0 3 8 * *" # 8th of month at 03:00 (7 days after archival for verification)
+#   class: "Points::RawData::ClearJob"
+#   queue: archival

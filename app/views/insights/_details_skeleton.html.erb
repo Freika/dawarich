@@ -1,39 +1,21 @@
-<!-- Skeleton placeholder for lazy-loaded insights details -->
+<%# Skeleton placeholder for lazy-loaded insights details %>
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-  <!-- Left Column Skeletons -->
+  <%# Left Column Skeletons %>
   <div class="space-y-6">
     <% 3.times do %>
-      <div class="card bg-base-200">
-        <div class="card-body p-5 space-y-4">
-          <div class="h-6 w-48 bg-base-300 rounded animate-pulse"></div>
-          <div class="space-y-2">
-            <div class="h-4 w-full bg-base-300 rounded animate-pulse"></div>
-            <div class="h-4 w-3/4 bg-base-300 rounded animate-pulse"></div>
-            <div class="h-4 w-5/6 bg-base-300 rounded animate-pulse"></div>
-          </div>
-        </div>
-      </div>
+      <%= render 'shared/skeleton_card', lines: 3 %>
     <% end %>
   </div>
 
-  <!-- Right Column Skeletons -->
+  <%# Right Column Skeletons %>
   <div class="space-y-6">
     <% 2.times do %>
-      <div class="card bg-base-200">
-        <div class="card-body p-5 space-y-4">
-          <div class="h-6 w-48 bg-base-300 rounded animate-pulse"></div>
-          <div class="h-40 w-full bg-base-300 rounded animate-pulse"></div>
-          <div class="space-y-2">
-            <div class="h-4 w-full bg-base-300 rounded animate-pulse"></div>
-            <div class="h-4 w-2/3 bg-base-300 rounded animate-pulse"></div>
-          </div>
-        </div>
-      </div>
+      <%= render 'shared/skeleton_card', lines: 2, chart_height: 'h-40' %>
     <% end %>
   </div>
 </div>
 
-<!-- Movement & Wellness Skeleton -->
+<%# Movement & Wellness Skeleton %>
 <div class="card bg-base-200 mb-6">
   <div class="card-body p-5 space-y-4">
     <div class="h-6 w-56 bg-base-300 rounded animate-pulse"></div>

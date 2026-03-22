@@ -6,7 +6,7 @@ RSpec.describe Visits::Suggest do
   describe '#call' do
     let!(:user) { create(:user) }
     let(:start_at) { Time.zone.local(2020, 1, 1, 0, 0, 0) }
-    let(:end_at) { Time.zone.local(2020, 1, 1, 2, 0, 0) }
+    let(:end_at) { Time.zone.local(2020, 1, 1, 5, 0, 0) }
 
     let!(:points) { create_visit_points(user, start_at) }
 
@@ -76,7 +76,7 @@ RSpec.describe Visits::Suggest do
 
     context 'when reverse geocoding is enabled' do
       let(:reverse_geocoding_start_at) { Time.zone.local(2020, 6, 1, 0, 0, 0) }
-      let(:reverse_geocoding_end_at) { Time.zone.local(2020, 6, 1, 2, 0, 0) }
+      let(:reverse_geocoding_end_at) { Time.zone.local(2020, 6, 1, 5, 0, 0) }
 
       before do
         allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
@@ -88,7 +88,9 @@ RSpec.describe Visits::Suggest do
       it 'enqueues reverse geocoding jobs for created visits' do
         described_class.new(user, start_at: reverse_geocoding_start_at, end_at: reverse_geocoding_end_at).call
 
-        expect(enqueued_jobs.count).to eq(2)
+        # Since both visits are at the same location, they share the same place.
+        # So only 1 reverse geocoding job should be enqueued.
+        expect(enqueued_jobs.count).to eq(1)
         expect(enqueued_jobs).to all(have_job_class('ReverseGeocodingJob'))
         expect(enqueued_jobs).to all(have_arguments_starting_with('place'))
       end
@@ -97,11 +99,12 @@ RSpec.describe Visits::Suggest do
     context 'when reverse geocoding is disabled' do
       before do
         allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false)
+        clear_enqueued_jobs
       end
 
       it 'does not reverse geocode visits' do
-        expect_any_instance_of(Visit).not_to receive(:async_reverse_geocode)
         subject
+        expect(enqueued_jobs).to be_empty
       end
     end
   end
@@ -126,9 +129,9 @@ RSpec.describe Visits::Suggest do
       # end of first visit
 
       # second visit
-      create(:point, :with_known_location, user:, timestamp: start_time + 95.minutes),
-      create(:point, :with_known_location, user:, timestamp: start_time + 100.minutes),
-      create(:point, :with_known_location, user:, timestamp: start_time + 105.minutes)
+      create(:point, :with_known_location, user:, timestamp: start_time + 180.minutes),
+      create(:point, :with_known_location, user:, timestamp: start_time + 185.minutes),
+      create(:point, :with_known_location, user:, timestamp: start_time + 190.minutes)
       # end of second visit
     ]
   end

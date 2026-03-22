@@ -65,7 +65,7 @@ RSpec.describe Points::Create do
             processed_data,
             unique_by: %i[lonlat timestamp user_id],
             returning: Arel.sql(
-              'id, timestamp, ST_X(lonlat::geometry) AS longitude, ST_Y(lonlat::geometry) AS latitude'
+              'id, xmax, timestamp, ST_X(lonlat::geometry) AS longitude, ST_Y(lonlat::geometry) AS latitude'
             )
           )
           .and_return(upsert_result)
@@ -178,7 +178,7 @@ RSpec.describe Points::Create do
         it 'uses the correct returning clause' do
           expect(Point).to receive(:upsert_all) do |_data, options|
             expect(options[:returning]).to eq(
-              Arel.sql('id, timestamp, ST_X(lonlat::geometry) AS longitude, ST_Y(lonlat::geometry) AS latitude')
+              Arel.sql('id, xmax, timestamp, ST_X(lonlat::geometry) AS longitude, ST_Y(lonlat::geometry) AS latitude')
             )
             deduplicated_upsert_result
           end
@@ -293,6 +293,24 @@ RSpec.describe Points::Create do
         point_time = points[1].timestamp.is_a?(Integer) ? Time.zone.at(points[1].timestamp) : points[1].timestamp
         expect(point_time).to be_within(1.second).of(timestamp + 1.hour)
       end
+
+      it 'increments points_count to match actual point count' do
+        described_class.new(user, point_params).call
+        user.reload
+
+        expect(user.points_count).to eq(Point.where(user_id: user.id).count)
+      end
+
+      it 'does not increment points_count for duplicate upserts' do
+        described_class.new(user, point_params).call
+        user.reload
+        count_after_first = user.points_count
+
+        described_class.new(user, point_params).call
+        user.reload
+
+        expect(user.points_count).to eq(count_after_first)
+      end
     end
 
     context 'with GeoJSON example data' do
@@ -353,7 +371,7 @@ RSpec.describe Points::Create do
             all_processed_data,
             unique_by: %i[lonlat timestamp user_id],
             returning: Arel.sql(
-              'id, timestamp, ST_X(lonlat::geometry) AS longitude, ST_Y(lonlat::geometry) AS latitude'
+              'id, xmax, timestamp, ST_X(lonlat::geometry) AS longitude, ST_Y(lonlat::geometry) AS latitude'
             )
           )
           .and_return(expected_results)

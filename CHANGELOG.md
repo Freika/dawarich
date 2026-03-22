@@ -4,7 +4,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.4.0] — Unreleased
+
+### Added
+
+- Family page now contains a map with family members markers on it.
+- Visits page now have "Confirm all" and "Decline all" buttons to quickly confirm or decline all visit suggestions at once.
+
+### Changed
+
+- Updated look and feel
+- The point counting was changed to be more efficient on bigger accounts.
+- Redesigned raw data archival system for large instances (10M+ points). Archival now runs per-user via Sidekiq jobs instead of a single sequential process, uses PK cursor-based queries instead of full table scans, and processes in 50K-point chunks with 5K-batch flag updates to minimize DB lock contention. Inline verification removed in favor of daily spot-checks. FK constraint changed from `ON DELETE nullify` to `ON DELETE RESTRICT` to prevent cascading updates on large tables.
+
+### Fixed
+
+- Fix Lite plan archival warnings sending all three notifications (11-month, 11.5-month, and 12-month) simultaneously when a user's oldest data already exceeds all thresholds. Now only the most severe warning is sent, and lower thresholds are marked as already notified.
+- Fix intermittent 502/504 errors caused by `User.reset_counters(:points)` running synchronously during OwnTracks, Overland, and API point creation. The full `COUNT(*)` query blocked web workers for 60–500+ seconds on large accounts, starving all other requests. Counter reset now runs as a background job.
+- Misconfigured Prometheus settings will no longer litter logs with error messages, it will make multiple attempts to connect instead and then stop.
+- One of previous versions removed a database index making points upload very slow. The index is now added back to fix the issue.
+
 ## [1.3.4] - 2026-03-15
+
+### Added
+
+- Family members can now share their location with each other. In the family settings, you can send a location sharing request to any family member. Once they accept it, you will be able to see their location on the map and they will be able to see yours. You can also revoke location sharing at any time. Location sharing is disabled by default for all existing families, so you need to enable it in the family settings if you want to use this feature.
 
 ### Changed
 

@@ -77,11 +77,23 @@ RSpec.describe Lite::ArchivalWarningJob, type: :job do
         create(:point, user: lite_user, timestamp: 12.months.ago.to_i)
       end
 
-      it 'creates an in-app banner notification about archived data' do
-        expect { described_class.perform_now }.to change(Notification, :count)
+      it 'creates only the most severe notification (archived), not all three' do
+        expect { described_class.perform_now }.to change(Notification, :count).by(1)
         notification = Notification.where(user: lite_user).order(:created_at).last
         expect(notification.kind).to eq('warning')
         expect(notification.title).to include('archived')
+      end
+
+      it 'does not enqueue the 11.5-month email when all thresholds crossed at once' do
+        expect { described_class.perform_now }
+          .not_to have_enqueued_job(Users::MailerSendingJob)
+      end
+
+      it 'marks all thresholds as sent so none fire on subsequent runs' do
+        described_class.perform_now
+        lite_user.reload
+        warnings = lite_user.settings['archival_warnings']
+        expect(warnings.keys).to contain_exactly('11mo', '11_5mo', '12mo')
       end
     end
 

@@ -1,10 +1,12 @@
 # frozen_string_literal: true
 
+require_relative '../prometheus_helper'
+
 Sidekiq.configure_server do |config|
   config.redis = { url: ENV['REDIS_URL'], db: ENV.fetch('RAILS_JOB_QUEUE_DB', 1) }
   config.logger = Sidekiq::Logger.new($stdout)
 
-  if ENV['PROMETHEUS_EXPORTER_ENABLED'].to_s == 'true'
+  if ENV['PROMETHEUS_EXPORTER_ENABLED'].to_s == 'true' && PrometheusHelper.ensure_reachable!
     require 'prometheus_exporter/instrumentation'
     # Add middleware for collecting job-level metrics
     config.server_middleware do |chain|

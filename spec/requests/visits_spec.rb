@@ -59,21 +59,34 @@ RSpec.describe '/visits', type: :request do
         expect(@controller.instance_variable_get(:@visits)).to match_array(declined_visits)
       end
     end
+  end
 
-    context 'with suggested visits' do
-      let!(:suggested_visits) { create_list(:visit, 3, user:, status: :suggested) }
+  describe 'PATCH /bulk_update' do
+    let!(:suggested_visits) { create_list(:visit, 3, user:, status: :suggested) }
 
-      it 'does not return suggested visits' do
-        get visits_url
+    it 'confirms all suggested visits' do
+      patch bulk_update_visits_url, params: { status: 'confirmed', source_status: 'suggested' }
 
-        expect(@controller.instance_variable_get(:@visits)).not_to include(suggested_visits)
-      end
+      expect(suggested_visits.each(&:reload).map(&:status)).to all(eq('confirmed'))
+      expect(response).to redirect_to(visits_path(status: 'suggested'))
+      follow_redirect!
+      expect(response.body).to include('3 visits confirmed.')
+    end
 
-      it 'returns suggested visits' do
-        get visits_url, params: { status: 'suggested' }
+    it 'declines all suggested visits' do
+      patch bulk_update_visits_url, params: { status: 'declined', source_status: 'suggested' }
 
-        expect(@controller.instance_variable_get(:@visits)).to match_array(suggested_visits)
-      end
+      expect(suggested_visits.each(&:reload).map(&:status)).to all(eq('declined'))
+      expect(response).to redirect_to(visits_path(status: 'suggested'))
+    end
+
+    it 'does not affect visits of other users' do
+      other_user = create(:user)
+      other_visit = create(:visit, user: other_user, status: :suggested)
+
+      patch bulk_update_visits_url, params: { status: 'confirmed', source_status: 'suggested' }
+
+      expect(other_visit.reload.status).to eq('suggested')
     end
   end
 

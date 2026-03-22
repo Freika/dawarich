@@ -25,6 +25,25 @@ RSpec.describe OwnTracks::PointCreator do
     expect { call_service }.not_to(change { Point.where(user:).count })
   end
 
+  it 'does not inflate points_count on duplicate submissions' do
+    call_service
+    user.reload
+    count_after_first = user.points_count
+
+    expect do
+      call_service
+      user.reload
+    end.not_to(change { user.points_count })
+    expect(user.points_count).to eq(count_after_first)
+  end
+
+  it 'updates points_count to match actual point count' do
+    call_service
+    user.reload
+
+    expect(user.points_count).to eq(Point.where(user_id: user.id).count)
+  end
+
   context 'when params are invalid' do
     let(:point_params) { { lat: nil } }
 

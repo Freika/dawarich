@@ -5,9 +5,11 @@ module Points
     self.table_name = 'points_raw_data_archives'
 
     belongs_to :user
-    has_many :points, dependent: :nullify
+    has_many :points, dependent: :restrict_with_exception
 
     has_one_attached :file
+
+    after_commit :remove_attached_file, on: :destroy
 
     validates :year, :month, :chunk_number, :point_count, presence: true
     validates :year, numericality: { greater_than: 1970, less_than: 2100 }
@@ -31,7 +33,7 @@ module Points
     end
 
     def filename
-      "raw_data_archives/#{user_id}/#{year}/#{format('%02d', month)}/#{format('%03d', chunk_number)}.jsonl.gz"
+      "raw_data_archives/#{user_id}/#{year}/#{format('%02d', month)}/#{format('%03d', chunk_number)}.jsonl.gz.enc"
     end
 
     def size_mb
@@ -66,6 +68,10 @@ module Points
       return unless metadata['expected_count'].blank? || metadata['actual_count'].blank?
 
       errors.add(:metadata, 'must contain expected_count and actual_count')
+    end
+
+    def remove_attached_file
+      file.purge_later
     end
   end
 end

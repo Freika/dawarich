@@ -24,6 +24,73 @@
   }
 }
 
+/* ===== Dawarich Design System v2 ===== */
+
+/* Glass navbar — must sit above all page content */
+.navbar {
+  background: oklch(var(--b1) / 0.75) !important;
+  backdrop-filter: blur(16px) saturate(1.5);
+  -webkit-backdrop-filter: blur(16px) saturate(1.5);
+  border-bottom: 1px solid oklch(var(--bc) / 0.1);
+  z-index: 40;
+}
+
+/* DaisyUI table sticky headers conflict with navbar dropdowns — disable */
+.table :where(thead, tfoot) :where(th, td) {
+  position: static !important;
+  z-index: auto !important;
+}
+
+.table thead th,
+.table tfoot th,
+table thead th,
+table tfoot th {
+  position: static !important;
+  z-index: auto !important;
+}
+
+/* Card lift on hover — only for cards that are links */
+a .card,
+a.card {
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+
+a .card:hover,
+a.card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px oklch(var(--bc) / 0.05);
+}
+
+/* Button lift on hover */
+.btn-primary:hover,
+.btn-secondary:hover,
+.btn-accent:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px oklch(var(--p) / 0.35);
+}
+
+/* Stat values — tabular nums */
+.stat-value {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Grain texture overlay */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 256px;
+}
+
+[data-theme="dawarich-dark"] body::before {
+  opacity: 0.04;
+}
+
 /* Leaflet Panel Styles */
 .leaflet-right-panel {
   margin-top: 80px;

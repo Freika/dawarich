@@ -1,0 +1,23 @@
+<%# Reusable skeleton card for lazy-loaded Turbo Frame placeholders
+  Usage:
+    render 'shared/skeleton_card'
+    render 'shared/skeleton_card', lines: 4, title_width: 'w-56'
+    render 'shared/skeleton_card', lines: 2, chart_height: 'h-40'
+%>
+<% lines ||= 3 %>
+<% title_width ||= 'w-48' %>
+<% chart_height ||= nil %>
+<div class="card bg-base-200">
+  <div class="card-body p-5 space-y-4">
+    <div class="h-6 <%= title_width %> bg-base-300 rounded animate-pulse"></div>
+    <% if chart_height %>
+      <div class="<%= chart_height %> w-full bg-base-300 rounded animate-pulse"></div>
+    <% end %>
+    <div class="space-y-2">
+      <% line_widths = %w[w-full w-3/4 w-5/6 w-2/3 w-4/5] %>
+      <% lines.times do |i| %>
+        <div class="h-4 <%= line_widths[i % line_widths.size] %> bg-base-300 rounded animate-pulse"></div>
+      <% end %>
+    </div>
+  </div>
+</div>

@@ -8,7 +8,7 @@ RSpec.describe Points::RawDataArchive, type: :model do
 
   describe 'associations' do
     it { is_expected.to belong_to(:user) }
-    it { is_expected.to have_many(:points).dependent(:nullify) }
+    it { is_expected.to have_many(:points).dependent(:restrict_with_exception) }
   end
 
   describe 'validations' do
@@ -102,6 +102,26 @@ RSpec.describe Points::RawDataArchive, type: :model do
     it 'generates correct filename with directory structure' do
       archive = build(:points_raw_data_archive, user_id: 123, year: 2024, month: 6, chunk_number: 5)
       expect(archive.filename).to eq('raw_data_archives/123/2024/06/005.jsonl.gz')
+    end
+  end
+
+  describe 'deletion restriction' do
+    it 'prevents deletion of archive that has linked points' do
+      archive = create(:points_raw_data_archive, user: user)
+      point = create(:point, user: user, raw_data_archive_id: archive.id, raw_data_archived: true)
+
+      expect { archive.destroy! }.to raise_error(ActiveRecord::DeleteRestrictionError)
+
+      # Point still exists and still references the archive
+      expect(Point.exists?(point.id)).to be true
+      expect(Points::RawDataArchive.exists?(archive.id)).to be true
+    end
+
+    it 'allows deletion of archive with no linked points' do
+      archive = create(:points_raw_data_archive, user: user)
+
+      expect { archive.destroy! }.not_to raise_error
+      expect(Points::RawDataArchive.exists?(archive.id)).to be false
     end
   end
 

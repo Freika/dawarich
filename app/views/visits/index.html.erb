@@ -28,6 +28,19 @@
       <span class="w-full text-sm font-medium md:w-auto">Order by:</span>
       <%= link_to 'Newest', visits_path(order_by: :desc, status: params[:status]), class: 'btn btn-xs btn-primary' %>
       <%= link_to 'Oldest', visits_path(order_by: :asc, status: params[:status]), class: 'btn btn-xs btn-primary' %>
+
+      <% unless params[:status] == 'confirmed' %>
+        <%= button_to 'Confirm All', bulk_update_visits_path(status: :confirmed, source_status: params[:status]),
+            method: :patch,
+            class: 'btn btn-xs btn-success',
+            form: { data: { turbo_confirm: "Are you sure you want to confirm all #{params[:status]} visits?" } } %>
+      <% end %>
+      <% unless params[:status] == 'declined' %>
+        <%= button_to 'Decline All', bulk_update_visits_path(status: :declined, source_status: params[:status]),
+            method: :patch,
+            class: 'btn btn-xs btn-error',
+            form: { data: { turbo_confirm: "Are you sure you want to decline all #{params[:status]} visits?" } } %>
+      <% end %>
     </div>
   </div>
 

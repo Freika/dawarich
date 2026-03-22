@@ -1,5 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 import { Picker } from "emoji-mart"
+import { getCurrentTheme } from "maps_maplibre/utils/popup_theme"
 
 // Emoji Picker Controller
 // Based on RailsBlocks pattern: https://railsblocks.com/docs/emoji-picker
@@ -123,14 +124,7 @@ export default class extends Controller {
   }
 
   getTheme() {
-    // Detect dark mode from document
-    if (
-      document.documentElement.getAttribute("data-theme") === "dark" ||
-      document.documentElement.classList.contains("dark")
-    ) {
-      return "dark"
-    }
-    return "light"
+    return getCurrentTheme()
   }
 
   setupKeyboardListeners() {

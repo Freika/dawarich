@@ -27,6 +27,26 @@ RSpec.describe Overland::PointsCreator do
 
       expect { call_service }.not_to(change { Point.where(user:).count })
     end
+
+    it 'increments points_count only for newly inserted points' do
+      call_service
+      user.reload
+      count_after_first = user.points_count
+
+      # Second call with same data should not change the counter
+      expect do
+        call_service
+        user.reload
+      end.not_to(change { user.points_count })
+      expect(user.points_count).to eq(count_after_first)
+    end
+
+    it 'updates points_count to match actual point count' do
+      call_service
+      user.reload
+
+      expect(user.points_count).to eq(Point.where(user_id: user.id).count)
+    end
   end
 
   context 'with a locations array payload' do

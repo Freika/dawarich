@@ -37,6 +37,16 @@ FactoryBot.define do
       country { nil } # Allow country to be passed as string
     end
 
+    # Keep user.points_count in sync (counter_cache was removed from belongs_to :user)
+    after(:create) do |point, _|
+      User.update_counters(point.user_id, points_count: 1)
+      point.user.reload
+    end
+
+    after(:destroy) do |point|
+      User.update_counters(point.user_id, points_count: -1)
+    end
+
     # Handle country string assignment by creating Country objects
     after(:create) do |point, evaluator|
       if evaluator.country.is_a?(String)

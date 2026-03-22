@@ -14,8 +14,7 @@ class Users::ImportDataJob < ApplicationJob
     raise StandardError, "Archive file not found: #{archive_path}" unless File.exist?(archive_path)
 
     import_stats = Users::ImportData.new(user, archive_path).import
-
-    User.reset_counters(user.id, :points)
+    User.where(id: user.id).update_all(points_count: user.points.count)
 
     Rails.logger.info "Import completed successfully for user #{user.email}: #{import_stats}"
   rescue ActiveRecord::RecordNotFound => e

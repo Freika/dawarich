@@ -29,13 +29,13 @@ export class EventHandlers {
   }
 
   /**
-   * Handle point click
+   * Handle point click — shows instant info from GeoJSON, address loaded via Turbo Frame
    */
   handlePointClick(e) {
-    const properties = e.features[0].properties
+    const feature = e.features[0]
     this.controller.showInfo(
       "Location Point",
-      this._buildPointInfoContent(properties),
+      this._buildPointInfoContent(feature.properties, feature.geometry),
     )
   }
 
@@ -52,25 +52,38 @@ export class EventHandlers {
     const container = document.getElementById("track-point-info-container")
     if (!container) return
 
-    const properties = e.features[0].properties
+    const feature = e.features[0]
     container.innerHTML = `
       <div class="mt-3 pt-3 border-t border-base-300">
         <div class="text-sm font-semibold mb-1">Selected Point</div>
-        ${this._buildPointInfoContent(properties)}
+        ${this._buildPointInfoContent(feature.properties, feature.geometry)}
       </div>
     `
   }
 
   /**
    * Build HTML content for point info display (shared by regular and track points)
+   * Address is loaded asynchronously via a Turbo Frame.
    * @param {Object} properties - GeoJSON feature properties
+   * @param {Object} geometry - GeoJSON geometry with coordinates
    * @returns {string} HTML content string
    * @private
    */
-  _buildPointInfoContent(properties) {
+  _buildPointInfoContent(properties, geometry) {
     const distanceUnit = this.controller.settings.distance_unit || "km"
+    const coords = geometry?.coordinates
+    const coordStr =
+      coords && coords.length >= 2
+        ? `${coords[1].toFixed(6)}, ${coords[0].toFixed(6)}`
+        : null
+    const pointId = properties.id
+    const addressFrame = pointId
+      ? `<turbo-frame id="point-address-${pointId}" src="/points/${pointId}/address" loading="lazy"></turbo-frame>`
+      : ""
     return `
       <div class="space-y-2">
+        ${addressFrame}
+        ${coordStr ? `<div><span class="font-semibold">Coordinates:</span> ${coordStr}</div>` : ""}
         <div><span class="font-semibold">Time:</span> ${formatTimestamp(properties.timestamp, this.controller.timezoneValue)}</div>
         ${properties.battery ? `<div><span class="font-semibold">Battery:</span> ${properties.battery}%</div>` : ""}
         ${properties.altitude ? `<div><span class="font-semibold">Altitude:</span> ${Math.round(properties.altitude)}m</div>` : ""}
@@ -285,16 +298,12 @@ export class EventHandlers {
     // Try multiple ways to access the data
     let sourceData = null
 
-    // Method 1: Internal _data property (most common)
-    if (source._data) {
-      sourceData = source._data
-    }
-    // Method 2: Serialize and deserialize (fallback)
-    else if (source.serialize) {
+    // Method 1: Serialize via public API (preferred)
+    if (source.serialize) {
       const serialized = source.serialize()
       sourceData = serialized.data
     }
-    // Method 3: Use cached data from layer
+    // Method 2: Use cached data from layer
     else if (routesLayer.data) {
       sourceData = routesLayer.data
     }
@@ -898,8 +907,8 @@ export class EventHandlers {
     if (!source) return null
 
     let sourceData = null
-    if (source._data) {
-      sourceData = source._data
+    if (source.serialize) {
+      sourceData = source.serialize().data
     } else if (tracksLayer.data) {
       sourceData = tracksLayer.data
     }

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class Overland::PointsCreator
-  RETURNING_COLUMNS = 'id, timestamp, ST_X(lonlat::geometry) AS longitude, ST_Y(lonlat::geometry) AS latitude'
+  RETURNING_COLUMNS = 'id, xmax, timestamp, ST_X(lonlat::geometry) AS longitude, ST_Y(lonlat::geometry) AS latitude'
 
   attr_reader :params, :user_id
 
@@ -21,7 +21,8 @@ class Overland::PointsCreator
 
     result = upsert_points(payload)
     if result.any?
-      User.reset_counters(user_id, :points)
+      inserted_count = result.count { |row| row['xmax'].to_i.zero? }
+      User.update_counters(user_id, points_count: inserted_count) if inserted_count.positive?
       Tracks::RealtimeDebouncer.new(user_id).trigger
       Points::LiveBroadcaster.new(user_id, result, payload).call
     end
@@ -40,7 +41,6 @@ class Overland::PointsCreator
         unique_by: %i[lonlat timestamp user_id],
         returning: Arel.sql(RETURNING_COLUMNS)
       )
-      # rubocop:enable Rails/SkipsModelValidations
       created_points.concat(result) if result
     end
 

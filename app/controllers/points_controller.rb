@@ -19,6 +19,10 @@ class PointsController < ApplicationController
     @imports = current_user.imports.order(created_at: :desc)
   end
 
+  def address
+    @point = current_user.points.select(:id, :city, :country, :geodata, :lonlat).find(params[:id])
+  end
+
   def bulk_destroy
     point_ids = params[:point_ids]&.compact&.reject(&:blank?)
 
@@ -28,7 +32,8 @@ class PointsController < ApplicationController
                   status: :see_other and return
     end
 
-    current_user.points.where(id: point_ids).destroy_all
+    deleted_count = current_user.points.where(id: point_ids).destroy_all.count
+    User.update_counters(current_user.id, points_count: -deleted_count) if deleted_count.positive?
 
     redirect_to points_url(preserved_params),
                 notice: 'Points were successfully destroyed.',

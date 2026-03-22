@@ -24,11 +24,11 @@ class Imports::Create
 
     import.update!(source: source)
     importer(source).new(import, user.id, temp_file_path).call
+    User.where(id: user.id).update_all(points_count: user.points.count)
 
     schedule_stats_creating(user.id)
     schedule_visit_suggesting(user.id, import)
     update_import_points_count(import)
-    User.reset_counters(user.id, :points)
   rescue StandardError => e
     import.update!(status: :failed, error_message: e.message)
     broadcast_status_update

@@ -2,14 +2,13 @@
 <%= render 'shared/chartkick_scripts' %>
 
 <div class="w-full my-5">
-  <div class="flex justify-between items-center mb-6">
-    <h1 class="text-3xl font-bold">Statistics</h1>
+  <%= render layout: 'shared/page_header', locals: { title: 'Statistics' } do %>
     <% if Date.today >= Date.new(2025, 12, 31) %>
       <%= link_to users_digests_path, class: 'btn btn-outline btn-sm' do %>
         <%= icon 'earth' %> Year-End Digests
       <% end %>
     <% end %>
-  </div>
+  <% end %>
 
   <%= render 'shared/plan_data_window_alert', utm_content: 'stats_index' %>
 
@@ -102,6 +101,7 @@
               </div>
             </div>
           <% end %>
+          <% month_colors = ['#397bb5', '#5A4E9D', '#3B945E', '#7BC96F', '#FFD54F', '#FFA94D', '#FF6B6B', '#FF8C42', '#C97E4F', '#8B4513', '#5A2E2E', '#265d7d'] %>
           <%= column_chart(
             @year_distances[year].map { |month_name, distance_meters|
               [month_name, Stat.convert_distance(distance_meters, current_user.safe_settings.distance_unit).round]
@@ -110,12 +110,10 @@
             suffix: " #{current_user.safe_settings.distance_unit}",
             xtitle: 'Days',
             ytitle: 'Distance',
-            colors: [
-              '#397bb5', '#5A4E9D', '#3B945E',
-              '#7BC96F', '#FFD54F', '#FFA94D',
-              '#FF6B6B', '#FF8C42', '#C97E4F',
-              '#8B4513', '#5A2E2E', '#265d7d'
-            ]
+            colors: month_colors,
+            library: {
+              datasets: { backgroundColor: month_colors, borderWidth: 0 }
+            }
           ) %>
         </div>
       </div>
