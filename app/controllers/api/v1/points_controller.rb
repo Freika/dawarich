@@ -54,8 +54,9 @@ class Api::V1::PointsController < ApiController
 
   def create
     points = Points::Create.new(current_api_user, batch_params).call
+    sanitized = points.map { |row| row.to_h.except('xmax') }
 
-    render json: { data: points }
+    render json: { data: sanitized }
   end
 
   def update
