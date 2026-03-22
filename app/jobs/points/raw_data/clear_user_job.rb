@@ -51,12 +51,12 @@ module Points
           break if cleared.zero?
         end
 
-        if total.positive?
-          Rails.logger.info("Cleared raw_data for #{total} points (user #{user.id})")
+        return unless total.positive?
 
-          Metrics::Archives::Operation.new(operation: 'clear', status: 'success').call
-          Metrics::Archives::PointsArchived.new(count: total, operation: 'removed').call
-        end
+        Rails.logger.info("Cleared raw_data for #{total} points (user #{user.id})")
+
+        Metrics::Archives::Operation.new(operation: 'clear', status: 'success').call
+        Metrics::Archives::PointsArchived.new(count: total, operation: 'removed').call
       end
     end
   end

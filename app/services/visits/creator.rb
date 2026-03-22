@@ -68,18 +68,18 @@ module Visits
             start: start_time, end: end_time
           )
           .find_each do |visit|
-        visit_lat, visit_lon = visit.center
-        next unless visit_lat && visit_lon
+            visit_lat, visit_lon = visit.center
+            next unless visit_lat && visit_lon
 
-        # Calculate distance between centers
-        distance = Geocoder::Calculations.distance_between(
-          [visit_data[:center_lat], visit_data[:center_lon]],
-          [visit_lat, visit_lon],
-          units: :km
-        )
+            # Calculate distance between centers
+            distance = Geocoder::Calculations.distance_between(
+              [visit_data[:center_lat], visit_data[:center_lon]],
+              [visit_lat, visit_lon],
+              units: :km
+            )
 
-        # If this visit is within 100 meters of the new suggestion
-        return visit if distance <= 0.1
+            # If this visit is within 100 meters of the new suggestion
+            return visit if distance <= 0.1
       end
 
       nil

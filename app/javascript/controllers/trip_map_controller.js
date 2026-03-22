@@ -3,6 +3,7 @@
 
 import { Controller } from "@hotwired/stimulus"
 import maplibregl from "maplibre-gl"
+import { getCurrentTheme } from "maps_maplibre/utils/popup_theme"
 import { getMapStyle } from "maps_maplibre/utils/style_manager"
 
 export default class extends Controller {
@@ -29,10 +30,7 @@ export default class extends Controller {
         return
       }
 
-      const isDark = document.documentElement
-        .getAttribute("data-theme")
-        ?.includes("dark")
-      const style = await getMapStyle(isDark ? "dark" : "light")
+      const style = await getMapStyle(getCurrentTheme())
 
       this.map = new maplibregl.Map({
         container,

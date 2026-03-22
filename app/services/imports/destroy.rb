@@ -11,14 +11,12 @@ class Imports::Destroy
   end
 
   def call
-    points_count = @import.points_count.to_i
-
     total_deleted = delete_points_in_batches
     User.update_counters(@user.id, points_count: -total_deleted) if total_deleted.positive?
 
     @import.destroy!
 
-    Rails.logger.info "Import #{@import.id} deleted with #{points_count} points"
+    Rails.logger.info "Import #{@import.id} deleted with #{total_deleted} points"
 
     Stats::BulkCalculator.new(@user.id).call
   end

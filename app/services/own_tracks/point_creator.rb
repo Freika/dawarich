@@ -39,7 +39,6 @@ class OwnTracks::PointCreator
         unique_by: %i[lonlat timestamp user_id],
         returning: Arel.sql(RETURNING_COLUMNS)
       )
-      # rubocop:enable Rails/SkipsModelValidations
       created_points.concat(result) if result
     end
 

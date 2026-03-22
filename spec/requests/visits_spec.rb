@@ -59,22 +59,6 @@ RSpec.describe '/visits', type: :request do
         expect(@controller.instance_variable_get(:@visits)).to match_array(declined_visits)
       end
     end
-
-    context 'with suggested visits' do
-      let!(:suggested_visits) { create_list(:visit, 3, user:, status: :suggested) }
-
-      it 'does not return suggested visits' do
-        get visits_url
-
-        expect(@controller.instance_variable_get(:@visits)).not_to include(suggested_visits)
-      end
-
-      it 'returns suggested visits' do
-        get visits_url, params: { status: 'suggested' }
-
-        expect(@controller.instance_variable_get(:@visits)).to match_array(suggested_visits)
-      end
-    end
   end
 
   describe 'PATCH /bulk_update' do

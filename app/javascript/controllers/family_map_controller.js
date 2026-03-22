@@ -1,6 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 import maplibregl from "maplibre-gl"
 import { escapeHtml } from "maps_maplibre/utils/geojson_transformers"
+import { getCurrentTheme } from "maps_maplibre/utils/popup_theme"
 import { getMapStyle } from "maps_maplibre/utils/style_manager"
 
 const MEMBER_COLORS = [
@@ -48,10 +49,8 @@ export default class extends Controller {
         return
       }
 
-      const isDark = document.documentElement
-        .getAttribute("data-theme")
-        ?.includes("dark")
-      const style = await getMapStyle(isDark ? "dark" : "light")
+      const theme = getCurrentTheme()
+      const style = await getMapStyle(theme)
 
       this.map = new maplibregl.Map({
         container,
@@ -129,16 +128,8 @@ export default class extends Controller {
         "text-anchor": "top",
       },
       paint: {
-        "text-color": document.documentElement
-          .getAttribute("data-theme")
-          ?.includes("dark")
-          ? "#e5e7eb"
-          : "#111827",
-        "text-halo-color": document.documentElement
-          .getAttribute("data-theme")
-          ?.includes("dark")
-          ? "#1f2937"
-          : "#ffffff",
+        "text-color": theme === "dark" ? "#e5e7eb" : "#111827",
+        "text-halo-color": theme === "dark" ? "#1f2937" : "#ffffff",
         "text-halo-width": 2,
       },
     })

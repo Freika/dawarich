@@ -75,7 +75,13 @@ RSpec.describe Visits::Creator do
           points: [point1, point2]
         }
       end
-      let(:place) { create(:place, lonlat: 'POINT(-74.0060 40.7128)', name: 'Existing Place', latitude: 40.7128, longitude: -74.0060, user_id: nil) }
+      let(:place) do
+        create(
+          :place,
+          lonlat: 'POINT(-74.0060 40.7128)', name: 'Existing Place',
+          latitude: 40.7128, longitude: -74.0060, user_id: nil
+        )
+      end
       let!(:existing_visit) do
         create(
           :visit,
@@ -98,7 +104,13 @@ RSpec.describe Visits::Creator do
     end
 
     context 'when a suggested visit already exists at the same location' do
-      let(:place) { create(:place, lonlat: 'POINT(-74.0060 40.7128)', name: 'Existing Place', latitude: 40.7128, longitude: -74.0060, user_id: nil) }
+      let(:place) do
+        create(
+          :place,
+          lonlat: 'POINT(-74.0060 40.7128)', name: 'Existing Place',
+          latitude: 40.7128, longitude: -74.0060, user_id: nil
+        )
+      end
       let!(:existing_visit) do
         create(
           :visit,
@@ -123,7 +135,13 @@ RSpec.describe Visits::Creator do
     end
 
     context 'when a declined visit already exists at the same location' do
-      let(:place) { create(:place, lonlat: 'POINT(-74.0060 40.7128)', name: 'Existing Place', latitude: 40.7128, longitude: -74.0060, user_id: nil) }
+      let(:place) do
+        create(
+          :place,
+          lonlat: 'POINT(-74.0060 40.7128)', name: 'Existing Place',
+          latitude: 40.7128, longitude: -74.0060, user_id: nil
+        )
+      end
       let!(:existing_visit) do
         create(
           :visit,
@@ -175,7 +193,7 @@ RSpec.describe Visits::Creator do
     end
 
     context 'when an existing visit has both area and place, area takes precedence' do
-      let(:place) {
+      let(:place) do
         create(
           :place,
           lonlat: 'POINT(-74.0060 40.7128)',
@@ -184,8 +202,8 @@ RSpec.describe Visits::Creator do
           longitude: -74.0060,
           user_id: nil
         )
-      }
-      let(:area) { # Berlin
+      end
+      let(:area) do # Berlin
         create(
           :area,
           user: user,
@@ -193,7 +211,7 @@ RSpec.describe Visits::Creator do
           longitude: 13.4050,
           radius: 100
         )
-      }
+      end
       let!(:existing_visit) do
         create(
           :visit,
