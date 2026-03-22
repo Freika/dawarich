@@ -51,7 +51,9 @@ class Users::SafeSettings
     'transportation_expert_mode' => false,
     'min_minutes_spent_in_city' => 60,
     'max_gap_minutes_in_city' => 120,
-    'timezone' => ENV.fetch('TIME_ZONE', 'UTC')
+    'timezone' => ENV.fetch('TIME_ZONE', 'UTC'),
+    'outlier_detection_enabled' => true,
+    'max_speed_kmh' => 900
   }.freeze
 
   def initialize(settings = {}, plan: nil)
@@ -238,6 +240,17 @@ class Users::SafeSettings
 
   def timezone
     settings['timezone'] || DEFAULT_VALUES['timezone']
+  end
+
+  def outlier_detection_enabled?
+    value = settings['outlier_detection_enabled']
+    return true if value.nil?
+
+    ActiveModel::Type::Boolean.new.cast(value)
+  end
+
+  def max_speed_kmh
+    (settings['max_speed_kmh'] || DEFAULT_VALUES['max_speed_kmh']).to_i
   end
 
   private
