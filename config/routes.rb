@@ -38,6 +38,7 @@ Rails.application.routes.draw do
     resources :general, only: [:index]
     patch 'general', to: 'general#update'
     post 'general/verify_supporter', to: 'general#verify_supporter', as: :verify_supporter
+    post 'general/detect_outliers', to: 'general#detect_outliers', as: :detect_outliers
 
     resources :integrations, only: [:index]
     patch 'integrations', to: 'integrations#update'

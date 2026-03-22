@@ -9,12 +9,19 @@ class Settings::GeneralController < ApplicationController
     update_timezone
     update_email_settings
     update_supporter_settings
+    update_outlier_settings
 
     if current_user.save
       redirect_to settings_general_index_path, notice: 'Settings updated'
     else
       redirect_to settings_general_index_path, alert: 'Failed to update settings'
     end
+  end
+
+  def detect_outliers
+    Points::OutlierDetectionJob.perform_later(current_user.id)
+    redirect_to settings_general_index_path,
+                notice: 'Outlier detection started. This may take a few minutes for large datasets.'
   end
 
   def verify_supporter
@@ -62,5 +69,15 @@ class Settings::GeneralController < ApplicationController
 
     current_user.settings['show_supporter_badge'] =
       ActiveModel::Type::Boolean.new.cast(params[:show_supporter_badge])
+  end
+
+  def update_outlier_settings
+    if params.key?(:outlier_detection_enabled)
+      current_user.settings['outlier_detection_enabled'] =
+        ActiveModel::Type::Boolean.new.cast(params[:outlier_detection_enabled])
+    end
+    return unless params.key?(:max_speed_kmh)
+
+    current_user.settings['max_speed_kmh'] = params[:max_speed_kmh].to_i
   end
 end

@@ -92,12 +92,77 @@
                 </div>
               </div>
             <% end %>
+
+            <!-- Data Quality Section -->
+            <div>
+              <h2 class="text-2xl font-bold mb-4 flex items-center">
+                <%= icon 'shield-check', class: "text-primary mr-2" %> Data Quality
+              </h2>
+              <div class="bg-base-100 p-5 rounded-lg shadow-sm space-y-4">
+                <div class="form-control">
+                  <label class="label cursor-pointer justify-start gap-4">
+                    <%= f.check_box :outlier_detection_enabled,
+                                    checked: current_user.safe_settings.outlier_detection_enabled?,
+                                    class: "toggle toggle-primary" %>
+                    <div>
+                      <span class="label-text font-medium">Automatically detect outlier points</span>
+                      <p class="text-sm text-base-content/70 mt-1">
+                        After each import, detect and flag GPS points that require physically impossible speeds
+                      </p>
+                    </div>
+                  </label>
+                </div>
+                <div class="form-control">
+                  <label class="label">
+                    <span class="label-text font-medium">Maximum realistic speed (km/h)</span>
+                  </label>
+                  <%= f.number_field :max_speed_kmh,
+                                    value: current_user.safe_settings.max_speed_kmh,
+                                    min: 10, max: 2000, step: 10,
+                                    class: "input input-bordered w-full max-w-xs" %>
+                  <p class="text-sm text-base-content/70 mt-1">
+                    Points requiring faster travel are flagged as outliers. Default: 900 km/h (above commercial flight speed).
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
           <div class="card-actions justify-end mt-6">
             <%= f.submit 'Save changes', class: "btn btn-primary" %>
           </div>
         </div>
       <% end %>
+    </div>
+
+    <div class="card bg-base-200 shadow-xl">
+      <div class="card-body">
+        <h2 class="text-2xl font-bold mb-4 flex items-center">
+          <%= icon 'scan', class: "text-primary mr-2" %> Outlier Scan
+        </h2>
+        <div class="bg-base-100 p-5 rounded-lg shadow-sm space-y-4">
+          <p class="text-sm text-base-content/70">
+            Scan all your points to detect and flag GPS outliers. Flagged points are excluded from
+            distance calculations and track generation but are not deleted.
+          </p>
+
+          <% outlier_count = current_user.points.where(outlier: true).count %>
+          <% if outlier_count > 0 %>
+            <div class="stats shadow">
+              <div class="stat">
+                <div class="stat-title">Flagged outliers</div>
+                <div class="stat-value text-warning"><%= outlier_count %></div>
+                <div class="stat-desc">points excluded from calculations</div>
+              </div>
+            </div>
+          <% end %>
+
+          <%= button_to "Scan all points",
+                settings_detect_outliers_path,
+                method: :post,
+                class: "btn btn-outline btn-primary",
+                form: { data: { turbo_confirm: "This will scan all your points for outliers. It may take a few minutes for large datasets. Continue?" } } %>
+        </div>
+      </div>
     </div>
 
     <%= render 'settings/general/supporter_status' %>
