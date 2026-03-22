@@ -28,6 +28,7 @@ class Imports::Create
 
     schedule_stats_creating(user.id)
     schedule_visit_suggesting(user.id, import)
+    schedule_outlier_detection(user.id, import)
     update_import_points_count(import)
   rescue StandardError => e
     import.update!(status: :failed, error_message: e.message)
@@ -84,6 +85,18 @@ class Imports::Create
     end_at = Time.zone.at(min_max[1])
 
     VisitSuggestingJob.perform_later(user_id:, start_at:, end_at:)
+  end
+
+  def schedule_outlier_detection(user_id, import)
+    return unless user.safe_settings.outlier_detection_enabled?
+
+    min_max = import.points.pick('MIN(timestamp), MAX(timestamp)')
+    return if min_max.compact.empty?
+
+    start_at = Time.zone.at(min_max[0])
+    end_at = Time.zone.at(min_max[1])
+
+    Points::OutlierDetectionJob.perform_later(user_id, start_at.iso8601, end_at.iso8601)
   end
 
   def create_import_failed_notification(import, user, error)
