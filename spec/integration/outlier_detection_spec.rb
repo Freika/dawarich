@@ -16,7 +16,8 @@ RSpec.describe 'Outlier detection integration', type: :model do
                 lonlat: 'POINT(-0.1280 51.5080)', timestamp: base_time + 120)
 
     # Distance before detection (includes the Tokyo teleport)
-    distance_before = Point.where(user: user).total_distance
+    all_points = user.points.order(:timestamp).to_a
+    distance_before = Point.calculate_distance_for_array_geocoder(all_points)
 
     # Run outlier detection
     count = Points::OutlierDetector.new(user).call
@@ -25,7 +26,8 @@ RSpec.describe 'Outlier detection integration', type: :model do
     expect(p2.reload.outlier).to be true
 
     # Distance after detection (excludes the Tokyo teleport)
-    distance_after = Point.where(user: user).not_outlier.total_distance
+    clean_points = user.points.not_outlier.order(:timestamp).to_a
+    distance_after = Point.calculate_distance_for_array_geocoder(clean_points)
 
     # The distance should be dramatically smaller
     expect(distance_after).to be < distance_before
