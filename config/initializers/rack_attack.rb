@@ -3,6 +3,7 @@
 # Per-plan API rate limiting using rack-attack with Redis backend.
 # Self-hosted instances are exempt from rate limiting entirely.
 # Cloud plans: Lite = 200 req/hr, Pro = 1,000 req/hr.
+# Points creation endpoints: 10,000 req/hr (all plans, including self-hosted).
 
 Rack::Attack.cache.store = ActiveSupport::Cache::RedisCacheStore.new(
   url: ENV['REDIS_URL'],
@@ -36,6 +37,24 @@ Rack::Attack.throttle('api/token',
 
   req.env['rack.attack.api_rate_limit'] = Rack::Attack.api_rate_limits[user_plan] || 1_000
   api_key
+end
+
+# Points creation rate limit: 10,000 req/hr per API key.
+# Only applies to cloud instances.
+POINTS_CREATION_PATHS = %w[
+  /api/v1/points
+  /api/v1/owntracks/points
+  /api/v1/overland/batches
+].freeze
+
+Rack::Attack.throttle('api/points_creation', limit: 10_000, period: 1.hour) do |req|
+  next unless req.post? && POINTS_CREATION_PATHS.include?(req.path)
+  next if DawarichSettings.self_hosted?
+
+  api_key = req.params['api_key'] || req.get_header('HTTP_AUTHORIZATION')&.split(' ')&.last
+  next if api_key.blank?
+
+  "points_creation:#{api_key}"
 end
 
 Rack::Attack.throttled_responder = lambda do |request|

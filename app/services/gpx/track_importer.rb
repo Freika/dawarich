@@ -43,7 +43,7 @@ class Gpx::TrackImporter
 
     {
       lonlat: "POINT(#{point['lon'].to_d} #{point['lat'].to_d})",
-      altitude: point['ele'].to_i,
+      altitude: point['ele'].to_f,
       timestamp: Time.parse(point['time']).utc.to_i,
       import_id: import.id,
       velocity: speed(point),

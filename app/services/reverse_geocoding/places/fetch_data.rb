@@ -121,7 +121,7 @@ class ReverseGeocoding::Places::FetchData
 
   def save_places(places_to_create, places_to_update)
     if places_to_create.any?
-      place_attributes = places_to_create.map do |place|
+      place_attributes = places_to_create.uniq { |p| p.geodata&.dig('properties', 'osm_id') }.map do |place|
         {
           name: place.name,
           latitude: place.latitude,

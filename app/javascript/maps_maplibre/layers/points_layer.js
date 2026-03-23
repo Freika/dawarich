@@ -11,6 +11,8 @@ export class PointsLayer extends BaseLayer {
     this.apiClient = options.apiClient
     this.layerManager = options.layerManager
     this.isDragging = false
+    this.hasMoved = false
+    this.justDragged = false
     this.draggedFeature = null
     this.canvas = null
 
@@ -96,7 +98,8 @@ export class PointsLayer extends BaseLayer {
     // Store the feature being dragged
     this.draggedFeature = e.features[0]
     this.isDragging = true
-    this.canvas.style.cursor = "grabbing"
+    this.hasMoved = false
+    this.justDragged = false
 
     // Bind mouse move and up events
     this.map.on("mousemove", this._onMouseMove)
@@ -105,6 +108,11 @@ export class PointsLayer extends BaseLayer {
 
   onMouseMove(e) {
     if (!this.isDragging || !this.draggedFeature) return
+
+    if (!this.hasMoved) {
+      this.hasMoved = true
+      this.canvas.style.cursor = "grabbing"
+    }
 
     // Get the new coordinates
     const coords = e.lngLat
@@ -129,11 +137,26 @@ export class PointsLayer extends BaseLayer {
     const coords = e.lngLat
     const pointId = this.draggedFeature.properties.id
     const originalCoords = this.draggedFeature.geometry.coordinates
+    const wasDrag = this.hasMoved
 
     // Clean up drag state
     this.isDragging = false
+    this.hasMoved = false
     this.canvas.style.cursor = ""
     this.map.off("mousemove", this._onMouseMove)
+
+    if (!wasDrag) {
+      // Just a click — no position update, let the click handler show info
+      this.draggedFeature = null
+      return
+    }
+
+    // Set justDragged so the subsequent click event (fired by MapLibre after mouseup)
+    // doesn't open the info panel. Reset asynchronously after the click event fires.
+    this.justDragged = true
+    setTimeout(() => {
+      this.justDragged = false
+    }, 0)
 
     // Update the point on the backend
     try {

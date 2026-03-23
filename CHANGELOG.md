@@ -4,7 +4,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [1.4.0] — Unreleased
+## [1.4.1] - Unreleased
+
+### Changed
+
+- [Cloud] The point creation API endpoints are being excluded from the default Lite/Pro rate limits (200/1,000 requests/hour). They now have general rate limits of 10,000 requests/hour.
+
+### Fixed
+
+- Fix deadlocks in reverse geocoding job when multiple Sidekiq workers update points concurrently.
+- Fix `counter_cache_column` error in points counter reset job by using direct SQL count instead of `reset_counters`.
+- Fix duplicate place records causing `ON CONFLICT` cardinality violations during reverse geocoding.
+- Fix `TypeError` crash in transportation mode backfill when Google export files have unexpected JSON structure.
+- Fix inability to disable visit suggestions background job due to conflicting Rails UJS and Turbo handlers causing request cancellation #2118.
+- Fix visit confirm/decline buttons firing twice #2379.
+- Fix clicking on a point in Map v2 silently moving it to the cursor position. Points now only update when intentionally dragged #2149, #2150.
+- Fix visit name suggester not recognizing Photon reverse geocoding data format, causing all suggested places to show as "Suggested place" #2151, #2377.
+- Fix visit edit form displaying UTC times instead of the user's configured timezone #2168.
+
+## [1.4.0] — 2026-03-22
 
 ### Added
 
@@ -15,12 +33,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Updated look and feel
 - The point counting was changed to be more efficient on bigger accounts.
-- Redesigned raw data archival system for large instances (10M+ points). Archival now runs per-user via Sidekiq jobs instead of a single sequential process, uses PK cursor-based queries instead of full table scans, and processes in 50K-point chunks with 5K-batch flag updates to minimize DB lock contention. Inline verification removed in favor of daily spot-checks. FK constraint changed from `ON DELETE nullify` to `ON DELETE RESTRICT` to prevent cascading updates on large tables.
+- Redesigned raw data archival system for large instances (10M+ points).
 
 ### Fixed
 
 - Fix Lite plan archival warnings sending all three notifications (11-month, 11.5-month, and 12-month) simultaneously when a user's oldest data already exceeds all thresholds. Now only the most severe warning is sent, and lower thresholds are marked as already notified.
-- Fix intermittent 502/504 errors caused by `User.reset_counters(:points)` running synchronously during OwnTracks, Overland, and API point creation. The full `COUNT(*)` query blocked web workers for 60–500+ seconds on large accounts, starving all other requests. Counter reset now runs as a background job.
 - Misconfigured Prometheus settings will no longer litter logs with error messages, it will make multiple attempts to connect instead and then stop.
 - One of previous versions removed a database index making points upload very slow. The index is now added back to fix the issue.
 

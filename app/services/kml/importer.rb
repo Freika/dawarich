@@ -200,7 +200,7 @@ class Kml::Importer
 
     {
       lonlat: "POINT(#{lng} #{lat})",
-      altitude: alt.to_i,
+      altitude: alt,
       timestamp: time,
       import_id: import.id,
       velocity: 0.0,
@@ -256,7 +256,7 @@ class Kml::Importer
 
     {
       lonlat: format_point_geometry(coord),
-      altitude: coord[:alt].to_i,
+      altitude: coord[:alt].to_f,
       timestamp: timestamp,
       import_id: import.id,
       velocity: extract_velocity(placemark),

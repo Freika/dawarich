@@ -16,8 +16,8 @@ class DataMigrations::PrefillPointsCounterCacheJob < ApplicationJob
   private
 
   def prefill_counter_for_user(user_id)
-    User.reset_counters(user_id, :points)
-  rescue ActiveRecord::RecordNotFound
-    Rails.logger.warn "User #{user_id} not found, skipping counter cache update"
+    User.where(id: user_id).update_all(
+      'points_count = (SELECT COUNT(*) FROM points WHERE points.user_id = users.id)'
+    )
   end
 end

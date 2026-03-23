@@ -47,10 +47,13 @@ module TransportationModes
       return unless file_content
 
       data = JSON.parse(file_content)
-      timeline_objects = data['timelineObjects'] || []
+      return unless data.is_a?(Hash)
+
+      timeline_objects = data['timelineObjects']
+      return unless timeline_objects.is_a?(Array)
 
       timeline_objects.each do |obj|
-        next unless obj['activitySegment']
+        next unless obj.is_a?(Hash) && obj['activitySegment']
 
         process_activity_segment(obj['activitySegment'])
       end
@@ -63,7 +66,10 @@ module TransportationModes
       return unless file_content
 
       data = JSON.parse(file_content)
-      locations = data['locations'] || []
+      return unless data.is_a?(Hash)
+
+      locations = data['locations']
+      return unless locations.is_a?(Array)
 
       locations.each do |location|
         next unless location['activityRecord']
@@ -81,11 +87,13 @@ module TransportationModes
     end
 
     def process_activity_segment(segment)
+      return unless segment.is_a?(Hash)
+
       activities = segment['activities'] || []
       travel_mode = segment.dig('waypointPath', 'travelMode')
 
-      start_time = parse_segment_timestamp(segment['duration']['startTimestamp'])
-      end_time = parse_segment_timestamp(segment['duration']['endTimestamp'])
+      start_time = parse_segment_timestamp(segment.dig('duration', 'startTimestamp'))
+      end_time = parse_segment_timestamp(segment.dig('duration', 'endTimestamp'))
 
       return unless start_time && end_time
 

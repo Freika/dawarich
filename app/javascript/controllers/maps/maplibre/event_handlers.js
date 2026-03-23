@@ -32,6 +32,10 @@ export class EventHandlers {
    * Handle point click — shows instant info from GeoJSON, address loaded via Turbo Frame
    */
   handlePointClick(e) {
+    // Check if the click is a follow-on event from a drag operation
+    const pointsLayer = this.controller.layerManager.getLayer("points")
+    if (pointsLayer?.justDragged) return
+
     const feature = e.features[0]
     this.controller.showInfo(
       "Location Point",

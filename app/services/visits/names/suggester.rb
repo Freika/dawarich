@@ -36,9 +36,15 @@ module Visits
 
       def extract_features(geocoded_points)
         geocoded_points.flat_map do |point|
-          next [] unless point.geodata['features'].is_a?(Array)
+          geodata = point.geodata
 
-          point.geodata['features']
+          if geodata['features'].is_a?(Array)
+            geodata['features']
+          elsif geodata['type'] == 'Feature' && geodata['properties'].is_a?(Hash)
+            [geodata]
+          else
+            []
+          end
         end.compact
       end
 
