@@ -18,12 +18,54 @@ RSpec.describe Imports::Watcher do
     context 'when user exists' do
       let!(:user) { create(:user, email: 'user@domain.com') }
 
-      it 'creates an import for the user' do
-        expect { service }.to change(user.imports, :count).by(6)
+      it 'creates an import for each supported file' do
+        expect { service }.to change(user.imports, :count).by(13)
       end
 
       it 'enqueues importing jobs for the user' do
-        expect { service }.to have_enqueued_job(Import::ProcessJob).exactly(6).times
+        expect { service }.to have_enqueued_job(Import::ProcessJob).exactly(13).times
+      end
+
+      it 'sets correct source for csv files' do
+        service
+        import = user.imports.find_by(name: 'test.csv')
+        expect(import.source).to eq('csv')
+      end
+
+      it 'sets correct source for tcx files' do
+        service
+        import = user.imports.find_by(name: 'test.tcx')
+        expect(import.source).to eq('tcx')
+      end
+
+      it 'sets correct source for fit files' do
+        service
+        import = user.imports.find_by(name: 'test.fit')
+        expect(import.source).to eq('fit')
+      end
+
+      it 'sets correct source for geojson files' do
+        service
+        import = user.imports.find_by(name: 'test.geojson')
+        expect(import.source).to eq('geojson')
+      end
+
+      it 'sets correct source for kml files' do
+        service
+        import = user.imports.find_by(name: 'test.kml')
+        expect(import.source).to eq('kml')
+      end
+
+      it 'sets correct source for kmz files' do
+        service
+        import = user.imports.find_by(name: 'test.kmz')
+        expect(import.source).to eq('kml')
+      end
+
+      it 'sets nil source for zip files' do
+        service
+        import = user.imports.find_by(name: 'test.zip')
+        expect(import.source).to be_nil
       end
 
       context 'when the import already exists' do
@@ -34,6 +76,13 @@ RSpec.describe Imports::Watcher do
           create(:import, user:, name: 'location-history.json')
           create(:import, user:, name: 'owntracks.rec')
           create(:import, user:, name: 'Records.json')
+          create(:import, user:, name: 'test.csv')
+          create(:import, user:, name: 'test.tcx')
+          create(:import, user:, name: 'test.fit')
+          create(:import, user:, name: 'test.geojson')
+          create(:import, user:, name: 'test.kml')
+          create(:import, user:, name: 'test.kmz')
+          create(:import, user:, name: 'test.zip')
 
           expect { service }.not_to change(Import, :count)
         end

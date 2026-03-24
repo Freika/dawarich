@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Geojson::Params
+  include Imports::FieldAliases
+
   attr_reader :json
 
   def initialize(json)
@@ -32,18 +34,21 @@ class Geojson::Params
   end
 
   def build_point(feature)
+    properties = feature[:properties]
+
     {
-      lonlat: "POINT(#{feature[:geometry][:coordinates][0]} #{feature[:geometry][:coordinates][1]})",
-      battery_status:     feature[:properties][:battery_state],
-      battery:            battery_level(feature[:properties][:battery_level]),
+      lonlat:             "POINT(#{feature[:geometry][:coordinates][0]} #{feature[:geometry][:coordinates][1]})",
+      battery_status:     properties[:battery_state],
+      battery:            battery(properties),
       timestamp:          timestamp(feature),
       altitude:           altitude(feature),
-      velocity:           speed(feature),
-      tracker_id:         feature[:properties][:device_id],
-      ssid:               feature[:properties][:wifi],
-      accuracy:           accuracy(feature),
-      vertical_accuracy:  feature[:properties][:vertical_accuracy],
-      motion_data:        Points::MotionDataExtractor.from_overland_properties(feature[:properties]),
+      velocity:           speed(properties),
+      tracker_id:         find_field(properties, :tracker_id),
+      ssid:               properties[:wifi],
+      accuracy:           find_field(properties, :accuracy),
+      vertical_accuracy:  find_field(properties, :vertical_accuracy),
+      course:             find_field(properties, :heading),
+      motion_data:        Points::MotionDataExtractor.from_overland_properties(properties),
       raw_data:           feature
     }
   end
@@ -70,14 +75,18 @@ class Geojson::Params
     }
   end
 
-  def battery_level(level)
-    value = (level.to_f * 100).to_i
+  def battery(properties)
+    value = find_field(properties, :battery)
+    return nil if value.nil?
 
-    value.positive? ? value : nil
+    numeric = value.to_f
+    # Values <= 1.0 are fractional (e.g. 0.72 = 72%), convert to percentage
+    numeric = (numeric * 100).to_i if numeric <= 1.0 && numeric.positive?
+    numeric.to_i.positive? ? numeric.to_i : nil
   end
 
   def altitude(feature)
-    feature.dig(:properties, :altitude) || feature.dig(:geometry, :coordinates, 2)
+    find_field(feature[:properties], :altitude) || feature.dig(:geometry, :coordinates, 2)
   end
 
   def timestamp(feature)
@@ -97,28 +106,32 @@ class Geojson::Params
   end
 
   def numeric_timestamp(feature)
-    value = feature.dig(:properties, :timestamp) ||
-            feature.dig(:geometry, :coordinates, 3)
+    value = find_field(feature[:properties], :timestamp)
+    value ||= feature.dig(:geometry, :coordinates, 3)
 
-    value.to_i if value.is_a?(Numeric)
+    return nil unless value.is_a?(Numeric)
+
+    # Unix milliseconds: divide by 1000 if value is too large for seconds
+    value /= 1000.0 if value > 10_000_000_000
+    value.to_i
   end
 
   def parse_string_timestamp(feature)
-    ### GPSLogger for Android / Google Takeout case ###
-    time = feature.dig(:properties, :time) ||
-           feature.dig(:properties, :date)
-    ### /GPSLogger for Android / Google Takeout case ###
+    time = find_field(feature[:properties], :timestamp)
 
-    Time.zone.parse(time).utc.to_i if time.present?
+    Time.zone.parse(time.to_s).utc.to_i if time.present?
   end
 
-  def speed(feature)
-    value = feature.dig(:properties, :speed) || feature.dig(:properties, :velocity)
+  def speed(properties)
+    value, matched_key = find_field_with_key(properties, :speed)
+    return 0.0 if value.nil?
 
-    value.to_f.round(1)
+    numeric = value.to_f
+    numeric /= 3.6 if speed_kmh_alias?(matched_key)
+    numeric.round(1)
   end
 
   def accuracy(feature)
-    feature.dig(:properties, :accuracy) || feature.dig(:properties, :horizontal_accuracy)
+    find_field(feature[:properties], :accuracy)
   end
 end

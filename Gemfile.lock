@@ -110,7 +110,7 @@ GEM
     bcrypt (3.1.20)
     benchmark (0.5.0)
     bigdecimal (4.0.1)
-    bindata (2.5.1)
+    bindata (2.4.15)
     bootsnap (1.20.1)
       msgpack (~> 1.2)
     brakeman (7.1.1)
@@ -192,6 +192,8 @@ GEM
     ffi (1.17.2-x86-linux-gnu)
     ffi (1.17.2-x86_64-darwin)
     ffi (1.17.2-x86_64-linux-gnu)
+    fit4ruby (3.13.0)
+      bindata (~> 2.4.14)
     foreman (0.90.0)
       thor (~> 1.4)
     fugit (1.12.1)
@@ -677,6 +679,7 @@ DEPENDENCIES
   factory_bot_rails
   fakeredis
   ffaker
+  fit4ruby (~> 3.13)
   foreman
   geocoder!
   gpx

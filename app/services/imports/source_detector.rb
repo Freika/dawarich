@@ -73,6 +73,10 @@ class Imports::SourceDetector
     return :gpx if gpx_file?
     return :kml if kml_file?
     return :owntracks if owntracks_file?
+    return :zip if zip_file?
+    return :fit if fit_file?
+    return :tcx if tcx_file?
+    return :csv if csv_file?
 
     json_data = parse_json
     return nil unless json_data
@@ -157,6 +161,38 @@ class Imports::SourceDetector
                        end
 
     content_to_check.lines.any? { |line| line.include?('"_type":"location"') }
+  end
+
+  def zip_file?
+    return false unless filename&.downcase&.end_with?('.zip')
+
+    bytes = file_content&.bytes
+    bytes && bytes.length >= 4 && bytes[0..3] == [0x50, 0x4B, 0x03, 0x04]
+  end
+
+  def fit_file?
+    return false unless filename&.downcase&.end_with?('.fit')
+
+    bytes = file_content&.bytes
+    bytes && bytes.length >= 12 && bytes[8..11] == [0x2E, 0x46, 0x49, 0x54]
+  end
+
+  def tcx_file?
+    return false unless filename&.downcase&.end_with?('.tcx')
+
+    file_content&.include?('<TrainingCenterDatabase')
+  end
+
+  def csv_file?
+    return false unless filename&.downcase&.end_with?('.csv')
+
+    first_line = file_content&.lines&.first&.strip
+    return false if first_line.nil?
+
+    headers = first_line.split(/[,;\t]/).map { |h| h.strip.downcase }
+    all_aliases = Imports::FieldAliases::ALIASES.values.flatten.map(&:downcase)
+    matched = headers.count { |h| all_aliases.include?(h) }
+    matched >= 2
   end
 
   def parse_json

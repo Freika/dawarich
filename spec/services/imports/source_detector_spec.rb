@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require 'zip'
+require 'tempfile'
 
 RSpec.describe Imports::SourceDetector do
   let(:detector) { described_class.new(file_content, filename) }
@@ -104,6 +106,135 @@ RSpec.describe Imports::SourceDetector do
 
       it 'returns nil for empty content' do
         expect(detector.detect_source).to be_nil
+      end
+    end
+
+    context 'ZIP file detection' do
+      it 'detects ZIP by PK magic bytes' do
+        zip_file = Tempfile.new(['test', '.zip'])
+        Zip::File.open(zip_file.path, create: true) do |zipfile|
+          zipfile.get_output_stream('test.txt') { |f| f.write('hello') }
+        end
+
+        detector = described_class.new_from_file_header(zip_file.path)
+        expect(detector.detect_source).to eq(:zip)
+      ensure
+        zip_file&.close
+        zip_file&.unlink
+      end
+
+      it 'does not detect ZIP without .zip extension' do
+        non_zip = Tempfile.new(['test', '.dat'])
+        Zip::File.open(non_zip.path, create: true) do |zipfile|
+          zipfile.get_output_stream('test.txt') { |f| f.write('hello') }
+        end
+
+        detector = described_class.new_from_file_header(non_zip.path)
+        expect(detector.detect_source).not_to eq(:zip)
+      ensure
+        non_zip&.close
+        non_zip&.unlink
+      end
+    end
+
+    context 'FIT file detection' do
+      it 'detects FIT by .FIT signature at bytes 8-11' do
+        # Use a tempfile to avoid overwriting the real fixture
+        fit_file = Tempfile.new(['test', '.fit'])
+        header = "#{[14, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00].pack('C*')}.FIT#{[0x00, 0x00].pack('C*')}"
+        File.write(fit_file.path, header, mode: 'wb')
+
+        detector = described_class.new_from_file_header(fit_file.path)
+        expect(detector.detect_source).to eq(:fit)
+      ensure
+        fit_file&.close
+        fit_file&.unlink
+      end
+
+      it 'does not detect FIT without .fit extension' do
+        file = Tempfile.new(['test', '.dat'])
+        header = "#{[14, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00].pack('C*')}.FIT#{[0x00, 0x00].pack('C*')}"
+        File.write(file.path, header, mode: 'wb')
+
+        detector = described_class.new_from_file_header(file.path)
+        expect(detector.detect_source).not_to eq(:fit)
+      ensure
+        file&.close
+        file&.unlink
+      end
+    end
+
+    context 'TCX file detection' do
+      it 'detects TCX by TrainingCenterDatabase tag' do
+        tcx_path = Rails.root.join('spec/fixtures/files/tcx/running.tcx').to_s
+        FileUtils.mkdir_p(File.dirname(tcx_path))
+        File.write(tcx_path, <<~XML)
+          <?xml version="1.0" encoding="UTF-8"?>
+          <TrainingCenterDatabase xmlns="http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2">
+            <Activities>
+              <Activity Sport="Running">
+                <Lap StartTime="2024-01-01T10:00:00.000Z">
+                  <Track>
+                    <Trackpoint>
+                      <Time>2024-01-01T10:00:00.000Z</Time>
+                      <Position>
+                        <LatitudeDegrees>52.520</LatitudeDegrees>
+                        <LongitudeDegrees>13.405</LongitudeDegrees>
+                      </Position>
+                    </Trackpoint>
+                  </Track>
+                </Lap>
+              </Activity>
+            </Activities>
+          </TrainingCenterDatabase>
+        XML
+
+        detector = described_class.new_from_file_header(tcx_path)
+        expect(detector.detect_source).to eq(:tcx)
+      end
+
+      it 'does not detect TCX without .tcx extension' do
+        file = Tempfile.new(['test', '.xml'])
+        file.write('<TrainingCenterDatabase><Activities></Activities></TrainingCenterDatabase>')
+        file.rewind
+
+        detector = described_class.new_from_file_header(file.path)
+        expect(detector.detect_source).not_to eq(:tcx)
+      ensure
+        file&.close
+        file&.unlink
+      end
+    end
+
+    context 'CSV file detection' do
+      it 'detects CSV with recognized headers' do
+        csv_path = Rails.root.join('spec/fixtures/files/csv/gpslogger.csv').to_s
+        detector = described_class.new_from_file_header(csv_path)
+        expect(detector.detect_source).to eq(:csv)
+      end
+
+      it 'does not detect CSV with unrecognized headers' do
+        file = Tempfile.new(['bad', '.csv'])
+        file.write("foo,bar,baz\n1,2,3\n")
+        file.rewind
+
+        detector = described_class.new_from_file_header(file.path)
+        expect(detector.detect_source).not_to eq(:csv)
+      ensure
+        file&.close
+        file&.unlink
+      end
+
+      it 'does not detect CSV without .csv extension' do
+        file = Tempfile.new(['test', '.txt'])
+        file.write("lat,lon,elevation\n52.52,13.40,34.0\n")
+        file.rewind
+
+        detector = described_class.new_from_file_header(file.path)
+        expect(detector.detect_source).not_to eq(:csv)
+      ensure
+        file&.close
+        file&.unlink
       end
     end
   end

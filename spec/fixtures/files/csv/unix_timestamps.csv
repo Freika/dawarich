@@ -1,0 +1,4 @@
+deviceid,lat,lon,timestamp,accuracy,altitude,batterylevel,speed,bearing
+phone1,52.5200,13.4050,1718444200,8,34.0,85,1.5,90
+phone1,52.5210,13.4060,1718444260,10,35.0,84,1.6,95
+phone1,52.5220,13.4070,1718444320,7,36.0,84,1.4,100
