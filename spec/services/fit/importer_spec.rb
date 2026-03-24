@@ -107,5 +107,4 @@ RSpec.describe Fit::Importer do
       end
     end
   end
-
 end
