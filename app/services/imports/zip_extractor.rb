@@ -61,14 +61,25 @@ module Imports
           file_count += 1
           raise "Too many files in archive (max #{MAX_FILES})" if file_count > MAX_FILES
 
-          total_size += entry.size
-          raise "Archive too large (max #{@max_size} bytes)" if total_size > @max_size
-
           dest = File.join(temp_dir, entry.name)
           FileUtils.mkdir_p(File.dirname(dest))
-          File.binwrite(dest, entry.get_input_stream.read)
+          total_size += extract_entry(entry, dest)
+          raise "Archive too large (max #{@max_size} bytes)" if total_size > @max_size
         end
       end
+    end
+
+    def extract_entry(entry, dest)
+      bytes_written = 0
+      File.open(dest, 'wb') do |out|
+        entry.get_input_stream do |stream|
+          while (chunk = stream.read(8192))
+            bytes_written += chunk.bytesize
+            out.write(chunk)
+          end
+        end
+      end
+      bytes_written
     end
 
     def collect_supported_files(temp_dir)

@@ -145,8 +145,7 @@ RSpec.describe GoogleMaps::PhoneTakeoutImporter do
     end
 
     context 'when timelinePath entry has no point field' do
-      let(:import) { create(:import, user:, name: 'phone_takeout.json') }
-      let(:json_with_missing_point) do
+      let(:json_data) do
         {
           'semanticSegments' => [
             {
@@ -161,19 +160,23 @@ RSpec.describe GoogleMaps::PhoneTakeoutImporter do
           ]
         }
       end
-
-      before do
-        allow_any_instance_of(described_class).to receive(:load_json_data).and_return(json_with_missing_point)
+      let(:temp_file) do
+        f = Tempfile.new(['phone_takeout_missing_point', '.json'])
+        f.write(json_data.to_json)
+        f.rewind
+        f
       end
+      let(:import) { create(:import, user:, name: 'phone_takeout.json') }
+
+      after { temp_file.close! }
 
       it 'skips entries with missing or blank point and creates only valid points' do
-        expect { parser }.to change { Point.count }.by(1)
+        expect { described_class.new(import, user.id, temp_file.path).call }.to change { Point.count }.by(1)
       end
     end
 
     context 'when coordinate formats vary across the file' do
-      let(:import) { create(:import, user:, name: 'phone_takeout.json') }
-      let(:json_with_varied_coords) do
+      let(:json_data) do
         {
           'semanticSegments' => [
             {
@@ -202,10 +205,17 @@ RSpec.describe GoogleMaps::PhoneTakeoutImporter do
           ]
         }
       end
-
-      before do
-        allow_any_instance_of(described_class).to receive(:load_json_data).and_return(json_with_varied_coords)
+      let(:temp_file) do
+        f = Tempfile.new(['phone_takeout_varied_coords', '.json'])
+        f.write(json_data.to_json)
+        f.rewind
+        f
       end
+      let(:import) { create(:import, user:, name: 'phone_takeout.json') }
+
+      after { temp_file.close! }
+
+      subject(:parser) { described_class.new(import, user.id, temp_file.path).call }
 
       it 'parses degree-symbol, no-space decimal, and geo URI formats correctly' do
         expect { parser }.to change { Point.count }.by(3)
@@ -236,8 +246,7 @@ RSpec.describe GoogleMaps::PhoneTakeoutImporter do
     end
 
     context 'when visit has nil coordinates' do
-      let(:import) { create(:import, user:, name: 'phone_takeout.json') }
-      let(:json_with_nil_visit_coords) do
+      let(:json_data) do
         [
           {
             'startTime' => '2024-06-15T09:00:00.000+02:00',
@@ -249,20 +258,24 @@ RSpec.describe GoogleMaps::PhoneTakeoutImporter do
           }
         ]
       end
-
-      before do
-        allow_any_instance_of(described_class).to receive(:load_json_data).and_return(json_with_nil_visit_coords)
+      let(:temp_file) do
+        f = Tempfile.new(['phone_takeout_nil_visit', '.json'])
+        f.write(json_data.to_json)
+        f.rewind
+        f
       end
+      let(:import) { create(:import, user:, name: 'phone_takeout.json') }
+
+      after { temp_file.close! }
 
       it 'skips the entry without raising' do
-        expect { parser }.not_to raise_error
+        expect { described_class.new(import, user.id, temp_file.path).call }.not_to raise_error
         expect(Point.count).to eq(0)
       end
     end
 
     context 'when activity has nil start coordinates' do
-      let(:import) { create(:import, user:, name: 'phone_takeout.json') }
-      let(:json_with_nil_activity_coords) do
+      let(:json_data) do
         [
           {
             'startTime' => '2024-06-15T09:00:00.000+02:00',
@@ -274,20 +287,24 @@ RSpec.describe GoogleMaps::PhoneTakeoutImporter do
           }
         ]
       end
-
-      before do
-        allow_any_instance_of(described_class).to receive(:load_json_data).and_return(json_with_nil_activity_coords)
+      let(:temp_file) do
+        f = Tempfile.new(['phone_takeout_nil_activity', '.json'])
+        f.write(json_data.to_json)
+        f.rewind
+        f
       end
+      let(:import) { create(:import, user:, name: 'phone_takeout.json') }
+
+      after { temp_file.close! }
 
       it 'skips the entry without raising' do
-        expect { parser }.not_to raise_error
+        expect { described_class.new(import, user.id, temp_file.path).call }.not_to raise_error
         expect(Point.count).to eq(0)
       end
     end
 
     context 'when timelinePath segment has nil startTime' do
-      let(:import) { create(:import, user:, name: 'phone_takeout.json') }
-      let(:json_with_nil_start_time) do
+      let(:json_data) do
         [
           {
             'startTime' => nil,
@@ -297,20 +314,24 @@ RSpec.describe GoogleMaps::PhoneTakeoutImporter do
           }
         ]
       end
-
-      before do
-        allow_any_instance_of(described_class).to receive(:load_json_data).and_return(json_with_nil_start_time)
+      let(:temp_file) do
+        f = Tempfile.new(['phone_takeout_nil_start', '.json'])
+        f.write(json_data.to_json)
+        f.rewind
+        f
       end
+      let(:import) { create(:import, user:, name: 'phone_takeout.json') }
+
+      after { temp_file.close! }
 
       it 'skips the segment without raising' do
-        expect { parser }.not_to raise_error
+        expect { described_class.new(import, user.id, temp_file.path).call }.not_to raise_error
         expect(Point.count).to eq(0)
       end
     end
 
     context 'when timelinePath has negative durationMinutesOffsetFromStartTime' do
-      let(:import) { create(:import, user:, name: 'phone_takeout.json') }
-      let(:json_with_negative_offset) do
+      let(:json_data) do
         [
           {
             'startTime' => '2024-06-15T10:00:00.000+02:00',
@@ -321,10 +342,17 @@ RSpec.describe GoogleMaps::PhoneTakeoutImporter do
           }
         ]
       end
-
-      before do
-        allow_any_instance_of(described_class).to receive(:load_json_data).and_return(json_with_negative_offset)
+      let(:temp_file) do
+        f = Tempfile.new(['phone_takeout_negative_offset', '.json'])
+        f.write(json_data.to_json)
+        f.rewind
+        f
       end
+      let(:import) { create(:import, user:, name: 'phone_takeout.json') }
+
+      after { temp_file.close! }
+
+      subject(:parser) { described_class.new(import, user.id, temp_file.path).call }
 
       it 'ignores the negative offset and uses the start time' do
         parser

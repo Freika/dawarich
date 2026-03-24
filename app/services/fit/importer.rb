@@ -19,7 +19,18 @@ class Fit::Importer
 
   def call
     path = resolved_file_path
-    activity = Fit4Ruby.read(path)
+
+    begin
+      activity = Fit4Ruby.read(path)
+    rescue StandardError => e
+      import.update!(status: :failed, error_message: "FIT parsing error: #{e.message}")
+      return
+    end
+
+    unless activity
+      import.update!(status: :failed, error_message: 'No activities found in FIT file')
+      return
+    end
 
     points_data = []
 
@@ -42,8 +53,6 @@ class Fit::Importer
     end
 
     bulk_insert_points(points_data) if points_data.any?
-  rescue StandardError => e
-    import.update!(status: :failed, error_message: "FIT parsing error: #{e.message}")
   ensure
     cleanup_temp_file
   end

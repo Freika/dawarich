@@ -22,7 +22,7 @@ module Imports
       return nil unless aliases
 
       aliases.each do |key|
-        [key, key.downcase, key.upcase, key.capitalize].each do |variant|
+        [key, key.downcase, key.upcase, key.capitalize, key.to_sym, key.downcase.to_sym].each do |variant|
           return hash[variant] if hash.key?(variant)
         end
       end
@@ -34,7 +34,7 @@ module Imports
       return [nil, nil] unless aliases
 
       aliases.each do |key|
-        [key, key.downcase, key.upcase, key.capitalize].each do |variant|
+        [key, key.downcase, key.upcase, key.capitalize, key.to_sym, key.downcase.to_sym].each do |variant|
           return [hash[variant], key] if hash.key?(variant)
         end
       end

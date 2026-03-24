@@ -58,6 +58,12 @@ RSpec.describe Imports::FieldAliases do
       expect(instance.find_field(props, :latitude)).to eq(51.5)
       expect(instance.find_field(props, :longitude)).to eq(-0.12)
     end
+
+    it 'handles symbol keys' do
+      props = { lat: 51.5, lon: -0.12 }
+      expect(instance.find_field(props, :latitude)).to eq(51.5)
+      expect(instance.find_field(props, :longitude)).to eq(-0.12)
+    end
   end
 
   describe '#find_header' do

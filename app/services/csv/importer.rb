@@ -56,19 +56,15 @@ module Csv
     def resolve_file_path
       return file_path if file_path && File.exist?(file_path)
 
-      content = Imports::SecureFileDownloader.new(import.file).download_with_verification
-      @temp_file = Tempfile.new(['csv_import', '.csv'])
-      @temp_file.binmode
-      @temp_file.write(content)
-      @temp_file.rewind
-      @temp_file.path
+      @temp_file_path = Imports::SecureFileDownloader.new(import.file).download_to_temp_file
     end
 
     def cleanup_temp_file
-      return unless @temp_file
+      return unless @temp_file_path
 
-      @temp_file.close unless @temp_file.closed?
-      @temp_file.unlink if File.exist?(@temp_file.path)
+      File.delete(@temp_file_path) if File.exist?(@temp_file_path)
+    rescue StandardError => e
+      Rails.logger.warn("Failed to cleanup CSV temp file: #{e.message}")
     end
 
     def bulk_insert_points(batch)

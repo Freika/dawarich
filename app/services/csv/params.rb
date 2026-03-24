@@ -29,7 +29,9 @@ module Csv
         course: parse_float(:heading),
         tracker_id: field_value(:tracker_id),
         user_id: @user_id,
-        import_id: @import_id
+        import_id: @import_id,
+        created_at: Time.current,
+        updated_at: Time.current
       }
     end
 
