@@ -44,6 +44,18 @@ export class EventHandlers {
   }
 
   /**
+   * Handle anomaly point click — shows reason and timestamp in the info panel.
+   */
+  handleAnomalyClick(e) {
+    const feature = e.features[0]
+    const anomaliesLayer = this.controller.layerManager.getLayer("anomalies")
+    if (!anomaliesLayer) return
+
+    const content = anomaliesLayer.buildPopupContent(feature.properties)
+    this.controller.showInfo("Anomaly Point", content)
+  }
+
+  /**
    * Handle track point click — injects point info into the existing track info panel.
    * Suppresses the event if the user just finished dragging (justDragged flag).
    */

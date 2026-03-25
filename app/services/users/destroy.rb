@@ -49,12 +49,26 @@ class Users::Destroy
       user.areas.delete_all
 
       user.places.delete_all
+
+      # Delete taggings BEFORE tags (taggings has FK to tags)
+      Tagging.where(tag_id: user.tags.select(:id)).delete_all
       user.tags.delete_all
+
       user.trips.delete_all
+
+      # Delete track_segments and video_exports BEFORE tracks (both have FK to tracks)
+      TrackSegment.where(track_id: user.tracks.select(:id)).delete_all
+      delete_video_exports_for(user)
       user.tracks.delete_all
+
       user.raw_data_archives.delete_all
       user.digests.delete_all
       user.sent_family_invitations.delete_all if user.respond_to?(:sent_family_invitations)
+
+      # Delete family location requests (has FK to users via requester_id and target_user_id)
+      Family::LocationRequest.where(requester_id: user.id)
+                             .or(Family::LocationRequest.where(target_user_id: user.id))
+                             .delete_all
 
       # Delete family associations (memberships before family due to FK)
       # Delete ALL family memberships for this user (using direct query to avoid association cache issues)
@@ -63,6 +77,8 @@ class Users::Destroy
       # If user created a family, delete all remaining memberships and the family
       # Reuses created_family from the validation check above
       if created_family
+        # Delete location requests referencing this family before deleting the family
+        Family::LocationRequest.where(family_id: created_family.id).delete_all
         Family::Membership.where(family_id: created_family.id).delete_all
         created_family.delete
       end
@@ -111,6 +127,18 @@ class Users::Destroy
   rescue StandardError => e
     Rails.logger.warn "Failed to purge #{record_type} attachments: #{e.message}"
     ExceptionReporter.call(e, "Failed to purge #{record_type} attachments for user #{user.id}")
+  end
+
+  # video_exports table exists (FK to tracks and users) but has no model class.
+  # Use raw SQL to avoid NameError.
+  def delete_video_exports_for(user)
+    return unless ActiveRecord::Base.connection.table_exists?('video_exports')
+
+    ActiveRecord::Base.connection.execute(
+      ActiveRecord::Base.sanitize_sql_array(
+        ['DELETE FROM video_exports WHERE user_id = ?', user.id]
+      )
+    )
   end
 
   def cleanup_user_cache(user_id)

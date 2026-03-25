@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [1.4.1] - Unreleased
 
+### Added
+
+- GPS noise filtering. An automatic system to detect ahd filter out points with unrealistic speeds, altitudes, or sudden jumps.
+- Support for signing in via web view using our Android app.
+
 ### Changed
 
 - [Cloud] The point creation API endpoints are being excluded from the default Lite/Pro rate limits (200/1,000 requests/hour). They now have general rate limits of 10,000 requests/hour.

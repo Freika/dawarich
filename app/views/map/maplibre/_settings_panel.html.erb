@@ -148,6 +148,20 @@
 
           <div class="divider"></div>
 
+          <!-- Anomalies Layer -->
+          <div class="form-control">
+            <label class="label cursor-pointer justify-start gap-3">
+              <input type="checkbox"
+                     class="toggle toggle-warning"
+                     data-maps--maplibre-target="anomaliesToggle"
+                     data-action="change->maps--maplibre#toggleAnomalies" />
+              <span class="label-text font-medium">Anomalies</span>
+            </label>
+            <p class="text-sm text-base-content/60 ml-14">Show filtered GPS noise points</p>
+          </div>
+
+          <div class="divider"></div>
+
           <!-- Tracks Layer -->
           <div class="form-control">
             <label class="label cursor-pointer justify-start gap-3">

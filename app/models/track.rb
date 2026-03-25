@@ -57,6 +57,7 @@ class Track < ApplicationRecord
                    else
                      'WHERE user_id = $1 AND timestamp BETWEEN $2 AND $3'
                    end
+    where_clause += ' AND (anomaly IS NOT TRUE)'
 
     sql = <<~SQL
       WITH points_with_gaps AS (

@@ -31,6 +31,7 @@ class Imports::Create
     importer(source).new(import, user.id, temp_file_path).call
     User.where(id: user.id).update_all(points_count: user.points.count)
 
+    filter_anomalies(user, import)
     schedule_stats_creating(user.id)
     schedule_visit_suggesting(user.id, import)
     update_import_points_count(import)
@@ -76,6 +77,14 @@ class Imports::Create
 
   def update_import_points_count(import)
     Import::UpdatePointsCountJob.perform_later(import.id)
+  end
+
+  def filter_anomalies(user, import)
+    min_ts = import.points.minimum(:timestamp)
+    max_ts = import.points.maximum(:timestamp)
+    return unless min_ts && max_ts
+
+    Points::AnomalyFilter.new(user.id, min_ts, max_ts).call
   end
 
   def schedule_stats_creating(user_id)

@@ -337,6 +337,75 @@ RSpec.describe Users::Destroy do
       end
     end
 
+    context 'with taggings referencing tags (foreign key constraint)' do
+      let!(:tag) { create(:tag, user:) }
+      let!(:place) { create(:place, user:) }
+      let!(:tagging) { create(:tagging, tag:, taggable: place) }
+
+      it 'deletes taggings before tags to respect foreign key constraints' do
+        user_id = user.id
+        tag_id = tag.id
+        tagging_id = tagging.id
+
+        service.call
+
+        expect(Tagging.where(id: tagging_id).count).to eq(0)
+        expect(Tag.where(id: tag_id).count).to eq(0)
+        expect(User.unscoped.where(id: user_id).count).to eq(0)
+      end
+    end
+
+    context 'with track_segments referencing tracks (foreign key constraint)' do
+      let!(:track) { create(:track, user:) }
+      let!(:segment) { create(:track_segment, track:) }
+
+      it 'deletes track_segments before tracks to respect foreign key constraints' do
+        user_id = user.id
+        track_id = track.id
+        segment_id = segment.id
+
+        service.call
+
+        expect(TrackSegment.where(id: segment_id).count).to eq(0)
+        expect(Track.where(id: track_id).count).to eq(0)
+        expect(User.unscoped.where(id: user_id).count).to eq(0)
+      end
+    end
+
+    context 'with family location requests' do
+      let(:family) { create(:family, creator: user) }
+      let(:other_user) { create(:user) }
+
+      before do
+        create(:family_membership, user:, family:, role: :owner)
+        create(:family_membership, user: other_user, family:, role: :member)
+      end
+
+      it 'deletes location requests where user is requester' do
+        request = create(:family_location_request, requester: user, target_user: other_user, family:)
+
+        # Remove other member so deletion is allowed
+        Family::Membership.where(user_id: other_user.id).delete_all
+
+        service.call
+
+        expect(Family::LocationRequest.where(id: request.id).count).to eq(0)
+        expect(User.unscoped.where(id: user.id).count).to eq(0)
+      end
+
+      it 'deletes location requests where user is target' do
+        request = create(:family_location_request, requester: other_user, target_user: user, family:)
+
+        # Remove other member so deletion is allowed
+        Family::Membership.where(user_id: other_user.id).delete_all
+
+        service.call
+
+        expect(Family::LocationRequest.where(id: request.id).count).to eq(0)
+        expect(User.unscoped.where(id: user.id).count).to eq(0)
+      end
+    end
+
     context 'with large datasets' do
       before do
         # Create many points to simulate a real user with lots of data

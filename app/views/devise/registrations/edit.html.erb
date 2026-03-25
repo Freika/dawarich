@@ -168,7 +168,7 @@
 
             <div class="rounded-2xl border border-error/30 bg-error/5 p-4">
               <h3 class="text-lg font-semibold">Danger zone</h3>
-              <p class="mt-2 text-sm text-base-content/70">Deleting your account is permanent and removes access to your data.</p>
+              <p class="mt-2 text-sm text-base-content/70">Deleting your account is permanent and removes all your data.</p>
               <div class="mt-4">
                 <%= link_to "Cancel my account", registration_path(resource_name), data: { turbo_confirm: "Are you sure?", turbo_method: :delete }, method: :delete, class: 'btn btn-error btn-outline w-full sm:w-auto' %>
               </div>
