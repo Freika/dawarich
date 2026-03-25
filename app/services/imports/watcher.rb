@@ -4,7 +4,7 @@ class Imports::Watcher
   class UnsupportedSourceError < StandardError; end
 
   WATCHED_DIR_PATH = Rails.root.join('tmp/imports/watched')
-  SUPPORTED_FORMATS = %w[.gpx .json .rec].freeze
+  SUPPORTED_FORMATS = %w[.gpx .json .rec .csv .tcx .fit .zip .geojson .kml .kmz].freeze
 
   def call
     user_directories.each do |user_email|
@@ -66,6 +66,12 @@ class Imports::Watcher
       end
     when 'rec' then :owntracks
     when 'gpx' then :gpx
+    when 'csv' then :csv
+    when 'tcx' then :tcx
+    when 'fit' then :fit
+    when 'geojson' then :geojson
+    when 'kml', 'kmz' then :kml
+    when 'zip' then nil
     else raise UnsupportedSourceError, 'Unsupported source '
     end
   end
@@ -75,8 +81,11 @@ class Imports::Watcher
     when :gpx then 'application/xml'
     when :json, :geojson, :google_phone_takeout, :google_records, :google_semantic_history
       'application/json'
-    when :owntracks
+    when :owntracks, :fit
       'application/octet-stream'
+    when :csv then 'text/csv'
+    when :tcx then 'application/xml'
+    when :kml then 'application/vnd.google-earth.kml+xml'
     when nil
       'application/octet-stream' # fallback MIME type for nil source
     else

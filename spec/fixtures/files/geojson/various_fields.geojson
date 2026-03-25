@@ -1,0 +1,42 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [13.4050, 52.5200, 34.0] },
+      "properties": {
+        "datetime": "2024-06-15T10:30:00Z",
+        "vel": 1.5,
+        "acc": 8,
+        "batt": 72,
+        "bearing": 90,
+        "tid": "T1"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [13.4060, 52.5210, 35.0] },
+      "properties": {
+        "when": "2024-06-15T10:31:00Z",
+        "speed_kmh": 5.4,
+        "hdop": 12,
+        "bat": 71,
+        "cog": 95,
+        "deviceId": "phone1"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [13.4070, 52.5220] },
+      "properties": {
+        "recorded_at": "2024-06-15T10:32:00Z",
+        "speed": 1.8,
+        "precision": 5,
+        "height": 36.0,
+        "battery_level": 70,
+        "course": 100,
+        "device": "phone1"
+      }
+    }
+  ]
+}

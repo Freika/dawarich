@@ -1,0 +1,4 @@
+time,lat,lon,elevation,accuracy,bearing,speed,satellites,provider,activity,battery
+2024-06-15T10:30:00.000Z,52.5200,13.4050,34.0,8,90,1.5,12,gps,walking,85
+2024-06-15T10:31:00.000Z,52.5210,13.4060,35.0,10,95,1.6,11,gps,walking,84
+2024-06-15T10:32:00.000Z,52.5220,13.4070,36.0,7,100,1.4,13,gps,walking,84

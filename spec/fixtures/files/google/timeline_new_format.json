@@ -1,0 +1,68 @@
+{
+  "semanticSegments": [
+    {
+      "startTime": "2024-06-15T09:00:00.000+02:00",
+      "endTime": "2024-06-15T10:00:00.000+02:00",
+      "visit": {
+        "topCandidate": {
+          "placeId": "ChIJtest123",
+          "probability": 0.95,
+          "placeLocation": {
+            "latLng": "48.8566\u00b0, 2.3522\u00b0"
+          }
+        }
+      }
+    },
+    {
+      "startTime": "2024-06-15T10:00:00.000+02:00",
+      "endTime": "2024-06-15T10:30:00.000+02:00",
+      "activity": {
+        "start": { "latLng": "48.8566\u00b0, 2.3522\u00b0" },
+        "end": { "latLng": "48.8606\u00b0, 2.3376\u00b0" },
+        "topCandidate": {
+          "type": "IN_PASSENGER_VEHICLE",
+          "probability": 0.85
+        }
+      }
+    },
+    {
+      "startTime": "2024-06-15T10:30:00.000+02:00",
+      "endTime": "2024-06-15T11:00:00.000+02:00",
+      "timelinePath": [
+        {
+          "point": "48.8606\u00b0, 2.3376\u00b0",
+          "time": "2024-06-15T10:35:00.000+02:00"
+        },
+        {
+          "point": "48.8620\u00b0, 2.3350\u00b0",
+          "time": "2024-06-15T10:40:00.000+02:00"
+        }
+      ]
+    }
+  ],
+  "rawSignals": [
+    {
+      "position": {
+        "LatLng": "48.8566, 2.3522",
+        "accuracyMeters": 15,
+        "altitudeMeters": 35.0,
+        "speedMetersPerSecond": 0.0,
+        "timestamp": "2024-06-15T09:05:00.000Z"
+      }
+    }
+  ],
+  "userLocationProfile": {
+    "frequentPlaces": [
+      {
+        "placeId": "ChIJtest123",
+        "placeLocation": "48.8566, 2.3522",
+        "label": "HOME"
+      },
+      {
+        "placeId": "ChIJtest456",
+        "placeLocation": "48.8606, 2.3376",
+        "label": "WORK"
+      }
+    ]
+  }
+}
