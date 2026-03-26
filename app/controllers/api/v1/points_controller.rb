@@ -3,6 +3,8 @@
 class Api::V1::PointsController < ApiController
   include SafeTimestampParser
 
+  DEFAULT_MAX_SAMPLED_POINTS = 20_000
+
   before_action :authenticate_active_api_user!, only: %i[create update destroy bulk_destroy]
   before_action :require_write_api!, only: %i[update destroy bulk_destroy]
   before_action :validate_points_limit, only: %i[create]
@@ -15,6 +17,7 @@ class Api::V1::PointsController < ApiController
     points = scoped_points
              .without_raw_data
              .where(timestamp: start_at..end_at)
+    points_before_sampling = points
 
     if params[:min_longitude].present? && params[:max_longitude].present? &&
        params[:min_latitude].present? && params[:max_latitude].present?
@@ -27,6 +30,19 @@ class Api::V1::PointsController < ApiController
         'ST_X(lonlat::geometry) BETWEEN ? AND ? AND ST_Y(lonlat::geometry) BETWEEN ? AND ?',
         min_lng, max_lng, min_lat, max_lat
       )
+    end
+
+    if sampling_requested?
+      sampling_result = Points::Downsampler.new(
+        relation: points,
+        order:,
+        max_points: sampled_points_limit
+      ).call
+
+      points = sampling_result.relation
+      response.set_header('X-Points-Sampled', sampling_result.sampled.to_s)
+      response.set_header('X-Total-Points-Before-Sampling', sampling_result.total_count.to_s)
+      response.set_header('X-Sampled-Points-Limit', sampled_points_limit.to_s)
     end
 
     points = points
@@ -44,7 +60,7 @@ class Api::V1::PointsController < ApiController
     if !DawarichSettings.self_hosted? && current_api_user.lite?
       total_in_range = current_api_user.points
                                        .where(timestamp: start_at..end_at).count
-      scoped_count = points.except(:select, :order).count
+      scoped_count = points_before_sampling.except(:select, :order, :includes, :preload, :eager_load).count
       response.set_header('X-Total-Points-In-Range', total_in_range.to_s)
       response.set_header('X-Scoped-Points', scoped_count.to_s)
     end
@@ -111,5 +127,16 @@ class Api::V1::PointsController < ApiController
 
   def point_serializer
     params[:slim] == 'true' ? Api::SlimPointSerializer : Api::PointSerializer
+  end
+
+  def sampling_requested?
+    params[:sample] == 'true'
+  end
+
+  def sampled_points_limit
+    requested = params[:max_points].to_i
+    return DEFAULT_MAX_SAMPLED_POINTS if requested <= 0
+
+    requested.clamp(1, DEFAULT_MAX_SAMPLED_POINTS)
   end
 end

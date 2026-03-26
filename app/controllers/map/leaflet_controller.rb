@@ -3,11 +3,13 @@
 class Map::LeafletController < ApplicationController
   include SafeTimestampParser
 
+  MAX_RENDERED_POINTS = 20_000
+
   before_action :authenticate_user!
   layout 'map', only: :index
 
   def index
-    @points = filtered_points
+    @points = sampled_points.relation
     @coordinates = build_coordinates
     @tracks = build_tracks
     @distance = calculate_distance
@@ -20,6 +22,14 @@ class Map::LeafletController < ApplicationController
   end
 
   private
+
+  def sampled_points
+    @sampled_points ||= Points::Downsampler.new(
+      relation: filtered_points,
+      order: :asc,
+      max_points: MAX_RENDERED_POINTS
+    ).call
+  end
 
   def filtered_points
     points.where('timestamp >= ? AND timestamp <= ?', start_at, end_at)
@@ -41,7 +51,7 @@ class Map::LeafletController < ApplicationController
   end
 
   def calculate_distance
-    return 0 if @points.count(:id) < 2
+    return 0 if sampled_points.total_count < 2
 
     # Use PostGIS window function for efficient distance calculation
     # This is O(1) database operation vs O(n) Ruby iteration
