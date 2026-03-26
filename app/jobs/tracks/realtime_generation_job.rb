@@ -26,7 +26,21 @@ class Tracks::RealtimeGenerationJob < ApplicationJob
 
     # Generate tracks from recent untracked points
     Tracks::IncrementalGenerator.new(user).call
+
+    # Enqueue reverse geocoding for recent ungeocoded points
+    enqueue_reverse_geocoding(user)
   rescue StandardError => e
     ExceptionReporter.call(e, "Failed real-time track generation for user #{user_id}")
+  end
+
+  private
+
+  def enqueue_reverse_geocoding(user)
+    return unless DawarichSettings.reverse_geocoding_enabled?
+
+    user.points
+        .not_reverse_geocoded
+        .where('timestamp > ?', 6.hours.ago.to_i)
+        .find_each(&:async_reverse_geocode)
   end
 end

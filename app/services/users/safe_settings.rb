@@ -157,7 +157,11 @@ class Users::SafeSettings
   end
 
   def maps
-    settings['maps']
+    m = settings['maps']
+    return m unless lite?
+
+    # Lite users cannot customize map layers or POI groups
+    m&.except('hidden_tile_categories', 'disabled_poi_groups') || m
   end
 
   def distance_unit

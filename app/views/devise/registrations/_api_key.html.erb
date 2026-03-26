@@ -4,12 +4,12 @@
     <div class="mt-2 rounded-xl bg-base-300/70 p-3">
       <code class="block break-all text-sm sm:text-base"><%= current_user.api_key %></code>
     </div>
-    <p class="mt-3 text-sm text-base-content/70">Docs: <%= link_to "API documentation", '/api-docs', class: 'underline hover:no-underline' %></p>
+    <p class="mt-3 text-sm text-base-content/70">Docs: <%= link_to "API documentation", 'https://dawarich.app/docs/api/dawarich-api?utm_source=app&utm_medium=web&utm_campaign=api_docs', class: 'underline hover:no-underline' %></p>
   </div>
 
   <div class="rounded-2xl border border-base-300/70 bg-base-200/40 p-4 text-center">
     <p class="text-sm font-medium text-base-content/70">Scan in the Dawarich iOS app</p>
-    <div class="mt-4 mx-auto max-w-xs overflow-hidden rounded-2xl bg-white p-2 shadow-lg">
+    <div class="mt-4 mx-auto max-w-xs rounded-2xl bg-white p-2 shadow-lg [&_svg]:w-full [&_svg]:h-auto">
       <%= api_key_qr_code(current_user) %>
     </div>
   </div>

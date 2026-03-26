@@ -9,11 +9,11 @@
       <div class="flex flex-col gap-3 md:flex-row md:items-end">
         <div class="flex-1">
           <%= f.label :start_at, class: "text-xs font-medium text-base-content/50 uppercase tracking-wider mb-1 block" %>
-          <%= f.datetime_local_field :start_at, class: "input input-bordered input-sm w-full", value: @start_at %>
+          <%= f.datetime_local_field :start_at, include_seconds: false, max: "9999-12-31T23:59", class: "input input-bordered input-sm w-full", value: @start_at %>
         </div>
         <div class="flex-1">
           <%= f.label :end_at, class: "text-xs font-medium text-base-content/50 uppercase tracking-wider mb-1 block" %>
-          <%= f.datetime_local_field :end_at, class: "input input-bordered input-sm w-full", value: @end_at %>
+          <%= f.datetime_local_field :end_at, include_seconds: false, max: "9999-12-31T23:59", class: "input input-bordered input-sm w-full", value: @end_at %>
         </div>
         <div class="flex-1">
           <%= f.label :import, class: "text-xs font-medium text-base-content/50 uppercase tracking-wider mb-1 block" %>
@@ -60,7 +60,7 @@
     <%= form_with url: bulk_destroy_points_path(params.permit!), method: :delete, id: :bulk_destroy_form do |f| %>
       <%= f.submit "Delete Selected", class: "btn btn-error btn-sm mb-3", data: { turbo_confirm: "Are you sure?", checkbox_select_all_target: "deleteButton" }, style: "display: none;" %>
 
-      <div class="border border-base-300 rounded-xl overflow-hidden">
+      <div class="border border-base-300 rounded-xl overflow-clip">
         <table class="table table-sm w-full">
           <thead class="bg-base-200">
             <tr>

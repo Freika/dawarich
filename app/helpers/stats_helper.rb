@@ -76,11 +76,14 @@ module StatsHelper
 
     year_stats.each do |stat|
       toponyms = stat.toponyms.flatten
-      countries.concat(toponyms.map { |t| normalize_country_name(t['country']) }.compact)
-      cities.concat(toponyms.flat_map { |t| (t['cities'] || []).map { |c| c['city'] } }.compact)
+      toponyms.each do |t|
+        city_names = (t['cities'] || []).filter_map { |c| c['city'] }
+        cities.concat(city_names)
+        countries << normalize_country_name(t['country']) if city_names.any? && t['country'].present?
+      end
     end
 
-    [countries.uniq, cities.uniq]
+    [countries.compact.uniq, cities.uniq]
   end
 
   def group_toponyms_by_country(year_stats)

@@ -68,14 +68,14 @@ class CountriesAndCities
     return 0 if timestamps.size < 2
 
     sorted = timestamps.sort
-    total_minutes = 0
+    total_seconds = 0
     gap_threshold_seconds = max_gap_minutes * 60
 
     sorted.each_cons(2) do |prev_ts, curr_ts|
       interval_seconds = curr_ts - prev_ts
-      total_minutes += (interval_seconds / 60) if interval_seconds < gap_threshold_seconds
+      total_seconds += interval_seconds if interval_seconds < gap_threshold_seconds
     end
 
-    total_minutes
+    total_seconds / 60
   end
 end

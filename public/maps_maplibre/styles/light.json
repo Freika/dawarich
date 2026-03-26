@@ -5,7 +5,7 @@
       "type": "vector",
       "tiles": ["https://tyles.dwri.xyz/planet/{z}/{x}/{y}.mvt"],
       "minzoom": 0,
-      "maxzoom": 14
+      "maxzoom": 15
     }
   },
   "layers": [
@@ -1375,7 +1375,7 @@
       "type": "symbol",
       "source": "protomaps",
       "source-layer": "buildings",
-      "minzoom": 18,
+      "minzoom": 14,
       "filter": ["==", "kind", "address"],
       "layout": {
         "symbol-placement": "point",

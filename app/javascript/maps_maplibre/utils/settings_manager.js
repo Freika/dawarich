@@ -292,6 +292,16 @@ export class SettingsManager {
         mergedSettings.enabledMapLayers = backendSettings.enabled_map_layers
       }
 
+      // Extract map customization from nested maps settings
+      if (backendSettings.maps?.hidden_tile_categories) {
+        mergedSettings.hiddenTileCategories =
+          backendSettings.maps.hidden_tile_categories
+      }
+      if (backendSettings.maps?.disabled_poi_groups) {
+        mergedSettings.disabledPoiGroups =
+          backendSettings.maps.disabled_poi_groups
+      }
+
       const expandedSettings =
         SettingsManager._expandLayerSettings(mergedSettings)
 

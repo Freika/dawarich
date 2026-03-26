@@ -59,7 +59,10 @@ Rails.application.routes.draw do
     resources :maps, only: %i[index]
     patch 'maps', to: 'maps#update'
 
-    resource :onboarding, only: [:update]
+    resource :onboarding, only: [:update] do
+      post :demo_data, on: :member
+      delete :demo_data, on: :member, action: :destroy_demo_data
+    end
   end
 
   get 'settings/theme', to: 'settings#theme'

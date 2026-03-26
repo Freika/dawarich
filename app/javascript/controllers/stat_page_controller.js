@@ -140,7 +140,14 @@ export default class extends BaseController {
     this.markersLayer.clearLayers()
 
     // Convert points to markers (API returns latitude/longitude as strings)
-    const markers = points.map((point) => {
+    // Filter out points with invalid coordinates to prevent Leaflet errors
+    const validPoints = points.filter((point) => {
+      const lat = parseFloat(point.latitude)
+      const lng = parseFloat(point.longitude)
+      return !Number.isNaN(lat) && !Number.isNaN(lng) && lat !== 0 && lng !== 0
+    })
+
+    const markers = validPoints.map((point) => {
       const lat = parseFloat(point.latitude)
       const lng = parseFloat(point.longitude)
 
@@ -160,7 +167,7 @@ export default class extends BaseController {
     })
 
     // Prepare data for heatmap (convert strings to numbers)
-    this.heatmapData = points.map((point) => [
+    this.heatmapData = validPoints.map((point) => [
       parseFloat(point.latitude),
       parseFloat(point.longitude),
       0.5,
@@ -181,7 +188,7 @@ export default class extends BaseController {
     }
 
     // Fit map to show all points
-    if (points.length > 0) {
+    if (validPoints.length > 0) {
       const group = new L.featureGroup(markers)
       this.map.fitBounds(group.getBounds().pad(0.1))
     }

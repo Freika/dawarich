@@ -111,6 +111,23 @@ RSpec.describe '/visits', type: :request do
 
         expect(response).to redirect_to(visits_url(status: :suggested))
       end
+
+      it 'auto-names the visit from suggested place when confirming without name change' do
+        place = create(:place, user:, name: 'Central Park')
+        create(:place_visit, visit:, place:)
+
+        patch visit_url(visit), params: { visit: { status: :confirmed } }
+
+        expect(visit.reload.name).to eq('Central Park')
+      end
+
+      it 'keeps the original name when confirming if no suggested place exists' do
+        visit.update!(name: 'My Visit')
+
+        patch visit_url(visit), params: { visit: { status: :confirmed } }
+
+        expect(visit.reload.name).to eq('My Visit')
+      end
     end
 
     context 'with turbo_stream format' do

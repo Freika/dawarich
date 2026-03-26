@@ -1,18 +1,27 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static targets = ["modal", "choiceScreen", "importScreen", "trackScreen"]
+  static targets = [
+    "modal",
+    "choiceScreen",
+    "importScreen",
+    "trackScreen",
+    "demoButton",
+  ]
   static values = {
     showable: Boolean,
     onboardingUrl: String,
     userTrial: Boolean,
     importsCount: Number,
+    demoDataUrl: String,
+    hasDemoData: Boolean,
   }
 
   connect() {
     if (this.showableValue) {
       document.addEventListener("turbo:load", this.handleTurboLoad)
     }
+    this.updateDemoButton()
   }
 
   disconnect() {
@@ -52,6 +61,38 @@ export default class extends Controller {
 
   showChoice() {
     this.switchScreen("choiceScreen")
+  }
+
+  loadDemoData() {
+    if (this.hasDemoDataValue) return
+
+    this.trackEvent("onboarding_demo_selected")
+
+    if (this.hasDemoButtonTarget) {
+      this.demoButtonTarget.classList.add("opacity-50", "pointer-events-none")
+    }
+
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content
+
+    fetch(this.demoDataUrlValue, {
+      method: "POST",
+      headers: {
+        "X-CSRF-Token": csrfToken,
+        Accept: "text/html",
+      },
+      redirect: "follow",
+    }).then((response) => {
+      this.modalTarget.close()
+      window.Turbo.visit(response.url || window.location.href)
+    })
+  }
+
+  updateDemoButton() {
+    if (this.hasDemoDataValue && this.hasDemoButtonTarget) {
+      this.demoButtonTarget.classList.add("opacity-50", "pointer-events-none")
+      const label = this.demoButtonTarget.querySelector("h4")
+      if (label) label.textContent = "Demo data already loaded"
+    }
   }
 
   dismiss() {

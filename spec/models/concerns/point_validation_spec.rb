@@ -104,29 +104,11 @@ RSpec.describe PointValidation do
       end
     end
 
-    context 'with integration tests', :db do
-      # These tests require a database with PostGIS support
-      # Only run them if using real database integration
-
+    context 'with real database points' do
       let(:existing_timestamp) { 1_650_000_000 }
-      let(:existing_point_params) do
-        {
-          lonlat: 'POINT(10.5 50.5)',
-          timestamp: existing_timestamp,
-          user_id: user.id
-        }
-      end
 
       before do
-        # Skip this context if not in integration mode
-        skip 'Skipping integration tests' unless ENV['RUN_INTEGRATION_TESTS']
-
-        # Create a point in the database
-        Point.create!(
-          lonlat: "POINT(#{existing_point_params[:longitude]} #{existing_point_params[:latitude]})",
-          timestamp: existing_timestamp,
-          user_id: user.id
-        )
+        create(:point, lonlat: 'POINT(10.5 50.5)', timestamp: existing_timestamp, user: user)
       end
 
       it 'returns true when a point with same coordinates and timestamp exists' do

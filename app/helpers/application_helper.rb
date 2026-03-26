@@ -108,6 +108,17 @@ module ApplicationHelper
     }
   }.freeze
 
+  def mobile_browser?
+    user_agent = request.user_agent.to_s
+    user_agent.match?(/iPhone|iPad|iPod|Android/i)
+  end
+
+  def visible_omniauth_providers
+    providers = resource_class.omniauth_providers
+    providers = providers.reject { |p| p == :google_oauth2 } if mobile_browser?
+    providers
+  end
+
   def oauth_button_config(provider)
     config = OAUTH_PROVIDERS[provider.to_sym]
 

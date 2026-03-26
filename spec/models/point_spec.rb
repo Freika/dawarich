@@ -29,17 +29,6 @@ RSpec.describe Point, type: :model do
         expect(point.country_id).to eq(country.id)
       end
     end
-
-    xdescribe '#recalculate_track' do
-      let(:point) { create(:point, track: track) }
-      let(:track) { create(:track) }
-
-      it 'recalculates the track' do
-        expect(track).to receive(:recalculate_path_and_distance!)
-
-        point.update(lonlat: 'POINT(-79.85581250721961 15.854775993302411)')
-      end
-    end
   end
 
   describe 'scopes' do
@@ -124,21 +113,6 @@ RSpec.describe Point, type: :model do
 
       it 'returns latitude' do
         expect(point.lat).to eq(2)
-      end
-    end
-
-    xdescribe '#trigger_incremental_track_generation' do
-      let(:point) do
-        create(:point, track: track, import_id: nil, timestamp: 1.hour.ago.to_i, reverse_geocoded_at: 1.hour.ago)
-      end
-      let(:track) { create(:track) }
-
-      it 'enqueues Tracks::IncrementalCheckJob' do
-        expect do
-          point.send(:trigger_incremental_track_generation)
-        end.to have_enqueued_job(Tracks::IncrementalCheckJob).with(
-          point.user_id, point.id
-        )
       end
     end
   end
