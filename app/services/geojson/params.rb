@@ -36,6 +36,8 @@ class Geojson::Params
   end
 
   def process_feature_collection(json)
+    return [] if json['features'].blank?
+
     json['features'].map { |feature| process_feature(feature) }
   end
 

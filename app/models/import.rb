@@ -45,11 +45,11 @@ class Import < ApplicationRecord
   end
 
   def years_and_months_tracked
-    tz = Time.zone.tzinfo.identifier
+    quoted_tz = ActiveRecord::Base.connection.quote(Time.zone.tzinfo.identifier)
     points
       .select(Arel.sql(
-                "DISTINCT EXTRACT(YEAR FROM TO_TIMESTAMP(timestamp) AT TIME ZONE '#{tz}')::integer AS year, \
-                 EXTRACT(MONTH FROM TO_TIMESTAMP(timestamp) AT TIME ZONE '#{tz}')::integer AS month"
+                "DISTINCT EXTRACT(YEAR FROM TO_TIMESTAMP(timestamp) AT TIME ZONE #{quoted_tz})::integer AS year, \
+                 EXTRACT(MONTH FROM TO_TIMESTAMP(timestamp) AT TIME ZONE #{quoted_tz})::integer AS month"
               ))
       .map { |row| [row[:year], row[:month]] }
   end
@@ -87,7 +87,7 @@ class Import < ApplicationRecord
   def import_count_within_limit
     return unless new_record?
 
-    existing_imports_count = user.imports.count
+    existing_imports_count = user.imports.where(demo: false).count
     return unless existing_imports_count >= 5
 
     errors.add(:base, 'Trial users can only create up to 5 imports. Please subscribe to import more files.')

@@ -6,6 +6,8 @@ class Gpx::TrackImporter
   include Imports::Broadcaster
   include Imports::FileLoader
 
+  BATCH_SIZE = 1000
+
   attr_reader :import, :user_id, :file_path
 
   def initialize(import, user_id, file_path = nil)
@@ -24,7 +26,7 @@ class Gpx::TrackImporter
     points = tracks_arr.map { parse_track(_1) }.flatten.compact
     points_data = points.map { prepare_point(_1) }.compact
 
-    bulk_insert_points(points_data)
+    points_data.each_slice(BATCH_SIZE) { |batch| bulk_insert_points(batch) }
   end
 
   private

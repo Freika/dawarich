@@ -4,6 +4,8 @@ class OwnTracks::Importer
   include Imports::Broadcaster
   include Imports::FileLoader
 
+  BATCH_SIZE = 1000
+
   attr_reader :import, :user_id, :file_path
 
   def initialize(import, user_id, file_path = nil)
@@ -27,7 +29,7 @@ class OwnTracks::Importer
       )
     end
 
-    bulk_insert_points(points_data)
+    points_data.compact.each_slice(BATCH_SIZE) { |batch| bulk_insert_points(batch) }
   end
 
   private
@@ -41,7 +43,6 @@ class OwnTracks::Importer
       returning: false,
       on_duplicate: :skip
     )
-    # rubocop:enable Rails/SkipsModelValidations
 
     broadcast_import_progress(import, unique_batch.size)
   rescue StandardError => e

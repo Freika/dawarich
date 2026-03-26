@@ -41,9 +41,10 @@ module Csv
     private
 
     def read_sample_lines
-      File.readlines(@file_path, encoding: 'bom|utf-8', chomp: true)
-          .first(SAMPLE_LINES)
+      File.foreach(@file_path, encoding: 'bom|utf-8', chomp: true)
+          .lazy
           .reject(&:empty?)
+          .first(SAMPLE_LINES)
     end
 
     def detect_delimiter(lines)

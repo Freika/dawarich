@@ -49,7 +49,7 @@ export class SearchManager {
     })
 
     // Clear results when clicking outside
-    document.addEventListener("click", (e) => {
+    this._documentClickHandler = (e) => {
       if (
         !this.searchInput.contains(e.target) &&
         !this.resultsContainer.contains(e.target)
@@ -59,7 +59,8 @@ export class SearchManager {
           this.clearResults()
         }, 100)
       }
-    })
+    }
+    document.addEventListener("click", this._documentClickHandler)
 
     // Handle Enter key
     this.searchInput.addEventListener("keydown", (e) => {
@@ -276,7 +277,7 @@ export class SearchManager {
   showError(message) {
     this.resultsContainer.innerHTML = `
       <div class="p-3 text-sm text-error">
-        ${message}
+        ${this.escapeHtml(message)}
       </div>
     `
     this.resultsContainer.classList.remove("hidden")
@@ -647,7 +648,7 @@ export class SearchManager {
       )
     } catch (error) {
       console.error("Failed to create visit:", error)
-      alert(`Failed to create visit: ${error.message}`)
+      this.showError(`Failed to create visit: ${error.message}`)
 
       // Re-enable submit button
       submitBtn.disabled = false
@@ -759,5 +760,8 @@ export class SearchManager {
     clearTimeout(this.debounceTimer)
     this.clearMarker()
     this.clearResults()
+    if (this._documentClickHandler) {
+      document.removeEventListener("click", this._documentClickHandler)
+    }
   }
 }

@@ -8,7 +8,6 @@ export default class extends BaseController {
 
   connect() {
     super.connect()
-    console.log("StatPage controller connected")
 
     // Get data attributes from the element (will be passed from the view)
     this.year = parseInt(
@@ -22,10 +21,6 @@ export default class extends BaseController {
     this.apiKey = this.element.dataset.apiKey
     this.selfHosted = this.element.dataset.selfHosted || this.selfHostedValue
 
-    console.log(
-      `Loading data for ${this.month}/${this.year} with API key: ${this.apiKey ? "present" : "missing"}`,
-    )
-
     // Initialize map after a short delay to ensure container is ready
     setTimeout(() => {
       this.initializeMap()
@@ -36,7 +31,6 @@ export default class extends BaseController {
     if (this.map) {
       this.map.remove()
     }
-    console.log("StatPage controller disconnected")
   }
 
   initializeMap() {
@@ -92,8 +86,6 @@ export default class extends BaseController {
       const lastDay = new Date(this.year, this.month, 0).getDate()
       const endDate = `${this.year}-${this.month.toString().padStart(2, "0")}-${lastDay}T23:59:59`
 
-      console.log(`Fetching points from ${startDate} to ${endDate}`)
-
       // Fetch points data for the month using Authorization header
       const response = await fetch(
         `/api/v1/points?start_at=${encodeURIComponent(startDate)}&end_at=${encodeURIComponent(endDate)}&per_page=1000`,
@@ -112,14 +104,10 @@ export default class extends BaseController {
       }
 
       const data = await response.json()
-      console.log(
-        `Received ${Array.isArray(data) ? data.length : 0} points from API`,
-      )
 
       if (Array.isArray(data) && data.length > 0) {
         this.processPointsData(data)
       } else {
-        console.log("No points data available for this month")
         this.showNoData()
       }
     } catch (error) {
@@ -132,10 +120,6 @@ export default class extends BaseController {
   }
 
   processPointsData(points) {
-    console.log(
-      `Processing ${points.length} points for ${this.month}/${this.year}`,
-    )
-
     // Clear existing markers
     this.markersLayer.clearLayers()
 
@@ -192,8 +176,6 @@ export default class extends BaseController {
       const group = new L.featureGroup(markers)
       this.map.fitBounds(group.getBounds().pad(0.1))
     }
-
-    console.log("Points processed successfully")
   }
 
   toggleHeatmap() {
@@ -257,27 +239,31 @@ export default class extends BaseController {
   }
 
   showError(message) {
-    console.error(message)
     if (this.hasLoadingTarget) {
-      this.loadingTarget.innerHTML = `
-        <div class="alert alert-error">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-          <span>${message}</span>
-        </div>
-      `
+      const container = document.createElement("div")
+      container.className = "alert alert-error"
+      container.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`
+      const span = document.createElement("span")
+      span.textContent = message
+      container.appendChild(span)
+      this.loadingTarget.replaceChildren(container)
       this.loadingTarget.style.display = "flex"
     }
   }
 
   showNoData() {
-    console.log("No data available for this month")
     if (this.hasLoadingTarget) {
-      this.loadingTarget.innerHTML = `
-        <div class="alert alert-info">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-          <span>No location data available for ${new Date(this.year, this.month - 1).toLocaleDateString("en-US", { month: "long", year: "numeric" })}</span>
-        </div>
-      `
+      const dateLabel = new Date(this.year, this.month - 1).toLocaleDateString(
+        "en-US",
+        { month: "long", year: "numeric" },
+      )
+      const container = document.createElement("div")
+      container.className = "alert alert-info"
+      container.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`
+      const span = document.createElement("span")
+      span.textContent = `No location data available for ${dateLabel}`
+      container.appendChild(span)
+      this.loadingTarget.replaceChildren(container)
       this.loadingTarget.style.display = "flex"
     }
   }
@@ -301,7 +287,6 @@ export default class extends BaseController {
       }
     } catch (error) {
       console.error("Error creating map layers:", error)
-      console.log("Falling back to OSM tile layer")
       this.addFallbackOSMLayer()
     }
   }

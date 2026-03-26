@@ -43,7 +43,9 @@ class DataMigrations::BackfillAltitudeUserJob < ApplicationJob
       updates = points.filter_map { |point| build_update(point) }
 
       if updates.any?
-        Point.upsert_all(updates, unique_by: :id, update_only: [:altitude])
+        update_cols = [:altitude]
+        update_cols << :altitude_decimal if Point.column_names.include?('altitude_decimal')
+        Point.upsert_all(updates, unique_by: :id, update_only: update_cols)
         stats[:updated] += updates.size
       end
 
@@ -70,7 +72,7 @@ class DataMigrations::BackfillAltitudeUserJob < ApplicationJob
       altitude = Points::AltitudeExtractor.from_raw_data(data['raw_data'])
       next if altitude.nil?
 
-      updates << { id: data['id'], altitude: altitude }
+      updates << { id: data['id'], altitude: altitude, altitude_decimal: altitude }
 
       if updates.size >= batch_size
         flush_updates(updates, stats)
@@ -94,7 +96,9 @@ class DataMigrations::BackfillAltitudeUserJob < ApplicationJob
 
     return unless meaningful_updates.any?
 
-    Point.upsert_all(meaningful_updates, unique_by: :id, update_only: [:altitude])
+    update_cols = [:altitude]
+    update_cols << :altitude_decimal if Point.column_names.include?('altitude_decimal')
+    Point.upsert_all(meaningful_updates, unique_by: :id, update_only: update_cols)
     stats[:archived] += meaningful_updates.size
   end
 

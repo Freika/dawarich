@@ -7,20 +7,23 @@ import {
 import Flash from "./flash_controller"
 
 export default class extends Controller {
-  static targets = [""]
+  static targets = []
   static values = {
     apiKey: String,
     userTheme: String,
   }
 
+  MAX_RETRIES = 50
+
   connect() {
-    console.log("Add visit controller connected")
     this.map = null
     this.isAddingVisit = false
     this.addVisitMarker = null
     this.addVisitButton = null
     this.currentPopup = null
     this.mapsController = null
+    this._mapRetries = 0
+    this._buttonRetries = 0
 
     // Wait for the map to be initialized
     this.waitForMap()
@@ -28,7 +31,6 @@ export default class extends Controller {
 
   disconnect() {
     this.cleanup()
-    console.log("Add visit controller disconnected")
   }
 
   waitForMap() {
@@ -75,7 +77,10 @@ export default class extends Controller {
     }
 
     // Wait a bit more for the map to initialize
-    setTimeout(() => this.waitForMap(), 200)
+    this._mapRetries++
+    if (this._mapRetries < this.constructor.MAX_RETRIES) {
+      setTimeout(() => this.waitForMap(), 200)
+    }
   }
 
   setupAddVisitButton() {
@@ -99,10 +104,12 @@ export default class extends Controller {
           true,
         ) // Use capture phase
       } else {
-        console.warn("Add visit button not found, retrying...")
         // Retry if button hasn't been created yet
         this.addVisitButton = null
-        setTimeout(() => this.setupAddVisitButton(), 200)
+        this._buttonRetries++
+        if (this._buttonRetries < this.constructor.MAX_RETRIES) {
+          setTimeout(() => this.setupAddVisitButton(), 200)
+        }
       }
     }, 100)
   }
@@ -160,7 +167,6 @@ export default class extends Controller {
       this.map.closePopup(this.currentPopup)
       this.currentPopup = null
     } else {
-      console.warn("No currentPopup reference found")
       // Fallback: try to close any open popup
       this.map.closePopup()
     }
@@ -373,21 +379,14 @@ export default class extends Controller {
 
   addCreatedVisitToMap(_visitData, latitude, longitude) {
     const mapsController = document.querySelector('[data-controller*="maps"]')
-    if (!mapsController) {
-      console.log("Could not find maps controller element")
-      return
-    }
+    if (!mapsController) return
 
     const stimulusController =
       this.application.getControllerForElementAndIdentifier(
         mapsController,
         "maps",
       )
-    if (!stimulusController || !stimulusController.visitsManager) {
-      console.log("Could not find maps controller or visits manager")
-
-      return
-    }
+    if (!stimulusController || !stimulusController.visitsManager) return
 
     const visitsManager = stimulusController.visitsManager
 
@@ -420,10 +419,7 @@ export default class extends Controller {
     const layerControlContainer = document.querySelector(
       ".leaflet-control-layers",
     )
-    if (!layerControlContainer) {
-      console.log("Layer control container not found")
-      return
-    }
+    if (!layerControlContainer) return
 
     // Expand the layer control if it's collapsed
     const layerControlExpand = layerControlContainer.querySelector(
@@ -450,11 +446,9 @@ export default class extends Controller {
   }
 
   refreshVisitsLayer() {
-    // Don't auto-refresh after creating a visit
-    // The visit is already visible on the map from addCreatedVisitToMap()
+    // Don't auto-refresh — the visit is already visible from addCreatedVisitToMap().
     // Auto-refresh would clear it because fetchAndDisplayVisits uses URL date params
-    // which might not include the newly created visit
-    console.log("Skipping auto-refresh - visit already added to map")
+    // which might not include the newly created visit.
   }
 
   cleanup() {

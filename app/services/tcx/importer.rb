@@ -78,7 +78,7 @@ class Tcx::Importer
     tpx = extensions['TPX']
     speed = tpx['Speed'] if tpx.is_a?(Hash)
 
-    speed&.to_f&.round(1)&.to_s
+    speed&.to_f&.round(1)
   end
 
   def bulk_insert_points(batch)

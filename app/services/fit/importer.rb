@@ -103,7 +103,7 @@ class Fit::Importer
             else
               record.speed
             end
-    speed&.to_f&.round(1)&.to_s
+    speed&.to_f&.round(1)
   end
 
   def bulk_insert_points(batch)

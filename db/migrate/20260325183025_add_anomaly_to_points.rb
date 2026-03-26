@@ -2,9 +2,10 @@ class AddAnomalyToPoints < ActiveRecord::Migration[8.0]
   disable_ddl_transaction!
 
   def change
-    add_column :points, :anomaly, :boolean
+    add_column :points, :anomaly, :boolean, if_not_exists: true
     add_index :points, :anomaly, where: 'anomaly IS NOT TRUE',
               name: 'index_points_on_not_anomaly',
-              algorithm: :concurrently
+              algorithm: :concurrently,
+              if_not_exists: true
   end
 end
