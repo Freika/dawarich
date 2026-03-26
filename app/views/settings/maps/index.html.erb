@@ -4,22 +4,7 @@
   <%= render 'shared/page_header', title: 'Map settings' %>
   <%= render 'settings/navigation' %>
 
-  <div role="alert" class="alert alert-info">
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      fill="none"
-      viewBox="0 0 24 24"
-      class="h-6 w-6 shrink-0 stroke-current">
-      <path
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        stroke-width="2"
-        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-    </svg>
-    <span>Please remember, that using a custom tile URL may result in extra costs. Check your map tile provider's terms of service for more information.</span>
-  </div>
-
-  <div class="card bg-base-200 shadow-xl">
+  <div class="card bg-base-200 shadow-xl" data-controller="map-settings">
     <%= form_for :maps,
       url: settings_maps_path,
       method: :patch,
@@ -28,13 +13,57 @@
 
       <div class="card-body">
         <div class="space-y-8 animate-fade-in">
+          <%# === Shared settings (always visible) === %>
           <div>
             <h2 class="text-2xl font-bold mb-4 flex items-center">
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-map mr-2 text-primary">
-                <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"></polygon>
-                <line x1="9" x2="9" y1="3" y2="18"></line>
-                <line x1="15" x2="15" y1="6" y2="21"></line>
-              </svg>Map Configuration
+              <%= icon 'map', class: 'mr-2 text-primary' %>
+              General
+            </h2>
+            <div class="bg-base-100 p-5 rounded-lg shadow-sm space-y-4">
+              <div class="form-control">
+                <label class="label cursor-pointer justify-start">
+                  <span class="label-text mr-4 flex items-center">
+                    <%= icon 'globe', class: 'mr-2 w-4 h-4' %>
+                    Distance Unit
+                  </span>
+                  <div class="flex items-center space-x-2">
+                    <%= f.label :distance_unit_km, 'Kilometers', class: 'cursor-pointer' %>
+                    <%= f.radio_button :distance_unit, 'km', id: 'maps_distance_unit_km', class: 'radio radio-primary ml-1 mr-4', checked: @maps['distance_unit'] == 'km' %>
+                    <%= f.label :distance_unit_mi, 'Miles', class: 'cursor-pointer' %>
+                    <%= f.radio_button :distance_unit, 'mi', id: 'maps_distance_unit_mi', class: 'radio radio-primary ml-1', checked: @maps['distance_unit'] == 'mi' %>
+                  </div>
+                </label>
+              </div>
+              <div class="form-control">
+                <label class="label cursor-pointer justify-start">
+                  <span class="label-text mr-4 flex items-center">
+                    <%= icon 'map', class: 'mr-2 w-4 h-4' %>
+                    Preferred Map Version
+                  </span>
+                  <div class="flex items-center space-x-2">
+                    <%= f.label :preferred_version_v1, 'V1 (Leaflet)', class: 'cursor-pointer' %>
+                    <%= f.radio_button :preferred_version, 'v1', id: 'maps_preferred_version_v1', class: 'radio radio-primary ml-1 mr-4', checked: @maps['preferred_version'] == 'v1', data: { action: 'change->map-settings#toggle' } %>
+                    <%= f.label :preferred_version_v2, 'V2 (MapLibre)', class: 'cursor-pointer' %>
+                    <%= f.radio_button :preferred_version, 'v2', id: 'maps_preferred_version_v2', class: 'radio radio-primary ml-1', checked: @maps['preferred_version'] != 'v1', data: { action: 'change->map-settings#toggle' } %>
+                  </div>
+                </label>
+                <span class="label-text-alt mt-1">V2 (MapLibre) is the default. V1 (Leaflet) is available for compatibility.</span>
+              </div>
+            </div>
+          </div>
+
+          <%# === V1 (Leaflet) settings === %>
+          <div data-map-settings-target="v1Section">
+            <div role="alert" class="alert alert-info mb-4">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="h-6 w-6 shrink-0 stroke-current">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+              <span>Using a custom tile URL may result in extra costs. Check your map tile provider's terms of service.</span>
+            </div>
+
+            <h2 class="text-2xl font-bold mb-4 flex items-center">
+              <%= icon 'map-pin', class: 'mr-2 text-primary' %>
+              Custom Tiles (V1)
             </h2>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6" data-controller="map-preview">
               <div class="bg-base-100 p-5 rounded-lg shadow-sm space-y-4">
@@ -64,39 +93,6 @@
                   </div>
                   <span class="label-text-alt mt-1">URL pattern for map tiles. Must include {x}, {y}, and {z} placeholders</span>
                 </div>
-                <div class="form-control">
-                  <label class="label cursor-pointer justify-start">
-                    <span class="label-text mr-4 flex items-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-globe mr-2 w-4 h-4">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path>
-                        <path d="M2 12h20"></path>
-                      </svg>Distance Unit </span>
-                    <div class="flex items-center space-x-2">
-                      <%= f.label :distance_unit_km, 'Kilometers', class: 'cursor-pointer' %>
-                      <%= f.radio_button :distance_unit, 'km', id: 'maps_distance_unit_km', class: 'radio radio-primary ml-1 mr-4', checked: @maps['distance_unit'] == 'km' %>
-                      <%= f.label :distance_unit_mi, 'Miles', class: 'cursor-pointer' %>
-                      <%= f.radio_button :distance_unit, 'mi', id: 'maps_distance_unit_mi', class: 'radio radio-primary ml-1', checked: @maps['distance_unit'] == 'mi' %>
-                    </div>
-                  </label>
-                </div>
-                <div class="form-control">
-                  <label class="label cursor-pointer justify-start">
-                    <span class="label-text mr-4 flex items-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-map mr-2 w-4 h-4">
-                        <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"></polygon>
-                        <line x1="9" x2="9" y1="3" y2="18"></line>
-                        <line x1="15" x2="15" y1="6" y2="21"></line>
-                      </svg>Preferred Map Version </span>
-                    <div class="flex items-center space-x-2">
-                      <%= f.label :preferred_version_v1, 'V1 (Leaflet)', class: 'cursor-pointer' %>
-                      <%= f.radio_button :preferred_version, 'v1', id: 'maps_preferred_version_v1', class: 'radio radio-primary ml-1 mr-4', checked: @maps['preferred_version'] == 'v1' %>
-                      <%= f.label :preferred_version_v2, 'V2 (MapLibre)', class: 'cursor-pointer' %>
-                      <%= f.radio_button :preferred_version, 'v2', id: 'maps_preferred_version_v2', class: 'radio radio-primary ml-1', checked: @maps['preferred_version'] != 'v1' %>
-                    </div>
-                  </label>
-                  <span class="label-text-alt mt-1">Choose which map version to use by default. V2 (MapLibre with enhanced features) is the default for new users, V1 (Leaflet) is available for compatibility.</span>
-                </div>
               </div>
               <div class="bg-base-100 p-5 rounded-lg shadow-sm">
                 <h3 class="font-semibold mb-2">Map Preview</h3>
@@ -113,7 +109,117 @@
               </div>
             </div>
           </div>
+
+          <%# === V2 (MapLibre) settings === %>
+          <% can_customize_layers = DawarichSettings.self_hosted? || current_user.pro? %>
+          <% hidden_categories = @maps['hidden_tile_categories'] || [] %>
+          <% disabled_poi_groups = @maps['disabled_poi_groups'] || [] %>
+          <div data-map-settings-target="v2Section"
+               data-controller="map-v2-preview"
+               data-map-v2-preview-style-value="<%= @maplibre_style %>"
+               data-map-v2-preview-hidden-categories-value="<%= hidden_categories.to_json %>"
+               data-map-v2-preview-disabled-poi-groups-value="<%= disabled_poi_groups.to_json %>">
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <%# Left column: all toggles %>
+              <div class="space-y-6">
+                <%# Tile layer toggles %>
+                <div class="bg-base-100 p-5 rounded-lg shadow-sm space-y-3" data-map-v2-preview-target="categoryToggles">
+                  <h3 class="font-semibold flex items-center gap-2">
+                    Map Layers
+                    <%= pro_badge_tag(preview: false) %>
+                  </h3>
+                  <% if can_customize_layers %>
+                    <p class="text-sm text-base-content/60">Toggle base map elements. Changes are reflected in the preview.</p>
+                  <% else %>
+                    <p class="text-sm text-base-content/60">Upgrade to Pro to customize which map layers are visible.</p>
+                  <% end %>
+                  <input type="hidden" name="maps[hidden_tile_categories]" value="<%= hidden_categories.to_json %>" />
+
+                  <% [
+                    ['roads', 'Roads', 'Streets, highways, and paths'],
+                    ['road_labels', 'Road Labels', 'Street names and route shields'],
+                    ['rail', 'Railways', 'Train tracks and rail lines'],
+                    ['buildings', 'Buildings', 'Building footprints'],
+                    ['address_labels', 'Address Labels', 'Building numbers (visible at high zoom)'],
+                    ['pois', 'Points of Interest', 'Master toggle for all POI groups below'],
+                    ['place_labels', 'Place Names', 'Cities, neighborhoods, regions, and countries'],
+                    ['water_labels', 'Water Labels', 'Ocean, lake, and river names'],
+                    ['water', 'Water', 'Oceans, lakes, rivers, and streams'],
+                    ['landuse', 'Land Use', 'Parks, schools, hospitals, airports, etc.'],
+                    ['boundaries', 'Boundaries', 'Country and administrative borders'],
+                  ].each do |key, label, description| %>
+                    <div class="form-control">
+                      <label class="label cursor-pointer justify-start gap-3 py-1">
+                        <input type="checkbox"
+                               class="toggle toggle-sm toggle-primary"
+                               data-category="<%= key %>"
+                               data-action="change->map-v2-preview#toggleCategory"
+                               <%= 'checked' unless hidden_categories.include?(key) %>
+                               <%= 'disabled' unless can_customize_layers %> />
+                        <div>
+                          <span class="label-text font-medium"><%= label %></span>
+                          <p class="text-xs text-base-content/60"><%= description %></p>
+                        </div>
+                      </label>
+                    </div>
+                  <% end %>
+                </div>
+
+                <%# POI group toggles %>
+                <div class="bg-base-100 p-5 rounded-lg shadow-sm space-y-3" data-map-v2-preview-target="poiToggles">
+                  <h3 class="font-semibold flex items-center gap-2">
+                    Points of Interest
+                    <%= pro_badge_tag(preview: false) %>
+                  </h3>
+                  <% if can_customize_layers %>
+                    <p class="text-sm text-base-content/60">Choose which POI categories appear on the map.</p>
+                  <% else %>
+                    <p class="text-sm text-base-content/60">Upgrade to Pro to choose which points of interest are shown.</p>
+                  <% end %>
+                  <input type="hidden" name="maps[disabled_poi_groups]" value="<%= disabled_poi_groups.to_json %>" />
+
+                  <% [
+                    ['food_drink', 'Food & Drink', 'Restaurants, cafes, bars, bakeries, fast food'],
+                    ['shopping', 'Shopping', 'Supermarkets, clothes, electronics, books, beauty'],
+                    ['transport', 'Transport', 'Stations, bus stops, airports, fuel, parking'],
+                    ['cycling', 'Cycling', 'Bike parking, rental, and repair stations'],
+                    ['nature_leisure', 'Nature & Leisure', 'Parks, forests, beaches, playgrounds, stadiums'],
+                    ['tourism', 'Tourism & Culture', 'Museums, theatres, attractions, viewpoints, hotels'],
+                    ['services', 'Services & Civic', 'Post offices, libraries, schools, hospitals, police, banks'],
+                    ['urban_amenities', 'Urban Amenities', 'Benches, toilets, drinking water, fountains, recycling, shelters'],
+                  ].each do |key, label, description| %>
+                    <div class="form-control">
+                      <label class="label cursor-pointer justify-start gap-3 py-1">
+                        <input type="checkbox"
+                               class="toggle toggle-sm toggle-accent"
+                               data-poi-group="<%= key %>"
+                               data-action="change->map-v2-preview#togglePoiGroup"
+                               <%= 'checked' unless disabled_poi_groups.include?(key) %>
+                               <%= 'disabled' unless can_customize_layers %> />
+                        <div>
+                          <span class="label-text font-medium"><%= label %></span>
+                          <p class="text-xs text-base-content/60"><%= description %></p>
+                        </div>
+                      </label>
+                    </div>
+                  <% end %>
+                </div>
+              </div>
+
+              <%# Right column: map preview (sticky) %>
+              <div class="bg-base-100 p-5 rounded-lg shadow-sm md:sticky md:top-4 md:self-start">
+                <h3 class="font-semibold mb-2">Map Preview</h3>
+                <div class="h-[500px] w-full rounded-lg overflow-hidden border border-base-300">
+                  <div data-map-v2-preview-target="mapContainer"
+                       class="w-full h-full">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
+
         <div class="card-actions justify-end mt-6">
           <%= f.submit 'Save changes', class: "btn btn-primary", data: { map_preview_target: "saveButton" } %>
         </div>

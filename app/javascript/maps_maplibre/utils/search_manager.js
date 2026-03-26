@@ -545,7 +545,7 @@ export class SearchManager {
                 <span class="label-text">Start Time</span>
               </label>
               <input type="datetime-local" name="started_at" class="input input-bordered w-full"
-                     value="${this.formatDateTimeForInput(visitData.started_at)}" required />
+                     max="9999-12-31T23:59" value="${this.formatDateTimeForInput(visitData.started_at)}" required />
             </div>
 
             <div class="form-control mb-4">
@@ -553,7 +553,7 @@ export class SearchManager {
                 <span class="label-text">End Time</span>
               </label>
               <input type="datetime-local" name="ended_at" class="input input-bordered w-full"
-                     value="${this.formatDateTimeForInput(visitData.ended_at)}" required />
+                     max="9999-12-31T23:59" value="${this.formatDateTimeForInput(visitData.ended_at)}" required />
             </div>
 
             <input type="hidden" name="latitude" value="${visitData.latitude}" />

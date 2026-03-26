@@ -23,7 +23,12 @@ RSpec.describe 'settings/maps', type: :request do
         patch settings_maps_path, params: { maps: { name: 'Test', url: 'https://test.com' } }
 
         expect(response).to redirect_to(settings_maps_path)
-        expect(user.settings['maps']).to eq({ 'name' => 'Test', 'url' => 'https://test.com' })
+        expect(user.settings['maps']).to eq(
+          {
+            'name' => 'Test', 'url' => 'https://test.com',
+            'hidden_tile_categories' => [], 'disabled_poi_groups' => []
+          }
+        )
       end
     end
   end

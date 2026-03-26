@@ -10,6 +10,10 @@ export default class extends BaseController {
   }
 
   save() {
+    if (this.inputTarget.value.trim() === "") {
+      this.cancel()
+      return
+    }
     this.formTarget.requestSubmit()
   }
 

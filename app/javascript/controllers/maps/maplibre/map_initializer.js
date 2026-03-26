@@ -18,9 +18,14 @@ export class MapInitializer {
       zoom = 2,
       showControls = true,
       globeProjection = false,
+      hiddenTileCategories = [],
+      disabledPoiGroups = [],
     } = settings
 
-    const style = await getMapStyle(mapStyle)
+    const style = await getMapStyle(mapStyle, {
+      hiddenTileCategories,
+      disabledPoiGroups,
+    })
 
     const mapOptions = {
       container,

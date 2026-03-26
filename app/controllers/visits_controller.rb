@@ -37,6 +37,7 @@ class VisitsController < ApplicationController
 
   def update
     update_visit_name_from_place if visit_params[:place_id].present?
+    auto_name_on_confirm if confirming_suggested_visit?
 
     if @visit.update(visit_params)
       respond_to do |format|
@@ -84,6 +85,15 @@ class VisitsController < ApplicationController
   def update_visit_name_from_place
     place = current_user.places.find_by(id: visit_params[:place_id])
     @visit.name = place.name if place
+  end
+
+  def confirming_suggested_visit?
+    visit_params[:status] == 'confirmed' && @visit.suggested? && visit_params[:name].blank?
+  end
+
+  def auto_name_on_confirm
+    place = @visit.place || @visit.suggested_places.first
+    @visit.name = place.name if place&.name.present?
   end
 
   def visit_params

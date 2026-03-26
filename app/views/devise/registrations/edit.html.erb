@@ -51,13 +51,15 @@
                 <%= f.password_field :password_confirmation, autocomplete: "new-password", class: 'input input-bordered w-full' %>
               </div>
 
-              <div class="form-control mt-5">
-                <%= f.label :current_password, class: 'label' do %>
-                  <span class="label-text">Current password</span>
-                <% end %>
-                <i class='text-xs text-base-content/60'>(required to confirm your changes)</i>
-                <%= f.password_field :current_password, autocomplete: "current-password", class: 'input input-bordered mt-2 w-full' %>
-              </div>
+              <% unless current_user.oauth_user? %>
+                <div class="form-control mt-5">
+                  <%= f.label :current_password, class: 'label' do %>
+                    <span class="label-text">Current password</span>
+                  <% end %>
+                  <i class='text-xs text-base-content/60'>(required to confirm your changes)</i>
+                  <%= f.password_field :current_password, autocomplete: "current-password", class: 'input input-bordered mt-2 w-full' %>
+                </div>
+              <% end %>
 
               <div class="form-control mt-6">
                 <%= f.submit "Save changes", class: 'btn btn-primary w-full sm:w-auto' %>

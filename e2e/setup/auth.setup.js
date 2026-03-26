@@ -20,9 +20,23 @@ setup("authenticate", async ({ page }) => {
   // Wait for successful navigation to map (v1 or v2 depending on user preference)
   await page.waitForURL(/\/map(\/v[12])?/, { timeout: 10000 })
 
+  // Dismiss onboarding modal so it doesn't block E2E tests
+  await page.evaluate(() =>
+    localStorage.setItem("dawarich_onboarding_shown", "true"),
+  )
+  // Persist onboarding completion server-side
+  const csrfToken = await page
+    .locator('meta[name="csrf-token"]')
+    .getAttribute("content")
+  if (csrfToken) {
+    await page.request.patch("/settings/onboarding", {
+      headers: { "X-CSRF-Token": csrfToken },
+    })
+  }
+
   // Disable globe projection to ensure consistent E2E test behavior
   await disableGlobeProjection(page)
 
-  // Save authentication state
+  // Save authentication state (includes localStorage with onboarding dismissal)
   await page.context().storageState({ path: authFile })
 })

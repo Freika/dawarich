@@ -18,15 +18,21 @@
           <% if visit.suggested_places.any? %>
             <%= form_with(model: visit, url: visit_path(visit), method: :patch,
                           data: { visit_modal_places_target: "form" }) do |f| %>
-              <%= f.select :place_id,
-                  options_for_select(
-                    visit.suggested_places.map { |place| [place.name, place.id] },
-                    (visit.place_id || visit.suggested_places.first&.id)
-                  ),
-                  {},
-                  class: 'w-full select select-bordered',
-                  data: { action: 'change->visit-modal-places#selectPlace' }
-              %>
+              <% if visit.suggested_places.size == 1 %>
+                <%= f.hidden_field :place_id, value: visit.suggested_places.first.id %>
+                <span class="font-medium"><%= visit.suggested_places.first.name %></span>
+                <%= f.submit "Apply", class: "btn btn-xs btn-primary ml-2" %>
+              <% else %>
+                <%= f.select :place_id,
+                    options_for_select(
+                      visit.suggested_places.map { |place| [place.name, place.id] },
+                      (visit.place_id || visit.suggested_places.first&.id)
+                    ),
+                    {},
+                    class: 'w-full select select-bordered',
+                    data: { action: 'change->visit-modal-places#selectPlace' }
+                %>
+              <% end %>
             <% end %>
           <% end %>
         </div>

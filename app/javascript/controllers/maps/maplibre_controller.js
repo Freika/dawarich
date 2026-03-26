@@ -348,6 +348,8 @@ export default class extends Controller {
     this.map = await MapInitializer.initialize(this.containerTarget, {
       mapStyle: this.settings.mapStyle,
       globeProjection: this.settings.globeProjection,
+      hiddenTileCategories: this.settings.hiddenTileCategories || [],
+      disabledPoiGroups: this.settings.disabledPoiGroups || [],
     })
   }
 

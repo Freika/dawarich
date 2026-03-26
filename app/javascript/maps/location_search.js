@@ -1025,13 +1025,13 @@ class LocationSearch {
           <div>
             <label for="basic-visit-start" style="display: block; margin-bottom: 5px; font-weight: bold; font-size: 14px;">Start Time:</label>
             <input type="datetime-local" id="basic-visit-start" name="started_at" required value="${startTime}"
-                   style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px;">
+                   max="9999-12-31T23:59" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px;">
           </div>
 
           <div>
             <label for="basic-visit-end" style="display: block; margin-bottom: 5px; font-weight: bold; font-size: 14px;">End Time:</label>
             <input type="datetime-local" id="basic-visit-end" name="ended_at" required value="${endTime}"
-                   style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px;">
+                   max="9999-12-31T23:59" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px;">
           </div>
 
           <input type="hidden" name="latitude" value="${lat}">

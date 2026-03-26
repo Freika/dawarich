@@ -3,8 +3,9 @@
   "sources": {
     "protomaps": {
       "type": "vector",
-      "attribution": "<a href=\"https://github.com/protomaps/basemaps\">Protomaps</a> © <a href=\"https://openstreetmap.org\">OpenStreetMap</a>",
-      "url": "pmtiles://https://demo-bucket.protomaps.com/v4.pmtiles"
+      "attribution": "<a href=\"https://github.com/protomaps/basemaps\">Protomaps</a> \u00a9 <a href=\"https://openstreetmap.org\">OpenStreetMap</a>",
+      "url": "pmtiles://https://demo-bucket.protomaps.com/v4.pmtiles",
+      "maxzoom": 15
     }
   },
   "layers": [
@@ -1374,7 +1375,7 @@
       "type": "symbol",
       "source": "protomaps",
       "source-layer": "buildings",
-      "minzoom": 18,
+      "minzoom": 14,
       "filter": ["==", "kind", "address"],
       "layout": {
         "symbol-placement": "point",

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_03_25_163025) do
+ActiveRecord::Schema[8.0].define(version: 2026_03_26_192648) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
@@ -187,6 +187,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_25_163025) do
     t.integer "status", default: 0, null: false
     t.datetime "processing_started_at"
     t.text "error_message"
+    t.boolean "demo", default: false, null: false
     t.index ["source"], name: "index_imports_on_source"
     t.index ["status"], name: "index_imports_on_status"
     t.index ["user_id"], name: "index_imports_on_user_id"
