@@ -63,7 +63,7 @@
           <p class="text-base-content opacity-70 mb-4">Sign in using your organization's identity provider</p>
         </div>
         <% if devise_mapping.omniauthable? %>
-          <% resource_class.omniauth_providers.each do |provider| %>
+          <% visible_omniauth_providers.each do |provider| %>
             <% config = oauth_button_config(provider) %>
             <div class="form-control mt-2">
               <%= button_to omniauth_authorize_path(resource_name, provider),

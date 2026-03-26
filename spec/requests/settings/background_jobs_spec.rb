@@ -12,8 +12,7 @@ RSpec.describe '/settings/background_jobs', type: :request do
       it 'redirects to sign in page' do
         get settings_background_jobs_url
 
-        expect(response).to redirect_to(root_url)
-        expect(flash[:alert]).to eq('You are not authorized to perform this action.')
+        expect(response).to redirect_to(new_user_session_url)
       end
     end
 
@@ -23,11 +22,10 @@ RSpec.describe '/settings/background_jobs', type: :request do
       before { sign_in user }
 
       context 'when user is not an admin' do
-        it 'redirects to root page' do
+        it 'renders a successful response' do
           get settings_background_jobs_url
 
-          expect(response).to redirect_to(root_url)
-          expect(flash[:alert]).to eq('You are not authorized to perform this action.')
+          expect(response).to be_successful
         end
 
         context 'when job name is start_immich_import' do
@@ -107,11 +105,11 @@ RSpec.describe '/settings/background_jobs', type: :request do
       end
 
       context 'when non-admin user patches update' do
-        it 'rejects the request' do
+        it 'allows the request and updates settings' do
           patch settings_background_jobs_url, params: { settings: { 'visits_suggestions_enabled' => 'true' } }
 
-          expect(response).to redirect_to(root_url)
-          expect(flash[:alert]).to eq('You are not authorized to perform this action.')
+          expect(response).to redirect_to(settings_background_jobs_url)
+          expect(flash[:notice]).to eq('Settings updated')
         end
       end
     end
@@ -126,8 +124,7 @@ RSpec.describe '/settings/background_jobs', type: :request do
       it 'redirects to sign in page' do
         get settings_background_jobs_url
 
-        expect(response).to redirect_to(root_url)
-        expect(flash[:alert]).to eq('You are not authorized to perform this action.')
+        expect(response).to redirect_to(new_user_session_url)
       end
     end
 

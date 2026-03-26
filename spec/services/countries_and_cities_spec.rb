@@ -153,6 +153,27 @@ RSpec.describe CountriesAndCities do
         end
       end
 
+      context 'when points are high-frequency (sub-minute intervals)' do
+        let(:kwargs) { { min_minutes_spent_in_city: 60 } }
+
+        let(:points) do
+          # Simulate OwnTracks ~5 second intervals over 3 hours (2160 points)
+          # Previously, integer division (5/60==0) would make duration ~0
+          (0..359).map do |i|
+            create(:point, city: 'Berlin', country: 'Germany', timestamp: timestamp + (i * 30).seconds)
+          end
+        end
+
+        it 'correctly accumulates sub-minute intervals into total duration' do
+          result = countries_and_cities
+
+          berlin = result.find { |c| c.country == 'Germany' }&.cities&.find { |c| c.city == 'Berlin' }
+          expect(berlin).not_to be_nil
+          # 359 intervals of 30 seconds = 10770 seconds = 179 minutes
+          expect(berlin.stayed_for).to eq(179)
+        end
+      end
+
       context 'when points have different country_name spellings but same country_id' do
         let(:kwargs) { { min_minutes_spent_in_city: 5 } }
 

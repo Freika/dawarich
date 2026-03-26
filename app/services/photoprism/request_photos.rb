@@ -87,7 +87,7 @@ class Photoprism::RequestPhotos
 
   def request_params(offset = 0)
     params = offset.zero? ? default_params : default_params.merge(offset: offset)
-    params[:before] = end_date if end_date.present?
+    params[:before] = (end_date.to_date + 1.day).to_s if end_date.present?
     params
   end
 

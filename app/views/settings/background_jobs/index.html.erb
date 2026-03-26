@@ -40,15 +40,17 @@
       </div>
     </div>
 
-    <div class="card bg-base-300 w-96 shadow-xl m-5">
-      <div class="card-body">
-        <h2 class="card-title">Background Jobs Dashboard</h2>
-        <p>This will open the background jobs dashboard in a new tab.</p>
-        <div class="card-actions justify-end">
-          <%= link_to 'Open Dashboard', '/sidekiq', target: '_blank', class: 'btn btn-primary' %>
+    <% if current_user.admin? %>
+      <div class="card bg-base-300 w-96 shadow-xl m-5">
+        <div class="card-body">
+          <h2 class="card-title">Background Jobs Dashboard</h2>
+          <p>This will open the background jobs dashboard in a new tab.</p>
+          <div class="card-actions justify-end">
+            <%= link_to 'Open Dashboard', '/sidekiq', target: '_blank', class: 'btn btn-primary' %>
+          </div>
         </div>
       </div>
-    </div>
+    <% end %>
 
     <div class="card bg-base-300 w-96 shadow-xl m-5">
       <div class="card-body">

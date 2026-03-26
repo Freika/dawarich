@@ -9,7 +9,11 @@
       data-action="click->visit-name#edit"
       data-tip="Click to change visit name"
       class='hover:cursor-pointer tooltip'>
-      <%= visit.default_name %>
+      <% if visit.default_name.present? %>
+        <%= visit.default_name %>
+      <% else %>
+        <span class="text-base-content/40 italic">Unnamed visit</span>
+      <% end %>
     </span>
 
     <%# Visit Name Inline Edit Form %>

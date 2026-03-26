@@ -88,6 +88,84 @@ RSpec.describe ApplicationHelper, type: :helper do
     end
   end
 
+  describe '#mobile_browser?' do
+    context 'when user agent is iPhone' do
+      before { allow(helper.request).to receive(:user_agent).and_return('Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)') }
+
+      it 'returns true' do
+        expect(helper.mobile_browser?).to be true
+      end
+    end
+
+    context 'when user agent is iPad' do
+      before { allow(helper.request).to receive(:user_agent).and_return('Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X)') }
+
+      it 'returns true' do
+        expect(helper.mobile_browser?).to be true
+      end
+    end
+
+    context 'when user agent is Android' do
+      before { allow(helper.request).to receive(:user_agent).and_return('Mozilla/5.0 (Linux; Android 14; Pixel 8)') }
+
+      it 'returns true' do
+        expect(helper.mobile_browser?).to be true
+      end
+    end
+
+    context 'when user agent is desktop browser' do
+      before { allow(helper.request).to receive(:user_agent).and_return('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)') }
+
+      it 'returns false' do
+        expect(helper.mobile_browser?).to be false
+      end
+    end
+
+    context 'when user agent is nil' do
+      before { allow(helper.request).to receive(:user_agent).and_return(nil) }
+
+      it 'returns false' do
+        expect(helper.mobile_browser?).to be false
+      end
+    end
+  end
+
+  describe '#visible_omniauth_providers' do
+    before do
+      unless helper.respond_to?(:resource_class)
+        helper.define_singleton_method(:resource_class) { User }
+      end
+      allow(User).to receive(:omniauth_providers).and_return(%i[google_oauth2 github])
+    end
+
+    context 'on desktop browser' do
+      before { allow(helper).to receive(:mobile_browser?).and_return(false) }
+
+      it 'returns all providers' do
+        expect(helper.visible_omniauth_providers).to eq(%i[google_oauth2 github])
+      end
+    end
+
+    context 'on mobile browser' do
+      before { allow(helper).to receive(:mobile_browser?).and_return(true) }
+
+      it 'excludes google_oauth2' do
+        expect(helper.visible_omniauth_providers).to eq([:github])
+      end
+    end
+
+    context 'on mobile with only google_oauth2' do
+      before do
+        allow(User).to receive(:omniauth_providers).and_return([:google_oauth2])
+        allow(helper).to receive(:mobile_browser?).and_return(true)
+      end
+
+      it 'returns empty array' do
+        expect(helper.visible_omniauth_providers).to eq([])
+      end
+    end
+  end
+
   describe '#oauth_button_config' do
     context 'when provider is google_oauth2' do
       subject(:config) { helper.oauth_button_config(:google_oauth2) }

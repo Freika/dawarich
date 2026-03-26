@@ -230,7 +230,7 @@ export default class extends Controller {
               <span class="label-text font-medium">Start Time:</span>
             </label>
             <input type="datetime-local" id="visit-start" name="started_at" required value="${startTime}"
-                   class="input input-bordered w-full">
+                   max="9999-12-31T23:59" class="input input-bordered w-full">
           </div>
 
           <div class="form-control">
@@ -238,7 +238,7 @@ export default class extends Controller {
               <span class="label-text font-medium">End Time:</span>
             </label>
             <input type="datetime-local" id="visit-end" name="ended_at" required value="${endTime}"
-                   class="input input-bordered w-full">
+                   max="9999-12-31T23:59" class="input input-bordered w-full">
           </div>
 
           <input type="hidden" name="latitude" value="${lat}">

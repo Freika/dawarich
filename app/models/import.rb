@@ -16,8 +16,8 @@ class Import < ApplicationRecord
   before_save :set_processing_started_at, if: :status_changed_to_processing?
 
   validates :name, presence: true, uniqueness: { scope: :user_id }
-  validate :file_size_within_limit, if: -> { user.trial? }
-  validate :import_count_within_limit, if: -> { user.trial? }
+  validate :file_size_within_limit, if: -> { user.trial? && !demo }
+  validate :import_count_within_limit, if: -> { user.trial? && !demo }
 
   enum :status, { created: 0, processing: 1, completed: 2, failed: 3, deleting: 4 }
 

@@ -10,6 +10,9 @@
       <div>
         <div class="font-medium">
           <%= link_to import.name, import, class: 'link link-hover' %>
+          <% if import.demo? %>
+            <span class="badge badge-accent badge-sm ml-1">Demo</span>
+          <% end %>
         </div>
         <div class="text-xs text-base-content/50"><%= import.source&.humanize %></div>
       </div>

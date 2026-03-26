@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_03_23_000002) do
+ActiveRecord::Schema[8.0].define(version: 2026_03_26_152648) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
@@ -187,6 +187,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_23_000002) do
     t.integer "status", default: 0, null: false
     t.datetime "processing_started_at"
     t.text "error_message"
+    t.boolean "demo", default: false, null: false
     t.index ["source"], name: "index_imports_on_source"
     t.index ["status"], name: "index_imports_on_status"
     t.index ["user_id"], name: "index_imports_on_user_id"
@@ -272,6 +273,8 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_23_000002) do
     t.boolean "raw_data_archived", default: false, null: false
     t.bigint "raw_data_archive_id"
     t.jsonb "motion_data", default: {}, null: false
+    t.boolean "anomaly"
+    t.index ["anomaly"], name: "index_points_on_not_anomaly", where: "(anomaly IS NOT TRUE)"
     t.index ["id"], name: "index_points_on_not_reverse_geocoded", where: "(reverse_geocoded_at IS NULL)"
     t.index ["import_id"], name: "index_points_on_import_id"
     t.index ["lonlat", "timestamp", "user_id"], name: "index_points_on_lonlat_timestamp_user_id", unique: true

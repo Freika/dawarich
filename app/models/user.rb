@@ -42,6 +42,10 @@ class User < ApplicationRecord
   enum :status, { inactive: 0, active: 1, trial: 2 }
   enum :plan, { lite: 0, pro: 1 }, default: :pro
 
+  def oauth_user?
+    provider.present?
+  end
+
   def safe_settings
     Users::SafeSettings.new(settings, plan: plan)
   end
@@ -138,7 +142,8 @@ class User < ApplicationRecord
   delegate :timezone, to: :safe_settings
 
   # Aggregate countries from all stats' toponyms
-  # This is more accurate than raw point queries as it uses processed data
+  # Only counts a country if the user spent meaningful time in at least one city
+  # (i.e., the country has non-empty cities array in at least one month)
   def countries_visited_uncached
     countries = Set.new
 
@@ -148,8 +153,10 @@ class User < ApplicationRecord
 
       toponyms.each do |toponym|
         next unless toponym.is_a?(Hash)
+        next if toponym['country'].blank?
+        next unless toponym['cities'].is_a?(Array) && toponym['cities'].any?
 
-        countries.add(toponym['country']) if toponym['country'].present?
+        countries.add(toponym['country'])
       end
     end
 
