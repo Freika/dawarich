@@ -27,6 +27,7 @@ class Stat < ApplicationRecord
 
   def points
     user.points
+        .not_anomaly
         .without_raw_data
         .where(timestamp: timespan)
         .order(timestamp: :asc)

@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
+- GPS noise filtering. An automatic system to detect ahd filter out points with unrealistic speeds, altitudes, or sudden jumps.
+- Support for signing in via web view using our Android app.
 - On the map settings page user now can enable and disable map layers.
 - Onboarding modal now offers a third option to load demo data (3 days in Berlin, ~1000 points) so new users can instantly see what the map looks like. Demo imports bypass trial limits, are clearly labeled with a "Demo" badge, and can be deleted from a banner on the map page or from the imports list.
 

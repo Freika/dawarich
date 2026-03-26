@@ -55,6 +55,33 @@ RSpec.describe Point, type: :model do
         expect(result).not_to include(point)
       end
     end
+
+    describe 'anomaly scopes' do
+      let(:user) { create(:user) }
+      let!(:normal_point) { create(:point, user: user, anomaly: nil) }
+      let!(:false_point) { create(:point, user: user, anomaly: false) }
+      let!(:anomaly_point) { create(:point, user: user, anomaly: true) }
+
+      describe '.not_anomaly' do
+        it 'includes points with anomaly nil' do
+          expect(described_class.not_anomaly).to include(normal_point)
+        end
+
+        it 'includes points with anomaly false' do
+          expect(described_class.not_anomaly).to include(false_point)
+        end
+
+        it 'excludes points with anomaly true' do
+          expect(described_class.not_anomaly).not_to include(anomaly_point)
+        end
+      end
+
+      describe '.anomaly' do
+        it 'includes only anomaly points' do
+          expect(described_class.anomaly).to contain_exactly(anomaly_point)
+        end
+      end
+    end
   end
 
   describe 'methods' do
