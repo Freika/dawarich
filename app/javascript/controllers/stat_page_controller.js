@@ -144,7 +144,7 @@ export default class extends BaseController {
     const validPoints = points.filter((point) => {
       const lat = parseFloat(point.latitude)
       const lng = parseFloat(point.longitude)
-      return !isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0
+      return !Number.isNaN(lat) && !Number.isNaN(lng) && lat !== 0 && lng !== 0
     })
 
     const markers = validPoints.map((point) => {

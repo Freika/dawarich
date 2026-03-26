@@ -90,7 +90,10 @@ RSpec.describe ApplicationHelper, type: :helper do
 
   describe '#mobile_browser?' do
     context 'when user agent is iPhone' do
-      before { allow(helper.request).to receive(:user_agent).and_return('Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)') }
+      before do
+        allow(helper.request).to receive(:user_agent)
+          .and_return('Mozilla/5.0 (iPhone; CPU iPhone OS 17_0)')
+      end
 
       it 'returns true' do
         expect(helper.mobile_browser?).to be true
@@ -98,7 +101,10 @@ RSpec.describe ApplicationHelper, type: :helper do
     end
 
     context 'when user agent is iPad' do
-      before { allow(helper.request).to receive(:user_agent).and_return('Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X)') }
+      before do
+        allow(helper.request).to receive(:user_agent)
+          .and_return('Mozilla/5.0 (iPad; CPU OS 17_0)')
+      end
 
       it 'returns true' do
         expect(helper.mobile_browser?).to be true
@@ -106,7 +112,10 @@ RSpec.describe ApplicationHelper, type: :helper do
     end
 
     context 'when user agent is Android' do
-      before { allow(helper.request).to receive(:user_agent).and_return('Mozilla/5.0 (Linux; Android 14; Pixel 8)') }
+      before do
+        allow(helper.request).to receive(:user_agent)
+          .and_return('Mozilla/5.0 (Linux; Android 14; Pixel 8)')
+      end
 
       it 'returns true' do
         expect(helper.mobile_browser?).to be true
@@ -114,7 +123,10 @@ RSpec.describe ApplicationHelper, type: :helper do
     end
 
     context 'when user agent is desktop browser' do
-      before { allow(helper.request).to receive(:user_agent).and_return('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)') }
+      before do
+        allow(helper.request).to receive(:user_agent)
+          .and_return('Mozilla/5.0 (Macintosh; Intel Mac OS X)')
+      end
 
       it 'returns false' do
         expect(helper.mobile_browser?).to be false
@@ -132,9 +144,7 @@ RSpec.describe ApplicationHelper, type: :helper do
 
   describe '#visible_omniauth_providers' do
     before do
-      unless helper.respond_to?(:resource_class)
-        helper.define_singleton_method(:resource_class) { User }
-      end
+      helper.define_singleton_method(:resource_class) { User } unless helper.respond_to?(:resource_class)
       allow(User).to receive(:omniauth_providers).and_return(%i[google_oauth2 github])
     end
 
