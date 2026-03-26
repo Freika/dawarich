@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'csv'
+
 module Csv
   class Detector
     include Imports::FieldAliases
@@ -56,7 +58,7 @@ module Csv
     end
 
     def parse_headers(header_line, delimiter)
-      header_line.split(delimiter).map(&:strip)
+      CSV.parse_line(header_line, col_sep: delimiter)&.map(&:strip) || []
     end
 
     def map_columns(headers)
@@ -91,7 +93,9 @@ module Csv
     end
 
     def parse_data_rows(lines, delimiter)
-      lines.first(DATA_SAMPLE_SIZE).map { |line| line.split(delimiter).map(&:strip) }
+      lines.first(DATA_SAMPLE_SIZE).filter_map do |line|
+        CSV.parse_line(line, col_sep: delimiter)&.map(&:strip)
+      end
     end
 
     def detect_coordinate_format(data_rows, columns)

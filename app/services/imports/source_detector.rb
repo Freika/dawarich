@@ -195,25 +195,33 @@ class Imports::SourceDetector
     matched >= 2
   end
 
+  MAX_DETECTION_BYTES = 8192 # 8KB is enough to detect top-level keys and first array elements
+
   def parse_json
-    # If we have a file path, use streaming for better memory efficiency
-    if file_path && File.exist?(file_path)
-      Oj.load_file(file_path, mode: :compat)
-    else
-      Oj.load(file_content, mode: :compat)
-    end
+    content = if file_path && File.exist?(file_path)
+                File.open(file_path, 'rb') { |f| f.read(MAX_DETECTION_BYTES) }
+              else
+                file_content
+              end
+
+    Oj.load(content, mode: :compat)
   rescue Oj::ParseError, JSON::ParserError
-    # If full file parsing fails but we have a file path, try with just the header
-    if file_path && file_content.length < 2048
-      begin
-        File.open(file_path, 'rb') do |f|
-          partial_content = f.read(4096) # Try a bit more content
-          Oj.load(partial_content, mode: :compat)
-        end
-      rescue Oj::ParseError, JSON::ParserError
-        nil
-      end
+    # Partial read may produce incomplete JSON — try to detect from truncated content
+    # by closing any open structures
+    attempt_partial_json_parse(content)
+  end
+
+  def attempt_partial_json_parse(content)
+    return nil if content.blank?
+
+    # Try progressively simpler fixes for truncated JSON
+    ["#{content}]", "#{content}}]", "#{content}}}]"].each do |patched|
+      return Oj.load(patched, mode: :compat)
+    rescue Oj::ParseError, JSON::ParserError
+      next
     end
+
+    nil
   end
 
   def matches_format?(json_data, rules)

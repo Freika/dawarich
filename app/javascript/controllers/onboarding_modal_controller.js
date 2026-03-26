@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import Flash from "./flash_controller"
 
 export default class extends Controller {
   static targets = [
@@ -81,10 +82,23 @@ export default class extends Controller {
         Accept: "text/html",
       },
       redirect: "follow",
-    }).then((response) => {
-      this.modalTarget.close()
-      window.Turbo.visit(response.url || window.location.href)
     })
+      .then((response) => {
+        if (!response.ok) throw new Error(`Server error: ${response.status}`)
+
+        this.modalTarget.close()
+        window.Turbo.visit(response.url || window.location.href)
+      })
+      .catch((error) => {
+        console.error("Failed to load demo data:", error)
+        if (this.hasDemoButtonTarget) {
+          this.demoButtonTarget.classList.remove(
+            "opacity-50",
+            "pointer-events-none",
+          )
+        }
+        Flash.show("error", "Failed to load demo data. Please try again.")
+      })
   }
 
   updateDemoButton() {

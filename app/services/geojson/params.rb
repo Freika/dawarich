@@ -10,15 +10,19 @@ class Geojson::Params
   end
 
   def call
-    case json['type']
-    when 'Feature' then process_feature(json)
-    when 'FeatureCollection' then process_feature_collection(json)
-    end.flatten
+    result = case json['type']
+             when 'Feature' then process_feature(json)
+             when 'FeatureCollection' then process_feature_collection(json)
+             end
+
+    Array(result).flatten
   end
 
   private
 
   def process_feature(json)
+    return [] if json[:geometry].blank?
+
     case json[:geometry][:type]
     when 'Point'
       build_point(json)
@@ -26,6 +30,8 @@ class Geojson::Params
       build_line(json)
     when 'MultiLineString'
       build_multi_line(json)
+    else
+      []
     end
   end
 

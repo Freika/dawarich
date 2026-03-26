@@ -127,9 +127,12 @@ class ApplicationController < ActionController::Base
     @self_hosted = DawarichSettings.self_hosted?
   end
 
+  ALLOWED_CLIENTS = %w[ios android].freeze
+
   def store_client_header
     client = request.headers['X-Dawarich-Client'] || params[:client]
     return unless client
+    return unless ALLOWED_CLIENTS.include?(client)
 
     session[:dawarich_client] = client
   end

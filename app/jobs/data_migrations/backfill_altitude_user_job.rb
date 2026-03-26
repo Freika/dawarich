@@ -86,9 +86,9 @@ class DataMigrations::BackfillAltitudeUserJob < ApplicationJob
     existing = Point.where(id: point_ids).pluck(:id, :altitude).to_h
 
     meaningful_updates = updates.select do |u|
-      current = existing[u[:id]]
-      next false if current.nil?
+      next false unless existing.key?(u[:id])
 
+      current = existing[u[:id]]
       current.nil? || current.to_d != BigDecimal(u[:altitude].to_s)
     end
 

@@ -45,10 +45,13 @@ class Import < ApplicationRecord
   end
 
   def years_and_months_tracked
-    points.order(:timestamp).pluck(:timestamp).map do |timestamp|
-      time = Time.zone.at(timestamp)
-      [time.year, time.month]
-    end.uniq
+    tz = Time.zone.tzinfo.identifier
+    points
+      .select(Arel.sql(
+                "DISTINCT EXTRACT(YEAR FROM TO_TIMESTAMP(timestamp) AT TIME ZONE '#{tz}')::integer AS year, \
+                 EXTRACT(MONTH FROM TO_TIMESTAMP(timestamp) AT TIME ZONE '#{tz}')::integer AS month"
+              ))
+      .map { |row| [row[:year], row[:month]] }
   end
 
   def migrate_to_new_storage

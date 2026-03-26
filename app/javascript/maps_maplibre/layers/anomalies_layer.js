@@ -1,3 +1,4 @@
+import { escapeHtml } from "../utils/geojson_transformers"
 import { BaseLayer } from "./base_layer"
 
 /**
@@ -139,8 +140,8 @@ export class AnomaliesLayer extends BaseLayer {
     const reason = AnomaliesLayer.anomalyReason(properties)
 
     return `<div class="text-sm space-y-1">
-      <div><strong>Time:</strong> ${ts}</div>
-      <div><strong>Reason:</strong> ${reason}</div>
+      <div><strong>Time:</strong> ${escapeHtml(ts)}</div>
+      <div><strong>Reason:</strong> ${escapeHtml(reason)}</div>
     </div>`
   }
 

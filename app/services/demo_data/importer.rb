@@ -12,7 +12,7 @@ class DemoData::Importer
   def call
     return { status: :exists } if user.imports.exists?(demo: true)
 
-    geojson_content = DemoData::GpxGenerator.new.call
+    geojson_content = DemoData::GeojsonGenerator.new.call
 
     import = user.imports.build(
       name: DEMO_IMPORT_NAME,

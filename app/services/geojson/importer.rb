@@ -46,7 +46,6 @@ class Geojson::Importer
       returning: false,
       on_duplicate: :skip
     )
-    # rubocop:enable Rails/SkipsModelValidations
   rescue StandardError => e
     create_notification("Failed to process GeoJSON batch: #{e.message}")
   end
