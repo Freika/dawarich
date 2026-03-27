@@ -35,22 +35,31 @@ module Points
     end
 
     def sampled_ids_for(relation, total_count)
-      step = (total_count.to_f / max_points).ceil
+      return relation.limit(1).pluck(:id) if max_points == 1
+
       direction = sql_direction.to_s.upcase
+      denominator = max_points - 1
+      table_name = Point.table_name
 
       ranked_sql = relation
                    .except(:select, :includes, :preload, :eager_load, :limit, :offset)
                    .select(
                      Arel.sql(
-                       "#{Point.table_name}.id AS sampled_id, " \
-                       "ROW_NUMBER() OVER (ORDER BY #{Point.table_name}.timestamp #{direction}, " \
-                       "#{Point.table_name}.id #{direction}) AS row_num"
+                       "#{table_name}.id AS sampled_id, " \
+                       "ROW_NUMBER() OVER (ORDER BY #{table_name}.timestamp #{direction}, " \
+                       "#{table_name}.id #{direction}) AS row_num"
                      )
                    )
                    .to_sql
 
+      target_rows_sql = <<~SQL.squish
+        SELECT FLOOR(1 + (series_index * (#{total_count} - 1)::float / #{denominator}))::bigint AS row_num
+        FROM generate_series(0, #{max_points - 1}) AS series_index
+      SQL
+
       Point.from("(#{ranked_sql}) sampled_points")
-           .where('((row_num - 1) % ?) = 0', step)
+           .joins("INNER JOIN (#{target_rows_sql}) target_rows ON target_rows.row_num = sampled_points.row_num")
+           .order(Arel.sql('sampled_points.row_num'))
            .limit(max_points)
            .pluck(Arel.sql('sampled_points.sampled_id'))
     end
