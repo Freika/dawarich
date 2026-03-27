@@ -31,7 +31,7 @@ class Points::Create
     if created_points.any?
       User.update_counters(user.id, points_count: inserted_count) if inserted_count.positive?
       timestamps = deduplicated_data.filter_map { |p| p[:timestamp]&.to_i }
-      Points::AnomalyFilter.new(user.id, timestamps.min, timestamps.max).call if timestamps.any?
+      Points::AnomalyFilterJob.perform_later(user.id, timestamps.min, timestamps.max) if timestamps.any?
       Tracks::RealtimeDebouncer.new(user.id).trigger
       Points::LiveBroadcaster.new(user.id, created_points, deduplicated_data).call
     end

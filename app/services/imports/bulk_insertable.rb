@@ -11,14 +11,14 @@ module Imports
 
       unique_batch = batch.compact.uniq { |record| [record[:lonlat], record[:timestamp], record[:user_id]] }
 
-      Point.upsert_all(
+      result = Point.upsert_all(
         unique_batch,
         unique_by: %i[lonlat timestamp user_id],
-        returning: false,
+        returning: Arel.sql('id'),
         on_duplicate: :skip
       )
 
-      unique_batch.size
+      result.length
     rescue StandardError => e
       on_bulk_insert_error(e)
       create_import_error_notification("Failed to process #{importer_name} data: #{e.message}")

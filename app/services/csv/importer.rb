@@ -59,20 +59,6 @@ module Csv
 
     private
 
-    def resolve_file_path
-      return file_path if file_path && File.exist?(file_path)
-
-      @temp_file_path = Imports::SecureFileDownloader.new(import.file).download_to_temp_file
-    end
-
-    def cleanup_temp_file
-      return unless @temp_file_path
-
-      File.delete(@temp_file_path) if File.exist?(@temp_file_path)
-    rescue StandardError => e
-      Rails.logger.warn("Failed to cleanup CSV temp file: #{e.message}")
-    end
-
     def importer_name
       'CSV'
     end

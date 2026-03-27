@@ -18,6 +18,8 @@ module Settings
         redirect_to root_path, notice: 'Demo data is being imported! Your map will populate shortly.'
       when :exists
         redirect_to root_path, notice: 'Demo data has already been loaded.'
+      else
+        redirect_to root_path, alert: 'Something went wrong importing demo data.'
       end
     end
 

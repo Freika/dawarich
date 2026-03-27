@@ -17,35 +17,41 @@ module Imports
 
     SPEED_KMH_ALIASES = %w[speed_kmh].freeze
 
-    def find_field(hash, canonical_name)
-      aliases = ALIASES[canonical_name]
-      return nil unless aliases
-
-      aliases.each do |key|
-        [key, key.downcase, key.upcase, key.capitalize, key.to_sym, key.downcase.to_sym].each do |variant|
-          return hash[variant] if hash.key?(variant)
+    # Pre-computed reverse lookup: variant → [canonical_name, original_alias_key]
+    # Eliminates 60 hash lookups per field per point, replacing with a single lookup.
+    REVERSE_LOOKUP = begin
+      table = {}
+      ALIASES.each do |canonical, keys|
+        keys.each do |key|
+          [key, key.downcase, key.upcase, key.capitalize, key.to_sym, key.downcase.to_sym].each do |variant|
+            table[variant] ||= [canonical, key]
+          end
         end
+      end
+      table.freeze
+    end
+
+    def find_field(hash, canonical_name)
+      hash.each_key do |key|
+        entry = REVERSE_LOOKUP[key]
+        return hash[key] if entry && entry[0] == canonical_name
       end
       nil
     end
 
     def find_field_with_key(hash, canonical_name)
-      aliases = ALIASES[canonical_name]
-      return [nil, nil] unless aliases
-
-      aliases.each do |key|
-        [key, key.downcase, key.upcase, key.capitalize, key.to_sym, key.downcase.to_sym].each do |variant|
-          return [hash[variant], key] if hash.key?(variant)
-        end
+      hash.each_key do |key|
+        entry = REVERSE_LOOKUP[key]
+        return [hash[key], entry[1]] if entry && entry[0] == canonical_name
       end
       [nil, nil]
     end
 
     def find_header(headers, canonical_name)
+      normalized = headers.map { |h| h.to_s.downcase.strip }
       aliases = ALIASES[canonical_name]
       return nil unless aliases
 
-      normalized = headers.map { |h| h.to_s.downcase.strip }
       aliases.each do |key|
         idx = normalized.index(key.downcase)
         return idx if idx

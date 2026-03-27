@@ -5,7 +5,7 @@ class Map::ResidencyController < ApplicationController
   before_action :require_pro!
 
   def show
-    year = params[:year]&.to_i || default_year
+    year = params[:year]&.to_i || Residency::DayCounter.default_year(current_user)
     result = Residency::DayCounter.new(current_user, year).call
 
     @year = result[:year]
@@ -16,11 +16,5 @@ class Map::ResidencyController < ApplicationController
     @countries = result[:countries]
 
     render layout: false
-  end
-
-  private
-
-  def default_year
-    current_user.stats.maximum(:year) || Time.current.year
   end
 end

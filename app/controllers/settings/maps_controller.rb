@@ -36,7 +36,8 @@ class Settings::MapsController < ApplicationController
     return [] if value.blank?
     return value if value.is_a?(Array)
 
-    JSON.parse(value)
+    parsed = JSON.parse(value)
+    parsed.is_a?(Array) ? parsed : []
   rescue JSON::ParserError
     []
   end

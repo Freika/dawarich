@@ -9,6 +9,10 @@ module Residency
       @year = year.to_i
     end
 
+    def self.default_year(user)
+      user.stats.maximum(:year) || Time.current.year
+    end
+
     def call
       {
         year: year,
@@ -79,14 +83,13 @@ module Residency
     # Returns { "Germany" => [Date, Date, ...], "France" => [...] }
     def country_days
       @country_days ||= begin
-        rows = fetch_daily_country_data
         result = Hash.new { |h, k| h[k] = [] }
 
-        rows.each do |row|
+        daily_country_counts.each do |row|
           result[row['country_name']] << row['point_date'].to_date
         end
 
-        result
+        result.transform_values(&:uniq)
       end
     end
 
@@ -98,10 +101,9 @@ module Residency
     # For multi-country days, picks the country with the most points
     def daily_countries
       @daily_countries ||= begin
-        rows = fetch_daily_country_counts
         by_date = Hash.new { |h, k| h[k] = [] }
 
-        rows.each do |row|
+        daily_country_counts.each do |row|
           by_date[row['point_date'].to_s] << { country: row['country_name'], count: row['point_count'].to_i }
         end
 
@@ -109,54 +111,34 @@ module Residency
       end
     end
 
-    def fetch_daily_country_data
-      start_of_year = Time.zone.local(year, 1, 1, 0, 0, 0)
-      end_of_year = start_of_year.end_of_year
+    # Single query returning date/country/count — used by both country_days and daily_countries
+    def daily_country_counts
+      @daily_country_counts ||= begin
+        start_of_year = Time.zone.local(year, 1, 1, 0, 0, 0)
+        end_of_year = start_of_year.end_of_year
 
-      sql = <<~SQL.squish
-        SELECT DISTINCT
-          DATE(to_timestamp(timestamp) AT TIME ZONE 'UTC') as point_date,
-          country_name
-        FROM points
-        WHERE user_id = $1
-          AND timestamp >= $2
-          AND timestamp <= $3
-          AND country_name IS NOT NULL
-          AND country_name != ''
-        ORDER BY point_date
-      SQL
+        sql = <<~SQL.squish
+          SELECT
+            DATE(to_timestamp(timestamp) AT TIME ZONE 'UTC') as point_date,
+            country_name,
+            COUNT(*) as point_count
+          FROM points
+          WHERE user_id = $1
+            AND timestamp >= $2
+            AND timestamp <= $3
+            AND country_name IS NOT NULL
+            AND country_name != ''
+            AND (anomaly IS NOT TRUE)
+          GROUP BY point_date, country_name
+          ORDER BY point_date
+        SQL
 
-      ActiveRecord::Base.connection.exec_query(
-        sql,
-        'Residency::DayCounter',
-        [user.id, start_of_year.to_i, end_of_year.to_i]
-      ).to_a
-    end
-
-    def fetch_daily_country_counts
-      start_of_year = Time.zone.local(year, 1, 1, 0, 0, 0)
-      end_of_year = start_of_year.end_of_year
-
-      sql = <<~SQL.squish
-        SELECT
-          DATE(to_timestamp(timestamp) AT TIME ZONE 'UTC') as point_date,
-          country_name,
-          COUNT(*) as point_count
-        FROM points
-        WHERE user_id = $1
-          AND timestamp >= $2
-          AND timestamp <= $3
-          AND country_name IS NOT NULL
-          AND country_name != ''
-        GROUP BY point_date, country_name
-        ORDER BY point_date
-      SQL
-
-      ActiveRecord::Base.connection.exec_query(
-        sql,
-        'Residency::DayCounter::DailyCounts',
-        [user.id, start_of_year.to_i, end_of_year.to_i]
-      ).to_a
+        ActiveRecord::Base.connection.exec_query(
+          sql,
+          'Residency::DayCounter',
+          [user.id, start_of_year.to_i, end_of_year.to_i]
+        ).to_a
+      end
     end
 
     def days_in_year

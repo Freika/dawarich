@@ -86,9 +86,28 @@ export default class extends BaseController {
       const lastDay = new Date(this.year, this.month, 0).getDate()
       const endDate = `${this.year}-${this.month.toString().padStart(2, "0")}-${lastDay}T23:59:59`
 
-      // Fetch points data for the month using Authorization header
+      const data = await this.fetchAllPoints(startDate, endDate)
+
+      if (data.length > 0) {
+        this.processPointsData(data)
+      } else {
+        this.showNoData()
+      }
+    } catch (error) {
+      console.error("Error loading month data:", error)
+      this.showError("Failed to load location data")
+    } finally {
+      this.showLoading(false)
+    }
+  }
+
+  async fetchAllPoints(startDate, endDate) {
+    const allPoints = []
+    let page = 1
+
+    while (true) {
       const response = await fetch(
-        `/api/v1/points?start_at=${encodeURIComponent(startDate)}&end_at=${encodeURIComponent(endDate)}&per_page=1000`,
+        `/api/v1/points?start_at=${encodeURIComponent(startDate)}&end_at=${encodeURIComponent(endDate)}&per_page=1000&page=${page}`,
         {
           method: "GET",
           headers: {
@@ -99,24 +118,21 @@ export default class extends BaseController {
       )
 
       if (!response.ok) {
-        console.error(`API request failed with status: ${response.status}`)
         throw new Error(`HTTP error! status: ${response.status}`)
       }
 
       const data = await response.json()
+      if (!Array.isArray(data) || data.length === 0) break
 
-      if (Array.isArray(data) && data.length > 0) {
-        this.processPointsData(data)
-      } else {
-        this.showNoData()
-      }
-    } catch (error) {
-      console.error("Error loading month data:", error)
-      this.showError("Failed to load location data")
-      // Don't fallback to mock data - show the error instead
-    } finally {
-      this.showLoading(false)
+      allPoints.push(...data)
+
+      const totalPages = parseInt(response.headers.get("X-Total-Pages"), 10)
+      if (!totalPages || page >= totalPages) break
+
+      page++
     }
+
+    return allPoints
   }
 
   processPointsData(points) {

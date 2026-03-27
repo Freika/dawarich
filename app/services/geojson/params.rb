@@ -90,7 +90,7 @@ class Geojson::Params
     numeric = value.to_f
     # Values <= 1.0 are fractional (e.g. 0.72 = 72%), convert to percentage
     numeric = (numeric * 100).to_i if numeric <= 1.0 && numeric.positive?
-    numeric.to_i.positive? ? numeric.to_i : nil
+    numeric.to_i >= 0 ? numeric.to_i : nil
   end
 
   def altitude(feature)
