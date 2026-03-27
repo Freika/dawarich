@@ -991,56 +991,50 @@
       <!-- Tools Tab -->
       <div class="tab-content" data-tab-content="tools" data-map-panel-target="tabContent">
         <div class="space-y-4">
-          <!-- Tools Grid: Full width on mobile/tablet, 2 columns on large screens -->
-          <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
-            <!-- Create a Visit Button -->
+          <!-- Tools Grid: 2 columns, 3 columns on large screens -->
+          <div class="grid grid-cols-2 lg:grid-cols-3 gap-2">
             <button type="button"
-                    class="btn btn-sm btn-outline"
+                    class="btn btn-sm btn-outline flex flex-col items-center gap-1 h-auto py-3"
                     data-action="click->maps--maplibre#startCreateVisit">
               <%= icon 'map-pin-check' %>
-              Create a Visit
+              <span class="text-xs">Create Visit</span>
             </button>
 
-            <!-- Create a Place Button -->
             <button type="button"
-                    class="btn btn-sm btn-outline"
+                    class="btn btn-sm btn-outline flex flex-col items-center gap-1 h-auto py-3"
                     data-action="click->maps--maplibre#startCreatePlace">
               <%= icon 'map-pin-plus' %>
-              Create a Place
+              <span class="text-xs">Create Place</span>
             </button>
 
-            <!-- Select Area Button -->
             <button type="button"
-                    class="btn btn-sm btn-outline"
+                    class="btn btn-sm btn-outline flex flex-col items-center gap-1 h-auto py-3"
                     data-maps--maplibre-target="selectAreaButton"
                     data-action="click->maps--maplibre#startSelectArea">
               <%= icon 'square-dashed-mouse-pointer' %>
-              Select Area
+              <span class="text-xs">Select Area</span>
             </button>
 
-            <!-- Create Area Button -->
             <button type="button"
-                    class="btn btn-sm btn-outline"
+                    class="btn btn-sm btn-outline flex flex-col items-center gap-1 h-auto py-3"
                     data-action="click->maps--maplibre#startCreateArea">
               <%= icon 'circle-plus' %>
-              Create an Area
+              <span class="text-xs">Create Area</span>
             </button>
 
-            <!-- Replay Button -->
             <button type="button"
-                    class="btn btn-sm btn-outline"
+                    class="btn btn-sm btn-outline flex flex-col items-center gap-1 h-auto py-3"
                     data-action="click->maps--maplibre#toggleReplay">
               <%= icon 'clock' %>
-              Replay
+              <span class="text-xs">Replay</span>
             </button>
 
             <% if DawarichSettings.self_hosted? || current_user.pro? %>
-              <!-- Days per Country Button -->
               <button type="button"
-                      class="btn btn-sm btn-outline"
+                      class="btn btn-sm btn-outline flex flex-col items-center gap-1 h-auto py-3"
                       onclick="document.dispatchEvent(new CustomEvent('residency:open'))">
                 <%= icon 'calendar-range' %>
-                Days per Country
+                <span class="text-xs">Days / Country</span>
               </button>
             <% end %>
           </div>
