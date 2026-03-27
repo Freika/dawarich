@@ -150,7 +150,7 @@ RSpec.describe 'Api::V1::Points', type: :request do
         json_response = JSON.parse(response.body)
         expect(json_response.size).to eq(50)
         expect(response.headers['X-Points-Sampled']).to eq('true')
-        expect(response.headers['X-Total-Points-Before-Sampling']).to eq('135')
+        expect(response.headers['X-Total-Points-Before-Sampling']).to eq((points.size + dense_points.size).to_s)
         expect(response.headers['X-Sampled-Points-Limit']).to eq('50')
       end
 
