@@ -13,6 +13,14 @@ class LocationSearch {
     this.suggestionsVisible = false
     this.currentSuggestionIndex = -1
 
+    // Clean up previous instance before replacing
+    if (
+      window.locationSearchInstance &&
+      typeof window.locationSearchInstance.destroy === "function"
+    ) {
+      window.locationSearchInstance.destroy()
+    }
+
     // Make instance globally accessible for popup buttons
     window.locationSearchInstance = this
 
@@ -1242,6 +1250,25 @@ class LocationSearch {
 
   formatDate(dateString) {
     return new Date(dateString).toLocaleDateString()
+  }
+
+  destroy() {
+    this.clearSearch()
+    this.clearSearchMarkers()
+    this.clearVisitMarker()
+
+    if (this.searchTimeout) {
+      clearTimeout(this.searchTimeout)
+      this.searchTimeout = null
+    }
+
+    if (this.searchBar?.parentNode) {
+      this.searchBar.parentNode.removeChild(this.searchBar)
+    }
+
+    if (window.locationSearchInstance === this) {
+      window.locationSearchInstance = null
+    }
   }
 
   formatDateTime(dateString) {

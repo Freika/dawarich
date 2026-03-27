@@ -341,22 +341,14 @@ export class LayerManager {
   }
 
   async _addPhotosLayer(photosGeoJSON) {
-    console.log(
-      "[Photos] Adding photos layer, visible:",
-      this.settings.photosEnabled,
-    )
     if (!this.layers.photosLayer) {
       this.layers.photosLayer = new PhotosLayer(this.map, {
         visible: this.settings.photosEnabled || false,
         timezone: this.settings.timezone,
       })
-      console.log("[Photos] Created new PhotosLayer instance")
       await this.layers.photosLayer.add(photosGeoJSON)
-      console.log("[Photos] Added photos to layer")
     } else {
-      console.log("[Photos] Updating existing PhotosLayer")
       await this.layers.photosLayer.update(photosGeoJSON)
-      console.log("[Photos] Updated photos layer")
     }
   }
 

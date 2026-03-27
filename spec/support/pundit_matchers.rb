@@ -18,7 +18,7 @@ end
 
 RSpec::Matchers.define :forbid do |action|
   match do |policy|
-    policy.public_send("#{action}?")
+    !policy.public_send("#{action}?")
   end
 
   failure_message do |policy|

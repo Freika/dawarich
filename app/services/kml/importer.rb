@@ -5,6 +5,7 @@ require 'zip'
 
 class Kml::Importer
   include Imports::Broadcaster
+  include Imports::BulkInsertable
   include Imports::FileLoader
 
   attr_reader :import, :user_id, :file_path
@@ -40,7 +41,8 @@ class Kml::Importer
 
   def save_points_in_batches(points_data)
     points_data.each_slice(1000) do |batch|
-      bulk_insert_points(batch)
+      inserted = bulk_insert_points(batch)
+      broadcast_import_progress(import, inserted)
     end
   end
 
@@ -322,33 +324,7 @@ class Kml::Importer
     data
   end
 
-  def bulk_insert_points(batch)
-    unique_batch = deduplicate_batch(batch)
-    upsert_points(unique_batch)
-    broadcast_import_progress(import, unique_batch.size)
-  rescue StandardError => e
-    create_notification("Failed to process KML file: #{e.message}")
-  end
-
-  def deduplicate_batch(batch)
-    batch.uniq { |record| [record[:lonlat], record[:timestamp], record[:user_id]] }
-  end
-
-  def upsert_points(batch)
-    Point.upsert_all(
-      batch,
-      unique_by: %i[lonlat timestamp user_id],
-      returning: false,
-      on_duplicate: :skip
-    )
-  end
-
-  def create_notification(message)
-    Notification.create!(
-      user_id: user_id,
-      title: 'KML Import Error',
-      content: message,
-      kind: :error
-    )
+  def importer_name
+    'KML'
   end
 end

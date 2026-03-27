@@ -5,10 +5,6 @@ require 'rails_helper'
 RSpec.describe '/areas', type: :request do
   let(:user) { create(:user) }
 
-  before do
-    stub_request(:any, 'https://api.github.com/repos/Freika/dawarich/tags')
-      .to_return(status: 200, body: '[{"name": "1.0.0"}]', headers: {})
-  end
 
   describe 'POST /create' do
     let(:valid_params) { { name: 'Test Area', latitude: 52.52, longitude: 13.405, radius: 200 } }

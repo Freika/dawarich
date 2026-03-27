@@ -1033,6 +1033,16 @@
               <%= icon 'clock' %>
               Replay
             </button>
+
+            <% if DawarichSettings.self_hosted? || current_user.pro? %>
+              <!-- Days per Country Button -->
+              <button type="button"
+                      class="btn btn-sm btn-outline"
+                      onclick="document.dispatchEvent(new CustomEvent('residency:open'))">
+                <%= icon 'calendar-range' %>
+                Days per Country
+              </button>
+            <% end %>
           </div>
 
           <!-- Info Display (shown when clicking on visit/area/place) -->

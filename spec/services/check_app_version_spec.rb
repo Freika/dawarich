@@ -7,9 +7,6 @@ RSpec.describe CheckAppVersion do
     subject(:check_app_version) { described_class.new.call }
 
     before do
-      stub_request(:any, 'https://api.github.com/repos/Freika/dawarich/tags')
-        .to_return(status: 200, body: '[{"name": "1.0.0"}]', headers: {})
-
       stub_const('APP_VERSION', '1.0.0')
     end
 

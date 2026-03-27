@@ -11,7 +11,7 @@ FactoryBot.define do
     path { 'LINESTRING(1 1, 2 2, 3 3)' }
 
     trait :with_points do
-      after(:build) do |trip|
+      after(:create) do |trip|
         (1..25).map do |i|
           create(
             :point,

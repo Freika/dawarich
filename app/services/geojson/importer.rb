@@ -2,6 +2,7 @@
 
 class Geojson::Importer
   include Imports::Broadcaster
+  include Imports::BulkInsertable
   include Imports::FileLoader
   include PointValidation
 
@@ -37,25 +38,7 @@ class Geojson::Importer
 
   private
 
-  def bulk_insert_points(batch)
-    unique_batch = batch.uniq { |record| [record[:lonlat], record[:timestamp], record[:user_id]] }
-
-    Point.upsert_all(
-      unique_batch,
-      unique_by: %i[lonlat timestamp user_id],
-      returning: false,
-      on_duplicate: :skip
-    )
-  rescue StandardError => e
-    create_notification("Failed to process GeoJSON batch: #{e.message}")
-  end
-
-  def create_notification(message)
-    Notification.create!(
-      user_id: user_id,
-      title: 'GeoJSON Import Error',
-      content: message,
-      kind: :error
-    )
+  def importer_name
+    'GeoJSON'
   end
 end

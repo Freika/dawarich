@@ -47,7 +47,7 @@ RSpec.describe Points::AltitudeExtractor do
 
     context 'with Google Records data' do
       it 'extracts altitude from altitude key' do
-        raw_data = { 'latitudeE7' => 533690550, 'longitudeE7' => 836950010, 'altitude' => 150.3 }
+        raw_data = { 'latitudeE7' => 533_690_550, 'longitudeE7' => 836_950_010, 'altitude' => 150.3 }
         expect(described_class.from_raw_data(raw_data)).to eq(150.3)
       end
     end
@@ -87,7 +87,7 @@ RSpec.describe Points::AltitudeExtractor do
 
     context 'with no altitude data present' do
       it 'returns nil when raw_data has no altitude keys' do
-        raw_data = { 'latitudeE7' => 533690550, 'longitudeE7' => 836950010 }
+        raw_data = { 'latitudeE7' => 533_690_550, 'longitudeE7' => 836_950_010 }
         expect(described_class.from_raw_data(raw_data)).to be_nil
       end
     end

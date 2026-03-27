@@ -40,7 +40,7 @@ class Api::V1::ImportsController < ApiController
     import.file.attach(
       io: uploaded_file.tempfile,
       filename: uploaded_file.original_filename,
-      content_type: uploaded_file.content_type || 'application/octet-stream'
+      content_type: Marcel::MimeType.for(name: uploaded_file.original_filename) || 'application/octet-stream'
     )
 
     if import.save

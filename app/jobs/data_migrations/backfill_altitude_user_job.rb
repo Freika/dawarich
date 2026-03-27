@@ -72,7 +72,9 @@ class DataMigrations::BackfillAltitudeUserJob < ApplicationJob
       altitude = Points::AltitudeExtractor.from_raw_data(data['raw_data'])
       next if altitude.nil?
 
-      updates << { id: data['id'], altitude: altitude, altitude_decimal: altitude }
+      update = { id: data['id'], altitude: altitude }
+      update[:altitude_decimal] = altitude if Point.column_names.include?('altitude_decimal')
+      updates << update
 
       if updates.size >= batch_size
         flush_updates(updates, stats)

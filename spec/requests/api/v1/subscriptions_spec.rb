@@ -8,8 +8,6 @@ RSpec.describe 'Api::V1::Subscriptions', type: :request do
 
   before do
     stub_const('ENV', ENV.to_h.merge('JWT_SECRET_KEY' => 'test_secret'))
-    stub_request(:any, 'https://api.github.com/repos/Freika/dawarich/tags')
-      .to_return(status: 200, body: '[{"name": "1.0.0"}]', headers: {})
   end
 
   context 'when Dawarich is not self-hosted' do

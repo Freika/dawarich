@@ -5,6 +5,7 @@
 
 class GoogleMaps::RecordsImporter
   include Imports::Broadcaster
+  include Imports::BulkInsertable
 
   BATCH_SIZE = 1000
   attr_reader :import, :current_index
@@ -46,30 +47,6 @@ class GoogleMaps::RecordsImporter
     }
   end
 
-  def bulk_insert_points(batch)
-    unique_batch = deduplicate_batch(batch)
-
-    Point.upsert_all(
-      unique_batch,
-      unique_by: %i[lonlat timestamp user_id],
-      returning: false,
-      on_duplicate: :skip
-    )
-    # rubocop:enable Rails/SkipsModelValidations
-  rescue StandardError => e
-    create_notification("Failed to process location batch: #{e.message}")
-  end
-
-  def deduplicate_batch(batch)
-    batch.uniq do |record|
-      [
-        record[:lonlat],
-        record[:timestamp],
-        record[:user_id]
-      ]
-    end
-  end
-
   def parse_timestamp(location)
     Timestamps.parse_timestamp(
       location['timestamp'] || location['timestampMs']
@@ -82,12 +59,7 @@ class GoogleMaps::RecordsImporter
     battery_charging ? 1 : 0
   end
 
-  def create_notification(message)
-    Notification.create!(
-      user: @import.user,
-      title: 'Google\'s Records.json Import Error',
-      content: message,
-      kind: :error
-    )
+  def importer_name
+    "Google's Records.json"
   end
 end

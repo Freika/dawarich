@@ -70,7 +70,7 @@ RSpec.describe DataMigrations::BackfillAltitudeUserJob do
         end
 
         it 'does not issue an update' do
-          expect { described_class.new.perform(user.id) }.not_to change { point.reload.updated_at }
+          expect { described_class.new.perform(user.id) }.not_to(change { point.reload.updated_at })
         end
       end
 

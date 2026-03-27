@@ -4,6 +4,7 @@ require 'fit4ruby'
 
 class Fit::Importer
   include Imports::Broadcaster
+  include Imports::BulkInsertable
   include Imports::FileLoader
   include Imports::ActivityTypeMapping
 
@@ -44,15 +45,19 @@ class Fit::Importer
 
           points_data << build_point(record, activity_type)
 
-          if points_data.size >= BATCH_SIZE
-            bulk_insert_points(points_data)
-            points_data = []
-          end
+          next unless points_data.size >= BATCH_SIZE
+
+          inserted = bulk_insert_points(points_data)
+          broadcast_import_progress(import, inserted)
+          points_data = []
         end
       end
     end
 
-    bulk_insert_points(points_data) if points_data.any?
+    if points_data.any?
+      inserted = bulk_insert_points(points_data)
+      broadcast_import_progress(import, inserted)
+    end
   ensure
     cleanup_temp_file
   end
@@ -106,29 +111,7 @@ class Fit::Importer
     speed&.to_f&.round(1)
   end
 
-  def bulk_insert_points(batch)
-    return if batch.empty?
-
-    unique_batch = batch.uniq { |record| [record[:lonlat], record[:timestamp], record[:user_id]] }
-
-    Point.upsert_all(
-      unique_batch,
-      unique_by: %i[lonlat timestamp user_id],
-      returning: false,
-      on_duplicate: :skip
-    )
-
-    broadcast_import_progress(import, unique_batch.size)
-  rescue StandardError => e
-    create_notification("Failed to process FIT file: #{e.message}")
-  end
-
-  def create_notification(message)
-    Notification.create!(
-      user_id: user_id,
-      title: 'FIT Import Error',
-      content: message,
-      kind: :error
-    )
+  def importer_name
+    'FIT'
   end
 end

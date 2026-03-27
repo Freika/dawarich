@@ -14,6 +14,9 @@ RSpec.describe 'Users::OmniauthCallbacks', type: :request do
         post 'users/auth/openid_connect/callback', to: 'users/omniauth_callbacks#openid_connect'
       end
     end
+    # Force route recompilation so appended routes are recognized even when
+    # prior tests have already triggered route finalization.
+    Rails.application.reload_routes!
   end
 
   after(:all) do

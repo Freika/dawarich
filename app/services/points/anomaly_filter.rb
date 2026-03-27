@@ -32,7 +32,7 @@ class Points::AnomalyFilter
 
   # Pass 2: Speed-based sandwich test
   def filter_by_speed
-    points = fetch_points_with_context
+    points, main_points = fetch_points_with_context
     return 0 if points.size < 3
 
     point_ids = points.map(&:id)
@@ -49,8 +49,7 @@ class Points::AnomalyFilter
     threshold = [floor_mps, median * SPEED_MULTIPLIER].max
 
     # Only check points in the main range (not context points)
-    main_range_ids = Point.where(user_id: @user_id, timestamp: @start_time..@end_time)
-                          .not_anomaly.pluck(:id).to_set
+    main_range_ids = main_points.map(&:id).to_set
 
     anomaly_ids = []
     points.each_with_index do |point, i|
@@ -84,7 +83,7 @@ class Points::AnomalyFilter
                      .order(:timestamp).limit(CONTEXT_POINTS)
                      .select(:id, :lonlat, :timestamp).to_a
 
-    before_ctx + main + after_ctx
+    [before_ctx + main + after_ctx, main]
   end
 
   # Single CTE query: compute distance and time diff for ALL consecutive pairs

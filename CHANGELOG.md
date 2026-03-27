@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [1.4.1] - Unreleased
+## [1.5.0] - Unreleased
 
 ### Added
 
@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Support for signing in via web view using our Android app.
 - On the map settings page user now can enable and disable map layers.
 - Onboarding modal now offers a third option to load demo data (3 days in Berlin, ~1000 points) so new users can instantly see what the map looks like. Demo imports bypass trial limits, are clearly labeled with a "Demo" badge, and can be deleted from a banner on the map page or from the imports list.
+- New tool to the Map V2 tools: The "Day per Country" button will open a modal showing a breakdown of how many days the user has spent in each country, based on their points data. This is calculated by grouping points by country and counting unique days with at least one point in that country.
 
 ### Changed
 

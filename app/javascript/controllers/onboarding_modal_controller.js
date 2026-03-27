@@ -27,6 +27,9 @@ export default class extends Controller {
 
   disconnect() {
     document.removeEventListener("turbo:load", this.handleTurboLoad)
+    if (this._handleDialogClose && this.hasModalTarget) {
+      this.modalTarget.removeEventListener("close", this._handleDialogClose)
+    }
   }
 
   handleTurboLoad = () => {
@@ -44,9 +47,8 @@ export default class extends Controller {
       localStorage.setItem(MODAL_STORAGE_KEY, "true")
       this.trackEvent("onboarding_shown")
 
-      this.modalTarget.addEventListener("close", () => {
-        this.completeOnboarding()
-      })
+      this._handleDialogClose = () => this.completeOnboarding()
+      this.modalTarget.addEventListener("close", this._handleDialogClose)
     }
   }
 

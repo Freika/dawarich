@@ -59,7 +59,7 @@ module Csv
     end
 
     def parse_headers(header_line, delimiter)
-      CSV.parse_line(header_line, col_sep: delimiter)&.map(&:strip) || []
+      CSV.parse_line(header_line, col_sep: delimiter)&.map { |v| v&.strip } || []
     end
 
     def map_columns(headers)
@@ -95,7 +95,8 @@ module Csv
 
     def parse_data_rows(lines, delimiter)
       lines.first(DATA_SAMPLE_SIZE).filter_map do |line|
-        CSV.parse_line(line, col_sep: delimiter)&.map(&:strip)
+        row = CSV.parse_line(line, col_sep: delimiter)&.map { |v| v&.strip }
+        row if row&.any?(&:present?)
       end
     end
 

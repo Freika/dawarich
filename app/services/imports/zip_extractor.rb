@@ -62,6 +62,8 @@ module Imports
           raise "Too many files in archive (max #{MAX_FILES})" if file_count > MAX_FILES
 
           dest = File.join(temp_dir, entry.name)
+          next unless File.expand_path(dest).start_with?("#{File.expand_path(temp_dir)}/")
+
           FileUtils.mkdir_p(File.dirname(dest))
           total_size += extract_entry(entry, dest)
           raise "Archive too large (max #{@max_size} bytes)" if total_size > @max_size

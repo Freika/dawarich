@@ -8,7 +8,7 @@ class Subscription::DecodeJwtToken
   def call
     JWT.decode(
       @token,
-      ENV['JWT_SECRET_KEY'],
+      ENV.fetch('JWT_SECRET_KEY'),
       true,
       { algorithm: 'HS256' }
     ).first.symbolize_keys

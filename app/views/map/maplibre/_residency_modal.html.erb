@@ -1,0 +1,40 @@
+<div data-controller="residency"
+     data-residency-url-value="<%= map_residency_path %>">
+  <div class="modal z-[10000]" data-residency-target="modal">
+    <div class="modal-box max-w-4xl w-11/12 h-[36rem] flex flex-col">
+      <!-- Header -->
+      <div class="flex items-center justify-between mb-1">
+        <div class="flex items-center gap-2">
+          <%= icon 'calendar-range', class: 'w-5 h-5 opacity-70' %>
+          <h3 class="font-bold text-lg">Days per Country</h3>
+        </div>
+        <button class="btn btn-ghost btn-sm btn-circle"
+                data-action="click->residency#close">
+          <%= icon 'x', class: 'w-4 h-4' %>
+        </button>
+      </div>
+
+      <p class="text-xs opacity-50 mb-4">
+        Distinct days with at least one tracked point per country. Not tax advice.
+      </p>
+
+      <!-- Content area with loading overlay -->
+      <div class="relative flex flex-col flex-1 min-h-0">
+        <!-- Loading overlay -->
+        <div class="hidden absolute inset-0 z-10 bg-base-100/60 flex items-center justify-center rounded-lg"
+             data-residency-target="overlay">
+          <span class="loading loading-spinner loading-md"></span>
+        </div>
+
+        <!-- Turbo Frame for server-rendered content -->
+        <%= turbo_frame_tag "residency-content", class: "flex flex-col flex-1 min-h-0",
+            data: { residency_target: "frame" } do %>
+          <div class="flex justify-center items-center flex-1">
+            <span class="loading loading-spinner loading-md"></span>
+          </div>
+        <% end %>
+      </div>
+    </div>
+    <div class="modal-backdrop" data-action="click->residency#close"></div>
+  </div>
+</div>

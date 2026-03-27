@@ -1,0 +1,176 @@
+<%= turbo_frame_tag "residency-content" do %>
+  <%
+    # Color palette: one color per country, ordered by most days
+    country_colors = %w[
+      bg-primary bg-secondary bg-accent bg-info bg-success
+      bg-warning bg-error bg-primary/70 bg-secondary/70 bg-accent/70
+      bg-info/70 bg-success/70 bg-warning/70 bg-error/70
+    ]
+    color_map = @countries.each_with_index.to_h { |c, i| [c[:country_name], country_colors[i % country_colors.length]] }
+  %>
+
+  <!-- Header row: year selector + summary -->
+  <div class="flex items-center justify-between mb-3 flex-shrink-0">
+    <select class="select select-bordered select-md"
+            data-residency-target="yearSelect"
+            data-action="change->residency#changeYear">
+      <% @available_years.reverse.each do |y| %>
+        <option value="<%= y %>" <%= 'selected' if y == @year %>><%= y %></option>
+      <% end %>
+    </select>
+
+    <div class="flex items-center gap-2 text-sm opacity-70">
+      <%= icon 'calendar-range', class: 'w-4 h-4' %>
+      <span><%= @total_tracked_days %> / <%= @days_in_year %> days</span>
+    </div>
+  </div>
+
+  <% if @countries.any? %>
+    <!-- Year heatmap -->
+    <div class="flex-shrink-0 mb-3">
+      <div class="overflow-x-auto flex justify-center">
+        <div class="min-w-fit relative">
+          <!-- Month labels -->
+          <div class="flex ml-8 mb-1">
+            <% weeks = heatmap_week_columns(@year) %>
+            <% month_labels = heatmap_month_labels(weeks, @year) %>
+            <% last_index = 0 %>
+            <% month_labels.each do |label| %>
+              <div style="margin-left: <%= (label[:index] - last_index) * 14 %>px" class="text-xs text-base-content/60">
+                <%= label[:name] %>
+              </div>
+              <% last_index = label[:index] + 1 %>
+            <% end %>
+          </div>
+
+          <!-- Grid with day labels -->
+          <div class="flex">
+            <div class="flex flex-col justify-around mr-2 text-xs text-base-content/60" style="height: 98px;">
+              <span>Mon</span>
+              <span>Wed</span>
+              <span>Fri</span>
+            </div>
+
+            <div class="flex gap-0.5">
+              <% weeks.each do |week_start| %>
+                <div class="flex flex-col gap-0.5">
+                  <% 7.times do |day_offset| %>
+                    <%
+                      date = week_start + day_offset
+                      date_key = date.strftime('%Y-%m-%d')
+                      is_in_year = date.year == @year
+                      is_future = date > Date.current
+                      country_name = @daily_countries[date_key]
+                      cell_color = country_name ? color_map[country_name] : nil
+                    %>
+
+                    <% if is_in_year && !is_future && cell_color %>
+                      <div class="w-3 h-3 rounded-sm cursor-pointer transition-opacity hover:opacity-80 hover:z-50 tooltip tooltip-top <%= cell_color %>"
+                           data-tip="<%= country_name %> — <%= date.strftime('%a, %b %-d') %>">
+                      </div>
+                    <% elsif is_in_year && !is_future %>
+                      <div class="w-3 h-3 rounded-sm bg-base-300"></div>
+                    <% else %>
+                      <div class="w-3 h-3 rounded-sm <%= is_future && is_in_year ? 'bg-base-300/30' : '' %>"></div>
+                    <% end %>
+                  <% end %>
+                </div>
+              <% end %>
+            </div>
+          </div>
+
+          <!-- Legend: country color dots -->
+          <div class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-xs text-base-content/60">
+            <% @countries.first(7).each_with_index do |country, i| %>
+              <div class="flex items-center gap-1">
+                <div class="w-2.5 h-2.5 rounded-sm <%= country_colors[i % country_colors.length] %>"></div>
+                <span><%= country[:country_name] %></span>
+              </div>
+            <% end %>
+            <% if @countries.size > 7 %>
+              <span class="opacity-40">+<%= @countries.size - 7 %> more</span>
+            <% end %>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Country list -->
+    <div class="flex-1 overflow-y-auto space-y-0.5 pr-1 min-h-0">
+      <% @countries.each_with_index do |country, i| %>
+        <details class="group bg-base-200 rounded-lg">
+          <summary class="flex items-center gap-3 px-4 py-2.5 cursor-pointer list-none select-none
+                          [&::-webkit-details-marker]:hidden">
+            <!-- Color dot -->
+            <div class="flex-shrink-0 w-2.5 h-2.5 rounded-full <%= country_colors[i % country_colors.length] %>"></div>
+
+            <!-- Flag -->
+            <div class="flex-shrink-0 w-7 h-5 rounded-sm overflow-hidden shadow-sm">
+              <% if country[:iso_a2].present? %>
+                <%= icon country[:iso_a2].downcase, library: 'flags', variant: 'landscape',
+                    class: 'w-full h-full object-cover' %>
+              <% else %>
+                <%= icon 'globe', class: 'w-5 h-5 opacity-40' %>
+              <% end %>
+            </div>
+
+            <!-- Country name + warning -->
+            <span class="font-medium flex-1 text-sm">
+              <%= country[:country_name] %>
+              <% if country[:threshold_warning] %>
+                <%= icon 'triangle-alert', class: 'w-3.5 h-3.5 inline text-warning ml-1' %>
+              <% end %>
+            </span>
+
+            <!-- Days count -->
+            <div class="text-right flex-shrink-0">
+              <span class="font-mono font-semibold"><%= country[:days] %></span>
+              <span class="text-xs opacity-60 ml-0.5">days</span>
+              <span class="text-xs opacity-40 ml-1">(<%= country[:year_percentage] %>%)</span>
+            </div>
+
+            <!-- Chevron -->
+            <div class="flex-shrink-0">
+              <%= icon 'chevron-down', class: 'w-4 h-4 opacity-40 transition-transform group-open:rotate-180' %>
+            </div>
+          </summary>
+
+          <!-- Expanded periods -->
+          <div class="px-4 pb-3">
+            <div class="border-t border-base-300 pt-2 space-y-1.5">
+              <p class="text-[10px] font-medium opacity-40 uppercase tracking-wider">Stay periods</p>
+              <% country[:periods].each do |period| %>
+                <div class="flex items-center justify-between text-sm">
+                  <div class="flex items-center gap-2">
+                    <%= icon 'calendar', class: 'w-3.5 h-3.5 opacity-40' %>
+                    <span>
+                      <%= Date.parse(period[:start_date]).strftime('%b %-d') %> –
+                      <%= Date.parse(period[:end_date]).strftime('%b %-d, %Y') %>
+                    </span>
+                  </div>
+                  <span class="font-mono text-xs bg-base-300 px-2 py-0.5 rounded">
+                    <%= period[:consecutive_days] %> days
+                  </span>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        </details>
+      <% end %>
+    </div>
+
+    <% if @countries.any? { |c| c[:threshold_warning] } %>
+      <div class="flex items-center gap-2 mt-3 text-xs opacity-50 flex-shrink-0">
+        <%= icon 'triangle-alert', class: 'w-3.5 h-3.5 text-warning' %>
+        <span>Exceeds 183-day threshold common in many tax jurisdictions.</span>
+      </div>
+    <% end %>
+  <% else %>
+    <div class="flex flex-col items-center justify-center flex-1 opacity-50">
+      <%= icon 'globe', class: 'w-10 h-10 mb-3' %>
+      <p class="text-sm">No country data for <%= @year %>.</p>
+      <p class="text-xs mt-1">Points need reverse geocoding to detect countries.</p>
+    </div>
+  <% end %>
+<% end %>

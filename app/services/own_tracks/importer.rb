@@ -2,6 +2,7 @@
 
 class OwnTracks::Importer
   include Imports::Broadcaster
+  include Imports::BulkInsertable
   include Imports::FileLoader
 
   BATCH_SIZE = 1000
@@ -29,34 +30,17 @@ class OwnTracks::Importer
       )
     end
 
-    points_data.compact.each_slice(BATCH_SIZE) { |batch| bulk_insert_points(batch) }
+    points_data.compact.each_slice(BATCH_SIZE) do |batch|
+      inserted = bulk_insert_points(batch)
+      broadcast_import_progress(import, inserted)
+    end
   end
 
   private
 
-  def bulk_insert_points(batch)
-    unique_batch = batch.compact.uniq { |record| [record[:lonlat], record[:timestamp], record[:user_id]] }
-
-    Point.upsert_all(
-      unique_batch,
-      unique_by: %i[lonlat timestamp user_id],
-      returning: false,
-      on_duplicate: :skip
-    )
-
-    broadcast_import_progress(import, unique_batch.size)
-  rescue StandardError => e
-    ExceptionReporter.call(e, "Failed to bulk insert OwnTracks points for user #{user_id}: #{e.message}")
-
-    create_notification("Failed to process OwnTracks data: #{e.message}")
-  end
-
-  def create_notification(message)
-    Notification.create!(
-      user_id: user_id,
-      title: 'OwnTracks Import Error',
-      content: message,
-      kind: :error
+  def on_bulk_insert_error(exception)
+    ExceptionReporter.call(
+      exception, "Failed to bulk insert OwnTracks points for user #{user_id}: #{exception.message}"
     )
   end
 

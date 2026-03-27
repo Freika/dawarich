@@ -23,20 +23,15 @@ export default class extends Controller {
   }
 
   connect() {
-    console.log("[Visit Creation V2] Controller connected")
     this.marker = null
     this.mapController = null
     this.editingVisitId = null
-    this.setupEventListeners()
-  }
-
-  setupEventListeners() {
-    document.addEventListener("visit:edit", (e) => {
-      this.openForEdit(e.detail.visit)
-    })
+    this._handleVisitEdit = (e) => this.openForEdit(e.detail.visit)
+    document.addEventListener("visit:edit", this._handleVisitEdit)
   }
 
   disconnect() {
+    document.removeEventListener("visit:edit", this._handleVisitEdit)
     this.cleanup()
   }
 
@@ -44,8 +39,6 @@ export default class extends Controller {
    * Open the modal with coordinates
    */
   open(lat, lng, mapController) {
-    console.log("[Visit Creation V2] Opening modal", { lat, lng })
-
     this.editingVisitId = null
     this.mapController = mapController
     this.latitudeInputTarget.value = lat
@@ -80,8 +73,6 @@ export default class extends Controller {
    * Open the modal for editing an existing visit
    */
   openForEdit(visit) {
-    console.log("[Visit Creation V2] Opening modal for edit", visit)
-
     this.editingVisitId = visit.id
 
     // Set modal title and button for editing
@@ -131,8 +122,6 @@ export default class extends Controller {
    * Close the modal
    */
   close() {
-    console.log("[Visit Creation V2] Closing modal")
-
     // Hide modal
     this.modalTarget.classList.remove("modal-open")
 
@@ -153,9 +142,6 @@ export default class extends Controller {
     event.preventDefault()
 
     const isEdit = this.editingVisitId !== null
-    console.log(
-      `[Visit Creation V2] Submitting form (${isEdit ? "edit" : "create"})`,
-    )
 
     const formData = new FormData(this.formTarget)
 
@@ -195,11 +181,6 @@ export default class extends Controller {
       }
 
       const visit = await response.json()
-
-      console.log(
-        `[Visit Creation V2] Visit ${isEdit ? "updated" : "created"} successfully`,
-        visit,
-      )
 
       // Show success message
       this.showToast(

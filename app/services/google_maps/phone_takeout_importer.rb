@@ -2,6 +2,7 @@
 
 class GoogleMaps::PhoneTakeoutImporter
   include Imports::Broadcaster
+  include Imports::BulkInsertable
   include Imports::FileLoader
   include Imports::ActivityTypeMapping
 
@@ -88,7 +89,7 @@ class GoogleMaps::PhoneTakeoutImporter
   end
 
   def parse_visit_place_location(data_point)
-    coords = parse_coordinates(data_point['visit']['topCandidate']['placeLocation'])
+    coords = parse_coordinates(data_point.dig('visit', 'topCandidate', 'placeLocation'))
     return if coords.nil?
 
     lat, lon, alt = coords
@@ -98,8 +99,8 @@ class GoogleMaps::PhoneTakeoutImporter
   end
 
   def parse_activity(data_point)
-    start_coords = parse_coordinates(data_point['activity']['start'])
-    end_coords = parse_coordinates(data_point['activity']['end'])
+    start_coords = parse_coordinates(data_point.dig('activity', 'start'))
+    end_coords = parse_coordinates(data_point.dig('activity', 'end'))
     return if start_coords.nil? || end_coords.nil?
 
     start_lat, start_lon, start_alt = start_coords
@@ -133,7 +134,7 @@ class GoogleMaps::PhoneTakeoutImporter
   end
 
   def parse_semantic_visit(segment)
-    coords = parse_coordinates(segment['visit']['topCandidate']['placeLocation']['latLng'])
+    coords = parse_coordinates(segment.dig('visit', 'topCandidate', 'placeLocation', 'latLng'))
     return if coords.nil?
 
     lat, lon, alt = coords
@@ -143,8 +144,8 @@ class GoogleMaps::PhoneTakeoutImporter
   end
 
   def parse_semantic_activity(segment)
-    start_coords = parse_coordinates(segment['activity']['start']['latLng'])
-    end_coords = parse_coordinates(segment['activity']['end']['latLng'])
+    start_coords = parse_coordinates(segment.dig('activity', 'start', 'latLng'))
+    end_coords = parse_coordinates(segment.dig('activity', 'end', 'latLng'))
     return if start_coords.nil? || end_coords.nil?
 
     start_lat, start_lon, start_alt = start_coords
@@ -243,25 +244,7 @@ class GoogleMaps::PhoneTakeoutImporter
     end
   end
 
-  def bulk_insert_points(batch)
-    unique_batch = batch.uniq { |record| [record[:lonlat], record[:timestamp], record[:user_id]] }
-
-    Point.upsert_all(
-      unique_batch,
-      unique_by: %i[lonlat timestamp user_id],
-      returning: false,
-      on_duplicate: :skip
-    )
-  rescue StandardError => e
-    create_notification("Failed to process phone takeout batch: #{e.message}")
-  end
-
-  def create_notification(message)
-    Notification.create!(
-      user_id: user_id,
-      title: 'Google Maps Phone Takeout Import Error',
-      content: message,
-      kind: :error
-    )
+  def importer_name
+    'Google Maps Phone Takeout'
   end
 end

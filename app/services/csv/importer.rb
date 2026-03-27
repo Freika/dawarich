@@ -5,6 +5,7 @@ require 'csv'
 module Csv
   class Importer
     include Imports::Broadcaster
+    include Imports::BulkInsertable
     include Imports::FileLoader
 
     BATCH_SIZE = 1000
@@ -19,15 +20,20 @@ module Csv
 
     def call
       resolved_path = resolve_file_path
-      content = File.read(resolved_path, encoding: 'bom|utf-8')
-      lines = content.lines.map(&:strip).reject(&:empty?)
-      return if lines.size < 2
-
       detection = Csv::Detector.new(resolved_path).call
       points_data = []
       skipped = 0
+      header_skipped = false
 
-      lines[1..].each_with_index do |line, idx|
+      File.foreach(resolved_path, encoding: 'bom|utf-8') do |raw_line|
+        line = raw_line.strip
+        next if line.empty?
+
+        unless header_skipped
+          header_skipped = true
+          next
+        end
+
         row = CSV.parse_line(line, col_sep: detection[:delimiter])
         point = Csv::Params.new(row, detection, user_id, import.id).call
 
@@ -35,7 +41,7 @@ module Csv
           points_data << point
         else
           skipped += 1
-          Rails.logger.warn("CSV import #{import.id}: skipped row #{idx + 2}")
+          Rails.logger.warn("CSV import #{import.id}: skipped row")
         end
 
         next unless points_data.size >= BATCH_SIZE
@@ -67,28 +73,8 @@ module Csv
       Rails.logger.warn("Failed to cleanup CSV temp file: #{e.message}")
     end
 
-    def bulk_insert_points(batch)
-      return if batch.empty?
-
-      unique_batch = batch.uniq { |record| [record[:lonlat], record[:timestamp], record[:user_id]] }
-
-      Point.upsert_all(
-        unique_batch,
-        unique_by: %i[lonlat timestamp user_id],
-        returning: false,
-        on_duplicate: :skip
-      )
-    rescue StandardError => e
-      create_notification("Failed to process CSV batch: #{e.message}")
-    end
-
-    def create_notification(message)
-      Notification.create!(
-        user_id: user_id,
-        title: 'CSV Import Error',
-        content: message,
-        kind: :error
-      )
+    def importer_name
+      'CSV'
     end
   end
 end
