@@ -14,13 +14,14 @@ module Points
     end
 
     def call
-      ordered_relation = relation.reorder(timestamp: sql_direction, id: sql_direction)
+      base_relation = relation.unscope(:limit, :offset)
+      ordered_relation = base_relation.reorder(timestamp: sql_direction, id: sql_direction)
       total_count = count_rows(ordered_relation)
 
       return Result.new(relation: ordered_relation, total_count:, sampled: false) if total_count <= max_points
 
       sampled_ids = sampled_ids_for(ordered_relation, total_count)
-      sampled_relation = relation.where(id: sampled_ids).reorder(timestamp: sql_direction, id: sql_direction)
+      sampled_relation = base_relation.where(id: sampled_ids).reorder(timestamp: sql_direction, id: sql_direction)
 
       Result.new(relation: sampled_relation, total_count:, sampled: true)
     end
