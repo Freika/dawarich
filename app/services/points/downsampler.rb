@@ -39,7 +39,7 @@ module Points
       direction = sql_direction.to_s.upcase
 
       ranked_sql = relation
-                   .except(:includes, :preload, :eager_load, :limit, :offset)
+                   .except(:select, :includes, :preload, :eager_load, :limit, :offset)
                    .select(
                      Arel.sql(
                        "#{Point.table_name}.id AS sampled_id, " \
