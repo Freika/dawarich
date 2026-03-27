@@ -2,12 +2,15 @@
 
 module Points
   class Downsampler
+    MAX_POINTS_CAP = 20_000
+    MIN_POINTS = 1
+
     Result = Struct.new(:relation, :total_count, :sampled, keyword_init: true)
 
     def initialize(relation:, order: 'asc', max_points: 20_000)
       @relation = relation
       @order = order.to_s
-      @max_points = max_points.to_i
+      @max_points = max_points.to_i.clamp(MIN_POINTS, MAX_POINTS_CAP)
     end
 
     def call
