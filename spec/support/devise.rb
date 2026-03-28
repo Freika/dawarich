@@ -12,10 +12,4 @@ RSpec.configure do |config|
     @request.env['devise.mapping'] = Devise.mappings[:user] if @request
   end
 
-  # Ensure Devise routes are loaded before request specs
-  config.before(:each, type: :request) do
-    # Reload routes to ensure Devise mappings are available
-    Rails.application.reload_routes! unless @routes_reloaded
-    @routes_reloaded = true
-  end
 end

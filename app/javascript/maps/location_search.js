@@ -13,6 +13,14 @@ class LocationSearch {
     this.suggestionsVisible = false
     this.currentSuggestionIndex = -1
 
+    // Clean up previous instance before replacing
+    if (
+      window.locationSearchInstance &&
+      typeof window.locationSearchInstance.destroy === "function"
+    ) {
+      window.locationSearchInstance.destroy()
+    }
+
     // Make instance globally accessible for popup buttons
     window.locationSearchInstance = this
 
@@ -1025,13 +1033,13 @@ class LocationSearch {
           <div>
             <label for="basic-visit-start" style="display: block; margin-bottom: 5px; font-weight: bold; font-size: 14px;">Start Time:</label>
             <input type="datetime-local" id="basic-visit-start" name="started_at" required value="${startTime}"
-                   style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px;">
+                   max="9999-12-31T23:59" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px;">
           </div>
 
           <div>
             <label for="basic-visit-end" style="display: block; margin-bottom: 5px; font-weight: bold; font-size: 14px;">End Time:</label>
             <input type="datetime-local" id="basic-visit-end" name="ended_at" required value="${endTime}"
-                   style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px;">
+                   max="9999-12-31T23:59" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px;">
           </div>
 
           <input type="hidden" name="latitude" value="${lat}">
@@ -1242,6 +1250,25 @@ class LocationSearch {
 
   formatDate(dateString) {
     return new Date(dateString).toLocaleDateString()
+  }
+
+  destroy() {
+    this.clearSearch()
+    this.clearSearchMarkers()
+    this.clearVisitMarker()
+
+    if (this.searchTimeout) {
+      clearTimeout(this.searchTimeout)
+      this.searchTimeout = null
+    }
+
+    if (this.searchBar?.parentNode) {
+      this.searchBar.parentNode.removeChild(this.searchBar)
+    }
+
+    if (window.locationSearchInstance === this) {
+      window.locationSearchInstance = null
+    }
   }
 
   formatDateTime(dateString) {

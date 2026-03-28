@@ -5,19 +5,15 @@ require 'rails_helper'
 RSpec.describe Places::NameFetchingJob, type: :job do
   describe '#perform' do
     let(:place) { create(:place, name: Place::DEFAULT_NAME) }
-    let(:name_fetcher) { instance_double(Places::NameFetcher) }
 
-    before do
+    it 'calls NameFetcher for the place' do
+      name_fetcher = instance_double(Places::NameFetcher)
       allow(Places::NameFetcher).to receive(:new).with(place).and_return(name_fetcher)
       allow(name_fetcher).to receive(:call)
-    end
-
-    it 'finds the place and calls NameFetcher' do
-      expect(Place).to receive(:find).with(place.id).and_return(place)
-      expect(Places::NameFetcher).to receive(:new).with(place)
-      expect(name_fetcher).to receive(:call)
 
       described_class.perform_now(place.id)
+
+      expect(name_fetcher).to have_received(:call)
     end
 
     it 'can be enqueued' do

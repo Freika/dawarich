@@ -115,6 +115,17 @@ RSpec.describe User, type: :model do
   describe 'methods' do
     let(:user) { create(:user) }
 
+    describe '#oauth_user?' do
+      it 'returns true when provider is set' do
+        user.update_columns(provider: 'google_oauth2', uid: '12345')
+        expect(user.oauth_user?).to be true
+      end
+
+      it 'returns false when provider is nil' do
+        expect(user.oauth_user?).to be false
+      end
+    end
+
     describe '#trial_state?' do
       context 'when user has trial status and no tracked points' do
         let(:user) do
@@ -159,6 +170,7 @@ RSpec.describe User, type: :model do
         create(:stat, user:, toponyms: [
                  { 'country' => 'Germany', 'cities' => [{ 'city' => 'Berlin', 'stayed_for' => 120 }] },
                  { 'country' => 'France', 'cities' => [{ 'city' => 'Paris', 'stayed_for' => 90 }] },
+                 { 'country' => 'Belgium', 'cities' => [] },
                  { 'country' => nil, 'cities' => [] },
                  { 'country' => '', 'cities' => [] }
                ])
@@ -171,6 +183,10 @@ RSpec.describe User, type: :model do
 
       it 'excludes nil and empty country names' do
         expect(subject).not_to include(nil, '')
+      end
+
+      it 'excludes drive-through countries with no qualifying cities' do
+        expect(subject).not_to include('Belgium')
       end
     end
 
@@ -214,14 +230,19 @@ RSpec.describe User, type: :model do
 
       let!(:stat) do
         create(:stat, user:, toponyms: [
-                 { 'country' => 'Germany', 'cities' => [] },
-                 { 'country' => 'France', 'cities' => [] },
+                 { 'country' => 'Germany', 'cities' => [{ 'city' => 'Berlin', 'stayed_for' => 120 }] },
+                 { 'country' => 'France', 'cities' => [{ 'city' => 'Paris', 'stayed_for' => 90 }] },
+                 { 'country' => 'Belgium', 'cities' => [] },
                  { 'country' => nil, 'cities' => [] }
                ])
       end
 
-      it 'returns number of countries from stats toponyms' do
+      it 'returns number of countries with qualifying cities' do
         expect(subject).to eq(2)
+      end
+
+      it 'excludes drive-through countries with empty cities' do
+        expect(user.countries_visited).not_to include('Belgium')
       end
     end
 

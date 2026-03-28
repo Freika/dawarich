@@ -2,7 +2,9 @@
 
 class GoogleMaps::PhoneTakeoutImporter
   include Imports::Broadcaster
+  include Imports::BulkInsertable
   include Imports::FileLoader
+  include Imports::ActivityTypeMapping
 
   attr_reader :import, :user_id, :file_path
 
@@ -50,87 +52,129 @@ class GoogleMaps::PhoneTakeoutImporter
       raw_signals = parse_raw_signals(json['rawSignals']) if json['rawSignals']
     end
 
-    semantic_segments + raw_signals + raw_array
+    frequent_places = []
+    frequent_places = parse_user_location_profile(json) if json.is_a?(Hash) && json['userLocationProfile']
+
+    semantic_segments + raw_signals + raw_array + frequent_places
   end
 
-  def parse_coordinates(coordinates)
-    if coordinates.include?('°')
-      coordinates.split(', ').map { _1.chomp('°') }
-    else
-      coordinates.delete('geo:').split(',')
-    end
+  def parse_coordinates(coord_string)
+    return nil if coord_string.blank?
+
+    cleaned = coord_string.to_s
+                          .gsub('geo:', '')
+                          .gsub("\u00B0", '')
+                          .strip
+
+    parts = cleaned.split(/,\s*/)
+    return nil if parts.size < 2
+
+    lat = parts[0].to_f
+    lon = parts[1].to_f
+    altitude = parts[2]&.to_f
+
+    altitude ? [lat, lon, altitude] : [lat, lon]
   end
 
-  def point_hash(lat, lon, timestamp, raw_data)
+  def point_hash(lat, lon, timestamp, raw_data, altitude: nil)
     {
       lonlat: "POINT(#{lon.to_f} #{lat.to_f})",
       timestamp:,
       motion_data: Points::MotionDataExtractor.from_google_phone_takeout(raw_data),
       raw_data:,
       accuracy: raw_data['accuracyMeters'],
-      altitude: raw_data['altitudeMeters'],
+      altitude: altitude || raw_data['altitudeMeters'],
       velocity: raw_data['speedMetersPerSecond']
     }
   end
 
   def parse_visit_place_location(data_point)
-    lat, lon = parse_coordinates(data_point['visit']['topCandidate']['placeLocation'])
+    coords = parse_coordinates(data_point.dig('visit', 'topCandidate', 'placeLocation'))
+    return if coords.nil?
+
+    lat, lon, alt = coords
     timestamp = DateTime.parse(data_point['startTime']).utc.to_i
 
-    point_hash(lat, lon, timestamp, data_point)
+    point_hash(lat, lon, timestamp, data_point, altitude: alt)
   end
 
   def parse_activity(data_point)
-    start_lat, start_lon = parse_coordinates(data_point['activity']['start'])
+    start_coords = parse_coordinates(data_point.dig('activity', 'start'))
+    end_coords = parse_coordinates(data_point.dig('activity', 'end'))
+    return if start_coords.nil? || end_coords.nil?
+
+    start_lat, start_lon, start_alt = start_coords
     start_timestamp = DateTime.parse(data_point['startTime']).utc.to_i
 
-    end_lat, end_lon = parse_coordinates(data_point['activity']['end'])
+    end_lat, end_lon, end_alt = end_coords
     end_timestamp = DateTime.parse(data_point['endTime']).utc.to_i
 
     [
-      point_hash(start_lat, start_lon, start_timestamp, data_point),
-      point_hash(end_lat, end_lon, end_timestamp, data_point)
+      point_hash(start_lat, start_lon, start_timestamp, data_point, altitude: start_alt),
+      point_hash(end_lat, end_lon, end_timestamp, data_point, altitude: end_alt)
     ]
   end
 
   def parse_timeline_path(data_point)
-    data_point['timelinePath'].map do |point|
-      lat, lon = parse_coordinates(point['point'])
+    return [] if data_point['startTime'].nil?
+
+    data_point['timelinePath'].filter_map do |point|
+      coords = parse_coordinates(point['point'])
+      next if coords.nil?
+
+      lat, lon, alt = coords
       start_time = DateTime.parse(data_point['startTime'])
       offset = point['durationMinutesOffsetFromStartTime']
 
       timestamp = start_time
-      timestamp += offset.to_i.minutes if offset.present?
+      timestamp += offset.to_i.minutes if offset.present? && !offset.to_i.negative?
 
-      point_hash(lat, lon, timestamp, data_point)
+      point_hash(lat, lon, timestamp, data_point, altitude: alt)
     end
   end
 
   def parse_semantic_visit(segment)
-    lat, lon = parse_coordinates(segment['visit']['topCandidate']['placeLocation']['latLng'])
+    coords = parse_coordinates(segment.dig('visit', 'topCandidate', 'placeLocation', 'latLng'))
+    return if coords.nil?
+
+    lat, lon, alt = coords
     timestamp = DateTime.parse(segment['startTime']).utc.to_i
 
-    point_hash(lat, lon, timestamp, segment)
+    point_hash(lat, lon, timestamp, segment, altitude: alt)
   end
 
   def parse_semantic_activity(segment)
-    start_lat, start_lon = parse_coordinates(segment['activity']['start']['latLng'])
+    start_coords = parse_coordinates(segment.dig('activity', 'start', 'latLng'))
+    end_coords = parse_coordinates(segment.dig('activity', 'end', 'latLng'))
+    return if start_coords.nil? || end_coords.nil?
+
+    start_lat, start_lon, start_alt = start_coords
     start_timestamp = DateTime.parse(segment['startTime']).utc.to_i
-    end_lat, end_lon = parse_coordinates(segment['activity']['end']['latLng'])
+    end_lat, end_lon, end_alt = end_coords
     end_timestamp = DateTime.parse(segment['endTime']).utc.to_i
 
+    source_type = segment.dig('activity', 'topCandidate', 'type')
+    enriched = segment
+    if source_type
+      mapped = map_activity_type(source_type)
+      enriched = segment.merge('activity_type' => mapped) if mapped
+    end
+
     [
-      point_hash(start_lat, start_lon, start_timestamp, segment),
-      point_hash(end_lat, end_lon, end_timestamp, segment)
+      point_hash(start_lat, start_lon, start_timestamp, enriched, altitude: start_alt),
+      point_hash(end_lat, end_lon, end_timestamp, enriched, altitude: end_alt)
     ]
   end
 
   def parse_semantic_timeline_path(segment)
-    segment['timelinePath'].map do |point|
-      lat, lon = parse_coordinates(point['point'])
+    segment['timelinePath'].filter_map do |point|
+      coords = parse_coordinates(point['point'])
+      next if coords.nil?
+
+      lat, lon, alt = coords
       timestamp = DateTime.parse(point['time']).utc.to_i
 
-      point_hash(lat, lon, timestamp, segment)
+      point_hash(lat, lon, timestamp, segment, altitude: alt)
     end
   end
 
@@ -165,33 +209,42 @@ class GoogleMaps::PhoneTakeoutImporter
     raw_signals.flat_map do |segment|
       next unless segment.dig('position', 'LatLng')
 
-      lat, lon = parse_coordinates(segment['position']['LatLng'])
+      coords = parse_coordinates(segment['position']['LatLng'])
+      next if coords.nil?
+
+      lat, lon, alt = coords
       timestamp = DateTime.parse(segment['position']['timestamp']).utc.to_i
 
-      point_hash(lat, lon, timestamp, segment)
+      point_hash(lat, lon, timestamp, segment, altitude: alt)
     end
   end
 
-  def bulk_insert_points(batch)
-    unique_batch = batch.uniq { |record| [record[:lonlat], record[:timestamp], record[:user_id]] }
+  def parse_user_location_profile(json)
+    places = json.dig('userLocationProfile', 'frequentPlaces')
+    return [] if places.blank?
 
-    Point.upsert_all(
-      unique_batch,
-      unique_by: %i[lonlat timestamp user_id],
-      returning: false,
-      on_duplicate: :skip
-    )
-    # rubocop:enable Rails/SkipsModelValidations
-  rescue StandardError => e
-    create_notification("Failed to process phone takeout batch: #{e.message}")
+    # Use midnight of the first semantic segment's date as a base,
+    # offset negatively to avoid collisions with actual data points
+    reference_time = json.dig('semanticSegments', 0, 'startTime')
+    base_timestamp = if reference_time
+                       DateTime.parse(reference_time).beginning_of_day.utc.to_i
+                     else
+                       Time.current.beginning_of_day.to_i
+                     end
+
+    places.filter_map.with_index do |place, index|
+      coords = parse_coordinates(place['placeLocation'])
+      next if coords.nil?
+
+      lat, lon, alt = coords
+      timestamp = base_timestamp + index
+
+      raw_data = { 'frequent_place_label' => place['label'], 'placeId' => place['placeId'] }
+      point_hash(lat, lon, timestamp, raw_data, altitude: alt)
+    end
   end
 
-  def create_notification(message)
-    Notification.create!(
-      user_id: user_id,
-      title: 'Google Maps Phone Takeout Import Error',
-      content: message,
-      kind: :error
-    )
+  def importer_name
+    'Google Maps Phone Takeout'
   end
 end

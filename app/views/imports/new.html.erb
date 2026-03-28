@@ -1,9 +1,22 @@
 <% content_for :title, 'New Import' %>
 
-<div class="mx-auto md:w-2/3 w-full">
-  <h1 class="font-bold text-4xl">New import</h1>
+<div class="mx-auto md:w-2/3 w-full my-5">
+  <%= render layout: 'shared/page_header', locals: { title: 'New import' } do %>
+    <%= link_to imports_path, class: "btn btn-sm" do %>
+      <%= icon 'arrow-left', class: 'w-4 h-4' %> Back to imports
+    <% end %>
+  <% end %>
+
+  <% if current_user.trial? %>
+    <div class="alert alert-info my-4">
+      <%= icon 'scissors', class: 'w-5 h-5 shrink-0' %>
+      <span>
+        Google Timeline file too large?
+        <%= link_to 'Split it with our free private tool', 'https://dawarich.app/tools/google-timeline-splitter?utm_source=dawarich&utm_medium=import_page&utm_campaign=trial_banner',
+            target: '_blank', rel: 'noopener', class: 'link link-primary font-semibold' %> — your data never leaves your browser.
+      </span>
+    </div>
+  <% end %>
 
   <%= render "form", import: @import %>
-
-  <%= link_to "Back to imports", imports_path, class: "btn mx-5 mb-5" %>
 </div>

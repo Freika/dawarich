@@ -26,7 +26,8 @@ class ApiController < ApplicationController
   end
 
   def set_version_header
-    message = "Hey, I\'m alive#{current_api_user ? ' and authenticated' : ''}!"
+    authenticated = api_key.present? && current_api_user.present?
+    message = "Hey, I'm alive#{authenticated ? ' and authenticated' : ''}!"
 
     response.set_header('X-Dawarich-Response', message)
     response.set_header('X-Dawarich-Version', APP_VERSION)

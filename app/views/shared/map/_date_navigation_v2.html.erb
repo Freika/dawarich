@@ -29,10 +29,10 @@
           </div>
         </div>
         <div class="w-full lg:w-2/12 tooltip tooltip-bottom" data-tip="Start date and time">
-          <%= f.datetime_local_field :start_at, include_seconds: false, class: "input input-sm input-bordered hover:cursor-pointer hover:input-primary w-full", value: start_at %>
+          <%= f.datetime_local_field :start_at, include_seconds: false, max: "9999-12-31T23:59", class: "input input-sm input-bordered hover:cursor-pointer hover:input-primary w-full", value: start_at %>
         </div>
         <div class="w-full lg:w-2/12 tooltip tooltip-bottom" data-tip="End date and time">
-          <%= f.datetime_local_field :end_at, include_seconds: false, class: "input input-sm input-bordered hover:cursor-pointer hover:input-primary w-full", value: end_at %>
+          <%= f.datetime_local_field :end_at, include_seconds: false, max: "9999-12-31T23:59", class: "input input-sm input-bordered hover:cursor-pointer hover:input-primary w-full", value: end_at %>
         </div>
         <div class="w-full lg:w-1/12">
           <div class="flex flex-col space-y-2">

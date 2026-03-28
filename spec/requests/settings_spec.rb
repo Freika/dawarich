@@ -73,9 +73,6 @@ RSpec.describe 'Settings', type: :request do
     let!(:user) { create(:user, admin: true) }
 
     before do
-      stub_request(:any, 'https://api.github.com/repos/Freika/dawarich/tags')
-        .to_return(status: 200, body: '[{"name": "1.0.0"}]', headers: {})
-
       sign_in user
     end
 

@@ -49,11 +49,11 @@ class ApplicationController < ActionController::Base
       return family_invitation_path(invitation.token) if invitation&.can_be_accepted?
     end
 
-    # Handle iOS client flow
+    # Handle mobile client flow (iOS and Android)
     client_type = request.headers['X-Dawarich-Client'] || session[:dawarich_client]
 
     case client_type
-    when 'ios'
+    when 'ios', 'android'
       payload = { api_key: resource.api_key, exp: 5.minutes.from_now.to_i }
 
       token = Subscription::EncodeJwtToken.new(
@@ -127,10 +127,14 @@ class ApplicationController < ActionController::Base
     @self_hosted = DawarichSettings.self_hosted?
   end
 
-  def store_client_header
-    return unless request.headers['X-Dawarich-Client']
+  ALLOWED_CLIENTS = %w[ios android].freeze
 
-    session[:dawarich_client] = request.headers['X-Dawarich-Client']
+  def store_client_header
+    client = request.headers['X-Dawarich-Client'] || params[:client]
+    return unless client
+    return unless ALLOWED_CLIENTS.include?(client)
+
+    session[:dawarich_client] = client
   end
 
   def user_not_authorized

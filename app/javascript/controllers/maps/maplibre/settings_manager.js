@@ -998,7 +998,12 @@ export class SettingsController {
     const styleName = event.target.value
     SettingsManager.updateSetting("mapStyle", styleName)
 
-    const style = await getMapStyle(styleName)
+    const hiddenTileCategories = this.settings.hiddenTileCategories || []
+    const disabledPoiGroups = this.settings.disabledPoiGroups || []
+    const style = await getMapStyle(styleName, {
+      hiddenTileCategories,
+      disabledPoiGroups,
+    })
 
     // Clear layer references
     this.layerManager.clearLayerReferences()

@@ -3,7 +3,9 @@
      data-onboarding-modal-showable-value="<%= onboarding_modal_showable?(current_user) %>"
      data-onboarding-modal-onboarding-url-value="<%= settings_onboarding_path %>"
      data-onboarding-modal-user-trial-value="<%= current_user.trial? %>"
-     data-onboarding-modal-imports-count-value="<%= current_user.imports.count %>">
+     data-onboarding-modal-imports-count-value="<%= current_user.imports.count %>"
+     data-onboarding-modal-demo-data-url-value="<%= demo_data_settings_onboarding_path %>"
+     data-onboarding-modal-has-demo-data-value="<%= current_user.imports.exists?(demo: true) %>">
   <dialog id="getting_started" class="modal" data-onboarding-modal-target="modal">
     <div class="modal-box max-w-2xl bg-base-200">
 
@@ -41,6 +43,21 @@
               </div>
               <p class="text-sm text-base-content/70">
                 Download the app and connect it to start recording your location.
+              </p>
+            </div>
+          </button>
+
+          <%# Path C: Demo Data %>
+          <button class="card bg-base-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer text-left border-2 border-transparent hover:border-accent sm:col-span-2"
+                  data-action="onboarding-modal#loadDemoData"
+                  data-onboarding-modal-target="demoButton">
+            <div class="card-body p-5">
+              <div class="flex items-center gap-2 mb-2">
+                <%= icon 'map', class: 'w-6 h-6 text-accent' %>
+                <h4 class="text-lg font-semibold">Explore with demo data</h4>
+              </div>
+              <p class="text-sm text-base-content/70">
+                Load sample location data (3 days in Berlin) to see what your map could look like. You can delete it anytime.
               </p>
             </div>
           </button>

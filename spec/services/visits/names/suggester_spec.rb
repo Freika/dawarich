@@ -139,6 +139,56 @@ RSpec.describe Visits::Names::Suggester do
       end
     end
 
+    context 'when points have single Feature geodata (Photon format)' do
+      let(:points) do
+        [
+          double(
+            'Point',
+            geodata: {
+              'type' => 'Feature',
+              'geometry' => { 'type' => 'Point', 'coordinates' => [37.6177, 55.7558] },
+              'properties' => {
+                'type' => 'cafe',
+                'name' => 'Coffee House',
+                'street' => 'Main Street',
+                'city' => 'Moscow'
+              }
+            }
+          )
+        ]
+      end
+
+      it 'returns a descriptive name' do
+        expect(suggester.call).to eq('Coffee House, Main Street, Moscow')
+      end
+    end
+
+    context 'when points have mixed FeatureCollection and single Feature geodata' do
+      let(:points) do
+        [
+          double(
+            'Point',
+            geodata: {
+              'features' => [
+                { 'properties' => { 'type' => 'park', 'name' => 'Central Park' } }
+              ]
+            }
+          ),
+          double(
+            'Point',
+            geodata: {
+              'type' => 'Feature',
+              'properties' => { 'type' => 'park', 'name' => 'Central Park' }
+            }
+          )
+        ]
+      end
+
+      it 'handles both formats and returns the most common name' do
+        expect(suggester.call).to eq('Central Park')
+      end
+    end
+
     context 'when points have geodata with non-array features' do
       let(:points) do
         [

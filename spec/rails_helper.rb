@@ -54,9 +54,6 @@ RSpec.configure do |config|
   config.before(:each, type: :system) do
     # Configure Capybara for CI environments
     if ENV['CI']
-      # Setup for CircleCI
-      Capybara.server = :puma, { Silent: true }
-
       # Make the app accessible to Chrome in the Docker network
       ip_address = Socket.ip_address_list.detect(&:ipv4_private?).ip_address
       host! "http://#{ip_address}"

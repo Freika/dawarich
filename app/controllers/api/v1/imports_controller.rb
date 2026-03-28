@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class Api::V1::ImportsController < ApiController
-  ALLOWED_EXTENSIONS = %w[.gpx .geojson .json .kml .kmz .rec .csv].freeze
+  ALLOWED_EXTENSIONS = %w[.gpx .geojson .json .kml .kmz .rec .csv .tcx .fit .zip].freeze
 
   before_action :authenticate_active_api_user!, only: %i[create]
   before_action :require_write_api!, only: %i[create]
@@ -40,7 +40,7 @@ class Api::V1::ImportsController < ApiController
     import.file.attach(
       io: uploaded_file.tempfile,
       filename: uploaded_file.original_filename,
-      content_type: uploaded_file.content_type || 'application/octet-stream'
+      content_type: Marcel::MimeType.for(name: uploaded_file.original_filename) || 'application/octet-stream'
     )
 
     if import.save

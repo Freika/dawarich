@@ -16,15 +16,16 @@ class Import < ApplicationRecord
   before_save :set_processing_started_at, if: :status_changed_to_processing?
 
   validates :name, presence: true, uniqueness: { scope: :user_id }
-  validate :file_size_within_limit, if: -> { user.trial? }
-  validate :import_count_within_limit, if: -> { user.trial? }
+  validate :file_size_within_limit, if: -> { user.trial? && !demo }
+  validate :import_count_within_limit, if: -> { user.trial? && !demo }
 
   enum :status, { created: 0, processing: 1, completed: 2, failed: 3, deleting: 4 }
 
   enum :source, {
     google_semantic_history: 0, owntracks: 1, google_records: 2,
     google_phone_takeout: 3, gpx: 4, immich_api: 5, geojson: 6, photoprism_api: 7,
-    user_data_archive: 8, kml: 9
+    user_data_archive: 8, kml: 9,
+    csv: 10, tcx: 11, fit: 12
   }, allow_nil: true
 
   def process!
@@ -44,10 +45,13 @@ class Import < ApplicationRecord
   end
 
   def years_and_months_tracked
-    points.order(:timestamp).pluck(:timestamp).map do |timestamp|
-      time = Time.zone.at(timestamp)
-      [time.year, time.month]
-    end.uniq
+    quoted_tz = ActiveRecord::Base.connection.quote(Time.zone.tzinfo.identifier)
+    points
+      .select(Arel.sql(
+                "DISTINCT EXTRACT(YEAR FROM TO_TIMESTAMP(timestamp) AT TIME ZONE #{quoted_tz})::integer AS year, \
+                 EXTRACT(MONTH FROM TO_TIMESTAMP(timestamp) AT TIME ZONE #{quoted_tz})::integer AS month"
+              ))
+      .map { |row| [row[:year], row[:month]] }
   end
 
   def migrate_to_new_storage
@@ -83,7 +87,7 @@ class Import < ApplicationRecord
   def import_count_within_limit
     return unless new_record?
 
-    existing_imports_count = user.imports.count
+    existing_imports_count = user.imports.where(demo: false).count
     return unless existing_imports_count >= 5
 
     errors.add(:base, 'Trial users can only create up to 5 imports. Please subscribe to import more files.')

@@ -172,7 +172,9 @@ RSpec.describe Users::ExportData, type: :service do
 
     context 'when export record creation fails' do
       before do
-        allow(user).to receive_message_chain(:exports, :create!).and_raise(ActiveRecord::RecordInvalid)
+        exports_relation = user.exports
+        allow(user).to receive(:exports).and_return(exports_relation)
+        allow(exports_relation).to receive(:create!).and_raise(ActiveRecord::RecordInvalid)
       end
 
       it 'raises the error without marking export as failed' do

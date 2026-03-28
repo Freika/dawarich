@@ -4,7 +4,10 @@ require 'rexml/document'
 
 class Gpx::TrackImporter
   include Imports::Broadcaster
+  include Imports::BulkInsertable
   include Imports::FileLoader
+
+  BATCH_SIZE = 1000
 
   attr_reader :import, :user_id, :file_path
 
@@ -24,7 +27,10 @@ class Gpx::TrackImporter
     points = tracks_arr.map { parse_track(_1) }.flatten.compact
     points_data = points.map { prepare_point(_1) }.compact
 
-    bulk_insert_points(points_data)
+    points_data.each_slice(BATCH_SIZE) do |batch|
+      inserted = bulk_insert_points(batch)
+      broadcast_import_progress(import, inserted)
+    end
   end
 
   private
@@ -43,8 +49,8 @@ class Gpx::TrackImporter
 
     {
       lonlat: "POINT(#{point['lon'].to_d} #{point['lat'].to_d})",
-      altitude: point['ele'].to_i,
-      timestamp: Time.parse(point['time']).utc.to_i,
+      altitude: point['ele'].to_f,
+      timestamp: Time.zone.parse(point['time']).utc.to_i,
       import_id: import.id,
       velocity: speed(point),
       raw_data: point,
@@ -54,29 +60,8 @@ class Gpx::TrackImporter
     }
   end
 
-  def bulk_insert_points(batch)
-    unique_batch = batch.uniq { |record| [record[:lonlat], record[:timestamp], record[:user_id]] }
-
-    Point.upsert_all(
-      unique_batch,
-      unique_by: %i[lonlat timestamp user_id],
-      returning: false,
-      on_duplicate: :skip
-    )
-    # rubocop:enable Rails/SkipsModelValidations
-
-    broadcast_import_progress(import, unique_batch.size)
-  rescue StandardError => e
-    create_notification("Failed to process GPX track: #{e.message}")
-  end
-
-  def create_notification(message)
-    Notification.create!(
-      user_id: user_id,
-      title: 'GPX Import Error',
-      content: message,
-      kind: :error
-    )
+  def importer_name
+    'GPX'
   end
 
   def speed(point)
@@ -86,6 +71,6 @@ class Gpx::TrackImporter
     extensions = point.dig('extensions', 'TrackPointExtension')
     value ||= extensions.is_a?(Hash) ? extensions['speed'] : nil
 
-    value&.to_f&.round(1) || 0.0
+    value&.to_f&.round(1)
   end
 end

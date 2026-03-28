@@ -67,10 +67,10 @@ RSpec.describe Imports::Create do
                            content_type: 'application/json')
       end
 
-      it 'calls the GoogleMaps::SemanticHistoryImporter' do
-        expect(GoogleMaps::SemanticHistoryImporter).to \
-          receive(:new).with(import, user.id, kind_of(String)).and_return(double(call: true))
-        service.call
+      it 'completes the import and creates points' do
+        expect { service.call }.to change { import.points.count }.from(0)
+
+        expect(import.reload.status).to eq('completed')
       end
 
       it 'updates the import points count' do
@@ -87,10 +87,10 @@ RSpec.describe Imports::Create do
                            content_type: 'application/json')
       end
 
-      it 'calls the GoogleMaps::PhoneTakeoutImporter' do
-        expect(GoogleMaps::PhoneTakeoutImporter).to \
-          receive(:new).with(import, user.id, kind_of(String)).and_return(double(call: true))
-        service.call
+      it 'completes the import and creates points' do
+        expect { service.call }.to change { import.points.count }.from(0)
+
+        expect(import.reload.status).to eq('completed')
       end
     end
 
@@ -103,10 +103,10 @@ RSpec.describe Imports::Create do
         import.file.attach(io: File.open(file_path), filename: '2024-03.rec', content_type: 'application/octet-stream')
       end
 
-      it 'calls the OwnTracks::Importer' do
-        expect(OwnTracks::Importer).to \
-          receive(:new).with(import, user.id, kind_of(String)).and_return(double(call: true))
-        service.call
+      it 'completes the import and creates points' do
+        expect { service.call }.to change { import.points.count }.from(0)
+
+        expect(import.reload.status).to eq('completed')
       end
 
       context 'when import is successful' do
@@ -175,10 +175,10 @@ RSpec.describe Imports::Create do
                            content_type: 'application/octet-stream')
       end
 
-      it 'calls the Gpx::TrackImporter' do
-        expect(Gpx::TrackImporter).to \
-          receive(:new).with(import, user.id, kind_of(String)).and_return(double(call: true))
-        service.call
+      it 'completes the import and creates points' do
+        expect { service.call }.to change { import.points.count }.from(0)
+
+        expect(import.reload.status).to eq('completed')
       end
     end
 
@@ -191,10 +191,10 @@ RSpec.describe Imports::Create do
                            content_type: 'application/json')
       end
 
-      it 'calls the Geojson::Importer' do
-        expect(Geojson::Importer).to \
-          receive(:new).with(import, user.id, kind_of(String)).and_return(double(call: true))
-        service.call
+      it 'completes the import and creates points' do
+        expect { service.call }.to change { import.points.count }.from(0)
+
+        expect(import.reload.status).to eq('completed')
       end
     end
 
@@ -207,11 +207,10 @@ RSpec.describe Imports::Create do
                            content_type: 'application/json')
       end
 
-      it 'calls the Photos::Importer' do
-        expect(Photos::Importer).to \
-          receive(:new).with(import, user.id, kind_of(String)).and_return(double(call: true))
+      it 'completes the import and creates points' do
+        expect { service.call }.to change { import.points.count }.from(0)
 
-        service.call
+        expect(import.reload.status).to eq('completed')
       end
     end
 
@@ -224,10 +223,97 @@ RSpec.describe Imports::Create do
                            content_type: 'application/json')
       end
 
-      it 'calls the Photos::Importer' do
-        expect(Photos::Importer).to \
-          receive(:new).with(import, user.id, kind_of(String)).and_return(double(call: true))
+      it 'completes the import and creates points' do
+        expect { service.call }.to change { import.points.count }.from(0)
+
+        expect(import.reload.status).to eq('completed')
+      end
+    end
+
+    context 'when source is csv' do
+      let(:import) { create(:import, source: 'csv') }
+      let(:file_path) { Rails.root.join('spec/fixtures/files/csv/gpslogger.csv') }
+
+      before do
+        import.file.attach(io: File.open(file_path), filename: 'gpslogger.csv',
+                           content_type: 'text/csv')
+      end
+
+      it 'completes the import and creates points' do
+        expect { service.call }.to change { import.points.count }.from(0)
+
+        expect(import.reload.status).to eq('completed')
+      end
+    end
+
+    context 'when source is tcx' do
+      let(:import) { create(:import, source: 'tcx') }
+      let(:file_path) { Rails.root.join('spec/fixtures/files/tcx/running.tcx') }
+
+      before do
+        import.file.attach(io: File.open(file_path), filename: 'running.tcx',
+                           content_type: 'application/octet-stream')
+      end
+
+      it 'completes the import and creates points' do
+        expect { service.call }.to change { import.points.count }.from(0)
+
+        expect(import.reload.status).to eq('completed')
+      end
+    end
+
+    context 'when source is fit' do
+      let(:import) { create(:import, source: 'fit') }
+
+      before do
+        temp = Tempfile.new(['cycling', '.fit'])
+        generate_fit_fixture(temp.path)
+        import.file.attach(io: File.open(temp.path), filename: 'cycling.fit',
+                           content_type: 'application/octet-stream')
+      end
+
+      it 'completes the import and creates points' do
+        expect { service.call }.to change { import.points.count }.from(0)
+
+        expect(import.reload.status).to eq('completed')
+      end
+    end
+
+    context 'when source is detected as zip' do
+      let(:import) { create(:import, name: 'test_archive.zip') }
+      let(:zip_path) do
+        path = Rails.root.join('tmp', "test_create_zip_#{SecureRandom.hex(4)}.zip").to_s
+        require 'zip'
+        ::Zip::File.open(path, create: true) do |zipfile|
+          gpx_content = File.read(Rails.root.join('spec/fixtures/files/gpx/gpx_track_single_segment.gpx'))
+          zipfile.get_output_stream('track.gpx') { |f| f.write(gpx_content) }
+        end
+        path
+      end
+
+      before do
+        import.file.attach(io: File.open(zip_path, 'rb'), filename: 'test_archive.zip',
+                           content_type: 'application/zip')
+      end
+
+      after { File.delete(zip_path) if File.exist?(zip_path) }
+
+      it 'delegates to Imports::ZipExtractor' do
+        extractor = instance_double(Imports::ZipExtractor, call: true)
+        allow(Imports::ZipExtractor).to receive(:new).and_return(extractor)
+
         service.call
+
+        expect(Imports::ZipExtractor).to have_received(:new).with(import, user.id, kind_of(String))
+        expect(extractor).to have_received(:call)
+      end
+
+      it 'does not call importer routing' do
+        extractor = instance_double(Imports::ZipExtractor, call: true)
+        allow(Imports::ZipExtractor).to receive(:new).and_return(extractor)
+
+        # Should not raise ArgumentError for unsupported source
+        expect { service.call }.not_to raise_error
       end
     end
   end

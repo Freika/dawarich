@@ -15,6 +15,7 @@ RSpec.describe Photoprism::RequestPhotos do
 
   let(:start_date) { '2024-01-01' }
   let(:end_date) { '2024-12-31' }
+  let(:expected_before_date) { (end_date.to_date + 1.day).to_s }
   let(:service) { described_class.new(user, start_date: start_date, end_date: end_date) }
 
   let(:mock_photo_response) do
@@ -148,12 +149,25 @@ RSpec.describe Photoprism::RequestPhotos do
   end
 
   describe '#call' do
+    context 'when end_date is provided' do
+      it 'sends before param as end_date + 1 day to include photos from end_date' do
+        stub_request(:any, /photoprism\.local/).to_return(
+          status: 200, body: [].to_json, headers: { 'Content-Type' => 'application/json' }
+        )
+
+        service.call
+
+        expect(WebMock).to have_requested(:get, /photoprism\.local/)
+          .with(query: hash_including(before: '2025-01-01'))
+      end
+    end
+
     context 'with valid credentials' do
       before do
         stub_request(
           :any,
           "#{user.settings['photoprism_url']}/api/v1/photos?" \
-            "after=#{start_date}&before=#{end_date}&count=1000&public=true&q=&quality=3"
+            "after=#{start_date}&before=#{expected_before_date}&count=1000&public=true&q=&quality=3"
         ).with(
           headers: {
             'Accept' => 'application/json',
@@ -171,7 +185,7 @@ RSpec.describe Photoprism::RequestPhotos do
         stub_request(
           :any,
           "#{user.settings['photoprism_url']}/api/v1/photos?" \
-            "after=#{start_date}&before=#{end_date}&count=1000&public=true&q=&quality=3&offset=1000"
+            "after=#{start_date}&before=#{expected_before_date}&count=1000&public=true&q=&quality=3&offset=1000"
         ).to_return(status: 200, body: [].to_json, headers: { 'Content-Type' => 'application/json' })
       end
 
@@ -202,7 +216,7 @@ RSpec.describe Photoprism::RequestPhotos do
         stub_request(
           :get,
           "#{user.settings['photoprism_url']}/api/v1/photos?" \
-            "after=#{start_date}&before=#{end_date}&count=1000&public=true&q=&quality=3"
+            "after=#{start_date}&before=#{expected_before_date}&count=1000&public=true&q=&quality=3"
         ).to_return(status: 400, body: { status: 400, error: 'Unable to do that' }.to_json)
       end
 
@@ -210,7 +224,7 @@ RSpec.describe Photoprism::RequestPhotos do
         expect(Rails.logger).to receive(:error).with('Photoprism photo fetch failed: Request failed: 400')
         expect(Rails.logger).to receive(:debug).with(
           "Photoprism API request params: #{{ q: '', public: true, quality: 3, after: start_date, count: 1000,
-before: end_date }}"
+before: expected_before_date }}"
         )
 
         service.call
@@ -238,7 +252,7 @@ before: end_date }}"
             headers: common_headers,
             query: {
               after: start_date,
-              before: end_date,
+              before: expected_before_date,
               count: '1000',
               public: 'true',
               q: '',
@@ -253,7 +267,7 @@ before: end_date }}"
             headers: common_headers,
             query: {
               after: start_date,
-              before: end_date,
+              before: expected_before_date,
               count: '1000',
               public: 'true',
               q: '',
@@ -269,7 +283,7 @@ before: end_date }}"
             headers: common_headers,
             query: {
               after: start_date,
-              before: end_date,
+              before: expected_before_date,
               count: '1000',
               public: 'true',
               q: '',

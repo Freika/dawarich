@@ -34,10 +34,23 @@ RSpec.describe Export, type: :model do
       context 'when the export is destroyed' do
         let(:export) { create(:export) }
 
-        it 'removes the attached file' do
+        it 'removes the attached file when present' do
+          allow(export.file).to receive(:attached?).and_return(true)
           expect(export.file).to receive(:purge_later)
 
           export.destroy!
+        end
+
+        it 'does not error when file is not attached' do
+          allow(export.file).to receive(:attached?).and_return(false)
+
+          expect { export.destroy! }.not_to raise_error
+        end
+
+        it 'does not error when legacy url file is missing from disk' do
+          export.update_column(:url, 'exports/missing_file.json')
+
+          expect { export.destroy! }.not_to raise_error
         end
       end
     end

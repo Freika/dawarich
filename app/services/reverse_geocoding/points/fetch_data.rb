@@ -21,21 +21,38 @@ class ReverseGeocoding::Points::FetchData
 
   private
 
+  DEADLOCK_MAX_RETRIES = 3
+
   def update_point_with_geocoding_data
     response = Geocoder.search([point.lat, point.lon]).first
     return if response.blank? || response.data['error'].present?
 
     country_record = Country.find_by(name: response.country) if response.country
 
-    point.update!(
-      city: response.city,
-      country_name: response.country,
-      country_id: country_record&.id,
-      geodata: DawarichSettings.store_geodata? ? response.data : {},
-      reverse_geocoded_at: Time.current
-    )
+    with_deadlock_retry do
+      point.update!(
+        city: response.city,
+        country_name: response.country,
+        country_id: country_record&.id,
+        geodata: DawarichSettings.store_geodata? ? response.data : {},
+        reverse_geocoded_at: Time.current
+      )
+    end
   rescue StandardError => e
     Rails.logger.error("Reverse geocoding error for point #{point.id}: #{e.message}")
     ExceptionReporter.call(e)
+  end
+
+  def with_deadlock_retry
+    retries = 0
+    begin
+      yield
+    rescue ActiveRecord::Deadlocked => e
+      retries += 1
+      raise e if retries > DEADLOCK_MAX_RETRIES
+
+      sleep(0.1 * retries)
+      retry
+    end
   end
 end

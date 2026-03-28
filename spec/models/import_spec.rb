@@ -118,7 +118,10 @@ RSpec.describe Import, type: :model do
         geojson: 6,
         photoprism_api: 7,
         user_data_archive: 8,
-        kml: 9
+        kml: 9,
+        csv: 10,
+        tcx: 11,
+        fit: 12
       )
     end
   end

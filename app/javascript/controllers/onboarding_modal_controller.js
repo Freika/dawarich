@@ -1,22 +1,35 @@
 import { Controller } from "@hotwired/stimulus"
+import Flash from "./flash_controller"
 
 export default class extends Controller {
-  static targets = ["modal", "choiceScreen", "importScreen", "trackScreen"]
+  static targets = [
+    "modal",
+    "choiceScreen",
+    "importScreen",
+    "trackScreen",
+    "demoButton",
+  ]
   static values = {
     showable: Boolean,
     onboardingUrl: String,
     userTrial: Boolean,
     importsCount: Number,
+    demoDataUrl: String,
+    hasDemoData: Boolean,
   }
 
   connect() {
     if (this.showableValue) {
       document.addEventListener("turbo:load", this.handleTurboLoad)
     }
+    this.updateDemoButton()
   }
 
   disconnect() {
     document.removeEventListener("turbo:load", this.handleTurboLoad)
+    if (this._handleDialogClose && this.hasModalTarget) {
+      this.modalTarget.removeEventListener("close", this._handleDialogClose)
+    }
   }
 
   handleTurboLoad = () => {
@@ -34,9 +47,8 @@ export default class extends Controller {
       localStorage.setItem(MODAL_STORAGE_KEY, "true")
       this.trackEvent("onboarding_shown")
 
-      this.modalTarget.addEventListener("close", () => {
-        this.completeOnboarding()
-      })
+      this._handleDialogClose = () => this.completeOnboarding()
+      this.modalTarget.addEventListener("close", this._handleDialogClose)
     }
   }
 
@@ -52,6 +64,51 @@ export default class extends Controller {
 
   showChoice() {
     this.switchScreen("choiceScreen")
+  }
+
+  loadDemoData() {
+    if (this.hasDemoDataValue) return
+
+    this.trackEvent("onboarding_demo_selected")
+
+    if (this.hasDemoButtonTarget) {
+      this.demoButtonTarget.classList.add("opacity-50", "pointer-events-none")
+    }
+
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content
+
+    fetch(this.demoDataUrlValue, {
+      method: "POST",
+      headers: {
+        "X-CSRF-Token": csrfToken,
+        Accept: "text/html",
+      },
+      redirect: "follow",
+    })
+      .then((response) => {
+        if (!response.ok) throw new Error(`Server error: ${response.status}`)
+
+        this.modalTarget.close()
+        window.Turbo.visit(response.url || window.location.href)
+      })
+      .catch((error) => {
+        console.error("Failed to load demo data:", error)
+        if (this.hasDemoButtonTarget) {
+          this.demoButtonTarget.classList.remove(
+            "opacity-50",
+            "pointer-events-none",
+          )
+        }
+        Flash.show("error", "Failed to load demo data. Please try again.")
+      })
+  }
+
+  updateDemoButton() {
+    if (this.hasDemoDataValue && this.hasDemoButtonTarget) {
+      this.demoButtonTarget.classList.add("opacity-50", "pointer-events-none")
+      const label = this.demoButtonTarget.querySelector("h4")
+      if (label) label.textContent = "Demo data already loaded"
+    }
   }
 
   dismiss() {

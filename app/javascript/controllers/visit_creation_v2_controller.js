@@ -19,23 +19,19 @@ export default class extends Controller {
 
   static values = {
     apiKey: String,
+    timezone: { type: String, default: "UTC" },
   }
 
   connect() {
-    console.log("[Visit Creation V2] Controller connected")
     this.marker = null
     this.mapController = null
     this.editingVisitId = null
-    this.setupEventListeners()
-  }
-
-  setupEventListeners() {
-    document.addEventListener("visit:edit", (e) => {
-      this.openForEdit(e.detail.visit)
-    })
+    this._handleVisitEdit = (e) => this.openForEdit(e.detail.visit)
+    document.addEventListener("visit:edit", this._handleVisitEdit)
   }
 
   disconnect() {
+    document.removeEventListener("visit:edit", this._handleVisitEdit)
     this.cleanup()
   }
 
@@ -43,8 +39,6 @@ export default class extends Controller {
    * Open the modal with coordinates
    */
   open(lat, lng, mapController) {
-    console.log("[Visit Creation V2] Opening modal", { lat, lng })
-
     this.editingVisitId = null
     this.mapController = mapController
     this.latitudeInputTarget.value = lat
@@ -79,8 +73,6 @@ export default class extends Controller {
    * Open the modal for editing an existing visit
    */
   openForEdit(visit) {
-    console.log("[Visit Creation V2] Opening modal for edit", visit)
-
     this.editingVisitId = visit.id
 
     // Set modal title and button for editing
@@ -130,8 +122,6 @@ export default class extends Controller {
    * Close the modal
    */
   close() {
-    console.log("[Visit Creation V2] Closing modal")
-
     // Hide modal
     this.modalTarget.classList.remove("modal-open")
 
@@ -152,17 +142,14 @@ export default class extends Controller {
     event.preventDefault()
 
     const isEdit = this.editingVisitId !== null
-    console.log(
-      `[Visit Creation V2] Submitting form (${isEdit ? "edit" : "create"})`,
-    )
 
     const formData = new FormData(this.formTarget)
 
     const visitData = {
       visit: {
         name: formData.get("name"),
-        started_at: formData.get("started_at"),
-        ended_at: formData.get("ended_at"),
+        started_at: this.localToUTC(formData.get("started_at")),
+        ended_at: this.localToUTC(formData.get("ended_at")),
         latitude: parseFloat(formData.get("latitude")),
         longitude: parseFloat(formData.get("longitude")),
         status: "confirmed",
@@ -194,11 +181,6 @@ export default class extends Controller {
       }
 
       const visit = await response.json()
-
-      console.log(
-        `[Visit Creation V2] Visit ${isEdit ? "updated" : "created"} successfully`,
-        visit,
-      )
 
       // Show success message
       this.showToast(
@@ -270,10 +252,38 @@ export default class extends Controller {
   }
 
   /**
-   * Format date for datetime-local input
+   * Format date for datetime-local input in the user's timezone
    */
   formatDateTime(date) {
-    return date.toISOString().slice(0, 16)
+    const options = {
+      timeZone: this.timezoneValue,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }
+    const parts = new Intl.DateTimeFormat("en-CA", options).formatToParts(date)
+    const get = (type) => parts.find((p) => p.type === type)?.value || "00"
+    return `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}`
+  }
+
+  /**
+   * Convert a datetime-local string (in user's timezone) to a UTC ISO string
+   */
+  localToUTC(datetimeLocalStr) {
+    // Treat the input as if it were UTC to get a reference timestamp
+    const asUTC = new Date(`${datetimeLocalStr}Z`)
+    // Format that UTC timestamp in the user's timezone to find the offset
+    const inTZ = this.formatDateTime(asUTC)
+    const offsetMs =
+      new Date(`${inTZ}Z`).getTime() -
+      new Date(`${datetimeLocalStr}Z`).getTime()
+    // Subtract the offset to convert from user's timezone to UTC
+    return new Date(
+      new Date(`${datetimeLocalStr}Z`).getTime() - offsetMs,
+    ).toISOString()
   }
 
   /**

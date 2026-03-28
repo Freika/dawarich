@@ -79,6 +79,7 @@ class Stats::HexagonCalculator
 
     @points = user
               .points
+              .not_anomaly
               .without_raw_data
               .where(timestamp: start_timestamp..end_timestamp)
               .where.not(lonlat: nil)

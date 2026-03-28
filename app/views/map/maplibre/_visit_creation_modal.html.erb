@@ -1,4 +1,4 @@
-<div data-controller="visit-creation-v2" data-visit-creation-v2-api-key-value="<%= current_user.api_key %>">
+<div data-controller="visit-creation-v2" data-visit-creation-v2-api-key-value="<%= current_user.api_key %>" data-visit-creation-v2-timezone-value="<%= current_user.timezone %>">
   <div class="modal z-[10000]" data-visit-creation-v2-target="modal">
     <div class="modal-box max-w-2xl">
       <h3 class="font-bold text-lg mb-4" data-visit-creation-v2-target="modalTitle">Create New Visit</h3>
@@ -29,6 +29,7 @@
               <input
                 type="datetime-local"
                 name="started_at"
+                max="9999-12-31T23:59"
                 class="input input-bordered w-full"
                 data-visit-creation-v2-target="startTimeInput"
                 required>
@@ -41,6 +42,7 @@
               <input
                 type="datetime-local"
                 name="ended_at"
+                max="9999-12-31T23:59"
                 class="input input-bordered w-full"
                 data-visit-creation-v2-target="endTimeInput"
                 required>

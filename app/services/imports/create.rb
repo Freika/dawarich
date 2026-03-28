@@ -22,14 +22,22 @@ class Imports::Create
                import.source
              end
 
+    if source.to_s == 'zip'
+      Imports::ZipExtractor.new(import, user.id, temp_file_path).call
+      return
+    end
+
     import.update!(source: source)
     importer(source).new(import, user.id, temp_file_path).call
     User.where(id: user.id).update_all(points_count: user.points.count)
 
+    filter_anomalies(user, import)
     schedule_stats_creating(user.id)
     schedule_visit_suggesting(user.id, import)
     update_import_points_count(import)
   rescue StandardError => e
+    return if import.destroyed?
+
     import.update!(status: :failed, error_message: e.message)
     broadcast_status_update
 
@@ -39,7 +47,7 @@ class Imports::Create
   ensure
     File.unlink(temp_file_path) if temp_file_path && File.exist?(temp_file_path)
 
-    if import.processing?
+    if !import.destroyed? && import.processing?
       import.update!(status: :completed)
       broadcast_status_update
     end
@@ -59,6 +67,9 @@ class Imports::Create
     when 'kml'                          then Kml::Importer
     when 'geojson'                      then Geojson::Importer
     when 'immich_api', 'photoprism_api' then Photos::Importer
+    when 'csv'                          then Csv::Importer
+    when 'tcx'                          then Tcx::Importer
+    when 'fit'                          then Fit::Importer
     else
       raise ArgumentError, "Unsupported source: #{source}"
     end
@@ -66,6 +77,14 @@ class Imports::Create
 
   def update_import_points_count(import)
     Import::UpdatePointsCountJob.perform_later(import.id)
+  end
+
+  def filter_anomalies(user, import)
+    min_ts = import.points.minimum(:timestamp)
+    max_ts = import.points.maximum(:timestamp)
+    return unless min_ts && max_ts
+
+    Points::AnomalyFilter.new(user.id, min_ts, max_ts).call
   end
 
   def schedule_stats_creating(user_id)

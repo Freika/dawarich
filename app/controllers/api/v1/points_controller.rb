@@ -12,7 +12,13 @@ class Api::V1::PointsController < ApiController
     end_at   = params[:end_at].present? ? safe_timestamp(params[:end_at]) : Time.zone.now.to_i
     order    = params[:order] || 'desc'
 
-    points = scoped_points
+    points = if ActiveModel::Type::Boolean.new.cast(params[:anomalies_only])
+               scoped_points.anomaly
+             else
+               scoped_points.not_anomaly
+             end
+
+    points = points
              .without_raw_data
              .where(timestamp: start_at..end_at)
 

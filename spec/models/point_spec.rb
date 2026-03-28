@@ -29,17 +29,6 @@ RSpec.describe Point, type: :model do
         expect(point.country_id).to eq(country.id)
       end
     end
-
-    xdescribe '#recalculate_track' do
-      let(:point) { create(:point, track: track) }
-      let(:track) { create(:track) }
-
-      it 'recalculates the track' do
-        expect(track).to receive(:recalculate_path_and_distance!)
-
-        point.update(lonlat: 'POINT(-79.85581250721961 15.854775993302411)')
-      end
-    end
   end
 
   describe 'scopes' do
@@ -64,6 +53,33 @@ RSpec.describe Point, type: :model do
         result = described_class.not_reverse_geocoded
         expect(result).to include(point_without_address)
         expect(result).not_to include(point)
+      end
+    end
+
+    describe 'anomaly scopes' do
+      let(:user) { create(:user) }
+      let!(:normal_point) { create(:point, user: user, anomaly: nil) }
+      let!(:false_point) { create(:point, user: user, anomaly: false) }
+      let!(:anomaly_point) { create(:point, user: user, anomaly: true) }
+
+      describe '.not_anomaly' do
+        it 'includes points with anomaly nil' do
+          expect(described_class.not_anomaly).to include(normal_point)
+        end
+
+        it 'includes points with anomaly false' do
+          expect(described_class.not_anomaly).to include(false_point)
+        end
+
+        it 'excludes points with anomaly true' do
+          expect(described_class.not_anomaly).not_to include(anomaly_point)
+        end
+      end
+
+      describe '.anomaly' do
+        it 'includes only anomaly points' do
+          expect(described_class.anomaly).to contain_exactly(anomaly_point)
+        end
       end
     end
   end
@@ -124,21 +140,6 @@ RSpec.describe Point, type: :model do
 
       it 'returns latitude' do
         expect(point.lat).to eq(2)
-      end
-    end
-
-    xdescribe '#trigger_incremental_track_generation' do
-      let(:point) do
-        create(:point, track: track, import_id: nil, timestamp: 1.hour.ago.to_i, reverse_geocoded_at: 1.hour.ago)
-      end
-      let(:track) { create(:track) }
-
-      it 'enqueues Tracks::IncrementalCheckJob' do
-        expect do
-          point.send(:trigger_incremental_track_generation)
-        end.to have_enqueued_job(Tracks::IncrementalCheckJob).with(
-          point.user_id, point.id
-        )
       end
     end
   end

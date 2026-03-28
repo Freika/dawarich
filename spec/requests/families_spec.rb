@@ -9,8 +9,6 @@ RSpec.describe 'Family', type: :request do
   let!(:membership) { create(:family_membership, user: user, family: family, role: :owner) }
 
   before do
-    stub_request(:any, 'https://api.github.com/repos/Freika/dawarich/tags')
-      .to_return(status: 200, body: '[{"name": "1.0.0"}]', headers: {})
     sign_in user
   end
 

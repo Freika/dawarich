@@ -32,11 +32,27 @@ export class EventHandlers {
    * Handle point click — shows instant info from GeoJSON, address loaded via Turbo Frame
    */
   handlePointClick(e) {
+    // Check if the click is a follow-on event from a drag operation
+    const pointsLayer = this.controller.layerManager.getLayer("points")
+    if (pointsLayer?.justDragged) return
+
     const feature = e.features[0]
     this.controller.showInfo(
       "Location Point",
       this._buildPointInfoContent(feature.properties, feature.geometry),
     )
+  }
+
+  /**
+   * Handle anomaly point click — shows reason and timestamp in the info panel.
+   */
+  handleAnomalyClick(e) {
+    const feature = e.features[0]
+    const anomaliesLayer = this.controller.layerManager.getLayer("anomalies")
+    if (!anomaliesLayer) return
+
+    const content = anomaliesLayer.buildPopupContent(feature.properties)
+    this.controller.showInfo("Anomaly Point", content)
   }
 
   /**

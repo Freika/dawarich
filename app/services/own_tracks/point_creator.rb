@@ -21,6 +21,8 @@ class OwnTracks::PointCreator
     if result.any?
       inserted_count = result.count { |row| row['xmax'].to_i.zero? }
       User.update_counters(user_id, points_count: inserted_count) if inserted_count.positive?
+      timestamps = [payload].filter_map { |p| p[:timestamp]&.to_i }
+      Points::AnomalyFilterJob.perform_later(user_id, timestamps.min, timestamps.max) if timestamps.any?
       Tracks::RealtimeDebouncer.new(user_id).trigger
       Points::LiveBroadcaster.new(user_id, result, [payload]).call
     end

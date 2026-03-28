@@ -1,3 +1,4 @@
+import { AnomaliesLayer } from "maps_maplibre/layers/anomalies_layer"
 import { AreasLayer } from "maps_maplibre/layers/areas_layer"
 import { FamilyLayer } from "maps_maplibre/layers/family_layer"
 import { FogLayer } from "maps_maplibre/layers/fog_layer"
@@ -59,6 +60,7 @@ export class LayerManager {
     }
 
     this._addFamilyLayer()
+    this._addAnomaliesLayer()
     this._addPointsLayer(pointsGeoJSON)
     this._addRoutesHitLayer() // Add hit target layer after points, will be on top visually
     this._addRecentPointLayer()
@@ -86,6 +88,9 @@ export class LayerManager {
     this.map.on("click", "areas-fill", handlers.handleAreaClick)
     this.map.on("click", "areas-outline", handlers.handleAreaClick)
     this.map.on("click", "areas-labels", handlers.handleAreaClick)
+
+    // Anomalies click handler
+    this.map.on("click", "anomalies", handlers.handleAnomalyClick)
 
     // Track click handler (debug mode for segment visualization)
     this.map.on("click", "tracks", handlers.handleTrackClick)
@@ -118,6 +123,13 @@ export class LayerManager {
       this.map.getCanvas().style.cursor = "pointer"
     })
     this.map.on("mouseleave", "places", () => {
+      this.map.getCanvas().style.cursor = ""
+    })
+    // Anomalies cursor handlers
+    this.map.on("mouseenter", "anomalies", () => {
+      this.map.getCanvas().style.cursor = "pointer"
+    })
+    this.map.on("mouseleave", "anomalies", () => {
       this.map.getCanvas().style.cursor = ""
     })
     // Track cursor handlers
@@ -329,22 +341,14 @@ export class LayerManager {
   }
 
   async _addPhotosLayer(photosGeoJSON) {
-    console.log(
-      "[Photos] Adding photos layer, visible:",
-      this.settings.photosEnabled,
-    )
     if (!this.layers.photosLayer) {
       this.layers.photosLayer = new PhotosLayer(this.map, {
         visible: this.settings.photosEnabled || false,
         timezone: this.settings.timezone,
       })
-      console.log("[Photos] Created new PhotosLayer instance")
       await this.layers.photosLayer.add(photosGeoJSON)
-      console.log("[Photos] Added photos to layer")
     } else {
-      console.log("[Photos] Updating existing PhotosLayer")
       await this.layers.photosLayer.update(photosGeoJSON)
-      console.log("[Photos] Updated photos layer")
     }
   }
 
@@ -354,6 +358,20 @@ export class LayerManager {
         visible: this.settings.familyEnabled || false,
       })
       this.layers.familyLayer.add({ type: "FeatureCollection", features: [] })
+    }
+  }
+
+  _addAnomaliesLayer() {
+    if (!this.layers.anomaliesLayer) {
+      this.layers.anomaliesLayer = new AnomaliesLayer(this.map, {
+        visible: false,
+        apiClient: this.api,
+        timezone: this.settings.timezone,
+      })
+      this.layers.anomaliesLayer.add({
+        type: "FeatureCollection",
+        features: [],
+      })
     }
   }
 

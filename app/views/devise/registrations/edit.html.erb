@@ -51,13 +51,15 @@
                 <%= f.password_field :password_confirmation, autocomplete: "new-password", class: 'input input-bordered w-full' %>
               </div>
 
-              <div class="form-control mt-5">
-                <%= f.label :current_password, class: 'label' do %>
-                  <span class="label-text">Current password</span>
-                <% end %>
-                <i class='text-xs text-base-content/60'>(required to confirm your changes)</i>
-                <%= f.password_field :current_password, autocomplete: "current-password", class: 'input input-bordered mt-2 w-full' %>
-              </div>
+              <% unless current_user.oauth_user? %>
+                <div class="form-control mt-5">
+                  <%= f.label :current_password, class: 'label' do %>
+                    <span class="label-text">Current password</span>
+                  <% end %>
+                  <i class='text-xs text-base-content/60'>(required to confirm your changes)</i>
+                  <%= f.password_field :current_password, autocomplete: "current-password", class: 'input input-bordered mt-2 w-full' %>
+                </div>
+              <% end %>
 
               <div class="form-control mt-6">
                 <%= f.submit "Save changes", class: 'btn btn-primary w-full sm:w-auto' %>
@@ -168,7 +170,7 @@
 
             <div class="rounded-2xl border border-error/30 bg-error/5 p-4">
               <h3 class="text-lg font-semibold">Danger zone</h3>
-              <p class="mt-2 text-sm text-base-content/70">Deleting your account is permanent and removes access to your data.</p>
+              <p class="mt-2 text-sm text-base-content/70">Deleting your account is permanent and removes all your data.</p>
               <div class="mt-4">
                 <%= link_to "Cancel my account", registration_path(resource_name), data: { turbo_confirm: "Are you sure?", turbo_method: :delete }, method: :delete, class: 'btn btn-error btn-outline w-full sm:w-auto' %>
               </div>

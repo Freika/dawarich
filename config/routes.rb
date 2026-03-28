@@ -59,7 +59,10 @@ Rails.application.routes.draw do
     resources :maps, only: %i[index]
     patch 'maps', to: 'maps#update'
 
-    resource :onboarding, only: [:update]
+    resource :onboarding, only: [:update] do
+      post :demo_data, on: :member
+      delete :demo_data, on: :member, action: :destroy_demo_data
+    end
   end
 
   get 'settings/theme', to: 'settings#theme'
@@ -165,6 +168,7 @@ Rails.application.routes.draw do
     resources :timeline_feeds, only: [:index] do
       get :track_info, on: :member
     end
+    resource :residency, only: [:show], controller: 'residency'
   end
 
   # Backward compatibility redirects
@@ -205,6 +209,7 @@ Rails.application.routes.draw do
         end
       end
       resource :plan, only: [:show], controller: 'plan'
+      resource :residency, only: [:show], controller: 'residency'
       resources :stats, only: :index
       resources :insights, only: :index do
         collection do

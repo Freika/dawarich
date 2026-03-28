@@ -5,6 +5,7 @@ require 'zip'
 
 class Kml::Importer
   include Imports::Broadcaster
+  include Imports::BulkInsertable
   include Imports::FileLoader
 
   attr_reader :import, :user_id, :file_path
@@ -40,7 +41,8 @@ class Kml::Importer
 
   def save_points_in_batches(points_data)
     points_data.each_slice(1000) do |batch|
-      bulk_insert_points(batch)
+      inserted = bulk_insert_points(batch)
+      broadcast_import_progress(import, inserted)
     end
   end
 
@@ -192,7 +194,7 @@ class Kml::Importer
   end
 
   def build_gx_track_point(timestamp_str, coord_str, index)
-    time = Time.parse(timestamp_str).utc.to_i
+    time = Time.zone.parse(timestamp_str).utc.to_i
     coord_parts = coord_str.split(/\s+/)
     return nil if coord_parts.size < 2
 
@@ -200,7 +202,7 @@ class Kml::Importer
 
     {
       lonlat: "POINT(#{lng} #{lat})",
-      altitude: alt.to_i,
+      altitude: alt,
       timestamp: time,
       import_id: import.id,
       velocity: 0.0,
@@ -239,7 +241,7 @@ class Kml::Importer
     node = find_timestamp_node(placemark)
     raise 'No timestamp found in placemark' unless node
 
-    Time.parse(node.text).utc.to_i
+    Time.zone.parse(node.text).utc.to_i
   rescue StandardError => e
     Rails.logger.error("Failed to parse timestamp: #{e.message}")
     raise e
@@ -256,7 +258,7 @@ class Kml::Importer
 
     {
       lonlat: format_point_geometry(coord),
-      altitude: coord[:alt].to_i,
+      altitude: coord[:alt].to_f,
       timestamp: timestamp,
       import_id: import.id,
       velocity: extract_velocity(placemark),
@@ -322,34 +324,7 @@ class Kml::Importer
     data
   end
 
-  def bulk_insert_points(batch)
-    unique_batch = deduplicate_batch(batch)
-    upsert_points(unique_batch)
-    broadcast_import_progress(import, unique_batch.size)
-  rescue StandardError => e
-    create_notification("Failed to process KML file: #{e.message}")
-  end
-
-  def deduplicate_batch(batch)
-    batch.uniq { |record| [record[:lonlat], record[:timestamp], record[:user_id]] }
-  end
-
-  def upsert_points(batch)
-    Point.upsert_all(
-      batch,
-      unique_by: %i[lonlat timestamp user_id],
-      returning: false,
-      on_duplicate: :skip
-    )
-    # rubocop:enable Rails/SkipsModelValidations
-  end
-
-  def create_notification(message)
-    Notification.create!(
-      user_id: user_id,
-      title: 'KML Import Error',
-      content: message,
-      kind: :error
-    )
+  def importer_name
+    'KML'
   end
 end

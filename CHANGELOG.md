@@ -4,7 +4,57 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [1.4.0] — Unreleased
+## [1.5.0] - Unreleased
+
+### Added
+
+- GPS noise filtering. An automatic system to detect ahd filter out points with unrealistic speeds, altitudes, or sudden jumps.
+- Support for signing in via web view using our Android app.
+- On the map settings page user now can enable and disable map layers.
+- Onboarding modal now offers a third option to load demo data (3 days in Berlin, ~1000 points) so new users can instantly see what the map looks like. Demo imports bypass trial limits, are clearly labeled with a "Demo" badge, and can be deleted from a banner on the map page or from the imports list.
+- New tool to the Map V2 tools: The "Day per Country" button will open a modal showing a breakdown of how many days the user has spent in each country, based on their points data. This is calculated by grouping points by country and counting unique days with at least one point in that country.
+
+### Changed
+
+- [Cloud] The point creation API endpoints are being excluded from the default Lite/Pro rate limits (200/1,000 requests/hour). They now have general rate limits of 10,000 requests/hour.
+- Buildings numbers on map V2 are now shown on closer zoom.
+
+### Fixed
+
+- Users who registered via Google (or other OAuth providers) can now change their password and email without needing to enter their current password.
+- Fix deadlocks in reverse geocoding job when multiple Sidekiq workers update points concurrently.
+- Fix `counter_cache_column` error in points counter reset job by using direct SQL count instead of `reset_counters`.
+- Fix duplicate place records causing `ON CONFLICT` cardinality violations during reverse geocoding.
+- Fix `TypeError` crash in transportation mode backfill when Google export files have unexpected JSON structure.
+- Fix inability to disable visit suggestions background job due to conflicting Rails UJS and Turbo handlers causing request cancellation #2118.
+- Fix visit confirm/decline buttons firing twice #2379.
+- Fix clicking on a point in Map v2 silently moving it to the cursor position. Points now only update when intentionally dragged #2149, #2150.
+- Fix visit name suggester not recognizing Photon reverse geocoding data format, causing all suggested places to show as "Suggested place" #2151, #2377.
+- Fix visit edit form displaying UTC times instead of the user's configured timezone #2168.
+- Fix export deletion failing when the export file was manually removed from disk #915.
+- Fix PhotoPrism `before` date filter being off by one day, excluding photos taken on the end date #747.
+- Fix datetime inputs allowing 5-digit years on Chrome by adding `max` attribute to all datetime-local fields #578.
+- Fix Points page datetime fields requiring seconds input, preventing search on mobile browsers and some desktop browsers #1040, #1478.
+- Fix altitude values being truncated to integers instead of preserving decimal precision #1573.
+- Fix suggested visits keeping "Suggested Visit" name when confirmed directly without selecting a place #1725.
+- Fix visit name becoming empty and uneditable when clicking the name field and then clicking away #1776.
+- Fix trips page crashing with `undefined method 'coordinates' for nil` when trip path calculation hasn't completed yet #1356, #1765.
+- Fix Immich/PhotoPrism photos on map not being filtered by the selected date range #1755.
+- Fix short trips (less than one full day) not showing photos due to PhotoPrism `before` date filter being exclusive #1688.
+- Fix health check endpoint (`/api/v1/health`) triggering unnecessary `User Load` database queries on every request #1770.
+- Fix points created via Overland API (Home Assistant, GPSLogger) not being automatically reverse geocoded after creation #1242.
+- Fix monthly stats map crashing with `Invalid LatLng object: (NaN, NaN)` when points have missing coordinates #1762.
+- Fix trips failing with self-signed certificates by leveraging per-integration SSL skip settings #455.
+- Fix non-admin users unable to access Background Jobs settings to trigger reverse geocoding or manage visit suggestions #1714.
+- Fix family page map not loading due to `escape_javascript` producing invalid JSON in the Stimulus data attribute.
+- Fix countries appearing in visited statistics despite only being driven through without spending meaningful time in any city #1595, #1779.
+- Fix `migrate_to_new_storage` rake task crashing when export URL is blank, already migrated, or points to a directory instead of a file #1018, #1037.
+- Fix selecting the only suggested place for a visit having no effect because the dropdown `change` event never fires with a single option #471.
+- Fix city duration calculation undercounting time spent due to integer division truncating sub-minute GPS intervals to zero #2408.
+- Fix tooltips in data tables (Imports, Exports, Points) being hidden behind adjacent rows #2409.
+- Fix iOS QR code in Account settings being cut off on the right side #2406.
+
+## [1.4.0] — 2026-03-22
 
 ### Added
 
@@ -15,12 +65,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Updated look and feel
 - The point counting was changed to be more efficient on bigger accounts.
-- Redesigned raw data archival system for large instances (10M+ points). Archival now runs per-user via Sidekiq jobs instead of a single sequential process, uses PK cursor-based queries instead of full table scans, and processes in 50K-point chunks with 5K-batch flag updates to minimize DB lock contention. Inline verification removed in favor of daily spot-checks. FK constraint changed from `ON DELETE nullify` to `ON DELETE RESTRICT` to prevent cascading updates on large tables.
+- Redesigned raw data archival system for large instances (10M+ points).
 
 ### Fixed
 
 - Fix Lite plan archival warnings sending all three notifications (11-month, 11.5-month, and 12-month) simultaneously when a user's oldest data already exceeds all thresholds. Now only the most severe warning is sent, and lower thresholds are marked as already notified.
-- Fix intermittent 502/504 errors caused by `User.reset_counters(:points)` running synchronously during OwnTracks, Overland, and API point creation. The full `COUNT(*)` query blocked web workers for 60–500+ seconds on large accounts, starving all other requests. Counter reset now runs as a background job.
 - Misconfigured Prometheus settings will no longer litter logs with error messages, it will make multiple attempts to connect instead and then stop.
 - One of previous versions removed a database index making points upload very slow. The index is now added back to fix the issue.
 
