@@ -4,7 +4,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [1.5.0] - Unreleased
+## [1.5.1] - Unreleased
+
+### Fixed
+
+- Fix points and tracks interactions on Map v2 being unresponsive after the latest update.
+- Fix creating demo data from the onboarding modal.
+- Fix navbar for cloud trial users.
+- Reset months stats instead of deleting when there is no data.
+
+## [1.5.0] - 2026-03-28
 
 ### Added
 

@@ -152,29 +152,29 @@
       </div>
 
       <%# ===== Desktop navbar-end (>= lg) ===== %>
-      <ul class="menu menu-horizontal bg-base-100 rounded-box px-1 hidden lg:flex">
+      <div class="hidden lg:flex items-center gap-2 flex-nowrap">
         <% if current_user.can_subscribe? %>
-          <div class="join">
-            <%= link_to "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}" do %>
-              <span class="join-item btn btn-sm <%= trial_button_class(current_user) %>">
-                <% expiry = current_user.active_until %>
-                <% if expiry.blank? || expiry.past? %>
-                  <span class="tooltip tooltip-bottom" data-tip="Trial expired" title="Trial expired">Trial expired 🥺</span>
-                <% else %>
-                  <% days_left = [(expiry.to_date - Time.zone.today).to_i, 0].max %>
-                  <span class="tooltip tooltip-bottom"
-                        data-tip="Your trial will end in <%= distance_of_time_in_words(expiry, Time.current) %>"
-                        title="Your trial will end in <%= distance_of_time_in_words(expiry, Time.current) %>">
-                    <%= pluralize(days_left, 'day') %> remaining
-                  </span>
-                <% end %>
-              </span><span class="join-item btn btn-sm btn-success">
-                Subscribe
-              </span>
-            <% end %>
-          </div>
+          <%= link_to "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}",
+                      class: "join flex-nowrap" do %>
+            <span class="join-item btn btn-sm <%= trial_button_class(current_user) %>">
+              <% expiry = current_user.active_until %>
+              <% if expiry.blank? || expiry.past? %>
+                <span class="tooltip tooltip-bottom" data-tip="Trial expired" title="Trial expired">Trial expired 🥺</span>
+              <% else %>
+                <% days_left = [(expiry.to_date - Time.zone.today).to_i, 0].max %>
+                <span class="tooltip tooltip-bottom"
+                      data-tip="Your trial will end in <%= distance_of_time_in_words(expiry, Time.current) %>"
+                      title="Your trial will end in <%= distance_of_time_in_words(expiry, Time.current) %>">
+                  <%= pluralize(days_left, 'day') %> remaining
+                </span>
+              <% end %>
+            </span><span class="join-item btn btn-sm btn-success">
+              Subscribe
+            </span>
+          <% end %>
         <% end %>
 
+        <ul class="menu menu-horizontal px-1 flex-nowrap">
         <%= turbo_stream_from current_user, :notifications %>
         <li data-controller="notifications">
           <details>
@@ -238,6 +238,7 @@
           </details>
         </li>
       </ul>
+      </div>
     <% else %>
       <ul class="menu menu-horizontal bg-base-100 rounded-box px-1">
         <li><%= link_to 'Login', new_user_session_path %></li>

@@ -9,7 +9,7 @@ class Stats::CalculateMonth
 
   def call
     if points.empty?
-      destroy_month_stats(year, month)
+      reset_month_stats(year, month)
 
       return
     end
@@ -26,7 +26,7 @@ class Stats::CalculateMonth
   def start_timestamp = DateTime.new(year, month, 1).to_i
 
   def end_timestamp
-    DateTime.new(year, month, -1).to_i
+    DateTime.new(year, month, -1).end_of_day.to_i
   end
 
   def update_month_stats(year, month)
@@ -82,8 +82,18 @@ class Stats::CalculateMonth
     ).call
   end
 
-  def destroy_month_stats(year, month)
-    Stat.where(year:, month:, user:).destroy_all
+  def reset_month_stats(year, month)
+    stat = Stat.find_by(year:, month:, user:)
+    return unless stat
+
+    stat.update!(
+      daily_distance: {},
+      distance: 0,
+      toponyms: nil,
+      h3_hex_ids: {}
+    )
+
+    Cache::InvalidateUserCaches.new(user.id, year: year).call
   end
 
   def calculate_h3_hex_ids

@@ -16,12 +16,25 @@ RSpec.describe Stats::CalculateMonth do
       end
 
       context 'when stats already exist for the month' do
-        before do
-          create(:stat, user: user, year: year, month: month)
+        let!(:stat) { create(:stat, user: user, year: year, month: month, distance: 5000) }
+
+        it 'resets existing stats to zero instead of deleting' do
+          expect { calculate_stats }.not_to(change { Stat.count })
+          stat.reload
+          expect(stat.distance).to eq(0)
+          expect(stat.daily_distance).to eq({})
+          expect(stat.toponyms).to be_nil
+          expect(stat.h3_hex_ids).to eq({})
         end
 
-        it 'deletes existing stats for that month' do
-          expect { calculate_stats }.to change { Stat.count }.by(-1)
+        it 'invalidates caches after resetting stats' do
+          cache_service = instance_double(Cache::InvalidateUserCaches)
+          allow(Cache::InvalidateUserCaches).to receive(:new).with(user.id, year: year).and_return(cache_service)
+          allow(cache_service).to receive(:call)
+
+          calculate_stats
+
+          expect(cache_service).to have_received(:call)
         end
       end
     end
@@ -224,7 +237,7 @@ RSpec.describe Stats::CalculateMonth do
           expect(cache_service).to have_received(:call)
         end
 
-        it 'does not invalidate caches when there are no points' do
+        it 'does not invalidate caches when there are no points and no existing stat' do
           new_user = create(:user)
           service = described_class.new(new_user.id, year, month)
 
