@@ -86,7 +86,14 @@ class Stats::CalculateMonth
     stat = Stat.find_by(year:, month:, user:)
     return unless stat
 
-    stat.update!(daily_distance: {}, distance: 0, toponyms: nil)
+    stat.update!(
+      daily_distance: {},
+      distance: 0,
+      toponyms: nil,
+      h3_hex_ids: {}
+    )
+
+    Cache::InvalidateUserCaches.new(user.id, year: year).call
   end
 
   def calculate_h3_hex_ids
