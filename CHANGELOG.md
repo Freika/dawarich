@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Fix points and tracks interactions on Map v2 being unresponsive after the latest update.
 - Fix creating demo data from the onboarding modal.
 - Fix navbar for cloud trial users.
+- Reset months stats instead of deleting when there is no data.
 
 ## [1.5.0] - 2026-03-28
 

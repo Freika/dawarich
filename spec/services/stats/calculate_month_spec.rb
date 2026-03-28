@@ -16,12 +16,14 @@ RSpec.describe Stats::CalculateMonth do
       end
 
       context 'when stats already exist for the month' do
-        before do
-          create(:stat, user: user, year: year, month: month)
-        end
+        let!(:stat) { create(:stat, user: user, year: year, month: month, distance: 5000) }
 
-        it 'deletes existing stats for that month' do
-          expect { calculate_stats }.to change { Stat.count }.by(-1)
+        it 'resets existing stats to zero instead of deleting' do
+          expect { calculate_stats }.not_to(change { Stat.count })
+          stat.reload
+          expect(stat.distance).to eq(0)
+          expect(stat.daily_distance).to eq({})
+          expect(stat.toponyms).to be_nil
         end
       end
     end
