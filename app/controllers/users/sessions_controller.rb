@@ -13,6 +13,7 @@ class Users::SessionsController < Devise::SessionsController
 
   def check_otp_required
     return unless request.post?
+    return unless DawarichSettings.two_factor_available?
     return if params.dig(:user, :email).blank?
 
     user = User.find_by(email: params[:user][:email])
@@ -20,6 +21,7 @@ class Users::SessionsController < Devise::SessionsController
     return unless user.valid_password?(params[:user][:password])
 
     session[:otp_user_id] = user.id
+    session[:otp_challenge_at] = Time.current.to_i
     self.resource = user
     render :otp_challenge, status: :unprocessable_entity
   end

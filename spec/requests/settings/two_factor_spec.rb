@@ -6,7 +6,10 @@ RSpec.describe 'Settings::TwoFactor', type: :request do
   let(:password) { 'test_password_123' }
   let(:user) { create(:user, password: password) }
 
-  before { sign_in user }
+  before do
+    allow(DawarichSettings).to receive(:two_factor_available?).and_return(true)
+    sign_in user
+  end
 
   describe 'GET /settings/two_factor' do
     it 'shows 2FA status page' do

@@ -2,6 +2,7 @@
 
 class Settings::TwoFactorController < ApplicationController
   before_action :authenticate_user!
+  before_action :require_two_factor_available
 
   def show; end
 
@@ -44,6 +45,12 @@ class Settings::TwoFactorController < ApplicationController
   end
 
   private
+
+  def require_two_factor_available
+    return if DawarichSettings.two_factor_available?
+
+    redirect_to settings_general_index_path, alert: 'Two-factor authentication is not configured on this instance.'
+  end
 
   def generate_qr_code
     uri = current_user.otp_provisioning_uri(current_user.email, issuer: 'Dawarich')

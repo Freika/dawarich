@@ -3,7 +3,9 @@
     <%= link_to 'General', settings_general_index_path, role: 'tab', class: "tab tab-lg #{active_tab?(settings_general_index_path)}" %>
     <%= link_to 'Integrations', settings_integrations_path, role: 'tab', class: "tab tab-lg #{active_tab?(settings_integrations_path)}" %>
     <%= link_to 'Map', settings_maps_path, role: 'tab', class: "tab tab-lg #{active_tab?(settings_maps_path)}" %>
-    <%= link_to 'Two-Factor Authentication', settings_two_factor_path, role: 'tab', class: "tab tab-lg #{active_tab?(settings_two_factor_path)}" %>
+    <% if DawarichSettings.two_factor_available? %>
+      <%= link_to 'Two-Factor Authentication', settings_two_factor_path, role: 'tab', class: "tab tab-lg #{active_tab?(settings_two_factor_path)}" %>
+    <% end %>
     <% if DawarichSettings.self_hosted? %>
       <% if current_user.admin? %>
         <%= link_to 'Users', settings_users_path, role: 'tab', class: "tab tab-lg #{controller_path == 'settings/users' ? 'tab-active' : ''}" %>
