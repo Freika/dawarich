@@ -1,0 +1,49 @@
+<% content_for :title, "Set up Two-Factor Authentication" %>
+
+<div class="min-h-content w-full my-5">
+  <%= render 'shared/page_header', title: 'Set up Two-Factor Authentication' %>
+  <%= render 'settings/navigation' %>
+
+  <div class="max-w-lg">
+    <div class="card bg-base-200 shadow-xl">
+      <div class="card-body">
+        <h2 class="text-xl font-bold mb-2">Scan QR code</h2>
+        <p class="text-sm text-base-content/70 mb-4">
+          Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.).
+        </p>
+
+        <div class="mx-auto max-w-xs overflow-hidden rounded-2xl bg-white p-4 shadow-lg flex justify-center mb-4">
+          <%= @qr_code.html_safe %>
+        </div>
+
+        <details class="bg-base-100 rounded-lg mb-4">
+          <summary class="cursor-pointer text-sm font-medium p-4">
+            Can't scan? Enter the code manually
+          </summary>
+          <div class="px-4 pb-4 mb-4">
+            <code class="block break-all text-sm bg-base-300 p-3 rounded"><%= @otp_secret %></code>
+          </div>
+        </details>
+
+        <div class="divider"></div>
+
+        <h2 class="text-xl font-bold mb-2">Verify setup</h2>
+        <p class="text-sm text-base-content/70 mb-4">
+          Enter the 6-digit code from your authenticator app to verify the setup.
+        </p>
+
+        <%= form_with url: verify_settings_two_factor_path, method: :post, data: { turbo: false }, class: "space-y-4" do |f| %>
+          <div class="form-control">
+            <%= f.label :otp_attempt, 'Verification code', class: 'label' %>
+            <%= f.text_field :otp_attempt, class: 'input input-bordered w-full text-center text-2xl tracking-widest',
+                maxlength: 6, pattern: '[0-9]{6}', inputmode: 'numeric', autocomplete: 'one-time-code',
+                autofocus: true, required: true, placeholder: '000000' %>
+          </div>
+          <div class="form-control">
+            <%= f.submit 'Verify and enable', class: 'btn btn-primary w-full' %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>

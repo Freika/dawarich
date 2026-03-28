@@ -6,9 +6,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [1.5.2] - 2026-03-28
 
+### Added
+
+- Users can now optionally enable two-factor authentication (2FA) for their accounts in Settings > Two-Factor Authentication. Supported methods: TOTP apps (Google Authenticator, Authy, etc.) and backup codes. Once enabled, users will be prompted for a 2FA code on login. This adds an extra layer of security to protect your location data.
+
 ### Fixed
 
 - Fix OIDC account linking failing when the email from the identity provider has different casing than the existing Dawarich account #1983.
+- Fix confirmation dialogs being ignored when clicking "Cancel" — destructive actions (account deletion, import/export deletion, place deletion) fired regardless of user choice due to Rails UJS and Turbo both handling the same click #1978.
 
 ## [1.5.1] - 2026-03-28
 

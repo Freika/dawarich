@@ -1,0 +1,30 @@
+<div class="hero min-h-content bg-base-200">
+  <div class="hero-content flex-col lg:flex-row-reverse w-full my-10">
+    <div class="text-center lg:text-left">
+      <h1 class="text-5xl font-bold text-base-content">Two-Factor Authentication</h1>
+      <p class="py-6 text-base-content opacity-70">
+        Enter the 6-digit code from your authenticator app to continue.
+      </p>
+    </div>
+    <div class="card flex-shrink-0 w-full max-w-sm shadow-2xl bg-base-100 px-5 py-5">
+      <%= form_with url: user_otp_challenge_path, method: :post, class: 'form-body' do |f| %>
+        <div class="form-control">
+          <%= f.label :otp_attempt, 'Authentication code', class: 'label' do %>
+            <span class="label-text">Authentication code</span>
+          <% end %>
+          <%= f.text_field :otp_attempt, class: 'input input-bordered text-center text-2xl tracking-widest',
+              maxlength: 32, inputmode: 'numeric', autocomplete: 'one-time-code',
+              autofocus: true, required: true, placeholder: '000000' %>
+          <p class="text-xs text-base-content/50 mt-2">You can also use a backup code.</p>
+        </div>
+        <div class="form-control mt-6">
+          <%= f.submit 'Verify', class: 'btn btn-primary' %>
+        </div>
+      <% end %>
+
+      <div class="text-center mt-4">
+        <%= link_to 'Back to login', new_user_session_path, class: 'link link-hover text-sm' %>
+      </div>
+    </div>
+  </div>
+</div>
