@@ -604,11 +604,11 @@ class LocationSearch {
           <div class="text-xs text-gray-500">Duration: ${visit.duration_estimate}</div>
         </div>
         <div class="mt-3 pt-2 border-t border-gray-200 flex gap-2">
-          <button onclick="window.locationSearchInstance?.createVisitAt?.(${lat}, ${lon}, '${this.escapeHtml(location.place_name)}', '${visit.date}', '${visit.duration_estimate}')"
+          <button data-action="create-visit"
                   class="text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 flex-1">
             Create Visit
           </button>
-          <button onclick="this.getRootNode().host?.closePopup?.() || this.closest('.leaflet-popup').querySelector('.leaflet-popup-close-button')?.click()"
+          <button data-action="close-popup"
                   class="text-xs text-blue-600 hover:text-blue-800 px-2">
             Close
           </button>
@@ -621,6 +621,26 @@ class LocationSearch {
       autoClose: false, // Don't auto-close when clicking elsewhere
       closeOnEscapeKey: true, // Allow closing with Escape key
       closeOnClick: false, // Don't close when clicking on map
+    })
+
+    this.visitMarker.on("popupopen", () => {
+      const popup = this.visitMarker.getPopup().getElement()
+      popup
+        ?.querySelector('[data-action="create-visit"]')
+        ?.addEventListener("click", () => {
+          this.createVisitAt(
+            lat,
+            lon,
+            location.place_name,
+            visit.date,
+            visit.duration_estimate,
+          )
+        })
+      popup
+        ?.querySelector('[data-action="close-popup"]')
+        ?.addEventListener("click", () => {
+          this.visitMarker.closePopup()
+        })
     })
 
     this.visitMarker.addTo(this.map)

@@ -8,6 +8,7 @@ class User < ApplicationRecord
 
   devise :database_authenticatable, :registerable,
          :recoverable, :rememberable, :validatable, :trackable,
+         :lockable,
          :omniauthable, omniauth_providers: ::OMNIAUTH_PROVIDERS
 
   has_many :points, dependent: :destroy

@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Settings::Update
+  include UrlValidatable
+
   attr_reader :user, :settings_params, :refresh_photos_cache
 
   def initialize(user, settings_params, refresh_photos_cache: false)
@@ -15,6 +17,14 @@ class Settings::Update
 
     immich_changed = settings_changed?(existing_settings, updated_settings, %w[immich_url immich_api_key])
     photoprism_changed = settings_changed?(existing_settings, updated_settings, %w[photoprism_url photoprism_api_key])
+
+    %w[immich_url photoprism_url].each do |key|
+      next if updated_settings[key].blank?
+
+      validate_integration_url!(updated_settings[key])
+    rescue UrlValidatable::BlockedUrlError => e
+      return { success: false, notices: [], alerts: ["#{key.humanize} is not allowed: #{e.message}"] }
+    end
 
     unless user.update(settings: updated_settings)
       return { success: false, notices: [], alerts: ['Settings could not be updated'] }

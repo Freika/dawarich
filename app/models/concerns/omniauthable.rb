@@ -14,8 +14,8 @@ module Omniauthable
 
       return user if user
 
-      # If not found, try to find by email
-      user = find_by(email: data['email']) if data['email'].present?
+      # If not found, try to find by email (case-insensitive)
+      user = where('LOWER(email) = LOWER(?)', data['email']).first if data['email'].present?
 
       if user
         # Update provider and uid for existing user (first-time linking)

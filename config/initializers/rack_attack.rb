@@ -57,6 +57,19 @@ Rack::Attack.throttle('api/points_creation', limit: 10_000, period: 1.hour) do |
   "points_creation:#{api_key}"
 end
 
+# Login brute-force protection: 5 attempts per email per minute, 20 per IP per minute.
+Rack::Attack.throttle('logins/email', limit: 5, period: 1.minute) do |req|
+  next unless req.path == '/users/sign_in' && req.post?
+
+  req.params.dig('user', 'email')&.downcase&.strip
+end
+
+Rack::Attack.throttle('logins/ip', limit: 20, period: 1.minute) do |req|
+  next unless req.path == '/users/sign_in' && req.post?
+
+  req.ip
+end
+
 Rack::Attack.throttled_responder = lambda do |request|
   match_data = request.env['rack.attack.match_data'] || {}
   now = Time.current
