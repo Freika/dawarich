@@ -270,6 +270,9 @@ export class MapDataManager {
         handleAreaClick: this.eventHandlers.handleAreaClick.bind(
           this.eventHandlers,
         ),
+        handleAnomalyClick: this.eventHandlers.handleAnomalyClick.bind(
+          this.eventHandlers,
+        ),
         handleRouteClick: this.eventHandlers.handleRouteClick.bind(
           this.eventHandlers,
         ),
