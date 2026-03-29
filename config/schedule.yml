@@ -82,7 +82,7 @@ lite_archival_warning_job:
 
 # Raw data archival pipeline — enable when ready for production use.
 # Pipeline: archive (1st) → verify (daily) → clear (8th, 7 days after archive).
-See https://github.com/Freika/dawarich/issues/XXXX for tracking.
+# See https://github.com/Freika/dawarich/issues/XXXX for tracking.
 raw_data_archive_job:
   cron: "0 3 1 * *" # 1st of month at 03:00
   class: "Points::RawData::ArchiveJob"

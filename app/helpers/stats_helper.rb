@@ -20,8 +20,9 @@ module StatsHelper
   end
 
   def countries_and_cities_stat_for_month(stat)
-    countries = stat.toponyms.count { _1['country'] }
-    cities = stat.toponyms.sum { _1['cities'].count }
+    visited = stat.toponyms.select { |t| t['country'].present? && t['cities']&.any? }
+    countries = visited.count
+    cities = visited.sum { _1['cities'].count }
 
     "#{countries} countries, #{cities} cities"
   end
@@ -41,7 +42,7 @@ module StatsHelper
   end
 
   def countries_visited(stat)
-    stat.toponyms.count { _1['country'] }
+    stat.toponyms.count { |t| t['country'].present? && t['cities']&.any? }
   end
 
   def peak_day(stat)

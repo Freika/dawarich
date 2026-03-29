@@ -4,16 +4,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [1.5.2] - 2026-03-28
+## [1.5.2] - 2026-03-29
 
 ### Added
 
+- Immich users can now enrich their photos with geodata.
 - Users can now optionally enable two-factor authentication (2FA) for their accounts in Settings > Two-Factor Authentication. Supported methods: TOTP apps (Google Authenticator, Authy, etc.) and backup codes. Once enabled, users will be prompted for a 2FA code on login. This adds an extra layer of security to protect your location data.
 
 ### Fixed
 
 - Fix OIDC account linking failing when the email from the identity provider has different casing than the existing Dawarich account #1983.
 - Fix confirmation dialogs being ignored when clicking "Cancel" — destructive actions (account deletion, import/export deletion, place deletion) fired regardless of user choice due to Rails UJS and Turbo both handling the same click #1978.
+- Fix Year in Review share link being empty when toggling public access #2418.
+- Fix address field on Points page being empty when geodata properties are unavailable #2419.
+- Fix Stats API returning the same country/city count for every year instead of per-year counts #2280.
+- Fix flyover countries (with no visited cities) still showing in monthly stats views #2423.
+- Fix importing Google Timeline files. #2427
 
 ## [1.5.1] - 2026-03-28
 
