@@ -4,7 +4,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [1.5.2] - 2026-03-28
+## [1.5.2] - 2026-03-29
+
+### Added
+
+- Immich users can now enrich their photos with geodata.
 
 ### Fixed
 
@@ -13,6 +17,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Fix address field on Points page being empty when geodata properties are unavailable #2419.
 - Fix Stats API returning the same country/city count for every year instead of per-year counts #2280.
 - Fix flyover countries (with no visited cities) still showing in monthly stats views #2423.
+- Fix importing Google Timeline files. #2427
 
 ## [1.5.1] - 2026-03-28
 

@@ -261,6 +261,11 @@ Rails.application.routes.draw do
         end
       end
 
+      namespace :immich do
+        post 'enrich/scan', to: 'enrich#scan'
+        post 'enrich', to: 'enrich#create'
+      end
+
       namespace :families do
         resources :locations, only: [:index] do
           collection do

@@ -44,7 +44,7 @@
                   <div class="relative">
                     <%= f.password_field :immich_api_key, value: current_user.safe_settings.immich_api_key, class: "input input-bordered w-full pr-10", placeholder: 'xxxxxxxxxxxxxx' %>
                   </div>
-                  <span class="label-text-alt mt-1">Found in your Immich admin panel under API settings. Required permissions: <code class="text-xs">asset.read</code> and <code class="text-xs">asset.view</code>.</span>
+                  <span class="label-text-alt mt-1">Found in your Immich admin panel under API settings. Required permissions: <code class="text-xs">asset.read</code>, <code class="text-xs">asset.view</code>, and <code class="text-xs">asset.update</code> (for photo enrichment).</span>
                 </div>
                 <div class="form-control">
                   <label class="label cursor-pointer justify-start gap-3">
