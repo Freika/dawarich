@@ -15,6 +15,7 @@ gem 'chartkick'
 gem 'connection_pool', '< 3' # Pin to 2.x - version 3.0+ has breaking API changes with Rails RedisCacheStore
 gem 'data_migrate'
 gem 'devise'
+gem 'devise-two-factor'
 gem 'fit4ruby', '~> 3.13'
 gem 'foreman'
 gem 'geocoder', github: 'Freika/geocoder', branch: 'master'
