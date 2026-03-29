@@ -1037,7 +1037,97 @@
                 <span class="text-xs">Days / Country</span>
               </button>
             <% end %>
+
+            <% if current_user.immich_integration_configured? && (DawarichSettings.self_hosted? || current_user.pro?) %>
+              <button type="button"
+                      class="btn btn-sm btn-outline flex flex-col items-center gap-1 h-auto py-3"
+                      id="immich-enrich-toggle-btn">
+                <%= icon 'camera' %>
+                <span class="text-xs">Enrich Photos</span>
+              </button>
+            <% end %>
           </div>
+
+          <!-- Immich Enrich Panel -->
+          <% if current_user.immich_integration_configured? && (DawarichSettings.self_hosted? || current_user.pro?) %>
+            <div class="hidden mt-4"
+                 data-controller="maps--immich-enrich"
+                 data-maps--immich-enrich-api-key-value="<%= current_user.api_key %>"
+                 data-maps--immich-enrich-toggle-btn-value="immich-enrich-toggle-btn"
+                 data-maps--immich-enrich-immich-url-value="<%= current_user.safe_settings.immich_url %>"
+              <div class="card bg-base-200 shadow-md">
+                <div class="card-body p-4">
+                  <div class="flex justify-between items-start mb-2">
+                    <h4 class="card-title text-base">Enrich Immich Photos</h4>
+                    <button class="btn btn-ghost btn-xs btn-circle" data-action="click->maps--immich-enrich#toggle" title="Close">✕</button>
+                  </div>
+
+                  <!-- Scan Form -->
+                  <div data-maps--immich-enrich-target="scanForm">
+                    <p class="text-sm text-base-content/70 mb-3">
+                      Find photos without GPS data and match them to your location history.
+                    </p>
+                    <div class="space-y-2">
+                      <div class="form-control">
+                        <label class="label py-1">
+                          <span class="label-text text-xs">Date range</span>
+                        </label>
+                        <div class="flex gap-2">
+                          <input type="date" class="input input-bordered input-sm flex-1"
+                                 data-maps--immich-enrich-target="startDate">
+                          <input type="date" class="input input-bordered input-sm flex-1"
+                                 data-maps--immich-enrich-target="endDate">
+                        </div>
+                      </div>
+                      <div class="form-control">
+                        <label class="label py-1">
+                          <span class="label-text text-xs">Tolerance (minutes)</span>
+                        </label>
+                        <input type="number" value="30" min="1" max="120" class="input input-bordered input-sm"
+                               data-maps--immich-enrich-target="tolerance">
+                      </div>
+                      <button class="btn btn-primary btn-sm w-full mt-2"
+                              data-action="click->maps--immich-enrich#scan">
+                        Scan for matches
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Loading -->
+                  <div class="hidden text-center py-4" data-maps--immich-enrich-target="loading">
+                    <span class="loading loading-spinner loading-md"></span>
+                    <p class="text-sm mt-2" data-maps--immich-enrich-target="loadingText">Scanning Immich photos...</p>
+                  </div>
+
+                  <!-- Results -->
+                  <div class="hidden" data-maps--immich-enrich-target="results">
+                    <div class="flex justify-between items-center mb-2">
+                      <span class="text-sm font-medium" data-maps--immich-enrich-target="resultsSummary"></span>
+                      <label class="label cursor-pointer gap-2">
+                        <span class="label-text text-xs">All</span>
+                        <input type="checkbox" class="checkbox checkbox-xs" checked
+                               data-action="change->maps--immich-enrich#toggleSelectAll"
+                               data-maps--immich-enrich-target="selectAll">
+                      </label>
+                    </div>
+                    <div class="max-h-64 overflow-y-auto space-y-1" data-maps--immich-enrich-target="matchList">
+                    </div>
+                    <div class="flex gap-2 mt-3">
+                      <button class="btn btn-ghost btn-sm flex-1"
+                              data-action="click->maps--immich-enrich#backToScan">
+                        Back
+                      </button>
+                      <button class="btn btn-primary btn-sm flex-1"
+                              data-action="click->maps--immich-enrich#enrich"
+                              data-maps--immich-enrich-target="enrichButton">
+                        Enrich
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          <% end %>
 
           <!-- Info Display (shown when clicking on visit/area/place) -->
           <div class="hidden mt-4" data-maps--maplibre-target="infoDisplay">

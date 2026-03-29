@@ -79,15 +79,17 @@ class Imports::SourceDetector
     return :csv if csv_file?
 
     json_data = parse_json
-    return nil unless json_data
 
-    DETECTION_RULES.each do |format, rules|
-      next if format == :owntracks # Already handled above
+    if json_data
+      DETECTION_RULES.each do |format, rules|
+        next if format == :owntracks # Already handled above
 
-      return format if matches_format?(json_data, rules)
+        return format if matches_format?(json_data, rules)
+      end
     end
 
-    nil
+    # Fallback: detect from raw content when JSON parsing fails (e.g. deeply nested truncation)
+    detect_from_raw_content
   end
 
   def detect_source!
@@ -193,6 +195,27 @@ class Imports::SourceDetector
     all_aliases = Imports::FieldAliases::ALIASES.values.flatten.map(&:downcase)
     matched = headers.count { |h| all_aliases.include?(h) }
     matched >= 2
+  end
+
+  def detect_from_raw_content
+    content = if file_path && File.exist?(file_path)
+                File.open(file_path, 'rb') { |f| f.read(MAX_DETECTION_BYTES) }
+              else
+                file_content
+              end
+    return nil if content.blank?
+
+    if content.include?('"semanticSegments"') &&
+        (content.include?('"startTime"') || content.include?('"visit"') || content.include?('"activity"'))
+      :google_phone_takeout
+    elsif content.include?('"timelineObjects"') &&
+        (content.include?('"activitySegment"') || content.include?('"placeVisit"'))
+      :google_semantic_history
+    elsif content.include?('"locations"') && content.include?('"latitudeE7"')
+      :google_records
+    elsif content.include?('"FeatureCollection"') && content.include?('"features"')
+      :geojson
+    end
   end
 
   MAX_DETECTION_BYTES = 8192 # 8KB is enough to detect top-level keys and first array elements
