@@ -2,6 +2,9 @@ import { Controller } from "@hotwired/stimulus"
 import maplibregl from "maplibre-gl"
 import Flash from "../flash_controller"
 
+const EXTERNAL_LINK_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>`
+const SCAN_DEBOUNCE_MS = 2000
+
 export default class extends Controller {
   static targets = [
     "scanForm",
@@ -15,6 +18,7 @@ export default class extends Controller {
     "startDate",
     "endDate",
     "tolerance",
+    "scanButton",
   ]
 
   static values = { apiKey: String, toggleBtn: String, immichUrl: String }
@@ -22,6 +26,8 @@ export default class extends Controller {
   connect() {
     this.matches = []
     this.markers = []
+    this.markerElements = []
+    this.scanning = false
     this.initDateDefaults()
     this.bindToggleButton()
   }
@@ -49,7 +55,6 @@ export default class extends Controller {
 
   toggle() {
     this.element.classList.toggle("hidden")
-
     if (this.element.classList.contains("hidden")) {
       this.removeMarkers()
     }
@@ -70,7 +75,20 @@ export default class extends Controller {
     }
   }
 
+  // --- API helpers ---
+
+  apiHeaders() {
+    return {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${this.apiKeyValue}`,
+    }
+  }
+
+  // --- Scan ---
+
   async scan() {
+    if (this.scanning) return
+
     const startDate = this.startDateTarget.value
     const endDate = this.endDateTarget.value
     const tolerance = (parseInt(this.toleranceTarget.value, 10) || 30) * 60
@@ -80,22 +98,24 @@ export default class extends Controller {
       return
     }
 
+    // Sync the map's date range and reload map data
+    this.syncMapDateRange(startDate, endDate)
+
+    this.scanning = true
+    if (this.hasScanButtonTarget) this.scanButtonTarget.disabled = true
     this.showLoading("Scanning Immich photos...")
     this.removeMarkers()
 
     try {
-      const response = await fetch(
-        `/api/v1/immich/enrich/scan?api_key=${this.apiKeyValue}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            start_date: startDate,
-            end_date: endDate,
-            tolerance,
-          }),
-        },
-      )
+      const response = await fetch("/api/v1/immich/enrich/scan", {
+        method: "POST",
+        headers: this.apiHeaders(),
+        body: JSON.stringify({
+          start_date: startDate,
+          end_date: endDate,
+          tolerance,
+        }),
+      })
 
       const data = await response.json()
 
@@ -111,70 +131,118 @@ export default class extends Controller {
       console.error("[Immich Enrich] Scan failed:", error)
       Flash.show("error", "Failed to scan photos")
       this.showScanForm()
+    } finally {
+      setTimeout(() => {
+        this.scanning = false
+        if (this.hasScanButtonTarget) this.scanButtonTarget.disabled = false
+      }, SCAN_DEBOUNCE_MS)
     }
   }
 
-  renderResults(data) {
-    this.resultsSummaryTarget.textContent = `${data.total_matched} of ${data.total_without_geodata} photos matched`
+  syncMapDateRange(startDate, endDate) {
+    const startIso = `${startDate}T00:00`
+    const endIso = `${endDate}T23:59`
 
+    // Update map controller's date values and reload map data
+    const mapController = this.findMapController()
+    if (mapController) {
+      mapController.startDateValue = startIso
+      mapController.endDateValue = endIso
+      mapController.loadMapData()
+    }
+
+    // Update the date navigation inputs
+    const startInput = document.querySelector("input[name='start_at']")
+    const endInput = document.querySelector("input[name='end_at']")
+    if (startInput) startInput.value = startIso
+    if (endInput) endInput.value = endIso
+
+    // Update URL without reload
+    const url = new URL(window.location.href)
+    url.searchParams.set("start_at", startIso)
+    url.searchParams.set("end_at", endIso)
+    window.history.replaceState({}, "", url.toString())
+  }
+
+  // --- Results rendering ---
+
+  renderResults(data) {
+    if (this.matches.length === 0) {
+      this.resultsSummaryTarget.innerHTML = `
+        <div class="text-center py-3">
+          <div class="text-base-content/40 text-2xl mb-1">📷</div>
+          <div class="text-sm font-medium">${data.total_without_geodata} photos without GPS</div>
+          <div class="text-xs text-base-content/50">No matches found within tolerance</div>
+        </div>
+      `
+      this.matchListTarget.innerHTML = ""
+      this.updateEnrichButton()
+      this.showResults()
+      return
+    }
+
+    this.resultsSummaryTarget.textContent = `${data.total_matched} of ${data.total_without_geodata} matched`
     this.matchListTarget.innerHTML = ""
 
-    this.matches.forEach((match, index) => {
-      const timeDelta = this.formatTimeDelta(match.time_delta_seconds)
-      const badgeClass = this.confidenceBadgeClass(match.time_delta_seconds)
-
-      const item = document.createElement("div")
-      item.className =
-        "flex items-start gap-2 p-2 rounded-lg bg-base-100 cursor-pointer hover:bg-base-300 transition-colors"
-      item.dataset.index = index
-      item.dataset.action = "click->maps--immich-enrich#focusMatch"
-
-      const thumbUrl = `/api/v1/photos/${match.immich_asset_id}/thumbnail?source=immich&api_key=${this.apiKeyValue}`
-      const immichPhotoUrl = `${this.immichUrlValue}/photos/${match.immich_asset_id}`
-
-      const externalLinkSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>`
-
-      item.innerHTML = `
-        <input type="checkbox" class="checkbox checkbox-xs mt-1" checked
-               data-index="${index}"
-               data-action="change->maps--immich-enrich#updateSelection">
-        <div class="flex-shrink-0 enrich-thumb-wrapper"
-             data-thumb-url="${thumbUrl}"
-             data-filename="${this.escapeHtml(match.filename)}">
-          <img src="${thumbUrl}" alt="${this.escapeHtml(match.filename)}"
-               class="w-10 h-10 rounded object-cover"
-               loading="lazy"
-               onerror="this.parentElement.style.display='none'">
-        </div>
-        <div class="flex-1 min-w-0">
-          <div class="text-sm font-medium truncate">${this.escapeHtml(match.filename)}</div>
-          <div class="text-xs text-base-content/60">
-            ${this.formatDatetime(match.photo_timestamp)}
-          </div>
-          <div class="text-xs text-base-content/60">
-            ${timeDelta} delta
-            <span class="badge badge-xs ${badgeClass} ml-1">${match.match_method}</span>
-          </div>
-          <div class="text-xs text-base-content/50">
-            ${match.latitude.toFixed(4)}°, ${match.longitude.toFixed(4)}°
-          </div>
-        </div>
-        <a href="${immichPhotoUrl}" target="_blank" rel="noopener noreferrer"
-           class="btn btn-ghost btn-xs flex-shrink-0 self-center opacity-50 hover:opacity-100"
-           title="Open in Immich"
-           onclick="event.stopPropagation()">
-          ${externalLinkSvg}
-        </a>
-      `
-
-      this.matchListTarget.appendChild(item)
-    })
+    for (const [index, match] of this.matches.entries()) {
+      this.matchListTarget.appendChild(this.buildMatchItem(match, index))
+    }
 
     this.bindThumbHovers()
     this.updateEnrichButton()
     this.showResults()
     this.addMarkers()
   }
+
+  buildMatchItem(match, index) {
+    const timeDelta = this.formatTimeDelta(match.time_delta_seconds)
+    const badgeClass = this.confidenceBadgeClass(match.time_delta_seconds)
+    const thumbUrl = this.thumbnailUrl(match.immich_asset_id)
+    const immichPhotoUrl = `${this.immichUrlValue}/photos/${match.immich_asset_id}`
+
+    const item = document.createElement("div")
+    item.className =
+      "flex items-center gap-2 p-2 rounded-lg bg-base-100 cursor-pointer hover:bg-base-300/50 transition-all border border-transparent hover:border-base-300"
+    item.dataset.index = index
+    item.dataset.action = "click->maps--immich-enrich#focusMatch"
+
+    item.innerHTML = `
+      <input type="checkbox" class="checkbox checkbox-xs checkbox-primary" checked
+             data-index="${index}"
+             data-action="change->maps--immich-enrich#updateSelection"
+             onclick="event.stopPropagation()">
+      <div class="flex-shrink-0 enrich-thumb-wrapper"
+           data-thumb-url="${thumbUrl}"
+           data-filename="${this.escapeHtml(match.filename)}">
+        <img src="${thumbUrl}" alt=""
+             class="w-10 h-10 rounded-md object-cover ring-1 ring-base-300"
+             loading="lazy"
+             onerror="this.parentElement.style.display='none'">
+      </div>
+      <div class="flex-1 min-w-0">
+        <div class="text-sm font-medium truncate leading-tight">${this.escapeHtml(match.filename)}</div>
+        <div class="text-xs text-base-content/50 leading-tight mt-0.5">
+          ${this.formatDatetime(match.photo_timestamp)}
+          <span class="mx-0.5">&middot;</span>
+          <span class="badge badge-xs ${badgeClass}">${match.match_method}</span>
+          <span class="mx-0.5">&middot;</span>
+          ${timeDelta}
+        </div>
+        <div class="text-xs text-base-content/40 leading-tight font-mono" data-coord>
+          ${match.latitude.toFixed(4)}, ${match.longitude.toFixed(4)}
+        </div>
+      </div>
+      <a href="${immichPhotoUrl}" target="_blank" rel="noopener noreferrer"
+         class="btn btn-ghost btn-xs btn-square flex-shrink-0 opacity-40 hover:opacity-100"
+         title="Open in Immich"
+         onclick="event.stopPropagation()">
+        ${EXTERNAL_LINK_SVG}
+      </a>
+    `
+    return item
+  }
+
+  // --- Thumbnail tooltip ---
 
   bindThumbHovers() {
     this.matchListTarget
@@ -187,7 +255,7 @@ export default class extends Controller {
       })
   }
 
-  showThumbTooltip(event, wrapper) {
+  showThumbTooltip(_event, wrapper) {
     this.hideThumbTooltip()
 
     const url = wrapper.dataset.thumbUrl
@@ -198,14 +266,15 @@ export default class extends Controller {
     tooltip.style.cssText = `
       position: fixed; z-index: 9999; pointer-events: none;
       padding: 4px; background: var(--fallback-b1, oklch(var(--b1)));
-      border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+      border-radius: 12px; box-shadow: 0 12px 32px rgba(0,0,0,0.25);
       border: 1px solid var(--fallback-b3, oklch(var(--b3)));
     `
     tooltip.innerHTML = `
       <img src="${url}" alt="${name}"
-           style="width: 200px; height: 200px; object-fit: cover; border-radius: 6px; display: block;">
-      <div style="text-align: center; font-size: 11px; padding: 4px 0 2px; opacity: 0.7;
-                  max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+           style="width: 220px; height: 220px; object-fit: cover; border-radius: 8px; display: block;"
+           onerror="this.parentElement.remove()">
+      <div style="text-align: center; font-size: 11px; padding: 4px 0 2px; opacity: 0.6;
+                  max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
         ${name}
       </div>
     `
@@ -230,21 +299,28 @@ export default class extends Controller {
     if (existing) existing.remove()
   }
 
+  // --- List interaction ---
+
   focusMatch(event) {
-    const index = parseInt(event.currentTarget.dataset.index, 10)
+    const item = event.currentTarget
+    const index = parseInt(item.dataset.index, 10)
     const match = this.matches[index]
     if (!match) return
 
+    const marker = this.markers[index]
+    const lngLat = marker ? marker.getLngLat() : null
+    const lng = lngLat ? lngLat.lng : match.longitude
+    const lat = lngLat ? lngLat.lat : match.latitude
+
     const map = this.getMap()
     if (map) {
-      map.flyTo({ center: [match.longitude, match.latitude], zoom: 15 })
+      map.flyTo({ center: [lng, lat], zoom: 15 })
     }
 
-    // Highlight list item
     this.matchListTarget.querySelectorAll("[data-index]").forEach((el) => {
       el.classList.remove("ring-2", "ring-primary")
     })
-    event.currentTarget.classList.add("ring-2", "ring-primary")
+    item.classList.add("ring-2", "ring-primary")
   }
 
   toggleSelectAll() {
@@ -282,43 +358,46 @@ export default class extends Controller {
       .forEach((cb) => {
         const index = parseInt(cb.dataset.index, 10)
         const match = this.matches[index]
-        if (match) {
-          // Use marker position if it was dragged, otherwise use original
-          const marker = this.markers[index]
-          if (marker) {
-            const lngLat = marker.getLngLat()
-            selected.push({
-              immich_asset_id: match.immich_asset_id,
-              latitude: lngLat.lat,
-              longitude: lngLat.lng,
-            })
-          } else {
-            selected.push({
-              immich_asset_id: match.immich_asset_id,
-              latitude: match.latitude,
-              longitude: match.longitude,
-            })
-          }
+        if (!match) return
+
+        const marker = this.markers[index]
+        if (marker) {
+          const lngLat = marker.getLngLat()
+          selected.push({
+            immich_asset_id: match.immich_asset_id,
+            latitude: lngLat.lat,
+            longitude: lngLat.lng,
+          })
+        } else {
+          selected.push({
+            immich_asset_id: match.immich_asset_id,
+            latitude: match.latitude,
+            longitude: match.longitude,
+          })
         }
       })
     return selected
   }
 
+  // --- Enrich ---
+
   async enrich() {
     const assets = this.selectedMatches()
     if (assets.length === 0) return
 
+    const confirmed = window.confirm(
+      `Write GPS coordinates to ${assets.length} photo${assets.length !== 1 ? "s" : ""} in Immich? This will update their location metadata.`,
+    )
+    if (!confirmed) return
+
     this.showLoading(`Enriching ${assets.length} photos...`)
 
     try {
-      const response = await fetch(
-        `/api/v1/immich/enrich?api_key=${this.apiKeyValue}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ assets }),
-        },
-      )
+      const response = await fetch("/api/v1/immich/enrich", {
+        method: "POST",
+        headers: this.apiHeaders(),
+        body: JSON.stringify({ assets }),
+      })
 
       const data = await response.json()
 
@@ -348,7 +427,8 @@ export default class extends Controller {
     this.showScanForm()
   }
 
-  // Map marker management
+  // --- Map markers ---
+
   addMarkers() {
     const map = this.getMap()
     if (!map) return
@@ -391,9 +471,9 @@ export default class extends Controller {
           `[data-index="${index}"]`,
         )
         if (listItem) {
-          const coordEl = listItem.querySelector(".text-base-content\\/50")
+          const coordEl = listItem.querySelector("[data-coord]")
           if (coordEl) {
-            coordEl.textContent = `${lngLat.lat.toFixed(4)}°, ${lngLat.lng.toFixed(4)}°`
+            coordEl.textContent = `${lngLat.lat.toFixed(4)}, ${lngLat.lng.toFixed(4)}`
           }
         }
       })
@@ -426,7 +506,6 @@ export default class extends Controller {
     const icon = selected ? "📷✓" : "📷"
 
     if (initial) {
-      // Only set cssText on first creation, before MapLibre adds transform
       el.style.cssText = `
         width: 32px; height: 32px; border-radius: 50%;
         background: ${color}; border: 2px solid white;
@@ -435,7 +514,6 @@ export default class extends Controller {
         font-size: 12px; pointer-events: auto; z-index: 10;
       `
     } else {
-      // Update only visual properties, preserve MapLibre's transform
       el.style.background = color
       el.style.border = selected ? "2px solid white" : "2px dashed #6b7280"
       el.style.opacity = selected ? "1" : "0.6"
@@ -468,7 +546,8 @@ export default class extends Controller {
     this.markerElements = []
   }
 
-  // UI state management
+  // --- UI state ---
+
   showLoading(text) {
     this.scanFormTarget.classList.add("hidden")
     this.resultsTarget.classList.add("hidden")
@@ -488,7 +567,8 @@ export default class extends Controller {
     this.resultsTarget.classList.remove("hidden")
   }
 
-  // Helpers
+  // --- Helpers ---
+
   findMapController() {
     const mapElement = document.querySelector(
       "[data-controller*='maps--maplibre']",
@@ -503,6 +583,10 @@ export default class extends Controller {
   getMap() {
     const controller = this.findMapController()
     return controller?.map || null
+  }
+
+  thumbnailUrl(assetId) {
+    return `/api/v1/photos/${assetId}/thumbnail?source=immich&api_key=${this.apiKeyValue}`
   }
 
   formatDatetime(isoString) {
@@ -523,9 +607,9 @@ export default class extends Controller {
   }
 
   confidenceColor(timeDelta) {
-    if (timeDelta < 300) return "#22c55e" // green: < 5 min
-    if (timeDelta < 900) return "#eab308" // yellow: 5-15 min
-    return "#f97316" // orange: > 15 min
+    if (timeDelta < 300) return "#22c55e"
+    if (timeDelta < 900) return "#eab308"
+    return "#f97316"
   }
 
   confidenceBadgeClass(timeDelta) {

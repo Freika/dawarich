@@ -15,9 +15,16 @@ class Api::V1::Immich::EnrichController < ApiController
   end
 
   def create
-    assets = params[:assets] || []
-    result = Immich::EnrichPhotos.new(current_api_user, assets.map(&:to_unsafe_h)).call
+    result = Immich::EnrichPhotos.new(current_api_user, permitted_assets).call
 
     render json: result
+  end
+
+  private
+
+  def permitted_assets
+    (params[:assets] || []).map do |asset|
+      asset.permit(:immich_asset_id, :latitude, :longitude).to_h
+    end
   end
 end

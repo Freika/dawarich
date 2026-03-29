@@ -36,13 +36,15 @@ class Immich::EnrichPhotos
   private
 
   def update_asset(asset)
+    options = {
+      headers:,
+      body: { latitude: asset['latitude'], longitude: asset['longitude'] }.to_json,
+      timeout: 10
+    }
+
     response = HTTParty.put(
       "#{immich_url}/api/assets/#{asset['immich_asset_id']}",
-      http_options_with_ssl(user, :immich, {
-                              headers: headers,
-        body: { latitude: asset['latitude'], longitude: asset['longitude'] }.to_json,
-        timeout: 10
-                            })
+      http_options_with_ssl(user, :immich, options)
     )
 
     if response.success?

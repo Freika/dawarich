@@ -39,10 +39,10 @@ class Immich::EnrichScan
   end
 
   def filter_photos_without_geodata(photos)
-    photos.reject { |photo| has_geodata?(photo) }
+    photos.reject { |photo| geodata?(photo) }
   end
 
-  def has_geodata?(photo)
+  def geodata?(photo)
     lat = photo.dig('exifInfo', 'latitude')
     lon = photo.dig('exifInfo', 'longitude')
 
