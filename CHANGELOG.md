@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 - Fix OIDC account linking failing when the email from the identity provider has different casing than the existing Dawarich account #1983.
+- Fix Year in Review share link being empty when toggling public access #2418.
+- Fix address field on Points page being empty when geodata properties are unavailable #2419.
+- Fix Stats API returning the same country/city count for every year instead of per-year counts #2280.
+- Fix flyover countries (with no visited cities) still showing in monthly stats views #2423.
 
 ## [1.5.1] - 2026-03-28
 
