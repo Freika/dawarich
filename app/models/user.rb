@@ -6,9 +6,11 @@ class User < ApplicationRecord
   include PlanScopable
   include SoftDeletable # introduces default_scope and soft-delete methods
 
-  devise :database_authenticatable, :registerable,
+  devise :two_factor_authenticatable, :registerable,
          :recoverable, :rememberable, :validatable, :trackable,
+         :lockable,
          :omniauthable, omniauth_providers: ::OMNIAUTH_PROVIDERS
+  devise :two_factor_backupable, otp_backup_code_length: 12, otp_number_of_backup_codes: 10
 
   has_many :points, dependent: :destroy
   has_many :imports,        dependent: :destroy

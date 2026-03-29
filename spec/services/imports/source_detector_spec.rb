@@ -239,6 +239,50 @@ RSpec.describe Imports::SourceDetector do
     end
   end
 
+  describe 'raw content fallback for truncated JSON' do
+    context 'with deeply nested truncated Google Phone Takeout' do
+      let(:file_content) do
+        # Simulates 8KB read truncating mid-string in deeply nested structure
+        '{"semanticSegments": [{"startTime": "2013-03-16T03:00:00.000+01:00", ' \
+        '"timelinePath": [{"point": "43.7283°, 10.4047°", "time": "2013-03-16T04:15'
+      end
+
+      it 'detects google_phone_takeout via raw content fallback' do
+        expect(detector.detect_source).to eq(:google_phone_takeout)
+      end
+    end
+
+    context 'with truncated Google Records' do
+      let(:file_content) do
+        '{"locations": [{"latitudeE7": 525200000, "longitudeE7": 134000000, "timestamp": "2024-01'
+      end
+
+      it 'detects google_records via raw content fallback' do
+        expect(detector.detect_source).to eq(:google_records)
+      end
+    end
+
+    context 'with truncated Google Semantic History' do
+      let(:file_content) do
+        '{"timelineObjects": [{"activitySegment": {"duration": {"startTimestamp": "2024-01'
+      end
+
+      it 'detects google_semantic_history via raw content fallback' do
+        expect(detector.detect_source).to eq(:google_semantic_history)
+      end
+    end
+
+    context 'with truncated GeoJSON' do
+      let(:file_content) do
+        '{"type": "FeatureCollection", "features": [{"type": "Feature", "geometry": {"type": "Point'
+      end
+
+      it 'detects geojson via raw content fallback' do
+        expect(detector.detect_source).to eq(:geojson)
+      end
+    end
+  end
+
   describe '#detect_source!' do
     context 'with valid format' do
       let(:file_content) { file_fixture('google/records.json').read }

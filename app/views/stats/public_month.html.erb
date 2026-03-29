@@ -130,7 +130,8 @@
         <%= icon 'earth' %> Countries & Cities
       </h2>
       <div class="space-y-4">
-        <% @stat.toponyms.each_with_index do |country, index| %>
+        <% visited_toponyms = @stat.toponyms.select { |t| t['country'].present? && t['cities']&.any? } %>
+        <% visited_toponyms.each_with_index do |country, index| %>
           <div class="space-y-2">
             <div class="flex justify-between items-center">
               <span class="font-semibold"><%= country['country'] %></span>
@@ -145,7 +146,7 @@
 
       <div class="flex flex-wrap gap-2">
         <span class="text-sm font-medium">Cities visited:</span>
-        <% @stat.toponyms.each do |country| %>
+        <% visited_toponyms.each do |country| %>
           <% country['cities'].first(5).each do |city| %>
             <div class="badge badge-outline"><%= city['city'] %></div>
           <% end %>

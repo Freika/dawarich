@@ -4,7 +4,6 @@ require 'rails_helper'
 
 RSpec.describe '/points', type: :request do
   describe 'GET /index' do
-
     context 'when user is not logged in' do
       it 'redirects to login page' do
         get points_url
@@ -13,14 +12,51 @@ RSpec.describe '/points', type: :request do
     end
 
     context 'when user is logged in' do
+      let(:user) { create(:user) }
+
       before do
-        sign_in create(:user)
+        sign_in user
       end
 
       it 'renders a successful response' do
         get points_url
 
         expect(response).to be_successful
+      end
+
+      context 'when reverse geocoding is enabled' do
+        let(:recent_timestamp) { 1.day.ago.to_i }
+
+        before do
+          allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
+        end
+
+        it 'displays address from geodata properties when available' do
+          create(:point, user:, timestamp: recent_timestamp, geodata: {
+                   'properties' => { 'street' => 'Main St', 'city' => 'Berlin', 'country' => 'Germany' }
+                 })
+
+          get points_url
+
+          expect(response.body).to include('Main St, Berlin, Germany')
+        end
+
+        it 'falls back to city and country_name when geodata is empty' do
+          create(:point, user:, timestamp: recent_timestamp, geodata: {}, city: 'Paris', country: 'France')
+
+          get points_url
+
+          expect(response.body).to include('Paris, France')
+        end
+
+        it 'falls back to city and country_name when geodata has no properties' do
+          create(:point, user:, timestamp: recent_timestamp,
+                         geodata: { 'type' => 'Feature' }, city: 'Tokyo', country: 'Japan')
+
+          get points_url
+
+          expect(response.body).to include('Tokyo, Japan')
+        end
       end
     end
   end

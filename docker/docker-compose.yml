@@ -81,6 +81,10 @@ services:
       RAILS_LOG_TO_STDOUT: ${RAILS_LOG_TO_STDOUT:-true}
       SELF_HOSTED: ${SELF_HOSTED:-true}
       STORE_GEODATA: ${STORE_GEODATA:-true}
+      ### OTP encryption keys are required if you want to use 2FA
+      # OTP_ENCRYPTION_PRIMARY_KEY: ${OTP_ENCRYPTION_PRIMARY_KEY:-}
+      # OTP_ENCRYPTION_DETERMINISTIC_KEY: ${OTP_ENCRYPTION_DETERMINISTIC_KEY:-}
+      # OTP_ENCRYPTION_KEY_DERIVATION_SALT: ${OTP_ENCRYPTION_KEY_DERIVATION_SALT:-}
     logging:
       driver: "json-file"
       options:
@@ -137,6 +141,10 @@ services:
       RAILS_LOG_TO_STDOUT: ${RAILS_LOG_TO_STDOUT:-true}
       SELF_HOSTED: ${SELF_HOSTED:-true}
       STORE_GEODATA: ${STORE_GEODATA:-true}
+      ### OTP encryption keys are required if you want to use 2FA
+      # OTP_ENCRYPTION_PRIMARY_KEY: ${OTP_ENCRYPTION_PRIMARY_KEY:-}
+      # OTP_ENCRYPTION_DETERMINISTIC_KEY: ${OTP_ENCRYPTION_DETERMINISTIC_KEY:-}
+      # OTP_ENCRYPTION_KEY_DERIVATION_SALT: ${OTP_ENCRYPTION_KEY_DERIVATION_SALT:-}
     logging:
       driver: "json-file"
       options:

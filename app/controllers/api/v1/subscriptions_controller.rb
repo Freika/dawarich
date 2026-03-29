@@ -2,6 +2,7 @@
 
 class Api::V1::SubscriptionsController < ApiController
   skip_before_action :authenticate_api_key, only: %i[callback]
+  before_action :verify_webhook_secret, only: %i[callback]
 
   def callback
     decoded_token = Subscription::DecodeJwtToken.new(params[:token]).call
@@ -29,5 +30,22 @@ class Api::V1::SubscriptionsController < ApiController
   rescue ArgumentError => e
     ExceptionReporter.call(e)
     render json: { message: 'Invalid subscription data received.' }, status: :unprocessable_content
+  end
+
+  private
+
+  def verify_webhook_secret
+    expected = ENV['SUBSCRIPTION_WEBHOOK_SECRET']
+
+    if expected.blank?
+      render json: { message: 'Webhook secret not configured' }, status: :service_unavailable
+      return
+    end
+
+    provided = request.headers['X-Webhook-Secret']
+
+    return if ActiveSupport::SecurityUtils.secure_compare(provided.to_s, expected)
+
+    render json: { message: 'Invalid webhook secret' }, status: :unauthorized
   end
 end

@@ -32,11 +32,13 @@ class StatsSerializer
 
   def yearly_stats
     user.stats.group_by(&:year).sort.reverse.map do |year, stats|
+      countries, cities = countries_and_cities_from_stats(stats)
+
       {
         year:,
         totalDistanceKm: stats_distance_km(stats),
-        totalCountriesVisited: user.countries_visited.count,
-        totalCitiesVisited: user.cities_visited.count,
+        totalCountriesVisited: countries.count,
+        totalCitiesVisited: cities.count,
         monthlyDistanceKm: monthly_distance(year, stats)
       }
     end
@@ -61,5 +63,28 @@ class StatsSerializer
     distance_meters = stats.find { _1.month == month && _1.year == year }&.distance.to_i
 
     distance_meters / 1000
+  end
+
+  def countries_and_cities_from_stats(stats)
+    countries = Set.new
+    cities = Set.new
+
+    stats.each do |stat|
+      toponyms = stat.toponyms
+      next unless toponyms.is_a?(Array)
+
+      toponyms.each do |toponym|
+        next unless toponym.is_a?(Hash)
+        next if toponym['country'].blank?
+        next unless toponym['cities'].is_a?(Array) && toponym['cities'].any?
+
+        countries.add(toponym['country'])
+        toponym['cities'].each do |city|
+          cities.add(city['city']) if city.is_a?(Hash) && city['city'].present?
+        end
+      end
+    end
+
+    [countries, cities]
   end
 end

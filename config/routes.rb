@@ -59,6 +59,10 @@ Rails.application.routes.draw do
     resources :maps, only: %i[index]
     patch 'maps', to: 'maps#update'
 
+    resource :two_factor, only: %i[show create destroy], controller: 'two_factor' do
+      post :verify, on: :member
+    end
+
     resource :onboarding, only: [:update] do
       post :demo_data, on: :member
       delete :demo_data, on: :member, action: :destroy_demo_data
@@ -158,6 +162,8 @@ Rails.application.routes.draw do
     sessions: 'users/sessions',
     omniauth_callbacks: 'users/omniauth_callbacks'
   }
+
+  post 'users/otp_challenge', to: 'users/otp_challenge#create', as: :user_otp_challenge
 
   resources :metrics, only: [:index]
 
@@ -259,6 +265,11 @@ Rails.application.routes.draw do
             get :bounds
           end
         end
+      end
+
+      namespace :immich do
+        post 'enrich/scan', to: 'enrich#scan'
+        post 'enrich', to: 'enrich#create'
       end
 
       namespace :families do

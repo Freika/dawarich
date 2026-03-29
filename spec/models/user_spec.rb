@@ -421,6 +421,23 @@ RSpec.describe User, type: :model do
       end
     end
 
+    context 'when user exists with different email casing' do
+      let(:email) { 'Existing@Example.COM' }
+      let!(:existing_user) { create(:user, email: 'existing@example.com') }
+
+      it 'finds the existing user regardless of case' do
+        user = described_class.from_omniauth(auth_hash)
+        expect(user).to eq(existing_user)
+        expect(user.persisted?).to be true
+      end
+
+      it 'does not create a new user' do
+        expect do
+          described_class.from_omniauth(auth_hash)
+        end.not_to change(User, :count)
+      end
+    end
+
     context 'when user does not exist' do
       let(:email) { 'new@example.com' }
 
