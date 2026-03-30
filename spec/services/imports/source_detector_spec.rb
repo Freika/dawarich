@@ -244,7 +244,21 @@ RSpec.describe Imports::SourceDetector do
       let(:file_content) do
         # Simulates 8KB read truncating mid-string in deeply nested structure
         '{"semanticSegments": [{"startTime": "2013-03-16T03:00:00.000+01:00", ' \
-        '"timelinePath": [{"point": "43.7283°, 10.4047°", "time": "2013-03-16T04:15'
+        '"timelinePath": [{"point": "43.7283\u00b0, 10.4047\u00b0", "time": "2013-03-16T04:15'
+      end
+
+      it 'detects google_phone_takeout via raw content fallback' do
+        expect(detector.detect_source).to eq(:google_phone_takeout)
+      end
+    end
+
+    context 'with truncated Google Phone Takeout array format' do
+      let(:file_content) do
+        # Simulates 8KB read truncating mid-string in array-format location-history.json
+        '[{"endTime": "2023-08-27T17:04:26.999-05:00", "startTime": "2023-08-27T15:48:56.000-05:00", ' \
+        '"visit": {"hierarchyLevel": "0", "topCandidate": {"probability": "0.785181", ' \
+        '"semanticType": "Unknown", "placeID": "ChIJxxP_Qwb2aIYRTwDNDLkUmD0", ' \
+        '"placeLocation": "geo:27.720022,-97'
       end
 
       it 'detects google_phone_takeout via raw content fallback' do
