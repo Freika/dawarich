@@ -61,9 +61,10 @@ It enables you to:
 You can track your location with the following apps:
 
 - 💫 [Dawarich for iOS](https://dawarich.app/docs/dawarich-for-ios/)
+- 🗺️ [Dawarich Community](https://github.com/sunstep/dawarich-android)
 - 🌍 [Overland](https://dawarich.app/docs/tutorials/track-your-location#overland)
 - 🛰️ [OwnTracks](https://dawarich.app/docs/tutorials/track-your-location#owntracks)
-- 🗺️ [GPSLogger](https://dawarich.app/docs/tutorials/track-your-location#gps-logger)
+- 🧭 [GPSLogger](https://dawarich.app/docs/tutorials/track-your-location#gps-logger)
 - 📱 [PhoneTrack](https://dawarich.app/docs/tutorials/track-your-location#phonetrack)
 - 🏡 [Home Assistant](https://dawarich.app/docs/tutorials/track-your-location#home-assistant)
 
