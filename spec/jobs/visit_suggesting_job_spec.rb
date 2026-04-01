@@ -103,6 +103,18 @@ RSpec.describe VisitSuggestingJob, type: :job do
         subject
       end
     end
+
+    context 'when visits_suggestions_enabled is false' do
+      before do
+        user.update!(settings: user.settings.merge('visits_suggestions_enabled' => 'false'))
+      end
+
+      it 'does not call Visits::Suggest' do
+        expect(Visits::Suggest).not_to receive(:new)
+
+        described_class.perform_now(user_id: user.id, start_at: start_at, end_at: end_at)
+      end
+    end
   end
 
   describe 'queue name' do
