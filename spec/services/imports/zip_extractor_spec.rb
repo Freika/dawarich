@@ -126,7 +126,7 @@ RSpec.describe Imports::ZipExtractor do
       it 'marks the import as failed with the error message' do
         expect do
           described_class.new(import, user.id, zip_path).call
-        end.to raise_error(Zip::Error)
+        end.to raise_error(StandardError)
 
         import.reload
         expect(import.status).to eq('failed')

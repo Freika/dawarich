@@ -16,6 +16,10 @@
     <div class="text-xs text-base-content/50 mt-2">
       File format is automatically detected during upload.
     </div>
+    <div class="flex items-start gap-2 text-xs text-info mt-2">
+      <%= icon 'info', class: 'w-3.5 h-3.5 shrink-0 mt-0.5' %>
+      <span>For files larger than 200MB, consider compressing them into a ZIP archive before uploading. This significantly reduces upload time and avoids connection timeouts.</span>
+    </div>
     <% if current_user.trial? %>
       <div class="text-xs text-warning mt-2 font-medium">
         Trial limitations: Max 5 imports, 10MB per file.

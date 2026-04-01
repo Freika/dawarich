@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.6.1] - 2026-04-02
+
+### Added
+
+- Info badge on import form suggesting users zip large files (200MB+) before uploading.
+- Missing SVG icons for activity breakdown (ship, circle).
+
+### Fixed
+
+- Fix compressed zip files failing to import with "No such file or directory" error. Rubyzip needs to re-open the source zip for compressed entries, but the temp file could be garbage collected before extraction completes #2446.
+- Fix anomaly filter crashing on large imports (millions of points) due to loading all points into memory at once. Speed-based filtering now processes data in monthly chunks.
+
 ## [1.6.0] - 2026-03-29
 
 ### Added

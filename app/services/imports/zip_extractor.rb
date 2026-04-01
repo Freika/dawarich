@@ -26,6 +26,12 @@ module Imports
       temp_dir = Rails.root.join("tmp/imports/zip_extract_#{SecureRandom.hex(8)}").to_s
 
       begin
+        # Copy the zip to a stable path so rubyzip can re-open it for compressed entries.
+        # The original may be a Tempfile whose underlying file gets deleted by GC.
+        @stable_zip_path = File.join(temp_dir, "_source#{File.extname(@file_path)}")
+        FileUtils.mkdir_p(temp_dir)
+        FileUtils.cp(@file_path, @stable_zip_path)
+
         extract_files(temp_dir)
         entries = collect_supported_files(temp_dir)
         google_entries = detect_google_takeout(entries)
@@ -48,11 +54,10 @@ module Imports
     private
 
     def extract_files(temp_dir)
-      FileUtils.mkdir_p(temp_dir)
       total_size = 0
       file_count = 0
 
-      ::Zip::File.open(@file_path) do |zip_file|
+      ::Zip::File.open(@stable_zip_path) do |zip_file|
         zip_file.each do |entry|
           next if entry.directory?
           next if entry.name.include?('..')
