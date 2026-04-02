@@ -54,12 +54,15 @@ RUN gem update --system 3.6.9 \
 WORKDIR $APP_PATH
 
 COPY ../Gemfile ../Gemfile.lock ../.ruby-version ../vendor ./
+COPY ../package.json ../package-lock.json ./
 
 # Install production gems only
 RUN bundle config set --local path 'vendor/bundle' \
     && bundle config set --local without 'development test' \
     && bundle install --jobs 4 --retry 3 \
     && rm -rf vendor/bundle/ruby/3.4.0/cache/*.gem
+
+RUN npm ci --no-audit --no-fund
 
 COPY ../. ./
 
