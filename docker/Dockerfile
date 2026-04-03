@@ -71,10 +71,6 @@ RUN SECRET_KEY_BASE_DUMMY=1 bundle exec rake assets:precompile \
 RUN mkdir -p tmp/pids tmp/cache tmp/sockets \
     && chmod -R 777 tmp
 
-# Copy public directory to temp location for syncing with volume at runtime
-# This allows new static files to be added to the persistent volume
-RUN cp -r public /tmp/public_assets
-
 # Copy entrypoint scripts and grant execution permissions
 COPY ./docker/web-entrypoint.sh /usr/local/bin/web-entrypoint.sh
 RUN chmod +x /usr/local/bin/web-entrypoint.sh
