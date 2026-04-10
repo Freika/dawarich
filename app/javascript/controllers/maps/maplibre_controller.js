@@ -1,3 +1,4 @@
+import { RouteEditorManager } from "./maplibre/route_editor_manager"
 import { Controller } from "@hotwired/stimulus"
 import maplibregl from "maplibre-gl"
 import { Toast } from "maps_maplibre/components/toast"
@@ -198,6 +199,8 @@ export default class extends Controller {
     this.visitsManager = new VisitsManager(this)
     this.placesManager = new PlacesManager(this)
     this.routesManager = new RoutesManager(this)
+    this.routeEditorManager = new RouteEditorManager(this)
+    this.routeEditorManager.connect()
 
     // Listen for tab changes to trigger timeline feed loading via Turbo Frame
     this.boundHandleTabChanged = this.handleTabChanged.bind(this)
@@ -2671,3 +2674,4 @@ export default class extends Controller {
     }
   }
 }
+

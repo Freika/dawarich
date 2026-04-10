@@ -185,6 +185,7 @@ Rails.application.routes.draw do
     namespace :v1 do
       get   'photos', to: 'photos#index'
       get   'health', to: 'health#index'
+post 'route_editor/preview', to: 'route_editor#preview'
       patch 'settings', to: 'settings#update'
       get   'settings', to: 'settings#index'
       get   'settings/transportation_recalculation_status', to: 'settings#transportation_recalculation_status'
