@@ -1,10 +1,10 @@
 import maplibregl from "maplibre-gl"
 
-export class RouteEditorManager {
-  constructor(controller) {
+export default class RouteEditorManager {
+  constructor(controller, map, layerManager) {
     this.controller = controller
-    this.map = controller.map
-    this.layerManager = controller.layerManager
+    this.map = map
+    this.layerManager = layerManager
     this.api = controller.api
 
     this.enabled = false
@@ -1040,3 +1040,5 @@ export class RouteEditorManager {
     return this.layerManager?.getLayer("points")
   }
 }
+
+
