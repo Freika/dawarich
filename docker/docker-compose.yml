@@ -43,10 +43,13 @@ services:
       retries: 5
       start_period: 30s
       timeout: 10s
-    # command: postgres -c config_file=/etc/postgresql/postgresql.conf # Use custom config, uncomment if you want to use a custom config
+    # command: postgres -c config_file=/etc/postgresql/postgresql.conf
+    # Use custom config, uncomment if you want to use a custom config
 
   dawarich_app:
-    image: freikin/dawarich:latest
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
     container_name: dawarich_app
     volumes:
       - dawarich_public:/var/app/public
@@ -110,7 +113,9 @@ services:
           memory: ${APP_MEMORY_LIMIT:-4G}
 
   dawarich_sidekiq:
-    image: freikin/dawarich:latest
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
     container_name: dawarich_sidekiq
     volumes:
       - dawarich_public:/var/app/public
