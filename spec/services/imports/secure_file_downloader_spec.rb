@@ -106,4 +106,24 @@ RSpec.describe Imports::SecureFileDownloader do
       end
     end
   end
+
+  describe '#download_to_temp_file' do
+    before do
+      allow(storage_attachment).to receive(:filename).and_return('track.gpx')
+      allow(storage_attachment).to receive(:download) do |&block|
+        block.call(file_content)
+      end
+    end
+
+    it 'returns a temp path that remains readable after GC runs' do
+      path = subject.download_to_temp_file
+
+      GC.start(full_mark: true, immediate_sweep: true)
+
+      expect(File.exist?(path)).to be(true)
+      expect(File.read(path)).to eq(file_content)
+    ensure
+      File.delete(path) if path && File.exist?(path)
+    end
+  end
 end
