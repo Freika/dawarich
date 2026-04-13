@@ -4,7 +4,9 @@ require "net/http"
 require "json"
 
 class Api::V1::RouteEditorController < ApiController
-  def preview
+  before_action :require_pro_api!
+
+def preview
     locations = preview_params[:locations]
 
     if locations.blank? || locations.size < 2
