@@ -85,6 +85,7 @@ node_modules/
 /blob-report/
 /playwright/.cache/
 /e2e/temp/
+.playwright-cli/
 
 .claude
 .worktrees/

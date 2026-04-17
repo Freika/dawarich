@@ -64,7 +64,7 @@ RSpec.describe 'Shared::Digests', type: :request do
 
         before { sign_in user }
 
-        context 'enabling sharing' do
+        context 'enabling sharing via JSON' do
           it 'enables sharing and returns success' do
             patch sharing_users_digest_path(year: 2024),
                   params: { enabled: '1' },
@@ -93,7 +93,24 @@ RSpec.describe 'Shared::Digests', type: :request do
           end
         end
 
-        context 'disabling sharing' do
+        context 'enabling sharing via Turbo Stream' do
+          it 'enables sharing and returns turbo stream with sharing link' do
+            patch sharing_users_digest_path(year: 2024),
+                  params: { enabled: '1' },
+                  headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+
+            expect(response).to have_http_status(:success)
+            expect(response.media_type).to eq('text/vnd.turbo-stream.html')
+            expect(response.body).to include('sharing-link-display')
+            expect(response.body).to include('shared/digest/')
+
+            digest_to_share.reload
+            expect(digest_to_share.sharing_enabled?).to be(true)
+            expect(digest_to_share.sharing_uuid).to be_present
+          end
+        end
+
+        context 'disabling sharing via JSON' do
           let!(:enabled_digest) { create(:users_digest, :with_sharing_enabled, user:, year: 2023) }
 
           it 'disables sharing and returns success' do
@@ -106,6 +123,23 @@ RSpec.describe 'Shared::Digests', type: :request do
             json_response = JSON.parse(response.body)
             expect(json_response['success']).to be(true)
             expect(json_response['message']).to eq('Sharing disabled successfully')
+
+            enabled_digest.reload
+            expect(enabled_digest.sharing_enabled?).to be(false)
+          end
+        end
+
+        context 'disabling sharing via Turbo Stream' do
+          let!(:enabled_digest) { create(:users_digest, :with_sharing_enabled, user:, year: 2023) }
+
+          it 'disables sharing and returns turbo stream' do
+            patch sharing_users_digest_path(year: 2023),
+                  params: { enabled: '0' },
+                  headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+
+            expect(response).to have_http_status(:success)
+            expect(response.media_type).to eq('text/vnd.turbo-stream.html')
+            expect(response.body).to include('sharing-link-display')
 
             enabled_digest.reload
             expect(enabled_digest.sharing_enabled?).to be(false)

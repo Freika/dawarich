@@ -30,9 +30,30 @@ class Points::AnomalyFilter
          .update_all(anomaly: true)
   end
 
-  # Pass 2: Speed-based sandwich test
+  # Pass 2: Speed-based sandwich test (chunked by month to handle large imports)
   def filter_by_speed
-    points, main_points = fetch_points_with_context
+    count = 0
+
+    each_monthly_chunk do |chunk_start, chunk_end|
+      count += filter_speed_chunk(chunk_start, chunk_end)
+    end
+
+    count
+  end
+
+  def each_monthly_chunk
+    cursor = Time.zone.at(@start_time).beginning_of_month
+    range_end = Time.zone.at(@end_time)
+
+    while cursor <= range_end
+      chunk_end_time = cursor.end_of_month
+      yield cursor.to_i, [chunk_end_time.to_i, @end_time].min
+      cursor = cursor.next_month.beginning_of_month
+    end
+  end
+
+  def filter_speed_chunk(chunk_start, chunk_end)
+    points, main_points = fetch_points_with_context(chunk_start, chunk_end)
     return 0 if points.size < 3
 
     point_ids = points.map(&:id)
@@ -68,18 +89,18 @@ class Points::AnomalyFilter
     Point.where(id: anomaly_ids).update_all(anomaly: true)
   end
 
-  def fetch_points_with_context
+  def fetch_points_with_context(start_time, end_time)
     before_ctx = Point.where(user_id: @user_id).not_anomaly
-                      .where('timestamp < ?', @start_time)
+                      .where('timestamp < ?', start_time)
                       .order(timestamp: :desc).limit(CONTEXT_POINTS)
                       .select(:id, :lonlat, :timestamp).to_a.reverse
 
-    main = Point.where(user_id: @user_id, timestamp: @start_time..@end_time)
+    main = Point.where(user_id: @user_id, timestamp: start_time..end_time)
                 .not_anomaly.order(:timestamp)
                 .select(:id, :lonlat, :timestamp).to_a
 
     after_ctx = Point.where(user_id: @user_id).not_anomaly
-                     .where('timestamp > ?', @end_time)
+                     .where('timestamp > ?', end_time)
                      .order(:timestamp).limit(CONTEXT_POINTS)
                      .select(:id, :lonlat, :timestamp).to_a
 

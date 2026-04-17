@@ -202,6 +202,37 @@ RSpec.describe 'Api::V1::Visits', type: :request do
         expect(response).to have_http_status(:unprocessable_content)
       end
     end
+
+    context 'when updating name together with place_id' do
+      let(:new_place) { create(:place, name: 'Coffee Shop') }
+
+      it 'preserves the user-provided name instead of overwriting it with the place name' do
+        put "/api/v1/visits/#{visit.id}",
+            params: { visit: { name: 'Grandma house', place_id: new_place.id } },
+            headers: auth_headers
+
+        expect(visit.reload.name).to eq('Grandma house')
+        expect(visit.place_id).to eq(new_place.id)
+      end
+
+      it 'falls back to the place name when the user clears the name field' do
+        put "/api/v1/visits/#{visit.id}",
+            params: { visit: { name: '', place_id: new_place.id } },
+            headers: auth_headers
+
+        expect(visit.reload.name).to eq('Coffee Shop')
+        expect(visit.place_id).to eq(new_place.id)
+      end
+
+      it 'sets the visit name from the place when no name is provided' do
+        put "/api/v1/visits/#{visit.id}",
+            params: { visit: { place_id: new_place.id } },
+            headers: auth_headers
+
+        expect(visit.reload.name).to eq('Coffee Shop')
+        expect(visit.place_id).to eq(new_place.id)
+      end
+    end
   end
 
   describe 'POST /api/v1/visits/merge' do

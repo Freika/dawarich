@@ -260,71 +260,57 @@
       <%= icon 'link' %> Sharing Settings
     </h3>
 
-    <div data-controller="sharing-modal"
-         data-sharing-modal-url-value="<%= sharing_users_digest_path(year: @digest.year) %>">
+    <div data-controller="sharing-modal">
+      <%= form_with(url: sharing_users_digest_path(year: @digest.year), method: :patch,
+                    data: { sharing_modal_target: "form" }) do %>
 
-      <!-- Enable/Disable Sharing Toggle -->
-      <div class="form-control mb-4">
-        <label class="label cursor-pointer">
-          <span class="label-text font-medium">Enable public access</span>
-          <input type="checkbox"
-                 name="enabled"
-                 <%= 'checked' if @digest.sharing_enabled? %>
-                 class="toggle toggle-primary"
-                 data-action="change->sharing-modal#toggleSharing"
-                 data-sharing-modal-target="enableToggle" />
-        </label>
-        <div class="label">
-          <span class="label-text-alt text-gray-500">Allow others to view this year-end digest • Auto-saves on change</span>
-        </div>
-      </div>
-
-      <!-- Expiration Settings (shown when enabled) -->
-      <div data-sharing-modal-target="expirationSettings"
-           class="<%= 'hidden' unless @digest.sharing_enabled? %>">
-
+        <%# Enable/Disable Sharing Toggle %>
         <div class="form-control mb-4">
-          <label class="label">
-            <span class="label-text font-medium">Link expiration</span>
+          <label class="label cursor-pointer">
+            <span class="label-text font-medium">Enable public access</span>
+            <input type="checkbox"
+                   name="enabled"
+                   value="1"
+                   <%= 'checked' if @digest.sharing_enabled? %>
+                   class="toggle toggle-primary"
+                   data-action="change->sharing-modal#toggleSharing"
+                   data-sharing-modal-target="enableToggle" />
           </label>
-          <select name="expiration"
-                  class="select select-bordered w-full"
-                  data-sharing-modal-target="expirationSelect"
-                  data-action="change->sharing-modal#expirationChanged">
-            <%= options_for_select([
-                  ['1 hour', '1h'],
-                  ['12 hours', '12h'],
-                  ['24 hours', '24h'],
-                  ['1 week', '1w'],
-                  ['1 month', '1m']
-                ], @digest&.sharing_settings&.dig('expiration') || '24h') %>
-          </select>
-        </div>
-
-        <!-- Sharing Link Display -->
-        <div class="form-control mb-4">
-          <label class="label">
-            <span class="label-text font-medium">Sharing link</span>
-          </label>
-          <div class="join w-full">
-            <input type="text"
-                   readonly
-                   class="input input-bordered join-item flex-1"
-                   data-sharing-modal-target="sharingLink"
-                   value="<%= @digest.sharing_enabled? ? shared_users_digest_url(@digest.sharing_uuid) : '' %>" />
-            <button type="button"
-                    class="btn btn-outline join-item"
-                    data-action="click->sharing-modal#copyLink">
-              <%= icon 'copy' %> Copy
-            </button>
-          </div>
           <div class="label">
-            <span class="label-text-alt text-gray-500">Share this link to allow others to view your year-end digest</span>
+            <span class="label-text-alt text-gray-500">Allow others to view this year-end digest • Auto-saves on change</span>
           </div>
         </div>
-      </div>
 
-      <!-- Privacy Notice -->
+        <%# Expiration Settings (shown when enabled) %>
+        <div data-sharing-modal-target="expirationSettings"
+             class="<%= 'hidden' unless @digest.sharing_enabled? %>">
+
+          <div class="form-control mb-4">
+            <label class="label">
+              <span class="label-text font-medium">Link expiration</span>
+            </label>
+            <select name="expiration"
+                    class="select select-bordered w-full"
+                    data-sharing-modal-target="expirationSelect"
+                    data-action="change->sharing-modal#expirationChanged">
+              <%= options_for_select([
+                    ['1 hour', '1h'],
+                    ['12 hours', '12h'],
+                    ['24 hours', '24h'],
+                    ['1 week', '1w'],
+                    ['1 month', '1m']
+                  ], @digest&.sharing_settings&.dig('expiration') || '24h') %>
+            </select>
+          </div>
+
+          <%# Sharing Link Display %>
+          <%= render 'shared/sharing_link',
+              sharing_url: @digest.sharing_enabled? ? shared_users_digest_url(@digest.sharing_uuid) : '' %>
+        </div>
+
+      <% end %>
+
+      <%# Privacy Notice %>
       <div class="alert alert-info mb-4">
         <%= icon 'info' %>
         <div>
@@ -336,7 +322,7 @@
         </div>
       </div>
 
-      <!-- Form Actions -->
+      <%# Form Actions %>
       <div class="modal-action">
         <button type="button"
                 class="btn btn-primary"

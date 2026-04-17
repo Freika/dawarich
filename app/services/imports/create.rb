@@ -16,7 +16,7 @@ class Imports::Create
 
     temp_file_path = Imports::SecureFileDownloader.new(import.file).download_to_temp_file
 
-    source = if import.source.nil? || should_detect_source?
+    source = if import.source.nil?
                detect_source_from_file(temp_file_path)
              else
                import.source
@@ -114,11 +114,6 @@ class Imports::Create
       title: 'Import failed',
       content: message
     ).call
-  end
-
-  def should_detect_source?
-    # Don't override API-based sources that can't be reliably detected
-    !%w[immich_api photoprism_api].include?(import.source)
   end
 
   def detect_source_from_file(temp_file_path)

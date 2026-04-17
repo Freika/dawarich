@@ -139,6 +139,45 @@ RSpec.describe Settings::Update do
       end
     end
 
+    context 'when not self-hosted and URL points to a blocked address' do
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        allow(Resolv).to receive(:getaddress).with('169.254.169.254').and_return('169.254.169.254')
+      end
+
+      let(:settings_params) { { 'immich_url' => 'http://169.254.169.254/latest' } }
+      let(:service) { described_class.new(user, settings_params) }
+
+      it 'rejects the URL and returns failure' do
+        result = service.call
+
+        expect(result[:success]).to be false
+        expect(result[:alerts].first).to include('not allowed')
+      end
+
+      it 'does not update the settings' do
+        service.call
+
+        expect(user.reload.settings['immich_url']).to be_nil
+      end
+    end
+
+    context 'when self-hosted and URL points to a private address' do
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+      end
+
+      let(:settings_params) { { 'immich_url' => 'http://127.0.0.1:2283' } }
+      let(:service) { described_class.new(user, settings_params) }
+
+      it 'allows the URL' do
+        result = service.call
+
+        expect(result[:success]).to be true
+        expect(user.reload.settings['immich_url']).to eq('http://127.0.0.1:2283')
+      end
+    end
+
     context 'when photoprism settings have not changed' do
       let(:service) { described_class.new(user, settings_params) }
 

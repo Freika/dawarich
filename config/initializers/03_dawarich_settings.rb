@@ -66,6 +66,13 @@ class DawarichSettings
       @archive_raw_data_enabled ||= ARCHIVE_RAW_DATA
     end
 
+    def two_factor_available?
+      @two_factor_available ||=
+        ENV['OTP_ENCRYPTION_PRIMARY_KEY'].present? &&
+        ENV['OTP_ENCRYPTION_DETERMINISTIC_KEY'].present? &&
+        ENV['OTP_ENCRYPTION_KEY_DERIVATION_SALT'].present?
+    end
+
     def registration_enabled?
       Rails.cache.fetch('dawarich/registration_enabled') { ALLOW_EMAIL_PASSWORD_REGISTRATION }
     end

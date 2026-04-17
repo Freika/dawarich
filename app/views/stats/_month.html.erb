@@ -211,11 +211,12 @@
       <%= icon 'globe' %> Countries & Cities
     </h2>
     <div class="space-y-4">
-      <% if stat.toponyms.present? %>
-        <% max_cities = stat.toponyms.map { |country| country['cities'].length }.max %>
+      <% visited_toponyms = stat.toponyms.select { |t| t['country'].present? && t['cities']&.any? } %>
+      <% if visited_toponyms.present? %>
+        <% max_cities = visited_toponyms.map { |country| country['cities'].length }.max %>
         <% progress_colors = ['progress-primary', 'progress-secondary', 'progress-accent', 'progress-info', 'progress-success', 'progress-warning'] %>
 
-        <% stat.toponyms.each_with_index do |country, index| %>
+        <% visited_toponyms.each_with_index do |country, index| %>
           <% cities_count = country['cities'].length %>
           <% progress_value = max_cities > 0 ? (cities_count.to_f / max_cities * 100).round : 0 %>
           <% color_class = progress_colors[index % progress_colors.length] %>
@@ -244,7 +245,7 @@
 
     <div class="flex flex-wrap gap-2">
       <span class="text-sm font-medium">Cities visited:</span>
-      <% stat.toponyms.each do |country| %>
+      <% visited_toponyms.each do |country| %>
         <% country['cities'].each do |city| %>
           <div class="badge badge-outline"><%= city['city'] %></div>
         <% end %>

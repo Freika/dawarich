@@ -111,7 +111,7 @@ GEM
     benchmark (0.5.0)
     bigdecimal (4.0.1)
     bindata (2.4.15)
-    bootsnap (1.20.1)
+    bootsnap (1.23.0)
       msgpack (~> 1.2)
     brakeman (7.1.1)
       racc
@@ -158,6 +158,11 @@ GEM
       railties (>= 4.1.0)
       responders
       warden (~> 1.2.3)
+    devise-two-factor (6.4.0)
+      activesupport (>= 7.2, < 8.2)
+      devise (>= 4.0, < 6.0)
+      railties (>= 7.2, < 8.2)
+      rotp (~> 6.0)
     diff-lcs (1.6.2)
     docile (1.4.1)
     dotenv (3.2.0)
@@ -294,7 +299,7 @@ GEM
       timeout
     net-smtp (0.5.1)
       net-protocol
-    nio4r (2.7.4)
+    nio4r (2.7.5)
     nokogiri (1.19.2)
       mini_portile2 (~> 2.8.2)
       racc (~> 1.4)
@@ -389,7 +394,7 @@ GEM
       date
       stringio
     public_suffix (6.0.2)
-    puma (7.1.0)
+    puma (7.2.0)
       nio4r (~> 2.0)
     pundit (2.5.2)
       activesupport (>= 3.0.0)
@@ -490,6 +495,7 @@ GEM
     rgeo-geojson (2.2.0)
       multi_json (~> 1.15)
       rgeo (>= 1.0.0)
+    rotp (6.3.0)
     rqrcode (3.1.0)
       chunky_png (~> 1.0)
       rqrcode_core (~> 2.0)
@@ -675,6 +681,7 @@ DEPENDENCIES
   database_consistency (>= 2.0.5)
   debug
   devise
+  devise-two-factor
   dotenv-rails
   factory_bot_rails
   fakeredis

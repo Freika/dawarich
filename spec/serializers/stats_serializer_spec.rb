@@ -104,5 +104,49 @@ RSpec.describe StatsSerializer do
         expect(serializer).to eq(expected_json)
       end
     end
+
+    context 'when years have different countries' do
+      let!(:stat_2020) do
+        create(:stat, year: 2020, month: 1, user:, toponyms: [
+                 { 'country' => 'France', 'cities' => [{ 'city' => 'Paris', 'points' => 5, 'stayed_for' => 120 }] }
+               ])
+      end
+      let!(:stat_2021) do
+        create(:stat, year: 2021, month: 1, user:, toponyms: [
+                 { 'country' => 'Germany', 'cities' => [{ 'city' => 'Berlin', 'points' => 5, 'stayed_for' => 120 }] },
+                 { 'country' => 'Spain', 'cities' => [{ 'city' => 'Madrid', 'points' => 3, 'stayed_for' => 90 }] }
+               ])
+      end
+
+      it 'returns per-year country and city counts' do
+        result = JSON.parse(serializer)
+        yearly = result['yearlyStats']
+
+        year_2021 = yearly.find { |y| y['year'] == 2021 }
+        year_2020 = yearly.find { |y| y['year'] == 2020 }
+
+        expect(year_2021['totalCountriesVisited']).to eq(2)
+        expect(year_2021['totalCitiesVisited']).to eq(2)
+        expect(year_2020['totalCountriesVisited']).to eq(1)
+        expect(year_2020['totalCitiesVisited']).to eq(1)
+      end
+    end
+
+    context 'when toponyms include flyover countries with empty cities' do
+      let!(:stat_with_flyover) do
+        create(:stat, year: 2020, month: 1, user:, toponyms: [
+                 { 'country' => 'France', 'cities' => [{ 'city' => 'Paris', 'points' => 5, 'stayed_for' => 120 }] },
+                 { 'country' => 'Germany', 'cities' => [] }
+               ])
+      end
+
+      it 'excludes flyover countries from yearly counts' do
+        result = JSON.parse(serializer)
+        yearly = result['yearlyStats']
+
+        year_2020 = yearly.find { |y| y['year'] == 2020 }
+        expect(year_2020['totalCountriesVisited']).to eq(1)
+      end
+    end
   end
 end
