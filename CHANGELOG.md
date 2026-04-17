@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.6.2] - Unreleased
+
+### Fixed
+
+- Fix visit name being overwritten by the location name when updating a visit via the map popup. The custom name typed into the "Visit Name" field is now preserved; the place name is only used as a default when the user leaves the name blank #1915.
+- Fix stray "Map layer preferences saved" flash (and spurious settings requests) when deleting a point on Map v1. Layer-preference saves are now suppressed while the delete flow internally rebuilds the routes layer and layer control #1902.
+
 ## [1.6.1] - 2026-04-02
 
 ### Added
