@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Fix visit name being overwritten by the location name when updating a visit via the map popup. The custom name typed into the "Visit Name" field is now preserved; the place name is only used as a default when the user leaves the name blank #1915.
 - Fix stray "Map layer preferences saved" flash (and spurious settings requests) when deleting a point on Map v1. Layer-preference saves are now suppressed while the delete flow internally rebuilds the routes layer and layer control #1902.
+- Fix the Map v2 replay slider showing times in the browser's local timezone instead of the timezone configured in Settings. Day buckets and the minute-of-day index are now computed in the user's timezone so the replay scrubber matches the rest of the app #2457.
 
 ## [1.6.1] - 2026-04-02
 

@@ -67,7 +67,10 @@ export class ReplayManager {
       const date = this._parseTimestamp(timestamp)
       if (!date || Number.isNaN(date.getTime())) return
 
-      const dayKey = this._formatDayKey(date)
+      const parts = this._getDateParts(date)
+      if (!parts) return
+
+      const dayKey = this._formatDayKey(parts)
 
       if (!this.pointsByDay[dayKey]) {
         this.pointsByDay[dayKey] = []
@@ -107,7 +110,10 @@ export class ReplayManager {
       const date = this._parseTimestamp(timestamp)
       if (!date || Number.isNaN(date.getTime())) return
 
-      const minuteOfDay = date.getHours() * 60 + date.getMinutes()
+      const parts = this._getDateParts(date)
+      if (!parts) return
+
+      const minuteOfDay = parts.hour * 60 + parts.minute
 
       if (!this.pointsByMinute[minuteOfDay]) {
         this.pointsByMinute[minuteOfDay] = []
@@ -517,14 +523,54 @@ export class ReplayManager {
   }
 
   /**
-   * Format date to day key
+   * Break a Date into year/month/day/hour/minute in the configured timezone.
+   * Falls back to browser local time if the timezone string is invalid.
    * @private
    */
-  _formatDayKey(date) {
-    const year = date.getFullYear()
-    const month = (date.getMonth() + 1).toString().padStart(2, "0")
-    const day = date.getDate().toString().padStart(2, "0")
-    return `${year}-${month}-${day}`
+  _getDateParts(date) {
+    if (!date || Number.isNaN(date.getTime())) return null
+
+    try {
+      const formatter = new Intl.DateTimeFormat("en-US", {
+        timeZone: this.timezone || "UTC",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        hourCycle: "h23",
+      })
+      const parts = formatter.formatToParts(date).reduce((acc, p) => {
+        if (p.type !== "literal") acc[p.type] = p.value
+        return acc
+      }, {})
+
+      return {
+        year: parseInt(parts.year, 10),
+        month: parseInt(parts.month, 10),
+        day: parseInt(parts.day, 10),
+        hour: parseInt(parts.hour, 10),
+        minute: parseInt(parts.minute, 10),
+      }
+    } catch (_err) {
+      return {
+        year: date.getFullYear(),
+        month: date.getMonth() + 1,
+        day: date.getDate(),
+        hour: date.getHours(),
+        minute: date.getMinutes(),
+      }
+    }
+  }
+
+  /**
+   * Format date parts to day key
+   * @private
+   */
+  _formatDayKey({ year, month, day }) {
+    const mm = month.toString().padStart(2, "0")
+    const dd = day.toString().padStart(2, "0")
+    return `${year}-${mm}-${dd}`
   }
 
   /**
