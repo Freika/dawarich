@@ -95,8 +95,19 @@ class Api::V1::PointsController < ApiController
 
     render json: { error: 'No points selected' }, status: :unprocessable_entity and return if point_ids.blank?
 
+    # Capture affected tracks before deletion so we can recalculate cached track geometry.
+    # Deleting points does not automatically update tracks.original_path.
+    affected_track_ids = current_api_user.points.where(id: point_ids).where.not(track_id: nil).distinct.pluck(:track_id)
+
     deleted_count = current_api_user.points.where(id: point_ids).destroy_all.count
     User.update_counters(current_api_user.id, points_count: -deleted_count) if deleted_count.positive?
+
+    affected_track_ids.each do |track_id|
+      Rails.logger.info(
+        "[PointsController] bulk_destroy deleted points, enqueuing Tracks::RecalculateJob for track #{track_id}"
+      )
+      Tracks::RecalculateJob.perform_later(track_id)
+    end
 
     render json: { message: 'Points were successfully destroyed', count: deleted_count }, status: :ok
   end
