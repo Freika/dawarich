@@ -128,6 +128,49 @@ RSpec.describe 'Api::V1::Points', type: :request do
         expect(json_response.first['timestamp']).to be > json_response.last['timestamp']
       end
     end
+
+    context 'when sampling is requested' do
+      let!(:dense_points) do
+        (1..120).map do |i|
+          create(:point, user:, timestamp: 2.days.ago.to_i + i)
+        end
+      end
+
+      it 'caps results to max_points' do
+        get api_v1_points_url(
+          api_key: user.api_key,
+          sample: 'true',
+          max_points: 50,
+          per_page: 1000,
+          order: 'asc'
+        )
+
+        expect(response).to have_http_status(:ok)
+
+        json_response = JSON.parse(response.body)
+        expect(json_response.size).to eq(50)
+        expect(response.headers['X-Points-Sampled']).to eq('true')
+        expect(response.headers['X-Total-Points-Before-Sampling']).to eq((points.size + dense_points.size).to_s)
+        expect(response.headers['X-Sampled-Points-Limit']).to eq('50')
+      end
+
+      it 'preserves descending order after sampling' do
+        get api_v1_points_url(
+          api_key: user.api_key,
+          sample: 'true',
+          max_points: 30,
+          per_page: 1000,
+          order: 'desc'
+        )
+
+        expect(response).to have_http_status(:ok)
+
+        json_response = JSON.parse(response.body)
+        timestamps = json_response.map { |point| point['timestamp'] }
+
+        expect(timestamps).to eq(timestamps.sort.reverse)
+      end
+    end
   end
 
   describe 'POST /create' do

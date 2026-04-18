@@ -3,6 +3,8 @@
  * Wraps all API endpoints with consistent error handling
  */
 export class ApiClient {
+  static MAX_RENDERED_POINTS = 20000
+
   constructor(apiKey) {
     this.apiKey = apiKey
     this.baseURL = "/api/v1"
@@ -19,6 +21,8 @@ export class ApiClient {
       end_at,
       page: page.toString(),
       per_page: per_page.toString(),
+      sample: "true",
+      max_points: ApiClient.MAX_RENDERED_POINTS.toString(),
       slim: "true",
       order: "asc",
     })
