@@ -21,6 +21,7 @@ module Map
       end
 
       return safe_timestamp(params[:start_at]) if params[:start_at].present?
+
       Time.zone.today.beginning_of_day.to_i
     end
 
@@ -31,6 +32,7 @@ module Map
       end
 
       return safe_timestamp(params[:end_at]) if params[:end_at].present?
+
       Time.zone.today.end_of_day.to_i
     end
 
