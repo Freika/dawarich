@@ -15,14 +15,22 @@ module Map
     private
 
     def start_at
-      return safe_timestamp(params[:start_at]) if params[:start_at].present?
+      if params[:import_id].present?
+        import = current_user.imports.find(params[:import_id])
+        return import.points.minimum(:timestamp) || Time.zone.today.beginning_of_day.to_i
+      end
 
+      return safe_timestamp(params[:start_at]) if params[:start_at].present?
       Time.zone.today.beginning_of_day.to_i
     end
 
     def end_at
-      return safe_timestamp(params[:end_at]) if params[:end_at].present?
+      if params[:import_id].present?
+        import = current_user.imports.find(params[:import_id])
+        return import.points.maximum(:timestamp) || Time.zone.today.end_of_day.to_i
+      end
 
+      return safe_timestamp(params[:end_at]) if params[:end_at].present?
       Time.zone.today.end_of_day.to_i
     end
 
