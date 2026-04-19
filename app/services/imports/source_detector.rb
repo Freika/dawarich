@@ -213,6 +213,10 @@ class Imports::SourceDetector
       :google_semantic_history
     elsif content.include?('"locations"') && content.include?('"latitudeE7"')
       :google_records
+    elsif content.include?('"visit"') &&
+        content.include?('"topCandidate"') &&
+        content.include?('"placeLocation"')
+      :google_phone_takeout
     elsif content.include?('"FeatureCollection"') && content.include?('"features"')
       :geojson
     end
