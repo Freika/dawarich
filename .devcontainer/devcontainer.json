@@ -1,17 +1,25 @@
 {
-  "name": "Ruby and Node DevContainer",
-  "dockerComposeFile": ["docker-compose.yml"],
-  "service": "dawarich_dev",
-  "settings": {
-    "terminal.integrated.defaultProfile.linux": "bash"
-  },
-  "extensions": [
-    "rebornix.ruby", // Ruby-Support
-    "esbenp.prettier-vscode", // Prettier for JS-Formating
-    "dbaeumer.vscode-eslint" // ESLint for JavaScript
+  "name": "Dawarich Dev",
+  "dockerComposeFile": [
+    "../docker/docker-compose.yml",
+    "docker-compose.dev.yml"
   ],
-  "postCreateCommand": "yarn install && bundle config set --local path 'vendor/bundle' && bundle install --jobs 20 --retry 5",
-  "forwardPorts": [3000], // Redirect to Rails-App-Server
+  "service": "dawarich_app",
+  "workspaceFolder": "/var/app",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "rebornix.Ruby",
+        "castwide.solargraph",
+        "ms-azuretools.vscode-docker",
+        "shopline.vscode-ruby-test-adapter"
+      ],
+      "settings": {
+        "ruby.interpreter.commandPath": "bundle"
+      }
+    }
+  },
+  "forwardPorts": [3000, 5432, 6379], // Web, DB, and Redis
   "remoteUser": "root",
-  "workspaceFolder": "/var/app"
+  "postCreateCommand": "bundle install && yarn install --ignore-engines && bundle exec rails db:prepare"
 }

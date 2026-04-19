@@ -59,6 +59,22 @@
 .devcontainer/.postCreateCommandMarker
 .devcontainer/.updateContentCommandMarker
 
+# Ignore local gems
+/vendor/bundle/
+/vendor/cache/
+
+# Ignore JS dependencies
+/node_modules/
+
+# Ignore your secret environment dev files
+.env.development
+
+# Ignore temporary files
+/tmp/
+/log/*.log
+
+/.vscode/
+
 .vscode-server/
 .ash_history
 .cache/
