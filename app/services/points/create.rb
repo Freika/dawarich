@@ -11,7 +11,7 @@ class Points::Create
   def call
     data = Points::Params.new(params, user.id).call
 
-    deduplicated_data = data.uniq { |point| [point[:lonlat], point[:timestamp].to_i, point[:user_id]] }
+    deduplicated_data = data.uniq { |point| dedup_key(point) }
 
     created_points = []
     inserted_count = 0
@@ -37,5 +37,24 @@ class Points::Create
     end
 
     created_points
+  end
+
+  private
+
+  # Build a dedup key whose equivalence classes match the PostgreSQL
+  # UNIQUE index on (lonlat, timestamp, user_id). The raw lonlat WKT
+  # string from Points::Params can differ character-by-character for
+  # points that collapse to the same geography(Point, 4326) value at
+  # double precision (e.g. clients that sometimes stringify floats
+  # with extra decimals). Without normalization, `uniq` keeps both
+  # variants and the subsequent `Point.upsert_all` fails with
+  # `PG::CardinalityViolation: ON CONFLICT DO UPDATE command cannot
+  # affect row a second time`, losing the entire 1000-point slice.
+  # Rounding to 7 decimal places preserves ~1 cm precision at the
+  # equator — well within GPS error — while guaranteeing the Ruby key
+  # matches the DB key.
+  def dedup_key(point)
+    lon, lat = point[:lonlat].to_s.scan(/-?\d+(?:\.\d+)?/).map { |n| n.to_f.round(7) }
+    [lon, lat, point[:timestamp].to_i, point[:user_id]]
   end
 end
