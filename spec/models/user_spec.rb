@@ -19,7 +19,7 @@ RSpec.describe User, type: :model do
   end
 
   describe 'enums' do
-    it { is_expected.to define_enum_for(:status).with_values(inactive: 0, active: 1, trial: 2) }
+    it { is_expected.to define_enum_for(:status).with_values(inactive: 0, active: 1, trial: 2, pending_payment: 3) }
     it { is_expected.to define_enum_for(:plan).with_values(lite: 0, pro: 1) }
   end
 
@@ -78,36 +78,34 @@ RSpec.describe User, type: :model do
         expect { user.send(:start_trial) }.to have_enqueued_job(Users::TrialWebhookJob).with(user.id)
       end
 
-      it 'schedules welcome emails' do
-        allow(user).to receive(:schedule_welcome_emails)
+      it 'schedules product emails' do
+        allow(user).to receive(:schedule_product_emails)
 
         user.send(:start_trial)
 
-        expect(user).to have_received(:schedule_welcome_emails)
+        expect(user).to have_received(:schedule_product_emails)
+      end
+
+      it 'schedules paddle billing emails' do
+        allow(user).to receive(:schedule_paddle_billing_emails)
+
+        user.send(:start_trial)
+
+        expect(user).to have_received(:schedule_paddle_billing_emails)
       end
     end
 
-    describe '#schedule_welcome_emails' do
+    describe '#schedule_product_emails' do
       let(:user) { create(:user, :inactive) }
 
       it 'schedules welcome email immediately' do
-        expect { user.send(:schedule_welcome_emails) }
+        expect { user.schedule_product_emails }
           .to have_enqueued_job(Users::MailerSendingJob).with(user.id, 'welcome')
       end
 
       it 'schedules explore_features email for day 2' do
-        expect { user.send(:schedule_welcome_emails) }
+        expect { user.schedule_product_emails }
           .to have_enqueued_job(Users::MailerSendingJob).with(user.id, 'explore_features')
-      end
-
-      it 'schedules trial_expires_soon email for day 5' do
-        expect { user.send(:schedule_welcome_emails) }
-          .to have_enqueued_job(Users::MailerSendingJob).with(user.id, 'trial_expires_soon')
-      end
-
-      it 'schedules trial_expired email for day 7' do
-        expect { user.send(:schedule_welcome_emails) }
-          .to have_enqueued_job(Users::MailerSendingJob).with(user.id, 'trial_expired')
       end
     end
   end
@@ -501,6 +499,146 @@ RSpec.describe User, type: :model do
         expect(user.persisted?).to be false
         expect(user.errors[:email]).to be_present
       end
+    end
+  end
+
+  describe '#generate_subscription_token' do
+    let(:user) { create(:user) }
+    let(:secret) { ENV.fetch('JWT_SECRET_KEY', 'test_secret') }
+
+    def decode(token)
+      JWT.decode(token, secret, true, { algorithm: 'HS256' }).first
+    end
+
+    it 'encodes user_id, email, theme, and exp by default' do
+      payload = decode(user.generate_subscription_token)
+
+      expect(payload['user_id']).to eq(user.id)
+      expect(payload['email']).to eq(user.email)
+      expect(payload).to have_key('theme')
+      expect(payload['exp']).to be > Time.current.to_i
+      expect(payload).not_to have_key('plan')
+      expect(payload).not_to have_key('interval')
+    end
+
+    it 'includes plan and interval when provided' do
+      payload = decode(user.generate_subscription_token(plan: 'pro', interval: 'annual'))
+
+      expect(payload['plan']).to eq('pro')
+      expect(payload['interval']).to eq('annual')
+    end
+
+    it 'omits plan/interval when blank' do
+      payload = decode(user.generate_subscription_token(plan: '', interval: nil))
+
+      expect(payload).not_to have_key('plan')
+      expect(payload).not_to have_key('interval')
+    end
+  end
+
+  describe 'subscription columns' do
+    it 'has a subscription_source column defaulting to 0' do
+      user = create(:user)
+      expect(user.read_attribute_before_type_cast(:subscription_source)).to eq(0)
+    end
+
+    it 'has a nullable signup_variant column' do
+      user = create(:user)
+      expect(user.signup_variant).to be_nil
+    end
+
+    it 'indexes subscription_source for query performance' do
+      indexes = ActiveRecord::Base.connection.indexes(:users).map(&:columns)
+      expect(indexes).to include(['subscription_source'])
+    end
+  end
+
+  describe 'status enum' do
+    it 'includes pending_payment with value 3' do
+      expect(User.statuses['pending_payment']).to eq(3)
+    end
+
+    it 'exposes predicate pending_payment?' do
+      user = create(:user)
+      user.update!(status: :pending_payment)
+      expect(user.pending_payment?).to be true
+    end
+  end
+
+  describe 'subscription_source enum' do
+    it 'defaults to :none for new users' do
+      user = create(:user)
+      expect(user.subscription_source).to eq('none')
+    end
+
+    it 'accepts paddle, apple_iap, google_play' do
+      user = create(:user)
+      %i[paddle apple_iap google_play].each do |source|
+        user.update!(subscription_source: source)
+        expect(user.subscription_source).to eq(source.to_s)
+      end
+    end
+  end
+
+  describe 'skip_auto_trial' do
+    before do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+    end
+
+    it 'does not call start_trial when skip_auto_trial is true' do
+      user = build(:user, skip_auto_trial: true)
+      expect(user).not_to receive(:start_trial)
+      user.save!
+    end
+
+    it 'still calls start_trial by default' do
+      user = build(:user)
+      expect(user).to receive(:start_trial).and_call_original
+      user.save!
+    end
+
+    it 'leaves a skip_auto_trial user in inactive status (no trial granted)' do
+      user = create(:user, skip_auto_trial: true, status: :inactive, active_until: nil)
+      expect(user.status).to eq('inactive')
+      expect(user.active_until).to be_nil
+    end
+  end
+
+  describe 'email campaign scheduling' do
+    include ActiveJob::TestHelper
+
+    before do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      ActiveJob::Base.queue_adapter = :test
+    end
+
+    after { clear_enqueued_jobs }
+
+    it 'schedules product emails for a paddle-sourced trial user' do
+      user = create(:user, subscription_source: :paddle, skip_auto_trial: true)
+      clear_enqueued_jobs
+      user.schedule_product_emails
+      expect(Users::MailerSendingJob).to have_been_enqueued.with(user.id, 'welcome')
+      expect(Users::MailerSendingJob).to have_been_enqueued.with(user.id, 'explore_features')
+    end
+
+    it 'schedules paddle billing emails only for paddle-sourced users' do
+      paddle_user = create(:user, subscription_source: :paddle, skip_auto_trial: true)
+      iap_user = create(:user, subscription_source: :apple_iap, skip_auto_trial: true)
+      clear_enqueued_jobs
+
+      paddle_user.schedule_paddle_billing_emails
+      iap_user.schedule_paddle_billing_emails
+
+      expect(Users::MailerSendingJob).to have_been_enqueued.with(paddle_user.id, 'trial_first_payment_soon')
+      expect(Users::MailerSendingJob).not_to have_been_enqueued.with(iap_user.id, 'trial_first_payment_soon')
+    end
+
+    it 'start_trial still schedules product + paddle billing for legacy cloud signups' do
+      user = build(:user)
+      expect(user).to receive(:schedule_product_emails).and_call_original
+      expect(user).to receive(:schedule_paddle_billing_emails).and_call_original
+      user.save!
     end
   end
 end

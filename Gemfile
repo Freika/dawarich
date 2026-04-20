@@ -16,6 +16,7 @@ gem 'connection_pool', '< 3' # Pin to 2.x - version 3.0+ has breaking API change
 gem 'data_migrate'
 gem 'devise'
 gem 'devise-two-factor'
+gem 'google-id-token', '~> 1.4'
 gem 'fit4ruby', '~> 3.13'
 gem 'foreman'
 gem 'geocoder', github: 'Freika/geocoder', branch: 'master'

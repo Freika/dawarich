@@ -70,6 +70,16 @@ Rack::Attack.throttle('logins/ip', limit: 20, period: 1.minute) do |req|
   req.ip
 end
 
+# Rate-limit OTP challenge attempts: 5 per 15 minutes.
+# Protects against brute-forcing a 6-digit TOTP within its validity window.
+# Ideally throttle by SHA256(challenge_token); IP-based throttling is a pragmatic
+# fallback since the request body isn't easily accessible here.
+Rack::Attack.throttle('api/auth/otp_challenge', limit: 5, period: 15.minutes) do |req|
+  if req.path == '/api/v1/auth/otp_challenge' && req.post?
+    req.ip
+  end
+end
+
 Rack::Attack.throttled_responder = lambda do |request|
   match_data = request.env['rack.attack.match_data'] || {}
   now = Time.current
