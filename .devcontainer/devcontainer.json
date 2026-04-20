@@ -11,17 +11,18 @@
       "extensions": [
         "Shopify.ruby-lsp",
         "ms-azuretools.vscode-docker",
-        "biomejs.biome"
+        "eamodio.gitlens"
       ],
       "settings": {
         "rubyLsp.rubyVersionManager": { "identifier": "none" },
-        "rubyLsp.formatter": "auto",
-        "editor.defaultFormatter": "biomejs.biome",
-        "editor.formatOnSave": true
+        "rubyLsp.formatter": "rubocop",
+        "rubyLsp.bundleGemfile": "",
+        "[ruby]": {
+          "editor.defaultFormatter": "Shopify.ruby-lsp",
+          "editor.formatOnSave": true
       }
     }
   },
   "forwardPorts": [3000, 5432, 6379], // Web, DB, and Redis
-  "remoteUser": "root",
   "postCreateCommand": "bundle install && yarn install --ignore-engines && bundle exec rails db:prepare"
 }
