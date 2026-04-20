@@ -34,7 +34,7 @@ RUN apt-get update -qq \
 
 # Install Node.js from Debian repositories (supports all architectures including armv7)
 RUN apt-get update -qq \
-    && apt-get install -y nodejs npm \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends nodejs npm \
     && npm install -g yarn \
     && rm -rf /var/lib/apt/lists/*
 
@@ -67,9 +67,6 @@ RUN yarn install --ignore-engines
 
 # 3. Copy the rest of the app
 COPY . ./
-
-# 4. Cleanup/Setup (Keep your tmp/chmod lines here)
-RUN mkdir -p tmp/pids tmp/cache tmp/sockets && chmod -R 777 tmp
 
 # Precompile assets (Not necessary in development)
 # RUN SECRET_KEY_BASE_DUMMY=1 bundle exec rake assets:precompile \
