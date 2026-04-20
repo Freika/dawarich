@@ -13,7 +13,7 @@ export class MapInitializer {
    * @param {Object} settings - Map settings (style, center, zoom)
    * @returns {Promise<maplibregl.Map>} The initialized map instance
    */
-  static async initialize(container, settings = {}) {
+  static async initialize(container, settings = {}, apiKey = null) {
     const {
       mapStyle = "streets",
       center = [0, 0],
@@ -39,6 +39,20 @@ export class MapInitializer {
       center,
       zoom,
       attributionControl: false,
+      transformRequest: (url) => {
+        const requestUrl = new URL(url, window.location.origin)
+
+        if (!requestUrl.pathname.startsWith("/api/v1/tiles/") || !apiKey) {
+          return { url: requestUrl.toString() }
+        }
+
+        return {
+          url: requestUrl.toString(),
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+          },
+        }
+      },
     }
 
     const map = new maplibregl.Map(mapOptions)

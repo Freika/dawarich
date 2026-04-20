@@ -62,6 +62,7 @@ export default class extends Controller {
     // Layer toggles
     "pointsToggle",
     "pointsEditToggle",
+    "pointsMvtToggle",
     "routesToggle",
     "heatmapToggle",
     "hexagonsToggle",
@@ -416,15 +417,19 @@ export default class extends Controller {
     // none, the map stays on the last-known view rather than the world.
     const lastView = loadLastView(this.apiKeyValue)
 
-    const map = await MapInitializer.initialize(this.containerTarget, {
-      mapStyle: this.settings.mapStyle,
-      globeProjection: this.settings.globeProjection,
-      hiddenTileCategories: this.settings.hiddenTileCategories || [],
-      disabledPoiGroups: this.settings.disabledPoiGroups || [],
-      customTheme: this.settings.customTheme,
-      vectorTilesUrl: this.settings.vectorTilesUrl,
-      ...(lastView ? { center: lastView.center, zoom: lastView.zoom } : {}),
-    })
+    const map = await MapInitializer.initialize(
+      this.containerTarget,
+      {
+        mapStyle: this.settings.mapStyle,
+        globeProjection: this.settings.globeProjection,
+        hiddenTileCategories: this.settings.hiddenTileCategories || [],
+        disabledPoiGroups: this.settings.disabledPoiGroups || [],
+        customTheme: this.settings.customTheme,
+        vectorTilesUrl: this.settings.vectorTilesUrl,
+        ...(lastView ? { center: lastView.center, zoom: lastView.zoom } : {}),
+      },
+      this.apiKeyValue,
+    )
 
     // The controller may have disconnected while the style was loading (e.g.
     // fast Turbo navigation). Tear the map down instead of attaching a listener
@@ -1401,6 +1406,10 @@ export default class extends Controller {
 
   togglePointsEditing(event) {
     return this.settingsController.togglePointsEditing(event)
+  }
+
+  togglePointsMvt(event) {
+    return this.routesManager.togglePointsMvt(event)
   }
   toggleRoutes(event) {
     return this.routesManager.toggleRoutes(event)

@@ -686,6 +686,21 @@ export class RoutesManager {
   }
 
   /**
+   * Toggle vector-tile points layer visibility
+   */
+  async togglePointsMvt(event) {
+    const element = event.currentTarget
+    const visible = element.checked
+
+    const pointsMvtLayer = this.layerManager.getLayer("points-mvt")
+    if (pointsMvtLayer) {
+      pointsMvtLayer.toggle(visible)
+    }
+
+    SettingsManager.updateSetting("pointsMvtEnabled", visible)
+  }
+
+  /**
    * Toggle family members layer
    */
   async toggleFamily(event) {

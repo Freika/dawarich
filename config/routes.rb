@@ -371,6 +371,10 @@ Rails.application.routes.draw do
         get 'tracked_months', to: 'tracked_months#index'
       end
 
+      namespace :tiles do
+        get 'points/:z/:x/:y.mvt', to: 'points#show', defaults: { format: :mvt }
+      end
+
       resources :photos, only: %i[index] do
         member do
           get 'thumbnail', constraints: { id: %r{[^/]+} }

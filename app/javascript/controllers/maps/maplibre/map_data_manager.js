@@ -48,6 +48,8 @@ export class MapDataManager {
     let data = null
 
     try {
+      this.layerManager.updatePointTileRange(startDate, endDate)
+
       // 1. Initialize all layers with empty data for correct z-ordering
       await this._setupLayers({
         pointsGeoJSON: EMPTY_GEOJSON,

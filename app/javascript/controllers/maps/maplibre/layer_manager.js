@@ -8,6 +8,7 @@ import { HexagonLayer } from "maps_maplibre/layers/hexagon_layer"
 import { PhotosLayer } from "maps_maplibre/layers/photos_layer"
 import { PlacesLayer } from "maps_maplibre/layers/places_layer"
 import { PointsLayer } from "maps_maplibre/layers/points_layer"
+import { PointsMvtLayer } from "maps_maplibre/layers/points_mvt_layer"
 import { RecentPointLayer } from "maps_maplibre/layers/recent_point_layer"
 import { ReplayMarkerLayer } from "maps_maplibre/layers/replay_marker_layer"
 import { RoutesLayer } from "maps_maplibre/layers/routes_layer"
@@ -27,8 +28,10 @@ export class LayerManager {
     this.settings = settings
     this.api = api
     this.controller = controller
+    this.apiKey = controller?.apiKeyValue || null
     this.layers = {}
     this.eventHandlersSetup = false
+    this.pointTileRange = { startAt: null, endAt: null }
   }
 
   /**
@@ -69,6 +72,7 @@ export class LayerManager {
 
     this._addFamilyLayer()
     this._addAnomaliesLayer()
+    this._addPointsMvtLayer()
     this._addPointsLayer(pointsGeoJSON)
     this._addRoutesHitLayer() // Add hit target layer after points, will be on top visually
     this._addRecentPointLayer()
@@ -89,6 +93,7 @@ export class LayerManager {
 
     // Click handlers
     this.map.on("click", "points", handlers.handlePointClick)
+    this.map.on("click", "points-mvt", handlers.handlePointClick)
     this.map.on("click", "visits", handlers.handleVisitClick)
     this.map.on("click", "photos", handlers.handlePhotoClick)
     this.map.on("click", "places", handlers.handlePlaceClick)
@@ -113,6 +118,12 @@ export class LayerManager {
       this.map.getCanvas().style.cursor = "pointer"
     })
     this.map.on("mouseleave", "points", () => {
+      this.map.getCanvas().style.cursor = ""
+    })
+    this.map.on("mouseenter", "points-mvt", () => {
+      this.map.getCanvas().style.cursor = "pointer"
+    })
+    this.map.on("mouseleave", "points-mvt", () => {
       this.map.getCanvas().style.cursor = ""
     })
     this.map.on("mouseenter", "visits", () => {
@@ -176,7 +187,7 @@ export class LayerManager {
       const trackFeatures = this.map.queryRenderedFeatures(e.point, {
         layers: ["tracks"],
       })
-      // Track points are part of a selected track — clicking them should not clear the selection
+      // Track points are part of a selected track, clicking them should not clear the selection
       const trackPointFeatures = this.map.getLayer("track-points")
         ? this.map.queryRenderedFeatures(e.point, { layers: ["track-points"] })
         : []
@@ -195,7 +206,7 @@ export class LayerManager {
    * Toggle layer visibility
    */
   toggleLayer(layerName) {
-    const layer = this.layers[`${layerName}Layer`]
+    const layer = this.getLayer(layerName)
     if (!layer) return null
 
     layer.toggle()
@@ -206,7 +217,10 @@ export class LayerManager {
    * Get layer instance
    */
   getLayer(layerName) {
-    return this.layers[`${layerName}Layer`]
+    return (
+      this.layers[`${layerName}Layer`] ||
+      this.layers[`${this._normalizeLayerName(layerName)}Layer`]
+    )
   }
 
   /**
@@ -215,7 +229,16 @@ export class LayerManager {
    * @param {object} layerInstance - Layer instance
    */
   registerLayer(layerName, layerInstance) {
-    this.layers[`${layerName}Layer`] = layerInstance
+    this.layers[`${this._normalizeLayerName(layerName)}Layer`] = layerInstance
+  }
+
+  updatePointTileRange(startAt, endAt) {
+    this.pointTileRange = { startAt, endAt }
+
+    const layer = this.getLayer("points-mvt")
+    if (layer) {
+      layer.update(this.pointTileRange)
+    }
   }
 
   /**
@@ -232,6 +255,12 @@ export class LayerManager {
     this.layers.pointsLayer?.setEditMode(false)
     this.layers = {}
     this.eventHandlersSetup = false
+  }
+
+  _normalizeLayerName(layerName) {
+    return layerName.replace(/-([a-z])/g, (_match, letter) =>
+      letter.toUpperCase(),
+    )
   }
 
   // Private methods for individual layer management
@@ -426,6 +455,19 @@ export class LayerManager {
       this.layers.pointsLayer.add(pointsGeoJSON)
     } else {
       this.layers.pointsLayer.update(pointsGeoJSON)
+    }
+  }
+
+  _addPointsMvtLayer() {
+    if (!this.layers.pointsMvtLayer) {
+      this.layers.pointsMvtLayer = new PointsMvtLayer(this.map, {
+        visible: this.settings.pointsMvtEnabled || false,
+        apiKey: this.apiKey,
+        ...this.pointTileRange,
+      })
+      this.layers.pointsMvtLayer.add(this.pointTileRange)
+    } else {
+      this.layers.pointsMvtLayer.update(this.pointTileRange)
     }
   }
 

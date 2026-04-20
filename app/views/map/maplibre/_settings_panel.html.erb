@@ -87,6 +87,20 @@
 
           <div class="divider"></div>
 
+          <!-- Points (MVT) Layer -->
+          <div class="form-control">
+            <label class="label cursor-pointer justify-start gap-3">
+              <input type="checkbox"
+                     class="toggle toggle-primary"
+                     data-maps--maplibre-target="pointsMvtToggle"
+                     data-action="change->maps--maplibre#togglePointsMvt" />
+              <span class="label-text font-medium">Points (MVT)</span>
+            </label>
+            <p class="text-sm text-base-content/60 ml-14">Show the tiled points implementation for comparison</p>
+          </div>
+
+          <div class="divider"></div>
+
           <!-- Routes Layer -->
           <div class="form-control">
             <label class="label cursor-pointer justify-start gap-3">
@@ -1735,4 +1749,3 @@
     </div>
   </div>
 </div>
-

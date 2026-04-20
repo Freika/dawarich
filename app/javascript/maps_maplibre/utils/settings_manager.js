@@ -85,6 +85,7 @@ const DEFAULT_SETTINGS = {
 
 const LAYER_NAME_MAP = {
   Points: "pointsVisible",
+  "Points (MVT)": "pointsMvtEnabled",
   Routes: "routesVisible",
   Heatmap: "heatmapEnabled",
   Hexagons: "hexagonsEnabled",

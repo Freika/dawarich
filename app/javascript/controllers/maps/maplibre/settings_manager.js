@@ -61,6 +61,7 @@ export class SettingsController {
     const toggleMap = {
       pointsToggle: "pointsVisible",
       pointsEditToggle: "pointDraggingEnabled",
+      pointsMvtToggle: "pointsMvtEnabled",
       routesToggle: "routesVisible",
       heatmapToggle: "heatmapEnabled",
       hexagonsToggle: "hexagonsEnabled",
