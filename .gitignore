@@ -70,7 +70,6 @@
 .env.development
 
 # Ignore temporary files
-/tmp/
 /log/*.log
 
 /.vscode/
@@ -95,7 +94,6 @@ Makefile
 /db/*.sqlite3-wal
 
 # Playwright
-node_modules/
 /test-results/
 /playwright-report/
 /blob-report/

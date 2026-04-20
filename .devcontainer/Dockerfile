@@ -38,12 +38,13 @@ RUN apt-get update -qq \
     && npm install -g yarn \
     && rm -rf /var/lib/apt/lists/*
 
-# Use jemalloc with check for architecture
-RUN if [ "$(uname -m)" = "x86_64" ]; then \
-    echo "/usr/lib/x86_64-linux-gnu/libjemalloc.so.2" > /etc/ld.so.preload; \
-    else \
-    echo "/usr/lib/aarch64-linux-gnu/libjemalloc.so.2" > /etc/ld.so.preload; \
-    fi
+# Preload jemalloc per Debian multiarch triplet
+RUN case "$(uname -m)" in \
+      x86_64)           echo "/usr/lib/x86_64-linux-gnu/libjemalloc.so.2" > /etc/ld.so.preload ;; \
+      aarch64)          echo "/usr/lib/aarch64-linux-gnu/libjemalloc.so.2" > /etc/ld.so.preload ;; \
+      armv7l|armv6l)    echo "/usr/lib/arm-linux-gnueabihf/libjemalloc.so.2" > /etc/ld.so.preload ;; \
+      *) echo "jemalloc preload skipped for $(uname -m)" ;; \
+    esac
 
 # Enable YJIT
 ENV RUBY_YJIT_ENABLE=1

@@ -9,13 +9,15 @@
   "customizations": {
     "vscode": {
       "extensions": [
-        "rebornix.Ruby",
-        "castwide.solargraph",
+        "Shopify.ruby-lsp",
         "ms-azuretools.vscode-docker",
-        "shopline.vscode-ruby-test-adapter"
+        "biomejs.biome"
       ],
       "settings": {
-        "ruby.interpreter.commandPath": "bundle"
+        "rubyLsp.rubyVersionManager": { "identifier": "none" },
+        "rubyLsp.formatter": "auto",
+        "editor.defaultFormatter": "biomejs.biome",
+        "editor.formatOnSave": true
       }
     }
   },
