@@ -12,6 +12,7 @@
       "**",
       "!!**/node_modules",
       "!!**/vendor",
+      "!!.devcontainer",
       "!!app/assets/builds",
       "!!app/assets/stylesheets/maplibre-gl.css",
       "!!app/javascript/posthog.js"
