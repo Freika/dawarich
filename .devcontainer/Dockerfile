@@ -4,11 +4,12 @@ ARG RAILS_ENV=development
 ENV RAILS_ENV=development
 ENV APP_PATH=/var/app
 ENV BUNDLE_VERSION=2.5.21
-ENV BUNDLE_PATH=/usr/local/bundle/gems
+# In dev, we usually let gems stay in the system path for easier LSP access
+#ENV BUNDLE_PATH=/usr/local/bundle/gems
 ENV RAILS_LOG_TO_STDOUT=true
 ENV RAILS_PORT=3000
 # Add the gem bin directory to the system PATH
-ENV PATH="${BUNDLE_PATH}/bin:${PATH}"
+#ENV PATH="${BUNDLE_PATH}/bin:${PATH}"
 
 RUN apt-get update -qq \
     && DEBIAN_FRONTEND=noninteractive apt-get upgrade -y -qq \
@@ -34,17 +35,16 @@ RUN apt-get update -qq \
 
 # Install Node.js from Debian repositories (supports all architectures including armv7)
 RUN apt-get update -qq \
-    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends nodejs npm \
+    && apt-get install -y nodejs npm \
     && npm install -g yarn \
     && rm -rf /var/lib/apt/lists/*
 
-# Preload jemalloc per Debian multiarch triplet
-RUN case "$(uname -m)" in \
-      x86_64)           echo "/usr/lib/x86_64-linux-gnu/libjemalloc.so.2" > /etc/ld.so.preload ;; \
-      aarch64)          echo "/usr/lib/aarch64-linux-gnu/libjemalloc.so.2" > /etc/ld.so.preload ;; \
-      armv7l|armv6l)    echo "/usr/lib/arm-linux-gnueabihf/libjemalloc.so.2" > /etc/ld.so.preload ;; \
-      *) echo "jemalloc preload skipped for $(uname -m)" ;; \
-    esac
+# Use jemalloc with check for architecture
+RUN if [ "$(uname -m)" = "x86_64" ]; then \
+    echo "/usr/lib/x86_64-linux-gnu/libjemalloc.so.2" > /etc/ld.so.preload; \
+    else \
+    echo "/usr/lib/aarch64-linux-gnu/libjemalloc.so.2" > /etc/ld.so.preload; \
+    fi
 
 # Enable YJIT
 ENV RUBY_YJIT_ENABLE=1
@@ -54,41 +54,20 @@ RUN gem update --system 3.6.9 \
     && gem install bundler --version "$BUNDLE_VERSION" \
     && rm -rf $GEM_HOME/cache/*
 
-USER root
-
 WORKDIR $APP_PATH
 
-# 1. Copy only files needed for gem/package installation first (better caching)
-COPY Gemfile Gemfile.lock .ruby-version package.json *yarn.lock *package-lock.json ./
-
-# 2. Install dependencies
+# DEV OPTIMIZATION: Don't exclude development/test gems
+COPY Gemfile Gemfile.lock .ruby-version ./
 RUN bundle install --jobs 4 --retry 3
-RUN yarn install --ignore-engines
 
-# 3. Copy the rest of the app
-COPY . ./
+# We don't COPY the whole app here because devcontainer.json 
+# mounts the local folder over $APP_PATH anyway.
 
-# Precompile assets (Not necessary in development)
-# RUN SECRET_KEY_BASE_DUMMY=1 bundle exec rake assets:precompile \
-#     && rm -rf node_modules tmp/cache
-
-# Ensure tmp directory exists and is writable by any user (for custom uid:gid support)
-RUN mkdir -p tmp/pids tmp/cache tmp/sockets \
-    && chmod -R 777 tmp
-
-# Copy public directory to temp location for syncing with volume at runtime
-# This allows new static files to be added to the persistent volume
-RUN cp -r public /tmp/public_assets
-
-# Copy entrypoint scripts and grant execution permissions (Not necessary in development)
-#COPY ./docker/web-entrypoint.sh /usr/local/bin/web-entrypoint.sh
-#RUN chmod +x /usr/local/bin/web-entrypoint.sh
-
-#COPY ./docker/sidekiq-entrypoint.sh /usr/local/bin/sidekiq-entrypoint.sh
-#RUN chmod +x /usr/local/bin/sidekiq-entrypoint.sh
+# Copy entrypoints from the specific context
+COPY ./docker/web-entrypoint.sh /usr/local/bin/web-entrypoint.sh
+COPY ./docker/sidekiq-entrypoint.sh /usr/local/bin/sidekiq-entrypoint.sh
+RUN chmod +x /usr/local/bin/*.sh
 
 EXPOSE $RAILS_PORT
 
-STOPSIGNAL SIGINT
-
-#ENTRYPOINT [ "bundle", "exec" ]
+ENTRYPOINT [ "bundle", "exec" ]

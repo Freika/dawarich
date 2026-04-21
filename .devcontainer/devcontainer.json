@@ -1,11 +1,9 @@
 {
   "name": "Dawarich Dev",
-  "dockerComposeFile": [
-    "../docker/docker-compose.yml",
-    "docker-compose.dev.yml"
-  ],
+  "dockerComposeFile": "docker-compose.yml",
   "service": "dawarich_app",
   "workspaceFolder": "/var/app",
+  "overrideCommand": true,
   "customizations": {
     "vscode": {
       "extensions": [
@@ -20,9 +18,12 @@
         "[ruby]": {
           "editor.defaultFormatter": "Shopify.ruby-lsp",
           "editor.formatOnSave": true
+        }
       }
     }
   },
   "forwardPorts": [3000, 5432, 6379], // Web, DB, and Redis
-  "postCreateCommand": "bundle install && yarn install --ignore-engines && bundle exec rails db:prepare"
+  "onCreateCommand": "bundle install && yarn install --ignore-engines",
+  "postCreateCommand": "bundle exec rails db:prepare",
+  "postStartCommand": "./bin/dev"
 }
