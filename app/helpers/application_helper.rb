@@ -69,7 +69,11 @@ module ApplicationHelper
   end
 
   def trial_button_class(user)
-    case (user.active_until.to_date - Time.current.to_date).to_i
+    return 'btn-error' if user.active_until.blank?
+
+    days_left = (user.active_until.to_date - Time.current.to_date).to_i
+
+    case days_left
     when 5..8
       'btn-info'
     when 2...5
@@ -77,7 +81,7 @@ module ApplicationHelper
     when 0...2
       'btn-error'
     else
-      'btn-success'
+      days_left.negative? ? 'btn-error' : 'btn-success'
     end
   end
 
@@ -87,6 +91,28 @@ module ApplicationHelper
 
     days_left = [(expiry.to_date - Time.zone.today).to_i, 0].max
     "#{days_left}d left"
+  end
+
+  # Returns the correct upgrade URL for a user's subscription state.
+  # pending_payment users (reverse-trial variant who abandoned Manager checkout)
+  # are directed to /trial/resume which surfaces a Resume-checkout button.
+  # All other upgrade-eligible users (trial, inactive) go to Manager's standard
+  # upgrade dashboard via JWT auth.
+  def subscription_upgrade_url(user)
+    if user.pending_payment?
+      trial_resume_path
+    else
+      "#{MANAGER_URL}/auth/dawarich?token=#{user.generate_subscription_token}"
+    end
+  end
+
+  # Returns the navbar button label for a subscribe-eligible user.
+  # pending_payment users get "Finish signup" since they never started a trial
+  # (no active_until to count down from). Other users get the trial compact label.
+  def subscription_button_label(user)
+    return 'Finish signup' if user.pending_payment?
+
+    trial_days_remaining_compact(user)
   end
 
   def oauth_provider_name(provider)
