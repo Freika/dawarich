@@ -42,4 +42,27 @@ RSpec.describe 'POST /api/v1/auth/register', type: :request do
     post '/api/v1/auth/register', params: valid_params
     expect(Users::MailerSendingJob).not_to have_been_enqueued
   end
+
+  context 'on a self-hosted instance' do
+    before { allow(DawarichSettings).to receive(:self_hosted?).and_return(true) }
+
+    it 'creates a user in active status (not pending_payment)' do
+      expect {
+        post '/api/v1/auth/register', params: valid_params
+      }.to change(User, :count).by(1)
+
+      user = User.find_by(email: 'new@example.com')
+      expect(user.status).to eq('active')
+      expect(user.plan).to eq('pro')
+      expect(user.active_until).to be > 900.years.from_now
+      expect(user.api_key).to be_present
+    end
+
+    it 'returns 201 with active status in the response body' do
+      post '/api/v1/auth/register', params: valid_params
+      expect(response).to have_http_status(:created)
+      body = JSON.parse(response.body)
+      expect(body['status']).to eq('active')
+    end
+  end
 end

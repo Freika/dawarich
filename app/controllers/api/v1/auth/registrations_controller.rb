@@ -6,11 +6,11 @@ class Api::V1::Auth::RegistrationsController < Api::V1::Auth::BaseController
       email: params[:email],
       password: params[:password],
       password_confirmation: params[:password_confirmation],
-      skip_auto_trial: true
+      skip_auto_trial: !DawarichSettings.self_hosted?
     )
 
     if user.save
-      user.update!(status: :pending_payment)
+      user.update!(status: :pending_payment) unless DawarichSettings.self_hosted?
       render_auth_success(user, status: :created)
     else
       render json: {

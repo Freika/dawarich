@@ -38,5 +38,23 @@ module Dawarich
     config.active_job.queue_adapter = :sidekiq
 
     config.action_mailer.preview_paths << Rails.root.join('spec/mailers/previews').to_s
+
+    # Active Record Encryption is required by devise-two-factor for the `encrypts :otp_secret`
+    # declaration on the User model. These keys must always be set for the model to load.
+    #
+    # 2FA is only user-facing when all three env vars are explicitly set (checked via
+    # DawarichSettings.two_factor_available?). Without them, the 2FA settings page is hidden
+    # and the OTP login challenge is skipped — but the model still needs encryption keys to boot.
+    #
+    # Set here (not in an initializer) so they are applied during Rails bootstrap before any
+    # gem initializer (e.g., Flipper) forces ActiveRecord to boot eagerly. Otherwise the
+    # on_load hook that copies these to ActiveRecord::Encryption.config fires with empty
+    # values and `encrypts :otp_secret` fails at save time.
+    config.active_record.encryption.primary_key =
+      ENV.fetch('OTP_ENCRYPTION_PRIMARY_KEY', 'dawarich-dev-primary-key-not-for-production')
+    config.active_record.encryption.deterministic_key =
+      ENV.fetch('OTP_ENCRYPTION_DETERMINISTIC_KEY', 'dawarich-dev-deterministic-not-for-prod')
+    config.active_record.encryption.key_derivation_salt =
+      ENV.fetch('OTP_ENCRYPTION_KEY_DERIVATION_SALT', 'dawarich-dev-salt-not-for-production')
   end
 end

@@ -18,12 +18,38 @@ class Users::RegistrationsController < Devise::RegistrationsController
   end
 
   def create
-    super do |resource|
-      if resource.persisted?
-        assign_utm_params(resource)
-        store_signup_intent(resource)
-        accept_invitation_for_user(resource) if @invitation
+    build_resource(sign_up_params)
+    @signup_variant = Signup::BucketVariant.new(resource).call
+    resource.signup_variant = @signup_variant
+    resource.skip_auto_trial = true if @signup_variant == 'reverse_trial'
+
+    resource.save
+    yield resource if block_given?
+
+    if resource.persisted?
+      assign_utm_params(resource)
+      store_signup_intent(resource)
+      accept_invitation_for_user(resource) if @invitation
+
+      if @signup_variant == 'reverse_trial'
+        resource.update!(status: :pending_payment)
+        checkout_url = "#{MANAGER_URL}/checkout?token=#{resource.generate_subscription_token(variant: 'reverse_trial')}"
+        redirect_to checkout_url, allow_other_host: true
+      else
+        if resource.active_for_authentication?
+          set_flash_message!(:notice, :signed_up)
+          sign_up(resource_name, resource)
+          respond_with(resource, location: after_sign_up_path_for(resource))
+        else
+          set_flash_message!(:notice, :"signed_up_but_#{resource.inactive_message}")
+          expire_data_after_sign_in!
+          respond_with(resource, location: after_inactive_sign_up_path_for(resource))
+        end
       end
+    else
+      clean_up_passwords(resource)
+      set_minimum_password_length
+      respond_with(resource)
     end
   end
 

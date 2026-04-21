@@ -26,14 +26,19 @@ class Api::V1::Auth::AppleController < Api::V1::Auth::BaseController
       return [user, false]
     end
 
-    user = User.create!(
+    attrs = {
       email: email.presence || "#{uid}@apple.dawarich.app",
       password: SecureRandom.hex(32),
       provider: 'apple',
-      uid: uid,
-      status: :pending_payment,
-      skip_auto_trial: true
-    )
+      uid: uid
+    }
+
+    if DawarichSettings.self_hosted?
+      user = User.create!(attrs)
+    else
+      user = User.create!(attrs.merge(status: :pending_payment, skip_auto_trial: true))
+    end
+
     [user, true]
   end
 end

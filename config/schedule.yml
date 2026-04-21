@@ -97,3 +97,13 @@ raw_data_clear_job:
   cron: "0 3 8 * *" # 8th of month at 03:00 (7 days after archival for verification)
   class: "Points::RawData::ClearJob"
   queue: archival
+
+pending_payment_reminders:
+  cron: "0 9 * * *" # every day at 9am
+  class: "Users::PendingPaymentReminderJob"
+  queue: default
+
+pending_payment_purge:
+  cron: "0 3 * * *" # every day at 3am
+  class: "Users::PendingPaymentPurgeJob"
+  queue: default

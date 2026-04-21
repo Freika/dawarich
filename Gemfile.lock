@@ -199,6 +199,18 @@ GEM
     ffi (1.17.2-x86_64-linux-gnu)
     fit4ruby (3.13.0)
       bindata (~> 2.4.14)
+    flipper (1.4.1)
+      concurrent-ruby (< 2)
+    flipper-active_record (1.4.1)
+      activerecord (>= 4.2, < 9)
+      flipper (~> 1.4.1)
+    flipper-ui (1.4.1)
+      erubi (>= 1.0.0, < 2.0.0)
+      flipper (~> 1.4.1)
+      rack (>= 1.4, < 4)
+      rack-protection (>= 1.5.3, < 5.0.0)
+      rack-session (>= 1.0.2, < 3.0.0)
+      sanitize (< 8)
     foreman (0.90.0)
       thor (~> 1.4)
     fugit (1.12.1)
@@ -552,6 +564,9 @@ GEM
       rubocop-ast (>= 1.44.0, < 2.0)
     ruby-progressbar (1.13.0)
     rubyzip (3.2.2)
+    sanitize (7.0.0)
+      crass (~> 1.0.2)
+      nokogiri (>= 1.16.8)
     securerandom (0.4.1)
     selenium-webdriver (4.35.0)
       base64 (~> 0.2)
@@ -689,6 +704,9 @@ DEPENDENCIES
   fakeredis
   ffaker
   fit4ruby (~> 3.13)
+  flipper (~> 1.3)
+  flipper-active_record (~> 1.3)
+  flipper-ui (~> 1.3)
   foreman
   geocoder!
   google-id-token (~> 1.4)

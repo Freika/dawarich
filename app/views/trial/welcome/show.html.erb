@@ -1,0 +1,12 @@
+<div class="hero min-h-[60vh]">
+  <div class="hero-content text-center max-w-xl">
+    <div>
+      <h1 class="text-4xl font-bold mb-4">Welcome to Dawarich</h1>
+      <p class="py-4">
+        Your 7-day free trial is active until
+        <strong><%= @user.active_until.strftime('%B %d, %Y') %></strong>.
+      </p>
+      <%= link_to "Open the map", map_v2_path, class: "btn btn-primary btn-lg" %>
+    </div>
+  </div>
+</div>

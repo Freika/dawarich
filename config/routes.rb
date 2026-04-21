@@ -26,6 +26,10 @@ Rails.application.routes.draw do
   } do
     mount Sidekiq::Web => '/sidekiq'
   end
+
+  authenticate :user, ->(u) { u.admin? } do
+    mount Flipper::UI.app(Flipper) => '/admin/flipper'
+  end
   mount RailsPulse::Engine => '/rails_pulse'
 
   # We want to return a nice error message if the user is not authorized to access Sidekiq
@@ -73,6 +77,8 @@ Rails.application.routes.draw do
   post 'settings/generate_api_key', to: 'settings#generate_api_key', as: :generate_api_key
 
   get 'trial/upgrade', to: 'trial/upgrades#show', as: :trial_upgrade
+  get 'trial/resume', to: 'trial/resume#show', as: :trial_resume
+  get 'trial/welcome', to: 'trial/welcome#show', as: :trial_welcome
 
   resources :imports
   resources :visits, only: %i[index update] do

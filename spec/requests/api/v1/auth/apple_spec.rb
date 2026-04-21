@@ -81,4 +81,25 @@ RSpec.describe 'POST /api/v1/auth/apple', type: :request do
       expect(user.email).to eq('abc@privaterelay.appleid.com')
     end
   end
+
+  context 'on a self-hosted instance' do
+    before do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+      allow(verifier_double).to receive(:call).and_return(
+        sub: '000444.apple',
+        email: 'selfhost-apple@example.com'
+      )
+    end
+
+    it 'creates the user in active status (not pending_payment)' do
+      expect {
+        post '/api/v1/auth/apple', params: { id_token: 'fake_token' }
+      }.to change(User, :count).by(1)
+
+      user = User.find_by(uid: '000444.apple')
+      expect(user.status).to eq('active')
+      expect(user.plan).to eq('pro')
+      expect(user.active_until).to be > 900.years.from_now
+    end
+  end
 end

@@ -124,7 +124,7 @@ class User < ApplicationRecord
     (trial? || !active_until&.future?) && !DawarichSettings.self_hosted?
   end
 
-  def generate_subscription_token(plan: nil, interval: nil)
+  def generate_subscription_token(plan: nil, interval: nil, variant: nil)
     payload = {
       user_id: id,
       email: email,
@@ -133,6 +133,7 @@ class User < ApplicationRecord
     }
     payload[:plan] = plan if plan.present?
     payload[:interval] = interval if interval.present?
+    payload[:variant] = variant if variant.present?
 
     secret_key = ENV['JWT_SECRET_KEY']
 
@@ -234,6 +235,13 @@ class User < ApplicationRecord
     Users::MailerSendingJob.set(wait: 14.days).perform_later(id, 'post_trial_reminder_late')
   end
 
+  def schedule_legacy_trial_emails
+    Users::MailerSendingJob.set(wait: 5.days).perform_later(id, 'trial_expires_soon')
+    Users::MailerSendingJob.set(wait: 7.days).perform_later(id, 'trial_expired')
+    Users::MailerSendingJob.set(wait: 9.days).perform_later(id, 'post_trial_reminder_early')
+    Users::MailerSendingJob.set(wait: 14.days).perform_later(id, 'post_trial_reminder_late')
+  end
+
   private
 
   def create_api_key
@@ -253,9 +261,9 @@ class User < ApplicationRecord
   end
 
   def start_trial
-    update(status: :trial, active_until: 7.days.from_now, subscription_source: :paddle)
+    update(status: :trial, active_until: 7.days.from_now)
     schedule_product_emails
-    schedule_paddle_billing_emails
+    schedule_legacy_trial_emails
 
     Users::TrialWebhookJob.perform_later(id)
   end
