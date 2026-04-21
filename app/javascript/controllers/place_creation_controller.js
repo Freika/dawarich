@@ -8,6 +8,8 @@ export default class extends Controller {
     "latitudeInput",
     "longitudeInput",
     "noteInput",
+    "reviewRatingInput",
+    "reviewTextInput",
     "nearbyFrame",
     "tagCheckboxes",
     "modalTitle",
@@ -83,6 +85,17 @@ export default class extends Controller {
 
     if (this.hasNoteInputTarget && place.note) {
       this.noteInputTarget.value = place.note
+    }
+
+    if (this.hasReviewRatingInputTarget && place.review_rating) {
+      const ratingRadio = this.formTarget.querySelector(
+        `input[name="place[review_rating]"][value="${place.review_rating}"]`,
+      )
+      if (ratingRadio) ratingRadio.checked = true
+    }
+
+    if (this.hasReviewTextInputTarget && place.review_text) {
+      this.reviewTextInputTarget.value = place.review_text
     }
 
     // Set form for edit mode

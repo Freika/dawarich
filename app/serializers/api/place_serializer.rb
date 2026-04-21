@@ -17,7 +17,12 @@ class Api::PlaceSerializer
       geodata:    place.geodata,
       created_at: place.created_at,
       updated_at: place.updated_at,
-      reverse_geocoded_at: place.reverse_geocoded_at
+      reverse_geocoded_at: place.reverse_geocoded_at,
+      review_rating: place.review_rating,
+      review_text: place.review_text,
+      review_drafted_at: place.review_drafted_at,
+      review_submitted_at: place.review_submitted_at,
+      reviewed: place.reviewed?
     }
   end
 

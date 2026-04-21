@@ -85,6 +85,7 @@ This file contains essential information for Claude to work effectively with the
 - **Track**: Collections of related points forming routes
 - **Area**: Geographic areas drawn by users
 - **Visit**: Detected visits to areas
+- **Place**: Physical locations with geocoding, tags, notes, and reviews (rating 1-5, text, submission tracking)
 - **Trip**: User-defined travel periods with analytics
 - **Import**: Data import operations
 - **Export**: Data export operations

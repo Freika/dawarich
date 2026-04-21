@@ -58,6 +58,41 @@
             </label>
           </div>
 
+          <div class="divider">Review</div>
+
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-semibold">Rating</span>
+            </label>
+            <div class="flex gap-2 items-center">
+              <% (1..5).each do |rating| %>
+                <label class="cursor-pointer flex items-center gap-1">
+                  <%= f.radio_button :review_rating, rating,
+                      class: "radio radio-sm",
+                      data: { place_creation_target: "reviewRatingInput" } %>
+                  <span class="text-lg"><%= "⭐" * rating %></span>
+                </label>
+              <% end %>
+            </div>
+            <label class="label">
+              <span class="label-text-alt">Rate this place from 1 to 5 stars</span>
+            </label>
+          </div>
+
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-semibold">Review</span>
+            </label>
+            <%= f.text_area :review_text,
+                placeholder: "Write your review about this place...",
+                class: "textarea textarea-bordered w-full bg-base-100",
+                rows: 3,
+                data: { place_creation_target: "reviewTextInput" } %>
+            <label class="label">
+              <span class="label-text-alt">Optional - Share your thoughts and experiences at this place</span>
+            </label>
+          </div>
+
           <div class="divider">Suggested Places</div>
 
           <div class="form-control">

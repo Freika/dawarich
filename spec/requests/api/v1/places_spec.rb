@@ -18,6 +18,18 @@ RSpec.describe 'Api::V1::Places', type: :request do
       expect(json.first['name']).to eq('Home')
     end
 
+    it 'includes review fields in response' do
+      place.update(review_rating: 5, review_text: 'Great place!', review_submitted_at: Time.current)
+
+      get '/api/v1/places', headers: headers
+
+      json = JSON.parse(response.body)
+      expect(json.first).to include('review_rating', 'review_text', 'review_submitted_at', 'reviewed')
+      expect(json.first['review_rating']).to eq(5)
+      expect(json.first['review_text']).to eq('Great place!')
+      expect(json.first['reviewed']).to be true
+    end
+
     it 'filters by tag_ids' do
       tagged_place = create(:place, user: user)
       create(:tagging, taggable: tagged_place, tag: tag)
@@ -48,6 +60,18 @@ RSpec.describe 'Api::V1::Places', type: :request do
       json = JSON.parse(response.body)
       expect(json['name']).to eq('Home')
       expect(json['latitude']).to eq(40.7128)
+    end
+
+    it 'includes review fields in response' do
+      place.update(review_rating: 4, review_text: 'Nice location', review_submitted_at: Time.current)
+
+      get "/api/v1/places/#{place.id}", headers: headers
+
+      json = JSON.parse(response.body)
+      expect(json).to include('review_rating', 'review_text', 'review_submitted_at', 'reviewed')
+      expect(json['review_rating']).to eq(4)
+      expect(json['review_text']).to eq('Nice location')
+      expect(json['reviewed']).to be true
     end
 
     it 'returns 404 for other users place' do
@@ -107,6 +131,30 @@ RSpec.describe 'Api::V1::Places', type: :request do
 
       expect(response).to have_http_status(:success)
       expect(place.reload.name).to eq('Updated Home')
+    end
+
+    it 'updates review fields' do
+      patch "/api/v1/places/#{place.id}",
+            params: { place: { review_rating: 5, review_text: 'Amazing place!', review_submitted_at: Time.current } },
+            headers: headers
+
+      expect(response).to have_http_status(:success)
+      place.reload
+      expect(place.review_rating).to eq(5)
+      expect(place.review_text).to eq('Amazing place!')
+      expect(place.review_submitted_at).to be_present
+    end
+
+    it 'returns review fields in response' do
+      now = Time.current
+      patch "/api/v1/places/#{place.id}",
+            params: { place: { review_rating: 3, review_text: 'Good', review_submitted_at: now } },
+            headers: headers
+
+      json = JSON.parse(response.body)
+      expect(json['review_rating']).to eq(3)
+      expect(json['review_text']).to eq('Good')
+      expect(json['reviewed']).to be true
     end
 
     it 'updates tags' do

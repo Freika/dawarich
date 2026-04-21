@@ -16,6 +16,7 @@ class Place < ApplicationRecord
 
   validates :name, presence: true
   validates :lonlat, presence: true
+  validates :review_rating, inclusion: { in: 1..5 }, allow_nil: true
 
   enum :source, { manual: 0, photon: 1 }
 
@@ -45,6 +46,14 @@ class Place < ApplicationRecord
 
   def osm_type
     geodata.dig('properties', 'osm_type')
+  end
+
+  def reviewed?
+    review_submitted_at.present?
+  end
+
+  def review_stale?
+    reviewed? && review_submitted_at < 6.months.ago
   end
 
   private

@@ -25,6 +25,11 @@ RSpec.describe 'Places API', type: :request do
                    color: { type: :string, nullable: true },
                    visits_count: { type: :integer },
                    created_at: { type: :string, format: 'date-time' },
+                   review_rating: { type: :integer, nullable: true },
+                   review_text: { type: :string, nullable: true },
+                   review_drafted_at: { type: :string, format: 'date-time', nullable: true },
+                   review_submitted_at: { type: :string, format: 'date-time', nullable: true },
+                   reviewed: { type: :boolean },
                    tags: {
                      type: :array,
                      items: {
@@ -73,6 +78,10 @@ RSpec.describe 'Places API', type: :request do
           latitude: { type: :number, format: :float },
           longitude: { type: :number, format: :float },
           source: { type: :string },
+          review_rating: { type: :integer },
+          review_text: { type: :string },
+          review_drafted_at: { type: :string, format: 'date-time' },
+          review_submitted_at: { type: :string, format: 'date-time' },
           tag_ids: { type: :array, items: { type: :integer } }
         },
         required: %w[name latitude longitude]
@@ -90,6 +99,11 @@ RSpec.describe 'Places API', type: :request do
                  color: { type: :string, nullable: true },
                  visits_count: { type: :integer },
                  created_at: { type: :string, format: 'date-time' },
+                 review_rating: { type: :integer, nullable: true },
+                 review_text: { type: :string, nullable: true },
+                 review_drafted_at: { type: :string, format: 'date-time', nullable: true },
+                 review_submitted_at: { type: :string, format: 'date-time', nullable: true },
+                 reviewed: { type: :boolean },
                  tags: { type: :array }
                }
 
@@ -210,6 +224,11 @@ RSpec.describe 'Places API', type: :request do
                  color: { type: :string, nullable: true },
                  visits_count: { type: :integer },
                  created_at: { type: :string, format: 'date-time' },
+                 review_rating: { type: :integer, nullable: true },
+                 review_text: { type: :string, nullable: true },
+                 review_drafted_at: { type: :string, format: 'date-time', nullable: true },
+                 review_submitted_at: { type: :string, format: 'date-time', nullable: true },
+                 reviewed: { type: :boolean },
                  tags: { type: :array }
                }
 
@@ -254,6 +273,10 @@ RSpec.describe 'Places API', type: :request do
           name: { type: :string },
           latitude: { type: :number, format: :float },
           longitude: { type: :number, format: :float },
+          review_rating: { type: :integer },
+          review_text: { type: :string },
+          review_drafted_at: { type: :string, format: 'date-time' },
+          review_submitted_at: { type: :string, format: 'date-time' },
           tag_ids: { type: :array, items: { type: :integer } }
         }
       }
@@ -265,6 +288,11 @@ RSpec.describe 'Places API', type: :request do
                  name: { type: :string },
                  latitude: { type: :number, format: :float },
                  longitude: { type: :number, format: :float },
+                 review_rating: { type: :integer, nullable: true },
+                 review_text: { type: :string, nullable: true },
+                 review_drafted_at: { type: :string, format: 'date-time', nullable: true },
+                 review_submitted_at: { type: :string, format: 'date-time', nullable: true },
+                 reviewed: { type: :boolean },
                  tags: { type: :array }
                }
 

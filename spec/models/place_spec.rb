@@ -12,6 +12,7 @@ RSpec.describe Place, type: :model do
   describe 'validations' do
     it { is_expected.to validate_presence_of(:name) }
     it { is_expected.to validate_presence_of(:lonlat) }
+    it { is_expected.to validate_inclusion_of(:review_rating).in_array([1, 2, 3, 4, 5]).allow_nil }
   end
 
   describe 'enums' do
@@ -157,6 +158,42 @@ RSpec.describe Place, type: :model do
     describe '#lat' do
       it 'returns the latitude' do
         expect(place.lat).to be_within(0.000001).of(54.2905245)
+      end
+    end
+
+    describe '#reviewed?' do
+      let(:place) { create(:place) }
+
+      it 'returns false when review_submitted_at is nil' do
+        expect(place.reviewed?).to be false
+      end
+
+      it 'returns true when review_submitted_at is set' do
+        place.update(review_submitted_at: Time.current)
+        expect(place.reviewed?).to be true
+      end
+    end
+
+    describe '#review_stale?' do
+      let(:place) { create(:place) }
+
+      it 'returns false when review_submitted_at is nil' do
+        expect(place.review_stale?).to be false
+      end
+
+      it 'returns false when submitted less than 6 months ago' do
+        place.update(review_submitted_at: 3.months.ago)
+        expect(place.review_stale?).to be false
+      end
+
+      it 'returns true when submitted more than 6 months ago' do
+        place.update(review_submitted_at: 7.months.ago)
+        expect(place.review_stale?).to be true
+      end
+
+      it 'returns true at exactly 6 months and 1 second' do
+        place.update(review_submitted_at: 6.months.ago - 1.second)
+        expect(place.review_stale?).to be true
       end
     end
   end
