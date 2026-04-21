@@ -12,7 +12,21 @@ RSpec.describe Place, type: :model do
   describe 'validations' do
     it { is_expected.to validate_presence_of(:name) }
     it { is_expected.to validate_presence_of(:lonlat) }
-    it { is_expected.to validate_inclusion_of(:review_rating).in_array([1, 2, 3, 4, 5]).allow_nil }
+
+    describe 'review_rating validation' do
+      it 'allows values 1-5' do
+        expect(build(:place, review_rating: 3)).to be_valid
+      end
+
+      it 'rejects values outside 1-5' do
+        expect(build(:place, review_rating: 0)).not_to be_valid
+        expect(build(:place, review_rating: 6)).not_to be_valid
+      end
+
+      it 'allows nil' do
+        expect(build(:place, review_rating: nil)).to be_valid
+      end
+    end
   end
 
   describe 'enums' do
