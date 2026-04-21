@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class AddReviewFieldsToPlaces < ActiveRecord::Migration[8.0]
   def change
     add_column :places, :review_rating, :integer, null: true unless column_exists?(:places, :review_rating)
