@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 
 - S3 storage can now be used in self-hosted mode. It's compatible with S3-like backends, such as MinIO, Ceph, or Cloudflare R2. To enable S3 storage, set `STORAGE_BACKEND=s3` and provide `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, and `AWS_BUCKET`. For S3-compatible backends, additionally set `AWS_ENDPOINT_URL` (or `AWS_ENDPOINT`).
+- Points exports (GeoJSON and GPX) are now stored on S3 as single-entry zip archives. Downloads are delivered as `<name>.zip`.
+- Import uploads are compressed client-side before upload. Users who previously uploaded uncompressed files see no behavior change; S3 storage for new uploads drops substantially for text formats.
+
+### Internal
+
+- Added `Archive::Zipper` / `Archive::Unzipper` services.
+- `Imports::Create` now dispatches on zip content rather than filename-based source detection.
+- Existing stored blobs remain readable without migration.
 
 ### Fixed
 
