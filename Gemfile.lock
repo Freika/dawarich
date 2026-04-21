@@ -145,7 +145,7 @@ GEM
       tzinfo
       unicode (>= 0.4.4.5)
     css-zero (1.1.15)
-    csv (3.3.4)
+    csv (3.3.5)
     data_migrate (11.3.1)
       activerecord (>= 6.1)
       railties (>= 6.1)
@@ -222,7 +222,7 @@ GEM
     hashdiff (1.2.1)
     hashie (5.1.0)
       logger
-    httparty (0.23.1)
+    httparty (0.24.2)
       csv
       mini_mime (>= 1.0.0)
       multi_xml (>= 0.5.2)
@@ -239,7 +239,7 @@ GEM
       rdoc (>= 4.0.0)
       reline (>= 0.4.2)
     jmespath (1.6.2)
-    json (2.19.1)
+    json (2.19.4)
     json-jwt (1.17.0)
       activesupport (>= 4.2)
       aes_key_wrap
@@ -696,8 +696,9 @@ DEPENDENCIES
   gpx
   groupdate
   h3 (~> 3.7)
-  httparty
+  httparty (>= 0.24.0)
   importmap-rails
+  json (>= 2.19.2)
   jwt (~> 2.8)
   kaminari
   lograge
