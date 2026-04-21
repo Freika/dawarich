@@ -110,7 +110,11 @@ module Api
       end
 
       def place_params
-        params.require(:place).permit(:name, :latitude, :longitude, :source, :note, :review_rating, :review_text, :review_drafted_at, :review_submitted_at, tag_ids: [])
+        params.require(:place).permit(
+          :name, :latitude, :longitude, :source, :note,
+          :review_rating, :review_text, :review_drafted_at, :review_submitted_at,
+          tag_ids: []
+        )
       end
 
       def tag_ids
