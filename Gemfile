@@ -7,14 +7,14 @@ ruby File.read('.ruby-version').strip
 
 gem 'activerecord-postgis-adapter', '11.0'
 # https://meta.discourse.org/t/cant-rebuild-due-to-aws-sdk-gem-bump-and-new-aws-data-integrity-protections/354217/40
-gem 'aws-sdk-core', '~> 3.215.1', require: false
-gem 'aws-sdk-kms', '~> 1.96.0', require: false
-gem 'aws-sdk-s3', '~> 1.177.0', require: false
+gem 'aws-sdk-core', '>= 3.234.0', require: false
+gem 'aws-sdk-kms', '>= 1.96.0', require: false
+gem 'aws-sdk-s3', '>= 1.208.0', require: false
 gem 'bootsnap', require: false
 gem 'chartkick'
 gem 'connection_pool', '< 3' # Pin to 2.x - version 3.0+ has breaking API changes with Rails RedisCacheStore
 gem 'data_migrate'
-gem 'devise'
+gem 'devise', '>= 5.0.3'
 gem 'devise-two-factor'
 gem 'fit4ruby', '~> 3.13'
 gem 'foreman'
@@ -38,7 +38,7 @@ gem 'prometheus_exporter'
 gem 'puma'
 gem 'pundit', '>= 2.5.1'
 gem 'rack-attack'
-gem 'rails', '~> 8.0'
+gem 'rails', '> 8.0.3'
 gem 'rails_icons'
 gem 'rails_pulse'
 gem 'redis'
