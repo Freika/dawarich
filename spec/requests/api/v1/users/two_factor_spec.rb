@@ -6,7 +6,11 @@ RSpec.describe 'Two-factor management', type: :request do
   let(:user) { create(:user, password: 'secret123', status: :active) }
   let(:headers) { { 'Authorization' => "Bearer #{user.api_key}" } }
 
-  before { allow(DawarichSettings).to receive(:two_factor_available?).and_return(true) }
+  before do
+    allow(DawarichSettings).to receive(:two_factor_available?).and_return(true)
+    Rack::Attack.cache.store = ActiveSupport::Cache::MemoryStore.new
+    Rack::Attack.reset!
+  end
 
   describe 'POST /api/v1/users/me/two_factor/setup' do
     it 'returns provisioning URI and secret' do
@@ -100,6 +104,16 @@ RSpec.describe 'Two-factor management', type: :request do
       delete '/api/v1/users/me/two_factor', params: { otp_code: '000000' }, headers: headers
       expect(response).to have_http_status(:unauthorized)
       expect(user.reload.otp_required_for_login).to be true
+    end
+
+    describe 'brute-force protection' do
+      it 'throttles repeated disable attempts keyed on the Authorization header' do
+        5.times do
+          delete '/api/v1/users/me/two_factor', params: { otp_code: '000000' }, headers: headers
+        end
+        delete '/api/v1/users/me/two_factor', params: { otp_code: '000000' }, headers: headers
+        expect(response).to have_http_status(:too_many_requests)
+      end
     end
   end
 end

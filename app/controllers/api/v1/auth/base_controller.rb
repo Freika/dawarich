@@ -1,6 +1,16 @@
 # frozen_string_literal: true
 
-class Api::V1::Auth::BaseController < ActionController::API
+# Auth endpoints are accessible without an existing api_key (that's what
+# sessions#create hands out) and apply to users in any status (including
+# pending_payment who need to complete login to reach /trial/resume).
+#
+# We still want the shared middleware from ApiController — version header,
+# rate-limit headers, and generic record-not-found handling — so we inherit
+# from it and skip just the auth/status gates.
+class Api::V1::Auth::BaseController < ApiController
+  skip_before_action :authenticate_api_key, raise: false
+  skip_before_action :reject_pending_payment!, raise: false
+
   include ActionController::Cookies if Rails.env.test? || Rails.env.development?
 
   private

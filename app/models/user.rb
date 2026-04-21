@@ -5,6 +5,7 @@ class User < ApplicationRecord
   include Omniauthable
   include PlanScopable
   include SoftDeletable # introduces default_scope and soft-delete methods
+  include TrialCampaigns
 
   attr_accessor :skip_auto_trial
 
@@ -128,7 +129,6 @@ class User < ApplicationRecord
     payload = {
       user_id: id,
       email: email,
-      theme: theme,
       exp: 30.minutes.from_now.to_i
     }
     payload[:plan] = plan if plan.present?
@@ -219,27 +219,6 @@ class User < ApplicationRecord
     return { supporter: false } if safe_settings.supporter_email.blank?
 
     Supporter::VerifyEmail.new(safe_settings.supporter_email).call
-  end
-
-  def schedule_product_emails
-    Users::MailerSendingJob.perform_later(id, 'welcome')
-    Users::MailerSendingJob.set(wait: 2.days).perform_later(id, 'explore_features')
-  end
-
-  def schedule_paddle_billing_emails
-    return unless sub_source_paddle?
-
-    Users::MailerSendingJob.set(wait: 5.days).perform_later(id, 'trial_first_payment_soon')
-    Users::MailerSendingJob.set(wait: 7.days).perform_later(id, 'trial_converted')
-    Users::MailerSendingJob.set(wait: 9.days).perform_later(id, 'post_trial_reminder_early')
-    Users::MailerSendingJob.set(wait: 14.days).perform_later(id, 'post_trial_reminder_late')
-  end
-
-  def schedule_legacy_trial_emails
-    Users::MailerSendingJob.set(wait: 5.days).perform_later(id, 'trial_expires_soon')
-    Users::MailerSendingJob.set(wait: 7.days).perform_later(id, 'trial_expired')
-    Users::MailerSendingJob.set(wait: 9.days).perform_later(id, 'post_trial_reminder_early')
-    Users::MailerSendingJob.set(wait: 14.days).perform_later(id, 'post_trial_reminder_late')
   end
 
   private

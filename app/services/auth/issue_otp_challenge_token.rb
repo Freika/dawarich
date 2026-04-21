@@ -9,10 +9,13 @@ module Auth
     end
 
     def call
+      now = Time.now.to_i
       payload = {
         user_id: @user.id,
         purpose: 'otp_challenge',
-        exp: TTL.from_now.to_i
+        jti: SecureRandom.uuid,
+        iat: now,
+        exp: now + TTL.to_i
       }
       JWT.encode(payload, ENV.fetch('JWT_SECRET_KEY'), 'HS256')
     end

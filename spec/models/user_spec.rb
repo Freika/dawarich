@@ -64,48 +64,43 @@ RSpec.describe User, type: :model do
       end
     end
 
-    describe '#start_trial' do
-      let(:user) { create(:user, :inactive) }
+    describe 'start_trial (invoked on create for cloud users)' do
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        ActiveJob::Base.queue_adapter = :test
+      end
 
       it 'sets trial status and active_until to 7 days from now' do
-        user.send(:start_trial)
+        user = create(:user, :inactive)
 
-        expect(user.reload.trial?).to be_truthy
+        expect(user.trial?).to be_truthy
         expect(user.active_until).to be_within(1.minute).of(7.days.from_now)
       end
 
       it 'leaves subscription_source as :none (legacy trial, no Paddle checkout yet)' do
-        user.send(:start_trial)
+        user = create(:user, :inactive)
 
-        expect(user.reload.subscription_source).to eq('none')
+        expect(user.subscription_source).to eq('none')
       end
 
       it 'enqueues trial webhook job' do
-        expect { user.send(:start_trial) }.to have_enqueued_job(Users::TrialWebhookJob).with(user.id)
+        expect { create(:user, :inactive) }.to have_enqueued_job(Users::TrialWebhookJob)
       end
 
-      it 'schedules product emails' do
-        allow(user).to receive(:schedule_product_emails)
-
-        user.send(:start_trial)
-
-        expect(user).to have_received(:schedule_product_emails)
+      it 'enqueues welcome and explore_features via product email campaign' do
+        expect { create(:user, :inactive) }
+          .to have_enqueued_job(Users::MailerSendingJob).with(an_instance_of(Integer), 'welcome')
       end
 
-      it 'schedules legacy trial emails' do
-        allow(user).to receive(:schedule_legacy_trial_emails)
-
-        user.send(:start_trial)
-
-        expect(user).to have_received(:schedule_legacy_trial_emails)
+      it 'enqueues the legacy trial emails' do
+        expect { create(:user, :inactive) }
+          .to have_enqueued_job(Users::MailerSendingJob).with(an_instance_of(Integer), 'trial_expires_soon')
       end
 
-      it 'does not schedule paddle billing emails (user has not completed Paddle checkout)' do
-        allow(user).to receive(:schedule_paddle_billing_emails)
+      it 'does not enqueue paddle billing emails (user has not completed Paddle checkout)' do
+        user = create(:user, :inactive)
 
-        user.send(:start_trial)
-
-        expect(user).not_to have_received(:schedule_paddle_billing_emails)
+        expect(Users::MailerSendingJob).not_to have_been_enqueued.with(user.id, 'trial_first_payment_soon')
       end
     end
 
@@ -524,12 +519,12 @@ RSpec.describe User, type: :model do
       JWT.decode(token, secret, true, { algorithm: 'HS256' }).first
     end
 
-    it 'encodes user_id, email, theme, and exp by default' do
+    it 'encodes user_id, email, and exp by default (no theme claim)' do
       payload = decode(user.generate_subscription_token)
 
       expect(payload['user_id']).to eq(user.id)
       expect(payload['email']).to eq(user.email)
-      expect(payload).to have_key('theme')
+      expect(payload).not_to have_key('theme')
       expect(payload['exp']).to be > Time.current.to_i
       expect(payload).not_to have_key('plan')
       expect(payload).not_to have_key('interval')
@@ -599,16 +594,16 @@ RSpec.describe User, type: :model do
       allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
     end
 
-    it 'does not call start_trial when skip_auto_trial is true' do
-      user = build(:user, skip_auto_trial: true)
-      expect(user).not_to receive(:start_trial)
-      user.save!
+    it 'does not start the trial when skip_auto_trial is true' do
+      user = create(:user, skip_auto_trial: true, status: :inactive, active_until: nil)
+      expect(user.status).to eq('inactive')
+      expect(user.active_until).to be_nil
     end
 
-    it 'still calls start_trial by default' do
-      user = build(:user)
-      expect(user).to receive(:start_trial).and_call_original
-      user.save!
+    it 'starts the trial by default (7 day trial window)' do
+      user = create(:user, :inactive)
+      expect(user.trial?).to be true
+      expect(user.active_until).to be_within(1.minute).of(7.days.from_now)
     end
 
     it 'leaves a skip_auto_trial user in inactive status (no trial granted)' do
@@ -636,9 +631,9 @@ RSpec.describe User, type: :model do
       expect(Users::MailerSendingJob).to have_been_enqueued.with(user.id, 'explore_features')
     end
 
-    it 'schedules paddle billing emails only for paddle-sourced users' do
-      paddle_user = create(:user, subscription_source: :paddle, skip_auto_trial: true)
-      iap_user = create(:user, subscription_source: :apple_iap, skip_auto_trial: true)
+    it 'schedules paddle billing emails only for paddle-sourced reverse_trial users' do
+      paddle_user = create(:user, subscription_source: :paddle, signup_variant: 'reverse_trial', skip_auto_trial: true)
+      iap_user = create(:user, subscription_source: :apple_iap, signup_variant: 'reverse_trial', skip_auto_trial: true)
       clear_enqueued_jobs
 
       paddle_user.schedule_paddle_billing_emails
@@ -646,6 +641,33 @@ RSpec.describe User, type: :model do
 
       expect(Users::MailerSendingJob).to have_been_enqueued.with(paddle_user.id, 'trial_first_payment_soon')
       expect(Users::MailerSendingJob).not_to have_been_enqueued.with(iap_user.id, 'trial_first_payment_soon')
+    end
+
+    it 'does not schedule paddle billing emails for paddle-sourced users without reverse_trial variant' do
+      # e.g., existing user receiving a plan-change callback
+      user = create(:user, subscription_source: :paddle, signup_variant: nil, skip_auto_trial: true)
+      clear_enqueued_jobs
+
+      user.schedule_paddle_billing_emails
+
+      expect(Users::MailerSendingJob).not_to have_been_enqueued.with(user.id, 'trial_first_payment_soon')
+    end
+
+    describe '#cancel_legacy_trial_emails' do
+      let(:user) { create(:user, skip_auto_trial: true) }
+
+      it 'sets legacy_trial_cancelled flag in settings' do
+        user.cancel_legacy_trial_emails
+
+        expect(user.reload.settings['legacy_trial_cancelled']).to eq(true)
+        expect(user.reload.settings['legacy_trial_cancelled_at']).to be_present
+      end
+
+      it 'is exposed via #legacy_trial_mail_cancelled?' do
+        expect(user.legacy_trial_mail_cancelled?).to be false
+        user.cancel_legacy_trial_emails
+        expect(user.reload.legacy_trial_mail_cancelled?).to be true
+      end
     end
 
     describe '#schedule_legacy_trial_emails' do
@@ -685,10 +707,16 @@ RSpec.describe User, type: :model do
 
     it 'start_trial schedules product + legacy trial emails for legacy cloud signups' do
       user = build(:user)
-      expect(user).to receive(:schedule_product_emails).and_call_original
-      expect(user).to receive(:schedule_legacy_trial_emails).and_call_original
-      expect(user).not_to receive(:schedule_paddle_billing_emails)
       user.save!
+
+      # Product emails (welcome + explore_features) + legacy trial emails (4) = 6 mailer jobs
+      expect(Users::MailerSendingJob).to have_been_enqueued.with(user.id, 'welcome')
+      expect(Users::MailerSendingJob).to have_been_enqueued.with(user.id, 'explore_features')
+      expect(Users::MailerSendingJob).to have_been_enqueued.with(user.id, 'trial_expires_soon')
+      expect(Users::MailerSendingJob).to have_been_enqueued.with(user.id, 'trial_expired')
+      # Paddle-specific emails must NOT be enqueued
+      expect(Users::MailerSendingJob).not_to have_been_enqueued.with(user.id, 'trial_first_payment_soon')
+      expect(Users::MailerSendingJob).not_to have_been_enqueued.with(user.id, 'trial_converted')
     end
 
     it 'start_trial actually enqueues legacy trial emails (not paddle-specific emails)' do

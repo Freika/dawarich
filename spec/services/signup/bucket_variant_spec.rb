@@ -1,50 +1,130 @@
+# frozen_string_literal: true
+
 require 'rails_helper'
 
 RSpec.describe Signup::BucketVariant do
-  let(:user) { create(:user) }
+  before { Flipper.disable(:reverse_trial_signup) }
 
-  context 'feature disabled' do
-    before { Flipper.disable(:reverse_trial_signup) }
+  describe 'self-hosted bypass' do
+    it 'returns legacy_trial for self-hosted instances even when flag enabled' do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+      Flipper.enable(:reverse_trial_signup)
 
-    it 'returns legacy_trial for everyone' do
+      user = build(:user, email: 'self-hosted@example.com')
+
+      expect(described_class.new(user).call).to eq('legacy_trial')
+    end
+
+    it 'does not consult Flipper when self-hosted' do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+      allow(Flipper).to receive(:enabled?).and_raise('Flipper should not be called')
+
+      user = build(:user, email: 'self-hosted@example.com')
+
       expect(described_class.new(user).call).to eq('legacy_trial')
     end
   end
 
-  context 'feature enabled 100%' do
-    before { Flipper.enable(:reverse_trial_signup) }
+  describe 'cloud mode' do
+    before { allow(DawarichSettings).to receive(:self_hosted?).and_return(false) }
 
-    it 'returns reverse_trial for everyone' do
-      expect(described_class.new(user).call).to eq('reverse_trial')
-    end
-  end
+    context 'when the flag is disabled' do
+      it 'returns legacy_trial for everyone' do
+        user = build(:user, email: 'anyone@example.com')
 
-  context 'feature enabled for specific actor' do
-    before do
-      Flipper.disable(:reverse_trial_signup)
-      Flipper.enable_actor(:reverse_trial_signup, user)
+        expect(described_class.new(user).call).to eq('legacy_trial')
+      end
     end
 
-    it 'returns reverse_trial for that actor' do
-      expect(described_class.new(user).call).to eq('reverse_trial')
+    context 'when the flag is enabled globally' do
+      before { Flipper.enable(:reverse_trial_signup) }
+
+      it 'returns reverse_trial for everyone' do
+        user = build(:user, email: 'anyone@example.com')
+
+        expect(described_class.new(user).call).to eq('reverse_trial')
+      end
     end
 
-    it 'returns legacy_trial for a different actor' do
-      other = create(:user)
-      expect(described_class.new(other).call).to eq('legacy_trial')
-    end
-  end
+    context 'when the flag targets a specific persisted actor' do
+      let(:target) { create(:user) }
 
-  context 'feature enabled at 50% of actors' do
-    before do
-      Flipper.disable(:reverse_trial_signup)
-      Flipper.enable_percentage_of_actors(:reverse_trial_signup, 50)
+      before { Flipper.enable_actor(:reverse_trial_signup, target) }
+
+      it 'returns reverse_trial for that actor' do
+        expect(described_class.new(target).call).to eq('reverse_trial')
+      end
+
+      it 'returns legacy_trial for a different actor' do
+        other = create(:user)
+
+        expect(described_class.new(other).call).to eq('legacy_trial')
+      end
     end
 
-    it 'is deterministic for the same user across calls' do
-      result1 = described_class.new(user).call
-      result2 = described_class.new(user).call
-      expect(result1).to eq(result2)
+    describe 'deterministic bucketing for unpersisted users' do
+      it 'assigns the same variant to two users sharing an email' do
+        Flipper.enable_percentage_of_actors(:reverse_trial_signup, 50)
+
+        email = 'stable-bucket@example.com'
+        result_a = described_class.new(build(:user, email: email)).call
+        result_b = described_class.new(build(:user, email: email)).call
+
+        expect(result_a).to eq(result_b)
+      end
+
+      it 'ignores case differences in the email' do
+        Flipper.enable_percentage_of_actors(:reverse_trial_signup, 50)
+
+        a = described_class.new(build(:user, email: 'MixedCase@Example.com')).call
+        b = described_class.new(build(:user, email: 'mixedcase@example.com')).call
+
+        expect(a).to eq(b)
+      end
+
+      it 'is deterministic across repeat calls on the same persisted user' do
+        Flipper.enable_percentage_of_actors(:reverse_trial_signup, 50)
+        user = create(:user)
+
+        result_a = described_class.new(user).call
+        result_b = described_class.new(user).call
+
+        expect(result_a).to eq(result_b)
+      end
+
+      it 'distributes roughly 50/50 across many distinct emails when flag set to 50%' do
+        Flipper.enable_percentage_of_actors(:reverse_trial_signup, 50)
+
+        sample_size = 1000
+        reverse_count = 0
+        sample_size.times do |i|
+          user = build(:user, email: "bucket-sample-#{i}-#{SecureRandom.hex(4)}@example.com")
+          reverse_count += 1 if described_class.new(user).call == 'reverse_trial'
+        end
+
+        ratio = reverse_count.to_f / sample_size
+        expect(ratio).to be_within(0.05).of(0.5)
+      end
+    end
+
+    describe 'validation' do
+      it 'raises ArgumentError on nil user' do
+        expect { described_class.new(nil).call }.to raise_error(ArgumentError)
+      end
+
+      it 'raises ArgumentError on blank email' do
+        user = build(:user)
+        user.email = ''
+
+        expect { described_class.new(user).call }.to raise_error(ArgumentError, /email/)
+      end
+
+      it 'raises ArgumentError on nil email' do
+        user = build(:user)
+        user.email = nil
+
+        expect { described_class.new(user).call }.to raise_error(ArgumentError, /email/)
+      end
     end
   end
 end

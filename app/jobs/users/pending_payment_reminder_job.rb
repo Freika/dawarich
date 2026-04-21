@@ -4,25 +4,52 @@ module Users
   class PendingPaymentReminderJob < ApplicationJob
     queue_as :default
 
-    REMINDERS = {
-      'day_1' => (1.day..1.day + 24.hours),
-      'day_3' => (3.days..3.days + 24.hours),
-      'day_7' => (7.days..7.days + 24.hours)
+    THRESHOLDS = {
+      1 => 'pending_payment_day_1',
+      3 => 'pending_payment_day_3',
+      7 => 'pending_payment_day_7'
     }.freeze
 
     def perform
       User.where(status: User.statuses[:pending_payment], signup_variant: 'reverse_trial').find_each do |user|
-        age = Time.current - user.created_at
-        already_sent = user.settings.fetch('pending_payment_reminders', [])
+        process_user(user)
+      end
+    end
 
-        REMINDERS.each do |key, range|
-          next unless range.cover?(age)
-          next if already_sent.include?(key)
+    private
 
-          Users::MailerSendingJob.perform_later(user.id, "pending_payment_#{key}")
-          user.settings['pending_payment_reminders'] = already_sent + [key]
-          user.save!
+    def process_user(user)
+      age_days = ((Time.current - user.created_at) / 1.day).floor
+
+      user.with_lock do
+        # Reload under the lock so we see fresh settings and avoid overwriting a
+        # concurrent update.
+        user.reload
+
+        sent = normalized_reminders(user.settings['pending_payment_reminders'])
+        pending = THRESHOLDS.select { |day, _| age_days >= day && !sent[day.to_s] }
+
+        next if pending.empty?
+
+        merged = sent.dup
+        pending.each_key { |day| merged[day.to_s] = true }
+
+        new_settings = user.settings.merge('pending_payment_reminders' => merged)
+        user.update!(settings: new_settings)
+
+        pending.each_value do |email_type|
+          Users::MailerSendingJob.perform_later(user.id, email_type)
         end
+      end
+    end
+
+    # Accepts both new hash format ({ '1' => true, '3' => true }) and
+    # legacy array format (['day_1', 'day_3']). Returns normalized hash.
+    def normalized_reminders(raw)
+      case raw
+      when Hash  then raw
+      when Array then raw.each_with_object({}) { |v, h| h[v.to_s.sub('day_', '')] = true if v.is_a?(String) }
+      else            {}
       end
     end
   end

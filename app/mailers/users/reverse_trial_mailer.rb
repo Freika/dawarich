@@ -3,6 +3,7 @@
 module Users
   class ReverseTrialMailer < ApplicationMailer
     before_action :extract_user
+    before_action :set_list_unsubscribe_headers
 
     def trial_first_payment_soon
       mail(to: @user.email, subject: 'Your Dawarich first payment is coming up')
@@ -28,6 +29,12 @@ module Users
 
     def extract_user
       @user = params[:user]
+    end
+
+    def set_list_unsubscribe_headers
+      unsubscribe_host = ENV.fetch('APP_HOST', 'dawarich.app')
+      headers['List-Unsubscribe'] = "<mailto:unsubscribe@#{unsubscribe_host}?subject=unsubscribe>"
+      headers['List-Unsubscribe-Post'] = 'List-Unsubscribe=One-Click'
     end
   end
 end

@@ -70,14 +70,45 @@ Rack::Attack.throttle('logins/ip', limit: 20, period: 1.minute) do |req|
   req.ip
 end
 
-# Rate-limit OTP challenge attempts: 5 per 15 minutes.
-# Protects against brute-forcing a 6-digit TOTP within its validity window.
-# Ideally throttle by SHA256(challenge_token); IP-based throttling is a pragmatic
-# fallback since the request body isn't easily accessible here.
-Rack::Attack.throttle('api/auth/otp_challenge', limit: 5, period: 15.minutes) do |req|
+# Brute-force protection on OTP verification.
+# Key the throttle on SHA256(challenge_token) so that an attacker cannot simply
+# rotate source IPs to multiply their TOTP guessing budget. Keep the legacy
+# IP-based throttle as defense-in-depth.
+Rack::Attack.throttle('api/auth/otp_challenge_token', limit: 5, period: 15.minutes) do |req|
   if req.path == '/api/v1/auth/otp_challenge' && req.post?
-    req.ip
+    token = req.params['challenge_token'].to_s
+    Digest::SHA256.hexdigest(token)[0, 32] if token.present?
   end
+end
+
+# Defense-in-depth IP-based throttle (retained from original config).
+Rack::Attack.throttle('api/auth/otp_challenge', limit: 5, period: 15.minutes) do |req|
+  req.ip if req.path == '/api/v1/auth/otp_challenge' && req.post?
+end
+
+# 2FA management (disable / confirm / backup_codes) brute-force protection.
+# Keyed on the Authorization header so an attacker with a valid API key can't
+# grind on TOTP codes to disable 2FA on a stolen session.
+Rack::Attack.throttle('api/users/two_factor_sensitive', limit: 5, period: 15.minutes) do |req|
+  next unless req.post? || req.delete?
+
+  sensitive_2fa_path = req.path.include?('/api/v1/users/me/two_factor') &&
+                       (req.path.end_with?('/two_factor') ||
+                        req.path.end_with?('/confirm') ||
+                        req.path.end_with?('/backup_codes'))
+  next unless sensitive_2fa_path
+
+  auth_header = req.get_header('HTTP_AUTHORIZATION')
+  api_key = req.params['api_key'] || auth_header&.split(' ')&.last
+  next if api_key.blank?
+
+  "two_factor_sensitive:#{api_key}"
+end
+
+# Flipper admin UI: 30 req / 5 min per IP. The UI sits behind admin auth, but
+# limit hammering so an attacker (or buggy client) can't brute-force or scrape it.
+Rack::Attack.throttle('admin/flipper', limit: 30, period: 5.minutes) do |req|
+  req.ip if req.path.start_with?('/admin/flipper')
 end
 
 Rack::Attack.throttled_responder = lambda do |request|

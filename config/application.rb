@@ -39,6 +39,15 @@ module Dawarich
 
     config.action_mailer.preview_paths << Rails.root.join('spec/mailers/previews').to_s
 
+    # Default host and protocol for URL helpers in mailer views. Individual
+    # environments (e.g. test) override this via `config.action_mailer.default_url_options`.
+    # Missing APP_HOST raises in production so mail is never sent with a broken host.
+    config.action_mailer.default_url_options = {
+      host: ENV['APP_HOST'] ||
+            (Rails.env.production? ? raise('APP_HOST required in production') : 'localhost:3000'),
+      protocol: Rails.env.production? ? 'https' : 'http'
+    }
+
     # Active Record Encryption is required by devise-two-factor for the `encrypts :otp_secret`
     # declaration on the User model. These keys must always be set for the model to load.
     #
@@ -51,10 +60,25 @@ module Dawarich
     # on_load hook that copies these to ActiveRecord::Encryption.config fires with empty
     # values and `encrypts :otp_secret` fails at save time.
     config.active_record.encryption.primary_key =
-      ENV.fetch('OTP_ENCRYPTION_PRIMARY_KEY', 'dawarich-dev-primary-key-not-for-production')
+      ENV['OTP_ENCRYPTION_PRIMARY_KEY'] || (if Rails.env.production?
+                                              raise('OTP_ENCRYPTION_PRIMARY_KEY required in production')
+                                            end
+
+                                            'dawarich-dev-primary-key-not-for-production'
+                                           )
     config.active_record.encryption.deterministic_key =
-      ENV.fetch('OTP_ENCRYPTION_DETERMINISTIC_KEY', 'dawarich-dev-deterministic-not-for-prod')
+      ENV['OTP_ENCRYPTION_DETERMINISTIC_KEY'] || (if Rails.env.production?
+                                                    raise('OTP_ENCRYPTION_DETERMINISTIC_KEY required in production')
+                                                  end
+
+                                                  'dawarich-dev-deterministic-not-for-prod'
+                                                 )
     config.active_record.encryption.key_derivation_salt =
-      ENV.fetch('OTP_ENCRYPTION_KEY_DERIVATION_SALT', 'dawarich-dev-salt-not-for-production')
+      ENV['OTP_ENCRYPTION_KEY_DERIVATION_SALT'] || (if Rails.env.production?
+                                                      raise('OTP_ENCRYPTION_KEY_DERIVATION_SALT required in production')
+                                                    end
+
+                                                    'dawarich-dev-salt-not-for-production'
+                                                   )
   end
 end

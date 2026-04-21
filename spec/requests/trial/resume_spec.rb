@@ -24,6 +24,12 @@ RSpec.describe 'Trial::Resume', type: :request do
         expect(response.body).to include('Finish setting up your account')
       end
 
+      it 'sends Cache-Control: no-store so proxies do not cache the embedded JWT' do
+        get trial_resume_path
+
+        expect(response.headers['Cache-Control']).to include('no-store')
+      end
+
       it 'includes the Manager checkout link with a fresh JWT' do
         get trial_resume_path
 

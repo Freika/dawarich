@@ -1,11 +1,5 @@
 # frozen_string_literal: true
 
-require 'flipper/adapters/active_record'
-
-Rails.application.configure do
-  config.flipper.memoize = true
-end
-
-Flipper.configure do |config|
-  config.adapter { Flipper::Adapters::ActiveRecord.new }
-end
+# Flipper's defaults (active_record adapter, memoize=true, preload=true) are
+# picked up via its Rails engine and the FLIPPER_* environment variables.
+# This initializer is intentionally empty so we don't shadow those defaults.

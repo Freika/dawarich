@@ -18,9 +18,9 @@ RSpec.describe 'POST /api/v1/auth/google', type: :request do
     end
 
     it 'creates a new user in pending_payment with provider google and uid' do
-      expect {
+      expect do
         post '/api/v1/auth/google', params: { id_token: 'fake_token' }
-      }.to change(User, :count).by(1)
+      end.to change(User, :count).by(1)
 
       user = User.find_by(email: 'google@example.com')
       expect(user.status).to eq('pending_payment')
@@ -47,9 +47,9 @@ RSpec.describe 'POST /api/v1/auth/google', type: :request do
     end
 
     it 'returns existing user without creating a new one' do
-      expect {
+      expect do
         post '/api/v1/auth/google', params: { id_token: 'fake_token' }
-      }.not_to change(User, :count)
+      end.not_to change(User, :count)
 
       expect(response).to have_http_status(:ok)
       expect(JSON.parse(response.body)['user_id']).to eq(existing.id)
@@ -67,6 +67,61 @@ RSpec.describe 'POST /api/v1/auth/google', type: :request do
     end
   end
 
+  context 'existing user matched by email (potential ATO)' do
+    let!(:existing) { create(:user, email: 'google@example.com') }
+
+    context 'when Google asserts email_verified == true' do
+      before do
+        allow(verifier_double).to receive(:call).and_return(
+          sub: 'google-uid-777',
+          email: 'google@example.com',
+          email_verified: true
+        )
+      end
+
+      it 'links the OAuth identity to the existing user' do
+        post '/api/v1/auth/google', params: { id_token: 'fake_token' }
+        expect(response).to have_http_status(:ok)
+        expect(existing.reload.provider).to eq('google')
+        expect(existing.reload.uid).to eq('google-uid-777')
+      end
+    end
+
+    context 'when Google does NOT assert email_verified' do
+      before do
+        allow(verifier_double).to receive(:call).and_return(
+          sub: 'google-uid-777',
+          email: 'google@example.com'
+        )
+      end
+
+      it 'refuses to merge the OAuth identity and returns 403 email_not_verified' do
+        post '/api/v1/auth/google', params: { id_token: 'fake_token' }
+        expect(response).to have_http_status(:forbidden)
+        body = JSON.parse(response.body)
+        expect(body['error']).to eq('email_not_verified')
+        expect(existing.reload.provider).to be_nil
+        expect(existing.reload.uid).to be_nil
+      end
+    end
+
+    context 'when Google asserts email_verified == false' do
+      before do
+        allow(verifier_double).to receive(:call).and_return(
+          sub: 'google-uid-777',
+          email: 'google@example.com',
+          email_verified: false
+        )
+      end
+
+      it 'refuses to merge the OAuth identity and returns 403' do
+        post '/api/v1/auth/google', params: { id_token: 'fake_token' }
+        expect(response).to have_http_status(:forbidden)
+        expect(existing.reload.provider).to be_nil
+      end
+    end
+  end
+
   context 'on a self-hosted instance' do
     before do
       allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
@@ -77,9 +132,9 @@ RSpec.describe 'POST /api/v1/auth/google', type: :request do
     end
 
     it 'creates the user in active status (not pending_payment)' do
-      expect {
+      expect do
         post '/api/v1/auth/google', params: { id_token: 'fake_token' }
-      }.to change(User, :count).by(1)
+      end.to change(User, :count).by(1)
 
       user = User.find_by(uid: 'google-selfhost-uid')
       expect(user.status).to eq('active')

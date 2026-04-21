@@ -22,6 +22,31 @@ RSpec.describe 'POST /api/v1/auth/login', type: :request do
     expect(response).to have_http_status(:unauthorized)
   end
 
+  describe 'shared API middleware' do
+    # BaseController inherits from ApiController, so the version header and
+    # rate-limit header pipeline are applied consistently across all API
+    # endpoints. These are served by ApplicationController-level hooks
+    # (set_version_header, set_rate_limit_headers) that would otherwise be
+    # absent if BaseController inherited from ActionController::API directly.
+    it 'sends the X-Dawarich-Version header from ApiController' do
+      post '/api/v1/auth/login', params: { email: 'me@example.com', password: 'secret123' }
+      expect(response.headers['X-Dawarich-Version']).to be_present
+      expect(response.headers['X-Dawarich-Response']).to be_present
+    end
+  end
+
+  describe 'timing-attack resistance' do
+    it 'runs a bcrypt comparison on the unknown-email path (constant time)' do
+      # Observable behavior: a bcrypt password verification happens even when
+      # no user exists for the submitted email. We assert this by watching
+      # BCrypt::Password#is_password? — it is the heavy operation that, if
+      # skipped, reveals account existence through response timing.
+      expect(BCrypt::Password).to receive(:new).and_call_original.at_least(:once)
+      post '/api/v1/auth/login', params: { email: 'no-such-user@example.com', password: 'whatever' }
+      expect(response).to have_http_status(:unauthorized)
+    end
+  end
+
   it 'includes current plan/status/subscription_source on success' do
     user.update!(status: :active, plan: :pro, subscription_source: :paddle, active_until: 1.year.from_now)
     post '/api/v1/auth/login', params: { email: 'me@example.com', password: 'secret123' }
