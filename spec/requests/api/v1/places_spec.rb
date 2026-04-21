@@ -134,8 +134,9 @@ RSpec.describe 'Api::V1::Places', type: :request do
     end
 
     it 'updates review fields' do
+      now_iso = Time.current.iso8601
       patch "/api/v1/places/#{place.id}",
-            params: { place: { review_rating: 5, review_text: 'Amazing place!', review_submitted_at: Time.current } },
+            params: { place: { review_rating: 5, review_text: 'Amazing place!', review_submitted_at: now_iso } },
             headers: headers
 
       expect(response).to have_http_status(:success)
@@ -146,9 +147,9 @@ RSpec.describe 'Api::V1::Places', type: :request do
     end
 
     it 'returns review fields in response' do
-      now = Time.current
+      now_iso = Time.current.iso8601
       patch "/api/v1/places/#{place.id}",
-            params: { place: { review_rating: 3, review_text: 'Good', review_submitted_at: now } },
+            params: { place: { review_rating: 3, review_text: 'Good', review_submitted_at: now_iso } },
             headers: headers
 
       json = JSON.parse(response.body)
