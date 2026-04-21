@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require 'zip'
 
 RSpec.describe Exports::Create do
   describe '#call' do
@@ -28,20 +29,35 @@ RSpec.describe Exports::Create do
       allow_any_instance_of(Point).to receive(:reverse_geocoded_at).and_return(reverse_geocoded_at)
     end
 
-    it 'writes valid GeoJSON with all points to the export file' do
-      create_export
-
-      blob = export.reload.file.blob
-      json = JSON.parse(blob.download)
-
-      expect(json['type']).to eq('FeatureCollection')
-      expect(json['features'].size).to eq(10)
+    def read_inner_bytes(blob)
+      Tempfile.create(['download', '.zip'], binmode: true) do |tf|
+        tf.write(blob.download)
+        tf.rewind
+        ::Zip::File.open(tf.path) do |zf|
+          entry = zf.entries.first
+          return [entry.name, entry.get_input_stream.read]
+        end
+      end
     end
 
-    it 'sets the export file' do
+    it 'attaches the export as a single-entry zip with application/zip content type' do
       create_export
+      blob = export.reload.file.blob
 
-      expect(export.reload.file.attached?).to be_truthy
+      expect(blob.content_type).to eq('application/zip')
+      expect(blob.filename.to_s).to eq("#{export_name}.zip")
+    end
+
+    it 'writes valid GeoJSON as the inner entry' do
+      create_export
+      blob = export.reload.file.blob
+
+      entry_name, inner = read_inner_bytes(blob)
+      expect(entry_name).to eq(export_name)
+
+      json = JSON.parse(inner)
+      expect(json['type']).to eq('FeatureCollection')
+      expect(json['features'].size).to eq(10)
     end
 
     it 'updates the export status to completed' do
@@ -57,14 +73,13 @@ RSpec.describe Exports::Create do
     context 'when file format is gpx' do
       let(:file_format) { :gpx }
 
-      it 'writes valid GPX to the export file' do
+      it 'writes valid GPX as the inner entry' do
         create_export
-
         blob = export.reload.file.blob
-        content = blob.download
 
-        expect(content).to include('<gpx')
-        expect(content).to include('<trkpt')
+        _name, inner = read_inner_bytes(blob)
+        expect(inner).to include('<gpx')
+        expect(inner).to include('<trkpt')
       end
 
       it 'updates the export status to completed' do
