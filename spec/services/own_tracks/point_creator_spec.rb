@@ -44,6 +44,24 @@ RSpec.describe OwnTracks::PointCreator do
     expect(user.points_count).to eq(Point.where(user_id: user.id).count)
   end
 
+  context 'with geofence evaluation' do
+    let(:area) { create(:area, user: user, latitude: 52.225, longitude: 13.332, radius: 100) }
+
+    before do
+      area
+      GeofenceEvents::Evaluator::StateStore.reset!(user)
+    end
+
+    it 'records a geofence enter event for a point inside an area' do
+      expect do
+        call_service
+      end.to change(GeofenceEvent, :count).by(1)
+
+      expect(GeofenceEvent.last.event_type).to eq('enter')
+      expect(GeofenceEvent.last.source).to eq('server_inferred')
+    end
+  end
+
   context 'when params are invalid' do
     let(:point_params) { { lat: nil } }
 

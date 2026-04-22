@@ -1,0 +1,10 @@
+<div id="<%= dom_id(geofence_event) %>" class="border-b p-2 flex gap-3 items-center">
+  <span class="badge <%= geofence_event.event_type_enter? ? 'badge-success' : 'badge-warning' %>">
+    <%= geofence_event.event_type %>
+  </span>
+  <strong><%= geofence_event.area.name %></strong>
+  <span class="text-xs text-gray-500"><%= geofence_event.source %></span>
+  <span class="text-xs text-gray-500 ml-auto">
+    <%= geofence_event.occurred_at.to_fs(:short) rescue geofence_event.occurred_at.iso8601 %>
+  </span>
+</div>

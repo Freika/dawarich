@@ -1,0 +1,30 @@
+<% content_for :title, @area.name %>
+<div class="p-4">
+  <%= render 'shared/page_header', title: @area.name %>
+
+  <div class="card bg-base-200 shadow-xl mt-4">
+    <div class="card-body">
+      <dl class="grid grid-cols-2 gap-4">
+        <div>
+          <dt class="text-sm font-medium text-base-content/70">Latitude</dt>
+          <dd><%= @area.latitude %></dd>
+        </div>
+        <div>
+          <dt class="text-sm font-medium text-base-content/70">Longitude</dt>
+          <dd><%= @area.longitude %></dd>
+        </div>
+        <div>
+          <dt class="text-sm font-medium text-base-content/70">Radius</dt>
+          <dd><%= @area.radius %> m</dd>
+        </div>
+      </dl>
+    </div>
+  </div>
+
+  <section class="mt-6 p-4 border-t">
+    <h2 class="text-lg mb-2">Recent geofence events</h2>
+    <%= turbo_frame_tag "area-events-#{@area.id}", src: geofence_events_path(area_id: @area.id) do %>
+      <p class="text-sm text-gray-500">Loading events…</p>
+    <% end %>
+  </section>
+</div>

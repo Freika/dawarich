@@ -26,6 +26,9 @@ class User < ApplicationRecord
   has_many :tracks, dependent: :destroy
   has_many :raw_data_archives, class_name: 'Points::RawDataArchive', dependent: :destroy
   has_many :digests, class_name: 'Users::Digest', dependent: :destroy
+  has_many :geofence_events, dependent: :destroy
+  has_many :webhooks, dependent: :destroy
+  has_many :user_devices, dependent: :destroy
 
   after_create :create_api_key
   after_commit :activate, on: :create, if: -> { DawarichSettings.self_hosted? }

@@ -5,6 +5,14 @@ class AreasController < ApplicationController
 
   before_action :authenticate_user!
 
+  def index
+    @areas = current_user.areas.order(:name)
+  end
+
+  def show
+    @area = current_user.areas.find(params[:id])
+  end
+
   def create
     @area = current_user.areas.build(area_params)
 

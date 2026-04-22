@@ -313,6 +313,36 @@ RSpec.describe Points::Create do
       end
     end
 
+    context 'with geofence evaluation' do
+      let(:area) { create(:area, user: user, latitude: 52.5, longitude: 13.4, radius: 100) }
+
+      before do
+        area
+        GeofenceEvents::Evaluator::StateStore.reset!(user)
+      end
+
+      it 'records a geofence enter event for a point inside an area' do
+        data = [
+          {
+            lonlat: 'POINT(13.4 52.5)',
+            timestamp: Time.current,
+            user_id: user.id,
+            created_at: Time.current,
+            updated_at: Time.current
+          }
+        ]
+
+        allow_any_instance_of(Points::Params).to receive(:call).and_return(data)
+
+        expect do
+          described_class.new(user, { locations: [] }).call
+        end.to change(GeofenceEvent, :count).by(1)
+
+        expect(GeofenceEvent.last.event_type).to eq('enter')
+        expect(GeofenceEvent.last.source).to eq('server_inferred')
+      end
+    end
+
     context 'with GeoJSON example data' do
       let(:geojson_file) { file_fixture('points/geojson_example.json') }
       let(:geojson_data) { JSON.parse(File.read(geojson_file)) }

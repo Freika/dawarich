@@ -1,0 +1,2 @@
+<%= turbo_stream.replace dom_id(@webhook), partial: "webhook", locals: { webhook: @webhook } %>
+<%= stream_flash(:notice, "Webhook updated.") %>

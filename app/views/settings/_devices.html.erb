@@ -1,0 +1,33 @@
+<section class="p-4 space-y-2">
+  <h2 class="text-xl mb-2">Registered Devices</h2>
+  <% if current_user.user_devices.any? %>
+    <table class="table w-full">
+      <thead>
+        <tr><th>Platform</th><th>Name</th><th>App version</th><th>Last seen</th><th></th></tr>
+      </thead>
+      <tbody>
+        <% current_user.user_devices.order(last_seen_at: :desc).each do |device| %>
+          <tr id="<%= dom_id(device) %>">
+            <td><%= device.platform %></td>
+            <td><%= device.device_name.presence || '—' %></td>
+            <td><%= device.app_version.presence || '—' %></td>
+            <td>
+              <% if device.last_seen_at %>
+                <%= time_ago_in_words(device.last_seen_at) %> ago
+              <% else %>
+                never
+              <% end %>
+            </td>
+            <td>
+              <%= button_to "Revoke", user_device_path(device), method: :delete,
+                    data: { turbo_confirm: "Revoke this device?" },
+                    class: "btn btn-sm btn-error" %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% else %>
+    <p class="text-sm text-gray-500">No devices registered. Sign in on the Dawarich mobile app to register one.</p>
+  <% end %>
+</section>

@@ -3,7 +3,7 @@
 class Api::V1::PointsController < ApiController
   include SafeTimestampParser
 
-  before_action :authenticate_active_api_user!, only: %i[create update destroy bulk_destroy]
+  before_action :authenticate_active_api_user!, only: %i[create update destroy bulk_destroy create_transition]
   before_action :require_write_api!, only: %i[update destroy bulk_destroy]
   before_action :validate_points_limit, only: %i[create]
 
@@ -99,6 +99,31 @@ class Api::V1::PointsController < ApiController
     User.update_counters(current_api_user.id, points_count: -deleted_count) if deleted_count.positive?
 
     render json: { message: 'Points were successfully destroyed', count: deleted_count }, status: :ok
+  end
+
+  def create_transition
+    occurred_at = Time.iso8601(params.require(:occurred_at))
+    return head :unprocessable_entity if (Time.current - occurred_at).abs > 1.hour
+
+    area = current_api_user.areas.find_by(id: params[:area_id])
+    return head :no_content unless area
+
+    lonlat_arr = params.require(:lonlat)
+    GeofenceEvents::Record.call(
+      user: current_api_user,
+      area: area,
+      event_type: params.require(:event_type).to_sym,
+      source: :native_app,
+      occurred_at: occurred_at,
+      lonlat: "POINT(#{lonlat_arr[0]} #{lonlat_arr[1]})",
+      accuracy_m: params[:accuracy_m],
+      device_id: params[:device_id],
+      metadata: params[:metadata] || {}
+    )
+
+    head :created
+  rescue ArgumentError, ActionController::ParameterMissing
+    head :unprocessable_entity
   end
 
   private

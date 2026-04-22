@@ -1,0 +1,47 @@
+<%= form_with model: webhook, class: "space-y-3" do |f| %>
+  <% if webhook.errors.any? %>
+    <div class="alert alert-error"><%= webhook.errors.full_messages.to_sentence %></div>
+  <% end %>
+
+  <div>
+    <%= f.label :name, class: "label" %>
+    <%= f.text_field :name, class: "input input-bordered w-full", required: true %>
+  </div>
+
+  <div>
+    <%= f.label :url, class: "label" %>
+    <%= f.url_field :url, class: "input input-bordered w-full", required: true %>
+  </div>
+
+  <fieldset>
+    <legend class="label">Event types</legend>
+    <label class="label cursor-pointer gap-2">
+      <input type="checkbox" name="webhook[event_types][]" value="0"
+             <%= "checked" if webhook.event_types.include?(0) %> class="checkbox">
+      <span>Enter</span>
+    </label>
+    <label class="label cursor-pointer gap-2">
+      <input type="checkbox" name="webhook[event_types][]" value="1"
+             <%= "checked" if webhook.event_types.include?(1) %> class="checkbox">
+      <span>Leave</span>
+    </label>
+  </fieldset>
+
+  <fieldset>
+    <legend class="label">Areas (leave all unchecked = all areas)</legend>
+    <% current_user.areas.each do |area| %>
+      <label class="label cursor-pointer gap-2">
+        <input type="checkbox" name="webhook[area_ids][]" value="<%= area.id %>"
+               <%= "checked" if webhook.area_ids.include?(area.id) %> class="checkbox">
+        <span><%= area.name %></span>
+      </label>
+    <% end %>
+  </fieldset>
+
+  <label class="label cursor-pointer gap-2">
+    <%= f.check_box :active, class: "checkbox" %>
+    <span>Active</span>
+  </label>
+
+  <%= f.submit class: "btn btn-primary" %>
+<% end %>

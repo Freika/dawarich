@@ -1,0 +1,2 @@
+<%= turbo_stream.prepend "webhooks-list", partial: "webhook", locals: { webhook: @webhook } %>
+<%= stream_flash(:notice, "Webhook created. Copy secret now — it won't be shown again: #{@show_secret_once}") %>
