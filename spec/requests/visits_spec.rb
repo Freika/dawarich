@@ -9,53 +9,9 @@ RSpec.describe '/visits', type: :request do
     sign_in user
   end
 
-  describe 'GET /index' do
-    it 'renders a successful response' do
-      get visits_url
-
-      expect(response).to be_successful
-    end
-
-    context 'with confirmed visits' do
-      let!(:confirmed_visits) { create_list(:visit, 3, user:, status: :confirmed) }
-
-      it 'returns confirmed visits' do
-        get visits_url
-
-        expect(@controller.instance_variable_get(:@visits)).to match_array(confirmed_visits)
-      end
-    end
-
-    context 'with suggested visits' do
-      let!(:suggested_visits) { create_list(:visit, 3, user:, status: :suggested) }
-
-      it 'does not return suggested visits' do
-        get visits_url
-
-        expect(@controller.instance_variable_get(:@visits)).not_to include(suggested_visits)
-      end
-
-      it 'returns suggested visits' do
-        get visits_url, params: { status: 'suggested' }
-
-        expect(@controller.instance_variable_get(:@visits)).to match_array(suggested_visits)
-      end
-    end
-
-    context 'with declined visits' do
-      let!(:declined_visits) { create_list(:visit, 3, user:, status: :declined) }
-
-      it 'does not return declined visits' do
-        get visits_url
-
-        expect(@controller.instance_variable_get(:@visits)).not_to include(declined_visits)
-      end
-
-      it 'returns declined visits' do
-        get visits_url, params: { status: 'declined' }
-
-        expect(@controller.instance_variable_get(:@visits)).to match_array(declined_visits)
-      end
+  describe 'GET /index (retired)' do
+    it 'VisitsController no longer responds to #index' do
+      expect(VisitsController.action_methods).not_to include('index')
     end
   end
 
@@ -66,16 +22,17 @@ RSpec.describe '/visits', type: :request do
       patch bulk_update_visits_url, params: { status: 'confirmed', source_status: 'suggested' }
 
       expect(suggested_visits.each(&:reload).map(&:status)).to all(eq('confirmed'))
-      expect(response).to redirect_to(visits_path(status: 'suggested'))
-      follow_redirect!
-      expect(response.body).to include('3 visits confirmed.')
+      expect(response).to have_http_status(:found)
+      expect(response.location).to include('/map')
+      expect(response.location).to include('panel=timeline')
     end
 
     it 'declines all suggested visits' do
       patch bulk_update_visits_url, params: { status: 'declined', source_status: 'suggested' }
 
       expect(suggested_visits.each(&:reload).map(&:status)).to all(eq('declined'))
-      expect(response).to redirect_to(visits_path(status: 'suggested'))
+      expect(response).to have_http_status(:found)
+      expect(response.location).to include('/map')
     end
 
     it 'does not affect visits of other users' do
@@ -85,6 +42,60 @@ RSpec.describe '/visits', type: :request do
       patch bulk_update_visits_url, params: { status: 'confirmed', source_status: 'suggested' }
 
       expect(other_visit.reload.status).to eq('suggested')
+    end
+
+    context 'with date param (TZ-aware scoping)' do
+      let(:tz) { 'Europe/Berlin' }
+
+      before do
+        user.settings ||= {}
+        user.settings['timezone'] = tz
+        user.save!
+
+        Visit.delete_all
+
+        # Visit on 2026-04-22 Berlin local (22:00 CEST = 20:00 UTC)
+        @visit_on_22 = create(:visit, user: user, status: :suggested,
+                                      started_at: Time.find_zone(tz).local(2026, 4, 22, 22, 0),
+                                      ended_at: Time.find_zone(tz).local(2026, 4, 22, 23, 0))
+        # Visit on 2026-04-23 Berlin local (01:00 CEST = 23:00 UTC on 04-22)
+        @visit_on_23 = create(:visit, user: user, status: :suggested,
+                                      started_at: Time.find_zone(tz).local(2026, 4, 23, 1, 0),
+                                      ended_at: Time.find_zone(tz).local(2026, 4, 23, 2, 0))
+      end
+
+      it 'only updates visits within the user-local day' do
+        patch bulk_update_visits_url,
+              params: { status: 'confirmed', source_status: 'suggested', date: '2026-04-22' }
+
+        expect(@visit_on_22.reload.status).to eq('confirmed')
+        expect(@visit_on_23.reload.status).to eq('suggested')
+      end
+
+      it 'handles DST spring-forward boundary correctly (Europe/Berlin 2026-03-29)' do
+        Visit.delete_all
+
+        # 2026-03-29 is the DST spring-forward day in Europe/Berlin (02:00 -> 03:00)
+        # Pre-DST: 01:30 Berlin CET = 00:30 UTC
+        pre_dst = create(:visit, user: user, status: :suggested,
+                                 started_at: Time.find_zone(tz).local(2026, 3, 29, 1, 30),
+                                 ended_at: Time.find_zone(tz).local(2026, 3, 29, 1, 45))
+        # Post-DST: 04:00 Berlin CEST = 02:00 UTC
+        post_dst = create(:visit, user: user, status: :suggested,
+                                  started_at: Time.find_zone(tz).local(2026, 3, 29, 4, 0),
+                                  ended_at: Time.find_zone(tz).local(2026, 3, 29, 5, 0))
+        # Next day: 2026-03-30 00:30 Berlin CEST = 2026-03-29 22:30 UTC
+        next_day = create(:visit, user: user, status: :suggested,
+                                  started_at: Time.find_zone(tz).local(2026, 3, 30, 0, 30),
+                                  ended_at: Time.find_zone(tz).local(2026, 3, 30, 1, 0))
+
+        patch bulk_update_visits_url,
+              params: { status: 'confirmed', source_status: 'suggested', date: '2026-03-29' }
+
+        expect(pre_dst.reload.status).to eq('confirmed')
+        expect(post_dst.reload.status).to eq('confirmed')
+        expect(next_day.reload.status).to eq('suggested')
+      end
     end
   end
 
@@ -104,12 +115,6 @@ RSpec.describe '/visits', type: :request do
         expect(visit.reload.status).to eq('declined')
       end
 
-      it 'redirects to the visits index page' do
-        patch visit_url(visit), params: { visit: { status: :confirmed } }
-
-        expect(response).to redirect_to(visits_url(status: :suggested))
-      end
-
       it 'auto-names the visit from suggested place when confirming without name change' do
         place = create(:place, user:, name: 'Central Park')
         create(:place_visit, visit:, place:)
@@ -125,6 +130,15 @@ RSpec.describe '/visits', type: :request do
         patch visit_url(visit), params: { visit: { status: :confirmed } }
 
         expect(visit.reload.name).to eq('My Visit')
+      end
+
+      it 'keeps the original name when a blank name is submitted (no 422)' do
+        visit.update!(name: 'Original Name')
+
+        patch visit_url(visit), params: { visit: { name: '  ' } }
+
+        expect(response).not_to have_http_status(:unprocessable_content)
+        expect(visit.reload.name).to eq('Original Name')
       end
     end
 
@@ -154,6 +168,60 @@ RSpec.describe '/visits', type: :request do
         expect_turbo_stream_response
         expect_turbo_stream_action('replace', "visit_name_#{visit.id}")
       end
+    end
+
+    describe 'cache busting on visit mutations' do
+      let!(:visit) do
+        create(:visit, user: user, status: :suggested,
+                       started_at: Time.zone.parse('2026-04-15 10:00:00 UTC'),
+                       ended_at: Time.zone.parse('2026-04-15 11:00:00 UTC'))
+      end
+
+      it 'deletes the MonthSummary cache for the visit month after update' do
+        month_start = visit.started_at.to_date.beginning_of_month
+        cache_key = Timeline::MonthSummary.cache_key_for(user, month_start)
+        Rails.cache.write(cache_key, { some: 'data' })
+
+        expect(Rails.cache.read(cache_key)).to be_present
+
+        patch visit_url(visit), params: { visit: { status: :confirmed } }
+
+        expect(Rails.cache.read(cache_key)).to be_nil
+      end
+    end
+  end
+
+  describe 'DELETE /destroy' do
+    let!(:visit) { create(:visit, user:, status: :confirmed) }
+
+    it 'removes the visit' do
+      expect { delete visit_url(visit), as: :turbo_stream }.to change(Visit, :count).by(-1)
+    end
+
+    it 'returns turbo_stream removing the visit row' do
+      delete visit_url(visit), as: :turbo_stream
+
+      expect_turbo_stream_response
+      expect_turbo_stream_action('remove', "visit_item_#{visit.id}")
+    end
+
+    it 'busts the MonthSummary cache for the visit month' do
+      month_start = visit.started_at.to_date.beginning_of_month
+      cache_key = Timeline::MonthSummary.cache_key_for(user, month_start)
+      Rails.cache.write(cache_key, { some: 'data' })
+
+      expect(Rails.cache.read(cache_key)).to be_present
+
+      delete visit_url(visit), as: :turbo_stream
+
+      expect(Rails.cache.read(cache_key)).to be_nil
+    end
+
+    it 'redirects to /map on HTML format' do
+      delete visit_url(visit)
+
+      expect(response).to have_http_status(:see_other)
+      expect(response.location).to include('/map')
     end
   end
 end

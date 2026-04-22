@@ -29,10 +29,16 @@
   padding: 16px;
 }
 
-/* --- Entries container --- */
+/* --- Entries container ---
+   Dual-purpose: historical flex layout for legacy `.timeline-entry` rows
+   AND the new `<ol>` wrapper for `.visit-row` children. List reset keeps
+   both layouts clean. */
 .timeline-entries {
   display: flex;
   flex-direction: column;
+  list-style: none;
+  padding: 0;
+  margin: 0;
 }
 
 /* --- Each entry: time column + content column --- */
@@ -161,4 +167,327 @@
     margin: -12px;
     padding: 8px;
   }
+}
+
+/* =========================================================================
+   Unified Timeline — calendar, visit rows, drawer, overlays
+   Introduced in Task 6 of the Unified Timeline plan. These styles back the
+   new Stimulus controller and the shared class contract consumed by the
+   server-rendered views and the map overlays.
+   ========================================================================= */
+
+/* --- Tab pane + filter row --- */
+.timeline-tab-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 0.75rem;
+}
+
+.timeline-filters {
+  display: flex;
+  gap: 0.75rem;
+  font-size: 0.85rem;
+}
+
+.timeline-filters label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  cursor: pointer;
+}
+
+/* --- Calendar grid --- */
+.timeline-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.timeline-calendar-grid__weekday {
+  text-align: center;
+  font-size: 10px;
+  text-transform: uppercase;
+  color: oklch(var(--bc) / 0.5);
+}
+
+.cal-cell {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  border: 0;
+  cursor: pointer;
+  background: transparent;
+  color: oklch(var(--bc));
+}
+
+.cal-cell:hover:not(.cal-cell--disabled) {
+  outline: 1px solid oklch(var(--bc) / 0.2);
+}
+
+.cal-cell--out-of-month {
+  color: oklch(var(--bc) / 0.25);
+}
+
+.cal-cell--disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.cal-cell--selected {
+  outline: 2px solid oklch(var(--p));
+  outline-offset: 1px;
+}
+
+/* Heat buckets — transparent through emerald-88%.
+   High-intensity cells switch to white text for contrast. */
+.heat-0 {
+  background: transparent;
+}
+.heat-1 {
+  background: rgba(34, 197, 94, 0.15);
+}
+.heat-2 {
+  background: rgba(34, 197, 94, 0.3);
+}
+.heat-3 {
+  background: rgba(34, 197, 94, 0.5);
+  color: white;
+}
+.heat-4 {
+  background: rgba(34, 197, 94, 0.7);
+  color: white;
+}
+.heat-5 {
+  background: rgba(34, 197, 94, 0.88);
+  color: white;
+}
+
+.suggestion-dot {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: #f59e0b;
+  outline: 1px solid white;
+}
+
+/* --- Day header / summary / bulk banner --- */
+.timeline-day-header {
+  position: sticky;
+  top: 0;
+  background: oklch(var(--b1) / 0.95);
+  backdrop-filter: blur(4px);
+  padding: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  border-bottom: 1px solid oklch(var(--bc) / 0.1);
+  z-index: 5;
+}
+
+.timeline-day-header > button {
+  background: none;
+  border: 0;
+  padding: 0.25rem 0.5rem;
+  cursor: pointer;
+  font-size: 1rem;
+  color: oklch(var(--bc) / 0.6);
+}
+
+.timeline-day-summary {
+  font-size: 0.75rem;
+  color: oklch(var(--bc) / 0.7);
+  padding: 0 0.5rem;
+}
+
+.timeline-bulk-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+
+.timeline-bulk-banner > span {
+  flex: 1;
+  color: #92400e;
+  font-weight: 500;
+}
+
+/* --- Visit row --- */
+.visit-row {
+  display: grid;
+  grid-template-columns: 56px 16px 1fr auto;
+  gap: 0.5rem;
+  align-items: start;
+  padding: 0.6rem 0.5rem;
+  border-bottom: 1px solid oklch(var(--bc) / 0.08);
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+
+.visit-row:hover {
+  background-color: oklch(var(--bc) / 0.03);
+}
+
+.visit-row--selected {
+  background-color: rgba(34, 197, 94, 0.08);
+  box-shadow: inset 3px 0 0 #22c55e;
+}
+
+/* All-day visits collapse to 3 columns (no actions column). */
+.visit-row--all-day {
+  grid-template-columns: 56px 16px 1fr;
+}
+
+.visit-row__time {
+  text-align: right;
+}
+
+.visit-row__rail {
+  display: flex;
+  justify-content: center;
+  padding-top: 4px;
+}
+
+.visit-row__title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.visit-row__title .place-link {
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.visit-row__title .place-link:hover {
+  text-decoration: underline;
+}
+
+.visit-row__meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 2px;
+}
+
+.visit-row__actions {
+  opacity: 0;
+  transition: opacity 120ms;
+}
+
+.visit-row:hover .visit-row__actions {
+  opacity: 1;
+}
+
+/* Status dots: confirmed (green) / suggested (amber) / declined (grey). */
+.visit-status-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 9999px;
+  box-shadow: 0 0 0 2px white;
+}
+
+.visit-status-dot--confirmed {
+  background: #22c55e;
+}
+
+.visit-status-dot--suggested {
+  background: #f59e0b;
+}
+
+.visit-status-dot--declined {
+  background: #9ca3af;
+}
+
+/* Tag chips — background color applied inline by the view. */
+.tag-chip {
+  display: inline-block;
+  padding: 0 6px;
+  border-radius: 9999px;
+  font-size: 10px;
+  line-height: 1.6;
+  color: white;
+}
+
+/* --- Suggested picker (inline, amber-tinted) --- */
+.suggested-picker {
+  margin-top: 6px;
+  padding: 6px 8px;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: 6px;
+  font-size: 0.8rem;
+}
+
+.suggested-picker__option {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: 8px;
+  cursor: pointer;
+}
+
+/* Place drawer styles live in maps_maplibre_place_drawer.css. */
+
+/* --- Map overlays (scope + legend) ---
+   Hidden by default. Visible only when the map container sits in the
+   timeline-expanded state, which is toggled alongside the panel. */
+.timeline-map-overlay {
+  display: none;
+  position: absolute;
+  z-index: 500;
+  background: oklch(var(--b1) / 0.95);
+  backdrop-filter: blur(4px);
+  border: 1px solid oklch(var(--bc) / 0.15);
+  border-radius: 6px;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.75rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.maps-maplibre-container.panel-timeline-expanded .timeline-map-overlay {
+  display: block;
+}
+
+.timeline-map-overlay--scope {
+  top: 12px;
+  left: 12px;
+}
+
+.timeline-map-overlay--legend {
+  bottom: 12px;
+  left: 12px;
+  display: none;
+}
+
+.maps-maplibre-container.panel-timeline-expanded .timeline-map-overlay--legend {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.timeline-map-overlay--legend > div {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }

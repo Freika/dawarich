@@ -10,6 +10,7 @@ module Map
     def index
       @start_at = parsed_start_at
       @end_at = parsed_end_at
+      @suggestions_pending_count = current_user.scoped_visits.suggested.count
     end
 
     private

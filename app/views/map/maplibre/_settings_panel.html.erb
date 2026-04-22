@@ -22,6 +22,7 @@
             data-action="click->map-panel#switchTab"
             data-tab="timeline-feed"
             data-map-panel-target="tabButton"
+            data-testid="timeline-tab-button"
             title="Timeline">
       <%= icon 'calendar-clock' %>
     </button>
@@ -948,44 +949,43 @@
 
       <!-- Timeline Feed Tab -->
       <div class="tab-content" data-tab-content="timeline-feed" data-map-panel-target="tabContent">
-        <turbo-frame id="timeline-feed-frame"
-                     data-maps--maplibre-target="timelineFeedContainer">
-          <div class="timeline-feed-placeholder text-center text-base-content/60 py-8">
-            <p class="text-sm">Select a date range to see your day-by-day timeline.</p>
+        <div class="timeline-tab-content" data-controller="timeline-feed">
+          <%# Calendar (lazy-loaded turbo frame) %>
+          <turbo-frame id="timeline-calendar-frame"
+                       src="<%= calendar_map_timeline_feeds_path(month: Date.current.strftime('%Y-%m')) %>"
+                       loading="lazy">
+            <div class="text-center text-base-content/60 py-4 text-sm">Loading calendar…</div>
+          </turbo-frame>
+
+          <%# Filters %>
+          <div class="timeline-filters">
+            <label>
+              <input type="checkbox" data-status="confirmed" data-testid="filter-confirmed"
+                     data-action="change->timeline-feed#filterChanged" checked />
+              <span>Confirmed</span>
+            </label>
+            <label>
+              <input type="checkbox" data-status="suggested" data-testid="filter-suggested"
+                     data-action="change->timeline-feed#filterChanged" checked />
+              <span>Suggested</span>
+            </label>
+            <label>
+              <input type="checkbox" data-status="declined" data-testid="filter-declined"
+                     data-action="change->timeline-feed#filterChanged" />
+              <span>Declined</span>
+            </label>
           </div>
-        </turbo-frame>
-        <template id="timeline-feed-skeleton">
-          <div class="timeline-feed-skeleton space-y-2 p-2 animate-pulse">
-            <% 3.times do %>
-              <div class="bg-base-200 rounded-lg p-3">
-                <div class="flex justify-between items-center">
-                  <div class="h-4 bg-base-300 rounded w-36"></div>
-                  <div class="h-4 bg-base-300 rounded w-16"></div>
-                </div>
-                <div class="mt-3 space-y-2">
-                  <div class="flex items-center gap-2">
-                    <div class="w-3 h-3 bg-base-300 rounded-full shrink-0"></div>
-                    <div class="h-3 bg-base-300 rounded w-28"></div>
-                  </div>
-                  <div class="ml-1 border-l-2 border-base-300 pl-3 py-1">
-                    <div class="h-3 bg-base-300 rounded w-40"></div>
-                  </div>
-                  <div class="flex items-center gap-2">
-                    <div class="w-3 h-3 bg-base-300 rounded-full shrink-0"></div>
-                    <div class="h-3 bg-base-300 rounded w-32"></div>
-                  </div>
-                  <div class="ml-1 border-l-2 border-base-300 pl-3 py-1">
-                    <div class="h-3 bg-base-300 rounded w-36"></div>
-                  </div>
-                  <div class="flex items-center gap-2">
-                    <div class="w-3 h-3 bg-base-300 rounded-full shrink-0"></div>
-                    <div class="h-3 bg-base-300 rounded w-24"></div>
-                  </div>
-                </div>
-              </div>
-            <% end %>
-          </div>
-        </template>
+
+          <%# Day summary (populated when a day is selected) %>
+          <div class="timeline-day-summary" data-timeline-feed-target="daySummary"></div>
+
+          <%# Visit list (turbo frame; loaded by Task 7's selectDay) %>
+          <turbo-frame id="timeline-feed-frame" data-timeline-feed-target="visitListFrame">
+            <div class="text-center text-base-content/60 py-8 text-sm">
+              Pick a day in the calendar above.
+            </div>
+          </turbo-frame>
+        </div>
       </div>
 
       <!-- Tools Tab -->

@@ -27,14 +27,17 @@
     <span data-maps--maplibre-target="progressBadgeText">Loading...</span>
   </div>
 
-  <!-- Settings button (top-left corner) -->
-  <div class="absolute top-4 left-4 z-10">
-    <button data-action="click->maps--maplibre#toggleSettings"
-            class="btn btn-sm btn-primary"
-            title="Open map settings">
-      <%= icon 'square-pen' %>
-      <span class="ml-1">Settings</span>
-    </button>
+  <!-- Map-edge button cluster (top-right corner) -->
+  <%= render 'button_cluster' %>
+
+  <!-- Timeline map-corner overlays (shown only when Timeline tab is active; CSS handles visibility) -->
+  <div class="timeline-map-overlay timeline-map-overlay--scope" data-timeline-feed-target="scopeBadge">
+    <span class="font-semibold">Pick a day</span>
+  </div>
+  <div class="timeline-map-overlay timeline-map-overlay--legend">
+    <div><span class="visit-status-dot visit-status-dot--confirmed"></span> Confirmed</div>
+    <div><span class="visit-status-dot visit-status-dot--suggested"></span> Suggested</div>
+    <div><span class="visit-status-dot visit-status-dot--declined"></span> Declined</div>
   </div>
 
   <!-- Settings panel -->

@@ -37,7 +37,7 @@ class Visits::Suggest
 
   def create_visits_notification(user)
     content = <<~CONTENT
-      New visits have been suggested based on your location data from #{Time.zone.at(start_at)} to #{Time.zone.at(end_at)}. You can review them on the <a href="/visits" class="link">Visits</a> page.
+      New visits have been suggested based on your location data from #{Time.zone.at(start_at)} to #{Time.zone.at(end_at)}. You can review them on the <a href="/map/v2?panel=timeline&date=today&status=suggested" class="link">Timeline</a> page.
     CONTENT
 
     user.notifications.create!(

@@ -22,6 +22,12 @@ module Map
       @distance_unit = current_user.safe_settings.distance_unit
     end
 
+    def calendar
+      month = params[:month].presence || Date.current.strftime('%Y-%m')
+      @summary = Timeline::MonthSummary.new(user: current_user, month: month).call
+      render partial: 'calendar', locals: { summary: @summary }
+    end
+
     private
 
     def parsed_start_at

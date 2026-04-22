@@ -1,0 +1,101 @@
+<%
+  total_minutes = place.visits.sum(:duration).to_i
+  visit_count = place.visits.size
+  total_hours = (total_minutes / 60.0).round(1)
+  avg_minutes = visit_count.positive? ? (total_minutes / visit_count) : 0
+  avg_hours_part = avg_minutes / 60
+  avg_minutes_part = avg_minutes % 60
+  primary_tag = place.tags.first
+  location_line = [place.city, place.country].compact_blank.join(', ')
+%>
+
+<div class="place-drawer" data-place-id="<%= place.id %>">
+  <header class="place-drawer__header">
+    <div class="place-drawer__icon">
+      <% if primary_tag&.icon.present? %>
+        <%= icon primary_tag.icon, class: 'w-6 h-6' %>
+      <% else %>
+        <%= icon 'map-pin', class: 'w-6 h-6' %>
+      <% end %>
+    </div>
+    <div class="place-drawer__titles">
+      <h2 class="place-drawer__name"><%= place.name %></h2>
+      <% if location_line.present? %>
+        <p class="place-drawer__location"><%= location_line %></p>
+      <% end %>
+      <p class="place-drawer__source">Source: <%= place.source.to_s.humanize %></p>
+    </div>
+  </header>
+
+  <section class="place-drawer__stats">
+    <div class="place-drawer__stat">
+      <span class="place-drawer__stat-value"><%= visit_count %></span>
+      <span class="place-drawer__stat-label"><%= visit_count == 1 ? '1 visit' : "#{visit_count} visits" %></span>
+    </div>
+    <div class="place-drawer__stat">
+      <span class="place-drawer__stat-value"><%= total_hours %></span>
+      <span class="place-drawer__stat-label">total hours</span>
+    </div>
+    <div class="place-drawer__stat">
+      <span class="place-drawer__stat-value"><%= "#{avg_hours_part}h #{avg_minutes_part}m" %></span>
+      <span class="place-drawer__stat-label">avg dwell</span>
+    </div>
+  </section>
+
+  <section class="place-drawer__tags">
+    <% if place.tags.any? %>
+      <ul class="place-drawer__tag-list">
+        <% place.tags.each do |tag| %>
+          <li class="place-drawer__tag-chip" style="<%= "background-color: #{tag.color};" if tag.color.present? %>">
+            <%= tag.name %>
+          </li>
+        <% end %>
+      </ul>
+    <% else %>
+      <p class="place-drawer__tags-empty">No tags</p>
+    <% end %>
+  </section>
+
+  <section class="place-drawer__notes">
+    <%= form_with model: place, method: :patch, data: { turbo_frame: 'place-drawer' } do |f| %>
+      <%= f.label :note, 'Notes', class: 'place-drawer__notes-label' %>
+      <%= f.text_area :note, rows: 3, class: 'place-drawer__notes-input' %>
+      <%= f.submit 'Save', class: 'place-drawer__notes-submit' %>
+    <% end %>
+  </section>
+
+  <section class="place-drawer__visits">
+    <h3 class="place-drawer__visits-heading">Recent visits</h3>
+    <% if recent_visits.any? %>
+      <ul class="place-drawer__visits-list">
+        <% recent_visits.each do |visit| %>
+          <%
+            v_duration_min = visit.duration.to_i
+            v_hours = v_duration_min / 60
+            v_mins = v_duration_min % 60
+            start_time = visit.started_at.strftime('%H:%M')
+            end_time = visit.ended_at.strftime('%H:%M')
+            date_str = visit.started_at.strftime('%Y-%m-%d')
+          %>
+          <li class="place-drawer__visit">
+            <span class="place-drawer__visit-name"><%= visit.name %></span>
+            <span class="place-drawer__visit-time"><%= start_time %> &rarr; <%= end_time %> on <%= date_str %></span>
+            <span class="place-drawer__visit-duration"><%= "#{v_hours}h #{v_mins}m" %></span>
+          </li>
+        <% end %>
+      </ul>
+    <% else %>
+      <p class="place-drawer__visits-empty">No visits yet</p>
+    <% end %>
+  </section>
+
+  <footer class="place-drawer__actions">
+    <button type="button" class="place-drawer__action place-drawer__action--rename" disabled>Rename</button>
+    <button type="button" class="place-drawer__action place-drawer__action--merge" disabled>Merge</button>
+    <%= button_to 'Delete',
+                  places_path(place),
+                  method: :delete,
+                  class: 'place-drawer__action place-drawer__action--delete',
+                  data: { turbo_confirm: 'Delete this place? This cannot be undone.' } %>
+  </footer>
+</div>

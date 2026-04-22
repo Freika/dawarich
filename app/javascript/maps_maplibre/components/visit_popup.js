@@ -45,7 +45,7 @@ export class VisitPopupFactory {
           </div>
         </div>
         <div class="popup-footer">
-          <a href="/visits/${id}" class="view-details-btn">View Details →</a>
+          <a href="/map/v2?panel=timeline&date=${(started_at || "").slice(0, 10)}&visit_id=${id}" class="view-details-btn">View Details →</a>
         </div>
       </div>
 

@@ -12,6 +12,151 @@ export class VisitsManager {
     this.filterManager = controller.filterManager
     this.api = controller.api
     this.dataLoader = controller.dataLoader
+    this.bindTimelineFeedListeners()
+  }
+
+  /**
+   * Register document-level listeners for the timeline-feed contract.
+   * See PLAN.md Task 7/8 SHARED CONTRACT.
+   */
+  bindTimelineFeedListeners() {
+    this.onVisitSelected = (e) => {
+      const detail = e?.detail || {}
+      const { visitId, lat, lng } = detail
+      const layer = this.layerManager?.getLayer("visits")
+      if (layer) layer.setSelectedVisit(visitId)
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        this.controller.map?.flyTo({
+          center: [lng, lat],
+          zoom: 15,
+          duration: 600,
+        })
+      }
+    }
+
+    this.onVisitDeselected = () => {
+      const layer = this.layerManager?.getLayer("visits")
+      if (layer) layer.setSelectedVisit(null)
+    }
+
+    this.onPlaceSelected = (e) => {
+      const detail = e?.detail || {}
+      const { placeId, lat, lng } = detail
+
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        this.controller.map?.flyTo({
+          center: [lng, lat],
+          zoom: 15,
+          duration: 600,
+        })
+        return
+      }
+
+      const placesLayer = this.layerManager?.getLayer("places")
+      const features = placesLayer?.data?.features || []
+      const feature = features.find(
+        (f) => Number(f?.properties?.id) === Number(placeId),
+      )
+      if (feature?.geometry?.coordinates) {
+        const [flng, flat] = feature.geometry.coordinates
+        if (Number.isFinite(flng) && Number.isFinite(flat)) {
+          this.controller.map?.flyTo({
+            center: [flng, flat],
+            zoom: 15,
+            duration: 600,
+          })
+        }
+      }
+    }
+
+    this.onFilterChanged = (e) => {
+      const layer = this.layerManager?.getLayer("visits")
+      if (layer) layer.setStatusFilter(e?.detail || {})
+    }
+
+    this.onDaySelected = (e) => {
+      const detail = e?.detail || {}
+      const { bounds } = detail
+      if (
+        bounds &&
+        Number.isFinite(bounds.sw_lat) &&
+        Number.isFinite(bounds.sw_lng) &&
+        Number.isFinite(bounds.ne_lat) &&
+        Number.isFinite(bounds.ne_lng)
+      ) {
+        this.controller.map?.fitBounds(
+          [
+            [bounds.sw_lng, bounds.sw_lat],
+            [bounds.ne_lng, bounds.ne_lat],
+          ],
+          { padding: 60, duration: 500 },
+        )
+      }
+    }
+
+    this.onResizeNeeded = () => {
+      this.controller.map?.resize()
+    }
+
+    document.addEventListener(
+      "timeline-feed:visit-selected",
+      this.onVisitSelected,
+    )
+    document.addEventListener(
+      "timeline-feed:visit-deselected",
+      this.onVisitDeselected,
+    )
+    document.addEventListener(
+      "timeline-feed:place-selected",
+      this.onPlaceSelected,
+    )
+    document.addEventListener(
+      "timeline-feed:filter-changed",
+      this.onFilterChanged,
+    )
+    document.addEventListener("timeline-feed:day-selected", this.onDaySelected)
+    document.addEventListener("map:resize-needed", this.onResizeNeeded)
+  }
+
+  /**
+   * Tear down document-level listeners. Not currently wired to a
+   * lifecycle hook (VisitsManager is managed by the map controller),
+   * but provided for future use and consistency.
+   */
+  destroy() {
+    if (this.onVisitSelected) {
+      document.removeEventListener(
+        "timeline-feed:visit-selected",
+        this.onVisitSelected,
+      )
+    }
+    if (this.onVisitDeselected) {
+      document.removeEventListener(
+        "timeline-feed:visit-deselected",
+        this.onVisitDeselected,
+      )
+    }
+    if (this.onPlaceSelected) {
+      document.removeEventListener(
+        "timeline-feed:place-selected",
+        this.onPlaceSelected,
+      )
+    }
+    if (this.onFilterChanged) {
+      document.removeEventListener(
+        "timeline-feed:filter-changed",
+        this.onFilterChanged,
+      )
+    }
+    if (this.onDaySelected) {
+      document.removeEventListener(
+        "timeline-feed:day-selected",
+        this.onDaySelected,
+      )
+    }
+    if (this.onResizeNeeded) {
+      document.removeEventListener("map:resize-needed", this.onResizeNeeded)
+    }
   }
 
   /**

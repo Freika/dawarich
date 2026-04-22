@@ -22,7 +22,7 @@ RSpec.describe 'Map::TimelineFeeds', type: :request do
         get map_timeline_feeds_path(start_at: day.iso8601, end_at: (day + 1.day).iso8601)
 
         expect(response).to have_http_status(:success)
-        expect(response.body).to include('No visits or journeys found')
+        expect(response.body).to include('No visits tracked this day')
       end
 
       context 'with visits and tracks' do
@@ -61,10 +61,13 @@ RSpec.describe 'Map::TimelineFeeds', type: :request do
           expect(response.body).to include('8.5 km')
         end
 
-        it 'includes data-controller for Stimulus' do
+        it 'includes Stimulus action attributes wired for timeline-feed controller' do
           get map_timeline_feeds_path(start_at: day.iso8601, end_at: (day + 1.day).iso8601)
 
-          expect(response.body).to include('data-controller="timeline-feed"')
+          # The timeline-feed controller is now mounted on the settings panel wrapper
+          # (app/views/map/maplibre/_settings_panel.html.erb). The feed partial renders
+          # action attributes that target it.
+          expect(response.body).to include('click->timeline-feed#')
         end
 
         it 'includes turbo-frame for track info' do
@@ -72,6 +75,49 @@ RSpec.describe 'Map::TimelineFeeds', type: :request do
 
           expect(response.body).to include("track-info-#{track.id}")
         end
+      end
+    end
+  end
+
+  describe 'GET /map/timeline_feeds/calendar' do
+    context 'when not signed in' do
+      it 'redirects to sign in' do
+        get calendar_map_timeline_feeds_path
+
+        expect(response).to have_http_status(:redirect)
+      end
+    end
+
+    context 'when signed in' do
+      before { sign_in user }
+
+      it 'returns 200 with the calendar turbo-frame' do
+        get calendar_map_timeline_feeds_path
+
+        expect(response).to have_http_status(:success)
+        expect(response.body).to include('turbo-frame id="timeline-calendar-frame"')
+      end
+
+      it 'renders the requested month and includes calendar day cells' do
+        get calendar_map_timeline_feeds_path(month: '2026-04')
+
+        expect(response).to have_http_status(:success)
+        expect(response.body).to include('data-day="2026-04-22"')
+        expect(response.body).to include('data-testid="calendar-day"')
+        expect(response.body).to include('data-action="click->timeline-feed#selectDay"')
+      end
+
+      it 'applies heat-N class to each cell' do
+        get calendar_map_timeline_feeds_path(month: '2026-04')
+
+        expect(response.body).to match(/class="[^"]*heat-0[^"]*"/)
+      end
+
+      it 'includes previous/next month navigation' do
+        get calendar_map_timeline_feeds_path(month: '2026-04')
+
+        expect(response.body).to include('month=2026-03')
+        expect(response.body).to include('month=2026-05')
       end
     end
   end

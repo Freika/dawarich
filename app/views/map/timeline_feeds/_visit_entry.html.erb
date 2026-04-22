@@ -1,28 +1,79 @@
 <%
-  start_time = Time.zone.parse(entry[:started_at]).strftime('%H:%M')
-  duration = format_duration_short(entry[:duration])
-  place_name = entry[:name].presence || 'Unknown Location'
+  started = Time.zone.parse(entry[:started_at])
+  ended = Time.zone.parse(entry[:ended_at])
+  start_time = started.strftime('%H:%M')
+  end_time = ended.strftime('%H:%M')
+  status = entry[:status].presence || 'confirmed'
+  visit_id = entry[:visit_id]
   place = entry[:place]
-  location = place ? [place[:city], place[:country]].compact.join(', ') : nil
+  place_id = entry[:place_id]
+  tags = Array(entry[:tags])
+  duration_minutes = entry[:duration].to_i
+  # Inline all-day heuristic (avoids per-row Visit.find N+1)
+  all_day = duration_minutes >= 23 * 60 || (started.hour.zero? && (ended - started) >= 23.hours)
+  display_name = entry[:name].presence || place&.dig(:name) || 'Unnamed'
 %>
-<div class="timeline-entry"
-     data-action="mouseenter->timeline-feed#entryHover mouseleave->timeline-feed#entryUnhover"
-     data-entry-type="visit"
-     data-started-at="<%= entry[:started_at] %>"
-     data-ended-at="<%= entry[:ended_at] %>"
-     data-visit-name="<%= place_name %>"
-     <% if place %>
-       data-visit-lat="<%= place[:lat] %>"
-       data-visit-lng="<%= place[:lng] %>"
-     <% end %>>
-  <div class="timeline-entry-time"><%= start_time %></div>
-  <div class="timeline-entry-content">
-    <div class="text-sm truncate" title="<%= place_name %>"><%= place_name %></div>
-    <div class="text-xs text-base-content/40 mt-px">
-      <%= duration %>
-      <% if location.present? %>
-        &middot; <%= location %>
+<li class="visit-row<%= ' visit-row--all-day' if all_day %>"
+    data-visit-id="<%= visit_id %>"
+    data-status="<%= status %>"
+    data-testid="visit-row"
+    data-action="click->timeline-feed#selectVisit"
+    data-started-at="<%= entry[:started_at] %>"
+    data-ended-at="<%= entry[:ended_at] %>"
+    <% if place %>
+      data-visit-lat="<%= place[:lat] %>"
+      data-visit-lng="<%= place[:lng] %>"
+    <% end %>>
+  <div class="visit-row__time">
+    <% if all_day %>
+      <span class="text-xs">All day</span>
+    <% else %>
+      <div class="font-mono text-xs"><%= start_time %></div>
+      <div class="font-mono text-[10px] text-base-content/50"><%= end_time %></div>
+    <% end %>
+  </div>
+
+  <div class="visit-row__rail">
+    <span class="visit-status-dot visit-status-dot--<%= status %>"></span>
+  </div>
+
+  <div class="visit-row__content">
+    <div class="visit-row__title">
+      <% if place_id %>
+        <button class="place-link font-bold"
+                data-place-id="<%= place_id %>"
+                data-action="click->timeline-feed#openPlaceDrawer"
+                type="button">
+          <%= display_name %>
+        </button>
+      <% else %>
+        <span class="font-bold"><%= display_name %></span>
       <% end %>
     </div>
+    <div class="visit-row__meta text-xs text-base-content/60">
+      <%= format_dwell_minutes(duration_minutes) %> · <%= entry[:point_count] %> pts
+      <% tags.each do |t| %>
+        <span class="tag-chip" style="background-color: <%= t[:color] %>;">#<%= t[:name] %></span>
+      <% end %>
+    </div>
+
+    <% if status == 'suggested' && entry[:suggested_places].present? %>
+      <%= render partial: 'map/timeline_feeds/suggested_picker', locals: { entry: entry } %>
+    <% end %>
   </div>
-</div>
+
+  <% if status != 'suggested' %>
+    <div class="visit-row__actions">
+      <% if status == 'confirmed' %>
+        <%= button_to 'Decline', visit_path(visit_id, visit: { status: :declined }),
+                      method: :patch,
+                      data: { testid: 'visit-decline' },
+                      class: 'btn btn-xs btn-ghost' %>
+      <% else %>
+        <%= button_to 'Restore', visit_path(visit_id, visit: { status: :confirmed }),
+                      method: :patch,
+                      class: 'btn btn-xs btn-ghost' %>
+      <% end %>
+    </div>
+  <% end %>
+</li>

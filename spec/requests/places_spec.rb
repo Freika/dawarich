@@ -171,4 +171,142 @@ RSpec.describe '/places', type: :request do
       expect(response).to redirect_to(places_url)
     end
   end
+
+  describe 'GET /show' do
+    let!(:place) do
+      create(:place, user:, name: 'Test Cafe', city: 'Berlin', country: 'Germany', source: :manual)
+    end
+
+    context 'when authenticated' do
+      it 'returns a successful response' do
+        get place_url(place)
+
+        expect(response).to have_http_status(:ok)
+      end
+
+      it 'wraps the body in the place-drawer turbo-frame' do
+        get place_url(place)
+
+        expect(response.body).to include('turbo-frame')
+        expect(response.body).to include('id="place-drawer"')
+      end
+
+      it 'renders the place name, city, and country' do
+        get place_url(place)
+
+        expect(response.body).to include('Test Cafe')
+        expect(response.body).to include('Berlin')
+        expect(response.body).to include('Germany')
+      end
+
+      it 'renders the total visit count' do
+        create_list(:visit, 3, place:, user:, duration: 60, area: nil)
+
+        get place_url(place)
+
+        expect(response.body).to include('3 visits').or include('>3<')
+      end
+
+      it 'shows total dwell hours based on MINUTES column' do
+        base_time = Time.zone.parse('2026-04-01 12:00')
+        3.times do |i|
+          create(
+            :visit,
+            place:,
+            user:,
+            duration: 60,
+            started_at: base_time + i.days,
+            ended_at: base_time + i.days + 1.hour,
+            area: nil
+          )
+        end
+
+        get place_url(place)
+
+        # 3 visits * 60 minutes = 180 minutes = 3.0 hours
+        expect(response.body).to include('3.0')
+      end
+
+      it 'shows average dwell formatted as Xh Ym' do
+        base_time = Time.zone.parse('2026-04-01 12:00')
+        [90, 90].each_with_index do |duration, i|
+          create(
+            :visit,
+            place:,
+            user:,
+            duration: duration,
+            started_at: base_time + i.days,
+            ended_at: base_time + i.days + duration.minutes,
+            area: nil
+          )
+        end
+
+        get place_url(place)
+
+        # avg = 90 min = 1h 30m
+        expect(response.body).to include('1h 30m')
+      end
+
+      it 'lists up to 5 most recent visits ordered by started_at DESC' do
+        base_time = Time.zone.parse('2026-04-01 12:00')
+        7.times do |i|
+          create(
+            :visit,
+            place:,
+            user:,
+            name: "Visit #{i}",
+            duration: 30,
+            started_at: base_time + i.hours,
+            ended_at: base_time + i.hours + 30.minutes,
+            area: nil
+          )
+        end
+
+        get place_url(place)
+
+        # Most recent is Visit 6; oldest two (0, 1) should not appear in the body
+        # of the drawer's recent-visits list
+        expect(response.body.scan(/Visit \d/).size).to be <= 5
+        expect(response.body).to include('Visit 6')
+        expect(response.body).not_to include('Visit 0')
+      end
+    end
+
+    context 'when unauthenticated' do
+      before { sign_out user }
+
+      it 'redirects to the sign-in page' do
+        get place_url(place)
+
+        expect(response).to have_http_status(:redirect)
+        expect(response.location).to include('/users/sign_in')
+      end
+    end
+
+    context "when accessing another user's place" do
+      let(:other_user) { create(:user) }
+      let!(:other_place) { create(:place, user: other_user) }
+
+      it 'returns 404' do
+        get place_url(other_place)
+
+        expect(response).to have_http_status(:not_found)
+      end
+    end
+  end
+
+  describe 'PATCH /update from drawer frame' do
+    let!(:place) { create(:place, user:, name: 'Drawer Place') }
+
+    it 'returns a turbo_stream that replaces the place-drawer frame' do
+      patch place_url(place),
+            params: { place: { note: 'Updated note' } },
+            headers: { 'Turbo-Frame' => 'place-drawer' },
+            as: :turbo_stream
+
+      expect(place.reload.note).to eq('Updated note')
+      expect_turbo_stream_response
+      expect_turbo_stream_action('replace', 'place-drawer')
+    end
+  end
 end
