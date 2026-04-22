@@ -16,9 +16,6 @@ class Api::V1::WebhooksController < ApiController
   def create
     webhook = current_api_user.webhooks.new(webhook_params)
 
-    validation = Webhooks::UrlValidator.call(webhook.url.to_s)
-    return render json: { error: "Invalid URL: #{validation}" }, status: :unprocessable_entity if validation != :ok
-
     if webhook.save
       render json: webhook.as_json.merge(secret: webhook.secret), status: :created
     else
@@ -40,14 +37,15 @@ class Api::V1::WebhooksController < ApiController
   end
 
   def test
-    area = current_api_user.areas.first
-    return render(json: { error: 'No areas to test with' }, status: :unprocessable_entity) unless area
+    area = pick_testable_area_for(@webhook)
+    return render(json: { error: 'No subscribed area for this webhook' }, status: :unprocessable_entity) unless area
 
+    event_type = @webhook.event_types.include?(0) ? :enter : :leave
     event = GeofenceEvent.create!(
-      user: current_api_user, area: area, event_type: :enter, source: :native_app,
+      user: current_api_user, area: area, event_type: event_type, source: :native_app,
       occurred_at: Time.current, received_at: Time.current,
       lonlat: "POINT(#{area.longitude} #{area.latitude})",
-      metadata: { test: true }
+      metadata: { test: true }, synthetic: true
     )
     delivery = WebhookDelivery.create!(webhook: @webhook, geofence_event: event, status: :pending)
     Webhooks::DeliverJob.perform_later(delivery.id)
@@ -67,5 +65,11 @@ class Api::V1::WebhooksController < ApiController
 
   def webhook_params
     params.require(:webhook).permit(:name, :url, :active, event_types: [], area_ids: [])
+  end
+
+  def pick_testable_area_for(webhook)
+    scope = current_api_user.areas
+    scope = scope.where(id: webhook.area_ids) if webhook.area_ids.present?
+    scope.first
   end
 end

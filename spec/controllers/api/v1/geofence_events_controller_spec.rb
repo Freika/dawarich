@@ -32,5 +32,13 @@ RSpec.describe Api::V1::GeofenceEventsController, type: :controller do
       get :index
       expect(JSON.parse(response.body)).to be_empty
     end
+
+    it 'excludes synthetic events' do
+      real = create(:geofence_event, user: user)
+      create(:geofence_event, user: user, synthetic: true)
+      get :index
+      ids = JSON.parse(response.body).map { |e| e['id'] }
+      expect(ids).to contain_exactly(real.id)
+    end
   end
 end

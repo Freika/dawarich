@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_04_22_124341) do
+ActiveRecord::Schema[8.0].define(version: 2026_04_22_200001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
@@ -186,6 +186,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_04_22_124341) do
     t.jsonb "metadata", default: {}, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.boolean "synthetic", default: false, null: false
     t.index ["area_id", "occurred_at"], name: "index_geofence_events_on_area_id_and_occurred_at", order: { occurred_at: :desc }
     t.index ["area_id"], name: "index_geofence_events_on_area_id"
     t.index ["lonlat"], name: "index_geofence_events_on_lonlat", using: :gist

@@ -33,8 +33,31 @@ RSpec.describe 'POST /api/v1/points/transitions', type: :request do
     expect(response).to have_http_status(:no_content)
   end
 
-  it 'rejects occurred_at more than 1 hour off' do
-    post '/api/v1/points/transitions', params: payload(occurred_at: 2.hours.ago.iso8601), headers: headers
+  it 'rejects occurred_at more than 5 minutes in the future' do
+    post '/api/v1/points/transitions', params: payload(occurred_at: 10.minutes.from_now.iso8601), headers: headers
+    expect(response).to have_http_status(:unprocessable_entity)
+  end
+
+  it 'accepts offline-queued occurred_at up to 24h in the past' do
+    post '/api/v1/points/transitions', params: payload(occurred_at: 12.hours.ago.iso8601), headers: headers
+    expect(response).to have_http_status(:created)
+  end
+
+  it 'rejects occurred_at more than 24h in the past' do
+    post '/api/v1/points/transitions', params: payload(occurred_at: 26.hours.ago.iso8601), headers: headers
+    expect(response).to have_http_status(:unprocessable_entity)
+  end
+
+  it 'rejects when write API is disabled (Lite user on cloud)' do
+    allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+    lite_user = create(:user, plan: :lite)
+    lite_headers = { 'Authorization' => "Bearer #{lite_user.api_key}", 'CONTENT_TYPE' => 'application/json' }
+    post '/api/v1/points/transitions', params: payload(area_id: create(:area, user: lite_user).id), headers: lite_headers
+    expect(response).to have_http_status(:forbidden)
+  end
+
+  it 'rejects invalid event_type' do
+    post '/api/v1/points/transitions', params: payload(event_type: 'arrive'), headers: headers
     expect(response).to have_http_status(:unprocessable_entity)
   end
 

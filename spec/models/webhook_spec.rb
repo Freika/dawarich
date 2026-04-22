@@ -37,6 +37,20 @@ RSpec.describe Webhook, type: :model do
     end
   end
 
+  describe 'URL validation' do
+    before { allow(DawarichSettings).to receive(:self_hosted?).and_return(false) }
+
+    it 'rejects private IPs on cloud' do
+      w = build(:webhook, url: 'https://192.168.1.1/hook')
+      expect(w).not_to be_valid
+      expect(w.errors[:url]).to be_present
+    end
+
+    it 'accepts https public URLs' do
+      expect(build(:webhook, url: 'https://example.com/hook')).to be_valid
+    end
+  end
+
   describe '#subscribed_to?' do
     let(:user) { create(:user) }
     let(:area) { create(:area, user: user) }

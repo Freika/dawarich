@@ -14,6 +14,9 @@ class WebhooksController < ApplicationController
   def show
     authorize @webhook
     @deliveries = @webhook.webhook_deliveries.order(created_at: :desc).limit(50)
+
+    reveal = session.delete(:webhook_secret_reveal)
+    @reveal_secret = reveal && reveal['id'] == @webhook.id ? reveal['secret'] : nil
   end
 
   def new
@@ -25,14 +28,8 @@ class WebhooksController < ApplicationController
     @webhook = current_user.webhooks.new(webhook_params)
     authorize @webhook
 
-    validation = Webhooks::UrlValidator.call(@webhook.url.to_s)
-    if validation != :ok
-      @webhook.errors.add(:url, "is invalid: #{validation}")
-      return render :new, status: :unprocessable_entity
-    end
-
     if @webhook.save
-      @show_secret_once = @webhook.secret
+      session[:webhook_secret_reveal] = { 'id' => @webhook.id, 'secret' => @webhook.secret }
       respond_to do |format|
         format.turbo_stream
         format.html { redirect_to webhook_path(@webhook) }
@@ -70,18 +67,20 @@ class WebhooksController < ApplicationController
 
   def test
     authorize @webhook, :test?
-    area = current_user.areas.first
+    area = pick_testable_area_for(@webhook)
     return redirect_to(webhook_path(@webhook), alert: 'Create an area first to test.') if area.nil?
 
+    event_type = @webhook.event_types.include?(0) ? :enter : :leave
     event = GeofenceEvent.create!(
       user: current_user,
       area: area,
-      event_type: :enter,
+      event_type: event_type,
       source: :native_app,
       occurred_at: Time.current,
       received_at: Time.current,
       lonlat: "POINT(#{area.longitude} #{area.latitude})",
-      metadata: { test: true }
+      metadata: { test: true },
+      synthetic: true
     )
     delivery = WebhookDelivery.create!(webhook: @webhook, geofence_event: event, status: :pending)
     Webhooks::DeliverJob.perform_later(delivery.id)
@@ -106,5 +105,11 @@ class WebhooksController < ApplicationController
 
   def webhook_params
     params.require(:webhook).permit(:name, :url, :active, event_types: [], area_ids: [])
+  end
+
+  def pick_testable_area_for(webhook)
+    scope = current_user.areas
+    scope = scope.where(id: webhook.area_ids) if webhook.area_ids.present?
+    scope.first
   end
 end

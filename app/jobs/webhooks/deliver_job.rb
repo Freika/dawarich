@@ -24,6 +24,13 @@ module Webhooks
       return unless webhook
 
       delivery.increment!(:attempt_count)
+
+      if Webhooks::UrlValidator.call(webhook.url) != :ok
+        record_failure(delivery, webhook, status: nil, body: nil, error: 'URL failed revalidation (possible DNS rebinding)')
+        webhook.update!(active: false)
+        return
+      end
+
       body = Webhooks::PayloadBuilder.call(delivery.geofence_event).to_json
       signature = Webhooks::Signer.sign(body: body, secret: webhook.secret)
 

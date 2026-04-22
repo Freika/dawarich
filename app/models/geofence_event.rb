@@ -9,4 +9,6 @@ class GeofenceEvent < ApplicationRecord
   enum :source, { native_app: 0, server_inferred: 1, owntracks_native: 2 }, prefix: :source
 
   validates :event_type, :source, :occurred_at, :received_at, presence: true
+
+  scope :real, -> { where(synthetic: false) }
 end

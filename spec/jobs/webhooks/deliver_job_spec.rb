@@ -78,6 +78,32 @@ RSpec.describe Webhooks::DeliverJob, type: :job do
       end
     end
 
+    context 'when URL fails pre-send validation (DNS rebinding)' do
+      # Create webhook and delivery BEFORE stubbing UrlValidator so model validation passes
+      let!(:prepared_delivery) { delivery }
+
+      before do
+        # Simulate: URL was valid at creation, now resolves to a private IP
+        allow(Webhooks::UrlValidator).to receive(:call).with(webhook.url).and_return(:private_address)
+      end
+
+      it 'does not send the HTTP request' do
+        described_class.new.perform(prepared_delivery.id)
+        expect(WebMock).not_to have_requested(:any, 'https://example.com/hook')
+      end
+
+      it 'marks the webhook inactive' do
+        described_class.new.perform(prepared_delivery.id)
+        expect(webhook.reload.active).to be false
+      end
+
+      it 'records the failure' do
+        described_class.new.perform(prepared_delivery.id)
+        expect(prepared_delivery.reload.status_failure?).to be true
+        expect(prepared_delivery.reload.error_message).to match(/DNS|validation/i)
+      end
+    end
+
     context 'on network timeout' do
       before do
         stub_request(:post, 'https://example.com/hook').to_timeout
