@@ -21,12 +21,21 @@ module Archive
         ::Zip::File.open(path) do |zf|
           entries = zf.entries.reject(&:directory?)
         end
-      rescue StandardError
+      rescue ::Zip::Error
+        return Result.new(kind: :not_a_zip)
+      rescue StandardError => e
+        # Unexpected non-zip error (disk, NFS, permissions). Fall through to
+        # the raw-file path rather than crashing the import, but log so the
+        # underlying issue is visible in Sentry/Rails logs.
+        Rails.logger.warn("Archive::Unzipper.inspect_archive failed on #{path}: #{e.class} #{e.message}")
         return Result.new(kind: :not_a_zip)
       end
 
       return Result.new(kind: :not_a_zip) if entries.nil?
 
+      # Single-entry-with-unsupported-extension collapses to :multi_entry so
+      # the existing Imports::ZipExtractor handles the filtering rather than
+      # duplicating the supported-extensions list in two places.
       if entries.size == 1 && supported_extension?(entries.first.name)
         Result.new(kind: :single_entry, entry_name: entries.first.name)
       else

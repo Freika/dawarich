@@ -17,6 +17,8 @@ export async function zipSingleFile(file) {
   return new File([zipped], `${file.name}.zip`, { type: "application/zip" })
 }
 
+// .zip is already a zip. .kmz is also a zip container (KML inside a zip) —
+// re-zipping would just add an outer wrapper for no compression benefit.
 const SKIP_EXTENSIONS = new Set(["zip", "kmz"])
 
 export function shouldZip(file) {

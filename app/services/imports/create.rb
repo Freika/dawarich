@@ -59,7 +59,7 @@ class Imports::Create
 
   def run_importer(path)
     source = import.source.presence || detect_source_from_file(path)
-    import.update!(source: source) if import.source != source.to_s
+    import.update!(source: source) if import.source.to_s != source.to_s
     importer(source).new(import, user.id, path).call
   end
 
