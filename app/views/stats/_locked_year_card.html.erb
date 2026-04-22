@@ -11,6 +11,7 @@
       <div class="opacity-20 blur-[3px] pointer-events-none select-none" aria-hidden="true">
         <%= column_chart(
           (1..12).map { |m| [Date::MONTHNAMES[m], rand(5_000..80_000)] },
+          id: "chart-year-locked-#{year}",
           height: '200px',
           suffix: " #{current_user.safe_settings.distance_unit}",
           colors: [
