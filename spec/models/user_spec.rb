@@ -87,34 +87,24 @@ RSpec.describe User, type: :model do
         expect { create(:user, :inactive) }.to have_enqueued_job(Users::TrialWebhookJob)
       end
 
-      it 'enqueues welcome and explore_features via product email campaign' do
+      it 'enqueues the welcome email immediately' do
         expect { create(:user, :inactive) }
           .to have_enqueued_job(Users::MailerSendingJob).with(an_instance_of(Integer), 'welcome')
       end
 
-      it 'enqueues the legacy trial emails' do
+      it 'enqueues the explore_features email with a 2-day delay' do
         expect { create(:user, :inactive) }
-          .to have_enqueued_job(Users::MailerSendingJob).with(an_instance_of(Integer), 'trial_expires_soon')
+          .to have_enqueued_job(Users::MailerSendingJob).with(an_instance_of(Integer), 'explore_features')
       end
 
-      it 'does not enqueue paddle billing emails (user has not completed Paddle checkout)' do
+      it 'does not enqueue any billing-related emails (Manager service owns billing emails)' do
         user = create(:user, :inactive)
 
-        expect(Users::MailerSendingJob).not_to have_been_enqueued.with(user.id, 'trial_first_payment_soon')
-      end
-    end
-
-    describe '#schedule_product_emails' do
-      let(:user) { create(:user, :inactive) }
-
-      it 'schedules welcome email immediately' do
-        expect { user.schedule_product_emails }
-          .to have_enqueued_job(Users::MailerSendingJob).with(user.id, 'welcome')
-      end
-
-      it 'schedules explore_features email for day 2' do
-        expect { user.schedule_product_emails }
-          .to have_enqueued_job(Users::MailerSendingJob).with(user.id, 'explore_features')
+        %w[trial_expires_soon trial_expired post_trial_reminder_early post_trial_reminder_late
+           trial_first_payment_soon trial_converted
+           pending_payment_day_1 pending_payment_day_3 pending_payment_day_7].each do |billing_type|
+          expect(Users::MailerSendingJob).not_to have_been_enqueued.with(user.id, billing_type)
+        end
       end
     end
   end
@@ -613,7 +603,7 @@ RSpec.describe User, type: :model do
     end
   end
 
-  describe 'email campaign scheduling' do
+  describe 'email campaign scheduling on trial start' do
     include ActiveJob::TestHelper
 
     before do
@@ -623,110 +613,29 @@ RSpec.describe User, type: :model do
 
     after { clear_enqueued_jobs }
 
-    it 'schedules product emails for a paddle-sourced trial user' do
-      user = create(:user, subscription_source: :paddle, skip_auto_trial: true)
-      clear_enqueued_jobs
-      user.schedule_product_emails
+    it 'enqueues welcome and explore_features (product emails only; billing is owned by Manager)' do
+      user = build(:user)
+      user.save!
+
       expect(Users::MailerSendingJob).to have_been_enqueued.with(user.id, 'welcome')
       expect(Users::MailerSendingJob).to have_been_enqueued.with(user.id, 'explore_features')
     end
 
-    it 'schedules paddle billing emails only for paddle-sourced reverse_trial users' do
-      paddle_user = create(:user, subscription_source: :paddle, signup_variant: 'reverse_trial', skip_auto_trial: true)
-      iap_user = create(:user, subscription_source: :apple_iap, signup_variant: 'reverse_trial', skip_auto_trial: true)
-      clear_enqueued_jobs
+    it 'enqueues the trial webhook job so Manager can sync billing state' do
+      user = build(:user)
 
-      paddle_user.schedule_paddle_billing_emails
-      iap_user.schedule_paddle_billing_emails
-
-      expect(Users::MailerSendingJob).to have_been_enqueued.with(paddle_user.id, 'trial_first_payment_soon')
-      expect(Users::MailerSendingJob).not_to have_been_enqueued.with(iap_user.id, 'trial_first_payment_soon')
+      expect { user.save! }.to have_enqueued_job(Users::TrialWebhookJob).with(an_instance_of(Integer))
     end
 
-    it 'does not schedule paddle billing emails for paddle-sourced users without reverse_trial variant' do
-      # e.g., existing user receiving a plan-change callback
-      user = create(:user, subscription_source: :paddle, signup_variant: nil, skip_auto_trial: true)
-      clear_enqueued_jobs
-
-      user.schedule_paddle_billing_emails
-
-      expect(Users::MailerSendingJob).not_to have_been_enqueued.with(user.id, 'trial_first_payment_soon')
-    end
-
-    describe '#cancel_legacy_trial_emails' do
-      let(:user) { create(:user, skip_auto_trial: true) }
-
-      it 'sets legacy_trial_cancelled flag in settings' do
-        user.cancel_legacy_trial_emails
-
-        expect(user.reload.settings['legacy_trial_cancelled']).to eq(true)
-        expect(user.reload.settings['legacy_trial_cancelled_at']).to be_present
-      end
-
-      it 'is exposed via #legacy_trial_mail_cancelled?' do
-        expect(user.legacy_trial_mail_cancelled?).to be false
-        user.cancel_legacy_trial_emails
-        expect(user.reload.legacy_trial_mail_cancelled?).to be true
-      end
-    end
-
-    describe '#schedule_legacy_trial_emails' do
-      let(:user) { create(:user, skip_auto_trial: true) }
-
-      before { clear_enqueued_jobs }
-
-      it 'schedules trial_expires_soon for day 5' do
-        user.schedule_legacy_trial_emails
-
-        expect(Users::MailerSendingJob).to have_been_enqueued.with(user.id, 'trial_expires_soon')
-      end
-
-      it 'schedules trial_expired for day 7' do
-        user.schedule_legacy_trial_emails
-
-        expect(Users::MailerSendingJob).to have_been_enqueued.with(user.id, 'trial_expired')
-      end
-
-      it 'schedules post_trial_reminder_early for day 9' do
-        user.schedule_legacy_trial_emails
-
-        expect(Users::MailerSendingJob).to have_been_enqueued.with(user.id, 'post_trial_reminder_early')
-      end
-
-      it 'schedules post_trial_reminder_late for day 14' do
-        user.schedule_legacy_trial_emails
-
-        expect(Users::MailerSendingJob).to have_been_enqueued.with(user.id, 'post_trial_reminder_late')
-      end
-
-      it 'schedules all four emails' do
-        expect { user.schedule_legacy_trial_emails }
-          .to have_enqueued_job(Users::MailerSendingJob).exactly(4).times
-      end
-    end
-
-    it 'start_trial schedules product + legacy trial emails for legacy cloud signups' do
+    it 'does not enqueue any billing-related mailer jobs from start_trial' do
       user = build(:user)
       user.save!
 
-      # Product emails (welcome + explore_features) + legacy trial emails (4) = 6 mailer jobs
-      expect(Users::MailerSendingJob).to have_been_enqueued.with(user.id, 'welcome')
-      expect(Users::MailerSendingJob).to have_been_enqueued.with(user.id, 'explore_features')
-      expect(Users::MailerSendingJob).to have_been_enqueued.with(user.id, 'trial_expires_soon')
-      expect(Users::MailerSendingJob).to have_been_enqueued.with(user.id, 'trial_expired')
-      # Paddle-specific emails must NOT be enqueued
-      expect(Users::MailerSendingJob).not_to have_been_enqueued.with(user.id, 'trial_first_payment_soon')
-      expect(Users::MailerSendingJob).not_to have_been_enqueued.with(user.id, 'trial_converted')
-    end
-
-    it 'start_trial actually enqueues legacy trial emails (not paddle-specific emails)' do
-      user = build(:user)
-      user.save!
-
-      expect(Users::MailerSendingJob).to have_been_enqueued.with(user.id, 'trial_expires_soon')
-      expect(Users::MailerSendingJob).to have_been_enqueued.with(user.id, 'trial_expired')
-      expect(Users::MailerSendingJob).not_to have_been_enqueued.with(user.id, 'trial_first_payment_soon')
-      expect(Users::MailerSendingJob).not_to have_been_enqueued.with(user.id, 'trial_converted')
+      %w[trial_expires_soon trial_expired post_trial_reminder_early post_trial_reminder_late
+         trial_first_payment_soon trial_converted
+         pending_payment_day_1 pending_payment_day_3 pending_payment_day_7].each do |billing_type|
+        expect(Users::MailerSendingJob).not_to have_been_enqueued.with(user.id, billing_type)
+      end
     end
   end
 end

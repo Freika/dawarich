@@ -30,40 +30,4 @@ RSpec.describe UsersMailer, type: :mailer do
       expect(mail.to).to eq([user.email])
     end
   end
-
-  describe 'trial_expires_soon' do
-    let(:mail) { UsersMailer.with(user: user).trial_expires_soon }
-
-    it 'renders the headers' do
-      expect(mail.subject).to eq('⚠️ Your Dawarich trial expires in 2 days')
-      expect(mail.to).to eq([user.email])
-    end
-  end
-
-  describe 'trial_expired' do
-    let(:mail) { UsersMailer.with(user: user).trial_expired }
-
-    it 'renders the headers' do
-      expect(mail.subject).to eq('💔 Your Dawarich trial expired')
-      expect(mail.to).to eq([user.email])
-    end
-  end
-
-  describe 'post_trial_reminder_early' do
-    let(:mail) { UsersMailer.with(user: user).post_trial_reminder_early }
-
-    it 'renders the headers' do
-      expect(mail.subject).to eq('🚀 Still interested in Dawarich? Subscribe now!')
-      expect(mail.to).to eq([user.email])
-    end
-  end
-
-  describe 'post_trial_reminder_late' do
-    let(:mail) { UsersMailer.with(user: user).post_trial_reminder_late }
-
-    it 'renders the headers' do
-      expect(mail.subject).to eq('📍 Your location data is waiting - Subscribe to Dawarich')
-      expect(mail.to).to eq([user.email])
-    end
-  end
 end

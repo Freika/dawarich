@@ -5,7 +5,6 @@ class User < ApplicationRecord
   include Omniauthable
   include PlanScopable
   include SoftDeletable # introduces default_scope and soft-delete methods
-  include TrialCampaigns
 
   attr_accessor :skip_auto_trial
 
@@ -241,8 +240,9 @@ class User < ApplicationRecord
 
   def start_trial
     update(status: :trial, active_until: 7.days.from_now)
-    schedule_product_emails
-    schedule_legacy_trial_emails
+
+    Users::MailerSendingJob.perform_later(id, 'welcome')
+    Users::MailerSendingJob.set(wait: 2.days).perform_later(id, 'explore_features')
 
     Users::TrialWebhookJob.perform_later(id)
   end
