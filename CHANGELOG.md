@@ -6,12 +6,20 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [1.6.2] - Unreleased
 
+### Added
+
+- Monthly digest emails. On the 2nd of each month users receive an email summarizing the previous month with an ASCII-rendered overview (distance, active days, countries, cities), a weekly pattern bar chart, a daily distance sparkline, top countries and cities by time spent, first-time visits, and a month-over-month trend comparison. Enabled by default; opt out at Settings → Email Preferences.
+
 ### Changed
 
 - S3 storage can now be used in self-hosted mode. It's compatible with S3-like backends, such as MinIO, Ceph, or Cloudflare R2. To enable S3 storage, set `STORAGE_BACKEND=s3` and provide `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, and `AWS_BUCKET`. For S3-compatible backends, additionally set `AWS_ENDPOINT_URL` (or `AWS_ENDPOINT`).
+- The single digest email toggle in Settings has been split into independent **Monthly Digest** and **Year-End Digest** controls. A data migration preserves explicit opt-outs: users who had previously disabled digest emails stay opted out of both; users with no preference default to both on.
+- The Year-End Digest email has been rewritten with ASCII-rendered charts (activity heatmap, monthly distance bars, top countries, year-over-year trend). Content renders identically in HTML and plain-text email clients without JavaScript or external images, fixing rendering issues in Gmail and Outlook.
 
 ### Fixed
 
+- Fix yearly digest emails not being sent automatically. The scheduling job existed in the codebase but was never wired into `config/schedule.yml`, so no year-end emails went out. Yearly digests now fire on January 2nd at 06:00 UTC.
+- Fix a latent race in the yearly digest pipeline where the email job was scheduled with a 30-minute delay after the calculation job; if the calculation took longer than 30 minutes (e.g., Sidekiq backpressure, transient retries), the email was silently dropped. Emails are now chained from the calculation job's success path.
 - Fix visit name being overwritten by the location name when updating a visit via the map popup. The custom name typed into the "Visit Name" field is now preserved; the place name is only used as a default when the user leaves the name blank #1915.
 - Fix stray "Map layer preferences saved" flash (and spurious settings requests) when deleting a point on Map v1. Layer-preference saves are now suppressed while the delete flow internally rebuilds the routes layer and layer control #1902.
 - Fix the Map v2 replay slider showing times in the browser's local timezone instead of the timezone configured in Settings. Day buckets and the minute-of-day index are now computed in the user's timezone so the replay scrubber matches the rest of the app #2457.
