@@ -62,6 +62,23 @@ RSpec.describe Archive::Unzipper do
     ensure
       File.delete(path) if path && File.exist?(path)
     end
+
+    it 'classifies an empty zip as :not_a_zip (known limitation)' do
+      # A valid empty zip contains only the end-of-central-directory record,
+      # which starts with PK\x05\x06 -- not the local-file-header magic
+      # PK\x03\x04 that zip_magic? looks for. The file therefore falls
+      # through to the raw-file importer path, which will reject it via
+      # source detection. This is an intentional trade-off: checking for
+      # both magics would also misclassify any random 4-byte-prefix binary.
+      # Pinning the current behavior so future refactors do not silently
+      # change it.
+      path = Rails.root.join('tmp', "empty_#{SecureRandom.hex(4)}.zip").to_s
+      ::Zip::File.open(path, create: true) { |_zf| } # no entries
+      result = described_class.inspect_archive(path)
+      expect(result.kind).to eq(:not_a_zip)
+    ensure
+      File.delete(path) if path && File.exist?(path)
+    end
   end
 
   describe '.extract_single' do
@@ -84,6 +101,25 @@ RSpec.describe Archive::Unzipper do
         .to raise_error(Archive::Unzipper::ArchiveTooLarge)
     ensure
       File.delete(zip_path) if zip_path && File.exist?(zip_path)
+    end
+
+    it 'returns a path that survives garbage collection of intermediate objects' do
+      # Regression: previously used Tempfile.new, whose ObjectSpace finalizer
+      # would unlink the file when the Tempfile object was GC'd. The caller
+      # holds only the path string, so between extract_single returning and
+      # the caller reading, a GC cycle could unlink the file out from under
+      # the import job. Tempfile.create avoids the finalizer.
+      zip_path = make_zip('ride.gpx' => '<gpx>hello</gpx>')
+      inner_path = described_class.extract_single(zip_path)
+
+      GC.start
+      GC.start
+
+      expect(File.exist?(inner_path)).to be(true)
+      expect(File.read(inner_path)).to eq('<gpx>hello</gpx>')
+    ensure
+      File.delete(zip_path) if zip_path && File.exist?(zip_path)
+      File.delete(inner_path) if inner_path && File.exist?(inner_path)
     end
   end
 end

@@ -49,7 +49,11 @@ module Archive
         raise ArgumentError, 'zip has no entries' unless entry
 
         ext = File.extname(entry.name)
-        inner = Tempfile.new(['unzipped', ext], binmode: true)
+        # Tempfile.create (not .new) returns a plain File without an
+        # ObjectSpace finalizer, so the path survives GC of the File object.
+        # The caller (Imports::Create) is responsible for unlinking.
+        inner = Tempfile.create(['unzipped', ext])
+        inner.binmode
 
         begin
           bytes_written = 0
@@ -57,7 +61,8 @@ module Archive
             while (chunk = stream.read(64 * 1024))
               bytes_written += chunk.bytesize
               if bytes_written > MAX_EXTRACTED_SIZE
-                inner.close!
+                inner.close
+                File.unlink(inner.path) if File.exist?(inner.path)
                 raise ArchiveTooLarge, "entry exceeds #{MAX_EXTRACTED_SIZE} bytes"
               end
 
@@ -69,7 +74,8 @@ module Archive
         rescue ArchiveTooLarge
           raise
         rescue StandardError
-          inner.close! if inner && !inner.closed?
+          inner.close unless inner.closed?
+          File.unlink(inner.path) if File.exist?(inner.path)
           raise
         end
       end

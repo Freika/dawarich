@@ -53,12 +53,16 @@ export default class extends Controller {
 
     this.isUploading = true
     this.disableSubmit()
-    Flash.show(
-      "notice",
-      `Preparing ${filesToUpload.length} file(s) for upload...`,
-    )
     this.createProgressBar()
     this.clearExistingHiddenFields()
+
+    const willCompress = filesToUpload.some((f) => shouldZip(f))
+    Flash.show(
+      "notice",
+      willCompress
+        ? `Preparing ${filesToUpload.length} file(s) for upload...`
+        : `Uploading ${filesToUpload.length} file(s), please wait...`,
+    )
 
     const prepared = await this.prepareForUpload(filesToUpload)
 
@@ -109,7 +113,7 @@ export default class extends Controller {
           err,
         )
         Flash.show(
-          "notice",
+          "warning",
           `Could not compress ${original.name}, uploading as-is.`,
         )
         result.push(original)
