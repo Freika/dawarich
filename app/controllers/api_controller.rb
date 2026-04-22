@@ -89,6 +89,12 @@ class ApiController < ApplicationController
       return false
     end
 
+    if current_api_user.inactive?
+      render json: { error: 'User account is not active' }, status: :unauthorized
+
+      return false
+    end
+
     if current_api_user.active_until&.past?
       render json: { error: 'User subscription is not active' }, status: :unauthorized
 

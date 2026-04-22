@@ -43,6 +43,18 @@ RSpec.describe 'Api::V1::Overland::Batches', type: :request do
           expect(response).to have_http_status(:unauthorized)
         end
       end
+
+      context 'when user is inactive but active_until is in the future' do
+        before do
+          user.update(status: :inactive, active_until: 1.day.from_now)
+        end
+
+        it 'returns http unauthorized' do
+          post "/api/v1/overland/batches?api_key=#{user.api_key}", params: params
+
+          expect(response).to have_http_status(:unauthorized)
+        end
+      end
     end
   end
 end

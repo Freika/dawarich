@@ -156,6 +156,18 @@ RSpec.describe 'Api::V1::Points', type: :request do
       end
     end
 
+    context 'when user is inactive but active_until is in the future' do
+      before do
+        user.update(status: :inactive, active_until: 1.day.from_now)
+      end
+
+      it 'returns an unauthorized response' do
+        post "/api/v1/points?api_key=#{user.api_key}", params: point_params
+
+        expect(response).to have_http_status(:unauthorized)
+      end
+    end
+
     context 'when user is on lite plan' do
       before do
         allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
@@ -195,6 +207,19 @@ RSpec.describe 'Api::V1::Points', type: :request do
       end
     end
 
+    context 'when user is inactive but active_until is in the future' do
+      before do
+        user.update(status: :inactive, active_until: 1.day.from_now)
+      end
+
+      it 'returns an unauthorized response' do
+        put "/api/v1/points/#{points.first.id}?api_key=#{user.api_key}",
+            params: { point: { latitude: 1.0, longitude: 1.1 } }
+
+        expect(response).to have_http_status(:unauthorized)
+      end
+    end
+
     context 'when user is on lite plan' do
       before do
         allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
@@ -222,6 +247,18 @@ RSpec.describe 'Api::V1::Points', type: :request do
     context 'when user is inactive' do
       before do
         user.update(status: :inactive, active_until: 1.day.ago)
+      end
+
+      it 'returns an unauthorized response' do
+        delete "/api/v1/points/#{points.first.id}?api_key=#{user.api_key}"
+
+        expect(response).to have_http_status(:unauthorized)
+      end
+    end
+
+    context 'when user is inactive but active_until is in the future' do
+      before do
+        user.update(status: :inactive, active_until: 1.day.from_now)
       end
 
       it 'returns an unauthorized response' do
@@ -312,6 +349,26 @@ RSpec.describe 'Api::V1::Points', type: :request do
     context 'when user is inactive' do
       before do
         user.update(status: :inactive, active_until: 1.day.ago)
+      end
+
+      it 'returns an unauthorized response' do
+        delete "/api/v1/points/bulk_destroy?api_key=#{user.api_key}",
+               params: { point_ids: }
+
+        expect(response).to have_http_status(:unauthorized)
+      end
+
+      it 'does not delete any points' do
+        expect do
+          delete "/api/v1/points/bulk_destroy?api_key=#{user.api_key}",
+                 params: { point_ids: }
+        end.not_to(change { user.points.count })
+      end
+    end
+
+    context 'when user is inactive but active_until is in the future' do
+      before do
+        user.update(status: :inactive, active_until: 1.day.from_now)
       end
 
       it 'returns an unauthorized response' do

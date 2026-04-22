@@ -44,12 +44,6 @@ class Api::V1::DigestsController < ApiController
 
   private
 
-  def authenticate_active_api_user!
-    return if current_api_user&.active_until&.future?
-
-    render json: { error: 'User is not active' }, status: :unauthorized
-  end
-
   def available_years_for_generation
     tracked_years = current_api_user.stats.select(:year).distinct.pluck(:year)
     existing_digests = current_api_user.digests.yearly.pluck(:year)

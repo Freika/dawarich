@@ -122,6 +122,18 @@ RSpec.describe 'Api::V1::Digests', type: :request do
       expect(response).to have_http_status(:unauthorized)
     end
 
+    it 'returns 401 for inactive user even when active_until is in the future' do
+      inactive_user = create(:user)
+      inactive_user.update_columns(status: 'inactive', active_until: 1.day.from_now)
+      create(:stat, year: 2024, month: 1, user: inactive_user)
+
+      post api_v1_digests_url,
+           headers: { 'Authorization' => "Bearer #{inactive_user.api_key}" },
+           params: { year: 2024 }
+
+      expect(response).to have_http_status(:unauthorized)
+    end
+
     it 'enqueues digest calculation job and returns 202' do
       expect do
         post api_v1_digests_url, headers: headers, params: { year: 2024 }
@@ -167,6 +179,28 @@ RSpec.describe 'Api::V1::Digests', type: :request do
       delete api_v1_digest_url(year: 1999), headers: headers
 
       expect(response).to have_http_status(:not_found)
+    end
+
+    it 'returns 401 for inactive user' do
+      inactive_user = create(:user)
+      inactive_user.update_columns(status: 'inactive', active_until: 1.day.ago)
+      create(:users_digest, year: 2024, user: inactive_user)
+
+      delete api_v1_digest_url(year: 2024),
+             headers: { 'Authorization' => "Bearer #{inactive_user.api_key}" }
+
+      expect(response).to have_http_status(:unauthorized)
+    end
+
+    it 'returns 401 for inactive user even when active_until is in the future' do
+      inactive_user = create(:user)
+      inactive_user.update_columns(status: 'inactive', active_until: 1.day.from_now)
+      create(:users_digest, year: 2024, user: inactive_user)
+
+      delete api_v1_digest_url(year: 2024),
+             headers: { 'Authorization' => "Bearer #{inactive_user.api_key}" }
+
+      expect(response).to have_http_status(:unauthorized)
     end
   end
 end

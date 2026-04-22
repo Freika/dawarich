@@ -121,12 +121,12 @@ class Api::V1::VisitsController < ApiController
   end
 
   def update_visit(visit)
-    visit_params.each do |key, value|
-      next if %w[latitude longitude].include?(key.to_s)
+    attributes = visit_params.to_h.except('latitude', 'longitude')
+    user_provided_name = attributes['name'].present?
 
-      visit[key] = value
-      visit.name = visit.place.name if visit_params[:place_id].present?
-    end
+    visit.assign_attributes(attributes)
+
+    visit.name = visit.place.name if attributes['place_id'].present? && !user_provided_name && visit.place.present?
 
     visit.save!
 
