@@ -57,6 +57,24 @@ RSpec.describe Overland::PointsCreator do
     end
   end
 
+  context 'with geofence evaluation' do
+    let(:area) { create(:area, user: user, latitude: 37.3318, longitude: -122.030581, radius: 500) }
+
+    before do
+      area
+      GeofenceEvents::Evaluator::StateStore.reset!(user)
+    end
+
+    it 'records a geofence enter event for a point inside an area' do
+      expect do
+        described_class.new(payload_hash, user.id).call
+      end.to change(GeofenceEvent, :count).by(1)
+
+      expect(GeofenceEvent.last.event_type).to eq('enter')
+      expect(GeofenceEvent.last.source).to eq('server_inferred')
+    end
+  end
+
   context 'with invalid data' do
     let(:payload) { { 'locations' => [{ 'properties' => { 'timestamp' => nil } }] } }
 

@@ -1,0 +1,16 @@
+<% content_for :title, "Areas" %>
+<div class="p-4">
+  <%= render 'shared/page_header', title: 'Areas' %>
+
+  <div id="areas-list" class="mt-4 card bg-base-200 shadow-xl">
+    <div class="card-body p-0">
+      <% if @areas.any? %>
+        <%= render @areas %>
+      <% else %>
+        <div class="text-center py-8 text-base-content/60">
+          <p>No areas yet. Create areas on the <strong><%= link_to 'map', map_v2_path, class: 'link' %></strong> to track visits and geofence events.</p>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

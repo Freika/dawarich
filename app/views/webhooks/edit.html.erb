@@ -1,0 +1,11 @@
+<% content_for :title, "Edit webhook" %>
+<div class="p-4 space-y-6">
+  <h1 class="text-2xl">Edit webhook</h1>
+  <%= render 'form', webhook: @webhook %>
+  <div class="border-t pt-4">
+    <h2 class="font-semibold mb-2">Secret management</h2>
+    <%= button_to "Regenerate secret", regenerate_secret_webhook_path(@webhook), method: :post,
+        data: { turbo_confirm: "The current secret will stop working. Continue?" },
+        class: "btn btn-warning" %>
+  </div>
+</div>

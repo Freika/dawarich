@@ -1,0 +1,30 @@
+<div id="<%= dom_id(webhook) %>" class="card bg-base-100 border p-3 mb-2">
+  <div class="flex justify-between items-start gap-2">
+    <div class="flex-1 min-w-0">
+      <h2 class="font-semibold"><%= webhook.name %></h2>
+      <code class="text-xs text-gray-500 break-all"><%= webhook.url %></code>
+      <div class="text-xs mt-1">
+        <% if webhook.active? %>
+          <span class="badge badge-success badge-sm">active</span>
+        <% else %>
+          <span class="badge badge-error badge-sm">inactive</span>
+        <% end %>
+        <% if webhook.area_ids.empty? %>
+          <span class="badge badge-outline badge-sm">all areas</span>
+        <% else %>
+          <span class="badge badge-outline badge-sm"><%= webhook.area_ids.size %> areas</span>
+        <% end %>
+        <% if webhook.last_success_at %>
+          <span class="ml-2 text-gray-500">last success <%= time_ago_in_words(webhook.last_success_at) %> ago</span>
+        <% end %>
+      </div>
+    </div>
+    <div class="flex gap-2 flex-shrink-0">
+      <%= button_to "Test", test_webhook_path(webhook), method: :post, class: "btn btn-sm" %>
+      <%= link_to "Edit", edit_webhook_path(webhook), class: "btn btn-sm" %>
+      <%= link_to "Show", webhook_path(webhook), class: "btn btn-sm" %>
+      <%= button_to "Delete", webhook_path(webhook), method: :delete,
+          data: { turbo_confirm: "Delete this webhook?" }, class: "btn btn-sm btn-error" %>
+    </div>
+  </div>
+</div>

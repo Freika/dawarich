@@ -3,8 +3,8 @@
 class Api::V1::PointsController < ApiController
   include SafeTimestampParser
 
-  before_action :authenticate_active_api_user!, only: %i[create update destroy bulk_destroy]
-  before_action :require_write_api!, only: %i[update destroy bulk_destroy]
+  before_action :authenticate_active_api_user!, only: %i[create update destroy bulk_destroy create_transition]
+  before_action :require_write_api!, only: %i[update destroy bulk_destroy create_transition]
   before_action :validate_points_limit, only: %i[create]
 
   def index
@@ -99,6 +99,41 @@ class Api::V1::PointsController < ApiController
     User.update_counters(current_api_user.id, points_count: -deleted_count) if deleted_count.positive?
 
     render json: { message: 'Points were successfully destroyed', count: deleted_count }, status: :ok
+  end
+
+  TRANSITION_FUTURE_TOLERANCE = 5.minutes
+  TRANSITION_PAST_HORIZON = 24.hours
+
+  def create_transition
+    event_type = params.require(:event_type)
+    return head :unprocessable_entity unless %w[enter leave].include?(event_type)
+
+    occurred_at = Time.iso8601(params.require(:occurred_at))
+    # Reject implausibly future events (anti-replay / clock-skew abuse)
+    return head :unprocessable_entity if occurred_at > Time.current + TRANSITION_FUTURE_TOLERANCE
+    # Accept past timestamps up to TRANSITION_PAST_HORIZON (offline self-hosters can
+    # queue transitions for hours before their phone reconnects)
+    return head :unprocessable_entity if occurred_at < Time.current - TRANSITION_PAST_HORIZON
+
+    area = current_api_user.areas.find_by(id: params[:area_id])
+    return head :no_content unless area
+
+    lonlat_arr = params.require(:lonlat)
+    GeofenceEvents::Record.call(
+      user: current_api_user,
+      area: area,
+      event_type: event_type.to_sym,
+      source: :native_app,
+      occurred_at: occurred_at,
+      lonlat: "POINT(#{lonlat_arr[0]} #{lonlat_arr[1]})",
+      accuracy_m: params[:accuracy_m],
+      device_id: params[:device_id],
+      metadata: params[:metadata] || {}
+    )
+
+    head :created
+  rescue ArgumentError, ActionController::ParameterMissing
+    head :unprocessable_entity
   end
 
   private

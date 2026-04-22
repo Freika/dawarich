@@ -1,0 +1,11 @@
+<div id="<%= dom_id(area) %>" class="flex items-center justify-between border-b p-3">
+  <div class="flex items-center gap-2">
+    <%= link_to area_path(area), class: "font-medium hover:underline" do %>
+      <%= area.name %>
+    <% end %>
+    <span class="badge badge-outline badge-sm ml-2" title="Geofencing is enabled for this area">geofence</span>
+  </div>
+  <div class="text-sm text-base-content/60">
+    <%= area.radius %> m radius
+  </div>
+</div>

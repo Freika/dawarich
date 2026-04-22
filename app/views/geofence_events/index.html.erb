@@ -1,0 +1,24 @@
+<% content_for :title, "Geofence events" %>
+<div class="p-4">
+  <h1 class="text-2xl mb-4">Geofence events</h1>
+
+  <%= form_with url: geofence_events_path, method: :get, local: true, class: "mb-4" do %>
+    <%= select_tag :area_id,
+          options_from_collection_for_select(@areas, :id, :name, params[:area_id]),
+          include_blank: "All areas",
+          onchange: "this.form.submit()",
+          class: "select select-bordered" %>
+  <% end %>
+
+  <%= turbo_frame_tag (params[:area_id].present? ? "area-events-#{params[:area_id]}" : "events-list") do %>
+    <% if @events.any? %>
+      <%= render @events %>
+    <% else %>
+      <div class="text-center py-4 text-gray-500 text-sm">No events yet.</div>
+    <% end %>
+  <% end %>
+
+  <% if defined?(paginate) %>
+    <%= paginate @events %>
+  <% end %>
+</div>

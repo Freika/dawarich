@@ -72,13 +72,15 @@ Rails.application.routes.draw do
   get 'settings/theme', to: 'settings#theme'
   post 'settings/generate_api_key', to: 'settings#generate_api_key', as: :generate_api_key
 
+  resources :geofence_events, only: [:index]
+  resources :user_devices, only: [:destroy]
   resources :imports
   resources :visits, only: %i[index update] do
     collection do
       patch :bulk_update
     end
   end
-  resources :areas, only: [:create]
+  resources :areas, only: [:index, :create, :show]
   resources :places, only: %i[index destroy create update] do
     collection do
       get 'nearby'
@@ -87,6 +89,12 @@ Rails.application.routes.draw do
   resources :exports, only: %i[index create destroy]
   resources :trips
   resources :tags, except: [:show]
+  resources :webhooks do
+    member do
+      post :test
+      post :regenerate_secret
+    end
+  end
 
   # Family management routes (only if feature is enabled)
   if DawarichSettings.family_feature_enabled?
@@ -205,6 +213,7 @@ Rails.application.routes.draw do
       resources :points, only: %i[index create update destroy] do
         collection do
           delete :bulk_destroy
+          post 'transitions', to: 'points#create_transition'
         end
       end
       resources :visits, only: %i[index show create update destroy] do
@@ -281,6 +290,17 @@ Rails.application.routes.draw do
       end
 
       post 'subscriptions/callback', to: 'subscriptions#callback'
+
+      resources :webhooks do
+        member do
+          post :test
+          post :regenerate_secret
+        end
+      end
+
+      resources :geofence_events, only: [:index]
+
+      resources :user_devices, only: %i[index create destroy]
     end
   end
 end

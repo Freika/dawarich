@@ -1,0 +1,10 @@
+<div class="border-b p-2 flex gap-3 items-center">
+  <span class="badge <%= delivery.status_success? ? 'badge-success' : delivery.status_failure? ? 'badge-error' : '' %>">
+    <%= delivery.status %>
+  </span>
+  <span>HTTP <%= delivery.response_status || "—" %></span>
+  <span class="text-sm text-gray-500"><%= time_ago_in_words(delivery.created_at) %> ago</span>
+  <% if delivery.error_message.present? %>
+    <span class="text-red-500 text-xs truncate"><%= delivery.error_message %></span>
+  <% end %>
+</div>

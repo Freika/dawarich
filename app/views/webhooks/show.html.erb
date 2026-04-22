@@ -1,0 +1,33 @@
+<% content_for :title, @webhook.name %>
+<div class="p-4 space-y-6">
+  <% if @reveal_secret.present? %>
+    <div class="alert alert-warning mb-4">
+      <div>
+        <strong>Secret — copy now, it won't be shown again:</strong>
+        <code class="select-all block mt-1 p-2 bg-base-200 rounded break-all"><%= @reveal_secret %></code>
+        <p class="text-sm mt-2">Store this in your webhook consumer's signing key configuration. Dawarich does not store it in clear in this session — refresh this page and it's gone.</p>
+      </div>
+    </div>
+  <% end %>
+
+  <div>
+    <h1 class="text-2xl"><%= @webhook.name %></h1>
+    <p class="text-sm"><%= @webhook.url %></p>
+  </div>
+
+  <div>
+    <h2 class="font-semibold mb-2">Recent deliveries</h2>
+    <%= turbo_frame_tag "deliveries" do %>
+      <% if @deliveries.any? %>
+        <%= render @deliveries %>
+      <% else %>
+        <p class="text-sm text-gray-500">No deliveries yet.</p>
+      <% end %>
+    <% end %>
+  </div>
+
+  <div class="flex gap-2">
+    <%= link_to "Edit", edit_webhook_path(@webhook), class: "btn" %>
+    <%= link_to "Back", webhooks_path, class: "btn btn-ghost" %>
+  </div>
+</div>

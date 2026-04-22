@@ -97,3 +97,8 @@ raw_data_clear_job:
   cron: "0 3 8 * *" # 8th of month at 03:00 (7 days after archival for verification)
   class: "Points::RawData::ClearJob"
   queue: archival
+
+webhooks_cleanup_deliveries:
+  cron: "0 3 * * *" # every day at 03:00
+  class: "Webhooks::CleanupDeliveriesJob"
+  queue: default

@@ -25,12 +25,25 @@ class OwnTracks::PointCreator
       Points::AnomalyFilterJob.perform_later(user_id, timestamps.min, timestamps.max) if timestamps.any?
       Tracks::RealtimeDebouncer.new(user_id).trigger
       Points::LiveBroadcaster.new(user_id, result, [payload]).call
+      evaluate_geofences(result)
     end
 
     result
   end
 
   private
+
+  def evaluate_geofences(result)
+    point_ids = result.map { |row| row['id'] }.compact
+    return if point_ids.empty?
+
+    user = User.find_by(id: user_id)
+    return unless user
+
+    Point.where(id: point_ids).find_each do |point|
+      GeofenceEvents::Evaluator::ForPoint.call(user, point)
+    end
+  end
 
   def upsert_points(locations)
     created_points = []

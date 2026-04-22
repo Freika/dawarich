@@ -1,0 +1,14 @@
+<% content_for :title, "Webhooks" %>
+<div class="p-4">
+  <div class="flex justify-between items-center mb-4">
+    <h1 class="text-2xl font-semibold">Webhooks</h1>
+    <%= link_to "New webhook", new_webhook_path, class: "btn btn-primary" %>
+  </div>
+  <div id="webhooks-list">
+    <% if @webhooks.any? %>
+      <%= render @webhooks %>
+    <% else %>
+      <div class="text-center py-8 text-gray-500">No webhooks yet. Create one to start receiving geofence events.</div>
+    <% end %>
+  </div>
+</div>

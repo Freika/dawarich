@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_03_28_210500) do
+ActiveRecord::Schema[8.0].define(version: 2026_04_22_200001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
@@ -171,6 +171,27 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_28_210500) do
     t.datetime "updated_at", null: false
     t.index ["family_id", "role"], name: "index_family_memberships_on_family_and_role"
     t.index ["user_id"], name: "index_family_memberships_on_user_id", unique: true
+  end
+
+  create_table "geofence_events", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "area_id", null: false
+    t.integer "event_type", null: false
+    t.integer "source", null: false
+    t.datetime "occurred_at", null: false
+    t.datetime "received_at", null: false
+    t.geography "lonlat", limit: {srid: 4326, type: "st_point", geographic: true}, null: false
+    t.integer "accuracy_m"
+    t.string "device_id"
+    t.jsonb "metadata", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.boolean "synthetic", default: false, null: false
+    t.index ["area_id", "occurred_at"], name: "index_geofence_events_on_area_id_and_occurred_at", order: { occurred_at: :desc }
+    t.index ["area_id"], name: "index_geofence_events_on_area_id"
+    t.index ["lonlat"], name: "index_geofence_events_on_lonlat", using: :gist
+    t.index ["user_id", "occurred_at"], name: "index_geofence_events_on_user_id_and_occurred_at", order: { occurred_at: :desc }
+    t.index ["user_id"], name: "index_geofence_events_on_user_id"
   end
 
   create_table "imports", force: :cascade do |t|
@@ -502,6 +523,20 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_28_210500) do
     t.index ["user_id"], name: "index_trips_on_user_id"
   end
 
+  create_table "user_devices", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.integer "platform", null: false
+    t.string "device_id", null: false
+    t.string "device_name"
+    t.string "push_token"
+    t.string "app_version"
+    t.datetime "last_seen_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id", "device_id"], name: "index_user_devices_on_user_id_and_device_id", unique: true
+    t.index ["user_id"], name: "index_user_devices_on_user_id"
+  end
+
   create_table "users", force: :cascade do |t|
     t.string "email", default: "", null: false
     t.string "encrypted_password", default: "", null: false
@@ -585,6 +620,38 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_28_210500) do
     t.index ["user_id"], name: "index_visits_on_user_id"
   end
 
+  create_table "webhook_deliveries", force: :cascade do |t|
+    t.bigint "webhook_id", null: false
+    t.bigint "geofence_event_id", null: false
+    t.integer "status", default: 0, null: false
+    t.integer "attempt_count", default: 0, null: false
+    t.integer "response_status"
+    t.text "response_body"
+    t.string "error_message"
+    t.datetime "delivered_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["geofence_event_id"], name: "index_webhook_deliveries_on_geofence_event_id"
+    t.index ["webhook_id", "created_at"], name: "index_webhook_deliveries_on_webhook_id_and_created_at", order: { created_at: :desc }
+    t.index ["webhook_id"], name: "index_webhook_deliveries_on_webhook_id"
+  end
+
+  create_table "webhooks", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "name", null: false
+    t.string "url", null: false
+    t.string "secret", null: false
+    t.integer "event_types", default: [0, 1], null: false, array: true
+    t.bigint "area_ids", default: [], null: false, array: true
+    t.boolean "active", default: true, null: false
+    t.datetime "last_delivery_at"
+    t.datetime "last_success_at"
+    t.integer "consecutive_failures", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id"], name: "index_webhooks_on_user_id"
+  end
+
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "areas", "users"
@@ -597,6 +664,8 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_28_210500) do
   add_foreign_key "family_location_requests", "users", column: "target_user_id"
   add_foreign_key "family_memberships", "families"
   add_foreign_key "family_memberships", "users"
+  add_foreign_key "geofence_events", "areas"
+  add_foreign_key "geofence_events", "users"
   add_foreign_key "notifications", "users"
   add_foreign_key "place_visits", "places"
   add_foreign_key "place_visits", "visits"
@@ -613,9 +682,13 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_28_210500) do
   add_foreign_key "track_segments", "tracks"
   add_foreign_key "tracks", "users"
   add_foreign_key "trips", "users"
+  add_foreign_key "user_devices", "users"
   add_foreign_key "video_exports", "tracks"
   add_foreign_key "video_exports", "users"
   add_foreign_key "visits", "areas"
   add_foreign_key "visits", "places"
   add_foreign_key "visits", "users"
+  add_foreign_key "webhook_deliveries", "geofence_events"
+  add_foreign_key "webhook_deliveries", "webhooks"
+  add_foreign_key "webhooks", "users"
 end
