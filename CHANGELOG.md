@@ -4,7 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+
 ## [1.6.2] - Unreleased
+
+### Added
+
+- Visible, selectable family invitation URL under each pending invite on the family page, so self-hosted instances without SMTP can still share the link #2438.
 
 ### Changed
 
@@ -17,6 +22,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Fix the Map v2 replay slider showing times in the browser's local timezone instead of the timezone configured in Settings. Day buckets and the minute-of-day index are now computed in the user's timezone so the replay scrubber matches the rest of the app #2457.
 - Fix "View on map" to use the preferred map. #2475
 - Fix a bug allowing inactive users to create points via the API.
+- Fix country name canonicalization on the Stats page producing wrong results (e.g., France showing as "Scarborough Reef") when the `countries` table has multiple rows sharing the same ISO code #2434.
+- Fix Stats dashboard charts stuck on "Loading..." for some years due to duplicate Chartkick element IDs when rendered inside cached year partials #2453.
+- Fix map date-navigation prev/next buttons always shifting by one day; they now shift by the currently selected interval #1736.
+- Fix individual points occasionally rendering on top of dense point lines on Map v2 by adding a deterministic timestamp-based sort key #2388.
 
 ## [1.6.1] - 2026-04-02
 

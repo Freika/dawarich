@@ -138,11 +138,14 @@
             <% @pending_invitations.each do |invitation| %>
               <div class="px-4 py-3">
                 <div class="flex items-center justify-between">
-                  <div>
+                  <div class="min-w-0 flex-1 mr-2">
                     <div class="text-sm font-medium"><%= invitation.email %></div>
                     <div class="text-xs text-base-content/40">
                       Invited <%= time_ago_in_words(invitation.created_at) %> ago
                       &middot; expires <%= invitation.expires_at.strftime('%b %d') %>
+                    </div>
+                    <div class="text-xs text-base-content/50 font-mono break-all select-all mt-1">
+                      <%= public_invitation_url(invitation.token) %>
                     </div>
                   </div>
                   <div class="flex items-center gap-1">
