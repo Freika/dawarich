@@ -9,41 +9,41 @@ RSpec.describe Users::Digests::Monthly::EmailSendingJob, type: :job do
   end
 
   it 'sends the email and marks sent_at when all conditions are met' do
-    expect {
+    expect do
       described_class.new.perform(user.id, 2026, 3)
-    }.to have_enqueued_mail(Users::DigestsMailer, :monthly_digest)
+    end.to have_enqueued_mail(Users::DigestsMailer, :monthly_digest)
     expect(digest.reload.sent_at).to be_present
   end
 
   it 'skips when the toggle is off' do
     user.update!(settings: user.settings.merge('monthly_digest_emails_enabled' => false))
 
-    expect {
+    expect do
       described_class.new.perform(user.id, 2026, 3)
-    }.not_to have_enqueued_mail(Users::DigestsMailer, :monthly_digest)
+    end.not_to have_enqueued_mail(Users::DigestsMailer, :monthly_digest)
   end
 
   it 'skips when sent_at is already present (idempotent)' do
     digest.update!(sent_at: 1.day.ago)
 
-    expect {
+    expect do
       described_class.new.perform(user.id, 2026, 3)
-    }.not_to have_enqueued_mail(Users::DigestsMailer, :monthly_digest)
+    end.not_to have_enqueued_mail(Users::DigestsMailer, :monthly_digest)
   end
 
   it 'skips when the digest record is missing' do
     digest.destroy!
 
-    expect {
+    expect do
       described_class.new.perform(user.id, 2026, 3)
-    }.not_to have_enqueued_mail(Users::DigestsMailer, :monthly_digest)
+    end.not_to have_enqueued_mail(Users::DigestsMailer, :monthly_digest)
   end
 
   it 'skips when distance is zero' do
     digest.update!(distance: 0)
 
-    expect {
+    expect do
       described_class.new.perform(user.id, 2026, 3)
-    }.not_to have_enqueued_mail(Users::DigestsMailer, :monthly_digest)
+    end.not_to have_enqueued_mail(Users::DigestsMailer, :monthly_digest)
   end
 end

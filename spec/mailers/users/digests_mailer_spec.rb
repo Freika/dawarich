@@ -7,20 +7,19 @@ RSpec.describe Users::DigestsMailer, type: :mailer do
     let(:user) { create(:user, email: 'test@example.com') }
     let(:digest) do
       create(:users_digest,
-        user: user,
-        year: 2025,
-        period_type: :yearly,
-        distance: 4287,
-        toponyms: [{ 'country' => 'Germany', 'cities' => [] }],
-        monthly_distances: (1..12).map { |m| [m.to_s, 300 + m * 10] }.to_h,
-        time_spent_by_location: {
-          'countries' => [{ 'name' => 'Germany', 'minutes' => 456_000 }],
-          'cities' => []
-        },
-        first_time_visits: { 'countries' => [], 'cities' => [] },
-        year_over_year: { 'distance_change_percent' => 18 },
-        all_time_stats: { 'total_countries' => 12, 'total_cities' => 84, 'total_distance' => '12345' }
-      )
+             user: user,
+             year: 2025,
+             period_type: :yearly,
+             distance: 4287,
+             toponyms: [{ 'country' => 'Germany', 'cities' => [] }],
+             monthly_distances: (1..12).map { |m| [m.to_s, 300 + m * 10] }.to_h,
+             time_spent_by_location: {
+               'countries' => [{ 'name' => 'Germany', 'minutes' => 456_000 }],
+               'cities' => []
+             },
+             first_time_visits: { 'countries' => [], 'cities' => [] },
+             year_over_year: { 'distance_change_percent' => 18 },
+             all_time_stats: { 'total_countries' => 12, 'total_cities' => 84, 'total_distance' => '12345' })
     end
     let(:mail) { Users::DigestsMailer.with(user: user, digest: digest).year_end_digest }
 
@@ -48,14 +47,13 @@ RSpec.describe Users::DigestsMailer, type: :mailer do
     let(:user) { create(:user, email: 'test@example.com') }
     let(:digest) do
       create(:users_digest,
-        user: user,
-        year: 2026, month: 3, period_type: :monthly,
-        distance: 312,
-        monthly_distances: { '1' => 10, '2' => 20, '3' => 312 },
-        time_spent_by_location: { 'countries' => [], 'cities' => [] },
-        first_time_visits: { 'countries' => [], 'cities' => [] },
-        year_over_year: {}
-      )
+             user: user,
+             year: 2026, month: 3, period_type: :monthly,
+             distance: 312,
+             monthly_distances: { '1' => 10, '2' => 20, '3' => 312 },
+             time_spent_by_location: { 'countries' => [], 'cities' => [] },
+             first_time_visits: { 'countries' => [], 'cities' => [] },
+             year_over_year: {})
     end
     let(:mail) { Users::DigestsMailer.with(user: user, digest: digest).monthly_digest }
 
@@ -74,24 +72,24 @@ RSpec.describe Users::DigestsMailer, type: :mailer do
     context 'when monthly_distances is stored as Array of [day, distance] pairs (pre-normalization data)' do
       let(:digest) do
         create(:users_digest,
-          user: user, year: 2026, month: 3, period_type: :monthly,
-          distance: 312,
-          monthly_distances: [[1, 10], [2, 20], [3, 40], [4, 80], [5, 312]],
-          time_spent_by_location: { 'countries' => [], 'cities' => [] },
-          first_time_visits: { 'countries' => [], 'cities' => [] },
-          year_over_year: {}
-        )
+               user: user, year: 2026, month: 3, period_type: :monthly,
+               distance: 312,
+               monthly_distances: [[1, 10], [2, 20], [3, 40], [4, 80], [5, 312]],
+               time_spent_by_location: { 'countries' => [], 'cities' => [] },
+               first_time_visits: { 'countries' => [], 'cities' => [] },
+               year_over_year: {})
       end
 
       it 'renders a real sparkline (not a single flat block)' do
         # Bug regression: when monthly_distances is an Array of integer-indexed pairs and the
         # template uses string-key lookup, every lookup returns nil and the sparkline collapses.
         # After normalization the template must produce 5 non-zero chars in the sparkline.
-        html = mail.html_part.body.to_s
-        sparkline_section = html[/DAILY DISTANCE.*?<\/pre>/m]
+        # Use the plain-text part so we don't have to strip HTML (and avoid CodeQL's
+        # "incomplete HTML sanitization" warning for a test-only regex).
+        text = mail.text_part.body.to_s
+        sparkline_section = text[/DAILY DISTANCE\n([^\n]+)/, 1]
         expect(sparkline_section).not_to be_nil
-        # Extract the content between the <pre>...</pre>
-        chars = sparkline_section.gsub(/<[^>]+>/, '').scan(/[▁▂▃▄▅▆▇█]/)
+        chars = sparkline_section.scan(/[▁▂▃▄▅▆▇█]/)
         expect(chars.size).to eq 5
       end
     end
@@ -99,13 +97,12 @@ RSpec.describe Users::DigestsMailer, type: :mailer do
     context 'when year_over_year["distance_change_percent"] is -100 (full drop from prior period)' do
       let(:digest) do
         create(:users_digest,
-          user: user, year: 2026, month: 3, period_type: :monthly,
-          distance: 0,
-          monthly_distances: { '1' => 0 },
-          time_spent_by_location: { 'countries' => [], 'cities' => [] },
-          first_time_visits: { 'countries' => [], 'cities' => [] },
-          year_over_year: { 'distance_change_percent' => -100 }
-        )
+               user: user, year: 2026, month: 3, period_type: :monthly,
+               distance: 0,
+               monthly_distances: { '1' => 0 },
+               time_spent_by_location: { 'countries' => [], 'cities' => [] },
+               first_time_visits: { 'countries' => [], 'cities' => [] },
+               year_over_year: { 'distance_change_percent' => -100 })
       end
 
       it 'does not raise FloatDomainError when rendering' do

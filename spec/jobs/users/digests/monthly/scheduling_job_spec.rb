@@ -59,8 +59,12 @@ RSpec.describe Users::Digests::Monthly::SchedulingJob, type: :job do
     end
 
     context 'when user has no stats for the target period' do
-      let!(:user_without_stats) { create(:user, status: :active, settings: { 'monthly_digest_emails_enabled' => true }) }
-      let!(:user_with_stats)    { create(:user, status: :active, settings: { 'monthly_digest_emails_enabled' => true }) }
+      let!(:user_without_stats) do
+        create(:user, status: :active, settings: { 'monthly_digest_emails_enabled' => true })
+      end
+      let!(:user_with_stats) do
+        create(:user, status: :active, settings: { 'monthly_digest_emails_enabled' => true })
+      end
 
       before do
         create(:stat, user: user_with_stats, year: target_year, month: target_month)

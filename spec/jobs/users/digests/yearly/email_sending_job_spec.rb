@@ -12,42 +12,42 @@ RSpec.describe Users::Digests::Yearly::EmailSendingJob, type: :job do
   end
 
   it 'sends the email and marks sent_at when all conditions are met' do
-    expect {
+    expect do
       described_class.new.perform(user.id, year)
-    }.to have_enqueued_mail(Users::DigestsMailer, :year_end_digest)
+    end.to have_enqueued_mail(Users::DigestsMailer, :year_end_digest)
     expect(digest.reload.sent_at).to be_present
   end
 
   it 'skips when the toggle is off' do
     user.update!(settings: user.settings.merge('yearly_digest_emails_enabled' => false))
 
-    expect {
+    expect do
       described_class.new.perform(user.id, year)
-    }.not_to have_enqueued_mail(Users::DigestsMailer, :year_end_digest)
+    end.not_to have_enqueued_mail(Users::DigestsMailer, :year_end_digest)
   end
 
   it 'skips when sent_at is already present (idempotent)' do
     digest.update!(sent_at: 1.day.ago)
 
-    expect {
+    expect do
       described_class.new.perform(user.id, year)
-    }.not_to have_enqueued_mail(Users::DigestsMailer, :year_end_digest)
+    end.not_to have_enqueued_mail(Users::DigestsMailer, :year_end_digest)
   end
 
   it 'skips when the digest record is missing' do
     digest.destroy!
 
-    expect {
+    expect do
       described_class.new.perform(user.id, year)
-    }.not_to have_enqueued_mail(Users::DigestsMailer, :year_end_digest)
+    end.not_to have_enqueued_mail(Users::DigestsMailer, :year_end_digest)
   end
 
   it 'skips when distance is zero' do
     digest.update!(distance: 0)
 
-    expect {
+    expect do
       described_class.new.perform(user.id, year)
-    }.not_to have_enqueued_mail(Users::DigestsMailer, :year_end_digest)
+    end.not_to have_enqueued_mail(Users::DigestsMailer, :year_end_digest)
   end
 
   it 'does not raise when the user does not exist' do
@@ -57,8 +57,8 @@ RSpec.describe Users::Digests::Yearly::EmailSendingJob, type: :job do
   it 'does not send when the user is soft-deleted' do
     user.mark_as_deleted!
 
-    expect {
+    expect do
       described_class.new.perform(user.id, year)
-    }.not_to have_enqueued_mail(Users::DigestsMailer, :year_end_digest)
+    end.not_to have_enqueued_mail(Users::DigestsMailer, :year_end_digest)
   end
 end

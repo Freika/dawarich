@@ -108,9 +108,9 @@ RSpec.describe Users::Digests::Yearly::SchedulingJob, type: :job do
       create(:user, status: :active).tap do |u|
         create(:stat, user: u, year: Time.current.year - 1, month: 1)
       end
-      expect {
+      expect do
         described_class.new.perform
-      }.not_to have_enqueued_job(Users::Digests::Yearly::EmailSendingJob)
+      end.not_to have_enqueued_job(Users::Digests::Yearly::EmailSendingJob)
     end
   end
 end

@@ -37,9 +37,9 @@ RSpec.describe SplitDigestEmailSettings, type: :migration do
   describe '#down' do
     it 'reconstructs digest_emails_enabled from yearly value' do
       user = create(:user, settings: {
-        'monthly_digest_emails_enabled' => true,
+                      'monthly_digest_emails_enabled' => true,
         'yearly_digest_emails_enabled' => false
-      })
+                    })
       migration.down
       user.reload
       expect(user.settings['digest_emails_enabled']).to be false

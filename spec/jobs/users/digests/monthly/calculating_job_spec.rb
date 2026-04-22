@@ -21,24 +21,24 @@ RSpec.describe Users::Digests::Monthly::CalculatingJob, type: :job do
     allow(Stats::CalculateMonth).to receive(:new).and_return(double(call: true))
     allow(Users::Digests::CalculateMonth).to receive(:new).and_return(double(call: true))
 
-    expect {
+    expect do
       described_class.new.perform(user.id, 2026, 3)
-    }.to have_enqueued_job(Users::Digests::Monthly::EmailSendingJob).with(user.id, 2026, 3)
+    end.to have_enqueued_job(Users::Digests::Monthly::EmailSendingJob).with(user.id, 2026, 3)
   end
 
   it 'creates an error notification on failure' do
     allow(Stats::CalculateMonth).to receive(:new).and_raise(StandardError.new('boom'))
 
-    expect {
+    expect do
       described_class.new.perform(user.id, 2026, 3)
-    }.to change { user.reload.notifications.where(kind: :error).count }.by(1)
+    end.to change { user.reload.notifications.where(kind: :error).count }.by(1)
   end
 
   it 'does not enqueue email job on failure' do
     allow(Stats::CalculateMonth).to receive(:new).and_raise(StandardError.new('boom'))
 
-    expect {
+    expect do
       described_class.new.perform(user.id, 2026, 3)
-    }.not_to have_enqueued_job(Users::Digests::Monthly::EmailSendingJob)
+    end.not_to have_enqueued_job(Users::Digests::Monthly::EmailSendingJob)
   end
 end
