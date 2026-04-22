@@ -24,6 +24,26 @@ RSpec.describe StatsHelper, type: :helper do
       expect(helper.send(:normalize_country_name, nil)).to be_nil
       expect(helper.send(:normalize_country_name, '')).to be_nil
     end
+
+    # Regression for https://github.com/Freika/dawarich/issues/2434
+    # Multiple Country rows may share the same iso_a2 (e.g., overseas territories,
+    # disputed regions). The old implementation inverted names_to_iso_a2, so the
+    # last-seen name for a given code clobbered the canonical one, turning
+    # "France" into "Scarborough Reef" on the stats page.
+    it 'resolves to the ISO 3166 canonical name even when DB has duplicate iso_a2 rows' do
+      Country.find_or_create_by!(name: 'France') do |c|
+        c.iso_a2 = 'FR'
+        c.iso_a3 = 'FRA'
+        c.geom = 'MULTIPOLYGON (((0 0, 1 0, 1 1, 0 1, 0 0)))'
+      end
+      Country.find_or_create_by!(name: 'Scarborough Reef') do |c|
+        c.iso_a2 = 'FR'
+        c.iso_a3 = 'FRA'
+        c.geom = 'MULTIPOLYGON (((2 2, 3 2, 3 3, 2 3, 2 2)))'
+      end
+
+      expect(helper.send(:normalize_country_name, 'France')).to eq('France')
+    end
   end
 
   describe '#collect_countries_and_cities (private)' do

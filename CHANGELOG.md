@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Visible, selectable family invitation URL under each pending invite on the family page, so self-hosted instances without SMTP can still share the link #2438.
+
+### Fixed
+
+- Fix country name canonicalization on the Stats page producing wrong results (e.g., France showing as "Scarborough Reef") when the `countries` table has multiple rows sharing the same ISO code #2434.
+- Fix Stats dashboard charts stuck on "Loading..." for some years due to duplicate Chartkick element IDs when rendered inside cached year partials #2453.
+- Fix map date-navigation prev/next buttons always shifting by one day; they now shift by the currently selected interval #1736.
+- Fix individual points occasionally rendering on top of dense point lines on Map v2 by adding a deterministic timestamp-based sort key #2388.
+
 ## [1.6.1] - 2026-04-02
 
 ### Added

@@ -41,6 +41,11 @@ export class PointsLayer extends BaseLayer {
         id: this.id,
         type: "circle",
         source: this.sourceId,
+        layout: {
+          // Deterministic render order by timestamp — prevents a random point
+          // from sitting on top of a dense line (see #2388).
+          "circle-sort-key": ["to-number", ["get", "timestamp"]],
+        },
         paint: {
           "circle-color": "#3b82f6",
           "circle-radius": 6,
