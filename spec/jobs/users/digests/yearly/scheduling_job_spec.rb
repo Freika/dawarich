@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe Users::Digests::YearEndSchedulingJob, type: :job do
+RSpec.describe Users::Digests::Yearly::SchedulingJob, type: :job do
   describe '#perform' do
     subject { described_class.perform_now }
 
@@ -28,25 +28,20 @@ RSpec.describe Users::Digests::YearEndSchedulingJob, type: :job do
 
       it 'schedules jobs for active users' do
         expect { subject }
-          .to have_enqueued_job(Users::Digests::CalculatingJob)
+          .to have_enqueued_job(Users::Digests::Yearly::CalculatingJob)
           .with(active_user.id, previous_year)
       end
 
       it 'schedules jobs for trial users' do
         expect { subject }
-          .to have_enqueued_job(Users::Digests::CalculatingJob)
+          .to have_enqueued_job(Users::Digests::Yearly::CalculatingJob)
           .with(trial_user.id, previous_year)
       end
 
       it 'does not schedule jobs for inactive users' do
         expect { subject }
-          .not_to have_enqueued_job(Users::Digests::CalculatingJob)
+          .not_to have_enqueued_job(Users::Digests::Yearly::CalculatingJob)
           .with(inactive_user.id, anything)
-      end
-
-      it 'schedules email sending job with delay' do
-        expect { subject }
-          .to have_enqueued_job(Users::Digests::EmailSendingJob).at_least(:twice)
       end
     end
 
@@ -60,13 +55,13 @@ RSpec.describe Users::Digests::YearEndSchedulingJob, type: :job do
 
       it 'does not schedule jobs for user without stats' do
         expect { subject }
-          .not_to have_enqueued_job(Users::Digests::CalculatingJob)
+          .not_to have_enqueued_job(Users::Digests::Yearly::CalculatingJob)
           .with(user_without_stats.id, anything)
       end
 
       it 'schedules jobs for user with stats' do
         expect { subject }
-          .to have_enqueued_job(Users::Digests::CalculatingJob)
+          .to have_enqueued_job(Users::Digests::Yearly::CalculatingJob)
           .with(user_with_stats.id, previous_year)
       end
     end
@@ -80,9 +75,18 @@ RSpec.describe Users::Digests::YearEndSchedulingJob, type: :job do
 
       it 'does not schedule jobs for that user' do
         expect { subject }
-          .not_to have_enqueued_job(Users::Digests::CalculatingJob)
+          .not_to have_enqueued_job(Users::Digests::Yearly::CalculatingJob)
           .with(user_current_year_only.id, anything)
       end
+    end
+
+    it 'does not enqueue EmailSendingJob directly (email chains from CalculatingJob)' do
+      create(:user, status: :active).tap do |u|
+        create(:stat, user: u, year: Time.current.year - 1, month: 1)
+      end
+      expect {
+        described_class.new.perform
+      }.not_to have_enqueued_job(Users::Digests::Yearly::EmailSendingJob)
     end
   end
 end

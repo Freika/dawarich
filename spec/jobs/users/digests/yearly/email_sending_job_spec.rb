@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe Users::Digests::EmailSendingJob, type: :job do
+RSpec.describe Users::Digests::Yearly::EmailSendingJob, type: :job do
   describe '#perform' do
     let!(:user) { create(:user) }
     let(:year) { 2024 }
@@ -35,7 +35,7 @@ RSpec.describe Users::Digests::EmailSendingJob, type: :job do
 
     context 'when user has digest emails disabled' do
       before do
-        user.update!(settings: user.settings.merge('digest_emails_enabled' => false))
+        user.update!(settings: user.settings.merge('yearly_digest_emails_enabled' => false))
       end
 
       it 'does not send the email' do
@@ -59,6 +59,16 @@ RSpec.describe Users::Digests::EmailSendingJob, type: :job do
       before { digest.update!(sent_at: 1.day.ago) }
 
       it 'does not send the email again' do
+        subject
+
+        expect(Users::DigestsMailer).not_to have_received(:with)
+      end
+    end
+
+    context 'when digest has zero distance' do
+      before { digest.update!(distance: 0) }
+
+      it 'does not send the email' do
         subject
 
         expect(Users::DigestsMailer).not_to have_received(:with)
