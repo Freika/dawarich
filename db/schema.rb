@@ -173,22 +173,6 @@ ActiveRecord::Schema[8.0].define(version: 2026_04_21_000001) do
     t.index ["user_id"], name: "index_family_memberships_on_user_id", unique: true
   end
 
-  create_table "flipper_features", force: :cascade do |t|
-    t.string "key", null: false
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["key"], name: "index_flipper_features_on_key", unique: true
-  end
-
-  create_table "flipper_gates", force: :cascade do |t|
-    t.string "feature_key", null: false
-    t.string "key", null: false
-    t.text "value"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["feature_key", "key", "value"], name: "index_flipper_gates_on_feature_key_and_key_and_value", unique: true
-  end
-
   create_table "imports", force: :cascade do |t|
     t.string "name", null: false
     t.bigint "user_id", null: false
@@ -554,8 +538,6 @@ ActiveRecord::Schema[8.0].define(version: 2026_04_21_000001) do
     t.integer "consumed_timestep"
     t.boolean "otp_required_for_login", default: false, null: false
     t.text "otp_backup_codes", array: true
-    t.integer "subscription_source", default: 0, null: false
-    t.string "signup_variant"
     t.index ["api_key"], name: "index_users_on_api_key"
     t.index ["deleted_at"], name: "index_users_on_deleted_at"
     t.index ["email"], name: "index_users_on_email", unique: true
@@ -563,7 +545,6 @@ ActiveRecord::Schema[8.0].define(version: 2026_04_21_000001) do
     t.index ["provider", "uid"], name: "index_users_on_provider_and_uid", unique: true
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
     t.index ["status"], name: "index_users_on_status"
-    t.index ["subscription_source"], name: "index_users_on_subscription_source"
     t.index ["unlock_token"], name: "index_users_on_unlock_token", unique: true
   end
 

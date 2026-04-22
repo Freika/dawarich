@@ -80,6 +80,30 @@ RSpec.describe Users::Digests::Yearly::SchedulingJob, type: :job do
       end
     end
 
+    context 'when user has the yearly toggle off' do
+      let!(:opted_out_user) do
+        create(:user, status: :active, settings: { 'yearly_digest_emails_enabled' => false })
+      end
+      let!(:opted_in_user) { create(:user, status: :active) }
+
+      before do
+        create(:stat, user: opted_out_user, year: previous_year, month: 1)
+        create(:stat, user: opted_in_user, year: previous_year, month: 1)
+      end
+
+      it 'does not schedule jobs for the opted-out user' do
+        expect { subject }
+          .not_to have_enqueued_job(Users::Digests::Yearly::CalculatingJob)
+          .with(opted_out_user.id, anything)
+      end
+
+      it 'still schedules jobs for opted-in users' do
+        expect { subject }
+          .to have_enqueued_job(Users::Digests::Yearly::CalculatingJob)
+          .with(opted_in_user.id, previous_year)
+      end
+    end
+
     it 'does not enqueue EmailSendingJob directly (email chains from CalculatingJob)' do
       create(:user, status: :active).tap do |u|
         create(:stat, user: u, year: Time.current.year - 1, month: 1)
