@@ -9,7 +9,9 @@
        end
      end
    end %>
+<% monthly = @digest.monthly_distances.to_h.transform_keys(&:to_s) %>
 <% top_countries = @digest.time_spent_by_location.to_h['countries'].to_a %>
+<% pre_style = 'white-space: pre; font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; line-height: 1.25; font-size: 13px; background: #fff; padding: 16px; border-radius: 6px; border: 1px solid #e5e5e5; overflow-x: auto; margin: 0 0 1em 0;' %>
 <!DOCTYPE html>
 <html>
 <head>
@@ -33,7 +35,7 @@
   <p class="meta">Here's your <%= @digest.year %> at a glance.</p>
 
   <h2>THE NUMBERS</h2>
-  <pre class="ascii">
+  <pre class="ascii" style="<%= pre_style %>">
 Distance       <%= @digest.distance %> <%= @distance_unit %>
 Countries      <%= @digest.all_time_stats.to_h['total_countries'] %>
 Cities         <%= @digest.all_time_stats.to_h['total_cities'] %>
@@ -41,14 +43,14 @@ Cities         <%= @digest.all_time_stats.to_h['total_cities'] %>
 
   <% if daily_values.any? %>
     <h2>ACTIVITY HEATMAP</h2>
-    <pre class="ascii"><%= ascii_year_heatmap(daily_values, start_date: Date.new(@digest.year, 1, 1)) %>
+    <pre class="ascii" style="<%= pre_style %>"><%= ascii_year_heatmap(daily_values, start_date: Date.new(@digest.year, 1, 1)) %>
 
 · none   ░ light   ▒ moderate   ▓ high   █ peak</pre>
   <% end %>
 
   <h2>MONTHLY DISTANCE</h2>
-  <pre class="ascii"><%= ascii_hbar(
-      (1..12).map { |m| @digest.monthly_distances.to_h[m.to_s].to_f },
+  <pre class="ascii" style="<%= pre_style %>"><%= ascii_hbar(
+      (1..12).map { |m| monthly[m.to_s].to_f },
       labels: Date::ABBR_MONTHNAMES[1..12],
       width: 24,
       suffix: " #{@distance_unit}"
@@ -56,12 +58,12 @@ Cities         <%= @digest.all_time_stats.to_h['total_cities'] %>
 
   <% if top_countries.any? %>
     <h2>TOP COUNTRIES</h2>
-    <pre class="ascii"><%= ascii_ranked_list(top_countries.first(5), value_key: 'minutes', label_key: 'name', width: 20, format: ->(m) { "#{(m.to_f / 60).round}h" }) %></pre>
+    <pre class="ascii" style="<%= pre_style %>"><%= ascii_ranked_list(top_countries.first(5), value_key: 'minutes', label_key: 'name', width: 20, format: ->(m) { "#{(m.to_f / 60).round}h" }) %></pre>
   <% end %>
 
   <% if @digest.year_over_year.to_h['distance_change_percent'].present? %>
     <h2>VS PREVIOUS YEAR</h2>
-    <pre class="ascii">Distance  <%= ascii_trend(@digest.distance, @digest.distance / (1 + @digest.year_over_year['distance_change_percent'].to_f / 100)) %>
+    <pre class="ascii" style="<%= pre_style %>">Distance  <%= ascii_trend_from_pct(@digest.distance, @digest.year_over_year['distance_change_percent']) %>
 </pre>
   <% end %>
 

@@ -3,98 +3,62 @@
 require 'rails_helper'
 
 RSpec.describe Users::Digests::Yearly::EmailSendingJob, type: :job do
-  describe '#perform' do
-    let!(:user) { create(:user) }
-    let(:year) { 2024 }
-    let!(:digest) { create(:users_digest, user: user, year: year, period_type: :yearly) }
+  let(:user) { create(:user, settings: { 'yearly_digest_emails_enabled' => true }) }
+  let(:year) { 2024 }
+  let!(:digest) { create(:users_digest, user: user, year: year, period_type: :yearly) }
 
-    subject { described_class.perform_now(user.id, year) }
+  it 'enqueues to the mailers queue' do
+    expect(described_class.new.queue_name).to eq('mailers')
+  end
 
-    let(:mail_message) { double('MailMessage', deliver_later: true) }
-    let(:mailer_with_params) { double('MailerWithParams', year_end_digest: mail_message) }
+  it 'sends the email and marks sent_at when all conditions are met' do
+    expect {
+      described_class.new.perform(user.id, year)
+    }.to have_enqueued_mail(Users::DigestsMailer, :year_end_digest)
+    expect(digest.reload.sent_at).to be_present
+  end
 
-    before do
-      allow(Users::DigestsMailer).to receive(:with).and_return(mailer_with_params)
-    end
+  it 'skips when the toggle is off' do
+    user.update!(settings: user.settings.merge('yearly_digest_emails_enabled' => false))
 
-    it 'enqueues to the mailers queue' do
-      expect(described_class.new.queue_name).to eq('mailers')
-    end
+    expect {
+      described_class.new.perform(user.id, year)
+    }.not_to have_enqueued_mail(Users::DigestsMailer, :year_end_digest)
+  end
 
-    context 'when user has digest emails enabled' do
-      it 'sends the email' do
-        subject
+  it 'skips when sent_at is already present (idempotent)' do
+    digest.update!(sent_at: 1.day.ago)
 
-        expect(Users::DigestsMailer).to have_received(:with).with(user: user, digest: digest)
-      end
+    expect {
+      described_class.new.perform(user.id, year)
+    }.not_to have_enqueued_mail(Users::DigestsMailer, :year_end_digest)
+  end
 
-      it 'updates the sent_at timestamp' do
-        expect { subject }.to change { digest.reload.sent_at }.from(nil)
-      end
-    end
+  it 'skips when the digest record is missing' do
+    digest.destroy!
 
-    context 'when user has digest emails disabled' do
-      before do
-        user.update!(settings: user.settings.merge('yearly_digest_emails_enabled' => false))
-      end
+    expect {
+      described_class.new.perform(user.id, year)
+    }.not_to have_enqueued_mail(Users::DigestsMailer, :year_end_digest)
+  end
 
-      it 'does not send the email' do
-        subject
+  it 'skips when distance is zero' do
+    digest.update!(distance: 0)
 
-        expect(Users::DigestsMailer).not_to have_received(:with)
-      end
-    end
+    expect {
+      described_class.new.perform(user.id, year)
+    }.not_to have_enqueued_mail(Users::DigestsMailer, :year_end_digest)
+  end
 
-    context 'when digest does not exist' do
-      before { digest.destroy }
+  it 'does not raise when the user does not exist' do
+    expect { described_class.new.perform(999_999, year) }.not_to raise_error
+  end
 
-      it 'does not send the email' do
-        subject
+  it 'does not send when the user is soft-deleted' do
+    user.mark_as_deleted!
 
-        expect(Users::DigestsMailer).not_to have_received(:with)
-      end
-    end
-
-    context 'when digest was already sent' do
-      before { digest.update!(sent_at: 1.day.ago) }
-
-      it 'does not send the email again' do
-        subject
-
-        expect(Users::DigestsMailer).not_to have_received(:with)
-      end
-    end
-
-    context 'when digest has zero distance' do
-      before { digest.update!(distance: 0) }
-
-      it 'does not send the email' do
-        subject
-
-        expect(Users::DigestsMailer).not_to have_received(:with)
-      end
-    end
-
-    context 'when user does not exist' do
-      it 'does not raise error' do
-        expect { described_class.perform_now(999_999, year) }.not_to raise_error
-      end
-
-      it 'does not send the email' do
-        described_class.perform_now(999_999, year)
-
-        expect(Users::DigestsMailer).not_to have_received(:with)
-      end
-    end
-
-    context 'when user is soft-deleted' do
-      before { user.mark_as_deleted! }
-
-      it 'does not send the email' do
-        described_class.perform_now(user.id, year)
-
-        expect(Users::DigestsMailer).not_to have_received(:with)
-      end
-    end
+    expect {
+      described_class.new.perform(user.id, year)
+    }.not_to have_enqueued_mail(Users::DigestsMailer, :year_end_digest)
   end
 end

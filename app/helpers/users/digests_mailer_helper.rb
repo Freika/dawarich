@@ -98,6 +98,17 @@ module Users::DigestsMailerHelper
     "#{arrow} #{sign}#{delta}%"
   end
 
+  # Render a trend when only the percent-change is stored (e.g. month_over_month['distance_change_percent']).
+  # Guards against percent == -100 which would make 1 + pct/100 == 0 → Infinity → NaN → FloatDomainError.
+  def ascii_trend_from_pct(current, percent_change)
+    return '→ same' if percent_change.nil?
+
+    denom = 1 + percent_change.to_f / 100.0
+    return current.to_f.positive? ? '↑ new' : '→ same' if denom.zero?
+
+    ascii_trend(current, current.to_f / denom)
+  end
+
   def ascii_ranked_list(items, value_key:, label_key:, width: 20, format: ->(v) { v })
     return '' if items.empty?
 

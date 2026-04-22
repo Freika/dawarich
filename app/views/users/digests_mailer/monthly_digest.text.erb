@@ -1,4 +1,4 @@
-<% daily = @digest.monthly_distances.to_h %>
+<% daily = @digest.monthly_distances.to_h.transform_keys(&:to_s) %>
 <% weekday_totals = Array.new(7, 0.0) %>
 <% daily.each do |day_str, distance|
      begin
@@ -31,7 +31,7 @@ WEEKLY PATTERN
 
 DAILY DISTANCE
 <%= ascii_sparkline(
-  (1..31).map { |d| @digest.monthly_distances.to_h[d.to_s].to_f }
+  (1..31).map { |d| daily[d.to_s].to_f }
          .reject(&:zero?)
          .presence || [0]
 ) %>
@@ -58,7 +58,7 @@ FIRST VISITS THIS MONTH
 <% end %>
 <% if @digest.year_over_year.to_h['distance_change_percent'].present? %>
 VS PREVIOUS MONTH
-  Distance  <%= ascii_trend(@digest.distance, @digest.distance / (1 + @digest.year_over_year['distance_change_percent'].to_f / 100)) %>
+  Distance  <%= ascii_trend_from_pct(@digest.distance, @digest.year_over_year['distance_change_percent']) %>
 
 <% end %>
 → View full insights: <%= insights_url %>

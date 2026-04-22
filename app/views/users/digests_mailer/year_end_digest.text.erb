@@ -8,6 +8,7 @@
        end
      end
    end %>
+<% monthly = @digest.monthly_distances.to_h.transform_keys(&:to_s) %>
 <% top_countries = @digest.time_spent_by_location.to_h['countries'].to_a %>
 Your <%= @digest.year %> Year in Review
 ──────────────────────────────
@@ -28,7 +29,7 @@ ACTIVITY HEATMAP
 <% end %>
 MONTHLY DISTANCE
 <%= ascii_hbar(
-  (1..12).map { |m| @digest.monthly_distances.to_h[m.to_s].to_f },
+  (1..12).map { |m| monthly[m.to_s].to_f },
   labels: Date::ABBR_MONTHNAMES[1..12],
   width: 24,
   suffix: " #{@distance_unit}"
@@ -41,7 +42,7 @@ TOP COUNTRIES
 <% end %>
 <% if @digest.year_over_year.to_h['distance_change_percent'].present? %>
 VS PREVIOUS YEAR
-  Distance  <%= ascii_trend(@digest.distance, @digest.distance / (1 + @digest.year_over_year['distance_change_percent'].to_f / 100)) %>
+  Distance  <%= ascii_trend_from_pct(@digest.distance, @digest.year_over_year['distance_change_percent']) %>
 
 <% end %>
 -> View full insights: <%= insights_url %>

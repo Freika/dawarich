@@ -70,5 +70,50 @@ RSpec.describe Users::DigestsMailer, type: :mailer do
       expect(mail.text_part.body.to_s).to include('OVERVIEW')
       expect(mail.html_part.body.to_s).to include('email-digests')
     end
+
+    context 'when monthly_distances is stored as Array of [day, distance] pairs (pre-normalization data)' do
+      let(:digest) do
+        create(:users_digest,
+          user: user, year: 2026, month: 3, period_type: :monthly,
+          distance: 312,
+          monthly_distances: [[1, 10], [2, 20], [3, 40], [4, 80], [5, 312]],
+          time_spent_by_location: { 'countries' => [], 'cities' => [] },
+          first_time_visits: { 'countries' => [], 'cities' => [] },
+          year_over_year: {}
+        )
+      end
+
+      it 'renders a real sparkline (not a single flat block)' do
+        # Bug regression: when monthly_distances is an Array of integer-indexed pairs and the
+        # template uses string-key lookup, every lookup returns nil and the sparkline collapses.
+        # After normalization the template must produce 5 non-zero chars in the sparkline.
+        html = mail.html_part.body.to_s
+        sparkline_section = html[/DAILY DISTANCE.*?<\/pre>/m]
+        expect(sparkline_section).not_to be_nil
+        # Extract the content between the <pre>...</pre>
+        chars = sparkline_section.gsub(/<[^>]+>/, '').scan(/[▁▂▃▄▅▆▇█]/)
+        expect(chars.size).to eq 5
+      end
+    end
+
+    context 'when year_over_year["distance_change_percent"] is -100 (full drop from prior period)' do
+      let(:digest) do
+        create(:users_digest,
+          user: user, year: 2026, month: 3, period_type: :monthly,
+          distance: 0,
+          monthly_distances: { '1' => 0 },
+          time_spent_by_location: { 'countries' => [], 'cities' => [] },
+          first_time_visits: { 'countries' => [], 'cities' => [] },
+          year_over_year: { 'distance_change_percent' => -100 }
+        )
+      end
+
+      it 'does not raise FloatDomainError when rendering' do
+        # Bug regression: `@digest.distance / (1 + pct/100)` with pct=-100 yields Infinity
+        # then NaN.round → FloatDomainError. ascii_trend_from_pct must guard this.
+        expect { mail.html_part.body.to_s }.not_to raise_error
+        expect { mail.text_part.body.to_s }.not_to raise_error
+      end
+    end
   end
 end

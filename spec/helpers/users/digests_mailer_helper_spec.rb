@@ -87,6 +87,22 @@ RSpec.describe Users::DigestsMailerHelper, type: :helper do
     end
   end
 
+  describe '#ascii_trend_from_pct' do
+    it 'reconstructs previous and delegates to ascii_trend' do
+      expect(helper.ascii_trend_from_pct(120, 20)).to eq '↑ +20%'
+    end
+
+    it 'returns "same" when percent is nil' do
+      expect(helper.ascii_trend_from_pct(100, nil)).to eq '→ same'
+    end
+
+    it 'guards -100% without raising FloatDomainError' do
+      expect { helper.ascii_trend_from_pct(0, -100) }.not_to raise_error
+      expect(helper.ascii_trend_from_pct(0, -100)).to eq '→ same'
+      expect(helper.ascii_trend_from_pct(50, -100)).to eq '↑ new'
+    end
+  end
+
   describe '#ascii_ranked_list' do
     it 'sorts by value descending, bars proportional to the top' do
       items = [
