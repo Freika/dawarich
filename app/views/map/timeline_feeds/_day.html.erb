@@ -1,17 +1,5 @@
-<%
-  date_obj = Date.parse(day[:date])
-  day_label = date_obj.strftime('%A, %B %-d')
-  bounds_json = day[:bounds]&.to_json
-  visits_count = day[:summary][:confirmed_count].to_i +
-                 day[:summary][:suggested_count].to_i +
-                 day[:summary][:declined_count].to_i
-  suggested_count = day[:summary][:suggested_count].to_i
-  entries = Array(day[:entries])
-  total_entries = entries.size
-  # TODO: Add proper pagination via controller ?page= param; for now render up to 50.
-  displayed_entries = entries.first(50)
-%>
-<div class="timeline-day" data-day="<%= day[:date] %>" data-bounds="<%= bounds_json %>">
+<% entries = Array(day[:entries]); displayed_entries = entries.first(50); suggested_count = day[:summary][:suggested_count].to_i %>
+<div class="timeline-day" data-day="<%= day[:date] %>" data-bounds="<%= day_bounds_json(day) %>">
   <div class="timeline-day-header">
     <button data-testid="day-prev"
             data-action="click->timeline-feed#navigateDay"
@@ -19,8 +7,8 @@
             title="Previous day"
             class="btn btn-ghost btn-xs">‹</button>
     <div class="flex-1 text-center">
-      <div class="font-bold"><%= day_label %></div>
-      <div class="text-xs text-base-content/60"><%= visits_count %> visits</div>
+      <div class="font-bold"><%= day_label(day) %></div>
+      <div class="text-xs text-base-content/60"><%= day_total_visits_count(day) %> visits</div>
     </div>
     <button data-testid="day-next"
             data-action="click->timeline-feed#navigateDay"
@@ -56,10 +44,10 @@
         <% end %>
       <% end %>
     </ol>
-    <% if total_entries > displayed_entries.size %>
+    <% if entries.size > displayed_entries.size %>
       <div class="text-center py-2">
         <%# TODO: implement proper ?page= pagination on controller side %>
-        <%= link_to "Show all (#{total_entries} total)",
+        <%= link_to "Show all (#{entries.size} total)",
                     map_timeline_feeds_path(start_at: day[:date], end_at: day[:date], show_all: true),
                     data: { turbo_frame: 'timeline-feed-frame' },
                     class: 'btn btn-ghost btn-xs' %>

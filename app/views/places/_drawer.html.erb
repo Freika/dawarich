@@ -1,27 +1,17 @@
-<%
-  total_minutes = place.visits.sum(:duration).to_i
-  visit_count = place.visits.size
-  total_hours = (total_minutes / 60.0).round(1)
-  avg_minutes = visit_count.positive? ? (total_minutes / visit_count) : 0
-  avg_hours_part = avg_minutes / 60
-  avg_minutes_part = avg_minutes % 60
-  primary_tag = place.tags.first
-  location_line = [place.city, place.country].compact_blank.join(', ')
-%>
-
+<% stats = place_dwell_stats(place) %>
 <div class="place-drawer" data-place-id="<%= place.id %>">
   <header class="place-drawer__header">
     <div class="place-drawer__icon">
-      <% if primary_tag&.icon.present? %>
-        <%= icon primary_tag.icon, class: 'w-6 h-6' %>
+      <% if stats[:primary_tag]&.icon.present? %>
+        <%= icon stats[:primary_tag].icon, class: 'w-6 h-6' %>
       <% else %>
         <%= icon 'map-pin', class: 'w-6 h-6' %>
       <% end %>
     </div>
     <div class="place-drawer__titles">
       <h2 class="place-drawer__name"><%= place.name %></h2>
-      <% if location_line.present? %>
-        <p class="place-drawer__location"><%= location_line %></p>
+      <% if stats[:location_line].present? %>
+        <p class="place-drawer__location"><%= stats[:location_line] %></p>
       <% end %>
       <p class="place-drawer__source">Source: <%= place.source.to_s.humanize %></p>
     </div>
@@ -29,15 +19,15 @@
 
   <section class="place-drawer__stats">
     <div class="place-drawer__stat">
-      <span class="place-drawer__stat-value"><%= visit_count %></span>
-      <span class="place-drawer__stat-label"><%= visit_count == 1 ? '1 visit' : "#{visit_count} visits" %></span>
+      <span class="place-drawer__stat-value"><%= stats[:visit_count] %></span>
+      <span class="place-drawer__stat-label"><%= stats[:visit_count] == 1 ? '1 visit' : "#{stats[:visit_count]} visits" %></span>
     </div>
     <div class="place-drawer__stat">
-      <span class="place-drawer__stat-value"><%= total_hours %></span>
+      <span class="place-drawer__stat-value"><%= stats[:total_hours] %></span>
       <span class="place-drawer__stat-label">total hours</span>
     </div>
     <div class="place-drawer__stat">
-      <span class="place-drawer__stat-value"><%= "#{avg_hours_part}h #{avg_minutes_part}m" %></span>
+      <span class="place-drawer__stat-value"><%= stats[:avg_label] %></span>
       <span class="place-drawer__stat-label">avg dwell</span>
     </div>
   </section>
@@ -69,18 +59,11 @@
     <% if recent_visits.any? %>
       <ul class="place-drawer__visits-list">
         <% recent_visits.each do |visit| %>
-          <%
-            v_duration_min = visit.duration.to_i
-            v_hours = v_duration_min / 60
-            v_mins = v_duration_min % 60
-            start_time = visit.started_at.strftime('%H:%M')
-            end_time = visit.ended_at.strftime('%H:%M')
-            date_str = visit.started_at.strftime('%Y-%m-%d')
-          %>
+          <% range = place_visit_time_range(visit) %>
           <li class="place-drawer__visit">
             <span class="place-drawer__visit-name"><%= visit.name %></span>
-            <span class="place-drawer__visit-time"><%= start_time %> &rarr; <%= end_time %> on <%= date_str %></span>
-            <span class="place-drawer__visit-duration"><%= "#{v_hours}h #{v_mins}m" %></span>
+            <span class="place-drawer__visit-time"><%= range[:start_label] %> &rarr; <%= range[:end_label] %> on <%= range[:date_label] %></span>
+            <span class="place-drawer__visit-duration"><%= range[:duration_label] %></span>
           </li>
         <% end %>
       </ul>

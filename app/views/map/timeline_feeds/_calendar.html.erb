@@ -1,30 +1,25 @@
 <%# locals: (summary:) %>
-<%
-  month_date = Date.parse("#{summary[:month]}-01")
-  prev_month = (month_date - 1.month).strftime('%Y-%m')
-  next_month = (month_date + 1.month).strftime('%Y-%m')
-  day_header_labels = %w[M T W T F S S]
-%>
+<% nav = calendar_month_nav(summary) %>
 <%= turbo_frame_tag 'timeline-calendar-frame' do %>
   <div class="timeline-calendar" data-testid="timeline-calendar">
     <div class="flex items-center justify-between mb-2">
       <%= link_to '<',
-                  calendar_map_timeline_feeds_path(month: prev_month),
+                  calendar_map_timeline_feeds_path(month: nav[:prev]),
                   data: { turbo_frame: 'timeline-calendar-frame', testid: 'calendar-prev' },
                   class: 'btn btn-ghost btn-xs',
                   'aria-label': 'Previous month' %>
       <div class="font-semibold text-sm" data-testid="calendar-title">
-        <%= month_date.strftime('%B %Y') %>
+        <%= nav[:title] %>
       </div>
       <%= link_to '>',
-                  calendar_map_timeline_feeds_path(month: next_month),
+                  calendar_map_timeline_feeds_path(month: nav[:next]),
                   data: { turbo_frame: 'timeline-calendar-frame', testid: 'calendar-next' },
                   class: 'btn btn-ghost btn-xs',
                   'aria-label': 'Next month' %>
     </div>
 
     <div class="grid grid-cols-7 gap-0.5 text-[10px] text-base-content/60 mb-1">
-      <% day_header_labels.each do |label| %>
+      <% calendar_weekday_labels.each do |label| %>
         <div class="text-center"><%= label %></div>
       <% end %>
     </div>
@@ -32,22 +27,14 @@
     <div class="grid grid-cols-7 gap-0.5">
       <% summary[:weeks].each do |week| %>
         <% week.each do |cell| %>
-          <%
-            bucket = Timeline::MonthSummary.heat_bucket(cell[:tracked_seconds])
-            classes = ['cal-cell', "heat-#{bucket}"]
-            classes << 'has-suggestions' if cell[:suggested_count].to_i.positive?
-            classes << 'out-of-month' unless cell[:in_month]
-            classes << 'disabled' if cell[:disabled]
-            classes << (bucket >= 3 ? 'cal-cell--light-text' : 'cal-cell--dark-text')
-          %>
           <button type="button"
-                  class="<%= classes.join(' ') %>"
+                  class="<%= calendar_cell_classes(cell) %>"
                   data-day="<%= cell[:date] %>"
                   data-action="click->timeline-feed#selectDay"
                   data-testid="calendar-day"
                   data-tracked-seconds="<%= cell[:tracked_seconds] %>"
                   <% if cell[:disabled] %>disabled<% end %>>
-            <span class="cal-cell__day"><%= Date.parse(cell[:date]).day %></span>
+            <span class="cal-cell__day"><%= calendar_day_number(cell) %></span>
             <% if cell[:suggested_count].to_i.positive? %>
               <span class="suggestion-dot" aria-label="Has suggested visits"></span>
             <% end %>
