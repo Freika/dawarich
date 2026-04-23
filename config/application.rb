@@ -39,15 +39,6 @@ module Dawarich
 
     config.action_mailer.preview_paths << Rails.root.join('spec/mailers/previews').to_s
 
-    # Default host and protocol for URL helpers in mailer views. Individual
-    # environments (e.g. test) override this via `config.action_mailer.default_url_options`.
-    # Missing APP_HOST raises in production so mail is never sent with a broken host.
-    config.action_mailer.default_url_options = {
-      host: ENV['APP_HOST'] ||
-            (Rails.env.production? ? raise('APP_HOST required in production') : 'localhost:3000'),
-      protocol: Rails.env.production? ? 'https' : 'http'
-    }
-
     # Active Record Encryption is required by devise-two-factor for the `encrypts :otp_secret`
     # declaration on the User model. These keys must always be set for the model to load.
     #

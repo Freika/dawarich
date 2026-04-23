@@ -31,7 +31,11 @@
 
     </div>
     <div class="card flex-shrink-0 w-full max-w-sm shadow-2xl bg-base-100 px-5 py-5">
-      <%= form_for(resource, as: resource_name, url: registration_path(resource_name), class: 'form-body', html: { data: { turbo: session[:dawarich_client] == 'ios' ? false : true } }) do |f| %>
+      <%# turbo: false — sign-up may redirect cross-host to Manager for the
+          reverse_trial arm, and Turbo's fetch can't follow cross-origin
+          redirects (CORS blocks the response body). Native form submission
+          lets the browser follow the 302 directly. %>
+      <%= form_for(resource, as: resource_name, url: registration_path(resource_name), class: 'form-body', html: { data: { turbo: false } }) do |f| %>
         <%= render "devise/shared/error_messages", resource: resource %>
         <% if @invitation %>
           <%= f.hidden_field :invitation_token, value: params[:invitation_token] %>

@@ -124,6 +124,15 @@ class User < ApplicationRecord
     (trial? || !active_until&.future?) && !DawarichSettings.self_hosted?
   end
 
+  # Users on a Paddle/IAP trial already have a payment source on file and will
+  # auto-convert on day 7 without any action from them. The navbar's trial
+  # countdown CTA is misleading for them — they don't need to "Subscribe";
+  # they're already subscribed and in the trial period. Use this to suppress
+  # the CTA on reverse-trial signups and IAP purchases.
+  def auto_converting_trial?
+    trial? && active_until&.future? && !sub_source_none?
+  end
+
   def generate_subscription_token(plan: nil, interval: nil, variant: nil)
     payload = {
       user_id: id,

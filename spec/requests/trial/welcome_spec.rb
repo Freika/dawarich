@@ -19,10 +19,24 @@ RSpec.describe 'GET /trial/welcome', type: :request do
 
   before { Rails.cache.clear }
 
-  it 'signs in the user and renders the welcome page' do
+  it 'signs in the user and redirects to the map with a welcome flash' do
     get "/trial/welcome?token=#{token}"
-    expect(response).to have_http_status(:ok)
-    expect(response.body).to include('Welcome to Dawarich')
+    expect(response).to have_http_status(:found)
+    expect(response).to redirect_to(%r{/map/v\d})
+    expect(flash[:notice]).to include('Welcome to Dawarich')
+    expect(flash[:notice]).to include(user.active_until.strftime('%B %d, %Y'))
+  end
+
+  context 'when active_until is not yet populated (Paddle webhook race)' do
+    let(:user) { create(:user, status: :pending_payment, active_until: nil) }
+
+    it 'still redirects to the map without raising NoMethodError on nil#strftime' do
+      get "/trial/welcome?token=#{token}"
+
+      expect(response).to have_http_status(:found)
+      expect(response).to redirect_to(%r{/map/v\d})
+      expect(flash[:notice]).to include('activated')
+    end
   end
 
   it 'rejects an invalid token' do
@@ -69,13 +83,32 @@ RSpec.describe 'GET /trial/welcome', type: :request do
       Rails.cache.clear
       t = issue_welcome_token(user)
       get "/trial/welcome?token=#{t}"
-      expect(response).to have_http_status(:ok)
+      expect(response).to have_http_status(:found)
 
       # Simulate the "attacker replays the captured URL from the magic email"
       # after the legitimate user has already visited it.
       delete destroy_user_session_path
       get "/trial/welcome?token=#{t}"
       expect(response).to have_http_status(:found)
+      expect(response).to redirect_to(new_user_session_path)
+    end
+
+    it 'silently redirects to the map when the same signed-in user reloads a consumed link' do
+      # Browser back / reload / accidental re-visit of the welcome URL after
+      # the user has already been onboarded. For the same signed-in user we
+      # just send them to the map without any flash (they already saw the
+      # welcome notice on first visit) — never to /users/sign_in (which would
+      # trigger Devise's "You are already signed in" alert on top of ours).
+      Rails.cache.clear
+      t = issue_welcome_token(user)
+      get "/trial/welcome?token=#{t}"
+      expect(response).to redirect_to(%r{/map/v\d})
+
+      # Same session, same signed-in user — simulate reload
+      get "/trial/welcome?token=#{t}"
+      expect(response).to redirect_to(%r{/map/v\d})
+      expect(flash[:alert]).to be_blank
+      expect(flash[:notice]).to be_blank
     end
 
     it 'refuses auto-signin if a different user is already signed in' do

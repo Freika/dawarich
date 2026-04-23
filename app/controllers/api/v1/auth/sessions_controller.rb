@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'bcrypt'
+
 class Api::V1::Auth::SessionsController < Api::V1::Auth::BaseController
   # A pre-computed bcrypt hash used to run a dummy password comparison when
   # no user is found for the submitted email. This equalises response time

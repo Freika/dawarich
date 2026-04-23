@@ -16,6 +16,7 @@ export default class extends Controller {
     importsCount: Number,
     demoDataUrl: String,
     hasDemoData: Boolean,
+    userId: Number,
   }
 
   connect() {
@@ -39,12 +40,18 @@ export default class extends Controller {
   }
 
   checkAndShowModal() {
-    const MODAL_STORAGE_KEY = "dawarich_onboarding_shown"
-    const hasShownModal = localStorage.getItem(MODAL_STORAGE_KEY)
+    // Scope the dedup key by user id so different users on the same browser
+    // (QA/staging, household shared devices) each see the onboarding once.
+    // Without this, the first user "consumes" the modal for every subsequent
+    // signup on the same browser.
+    const storageKey = this.hasUserIdValue
+      ? `dawarich_onboarding_shown_${this.userIdValue}`
+      : "dawarich_onboarding_shown"
+    const hasShownModal = localStorage.getItem(storageKey)
 
     if (!hasShownModal && this.hasModalTarget) {
       this.modalTarget.showModal()
-      localStorage.setItem(MODAL_STORAGE_KEY, "true")
+      localStorage.setItem(storageKey, "true")
       this.trackEvent("onboarding_shown")
 
       this._handleDialogClose = () => this.completeOnboarding()
