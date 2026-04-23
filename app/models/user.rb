@@ -46,7 +46,7 @@ class User < ApplicationRecord
   enum :status, { inactive: 0, active: 1, trial: 2, pending_payment: 3 }
   # prefix: :sub_source — the `none` value would otherwise generate a
   # `User#none?` predicate that collides with NilClass semantics in
-  # conditional chains. Callers use `user.sub_source_paddle?` etc.
+  # conditional chains. Callers use `user.sub_source_none?` etc.
   enum :subscription_source, { none: 0, paddle: 1, apple_iap: 2, google_play: 3 }, default: :none, prefix: :sub_source
   enum :plan, { lite: 0, pro: 1 }, default: :pro
 
@@ -127,7 +127,8 @@ class User < ApplicationRecord
     (trial? || !active_until&.future?) && !DawarichSettings.self_hosted?
   end
 
-  # Users on a Paddle/IAP trial already have a payment source on file and will
+  # Users whose subscription_source is anything other than :none already
+  # have a payment source on file (card / App Store / Play Store) and will
   # auto-convert on day 7 without any action from them. The navbar's trial
   # countdown CTA is misleading for them — they don't need to "Subscribe";
   # they're already subscribed and in the trial period. Use this to suppress

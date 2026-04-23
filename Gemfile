@@ -15,6 +15,7 @@ gem 'chartkick'
 gem 'connection_pool', '< 3' # Pin to 2.x - version 3.0+ has breaking API changes with Rails RedisCacheStore
 gem 'data_migrate'
 gem 'devise'
+gem 'apple_id', '~> 1.2'
 gem 'devise-two-factor'
 gem 'flipper', '~> 1.3'
 gem 'flipper-active_record', '~> 1.3'

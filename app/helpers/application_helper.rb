@@ -94,10 +94,10 @@ module ApplicationHelper
   end
 
   # Returns the correct upgrade URL for a user's subscription state.
-  # pending_payment users (reverse-trial variant who abandoned Manager checkout)
-  # are directed to /trial/resume which surfaces a Resume-checkout button.
-  # All other upgrade-eligible users (trial, inactive) go to Manager's standard
-  # upgrade dashboard via JWT auth.
+  # pending_payment users (reverse-trial variant who abandoned checkout) are
+  # directed to /trial/resume which surfaces a Resume-checkout button.
+  # All other upgrade-eligible users (trial, inactive) go to the external
+  # subscription dashboard via JWT auth.
   def subscription_upgrade_url(user)
     if user.pending_payment?
       trial_resume_path
@@ -183,7 +183,7 @@ module ApplicationHelper
   end
 
   # Generates a user-specific upgrade URL that authenticates the user
-  # with the subscription manager via JWT token.
+  # with the external subscription service via JWT token.
   # Accepts optional UTM parameters for tracking.
   def upgrade_url(utm_source: 'app', utm_medium: nil, utm_campaign: 'lite_upgrade', utm_content: nil)
     base = "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}"

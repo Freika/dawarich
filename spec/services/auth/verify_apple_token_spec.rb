@@ -66,7 +66,17 @@ RSpec.describe Auth::VerifyAppleToken do
 
   it 'raises when signature does not match JWKS' do
     other_key = OpenSSL::PKey::RSA.generate(2048)
-    token = JWT.encode({ sub: 'x' }, other_key, 'RS256', { kid: kid })
+    payload = {
+      iss: 'https://appleid.apple.com',
+      aud: bundle_id,
+      sub: '000999.mismatch',
+      email: 'user@example.com',
+      exp: 15.minutes.from_now.to_i,
+      iat: Time.now.to_i
+    }
+    # Sign with a key the JWKS endpoint doesn't know about — signature check
+    # fails even though the claims are well-formed.
+    token = JWT.encode(payload, other_key, 'RS256', { kid: kid })
     expect { described_class.new(token).call }.to raise_error(Auth::VerifyAppleToken::InvalidToken)
   end
 end

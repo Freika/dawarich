@@ -81,11 +81,11 @@ RSpec.describe Users::MailerSendingJob, type: :job do
       end
     end
 
-    context 'when email_type is a billing email (now owned by Manager service)' do
-      # Billing emails (trial_*, post_trial_reminder_*, pending_payment_*) moved
-      # out of Dawarich in the Manager extraction. If a stale job gets enqueued
-      # it must surface loudly via UnknownEmailType so Sentry alerts and Sidekiq
-      # can be manually drained.
+    context 'when email_type is a billing email (now owned by the subscription service)' do
+      # Billing emails (trial_*, post_trial_reminder_*, pending_payment_*)
+      # moved out of Dawarich when billing was extracted to a dedicated
+      # service. If a stale job gets enqueued it must surface loudly via
+      # UnknownEmailType so Sentry alerts and Sidekiq can be manually drained.
       %w[trial_expires_soon trial_expired post_trial_reminder_early post_trial_reminder_late
          trial_first_payment_soon trial_converted
          pending_payment_day_1 pending_payment_day_3 pending_payment_day_7].each do |billing_type|

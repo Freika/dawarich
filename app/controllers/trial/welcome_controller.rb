@@ -2,9 +2,10 @@
 
 class Trial::WelcomeController < ApplicationController
   CONSUMED_KEY_PREFIX = 'trial_welcome:consumed:'
-  # Manager must issue tokens with purpose: 'trial_welcome' and a jti claim.
-  # We enforce both here and single-use via Redis to prevent replay if the
-  # magic link leaks (email logs, browser history, shared device, proxies).
+  # The subscription service issues tokens with purpose: 'trial_welcome'
+  # and a jti claim. We enforce both here and single-use via Redis to
+  # prevent replay if the magic link leaks (email logs, browser history,
+  # shared device, proxies).
 
   before_action :no_store_headers
 

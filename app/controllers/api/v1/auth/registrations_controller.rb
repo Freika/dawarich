@@ -24,9 +24,9 @@ class Api::V1::Auth::RegistrationsController < Api::V1::Auth::BaseController
     }
     return base if DawarichSettings.self_hosted?
 
-    # Cloud signups land in pending_payment until Manager emits the
-    # subscription callback; skip_auto_trial suppresses the after_commit
-    # trial start so we don't grant a trial to someone who hasn't paid.
+    # Cloud signups land in pending_payment until the subscription service
+    # emits its callback. skip_auto_trial suppresses the after_commit trial
+    # start so we don't grant a trial to someone who hasn't paid.
     base.merge(status: :pending_payment, skip_auto_trial: true)
   end
 end

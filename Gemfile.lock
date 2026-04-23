@@ -87,6 +87,10 @@ GEM
     addressable (2.8.7)
       public_suffix (>= 2.0.2, < 7.0)
     aes_key_wrap (1.1.0)
+    apple_id (1.6.4)
+      json-jwt (~> 1.16)
+      openid_connect (~> 2.2)
+      rack-oauth2 (~> 2.0)
     ast (2.4.3)
     attr_extras (7.1.0)
     attr_required (1.0.2)
@@ -685,6 +689,7 @@ PLATFORMS
 
 DEPENDENCIES
   activerecord-postgis-adapter (= 11.0)
+  apple_id (~> 1.2)
   aws-sdk-core (~> 3.215.1)
   aws-sdk-kms (~> 1.96.0)
   aws-sdk-s3 (~> 1.177.0)

@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
-# Single inbound endpoint for subscription state updates from Manager.
+# Single inbound endpoint for subscription state updates from the external
+# subscription service. That service is the source of truth for billing;
+# Dawarich only stores a read projection (plan, status, active_until,
+# subscription_source) for plan gating.
 #
-# Manager is the source of truth for billing. Dawarich only stores a read
-# projection (plan, status, active_until, subscription_source) for gating.
-#
-# Contract: see superpowers/specs/2026-04-22-manager-callback-contract.md
+# Contract: see superpowers/specs/2026-04-22-subscription-callback-contract.md
 class Api::V1::SubscriptionsController < ApiController
   skip_before_action :authenticate_api_key, only: %i[callback]
   skip_before_action :reject_pending_payment!, only: %i[callback], raise: false

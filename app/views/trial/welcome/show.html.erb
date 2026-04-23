@@ -1,10 +1,10 @@
 <%#
-  active_until is populated by Manager's subscription-callback, which arrives
-  server-to-server after the Paddle webhook lands. Paddle's client-side
-  `checkout.completed` event can outrun that webhook by a few seconds, so the
-  first render here may find active_until still nil. When that happens we
-  show an "activating" state and meta-refresh once; the next render picks up
-  the populated value.
+  active_until is populated by the subscription service's callback, which
+  arrives server-to-server after the upstream checkout webhook lands. The
+  client-side "checkout completed" event can outrun that webhook by a few
+  seconds, so the first render here may find active_until still nil. When
+  that happens we show an "activating" state and meta-refresh once; the
+  next render picks up the populated value.
 %>
 <% if @user.active_until.blank? %>
   <meta http-equiv="refresh" content="3">

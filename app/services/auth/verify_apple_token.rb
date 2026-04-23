@@ -1,12 +1,15 @@
 # frozen_string_literal: true
 
 module Auth
+  # Verifies an Apple ID token sent by a mobile client (id_token from
+  # ASAuthorizationController / Sign in with Apple).
+  #
+  # Delegates JWKS fetching, signature verification, and iss/aud/exp/iat
+  # checks to the `apple_id` gem so we don't have to maintain this against
+  # Apple's evolving spec. JWKS caching is wired through `Rails.cache` in
+  # config/initializers/apple_id.rb.
   class VerifyAppleToken
     class InvalidToken < StandardError; end
-
-    APPLE_JWKS_URL = 'https://appleid.apple.com/auth/keys'
-    APPLE_ISSUER   = 'https://appleid.apple.com'
-    JWKS_CACHE_TTL = 1.hour
 
     def initialize(id_token)
       @id_token = id_token
@@ -14,42 +17,25 @@ module Auth
 
     def call
       raise InvalidToken, 'blank token' if @id_token.blank?
-      raise InvalidToken, 'APPLE_BUNDLE_ID not configured' if expected_audience.blank?
+      raise InvalidToken, 'APPLE_BUNDLE_ID not configured' if bundle_id.blank?
 
-      decoded, _header = JWT.decode(
-        @id_token,
-        nil,
-        true,
-        {
-          algorithms: ['RS256'],
-          jwks: fetch_jwks_proc,
-          iss: APPLE_ISSUER,
-          verify_iss: true,
-          aud: expected_audience,
-          verify_aud: true
-        }
-      )
-      decoded.symbolize_keys
-    rescue JWT::DecodeError => e
+      decoded = AppleID::IdToken.decode(@id_token)
+      decoded.verify!(client: bundle_id)
+
+      {
+        sub: decoded.sub,
+        email: decoded.email,
+        email_verified: decoded.email_verified?,
+        is_private_email: decoded.is_private_email?
+      }
+    rescue AppleID::IdToken::VerificationFailed, JSON::JWT::Exception => e
       raise InvalidToken, e.message
     end
 
     private
 
-    def expected_audience
+    def bundle_id
       ENV['APPLE_BUNDLE_ID']
-    end
-
-    def fetch_jwks_proc
-      ->(options) { { keys: fetch_jwks(force: options[:invalidate]) } }
-    end
-
-    def fetch_jwks(force: false)
-      Rails.cache.fetch('apple_jwks', expires_in: JWKS_CACHE_TTL, force: force) do
-        body = Net::HTTP.get(URI(APPLE_JWKS_URL))
-        parsed = JSON.parse(body, symbolize_names: true)
-        parsed[:keys]
-      end
     end
   end
 end

@@ -19,15 +19,15 @@ class Users::RegistrationsController < Devise::RegistrationsController
 
   # Handles both A/B arms. The legacy_trial arm is the standard Devise
   # sign-up flow; the reverse_trial arm skips sign-in and redirects the
-  # user off to Manager to complete Paddle checkout.
+  # user off to the external checkout host.
   #
   # The method intentionally mirrors `Devise::RegistrationsController#create`
   # rather than calling `super`. Calling `super` doesn't work cleanly here
   # because Devise's responder always issues a local redirect after a
-  # successful save — but the reverse_trial arm needs a cross-host redirect
-  # to the Manager, and Rails raises either `DoubleRenderError` (if we try
-  # to redirect a second time) or `UnsafeRedirectError` (if we piggyback on
-  # Devise's redirect via `after_sign_up_path_for`). The structure below is
+  # successful save — but the reverse_trial arm needs a cross-host redirect,
+  # and Rails raises either `DoubleRenderError` (if we try to redirect a
+  # second time) or `UnsafeRedirectError` (if we piggyback on Devise's
+  # redirect via `after_sign_up_path_for`). The structure below is
   # mechanically identical to Devise, plus a branch for reverse_trial.
   #
   # Bucketing into a variant happens in `build_resource` (below) so that

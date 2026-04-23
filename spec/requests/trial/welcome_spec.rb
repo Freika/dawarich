@@ -27,10 +27,11 @@ RSpec.describe 'GET /trial/welcome', type: :request do
     expect(flash[:notice]).to include(user.active_until.strftime('%B %d, %Y'))
   end
 
-  context 'when active_until is not yet populated (Paddle webhook race)' do
+  context 'when active_until is not yet populated (webhook race)' do
     # skip_auto_trial suppresses the `activate` (self-hosted) and
     # `start_trial` (cloud) after_commit hooks so active_until stays nil and
-    # we can exercise the race-with-Paddle-webhook path.
+    # we can exercise the path where the subscription callback is still
+    # in flight.
     let(:user) do
       create(:user, skip_auto_trial: true, status: :pending_payment, active_until: nil)
     end

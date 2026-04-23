@@ -16,9 +16,9 @@ RSpec.describe 'Api::V1::Subscriptions', type: :request do
                       ))
   end
 
-  # `event_id` is required by the Manager callback contract — we supply a
-  # random default so individual tests don't need to set it unless they are
-  # specifically exercising the idempotency / missing-event_id paths.
+  # `event_id` is required by the subscription-callback contract — we supply
+  # a random default so individual tests don't need to set it unless they
+  # are specifically exercising the idempotency / missing-event_id paths.
   def build_token(payload)
     defaults = { exp: 30.minutes.from_now.to_i, event_id: "paddle:#{SecureRandom.uuid}" }
     JWT.encode(defaults.merge(payload), jwt_secret, 'HS256')
