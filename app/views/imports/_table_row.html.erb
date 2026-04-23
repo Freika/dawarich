@@ -33,7 +33,7 @@
         <span class="text-xs text-base-content/50">Deleting...</span>
       <% else %>
         <div class="tooltip" data-tip="View on map">
-          <%= link_to map_path(import_id: import.id), class: 'btn btn-ghost btn-xs' do %>
+          <%= link_to preferred_map_path(import_id: import.id), class: 'btn btn-ghost btn-xs' do %>
             <%= icon 'map', class: 'w-4 h-4' %>
           <% end %>
         </div>

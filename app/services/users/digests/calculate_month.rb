@@ -21,7 +21,7 @@ module Users
         digest.assign_attributes(
           distance: stat.distance,
           toponyms: stat.toponyms || [],
-          monthly_distances: stat.daily_distance || {},
+          monthly_distances: (stat.daily_distance || []).to_h.transform_keys(&:to_s),
           time_spent_by_location: calculate_time_spent,
           first_time_visits: calculate_first_time_visits,
           year_over_year: calculate_mom_comparison,

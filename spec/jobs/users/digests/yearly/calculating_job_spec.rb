@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe Users::Digests::CalculatingJob, type: :job do
+RSpec.describe Users::Digests::Yearly::CalculatingJob, type: :job do
   describe '#perform' do
     let!(:user) { create(:user) }
     let(:year) { 2024 }
@@ -22,6 +22,22 @@ RSpec.describe Users::Digests::CalculatingJob, type: :job do
 
     it 'enqueues to the digests queue' do
       expect(described_class.new.queue_name).to eq('digests')
+    end
+
+    it 'chains EmailSendingJob on success' do
+      allow(Users::Digests::CalculateYear).to receive(:new).and_return(double(call: true))
+
+      expect {
+        described_class.new.perform(user.id, year)
+      }.to have_enqueued_job(Users::Digests::Yearly::EmailSendingJob).with(user.id, year)
+    end
+
+    it 'does not chain the email on failure' do
+      allow(Users::Digests::CalculateYear).to receive(:new).and_raise(StandardError.new('boom'))
+
+      expect {
+        described_class.new.perform(user.id, year)
+      }.not_to have_enqueued_job(Users::Digests::Yearly::EmailSendingJob)
     end
 
     context 'when Users::Digests::CalculateYear raises an error' do

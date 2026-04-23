@@ -48,12 +48,20 @@ class Settings::GeneralController < ApplicationController
   end
 
   def update_email_settings
-    if params.key?(:digest_emails_enabled)
-      current_user.settings['digest_emails_enabled'] = ActiveModel::Type::Boolean.new.cast(params[:digest_emails_enabled])
+    if params.key?(:monthly_digest_emails_enabled)
+      current_user.settings['monthly_digest_emails_enabled'] =
+        ActiveModel::Type::Boolean.new.cast(params[:monthly_digest_emails_enabled])
     end
+
+    if params.key?(:yearly_digest_emails_enabled)
+      current_user.settings['yearly_digest_emails_enabled'] =
+        ActiveModel::Type::Boolean.new.cast(params[:yearly_digest_emails_enabled])
+    end
+
     return unless params.key?(:news_emails_enabled)
 
-    current_user.settings['news_emails_enabled'] = ActiveModel::Type::Boolean.new.cast(params[:news_emails_enabled])
+    current_user.settings['news_emails_enabled'] =
+      ActiveModel::Type::Boolean.new.cast(params[:news_emails_enabled])
   end
 
   def update_supporter_settings

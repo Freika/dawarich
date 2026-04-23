@@ -105,7 +105,8 @@ RSpec.describe Users::SafeSettings do
             'visits_suggestions_enabled' => false,
             'enabled_map_layers' => %w[Points Routes Areas Photos],
             'maps_maplibre_style' => 'light',
-            'digest_emails_enabled' => true,
+            'monthly_digest_emails_enabled' => true,
+            'yearly_digest_emails_enabled' => true,
             'news_emails_enabled' => true,
             'globe_projection' => false,
             'supporter_email' => nil,
@@ -415,6 +416,54 @@ RSpec.describe Users::SafeSettings do
         it 'returns the stored value' do
           expect(safe_settings.globe_projection).to be true
         end
+      end
+    end
+  end
+
+  describe '#monthly_digest_emails_enabled?' do
+    let(:safe_settings) { described_class.new(settings) }
+
+    context 'when not set' do
+      let(:settings) { {} }
+
+      it 'returns true when the setting is missing' do
+        expect(safe_settings.monthly_digest_emails_enabled?).to be true
+      end
+    end
+
+    context 'when explicitly set to true' do
+      let(:settings) { { 'monthly_digest_emails_enabled' => true } }
+
+      it 'returns true when explicitly true' do
+        expect(safe_settings.monthly_digest_emails_enabled?).to be true
+      end
+    end
+
+    context 'when set to false' do
+      let(:settings) { { 'monthly_digest_emails_enabled' => false } }
+
+      it 'returns false when explicitly false' do
+        expect(safe_settings.monthly_digest_emails_enabled?).to be false
+      end
+    end
+  end
+
+  describe '#yearly_digest_emails_enabled?' do
+    let(:safe_settings) { described_class.new(settings) }
+
+    context 'when not set' do
+      let(:settings) { {} }
+
+      it 'returns true when the setting is missing' do
+        expect(safe_settings.yearly_digest_emails_enabled?).to be true
+      end
+    end
+
+    context 'when set to false' do
+      let(:settings) { { 'yearly_digest_emails_enabled' => false } }
+
+      it 'returns false when explicitly false' do
+        expect(safe_settings.yearly_digest_emails_enabled?).to be false
       end
     end
   end

@@ -27,7 +27,8 @@ class Users::SafeSettings
     'visits_suggestions_enabled' => 'true',
     'enabled_map_layers' => %w[Tracks Heatmap],
     'maps_maplibre_style' => 'light',
-    'digest_emails_enabled' => true,
+    'monthly_digest_emails_enabled' => true,
+    'yearly_digest_emails_enabled' => true,
     'news_emails_enabled' => true,
     'globe_projection' => false,
     'supporter_email' => nil,
@@ -195,8 +196,15 @@ class Users::SafeSettings
     ActiveModel::Type::Boolean.new.cast(settings['globe_projection'])
   end
 
-  def digest_emails_enabled?
-    value = settings['digest_emails_enabled']
+  def monthly_digest_emails_enabled?
+    value = settings['monthly_digest_emails_enabled']
+    return true if value.nil?
+
+    ActiveModel::Type::Boolean.new.cast(value)
+  end
+
+  def yearly_digest_emails_enabled?
+    value = settings['yearly_digest_emails_enabled']
     return true if value.nil?
 
     ActiveModel::Type::Boolean.new.cast(value)
