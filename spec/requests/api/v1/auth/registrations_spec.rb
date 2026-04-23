@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'rails_helper'
 
 RSpec.describe 'POST /api/v1/auth/register', type: :request do
@@ -8,9 +10,9 @@ RSpec.describe 'POST /api/v1/auth/register', type: :request do
   end
 
   it 'creates a user in pending_payment status with an api_key' do
-    expect {
+    expect do
       post '/api/v1/auth/register', params: valid_params
-    }.to change(User, :count).by(1)
+    end.to change(User, :count).by(1)
 
     user = User.find_by(email: 'new@example.com')
     expect(user.status).to eq('pending_payment')
@@ -47,9 +49,9 @@ RSpec.describe 'POST /api/v1/auth/register', type: :request do
     before { allow(DawarichSettings).to receive(:self_hosted?).and_return(true) }
 
     it 'creates a user in active status (not pending_payment)' do
-      expect {
+      expect do
         post '/api/v1/auth/register', params: valid_params
-      }.to change(User, :count).by(1)
+      end.to change(User, :count).by(1)
 
       user = User.find_by(email: 'new@example.com')
       expect(user.status).to eq('active')

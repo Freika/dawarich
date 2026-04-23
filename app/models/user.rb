@@ -44,6 +44,9 @@ class User < ApplicationRecord
   scope :active_or_trial, -> { where(status: %i[active trial]) }
 
   enum :status, { inactive: 0, active: 1, trial: 2, pending_payment: 3 }
+  # prefix: :sub_source — the `none` value would otherwise generate a
+  # `User#none?` predicate that collides with NilClass semantics in
+  # conditional chains. Callers use `user.sub_source_paddle?` etc.
   enum :subscription_source, { none: 0, paddle: 1, apple_iap: 2, google_play: 3 }, default: :none, prefix: :sub_source
   enum :plan, { lite: 0, pro: 1 }, default: :pro
 

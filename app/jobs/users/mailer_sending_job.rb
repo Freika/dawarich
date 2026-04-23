@@ -15,7 +15,8 @@ class Users::MailerSendingJob < ApplicationJob
     # UsersMailer
     'welcome'              => ['UsersMailer', :welcome],
     'explore_features'     => ['UsersMailer', :explore_features],
-    'archival_approaching' => ['UsersMailer', :archival_approaching]
+    'archival_approaching' => ['UsersMailer', :archival_approaching],
+    'oauth_account_link'   => ['UsersMailer', :oauth_account_link]
   }.freeze
 
   def perform(user_id, email_type, **options)

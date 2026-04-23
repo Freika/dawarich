@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'rails_helper'
 
 RSpec.describe 'POST /api/v1/auth/google', type: :request do
@@ -6,6 +8,7 @@ RSpec.describe 'POST /api/v1/auth/google', type: :request do
   before do
     allow(Auth::VerifyGoogleToken).to receive(:new).and_return(verifier_double)
     allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+    Flipper.disable(:oauth_auto_link_verified_email)
   end
 
   context 'first-time Google user' do
@@ -70,7 +73,7 @@ RSpec.describe 'POST /api/v1/auth/google', type: :request do
   context 'existing user matched by email (potential ATO)' do
     let!(:existing) { create(:user, email: 'google@example.com') }
 
-    context 'when Google asserts email_verified == true' do
+    context 'when Google asserts email_verified == true (default: verification required)' do
       before do
         allow(verifier_double).to receive(:call).and_return(
           sub: 'google-uid-777',
@@ -79,7 +82,32 @@ RSpec.describe 'POST /api/v1/auth/google', type: :request do
         )
       end
 
-      it 'links the OAuth identity to the existing user' do
+      it 'does NOT merge the identity; returns 202 and enqueues a verification email' do
+        expect do
+          post '/api/v1/auth/google', params: { id_token: 'fake_token' }
+        end.to have_enqueued_job(Users::MailerSendingJob).with(
+          existing.id, 'oauth_account_link', hash_including(:link_url, provider_label: 'Google')
+        )
+
+        expect(response).to have_http_status(:accepted)
+        body = JSON.parse(response.body)
+        expect(body['error']).to eq('verification_sent')
+        expect(existing.reload.provider).to be_nil
+        expect(existing.reload.uid).to be_nil
+      end
+    end
+
+    context 'when Flipper oauth_auto_link_verified_email is enabled (legacy silent-link path)' do
+      before do
+        Flipper.enable(:oauth_auto_link_verified_email)
+        allow(verifier_double).to receive(:call).and_return(
+          sub: 'google-uid-777',
+          email: 'google@example.com',
+          email_verified: true
+        )
+      end
+
+      it 'silently merges the OAuth identity' do
         post '/api/v1/auth/google', params: { id_token: 'fake_token' }
         expect(response).to have_http_status(:ok)
         expect(existing.reload.provider).to eq('google')

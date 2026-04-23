@@ -16,8 +16,12 @@ RSpec.describe 'Api::V1::Subscriptions', type: :request do
                       ))
   end
 
+  # `event_id` is required by the Manager callback contract — we supply a
+  # random default so individual tests don't need to set it unless they are
+  # specifically exercising the idempotency / missing-event_id paths.
   def build_token(payload)
-    JWT.encode({ exp: 30.minutes.from_now.to_i }.merge(payload), jwt_secret, 'HS256')
+    defaults = { exp: 30.minutes.from_now.to_i, event_id: "paddle:#{SecureRandom.uuid}" }
+    JWT.encode(defaults.merge(payload), jwt_secret, 'HS256')
   end
 
   describe 'POST /api/v1/subscriptions/callback' do
@@ -111,6 +115,32 @@ RSpec.describe 'Api::V1::Subscriptions', type: :request do
         user.reload
         expect(user.plan).to eq('pro')
         expect(user.status).to eq('active')
+      end
+    end
+
+    context 'when event_id is missing' do
+      it 'returns 422 and does not mutate the user' do
+        user.update!(status: :inactive, plan: :lite)
+
+        token = JWT.encode(
+          {
+            user_id: user.id,
+            status: 'active',
+            active_until: 30.days.from_now.iso8601,
+            plan: 'pro',
+            exp: 30.minutes.from_now.to_i
+          },
+          jwt_secret,
+          'HS256'
+        )
+
+        post '/api/v1/subscriptions/callback', params: { token: token }, headers: webhook_headers
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(JSON.parse(response.body)['message']).to eq('Missing event_id')
+        user.reload
+        expect(user.status).to eq('inactive')
+        expect(user.plan).to eq('lite')
       end
     end
 

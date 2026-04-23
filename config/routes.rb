@@ -80,6 +80,8 @@ Rails.application.routes.draw do
   get 'trial/resume', to: 'trial/resume#show', as: :trial_resume
   get 'trial/welcome', to: 'trial/welcome#show', as: :trial_welcome
 
+  get 'auth/account_link', to: 'auth/account_links#show', as: :auth_account_link
+
   resources :imports
   resources :visits, only: %i[index update] do
     collection do

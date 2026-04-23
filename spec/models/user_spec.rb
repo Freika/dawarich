@@ -357,38 +357,46 @@ RSpec.describe User, type: :model do
     end
 
     describe '#auto_converting_trial?' do
+      # skip_auto_trial suppresses the after_commit `activate` (self-hosted)
+      # and `start_trial` (cloud) hooks so the factory trait's values
+      # (`status`, `active_until`) survive to the assertion instead of
+      # being overwritten on commit.
       it 'is true for a Paddle reverse-trial user with a future active_until' do
-        user = create(:user, :trial, active_until: 1.week.from_now, subscription_source: :paddle)
+        user = create(:user, :trial, skip_auto_trial: true, active_until: 1.week.from_now, subscription_source: :paddle)
         expect(user.auto_converting_trial?).to be true
       end
 
       it 'is true for an Apple IAP trial user' do
-        user = create(:user, :trial, active_until: 1.week.from_now, subscription_source: :apple_iap)
+        user = create(:user, :trial, skip_auto_trial: true, active_until: 1.week.from_now,
+subscription_source: :apple_iap)
         expect(user.auto_converting_trial?).to be true
       end
 
       it 'is true for a Google Play trial user' do
-        user = create(:user, :trial, active_until: 1.week.from_now, subscription_source: :google_play)
+        user = create(:user, :trial, skip_auto_trial: true, active_until: 1.week.from_now,
+subscription_source: :google_play)
         expect(user.auto_converting_trial?).to be true
       end
 
       it 'is false for a legacy trial user with no subscription source' do
-        user = create(:user, :trial, active_until: 1.week.from_now, subscription_source: :none)
+        user = create(:user, :trial, skip_auto_trial: true, active_until: 1.week.from_now, subscription_source: :none)
         expect(user.auto_converting_trial?).to be false
       end
 
       it 'is false when the trial has expired (active_until in the past)' do
-        user = create(:user, :trial, active_until: 1.day.ago, subscription_source: :paddle)
+        user = create(:user, :trial, skip_auto_trial: true, active_until: 1.day.ago, subscription_source: :paddle)
         expect(user.auto_converting_trial?).to be false
       end
 
       it 'is false for an active (post-trial) user' do
-        user = create(:user, :active, active_until: 1.year.from_now, subscription_source: :paddle)
+        user = create(:user, :active, skip_auto_trial: true, active_until: 1.year.from_now,
+subscription_source: :paddle)
         expect(user.auto_converting_trial?).to be false
       end
 
       it 'is false for a pending_payment user (no trial started yet)' do
-        user = create(:user, status: :pending_payment, active_until: nil, subscription_source: :none)
+        user = create(:user, skip_auto_trial: true, status: :pending_payment, active_until: nil,
+subscription_source: :none)
         expect(user.auto_converting_trial?).to be false
       end
     end

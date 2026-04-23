@@ -17,6 +17,9 @@ class Api::V1::SubscriptionsController < ApiController
     return render(json: { message: 'Invalid webhook secret' }, status: :unauthorized) unless valid_manager_secret?
 
     decoded = Subscription::DecodeJwtToken.new(params[:token]).call
+
+    return render(json: { message: 'Missing event_id' }, status: :unprocessable_content) if decoded[:event_id].blank?
+
     return render(json: { message: 'Stale event' }, status: :ok) if stale_event?(decoded)
 
     user = User.find(decoded[:user_id])
@@ -57,16 +60,10 @@ class Api::V1::SubscriptionsController < ApiController
   end
 
   def stale_event?(decoded)
-    event_id = decoded[:event_id]
-    return false if event_id.blank?
-
-    Rails.cache.exist?("manager_callback:processed:#{event_id}")
+    Rails.cache.exist?("manager_callback:processed:#{decoded[:event_id]}")
   end
 
   def mark_event_processed(decoded)
-    event_id = decoded[:event_id]
-    return if event_id.blank?
-
-    Rails.cache.write("manager_callback:processed:#{event_id}", true, expires_in: 7.days)
+    Rails.cache.write("manager_callback:processed:#{decoded[:event_id]}", true, expires_in: 7.days)
   end
 end

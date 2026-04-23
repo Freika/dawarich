@@ -28,7 +28,12 @@ RSpec.describe 'GET /trial/welcome', type: :request do
   end
 
   context 'when active_until is not yet populated (Paddle webhook race)' do
-    let(:user) { create(:user, status: :pending_payment, active_until: nil) }
+    # skip_auto_trial suppresses the `activate` (self-hosted) and
+    # `start_trial` (cloud) after_commit hooks so active_until stays nil and
+    # we can exercise the race-with-Paddle-webhook path.
+    let(:user) do
+      create(:user, skip_auto_trial: true, status: :pending_payment, active_until: nil)
+    end
 
     it 'still redirects to the map without raising NoMethodError on nil#strftime' do
       get "/trial/welcome?token=#{token}"
@@ -39,16 +44,20 @@ RSpec.describe 'GET /trial/welcome', type: :request do
     end
   end
 
-  it 'rejects an invalid token' do
+  it 'redirects an invalid token to sign-in with a "link invalid or expired" alert' do
     get '/trial/welcome?token=not_a_real_jwt'
-    expect(response).to have_http_status(:unauthorized).or have_http_status(:found) # redirect to sign_in
+
+    expect(response).to redirect_to(new_user_session_path)
+    expect(flash[:alert]).to eq('Link invalid or expired. Please sign in.')
   end
 
-  it 'rejects an expired token' do
+  it 'redirects an expired token to sign-in with the same alert' do
     expired_token = token # generate before stubbing time so exp is based on real "now"
     allow(Time).to receive(:now).and_return(1.hour.from_now)
     get "/trial/welcome?token=#{expired_token}"
-    expect(response).to have_http_status(:unauthorized).or have_http_status(:found)
+
+    expect(response).to redirect_to(new_user_session_path)
+    expect(flash[:alert]).to eq('Link invalid or expired. Please sign in.')
   end
 
   describe 'security hardening' do
@@ -96,18 +105,25 @@ RSpec.describe 'GET /trial/welcome', type: :request do
     it 'silently redirects to the map when the same signed-in user reloads a consumed link' do
       # Browser back / reload / accidental re-visit of the welcome URL after
       # the user has already been onboarded. For the same signed-in user we
-      # just send them to the map without any flash (they already saw the
-      # welcome notice on first visit) — never to /users/sign_in (which would
-      # trigger Devise's "You are already signed in" alert on top of ours).
+      # just send them to the map without adding a new flash (they already
+      # saw the welcome notice on first visit) — and never to /users/sign_in
+      # (which would trigger Devise's "You are already signed in" alert).
       Rails.cache.clear
       t = issue_welcome_token(user)
       get "/trial/welcome?token=#{t}"
       expect(response).to redirect_to(%r{/map/v\d})
 
-      # Same session, same signed-in user — simulate reload
+      # Follow the redirect so the first request's flash gets consumed —
+      # otherwise Rack carries it into the next request and masks what the
+      # reload branch actually sets.
+      follow_redirect! if response.redirect?
+
+      # Same session, same signed-in user — simulate reload.
       get "/trial/welcome?token=#{t}"
       expect(response).to redirect_to(%r{/map/v\d})
       expect(flash[:alert]).to be_blank
+      # The reload branch intentionally does NOT set a new flash; the prior
+      # redirect's notice has already been consumed above.
       expect(flash[:notice]).to be_blank
     end
 

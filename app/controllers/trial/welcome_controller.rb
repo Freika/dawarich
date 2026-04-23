@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 class Trial::WelcomeController < ApplicationController
-  include ApplicationHelper
-
   CONSUMED_KEY_PREFIX = 'trial_welcome:consumed:'
   # Manager must issue tokens with purpose: 'trial_welcome' and a jti claim.
   # We enforce both here and single-use via Redis to prevent replay if the
@@ -18,9 +16,7 @@ class Trial::WelcomeController < ApplicationController
     end
 
     jti = decoded[:jti].to_s
-    if jti.blank?
-      return redirect_to(new_user_session_path, alert: 'Link invalid. Please sign in.')
-    end
+    return redirect_to(new_user_session_path, alert: 'Link invalid. Please sign in.') if jti.blank?
 
     @user = User.find(decoded[:user_id])
 
@@ -33,16 +29,18 @@ class Trial::WelcomeController < ApplicationController
     # drop them on the map. For a different or no current_user, treat as a
     # genuine replay attempt.
     if token_already_consumed?(jti)
-      return redirect_to(preferred_map_path) if user_signed_in? && current_user == @user
+      return redirect_to(helpers.preferred_map_path) if user_signed_in? && current_user == @user
 
       return redirect_to(new_user_session_path, alert: 'This welcome link has already been used.')
     end
 
     mark_token_consumed!(jti, decoded[:exp])
     sign_in(@user) unless current_user == @user
-    redirect_to preferred_map_path, notice: welcome_notice(@user)
-  rescue JWT::DecodeError, ActiveRecord::RecordNotFound
-    redirect_to new_user_session_path, alert: 'Link expired. Please sign in.'
+    redirect_to helpers.preferred_map_path, notice: welcome_notice(@user)
+  rescue JWT::DecodeError
+    redirect_to new_user_session_path, alert: 'Link invalid or expired. Please sign in.'
+  rescue ActiveRecord::RecordNotFound
+    redirect_to new_user_session_path, alert: 'Account no longer exists. Please sign up again.'
   end
 
   private

@@ -89,14 +89,15 @@ end
 # 2FA management (disable / confirm / backup_codes) brute-force protection.
 # Keyed on the Authorization header so an attacker with a valid API key can't
 # grind on TOTP codes to disable 2FA on a stolen session.
+SENSITIVE_2FA_PATHS = %w[
+  /api/v1/users/me/two_factor
+  /api/v1/users/me/two_factor/confirm
+  /api/v1/users/me/two_factor/backup_codes
+].to_set.freeze
+
 Rack::Attack.throttle('api/users/two_factor_sensitive', limit: 5, period: 15.minutes) do |req|
   next unless req.post? || req.delete?
-
-  sensitive_2fa_path = req.path.include?('/api/v1/users/me/two_factor') &&
-                       (req.path.end_with?('/two_factor') ||
-                        req.path.end_with?('/confirm') ||
-                        req.path.end_with?('/backup_codes'))
-  next unless sensitive_2fa_path
+  next unless SENSITIVE_2FA_PATHS.include?(req.path)
 
   auth_header = req.get_header('HTTP_AUTHORIZATION')
   api_key = req.params['api_key'] || auth_header&.split(' ')&.last

@@ -2,6 +2,10 @@
 
 class Api::V1::Auth::AppleController < Api::V1::Auth::BaseController
   class UnverifiedEmail < StandardError; end
+  class LinkVerificationSent < StandardError; end
+
+  PROVIDER = 'apple'
+  PROVIDER_LABEL = 'Sign in with Apple'
 
   def create
     claims =
@@ -11,55 +15,31 @@ class Api::V1::Auth::AppleController < Api::V1::Auth::BaseController
         return render_auth_error("Apple token verification failed: #{e.message}")
       end
 
-    user, created = find_or_create_apple_user(claims)
+    user, created = Auth::FindOrCreateOauthUser.new(
+      provider: PROVIDER,
+      provider_label: PROVIDER_LABEL,
+      claims: claims,
+      email_verified: email_verified?(claims)
+    ).call
+
     render_auth_success(user, status: created ? :created : :ok)
   rescue UnverifiedEmail
     render json: {
       error: 'email_not_verified',
       message: 'Apple has not verified this email. Sign in with password and link from settings.'
     }, status: :forbidden
+  rescue LinkVerificationSent
+    render json: {
+      error: 'verification_sent',
+      message: 'This email already has a Dawarich account. ' \
+               'We sent a confirmation link to that address — click it to link your Apple ID.'
+    }, status: :accepted
   end
 
   private
 
-  def find_or_create_apple_user(claims)
-    uid = claims[:sub]
-    email = claims[:email].to_s.downcase
-    # Apple sends email_verified as a string 'true'/'false' in id_tokens
-    email_verified = [true, 'true'].include?(claims[:email_verified])
-
-    User.transaction do
-      user = User.find_by(provider: 'apple', uid: uid)
-      return [user, false] if user
-
-      # Match on email if the user already registered a different way.
-      # SECURITY: only link if Apple asserts the email is verified.
-      if email.present?
-        existing_by_email = User.find_by(email: email)
-        if existing_by_email
-          raise UnverifiedEmail unless email_verified
-
-          existing_by_email.update!(provider: 'apple', uid: uid)
-          return [existing_by_email, false]
-        end
-      end
-
-      attrs = {
-        email: email.presence || "#{uid}@apple.dawarich.app",
-        password: SecureRandom.hex(32),
-        provider: 'apple',
-        uid: uid
-      }
-
-      user =
-        if DawarichSettings.self_hosted?
-          User.where(provider: 'apple', uid: uid).first_or_create!(attrs)
-        else
-          User.where(provider: 'apple', uid: uid)
-              .first_or_create!(attrs.merge(status: :pending_payment, skip_auto_trial: true))
-        end
-
-      [user, true]
-    end
+  # Apple sends email_verified as a string 'true'/'false' in id_tokens.
+  def email_verified?(claims)
+    [true, 'true'].include?(claims[:email_verified])
   end
 end
