@@ -16,23 +16,17 @@ RSpec.describe 'settings/general', type: :request do
 
         expect(response).to be_successful
       end
+
+      it 'renders both digest toggles and the email-digests anchor' do
+        get settings_general_index_url
+
+        expect(response.body).to include('id="email-digests"')
+        expect(response.body).to include('name="monthly_digest_emails_enabled"')
+        expect(response.body).to include('name="yearly_digest_emails_enabled"')
+      end
     end
 
     describe 'PATCH /update' do
-      it 'updates email settings with checkbox value' do
-        patch settings_general_path, params: { digest_emails_enabled: '0' }
-
-        expect(response).to redirect_to(settings_general_index_path)
-        expect(user.reload.settings['digest_emails_enabled']).to eq(false)
-      end
-
-      it 'enables email settings' do
-        patch settings_general_path, params: { digest_emails_enabled: '1' }
-
-        expect(response).to redirect_to(settings_general_index_path)
-        expect(user.reload.settings['digest_emails_enabled']).to eq(true)
-      end
-
       it 'disables news emails setting' do
         patch settings_general_path, params: { news_emails_enabled: '0' }
 
@@ -45,6 +39,31 @@ RSpec.describe 'settings/general', type: :request do
 
         expect(response).to redirect_to(settings_general_index_path)
         expect(user.reload.settings['news_emails_enabled']).to eq(true)
+      end
+
+      it 'updates monthly_digest_emails_enabled independently' do
+        patch settings_general_path, params: { monthly_digest_emails_enabled: '0' }
+
+        expect(response).to redirect_to(settings_general_index_path)
+        expect(user.reload.settings['monthly_digest_emails_enabled']).to eq(false)
+      end
+
+      it 'updates yearly_digest_emails_enabled independently' do
+        patch settings_general_path, params: { yearly_digest_emails_enabled: '0' }
+
+        expect(response).to redirect_to(settings_general_index_path)
+        expect(user.reload.settings['yearly_digest_emails_enabled']).to eq(false)
+      end
+
+      it 'updates both monthly and yearly digest settings' do
+        patch settings_general_path, params: {
+          monthly_digest_emails_enabled: '1',
+          yearly_digest_emails_enabled: '0'
+        }
+
+        expect(response).to redirect_to(settings_general_index_path)
+        expect(user.reload.settings['monthly_digest_emails_enabled']).to eq(true)
+        expect(user.reload.settings['yearly_digest_emails_enabled']).to eq(false)
       end
 
       it 'updates timezone setting with valid timezone' do

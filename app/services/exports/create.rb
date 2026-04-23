@@ -12,9 +12,10 @@ class Exports::Create
   def call
     export.update!(status: :processing)
 
-    tempfile = build_export_tempfile
+    payload_tempfile = build_export_tempfile
+    zipped_tempfile  = Archive::Zipper.wrap(payload_tempfile, entry_name: export.name)
 
-    attach_export_file(tempfile)
+    attach_export_file(zipped_tempfile)
 
     export.update!(status: :completed, error_message: nil)
 
@@ -23,6 +24,9 @@ class Exports::Create
     export.update!(status: :failed, error_message: e.message)
 
     notify_export_failed(e)
+  ensure
+    payload_tempfile.close! if payload_tempfile && !payload_tempfile.closed?
+    zipped_tempfile.close!  if zipped_tempfile  && !zipped_tempfile.closed?
   end
 
   private
@@ -62,17 +66,11 @@ class Exports::Create
     ).call
   end
 
-  def attach_export_file(tempfile)
-    export.file.attach(io: tempfile, filename: export.name, content_type:)
-  ensure
-    tempfile.close!
-  end
-
-  def content_type
-    case file_format.to_sym
-    when :json then 'application/json'
-    when :gpx  then 'application/gpx+xml'
-    else raise ArgumentError, "Unsupported file format: #{file_format}"
-    end
+  def attach_export_file(zipped_tempfile)
+    export.file.attach(
+      io: zipped_tempfile,
+      filename: "#{export.name}.zip",
+      content_type: 'application/zip'
+    )
   end
 end
