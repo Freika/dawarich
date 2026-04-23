@@ -127,9 +127,6 @@
                   <p class="text-sm text-base-content/70">Your trial period ends at <span class="font-medium text-base-content"><%= human_datetime current_user.active_until %></span>.</p>
                   <div class="mt-2">
                     <% if current_user.auto_converting_trial? %>
-                      <%# Paddle / IAP trial: card on file, already subscribed.
-                          "Subscribe" CTA is misleading — point them at Manager
-                          where they can change plan or cancel. %>
                       <%= link_to 'Manage subscription', "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}", class: 'btn btn-primary btn-sm glass' %>
                     <% else %>
                       <%= link_to 'Subscribe', "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}", class: 'btn btn-success btn-sm glass' %>
@@ -149,11 +146,6 @@
             <% end %>
           </div>
 
-          <%# Cloud-only subscription management surface. Always present for
-              cloud users so paid / canceled / about-to-renew users have an
-              obvious entry point to change plan, update card, or cancel.
-              Trial users get the Trial-status card above AS WELL so they see
-              their expiry prominently. %>
           <% unless DawarichSettings.self_hosted? %>
             <div class="card bg-base-100 shadow-xl">
               <div class="card-body p-5 sm:p-6">

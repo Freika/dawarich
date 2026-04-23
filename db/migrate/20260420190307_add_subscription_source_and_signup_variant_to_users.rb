@@ -1,7 +1,23 @@
+# frozen_string_literal: true
+
+# Idempotent column additions for the subscription/signup_variant rollout.
+#
+# The `subscription_source` index is intentionally *not* added here — migration
+# 20260421230359_add_concurrent_indexes_for_subscription_lookup creates it
+# CONCURRENTLY so it's safe on large `users` tables.
 class AddSubscriptionSourceAndSignupVariantToUsers < ActiveRecord::Migration[8.0]
-  def change
-    add_column :users, :subscription_source, :integer, default: 0, null: false
+  def up
+    unless column_exists?(:users, :subscription_source)
+      add_column :users, :subscription_source, :integer, default: 0, null: false
+    end
+
+    return if column_exists?(:users, :signup_variant)
+
     add_column :users, :signup_variant, :string
-    add_index :users, :subscription_source
+  end
+
+  def down
+    remove_column :users, :signup_variant if column_exists?(:users, :signup_variant)
+    remove_column :users, :subscription_source if column_exists?(:users, :subscription_source)
   end
 end
