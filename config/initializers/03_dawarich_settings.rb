@@ -30,10 +30,7 @@ class DawarichSettings
     end
 
     def prometheus_exporter_enabled?
-      @prometheus_exporter_enabled ||=
-        ENV['PROMETHEUS_EXPORTER_ENABLED'].to_s == 'true' &&
-        ENV['PROMETHEUS_EXPORTER_HOST'].present? &&
-        ENV['PROMETHEUS_EXPORTER_PORT'].present?
+      @prometheus_exporter_enabled ||= ENV['PROMETHEUS_EXPORTER_ENABLED'].to_s == 'true'
     end
 
     def nominatim_enabled?

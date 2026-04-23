@@ -165,7 +165,15 @@ Rails.application.routes.draw do
 
   post 'users/otp_challenge', to: 'users/otp_challenge#create', as: :user_otp_challenge
 
-  resources :metrics, only: [:index]
+  # Prometheus metrics endpoint (Yabeda + prometheus-client). Wrapped in basic auth.
+  # Enablement is evaluated per-request via routing constraint, so stubbing
+  # DawarichSettings.prometheus_exporter_enabled? in tests toggles 404 vs 200.
+  require 'yabeda/prometheus/exporter'
+  require 'dawarich/metrics_basic_auth'
+  metrics_app = Dawarich::MetricsBasicAuth.new(Yabeda::Prometheus::Exporter)
+  mount metrics_app,
+        at: '/metrics',
+        constraints: ->(_req) { DawarichSettings.prometheus_exporter_enabled? }
 
   # Map namespace with versioning
   namespace :map do

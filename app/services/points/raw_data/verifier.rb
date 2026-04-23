@@ -50,10 +50,7 @@ module Points
           @stats[:verified] += 1
           Rails.logger.info("✓ Archive #{archive.id} verified successfully")
 
-          Metrics::Archives::Operation.new(
-            operation: 'verify',
-            status: 'success'
-          ).call
+          Yabeda.dawarich_archive.operations_total.increment({ operation: 'verify', status: 'success' })
 
           report_verification_metric(start_time, 'success')
         else
@@ -64,10 +61,7 @@ module Points
             "Archive verification failed for archive #{archive.id}"
           )
 
-          Metrics::Archives::Operation.new(
-            operation: 'verify',
-            status: 'failure'
-          ).call
+          Yabeda.dawarich_archive.operations_total.increment({ operation: 'verify', status: 'failure' })
 
           check_name = extract_check_name_from_error(verification_result[:error])
           report_verification_metric(start_time, 'failure', check_name)
@@ -77,10 +71,7 @@ module Points
         ExceptionReporter.call(e, "Failed to verify archive #{archive.id}")
         Rails.logger.error("✗ Archive #{archive.id} verification error: #{e.message}")
 
-        Metrics::Archives::Operation.new(
-          operation: 'verify',
-          status: 'failure'
-        ).call
+        Yabeda.dawarich_archive.operations_total.increment({ operation: 'verify', status: 'failure' })
 
         report_verification_metric(start_time, 'failure', 'exception')
       end
@@ -233,11 +224,8 @@ module Points
       def report_verification_metric(start_time, status, check_name = nil)
         duration = Time.current - start_time
 
-        Metrics::Archives::Verification.new(
-          duration_seconds: duration,
-          status: status,
-          check_name: check_name
-        ).call
+        Yabeda.dawarich_archive.verification_duration_seconds.measure({ status: status }, duration)
+        Yabeda.dawarich_archive.verification_failures_total.increment({ check: check_name }) if check_name
       end
 
       def extract_check_name_from_error(error_message)

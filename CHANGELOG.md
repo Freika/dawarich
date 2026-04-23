@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [1.6.2] - Unreleased
 
+### ⚠️ Breaking changes
+
+**Prometheus metrics backend migrated to Yabeda.**
+
+Dawarich now uses the Yabeda monitoring framework instead of `discourse/prometheus_exporter`. Self-hosters who scrape Prometheus metrics from Dawarich should update their configuration.
+
+**Scrape targets** (both require HTTP basic auth with `METRICS_USERNAME` / `METRICS_PASSWORD`):
+
+- Web: `http://dawarich_app:3000/metrics` (unchanged URL)
+- Sidekiq: `http://dawarich_sidekiq:9394/metrics` (new — previously Sidekiq metrics came from the web container's sidecar)
+
+**Custom `dawarich_archive_*` metric names are unchanged.** Dashboards and alerts built on these metrics continue to work.
+
+**Infrastructure metric names have changed.** If you have dashboards built on `ruby_*`, `active_record_*`, or similar metrics emitted by `prometheus_exporter`, you must update them:
+
+| Category | Before | After |
+|---|---|---|
+| HTTP requests (total) | `ruby_http_requests_total` | `rails_requests_total` |
+| HTTP request duration | `ruby_http_request_duration_seconds` | `rails_request_duration` |
+| Sidekiq job count | `ruby_sidekiq_jobs_total` | `sidekiq_jobs_executed_total` |
+| Sidekiq failed jobs | `ruby_sidekiq_failed_jobs_total` | `sidekiq_jobs_failed_total` |
+| Sidekiq job duration | `ruby_sidekiq_job_duration_seconds` | `sidekiq_job_runtime_seconds` |
+| Sidekiq queue latency | `ruby_sidekiq_queue_latency_seconds` | `sidekiq_queue_latency` |
+| Sidekiq queue backlog | `ruby_sidekiq_queue_backlog_total` | `sidekiq_jobs_waiting_count` |
+| Sidekiq process count | `ruby_sidekiq_process_count` | `sidekiq_active_processes` |
+| Puma workers | `ruby_puma_workers` | `puma_workers` |
+| Puma backlog | `ruby_puma_request_backlog` | `puma_backlog` |
+| Puma thread pool capacity | `ruby_puma_thread_pool_capacity` | `puma_pool_capacity` |
+| ActiveRecord pool | `active_record_connection_pool_connections` | `activerecord_connection_pool_size` |
+| Process/GC (e.g. `ruby_rss`, `ruby_heap_live_slots`) | emitted | not emitted by default; add a custom Yabeda group if needed |
+
+**Removed environment variables:**
+- `PROMETHEUS_EXPORTER_HOST`, `PROMETHEUS_EXPORTER_PORT`, `PROMETHEUS_EXPORTER_HOST_SIDEKIQ` — no longer needed. Metrics are served in-process by each application.
+
+**Retained environment variables:**
+- `PROMETHEUS_EXPORTER_ENABLED` — still the single on/off switch.
+- `METRICS_USERNAME`, `METRICS_PASSWORD` — unchanged.
+
+**New optional environment variable:**
+- `PROMETHEUS_MULTIPROC_DIR` — directory for Puma multi-worker aggregation mmap files. Defaults to `tmp/prometheus_mmap`. Only override if you mount `tmp/` somewhere unusual.
+
 ### Added
 
 - Monthly digest emails. On the 2nd of each month users receive an email summarizing the previous month with an ASCII-rendered overview (distance, active days, countries, cities), a weekly pattern bar chart, a daily distance sparkline, top countries and cities by time spent, first-time visits, and a month-over-month trend comparison. Enabled by default; opt out at Settings → Email Preferences.
