@@ -23,10 +23,11 @@
   }
 }
 
-/* Tighter padding for the timeline tab */
+/* Tighter padding for the timeline tab. No bottom padding — the main
+   column extends to the panel edge and scrolls independently. */
 .tab-content[data-tab-content="timeline-feed"] {
   margin: -24px;
-  padding: 16px;
+  padding: 16px 16px 0;
 }
 
 /* --- Entries container ---
@@ -177,47 +178,60 @@
    ========================================================================= */
 
 /* --- Tab pane + filter row --- */
-.timeline-tab-content {
+/* Timeline tab fills the panel body and manages its own scroll — rail stays
+   in view while the main column (visit list) scrolls independently. */
+.tab-content[data-tab-content="timeline-feed"].active {
   display: flex;
   flex-direction: column;
+  height: 100%;
+}
+
+/* Two-column layout: calendar/filter rail (260px) + visit list main.
+   No bottom padding so the day column reaches the panel edge; top + sides
+   keep the breathing room. */
+.timeline-tab-content {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
   gap: 1rem;
-  padding: 0.75rem;
+  padding: 0.75rem 0.75rem 0;
+  align-items: start;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
-.timeline-filters {
-  display: flex;
-  gap: 0.75rem;
-  font-size: 0.85rem;
+/* Collapse to single column when the panel gets narrow (≤1024px panel) */
+@media (max-width: 1024px) {
+  .timeline-tab-content {
+    grid-template-columns: 1fr;
+  }
+  .timeline-rail {
+    gap: 0.5rem;
+  }
 }
 
-.timeline-filters label {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  cursor: pointer;
-}
-
-/* --- Calendar grid --- */
+/* --- Calendar grid (sits inside the 260px timeline-rail) --- */
 .timeline-calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 2px;
+  gap: 1px;
 }
 
 .timeline-calendar-grid__weekday {
   text-align: center;
-  font-size: 10px;
+  font-size: 9px;
   text-transform: uppercase;
   color: oklch(var(--bc) / 0.5);
+  padding: 2px 0;
 }
 
 .cal-cell {
   position: relative;
-  aspect-ratio: 1 / 1;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
+  border-radius: 3px;
   font-size: 11px;
   font-weight: 500;
   border: 0;
@@ -281,25 +295,22 @@
 
 /* --- Day header / summary / bulk banner --- */
 .timeline-day-header {
-  position: sticky;
-  top: 0;
-  background: oklch(var(--b1) / 0.95);
-  backdrop-filter: blur(4px);
-  padding: 0.5rem;
+  padding: 0 0.5rem 0.5rem;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
+  flex-direction: column;
+  gap: 0.25rem;
   border-bottom: 1px solid oklch(var(--bc) / 0.1);
-  z-index: 5;
 }
 
-.timeline-day-header > button {
-  background: none;
-  border: 0;
-  padding: 0.25rem 0.5rem;
-  cursor: pointer;
-  font-size: 1rem;
+.timeline-day-header__nav {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.timeline-day-header__meta {
+  text-align: center;
+  font-size: 0.75rem;
   color: oklch(var(--bc) / 0.6);
 }
 
@@ -312,24 +323,45 @@
 .timeline-bulk-banner {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 0.5rem;
-  padding: 0.5rem;
+  padding: 0.5rem 0.75rem;
   background: rgba(245, 158, 11, 0.1);
   border: 1px solid rgba(245, 158, 11, 0.3);
   border-radius: 6px;
   font-size: 0.85rem;
+  margin: 0.5rem 0.25rem;
 }
 
-.timeline-bulk-banner > span {
-  flex: 1;
-  color: #92400e;
+.timeline-bulk-banner__text {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: #d97706;
   font-weight: 500;
+  white-space: nowrap;
+}
+
+.timeline-bulk-banner__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+/* `button_to` wraps each button in a <form class="button_to"> which defaults
+   to block-level. Reset so the banner's flex layout works cleanly. */
+.timeline-bulk-banner__actions form.button_to {
+  display: inline-flex;
+  margin: 0;
 }
 
 /* --- Visit row --- */
 .visit-row {
   display: grid;
-  grid-template-columns: 56px 16px 1fr auto;
+  /* minmax(0, 1fr) so the content column can shrink below its natural
+     content width — otherwise long place names push the row beyond the
+     panel and trigger horizontal scroll. */
+  grid-template-columns: 56px 16px minmax(0, 1fr) auto;
   gap: 0.5rem;
   align-items: start;
   padding: 0.6rem 0.5rem;
@@ -347,9 +379,33 @@
   box-shadow: inset 3px 0 0 #22c55e;
 }
 
+/* Suggested visit row — subtle amber tint + left accent so the "needs
+   decision" state is visible at the row level, not just in the status dot. */
+.visit-row--suggested {
+  background-color: rgba(245, 158, 11, 0.05);
+  box-shadow: inset 3px 0 0 #f59e0b;
+}
+
+/* When a suggested row is also selected, green wins (user intent > status). */
+.visit-row--suggested.visit-row--selected {
+  box-shadow: inset 3px 0 0 #22c55e;
+}
+
+/* Picker spans the full row so long candidate names have room to breathe. */
+.visit-row__suggested {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
 /* All-day visits collapse to 3 columns (no actions column). */
 .visit-row--all-day {
-  grid-template-columns: 56px 16px 1fr;
+  grid-template-columns: 56px 16px minmax(0, 1fr);
+}
+
+/* Belt + suspenders — ensure the content cell (and anything inside it like
+   the suggested picker) can shrink below intrinsic content width. */
+.visit-row__content {
+  min-width: 0;
 }
 
 .visit-row__time {
@@ -366,6 +422,8 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  font-size: 0.8125rem; /* 13px — compact; drops from the default ~16px */
+  line-height: 1.3;
 }
 
 .visit-row__title .place-link {
@@ -429,23 +487,7 @@
   color: white;
 }
 
-/* --- Suggested picker (inline, amber-tinted) --- */
-.suggested-picker {
-  margin-top: 6px;
-  padding: 6px 8px;
-  background: rgba(245, 158, 11, 0.08);
-  border: 1px solid rgba(245, 158, 11, 0.3);
-  border-radius: 6px;
-  font-size: 0.8rem;
-}
-
-.suggested-picker__option {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  margin-right: 8px;
-  cursor: pointer;
-}
+/* Suggested picker styles live in maps_maplibre_suggested_picker.css. */
 
 /* Place drawer styles live in maps_maplibre_place_drawer.css. */
 

@@ -200,6 +200,54 @@ RSpec.describe Timeline::DayAssembler do
       end
     end
 
+    context 'with a suggested visit that has duplicate candidate names' do
+      let(:day) { Time.zone.parse('2025-01-15 00:00:00') }
+      let(:dup_a) do
+        create(:place, :with_geodata, name: '1. FC Union Zapfstelle', latitude: 52.5, longitude: 13.4)
+      end
+      let(:dup_b) do
+        create(:place, :with_geodata, name: '1. FC Union Zapfstelle', latitude: 52.51, longitude: 13.41)
+      end
+      let(:dup_c) do
+        create(:place, :with_geodata, name: '  1. FC UNION ZAPFSTELLE  ', latitude: 52.52, longitude: 13.42)
+      end
+      let(:unique_place) do
+        create(:place, :with_geodata, name: 'zapfLaden', latitude: 52.6, longitude: 13.5)
+      end
+
+      let!(:suggested_visit) do
+        visit = create(:visit,
+                       user: user,
+                       place: place,
+                       name: 'Suggested',
+                       status: :suggested,
+                       started_at: day + 10.hours,
+                       ended_at: day + 12.hours,
+                       duration: 120)
+        visit.suggested_places << dup_a
+        visit.suggested_places << dup_b
+        visit.suggested_places << dup_c
+        visit.suggested_places << unique_place
+        visit
+      end
+
+      subject do
+        described_class.new(user, start_at: day.iso8601, end_at: (day + 1.day).iso8601).call
+      end
+
+      it 'deduplicates candidates by normalized name, keeping the first occurrence' do
+        entry = subject.first[:entries].first
+        names = entry[:suggested_places].map { |p| p[:name] }
+        expect(names).to eq(['1. FC Union Zapfstelle', 'zapfLaden'])
+      end
+
+      it 'preserves the id of the first matching candidate' do
+        entry = subject.first[:entries].first
+        first_candidate = entry[:suggested_places].first
+        expect(first_candidate[:id]).to eq(dup_a.id)
+      end
+    end
+
     context 'with a confirmed visit' do
       let(:day) { Time.zone.parse('2025-01-15 00:00:00') }
 

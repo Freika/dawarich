@@ -1,0 +1,146 @@
+/* Timeline Feed — left rail (calendar + filters + tags + day summary).
+   Paired with .timeline-tab-content grid in maps_maplibre_timeline_feed.css. */
+
+.timeline-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+  min-height: 0;
+  max-height: 100%;
+  overflow-y: auto;
+}
+
+.timeline-rail__section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.timeline-rail__section-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: oklch(var(--bc) / 0.55);
+}
+
+.timeline-rail__heat-legend {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 10px;
+  color: oklch(var(--bc) / 0.55);
+}
+
+.timeline-rail__heat-legend .heat-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.timeline-rail__heat-legend .heat-swatch.heat-0 {
+  border: 1px solid oklch(var(--bc) / 0.2);
+}
+
+.timeline-rail__search {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.5rem;
+  background: oklch(var(--b2));
+  border-radius: 6px;
+}
+
+.timeline-rail__search svg {
+  width: 14px;
+  height: 14px;
+  color: oklch(var(--bc) / 0.5);
+  flex-shrink: 0;
+}
+
+.timeline-rail__search-input {
+  background: transparent;
+  border: 0;
+  outline: 0;
+  flex: 1;
+  min-width: 0;
+  font-size: 0.85rem;
+  color: oklch(var(--bc));
+}
+
+.timeline-rail__search-input::placeholder {
+  color: oklch(var(--bc) / 0.45);
+}
+
+.timeline-rail__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.tag-chip--ghost {
+  background: transparent !important;
+  color: oklch(var(--bc) / 0.6);
+  border: 1px dashed oklch(var(--bc) / 0.3);
+  cursor: pointer;
+}
+
+/* Clickable tag chip — inactive looks muted; active pops with a ring. */
+.tag-chip--toggle {
+  cursor: pointer;
+  border: 0;
+  opacity: 0.7;
+  transition:
+    opacity 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.tag-chip--toggle:hover {
+  opacity: 1;
+}
+
+.tag-chip--toggle.tag-chip--active {
+  opacity: 1;
+  box-shadow:
+    0 0 0 2px oklch(var(--b1)),
+    0 0 0 3px oklch(var(--p));
+}
+
+.timeline-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.timeline-filter-row--muted {
+  color: oklch(var(--bc) / 0.55);
+}
+
+.timeline-filter-row__count {
+  font-size: 0.72rem;
+  color: oklch(var(--bc) / 0.45);
+  font-variant-numeric: tabular-nums;
+}
+
+.timeline-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  max-height: 100%;
+  overflow-y: auto;
+}
+
+.timeline-main__empty {
+  text-align: center;
+  color: oklch(var(--bc) / 0.6);
+  font-size: 0.85rem;
+  padding: 2rem 1rem;
+}
+
+.visit-row--hidden {
+  display: none !important;
+}

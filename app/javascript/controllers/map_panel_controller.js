@@ -25,14 +25,19 @@ export default class extends Controller {
   }
 
   connect() {
-    console.log("[Map Panel] Connected")
+    // Two instances connect per page (settings panel + button cluster); the
+    // module-level guard below makes sure document listeners bind only once.
 
-    // Honor ?panel=timeline on first load by activating the Timeline tab.
-    // Defer to the next frame so other controllers (e.g., MapLibre) have a
-    // chance to connect first and target queries resolve.
+    // Honor ?panel=timeline on first load by opening the panel and activating
+    // the Timeline tab. `openTabByName` both opens the panel (maps--maplibre
+    // controller's toggleSettings, so the `.open` class lands) AND activates
+    // the tab — necessary because `.timeline-expanded` positions the panel at
+    // `left: -720px`, which stays off-screen until `.open` is added.
+    // Defer to the next frame so the maps--maplibre controller has connected
+    // and its target queries resolve.
     const params = new URLSearchParams(window.location.search)
     if (params.get("panel") === "timeline") {
-      requestAnimationFrame(() => this.activateTab("timeline-feed"))
+      requestAnimationFrame(() => this.openTabByName("timeline-feed"))
     }
 
     // Only bind the document-level listeners from a single instance to avoid
@@ -63,6 +68,10 @@ export default class extends Controller {
       ) {
         return
       }
+      // Don't hijack modified combos — Cmd+Shift+C (DevTools picker),
+      // Ctrl+L (address bar), etc. must stay with the browser.
+      if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return
+
       const keyToTab = {
         t: "timeline-feed",
         T: "timeline-feed",
@@ -78,6 +87,12 @@ export default class extends Controller {
       this.openTabByName(tab)
     }
     document.addEventListener("keydown", this.boundClusterKeys)
+
+    // Clicking a visit pin on the map dispatches `timeline:open-visit` — open
+    // the Timeline tab so the list + halo are visible (timeline_feed_controller
+    // handles day selection on its own).
+    this.boundOpenVisit = () => this.openTabByName("timeline-feed")
+    document.addEventListener("timeline:open-visit", this.boundOpenVisit)
   }
 
   disconnect() {
@@ -91,6 +106,10 @@ export default class extends Controller {
         this.boundTabChangedListener,
       )
       this.boundTabChangedListener = null
+    }
+    if (this.boundOpenVisit) {
+      document.removeEventListener("timeline:open-visit", this.boundOpenVisit)
+      this.boundOpenVisit = null
     }
     if (clusterGlobalHandlersBoundBy === this) {
       clusterGlobalHandlersBoundBy = null

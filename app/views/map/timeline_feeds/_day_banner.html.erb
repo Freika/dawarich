@@ -1,0 +1,30 @@
+<%# Bulk-suggestion banner for one day. Rendered inline by `_day.html.erb`
+    and re-rendered via turbo_stream by VisitsController#update on status
+    changes, so the count always reflects reality after a user confirms /
+    declines a visit.
+
+    Locals:
+      date              - "YYYY-MM-DD" string (the day's date)
+      suggested_count   - Integer
+%>
+<div id="day-banner-<%= date %>" class="day-banner-slot">
+  <% if suggested_count.to_i.positive? %>
+    <div class="timeline-bulk-banner">
+      <span class="timeline-bulk-banner__text">
+        <%= suggested_count %>
+        <%= 'suggestion'.pluralize(suggested_count) %> waiting
+      </span>
+      <div class="timeline-bulk-banner__actions">
+        <%= button_to 'Confirm all',
+                      bulk_update_visits_path(status: :confirmed, source_status: :suggested, date: date),
+                      method: :patch,
+                      data: { testid: 'bulk-confirm-day' },
+                      class: 'btn btn-xs btn-success' %>
+        <%= button_to 'Decline all',
+                      bulk_update_visits_path(status: :declined, source_status: :suggested, date: date),
+                      method: :patch,
+                      class: 'btn btn-xs btn-outline' %>
+      </div>
+    </div>
+  <% end %>
+</div>

@@ -109,49 +109,21 @@ export class EventHandlers {
   }
 
   /**
-   * Handle visit click
+   * Handle visit click — opens the Timeline tab, selects the visit's day, and
+   * queues the visit for halo highlighting. Replaces the old Tools-tab flow
+   * (info panel + Edit button) which is gone with the unified timeline.
    */
   handleVisitClick(e) {
-    const feature = e.features[0]
-    const properties = feature.properties
+    const properties = e.features[0].properties
+    const visitId = Number(properties.id)
+    const startedAt =
+      typeof properties.started_at === "string" ? properties.started_at : null
+    const date = startedAt ? startedAt.slice(0, 10) : null
 
-    const startTime = formatTimestamp(
-      properties.started_at,
-      this.controller.timezoneValue,
-    )
-    const endTime = formatTimestamp(
-      properties.ended_at,
-      this.controller.timezoneValue,
-    )
-    const durationHours = Math.round(properties.duration / 3600)
-    const durationDisplay =
-      durationHours >= 1
-        ? `${durationHours}h`
-        : `${Math.round(properties.duration / 60)}m`
-
-    const content = `
-      <div class="space-y-2">
-        <div class="badge badge-sm ${properties.status === "confirmed" ? "badge-success" : "badge-warning"}">${escapeHtml(properties.status)}</div>
-        <div><span class="font-semibold">Arrived:</span> ${startTime}</div>
-        <div><span class="font-semibold">Left:</span> ${endTime}</div>
-        <div><span class="font-semibold">Duration:</span> ${durationDisplay}</div>
-      </div>
-    `
-
-    const actions = [
-      {
-        type: "button",
-        handler: "handleEdit",
-        id: properties.id,
-        entityType: "visit",
-        label: "Edit",
-      },
-    ]
-
-    this.controller.showInfo(
-      escapeHtml(properties.name || properties.place_name || "Visit"),
-      content,
-      actions,
+    document.dispatchEvent(
+      new CustomEvent("timeline:open-visit", {
+        detail: { visitId, date },
+      }),
     )
   }
 

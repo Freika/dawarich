@@ -68,6 +68,39 @@
   pointer-events: auto;
 }
 
+/* Shift the loading badge so it stays centered over the VISIBLE map area
+   when the side panel is open. The badge is a sibling of the map container
+   inside #maps-maplibre-container; the container gets `panel-open` /
+   `panel-timeline-expanded` and takes width = 100% - <panel width>. The
+   offset below nudges the badge by half the panel width. */
+.maps-maplibre-container.panel-open ~ .map-progress-badge {
+  left: calc(50% + 240px);
+}
+
+.maps-maplibre-container.panel-timeline-expanded ~ .map-progress-badge {
+  left: calc(50% + 360px);
+}
+
+@media (max-width: 1280px) {
+  .maps-maplibre-container.panel-timeline-expanded ~ .map-progress-badge {
+    left: calc(50% + 310px);
+  }
+}
+
+@media (max-width: 1024px) {
+  .maps-maplibre-container.panel-timeline-expanded ~ .map-progress-badge {
+    left: calc(50% + 260px);
+  }
+}
+
+@media (max-width: 768px) {
+  /* Panel overlays the map on mobile; keep the badge centered. */
+  .maps-maplibre-container.panel-open ~ .map-progress-badge,
+  .maps-maplibre-container.panel-timeline-expanded ~ .map-progress-badge {
+    left: 50%;
+  }
+}
+
 .map-progress-badge-dot {
   width: 14px;
   height: 14px;

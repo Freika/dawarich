@@ -249,6 +249,15 @@ export default class extends Controller {
       this.boundHandleEntryDeselect,
     )
 
+    // SPA date-range change from the Timeline calendar — refetch all enabled
+    // layers for the new start/end without tearing down the map instance.
+    this.boundHandleDateNavigated = this.handleTimelineDateNavigated.bind(this)
+    this.cleanup.addEventListener(
+      document,
+      "timeline-feed:date-navigated",
+      this.boundHandleDateNavigated,
+    )
+
     // Initialize search manager
     this.initializeSearch()
 
@@ -403,6 +412,35 @@ export default class extends Controller {
     this.loadMapData()
     this.refreshTimelineFeedIfActive()
     this.debouncedLoadFamilyHistory()
+  }
+
+  /**
+   * Timeline panel requested a new day (SPA navigation — no page reload).
+   * Mirrors `monthChanged` exactly, including the date format: the Points/Tracks
+   * API expects `DateManager.formatDateForAPI`'s local `YYYY-MM-DDTHH:MM+OFFSET`
+   * shape. Using `Date#toISOString()` (UTC `Z` suffix) here was causing Tracks
+   * to come back empty because the server parsed the dates differently.
+   */
+  handleTimelineDateNavigated(event) {
+    const { startAt, endAt } = event.detail || {}
+    if (!startAt || !endAt) return
+
+    const toApiDate = (local) => {
+      const d = new Date(local)
+      if (Number.isNaN(d.getTime())) return null
+      return DateManager.formatDateForAPI(d)
+    }
+    const start = toApiDate(startAt)
+    const end = toApiDate(endAt)
+    if (!start || !end) return
+
+    this.startDateValue = start
+    this.endDateValue = end
+
+    this._clearDayHighlight?.()
+    this.loadMapData()
+    this.refreshTimelineFeedIfActive?.()
+    this.debouncedLoadFamilyHistory?.()
   }
 
   debouncedLoadFamilyHistory() {

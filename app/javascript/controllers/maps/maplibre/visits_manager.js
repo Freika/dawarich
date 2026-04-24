@@ -74,10 +74,45 @@ export class VisitsManager {
       if (layer) layer.setStatusFilter(e?.detail || {})
     }
 
-    this.onDaySelected = (e) => {
+    this.onDaySelected = async (e) => {
       const detail = e?.detail || {}
-      const { bounds } = detail
+      const { date, bounds } = detail
+
+      // Page-level day changes now trigger a full Turbo navigation (see
+      // timeline_feed_controller#navigateToDay) so the server re-renders the
+      // map with the new `start_at`/`end_at` and every enabled layer refetches
+      // for that day as part of normal init. The remaining case where this
+      // handler fires without a full navigation is hydration after page load
+      // and the `timeline:open-visit` event — in both, the map layers are
+      // already aligned, so we skip the refetch. Bounds-fit still runs when a
+      // day entry carries bounds (useful when another event surfaces them).
+      //
+      // A belt-and-braces refetch only makes sense if the map is fully ready
+      // AND the rendered date range differs from the selected day — we detect
+      // the second via map.style, which is undefined mid-init.
+      const map = this.controller.map
+      const mapReady = Boolean(map && map.isStyleLoaded && map.isStyleLoaded())
+
+      if (date && mapReady) {
+        try {
+          const startAt = `${date}T00:00:00Z`
+          const endAt = `${date}T23:59:59Z`
+          const visits = await this.api.fetchVisits({
+            start_at: startAt,
+            end_at: endAt,
+          })
+          const layer = this.layerManager?.getLayer("visits")
+          if (layer && map.isStyleLoaded()) {
+            layer.update(this.dataLoader.visitsToGeoJSON(visits))
+            layer.show?.()
+          }
+        } catch (err) {
+          console.error("Failed to refetch visits for timeline day:", err)
+        }
+      }
+
       if (
+        mapReady &&
         bounds &&
         Number.isFinite(bounds.sw_lat) &&
         Number.isFinite(bounds.sw_lng) &&

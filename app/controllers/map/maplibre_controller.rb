@@ -10,7 +10,13 @@ module Map
     def index
       @start_at = parsed_start_at
       @end_at = parsed_end_at
-      @suggestions_pending_count = current_user.scoped_visits.suggested.count
+
+      # Status counts shown in the Timeline tab's FILTER section.
+      @status_counts = current_user.scoped_visits.group(:status).count
+      @suggestions_pending_count = @status_counts['suggested'].to_i
+
+      # Tag chips displayed in the rail; capped so the list doesn't explode.
+      @timeline_tags = current_user.tags.order(:name).limit(8)
     end
 
     private

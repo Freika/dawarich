@@ -1,17 +1,87 @@
+<%#
+  Suggested Place Picker
+  ----------------------
+  Renders the inline decision UI for a visit whose place is still ambiguous.
+
+  Layout:
+    ┌ header ──────────────────────────────────────────┐
+    │ [Needs review] Pick a place       [Confirm]      │  ← actions never scroll off
+    └──────────────────────────────────────────────────┘
+    ┌ candidates ──────────────────────────────────────┐
+    │ (•) Candidate one                                │  ← up to SUGGESTED_PICKER_VISIBLE_LIMIT
+    │ ( ) Candidate two                                │
+    │ ( ) Candidate three                              │
+    │ ▸ Show N more                                    │  ← native <details>, no Stimulus
+    └──────────────────────────────────────────────────┘
+    [ Decline ]
+
+  Accessibility:
+    - Each candidate is a <label> wrapping a real radio input — Tab + arrow
+      keys + Space/Enter all work natively.
+    - The radio input stays visually rendered (just restyled) so focus rings
+      land on the label content.
+    - The "Show N more" disclosure is a native <details>/<summary>.
+%>
+<% visible, overflow = split_suggested_places(entry[:suggested_places]) %>
 <div class="suggested-picker" data-visit-id="<%= entry[:visit_id] %>">
-  <div class="text-xs font-semibold text-amber-900 mb-1">Is this right?</div>
-  <%= form_with url: visit_path(entry[:visit_id]), method: :patch, local: false do |f| %>
-    <% entry[:suggested_places].each_with_index do |place, idx| %>
-      <label class="suggested-picker__option">
-        <%= f.radio_button 'visit[place_id]', place[:id], checked: idx.zero? %>
-        <span><%= place[:name] %></span>
-      </label>
-    <% end %>
-    <div class="flex gap-1 mt-2">
-      <%= f.hidden_field 'visit[status]', value: 'confirmed' %>
-      <%= f.submit 'Confirm', data: { testid: 'visit-confirm' }, class: 'btn btn-xs btn-success' %>
+  <%= form_with url: visit_path(entry[:visit_id]), method: :patch, local: false,
+                class: 'suggested-picker__form' do |f| %>
+    <%= f.hidden_field 'visit[status]', value: 'confirmed' %>
+
+    <div class="suggested-picker__header">
+      <div class="suggested-picker__heading">
+        <span class="suggested-picker__badge">Needs review</span>
+        <span class="suggested-picker__prompt">Which place is this?</span>
+      </div>
+      <%= f.submit 'Confirm',
+                   data: { testid: 'visit-confirm' },
+                   class: 'suggested-picker__confirm' %>
     </div>
+
+    <ul class="suggested-picker__list" role="radiogroup"
+        aria-label="Candidate places for this visit">
+      <% visible.each_with_index do |place, idx| %>
+        <li>
+          <label class="suggested-picker__option">
+            <%= f.radio_button 'visit[place_id]', place[:id],
+                               checked: idx.zero?,
+                               class: 'suggested-picker__radio' %>
+            <span class="suggested-picker__option-name"><%= place[:name] %></span>
+          </label>
+        </li>
+      <% end %>
+
+      <% if overflow.any? %>
+        <li class="suggested-picker__overflow">
+          <details>
+            <summary class="suggested-picker__more" data-testid="visit-show-more-candidates">
+              <span class="suggested-picker__more-caret" aria-hidden="true">▸</span>
+              <span class="suggested-picker__more-text--closed">
+                Show <%= overflow.size %> more
+              </span>
+              <span class="suggested-picker__more-text--open">
+                Hide <%= pluralize(overflow.size, 'place') %>
+              </span>
+            </summary>
+            <ul class="suggested-picker__list suggested-picker__list--overflow">
+              <% overflow.each do |place| %>
+                <li>
+                  <label class="suggested-picker__option">
+                    <%= f.radio_button 'visit[place_id]', place[:id],
+                                       class: 'suggested-picker__radio' %>
+                    <span class="suggested-picker__option-name"><%= place[:name] %></span>
+                  </label>
+                </li>
+              <% end %>
+            </ul>
+          </details>
+        </li>
+      <% end %>
+    </ul>
   <% end %>
+
   <%= button_to 'Decline', visit_path(entry[:visit_id], visit: { status: :declined }),
-                method: :patch, class: 'btn btn-xs btn-ghost mt-1' %>
+                method: :patch,
+                data: { testid: 'visit-decline' },
+                class: 'suggested-picker__decline' %>
 </div>

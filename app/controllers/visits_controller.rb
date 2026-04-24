@@ -18,14 +18,25 @@ class VisitsController < ApplicationController
     visit_ids = scope.pluck(:id)
 
     result = Visits::BulkUpdate.new(current_user, visit_ids, status).call
-
-    redirect_target = timeline_map_url(date: params[:date].presence || 'today', status: source_status)
+    redirect_target = build_timeline_url(date: params[:date].presence || 'today', status: source_status)
 
     if result
-      redirect_to redirect_target,
-                  notice: "#{result[:count]} #{'visit'.pluralize(result[:count])} #{status}."
+      respond_to do |format|
+        format.turbo_stream do
+          render turbo_stream: build_bulk_update_streams(status, result[:count])
+        end
+        format.html do
+          redirect_to redirect_target,
+                      notice: "#{result[:count]} #{'visit'.pluralize(result[:count])} #{status}."
+        end
+      end
     else
-      redirect_to redirect_target, alert: 'Failed to update visits.'
+      respond_to do |format|
+        format.turbo_stream do
+          render turbo_stream: stream_flash(:error, 'Failed to update visits.')
+        end
+        format.html { redirect_to redirect_target, alert: 'Failed to update visits.' }
+      end
     end
   end
 
@@ -41,34 +52,14 @@ class VisitsController < ApplicationController
     if @visit.update(params_to_update)
       respond_to do |format|
         format.turbo_stream do
-          streams = if @visit.saved_change_to_status?
-                      [
-                        turbo_stream.remove("visit_item_#{@visit.id}"),
-                        stream_flash(:notice, "Visit #{@visit.status}.")
-                      ]
-                    else
-                      [
-                        turbo_stream.replace("visit_name_#{@visit.id}",
-                                             partial: 'visits/name', locals: { visit: @visit }),
-                        turbo_stream.replace("visit_buttons_#{@visit.id}",
-                                             partial: 'visits/buttons', locals: { visit: @visit }),
-                        stream_flash(:notice, 'Visit updated.')
-                      ]
-                    end
-          render turbo_stream: streams
+          render turbo_stream: build_update_streams
         end
-        format.html { redirect_back(fallback_location: timeline_map_url(date: 'today', status: 'suggested')) }
+        format.html { redirect_back(fallback_location: build_timeline_url(date: 'today', status: 'suggested')) }
       end
     else
       respond_to do |format|
         format.turbo_stream do
-          render turbo_stream: [
-            turbo_stream.replace("visit_name_#{@visit.id}",
-                                 partial: 'visits/name', locals: { visit: @visit }),
-            turbo_stream.replace("visit_buttons_#{@visit.id}",
-                                 partial: 'visits/buttons', locals: { visit: @visit }),
-            stream_flash(:error, 'Failed to update visit.')
-          ]
+          render turbo_stream: stream_flash(:error, 'Failed to update visit.')
         end
         format.html { render :edit, status: :unprocessable_content }
       end
@@ -83,7 +74,7 @@ class VisitsController < ApplicationController
       format.turbo_stream do
         render turbo_stream: turbo_stream.remove("visit_item_#{@visit.id}")
       end
-      format.html { redirect_to timeline_map_url(date: 'today'), status: :see_other }
+      format.html { redirect_to build_timeline_url(date: 'today'), status: :see_other }
     end
   end
 
@@ -99,7 +90,92 @@ class VisitsController < ApplicationController
     scope.where(started_at: range)
   end
 
-  def timeline_map_url(date: 'today', status: nil)
+  # Builds the timeline-entry hash for a single visit — lets the update
+  # turbo_stream re-render `_visit_entry.html.erb` with fresh status / name /
+  # place / suggested_places data. Reuses Timeline::DayAssembler to keep the
+  # payload shape consistent with the day-level fetch.
+  def timeline_entry_for(visit)
+    Timeline::DayAssembler.new(current_user, start_at: '', end_at: '')
+                          .build_visit_entry(visit)
+  end
+
+  # Turbo streams for #bulk_update: swaps the day's visit-list contents with
+  # a freshly-assembled day (so every row's status is current), refreshes the
+  # three filter counts in the rail, and shows the "N visits confirmed." flash.
+  # `turbo_stream.update` targets the frame's children — we keep the frame
+  # element (its id + Stimulus target) intact.
+  def build_bulk_update_streams(status, count)
+    tz = current_user.safe_settings.timezone.presence || 'UTC'
+    date_str = params[:date].presence || Time.use_zone(tz) { Date.current.to_s }
+    day_range = Time.use_zone(tz) { Date.parse(date_str).in_time_zone.all_day }
+
+    days = Timeline::DayAssembler.new(
+      current_user,
+      start_at: day_range.begin.iso8601,
+      end_at: day_range.end.iso8601,
+      distance_unit: current_user.safe_settings.distance_unit
+    ).call
+    day = days.first
+
+    status_counts = current_user.scoped_visits.group(:status).count
+
+    streams = []
+    streams << if day
+                 turbo_stream.update('timeline-feed-frame',
+                                     partial: 'map/timeline_feeds/day',
+                                     locals: { day: day })
+               else
+                 turbo_stream.update('timeline-feed-frame', '')
+               end
+    streams << turbo_stream.replace('filter-count-confirmed',
+                                    partial: 'map/timeline_feeds/filter_count',
+                                    locals: { status: 'confirmed', count: status_counts['confirmed'].to_i })
+    streams << turbo_stream.replace('filter-count-suggested',
+                                    partial: 'map/timeline_feeds/filter_count',
+                                    locals: { status: 'suggested', count: status_counts['suggested'].to_i })
+    streams << turbo_stream.replace('filter-count-declined',
+                                    partial: 'map/timeline_feeds/filter_count',
+                                    locals: { status: 'declined', count: status_counts['declined'].to_i })
+    streams << stream_flash(:notice, "#{count} #{'visit'.pluralize(count)} #{status}.")
+    streams
+  end
+
+  # Turbo streams emitted on a successful #update:
+  #   - Replace the visit row (status dot, picker, tags, everything)
+  #   - Re-render the day's suggestion banner (disappears when count hits 0)
+  #   - Re-render the three rail filter-count badges (confirmed/suggested/declined)
+  # Keeps the panel's state consistent after any confirm/decline/rename.
+  def build_update_streams
+    tz = current_user.safe_settings.timezone.presence || 'UTC'
+    day_date = Time.use_zone(tz) { @visit.started_at.in_time_zone.to_date.to_s }
+    day_range = Time.use_zone(tz) { Date.parse(day_date).in_time_zone.all_day }
+
+    day_suggested_count = current_user.scoped_visits
+                                      .where(started_at: day_range, status: :suggested)
+                                      .count
+    status_counts = current_user.scoped_visits.group(:status).count
+
+    [
+      turbo_stream.replace("visit_entry_#{@visit.id}",
+                           partial: 'map/timeline_feeds/visit_entry',
+                           locals: { entry: timeline_entry_for(@visit) }),
+      turbo_stream.replace("day-banner-#{day_date}",
+                           partial: 'map/timeline_feeds/day_banner',
+                           locals: { date: day_date, suggested_count: day_suggested_count }),
+      turbo_stream.replace('filter-count-confirmed',
+                           partial: 'map/timeline_feeds/filter_count',
+                           locals: { status: 'confirmed', count: status_counts['confirmed'].to_i }),
+      turbo_stream.replace('filter-count-suggested',
+                           partial: 'map/timeline_feeds/filter_count',
+                           locals: { status: 'suggested', count: status_counts['suggested'].to_i }),
+      turbo_stream.replace('filter-count-declined',
+                           partial: 'map/timeline_feeds/filter_count',
+                           locals: { status: 'declined', count: status_counts['declined'].to_i }),
+      stream_flash(:notice, "Visit #{@visit.status}.")
+    ]
+  end
+
+  def build_timeline_url(date: 'today', status: nil)
     params = { panel: 'timeline', date: date }
     params[:status] = status if status.present?
     "/map/v2?#{params.to_query}"
@@ -127,8 +203,11 @@ class VisitsController < ApplicationController
     started_ats = Array(@affected_started_at).compact
     return if started_ats.empty?
 
-    started_ats.map(&:to_date).map(&:beginning_of_month).uniq.each do |month_start|
-      Rails.cache.delete(Timeline::MonthSummary.cache_key_for(current_user, month_start))
+    tz = current_user.safe_settings.timezone.presence || 'UTC'
+    Time.use_zone(tz) do
+      started_ats.map { |t| t.in_time_zone.to_date.beginning_of_month }.uniq.each do |month_start|
+        Rails.cache.delete(Timeline::MonthSummary.cache_key_for(current_user, month_start))
+      end
     end
   end
 end

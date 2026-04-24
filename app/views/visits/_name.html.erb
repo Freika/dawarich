@@ -1,31 +1,53 @@
-<%= turbo_frame_tag "visit_name_#{visit.id}" do %>
-  <span class="text-lg font-black <%= 'underline decoration-dotted' if visit.suggested? %>"
+<%#
+  Inline rename affordance for a visit.
+
+  Accepts either:
+    - `visit:` (ActiveRecord Visit object) — used by VisitsController#update
+      turbo_stream responses, which have no access to the timeline entry hash.
+    - `visit_id:`, `name:`, `suggested:` locals — used by _visit_entry.html.erb
+      which receives a hash, not an AR object, and must avoid N+1 `Visit.find`.
+%>
+<%
+  if local_assigns[:visit]
+    resolved_id = visit.id
+    resolved_name = visit.default_name
+    resolved_suggested = visit.suggested?
+  else
+    resolved_id = local_assigns[:visit_id]
+    resolved_name = local_assigns[:name]
+    resolved_suggested = local_assigns.fetch(:suggested, false)
+  end
+%>
+<%= turbo_frame_tag "visit_name_#{resolved_id}" do %>
+  <span class="<%= 'underline decoration-dotted' if resolved_suggested %>"
         data-controller="visit-name"
         data-visit-name-target="wrapper">
     <%# Visit Name Display %>
     <span
-      data-visit-name="<%= visit.id %>"
+      data-visit-name="<%= resolved_id %>"
       data-visit-name-target="name"
       data-action="click->visit-name#edit"
-      data-tip="Click to change visit name"
-      class='hover:cursor-pointer tooltip'>
-      <% if visit.default_name.present? %>
-        <%= visit.default_name %>
+      data-testid="visit-rename-trigger"
+      data-tip="Click to rename"
+      class="hover:cursor-pointer tooltip">
+      <% if resolved_name.present? %>
+        <%= resolved_name %>
       <% else %>
         <span class="text-base-content/40 italic">Unnamed visit</span>
       <% end %>
     </span>
 
-    <%# Visit Name Inline Edit Form %>
-    <%= form_with(model: visit, url: visit_path(visit), method: :patch,
+    <%# Inline rename form — shown by visit-name Stimulus controller %>
+    <%= form_with(url: visit_path(resolved_id), scope: :visit, method: :patch,
                   class: "hidden inline",
                   data: { visit_name_target: "form" }) do |f| %>
-      <%= f.text_field :name, value: visit.default_name,
+      <%= f.text_field :name, value: resolved_name,
           data: {
             visit_name_target: "input",
+            testid: "visit-rename-input",
             action: "blur->visit-name#save keydown->visit-name#handleEnter"
           },
-          class: "input input-sm input-bordered w-full max-w-xs" %>
+          class: "input input-xs input-bordered w-48" %>
     <% end %>
   </span>
 <% end %>

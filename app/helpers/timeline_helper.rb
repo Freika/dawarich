@@ -3,6 +3,49 @@
 module TimelineHelper
   WEEKDAY_HEADER_LABELS = %w[M T W T F S S].freeze
 
+  # Max suggested-place candidates shown before the "Show N more" disclosure
+  # kicks in. The assembler dedupes by name upstream; this just keeps the
+  # visible picker compact regardless of geocoder quality.
+  SUGGESTED_PICKER_VISIBLE_LIMIT = 3
+
+  # "YYYY-MM" for the calendar's initial month. Prefers, in order:
+  #   1. `params[:date]` (the selected day, e.g. "2025-12-11")
+  #   2. `params[:start_at]` (range start, e.g. "2025-12-11T00:00:00")
+  #   3. Today in the user's timezone
+  # Edge case avoided: around UTC midnight, plain Date.current returns the
+  # server-local day, which can differ from the user's day by one.
+  def initial_calendar_month(user)
+    date_param = params[:date].presence || params[:start_at].presence
+    parsed = parse_calendar_date(date_param)
+    return parsed.strftime('%Y-%m') if parsed
+
+    tz = user&.safe_settings&.timezone.presence || 'UTC'
+    Time.use_zone(tz) { Date.current.strftime('%Y-%m') }
+  end
+
+  def parse_calendar_date(value)
+    return nil if value.blank?
+
+    Date.parse(value)
+  rescue ArgumentError, TypeError
+    nil
+  end
+
+  # Lower-cased, space-joined string of all tokens a user might type into the
+  # rail's search box to find this visit. Baked into the row as
+  # `data-search-tokens` so the Stimulus filter is a single substring check.
+  def visit_entry_search_tokens(entry)
+    [
+      entry[:name],
+      entry[:editable_name],
+      entry.dig(:place, :name),
+      entry.dig(:place, :city),
+      entry.dig(:place, :country),
+      entry.dig(:area, :name),
+      Array(entry[:tags]).map { |t| t[:name] }
+    ].flatten.compact.join(' ').downcase
+  end
+
   # visit.duration is MINUTES.
   # Returns true when the visit covers (effectively) a whole day.
   def timeline_all_day?(visit)
@@ -44,7 +87,10 @@ module TimelineHelper
   # the serialized hash payload, avoiding per-row Visit.find (N+1).
 
   def visit_entry_display_name(entry)
-    entry[:name].presence || entry[:place]&.dig(:name).presence || 'Unnamed'
+    entry[:name].presence ||
+      entry[:place]&.dig(:name).presence ||
+      entry[:area]&.dig(:name).presence ||
+      'Unnamed'
   end
 
   # Duration-based heuristic for hash entries. Avoids N+1 Visit lookups.
@@ -69,6 +115,16 @@ module TimelineHelper
 
   def visit_entry_status(entry)
     entry[:status].presence || 'confirmed'
+  end
+
+  # Splits suggested places into [visible, overflow] for the picker UI.
+  # `visible` is rendered as selectable rows; `overflow` lives inside the
+  # <details> disclosure so the default footprint stays compact.
+  def split_suggested_places(places, limit: SUGGESTED_PICKER_VISIBLE_LIMIT)
+    list = Array(places)
+    return [list, []] if list.size <= limit
+
+    [list.first(limit), list.drop(limit)]
   end
 
   def day_label(day)

@@ -145,12 +145,14 @@ RSpec.describe '/visits', type: :request do
     context 'with turbo_stream format' do
       let(:visit) { create(:visit, user:, status: :suggested) }
 
-      it 'updates status and returns turbo_stream removing visit item' do
+      # All successful updates replace the whole `visit_entry_<id>` row so
+      # status / name / picker state stay consistent with the rendered payload.
+      it 'replaces the visit_entry row on status change' do
         patch visit_url(visit), params: { visit: { status: :confirmed } }, as: :turbo_stream
 
         expect(visit.reload.status).to eq('confirmed')
         expect_turbo_stream_response
-        expect_turbo_stream_action('remove', "visit_item_#{visit.id}")
+        expect_turbo_stream_action('replace', "visit_entry_#{visit.id}")
       end
 
       it 'sets visit name from place when place_id is provided' do
@@ -159,14 +161,14 @@ RSpec.describe '/visits', type: :request do
 
         expect(visit.reload.name).to eq('Coffee Shop')
         expect_turbo_stream_response
-        expect_turbo_stream_action('replace', "visit_name_#{visit.id}")
+        expect_turbo_stream_action('replace', "visit_entry_#{visit.id}")
       end
 
-      it 'returns turbo_stream replace on non-status update' do
+      it 'replaces the visit_entry row on rename' do
         patch visit_url(visit), params: { visit: { name: 'New Name' } }, as: :turbo_stream
 
         expect_turbo_stream_response
-        expect_turbo_stream_action('replace', "visit_name_#{visit.id}")
+        expect_turbo_stream_action('replace', "visit_entry_#{visit.id}")
       end
     end
 

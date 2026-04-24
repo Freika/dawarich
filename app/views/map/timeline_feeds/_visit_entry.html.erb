@@ -1,14 +1,21 @@
 <% times = visit_entry_times(entry); status = visit_entry_status(entry); all_day = visit_entry_all_day?(entry) %>
-<li class="visit-row<%= ' visit-row--all-day' if all_day %>"
+<li class="visit-row<%= ' visit-row--suggested' if status == 'suggested' %><%= ' visit-row--all-day' if all_day %>"
+    id="visit_entry_<%= entry[:visit_id] %>"
     data-visit-id="<%= entry[:visit_id] %>"
     data-status="<%= status %>"
     data-testid="visit-row"
-    data-action="click->timeline-feed#selectVisit"
+    tabindex="0"
+    role="button"
+    aria-label="<%= visit_entry_display_name(entry) %> · <%= times[:start_label] %>"
+    data-action="click->timeline-feed#selectVisit keydown.enter->timeline-feed#selectVisit keydown.space->timeline-feed#selectVisit"
     data-started-at="<%= entry[:started_at] %>"
     data-ended-at="<%= entry[:ended_at] %>"
-    <% if entry[:place] %>
-      data-visit-lat="<%= entry[:place][:lat] %>"
-      data-visit-lng="<%= entry[:place][:lng] %>"
+    data-search-tokens="<%= visit_entry_search_tokens(entry) %>"
+    <%# Fall back to area coords so area-based visits zoom on click too. %>
+    <% coords = entry[:place] || entry[:area] %>
+    <% if coords %>
+      data-visit-lat="<%= coords[:lat] %>"
+      data-visit-lng="<%= coords[:lng] %>"
     <% end %>>
   <div class="visit-row__time">
     <% if all_day %>
@@ -25,15 +32,22 @@
 
   <div class="visit-row__content">
     <div class="visit-row__title">
+      <%# Display name with inline rename (click to edit) %>
+      <%= render 'visits/name',
+                 visit_id: entry[:visit_id],
+                 name: visit_entry_display_name(entry),
+                 suggested: status == 'suggested' %>
+
+      <%# Separate affordance: open Place Drawer (doesn't conflict with rename click target) %>
       <% if entry[:place_id] %>
-        <button class="place-link font-bold"
+        <button class="btn btn-ghost btn-xs visit-row__place-link"
                 data-place-id="<%= entry[:place_id] %>"
                 data-action="click->timeline-feed#openPlaceDrawer"
-                type="button">
-          <%= visit_entry_display_name(entry) %>
+                data-testid="visit-place-drawer"
+                type="button"
+                aria-label="Open place details">
+          <%= icon 'info' %>
         </button>
-      <% else %>
-        <span class="font-bold"><%= visit_entry_display_name(entry) %></span>
       <% end %>
     </div>
     <div class="visit-row__meta text-xs text-base-content/60">
@@ -42,10 +56,6 @@
         <span class="tag-chip" style="background-color: <%= t[:color] %>;">#<%= t[:name] %></span>
       <% end %>
     </div>
-
-    <% if status == 'suggested' && entry[:suggested_places].present? %>
-      <%= render partial: 'map/timeline_feeds/suggested_picker', locals: { entry: entry } %>
-    <% end %>
   </div>
 
   <% if status != 'suggested' %>
@@ -60,6 +70,14 @@
                       method: :patch,
                       class: 'btn btn-xs btn-ghost' %>
       <% end %>
+    </div>
+  <% end %>
+
+  <%# Suggested picker spans the full row width (grid-column: 1 / -1) so it
+      doesn't squeeze into the narrow content column. %>
+  <% if status == 'suggested' && entry[:suggested_places].present? %>
+    <div class="visit-row__suggested">
+      <%= render partial: 'map/timeline_feeds/suggested_picker', locals: { entry: entry } %>
     </div>
   <% end %>
 </li>

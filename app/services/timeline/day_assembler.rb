@@ -21,6 +21,32 @@ module Timeline
       build_days(days)
     end
 
+    # Public entry-point for building a single visit's hash payload — used by
+    # VisitsController#update so the turbo_stream response can re-render the
+    # row with fresh status / name / place / suggested_places data.
+    # (Helpers it calls remain private; same-class access is allowed.)
+    def build_visit_entry(visit)
+      entry = {
+        type: 'visit',
+        visit_id: visit.id,
+        name: visit.name,
+        editable_name: visit.name,
+        status: visit.status,
+        place_id: visit.place_id,
+        point_count: visit.points.size,
+        tags: build_tags(visit.place),
+        started_at: visit.started_at.iso8601,
+        ended_at: visit.ended_at.iso8601,
+        duration: visit.duration,
+        place: visit.place ? build_place(visit.place) : nil,
+        area: visit.area ? build_area(visit.area) : nil
+      }
+
+      entry[:suggested_places] = build_suggested_places(visit) if visit.suggested?
+
+      entry
+    end
+
     private
 
     attr_reader :user, :start_at, :end_at, :distance_unit
@@ -79,26 +105,17 @@ module Timeline
       (visit_entries + track_entries).sort_by { |e| e[:started_at] }
     end
 
-    # NOTE: visit.duration is stored in MINUTES; downstream consumers must format accordingly.
-    def build_visit_entry(visit)
-      entry = {
-        type: 'visit',
-        visit_id: visit.id,
-        name: visit.name,
-        editable_name: visit.name,
-        status: visit.status,
-        place_id: visit.place_id,
-        point_count: visit.points.size,
-        tags: build_tags(visit.place),
-        started_at: visit.started_at.iso8601,
-        ended_at: visit.ended_at.iso8601,
-        duration: visit.duration,
-        place: visit.place ? build_place(visit.place) : nil
+    # NOTE: visit.duration is stored in MINUTES. See the public #build_visit_entry
+    # above for the entry payload shape.
+
+    def build_area(area)
+      {
+        id: area.id,
+        name: area.name,
+        lat: area.latitude.to_f,
+        lng: area.longitude.to_f,
+        radius: area.radius
       }
-
-      entry[:suggested_places] = build_suggested_places(visit) if visit.suggested?
-
-      entry
     end
 
     def build_tags(place)
@@ -107,10 +124,19 @@ module Timeline
       place.tags.map { |t| { id: t.id, name: t.name, icon: t.icon, color: t.color } }
     end
 
+    # Geocoder suggestions often include near-identical rows (same name,
+    # slightly different ids). We dedupe by normalized name so the picker
+    # UI can stay compact — if a user actually needs the tail, the view
+    # reveals it behind a disclosure.
     def build_suggested_places(visit)
-      visit.suggested_places.map do |p|
-        { id: p.id, name: p.name, lat: p.lat, lng: p.lon }
+      seen = {}
+      visit.suggested_places.each do |p|
+        key = p.name.to_s.strip.downcase
+        next if key.empty?
+
+        seen[key] ||= { id: p.id, name: p.name, lat: p.lat, lng: p.lon }
       end
+      seen.values
     end
 
     def build_journey_entry(track)

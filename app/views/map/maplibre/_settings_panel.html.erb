@@ -1,7 +1,22 @@
-<div class="map-control-panel" data-maps--maplibre-target="settingsPanel" data-controller="map-panel">
+<%# Server-render the open + timeline-expanded classes when the URL asks for
+    the timeline panel — avoids the JS-driven `.open` toggle animating the
+    panel in from off-screen on every Turbo navigation.
+
+    `data-turbo-permanent` (with the matching #id) tells Turbo to keep the
+    existing panel DOM across navigations — calendar turbo-frame, filter
+    counts, tab state, and Stimulus controller instances are all preserved,
+    so clicking a day refetches the map layers without resetting the panel
+    (no "Loading calendar…" flash). Turbo only swaps content outside the
+    panel element. %>
+<% timeline_panel_open = params[:panel] == 'timeline' %>
+<div id="map-settings-panel"
+     data-turbo-permanent
+     class="map-control-panel<%= ' open timeline-expanded' if timeline_panel_open %>"
+     data-maps--maplibre-target="settingsPanel"
+     data-controller="map-panel">
   <!-- Vertical Icon Tabs (Left Side) -->
   <div class="panel-tabs">
-    <button class="tab-btn active"
+    <button class="tab-btn<%= ' active' unless timeline_panel_open %>"
             data-action="click->map-panel#switchTab"
             data-tab="layers"
             data-map-panel-target="tabButton"
@@ -18,7 +33,7 @@
     </button>
 
 
-    <button class="tab-btn"
+    <button class="tab-btn<%= ' active' if timeline_panel_open %>"
             data-action="click->map-panel#switchTab"
             data-tab="timeline-feed"
             data-map-panel-target="tabButton"
@@ -93,7 +108,7 @@
       </div>
 
       <!-- Layers Tab -->
-      <div class="tab-content active" data-tab-content="layers" data-map-panel-target="tabContent">
+      <div class="tab-content<%= ' active' unless timeline_panel_open %>" data-tab-content="layers" data-map-panel-target="tabContent">
         <div class="space-y-4">
           <!-- Points Layer -->
           <div class="form-control">
@@ -948,43 +963,101 @@
       </div>
 
       <!-- Timeline Feed Tab -->
-      <div class="tab-content" data-tab-content="timeline-feed" data-map-panel-target="tabContent">
+      <div class="tab-content<%= ' active' if timeline_panel_open %>" data-tab-content="timeline-feed" data-map-panel-target="tabContent">
         <div class="timeline-tab-content" data-controller="timeline-feed">
-          <%# Calendar (lazy-loaded turbo frame) %>
-          <turbo-frame id="timeline-calendar-frame"
-                       src="<%= calendar_map_timeline_feeds_path(month: Date.current.strftime('%Y-%m')) %>"
-                       loading="lazy">
-            <div class="text-center text-base-content/60 py-4 text-sm">Loading calendar…</div>
-          </turbo-frame>
+          <%# ---------- LEFT RAIL ---------- %>
+          <aside class="timeline-rail">
+            <%# Calendar (lazy-loaded turbo frame) %>
+            <turbo-frame id="timeline-calendar-frame"
+                         src="<%= calendar_map_timeline_feeds_path(month: initial_calendar_month(current_user)) %>"
+                         loading="lazy">
+              <div class="text-center text-base-content/60 py-4 text-sm">Loading calendar…</div>
+            </turbo-frame>
 
-          <%# Filters %>
-          <div class="timeline-filters">
-            <label>
-              <input type="checkbox" data-status="confirmed" data-testid="filter-confirmed"
-                     data-action="change->timeline-feed#filterChanged" checked />
-              <span>Confirmed</span>
-            </label>
-            <label>
-              <input type="checkbox" data-status="suggested" data-testid="filter-suggested"
-                     data-action="change->timeline-feed#filterChanged" checked />
-              <span>Suggested</span>
-            </label>
-            <label>
-              <input type="checkbox" data-status="declined" data-testid="filter-declined"
-                     data-action="change->timeline-feed#filterChanged" />
-              <span>Declined</span>
-            </label>
-          </div>
-
-          <%# Day summary (populated when a day is selected) %>
-          <div class="timeline-day-summary" data-timeline-feed-target="daySummary"></div>
-
-          <%# Visit list (turbo frame; loaded by Task 7's selectDay) %>
-          <turbo-frame id="timeline-feed-frame" data-timeline-feed-target="visitListFrame">
-            <div class="text-center text-base-content/60 py-8 text-sm">
-              Pick a day in the calendar above.
+            <%# Heat legend %>
+            <div class="timeline-rail__heat-legend">
+              <span>less</span>
+              <span class="heat-swatch heat-0"></span>
+              <span class="heat-swatch heat-1"></span>
+              <span class="heat-swatch heat-2"></span>
+              <span class="heat-swatch heat-3"></span>
+              <span class="heat-swatch heat-4"></span>
+              <span class="heat-swatch heat-5"></span>
+              <span>more</span>
             </div>
-          </turbo-frame>
+
+            <%# Filter with counts %>
+            <div class="timeline-rail__section">
+              <div class="timeline-rail__section-label">Filter</div>
+              <label class="timeline-filter-row">
+                <input type="checkbox" class="checkbox checkbox-xs checkbox-success"
+                       data-status="confirmed" data-testid="filter-confirmed"
+                       data-action="change->timeline-feed#filterChanged" checked />
+                <span class="flex-1">Confirmed</span>
+                <%= render 'map/timeline_feeds/filter_count',
+                           status: 'confirmed', count: @status_counts&.dig('confirmed').to_i %>
+              </label>
+              <label class="timeline-filter-row">
+                <input type="checkbox" class="checkbox checkbox-xs checkbox-warning"
+                       data-status="suggested" data-testid="filter-suggested"
+                       data-action="change->timeline-feed#filterChanged" checked />
+                <span class="flex-1">Suggested</span>
+                <%= render 'map/timeline_feeds/filter_count',
+                           status: 'suggested', count: @status_counts&.dig('suggested').to_i %>
+              </label>
+              <label class="timeline-filter-row timeline-filter-row--muted">
+                <input type="checkbox" class="checkbox checkbox-xs"
+                       data-status="declined" data-testid="filter-declined"
+                       data-action="change->timeline-feed#filterChanged" />
+                <span class="flex-1">Declined</span>
+                <%= render 'map/timeline_feeds/filter_count',
+                           status: 'declined', count: @status_counts&.dig('declined').to_i %>
+              </label>
+            </div>
+
+            <%# Search — filters the currently loaded day's visit rows by
+                name / place / tag (substring match on data-search-tokens). %>
+            <label class="timeline-rail__search">
+              <%= icon 'search' %>
+              <input type="text"
+                     placeholder="Search visits, places…"
+                     class="timeline-rail__search-input"
+                     data-timeline-feed-target="searchInput"
+                     data-action="input->timeline-feed#search" />
+            </label>
+
+            <%# Tag chips — click to toggle as an active filter. Multi-select ANDs
+                the chips; clicking an active chip clears it. Pure Stimulus; the
+                visibility is unified with status filters and search in
+                timeline_feed_controller#applyVisibility. %>
+            <% if @timeline_tags&.any? %>
+              <div class="timeline-rail__section">
+                <div class="timeline-rail__section-label">Tags</div>
+                <div class="timeline-rail__tags">
+                  <% @timeline_tags.each do |t| %>
+                    <button type="button"
+                            class="tag-chip tag-chip--toggle"
+                            data-tag-name="<%= t.name.downcase %>"
+                            data-action="click->timeline-feed#toggleTag"
+                            <% if t.color.present? %>style="background-color: <%= t.color %>;"<% end %>
+                            aria-pressed="false">
+                      <% if t.icon.present? %><%= t.icon %> <% end %><%= t.name %>
+                    </button>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+
+          </aside>
+
+          <%# ---------- MAIN COLUMN (visit list) ---------- %>
+          <div class="timeline-main">
+            <turbo-frame id="timeline-feed-frame" data-timeline-feed-target="visitListFrame">
+              <div class="timeline-main__empty">
+                Pick a day in the calendar to see visits.
+              </div>
+            </turbo-frame>
+          </div>
         </div>
       </div>
 

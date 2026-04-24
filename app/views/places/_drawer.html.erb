@@ -2,8 +2,10 @@
 <div class="place-drawer" data-place-id="<%= place.id %>">
   <header class="place-drawer__header">
     <div class="place-drawer__icon">
+      <%# Tag.icon is validated to be emoji/symbol (see Tag#icon_is_not_ascii_letter),
+          so render as a text glyph rather than through the rails_icons helper. %>
       <% if stats[:primary_tag]&.icon.present? %>
-        <%= icon stats[:primary_tag].icon, class: 'w-6 h-6' %>
+        <span class="text-2xl leading-none"><%= stats[:primary_tag].icon %></span>
       <% else %>
         <%= icon 'map-pin', class: 'w-6 h-6' %>
       <% end %>

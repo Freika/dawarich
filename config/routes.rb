@@ -73,7 +73,9 @@ Rails.application.routes.draw do
   post 'settings/generate_api_key', to: 'settings#generate_api_key', as: :generate_api_key
 
   resources :imports
-  get '/visits', to: redirect { |_params, req|
+  # Temporary (302) during the unified-timeline rollout; promote to :moved_permanently (301)
+  # once the redesign is known-stable so browsers cache the redirect.
+  get '/visits', to: redirect(status: 302) { |_params, req|
     status = req.params[:status]
     base = '/map/v2?panel=timeline&date=today'
     status ? "#{base}&status=#{status}" : "#{base}&status=confirmed"

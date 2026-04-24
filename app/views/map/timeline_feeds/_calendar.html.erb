@@ -3,19 +3,21 @@
 <%= turbo_frame_tag 'timeline-calendar-frame' do %>
   <div class="timeline-calendar" data-testid="timeline-calendar">
     <div class="flex items-center justify-between mb-2">
-      <%= link_to '<',
-                  calendar_map_timeline_feeds_path(month: nav[:prev]),
+      <%= link_to calendar_map_timeline_feeds_path(month: nav[:prev]),
                   data: { turbo_frame: 'timeline-calendar-frame', testid: 'calendar-prev' },
-                  class: 'btn btn-ghost btn-xs',
-                  'aria-label': 'Previous month' %>
+                  class: 'btn btn-ghost btn-xs btn-square',
+                  'aria-label': 'Previous month' do %>
+        <%= icon 'chevron-left', class: 'w-4 h-4' %>
+      <% end %>
       <div class="font-semibold text-sm" data-testid="calendar-title">
         <%= nav[:title] %>
       </div>
-      <%= link_to '>',
-                  calendar_map_timeline_feeds_path(month: nav[:next]),
+      <%= link_to calendar_map_timeline_feeds_path(month: nav[:next]),
                   data: { turbo_frame: 'timeline-calendar-frame', testid: 'calendar-next' },
-                  class: 'btn btn-ghost btn-xs',
-                  'aria-label': 'Next month' %>
+                  class: 'btn btn-ghost btn-xs btn-square',
+                  'aria-label': 'Next month' do %>
+        <%= icon 'chevron-right', class: 'w-4 h-4' %>
+      <% end %>
     </div>
 
     <div class="grid grid-cols-7 gap-0.5 text-[10px] text-base-content/60 mb-1">
