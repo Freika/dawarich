@@ -6,6 +6,12 @@ class User < ApplicationRecord
   include PlanScopable
   include SoftDeletable # introduces default_scope and soft-delete methods
 
+  # Per-record opt-out for the auto-trial / auto-activate after_commit hooks.
+  # Set to `true` when creating a user via a flow that should NOT grant a trial:
+  # primarily mobile OAuth signups, where the user lands in :pending_payment
+  # until their subscription source confirms a purchase.
+  attr_accessor :skip_auto_trial
+
   devise :two_factor_authenticatable, :registerable,
          :recoverable, :rememberable, :validatable, :trackable,
          :lockable,
@@ -28,8 +34,8 @@ class User < ApplicationRecord
   has_many :digests, class_name: 'Users::Digest', dependent: :destroy
 
   after_create :create_api_key
-  after_commit :activate, on: :create, if: -> { DawarichSettings.self_hosted? }
-  after_commit :start_trial, on: :create, if: -> { !DawarichSettings.self_hosted? }
+  after_commit :activate, on: :create, if: -> { DawarichSettings.self_hosted? && !skip_auto_trial }
+  after_commit :start_trial, on: :create, if: -> { !DawarichSettings.self_hosted? && !skip_auto_trial }
 
   before_save :sanitize_input
 
@@ -41,7 +47,11 @@ class User < ApplicationRecord
 
   scope :active_or_trial, -> { where(status: %i[active trial]) }
 
-  enum :status, { inactive: 0, active: 1, trial: 2 }
+  enum :status, { inactive: 0, active: 1, trial: 2, pending_payment: 3 }
+  # prefix: :sub_source — the `none` value would otherwise generate a
+  # `User#none?` predicate that collides with NilClass semantics in
+  # conditional chains. Callers use `user.sub_source_none?` etc.
+  enum :subscription_source, { none: 0, paddle: 1, apple_iap: 2, google_play: 3 }, default: :none, prefix: :sub_source
   enum :plan, { lite: 0, pro: 1 }, default: :pro
 
   def oauth_user?
