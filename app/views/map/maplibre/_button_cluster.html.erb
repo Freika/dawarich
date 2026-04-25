@@ -79,4 +79,20 @@
           title="Settings (S)">
     <%= icon 'settings' %>
   </button>
+
+  <%# Cloud-only — same gating as the previous in-panel `Links` tab so
+      self-hosted instances aren't pointed at marketing/help URLs. The Links
+      tab content is still rendered in the side panel (just without its own
+      tab button there); this cluster icon is the only entry point. %>
+  <% if !DawarichSettings.self_hosted? %>
+    <button type="button"
+            class="map-button-cluster__btn map-button-cluster__btn--muted"
+            data-action="click->map-panel#openTab"
+            data-tab="links"
+            data-testid="map-button-links"
+            aria-label="Links"
+            title="Links">
+      <%= icon 'info' %>
+    </button>
+  <% end %>
 </div>

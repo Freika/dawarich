@@ -119,6 +119,11 @@ export default class extends Controller {
     // tab and expands the matching journey entry inline.
     this.boundOpenTrack = () => this.openTabByName("timeline-feed")
     document.addEventListener("timeline:open-track", this.boundOpenTrack)
+
+    // Clear cluster active state when the panel is dismissed via the
+    // header's X button (or any path that goes through #toggleSettings).
+    this.boundPanelClosed = () => this.markActiveClusterButton(null)
+    document.addEventListener("map-panel:closed", this.boundPanelClosed)
   }
 
   disconnect() {
@@ -141,6 +146,10 @@ export default class extends Controller {
       document.removeEventListener("timeline:open-track", this.boundOpenTrack)
       this.boundOpenTrack = null
     }
+    if (this.boundPanelClosed) {
+      document.removeEventListener("map-panel:closed", this.boundPanelClosed)
+      this.boundPanelClosed = null
+    }
     if (clusterGlobalHandlersBoundBy === this) {
       clusterGlobalHandlersBoundBy = null
     }
@@ -160,18 +169,37 @@ export default class extends Controller {
   /**
    * Programmatic equivalent of openTab(event). Opens the settings panel
    * (via the maps--maplibre controller) and activates the given tab on the
-   * panel's map-panel controller instance.
+   * panel's map-panel controller instance. If the panel is already open
+   * AND `tabName` is the active tab, toggle the panel closed — gives the
+   * cluster button a "press again to dismiss" affordance now that the
+   * cluster doubles as the panel's tab strip.
    */
   openTabByName(tabName) {
     const panel = document.querySelector(".map-control-panel")
     const mapContainer = document.getElementById("maps-maplibre-container")
 
+    const maplibreController =
+      mapContainer &&
+      this.application.getControllerForElementAndIdentifier(
+        mapContainer,
+        "maps--maplibre",
+      )
+
+    if (panel && panel.classList.contains("open")) {
+      const activeContent = panel.querySelector(
+        ".tab-content.active[data-tab-content]",
+      )
+      const activeTab = activeContent?.dataset?.tabContent
+      if (activeTab === tabName) {
+        if (maplibreController?.toggleSettings) {
+          maplibreController.toggleSettings()
+          this.markActiveClusterButton(null)
+        }
+        return
+      }
+    }
+
     if (panel && mapContainer && !panel.classList.contains("open")) {
-      const maplibreController =
-        this.application.getControllerForElementAndIdentifier(
-          mapContainer,
-          "maps--maplibre",
-        )
       if (maplibreController?.toggleSettings) {
         maplibreController.toggleSettings()
       }
@@ -193,14 +221,15 @@ export default class extends Controller {
 
   /**
    * Reflect the currently-active tab on the map-edge cluster buttons.
+   * Pass `null` to clear every cluster button — used when the panel is
+   * dismissed (no tab is "active" because the panel itself is hidden).
    */
   markActiveClusterButton(activeTab) {
-    if (!activeTab) return
     const buttons = document.querySelectorAll(".map-button-cluster__btn")
     for (const btn of buttons) {
       btn.classList.toggle(
         "map-button-cluster__btn--active",
-        btn.dataset.tab === activeTab,
+        Boolean(activeTab) && btn.dataset.tab === activeTab,
       )
     }
   }

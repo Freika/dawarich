@@ -568,6 +568,10 @@ export default class extends Controller {
         if (!isOpening) {
           this.containerTarget.classList.remove("panel-timeline-expanded")
           this.settingsPanelTarget.classList.remove("timeline-expanded")
+          // Cluster doubles as the panel's tab strip — clear its active
+          // state when the panel is dismissed (e.g. via the header X) so
+          // users don't see a button still highlighted with no panel open.
+          document.dispatchEvent(new CustomEvent("map-panel:closed"))
         }
         // Tell MapLibre to recalculate after the CSS transition
         setTimeout(() => this.map?.resize(), 350)

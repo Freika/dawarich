@@ -11,7 +11,9 @@
   z-index: 9999;
   transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
-  flex-direction: row-reverse; /* Tabs on right, content on left */
+  flex-direction: column; /* Single column — the floating cluster on the
+                             panel's right edge serves as the tab strip
+                             whether the panel is open or closed. */
   overflow: hidden;
 }
 
@@ -365,11 +367,20 @@
   }
 }
 
-/* ===== Map edge button cluster ===== */
+/* ===== Map edge button cluster =====
+   The cluster sits 12px off the panel's RIGHT edge, so it tracks with the
+   panel as it slides:
+     - panel closed (panel.left = -480px → panel.right = 0): cluster at 12px
+       (top-left of the map area, looks like a floating tab launcher)
+     - panel open (panel.left = 0 → panel.right = 480/720): cluster at
+       492/732px (visually attached to the panel, looks like the panel's
+       tab strip)
+   Removes the need for the old in-panel `.panel-tabs` element since the
+   cluster itself is the tab strip in both states. */
 .map-button-cluster {
   position: absolute;
   top: 12px;
-  right: 12px;
+  left: 12px;
   z-index: 500;
   display: flex;
   flex-direction: column;
@@ -380,6 +391,39 @@
   border-radius: 8px;
   padding: 6px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.maps-maplibre-container.panel-open ~ .map-button-cluster {
+  left: 492px;
+}
+
+.maps-maplibre-container.panel-timeline-expanded ~ .map-button-cluster {
+  left: 732px;
+}
+
+@media (max-width: 1280px) {
+  .maps-maplibre-container.panel-timeline-expanded ~ .map-button-cluster {
+    left: 632px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .maps-maplibre-container.panel-open ~ .map-button-cluster {
+    left: 392px;
+  }
+  .maps-maplibre-container.panel-timeline-expanded ~ .map-button-cluster {
+    left: 532px;
+  }
+}
+
+/* On mobile the panel overlays the map — keep the cluster pinned to the
+   left edge so users can dismiss the panel by tapping a cluster button. */
+@media (max-width: 768px) {
+  .maps-maplibre-container.panel-open ~ .map-button-cluster,
+  .maps-maplibre-container.panel-timeline-expanded ~ .map-button-cluster {
+    left: 12px;
+  }
 }
 
 .map-button-cluster__btn {

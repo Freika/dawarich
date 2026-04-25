@@ -14,64 +14,10 @@
      class="map-control-panel<%= ' open timeline-expanded' if timeline_panel_open %>"
      data-maps--maplibre-target="settingsPanel"
      data-controller="map-panel">
-  <!-- Vertical Icon Tabs (Left Side) -->
-  <%# Order mirrors the map-edge button cluster (Timeline → Layers → Search →
-      Tools → Settings → Links) so a user's spatial muscle memory works the
-      same regardless of which entry point they reach for. The cluster's
-      Replay button is intentionally absent — Replay opens a panel, not a
-      tab. %>
-  <div class="panel-tabs">
-    <button class="tab-btn<%= ' active' if timeline_panel_open %>"
-            data-action="click->map-panel#switchTab"
-            data-tab="timeline-feed"
-            data-map-panel-target="tabButton"
-            data-testid="timeline-tab-button"
-            title="Timeline">
-      <%= icon 'calendar-clock' %>
-    </button>
-
-    <button class="tab-btn<%= ' active' unless timeline_panel_open %>"
-            data-action="click->map-panel#switchTab"
-            data-tab="layers"
-            data-map-panel-target="tabButton"
-            title="Map Layers">
-      <%= icon 'layer' %>
-    </button>
-
-    <button class="tab-btn"
-            data-action="click->map-panel#switchTab"
-            data-tab="search"
-            data-map-panel-target="tabButton"
-            title="Search">
-      <%= icon 'search' %>
-    </button>
-
-    <button class="tab-btn"
-            data-action="click->map-panel#switchTab"
-            data-tab="tools"
-            data-map-panel-target="tabButton"
-            title="Tools">
-      <%= icon 'pocket-knife' %>
-    </button>
-
-    <button class="tab-btn"
-            data-action="click->map-panel#switchTab"
-            data-tab="settings"
-            data-map-panel-target="tabButton"
-            title="Settings">
-      <%= icon 'settings' %>
-    </button>
-
-    <% if !DawarichSettings.self_hosted? %>
-      <button class="tab-btn"
-              data-action="click->map-panel#switchTab"
-              data-tab="links"
-              data-map-panel-target="tabButton"
-              title="Links">
-        <%= icon 'info' %>
-      </button>
-    <% end %>
-  </div>
+  <%# The in-panel tab strip is gone — the floating button cluster on the
+      map's left edge (`_button_cluster.html.erb`) doubles as the tab strip
+      both when the panel is closed and when it's open (it slides to sit at
+      the panel's right edge while open). Single source of truth. %>
 
   <!-- Panel Content -->
   <div class="panel-content">
