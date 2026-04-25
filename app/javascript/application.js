@@ -4,6 +4,7 @@ import "@rails/ujs"
 import "@rails/actioncable"
 import "controllers"
 import "@hotwired/turbo-rails"
+import "./tooltip_popovers"
 
 import "./channels"
 
