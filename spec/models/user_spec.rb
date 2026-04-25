@@ -578,6 +578,29 @@ subscription_source: :none)
       expect(payload).not_to have_key('plan')
       expect(payload).not_to have_key('interval')
     end
+
+    it "includes purpose: 'checkout' as a defense-in-depth audience claim" do
+      payload = decode(user.generate_subscription_token)
+
+      expect(payload['purpose']).to eq('checkout')
+    end
+
+    it 'includes a unique jti on every token' do
+      payload_a = decode(user.generate_subscription_token)
+      payload_b = decode(user.generate_subscription_token)
+
+      expect(payload_a['jti']).to be_a(String)
+      expect(payload_a['jti']).to be_present
+      expect(payload_b['jti']).to be_a(String)
+      expect(payload_a['jti']).not_to eq(payload_b['jti'])
+    end
+
+    it 'raises KeyError when JWT_SECRET_KEY is unset (fail-loud on misconfiguration)' do
+      env_without_jwt = ENV.to_h.tap { |h| h.delete('JWT_SECRET_KEY') }
+      stub_const('ENV', env_without_jwt)
+
+      expect { user.generate_subscription_token }.to raise_error(KeyError)
+    end
   end
 
   describe 'subscription columns' do

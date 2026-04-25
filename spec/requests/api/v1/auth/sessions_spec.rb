@@ -5,6 +5,14 @@ require 'rails_helper'
 RSpec.describe 'POST /api/v1/auth/login', type: :request do
   let!(:user) { create(:user, email: 'me@example.com', password: 'secret123') }
 
+  before do
+    # Brute-force throttles on this endpoint share state between examples via
+    # the rack-attack cache. Reset on every example so failed-login tests in
+    # one block don't trip the limit for unrelated examples.
+    Rack::Attack.cache.store = ActiveSupport::Cache::MemoryStore.new
+    Rack::Attack.reset!
+  end
+
   it 'returns 200 with api_key on correct credentials' do
     post '/api/v1/auth/login', params: { email: 'me@example.com', password: 'secret123' }
     expect(response).to have_http_status(:ok)
@@ -92,6 +100,62 @@ RSpec.describe 'POST /api/v1/auth/login', type: :request do
 
     it 'logs the user in normally, ignoring the otp flag' do
       post '/api/v1/auth/login', params: { email: 'me@example.com', password: 'secret123' }
+      expect(response).to have_http_status(:ok)
+    end
+  end
+
+  describe 'brute-force protection' do
+    it 'throttles repeated attempts against the same email to 5 per minute' do
+      5.times do
+        post '/api/v1/auth/login',
+             params: { email: 'me@example.com', password: 'wrong' }
+        expect(response).to have_http_status(:unauthorized)
+      end
+      post '/api/v1/auth/login',
+           params: { email: 'me@example.com', password: 'wrong' }
+      expect(response).to have_http_status(:too_many_requests)
+    end
+
+    it 'normalises email casing/whitespace so case variations share the same bucket' do
+      5.times do
+        post '/api/v1/auth/login',
+             params: { email: 'me@example.com', password: 'wrong' }
+      end
+      post '/api/v1/auth/login',
+           params: { email: '  ME@Example.com  ', password: 'wrong' }
+      expect(response).to have_http_status(:too_many_requests)
+    end
+
+    it 'throttles repeated attempts from the same IP across many emails to 20 per minute' do
+      # 20 attempts from this IP, each with a different email so the email throttle
+      # does not fire (each email still under the per-email limit of 5).
+      20.times do |i|
+        post '/api/v1/auth/login',
+             params: { email: "user#{i}@example.com", password: 'wrong' }
+      end
+      post '/api/v1/auth/login',
+           params: { email: 'user-final@example.com', password: 'wrong' }
+      expect(response).to have_http_status(:too_many_requests)
+    end
+
+    it 'returns the shared rate-limit error envelope when throttled' do
+      6.times do
+        post '/api/v1/auth/login',
+             params: { email: 'me@example.com', password: 'wrong' }
+      end
+      expect(response).to have_http_status(:too_many_requests)
+      body = JSON.parse(response.body)
+      expect(body['error']).to eq('rate_limit_exceeded')
+      expect(response.headers['Retry-After']).to be_present
+    end
+
+    it 'still permits a successful login while under the limit' do
+      4.times do
+        post '/api/v1/auth/login',
+             params: { email: 'me@example.com', password: 'wrong' }
+      end
+      post '/api/v1/auth/login',
+           params: { email: 'me@example.com', password: 'secret123' }
       expect(response).to have_http_status(:ok)
     end
   end

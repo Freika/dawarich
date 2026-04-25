@@ -66,9 +66,18 @@ RSpec.describe 'Users::Registrations signup variant', type: :request do
         post user_registration_path, params: valid_params
 
         user = User.find_by(email: unique_email)
-        expect(response).to redirect_to(
-          "#{MANAGER_URL}/checkout?token=#{user.generate_subscription_token(variant: 'reverse_trial')}"
-        )
+
+        # Token is non-deterministic (per-call `jti` and `exp`), so assert
+        # the URL shape and decode the token to verify the variant claim
+        # rather than comparing against a freshly-generated token string.
+        expect(response).to have_http_status(:redirect)
+        location = response.location
+        expect(location).to start_with("#{MANAGER_URL}/checkout?token=")
+
+        token = location.split('token=', 2).last
+        decoded = JWT.decode(token, ENV.fetch('JWT_SECRET_KEY'), true, { algorithm: 'HS256' }).first
+        expect(decoded['user_id']).to eq(user.id)
+        expect(decoded['variant']).to eq('reverse_trial')
       end
 
       it 'does not enqueue trial onboarding emails' do

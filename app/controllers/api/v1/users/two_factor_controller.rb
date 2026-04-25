@@ -3,6 +3,13 @@
 class Api::V1::Users::TwoFactorController < ApiController
   before_action :ensure_two_factor_available
   before_action :ensure_credential_provided, only: %i[backup_codes destroy]
+  # `confirm` enables 2FA on the account using the OTP that was just provisioned
+  # in `setup`. Because the user has not yet enrolled an authenticator from the
+  # account owner's perspective, the OTP itself cannot serve as a credential —
+  # an attacker holding only the API key could call setup (provisioning a secret
+  # to their own authenticator) and then confirm with a valid OTP. Require a
+  # fresh password re-auth before flipping the otp_required flag.
+  before_action :ensure_password_provided, only: :confirm
 
   def setup
     current_api_user.otp_secret = User.generate_otp_secret if current_api_user.otp_secret.blank?
@@ -53,6 +60,13 @@ class Api::V1::Users::TwoFactorController < ApiController
     return if valid_otp? || valid_password?
 
     render json: { error: 'credential_required', message: 'Provide a valid OTP or password.' },
+           status: :unauthorized
+  end
+
+  def ensure_password_provided
+    return if valid_password?
+
+    render json: { error: 'password_required', message: 'Provide your current password.' },
            status: :unauthorized
   end
 

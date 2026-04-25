@@ -115,6 +115,16 @@ module ApplicationHelper
     trial_days_remaining_compact(user)
   end
 
+  # Returns the call-to-action label for the navbar Subscribe/Resume button.
+  # pending_payment users (reverse-trial cohort who abandoned checkout) see
+  # "Resume" because they have a Paddle session waiting to be completed; all
+  # other upgrade-eligible users see "Subscribe". Used by the desktop navbar
+  # (and any other place that renders the action button) to keep the label
+  # source-of-truth in one helper.
+  def subscription_cta_label(user)
+    user.pending_payment? ? 'Resume' : 'Subscribe'
+  end
+
   def oauth_provider_name(provider)
     return OIDC_PROVIDER_NAME if provider == :openid_connect
 

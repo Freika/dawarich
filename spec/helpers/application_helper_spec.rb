@@ -92,6 +92,20 @@ RSpec.describe ApplicationHelper, type: :helper do
     end
   end
 
+  describe '#subscription_cta_label' do
+    let(:user) { build_stubbed(:user) }
+
+    it 'returns "Resume" for pending_payment users' do
+      allow(user).to receive(:pending_payment?).and_return(true)
+      expect(helper.subscription_cta_label(user)).to eq('Resume')
+    end
+
+    it 'returns "Subscribe" for non-pending_payment users' do
+      allow(user).to receive(:pending_payment?).and_return(false)
+      expect(helper.subscription_cta_label(user)).to eq('Subscribe')
+    end
+  end
+
   describe '#onboarding_modal_showable?' do
     context 'when onboarding is not completed' do
       let(:user) { build(:user, settings: {}) }

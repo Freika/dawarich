@@ -137,17 +137,42 @@ class User < ApplicationRecord
     trial? && active_until&.future? && !sub_source_none?
   end
 
+  # Issues a short-lived JWT used to hand the user off to the external
+  # subscription Manager (checkout, account portal, etc).
+  #
+  # Two defense-in-depth claims:
+  #
+  # * `purpose: 'checkout'` — narrows the token to its intended audience.
+  #   Manager (the consumer) ignores unknown claims today, but if a future
+  #   Dawarich endpoint ever decodes via `Subscription::DecodeJwtToken` it
+  #   should reject any token whose purpose doesn't match. This prevents a
+  #   leaked checkout token from being replayed against an unrelated
+  #   endpoint that happens to share the JWT secret.
+  #
+  # * `jti` (random per token) — gives Manager (or future Dawarich code) a
+  #   stable identifier for one-shot revocation, mirroring the JTI rotation
+  #   we use on the OTP challenge token.
+  #
+  # NOTE: do NOT reject tokens missing `purpose`/`jti` in
+  # `Subscription::DecodeJwtToken`. The manager → dawarich callback path
+  # uses a different claim shape (event_id, event_timestamp_ms, etc) and
+  # does not include these claims.
   def generate_subscription_token(plan: nil, interval: nil, variant: nil)
     payload = {
       user_id: id,
       email: email,
+      purpose: 'checkout',
+      jti: SecureRandom.uuid,
       exp: 30.minutes.from_now.to_i
     }
     payload[:plan] = plan if plan.present?
     payload[:interval] = interval if interval.present?
     payload[:variant] = variant if variant.present?
 
-    secret_key = ENV['JWT_SECRET_KEY']
+    # Fail loud at boot/runtime if JWT_SECRET_KEY is unset rather than
+    # silently signing with nil (which would still produce a "valid" token
+    # against any other process that also reads a missing env var).
+    secret_key = ENV.fetch('JWT_SECRET_KEY')
 
     JWT.encode(payload, secret_key, 'HS256')
   end

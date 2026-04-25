@@ -34,12 +34,26 @@ module Signup
       email = @user.email.to_s.strip
       raise ArgumentError, 'user email must be present for bucketing' if email.empty?
 
-      return 'reverse_trial' if Flipper.enabled?(:reverse_trial_signup, actor_for(@user, email))
+      return 'reverse_trial' if flipper_enabled?(email)
 
       'legacy_trial'
     end
 
     private
+
+    # Wrap the Flipper check so a transient adapter failure (DB hiccup, Redis
+    # outage, network blip) cannot 500 the signup endpoint. Falling back to
+    # `legacy_trial` keeps signups functional; bucketing is the degraded arm,
+    # not the user-visible flow. Mirrors the rescue pattern in
+    # `Auth::FindOrCreateOauthUser#auto_link_allowed?`.
+    def flipper_enabled?(email)
+      Flipper.enabled?(:reverse_trial_signup, actor_for(@user, email))
+    rescue StandardError => e
+      Rails.logger.warn(
+        "[Signup::BucketVariant] Flipper unavailable, falling back to legacy_trial: #{e.class}: #{e.message}"
+      )
+      false
+    end
 
     # Return the user directly when Flipper can derive a stable `flipper_id`
     # from a persisted primary key; otherwise wrap the user in a StableActor

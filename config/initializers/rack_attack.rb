@@ -70,6 +70,26 @@ Rack::Attack.throttle('logins/ip', limit: 20, period: 1.minute) do |req|
   req.ip
 end
 
+# Mobile login API — same brute-force protection as the web sign-in endpoint.
+# Mirrors the limits above (5/min per email, 20/min per IP) because the threat
+# model is identical: an attacker grinding passwords against /api/v1/auth/login
+# would otherwise bypass the Devise web throttles entirely.
+Rack::Attack.throttle('logins/api_email', limit: 5, period: 1.minute) do |req|
+  next unless req.path == '/api/v1/auth/login' && req.post?
+
+  # Sessions controller reads the email at the top level (params[:email]),
+  # whereas the Devise web form nests it under params[:user]. Rails parses
+  # both x-www-form-urlencoded and JSON bodies into req.params, so reading
+  # req.params['email'] here matches the controller's lookup.
+  req.params['email']&.to_s&.downcase&.strip
+end
+
+Rack::Attack.throttle('logins/api_ip', limit: 20, period: 1.minute) do |req|
+  next unless req.path == '/api/v1/auth/login' && req.post?
+
+  req.ip
+end
+
 # Brute-force protection on OTP verification.
 # Key the throttle on SHA256(challenge_token) so that an attacker cannot simply
 # rotate source IPs to multiply their TOTP guessing budget. Keep the legacy

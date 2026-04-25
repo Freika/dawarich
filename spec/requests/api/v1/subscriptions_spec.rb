@@ -229,5 +229,149 @@ RSpec.describe 'Api::V1::Subscriptions', type: :request do
         expect(JSON.parse(response.body)['message']).to eq('Failed to verify subscription update.')
       end
     end
+
+    context 'event ordering via event_timestamp_ms' do
+      it 'skips an event whose event_timestamp_ms is older than the last seen for that user' do
+        newer_ts = 2_000_000_000_000
+        older_ts = 1_000_000_000_000
+
+        newer_token = build_token(
+          user_id: user.id,
+          plan: 'pro',
+          status: 'active',
+          active_until: 30.days.from_now.iso8601,
+          subscription_source: 'paddle',
+          event_id: SecureRandom.uuid,
+          event_timestamp_ms: newer_ts
+        )
+
+        post '/api/v1/subscriptions/callback', params: { token: newer_token }, headers: webhook_headers
+        expect(response).to have_http_status(:ok)
+        user.reload
+        expect(user.plan).to eq('pro')
+        expect(user.status).to eq('active')
+
+        # Older event arrives later (out-of-order delivery). Must be ignored.
+        older_token = build_token(
+          user_id: user.id,
+          plan: 'lite',
+          status: 'inactive',
+          active_until: 1.year.ago.iso8601,
+          subscription_source: 'none',
+          event_id: SecureRandom.uuid,
+          event_timestamp_ms: older_ts
+        )
+
+        post '/api/v1/subscriptions/callback', params: { token: older_token }, headers: webhook_headers
+        expect(response).to have_http_status(:ok)
+        expect(JSON.parse(response.body)['message']).to eq('Stale event')
+
+        user.reload
+        expect(user.plan).to eq('pro')
+        expect(user.status).to eq('active')
+      end
+
+      it 'still processes events when event_timestamp_ms is missing (back-compat)' do
+        token = build_token(
+          user_id: user.id,
+          plan: 'pro',
+          status: 'active',
+          active_until: 30.days.from_now.iso8601,
+          subscription_source: 'paddle',
+          event_id: SecureRandom.uuid
+        )
+
+        post '/api/v1/subscriptions/callback', params: { token: token }, headers: webhook_headers
+        expect(response).to have_http_status(:ok)
+        expect(user.reload.plan).to eq('pro')
+      end
+
+      it 'advances the last-seen watermark on each successful event' do
+        first_ts = 1_500_000_000_000
+        second_ts = 1_600_000_000_000
+        third_ts = 1_550_000_000_000
+
+        first_token = build_token(
+          user_id: user.id,
+          status: 'active',
+          active_until: 30.days.from_now.iso8601,
+          plan: 'pro',
+          event_id: SecureRandom.uuid,
+          event_timestamp_ms: first_ts
+        )
+        post '/api/v1/subscriptions/callback', params: { token: first_token }, headers: webhook_headers
+        expect(response).to have_http_status(:ok)
+
+        second_token = build_token(
+          user_id: user.id,
+          status: 'active',
+          active_until: 60.days.from_now.iso8601,
+          plan: 'pro',
+          subscription_source: 'apple_iap',
+          event_id: SecureRandom.uuid,
+          event_timestamp_ms: second_ts
+        )
+        post '/api/v1/subscriptions/callback', params: { token: second_token }, headers: webhook_headers
+        expect(response).to have_http_status(:ok)
+        expect(user.reload.subscription_source).to eq('apple_iap')
+
+        # Third event has a timestamp older than the watermark (now=second_ts).
+        # Should be rejected even though it's newer than first_ts.
+        third_token = build_token(
+          user_id: user.id,
+          status: 'inactive',
+          active_until: 1.year.ago.iso8601,
+          plan: 'lite',
+          subscription_source: 'none',
+          event_id: SecureRandom.uuid,
+          event_timestamp_ms: third_ts
+        )
+        post '/api/v1/subscriptions/callback', params: { token: third_token }, headers: webhook_headers
+        expect(response).to have_http_status(:ok)
+        expect(JSON.parse(response.body)['message']).to eq('Stale event')
+
+        user.reload
+        expect(user.plan).to eq('pro')
+        expect(user.subscription_source).to eq('apple_iap')
+      end
+    end
+
+    context 'plan handling - unknown plan contract' do
+      it 'applies status/active_until/subscription_source even when plan is unknown' do
+        user.update!(status: :inactive, plan: :lite, subscription_source: :none)
+        active_until = 30.days.from_now.change(usec: 0)
+
+        token = build_token(
+          user_id: user.id,
+          plan: 'enterprise',
+          status: 'active',
+          active_until: active_until.iso8601,
+          subscription_source: 'paddle'
+        )
+
+        post '/api/v1/subscriptions/callback', params: { token: token }, headers: webhook_headers
+        expect(response).to have_http_status(:ok)
+
+        user.reload
+        expect(user.status).to eq('active')
+        expect(user.active_until.to_i).to eq(active_until.to_i)
+        expect(user.subscription_source).to eq('paddle')
+      end
+
+      it 'leaves plan unchanged when decoded plan is unknown' do
+        user.update_column(:plan, User.plans[:pro])
+
+        token = build_token(
+          user_id: user.id,
+          plan: 'enterprise',
+          status: 'active',
+          active_until: 30.days.from_now.iso8601
+        )
+
+        post '/api/v1/subscriptions/callback', params: { token: token }, headers: webhook_headers
+        expect(response).to have_http_status(:ok)
+        expect(user.reload.plan).to eq('pro')
+      end
+    end
   end
 end

@@ -173,7 +173,7 @@
                 <% end %>
               <% end %>
             </span><span class="join-item btn btn-sm btn-success">
-              <%= current_user.pending_payment? ? 'Resume' : 'Subscribe' %>
+              <%= subscription_cta_label(current_user) %>
             </span>
           <% end %>
         <% end %>

@@ -33,9 +33,10 @@ RSpec.describe 'Two-factor management', type: :request do
       user.reload
     end
 
-    it 'enables 2FA and returns backup codes on valid OTP' do
+    it 'enables 2FA and returns backup codes on valid OTP plus password re-auth' do
       otp = ROTP::TOTP.new(user.otp_secret).now
-      post '/api/v1/users/me/two_factor/confirm', params: { otp_code: otp }, headers: headers
+      post '/api/v1/users/me/two_factor/confirm',
+           params: { otp_code: otp, password: 'secret123' }, headers: headers
       expect(response).to have_http_status(:ok)
       body = JSON.parse(response.body)
       expect(body['backup_codes']).to be_an(Array)
@@ -43,9 +44,25 @@ RSpec.describe 'Two-factor management', type: :request do
       expect(user.reload.otp_required_for_login).to be true
     end
 
-    it 'returns 422 on wrong OTP' do
-      post '/api/v1/users/me/two_factor/confirm', params: { otp_code: '000000' }, headers: headers
+    it 'returns 422 on wrong OTP even with valid password' do
+      post '/api/v1/users/me/two_factor/confirm',
+           params: { otp_code: '000000', password: 'secret123' }, headers: headers
       expect(response).to have_http_status(:unprocessable_content)
+      expect(user.reload.otp_required_for_login).to be false
+    end
+
+    it 'returns 401 when no password is provided (credential gate)' do
+      otp = ROTP::TOTP.new(user.otp_secret).now
+      post '/api/v1/users/me/two_factor/confirm', params: { otp_code: otp }, headers: headers
+      expect(response).to have_http_status(:unauthorized)
+      expect(user.reload.otp_required_for_login).to be false
+    end
+
+    it 'returns 401 when the password is wrong' do
+      otp = ROTP::TOTP.new(user.otp_secret).now
+      post '/api/v1/users/me/two_factor/confirm',
+           params: { otp_code: otp, password: 'not-the-password' }, headers: headers
+      expect(response).to have_http_status(:unauthorized)
       expect(user.reload.otp_required_for_login).to be false
     end
   end

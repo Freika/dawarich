@@ -44,6 +44,17 @@ class Api::V1::SubscriptionsController < ApiController
     ActiveSupport::SecurityUtils.secure_compare(provided, ENV['SUBSCRIPTION_WEBHOOK_SECRET'].to_s)
   end
 
+  # Translates the JWT payload into User#update! attributes.
+  #
+  # Plan compatibility (forward-compat contract):
+  # Unknown `plan` values (any string not in `User.plans.keys`) are silently
+  # logged and dropped. Other claims (status, active_until, subscription_source)
+  # are still applied. This lets Manager add new plan tiers without breaking
+  # Dawarich during the rollout window. Manager is responsible for ensuring
+  # any new plan is shipped to Dawarich BEFORE that plan starts being sent
+  # in callbacks; otherwise users on the new plan will retain their
+  # previous Dawarich plan value while still getting status/active_until
+  # updates.
   def subscription_attrs(decoded)
     attrs = { status: decoded[:status], active_until: decoded[:active_until] }
 
@@ -60,10 +71,43 @@ class Api::V1::SubscriptionsController < ApiController
   end
 
   def stale_event?(decoded)
+    return true if event_already_processed?(decoded)
+    return true if event_older_than_last_seen?(decoded)
+
+    false
+  end
+
+  def event_already_processed?(decoded)
     Rails.cache.exist?("manager_callback:processed:#{decoded[:event_id]}")
+  end
+
+  # Out-of-order delivery guard. Manager assigns a monotonically increasing
+  # `event_timestamp_ms` per user; if an event arrives whose timestamp is
+  # older than the last we've successfully applied, we drop it so older
+  # state cannot stomp newer state. We key on user_id so concurrent users
+  # don't share a watermark. Missing timestamp falls back to event_id-only
+  # dedup (back-compat for Manager versions that don't send the field yet).
+  def event_older_than_last_seen?(decoded)
+    ts = decoded[:event_timestamp_ms].to_i
+    return false if ts.zero?
+
+    last_seen = Rails.cache.read(last_seen_cache_key(decoded)).to_i
+    ts < last_seen
   end
 
   def mark_event_processed(decoded)
     Rails.cache.write("manager_callback:processed:#{decoded[:event_id]}", true, expires_in: 7.days)
+
+    ts = decoded[:event_timestamp_ms].to_i
+    return if ts.zero?
+
+    cache_key = last_seen_cache_key(decoded)
+    return if ts < Rails.cache.read(cache_key).to_i
+
+    Rails.cache.write(cache_key, ts, expires_in: 7.days)
+  end
+
+  def last_seen_cache_key(decoded)
+    "manager_callback:last_seen_ms:#{decoded[:user_id]}"
   end
 end

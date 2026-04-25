@@ -126,5 +126,29 @@ RSpec.describe Signup::BucketVariant do
         expect { described_class.new(user).call }.to raise_error(ArgumentError, /email/)
       end
     end
+
+    describe 'Flipper unavailability' do
+      let(:user) { build(:user, email: 'flipper-down@example.com') }
+
+      before do
+        allow(Flipper).to receive(:enabled?)
+          .with(:reverse_trial_signup, anything)
+          .and_raise(StandardError, 'flipper adapter offline')
+      end
+
+      it 'falls back to legacy_trial when Flipper raises' do
+        expect(described_class.new(user).call).to eq('legacy_trial')
+      end
+
+      it 'logs a warning when Flipper raises' do
+        expect(Rails.logger).to receive(:warn).with(/Flipper unavailable/)
+
+        described_class.new(user).call
+      end
+
+      it 'does not propagate the exception' do
+        expect { described_class.new(user).call }.not_to raise_error
+      end
+    end
   end
 end
