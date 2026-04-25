@@ -70,62 +70,6 @@ Rack::Attack.throttle('logins/ip', limit: 20, period: 1.minute) do |req|
   req.ip
 end
 
-# Mobile login API — same brute-force protection as the web sign-in endpoint.
-# Mirrors the limits above (5/min per email, 20/min per IP) because the threat
-# model is identical: an attacker grinding passwords against /api/v1/auth/login
-# would otherwise bypass the Devise web throttles entirely.
-Rack::Attack.throttle('logins/api_email', limit: 5, period: 1.minute) do |req|
-  next unless req.path == '/api/v1/auth/login' && req.post?
-
-  # Sessions controller reads the email at the top level (params[:email]),
-  # whereas the Devise web form nests it under params[:user]. Rails parses
-  # both x-www-form-urlencoded and JSON bodies into req.params, so reading
-  # req.params['email'] here matches the controller's lookup.
-  req.params['email']&.to_s&.downcase&.strip
-end
-
-Rack::Attack.throttle('logins/api_ip', limit: 20, period: 1.minute) do |req|
-  next unless req.path == '/api/v1/auth/login' && req.post?
-
-  req.ip
-end
-
-# Brute-force protection on OTP verification.
-# Key the throttle on SHA256(challenge_token) so that an attacker cannot simply
-# rotate source IPs to multiply their TOTP guessing budget. Keep the legacy
-# IP-based throttle as defense-in-depth.
-Rack::Attack.throttle('api/auth/otp_challenge_token', limit: 5, period: 15.minutes) do |req|
-  if req.path == '/api/v1/auth/otp_challenge' && req.post?
-    token = req.params['challenge_token'].to_s
-    Digest::SHA256.hexdigest(token)[0, 32] if token.present?
-  end
-end
-
-# Defense-in-depth IP-based throttle (retained from original config).
-Rack::Attack.throttle('api/auth/otp_challenge', limit: 5, period: 15.minutes) do |req|
-  req.ip if req.path == '/api/v1/auth/otp_challenge' && req.post?
-end
-
-# 2FA management (disable / confirm / backup_codes) brute-force protection.
-# Keyed on the Authorization header so an attacker with a valid API key can't
-# grind on TOTP codes to disable 2FA on a stolen session.
-SENSITIVE_2FA_PATHS = %w[
-  /api/v1/users/me/two_factor
-  /api/v1/users/me/two_factor/confirm
-  /api/v1/users/me/two_factor/backup_codes
-].to_set.freeze
-
-Rack::Attack.throttle('api/users/two_factor_sensitive', limit: 5, period: 15.minutes) do |req|
-  next unless req.post? || req.delete?
-  next unless SENSITIVE_2FA_PATHS.include?(req.path)
-
-  auth_header = req.get_header('HTTP_AUTHORIZATION')
-  api_key = req.params['api_key'] || auth_header&.split(' ')&.last
-  next if api_key.blank?
-
-  "two_factor_sensitive:#{api_key}"
-end
-
 # Flipper admin UI: 30 req / 5 min per IP. The UI sits behind admin auth, but
 # limit hammering so an attacker (or buggy client) can't brute-force or scrape it.
 Rack::Attack.throttle('admin/flipper', limit: 30, period: 5.minutes) do |req|

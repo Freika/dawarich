@@ -80,8 +80,6 @@ Rails.application.routes.draw do
   get 'trial/resume', to: 'trial/resume#show', as: :trial_resume
   get 'trial/welcome', to: 'trial/welcome#show', as: :trial_welcome
 
-  get 'auth/account_link', to: 'auth/account_links#show', as: :auth_account_link
-
   resources :imports
   resources :visits, only: %i[index update] do
     collection do
@@ -199,17 +197,6 @@ Rails.application.routes.draw do
       get   'settings', to: 'settings#index'
       get   'settings/transportation_recalculation_status', to: 'settings#transportation_recalculation_status'
       get   'users/me', to: 'users#me'
-      delete 'users/me', to: 'users/destroy#destroy'
-
-      namespace :users do
-        scope 'me' do
-          resource :two_factor, only: %i[destroy], controller: 'two_factor' do
-            post :setup
-            post :confirm
-            post :backup_codes
-          end
-        end
-      end
 
       resources :areas,     only: %i[index show create update destroy]
       resources :imports,   only: %i[index show create]
@@ -302,14 +289,6 @@ Rails.application.routes.draw do
       end
 
       post 'subscriptions/callback', to: 'subscriptions#callback'
-
-      namespace :auth do
-        post 'register', to: 'registrations#create'
-        post 'login',    to: 'sessions#create'
-        post 'apple',    to: 'apple#create'
-        post 'google',   to: 'google#create'
-        post 'otp_challenge', to: 'otp_challenges#create'
-      end
     end
   end
 end

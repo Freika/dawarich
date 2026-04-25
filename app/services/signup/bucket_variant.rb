@@ -44,8 +44,7 @@ module Signup
     # Wrap the Flipper check so a transient adapter failure (DB hiccup, Redis
     # outage, network blip) cannot 500 the signup endpoint. Falling back to
     # `legacy_trial` keeps signups functional; bucketing is the degraded arm,
-    # not the user-visible flow. Mirrors the rescue pattern in
-    # `Auth::FindOrCreateOauthUser#auto_link_allowed?`.
+    # not the user-visible flow.
     def flipper_enabled?(email)
       Flipper.enabled?(:reverse_trial_signup, actor_for(@user, email))
     rescue StandardError => e
