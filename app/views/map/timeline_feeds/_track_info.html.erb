@@ -8,33 +8,33 @@
   elev_gain = track.elevation_gain
   elev_loss = track.elevation_loss
 %>
-<div class="bg-base-100 rounded-lg p-3 mt-2 text-xs space-y-2 border border-base-300">
-  <div class="grid grid-cols-2 gap-2">
-    <div>
-      <div class="text-base-content/60">Distance</div>
-      <div class="font-semibold"><%= distance_val %> <%= unit %></div>
-    </div>
-    <div>
-      <div class="text-base-content/60">Avg Speed</div>
-      <div class="font-semibold"><%= avg_speed %> <%= speed_label %></div>
-    </div>
+<div class="track-info-card">
+  <div class="track-info-card__id">Track #<%= track.id %></div>
+  <%# Inline stat row — labels live to the left of values to keep height low.
+      Elevation entries only render when present so quick walks/cycles stay
+      single-line. %>
+  <div class="track-info-stats">
+    <span><span class="track-info-stats__label">Dist</span> <strong><%= distance_val %> <%= unit %></strong></span>
+    <span><span class="track-info-stats__label">Avg</span> <strong><%= avg_speed %> <%= speed_label %></strong></span>
     <% if elev_gain.present? && elev_gain > 0 %>
-      <div>
-        <div class="text-base-content/60">Elevation Gain</div>
-        <div class="font-semibold"><%= elev_gain.round %> m</div>
-      </div>
+      <span><span class="track-info-stats__label">↑</span> <strong><%= elev_gain.round %>m</strong></span>
     <% end %>
     <% if elev_loss.present? && elev_loss > 0 %>
-      <div>
-        <div class="text-base-content/60">Elevation Loss</div>
-        <div class="font-semibold"><%= elev_loss.round %> m</div>
-      </div>
+      <span><span class="track-info-stats__label">↓</span> <strong><%= elev_loss.round %>m</strong></span>
     <% end %>
+    <span class="track-info-mode capitalize"><%= mode_label %></span>
   </div>
-  <div class="flex items-center justify-between pt-1 border-t border-base-300">
-    <span class="badge badge-sm badge-outline capitalize"><%= mode_label %></span>
+
+  <div class="track-info-actions">
+    <label class="track-info-toggle">
+      <input type="checkbox"
+             class="toggle toggle-xs toggle-success"
+             data-track-id="<%= track.id %>"
+             data-action="change->maps--maplibre#toggleTrackPoints" />
+      <span>Show points</span>
+    </label>
     <button type="button"
-            class="btn btn-xs btn-ghost gap-1"
+            class="btn btn-xs btn-ghost gap-1 px-2"
             data-action="click->maps--maplibre#replayTrack"
             data-track-start="<%= track.start_at.iso8601 %>">
       <svg id="track-replay-play-icon" class="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21"/></svg>

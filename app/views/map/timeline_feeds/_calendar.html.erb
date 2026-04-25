@@ -3,8 +3,17 @@
 <%= turbo_frame_tag 'timeline-calendar-frame' do %>
   <div class="timeline-calendar" data-testid="timeline-calendar">
     <div class="flex items-center justify-between mb-2">
+      <%# turbo-stream requests so the prev/next response can update both
+          the calendar grid AND the FILTER pills (which are scoped to the
+          visible month) in a single round-trip. %>
+      <%# `previewMonth` paints a skeleton calendar (correct dates, neutral
+          cells) the moment the user clicks, so the new month feels instant.
+          The turbo_stream response then replaces it with the real
+          heat-colored cells when the network round-trip finishes. %>
       <%= link_to calendar_map_timeline_feeds_path(month: nav[:prev]),
-                  data: { turbo_frame: 'timeline-calendar-frame', testid: 'calendar-prev' },
+                  data: { turbo_stream: true, testid: 'calendar-prev',
+                          target_month: nav[:prev],
+                          action: 'click->timeline-feed#previewMonth' },
                   class: 'btn btn-ghost btn-xs btn-square',
                   'aria-label': 'Previous month' do %>
         <%= icon 'chevron-left', class: 'w-4 h-4' %>
@@ -13,7 +22,9 @@
         <%= nav[:title] %>
       </div>
       <%= link_to calendar_map_timeline_feeds_path(month: nav[:next]),
-                  data: { turbo_frame: 'timeline-calendar-frame', testid: 'calendar-next' },
+                  data: { turbo_stream: true, testid: 'calendar-next',
+                          target_month: nav[:next],
+                          action: 'click->timeline-feed#previewMonth' },
                   class: 'btn btn-ghost btn-xs btn-square',
                   'aria-label': 'Next month' do %>
         <%= icon 'chevron-right', class: 'w-4 h-4' %>

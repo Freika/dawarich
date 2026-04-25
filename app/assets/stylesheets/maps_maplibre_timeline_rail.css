@@ -25,6 +25,26 @@
   color: oklch(var(--bc) / 0.55);
 }
 
+.timeline-rail__section-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.timeline-rail__section-link {
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: oklch(var(--p));
+  text-decoration: none;
+}
+
+.timeline-rail__section-link:hover {
+  text-decoration: underline;
+}
+
 .timeline-rail__heat-legend {
   display: flex;
   align-items: center;
@@ -41,36 +61,6 @@
 
 .timeline-rail__heat-legend .heat-swatch.heat-0 {
   border: 1px solid oklch(var(--bc) / 0.2);
-}
-
-.timeline-rail__search {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.35rem 0.5rem;
-  background: oklch(var(--b2));
-  border-radius: 6px;
-}
-
-.timeline-rail__search svg {
-  width: 14px;
-  height: 14px;
-  color: oklch(var(--bc) / 0.5);
-  flex-shrink: 0;
-}
-
-.timeline-rail__search-input {
-  background: transparent;
-  border: 0;
-  outline: 0;
-  flex: 1;
-  min-width: 0;
-  font-size: 0.85rem;
-  color: oklch(var(--bc));
-}
-
-.timeline-rail__search-input::placeholder {
-  color: oklch(var(--bc) / 0.45);
 }
 
 .timeline-rail__tags {
@@ -132,6 +122,10 @@
   min-height: 0;
   max-height: 100%;
   overflow-y: auto;
+  /* Hover highlight on entries uses negative horizontal margin to bleed
+     into the column padding — without overflow-x clipping the parent gets
+     a scrollbar. */
+  overflow-x: hidden;
 }
 
 .timeline-main__empty {

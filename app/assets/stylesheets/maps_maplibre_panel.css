@@ -428,6 +428,17 @@
   color: #22c55e;
 }
 
+/* When Create is the active tab, the green icon-on-blue ends up low
+   contrast. Lean into the create accent color for the active state too —
+   green background, white glyph — so the active state reads cleanly and
+   keeps the button's semantic color. Higher-specificity selector wins
+   over the generic `--active` rule above. */
+.map-button-cluster__btn--create.map-button-cluster__btn--active,
+.map-button-cluster__btn--create.map-button-cluster__btn--active:hover {
+  background: #22c55e;
+  color: white;
+}
+
 .map-button-cluster__btn--muted {
   opacity: 0.6;
 }

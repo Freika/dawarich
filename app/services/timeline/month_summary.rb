@@ -9,23 +9,12 @@ module Timeline
   # Visit duration is stored in MINUTES; track duration is stored in SECONDS.
   # `tracked_seconds` normalizes both into seconds for intensity bucketing.
   class MonthSummary
-    HEAT_THRESHOLDS_HOURS = [0, 2, 4, 8, 12].freeze
+    HEAT_BUCKETS = 5
     CACHE_TTL = 5.minutes
 
     def self.cache_key_for(user, date)
       d = normalize_month(date)
       ['timeline_month_summary', user.id, d.strftime('%Y-%m')]
-    end
-
-    def self.heat_bucket(tracked_seconds)
-      return 0 if tracked_seconds <= 0
-
-      hours = tracked_seconds / 3600.0
-      HEAT_THRESHOLDS_HOURS.each_with_index.reverse_each do |threshold, idx|
-        return idx + 1 if hours >= threshold && idx < HEAT_THRESHOLDS_HOURS.length - 1
-        return HEAT_THRESHOLDS_HOURS.length if hours >= HEAT_THRESHOLDS_HOURS.last
-      end
-      0
     end
 
     def self.normalize_month(date)
@@ -54,8 +43,20 @@ module Timeline
         month: @month_start.strftime('%Y-%m'),
         tz: tz,
         days: day_data,
-        weeks: weeks
+        weeks: weeks,
+        status_counts: status_counts
       }
+    end
+
+    # Visit counts for the displayed month, keyed by status string. Powers the
+    # FILTER pills under the calendar so they reflect "this month" rather
+    # than the user's lifetime totals.
+    def status_counts
+      @status_counts ||= @user.scoped_visits
+                              .where(started_at: month_range)
+                              .group(:status)
+                              .count
+                              .transform_keys { |k| visit_status_label(k) }
     end
 
     def tz
@@ -86,6 +87,13 @@ module Timeline
           result[date_str][:tracked_seconds] += seconds.to_i
         end
 
+        # Track count is independent of duration — a track with NULL duration
+        # still represents activity, so the day shouldn't bucket as 0/black.
+        track_count.each do |date_str, count|
+          result[date_str] ||= default_day
+          result[date_str][:track_count] += count.to_i
+        end
+
         result
       end
     end
@@ -93,6 +101,7 @@ module Timeline
     def default_day
       {
         tracked_seconds: 0,
+        track_count: 0,
         visit_count: 0,
         suggested_count: 0,
         confirmed_count: 0,
@@ -125,6 +134,14 @@ module Timeline
                               .transform_keys(&:to_s)
     end
 
+    def track_count
+      @track_count ||= @user.scoped_tracks
+                            .where(start_at: month_range)
+                            .group(date_sql_expr('tracks.start_at'))
+                            .count
+                            .transform_keys(&:to_s)
+    end
+
     def visit_status_label(status)
       return status.to_s if status.is_a?(String)
 
@@ -141,9 +158,18 @@ module Timeline
       grid_end = grid_start + (6 * 7) - 1
       dates = (grid_start..grid_end).to_a
 
-      dates.each_slice(7).map do |week|
-        week.map { |date| build_cell(date) }
-      end
+      cells = dates.map { |d| build_cell(d) }
+
+      # Heat is graded relative to the busiest day IN THIS MONTH so every
+      # month renders with full color range. Days outside the month aren't
+      # considered when computing the max, but they still get bucketed.
+      in_month_max = cells.select { |c| c[:in_month] }
+                          .map { |c| c[:tracked_seconds].to_i }
+                          .max.to_i
+
+      cells.each { |c| c[:heat_bucket] = compute_heat_bucket(c, in_month_max) }
+
+      cells.each_slice(7).to_a
     end
 
     def build_cell(date)
@@ -154,10 +180,29 @@ module Timeline
         date: key,
         in_month: date.month == @month_start.month,
         tracked_seconds: data[:tracked_seconds],
+        track_count: data[:track_count],
         visit_count: data[:visit_count],
         suggested_count: data[:suggested_count],
         disabled: disabled_cell?(date)
       }
+    end
+
+    # Returns 0..HEAT_BUCKETS. Days with any activity (visits or tracks)
+    # always get at least bucket 1 so they aren't drawn as "no activity"
+    # black cells, even when their stored durations are NULL/zero.
+    def compute_heat_bucket(cell, month_max)
+      return 0 unless cell_has_activity?(cell)
+      return 1 if month_max.to_i <= 0
+
+      ratio = cell[:tracked_seconds].to_f / month_max
+      bucket = (ratio * HEAT_BUCKETS).ceil
+      bucket.clamp(1, HEAT_BUCKETS)
+    end
+
+    def cell_has_activity?(cell)
+      cell[:tracked_seconds].to_i.positive? ||
+        cell[:visit_count].to_i.positive? ||
+        cell[:track_count].to_i.positive?
     end
 
     def disabled_cell?(date)

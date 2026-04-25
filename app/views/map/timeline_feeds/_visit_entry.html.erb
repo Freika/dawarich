@@ -37,18 +37,6 @@
                  visit_id: entry[:visit_id],
                  name: visit_entry_display_name(entry),
                  suggested: status == 'suggested' %>
-
-      <%# Separate affordance: open Place Drawer (doesn't conflict with rename click target) %>
-      <% if entry[:place_id] %>
-        <button class="btn btn-ghost btn-xs visit-row__place-link"
-                data-place-id="<%= entry[:place_id] %>"
-                data-action="click->timeline-feed#openPlaceDrawer"
-                data-testid="visit-place-drawer"
-                type="button"
-                aria-label="Open place details">
-          <%= icon 'info' %>
-        </button>
-      <% end %>
     </div>
     <div class="visit-row__meta text-xs text-base-content/60">
       <%= format_dwell_minutes(entry[:duration]) %> · <%= entry[:point_count] %> pts

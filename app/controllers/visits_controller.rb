@@ -117,7 +117,10 @@ class VisitsController < ApplicationController
     ).call
     day = days.first
 
-    status_counts = current_user.scoped_visits.group(:status).count
+    # Filter pills are scoped to the calendar's currently-visible month, so
+    # the streamed counts must be too — otherwise after a bulk action the
+    # pills swap from a monthly count to an all-time count and look wrong.
+    status_counts = month_status_counts(date_str)
 
     streams = []
     streams << if day
@@ -153,7 +156,9 @@ class VisitsController < ApplicationController
     day_suggested_count = current_user.scoped_visits
                                       .where(started_at: day_range, status: :suggested)
                                       .count
-    status_counts = current_user.scoped_visits.group(:status).count
+    # Match the FILTER pills' month-scoped counts — they would otherwise
+    # flip from monthly (initial render) to all-time (after an edit).
+    status_counts = month_status_counts(day_date)
 
     [
       turbo_stream.replace("visit_entry_#{@visit.id}",
@@ -179,6 +184,18 @@ class VisitsController < ApplicationController
     params = { panel: 'timeline', date: date }
     params[:status] = status if status.present?
     "/map/v2?#{params.to_query}"
+  end
+
+  # Visits-by-status counts scoped to the month containing `date_str`. Used by
+  # the FILTER pills, which are intentionally month-bound so users see "this
+  # month's" totals next to the calendar grid.
+  def month_status_counts(date_str)
+    tz = current_user.safe_settings.timezone.presence || 'UTC'
+    month_range = Time.use_zone(tz) { Date.parse(date_str).in_time_zone.all_month }
+    current_user.scoped_visits
+                .where(started_at: month_range)
+                .group(:status)
+                .count
   end
 
   def update_visit_name_from_place

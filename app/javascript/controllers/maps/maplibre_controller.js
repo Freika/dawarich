@@ -180,6 +180,17 @@ export default class extends Controller {
     this.settings = this.settingsController.settings
     this.settings.timezone = this.timezoneValue
 
+    // When the page loads with the Timeline panel open (deep link or
+    // SPA-style nav from elsewhere), the visits layer is always relevant —
+    // it's the on-map counterpart of the rail. Force it on for this session
+    // even if the user's saved layer toggle is off, without persisting back
+    // to the server.
+    const urlParams = new URLSearchParams(window.location.search)
+    if (urlParams.get("panel") === "timeline") {
+      this.settings.visitsEnabled = true
+      this.settingsController.settings.visitsEnabled = true
+    }
+
     // Sync toggle states with loaded settings
     this.settingsController.syncToggleStates()
 
@@ -549,6 +560,15 @@ export default class extends Controller {
       // Shrink/expand map container
       if (this.hasContainerTarget) {
         this.containerTarget.classList.toggle("panel-open", isOpening)
+        // The Timeline tab puts the map container in `panel-timeline-expanded`
+        // (720px-wide panel + matching margin-left). When the user closes the
+        // panel we have to clear that too — otherwise the panel slides
+        // off-screen but the map keeps its 720px left margin and the user
+        // sees an empty dark column where the panel used to be.
+        if (!isOpening) {
+          this.containerTarget.classList.remove("panel-timeline-expanded")
+          this.settingsPanelTarget.classList.remove("timeline-expanded")
+        }
         // Tell MapLibre to recalculate after the CSS transition
         setTimeout(() => this.map?.resize(), 350)
       }
@@ -562,9 +582,43 @@ export default class extends Controller {
     const { tab } = event.detail
     if (tab === "timeline-feed") {
       this.loadTimelineFeed()
+      // The timeline rail is the on-panel counterpart of the visits map
+      // layer — keep them in sync. If the visits layer is currently off,
+      // turn it on (session-only, no persistence) so the dots appear next
+      // to the day's entries.
+      this._ensureVisitsLayerEnabled()
     } else if (this._highlightedDay) {
       // Leaving timeline-feed tab — restore full opacity
       this._clearDayHighlight()
+    }
+  }
+
+  // Force-enables the visits layer for this session without persisting the
+  // change to the server — the user's saved Layers preference shouldn't be
+  // flipped just because they opened Timeline once.
+  async _ensureVisitsLayerEnabled() {
+    if (!this.hasVisitsToggleTarget) return
+    if (this.visitsToggleTarget.checked) return
+    this.visitsToggleTarget.checked = true
+    if (this.hasVisitsSearchTarget) {
+      this.visitsSearchTarget.style.display = "block"
+    }
+
+    const visitsLayer = this.layerManager?.getLayer("visits")
+    if (!visitsLayer) return
+
+    try {
+      if (!visitsLayer.data?.features?.length) {
+        const visits = await this.api.fetchVisits({
+          start_at: this.startDateValue,
+          end_at: this.endDateValue,
+        })
+        this.filterManager?.setAllVisits(visits)
+        visitsLayer.update(this.dataLoader.visitsToGeoJSON(visits))
+      }
+      visitsLayer.show()
+    } catch (err) {
+      console.error("Failed to auto-enable visits layer for timeline:", err)
     }
   }
 
@@ -758,31 +812,35 @@ export default class extends Controller {
     this._safeSetPaint("points", "circle-opacity", pointExpr)
     this._safeSetPaint("points", "circle-stroke-opacity", pointExpr)
 
-    // Visits: for visit hovers, keep all visits visible (popup highlights the specific one);
-    // for journey hovers, dim non-matching visits
+    // Visits:
+    //   - Visit hover  → only the hovered visit stays full opacity; others are
+    //     dimmed so the on-map dot the rail row points to is unambiguous.
+    //   - Journey hover → no visit is the focus, so all visits fade nearly out;
+    //     the eye lands on the highlighted track instead.
     if (entryType === "visit") {
-      this._safeSetPaint("visits", "circle-opacity", 0.9)
-      this._safeSetPaint("visits", "circle-stroke-opacity", 1)
-      this._safeSetPaint("visits-labels", "text-opacity", 1)
-    } else {
       const visitExpr = this._dayRangeExpr(
         "started_at",
         startedAt,
         endedAt,
-        0.9,
-        DIM,
+        1,
+        0.15,
       )
       this._safeSetPaint("visits", "circle-opacity", visitExpr)
       this._safeSetPaint("visits", "circle-stroke-opacity", visitExpr)
-
-      const labelExpr = this._dayRangeExpr(
-        "started_at",
-        startedAt,
-        endedAt,
-        1,
-        DIM,
+      this._safeSetPaint("visits-labels", "text-opacity", visitExpr)
+    } else {
+      const VISITS_NEARLY_INVISIBLE = 0.05
+      this._safeSetPaint("visits", "circle-opacity", VISITS_NEARLY_INVISIBLE)
+      this._safeSetPaint(
+        "visits",
+        "circle-stroke-opacity",
+        VISITS_NEARLY_INVISIBLE,
       )
-      this._safeSetPaint("visits-labels", "text-opacity", labelExpr)
+      this._safeSetPaint(
+        "visits-labels",
+        "text-opacity",
+        VISITS_NEARLY_INVISIBLE,
+      )
     }
 
     // Tracks: start_at is ISO 8601 string
@@ -1814,6 +1872,22 @@ export default class extends Controller {
     // Start replay and update card button to Pause
     this._startReplayPlayback()
     this._updateTrackReplayButton(true)
+  }
+
+  /**
+   * Toggle the per-track points layer (triggered from the inline track info
+   * card's "Show points" switch). Delegates the actual layer/opacity work to
+   * EventHandlers — same code path the legacy Tools-tab toggle used.
+   */
+  async toggleTrackPoints(event) {
+    const target = event?.currentTarget
+    if (!target) return
+    const trackId = target.dataset.trackId
+    if (!trackId) return
+    const enabled = !!target.checked
+    if (this.eventHandlers?._toggleTrackPoints) {
+      await this.eventHandlers._toggleTrackPoints(trackId, enabled)
+    }
   }
 
   /**

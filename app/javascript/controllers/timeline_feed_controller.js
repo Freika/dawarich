@@ -3,14 +3,19 @@ import { Controller } from "@hotwired/stimulus"
 /**
  * Timeline Feed Controller (Unified Timeline)
  *
- * Coordinates the Timeline tab's calendar, visit list, filters, and place drawer,
- * and dispatches events the MapLibre layer listens for.
+ * Coordinates the Timeline tab's calendar, visit list, and filters, and
+ * dispatches events the MapLibre layer listens for.
  *
  * See docs/specs for contract details — event names and DOM attributes must match
  * what the views (Task 5), CSS (Task 6), and MapLibre layer/manager (Task 8) emit/expect.
  */
 export default class extends Controller {
-  static targets = ["visitListFrame", "scopeBadge", "searchInput"]
+  static targets = [
+    "visitListFrame",
+    "scopeBadge",
+    "searchInput",
+    "emptyFiltered",
+  ]
 
   connect() {
     this.selectedDate = null
@@ -19,6 +24,15 @@ export default class extends Controller {
     // `visit_id=` URL-param selection (hydration is async because the frame
     // lazy-loads per-day data).
     this.pendingVisitId = null
+
+    this.pendingTrackId = null
+
+    // Browsers (Firefox especially) restore the search field's value on a
+    // full page reload via the form-autocomplete cache, even with
+    // autocomplete="off". Clear it explicitly so the rendered visit list
+    // matches the URL state on a fresh load. Skip when an active query is
+    // surfaced via URL (none today, but keeps this safe for future params).
+    if (this.hasSearchInputTarget) this.searchInputTarget.value = ""
 
     this.boundKeyHandler = this.handleKey.bind(this)
     document.addEventListener("keydown", this.boundKeyHandler)
@@ -29,6 +43,12 @@ export default class extends Controller {
     this.boundOpenVisit = this.handleOpenVisit.bind(this)
     document.addEventListener("timeline:open-visit", this.boundOpenVisit)
 
+    // Clicking a track line on the map dispatches `timeline:open-track`
+    // (see event_handlers.js#handleTrackClick). Jump to the day and expand
+    // the matching journey entry inline.
+    this.boundOpenTrack = this.handleOpenTrack.bind(this)
+    document.addEventListener("timeline:open-track", this.boundOpenTrack)
+
     if (this.hasVisitListFrameTarget) {
       this.boundFrameLoad = this.handleVisitFrameLoad.bind(this)
       this.visitListFrameTarget.addEventListener(
@@ -37,11 +57,41 @@ export default class extends Controller {
       )
     }
 
+    // The calendar is rendered into a lazy turbo-frame, so the cell for the
+    // URL-driven selected day doesn't exist when hydrateFromUrl() first runs.
+    // Re-apply the highlight once the calendar frame finishes loading.
+    this.boundCalendarLoad = (e) => {
+      if (e.target?.id !== "timeline-calendar-frame") return
+      if (!this.selectedDate) return
+      const cell = this.element.querySelector(
+        `[data-day="${this.selectedDate}"]`,
+      )
+      if (cell) cell.classList.add("cal-cell--selected")
+    }
+    document.addEventListener("turbo:frame-load", this.boundCalendarLoad)
+
     // Re-apply filter + search visibility after any turbo_stream update
     // (e.g., VisitsController#update replaces the row with fresh state, and
     // without this the newly-rendered row wouldn't honor the active filters).
-    this.boundStreamRender = () =>
-      requestAnimationFrame(() => this.applyVisibility())
+    // Also fire `visit:updated` whenever a visit row or the day frame is
+    // replaced — VisitsController emits these streams on confirm / decline /
+    // rename / bulk_update, and the map's visits layer needs to refetch so
+    // its dot color reflects the new status.
+    this.boundStreamRender = (event) => {
+      const target = event?.detail?.newStream?.getAttribute?.("target") || ""
+      const action = event?.detail?.newStream?.getAttribute?.("action") || ""
+      const visitRowReplaced =
+        action === "replace" && target.startsWith("visit_entry_")
+      const dayFrameUpdated =
+        action === "update" && target === "timeline-feed-frame"
+
+      requestAnimationFrame(() => {
+        this.applyVisibility()
+        if (visitRowReplaced || dayFrameUpdated) {
+          document.dispatchEvent(new CustomEvent("visit:updated"))
+        }
+      })
+    }
     document.addEventListener(
       "turbo:before-stream-render",
       this.boundStreamRender,
@@ -54,6 +104,10 @@ export default class extends Controller {
   disconnect() {
     document.removeEventListener("keydown", this.boundKeyHandler)
     document.removeEventListener("timeline:open-visit", this.boundOpenVisit)
+    document.removeEventListener("timeline:open-track", this.boundOpenTrack)
+    if (this.boundCalendarLoad) {
+      document.removeEventListener("turbo:frame-load", this.boundCalendarLoad)
+    }
     if (this.boundStreamRender) {
       document.removeEventListener(
         "turbo:before-stream-render",
@@ -74,6 +128,23 @@ export default class extends Controller {
       this.pendingVisitId = Number(visitId)
     }
     if (date) this.selectDayByDate(date)
+  }
+
+  handleOpenTrack(event) {
+    const { trackId, date } = event.detail || {}
+    const tid = Number.parseInt(trackId, 10)
+    if (!Number.isFinite(tid)) return
+    this.pendingTrackId = tid
+
+    // If the clicked track is on the already-selected day, the journey
+    // entry is already rendered — expand it immediately. Otherwise navigate
+    // to the day; the frame-load handler will consume pendingTrackId once the
+    // new day's entries render.
+    if (date && date !== this.selectedDate) {
+      this.navigateToDay(date)
+    } else {
+      this._tryExpandPendingTrack()
+    }
   }
 
   // ---------- URL hydration ----------
@@ -99,15 +170,6 @@ export default class extends Controller {
       const isoDate =
         date === "today" ? new Date().toLocaleDateString("en-CA") : date
       requestAnimationFrame(() => this.selectDayByDate(isoDate))
-    }
-
-    // Place drawer
-    const placeId = params.get("place_id")
-    if (placeId) {
-      const parsed = Number.parseInt(placeId, 10)
-      if (Number.isFinite(parsed)) {
-        requestAnimationFrame(() => this.openDrawerForPlace(parsed))
-      }
     }
 
     // Specific visit selection — deferred until the visit list frame loads
@@ -143,6 +205,8 @@ export default class extends Controller {
       }
     }
 
+    if (this.pendingTrackId) this._tryExpandPendingTrack()
+
     if (!this.pendingVisitId) return
     const row = this.element.querySelector(
       `[data-visit-id="${this.pendingVisitId}"]`,
@@ -152,6 +216,34 @@ export default class extends Controller {
     // Synthesize a Stimulus-shaped event and run through the normal path so
     // visual selection + the `timeline-feed:visit-selected` dispatch are consistent.
     this.selectVisit({ currentTarget: row, target: row })
+  }
+
+  // Expands the journey entry for `this.pendingTrackId` if it's present in
+  // the currently rendered day. Idempotent — re-clicking the same track
+  // collapses via `toggleTrackInfo`, but programmatic expansion only opens
+  // a closed entry, never collapses an open one.
+  _tryExpandPendingTrack() {
+    const tid = this.pendingTrackId
+    if (!tid) return
+    this.pendingTrackId = null
+
+    const toggle = this.element.querySelector(
+      `.journey-leg[data-track-id="${tid}"]`,
+    )
+    if (!toggle) return
+
+    const frameId = toggle.dataset.frameId
+    const frame = frameId ? document.getElementById(frameId) : null
+    if (!frame) return
+
+    if (frame.classList.contains("hidden")) {
+      this.toggleTrackInfo({ currentTarget: toggle })
+    }
+
+    toggle.closest(".timeline-entry")?.scrollIntoView({
+      behavior: "smooth",
+      block: "nearest",
+    })
   }
 
   // ---------- Calendar ----------
@@ -211,9 +303,18 @@ export default class extends Controller {
     if (this.hasVisitListFrameTarget) {
       const start = `${date}T00:00:00Z`
       const end = `${date}T23:59:59Z`
-      this.visitListFrameTarget.src = `/map/timeline_feeds?start_at=${encodeURIComponent(
+      const newSrc = `/map/timeline_feeds?start_at=${encodeURIComponent(
         start,
       )}&end_at=${encodeURIComponent(end)}`
+      // Force-fetch even when the URL appears identical (cache-control or
+      // an in-flight request can otherwise leave the frame showing stale
+      // entries when the user nudges day-by-day with the arrow keys).
+      const frame = this.visitListFrameTarget
+      if (frame.getAttribute("src") === newSrc) {
+        frame.reload?.()
+      } else {
+        frame.setAttribute("src", newSrc)
+      }
     }
 
     if (this.hasScopeBadgeTarget) {
@@ -244,11 +345,10 @@ export default class extends Controller {
 
   // ---------- Visit selection ----------
   selectVisit(event) {
-    // Don't trigger when activating a nested control: drawer button, rename
-    // trigger span, submit button, form field, or the [data-controller="visit-name"]
+    // Don't trigger when activating a nested control: rename trigger span,
+    // submit button, form field, or the [data-controller="visit-name"]
     // wrapper whose click opens the inline rename form.
     if (
-      event.target.closest("[data-action*='openPlaceDrawer']") ||
       event.target.closest("[data-controller='visit-name']") ||
       event.target.closest("button[type='submit']") ||
       event.target.closest("input") ||
@@ -342,63 +442,6 @@ export default class extends Controller {
     document.dispatchEvent(new CustomEvent("timeline-feed:entry-unhover"))
   }
 
-  // ---------- Place drawer ----------
-  openPlaceDrawer(event) {
-    event.stopPropagation()
-    const button = event.currentTarget
-    const placeId = Number.parseInt(button.dataset.placeId, 10)
-    if (!Number.isFinite(placeId)) return
-    this.openDrawerForPlace(placeId)
-  }
-
-  openDrawerForPlace(placeId) {
-    const drawer = this.ensureDrawerElement()
-    drawer.src = `/places/${placeId}`
-    drawer.classList.add("place-drawer--open")
-
-    document.dispatchEvent(
-      new CustomEvent("timeline-feed:place-selected", {
-        detail: { placeId },
-      }),
-    )
-  }
-
-  closePlaceDrawer() {
-    const drawer = document.getElementById("place-drawer")
-    if (drawer) drawer.classList.remove("place-drawer--open")
-  }
-
-  ensureDrawerElement() {
-    let drawer = document.getElementById("place-drawer")
-    if (drawer) return drawer
-
-    drawer = document.createElement("turbo-frame")
-    drawer.id = "place-drawer"
-    drawer.className = "place-drawer"
-    drawer.setAttribute("data-testid", "place-drawer")
-
-    const closeBtn = document.createElement("button")
-    closeBtn.type = "button"
-    closeBtn.className =
-      "btn btn-sm btn-ghost btn-circle absolute top-2 right-2 z-10"
-    closeBtn.setAttribute(
-      "data-action",
-      "click->timeline-feed#closePlaceDrawer",
-    )
-    closeBtn.setAttribute("data-testid", "place-drawer-close")
-    closeBtn.textContent = "✕"
-    drawer.appendChild(closeBtn)
-
-    const container = document.querySelector(".maps-maplibre-container")
-    if (container) {
-      container.appendChild(drawer)
-    } else {
-      document.body.appendChild(drawer)
-    }
-
-    return drawer
-  }
-
   // ---------- Filters + Search ----------
   filterChanged() {
     this.applyVisibility()
@@ -438,17 +481,51 @@ export default class extends Controller {
     const activeTags = this.readActiveTags()
 
     const rows = this.visitListFrameTarget.querySelectorAll("[data-status]")
+    let visibleCount = 0
     for (const row of rows) {
       const tokens = row.dataset.searchTokens || ""
       const statusOk = filter[row.dataset.status] !== false
       const searchOk = !query || tokens.includes(query)
       const tagsOk =
         activeTags.length === 0 || activeTags.some((t) => tokens.includes(t))
-      row.classList.toggle(
-        "visit-row--hidden",
-        !(statusOk && searchOk && tagsOk),
-      )
+      const hidden = !(statusOk && searchOk && tagsOk)
+      row.classList.toggle("visit-row--hidden", hidden)
+      if (!hidden) visibleCount += 1
     }
+
+    // Show the "no matches — clear filters" helper only when the day has at
+    // least one visit but active search/filter/tags hide them all. Prevents
+    // the confusing state where the day header says "N visits" but the list
+    // appears empty.
+    const filtersActive =
+      query.length > 0 ||
+      activeTags.length > 0 ||
+      Object.values(filter).some((v) => v === false)
+    const shouldShowHelper =
+      rows.length > 0 && visibleCount === 0 && filtersActive
+    for (const el of this.emptyFilteredTargets) {
+      el.classList.toggle("hidden", !shouldShowHelper)
+    }
+  }
+
+  // Wired from the empty-filtered helper's "Clear search & filters" button.
+  clearVisitFilters() {
+    if (this.hasSearchInputTarget) {
+      this.searchInputTarget.value = ""
+    }
+    const checkboxes = this.element.querySelectorAll(
+      'input[type="checkbox"][data-status]',
+    )
+    for (const cb of checkboxes) {
+      if (!cb.checked) cb.checked = true
+    }
+    const activeTagChips = this.element.querySelectorAll(
+      ".tag-chip--toggle.tag-chip--active",
+    )
+    for (const chip of activeTagChips) {
+      chip.classList.remove("tag-chip--active")
+    }
+    this.applyVisibility()
   }
 
   readFilterDetail() {
@@ -473,6 +550,72 @@ export default class extends Controller {
     ).map((b) => b.dataset.tagName || "")
   }
 
+  // ---------- Calendar month skeleton ----------
+  // Paints a "neutral" version of the target month immediately on click,
+  // so users see the new month structure without waiting for the
+  // turbo_stream round-trip. The stream then swaps this skeleton out for
+  // the real heat-colored cells the moment the response arrives.
+  previewMonth(event) {
+    const link = event.currentTarget
+    const targetMonth = link?.dataset?.targetMonth
+    if (!targetMonth) return
+
+    const calendar = this.element.querySelector(
+      '[data-testid="timeline-calendar"]',
+    )
+    if (!calendar) return
+
+    const grid = calendar.querySelector(
+      ".grid.grid-cols-7.gap-0\\.5:last-child",
+    )
+    const title = calendar.querySelector('[data-testid="calendar-title"]')
+    if (!grid || !title) return
+
+    const [yearStr, monthStr] = targetMonth.split("-")
+    const year = Number.parseInt(yearStr, 10)
+    const monthIdx = Number.parseInt(monthStr, 10) - 1
+    if (!Number.isFinite(year) || !Number.isFinite(monthIdx)) return
+
+    // Force English locale to match the server-rendered title
+    // (`strftime('%B %Y')`) — otherwise users on a non-English browser see
+    // a brief "Январь 2025" → "January 2025" flicker as the turbo_stream
+    // response replaces the skeleton.
+    title.textContent = new Date(year, monthIdx, 1).toLocaleDateString("en", {
+      month: "long",
+      year: "numeric",
+    })
+
+    // 6×7 grid, Monday-aligned — mirrors what MonthSummary builds server-side.
+    const monthStart = new Date(year, monthIdx, 1)
+    // Day-of-week with Monday as 0
+    const offset = (monthStart.getDay() + 6) % 7
+    const gridStart = new Date(year, monthIdx, 1 - offset)
+
+    const cells = []
+    for (let i = 0; i < 42; i += 1) {
+      const d = new Date(gridStart)
+      d.setDate(gridStart.getDate() + i)
+      const inMonth = d.getMonth() === monthIdx
+      const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+      const selected = iso === this.selectedDate
+      const classes = [
+        "cal-cell",
+        "heat-0",
+        "cal-cell--dark-text",
+        inMonth ? null : "out-of-month",
+        selected ? "cal-cell--selected" : null,
+      ]
+        .filter(Boolean)
+        .join(" ")
+      cells.push(
+        `<button type="button" class="${classes}" data-day="${iso}" data-action="click->timeline-feed#selectDay" data-testid="calendar-day" disabled><span class="cal-cell__day">${d.getDate()}</span></button>`,
+      )
+    }
+
+    grid.innerHTML = cells.join("")
+    calendar.classList.add("timeline-calendar--loading")
+  }
+
   // ---------- Day navigation ----------
   navigateDay(event) {
     const direction = event.currentTarget.dataset.direction
@@ -493,9 +636,7 @@ export default class extends Controller {
     if (e.target.matches?.("input, textarea, select")) return
     if (!this.element.isConnected) return
 
-    if (e.key === "Escape") {
-      this.closePlaceDrawer()
-    } else if (e.key === "ArrowLeft") {
+    if (e.key === "ArrowLeft") {
       this.navigateInDirection("prev")
     } else if (e.key === "ArrowRight") {
       this.navigateInDirection("next")

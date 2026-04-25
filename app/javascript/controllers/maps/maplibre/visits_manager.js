@@ -39,36 +39,6 @@ export class VisitsManager {
       if (layer) layer.setSelectedVisit(null)
     }
 
-    this.onPlaceSelected = (e) => {
-      const detail = e?.detail || {}
-      const { placeId, lat, lng } = detail
-
-      if (Number.isFinite(lat) && Number.isFinite(lng)) {
-        this.controller.map?.flyTo({
-          center: [lng, lat],
-          zoom: 15,
-          duration: 600,
-        })
-        return
-      }
-
-      const placesLayer = this.layerManager?.getLayer("places")
-      const features = placesLayer?.data?.features || []
-      const feature = features.find(
-        (f) => Number(f?.properties?.id) === Number(placeId),
-      )
-      if (feature?.geometry?.coordinates) {
-        const [flng, flat] = feature.geometry.coordinates
-        if (Number.isFinite(flng) && Number.isFinite(flat)) {
-          this.controller.map?.flyTo({
-            center: [flng, flat],
-            zoom: 15,
-            duration: 600,
-          })
-        }
-      }
-    }
-
     this.onFilterChanged = (e) => {
       const layer = this.layerManager?.getLayer("visits")
       if (layer) layer.setStatusFilter(e?.detail || {})
@@ -142,10 +112,6 @@ export class VisitsManager {
       this.onVisitDeselected,
     )
     document.addEventListener(
-      "timeline-feed:place-selected",
-      this.onPlaceSelected,
-    )
-    document.addEventListener(
       "timeline-feed:filter-changed",
       this.onFilterChanged,
     )
@@ -169,12 +135,6 @@ export class VisitsManager {
       document.removeEventListener(
         "timeline-feed:visit-deselected",
         this.onVisitDeselected,
-      )
-    }
-    if (this.onPlaceSelected) {
-      document.removeEventListener(
-        "timeline-feed:place-selected",
-        this.onPlaceSelected,
       )
     }
     if (this.onFilterChanged) {

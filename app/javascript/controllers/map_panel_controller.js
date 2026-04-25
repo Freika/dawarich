@@ -80,11 +80,32 @@ export default class extends Controller {
         "/": "search",
         c: "tools",
         C: "tools",
+        s: "settings",
+        S: "settings",
       }
       const tab = keyToTab[e.key]
-      if (!tab) return
-      e.preventDefault()
-      this.openTabByName(tab)
+      if (tab) {
+        e.preventDefault()
+        this.openTabByName(tab)
+        return
+      }
+
+      // Replay isn't a tab — it toggles a separate panel. Wire R into the
+      // same hotkey handler so it shares the input/modifier-key guards
+      // already established above.
+      if (e.key === "r" || e.key === "R") {
+        const mapContainer = document.getElementById("maps-maplibre-container")
+        if (!mapContainer) return
+        const maplibreController =
+          this.application.getControllerForElementAndIdentifier(
+            mapContainer,
+            "maps--maplibre",
+          )
+        if (maplibreController?.toggleReplay) {
+          e.preventDefault()
+          maplibreController.toggleReplay()
+        }
+      }
     }
     document.addEventListener("keydown", this.boundClusterKeys)
 
@@ -93,6 +114,11 @@ export default class extends Controller {
     // handles day selection on its own).
     this.boundOpenVisit = () => this.openTabByName("timeline-feed")
     document.addEventListener("timeline:open-visit", this.boundOpenVisit)
+
+    // Same for tracks — clicking a track line on the map opens the Timeline
+    // tab and expands the matching journey entry inline.
+    this.boundOpenTrack = () => this.openTabByName("timeline-feed")
+    document.addEventListener("timeline:open-track", this.boundOpenTrack)
   }
 
   disconnect() {
@@ -110,6 +136,10 @@ export default class extends Controller {
     if (this.boundOpenVisit) {
       document.removeEventListener("timeline:open-visit", this.boundOpenVisit)
       this.boundOpenVisit = null
+    }
+    if (this.boundOpenTrack) {
+      document.removeEventListener("timeline:open-track", this.boundOpenTrack)
+      this.boundOpenTrack = null
     }
     if (clusterGlobalHandlersBoundBy === this) {
       clusterGlobalHandlersBoundBy = null

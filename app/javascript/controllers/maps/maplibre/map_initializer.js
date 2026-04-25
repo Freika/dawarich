@@ -59,14 +59,20 @@ export class MapInitializer {
       })
     }
 
-    if (showControls) {
-      map.addControl(new maplibregl.NavigationControl(), "top-right")
-    }
-
+    // The bottom-right corner uses `flex-direction: column-reverse` (MapLibre
+    // default), so the FIRST control added ends up at the bottom of the
+    // visual stack. Add attribution first so the zoom buttons sit ABOVE it.
     map.addControl(
       new maplibregl.AttributionControl({ compact: true }),
       "bottom-right",
     )
+
+    if (showControls) {
+      // Bottom-right keeps zoom out of the way of the right-edge button
+      // cluster (timeline / layers / search / replay / settings) which lives
+      // along the top of the map.
+      map.addControl(new maplibregl.NavigationControl(), "bottom-right")
+    }
 
     return map
   }

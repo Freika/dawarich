@@ -37,6 +37,10 @@ export class MapDataManager {
       this.controller.showProgress()
     }
 
+    // Hoisted out of `try` so the `finally` block can await background
+    // work (tracks / photos) before deciding whether to dismiss the badge.
+    let data = null
+
     try {
       // 1. Initialize all layers with empty data for correct z-ordering
       await this._setupLayers({
@@ -50,7 +54,7 @@ export class MapDataManager {
       })
 
       // 2. Fetch data with incremental callbacks
-      const data = await this.dataLoader.fetchMapData(startDate, endDate, {
+      data = await this.dataLoader.fetchMapData(startDate, endDate, {
         onUpdate: showLoading
           ? (info) => this.controller.updateLoadingCounts(info)
           : null,
@@ -61,9 +65,14 @@ export class MapDataManager {
             "[MapDataManager] Updating tracks layer from background load",
           )
           this._updateTracksLayer(tracksGeoJSON)
-          // Fit bounds to tracks if no other data triggered it
-          if (fitBounds && !this._hasFittedBounds) {
-            this._hasFittedBounds = this._fitToFirstAvailable([tracksGeoJSON])
+          // Tracks usually have the largest bbox of any layer (they include
+          // every leg between visits), so once they arrive we always re-fit
+          // to them — even if the initial fit already snapped to visits or
+          // points. Tracks tend to contain those locations too, so the new
+          // view supersets the old one rather than losing context.
+          if (fitBounds && tracksGeoJSON?.features?.length) {
+            this._fitMapToBounds(tracksGeoJSON)
+            this._hasFittedBounds = true
           }
         },
         onPhotosLoaded: (photosGeoJSON) => {
@@ -106,8 +115,21 @@ export class MapDataManager {
       const duration = performanceMonitor.measure("load-map-data")
       console.log(`[Performance] Map data loaded in ${duration}ms`)
 
-      // Safety net: if the counter didn't complete (e.g. no sources expected),
-      // ensure the badge is dismissed after a short delay.
+      // Wait for background fetches (tracks, photos) to finish before
+      // running the safety net. If we don't, the badge gets force-hidden
+      // while tracks are still loading — see issue: "loader disappears
+      // before tracks are rendered."
+      if (data?.backgroundReady) {
+        try {
+          await data.backgroundReady
+        } catch {
+          /* allSettled never rejects but be defensive */
+        }
+      }
+
+      // Safety net: if the counter didn't complete (e.g. no sources expected,
+      // or the user has every layer disabled), ensure the badge is dismissed
+      // after a short delay so it doesn't linger forever.
       if (showLoading && this.controller.hasProgressBadgeTarget) {
         const badge = this.controller.progressBadgeTarget
         if (

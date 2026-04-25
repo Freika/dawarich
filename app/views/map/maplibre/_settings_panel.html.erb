@@ -15,7 +15,21 @@
      data-maps--maplibre-target="settingsPanel"
      data-controller="map-panel">
   <!-- Vertical Icon Tabs (Left Side) -->
+  <%# Order mirrors the map-edge button cluster (Timeline → Layers → Search →
+      Tools → Settings → Links) so a user's spatial muscle memory works the
+      same regardless of which entry point they reach for. The cluster's
+      Replay button is intentionally absent — Replay opens a panel, not a
+      tab. %>
   <div class="panel-tabs">
+    <button class="tab-btn<%= ' active' if timeline_panel_open %>"
+            data-action="click->map-panel#switchTab"
+            data-tab="timeline-feed"
+            data-map-panel-target="tabButton"
+            data-testid="timeline-tab-button"
+            title="Timeline">
+      <%= icon 'calendar-clock' %>
+    </button>
+
     <button class="tab-btn<%= ' active' unless timeline_panel_open %>"
             data-action="click->map-panel#switchTab"
             data-tab="layers"
@@ -30,16 +44,6 @@
             data-map-panel-target="tabButton"
             title="Search">
       <%= icon 'search' %>
-    </button>
-
-
-    <button class="tab-btn<%= ' active' if timeline_panel_open %>"
-            data-action="click->map-panel#switchTab"
-            data-tab="timeline-feed"
-            data-map-panel-target="tabButton"
-            data-testid="timeline-tab-button"
-            title="Timeline">
-      <%= icon 'calendar-clock' %>
     </button>
 
     <button class="tab-btn"
@@ -1016,15 +1020,21 @@
             </div>
 
             <%# Search — filters the currently loaded day's visit rows by
-                name / place / tag (substring match on data-search-tokens). %>
-            <label class="timeline-rail__search">
-              <%= icon 'search' %>
+                name / place / tag (substring match on data-search-tokens).
+                DaisyUI `input` styles target the <input> element directly;
+                the magnifier overlays via absolute positioning so we get a
+                single bordered field instead of the label-wrapper double
+                border. %>
+            <div class="relative">
+              <%= icon 'search',
+                       class: 'h-4 w-4 opacity-50 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none' %>
               <input type="text"
                      placeholder="Search visits, places…"
-                     class="timeline-rail__search-input"
+                     class="input input-sm input-bordered w-full pl-8"
+                     autocomplete="off"
                      data-timeline-feed-target="searchInput"
                      data-action="input->timeline-feed#search" />
-            </label>
+            </div>
 
             <%# Tag chips — click to toggle as an active filter. Multi-select ANDs
                 the chips; clicking an active chip clears it. Pure Stimulus; the
@@ -1032,7 +1042,14 @@
                 timeline_feed_controller#applyVisibility. %>
             <% if @timeline_tags&.any? %>
               <div class="timeline-rail__section">
-                <div class="timeline-rail__section-label">Tags</div>
+                <div class="timeline-rail__section-header">
+                  <span class="timeline-rail__section-label">Tags</span>
+                  <%= link_to 'Manage', tags_path,
+                              class: 'timeline-rail__section-link',
+                              target: '_blank',
+                              rel: 'noopener',
+                              title: 'Manage tags in a new tab' %>
+                </div>
                 <div class="timeline-rail__tags">
                   <% @timeline_tags.each do |t| %>
                     <button type="button"

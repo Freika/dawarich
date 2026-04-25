@@ -49,6 +49,24 @@
     <%= icon 'circle-plus' %>
   </button>
 
+  <%# Inline play triangle — `lucide/outline/play.svg` isn't bundled with the
+      app's icon set and the only other places we draw a play icon also use
+      inline SVG (replay panel + track info card), so doing the same keeps
+      the dependency surface small. %>
+  <button type="button"
+          class="map-button-cluster__btn"
+          data-action="click->maps--maplibre#toggleReplay"
+          data-testid="map-button-replay"
+          aria-label="Replay"
+          aria-keyshortcuts="R"
+          title="Replay points for the current date range (R)">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+         stroke="currentColor" stroke-width="2" stroke-linecap="round"
+         stroke-linejoin="round" class="w-5 h-5" aria-hidden="true">
+      <polygon points="6 4 20 12 6 20 6 4"/>
+    </svg>
+  </button>
+
   <div class="map-button-cluster__divider" aria-hidden="true"></div>
 
   <button type="button"
@@ -57,7 +75,8 @@
           data-tab="settings"
           data-testid="map-button-settings"
           aria-label="Settings"
-          title="Settings">
+          aria-keyshortcuts="S"
+          title="Settings (S)">
     <%= icon 'settings' %>
   </button>
 </div>

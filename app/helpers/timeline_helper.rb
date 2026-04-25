@@ -158,11 +158,11 @@ module TimelineHelper
   end
 
   # Returns the space-joined CSS class string for a calendar cell.
-  # Uses Timeline::MonthSummary.heat_bucket (service-layer authoritative
-  # bucketing with 6-level thresholds), not the simpler TimelineHelper
-  # #heat_bucket which is kept for non-calendar contexts.
+  # Heat bucket is precomputed by Timeline::MonthSummary as a month-relative
+  # grade (1..5 = quintiles of the busiest day in the visible month;
+  # 0 = no activity at all).
   def calendar_cell_classes(cell)
-    bucket = Timeline::MonthSummary.heat_bucket(cell[:tracked_seconds])
+    bucket = cell[:heat_bucket].to_i
     classes = ['cal-cell', "heat-#{bucket}"]
     classes << 'has-suggestions' if cell[:suggested_count].to_i.positive?
     classes << 'out-of-month' unless cell[:in_month]
