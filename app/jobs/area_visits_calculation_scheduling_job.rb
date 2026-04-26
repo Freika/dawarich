@@ -6,6 +6,8 @@ class AreaVisitsCalculationSchedulingJob < ApplicationJob
 
   def perform
     User.find_each do |user|
+      next unless user.safe_settings.visits_suggestions_enabled?
+
       AreaVisitsCalculatingJob.perform_later(user.id)
       PlaceVisitsCalculatingJob.perform_later(user.id)
     end
