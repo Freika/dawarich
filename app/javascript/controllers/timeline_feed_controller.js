@@ -443,31 +443,11 @@ export default class extends Controller {
 
   entryHover(event) {
     const el = event.currentTarget
-    const {
-      entryType,
-      startedAt,
-      endedAt,
-      trackId,
-      visitId,
-      visitLat,
-      visitLng,
-    } = el.dataset
+    const { entryType, startedAt, endedAt, trackId, visitId } = el.dataset
     if (!startedAt || !endedAt) return
-    const visitName = el
-      .querySelector('[data-visit-name-target="name"]')
-      ?.textContent?.trim()
     document.dispatchEvent(
       new CustomEvent("timeline-feed:entry-hover", {
-        detail: {
-          entryType,
-          startedAt,
-          endedAt,
-          trackId,
-          visitId,
-          visitName,
-          visitLat,
-          visitLng,
-        },
+        detail: { entryType, startedAt, endedAt, trackId, visitId },
       }),
     )
   }

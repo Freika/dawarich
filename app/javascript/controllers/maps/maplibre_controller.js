@@ -1,10 +1,8 @@
 import { Controller } from "@hotwired/stimulus"
-import maplibregl from "maplibre-gl"
 import { Toast } from "maps_maplibre/components/toast"
 import { ReplayManager } from "maps_maplibre/managers/replay_manager"
 import { ApiClient } from "maps_maplibre/services/api_client"
 import { CleanupHelper } from "maps_maplibre/utils/cleanup_helper"
-import { escapeHtml } from "maps_maplibre/utils/geojson_transformers"
 import { cancelAllPreviews } from "maps_maplibre/utils/layer_gate"
 import { performanceMonitor } from "maps_maplibre/utils/performance_monitor"
 import { SearchManager } from "maps_maplibre/utils/search_manager"
@@ -794,16 +792,7 @@ export default class extends Controller {
    * Highlights the matching route/visit on the map by dimming everything else.
    */
   handleEntryHover(event) {
-    const {
-      entryType,
-      startedAt,
-      endedAt,
-      trackId,
-      visitId,
-      visitName,
-      visitLat,
-      visitLng,
-    } = event.detail
+    const { entryType, startedAt, endedAt, trackId, visitId } = event.detail
     if (!this.map || !startedAt || !endedAt) return
 
     this._entryHighlightActive = true
@@ -889,26 +878,6 @@ export default class extends Controller {
           tracksLayer.setSelectedTrack(feature)
           this._hoverHighlightedTrack = true
         }
-      }
-    }
-
-    // Show popup for visit entries with coordinates
-    if (entryType === "visit" && visitLat && visitLng) {
-      const lat = parseFloat(visitLat)
-      const lng = parseFloat(visitLng)
-      if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
-        this._removeHoverPopup()
-        this._hoverPopup = new maplibregl.Popup({
-          closeButton: false,
-          closeOnClick: false,
-          offset: 12,
-          className: "timeline-hover-popup",
-        })
-          .setLngLat([lng, lat])
-          .setHTML(
-            `<div style="font-size:13px;font-weight:500;padding:2px 0">${escapeHtml(visitName || "Visit")}</div>`,
-          )
-          .addTo(this.map)
       }
     }
   }
