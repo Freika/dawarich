@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
 class Points::AnomalyFilter
-  ACCURACY_THRESHOLD = 100       # meters
-  MAX_SPEED_KMH = 1000           # km/h — floor for speed threshold
-  SPEED_MULTIPLIER = 3           # threshold = max(floor, median * multiplier)
-  CONTEXT_POINTS = 5             # extra points for speed context at boundaries
+  DEFAULT_ACCURACY_THRESHOLD = 100 # meters
+  MAX_SPEED_KMH = 1000             # km/h — floor for speed threshold
+  SPEED_MULTIPLIER = 3             # threshold = max(floor, median * multiplier)
+  CONTEXT_POINTS = 5               # extra points for speed context at boundaries
 
   def initialize(user_id, start_time, end_time)
     @user_id = user_id
@@ -13,6 +13,8 @@ class Points::AnomalyFilter
   end
 
   def call
+    return 0 unless filtering_enabled?
+
     count = 0
     count += filter_by_accuracy
     count += filter_by_speed
@@ -21,12 +23,24 @@ class Points::AnomalyFilter
 
   private
 
+  def user_settings
+    @user_settings ||= User.find(@user_id).safe_settings
+  end
+
+  def filtering_enabled?
+    user_settings.gps_filtering_enabled?
+  end
+
+  def accuracy_threshold
+    @accuracy_threshold ||= user_settings.gps_accuracy_threshold
+  end
+
   # Pass 1: Mark points with accuracy > threshold
   def filter_by_accuracy
     Point.where(user_id: @user_id, timestamp: @start_time..@end_time)
          .not_anomaly
          .where.not(accuracy: nil)
-         .where('accuracy > ?', ACCURACY_THRESHOLD)
+         .where('accuracy > ?', accuracy_threshold)
          .update_all(anomaly: true)
   end
 

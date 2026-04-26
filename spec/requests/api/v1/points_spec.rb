@@ -580,4 +580,20 @@ RSpec.describe 'Api::V1::Points', type: :request do
       end
     end
   end
+
+  describe 'POST /reapply_anomaly_filter' do
+    it 'enqueues the backfill job in reset mode for the current user' do
+      expect do
+        post "/api/v1/points/reapply_anomaly_filter?api_key=#{user.api_key}"
+      end.to have_enqueued_job(Points::AnomalyBackfillUserJob).with(user.id, reset: true)
+
+      expect(response).to have_http_status(:accepted)
+    end
+
+    it 'requires authentication' do
+      post '/api/v1/points/reapply_anomaly_filter'
+
+      expect(response).to have_http_status(:unauthorized)
+    end
+  end
 end
