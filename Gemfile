@@ -37,7 +37,6 @@ gem 'omniauth_openid_connect'
 gem 'omniauth-rails_csrf_protection'
 gem 'parallel'
 gem 'pg'
-gem 'prometheus_exporter'
 gem 'puma'
 gem 'pundit', '>= 2.5.1'
 gem 'rack-attack'
@@ -65,7 +64,13 @@ gem 'stimulus-rails'
 gem 'tailwindcss-rails', '= 3.3.2'
 gem 'turbo-rails', '>= 2.0.17'
 gem 'tzinfo-data', platforms: %i[mingw mswin x64_mingw jruby]
+gem 'webrick' # Required by Yabeda::Prometheus::Exporter.start_metrics_server! on Ruby 3.0+
 gem 'with_advisory_lock'
+gem 'yabeda-activerecord'
+gem 'yabeda-prometheus'
+gem 'yabeda-puma-plugin'
+gem 'yabeda-rails'
+gem 'yabeda-sidekiq'
 
 group :development, :test, :staging do
   gem 'brakeman', require: false

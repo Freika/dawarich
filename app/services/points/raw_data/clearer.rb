@@ -75,23 +75,13 @@ module Points
         @stats[:cleared] += cleared_count
         Rails.logger.info("✓ Cleared #{cleared_count} points for archive #{archive.id}")
 
-        Metrics::Archives::Operation.new(
-          operation: 'clear',
-          status: 'success'
-        ).call
-
-        Metrics::Archives::PointsArchived.new(
-          count: cleared_count,
-          operation: 'removed'
-        ).call
+        Yabeda.dawarich_archive.operations_total.increment({ operation: 'clear', status: 'success' })
+        Yabeda.dawarich_archive.points_total.increment({ operation: 'removed' }, by: cleared_count)
       rescue StandardError => e
         ExceptionReporter.call(e, "Failed to clear points for archive #{archive.id}")
         Rails.logger.error("✗ Failed to clear archive #{archive.id}: #{e.message}")
 
-        Metrics::Archives::Operation.new(
-          operation: 'clear',
-          status: 'failure'
-        ).call
+        Yabeda.dawarich_archive.operations_total.increment({ operation: 'clear', status: 'failure' })
       end
 
       def clear_points_in_batches(point_ids)

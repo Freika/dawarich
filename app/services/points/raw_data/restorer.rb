@@ -33,20 +33,10 @@ module Points
             )
           end
 
-          Metrics::Archives::Operation.new(
-            operation: 'restore',
-            status: 'success'
-          ).call
-
-          Metrics::Archives::PointsArchived.new(
-            count: total_restored,
-            operation: 'removed'
-          ).call
+          Yabeda.dawarich_archive.operations_total.increment({ operation: 'restore', status: 'success' })
+          Yabeda.dawarich_archive.points_total.increment({ operation: 'removed' }, by: total_restored)
         rescue StandardError
-          Metrics::Archives::Operation.new(
-            operation: 'restore',
-            status: 'failure'
-          ).call
+          Yabeda.dawarich_archive.operations_total.increment({ operation: 'restore', status: 'failure' })
 
           raise
         end

@@ -177,5 +177,19 @@ RSpec.describe Points::RawData::Clearer do
       other_points = Point.where(user: user).where.not(id: restored_point.id)
       expect(other_points.pluck(:raw_data)).to all(eq({}))
     end
+
+    it 'increments operations_total with clear/success tags' do
+      expect do
+        clearer.call
+      end.to increment_yabeda_counter(Yabeda.dawarich_archive.operations_total)
+        .with_tags(operation: 'clear', status: 'success')
+    end
+
+    it 'increments points_total with removed tag' do
+      expect do
+        clearer.call
+      end.to increment_yabeda_counter(Yabeda.dawarich_archive.points_total)
+        .with_tags(operation: 'removed')
+    end
   end
 end

@@ -288,4 +288,67 @@ RSpec.describe Points::RawData::Archiver do
       expect(archive.metadata['content_checksum']).to eq(actual_checksum)
     end
   end
+
+  describe 'metric emissions' do
+    let(:test_date) { 3.months.ago.beginning_of_month.utc }
+    let!(:test_points) do
+      create_list(:point, 3, user: user,
+                            timestamp: test_date.to_i,
+                            raw_data: { lon: 13.4, lat: 52.5 })
+    end
+
+    it 'increments operations_total with archive/success tags' do
+      expect do
+        archiver.archive_specific_month(user.id, test_date.year, test_date.month)
+      end.to increment_yabeda_counter(Yabeda.dawarich_archive.operations_total)
+        .with_tags(operation: 'archive', status: 'success')
+    end
+
+    it 'increments points_total with added tag' do
+      expect do
+        archiver.archive_specific_month(user.id, test_date.year, test_date.month)
+      end.to increment_yabeda_counter(Yabeda.dawarich_archive.points_total)
+        .with_tags(operation: 'added')
+    end
+
+    it 'measures size_bytes histogram' do
+      expect do
+        archiver.archive_specific_month(user.id, test_date.year, test_date.month)
+      end.to measure_yabeda_histogram(Yabeda.dawarich_archive.size_bytes)
+    end
+
+    it 'measures compression_ratio histogram' do
+      expect do
+        archiver.archive_specific_month(user.id, test_date.year, test_date.month)
+      end.to measure_yabeda_histogram(Yabeda.dawarich_archive.compression_ratio)
+    end
+
+    context 'when count mismatch occurs' do
+      it 'increments count_mismatches_total and sets count_difference gauge' do
+        fake_compressor = instance_double(Points::RawData::ChunkCompressor)
+        allow(Points::RawData::ChunkCompressor).to receive(:new).and_return(fake_compressor)
+
+        io = StringIO.new
+        gz = Zlib::GzipWriter.new(io)
+        2.times { |i| gz.puts({ id: i, raw_data: { test: 'data' } }.to_json) }
+        gz.close
+
+        allow(fake_compressor).to receive(:compress).and_return(
+          { data: io.string.force_encoding(Encoding::ASCII_8BIT), count: 2 }
+        )
+
+        expect do
+          archiver.archive_specific_month(user.id, test_date.year, test_date.month)
+        rescue StandardError
+          nil
+        end.to increment_yabeda_counter(Yabeda.dawarich_archive.count_mismatches_total)
+
+        expect do
+          archiver.archive_specific_month(user.id, test_date.year, test_date.month)
+        rescue StandardError
+          nil
+        end.to update_yabeda_gauge(Yabeda.dawarich_archive.count_difference)
+      end
+    end
+  end
 end

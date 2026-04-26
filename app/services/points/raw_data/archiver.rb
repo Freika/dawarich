@@ -118,13 +118,12 @@ module Points
         first_ts = Point.where(id: point_ids.first).pick(:timestamp)
         time = first_ts ? Time.at(first_ts).utc : Time.current.utc
 
-        Metrics::Archives::CountMismatch.new(
-          user_id: user_id,
-          year: time.year,
-          month: time.month,
-          expected: expected_count,
-          actual: actual_count
-        ).call
+        Yabeda.dawarich_archive.count_mismatches_total.increment(
+          { year: time.year.to_s, month: time.month.to_s }
+        )
+        Yabeda.dawarich_archive.count_difference.set(
+          { user_id: user_id.to_s }, (expected_count - actual_count).abs
+        )
 
         error_msg = "Archive count mismatch for user #{user_id}: " \
                     "expected #{expected_count}, got #{actual_count}"
@@ -243,16 +242,15 @@ module Points
       end
 
       def report_metrics(archive, count, compressed)
-        Metrics::Archives::Operation.new(operation: 'archive', status: 'success').call
-        Metrics::Archives::PointsArchived.new(count: count, operation: 'added').call
+        Yabeda.dawarich_archive.operations_total.increment({ operation: 'archive', status: 'success' })
+        Yabeda.dawarich_archive.points_total.increment({ operation: 'added' }, by: count)
 
         return unless archive.file.attached?
 
-        Metrics::Archives::Size.new(size_bytes: archive.file.blob.byte_size).call
-        Metrics::Archives::CompressionRatio.new(
-          original_size: compressed[:uncompressed_size],
-          compressed_size: archive.file.blob.byte_size
-        ).call
+        Yabeda.dawarich_archive.size_bytes.measure({}, archive.file.blob.byte_size)
+        Yabeda.dawarich_archive.compression_ratio.measure(
+          {}, archive.file.blob.byte_size.to_f / compressed[:uncompressed_size]
+        )
       end
     end
   end

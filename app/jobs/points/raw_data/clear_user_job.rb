@@ -55,8 +55,8 @@ module Points
 
         Rails.logger.info("Cleared raw_data for #{total} points (user #{user.id})")
 
-        Metrics::Archives::Operation.new(operation: 'clear', status: 'success').call
-        Metrics::Archives::PointsArchived.new(count: total, operation: 'removed').call
+        Yabeda.dawarich_archive.operations_total.increment({ operation: 'clear', status: 'success' })
+        Yabeda.dawarich_archive.points_total.increment({ operation: 'removed' }, by: total)
       end
     end
   end

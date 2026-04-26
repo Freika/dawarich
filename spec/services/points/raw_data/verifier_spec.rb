@@ -199,4 +199,56 @@ RSpec.describe Points::RawData::Verifier do
       expect(result[:failed]).to eq(0)
     end
   end
+
+  describe 'metric emissions' do
+    let(:test_date) { 3.months.ago.beginning_of_month.utc }
+
+    let(:archive) do
+      create_list(:point, 3, user: user,
+                            timestamp: test_date.to_i,
+                            raw_data: { lon: 13.4, lat: 52.5 })
+
+      archiver = Points::RawData::Archiver.new
+      archiver.archive_specific_month(user.id, test_date.year, test_date.month)
+      Points::RawDataArchive.last
+    end
+
+    it 'increments operations_total with verify/success on successful verification' do
+      expect do
+        verifier.verify_specific_archive(archive.id)
+      end.to increment_yabeda_counter(Yabeda.dawarich_archive.operations_total)
+        .with_tags(operation: 'verify', status: 'success')
+    end
+
+    it 'measures verification_duration_seconds with success status' do
+      expect do
+        verifier.verify_specific_archive(archive.id)
+      end.to measure_yabeda_histogram(Yabeda.dawarich_archive.verification_duration_seconds)
+        .with_tags(status: 'success')
+    end
+
+    context 'when verification fails' do
+      before { archive.update_column(:point_count, 999) }
+
+      it 'increments operations_total with verify/failure' do
+        expect do
+          verifier.verify_specific_archive(archive.id)
+        end.to increment_yabeda_counter(Yabeda.dawarich_archive.operations_total)
+          .with_tags(operation: 'verify', status: 'failure')
+      end
+
+      it 'measures verification_duration_seconds with failure status' do
+        expect do
+          verifier.verify_specific_archive(archive.id)
+        end.to measure_yabeda_histogram(Yabeda.dawarich_archive.verification_duration_seconds)
+          .with_tags(status: 'failure')
+      end
+
+      it 'increments verification_failures_total with check tag' do
+        expect do
+          verifier.verify_specific_archive(archive.id)
+        end.to increment_yabeda_counter(Yabeda.dawarich_archive.verification_failures_total)
+      end
+    end
+  end
 end
