@@ -3,8 +3,8 @@
 class Api::V1::PointsController < ApiController
   include SafeTimestampParser
 
-  before_action :authenticate_active_api_user!, only: %i[create update destroy bulk_destroy]
-  before_action :require_write_api!, only: %i[update destroy bulk_destroy]
+  before_action :authenticate_active_api_user!, only: %i[create update destroy bulk_destroy reapply_anomaly_filter]
+  before_action :require_write_api!, only: %i[update destroy bulk_destroy reapply_anomaly_filter]
   before_action :validate_points_limit, only: %i[create]
 
   def index
@@ -99,6 +99,14 @@ class Api::V1::PointsController < ApiController
     User.update_counters(current_api_user.id, points_count: -deleted_count) if deleted_count.positive?
 
     render json: { message: 'Points were successfully destroyed', count: deleted_count }, status: :ok
+  end
+
+  def reapply_anomaly_filter
+    Points::AnomalyBackfillUserJob.perform_later(current_api_user.id, reset: true)
+
+    render json: {
+      message: 'Re-evaluation queued. Existing anomaly flags will be cleared and recomputed.'
+    }, status: :accepted
   end
 
   private

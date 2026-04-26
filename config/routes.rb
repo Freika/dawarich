@@ -221,6 +221,7 @@ Rails.application.routes.draw do
       resources :points, only: %i[index create update destroy] do
         collection do
           delete :bulk_destroy
+          post :reapply_anomaly_filter
         end
       end
       resources :visits, only: %i[index show create update destroy] do
@@ -232,6 +233,7 @@ Rails.application.routes.draw do
       end
       resource :plan, only: [:show], controller: 'plan'
       resource :residency, only: [:show], controller: 'residency'
+      resources :recalculations, only: [:create]
       resources :stats, only: :index
       resources :insights, only: :index do
         collection do

@@ -486,6 +486,57 @@
 
           <div class="divider"></div>
 
+          <!-- GPS Noise Filtering -->
+          <div class="form-control">
+            <label class="label cursor-pointer justify-start gap-3">
+              <input type="checkbox"
+                     name="gpsFilteringEnabled"
+                     class="toggle toggle-primary"
+                     data-maps--maplibre-target="gpsFilteringToggle" />
+              <span class="label-text font-medium">GPS Noise Filtering</span>
+            </label>
+            <p class="text-sm text-base-content/60 mt-1">Hide points whose reported accuracy exceeds the threshold below. Disable for trains, indoor, or weak-signal data.</p>
+          </div>
+
+          <div class="form-control w-full">
+            <label class="label">
+              <span class="label-text font-medium">Accuracy Threshold</span>
+              <span class="label-text-alt" data-maps--maplibre-target="gpsAccuracyThresholdValue">100m</span>
+            </label>
+            <input type="range"
+                   name="gpsAccuracyThreshold"
+                   min="50"
+                   max="1000"
+                   step="10"
+                   value="100"
+                   class="range range-sm"
+                   data-action="input->maps--maplibre#updateGpsAccuracyThresholdDisplay" />
+            <div class="w-full flex justify-between text-xs px-2 mt-1">
+              <span>50m</span>
+              <span>500m</span>
+              <span>1000m</span>
+            </div>
+            <p class="text-xs text-base-content/60 mt-1">Points with reported GPS accuracy worse than this are flagged as noise. Lower = stricter, higher = keeps more weak-signal data.</p>
+          </div>
+
+          <button type="button"
+                  class="btn btn-sm btn-outline btn-block"
+                  data-action="click->maps--maplibre#reapplyAnomalyFilter">
+            <%= icon 'rotate-ccw' %>
+            Re-evaluate past data
+          </button>
+          <p class="text-xs text-base-content/60 mt-1">Clears existing anomaly flags and re-runs the filter on all your points with the current settings. Tracks, stats, and digests will be rebuilt afterwards. Runs in the background.</p>
+
+          <button type="button"
+                  class="btn btn-sm btn-outline btn-block mt-2"
+                  data-action="click->maps--maplibre#recalculateUserData">
+            <%= icon 'refresh-ccw' %>
+            Recalculate tracks &amp; stats
+          </button>
+          <p class="text-xs text-base-content/60 mt-1">Rebuild tracks, stats, and digests from your current points without touching anomaly flags. Useful after changing route-splitting thresholds.</p>
+
+          <div class="divider"></div>
+
           <!-- City Statistics Settings -->
           <div class="form-control w-full">
             <label class="label">
