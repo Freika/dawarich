@@ -42,6 +42,7 @@ class ApiController < ApplicationController
 
   def reject_pending_payment!
     return unless current_api_user&.pending_payment?
+
     render json: {
       error: 'payment_required',
       message: 'Complete your subscription to continue.',

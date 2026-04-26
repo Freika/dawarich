@@ -10,11 +10,7 @@ class Trial::WelcomeController < ApplicationController
   before_action :no_store_headers
 
   def show
-    decoded = Subscription::DecodeJwtToken.new(params[:token]).call
-
-    unless decoded[:purpose] == 'trial_welcome'
-      return redirect_to(new_user_session_path, alert: 'Link invalid. Please sign in.')
-    end
+    decoded = Subscription::DecodeJwtToken.new(params[:token], expected_purpose: 'trial_welcome').call
 
     jti = decoded[:jti].to_s
     return redirect_to(new_user_session_path, alert: 'Link invalid. Please sign in.') if jti.blank?

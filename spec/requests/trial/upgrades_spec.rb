@@ -25,7 +25,7 @@ RSpec.describe 'Trial::Upgrades', type: :request do
       it 'redirects to Manager with a JWT containing plan and interval' do
         get '/trial/upgrade', params: { plan: 'pro', interval: 'annual' }
 
-        expect(response).to redirect_to(/\Ahttps:\/\/manager\.example\.test\/auth\/dawarich\?token=/)
+        expect(response).to redirect_to(%r{\Ahttps://manager\.example\.test/auth/dawarich\?token=})
 
         token = CGI.parse(URI(response.location).query)['token'].first
         payload = JWT.decode(token, ENV.fetch('JWT_SECRET_KEY', 'test_secret'), true, { algorithm: 'HS256' }).first

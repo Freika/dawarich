@@ -45,18 +45,30 @@ module Signup
     # outage, network blip) cannot 500 the signup endpoint. Falling back to
     # `legacy_trial` keeps signups functional; bucketing is the degraded arm,
     # not the user-visible flow.
+    #
+    # Surface the underlying exception to ExceptionReporter so on-call gets
+    # paged on the actual outage instead of finding it via a reverse-trial
+    # KPI dip a week later. The signup itself still succeeds.
     def flipper_enabled?(email)
       Flipper.enabled?(:reverse_trial_signup, actor_for(@user, email))
     rescue StandardError => e
       Rails.logger.warn(
         "[Signup::BucketVariant] Flipper unavailable, falling back to legacy_trial: #{e.class}: #{e.message}"
       )
+      ExceptionReporter.call(e, '[Signup::BucketVariant] Flipper unavailable, falling back to legacy_trial')
       false
     end
 
     # Return the user directly when Flipper can derive a stable `flipper_id`
     # from a persisted primary key; otherwise wrap the user in a StableActor
     # keyed off the downcased email hash.
+    #
+    # The two flipper_ids ("User;email-<sha>" pre-save and "User;<id>" post-save)
+    # are different actors, so a percentage_of_actors gate would technically
+    # bucket the same user differently across the save boundary. In practice
+    # we bucket exactly once during registration and persist the result on
+    # User#signup_variant — we never re-bucket the same user, so the discrepancy
+    # never materialises. Don't reuse this helper outside the registration path.
     def actor_for(user, email)
       return user if user.respond_to?(:id) && !user.id.nil?
 

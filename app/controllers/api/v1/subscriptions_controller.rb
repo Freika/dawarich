@@ -62,7 +62,15 @@ class Api::V1::SubscriptionsController < ApiController
       if User.plans.key?(decoded[:plan])
         attrs[:plan] = decoded[:plan]
       else
+        # Forward-compat: don't 4xx the callback on an unknown plan name (we
+        # still want status/active_until applied), but raise visibility so we
+        # learn about a Manager → Dawarich plan-name mismatch within minutes
+        # instead of via a confused-customer support ticket.
         Rails.logger.warn("[Subscriptions#callback] ignoring unknown plan: #{decoded[:plan].inspect}")
+        ExceptionReporter.call(
+          ArgumentError.new("Unknown plan in subscription callback: #{decoded[:plan].inspect}"),
+          '[Subscriptions#callback] unknown plan dropped — Manager may be ahead of Dawarich'
+        )
       end
     end
 

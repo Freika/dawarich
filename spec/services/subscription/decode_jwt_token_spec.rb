@@ -66,5 +66,44 @@ RSpec.describe Subscription::DecodeJwtToken do
       expect { described_class.new('obviously-not-a-jwt').call }
         .to raise_error(JWT::DecodeError)
     end
+
+    context 'with expected_purpose:' do
+      it 'returns the decoded payload when the purpose claim matches' do
+        token = encode({ purpose: 'trial_welcome', user_id: 1, jti: 'abc', exp: 30.minutes.from_now.to_i })
+
+        decoded = described_class.new(token, expected_purpose: 'trial_welcome').call
+
+        expect(decoded[:purpose]).to eq('trial_welcome')
+      end
+
+      it 'raises InvalidPurpose (a JWT::DecodeError subclass) when the purpose does not match' do
+        token = encode({ purpose: 'checkout', user_id: 1, exp: 30.minutes.from_now.to_i })
+
+        expect { described_class.new(token, expected_purpose: 'trial_welcome').call }
+          .to raise_error(described_class::InvalidPurpose)
+
+        # The subclass relationship matters: existing controllers `rescue
+        # JWT::DecodeError` and we want a purpose mismatch to take the same
+        # "link invalid" branch as a tampered token.
+        expect(described_class::InvalidPurpose.ancestors).to include(JWT::DecodeError)
+      end
+
+      it 'raises InvalidPurpose when the purpose claim is absent' do
+        token = encode({ user_id: 1, exp: 30.minutes.from_now.to_i })
+
+        expect { described_class.new(token, expected_purpose: 'trial_welcome').call }
+          .to raise_error(described_class::InvalidPurpose)
+      end
+
+      it 'returns the decoded payload without checking purpose when expected_purpose is nil' do
+        # Manager → Dawarich callback path uses a different claim shape
+        # (event_id, event_timestamp_ms) and intentionally has no purpose
+        # claim. Skipping the check for nil keeps that contract intact.
+        token = encode({ event_id: 'paddle:xyz', user_id: 1, exp: 30.minutes.from_now.to_i })
+
+        expect { described_class.new(token).call }.not_to raise_error
+        expect { described_class.new(token, expected_purpose: nil).call }.not_to raise_error
+      end
+    end
   end
 end
