@@ -53,7 +53,8 @@ RSpec.describe OwnTracks::Params do
           'inrids' => ['5f1d1b'],
           'inregions' => ['home'],
           '_http' => true
-        }
+        },
+        altitude_decimal: 36
       }
     end
 

@@ -74,6 +74,30 @@ class Point < ApplicationRecord
     read_attribute(:country_name) || country&.name || self[:country] || ''
   end
 
+  # Stage 1 of the altitude integer→decimal migration: prefer the new
+  # `altitude_decimal` column when it carries a value, fall back to the
+  # legacy integer `altitude` column otherwise. Writes always update the
+  # decimal column so new data is full-precision; the integer column gets
+  # the truncated value via the underlying attribute.
+  #
+  # `has_attribute?` guards against MissingAttributeError when the record
+  # was loaded with a partial `.select(...)` that omitted altitude_decimal
+  # (e.g. the altitude backfill job uses `.select(:id, :altitude, :raw_data)`
+  # for streaming-friendly memory usage).
+  def altitude
+    if has_attribute?(:altitude_decimal)
+      decimal = self[:altitude_decimal]
+      return decimal if decimal.present?
+    end
+
+    self[:altitude] if has_attribute?(:altitude)
+  end
+
+  def altitude=(value)
+    self[:altitude] = value if has_attribute?(:altitude)
+    self[:altitude_decimal] = value if has_attribute?(:altitude_decimal)
+  end
+
   private
 
   # Metrics/AbcSize

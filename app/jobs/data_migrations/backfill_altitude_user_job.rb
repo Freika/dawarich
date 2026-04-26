@@ -109,7 +109,9 @@ class DataMigrations::BackfillAltitudeUserJob < ApplicationJob
     return nil if altitude.nil?
     return nil if point.altitude.present? && point.altitude.to_d == BigDecimal(altitude.to_s)
 
-    { id: point.id, altitude: altitude }
+    update = { id: point.id, altitude: altitude }
+    update[:altitude_decimal] = altitude if Point.column_names.include?('altitude_decimal')
+    update
   end
 
   # Streams archive line-by-line without materializing the full decompressed content.

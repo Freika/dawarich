@@ -43,13 +43,14 @@ class Geojson::Params
 
   def build_point(feature)
     properties = feature[:properties]
+    altitude_value = altitude(feature)
 
-    {
+    attrs = {
       lonlat:             "POINT(#{feature[:geometry][:coordinates][0]} #{feature[:geometry][:coordinates][1]})",
       battery_status:     properties[:battery_state],
       battery:            battery(properties),
       timestamp:          timestamp(feature),
-      altitude:           altitude(feature),
+      altitude:           altitude_value,
       velocity:           speed(properties),
       tracker_id:         find_field(properties, :tracker_id),
       ssid:               properties[:wifi],
@@ -59,6 +60,8 @@ class Geojson::Params
       motion_data:        Points::MotionDataExtractor.from_overland_properties(properties),
       raw_data:           feature
     }
+    attrs[:altitude_decimal] = altitude_value if Point.column_names.include?('altitude_decimal')
+    attrs
   end
 
   def build_line(feature)

@@ -77,15 +77,19 @@ class GoogleMaps::PhoneTakeoutImporter
   end
 
   def point_hash(lat, lon, timestamp, raw_data, altitude: nil)
-    {
+    altitude_value = altitude || raw_data['altitudeMeters']
+
+    attrs = {
       lonlat: "POINT(#{lon.to_f} #{lat.to_f})",
       timestamp:,
       motion_data: Points::MotionDataExtractor.from_google_phone_takeout(raw_data),
       raw_data:,
       accuracy: raw_data['accuracyMeters'],
-      altitude: altitude || raw_data['altitudeMeters'],
+      altitude: altitude_value,
       velocity: raw_data['speedMetersPerSecond']
     }
+    attrs[:altitude_decimal] = altitude_value if Point.column_names.include?('altitude_decimal')
+    attrs
   end
 
   def parse_visit_place_location(data_point)

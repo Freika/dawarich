@@ -200,7 +200,7 @@ class Kml::Importer
 
     lng, lat, alt = coord_parts.map(&:to_f)
 
-    {
+    attrs = {
       lonlat: "POINT(#{lng} #{lat})",
       altitude: alt,
       timestamp: time,
@@ -211,6 +211,8 @@ class Kml::Importer
       created_at: Time.current,
       updated_at: Time.current
     }
+    attrs[:altitude_decimal] = alt if Point.column_names.include?('altitude_decimal')
+    attrs
   rescue StandardError => e
     Rails.logger.warn("Failed to parse gx:Track point at index #{index}: #{e.message}")
     nil
@@ -256,9 +258,11 @@ class Kml::Importer
   def build_point(coord, timestamp, placemark)
     return if invalid_coordinates?(coord)
 
-    {
+    altitude_value = coord[:alt].to_f
+
+    attrs = {
       lonlat: format_point_geometry(coord),
-      altitude: coord[:alt].to_f,
+      altitude: altitude_value,
       timestamp: timestamp,
       import_id: import.id,
       velocity: extract_velocity(placemark),
@@ -267,6 +271,8 @@ class Kml::Importer
       created_at: Time.current,
       updated_at: Time.current
     }
+    attrs[:altitude_decimal] = altitude_value if Point.column_names.include?('altitude_decimal')
+    attrs
   end
 
   def invalid_coordinates?(coord)

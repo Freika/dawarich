@@ -162,7 +162,7 @@ module TimelineHelper
   # grade (1..5 = quintiles of the busiest day in the visible month;
   # 0 = no activity at all).
   def calendar_cell_classes(cell)
-    bucket = cell[:heat_bucket].to_i
+    bucket = cell[:heat_bucket].nil? ? heat_bucket(cell[:tracked_seconds]) : cell[:heat_bucket].to_i
     classes = ['cal-cell', "heat-#{bucket}"]
     classes << 'has-suggestions' if cell[:suggested_count].to_i.positive?
     classes << 'out-of-month' unless cell[:in_month]

@@ -13,12 +13,14 @@ class Points::Params
     points.map do |point|
       next unless params_valid?(point)
 
-      {
+      altitude_value = point[:properties][:altitude]
+
+      attrs = {
         lonlat: lonlat(point),
         battery_status:     point[:properties][:battery_state],
         battery:            battery_level(point[:properties][:battery_level]),
         timestamp:          DateTime.parse(point[:properties][:timestamp]),
-        altitude:           point[:properties][:altitude],
+        altitude:           altitude_value,
         tracker_id:         point[:properties][:device_id],
         velocity:           point[:properties][:speed],
         ssid:               point[:properties][:wifi],
@@ -30,6 +32,8 @@ class Points::Params
         raw_data:           point,
         user_id:            user_id
       }
+      attrs[:altitude_decimal] = altitude_value if Point.column_names.include?('altitude_decimal')
+      attrs
     end.compact
   end
 

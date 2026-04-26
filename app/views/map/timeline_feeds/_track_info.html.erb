@@ -17,10 +17,10 @@
     <span><span class="track-info-stats__label">Dist</span> <strong><%= distance_val %> <%= unit %></strong></span>
     <span><span class="track-info-stats__label">Avg</span> <strong><%= avg_speed %> <%= speed_label %></strong></span>
     <% if elev_gain.present? && elev_gain > 0 %>
-      <span><span class="track-info-stats__label">↑</span> <strong><%= elev_gain.round %>m</strong></span>
+      <span><span class="track-info-stats__label">↑</span> <strong><%= elev_gain.round %> m</strong></span>
     <% end %>
     <% if elev_loss.present? && elev_loss > 0 %>
-      <span><span class="track-info-stats__label">↓</span> <strong><%= elev_loss.round %>m</strong></span>
+      <span><span class="track-info-stats__label">↓</span> <strong><%= elev_loss.round %> m</strong></span>
     <% end %>
     <span class="track-info-mode capitalize"><%= mode_label %></span>
   </div>

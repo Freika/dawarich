@@ -12,6 +12,27 @@ module Timeline
     HEAT_BUCKETS = 5
     CACHE_TTL = 5.minutes
 
+    # Fixed-threshold heat bucket for a single day, independent of the
+    # month's max. Used by the calendar UI when it wants a stable bucket
+    # value per day (`compute_heat_bucket` is month-relative; this one is
+    # absolute). Thresholds match the rendered heat ramp:
+    #   0           → 0
+    #   < 2 hours   → 1
+    #   2..4 hours  → 2
+    #   4..8 hours  → 3
+    #   8..12 hours → 4
+    #   >= 12 hours → 5
+    def self.heat_bucket(tracked_seconds)
+      seconds = tracked_seconds.to_i
+      return 0 if seconds <= 0
+      return 1 if seconds < 2.hours
+      return 2 if seconds < 4.hours
+      return 3 if seconds < 8.hours
+      return 4 if seconds < 12.hours
+
+      5
+    end
+
     def self.cache_key_for(user, date)
       d = normalize_month(date)
       ['timeline_month_summary', user.id, d.strftime('%Y-%m')]
