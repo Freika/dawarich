@@ -446,6 +446,54 @@ RSpec.describe 'Api::V1::Subscriptions', type: :request do
       end
     end
 
+    context 'when user.update! raises mid-transaction' do
+      let(:event_id) { SecureRandom.uuid }
+      let(:event_timestamp_ms) { 1_700_000_000_000 }
+      let(:token) do
+        build_token(
+          user_id: user.id,
+          plan: 'pro',
+          status: 'active',
+          active_until: 30.days.from_now.iso8601,
+          subscription_source: 'paddle',
+          event_id: event_id,
+          event_timestamp_ms: event_timestamp_ms
+        )
+      end
+
+      before do
+        # Simulate validation failure inside the transaction. The cache write
+        # for the dedup key has already happened (claim_event!) by the time
+        # update! runs, so a rollback alone leaves an orphan dedup key behind.
+        allow(User).to receive(:find).and_call_original
+        allow(User).to receive(:find).with(user.id).and_return(user)
+        allow(user).to receive(:lock!).and_return(user)
+        allow(user).to receive(:update!).and_raise(
+          ActiveRecord::RecordInvalid.new(user)
+        )
+      end
+
+      it 'releases the dedup key so Manager retries are not silently dropped' do
+        # Rails maps ActiveRecord::RecordInvalid to 422 by default. Whichever
+        # status the bubbled exception manifests as, the cache key MUST be
+        # released so the Manager's 7-day retry window can recover.
+        post '/api/v1/subscriptions/callback', params: { token: token }, headers: webhook_headers
+        expect(response).not_to have_http_status(:ok)
+
+        expect(
+          Rails.cache.exist?("manager_callback:processed:#{event_id}")
+        ).to eq(false)
+      end
+
+      it 'does not advance the last-seen watermark' do
+        post '/api/v1/subscriptions/callback', params: { token: token }, headers: webhook_headers
+        expect(response).not_to have_http_status(:ok)
+
+        watermark = Rails.cache.read("manager_callback:last_seen_ms:#{user.id}").to_i
+        expect(watermark).to eq(0)
+      end
+    end
+
     context 'plan handling - unknown plan contract' do
       it 'applies status/active_until/subscription_source even when plan is unknown' do
         user.update!(status: :inactive, plan: :lite, subscription_source: :none)

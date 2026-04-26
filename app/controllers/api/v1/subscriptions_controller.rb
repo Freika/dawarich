@@ -25,17 +25,26 @@ class Api::V1::SubscriptionsController < ApiController
     user = User.find(decoded[:user_id])
     applied = false
 
-    User.transaction do
-      user.lock!
+    begin
+      User.transaction do
+        user.lock!
 
-      if event_older_than_last_seen?(decoded)
-        Rails.cache.delete("manager_callback:processed:#{decoded[:event_id]}")
-        raise ActiveRecord::Rollback
+        if event_older_than_last_seen?(decoded)
+          Rails.cache.delete("manager_callback:processed:#{decoded[:event_id]}")
+          raise ActiveRecord::Rollback
+        end
+
+        user.update!(subscription_attrs(decoded))
+        advance_last_seen_watermark(decoded)
+        applied = true
       end
-
-      user.update!(subscription_attrs(decoded))
-      advance_last_seen_watermark(decoded)
-      applied = true
+    rescue StandardError
+      # Transaction rolled back due to an unexpected error (e.g. validation
+      # failure on user.update!). The dedup key written by claim_event! is
+      # NOT rolled back automatically — release it so Manager's 7-day retry
+      # window can recover instead of silently dropping replays as "Stale".
+      Rails.cache.delete("manager_callback:processed:#{decoded[:event_id]}") unless applied
+      raise
     end
 
     return render(json: { message: 'Stale event' }, status: :ok) unless applied

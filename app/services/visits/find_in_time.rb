@@ -9,6 +9,8 @@ module Visits
     end
 
     def call
+      # Filter by started_at only; adding ended_at <= end_at silently drops
+      # boundary-crossing visits and breaks marker rendering on the timeline.
       user.scoped_visits
           .includes(:place, :area)
           .where(started_at: start_at..end_at)

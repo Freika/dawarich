@@ -64,6 +64,48 @@ RSpec.describe 'Trial::Upgrades', type: :request do
         expect(payload['plan']).to eq('lite')
         expect(payload['interval']).to eq('monthly')
       end
+
+      describe 'analytics telemetry' do
+        def capture_telemetry
+          captured = []
+          allow(Rails.logger).to receive(:info).and_wrap_original do |original, *args, &block|
+            payload = block ? block.call : args.first
+            if payload.is_a?(String) && payload.start_with?('{') && payload.include?('trial_upgrades_viewed')
+              captured << payload
+            end
+            original.call(*args, &block)
+          end
+          captured
+        end
+
+        it 'logs a structured trial_upgrades_viewed event with sanitized plan and interval' do
+          captured = capture_telemetry
+
+          get '/trial/upgrade', params: { plan: 'pro', interval: 'annual' }
+
+          expect(captured).not_to be_empty
+          json = JSON.parse(captured.first)
+          expect(json['event']).to eq('trial_upgrades_viewed')
+          expect(json['user_id']).to eq(user.id)
+          expect(json['plan']).to eq('pro')
+          expect(json['interval']).to eq('annual')
+        end
+
+        it 'logs nil plan and nil interval when params are unrecognised' do
+          captured = capture_telemetry
+
+          get '/trial/upgrade', params: { plan: 'evil', interval: 'hourly' }
+
+          expect(captured).not_to be_empty
+          json = JSON.parse(captured.first)
+          expect(json['event']).to eq('trial_upgrades_viewed')
+          expect(json['user_id']).to eq(user.id)
+          expect(json).to have_key('plan')
+          expect(json['plan']).to be_nil
+          expect(json).to have_key('interval')
+          expect(json['interval']).to be_nil
+        end
+      end
     end
   end
 end

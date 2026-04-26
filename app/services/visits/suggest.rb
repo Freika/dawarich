@@ -1,12 +1,11 @@
 # frozen_string_literal: true
 
 class Visits::Suggest
-  attr_reader :points, :user, :start_at, :end_at
+  attr_reader :user, :start_at, :end_at
 
   def initialize(user, start_at:, end_at:)
     @start_at = start_at.to_i
     @end_at = end_at.to_i
-    @points = user.scoped_points.not_visited.order(timestamp: :asc).where(timestamp: start_at..end_at)
     @user = user
   end
 
