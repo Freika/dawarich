@@ -43,16 +43,20 @@ RSpec.describe Archive::Zipper do
       end
     end
 
-    it 'closes the output tempfile when zip creation fails' do
-      allow(::Zip::OutputStream).to receive(:open).and_raise(StandardError, 'disk full')
+    it 'closes and unlinks the output tempfile when zip creation fails' do
+      allow(::Zip::OutputStream).to receive(:open).and_raise(Zip::Error, 'disk full')
+
+      before_count = Dir["#{Dir.tmpdir}/archive*.zip"].size
 
       expect do
         described_class.wrap(payload_tempfile, entry_name: 'ride.gpx')
-      end.to raise_error(StandardError, 'disk full')
+      end.to raise_error(Zip::Error, 'disk full')
 
-      # Not a perfect resource-leak test, but confirms the method reraises and
-      # doesn't leave a tempfile reference behind in the return value (which the
-      # caller would never receive on failure).
+      GC.start
+      GC.start
+
+      after_count = Dir["#{Dir.tmpdir}/archive*.zip"].size
+      expect(after_count).to eq(before_count)
     end
   end
 end

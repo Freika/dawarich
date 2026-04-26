@@ -23,7 +23,7 @@ module Archive
             zos.write(chunk)
           end
         end
-      rescue StandardError
+      rescue ::Zip::Error, IOError, SystemCallError
         output.close! unless output.closed?
         raise
       end

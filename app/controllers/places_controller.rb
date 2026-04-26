@@ -11,7 +11,7 @@ class PlacesController < ApplicationController
   end
 
   def show
-    @place = current_user.places.includes(:tags, visits: :points).find(params[:id])
+    @place = current_user.places.includes(:tags).find(params[:id])
     @recent_visits = @place.visits.order(started_at: :desc).limit(5)
 
     render layout: false

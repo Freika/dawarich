@@ -110,16 +110,17 @@ namespace :demo do
       puts "ℹ️  Lite user already exists: #{lite_user.email}"
     end
 
-    # Bypass after_commit callbacks that override plan
     lite_user.update_columns(
       api_key: 'lite_demo_api_key_001',
       plan: User.plans[:lite],
       status: User.statuses[:active],
-      active_until: 1000.years.from_now
+      active_until: 1000.years.from_now,
+      signup_variant: 'legacy_trial'
     )
     lite_user.update!(settings: (lite_user.settings || {}).merge('live_map_enabled' => true))
     puts "   API Key: #{lite_user.api_key}"
     puts '   Plan: lite'
+    puts "   Signup Variant: #{lite_user.signup_variant}"
 
     # 9a. Create recent points for Lite user (within 12-month window)
     puts "\n📍 Creating recent points for Lite user..."

@@ -78,8 +78,8 @@ RSpec.describe Visits::FindInTime do
         expect(result).not_to include(visit_before, visit_after)
       end
 
-      it 'returns visits in descending order by started_at' do
-        expect(result.to_a).to eq([visit2, visit1])
+      it 'returns visits in ascending order by started_at (matches DayAssembler#fetch_visits)' do
+        expect(result.to_a).to eq([visit1, visit2])
       end
 
       it 'does not include visits from other users' do

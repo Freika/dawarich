@@ -6,8 +6,6 @@ module Archive
   class Unzipper
     class ArchiveTooLarge < StandardError; end
 
-    SUPPORTED_INNER_EXTENSIONS = %w[.gpx .json .geojson .kml .kmz .csv .tcx .fit .rec].freeze
-
     MAX_EXTRACTED_SIZE = ENV.fetch('ZIP_MAX_EXTRACTED_SIZE', 2.gigabytes).to_i
     ZIP_MAGIC = "PK\x03\x04".b.freeze
 
@@ -52,8 +50,7 @@ module Archive
         # Tempfile.create (not .new) returns a plain File without an
         # ObjectSpace finalizer, so the path survives GC of the File object.
         # The caller (Imports::Create) is responsible for unlinking.
-        inner = Tempfile.create(['unzipped', ext])
-        inner.binmode
+        inner = Tempfile.create(['unzipped', ext], binmode: true)
 
         begin
           bytes_written = 0
@@ -88,7 +85,7 @@ module Archive
     end
 
     def self.supported_extension?(name)
-      SUPPORTED_INNER_EXTENSIONS.include?(File.extname(name).downcase)
+      Imports::ZipExtractor::SUPPORTED_EXTENSIONS.include?(File.extname(name).downcase)
     end
   end
 end

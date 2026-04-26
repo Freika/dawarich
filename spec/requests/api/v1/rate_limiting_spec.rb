@@ -135,4 +135,60 @@ RSpec.describe 'API Rate Limiting', type: :request do
       end
     end
   end
+
+  describe 'subscription callback throttle' do
+    let(:webhook_secret) { 'test_webhook_secret' }
+    let(:webhook_headers) { { 'X-Webhook-Secret' => webhook_secret } }
+
+    before do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      stub_const('ENV', ENV.to_h.merge('SUBSCRIPTION_WEBHOOK_SECRET' => webhook_secret))
+    end
+
+    it 'throttles POST /api/v1/subscriptions/callback at 60/min/IP' do
+      60.times do
+        post '/api/v1/subscriptions/callback', params: { token: 'x' }, headers: webhook_headers
+        expect(response).not_to have_http_status(:too_many_requests)
+      end
+
+      post '/api/v1/subscriptions/callback', params: { token: 'x' }, headers: webhook_headers
+      expect(response).to have_http_status(:too_many_requests)
+    end
+  end
+
+  describe 'trial welcome throttle' do
+    before { allow(DawarichSettings).to receive(:self_hosted?).and_return(false) }
+
+    it 'throttles GET /trial/welcome at 30/min/IP' do
+      30.times do
+        get '/trial/welcome?token=x'
+        expect(response).not_to have_http_status(:too_many_requests)
+      end
+
+      get '/trial/welcome?token=x'
+      expect(response).to have_http_status(:too_many_requests)
+    end
+  end
+
+  describe 'signup throttle' do
+    before { allow(DawarichSettings).to receive(:self_hosted?).and_return(false) }
+
+    it 'throttles POST /users at 5/min/IP' do
+      5.times do
+        post '/users', params: { user: { email: "burst-#{SecureRandom.hex(3)}@example.com", password: 'x' } }
+        expect(response).not_to have_http_status(:too_many_requests)
+      end
+
+      post '/users', params: { user: { email: 'burst-final@example.com', password: 'x' } }
+      expect(response).to have_http_status(:too_many_requests)
+    end
+
+    it 'throttles POST /users at 20/hour/IP independently of the per-minute throttle' do
+      21.times do
+        post '/users', params: { user: { email: "hourly-#{SecureRandom.hex(3)}@example.com", password: 'x' } }
+      end
+
+      expect(response).to have_http_status(:too_many_requests)
+    end
+  end
 end

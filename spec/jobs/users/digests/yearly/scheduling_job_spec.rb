@@ -112,5 +112,31 @@ RSpec.describe Users::Digests::Yearly::SchedulingJob, type: :job do
         described_class.new.perform
       end.not_to have_enqueued_job(Users::Digests::Yearly::EmailSendingJob)
     end
+
+    context 'when user has only the legacy digest_emails_enabled key' do
+      let!(:legacy_disabled_user) do
+        create(:user, status: :active, settings: { 'digest_emails_enabled' => false })
+      end
+      let!(:legacy_enabled_user) do
+        create(:user, status: :active, settings: { 'digest_emails_enabled' => true })
+      end
+
+      before do
+        create(:stat, user: legacy_disabled_user, year: previous_year, month: 1)
+        create(:stat, user: legacy_enabled_user,  year: previous_year, month: 1)
+      end
+
+      it 'preserves a legacy opt-out (false) and skips the user' do
+        expect { subject }
+          .not_to have_enqueued_job(Users::Digests::Yearly::CalculatingJob)
+          .with(legacy_disabled_user.id, anything)
+      end
+
+      it 'still schedules the user when the legacy value is true' do
+        expect { subject }
+          .to have_enqueued_job(Users::Digests::Yearly::CalculatingJob)
+          .with(legacy_enabled_user.id, previous_year)
+      end
+    end
   end
 end

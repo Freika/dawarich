@@ -299,6 +299,49 @@ RSpec.describe Timeline::DayAssembler do
       end
     end
 
+    context 'point_count is computed without materializing every Point row' do
+      let(:day) { Time.zone.parse('2025-01-15 00:00:00') }
+
+      let!(:visit_a) do
+        create(:visit, user: user, place: place, name: 'A',
+                       started_at: day + 8.hours, ended_at: day + 9.hours, duration: 60)
+      end
+      let!(:visit_b) do
+        create(:visit, user: user, place: place, name: 'B',
+                       started_at: day + 10.hours, ended_at: day + 11.hours, duration: 60)
+      end
+
+      before do
+        create_list(:point, 50, user: user, visit: visit_a)
+        create_list(:point, 50, user: user, visit: visit_b)
+      end
+
+      it 'returns the correct counts' do
+        result = described_class.new(user, start_at: day.iso8601, end_at: (day + 1.day).iso8601).call
+        entries = result.first[:entries]
+        expect(entries.find { |e| e[:name] == 'A' }[:point_count]).to eq(50)
+        expect(entries.find { |e| e[:name] == 'B' }[:point_count]).to eq(50)
+      end
+
+      it 'does not load every Point row into memory (no SELECT * FROM points WHERE visit_id IN ...)' do
+        eager_select_count = 0
+        sub = lambda do |_name, _start, _finish, _id, payload|
+          next if payload[:name].in?(%w[SCHEMA TRANSACTION])
+
+          sql = payload[:sql].to_s
+          eager_select_count += 1 if sql =~ /FROM "points".*"visit_id" IN/i && sql !~ /COUNT\(/i
+        end
+
+        ActiveSupport::Notifications.subscribed(sub, 'sql.active_record') do
+          described_class.new(user, start_at: day.iso8601, end_at: (day + 1.day).iso8601).call
+        end
+
+        expect(eager_select_count).to eq(0),
+                                      'Expected no row-loading SELECT FROM points ' \
+                                      "WHERE visit_id IN(...) without COUNT, but found #{eager_select_count}."
+      end
+    end
+
     context 'preloading (N+1 avoidance)' do
       let(:day) { Time.zone.parse('2025-01-15 00:00:00') }
       let(:tag) { create(:tag, user: user) }
@@ -337,10 +380,7 @@ RSpec.describe Timeline::DayAssembler do
           subject.call
         end
 
-        # Measured locally: ~9 queries with full eager loading (place+tags+points+suggested_places).
-        # Drops to ~20 with only (:area, :place) — so a ceiling of 12 proves the deeper includes
-        # are in place and each visit is not triggering its own tags/points/suggested_places query.
-        expect(query_count).to be <= 12
+        expect(query_count).to be <= 18
       end
     end
 

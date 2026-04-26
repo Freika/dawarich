@@ -11,12 +11,6 @@ class Users::SessionsController < Devise::SessionsController
 
   private
 
-  def after_sign_in_path_for(resource)
-    return trial_resume_path if resource.pending_payment?
-
-    super
-  end
-
   def check_otp_required
     return unless request.post?
     return unless DawarichSettings.two_factor_available?

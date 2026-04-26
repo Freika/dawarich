@@ -45,9 +45,11 @@ module Visits
     def find_existing_place
       Place.joins('JOIN visits ON places.id = visits.place_id')
            .where(visits: { user: user })
+           .where(places: { user_id: user.id })
            .where(
-             'ST_DWithin(lonlat, ST_SetSRID(ST_MakePoint(?, ?), 4326), ?)',
-             params[:longitude].to_f, params[:latitude].to_f, 0.001 # approximately 100 meters
+             'ST_DWithin(places.lonlat::geography, ' \
+             'ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography, ?)',
+             params[:longitude].to_f, params[:latitude].to_f, 100
            ).first
     end
 
@@ -91,7 +93,13 @@ module Visits
     def attach_suggested_places(visit)
       lat = visit.place.latitude
       lon = visit.place.longitude
-      candidates = user.places.near([lat, lon], 100, :m).limit(8)
+      candidates = user.places
+                       .where(
+                         'ST_DWithin(lonlat::geography, ' \
+                         'ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography, 100)',
+                         lon, lat
+                       )
+                       .limit(8)
       candidates.each { |p| visit.suggested_places << p unless visit.suggested_places.include?(p) }
     rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
       ExceptionReporter.call(e, "Failed to attach suggested places: #{e.message}")

@@ -107,8 +107,6 @@ RSpec.describe Users::SafeSettings do
             'visits_suggestions_enabled' => false,
             'enabled_map_layers' => %w[Points Routes Areas Photos],
             'maps_maplibre_style' => 'light',
-            'monthly_digest_emails_enabled' => true,
-            'yearly_digest_emails_enabled' => true,
             'news_emails_enabled' => true,
             'globe_projection' => false,
             'supporter_email' => nil,
@@ -452,6 +450,32 @@ RSpec.describe Users::SafeSettings do
         expect(safe_settings.monthly_digest_emails_enabled?).to be false
       end
     end
+
+    context 'when only the legacy digest_emails_enabled key is present' do
+      context 'and legacy is true' do
+        let(:settings) { { 'digest_emails_enabled' => true } }
+
+        it 'falls back to legacy value (true)' do
+          expect(safe_settings.monthly_digest_emails_enabled?).to be true
+        end
+      end
+
+      context 'and legacy is false (preserved opt-out)' do
+        let(:settings) { { 'digest_emails_enabled' => false } }
+
+        it 'falls back to legacy value (false)' do
+          expect(safe_settings.monthly_digest_emails_enabled?).to be false
+        end
+      end
+    end
+
+    context 'when both new and legacy keys are present' do
+      let(:settings) { { 'monthly_digest_emails_enabled' => false, 'digest_emails_enabled' => true } }
+
+      it 'prefers the new key over the legacy key' do
+        expect(safe_settings.monthly_digest_emails_enabled?).to be false
+      end
+    end
   end
 
   describe '#yearly_digest_emails_enabled?' do
@@ -469,6 +493,32 @@ RSpec.describe Users::SafeSettings do
       let(:settings) { { 'yearly_digest_emails_enabled' => false } }
 
       it 'returns false when explicitly false' do
+        expect(safe_settings.yearly_digest_emails_enabled?).to be false
+      end
+    end
+
+    context 'when only the legacy digest_emails_enabled key is present' do
+      context 'and legacy is true' do
+        let(:settings) { { 'digest_emails_enabled' => true } }
+
+        it 'falls back to legacy value (true)' do
+          expect(safe_settings.yearly_digest_emails_enabled?).to be true
+        end
+      end
+
+      context 'and legacy is false (preserved opt-out)' do
+        let(:settings) { { 'digest_emails_enabled' => false } }
+
+        it 'falls back to legacy value (false)' do
+          expect(safe_settings.yearly_digest_emails_enabled?).to be false
+        end
+      end
+    end
+
+    context 'when both new and legacy keys are present' do
+      let(:settings) { { 'yearly_digest_emails_enabled' => false, 'digest_emails_enabled' => true } }
+
+      it 'prefers the new key over the legacy key' do
         expect(safe_settings.yearly_digest_emails_enabled?).to be false
       end
     end

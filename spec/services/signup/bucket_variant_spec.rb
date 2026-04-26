@@ -150,5 +150,49 @@ RSpec.describe Signup::BucketVariant do
         expect { described_class.new(user).call }.not_to raise_error
       end
     end
+
+    describe 'analytics telemetry' do
+      it 'logs a structured signup_variant_assigned event with the variant' do
+        Flipper.enable(:reverse_trial_signup)
+        user = create(:user, email: 'telemetry@example.com')
+
+        captured = []
+        allow(Rails.logger).to receive(:info).and_wrap_original do |original, *args, &block|
+          payload = block ? block.call : args.first
+          if payload.is_a?(String) && payload.start_with?('{') && payload.include?('signup_variant_assigned')
+            captured << payload
+          end
+          original.call(*args, &block)
+        end
+
+        described_class.new(user).call
+
+        expect(captured).not_to be_empty
+        json = JSON.parse(captured.first)
+        expect(json['event']).to eq('signup_variant_assigned')
+        expect(json['user_id']).to eq(user.id)
+        expect(json['variant']).to eq('reverse_trial')
+        expect(json['source']).to eq('bucket_variant')
+      end
+
+      it 'logs the variant as legacy_trial when Flipper is off' do
+        user = create(:user, email: 'telemetry-legacy@example.com')
+
+        captured = []
+        allow(Rails.logger).to receive(:info).and_wrap_original do |original, *args, &block|
+          payload = block ? block.call : args.first
+          if payload.is_a?(String) && payload.start_with?('{') && payload.include?('signup_variant_assigned')
+            captured << payload
+          end
+          original.call(*args, &block)
+        end
+
+        described_class.new(user).call
+
+        expect(captured).not_to be_empty
+        json = JSON.parse(captured.first)
+        expect(json['variant']).to eq('legacy_trial')
+      end
+    end
   end
 end

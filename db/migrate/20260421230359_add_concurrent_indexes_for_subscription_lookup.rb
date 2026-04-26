@@ -13,5 +13,9 @@ class AddConcurrentIndexesForSubscriptionLookup < ActiveRecord::Migration[8.0]
               name: INDEX_NAME
   end
 
-  def down; end
+  def down
+    return unless index_name_exists?(:users, INDEX_NAME)
+
+    remove_index :users, name: INDEX_NAME, algorithm: :concurrently
+  end
 end

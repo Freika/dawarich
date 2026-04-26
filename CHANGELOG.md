@@ -24,7 +24,7 @@ The Timeline Feature in Map V2 is now a feature capable to fully replace Google 
 - The Year-End Digest email has been rewritten with ASCII-rendered charts (activity heatmap, monthly distance bars, top countries, year-over-year trend). Content renders identically in HTML and plain-text email clients without JavaScript or external images, fixing rendering issues in Gmail and Outlook.
 - Points exports (GeoJSON and GPX) are now stored on S3 as single-entry zip archives. Downloads are delivered as `<name>.zip`.
 - Import uploads are compressed client-side before upload. Users who previously uploaded uncompressed files see no behavior change; S3 storage for new uploads drops substantially for text formats.
-- Trial users' 10 MB import-file size limit now measures the stored (compressed) blob. For text formats (GPX, GeoJSON, CSV, OwnTracks `.rec`) this effectively raises the limit by ~10x since compression is applied before the size check.
+- Trial users' 10 MB import-file size limit applies to the uploaded file before any client-side compression, so the user-facing limit is unchanged.
 
 ### Internal
 

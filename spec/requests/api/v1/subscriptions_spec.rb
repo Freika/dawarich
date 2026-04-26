@@ -50,6 +50,19 @@ RSpec.describe 'Api::V1::Subscriptions', type: :request do
 
         expect(response).to have_http_status(:service_unavailable)
       end
+
+      it 'returns a generic body when SUBSCRIPTION_WEBHOOK_SECRET is not configured (no detail leak)' do
+        stub_const('ENV', ENV.to_h.merge('SUBSCRIPTION_WEBHOOK_SECRET' => nil))
+
+        post '/api/v1/subscriptions/callback',
+             params: { token: 'any' },
+             headers: webhook_headers
+
+        body = JSON.parse(response.body)
+        expect(body['message']).to eq('Configuration error')
+        expect(body['message']).not_to include('Webhook')
+        expect(body['message']).not_to include('secret')
+      end
     end
 
     context 'with a valid token and the correct webhook secret' do
@@ -76,6 +89,29 @@ RSpec.describe 'Api::V1::Subscriptions', type: :request do
         expect(user.plan).to eq('pro')
         expect(user.subscription_source).to eq('paddle')
         expect(user.active_until.to_i).to eq(active_until.to_i)
+      end
+
+      it 'logs a structured subscription_callback_applied event after a successful update' do
+        captured = []
+        allow(Rails.logger).to receive(:info).and_wrap_original do |original, *args, &block|
+          payload = block ? block.call : args.first
+          if payload.is_a?(String) && payload.start_with?('{') &&
+             payload.include?('subscription_callback_applied')
+            captured << payload
+          end
+          original.call(*args, &block)
+        end
+
+        post '/api/v1/subscriptions/callback', params: { token: token }, headers: webhook_headers
+        expect(response).to have_http_status(:ok)
+
+        expect(captured).not_to be_empty, 'Expected a JSON-encoded subscription_callback_applied log line'
+        json = JSON.parse(captured.first)
+        expect(json['event']).to eq('subscription_callback_applied')
+        expect(json['user_id']).to eq(user.id)
+        expect(json['status']).to eq('active')
+        expect(json['plan']).to eq('pro')
+        expect(json['source']).to eq('paddle')
       end
     end
 
@@ -333,6 +369,80 @@ RSpec.describe 'Api::V1::Subscriptions', type: :request do
         user.reload
         expect(user.plan).to eq('pro')
         expect(user.subscription_source).to eq('apple_iap')
+      end
+    end
+
+    context 'race condition: dedup uses atomic Rails.cache.write(unless_exist:) and a transactional user lock' do
+      let(:event_id) { SecureRandom.uuid }
+      let(:token) do
+        build_token(
+          user_id: user.id,
+          plan: 'pro',
+          status: 'active',
+          active_until: 30.days.from_now.iso8601,
+          subscription_source: 'paddle',
+          event_id: event_id
+        )
+      end
+
+      it 'uses Rails.cache.write(unless_exist: true) for the processed-events guard (atomic, not exist?+write)' do
+        unless_exist_calls = []
+        allow(Rails.cache).to receive(:write).and_wrap_original do |original, *args, **opts|
+          unless_exist_calls << args.first if opts[:unless_exist]
+          original.call(*args, **opts)
+        end
+
+        post '/api/v1/subscriptions/callback', params: { token: token }, headers: webhook_headers
+
+        expect(unless_exist_calls).to(
+          include(a_string_starting_with('manager_callback:processed:')),
+          'Subscription callback dedup MUST claim the event_id key with ' \
+          'Rails.cache.write(..., unless_exist: true). The non-atomic exist?+write ' \
+          'pattern is a TOCTOU bug that lets two concurrent webhooks both apply.'
+        )
+      end
+
+      it 'returns Stale event when the atomic claim returns false (lost the race)' do
+        call_count = 0
+        allow(Rails.cache).to receive(:write).and_wrap_original do |original, *args, **opts|
+          if opts[:unless_exist] && args.first.to_s.start_with?('manager_callback:processed:')
+            call_count += 1
+            call_count == 1 ? original.call(*args, **opts) : false
+          else
+            original.call(*args, **opts)
+          end
+        end
+
+        post '/api/v1/subscriptions/callback', params: { token: token }, headers: webhook_headers
+        expect(response).to have_http_status(:ok)
+        user.reload
+        expect(user.plan).to eq('pro')
+        expect(user.status).to eq('active')
+
+        replay_token = build_token(
+          user_id: user.id,
+          plan: 'lite',
+          status: 'inactive',
+          active_until: 1.year.ago.iso8601,
+          subscription_source: 'none',
+          event_id: event_id
+        )
+
+        post '/api/v1/subscriptions/callback', params: { token: replay_token }, headers: webhook_headers
+        expect(response).to have_http_status(:ok)
+        expect(JSON.parse(response.body)['message']).to eq('Stale event')
+
+        user.reload
+        expect(user.plan).to eq('pro')
+        expect(user.status).to eq('active')
+      end
+
+      it 'wraps the apply path in a User.transaction so the watermark + update are atomic' do
+        expect(User).to receive(:transaction).and_call_original
+
+        post '/api/v1/subscriptions/callback', params: { token: token }, headers: webhook_headers
+        expect(response).to have_http_status(:ok)
+        expect(user.reload.plan).to eq('pro')
       end
     end
 

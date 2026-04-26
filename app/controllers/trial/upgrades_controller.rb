@@ -9,6 +9,12 @@ module Trial
         plan: sanitized_plan,
         interval: sanitized_interval
       )
+      Rails.logger.info(
+        { event: 'trial_upgrades_viewed',
+          user_id: current_user&.id,
+          plan: sanitized_plan,
+          interval: sanitized_interval }.to_json
+      )
       redirect_to "#{MANAGER_URL}/auth/dawarich?token=#{token}", allow_other_host: true
     end
 

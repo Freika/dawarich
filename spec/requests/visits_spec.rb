@@ -178,6 +178,46 @@ RSpec.describe '/visits', type: :request do
         expect(visit.reload.place_id).to eq(original_place_id)
       end
 
+      context 'when user is on Lite plan with archived visit (>12 months old)' do
+        let(:lite_user) do
+          u = create(:user)
+          u.update_columns(plan: User.plans[:lite])
+          u
+        end
+        let!(:archived_visit) do
+          create(:visit, user: lite_user, status: :suggested,
+                         started_at: 13.months.ago,
+                         ended_at: 13.months.ago + 1.hour)
+        end
+
+        before do
+          allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+          sign_out user
+          sign_in lite_user
+        end
+
+        it 'returns 404 on PATCH for an archived visit outside the 12-month window' do
+          patch visit_url(archived_visit), params: { visit: { status: :confirmed } }
+
+          expect(response).to have_http_status(:not_found)
+        end
+
+        it 'returns 404 on DELETE for an archived visit outside the 12-month window' do
+          delete visit_url(archived_visit)
+
+          expect(response).to have_http_status(:not_found)
+        end
+
+        it 'still allows PATCH on a recent visit (within the window)' do
+          recent_visit = create(:visit, user: lite_user, status: :suggested,
+                                        started_at: 1.day.ago,
+                                        ended_at: 1.day.ago + 1.hour)
+          patch visit_url(recent_visit), params: { visit: { status: :confirmed } }
+
+          expect(recent_visit.reload.status).to eq('confirmed')
+        end
+      end
+
       it 'replaces the visit_entry row on rename' do
         patch visit_url(visit), params: { visit: { name: 'New Name' } }, as: :turbo_stream
 

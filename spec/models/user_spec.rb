@@ -107,6 +107,40 @@ RSpec.describe User, type: :model do
         end
       end
     end
+
+    describe '#invalidate_plan_rate_limit_cache' do
+      let!(:user) do
+        u = create(:user, skip_auto_trial: true)
+        u.update_columns(plan: User.plans[:lite])
+        u
+      end
+      let(:cache_key) { "rack_attack/plan/#{user.api_key}" }
+
+      it 'evicts the rack_attack plan cache when plan changes' do
+        Rails.cache.write(cache_key, 'lite', expires_in: 2.minutes)
+        expect(Rails.cache.read(cache_key)).to eq('lite')
+
+        user.update!(plan: :pro)
+
+        expect(Rails.cache.read(cache_key)).to be_nil
+      end
+
+      it 'does NOT evict the cache when an unrelated column changes' do
+        Rails.cache.write(cache_key, 'lite', expires_in: 2.minutes)
+
+        user.update!(active_until: 1.year.from_now)
+
+        expect(Rails.cache.read(cache_key)).to eq('lite')
+      end
+
+      it 'evicts the cache using the previous api_key when api_key itself changes' do
+        Rails.cache.write(cache_key, 'lite', expires_in: 2.minutes)
+
+        user.update!(plan: :pro, api_key: 'rotated-key')
+
+        expect(Rails.cache.read(cache_key)).to be_nil
+      end
+    end
   end
 
   describe 'methods' do
@@ -614,9 +648,9 @@ subscription_source: :none)
       expect(user.signup_variant).to be_nil
     end
 
-    it 'indexes subscription_source for query performance' do
+    it 'does not index subscription_source (no query path filters by it)' do
       indexes = ActiveRecord::Base.connection.indexes(:users).map(&:columns)
-      expect(indexes).to include(['subscription_source'])
+      expect(indexes).not_to include(['subscription_source'])
     end
   end
 

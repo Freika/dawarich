@@ -102,7 +102,7 @@ class VisitsController < ApplicationController
   private
 
   def set_visit
-    @visit = current_user.visits.find(params[:id])
+    @visit = current_user.scoped_visits.find(params[:id])
   end
 
   def apply_date_scope(scope)

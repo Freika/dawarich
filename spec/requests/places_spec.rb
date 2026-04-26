@@ -270,6 +270,41 @@ RSpec.describe '/places', type: :request do
         expect(response.body).to include('Visit 6')
         expect(response.body).not_to include('Visit 0')
       end
+
+      it 'does not eagerly load every point belonging to the place visits' do
+        base_time = Time.zone.parse('2026-04-01 12:00')
+        visits_for_place = []
+        10.times do |i|
+          v = create(
+            :visit,
+            place:,
+            user:,
+            name: "Eager Visit #{i}",
+            duration: 30,
+            started_at: base_time + i.hours,
+            ended_at: base_time + i.hours + 30.minutes,
+            area: nil
+          )
+          visits_for_place << v
+          create_list(:point, 5, user: user, visit: v)
+        end
+
+        point_select_count = 0
+        sub = lambda do |_name, _start, _finish, _id, payload|
+          next if payload[:name].in?(%w[SCHEMA TRANSACTION])
+
+          point_select_count += 1 if payload[:sql].to_s =~ /FROM "points".*"visit_id" IN/i
+        end
+
+        ActiveSupport::Notifications.subscribed(sub, 'sql.active_record') do
+          get place_url(place)
+        end
+
+        expect(response).to have_http_status(:ok)
+        expect(point_select_count).to eq(0),
+                                      'Expected no eager-loaded SELECT FROM points ' \
+                                      "WHERE visit_id IN(...), but found #{point_select_count}."
+      end
     end
 
     context 'when unauthenticated' do

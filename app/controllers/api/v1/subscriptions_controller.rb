@@ -6,7 +6,8 @@ class Api::V1::SubscriptionsController < ApiController
 
   def callback
     if ENV['SUBSCRIPTION_WEBHOOK_SECRET'].blank?
-      return render(json: { message: 'Webhook secret not configured' }, status: :service_unavailable)
+      Rails.logger.error('[Subscriptions#callback] SUBSCRIPTION_WEBHOOK_SECRET is not configured')
+      return render(json: { message: 'Configuration error' }, status: :service_unavailable)
     end
     return render(json: { message: 'Invalid webhook secret' }, status: :unauthorized) unless valid_manager_secret?
 
@@ -14,13 +15,40 @@ class Api::V1::SubscriptionsController < ApiController
 
     return render(json: { message: 'Missing event_id' }, status: :unprocessable_content) if decoded[:event_id].blank?
 
-    return render(json: { message: 'Stale event' }, status: :ok) if stale_event?(decoded)
+    return render(json: { message: 'Stale event' }, status: :ok) unless claim_event!(decoded)
+
+    if event_older_than_last_seen?(decoded)
+      Rails.cache.delete("manager_callback:processed:#{decoded[:event_id]}")
+      return render(json: { message: 'Stale event' }, status: :ok)
+    end
 
     user = User.find(decoded[:user_id])
-    user.update!(subscription_attrs(decoded))
+    applied = false
 
-    Rails.cache.delete("rack_attack/plan/#{user.api_key}")
-    mark_event_processed(decoded)
+    User.transaction do
+      user.lock!
+
+      if event_older_than_last_seen?(decoded)
+        Rails.cache.delete("manager_callback:processed:#{decoded[:event_id]}")
+        raise ActiveRecord::Rollback
+      end
+
+      user.update!(subscription_attrs(decoded))
+      advance_last_seen_watermark(decoded)
+      applied = true
+    end
+
+    return render(json: { message: 'Stale event' }, status: :ok) unless applied
+
+    Rails.cache.delete("rack_attack/plan/#{user.api_key}") if user.previous_changes.any?
+
+    log_event(
+      'subscription_callback_applied',
+      user_id: user.id,
+      status: user.status,
+      plan: user.plan,
+      source: user.subscription_source
+    )
 
     render json: { message: 'Subscription updated successfully' }
   rescue JWT::DecodeError => e
@@ -57,15 +85,13 @@ class Api::V1::SubscriptionsController < ApiController
     attrs
   end
 
-  def stale_event?(decoded)
-    return true if event_already_processed?(decoded)
-    return true if event_older_than_last_seen?(decoded)
-
-    false
-  end
-
-  def event_already_processed?(decoded)
-    Rails.cache.exist?("manager_callback:processed:#{decoded[:event_id]}")
+  def claim_event!(decoded)
+    Rails.cache.write(
+      "manager_callback:processed:#{decoded[:event_id]}",
+      true,
+      expires_in: 7.days,
+      unless_exist: true
+    )
   end
 
   def event_older_than_last_seen?(decoded)
@@ -76,9 +102,7 @@ class Api::V1::SubscriptionsController < ApiController
     ts < last_seen
   end
 
-  def mark_event_processed(decoded)
-    Rails.cache.write("manager_callback:processed:#{decoded[:event_id]}", true, expires_in: 7.days)
-
+  def advance_last_seen_watermark(decoded)
     ts = decoded[:event_timestamp_ms].to_i
     return if ts.zero?
 
@@ -90,5 +114,9 @@ class Api::V1::SubscriptionsController < ApiController
 
   def last_seen_cache_key(decoded)
     "manager_callback:last_seen_ms:#{decoded[:user_id]}"
+  end
+
+  def log_event(name, **payload)
+    Rails.logger.info({ event: name, **payload }.to_json)
   end
 end

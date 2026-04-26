@@ -67,6 +67,15 @@ RSpec.describe Subscription::DecodeJwtToken do
         .to raise_error(JWT::DecodeError)
     end
 
+    it 'requires the exp claim and rejects tokens that omit it' do
+      token = encode({ user_id: 1, event_id: 'paddle:abc' })
+
+      expect { described_class.new(token).call }
+        .to raise_error(JWT::MissingRequiredClaim)
+
+      expect(JWT::MissingRequiredClaim.ancestors).to include(JWT::DecodeError)
+    end
+
     context 'with expected_purpose:' do
       it 'returns the decoded payload when the purpose claim matches' do
         token = encode({ purpose: 'trial_welcome', user_id: 1, jti: 'abc', exp: 30.minutes.from_now.to_i })

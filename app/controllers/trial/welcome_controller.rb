@@ -17,13 +17,15 @@ class Trial::WelcomeController < ApplicationController
       return redirect_to(root_path, alert: 'Another user is already signed in.')
     end
 
-    if token_already_consumed?(jti)
+    consumed = !mark_token_consumed!(jti, decoded[:exp])
+    if consumed
       return redirect_to(helpers.preferred_map_path) if user_signed_in? && current_user == @user
 
       return redirect_to(new_user_session_path, alert: 'This welcome link has already been used.')
     end
 
-    mark_token_consumed!(jti, decoded[:exp])
+    log_event('trial_welcome_consumed', user_id: @user.id, jti: jti, variant: @user.signup_variant)
+
     sign_in(@user) unless current_user == @user
     redirect_to helpers.preferred_map_path, notice: welcome_notice(@user)
   rescue JWT::DecodeError
@@ -37,15 +39,12 @@ class Trial::WelcomeController < ApplicationController
   def no_store_headers
     response.headers['Cache-Control'] = 'no-store'
     response.headers['Pragma'] = 'no-cache'
-  end
-
-  def token_already_consumed?(jti)
-    Rails.cache.exist?("#{CONSUMED_KEY_PREFIX}#{jti}")
+    response.headers['Referrer-Policy'] = 'no-referrer'
   end
 
   def mark_token_consumed!(jti, exp)
-    ttl = [(exp.to_i - Time.now.to_i), 60].max
-    Rails.cache.write("#{CONSUMED_KEY_PREFIX}#{jti}", true, expires_in: ttl)
+    ttl = [(exp.to_i - Time.current.to_i), 60].max
+    Rails.cache.write("#{CONSUMED_KEY_PREFIX}#{jti}", true, expires_in: ttl, unless_exist: true)
   end
 
   def welcome_notice(user)
@@ -54,5 +53,9 @@ class Trial::WelcomeController < ApplicationController
     else
       'Welcome to Dawarich — your trial is being activated now.'
     end
+  end
+
+  def log_event(name, **payload)
+    Rails.logger.info({ event: name, **payload }.to_json)
   end
 end

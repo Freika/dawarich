@@ -27,8 +27,6 @@ class Users::SafeSettings
     'visits_suggestions_enabled' => 'true',
     'enabled_map_layers' => %w[Tracks Heatmap],
     'maps_maplibre_style' => 'light',
-    'monthly_digest_emails_enabled' => true,
-    'yearly_digest_emails_enabled' => true,
     'news_emails_enabled' => true,
     'globe_projection' => false,
     'supporter_email' => nil,
@@ -205,17 +203,11 @@ class Users::SafeSettings
   end
 
   def monthly_digest_emails_enabled?
-    value = settings['monthly_digest_emails_enabled']
-    return true if value.nil?
-
-    ActiveModel::Type::Boolean.new.cast(value)
+    fetch_with_legacy_fallback('monthly_digest_emails_enabled', 'digest_emails_enabled', default: true)
   end
 
   def yearly_digest_emails_enabled?
-    value = settings['yearly_digest_emails_enabled']
-    return true if value.nil?
-
-    ActiveModel::Type::Boolean.new.cast(value)
+    fetch_with_legacy_fallback('yearly_digest_emails_enabled', 'digest_emails_enabled', default: true)
   end
 
   def news_emails_enabled?
@@ -276,5 +268,12 @@ class Users::SafeSettings
 
   def lite?
     @plan&.to_sym == :lite
+  end
+
+  def fetch_with_legacy_fallback(new_key, legacy_key, default:)
+    return ActiveModel::Type::Boolean.new.cast(settings[new_key]) if settings.key?(new_key)
+    return ActiveModel::Type::Boolean.new.cast(settings[legacy_key]) if settings.key?(legacy_key)
+
+    default
   end
 end

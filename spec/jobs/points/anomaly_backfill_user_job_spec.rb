@@ -52,4 +52,33 @@ RSpec.describe Points::AnomalyBackfillUserJob, type: :job do
       end.not_to have_enqueued_job(Users::RecalculateDataJob)
     end
   end
+
+  describe '#perform skips empty chunks for sparse data' do
+    let(:sparse_user) { create(:user) }
+
+    before do
+      sparse_user.update!(settings: { 'gps_accuracy_threshold' => 200 })
+
+      [22.months.ago, 12.months.ago, 1.month.ago].each do |bucket_anchor|
+        2.times do |i|
+          create(:point, user: sparse_user, accuracy: 60, anomaly: false,
+                         timestamp: (bucket_anchor + i.minutes).to_i,
+                         latitude: 52.52, longitude: 13.405,
+                         lonlat: 'POINT(13.405 52.52)')
+        end
+      end
+    end
+
+    it 'invokes the AnomalyFilter once per populated month, not per 30-day chunk in the span' do
+      filter_calls = 0
+      allow(Points::AnomalyFilter).to receive(:new).and_wrap_original do |original, *args|
+        filter_calls += 1
+        original.call(*args)
+      end
+
+      described_class.new.perform(sparse_user.id)
+
+      expect(filter_calls).to eq(3)
+    end
+  end
 end

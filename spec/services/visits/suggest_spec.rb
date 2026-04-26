@@ -107,6 +107,37 @@ RSpec.describe Visits::Suggest do
         expect(enqueued_jobs).to be_empty
       end
     end
+
+    context 'when user is on Lite plan with points outside the 12-month window' do
+      let!(:lite_user) do
+        u = create(:user)
+        u.update_columns(plan: User.plans[:lite])
+        u
+      end
+      let(:archived_start) { 14.months.ago.beginning_of_day }
+      let(:archived_end) { archived_start + 1.hour }
+
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+
+        15.times do |i|
+          create(:point, :with_known_location, user: lite_user,
+                                               timestamp: archived_start.to_i + (i * 5 * 60))
+        end
+
+        recent_ts = 1.day.ago.to_i
+        create(:point, :with_known_location, user: lite_user, timestamp: recent_ts)
+      end
+
+      it 'exposes @points scoped to the plan window (excludes points older than 12 months)' do
+        service = described_class.new(lite_user, start_at: archived_start, end_at: 1.hour.from_now)
+
+        archived_count = service.points.where(timestamp: archived_start.to_i..archived_end.to_i).count
+        expect(archived_count).to eq(0)
+
+        expect(service.points.count).to eq(1)
+      end
+    end
   end
 
   private

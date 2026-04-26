@@ -35,7 +35,7 @@ module Users
       attr_reader :user, :year
 
       def monthly_stats
-        @monthly_stats ||= user.stats.where(year: year).order(:month)
+        @monthly_stats ||= user.scoped_stats.where(year: year).order(:month)
       end
 
       def total_distance
@@ -221,7 +221,7 @@ module Users
         {
           'total_countries' => user.countries_visited_uncached.size,
           'total_cities' => user.cities_visited_uncached.size,
-          'total_distance' => user.stats.sum(:distance).to_s
+          'total_distance' => user.scoped_stats.sum(:distance).to_s
         }
       end
 

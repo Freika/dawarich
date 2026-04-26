@@ -136,5 +136,61 @@ RSpec.describe 'GET /trial/welcome', type: :request do
       expect(response).to have_http_status(:found)
       expect(response).to redirect_to(root_path)
     end
+
+    it 'sets Referrer-Policy: no-referrer on the response' do
+      t = issue_welcome_token(user)
+      get "/trial/welcome?token=#{t}"
+      expect(response.headers['Referrer-Policy']).to eq('no-referrer')
+    end
+
+    it 'sets Referrer-Policy: no-referrer on rejection (invalid token)' do
+      get '/trial/welcome?token=garbage'
+      expect(response.headers['Referrer-Policy']).to eq('no-referrer')
+    end
+
+    it 'consumes the jti atomically via Rails.cache.write(unless_exist: true)' do
+      Rails.cache.clear
+      t = issue_welcome_token(user)
+
+      writes = []
+      allow(Rails.cache).to receive(:write).and_wrap_original do |original, *args, **opts|
+        writes << opts.dup
+        original.call(*args, **opts)
+      end
+
+      get "/trial/welcome?token=#{t}"
+      expect(response).to redirect_to(%r{/map/v\d})
+
+      consume_writes = writes.select { |o| o.key?(:unless_exist) }
+      expect(consume_writes).not_to(
+        be_empty,
+        'Trial welcome consumption MUST use Rails.cache.write(..., unless_exist: true) ' \
+        'to be atomic. The non-atomic exist?+write pattern is a TOCTOU bug.'
+      )
+      expect(consume_writes.first[:unless_exist]).to be(true)
+    end
+
+    it 'rejects a second visit when the atomic write returns false (lost the race)' do
+      Rails.cache.clear
+      t = issue_welcome_token(user)
+
+      call_count = 0
+      allow(Rails.cache).to receive(:write).and_wrap_original do |original, *args, **opts|
+        if opts[:unless_exist]
+          call_count += 1
+          call_count == 1 ? original.call(*args, **opts) : false
+        else
+          original.call(*args, **opts)
+        end
+      end
+
+      get "/trial/welcome?token=#{t}"
+      expect(response).to redirect_to(%r{/map/v\d})
+
+      delete destroy_user_session_path
+      get "/trial/welcome?token=#{t}"
+      expect(response).to redirect_to(new_user_session_path)
+      expect(flash[:alert]).to include('already been used')
+    end
   end
 end

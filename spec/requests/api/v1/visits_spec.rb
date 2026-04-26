@@ -78,7 +78,7 @@ RSpec.describe 'Api::V1::Visits', type: :request do
     end
 
     context 'with valid parameters' do
-      let(:existing_place) { create(:place, latitude: 52.52, longitude: 13.405) }
+      let(:existing_place) { create(:place, user: user, latitude: 52.52, longitude: 13.405) }
 
       it 'creates a new visit' do
         expect do

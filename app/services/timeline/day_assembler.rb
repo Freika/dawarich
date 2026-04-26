@@ -39,7 +39,7 @@ module Timeline
         editable_name: visit.name,
         status: visit.status,
         place_id: visit.place_id,
-        point_count: visit.points.size,
+        point_count: point_count_for(visit),
         tags: build_tags(visit.place),
         started_at: visit.started_at.iso8601,
         ended_at: visit.ended_at.iso8601,
@@ -59,9 +59,14 @@ module Timeline
 
     def fetch_visits
       user.scoped_visits
-          .includes(:area, :points, suggested_places: :tags, place: :tags)
+          .includes(:area, suggested_places: :tags, place: :tags)
           .where(started_at: start_at..end_at)
           .order(started_at: :asc)
+    end
+
+    def point_count_for(visit)
+      assoc = visit.association(:points)
+      assoc.loaded? ? assoc.target.length : visit.points.count
     end
 
     def fetch_tracks
@@ -225,7 +230,7 @@ module Timeline
       track_ids = tracks.map(&:id)
       return nil if track_ids.empty?
 
-      sql = <<~SQL.squish
+      query = <<~SQL.squish
         SELECT
           ST_XMin(extent) AS min_lng,
           ST_YMin(extent) AS min_lat,
@@ -234,9 +239,10 @@ module Timeline
         FROM (
           SELECT ST_Extent(original_path::geometry) AS extent
           FROM tracks
-          WHERE id IN (#{track_ids.join(',')}) AND original_path IS NOT NULL
+          WHERE id IN (?) AND original_path IS NOT NULL
         ) sub
       SQL
+      sql = ActiveRecord::Base.sanitize_sql_array([query, track_ids])
 
       row = ActiveRecord::Base.connection.exec_query(sql).first
       return nil unless row && row['min_lng']

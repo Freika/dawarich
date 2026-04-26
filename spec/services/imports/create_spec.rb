@@ -351,6 +351,15 @@ RSpec.describe Imports::Create do
           expect(import.reload.status).to eq('failed')
         end
       end
+
+      context 'when an importer is requested for source "zip"' do
+        let(:import) { create(:import, source: 'gpx') }
+
+        it 'raises a clear "could not classify zip contents" ArgumentError' do
+          expect { service.send(:importer, 'zip') }
+            .to raise_error(ArgumentError, /Could not classify zip contents.*corrupted/i)
+        end
+      end
     end
   end
 end

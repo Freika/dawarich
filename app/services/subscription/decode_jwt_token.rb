@@ -13,7 +13,7 @@ class Subscription::DecodeJwtToken
       @token,
       ENV.fetch('JWT_SECRET_KEY'),
       true,
-      { algorithm: 'HS256' }
+      { algorithm: 'HS256', required_claims: ['exp'], verify_expiration: true }
     ).first.symbolize_keys
 
     if @expected_purpose && decoded[:purpose].to_s != @expected_purpose.to_s

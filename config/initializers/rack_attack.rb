@@ -96,6 +96,30 @@ Rack::Attack.throttle('logins/ip', limit: 20, period: 1.minute) do |req|
   req.ip
 end
 
+Rack::Attack.throttle('subscriptions/callback', limit: 60, period: 1.minute) do |req|
+  next unless req.path == '/api/v1/subscriptions/callback' && req.post?
+
+  req.ip
+end
+
+Rack::Attack.throttle('trial/welcome', limit: 30, period: 1.minute) do |req|
+  next unless req.path == '/trial/welcome' && req.get?
+
+  req.ip
+end
+
+Rack::Attack.throttle('signups/ip_burst', limit: 5, period: 1.minute) do |req|
+  next unless req.path == '/users' && req.post?
+
+  req.ip
+end
+
+Rack::Attack.throttle('signups/ip_hourly', limit: 20, period: 1.hour) do |req|
+  next unless req.path == '/users' && req.post?
+
+  req.ip
+end
+
 # Flipper admin UI: 30 req / 5 min per IP. The UI sits behind admin auth, but
 # limit hammering so an attacker (or buggy client) can't brute-force or scrape it.
 Rack::Attack.throttle('admin/flipper', limit: 30, period: 5.minutes) do |req|

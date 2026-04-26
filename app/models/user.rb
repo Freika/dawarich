@@ -32,6 +32,7 @@ class User < ApplicationRecord
   after_create :create_api_key
   after_commit :activate, on: :create, if: -> { DawarichSettings.self_hosted? && !skip_auto_trial }
   after_commit :start_trial, on: :create, if: -> { !DawarichSettings.self_hosted? && !skip_auto_trial }
+  after_update :invalidate_plan_rate_limit_cache, if: :saved_change_to_plan?
 
   before_save :sanitize_input
 
@@ -249,5 +250,10 @@ class User < ApplicationRecord
     Users::MailerSendingJob.set(wait: 2.days).perform_later(id, 'explore_features')
 
     Users::TrialWebhookJob.perform_later(id)
+  end
+
+  def invalidate_plan_rate_limit_cache
+    key = api_key_previously_was || api_key_was || api_key
+    Rails.cache.delete("rack_attack/plan/#{key}") if key.present?
   end
 end
