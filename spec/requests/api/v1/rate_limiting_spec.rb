@@ -6,12 +6,17 @@ RSpec.describe 'API Rate Limiting', type: :request do
   let(:original_limits) { Rack::Attack.api_rate_limits.dup }
 
   before do
+    # Rack::Attack is globally disabled in test env so unrelated request
+    # specs don't share throttle counters; re-enable for this file since
+    # it explicitly exercises the throttling behavior.
+    Rack::Attack.enabled = true
     Rack::Attack.cache.store = ActiveSupport::Cache::MemoryStore.new
     Rack::Attack.reset!
   end
 
   after do
     Rack::Attack.api_rate_limits = original_limits
+    Rack::Attack.enabled = false
   end
 
   describe 'rate limit headers' do

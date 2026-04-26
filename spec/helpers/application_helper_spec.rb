@@ -25,6 +25,10 @@ RSpec.describe ApplicationHelper, type: :helper do
         allow(helper).to receive(:controller).and_return(
           double(class: double(name: 'ApplicationController'))
         )
+        # Lite users only exist on cloud — `pro_badge_tag` returns nil on
+        # self-hosted via `current_user&.lite?` upstream, so this stub
+        # mirrors the cloud path the test is exercising.
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
       end
 
       it 'renders a DaisyUI tooltip with data-tip attribute' do
@@ -75,6 +79,17 @@ RSpec.describe ApplicationHelper, type: :helper do
       allow(user).to receive(:generate_subscription_token).and_return('fake_token')
       stub_const('MANAGER_URL', 'https://manager.example.com')
       expect(helper.subscription_upgrade_url(user)).to eq('https://manager.example.com/auth/dawarich?token=fake_token')
+    end
+  end
+
+  describe '#upgrade_url' do
+    context 'on self-hosted instances' do
+      before { allow(DawarichSettings).to receive(:self_hosted?).and_return(true) }
+
+      it 'returns empty string without invoking JWT generation' do
+        # Would raise KeyError on self-hosted (no JWT_SECRET_KEY) if not guarded.
+        expect(helper.upgrade_url).to eq('')
+      end
     end
   end
 

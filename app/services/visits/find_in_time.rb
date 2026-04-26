@@ -9,9 +9,15 @@ module Visits
     end
 
     def call
+      # Match DayAssembler: bucket by `started_at` only. Anchoring on
+      # `ended_at <= end_at` (the previous form) silently dropped visits
+      # crossing the range boundary — the timeline rail listed them but
+      # the map didn't render their markers. Suggested visits are
+      # over-represented because they're often auto-detected long stays
+      # that span midnight.
       user.scoped_visits
           .includes(:place, :area)
-          .where('started_at >= ? AND ended_at <= ?', start_at, end_at)
+          .where(started_at: start_at..end_at)
           .order(started_at: :desc)
     end
 

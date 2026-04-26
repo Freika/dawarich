@@ -1,57 +1,23 @@
-<div class="map-control-panel" data-maps--maplibre-target="settingsPanel" data-controller="map-panel">
-  <!-- Vertical Icon Tabs (Left Side) -->
-  <div class="panel-tabs">
-    <button class="tab-btn active"
-            data-action="click->map-panel#switchTab"
-            data-tab="layers"
-            data-map-panel-target="tabButton"
-            title="Map Layers">
-      <%= icon 'layer' %>
-    </button>
+<%# Server-render the open + timeline-expanded classes when the URL asks for
+    the timeline panel — avoids the JS-driven `.open` toggle animating the
+    panel in from off-screen on every Turbo navigation.
 
-    <button class="tab-btn"
-            data-action="click->map-panel#switchTab"
-            data-tab="search"
-            data-map-panel-target="tabButton"
-            title="Search">
-      <%= icon 'search' %>
-    </button>
-
-
-    <button class="tab-btn"
-            data-action="click->map-panel#switchTab"
-            data-tab="timeline-feed"
-            data-map-panel-target="tabButton"
-            title="Timeline">
-      <%= icon 'calendar-clock' %>
-    </button>
-
-    <button class="tab-btn"
-            data-action="click->map-panel#switchTab"
-            data-tab="tools"
-            data-map-panel-target="tabButton"
-            title="Tools">
-      <%= icon 'pocket-knife' %>
-    </button>
-
-    <button class="tab-btn"
-            data-action="click->map-panel#switchTab"
-            data-tab="settings"
-            data-map-panel-target="tabButton"
-            title="Settings">
-      <%= icon 'settings' %>
-    </button>
-
-    <% if !DawarichSettings.self_hosted? %>
-      <button class="tab-btn"
-              data-action="click->map-panel#switchTab"
-              data-tab="links"
-              data-map-panel-target="tabButton"
-              title="Links">
-        <%= icon 'info' %>
-      </button>
-    <% end %>
-  </div>
+    `data-turbo-permanent` (with the matching #id) tells Turbo to keep the
+    existing panel DOM across navigations — calendar turbo-frame, filter
+    counts, tab state, and Stimulus controller instances are all preserved,
+    so clicking a day refetches the map layers without resetting the panel
+    (no "Loading calendar…" flash). Turbo only swaps content outside the
+    panel element. %>
+<% timeline_panel_open = params[:panel] == 'timeline' %>
+<div id="map-settings-panel"
+     data-turbo-permanent
+     class="map-control-panel<%= ' open timeline-expanded' if timeline_panel_open %>"
+     data-maps--maplibre-target="settingsPanel"
+     data-controller="map-panel">
+  <%# The in-panel tab strip is gone — the floating button cluster on the
+      map's left edge (`_button_cluster.html.erb`) doubles as the tab strip
+      both when the panel is closed and when it's open (it slides to sit at
+      the panel's right edge while open). Single source of truth. %>
 
   <!-- Panel Content -->
   <div class="panel-content">
@@ -92,7 +58,7 @@
       </div>
 
       <!-- Layers Tab -->
-      <div class="tab-content active" data-tab-content="layers" data-map-panel-target="tabContent">
+      <div class="tab-content<%= ' active' unless timeline_panel_open %>" data-tab-content="layers" data-map-panel-target="tabContent">
         <div class="space-y-4">
           <!-- Points Layer -->
           <div class="form-control">
@@ -137,9 +103,7 @@
               <button type="button"
                       class="btn btn-sm btn-outline w-full"
                       data-action="click->maps--maplibre#openSpeedColorEditor">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
-                </svg>
+                <%= icon 'palette', class: 'h-4 w-4 mr-2' %>
                 Edit Color Gradient
               </button>
               <input type="hidden" data-maps--maplibre-target="speedColorScaleInput" value="" />
@@ -517,6 +481,57 @@
             </div>
             <p class="text-xs text-base-content/60 mt-1">Time threshold for route splitting</p>
           </div>
+
+          <div class="divider"></div>
+
+          <!-- GPS Noise Filtering -->
+          <div class="form-control">
+            <label class="label cursor-pointer justify-start gap-3">
+              <input type="checkbox"
+                     name="gpsFilteringEnabled"
+                     class="toggle toggle-primary"
+                     data-maps--maplibre-target="gpsFilteringToggle" />
+              <span class="label-text font-medium">GPS Noise Filtering</span>
+            </label>
+            <p class="text-sm text-base-content/60 mt-1">Hide points whose reported accuracy exceeds the threshold below. Disable for trains, indoor, or weak-signal data.</p>
+          </div>
+
+          <div class="form-control w-full">
+            <label class="label">
+              <span class="label-text font-medium">Accuracy Threshold</span>
+              <span class="label-text-alt" data-maps--maplibre-target="gpsAccuracyThresholdValue">100m</span>
+            </label>
+            <input type="range"
+                   name="gpsAccuracyThreshold"
+                   min="50"
+                   max="1000"
+                   step="10"
+                   value="100"
+                   class="range range-sm"
+                   data-action="input->maps--maplibre#updateGpsAccuracyThresholdDisplay" />
+            <div class="w-full flex justify-between text-xs px-2 mt-1">
+              <span>50m</span>
+              <span>500m</span>
+              <span>1000m</span>
+            </div>
+            <p class="text-xs text-base-content/60 mt-1">Points with reported GPS accuracy worse than this are flagged as noise. Lower = stricter, higher = keeps more weak-signal data.</p>
+          </div>
+
+          <button type="button"
+                  class="btn btn-sm btn-outline btn-block"
+                  data-action="click->maps--maplibre#reapplyAnomalyFilter">
+            <%= icon 'rotate-ccw' %>
+            Re-evaluate past data
+          </button>
+          <p class="text-xs text-base-content/60 mt-1">Clears existing anomaly flags and re-runs the filter on all your points with the current settings. Tracks, stats, and digests will be rebuilt afterwards. Runs in the background.</p>
+
+          <button type="button"
+                  class="btn btn-sm btn-outline btn-block mt-2"
+                  data-action="click->maps--maplibre#recalculateUserData">
+            <%= icon 'refresh-ccw' %>
+            Recalculate tracks &amp; stats
+          </button>
+          <p class="text-xs text-base-content/60 mt-1">Rebuild tracks, stats, and digests from your current points without touching anomaly flags. Useful after changing route-splitting thresholds.</p>
 
           <div class="divider"></div>
 
@@ -947,45 +962,116 @@
       </div>
 
       <!-- Timeline Feed Tab -->
-      <div class="tab-content" data-tab-content="timeline-feed" data-map-panel-target="tabContent">
-        <turbo-frame id="timeline-feed-frame"
-                     data-maps--maplibre-target="timelineFeedContainer">
-          <div class="timeline-feed-placeholder text-center text-base-content/60 py-8">
-            <p class="text-sm">Select a date range to see your day-by-day timeline.</p>
-          </div>
-        </turbo-frame>
-        <template id="timeline-feed-skeleton">
-          <div class="timeline-feed-skeleton space-y-2 p-2 animate-pulse">
-            <% 3.times do %>
-              <div class="bg-base-200 rounded-lg p-3">
-                <div class="flex justify-between items-center">
-                  <div class="h-4 bg-base-300 rounded w-36"></div>
-                  <div class="h-4 bg-base-300 rounded w-16"></div>
+      <div class="tab-content<%= ' active' if timeline_panel_open %>" data-tab-content="timeline-feed" data-map-panel-target="tabContent">
+        <div class="timeline-tab-content" data-controller="timeline-feed">
+          <%# ---------- LEFT RAIL ---------- %>
+          <aside class="timeline-rail">
+            <%# Calendar (lazy-loaded turbo frame) %>
+            <turbo-frame id="timeline-calendar-frame"
+                         src="<%= calendar_map_timeline_feeds_path(month: initial_calendar_month(current_user)) %>"
+                         loading="lazy">
+              <div class="text-center text-base-content/60 py-4 text-sm">Loading calendar…</div>
+            </turbo-frame>
+
+            <%# Heat legend %>
+            <div class="timeline-rail__heat-legend">
+              <span>less</span>
+              <span class="heat-swatch heat-0"></span>
+              <span class="heat-swatch heat-1"></span>
+              <span class="heat-swatch heat-2"></span>
+              <span class="heat-swatch heat-3"></span>
+              <span class="heat-swatch heat-4"></span>
+              <span class="heat-swatch heat-5"></span>
+              <span>more</span>
+            </div>
+
+            <%# Filter with counts %>
+            <div class="timeline-rail__section">
+              <div class="timeline-rail__section-label">Filter</div>
+              <label class="timeline-filter-row">
+                <input type="checkbox" class="checkbox checkbox-xs checkbox-success"
+                       data-status="confirmed" data-testid="filter-confirmed"
+                       data-action="change->timeline-feed#filterChanged" checked />
+                <span class="flex-1">Confirmed</span>
+                <%= render 'map/timeline_feeds/filter_count',
+                           status: 'confirmed', count: @status_counts&.dig('confirmed').to_i %>
+              </label>
+              <label class="timeline-filter-row">
+                <input type="checkbox" class="checkbox checkbox-xs checkbox-warning"
+                       data-status="suggested" data-testid="filter-suggested"
+                       data-action="change->timeline-feed#filterChanged" checked />
+                <span class="flex-1">Suggested</span>
+                <%= render 'map/timeline_feeds/filter_count',
+                           status: 'suggested', count: @status_counts&.dig('suggested').to_i %>
+              </label>
+              <label class="timeline-filter-row timeline-filter-row--muted">
+                <input type="checkbox" class="checkbox checkbox-xs"
+                       data-status="declined" data-testid="filter-declined"
+                       data-action="change->timeline-feed#filterChanged" />
+                <span class="flex-1">Declined</span>
+                <%= render 'map/timeline_feeds/filter_count',
+                           status: 'declined', count: @status_counts&.dig('declined').to_i %>
+              </label>
+            </div>
+
+            <%# Search — filters the currently loaded day's visit rows by
+                name / place / tag (substring match on data-search-tokens).
+                DaisyUI `input` styles target the <input> element directly;
+                the magnifier overlays via absolute positioning so we get a
+                single bordered field instead of the label-wrapper double
+                border. %>
+            <div class="relative">
+              <%= icon 'search',
+                       class: 'h-4 w-4 opacity-50 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none' %>
+              <input type="text"
+                     placeholder="Search visits, places…"
+                     class="input input-sm input-bordered w-full pl-8"
+                     autocomplete="off"
+                     data-timeline-feed-target="searchInput"
+                     data-action="input->timeline-feed#search" />
+            </div>
+
+            <%# Tag chips — click to toggle as an active filter. Multi-select ANDs
+                the chips; clicking an active chip clears it. Pure Stimulus; the
+                visibility is unified with status filters and search in
+                timeline_feed_controller#applyVisibility. %>
+            <% if @timeline_tags&.any? %>
+              <div class="timeline-rail__section">
+                <div class="timeline-rail__section-header">
+                  <span class="timeline-rail__section-label">Tags</span>
+                  <%= link_to 'Manage', tags_path,
+                              class: 'timeline-rail__section-link',
+                              target: '_blank',
+                              rel: 'noopener',
+                              title: 'Manage tags in a new tab',
+                              data: { testid: 'tags-manage-link' } %>
                 </div>
-                <div class="mt-3 space-y-2">
-                  <div class="flex items-center gap-2">
-                    <div class="w-3 h-3 bg-base-300 rounded-full shrink-0"></div>
-                    <div class="h-3 bg-base-300 rounded w-28"></div>
-                  </div>
-                  <div class="ml-1 border-l-2 border-base-300 pl-3 py-1">
-                    <div class="h-3 bg-base-300 rounded w-40"></div>
-                  </div>
-                  <div class="flex items-center gap-2">
-                    <div class="w-3 h-3 bg-base-300 rounded-full shrink-0"></div>
-                    <div class="h-3 bg-base-300 rounded w-32"></div>
-                  </div>
-                  <div class="ml-1 border-l-2 border-base-300 pl-3 py-1">
-                    <div class="h-3 bg-base-300 rounded w-36"></div>
-                  </div>
-                  <div class="flex items-center gap-2">
-                    <div class="w-3 h-3 bg-base-300 rounded-full shrink-0"></div>
-                    <div class="h-3 bg-base-300 rounded w-24"></div>
-                  </div>
+                <div class="timeline-rail__tags">
+                  <% @timeline_tags.each do |t| %>
+                    <button type="button"
+                            class="tag-chip tag-chip--toggle"
+                            data-tag-name="<%= t.name.downcase %>"
+                            data-action="click->timeline-feed#toggleTag"
+                            <% if t.color.present? %>style="background-color: <%= t.color %>;"<% end %>
+                            aria-pressed="false">
+                      <% if t.icon.present? %><%= t.icon %> <% end %><%= t.name %>
+                    </button>
+                  <% end %>
                 </div>
               </div>
             <% end %>
+
+          </aside>
+
+          <%# ---------- MAIN COLUMN (visit list) ---------- %>
+          <div class="timeline-main">
+            <turbo-frame id="timeline-feed-frame" data-timeline-feed-target="visitListFrame">
+              <div class="timeline-main__empty">
+                Pick a day in the calendar to see visits.
+              </div>
+            </turbo-frame>
           </div>
-        </template>
+        </div>
       </div>
 
       <!-- Tools Tab -->

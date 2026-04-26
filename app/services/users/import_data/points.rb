@@ -187,6 +187,14 @@ class Users::ImportData::Points
     attributes['created_at'] = Time.current
     attributes['updated_at'] = Time.current
 
+    # Stage 1 of altitude integer→decimal migration: ensure altitude_decimal
+    # is populated alongside altitude when importing legacy dumps that only
+    # include the integer column.
+    if Point.altitude_decimal_supported? &&
+       attributes['altitude_decimal'].blank? && attributes['altitude'].present?
+      attributes['altitude_decimal'] = attributes['altitude']
+    end
+
     resolve_import_reference(attributes, point_data['import_reference'])
     resolve_country_reference(attributes, point_data['country_info'])
     resolve_visit_reference(attributes, point_data['visit_reference'])

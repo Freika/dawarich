@@ -1,0 +1,140 @@
+/* Timeline Feed — left rail (calendar + filters + tags + day summary).
+   Paired with .timeline-tab-content grid in maps_maplibre_timeline_feed.css. */
+
+.timeline-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+  min-height: 0;
+  max-height: 100%;
+  overflow-y: auto;
+}
+
+.timeline-rail__section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.timeline-rail__section-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: oklch(var(--bc) / 0.55);
+}
+
+.timeline-rail__section-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.timeline-rail__section-link {
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: oklch(var(--p));
+  text-decoration: none;
+}
+
+.timeline-rail__section-link:hover {
+  text-decoration: underline;
+}
+
+.timeline-rail__heat-legend {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 10px;
+  color: oklch(var(--bc) / 0.55);
+}
+
+.timeline-rail__heat-legend .heat-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.timeline-rail__heat-legend .heat-swatch.heat-0 {
+  border: 1px solid oklch(var(--bc) / 0.2);
+}
+
+.timeline-rail__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.tag-chip--ghost {
+  background: transparent !important;
+  color: oklch(var(--bc) / 0.6);
+  border: 1px dashed oklch(var(--bc) / 0.3);
+  cursor: pointer;
+}
+
+/* Clickable tag chip — inactive looks muted; active pops with a ring. */
+.tag-chip--toggle {
+  cursor: pointer;
+  border: 0;
+  opacity: 0.7;
+  transition:
+    opacity 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.tag-chip--toggle:hover {
+  opacity: 1;
+}
+
+.tag-chip--toggle.tag-chip--active {
+  opacity: 1;
+  box-shadow:
+    0 0 0 2px oklch(var(--b1)),
+    0 0 0 3px oklch(var(--p));
+}
+
+.timeline-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.timeline-filter-row--muted {
+  color: oklch(var(--bc) / 0.55);
+}
+
+.timeline-filter-row__count {
+  font-size: 0.72rem;
+  color: oklch(var(--bc) / 0.45);
+  font-variant-numeric: tabular-nums;
+}
+
+.timeline-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  max-height: 100%;
+  overflow-y: auto;
+  /* Hover highlight on entries uses negative horizontal margin to bleed
+     into the column padding — without overflow-x clipping the parent gets
+     a scrollbar. */
+  overflow-x: hidden;
+}
+
+.timeline-main__empty {
+  text-align: center;
+  color: oklch(var(--bc) / 0.6);
+  font-size: 0.85rem;
+  padding: 2rem 1rem;
+}
+
+.visit-row--hidden {
+  display: none !important;
+}
