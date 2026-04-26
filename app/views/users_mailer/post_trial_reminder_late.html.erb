@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: #059669; color: white; padding: 20px; text-align: center; }
+    .content { padding: 20px; background: #f9fafb; }
+    .cta { background: #059669; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; margin: 20px 0; }
+    .waiting { background: #d1fae5; border: 1px solid #059669; padding: 15px; border-radius: 6px; margin: 20px 0; }
+    .special { background: #fef3c7; border: 1px solid #f59e0b; padding: 15px; border-radius: 6px; margin: 20px 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>📍 Your Location Data is Waiting</h1>
+    </div>
+    <div class="content">
+      <p>Hi <%= @user.email %>, this is Evgenii from Dawarich.</p>
+
+      <div class="waiting">
+        <p><strong>It's been a week since your Dawarich trial ended.</strong></p>
+      </div>
+
+      <p>Your location data is still safely stored and patiently waiting for you to return. I understand that choosing the right tool for your location tracking needs is important, and I wanted to reach out one more time.</p>
+
+      <h3>🗺️ Here's what's waiting for you:</h3>
+      <ul>
+        <li>All your location data, preserved and ready</li>
+        <li>Reliving your travels through detailed maps and insights</li>
+        <li>Privacy-first approach – your data stays yours</li>
+        <li>Beautiful visualizations of your travel patterns</li>
+        <li>Regular updates and new features</li>
+      </ul>
+
+      <a href="https://my.dawarich.app?utm_source=email&utm_medium=email&utm_campaign=post_trial_reminder_late&utm_content=special_offer" class="cta">Return to Dawarich</a>
+
+      <p>This is my final reminder about your trial. If Dawarich isn't the right fit for you right now, I completely understand. Your data will remain secure for the next year, and you're always welcome back.</p>
+
+      <p>Thank you for giving Dawarich a try. I hope to see you again soon!</p>
+
+      <p>Safe travels,<br>
+      Evgenii from Dawarich</p>
+
+      <p><em>P.S. If you have any questions or need assistance, just hit reply – I'm here to help!</em></p>
+    </div>
+  </div>
+</body>
+</html>

@@ -81,18 +81,53 @@ RSpec.describe Users::MailerSendingJob, type: :job do
       end
     end
 
-    context 'when email_type is a billing email (now owned by the subscription service)' do
-      # Billing emails (trial_*, post_trial_reminder_*, pending_payment_*)
-      # moved out of Dawarich when billing was extracted to a dedicated
-      # service. If a stale job gets enqueued it must surface loudly via
-      # UnknownEmailType so Sentry alerts and Sidekiq can be manually drained.
-      %w[trial_expires_soon trial_expired post_trial_reminder_early post_trial_reminder_late
-         trial_first_payment_soon trial_converted
+    context 'when email_type is a billing email never implemented in Dawarich' do
+      # These types are owned exclusively by Manager's BillingMailer. If a stale
+      # job ever appears with these types it must surface loudly via
+      # UnknownEmailType so Sentry alerts and Sidekiq can be drained manually.
+      %w[trial_first_payment_soon trial_converted
          pending_payment_day_1 pending_payment_day_3 pending_payment_day_7].each do |billing_type|
         it "raises UnknownEmailType for #{billing_type}" do
           expect do
             described_class.perform_now(user.id, billing_type)
           end.to raise_error(Users::MailerSendingJob::UnknownEmailType, /#{billing_type}/)
+        end
+      end
+    end
+
+    context 'when email_type is a transitional trial-reminder' do
+      # The four trial-reminder types below were enqueued by Dawarich pre-billing
+      # extraction. They're kept in MAILER_REGISTRY through the queue-drain
+      # window so stale Sidekiq jobs fire normally instead of crashing.
+      # Earliest removal: 2026-05-17 (deploy + 21 days). When you delete them,
+      # also delete the registry entries, the mailer methods, and the templates.
+      let(:active_user) { create(:user, skip_auto_trial: true, status: :active, active_until: 1.year.from_now) }
+
+      %w[trial_expires_soon trial_expired].each do |type|
+        it "skips #{type} when the user is already active (no stale 'trial expires soon' to a paying user)" do
+          expect(UsersMailer).not_to receive(:with)
+          described_class.perform_now(active_user.id, type)
+        end
+
+        it "still delivers #{type} to a trialing user (drain path)" do
+          expect(UsersMailer).to receive(:with).with({ user: user })
+          expect(UsersMailer).to receive(type).and_return(mailer_double)
+          expect(mailer_double).to receive(:deliver_later)
+          described_class.perform_now(user.id, type)
+        end
+      end
+
+      %w[post_trial_reminder_early post_trial_reminder_late].each do |type|
+        it "skips #{type} when the user has converted to active" do
+          expect(UsersMailer).not_to receive(:with)
+          described_class.perform_now(active_user.id, type)
+        end
+
+        it "still delivers #{type} to a trialing user (drain path)" do
+          expect(UsersMailer).to receive(:with).with({ user: user })
+          expect(UsersMailer).to receive(type).and_return(mailer_double)
+          expect(mailer_double).to receive(:deliver_later)
+          described_class.perform_now(user.id, type)
         end
       end
     end

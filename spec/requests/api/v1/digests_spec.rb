@@ -137,7 +137,7 @@ RSpec.describe 'Api::V1::Digests', type: :request do
     it 'enqueues digest calculation job and returns 202' do
       expect do
         post api_v1_digests_url, headers: headers, params: { year: 2024 }
-      end.to have_enqueued_job(Users::Digests::CalculatingJob).with(user.id, 2024)
+      end.to have_enqueued_job(Users::Digests::Yearly::CalculatingJob).with(user.id, 2024)
 
       expect(response).to have_http_status(:accepted)
 
