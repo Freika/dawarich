@@ -2,6 +2,11 @@
 
 module Timeline
   class DayAssembler
+    # Hard cap on the requested window. The UI consumes day-by-day; ranges
+    # this large would otherwise materialize thousands of LINESTRINGs in
+    # memory just to compute bounds.
+    MAX_RANGE = 31.days
+
     def initialize(user, start_at:, end_at:, distance_unit: 'km')
       @user = user
       @start_at = start_at.present? ? Time.zone.parse(start_at) : nil
@@ -11,6 +16,7 @@ module Timeline
 
     def call
       return [] if start_at.nil? || end_at.nil?
+      return [] if (end_at - start_at) > MAX_RANGE
 
       visits = fetch_visits
       tracks = fetch_tracks
@@ -196,12 +202,10 @@ module Timeline
         lngs << visit.place.lon
       end
 
-      tracks.each do |track|
-        coords = extract_track_coordinates(track)
-        coords.each do |lng, lat|
-          lats << lat
-          lngs << lng
-        end
+      track_extent = tracks_extent(tracks)
+      if track_extent
+        lats << track_extent[:min_lat] << track_extent[:max_lat]
+        lngs << track_extent[:min_lng] << track_extent[:max_lng]
       end
 
       return nil if lats.empty? || lngs.empty?
@@ -214,23 +218,35 @@ module Timeline
       }
     end
 
-    def extract_track_coordinates(track)
-      return [] if track.original_path.blank?
+    # Single PostGIS aggregate over all tracks in the day instead of
+    # materializing each LINESTRING into Ruby. Returns nil if no tracks
+    # have a path.
+    def tracks_extent(tracks)
+      track_ids = tracks.map(&:id)
+      return nil if track_ids.empty?
 
-      if track.original_path.respond_to?(:coordinates)
-        track.original_path.coordinates
-      else
-        parse_linestring(track.original_path.to_s)
-      end
-    end
+      sql = <<~SQL.squish
+        SELECT
+          ST_XMin(extent) AS min_lng,
+          ST_YMin(extent) AS min_lat,
+          ST_XMax(extent) AS max_lng,
+          ST_YMax(extent) AS max_lat
+        FROM (
+          SELECT ST_Extent(original_path::geometry) AS extent
+          FROM tracks
+          WHERE id IN (#{track_ids.join(',')}) AND original_path IS NOT NULL
+        ) sub
+      SQL
 
-    def parse_linestring(wkt)
-      match = wkt.match(/LINESTRING\s*\((.+)\)/i)
-      return [] unless match
+      row = ActiveRecord::Base.connection.exec_query(sql).first
+      return nil unless row && row['min_lng']
 
-      match[1].split(',').map do |pair|
-        pair.strip.split(/\s+/).map(&:to_f)
-      end
+      {
+        min_lng: row['min_lng'].to_f,
+        min_lat: row['min_lat'].to_f,
+        max_lng: row['max_lng'].to_f,
+        max_lat: row['max_lat'].to_f
+      }
     end
 
     def convert_distance(meters)

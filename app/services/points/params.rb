@@ -32,7 +32,7 @@ class Points::Params
         raw_data:           point,
         user_id:            user_id
       }
-      attrs[:altitude_decimal] = altitude_value if Point.column_names.include?('altitude_decimal')
+      attrs[:altitude_decimal] = altitude_value if Point.altitude_decimal_supported?
       attrs
     end.compact
   end

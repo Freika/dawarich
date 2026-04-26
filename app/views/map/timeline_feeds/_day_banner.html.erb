@@ -11,8 +11,7 @@
   <% if suggested_count.to_i.positive? %>
     <div class="timeline-bulk-banner">
       <span class="timeline-bulk-banner__text">
-        <%= suggested_count %>
-        <%= 'suggestion'.pluralize(suggested_count) %> waiting
+        <%= pluralize(suggested_count, 'suggestion') %> waiting
       </span>
       <div class="timeline-bulk-banner__actions">
         <%= button_to 'Confirm all',

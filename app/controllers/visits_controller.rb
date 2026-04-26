@@ -44,7 +44,22 @@ class VisitsController < ApplicationController
     params_to_update = visit_params.to_h
     params_to_update.delete(:name) if params_to_update[:name].is_a?(String) && params_to_update[:name].strip.empty?
 
+    # Cross-tenant IDOR guard: place_id must belong to current_user.
+    # Suggested places (visit.suggested_places) are also acceptable since
+    # they're already user-scoped via the visit relationship.
+    if params_to_update[:place_id].present?
+      allowed_place_ids = current_user.places.where(id: params_to_update[:place_id]).pluck(:id) +
+                          @visit.suggested_places.where(id: params_to_update[:place_id]).pluck(:id)
+      return render_unprocessable('Invalid place') unless allowed_place_ids.include?(params_to_update[:place_id].to_i)
+    end
+
+    # Capture both old and new month so cache busts cover edits that move
+    # a visit across month boundaries.
     @affected_started_at = [@visit.started_at]
+    if params_to_update[:started_at].present?
+      new_started_at = parse_time_safely(params_to_update[:started_at])
+      @affected_started_at << new_started_at if new_started_at
+    end
 
     update_visit_name_from_place if params_to_update[:place_id].present?
     auto_name_on_confirm if confirming_suggested_visit?(params_to_update)
@@ -214,6 +229,19 @@ class VisitsController < ApplicationController
 
   def visit_params
     params.require(:visit).permit(:name, :place_id, :started_at, :ended_at, :status)
+  end
+
+  def render_unprocessable(message)
+    respond_to do |format|
+      format.turbo_stream { render turbo_stream: stream_flash(:error, message), status: :unprocessable_content }
+      format.html { redirect_back(fallback_location: build_timeline_url, alert: message) }
+    end
+  end
+
+  def parse_time_safely(value)
+    Time.zone.parse(value.to_s)
+  rescue ArgumentError, TypeError
+    nil
   end
 
   def bust_timeline_month_cache

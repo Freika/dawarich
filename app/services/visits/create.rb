@@ -64,7 +64,7 @@ module Visits
         lonlat: "POINT(#{lon_f} #{lat_f})",
         source: :manual
       )
-    rescue StandardError => e
+    rescue ActiveRecord::RecordInvalid => e
       ExceptionReporter.call(e, "Failed to create place: #{e.message}")
       nil
     end
@@ -91,9 +91,9 @@ module Visits
     def attach_suggested_places(visit)
       lat = visit.place.latitude
       lon = visit.place.longitude
-      candidates = Place.near([lat, lon], 100, :m).limit(8)
+      candidates = user.places.near([lat, lon], 100, :m).limit(8)
       candidates.each { |p| visit.suggested_places << p unless visit.suggested_places.include?(p) }
-    rescue StandardError => e
+    rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
       ExceptionReporter.call(e, "Failed to attach suggested places: #{e.message}")
 
       @visit

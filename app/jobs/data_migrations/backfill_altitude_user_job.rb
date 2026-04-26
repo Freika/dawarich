@@ -44,7 +44,7 @@ class DataMigrations::BackfillAltitudeUserJob < ApplicationJob
 
       if updates.any?
         update_cols = [:altitude]
-        update_cols << :altitude_decimal if Point.column_names.include?('altitude_decimal')
+        update_cols << :altitude_decimal if Point.altitude_decimal_supported?
         Point.upsert_all(updates, unique_by: :id, update_only: update_cols)
         stats[:updated] += updates.size
       end
@@ -73,7 +73,7 @@ class DataMigrations::BackfillAltitudeUserJob < ApplicationJob
       next if altitude.nil?
 
       update = { id: data['id'], altitude: altitude }
-      update[:altitude_decimal] = altitude if Point.column_names.include?('altitude_decimal')
+      update[:altitude_decimal] = altitude if Point.altitude_decimal_supported?
       updates << update
 
       if updates.size >= batch_size
@@ -99,7 +99,7 @@ class DataMigrations::BackfillAltitudeUserJob < ApplicationJob
     return unless meaningful_updates.any?
 
     update_cols = [:altitude]
-    update_cols << :altitude_decimal if Point.column_names.include?('altitude_decimal')
+    update_cols << :altitude_decimal if Point.altitude_decimal_supported?
     Point.upsert_all(meaningful_updates, unique_by: :id, update_only: update_cols)
     stats[:archived] += meaningful_updates.size
   end
@@ -110,7 +110,7 @@ class DataMigrations::BackfillAltitudeUserJob < ApplicationJob
     return nil if point.altitude.present? && point.altitude.to_d == BigDecimal(altitude.to_s)
 
     update = { id: point.id, altitude: altitude }
-    update[:altitude_decimal] = altitude if Point.column_names.include?('altitude_decimal')
+    update[:altitude_decimal] = altitude if Point.altitude_decimal_supported?
     update
   end
 

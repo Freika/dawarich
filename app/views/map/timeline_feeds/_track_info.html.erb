@@ -37,8 +37,8 @@
             class="btn btn-xs btn-ghost gap-1 px-2"
             data-action="click->maps--maplibre#replayTrack"
             data-track-start="<%= track.start_at.iso8601 %>">
-      <svg id="track-replay-play-icon" class="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21"/></svg>
-      <svg id="track-replay-pause-icon" class="w-3 h-3 hidden" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+      <%= icon 'play', id: 'track-replay-play-icon', class: 'w-3 h-3' %>
+      <%= icon 'pause', id: 'track-replay-pause-icon', class: 'w-3 h-3 hidden' %>
       <span id="track-replay-label">Replay</span>
     </button>
   </div>

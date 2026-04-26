@@ -22,7 +22,7 @@
   <section class="place-drawer__stats">
     <div class="place-drawer__stat">
       <span class="place-drawer__stat-value"><%= stats[:visit_count] %></span>
-      <span class="place-drawer__stat-label"><%= stats[:visit_count] == 1 ? '1 visit' : "#{stats[:visit_count]} visits" %></span>
+      <span class="place-drawer__stat-label"><%= pluralize(stats[:visit_count], 'visit') %></span>
     </div>
     <div class="place-drawer__stat">
       <span class="place-drawer__stat-value"><%= stats[:total_hours] %></span>

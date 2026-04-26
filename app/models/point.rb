@@ -43,6 +43,16 @@ class Point < ApplicationRecord
     select(column_names - ['raw_data'])
   end
 
+  # Memoized at class-load to avoid `Point.column_names.include?` lookups on
+  # every row during bulk imports (importer params files call this thousands
+  # of times per batch). The constant evaluates once per process; if the
+  # schema changes mid-process (e.g. dev migration), restart Rails.
+  ALTITUDE_DECIMAL_SUPPORTED = column_names.include?('altitude_decimal')
+
+  def self.altitude_decimal_supported?
+    ALTITUDE_DECIMAL_SUPPORTED
+  end
+
   def recorded_at
     @recorded_at ||= Time.zone.at(timestamp)
   end

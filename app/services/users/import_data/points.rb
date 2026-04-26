@@ -190,7 +190,7 @@ class Users::ImportData::Points
     # Stage 1 of altitude integer→decimal migration: ensure altitude_decimal
     # is populated alongside altitude when importing legacy dumps that only
     # include the integer column.
-    if Point.column_names.include?('altitude_decimal') &&
+    if Point.altitude_decimal_supported? &&
        attributes['altitude_decimal'].blank? && attributes['altitude'].present?
       attributes['altitude_decimal'] = attributes['altitude']
     end

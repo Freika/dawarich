@@ -24,14 +24,12 @@ class Api::V1::PointsController < ApiController
 
     if params[:min_longitude].present? && params[:max_longitude].present? &&
        params[:min_latitude].present? && params[:max_latitude].present?
-      min_lng = params[:min_longitude].to_f
-      max_lng = params[:max_longitude].to_f
-      min_lat = params[:min_latitude].to_f
-      max_lat = params[:max_latitude].to_f
+      bbox = parse_bbox(params)
+      return render(json: { error: 'Invalid bounding box' }, status: :bad_request) unless bbox
 
       points = points.where(
         'ST_X(lonlat::geometry) BETWEEN ? AND ? AND ST_Y(lonlat::geometry) BETWEEN ? AND ?',
-        min_lng, max_lng, min_lat, max_lat
+        bbox[:min_lng], bbox[:max_lng], bbox[:min_lat], bbox[:max_lat]
       )
     end
 
@@ -102,6 +100,15 @@ class Api::V1::PointsController < ApiController
   end
 
   def reapply_anomaly_filter
+    pending_key = "anomaly_backfill_pending:#{current_api_user.id}"
+    if Rails.cache.read(pending_key)
+      return render(
+        json: { error: 'Anomaly re-evaluation already in progress.' },
+        status: :conflict
+      )
+    end
+
+    Rails.cache.write(pending_key, true, expires_in: 30.minutes)
     Points::AnomalyBackfillUserJob.perform_later(current_api_user.id, reset: true)
 
     render json: {
@@ -125,5 +132,28 @@ class Api::V1::PointsController < ApiController
 
   def point_serializer
     params[:slim] == 'true' ? Api::SlimPointSerializer : Api::PointSerializer
+  end
+
+  # Validate and parse a bbox from request params. Rejects non-finite values
+  # (NaN/Infinity from `to_f` on garbage strings), inverted ranges, and
+  # out-of-range geographic coordinates. Returns nil on invalid input.
+  def parse_bbox(params)
+    min_lng = safe_float(params[:min_longitude])
+    max_lng = safe_float(params[:max_longitude])
+    min_lat = safe_float(params[:min_latitude])
+    max_lat = safe_float(params[:max_latitude])
+
+    return nil if [min_lng, max_lng, min_lat, max_lat].any? { |v| v.nil? || !v.finite? }
+    return nil if min_lng > max_lng || min_lat > max_lat
+    return nil unless min_lng.between?(-180, 180) && max_lng.between?(-180, 180)
+    return nil unless min_lat.between?(-90, 90) && max_lat.between?(-90, 90)
+
+    { min_lng: min_lng, max_lng: max_lng, min_lat: min_lat, max_lat: max_lat }
+  end
+
+  def safe_float(value)
+    Float(value)
+  rescue ArgumentError, TypeError
+    nil
   end
 end

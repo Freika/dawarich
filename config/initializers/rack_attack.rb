@@ -64,6 +64,25 @@ Rack::Attack.throttle('api/points_creation', limit: 10_000, period: 1.hour) do |
   "points_creation:#{api_key}"
 end
 
+# Heavy-recompute endpoints that fan out into multi-hour Sidekiq work
+# (track regeneration, monthly stats, yearly digests, anomaly re-evaluation).
+# 5/hr per API key on top of the base api/token throttle, since one
+# request can saturate the :default queue for hours.
+HEAVY_RECOMPUTE_PATHS = %w[
+  /api/v1/recalculations
+  /api/v1/points/reapply_anomaly_filter
+].freeze
+
+Rack::Attack.throttle('api/heavy_recompute', limit: 5, period: 1.hour) do |req|
+  next unless req.post? && HEAVY_RECOMPUTE_PATHS.include?(req.path)
+  next if DawarichSettings.self_hosted?
+
+  api_key = req.params['api_key'] || req.get_header('HTTP_AUTHORIZATION')&.split(' ')&.last
+  next if api_key.blank?
+
+  "heavy_recompute:#{api_key}"
+end
+
 # Login brute-force protection: 5 attempts per email per minute, 20 per IP per minute.
 Rack::Attack.throttle('logins/email', limit: 5, period: 1.minute) do |req|
   next unless req.path == '/users/sign_in' && req.post?

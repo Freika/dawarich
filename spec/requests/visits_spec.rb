@@ -9,9 +9,11 @@ RSpec.describe '/visits', type: :request do
     sign_in user
   end
 
-  describe 'GET /index (retired)' do
-    it 'VisitsController no longer responds to #index' do
-      expect(VisitsController.action_methods).not_to include('index')
+  describe 'GET /visits (retired)' do
+    it 'no longer routes to VisitsController#index' do
+      expect { get '/visits' }.not_to raise_error
+      # The retired route now redirects (see visits_redirect_spec).
+      expect(response).not_to have_http_status(:ok)
     end
   end
 
@@ -164,6 +166,18 @@ RSpec.describe '/visits', type: :request do
         expect_turbo_stream_action('replace', "visit_entry_#{visit.id}")
       end
 
+      it 'rejects place_id belonging to another user (IDOR guard)' do
+        other_user = create(:user)
+        other_place = create(:place, user: other_user, name: "Stranger's Place")
+
+        original_place_id = visit.place_id
+        patch visit_url(visit),
+              params: { visit: { place_id: other_place.id } }, as: :turbo_stream
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(visit.reload.place_id).to eq(original_place_id)
+      end
+
       it 'replaces the visit_entry row on rename' do
         patch visit_url(visit), params: { visit: { name: 'New Name' } }, as: :turbo_stream
 
@@ -189,6 +203,23 @@ RSpec.describe '/visits', type: :request do
         patch visit_url(visit), params: { visit: { status: :confirmed } }
 
         expect(Rails.cache.read(cache_key)).to be_nil
+      end
+
+      it 'busts both old and new month caches when started_at moves across months' do
+        old_month = visit.started_at.to_date.beginning_of_month
+        new_started_at = '2026-05-15 10:00:00 UTC'
+        new_month = Time.zone.parse(new_started_at).to_date.beginning_of_month
+
+        old_key = Timeline::MonthSummary.cache_key_for(user, old_month)
+        new_key = Timeline::MonthSummary.cache_key_for(user, new_month)
+        Rails.cache.write(old_key, { some: 'old' })
+        Rails.cache.write(new_key, { some: 'new' })
+
+        patch visit_url(visit),
+              params: { visit: { started_at: new_started_at, ended_at: '2026-05-15 11:00:00 UTC' } }
+
+        expect(Rails.cache.read(old_key)).to be_nil
+        expect(Rails.cache.read(new_key)).to be_nil
       end
     end
   end

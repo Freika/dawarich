@@ -343,6 +343,7 @@ export default class extends Controller {
     this._stopReplayPlayback()
     this.settingsController?.stopRecalculationPolling()
     this.searchManager?.destroy()
+    this.visitsManager?.destroy()
     cancelAllPreviews()
     this.cleanup.cleanup()
     this.map?.remove()

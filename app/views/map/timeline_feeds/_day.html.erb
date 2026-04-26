@@ -29,7 +29,7 @@
       </button>
     </div>
     <div class="timeline-day-header__meta">
-      <%= day_total_visits_count(day) %> visits
+      <%= pluralize(day_total_visits_count(day), 'visit') %>
     </div>
   </div>
 

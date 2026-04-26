@@ -582,6 +582,8 @@ RSpec.describe 'Api::V1::Points', type: :request do
   end
 
   describe 'POST /reapply_anomaly_filter' do
+    before { Rails.cache.delete("anomaly_backfill_pending:#{user.id}") }
+
     it 'enqueues the backfill job in reset mode for the current user' do
       expect do
         post "/api/v1/points/reapply_anomaly_filter?api_key=#{user.api_key}"
@@ -590,10 +592,43 @@ RSpec.describe 'Api::V1::Points', type: :request do
       expect(response).to have_http_status(:accepted)
     end
 
+    it 'returns 409 when a backfill is already pending' do
+      Rails.cache.write("anomaly_backfill_pending:#{user.id}", true, expires_in: 30.minutes)
+
+      expect do
+        post "/api/v1/points/reapply_anomaly_filter?api_key=#{user.api_key}"
+      end.not_to have_enqueued_job(Points::AnomalyBackfillUserJob)
+
+      expect(response).to have_http_status(:conflict)
+    end
+
     it 'requires authentication' do
       post '/api/v1/points/reapply_anomaly_filter'
 
       expect(response).to have_http_status(:unauthorized)
+    end
+  end
+
+  describe 'GET /index bbox validation' do
+    it 'rejects an inverted bbox with 400' do
+      get "/api/v1/points?api_key=#{user.api_key}&" \
+          'min_longitude=10&max_longitude=5&min_latitude=10&max_latitude=20'
+
+      expect(response).to have_http_status(:bad_request)
+    end
+
+    it 'rejects out-of-range latitude with 400' do
+      get "/api/v1/points?api_key=#{user.api_key}&" \
+          'min_longitude=-10&max_longitude=10&min_latitude=-100&max_latitude=10'
+
+      expect(response).to have_http_status(:bad_request)
+    end
+
+    it 'rejects non-numeric bbox values with 400' do
+      get "/api/v1/points?api_key=#{user.api_key}&" \
+          'min_longitude=foo&max_longitude=10&min_latitude=0&max_latitude=10'
+
+      expect(response).to have_http_status(:bad_request)
     end
   end
 end

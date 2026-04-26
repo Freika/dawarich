@@ -48,8 +48,10 @@ class Api::V1::SettingsController < ApiController
     @recalculation_status_manager ||= Tracks::TransportationRecalculationStatus.new(current_api_user.id)
   end
 
+  PRO_ONLY_KEYS = %i[immich_url immich_api_key photoprism_url photoprism_api_key].freeze
+
   def settings_params
-    params.require(:settings).permit(
+    permitted = params.require(:settings).permit(
       :timezone,
       :meters_between_routes, :minutes_between_routes, :fog_of_war_meters,
       :time_threshold_minutes, :merge_threshold_minutes, :route_opacity,
@@ -66,5 +68,11 @@ class Api::V1::SettingsController < ApiController
                                            train_min_speed min_segment_duration time_gap_threshold
                                            min_flight_distance_km]
     )
+
+    # Strip Pro-only integration keys for Lite cloud users. Self-hosted
+    # users always have full access (`plan_restricted?` returns false).
+    permitted = permitted.except(*PRO_ONLY_KEYS) if current_api_user.plan_restricted?
+
+    permitted
   end
 end
