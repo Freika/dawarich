@@ -1,10 +1,9 @@
 # frozen_string_literal: true
 
 class Points::AnomalyFilter
-  DEFAULT_ACCURACY_THRESHOLD = 100 # meters
-  MAX_SPEED_KMH = 1000             # km/h — floor for speed threshold
-  SPEED_MULTIPLIER = 3             # threshold = max(floor, median * multiplier)
-  CONTEXT_POINTS = 5               # extra points for speed context at boundaries
+  MAX_SPEED_KMH = 1000 # km/h — floor for speed threshold
+  SPEED_MULTIPLIER = 3 # threshold = max(floor, median * multiplier)
+  CONTEXT_POINTS = 5   # extra points for speed context at boundaries
 
   def initialize(user_id, start_time, end_time)
     @user_id = user_id
