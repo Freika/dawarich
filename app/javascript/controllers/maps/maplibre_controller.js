@@ -603,8 +603,23 @@ export default class extends Controller {
   // Force-enables the visits layer for this session without persisting the
   // change to the server — the user's saved Layers preference shouldn't be
   // flipped just because they opened Timeline once.
+  //
+  // We DO update the in-memory `settings.visitsEnabled` so subsequent
+  // `loadMapData()` calls (e.g. when the user navigates to a different
+  // day) include visits in the fetch + the loading-counter expectations.
+  // Otherwise the loader badge reads "N tracks" only and the map ends
+  // up with stale visits when a new day is selected.
   async _ensureVisitsLayerEnabled() {
     if (!this.hasVisitsToggleTarget) return
+
+    // In-memory only — don't go through SettingsManager.updateSetting,
+    // which would persist back to the server.
+    if (this.settings) this.settings.visitsEnabled = true
+    if (this.dataLoader?.settings) this.dataLoader.settings.visitsEnabled = true
+    if (this.settingsController?.settings) {
+      this.settingsController.settings.visitsEnabled = true
+    }
+
     if (this.visitsToggleTarget.checked) return
     this.visitsToggleTarget.checked = true
     if (this.hasVisitsSearchTarget) {
@@ -784,6 +799,7 @@ export default class extends Controller {
       startedAt,
       endedAt,
       trackId,
+      visitId,
       visitName,
       visitLat,
       visitLng,
@@ -825,13 +841,17 @@ export default class extends Controller {
     //   - Journey hover → no visit is the focus, so all visits fade nearly out;
     //     the eye lands on the highlighted track instead.
     if (entryType === "visit") {
-      const visitExpr = this._dayRangeExpr(
-        "started_at",
-        startedAt,
-        endedAt,
+      // Match by visit id rather than by ISO `started_at` range — the
+      // API returns timestamps with milliseconds (`...:00.000Z`) while
+      // DayAssembler renders the row attribute with second precision
+      // (`...:00Z`). Lexicographic comparison fails the equality check
+      // and dims the hovered visit along with the others.
+      const visitExpr = [
+        "case",
+        ["==", ["get", "id"], Number(visitId)],
         1,
         0.15,
-      )
+      ]
       this._safeSetPaint("visits", "circle-opacity", visitExpr)
       this._safeSetPaint("visits", "circle-stroke-opacity", visitExpr)
       this._safeSetPaint("visits-labels", "text-opacity", visitExpr)

@@ -61,8 +61,14 @@ class VisitsController < ApplicationController
       @affected_started_at << new_started_at if new_started_at
     end
 
-    update_visit_name_from_place if params_to_update[:place_id].present?
-    auto_name_on_confirm if confirming_suggested_visit?(params_to_update)
+    if params_to_update[:place_id].present?
+      update_visit_name_from_place(params_to_update[:place_id])
+    elsif confirming_suggested_visit?(params_to_update)
+      # Only auto-pick from the visit's first suggested place when the
+      # user did NOT explicitly select one — otherwise we'd overwrite the
+      # name the picker just set.
+      auto_name_on_confirm
+    end
 
     if @visit.update(params_to_update)
       respond_to do |format|
@@ -213,9 +219,14 @@ class VisitsController < ApplicationController
                 .count
   end
 
-  def update_visit_name_from_place
-    place = current_user.places.find_by(id: visit_params[:place_id])
-    @visit.name = place.name if place
+  # Look up the place across both user-owned places AND the visit's
+  # suggested_places. Suggested places may have a NULL user_id (the
+  # `Place.user_id` column is optional, populated for user-created
+  # places only) and would otherwise miss `current_user.places`.
+  def update_visit_name_from_place(place_id)
+    place = current_user.places.find_by(id: place_id) ||
+            @visit.suggested_places.find_by(id: place_id)
+    @visit.name = place.name if place && place.name.present?
   end
 
   def confirming_suggested_visit?(params_to_update = visit_params)
