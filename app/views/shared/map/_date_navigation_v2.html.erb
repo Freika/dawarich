@@ -17,12 +17,15 @@
   <div
     data-map-controls-target="panel"
     class="hidden lg:!block bg-base-100 rounded-lg p-4 mt-2 lg:mt-0">
+    <% nav_interval = [end_at - start_at, 1.second].max %>
+    <% prev_start = start_at - nav_interval %>
+    <% next_end = end_at + nav_interval %>
     <%= form_with url: map_v2_path(import_id: params[:import_id]), method: :get do |f| %>
       <div class="flex flex-col space-y-4 lg:flex-row lg:space-y-0 lg:space-x-4 lg:items-end">
         <div class="w-full lg:w-1/12">
           <div class="flex flex-col space-y-2">
-            <span class="tooltip tooltip-bottom" data-tip="<%= human_date(start_at - 1.day) %>">
-              <%= link_to map_v2_path(start_at: (start_at - 1.day).iso8601, end_at: (end_at - 1.day).iso8601, import_id: params[:import_id]), class: "btn btn-sm border border-base-300 hover:btn-ghost w-full" do %>
+            <span class="tooltip tooltip-bottom" data-tip="<%= human_date(prev_start) %>">
+              <%= link_to map_v2_path(start_at: prev_start.iso8601, end_at: start_at.iso8601, import_id: params[:import_id]), class: "btn btn-sm border border-base-300 hover:btn-ghost w-full" do %>
                 <%= icon 'chevron-left' %>
               <% end %>
             </span>
@@ -36,8 +39,8 @@
         </div>
         <div class="w-full lg:w-1/12">
           <div class="flex flex-col space-y-2">
-            <span class="tooltip tooltip-bottom" data-tip="<%= human_date(start_at + 1.day) %>">
-              <%= link_to map_v2_path(start_at: (start_at + 1.day).iso8601, end_at: (end_at + 1.day).iso8601, import_id: params[:import_id]), class: "btn btn-sm border border-base-300 hover:btn-ghost w-full" do %>
+            <span class="tooltip tooltip-bottom" data-tip="<%= human_date(next_end) %>">
+              <%= link_to map_v2_path(start_at: end_at.iso8601, end_at: next_end.iso8601, import_id: params[:import_id]), class: "btn btn-sm border border-base-300 hover:btn-ghost w-full" do %>
                 <%= icon 'chevron-right' %>
               <% end %>
             </span>

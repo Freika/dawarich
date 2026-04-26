@@ -38,5 +38,16 @@ module Dawarich
     config.active_job.queue_adapter = :sidekiq
 
     config.action_mailer.preview_paths << Rails.root.join('spec/mailers/previews').to_s
+
+    def self.env_or_dev_default(var, dev_default)
+      ENV[var] || (Rails.env.production? ? raise("#{var} required in production") : dev_default)
+    end
+
+    config.active_record.encryption.primary_key =
+      env_or_dev_default('OTP_ENCRYPTION_PRIMARY_KEY',       'dawarich-dev-primary-key-not-for-production')
+    config.active_record.encryption.deterministic_key =
+      env_or_dev_default('OTP_ENCRYPTION_DETERMINISTIC_KEY', 'dawarich-dev-deterministic-not-for-prod')
+    config.active_record.encryption.key_derivation_salt =
+      env_or_dev_default('OTP_ENCRYPTION_KEY_DERIVATION_SALT', 'dawarich-dev-salt-not-for-production')
   end
 end

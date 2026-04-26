@@ -70,6 +70,12 @@ Rack::Attack.throttle('logins/ip', limit: 20, period: 1.minute) do |req|
   req.ip
 end
 
+# Flipper admin UI: 30 req / 5 min per IP. The UI sits behind admin auth, but
+# limit hammering so an attacker (or buggy client) can't brute-force or scrape it.
+Rack::Attack.throttle('admin/flipper', limit: 30, period: 5.minutes) do |req|
+  req.ip if req.path.start_with?('/admin/flipper')
+end
+
 Rack::Attack.throttled_responder = lambda do |request|
   match_data = request.env['rack.attack.match_data'] || {}
   now = Time.current

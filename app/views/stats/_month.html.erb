@@ -120,6 +120,7 @@
           stat.daily_distance.map { |day, distance_meters|
             [day, Stat.convert_distance(distance_meters, current_user.safe_settings.distance_unit).round]
           },
+          id: "chart-month-daily-#{stat.year}-#{stat.month}",
           height: '200px',
           suffix: " #{current_user.safe_settings.distance_unit}",
           xtitle: 'Day',

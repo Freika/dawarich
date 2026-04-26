@@ -2,26 +2,25 @@
 
 class Api::V1::SubscriptionsController < ApiController
   skip_before_action :authenticate_api_key, only: %i[callback]
-  before_action :verify_webhook_secret, only: %i[callback]
+  skip_before_action :reject_pending_payment!, only: %i[callback], raise: false
 
   def callback
-    decoded_token = Subscription::DecodeJwtToken.new(params[:token]).call
-
-    user = User.find(decoded_token[:user_id])
-    attrs = { status: decoded_token[:status], active_until: decoded_token[:active_until] }
-
-    if decoded_token[:plan].present?
-      unless User.plans.key?(decoded_token[:plan])
-        return render json: { message: "Invalid plan: #{decoded_token[:plan]}" }, status: :unprocessable_content
-      end
-
-      attrs[:plan] = decoded_token[:plan]
+    if ENV['SUBSCRIPTION_WEBHOOK_SECRET'].blank?
+      return render(json: { message: 'Webhook secret not configured' }, status: :service_unavailable)
     end
+    return render(json: { message: 'Invalid webhook secret' }, status: :unauthorized) unless valid_manager_secret?
 
-    user.update!(attrs)
+    decoded = Subscription::DecodeJwtToken.new(params[:token]).call
 
-    # Bust rate-limit plan cache so new limits take effect immediately
-    Rails.cache.delete("rack_attack/plan/#{user.api_key}") if attrs.key?(:plan)
+    return render(json: { message: 'Missing event_id' }, status: :unprocessable_content) if decoded[:event_id].blank?
+
+    return render(json: { message: 'Stale event' }, status: :ok) if stale_event?(decoded)
+
+    user = User.find(decoded[:user_id])
+    user.update!(subscription_attrs(decoded))
+
+    Rails.cache.delete("rack_attack/plan/#{user.api_key}")
+    mark_event_processed(decoded)
 
     render json: { message: 'Subscription updated successfully' }
   rescue JWT::DecodeError => e
@@ -34,18 +33,62 @@ class Api::V1::SubscriptionsController < ApiController
 
   private
 
-  def verify_webhook_secret
-    expected = ENV['SUBSCRIPTION_WEBHOOK_SECRET']
+  def valid_manager_secret?
+    provided = request.headers['X-Webhook-Secret'].to_s
+    ActiveSupport::SecurityUtils.secure_compare(provided, ENV['SUBSCRIPTION_WEBHOOK_SECRET'].to_s)
+  end
 
-    if expected.blank?
-      render json: { message: 'Webhook secret not configured' }, status: :service_unavailable
-      return
+  def subscription_attrs(decoded)
+    attrs = { status: decoded[:status], active_until: decoded[:active_until] }
+
+    if decoded[:plan].present?
+      if User.plans.key?(decoded[:plan])
+        attrs[:plan] = decoded[:plan]
+      else
+        Rails.logger.warn("[Subscriptions#callback] ignoring unknown plan: #{decoded[:plan].inspect}")
+        ExceptionReporter.call(
+          ArgumentError.new("Unknown plan in subscription callback: #{decoded[:plan].inspect}"),
+          '[Subscriptions#callback] unknown plan dropped — Manager may be ahead of Dawarich'
+        )
+      end
     end
 
-    provided = request.headers['X-Webhook-Secret']
+    attrs[:subscription_source] = decoded[:subscription_source] if decoded[:subscription_source].present?
+    attrs
+  end
 
-    return if ActiveSupport::SecurityUtils.secure_compare(provided.to_s, expected)
+  def stale_event?(decoded)
+    return true if event_already_processed?(decoded)
+    return true if event_older_than_last_seen?(decoded)
 
-    render json: { message: 'Invalid webhook secret' }, status: :unauthorized
+    false
+  end
+
+  def event_already_processed?(decoded)
+    Rails.cache.exist?("manager_callback:processed:#{decoded[:event_id]}")
+  end
+
+  def event_older_than_last_seen?(decoded)
+    ts = decoded[:event_timestamp_ms].to_i
+    return false if ts.zero?
+
+    last_seen = Rails.cache.read(last_seen_cache_key(decoded)).to_i
+    ts < last_seen
+  end
+
+  def mark_event_processed(decoded)
+    Rails.cache.write("manager_callback:processed:#{decoded[:event_id]}", true, expires_in: 7.days)
+
+    ts = decoded[:event_timestamp_ms].to_i
+    return if ts.zero?
+
+    cache_key = last_seen_cache_key(decoded)
+    return if ts < Rails.cache.read(cache_key).to_i
+
+    Rails.cache.write(cache_key, ts, expires_in: 7.days)
+  end
+
+  def last_seen_cache_key(decoded)
+    "manager_callback:last_seen_ms:#{decoded[:user_id]}"
   end
 end

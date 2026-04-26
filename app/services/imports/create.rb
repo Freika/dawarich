@@ -15,20 +15,21 @@ class Imports::Create
     broadcast_status_update
 
     temp_file_path = Imports::SecureFileDownloader.new(import.file).download_to_temp_file
+    inner_file_path = nil
 
-    source = if import.source.nil?
-               detect_source_from_file(temp_file_path)
-             else
-               import.source
-             end
+    dispatch = Archive::Unzipper.inspect_archive(temp_file_path)
 
-    if source.to_s == 'zip'
+    case dispatch.kind
+    when :multi_entry
       Imports::ZipExtractor.new(import, user.id, temp_file_path).call
       return
+    when :single_entry
+      inner_file_path = Archive::Unzipper.extract_single(temp_file_path)
+      run_importer(inner_file_path)
+    else
+      run_importer(temp_file_path)
     end
 
-    import.update!(source: source)
-    importer(source).new(import, user.id, temp_file_path).call
     User.where(id: user.id).update_all(points_count: user.points.count)
 
     filter_anomalies(user, import)
@@ -46,6 +47,7 @@ class Imports::Create
     create_import_failed_notification(import, user, e)
   ensure
     File.unlink(temp_file_path) if temp_file_path && File.exist?(temp_file_path)
+    File.unlink(inner_file_path) if inner_file_path && File.exist?(inner_file_path)
 
     if !import.destroyed? && import.processing?
       import.update!(status: :completed)
@@ -54,6 +56,12 @@ class Imports::Create
   end
 
   private
+
+  def run_importer(path)
+    source = import.source.presence || detect_source_from_file(path)
+    import.update!(source: source) if import.source.to_s != source.to_s
+    importer(source).new(import, user.id, path).call
+  end
 
   def importer(source)
     raise ArgumentError, 'Import source cannot be nil' if source.nil?
@@ -116,8 +124,8 @@ class Imports::Create
     ).call
   end
 
-  def detect_source_from_file(temp_file_path)
-    detector = Imports::SourceDetector.new_from_file_header(temp_file_path)
+  def detect_source_from_file(file_path)
+    detector = Imports::SourceDetector.new_from_file_header(file_path)
 
     detector.detect_source!
   end

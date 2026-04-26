@@ -1,0 +1,31 @@
+<%#
+  active_until is populated by the subscription service's callback, which
+  arrives server-to-server after the upstream checkout webhook lands. The
+  client-side "checkout completed" event can outrun that webhook by a few
+  seconds, so the first render here may find active_until still nil. When
+  that happens we show an "activating" state and meta-refresh once; the
+  next render picks up the populated value.
+%>
+<% if @user.active_until.blank? %>
+  <meta http-equiv="refresh" content="3">
+<% end %>
+
+<div class="hero min-h-[60vh]">
+  <div class="hero-content text-center max-w-xl">
+    <div>
+      <h1 class="text-4xl font-bold mb-4">Welcome to Dawarich</h1>
+      <% if @user.active_until.present? %>
+        <p class="py-4">
+          Your 7-day free trial is active until
+          <strong><%= @user.active_until.strftime('%B %d, %Y') %></strong>.
+        </p>
+        <%= link_to "Open the map", map_v2_path, class: "btn btn-primary btn-lg" %>
+      <% else %>
+        <div class="flex flex-col items-center py-4">
+          <span class="loading loading-spinner loading-lg text-primary" aria-label="Activating"></span>
+          <p class="mt-4">Activating your trial — just a moment.</p>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>
