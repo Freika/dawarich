@@ -4,11 +4,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [1.6.2] - Unreleased
+## [1.7.0] - 2026-04-26
+
+The Timeline Release
+
+The Timeline Feature in Map V2 is now a feature capable to fully replace Google Timeline's user experience and overshine it. Please enjoy responsibly.
 
 ### Changed
 
 - S3 storage can now be used in self-hosted mode. It's compatible with S3-like backends, such as MinIO, Ceph, or Cloudflare R2. To enable S3 storage, set `STORAGE_BACKEND=s3` and provide `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, and `AWS_BUCKET`. For S3-compatible backends, additionally set `AWS_ENDPOINT_URL` (or `AWS_ENDPOINT`).
+- The Timeline tab in Map v2 Tools panel is now a first-class feature.
 
 ### Fixed
 

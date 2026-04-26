@@ -60,9 +60,6 @@ export class MapInitializer {
     }
 
     if (showControls) {
-      // Top-right is clear again now that the button cluster lives on the
-      // left edge (it doubles as the panel's tab strip). Native zoom
-      // controls go back to MapLibre's default position.
       map.addControl(new maplibregl.NavigationControl(), "top-right")
     }
 

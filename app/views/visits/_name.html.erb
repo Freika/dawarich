@@ -1,12 +1,3 @@
-<%#
-  Inline rename affordance for a visit.
-
-  Accepts either:
-    - `visit:` (ActiveRecord Visit object) — used by VisitsController#update
-      turbo_stream responses, which have no access to the timeline entry hash.
-    - `visit_id:`, `name:`, `suggested:` locals — used by _visit_entry.html.erb
-      which receives a hash, not an AR object, and must avoid N+1 `Visit.find`.
-%>
 <%
   if local_assigns[:visit]
     resolved_id = visit.id

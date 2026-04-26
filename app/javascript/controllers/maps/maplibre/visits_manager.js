@@ -15,10 +15,6 @@ export class VisitsManager {
     this.bindTimelineFeedListeners()
   }
 
-  /**
-   * Register document-level listeners for the timeline-feed contract.
-   * See PLAN.md Task 7/8 SHARED CONTRACT.
-   */
   bindTimelineFeedListeners() {
     this.onVisitSelected = (e) => {
       const detail = e?.detail || {}
@@ -47,19 +43,6 @@ export class VisitsManager {
     this.onDaySelected = async (e) => {
       const detail = e?.detail || {}
       const { date, bounds } = detail
-
-      // Page-level day changes now trigger a full Turbo navigation (see
-      // timeline_feed_controller#navigateToDay) so the server re-renders the
-      // map with the new `start_at`/`end_at` and every enabled layer refetches
-      // for that day as part of normal init. The remaining case where this
-      // handler fires without a full navigation is hydration after page load
-      // and the `timeline:open-visit` event — in both, the map layers are
-      // already aligned, so we skip the refetch. Bounds-fit still runs when a
-      // day entry carries bounds (useful when another event surfaces them).
-      //
-      // A belt-and-braces refetch only makes sense if the map is fully ready
-      // AND the rendered date range differs from the selected day — we detect
-      // the second via map.style, which is undefined mid-init.
       const map = this.controller.map
       const mapReady = Boolean(map && map.isStyleLoaded && map.isStyleLoaded())
 

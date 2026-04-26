@@ -1,27 +1,3 @@
-<%#
-  Suggested Place Picker
-  ----------------------
-  Renders the inline decision UI for a visit whose place is still ambiguous.
-
-  Layout:
-    ┌ header ──────────────────────────────────────────┐
-    │ [Needs review] Pick a place       [Confirm]      │  ← actions never scroll off
-    └──────────────────────────────────────────────────┘
-    ┌ candidates ──────────────────────────────────────┐
-    │ (•) Candidate one                                │  ← up to SUGGESTED_PICKER_VISIBLE_LIMIT
-    │ ( ) Candidate two                                │
-    │ ( ) Candidate three                              │
-    │ ▸ Show N more                                    │  ← native <details>, no Stimulus
-    └──────────────────────────────────────────────────┘
-    [ Decline ]
-
-  Accessibility:
-    - Each candidate is a <label> wrapping a real radio input — Tab + arrow
-      keys + Space/Enter all work natively.
-    - The radio input stays visually rendered (just restyled) so focus rings
-      land on the label content.
-    - The "Show N more" disclosure is a native <details>/<summary>.
-%>
 <% visible, overflow = split_suggested_places(entry[:suggested_places]) %>
 <div class="suggested-picker" data-visit-id="<%= entry[:visit_id] %>">
   <%= form_with url: visit_path(entry[:visit_id]), method: :patch, local: false,
