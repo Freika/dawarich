@@ -44,9 +44,6 @@ class User < ApplicationRecord
   scope :active_or_trial, -> { where(status: %i[active trial]) }
 
   enum :status, { inactive: 0, active: 1, trial: 2, pending_payment: 3 }
-  # prefix: :sub_source — the `none` value would otherwise generate a
-  # `User#none?` predicate that collides with NilClass semantics in
-  # conditional chains. Callers use `user.sub_source_none?` etc.
   enum :subscription_source, { none: 0, paddle: 1, apple_iap: 2, google_play: 3 }, default: :none, prefix: :sub_source
   enum :plan, { lite: 0, pro: 1 }, default: :pro
 
@@ -127,36 +124,10 @@ class User < ApplicationRecord
     (trial? || !active_until&.future?) && !DawarichSettings.self_hosted?
   end
 
-  # Users whose subscription_source is anything other than :none already
-  # have a payment source on file (card / App Store / Play Store) and will
-  # auto-convert on day 7 without any action from them. The navbar's trial
-  # countdown CTA is misleading for them — they don't need to "Subscribe";
-  # they're already subscribed and in the trial period. Use this to suppress
-  # the CTA on reverse-trial signups and IAP purchases.
   def auto_converting_trial?
     trial? && active_until&.future? && !sub_source_none?
   end
 
-  # Issues a short-lived JWT used to hand the user off to the external
-  # subscription Manager (checkout, account portal, etc).
-  #
-  # Two defense-in-depth claims:
-  #
-  # * `purpose: 'checkout'` — narrows the token to its intended audience.
-  #   Manager (the consumer) ignores unknown claims today, but if a future
-  #   Dawarich endpoint ever decodes via `Subscription::DecodeJwtToken` it
-  #   should reject any token whose purpose doesn't match. This prevents a
-  #   leaked checkout token from being replayed against an unrelated
-  #   endpoint that happens to share the JWT secret.
-  #
-  # * `jti` (random per token) — gives Manager (or future Dawarich code) a
-  #   stable identifier for one-shot revocation, mirroring the JTI rotation
-  #   we use on the OTP challenge token.
-  #
-  # NOTE: do NOT reject tokens missing `purpose`/`jti` in
-  # `Subscription::DecodeJwtToken`. The manager → dawarich callback path
-  # uses a different claim shape (event_id, event_timestamp_ms, etc) and
-  # does not include these claims.
   def generate_subscription_token(plan: nil, interval: nil, variant: nil)
     payload = {
       user_id: id,
@@ -169,12 +140,7 @@ class User < ApplicationRecord
     payload[:interval] = interval if interval.present?
     payload[:variant] = variant if variant.present?
 
-    # Fail loud at boot/runtime if JWT_SECRET_KEY is unset rather than
-    # silently signing with nil (which would still produce a "valid" token
-    # against any other process that also reads a missing env var).
-    secret_key = ENV.fetch('JWT_SECRET_KEY')
-
-    JWT.encode(payload, secret_key, 'HS256')
+    JWT.encode(payload, ENV.fetch('JWT_SECRET_KEY'), 'HS256')
   end
 
   def export_data

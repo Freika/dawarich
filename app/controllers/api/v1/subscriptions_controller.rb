@@ -1,11 +1,5 @@
 # frozen_string_literal: true
 
-# Single inbound endpoint for subscription state updates from the external
-# subscription service. That service is the source of truth for billing;
-# Dawarich only stores a read projection (plan, status, active_until,
-# subscription_source) for plan gating.
-#
-# Contract: see superpowers/specs/2026-04-22-subscription-callback-contract.md
 class Api::V1::SubscriptionsController < ApiController
   skip_before_action :authenticate_api_key, only: %i[callback]
   skip_before_action :reject_pending_payment!, only: %i[callback], raise: false
@@ -44,17 +38,6 @@ class Api::V1::SubscriptionsController < ApiController
     ActiveSupport::SecurityUtils.secure_compare(provided, ENV['SUBSCRIPTION_WEBHOOK_SECRET'].to_s)
   end
 
-  # Translates the JWT payload into User#update! attributes.
-  #
-  # Plan compatibility (forward-compat contract):
-  # Unknown `plan` values (any string not in `User.plans.keys`) are silently
-  # logged and dropped. Other claims (status, active_until, subscription_source)
-  # are still applied. This lets Manager add new plan tiers without breaking
-  # Dawarich during the rollout window. Manager is responsible for ensuring
-  # any new plan is shipped to Dawarich BEFORE that plan starts being sent
-  # in callbacks; otherwise users on the new plan will retain their
-  # previous Dawarich plan value while still getting status/active_until
-  # updates.
   def subscription_attrs(decoded)
     attrs = { status: decoded[:status], active_until: decoded[:active_until] }
 
@@ -62,10 +45,6 @@ class Api::V1::SubscriptionsController < ApiController
       if User.plans.key?(decoded[:plan])
         attrs[:plan] = decoded[:plan]
       else
-        # Forward-compat: don't 4xx the callback on an unknown plan name (we
-        # still want status/active_until applied), but raise visibility so we
-        # learn about a Manager → Dawarich plan-name mismatch within minutes
-        # instead of via a confused-customer support ticket.
         Rails.logger.warn("[Subscriptions#callback] ignoring unknown plan: #{decoded[:plan].inspect}")
         ExceptionReporter.call(
           ArgumentError.new("Unknown plan in subscription callback: #{decoded[:plan].inspect}"),
@@ -89,12 +68,6 @@ class Api::V1::SubscriptionsController < ApiController
     Rails.cache.exist?("manager_callback:processed:#{decoded[:event_id]}")
   end
 
-  # Out-of-order delivery guard. Manager assigns a monotonically increasing
-  # `event_timestamp_ms` per user; if an event arrives whose timestamp is
-  # older than the last we've successfully applied, we drop it so older
-  # state cannot stomp newer state. We key on user_id so concurrent users
-  # don't share a watermark. Missing timestamp falls back to event_id-only
-  # dedup (back-compat for Manager versions that don't send the field yet).
   def event_older_than_last_seen?(decoded)
     ts = decoded[:event_timestamp_ms].to_i
     return false if ts.zero?

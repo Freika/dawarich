@@ -13,8 +13,6 @@ class Trial::ResumeController < ApplicationController
   private
 
   def no_store_headers
-    # The rendered page embeds a short-lived JWT in a checkout URL.
-    # Disallow shared-cache / proxy caching so the token isn't leaked.
     response.headers['Cache-Control'] = 'no-store'
     response.headers['Pragma'] = 'no-cache'
   end

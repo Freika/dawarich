@@ -93,11 +93,6 @@ module ApplicationHelper
     "#{days_left}d left"
   end
 
-  # Returns the correct upgrade URL for a user's subscription state.
-  # pending_payment users (reverse-trial variant who abandoned checkout) are
-  # directed to /trial/resume which surfaces a Resume-checkout button.
-  # All other upgrade-eligible users (trial, inactive) go to the external
-  # subscription dashboard via JWT auth.
   def subscription_upgrade_url(user)
     if user.pending_payment?
       trial_resume_path
@@ -106,21 +101,12 @@ module ApplicationHelper
     end
   end
 
-  # Returns the navbar button label for a subscribe-eligible user.
-  # pending_payment users get "Finish signup" since they never started a trial
-  # (no active_until to count down from). Other users get the trial compact label.
   def subscription_button_label(user)
     return 'Finish signup' if user.pending_payment?
 
     trial_days_remaining_compact(user)
   end
 
-  # Returns the call-to-action label for the navbar Subscribe/Resume button.
-  # pending_payment users (reverse-trial cohort who abandoned checkout) see
-  # "Resume" because they have a Paddle session waiting to be completed; all
-  # other upgrade-eligible users see "Subscribe". Used by the desktop navbar
-  # (and any other place that renders the action button) to keep the label
-  # source-of-truth in one helper.
   def subscription_cta_label(user)
     user.pending_payment? ? 'Resume' : 'Subscribe'
   end

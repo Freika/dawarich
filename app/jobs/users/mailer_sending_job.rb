@@ -5,14 +5,7 @@ class Users::MailerSendingJob < ApplicationJob
 
   class UnknownEmailType < StandardError; end
 
-  # Explicit routing registry: email_type => [mailer_class_name, action_name]
-  #
-  # Kept as strings to avoid autoload issues at class-body evaluation and so
-  # unknown types produce a clear `UnknownEmailType` error instead of a silent
-  # `NoMethodError` in production. Add new email types here — don't rely on
-  # `respond_to?` reflection.
   MAILER_REGISTRY = {
-    # UsersMailer
     'welcome'              => ['UsersMailer', :welcome],
     'explore_features'     => ['UsersMailer', :explore_features],
     'archival_approaching' => ['UsersMailer', :archival_approaching]

@@ -146,12 +146,6 @@
             <% end %>
           </div>
 
-          <%# Cloud-only "Manage subscription" surface, shown only when the
-              Trial-status card (above) is NOT rendered — prevents two
-              duplicate "Manage subscription" buttons on the same page.
-              Trial users (legacy or reverse) see their Manage/Subscribe CTA
-              inside the Trial-status card. Non-trial cloud users (active,
-              canceled, pending_payment, inactive) see this card. %>
           <% if !DawarichSettings.self_hosted? && !current_user.trial? %>
             <div class="card bg-base-100 shadow-xl">
               <div class="card-body p-5 sm:p-6">

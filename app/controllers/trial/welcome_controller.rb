@@ -2,10 +2,6 @@
 
 class Trial::WelcomeController < ApplicationController
   CONSUMED_KEY_PREFIX = 'trial_welcome:consumed:'
-  # The subscription service issues tokens with purpose: 'trial_welcome'
-  # and a jti claim. We enforce both here and single-use via Redis to
-  # prevent replay if the magic link leaks (email logs, browser history,
-  # shared device, proxies).
 
   before_action :no_store_headers
 
@@ -21,10 +17,6 @@ class Trial::WelcomeController < ApplicationController
       return redirect_to(root_path, alert: 'Another user is already signed in.')
     end
 
-    # A consumed jti for the same signed-in user = reload / meta-refresh /
-    # browser back. Skip the flash (user already saw it on first visit) and
-    # drop them on the map. For a different or no current_user, treat as a
-    # genuine replay attempt.
     if token_already_consumed?(jti)
       return redirect_to(helpers.preferred_map_path) if user_signed_in? && current_user == @user
 

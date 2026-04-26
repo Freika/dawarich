@@ -17,21 +17,6 @@ class Users::RegistrationsController < Devise::RegistrationsController
     respond_with resource
   end
 
-  # Handles both A/B arms. The legacy_trial arm is the standard Devise
-  # sign-up flow; the reverse_trial arm skips sign-in and redirects the
-  # user off to the external checkout host.
-  #
-  # The method intentionally mirrors `Devise::RegistrationsController#create`
-  # rather than calling `super`. Calling `super` doesn't work cleanly here
-  # because Devise's responder always issues a local redirect after a
-  # successful save — but the reverse_trial arm needs a cross-host redirect,
-  # and Rails raises either `DoubleRenderError` (if we try to redirect a
-  # second time) or `UnsafeRedirectError` (if we piggyback on Devise's
-  # redirect via `after_sign_up_path_for`). The structure below is
-  # mechanically identical to Devise, plus a branch for reverse_trial.
-  #
-  # Bucketing into a variant happens in `build_resource` (below) so that
-  # `skip_auto_trial` can suppress `User#start_trial` *before* save.
   def create
     build_resource(sign_up_params)
     resource.save
@@ -77,12 +62,6 @@ class Users::RegistrationsController < Devise::RegistrationsController
 
   protected
 
-  # Devise calls `build_resource` inside `create`; we hook in here to bucket
-  # the user into an A/B variant *before* `resource.save` so the
-  # `skip_auto_trial` attribute can suppress `User#start_trial` for
-  # reverse_trial signups. Bucketing is delegated to `Signup::BucketVariant`,
-  # which uses a stable email-derived `flipper_id` when the resource has no
-  # primary key yet — keeping `percentage_of_actors` bucketing deterministic.
   def build_resource(hash = nil)
     super
     return if resource.email.to_s.strip.empty?

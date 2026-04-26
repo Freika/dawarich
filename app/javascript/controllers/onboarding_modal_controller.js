@@ -40,10 +40,6 @@ export default class extends Controller {
   }
 
   checkAndShowModal() {
-    // Scope the dedup key by user id so different users on the same browser
-    // (QA/staging, household shared devices) each see the onboarding once.
-    // Without this, the first user "consumes" the modal for every subsequent
-    // signup on the same browser.
     const storageKey = this.hasUserIdValue
       ? `dawarich_onboarding_shown_${this.userIdValue}`
       : "dawarich_onboarding_shown"
