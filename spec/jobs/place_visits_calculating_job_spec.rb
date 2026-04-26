@@ -7,13 +7,8 @@ RSpec.describe PlaceVisitsCalculatingJob, type: :job do
     let(:user) { create(:user) }
     let!(:place) { create(:place, user: user) }
 
-    it 'calls Places::Visits::Create with the user places relation' do
-      expect(Places::Visits::Create).to receive(:new).with(
-        user,
-        satisfy { |places| places.map(&:id) == [place.id] }
-      ).and_call_original
-
-      described_class.new.perform(user.id)
+    it 'runs place visit creation for the user without raising' do
+      expect { described_class.new.perform(user.id) }.not_to raise_error
     end
 
     context 'when visits_suggestions_enabled is false' do

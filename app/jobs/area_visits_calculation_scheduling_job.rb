@@ -5,7 +5,7 @@ class AreaVisitsCalculationSchedulingJob < ApplicationJob
   sidekiq_options retry: false
 
   def perform
-    User.find_each do |user|
+    User.active_or_trial.find_each do |user|
       next unless user.safe_settings.visits_suggestions_enabled?
 
       AreaVisitsCalculatingJob.perform_later(user.id)

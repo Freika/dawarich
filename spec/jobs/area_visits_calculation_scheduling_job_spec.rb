@@ -27,5 +27,16 @@ RSpec.describe AreaVisitsCalculationSchedulingJob, type: :job do
         expect(PlaceVisitsCalculatingJob).not_to have_been_enqueued.with(user_disabled.id)
       end
     end
+
+    context 'when the user is inactive' do
+      let!(:inactive_user) { create(:user, :inactive, skip_auto_trial: true) }
+
+      it 'does not enqueue area or place visit jobs for that user' do
+        described_class.new.perform
+
+        expect(AreaVisitsCalculatingJob).not_to have_been_enqueued.with(inactive_user.id)
+        expect(PlaceVisitsCalculatingJob).not_to have_been_enqueued.with(inactive_user.id)
+      end
+    end
   end
 end
