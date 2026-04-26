@@ -33,7 +33,7 @@
             </ul>
           </details>
         </li>
-        <% if user_signed_in? && current_user.can_subscribe? %>
+        <% if user_signed_in? && current_user.can_subscribe? && !current_user.auto_converting_trial? %>
           <li>
             <%= link_to 'Subscribe', "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}", class: 'btn btn-sm btn-success' %>
           </li>
@@ -109,10 +109,10 @@
     <% if user_signed_in? %>
       <%# ===== Mobile navbar-end (< lg) ===== %>
       <div class="flex items-center gap-1 lg:hidden">
-        <% if current_user.can_subscribe? %>
-          <%= link_to "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}",
+        <% if current_user.can_subscribe? && !current_user.auto_converting_trial? %>
+          <%= link_to subscription_upgrade_url(current_user),
                       class: "btn btn-xs #{trial_button_class(current_user)}" do %>
-            <%= trial_days_remaining_compact(current_user) %>
+            <%= subscription_button_label(current_user) %>
           <% end %>
         <% end %>
 
@@ -153,23 +153,27 @@
 
       <%# ===== Desktop navbar-end (>= lg) ===== %>
       <div class="hidden lg:flex items-center gap-2 flex-nowrap">
-        <% if current_user.can_subscribe? %>
-          <%= link_to "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}",
+        <% if current_user.can_subscribe? && !current_user.auto_converting_trial? %>
+          <%= link_to subscription_upgrade_url(current_user),
                       class: "join flex-nowrap" do %>
             <span class="join-item btn btn-sm <%= trial_button_class(current_user) %>">
-              <% expiry = current_user.active_until %>
-              <% if expiry.blank? || expiry.past? %>
-                <span class="tooltip tooltip-bottom" data-tip="Trial expired" title="Trial expired">Trial expired 🥺</span>
+              <% if current_user.pending_payment? %>
+                <span class="tooltip tooltip-bottom" data-tip="Finish setting up your account" title="Finish setting up your account">Finish signup</span>
               <% else %>
-                <% days_left = [(expiry.to_date - Time.zone.today).to_i, 0].max %>
-                <span class="tooltip tooltip-bottom"
-                      data-tip="Your trial will end in <%= distance_of_time_in_words(expiry, Time.current) %>"
-                      title="Your trial will end in <%= distance_of_time_in_words(expiry, Time.current) %>">
-                  <%= pluralize(days_left, 'day') %> remaining
-                </span>
+                <% expiry = current_user.active_until %>
+                <% if expiry.blank? || expiry.past? %>
+                  <span class="tooltip tooltip-bottom" data-tip="Trial expired" title="Trial expired">Trial expired 🥺</span>
+                <% else %>
+                  <% days_left = [(expiry.to_date - Time.zone.today).to_i, 0].max %>
+                  <span class="tooltip tooltip-bottom"
+                        data-tip="Your trial will end in <%= distance_of_time_in_words(expiry, Time.current) %>"
+                        title="Your trial will end in <%= distance_of_time_in_words(expiry, Time.current) %>">
+                    <%= pluralize(days_left, 'day') %> remaining
+                  </span>
+                <% end %>
               <% end %>
             </span><span class="join-item btn btn-sm btn-success">
-              Subscribe
+              <%= subscription_cta_label(current_user) %>
             </span>
           <% end %>
         <% end %>

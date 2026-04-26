@@ -1,0 +1,21 @@
+<div class="hero min-h-[70vh] bg-base-200 rounded-box">
+  <div class="hero-content text-center">
+    <div class="max-w-lg">
+      <h1 class="text-4xl font-bold">Finish setting up your account</h1>
+      <p class="py-6">
+        Your account is almost ready. To start tracking your location data, please
+        complete your subscription checkout. You won't be charged during the
+        7-day free trial — cancel anytime before it ends and you won't be billed.
+      </p>
+      <%= link_to 'Resume checkout', @checkout_url,
+            class: 'btn btn-primary btn-lg',
+            data: { turbo: false } %>
+      <div class="mt-6 text-sm">
+        <%= link_to 'Or delete my account',
+              user_registration_path,
+              data: { turbo_method: :delete, turbo_confirm: 'Are you sure? This cannot be undone.' },
+              class: 'link link-hover text-base-content/60' %>
+      </div>
+    </div>
+  </div>
+</div>

@@ -22,7 +22,7 @@ class Users::DigestsController < ApplicationController
     year = params[:year].to_i
 
     if valid_year?(year)
-      Users::Digests::CalculatingJob.perform_later(current_user.id, year)
+      Users::Digests::Yearly::CalculatingJob.perform_later(current_user.id, year)
       redirect_to users_digests_path,
                   notice: "Year-end digest for #{year} is being generated. Check back soon!",
                   status: :see_other

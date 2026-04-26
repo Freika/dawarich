@@ -162,10 +162,10 @@ RSpec.describe '/digests', type: :request do
           create(:stat, user:, year: 2024, month: 1)
         end
 
-        it 'enqueues Users::Digests::CalculatingJob' do
+        it 'enqueues Users::Digests::Yearly::CalculatingJob' do
           post users_digests_url, params: { year: 2024 }
 
-          expect(Users::Digests::CalculatingJob).to have_been_enqueued.with(user.id, 2024)
+          expect(Users::Digests::Yearly::CalculatingJob).to have_been_enqueued.with(user.id, 2024)
         end
 
         it 'redirects with success notice' do

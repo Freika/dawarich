@@ -4,6 +4,7 @@ class ApiController < ApplicationController
   skip_before_action :verify_authenticity_token
   before_action :set_version_header
   before_action :authenticate_api_key
+  before_action :reject_pending_payment!
   after_action :set_rate_limit_headers
 
   rescue_from ActiveRecord::RecordNotFound, with: :record_not_found
@@ -37,6 +38,16 @@ class ApiController < ApplicationController
     return head :unauthorized unless current_api_user
 
     true
+  end
+
+  def reject_pending_payment!
+    return unless current_api_user&.pending_payment?
+
+    render json: {
+      error: 'payment_required',
+      message: 'Complete your subscription to continue.',
+      resume_url: upgrade_url_for(current_api_user)
+    }, status: :payment_required
   end
 
   def require_pro_api!

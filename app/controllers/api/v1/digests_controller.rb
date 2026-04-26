@@ -32,7 +32,7 @@ class Api::V1::DigestsController < ApiController
       return
     end
 
-    Users::Digests::CalculatingJob.perform_later(current_api_user.id, year)
+    Users::Digests::Yearly::CalculatingJob.perform_later(current_api_user.id, year)
     render json: { message: "Digest for #{year} is being generated" }, status: :accepted
   end
 
