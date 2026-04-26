@@ -4,21 +4,36 @@
   total_minutes = moving + stationary
   moving_pct = total_minutes > 0 ? (moving.to_f / total_minutes * 100).round : 0
   stationary_pct = 100 - moving_pct
+  moving_label = "#{format_duration_short(moving * 60)} moving (#{moving_pct}%)"
+  stationary_label = "#{format_duration_short(stationary * 60)} stationary (#{stationary_pct}%)"
 %>
 <div class="space-y-2 py-1">
   <div class="timeline-summary-stats">
-    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-primary/10 text-primary"><%= summary[:total_distance] %> <%= summary[:distance_unit] %></span>
-    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-secondary/10 text-secondary"><%= summary[:places_visited] %> places</span>
-    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-base-content/5 text-base-content/60"><%= format_duration_short(moving * 60) %> moving</span>
+    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-primary/10 text-primary"
+          title="Total distance traveled this day">
+      <%= summary[:total_distance] %> <%= summary[:distance_unit] %>
+    </span>
+    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-secondary/10 text-secondary"
+          title="Distinct places visited this day">
+      <%= summary[:places_visited] %> places
+    </span>
+    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-base-content/5 text-base-content/60"
+          title="<%= moving_label %> · <%= stationary_label %>">
+      <%= format_duration_short(moving * 60) %> moving
+    </span>
   </div>
   <% if total_minutes > 0 %>
-    <div class="timeline-summary-bar" title="<%= moving_pct %>% moving · <%= stationary_pct %>% stationary">
-      <div class="timeline-summary-bar-moving" style="width: <%= moving_pct %>%"></div>
-      <div class="timeline-summary-bar-stationary" style="width: <%= stationary_pct %>%"></div>
+    <div class="timeline-summary-bar" title="<%= moving_label %> · <%= stationary_label %>">
+      <div class="timeline-summary-bar-moving"
+           style="width: <%= moving_pct %>%"
+           title="<%= moving_label %>"></div>
+      <div class="timeline-summary-bar-stationary"
+           style="width: <%= stationary_pct %>%"
+           title="<%= stationary_label %>"></div>
     </div>
     <div class="flex justify-between text-[0.625rem] text-base-content/40 px-0.5">
-      <span>moving</span>
-      <span>stationary</span>
+      <span title="<%= moving_label %>">moving</span>
+      <span title="<%= stationary_label %>">stationary</span>
     </div>
   <% end %>
 </div>

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_03_28_210500) do
+ActiveRecord::Schema[8.0].define(version: 2026_04_26_204917) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
@@ -173,6 +173,22 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_28_210500) do
     t.index ["user_id"], name: "index_family_memberships_on_user_id", unique: true
   end
 
+  create_table "flipper_features", force: :cascade do |t|
+    t.string "key", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["key"], name: "index_flipper_features_on_key", unique: true
+  end
+
+  create_table "flipper_gates", force: :cascade do |t|
+    t.string "feature_key", null: false
+    t.string "key", null: false
+    t.text "value"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["feature_key", "key", "value"], name: "index_flipper_gates_on_feature_key_and_key_and_value", unique: true
+  end
+
   create_table "imports", force: :cascade do |t|
     t.string "name", null: false
     t.bigint "user_id", null: false
@@ -239,7 +255,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_28_210500) do
     t.integer "battery"
     t.string "tracker_id"
     t.string "topic"
-    t.decimal "altitude", precision: 10, scale: 2
+    t.integer "altitude"
     t.decimal "longitude", precision: 10, scale: 6
     t.string "velocity"
     t.integer "trigger"
@@ -273,6 +289,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_28_210500) do
     t.boolean "raw_data_archived", default: false, null: false
     t.bigint "raw_data_archive_id"
     t.jsonb "motion_data", default: {}, null: false
+    t.decimal "altitude_decimal", precision: 10, scale: 2
     t.boolean "anomaly"
     t.index ["anomaly"], name: "index_points_on_not_anomaly", where: "(anomaly IS NOT TRUE)"
     t.index ["id"], name: "index_points_on_not_reverse_geocoded", where: "(reverse_geocoded_at IS NULL)"
@@ -538,35 +555,20 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_28_210500) do
     t.integer "consumed_timestep"
     t.boolean "otp_required_for_login", default: false, null: false
     t.text "otp_backup_codes", array: true
+    t.integer "subscription_source", default: 0, null: false
+    t.string "signup_variant"
     t.index ["api_key"], name: "index_users_on_api_key"
     t.index ["deleted_at"], name: "index_users_on_deleted_at"
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["plan"], name: "index_users_on_plan"
     t.index ["provider", "uid"], name: "index_users_on_provider_and_uid", unique: true
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
+    t.index ["signup_variant"], name: "index_users_on_signup_variant_reverse_trial", where: "((signup_variant)::text = 'reverse_trial'::text)"
     t.index ["status"], name: "index_users_on_status"
     t.index ["unlock_token"], name: "index_users_on_unlock_token", unique: true
   end
 
   add_check_constraint "users", "admin IS NOT NULL", name: "users_admin_null", validate: false
-
-  create_table "video_exports", force: :cascade do |t|
-    t.bigint "user_id", null: false
-    t.bigint "track_id"
-    t.datetime "start_at", null: false
-    t.datetime "end_at", null: false
-    t.integer "status", default: 0, null: false
-    t.jsonb "config", default: {}, null: false
-    t.string "error_message"
-    t.string "callback_nonce", null: false
-    t.datetime "processing_started_at"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["status"], name: "index_video_exports_on_status"
-    t.index ["track_id"], name: "index_video_exports_on_track_id"
-    t.index ["user_id", "status"], name: "index_video_exports_on_user_id_and_status"
-    t.index ["user_id"], name: "index_video_exports_on_user_id"
-  end
 
   create_table "visits", force: :cascade do |t|
     t.bigint "area_id"
@@ -613,8 +615,6 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_28_210500) do
   add_foreign_key "track_segments", "tracks"
   add_foreign_key "tracks", "users"
   add_foreign_key "trips", "users"
-  add_foreign_key "video_exports", "tracks"
-  add_foreign_key "video_exports", "users"
   add_foreign_key "visits", "areas"
   add_foreign_key "visits", "places"
   add_foreign_key "visits", "users"

@@ -14,23 +14,25 @@ module Users
       def call
         return nil if stat.blank?
 
-        digest = Users::Digest.find_or_initialize_by(
-          user: user, year: year, month: month, period_type: :monthly
-        )
+        Time.use_zone(user.timezone || Time.zone.name) do
+          digest = Users::Digest.find_or_initialize_by(
+            user: user, year: year, month: month, period_type: :monthly
+          )
 
-        digest.assign_attributes(
-          distance: stat.distance,
-          toponyms: stat.toponyms || [],
-          monthly_distances: stat.daily_distance || {},
-          time_spent_by_location: calculate_time_spent,
-          first_time_visits: calculate_first_time_visits,
-          year_over_year: calculate_mom_comparison,
-          all_time_stats: calculate_all_time_stats,
-          travel_patterns: calculate_travel_patterns
-        )
+          digest.assign_attributes(
+            distance: stat.distance,
+            toponyms: stat.toponyms || [],
+            monthly_distances: (stat.daily_distance || []).to_h.transform_keys(&:to_s),
+            time_spent_by_location: calculate_time_spent,
+            first_time_visits: calculate_first_time_visits,
+            year_over_year: calculate_mom_comparison,
+            all_time_stats: calculate_all_time_stats,
+            travel_patterns: calculate_travel_patterns
+          )
 
-        digest.save!
-        digest
+          digest.save!
+          digest
+        end
       end
 
       private
@@ -160,7 +162,7 @@ module Users
         {
           'total_countries' => user.countries_visited_uncached.size,
           'total_cities' => user.cities_visited_uncached.size,
-          'total_distance' => user.stats.sum(:distance).to_s
+          'total_distance' => user.scoped_stats.sum(:distance).to_s
         }
       end
 

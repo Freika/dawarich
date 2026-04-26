@@ -1,0 +1,30 @@
+/* Place Drawer — right-edge slide-in panel on the map.
+   Introduced in Task 6 of the Unified Timeline plan. Split out from
+   maps_maplibre_timeline_feed.css to keep each stylesheet under 500 lines.
+   Toggle open/closed by adding/removing `.place-drawer--open`. */
+
+.place-drawer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 100%;
+  width: 380px;
+  max-width: 90vw;
+  background: oklch(var(--b1));
+  border-left: 1px solid oklch(var(--bc) / 0.1);
+  box-shadow: 0 0 24px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  overflow-y: auto;
+  transform: translateX(100%);
+  transition: transform 250ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.place-drawer--open {
+  transform: translateX(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .place-drawer {
+    transition-duration: 50ms;
+  }
+}

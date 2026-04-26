@@ -1,0 +1,86 @@
+<% stats = place_dwell_stats(place) %>
+<div class="place-drawer" data-place-id="<%= place.id %>">
+  <header class="place-drawer__header">
+    <div class="place-drawer__icon">
+      <%# Tag.icon is validated to be emoji/symbol (see Tag#icon_is_not_ascii_letter),
+          so render as a text glyph rather than through the rails_icons helper. %>
+      <% if stats[:primary_tag]&.icon.present? %>
+        <span class="text-2xl leading-none"><%= stats[:primary_tag].icon %></span>
+      <% else %>
+        <%= icon 'map-pin', class: 'w-6 h-6' %>
+      <% end %>
+    </div>
+    <div class="place-drawer__titles">
+      <h2 class="place-drawer__name"><%= place.name %></h2>
+      <% if stats[:location_line].present? %>
+        <p class="place-drawer__location"><%= stats[:location_line] %></p>
+      <% end %>
+      <p class="place-drawer__source">Source: <%= place.source.to_s.humanize %></p>
+    </div>
+  </header>
+
+  <section class="place-drawer__stats">
+    <div class="place-drawer__stat">
+      <span class="place-drawer__stat-value"><%= stats[:visit_count] %></span>
+      <span class="place-drawer__stat-label"><%= pluralize(stats[:visit_count], 'visit') %></span>
+    </div>
+    <div class="place-drawer__stat">
+      <span class="place-drawer__stat-value"><%= stats[:total_hours] %></span>
+      <span class="place-drawer__stat-label">total hours</span>
+    </div>
+    <div class="place-drawer__stat">
+      <span class="place-drawer__stat-value"><%= stats[:avg_label] %></span>
+      <span class="place-drawer__stat-label">avg dwell</span>
+    </div>
+  </section>
+
+  <section class="place-drawer__tags">
+    <% if place.tags.any? %>
+      <ul class="place-drawer__tag-list">
+        <% place.tags.each do |tag| %>
+          <li class="place-drawer__tag-chip" style="<%= "background-color: #{tag.color};" if tag.color.present? %>">
+            <%= tag.name %>
+          </li>
+        <% end %>
+      </ul>
+    <% else %>
+      <p class="place-drawer__tags-empty">No tags</p>
+    <% end %>
+  </section>
+
+  <section class="place-drawer__notes">
+    <%= form_with model: place, method: :patch, data: { turbo_frame: 'place-drawer' } do |f| %>
+      <%= f.label :note, 'Notes', class: 'place-drawer__notes-label' %>
+      <%= f.text_area :note, rows: 3, class: 'place-drawer__notes-input' %>
+      <%= f.submit 'Save', class: 'place-drawer__notes-submit' %>
+    <% end %>
+  </section>
+
+  <section class="place-drawer__visits">
+    <h3 class="place-drawer__visits-heading">Recent visits</h3>
+    <% if recent_visits.any? %>
+      <ul class="place-drawer__visits-list">
+        <% recent_visits.each do |visit| %>
+          <% range = place_visit_time_range(visit) %>
+          <li class="place-drawer__visit">
+            <span class="place-drawer__visit-name"><%= visit.name %></span>
+            <span class="place-drawer__visit-time"><%= range[:start_label] %> &rarr; <%= range[:end_label] %> on <%= range[:date_label] %></span>
+            <span class="place-drawer__visit-duration"><%= range[:duration_label] %></span>
+          </li>
+        <% end %>
+      </ul>
+    <% else %>
+      <p class="place-drawer__visits-empty">No visits yet</p>
+    <% end %>
+  </section>
+
+  <footer class="place-drawer__actions">
+    <button type="button" class="place-drawer__action place-drawer__action--rename" disabled>Rename</button>
+    <button type="button" class="place-drawer__action place-drawer__action--merge" disabled>Merge</button>
+    <%= button_to 'Delete',
+                  places_path(place),
+                  method: :delete,
+                  class: 'place-drawer__action place-drawer__action--delete',
+                  data: { turbo_confirm: 'Delete this place? This cannot be undone.' } %>
+  </footer>
+</div>

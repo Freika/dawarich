@@ -3035,10 +3035,16 @@ paths:
       tags:
       - Subscriptions
       description: Processes a JWT-encoded subscription callback to update user subscription
-        status. This endpoint does not require API key authentication — it uses JWT
-        tokens for verification.
+        status. This endpoint uses a shared webhook secret header and JWT tokens for
+        verification instead of API key authentication.
       security: []
-      parameters: []
+      parameters:
+      - name: X-Webhook-Secret
+        in: header
+        required: true
+        description: Shared webhook secret used to authenticate the caller
+        schema:
+          type: string
       responses:
         '200':
           description: subscription updated

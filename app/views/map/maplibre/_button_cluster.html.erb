@@ -1,0 +1,90 @@
+<div class="map-button-cluster" data-controller="map-panel" role="toolbar" aria-label="Map controls">
+  <button type="button"
+          class="map-button-cluster__btn"
+          data-action="click->map-panel#openTab"
+          data-tab="timeline-feed"
+          data-testid="map-button-timeline"
+          aria-label="Timeline"
+          aria-keyshortcuts="T"
+          title="Timeline (T)">
+    <%= icon 'calendar-clock' %>
+    <% count = @suggestions_pending_count.to_i %>
+    <% if count.positive? %>
+      <span class="map-button-cluster__badge" aria-label="<%= count %> suggestions pending">
+        <%= count > 99 ? '99+' : count %>
+      </span>
+    <% end %>
+  </button>
+
+  <button type="button"
+          class="map-button-cluster__btn"
+          data-action="click->map-panel#openTab"
+          data-tab="layers"
+          data-testid="map-button-layers"
+          aria-label="Layers"
+          aria-keyshortcuts="L"
+          title="Layers (L)">
+    <%= icon 'layer' %>
+  </button>
+
+  <button type="button"
+          class="map-button-cluster__btn"
+          data-action="click->map-panel#openTab"
+          data-tab="search"
+          data-testid="map-button-search"
+          aria-label="Search"
+          aria-keyshortcuts="/"
+          title="Search (/)">
+    <%= icon 'search' %>
+  </button>
+
+  <button type="button"
+          class="map-button-cluster__btn map-button-cluster__btn--create"
+          data-action="click->map-panel#openTab"
+          data-tab="tools"
+          data-testid="map-button-create"
+          aria-label="Create"
+          aria-keyshortcuts="C"
+          title="Create (C)">
+    <%= icon 'circle-plus' %>
+  </button>
+
+  <button type="button"
+          class="map-button-cluster__btn"
+          data-action="click->maps--maplibre#toggleReplay"
+          data-testid="map-button-replay"
+          aria-label="Replay"
+          aria-keyshortcuts="R"
+          title="Replay points for the current date range (R)">
+    <%= icon 'play', class: 'w-5 h-5', aria: { hidden: true } %>
+  </button>
+
+  <div class="map-button-cluster__divider" aria-hidden="true"></div>
+
+  <button type="button"
+          class="map-button-cluster__btn map-button-cluster__btn--muted"
+          data-action="click->map-panel#openTab"
+          data-tab="settings"
+          data-testid="map-button-settings"
+          aria-label="Settings"
+          aria-keyshortcuts="S"
+          title="Settings (S)">
+    <%= icon 'settings' %>
+  </button>
+
+  <%# Cloud-only — same gating as the previous in-panel `Links` tab so
+      self-hosted instances aren't pointed at marketing/help URLs. The Links
+      tab content is still rendered in the side panel (just without its own
+      tab button there); this cluster icon is the only entry point. %>
+  <% if !DawarichSettings.self_hosted? %>
+    <button type="button"
+            class="map-button-cluster__btn map-button-cluster__btn--muted"
+            data-action="click->map-panel#openTab"
+            data-tab="links"
+            data-testid="map-button-links"
+            aria-label="Links"
+            title="Links">
+      <%= icon 'info' %>
+    </button>
+  <% end %>
+</div>

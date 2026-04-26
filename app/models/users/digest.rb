@@ -135,15 +135,18 @@ class Users::Digest < ApplicationRecord
   end
 
   # Monthly digest specific methods
-  # Returns daily distances as array of [day, distance] pairs
-  # Format: [[1, 5000], [2, 3000], ...]
+  # Returns daily distances as array of [day, distance] pairs sorted by day.
+  # Storage format is a string-keyed hash (normalized by CalculateMonth);
+  # legacy/yearly digests may still be in array form.
   def daily_distances
-    monthly_distances
+    case monthly_distances
+    when Array then monthly_distances
+    when Hash  then monthly_distances.map { |day, distance| [day.to_i, distance] }.sort_by(&:first)
+    else []
+    end
   end
 
   def active_days_count
-    return 0 unless daily_distances.is_a?(Array)
-
     daily_distances.count { |pair| pair[1].to_i.positive? }
   end
 
@@ -154,7 +157,7 @@ class Users::Digest < ApplicationRecord
   end
 
   def weekly_pattern
-    return [] unless daily_distances.is_a?(Array) && month.present?
+    return [] unless month.present? && daily_distances.any?
 
     pattern = Array.new(7, 0)
     daily_distances.each do |day, distance|

@@ -1,0 +1,276 @@
+/* Suggested Place Picker
+   ----------------------
+   Inline decision UI shown on visit rows whose place is still ambiguous.
+   Extracted from maps_maplibre_timeline_feed.css to keep each stylesheet
+   under 500 lines (see maps_maplibre_place_drawer.css for the pattern).
+
+   Paired with app/views/map/timeline_feeds/_suggested_picker.html.erb. */
+
+/* Amber tint scoped to the "Needs review" badge + a thin leading border on
+   the card, not the entire surface — so the rest of the picker reads with
+   the same light touch as the surrounding Timeline rows. */
+.suggested-picker {
+  margin-top: 8px;
+  padding: 8px 10px 8px 10px;
+  background: oklch(var(--b1));
+  border: 1px solid oklch(var(--bc) / 0.1);
+  border-left: 3px solid #f59e0b;
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  /* Constrain to the parent column — long candidate names must wrap/truncate
+     instead of forcing horizontal scroll in the visit list. */
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.suggested-picker__form {
+  margin: 0;
+}
+
+/* Header: badge + prompt on the left, Confirm anchored right.
+   Kept at the top (not below the list) so the primary action never
+   scrolls off-screen when the list is tall or partly expanded. */
+.suggested-picker__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.suggested-picker__heading {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.suggested-picker__badge {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 9999px;
+  background: rgba(245, 158, 11, 0.15);
+  color: #b45309;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+:is(.dark, [data-theme="dark"]) .suggested-picker__badge {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+}
+
+.suggested-picker__prompt {
+  color: oklch(var(--bc) / 0.7);
+  font-size: 0.75rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.suggested-picker__confirm {
+  appearance: none;
+  border: 0;
+  padding: 4px 12px;
+  min-height: 28px;
+  border-radius: 6px;
+  background: #f59e0b;
+  color: #111827;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 120ms ease;
+}
+
+.suggested-picker__confirm:hover {
+  background: #d97706;
+  color: #fff;
+}
+
+.suggested-picker__confirm:focus-visible {
+  outline: 2px solid #f59e0b;
+  outline-offset: 2px;
+}
+
+/* Candidate list — visually compact rows with enough vertical padding to
+   keep the 44px touch-target on coarse pointers. The radio is kept as a
+   real input for accessibility (arrow-key grouping + Space to select). */
+.suggested-picker__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.suggested-picker__list--overflow {
+  margin-top: 4px;
+}
+
+.suggested-picker__option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  min-height: 32px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition:
+    background 120ms ease,
+    box-shadow 120ms ease;
+}
+
+@media (pointer: coarse) {
+  .suggested-picker__option {
+    min-height: 44px;
+  }
+}
+
+.suggested-picker__option:hover {
+  background: oklch(var(--bc) / 0.05);
+}
+
+.suggested-picker__option:has(.suggested-picker__radio:checked) {
+  background: rgba(245, 158, 11, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.4);
+}
+
+.suggested-picker__option:has(.suggested-picker__radio:focus-visible) {
+  outline: 2px solid #f59e0b;
+  outline-offset: 1px;
+}
+
+.suggested-picker__radio {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  min-width: 14px;
+  border-radius: 9999px;
+  border: 1.5px solid oklch(var(--bc) / 0.35);
+  background: transparent;
+  cursor: pointer;
+  position: relative;
+  margin: 0;
+  flex-shrink: 0;
+  transition:
+    border-color 120ms ease,
+    background 120ms ease;
+}
+
+.suggested-picker__radio:checked {
+  border-color: #f59e0b;
+  background: #f59e0b;
+  box-shadow: inset 0 0 0 2.5px oklch(var(--b1));
+}
+
+.suggested-picker__option-name {
+  flex: 1;
+  min-width: 0;
+  color: oklch(var(--bc) / 0.9);
+  /* Allow long place names ("1. FC Union Zapfstelle (Fuel)") to wrap inside
+     the narrow candidate row rather than overflow. `overflow-wrap: anywhere`
+     handles the no-space case; `word-break: break-word` is the widely
+     supported fallback. */
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* "Show N more" disclosure — native <details>, so no extra Stimulus.
+   Styled as a subtle inline link so it doesn't compete with the candidates. */
+.suggested-picker__overflow {
+  margin-top: 2px;
+}
+
+.suggested-picker__overflow details {
+  margin: 0;
+}
+
+.suggested-picker__more {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  color: oklch(var(--bc) / 0.65);
+  list-style: none;
+  user-select: none;
+}
+
+.suggested-picker__more::-webkit-details-marker {
+  display: none;
+}
+
+.suggested-picker__more:hover {
+  background: oklch(var(--bc) / 0.05);
+  color: oklch(var(--bc) / 0.9);
+}
+
+.suggested-picker__more-caret {
+  display: inline-block;
+  font-size: 0.625rem;
+  transition: transform 150ms ease;
+}
+
+.suggested-picker__overflow details[open] .suggested-picker__more-caret {
+  transform: rotate(90deg);
+}
+
+/* Summary text swaps between "Show N more" (closed) and "Hide N places"
+   (open) via the parent <details>[open] state. Keeps behavior server-side
+   + CSS only — no Stimulus needed. */
+.suggested-picker__more-text--open {
+  display: none;
+}
+
+.suggested-picker__overflow details[open] .suggested-picker__more-text--closed {
+  display: none;
+}
+
+.suggested-picker__overflow details[open] .suggested-picker__more-text--open {
+  display: inline;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .suggested-picker__confirm,
+  .suggested-picker__option,
+  .suggested-picker__radio,
+  .suggested-picker__more-caret {
+    transition: none;
+  }
+}
+
+/* Decline action — tertiary affordance, aligned to the start with a small
+   top offset so it reads as "escape hatch" not "primary choice". */
+.suggested-picker__decline {
+  appearance: none;
+  margin: 6px 0 0 0;
+  padding: 2px 0;
+  background: transparent;
+  border: 0;
+  color: oklch(var(--bc) / 0.55);
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.suggested-picker__decline:hover {
+  color: oklch(var(--bc) / 0.9);
+  text-decoration: underline;
+}
+
+.suggested-picker__decline:focus-visible {
+  outline: 2px solid oklch(var(--bc) / 0.4);
+  outline-offset: 2px;
+  border-radius: 3px;
+}

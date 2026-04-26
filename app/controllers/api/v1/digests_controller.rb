@@ -32,7 +32,7 @@ class Api::V1::DigestsController < ApiController
       return
     end
 
-    Users::Digests::CalculatingJob.perform_later(current_api_user.id, year)
+    Users::Digests::Yearly::CalculatingJob.perform_later(current_api_user.id, year)
     render json: { message: "Digest for #{year} is being generated" }, status: :accepted
   end
 
@@ -43,12 +43,6 @@ class Api::V1::DigestsController < ApiController
   end
 
   private
-
-  def authenticate_active_api_user!
-    return if current_api_user&.active_until&.future?
-
-    render json: { error: 'User is not active' }, status: :unauthorized
-  end
 
   def available_years_for_generation
     tracked_years = current_api_user.stats.select(:year).distinct.pluck(:year)

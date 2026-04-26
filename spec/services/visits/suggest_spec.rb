@@ -107,6 +107,10 @@ RSpec.describe Visits::Suggest do
         expect(enqueued_jobs).to be_empty
       end
     end
+
+    # The Lite plan window is enforced inside `Visits::SmartDetect` (which is
+    # what `Visits::Suggest#call` delegates to). The corresponding regression
+    # test lives in spec/services/visits/smart_detect_spec.rb.
   end
 
   private

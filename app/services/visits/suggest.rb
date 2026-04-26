@@ -1,12 +1,11 @@
 # frozen_string_literal: true
 
 class Visits::Suggest
-  attr_reader :points, :user, :start_at, :end_at
+  attr_reader :user, :start_at, :end_at
 
   def initialize(user, start_at:, end_at:)
     @start_at = start_at.to_i
     @end_at = end_at.to_i
-    @points = user.points.not_visited.order(timestamp: :asc).where(timestamp: start_at..end_at)
     @user = user
   end
 
@@ -37,7 +36,7 @@ class Visits::Suggest
 
   def create_visits_notification(user)
     content = <<~CONTENT
-      New visits have been suggested based on your location data from #{Time.zone.at(start_at)} to #{Time.zone.at(end_at)}. You can review them on the <a href="/visits" class="link">Visits</a> page.
+      New visits have been suggested based on your location data from #{Time.zone.at(start_at)} to #{Time.zone.at(end_at)}. You can review them on the <a href="/map/v2?panel=timeline&date=today&status=suggested" class="link">Timeline</a> page.
     CONTENT
 
     user.notifications.create!(

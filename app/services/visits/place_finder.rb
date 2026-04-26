@@ -223,8 +223,16 @@ module Visits
     end
 
     # Step 9: Find suggested places
+    #
+    # Constrains the search to the current user's own places plus globally-
+    # shared (user_id IS NULL) places. Without this scope, Place.near(...)
+    # returns every user's nearby places — an IDOR that leaks one user's
+    # private places into another user's auto-suggestion path.
     def find_suggested_places(lat, lon)
-      Place.near([lat, lon], SEARCH_RADIUS, :m).with_distance([lat, lon], :m).limit(MAX_SUGGESTED_PLACES)
+      Place.where(user_id: [user.id, nil])
+           .near([lat, lon], SEARCH_RADIUS, :m)
+           .with_distance([lat, lon], :m)
+           .limit(MAX_SUGGESTED_PLACES)
     end
 
     # Helper methods

@@ -14,12 +14,14 @@ class Overland::Params
     points.map do |point|
       next if point[:geometry].nil? || point.dig(:properties, :timestamp).nil?
 
-      {
+      altitude_value = point[:properties][:altitude]
+
+      attrs = {
         lonlat:             lonlat(point),
         battery_status:     point[:properties][:battery_state],
         battery:            battery_level(point[:properties][:battery_level]),
         timestamp:          DateTime.parse(point[:properties][:timestamp]),
-        altitude:           point[:properties][:altitude],
+        altitude:           altitude_value,
         velocity:           point[:properties][:speed],
         tracker_id:         point[:properties][:device_id],
         ssid:               point[:properties][:wifi],
@@ -28,6 +30,8 @@ class Overland::Params
         motion_data:        Points::MotionDataExtractor.from_overland_properties(point[:properties]),
         raw_data:           point
       }
+      attrs[:altitude_decimal] = altitude_value if Point.altitude_decimal_supported?
+      attrs
     end.compact
   end
 

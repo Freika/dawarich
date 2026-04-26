@@ -26,6 +26,10 @@ Rails.application.routes.draw do
   } do
     mount Sidekiq::Web => '/sidekiq'
   end
+
+  authenticate :user, ->(u) { u.admin? } do
+    mount Flipper::UI.app(Flipper) => '/admin/flipper'
+  end
   mount RailsPulse::Engine => '/rails_pulse'
 
   # We want to return a nice error message if the user is not authorized to access Sidekiq
@@ -72,14 +76,25 @@ Rails.application.routes.draw do
   get 'settings/theme', to: 'settings#theme'
   post 'settings/generate_api_key', to: 'settings#generate_api_key', as: :generate_api_key
 
+  get 'trial/upgrade', to: 'trial/upgrades#show', as: :trial_upgrade
+  get 'trial/resume', to: 'trial/resume#show', as: :trial_resume
+  get 'trial/welcome', to: 'trial/welcome#show', as: :trial_welcome
+
   resources :imports
-  resources :visits, only: %i[index update] do
+  # Temporary (302) during the unified-timeline rollout; promote to :moved_permanently (301)
+  # once the redesign is known-stable so browsers cache the redirect.
+  get '/visits', to: redirect(status: 302) { |_params, req|
+    status = req.params[:status]
+    base = '/map/v2?panel=timeline&date=today'
+    status ? "#{base}&status=#{status}" : "#{base}&status=confirmed"
+  }
+  resources :visits, only: %i[update destroy] do
     collection do
       patch :bulk_update
     end
   end
   resources :areas, only: [:create]
-  resources :places, only: %i[index destroy create update] do
+  resources :places, only: %i[index show destroy create update] do
     collection do
       get 'nearby'
     end
@@ -173,6 +188,7 @@ Rails.application.routes.draw do
     get '/v2', to: 'maplibre#index', as: :v2
     resources :timeline_feeds, only: [:index] do
       get :track_info, on: :member
+      get :calendar, on: :collection
     end
     resource :residency, only: [:show], controller: 'residency'
   end
@@ -205,6 +221,7 @@ Rails.application.routes.draw do
       resources :points, only: %i[index create update destroy] do
         collection do
           delete :bulk_destroy
+          post :reapply_anomaly_filter
         end
       end
       resources :visits, only: %i[index show create update destroy] do
@@ -216,6 +233,7 @@ Rails.application.routes.draw do
       end
       resource :plan, only: [:show], controller: 'plan'
       resource :residency, only: [:show], controller: 'residency'
+      resources :recalculations, only: [:create]
       resources :stats, only: :index
       resources :insights, only: :index do
         collection do

@@ -109,49 +109,21 @@ export class EventHandlers {
   }
 
   /**
-   * Handle visit click
+   * Handle visit click — opens the Timeline tab, selects the visit's day, and
+   * queues the visit for halo highlighting. Replaces the old Tools-tab flow
+   * (info panel + Edit button) which is gone with the unified timeline.
    */
   handleVisitClick(e) {
-    const feature = e.features[0]
-    const properties = feature.properties
+    const properties = e.features[0].properties
+    const visitId = Number(properties.id)
+    const startedAt =
+      typeof properties.started_at === "string" ? properties.started_at : null
+    const date = startedAt ? startedAt.slice(0, 10) : null
 
-    const startTime = formatTimestamp(
-      properties.started_at,
-      this.controller.timezoneValue,
-    )
-    const endTime = formatTimestamp(
-      properties.ended_at,
-      this.controller.timezoneValue,
-    )
-    const durationHours = Math.round(properties.duration / 3600)
-    const durationDisplay =
-      durationHours >= 1
-        ? `${durationHours}h`
-        : `${Math.round(properties.duration / 60)}m`
-
-    const content = `
-      <div class="space-y-2">
-        <div class="badge badge-sm ${properties.status === "confirmed" ? "badge-success" : "badge-warning"}">${escapeHtml(properties.status)}</div>
-        <div><span class="font-semibold">Arrived:</span> ${startTime}</div>
-        <div><span class="font-semibold">Left:</span> ${endTime}</div>
-        <div><span class="font-semibold">Duration:</span> ${durationDisplay}</div>
-      </div>
-    `
-
-    const actions = [
-      {
-        type: "button",
-        handler: "handleEdit",
-        id: properties.id,
-        entityType: "visit",
-        label: "Edit",
-      },
-    ]
-
-    this.controller.showInfo(
-      escapeHtml(properties.name || properties.place_name || "Visit"),
-      content,
-      actions,
+    document.dispatchEvent(
+      new CustomEvent("timeline:open-visit", {
+        detail: { visitId, date },
+      }),
     )
   }
 
@@ -526,7 +498,10 @@ export class EventHandlers {
   }
 
   /**
-   * Handle track click - shows segment visualization with lazy loading
+   * Handle track click — opens the Timeline tab, navigates to the track's day,
+   * and expands the matching journey entry so the track's full details
+   * (distance, speed, elevation, replay, show-points toggle) are shown inline.
+   * Replaces the old Tools-tab flow.
    */
   handleTrackClick(e) {
     // Points take priority over tracks
@@ -557,28 +532,33 @@ export class EventHandlers {
     if (!clickedFeature) return
 
     const properties = clickedFeature.properties
-
-    // Get the full feature from source (not clipped)
     const fullFeature = this._getFullTrackFeature(properties) || clickedFeature
-
-    // Store selected track
     this.selectedTrackFeature = fullFeature
 
-    // Update selection layer to highlight selected track (non-critical — don't block info panel)
+    // Keep the on-map highlight + segment visualization — those are visual
+    // feedback for the click itself, independent of the info surface.
     try {
       const tracksLayer = this.controller.layerManager.getLayer("tracks")
       if (tracksLayer?.setSelectedTrack) {
         tracksLayer.setSelectedTrack(fullFeature)
       }
-    } catch (e) {
-      console.warn("[EventHandlers] Failed to highlight track:", e)
+    } catch (err) {
+      console.warn("[EventHandlers] Failed to highlight track:", err)
     }
-
-    // Show basic info panel immediately with loading indicator for segments
-    this._showTrackInfoPanel(properties)
-
-    // Lazy-load segments from API
     this._loadTrackSegments(properties.id, fullFeature)
+
+    // Derive the day from the track's start. `start_at` comes from our own
+    // serializer as an ISO8601 string — safe to slice the date portion.
+    const startAt =
+      typeof properties.start_at === "string" ? properties.start_at : null
+    const date = startAt ? startAt.slice(0, 10) : null
+    const trackId = Number(properties.id)
+
+    document.dispatchEvent(
+      new CustomEvent("timeline:open-track", {
+        detail: { trackId, date, startAt },
+      }),
+    )
   }
 
   /**

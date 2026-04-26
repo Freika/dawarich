@@ -98,6 +98,8 @@ class Users::Destroy
 
   CANCELLABLE_JOB_CLASSES = %w[
     Users::MailerSendingJob
+    Users::Digests::Yearly::EmailSendingJob
+    Users::Digests::Monthly::EmailSendingJob
     Users::Digests::EmailSendingJob
     Tracks::RealtimeGenerationJob
     Tracks::BoundaryResolverJob
