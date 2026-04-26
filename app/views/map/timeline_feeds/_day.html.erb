@@ -18,7 +18,7 @@
               class="btn btn-ghost btn-xs btn-square">
         <%= icon 'chevron-left', class: 'w-4 h-4' %>
       </button>
-      <div class="font-semibold text-sm text-center flex-1"><%= day_label(day) %></div>
+      <div class="font-semibold text-sm text-center flex-1" data-testid="day-header-label"><%= day_label(day) %></div>
       <button data-testid="day-next"
               data-action="click->timeline-feed#navigateDay"
               data-direction="next"

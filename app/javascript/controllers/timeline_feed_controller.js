@@ -298,7 +298,21 @@ export default class extends Controller {
       el.classList.remove("cal-cell--selected")
     }
     const cell = this.element.querySelector(`[data-day="${date}"]`)
-    if (cell) cell.classList.add("cal-cell--selected")
+    if (cell) {
+      cell.classList.add("cal-cell--selected")
+    }
+
+    // If the date is outside the calendar's currently-rendered month, fetch
+    // the matching month so the cell becomes visible. `boundCalendarLoad`
+    // re-applies `.cal-cell--selected` once the new cells are in the DOM.
+    const calendarFrame = document.getElementById("timeline-calendar-frame")
+    if (calendarFrame && !cell) {
+      const month = date.slice(0, 7)
+      const newSrc = `/map/timeline_feeds/calendar?month=${encodeURIComponent(month)}`
+      if (calendarFrame.getAttribute("src") !== newSrc) {
+        calendarFrame.setAttribute("src", newSrc)
+      }
+    }
 
     if (this.hasVisitListFrameTarget) {
       const start = `${date}T00:00:00Z`
