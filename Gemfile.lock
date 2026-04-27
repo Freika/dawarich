@@ -141,7 +141,6 @@ GEM
     cronex (0.15.0)
       tzinfo
       unicode (>= 0.4.4.5)
-    css-zero (1.1.15)
     csv (3.3.5)
     data_migrate (11.3.1)
       activerecord (>= 6.1)
@@ -374,9 +373,6 @@ GEM
     optimist (3.2.1)
     orm_adapter (0.5.0)
     ostruct (0.6.1)
-    pagy (43.2.2)
-      json
-      yaml
     parallel (1.27.0)
     parser (3.3.10.0)
       ast (~> 2.4.1)
@@ -457,14 +453,6 @@ GEM
     rails_icons (1.4.0)
       nokogiri (~> 1.16, >= 1.16.4)
       rails (> 6.1)
-    rails_pulse (0.2.4)
-      css-zero (~> 1.1, >= 1.1.4)
-      groupdate (~> 6.0)
-      pagy (>= 8, < 44)
-      rails (>= 7.1.0, < 9.0.0)
-      ransack (~> 4.0)
-      request_store (~> 1.5)
-      turbo-rails (~> 2.0.11)
     railties (8.0.3)
       actionpack (= 8.0.3)
       activesupport (= 8.0.3)
@@ -476,10 +464,6 @@ GEM
       zeitwerk (~> 2.6)
     rainbow (3.1.1)
     rake (13.3.1)
-    ransack (4.4.1)
-      activerecord (>= 7.2)
-      activesupport (>= 7.2)
-      i18n
     rdoc (7.1.0)
       erb
       psych (>= 4.0.0)
@@ -670,7 +654,6 @@ GEM
       zeitwerk (>= 2.7)
     xpath (3.2.0)
       nokogiri (~> 1.8)
-    yaml (0.4.0)
     zeitwerk (2.7.4)
 
 PLATFORMS
@@ -731,7 +714,6 @@ DEPENDENCIES
   rack-session (>= 2.1.2)
   rails (~> 8.0)
   rails_icons
-  rails_pulse
   redis
   resolv-replace (~> 0.2.0)
   rexml

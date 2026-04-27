@@ -40,7 +40,10 @@ module Dawarich
     config.action_mailer.preview_paths << Rails.root.join('spec/mailers/previews').to_s
 
     def self.env_or_dev_default(var, dev_default)
-      ENV[var] || (Rails.env.production? ? raise("#{var} required in production") : dev_default)
+      return ENV[var] if ENV[var]
+      return dev_default if !Rails.env.production? || ENV['SECRET_KEY_BASE_DUMMY']
+
+      raise "#{var} required in production"
     end
 
     config.active_record.encryption.primary_key =
