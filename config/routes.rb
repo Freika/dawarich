@@ -95,6 +95,10 @@ Rails.application.routes.draw do
   get 'trial/resume', to: 'trial/resume#show', as: :trial_resume
   get 'trial/welcome', to: 'trial/welcome#show', as: :trial_welcome
 
+  resources :gapfills, only: [:create] do
+    collection { post :preview }
+  end
+
   resources :imports
   resources :tracks, only: [] do
     resources :segments, controller: 'tracks/segments', only: %i[index update]

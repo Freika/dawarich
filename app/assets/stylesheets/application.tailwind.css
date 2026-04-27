@@ -15,6 +15,7 @@
 @import "actiontext.css";
 @import "leaflet_theme.css";
 @import "maps_maplibre_replay.css";
+@import "maps_maplibre_gapfill.css";
 @import "maps_maplibre_timeline_feed.css";
 @import "maps_maplibre_timeline_rail.css";
 @import "maps_maplibre_place_drawer.css";
