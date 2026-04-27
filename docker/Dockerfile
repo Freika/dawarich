@@ -64,7 +64,11 @@ RUN bundle config set --local path 'vendor/bundle' \
 COPY ../. ./
 
 # Precompile assets
-RUN SECRET_KEY_BASE_DUMMY=1 bundle exec rake assets:precompile \
+RUN SECRET_KEY_BASE_DUMMY=1 \
+    OTP_ENCRYPTION_PRIMARY_KEY=dummy \
+    OTP_ENCRYPTION_DETERMINISTIC_KEY=dummy \
+    OTP_ENCRYPTION_KEY_DERIVATION_SALT=dummy \
+    bundle exec rake assets:precompile \
     && rm -rf node_modules tmp/cache
 
 # Ensure tmp directory exists and is writable by any user (for custom uid:gid support)
