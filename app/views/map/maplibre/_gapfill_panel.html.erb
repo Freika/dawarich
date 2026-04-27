@@ -1,0 +1,86 @@
+<div class="gapfill-panel hidden"
+     data-controller="gapfill"
+     data-gapfill-preview-url-value="<%= preview_gapfills_path %>"
+     data-gapfill-target="panel">
+
+  <%# Close button %>
+  <button type="button"
+          class="gapfill-close"
+          data-action="click->gapfill#exit"
+          title="Close gap-fill"
+          aria-label="Close gap-fill">
+    &times;
+  </button>
+
+  <%# Controls row: Points | Mode + Alternatives | Actions %>
+  <div class="gapfill-controls-row">
+    <%# Left: Point selection stacked %>
+    <div class="gapfill-points">
+      <button type="button"
+              class="gapfill-swap-btn"
+              data-action="click->gapfill#swap"
+              title="Swap start and end points">&#x21C5;</button>
+      <div class="gapfill-points-rows">
+        <button type="button"
+                class="gapfill-point-row"
+                data-action="click->gapfill#reselectStart"
+                title="Click to re-pick start point">
+          <span class="gapfill-point-badge">A</span>
+          <span class="gapfill-point-display" data-gapfill-target="startPointLabel">-</span>
+        </button>
+        <button type="button"
+                class="gapfill-point-row"
+                data-action="click->gapfill#reselectEnd"
+                title="Click to re-pick end point">
+          <span class="gapfill-point-badge">B</span>
+          <span class="gapfill-point-display" data-gapfill-target="endPointLabel">&mdash;</span>
+        </button>
+      </div>
+    </div>
+
+    <%# Center: Mode + Route alternatives %>
+    <div class="gapfill-mode-block">
+      <select class="gapfill-mode-select"
+              data-gapfill-target="modeSelect">
+        <% Gapfill::Router.modes.each_key do |label| %>
+          <option value="<%= label %>"
+                  <%= 'selected' if label == Gapfill::Router.default_mode %>><%= label %></option>
+        <% end %>
+      </select>
+
+      <div class="gapfill-alt-nav" data-gapfill-target="alternativesNav">
+        <button type="button"
+                data-action="click->gapfill#prevAlternative"
+                title="Previous route">&larr;</button>
+        <span class="gapfill-alt-counter" data-gapfill-target="alternativeLabel">&mdash;</span>
+        <button type="button"
+                data-action="click->gapfill#nextAlternative"
+                title="Next route">&rarr;</button>
+      </div>
+    </div>
+
+    <%# Right: Action button %>
+    <div class="gapfill-action-controls">
+      <button type="button"
+              class="gapfill-action-btn gapfill-confirm-btn"
+              data-action="click->gapfill#confirm"
+              data-gapfill-target="confirmButton"
+              disabled>
+        Confirm
+      </button>
+    </div>
+  </div>
+
+  <%# Hidden form for Turbo Stream submission %>
+  <%= form_with url: gapfills_path, method: :post, data: { gapfill_target: "form" }, class: "hidden" do %>
+    <input type="hidden" name="start_point_id" data-gapfill-target="startPointInput">
+    <input type="hidden" name="end_point_id" data-gapfill-target="endPointInput">
+    <input type="hidden" name="mode" data-gapfill-target="modeInput">
+    <input type="hidden" name="alternative" data-gapfill-target="alternativeInput">
+  <% end %>
+
+  <%# Status line %>
+  <div class="gapfill-status-bar" data-gapfill-target="status">
+    Select the start point
+  </div>
+</div>

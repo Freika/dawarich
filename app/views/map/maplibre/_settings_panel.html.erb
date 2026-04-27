@@ -1115,6 +1115,16 @@
               <span class="text-xs">Replay</span>
             </button>
 
+            <% if DawarichSettings.gapfill_enabled? && (DawarichSettings.self_hosted? || current_user.pro?) %>
+              <button type="button"
+                      class="btn btn-sm btn-outline flex flex-col items-center gap-1 h-auto py-3"
+                      id="gapfill-toggle-btn"
+                      data-action="click->maps--maplibre#toggleGapfill">
+                <%= icon 'route' %>
+                <span class="text-xs">Gap-fill</span>
+              </button>
+            <% end %>
+
             <% if DawarichSettings.self_hosted? || current_user.pro? %>
               <button type="button"
                       class="btn btn-sm btn-outline flex flex-col items-center gap-1 h-auto py-3"

@@ -62,6 +62,10 @@ class DawarichSettings
       }
     end
 
+    def gapfill_enabled?
+      @gapfill_enabled ||= ENV['BROUTER_URL'].present?
+    end
+
     def archive_raw_data_enabled?
       @archive_raw_data_enabled ||= ARCHIVE_RAW_DATA
     end

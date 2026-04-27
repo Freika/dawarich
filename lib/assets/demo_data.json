@@ -3,6 +3,339 @@
   "features": [
     {
       "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [13.36161812814962, 52.4703743095848]
+      },
+      "properties": {
+        "battery_status": null,
+        "battery": null,
+        "tracker_id": "demo",
+        "altitude": 38,
+        "longitude": "13.36161812814962",
+        "latitude": "52.4703743095848",
+        "velocity": 1.3,
+        "accuracy": null,
+        "vertical_accuracy": null,
+        "timestamp": 1721988000,
+        "inrids": [],
+        "in_regions": []
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [13.36212507654574, 52.47122920140743]
+      },
+      "properties": {
+        "battery_status": null,
+        "battery": null,
+        "tracker_id": "demo",
+        "altitude": 38,
+        "longitude": "13.36212507654574",
+        "latitude": "52.47122920140743",
+        "velocity": 1.4,
+        "accuracy": null,
+        "vertical_accuracy": null,
+        "timestamp": 1721988045,
+        "inrids": [],
+        "in_regions": []
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [13.3627123948105, 52.47207277882185]
+      },
+      "properties": {
+        "battery_status": null,
+        "battery": null,
+        "tracker_id": "demo",
+        "altitude": 39,
+        "longitude": "13.3627123948105",
+        "latitude": "52.47207277882185",
+        "velocity": 1.3,
+        "accuracy": null,
+        "vertical_accuracy": null,
+        "timestamp": 1721988090,
+        "inrids": [],
+        "in_regions": []
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [13.36332660356661, 52.4729969986885]
+      },
+      "properties": {
+        "battery_status": null,
+        "battery": null,
+        "tracker_id": "demo",
+        "altitude": 39,
+        "longitude": "13.36332660356661",
+        "latitude": "52.4729969986885",
+        "velocity": 1.4,
+        "accuracy": null,
+        "vertical_accuracy": null,
+        "timestamp": 1721988135,
+        "inrids": [],
+        "in_regions": []
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [13.36399429171246, 52.47456305451868]
+      },
+      "properties": {
+        "battery_status": null,
+        "battery": null,
+        "tracker_id": "demo",
+        "altitude": 40,
+        "longitude": "13.36399429171246",
+        "latitude": "52.47456305451868",
+        "velocity": 1.2,
+        "accuracy": null,
+        "vertical_accuracy": null,
+        "timestamp": 1721988180,
+        "inrids": [],
+        "in_regions": []
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [13.36452241426707, 52.47594574505828]
+      },
+      "properties": {
+        "battery_status": null,
+        "battery": null,
+        "tracker_id": "demo",
+        "altitude": 40,
+        "longitude": "13.36452241426707",
+        "latitude": "52.47594574505828",
+        "velocity": 1.3,
+        "accuracy": null,
+        "vertical_accuracy": null,
+        "timestamp": 1721988225,
+        "inrids": [],
+        "in_regions": []
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [13.36460278413571, 52.47653694077076]
+      },
+      "properties": {
+        "battery_status": null,
+        "battery": null,
+        "tracker_id": "demo",
+        "altitude": 41,
+        "longitude": "13.36460278413571",
+        "latitude": "52.47653694077076",
+        "velocity": 1.1,
+        "accuracy": null,
+        "vertical_accuracy": null,
+        "timestamp": 1721988270,
+        "inrids": [],
+        "in_regions": []
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [13.36547245927292, 52.47514185382127]
+      },
+      "properties": {
+        "battery_status": null,
+        "battery": null,
+        "tracker_id": "demo",
+        "altitude": 42,
+        "longitude": "13.36547245927292",
+        "latitude": "52.47514185382127",
+        "velocity": 0.3,
+        "accuracy": null,
+        "vertical_accuracy": null,
+        "timestamp": 1721988300,
+        "inrids": [],
+        "in_regions": []
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [13.4696, 52.5034] },
+      "properties": {
+        "battery_status": null,
+        "battery": null,
+        "tracker_id": "demo",
+        "altitude": 48,
+        "longitude": "13.4696",
+        "latitude": "52.5034",
+        "velocity": 0.4,
+        "accuracy": null,
+        "vertical_accuracy": null,
+        "timestamp": 1721989500,
+        "inrids": [],
+        "in_regions": []
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [13.46853713216322, 52.5038188955042]
+      },
+      "properties": {
+        "battery_status": null,
+        "battery": null,
+        "tracker_id": "demo",
+        "altitude": 47,
+        "longitude": "13.46853713216322",
+        "latitude": "52.5038188955042",
+        "velocity": 1.2,
+        "accuracy": null,
+        "vertical_accuracy": null,
+        "timestamp": 1721989545,
+        "inrids": [],
+        "in_regions": []
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [13.46802034596354, 52.50439013777589]
+      },
+      "properties": {
+        "battery_status": null,
+        "battery": null,
+        "tracker_id": "demo",
+        "altitude": 46,
+        "longitude": "13.46802034596354",
+        "latitude": "52.50439013777589",
+        "velocity": 1.4,
+        "accuracy": null,
+        "vertical_accuracy": null,
+        "timestamp": 1721989590,
+        "inrids": [],
+        "in_regions": []
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [13.46663089766787, 52.50543322701267]
+      },
+      "properties": {
+        "battery_status": null,
+        "battery": null,
+        "tracker_id": "demo",
+        "altitude": 46,
+        "longitude": "13.46663089766787",
+        "latitude": "52.50543322701267",
+        "velocity": 1.3,
+        "accuracy": null,
+        "vertical_accuracy": null,
+        "timestamp": 1721989635,
+        "inrids": [],
+        "in_regions": []
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [13.46542917858716, 52.50643267265329]
+      },
+      "properties": {
+        "battery_status": null,
+        "battery": null,
+        "tracker_id": "demo",
+        "altitude": 45,
+        "longitude": "13.46542917858716",
+        "latitude": "52.50643267265329",
+        "velocity": 1.4,
+        "accuracy": null,
+        "vertical_accuracy": null,
+        "timestamp": 1721989680,
+        "inrids": [],
+        "in_regions": []
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [13.46432860923471, 52.50736314528552]
+      },
+      "properties": {
+        "battery_status": null,
+        "battery": null,
+        "tracker_id": "demo",
+        "altitude": 45,
+        "longitude": "13.46432860923471",
+        "latitude": "52.50736314528552",
+        "velocity": 1.3,
+        "accuracy": null,
+        "vertical_accuracy": null,
+        "timestamp": 1721989725,
+        "inrids": [],
+        "in_regions": []
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [13.46328828822109, 52.50819352187895]
+      },
+      "properties": {
+        "battery_status": null,
+        "battery": null,
+        "tracker_id": "demo",
+        "altitude": 44,
+        "longitude": "13.46328828822109",
+        "latitude": "52.50819352187895",
+        "velocity": 1.2,
+        "accuracy": null,
+        "vertical_accuracy": null,
+        "timestamp": 1721989770,
+        "inrids": [],
+        "in_regions": []
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [13.46081138034765, 52.50880602203958]
+      },
+      "properties": {
+        "battery_status": null,
+        "battery": null,
+        "tracker_id": "demo",
+        "altitude": 44,
+        "longitude": "13.46081138034765",
+        "latitude": "52.50880602203958",
+        "velocity": 1.3,
+        "accuracy": null,
+        "vertical_accuracy": null,
+        "timestamp": 1721989800,
+        "inrids": [],
+        "in_regions": []
+      }
+    },
+    {
+      "type": "Feature",
       "geometry": { "type": "Point", "coordinates": [13.3797, 52.5097] },
       "properties": {
         "battery_status": null,
@@ -4863,7 +5196,10 @@
     },
     {
       "type": "Feature",
-      "geometry": { "type": "Point", "coordinates": [13.365803, 52.472607] },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [13.365803, 52.472607000000004]
+      },
       "properties": {
         "battery_status": "charging",
         "battery": 65,
@@ -6339,7 +6675,10 @@
     },
     {
       "type": "Feature",
-      "geometry": { "type": "Point", "coordinates": [13.538937, 52.420852] },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [13.538937, 52.420851999999996]
+      },
       "properties": {
         "battery_status": "charging",
         "battery": 70,
@@ -9291,7 +9630,10 @@
     },
     {
       "type": "Feature",
-      "geometry": { "type": "Point", "coordinates": [13.294543, 52.491845] },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [13.294543000000001, 52.491845]
+      },
       "properties": {
         "battery_status": "charging",
         "battery": 70,
@@ -11703,7 +12045,10 @@
     },
     {
       "type": "Feature",
-      "geometry": { "type": "Point", "coordinates": [13.058626, 52.397513] },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [13.058626, 52.397512999999996]
+      },
       "properties": {
         "battery_status": "unplugged",
         "battery": 80,

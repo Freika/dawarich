@@ -1,0 +1,321 @@
+/* Maps V2 Gap-fill Panel Styles */
+
+.gapfill-panel {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 70%;
+  max-width: 850px;
+  min-width: 360px;
+  background: oklch(var(--b1));
+  border-radius: 10px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
+  z-index: 460;
+  padding: 12px 32px 12px 20px;
+  transition:
+    opacity 0.2s ease-in-out,
+    transform 0.2s ease-in-out,
+    left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.maps-maplibre-container.panel-open ~ .gapfill-panel {
+  left: calc(50% + 240px);
+}
+
+.gapfill-panel.hidden {
+  display: none;
+}
+
+/* Close button */
+.gapfill-close {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  color: oklch(var(--bc) / 0.4);
+  cursor: pointer;
+  transition: all 0.15s;
+  font-size: 18px;
+  line-height: 1;
+  z-index: 1;
+}
+
+.gapfill-close:hover {
+  background: oklch(var(--b2));
+  color: oklch(var(--bc) / 0.8);
+}
+
+/* Controls row */
+.gapfill-controls-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  position: relative;
+  z-index: 2;
+}
+
+/* Points - rows + swap button side by side */
+.gapfill-points {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  flex: 1 1 33.333%;
+  min-width: 0;
+}
+
+.gapfill-points-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+button.gapfill-point-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  background: transparent;
+  padding: 4px 8px;
+  margin: -4px -8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s;
+  width: 100%;
+  text-align: left;
+}
+
+button.gapfill-point-row:hover {
+  background: oklch(var(--bc) / 0.08);
+}
+
+.gapfill-point-badge {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: oklch(var(--p));
+  color: oklch(var(--pc));
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.gapfill-swap-btn {
+  width: 28px;
+  height: 28px;
+  align-self: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 5px;
+  border: 1px solid oklch(var(--bc) / 0.2);
+  background: oklch(var(--b2));
+  color: oklch(var(--bc));
+  cursor: pointer;
+  transition: all 0.15s;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 0;
+  flex-shrink: 0;
+  margin-right: 6px;
+}
+
+.gapfill-swap-btn:hover {
+  background: oklch(var(--b3));
+  border-color: oklch(var(--bc) / 0.3);
+}
+
+.gapfill-point-display {
+  font-weight: 600;
+  font-size: 0.8rem;
+  color: oklch(var(--bc));
+  white-space: nowrap;
+}
+
+/* Mode block */
+.gapfill-mode-block {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1 1 auto;
+}
+
+.gapfill-mode-select {
+  height: 32px;
+  padding: 0 28px 0 10px;
+  border-radius: 6px;
+  border: 1px solid oklch(var(--bc) / 0.2);
+  background: oklch(var(--b2));
+  color: oklch(var(--bc));
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+  appearance: auto;
+  transition: all 0.15s;
+}
+
+.gapfill-mode-select:hover {
+  background: oklch(var(--b3));
+  border-color: oklch(var(--bc) / 0.3);
+}
+
+/* Alternative navigation */
+.gapfill-alt-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-left: 10px;
+  border-left: 1px solid oklch(var(--bc) / 0.1);
+}
+
+.gapfill-alt-nav.inactive {
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+.gapfill-alt-nav button {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 5px;
+  border: 1px solid oklch(var(--bc) / 0.2);
+  background: oklch(var(--b2));
+  color: oklch(var(--bc));
+  cursor: pointer;
+  transition: all 0.15s;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.gapfill-alt-nav button:hover {
+  background: oklch(var(--b3));
+  border-color: oklch(var(--bc) / 0.3);
+}
+
+.gapfill-alt-counter {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: oklch(var(--bc) / 0.7);
+  min-width: 52px;
+  text-align: center;
+}
+
+/* Action buttons */
+.gapfill-action-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.gapfill-confirm-btn {
+  height: 32px;
+  padding: 0 16px;
+  border-radius: 6px;
+  border: 2px solid oklch(var(--su));
+  background: oklch(var(--b1));
+  color: oklch(var(--su));
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.gapfill-confirm-btn:hover:not(:disabled) {
+  background: oklch(var(--su) / 0.1);
+}
+
+.gapfill-confirm-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* (confirm button is always visible, just disabled) */
+
+/* Status bar */
+.gapfill-status-bar {
+  font-size: 0.8rem;
+  color: oklch(var(--bc) / 0.5);
+  text-align: center;
+  margin-top: 6px;
+}
+
+/* Responsive */
+@media (max-width: 1280px) {
+  .maps-maplibre-container.panel-open ~ .gapfill-panel {
+    left: calc(50% + 210px);
+  }
+}
+
+@media (max-width: 1024px) {
+  .maps-maplibre-container.panel-open ~ .gapfill-panel {
+    left: calc(50% + 190px);
+  }
+}
+
+@media (max-width: 768px) {
+  .maps-maplibre-container.panel-open ~ .gapfill-panel {
+    left: 50%;
+  }
+
+  .gapfill-panel {
+    width: 95%;
+    min-width: unset;
+    padding: 10px 14px;
+    bottom: 10px;
+  }
+
+  .gapfill-controls-row {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .gapfill-points {
+    order: 1;
+    width: 100%;
+  }
+
+  .gapfill-mode-block {
+    order: 2;
+  }
+
+  .gapfill-action-controls {
+    order: 3;
+  }
+
+  .gapfill-point-display {
+    max-width: none;
+  }
+}
+
+/* Map markers for selected gap-fill points */
+.gapfill-map-marker {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: oklch(var(--p));
+  color: oklch(var(--pc));
+  font-size: 13px;
+  font-weight: 800;
+  border: 3px solid #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}
