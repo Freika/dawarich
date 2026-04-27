@@ -30,7 +30,7 @@ Rails.application.routes.draw do
   authenticate :user, ->(u) { u.admin? } do
     mount Flipper::UI.app(Flipper) => '/admin/flipper'
   end
-  mount RailsPulse::Engine => '/rails_pulse'
+  mount RailsPulse::Engine => '/rails_pulse' if defined?(RailsPulse::Engine)
 
   # We want to return a nice error message if the user is not authorized to access Sidekiq
   match '/sidekiq' => redirect { |_, request|

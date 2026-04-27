@@ -26,12 +26,6 @@ The Timeline Feature in Map V2 is now a feature capable to fully replace Google 
 - Import uploads are compressed client-side before upload. Users who previously uploaded uncompressed files see no behavior change; S3 storage for new uploads drops substantially for text formats.
 - Trial users' 10 MB import-file size limit applies to the uploaded file before any client-side compression, so the user-facing limit is unchanged.
 
-### Internal
-
-- Added `Archive::Zipper` / `Archive::Unzipper` services.
-- `Imports::Create` now dispatches on zip content rather than filename-based source detection.
-- Existing stored blobs remain readable without migration.
-
 ### Fixed
 
 - Fix yearly digest emails not being sent automatically. The scheduling job existed in the codebase but was never wired into `config/schedule.yml`, so no year-end emails went out. Yearly digests now fire on January 2nd at 06:00 UTC.
