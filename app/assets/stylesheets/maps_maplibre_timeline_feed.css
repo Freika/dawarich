@@ -757,7 +757,7 @@
 .visit-row__check input[type="checkbox"] {
   width: 16px;
   height: 16px;
-  accent-color: hsl(var(--p));
+  accent-color: oklch(var(--p));
   cursor: pointer;
 }
 
@@ -781,16 +781,16 @@
   margin-left: 8px;
   font-size: 11px;
   padding: 2px 8px;
-  border: 1px solid hsl(var(--bc) / 0.2);
+  border: 1px solid oklch(var(--bc) / 0.2);
   border-radius: 6px;
   background: transparent;
-  color: hsl(var(--bc) / 0.7);
+  color: oklch(var(--bc) / 0.7);
   cursor: pointer;
 }
 
 .day-select-toggle:hover {
-  background: hsl(var(--bc) / 0.05);
-  color: hsl(var(--bc));
+  background: oklch(var(--bc) / 0.05);
+  color: oklch(var(--bc));
 }
 
 .selection-bar {
@@ -803,11 +803,11 @@
   gap: 8px;
   padding: 8px 12px;
   margin: 0 0 8px 0;
-  background: hsl(var(--p) / 0.08);
-  border: 1px solid hsl(var(--p) / 0.3);
+  background: oklch(var(--p) / 0.08);
+  border: 1px solid oklch(var(--p) / 0.3);
   border-radius: 8px;
   font-size: 12px;
-  color: hsl(var(--bc));
+  color: oklch(var(--bc));
 }
 
 .selection-bar[hidden] {
@@ -833,14 +833,14 @@
 
 .selection-bar__cancel {
   background: transparent;
-  border: 1px solid hsl(var(--bc) / 0.2);
-  color: hsl(var(--bc) / 0.7);
+  border: 1px solid oklch(var(--bc) / 0.2);
+  color: oklch(var(--bc) / 0.7);
 }
 
 .selection-bar__merge {
-  background: hsl(var(--p));
-  border: 1px solid hsl(var(--p));
-  color: hsl(var(--pc));
+  background: oklch(var(--p));
+  border: 1px solid oklch(var(--p));
+  color: oklch(var(--pc));
   font-weight: 600;
 }
 
