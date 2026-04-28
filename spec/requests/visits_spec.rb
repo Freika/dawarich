@@ -297,4 +297,83 @@ RSpec.describe '/visits', type: :request do
       expect(response.location).to include('/map')
     end
   end
+
+  describe 'POST /merge' do
+    let(:tz) { 'UTC' }
+    before do
+      user.settings ||= {}
+      user.settings['timezone'] = tz
+      user.save!
+    end
+
+    let(:day) { Time.zone.parse('2025-03-15 09:00:00') }
+    let!(:visit_a) { create(:visit, user:, started_at: day,             ended_at: day + 30.minutes, duration: 30, status: :confirmed) }
+    let!(:visit_b) { create(:visit, user:, started_at: day + 1.hour,    ended_at: day + 90.minutes, duration: 30, status: :confirmed) }
+    let!(:visit_c) { create(:visit, user:, started_at: day + 2.hours,   ended_at: day + 150.minutes, duration: 30, status: :suggested) }
+
+    it 'merges 2 same-day visits and returns turbo_stream' do
+      post merge_visits_url(format: :turbo_stream),
+           params: { visit_ids: [visit_a.id, visit_b.id] }
+
+      expect(response).to have_http_status(:ok)
+      expect(response.media_type).to eq(Mime[:turbo_stream].to_s)
+
+      expect { visit_a.reload }.not_to raise_error
+      expect { visit_b.reload }.to raise_error(ActiveRecord::RecordNotFound)
+
+      expect(visit_a.status).to eq('confirmed')
+      expect(visit_a.started_at).to eq(day)
+      expect(visit_a.ended_at).to eq(day + 90.minutes)
+    end
+
+    it 'merges 3 same-day visits across mixed statuses' do
+      post merge_visits_url(format: :turbo_stream),
+           params: { visit_ids: [visit_a.id, visit_b.id, visit_c.id] }
+
+      expect(response).to have_http_status(:ok)
+      expect(Visit.where(id: [visit_b.id, visit_c.id])).to be_empty
+      expect(visit_a.reload.status).to eq('confirmed')
+    end
+
+    it 'rejects when fewer than 2 visit_ids are submitted' do
+      post merge_visits_url(format: :turbo_stream),
+           params: { visit_ids: [visit_a.id] }
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect { visit_a.reload }.not_to raise_error
+    end
+
+    it 'rejects when a visit_id belongs to another user' do
+      other_user_visit = create(:visit, user: create(:user), started_at: day, ended_at: day + 5.minutes, duration: 5)
+
+      post merge_visits_url(format: :turbo_stream),
+           params: { visit_ids: [visit_a.id, other_user_visit.id] }
+
+      expect(response).to have_http_status(:not_found)
+      expect { visit_a.reload }.not_to raise_error
+      expect { other_user_visit.reload }.not_to raise_error
+    end
+
+    it 'rejects when visits span multiple days in the user timezone' do
+      visit_next_day = create(:visit, user:, started_at: day + 1.day, ended_at: day + 1.day + 30.minutes, duration: 30)
+
+      post merge_visits_url(format: :turbo_stream),
+           params: { visit_ids: [visit_a.id, visit_next_day.id] }
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect { visit_a.reload }.not_to raise_error
+      expect { visit_next_day.reload }.not_to raise_error
+    end
+
+    it 'busts the month-summary cache for the affected month' do
+      month_start = day.beginning_of_month.to_date
+      cache_key = Timeline::MonthSummary.cache_key_for(user, month_start)
+      Rails.cache.write(cache_key, 'sentinel')
+
+      post merge_visits_url(format: :turbo_stream),
+           params: { visit_ids: [visit_a.id, visit_b.id] }
+
+      expect(Rails.cache.read(cache_key)).to be_nil
+    end
+  end
 end
