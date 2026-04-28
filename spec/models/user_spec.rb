@@ -19,7 +19,15 @@ RSpec.describe User, type: :model do
   end
 
   describe 'enums' do
-    it { is_expected.to define_enum_for(:status).with_values(inactive: 0, active: 1, trial: 2, pending_payment: 3) }
+    it {
+      is_expected.to define_enum_for(:status)
+        .with_values(inactive: 0, active: 1, trial: 2, pending_payment: 3)
+    }
+    it {
+      is_expected.to define_enum_for(:subscription_source)
+        .with_values(none: 0, paddle: 1, apple_iap: 2, google_play: 3)
+        .with_prefix(:sub_source)
+    }
     it { is_expected.to define_enum_for(:plan).with_values(lite: 0, pro: 1) }
   end
 
@@ -580,6 +588,39 @@ subscription_source: :none)
     end
   end
 
+  describe 'skip_auto_trial' do
+    context 'on cloud (not self-hosted)' do
+      before { allow(DawarichSettings).to receive(:self_hosted?).and_return(false) }
+
+      it 'starts the trial by default (7-day trial window)' do
+        user = create(:user, :inactive)
+        expect(user.trial?).to be true
+        expect(user.active_until).to be_within(1.minute).of(7.days.from_now)
+      end
+
+      it 'does not start the trial when skip_auto_trial is true' do
+        user = create(:user, skip_auto_trial: true, status: :inactive, active_until: nil)
+        expect(user.status).to eq('inactive')
+        expect(user.active_until).to be_nil
+      end
+    end
+
+    context 'on self-hosted' do
+      before { allow(DawarichSettings).to receive(:self_hosted?).and_return(true) }
+
+      it 'auto-activates by default' do
+        user = create(:user, :inactive)
+        expect(user.active?).to be true
+      end
+
+      it 'does not auto-activate when skip_auto_trial is true' do
+        user = create(:user, skip_auto_trial: true, status: :inactive, active_until: nil)
+        expect(user.status).to eq('inactive')
+        expect(user.active_until).to be_nil
+      end
+    end
+  end
+
   describe '#generate_subscription_token' do
     let(:user) { create(:user) }
     let(:secret) { ENV.fetch('JWT_SECRET_KEY', 'test_secret') }
@@ -679,29 +720,11 @@ subscription_source: :none)
         expect(user.subscription_source).to eq(source.to_s)
       end
     end
-  end
 
-  describe 'skip_auto_trial' do
-    before do
-      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
-    end
-
-    it 'does not start the trial when skip_auto_trial is true' do
-      user = create(:user, skip_auto_trial: true, status: :inactive, active_until: nil)
-      expect(user.status).to eq('inactive')
-      expect(user.active_until).to be_nil
-    end
-
-    it 'starts the trial by default (7 day trial window)' do
-      user = create(:user, :inactive)
-      expect(user.trial?).to be true
-      expect(user.active_until).to be_within(1.minute).of(7.days.from_now)
-    end
-
-    it 'leaves a skip_auto_trial user in inactive status (no trial granted)' do
-      user = create(:user, skip_auto_trial: true, status: :inactive, active_until: nil)
-      expect(user.status).to eq('inactive')
-      expect(user.active_until).to be_nil
+    it 'exposes prefixed predicates (sub_source_paddle? etc.)' do
+      user = create(:user, subscription_source: :paddle)
+      expect(user.sub_source_paddle?).to be true
+      expect(user.sub_source_none?).to be false
     end
   end
 

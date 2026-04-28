@@ -56,6 +56,25 @@ module Points
         data
       end
 
+      # Traccar mobile client (react-native-background-geolocation payload) —
+      # activity, is_moving, event
+      def from_traccar(payload)
+        return {} unless payload
+
+        location = payload[:location] || payload['location'] || {}
+        activity = payload[:activity] || payload['activity'] || {}
+
+        data = {}
+        activity_type = activity[:type] || activity['type']
+        is_moving     = location.key?(:is_moving) ? location[:is_moving] : location['is_moving']
+        event         = location[:event] || location['event']
+
+        data['activity']  = activity_type if activity_type
+        data['is_moving'] = is_moving unless is_moving.nil?
+        data['event']     = event if event
+        data
+      end
+
       # OwnTracks — monitoring mode (m) and type
       def from_owntracks(params)
         return {} unless params

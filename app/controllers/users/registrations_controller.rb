@@ -6,6 +6,7 @@ class Users::RegistrationsController < Devise::RegistrationsController
   before_action :set_invitation, only: %i[new create]
   before_action :check_registration_allowed, only: %i[new create]
   before_action :store_utm_params, only: %i[new], unless: -> { DawarichSettings.self_hosted? }
+  before_action :store_gads_linker, only: %i[new], unless: -> { DawarichSettings.self_hosted? }
 
   def new
     build_resource({})
@@ -51,16 +52,37 @@ class Users::RegistrationsController < Devise::RegistrationsController
       return
     end
 
+    DawarichSettings.self_hosted? ? destroy_self_hosted : destroy_cloud
+  end
+
+  protected
+
+  def destroy_self_hosted
+    unless resource.valid_password?(params[:password].to_s)
+      redirect_to edit_user_registration_path,
+                  alert: 'Provide your current password to delete your account.',
+                  status: :unauthorized
+      return
+    end
+
     Users::DestroyJob.perform_later(resource.id) if resource.mark_as_deleted_atomically!
 
     Devise.sign_out_all_scopes ? sign_out : sign_out(resource_name)
 
-    set_flash_message! :notice, :destroyed
-    yield resource if block_given?
-    respond_with_navigational(resource) { redirect_to after_sign_out_path_for(resource_name) }
+    redirect_to after_sign_out_path_for(resource_name),
+                notice: 'Your account has been scheduled for deletion.'
   end
 
-  protected
+  def destroy_cloud
+    result = Users::RequestAccountDestroy.new(
+      resource,
+      host: default_mailer_host,
+      protocol: default_mailer_protocol
+    ).call
+
+    flash_key = result.status == :sent ? :notice : :alert
+    redirect_to edit_user_registration_path, flash_key => result.message
+  end
 
   def build_resource(hash = nil)
     super
@@ -100,7 +122,24 @@ class Users::RegistrationsController < Devise::RegistrationsController
   end
 
   def manager_checkout_url(user)
-    "#{MANAGER_URL}/checkout?token=#{user.generate_subscription_token(variant: 'reverse_trial')}"
+    url = "#{MANAGER_URL}/checkout?token=#{user.generate_subscription_token(variant: 'reverse_trial')}"
+    linker = session.delete(:gads_linker)
+    url += "&_gl=#{CGI.escape(linker)}" if linker.present?
+    url
+  end
+
+  def store_gads_linker
+    return if params[:_gl].blank?
+
+    session[:gads_linker] = params[:_gl].to_s.byteslice(0, 1024)
+  end
+
+  def default_mailer_host
+    ActionMailer::Base.default_url_options[:host] || request.host
+  end
+
+  def default_mailer_protocol
+    ActionMailer::Base.default_url_options[:protocol] || (request.ssl? ? 'https' : 'http')
   end
 
   def check_registration_allowed

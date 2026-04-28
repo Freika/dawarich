@@ -29,6 +29,12 @@ STORE_GEODATA = ENV.fetch('STORE_GEODATA', 'true') == 'true'
 
 SENTRY_DSN = ENV.fetch('SENTRY_DSN', nil)
 MANAGER_URL = SELF_HOSTED ? nil : ENV.fetch('MANAGER_URL', nil)
+MANAGER_HOST =
+  begin
+    MANAGER_URL.present? ? URI.parse(MANAGER_URL).host : nil
+  rescue URI::InvalidURIError
+    nil
+  end
 
 # Prometheus metrics
 METRICS_USERNAME = ENV.fetch('METRICS_USERNAME', 'prometheus')

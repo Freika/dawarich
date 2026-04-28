@@ -22,7 +22,20 @@ class Api::V1::SubscriptionsController < ApiController
       return render(json: { message: 'Stale event' }, status: :ok)
     end
 
-    user = User.find(decoded[:user_id])
+    user = User.find_by(id: decoded[:user_id])
+
+    unless user
+      log_event(
+        'subscription_callback_unknown_user',
+        user_id: decoded[:user_id],
+        event_id: decoded[:event_id]
+      )
+      return render(
+        json: { error: 'unknown_dawarich_user_id', user_id: decoded[:user_id] },
+        status: :not_found
+      )
+    end
+
     applied = false
 
     begin

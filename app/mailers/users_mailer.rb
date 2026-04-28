@@ -50,4 +50,23 @@ class UsersMailer < ApplicationMailer
 
     mail(to: @user.email, subject: 'Keep your full history — upgrade to Pro')
   end
+
+  # Sent by Auth::FindOrCreateOauthUser when a mobile OAuth signup
+  # collides with an existing email-password account. The recipient
+  # clicks the signed link to confirm they own the email and merge
+  # the OAuth identity onto the existing account.
+  def oauth_account_link
+    @user = params[:user]
+    @provider_label = params[:provider_label]
+    @link_url = params[:link_url]
+
+    mail(to: @user.email, subject: "Confirm linking #{@provider_label} to your Dawarich account")
+  end
+
+  def account_destroy_confirmation
+    @user = params[:user]
+    @link_url = params[:link_url]
+
+    mail(to: @user.email, subject: 'Confirm Dawarich account deletion')
+  end
 end

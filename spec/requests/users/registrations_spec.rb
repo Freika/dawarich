@@ -536,40 +536,83 @@ RSpec.describe 'Users::Registrations', type: :request do
   describe 'Account Deletion' do
     let(:user) { create(:user, password: 'password123') }
 
-    before { sign_in user }
+    before do
+      sign_in user
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+    end
 
-    context 'when user deletes their own account' do
-      it 'soft deletes the user' do
+    context 'cloud (non-self-hosted) — email-confirmation flow' do
+      it 'does NOT delete immediately — sends a confirmation email instead' do
         expect do
           delete user_registration_path
-        end.to change(User, :count).by(-1)
+        end.not_to(change(User, :count))
 
-        expect(user.reload.deleted?).to be true
+        expect(user.reload.deleted?).to be false
       end
 
-      it 'enqueues a background deletion job' do
+      it 'enqueues the account-destroy confirmation email' do
         expect do
           delete user_registration_path
-        end.to have_enqueued_job(Users::DestroyJob).with(user.id)
+        end.to have_enqueued_job(Users::MailerSendingJob).with(
+          user.id, 'account_destroy_confirmation', hash_including(:link_url)
+        )
       end
 
-      it 'signs out the user' do
+      it 'does NOT enqueue Users::DestroyJob until the email is clicked' do
+        expect do
+          delete user_registration_path
+        end.not_to have_enqueued_job(Users::DestroyJob)
+      end
+
+      it 'leaves the user signed in (they may want to cancel)' do
         delete user_registration_path
+
+        expect(controller.current_user).to eq(user)
+      end
+
+      it 'redirects to settings with a confirmation-email message' do
+        delete user_registration_path
+
+        expect(response).to redirect_to(edit_user_registration_path)
+        expect(flash[:notice]).to include('confirmation email')
+      end
+    end
+
+    context 'self-hosted — password-confirmation flow' do
+      before { allow(DawarichSettings).to receive(:self_hosted?).and_return(true) }
+
+      it 'soft-deletes immediately when password is correct (no email)' do
+        expect do
+          delete user_registration_path, params: { password: 'password123' }
+        end.to have_enqueued_job(Users::DestroyJob).with(user.id)
+
+        expect(user.reload.deleted_at).to be_present
+      end
+
+      it 'does NOT enqueue an email' do
+        expect do
+          delete user_registration_path, params: { password: 'password123' }
+        end.not_to have_enqueued_job(Users::MailerSendingJob)
+      end
+
+      it 'signs out the user after deletion' do
+        delete user_registration_path, params: { password: 'password123' }
 
         expect(controller.current_user).to be_nil
       end
 
-      it 'redirects with success message' do
+      it 'rejects deletion without a password' do
         delete user_registration_path
 
-        expect(response).to redirect_to(root_path)
-        expect(flash[:notice]).to eq('Your account has been scheduled for deletion. Goodbye!')
+        expect(response).to have_http_status(:unauthorized)
+        expect(user.reload.deleted_at).to be_nil
       end
 
-      it 'immediately marks user as deleted' do
-        delete user_registration_path
+      it 'rejects deletion with the wrong password' do
+        delete user_registration_path, params: { password: 'wrong' }
 
-        expect(user.reload.deleted_at).to be_present
+        expect(response).to have_http_status(:unauthorized)
+        expect(user.reload.deleted_at).to be_nil
       end
     end
 
@@ -609,17 +652,19 @@ RSpec.describe 'Users::Registrations', type: :request do
       end
     end
 
-    context 'concurrent deletion attempts' do
-      it 'handles multiple deletion requests gracefully' do
-        # First deletion
-        delete user_registration_path
-        expect(user.reload.deleted?).to be true
+    context 'concurrent deletion-request attempts' do
+      it 'rate-limits to one confirmation email per user per window' do
+        expect do
+          delete user_registration_path
+          delete user_registration_path
+        end.to have_enqueued_job(Users::MailerSendingJob).once
+      end
 
-        # User is now signed out, try to delete again (should be unauthorized)
+      it 'shows a flash alert on the throttled second request' do
+        delete user_registration_path
         delete user_registration_path
 
-        # Should redirect to sign in
-        expect(response).to redirect_to(new_user_session_path)
+        expect(flash[:alert]).to include('already sent')
       end
     end
 
@@ -630,12 +675,12 @@ RSpec.describe 'Users::Registrations', type: :request do
         create(:family_membership, user: user, family: user_family, role: :owner)
       end
 
-      it 'allows deletion' do
+      it 'allows the deletion-request flow (cloud — email confirmation will perform the delete)' do
         expect do
           delete user_registration_path
-        end.to change(User, :count).by(-1)
-
-        expect(user.reload.deleted?).to be true
+        end.to have_enqueued_job(Users::MailerSendingJob).with(
+          user.id, 'account_destroy_confirmation', hash_including(:link_url)
+        )
       end
     end
   end

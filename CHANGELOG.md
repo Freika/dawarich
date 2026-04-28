@@ -4,6 +4,50 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+
+## [1.7.1] - 2026-04-28
+
+### Added
+
+- API endpoints for mobile authentication.
+- New ingest endpoint `POST /api/v1/traccar/points` for the Dawarich mobile client and any compatible Traccar-style tracker. Accepts a single nested-JSON location payload, upserts the point, refreshes the points counter, and triggers anomaly filtering, realtime track regeneration, and the live broadcaster — exactly like the OwnTracks and Overland endpoints.
+
+  **Configuration**
+
+  | Setting | Value |
+  | --- | --- |
+  | URL | `https://<your-host>/api/v1/traccar/points?api_key=<API_KEY>` |
+  | Method | `POST` |
+  | Content-Type | `application/json` |
+
+  Find your API key under **Settings → Account**.
+
+  **Payload**
+
+  ```json
+  {
+    "device_id": "iphone-jane",
+    "location": {
+      "timestamp": "2026-04-23T12:34:56Z",
+      "latitude": 52.52,
+      "longitude": 13.405,
+      "accuracy": 5,
+      "speed": 1.4,
+      "heading": 90,
+      "altitude": 42,
+      "is_moving": true,
+      "odometer": 1200,
+      "event": "motionchange"
+    },
+    "battery": { "level": 0.85, "is_charging": true },
+    "activity": { "type": "walking" }
+  }
+  ```
+
+  Required fields: `location.latitude`, `location.longitude`, `location.timestamp` (ISO 8601). Everything else is optional. Speed is expected in m/s. Battery level is expected as a 0-1 fraction (Dawarich stores it as 0-100).
+
+  **Response**: `200 OK` with empty array on success. Malformed payloads (missing required fields, unparseable timestamp) return `200` and are silently dropped — same behavior as the OwnTracks and Overland endpoints. Authentication failures return `401`. Unexpected server errors return `500`. Full schema available at `/api-docs`.
+
 ## [1.7.0] - 2026-04-26
 
 The Timeline Release

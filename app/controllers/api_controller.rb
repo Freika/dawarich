@@ -40,6 +40,10 @@ class ApiController < ApplicationController
     true
   end
 
+  # Users in :pending_payment have signed up but not yet completed checkout
+  # (mobile OAuth flow). Block all API access except the auth endpoints
+  # (which skip this filter via Api::V1::Auth::BaseController) and the
+  # destroy endpoint (which skips this filter explicitly).
   def reject_pending_payment!
     return unless current_api_user&.pending_payment?
 
@@ -120,7 +124,13 @@ class ApiController < ApplicationController
   end
 
   def api_key
-    params[:api_key] || request.headers['Authorization']&.split(' ')&.last
+    params[:api_key] || extract_bearer_token
+  end
+
+  def extract_bearer_token
+    header = request.headers['Authorization'].to_s
+    match = header.match(/\ABearer\s+(\S+)\z/i)
+    match && match[1]
   end
 
   def validate_params

@@ -10,6 +10,13 @@ Rack::Attack.cache.store = ActiveSupport::Cache::RedisCacheStore.new(
   db: ENV.fetch('RACK_ATTACK_REDIS_DB', '3').to_i # dbs 0-2 are reserved for app caching, sidekiq and ws.
 )
 
+def bearer_token(header)
+  return nil if header.blank?
+
+  match = header.match(/\ABearer\s+(\S+)\z/i)
+  match && match[1]
+end
+
 # Disabled in the test environment so request specs aren't throttled by
 # accumulated counters across examples (login throttle is 5/min by IP,
 # 20/min by email — easy to trip when many specs hit /users/sign_in).
@@ -34,7 +41,7 @@ Rack::Attack.throttle('api/token',
   next unless req.path.start_with?('/api/')
   next if DawarichSettings.self_hosted?
 
-  api_key = req.params['api_key'] || req.get_header('HTTP_AUTHORIZATION')&.split(' ')&.last
+  api_key = req.params['api_key'] || bearer_token(req.get_header('HTTP_AUTHORIZATION'))
   next if api_key.blank?
 
   user_plan = Rails.cache.fetch("rack_attack/plan/#{api_key}", expires_in: 2.minutes) do
@@ -58,7 +65,7 @@ Rack::Attack.throttle('api/points_creation', limit: 10_000, period: 1.hour) do |
   next unless req.post? && POINTS_CREATION_PATHS.include?(req.path)
   next if DawarichSettings.self_hosted?
 
-  api_key = req.params['api_key'] || req.get_header('HTTP_AUTHORIZATION')&.split(' ')&.last
+  api_key = req.params['api_key'] || bearer_token(req.get_header('HTTP_AUTHORIZATION'))
   next if api_key.blank?
 
   "points_creation:#{api_key}"
@@ -77,7 +84,7 @@ Rack::Attack.throttle('api/heavy_recompute', limit: 5, period: 1.hour) do |req|
   next unless req.post? && HEAVY_RECOMPUTE_PATHS.include?(req.path)
   next if DawarichSettings.self_hosted?
 
-  api_key = req.params['api_key'] || req.get_header('HTTP_AUTHORIZATION')&.split(' ')&.last
+  api_key = req.params['api_key'] || bearer_token(req.get_header('HTTP_AUTHORIZATION'))
   next if api_key.blank?
 
   "heavy_recompute:#{api_key}"
@@ -96,10 +103,95 @@ Rack::Attack.throttle('logins/ip', limit: 20, period: 1.minute) do |req|
   req.ip
 end
 
+# Mobile login API — same brute-force protection as the web sign-in endpoint.
+# Mirrors the limits above (5/min per email, 20/min per IP) because the threat
+# model is identical: an attacker grinding passwords against /api/v1/auth/login
+# would otherwise bypass the Devise web throttles entirely.
+Rack::Attack.throttle('logins/api_email', limit: 5, period: 1.minute) do |req|
+  next if DawarichSettings.self_hosted?
+  next unless req.path == '/api/v1/auth/login' && req.post?
+
+  req.params['email']&.to_s&.downcase&.strip
+end
+
+Rack::Attack.throttle('logins/api_ip', limit: 20, period: 1.minute) do |req|
+  next if DawarichSettings.self_hosted?
+  next unless req.path == '/api/v1/auth/login' && req.post?
+
+  req.ip
+end
+
 Rack::Attack.throttle('subscriptions/callback', limit: 60, period: 1.minute) do |req|
   next unless req.path == '/api/v1/subscriptions/callback' && req.post?
 
   req.ip
+end
+
+Rack::Attack.throttle('signups/api_ip_burst', limit: 5, period: 1.minute) do |req|
+  next if DawarichSettings.self_hosted?
+
+  req.ip if req.path == '/api/v1/auth/register' && req.post?
+end
+
+Rack::Attack.throttle('signups/api_ip_hourly', limit: 20, period: 1.hour) do |req|
+  next if DawarichSettings.self_hosted?
+
+  req.ip if req.path == '/api/v1/auth/register' && req.post?
+end
+
+Rack::Attack.throttle('oauth/token_exchange', limit: 30, period: 1.minute) do |req|
+  next if DawarichSettings.self_hosted?
+  next unless req.post?
+  next unless ['/api/v1/auth/apple', '/api/v1/auth/google'].include?(req.path)
+
+  req.ip
+end
+
+Rack::Attack.throttle('users/exist', limit: 600, period: 1.hour) do |req|
+  next if DawarichSettings.self_hosted?
+  next unless req.path == '/api/v1/users/exist' && req.post?
+
+  secret = req.get_header('HTTP_X_WEBHOOK_SECRET').to_s
+  Digest::SHA256.hexdigest(secret)[0, 32] if secret.present?
+end
+
+# Brute-force protection on OTP verification.
+# Key the throttle on SHA256(challenge_token) so that an attacker cannot simply
+# rotate source IPs to multiply their TOTP guessing budget. Keep the legacy
+# IP-based throttle as defense-in-depth.
+Rack::Attack.throttle('api/auth/otp_challenge_token', limit: 5, period: 15.minutes) do |req|
+  next if DawarichSettings.self_hosted?
+
+  if req.path == '/api/v1/auth/otp_challenge' && req.post?
+    token = req.params['challenge_token'].to_s
+    Digest::SHA256.hexdigest(token)[0, 32] if token.present?
+  end
+end
+
+Rack::Attack.throttle('api/auth/otp_challenge', limit: 5, period: 15.minutes) do |req|
+  next if DawarichSettings.self_hosted?
+
+  req.ip if req.path == '/api/v1/auth/otp_challenge' && req.post?
+end
+
+# 2FA management (disable / confirm / backup_codes) brute-force protection.
+# Keyed on the Authorization header so an attacker with a valid API key can't
+# grind on TOTP codes to disable 2FA on a stolen session.
+SENSITIVE_2FA_PATHS = %w[
+  /api/v1/users/me/two_factor
+  /api/v1/users/me/two_factor/confirm
+  /api/v1/users/me/two_factor/backup_codes
+].to_set.freeze
+
+Rack::Attack.throttle('api/users/two_factor_sensitive', limit: 5, period: 15.minutes) do |req|
+  next if DawarichSettings.self_hosted?
+  next unless req.post? || req.delete?
+  next unless SENSITIVE_2FA_PATHS.include?(req.path)
+
+  api_key = req.params['api_key'] || bearer_token(req.get_header('HTTP_AUTHORIZATION'))
+  next if api_key.blank?
+
+  "two_factor_sensitive:#{api_key}"
 end
 
 Rack::Attack.throttle('trial/welcome', limit: 30, period: 1.minute) do |req|
