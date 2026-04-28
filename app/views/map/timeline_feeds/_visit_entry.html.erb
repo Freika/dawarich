@@ -18,6 +18,14 @@
       data-visit-lat="<%= coords[:lat] %>"
       data-visit-lng="<%= coords[:lng] %>"
     <% end %>>
+  <span class="visit-row__check" aria-hidden="true">
+    <input type="checkbox"
+           data-timeline-feed-target="rowCheck"
+           data-visit-id="<%= entry[:visit_id] %>"
+           data-action="change->timeline-feed#rowCheckChanged click->timeline-feed#stopPropagation"
+           tabindex="-1">
+  </span>
+
   <div class="visit-row__time">
     <% if all_day %>
       <span class="text-xs">All day</span>
