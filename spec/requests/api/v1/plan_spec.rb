@@ -74,5 +74,22 @@ RSpec.describe 'Api::V1::Plan', type: :request do
         expect(response).to have_http_status(:unauthorized)
       end
     end
+
+    context 'subscription metadata' do
+      let(:user) { create(:user) }
+
+      it 'includes subscription_source, active_until, and status in the response' do
+        user.update!(
+          subscription_source: :apple_iap,
+          status: :active,
+          active_until: 1.year.from_now
+        )
+        get api_v1_plan_url(api_key: user.api_key)
+        body = JSON.parse(response.body)
+        expect(body['subscription_source']).to eq('apple_iap')
+        expect(body['status']).to eq('active')
+        expect(body['active_until']).to be_present
+      end
+    end
   end
 end

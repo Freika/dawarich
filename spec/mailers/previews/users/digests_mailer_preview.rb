@@ -7,4 +7,11 @@ class Users::DigestsMailerPreview < ActionMailer::Preview
 
     Users::DigestsMailer.with(user: user, digest: digest).year_end_digest
   end
+
+  def monthly_digest
+    user = User.first
+    digest = user.digests.monthly.last || Users::Digest.last
+
+    Users::DigestsMailer.with(user: user, digest: digest).monthly_digest
+  end
 end

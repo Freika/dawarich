@@ -1,5 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 import { DirectUpload } from "@rails/activestorage"
+import { shouldZip, zipSingleFile } from "services/zip_file"
 import Flash from "./flash_controller"
 
 const MAX_FILE_SIZE = 11 * 1024 * 1024 // 11MB
@@ -42,7 +43,7 @@ export default class extends Controller {
     }
   }
 
-  upload() {
+  async upload() {
     const files = Array.from(this.inputTarget.files)
     if (files.length === 0) return
 
@@ -52,18 +53,24 @@ export default class extends Controller {
 
     this.isUploading = true
     this.disableSubmit()
-    Flash.show(
-      "notice",
-      `Uploading ${filesToUpload.length} file(s), please wait...`,
-    )
     this.createProgressBar()
     this.clearExistingHiddenFields()
 
-    this.totalBytes = filesToUpload.reduce((sum, f) => sum + f.size, 0)
+    const willCompress = filesToUpload.some((f) => shouldZip(f))
+    Flash.show(
+      "notice",
+      willCompress
+        ? `Preparing ${filesToUpload.length} file(s) for upload...`
+        : `Uploading ${filesToUpload.length} file(s), please wait...`,
+    )
+
+    const prepared = await this.prepareForUpload(filesToUpload)
+
+    this.totalBytes = prepared.reduce((sum, f) => sum + f.size, 0)
     this.fileProgress = {}
 
     let completed = 0
-    filesToUpload.forEach((file, index) => {
+    prepared.forEach((file, index) => {
       this.fileProgress[index] = 0
       const upload = new DirectUpload(file, this.urlValue, {
         directUploadWillStoreFileWithXHR: (request) => {
@@ -84,9 +91,35 @@ export default class extends Controller {
           this.fileProgress[index] = file.size
           this.addHiddenField(blob.signed_id)
         }
-        if (completed === filesToUpload.length) this.uploadComplete()
+        if (completed === prepared.length) this.uploadComplete()
       })
     })
+  }
+
+  async prepareForUpload(files) {
+    const result = []
+    for (const original of files) {
+      if (!shouldZip(original)) {
+        result.push(original)
+        continue
+      }
+      try {
+        const zipped = await zipSingleFile(original)
+        result.push(zipped)
+      } catch (err) {
+        console.error(
+          "Client-side zip failed, uploading raw:",
+          original.name,
+          err,
+        )
+        Flash.show(
+          "warning",
+          `Could not compress ${original.name}, uploading as-is.`,
+        )
+        result.push(original)
+      }
+    }
+    return result
   }
 
   validateFiles(files) {

@@ -30,6 +30,23 @@
         Paddle.Initialize({ token: <%= (ENV['PADDLE_BILLING_CLIENT_TOKEN'] || '').to_json.html_safe %> });
       "></script>
     <% end %>
+
+    <% if !DawarichSettings.self_hosted? && ENV['GOOGLE_ADS_ID'].present? %>
+      <% manager_host = (URI.parse(MANAGER_URL).host rescue nil) %>
+      <script async src="https://www.googletagmanager.com/gtag/js?id=<%= j ENV['GOOGLE_ADS_ID'] %>"></script>
+      <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', <%= ENV['GOOGLE_ADS_ID'].to_json.html_safe %>, {
+          send_page_view: false,
+          linker: {
+            accept_incoming: true,
+            domains: <%= [manager_host].compact.to_json.html_safe %>
+          }
+        });
+      </script>
+    <% end %>
   </head>
 
   <body class='min-h-screen flex flex-col'>

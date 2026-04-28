@@ -156,6 +156,18 @@ RSpec.describe 'Api::V1::Points', type: :request do
       end
     end
 
+    context 'when user is inactive but active_until is in the future' do
+      before do
+        user.update(status: :inactive, active_until: 1.day.from_now)
+      end
+
+      it 'returns an unauthorized response' do
+        post "/api/v1/points?api_key=#{user.api_key}", params: point_params
+
+        expect(response).to have_http_status(:unauthorized)
+      end
+    end
+
     context 'when user is on lite plan' do
       before do
         allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
@@ -195,6 +207,19 @@ RSpec.describe 'Api::V1::Points', type: :request do
       end
     end
 
+    context 'when user is inactive but active_until is in the future' do
+      before do
+        user.update(status: :inactive, active_until: 1.day.from_now)
+      end
+
+      it 'returns an unauthorized response' do
+        put "/api/v1/points/#{points.first.id}?api_key=#{user.api_key}",
+            params: { point: { latitude: 1.0, longitude: 1.1 } }
+
+        expect(response).to have_http_status(:unauthorized)
+      end
+    end
+
     context 'when user is on lite plan' do
       before do
         allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
@@ -222,6 +247,18 @@ RSpec.describe 'Api::V1::Points', type: :request do
     context 'when user is inactive' do
       before do
         user.update(status: :inactive, active_until: 1.day.ago)
+      end
+
+      it 'returns an unauthorized response' do
+        delete "/api/v1/points/#{points.first.id}?api_key=#{user.api_key}"
+
+        expect(response).to have_http_status(:unauthorized)
+      end
+    end
+
+    context 'when user is inactive but active_until is in the future' do
+      before do
+        user.update(status: :inactive, active_until: 1.day.from_now)
       end
 
       it 'returns an unauthorized response' do
@@ -312,6 +349,26 @@ RSpec.describe 'Api::V1::Points', type: :request do
     context 'when user is inactive' do
       before do
         user.update(status: :inactive, active_until: 1.day.ago)
+      end
+
+      it 'returns an unauthorized response' do
+        delete "/api/v1/points/bulk_destroy?api_key=#{user.api_key}",
+               params: { point_ids: }
+
+        expect(response).to have_http_status(:unauthorized)
+      end
+
+      it 'does not delete any points' do
+        expect do
+          delete "/api/v1/points/bulk_destroy?api_key=#{user.api_key}",
+                 params: { point_ids: }
+        end.not_to(change { user.points.count })
+      end
+    end
+
+    context 'when user is inactive but active_until is in the future' do
+      before do
+        user.update(status: :inactive, active_until: 1.day.from_now)
       end
 
       it 'returns an unauthorized response' do
@@ -521,6 +578,57 @@ RSpec.describe 'Api::V1::Points', type: :request do
         expect(returned_ids).to include(recent_point.id)
         expect(returned_ids).not_to include(old_point.id)
       end
+    end
+  end
+
+  describe 'POST /reapply_anomaly_filter' do
+    before { Rails.cache.delete("anomaly_backfill_pending:#{user.id}") }
+
+    it 'enqueues the backfill job in reset mode for the current user' do
+      expect do
+        post "/api/v1/points/reapply_anomaly_filter?api_key=#{user.api_key}"
+      end.to have_enqueued_job(Points::AnomalyBackfillUserJob).with(user.id, reset: true)
+
+      expect(response).to have_http_status(:accepted)
+    end
+
+    it 'returns 409 when a backfill is already pending' do
+      Rails.cache.write("anomaly_backfill_pending:#{user.id}", true, expires_in: 30.minutes)
+
+      expect do
+        post "/api/v1/points/reapply_anomaly_filter?api_key=#{user.api_key}"
+      end.not_to have_enqueued_job(Points::AnomalyBackfillUserJob)
+
+      expect(response).to have_http_status(:conflict)
+    end
+
+    it 'requires authentication' do
+      post '/api/v1/points/reapply_anomaly_filter'
+
+      expect(response).to have_http_status(:unauthorized)
+    end
+  end
+
+  describe 'GET /index bbox validation' do
+    it 'rejects an inverted bbox with 400' do
+      get "/api/v1/points?api_key=#{user.api_key}&" \
+          'min_longitude=10&max_longitude=5&min_latitude=10&max_latitude=20'
+
+      expect(response).to have_http_status(:bad_request)
+    end
+
+    it 'rejects out-of-range latitude with 400' do
+      get "/api/v1/points?api_key=#{user.api_key}&" \
+          'min_longitude=-10&max_longitude=10&min_latitude=-100&max_latitude=10'
+
+      expect(response).to have_http_status(:bad_request)
+    end
+
+    it 'rejects non-numeric bbox values with 400' do
+      get "/api/v1/points?api_key=#{user.api_key}&" \
+          'min_longitude=foo&max_longitude=10&min_latitude=0&max_latitude=10'
+
+      expect(response).to have_http_status(:bad_request)
     end
   end
 end

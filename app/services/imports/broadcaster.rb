@@ -49,5 +49,11 @@ module Imports::Broadcaster
       partial: partial,
       locals: locals
     )
+  rescue StandardError => e
+    # Broadcasts are progress UI only. In contexts without a request
+    # environment (rake tasks, background jobs), rendering the partial may
+    # fail (e.g. Warden::Proxy not loaded). Swallow so data ingestion
+    # continues; the import is still updated via `update_column(:processed, ...)`.
+    Rails.logger.warn("Imports::Broadcaster#broadcast_replace_to failed: #{e.class}: #{e.message}")
   end
 end

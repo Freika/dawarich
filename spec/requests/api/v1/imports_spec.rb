@@ -154,5 +154,29 @@ RSpec.describe 'Api::V1::Imports', type: :request do
         expect(response).to have_http_status(:unauthorized)
       end
     end
+
+    context 'when user is inactive' do
+      let(:file) { fixture_file_upload('gpx/gpx_track_single_segment.gpx', 'application/gpx+xml') }
+
+      before { user.update(status: :inactive, active_until: 1.day.ago) }
+
+      it 'returns unauthorized' do
+        post api_v1_imports_url(api_key: api_key), params: { file: file }
+
+        expect(response).to have_http_status(:unauthorized)
+      end
+    end
+
+    context 'when user is inactive but active_until is in the future' do
+      let(:file) { fixture_file_upload('gpx/gpx_track_single_segment.gpx', 'application/gpx+xml') }
+
+      before { user.update(status: :inactive, active_until: 1.day.from_now) }
+
+      it 'returns unauthorized' do
+        post api_v1_imports_url(api_key: api_key), params: { file: file }
+
+        expect(response).to have_http_status(:unauthorized)
+      end
+    end
   end
 end

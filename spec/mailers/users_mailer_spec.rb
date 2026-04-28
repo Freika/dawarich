@@ -31,6 +31,10 @@ RSpec.describe UsersMailer, type: :mailer do
     end
   end
 
+  # Trial-reminder mailers below are kept transitionally so stale Sidekiq
+  # jobs scheduled before the billing extraction drain cleanly. New code
+  # must NOT enqueue these — Manager owns the trial-reminder lifecycle now.
+  # Earliest safe removal: 2026-05-17 (deploy + 21 days).
   describe 'trial_expires_soon' do
     let(:mail) { UsersMailer.with(user: user).trial_expires_soon }
 

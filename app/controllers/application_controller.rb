@@ -47,6 +47,8 @@ class ApplicationController < ActionController::Base
   end
 
   def after_sign_in_path_for(resource)
+    return trial_resume_path if resource.respond_to?(:pending_payment?) && resource.pending_payment?
+
     # Check for family invitation first
     invitation_token = params[:invitation_token] || session[:invitation_token]
     if invitation_token.present?

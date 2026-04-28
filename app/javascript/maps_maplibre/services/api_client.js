@@ -398,6 +398,7 @@ export class ApiClient {
     end_at,
     onProgress,
     onBatch = null,
+    onTotalKnown = null,
     maxConcurrent = 3,
   } = {}) {
     // First fetch to get total pages
@@ -408,6 +409,13 @@ export class ApiClient {
       per_page: 500,
     })
     const totalPages = firstPage.totalPages
+
+    // Surface the server-reported total as soon as page 1 lands. Lets the
+    // loading badge show "N tracks" while the remaining pages and rendering
+    // catch up, so users get a count up-front instead of seeing 0 → 342.
+    if (onTotalKnown) {
+      onTotalKnown(firstPage.totalCount || firstPage.features.length)
+    }
 
     // If only one page, return immediately
     if (totalPages === 1) {

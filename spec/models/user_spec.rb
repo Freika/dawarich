@@ -72,50 +72,81 @@ RSpec.describe User, type: :model do
       end
     end
 
-    describe '#start_trial' do
-      let(:user) { create(:user, :inactive) }
+    describe 'start_trial (invoked on create for cloud users)' do
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        ActiveJob::Base.queue_adapter = :test
+      end
 
       it 'sets trial status and active_until to 7 days from now' do
-        user.send(:start_trial)
+        user = create(:user, :inactive)
 
-        expect(user.reload.trial?).to be_truthy
+        expect(user.trial?).to be_truthy
         expect(user.active_until).to be_within(1.minute).of(7.days.from_now)
       end
 
-      it 'enqueues trial webhook job' do
-        expect { user.send(:start_trial) }.to have_enqueued_job(Users::TrialWebhookJob).with(user.id)
+      it 'leaves subscription_source as :none (legacy trial, no Paddle checkout yet)' do
+        user = create(:user, :inactive)
+
+        expect(user.subscription_source).to eq('none')
       end
 
-      it 'schedules welcome emails' do
-        allow(user).to receive(:schedule_welcome_emails)
+      it 'enqueues trial webhook job' do
+        expect { create(:user, :inactive) }.to have_enqueued_job(Users::TrialWebhookJob)
+      end
 
-        user.send(:start_trial)
+      it 'enqueues the welcome email immediately' do
+        expect { create(:user, :inactive) }
+          .to have_enqueued_job(Users::MailerSendingJob).with(an_instance_of(Integer), 'welcome')
+      end
 
-        expect(user).to have_received(:schedule_welcome_emails)
+      it 'enqueues the explore_features email with a 2-day delay' do
+        expect { create(:user, :inactive) }
+          .to have_enqueued_job(Users::MailerSendingJob).with(an_instance_of(Integer), 'explore_features')
+      end
+
+      it 'does not enqueue any billing-related emails (Manager service owns billing emails)' do
+        user = create(:user, :inactive)
+
+        %w[trial_expires_soon trial_expired post_trial_reminder_early post_trial_reminder_late
+           trial_first_payment_soon trial_converted
+           pending_payment_day_1 pending_payment_day_3 pending_payment_day_7].each do |billing_type|
+          expect(Users::MailerSendingJob).not_to have_been_enqueued.with(user.id, billing_type)
+        end
       end
     end
 
-    describe '#schedule_welcome_emails' do
-      let(:user) { create(:user, :inactive) }
+    describe '#invalidate_plan_rate_limit_cache' do
+      let!(:user) do
+        u = create(:user, skip_auto_trial: true)
+        u.update_columns(plan: User.plans[:lite])
+        u
+      end
+      let(:cache_key) { "rack_attack/plan/#{user.api_key}" }
 
-      it 'schedules welcome email immediately' do
-        expect { user.send(:schedule_welcome_emails) }
-          .to have_enqueued_job(Users::MailerSendingJob).with(user.id, 'welcome')
+      it 'evicts the rack_attack plan cache when plan changes' do
+        Rails.cache.write(cache_key, 'lite', expires_in: 2.minutes)
+        expect(Rails.cache.read(cache_key)).to eq('lite')
+
+        user.update!(plan: :pro)
+
+        expect(Rails.cache.read(cache_key)).to be_nil
       end
 
-      it 'schedules explore_features email for day 2' do
-        expect { user.send(:schedule_welcome_emails) }
-          .to have_enqueued_job(Users::MailerSendingJob).with(user.id, 'explore_features')
+      it 'does NOT evict the cache when an unrelated column changes' do
+        Rails.cache.write(cache_key, 'lite', expires_in: 2.minutes)
+
+        user.update!(active_until: 1.year.from_now)
+
+        expect(Rails.cache.read(cache_key)).to eq('lite')
       end
 
-      it 'schedules trial_expires_soon email for day 5' do
-        expect { user.send(:schedule_welcome_emails) }
-          .to have_enqueued_job(Users::MailerSendingJob).with(user.id, 'trial_expires_soon')
-      end
+      it 'evicts the cache using the previous api_key when api_key itself changes' do
+        Rails.cache.write(cache_key, 'lite', expires_in: 2.minutes)
 
-      it 'schedules trial_expired email for day 7' do
-        expect { user.send(:schedule_welcome_emails) }
-          .to have_enqueued_job(Users::MailerSendingJob).with(user.id, 'trial_expired')
+        user.update!(plan: :pro, api_key: 'rotated-key')
+
+        expect(Rails.cache.read(cache_key)).to be_nil
       end
     end
   end
@@ -367,6 +398,51 @@ RSpec.describe User, type: :model do
       end
     end
 
+    describe '#auto_converting_trial?' do
+      # skip_auto_trial suppresses the after_commit `activate` (self-hosted)
+      # and `start_trial` (cloud) hooks so the factory trait's values
+      # (`status`, `active_until`) survive to the assertion instead of
+      # being overwritten on commit.
+      it 'is true for a Paddle reverse-trial user with a future active_until' do
+        user = create(:user, :trial, skip_auto_trial: true, active_until: 1.week.from_now, subscription_source: :paddle)
+        expect(user.auto_converting_trial?).to be true
+      end
+
+      it 'is true for an Apple IAP trial user' do
+        user = create(:user, :trial, skip_auto_trial: true, active_until: 1.week.from_now,
+subscription_source: :apple_iap)
+        expect(user.auto_converting_trial?).to be true
+      end
+
+      it 'is true for a Google Play trial user' do
+        user = create(:user, :trial, skip_auto_trial: true, active_until: 1.week.from_now,
+subscription_source: :google_play)
+        expect(user.auto_converting_trial?).to be true
+      end
+
+      it 'is false for a legacy trial user with no subscription source' do
+        user = create(:user, :trial, skip_auto_trial: true, active_until: 1.week.from_now, subscription_source: :none)
+        expect(user.auto_converting_trial?).to be false
+      end
+
+      it 'is false when the trial has expired (active_until in the past)' do
+        user = create(:user, :trial, skip_auto_trial: true, active_until: 1.day.ago, subscription_source: :paddle)
+        expect(user.auto_converting_trial?).to be false
+      end
+
+      it 'is false for an active (post-trial) user' do
+        user = create(:user, :active, skip_auto_trial: true, active_until: 1.year.from_now,
+subscription_source: :paddle)
+        expect(user.auto_converting_trial?).to be false
+      end
+
+      it 'is false for a pending_payment user (no trial started yet)' do
+        user = create(:user, skip_auto_trial: true, status: :pending_payment, active_until: nil,
+subscription_source: :none)
+        expect(user.auto_converting_trial?).to be false
+      end
+    end
+
     describe '#export_data' do
       it 'enqueues the export data job' do
         expect { user.export_data }.to have_enqueued_job(Users::ExportDataJob).with(user.id)
@@ -545,6 +621,92 @@ RSpec.describe User, type: :model do
     end
   end
 
+  describe '#generate_subscription_token' do
+    let(:user) { create(:user) }
+    let(:secret) { ENV.fetch('JWT_SECRET_KEY', 'test_secret') }
+
+    def decode(token)
+      JWT.decode(token, secret, true, { algorithm: 'HS256' }).first
+    end
+
+    it 'encodes user_id, email, and exp by default (no theme claim)' do
+      payload = decode(user.generate_subscription_token)
+
+      expect(payload['user_id']).to eq(user.id)
+      expect(payload['email']).to eq(user.email)
+      expect(payload).not_to have_key('theme')
+      expect(payload['exp']).to be > Time.current.to_i
+      expect(payload).not_to have_key('plan')
+      expect(payload).not_to have_key('interval')
+    end
+
+    it 'includes plan and interval when provided' do
+      payload = decode(user.generate_subscription_token(plan: 'pro', interval: 'annual'))
+
+      expect(payload['plan']).to eq('pro')
+      expect(payload['interval']).to eq('annual')
+    end
+
+    it 'omits plan/interval when blank' do
+      payload = decode(user.generate_subscription_token(plan: '', interval: nil))
+
+      expect(payload).not_to have_key('plan')
+      expect(payload).not_to have_key('interval')
+    end
+
+    it "includes purpose: 'checkout' as a defense-in-depth audience claim" do
+      payload = decode(user.generate_subscription_token)
+
+      expect(payload['purpose']).to eq('checkout')
+    end
+
+    it 'includes a unique jti on every token' do
+      payload_a = decode(user.generate_subscription_token)
+      payload_b = decode(user.generate_subscription_token)
+
+      expect(payload_a['jti']).to be_a(String)
+      expect(payload_a['jti']).to be_present
+      expect(payload_b['jti']).to be_a(String)
+      expect(payload_a['jti']).not_to eq(payload_b['jti'])
+    end
+
+    it 'raises KeyError when JWT_SECRET_KEY is unset (fail-loud on misconfiguration)' do
+      env_without_jwt = ENV.to_h.tap { |h| h.delete('JWT_SECRET_KEY') }
+      stub_const('ENV', env_without_jwt)
+
+      expect { user.generate_subscription_token }.to raise_error(KeyError)
+    end
+  end
+
+  describe 'subscription columns' do
+    it 'has a subscription_source column defaulting to 0' do
+      user = create(:user)
+      expect(user.read_attribute_before_type_cast(:subscription_source)).to eq(0)
+    end
+
+    it 'has a nullable signup_variant column' do
+      user = create(:user)
+      expect(user.signup_variant).to be_nil
+    end
+
+    it 'does not index subscription_source (no query path filters by it)' do
+      indexes = ActiveRecord::Base.connection.indexes(:users).map(&:columns)
+      expect(indexes).not_to include(['subscription_source'])
+    end
+  end
+
+  describe 'status enum' do
+    it 'includes pending_payment with value 3' do
+      expect(User.statuses['pending_payment']).to eq(3)
+    end
+
+    it 'exposes predicate pending_payment?' do
+      user = create(:user)
+      user.update!(status: :pending_payment)
+      expect(user.pending_payment?).to be true
+    end
+  end
+
   describe 'subscription_source enum' do
     it 'defaults to :none for new users' do
       user = create(:user)
@@ -566,15 +728,39 @@ RSpec.describe User, type: :model do
     end
   end
 
-  describe 'pending_payment status' do
-    it 'is included in the status enum with value 3' do
-      expect(User.statuses['pending_payment']).to eq(3)
+  describe 'email campaign scheduling on trial start' do
+    include ActiveJob::TestHelper
+
+    before do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      ActiveJob::Base.queue_adapter = :test
     end
 
-    it 'exposes a pending_payment? predicate' do
-      user = create(:user, skip_auto_trial: true)
-      user.update!(status: :pending_payment)
-      expect(user.pending_payment?).to be true
+    after { clear_enqueued_jobs }
+
+    it 'enqueues welcome and explore_features (product emails only; billing is owned by Manager)' do
+      user = build(:user)
+      user.save!
+
+      expect(Users::MailerSendingJob).to have_been_enqueued.with(user.id, 'welcome')
+      expect(Users::MailerSendingJob).to have_been_enqueued.with(user.id, 'explore_features')
+    end
+
+    it 'enqueues the trial webhook job so Manager can sync billing state' do
+      user = build(:user)
+
+      expect { user.save! }.to have_enqueued_job(Users::TrialWebhookJob).with(an_instance_of(Integer))
+    end
+
+    it 'does not enqueue any billing-related mailer jobs from start_trial' do
+      user = build(:user)
+      user.save!
+
+      %w[trial_expires_soon trial_expired post_trial_reminder_early post_trial_reminder_late
+         trial_first_payment_soon trial_converted
+         pending_payment_day_1 pending_payment_day_3 pending_payment_day_7].each do |billing_type|
+        expect(Users::MailerSendingJob).not_to have_been_enqueued.with(user.id, billing_type)
+      end
     end
   end
 end

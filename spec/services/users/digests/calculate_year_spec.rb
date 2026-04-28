@@ -287,5 +287,28 @@ RSpec.describe Users::Digests::CalculateYear do
         end.to raise_error(ActiveRecord::RecordNotFound)
       end
     end
+
+    context 'when the user is on the Lite cloud plan' do
+      let(:user) { create(:user, :lite_plan) }
+      let(:year) { Time.current.year }
+
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      end
+
+      let!(:in_window_stat) do
+        create(:stat, user: user, year: year, month: Time.current.month, distance: 5_000)
+      end
+
+      let!(:older_than_window_stat) do
+        create(:stat, user: user, year: year - 2, month: 1, distance: 999_999)
+      end
+
+      it 'reflects only scoped (12-month window) totals in all_time_stats.total_distance' do
+        digest = described_class.new(user.id, year).call
+
+        expect(digest.all_time_stats['total_distance']).to eq('5000')
+      end
+    end
   end
 end

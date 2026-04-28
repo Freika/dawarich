@@ -203,6 +203,24 @@ export class SettingsController {
       }
     }
 
+    // Sync GPS noise filtering settings
+    const gpsFilteringToggle = controller.element.querySelector(
+      'input[name="gpsFilteringEnabled"]',
+    )
+    if (gpsFilteringToggle) {
+      gpsFilteringToggle.checked = this.settings.gpsFilteringEnabled !== false
+    }
+
+    const gpsAccuracyInput = controller.element.querySelector(
+      'input[name="gpsAccuracyThreshold"]',
+    )
+    if (gpsAccuracyInput) {
+      gpsAccuracyInput.value = this.settings.gpsAccuracyThreshold || 100
+      if (controller.hasGpsAccuracyThresholdValueTarget) {
+        controller.gpsAccuracyThresholdValueTarget.textContent = `${gpsAccuracyInput.value}m`
+      }
+    }
+
     // Sync speed-colored routes settings
     if (controller.hasSpeedColorScaleInputTarget) {
       const colorScale =
@@ -1093,6 +1111,8 @@ export class SettingsController {
         10,
       ),
       maxGapMinutesInCity: parseInt(formData.get("maxGapMinutesInCity"), 10),
+      gpsFilteringEnabled: formData.get("gpsFilteringEnabled") === "on",
+      gpsAccuracyThreshold: parseInt(formData.get("gpsAccuracyThreshold"), 10),
     }
 
     // Collect transportation thresholds if present (convert from display units to metric)
@@ -1272,6 +1292,95 @@ export class SettingsController {
   updateMaxGapMinutesDisplay(event) {
     if (this.controller.hasMaxGapMinutesValueTarget) {
       this.controller.maxGapMinutesValueTarget.textContent = `${event.target.value} min`
+    }
+  }
+
+  updateGpsAccuracyThresholdDisplay(event) {
+    if (this.controller.hasGpsAccuracyThresholdValueTarget) {
+      this.controller.gpsAccuracyThresholdValueTarget.textContent = `${event.target.value}m`
+    }
+  }
+
+  async reapplyAnomalyFilter() {
+    if (
+      !window.confirm(
+        "This is destructive and long-running.\n\n" +
+          "• All existing anomaly flags will be cleared and re-computed with your current settings.\n" +
+          "• Tracks, stats, and digests will be rebuilt afterwards.\n" +
+          "• Depending on how many points you have, this can take several minutes (or longer for years of history).\n" +
+          "• During the rebuild, tracks and stats on the map may temporarily look incomplete.\n\n" +
+          "Continue?",
+      )
+    ) {
+      return
+    }
+
+    const apiKey = this.controller.apiKeyValue
+    if (!apiKey) {
+      Toast.error("API key not available; please reload the page.")
+      return
+    }
+
+    try {
+      const response = await fetch("/api/v1/points/reapply_anomaly_filter", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error(`Request failed: ${response.status}`)
+      }
+
+      Toast.success(
+        "Re-evaluation queued. The map will update once the job finishes.",
+      )
+    } catch (error) {
+      console.error("[Settings] reapplyAnomalyFilter failed:", error)
+      Toast.error("Could not queue re-evaluation. Please try again.")
+    }
+  }
+
+  async recalculateUserData() {
+    if (
+      !window.confirm(
+        "This is long-running and rebuilds derived data.\n\n" +
+          "• Tracks, stats, and digests will be regenerated from scratch using your current points and settings.\n" +
+          "• Existing tracks/stats are replaced — anything you tweaked manually on a track will be overwritten.\n" +
+          "• Depending on your history this can take several minutes; you'll get a notification when it's done.\n\n" +
+          "Continue?",
+      )
+    ) {
+      return
+    }
+
+    const apiKey = this.controller.apiKeyValue
+    if (!apiKey) {
+      Toast.error("API key not available; please reload the page.")
+      return
+    }
+
+    try {
+      const response = await fetch("/api/v1/recalculations", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error(`Request failed: ${response.status}`)
+      }
+
+      Toast.success(
+        "Recalculation queued. You'll get a notification when it finishes.",
+      )
+    } catch (error) {
+      console.error("[Settings] recalculateUserData failed:", error)
+      Toast.error("Could not queue recalculation. Please try again.")
     }
   }
 }

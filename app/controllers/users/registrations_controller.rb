@@ -6,6 +6,7 @@ class Users::RegistrationsController < Devise::RegistrationsController
   before_action :set_invitation, only: %i[new create]
   before_action :check_registration_allowed, only: %i[new create]
   before_action :store_utm_params, only: %i[new], unless: -> { DawarichSettings.self_hosted? }
+  before_action :store_gads_linker, only: %i[new], unless: -> { DawarichSettings.self_hosted? }
 
   def new
     build_resource({})
@@ -18,12 +19,29 @@ class Users::RegistrationsController < Devise::RegistrationsController
   end
 
   def create
-    super do |resource|
-      if resource.persisted?
-        assign_utm_params(resource)
-        store_signup_intent(resource)
-        accept_invitation_for_user(resource) if @invitation
+    build_resource(sign_up_params)
+    resource.save
+    yield resource if block_given?
+
+    if resource.persisted?
+      post_signup_setup(resource)
+
+      if @signup_variant == 'reverse_trial'
+        resource.update!(status: :pending_payment)
+        redirect_to manager_checkout_url(resource), allow_other_host: true
+      elsif resource.active_for_authentication?
+        set_flash_message!(:notice, :signed_up)
+        sign_up(resource_name, resource)
+        respond_with(resource, location: after_sign_up_path_for(resource))
+      else
+        set_flash_message!(:notice, :"signed_up_but_#{resource.inactive_message}")
+        expire_data_after_sign_in!
+        respond_with(resource, location: after_inactive_sign_up_path_for(resource))
       end
+    else
+      clean_up_passwords(resource)
+      set_minimum_password_length
+      respond_with(resource)
     end
   end
 
@@ -44,6 +62,15 @@ class Users::RegistrationsController < Devise::RegistrationsController
   end
 
   protected
+
+  def build_resource(hash = nil)
+    super
+    return if resource.email.to_s.strip.empty?
+
+    @signup_variant = Signup::BucketVariant.new(resource).call
+    resource.signup_variant = @signup_variant
+    resource.skip_auto_trial = true if @signup_variant == 'reverse_trial'
+  end
 
   def update_resource(resource, params)
     if resource.oauth_user?
@@ -66,6 +93,23 @@ class Users::RegistrationsController < Devise::RegistrationsController
   end
 
   private
+
+  def post_signup_setup(resource)
+    assign_utm_params(resource)
+    store_signup_intent(resource)
+    accept_invitation_for_user(resource) if @invitation
+  end
+
+  def manager_checkout_url(user)
+    url = "#{MANAGER_URL}/checkout?token=#{user.generate_subscription_token(variant: 'reverse_trial')}"
+    linker = session.delete(:gads_linker)
+    url += "&_gl=#{CGI.escape(linker)}" if linker.present?
+    url
+  end
+
+  def store_gads_linker
+    session[:gads_linker] = params[:_gl] if params[:_gl].present?
+  end
 
   def check_registration_allowed
     return unless self_hosted_mode?

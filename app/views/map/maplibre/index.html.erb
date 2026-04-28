@@ -18,8 +18,13 @@
   <!-- WebGL error (hidden by default, shown if WebGL unavailable) -->
   <%= render 'map/maplibre/webgl_error' %>
 
-  <!-- Map container takes full width and height -->
-  <div data-maps--maplibre-target="container" class="maps-maplibre-container" style="width: 100%; height: 100%;"></div>
+  <!-- Map container takes full width and height. Pre-apply panel classes
+       when the URL requests the Timeline panel — otherwise the JS-driven
+       toggle animates the panel in from off-screen on every Turbo nav. -->
+  <% timeline_panel_open = params[:panel] == 'timeline' %>
+  <div data-maps--maplibre-target="container"
+       class="maps-maplibre-container<%= ' panel-open panel-timeline-expanded' if timeline_panel_open %>"
+       style="width: 100%; height: 100%;"></div>
 
   <!-- Loading progress badge -->
   <div data-maps--maplibre-target="progressBadge" class="map-progress-badge">
@@ -27,14 +32,17 @@
     <span data-maps--maplibre-target="progressBadgeText">Loading...</span>
   </div>
 
-  <!-- Settings button (top-left corner) -->
-  <div class="absolute top-4 left-4 z-10">
-    <button data-action="click->maps--maplibre#toggleSettings"
-            class="btn btn-sm btn-primary"
-            title="Open map settings">
-      <%= icon 'square-pen' %>
-      <span class="ml-1">Settings</span>
-    </button>
+  <!-- Map-edge button cluster (top-right corner) -->
+  <%= render 'button_cluster' %>
+
+  <!-- Timeline map-corner overlays (shown only when Timeline tab is active; CSS handles visibility) -->
+  <div class="timeline-map-overlay timeline-map-overlay--scope" data-timeline-feed-target="scopeBadge">
+    <span class="font-semibold">Pick a day</span>
+  </div>
+  <div class="timeline-map-overlay timeline-map-overlay--legend">
+    <div><span class="visit-status-dot visit-status-dot--confirmed"></span> Confirmed</div>
+    <div><span class="visit-status-dot visit-status-dot--suggested"></span> Suggested</div>
+    <div><span class="visit-status-dot visit-status-dot--declined"></span> Declined</div>
   </div>
 
   <!-- Settings panel -->

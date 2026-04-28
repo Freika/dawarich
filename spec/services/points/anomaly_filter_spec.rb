@@ -140,5 +140,37 @@ RSpec.describe Points::AnomalyFilter do
         expect(result).to eq(1)
       end
     end
+
+    context 'when user disables GPS filtering' do
+      let(:user) { create(:user, settings: { 'gps_filtering_enabled' => false }) }
+      let!(:terrible) { create(:point, user: user, accuracy: 5000, timestamp: 30.minutes.ago.to_i) }
+
+      it 'returns 0 and leaves points untouched' do
+        expect(described_class.new(user.id, start_time, end_time).call).to eq(0)
+        expect(terrible.reload.anomaly).not_to be true
+      end
+    end
+
+    context 'when user raises the accuracy threshold' do
+      let(:user) { create(:user, settings: { 'gps_accuracy_threshold' => 500 }) }
+      let!(:between_default_and_user) do
+        create(:point, user: user, accuracy: 200, timestamp: 30.minutes.ago.to_i,
+               latitude: 52.52, longitude: 13.405, lonlat: 'POINT(13.405 52.52)')
+      end
+      let!(:above_user_threshold) do
+        create(:point, user: user, accuracy: 600, timestamp: 29.minutes.ago.to_i,
+               latitude: 52.5201, longitude: 13.4051, lonlat: 'POINT(13.4051 52.5201)')
+      end
+
+      before { described_class.new(user.id, start_time, end_time).call }
+
+      it 'keeps points below the user threshold' do
+        expect(between_default_and_user.reload.anomaly).not_to be true
+      end
+
+      it 'still flags points above the user threshold' do
+        expect(above_user_threshold.reload.anomaly).to be true
+      end
+    end
   end
 end
