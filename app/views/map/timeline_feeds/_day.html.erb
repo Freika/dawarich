@@ -30,6 +30,14 @@
     </div>
     <div class="timeline-day-header__meta">
       <%= pluralize(day_total_visits_count(day), 'visit') %>
+      <% if day_total_visits_count(day) >= 2 %>
+        <button type="button"
+                class="day-select-toggle"
+                data-testid="day-select-toggle"
+                data-action="click->timeline-feed#enterSelection">
+          Select
+        </button>
+      <% end %>
     </div>
   </div>
 
@@ -37,6 +45,8 @@
              locals: { date: day[:date], suggested_count: suggested_count } %>
 
   <%= render partial: 'map/timeline_feeds/day_summary', locals: { summary: day[:summary] } %>
+
+  <%= render partial: 'map/timeline_feeds/selection_bar' %>
 
   <% if entries.present? %>
     <ol class="timeline-entries">
