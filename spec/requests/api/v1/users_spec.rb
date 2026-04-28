@@ -32,6 +32,23 @@ RSpec.describe 'Api::V1::Users', type: :request do
         ]
       )
     end
+
+    context 'when the user is in pending_payment status' do
+      let(:user) do
+        u = create(:user, skip_auto_trial: true)
+        u.update!(status: :pending_payment)
+        u
+      end
+
+      it 'returns 402 with payment_required envelope' do
+        get '/api/v1/users/me', headers: headers
+
+        expect(response).to have_http_status(:payment_required)
+        body = JSON.parse(response.body)
+        expect(body['error']).to eq('payment_required')
+        expect(body['resume_url']).to be_present
+      end
+    end
   end
 
   describe 'POST /api/v1/users/exist' do
