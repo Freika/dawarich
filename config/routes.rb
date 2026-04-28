@@ -272,6 +272,10 @@ Rails.application.routes.draw do
         resources :points, only: :create
       end
 
+      namespace :traccar do
+        resources :points, only: :create
+      end
+
       namespace :countries do
         resources :borders, only: :index
         resources :visited_cities, only: :index

@@ -121,6 +121,44 @@ RSpec.describe Points::MotionDataExtractor do
     end
   end
 
+  describe '.from_traccar' do
+    it 'extracts activity, is_moving, and event from a symbol-keyed payload' do
+      payload = {
+        location: { is_moving: true, event: 'motionchange' },
+        activity: { type: 'walking' }
+      }
+
+      expect(described_class.from_traccar(payload)).to eq(
+        'activity' => 'walking', 'is_moving' => true, 'event' => 'motionchange'
+      )
+    end
+
+    it 'handles string-keyed payloads' do
+      payload = {
+        'location' => { 'is_moving' => false, 'event' => 'heartbeat' },
+        'activity' => { 'type' => 'still' }
+      }
+
+      expect(described_class.from_traccar(payload)).to eq(
+        'activity' => 'still', 'is_moving' => false, 'event' => 'heartbeat'
+      )
+    end
+
+    it 'preserves is_moving=false (does not drop falsy)' do
+      payload = { location: { is_moving: false } }
+
+      expect(described_class.from_traccar(payload)).to eq('is_moving' => false)
+    end
+
+    it 'returns empty hash for nil input' do
+      expect(described_class.from_traccar(nil)).to eq({})
+    end
+
+    it 'omits keys when fields are absent' do
+      expect(described_class.from_traccar({})).to eq({})
+    end
+  end
+
   describe '.from_raw_data' do
     it 'detects Overland data from properties' do
       raw = { 'properties' => { 'motion' => ['driving'], 'activity' => 'other_navigation' } }
