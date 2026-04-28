@@ -465,8 +465,8 @@ RSpec.describe 'Api::V1::Subscriptions', type: :request do
         # Simulate validation failure inside the transaction. The cache write
         # for the dedup key has already happened (claim_event!) by the time
         # update! runs, so a rollback alone leaves an orphan dedup key behind.
-        allow(User).to receive(:find).and_call_original
-        allow(User).to receive(:find).with(user.id).and_return(user)
+        allow(User).to receive(:find_by).and_call_original
+        allow(User).to receive(:find_by).with(id: user.id).and_return(user)
         allow(user).to receive(:lock!).and_return(user)
         allow(user).to receive(:update!).and_raise(
           ActiveRecord::RecordInvalid.new(user)
@@ -491,6 +491,53 @@ RSpec.describe 'Api::V1::Subscriptions', type: :request do
 
         watermark = Rails.cache.read("manager_callback:last_seen_ms:#{user.id}").to_i
         expect(watermark).to eq(0)
+      end
+    end
+
+    context 'when the decoded user_id does not match any user on this Dawarich' do
+      let(:event_id) { SecureRandom.uuid }
+      let(:missing_user_id) { 9_999_999 }
+      let(:token) do
+        build_token(
+          user_id: missing_user_id,
+          plan: 'pro',
+          status: 'active',
+          active_until: 30.days.from_now.iso8601,
+          subscription_source: 'paddle',
+          event_id: event_id
+        )
+      end
+
+      it 'returns 404 with an explicit unknown_dawarich_user_id error code' do
+        post '/api/v1/subscriptions/callback', params: { token: token }, headers: webhook_headers
+
+        expect(response).to have_http_status(:not_found)
+        body = JSON.parse(response.body)
+        expect(body['error']).to eq('unknown_dawarich_user_id')
+        expect(body['user_id']).to eq(missing_user_id)
+      end
+
+      it 'logs a structured subscription_callback_unknown_user event' do
+        captured = []
+        allow(Rails.logger).to receive(:info).and_wrap_original do |original, *args, &block|
+          payload = block ? block.call : args.first
+          captured << payload if payload.is_a?(String) && payload.include?('subscription_callback_unknown_user')
+          original.call(*args, &block)
+        end
+
+        post '/api/v1/subscriptions/callback', params: { token: token }, headers: webhook_headers
+
+        expect(captured).not_to be_empty
+        json = JSON.parse(captured.first)
+        expect(json['event']).to eq('subscription_callback_unknown_user')
+        expect(json['user_id']).to eq(missing_user_id)
+        expect(json['event_id']).to eq(event_id)
+      end
+
+      it 'does not raise inside the controller' do
+        expect do
+          post '/api/v1/subscriptions/callback', params: { token: token }, headers: webhook_headers
+        end.not_to raise_error
       end
     end
 

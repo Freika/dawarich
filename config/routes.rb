@@ -299,6 +299,7 @@ Rails.application.routes.draw do
       end
 
       post 'subscriptions/callback', to: 'subscriptions#callback'
+      post 'users/exist', to: 'users#exist'
     end
   end
 end

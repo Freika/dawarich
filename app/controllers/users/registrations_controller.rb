@@ -6,6 +6,7 @@ class Users::RegistrationsController < Devise::RegistrationsController
   before_action :set_invitation, only: %i[new create]
   before_action :check_registration_allowed, only: %i[new create]
   before_action :store_utm_params, only: %i[new], unless: -> { DawarichSettings.self_hosted? }
+  before_action :store_gads_linker, only: %i[new], unless: -> { DawarichSettings.self_hosted? }
 
   def new
     build_resource({})
@@ -100,7 +101,14 @@ class Users::RegistrationsController < Devise::RegistrationsController
   end
 
   def manager_checkout_url(user)
-    "#{MANAGER_URL}/checkout?token=#{user.generate_subscription_token(variant: 'reverse_trial')}"
+    url = "#{MANAGER_URL}/checkout?token=#{user.generate_subscription_token(variant: 'reverse_trial')}"
+    linker = session.delete(:gads_linker)
+    url += "&_gl=#{CGI.escape(linker)}" if linker.present?
+    url
+  end
+
+  def store_gads_linker
+    session[:gads_linker] = params[:_gl] if params[:_gl].present?
   end
 
   def check_registration_allowed
