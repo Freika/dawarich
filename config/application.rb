@@ -43,7 +43,17 @@ module Dawarich
       return ENV[var] if ENV[var]
       return dev_default if !Rails.env.production? || ENV['SECRET_KEY_BASE_DUMMY']
 
+      secret = ENV['SECRET_KEY_BASE']
+      return derive_encryption_key(var, secret) if secret
+
       raise "#{var} required in production"
+    end
+
+    def self.derive_encryption_key(var, secret)
+      ActiveSupport::KeyGenerator
+        .new(secret, iterations: 1000)
+        .generate_key("dawarich/encryption/#{var}", 32)
+        .unpack1('H*')
     end
 
     config.active_record.encryption.primary_key =
