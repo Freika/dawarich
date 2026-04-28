@@ -45,6 +45,19 @@ RSpec.describe 'POST /api/v1/auth/register', type: :request do
     expect(Users::MailerSendingJob).not_to have_been_enqueued
   end
 
+  it 'normalizes email casing/whitespace on signup so login round-trips' do
+    post '/api/v1/auth/register',
+         params: valid_params.merge(email: '  Mixed@Example.COM  ')
+    expect(response).to have_http_status(:created)
+
+    user = User.find_by(email: 'mixed@example.com')
+    expect(user).to be_present
+
+    post '/api/v1/auth/login',
+         params: { email: 'mixed@example.com', password: 'secret123' }
+    expect(response).to have_http_status(:ok)
+  end
+
   context 'on a self-hosted instance' do
     before { allow(DawarichSettings).to receive(:self_hosted?).and_return(true) }
 

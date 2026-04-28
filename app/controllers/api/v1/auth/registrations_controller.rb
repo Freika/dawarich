@@ -18,7 +18,7 @@ class Api::V1::Auth::RegistrationsController < Api::V1::Auth::BaseController
 
   def new_user_attrs
     base = {
-      email: params[:email],
+      email: params[:email]&.to_s&.downcase&.strip,
       password: params[:password],
       password_confirmation: params[:password_confirmation]
     }

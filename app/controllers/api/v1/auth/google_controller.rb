@@ -1,9 +1,6 @@
 # frozen_string_literal: true
 
 class Api::V1::Auth::GoogleController < Api::V1::Auth::BaseController
-  class UnverifiedEmail < StandardError; end
-  class LinkVerificationSent < StandardError; end
-
   PROVIDER = 'google'
   PROVIDER_LABEL = 'Google'
 
@@ -23,12 +20,12 @@ class Api::V1::Auth::GoogleController < Api::V1::Auth::BaseController
     ).call
 
     render_auth_success(user, status: created ? :created : :ok)
-  rescue UnverifiedEmail
+  rescue Auth::FindOrCreateOauthUser::UnverifiedEmail
     render json: {
       error: 'email_not_verified',
       message: 'Google has not verified this email. Sign in with password and link from settings.'
     }, status: :forbidden
-  rescue LinkVerificationSent
+  rescue Auth::FindOrCreateOauthUser::LinkVerificationSent
     render json: {
       error: 'verification_sent',
       message: 'This email already has a Dawarich account. ' \

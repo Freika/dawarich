@@ -33,7 +33,7 @@ RSpec.describe Auth::FindOrCreateOauthUser do
     it 'raises UnverifiedEmail when provider does not assert email_verified' do
       expect do
         build(claims: { sub: 'apple-2', email: 'taken@example.com' }, email_verified: false).call
-      end.to raise_error(Api::V1::Auth::AppleController::UnverifiedEmail)
+      end.to raise_error(Auth::FindOrCreateOauthUser::UnverifiedEmail)
 
       expect(existing.reload.provider).to be_nil
     end
@@ -41,7 +41,7 @@ RSpec.describe Auth::FindOrCreateOauthUser do
     it 'raises LinkVerificationSent and enqueues a verification mailer by default' do
       expect do
         build(claims: { sub: 'apple-2', email: 'taken@example.com' }, email_verified: true).call
-      end.to raise_error(Api::V1::Auth::AppleController::LinkVerificationSent)
+      end.to raise_error(Auth::FindOrCreateOauthUser::LinkVerificationSent)
          .and have_enqueued_job(Users::MailerSendingJob)
         .with(existing.id, 'oauth_account_link', hash_including(:link_url,
                                                                 provider_label: 'Sign in with Apple'))

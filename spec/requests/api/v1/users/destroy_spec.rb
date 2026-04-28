@@ -7,12 +7,13 @@ RSpec.describe 'Api::V1::Users::Destroy', type: :request do
     let(:user) { create(:user) }
     let(:headers) { { 'Authorization' => "Bearer #{user.api_key}" } }
 
-    it 'calls Users::Destroy.new(user).call on the current user' do
-      destroy_service = instance_double(Users::Destroy, call: true)
-      expect(Users::Destroy).to receive(:new).with(an_instance_of(User)).and_return(destroy_service)
-      expect(destroy_service).to receive(:call)
+    it 'deletes the current user' do
+      user # materialize before request
+      expect do
+        delete '/api/v1/users/me', headers: headers
+      end.to change(User.unscoped, :count).by(-1)
 
-      delete '/api/v1/users/me', headers: headers
+      expect(User.unscoped.find_by(id: user.id)).to be_nil
     end
 
     it 'returns 401 without auth' do
@@ -22,8 +23,6 @@ RSpec.describe 'Api::V1::Users::Destroy', type: :request do
     end
 
     it 'returns 200 with a confirmation message' do
-      allow_any_instance_of(Users::Destroy).to receive(:call).and_return(true)
-
       delete '/api/v1/users/me', headers: headers
 
       expect(response).to have_http_status(:ok)

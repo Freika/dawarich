@@ -26,6 +26,9 @@ module Auth
   # (`false`) so every email-collision flow goes through the email-verified
   # link-token path.
   class FindOrCreateOauthUser
+    class UnverifiedEmail < StandardError; end
+    class LinkVerificationSent < StandardError; end
+
     def initialize(provider:, provider_label:, claims:, email_verified:)
       @provider = provider
       @provider_label = provider_label
@@ -54,9 +57,9 @@ module Auth
     private
 
     # Returns a [user, created] tuple on the "silent auto-link" path, or
-    # raises a controller-scoped error to short-circuit the response.
+    # raises a service-level error to short-circuit the response.
     def handle_email_collision(existing)
-      raise controller_error(:UnverifiedEmail) unless @email_verified
+      raise UnverifiedEmail unless @email_verified
 
       if auto_link_allowed?
         existing.update!(provider: @provider, uid: @uid)
@@ -64,7 +67,7 @@ module Auth
       end
 
       send_verification_email(existing)
-      raise controller_error(:LinkVerificationSent)
+      raise LinkVerificationSent
     end
 
     # PR-A: Flipper is not yet wired in; default to the safe path (require
@@ -115,14 +118,6 @@ module Auth
       User.create_or_find_by!(provider: @provider, uid: @uid) do |u|
         u.assign_attributes(attrs.except(:provider, :uid))
       end
-    end
-
-    def controller_error(name)
-      controller_klass = {
-        'apple'  => Api::V1::Auth::AppleController,
-        'google' => Api::V1::Auth::GoogleController
-      }.fetch(@provider)
-      controller_klass.const_get(name)
     end
   end
 end
