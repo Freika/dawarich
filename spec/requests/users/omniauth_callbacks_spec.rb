@@ -148,4 +148,22 @@ RSpec.describe 'Users::OmniauthCallbacks', type: :request do
       end.not_to raise_error
     end
   end
+
+  describe 'pending_payment users' do
+    let(:pending_email) { 'pending_oauth@example.com' }
+    let!(:pending_user) do
+      u = create(:user, email: pending_email, skip_auto_trial: true)
+      u.update_columns(status: User.statuses[:pending_payment])
+      u
+    end
+
+    before { mock_openid_connect_auth(email: pending_email) }
+
+    it 'redirects pending_payment users to /trial/resume after OAuth sign-in' do
+      Rails.application.env_config['omniauth.auth'] = OmniAuth.config.mock_auth[:openid_connect]
+      get '/users/auth/openid_connect/callback'
+
+      expect(response).to redirect_to(trial_resume_path)
+    end
+  end
 end

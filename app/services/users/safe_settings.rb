@@ -27,8 +27,6 @@ class Users::SafeSettings
     'visits_suggestions_enabled' => 'true',
     'enabled_map_layers' => %w[Tracks Heatmap],
     'maps_maplibre_style' => 'light',
-    'monthly_digest_emails_enabled' => true,
-    'yearly_digest_emails_enabled' => true,
     'news_emails_enabled' => true,
     'globe_projection' => false,
     'supporter_email' => nil,
@@ -52,8 +50,14 @@ class Users::SafeSettings
     'transportation_expert_mode' => false,
     'min_minutes_spent_in_city' => 60,
     'max_gap_minutes_in_city' => 120,
+    # GPS noise filtering (Points::AnomalyFilter)
+    'gps_filtering_enabled' => true,
+    'gps_accuracy_threshold' => 100,
     'timezone' => ENV.fetch('TIME_ZONE', 'UTC')
   }.freeze
+
+  GPS_ACCURACY_THRESHOLD_MIN = 50
+  GPS_ACCURACY_THRESHOLD_MAX = 1000
 
   def initialize(settings = {}, plan: nil)
     @settings = DEFAULT_VALUES.deep_dup.deep_merge(settings)
@@ -89,6 +93,8 @@ class Users::SafeSettings
       transportation_expert_mode: transportation_expert_mode?,
       min_minutes_spent_in_city: min_minutes_spent_in_city,
       max_gap_minutes_in_city: max_gap_minutes_in_city,
+      gps_filtering_enabled: gps_filtering_enabled?,
+      gps_accuracy_threshold: gps_accuracy_threshold,
       timezone: timezone
     }
   end
@@ -197,17 +203,11 @@ class Users::SafeSettings
   end
 
   def monthly_digest_emails_enabled?
-    value = settings['monthly_digest_emails_enabled']
-    return true if value.nil?
-
-    ActiveModel::Type::Boolean.new.cast(value)
+    fetch_with_legacy_fallback('monthly_digest_emails_enabled', 'digest_emails_enabled', default: true)
   end
 
   def yearly_digest_emails_enabled?
-    value = settings['yearly_digest_emails_enabled']
-    return true if value.nil?
-
-    ActiveModel::Type::Boolean.new.cast(value)
+    fetch_with_legacy_fallback('yearly_digest_emails_enabled', 'digest_emails_enabled', default: true)
   end
 
   def news_emails_enabled?
@@ -252,9 +252,28 @@ class Users::SafeSettings
     settings['timezone'] || DEFAULT_VALUES['timezone']
   end
 
+  def gps_filtering_enabled?
+    value = settings['gps_filtering_enabled']
+    return true if value.nil?
+
+    ActiveModel::Type::Boolean.new.cast(value)
+  end
+
+  def gps_accuracy_threshold
+    raw = settings['gps_accuracy_threshold'] || DEFAULT_VALUES['gps_accuracy_threshold']
+    raw.to_i.clamp(GPS_ACCURACY_THRESHOLD_MIN, GPS_ACCURACY_THRESHOLD_MAX)
+  end
+
   private
 
   def lite?
     @plan&.to_sym == :lite
+  end
+
+  def fetch_with_legacy_fallback(new_key, legacy_key, default:)
+    return ActiveModel::Type::Boolean.new.cast(settings[new_key]) if settings.key?(new_key)
+    return ActiveModel::Type::Boolean.new.cast(settings[legacy_key]) if settings.key?(legacy_key)
+
+    default
   end
 end

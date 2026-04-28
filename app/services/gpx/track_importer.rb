@@ -47,9 +47,14 @@ class Gpx::TrackImporter
   def prepare_point(point)
     return if point['lat'].blank? || point['lon'].blank? || point['time'].blank?
 
+    elevation = point['ele'].to_f
+
     {
       lonlat: "POINT(#{point['lon'].to_d} #{point['lat'].to_d})",
-      altitude: point['ele'].to_f,
+      # During the integer→decimal altitude migration we write to both
+      # columns; readers (`Point#altitude`) prefer altitude_decimal.
+      altitude: elevation,
+      altitude_decimal: elevation,
       timestamp: Time.zone.parse(point['time']).utc.to_i,
       import_id: import.id,
       velocity: speed(point),

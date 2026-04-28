@@ -66,6 +66,28 @@ RSpec.describe 'settings/general', type: :request do
         expect(user.reload.settings['yearly_digest_emails_enabled']).to eq(false)
       end
 
+      context 'when the user still has the legacy digest_emails_enabled key' do
+        let!(:user) { create(:user, settings: { 'digest_emails_enabled' => false }) }
+
+        it 'removes the legacy key once a new digest key is written, leaving only the new key' do
+          patch settings_general_path, params: { monthly_digest_emails_enabled: '0' }
+
+          settings = user.reload.settings
+          expect(settings).to have_key('monthly_digest_emails_enabled')
+          expect(settings['monthly_digest_emails_enabled']).to eq(false)
+          expect(settings).not_to have_key('digest_emails_enabled')
+        end
+
+        it 'keeps the yearly default at true (via SafeSettings) after the legacy key is dropped' do
+          patch settings_general_path, params: { monthly_digest_emails_enabled: '0' }
+
+          user.reload
+          expect(user.settings).not_to have_key('digest_emails_enabled')
+          expect(user.settings).not_to have_key('yearly_digest_emails_enabled')
+          expect(user.safe_settings.yearly_digest_emails_enabled?).to be true
+        end
+      end
+
       it 'updates timezone setting with valid timezone' do
         patch settings_general_path, params: { timezone: 'America/New_York' }
 

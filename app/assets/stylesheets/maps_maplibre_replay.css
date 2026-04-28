@@ -24,6 +24,12 @@
   left: calc(50% + 240px);
 }
 
+/* When the Timeline tab is open the panel is 720px wide — push the replay
+   panel further right so it stays centered over the visible map area. */
+.maps-maplibre-container.panel-timeline-expanded ~ .replay-panel {
+  left: calc(50% + 360px);
+}
+
 .replay-panel.hidden {
   display: none;
 }
@@ -428,17 +434,24 @@
   .maps-maplibre-container.panel-open ~ .replay-panel {
     left: calc(50% + 210px);
   }
+  .maps-maplibre-container.panel-timeline-expanded ~ .replay-panel {
+    left: calc(50% + 310px);
+  }
 }
 
 @media (max-width: 1024px) {
   .maps-maplibre-container.panel-open ~ .replay-panel {
     left: calc(50% + 190px);
   }
+  .maps-maplibre-container.panel-timeline-expanded ~ .replay-panel {
+    left: calc(50% + 260px);
+  }
 }
 
 /* On mobile, side panel overlays instead of shrinking map — no shift needed */
 @media (max-width: 768px) {
-  .maps-maplibre-container.panel-open ~ .replay-panel {
+  .maps-maplibre-container.panel-open ~ .replay-panel,
+  .maps-maplibre-container.panel-timeline-expanded ~ .replay-panel {
     left: 50%;
   }
 }

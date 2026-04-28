@@ -78,6 +78,8 @@ class Imports::Create
     when 'csv'                          then Csv::Importer
     when 'tcx'                          then Tcx::Importer
     when 'fit'                          then Fit::Importer
+    when 'zip'
+      raise ArgumentError, 'Could not classify zip contents -- file may be corrupted'
     else
       raise ArgumentError, "Unsupported source: #{source}"
     end

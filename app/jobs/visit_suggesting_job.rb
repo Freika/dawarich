@@ -10,6 +10,8 @@ class VisitSuggestingJob < ApplicationJob
   def perform(user_id:, start_at:, end_at:)
     user = find_user_or_skip(user_id) || return
 
+    return unless user.safe_settings.visits_suggestions_enabled?
+
     with_user_timezone(user) do
       start_time = parse_date(start_at)
       end_time = parse_date(end_at)

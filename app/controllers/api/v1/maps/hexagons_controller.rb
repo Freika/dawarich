@@ -2,6 +2,7 @@
 
 class Api::V1::Maps::HexagonsController < ApiController
   skip_before_action :authenticate_api_key, if: :public_sharing_request?
+  skip_before_action :reject_pending_payment!, if: :public_sharing_request?
 
   def index
     context = resolve_hexagon_context

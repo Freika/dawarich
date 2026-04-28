@@ -97,6 +97,65 @@ RSpec.describe Users::Destroy do
         expect(Rails.logger).to have_received(:info).with(/Cancelled \d+ scheduled jobs for user #{user.id}/)
       end
 
+      describe 'CANCELLABLE_JOB_CLASSES' do
+        it 'lists only constants that resolve at runtime (no stale class names)' do
+          described_class::CANCELLABLE_JOB_CLASSES.each do |class_name|
+            expect { class_name.constantize }.not_to(
+              raise_error,
+              "Expected #{class_name} to constantize, but it does not exist."
+            )
+          end
+        end
+
+        it 'includes both the monthly and yearly digest email-sending jobs' do
+          expect(described_class::CANCELLABLE_JOB_CLASSES).to include(
+            'Users::Digests::Yearly::EmailSendingJob',
+            'Users::Digests::Monthly::EmailSendingJob'
+          )
+        end
+      end
+
+      context 'when both monthly and yearly digest email jobs are scheduled for the user' do
+        before do
+          Sidekiq.redis do |conn|
+            conn.zadd(
+              'schedule',
+              1.day.from_now.to_f,
+              {
+                'class' => 'ActiveJob::QueueAdapters::SidekiqAdapter::JobWrapper',
+                'wrapped' => 'Users::Digests::Monthly::EmailSendingJob',
+                'queue' => 'mailers',
+                'args' => [{ 'job_class' => 'Users::Digests::Monthly::EmailSendingJob',
+                             'arguments' => [user.id, 2026, 3] }]
+              }.to_json
+            )
+            conn.zadd(
+              'schedule',
+              1.day.from_now.to_f,
+              {
+                'class' => 'ActiveJob::QueueAdapters::SidekiqAdapter::JobWrapper',
+                'wrapped' => 'Users::Digests::Yearly::EmailSendingJob',
+                'queue' => 'mailers',
+                'args' => [{ 'job_class' => 'Users::Digests::Yearly::EmailSendingJob',
+                             'arguments' => [user.id, 2025] }]
+              }.to_json
+            )
+          end
+        end
+
+        after do
+          Sidekiq.redis { |c| c.del('schedule') }
+        end
+
+        it 'cancels both jobs from the scheduled set' do
+          expect(Sidekiq::ScheduledSet.new.size).to eq(2)
+
+          service.call
+
+          expect(Sidekiq::ScheduledSet.new.size).to eq(0)
+        end
+      end
+
       context 'when job cancellation fails' do
         before do
           allow(Sidekiq::ScheduledSet).to receive(:new).and_raise(StandardError, 'Redis error')

@@ -75,10 +75,12 @@ class Fit::Importer
     raw_data['temperature'] = record.temperature if record.respond_to?(:temperature) && record.temperature
     raw_data['activity_type'] = activity_type if activity_type
 
-    {
+    altitude_value = record.altitude&.to_f
+
+    attrs = {
       lonlat: "POINT(#{lon} #{lat})",
       timestamp: record.timestamp.to_i,
-      altitude: record.altitude&.to_f,
+      altitude: altitude_value,
       velocity: extract_speed(record),
       user_id: user_id,
       import_id: import.id,
@@ -86,6 +88,8 @@ class Fit::Importer
       created_at: Time.current,
       updated_at: Time.current
     }
+    attrs[:altitude_decimal] = altitude_value if Point.altitude_decimal_supported?
+    attrs
   end
 
   def extract_speed(record)

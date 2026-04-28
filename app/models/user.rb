@@ -6,6 +6,8 @@ class User < ApplicationRecord
   include PlanScopable
   include SoftDeletable # introduces default_scope and soft-delete methods
 
+  attr_accessor :skip_auto_trial
+
   devise :two_factor_authenticatable, :registerable,
          :recoverable, :rememberable, :validatable, :trackable,
          :lockable,
@@ -28,8 +30,9 @@ class User < ApplicationRecord
   has_many :digests, class_name: 'Users::Digest', dependent: :destroy
 
   after_create :create_api_key
-  after_commit :activate, on: :create, if: -> { DawarichSettings.self_hosted? }
-  after_commit :start_trial, on: :create, if: -> { !DawarichSettings.self_hosted? }
+  after_commit :activate, on: :create, if: -> { DawarichSettings.self_hosted? && !skip_auto_trial }
+  after_commit :start_trial, on: :create, if: -> { !DawarichSettings.self_hosted? && !skip_auto_trial }
+  after_update :invalidate_plan_rate_limit_cache, if: :saved_change_to_plan?
 
   before_save :sanitize_input
 
@@ -41,7 +44,8 @@ class User < ApplicationRecord
 
   scope :active_or_trial, -> { where(status: %i[active trial]) }
 
-  enum :status, { inactive: 0, active: 1, trial: 2 }
+  enum :status, { inactive: 0, active: 1, trial: 2, pending_payment: 3 }
+  enum :subscription_source, { none: 0, paddle: 1, apple_iap: 2, google_play: 3 }, default: :none, prefix: :sub_source
   enum :plan, { lite: 0, pro: 1 }, default: :pro
 
   def oauth_user?
@@ -121,16 +125,23 @@ class User < ApplicationRecord
     (trial? || !active_until&.future?) && !DawarichSettings.self_hosted?
   end
 
-  def generate_subscription_token
+  def auto_converting_trial?
+    trial? && active_until&.future? && !sub_source_none?
+  end
+
+  def generate_subscription_token(plan: nil, interval: nil, variant: nil)
     payload = {
       user_id: id,
       email: email,
+      purpose: 'checkout',
+      jti: SecureRandom.uuid,
       exp: 30.minutes.from_now.to_i
     }
+    payload[:plan] = plan if plan.present?
+    payload[:interval] = interval if interval.present?
+    payload[:variant] = variant if variant.present?
 
-    secret_key = ENV['JWT_SECRET_KEY']
-
-    JWT.encode(payload, secret_key, 'HS256')
+    JWT.encode(payload, ENV.fetch('JWT_SECRET_KEY'), 'HS256')
   end
 
   def export_data
@@ -234,21 +245,15 @@ class User < ApplicationRecord
 
   def start_trial
     update(status: :trial, active_until: 7.days.from_now)
-    schedule_welcome_emails
+
+    Users::MailerSendingJob.perform_later(id, 'welcome')
+    Users::MailerSendingJob.set(wait: 2.days).perform_later(id, 'explore_features')
 
     Users::TrialWebhookJob.perform_later(id)
   end
 
-  def schedule_welcome_emails
-    Users::MailerSendingJob.perform_later(id, 'welcome')
-    Users::MailerSendingJob.set(wait: 2.days).perform_later(id, 'explore_features')
-    Users::MailerSendingJob.set(wait: 5.days).perform_later(id, 'trial_expires_soon')
-    Users::MailerSendingJob.set(wait: 7.days).perform_later(id, 'trial_expired')
-    schedule_post_trial_emails
-  end
-
-  def schedule_post_trial_emails
-    Users::MailerSendingJob.set(wait: 9.days).perform_later(id, 'post_trial_reminder_early')
-    Users::MailerSendingJob.set(wait: 14.days).perform_later(id, 'post_trial_reminder_late')
+  def invalidate_plan_rate_limit_cache
+    key = api_key_previously_was || api_key_was || api_key
+    Rails.cache.delete("rack_attack/plan/#{key}") if key.present?
   end
 end

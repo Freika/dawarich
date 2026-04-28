@@ -287,6 +287,69 @@ RSpec.describe Visits::PlaceFinder do
     end
   end
 
+  describe 'cross-user isolation (IDOR)' do
+    # Regression: PlaceFinder.find_suggested_places (Step 9) queries
+    # Place.near(...) UNSCOPED, returning every user's nearby places. When
+    # user B's auto-suggestion path matches a global place at the same
+    # location, suggested_places must NOT leak user A's user-scoped nearby
+    # places.
+    let(:user_a) { create(:user) }
+    let(:user_b) { create(:user) }
+
+    let(:lat) { 52.5200 }
+    let(:lon) { 13.4050 }
+
+    # A global place at the location triggers find_existing_place to return
+    # a match, which is what causes find_suggested_places to be invoked.
+    let!(:global_place) do
+      create(:place,
+             user: nil,
+             name: 'Global Landmark',
+             latitude: lat,
+             longitude: lon,
+             lonlat: "POINT(#{lon} #{lat})")
+    end
+
+    # User A's private place near the same location. Must NOT be returned
+    # to user B as a suggestion.
+    let!(:user_a_private_place) do
+      offset = 0.0001 # ~11m
+      create(:place,
+             user: user_a,
+             name: "User A's Private Place",
+             latitude: lat + offset,
+             longitude: lon + offset,
+             lonlat: "POINT(#{lon + offset} #{lat + offset})")
+    end
+
+    let(:visit_data) do
+      {
+        center_lat: lat,
+        center_lon: lon,
+        suggested_name: 'New Place',
+        points: []
+      }
+    end
+
+    before do
+      allow(Geocoder).to receive(:search).and_return([])
+    end
+
+    it 'does not return user A\'s user-scoped place to user B' do
+      finder = described_class.new(user_b)
+      result = finder.find_or_create_place(visit_data)
+
+      # The main place is the global one (legitimately shared).
+      expect(result[:main_place]).to eq(global_place)
+
+      # Suggested places must NOT include user A's private place.
+      expect(result[:suggested_places]).not_to include(user_a_private_place)
+
+      foreign_user_ids = result[:suggested_places].map(&:user_id).compact - [user_b.id]
+      expect(foreign_user_ids).to be_empty
+    end
+  end
+
   describe 'private methods' do
     context '#build_place_name' do
       it 'combines name components correctly' do

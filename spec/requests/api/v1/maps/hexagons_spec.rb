@@ -100,6 +100,25 @@ RSpec.describe 'Api::V1::Maps::Hexagons', type: :request do
         end
       end
 
+      context 'when the calling API key user is pending_payment' do
+        let(:pending_user) do
+          u = create(:user, skip_auto_trial: true)
+          u.update_columns(status: User.statuses[:pending_payment])
+          u
+        end
+        let(:pending_headers) { { 'Authorization' => "Bearer #{pending_user.api_key}" } }
+
+        it 'returns 200 with hexagon data and does not 402' do
+          get '/api/v1/maps/hexagons', params: uuid_params, headers: pending_headers
+
+          expect(response).to have_http_status(:ok)
+          expect(response).not_to have_http_status(:payment_required)
+
+          json_response = JSON.parse(response.body)
+          expect(json_response['type']).to eq('FeatureCollection')
+        end
+      end
+
       it 'returns hexagon data without API key' do
         get '/api/v1/maps/hexagons', params: uuid_params
 

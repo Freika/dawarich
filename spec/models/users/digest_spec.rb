@@ -432,8 +432,10 @@ RSpec.describe Users::Digest, type: :model do
     let(:monthly_digest) { create(:users_digest, :monthly, user: user, year: 2024, month: 1) }
 
     describe '#daily_distances' do
-      it 'returns monthly_distances' do
-        expect(monthly_digest.daily_distances).to eq(monthly_digest.monthly_distances)
+      it 'normalizes string-keyed monthly_distances hash into a sorted array of [day, distance] pairs' do
+        expected = monthly_digest.monthly_distances.map { |day, distance| [day.to_i, distance] }.sort_by(&:first)
+
+        expect(monthly_digest.daily_distances).to eq(expected)
       end
     end
 

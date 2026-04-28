@@ -10,6 +10,13 @@ class PlacesController < ApplicationController
     @places = current_user.places.page(params[:page]).per(20)
   end
 
+  def show
+    @place = current_user.places.includes(:tags).find(params[:id])
+    @recent_visits = @place.visits.order(started_at: :desc).limit(5)
+
+    render layout: false
+  end
+
   def create
     @place = current_user.places.build(place_params.except(:tag_ids))
 
@@ -41,10 +48,22 @@ class PlacesController < ApplicationController
 
       respond_to do |format|
         format.turbo_stream do
-          render turbo_stream: [
-            turbo_stream.replace('place-creation-data', html: place_data_element(updated: true)),
-            stream_flash(:success, 'Place updated successfully!')
-          ]
+          if drawer_request?
+            recent_visits = @place.visits.order(started_at: :desc).limit(5)
+            render turbo_stream: [
+              turbo_stream.replace(
+                'place-drawer',
+                partial: 'places/drawer',
+                locals: { place: @place, recent_visits: recent_visits }
+              ),
+              stream_flash(:success, 'Place updated successfully!')
+            ]
+          else
+            render turbo_stream: [
+              turbo_stream.replace('place-creation-data', html: place_data_element(updated: true)),
+              stream_flash(:success, 'Place updated successfully!')
+            ]
+          end
         end
       end
     else
@@ -83,6 +102,10 @@ class PlacesController < ApplicationController
 
   def set_place
     @place = current_user.places.find(params[:id])
+  end
+
+  def drawer_request?
+    request.headers['Turbo-Frame'] == 'place-drawer'
   end
 
   def place_params

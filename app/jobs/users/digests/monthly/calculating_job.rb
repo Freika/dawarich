@@ -14,14 +14,18 @@ class Users::Digests::Monthly::CalculatingJob < ApplicationJob
 
   private
 
+  BACKTRACE_LINE_LIMIT = 20
+
   def create_digest_failed_notification(user_id, error)
     user = find_user_or_skip(user_id) || return
+
+    backtrace = error.backtrace&.first(BACKTRACE_LINE_LIMIT)&.join("\n")
 
     Notifications::Create.new(
       user:,
       kind: :error,
       title: 'Monthly Digest calculation failed',
-      content: "#{error.message}, stacktrace: #{error.backtrace.join("\n")}"
+      content: "#{error.message}, stacktrace: #{backtrace}"
     ).call
   rescue ActiveRecord::RecordNotFound
     nil

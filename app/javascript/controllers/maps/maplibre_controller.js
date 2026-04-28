@@ -1,10 +1,8 @@
 import { Controller } from "@hotwired/stimulus"
-import maplibregl from "maplibre-gl"
 import { Toast } from "maps_maplibre/components/toast"
 import { ReplayManager } from "maps_maplibre/managers/replay_manager"
 import { ApiClient } from "maps_maplibre/services/api_client"
 import { CleanupHelper } from "maps_maplibre/utils/cleanup_helper"
-import { escapeHtml } from "maps_maplibre/utils/geojson_transformers"
 import { cancelAllPreviews } from "maps_maplibre/utils/layer_gate"
 import { performanceMonitor } from "maps_maplibre/utils/performance_monitor"
 import { SearchManager } from "maps_maplibre/utils/search_manager"
@@ -53,6 +51,8 @@ export default class extends Controller {
     "minutesBetweenValue",
     "minMinutesInCityValue",
     "maxGapMinutesValue",
+    "gpsAccuracyThresholdValue",
+    "gpsFilteringToggle",
     // Search
     "searchInput",
     "searchResults",
@@ -180,6 +180,17 @@ export default class extends Controller {
     this.settings = this.settingsController.settings
     this.settings.timezone = this.timezoneValue
 
+    // When the page loads with the Timeline panel open (deep link or
+    // SPA-style nav from elsewhere), the visits layer is always relevant —
+    // it's the on-map counterpart of the rail. Force it on for this session
+    // even if the user's saved layer toggle is off, without persisting back
+    // to the server.
+    const urlParams = new URLSearchParams(window.location.search)
+    if (urlParams.get("panel") === "timeline") {
+      this.settings.visitsEnabled = true
+      this.settingsController.settings.visitsEnabled = true
+    }
+
     // Sync toggle states with loaded settings
     this.settingsController.syncToggleStates()
 
@@ -247,6 +258,15 @@ export default class extends Controller {
       document,
       "timeline-feed:entry-deselect",
       this.boundHandleEntryDeselect,
+    )
+
+    // SPA date-range change from the Timeline calendar — refetch all enabled
+    // layers for the new start/end without tearing down the map instance.
+    this.boundHandleDateNavigated = this.handleTimelineDateNavigated.bind(this)
+    this.cleanup.addEventListener(
+      document,
+      "timeline-feed:date-navigated",
+      this.boundHandleDateNavigated,
     )
 
     // Initialize search manager
@@ -321,6 +341,7 @@ export default class extends Controller {
     this._stopReplayPlayback()
     this.settingsController?.stopRecalculationPolling()
     this.searchManager?.destroy()
+    this.visitsManager?.destroy()
     cancelAllPreviews()
     this.cleanup.cleanup()
     this.map?.remove()
@@ -403,6 +424,35 @@ export default class extends Controller {
     this.loadMapData()
     this.refreshTimelineFeedIfActive()
     this.debouncedLoadFamilyHistory()
+  }
+
+  /**
+   * Timeline panel requested a new day (SPA navigation — no page reload).
+   * Mirrors `monthChanged` exactly, including the date format: the Points/Tracks
+   * API expects `DateManager.formatDateForAPI`'s local `YYYY-MM-DDTHH:MM+OFFSET`
+   * shape. Using `Date#toISOString()` (UTC `Z` suffix) here was causing Tracks
+   * to come back empty because the server parsed the dates differently.
+   */
+  handleTimelineDateNavigated(event) {
+    const { startAt, endAt } = event.detail || {}
+    if (!startAt || !endAt) return
+
+    const toApiDate = (local) => {
+      const d = new Date(local)
+      if (Number.isNaN(d.getTime())) return null
+      return DateManager.formatDateForAPI(d)
+    }
+    const start = toApiDate(startAt)
+    const end = toApiDate(endAt)
+    if (!start || !end) return
+
+    this.startDateValue = start
+    this.endDateValue = end
+
+    this._clearDayHighlight?.()
+    this.loadMapData()
+    this.refreshTimelineFeedIfActive?.()
+    this.debouncedLoadFamilyHistory?.()
   }
 
   debouncedLoadFamilyHistory() {
@@ -511,6 +561,19 @@ export default class extends Controller {
       // Shrink/expand map container
       if (this.hasContainerTarget) {
         this.containerTarget.classList.toggle("panel-open", isOpening)
+        // The Timeline tab puts the map container in `panel-timeline-expanded`
+        // (720px-wide panel + matching margin-left). When the user closes the
+        // panel we have to clear that too — otherwise the panel slides
+        // off-screen but the map keeps its 720px left margin and the user
+        // sees an empty dark column where the panel used to be.
+        if (!isOpening) {
+          this.containerTarget.classList.remove("panel-timeline-expanded")
+          this.settingsPanelTarget.classList.remove("timeline-expanded")
+          // Cluster doubles as the panel's tab strip — clear its active
+          // state when the panel is dismissed (e.g. via the header X) so
+          // users don't see a button still highlighted with no panel open.
+          document.dispatchEvent(new CustomEvent("map-panel:closed"))
+        }
         // Tell MapLibre to recalculate after the CSS transition
         setTimeout(() => this.map?.resize(), 350)
       }
@@ -524,9 +587,58 @@ export default class extends Controller {
     const { tab } = event.detail
     if (tab === "timeline-feed") {
       this.loadTimelineFeed()
+      // The timeline rail is the on-panel counterpart of the visits map
+      // layer — keep them in sync. If the visits layer is currently off,
+      // turn it on (session-only, no persistence) so the dots appear next
+      // to the day's entries.
+      this._ensureVisitsLayerEnabled()
     } else if (this._highlightedDay) {
       // Leaving timeline-feed tab — restore full opacity
       this._clearDayHighlight()
+    }
+  }
+
+  // Force-enables the visits layer for this session without persisting the
+  // change to the server — the user's saved Layers preference shouldn't be
+  // flipped just because they opened Timeline once.
+  //
+  // We DO update the in-memory `settings.visitsEnabled` so subsequent
+  // `loadMapData()` calls (e.g. when the user navigates to a different
+  // day) include visits in the fetch + the loading-counter expectations.
+  // Otherwise the loader badge reads "N tracks" only and the map ends
+  // up with stale visits when a new day is selected.
+  async _ensureVisitsLayerEnabled() {
+    if (!this.hasVisitsToggleTarget) return
+
+    // In-memory only — don't go through SettingsManager.updateSetting,
+    // which would persist back to the server.
+    if (this.settings) this.settings.visitsEnabled = true
+    if (this.dataLoader?.settings) this.dataLoader.settings.visitsEnabled = true
+    if (this.settingsController?.settings) {
+      this.settingsController.settings.visitsEnabled = true
+    }
+
+    if (this.visitsToggleTarget.checked) return
+    this.visitsToggleTarget.checked = true
+    if (this.hasVisitsSearchTarget) {
+      this.visitsSearchTarget.style.display = "block"
+    }
+
+    const visitsLayer = this.layerManager?.getLayer("visits")
+    if (!visitsLayer) return
+
+    try {
+      if (!visitsLayer.data?.features?.length) {
+        const visits = await this.api.fetchVisits({
+          start_at: this.startDateValue,
+          end_at: this.endDateValue,
+        })
+        this.filterManager?.setAllVisits(visits)
+        visitsLayer.update(this.dataLoader.visitsToGeoJSON(visits))
+      }
+      visitsLayer.show()
+    } catch (err) {
+      console.error("Failed to auto-enable visits layer for timeline:", err)
     }
   }
 
@@ -680,15 +792,7 @@ export default class extends Controller {
    * Highlights the matching route/visit on the map by dimming everything else.
    */
   handleEntryHover(event) {
-    const {
-      entryType,
-      startedAt,
-      endedAt,
-      trackId,
-      visitName,
-      visitLat,
-      visitLng,
-    } = event.detail
+    const { entryType, startedAt, endedAt, trackId, visitId } = event.detail
     if (!this.map || !startedAt || !endedAt) return
 
     this._entryHighlightActive = true
@@ -720,31 +824,39 @@ export default class extends Controller {
     this._safeSetPaint("points", "circle-opacity", pointExpr)
     this._safeSetPaint("points", "circle-stroke-opacity", pointExpr)
 
-    // Visits: for visit hovers, keep all visits visible (popup highlights the specific one);
-    // for journey hovers, dim non-matching visits
+    // Visits:
+    //   - Visit hover  → only the hovered visit stays full opacity; others are
+    //     dimmed so the on-map dot the rail row points to is unambiguous.
+    //   - Journey hover → no visit is the focus, so all visits fade nearly out;
+    //     the eye lands on the highlighted track instead.
     if (entryType === "visit") {
-      this._safeSetPaint("visits", "circle-opacity", 0.9)
-      this._safeSetPaint("visits", "circle-stroke-opacity", 1)
-      this._safeSetPaint("visits-labels", "text-opacity", 1)
-    } else {
-      const visitExpr = this._dayRangeExpr(
-        "started_at",
-        startedAt,
-        endedAt,
-        0.9,
-        DIM,
-      )
+      // Match by visit id rather than by ISO `started_at` range — the
+      // API returns timestamps with milliseconds (`...:00.000Z`) while
+      // DayAssembler renders the row attribute with second precision
+      // (`...:00Z`). Lexicographic comparison fails the equality check
+      // and dims the hovered visit along with the others.
+      const visitExpr = [
+        "case",
+        ["==", ["get", "id"], Number(visitId)],
+        1,
+        0.15,
+      ]
       this._safeSetPaint("visits", "circle-opacity", visitExpr)
       this._safeSetPaint("visits", "circle-stroke-opacity", visitExpr)
-
-      const labelExpr = this._dayRangeExpr(
-        "started_at",
-        startedAt,
-        endedAt,
-        1,
-        DIM,
+      this._safeSetPaint("visits-labels", "text-opacity", visitExpr)
+    } else {
+      const VISITS_NEARLY_INVISIBLE = 0.05
+      this._safeSetPaint("visits", "circle-opacity", VISITS_NEARLY_INVISIBLE)
+      this._safeSetPaint(
+        "visits",
+        "circle-stroke-opacity",
+        VISITS_NEARLY_INVISIBLE,
       )
-      this._safeSetPaint("visits-labels", "text-opacity", labelExpr)
+      this._safeSetPaint(
+        "visits-labels",
+        "text-opacity",
+        VISITS_NEARLY_INVISIBLE,
+      )
     }
 
     // Tracks: start_at is ISO 8601 string
@@ -766,26 +878,6 @@ export default class extends Controller {
           tracksLayer.setSelectedTrack(feature)
           this._hoverHighlightedTrack = true
         }
-      }
-    }
-
-    // Show popup for visit entries with coordinates
-    if (entryType === "visit" && visitLat && visitLng) {
-      const lat = parseFloat(visitLat)
-      const lng = parseFloat(visitLng)
-      if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
-        this._removeHoverPopup()
-        this._hoverPopup = new maplibregl.Popup({
-          closeButton: false,
-          closeOnClick: false,
-          offset: 12,
-          className: "timeline-hover-popup",
-        })
-          .setLngLat([lng, lat])
-          .setHTML(
-            `<div style="font-size:13px;font-weight:500;padding:2px 0">${escapeHtml(visitName || "Visit")}</div>`,
-          )
-          .addTo(this.map)
       }
     }
   }
@@ -1054,6 +1146,15 @@ export default class extends Controller {
   }
   updateMaxGapMinutesDisplay(event) {
     return this.settingsController.updateMaxGapMinutesDisplay(event)
+  }
+  updateGpsAccuracyThresholdDisplay(event) {
+    return this.settingsController.updateGpsAccuracyThresholdDisplay(event)
+  }
+  reapplyAnomalyFilter() {
+    return this.settingsController.reapplyAnomalyFilter()
+  }
+  recalculateUserData() {
+    return this.settingsController.recalculateUserData()
   }
   toggleGlobe(event) {
     return this.settingsController.toggleGlobe(event)
@@ -1776,6 +1877,22 @@ export default class extends Controller {
     // Start replay and update card button to Pause
     this._startReplayPlayback()
     this._updateTrackReplayButton(true)
+  }
+
+  /**
+   * Toggle the per-track points layer (triggered from the inline track info
+   * card's "Show points" switch). Delegates the actual layer/opacity work to
+   * EventHandlers — same code path the legacy Tools-tab toggle used.
+   */
+  async toggleTrackPoints(event) {
+    const target = event?.currentTarget
+    if (!target) return
+    const trackId = target.dataset.trackId
+    if (!trackId) return
+    const enabled = !!target.checked
+    if (this.eventHandlers?._toggleTrackPoints) {
+      await this.eventHandlers._toggleTrackPoints(trackId, enabled)
+    }
   }
 
   /**

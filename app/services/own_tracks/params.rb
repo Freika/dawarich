@@ -10,11 +10,13 @@ class OwnTracks::Params
   def call
     return unless valid_point?
 
-    {
+    altitude_value = params[:alt]
+
+    attrs = {
       lonlat:             "POINT(#{params[:lon]} #{params[:lat]})",
       battery:            params[:batt],
       ping:               params[:p],
-      altitude:           params[:alt],
+      altitude:           altitude_value,
       accuracy:           params[:acc],
       vertical_accuracy:  params[:vac],
       velocity:           speed,
@@ -31,6 +33,8 @@ class OwnTracks::Params
       motion_data:        Points::MotionDataExtractor.from_owntracks(params),
       raw_data:           params.deep_stringify_keys
     }
+    attrs[:altitude_decimal] = altitude_value if Point.altitude_decimal_supported?
+    attrs
   end
 
   private

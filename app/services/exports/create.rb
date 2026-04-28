@@ -25,8 +25,9 @@ class Exports::Create
 
     notify_export_failed(e)
   ensure
-    payload_tempfile.close! if payload_tempfile && !payload_tempfile.closed?
-    zipped_tempfile.close!  if zipped_tempfile  && !zipped_tempfile.closed?
+    safe_close = ->(t) { t.close! if t && !t.closed? }
+    safe_close.call(payload_tempfile)
+    safe_close.call(zipped_tempfile)
   end
 
   private

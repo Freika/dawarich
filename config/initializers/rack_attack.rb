@@ -10,6 +10,13 @@ Rack::Attack.cache.store = ActiveSupport::Cache::RedisCacheStore.new(
   db: ENV.fetch('RACK_ATTACK_REDIS_DB', '3').to_i # dbs 0-2 are reserved for app caching, sidekiq and ws.
 )
 
+# Disabled in the test environment so request specs aren't throttled by
+# accumulated counters across examples (login throttle is 5/min by IP,
+# 20/min by email — easy to trip when many specs hit /users/sign_in).
+# `spec/requests/api/v1/rate_limiting_spec.rb` re-enables it locally to
+# exercise the throttling behavior.
+Rack::Attack.enabled = false if Rails.env.test?
+
 # Configurable per-plan limits. Override in tests via Rack::Attack.api_rate_limits=
 class Rack::Attack
   class << self
@@ -57,6 +64,25 @@ Rack::Attack.throttle('api/points_creation', limit: 10_000, period: 1.hour) do |
   "points_creation:#{api_key}"
 end
 
+# Heavy-recompute endpoints that fan out into multi-hour Sidekiq work
+# (track regeneration, monthly stats, yearly digests, anomaly re-evaluation).
+# 5/hr per API key on top of the base api/token throttle, since one
+# request can saturate the :default queue for hours.
+HEAVY_RECOMPUTE_PATHS = %w[
+  /api/v1/recalculations
+  /api/v1/points/reapply_anomaly_filter
+].freeze
+
+Rack::Attack.throttle('api/heavy_recompute', limit: 5, period: 1.hour) do |req|
+  next unless req.post? && HEAVY_RECOMPUTE_PATHS.include?(req.path)
+  next if DawarichSettings.self_hosted?
+
+  api_key = req.params['api_key'] || req.get_header('HTTP_AUTHORIZATION')&.split(' ')&.last
+  next if api_key.blank?
+
+  "heavy_recompute:#{api_key}"
+end
+
 # Login brute-force protection: 5 attempts per email per minute, 20 per IP per minute.
 Rack::Attack.throttle('logins/email', limit: 5, period: 1.minute) do |req|
   next unless req.path == '/users/sign_in' && req.post?
@@ -68,6 +94,36 @@ Rack::Attack.throttle('logins/ip', limit: 20, period: 1.minute) do |req|
   next unless req.path == '/users/sign_in' && req.post?
 
   req.ip
+end
+
+Rack::Attack.throttle('subscriptions/callback', limit: 60, period: 1.minute) do |req|
+  next unless req.path == '/api/v1/subscriptions/callback' && req.post?
+
+  req.ip
+end
+
+Rack::Attack.throttle('trial/welcome', limit: 30, period: 1.minute) do |req|
+  next unless req.path == '/trial/welcome' && req.get?
+
+  req.ip
+end
+
+Rack::Attack.throttle('signups/ip_burst', limit: 5, period: 1.minute) do |req|
+  next unless req.path == '/users' && req.post?
+
+  req.ip
+end
+
+Rack::Attack.throttle('signups/ip_hourly', limit: 20, period: 1.hour) do |req|
+  next unless req.path == '/users' && req.post?
+
+  req.ip
+end
+
+# Flipper admin UI: 30 req / 5 min per IP. The UI sits behind admin auth, but
+# limit hammering so an attacker (or buggy client) can't brute-force or scrape it.
+Rack::Attack.throttle('admin/flipper', limit: 30, period: 5.minutes) do |req|
+  req.ip if req.path.start_with?('/admin/flipper')
 end
 
 Rack::Attack.throttled_responder = lambda do |request|

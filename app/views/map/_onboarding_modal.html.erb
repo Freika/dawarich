@@ -5,7 +5,8 @@
      data-onboarding-modal-user-trial-value="<%= current_user.trial? %>"
      data-onboarding-modal-imports-count-value="<%= current_user.imports.count %>"
      data-onboarding-modal-demo-data-url-value="<%= demo_data_settings_onboarding_path %>"
-     data-onboarding-modal-has-demo-data-value="<%= current_user.imports.exists?(demo: true) %>">
+     data-onboarding-modal-has-demo-data-value="<%= current_user.imports.exists?(demo: true) %>"
+     data-onboarding-modal-user-id-value="<%= current_user.id %>">
   <dialog id="getting_started" class="modal" data-onboarding-modal-target="modal">
     <div class="modal-box max-w-2xl bg-base-200">
 

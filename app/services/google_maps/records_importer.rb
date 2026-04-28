@@ -27,10 +27,12 @@ class GoogleMaps::RecordsImporter
   private
 
   def prepare_location_data(location)
-    {
+    altitude_value = location['altitude']
+
+    attrs = {
       lonlat: "POINT(#{location['longitudeE7'].to_f / 10**7} #{location['latitudeE7'].to_f / 10**7})",
       timestamp: parse_timestamp(location),
-      altitude: location['altitude'],
+      altitude: altitude_value,
       velocity: location['velocity'],
       accuracy: location['accuracy'],
       vertical_accuracy: location['verticalAccuracy'],
@@ -45,6 +47,8 @@ class GoogleMaps::RecordsImporter
       created_at: Time.current,
       updated_at: Time.current
     }
+    attrs[:altitude_decimal] = altitude_value if Point.altitude_decimal_supported?
+    attrs
   end
 
   def parse_timestamp(location)

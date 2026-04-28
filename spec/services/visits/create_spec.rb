@@ -51,6 +51,7 @@ RSpec.describe Visits::Create do
     context 'when reusing existing place' do
       let!(:existing_place) do
         create(:place,
+               user: user,
                latitude: 52.52,
                longitude: 13.405,
                lonlat: 'POINT(13.405 52.52)')
@@ -66,6 +67,96 @@ RSpec.describe Visits::Create do
 
       it 'creates a new visit with the existing place' do
         expect { service.call }.to change { user.visits.count }.by(1)
+        expect(service.visit.place).to eq(existing_place)
+      end
+    end
+
+    context 'IDOR — cross-user place leak' do
+      let(:user_a) { create(:user) }
+      let(:user_b) { create(:user) }
+
+      let!(:user_a_place) do
+        create(:place,
+               user: user_a,
+               name: "User A's Place",
+               latitude: 52.52,
+               longitude: 13.405,
+               lonlat: 'POINT(13.405 52.52)')
+      end
+
+      let!(:user_b_existing_visit_with_user_a_place) do
+        create(:visit, user: user_b, place: user_a_place,
+                       started_at: Time.zone.parse('2023-11-01T10:00:00Z'),
+                       ended_at: Time.zone.parse('2023-11-01T11:00:00Z'))
+      end
+
+      let(:user_b_params) do
+        {
+          name: "User B's New Visit",
+          latitude: 52.52,
+          longitude: 13.405,
+          started_at: '2023-12-01T10:00:00Z',
+          ended_at: '2023-12-01T12:00:00Z'
+        }
+      end
+
+      subject(:service) { described_class.new(user_b, user_b_params) }
+
+      it "does not attach user A's place to user B's new visit" do
+        service.call
+        new_visit = user_b.visits
+                          .where(started_at: Time.zone.parse('2023-12-01T10:00:00Z'))
+                          .first
+
+        expect(new_visit).to be_present
+        expect(new_visit.place_id).not_to eq(user_a_place.id)
+        expect(new_visit.place.user_id).to eq(user_b.id) if new_visit.place
+      end
+
+      it 'creates a fresh place owned by user B at the requested coordinates' do
+        expect { service.call }.to change { user_b.places.count }.by(1)
+
+        new_place = user_b.places.last
+        expect(new_place.user_id).to eq(user_b.id)
+        expect(new_place.latitude).to eq(52.52)
+        expect(new_place.longitude).to eq(13.405)
+      end
+    end
+
+    context 'distance threshold is exactly 100 meters (no degree-vs-meter drift)' do
+      let(:base_lat) { 52.52 }
+      let(:base_lon) { 13.405 }
+
+      let!(:existing_place) do
+        create(:place,
+               user: user,
+               latitude: base_lat,
+               longitude: base_lon,
+               lonlat: "POINT(#{base_lon} #{base_lat})")
+      end
+      let!(:existing_visit) { create(:visit, user: user, place: existing_place) }
+
+      let(:lon_offset_120m) { 0.0018 }
+
+      it 'does NOT match a place 120m away (would have matched under the old 0.001° threshold)' do
+        params_120m_away = valid_params.merge(
+          latitude: base_lat,
+          longitude: base_lon + lon_offset_120m
+        )
+
+        service = described_class.new(user, params_120m_away)
+        expect { service.call }.to change { Place.count }.by(1)
+        expect(service.visit.place).not_to eq(existing_place)
+      end
+
+      it 'matches a place 50m away' do
+        params_50m_away = valid_params.merge(
+          latitude: base_lat,
+          longitude: base_lon + 0.0006
+        )
+
+        service = described_class.new(user, params_50m_away)
+        expect { service.call }.not_to(change { Place.count })
         expect(service.visit.place).to eq(existing_place)
       end
     end

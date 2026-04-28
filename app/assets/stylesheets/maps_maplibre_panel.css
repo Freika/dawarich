@@ -11,7 +11,9 @@
   z-index: 9999;
   transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
-  flex-direction: row-reverse; /* Tabs on right, content on left */
+  flex-direction: column; /* Single column — the floating cluster on the
+                             panel's right edge serves as the tab strip
+                             whether the panel is open or closed. */
   overflow: hidden;
 }
 
@@ -300,5 +302,230 @@
 
   .panel-body {
     padding: 12px;
+  }
+}
+
+/* ===== Timeline tab expanded panel ===== */
+/* When the Timeline tab is active, the panel widens so the unified
+   calendar + visit list can breathe. Matching `.panel-timeline-expanded`
+   on the map container keeps the map offset so nothing is obscured. */
+
+.map-control-panel.timeline-expanded {
+  width: 720px;
+  left: -720px;
+}
+
+.map-control-panel.timeline-expanded.open {
+  left: 0;
+}
+
+.maps-maplibre-container.panel-timeline-expanded {
+  margin-left: 720px;
+  width: calc(100% - 720px) !important;
+}
+
+@media (max-width: 1280px) {
+  .map-control-panel.timeline-expanded {
+    width: 620px;
+    left: -620px;
+  }
+  .maps-maplibre-container.panel-timeline-expanded {
+    margin-left: 620px;
+    width: calc(100% - 620px) !important;
+  }
+}
+
+@media (max-width: 1024px) {
+  .map-control-panel.timeline-expanded {
+    width: 520px;
+    left: -520px;
+  }
+  .maps-maplibre-container.panel-timeline-expanded {
+    margin-left: 520px;
+    width: calc(100% - 520px) !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .map-control-panel.timeline-expanded {
+    width: 95%;
+    left: -95%;
+    max-width: 620px;
+  }
+  /* On mobile, overlay the map instead of shrinking it. */
+  .maps-maplibre-container.panel-timeline-expanded {
+    margin-left: 0;
+    width: 100% !important;
+  }
+}
+
+/* Respect user motion preferences — cap panel/map transitions. */
+@media (prefers-reduced-motion: reduce) {
+  .map-control-panel,
+  .maps-maplibre-container {
+    transition-duration: 50ms !important;
+  }
+}
+
+/* ===== Map edge button cluster =====
+   The cluster sits 12px off the panel's RIGHT edge, so it tracks with the
+   panel as it slides:
+     - panel closed (panel.left = -480px → panel.right = 0): cluster at 12px
+       (top-left of the map area, looks like a floating tab launcher)
+     - panel open (panel.left = 0 → panel.right = 480/720): cluster at
+       492/732px (visually attached to the panel, looks like the panel's
+       tab strip)
+   Removes the need for the old in-panel `.panel-tabs` element since the
+   cluster itself is the tab strip in both states. */
+.map-button-cluster {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 500;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: oklch(var(--b1) / 0.95);
+  backdrop-filter: blur(6px);
+  border: 1px solid oklch(var(--bc) / 0.15);
+  border-radius: 8px;
+  padding: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.maps-maplibre-container.panel-open ~ .map-button-cluster {
+  left: 492px;
+}
+
+.maps-maplibre-container.panel-timeline-expanded ~ .map-button-cluster {
+  left: 732px;
+}
+
+@media (max-width: 1280px) {
+  .maps-maplibre-container.panel-timeline-expanded ~ .map-button-cluster {
+    left: 632px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .maps-maplibre-container.panel-open ~ .map-button-cluster {
+    left: 392px;
+  }
+  .maps-maplibre-container.panel-timeline-expanded ~ .map-button-cluster {
+    left: 532px;
+  }
+}
+
+/* On mobile the panel overlays the map — keep the cluster pinned to the
+   left edge so users can dismiss the panel by tapping a cluster button. */
+@media (max-width: 768px) {
+  .maps-maplibre-container.panel-open ~ .map-button-cluster,
+  .maps-maplibre-container.panel-timeline-expanded ~ .map-button-cluster {
+    left: 12px;
+  }
+}
+
+.map-button-cluster__btn {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  color: oklch(var(--bc) / 0.75);
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
+}
+
+.map-button-cluster__btn:hover {
+  background: oklch(var(--bc) / 0.08);
+  color: oklch(var(--bc));
+}
+
+.map-button-cluster__btn:focus-visible {
+  outline: 2px solid oklch(var(--p));
+  outline-offset: 1px;
+}
+
+.map-button-cluster__btn--active {
+  background: oklch(var(--p));
+  color: oklch(var(--pc));
+}
+
+.map-button-cluster__btn--active:hover {
+  background: oklch(var(--p));
+  color: oklch(var(--pc));
+}
+
+.map-button-cluster__btn--create {
+  color: #22c55e;
+}
+
+.map-button-cluster__btn--create:hover {
+  background: rgba(34, 197, 94, 0.12);
+  color: #22c55e;
+}
+
+/* When Create is the active tab, the green icon-on-blue ends up low
+   contrast. Lean into the create accent color for the active state too —
+   green background, white glyph — so the active state reads cleanly and
+   keeps the button's semantic color. Higher-specificity selector wins
+   over the generic `--active` rule above. */
+.map-button-cluster__btn--create.map-button-cluster__btn--active,
+.map-button-cluster__btn--create.map-button-cluster__btn--active:hover {
+  background: #22c55e;
+  color: white;
+}
+
+.map-button-cluster__btn--muted {
+  opacity: 0.6;
+}
+
+.map-button-cluster__btn--muted:hover {
+  opacity: 1;
+}
+
+.map-button-cluster__btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+.map-button-cluster__divider {
+  height: 1px;
+  background: oklch(var(--bc) / 0.1);
+  margin: 2px 4px;
+}
+
+.map-button-cluster__badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 9999px;
+  background: #f59e0b;
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  border: 1.5px solid oklch(var(--b1));
+  white-space: nowrap;
+}
+
+/* Mobile — collapse to Timeline + Layers + overflow */
+@media (max-width: 640px) {
+  .map-button-cluster__btn[data-tab="search"],
+  .map-button-cluster__btn[data-tab="tools"],
+  .map-button-cluster__btn[data-tab="settings"],
+  .map-button-cluster__divider {
+    display: none;
   }
 }
