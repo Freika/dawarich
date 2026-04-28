@@ -769,5 +769,8 @@ export default class extends Controller {
       input.value = id
       form.appendChild(input)
     }
+
+    this.selectionMode = false
+    this.selectedVisitIds.clear()
   }
 }
