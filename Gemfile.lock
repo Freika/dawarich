@@ -87,6 +87,10 @@ GEM
     addressable (2.8.7)
       public_suffix (>= 2.0.2, < 7.0)
     aes_key_wrap (1.1.0)
+    apple_id (1.6.4)
+      json-jwt (~> 1.16)
+      openid_connect (~> 2.2)
+      rack-oauth2 (~> 2.0)
     ast (2.4.3)
     async (2.39.0)
       console (~> 1.29)
@@ -231,6 +235,8 @@ GEM
       raabro (~> 1.4)
     globalid (1.3.0)
       activesupport (>= 6.1)
+    google-id-token (1.4.2)
+      jwt (>= 1)
     gpx (1.2.2)
       csv
       nokogiri (~> 1.7)
@@ -693,6 +699,7 @@ PLATFORMS
 
 DEPENDENCIES
   activerecord-postgis-adapter (= 11.0)
+  apple_id (~> 1.2)
   aws-sdk-core (~> 3.215.1)
   aws-sdk-kms (~> 1.96.0)
   aws-sdk-s3 (~> 1.177.0)
@@ -717,6 +724,7 @@ DEPENDENCIES
   flipper-ui (~> 1.3)
   foreman
   geocoder!
+  google-id-token (~> 1.4)
   gpx
   groupdate
   h3 (~> 3.7)

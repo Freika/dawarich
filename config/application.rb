@@ -39,6 +39,11 @@ module Dawarich
 
     config.action_mailer.preview_paths << Rails.root.join('spec/mailers/previews').to_s
 
+    # Reads `var` from ENV. Missing + production → raise. Missing + non-production
+    # (or SECRET_KEY_BASE_DUMMY set during asset precompile) → returns the supplied
+    # dev-only fallback (never appropriate for runtime production).
+    #
+    # Class-level so it's usable during Rails configuration before initializers run.
     def self.env_or_dev_default(var, dev_default)
       return ENV[var] if ENV[var]
       return dev_default if !Rails.env.production? || ENV['SECRET_KEY_BASE_DUMMY']

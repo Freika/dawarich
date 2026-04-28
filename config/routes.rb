@@ -76,6 +76,11 @@ Rails.application.routes.draw do
   get 'settings/theme', to: 'settings#theme'
   post 'settings/generate_api_key', to: 'settings#generate_api_key', as: :generate_api_key
 
+  # Click-through endpoint for the OAuth account-link verification email.
+  # Issued by Auth::FindOrCreateOauthUser when a mobile OAuth signup
+  # collides with an existing email-password account.
+  get 'auth/account_link', to: 'auth/account_links#show', as: :auth_account_link
+
   get 'trial/upgrade', to: 'trial/upgrades#show', as: :trial_upgrade
   get 'trial/resume', to: 'trial/resume#show', as: :trial_resume
   get 'trial/welcome', to: 'trial/welcome#show', as: :trial_welcome
@@ -205,6 +210,17 @@ Rails.application.routes.draw do
       get   'settings', to: 'settings#index'
       get   'settings/transportation_recalculation_status', to: 'settings#transportation_recalculation_status'
       get   'users/me', to: 'users#me'
+      delete 'users/me', to: 'users/destroy#destroy'
+
+      namespace :users do
+        scope 'me' do
+          resource :two_factor, only: %i[destroy], controller: 'two_factor' do
+            post :setup
+            post :confirm
+            post :backup_codes
+          end
+        end
+      end
 
       resources :areas,     only: %i[index show create update destroy]
       resources :imports,   only: %i[index show create]
@@ -300,6 +316,14 @@ Rails.application.routes.draw do
 
       post 'subscriptions/callback', to: 'subscriptions#callback'
       post 'users/exist', to: 'users#exist'
+
+      namespace :auth do
+        post 'register', to: 'registrations#create'
+        post 'login',    to: 'sessions#create'
+        post 'apple',    to: 'apple#create'
+        post 'google',   to: 'google#create'
+        post 'otp_challenge', to: 'otp_challenges#create'
+      end
     end
   end
 end
