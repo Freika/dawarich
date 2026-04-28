@@ -6,12 +6,16 @@ RSpec.describe 'POST /api/v1/auth/login', type: :request do
   let!(:user) { create(:user, email: 'me@example.com', password: 'secret123') }
 
   before do
-    # Brute-force throttles on this endpoint share state between examples via
-    # the rack-attack cache. Reset on every example so failed-login tests in
+    # Rack::Attack is globally disabled in test env (config/initializers/rack_attack.rb)
+    # to keep unrelated request specs from tripping login throttles. Re-enable it here
+    # to exercise the throttling behavior. Reset cache too so failed-login tests in
     # one block don't trip the limit for unrelated examples.
+    Rack::Attack.enabled = true
     Rack::Attack.cache.store = ActiveSupport::Cache::MemoryStore.new
     Rack::Attack.reset!
   end
+
+  after { Rack::Attack.enabled = false }
 
   it 'returns 200 with api_key on correct credentials' do
     post '/api/v1/auth/login', params: { email: 'me@example.com', password: 'secret123' }

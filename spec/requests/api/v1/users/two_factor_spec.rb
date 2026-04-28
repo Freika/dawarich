@@ -124,6 +124,10 @@ RSpec.describe 'Two-factor management', type: :request do
     end
 
     describe 'brute-force protection' do
+      # Rack::Attack is globally disabled in test env; re-enable here to exercise the throttle.
+      before { Rack::Attack.enabled = true }
+      after { Rack::Attack.enabled = false }
+
       it 'throttles repeated disable attempts keyed on the Authorization header' do
         5.times do
           delete '/api/v1/users/me/two_factor', params: { otp_code: '000000' }, headers: headers
