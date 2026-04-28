@@ -4,11 +4,10 @@ require 'rails_helper'
 
 RSpec.describe 'POST /api/v1/auth/otp_challenge', type: :request do
   before do
-    # Rack::Attack is globally disabled in test env (config/initializers/rack_attack.rb).
-    # Re-enable it locally to exercise the brute-force throttle on otp_challenge.
     Rack::Attack.enabled = true
     Rack::Attack.cache.store = ActiveSupport::Cache::MemoryStore.new
     Rack::Attack.reset!
+    allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
   end
 
   after { Rack::Attack.enabled = false }

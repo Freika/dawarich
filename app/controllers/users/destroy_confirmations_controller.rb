@@ -13,10 +13,6 @@ class Users::DestroyConfirmationsController < ApplicationController
         return redirect_to(new_user_session_path, alert: 'Deletion link invalid or expired.')
       end
 
-    unless Users::VerifyDestroyToken.consume!(result.jti)
-      return redirect_to(new_user_session_path, alert: 'This deletion link has already been used.')
-    end
-
     user = result.user
 
     unless user.can_delete_account?
@@ -25,6 +21,10 @@ class Users::DestroyConfirmationsController < ApplicationController
         alert: 'Cannot delete account while you own a family with other members. ' \
                'Transfer ownership or remove members first.'
       )
+    end
+
+    unless Users::VerifyDestroyToken.consume!(result.jti)
+      return redirect_to(new_user_session_path, alert: 'This deletion link has already been used.')
     end
 
     Users::DestroyJob.perform_later(user.id) if user.mark_as_deleted_atomically!

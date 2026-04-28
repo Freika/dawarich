@@ -92,5 +92,14 @@ RSpec.describe 'GET /auth/account_link', type: :request do
       expect(user.provider).to eq('google')
       expect(user.uid).to eq('google-existing')
     end
+
+    it 'does NOT consume the token when refusing the overwrite' do
+      token = issue(provider: 'apple', uid: 'apple-sub-42')
+      get "/auth/account_link?token=#{token}" # rejected, token NOT consumed
+
+      user.update!(provider: nil, uid: nil)
+      get "/auth/account_link?token=#{token}"
+      expect(user.reload.provider).to eq('apple')
+    end
   end
 end

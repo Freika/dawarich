@@ -13,15 +13,15 @@ class Auth::AccountLinksController < ApplicationController
         return redirect_to(new_user_session_path, alert: 'Link invalid or expired.')
       end
 
-    unless Auth::VerifyAccountLinkToken.consume!(result.jti)
-      return redirect_to(new_user_session_path, alert: 'This link has already been used.')
-    end
-
     user = result.user
 
     if user.provider.present? && (user.provider != result.provider || user.uid != result.uid)
       return redirect_to(new_user_session_path,
                          alert: "This account is already linked to a different #{user.provider} identity.")
+    end
+
+    unless Auth::VerifyAccountLinkToken.consume!(result.jti)
+      return redirect_to(new_user_session_path, alert: 'This link has already been used.')
     end
 
     user.update!(provider: result.provider, uid: result.uid)

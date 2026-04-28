@@ -161,8 +161,10 @@ RSpec.describe 'Two-factor management', type: :request do
     end
 
     describe 'brute-force protection' do
-      # Rack::Attack is globally disabled in test env; re-enable here to exercise the throttle.
-      before { Rack::Attack.enabled = true }
+      before do
+        Rack::Attack.enabled = true
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      end
       after { Rack::Attack.enabled = false }
 
       it 'throttles repeated disable attempts keyed on the Authorization header' do

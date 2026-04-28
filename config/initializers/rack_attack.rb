@@ -108,16 +108,14 @@ end
 # model is identical: an attacker grinding passwords against /api/v1/auth/login
 # would otherwise bypass the Devise web throttles entirely.
 Rack::Attack.throttle('logins/api_email', limit: 5, period: 1.minute) do |req|
+  next if DawarichSettings.self_hosted?
   next unless req.path == '/api/v1/auth/login' && req.post?
 
-  # Sessions controller reads the email at the top level (params[:email]),
-  # whereas the Devise web form nests it under params[:user]. Rails parses
-  # both x-www-form-urlencoded and JSON bodies into req.params, so reading
-  # req.params['email'] here matches the controller's lookup.
   req.params['email']&.to_s&.downcase&.strip
 end
 
 Rack::Attack.throttle('logins/api_ip', limit: 20, period: 1.minute) do |req|
+  next if DawarichSettings.self_hosted?
   next unless req.path == '/api/v1/auth/login' && req.post?
 
   req.ip
@@ -130,14 +128,19 @@ Rack::Attack.throttle('subscriptions/callback', limit: 60, period: 1.minute) do 
 end
 
 Rack::Attack.throttle('signups/api_ip_burst', limit: 5, period: 1.minute) do |req|
+  next if DawarichSettings.self_hosted?
+
   req.ip if req.path == '/api/v1/auth/register' && req.post?
 end
 
 Rack::Attack.throttle('signups/api_ip_hourly', limit: 20, period: 1.hour) do |req|
+  next if DawarichSettings.self_hosted?
+
   req.ip if req.path == '/api/v1/auth/register' && req.post?
 end
 
 Rack::Attack.throttle('oauth/token_exchange', limit: 30, period: 1.minute) do |req|
+  next if DawarichSettings.self_hosted?
   next unless req.post?
   next unless ['/api/v1/auth/apple', '/api/v1/auth/google'].include?(req.path)
 
@@ -145,6 +148,7 @@ Rack::Attack.throttle('oauth/token_exchange', limit: 30, period: 1.minute) do |r
 end
 
 Rack::Attack.throttle('users/exist', limit: 600, period: 1.hour) do |req|
+  next if DawarichSettings.self_hosted?
   next unless req.path == '/api/v1/users/exist' && req.post?
 
   secret = req.get_header('HTTP_X_WEBHOOK_SECRET').to_s
@@ -156,14 +160,17 @@ end
 # rotate source IPs to multiply their TOTP guessing budget. Keep the legacy
 # IP-based throttle as defense-in-depth.
 Rack::Attack.throttle('api/auth/otp_challenge_token', limit: 5, period: 15.minutes) do |req|
+  next if DawarichSettings.self_hosted?
+
   if req.path == '/api/v1/auth/otp_challenge' && req.post?
     token = req.params['challenge_token'].to_s
     Digest::SHA256.hexdigest(token)[0, 32] if token.present?
   end
 end
 
-# Defense-in-depth IP-based throttle.
 Rack::Attack.throttle('api/auth/otp_challenge', limit: 5, period: 15.minutes) do |req|
+  next if DawarichSettings.self_hosted?
+
   req.ip if req.path == '/api/v1/auth/otp_challenge' && req.post?
 end
 
@@ -177,6 +184,7 @@ SENSITIVE_2FA_PATHS = %w[
 ].to_set.freeze
 
 Rack::Attack.throttle('api/users/two_factor_sensitive', limit: 5, period: 15.minutes) do |req|
+  next if DawarichSettings.self_hosted?
   next unless req.post? || req.delete?
   next unless SENSITIVE_2FA_PATHS.include?(req.path)
 

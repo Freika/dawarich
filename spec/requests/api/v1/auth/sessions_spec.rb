@@ -6,13 +6,11 @@ RSpec.describe 'POST /api/v1/auth/login', type: :request do
   let!(:user) { create(:user, email: 'me@example.com', password: 'secret123') }
 
   before do
-    # Rack::Attack is globally disabled in test env (config/initializers/rack_attack.rb)
-    # to keep unrelated request specs from tripping login throttles. Re-enable it here
-    # to exercise the throttling behavior. Reset cache too so failed-login tests in
-    # one block don't trip the limit for unrelated examples.
     Rack::Attack.enabled = true
     Rack::Attack.cache.store = ActiveSupport::Cache::MemoryStore.new
     Rack::Attack.reset!
+    # The login throttle is cloud-only — self-hosted instances skip it.
+    allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
   end
 
   after { Rack::Attack.enabled = false }

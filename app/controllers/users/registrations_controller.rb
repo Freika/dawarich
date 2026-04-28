@@ -52,25 +52,37 @@ class Users::RegistrationsController < Devise::RegistrationsController
       return
     end
 
-    token = Users::IssueDestroyToken.new(resource).call
-    link_url = user_destroy_confirmation_url(
-      token: token,
-      host: default_mailer_host,
-      protocol: default_mailer_protocol
-    )
-
-    Users::MailerSendingJob.perform_later(
-      resource.id,
-      'account_destroy_confirmation',
-      link_url: link_url
-    )
-
-    redirect_to edit_user_registration_path,
-                notice: 'A confirmation email has been sent. Click the link in the email to ' \
-                        'permanently delete your account.'
+    DawarichSettings.self_hosted? ? destroy_self_hosted : destroy_cloud
   end
 
   protected
+
+  def destroy_self_hosted
+    unless resource.valid_password?(params[:password].to_s)
+      redirect_to edit_user_registration_path,
+                  alert: 'Provide your current password to delete your account.',
+                  status: :unauthorized
+      return
+    end
+
+    Users::DestroyJob.perform_later(resource.id) if resource.mark_as_deleted_atomically!
+
+    Devise.sign_out_all_scopes ? sign_out : sign_out(resource_name)
+
+    redirect_to after_sign_out_path_for(resource_name),
+                notice: 'Your account has been scheduled for deletion.'
+  end
+
+  def destroy_cloud
+    result = Users::RequestAccountDestroy.new(
+      resource,
+      host: default_mailer_host,
+      protocol: default_mailer_protocol
+    ).call
+
+    flash_key = result.status == :sent ? :notice : :alert
+    redirect_to edit_user_registration_path, flash_key => result.message
+  end
 
   def build_resource(hash = nil)
     super

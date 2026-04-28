@@ -4,8 +4,13 @@ require 'rails_helper'
 
 RSpec.describe 'Api::V1::Users::Destroy', type: :request do
   describe 'DELETE /api/v1/users/me' do
-    let(:user) { create(:user) }
+    let(:user) { create(:user, password: 'secret123') }
     let(:headers) { { 'Authorization' => "Bearer #{user.api_key}" } }
+
+    before do
+      Rails.cache.clear
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+    end
 
     it 'does NOT delete the user immediately — sends a confirmation email instead' do
       user # materialize before request
@@ -50,6 +55,47 @@ RSpec.describe 'Api::V1::Users::Destroy', type: :request do
 
       result = Users::VerifyDestroyToken.new(token).call
       expect(result.user).to eq(user)
+    end
+
+    it 'rate-limits a second destroy request to 429 within the window' do
+      delete '/api/v1/users/me', headers: headers
+      delete '/api/v1/users/me', headers: headers
+
+      expect(response).to have_http_status(:too_many_requests)
+      expect(JSON.parse(response.body)['error']).to eq('rate_limited')
+    end
+
+    context 'in self-hosted mode' do
+      before { allow(DawarichSettings).to receive(:self_hosted?).and_return(true) }
+
+      it 'soft-deletes immediately when password is correct (no email)' do
+        expect do
+          delete '/api/v1/users/me', params: { password: 'secret123' }, headers: headers
+        end.to have_enqueued_job(Users::DestroyJob).with(user.id)
+
+        expect(response).to have_http_status(:ok)
+        expect(user.reload.deleted_at).to be_present
+      end
+
+      it 'does NOT enqueue an email in self-hosted mode' do
+        expect do
+          delete '/api/v1/users/me', params: { password: 'secret123' }, headers: headers
+        end.not_to have_enqueued_job(Users::MailerSendingJob)
+      end
+
+      it 'returns 401 without password' do
+        delete '/api/v1/users/me', headers: headers
+
+        expect(response).to have_http_status(:unauthorized)
+        expect(user.reload.deleted_at).to be_nil
+      end
+
+      it 'returns 401 with wrong password' do
+        delete '/api/v1/users/me', params: { password: 'wrong' }, headers: headers
+
+        expect(response).to have_http_status(:unauthorized)
+        expect(user.reload.deleted_at).to be_nil
+      end
     end
   end
 end
