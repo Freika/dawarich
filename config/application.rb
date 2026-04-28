@@ -48,20 +48,19 @@ module Dawarich
       return ENV[var] if ENV[var]
       return dev_default if !Rails.env.production? || ENV['SECRET_KEY_BASE_DUMMY']
 
+      secret = ENV['SECRET_KEY_BASE']
+      return derive_encryption_key(var, secret) if secret
+
       raise "#{var} required in production"
     end
 
-    # Active Record Encryption is required by devise-two-factor for the `encrypts :otp_secret`
-    # declaration on the User model. These keys must always be set for the model to load.
-    #
-    # 2FA is only user-facing when all three env vars are explicitly set (checked via
-    # DawarichSettings.two_factor_available?). Without them, the 2FA settings page is hidden
-    # and the OTP login challenge is skipped — but the model still needs encryption keys to boot.
-    #
-    # Set here (not in an initializer) so they are applied during Rails bootstrap before any
-    # gem initializer forces ActiveRecord to boot eagerly. Otherwise the on_load hook that
-    # copies these to ActiveRecord::Encryption.config fires with empty values and
-    # `encrypts :otp_secret` fails at save time.
+    def self.derive_encryption_key(var, secret)
+      ActiveSupport::KeyGenerator
+        .new(secret, iterations: 1000)
+        .generate_key("dawarich/encryption/#{var}", 32)
+        .unpack1('H*')
+    end
+
     config.active_record.encryption.primary_key =
       env_or_dev_default('OTP_ENCRYPTION_PRIMARY_KEY',       'dawarich-dev-primary-key-not-for-production')
     config.active_record.encryption.deterministic_key =
