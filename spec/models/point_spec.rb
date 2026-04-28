@@ -11,6 +11,17 @@ RSpec.describe Point, type: :model do
     it { is_expected.to belong_to(:track).optional }
   end
 
+  describe 'enums' do
+    it 'defines source enum with measured and inferred values' do
+      expect(described_class.sources).to eq('measured' => 0, 'inferred' => 1)
+    end
+
+    it 'defaults source to measured' do
+      point = build(:point)
+      expect(point).to be_measured_source
+    end
+  end
+
   describe 'validations' do
     it { is_expected.to validate_presence_of(:timestamp) }
     it { is_expected.to validate_presence_of(:lonlat) }
@@ -53,6 +64,28 @@ RSpec.describe Point, type: :model do
         result = described_class.not_reverse_geocoded
         expect(result).to include(point_without_address)
         expect(result).not_to include(point)
+      end
+    end
+
+    describe '.measured_only' do
+      let(:user) { create(:user) }
+      let!(:measured_point) { create(:point, user: user, source: :measured) }
+      let!(:inferred_point) { create(:point, user: user, source: :inferred) }
+
+      it 'returns only measured points' do
+        expect(described_class.measured_only).to include(measured_point)
+        expect(described_class.measured_only).not_to include(inferred_point)
+      end
+    end
+
+    describe '.inferred_only' do
+      let(:user) { create(:user) }
+      let!(:measured_point) { create(:point, user: user, source: :measured) }
+      let!(:inferred_point) { create(:point, user: user, source: :inferred) }
+
+      it 'returns only inferred points' do
+        expect(described_class.inferred_only).to include(inferred_point)
+        expect(described_class.inferred_only).not_to include(measured_point)
       end
     end
 

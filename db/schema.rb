@@ -291,12 +291,14 @@ ActiveRecord::Schema[8.0].define(version: 2026_04_26_204917) do
     t.jsonb "motion_data", default: {}, null: false
     t.decimal "altitude_decimal", precision: 10, scale: 2
     t.boolean "anomaly"
+    t.integer "source", default: 0, null: false
     t.index ["anomaly"], name: "index_points_on_not_anomaly", where: "(anomaly IS NOT TRUE)"
     t.index ["id"], name: "index_points_on_not_reverse_geocoded", where: "(reverse_geocoded_at IS NULL)"
     t.index ["import_id"], name: "index_points_on_import_id"
     t.index ["lonlat", "timestamp", "user_id"], name: "index_points_on_lonlat_timestamp_user_id", unique: true
     t.index ["lonlat"], name: "index_points_on_lonlat", using: :gist
     t.index ["raw_data_archive_id"], name: "index_points_on_raw_data_archive_id"
+    t.index ["source"], name: "index_points_on_source"
     t.index ["track_id", "timestamp"], name: "idx_points_track_id_timestamp"
     t.index ["track_id"], name: "index_points_on_track_id"
     t.index ["user_id", "country_name"], name: "idx_points_user_country_name"
