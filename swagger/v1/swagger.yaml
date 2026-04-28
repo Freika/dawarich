@@ -3180,6 +3180,111 @@ paths:
           description: bad request - missing parameters
         '401':
           description: unauthorized
+  "/api/v1/traccar/points":
+    post:
+      summary: Creates a point
+      tags:
+      - Points
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Point created
+        '401':
+          description: Unauthorized
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                device_id:
+                  type: string
+                  description: Tracker / device identifier
+                location:
+                  type: object
+                  properties:
+                    timestamp:
+                      type: string
+                      description: ISO 8601 timestamp of the location fix
+                    latitude:
+                      type: number
+                      description: Latitude in decimal degrees
+                    longitude:
+                      type: number
+                      description: Longitude in decimal degrees
+                    accuracy:
+                      type: number
+                      description: Horizontal accuracy in meters
+                    speed:
+                      type: number
+                      description: Speed in meters per second
+                    heading:
+                      type: number
+                      description: Bearing in degrees (0-360)
+                    altitude:
+                      type: number
+                      description: Altitude in meters
+                    is_moving:
+                      type: boolean
+                      description: Whether the device was moving at the time of the
+                        fix
+                    odometer:
+                      type: number
+                      description: Cumulative distance traveled in meters
+                    event:
+                      type: string
+                      description: Event type that produced the fix (e.g. motionchange,
+                        heartbeat)
+                  required:
+                  - latitude
+                  - longitude
+                  - timestamp
+                battery:
+                  type: object
+                  properties:
+                    level:
+                      type: number
+                      description: Battery level as a 0-1 fraction
+                    is_charging:
+                      type: boolean
+                      description: Whether the device is currently charging
+                activity:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                      description: Detected activity (walking, running, in_vehicle,
+                        ...)
+              required:
+              - device_id
+              - location
+            examples:
+              '0':
+                summary: Creates a point
+                value:
+                  device_id: iphone-jane
+                  location:
+                    timestamp: '2026-04-23T12:34:56Z'
+                    latitude: 52.52
+                    longitude: 13.405
+                    accuracy: 5
+                    speed: 1.4
+                    heading: 90
+                    altitude: 42
+                    is_moving: true
+                    odometer: 1200
+                    event: motionchange
+                  battery:
+                    level: 0.85
+                    is_charging: true
+                  activity:
+                    type: walking
   "/api/v1/tracks/{track_id}/points":
     parameters:
     - name: track_id
