@@ -13,23 +13,60 @@ RSpec.describe 'Two-factor management', type: :request do
   end
 
   describe 'POST /api/v1/users/me/two_factor/setup' do
-    it 'returns provisioning URI and secret' do
-      post '/api/v1/users/me/two_factor/setup', headers: headers
+    it 'returns provisioning URI and secret with valid password' do
+      post '/api/v1/users/me/two_factor/setup', params: { password: 'secret123' }, headers: headers
       expect(response).to have_http_status(:ok)
       body = JSON.parse(response.body)
       expect(body['provisioning_uri']).to match(%r{^otpauth://totp/})
       expect(body['secret']).to be_present
     end
 
-    it 'does not enable 2FA yet' do
+    it 'rotates the secret on each call (until 2FA is confirmed)' do
+      post '/api/v1/users/me/two_factor/setup', params: { password: 'secret123' }, headers: headers
+      first_secret = JSON.parse(response.body)['secret']
+
+      post '/api/v1/users/me/two_factor/setup', params: { password: 'secret123' }, headers: headers
+      second_secret = JSON.parse(response.body)['secret']
+
+      expect(second_secret).not_to eq(first_secret)
+    end
+
+    it 'returns 401 without a password' do
       post '/api/v1/users/me/two_factor/setup', headers: headers
+      expect(response).to have_http_status(:unauthorized)
+      expect(user.reload.otp_secret).to be_nil
+    end
+
+    it 'returns 401 with the wrong password' do
+      post '/api/v1/users/me/two_factor/setup', params: { password: 'wrong' }, headers: headers
+      expect(response).to have_http_status(:unauthorized)
+      expect(user.reload.otp_secret).to be_nil
+    end
+
+    it 'does not enable 2FA yet' do
+      post '/api/v1/users/me/two_factor/setup', params: { password: 'secret123' }, headers: headers
       expect(user.reload.otp_required_for_login).to be false
+    end
+
+    context 'when 2FA is already enabled' do
+      before do
+        user.otp_secret = User.generate_otp_secret
+        user.otp_required_for_login = true
+        user.save!
+      end
+
+      it 'returns 409 conflict and does not rotate the secret' do
+        original_secret = user.otp_secret
+        post '/api/v1/users/me/two_factor/setup', params: { password: 'secret123' }, headers: headers
+        expect(response).to have_http_status(:conflict)
+        expect(user.reload.otp_secret).to eq(original_secret)
+      end
     end
   end
 
   describe 'POST /api/v1/users/me/two_factor/confirm' do
     before do
-      post '/api/v1/users/me/two_factor/setup', headers: headers
+      post '/api/v1/users/me/two_factor/setup', params: { password: 'secret123' }, headers: headers
       user.reload
     end
 
@@ -75,24 +112,24 @@ RSpec.describe 'Two-factor management', type: :request do
       user.save!
     end
 
-    it 'requires valid OTP' do
+    it 'returns new codes with valid password' do
       post '/api/v1/users/me/two_factor/backup_codes',
-           params: { otp_code: '000000' }, headers: headers
-      expect(response).to have_http_status(:unauthorized)
-    end
-
-    it 'returns new codes on valid OTP' do
-      otp = ROTP::TOTP.new(user.otp_secret).now
-      post '/api/v1/users/me/two_factor/backup_codes',
-           params: { otp_code: otp }, headers: headers
+           params: { password: 'secret123' }, headers: headers
       expect(response).to have_http_status(:ok)
       expect(JSON.parse(response.body)['backup_codes'].length).to eq(10)
     end
 
-    it 'accepts the current password instead of OTP' do
+    it 'returns 401 without password (OTP alone is no longer accepted)' do
+      otp = ROTP::TOTP.new(user.otp_secret).now
       post '/api/v1/users/me/two_factor/backup_codes',
-           params: { password: 'secret123' }, headers: headers
-      expect(response).to have_http_status(:ok)
+           params: { otp_code: otp }, headers: headers
+      expect(response).to have_http_status(:unauthorized)
+    end
+
+    it 'returns 401 with wrong password' do
+      post '/api/v1/users/me/two_factor/backup_codes',
+           params: { password: 'wrong' }, headers: headers
+      expect(response).to have_http_status(:unauthorized)
     end
   end
 

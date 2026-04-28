@@ -52,13 +52,22 @@ class Users::RegistrationsController < Devise::RegistrationsController
       return
     end
 
-    Users::DestroyJob.perform_later(resource.id) if resource.mark_as_deleted_atomically!
+    token = Users::IssueDestroyToken.new(resource).call
+    link_url = user_destroy_confirmation_url(
+      token: token,
+      host: default_mailer_host,
+      protocol: default_mailer_protocol
+    )
 
-    Devise.sign_out_all_scopes ? sign_out : sign_out(resource_name)
+    Users::MailerSendingJob.perform_later(
+      resource.id,
+      'account_destroy_confirmation',
+      link_url: link_url
+    )
 
-    set_flash_message! :notice, :destroyed
-    yield resource if block_given?
-    respond_with_navigational(resource) { redirect_to after_sign_out_path_for(resource_name) }
+    redirect_to edit_user_registration_path,
+                notice: 'A confirmation email has been sent. Click the link in the email to ' \
+                        'permanently delete your account.'
   end
 
   protected
@@ -108,7 +117,17 @@ class Users::RegistrationsController < Devise::RegistrationsController
   end
 
   def store_gads_linker
-    session[:gads_linker] = params[:_gl] if params[:_gl].present?
+    return if params[:_gl].blank?
+
+    session[:gads_linker] = params[:_gl].to_s.byteslice(0, 1024)
+  end
+
+  def default_mailer_host
+    ActionMailer::Base.default_url_options[:host] || request.host
+  end
+
+  def default_mailer_protocol
+    ActionMailer::Base.default_url_options[:protocol] || (request.ssl? ? 'https' : 'http')
   end
 
   def check_registration_allowed

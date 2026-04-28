@@ -1,13 +1,13 @@
 # frozen_string_literal: true
 
-module Auth
-  class VerifyAccountLinkToken
+module Users
+  class VerifyDestroyToken
     class InvalidToken < StandardError; end
     class TokenReplayed < InvalidToken; end
 
-    CONSUMED_KEY_PREFIX = 'oauth_account_link:consumed:'
+    CONSUMED_KEY_PREFIX = 'account_destroy:consumed:'
 
-    Result = Struct.new(:user, :provider, :uid, :jti, keyword_init: true)
+    Result = Struct.new(:user, :jti, keyword_init: true)
 
     def initialize(token)
       @token = token
@@ -17,26 +17,23 @@ module Auth
       raise InvalidToken, 'blank token' if @token.blank?
 
       decoded, = JWT.decode(@token, ENV.fetch('JWT_SECRET_KEY'), true, algorithm: 'HS256')
-      raise InvalidToken, 'wrong purpose' unless decoded['purpose'] == 'oauth_account_link'
+      raise InvalidToken, 'wrong purpose' unless decoded['purpose'] == 'account_destroy'
 
       jti = decoded['jti'].to_s
       raise InvalidToken, 'missing jti' if jti.blank?
 
       if decoded['iat'].present? &&
-         (Time.now.to_i - decoded['iat'].to_i) > Auth::IssueAccountLinkToken::TTL.to_i
+         (Time.now.to_i - decoded['iat'].to_i) > Users::IssueDestroyToken::TTL.to_i
         raise InvalidToken, 'token too old'
       end
 
       raise TokenReplayed, 'token already consumed' if token_consumed?(jti)
 
-      user = User.find_by(id: decoded['user_id'])
+      user = User.unscoped.find_by(id: decoded['user_id'])
       raise InvalidToken, 'user not found' unless user
+      raise InvalidToken, 'user already deleted' if user.deleted?
 
-      provider = decoded['provider'].to_s
-      uid = decoded['uid'].to_s
-      raise InvalidToken, 'missing provider/uid' if provider.blank? || uid.blank?
-
-      Result.new(user: user, provider: provider, uid: uid, jti: jti)
+      Result.new(user: user, jti: jti)
     rescue JWT::DecodeError => e
       raise InvalidToken, e.message
     end
@@ -47,13 +44,9 @@ module Auth
       Rails.cache.write(
         "#{CONSUMED_KEY_PREFIX}#{jti}",
         true,
-        expires_in: Auth::IssueAccountLinkToken::TTL,
+        expires_in: Users::IssueDestroyToken::TTL,
         unless_exist: true
       )
-    end
-
-    def self.mark_consumed!(jti)
-      consume!(jti)
     end
 
     private

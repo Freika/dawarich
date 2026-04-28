@@ -12,13 +12,17 @@ class Traccar::Params
   def call
     return unless valid?
 
+    lon = parse_coordinate(location[:longitude], -180.0, 180.0)
+    lat = parse_coordinate(location[:latitude], -90.0, 90.0)
+    return if lon.nil? || lat.nil?
+
     parsed_timestamp = parse_timestamp(location[:timestamp])
     return if parsed_timestamp.nil?
 
     altitude_value = location[:altitude]
 
     attrs = {
-      lonlat:         "POINT(#{location[:longitude]} #{location[:latitude]})",
+      lonlat:         "POINT(#{lon} #{lat})",
       timestamp:      parsed_timestamp,
       altitude:       altitude_value,
       accuracy:       location[:accuracy],
@@ -40,6 +44,16 @@ class Traccar::Params
       location[:latitude].present? &&
       location[:longitude].present? &&
       location[:timestamp].present?
+  end
+
+  def parse_coordinate(raw, min, max)
+    value = Float(raw.to_s)
+    return nil unless value.finite?
+    return nil if value < min || value > max
+
+    value
+  rescue ArgumentError, TypeError
+    nil
   end
 
   def parse_timestamp(value)

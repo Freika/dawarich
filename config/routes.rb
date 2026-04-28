@@ -76,10 +76,9 @@ Rails.application.routes.draw do
   get 'settings/theme', to: 'settings#theme'
   post 'settings/generate_api_key', to: 'settings#generate_api_key', as: :generate_api_key
 
-  # Click-through endpoint for the OAuth account-link verification email.
-  # Issued by Auth::FindOrCreateOauthUser when a mobile OAuth signup
-  # collides with an existing email-password account.
   get 'auth/account_link', to: 'auth/account_links#show', as: :auth_account_link
+
+  get 'users/me/destroy/confirm', to: 'users/destroy_confirmations#show', as: :user_destroy_confirmation
 
   get 'trial/upgrade', to: 'trial/upgrades#show', as: :trial_upgrade
   get 'trial/resume', to: 'trial/resume#show', as: :trial_resume

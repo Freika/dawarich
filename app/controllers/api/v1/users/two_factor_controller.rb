@@ -2,17 +2,18 @@
 
 class Api::V1::Users::TwoFactorController < ApiController
   before_action :ensure_two_factor_available
-  before_action :ensure_credential_provided, only: %i[backup_codes destroy]
-  # `confirm` enables 2FA on the account using the OTP that was just provisioned
-  # in `setup`. Because the user has not yet enrolled an authenticator from the
-  # account owner's perspective, the OTP itself cannot serve as a credential —
-  # an attacker holding only the API key could call setup (provisioning a secret
-  # to their own authenticator) and then confirm with a valid OTP. Require a
-  # fresh password re-auth before flipping the otp_required flag.
-  before_action :ensure_password_provided, only: :confirm
+  before_action :ensure_password_provided, only: %i[setup confirm backup_codes]
+  before_action :ensure_credential_provided, only: %i[destroy]
 
   def setup
-    current_api_user.otp_secret = User.generate_otp_secret if current_api_user.otp_secret.blank?
+    if current_api_user.otp_required_for_login?
+      render json: { error: 'two_factor_already_enabled',
+                     message: 'Disable 2FA first to re-provision the secret.' },
+             status: :conflict
+      return
+    end
+
+    current_api_user.otp_secret = User.generate_otp_secret
     current_api_user.save!
 
     render json: {
@@ -23,7 +24,7 @@ class Api::V1::Users::TwoFactorController < ApiController
 
   def confirm
     if current_api_user.otp_secret.present? &&
-       ROTP::TOTP.new(current_api_user.otp_secret).verify(params[:otp_code].to_s, drift_behind: 30)
+       ROTP::TOTP.new(current_api_user.otp_secret).verify(params[:otp_code].to_s, drift_behind: 15, drift_ahead: 15)
       current_api_user.otp_required_for_login = true
       codes = current_api_user.generate_otp_backup_codes!
       current_api_user.save!
@@ -74,7 +75,9 @@ class Api::V1::Users::TwoFactorController < ApiController
     return false if params[:otp_code].blank?
     return false if current_api_user.otp_secret.blank?
 
-    ROTP::TOTP.new(current_api_user.otp_secret).verify(params[:otp_code].to_s, drift_behind: 30).present?
+    ROTP::TOTP.new(current_api_user.otp_secret)
+              .verify(params[:otp_code].to_s, drift_behind: 15, drift_ahead: 15)
+              .present?
   end
 
   def valid_password?

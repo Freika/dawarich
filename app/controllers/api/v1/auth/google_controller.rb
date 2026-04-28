@@ -7,7 +7,7 @@ class Api::V1::Auth::GoogleController < Api::V1::Auth::BaseController
   def create
     claims =
       begin
-        Auth::VerifyGoogleToken.new(params[:id_token]).call
+        Auth::VerifyGoogleToken.new(params[:id_token], nonce: params[:nonce]).call
       rescue Auth::VerifyGoogleToken::InvalidToken => e
         return render_auth_error("Google token verification failed: #{e.message}")
       end

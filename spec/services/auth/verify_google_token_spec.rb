@@ -50,6 +50,49 @@ RSpec.describe Auth::VerifyGoogleToken do
       end
     end
 
+    context 'nonce verification' do
+      let(:raw_nonce) { 'a-very-random-client-nonce' }
+
+      before do
+        stub_const(
+          'ENV',
+          ENV.to_hash.merge(
+            'GOOGLE_IOS_CLIENT_ID' => ios_client_id,
+            'GOOGLE_ANDROID_CLIENT_ID' => android_client_id
+          )
+        )
+      end
+
+      it 'accepts a token whose nonce claim matches the supplied nonce' do
+        validator = instance_double(GoogleIDToken::Validator)
+        allow(GoogleIDToken::Validator).to receive(:new).and_return(validator)
+        allow(validator).to receive(:check).and_return(
+          { 'sub' => 'g-id', 'email' => 'a@b.com', 'nonce' => raw_nonce }
+        )
+
+        expect { described_class.new(id_token, nonce: raw_nonce).call }.not_to raise_error
+      end
+
+      it 'raises when the nonce claim does not match' do
+        validator = instance_double(GoogleIDToken::Validator)
+        allow(GoogleIDToken::Validator).to receive(:new).and_return(validator)
+        allow(validator).to receive(:check).and_return(
+          { 'sub' => 'g-id', 'email' => 'a@b.com', 'nonce' => 'something-else' }
+        )
+
+        expect { described_class.new(id_token, nonce: raw_nonce).call }
+          .to raise_error(Auth::VerifyGoogleToken::InvalidToken, /nonce/)
+      end
+
+      it 'still accepts tokens when no nonce is supplied (transitional)' do
+        validator = instance_double(GoogleIDToken::Validator)
+        allow(GoogleIDToken::Validator).to receive(:new).and_return(validator)
+        allow(validator).to receive(:check).and_return({ 'sub' => 'g-id', 'email' => 'a@b.com' })
+
+        expect { described_class.new(id_token, nonce: nil).call }.not_to raise_error
+      end
+    end
+
     context 'when no client IDs are configured' do
       it 'raises InvalidToken' do
         env_without_clients = ENV.to_hash.dup

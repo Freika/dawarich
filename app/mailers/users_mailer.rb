@@ -62,4 +62,11 @@ class UsersMailer < ApplicationMailer
 
     mail(to: @user.email, subject: "Confirm linking #{@provider_label} to your Dawarich account")
   end
+
+  def account_destroy_confirmation
+    @user = params[:user]
+    @link_url = params[:link_url]
+
+    mail(to: @user.email, subject: 'Confirm Dawarich account deletion')
+  end
 end

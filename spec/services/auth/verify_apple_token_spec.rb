@@ -64,6 +64,28 @@ RSpec.describe Auth::VerifyAppleToken do
     expect { described_class.new(token).call }.to raise_error(Auth::VerifyAppleToken::InvalidToken)
   end
 
+  context 'nonce verification' do
+    let(:raw_nonce) { 'a-very-random-client-nonce' }
+    let(:hashed) { Digest::SHA256.hexdigest(raw_nonce) }
+
+    it 'accepts a token whose nonce claim matches SHA256(raw_nonce)' do
+      token = build_token(nonce: hashed)
+      claims = described_class.new(token, nonce: raw_nonce).call
+      expect(claims[:sub]).to be_present
+    end
+
+    it 'raises when the nonce claim does not match' do
+      token = build_token(nonce: Digest::SHA256.hexdigest('something-else'))
+      expect { described_class.new(token, nonce: raw_nonce).call }
+        .to raise_error(Auth::VerifyAppleToken::InvalidToken)
+    end
+
+    it 'still accepts tokens when no nonce is supplied (transitional)' do
+      token = build_token
+      expect { described_class.new(token, nonce: nil).call }.not_to raise_error
+    end
+  end
+
   it 'raises when signature does not match JWKS' do
     other_key = OpenSSL::PKey::RSA.generate(2048)
     payload = {

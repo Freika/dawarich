@@ -4,8 +4,9 @@ module Auth
   class VerifyGoogleToken
     class InvalidToken < StandardError; end
 
-    def initialize(id_token)
+    def initialize(id_token, nonce: nil)
       @id_token = id_token
+      @nonce = nonce
     end
 
     def call
@@ -17,9 +18,38 @@ module Auth
       claims = GoogleIDToken::Validator.new.check(@id_token, client_ids)
       raise InvalidToken, 'validator returned nil' if claims.nil?
 
-      claims.symbolize_keys
+      claims = claims.symbolize_keys
+      verify_nonce!(claims)
+
+      claims
     rescue GoogleIDToken::ValidationError => e
       raise InvalidToken, e.message
+    end
+
+    private
+
+    def verify_nonce!(claims)
+      if @nonce.blank?
+        log_missing_nonce_breadcrumb
+        return
+      end
+
+      claim_nonce = claims[:nonce].to_s
+      return if ActiveSupport::SecurityUtils.secure_compare(claim_nonce, @nonce.to_s)
+
+      raise InvalidToken, 'nonce mismatch'
+    end
+
+    def log_missing_nonce_breadcrumb
+      return unless defined?(Sentry)
+
+      Sentry.capture_message(
+        'google_id_token_missing_nonce',
+        level: :warning,
+        extra: { hint: 'Hard-require nonce after mobile client rollout' }
+      )
+    rescue StandardError
+      nil
     end
   end
 end

@@ -8,8 +8,8 @@ class Api::V1::Traccar::PointsController < ApiController
     Traccar::PointCreator.new(point_params, current_api_user.id).call
 
     render json: [], status: :ok
-  rescue StandardError => e
-    Sentry.capture_exception(e) if defined?(Sentry)
+  rescue ActiveRecord::RecordInvalid, ActiveRecord::StatementInvalid, ArgumentError => e
+    Sentry.capture_exception(e)
 
     render json: { error: 'Point creation failed' }, status: :internal_server_error
   end

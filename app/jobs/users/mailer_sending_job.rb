@@ -17,7 +17,9 @@ class Users::MailerSendingJob < ApplicationJob
     'trial_expires_soon'       => ['UsersMailer', :trial_expires_soon],
     'trial_expired'            => ['UsersMailer', :trial_expired],
     'post_trial_reminder_early' => ['UsersMailer', :post_trial_reminder_early],
-    'post_trial_reminder_late' => ['UsersMailer', :post_trial_reminder_late]
+    'post_trial_reminder_late' => ['UsersMailer', :post_trial_reminder_late],
+    'oauth_account_link'       => ['UsersMailer', :oauth_account_link],
+    'account_destroy_confirmation' => ['UsersMailer', :account_destroy_confirmation]
   }.freeze
 
   def perform(user_id, email_type, **options)

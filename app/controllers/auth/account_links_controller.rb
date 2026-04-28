@@ -1,10 +1,5 @@
 # frozen_string_literal: true
 
-# Handles the click-through from the OAuth account-link verification email.
-# A user who tries to sign in with Apple or Google on an email that already
-# belongs to a password account receives a signed link by email; clicking
-# the link here performs the merge (writes `provider` + `uid` onto the
-# existing user) and signs them in.
 class Auth::AccountLinksController < ApplicationController
   before_action :no_store_headers
 
@@ -18,6 +13,10 @@ class Auth::AccountLinksController < ApplicationController
         return redirect_to(new_user_session_path, alert: 'Link invalid or expired.')
       end
 
+    unless Auth::VerifyAccountLinkToken.consume!(result.jti)
+      return redirect_to(new_user_session_path, alert: 'This link has already been used.')
+    end
+
     user = result.user
 
     if user.provider.present? && (user.provider != result.provider || user.uid != result.uid)
@@ -26,10 +25,17 @@ class Auth::AccountLinksController < ApplicationController
     end
 
     user.update!(provider: result.provider, uid: result.uid)
-    Auth::VerifyAccountLinkToken.mark_consumed!(result.jti)
-    sign_in(user)
 
-    redirect_to root_path, notice: "#{provider_label(result.provider)} is now linked to your account."
+    if user.otp_required_for_login?
+      redirect_to(
+        new_user_session_path,
+        notice: "#{provider_label(result.provider)} is now linked to your account. " \
+                'Sign in with your password and 2FA code to continue.'
+      )
+    else
+      sign_in(user)
+      redirect_to root_path, notice: "#{provider_label(result.provider)} is now linked to your account."
+    end
   end
 
   private

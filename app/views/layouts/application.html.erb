@@ -32,7 +32,6 @@
     <% end %>
 
     <% if !DawarichSettings.self_hosted? && ENV['GOOGLE_ADS_ID'].present? %>
-      <% manager_host = (URI.parse(MANAGER_URL).host rescue nil) %>
       <script async src="https://www.googletagmanager.com/gtag/js?id=<%= j ENV['GOOGLE_ADS_ID'] %>"></script>
       <script>
         window.dataLayer = window.dataLayer || [];
@@ -42,7 +41,7 @@
           send_page_view: false,
           linker: {
             accept_incoming: true,
-            domains: <%= [manager_host].compact.to_json.html_safe %>
+            domains: <%= [MANAGER_HOST].compact.to_json.html_safe %>
           }
         });
       </script>

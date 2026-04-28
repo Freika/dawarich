@@ -124,7 +124,13 @@ class ApiController < ApplicationController
   end
 
   def api_key
-    params[:api_key] || request.headers['Authorization']&.split(' ')&.last
+    params[:api_key] || extract_bearer_token
+  end
+
+  def extract_bearer_token
+    header = request.headers['Authorization'].to_s
+    match = header.match(/\ABearer\s+(\S+)\z/i)
+    match && match[1]
   end
 
   def validate_params

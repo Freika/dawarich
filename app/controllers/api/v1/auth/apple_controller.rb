@@ -7,7 +7,7 @@ class Api::V1::Auth::AppleController < Api::V1::Auth::BaseController
   def create
     claims =
       begin
-        Auth::VerifyAppleToken.new(params[:id_token]).call
+        Auth::VerifyAppleToken.new(params[:id_token], nonce: params[:nonce]).call
       rescue Auth::VerifyAppleToken::InvalidToken => e
         return render_auth_error("Apple token verification failed: #{e.message}")
       end

@@ -18,9 +18,6 @@ module Auth
       raise InvalidToken, 'wrong purpose' unless decoded['purpose'] == 'otp_challenge'
       raise InvalidToken, 'missing jti' if decoded['jti'].blank?
 
-      # Defense in depth: even if exp is far in the future (e.g. someone manufactured
-      # a token server-side with a big exp), reject tokens whose iat is older than the
-      # configured TTL.
       if decoded['iat'].present? &&
          (Time.now.to_i - decoded['iat'].to_i) > Auth::IssueOtpChallengeToken::TTL.to_i
         raise InvalidToken, 'token too old'
@@ -37,14 +34,15 @@ module Auth
       raise InvalidToken, e.message
     end
 
-    # Callers invoke this after they have successfully completed the 2FA flow.
-    # It marks the token's jti as consumed so replaying the same challenge_token
-    # with another OTP guess fails. Key TTL covers the full token TTL.
     def mark_consumed!
-      return if @jti.blank?
+      return false if @jti.blank?
 
-      Rails.cache.write("#{CONSUMED_KEY_PREFIX}#{@jti}", true,
-                        expires_in: Auth::IssueOtpChallengeToken::TTL)
+      Rails.cache.write(
+        "#{CONSUMED_KEY_PREFIX}#{@jti}",
+        true,
+        expires_in: Auth::IssueOtpChallengeToken::TTL,
+        unless_exist: true
+      )
     end
 
     private

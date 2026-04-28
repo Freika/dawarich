@@ -1,18 +1,12 @@
 # frozen_string_literal: true
 
 module Auth
-  # Verifies an Apple ID token sent by a mobile client (id_token from
-  # ASAuthorizationController / Sign in with Apple).
-  #
-  # Delegates JWKS fetching, signature verification, and iss/aud/exp/iat
-  # checks to the `apple_id` gem so we don't have to maintain this against
-  # Apple's evolving spec. JWKS caching is wired through `Rails.cache` in
-  # config/initializers/apple_id.rb.
   class VerifyAppleToken
     class InvalidToken < StandardError; end
 
-    def initialize(id_token)
+    def initialize(id_token, nonce: nil)
       @id_token = id_token
+      @nonce = nonce
     end
 
     def call
@@ -20,7 +14,12 @@ module Auth
       raise InvalidToken, 'APPLE_BUNDLE_ID not configured' if bundle_id.blank?
 
       decoded = AppleID::IdToken.decode(@id_token)
-      decoded.verify!(client: bundle_id)
+      verify_args = { client: bundle_id }
+      verify_args[:nonce] = expected_nonce_hash if @nonce.present?
+
+      decoded.verify!(**verify_args)
+
+      log_missing_nonce_breadcrumb if @nonce.blank?
 
       {
         sub: decoded.sub,
@@ -36,6 +35,22 @@ module Auth
 
     def bundle_id
       ENV['APPLE_BUNDLE_ID']
+    end
+
+    def expected_nonce_hash
+      Digest::SHA256.hexdigest(@nonce.to_s)
+    end
+
+    def log_missing_nonce_breadcrumb
+      return unless defined?(Sentry)
+
+      Sentry.capture_message(
+        'apple_id_token_missing_nonce',
+        level: :warning,
+        extra: { hint: 'Hard-require nonce after mobile client rollout' }
+      )
+    rescue StandardError
+      nil
     end
   end
 end
