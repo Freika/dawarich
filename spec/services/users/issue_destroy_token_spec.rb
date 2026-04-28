@@ -13,7 +13,7 @@ RSpec.describe Users::IssueDestroyToken do
     expect(decoded['purpose']).to eq('account_destroy')
     expect(decoded['user_id']).to eq(user.id)
     expect(decoded['jti']).to be_present
-    expect(decoded['exp']).to be_within(5).of((Time.now + described_class::TTL).to_i)
+    expect(decoded['exp']).to be_within(5).of((Time.current + described_class::TTL).to_i)
   end
 
   it 'issues a unique jti per call' do

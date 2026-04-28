@@ -97,5 +97,54 @@ RSpec.describe 'Api::V1::Users::Destroy', type: :request do
         expect(user.reload.deleted_at).to be_nil
       end
     end
+
+    context 'when the user owns a family with other members' do
+      let(:family) { create(:family, creator: user) }
+
+      before do
+        create(:family_membership, family: family, user: user, role: :owner)
+        create(:family_membership, family: family, user: create(:user), role: :member)
+      end
+
+      it 'returns 422 and does NOT soft-delete (cloud)' do
+        delete '/api/v1/users/me', headers: headers
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(JSON.parse(response.body)['error']).to eq('cannot_delete_account')
+        expect(user.reload.deleted_at).to be_nil
+      end
+
+      it 'does NOT enqueue the confirmation email when blocked (cloud)' do
+        expect do
+          delete '/api/v1/users/me', headers: headers
+        end.not_to have_enqueued_job(Users::MailerSendingJob)
+      end
+
+      it 'returns 422 and does NOT soft-delete (self-hosted)' do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+
+        delete '/api/v1/users/me', params: { password: 'secret123' }, headers: headers
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(user.reload.deleted_at).to be_nil
+      end
+
+      it 'does NOT enqueue Users::DestroyJob when blocked (self-hosted)' do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+
+        expect do
+          delete '/api/v1/users/me', params: { password: 'secret123' }, headers: headers
+        end.not_to have_enqueued_job(Users::DestroyJob)
+      end
+
+      it 'rejects regardless of password validity (self-hosted)' do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+
+        delete '/api/v1/users/me', params: { password: 'wrong' }, headers: headers
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(user.reload.deleted_at).to be_nil
+      end
+    end
   end
 end
