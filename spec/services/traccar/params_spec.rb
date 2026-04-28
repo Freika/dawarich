@@ -80,6 +80,14 @@ RSpec.describe Traccar::Params do
       end
     end
 
+    context 'when battery block is present without is_charging' do
+      before { input[:battery] = { level: 0.5 } }
+
+      it 'returns unknown status' do
+        expect(params[:battery_status]).to eq('unknown')
+      end
+    end
+
     it 'extracts activity.type into motion_data' do
       expect(params[:motion_data]).to include('activity' => 'walking')
     end
@@ -109,10 +117,27 @@ RSpec.describe Traccar::Params do
       end
     end
 
+    context 'when longitude is missing' do
+      before { input[:location].delete(:longitude) }
+
+      it 'returns nil' do
+        expect(params).to be_nil
+      end
+    end
+
     context 'when timestamp is missing' do
       before { input[:location].delete(:timestamp) }
 
       it 'returns nil' do
+        expect(params).to be_nil
+      end
+    end
+
+    context 'when timestamp is unparseable' do
+      before { input[:location][:timestamp] = 'not-a-date' }
+
+      it 'returns nil instead of raising' do
+        expect { params }.not_to raise_error
         expect(params).to be_nil
       end
     end

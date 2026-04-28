@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-# Normalizes a Traccar Client v9+ JSON payload into Dawarich's point hash.
-# Payload reference: https://www.traccar.org/osmand/
+# Normalizes the JSON payload sent by the Dawarich mobile client (a Traccar-style
+# tracker built on react-native-background-geolocation) into a point hash.
 class Traccar::Params
   attr_reader :payload
 
@@ -12,18 +12,25 @@ class Traccar::Params
   def call
     return unless valid?
 
-    {
+    parsed_timestamp = parse_timestamp(location[:timestamp])
+    return if parsed_timestamp.nil?
+
+    altitude_value = location[:altitude]
+
+    attrs = {
       lonlat:         "POINT(#{location[:longitude]} #{location[:latitude]})",
-      timestamp:      DateTime.parse(location[:timestamp].to_s).to_i,
-      altitude:       location[:altitude],
+      timestamp:      parsed_timestamp,
+      altitude:       altitude_value,
       accuracy:       location[:accuracy],
       velocity:       location[:speed]&.to_s,
       tracker_id:     payload[:device_id],
       battery:        battery_level,
       battery_status: battery_status,
-      motion_data:    motion_data,
+      motion_data:    Points::MotionDataExtractor.from_traccar(payload),
       raw_data:       payload.deep_stringify_keys
     }
+    attrs[:altitude_decimal] = altitude_value if Point.column_names.include?('altitude_decimal')
+    attrs
   end
 
   private
@@ -35,16 +42,18 @@ class Traccar::Params
       location[:timestamp].present?
   end
 
+  def parse_timestamp(value)
+    DateTime.parse(value.to_s).to_i
+  rescue ArgumentError, TypeError
+    nil
+  end
+
   def location
     @location ||= payload[:location] || {}
   end
 
   def battery
     @battery ||= payload[:battery] || {}
-  end
-
-  def activity
-    @activity ||= payload[:activity] || {}
   end
 
   def battery_level
@@ -59,14 +68,6 @@ class Traccar::Params
     return 'unknown' unless battery.key?(:is_charging)
 
     battery[:is_charging] ? 'charging' : 'unplugged'
-  end
-
-  def motion_data
-    data = {}
-    data['activity']  = activity[:type] if activity[:type]
-    data['is_moving'] = location[:is_moving] unless location[:is_moving].nil?
-    data['event']     = location[:event] if location[:event]
-    data
   end
 
   def normalize(input)

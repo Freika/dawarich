@@ -562,11 +562,9 @@ ActiveRecord::Schema[8.0].define(version: 2026_04_26_204917) do
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["plan"], name: "index_users_on_plan"
     t.index ["provider", "uid"], name: "index_users_on_provider_and_uid", unique: true
-    t.index ["provider", "uid"], name: "index_users_on_provider_and_uid_present", unique: true, where: "((provider IS NOT NULL) AND (uid IS NOT NULL))"
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
     t.index ["signup_variant"], name: "index_users_on_signup_variant_reverse_trial", where: "((signup_variant)::text = 'reverse_trial'::text)"
     t.index ["status"], name: "index_users_on_status"
-    t.index ["subscription_source"], name: "index_users_on_subscription_source"
     t.index ["unlock_token"], name: "index_users_on_unlock_token", unique: true
   end
 

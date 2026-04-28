@@ -57,10 +57,32 @@ RSpec.describe Traccar::PointCreator do
     expect(user.points_count).to eq(count_after_first)
   end
 
+  it 'enqueues an anomaly filter job for inserted points' do
+    expect { call_service }.to have_enqueued_job(Points::AnomalyFilterJob).with(user.id, anything, anything)
+  end
+
+  it 'does not enqueue an anomaly filter job for duplicate submissions' do
+    call_service
+    expect { call_service }.not_to have_enqueued_job(Points::AnomalyFilterJob)
+  end
+
   context 'when payload is invalid' do
     let(:point_params) { { device_id: 'x' } }
 
     it 'returns an empty array' do
+      expect(call_service).to eq([])
+    end
+
+    it 'does not enqueue any jobs' do
+      expect { call_service }.not_to have_enqueued_job(Points::AnomalyFilterJob)
+    end
+  end
+
+  context 'when timestamp is unparseable' do
+    before { point_params[:location][:timestamp] = 'not-a-date' }
+
+    it 'does not raise and creates no point' do
+      expect { call_service }.not_to(change { Point.where(user:).count })
       expect(call_service).to eq([])
     end
   end

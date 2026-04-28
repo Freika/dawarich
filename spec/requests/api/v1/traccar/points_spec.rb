@@ -43,6 +43,24 @@ RSpec.describe 'Api::V1::Traccar::Points', type: :request do
         end.to change(Point, :count).by(1)
       end
 
+      it 'enqueues anomaly filter job' do
+        expect do
+          post "/api/v1/traccar/points?api_key=#{user.api_key}", params: payload, as: :json
+        end.to have_enqueued_job(Points::AnomalyFilterJob)
+      end
+
+      context 'when payload is malformed' do
+        before { payload[:location][:timestamp] = 'not-a-date' }
+
+        it 'returns ok and does not create a point' do
+          expect do
+            post "/api/v1/traccar/points?api_key=#{user.api_key}", params: payload, as: :json
+          end.not_to change(Point, :count)
+
+          expect(response).to have_http_status(:ok)
+        end
+      end
+
       context 'when user is inactive' do
         before { user.update(status: :inactive, active_until: 1.day.ago) }
 
