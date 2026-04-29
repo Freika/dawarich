@@ -21,7 +21,6 @@ RSpec.describe ApplicationHelper, type: :helper do
         allow(helper).to receive(:current_user).and_return(fake_user)
         # Stub icon helper used inside pro_badge_tag
         allow(helper).to receive(:icon).and_return('🔒'.html_safe)
-        # Provide a controller context for rails_pulse's link_to override
         allow(helper).to receive(:controller).and_return(
           double(class: double(name: 'ApplicationController'))
         )

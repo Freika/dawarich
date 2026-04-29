@@ -475,12 +475,6 @@ GEM
     rails_icons (1.4.0)
       nokogiri (~> 1.16, >= 1.16.4)
       rails (> 6.1)
-    rails_pulse (0.2.7)
-      async (~> 2.0)
-      rails (>= 7.1.0, < 9.0.0)
-      ransack (~> 4.0)
-      request_store (~> 1.5)
-      turbo-rails (~> 2.0.11)
     railties (8.0.3)
       actionpack (= 8.0.3)
       activesupport (= 8.0.3)
@@ -749,7 +743,6 @@ DEPENDENCIES
   rack-session (>= 2.1.2)
   rails (~> 8.0)
   rails_icons
-  rails_pulse
   redis
   resolv-replace (~> 0.2.0)
   rexml
