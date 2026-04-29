@@ -481,25 +481,26 @@
   color: oklch(var(--bc) / 0.7);
 }
 
-.timeline-day-footer__rollup {
+.timeline-day-rollup {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: center;
   gap: 0.35rem 0.9rem;
-  flex: 1;
-  margin: 0;
+  margin: 0.25rem 0 0.5rem;
+  padding: 0.5rem 0.5rem;
   font-size: 0.7rem;
   font-variant-numeric: tabular-nums;
+  border-bottom: 1px dashed oklch(var(--bc) / 0.12);
 }
 
-.timeline-day-footer__rollup > div {
+.timeline-day-rollup > div {
   display: flex;
   align-items: baseline;
   gap: 0.25rem;
 }
 
-.timeline-day-footer__rollup dt {
+.timeline-day-rollup dt {
   color: oklch(var(--bc) / 0.5);
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -507,7 +508,7 @@
   font-weight: 600;
 }
 
-.timeline-day-footer__rollup dd {
+.timeline-day-rollup dd {
   margin: 0;
   font-weight: 600;
   color: oklch(var(--bc) / 0.85);
@@ -616,6 +617,8 @@
    the suggested picker) can shrink below intrinsic content width. */
 .visit-row__content {
   min-width: 0;
+  justify-self: stretch;
+  text-align: left;
 }
 
 .visit-row__time {
@@ -631,9 +634,11 @@
 .visit-row__title {
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   gap: 0.5rem;
   font-size: 0.8125rem; /* 13px — compact; drops from the default ~16px */
   line-height: 1.3;
+  text-align: left;
 }
 
 .visit-row__title .place-link {
@@ -652,9 +657,11 @@
 .visit-row__meta {
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   flex-wrap: wrap;
   gap: 0.4rem;
   margin-top: 2px;
+  text-align: left;
 }
 
 .visit-row__actions {
@@ -745,13 +752,7 @@
 }
 
 .visit-row__check {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 0;
-  margin: 0;
-  visibility: hidden;
-  transition: width 120ms ease, margin 120ms ease;
+  display: none;
 }
 
 .visit-row__check input[type="checkbox"] {
@@ -761,10 +762,22 @@
   cursor: pointer;
 }
 
+.visit-row {
+  position: relative;
+}
+
+[data-selection-mode="true"] .timeline-entries {
+  padding-left: 28px;
+}
+
 [data-selection-mode="true"] .visit-row__check {
-  visibility: visible;
-  width: 22px;
-  margin-right: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  left: -22px;
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 [data-selection-mode="true"] .visit-row {
@@ -791,6 +804,12 @@
 .day-select-toggle:hover {
   background: oklch(var(--bc) / 0.05);
   color: oklch(var(--bc));
+}
+
+[data-selection-mode="true"] .day-select-toggle {
+  background: oklch(var(--p) / 0.15);
+  border-color: oklch(var(--p) / 0.5);
+  color: oklch(var(--p));
 }
 
 .selection-bar {

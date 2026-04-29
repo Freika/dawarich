@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 module Visits
-  # Service to handle merging multiple visits into one from the visits drawer
   class MergeService
     attr_reader :visits, :errors, :base_visit
 
@@ -11,8 +10,6 @@ module Visits
       @errors = []
     end
 
-    # Merges multiple visits into one
-    # @return [Visit, nil] The merged visit or nil if merge failed
     def call
       return add_error('At least 2 visits must be selected for merging') if visits.length < 2
 
@@ -45,7 +42,7 @@ module Visits
       earliest_start = visits.min_by(&:started_at).started_at
       latest_end     = visits.max_by(&:ended_at).ended_at
       total_duration = ((latest_end - earliest_start) / 60).round
-      combined_name  = visits.map(&:name).join(', ')
+      combined_name  = combined_visit_name
 
       {
         earliest_start:,
@@ -53,6 +50,20 @@ module Visits
         total_duration:,
         combined_name:
       }
+    end
+
+    def combined_visit_name
+      place_ids = visits.map(&:place_id)
+      return base_visit.name if place_ids.compact.length == place_ids.length && place_ids.uniq.length == 1
+
+      seen = {}
+      visits.each do |v|
+        key = v.name.to_s.strip.downcase
+        next if key.empty?
+
+        seen[key] ||= v.name
+      end
+      seen.values.join(', ').presence || base_visit.name
     end
 
     def update_base_visit(base_visit)

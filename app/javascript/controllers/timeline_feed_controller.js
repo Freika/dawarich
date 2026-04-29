@@ -26,6 +26,7 @@ export default class extends Controller {
     this.selectedVisitId = null
     this.selectionMode = false
     this.selectedVisitIds = new Set()
+    this.activeDayElement = null
     // When the visit list turbo-frame finishes loading, apply any pending
     // `visit_id=` URL-param selection (hydration is async because the frame
     // lazy-loads per-day data).
@@ -682,15 +683,22 @@ export default class extends Controller {
   }
 
   enterSelection(event) {
-    if (this.selectionMode) return
-    this.selectionMode = true
-    this.selectedVisitIds.clear()
-
     const day = event.currentTarget.closest(".timeline-day")
     if (!day) return
+
+    if (this.selectionMode) {
+      const wasSameDay = this.activeDayElement === day
+      this.exitSelection()
+      if (wasSameDay) return
+    }
+
+    this.selectionMode = true
+    this.selectedVisitIds.clear()
+    this.activeDayElement = day
     day.dataset.selectionMode = "true"
 
-    if (this.hasSelectionFormTarget) this.selectionFormTarget.hidden = false
+    const form = this.activeSelectionForm()
+    if (form) form.hidden = false
     this.syncSelectionUI()
   }
 
@@ -708,8 +716,11 @@ export default class extends Controller {
       cb.checked = false
     }
 
-    if (this.hasSelectionFormTarget) this.selectionFormTarget.hidden = true
+    const form = this.activeSelectionForm()
+    if (form) form.hidden = true
+
     this.syncSelectionUI()
+    this.activeDayElement = null
   }
 
   toggleVisitId(id) {
@@ -719,7 +730,10 @@ export default class extends Controller {
     } else {
       this.selectedVisitIds.add(idStr)
     }
-    const cb = this.rowCheckTargets.find((c) => c.dataset.visitId === idStr)
+    const scope = this.activeDayElement || this.element
+    const cb = scope.querySelector(
+      `input[type="checkbox"][data-visit-id="${idStr}"]`,
+    )
     if (cb) cb.checked = this.selectedVisitIds.has(idStr)
     this.syncSelectionUI()
   }
@@ -740,25 +754,48 @@ export default class extends Controller {
     event.stopPropagation()
   }
 
+  activeSelectionForm() {
+    const scope = this.activeDayElement
+    if (!scope) return null
+    return scope.querySelector('[data-timeline-feed-target="selectionForm"]')
+  }
+
+  activeSelectionCount() {
+    const scope = this.activeDayElement
+    if (!scope) return null
+    return scope.querySelector('[data-timeline-feed-target="selectionCount"]')
+  }
+
+  activeMergeButton() {
+    const scope = this.activeDayElement
+    if (!scope) return null
+    return scope.querySelector('[data-timeline-feed-target="mergeButton"]')
+  }
+
   syncSelectionUI() {
     const n = this.selectedVisitIds.size
-    if (this.hasSelectionCountTarget) {
-      this.selectionCountTarget.textContent = `${n} selected`
+    const countEl = this.activeSelectionCount()
+    if (countEl) {
+      countEl.textContent = `${n} selected`
     }
-    if (this.hasMergeButtonTarget) {
-      this.mergeButtonTarget.disabled = n < 2
-      this.mergeButtonTarget.textContent = n >= 2 ? `Merge ${n}` : "Merge"
+    const mergeBtn = this.activeMergeButton()
+    if (mergeBtn) {
+      mergeBtn.disabled = n < 2
+      mergeBtn.textContent = n >= 2 ? `Merge ${n}` : "Merge"
     }
   }
 
   submitMerge(event) {
-    if (!this.hasSelectionFormTarget) return
+    const form = this.activeSelectionForm()
+    if (!form || form !== event.currentTarget) {
+      event.preventDefault()
+      return
+    }
     if (this.selectedVisitIds.size < 2) {
       event.preventDefault()
       return
     }
 
-    const form = this.selectionFormTarget
     for (const old of form.querySelectorAll('input[name="visit_ids[]"]')) {
       old.remove()
     }
@@ -770,7 +807,18 @@ export default class extends Controller {
       form.appendChild(input)
     }
 
-    this.selectionMode = false
-    this.selectedVisitIds.clear()
+    const mergeBtn = this.activeMergeButton()
+    if (mergeBtn) mergeBtn.disabled = true
+
+    const onEnd = (e) => {
+      if (e.target !== form) return
+      document.removeEventListener("turbo:submit-end", onEnd)
+      if (e.detail?.success) {
+        this.exitSelection()
+      } else {
+        this.syncSelectionUI()
+      }
+    }
+    document.addEventListener("turbo:submit-end", onEnd)
   }
 }

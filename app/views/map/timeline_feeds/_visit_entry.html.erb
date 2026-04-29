@@ -18,11 +18,12 @@
       data-visit-lat="<%= coords[:lat] %>"
       data-visit-lng="<%= coords[:lng] %>"
     <% end %>>
-  <span class="visit-row__check" aria-hidden="true">
+  <span class="visit-row__check">
     <input type="checkbox"
            data-timeline-feed-target="rowCheck"
            data-visit-id="<%= entry[:visit_id] %>"
            data-action="change->timeline-feed#rowCheckChanged click->timeline-feed#stopPropagation"
+           aria-label="Select visit for merge"
            tabindex="-1">
   </span>
 
