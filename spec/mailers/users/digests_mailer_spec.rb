@@ -41,6 +41,53 @@ RSpec.describe Users::DigestsMailer, type: :mailer do
       expect(mail.html_part.body.to_s).to include('email-digests')
       expect(mail.text_part.body.to_s).to include('email-digests')
     end
+
+    context 'when the user prefers kilometers' do
+      let(:user) { create(:user, email: 'test@example.com') }
+      let(:digest) do
+        create(:users_digest,
+               user: user, year: 2025, period_type: :yearly,
+               distance: 500_000,
+               monthly_distances: { '1' => 50_000, '2' => 100_000 },
+               time_spent_by_location: { 'countries' => [], 'cities' => [] },
+               first_time_visits: { 'countries' => [], 'cities' => [] },
+               year_over_year: {},
+               all_time_stats: { 'total_countries' => 1, 'total_cities' => 1, 'total_distance' => '500000' })
+      end
+
+      it 'converts the total distance from meters to km in both parts' do
+        expect(mail.html_part.body.to_s).to match(/Distance\s+500\s+km/)
+        expect(mail.text_part.body.to_s).to match(/Distance\s+500\s+km/)
+      end
+
+      it 'converts the monthly bar values from meters to km' do
+        expect(mail.html_part.body.to_s).to match(/50\s+km/)
+        expect(mail.html_part.body.to_s).to match(/100\s+km/)
+        expect(mail.html_part.body.to_s).not_to match(/50000\s+km/)
+      end
+    end
+
+    context 'when the user prefers miles' do
+      let(:user) do
+        create(:user, email: 'test@example.com',
+                      settings: { 'maps' => { 'distance_unit' => 'mi' } })
+      end
+      let(:digest) do
+        create(:users_digest,
+               user: user, year: 2025, period_type: :yearly,
+               distance: 1_609_340,
+               monthly_distances: { '1' => 1_609_340 },
+               time_spent_by_location: { 'countries' => [], 'cities' => [] },
+               first_time_visits: { 'countries' => [], 'cities' => [] },
+               year_over_year: {},
+               all_time_stats: { 'total_countries' => 1, 'total_cities' => 1, 'total_distance' => '1609340' })
+      end
+
+      it 'converts the total distance from meters to mi' do
+        expect(mail.html_part.body.to_s).to match(/Distance\s+1,000\s+mi/)
+        expect(mail.text_part.body.to_s).to match(/Distance\s+1,000\s+mi/)
+      end
+    end
   end
 
   describe '#monthly_digest' do
@@ -110,6 +157,49 @@ RSpec.describe Users::DigestsMailer, type: :mailer do
         # then NaN.round → FloatDomainError. ascii_trend_from_pct must guard this.
         expect { mail.html_part.body.to_s }.not_to raise_error
         expect { mail.text_part.body.to_s }.not_to raise_error
+      end
+    end
+
+    context 'when the user prefers kilometers' do
+      let(:user) { create(:user, email: 'test@example.com') }
+      let(:digest) do
+        create(:users_digest,
+               user: user, year: 2026, month: 3, period_type: :monthly,
+               distance: 312_000,
+               monthly_distances: { '1' => 10_000, '2' => 20_000, '3' => 312_000 },
+               time_spent_by_location: { 'countries' => [], 'cities' => [] },
+               first_time_visits: { 'countries' => [], 'cities' => [] },
+               year_over_year: {})
+      end
+
+      it 'converts the total distance from meters to km' do
+        expect(mail.html_part.body.to_s).to match(/Distance\s+312\s+km/)
+        expect(mail.text_part.body.to_s).to match(/Distance\s+312\s+km/)
+      end
+
+      it 'converts weekday bar values from meters to km' do
+        expect(mail.html_part.body.to_s).not_to match(/\b312000 km\b/)
+      end
+    end
+
+    context 'when the user prefers miles' do
+      let(:user) do
+        create(:user, email: 'test@example.com',
+                      settings: { 'maps' => { 'distance_unit' => 'mi' } })
+      end
+      let(:digest) do
+        create(:users_digest,
+               user: user, year: 2026, month: 3, period_type: :monthly,
+               distance: 1_609_340,
+               monthly_distances: { '1' => 1_609_340 },
+               time_spent_by_location: { 'countries' => [], 'cities' => [] },
+               first_time_visits: { 'countries' => [], 'cities' => [] },
+               year_over_year: {})
+      end
+
+      it 'converts the total distance from meters to mi' do
+        expect(mail.html_part.body.to_s).to match(/Distance\s+1,000\s+mi/)
+        expect(mail.text_part.body.to_s).to match(/Distance\s+1,000\s+mi/)
       end
     end
   end

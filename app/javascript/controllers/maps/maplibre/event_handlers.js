@@ -37,9 +37,23 @@ export class EventHandlers {
     if (pointsLayer?.justDragged) return
 
     const feature = e.features[0]
+    const pointId = feature.properties.id
+    const actions = pointId
+      ? [
+          {
+            type: "button",
+            handler: "handleDelete",
+            id: pointId,
+            entityType: "point",
+            label: "Delete",
+          },
+        ]
+      : []
+
     this.controller.showInfo(
       "Location Point",
       this._buildPointInfoContent(feature.properties, feature.geometry),
+      actions,
     )
   }
 

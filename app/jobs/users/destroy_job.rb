@@ -15,9 +15,13 @@ class Users::DestroyJob < ApplicationJob
 
     Rails.logger.info "Starting hard deletion for user #{user.id} (#{user.email})"
 
+    user_email = user.email
+
     Users::Destroy.new(user).call
 
     Rails.logger.info "Successfully deleted user #{user_id}"
+
+    Users::DestructionWebhookJob.perform_later(user_id, user_email)
   rescue ActiveRecord::RecordInvalid => e
     # User cannot be deleted (e.g., owns a family with members) — not transient, retrying won't help
     Rails.logger.error "User deletion blocked for user_id #{user_id}: #{e.message}"
