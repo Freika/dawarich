@@ -100,7 +100,7 @@ class VisitsController < ApplicationController
   end
 
   def merge
-    visit_ids = Array(params[:visit_ids]).map(&:to_i).reject(&:zero?)
+    visit_ids = Array(params[:visit_ids]).map(&:to_i).reject(&:zero?).uniq
     return render_unprocessable('Select at least 2 visits to merge.') if visit_ids.length < 2
 
     visits = current_user.scoped_visits.where(id: visit_ids).order(:started_at)

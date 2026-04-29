@@ -28,8 +28,17 @@ namespace :e2e do
   # keep this aligned.
   E2E_BASE_TIME_STR = '2025-10-15 23:59:00'
 
+  def assert_safe_environment!
+    return unless Rails.env.production?
+    return if ENV['ALLOW_E2E_RESET'] == '1'
+
+    abort '✋ Refusing to run e2e:reset in production. Set ALLOW_E2E_RESET=1 to override.'
+  end
+
   desc 'Reset demo + lite + family users to a clean state and re-seed canonical e2e data'
   task reset_and_seed: :environment do
+    assert_safe_environment!
+
     puts '🧹 Resetting e2e users...'
     Rake::Task['e2e:reset'].invoke
 
@@ -46,6 +55,8 @@ namespace :e2e do
 
   desc 'Wipe data for the e2e users (demo, lite, family members) without deleting the users themselves'
   task reset: :environment do
+    assert_safe_environment!
+
     User.where(email: E2E_USER_EMAILS).find_each do |user|
       print "  ↪ #{user.email} ... "
       reset_user_data!(user)
