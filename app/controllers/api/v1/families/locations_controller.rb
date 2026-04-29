@@ -42,6 +42,6 @@ class Api::V1::Families::LocationsController < ApiController
   def ensure_user_in_family!
     return if current_api_user&.in_family?
 
-    render json: { error: 'User is not part of a family' }, status: :forbidden
+    render json: { error: 'User is not part of a family' }, status: :not_found
   end
 end
