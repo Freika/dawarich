@@ -9,16 +9,53 @@ export default class extends Controller {
   static targets = ["icon", "text"]
 
   copy() {
-    navigator.clipboard
-      .writeText(this.textValue)
-      .then(() => {
-        this.showButtonFeedback()
-        Flash.show("notice", "Link copied to clipboard!")
-      })
-      .catch((err) => {
-        console.error("Failed to copy text: ", err)
-        Flash.show("error", "Failed to copy link")
-      })
+    const text = this.textValue
+
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard
+        .writeText(text)
+        .then(() => this.handleSuccess())
+        .catch(() => this.fallbackCopy(text))
+      return
+    }
+
+    this.fallbackCopy(text)
+  }
+
+  fallbackCopy(text) {
+    const textarea = document.createElement("textarea")
+    textarea.value = text
+    textarea.setAttribute("readonly", "")
+    textarea.style.position = "fixed"
+    textarea.style.top = "0"
+    textarea.style.left = "0"
+    textarea.style.opacity = "0"
+    textarea.style.pointerEvents = "none"
+    document.body.appendChild(textarea)
+
+    textarea.focus()
+    textarea.select()
+    textarea.setSelectionRange(0, text.length)
+
+    let succeeded = false
+    try {
+      succeeded = document.execCommand("copy")
+    } catch (err) {
+      console.error("Failed to copy text: ", err)
+    }
+
+    document.body.removeChild(textarea)
+
+    if (succeeded) {
+      this.handleSuccess()
+    } else {
+      Flash.show("error", "Failed to copy. Please copy manually.")
+    }
+  }
+
+  handleSuccess() {
+    this.showButtonFeedback()
+    Flash.show("notice", "Copied to clipboard!")
   }
 
   showButtonFeedback() {

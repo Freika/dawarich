@@ -1,5 +1,6 @@
 <%# Day-of-month => distance (normalized to string keys so both Array-of-pairs and Hash inputs behave identically) %>
-<% daily = @digest.monthly_distances.to_h.transform_keys(&:to_s) %>
+<% daily = @digest.monthly_distances.to_h.transform_keys(&:to_s)
+                  .transform_values { |v| Users::Digest.convert_distance(v, @distance_unit) } %>
 <%# Weekday totals, Mon..Sun %>
 <% weekday_totals = Array.new(7, 0.0) %>
 <% daily.each do |day_str, distance|
@@ -10,7 +11,7 @@
        next
      end
    end %>
-<% weekday_totals = weekday_totals[1..6] + [weekday_totals[0]] %>
+<% weekday_totals = (weekday_totals[1..6] + [weekday_totals[0]]).map(&:round) %>
 <% active_days = daily.values.count { |d| d.to_f.positive? } %>
 <% pre_style = 'white-space: pre; font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; line-height: 1.25; font-size: 13px; background: #fff; padding: 16px; border-radius: 6px; border: 1px solid #e5e5e5; overflow-x: auto; margin: 0 0 1em 0;' %>
 <!DOCTYPE html>
@@ -37,7 +38,7 @@
 
   <h2>OVERVIEW</h2>
   <pre class="ascii" style="<%= pre_style %>">
-Distance       <%= @digest.distance %> <%= @distance_unit %>
+Distance       <%= distance_with_unit(@digest.distance, @distance_unit) %>
 Active days    <%= active_days %>
 Countries      <%= @digest.time_spent_by_location.to_h['countries'].to_a.size %>
 Cities         <%= @digest.time_spent_by_location.to_h['cities'].to_a.size %>

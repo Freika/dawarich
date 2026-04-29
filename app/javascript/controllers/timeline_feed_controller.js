@@ -15,11 +15,18 @@ export default class extends Controller {
     "scopeBadge",
     "searchInput",
     "emptyFiltered",
+    "rowCheck",
+    "selectionForm",
+    "selectionCount",
+    "mergeButton",
   ]
 
   connect() {
     this.selectedDate = null
     this.selectedVisitId = null
+    this.selectionMode = false
+    this.selectedVisitIds = new Set()
+    this.activeDayElement = null
     // When the visit list turbo-frame finishes loading, apply any pending
     // `visit_id=` URL-param selection (hydration is async because the frame
     // lazy-loads per-day data).
@@ -345,6 +352,7 @@ export default class extends Controller {
   // already reflect the date (hydrating after a Turbo page load) and from the
   // `timeline:open-visit` event path.
   selectDayByDate(date) {
+    if (this.selectionMode) this.exitSelection()
     this.applySelectedDayUI(date)
 
     // Tell the map — bounds are not known yet (visit list frame is async).
@@ -359,6 +367,16 @@ export default class extends Controller {
 
   // ---------- Visit selection ----------
   selectVisit(event) {
+    if (this.selectionMode) {
+      event.preventDefault()
+      event.stopPropagation()
+      const row = event.currentTarget
+      const id = row.dataset.visitId
+      if (!id) return
+      this.toggleVisitId(id)
+      return
+    }
+
     // Don't trigger when activating a nested control: rename trigger span,
     // submit button, form field, or the [data-controller="visit-name"]
     // wrapper whose click opens the inline rename form.
@@ -458,6 +476,7 @@ export default class extends Controller {
 
   // ---------- Filters + Search ----------
   filterChanged() {
+    if (this.selectionMode) this.exitSelection()
     this.applyVisibility()
     document.dispatchEvent(
       new CustomEvent("timeline-feed:filter-changed", {
@@ -661,5 +680,145 @@ export default class extends Controller {
     if (!this.selectedDate) return
     const fakeEvent = { currentTarget: { dataset: { direction } } }
     this.navigateDay(fakeEvent)
+  }
+
+  enterSelection(event) {
+    const day = event.currentTarget.closest(".timeline-day")
+    if (!day) return
+
+    if (this.selectionMode) {
+      const wasSameDay = this.activeDayElement === day
+      this.exitSelection()
+      if (wasSameDay) return
+    }
+
+    this.selectionMode = true
+    this.selectedVisitIds.clear()
+    this.activeDayElement = day
+    day.dataset.selectionMode = "true"
+
+    const form = this.activeSelectionForm()
+    if (form) form.hidden = false
+    this.syncSelectionUI()
+  }
+
+  exitSelection() {
+    this.selectionMode = false
+    this.selectedVisitIds.clear()
+
+    for (const day of this.element.querySelectorAll(
+      '[data-selection-mode="true"]',
+    )) {
+      day.removeAttribute("data-selection-mode")
+    }
+
+    for (const cb of this.rowCheckTargets) {
+      cb.checked = false
+    }
+
+    const form = this.activeSelectionForm()
+    if (form) form.hidden = true
+
+    this.syncSelectionUI()
+    this.activeDayElement = null
+  }
+
+  toggleVisitId(id) {
+    const idStr = String(id)
+    if (this.selectedVisitIds.has(idStr)) {
+      this.selectedVisitIds.delete(idStr)
+    } else {
+      this.selectedVisitIds.add(idStr)
+    }
+    const scope = this.activeDayElement || this.element
+    const cb = scope.querySelector(
+      `input[type="checkbox"][data-visit-id="${idStr}"]`,
+    )
+    if (cb) cb.checked = this.selectedVisitIds.has(idStr)
+    this.syncSelectionUI()
+  }
+
+  rowCheckChanged(event) {
+    if (!this.selectionMode) return
+    const id = event.target.dataset.visitId
+    if (!id) return
+    if (event.target.checked) {
+      this.selectedVisitIds.add(String(id))
+    } else {
+      this.selectedVisitIds.delete(String(id))
+    }
+    this.syncSelectionUI()
+  }
+
+  stopPropagation(event) {
+    event.stopPropagation()
+  }
+
+  activeSelectionForm() {
+    const scope = this.activeDayElement
+    if (!scope) return null
+    return scope.querySelector('[data-timeline-feed-target="selectionForm"]')
+  }
+
+  activeSelectionCount() {
+    const scope = this.activeDayElement
+    if (!scope) return null
+    return scope.querySelector('[data-timeline-feed-target="selectionCount"]')
+  }
+
+  activeMergeButton() {
+    const scope = this.activeDayElement
+    if (!scope) return null
+    return scope.querySelector('[data-timeline-feed-target="mergeButton"]')
+  }
+
+  syncSelectionUI() {
+    const n = this.selectedVisitIds.size
+    const countEl = this.activeSelectionCount()
+    if (countEl) {
+      countEl.textContent = `${n} selected`
+    }
+    const mergeBtn = this.activeMergeButton()
+    if (mergeBtn) {
+      mergeBtn.disabled = n < 2
+      mergeBtn.textContent = n >= 2 ? `Merge ${n}` : "Merge"
+    }
+  }
+
+  submitMerge(event) {
+    const form = this.activeSelectionForm()
+    if (!form || form !== event.currentTarget) {
+      event.preventDefault()
+      return
+    }
+    if (this.selectedVisitIds.size < 2) {
+      event.preventDefault()
+      return
+    }
+
+    for (const old of form.querySelectorAll('input[name="visit_ids[]"]')) {
+      old.remove()
+    }
+    for (const id of this.selectedVisitIds) {
+      const input = document.createElement("input")
+      input.type = "hidden"
+      input.name = "visit_ids[]"
+      input.value = id
+      form.appendChild(input)
+    }
+
+    const mergeBtn = this.activeMergeButton()
+    if (mergeBtn) mergeBtn.disabled = true
+
+    const onEnd = (e) => {
+      if (e.target !== form) return
+      document.removeEventListener("turbo:submit-end", onEnd)
+      if (e.detail?.success) {
+        this.exitSelection()
+      } else {
+        this.syncSelectionUI()
+      }
+    }
+    document.addEventListener("turbo:submit-end", onEnd)
   }
 }

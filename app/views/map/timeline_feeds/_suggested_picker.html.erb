@@ -20,7 +20,7 @@
         <li>
           <label class="suggested-picker__option">
             <%= f.radio_button 'visit[place_id]', place[:id],
-                               checked: idx.zero?,
+                               checked: place[:id] == entry[:place_id] || (entry[:place_id].nil? && idx.zero?),
                                class: 'suggested-picker__radio' %>
             <span class="suggested-picker__option-name"><%= place[:name] %></span>
           </label>
@@ -44,6 +44,7 @@
                 <li>
                   <label class="suggested-picker__option">
                     <%= f.radio_button 'visit[place_id]', place[:id],
+                                       checked: place[:id] == entry[:place_id],
                                        class: 'suggested-picker__radio' %>
                     <span class="suggested-picker__option-name"><%= place[:name] %></span>
                   </label>

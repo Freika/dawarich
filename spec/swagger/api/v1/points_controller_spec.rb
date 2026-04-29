@@ -352,4 +352,46 @@ describe 'Points API', type: :request do
       end
     end
   end
+
+  path '/api/v1/points/reapply_anomaly_filter' do
+    post 'Re-evaluates anomaly flags for all of the user\'s points' do
+      tags 'Points'
+      description 'Clears existing anomaly flags and re-runs the anomaly detection pipeline against ' \
+                  'every point belonging to the user. A per-user lock prevents concurrent runs.'
+      consumes 'application/json'
+      produces 'application/json'
+      parameter name: :api_key, in: :query, type: :string, required: true, description: 'API Key'
+
+      response '202', 're-evaluation queued' do
+        schema type: :object, properties: { message: { type: :string } }
+
+        let(:user) { create(:user) }
+        let(:api_key) { user.api_key }
+
+        before { Rails.cache.delete("anomaly_backfill_pending:#{user.id}") }
+
+        after { |example| SwaggerResponseExample.capture(example, response) }
+
+        run_test!
+      end
+
+      response '409', 're-evaluation already in progress' do
+        schema type: :object, properties: { error: { type: :string } }
+
+        let(:user) { create(:user) }
+        let(:api_key) { user.api_key }
+
+        before { Rails.cache.write("anomaly_backfill_pending:#{user.id}", true, expires_in: 30.minutes) }
+        after { Rails.cache.delete("anomaly_backfill_pending:#{user.id}") }
+
+        run_test!
+      end
+
+      response '401', 'unauthorized' do
+        let(:api_key) { 'invalid' }
+
+        run_test!
+      end
+    end
+  end
 end

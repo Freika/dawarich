@@ -609,6 +609,24 @@ export class ApiClient {
   }
 
   /**
+   * Delete a single point
+   * @param {number} pointId - Point ID to delete
+   * @returns {Promise<Object>} Deleted point payload
+   */
+  async deletePoint(pointId) {
+    const response = await fetch(`${this.baseURL}/points/${pointId}`, {
+      method: "DELETE",
+      headers: this.getHeaders(),
+    })
+
+    if (!response.ok) {
+      throw new Error(`Failed to delete point: ${response.statusText}`)
+    }
+
+    return response.json()
+  }
+
+  /**
    * Bulk delete points
    * @param {Array<number>} pointIds - Array of point IDs to delete
    * @returns {Promise<Object>} { message, count }

@@ -247,13 +247,10 @@ function addDragHandlers(marker, apiKey, userSettings) {
         return response.json()
       })
       .then((data) => {
-        const map = e.target._map
-        if (map?.mapsController?.markers) {
-          const markers = map.mapsController.markers
-          if (markers[pointIndex]) {
-            markers[pointIndex][0] = parseFloat(data.latitude)
-            markers[pointIndex][1] = parseFloat(data.longitude)
-          }
+        const markers = window.mapsController?.markers
+        if (markers?.[pointIndex]) {
+          markers[pointIndex][0] = parseFloat(data.latitude)
+          markers[pointIndex][1] = parseFloat(data.longitude)
         }
 
         // Create updated marker data array

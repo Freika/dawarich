@@ -4,6 +4,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.7.2] - Unreleased
+
+### Removed
+
+- `rails_pulse` performance monitoring has been removed entirely. The gem, its initializer (`config/initializers/rails_pulse.rb`), the `/rails_pulse` route mount, the scheduled `RailsPulse::SummaryJob` and `RailsPulse::CleanupJob` cron entries, and all `rails_pulse_*` tables are gone. A new migration `DropRailsPulseTables` cleans up existing installations on upgrade. This resolves a class of upgrade failures where the `rails_pulse_*` tables ended up missing/half-applied on production. (#2549)
+
+### Added
+
+- Swagger docs for all the recent API additions and changes, improving API discoverability and client generation. The full OpenAPI spec is available at `/api-docs`.
+- Map v2: Delete button on the point info card. Selecting a point now offers an immediate Delete action (with confirm dialog), matching the long-standing Map v1 behavior. The deleted point is removed from the points layer in place without a full reload.
+
+### Fixed
+
+- Monthly and yearly digest emails now convert distance from stored meters to the user's preferred unit (km/mi). Previously the raw meter value was shown next to the unit label (e.g. `500000 km` instead of `500 km`).
+- Map (Leaflet): route lines no longer revert to their pre-move shape when an unrelated point is deleted after dragging another point. The dragend handler was failing to update the marker array because it looked for the controller in the wrong place. (#1797)
+- Track creation now caps a single track's distance at 100,000 km (with a logged warning) instead of silently truncating at the legacy 999,999 m limit. Long-haul journeys are no longer collapsed to ~1000 km. (#1693)
+- Dev container: bind-mount the project root into the container so `bundle install` can locate the `Gemfile`. Previously only sub-paths were mounted, leaving `/var/app/Gemfile` missing. (#1804)
+- Map v2: photos without GPS metadata (`latitude`/`longitude` null) no longer render as markers at Null Island (0°, 0°) — they are now correctly excluded from the photos layer. (#2464, #2465)
 
 ## [1.7.1] - 2026-04-28
 

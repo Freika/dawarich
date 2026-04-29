@@ -31,6 +31,15 @@ RSpec.describe Users::DestroyJob, type: :job do
         expect(Rails.logger).to have_received(:info).with("Starting hard deletion for user #{user.id} (#{user.email})")
         expect(Rails.logger).to have_received(:info).with("Successfully deleted user #{user.id}")
       end
+
+      it 'enqueues destruction webhook with the deleted user_id and email' do
+        user_id = user.id
+        user_email = user.email
+
+        expect { described_class.perform_now(user_id) }
+          .to have_enqueued_job(Users::DestructionWebhookJob)
+          .with(user_id, user_email)
+      end
     end
 
     context 'when user is not soft-deleted' do
@@ -99,6 +108,14 @@ RSpec.describe Users::DestroyJob, type: :job do
           instance_of(StandardError),
           "User deletion failed for user_id #{user.id}"
         )
+      end
+
+      it 'does not enqueue the destruction webhook when deletion failed' do
+        allow(ExceptionReporter).to receive(:call)
+
+        expect do
+          expect { described_class.perform_now(user.id) }.to raise_error(StandardError)
+        end.not_to have_enqueued_job(Users::DestructionWebhookJob)
       end
     end
 

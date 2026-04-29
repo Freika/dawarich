@@ -481,25 +481,26 @@
   color: oklch(var(--bc) / 0.7);
 }
 
-.timeline-day-footer__rollup {
+.timeline-day-rollup {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: center;
   gap: 0.35rem 0.9rem;
-  flex: 1;
-  margin: 0;
+  margin: 0.25rem 0 0.5rem;
+  padding: 0.5rem 0.5rem;
   font-size: 0.7rem;
   font-variant-numeric: tabular-nums;
+  border-bottom: 1px dashed oklch(var(--bc) / 0.12);
 }
 
-.timeline-day-footer__rollup > div {
+.timeline-day-rollup > div {
   display: flex;
   align-items: baseline;
   gap: 0.25rem;
 }
 
-.timeline-day-footer__rollup dt {
+.timeline-day-rollup dt {
   color: oklch(var(--bc) / 0.5);
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -507,7 +508,7 @@
   font-weight: 600;
 }
 
-.timeline-day-footer__rollup dd {
+.timeline-day-rollup dd {
   margin: 0;
   font-weight: 600;
   color: oklch(var(--bc) / 0.85);
@@ -616,6 +617,8 @@
    the suggested picker) can shrink below intrinsic content width. */
 .visit-row__content {
   min-width: 0;
+  justify-self: stretch;
+  text-align: left;
 }
 
 .visit-row__time {
@@ -631,9 +634,11 @@
 .visit-row__title {
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   gap: 0.5rem;
   font-size: 0.8125rem; /* 13px — compact; drops from the default ~16px */
   line-height: 1.3;
+  text-align: left;
 }
 
 .visit-row__title .place-link {
@@ -652,9 +657,11 @@
 .visit-row__meta {
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   flex-wrap: wrap;
   gap: 0.4rem;
   margin-top: 2px;
+  text-align: left;
 }
 
 .visit-row__actions {
@@ -742,4 +749,121 @@
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+.visit-row__check {
+  display: none;
+}
+
+.visit-row__check input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: oklch(var(--p));
+  cursor: pointer;
+}
+
+.visit-row {
+  position: relative;
+}
+
+[data-selection-mode="true"] .timeline-entries {
+  padding-left: 28px;
+}
+
+[data-selection-mode="true"] .visit-row__check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  left: -22px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+[data-selection-mode="true"] .visit-row {
+  cursor: pointer;
+}
+
+[data-selection-mode="true"] .visit-row__actions,
+[data-selection-mode="true"] .visit-row__suggested {
+  pointer-events: none;
+  opacity: 0.45;
+}
+
+.day-select-toggle {
+  margin-left: 8px;
+  font-size: 11px;
+  padding: 2px 8px;
+  border: 1px solid oklch(var(--bc) / 0.2);
+  border-radius: 6px;
+  background: transparent;
+  color: oklch(var(--bc) / 0.7);
+  cursor: pointer;
+}
+
+.day-select-toggle:hover {
+  background: oklch(var(--bc) / 0.05);
+  color: oklch(var(--bc));
+}
+
+[data-selection-mode="true"] .day-select-toggle {
+  background: oklch(var(--p) / 0.15);
+  border-color: oklch(var(--p) / 0.5);
+  color: oklch(var(--p));
+}
+
+.selection-bar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  margin: 0 0 8px 0;
+  background: oklch(var(--p) / 0.08);
+  border: 1px solid oklch(var(--p) / 0.3);
+  border-radius: 8px;
+  font-size: 12px;
+  color: oklch(var(--bc));
+}
+
+.selection-bar[hidden] {
+  display: none;
+}
+
+.selection-bar__count {
+  font-weight: 600;
+}
+
+.selection-bar__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.selection-bar__cancel,
+.selection-bar__merge {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.selection-bar__cancel {
+  background: transparent;
+  border: 1px solid oklch(var(--bc) / 0.2);
+  color: oklch(var(--bc) / 0.7);
+}
+
+.selection-bar__merge {
+  background: oklch(var(--p));
+  border: 1px solid oklch(var(--p));
+  color: oklch(var(--pc));
+  font-weight: 600;
+}
+
+.selection-bar__merge:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }

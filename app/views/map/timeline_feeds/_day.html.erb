@@ -30,13 +30,46 @@
     </div>
     <div class="timeline-day-header__meta">
       <%= pluralize(day_total_visits_count(day), 'visit') %>
+      <% if day_total_visits_count(day) >= 2 %>
+        <button type="button"
+                class="day-select-toggle"
+                data-testid="day-select-toggle"
+                data-action="click->timeline-feed#enterSelection">
+          Select
+        </button>
+      <% end %>
     </div>
   </div>
 
   <%= render partial: 'map/timeline_feeds/day_banner',
              locals: { date: day[:date], suggested_count: suggested_count } %>
 
+  <dl class="timeline-day-rollup">
+    <div>
+      <dt>Visits</dt>
+      <dd><%= total_visits %></dd>
+    </div>
+    <div>
+      <dt>Tracks</dt>
+      <dd><%= total_tracks %></dd>
+    </div>
+    <% if total_distance.to_f.positive? %>
+      <div>
+        <dt>Distance</dt>
+        <dd><%= total_distance %> <%= distance_unit %></dd>
+      </div>
+    <% end %>
+    <% if moving_minutes.positive? %>
+      <div>
+        <dt>Moving</dt>
+        <dd><%= format_duration_short(moving_minutes * 60) %></dd>
+      </div>
+    <% end %>
+  </dl>
+
   <%= render partial: 'map/timeline_feeds/day_summary', locals: { summary: day[:summary] } %>
+
+  <%= render partial: 'map/timeline_feeds/selection_bar' %>
 
   <% if entries.present? %>
     <ol class="timeline-entries">
@@ -66,9 +99,6 @@
     <p class="text-center text-sm text-base-content/60 py-6">No visits tracked this day.</p>
   <% end %>
 
-  <%# Footer pinned to the bottom of the day column (margin-top: auto) so it
-      fills the empty space when the day's entries don't reach the panel
-      edge. Doubles as a quick-nav + at-a-glance day rollup. %>
   <footer class="timeline-day-footer">
     <button type="button"
             class="btn btn-ghost btn-xs btn-square"
@@ -78,29 +108,6 @@
             aria-label="Previous day">
       <%= icon 'chevron-left', class: 'w-4 h-4' %>
     </button>
-
-    <dl class="timeline-day-footer__rollup">
-      <div>
-        <dt>Visits</dt>
-        <dd><%= total_visits %></dd>
-      </div>
-      <div>
-        <dt>Tracks</dt>
-        <dd><%= total_tracks %></dd>
-      </div>
-      <% if total_distance.to_f.positive? %>
-        <div>
-          <dt>Distance</dt>
-          <dd><%= total_distance %> <%= distance_unit %></dd>
-        </div>
-      <% end %>
-      <% if moving_minutes.positive? %>
-        <div>
-          <dt>Moving</dt>
-          <dd><%= format_duration_short(moving_minutes * 60) %></dd>
-        </div>
-      <% end %>
-    </dl>
 
     <button type="button"
             class="btn btn-ghost btn-xs btn-square"

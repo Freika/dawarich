@@ -194,6 +194,7 @@ RSpec.describe Timeline::DayAssembler do
       it 'includes suggested_places on suggested visits' do
         entry = subject.first[:entries].first
         expect(entry[:suggested_places]).to contain_exactly(
+          { id: place.id, name: 'Home', lat: place.lat, lng: place.lon },
           { id: suggested_place_a.id, name: 'Cafe Alpha', lat: suggested_place_a.lat, lng: suggested_place_a.lon },
           { id: suggested_place_b.id, name: 'Cafe Beta', lat: suggested_place_b.lat, lng: suggested_place_b.lon }
         )
@@ -238,13 +239,13 @@ RSpec.describe Timeline::DayAssembler do
       it 'deduplicates candidates by normalized name, keeping the first occurrence' do
         entry = subject.first[:entries].first
         names = entry[:suggested_places].map { |p| p[:name] }
-        expect(names).to eq(['1. FC Union Zapfstelle', 'zapfLaden'])
+        expect(names).to eq(['Home', '1. FC Union Zapfstelle', 'zapfLaden'])
       end
 
-      it 'preserves the id of the first matching candidate' do
+      it 'preserves visit.place at index 0 and the first matching candidate for duplicates' do
         entry = subject.first[:entries].first
-        first_candidate = entry[:suggested_places].first
-        expect(first_candidate[:id]).to eq(dup_a.id)
+        expect(entry[:suggested_places].first[:id]).to eq(place.id)
+        expect(entry[:suggested_places][1][:id]).to eq(dup_a.id)
       end
     end
 
@@ -790,6 +791,67 @@ RSpec.describe Timeline::DayAssembler do
         result = described_class.new(user, start_at: nil, end_at: nil).call
         expect(result).to eq([])
       end
+    end
+  end
+
+  describe '#build_visit_entry suggested_places injection' do
+    let(:day) { Time.zone.parse('2025-02-10 00:00:00') }
+    let(:place_main)   { create(:place, name: 'Blue Bottle', latitude: 37.78, longitude: -122.41) }
+    let(:place_other)  { create(:place, name: 'Sightglass',  latitude: 37.78, longitude: -122.41) }
+    let(:place_dupe)   { create(:place, name: 'Blue Bottle', latitude: 37.78, longitude: -122.41) }
+
+    let(:visit) do
+      create(:visit,
+             user: user,
+             place: place_main,
+             name: 'Blue Bottle',
+             started_at: day + 9.hours,
+             ended_at: day + 10.hours,
+             duration: 60,
+             status: :suggested)
+    end
+
+    let(:assembler) do
+      described_class.new(user, start_at: day.iso8601, end_at: (day + 1.day).iso8601)
+    end
+
+    it 'puts visit.place at index 0 when not in suggested_places' do
+      visit.suggested_places << place_other
+
+      entry = assembler.build_visit_entry(visit.reload)
+
+      expect(entry[:suggested_places].first[:id]).to eq(place_main.id)
+      expect(entry[:suggested_places].first[:name]).to eq('Blue Bottle')
+      expect(entry[:suggested_places].map { |p| p[:id] }).to include(place_other.id)
+    end
+
+    it 'puts visit.place at index 0 when already in suggested_places (no duplicates)' do
+      visit.suggested_places << place_main
+      visit.suggested_places << place_other
+
+      entry = assembler.build_visit_entry(visit.reload)
+
+      ids = entry[:suggested_places].map { |p| p[:id] }
+      expect(ids.first).to eq(place_main.id)
+      expect(ids.count(place_main.id)).to eq(1)
+    end
+
+    it 'keeps visit.place when a different suggested_place shares the same normalized name' do
+      visit.suggested_places << place_dupe
+
+      entry = assembler.build_visit_entry(visit.reload)
+
+      expect(entry[:suggested_places].first[:id]).to eq(place_main.id)
+      expect(entry[:suggested_places].map { |p| p[:id] }).not_to include(place_dupe.id)
+    end
+
+    it 'falls back to current behavior when visit.place is nil' do
+      visit.update!(place: nil, name: 'Unknown')
+      visit.suggested_places << place_other
+
+      entry = assembler.build_visit_entry(visit.reload)
+
+      expect(entry[:suggested_places].map { |p| p[:id] }).to eq([place_other.id])
     end
   end
 end

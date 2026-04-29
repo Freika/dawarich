@@ -1676,6 +1676,9 @@ export default class extends Controller {
       case "area":
         this.deleteArea(id)
         break
+      case "point":
+        this.deletePoint(id)
+        break
       default:
         console.warn("[Maps V2] Unknown entity type for delete:", entityType)
     }
@@ -1708,6 +1711,38 @@ export default class extends Controller {
       document.dispatchEvent(event)
     } catch (_error) {
       Toast.error("Failed to load visit details")
+    }
+  }
+
+  /**
+   * Delete a single point with confirmation, then remove it from the points
+   * source so the map updates without a full reload.
+   */
+  async deletePoint(pointId) {
+    const confirmed = confirm(
+      "Delete this point?\n\nThis action cannot be undone.",
+    )
+    if (!confirmed) return
+
+    try {
+      Toast.info("Deleting point...")
+      await this.api.deletePoint(pointId)
+
+      const numericId = Number(pointId)
+      const pointsLayer = this.layerManager.getLayer("points")
+      const source = pointsLayer && this.map.getSource(pointsLayer.sourceId)
+      if (source?._data?.features) {
+        const data = source._data
+        data.features = data.features.filter(
+          (f) => Number(f.properties?.id) !== numericId,
+        )
+        source.setData(data)
+      }
+
+      this.closeInfo()
+      Toast.success("Point deleted successfully")
+    } catch (_error) {
+      Toast.error("Failed to delete point")
     }
   }
 

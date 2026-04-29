@@ -2,13 +2,15 @@
 <% @user.stats.where(year: @digest.year).each do |stat|
      (stat.daily_distance || {}).each do |day_str, distance|
        begin
-         daily_values[Date.new(stat.year, stat.month, day_str.to_i)] = distance.to_f
+         daily_values[Date.new(stat.year, stat.month, day_str.to_i)] =
+           Users::Digest.convert_distance(distance, @distance_unit)
        rescue ArgumentError
          next
        end
      end
    end %>
-<% monthly = @digest.monthly_distances.to_h.transform_keys(&:to_s) %>
+<% monthly = @digest.monthly_distances.to_h.transform_keys(&:to_s)
+                    .transform_values { |v| Users::Digest.convert_distance(v, @distance_unit) } %>
 <% top_countries = @digest.time_spent_by_location.to_h['countries'].to_a %>
 Your <%= @digest.year %> Year in Review
 ──────────────────────────────
@@ -16,7 +18,7 @@ Your <%= @digest.year %> Year in Review
 Here's your <%= @digest.year %> at a glance.
 
 THE NUMBERS
-  Distance       <%= @digest.distance %> <%= @distance_unit %>
+  Distance       <%= distance_with_unit(@digest.distance, @distance_unit) %>
   Countries      <%= @digest.all_time_stats.to_h['total_countries'] %>
   Cities         <%= @digest.all_time_stats.to_h['total_cities'] %>
 
@@ -29,7 +31,7 @@ ACTIVITY HEATMAP
 <% end %>
 MONTHLY DISTANCE
 <%= ascii_hbar(
-  (1..12).map { |m| monthly[m.to_s].to_f },
+  (1..12).map { |m| monthly[m.to_s].to_f.round },
   labels: Date::ABBR_MONTHNAMES[1..12],
   width: 24,
   suffix: " #{@distance_unit}"

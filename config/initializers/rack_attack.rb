@@ -179,6 +179,7 @@ end
 # grind on TOTP codes to disable 2FA on a stolen session.
 SENSITIVE_2FA_PATHS = %w[
   /api/v1/users/me/two_factor
+  /api/v1/users/me/two_factor/setup
   /api/v1/users/me/two_factor/confirm
   /api/v1/users/me/two_factor/backup_codes
 ].to_set.freeze

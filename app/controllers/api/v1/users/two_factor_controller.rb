@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Api::V1::Users::TwoFactorController < ApiController
+  TOTP_DRIFT = 1
+
   before_action :ensure_two_factor_available
   before_action :ensure_password_provided, only: %i[setup confirm backup_codes]
   before_action :ensure_credential_provided, only: %i[destroy]
@@ -24,7 +26,8 @@ class Api::V1::Users::TwoFactorController < ApiController
 
   def confirm
     if current_api_user.otp_secret.present? &&
-       ROTP::TOTP.new(current_api_user.otp_secret).verify(params[:otp_code].to_s, drift_behind: 15, drift_ahead: 15)
+       ROTP::TOTP.new(current_api_user.otp_secret)
+                 .verify(params[:otp_code].to_s, drift_behind: TOTP_DRIFT, drift_ahead: TOTP_DRIFT)
       current_api_user.otp_required_for_login = true
       codes = current_api_user.generate_otp_backup_codes!
       current_api_user.save!
@@ -76,7 +79,7 @@ class Api::V1::Users::TwoFactorController < ApiController
     return false if current_api_user.otp_secret.blank?
 
     ROTP::TOTP.new(current_api_user.otp_secret)
-              .verify(params[:otp_code].to_s, drift_behind: 15, drift_ahead: 15)
+              .verify(params[:otp_code].to_s, drift_behind: TOTP_DRIFT, drift_ahead: TOTP_DRIFT)
               .present?
   end
 

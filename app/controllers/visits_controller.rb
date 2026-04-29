@@ -5,7 +5,7 @@ class VisitsController < ApplicationController
 
   before_action :authenticate_user!
   before_action :set_visit, only: %i[update destroy]
-  after_action :bust_timeline_month_cache, only: %i[update bulk_update destroy]
+  after_action :bust_timeline_month_cache, only: %i[update bulk_update destroy merge]
 
   def bulk_update
     status = params[:status]
@@ -96,6 +96,30 @@ class VisitsController < ApplicationController
         render turbo_stream: turbo_stream.remove("visit_item_#{@visit.id}")
       end
       format.html { redirect_to build_timeline_url(date: 'today'), status: :see_other }
+    end
+  end
+
+  def merge
+    visit_ids = Array(params[:visit_ids]).map(&:to_i).reject(&:zero?).uniq
+    return render_unprocessable('Select at least 2 visits to merge.') if visit_ids.length < 2
+
+    visits = current_user.scoped_visits.where(id: visit_ids).order(:started_at)
+    return render_not_found('One or more visits not found.') if visits.length != visit_ids.length
+
+    return render_unprocessable('Visits must be on the same day.') unless same_day?(visits)
+
+    @affected_started_at = visits.map(&:started_at)
+
+    service = Visits::MergeService.new(visits)
+    merged = service.call
+
+    if merged&.persisted?
+      respond_to do |format|
+        format.turbo_stream { render turbo_stream: build_merge_streams(merged) }
+        format.html { redirect_back(fallback_location: build_timeline_url(date: 'today')) }
+      end
+    else
+      render_unprocessable(service.errors.join(', ').presence || 'Failed to merge visits.')
     end
   end
 
@@ -240,6 +264,56 @@ class VisitsController < ApplicationController
 
   def visit_params
     params.require(:visit).permit(:name, :place_id, :started_at, :ended_at, :status)
+  end
+
+  def same_day?(visits)
+    tz = current_user.safe_settings.timezone.presence || 'UTC'
+    Time.use_zone(tz) do
+      visits.map { |v| v.started_at.in_time_zone.to_date }.uniq.length == 1
+    end
+  end
+
+  def render_not_found(message)
+    respond_to do |format|
+      format.turbo_stream { render turbo_stream: stream_flash(:error, message), status: :not_found }
+      format.html { redirect_back(fallback_location: build_timeline_url, alert: message) }
+    end
+  end
+
+  def build_merge_streams(merged)
+    tz = current_user.safe_settings.timezone.presence || 'UTC'
+    day_date = Time.use_zone(tz) { merged.started_at.in_time_zone.to_date.to_s }
+    day_range = Time.use_zone(tz) { Date.parse(day_date).in_time_zone.all_day }
+
+    days = Timeline::DayAssembler.new(
+      current_user,
+      start_at: day_range.begin.iso8601,
+      end_at: day_range.end.iso8601,
+      distance_unit: current_user.safe_settings.distance_unit
+    ).call
+    day = days.first
+
+    status_counts = month_status_counts(day_date)
+
+    streams = []
+    streams << if day
+                 turbo_stream.update('timeline-feed-frame',
+                                     partial: 'map/timeline_feeds/day',
+                                     locals: { day: day })
+               else
+                 turbo_stream.update('timeline-feed-frame', '')
+               end
+    streams << turbo_stream.replace('filter-count-confirmed',
+                                    partial: 'map/timeline_feeds/filter_count',
+                                    locals: { status: 'confirmed', count: status_counts['confirmed'].to_i })
+    streams << turbo_stream.replace('filter-count-suggested',
+                                    partial: 'map/timeline_feeds/filter_count',
+                                    locals: { status: 'suggested', count: status_counts['suggested'].to_i })
+    streams << turbo_stream.replace('filter-count-declined',
+                                    partial: 'map/timeline_feeds/filter_count',
+                                    locals: { status: 'declined', count: status_counts['declined'].to_i })
+    streams << stream_flash(:notice, 'Visits merged.')
+    streams
   end
 
   def render_unprocessable(message)
