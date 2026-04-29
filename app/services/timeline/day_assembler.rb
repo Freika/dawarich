@@ -141,12 +141,21 @@ module Timeline
     # reveals it behind a disclosure.
     def build_suggested_places(visit)
       seen = {}
+
+      if visit.place.present?
+        key = visit.place.name.to_s.strip.downcase
+        unless key.empty?
+          seen[key] = { id: visit.place.id, name: visit.place.name, lat: visit.place.lat, lng: visit.place.lon }
+        end
+      end
+
       visit.suggested_places.each do |p|
         key = p.name.to_s.strip.downcase
         next if key.empty?
 
         seen[key] ||= { id: p.id, name: p.name, lat: p.lat, lng: p.lon }
       end
+
       seen.values
     end
 
