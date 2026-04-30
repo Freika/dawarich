@@ -48,6 +48,35 @@ RSpec.describe 'Users::Sessions OTP Challenge', type: :request do
         expect(response).to have_http_status(:unprocessable_entity)
         expect(response.body).to include('Invalid two-factor code')
       end
+
+      it 'increments failed_otp_attempts' do
+        post user_session_path, params: { user: { email: user.email, password: password } }
+        expect {
+          post user_otp_challenge_path, params: { otp_attempt: '000000' }
+        }.to change { user.reload.failed_otp_attempts }.by(1)
+      end
+    end
+
+    context 'when the account is locked' do
+      before do
+        user.update_columns(otp_locked_at: 1.minute.ago)
+        post user_session_path, params: { user: { email: user.email, password: password } }
+      end
+
+      it 'redirects to login with a locked message' do
+        post user_otp_challenge_path, params: { otp_attempt: user.current_otp }
+        expect(response).to redirect_to(new_user_session_path)
+        expect(flash[:alert]).to include('locked')
+      end
+    end
+
+    context 'when OTP succeeds after previous failures' do
+      it 'resets the failed_otp_attempts counter' do
+        user.update_columns(failed_otp_attempts: 5)
+        post user_session_path, params: { user: { email: user.email, password: password } }
+        post user_otp_challenge_path, params: { otp_attempt: user.current_otp }
+        expect(user.reload.failed_otp_attempts).to eq(0)
+      end
     end
 
     context 'when backup code is used' do

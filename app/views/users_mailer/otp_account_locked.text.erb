@@ -1,0 +1,13 @@
+Account temporarily locked
+
+Hi <%= @user.email %>,
+
+Your Dawarich account has been temporarily locked because 10 consecutive failed two-factor authentication attempts were detected.
+
+The lock will automatically lift after 30 minutes. No action is required if this was you.
+
+Didn't recognise this activity? Someone may be trying to access your account. We recommend resetting your password immediately.
+
+Reset your password: <%= new_user_password_url %>
+
+If you need further assistance, contact us at security@dawarich.app.

@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
+- Account lockout after 10 failed 2FA attempts (30-minute auto-unlock or password reset). Applies to both the mobile API (`POST /api/v1/auth/otp_challenge`) and the web sign-in flow. A notification email is sent to the account owner when a lockout is triggered.
 - Swagger docs for all the recent API additions and changes, improving API discoverability and client generation. The full OpenAPI spec is available at `/api-docs`.
 - Map v2: Delete button on the point info card. Selecting a point now offers an immediate Delete action (with confirm dialog), matching the long-standing Map v1 behavior. The deleted point is removed from the points layer in place without a full reload.
 
