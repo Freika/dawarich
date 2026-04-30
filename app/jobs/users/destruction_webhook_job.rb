@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class Users::DestructionWebhookJob < ApplicationJob
-  queue_as :default
+  queue_as :highest_priority
 
   HTTP_TIMEOUT_SECONDS = 10
 

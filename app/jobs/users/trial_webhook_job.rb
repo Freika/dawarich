@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class Users::TrialWebhookJob < ApplicationJob
-  queue_as :default
+  queue_as :highest_priority
 
   def perform(user_id)
     user = find_user_or_skip(user_id) || return

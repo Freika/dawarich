@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class Families::ExpireLocationRequestsJob < ApplicationJob
-  queue_as :default
+  queue_as :families
 
   def perform
     Family::LocationRequest

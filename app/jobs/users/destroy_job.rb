@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class Users::DestroyJob < ApplicationJob
-  queue_as :default
+  queue_as :highest_priority
 
   sidekiq_options retry: 3
 

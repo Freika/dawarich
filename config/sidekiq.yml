@@ -1,6 +1,7 @@
 ---
 :concurrency: <%= ENV.fetch("BACKGROUND_PROCESSING_CONCURRENCY", 10) %>
 :queues:
+  - highest_priority
   - data_migrations
   - points
   - default
