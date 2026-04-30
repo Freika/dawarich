@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.7.3] - Unreleased
+
+### Fixed
+
+- Upgrades from older versions (≤ 1.3.1) no longer crash during `db:migrate` with `Undeclared attribute type for enum 'subscription_source' in User`. The `SetPlanForExistingUsers` data migration now uses raw SQL instead of the live `User` AR model, so it no longer trips on enum/column declarations introduced by later migrations. (#2576)
+
 ## [1.7.2] - Unreleased
 
 ### Removed
