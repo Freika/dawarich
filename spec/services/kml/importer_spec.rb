@@ -142,6 +142,17 @@ RSpec.describe Kml::Importer do
       end
     end
 
+    context 'with KMZ written using streaming format (data descriptor)' do
+      let(:import) { create(:import, user:, name: 'test.kmz', source: 'kml') }
+      let(:file_path) do
+        Rails.root.join('spec/fixtures/files/kml/streaming_kmz_with_data_descriptor.kmz').to_s
+      end
+
+      it 'extracts the inner doc.kml without raising Zip::StreamingError' do
+        expect { parser }.not_to raise_error
+      end
+    end
+
     context 'when importing KMZ file (compressed KML)' do
       let(:file_path) { Rails.root.join('spec/fixtures/files/kml/points_with_timestamps.kmz').to_s }
 

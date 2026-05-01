@@ -102,10 +102,10 @@ class Kml::Importer
   def find_kml_in_zip(kmz_content)
     kml_content = nil
 
-    Zip::InputStream.open(StringIO.new(kmz_content)) do |io|
-      while (entry = io.get_next_entry)
+    Zip::File.open_buffer(StringIO.new(kmz_content)) do |zip|
+      zip.each do |entry|
         if kml_entry?(entry)
-          kml_content = io.read
+          kml_content = entry.get_input_stream.read
           break
         end
       end
