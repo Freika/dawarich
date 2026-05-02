@@ -25,6 +25,13 @@ RSpec.describe Auth::FindOrCreateOauthUser do
       expect(user).to eq(existing)
       expect(created).to be(false)
     end
+
+    it 'does not enqueue the Manager creation webhook (user already exists)' do
+      create(:user, provider: 'apple', uid: 'apple-1', email: 'a@example.com')
+
+      expect { build(claims: { sub: 'apple-1', email: 'a@example.com' }).call }
+        .not_to have_enqueued_job(Users::CreationWebhookJob)
+    end
   end
 
   describe 'email collision with existing account' do
@@ -50,6 +57,14 @@ RSpec.describe Auth::FindOrCreateOauthUser do
       expect(existing.reload.uid).to be_nil
     end
 
+    it 'does not enqueue the Manager creation webhook on the link-verification path' do
+      expect do
+        build(claims: { sub: 'apple-2', email: 'taken@example.com' }, email_verified: true).call
+      rescue Auth::FindOrCreateOauthUser::LinkVerificationSent
+        nil
+      end.not_to have_enqueued_job(Users::CreationWebhookJob)
+    end
+
     # NOTE: (PR-A): Flipper is not yet wired in. The legacy permissive
     # auto-link path (silent merge for verified emails) is reintroduced
     # in PR-B behind the `oauth_auto_link_verified_email` feature flag.
@@ -73,6 +88,18 @@ RSpec.describe Auth::FindOrCreateOauthUser do
 
       expect(created).to be(true)
       expect(user.status).to eq('active')
+    end
+
+    it 'enqueues the Manager creation webhook on cloud' do
+      expect { build(claims: { sub: 'apple-5', email: 'manager@example.com' }).call }
+        .to have_enqueued_job(Users::CreationWebhookJob).with(an_instance_of(Integer))
+    end
+
+    it 'does not enqueue the Manager creation webhook on self-hosted' do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+
+      expect { build(claims: { sub: 'apple-6', email: 'selfhost-2@example.com' }).call }
+        .not_to have_enqueued_job(Users::CreationWebhookJob)
     end
   end
 end

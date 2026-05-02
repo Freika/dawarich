@@ -91,8 +91,8 @@ RSpec.describe User, type: :model do
         expect(user.subscription_source).to eq('none')
       end
 
-      it 'enqueues trial webhook job' do
-        expect { create(:user, :inactive) }.to have_enqueued_job(Users::TrialWebhookJob)
+      it 'enqueues creation webhook job' do
+        expect { create(:user, :inactive) }.to have_enqueued_job(Users::CreationWebhookJob)
       end
 
       it 'enqueues the welcome email immediately' do
@@ -112,6 +112,52 @@ RSpec.describe User, type: :model do
            trial_first_payment_soon trial_converted
            pending_payment_day_1 pending_payment_day_3 pending_payment_day_7].each do |billing_type|
           expect(Users::MailerSendingJob).not_to have_been_enqueued.with(user.id, billing_type)
+        end
+      end
+    end
+
+    describe 'notify_manager_of_creation (cloud signups that skip trial)' do
+      before { ActiveJob::Base.queue_adapter = :test }
+
+      context 'when not self-hosted and skip_auto_trial is set' do
+        before { allow(DawarichSettings).to receive(:self_hosted?).and_return(false) }
+
+        it 'enqueues the creation webhook so Manager learns about the user' do
+          expect { create(:user, skip_auto_trial: true) }
+            .to have_enqueued_job(Users::CreationWebhookJob).with(an_instance_of(Integer))
+        end
+
+        it 'does not enqueue the trial mailer jobs' do
+          user = create(:user, skip_auto_trial: true)
+
+          expect(Users::MailerSendingJob).not_to have_been_enqueued.with(user.id, 'welcome')
+          expect(Users::MailerSendingJob).not_to have_been_enqueued.with(user.id, 'explore_features')
+        end
+
+        it 'does not transition the user out of pending_payment (start_trial would)' do
+          user = create(:user, status: :pending_payment, skip_auto_trial: true)
+
+          expect(user.reload.pending_payment?).to be true
+        end
+      end
+
+      context 'when self-hosted' do
+        before { allow(DawarichSettings).to receive(:self_hosted?).and_return(true) }
+
+        it 'does not enqueue the creation webhook (no Manager exists)' do
+          expect { create(:user, skip_auto_trial: true) }
+            .not_to have_enqueued_job(Users::CreationWebhookJob)
+        end
+      end
+
+      context 'on update of an existing user' do
+        before { allow(DawarichSettings).to receive(:self_hosted?).and_return(false) }
+
+        it 'does not enqueue the creation webhook' do
+          user = create(:user, skip_auto_trial: true)
+
+          expect { user.update!(email: "renamed-#{user.email}") }
+            .not_to have_enqueued_job(Users::CreationWebhookJob)
         end
       end
     end
@@ -741,10 +787,10 @@ subscription_source: :none)
       expect(Users::MailerSendingJob).to have_been_enqueued.with(user.id, 'explore_features')
     end
 
-    it 'enqueues the trial webhook job so Manager can sync billing state' do
+    it 'enqueues the creation webhook job so Manager can sync billing state' do
       user = build(:user)
 
-      expect { user.save! }.to have_enqueued_job(Users::TrialWebhookJob).with(an_instance_of(Integer))
+      expect { user.save! }.to have_enqueued_job(Users::CreationWebhookJob).with(an_instance_of(Integer))
     end
 
     it 'does not enqueue any billing-related mailer jobs from start_trial' do

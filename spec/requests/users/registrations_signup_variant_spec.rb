@@ -48,6 +48,11 @@ RSpec.describe 'Users::Registrations signup variant', type: :request do
 
         expect(response.location.to_s).not_to include('manager.example.com/checkout')
       end
+
+      it 'enqueues the Manager creation webhook exactly once (via start_trial)' do
+        expect { post user_registration_path, params: valid_params }
+          .to have_enqueued_job(Users::CreationWebhookJob).exactly(:once)
+      end
     end
 
     context 'when reverse_trial_signup is enabled (reverse_trial bucket)' do
@@ -83,6 +88,11 @@ RSpec.describe 'Users::Registrations signup variant', type: :request do
       it 'does not enqueue trial onboarding emails' do
         expect { post user_registration_path, params: valid_params }
           .not_to have_enqueued_job(Users::MailerSendingJob)
+      end
+
+      it 'enqueues the Manager creation webhook exactly once' do
+        expect { post user_registration_path, params: valid_params }
+          .to have_enqueued_job(Users::CreationWebhookJob).exactly(:once)
       end
     end
 

@@ -1,9 +1,11 @@
 # frozen_string_literal: true
 
-class Users::TrialWebhookJob < ApplicationJob
+class Users::CreationWebhookJob < ApplicationJob
   queue_as :highest_priority
 
   def perform(user_id)
+    return if ENV['MANAGER_URL'].blank?
+
     user = find_user_or_skip(user_id) || return
 
     payload = {
