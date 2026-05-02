@@ -262,6 +262,21 @@ RSpec.describe Imports::SourceDetector do
       end
     end
 
+    context 'with truncated iOS Google Phone Takeout (array format without semanticSegments)' do
+      let(:file_content) do
+        # iOS Google Maps Timeline export: array of visit/activity objects
+        '[{"endTime": "2018-12-26T18:55:26.237Z", "startTime": "2018-12-26T15:23:48.869Z", ' \
+        '"visit": {"hierarchyLevel": "0", "topCandidate": {"probability": "0.461223", ' \
+        '"placeLocation": "geo:41.570045,-8.468077"}}}, ' \
+        '{"endTime": "2018-12-27T10:35:33.000Z", "startTime": "2018-12-26T18:55:26.237Z", ' \
+        '"activity": {"end": "geo:41.640695,-8.333'
+      end
+
+      it 'detects google_phone_takeout via raw content fallback' do
+        expect(detector.detect_source).to eq(:google_phone_takeout)
+      end
+    end
+
     context 'with truncated Google Semantic History' do
       let(:file_content) do
         '{"timelineObjects": [{"activitySegment": {"duration": {"startTimestamp": "2024-01'

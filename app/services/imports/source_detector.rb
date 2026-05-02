@@ -215,6 +215,9 @@ class Imports::SourceDetector
       :google_records
     elsif content.include?('"FeatureCollection"') && content.include?('"features"')
       :geojson
+    elsif content.include?('"visit"') && content.include?('"activity"') &&
+          content.include?('"endTime"') && content.include?('"startTime"')
+      :google_phone_takeout
     end
   end
 
