@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Self-hosted instances no longer need to set `JWT_SECRET_KEY`. #2570
 - QR sizes are fixed #2479
 - Family owners can now remove other members directly from the family page (#2555)
+- Insights and statistics now agree on the number of countries visited per month (#2581)
 
 
 ## [1.7.3] - 2026-05-02
