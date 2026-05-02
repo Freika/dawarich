@@ -174,6 +174,21 @@ Rack::Attack.throttle('api/auth/otp_challenge', limit: 5, period: 15.minutes) do
   req.ip if req.path == '/api/v1/auth/otp_challenge' && req.post?
 end
 
+# Web OTP brute-force protection. Mirrors the API rule above. (audit H-1)
+# Without this an attacker with a valid password can grind 6-digit TOTP codes
+# at /users/otp_challenge — Devise lockable doesn't apply on this path
+# because valid_password? has already passed.
+Rack::Attack.throttle('users/otp_challenge_session', limit: 5, period: 15.minutes) do |req|
+  next unless req.path == '/users/otp_challenge' && req.post?
+
+  session_id = req.env['rack.session']&.[](:otp_user_id)
+  session_id || req.ip
+end
+
+Rack::Attack.throttle('users/otp_challenge_ip', limit: 20, period: 15.minutes) do |req|
+  req.ip if req.path == '/users/otp_challenge' && req.post?
+end
+
 # 2FA management (disable / confirm / backup_codes) brute-force protection.
 # Keyed on the Authorization header so an attacker with a valid API key can't
 # grind on TOTP codes to disable 2FA on a stolen session.
