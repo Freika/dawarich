@@ -1,17 +1,3 @@
-<% daily_values = {} %>
-<% @user.stats.where(year: @digest.year).each do |stat|
-     (stat.daily_distance || {}).each do |day_str, distance|
-       begin
-         daily_values[Date.new(stat.year, stat.month, day_str.to_i)] =
-           Users::Digest.convert_distance(distance, @distance_unit)
-       rescue ArgumentError
-         next
-       end
-     end
-   end %>
-<% monthly = @digest.monthly_distances.to_h.transform_keys(&:to_s)
-                    .transform_values { |v| Users::Digest.convert_distance(v, @distance_unit) } %>
-<% top_countries = @digest.time_spent_by_location.to_h['countries'].to_a %>
 Your <%= @digest.year %> Year in Review
 ──────────────────────────────
 
@@ -22,24 +8,24 @@ THE NUMBERS
   Countries      <%= @digest.all_time_stats.to_h['total_countries'] %>
   Cities         <%= @digest.all_time_stats.to_h['total_cities'] %>
 
-<% if daily_values.any? %>
+<% if @daily_values.any? %>
 ACTIVITY HEATMAP
-<%= ascii_year_heatmap(daily_values, start_date: Date.new(@digest.year, 1, 1)) %>
+<%= ascii_year_heatmap(@daily_values, start_date: Date.new(@digest.year, 1, 1)) %>
 
 · none   ░ light   ▒ moderate   ▓ high   █ peak
 
 <% end %>
 MONTHLY DISTANCE
 <%= ascii_hbar(
-  (1..12).map { |m| monthly[m.to_s].to_f.round },
+  (1..12).map { |m| @monthly_distances[m.to_s].to_f.round },
   labels: Date::ABBR_MONTHNAMES[1..12],
   width: 24,
   suffix: " #{@distance_unit}"
 ) %>
 
-<% if top_countries.any? %>
+<% if @top_countries.any? %>
 TOP COUNTRIES
-<%= ascii_ranked_list(top_countries.first(5), value_key: 'minutes', label_key: 'name', width: 20, format: ->(m) { "#{(m.to_f / 60).round}h" }) %>
+<%= ascii_ranked_list(@top_countries.first(5), value_key: 'minutes', label_key: 'name', width: 20, format: ->(m) { "#{(m.to_f / 60).round}h" }) %>
 
 <% end %>
 <% if @digest.year_over_year.to_h['distance_change_percent'].present? %>

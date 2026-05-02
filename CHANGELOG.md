@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changed
 
-- Monthly email digest now hides countries and cities with 1 hour or less of time spent, so the Top Countries / Top Cities lists no longer get padded with `0h` and `1h` entries.
+- Monthly and yearly email digests now hide countries and cities with 1 hour or less of time spent, so the Top Countries / Top Cities lists no longer get padded with `0h` and `1h` entries.
 
 ### Fixed
 
