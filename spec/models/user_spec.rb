@@ -489,6 +489,60 @@ subscription_source: :none)
       end
     end
 
+    describe '#legacy_trial?' do
+      # Mirrors #auto_converting_trial?: same trial? root, opposite branch on
+      # sub_source_none?. Together they partition all trial? users into
+      # "no payment method on file" (legacy) vs "card attached" (auto-converting).
+      it 'is true for a trial user with no subscription source' do
+        user = create(:user, :trial, skip_auto_trial: true, active_until: 1.week.from_now, subscription_source: :none)
+        expect(user.legacy_trial?).to be true
+      end
+
+      it 'is true for an expired trial user with no subscription source' do
+        user = create(:user, :trial, skip_auto_trial: true, active_until: 1.day.ago, subscription_source: :none)
+        expect(user.legacy_trial?).to be true
+      end
+
+      it 'is false for a Paddle reverse-trial user (card on file)' do
+        user = create(:user, :trial, skip_auto_trial: true, active_until: 1.week.from_now, subscription_source: :paddle)
+        expect(user.legacy_trial?).to be false
+      end
+
+      it 'is false for an Apple IAP trial user' do
+        user = create(:user, :trial, skip_auto_trial: true, active_until: 1.week.from_now,
+subscription_source: :apple_iap)
+        expect(user.legacy_trial?).to be false
+      end
+
+      it 'is false for a Google Play trial user' do
+        user = create(:user, :trial, skip_auto_trial: true, active_until: 1.week.from_now,
+subscription_source: :google_play)
+        expect(user.legacy_trial?).to be false
+      end
+
+      it 'is false for an active user' do
+        user = create(:user, :active, skip_auto_trial: true, active_until: 1.year.from_now, subscription_source: :none)
+        expect(user.legacy_trial?).to be false
+      end
+
+      it 'is false for a pending_payment user' do
+        user = create(:user, skip_auto_trial: true, status: :pending_payment, active_until: nil,
+subscription_source: :none)
+        expect(user.legacy_trial?).to be false
+      end
+
+      it 'is mutually exclusive with #auto_converting_trial? for any trial user' do
+        legacy = create(:user, :trial, skip_auto_trial: true, active_until: 1.week.from_now,
+subscription_source: :none)
+        auto = create(:user, :trial, skip_auto_trial: true, active_until: 1.week.from_now, subscription_source: :paddle)
+
+        expect(legacy.legacy_trial? && legacy.auto_converting_trial?).to be false
+        expect(auto.legacy_trial? && auto.auto_converting_trial?).to be false
+        expect(legacy.legacy_trial? || legacy.auto_converting_trial?).to be true
+        expect(auto.legacy_trial? || auto.auto_converting_trial?).to be true
+      end
+    end
+
     describe '#export_data' do
       it 'enqueues the export data job' do
         expect { user.export_data }.to have_enqueued_job(Users::ExportDataJob).with(user.id)

@@ -65,6 +65,20 @@ RSpec.describe Import, type: :model do
           expect(import).to be_valid
         end
       end
+
+      context 'when user is an auto-converting trial user (card on file)' do
+        let(:user) do
+          create(:user, :trial, skip_auto_trial: true, active_until: 1.week.from_now, subscription_source: :paddle)
+        end
+
+        it 'does not validate file size limit' do
+          import = build(:import, user: user)
+          mock_file = double(attached?: true, blob: double(byte_size: 12.megabytes))
+          allow(import).to receive(:file).and_return(mock_file)
+
+          expect(import).to be_valid
+        end
+      end
     end
 
     describe 'import count validation' do
@@ -95,6 +109,19 @@ RSpec.describe Import, type: :model do
 
       context 'when user is an active user' do
         let(:user) { create(:user, status: :active) }
+
+        it 'does not validate import count limit' do
+          7.times { |i| create(:import, user: user, name: "import_#{i}") }
+          new_import = build(:import, user: user, name: 'import_8')
+
+          expect(new_import).to be_valid
+        end
+      end
+
+      context 'when user is an auto-converting trial user (card on file)' do
+        let(:user) do
+          create(:user, :trial, skip_auto_trial: true, active_until: 1.week.from_now, subscription_source: :paddle)
+        end
 
         it 'does not validate import count limit' do
           7.times { |i| create(:import, user: user, name: "import_#{i}") }

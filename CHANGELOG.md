@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.7.4] - Unreleased
+
+### Fixed
+
+- Cloud Trial users are no longer limited to 10 MB import files.
+
+
 ## [1.7.3] - 2026-05-02
 
 ### Security
