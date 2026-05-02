@@ -119,6 +119,17 @@
                     <% end %>
                   </div>
                 </div>
+                <% if current_user.family_owner? && member != current_user && !member.family_membership.owner? %>
+                  <%= link_to family_member_path(member.family_membership),
+                        method: :delete,
+                        data: {
+                          turbo_confirm: "Remove #{member.email} from the family?",
+                          turbo_method: :delete
+                        },
+                        class: "btn btn-ghost btn-xs text-error ml-auto" do %>
+                    <%= icon 'x', class: 'w-3.5 h-3.5' %> Remove
+                  <% end %>
+                <% end %>
               </div>
             </div>
           <% end %>
