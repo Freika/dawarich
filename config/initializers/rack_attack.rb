@@ -185,6 +185,17 @@ Rack::Attack.throttle('users/otp_challenge_ip', limit: 20, period: 15.minutes) d
   req.ip if req.path == '/users/otp_challenge' && req.post?
 end
 
+Rack::Attack.throttle('auth/account_link_challenge_session', limit: 5, period: 15.minutes) do |req|
+  next unless req.path == '/auth/account_link/challenge' && req.post?
+
+  pending = req.env['rack.session']&.[](:pending_oauth_link)
+  pending.is_a?(Hash) ? pending['user_id'] : req.ip
+end
+
+Rack::Attack.throttle('auth/account_link_challenge_ip', limit: 20, period: 15.minutes) do |req|
+  req.ip if req.path == '/auth/account_link/challenge' && req.post?
+end
+
 # 2FA management (disable / confirm / backup_codes) brute-force protection.
 # Keyed on the Authorization header so an attacker with a valid API key can't
 # grind on TOTP codes to disable 2FA on a stolen session.

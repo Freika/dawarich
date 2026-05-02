@@ -105,6 +105,8 @@ RSpec.describe 'GET /auth/account_link', type: :request do
 end
 
 RSpec.describe 'OAuth account-link password challenge', type: :request do
+  include ActiveSupport::Testing::TimeHelpers
+
   let(:password) { 'secret-password-123' }
   let(:email) { 'oauth_user@example.com' }
   let!(:user) { create(:user, email: email, password: password, provider: nil, uid: nil) }
@@ -154,6 +156,14 @@ RSpec.describe 'OAuth account-link password challenge', type: :request do
       get auth_account_link_challenge_path
       expect(response).to redirect_to(new_user_session_path)
     end
+
+    it 'redirects to sign-in once the pending link has expired' do
+      trigger_collision
+      travel 16.minutes do
+        get auth_account_link_challenge_path
+        expect(response).to redirect_to(new_user_session_path)
+      end
+    end
   end
 
   describe 'POST /auth/account_link/challenge' do
@@ -200,6 +210,40 @@ RSpec.describe 'OAuth account-link password challenge', type: :request do
         expect(flash[:notice]).to match(/2FA/)
         expect(user.reload.provider).to eq('openid_connect')
       end
+    end
+
+    it 'clears pending state and bounces to sign-in after 5 invalid attempts' do
+      trigger_collision
+
+      4.times do
+        post confirm_auth_account_link_path, params: { password: 'wrong-password' }
+        expect(response).to have_http_status(:unprocessable_entity)
+      end
+
+      post confirm_auth_account_link_path, params: { password: 'wrong-password' }
+      expect(response).to redirect_to(new_user_session_path)
+      expect(flash[:alert]).to match(/Too many invalid/)
+
+      get auth_account_link_challenge_path
+      expect(response).to redirect_to(new_user_session_path)
+
+      expect(user.reload.provider).to be_nil
+    end
+  end
+
+  describe 'rack-attack throttle on /auth/account_link/challenge' do
+    it 'declares both per-session and per-IP throttles' do
+      throttle_names = Rack::Attack.throttles.keys
+      expect(throttle_names).to include('auth/account_link_challenge_session')
+      expect(throttle_names).to include('auth/account_link_challenge_ip')
+
+      session_rule = Rack::Attack.throttles['auth/account_link_challenge_session']
+      expect(session_rule.limit).to eq(5)
+      expect(session_rule.period).to eq(15.minutes.to_i)
+
+      ip_rule = Rack::Attack.throttles['auth/account_link_challenge_ip']
+      expect(ip_rule.limit).to eq(20)
+      expect(ip_rule.period).to eq(15.minutes.to_i)
     end
   end
 

@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Auth::AccountLinksController < ApplicationController
+  MAX_FAILED_PASSWORD_ATTEMPTS = 5
+
   before_action :no_store_headers
 
   def show
@@ -46,7 +48,7 @@ class Auth::AccountLinksController < ApplicationController
     return redirect_to(new_user_session_path, alert: 'Account no longer exists.') unless user
 
     @user_email = user.email
-    @provider_label = pending['provider_label'].presence || provider_label(pending['provider'])
+    @provider_label = label_for(pending)
   end
 
   def confirm
@@ -57,23 +59,31 @@ class Auth::AccountLinksController < ApplicationController
     return redirect_to(new_user_session_path, alert: 'Account no longer exists.') unless user
 
     unless user.valid_password?(params[:password].to_s)
+      session[:pending_oauth_link_attempts] = (session[:pending_oauth_link_attempts] || 0) + 1
+
+      if session[:pending_oauth_link_attempts] >= MAX_FAILED_PASSWORD_ATTEMPTS
+        clear_pending_oauth_link
+        return redirect_to new_user_session_path,
+                           alert: 'Too many invalid attempts. Start the linking flow again.'
+      end
+
       flash.now[:alert] = 'Incorrect password.'
       @user_email = user.email
-      @provider_label = pending['provider_label'].presence || provider_label(pending['provider'])
+      @provider_label = label_for(pending)
       return render :challenge, status: :unprocessable_entity
     end
 
     user.update!(provider: pending['provider'], uid: pending['uid'])
-    session.delete(:pending_oauth_link)
+    clear_pending_oauth_link
 
     if user.otp_required_for_login?
       redirect_to new_user_session_path,
-                  notice: "#{pending['provider_label']} is now linked to your account. " \
+                  notice: "#{label_for(pending)} is now linked to your account. " \
                           'Sign in with your password and 2FA code to continue.'
     else
       sign_in(user)
       redirect_to root_path,
-                  notice: "#{pending['provider_label']} is now linked to your account."
+                  notice: "#{label_for(pending)} is now linked to your account."
     end
   end
 
@@ -95,7 +105,7 @@ class Auth::AccountLinksController < ApplicationController
       Users::MailerSendingJob.perform_later(
         user.id,
         'oauth_account_link',
-        provider_label: pending['provider_label'],
+        provider_label: label_for(pending),
         link_url: link_url
       )
     end
@@ -115,9 +125,18 @@ class Auth::AccountLinksController < ApplicationController
     pending
   end
 
+  def clear_pending_oauth_link
+    session.delete(:pending_oauth_link)
+    session.delete(:pending_oauth_link_attempts)
+  end
+
   def no_store_headers
     response.headers['Cache-Control'] = 'no-store'
     response.headers['Pragma'] = 'no-cache'
+  end
+
+  def label_for(pending)
+    pending['provider_label'].presence || provider_label(pending['provider'])
   end
 
   def provider_label(provider)
