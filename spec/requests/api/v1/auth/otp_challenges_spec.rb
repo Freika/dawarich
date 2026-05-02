@@ -74,6 +74,35 @@ RSpec.describe 'POST /api/v1/auth/otp_challenge', type: :request do
     expect(response).to have_http_status(:unauthorized)
   end
 
+  describe 'OTP lockout' do
+    it 'returns 423 Locked when the account is locked' do
+      user.update_columns(otp_locked_at: 1.minute.ago)
+      post '/api/v1/auth/otp_challenge', params: { challenge_token: challenge_token, otp_code: current_totp }
+      expect(response).to have_http_status(:locked)
+      expect(JSON.parse(response.body)['message']).to include('locked')
+    end
+
+    it 'increments failed_otp_attempts on a wrong code' do
+      expect {
+        post '/api/v1/auth/otp_challenge', params: { challenge_token: challenge_token, otp_code: '000000' }
+      }.to change { user.reload.failed_otp_attempts }.by(1)
+    end
+
+    it 'resets failed_otp_attempts on a successful login' do
+      user.update_columns(failed_otp_attempts: 5)
+      post '/api/v1/auth/otp_challenge', params: { challenge_token: challenge_token, otp_code: current_totp }
+      expect(response).to have_http_status(:ok)
+      expect(user.reload.failed_otp_attempts).to eq(0)
+    end
+
+    it 'enqueues the lockout email when the threshold is reached' do
+      user.update_columns(failed_otp_attempts: User::MAX_FAILED_OTP_ATTEMPTS - 1)
+      expect {
+        post '/api/v1/auth/otp_challenge', params: { challenge_token: challenge_token, otp_code: '000000' }
+      }.to have_enqueued_mail(UsersMailer, :otp_account_locked)
+    end
+  end
+
   describe 'brute-force protection keyed on challenge_token' do
     it 'throttles repeated guesses against the same challenge_token to 5 per window' do
       # 5 wrong attempts should not be throttled; the 6th should

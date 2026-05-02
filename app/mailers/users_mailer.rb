@@ -69,4 +69,10 @@ class UsersMailer < ApplicationMailer
 
     mail(to: @user.email, subject: 'Confirm Dawarich account deletion')
   end
+
+  def otp_account_locked
+    @user = params[:user]
+
+    mail(to: @user.email, subject: 'Dawarich account temporarily locked')
+  end
 end

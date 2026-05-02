@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: #dc2626; color: white; padding: 20px; text-align: center; }
+    .content { padding: 20px; background: #f9fafb; }
+    .cta { background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; margin: 20px 0; }
+    .notice { background: #fef3c7; border: 1px solid #f59e0b; padding: 12px; border-radius: 6px; margin: 16px 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Account temporarily locked</h1>
+    </div>
+    <div class="content">
+      <p>Hi <%= @user.email %>,</p>
+
+      <p>Your Dawarich account has been <strong>temporarily locked</strong> because 10 consecutive failed two-factor authentication attempts were detected.</p>
+
+      <p>The lock will automatically lift after <strong>30 minutes</strong>. No action is required if this was you.</p>
+
+      <div class="notice">
+        <p><strong>Didn't recognise this activity?</strong> Someone may be trying to access your account. We recommend resetting your password immediately.</p>
+      </div>
+
+      <p><a href="<%= new_user_password_url %>" class="cta">Reset your password</a></p>
+
+      <p>If you need further assistance, contact us at <a href="mailto:security@dawarich.app">security@dawarich.app</a>.</p>
+    </div>
+  </div>
+</body>
+</html>

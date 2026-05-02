@@ -70,4 +70,25 @@ RSpec.describe UsersMailer, type: :mailer do
       expect(mail.to).to eq([user.email])
     end
   end
+
+  describe 'otp_account_locked' do
+    let(:mail) { UsersMailer.with(user: user).otp_account_locked }
+
+    it 'renders the headers' do
+      expect(mail.subject).to eq('Dawarich account temporarily locked')
+      expect(mail.to).to eq([user.email])
+    end
+
+    it 'renders the body with the user email' do
+      expect(mail.body.encoded).to match(user.email)
+    end
+
+    it 'includes password reset link in HTML part' do
+      expect(mail.html_part.body.encoded).to include('password')
+    end
+
+    it 'includes password reset link in text part' do
+      expect(mail.text_part.body.encoded).to include('password')
+    end
+  end
 end

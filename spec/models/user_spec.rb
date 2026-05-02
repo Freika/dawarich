@@ -763,4 +763,69 @@ subscription_source: :none)
       end
     end
   end
+
+  describe 'OTP lockout' do
+    let(:user) { create(:user) }
+
+    describe '#otp_locked?' do
+      it 'returns false when otp_locked_at is nil' do
+        expect(user.otp_locked?).to be false
+      end
+
+      it 'returns true when locked within the lock duration' do
+        user.update_columns(otp_locked_at: 1.minute.ago)
+        expect(user.otp_locked?).to be true
+      end
+
+      it 'returns false when lock has expired' do
+        user.update_columns(otp_locked_at: 31.minutes.ago)
+        expect(user.otp_locked?).to be false
+      end
+    end
+
+    describe '#register_failed_otp_attempt!' do
+      it 'increments failed_otp_attempts' do
+        expect { user.register_failed_otp_attempt! }
+          .to change { user.reload.failed_otp_attempts }.from(0).to(1)
+      end
+
+      it 'does not lock the account below the threshold' do
+        (User::MAX_FAILED_OTP_ATTEMPTS - 1).times { user.register_failed_otp_attempt! }
+        expect(user.reload.otp_locked_at).to be_nil
+      end
+
+      it 'locks the account when threshold is reached' do
+        User::MAX_FAILED_OTP_ATTEMPTS.times { user.register_failed_otp_attempt! }
+        expect(user.reload.otp_locked_at).to be_present
+      end
+
+      it 'enqueues a lockout email when threshold is reached' do
+        (User::MAX_FAILED_OTP_ATTEMPTS - 1).times { user.register_failed_otp_attempt! }
+        expect { user.register_failed_otp_attempt! }
+          .to have_enqueued_mail(UsersMailer, :otp_account_locked)
+      end
+
+      it 'does not enqueue a lockout email below the threshold' do
+        expect { user.register_failed_otp_attempt! }
+          .not_to have_enqueued_mail(UsersMailer, :otp_account_locked)
+      end
+    end
+
+    describe '#reset_failed_otp_attempts!' do
+      it 'clears failed_otp_attempts and otp_locked_at' do
+        user.update_columns(failed_otp_attempts: 5, otp_locked_at: 1.minute.ago)
+        user.reset_failed_otp_attempts!
+        user.reload
+        expect(user.failed_otp_attempts).to eq(0)
+        expect(user.otp_locked_at).to be_nil
+      end
+
+      it 'is a no-op when already at defaults' do
+        user.reset_failed_otp_attempts!
+        user.reload
+        expect(user.failed_otp_attempts).to eq(0)
+        expect(user.otp_locked_at).to be_nil
+      end
+    end
+  end
 end

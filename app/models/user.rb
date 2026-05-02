@@ -55,6 +55,29 @@ class User < ApplicationRecord
   enum :subscription_source, { none: 0, paddle: 1, apple_iap: 2, google_play: 3 }, default: :none, prefix: :sub_source
   enum :plan, { lite: 0, pro: 1 }, default: :pro
 
+  MAX_FAILED_OTP_ATTEMPTS = 10
+  OTP_LOCK_DURATION = 30.minutes
+
+  def otp_locked?
+    otp_locked_at.present? && otp_locked_at > OTP_LOCK_DURATION.ago
+  end
+
+  def register_failed_otp_attempt!
+    new_count = failed_otp_attempts + 1
+    if new_count >= MAX_FAILED_OTP_ATTEMPTS
+      update_columns(failed_otp_attempts: new_count, otp_locked_at: Time.current)
+      UsersMailer.with(user: self).otp_account_locked.deliver_later
+    else
+      update_columns(failed_otp_attempts: new_count)
+    end
+  end
+
+  def reset_failed_otp_attempts!
+    return if failed_otp_attempts.zero? && otp_locked_at.nil?
+
+    update_columns(failed_otp_attempts: 0, otp_locked_at: nil)
+  end
+
   def oauth_user?
     provider.present?
   end
