@@ -36,10 +36,7 @@ MANAGER_HOST =
     nil
   end
 
-# Prometheus metrics — fail-closed defaults (audit M-3). With the prior
-# 'prometheus'/'prometheus' fallback, an operator who didn't override the
-# env vars exposed /metrics with default credentials. Now /metrics is
-# inaccessible until an operator explicitly sets both vars.
+# Prometheus metrics
 METRICS_USERNAME = ENV.fetch('METRICS_USERNAME', nil)
 METRICS_PASSWORD = ENV.fetch('METRICS_PASSWORD', nil)
 # /Prometheus metrics

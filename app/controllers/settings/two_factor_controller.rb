@@ -32,8 +32,6 @@ class Settings::TwoFactorController < ApplicationController
   end
 
   def destroy
-    # audit M-1: disabling 2FA must require both factors so a leaked password
-    # alone can't strip the second factor before the attacker uses it.
     unless current_user.valid_password?(params[:password])
       redirect_to settings_two_factor_path, alert: 'Incorrect password.'
       return

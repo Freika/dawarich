@@ -49,7 +49,6 @@ RSpec.describe 'Users::Sessions OTP Challenge', type: :request do
         expect(response.body).to include('Invalid two-factor code')
       end
 
-      # audit H-1: cap brute-force attempts within a single OTP session
       it 'kicks the user back to sign-in after 5 invalid attempts' do
         post user_session_path, params: { user: { email: user.email, password: password } }
 

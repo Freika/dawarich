@@ -140,9 +140,6 @@ RSpec.describe 'Two-factor management', type: :request do
       user.save!
     end
 
-    # audit M-1: disabling 2FA must require BOTH password and a valid OTP /
-    # backup code. The previous gate accepted either factor alone, so a
-    # leaked password (or a stolen API session) was enough to strip 2FA.
     it 'disables 2FA with valid password AND valid OTP' do
       otp = ROTP::TOTP.new(user.otp_secret).now
       delete '/api/v1/users/me/two_factor',

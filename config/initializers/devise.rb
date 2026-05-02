@@ -170,9 +170,6 @@ Devise.setup do |config|
 
   # ==> Configuration for :validatable
   # Range for password length.
-  # audit M-4: bumped from 6, which is below NIST SP 800-63B guidance.
-  # Existing users keep their current passwords until they change/reset;
-  # this only gates new signups and password updates.
   config.password_length = 12..128
 
   # Email regex used to validate email formats. It simply asserts that

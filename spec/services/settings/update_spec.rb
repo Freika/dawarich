@@ -5,9 +5,6 @@ require 'rails_helper'
 RSpec.describe Settings::Update do
   let(:user) { create(:user) }
 
-  # Most tests in this file use *.test placeholder hostnames that don't
-  # resolve in CI. The save-time URL validator now applies even on
-  # self-hosted (just with a smaller blocklist), so we have to stub DNS.
   before do
     allow(Resolv).to receive(:getaddress).and_call_original
     allow(Resolv).to receive(:getaddress).with('immich.test').and_return('93.184.216.34')

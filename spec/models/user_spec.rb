@@ -488,11 +488,6 @@ subscription_source: :none)
       )
     end
 
-    # audit C-1: web flow no longer auto-links a local-password account to
-    # an OAuth identity on email match. The previous "returns existing user"
-    # / "does not create a new user" expectations encoded the insecure path;
-    # the new contract is that Auth::FindOrCreateOauthUser raises
-    # LinkVerificationSent and a confirmation email gets sent.
     context 'when a local-password user exists with the same email' do
       let(:email) { 'existing@example.com' }
       let!(:existing_user) { create(:user, email: email, provider: nil, uid: nil) }
@@ -512,11 +507,9 @@ subscription_source: :none)
 
       it 'does not create a new user' do
         expect do
-          begin
-            described_class.from_omniauth(auth_hash)
-          rescue Auth::FindOrCreateOauthUser::LinkVerificationSent
-            # expected
-          end
+          described_class.from_omniauth(auth_hash)
+        rescue Auth::FindOrCreateOauthUser::LinkVerificationSent
+          nil
         end.not_to change(User, :count)
       end
     end
@@ -579,11 +572,6 @@ subscription_source: :none)
       end
     end
 
-    # When the OAuth provider returns no email, github's email_verified check
-    # falls through to false → service skips both the email-collision branch
-    # and the create_new_user email handling. Service falls into
-    # create_new_user with the synthesized "<uid>@<provider>.dawarich.app"
-    # placeholder. Both nil and blank are treated identically.
     context 'when email is blank or nil' do
       let(:email) { nil }
 

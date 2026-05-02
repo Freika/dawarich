@@ -65,7 +65,6 @@ RSpec.describe 'Settings::TwoFactor', type: :request do
       )
     end
 
-    # audit M-1: disabling 2FA must require both factors.
     context 'with correct password and valid OTP' do
       it 'disables 2FA' do
         delete settings_two_factor_path, params: { password: password, otp_attempt: user.current_otp }

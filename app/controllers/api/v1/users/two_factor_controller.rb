@@ -60,9 +60,6 @@ class Api::V1::Users::TwoFactorController < ApiController
     render json: { error: 'two_factor_not_available' }, status: :service_unavailable
   end
 
-  # audit M-1: disabling 2FA must require both factors. Previously this
-  # before_action accepted password OR otp; with that, a leaked password
-  # alone removed the second factor on its way to a takeover.
   def ensure_otp_or_backup_provided
     return if consume_otp_or_backup!
 

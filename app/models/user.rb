@@ -234,9 +234,6 @@ class User < ApplicationRecord
 
   private
 
-  # audit L-1: 32 hex chars (128 bits) was adequate but below current
-  # convention. New keys are 64 hex chars (256 bits). Existing keys are
-  # not invalidated.
   def create_api_key
     self.api_key = SecureRandom.hex(32)
 

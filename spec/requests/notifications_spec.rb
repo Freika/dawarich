@@ -35,9 +35,6 @@ RSpec.describe '/notifications', type: :request do
         expect(response).to be_successful
       end
 
-      # audit H-2: family.name and error.message flow through notification.content
-      # unsanitized; the show view used .html_safe so an attacker-controlled string
-      # would execute as HTML/JS. Now sanitize() strips dangerous markup.
       context 'with a stored XSS payload in content' do
         let(:notification) do
           create(:notification, user:,
@@ -54,7 +51,7 @@ RSpec.describe '/notifications', type: :request do
         it 'preserves the safe text content' do
           get notification_url(notification)
 
-          expect(response.body).to include("joined the family")
+          expect(response.body).to include('joined the family')
         end
       end
     end

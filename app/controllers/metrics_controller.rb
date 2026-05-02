@@ -24,8 +24,6 @@ class MetricsController < ApplicationController
 
   private
 
-  # audit M-3: refuse to serve /metrics if credentials weren't configured.
-  # The previous defaults exposed metrics with prometheus/prometheus.
   def ensure_metrics_credentials_configured!
     return if METRICS_USERNAME.present? && METRICS_PASSWORD.present?
 

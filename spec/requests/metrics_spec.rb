@@ -4,9 +4,6 @@ require 'rails_helper'
 
 RSpec.describe '/metrics', type: :request do
   describe 'GET /metrics' do
-    # audit M-3: with empty METRICS_USERNAME / METRICS_PASSWORD env vars
-    # the prior defaults exposed the endpoint with prometheus/prometheus.
-    # The fail-closed change refuses to serve until both vars are set.
     context 'when METRICS_USERNAME / METRICS_PASSWORD are not configured' do
       before do
         stub_const('METRICS_USERNAME', nil)

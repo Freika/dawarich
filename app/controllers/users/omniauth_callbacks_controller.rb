@@ -60,13 +60,10 @@ class Users::OmniauthCallbacksController < Devise::OmniauthCallbacksController
       redirect_to new_user_registration_url, alert: @user.errors.full_messages.join("\n")
     end
   rescue Auth::FindOrCreateOauthUser::LinkVerificationSent
-    # Existing local account with the same email. Refused to auto-link;
-    # confirmation email was sent. (audit C-1)
     redirect_to new_user_session_path,
                 alert: 'This email already has a Dawarich account. We sent a confirmation link to that address — ' \
                        "click it to link your #{provider} account, then sign in."
   rescue Auth::FindOrCreateOauthUser::UnverifiedEmail
-    # Provider reports the email is not verified — refuse to find-or-create. (audit C-1)
     redirect_to new_user_session_path,
                 alert: "Your #{provider} email is not verified. Verify it with the provider, " \
                        'then try again — or sign in with your existing password.'

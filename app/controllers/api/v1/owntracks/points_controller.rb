@@ -16,11 +16,6 @@ class Api::V1::Owntracks::PointsController < ApiController
 
   private
 
-  # audit L-3: replace blanket params.permit! with the OwnTracks payload
-  # whitelist. The fields below cover the standard OwnTracks /pub format
-  # (https://owntracks.org/booklet/tech/json/); anything outside the list
-  # is dropped silently. user_id is never trusted from params — the
-  # service forces current_api_user.id.
   OWNTRACKS_FIELDS = %i[
     _type lat lon tst tid t bs batt p acc vac vel alt
     SSID BSSID topic conn cog rad m

@@ -4,14 +4,6 @@ module Omniauthable
   extend ActiveSupport::Concern
 
   class_methods do
-    # Delegates to Auth::FindOrCreateOauthUser so the web flow's email-collision
-    # rules match the mobile API path: an existing local-password account is
-    # NOT auto-linked to a new OAuth identity; a confirmation email is sent
-    # instead. The caller (Users::OmniauthCallbacksController) handles the
-    # following exceptions:
-    #   Auth::FindOrCreateOauthUser::LinkVerificationSent — email collision
-    #   Auth::FindOrCreateOauthUser::UnverifiedEmail — provider reports email unverified
-    # (audit C-1)
     def from_omniauth(access_token)
       provider = access_token.provider.to_s
 
