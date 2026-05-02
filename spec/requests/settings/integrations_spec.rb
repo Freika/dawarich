@@ -9,6 +9,11 @@ RSpec.describe 'Settings::Integrations', type: :request do
 
     before do
       sign_in user
+      # *.test placeholder hostnames don't resolve in CI; the URL validator
+      # now runs even on self-hosted, so stub DNS for them.
+      allow(Resolv).to receive(:getaddress).and_call_original
+      allow(Resolv).to receive(:getaddress).with('immich.test').and_return('93.184.216.34')
+      allow(Resolv).to receive(:getaddress).with('photoprism.test').and_return('93.184.216.34')
     end
 
     it 'updates the user settings' do
