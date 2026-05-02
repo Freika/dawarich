@@ -80,6 +80,32 @@ RSpec.describe UrlValidatable do
         expect { validator.validate_integration_url!('not a url at all') }
           .to raise_error(UrlValidatable::BlockedUrlError, /Invalid URL/)
       end
+
+      describe 'expanded blocklist (audit C-3)' do
+        {
+          'RFC1918 10/8'           => '10.0.0.5',
+          'RFC1918 172.16/12'      => '172.20.0.5',
+          'RFC1918 192.168/16'     => '192.168.1.5',
+          'CGNAT 100.64/10'        => '100.64.0.5',
+          'IETF reserved 192.0.0/24' => '192.0.0.5',
+          'benchmark 198.18/15'    => '198.19.0.5',
+          'multicast 224/4'        => '224.0.0.5',
+          'reserved 240/4'         => '240.0.0.5',
+          'IPv6 ULA fc00::/7'      => 'fd00::1',
+          'IPv6 multicast ff00::/8' => 'ff02::1'
+        }.each do |label, ip|
+          it "rejects #{label} (#{ip})" do
+            allow(Resolv).to receive(:getaddress).with('host.example').and_return(ip)
+            expect { validator.validate_integration_url!('http://host.example/path') }
+              .to raise_error(UrlValidatable::BlockedUrlError, /blocked address/)
+          end
+        end
+
+        it 'rejects URLs with userinfo' do
+          expect { validator.validate_integration_url!('http://user:pass@example.com/') }
+            .to raise_error(UrlValidatable::BlockedUrlError, /credentials/)
+        end
+      end
     end
   end
 end
