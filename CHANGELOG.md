@@ -43,7 +43,7 @@ Fixes for several issues found in a static-analysis security audit. None of thes
 
 ### Fixed
 
-- Google Phone Takeout `location-history.json` now imports reliably. (#2437)
+- Google Phone Takeout `location-history.json` now imports reliably. (#2437, #2587)
 - KMZ files from a wider range of exporters now import.
 - Imports no longer fail intermittently with `No such file or directory @ rb_sysopen - /tmp/...`. (#2446)
 - FIT files from non-Garmin devices and phone apps now import.
