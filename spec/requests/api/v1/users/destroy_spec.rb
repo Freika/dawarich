@@ -4,7 +4,7 @@ require 'rails_helper'
 
 RSpec.describe 'Api::V1::Users::Destroy', type: :request do
   describe 'DELETE /api/v1/users/me' do
-    let(:user) { create(:user, password: 'secret123') }
+    let(:user) { create(:user, password: 'secret123456') }
     let(:headers) { { 'Authorization' => "Bearer #{user.api_key}" } }
 
     before do
@@ -70,7 +70,7 @@ RSpec.describe 'Api::V1::Users::Destroy', type: :request do
 
       it 'soft-deletes immediately when password is correct (no email)' do
         expect do
-          delete '/api/v1/users/me', params: { password: 'secret123' }, headers: headers
+          delete '/api/v1/users/me', params: { password: 'secret123456' }, headers: headers
         end.to have_enqueued_job(Users::DestroyJob).with(user.id)
 
         expect(response).to have_http_status(:ok)
@@ -79,7 +79,7 @@ RSpec.describe 'Api::V1::Users::Destroy', type: :request do
 
       it 'does NOT enqueue an email in self-hosted mode' do
         expect do
-          delete '/api/v1/users/me', params: { password: 'secret123' }, headers: headers
+          delete '/api/v1/users/me', params: { password: 'secret123456' }, headers: headers
         end.not_to have_enqueued_job(Users::MailerSendingJob)
       end
 
@@ -123,7 +123,7 @@ RSpec.describe 'Api::V1::Users::Destroy', type: :request do
       it 'returns 422 and does NOT soft-delete (self-hosted)' do
         allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
 
-        delete '/api/v1/users/me', params: { password: 'secret123' }, headers: headers
+        delete '/api/v1/users/me', params: { password: 'secret123456' }, headers: headers
 
         expect(response).to have_http_status(:unprocessable_content)
         expect(user.reload.deleted_at).to be_nil
@@ -133,7 +133,7 @@ RSpec.describe 'Api::V1::Users::Destroy', type: :request do
         allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
 
         expect do
-          delete '/api/v1/users/me', params: { password: 'secret123' }, headers: headers
+          delete '/api/v1/users/me', params: { password: 'secret123456' }, headers: headers
         end.not_to have_enqueued_job(Users::DestroyJob)
       end
 

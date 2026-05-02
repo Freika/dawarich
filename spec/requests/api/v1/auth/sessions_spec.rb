@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe 'POST /api/v1/auth/login', type: :request do
-  let!(:user) { create(:user, email: 'me@example.com', password: 'secret123') }
+  let!(:user) { create(:user, email: 'me@example.com', password: 'secret123456') }
 
   before do
     Rack::Attack.enabled = true
@@ -16,7 +16,7 @@ RSpec.describe 'POST /api/v1/auth/login', type: :request do
   after { Rack::Attack.enabled = false }
 
   it 'returns 200 with api_key on correct credentials' do
-    post '/api/v1/auth/login', params: { email: 'me@example.com', password: 'secret123' }
+    post '/api/v1/auth/login', params: { email: 'me@example.com', password: 'secret123456' }
     expect(response).to have_http_status(:ok)
     body = JSON.parse(response.body)
     expect(body['api_key']).to eq(user.api_key)
@@ -30,7 +30,7 @@ RSpec.describe 'POST /api/v1/auth/login', type: :request do
   end
 
   it 'returns 401 on unknown email' do
-    post '/api/v1/auth/login', params: { email: 'nope@example.com', password: 'secret123' }
+    post '/api/v1/auth/login', params: { email: 'nope@example.com', password: 'secret123456' }
     expect(response).to have_http_status(:unauthorized)
   end
 
@@ -41,7 +41,7 @@ RSpec.describe 'POST /api/v1/auth/login', type: :request do
     # (set_version_header, set_rate_limit_headers) that would otherwise be
     # absent if BaseController inherited from ActionController::API directly.
     it 'sends the X-Dawarich-Version header from ApiController' do
-      post '/api/v1/auth/login', params: { email: 'me@example.com', password: 'secret123' }
+      post '/api/v1/auth/login', params: { email: 'me@example.com', password: 'secret123456' }
       expect(response.headers['X-Dawarich-Version']).to be_present
       expect(response.headers['X-Dawarich-Response']).to be_present
     end
@@ -61,7 +61,7 @@ RSpec.describe 'POST /api/v1/auth/login', type: :request do
 
   it 'includes current plan/status/subscription_source on success' do
     user.update!(status: :active, plan: :pro, subscription_source: :paddle, active_until: 1.year.from_now)
-    post '/api/v1/auth/login', params: { email: 'me@example.com', password: 'secret123' }
+    post '/api/v1/auth/login', params: { email: 'me@example.com', password: 'secret123456' }
     body = JSON.parse(response.body)
     expect(body['plan']).to eq('pro')
     expect(body['status']).to eq('active')
@@ -77,7 +77,7 @@ RSpec.describe 'POST /api/v1/auth/login', type: :request do
     end
 
     it 'returns 202 with a challenge_token and no api_key' do
-      post '/api/v1/auth/login', params: { email: 'me@example.com', password: 'secret123' }
+      post '/api/v1/auth/login', params: { email: 'me@example.com', password: 'secret123456' }
       expect(response).to have_http_status(:accepted)
       body = JSON.parse(response.body)
       expect(body['two_factor_required']).to be true
@@ -101,7 +101,7 @@ RSpec.describe 'POST /api/v1/auth/login', type: :request do
     end
 
     it 'logs the user in normally, ignoring the otp flag' do
-      post '/api/v1/auth/login', params: { email: 'me@example.com', password: 'secret123' }
+      post '/api/v1/auth/login', params: { email: 'me@example.com', password: 'secret123456' }
       expect(response).to have_http_status(:ok)
     end
   end
@@ -157,7 +157,7 @@ RSpec.describe 'POST /api/v1/auth/login', type: :request do
              params: { email: 'me@example.com', password: 'wrong' }
       end
       post '/api/v1/auth/login',
-           params: { email: 'me@example.com', password: 'secret123' }
+           params: { email: 'me@example.com', password: 'secret123456' }
       expect(response).to have_http_status(:ok)
     end
   end

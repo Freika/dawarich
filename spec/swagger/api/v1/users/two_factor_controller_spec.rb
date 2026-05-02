@@ -7,7 +7,7 @@ describe 'Users Two-Factor API', type: :request do
     allow(DawarichSettings).to receive(:two_factor_available?).and_return(true)
   end
 
-  let(:user) { create(:user, password: 'secret123', status: :active) }
+  let(:user) { create(:user, password: 'secret123456', status: :active) }
   let(:headers_authorization) { "Bearer #{user.api_key}" }
 
   path '/api/v1/users/me/two_factor/setup' do
@@ -34,7 +34,7 @@ describe 'Users Two-Factor API', type: :request do
                }
 
         let(:Authorization) { headers_authorization }
-        let(:payload) { { password: 'secret123' } }
+        let(:payload) { { password: 'secret123456' } }
 
         after { |example| SwaggerResponseExample.capture(example, response) }
 
@@ -50,14 +50,14 @@ describe 'Users Two-Factor API', type: :request do
 
       response '409', 'two-factor already enabled' do
         let(:user) do
-          u = create(:user, password: 'secret123', status: :active)
+          u = create(:user, password: 'secret123456', status: :active)
           u.otp_secret = User.generate_otp_secret
           u.otp_required_for_login = true
           u.save!(validate: false)
           u
         end
         let(:Authorization) { "Bearer #{user.api_key}" }
-        let(:payload) { { password: 'secret123' } }
+        let(:payload) { { password: 'secret123456' } }
 
         run_test!
       end
@@ -94,13 +94,13 @@ describe 'Users Two-Factor API', type: :request do
                }
 
         let(:user) do
-          u = create(:user, password: 'secret123', status: :active)
+          u = create(:user, password: 'secret123456', status: :active)
           u.otp_secret = User.generate_otp_secret
           u.save!(validate: false)
           u
         end
         let(:Authorization) { "Bearer #{user.api_key}" }
-        let(:payload) { { password: 'secret123', otp_code: ROTP::TOTP.new(user.otp_secret).now } }
+        let(:payload) { { password: 'secret123456', otp_code: ROTP::TOTP.new(user.otp_secret).now } }
 
         after { |example| SwaggerResponseExample.capture(example, response) }
 
@@ -109,7 +109,7 @@ describe 'Users Two-Factor API', type: :request do
 
       response '422', 'invalid otp code' do
         let(:Authorization) { headers_authorization }
-        let(:payload) { { password: 'secret123', otp_code: '000000' } }
+        let(:payload) { { password: 'secret123456', otp_code: '000000' } }
 
         run_test!
       end
@@ -138,7 +138,7 @@ describe 'Users Two-Factor API', type: :request do
                }
 
         let(:Authorization) { headers_authorization }
-        let(:payload) { { password: 'secret123' } }
+        let(:payload) { { password: 'secret123456' } }
 
         after { |example| SwaggerResponseExample.capture(example, response) }
 
@@ -177,7 +177,7 @@ describe 'Users Two-Factor API', type: :request do
         schema type: :object, properties: { message: { type: :string } }
 
         let(:Authorization) { headers_authorization }
-        let(:payload) { { password: 'secret123' } }
+        let(:payload) { { password: 'secret123456' } }
 
         after { |example| SwaggerResponseExample.capture(example, response) }
 

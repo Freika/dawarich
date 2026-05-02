@@ -6,7 +6,7 @@ RSpec.describe 'POST /api/v1/auth/register', type: :request do
   before { allow(DawarichSettings).to receive(:self_hosted?).and_return(false) }
 
   let(:valid_params) do
-    { email: 'new@example.com', password: 'secret123', password_confirmation: 'secret123' }
+    { email: 'new@example.com', password: 'secret123456', password_confirmation: 'secret123456' }
   end
 
   it 'creates a user in pending_payment status with an api_key' do
@@ -54,7 +54,7 @@ RSpec.describe 'POST /api/v1/auth/register', type: :request do
     expect(user).to be_present
 
     post '/api/v1/auth/login',
-         params: { email: 'mixed@example.com', password: 'secret123' }
+         params: { email: 'mixed@example.com', password: 'secret123456' }
     expect(response).to have_http_status(:ok)
   end
 

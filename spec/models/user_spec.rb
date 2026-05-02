@@ -488,37 +488,46 @@ subscription_source: :none)
       )
     end
 
-    context 'when user exists with the same email' do
+    # audit C-1: web flow no longer auto-links a local-password account to
+    # an OAuth identity on email match. The previous "returns existing user"
+    # / "does not create a new user" expectations encoded the insecure path;
+    # the new contract is that Auth::FindOrCreateOauthUser raises
+    # LinkVerificationSent and a confirmation email gets sent.
+    context 'when a local-password user exists with the same email' do
       let(:email) { 'existing@example.com' }
-      let!(:existing_user) { create(:user, email: email) }
+      let!(:existing_user) { create(:user, email: email, provider: nil, uid: nil) }
 
-      it 'returns the existing user' do
-        user = described_class.from_omniauth(auth_hash)
-        expect(user).to eq(existing_user)
-        expect(user.persisted?).to be true
+      it 'raises LinkVerificationSent rather than auto-linking' do
+        expect { described_class.from_omniauth(auth_hash) }
+          .to raise_error(Auth::FindOrCreateOauthUser::LinkVerificationSent)
+      end
+
+      it 'leaves the existing user unmodified' do
+        described_class.from_omniauth(auth_hash)
+      rescue Auth::FindOrCreateOauthUser::LinkVerificationSent
+        existing_user.reload
+        expect(existing_user.provider).to be_nil
+        expect(existing_user.uid).to be_nil
       end
 
       it 'does not create a new user' do
         expect do
-          described_class.from_omniauth(auth_hash)
+          begin
+            described_class.from_omniauth(auth_hash)
+          rescue Auth::FindOrCreateOauthUser::LinkVerificationSent
+            # expected
+          end
         end.not_to change(User, :count)
       end
     end
 
-    context 'when user exists with different email casing' do
-      let(:email) { 'Existing@Example.COM' }
-      let!(:existing_user) { create(:user, email: 'existing@example.com') }
+    context 'when an OAuth user already exists with this provider+uid' do
+      let(:email) { 'linked@example.com' }
+      let!(:existing_user) { create(:user, email: email, provider: 'github', uid: '123545') }
 
-      it 'finds the existing user regardless of case' do
+      it 'returns the linked user without creating a new one' do
         user = described_class.from_omniauth(auth_hash)
         expect(user).to eq(existing_user)
-        expect(user.persisted?).to be true
-      end
-
-      it 'does not create a new user' do
-        expect do
-          described_class.from_omniauth(auth_hash)
-        end.not_to change(User, :count)
       end
     end
 
@@ -555,6 +564,9 @@ subscription_source: :none)
             info: {
               email: email,
               name: 'Google User'
+            },
+            extra: {
+              raw_info: { email_verified: true }
             }
           }
         )
@@ -567,23 +579,18 @@ subscription_source: :none)
       end
     end
 
-    context 'when email is nil' do
+    # When the OAuth provider returns no email, github's email_verified check
+    # falls through to false → service skips both the email-collision branch
+    # and the create_new_user email handling. Service falls into
+    # create_new_user with the synthesized "<uid>@<provider>.dawarich.app"
+    # placeholder. Both nil and blank are treated identically.
+    context 'when email is blank or nil' do
       let(:email) { nil }
 
-      it 'attempts to create a user but fails validation' do
+      it 'creates a user with a placeholder email so the account is reachable by uid' do
         user = described_class.from_omniauth(auth_hash)
-        expect(user.persisted?).to be false
-        expect(user.errors[:email]).to be_present
-      end
-    end
-
-    context 'when email is blank' do
-      let(:email) { '' }
-
-      it 'attempts to create a user but fails validation' do
-        user = described_class.from_omniauth(auth_hash)
-        expect(user.persisted?).to be false
-        expect(user.errors[:email]).to be_present
+        expect(user.persisted?).to be true
+        expect(user.email).to include('@github.dawarich.app')
       end
     end
   end
