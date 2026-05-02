@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Files with unsupported extensions are rejected in the browser before upload starts.
 - Clear, actionable error messages when an unsupported file is uploaded — points to the right file in your Takeout instead of a generic "Unable to detect file format".
 
+### Changed
+
+- Monthly email digest now hides countries and cities with 1 hour or less of time spent, so the Top Countries / Top Cities lists no longer get padded with `0h` and `1h` entries.
+
 ### Fixed
 
 - Google Phone Takeout `location-history.json` now imports reliably. (#2437)

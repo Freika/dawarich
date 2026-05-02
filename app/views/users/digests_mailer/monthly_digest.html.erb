@@ -59,13 +59,13 @@ Cities         <%= @digest.time_spent_by_location.to_h['cities'].to_a.size %>
              .presence || [0]
     ) %></pre>
 
-  <% top_countries = @digest.time_spent_by_location.to_h['countries'].to_a %>
+  <% top_countries = @digest.time_spent_by_location.to_h['countries'].to_a.select { |c| c['minutes'].to_i > 60 } %>
   <% if top_countries.any? %>
     <h2>TOP COUNTRIES</h2>
     <pre class="ascii" style="<%= pre_style %>"><%= ascii_ranked_list(top_countries, value_key: 'minutes', label_key: 'name', width: 20, format: ->(m) { "#{(m.to_f / 60).round}h" }) %></pre>
   <% end %>
 
-  <% top_cities = @digest.time_spent_by_location.to_h['cities'].to_a %>
+  <% top_cities = @digest.time_spent_by_location.to_h['cities'].to_a.select { |c| c['minutes'].to_i > 60 } %>
   <% if top_cities.any? %>
     <h2>TOP CITIES</h2>
     <pre class="ascii" style="<%= pre_style %>"><%= ascii_ranked_list(top_cities.first(5), value_key: 'minutes', label_key: 'name', width: 20, format: ->(m) { "#{(m.to_f / 60).round}h" }) %></pre>

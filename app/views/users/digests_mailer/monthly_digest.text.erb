@@ -37,13 +37,13 @@ DAILY DISTANCE
          .presence || [0]
 ) %>
 
-<% top_countries = @digest.time_spent_by_location.to_h['countries'].to_a %>
+<% top_countries = @digest.time_spent_by_location.to_h['countries'].to_a.select { |c| c['minutes'].to_i > 60 } %>
 <% if top_countries.any? %>
 TOP COUNTRIES
 <%= ascii_ranked_list(top_countries, value_key: 'minutes', label_key: 'name', width: 20, format: ->(m) { "#{(m.to_f / 60).round}h" }) %>
 
 <% end %>
-<% top_cities = @digest.time_spent_by_location.to_h['cities'].to_a %>
+<% top_cities = @digest.time_spent_by_location.to_h['cities'].to_a.select { |c| c['minutes'].to_i > 60 } %>
 <% if top_cities.any? %>
 TOP CITIES
 <%= ascii_ranked_list(top_cities.first(5), value_key: 'minutes', label_key: 'name', width: 20, format: ->(m) { "#{(m.to_f / 60).round}h" }) %>
