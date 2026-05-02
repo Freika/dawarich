@@ -7,7 +7,11 @@
 
     <% if params[:action] == 'show' %>
       <div class="mt-2">
-        <%= notification.content.html_safe %>
+        <%# audit H-2: notification.content may interpolate user-supplied strings %>
+        <%# (family.name, error.message). sanitize() escapes <script> and event %>
+        <%# handlers but keeps the legitimate <a> links produced by services like %>
+        <%# Families::CreateLocationRequest. %>
+        <%= sanitize notification.content %>
 
         <% if notification.error? %>
           <div class="mt-2">

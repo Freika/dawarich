@@ -34,6 +34,29 @@ RSpec.describe '/notifications', type: :request do
 
         expect(response).to be_successful
       end
+
+      # audit H-2: family.name and error.message flow through notification.content
+      # unsanitized; the show view used .html_safe so an attacker-controlled string
+      # would execute as HTML/JS. Now sanitize() strips dangerous markup.
+      context 'with a stored XSS payload in content' do
+        let(:notification) do
+          create(:notification, user:,
+                                content: %(joined the family '<script>window.xss=true</script><img src=x onerror=alert(1)>'))
+        end
+
+        it 'does not render <script> or event-handler attributes' do
+          get notification_url(notification)
+
+          expect(response.body).not_to include('<script>window.xss=true</script>')
+          expect(response.body).not_to match(/onerror\s*=/i)
+        end
+
+        it 'preserves the safe text content' do
+          get notification_url(notification)
+
+          expect(response.body).to include("joined the family")
+        end
+      end
     end
 
     describe 'DELETE /destroy' do
