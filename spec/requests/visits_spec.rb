@@ -307,9 +307,15 @@ RSpec.describe '/visits', type: :request do
     end
 
     let(:day) { Time.zone.parse('2025-03-15 09:00:00') }
-    let!(:visit_a) { create(:visit, user:, started_at: day,             ended_at: day + 30.minutes, duration: 30, status: :confirmed) }
-    let!(:visit_b) { create(:visit, user:, started_at: day + 1.hour,    ended_at: day + 90.minutes, duration: 30, status: :confirmed) }
-    let!(:visit_c) { create(:visit, user:, started_at: day + 2.hours,   ended_at: day + 150.minutes, duration: 30, status: :suggested) }
+    let!(:visit_a) do
+      create(:visit, user:, started_at: day, ended_at: day + 30.minutes, duration: 30, status: :confirmed)
+    end
+    let!(:visit_b) do
+      create(:visit, user:, started_at: day + 1.hour, ended_at: day + 90.minutes, duration: 30, status: :confirmed)
+    end
+    let!(:visit_c) do
+      create(:visit, user:, started_at: day + 2.hours, ended_at: day + 150.minutes, duration: 30, status: :suggested)
+    end
 
     it 'merges 2 same-day visits and returns turbo_stream' do
       post merge_visits_url(format: :turbo_stream),

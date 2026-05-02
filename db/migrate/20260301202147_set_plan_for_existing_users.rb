@@ -1,15 +1,20 @@
 # frozen_string_literal: true
 
 class SetPlanForExistingUsers < ActiveRecord::Migration[8.0]
+  # Raw SQL on purpose: touching the User AR model here loads its current
+  # schema and pending enum decorators (e.g. `subscription_source`), which
+  # reference columns added by later migrations. Upgrading from older
+  # versions in a single run would crash with "Undeclared attribute type
+  # for enum 'subscription_source'". See issue #2576.
+  #
+  # status enum: 0 = inactive, 1 = active, 2 = trial
+  # plan enum:   0 = lite,     1 = pro
   def up
     if DawarichSettings.self_hosted?
-      # Self-hosted: all users get pro plan (already the default 1)
-      # Explicit update for clarity in case any user has a non-default value
-      User.update_all(plan: :pro)
+      execute 'UPDATE users SET plan = 1'
     else
-      # Cloud: active/trial users get pro plan (the current plan, renamed)
-      User.where(status: %i[active trial]).update_all(plan: :pro)
-      User.where(status: :inactive).update_all(plan: :lite)
+      execute 'UPDATE users SET plan = 1 WHERE status IN (1, 2)'
+      execute 'UPDATE users SET plan = 0 WHERE status = 0'
     end
   end
 

@@ -31,6 +31,15 @@ class Api::V1::Auth::AppleController < Api::V1::Auth::BaseController
       message: 'This email already has a Dawarich account. ' \
                'We sent a confirmation link to that address — click it to link your Apple ID.'
     }, status: :accepted
+  rescue Auth::FindOrCreateOauthUser::MissingOauthEmail => e
+    Rails.logger.warn("apple.auth.missing_email uid=#{e.uid}")
+    render json: {
+      error: 'apple_email_missing',
+      message: "We couldn't find your existing account, and Apple didn't share your email " \
+               'with us this time. Apple only shares it once. Please go to ' \
+               'appleid.apple.com → Sign in with Apple, find Dawarich, choose ' \
+               '"Stop using Sign in with Apple", then try signing in again.'
+    }, status: :unprocessable_entity
   end
 
   private

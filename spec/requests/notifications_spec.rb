@@ -34,6 +34,28 @@ RSpec.describe '/notifications', type: :request do
 
         expect(response).to be_successful
       end
+
+      context 'with a stored XSS payload in content' do
+        let(:xss_payload) do
+          %(<script>window.xss=true</script><img src=x onerror=alert(1)>)
+        end
+        let(:notification) do
+          create(:notification, user:, content: "joined the family '#{xss_payload}'")
+        end
+
+        it 'does not render <script> or event-handler attributes' do
+          get notification_url(notification)
+
+          expect(response.body).not_to include('<script>window.xss=true</script>')
+          expect(response.body).not_to match(/onerror\s*=/i)
+        end
+
+        it 'preserves the safe text content' do
+          get notification_url(notification)
+
+          expect(response.body).to include('joined the family')
+        end
+      end
     end
 
     describe 'DELETE /destroy' do

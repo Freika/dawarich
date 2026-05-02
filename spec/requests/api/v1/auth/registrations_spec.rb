@@ -6,7 +6,7 @@ RSpec.describe 'POST /api/v1/auth/register', type: :request do
   before { allow(DawarichSettings).to receive(:self_hosted?).and_return(false) }
 
   let(:valid_params) do
-    { email: 'new@example.com', password: 'secret123', password_confirmation: 'secret123' }
+    { email: 'new@example.com', password: 'secret123456', password_confirmation: 'secret123456' }
   end
 
   it 'creates a user in pending_payment status with an api_key' do
@@ -45,6 +45,21 @@ RSpec.describe 'POST /api/v1/auth/register', type: :request do
     expect(Users::MailerSendingJob).not_to have_been_enqueued
   end
 
+  it 'enqueues the Manager creation webhook so cloud users sync to Manager' do
+    ActiveJob::Base.queue_adapter = :test
+
+    expect { post '/api/v1/auth/register', params: valid_params }
+      .to have_enqueued_job(Users::CreationWebhookJob).with(an_instance_of(Integer))
+  end
+
+  it 'does not enqueue the Manager creation webhook on validation failure' do
+    ActiveJob::Base.queue_adapter = :test
+
+    expect do
+      post '/api/v1/auth/register', params: valid_params.merge(password: 'x', password_confirmation: 'x')
+    end.not_to have_enqueued_job(Users::CreationWebhookJob)
+  end
+
   it 'normalizes email casing/whitespace on signup so login round-trips' do
     post '/api/v1/auth/register',
          params: valid_params.merge(email: '  Mixed@Example.COM  ')
@@ -54,7 +69,7 @@ RSpec.describe 'POST /api/v1/auth/register', type: :request do
     expect(user).to be_present
 
     post '/api/v1/auth/login',
-         params: { email: 'mixed@example.com', password: 'secret123' }
+         params: { email: 'mixed@example.com', password: 'secret123456' }
     expect(response).to have_http_status(:ok)
   end
 
@@ -78,6 +93,13 @@ RSpec.describe 'POST /api/v1/auth/register', type: :request do
       expect(response).to have_http_status(:created)
       body = JSON.parse(response.body)
       expect(body['status']).to eq('active')
+    end
+
+    it 'does not enqueue the Manager creation webhook (no Manager exists self-hosted)' do
+      ActiveJob::Base.queue_adapter = :test
+
+      expect { post '/api/v1/auth/register', params: valid_params }
+        .not_to have_enqueued_job(Users::CreationWebhookJob)
     end
   end
 end

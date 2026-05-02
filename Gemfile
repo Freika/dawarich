@@ -7,6 +7,7 @@ ruby File.read('.ruby-version').strip
 
 gem 'activerecord-postgis-adapter', '11.0'
 # https://meta.discourse.org/t/cant-rebuild-due-to-aws-sdk-gem-bump-and-new-aws-data-integrity-protections/354217/40
+gem 'apple_id', '~> 1.2'
 gem 'aws-sdk-core', '~> 3.215.1', require: false
 gem 'aws-sdk-kms', '~> 1.96.0', require: false
 gem 'aws-sdk-s3', '~> 1.177.0', require: false
@@ -15,15 +16,14 @@ gem 'chartkick'
 gem 'connection_pool', '< 3' # Pin to 2.x - version 3.0+ has breaking API changes with Rails RedisCacheStore
 gem 'data_migrate'
 gem 'devise'
-gem 'apple_id', '~> 1.2'
 gem 'devise-two-factor'
-gem 'google-id-token', '~> 1.4'
 gem 'fit4ruby', '~> 3.13'
 gem 'flipper', '~> 1.3'
 gem 'flipper-active_record', '~> 1.3'
 gem 'flipper-ui', '~> 1.3'
 gem 'foreman'
 gem 'geocoder', github: 'Freika/geocoder', branch: 'master'
+gem 'google-id-token', '~> 1.4'
 gem 'gpx'
 gem 'groupdate'
 gem 'h3', '~> 3.7'

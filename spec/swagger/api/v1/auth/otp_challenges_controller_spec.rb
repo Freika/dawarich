@@ -9,7 +9,7 @@ describe 'Auth OTP Challenges API', type: :request do
   end
 
   let(:user) do
-    u = create(:user, password: 'secret123')
+    u = create(:user, password: 'secret123456')
     u.otp_secret = User.generate_otp_secret
     u.otp_required_for_login = true
     u.save!(validate: false)

@@ -91,8 +91,8 @@ RSpec.describe User, type: :model do
         expect(user.subscription_source).to eq('none')
       end
 
-      it 'enqueues trial webhook job' do
-        expect { create(:user, :inactive) }.to have_enqueued_job(Users::TrialWebhookJob)
+      it 'enqueues creation webhook job' do
+        expect { create(:user, :inactive) }.to have_enqueued_job(Users::CreationWebhookJob)
       end
 
       it 'enqueues the welcome email immediately' do
@@ -112,6 +112,52 @@ RSpec.describe User, type: :model do
            trial_first_payment_soon trial_converted
            pending_payment_day_1 pending_payment_day_3 pending_payment_day_7].each do |billing_type|
           expect(Users::MailerSendingJob).not_to have_been_enqueued.with(user.id, billing_type)
+        end
+      end
+    end
+
+    describe 'trigger_creation_webhook (cloud signups that skip trial)' do
+      before { ActiveJob::Base.queue_adapter = :test }
+
+      context 'when not self-hosted and skip_auto_trial is set' do
+        before { allow(DawarichSettings).to receive(:self_hosted?).and_return(false) }
+
+        it 'enqueues the creation webhook so Manager learns about the user' do
+          expect { create(:user, skip_auto_trial: true) }
+            .to have_enqueued_job(Users::CreationWebhookJob).with(an_instance_of(Integer))
+        end
+
+        it 'does not enqueue the trial mailer jobs' do
+          user = create(:user, skip_auto_trial: true)
+
+          expect(Users::MailerSendingJob).not_to have_been_enqueued.with(user.id, 'welcome')
+          expect(Users::MailerSendingJob).not_to have_been_enqueued.with(user.id, 'explore_features')
+        end
+
+        it 'does not transition the user out of pending_payment (start_trial would)' do
+          user = create(:user, status: :pending_payment, skip_auto_trial: true)
+
+          expect(user.reload.pending_payment?).to be true
+        end
+      end
+
+      context 'when self-hosted' do
+        before { allow(DawarichSettings).to receive(:self_hosted?).and_return(true) }
+
+        it 'does not enqueue the creation webhook (no Manager exists)' do
+          expect { create(:user, skip_auto_trial: true) }
+            .not_to have_enqueued_job(Users::CreationWebhookJob)
+        end
+      end
+
+      context 'on update of an existing user' do
+        before { allow(DawarichSettings).to receive(:self_hosted?).and_return(false) }
+
+        it 'does not enqueue the creation webhook' do
+          user = create(:user, skip_auto_trial: true)
+
+          expect { user.update!(email: "renamed-#{user.email}") }
+            .not_to have_enqueued_job(Users::CreationWebhookJob)
         end
       end
     end
@@ -488,37 +534,39 @@ subscription_source: :none)
       )
     end
 
-    context 'when user exists with the same email' do
+    context 'when a local-password user exists with the same email' do
       let(:email) { 'existing@example.com' }
-      let!(:existing_user) { create(:user, email: email) }
+      let!(:existing_user) { create(:user, email: email, provider: nil, uid: nil) }
 
-      it 'returns the existing user' do
-        user = described_class.from_omniauth(auth_hash)
-        expect(user).to eq(existing_user)
-        expect(user.persisted?).to be true
+      it 'raises LinkVerificationSent rather than auto-linking' do
+        expect { described_class.from_omniauth(auth_hash) }
+          .to raise_error(Auth::FindOrCreateOauthUser::LinkVerificationSent)
+      end
+
+      it 'leaves the existing user unmodified' do
+        described_class.from_omniauth(auth_hash)
+      rescue Auth::FindOrCreateOauthUser::LinkVerificationSent
+        existing_user.reload
+        expect(existing_user.provider).to be_nil
+        expect(existing_user.uid).to be_nil
       end
 
       it 'does not create a new user' do
         expect do
           described_class.from_omniauth(auth_hash)
+        rescue Auth::FindOrCreateOauthUser::LinkVerificationSent
+          nil
         end.not_to change(User, :count)
       end
     end
 
-    context 'when user exists with different email casing' do
-      let(:email) { 'Existing@Example.COM' }
-      let!(:existing_user) { create(:user, email: 'existing@example.com') }
+    context 'when an OAuth user already exists with this provider+uid' do
+      let(:email) { 'linked@example.com' }
+      let!(:existing_user) { create(:user, email: email, provider: 'github', uid: '123545') }
 
-      it 'finds the existing user regardless of case' do
+      it 'returns the linked user without creating a new one' do
         user = described_class.from_omniauth(auth_hash)
         expect(user).to eq(existing_user)
-        expect(user.persisted?).to be true
-      end
-
-      it 'does not create a new user' do
-        expect do
-          described_class.from_omniauth(auth_hash)
-        end.not_to change(User, :count)
       end
     end
 
@@ -555,6 +603,9 @@ subscription_source: :none)
             info: {
               email: email,
               name: 'Google User'
+            },
+            extra: {
+              raw_info: { email_verified: true }
             }
           }
         )
@@ -567,23 +618,13 @@ subscription_source: :none)
       end
     end
 
-    context 'when email is nil' do
+    context 'when email is blank or nil' do
       let(:email) { nil }
 
-      it 'attempts to create a user but fails validation' do
+      it 'creates a user with a placeholder email so the account is reachable by uid' do
         user = described_class.from_omniauth(auth_hash)
-        expect(user.persisted?).to be false
-        expect(user.errors[:email]).to be_present
-      end
-    end
-
-    context 'when email is blank' do
-      let(:email) { '' }
-
-      it 'attempts to create a user but fails validation' do
-        user = described_class.from_omniauth(auth_hash)
-        expect(user.persisted?).to be false
-        expect(user.errors[:email]).to be_present
+        expect(user.persisted?).to be true
+        expect(user.email).to include('@github.dawarich.app')
       end
     end
   end
@@ -746,10 +787,10 @@ subscription_source: :none)
       expect(Users::MailerSendingJob).to have_been_enqueued.with(user.id, 'explore_features')
     end
 
-    it 'enqueues the trial webhook job so Manager can sync billing state' do
+    it 'enqueues the creation webhook job so Manager can sync billing state' do
       user = build(:user)
 
-      expect { user.save! }.to have_enqueued_job(Users::TrialWebhookJob).with(an_instance_of(Integer))
+      expect { user.save! }.to have_enqueued_job(Users::CreationWebhookJob).with(an_instance_of(Integer))
     end
 
     it 'does not enqueue any billing-related mailer jobs from start_trial' do

@@ -59,6 +59,19 @@ class Users::OmniauthCallbacksController < Devise::OmniauthCallbacksController
     else
       redirect_to new_user_registration_url, alert: @user.errors.full_messages.join("\n")
     end
+  rescue Auth::FindOrCreateOauthUser::LinkVerificationSent => e
+    session[:pending_oauth_link] = {
+      'user_id' => e.user.id,
+      'provider' => e.provider,
+      'uid' => e.uid,
+      'provider_label' => provider,
+      'expires_at' => 15.minutes.from_now.to_i
+    }
+    redirect_to auth_account_link_challenge_path
+  rescue Auth::FindOrCreateOauthUser::UnverifiedEmail
+    redirect_to new_user_session_path,
+                alert: "Your #{provider} email is not verified. Verify it with the provider, " \
+                       'then try again — or sign in with your existing password.'
   end
 
   def oidc_auto_register_enabled?

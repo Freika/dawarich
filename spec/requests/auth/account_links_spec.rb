@@ -103,3 +103,168 @@ RSpec.describe 'GET /auth/account_link', type: :request do
     end
   end
 end
+
+RSpec.describe 'OAuth account-link password challenge', type: :request do
+  include ActiveSupport::Testing::TimeHelpers
+
+  let(:password) { 'secret-password-123' }
+  let(:email) { 'oauth_user@example.com' }
+  let!(:user) { create(:user, email: email, password: password, provider: nil, uid: nil) }
+
+  before(:all) do
+    Rails.application.routes.append do
+      devise_scope :user do
+        get 'users/auth/openid_connect/callback', to: 'users/omniauth_callbacks#openid_connect'
+      end
+    end
+    Rails.application.reload_routes!
+  end
+
+  before do
+    Rails.application.env_config['devise.mapping'] = Devise.mappings[:user]
+    OmniAuth.config.test_mode = true
+    OmniAuth.config.mock_auth[:openid_connect] = OmniAuth::AuthHash.new(
+      provider: 'openid_connect',
+      uid: '123545',
+      info: { email: email, name: 'Test' },
+      extra: { raw_info: { email_verified: true } }
+    )
+    Rails.application.env_config['omniauth.auth'] = OmniAuth.config.mock_auth[:openid_connect]
+    Rails.cache.clear
+  end
+
+  after do
+    OmniAuth.config.mock_auth[:openid_connect] = nil
+    Rails.application.env_config.delete('omniauth.auth')
+  end
+
+  def trigger_collision
+    get '/users/auth/openid_connect/callback'
+    expect(response).to redirect_to(auth_account_link_challenge_path)
+  end
+
+  describe 'GET /auth/account_link/challenge' do
+    it 'renders the password form after an OAuth email collision' do
+      trigger_collision
+      get auth_account_link_challenge_path
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include(email)
+    end
+
+    it 'redirects to sign-in when no pending link in session' do
+      get auth_account_link_challenge_path
+      expect(response).to redirect_to(new_user_session_path)
+    end
+
+    it 'redirects to sign-in once the pending link has expired' do
+      trigger_collision
+      travel 16.minutes do
+        get auth_account_link_challenge_path
+        expect(response).to redirect_to(new_user_session_path)
+      end
+    end
+  end
+
+  describe 'POST /auth/account_link/challenge' do
+    it 'links the identity and signs in when password is correct' do
+      trigger_collision
+      post confirm_auth_account_link_path, params: { password: password }
+
+      expect(response).to redirect_to(root_path)
+      user.reload
+      expect(user.provider).to eq('openid_connect')
+      expect(user.uid).to eq('123545')
+    end
+
+    it 'rejects an incorrect password without linking' do
+      trigger_collision
+      post confirm_auth_account_link_path, params: { password: 'wrong-password' }
+
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response.body).to include('Incorrect password')
+      user.reload
+      expect(user.provider).to be_nil
+      expect(user.uid).to be_nil
+    end
+
+    it 'redirects to sign-in (without linking) when no pending link' do
+      post confirm_auth_account_link_path, params: { password: password }
+
+      expect(response).to redirect_to(new_user_session_path)
+      expect(user.reload.provider).to be_nil
+    end
+
+    context 'when the user has 2FA enabled' do
+      before do
+        user.otp_secret = User.generate_otp_secret
+        user.otp_required_for_login = true
+        user.save!
+      end
+
+      it 'links but does NOT sign the user in (no 2FA bypass)' do
+        trigger_collision
+        post confirm_auth_account_link_path, params: { password: password }
+
+        expect(response).to redirect_to(new_user_session_path)
+        expect(flash[:notice]).to match(/2FA/)
+        expect(user.reload.provider).to eq('openid_connect')
+      end
+    end
+
+    it 'clears pending state and bounces to sign-in after 5 invalid attempts' do
+      trigger_collision
+
+      4.times do
+        post confirm_auth_account_link_path, params: { password: 'wrong-password' }
+        expect(response).to have_http_status(:unprocessable_entity)
+      end
+
+      post confirm_auth_account_link_path, params: { password: 'wrong-password' }
+      expect(response).to redirect_to(new_user_session_path)
+      expect(flash[:alert]).to match(/Too many invalid/)
+
+      get auth_account_link_challenge_path
+      expect(response).to redirect_to(new_user_session_path)
+
+      expect(user.reload.provider).to be_nil
+    end
+  end
+
+  describe 'rack-attack throttle on /auth/account_link/challenge' do
+    it 'declares both per-session and per-IP throttles' do
+      throttle_names = Rack::Attack.throttles.keys
+      expect(throttle_names).to include('auth/account_link_challenge_session')
+      expect(throttle_names).to include('auth/account_link_challenge_ip')
+
+      session_rule = Rack::Attack.throttles['auth/account_link_challenge_session']
+      expect(session_rule.limit).to eq(5)
+      expect(session_rule.period).to eq(15.minutes.to_i)
+
+      ip_rule = Rack::Attack.throttles['auth/account_link_challenge_ip']
+      expect(ip_rule.limit).to eq(20)
+      expect(ip_rule.period).to eq(15.minutes.to_i)
+    end
+  end
+
+  describe 'POST /auth/account_link/email' do
+    it 'enqueues the OAuth link mailer when a pending link is present' do
+      trigger_collision
+      expect do
+        post email_fallback_auth_account_link_path
+      end.to have_enqueued_job(Users::MailerSendingJob)
+        .with(user.id, 'oauth_account_link', hash_including(:provider_label, :link_url))
+
+      expect(response).to redirect_to(new_user_session_path)
+    end
+
+    it 'does not re-send within the rate-limit window' do
+      trigger_collision
+      post email_fallback_auth_account_link_path
+
+      expect do
+        post email_fallback_auth_account_link_path
+      end.not_to have_enqueued_job(Users::MailerSendingJob)
+    end
+  end
+end

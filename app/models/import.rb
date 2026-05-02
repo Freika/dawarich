@@ -25,7 +25,7 @@ class Import < ApplicationRecord
     google_semantic_history: 0, owntracks: 1, google_records: 2,
     google_phone_takeout: 3, gpx: 4, immich_api: 5, geojson: 6, photoprism_api: 7,
     user_data_archive: 8, kml: 9,
-    csv: 10, tcx: 11, fit: 12
+    csv: 10, tcx: 11, fit: 12, polarsteps: 13
   }, allow_nil: true
 
   def process!

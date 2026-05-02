@@ -121,7 +121,8 @@ RSpec.describe Import, type: :model do
         kml: 9,
         csv: 10,
         tcx: 11,
-        fit: 12
+        fit: 12,
+        polarsteps: 13
       )
     end
   end

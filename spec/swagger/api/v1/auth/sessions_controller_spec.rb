@@ -32,8 +32,8 @@ describe 'Auth Sessions API', type: :request do
                  active_until: { type: :string, format: 'date-time', nullable: true }
                }
 
-        let(:user) { create(:user, password: 'secret123') }
-        let(:credentials) { { email: user.email, password: 'secret123' } }
+        let(:user) { create(:user, password: 'secret123456') }
+        let(:credentials) { { email: user.email, password: 'secret123456' } }
 
         after { |example| SwaggerResponseExample.capture(example, response) }
 
@@ -44,18 +44,19 @@ describe 'Auth Sessions API', type: :request do
         schema type: :object,
                properties: {
                  two_factor_required: { type: :boolean },
-                 challenge_token: { type: :string, description: 'Short-lived token to exchange via /auth/otp_challenge' },
+                 challenge_token: { type: :string,
+description: 'Short-lived token to exchange via /auth/otp_challenge' },
                  ttl: { type: :integer, description: 'Token TTL in seconds' }
                }
 
         let(:user) do
-          u = create(:user, password: 'secret123')
+          u = create(:user, password: 'secret123456')
           u.otp_secret = User.generate_otp_secret
           u.otp_required_for_login = true
           u.save!(validate: false)
           u
         end
-        let(:credentials) { { email: user.email, password: 'secret123' } }
+        let(:credentials) { { email: user.email, password: 'secret123456' } }
 
         before { allow(DawarichSettings).to receive(:two_factor_available?).and_return(true) }
 

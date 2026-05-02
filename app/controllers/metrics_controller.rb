@@ -1,7 +1,14 @@
 # frozen_string_literal: true
 
 class MetricsController < ApplicationController
-  http_basic_authenticate_with name: METRICS_USERNAME, password: METRICS_PASSWORD, only: :index
+  before_action :ensure_metrics_credentials_configured!, only: :index
+
+  http_basic_authenticate_with(
+    name: METRICS_USERNAME.to_s,
+    password: METRICS_PASSWORD.to_s,
+    only: :index,
+    if: -> { METRICS_USERNAME.present? && METRICS_PASSWORD.present? }
+  )
 
   def index
     result = PrometheusMetrics.fetch_data
@@ -13,5 +20,13 @@ class MetricsController < ApplicationController
     else
       head :service_unavailable
     end
+  end
+
+  private
+
+  def ensure_metrics_credentials_configured!
+    return if METRICS_USERNAME.present? && METRICS_PASSWORD.present?
+
+    head :service_unavailable
   end
 end

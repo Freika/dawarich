@@ -3,18 +3,41 @@
 module Auth
   class FindOrCreateOauthUser
     class UnverifiedEmail < StandardError; end
-    class LinkVerificationSent < StandardError; end
+
+    class MissingOauthEmail < StandardError
+      attr_reader :provider, :uid
+
+      def initialize(provider:, uid:)
+        @provider = provider
+        @uid = uid
+        super('OAuth provider returned no email and no existing record was found')
+      end
+    end
+
+    class LinkVerificationSent < StandardError
+      attr_reader :user, :provider, :uid
+
+      def initialize(user:, provider:, uid:)
+        @user = user
+        @provider = provider
+        @uid = uid
+        super('OAuth account link verification required for existing email')
+      end
+    end
 
     LINK_EMAIL_RATE_LIMIT_WINDOW = 1.hour
     LINK_EMAIL_RATE_LIMIT_KEY_PREFIX = 'oauth_account_link:rate_limit:'
 
-    def initialize(provider:, provider_label:, claims:, email_verified:)
+    PROVIDERS_REQUIRING_EMAIL = %w[apple].freeze
+
+    def initialize(provider:, provider_label:, claims:, email_verified:, on_email_collision: :send_email)
       @provider = provider
       @provider_label = provider_label
       @claims = claims
       @uid = claims[:sub].to_s
       @email = claims[:email].to_s.downcase
       @email_verified = email_verified
+      @on_email_collision = on_email_collision
     end
 
     def call
@@ -44,8 +67,8 @@ module Auth
         return [existing, false]
       end
 
-      send_verification_email(existing)
-      raise LinkVerificationSent
+      send_verification_email(existing) if @on_email_collision == :send_email
+      raise LinkVerificationSent.new(user: existing, provider: @provider, uid: @uid)
     end
 
     def auto_link_allowed?
@@ -86,6 +109,10 @@ module Auth
     end
 
     def create_new_user
+      if @email.blank? && PROVIDERS_REQUIRING_EMAIL.include?(@provider)
+        raise MissingOauthEmail.new(provider: @provider, uid: @uid)
+      end
+
       attrs = {
         email: @email.presence || "#{@uid}@#{@provider}.dawarich.app",
         password: SecureRandom.hex(32),

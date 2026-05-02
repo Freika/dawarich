@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe '/settings/users', type: :request do
-  let(:valid_attributes) { { email: 'user@domain.com', password: '4815162342' } }
+  let(:valid_attributes) { { email: 'user@domain.com', password: '4815162342abc' } }
   let!(:admin) { create(:user, :admin) }
 
   context 'when Dawarich is in self-hosted mode' do
@@ -127,7 +127,7 @@ RSpec.describe '/settings/users', type: :request do
           before { sign_in admin }
 
           context 'with valid parameters' do
-            let(:new_attributes) { { email: FFaker::Internet.email, password: '4815162342' } }
+            let(:new_attributes) { { email: FFaker::Internet.email, password: '4815162342abc' } }
 
             it 'updates the requested user' do
               patch settings_user_url(user), params: { user: new_attributes }

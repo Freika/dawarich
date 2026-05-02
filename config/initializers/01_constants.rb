@@ -37,8 +37,8 @@ MANAGER_HOST =
   end
 
 # Prometheus metrics
-METRICS_USERNAME = ENV.fetch('METRICS_USERNAME', 'prometheus')
-METRICS_PASSWORD = ENV.fetch('METRICS_PASSWORD', 'prometheus')
+METRICS_USERNAME = ENV.fetch('METRICS_USERNAME', nil)
+METRICS_PASSWORD = ENV.fetch('METRICS_PASSWORD', nil)
 # /Prometheus metrics
 
 # Configure OAuth providers based on environment
