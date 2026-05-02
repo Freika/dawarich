@@ -55,10 +55,11 @@ class Imports::SecureFileDownloader
     raise 'Download completed but no content was received' if temp_file.size.zero? # rubocop:disable Style/ZeroLengthPredicate -- Tempfile has no .empty?
 
     verify_temp_file_integrity(temp_file)
-    temp_file.path
+    path = temp_file.path
+    temp_file.close
+    path
 
-    # Keep temp file open so it can be read by other processes
-    # Caller is responsible for cleanup
+    # Caller is responsible for deleting the returned path.
   end
 
   private
@@ -114,14 +115,16 @@ class Imports::SecureFileDownloader
   def create_temp_file
     extension = File.extname(storage_attachment.filename.to_s)
     basename = File.basename(storage_attachment.filename.to_s, extension)
-    Tempfile.new(["#{basename}_#{Time.now.to_i}", extension], binmode: true)
+    Tempfile.create(["#{basename}_#{Time.now.to_i}", extension], binmode: true)
   end
 
   def cleanup_temp_file(temp_file)
     return unless temp_file
 
-    temp_file.close unless temp_file.closed?
-    temp_file.unlink if File.exist?(temp_file.path)
+    temp_file.close if temp_file.respond_to?(:close) && !temp_file.closed?
+
+    path = temp_file.respond_to?(:path) ? temp_file.path : nil
+    File.delete(path) if path && File.exist?(path)
   rescue StandardError => e
     Rails.logger.warn("Failed to cleanup temp file: #{e.message}")
   end

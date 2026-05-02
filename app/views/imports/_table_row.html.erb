@@ -2,6 +2,11 @@
     id="<%= dom_id(import) %>"
     data-points-total="<%= import.processed %>"
     class="hover:bg-base-200/50 transition-colors">
+  <% import_show_path = if respond_to?(:main_app) && main_app.respond_to?(:import_path)
+                          main_app.import_path(import)
+                        else
+                          import_path(import)
+                        end %>
   <td class="px-4 py-3">
     <div class="flex items-center gap-3">
       <div class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 <%= import_source_icon_class(import.source) %>">
@@ -9,7 +14,7 @@
       </div>
       <div>
         <div class="font-medium">
-          <%= link_to import.name, import, class: 'link link-hover' %>
+          <%= link_to import.name, import_show_path, class: 'link link-hover' %>
           <% if import.demo? %>
             <span class="badge badge-accent badge-sm ml-1">Demo</span>
           <% end %>
@@ -50,7 +55,7 @@
           </div>
         <% end %>
         <div class="tooltip" data-tip="Delete import">
-          <%= link_to import, data: { turbo_confirm: "Are you sure?", turbo_method: :delete }, class: "btn btn-ghost btn-xs text-error hover:bg-error/10" do %>
+          <%= link_to import_show_path, data: { turbo_confirm: "Are you sure?", turbo_method: :delete }, class: "btn btn-ghost btn-xs text-error hover:bg-error/10" do %>
             <%= icon 'trash-2', class: 'w-4 h-4' %>
           <% end %>
         </div>
