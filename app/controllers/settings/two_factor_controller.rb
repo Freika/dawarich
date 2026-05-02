@@ -65,15 +65,6 @@ class Settings::TwoFactorController < ApplicationController
 
   def generate_qr_code
     uri = current_user.otp_provisioning_uri(current_user.email, issuer: 'Dawarich')
-    qrcode = RQRCode::QRCode.new(uri)
-    qrcode.as_svg(
-      color: '000',
-      fill: 'fff',
-      shape_rendering: 'crispEdges',
-      module_size: 6,
-      standalone: true,
-      use_path: true,
-      offset: 5
-    )
+    ResponsiveQrSvg.call(uri)
   end
 end
