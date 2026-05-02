@@ -36,9 +36,11 @@ RSpec.describe '/notifications', type: :request do
       end
 
       context 'with a stored XSS payload in content' do
+        let(:xss_payload) do
+          %(<script>window.xss=true</script><img src=x onerror=alert(1)>)
+        end
         let(:notification) do
-          create(:notification, user:,
-                                content: %(joined the family '<script>window.xss=true</script><img src=x onerror=alert(1)>'))
+          create(:notification, user:, content: "joined the family '#{xss_payload}'")
         end
 
         it 'does not render <script> or event-handler attributes' do

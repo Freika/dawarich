@@ -44,7 +44,8 @@ describe 'Auth Sessions API', type: :request do
         schema type: :object,
                properties: {
                  two_factor_required: { type: :boolean },
-                 challenge_token: { type: :string, description: 'Short-lived token to exchange via /auth/otp_challenge' },
+                 challenge_token: { type: :string,
+description: 'Short-lived token to exchange via /auth/otp_challenge' },
                  ttl: { type: :integer, description: 'Token TTL in seconds' }
                }
 
