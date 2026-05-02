@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Fix multiple possible security issues
 - Upgrades from older versions (≤ 1.3.1) no longer crash during `db:migrate` with `Undeclared attribute type for enum 'subscription_source' in User`. The `SetPlanForExistingUsers` data migration now uses raw SQL instead of the live `User` AR model, so it no longer trips on enum/column declarations introduced by later migrations. (#2576)
 
 ## [1.7.2] - Unreleased
