@@ -72,6 +72,26 @@ RSpec.describe Auth::FindOrCreateOauthUser do
     # verification path covered above.
   end
 
+  describe 'missing email from apple (subsequent sign-in with no local record)' do
+    it 'raises MissingOauthEmail instead of fabricating a synthetic address' do
+      expect do
+        build(provider: 'apple', claims: { sub: 'apple-orphan', email: '' }).call
+      end.to raise_error(Auth::FindOrCreateOauthUser::MissingOauthEmail) do |e|
+        expect(e.provider).to eq('apple')
+        expect(e.uid).to eq('apple-orphan')
+      end
+
+      expect(User.find_by(provider: 'apple', uid: 'apple-orphan')).to be_nil
+    end
+
+    it 'still synthesizes an email for non-apple providers (legacy fallback)' do
+      user, created = build(provider: 'google', claims: { sub: 'g-1', email: '' }).call
+
+      expect(created).to be(true)
+      expect(user.email).to eq('g-1@google.dawarich.app')
+    end
+  end
+
   describe 'new identity with new email' do
     it 'creates the user in pending_payment on cloud' do
       user, created = build(claims: { sub: 'apple-3', email: 'new@example.com' }).call

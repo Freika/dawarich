@@ -35,12 +35,8 @@ class User < ApplicationRecord
 
   after_create :create_api_key
   after_commit :activate, on: :create, if: -> { DawarichSettings.self_hosted? && !skip_auto_trial }
-  # Mutually exclusive with :start_trial below — exactly one fires per cloud
-  # signup. :start_trial enqueues the Manager creation webhook itself; this
-  # hook covers the skip-trial branch (OAuth, mobile-API password,
-  # reverse-trial web variant) so Manager still learns about every cloud user.
   after_commit :start_trial, on: :create, if: -> { !DawarichSettings.self_hosted? && !skip_auto_trial }
-  after_commit :notify_manager_of_creation, on: :create,
+  after_commit :trigger_creation_webhook, on: :create,
                                             if: -> { !DawarichSettings.self_hosted? && skip_auto_trial }
   after_update :invalidate_plan_rate_limit_cache, if: :saved_change_to_plan?
 
@@ -265,7 +261,7 @@ class User < ApplicationRecord
     Users::CreationWebhookJob.perform_later(id)
   end
 
-  def notify_manager_of_creation
+  def trigger_creation_webhook
     Users::CreationWebhookJob.perform_later(id)
   end
 

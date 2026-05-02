@@ -116,7 +116,7 @@ RSpec.describe User, type: :model do
       end
     end
 
-    describe 'notify_manager_of_creation (cloud signups that skip trial)' do
+    describe 'trigger_creation_webhook (cloud signups that skip trial)' do
       before { ActiveJob::Base.queue_adapter = :test }
 
       context 'when not self-hosted and skip_auto_trial is set' do
