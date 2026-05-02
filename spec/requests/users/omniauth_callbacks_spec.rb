@@ -62,7 +62,7 @@ RSpec.describe 'Users::OmniauthCallbacks', type: :request do
     context 'when a local-password account exists with the same email (audit C-1)' do
       let!(:existing_user) { create(:user, email: email, provider: nil, uid: nil) }
 
-      it 'does NOT auto-link and redirects to sign-in with verification message' do
+      it 'does NOT auto-link and redirects to the password-challenge page' do
         expect do
           Rails.application.env_config['omniauth.auth'] = OmniAuth.config.mock_auth[provider]
           get "/users/auth/#{provider}/callback"
@@ -72,16 +72,14 @@ RSpec.describe 'Users::OmniauthCallbacks', type: :request do
         expect(existing_user.provider).to be_nil
         expect(existing_user.uid).to be_nil
 
-        expect(response).to redirect_to(new_user_session_path)
-        expect(flash[:alert]).to include('confirmation link')
+        expect(response).to redirect_to(auth_account_link_challenge_path)
       end
 
-      it 'enqueues the OAuth account-link mailer to the existing user' do
+      it 'does not auto-send the OAuth account-link email (user can opt in)' do
         expect do
           Rails.application.env_config['omniauth.auth'] = OmniAuth.config.mock_auth[provider]
           get "/users/auth/#{provider}/callback"
-        end.to have_enqueued_job(Users::MailerSendingJob)
-          .with(existing_user.id, 'oauth_account_link', hash_including(:provider_label, :link_url))
+        end.not_to have_enqueued_job(Users::MailerSendingJob)
       end
     end
   end

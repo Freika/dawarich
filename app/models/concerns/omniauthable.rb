@@ -15,7 +15,8 @@ module Omniauthable
         provider: provider,
         provider_label: omniauth_provider_label(provider),
         claims: { sub: access_token.uid.to_s, email: access_token.info&.email.to_s },
-        email_verified: omniauth_email_verified?(access_token)
+        email_verified: omniauth_email_verified?(access_token),
+        on_email_collision: :raise_only
       ).call
 
       user
