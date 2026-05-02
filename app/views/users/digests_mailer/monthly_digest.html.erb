@@ -1,18 +1,3 @@
-<%# Day-of-month => distance (normalized to string keys so both Array-of-pairs and Hash inputs behave identically) %>
-<% daily = @digest.monthly_distances.to_h.transform_keys(&:to_s)
-                  .transform_values { |v| Users::Digest.convert_distance(v, @distance_unit) } %>
-<%# Weekday totals, Mon..Sun %>
-<% weekday_totals = Array.new(7, 0.0) %>
-<% daily.each do |day_str, distance|
-     begin
-       wday = Date.new(@digest.year, @digest.month, day_str.to_i).wday
-       weekday_totals[wday] += distance.to_f
-     rescue ArgumentError
-       next
-     end
-   end %>
-<% weekday_totals = (weekday_totals[1..6] + [weekday_totals[0]]).map(&:round) %>
-<% active_days = daily.values.count { |d| d.to_f.positive? } %>
 <% pre_style = 'white-space: pre; font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; line-height: 1.25; font-size: 13px; background: #fff; padding: 16px; border-radius: 6px; border: 1px solid #e5e5e5; overflow-x: auto; margin: 0 0 1em 0;' %>
 <!DOCTYPE html>
 <html>
@@ -39,14 +24,14 @@
   <h2>OVERVIEW</h2>
   <pre class="ascii" style="<%= pre_style %>">
 Distance       <%= distance_with_unit(@digest.distance, @distance_unit) %>
-Active days    <%= active_days %>
+Active days    <%= @active_days %>
 Countries      <%= @digest.time_spent_by_location.to_h['countries'].to_a.size %>
 Cities         <%= @digest.time_spent_by_location.to_h['cities'].to_a.size %>
 </pre>
 
   <h2>WEEKLY PATTERN</h2>
   <pre class="ascii" style="<%= pre_style %>"><%= ascii_hbar(
-      weekday_totals,
+      @weekday_totals,
       labels: %w[Mon Tue Wed Thu Fri Sat Sun],
       width: 20,
       suffix: " #{@distance_unit}"
@@ -54,31 +39,27 @@ Cities         <%= @digest.time_spent_by_location.to_h['cities'].to_a.size %>
 
   <h2>DAILY DISTANCE</h2>
   <pre class="ascii" style="<%= pre_style %>"><%= ascii_sparkline(
-      (1..31).map { |d| daily[d.to_s].to_f }
+      (1..31).map { |d| @daily_distances[d.to_s].to_f }
              .reject(&:zero?)
              .presence || [0]
     ) %></pre>
 
-  <% top_countries = @digest.time_spent_by_location.to_h['countries'].to_a %>
-  <% if top_countries.any? %>
+  <% if @top_countries.any? %>
     <h2>TOP COUNTRIES</h2>
-    <pre class="ascii" style="<%= pre_style %>"><%= ascii_ranked_list(top_countries, value_key: 'minutes', label_key: 'name', width: 20, format: ->(m) { "#{(m.to_f / 60).round}h" }) %></pre>
+    <pre class="ascii" style="<%= pre_style %>"><%= ascii_ranked_list(@top_countries, value_key: 'minutes', label_key: 'name', width: 20, format: ->(m) { "#{(m.to_f / 60).round}h" }) %></pre>
   <% end %>
 
-  <% top_cities = @digest.time_spent_by_location.to_h['cities'].to_a %>
-  <% if top_cities.any? %>
+  <% if @top_cities.any? %>
     <h2>TOP CITIES</h2>
-    <pre class="ascii" style="<%= pre_style %>"><%= ascii_ranked_list(top_cities.first(5), value_key: 'minutes', label_key: 'name', width: 20, format: ->(m) { "#{(m.to_f / 60).round}h" }) %></pre>
+    <pre class="ascii" style="<%= pre_style %>"><%= ascii_ranked_list(@top_cities.first(5), value_key: 'minutes', label_key: 'name', width: 20, format: ->(m) { "#{(m.to_f / 60).round}h" }) %></pre>
   <% end %>
 
-  <% first_countries = @digest.first_time_visits.to_h['countries'].to_a %>
-  <% first_cities    = @digest.first_time_visits.to_h['cities'].to_a %>
-  <% if first_countries.any? || first_cities.any? %>
+  <% if @first_countries.any? || @first_cities.any? %>
     <h2>FIRST VISITS THIS MONTH</h2>
     <pre class="ascii" style="<%= pre_style %>"><%
       lines = []
-      first_countries.first(2).each { |c| lines << "→ #{c}  (new country)" }
-      first_cities.first(3 - first_countries.first(2).size).each { |c| lines << "→ #{c}  (new city)" }
+      @first_countries.first(2).each { |c| lines << "→ #{c}  (new country)" }
+      @first_cities.first(3 - @first_countries.first(2).size).each { |c| lines << "→ #{c}  (new city)" }
     %><%= lines.join("\n") %></pre>
   <% end %>
 

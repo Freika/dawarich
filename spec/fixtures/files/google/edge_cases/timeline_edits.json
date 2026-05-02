@@ -1,0 +1,19 @@
+{
+  "timelineEdits": [
+    {
+      "deviceId": "-1613859921",
+      "rawSignal": {
+        "signal": {
+          "position": {
+            "point": {
+              "latE7": 355831402,
+              "lngE7": -1193393903
+            },
+            "accuracyMm": 12000,
+            "timestamp": "2025-08-15T14:32:18.000Z"
+          }
+        }
+      }
+    }
+  ]
+}

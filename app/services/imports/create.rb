@@ -78,6 +78,7 @@ class Imports::Create
     when 'csv'                          then Csv::Importer
     when 'tcx'                          then Tcx::Importer
     when 'fit'                          then Fit::Importer
+    when 'polarsteps'                   then Polarsteps::Importer
     when 'zip'
       raise ArgumentError, 'Could not classify zip contents -- file may be corrupted'
     else
