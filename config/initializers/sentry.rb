@@ -2,30 +2,16 @@
 
 return unless SENTRY_DSN
 
+require Rails.root.join('lib/sentry_log_redactor')
+
 Sentry.init do |config|
   config.breadcrumbs_logger = [:active_support_logger]
   config.dsn = SENTRY_DSN
   config.traces_sample_rate = 1.0
   config.profiles_sample_rate = 1.0
-  config.enable_logs = true
+  config.enable_logs = Rails.env.production? || Rails.env.staging?
 
-  sensitive_keys = %w[
-    password password_confirmation token api_key secret authorization
-    access_token refresh_token otp ssn credit_card card_number cvv
-  ]
-  email_pattern = /[\w._%+-]+@[\w.-]+\.[A-Za-z]{2,}/
-
-  config.before_send_log = lambda do |log|
-    log.attributes.each do |key, value|
-      if sensitive_keys.any? { |k| key.to_s.downcase.include?(k) }
-        log.attributes[key] = '[FILTERED]'
-      elsif value.is_a?(String) && value.match?(email_pattern)
-        log.attributes[key] = value.gsub(email_pattern, '[EMAIL]')
-      end
-    end
-    log.body = log.body.gsub(email_pattern, '[EMAIL]') if log.body.is_a?(String)
-    log
-  end
+  config.before_send_log = ->(log) { SentryLogRedactor.call(log) }
 end
 
 require Rails.root.join('lib/sentry_logs_logger')
