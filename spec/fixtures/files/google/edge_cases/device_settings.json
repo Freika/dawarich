@@ -1,0 +1,17 @@
+{
+  "gaiaId": "759627134211",
+  "createdTime": "2018-04-13T21:30:16.606Z",
+  "modifiedTime": "2024-09-15T16:34:51.462Z",
+  "hasReportedLocations": true,
+  "hasSetRetention": false,
+  "deviceSettings": [
+    {
+      "deviceTag": -1234567890,
+      "reportingEnabled": true,
+      "deviceSpec": {
+        "manufacturer": "Google",
+        "model": "Pixel 7"
+      }
+    }
+  ]
+}

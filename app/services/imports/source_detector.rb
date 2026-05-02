@@ -29,12 +29,13 @@ class Imports::SourceDetector
         {
           required_keys: ['rawSignals']
         },
-        # Pattern 3: Array format with visit/activity objects
+        # Pattern 3: Array format with visit/activity/timelinePath objects
         {
           structure: :array,
           nested_patterns: [
             [0, 'visit', 'topCandidate', 'placeLocation'],
-            [0, 'activity']
+            [0, 'activity'],
+            [0, 'timelinePath']
           ]
         }
       ]
@@ -48,11 +49,36 @@ class Imports::SourceDetector
         ['features', 0, 'properties']
       ]
     },
+    polarsteps: {
+      alternative_patterns: [
+        {
+          required_keys: ['locations'],
+          nested_patterns: [
+            ['locations', 0, 'lat'],
+            ['locations', 0, 'lon'],
+            ['locations', 0, 'time']
+          ]
+        },
+        {
+          structure: :array,
+          nested_patterns: [
+            [0, 'arrived'],
+            [0, 'departed']
+          ]
+        }
+      ]
+    },
     owntracks: {
       structure: :rec_file_lines,
       line_pattern: /"_type":"location"/
     }
   }.freeze
+
+  MAX_DETECTION_BYTES = 8192
+  MAX_RAW_DETECTION_BYTES = 262_144
+
+  UTF8_BOM = "\xEF\xBB\xBF".b.freeze
+  PARSE_ERRORS = [Oj::ParseError, JSON::ParserError, EncodingError, ArgumentError].freeze
 
   def initialize(file_content, filename = nil, file_path = nil)
     @file_content = file_content
@@ -94,9 +120,9 @@ class Imports::SourceDetector
 
   def detect_source!
     format = detect_source
-    raise UnknownSourceError, 'Unable to detect file format' unless format
+    return format if format
 
-    format
+    raise UnknownSourceError, unsupported_reason
   end
 
   private
@@ -161,6 +187,7 @@ class Imports::SourceDetector
                        else
                          file_content
                        end
+    return false if content_to_check.blank?
 
     content_to_check.lines.any? { |line| line.include?('"_type":"location"') }
   end
@@ -191,56 +218,55 @@ class Imports::SourceDetector
     first_line = file_content&.lines&.first&.strip
     return false if first_line.nil?
 
-    headers = first_line.split(/[,;\t]/).map { |h| h.strip.downcase }
+    headers = first_line.split(/[,;\t]/).map { |h| h.strip.delete(%(\"')).strip.downcase }
     all_aliases = Imports::FieldAliases::ALIASES.values.flatten.map(&:downcase)
     matched = headers.count { |h| all_aliases.include?(h) }
     matched >= 2
   end
 
   def detect_from_raw_content
-    content = if file_path && File.exist?(file_path)
-                File.open(file_path, 'rb') { |f| f.read(MAX_DETECTION_BYTES) }
-              else
-                file_content
-              end
+    content = read_for_raw_detection
     return nil if content.blank?
 
     if content.include?('"semanticSegments"') &&
-        (content.include?('"startTime"') || content.include?('"visit"') || content.include?('"activity"'))
+       (content.include?('"startTime"') || content.include?('"visit"') || content.include?('"activity"'))
       :google_phone_takeout
     elsif content.include?('"timelineObjects"') &&
-        (content.include?('"activitySegment"') || content.include?('"placeVisit"'))
+          (content.include?('"activitySegment"') || content.include?('"placeVisit"'))
       :google_semantic_history
     elsif content.include?('"locations"') && content.include?('"latitudeE7"')
       :google_records
     elsif content.include?('"FeatureCollection"') && content.include?('"features"')
       :geojson
+    elsif content.include?('"rawSignals"')
+      :google_phone_takeout
+    elsif content.include?('"timelinePath"') &&
+          (content.include?('"startTime"') || content.include?('"endTime"'))
+      :google_phone_takeout
+    elsif content.include?('"topCandidate"') && content.include?('"placeLocation"')
+      :google_phone_takeout
+    elsif content.include?('"arrived"') && content.include?('"departed"') && content.include?('"segment-')
+      :polarsteps
     end
   end
 
-  MAX_DETECTION_BYTES = 8192 # 8KB is enough to detect top-level keys and first array elements
-
   def parse_json
-    content = if file_path && File.exist?(file_path)
-                File.open(file_path, 'rb') { |f| f.read(MAX_DETECTION_BYTES) }
-              else
-                file_content
-              end
+    content = read_for_json_parse
+    content = strip_bom(content)
 
     Oj.load(content, mode: :compat)
-  rescue Oj::ParseError, JSON::ParserError
-    # Partial read may produce incomplete JSON — try to detect from truncated content
-    # by closing any open structures
+  rescue *PARSE_ERRORS
+    # Partial read may produce incomplete JSON — try to detect from truncated
+    # content by closing any open structures.
     attempt_partial_json_parse(content)
   end
 
   def attempt_partial_json_parse(content)
     return nil if content.blank?
 
-    # Try progressively simpler fixes for truncated JSON
     ["#{content}]", "#{content}}]", "#{content}}}]"].each do |patched|
       return Oj.load(patched, mode: :compat)
-    rescue Oj::ParseError, JSON::ParserError
+    rescue *PARSE_ERRORS
       next
     end
 
@@ -319,5 +345,159 @@ class Imports::SourceDetector
     end
 
     !current.nil?
+  end
+
+  def read_for_json_parse
+    if file_path && File.exist?(file_path)
+      File.open(file_path, 'rb') { |f| f.read(MAX_DETECTION_BYTES) }
+    else
+      file_content
+    end
+  end
+
+  def read_for_raw_detection
+    if file_path && File.exist?(file_path)
+      File.open(file_path, 'rb') { |f| f.read(MAX_RAW_DETECTION_BYTES) }
+    else
+      file_content
+    end
+  end
+
+  def strip_bom(content)
+    return content if content.blank?
+    return content unless content.bytesize >= 3 && content.byteslice(0, 3).b == UTF8_BOM
+
+    content.byteslice(3, content.bytesize - 3)
+  end
+
+  def unsupported_reason
+    content = read_for_raw_detection.to_s
+
+    return 'The uploaded file is empty (0 bytes).' if content.empty?
+
+    binary_reason = unsupported_binary_reason(content)
+    return binary_reason if binary_reason
+
+    stripped = content.strip
+    return 'The uploaded file contains no data (empty JSON object or array).' if EMPTY_JSON_BODIES.include?(stripped)
+
+    if content.include?('You have encrypted Timeline backups')
+      'Your Google Timeline data is encrypted. Open the Google Maps app, ' \
+        'turn off Timeline encryption in your settings, then re-export your data.'
+    elsif content.lstrip.start_with?('<!DOCTYPE html', '<!doctype html', '<html', '<HTML')
+      'This is an HTML page (likely "archive_browser.html" from your Google Takeout), ' \
+        'not the data file. Open the Takeout archive and look for the .json or .kml inside.'
+    elsif content.include?('"timelineEdits"')
+      'Google Timeline Edits format is not yet supported. Please upload Records.json ' \
+        'or the files inside the Timeline/ folder of your Google Takeout instead.'
+    elsif content.include?('"deviceSettings"') ||
+          (content.include?('"gaiaId"') && content.include?('"hasReportedLocations"'))
+      'This file contains your Google Maps settings, not location data. ' \
+        'Look for "Records.json" or files inside "Timeline/" in your Google Takeout.'
+    elsif content.include?('"placeUrl"') && content.include?('"selectedChoice"')
+      'This is a Google Maps place-feedback file (Maps Q&A answers like "Was this place open?"), ' \
+        'not your location history. Look for "Records.json" or files inside "Timeline/" in your Google Takeout.'
+    elsif google_my_activity?(content)
+      'This is a Google "My Activity" log (search and Maps activity), not your location history. ' \
+        'Look for "Records.json" or files inside "Timeline/" in your Google Takeout.'
+    elsif google_saved_places?(content)
+      'This is a Google saved-places / geocodes file, not your location history. ' \
+        'Look for "Records.json" or files inside "Timeline/" in your Google Takeout.'
+    elsif amazon_order?(content)
+      'This is an Amazon order export, not location data. ' \
+        'Dawarich imports location history from Google Takeout, OwnTracks, GPX, and similar sources.'
+    elsif snapchat_export?(content)
+      'This appears to be a Snapchat data export, not location data. ' \
+        'Dawarich imports location history from Google Takeout, OwnTracks, GPX, and similar sources.'
+    elsif looks_like_json_fragment?(content)
+      'The uploaded file appears to be a truncated or corrupted fragment of a JSON file ' \
+        '(it does not start with "{" or "["). Please re-export and upload the original complete file.'
+    else
+      'Unable to detect file format'
+    end
+  end
+
+  EMPTY_JSON_BODIES = ['{}', '[]', '[ ]'].freeze
+
+  def unsupported_binary_reason(content)
+    return nil if content.bytesize < 4
+
+    head4 = content.byteslice(0, 4)
+    head8 = content.byteslice(0, 8)
+    head_bytes = content.bytes
+
+    if head4 == '%PDF'
+      'PDF files are not supported. Open the PDF and find your actual location data file.'
+    elsif head4.start_with?('Rar!')
+      'RAR archives are not supported. Please extract the archive and upload the data files inside.'
+    elsif head8 == 'bplist00'
+      'Apple binary plist (.plist) files are not supported.'
+    elsif head_bytes[0, 2] == [0x1F, 0x8B]
+      'Gzip-compressed files (.gz) are not auto-decompressed. Please decompress the file and re-upload the contents.'
+    elsif head_bytes[0, 8] == [0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1]
+      'Microsoft Office documents (Word/Excel) are not supported. Please upload your location data file.'
+    elsif heic_file?(content)
+      'HEIC image files are not supported. Photos do not contain a location history; ' \
+        'connect your photo library via the Immich or PhotoPrism integration to import photo locations.'
+    elsif head_bytes[0, 3] == [0xFF, 0xD8, 0xFF]
+      'JPEG image files are not supported. Photos do not contain a location history; ' \
+        'connect your photo library via the Immich or PhotoPrism integration to import photo locations.'
+    elsif head8 == "\x89PNG\r\n\x1A\n".b
+      'PNG image files are not supported. Please upload your location data file (.json, .gpx, .kml, etc).'
+    elsif ds_store?(head_bytes)
+      'This is a macOS Finder metadata file (.DS_Store), not a data file. Please upload your actual location export.'
+    end
+  end
+
+  SNAPCHAT_MARKERS = [
+    'Snap Privacy Policy',
+    '"Snap Inc.',
+    '"Selfies"',
+    '"Friends"',
+    '"Public Users"',
+    '"Last Active Timezone"'
+  ].freeze
+
+  def snapchat_export?(content)
+    return true if SNAPCHAT_MARKERS.any? { |m| content.include?(m) }
+
+    content.include?('"Login History"') && content.include?('"Permissions"')
+  end
+
+  def google_my_activity?(content)
+    content.include?('"header": "Maps"') ||
+      content.include?('"header":"Maps"') ||
+      (content.include?('"titleUrl"') && content.include?('"header"'))
+  end
+
+  def google_saved_places?(content)
+    return true if content.include?('"geocodes"') && content.include?('"latE7"')
+    return true if content.include?('"placeId":"ChIJ') || content.include?('"placeID": "ChIJ')
+
+    content.include?('"displayName"') && content.include?('"formattedAddress"')
+  end
+
+  def amazon_order?(content)
+    content.include?('"OrderNumber"') && content.include?('"EstimatedDeliveryDate"')
+  end
+
+  def looks_like_json_fragment?(content)
+    return false if content.bytesize < 8
+
+    stripped = content.strip
+    return false if stripped.start_with?('{', '[')
+
+    stripped.start_with?('"timestamp"', '"position"', '"latitude"', '"longitude"', '"_type"', '"lat"')
+  end
+
+  def heic_file?(content)
+    return false if content.bytesize < 12
+
+    box = content.byteslice(4, 8)
+    %w[ftypheic ftypheix ftypmif1 ftypheis].include?(box)
+  end
+
+  def ds_store?(head_bytes)
+    head_bytes[4, 4] == 'Bud1'.bytes
   end
 end

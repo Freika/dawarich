@@ -114,14 +114,14 @@ class Imports::SecureFileDownloader
   def create_temp_file
     extension = File.extname(storage_attachment.filename.to_s)
     basename = File.basename(storage_attachment.filename.to_s, extension)
-    Tempfile.new(["#{basename}_#{Time.now.to_i}", extension], binmode: true)
+    Tempfile.create(["#{basename}_#{Time.now.to_i}_", extension], binmode: true)
   end
 
   def cleanup_temp_file(temp_file)
     return unless temp_file
 
     temp_file.close unless temp_file.closed?
-    temp_file.unlink if File.exist?(temp_file.path)
+    File.unlink(temp_file.path) if File.exist?(temp_file.path)
   rescue StandardError => e
     Rails.logger.warn("Failed to cleanup temp file: #{e.message}")
   end

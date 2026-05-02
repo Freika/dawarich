@@ -1,0 +1,1 @@
+You have encrypted Timeline backups stored on Google servers. To export your Timeline data, disable encryption in the Google Maps app on your phone first.

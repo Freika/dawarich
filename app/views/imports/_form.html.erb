@@ -11,6 +11,7 @@
       <li class="flex items-center gap-1.5"><%= icon 'circle-check', class: 'w-3.5 h-3.5 text-success shrink-0' %> <strong>FIT:</strong> Garmin activity files (.fit)</li>
       <li class="flex items-center gap-1.5"><%= icon 'circle-check', class: 'w-3.5 h-3.5 text-success shrink-0' %> <strong>TCX:</strong> Training Center files (.tcx)</li>
       <li class="flex items-center gap-1.5"><%= icon 'circle-check', class: 'w-3.5 h-3.5 text-success shrink-0' %> <strong>CSV:</strong> Location data (.csv)</li>
+      <li class="flex items-center gap-1.5"><%= icon 'circle-check', class: 'w-3.5 h-3.5 text-success shrink-0' %> <strong>Polarsteps:</strong> locations.json (.json)</li>
       <li class="flex items-center gap-1.5"><%= icon 'circle-check', class: 'w-3.5 h-3.5 text-success shrink-0' %> <strong>ZIP:</strong> Archives containing any of the above (.zip)</li>
     </ul>
     <div class="text-xs text-base-content/50 mt-2">
@@ -47,6 +48,7 @@
     <%= form.file_field :files,
         multiple: true,
         direct_upload: true,
+        accept: ".json,.geojson,.gpx,.kml,.kmz,.tcx,.fit,.csv,.rec,.zip,application/json,application/geo+json,application/gpx+xml,application/vnd.google-earth.kml+xml,application/vnd.google-earth.kmz,application/zip",
         class: "file-input file-input-bordered w-full max-w-xs",
         data: { upload_target: "input" } %>
     <div class="text-sm text-gray-500 mt-2">

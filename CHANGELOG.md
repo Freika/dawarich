@@ -6,11 +6,23 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [1.7.3] - Unreleased
 
+### Added
+
+- Polarsteps support — `locations.json` and segment-array exports now import directly.
+- Files with unsupported extensions are rejected in the browser before upload starts.
+- Clear, actionable error messages when an unsupported file is uploaded — points to the right file in your Takeout instead of a generic "Unable to detect file format".
+
 ### Fixed
 
-- Upgrades from older versions (≤ 1.3.1) no longer crash during `db:migrate` with `Undeclared attribute type for enum 'subscription_source' in User`. The `SetPlanForExistingUsers` data migration now uses raw SQL instead of the live `User` AR model, so it no longer trips on enum/column declarations introduced by later migrations. (#2576)
+- Google Phone Takeout `location-history.json` now imports reliably. (#2437)
+- KMZ files from a wider range of exporters now import.
+- Imports no longer fail intermittently with `No such file or directory @ rb_sysopen - /tmp/...`. (#2446)
+- FIT files from non-Garmin devices and phone apps now import.
+- CSV files with quoted headers (e.g. `"Latitude","Longitude"`) are now recognized.
+- Empty (0-byte) uploads now produce a clear error instead of crashing.
+- Upgrades from older versions (≤ 1.3.1) no longer crash during `db:migrate`. (#2576)
 
-## [1.7.2] - Unreleased
+## [1.7.2] - 2026-04-29
 
 ### Removed
 
