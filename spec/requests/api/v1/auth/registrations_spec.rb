@@ -45,6 +45,21 @@ RSpec.describe 'POST /api/v1/auth/register', type: :request do
     expect(Users::MailerSendingJob).not_to have_been_enqueued
   end
 
+  it 'enqueues the Manager creation webhook so cloud users sync to Manager' do
+    ActiveJob::Base.queue_adapter = :test
+
+    expect { post '/api/v1/auth/register', params: valid_params }
+      .to have_enqueued_job(Users::CreationWebhookJob).with(an_instance_of(Integer))
+  end
+
+  it 'does not enqueue the Manager creation webhook on validation failure' do
+    ActiveJob::Base.queue_adapter = :test
+
+    expect do
+      post '/api/v1/auth/register', params: valid_params.merge(password: 'x', password_confirmation: 'x')
+    end.not_to have_enqueued_job(Users::CreationWebhookJob)
+  end
+
   it 'normalizes email casing/whitespace on signup so login round-trips' do
     post '/api/v1/auth/register',
          params: valid_params.merge(email: '  Mixed@Example.COM  ')
@@ -78,6 +93,13 @@ RSpec.describe 'POST /api/v1/auth/register', type: :request do
       expect(response).to have_http_status(:created)
       body = JSON.parse(response.body)
       expect(body['status']).to eq('active')
+    end
+
+    it 'does not enqueue the Manager creation webhook (no Manager exists self-hosted)' do
+      ActiveJob::Base.queue_adapter = :test
+
+      expect { post '/api/v1/auth/register', params: valid_params }
+        .not_to have_enqueued_job(Users::CreationWebhookJob)
     end
   end
 end

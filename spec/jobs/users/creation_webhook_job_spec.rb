@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe Users::TrialWebhookJob, type: :job do
+RSpec.describe Users::CreationWebhookJob, type: :job do
   let(:user) { create(:user, :trial) }
   let(:jwt_token) { 'encoded.jwt.token' }
   let(:manager_url) { 'https://manager.example.com' }
@@ -60,6 +60,16 @@ RSpec.describe Users::TrialWebhookJob, type: :job do
         expect(HTTParty).not_to receive(:post)
 
         expect { described_class.perform_now(999_999) }.not_to raise_error
+      end
+    end
+
+    context 'when MANAGER_URL is blank' do
+      before { stub_const('ENV', ENV.to_hash.merge('MANAGER_URL' => '')) }
+
+      it 'skips the webhook' do
+        expect(HTTParty).not_to receive(:post)
+
+        described_class.perform_now(user.id)
       end
     end
   end
