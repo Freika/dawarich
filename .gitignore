@@ -90,3 +90,4 @@ node_modules/
 .claude
 .worktrees/
 .superpowers/
+.security-audit/
