@@ -4,8 +4,8 @@ class Api::V1::Users::TwoFactorController < ApiController
   TOTP_DRIFT = 1
 
   before_action :ensure_two_factor_available
-  before_action :ensure_password_provided, only: %i[setup confirm backup_codes]
-  before_action :ensure_credential_provided, only: %i[destroy]
+  before_action :ensure_password_provided, only: %i[setup confirm backup_codes destroy]
+  before_action :ensure_otp_or_backup_provided, only: %i[destroy]
 
   def setup
     if current_api_user.otp_required_for_login?
@@ -60,10 +60,14 @@ class Api::V1::Users::TwoFactorController < ApiController
     render json: { error: 'two_factor_not_available' }, status: :service_unavailable
   end
 
-  def ensure_credential_provided
-    return if valid_otp? || valid_password?
+  # audit M-1: disabling 2FA must require both factors. Previously this
+  # before_action accepted password OR otp; with that, a leaked password
+  # alone removed the second factor on its way to a takeover.
+  def ensure_otp_or_backup_provided
+    return if consume_otp_or_backup!
 
-    render json: { error: 'credential_required', message: 'Provide a valid OTP or password.' },
+    render json: { error: 'otp_required',
+                   message: 'Provide a valid two-factor code (or backup code) to disable 2FA.' },
            status: :unauthorized
   end
 
@@ -74,13 +78,12 @@ class Api::V1::Users::TwoFactorController < ApiController
            status: :unauthorized
   end
 
-  def valid_otp?
-    return false if params[:otp_code].blank?
-    return false if current_api_user.otp_secret.blank?
+  def consume_otp_or_backup!
+    code = params[:otp_code].to_s
+    return false if code.blank?
 
-    ROTP::TOTP.new(current_api_user.otp_secret)
-              .verify(params[:otp_code].to_s, drift_behind: TOTP_DRIFT, drift_ahead: TOTP_DRIFT)
-              .present?
+    current_api_user.validate_and_consume_otp!(code) ||
+      current_api_user.invalidate_otp_backup_code!(code)
   end
 
   def valid_password?

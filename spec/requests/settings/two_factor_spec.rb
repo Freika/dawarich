@@ -61,14 +61,14 @@ RSpec.describe 'Settings::TwoFactor', type: :request do
     before do
       user.update!(
         otp_secret: User.generate_otp_secret,
-        otp_required_for_login: true,
-        otp_backup_codes: %w[code1 code2]
+        otp_required_for_login: true
       )
     end
 
-    context 'with correct password' do
+    # audit M-1: disabling 2FA must require both factors.
+    context 'with correct password and valid OTP' do
       it 'disables 2FA' do
-        delete settings_two_factor_path, params: { password: password }
+        delete settings_two_factor_path, params: { password: password, otp_attempt: user.current_otp }
 
         expect(response).to redirect_to(settings_two_factor_path)
         user.reload
@@ -78,12 +78,44 @@ RSpec.describe 'Settings::TwoFactor', type: :request do
       end
     end
 
+    context 'with correct password and a valid backup code' do
+      it 'disables 2FA' do
+        backup = user.generate_otp_backup_codes!.first
+        user.save!
+
+        delete settings_two_factor_path, params: { password: password, otp_attempt: backup }
+
+        expect(response).to redirect_to(settings_two_factor_path)
+        expect(user.reload.otp_required_for_login).to be false
+      end
+    end
+
     context 'with incorrect password' do
       it 'does not disable 2FA' do
-        delete settings_two_factor_path, params: { password: 'wrong_password' }
+        delete settings_two_factor_path, params: { password: 'wrong_password', otp_attempt: user.current_otp }
 
         expect(response).to redirect_to(settings_two_factor_path)
         expect(flash[:alert]).to eq('Incorrect password.')
+        expect(user.reload.otp_required_for_login).to be true
+      end
+    end
+
+    context 'with correct password but missing OTP' do
+      it 'does not disable 2FA' do
+        delete settings_two_factor_path, params: { password: password }
+
+        expect(response).to redirect_to(settings_two_factor_path)
+        expect(flash[:alert]).to include('valid two-factor code')
+        expect(user.reload.otp_required_for_login).to be true
+      end
+    end
+
+    context 'with correct password but invalid OTP' do
+      it 'does not disable 2FA' do
+        delete settings_two_factor_path, params: { password: password, otp_attempt: '000000' }
+
+        expect(response).to redirect_to(settings_two_factor_path)
+        expect(flash[:alert]).to include('valid two-factor code')
         expect(user.reload.otp_required_for_login).to be true
       end
     end

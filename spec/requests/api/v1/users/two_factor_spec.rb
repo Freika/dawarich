@@ -140,22 +140,44 @@ RSpec.describe 'Two-factor management', type: :request do
       user.save!
     end
 
-    it 'disables 2FA with valid OTP' do
+    # audit M-1: disabling 2FA must require BOTH password and a valid OTP /
+    # backup code. The previous gate accepted either factor alone, so a
+    # leaked password (or a stolen API session) was enough to strip 2FA.
+    it 'disables 2FA with valid password AND valid OTP' do
       otp = ROTP::TOTP.new(user.otp_secret).now
-      delete '/api/v1/users/me/two_factor', params: { otp_code: otp }, headers: headers
+      delete '/api/v1/users/me/two_factor',
+             params: { password: 'secret123', otp_code: otp }, headers: headers
       expect(response).to have_http_status(:ok)
       expect(user.reload.otp_required_for_login).to be false
       expect(user.reload.otp_secret).to be_nil
     end
 
-    it 'disables 2FA with valid password' do
-      delete '/api/v1/users/me/two_factor', params: { password: 'secret123' }, headers: headers
+    it 'disables 2FA with valid password AND valid backup code' do
+      backup = user.generate_otp_backup_codes!.first
+      user.save!
+
+      delete '/api/v1/users/me/two_factor',
+             params: { password: 'secret123', otp_code: backup }, headers: headers
       expect(response).to have_http_status(:ok)
       expect(user.reload.otp_required_for_login).to be false
     end
 
-    it 'refuses disable without valid credential' do
-      delete '/api/v1/users/me/two_factor', params: { otp_code: '000000' }, headers: headers
+    it 'refuses to disable with password alone (no OTP)' do
+      delete '/api/v1/users/me/two_factor', params: { password: 'secret123' }, headers: headers
+      expect(response).to have_http_status(:unauthorized)
+      expect(user.reload.otp_required_for_login).to be true
+    end
+
+    it 'refuses to disable with OTP alone (no password)' do
+      otp = ROTP::TOTP.new(user.otp_secret).now
+      delete '/api/v1/users/me/two_factor', params: { otp_code: otp }, headers: headers
+      expect(response).to have_http_status(:unauthorized)
+      expect(user.reload.otp_required_for_login).to be true
+    end
+
+    it 'refuses to disable with valid password but invalid OTP' do
+      delete '/api/v1/users/me/two_factor',
+             params: { password: 'secret123', otp_code: '000000' }, headers: headers
       expect(response).to have_http_status(:unauthorized)
       expect(user.reload.otp_required_for_login).to be true
     end
@@ -169,9 +191,11 @@ RSpec.describe 'Two-factor management', type: :request do
 
       it 'throttles repeated disable attempts keyed on the Authorization header' do
         5.times do
-          delete '/api/v1/users/me/two_factor', params: { otp_code: '000000' }, headers: headers
+          delete '/api/v1/users/me/two_factor',
+                 params: { password: 'secret123', otp_code: '000000' }, headers: headers
         end
-        delete '/api/v1/users/me/two_factor', params: { otp_code: '000000' }, headers: headers
+        delete '/api/v1/users/me/two_factor',
+               params: { password: 'secret123', otp_code: '000000' }, headers: headers
         expect(response).to have_http_status(:too_many_requests)
       end
     end
