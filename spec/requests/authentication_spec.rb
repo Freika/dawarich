@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe 'Authentication', type: :request do
-  let(:user) { create(:user, password: 'password123') }
+  let(:user) { create(:user, password: 'password123456') }
 
   describe 'Route Protection' do
     it 'redirects to sign in page when accessing protected routes while signed out' do
@@ -39,7 +39,7 @@ RSpec.describe 'Authentication', type: :request do
       put user_registration_path, params: {
         user: {
           email: 'updated@example.com',
-          current_password: 'password123'
+          current_password: 'password123456'
         }
       }
 
@@ -64,7 +64,7 @@ RSpec.describe 'Authentication', type: :request do
     it 'redirects to iOS success path when signing in with iOS client header' do
       # Make a login request with the iOS client header (user NOT pre-signed in)
       post user_session_path, params: {
-        user: { email: user.email, password: 'password123' }
+        user: { email: user.email, password: 'password123456' }
       }, headers: {
         'X-Dawarich-Client' => 'ios',
         'Accept' => 'text/html'
@@ -89,7 +89,7 @@ RSpec.describe 'Authentication', type: :request do
 
       # Then sign-in POST request without header (relies on session)
       post user_session_path, params: {
-        user: { email: user.email, password: 'password123' }
+        user: { email: user.email, password: 'password123456' }
       }, headers: {
         'Accept' => 'text/html'
       }
@@ -155,7 +155,7 @@ RSpec.describe 'Authentication', type: :request do
     it 'uses default path for non-iOS clients' do
       # Make a login request without iOS client header (user NOT pre-signed in)
       post user_session_path, params: {
-        user: { email: user.email, password: 'password123' }
+        user: { email: user.email, password: 'password123456' }
       }
 
       # Should redirect to default path (not iOS success)
@@ -172,7 +172,7 @@ RSpec.describe 'Authentication', type: :request do
 
       it 'prevents sign in for deleted users' do
         post user_session_path, params: {
-          user: { email: user.email, password: 'password123' }
+          user: { email: user.email, password: 'password123456' }
         }
 
         # With default scope, Devise can't find the user at all,
@@ -208,7 +208,7 @@ RSpec.describe 'Authentication', type: :request do
         user.delete
 
         post user_session_path, params: {
-          user: { email: user_email, password: 'password123' }
+          user: { email: user_email, password: 'password123456' }
         }
 
         expect(response).not_to be_redirect
@@ -228,12 +228,12 @@ RSpec.describe 'Authentication', type: :request do
   describe 'Family Invitation with Authentication' do
     let(:family) { create(:family, creator: user) }
     let!(:membership) { create(:family_membership, user: user, family: family, role: :owner) }
-    let(:invitee) { create(:user, email: 'invitee@example.com', password: 'password123') }
+    let(:invitee) { create(:user, email: 'invitee@example.com', password: 'password123456') }
     let(:invitation) { create(:family_invitation, family: family, invited_by: user, email: invitee.email) }
 
     it 'redirects to invitation page when signing in with invitation token in params' do
       post user_session_path, params: {
-        user: { email: invitee.email, password: 'password123' },
+        user: { email: invitee.email, password: 'password123456' },
         invitation_token: invitation.token
       }
 
@@ -247,7 +247,7 @@ RSpec.describe 'Authentication', type: :request do
 
       # Then sign in without the invitation_token in params (should use session value)
       post user_session_path, params: {
-        user: { email: invitee.email, password: 'password123' }
+        user: { email: invitee.email, password: 'password123456' }
       }
 
       expect(response).to redirect_to(family_invitation_path(invitation.token))
@@ -256,7 +256,7 @@ RSpec.describe 'Authentication', type: :request do
     it 'prioritizes invitation over iOS flow when both are present' do
       # Sign in with both iOS header AND invitation token
       post user_session_path, params: {
-        user: { email: invitee.email, password: 'password123' },
+        user: { email: invitee.email, password: 'password123456' },
         invitation_token: invitation.token
       }, headers: {
         'X-Dawarich-Client' => 'ios'
@@ -277,7 +277,7 @@ RSpec.describe 'Authentication', type: :request do
 
       # Sign in with iOS header and expired invitation token
       post user_session_path, params: {
-        user: { email: invitee.email, password: 'password123' },
+        user: { email: invitee.email, password: 'password123456' },
         invitation_token: expired_invitation.token
       }, headers: {
         'X-Dawarich-Client' => 'ios'
@@ -290,7 +290,7 @@ RSpec.describe 'Authentication', type: :request do
     it 'uses default path when invitation token is invalid' do
       # Sign in with invalid invitation token
       post user_session_path, params: {
-        user: { email: invitee.email, password: 'password123' },
+        user: { email: invitee.email, password: 'password123456' },
         invitation_token: 'invalid-token-123'
       }
 

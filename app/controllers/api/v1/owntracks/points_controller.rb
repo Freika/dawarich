@@ -16,7 +16,14 @@ class Api::V1::Owntracks::PointsController < ApiController
 
   private
 
+  OWNTRACKS_FIELDS = %i[
+    _type lat lon tst tid t bs batt p acc vac vel alt
+    SSID BSSID topic conn cog rad m
+    inregions inrids
+    BSSID
+  ].freeze
+
   def point_params
-    params.permit!
+    params.permit(*OWNTRACKS_FIELDS, inregions: [], inrids: [])
   end
 end

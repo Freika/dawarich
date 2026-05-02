@@ -35,7 +35,7 @@ describe 'Auth Registrations API', type: :request do
                }
 
         let(:credentials) do
-          { email: 'new@example.com', password: 'secret123', password_confirmation: 'secret123' }
+          { email: 'new@example.com', password: 'secret123456', password_confirmation: 'secret123456' }
         end
 
         after { |example| SwaggerResponseExample.capture(example, response) }

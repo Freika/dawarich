@@ -24,8 +24,8 @@ RSpec.describe 'Users::Registrations signup variant', type: :request do
     {
       user: {
         email: unique_email,
-        password: 'password123',
-        password_confirmation: 'password123'
+        password: 'password123456',
+        password_confirmation: 'password123456'
       }
     }
   end
@@ -100,7 +100,7 @@ RSpec.describe 'Users::Registrations signup variant', type: :request do
     context 'when the submitted params fail validation' do
       it 'returns 422 and does not create the user (invalid email)' do
         post user_registration_path, params: {
-          user: { email: 'not-an-email', password: 'password123', password_confirmation: 'password123' }
+          user: { email: 'not-an-email', password: 'password123456', password_confirmation: 'password123456' }
         }
 
         expect(User.find_by(email: 'not-an-email')).to be_nil

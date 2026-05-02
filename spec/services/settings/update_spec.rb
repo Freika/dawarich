@@ -5,6 +5,12 @@ require 'rails_helper'
 RSpec.describe Settings::Update do
   let(:user) { create(:user) }
 
+  before do
+    allow(Resolv).to receive(:getaddress).and_call_original
+    allow(Resolv).to receive(:getaddress).with('immich.test').and_return('93.184.216.34')
+    allow(Resolv).to receive(:getaddress).with('photoprism.test').and_return('93.184.216.34')
+  end
+
   describe '#call' do
     context 'when updating basic settings' do
       let(:settings_params) { { 'immich_url' => 'https://immich.test', 'photoprism_url' => 'https://photoprism.test' } }

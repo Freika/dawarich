@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe 'Users::Sessions', type: :request do
-  let(:user) { create(:user, password: 'password123') }
+  let(:user) { create(:user, password: 'password123456') }
 
   describe 'POST /users/sign_in' do
     context 'when OIDC is not enabled' do
@@ -13,7 +13,7 @@ RSpec.describe 'Users::Sessions', type: :request do
 
       it 'allows email/password login' do
         post user_session_path, params: {
-          user: { email: user.email, password: 'password123' }
+          user: { email: user.email, password: 'password123456' }
         }
 
         expect(response).to redirect_to(root_path)
@@ -24,7 +24,7 @@ RSpec.describe 'Users::Sessions', type: :request do
         stub_const('ALLOW_EMAIL_PASSWORD_REGISTRATION', false)
 
         post user_session_path, params: {
-          user: { email: user.email, password: 'password123' }
+          user: { email: user.email, password: 'password123456' }
         }
 
         expect(response).to redirect_to(root_path)
@@ -44,7 +44,7 @@ RSpec.describe 'Users::Sessions', type: :request do
 
         it 'allows email/password login' do
           post user_session_path, params: {
-            user: { email: user.email, password: 'password123' }
+            user: { email: user.email, password: 'password123456' }
           }
 
           expect(response).to redirect_to(root_path)
@@ -59,7 +59,7 @@ RSpec.describe 'Users::Sessions', type: :request do
 
         it 'blocks email/password login' do
           post user_session_path, params: {
-            user: { email: user.email, password: 'password123' }
+            user: { email: user.email, password: 'password123456' }
           }
 
           expect(response).to redirect_to(root_path)
@@ -68,7 +68,7 @@ RSpec.describe 'Users::Sessions', type: :request do
 
         it 'does not complete the sign in flow' do
           post user_session_path, params: {
-            user: { email: user.email, password: 'password123' }
+            user: { email: user.email, password: 'password123456' }
           }
 
           # The request should be redirected before authentication completes

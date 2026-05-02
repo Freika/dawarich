@@ -63,7 +63,7 @@ class Settings::UsersController < ApplicationController
 
   def regenerate_api_key
     @user = User.find(params[:id])
-    @user.update!(api_key: SecureRandom.hex(16))
+    @user.update!(api_key: SecureRandom.hex(32))
 
     redirect_to settings_user_url(@user), notice: 'API key has been regenerated.'
   end

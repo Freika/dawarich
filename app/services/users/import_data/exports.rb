@@ -74,17 +74,22 @@ class Users::ImportData::Exports
   end
 
   def restore_export_file(export_record, export_data)
-    file_path = files_directory.join(export_data['file_name'])
+    file_path = Users::ImportData::PathSafety.safe_basename_path(
+      files_directory, export_data['file_name']
+    )
 
-    unless File.exist?(file_path)
-      Rails.logger.warn "Export file not found: #{export_data['file_name']}"
+    unless file_path && File.exist?(file_path)
+      Rails.logger.warn "Export file not found or unsafe: #{export_data['file_name']}"
       return false
     end
 
     begin
+      safe_filename = File.basename(
+        (export_data['original_filename'] || export_data['file_name']).to_s
+      )
       export_record.file.attach(
         io: File.open(file_path),
-        filename: export_data['original_filename'] || export_data['file_name'],
+        filename: safe_filename,
         content_type: export_data['content_type'] || 'application/octet-stream'
       )
 

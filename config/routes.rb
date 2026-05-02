@@ -75,7 +75,10 @@ Rails.application.routes.draw do
   get 'settings/theme', to: 'settings#theme'
   post 'settings/generate_api_key', to: 'settings#generate_api_key', as: :generate_api_key
 
-  get 'auth/account_link', to: 'auth/account_links#show', as: :auth_account_link
+  get  'auth/account_link', to: 'auth/account_links#show', as: :auth_account_link
+  get  'auth/account_link/challenge', to: 'auth/account_links#challenge', as: :auth_account_link_challenge
+  post 'auth/account_link/challenge', to: 'auth/account_links#confirm', as: :confirm_auth_account_link
+  post 'auth/account_link/email',     to: 'auth/account_links#email_fallback', as: :email_fallback_auth_account_link
 
   get 'users/me/destroy/confirm', to: 'users/destroy_confirmations#show', as: :user_destroy_confirmation
 
