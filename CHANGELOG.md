@@ -22,7 +22,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Empty (0-byte) uploads now produce a clear error instead of crashing.
 - Upgrades from older versions (≤ 1.3.1) no longer crash during `db:migrate`. (#2576)
 
-## [1.7.2] - Unreleased
+## [1.7.2] - 2026-04-29
 
 ### Removed
 
