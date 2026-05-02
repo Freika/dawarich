@@ -61,7 +61,8 @@ describe 'Immich Enrich API', type: :request do
   path '/api/v1/immich/enrich' do
     post 'Writes location data back to Immich photos' do
       tags 'Immich'
-      description 'Pushes latitude/longitude updates for the supplied Immich asset IDs back to the user\'s Immich instance.'
+      description 'Pushes latitude/longitude updates for the supplied Immich asset IDs back to the ' \
+                  "user's Immich instance."
       consumes 'application/json'
       produces 'application/json'
       parameter name: :api_key, in: :query, type: :string, required: true, description: 'API Key'

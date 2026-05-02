@@ -62,7 +62,7 @@ class Users::DigestsMailer < ApplicationMailer
 
   def yearly_daily_values
     values = {}
-    @user.stats.where(year: @digest.year).each do |stat|
+    @user.stats.where(year: @digest.year).find_each do |stat|
       (stat.daily_distance || {}).each do |day_str, distance|
         values[Date.new(stat.year, stat.month, day_str.to_i)] =
           Users::Digest.convert_distance(distance, @distance_unit)

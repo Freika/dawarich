@@ -14,7 +14,8 @@
       "!!**/vendor",
       "!!app/assets/builds",
       "!!app/assets/stylesheets/maplibre-gl.css",
-      "!!app/javascript/posthog.js"
+      "!!app/javascript/posthog.js",
+      "!!spec/fixtures/files/**"
     ]
   },
   "formatter": {
