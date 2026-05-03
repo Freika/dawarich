@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Map (Leaflet) on mobile browsers no longer clips the bottom of the map and routes after the address bar collapses or the date is changed. (#2000)
 - Visit suggestions are now generated from live tracking (Dawarich iOS app, OwnTracks, Overland, Traccar), not just from imports. Previously, only imported data triggered visit detection. Visit suggestion still requires a configured reverse geocoder (Photon, Geoapify, Nominatim, or LocationIQ). (#1749, #1966)
 
 ## [1.7.4] - 2026-05-03
