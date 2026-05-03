@@ -7,26 +7,31 @@ module Users
         'winter' => [12, 1, 2],
         'spring' => [3, 4, 5],
         'summer' => [6, 7, 8],
-        'fall'   => [9, 10, 11]
+        'fall' => [9, 10, 11]
       }.freeze
 
       SOUTHERN_SEASONS = {
         'winter' => [6, 7, 8],
         'spring' => [9, 10, 11],
         'summer' => [12, 1, 2],
-        'fall'   => [3, 4, 5]
+        'fall' => [3, 4, 5]
       }.freeze
 
-      # Build a one-time lookup of IANA timezone identifier → latitude (Float).
-      # TZInfo::Country.all covers ~400 named zones; we take the first latitude
-      # seen for each identifier (multiple countries can share a zone).
+      # IANA identifier → latitude (Float). Built once from TZInfo::Country#zone_info,
+      # which only covers country-bound zones — Etc/UTC, GMT, UTC are absent and
+      # treated as "unknown → northern" by callers. Country#zones returns
+      # TimezoneProxy without latitude; zone_info returns CountryTimezone with it.
       TIMEZONE_LATITUDES = begin
         TZInfo::Country.all.each_with_object({}) do |country, hash|
-          country.zones.each do |zone|
+          country.zone_info.each do |zone|
             hash[zone.identifier] ||= zone.latitude.to_f
           end
         end.freeze
-      rescue StandardError
+      rescue TZInfo::DataSourceNotFound => e
+        Rails.logger.warn(
+          "SeasonalityCalculator: tzinfo data unavailable (#{e.message}); " \
+          'defaulting all users to northern hemisphere'
+        )
         {}
       end
 
@@ -55,11 +60,11 @@ module Users
       end
 
       def southern_hemisphere?
-        tz_name = user.timezone.presence
-        return false if tz_name.blank?
+        tz_name = user.settings['timezone'].presence
+        return false if tz_name.nil?
 
         latitude = TIMEZONE_LATITUDES[tz_name]
-        latitude.present? && latitude < 0
+        latitude.present? && latitude.negative?
       end
 
       def calculate_distances_by_season

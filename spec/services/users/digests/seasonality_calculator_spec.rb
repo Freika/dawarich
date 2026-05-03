@@ -94,6 +94,46 @@ RSpec.describe Users::Digests::SeasonalityCalculator do
 
         expect(result['summer']).to eq(100)
       end
+
+      it 'ignores ENV TIME_ZONE so server defaults do not flip individual users' do
+        original = ENV['TIME_ZONE']
+        ENV['TIME_ZONE'] = 'Australia/Sydney'
+        create(:stat, user: user, year: year, month: 7, distance: 1000)
+
+        expect(result['summer']).to eq(100)
+      ensure
+        ENV['TIME_ZONE'] = original
+      end
+    end
+
+    context 'with an unknown or malformed timezone identifier' do
+      let(:user) { create(:user, settings: { 'timezone' => 'Europe/Atlantis' }) }
+
+      it 'falls back to Northern Hemisphere mapping' do
+        create(:stat, user: user, year: year, month: 7, distance: 1000)
+
+        expect(result['summer']).to eq(100)
+      end
+    end
+
+    context 'with a near-equatorial timezone with non-negative latitude' do
+      let(:user) { create(:user, settings: { 'timezone' => 'Africa/Kampala' }) }
+
+      it 'classifies non-negative latitude as Northern Hemisphere' do
+        create(:stat, user: user, year: year, month: 12, distance: 1000)
+
+        expect(result['winter']).to eq(100)
+      end
+    end
+
+    context 'with a near-equatorial timezone with negative latitude' do
+      let(:user) { create(:user, settings: { 'timezone' => 'Asia/Jakarta' }) }
+
+      it 'classifies negative latitude as Southern Hemisphere' do
+        create(:stat, user: user, year: year, month: 12, distance: 1000)
+
+        expect(result['summer']).to eq(100)
+      end
     end
   end
 end
