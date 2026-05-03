@@ -49,6 +49,13 @@
 module Tracks::TrackBuilder
   extend ActiveSupport::Concern
 
+  # Sane upper bound for a single track's distance, in meters.
+  # 100,000 km is roughly 2.5x Earth's circumference — anything beyond that points
+  # to corrupt input rather than a real journey, so we cap and warn instead of
+  # blindly storing it. The underlying column is bigint and could hold more,
+  # but bad data is rarely useful.
+  MAX_DISTANCE_METERS = 100_000_000
+
   def create_track_from_points(points, pre_calculated_distance)
     return nil if points.size < 2
 
@@ -59,8 +66,7 @@ module Tracks::TrackBuilder
       original_path: build_path(points)
     )
 
-    # TODO: Move trips attrs to columns with more precision and range
-    track.distance  = [[pre_calculated_distance.round, 999_999].min, 0].max
+    track.distance  = clamp_distance(pre_calculated_distance)
     track.duration  = calculate_duration(points)
     track.avg_speed = calculate_average_speed(track.distance, track.duration)
 
@@ -89,6 +95,20 @@ module Tracks::TrackBuilder
 
   def calculate_duration(points)
     points.last.timestamp - points.first.timestamp
+  end
+
+  def clamp_distance(raw_distance)
+    rounded = raw_distance.to_f.round
+    if rounded > MAX_DISTANCE_METERS
+      Rails.logger.warn(
+        "Track distance #{rounded}m exceeds maximum (#{MAX_DISTANCE_METERS}m); capping"
+      )
+      MAX_DISTANCE_METERS
+    elsif rounded.negative?
+      0
+    else
+      rounded
+    end
   end
 
   def calculate_average_speed(distance_in_meters, duration_seconds)

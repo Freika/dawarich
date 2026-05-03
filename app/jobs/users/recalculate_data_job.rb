@@ -6,7 +6,7 @@
 class Users::RecalculateDataJob < ApplicationJob
   include UserTimezone
 
-  queue_as :default
+  queue_as :stats
 
   def perform(user_id, year: nil)
     @user = find_user_or_skip(user_id) || return

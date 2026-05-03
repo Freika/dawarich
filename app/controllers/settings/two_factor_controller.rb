@@ -32,16 +32,27 @@ class Settings::TwoFactorController < ApplicationController
   end
 
   def destroy
-    if current_user.valid_password?(params[:password])
-      current_user.update!(
-        otp_required_for_login: false,
-        otp_secret: nil,
-        otp_backup_codes: nil
-      )
-      redirect_to settings_two_factor_path, notice: 'Two-factor authentication disabled.'
-    else
+    unless current_user.valid_password?(params[:password])
       redirect_to settings_two_factor_path, alert: 'Incorrect password.'
+      return
     end
+
+    otp_code = params[:otp_attempt].to_s
+    otp_ok = current_user.validate_and_consume_otp!(otp_code) ||
+             current_user.invalidate_otp_backup_code!(otp_code)
+
+    unless otp_ok
+      redirect_to settings_two_factor_path,
+                  alert: 'Provide a valid two-factor code (or backup code) to disable 2FA.'
+      return
+    end
+
+    current_user.update!(
+      otp_required_for_login: false,
+      otp_secret: nil,
+      otp_backup_codes: nil
+    )
+    redirect_to settings_two_factor_path, notice: 'Two-factor authentication disabled.'
   end
 
   private
@@ -54,15 +65,6 @@ class Settings::TwoFactorController < ApplicationController
 
   def generate_qr_code
     uri = current_user.otp_provisioning_uri(current_user.email, issuer: 'Dawarich')
-    qrcode = RQRCode::QRCode.new(uri)
-    qrcode.as_svg(
-      color: '000',
-      fill: 'fff',
-      shape_rendering: 'crispEdges',
-      module_size: 6,
-      standalone: true,
-      use_path: true,
-      offset: 5
-    )
+    ResponsiveQrSvg.call(uri)
   end
 end

@@ -84,12 +84,21 @@ namespace :demo do
     created_tracks = create_tracks(user, 20)
     puts "✅ Created #{created_tracks} tracks"
 
-    # 7. Create family with members
+    # 7. Create timeline fixtures — tagged places, today's pattern, suggested
+    # alternates, declined visits, and an all-day visit. Needed to exercise the
+    # Map v2 Timeline tab (calendar heatmap, inline suggestion picker, tag chips,
+    # place drawer with notes, and the all-day collapse rule).
+    puts "\n🗓️  Creating timeline fixtures..."
+    timeline_summary = create_timeline_demo_data(user)
+    puts "✅ #{timeline_summary[:tags]} tags · #{timeline_summary[:places]} places · " \
+         "#{timeline_summary[:visits]} visits (#{timeline_summary[:by_status]})"
+
+    # 8. Create family with members
     puts "\n👨‍👩‍👧‍👦 Creating demo family..."
     family_members = create_family_with_members(user)
     puts "✅ Created family with #{family_members.count} members"
 
-    # 8. Create Lite demo user
+    # 9. Create Lite demo user
     puts "\n📝 Creating Lite demo user..."
     lite_user = User.find_or_initialize_by(email: 'lite@dawarich.app')
     if lite_user.new_record?
@@ -101,28 +110,29 @@ namespace :demo do
       puts "ℹ️  Lite user already exists: #{lite_user.email}"
     end
 
-    # Bypass after_commit callbacks that override plan
     lite_user.update_columns(
       api_key: 'lite_demo_api_key_001',
       plan: User.plans[:lite],
       status: User.statuses[:active],
-      active_until: 1000.years.from_now
+      active_until: 1000.years.from_now,
+      signup_variant: 'legacy_trial'
     )
     lite_user.update!(settings: (lite_user.settings || {}).merge('live_map_enabled' => true))
     puts "   API Key: #{lite_user.api_key}"
     puts '   Plan: lite'
+    puts "   Signup Variant: #{lite_user.signup_variant}"
 
-    # 8a. Create recent points for Lite user (within 12-month window)
+    # 9a. Create recent points for Lite user (within 12-month window)
     puts "\n📍 Creating recent points for Lite user..."
     recent_points_count = create_lite_recent_points(lite_user)
     puts "✅ Created #{recent_points_count} recent points"
 
-    # 8b. Create old points for Lite user (outside 12-month window)
+    # 9b. Create old points for Lite user (outside 12-month window)
     puts "\n📍 Creating old points for Lite user..."
     old_points_count = create_lite_old_points(lite_user)
     puts "✅ Created #{old_points_count} old points"
 
-    # 8c. Create visits and areas for Lite user
+    # 9c. Create visits and areas for Lite user
     puts "\n🏠 Creating visits for Lite user..."
     lite_confirmed = create_visits(lite_user, 3, :confirmed)
     puts "✅ Created #{lite_confirmed} confirmed visits"
@@ -202,13 +212,14 @@ namespace :demo do
         place.save!
       end
 
-      # Create visit with place
+      # Create visit with place. visit.duration is stored in MINUTES
+      # (see app/services/visits/creator.rb and ...create.rb).
       visit = user.visits.create!(
         name: place.name,
         place: place,
         started_at: started_at,
         ended_at: ended_at,
-        duration: (ended_at - started_at).to_i,
+        duration: ((ended_at - started_at) / 60).to_i,
         status: status
       )
 
@@ -644,5 +655,151 @@ namespace :demo do
       created += 1
     end
     created
+  end
+
+  # --------------------------------------------------------------------------
+  # Timeline fixtures (Map v2 Timeline tab)
+  # --------------------------------------------------------------------------
+  # Seeds named, tagged places (home/work/coffee/food/gym) plus visits spread
+  # across the last ~14 days in the user's timezone. Exercises:
+  #   - Calendar heatmap buckets (multi-visit days light up hotter)
+  #   - Suggested visits with multiple `suggested_places` (radio picker)
+  #   - Declined visits (grey status dot + filter)
+  #   - All-day visit (duration ≥ 23h → compact collapse)
+  #   - Place Drawer with tags + notes
+  # Non-idempotent by design: rerunning appends more visits (matches the style
+  # of `create_visits` / `create_tracks` above).
+  # --------------------------------------------------------------------------
+
+  TIMELINE_CATEGORIES = {
+    home:   { name: 'Home',           tag: 'home',   icon: '🏠', color: '#22c55e', lat_offset: -0.003,
+lon_offset: 0.002, note: nil },
+    work:   { name: 'Office',         tag: 'work',   icon: '💼', color: '#3b82f6', lat_offset:  0.008,
+lon_offset: -0.006, note: nil },
+    coffee: { name: 'Café Süd',       tag: 'coffee', icon: '☕', color: '#f59e0b', lat_offset:  0.002,
+lon_offset: 0.015, note: 'Good wifi, quiet mornings. Almond croissant > everything.' },
+    food:   { name: 'Bäckerei Meier', tag: 'food',   icon: '🍞',  color: '#ef4444', lat_offset:  0.007,
+lon_offset: -0.003, note: 'Cash only. Sourdough lunch special Thursdays.' },
+    gym:    { name: 'Gym',            tag: 'gym',    icon: '🏋',  color: '#8b5cf6', lat_offset: -0.008,
+lon_offset: 0.009, note: nil }
+  }.freeze
+
+  def create_timeline_demo_data(user)
+    tz = user.safe_settings&.timezone.presence || 'Europe/Berlin'
+    user.update!(settings: (user.settings || {}).merge('timezone' => tz))
+
+    tags = timeline_demo_tags(user)
+    places = timeline_demo_places(user, tags)
+    counts = { confirmed: 0, suggested: 0, declined: 0 }
+
+    Time.use_zone(tz) do
+      today      = Date.current
+      yesterday  = today - 1.day
+      day_before = today - 2.days
+
+      # --- TODAY: rich pattern the user sees when they open /map/v2 -----
+      add_timeline_visit(user, places[:home],   today.beginning_of_day,
+                         today.beginning_of_day + 7.hours, :confirmed, 'Home', counts)
+      # A suggested visit with alternates drives the inline radio picker
+      add_timeline_visit(user, places[:coffee], today.beginning_of_day + 9.hours,
+                         today.beginning_of_day + 10.hours, :suggested, nil, counts,
+                         alternates: [places[:coffee], places[:food], places[:work]])
+      add_timeline_visit(user, places[:work],   today.beginning_of_day + 10.hours + 30.minutes,
+                         today.beginning_of_day + 18.hours, :confirmed, 'Office', counts)
+      add_timeline_visit(user, places[:home],   today.beginning_of_day + 19.hours,
+                         today.beginning_of_day + 23.hours + 45.minutes, :confirmed, 'Home', counts)
+
+      # --- YESTERDAY: mix including a declined -----------------------------
+      add_timeline_visit(user, places[:home], yesterday.beginning_of_day,
+                         yesterday.beginning_of_day + 8.hours, :confirmed, 'Home', counts)
+      add_timeline_visit(user, places[:work], yesterday.beginning_of_day + 9.hours,
+                         yesterday.beginning_of_day + 17.hours,          :confirmed, 'Office', counts)
+      add_timeline_visit(user, places[:gym],  yesterday.beginning_of_day + 18.hours,
+                         yesterday.beginning_of_day + 19.hours,          :declined,  'Gym',    counts)
+      add_timeline_visit(user, places[:food], yesterday.beginning_of_day + 19.hours + 30.minutes,
+                         yesterday.beginning_of_day + 20.hours + 15.minutes, :suggested, nil, counts,
+                         alternates: [places[:food], places[:coffee]])
+
+      # --- 2 DAYS AGO: all-day home (exercises the compact collapse) -----
+      add_timeline_visit(user, places[:home], day_before.beginning_of_day,
+                         day_before.beginning_of_day + 23.hours + 59.minutes, :confirmed, 'Home', counts)
+
+      # --- Sprinkle across the last 14 days so the heatmap has shape -----
+      (3..14).each do |days_ago|
+        next if days_ago.odd? && days_ago > 10 # a few gaps for realism
+
+        date = today - days_ago.days
+        add_timeline_visit(user, places[:home], date.beginning_of_day, date.beginning_of_day + 8.hours,
+                           :confirmed, 'Home',   counts)
+        add_timeline_visit(user, places[:work], date.beginning_of_day + 9.hours, date.beginning_of_day + 17.hours,
+                           :confirmed, 'Office', counts)
+
+        # Occasional midday café or bakery visit
+        next unless (days_ago % 3).zero?
+
+        midday_place = [places[:coffee], places[:food]].sample
+        add_timeline_visit(user, midday_place, date.beginning_of_day + 12.hours + 15.minutes,
+                           date.beginning_of_day + 13.hours, :confirmed, nil, counts)
+      end
+    end
+
+    {
+      tags:      tags.size,
+      places:    places.size,
+      visits:    counts.values.sum,
+      by_status: counts.map { |k, v| "#{v} #{k}" }.join(', ')
+    }
+  end
+
+  def timeline_demo_tags(user)
+    TIMELINE_CATEGORIES.values.map do |cat|
+      tag = user.tags.find_or_initialize_by(name: cat[:tag])
+      tag.icon  = cat[:icon]  if tag.icon.blank?
+      tag.color = cat[:color] if tag.color.blank?
+      tag.save!
+      tag
+    end
+  end
+
+  def timeline_demo_places(user, tags)
+    tag_by_name = tags.index_by(&:name)
+
+    TIMELINE_CATEGORIES.each_with_object({}) do |(key, cat), acc|
+      lat = (BERLIN_BASE[:lat] + cat[:lat_offset]).round(5)
+      lon = (BERLIN_BASE[:lon] + cat[:lon_offset]).round(5)
+
+      place = Place.find_or_initialize_by(latitude: lat, longitude: lon)
+      place.user    ||= user
+      place.name      = cat[:name]
+      place.lonlat    = "POINT(#{lon} #{lat})"
+      place.note      = cat[:note] if cat[:note] && place.note.blank?
+      place.save!
+
+      matching_tag = tag_by_name[cat[:tag]]
+      place.tags << matching_tag if matching_tag && !place.tags.include?(matching_tag)
+
+      acc[key] = place
+    end
+  end
+
+  # visit.duration is stored in MINUTES.
+  def add_timeline_visit(user, place, starts, ends, status, name, counts, alternates: nil)
+    duration_minutes = ((ends - starts) / 60).to_i
+
+    visit = user.visits.create!(
+      name:       name.presence || place.name,
+      place:      place,
+      started_at: starts,
+      ended_at:   ends,
+      duration:   duration_minutes,
+      status:     status
+    )
+
+    Array(alternates).uniq.each do |alt|
+      PlaceVisit.find_or_create_by!(visit: visit, place: alt)
+    end
+
+    counts[status] += 1
+    visit
   end
 end

@@ -1,0 +1,13 @@
+<%# One replaceable count badge. Wrapped in an identifiable span so
+    VisitsController#update can turbo_stream.replace it after status changes.
+    Locals:
+      status - "confirmed" | "suggested" | "declined"
+      count  - Integer
+%>
+<span id="filter-count-<%= status %>">
+  <% if status == 'suggested' && count.to_i.positive? %>
+    <span class="badge badge-warning badge-sm"><%= count %></span>
+  <% else %>
+    <span class="timeline-filter-row__count"><%= count.to_i %></span>
+  <% end %>
+</span>

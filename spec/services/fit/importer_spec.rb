@@ -106,5 +106,22 @@ RSpec.describe Fit::Importer do
         bad_file&.unlink
       end
     end
+
+    context 'fit4ruby strict-validation overrides' do
+      it 'HeartRateZones#check is a no-op on lap_index mismatch' do
+        zones = Fit4Ruby::HeartRateZones.new({})
+        zones.instance_variable_set(:@lap_index, 0)
+        expect { zones.check(1) }.not_to raise_error
+      end
+
+      it 'DeviceInfo#check is a no-op when serial_number is missing' do
+        info = Fit4Ruby::DeviceInfo.new({})
+        info.instance_variable_set(:@device_index, 0)
+        info.instance_variable_set(:@manufacturer, 'garmin')
+        info.instance_variable_set(:@garmin_product, 'fenix3')
+        info.instance_variable_set(:@serial_number, nil)
+        expect { info.check(0) }.not_to raise_error
+      end
+    end
   end
 end

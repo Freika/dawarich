@@ -7,8 +7,9 @@ class PlaceVisitsCalculatingJob < ApplicationJob
   def perform(user_id)
     user = find_user_or_skip(user_id) || return
 
-    places = user.places # Only user-owned places (with user_id)
+    return unless user.safe_settings.visits_suggestions_enabled?
 
-    Places::Visits::Create.new(user, places).call
+    # Only user-owned places (with user_id)
+    Places::Visits::Create.new(user, user.places).call
   end
 end

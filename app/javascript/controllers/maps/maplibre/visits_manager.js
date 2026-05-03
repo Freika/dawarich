@@ -12,6 +12,147 @@ export class VisitsManager {
     this.filterManager = controller.filterManager
     this.api = controller.api
     this.dataLoader = controller.dataLoader
+    this.bindTimelineFeedListeners()
+  }
+
+  bindTimelineFeedListeners() {
+    this.onVisitSelected = (e) => {
+      const detail = e?.detail || {}
+      const { visitId, lat, lng } = detail
+      const layer = this.layerManager?.getLayer("visits")
+      if (layer) layer.setSelectedVisit(visitId)
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        this.controller.map?.flyTo({
+          center: [lng, lat],
+          zoom: 15,
+          duration: 600,
+        })
+      }
+    }
+
+    this.onVisitDeselected = () => {
+      const layer = this.layerManager?.getLayer("visits")
+      if (layer) layer.setSelectedVisit(null)
+    }
+
+    this.onFilterChanged = (e) => {
+      const layer = this.layerManager?.getLayer("visits")
+      if (layer) layer.setStatusFilter(e?.detail || {})
+    }
+
+    this.onDaySelected = async (e) => {
+      const detail = e?.detail || {}
+      const { date, bounds } = detail
+      const map = this.controller.map
+      const mapReady = Boolean(map?.isStyleLoaded?.())
+
+      // Skip the per-day fetch when the day already falls inside the
+      // controller's loaded date range — `loadMapData()` (triggered by
+      // `timeline-feed:date-navigated`) has already fetched visits for
+      // the broader range. Re-fetching causes a race where the smaller
+      // request can resolve last and overwrite the larger result.
+      if (date && mapReady && !this.isDayWithinLoadedRange(date)) {
+        try {
+          const startAt = `${date}T00:00:00Z`
+          const endAt = `${date}T23:59:59Z`
+          const visits = await this.api.fetchVisits({
+            start_at: startAt,
+            end_at: endAt,
+          })
+          const layer = this.layerManager?.getLayer("visits")
+          if (layer && map.isStyleLoaded()) {
+            layer.update(this.dataLoader.visitsToGeoJSON(visits))
+            layer.show?.()
+          }
+        } catch (err) {
+          console.error("Failed to refetch visits for timeline day:", err)
+        }
+      }
+
+      if (
+        mapReady &&
+        bounds &&
+        Number.isFinite(bounds.sw_lat) &&
+        Number.isFinite(bounds.sw_lng) &&
+        Number.isFinite(bounds.ne_lat) &&
+        Number.isFinite(bounds.ne_lng)
+      ) {
+        this.controller.map?.fitBounds(
+          [
+            [bounds.sw_lng, bounds.sw_lat],
+            [bounds.ne_lng, bounds.ne_lat],
+          ],
+          { padding: 60, duration: 500 },
+        )
+      }
+    }
+
+    this.onResizeNeeded = () => {
+      this.controller.map?.resize()
+    }
+
+    document.addEventListener(
+      "timeline-feed:visit-selected",
+      this.onVisitSelected,
+    )
+    document.addEventListener(
+      "timeline-feed:visit-deselected",
+      this.onVisitDeselected,
+    )
+    document.addEventListener(
+      "timeline-feed:filter-changed",
+      this.onFilterChanged,
+    )
+    document.addEventListener("timeline-feed:day-selected", this.onDaySelected)
+    document.addEventListener("map:resize-needed", this.onResizeNeeded)
+  }
+
+  /**
+   * Returns true when `date` (YYYY-MM-DD) falls inside the controller's
+   * currently-loaded date range. Used to skip redundant per-day fetches
+   * after a broader fetch has already covered the day.
+   */
+  isDayWithinLoadedRange(date) {
+    const start = this.controller.startDateValue
+    const end = this.controller.endDateValue
+    if (!start || !end || !date) return false
+    return date >= start.slice(0, 10) && date <= end.slice(0, 10)
+  }
+
+  /**
+   * Tear down document-level listeners. Wired into the map controller's
+   * `disconnect()` so Turbo navigation away from `/map/v2` stops dead
+   * handlers from firing on a removed map.
+   */
+  destroy() {
+    if (this.onVisitSelected) {
+      document.removeEventListener(
+        "timeline-feed:visit-selected",
+        this.onVisitSelected,
+      )
+    }
+    if (this.onVisitDeselected) {
+      document.removeEventListener(
+        "timeline-feed:visit-deselected",
+        this.onVisitDeselected,
+      )
+    }
+    if (this.onFilterChanged) {
+      document.removeEventListener(
+        "timeline-feed:filter-changed",
+        this.onFilterChanged,
+      )
+    }
+    if (this.onDaySelected) {
+      document.removeEventListener(
+        "timeline-feed:day-selected",
+        this.onDaySelected,
+      )
+    }
+    if (this.onResizeNeeded) {
+      document.removeEventListener("map:resize-needed", this.onResizeNeeded)
+    }
+    this.disarmCreateVisit()
   }
 
   /**
@@ -76,19 +217,25 @@ export class VisitsManager {
   }
 
   /**
-   * Filter visits by status
+   * Filter visits by status. Reads the search term from the controller's
+   * visitsSearch target (a container) instead of document.getElementById
+   * so we don't reach across the DOM by id.
    */
   filterVisits(event) {
     const filter = event.target.value
     this.filterManager.setCurrentVisitFilter(filter)
-    const searchTerm =
-      document.getElementById("visits-search")?.value.toLowerCase() || ""
+    const searchInput = this.controller.hasVisitsSearchTarget
+      ? this.controller.visitsSearchTarget.querySelector('input[type="text"]')
+      : null
+    const searchTerm = searchInput?.value.toLowerCase() || ""
     const visitsLayer = this.layerManager.getLayer("visits")
     this.filterManager.filterAndUpdateVisits(searchTerm, filter, visitsLayer)
   }
 
   /**
-   * Start create visit mode
+   * Start create visit mode. Idempotent: re-entering disarms any
+   * previously-armed click handler so we don't fire multiple modals.
+   * Esc disarms without creating.
    */
   startCreateVisit() {
     if (
@@ -98,16 +245,41 @@ export class VisitsManager {
       this.controller.toggleSettings()
     }
 
+    this.disarmCreateVisit()
+
     this.controller.map.getCanvas().style.cursor = "crosshair"
-    Toast.info("Click on the map to place a visit")
+    Toast.info("Click on the map to place a visit (Esc to cancel)")
 
     this.handleCreateVisitClick = (e) => {
       const { lng, lat } = e.lngLat
+      this.disarmCreateVisit()
       this.openVisitCreationModal(lat, lng)
-      this.controller.map.getCanvas().style.cursor = ""
+    }
+
+    this.handleCreateVisitEscape = (e) => {
+      if (e.key === "Escape") this.disarmCreateVisit()
     }
 
     this.controller.map.once("click", this.handleCreateVisitClick)
+    document.addEventListener("keydown", this.handleCreateVisitEscape)
+    this.createVisitArmed = true
+  }
+
+  disarmCreateVisit() {
+    if (!this.createVisitArmed) return
+
+    if (this.handleCreateVisitClick) {
+      this.controller.map?.off("click", this.handleCreateVisitClick)
+      this.handleCreateVisitClick = null
+    }
+    if (this.handleCreateVisitEscape) {
+      document.removeEventListener("keydown", this.handleCreateVisitEscape)
+      this.handleCreateVisitEscape = null
+    }
+    if (this.controller.map?.getCanvas) {
+      this.controller.map.getCanvas().style.cursor = ""
+    }
+    this.createVisitArmed = false
   }
 
   /**
@@ -146,16 +318,8 @@ export class VisitsManager {
         end_at: this.controller.endDateValue,
       })
 
-      console.log("[Maps V2] Fetched visits:", visits.length)
-
       this.filterManager.setAllVisits(visits)
       const visitsGeoJSON = this.dataLoader.visitsToGeoJSON(visits)
-
-      console.log(
-        "[Maps V2] Converted to GeoJSON:",
-        visitsGeoJSON.features.length,
-        "features",
-      )
 
       const visitsLayer = this.layerManager.getLayer("visits")
       if (visitsLayer) {

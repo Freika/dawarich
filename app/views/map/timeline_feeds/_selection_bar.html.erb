@@ -1,0 +1,22 @@
+<form data-timeline-feed-target="selectionForm"
+      data-action="submit->timeline-feed#submitMerge"
+      action="<%= merge_visits_path %>"
+      method="post"
+      class="selection-bar"
+      hidden>
+  <%= hidden_field_tag :authenticity_token, form_authenticity_token %>
+  <span class="selection-bar__count" data-timeline-feed-target="selectionCount">0 selected</span>
+  <span class="selection-bar__actions">
+    <button type="button"
+            class="selection-bar__cancel"
+            data-action="click->timeline-feed#exitSelection">
+      Cancel
+    </button>
+    <button type="submit"
+            class="selection-bar__merge"
+            data-timeline-feed-target="mergeButton"
+            disabled>
+      Merge
+    </button>
+  </span>
+</form>

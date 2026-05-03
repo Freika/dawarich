@@ -7,14 +7,14 @@ if User.none?
 
   User.create!(
     email:,
-    password: 'password',
-    password_confirmation: 'password',
+    password: 'safepassword',
+    password_confirmation: 'safepassword',
     admin: true,
     status: :active,
     active_until: 100.years.from_now
   )
 
-  Rails.logger.debug "User created: '#{email}' / password: 'password'"
+  Rails.logger.debug "User created: '#{email}' / password: 'safepassword'"
 end
 
 if Country.none?

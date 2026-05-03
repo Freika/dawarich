@@ -42,7 +42,8 @@ RSpec.describe Points::Params do
             device_id:           '8D5D4197-245B-4619-A88B-2049100ADE46'
           }
         }.with_indifferent_access,
-        user_id:            user.id
+        user_id:            user.id,
+        altitude_decimal:   0
       }
     end
 

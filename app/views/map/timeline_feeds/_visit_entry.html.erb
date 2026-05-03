@@ -1,28 +1,81 @@
-<%
-  start_time = Time.zone.parse(entry[:started_at]).strftime('%H:%M')
-  duration = format_duration_short(entry[:duration])
-  place_name = entry[:name].presence || 'Unknown Location'
-  place = entry[:place]
-  location = place ? [place[:city], place[:country]].compact.join(', ') : nil
-%>
-<div class="timeline-entry"
-     data-action="mouseenter->timeline-feed#entryHover mouseleave->timeline-feed#entryUnhover"
-     data-entry-type="visit"
-     data-started-at="<%= entry[:started_at] %>"
-     data-ended-at="<%= entry[:ended_at] %>"
-     data-visit-name="<%= place_name %>"
-     <% if place %>
-       data-visit-lat="<%= place[:lat] %>"
-       data-visit-lng="<%= place[:lng] %>"
-     <% end %>>
-  <div class="timeline-entry-time"><%= start_time %></div>
-  <div class="timeline-entry-content">
-    <div class="text-sm truncate" title="<%= place_name %>"><%= place_name %></div>
-    <div class="text-xs text-base-content/40 mt-px">
-      <%= duration %>
-      <% if location.present? %>
-        &middot; <%= location %>
+<% times = visit_entry_times(entry); status = visit_entry_status(entry); all_day = visit_entry_all_day?(entry) %>
+<li class="visit-row<%= ' visit-row--suggested' if status == 'suggested' %><%= ' visit-row--all-day' if all_day %>"
+    id="visit_entry_<%= entry[:visit_id] %>"
+    data-visit-id="<%= entry[:visit_id] %>"
+    data-status="<%= status %>"
+    data-testid="visit-row"
+    tabindex="0"
+    role="button"
+    aria-label="<%= visit_entry_display_name(entry) %> · <%= times[:start_label] %>"
+    data-action="click->timeline-feed#selectVisit keydown.enter->timeline-feed#selectVisit keydown.space->timeline-feed#selectVisit mouseenter->timeline-feed#entryHover mouseleave->timeline-feed#entryUnhover"
+    data-entry-type="visit"
+    data-started-at="<%= entry[:started_at] %>"
+    data-ended-at="<%= entry[:ended_at] %>"
+    data-search-tokens="<%= visit_entry_search_tokens(entry) %>"
+    <%# Fall back to area coords so area-based visits zoom on click too. %>
+    <% coords = entry[:place] || entry[:area] %>
+    <% if coords %>
+      data-visit-lat="<%= coords[:lat] %>"
+      data-visit-lng="<%= coords[:lng] %>"
+    <% end %>>
+  <span class="visit-row__check">
+    <input type="checkbox"
+           data-timeline-feed-target="rowCheck"
+           data-visit-id="<%= entry[:visit_id] %>"
+           data-action="change->timeline-feed#rowCheckChanged click->timeline-feed#stopPropagation"
+           aria-label="Select visit for merge"
+           tabindex="-1">
+  </span>
+
+  <div class="visit-row__time">
+    <% if all_day %>
+      <span class="text-xs">All day</span>
+    <% else %>
+      <div class="font-mono text-xs"><%= times[:start_label] %></div>
+      <div class="font-mono text-[10px] text-base-content/50"><%= times[:end_label] %></div>
+    <% end %>
+  </div>
+
+  <div class="visit-row__rail">
+    <span class="visit-status-dot visit-status-dot--<%= status %>"></span>
+  </div>
+
+  <div class="visit-row__content">
+    <div class="visit-row__title">
+      <%# Display name with inline rename (click to edit) %>
+      <%= render 'visits/name',
+                 visit_id: entry[:visit_id],
+                 name: visit_entry_display_name(entry),
+                 suggested: status == 'suggested' %>
+    </div>
+    <div class="visit-row__meta text-xs text-base-content/60">
+      <%= format_dwell_minutes(entry[:duration]) %> · <%= entry[:point_count] %> pts
+      <% Array(entry[:tags]).each do |t| %>
+        <span class="tag-chip" style="background-color: <%= t[:color] %>;">#<%= t[:name] %></span>
       <% end %>
     </div>
   </div>
-</div>
+
+  <% if status != 'suggested' %>
+    <div class="visit-row__actions">
+      <% if status == 'confirmed' %>
+        <%= button_to 'Decline', visit_path(entry[:visit_id], visit: { status: :declined }),
+                      method: :patch,
+                      data: { testid: 'visit-decline' },
+                      class: 'btn btn-xs btn-ghost' %>
+      <% else %>
+        <%= button_to 'Restore', visit_path(entry[:visit_id], visit: { status: :confirmed }),
+                      method: :patch,
+                      class: 'btn btn-xs btn-ghost' %>
+      <% end %>
+    </div>
+  <% end %>
+
+  <%# Suggested picker spans the full row width (grid-column: 1 / -1) so it
+      doesn't squeeze into the narrow content column. %>
+  <% if status == 'suggested' && entry[:suggested_places].present? %>
+    <div class="visit-row__suggested">
+      <%= render partial: 'map/timeline_feeds/suggested_picker', locals: { entry: entry } %>
+    </div>
+  <% end %>
+</li>

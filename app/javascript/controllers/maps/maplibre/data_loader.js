@@ -131,14 +131,17 @@ export class DataLoader {
       this.settings.fogEnabled ||
       this.settings.scratchEnabled
 
-    // Register core sources that will be fetched so the badge shows them immediately.
-    // Tracks and photos load in the background after fetchMapData returns,
-    // so they are not tracked here — the badge completes with core data.
+    // Register every source that will be fetched so the badge stays visible
+    // until each one finishes. Tracks and photos load in parallel after the
+    // core data resolves, but the badge must still wait for them — otherwise
+    // the badge disappears while track lines are still painting on the map.
     if (counter) {
       if (needsPoints) counter.expect("points")
       if (this.settings.visitsEnabled) counter.expect("visits")
       if (this.settings.placesEnabled) counter.expect("places")
       if (this.settings.areasEnabled) counter.expect("areas")
+      if (this.settings.tracksEnabled) counter.expect("tracks")
+      if (this.settings.photosEnabled) counter.expect("photos")
     }
 
     // Start ALL core fetches in parallel for better progress granularity.
@@ -299,26 +302,44 @@ export class DataLoader {
     data.photosGeoJSON = { type: "FeatureCollection", features: [] }
     data.tracksGeoJSON = { type: "FeatureCollection", features: [] }
 
-    // Start background loading of heavy data (tracks, photos)
+    // Start background loading of heavy data (tracks, photos). We collect
+    // their promises so the caller can await "everything is truly done"
+    // (`data.backgroundReady`) before deciding whether to dismiss the
+    // loading badge — otherwise the badge can disappear while tracks are
+    // still rendering on the map.
+    const backgroundPromises = []
 
     // Background: Fetch tracks
     if (this.settings.tracksEnabled && onTracksLoaded) {
       console.log("[Tracks] Starting background fetch...")
-      this.api
+      const tracksTask = this.api
         .fetchTracks({
           start_at: startDate,
           end_at: endDate,
+          // Pushes the total tracks count into the badge as soon as page 1's
+          // X-Total-Count header arrives, so users see "342 tracks" while the
+          // rest of the pages and the on-map render catch up.
+          onTotalKnown: counter
+            ? (total) => counter.update("tracks", total)
+            : null,
         })
         .then((tracksGeoJSON) => {
-          console.log(
-            `[Tracks] Background fetch complete: ${tracksGeoJSON.features.length} tracks`,
-          )
+          const count = tracksGeoJSON.features.length
+          console.log(`[Tracks] Background fetch complete: ${count} tracks`)
           data.tracksGeoJSON = tracksGeoJSON
           onTracksLoaded(tracksGeoJSON)
+          if (counter) {
+            counter.update("tracks", count)
+            counter.complete("tracks")
+          }
         })
         .catch((error) => {
           console.warn("[Tracks] Background fetch failed:", error.message)
+          // Always close the counter — otherwise a transient failure leaves
+          // the badge spinning forever.
+          if (counter) counter.complete("tracks")
         })
+      backgroundPromises.push(tracksTask)
     }
 
     // Background: Fetch photos
@@ -332,7 +353,7 @@ export class DataLoader {
         setTimeout(() => reject(new Error("Photo fetch timeout")), 15000),
       )
 
-      Promise.race([photosPromise, timeoutPromise])
+      const photosTask = Promise.race([photosPromise, timeoutPromise])
         .then((photos) => {
           console.log(
             `[Photos] Background fetch complete: ${photos.length} photos`,
@@ -340,11 +361,20 @@ export class DataLoader {
           data.photos = photos
           data.photosGeoJSON = this.photosToGeoJSON(photos)
           onPhotosLoaded(data.photosGeoJSON)
+          if (counter) {
+            counter.update("photos", photos.length)
+            counter.complete("photos")
+          }
         })
         .catch((error) => {
           console.warn("[Photos] Background fetch failed:", error.message)
+          if (counter) counter.complete("photos")
         })
+      backgroundPromises.push(photosTask)
     }
+
+    // Always non-rejecting so callers can `await` without try/catch.
+    data.backgroundReady = Promise.allSettled(backgroundPromises)
 
     return data
   }
@@ -381,7 +411,13 @@ export class DataLoader {
     return {
       type: "FeatureCollection",
       features: photos
-        .filter((photo) => photo.latitude !== 0 && photo.longitude !== 0)
+        .filter(
+          (photo) =>
+            photo.latitude != null &&
+            photo.longitude != null &&
+            photo.latitude !== 0 &&
+            photo.longitude !== 0,
+        )
         .map((photo) => {
           // Construct thumbnail URL
           const thumbnailUrl = `/api/v1/photos/${photo.id}/thumbnail.jpg?api_key=${this.apiKey}&source=${photo.source}`

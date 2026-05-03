@@ -42,6 +42,18 @@ RSpec.describe 'Api::V1::Owntracks::Points', type: :request do
           expect(response).to have_http_status(:unauthorized)
         end
       end
+
+      context 'when user is inactive but active_until is in the future' do
+        before do
+          user.update(status: :inactive, active_until: 1.day.from_now)
+        end
+
+        it 'returns http unauthorized' do
+          post "/api/v1/owntracks/points?api_key=#{user.api_key}", params: point_params
+
+          expect(response).to have_http_status(:unauthorized)
+        end
+      end
     end
   end
 end

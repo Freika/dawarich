@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: #b91c1c; color: white; padding: 20px; text-align: center; }
+    .content { padding: 20px; background: #f9fafb; }
+    .cta { background: #b91c1c; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; margin: 20px 0; }
+    .notice { background: #fef3c7; border: 1px solid #f59e0b; padding: 12px; border-radius: 6px; margin: 16px 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Confirm account deletion</h1>
+    </div>
+    <div class="content">
+      <p>Hi <%= @user.email %>,</p>
+
+      <p>We received a request to delete your Dawarich account. <strong>This is your last chance to stop the deletion.</strong> Once confirmed, all your location history, tracks, areas, visits, trips, and family memberships will be permanently removed.</p>
+
+      <p><a href="<%= @link_url %>" class="cta">Permanently delete my account</a></p>
+
+      <div class="notice">
+        <p><strong>Didn't request this?</strong> Ignore this email — the link expires in 1 hour and your account remains untouched. If you keep getting these emails, change your password immediately.</p>
+      </div>
+
+      <p>If you have an active Apple or Google subscription, remember to cancel it in your platform settings to avoid further charges.</p>
+
+      <p style="font-size: 12px; color: #6b7280;">Link: <%= @link_url %></p>
+    </div>
+  </div>
+</body>
+</html>

@@ -7,7 +7,7 @@
     <% end %>
   <% end %>
 
-  <% if current_user.trial? %>
+  <% if current_user.legacy_trial? %>
     <div class="alert alert-info my-4">
       <%= icon 'scissors', class: 'w-5 h-5 shrink-0' %>
       <span>

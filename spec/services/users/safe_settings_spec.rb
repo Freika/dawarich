@@ -51,6 +51,8 @@ RSpec.describe Users::SafeSettings do
             transportation_expert_mode: false,
             min_minutes_spent_in_city: 60,
             max_gap_minutes_in_city: 120,
+            gps_filtering_enabled: true,
+            gps_accuracy_threshold: 100,
             timezone: 'UTC'
           }
         )
@@ -105,7 +107,6 @@ RSpec.describe Users::SafeSettings do
             'visits_suggestions_enabled' => false,
             'enabled_map_layers' => %w[Points Routes Areas Photos],
             'maps_maplibre_style' => 'light',
-            'digest_emails_enabled' => true,
             'news_emails_enabled' => true,
             'globe_projection' => false,
             'supporter_email' => nil,
@@ -128,6 +129,8 @@ RSpec.describe Users::SafeSettings do
             'transportation_expert_mode' => false,
             'min_minutes_spent_in_city' => 60,
             'max_gap_minutes_in_city' => 120,
+            'gps_filtering_enabled' => true,
+            'gps_accuracy_threshold' => 100,
             'timezone' => 'UTC'
           }
         )
@@ -176,6 +179,8 @@ RSpec.describe Users::SafeSettings do
             transportation_expert_mode: false,
             min_minutes_spent_in_city: 60,
             max_gap_minutes_in_city: 120,
+            gps_filtering_enabled: true,
+            gps_accuracy_threshold: 100,
             timezone: 'UTC'
           }
         )
@@ -419,6 +424,106 @@ RSpec.describe Users::SafeSettings do
     end
   end
 
+  describe '#monthly_digest_emails_enabled?' do
+    let(:safe_settings) { described_class.new(settings) }
+
+    context 'when not set' do
+      let(:settings) { {} }
+
+      it 'returns true when the setting is missing' do
+        expect(safe_settings.monthly_digest_emails_enabled?).to be true
+      end
+    end
+
+    context 'when explicitly set to true' do
+      let(:settings) { { 'monthly_digest_emails_enabled' => true } }
+
+      it 'returns true when explicitly true' do
+        expect(safe_settings.monthly_digest_emails_enabled?).to be true
+      end
+    end
+
+    context 'when set to false' do
+      let(:settings) { { 'monthly_digest_emails_enabled' => false } }
+
+      it 'returns false when explicitly false' do
+        expect(safe_settings.monthly_digest_emails_enabled?).to be false
+      end
+    end
+
+    context 'when only the legacy digest_emails_enabled key is present' do
+      context 'and legacy is true' do
+        let(:settings) { { 'digest_emails_enabled' => true } }
+
+        it 'falls back to legacy value (true)' do
+          expect(safe_settings.monthly_digest_emails_enabled?).to be true
+        end
+      end
+
+      context 'and legacy is false (preserved opt-out)' do
+        let(:settings) { { 'digest_emails_enabled' => false } }
+
+        it 'falls back to legacy value (false)' do
+          expect(safe_settings.monthly_digest_emails_enabled?).to be false
+        end
+      end
+    end
+
+    context 'when both new and legacy keys are present' do
+      let(:settings) { { 'monthly_digest_emails_enabled' => false, 'digest_emails_enabled' => true } }
+
+      it 'prefers the new key over the legacy key' do
+        expect(safe_settings.monthly_digest_emails_enabled?).to be false
+      end
+    end
+  end
+
+  describe '#yearly_digest_emails_enabled?' do
+    let(:safe_settings) { described_class.new(settings) }
+
+    context 'when not set' do
+      let(:settings) { {} }
+
+      it 'returns true when the setting is missing' do
+        expect(safe_settings.yearly_digest_emails_enabled?).to be true
+      end
+    end
+
+    context 'when set to false' do
+      let(:settings) { { 'yearly_digest_emails_enabled' => false } }
+
+      it 'returns false when explicitly false' do
+        expect(safe_settings.yearly_digest_emails_enabled?).to be false
+      end
+    end
+
+    context 'when only the legacy digest_emails_enabled key is present' do
+      context 'and legacy is true' do
+        let(:settings) { { 'digest_emails_enabled' => true } }
+
+        it 'falls back to legacy value (true)' do
+          expect(safe_settings.yearly_digest_emails_enabled?).to be true
+        end
+      end
+
+      context 'and legacy is false (preserved opt-out)' do
+        let(:settings) { { 'digest_emails_enabled' => false } }
+
+        it 'falls back to legacy value (false)' do
+          expect(safe_settings.yearly_digest_emails_enabled?).to be false
+        end
+      end
+    end
+
+    context 'when both new and legacy keys are present' do
+      let(:settings) { { 'yearly_digest_emails_enabled' => false, 'digest_emails_enabled' => true } }
+
+      it 'prefers the new key over the legacy key' do
+        expect(safe_settings.yearly_digest_emails_enabled?).to be false
+      end
+    end
+  end
+
   describe 'transportation threshold settings' do
     let(:safe_settings) { described_class.new(settings) }
 
@@ -500,6 +605,42 @@ RSpec.describe Users::SafeSettings do
       it 'returns true for transportation expert mode' do
         expect(safe_settings.transportation_expert_mode?).to be true
       end
+    end
+  end
+
+  describe '#gps_filtering_enabled?' do
+    it 'defaults to true when unset' do
+      expect(described_class.new({}).gps_filtering_enabled?).to be true
+    end
+
+    it 'returns false when explicitly disabled' do
+      expect(described_class.new({ 'gps_filtering_enabled' => false }).gps_filtering_enabled?).to be false
+    end
+
+    it 'casts string "false"' do
+      expect(described_class.new({ 'gps_filtering_enabled' => 'false' }).gps_filtering_enabled?).to be false
+    end
+  end
+
+  describe '#gps_accuracy_threshold' do
+    it 'defaults to 100' do
+      expect(described_class.new({}).gps_accuracy_threshold).to eq(100)
+    end
+
+    it 'returns the user-provided integer' do
+      expect(described_class.new({ 'gps_accuracy_threshold' => 250 }).gps_accuracy_threshold).to eq(250)
+    end
+
+    it 'clamps below the minimum' do
+      expect(described_class.new({ 'gps_accuracy_threshold' => 10 }).gps_accuracy_threshold).to eq(50)
+    end
+
+    it 'clamps above the maximum' do
+      expect(described_class.new({ 'gps_accuracy_threshold' => 99_999 }).gps_accuracy_threshold).to eq(1000)
+    end
+
+    it 'coerces string values' do
+      expect(described_class.new({ 'gps_accuracy_threshold' => '300' }).gps_accuracy_threshold).to eq(300)
     end
   end
 end

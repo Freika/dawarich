@@ -41,6 +41,13 @@ Naming/VariableNumber:
   Exclude:
     - 'spec/**/*'
 
+Rails/UnknownEnv:
+  Environments:
+    - development
+    - test
+    - production
+    - staging
+
 Rails/UniqueValidationWithoutIndex:
   Enabled: false
 

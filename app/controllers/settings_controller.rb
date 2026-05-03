@@ -10,7 +10,7 @@ class SettingsController < ApplicationController
   end
 
   def generate_api_key
-    current_user.update(api_key: SecureRandom.hex)
+    current_user.update(api_key: SecureRandom.hex(32))
 
     redirect_back(fallback_location: root_path)
   end

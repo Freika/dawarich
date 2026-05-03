@@ -18,6 +18,7 @@ class Overland::PointsCreator
               .compact
               .reject { |location| location[:lonlat].nil? || location[:timestamp].nil? }
               .map { |location| location.merge(user_id:) }
+              .uniq { |location| Point.dedup_key(location) }
 
     result = upsert_points(payload)
     if result.any?
@@ -26,6 +27,7 @@ class Overland::PointsCreator
       timestamps = payload.filter_map { |p| p[:timestamp]&.to_i }
       Points::AnomalyFilterJob.perform_later(user_id, timestamps.min, timestamps.max) if timestamps.any?
       Tracks::RealtimeDebouncer.new(user_id).trigger
+      Visits::RealtimeDebouncer.new(user_id).trigger
       Points::LiveBroadcaster.new(user_id, result, payload).call
     end
 

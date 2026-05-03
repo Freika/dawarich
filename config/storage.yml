@@ -6,17 +6,20 @@ local:
   service: Disk
   root: <%= Rails.root.join("storage") %>
 
-# Only load S3 config if not in test environment
-# Support both AWS_ENDPOINT and AWS_ENDPOINT_URL for backwards compatibility
+# Only load S3 config if not in test environment.
+# Endpoint is optional — set AWS_ENDPOINT_URL (or AWS_ENDPOINT) only for S3-compatible
+# backends like MinIO, Ceph, or Cloudflare R2. Vanilla AWS S3 works without it.
+<% if !Rails.env.test? && ENV['AWS_ACCESS_KEY_ID'] && ENV['AWS_SECRET_ACCESS_KEY'] && ENV['AWS_REGION'] && ENV['AWS_BUCKET'] %>
 <% endpoint_url = ENV['AWS_ENDPOINT_URL'] || ENV['AWS_ENDPOINT'] %>
-<% if !Rails.env.test? && ENV['AWS_ACCESS_KEY_ID'] && ENV['AWS_SECRET_ACCESS_KEY'] && ENV['AWS_REGION'] && ENV['AWS_BUCKET'] && endpoint_url %>
 s3:
   service: S3
   access_key_id: <%= ENV.fetch("AWS_ACCESS_KEY_ID") %>
   secret_access_key: <%= ENV.fetch("AWS_SECRET_ACCESS_KEY") %>
   region: <%= ENV.fetch("AWS_REGION") %>
   bucket: <%= ENV.fetch("AWS_BUCKET") %>
+<% if endpoint_url %>
   endpoint: <%= endpoint_url %>
+<% end %>
 <% end %>
 
 # Remember not to checkin your GCS keyfile to a repository

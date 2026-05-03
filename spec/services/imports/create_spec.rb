@@ -279,41 +279,91 @@ RSpec.describe Imports::Create do
       end
     end
 
-    context 'when source is detected as zip' do
-      let(:import) { create(:import, name: 'test_archive.zip') }
-      let(:zip_path) do
-        path = Rails.root.join('tmp', "test_create_zip_#{SecureRandom.hex(4)}.zip").to_s
-        require 'zip'
-        ::Zip::File.open(path, create: true) do |zipfile|
-          gpx_content = File.read(Rails.root.join('spec/fixtures/files/gpx/gpx_track_single_segment.gpx'))
-          zipfile.get_output_stream('track.gpx') { |f| f.write(gpx_content) }
+    describe 'archive dispatch' do
+      let(:gpx_content) do
+        File.read(Rails.root.join('spec/fixtures/files/gpx/gpx_track_single_segment.gpx'))
+      end
+
+      context 'when the stored blob is a single-entry zip wrapping one supported file' do
+        let(:import) { create(:import) }
+        let(:zip_path) do
+          path = Rails.root.join('tmp', "single_#{SecureRandom.hex(4)}.zip").to_s
+          ::Zip::File.open(path, create: true) do |zf|
+            zf.get_output_stream('track.gpx') { |f| f.write(gpx_content) }
+          end
+          path
         end
-        path
+
+        before do
+          import.file.attach(io: File.open(zip_path), filename: 'track.gpx.zip',
+                             content_type: 'application/zip')
+        end
+
+        after { File.delete(zip_path) if File.exist?(zip_path) }
+
+        it 'imports points from the inner file and completes' do
+          expect { service.call }.to change { import.points.count }.from(0)
+          expect(import.reload.status).to eq('completed')
+          expect(import.reload.source).to eq('gpx')
+        end
       end
 
-      before do
-        import.file.attach(io: File.open(zip_path, 'rb'), filename: 'test_archive.zip',
-                           content_type: 'application/zip')
+      context 'when the stored blob is a multi-entry zip' do
+        let(:import) { create(:import, user:) }
+        let(:zip_path) do
+          path = Rails.root.join('tmp', "multi_#{SecureRandom.hex(4)}.zip").to_s
+          ::Zip::File.open(path, create: true) do |zf|
+            zf.get_output_stream('a.gpx') { |f| f.write(gpx_content) }
+            zf.get_output_stream('b.gpx') { |f| f.write(gpx_content) }
+          end
+          path
+        end
+
+        before do
+          import.file.attach(io: File.open(zip_path), filename: 'archive.zip',
+                             content_type: 'application/zip')
+        end
+
+        after { File.delete(zip_path) if File.exist?(zip_path) }
+
+        it 'delegates to ZipExtractor which spawns per-entry sub-imports' do
+          expect { service.call }.to change { user.imports.count }.by(1) # +2 -1 destroyed
+        end
       end
 
-      after { File.delete(zip_path) if File.exist?(zip_path) }
+      context 'when the stored blob is a corrupted zip' do
+        let(:import) { create(:import) }
+        let(:bogus_path) do
+          path = Rails.root.join('tmp', "bogus_#{SecureRandom.hex(4)}.zip").to_s
+          File.binwrite(path, "PK\x03\x04garbage-not-really-a-zip")
+          path
+        end
 
-      it 'delegates to Imports::ZipExtractor' do
-        extractor = instance_double(Imports::ZipExtractor, call: true)
-        allow(Imports::ZipExtractor).to receive(:new).and_return(extractor)
+        before do
+          import.file.attach(io: File.open(bogus_path), filename: 'bad.zip',
+                             content_type: 'application/zip')
+        end
 
-        service.call
+        after { File.delete(bogus_path) if File.exist?(bogus_path) }
 
-        expect(Imports::ZipExtractor).to have_received(:new).with(import, user.id, kind_of(String))
-        expect(extractor).to have_received(:call)
-      end
+        it 'does not crash -- falls through to source detection on the raw file and marks failed' do
+          service.call
+          expect(import.reload.status).to eq('failed')
+        end
 
-      it 'does not call importer routing' do
-        extractor = instance_double(Imports::ZipExtractor, call: true)
-        allow(Imports::ZipExtractor).to receive(:new).and_return(extractor)
+        it 'persists a non-empty error message on the import' do
+          # The corrupted zip's PK\x03\x04 magic survives the initial check,
+          # so the file falls through to source-detection on the raw bytes
+          # and SourceDetector classifies it as `:zip`. There is no
+          # standalone "zip" importer (zip is a wrapper format dispatched by
+          # Archive::Unzipper), so the dispatch must surface a user-visible
+          # error rather than silently succeeding. The exact wording is
+          # implementation-detail; the contract is "import is marked failed
+          # with a populated error_message".
+          service.call
 
-        # Should not raise ArgumentError for unsupported source
-        expect { service.call }.not_to raise_error
+          expect(import.reload.error_message).to be_present
+        end
       end
     end
   end

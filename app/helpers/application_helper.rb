@@ -37,10 +37,6 @@ module ApplicationHelper
     'tab-active' if current_page?(link_path)
   end
 
-  def active_visit_places_tab?(controller_name)
-    'tab-active' if current_page?(controller: controller_name)
-  end
-
   def notification_link_color(notification)
     return 'text-gray-600' if notification.read?
 
@@ -69,7 +65,11 @@ module ApplicationHelper
   end
 
   def trial_button_class(user)
-    case (user.active_until.to_date - Time.current.to_date).to_i
+    return 'btn-error' if user.active_until.blank?
+
+    days_left = (user.active_until.to_date - Time.current.to_date).to_i
+
+    case days_left
     when 5..8
       'btn-info'
     when 2...5
@@ -77,7 +77,7 @@ module ApplicationHelper
     when 0...2
       'btn-error'
     else
-      'btn-success'
+      days_left.negative? ? 'btn-error' : 'btn-success'
     end
   end
 
@@ -87,6 +87,24 @@ module ApplicationHelper
 
     days_left = [(expiry.to_date - Time.zone.today).to_i, 0].max
     "#{days_left}d left"
+  end
+
+  def subscription_upgrade_url(user)
+    if user.pending_payment?
+      trial_resume_path
+    else
+      "#{MANAGER_URL}/auth/dawarich?token=#{user.generate_subscription_token}"
+    end
+  end
+
+  def subscription_button_label(user)
+    return 'Finish signup' if user.pending_payment?
+
+    trial_days_remaining_compact(user)
+  end
+
+  def subscription_cta_label(user)
+    user.pending_payment? ? 'Resume' : 'Subscribe'
   end
 
   def oauth_provider_name(provider)
@@ -150,16 +168,26 @@ module ApplicationHelper
   end
 
   def preferred_map_path(params = {})
-    return map_v2_path(params) unless user_signed_in?
+    signed_in =
+      begin
+        user_signed_in?
+      rescue Devise::MissingWarden
+        false
+      end
+    return map_v2_path(params) unless signed_in
 
     preferred_version = current_user.safe_settings.maps&.dig('preferred_version')
     preferred_version == 'v1' ? map_v1_path(params) : map_v2_path(params)
   end
 
   # Generates a user-specific upgrade URL that authenticates the user
-  # with the subscription manager via JWT token.
+  # with the external subscription service via JWT token.
   # Accepts optional UTM parameters for tracking.
+  # Returns an empty string on self-hosted instances — there is no
+  # upgrade flow there, and the JWT secret is not configured.
   def upgrade_url(utm_source: 'app', utm_medium: nil, utm_campaign: 'lite_upgrade', utm_content: nil)
+    return '' if DawarichSettings.self_hosted?
+
     base = "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}"
     utm = { utm_source:, utm_medium:, utm_campaign:, utm_content: }.compact
     utm.any? ? "#{base}&#{utm.to_query}" : base

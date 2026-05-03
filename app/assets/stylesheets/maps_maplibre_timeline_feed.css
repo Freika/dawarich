@@ -23,16 +23,39 @@
   }
 }
 
-/* Tighter padding for the timeline tab */
+/* Tighter padding for the timeline tab. No bottom padding — the main
+   column extends to the panel edge and scrolls independently. */
 .tab-content[data-tab-content="timeline-feed"] {
   margin: -24px;
-  padding: 16px;
+  padding: 16px 16px 0;
 }
 
-/* --- Entries container --- */
+/* --- Entries container ---
+   Dual-purpose: historical flex layout for legacy `.timeline-entry` rows
+   AND the new `<ol>` wrapper for `.visit-row` children. List reset keeps
+   both layouts clean. */
 .timeline-entries {
   display: flex;
   flex-direction: column;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* Helper shown when search/filter hides every visit row on a day that has
+   visits. Positioned just below the list so it reads as an explanation for
+   the apparent emptiness without shifting layout when hidden. */
+.timeline-entries-empty-filtered {
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  text-align: center;
+  border: 1px dashed oklch(var(--bc) / 0.15);
+  border-radius: 0.5rem;
+  background: oklch(var(--b2) / 0.4);
+}
+
+.timeline-entries-empty-filtered p {
+  margin: 0 0 0.4rem;
 }
 
 /* --- Each entry: time column + content column --- */
@@ -56,41 +79,94 @@
   border-radius: 0.375rem;
 }
 
-/* Time column */
-.timeline-entry-time {
-  min-width: 2.75rem;
-  font-size: 0.6875rem;
-  line-height: 1.5rem;
-  font-variant-numeric: tabular-nums;
-  color: oklch(var(--bc) / 0.45);
-  font-weight: 500;
-  flex-shrink: 0;
-  padding-top: 0.125rem;
+/* --- Journey leg: a "between-visits" connector, not a peer row --- */
+/* Override the visit-style entry layout so legs read as transitions:
+   no time column, no row border, lighter visual weight, vertical rail. */
+.timeline-entry--journey {
+  display: block;
+  padding: 0;
+  border-bottom: none;
 }
 
-/* Content column */
-.timeline-entry-content {
-  flex: 1;
-  min-width: 0;
+.timeline-entry--journey:hover {
+  background: transparent;
+  margin: 0;
+  padding: 0;
+  border-radius: 0;
 }
 
-/* --- Journey content (inline mode + distance + duration) --- */
-.timeline-journey-content {
-  display: flex;
+/* Mirrors `.visit-row` so the time / rail / content columns line up
+   between visit rows and the connecting legs — gives the day a steady
+   left edge regardless of entry type. */
+.journey-leg {
+  display: grid;
+  grid-template-columns: 56px 16px minmax(0, 1fr) auto;
+  gap: 0.5rem;
   align-items: center;
-  gap: 0.375rem;
-  font-size: 0.75rem;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.7rem;
   color: oklch(var(--bc) / 0.55);
+  border-radius: 0.25rem;
+  transition: background-color 0.15s ease;
+}
+
+.journey-leg:hover {
+  background: oklch(var(--p) / 0.04);
+  color: oklch(var(--bc) / 0.75);
+}
+
+.journey-leg__time {
+  text-align: right;
+  font-size: 0.65rem;
+  font-variant-numeric: tabular-nums;
+  color: oklch(var(--bc) / 0.4);
+}
+
+/* Vertical rail in the dot column — visually connects the visit rows
+   above and below. Sized to span the row's edges so the rail reads as a
+   continuous line through the leg. */
+.journey-leg__rail-col {
+  display: flex;
+  justify-content: center;
+  position: relative;
+  align-self: stretch;
+}
+
+.journey-leg__rail {
+  width: 2px;
+  background: oklch(var(--bc) / 0.18);
+  border-radius: 1px;
+  margin: -0.2rem 0;
+}
+
+.journey-leg__summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 0;
   flex-wrap: wrap;
 }
 
-.timeline-journey-content .journey-mode {
+.journey-leg__emoji {
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
+.journey-leg__verb {
   font-weight: 500;
   color: oklch(var(--bc) / 0.7);
 }
 
-.timeline-entry:hover .timeline-journey-content {
-  color: oklch(var(--bc) / 0.75);
+.journey-leg__sep {
+  color: oklch(var(--bc) / 0.35);
+}
+
+.journey-leg__chevron {
+  width: 0.75rem;
+  height: 0.75rem;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+  color: oklch(var(--bc) / 0.5);
 }
 
 /* Track info panel inside entry content */
@@ -98,8 +174,82 @@
   margin-top: 0.375rem;
 }
 
+/* When the track-info panel is rendered inside a journey leg, push it to
+   span the full width of the day column (the connector indent shouldn't
+   apply to the expanded card). */
+.timeline-entry--journey .track-info-panel {
+  margin-left: 0;
+  margin-right: 0;
+}
+
 .track-info-chevron.expanded {
   transform: rotate(180deg);
+}
+
+/* Compact track-info card — distance/speed/elevation render inline so the
+   card stays roughly two short rows even with all stats present. */
+.track-info-card {
+  margin-top: 0.375rem;
+  padding: 0.5rem 0.625rem;
+  border: 1px solid oklch(var(--bc) / 0.12);
+  border-radius: 0.5rem;
+  background: oklch(var(--b1));
+  font-size: 0.75rem;
+}
+
+.track-info-card__id {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: oklch(var(--bc) / 0.45);
+  margin-bottom: 0.35rem;
+}
+
+.track-info-stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.875rem;
+}
+
+.track-info-stats__label {
+  color: oklch(var(--bc) / 0.55);
+  margin-right: 0.15rem;
+}
+
+.track-info-stats strong {
+  font-weight: 600;
+}
+
+.track-info-mode {
+  margin-left: auto;
+  padding: 0.05rem 0.4rem;
+  border: 1px solid oklch(var(--bc) / 0.25);
+  border-radius: 999px;
+  font-size: 0.65rem;
+  letter-spacing: 0.02em;
+  color: oklch(var(--bc) / 0.75);
+}
+
+.track-info-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+  padding-top: 0.4rem;
+  border-top: 1px solid oklch(var(--bc) / 0.1);
+}
+
+.track-info-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+  font-size: 0.7rem;
+  color: oklch(var(--bc) / 0.8);
+  white-space: nowrap;
 }
 
 /* --- Summary stats and bar --- */
@@ -161,4 +311,559 @@
     margin: -12px;
     padding: 8px;
   }
+}
+
+/* =========================================================================
+   Unified Timeline — calendar, visit rows, drawer, overlays
+   Introduced in Task 6 of the Unified Timeline plan. These styles back the
+   new Stimulus controller and the shared class contract consumed by the
+   server-rendered views and the map overlays.
+   ========================================================================= */
+
+/* --- Tab pane + filter row --- */
+/* Timeline tab fills the panel body and manages its own scroll — rail stays
+   in view while the main column (visit list) scrolls independently. */
+.tab-content[data-tab-content="timeline-feed"].active {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* Two-column layout: calendar/filter rail (260px) + visit list main.
+   No bottom padding so the day column reaches the panel edge; top + sides
+   keep the breathing room. */
+.timeline-tab-content {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: 1rem;
+  padding: 0.75rem 0.75rem 0;
+  align-items: start;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Collapse to single column when the panel gets narrow (≤1024px panel) */
+@media (max-width: 1024px) {
+  .timeline-tab-content {
+    grid-template-columns: 1fr;
+  }
+  .timeline-rail {
+    gap: 0.5rem;
+  }
+}
+
+/* --- Calendar grid (sits inside the 260px timeline-rail) --- */
+.timeline-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 1px;
+}
+
+/* Optimistic skeleton state — applied by `timeline-feed#previewMonth`
+   when the user clicks the prev/next month chevron. Removed implicitly
+   when the turbo_stream replaces the calendar frame with real data. */
+.timeline-calendar--loading .cal-cell {
+  opacity: 0.55;
+  cursor: progress;
+  transition: opacity 0.15s ease;
+}
+
+.timeline-calendar--loading .cal-cell:not(.cal-cell--selected) {
+  background: oklch(var(--bc) / 0.05);
+}
+
+.timeline-calendar-grid__weekday {
+  text-align: center;
+  font-size: 9px;
+  text-transform: uppercase;
+  color: oklch(var(--bc) / 0.5);
+  padding: 2px 0;
+}
+
+.cal-cell {
+  position: relative;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: 500;
+  border: 0;
+  cursor: pointer;
+  background: transparent;
+  color: oklch(var(--bc));
+}
+
+.cal-cell:hover:not(.cal-cell--disabled) {
+  outline: 1px solid oklch(var(--bc) / 0.2);
+}
+
+.cal-cell--out-of-month {
+  color: oklch(var(--bc) / 0.25);
+}
+
+.cal-cell--disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.cal-cell--selected {
+  outline: 2px solid oklch(var(--p));
+  outline-offset: 1px;
+}
+
+/* Heat buckets — transparent through emerald-88%.
+   High-intensity cells switch to white text for contrast. */
+.heat-0 {
+  background: transparent;
+}
+.heat-1 {
+  background: rgba(34, 197, 94, 0.15);
+}
+.heat-2 {
+  background: rgba(34, 197, 94, 0.3);
+}
+.heat-3 {
+  background: rgba(34, 197, 94, 0.5);
+  color: white;
+}
+.heat-4 {
+  background: rgba(34, 197, 94, 0.7);
+  color: white;
+}
+.heat-5 {
+  background: rgba(34, 197, 94, 0.88);
+  color: white;
+}
+
+.suggestion-dot {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: #f59e0b;
+  outline: 1px solid white;
+}
+
+/* The day fills its column so the footer can anchor to the bottom (via
+   `margin-top: auto` on the footer) and the empty space below short days
+   gets reclaimed for at-a-glance rollup + quick day nav. */
+.timeline-day {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+/* --- Day header / summary / bulk banner --- */
+.timeline-day-header {
+  padding: 0 0.5rem 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  border-bottom: 1px solid oklch(var(--bc) / 0.1);
+}
+
+/* Pinned to the bottom of the day column. Compact rollup of day stats
+   flanked by prev/next-day buttons, so users don't need to scroll back to
+   the header to switch days when they've scrolled to the bottom. */
+.timeline-day-footer {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.6rem 0.5rem 0.4rem;
+  border-top: 1px dashed oklch(var(--bc) / 0.12);
+  color: oklch(var(--bc) / 0.7);
+}
+
+.timeline-day-rollup {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem 0.9rem;
+  margin: 0.25rem 0 0.5rem;
+  padding: 0.5rem 0.5rem;
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+  border-bottom: 1px dashed oklch(var(--bc) / 0.12);
+}
+
+.timeline-day-rollup > div {
+  display: flex;
+  align-items: baseline;
+  gap: 0.25rem;
+}
+
+.timeline-day-rollup dt {
+  color: oklch(var(--bc) / 0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.6rem;
+  font-weight: 600;
+}
+
+.timeline-day-rollup dd {
+  margin: 0;
+  font-weight: 600;
+  color: oklch(var(--bc) / 0.85);
+}
+
+.timeline-day-header__nav {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.timeline-day-header__meta {
+  text-align: center;
+  font-size: 0.75rem;
+  color: oklch(var(--bc) / 0.6);
+}
+
+.timeline-day-summary {
+  font-size: 0.75rem;
+  color: oklch(var(--bc) / 0.7);
+  padding: 0 0.5rem;
+}
+
+.timeline-bulk-banner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0.75rem;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  margin: 0.5rem 0.25rem;
+  text-align: center;
+}
+
+.timeline-bulk-banner__text {
+  color: #d97706;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.timeline-bulk-banner__actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+}
+
+/* `button_to` wraps each button in a <form class="button_to"> which defaults
+   to block-level. Reset so the banner's flex layout works cleanly. */
+.timeline-bulk-banner__actions form.button_to {
+  display: inline-flex;
+  margin: 0;
+}
+
+/* --- Visit row --- */
+.visit-row {
+  display: grid;
+  /* minmax(0, 1fr) so the content column can shrink below its natural
+     content width — otherwise long place names push the row beyond the
+     panel and trigger horizontal scroll. */
+  grid-template-columns: 56px 16px minmax(0, 1fr) auto;
+  gap: 0.5rem;
+  align-items: start;
+  padding: 0.6rem 0.5rem;
+  border-bottom: 1px solid oklch(var(--bc) / 0.08);
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+
+.visit-row:hover {
+  background-color: oklch(var(--bc) / 0.03);
+}
+
+.visit-row--selected {
+  background-color: rgba(34, 197, 94, 0.08);
+  box-shadow: inset 3px 0 0 #22c55e;
+}
+
+/* Suggested visit row — subtle amber tint + left accent so the "needs
+   decision" state is visible at the row level, not just in the status dot. */
+.visit-row--suggested {
+  background-color: rgba(245, 158, 11, 0.05);
+  box-shadow: inset 3px 0 0 #f59e0b;
+}
+
+/* When a suggested row is also selected, green wins (user intent > status). */
+.visit-row--suggested.visit-row--selected {
+  box-shadow: inset 3px 0 0 #22c55e;
+}
+
+/* Picker spans the full row so long candidate names have room to breathe. */
+.visit-row__suggested {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
+/* All-day visits collapse to 3 columns (no actions column). */
+.visit-row--all-day {
+  grid-template-columns: 56px 16px minmax(0, 1fr);
+}
+
+/* Belt + suspenders — ensure the content cell (and anything inside it like
+   the suggested picker) can shrink below intrinsic content width. */
+.visit-row__content {
+  min-width: 0;
+  justify-self: stretch;
+  text-align: left;
+}
+
+.visit-row__time {
+  text-align: right;
+}
+
+.visit-row__rail {
+  display: flex;
+  justify-content: center;
+  padding-top: 4px;
+}
+
+.visit-row__title {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.5rem;
+  font-size: 0.8125rem; /* 13px — compact; drops from the default ~16px */
+  line-height: 1.3;
+  text-align: left;
+}
+
+.visit-row__title .place-link {
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.visit-row__title .place-link:hover {
+  text-decoration: underline;
+}
+
+.visit-row__meta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 2px;
+  text-align: left;
+}
+
+.visit-row__actions {
+  opacity: 0;
+  transition: opacity 120ms;
+}
+
+.visit-row:hover .visit-row__actions {
+  opacity: 1;
+}
+
+/* Status dots: confirmed (green) / suggested (amber) / declined (grey). */
+.visit-status-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 9999px;
+  box-shadow: 0 0 0 2px white;
+}
+
+.visit-status-dot--confirmed {
+  background: #22c55e;
+}
+
+.visit-status-dot--suggested {
+  background: #f59e0b;
+}
+
+.visit-status-dot--declined {
+  background: #9ca3af;
+}
+
+/* Tag chips — background color applied inline by the view. */
+.tag-chip {
+  display: inline-block;
+  padding: 0 6px;
+  border-radius: 9999px;
+  font-size: 10px;
+  line-height: 1.6;
+  color: white;
+}
+
+/* Suggested picker styles live in maps_maplibre_suggested_picker.css. */
+
+/* Place drawer styles live in maps_maplibre_place_drawer.css. */
+
+/* --- Map overlays (scope + legend) ---
+   Hidden by default. Visible only when the map container sits in the
+   timeline-expanded state, which is toggled alongside the panel. */
+.timeline-map-overlay {
+  display: none;
+  position: absolute;
+  z-index: 500;
+  background: oklch(var(--b1) / 0.95);
+  backdrop-filter: blur(4px);
+  border: 1px solid oklch(var(--bc) / 0.15);
+  border-radius: 6px;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.75rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.maps-maplibre-container.panel-timeline-expanded .timeline-map-overlay {
+  display: block;
+}
+
+.timeline-map-overlay--scope {
+  top: 12px;
+  left: 12px;
+}
+
+.timeline-map-overlay--legend {
+  bottom: 12px;
+  left: 12px;
+  display: none;
+}
+
+.maps-maplibre-container.panel-timeline-expanded .timeline-map-overlay--legend {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.timeline-map-overlay--legend > div {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.visit-row__check {
+  display: none;
+}
+
+.visit-row__check input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: oklch(var(--p));
+  cursor: pointer;
+}
+
+.visit-row {
+  position: relative;
+}
+
+[data-selection-mode="true"] .timeline-entries {
+  padding-left: 28px;
+}
+
+[data-selection-mode="true"] .visit-row__check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  left: -22px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+[data-selection-mode="true"] .visit-row {
+  cursor: pointer;
+}
+
+[data-selection-mode="true"] .visit-row__actions,
+[data-selection-mode="true"] .visit-row__suggested {
+  pointer-events: none;
+  opacity: 0.45;
+}
+
+.day-select-toggle {
+  margin-left: 8px;
+  font-size: 11px;
+  padding: 2px 8px;
+  border: 1px solid oklch(var(--bc) / 0.2);
+  border-radius: 6px;
+  background: transparent;
+  color: oklch(var(--bc) / 0.7);
+  cursor: pointer;
+}
+
+.day-select-toggle:hover {
+  background: oklch(var(--bc) / 0.05);
+  color: oklch(var(--bc));
+}
+
+[data-selection-mode="true"] .day-select-toggle {
+  background: oklch(var(--p) / 0.15);
+  border-color: oklch(var(--p) / 0.5);
+  color: oklch(var(--p));
+}
+
+.selection-bar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  margin: 0 0 8px 0;
+  background: oklch(var(--p) / 0.08);
+  border: 1px solid oklch(var(--p) / 0.3);
+  border-radius: 8px;
+  font-size: 12px;
+  color: oklch(var(--bc));
+}
+
+.selection-bar[hidden] {
+  display: none;
+}
+
+.selection-bar__count {
+  font-weight: 600;
+}
+
+.selection-bar__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.selection-bar__cancel,
+.selection-bar__merge {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.selection-bar__cancel {
+  background: transparent;
+  border: 1px solid oklch(var(--bc) / 0.2);
+  color: oklch(var(--bc) / 0.7);
+}
+
+.selection-bar__merge {
+  background: oklch(var(--p));
+  border: 1px solid oklch(var(--p));
+  color: oklch(var(--pc));
+  font-weight: 600;
+}
+
+.selection-bar__merge:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }

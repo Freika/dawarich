@@ -52,7 +52,10 @@ RSpec.describe Visits::MergeService do
         expect { visit2.reload }.to raise_error(ActiveRecord::RecordNotFound)
       end
 
-      it 'creates a combined name for the merged visit' do
+      it 'creates a combined name for the merged visit when places differ' do
+        other_place = create(:place)
+        visit2.update!(place: other_place)
+
         visit1_name = visit1.name
         visit2_name = visit2.name
         service = described_class.new([visit1, visit2])
@@ -60,6 +63,13 @@ RSpec.describe Visits::MergeService do
 
         expected_name = "#{visit1_name}, #{visit2_name}"
         expect(result.name).to eq(expected_name)
+      end
+
+      it 'keeps the base visit name when all visits share the same place' do
+        service = described_class.new([visit1, visit2])
+        result = service.call
+
+        expect(result.name).to eq(visit1.name)
       end
 
       it 'calculates the correct duration' do

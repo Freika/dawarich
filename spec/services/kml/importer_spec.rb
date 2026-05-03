@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require 'zlib'
 
 RSpec.describe Kml::Importer do
   describe '#call' do
@@ -139,6 +140,79 @@ RSpec.describe Kml::Importer do
 
       it 'processes points' do
         expect { parser }.to change(Point, :count).by(20)
+      end
+    end
+
+    context 'with KMZ written using streaming format (data descriptor)' do
+      let(:import) { create(:import, user:, name: 'test.kmz', source: 'kml') }
+      let(:kml_body) do
+        <<~KML
+          <?xml version="1.0" encoding="UTF-8"?>
+          <kml xmlns="http://www.opengis.net/kml/2.2">
+            <Document>
+              <Placemark>
+                <TimeStamp><when>2024-01-15T12:00:00Z</when></TimeStamp>
+                <Point><coordinates>0,0,0</coordinates></Point>
+              </Placemark>
+            </Document>
+          </kml>
+        KML
+      end
+      let(:file_path) do
+        path = Rails.root.join('tmp', "streaming_kmz_#{SecureRandom.hex(4)}.kmz").to_s
+        File.binwrite(path, build_streaming_kmz('doc.kml', kml_body))
+        path
+      end
+
+      after { File.delete(file_path) if File.exist?(file_path) }
+
+      def build_streaming_kmz(filename, content)
+        uncompressed = content.b
+        deflated = Zlib::Deflate.deflate(uncompressed, Zlib::DEFAULT_COMPRESSION)[2..-5]
+        crc32 = Zlib.crc32(uncompressed)
+        csize = deflated.bytesize
+        usize = uncompressed.bytesize
+        fname = filename.b
+        fnlen = fname.bytesize
+
+        lfh = +''.b
+        lfh << "PK\x03\x04".b
+        lfh << [20].pack('v')
+        lfh << [0x0008].pack('v')
+        lfh << [8].pack('v')
+        lfh << [0, 0].pack('v2')
+        lfh << [0, 0, 0].pack('V3')
+        lfh << [fnlen, 0].pack('v2')
+        lfh << fname
+
+        descriptor = +''.b
+        descriptor << "PK\x07\x08".b
+        descriptor << [crc32, csize, usize].pack('V3')
+
+        body = lfh + deflated + descriptor
+
+        cd = +''.b
+        cd << "PK\x01\x02".b
+        cd << [20, 20].pack('v2')
+        cd << [0x0008].pack('v')
+        cd << [8].pack('v')
+        cd << [0, 0].pack('v2')
+        cd << [crc32, csize, usize].pack('V3')
+        cd << [fnlen, 0, 0, 0, 0].pack('v5')
+        cd << [0, 0].pack('V2')
+        cd << fname
+
+        eocd = +''.b
+        eocd << "PK\x05\x06".b
+        eocd << [0, 0, 1, 1].pack('v4')
+        eocd << [cd.bytesize, body.bytesize].pack('V2')
+        eocd << [0].pack('v')
+
+        body + cd + eocd
+      end
+
+      it 'extracts the inner doc.kml without raising Zip::StreamingError' do
+        expect { parser }.not_to raise_error
       end
     end
 

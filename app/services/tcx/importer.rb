@@ -62,9 +62,11 @@ class Tcx::Importer
 
     return if lat.blank? || lon.blank? || time.blank?
 
-    {
+    altitude_value = trackpoint['AltitudeMeters']&.to_f
+
+    attrs = {
       lonlat: "POINT(#{lon.to_d} #{lat.to_d})",
-      altitude: trackpoint['AltitudeMeters']&.to_f,
+      altitude: altitude_value,
       timestamp: Time.zone.parse(time).to_i,
       velocity: extract_speed(trackpoint),
       import_id: import.id,
@@ -73,6 +75,8 @@ class Tcx::Importer
       created_at: Time.current,
       updated_at: Time.current
     }
+    attrs[:altitude_decimal] = altitude_value if Point.altitude_decimal_supported?
+    attrs
   end
 
   def extract_speed(trackpoint)

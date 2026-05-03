@@ -16,23 +16,17 @@ RSpec.describe 'settings/general', type: :request do
 
         expect(response).to be_successful
       end
+
+      it 'renders both digest toggles and the email-digests anchor' do
+        get settings_general_index_url
+
+        expect(response.body).to include('id="email-digests"')
+        expect(response.body).to include('name="monthly_digest_emails_enabled"')
+        expect(response.body).to include('name="yearly_digest_emails_enabled"')
+      end
     end
 
     describe 'PATCH /update' do
-      it 'updates email settings with checkbox value' do
-        patch settings_general_path, params: { digest_emails_enabled: '0' }
-
-        expect(response).to redirect_to(settings_general_index_path)
-        expect(user.reload.settings['digest_emails_enabled']).to eq(false)
-      end
-
-      it 'enables email settings' do
-        patch settings_general_path, params: { digest_emails_enabled: '1' }
-
-        expect(response).to redirect_to(settings_general_index_path)
-        expect(user.reload.settings['digest_emails_enabled']).to eq(true)
-      end
-
       it 'disables news emails setting' do
         patch settings_general_path, params: { news_emails_enabled: '0' }
 
@@ -45,6 +39,53 @@ RSpec.describe 'settings/general', type: :request do
 
         expect(response).to redirect_to(settings_general_index_path)
         expect(user.reload.settings['news_emails_enabled']).to eq(true)
+      end
+
+      it 'updates monthly_digest_emails_enabled independently' do
+        patch settings_general_path, params: { monthly_digest_emails_enabled: '0' }
+
+        expect(response).to redirect_to(settings_general_index_path)
+        expect(user.reload.settings['monthly_digest_emails_enabled']).to eq(false)
+      end
+
+      it 'updates yearly_digest_emails_enabled independently' do
+        patch settings_general_path, params: { yearly_digest_emails_enabled: '0' }
+
+        expect(response).to redirect_to(settings_general_index_path)
+        expect(user.reload.settings['yearly_digest_emails_enabled']).to eq(false)
+      end
+
+      it 'updates both monthly and yearly digest settings' do
+        patch settings_general_path, params: {
+          monthly_digest_emails_enabled: '1',
+          yearly_digest_emails_enabled: '0'
+        }
+
+        expect(response).to redirect_to(settings_general_index_path)
+        expect(user.reload.settings['monthly_digest_emails_enabled']).to eq(true)
+        expect(user.reload.settings['yearly_digest_emails_enabled']).to eq(false)
+      end
+
+      context 'when the user still has the legacy digest_emails_enabled key' do
+        let!(:user) { create(:user, settings: { 'digest_emails_enabled' => false }) }
+
+        it 'removes the legacy key once a new digest key is written, leaving only the new key' do
+          patch settings_general_path, params: { monthly_digest_emails_enabled: '0' }
+
+          settings = user.reload.settings
+          expect(settings).to have_key('monthly_digest_emails_enabled')
+          expect(settings['monthly_digest_emails_enabled']).to eq(false)
+          expect(settings).not_to have_key('digest_emails_enabled')
+        end
+
+        it 'keeps the yearly default at true (via SafeSettings) after the legacy key is dropped' do
+          patch settings_general_path, params: { monthly_digest_emails_enabled: '0' }
+
+          user.reload
+          expect(user.settings).not_to have_key('digest_emails_enabled')
+          expect(user.settings).not_to have_key('yearly_digest_emails_enabled')
+          expect(user.safe_settings.yearly_digest_emails_enabled?).to be true
+        end
       end
 
       it 'updates timezone setting with valid timezone' do

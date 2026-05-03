@@ -198,8 +198,8 @@ class Users::ImportData::V2Handler
 
     # Process monthly stats files in sorted order
     stats_files.sort.each do |relative_path|
-      file_path = import_directory.join(relative_path)
-      next unless File.exist?(file_path)
+      file_path = safe_manifest_path(relative_path)
+      next unless file_path && File.exist?(file_path)
 
       batch = read_jsonl_file(file_path)
       next if batch.empty?
@@ -222,8 +222,8 @@ class Users::ImportData::V2Handler
     end
 
     digests_files.sort.each do |relative_path|
-      file_path = import_directory.join(relative_path)
-      next unless File.exist?(file_path)
+      file_path = safe_manifest_path(relative_path)
+      next unless file_path && File.exist?(file_path)
 
       batch = read_jsonl_file(file_path)
       next if batch.empty?
@@ -246,8 +246,8 @@ class Users::ImportData::V2Handler
     end
 
     tracks_files.sort.each do |relative_path|
-      file_path = import_directory.join(relative_path)
-      next unless File.exist?(file_path)
+      file_path = safe_manifest_path(relative_path)
+      next unless file_path && File.exist?(file_path)
 
       batch = read_jsonl_file(file_path)
       next if batch.empty?
@@ -288,8 +288,8 @@ class Users::ImportData::V2Handler
   end
 
   def import_visits_from_monthly_file(relative_path)
-    file_path = import_directory.join(relative_path)
-    return unless File.exist?(file_path)
+    file_path = safe_manifest_path(relative_path)
+    return unless file_path && File.exist?(file_path)
 
     batch = []
     File.foreach(file_path) do |line|
@@ -335,8 +335,8 @@ class Users::ImportData::V2Handler
     importer = Users::ImportData::Points.new(user, nil, batch_size: BATCH_SIZE)
 
     points_files.sort.each do |relative_path|
-      file_path = import_directory.join(relative_path)
-      next unless File.exist?(file_path)
+      file_path = safe_manifest_path(relative_path)
+      next unless file_path && File.exist?(file_path)
 
       File.foreach(file_path) do |line|
         line = line.strip
@@ -369,5 +369,11 @@ class Users::ImportData::V2Handler
       data << Oj.load(line)
     end
     data
+  end
+
+  def safe_manifest_path(relative_path)
+    safe = Users::ImportData::PathSafety.safe_relative_path(import_directory, relative_path)
+    Rails.logger.warn "Rejecting unsafe manifest path: #{relative_path.inspect}" if safe.nil?
+    safe
   end
 end

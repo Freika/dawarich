@@ -19,7 +19,7 @@
           <div class="divider"></div>
 
           <p class="text-sm text-base-content/70 mb-4">
-            To disable 2FA, enter your password below.
+            To disable 2FA, enter your password and a current authenticator code (or backup code).
           </p>
 
           <%= form_with url: settings_two_factor_path, method: :delete, data: { turbo: false }, class: "space-y-4" do |f| %>
@@ -28,6 +28,12 @@
                 <span class="label-text">Current password</span>
               <% end %>
               <%= f.password_field :password, class: 'input input-bordered w-full', required: true, autocomplete: 'current-password' %>
+            </div>
+            <div class="form-control">
+              <%= f.label :otp_attempt, class: 'label' do %>
+                <span class="label-text">Authenticator code or backup code</span>
+              <% end %>
+              <%= f.text_field :otp_attempt, class: 'input input-bordered w-full', required: true, autocomplete: 'one-time-code', inputmode: 'text' %>
             </div>
             <div class="form-control">
               <%= f.submit 'Disable 2FA', class: 'btn btn-error w-full' %>

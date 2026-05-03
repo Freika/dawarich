@@ -76,13 +76,13 @@
               </td>
               <td>
                 <% if user.last_sign_in_at.present? %>
-                  <%= human_datetime(user.last_sign_in_at) %>
+                  <%= human_datetime(user.last_sign_in_at, current_user.safe_settings.timezone) %>
                 <% else %>
                   <span class="text-base-content/50">Never</span>
                 <% end %>
               </td>
               <td>
-                <%= human_datetime(user.created_at) %>
+                <%= human_datetime(user.created_at, current_user.safe_settings.timezone) %>
               </td>
               <td class="flex gap-2">
                 <%= link_to 'Edit', edit_settings_user_path(user), class: 'btn btn-ghost btn-sm' %>

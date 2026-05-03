@@ -4,6 +4,10 @@ class Export < ApplicationRecord
   belongs_to :user
 
   enum :status, { created: 0, processing: 1, completed: 2, failed: 3 }
+  # file_format describes the *payload* format inside the stored blob, not
+  # the blob itself. For points exports (file_type: :points) the stored blob
+  # is always a single-entry zip (content_type: application/zip) containing
+  # one file in the format named by this enum.
   enum :file_format, { json: 0, gpx: 1, archive: 2 }
   enum :file_type, { points: 0, user_data: 1 }
 

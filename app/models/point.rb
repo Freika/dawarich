@@ -43,14 +43,37 @@ class Point < ApplicationRecord
     select(column_names - ['raw_data'])
   end
 
+  # Memoized at class-load to avoid `Point.column_names.include?` lookups on
+  # every row during bulk imports (importer params files call this thousands
+  # of times per batch). The constant evaluates once per process; if the
+  # schema changes mid-process (e.g. dev migration), restart Rails.
+  ALTITUDE_DECIMAL_SUPPORTED = column_names.include?('altitude_decimal')
+
+  def self.altitude_decimal_supported?
+    ALTITUDE_DECIMAL_SUPPORTED
+  end
+
+  # Build a key whose equivalence classes match the PostgreSQL UNIQUE index
+  # on (lonlat, timestamp, user_id). The raw lonlat WKT string from
+  # Points::Params / Overland::Params can differ character-by-character for
+  # points that collapse to the same geography(Point, 4326) double, so a
+  # plain string `uniq` keeps both variants and the subsequent
+  # `Point.upsert_all` fails with `PG::CardinalityViolation: ON CONFLICT DO
+  # UPDATE command cannot affect row a second time` — losing the entire
+  # 1000-point slice. Parsing to Float matches PG's IEEE 754 normalization.
+  def self.dedup_key(attrs)
+    lon, lat = attrs[:lonlat].to_s.scan(/-?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?/).map(&:to_f)
+    [lon, lat, attrs[:timestamp].to_i, attrs[:user_id]]
+  end
+
   def recorded_at
     @recorded_at ||= Time.zone.at(timestamp)
   end
 
-  def async_reverse_geocode
+  def async_reverse_geocode(force: false)
     return unless DawarichSettings.reverse_geocoding_enabled?
 
-    ReverseGeocodingJob.perform_later(self.class.to_s, id)
+    ReverseGeocodingJob.perform_later(self.class.to_s, id, force: force)
   end
 
   def reverse_geocoded?
@@ -72,6 +95,30 @@ class Point < ApplicationRecord
   def country_name
     # TODO: Remove the country column in the future.
     read_attribute(:country_name) || country&.name || self[:country] || ''
+  end
+
+  # Stage 1 of the altitude integer→decimal migration: prefer the new
+  # `altitude_decimal` column when it carries a value, fall back to the
+  # legacy integer `altitude` column otherwise. Writes always update the
+  # decimal column so new data is full-precision; the integer column gets
+  # the truncated value via the underlying attribute.
+  #
+  # `has_attribute?` guards against MissingAttributeError when the record
+  # was loaded with a partial `.select(...)` that omitted altitude_decimal
+  # (e.g. the altitude backfill job uses `.select(:id, :altitude, :raw_data)`
+  # for streaming-friendly memory usage).
+  def altitude
+    if has_attribute?(:altitude_decimal)
+      decimal = self[:altitude_decimal]
+      return decimal if decimal.present?
+    end
+
+    self[:altitude] if has_attribute?(:altitude)
+  end
+
+  def altitude=(value)
+    self[:altitude] = value if has_attribute?(:altitude)
+    self[:altitude_decimal] = value if has_attribute?(:altitude_decimal)
   end
 
   private

@@ -38,5 +38,34 @@ module Dawarich
     config.active_job.queue_adapter = :sidekiq
 
     config.action_mailer.preview_paths << Rails.root.join('spec/mailers/previews').to_s
+
+    # Reads `var` from ENV. Missing + production → raise. Missing + non-production
+    # (or SECRET_KEY_BASE_DUMMY set during asset precompile) → returns the supplied
+    # dev-only fallback (never appropriate for runtime production).
+    #
+    # Class-level so it's usable during Rails configuration before initializers run.
+    def self.env_or_dev_default(var, dev_default)
+      return ENV[var] if ENV[var]
+      return dev_default if !Rails.env.production? || ENV['SECRET_KEY_BASE_DUMMY']
+
+      secret = ENV['SECRET_KEY_BASE']
+      return derive_encryption_key(var, secret) if secret
+
+      raise "#{var} required in production"
+    end
+
+    def self.derive_encryption_key(var, secret)
+      ActiveSupport::KeyGenerator
+        .new(secret, iterations: 1000)
+        .generate_key("dawarich/encryption/#{var}", 32)
+        .unpack1('H*')
+    end
+
+    config.active_record.encryption.primary_key =
+      env_or_dev_default('OTP_ENCRYPTION_PRIMARY_KEY',       'dawarich-dev-primary-key-not-for-production')
+    config.active_record.encryption.deterministic_key =
+      env_or_dev_default('OTP_ENCRYPTION_DETERMINISTIC_KEY', 'dawarich-dev-deterministic-not-for-prod')
+    config.active_record.encryption.key_derivation_salt =
+      env_or_dev_default('OTP_ENCRYPTION_KEY_DERIVATION_SALT', 'dawarich-dev-salt-not-for-production')
   end
 end

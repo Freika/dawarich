@@ -202,9 +202,11 @@ RSpec.describe Points::RawData::Archiver do
   describe 'count validation' do
     let(:test_date) { 3.months.ago.beginning_of_month.utc }
     let!(:test_points) do
-      create_list(:point, 5, user: user,
-                            timestamp: test_date.to_i,
-                            raw_data: { lon: 13.4, lat: 52.5 })
+      5.times.map do |i|
+        create(:point, user: user,
+                       timestamp: test_date.to_i + i,
+                       raw_data: { lon: 13.4, lat: 52.5 })
+      end
     end
 
     it 'validates compression count matches expected count' do

@@ -275,5 +275,69 @@ RSpec.describe Users::ImportData::Imports, type: :service do
         expect(result).to eq([0, 0])
       end
     end
+
+    context 'with path-traversal file_name (audit C-2)' do
+      let(:sensitive_dir) { Rails.root.join('tmp') }
+      let(:sensitive_file) { sensitive_dir.join('secret_target.txt') }
+      let(:imports_data) do
+        [
+          {
+            'name' => 'evil.json',
+            'source' => 'gpx',
+            'created_at' => '2024-01-01T00:00:00Z',
+            'file_name' => '../secret_target.txt',
+            'original_filename' => 'looks_innocent.gpx',
+            'content_type' => 'application/json'
+          }
+        ]
+      end
+
+      before do
+        FileUtils.mkdir_p(sensitive_dir)
+        File.write(sensitive_file, 'CONFIDENTIAL_HOST_FILE_CONTENTS')
+      end
+
+      after { FileUtils.rm_f(sensitive_file) }
+
+      it 'does not attach a host file outside files_directory' do
+        service.call
+
+        evil_import = user.imports.find_by(name: 'evil.json')
+        expect(evil_import).to be_present
+        expect(evil_import.file).not_to be_attached
+      end
+
+      it 'does not exfiltrate the sensitive file contents' do
+        service.call
+        evil_import = user.imports.find_by(name: 'evil.json')
+        next unless evil_import.file.attached?
+
+        attached_contents = evil_import.file.download
+        expect(attached_contents).not_to include('CONFIDENTIAL_HOST_FILE_CONTENTS')
+      end
+    end
+
+    context 'with absolute path file_name (audit C-2)' do
+      let(:imports_data) do
+        [
+          {
+            'name' => 'evil.json',
+            'source' => 'gpx',
+            'created_at' => '2024-01-01T00:00:00Z',
+            'file_name' => '/etc/hostname',
+            'original_filename' => 'looks_innocent.gpx',
+            'content_type' => 'application/json'
+          }
+        ]
+      end
+
+      it 'does not attach an absolute-path file' do
+        service.call
+
+        evil_import = user.imports.find_by(name: 'evil.json')
+        expect(evil_import).to be_present
+        expect(evil_import.file).not_to be_attached
+      end
+    end
   end
 end

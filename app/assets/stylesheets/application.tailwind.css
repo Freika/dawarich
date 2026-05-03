@@ -16,6 +16,9 @@
 @import "leaflet_theme.css";
 @import "maps_maplibre_replay.css";
 @import "maps_maplibre_timeline_feed.css";
+@import "maps_maplibre_timeline_rail.css";
+@import "maps_maplibre_place_drawer.css";
+@import "maps_maplibre_suggested_picker.css";
 
 @layer components {
   .fade-out {
@@ -52,7 +55,9 @@ table tfoot th {
 /* Card lift on hover — only for cards that are links */
 a .card,
 a.card {
-  transition: transform 200ms ease, box-shadow 200ms ease;
+  transition:
+    transform 200ms ease,
+    box-shadow 200ms ease;
 }
 
 a .card:hover,
@@ -76,7 +81,7 @@ a.card:hover {
 
 /* Grain texture overlay */
 body::before {
-  content: '';
+  content: "";
   position: fixed;
   inset: 0;
   pointer-events: none;

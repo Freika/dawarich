@@ -55,16 +55,6 @@ stale_jobs_recovery_job:
   class: "StaleJobsRecoveryJob"
   queue: exports
 
-rails_pulse_summary_job:
-  cron: "5 * * * *" # every hour at 5 minutes past the hour
-  class: "RailsPulse::SummaryJob"
-  queue: default
-
-rails_pulse_clean_up_job:
-  cron: "0 1 * * *" # every day at 01:00
-  class: "RailsPulse::CleanupJob"
-  queue: default
-
 family_location_requests_expiry_job:
   cron: "30 * * * *" # every hour at :30
   class: "Families::ExpireLocationRequestsJob"
@@ -97,3 +87,13 @@ raw_data_clear_job:
   cron: "0 3 8 * *" # 8th of month at 03:00 (7 days after archival for verification)
   class: "Points::RawData::ClearJob"
   queue: archival
+
+monthly_digest_scheduling_job:
+  cron: "0 4 2 * *" # 2nd of every month at 04:00 UTC
+  class: "Users::Digests::Monthly::SchedulingJob"
+  queue: digests
+
+yearly_digest_scheduling_job:
+  cron: "0 6 2 1 *" # January 2nd at 06:00 UTC
+  class: "Users::Digests::Yearly::SchedulingJob"
+  queue: digests

@@ -80,7 +80,7 @@
                     <td class="font-semibold">Last sign-in</td>
                     <td>
                       <% if @user.last_sign_in_at.present? %>
-                        <%= human_datetime(@user.last_sign_in_at) %>
+                        <%= human_datetime(@user.last_sign_in_at, current_user.safe_settings.timezone) %>
                       <% else %>
                         <span class="text-base-content/50">Never</span>
                       <% end %>
@@ -96,7 +96,7 @@
                   </tr>
                   <tr>
                     <td class="font-semibold">Account created</td>
-                    <td><%= human_datetime(@user.created_at) %></td>
+                    <td><%= human_datetime(@user.created_at, current_user.safe_settings.timezone) %></td>
                   </tr>
                 </tbody>
               </table>

@@ -18,5 +18,17 @@ RSpec.describe AreaVisitsCalculatingJob, type: :job do
 
       described_class.perform_now(-1)
     end
+
+    context 'when visits_suggestions_enabled is false' do
+      before do
+        user.update!(settings: user.settings.merge('visits_suggestions_enabled' => 'false'))
+      end
+
+      it 'does not run area visit creation' do
+        expect(Areas::Visits::Create).not_to receive(:new)
+
+        described_class.new.perform(user.id)
+      end
+    end
   end
 end

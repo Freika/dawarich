@@ -39,7 +39,7 @@ RSpec.describe ReverseGeocodingJob, type: :job do
 
         perform
 
-        expect(ReverseGeocoding::Points::FetchData).to have_received(:new).with(point.id)
+        expect(ReverseGeocoding::Points::FetchData).to have_received(:new).with(point.id, force: false)
       end
     end
   end
