@@ -69,10 +69,10 @@ RSpec.describe 'Api::V1::Families::Locations', type: :request do
     context 'when user is not in a family' do
       let(:solo_user) { create(:user) }
 
-      it 'returns forbidden' do
+      it 'returns not_found' do
         get '/api/v1/families/locations', params: { api_key: solo_user.api_key }
 
-        expect(response).to have_http_status(:forbidden)
+        expect(response).to have_http_status(:not_found)
         json_response = JSON.parse(response.body)
         expect(json_response['error']).to eq('User is not part of a family')
       end

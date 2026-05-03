@@ -1033,7 +1033,7 @@ paths:
                   sharing_enabled:
                     type: boolean
                     description: Whether the current user has sharing enabled
-        '403':
+        '404':
           description: user not in a family
         '401':
           description: unauthorized

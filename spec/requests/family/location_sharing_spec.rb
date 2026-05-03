@@ -94,12 +94,12 @@ RSpec.describe 'Family::LocationSharing', type: :request do
         sign_in solo_user
       end
 
-      it 'returns forbidden' do
+      it 'returns not_found' do
         patch '/family/location_sharing',
               params: { enabled: true, duration: '1h' },
               as: :json
 
-        expect(response).to have_http_status(:forbidden)
+        expect(response).to have_http_status(:not_found)
         json_response = JSON.parse(response.body)
         expect(json_response['error']).to eq('User is not part of a family')
       end
@@ -178,7 +178,7 @@ RSpec.describe 'Family::LocationSharing', type: :request do
               params: { enabled: true, duration: '1h' },
               as: :turbo_stream
 
-        expect(response).to have_http_status(:forbidden)
+        expect(response).to have_http_status(:not_found)
         expect_turbo_stream_response
         expect_flash_stream('User is not part of a family')
       end
