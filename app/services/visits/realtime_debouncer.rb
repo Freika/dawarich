@@ -16,13 +16,18 @@ class Visits::RealtimeDebouncer
     redis_pool.with do |redis|
       key = redis_key
       if redis.set(key, 1, nx: true, ex: REDIS_KEY_TTL.to_i)
-        VisitSuggestingJob
-          .set(wait: DEBOUNCE_DELAY)
-          .perform_later(
-            user_id: @user_id,
-            start_at: LOOKBACK_WINDOW.ago.iso8601,
-            end_at: Time.current.iso8601
-          )
+        begin
+          VisitSuggestingJob
+            .set(wait: DEBOUNCE_DELAY)
+            .perform_later(
+              user_id: @user_id,
+              start_at: LOOKBACK_WINDOW.ago.iso8601,
+              end_at: Time.current.iso8601
+            )
+        rescue StandardError
+          redis.del(key)
+          raise
+        end
       else
         redis.expire(key, REDIS_KEY_TTL.to_i)
       end

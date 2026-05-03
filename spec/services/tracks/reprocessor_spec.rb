@@ -112,5 +112,34 @@ RSpec.describe Tracks::Reprocessor do
 
       expect(captured[:enabled_modes]).to eq(%w[walking cycling])
     end
+
+    context 'when a preserved segment has indices that exceed the current points count' do
+      it 'deletes the out-of-bounds preserved segment instead of leaving it dangling' do
+        out_of_bounds = create(
+          :track_segment,
+          track: track,
+          transportation_mode: :walking,
+          start_index: 25,
+          end_index: 99,
+          corrected_at: 1.day.ago
+        )
+
+        in_bounds = create(
+          :track_segment,
+          track: track,
+          transportation_mode: :cycling,
+          start_index: 0,
+          end_index: 5,
+          corrected_at: 1.day.ago
+        )
+
+        allow_any_instance_of(TransportationModes::Detector).to receive(:call).and_return([])
+
+        described_class.new(track: track).reprocess_single
+
+        expect(TrackSegment.exists?(out_of_bounds.id)).to be false
+        expect(TrackSegment.exists?(in_bounds.id)).to be true
+      end
+    end
   end
 end

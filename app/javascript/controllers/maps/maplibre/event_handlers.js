@@ -34,6 +34,23 @@ export class EventHandlers {
   }
 
   /**
+   * Tear down document-level listeners and DOM markers. Must be called from
+   * the parent Stimulus controller's `disconnect()` so Turbo navigations
+   * don't accumulate stale `dawarich:segment-mode-changed` listeners.
+   */
+  destroy() {
+    if (this._boundOnSegmentModeChanged) {
+      document.removeEventListener(
+        "dawarich:segment-mode-changed",
+        this._boundOnSegmentModeChanged,
+      )
+      this._boundOnSegmentModeChanged = null
+    }
+    this._clearRouteMarkers()
+    this._clearTrackMarkers()
+  }
+
+  /**
    * Handle point click — shows instant info from GeoJSON, address loaded via Turbo Frame
    */
   handlePointClick(e) {

@@ -62,7 +62,9 @@ class Point < ApplicationRecord
   # UPDATE command cannot affect row a second time` — losing the entire
   # 1000-point slice. Parsing to Float matches PG's IEEE 754 normalization.
   def self.dedup_key(attrs)
-    lon, lat = attrs[:lonlat].to_s.scan(/-?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?/).map(&:to_f)
+    raw = attrs[:lonlat].to_s
+    inside = raw[/POINT[^(]*\(([^)]*)\)/i, 1] || raw
+    lon, lat = inside.scan(/-?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?/).map(&:to_f)
     [lon, lat, attrs[:timestamp].to_i, attrs[:user_id]]
   end
 

@@ -140,6 +140,24 @@ RSpec.describe Visits::RealtimeDebouncer do
         expect(user_ids).to contain_exactly(user.id, other_user.id)
       end
     end
+
+    context 'when VisitSuggestingJob.perform_later raises' do
+      let(:configured_job) { instance_double(ActiveJob::ConfiguredJob) }
+
+      before do
+        allow(VisitSuggestingJob).to receive(:set).and_return(configured_job)
+        allow(configured_job).to receive(:perform_later)
+          .and_raise(StandardError, 'queue down')
+      end
+
+      it 'removes the Redis key so the next call can re-enqueue' do
+        expect { debouncer.trigger }.to raise_error(StandardError, 'queue down')
+
+        Sidekiq.redis do |redis|
+          expect(redis.exists(redis_key)).to eq(0)
+        end
+      end
+    end
   end
 
   describe '#clear' do

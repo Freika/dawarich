@@ -2,8 +2,8 @@
 
 module Tracks::SegmentsHelper
   def modes_for_segment(segment, user)
-    safe_settings = Users::SafeSettings.new(user.settings || {})
-    enabled = safe_settings.enabled_transportation_modes
+    settings = (current_user == user && current_user_safe_settings) || user.safe_settings
+    enabled = settings.enabled_transportation_modes
     current_mode = segment.transportation_mode.to_s
 
     options = enabled.map { |m| [m.titleize, m] }
@@ -25,7 +25,7 @@ module Tracks::SegmentsHelper
     return '-' unless segment.distance
 
     distance_km = segment.distance / 1000.0
-    case current_user&.safe_settings&.distance_unit
+    case current_user_safe_settings&.distance_unit
     when 'mi'
       "#{(distance_km * 0.621371).round(2)} mi"
     else

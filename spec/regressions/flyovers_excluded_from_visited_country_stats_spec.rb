@@ -103,4 +103,34 @@ RSpec.describe 'Flyovers excluded from visited-country statistics' do
     expect(result.countries_count).to eq(3)
     expect(result.countries_list).to eq(%w[Bolivia France Germany])
   end
+
+  context 'with legacy points that have nil velocity' do
+    let(:user) { create(:user) }
+    let(:legacy_year) { 2024 }
+    let(:legacy_month) { 6 }
+    let(:legacy_base_ts) { DateTime.new(legacy_year, legacy_month, 1, 12).to_i }
+    let!(:legacy_import) { create(:import, user: user) }
+
+    let!(:legacy_points_no_velocity) do
+      [0, 30, 70, 90].map do |minute_offset|
+        create(:point, user: user, import: legacy_import,
+                       timestamp: legacy_base_ts + minute_offset.minutes,
+                       city: 'Paris', country_name: 'France',
+                       altitude: 35, velocity: nil,
+                       lonlat: 'POINT(2.3522 48.8566)')
+      end
+    end
+
+    before do
+      Stats::CalculateMonth.new(user.id, legacy_year, legacy_month).call
+    end
+
+    it 'still attributes them to their country (does not exclude as flyover)' do
+      stat = user.stats.find_by(year: legacy_year, month: legacy_month)
+      countries = stat.toponyms.select { |t| t['cities'].is_a?(Array) && t['cities'].any? }
+                      .map { |t| t['country'] }
+                      .compact
+      expect(countries).to include('France')
+    end
+  end
 end

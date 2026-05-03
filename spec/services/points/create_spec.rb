@@ -238,12 +238,9 @@ RSpec.describe Points::Create do
       end
 
       it 'deduplicates them before upsert_all (prevents PG::CardinalityViolation)' do
-        expect(Point).to receive(:upsert_all) do |data, _options|
-          expect(data.size).to eq(1)
-          [Point.new(id: 1, lonlat: 'POINT(-0.1278 51.5074)', timestamp: timestamp)]
-        end
-
-        described_class.new(user, point_params).call
+        expect do
+          described_class.new(user, point_params).call
+        end.to change { Point.where(user: user, timestamp: timestamp.to_i).count }.from(0).to(1)
       end
     end
 

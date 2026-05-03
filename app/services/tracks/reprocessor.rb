@@ -59,6 +59,7 @@ module Tracks
 
       Track.transaction do
         preserved = track.track_segments.manually_corrected.to_a
+        preserved = prune_out_of_bounds(preserved, points_count)
         track.track_segments.auto_classified.delete_all
 
         user_thresholds, expert_thresholds = extract_user_thresholds(track.user)
@@ -91,6 +92,24 @@ module Tracks
       return nil unless user
 
       Users::SafeSettings.new(user.settings || {}).enabled_transportation_modes
+    end
+
+    def prune_out_of_bounds(preserved, points_count)
+      valid, invalid = preserved.partition do |s|
+        s.start_index >= 0 &&
+          s.end_index < points_count &&
+          s.start_index <= s.end_index
+      end
+
+      if invalid.any?
+        Rails.logger.warn(
+          "[Reprocessor] dropping #{invalid.size} preserved segment(s) " \
+          "with out-of-bounds indices for track points_count=#{points_count}"
+        )
+        TrackSegment.where(id: invalid.map(&:id)).delete_all
+      end
+
+      valid
     end
 
     def drop_overlapping(segment_data, preserved)

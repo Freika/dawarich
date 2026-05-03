@@ -128,18 +128,20 @@ module Timeline
 
     def interleave(date, visits, tracks, track_shares)
       day_local = date.in_time_zone(timezone)
-      day_start_iso = day_local.beginning_of_day.iso8601
-      day_end_iso = day_local.end_of_day.iso8601
+      day_start = day_local.beginning_of_day
+      day_end = day_local.end_of_day
       visit_entries = visits.map { |v| build_visit_entry(v) }
       track_entries = tracks.map { |t| build_journey_entry(t, date: date, day_share: track_shares.fetch(t.id, 1.0)) }
 
       (visit_entries + track_entries).sort_by do |entry|
-        anchor = if entry[:continuation_of_date]
-                   [[entry[:ended_at], day_end_iso].min, day_start_iso].max
-                 else
-                   entry[:started_at]
-                 end
-        [anchor, entry[:started_at]]
+        started_at_time = Time.iso8601(entry[:started_at])
+        anchor_time = if entry[:continuation_of_date]
+                        ended_at_time = Time.iso8601(entry[:ended_at])
+                        [[ended_at_time, day_end].min, day_start].max
+                      else
+                        started_at_time
+                      end
+        [anchor_time, started_at_time]
       end
     end
 

@@ -169,5 +169,26 @@ RSpec.describe Point, type: :model do
       expect(described_class.dedup_key(base))
         .not_to eq(described_class.dedup_key(base.merge(user_id: 2)))
     end
+
+    it 'ignores SRID prefix in EWKT and yields the same key as plain WKT' do
+      plain = { lonlat: 'POINT(-0.1278 51.5074)', timestamp: timestamp, user_id: 1 }
+      ewkt  = { lonlat: 'SRID=4326;POINT(-0.1278 51.5074)', timestamp: timestamp, user_id: 1 }
+
+      expect(described_class.dedup_key(plain)).to eq(described_class.dedup_key(ewkt))
+    end
+
+    it 'extracts lon and lat from POINT Z (3D form) without folding altitude into the key' do
+      flat = { lonlat: 'POINT(-0.1278 51.5074)', timestamp: timestamp, user_id: 1 }
+      threed = { lonlat: 'POINT Z (-0.1278 51.5074 100)', timestamp: timestamp, user_id: 1 }
+
+      expect(described_class.dedup_key(flat)).to eq(described_class.dedup_key(threed))
+    end
+
+    it 'handles southern-hemisphere negative lat/lon' do
+      a = { lonlat: 'POINT(-68.1193 -16.4897)', timestamp: timestamp, user_id: 1 }
+      b = { lonlat: 'POINT(-68.11930 -16.48970)', timestamp: timestamp, user_id: 1 }
+
+      expect(described_class.dedup_key(a)).to eq(described_class.dedup_key(b))
+    end
   end
 end

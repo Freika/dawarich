@@ -63,5 +63,58 @@ RSpec.describe Jobs::Create do
         expect { described_class.new(job_name, user.id).call }.to raise_error(Jobs::Create::InvalidJobName)
       end
     end
+
+    context 'when forcing rerun on a paid provider on a hosted (non-self-hosted) instance' do
+      let(:user) { create(:user) }
+
+      before do
+        allow(DawarichSettings).to receive(:locationiq_enabled?).and_return(true)
+        allow(DawarichSettings).to receive(:geoapify_enabled?).and_return(false)
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      end
+
+      it 'raises PaidProviderForceRerunBlocked and enqueues no jobs' do
+        create(:point, user:, timestamp: 1.day.ago)
+
+        expect do
+          expect do
+            described_class.new('start_reverse_geocoding', user.id).call
+          end.to raise_error(Jobs::Create::PaidProviderForceRerunBlocked)
+        end.not_to have_enqueued_job(ReverseGeocodingJob)
+      end
+    end
+
+    context 'when forcing rerun on a paid provider on a self-hosted instance' do
+      let(:user) { create(:user) }
+
+      before do
+        allow(DawarichSettings).to receive(:locationiq_enabled?).and_return(true)
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+      end
+
+      it 'enqueues jobs because the operator owns their own provider bill' do
+        create(:point, user:, timestamp: 1.day.ago)
+
+        expect do
+          described_class.new('start_reverse_geocoding', user.id).call
+        end.to have_enqueued_job(ReverseGeocodingJob).at_least(:once)
+      end
+    end
+
+    context 'when continue_reverse_geocoding runs on a paid provider' do
+      let(:user) { create(:user) }
+
+      before do
+        allow(DawarichSettings).to receive(:locationiq_enabled?).and_return(true)
+      end
+
+      it 'is not blocked because force is false' do
+        create(:point, user:, country: nil, city: nil, timestamp: 1.day.ago)
+
+        expect do
+          described_class.new('continue_reverse_geocoding', user.id).call
+        end.to have_enqueued_job(ReverseGeocodingJob).at_least(:once)
+      end
+    end
   end
 end
