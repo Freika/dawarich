@@ -17,10 +17,7 @@ module Users
         'fall' => [3, 4, 5]
       }.freeze
 
-      # IANA identifier → latitude (Float). Built once from TZInfo::Country#zone_info,
-      # which only covers country-bound zones — Etc/UTC, GMT, UTC are absent and
-      # treated as "unknown → northern" by callers. Country#zones returns
-      # TimezoneProxy without latitude; zone_info returns CountryTimezone with it.
+      # Country#zone_info (not #zones) returns CountryTimezone with #latitude.
       TIMEZONE_LATITUDES = begin
         TZInfo::Country.all.each_with_object({}) do |country, hash|
           country.zone_info.each do |zone|
@@ -60,7 +57,7 @@ module Users
       end
 
       def southern_hemisphere?
-        tz_name = user.settings['timezone'].presence
+        tz_name = user.safe_settings.persisted_timezone
         return false if tz_name.nil?
 
         latitude = TIMEZONE_LATITUDES[tz_name]

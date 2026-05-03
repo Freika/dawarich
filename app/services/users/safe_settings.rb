@@ -244,6 +244,10 @@ class Users::SafeSettings
     settings['timezone'] || DEFAULT_VALUES['timezone']
   end
 
+  def persisted_timezone
+    settings['timezone'].presence
+  end
+
   private
 
   def lite?
