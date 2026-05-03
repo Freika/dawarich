@@ -61,7 +61,7 @@ class Tracks::BoundaryDetector
   def adjacent_existing_tracks(recent_tracks)
     return [] if recent_tracks.empty?
 
-    window = 30.minutes
+    window = adjacency_window
     recent_ids = recent_tracks.map(&:id)
 
     conditions = recent_tracks.flat_map do |track|
@@ -80,14 +80,21 @@ class Tracks::BoundaryDetector
         .includes(:points)
   end
 
+  # Time gap that still counts as "adjacent" for boundary merging.
+  # Floors at 30 minutes so we never tighten behavior for users who set a
+  # smaller minutes_between_routes; widens past 30 minutes when the user has
+  # explicitly opted into longer gaps as part of the same journey.
+  def adjacency_window
+    [time_threshold_minutes.minutes, 30.minutes].max
+  end
+
   # Find tracks that might be connected to the given track
   def find_connected_tracks(track, all_tracks)
     connected = []
     track_end_time = track.end_at.to_i
     track_start_time = track.start_at.to_i
 
-    # Look for tracks that start shortly after this one ends (within 30 minutes)
-    time_window = 30.minutes.to_i
+    time_window = adjacency_window.to_i
 
     all_tracks.each do |candidate|
       next if candidate.id == track.id
