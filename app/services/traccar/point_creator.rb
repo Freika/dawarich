@@ -24,6 +24,7 @@ class Traccar::PointCreator
       timestamps = [payload].filter_map { |p| p[:timestamp]&.to_i }
       Points::AnomalyFilterJob.perform_later(user_id, timestamps.min, timestamps.max) if timestamps.any?
       Tracks::RealtimeDebouncer.new(user_id).trigger
+      Visits::RealtimeDebouncer.new(user_id).trigger
       Points::LiveBroadcaster.new(user_id, result, [payload]).call
     end
 
