@@ -105,7 +105,7 @@ RSpec.describe Point, type: :model do
         point.save
 
         expect { point.async_reverse_geocode }.to have_enqueued_job(ReverseGeocodingJob)
-          .with('Point', point.id)
+          .with('Point', point.id, force: false)
       end
 
       context 'when point is imported' do
@@ -141,6 +141,33 @@ RSpec.describe Point, type: :model do
       it 'returns latitude' do
         expect(point.lat).to eq(2)
       end
+    end
+  end
+
+  describe '.dedup_key' do
+    let(:timestamp) { Time.zone.at(1_700_000_000) }
+
+    it 'collapses different WKT strings that parse to the same doubles' do
+      a = { lonlat: 'POINT(-0.1278 51.5074)', timestamp: timestamp, user_id: 1 }
+      b = { lonlat: 'POINT(-0.12780000 51.50740000)', timestamp: timestamp, user_id: 1 }
+
+      expect(described_class.dedup_key(a)).to eq(described_class.dedup_key(b))
+    end
+
+    it 'distinguishes points whose doubles actually differ' do
+      a = { lonlat: 'POINT(-0.1278 51.5074)', timestamp: timestamp, user_id: 1 }
+      b = { lonlat: 'POINT(-0.1279 51.5074)', timestamp: timestamp, user_id: 1 }
+
+      expect(described_class.dedup_key(a)).not_to eq(described_class.dedup_key(b))
+    end
+
+    it 'distinguishes points by timestamp and user_id' do
+      base = { lonlat: 'POINT(-0.1278 51.5074)', timestamp: timestamp, user_id: 1 }
+
+      expect(described_class.dedup_key(base))
+        .not_to eq(described_class.dedup_key(base.merge(timestamp: timestamp + 1)))
+      expect(described_class.dedup_key(base))
+        .not_to eq(described_class.dedup_key(base.merge(user_id: 2)))
     end
   end
 end

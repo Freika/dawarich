@@ -34,5 +34,5 @@
     <%= point_speed(point.velocity, current_user.safe_settings.distance_unit) %>
   </td>
   <td class="px-3 py-2 text-sm tabular-nums text-base-content/50 whitespace-nowrap"><%= point.lat %>, <%= point.lon %></td>
-  <td class="px-3 py-2 text-sm tabular-nums whitespace-nowrap"><%= human_datetime_with_seconds(point.recorded_at) %></td>
+  <td class="px-3 py-2 text-sm tabular-nums whitespace-nowrap"><%= human_datetime_with_seconds(point.recorded_at, current_user.safe_settings.timezone) %></td>
 </tr>
