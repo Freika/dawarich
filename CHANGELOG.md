@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Track duration and average speed are now refreshed whenever a track's path is rebuilt (e.g. after a merge), instead of keeping their pre-merge values. To heal tracks already affected, click Map v2 → Settings → **Recalculate tracks & stats** once after upgrading.
 - Visited-country statistics no longer count countries that were merely flown over. Points moving faster than 500 km/h are now excluded from the country and city aggregation. Trains and high-altitude cities (Denver, Mexico City, La Paz, Lhasa, …) continue to count as visited. Previously-saved monthly stats are not recomputed automatically — re-run stats calculation to refresh historic months. (#1917)
 - Server-rendered timestamps (Points, Places, Imports, Exports, account settings, trial banner) now display in the user's profile timezone, matching the Maps tab. Previously, the time and tooltip could fall back to the server's default zone, drifting by hours. Invalid stored timezones no longer raise. (#1824)
 - "Start Reverse Geocoding" now actually re-runs for every point in your database — previously it silently skipped any point that had already been geocoded, even though the button promised a full re-run. (#2141)
