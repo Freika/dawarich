@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Visited-country statistics no longer count countries that were merely flown over. Points above 1000 m altitude or moving faster than 250 km/h are now excluded from the country and city aggregation. (#1917)
+
 ## [1.7.4] - 2026-05-03
 
 ### Fixed
