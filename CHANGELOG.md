@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Family owners can now remove other members directly from the family page. #2555
 - Insights and statistics now agree on the number of countries visited per month. #2581
 - The default password for the demo account has been changed to `safepassword`. The old default `password` prevented seeds from running due to the new 12-character minimum password length validation. Existing users were not affected. #2593
+- Emojis in place, area, visit, and family member names now render correctly on Maps v2 instead of appearing as a placeholder glyph. #2365
 
 
 ## [1.7.3] - 2026-05-02
