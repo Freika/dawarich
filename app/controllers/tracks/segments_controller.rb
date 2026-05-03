@@ -1,0 +1,73 @@
+# frozen_string_literal: true
+
+class Tracks::SegmentsController < ApplicationController
+  include FlashStreamable
+
+  before_action :authenticate_user!
+  before_action :load_track
+
+  def index
+    @segments = @track.track_segments.order(:start_index)
+    render layout: false
+  end
+
+  def update
+    segment = @track.track_segments.find(params[:id])
+    authorize segment, :update?
+
+    result = if params[:reset] == 'true'
+               Tracks::SegmentEditor.new(segment, current_user).reset_to_auto
+             else
+               Tracks::SegmentEditor.new(segment, current_user).apply_override(
+                 segment_params[:transportation_mode]
+               )
+             end
+
+    if result.success?
+      track = result.segment.track.reload
+      dominant_label = track.dominant_mode&.titleize || 'Unknown'
+
+      respond_to do |format|
+        format.turbo_stream do
+          render turbo_stream: [
+            turbo_stream.replace(
+              "segment-row-#{segment.id}",
+              partial: 'tracks/segments/segment_row',
+              locals: { segment: result.segment }
+            ),
+            turbo_stream.update("track-info-mode-#{track.id}", dominant_label),
+            stream_flash(:success, 'Segment updated')
+          ]
+        end
+        format.html { redirect_back(fallback_location: root_path, notice: 'Segment updated') }
+      end
+    else
+      respond_to do |format|
+        format.turbo_stream do
+          render turbo_stream: stream_flash(:error, error_message_for(result.error_code)),
+                 status: :unprocessable_entity
+        end
+        format.html do
+          redirect_back(fallback_location: root_path, alert: error_message_for(result.error_code))
+        end
+      end
+    end
+  end
+
+  private
+
+  def load_track
+    @track = current_user.tracks.find(params[:track_id])
+  end
+
+  def segment_params
+    params.require(:track_segment).permit(:transportation_mode)
+  end
+
+  def error_message_for(code)
+    case code
+    when :mode_not_enabled then "That mode isn't enabled in your settings"
+    else 'Could not update segment'
+    end
+  end
+end

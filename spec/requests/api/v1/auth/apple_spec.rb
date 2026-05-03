@@ -150,6 +150,26 @@ RSpec.describe 'POST /api/v1/auth/apple', type: :request do
     end
   end
 
+  context 'subsequent Apple sign-in with no local record (Apple omits email)' do
+    before do
+      allow(verifier_double).to receive(:call).and_return(
+        sub: '000888.apple',
+        email: ''
+      )
+    end
+
+    it 'does not create a synthetic-email user and returns a 422 with recovery instructions' do
+      expect do
+        post '/api/v1/auth/apple', params: { id_token: 'fake_token' }
+      end.not_to change(User, :count)
+
+      expect(response).to have_http_status(:unprocessable_entity)
+      body = JSON.parse(response.body)
+      expect(body['error']).to eq('apple_email_missing')
+      expect(body['message']).to include('appleid.apple.com')
+    end
+  end
+
   context 'on a self-hosted instance' do
     before do
       allow(DawarichSettings).to receive(:self_hosted?).and_return(true)

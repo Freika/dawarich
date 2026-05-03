@@ -36,6 +36,8 @@ class User < ApplicationRecord
   after_create :create_api_key
   after_commit :activate, on: :create, if: -> { DawarichSettings.self_hosted? && !skip_auto_trial }
   after_commit :start_trial, on: :create, if: -> { !DawarichSettings.self_hosted? && !skip_auto_trial }
+  after_commit :trigger_creation_webhook, on: :create,
+                                            if: -> { !DawarichSettings.self_hosted? && skip_auto_trial }
   after_update :invalidate_plan_rate_limit_cache, if: :saved_change_to_plan?
 
   before_save :sanitize_input
@@ -134,6 +136,10 @@ class User < ApplicationRecord
 
   def auto_converting_trial?
     trial? && active_until&.future? && !sub_source_none?
+  end
+
+  def legacy_trial?
+    trial? && sub_source_none?
   end
 
   def generate_subscription_token(plan: nil, interval: nil, variant: nil)
@@ -235,7 +241,7 @@ class User < ApplicationRecord
   private
 
   def create_api_key
-    self.api_key = SecureRandom.hex(16)
+    self.api_key = SecureRandom.hex(32)
 
     save
   end
@@ -256,7 +262,11 @@ class User < ApplicationRecord
     Users::MailerSendingJob.perform_later(id, 'welcome')
     Users::MailerSendingJob.set(wait: 2.days).perform_later(id, 'explore_features')
 
-    Users::TrialWebhookJob.perform_later(id)
+    Users::CreationWebhookJob.perform_later(id)
+  end
+
+  def trigger_creation_webhook
+    Users::CreationWebhookJob.perform_later(id)
   end
 
   def invalidate_plan_rate_limit_cache

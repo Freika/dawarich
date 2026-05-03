@@ -6,6 +6,19 @@ import Flash from "./flash_controller"
 const MAX_FILE_SIZE = 11 * 1024 * 1024 // 11MB
 const VALID_ZIP_TYPES = ["application/zip", "application/x-zip-compressed"]
 
+const ACCEPTED_EXTENSIONS = [
+  "json",
+  "geojson",
+  "gpx",
+  "kml",
+  "kmz",
+  "tcx",
+  "fit",
+  "csv",
+  "rec",
+  "zip",
+]
+
 export default class extends Controller {
   static targets = ["input", "progress", "progressBar", "submit", "form"]
   static values = {
@@ -123,6 +136,18 @@ export default class extends Controller {
   }
 
   validateFiles(files) {
+    const unsupported = files.filter((f) => !this.hasAcceptedExtension(f))
+    if (unsupported.length > 0) {
+      const names = unsupported.map((f) => f.name).join(", ")
+      const accepted = ACCEPTED_EXTENSIONS.map((e) => `.${e}`).join(", ")
+      Flash.show(
+        "error",
+        `Unsupported file type: ${names}. Supported formats: ${accepted}.`,
+      )
+      this.inputTarget.value = ""
+      return false
+    }
+
     if (
       this.userTrialValue &&
       this.maxImportsValue > 0 &&
@@ -251,5 +276,12 @@ export default class extends Controller {
   disableSubmit() {
     this.submitTarget.disabled = true
     this.submitTarget.classList.add("opacity-50", "cursor-not-allowed")
+  }
+
+  hasAcceptedExtension(file) {
+    const dot = file.name.lastIndexOf(".")
+    if (dot < 0 || dot === file.name.length - 1) return false
+    const ext = file.name.slice(dot + 1).toLowerCase()
+    return ACCEPTED_EXTENSIONS.includes(ext)
   }
 }

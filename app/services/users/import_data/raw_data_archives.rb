@@ -61,16 +61,21 @@ class Users::ImportData::RawDataArchives
   end
 
   def restore_archive_file(archive_record, archive_data)
-    file_path = files_directory.join(archive_data['file_name'])
+    file_path = Users::ImportData::PathSafety.safe_basename_path(
+      files_directory, archive_data['file_name']
+    )
 
-    unless File.exist?(file_path)
-      Rails.logger.warn "Raw data archive file not found: #{archive_data['file_name']}"
+    unless file_path && File.exist?(file_path)
+      Rails.logger.warn "Raw data archive file not found or unsafe: #{archive_data['file_name']}"
       return false
     end
 
+    safe_filename = File.basename(
+      (archive_data['original_filename'] || archive_data['file_name']).to_s
+    )
     archive_record.file.attach(
       io: File.open(file_path),
-      filename: archive_data['original_filename'] || archive_data['file_name'],
+      filename: safe_filename,
       content_type: archive_data['content_type'] || 'application/gzip'
     )
 

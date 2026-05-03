@@ -30,8 +30,14 @@ module Calculateable
   def recalculate_path_and_distance!
     calculate_path
     calculate_distance
+    recalculate_extra_metrics
     save_if_changed!
   end
+
+  # Hook for subclasses to recompute model-specific metrics that depend on
+  # the freshly-computed path/distance (e.g. Track's duration and avg_speed).
+  # Default is a no-op; Trip and other consumers don't need it.
+  def recalculate_extra_metrics; end
 
   private
 

@@ -57,6 +57,10 @@ module Timeline
 
     attr_reader :user, :start_at, :end_at, :distance_unit
 
+    def timezone
+      @timezone ||= user.safe_settings.timezone
+    end
+
     def fetch_visits
       user.scoped_visits
           .includes(:area, suggested_places: :tags, place: :tags)
@@ -71,49 +75,74 @@ module Timeline
 
     def fetch_tracks
       user.scoped_tracks
-          .where(start_at: start_at..end_at)
+          .where('start_at <= ? AND end_at >= ?', end_at, start_at)
           .order(start_at: :asc)
     end
 
     def group_by_day(visits, tracks)
-      Time.use_zone(user.safe_settings.timezone) do
+      Time.use_zone(timezone) do
         grouped = {}
+        window = start_at.in_time_zone.to_date..end_at.in_time_zone.to_date
 
         visits.each do |visit|
           day_key = visit.started_at.in_time_zone.to_date
-          grouped[day_key] ||= { visits: [], tracks: [] }
+          next unless window.cover?(day_key)
+
+          grouped[day_key] ||= empty_day_bucket
           grouped[day_key][:visits] << visit
         end
 
         tracks.each do |track|
-          day_key = track.start_at.in_time_zone.to_date
-          grouped[day_key] ||= { visits: [], tracks: [] }
-          grouped[day_key][:tracks] << track
+          start_day = track.start_at.in_time_zone.to_date
+          TrackDayShares.shares_for(track, timezone).each do |day_key, fraction|
+            next unless window.cover?(day_key)
+
+            grouped[day_key] ||= empty_day_bucket
+            grouped[day_key][:tracks] << track
+            grouped[day_key][:track_shares][track.id] = fraction
+            grouped[day_key][:originating_tracks] << track if day_key == start_day
+          end
         end
 
         grouped.sort_by(&:first)
       end
     end
 
-    def build_days(days)
-      days.map { |date, data| build_day(date, data[:visits], data[:tracks]) }
+    def empty_day_bucket
+      { visits: [], tracks: [], originating_tracks: [], track_shares: {} }
     end
 
-    def build_day(date, visits, tracks)
-      entries = interleave(visits, tracks)
+    def build_days(days)
+      days.map { |date, data| build_day(date, data) }
+    end
+
+    def build_day(date, data)
+      entries = interleave(date, data[:visits], data[:tracks], data[:track_shares])
       {
         date: date.to_s,
-        summary: build_summary(visits, tracks),
-        bounds: build_bounds(visits, tracks),
+        summary: build_summary(data[:visits], data[:tracks], data[:track_shares]),
+        bounds: build_bounds(data[:visits], data[:originating_tracks]),
         entries: entries
       }
     end
 
-    def interleave(visits, tracks)
+    def interleave(date, visits, tracks, track_shares)
+      day_local = date.in_time_zone(timezone)
+      day_start = day_local.beginning_of_day
+      day_end = day_local.end_of_day
       visit_entries = visits.map { |v| build_visit_entry(v) }
-      track_entries = tracks.map { |t| build_journey_entry(t) }
+      track_entries = tracks.map { |t| build_journey_entry(t, date: date, day_share: track_shares.fetch(t.id, 1.0)) }
 
-      (visit_entries + track_entries).sort_by { |e| e[:started_at] }
+      (visit_entries + track_entries).sort_by do |entry|
+        started_at_time = Time.iso8601(entry[:started_at])
+        anchor_time = if entry[:continuation_of_date]
+                        ended_at_time = Time.iso8601(entry[:ended_at])
+                        [[ended_at_time, day_end].min, day_start].max
+                      else
+                        started_at_time
+                      end
+        [anchor_time, started_at_time]
+      end
     end
 
     # NOTE: visit.duration is stored in MINUTES. See the public #build_visit_entry
@@ -159,7 +188,10 @@ module Timeline
       seen.values
     end
 
-    def build_journey_entry(track)
+    def build_journey_entry(track, date: nil, day_share: 1.0)
+      start_day = track.start_at.in_time_zone(timezone).to_date
+      continuation = date.present? && date != start_day
+
       {
         type: 'journey',
         track_id: track.id,
@@ -172,7 +204,10 @@ module Timeline
         avg_speed: convert_speed(track.avg_speed.to_f),
         speed_unit: speed_unit_label,
         elevation_gain: track.elevation_gain,
-        elevation_loss: track.elevation_loss
+        elevation_loss: track.elevation_loss,
+        continuation_of_date: continuation ? start_day.to_s : nil,
+        day_distance: continuation ? convert_distance(track.distance.to_f * day_share) : nil,
+        day_duration: continuation ? (track.duration.to_f * day_share).round : nil
       }
     end
 
@@ -186,9 +221,9 @@ module Timeline
       }
     end
 
-    def build_summary(visits, tracks)
-      total_distance_m = tracks.sum(&:distance)
-      moving_seconds = tracks.sum(&:duration)
+    def build_summary(visits, tracks, track_shares)
+      total_distance_m = tracks.sum { |t| t.distance.to_f * track_shares.fetch(t.id, 1.0) }
+      moving_seconds = tracks.sum { |t| t.duration.to_f * track_shares.fetch(t.id, 1.0) }
       # NOTE: visit.duration is stored in MINUTES (see Visits::Creator / Visits::Create).
       stationary_minutes = visits.sum(&:duration)
       status_counts = visits.group_by(&:status).transform_values(&:size)

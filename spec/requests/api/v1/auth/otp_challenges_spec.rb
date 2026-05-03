@@ -13,7 +13,7 @@ RSpec.describe 'POST /api/v1/auth/otp_challenge', type: :request do
   after { Rack::Attack.enabled = false }
 
   let(:user) do
-    u = create(:user, password: 'secret123')
+    u = create(:user, password: 'secret123456')
     u.otp_secret = User.generate_otp_secret
     u.otp_required_for_login = true
     u.save!

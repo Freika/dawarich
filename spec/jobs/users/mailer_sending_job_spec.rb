@@ -102,6 +102,9 @@ RSpec.describe Users::MailerSendingJob, type: :job do
       # Earliest removal: 2026-05-17 (deploy + 21 days). When you delete them,
       # also delete the registry entries, the mailer methods, and the templates.
       let(:active_user) { create(:user, skip_auto_trial: true, status: :active, active_until: 1.year.from_now) }
+      let(:auto_converting_user) do
+        create(:user, :trial, skip_auto_trial: true, active_until: 1.week.from_now, subscription_source: :paddle)
+      end
 
       %w[trial_expires_soon trial_expired].each do |type|
         it "skips #{type} when the user is already active (no stale 'trial expires soon' to a paying user)" do
@@ -109,7 +112,12 @@ RSpec.describe Users::MailerSendingJob, type: :job do
           described_class.perform_now(active_user.id, type)
         end
 
-        it "still delivers #{type} to a trialing user (drain path)" do
+        it "skips #{type} for an auto-converting trial (card on file — Paddle owns the lifecycle)" do
+          expect(UsersMailer).not_to receive(:with)
+          described_class.perform_now(auto_converting_user.id, type)
+        end
+
+        it "still delivers #{type} to a legacy trial user (drain path)" do
           expect(UsersMailer).to receive(:with).with({ user: user })
           expect(UsersMailer).to receive(type).and_return(mailer_double)
           expect(mailer_double).to receive(:deliver_later)
@@ -123,7 +131,12 @@ RSpec.describe Users::MailerSendingJob, type: :job do
           described_class.perform_now(active_user.id, type)
         end
 
-        it "still delivers #{type} to a trialing user (drain path)" do
+        it "skips #{type} for an auto-converting trial (card on file)" do
+          expect(UsersMailer).not_to receive(:with)
+          described_class.perform_now(auto_converting_user.id, type)
+        end
+
+        it "still delivers #{type} to a legacy trial user (drain path)" do
           expect(UsersMailer).to receive(:with).with({ user: user })
           expect(UsersMailer).to receive(type).and_return(mailer_double)
           expect(mailer_double).to receive(:deliver_later)

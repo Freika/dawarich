@@ -165,6 +165,35 @@ RSpec.describe Users::TransportationThresholdsUpdater do
       end
     end
 
+    context 'with enabled_transportation_modes allowlist' do
+      it 'persists a valid allowlist' do
+        params = { 'enabled_transportation_modes' => %w[walking cycling] }
+
+        result = described_class.new(user, params).call
+
+        expect(result.success?).to be true
+        expect(user.reload.settings['enabled_transportation_modes']).to eq(%w[walking cycling])
+      end
+
+      it 'rejects an empty intersection' do
+        params = { 'enabled_transportation_modes' => %w[bogus] }
+
+        result = described_class.new(user, params).call
+
+        expect(result.success?).to be false
+        expect(result.error).to match(/Enable at least one transportation mode/i)
+      end
+
+      it 'does not trigger recalculation for allowlist-only changes' do
+        params = { 'enabled_transportation_modes' => %w[walking cycling] }
+
+        result = nil
+        expect { result = described_class.new(user, params).call }
+          .not_to have_enqueued_job(Tracks::TransportationModeRecalculationJob)
+        expect(result.recalculation_triggered?).to be false
+      end
+    end
+
     context 'when save fails' do
       let(:params) { { 'route_opacity' => 0.5 } }
 

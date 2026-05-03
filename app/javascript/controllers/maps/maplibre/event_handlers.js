@@ -6,7 +6,6 @@ import {
 } from "maps/helpers"
 import {
   escapeHtml,
-  formatTimeOnly,
   formatTimestamp,
 } from "maps_maplibre/utils/geojson_transformers"
 
@@ -26,6 +25,29 @@ export class EventHandlers {
     // Bound handler for track point clicks — stored so the same reference can be
     // used for both map.on() and map.off() during toggle cleanup
     this._handleTrackPointClick = this.handleTrackPointClick.bind(this)
+
+    this._boundOnSegmentModeChanged = this._onSegmentModeChanged.bind(this)
+    document.addEventListener(
+      "dawarich:segment-mode-changed",
+      this._boundOnSegmentModeChanged,
+    )
+  }
+
+  /**
+   * Tear down document-level listeners and DOM markers. Must be called from
+   * the parent Stimulus controller's `disconnect()` so Turbo navigations
+   * don't accumulate stale `dawarich:segment-mode-changed` listeners.
+   */
+  destroy() {
+    if (this._boundOnSegmentModeChanged) {
+      document.removeEventListener(
+        "dawarich:segment-mode-changed",
+        this._boundOnSegmentModeChanged,
+      )
+      this._boundOnSegmentModeChanged = null
+    }
+    this._clearRouteMarkers()
+    this._clearTrackMarkers()
   }
 
   /**
@@ -580,24 +602,11 @@ export class EventHandlers {
    * @private
    */
   async _loadTrackSegments(trackId, fullFeature) {
-    const segmentsContainer = document.getElementById(
-      "track-segments-container",
-    )
-
     try {
-      // Fetch track with segments from API
       const trackFeature =
         await this.controller.api.fetchTrackWithSegments(trackId)
+      if (!trackFeature) return
 
-      if (!trackFeature) {
-        console.warn("Failed to fetch track segments")
-        if (segmentsContainer) {
-          segmentsContainer.textContent = "No segments available"
-        }
-        return
-      }
-
-      // Parse segments from the fetched track
       let segments = []
       try {
         const props = trackFeature.properties
@@ -609,37 +618,77 @@ export class EventHandlers {
         console.warn("Failed to parse track segments:", err)
       }
 
-      // Update tracks layer to show segment highlighting
       const tracksLayer = this.controller.layerManager.getLayer("tracks")
       if (tracksLayer?.showSegments) {
         tracksLayer.showSegments(fullFeature, segments)
-
-        // Set up callbacks for map segment hover → list highlight
         tracksLayer.setSegmentHoverCallback((segmentIndex) => {
           this._highlightSegmentOnMap(segmentIndex)
-          this._highlightSegmentListItem(segmentIndex)
+          this._dispatchSegmentHover(trackId, segments[segmentIndex]?.id)
         })
-
         tracksLayer.setSegmentLeaveCallback(() => {
           this._clearSegmentHighlight()
-          this._clearSegmentListHighlight()
+          this._dispatchSegmentUnhover(trackId)
         })
       }
 
-      // Create segment markers with emojis
-      this._createTrackSegmentMarkers(fullFeature, segments)
-
-      // Update segments list in info panel
-      this._updateSegmentsList(segments)
-
-      // Set up hover event listeners for segment list items
-      this._setupSegmentListHover(segments)
+      this._createTrackSegmentMarkers(trackId, fullFeature, segments)
     } catch (error) {
       console.error("Failed to load track segments:", error)
-      if (segmentsContainer) {
-        segmentsContainer.textContent = "Failed to load segments"
-      }
     }
+  }
+
+  _dispatchSegmentHover(trackId, segmentId) {
+    if (!segmentId) return
+    document.dispatchEvent(
+      new CustomEvent("dawarich:segment-hover", {
+        detail: { trackId, segmentId },
+      }),
+    )
+  }
+
+  _dispatchSegmentUnhover(trackId) {
+    document.dispatchEvent(
+      new CustomEvent("dawarich:segment-unhover", {
+        detail: { trackId },
+      }),
+    )
+  }
+
+  _onSegmentModeChanged(event) {
+    const { trackId, segmentId, mode } = event.detail
+    const tracksLayer = this.controller.layerManager.getLayer("tracks")
+    if (tracksLayer?.updateSegmentMode) {
+      tracksLayer.updateSegmentMode(trackId, segmentId, mode)
+    }
+    this._updateSegmentMarkerEmoji(trackId, segmentId, mode)
+  }
+
+  _updateSegmentMarkerEmoji(trackId, segmentId, mode) {
+    const marker = this.trackMarkers?.find(
+      (m) => m.trackId === trackId && m.segmentId === segmentId,
+    )
+    if (!marker) return
+    if (typeof marker.setEmoji === "function") {
+      marker.setEmoji(this._modeEmoji(mode))
+    }
+  }
+
+  _modeEmoji(mode) {
+    return (
+      {
+        unknown: "❓",
+        stationary: "🛑",
+        walking: "🚶",
+        running: "🏃",
+        cycling: "🚴",
+        driving: "🚗",
+        bus: "🚌",
+        train: "🚆",
+        flying: "✈️",
+        boat: "⛵",
+        motorcycle: "\u{1F3CD}️",
+      }[mode] || "❓"
+    )
   }
 
   /**
@@ -717,57 +766,6 @@ export class EventHandlers {
         ${showPointsToggle}
         <div id="track-point-info-container"></div>
         ${replayButton}
-        <div id="track-segments-container" class="mt-2">
-          <div class="flex items-center gap-2 text-sm text-base-content/60">
-            <span class="loading loading-spinner loading-xs"></span>
-            Loading segments...
-          </div>
-        </div>
-      </div>
-    `
-  }
-
-  /**
-   * Update segments list in the info panel after lazy loading
-   * Note: Data comes from our own backend API, not user input
-   * @private
-   */
-  _updateSegmentsList(segments) {
-    const segmentsContainer = document.getElementById(
-      "track-segments-container",
-    )
-    if (!segmentsContainer) return
-
-    if (segments.length === 0) {
-      segmentsContainer.textContent = "No segments"
-      return
-    }
-
-    const distanceUnit = this.controller.settings.distance_unit || "km"
-
-    // Build segments list HTML - data is from our trusted backend
-    const segmentsHtml = segments
-      .map(
-        (s, idx) => `
-        <li class="flex items-center gap-2 px-2 py-1 rounded cursor-pointer transition-colors hover:bg-base-200 segment-list-item"
-            data-segment-index="${idx}"
-            data-segment-mode="${s.mode}">
-          <span class="text-xs opacity-60 font-mono w-24">${formatTimeOnly(s.start_time, this.controller.timezoneValue)} - ${formatTimeOnly(s.end_time, this.controller.timezoneValue)}</span>
-          <span>${escapeHtml(s.emoji)}</span>
-          <span class="capitalize flex-1">${escapeHtml(s.mode)}</span>
-          <span class="text-xs opacity-70">${formatDistance((s.distance || 0) / 1000, distanceUnit)}</span>
-        </li>
-      `,
-      )
-      .join("")
-
-    // Using innerHTML for trusted backend data only
-    segmentsContainer.innerHTML = `
-      <div class="mt-2">
-        <span class="font-semibold">Segments:</span>
-        <ul id="track-segments-list" class="list-none pl-0 mt-1 space-y-1">
-          ${segmentsHtml}
-        </ul>
       </div>
     `
   }
@@ -802,9 +800,6 @@ export class EventHandlers {
 
     // Clear segment markers
     this._clearTrackMarkers()
-
-    // Clean up segment list listeners
-    this._cleanupSegmentListHover()
 
     // Close info panel
     this.controller.closeInfo()
@@ -936,7 +931,7 @@ export class EventHandlers {
   /**
    * Create emoji markers at segment transition points
    */
-  _createTrackSegmentMarkers(feature, segments) {
+  _createTrackSegmentMarkers(trackId, feature, segments) {
     this._clearTrackMarkers()
 
     if (!feature || !feature.geometry || feature.geometry.type !== "LineString")
@@ -946,7 +941,6 @@ export class EventHandlers {
     const coords = feature.geometry.coordinates
     if (coords.length < 2) return
 
-    // Add marker at start of each segment
     segments.forEach((segment) => {
       const coordIndex = Math.min(segment.start_index || 0, coords.length - 1)
       const coord = coords[coordIndex]
@@ -956,11 +950,12 @@ export class EventHandlers {
         segment.emoji || "❓",
         "track-emoji-marker",
       )
+      marker.trackId = trackId
+      marker.segmentId = segment.id
       marker.setLngLat(coord).addTo(this.map)
       this.trackMarkers.push(marker)
     })
 
-    // Add end marker (🏁) at the last point
     const endCoord = coords[coords.length - 1]
     const endMarker = this._createEmojiMarker("🏁", "track-emoji-marker")
     endMarker.setLngLat(endCoord).addTo(this.map)
@@ -1000,70 +995,8 @@ export class EventHandlers {
       return
     }
 
-    // Recreate markers with new coordinates
-    this._createTrackSegmentMarkers(feature, segments)
-  }
-
-  /**
-   * Clean up segment list hover/click listeners and pending timeout
-   * @private
-   */
-  _cleanupSegmentListHover() {
-    if (this._segmentListTimeout) {
-      clearTimeout(this._segmentListTimeout)
-      this._segmentListTimeout = null
-    }
-
-    if (this._segmentListListeners) {
-      this._segmentListListeners.forEach(({ element, event, handler }) => {
-        element.removeEventListener(event, handler)
-      })
-      this._segmentListListeners = null
-    }
-  }
-
-  /**
-   * Set up hover and click event listeners for segment list items in the info panel
-   * @param {Array} segments - Array of segment data
-   */
-  _setupSegmentListHover(segments) {
-    // Clean up any existing listeners first
-    this._cleanupSegmentListHover()
-
-    // Use setTimeout to ensure the DOM has been updated
-    this._segmentListTimeout = setTimeout(() => {
-      this._segmentListTimeout = null
-      const listItems = document.querySelectorAll(".segment-list-item")
-      this._segmentListListeners = []
-
-      listItems.forEach((item) => {
-        const segmentIndex = parseInt(item.dataset.segmentIndex, 10)
-
-        const enterHandler = () => {
-          this._highlightSegmentOnMap(segmentIndex)
-          this._highlightSegmentListItem(segmentIndex)
-        }
-
-        const leaveHandler = () => {
-          this._clearSegmentHighlight()
-          this._clearSegmentListHighlight()
-        }
-
-        const clickHandler = () => {
-          this._zoomToSegment(segments[segmentIndex])
-        }
-
-        item.addEventListener("mouseenter", enterHandler)
-        item.addEventListener("mouseleave", leaveHandler)
-        item.addEventListener("click", clickHandler)
-
-        this._segmentListListeners.push(
-          { element: item, event: "mouseenter", handler: enterHandler },
-          { element: item, event: "mouseleave", handler: leaveHandler },
-          { element: item, event: "click", handler: clickHandler },
-        )
-      })
-    }, 50)
+    const trackId = feature.properties?.id
+    this._createTrackSegmentMarkers(trackId, feature, segments)
   }
 
   /**
@@ -1136,30 +1069,5 @@ export class EventHandlers {
     // Reset to uniform appearance
     this.map.setPaintProperty(segmentLayerId, "line-opacity", 0.9)
     this.map.setPaintProperty(segmentLayerId, "line-width", 6)
-  }
-
-  /**
-   * Highlight a segment list item in the info panel
-   * @param {number} segmentIndex - Index of the segment to highlight
-   */
-  _highlightSegmentListItem(segmentIndex) {
-    const listItems = document.querySelectorAll(".segment-list-item")
-    listItems.forEach((item) => {
-      if (parseInt(item.dataset.segmentIndex, 10) === segmentIndex) {
-        item.classList.add("bg-primary", "bg-opacity-20")
-      } else {
-        item.classList.add("opacity-50")
-      }
-    })
-  }
-
-  /**
-   * Clear segment list item highlight
-   */
-  _clearSegmentListHighlight() {
-    const listItems = document.querySelectorAll(".segment-list-item")
-    listItems.forEach((item) => {
-      item.classList.remove("bg-primary", "bg-opacity-20", "opacity-50")
-    })
   }
 }

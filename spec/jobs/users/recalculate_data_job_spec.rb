@@ -152,8 +152,8 @@ RSpec.describe Users::RecalculateDataJob, type: :job do
       end
     end
 
-    it 'enqueues to the default queue' do
-      expect(described_class.new.queue_name).to eq('default')
+    it 'enqueues to the stats queue' do
+      expect(described_class.new.queue_name).to eq('stats')
     end
   end
 end

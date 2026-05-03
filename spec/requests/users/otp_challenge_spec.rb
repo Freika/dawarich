@@ -48,6 +48,19 @@ RSpec.describe 'Users::Sessions OTP Challenge', type: :request do
         expect(response).to have_http_status(:unprocessable_entity)
         expect(response.body).to include('Invalid two-factor code')
       end
+
+      it 'kicks the user back to sign-in after 5 invalid attempts' do
+        post user_session_path, params: { user: { email: user.email, password: password } }
+
+        4.times do
+          post user_otp_challenge_path, params: { otp_attempt: '000000' }
+          expect(response).to have_http_status(:unprocessable_entity)
+        end
+
+        post user_otp_challenge_path, params: { otp_attempt: '000000' }
+        expect(response).to redirect_to(new_user_session_path)
+        expect(flash[:alert]).to include('Too many invalid')
+      end
     end
 
     context 'when backup code is used' do

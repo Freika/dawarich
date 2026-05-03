@@ -7,7 +7,7 @@ describe 'Users Two-Factor API', type: :request do
     allow(DawarichSettings).to receive(:two_factor_available?).and_return(true)
   end
 
-  let(:user) { create(:user, password: 'secret123', status: :active) }
+  let(:user) { create(:user, password: 'secret123456', status: :active) }
   let(:headers_authorization) { "Bearer #{user.api_key}" }
 
   path '/api/v1/users/me/two_factor/setup' do
@@ -34,7 +34,7 @@ describe 'Users Two-Factor API', type: :request do
                }
 
         let(:Authorization) { headers_authorization }
-        let(:payload) { { password: 'secret123' } }
+        let(:payload) { { password: 'secret123456' } }
 
         after { |example| SwaggerResponseExample.capture(example, response) }
 
@@ -50,14 +50,14 @@ describe 'Users Two-Factor API', type: :request do
 
       response '409', 'two-factor already enabled' do
         let(:user) do
-          u = create(:user, password: 'secret123', status: :active)
+          u = create(:user, password: 'secret123456', status: :active)
           u.otp_secret = User.generate_otp_secret
           u.otp_required_for_login = true
           u.save!(validate: false)
           u
         end
         let(:Authorization) { "Bearer #{user.api_key}" }
-        let(:payload) { { password: 'secret123' } }
+        let(:payload) { { password: 'secret123456' } }
 
         run_test!
       end
@@ -94,13 +94,13 @@ describe 'Users Two-Factor API', type: :request do
                }
 
         let(:user) do
-          u = create(:user, password: 'secret123', status: :active)
+          u = create(:user, password: 'secret123456', status: :active)
           u.otp_secret = User.generate_otp_secret
           u.save!(validate: false)
           u
         end
         let(:Authorization) { "Bearer #{user.api_key}" }
-        let(:payload) { { password: 'secret123', otp_code: ROTP::TOTP.new(user.otp_secret).now } }
+        let(:payload) { { password: 'secret123456', otp_code: ROTP::TOTP.new(user.otp_secret).now } }
 
         after { |example| SwaggerResponseExample.capture(example, response) }
 
@@ -109,7 +109,7 @@ describe 'Users Two-Factor API', type: :request do
 
       response '422', 'invalid otp code' do
         let(:Authorization) { headers_authorization }
-        let(:payload) { { password: 'secret123', otp_code: '000000' } }
+        let(:payload) { { password: 'secret123456', otp_code: '000000' } }
 
         run_test!
       end
@@ -138,7 +138,7 @@ describe 'Users Two-Factor API', type: :request do
                }
 
         let(:Authorization) { headers_authorization }
-        let(:payload) { { password: 'secret123' } }
+        let(:payload) { { password: 'secret123456' } }
 
         after { |example| SwaggerResponseExample.capture(example, response) }
 
@@ -157,8 +157,8 @@ describe 'Users Two-Factor API', type: :request do
   path '/api/v1/users/me/two_factor' do
     delete 'Disables two-factor authentication' do
       tags 'Users'
-      description 'Removes the TOTP secret, clears backup codes, and disables 2FA. Requires either ' \
-                  'a current password or a valid OTP code.'
+      description 'Removes the TOTP secret, clears backup codes, and disables 2FA. Requires both ' \
+                  'the current password AND a valid TOTP code (or unused backup code).'
       consumes 'application/json'
       produces 'application/json'
       security [bearer_auth: []]
@@ -167,26 +167,34 @@ describe 'Users Two-Factor API', type: :request do
       parameter name: :payload, in: :body, schema: {
         type: :object,
         properties: {
-          password: { type: :string, format: :password,
-                      description: 'Either password or otp_code is required' },
-          otp_code: { type: :string, description: 'Either password or otp_code is required' }
-        }
+          password: { type: :string, format: :password, description: 'Current password' },
+          otp_code: { type: :string, description: 'Current TOTP code or unused backup code' }
+        },
+        required: %w[password otp_code]
       }
 
       response '200', 'two-factor disabled' do
         schema type: :object, properties: { message: { type: :string } }
 
+        before do
+          user.otp_secret = User.generate_otp_secret
+          user.otp_required_for_login = true
+          user.save!
+        end
+
         let(:Authorization) { headers_authorization }
-        let(:payload) { { password: 'secret123' } }
+        let(:payload) do
+          { password: 'secret123456', otp_code: ROTP::TOTP.new(user.otp_secret).now }
+        end
 
         after { |example| SwaggerResponseExample.capture(example, response) }
 
         run_test!
       end
 
-      response '401', 'no valid credential supplied' do
+      response '401', 'missing or invalid credentials' do
         let(:Authorization) { headers_authorization }
-        let(:payload) { {} }
+        let(:payload) { { password: 'secret123456' } }
 
         run_test!
       end

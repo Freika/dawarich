@@ -1,0 +1,26 @@
+[
+  {
+    "endTime": "2025-07-29T15:00:00.000Z",
+    "startTime": "2025-07-29T13:00:00.000Z",
+    "timelinePath": [
+      {
+        "point": "geo:29.725358,-95.482259",
+        "durationMinutesOffsetFromStartTime": "1"
+      },
+      {
+        "point": "geo:29.725688,-95.477992",
+        "durationMinutesOffsetFromStartTime": "5"
+      }
+    ]
+  },
+  {
+    "endTime": "2025-07-29T17:00:00.000Z",
+    "startTime": "2025-07-29T16:00:00.000Z",
+    "timelinePath": [
+      {
+        "point": "geo:29.732000,-95.485000",
+        "durationMinutesOffsetFromStartTime": "10"
+      }
+    ]
+  }
+]

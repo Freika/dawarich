@@ -1,7 +1,10 @@
 # frozen_string_literal: true
 
 class Jobs::Create
+  BULK_ENQUEUE_BATCH_SIZE = 1_000
+
   class InvalidJobName < StandardError; end
+  class PaidProviderForceRerunBlocked < StandardError; end
 
   attr_reader :job_name, :user
 
@@ -11,17 +14,55 @@ class Jobs::Create
   end
 
   def call
-    points =
-      case job_name
-      when 'start_reverse_geocoding'
-        user.points
-      when 'continue_reverse_geocoding'
-        user.points.not_reverse_geocoded
-      else
-        raise InvalidJobName, 'Invalid job name'
-      end
+    case job_name
+    when 'start_reverse_geocoding'
+      guard_paid_provider_force_rerun!
+      bulk_enqueue(user.points, force: true)
+    when 'continue_reverse_geocoding'
+      bulk_enqueue(user.points.not_reverse_geocoded, force: false)
+    else
+      raise InvalidJobName, 'Invalid job name'
+    end
+  end
 
-    # TODO: bulk enqueue reverse geocoding with ActiveJob
-    points.find_each(&:async_reverse_geocode)
+  private
+
+  def bulk_enqueue(points_relation, force:)
+    return unless DawarichSettings.reverse_geocoding_enabled?
+
+    points_relation.in_batches(of: BULK_ENQUEUE_BATCH_SIZE) do |batch|
+      jobs = batch.pluck(:id).map { |id| ReverseGeocodingJob.new('Point', id, force: force) }
+      ActiveJob.perform_all_later(jobs)
+    end
+  end
+
+  # Cloud users share the operator's geocoding budget, so a click that
+  # force-reruns reverse geocoding on a paid provider could fan out to
+  # millions of paid lookups. Self-hosted users own their provider key and
+  # bill — they keep the override.
+  def guard_paid_provider_force_rerun!
+    return unless paid_provider?
+    return if DawarichSettings.self_hosted?
+
+    point_count = user.points.size
+    Rails.logger.warn(
+      "[Jobs::Create] Refusing to force-rerun reverse geocoding for user=#{user.id} " \
+      "with #{point_count} points: a paid provider (#{paid_provider_name}) is configured " \
+      'on a non-self-hosted instance.'
+    )
+
+    raise PaidProviderForceRerunBlocked,
+          'Force re-run is not available for paid geocoding providers on hosted instances.'
+  end
+
+  def paid_provider?
+    DawarichSettings.geoapify_enabled? || DawarichSettings.locationiq_enabled?
+  end
+
+  def paid_provider_name
+    return 'locationiq' if DawarichSettings.locationiq_enabled?
+    return 'geoapify' if DawarichSettings.geoapify_enabled?
+
+    'unknown'
   end
 end

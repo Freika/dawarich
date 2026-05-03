@@ -82,7 +82,7 @@
               upload_field_name_value: "archive",
               upload_multiple_value: false,
               upload_validate_zip_value: true,
-              upload_user_trial_value: current_user.trial?,
+              upload_user_trial_value: current_user.legacy_trial?,
               upload_target: "form"
             } do |f| %>
               <div class="form-control">
@@ -124,7 +124,7 @@
               <div class="card bg-base-100 shadow-xl">
                 <div class="card-body p-5 sm:p-6">
                   <h2 class="card-title text-xl">Trial status</h2>
-                  <p class="text-sm text-base-content/70">Your trial period ends at <span class="font-medium text-base-content"><%= human_datetime current_user.active_until %></span>.</p>
+                  <p class="text-sm text-base-content/70">Your trial period ends at <span class="font-medium text-base-content"><%= human_datetime current_user.active_until, current_user.safe_settings.timezone %></span>.</p>
                   <div class="mt-2">
                     <% if current_user.auto_converting_trial? %>
                       <%= link_to 'Manage subscription', "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}", class: 'btn btn-primary btn-sm glass' %>

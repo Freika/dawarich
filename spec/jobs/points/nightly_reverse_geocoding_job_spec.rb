@@ -82,11 +82,11 @@ RSpec.describe Points::NightlyReverseGeocodingJob, type: :job do
         it 'enqueues jobs with correct parameters' do
           expect { described_class.perform_now }
             .to have_enqueued_job(ReverseGeocodingJob)
-            .with('Point', point_without_geocoding1.id)
+            .with('Point', point_without_geocoding1.id, force: false)
             .and have_enqueued_job(ReverseGeocodingJob)
-            .with('Point', point_without_geocoding2.id)
+            .with('Point', point_without_geocoding2.id, force: false)
             .and have_enqueued_job(ReverseGeocodingJob)
-            .with('Point', point_without_geocoding3.id)
+            .with('Point', point_without_geocoding3.id, force: false)
         end
 
         it 'uses find_each with correct batch size' do

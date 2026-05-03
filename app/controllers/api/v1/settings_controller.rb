@@ -63,6 +63,7 @@ class Api::V1::SettingsController < ApiController
       :min_minutes_spent_in_city, :max_gap_minutes_in_city,
       :gps_filtering_enabled, :gps_accuracy_threshold,
       enabled_map_layers: [],
+      enabled_transportation_modes: [],
       transportation_thresholds: %i[walking_max_speed cycling_max_speed driving_max_speed flying_min_speed],
       transportation_expert_thresholds: %i[stationary_max_speed running_vs_cycling_accel cycling_vs_driving_accel
                                            train_min_speed min_segment_duration time_gap_threshold

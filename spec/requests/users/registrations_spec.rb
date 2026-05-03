@@ -62,8 +62,8 @@ RSpec.describe 'Users::Registrations', type: :request do
       let(:user_params) do
         {
           email: invitation.email,
-          password: 'password123',
-          password_confirmation: 'password123'
+          password: 'password123456',
+          password_confirmation: 'password123456'
         }
       end
 
@@ -107,8 +107,8 @@ RSpec.describe 'Users::Registrations', type: :request do
           post user_registration_path, params: {
             user: {
               email: 'user@example.com',
-              password: 'password123',
-              password_confirmation: 'password123'
+              password: 'password123456',
+              password_confirmation: 'password123456'
             },
             invitation_token: 'invalid-token'
           }
@@ -125,8 +125,8 @@ RSpec.describe 'Users::Registrations', type: :request do
           post user_registration_path, params: {
             user: {
               email: 'different@example.com',
-              password: 'password123',
-              password_confirmation: 'password123'
+              password: 'password123456',
+              password_confirmation: 'password123456'
             },
             invitation_token: invitation.token
           }
@@ -162,8 +162,8 @@ RSpec.describe 'Users::Registrations', type: :request do
           post user_registration_path, params: {
             user: {
               email: 'test@example.com',
-              password: 'password123',
-              password_confirmation: 'password123'
+              password: 'password123456',
+              password_confirmation: 'password123456'
             }
           }
         end.not_to change(User, :count)
@@ -189,8 +189,8 @@ RSpec.describe 'Users::Registrations', type: :request do
           post user_registration_path, params: {
             user: {
               email: 'newuser@example.com',
-              password: 'password123',
-              password_confirmation: 'password123'
+              password: 'password123456',
+              password_confirmation: 'password123456'
             }
           }
         end.to change(User, :count).by(1)
@@ -214,8 +214,8 @@ RSpec.describe 'Users::Registrations', type: :request do
           post user_registration_path, params: {
             user: {
               email: invitation.email,
-              password: 'password123',
-              password_confirmation: 'password123'
+              password: 'password123456',
+              password_confirmation: 'password123456'
             },
             invitation_token: invitation.token
           }
@@ -269,8 +269,8 @@ RSpec.describe 'Users::Registrations', type: :request do
           post user_registration_path, params: {
             user: {
               email: unique_email,
-              password: 'password123',
-              password_confirmation: 'password123'
+              password: 'password123456',
+              password_confirmation: 'password123456'
             }
           }
         end.to change(User, :count).by(1)
@@ -297,8 +297,8 @@ RSpec.describe 'Users::Registrations', type: :request do
       post user_registration_path, params: {
         user: {
           email: invitation.email,
-          password: 'password123',
-          password_confirmation: 'password123'
+          password: 'password123456',
+          password_confirmation: 'password123456'
         },
         invitation_token: invitation.token
       }
@@ -334,8 +334,8 @@ RSpec.describe 'Users::Registrations', type: :request do
           post user_registration_path, params: {
             user: {
               email: invitation.email,
-              password: 'password123',
-              password_confirmation: 'password123'
+              password: 'password123456',
+              password_confirmation: 'password123456'
             },
             invitation_token: invitation.token
           }
@@ -356,8 +356,8 @@ RSpec.describe 'Users::Registrations', type: :request do
           post user_registration_path, params: {
             user: {
               email: invitation.email,
-              password: 'password123',
-              password_confirmation: 'password123'
+              password: 'password123456',
+              password_confirmation: 'password123456'
             },
             invitation_token: invitation.token
           }
@@ -393,8 +393,8 @@ RSpec.describe 'Users::Registrations', type: :request do
         post user_registration_path, params: {
           user: {
             email: unique_email,
-            password: 'password123',
-            password_confirmation: 'password123',
+            password: 'password123456',
+            password_confirmation: 'password123456',
             signup_intent: 'cloud'
           }
         }
@@ -408,8 +408,8 @@ RSpec.describe 'Users::Registrations', type: :request do
         post user_registration_path, params: {
           user: {
             email: unique_email,
-            password: 'password123',
-            password_confirmation: 'password123',
+            password: 'password123456',
+            password_confirmation: 'password123456',
             signup_intent: 'self_hosted_demo'
           }
         }
@@ -423,8 +423,8 @@ RSpec.describe 'Users::Registrations', type: :request do
         post user_registration_path, params: {
           user: {
             email: unique_email,
-            password: 'password123',
-            password_confirmation: 'password123',
+            password: 'password123456',
+            password_confirmation: 'password123456',
             signup_intent: 'hacker'
           }
         }
@@ -452,8 +452,8 @@ RSpec.describe 'Users::Registrations', type: :request do
         post user_registration_path, params: {
           user: {
             email: unique_email,
-            password: 'password123',
-            password_confirmation: 'password123',
+            password: 'password123456',
+            password_confirmation: 'password123456',
             signup_intent: 'cloud'
           }
         }
@@ -477,8 +477,8 @@ RSpec.describe 'Users::Registrations', type: :request do
         post user_registration_path, params: {
           user: {
             email: existing_user.email,
-            password: 'password123',
-            password_confirmation: 'password123'
+            password: 'password123456',
+            password_confirmation: 'password123456'
           }
         }
 
@@ -492,8 +492,8 @@ RSpec.describe 'Users::Registrations', type: :request do
           post user_registration_path, params: {
             user: {
               email: existing_user.email,
-              password: 'password123',
-              password_confirmation: 'password123'
+              password: 'password123456',
+              password_confirmation: 'password123456'
             }
           }
         end.not_to change(User, :count)
@@ -521,7 +521,7 @@ RSpec.describe 'Users::Registrations', type: :request do
         post user_registration_path, params: {
           user: {
             email: 'newuser@example.com',
-            password: 'password123',
+            password: 'password123456',
             password_confirmation: 'different123'
           }
         }
@@ -534,7 +534,7 @@ RSpec.describe 'Users::Registrations', type: :request do
   end
 
   describe 'Account Deletion' do
-    let(:user) { create(:user, password: 'password123') }
+    let(:user) { create(:user, password: 'password123456') }
 
     before do
       sign_in user
@@ -583,7 +583,7 @@ RSpec.describe 'Users::Registrations', type: :request do
 
       it 'soft-deletes immediately when password is correct (no email)' do
         expect do
-          delete user_registration_path, params: { password: 'password123' }
+          delete user_registration_path, params: { password: 'password123456' }
         end.to have_enqueued_job(Users::DestroyJob).with(user.id)
 
         expect(user.reload.deleted_at).to be_present
@@ -591,12 +591,12 @@ RSpec.describe 'Users::Registrations', type: :request do
 
       it 'does NOT enqueue an email' do
         expect do
-          delete user_registration_path, params: { password: 'password123' }
+          delete user_registration_path, params: { password: 'password123456' }
         end.not_to have_enqueued_job(Users::MailerSendingJob)
       end
 
       it 'signs out the user after deletion' do
-        delete user_registration_path, params: { password: 'password123' }
+        delete user_registration_path, params: { password: 'password123456' }
 
         expect(controller.current_user).to be_nil
       end
@@ -721,8 +721,8 @@ RSpec.describe 'Users::Registrations', type: :request do
         post user_registration_path, params: {
           user: {
             email: unique_email,
-            password: 'password123',
-            password_confirmation: 'password123'
+            password: 'password123456',
+            password_confirmation: 'password123456'
           }
         }
 
@@ -744,8 +744,8 @@ RSpec.describe 'Users::Registrations', type: :request do
         post user_registration_path, params: {
           user: {
             email: unique_email,
-            password: 'password123',
-            password_confirmation: 'password123'
+            password: 'password123456',
+            password_confirmation: 'password123456'
           }
         }
 
@@ -766,8 +766,8 @@ RSpec.describe 'Users::Registrations', type: :request do
         post user_registration_path, params: {
           user: {
             email: unique_email,
-            password: 'password123',
-            password_confirmation: 'password123'
+            password: 'password123456',
+            password_confirmation: 'password123456'
           }
         }
 
@@ -792,8 +792,8 @@ RSpec.describe 'Users::Registrations', type: :request do
         post user_registration_path, params: {
           user: {
             email: unique_email,
-            password: 'password123',
-            password_confirmation: 'password123'
+            password: 'password123456',
+            password_confirmation: 'password123456'
           }
         }
 
@@ -809,8 +809,8 @@ RSpec.describe 'Users::Registrations', type: :request do
         post user_registration_path, params: {
           user: {
             email: invitation.email,
-            password: 'password123',
-            password_confirmation: 'password123'
+            password: 'password123456',
+            password_confirmation: 'password123456'
           },
           invitation_token: invitation.token
         }
@@ -844,8 +844,8 @@ RSpec.describe 'Users::Registrations', type: :request do
         post user_registration_path, params: {
           user: {
             email: invitation.email,
-            password: 'password123',
-            password_confirmation: 'password123'
+            password: 'password123456',
+            password_confirmation: 'password123456'
           },
           invitation_token: invitation.token
         }

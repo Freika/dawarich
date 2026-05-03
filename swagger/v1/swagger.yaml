@@ -4413,7 +4413,8 @@ paths:
       tags:
       - Users
       description: Removes the TOTP secret, clears backup codes, and disables 2FA.
-        Requires either a current password or a valid OTP code.
+        Requires both the current password AND a valid TOTP code (or unused backup
+        code).
       security:
       - bearer_auth: []
       parameters:
@@ -4434,7 +4435,7 @@ paths:
                   message:
                     type: string
         '401':
-          description: no valid credential supplied
+          description: missing or invalid credentials
       requestBody:
         content:
           application/json:
@@ -4444,10 +4445,13 @@ paths:
                 password:
                   type: string
                   format: password
-                  description: Either password or otp_code is required
+                  description: Current password
                 otp_code:
                   type: string
-                  description: Either password or otp_code is required
+                  description: Current TOTP code or unused backup code
+              required:
+              - password
+              - otp_code
   "/api/v1/users/me":
     get:
       summary: Returns the current user

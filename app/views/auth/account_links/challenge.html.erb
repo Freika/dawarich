@@ -1,0 +1,48 @@
+<% content_for :title, "Confirm account linking" %>
+
+<div class="min-h-content w-full my-5">
+  <div class="max-w-lg mx-auto">
+    <div class="card bg-base-200 shadow-xl">
+      <div class="card-body">
+        <h2 class="card-title">Link <%= @provider_label %> to your Dawarich account</h2>
+
+        <p class="text-sm text-base-content/70 mt-2">
+          We found an existing Dawarich account for <strong><%= @user_email %></strong>.
+          Enter your password to link your <%= @provider_label %> identity to that account
+          and sign in.
+        </p>
+
+        <% if flash[:alert].present? %>
+          <div class="alert alert-error mt-4">
+            <%= flash[:alert] %>
+          </div>
+        <% end %>
+
+        <%= form_with url: confirm_auth_account_link_path, method: :post, data: { turbo: false }, class: "space-y-4 mt-4" do |f| %>
+          <div class="form-control">
+            <%= f.label :password, class: 'label' do %>
+              <span class="label-text">Current password</span>
+            <% end %>
+            <%= f.password_field :password, class: 'input input-bordered w-full', required: true, autocomplete: 'current-password', autofocus: true %>
+          </div>
+          <div class="form-control">
+            <%= f.submit "Link #{@provider_label} and sign in", class: 'btn btn-primary w-full' %>
+          </div>
+        <% end %>
+
+        <div class="divider">or</div>
+
+        <%= form_with url: email_fallback_auth_account_link_path, method: :post, data: { turbo: false } do %>
+          <%= submit_tag "Email me a confirmation link instead", class: 'btn btn-ghost w-full' %>
+        <% end %>
+
+        <p class="text-xs text-base-content/50 mt-4">
+          Forgot your password?
+          <%= link_to 'Reset it', new_user_password_path, class: 'link' %>
+          or
+          <%= link_to 'go back to sign in', new_user_session_path, class: 'link' %>.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>

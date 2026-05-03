@@ -275,6 +275,17 @@ export class SettingsController {
         this.settings.transportationExpertMode || false
     }
 
+    // Sync enabled transportation modes allowlist
+    if (controller.hasEnabledModeCheckboxTarget) {
+      const enabled = this.settings.enabledTransportationModes
+      if (Array.isArray(enabled)) {
+        const enabledSet = new Set(enabled.map(String))
+        controller.enabledModeCheckboxTargets.forEach((checkbox) => {
+          checkbox.checked = enabledSet.has(checkbox.value)
+        })
+      }
+    }
+
     // Show/hide expert settings based on toggle state
     if (controller.hasTransportationExpertSettingsTarget) {
       const isExpertMode = this.settings.transportationExpertMode || false
@@ -593,10 +604,21 @@ export class SettingsController {
         this.toMetricDistance(value, isMetric)
     }
 
+    // Collect enabled transportation modes allowlist
+    let enabledTransportationModes = null
+    if (controller.hasEnabledModeCheckboxTarget) {
+      enabledTransportationModes = controller.enabledModeCheckboxTargets
+        .filter((checkbox) => checkbox.checked)
+        .map((checkbox) => checkbox.value)
+    }
+
     // Update settings object
     this.settings.transportationThresholds = transportationThresholds
     this.settings.transportationExpertThresholds =
       transportationExpertThresholds
+    if (enabledTransportationModes !== null) {
+      this.settings.enabledTransportationModes = enabledTransportationModes
+    }
 
     // Save to backend
     const result = await SettingsManager.updateSetting(
@@ -607,6 +629,12 @@ export class SettingsController {
       "transportationExpertThresholds",
       transportationExpertThresholds,
     )
+    if (enabledTransportationModes !== null) {
+      await SettingsManager.updateSetting(
+        "enabledTransportationModes",
+        enabledTransportationModes,
+      )
+    }
 
     // Check result and update UI
     if (result && result.status === "locked") {

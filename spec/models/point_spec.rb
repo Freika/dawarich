@@ -105,7 +105,7 @@ RSpec.describe Point, type: :model do
         point.save
 
         expect { point.async_reverse_geocode }.to have_enqueued_job(ReverseGeocodingJob)
-          .with('Point', point.id)
+          .with('Point', point.id, force: false)
       end
 
       context 'when point is imported' do
@@ -141,6 +141,54 @@ RSpec.describe Point, type: :model do
       it 'returns latitude' do
         expect(point.lat).to eq(2)
       end
+    end
+  end
+
+  describe '.dedup_key' do
+    let(:timestamp) { Time.zone.at(1_700_000_000) }
+
+    it 'collapses different WKT strings that parse to the same doubles' do
+      a = { lonlat: 'POINT(-0.1278 51.5074)', timestamp: timestamp, user_id: 1 }
+      b = { lonlat: 'POINT(-0.12780000 51.50740000)', timestamp: timestamp, user_id: 1 }
+
+      expect(described_class.dedup_key(a)).to eq(described_class.dedup_key(b))
+    end
+
+    it 'distinguishes points whose doubles actually differ' do
+      a = { lonlat: 'POINT(-0.1278 51.5074)', timestamp: timestamp, user_id: 1 }
+      b = { lonlat: 'POINT(-0.1279 51.5074)', timestamp: timestamp, user_id: 1 }
+
+      expect(described_class.dedup_key(a)).not_to eq(described_class.dedup_key(b))
+    end
+
+    it 'distinguishes points by timestamp and user_id' do
+      base = { lonlat: 'POINT(-0.1278 51.5074)', timestamp: timestamp, user_id: 1 }
+
+      expect(described_class.dedup_key(base))
+        .not_to eq(described_class.dedup_key(base.merge(timestamp: timestamp + 1)))
+      expect(described_class.dedup_key(base))
+        .not_to eq(described_class.dedup_key(base.merge(user_id: 2)))
+    end
+
+    it 'ignores SRID prefix in EWKT and yields the same key as plain WKT' do
+      plain = { lonlat: 'POINT(-0.1278 51.5074)', timestamp: timestamp, user_id: 1 }
+      ewkt  = { lonlat: 'SRID=4326;POINT(-0.1278 51.5074)', timestamp: timestamp, user_id: 1 }
+
+      expect(described_class.dedup_key(plain)).to eq(described_class.dedup_key(ewkt))
+    end
+
+    it 'extracts lon and lat from POINT Z (3D form) without folding altitude into the key' do
+      flat = { lonlat: 'POINT(-0.1278 51.5074)', timestamp: timestamp, user_id: 1 }
+      threed = { lonlat: 'POINT Z (-0.1278 51.5074 100)', timestamp: timestamp, user_id: 1 }
+
+      expect(described_class.dedup_key(flat)).to eq(described_class.dedup_key(threed))
+    end
+
+    it 'handles southern-hemisphere negative lat/lon' do
+      a = { lonlat: 'POINT(-68.1193 -16.4897)', timestamp: timestamp, user_id: 1 }
+      b = { lonlat: 'POINT(-68.11930 -16.48970)', timestamp: timestamp, user_id: 1 }
+
+      expect(described_class.dedup_key(a)).to eq(described_class.dedup_key(b))
     end
   end
 end

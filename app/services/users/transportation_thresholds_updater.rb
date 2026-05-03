@@ -16,6 +16,7 @@ module Users
 
     def call
       return locked_result if recalculation_in_progress?
+      return invalid_allowlist_result if invalid_allowlist?
 
       apply_settings
       return failure_result unless @user.save
@@ -30,6 +31,24 @@ module Users
       return false unless threshold_params_present?
 
       status_manager.in_progress?
+    end
+
+    def invalid_allowlist?
+      raw = @settings_params['enabled_transportation_modes'] ||
+            @settings_params[:enabled_transportation_modes]
+      return false if raw.nil?
+
+      valid = Track::TRANSPORTATION_MODES.keys.map(&:to_s)
+      intersection = Array(raw).map(&:to_s) & valid
+      Array(raw).any? && intersection.empty?
+    end
+
+    def invalid_allowlist_result
+      Result.new(
+        success?: false,
+        error: 'Enable at least one transportation mode',
+        recalculation_triggered?: false
+      )
     end
 
     def capture_current_thresholds

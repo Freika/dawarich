@@ -61,10 +61,10 @@ RSpec.describe 'Trial::Resume', type: :request do
 
   describe 'POST /users/sign_in for pending_payment users' do
     it 'redirects pending_payment users to /trial/resume after login' do
-      user = create(:user, password: 'secret123', skip_auto_trial: true)
+      user = create(:user, password: 'secret123456', skip_auto_trial: true)
       user.update_column(:status, User.statuses[:pending_payment])
 
-      post user_session_path, params: { user: { email: user.email, password: 'secret123' } }
+      post user_session_path, params: { user: { email: user.email, password: 'secret123456' } }
 
       expect(response).to redirect_to(trial_resume_path)
     end

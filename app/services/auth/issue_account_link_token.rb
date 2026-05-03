@@ -26,7 +26,7 @@ module Auth
         iat: now,
         exp: now + TTL.to_i
       }
-      JWT.encode(payload, ENV.fetch('JWT_SECRET_KEY'), 'HS256')
+      JWT.encode(payload, Auth::InternalTokenSecret.call, 'HS256')
     end
   end
 end

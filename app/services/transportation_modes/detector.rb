@@ -28,11 +28,12 @@ module TransportationModes
     # @param points [Array<Point>] Points to analyze
     # @param user_thresholds [Hash, nil] User-configured thresholds from SafeSettings#transportation_thresholds
     # @param user_expert_thresholds [Hash, nil] Expert thresholds from SafeSettings#transportation_expert_thresholds
-    def initialize(track, points, user_thresholds: nil, user_expert_thresholds: nil)
+    def initialize(track, points, user_thresholds: nil, user_expert_thresholds: nil, enabled_modes: nil)
       @track = track
       @points = points.sort_by(&:timestamp)
       @user_thresholds = user_thresholds
       @user_expert_thresholds = user_expert_thresholds
+      @enabled_modes = enabled_modes
     end
 
     def call
@@ -46,7 +47,7 @@ module TransportationModes
 
     private
 
-    attr_reader :track, :points, :user_thresholds, :user_expert_thresholds
+    attr_reader :track, :points, :user_thresholds, :user_expert_thresholds, :enabled_modes
 
     def skip_detection?
       return true if points.size < MIN_POINTS
@@ -80,7 +81,8 @@ module TransportationModes
       MovementAnalyzer.new(
         track, points,
         user_thresholds: user_thresholds,
-        user_expert_thresholds: user_expert_thresholds
+        user_expert_thresholds: user_expert_thresholds,
+        enabled_modes: enabled_modes
       ).call
     end
   end

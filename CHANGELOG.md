@@ -4,7 +4,89 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [1.7.2] - Unreleased
+## [1.7.5] - 2026-05-04
+
+### Added
+
+- Manual transportation-mode correction per segment in the map view, with a one-click reset to auto-detection. Manually-corrected segments are preserved across re-classification. #2405
+- Per-user transportation-mode allowlist in the map settings panel. Disabled modes are excluded from auto-detection going forward; existing tracks stay as they are until you press "Re-classify my history". #2405
+
+### Fixed
+
+- Track duration and average speed are now refreshed whenever a track's path is rebuilt (e.g. after a merge), instead of keeping their pre-merge values. To heal tracks already affected, click Map v2 → Settings → **Recalculate tracks & stats** once after upgrading.
+- Visited-country statistics no longer count countries that were merely flown over. Points moving faster than 500 km/h are now excluded from the country and city aggregation. Trains and high-altitude cities (Denver, Mexico City, La Paz, Lhasa, …) continue to count as visited. Previously-saved monthly stats are not recomputed automatically — re-run stats calculation to refresh historic months. #1917
+- Server-rendered timestamps (Points, Places, Imports, Exports, account settings, trial banner) now display in the user's profile timezone, matching the Maps tab. Previously, the time and tooltip could fall back to the server's default zone, drifting by hours. Invalid stored timezones no longer raise. #1824
+- "Start Reverse Geocoding" now actually re-runs for every point in your database — previously it silently skipped any point that had already been geocoded, even though the button promised a full re-run. #2141
+- Map v2 date-navigation arrows (`<` / `>`) now shift the time window by exactly one day, matching Map v1. Previously they shifted by the current window width, so a 00:00–23:59 selection paged back by 23h59m instead of 24h. #2548
+- Daily track generation now merges a newly-created track with the immediately-preceding existing track when they are seconds apart, instead of leaving a permanent split each time live tracking briefly pauses. To heal splits that have already accumulated in your database, open Map v2 → Settings → **Recalculate tracks & stats** once after upgrading; from then on the daily job will keep adjacent tracks merged on its own. #2265
+- The Maps v1 area-drawing toolbar no longer disappears after toggling the Areas layer or refreshing the page. #1938
+- Trip page no longer shows an indefinite "loading" spinner in the Countries card when no country data is available; an em-dash placeholder is shown instead, matching the modal's "No countries data available yet." message. #1831
+- Trips that cross midnight in the user's timezone now contribute distance and time to both calendar days, instead of being attributed entirely to the day they started. The timeline day summary, the calendar heat grid, and adjacent-day km totals all reflect the trip on each day it actually spans. #2544, #2546
+
+
+### Changed
+
+- "Start Reverse Geocoding" and "Continue Reverse Geocoding" now enqueue Sidekiq jobs in bulk batches of 1,000 instead of one round-trip per point. For large databases (millions of points) this drops the enqueue phase from minutes to seconds. Per-point geocoder rate-limit behavior is unchanged. #2141
+- Map (Leaflet) on mobile browsers no longer clips the bottom of the map and routes after the address bar collapses or the date is changed. #2000
+- Visit suggestions are now generated from live tracking (Dawarich iOS app, OwnTracks, Overland, Traccar), not just from imports. Previously, only imported data triggered visit detection. Visit suggestion still requires a configured reverse geocoder (Photon, Geoapify, Nominatim, or LocationIQ). #1749, #1966
+
+
+## [1.7.4] - 2026-05-03
+
+### Fixed
+
+- Cloud Trial users are no longer limited to 10 MB import files.
+- Self-hosted instances no longer need to set `JWT_SECRET_KEY`. #2570
+- QR sizes are fixed. #2479
+- Family owners can now remove other members directly from the family page. #2555
+- Insights and statistics now agree on the number of countries visited per month. #2581
+- The default password for the demo account has been changed to `safepassword`. The old default `password` prevented seeds from running due to the new 12-character minimum password length validation. Existing users were not affected. #2593
+
+
+## [1.7.3] - 2026-05-02
+
+### Security
+
+Fixes for several issues found in a static-analysis security audit. None of these have a known in-the-wild exploit, but operators should still upgrade.
+
+- Path traversal in user-data archive import (`POST /settings/users/import`) — a malicious archive whose JSON manifest referenced files via `..` could attach arbitrary host files (e.g. `config/master.key`, `/proc/self/environ`) to the user's import record and download them.
+- OAuth web callback (Google / GitHub / OIDC) used to silently link an existing local-password account to an incoming OAuth identity on email match, with no `email_verified` check or consent. The web flow now mirrors the mobile-API flow: the user must confirm the link.
+- SSRF blocklist for the `immich_url` / `photoprism_url` settings missed RFC1918, CGNAT, IPv6 ULA, multicast and reserved ranges. Cloud installs now reject those; self-hosted gets a smaller blocklist that still catches non-http schemes, cloud-metadata IPs and multicast while permitting LAN / loopback / Docker DNS.
+- Web OTP challenge (`POST /users/otp_challenge`) had no rate limit, leaving 2FA brute-forceable given a leaked password. Added rack-attack throttles (5/15min per session, 20/15min per IP) plus an in-controller cap of 5 invalid attempts.
+- Stored XSS via `family.name` rendered through `notification.content.html_safe` is now passed through `sanitize`.
+- Disabling 2FA now requires both the password AND a current authenticator code (or backup code), on web and API.
+- Default `prometheus` / `prometheus` credentials for `/metrics` are gone — the endpoint refuses until both `METRICS_USERNAME` and `METRICS_PASSWORD` are set.
+- Devise minimum password length raised from 6 to 12.
+- API keys generated by new accounts are 256-bit (was 128-bit). Existing keys keep working.
+- OwnTracks point ingest replaces a blanket `params.permit!` with the documented field whitelist.
+
+### Added
+
+- Polarsteps support — `locations.json` and segment-array exports now import directly.
+- Files with unsupported extensions are rejected in the browser before upload starts.
+- Clear, actionable error messages when an unsupported file is uploaded — points to the right file in your Takeout instead of a generic "Unable to detect file format".
+
+### Changed
+
+- Monthly and yearly email digests now hide countries and cities with 1 hour or less of time spent, so the Top Countries / Top Cities lists no longer get padded with `0h` and `1h` entries.
+- Disabling 2FA via `/settings/two_factor` now asks for both your password and a current authenticator code (or one of your backup codes). The web form has been updated; API clients must send `password` AND `otp_code` to `DELETE /api/v1/users/me/two_factor`.
+- Setting a new password (signup, password change, password reset) now requires at least 12 characters. Existing shorter passwords still work for sign-in.
+- **`/metrics` endpoint**: if you scrape Prometheus metrics, set `METRICS_USERNAME` and `METRICS_PASSWORD` in your environment. With them unset, `/metrics` now returns 503.
+- **OAuth (web) without SMTP**: a user signing in via OIDC/GitHub/Google for the first time when an email-matching local account already exists is no longer auto-linked. They are sent to a password-challenge page where entering their existing Dawarich password completes the linking. **No SMTP setup is required for this path.** A "send me a confirmation email instead" button on the same page is the SMTP-based fallback for users who have forgotten their password.
+- **Self-hosted Immich/PhotoPrism URLs**: the next save of these settings re-validates the URL. Configurations using non-http schemes, `0.0.0.0`, multicast IPs, or the cloud-metadata `169.254.169.254` will be rejected. Standard LAN / Docker / loopback URLs continue to work.
+
+### Fixed
+
+- Google Phone Takeout `location-history.json` now imports reliably. (#2437, #2587)
+- KMZ files from a wider range of exporters now import.
+- Imports no longer fail intermittently with `No such file or directory @ rb_sysopen - /tmp/...`. (#2446)
+- FIT files from non-Garmin devices and phone apps now import.
+- CSV files with quoted headers (e.g. `"Latitude","Longitude"`) are now recognized.
+- Empty (0-byte) uploads now produce a clear error instead of crashing.
+- Upgrades from older versions (≤ 1.3.1) no longer crash during `db:migrate`. (#2576)
+
+
+## [1.7.2] - 2026-04-29
 
 ### Removed
 
@@ -22,6 +104,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Track creation now caps a single track's distance at 100,000 km (with a logged warning) instead of silently truncating at the legacy 999,999 m limit. Long-haul journeys are no longer collapsed to ~1000 km. (#1693)
 - Dev container: bind-mount the project root into the container so `bundle install` can locate the `Gemfile`. Previously only sub-paths were mounted, leaving `/var/app/Gemfile` missing. (#1804)
 - Map v2: photos without GPS metadata (`latitude`/`longitude` null) no longer render as markers at Null Island (0°, 0°) — they are now correctly excluded from the photos layer. (#2464, #2465)
+
 
 ## [1.7.1] - 2026-04-28
 
@@ -66,6 +149,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
   **Response**: `200 OK` with empty array on success. Malformed payloads (missing required fields, unparseable timestamp) return `200` and are silently dropped — same behavior as the OwnTracks and Overland endpoints. Authentication failures return `401`. Unexpected server errors return `500`. Full schema available at `/api-docs`.
 
+
 ## [1.7.0] - 2026-04-26
 
 The Timeline Release
@@ -101,6 +185,7 @@ The Timeline Feature in Map V2 is now a feature capable to fully replace Google 
 - Fix Stats dashboard charts stuck on "Loading..." for some years due to duplicate Chartkick element IDs when rendered inside cached year partials #2453.
 - Fix map date-navigation prev/next buttons always shifting by one day; they now shift by the currently selected interval #1736.
 - Fix individual points occasionally rendering on top of dense point lines on Map v2 by adding a deterministic timestamp-based sort key #2388.
+
 
 ## [1.6.1] - 2026-04-02
 

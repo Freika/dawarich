@@ -93,7 +93,7 @@
             <div class="text-xs text-base-content/60 mt-2">
               File format is automatically detected during upload.
             </div>
-            <% if current_user.trial? %>
+            <% if current_user.legacy_trial? %>
               <div class="text-xs text-warning mt-2 font-medium">
                 Trial limitations: Max 5 imports, 10MB per file.
                 Current imports: <%= current_user.imports.count %>/5
@@ -107,7 +107,7 @@
           upload_url_value: rails_direct_uploads_url,
           upload_field_name_value: "import[files][]",
           upload_multiple_value: true,
-          upload_user_trial_value: current_user.trial?,
+          upload_user_trial_value: current_user.legacy_trial?,
           upload_max_imports_value: 5,
           upload_current_imports_count_value: current_user.imports.count,
           upload_target: "form"

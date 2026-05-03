@@ -72,10 +72,17 @@ Rails.application.routes.draw do
     end
   end
 
+  namespace :tracks do
+    resource :recalculation, only: :create
+  end
+
   get 'settings/theme', to: 'settings#theme'
   post 'settings/generate_api_key', to: 'settings#generate_api_key', as: :generate_api_key
 
-  get 'auth/account_link', to: 'auth/account_links#show', as: :auth_account_link
+  get  'auth/account_link', to: 'auth/account_links#show', as: :auth_account_link
+  get  'auth/account_link/challenge', to: 'auth/account_links#challenge', as: :auth_account_link_challenge
+  post 'auth/account_link/challenge', to: 'auth/account_links#confirm', as: :confirm_auth_account_link
+  post 'auth/account_link/email',     to: 'auth/account_links#email_fallback', as: :email_fallback_auth_account_link
 
   get 'users/me/destroy/confirm', to: 'users/destroy_confirmations#show', as: :user_destroy_confirmation
 
@@ -84,6 +91,9 @@ Rails.application.routes.draw do
   get 'trial/welcome', to: 'trial/welcome#show', as: :trial_welcome
 
   resources :imports
+  resources :tracks, only: [] do
+    resources :segments, controller: 'tracks/segments', only: %i[index update]
+  end
   # Temporary (302) during the unified-timeline rollout; promote to :moved_permanently (301)
   # once the redesign is known-stable so browsers cache the redirect.
   get '/visits', to: redirect(status: 302) { |_params, req|

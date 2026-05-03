@@ -40,6 +40,27 @@ RSpec.describe Track, type: :model do
     it { is_expected.to validate_numericality_of(:duration).is_greater_than_or_equal_to(0) }
   end
 
+  describe '.avg_speed_kmh' do
+    it 'returns 0 for non-positive duration' do
+      expect(Track.avg_speed_kmh(1000, 0)).to eq(0.0)
+      expect(Track.avg_speed_kmh(1000, -10)).to eq(0.0)
+    end
+
+    it 'returns 0 for non-positive distance' do
+      expect(Track.avg_speed_kmh(0, 60)).to eq(0.0)
+      expect(Track.avg_speed_kmh(-100, 60)).to eq(0.0)
+    end
+
+    it 'converts m/s to km/h with two-decimal precision' do
+      expect(Track.avg_speed_kmh(10_000, 3600)).to eq(10.0)
+      expect(Track.avg_speed_kmh(21_355, 5076)).to be_within(0.01).of(15.14)
+    end
+
+    it 'caps at the column precision limit' do
+      expect(Track.avg_speed_kmh(10**12, 1)).to eq(999_999.99)
+    end
+  end
+
   describe '.last_for_day' do
     let(:user) { create(:user) }
     let(:other_user) { create(:user) }

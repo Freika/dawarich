@@ -219,4 +219,47 @@ RSpec.describe TransportationModes::ModeClassifier do
       end
     end
   end
+
+  describe 'enabled_modes filtering' do
+    let(:all_modes) { Track::TRANSPORTATION_MODES.keys }
+
+    it 'returns the auto-detected mode when allowlist is nil (regression guard)' do
+      classifier = described_class.new(avg_speed_kmh: 12, max_speed_kmh: 15, avg_acceleration: 0.1, duration: 600)
+      expect(classifier.classify).to eq(:cycling)
+    end
+
+    it 'returns the auto-detected mode when it is enabled' do
+      classifier = described_class.new(
+        avg_speed_kmh: 12, max_speed_kmh: 15, avg_acceleration: 0.1, duration: 600,
+        enabled_modes: %i[walking cycling driving]
+      )
+      expect(classifier.classify).to eq(:cycling)
+    end
+
+    it 'falls through to a different mode when the auto-detected one is disabled' do
+      classifier = described_class.new(
+        avg_speed_kmh: 12, max_speed_kmh: 15, avg_acceleration: 0.1, duration: 600,
+        enabled_modes: all_modes - [:cycling]
+      )
+      result = classifier.classify
+      expect(result).not_to eq(:cycling)
+      expect(all_modes).to include(result)
+    end
+
+    it 'returns :unknown when every plausible candidate is disabled' do
+      classifier = described_class.new(
+        avg_speed_kmh: 90, max_speed_kmh: 100, avg_acceleration: 0.3, duration: 600,
+        enabled_modes: %i[flying boat]
+      )
+      expect(classifier.classify).to eq(:unknown)
+    end
+
+    it 'ignores typos in the allowlist' do
+      classifier = described_class.new(
+        avg_speed_kmh: 12, max_speed_kmh: 15, avg_acceleration: 0.1, duration: 600,
+        enabled_modes: %i[cycling bogus_mode]
+      )
+      expect(classifier.classify).to eq(:cycling)
+    end
+  end
 end

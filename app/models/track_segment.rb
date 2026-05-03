@@ -19,6 +19,13 @@ class TrackSegment < ApplicationRecord
   validates :avg_speed, :max_speed, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
   validate :end_index_greater_than_or_equal_to_start_index
 
+  scope :auto_classified, -> { where(corrected_at: nil) }
+  scope :manually_corrected, -> { where.not(corrected_at: nil) }
+
+  def manually_corrected?
+    corrected_at.present?
+  end
+
   private
 
   def end_index_greater_than_or_equal_to_start_index
