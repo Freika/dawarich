@@ -121,24 +121,16 @@ RSpec.describe Tracks::BoundaryDetector do
       end
 
       let!(:track_a_start_point) do
-        create(:point, user: user, track: track_a,
-                       latitude: 52.43326, longitude: 13.52919,
-                       timestamp: 1.hour.ago.to_i)
+        create(:point, user: user, track: track_a, timestamp: 1.hour.ago.to_i)
       end
       let!(:track_a_end_point) do
-        create(:point, user: user, track: track_a,
-                       latitude: 52.43982, longitude: 13.48541,
-                       timestamp: track_a_end.to_i)
+        create(:point, user: user, track: track_a, timestamp: track_a_end.to_i)
       end
       let!(:track_b_start_point) do
-        create(:point, user: user, track: track_b,
-                       latitude: 52.43913, longitude: 13.48686,
-                       timestamp: track_b_start.to_i)
+        create(:point, user: user, track: track_b, timestamp: track_b_start.to_i)
       end
       let!(:track_b_end_point) do
-        create(:point, user: user, track: track_b,
-                       latitude: 52.43388, longitude: 13.52871,
-                       timestamp: (track_b_start + 5.minutes).to_i)
+        create(:point, user: user, track: track_b, timestamp: (track_b_start + 5.minutes).to_i)
       end
 
       it 'merges the two adjacent tracks into one' do
