@@ -42,4 +42,11 @@
       <span id="track-replay-label">Replay</span>
     </button>
   </div>
+
+  <%= turbo_frame_tag "track-#{track.id}-segments",
+                      class: "track-info-segments",
+                      src: track_segments_path(track),
+                      loading: "lazy" do %>
+    <%= render 'shared/skeleton_lines', lines: 2 %>
+  <% end %>
 </div>

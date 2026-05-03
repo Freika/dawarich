@@ -585,16 +585,6 @@ export class EventHandlers {
    * @private
    */
   async _loadTrackSegments(trackId, fullFeature) {
-    const segmentsContainer = document.getElementById(
-      "track-segments-container",
-    )
-    if (segmentsContainer) {
-      segmentsContainer.innerHTML =
-        `<turbo-frame id="track-${trackId}-segments" src="/tracks/${trackId}/segments" loading="lazy">` +
-        `<p class="text-sm text-base-content/60">Loading segments…</p>` +
-        `</turbo-frame>`
-    }
-
     try {
       const trackFeature =
         await this.controller.api.fetchTrackWithSegments(trackId)
@@ -759,12 +749,6 @@ export class EventHandlers {
         ${showPointsToggle}
         <div id="track-point-info-container"></div>
         ${replayButton}
-        <div id="track-segments-container" class="mt-2">
-          <div class="flex items-center gap-2 text-sm text-base-content/60">
-            <span class="loading loading-spinner loading-xs"></span>
-            Loading segments...
-          </div>
-        </div>
       </div>
     `
   }
