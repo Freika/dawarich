@@ -495,6 +495,8 @@ export class DataLoader {
             name: area.name,
             color: area.color || "#ef4444",
             radius: area.radius,
+            centerLng: center[0],
+            centerLat: center[1],
           },
         }
       }),

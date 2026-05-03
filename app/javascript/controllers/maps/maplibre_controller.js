@@ -759,10 +759,6 @@ export default class extends Controller {
     this._safeSetPaint("visits", "circle-opacity", visitExpr)
     this._safeSetPaint("visits", "circle-stroke-opacity", visitExpr)
 
-    // Visit labels
-    const labelExpr = this._dayRangeExpr("started_at", isoStart, isoEnd, 1, DIM)
-    this._safeSetPaint("visits-labels", "text-opacity", labelExpr)
-
     // Tracks: start_at is ISO 8601 string
     const trackExpr = this._dayRangeExpr("start_at", isoStart, isoEnd, 0.7, DIM)
     this._safeSetPaint("tracks", "line-opacity", trackExpr)
@@ -785,7 +781,6 @@ export default class extends Controller {
     this._safeSetPaint("points", "circle-stroke-opacity", 1)
     this._safeSetPaint("visits", "circle-opacity", 0.9)
     this._safeSetPaint("visits", "circle-stroke-opacity", 1)
-    this._safeSetPaint("visits-labels", "text-opacity", 1)
     this._safeSetPaint("tracks", "line-opacity", 0.7)
   }
 
@@ -845,18 +840,12 @@ export default class extends Controller {
       ]
       this._safeSetPaint("visits", "circle-opacity", visitExpr)
       this._safeSetPaint("visits", "circle-stroke-opacity", visitExpr)
-      this._safeSetPaint("visits-labels", "text-opacity", visitExpr)
     } else {
       const VISITS_NEARLY_INVISIBLE = 0.05
       this._safeSetPaint("visits", "circle-opacity", VISITS_NEARLY_INVISIBLE)
       this._safeSetPaint(
         "visits",
         "circle-stroke-opacity",
-        VISITS_NEARLY_INVISIBLE,
-      )
-      this._safeSetPaint(
-        "visits-labels",
-        "text-opacity",
         VISITS_NEARLY_INVISIBLE,
       )
     }

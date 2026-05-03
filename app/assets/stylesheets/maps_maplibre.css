@@ -339,3 +339,56 @@ html[data-theme="dawarich-dark"] .map-upgrade-banner-dismiss,
 html.dark .map-upgrade-banner-dismiss {
   color: #e2e8f0;
 }
+
+.map-html-label {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto",
+    "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+  font-weight: 700;
+  font-size: 11px;
+  color: #111827;
+  text-shadow:
+    -1px -1px 0 #ffffff,
+     1px -1px 0 #ffffff,
+    -1px  1px 0 #ffffff,
+     1px  1px 0 #ffffff,
+     0   -2px 0 #ffffff,
+     0    2px 0 #ffffff,
+    -2px  0   0 #ffffff,
+     2px  0   0 #ffffff;
+  pointer-events: none;
+  user-select: none;
+  white-space: nowrap;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.map-html-label--places {
+  font-size: 11px;
+}
+
+.map-html-label--areas {
+  font-size: 14px;
+}
+
+.map-html-label--visits {
+  font-size: 11px;
+}
+
+.map-html-label--family {
+  font-size: 12px;
+}
+
+html[data-theme="dark"] .map-html-label,
+html[data-theme="dawarich-dark"] .map-html-label,
+html.dark .map-html-label {
+  color: #f3f4f6;
+  text-shadow:
+    -1px -1px 0 #111827,
+     1px -1px 0 #111827,
+    -1px  1px 0 #111827,
+     1px  1px 0 #111827,
+     0   -2px 0 #111827,
+     0    2px 0 #111827,
+    -2px  0   0 #111827,
+     2px  0   0 #111827;
+}
