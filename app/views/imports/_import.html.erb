@@ -15,7 +15,7 @@
         <td>
           <%= "#{number_with_delimiter import.points.size}" %>
         </td>
-        <td><%= human_datetime(import.created_at) %></td>
+        <td><%= human_datetime(import.created_at, current_user.safe_settings.timezone) %></td>
       </tr>
     </tbody>
   </table>
