@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- "Start Reverse Geocoding" now actually re-runs for every point in your database — previously it silently skipped any point that had already been geocoded, even though the button promised a full re-run. (#2141)
+
+### Changed
+
+- "Start Reverse Geocoding" and "Continue Reverse Geocoding" now enqueue Sidekiq jobs in bulk batches of 1,000 instead of one round-trip per point. For large databases (millions of points) this drops the enqueue phase from minutes to seconds. Per-point geocoder rate-limit behavior is unchanged. (#2141)
 - Map (Leaflet) on mobile browsers no longer clips the bottom of the map and routes after the address bar collapses or the date is changed. (#2000)
 - Visit suggestions are now generated from live tracking (Dawarich iOS app, OwnTracks, Overland, Traccar), not just from imports. Previously, only imported data triggered visit detection. Visit suggestion still requires a configured reverse geocoder (Photon, Geoapify, Nominatim, or LocationIQ). (#1749, #1966)
 
