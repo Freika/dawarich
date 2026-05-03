@@ -138,6 +138,10 @@ class User < ApplicationRecord
     trial? && active_until&.future? && !sub_source_none?
   end
 
+  def legacy_trial?
+    trial? && sub_source_none?
+  end
+
   def generate_subscription_token(plan: nil, interval: nil, variant: nil)
     payload = {
       user_id: id,

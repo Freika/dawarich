@@ -16,7 +16,7 @@ module Auth
     def call
       raise InvalidToken, 'blank token' if @token.blank?
 
-      decoded, = JWT.decode(@token, ENV.fetch('JWT_SECRET_KEY'), true, algorithm: 'HS256')
+      decoded, = JWT.decode(@token, Auth::InternalTokenSecret.call, true, algorithm: 'HS256')
       raise InvalidToken, 'wrong purpose' unless decoded['purpose'] == 'oauth_account_link'
 
       jti = decoded['jti'].to_s

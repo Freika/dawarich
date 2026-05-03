@@ -43,9 +43,9 @@ class Users::MailerSendingJob < ApplicationJob
   def should_skip_email?(user, email_type)
     case email_type.to_s
     when 'trial_expires_soon', 'trial_expired'
-      user.active?
+      user.active? || user.auto_converting_trial?
     when 'post_trial_reminder_early', 'post_trial_reminder_late'
-      user.active? || !user.trial?
+      user.active? || !user.trial? || user.auto_converting_trial?
     else
       false
     end
