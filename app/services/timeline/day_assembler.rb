@@ -108,10 +108,6 @@ module Timeline
       end
     end
 
-    # Continuation-day buckets share polyline geometry with their start day.
-    # Auto-fit bounds use only `originating_tracks` so the camera frames "what
-    # happened today" instead of zooming out to a city visited the prior
-    # evening; the route layer still renders the full polyline independently.
     def empty_day_bucket
       { visits: [], tracks: [], originating_tracks: [], track_shares: {} }
     end
@@ -130,10 +126,6 @@ module Timeline
       }
     end
 
-    # Continuation journeys anchor to their arrival time within the day (so a
-    # 00:30 visit correctly sorts before a 02:00 trip arrival). For multi-day
-    # passes-through where arrival also falls outside the day, the anchor is
-    # clamped into the day window.
     def interleave(date, visits, tracks, track_shares)
       day_local = date.in_time_zone(timezone)
       day_start_iso = day_local.beginning_of_day.iso8601

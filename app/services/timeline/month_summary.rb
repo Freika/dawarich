@@ -157,9 +157,6 @@ module Timeline
       @track_count ||= track_day_attributions[:count]
     end
 
-    # `seconds` is pro-rated across days a track spans (so the heat grid
-    # reflects actual presence on each day). `count` stays start-day-only,
-    # preserving the field's prior meaning of "tracks that began this day".
     def track_day_attributions
       @track_day_attributions ||= begin
         seconds = Hash.new(0.0)
