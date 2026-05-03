@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Track duration and average speed are now refreshed whenever a track's path is rebuilt (e.g. after a merge), instead of keeping their pre-merge values. To heal tracks already affected, click Map v2 → Settings → **Recalculate tracks & stats** once after upgrading.
+
+
 ## [1.7.4] - 2026-05-03
 
 ### Fixed

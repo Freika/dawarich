@@ -38,6 +38,24 @@ class Track < ApplicationRecord
   scope :with_unknown_mode, -> { where(dominant_mode: :unknown) }
   scope :with_detected_mode, -> { where.not(dominant_mode: :unknown) }
 
+  # Convert raw distance + duration into a stored avg_speed (km/h),
+  # capped to the column's precision limit.
+  def self.avg_speed_kmh(distance_meters, duration_seconds)
+    return 0.0 if duration_seconds.to_i <= 0 || distance_meters.to_i <= 0
+
+    speed_mps = distance_meters.to_f / duration_seconds
+    speed_kmh = (speed_mps * 3.6).round(2)
+    [speed_kmh, 999_999.99].min
+  end
+
+  def recalculate_extra_metrics
+    timestamps = points.pluck(:timestamp)
+    return if timestamps.size < 2
+
+    self.duration = timestamps.max - timestamps.min
+    self.avg_speed = self.class.avg_speed_kmh(distance, duration)
+  end
+
   def self.last_for_day(user, day)
     day_start = day.beginning_of_day
     day_end = day.end_of_day
