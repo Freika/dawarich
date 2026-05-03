@@ -138,6 +138,8 @@ export default class extends Controller {
     // Transportation apply button
     "transportationApplyButton",
     "transportationDirtyMessage",
+    // Transportation enabled modes allowlist
+    "enabledModeCheckbox",
     // Replay
     "replayPanel",
     "replayScrubber",

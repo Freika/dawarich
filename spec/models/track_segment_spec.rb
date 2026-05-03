@@ -75,4 +75,23 @@ RSpec.describe TrackSegment, type: :model do
       end
     end
   end
+
+  describe 'scopes and predicates for manual correction' do
+    let(:track) { create(:track) }
+    let!(:auto)      { create(:track_segment, track: track, corrected_at: nil) }
+    let!(:corrected) { create(:track_segment, track: track, corrected_at: 2.days.ago) }
+
+    it 'returns auto-classified segments via .auto_classified' do
+      expect(TrackSegment.auto_classified).to contain_exactly(auto)
+    end
+
+    it 'returns user-corrected segments via .manually_corrected' do
+      expect(TrackSegment.manually_corrected).to contain_exactly(corrected)
+    end
+
+    it 'reports manually_corrected? based on corrected_at presence' do
+      expect(corrected.manually_corrected?).to be true
+      expect(auto.manually_corrected?).to be false
+    end
+  end
 end

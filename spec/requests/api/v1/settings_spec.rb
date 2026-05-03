@@ -143,6 +143,24 @@ RSpec.describe 'Api::V1::Settings', type: :request do
     end
   end
 
+  describe 'PATCH /api/v1/settings with enabled_transportation_modes' do
+    it 'persists a valid allowlist' do
+      patch "/api/v1/settings?api_key=#{api_key}",
+            params: { settings: { enabled_transportation_modes: %w[walking cycling] } }
+
+      expect(response).to have_http_status(:success)
+      expect(user.reload.settings['enabled_transportation_modes']).to eq(%w[walking cycling])
+    end
+
+    it 'returns 422 on empty intersection' do
+      patch "/api/v1/settings?api_key=#{api_key}",
+            params: { settings: { enabled_transportation_modes: %w[bogus] } }
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(response.parsed_body['errors']).to include(/Enable at least one transportation mode/i)
+    end
+  end
+
   describe 'GET /transportation_recalculation_status' do
     it 'returns idle status when no recalculation is running' do
       get "/api/v1/settings/transportation_recalculation_status?api_key=#{api_key}"

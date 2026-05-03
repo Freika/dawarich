@@ -58,19 +58,23 @@ module Tracks
       points = track.points.order(:timestamp).to_a
 
       Track.transaction do
-        track.track_segments.destroy_all
+        preserved = track.track_segments.manually_corrected.to_a
+        track.track_segments.auto_classified.delete_all
 
-        # Get user-specific thresholds
         user_thresholds, expert_thresholds = extract_user_thresholds(track.user)
+        enabled_modes = extract_enabled_modes(track.user)
 
         detector = TransportationModes::Detector.new(
           track, points,
           user_thresholds: user_thresholds,
-          user_expert_thresholds: expert_thresholds
+          user_expert_thresholds: expert_thresholds,
+          enabled_modes: enabled_modes
         )
         segment_data = detector.call
+        segment_data = drop_overlapping(segment_data, preserved)
 
         create_segments(track, segment_data)
+        recompute_dominant_mode(track)
       end
     rescue StandardError => e
       Rails.logger.error "Failed to reprocess track #{track.id}: #{e.message}"
@@ -83,10 +87,30 @@ module Tracks
       [safe_settings.transportation_thresholds, safe_settings.transportation_expert_thresholds]
     end
 
+    def extract_enabled_modes(user)
+      return nil unless user
+
+      Users::SafeSettings.new(user.settings || {}).enabled_transportation_modes
+    end
+
+    def drop_overlapping(segment_data, preserved)
+      return segment_data if preserved.empty?
+
+      segment_data.reject do |data|
+        preserved.any? do |p|
+          ranges_overlap?(p.start_index, p.end_index, data[:start_index], data[:end_index])
+        end
+      end
+    end
+
+    def ranges_overlap?(a_start, a_end, b_start, b_end)
+      a_start <= b_end && b_start <= a_end
+    end
+
     def create_segments(track, segment_data)
       return if segment_data.empty?
 
-      segments = segment_data.map do |data|
+      segment_data.each do |data|
         track.track_segments.create(
           transportation_mode: data[:mode],
           start_index: data[:start_index],
@@ -99,18 +123,15 @@ module Tracks
           confidence: data[:confidence],
           source: data[:source]
         )
-      end.select(&:persisted?)
-
-      update_dominant_mode(track, segments)
+      end
     end
 
-    def update_dominant_mode(track, segments)
-      return if segments.empty?
+    def recompute_dominant_mode(track)
+      all_segments = track.track_segments.reload.to_a
+      return if all_segments.empty?
 
-      dominant_segment = segments.max_by { |s| s.duration || 0 }
-      return unless dominant_segment
-
-      track.update(dominant_mode: dominant_segment.transportation_mode)
+      dominant = all_segments.max_by { |s| s.duration || 0 }
+      track.update!(dominant_mode: dominant.transportation_mode)
     end
   end
 end

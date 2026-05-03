@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Manual transportation-mode correction per segment in the map view, with a one-click reset to auto-detection. Manually-corrected segments are preserved across re-classification. (#2405)
+- Per-user transportation-mode allowlist in the map settings panel. Disabled modes are excluded from auto-detection going forward; existing tracks stay as they are until you press "Re-classify my history". (#2405)
+
 ### Fixed
 
 - Visited-country statistics no longer count countries that were merely flown over. Points moving faster than 500 km/h are now excluded from the country and city aggregation. Trains and high-altitude cities (Denver, Mexico City, La Paz, Lhasa, …) continue to count as visited. Previously-saved monthly stats are not recomputed automatically — re-run stats calculation to refresh historic months. (#1917)

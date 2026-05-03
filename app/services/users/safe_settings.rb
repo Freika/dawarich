@@ -90,6 +90,7 @@ class Users::SafeSettings
       globe_projection: globe_projection,
       transportation_thresholds: transportation_thresholds,
       transportation_expert_thresholds: transportation_expert_thresholds,
+      enabled_transportation_modes: enabled_transportation_modes,
       transportation_expert_mode: transportation_expert_mode?,
       min_minutes_spent_in_city: min_minutes_spent_in_city,
       max_gap_minutes_in_city: max_gap_minutes_in_city,
@@ -238,6 +239,15 @@ class Users::SafeSettings
 
   def transportation_expert_mode?
     ActiveModel::Type::Boolean.new.cast(settings['transportation_expert_mode'])
+  end
+
+  def enabled_transportation_modes
+    raw = settings['enabled_transportation_modes']
+    valid = Track::TRANSPORTATION_MODES.keys.map(&:to_s)
+    return valid if raw.nil? || (raw.respond_to?(:empty?) && raw.empty?)
+
+    intersection = Array(raw).map(&:to_s) & valid
+    intersection.presence || valid
   end
 
   def min_minutes_spent_in_city
