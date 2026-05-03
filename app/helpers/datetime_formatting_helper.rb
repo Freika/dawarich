@@ -5,25 +5,29 @@ module DatetimeFormattingHelper
     date.strftime('%e %B %Y')
   end
 
-  def human_datetime(datetime)
+  def human_datetime(datetime, timezone = nil)
     return unless datetime
+
+    zoned = timezone.present? ? datetime.in_time_zone(timezone) : datetime
 
     content_tag(
       :span,
-      datetime.strftime('%e %b %Y, %H:%M'),
+      zoned.strftime('%e %b %Y, %H:%M'),
       class: 'tooltip',
-      data: { tip: datetime.iso8601 }
+      data: { tip: zoned.iso8601 }
     )
   end
 
-  def human_datetime_with_seconds(datetime)
+  def human_datetime_with_seconds(datetime, timezone = nil)
     return unless datetime
+
+    zoned = timezone.present? ? datetime.in_time_zone(timezone) : datetime
 
     content_tag(
       :span,
-      datetime.strftime('%e %b %Y, %H:%M:%S'),
+      zoned.strftime('%e %b %Y, %H:%M:%S'),
       class: 'tooltip',
-      data: { tip: datetime.iso8601 }
+      data: { tip: zoned.iso8601 }
     )
   end
 
