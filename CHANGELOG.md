@@ -4,10 +4,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [Unreleased]
+## Unreleased
 
 ### Fixed
 
+- Server-rendered timestamps (Points, Places, Imports, Exports, account settings, trial banner) now display in the user's profile timezone, matching the Maps tab. Previously, the time and tooltip could fall back to the server's default zone, drifting by hours. Invalid stored timezones no longer raise. (#1824)
 - "Start Reverse Geocoding" now actually re-runs for every point in your database — previously it silently skipped any point that had already been geocoded, even though the button promised a full re-run. (#2141)
 
 ### Changed
