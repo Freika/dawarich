@@ -49,7 +49,7 @@
             <% end %>
           </div>
         <% end %>
-        <div class="tooltip" data-tip="Delete import">
+        <div class="tooltip tooltip-left" data-tip="Delete import">
           <%= link_to import, data: { turbo_confirm: "Are you sure?", turbo_method: :delete }, class: "btn btn-ghost btn-xs text-error hover:bg-error/10" do %>
             <%= icon 'trash-2', class: 'w-4 h-4' %>
           <% end %>

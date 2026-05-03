@@ -56,11 +56,11 @@
       <div class="flex justify-center mb-4">
         <%= paginate @imports %>
       </div>
-      <div class="border border-base-300 rounded-xl overflow-clip">
+      <div class="border border-base-300 rounded-xl overflow-x-auto">
         <table class="table w-full">
           <thead class="bg-base-200">
             <tr>
-              <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50 w-[35%]"><%= sortable_column 'Name', :name, :imports_path %></th>
+              <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50 w-auto"><%= sortable_column 'Name', :name, :imports_path %></th>
               <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50 w-[10%]"><%= sortable_column 'File size', :byte_size, :imports_path %></th>
               <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50 text-right w-[10%]"><%= sortable_column 'Points', :processed, :imports_path %></th>
               <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50 w-[12%]"><%= sortable_column 'Status', :status, :imports_path %></th>

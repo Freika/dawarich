@@ -60,7 +60,7 @@
     <%= form_with url: bulk_destroy_points_path(params.permit!), method: :delete, id: :bulk_destroy_form do |f| %>
       <%= f.submit "Delete Selected", class: "btn btn-error btn-sm mb-3", data: { turbo_confirm: "Are you sure?", checkbox_select_all_target: "deleteButton" }, style: "display: none;" %>
 
-      <div class="border border-base-300 rounded-xl overflow-clip">
+      <div class="border border-base-300 rounded-xl overflow-x-auto">
         <table class="table table-sm w-full">
           <thead class="bg-base-200">
             <tr>
