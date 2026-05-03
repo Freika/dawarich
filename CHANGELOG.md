@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Map v2 date-navigation arrows (`<` / `>`) now shift the time window by exactly one day, matching Map v1. Previously they shifted by the current window width, so a 00:00–23:59 selection paged back by 23h59m instead of 24h. (#2548)
 - Daily track generation now merges a newly-created track with the immediately-preceding existing track when they are seconds apart, instead of leaving a permanent split each time live tracking briefly pauses. To heal splits that have already accumulated in your database, open Map v2 → Settings → **Recalculate tracks & stats** once after upgrading; from then on the daily job will keep adjacent tracks merged on its own. (#2265)
 - Trip page no longer shows an indefinite "loading" spinner in the Countries card when no country data is available; an em-dash placeholder is shown instead, matching the modal's "No countries data available yet." message. #1831
+- Trips that cross midnight in the user's timezone now contribute distance and time to both calendar days, instead of being attributed entirely to the day they started. The timeline day summary, the calendar heat grid, and adjacent-day km totals all reflect the trip on each day it actually spans. (#2544, #2546)
 
 
 ### Changed
@@ -21,6 +22,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - "Start Reverse Geocoding" and "Continue Reverse Geocoding" now enqueue Sidekiq jobs in bulk batches of 1,000 instead of one round-trip per point. For large databases (millions of points) this drops the enqueue phase from minutes to seconds. Per-point geocoder rate-limit behavior is unchanged. (#2141)
 - Map (Leaflet) on mobile browsers no longer clips the bottom of the map and routes after the address bar collapses or the date is changed. (#2000)
 - Visit suggestions are now generated from live tracking (Dawarich iOS app, OwnTracks, Overland, Traccar), not just from imports. Previously, only imported data triggered visit detection. Visit suggestion still requires a configured reverse geocoder (Photon, Geoapify, Nominatim, or LocationIQ). (#1749, #1966)
+
 
 ## [1.7.4] - 2026-05-03
 

@@ -71,24 +71,27 @@ module Timeline
 
     def fetch_tracks
       user.scoped_tracks
-          .where(start_at: start_at..end_at)
+          .where('start_at <= ? AND end_at >= ?', end_at, start_at)
           .order(start_at: :asc)
     end
 
     def group_by_day(visits, tracks)
-      Time.use_zone(user.safe_settings.timezone) do
+      tz = user.safe_settings.timezone
+      Time.use_zone(tz) do
         grouped = {}
 
         visits.each do |visit|
           day_key = visit.started_at.in_time_zone.to_date
-          grouped[day_key] ||= { visits: [], tracks: [] }
+          grouped[day_key] ||= { visits: [], tracks: [], track_shares: {} }
           grouped[day_key][:visits] << visit
         end
 
         tracks.each do |track|
-          day_key = track.start_at.in_time_zone.to_date
-          grouped[day_key] ||= { visits: [], tracks: [] }
-          grouped[day_key][:tracks] << track
+          TrackDayShares.for(track, tz).each do |day_key, fraction|
+            grouped[day_key] ||= { visits: [], tracks: [], track_shares: {} }
+            grouped[day_key][:tracks] << track
+            grouped[day_key][:track_shares][track.id] = fraction
+          end
         end
 
         grouped.sort_by(&:first)
@@ -96,14 +99,14 @@ module Timeline
     end
 
     def build_days(days)
-      days.map { |date, data| build_day(date, data[:visits], data[:tracks]) }
+      days.map { |date, data| build_day(date, data[:visits], data[:tracks], data[:track_shares] || {}) }
     end
 
-    def build_day(date, visits, tracks)
+    def build_day(date, visits, tracks, track_shares)
       entries = interleave(visits, tracks)
       {
         date: date.to_s,
-        summary: build_summary(visits, tracks),
+        summary: build_summary(visits, tracks, track_shares),
         bounds: build_bounds(visits, tracks),
         entries: entries
       }
@@ -186,9 +189,9 @@ module Timeline
       }
     end
 
-    def build_summary(visits, tracks)
-      total_distance_m = tracks.sum(&:distance)
-      moving_seconds = tracks.sum(&:duration)
+    def build_summary(visits, tracks, track_shares)
+      total_distance_m = tracks.sum { |t| t.distance.to_f * track_shares.fetch(t.id, 1.0) }
+      moving_seconds = tracks.sum { |t| t.duration.to_f * track_shares.fetch(t.id, 1.0) }
       # NOTE: visit.duration is stored in MINUTES (see Visits::Creator / Visits::Create).
       stationary_minutes = visits.sum(&:duration)
       status_counts = visits.group_by(&:status).transform_values(&:size)
