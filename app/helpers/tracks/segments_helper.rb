@@ -24,7 +24,13 @@ module Tracks::SegmentsHelper
   def segment_distance(segment)
     return '-' unless segment.distance
 
-    "#{(segment.distance / 1000.0).round(2)} km"
+    distance_km = segment.distance / 1000.0
+    case current_user&.safe_settings&.distance_unit
+    when 'mi'
+      "#{(distance_km * 0.621371).round(2)} mi"
+    else
+      "#{distance_km.round(2)} km"
+    end
   end
 
   def segment_duration(segment)

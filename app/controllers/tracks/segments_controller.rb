@@ -32,15 +32,19 @@ class Tracks::SegmentsController < ApplicationController
               partial: 'tracks/segments/segment_row',
               locals: { segment: result.segment }
             ),
-            stream_flash(:notice, 'Segment updated')
+            stream_flash(:success, 'Segment updated')
           ]
         end
+        format.html { redirect_back(fallback_location: root_path, notice: 'Segment updated') }
       end
     else
       respond_to do |format|
         format.turbo_stream do
           render turbo_stream: stream_flash(:error, error_message_for(result.error_code)),
                  status: :unprocessable_entity
+        end
+        format.html do
+          redirect_back(fallback_location: root_path, alert: error_message_for(result.error_code))
         end
       end
     end
