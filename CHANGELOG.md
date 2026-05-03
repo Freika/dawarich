@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- "Start Reverse Geocoding" now actually re-runs for every point in your database — previously it silently skipped any point that had already been geocoded, even though the button promised a full re-run. (#2141)
+
+### Changed
+
+- "Start Reverse Geocoding" and "Continue Reverse Geocoding" now enqueue Sidekiq jobs in bulk batches of 1,000 instead of one round-trip per point. For large databases (millions of points) this drops the enqueue phase from minutes to seconds. Per-point geocoder rate-limit behavior is unchanged. (#2141)
+
 ## [1.7.4] - 2026-05-03
 
 ### Fixed

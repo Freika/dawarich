@@ -57,10 +57,10 @@ class Point < ApplicationRecord
     @recorded_at ||= Time.zone.at(timestamp)
   end
 
-  def async_reverse_geocode
+  def async_reverse_geocode(force: false)
     return unless DawarichSettings.reverse_geocoding_enabled?
 
-    ReverseGeocodingJob.perform_later(self.class.to_s, id)
+    ReverseGeocodingJob.perform_later(self.class.to_s, id, force: force)
   end
 
   def reverse_geocoded?

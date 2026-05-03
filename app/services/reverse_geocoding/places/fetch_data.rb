@@ -3,7 +3,8 @@
 class ReverseGeocoding::Places::FetchData
   attr_reader :place
 
-  def initialize(place_id)
+  def initialize(place_id, force: false)
+    @force = force
     @place = Place.find(place_id)
   end
 
