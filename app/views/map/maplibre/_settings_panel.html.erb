@@ -606,6 +606,31 @@
                 <strong>Note:</strong> Changing these thresholds will trigger a recalculation of transportation modes for all your tracks. This may take some time depending on how many tracks you have.
               </div>
 
+              <fieldset class="form-control mb-4" data-testid="enabled-modes-fieldset">
+                <legend class="font-medium mb-1 text-sm">Detected modes</legend>
+                <p class="text-xs text-base-content/60 mb-2">
+                  Disabled modes won't be detected. Existing tracks aren't affected
+                  until you press Re-classify below.
+                </p>
+                <div class="grid grid-cols-2 gap-1">
+                  <% Track::TRANSPORTATION_MODES.keys.map(&:to_s).each do |mode| %>
+                    <label class="cursor-pointer label justify-start gap-2 py-0.5">
+                      <input type="checkbox"
+                             name="enabledTransportationModes[]"
+                             value="<%= mode %>"
+                             class="checkbox checkbox-sm"
+                             <%= 'checked' if current_user.safe_settings.enabled_transportation_modes.include?(mode) %>
+                             data-maps--maplibre-target="enabledModeCheckbox"
+                             data-action="change->maps--maplibre#markTransportationSettingsDirty"
+                             data-testid="enabled-mode-<%= mode %>" />
+                      <span class="text-sm">
+                        <%= mode_emoji(mode) %> <%= mode.titleize %>
+                      </span>
+                    </label>
+                  <% end %>
+                </div>
+              </fieldset>
+
               <!-- Expert Mode Toggle -->
               <div class="form-control mb-4">
                 <label class="label cursor-pointer justify-start gap-3 py-1">
@@ -885,6 +910,20 @@
                 <p class="text-xs text-base-content/60 mt-2 text-center"
                    data-maps--maplibre-target="transportationDirtyMessage">
                   Make changes to enable the Apply button
+                </p>
+              </div>
+
+              <div class="mt-4 pt-4 border-t border-base-300">
+                <%= button_to 'Re-classify my history',
+                              settings_reclassification_path,
+                              method: :post,
+                              disabled: Tracks::TransportationRecalculationStatus.new(current_user.id).in_progress?,
+                              class: 'btn btn-secondary btn-sm w-full',
+                              form: { data: { turbo_frame: '_top' } },
+                              data: { testid: 'reclassify-history-button' } %>
+                <p class="text-xs text-base-content/60 mt-1">
+                  Re-runs auto-classification across all your tracks. Manually-corrected
+                  segments are kept. May take several minutes.
                 </p>
               </div>
             </div>
