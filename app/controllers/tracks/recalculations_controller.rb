@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class Settings::ReclassificationsController < ApplicationController
+class Tracks::RecalculationsController < ApplicationController
   include FlashStreamable
 
   before_action :authenticate_user!

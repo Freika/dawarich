@@ -915,7 +915,7 @@
 
               <div class="mt-4 pt-4 border-t border-base-300">
                 <%= button_to 'Re-classify my history',
-                              settings_reclassification_path,
+                              tracks_recalculation_path,
                               method: :post,
                               disabled: Tracks::TransportationRecalculationStatus.new(current_user.id).in_progress?,
                               class: 'btn btn-secondary btn-sm w-full',

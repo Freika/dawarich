@@ -2,15 +2,15 @@
 
 require 'rails_helper'
 
-RSpec.describe 'Settings::Reclassifications', type: :request do
+RSpec.describe 'Tracks::Recalculations', type: :request do
   let(:user) { create(:user) }
 
   before { sign_in user }
 
-  describe 'POST /settings/reclassification' do
+  describe 'POST /tracks/recalculation' do
     it 'enqueues TransportationModeRecalculationJob and returns turbo-stream' do
       expect do
-        post settings_reclassification_path,
+        post tracks_recalculation_path,
              headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
       end.to have_enqueued_job(Tracks::TransportationModeRecalculationJob).with(user.id)
 
@@ -24,7 +24,7 @@ RSpec.describe 'Settings::Reclassifications', type: :request do
         .to receive(:in_progress?).and_return(true)
 
       expect do
-        post settings_reclassification_path,
+        post tracks_recalculation_path,
              headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
       end.not_to have_enqueued_job(Tracks::TransportationModeRecalculationJob)
 

@@ -70,8 +70,10 @@ Rails.application.routes.draw do
       post :demo_data, on: :member
       delete :demo_data, on: :member, action: :destroy_demo_data
     end
+  end
 
-    resource :reclassification, only: :create, controller: 'reclassifications'
+  namespace :tracks do
+    resource :recalculation, only: :create
   end
 
   get 'settings/theme', to: 'settings#theme'
