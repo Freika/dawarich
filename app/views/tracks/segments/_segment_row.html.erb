@@ -1,5 +1,5 @@
 <%= turbo_frame_tag "segment-row-#{segment.id}",
-                    class: "segment-row flex items-center gap-2 py-1",
+                    class: "segment-row flex flex-wrap items-center gap-x-2 gap-y-1 py-1",
                     data: {
                       controller: "segment-mode-editor",
                       segment_mode_editor_segment_id_value: segment.id,
@@ -8,14 +8,14 @@
                       action: "mouseenter->segment-mode-editor#hover mouseleave->segment-mode-editor#unhover",
                       testid: "segment-row-#{segment.id}"
                     } do %>
-  <div class="segment-summary flex items-center gap-2 grow">
-    <span class="text-lg"><%= mode_emoji(segment.transportation_mode) %></span>
-    <span class="font-medium"><%= segment.transportation_mode.titleize %></span>
-    <span class="text-xs text-base-content/60">
+  <div class="segment-summary flex items-center gap-2 grow min-w-0">
+    <span class="text-lg shrink-0"><%= mode_emoji(segment.transportation_mode) %></span>
+    <span class="font-medium shrink-0"><%= segment.transportation_mode.titleize %></span>
+    <span class="text-xs text-base-content/60 truncate">
       <%= segment_distance(segment) %> · <%= segment_duration(segment) %>
     </span>
     <% if segment.manually_corrected? %>
-      <span class="badge badge-sm badge-info"
+      <span class="badge badge-sm badge-info shrink-0"
             title="Edited <%= time_ago_in_words(segment.corrected_at) %> ago">
         edited
       </span>
@@ -25,12 +25,12 @@
   <%= form_with model: segment,
                 url: track_segment_path(segment.track, segment),
                 method: :patch,
-                class: "segment-mode-form flex items-center gap-1",
+                class: "segment-mode-form flex items-center gap-1 shrink-0 ml-auto",
                 data: { turbo_frame: "segment-row-#{segment.id}" } do |f| %>
     <%= f.select :transportation_mode,
                  modes_for_segment(segment, current_user),
                  { selected: segment.transportation_mode },
-                 class: "select select-xs select-bordered",
+                 class: "select select-xs select-bordered max-w-[8rem]",
                  data: {
                    action: "change->segment-mode-editor#submit",
                    testid: "segment-mode-select-#{segment.id}"
