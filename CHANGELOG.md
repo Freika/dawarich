@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+
+### Fixed
+
+- The Maps v1 area-drawing toolbar no longer disappears after toggling the Areas layer or refreshing the page. (#1938)
+
+
 ## [1.7.4] - 2026-05-03
 
 ### Fixed
