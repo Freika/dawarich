@@ -64,4 +64,31 @@ RSpec.describe Overland::PointsCreator do
       expect(call_service).to eq([])
     end
   end
+
+  context 'with lonlat strings that collapse to the same geography' do
+    # Regression: clients can emit the same physical location with two
+    # different WKT-string forms in one batch. Without dedup, upsert_all
+    # raises PG::CardinalityViolation and the entire slice is lost.
+    let(:timestamp_iso) { '2026-04-30T12:00:00Z' }
+    let(:payload) do
+      {
+        'locations' => [
+          {
+            'type' => 'Feature',
+            'geometry' => { 'type' => 'Point', 'coordinates' => [-0.1278, 51.5074] },
+            'properties' => { 'timestamp' => timestamp_iso }
+          },
+          {
+            'type' => 'Feature',
+            'geometry' => { 'type' => 'Point', 'coordinates' => [-0.12780000, 51.50740000] },
+            'properties' => { 'timestamp' => timestamp_iso }
+          }
+        ]
+      }
+    end
+
+    it 'deduplicates them before upsert_all (prevents PG::CardinalityViolation)' do
+      expect { call_service }.to change { Point.where(user:).count }.by(1)
+    end
+  end
 end
