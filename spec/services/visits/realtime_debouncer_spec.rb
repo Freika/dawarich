@@ -32,6 +32,32 @@ RSpec.describe Visits::RealtimeDebouncer do
       end
     end
 
+    context 'when the user has disabled visit suggestions' do
+      before do
+        user.update!(settings: user.settings.merge('visits_suggestions_enabled' => 'false'))
+      end
+
+      it 'does not enqueue VisitSuggestingJob' do
+        expect { debouncer.trigger }.not_to have_enqueued_job(VisitSuggestingJob)
+      end
+
+      it 'does not set a Redis key' do
+        debouncer.trigger
+
+        Sidekiq.redis do |redis|
+          expect(redis.exists(redis_key)).to eq(0)
+        end
+      end
+    end
+
+    context 'when the user no longer exists' do
+      let(:debouncer) { described_class.new(0) }
+
+      it 'does not enqueue VisitSuggestingJob' do
+        expect { debouncer.trigger }.not_to have_enqueued_job(VisitSuggestingJob)
+      end
+    end
+
     context 'when called for the first time' do
       it 'sets the Redis key' do
         debouncer.trigger

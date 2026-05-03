@@ -11,6 +11,7 @@ class Visits::RealtimeDebouncer
 
   def trigger
     return unless DawarichSettings.reverse_geocoding_enabled?
+    return unless user_opted_in?
 
     redis_pool.with do |redis|
       key = redis_key
@@ -33,6 +34,10 @@ class Visits::RealtimeDebouncer
   end
 
   private
+
+  def user_opted_in?
+    User.find_by(id: @user_id)&.safe_settings&.visits_suggestions_enabled?
+  end
 
   def redis_key
     "visit_realtime:user:#{@user_id}"
