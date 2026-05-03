@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class ReverseGeocoding::Points::FetchData
-  attr_reader :point, :force
+  attr_reader :point
 
   def initialize(point_id, force: false)
     @force = force
@@ -14,7 +14,7 @@ class ReverseGeocoding::Points::FetchData
 
   def call
     return if point.blank?
-    return if point.reverse_geocoded? && !force
+    return if point.reverse_geocoded? && !@force
     return unless point.timestamp.present? && point.lonlat.present?
 
     update_point_with_geocoding_data

@@ -3,8 +3,7 @@
 class ReverseGeocoding::Places::FetchData
   attr_reader :place
 
-  def initialize(place_id, force: false)
-    @force = force
+  def initialize(place_id, force: false) # rubocop:disable Lint/UnusedMethodArgument
     @place = Place.find(place_id)
   end
 

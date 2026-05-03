@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Jobs::Create
+  BULK_ENQUEUE_BATCH_SIZE = 1_000
+
   class InvalidJobName < StandardError; end
 
   attr_reader :job_name, :user
@@ -9,8 +11,6 @@ class Jobs::Create
     @job_name = job_name
     @user = User.find(user_id)
   end
-
-  BULK_ENQUEUE_BATCH_SIZE = 1_000
 
   def call
     case job_name
