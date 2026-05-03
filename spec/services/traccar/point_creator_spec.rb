@@ -61,6 +61,19 @@ RSpec.describe Traccar::PointCreator do
     expect { call_service }.to have_enqueued_job(Points::AnomalyFilterJob).with(user.id, anything, anything)
   end
 
+  it 'enqueues VisitSuggestingJob when reverse geocoding is enabled (regression for #1749)' do
+    allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
+
+    expect { call_service }.to have_enqueued_job(VisitSuggestingJob)
+      .with(hash_including(user_id: user.id))
+  end
+
+  it 'does not enqueue VisitSuggestingJob when reverse geocoding is disabled' do
+    allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false)
+
+    expect { call_service }.not_to have_enqueued_job(VisitSuggestingJob)
+  end
+
   it 'does not enqueue an anomaly filter job for duplicate submissions' do
     call_service
     expect { call_service }.not_to have_enqueued_job(Points::AnomalyFilterJob)

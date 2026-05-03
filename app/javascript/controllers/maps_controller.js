@@ -152,6 +152,13 @@ export default class extends BaseController {
       14,
     )
 
+    if (typeof ResizeObserver !== "undefined") {
+      this.containerResizeObserver = new ResizeObserver(() => {
+        this.map?.invalidateSize()
+      })
+      this.containerResizeObserver.observe(this.containerTarget)
+    }
+
     // Add scale control
     this.scaleControl = L.control
       .scale({
@@ -359,6 +366,11 @@ export default class extends BaseController {
   disconnect() {
     super.disconnect()
     this.removeEventListeners()
+
+    if (this.containerResizeObserver) {
+      this.containerResizeObserver.disconnect()
+      this.containerResizeObserver = null
+    }
 
     if (this.tracksSubscription) {
       this.tracksSubscription.unsubscribe()
