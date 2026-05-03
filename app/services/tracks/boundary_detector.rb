@@ -27,9 +27,7 @@ class Tracks::BoundaryDetector
 
   private
 
-  # Find tracks that might span chunk boundaries
   def find_boundary_track_candidates
-    # Get recent tracks that might have boundary issues
     recent_tracks = user.tracks
                         .where('created_at > ?', 1.hour.ago)
                         .includes(:points)
@@ -37,16 +35,17 @@ class Tracks::BoundaryDetector
 
     return [] if recent_tracks.empty?
 
-    # Group tracks that might be connected
+    candidate_tracks = (recent_tracks + adjacent_existing_tracks(recent_tracks))
+                       .uniq
+                       .sort_by(&:start_at)
+
     potential_groups = []
 
-    recent_tracks.each do |track|
-      # Look for tracks that end close to where another begins
-      connected_tracks = find_connected_tracks(track, recent_tracks)
+    candidate_tracks.each do |track|
+      connected_tracks = find_connected_tracks(track, candidate_tracks)
 
       next unless connected_tracks.any?
 
-      # Create or extend a boundary group
       existing_group = potential_groups.find { |group| group.include?(track) }
 
       if existing_group
@@ -56,8 +55,29 @@ class Tracks::BoundaryDetector
       end
     end
 
-    # Filter groups to only include legitimate boundary cases
     potential_groups.select { |group| valid_boundary_group?(group) }
+  end
+
+  def adjacent_existing_tracks(recent_tracks)
+    return [] if recent_tracks.empty?
+
+    window = 30.minutes
+    recent_ids = recent_tracks.map(&:id)
+
+    conditions = recent_tracks.flat_map do |track|
+      [
+        ['end_at BETWEEN ? AND ?', track.start_at - window, track.start_at],
+        ['start_at BETWEEN ? AND ?', track.end_at, track.end_at + window]
+      ]
+    end
+
+    sql = conditions.map(&:first).join(' OR ')
+    bindings = conditions.flat_map { |c| c[1..] }
+
+    user.tracks
+        .where.not(id: recent_ids)
+        .where(sql, *bindings)
+        .includes(:points)
   end
 
   # Find tracks that might be connected to the given track

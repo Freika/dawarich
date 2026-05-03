@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Daily track generation now merges a newly-created track with the immediately-preceding existing track when they are seconds apart, instead of leaving a permanent split each time live tracking briefly pauses. To heal splits that have already accumulated in your database, open Map v2 → Settings → **Recalculate tracks & stats** once after upgrading; from then on the daily job will keep adjacent tracks merged on its own. (#2265)
+
+
 ## [1.7.4] - 2026-05-03
 
 ### Fixed

@@ -103,6 +103,56 @@ RSpec.describe Tracks::BoundaryDetector do
       end
     end
 
+    context 'when a newly created track is adjacent to a track created hours earlier' do
+      let(:track_a_end) { 30.minutes.ago }
+      let(:track_b_start) { track_a_end + 5.seconds }
+
+      let!(:track_a) do
+        create(:track, user: user,
+                       created_at: 12.hours.ago,
+                       start_at: 1.hour.ago,
+                       end_at: track_a_end)
+      end
+      let!(:track_b) do
+        create(:track, user: user,
+                       created_at: 5.minutes.ago,
+                       start_at: track_b_start,
+                       end_at: track_b_start + 5.minutes)
+      end
+
+      let!(:track_a_start_point) do
+        create(:point, user: user, track: track_a,
+                       latitude: 52.43326, longitude: 13.52919,
+                       timestamp: 1.hour.ago.to_i)
+      end
+      let!(:track_a_end_point) do
+        create(:point, user: user, track: track_a,
+                       latitude: 52.43982, longitude: 13.48541,
+                       timestamp: track_a_end.to_i)
+      end
+      let!(:track_b_start_point) do
+        create(:point, user: user, track: track_b,
+                       latitude: 52.43913, longitude: 13.48686,
+                       timestamp: track_b_start.to_i)
+      end
+      let!(:track_b_end_point) do
+        create(:point, user: user, track: track_b,
+                       latitude: 52.43388, longitude: 13.52871,
+                       timestamp: (track_b_start + 5.minutes).to_i)
+      end
+
+      it 'merges the two adjacent tracks into one' do
+        expect { detector.resolve_cross_chunk_tracks }
+          .to change { user.tracks.count }.by(-1)
+      end
+
+      it 'preserves all points from both tracks on the surviving track' do
+        detector.resolve_cross_chunk_tracks
+
+        expect(user.tracks.first.points.count).to eq(4)
+      end
+    end
+
     context 'when merge fails' do
       let!(:track1) { create(:track, user: user, created_at: 30.minutes.ago) }
       let!(:track2) { create(:track, user: user, created_at: 25.minutes.ago) }
