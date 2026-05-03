@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
-- Visited-country statistics no longer count countries that were merely flown over. Points above 1000 m altitude or moving faster than 250 km/h are now excluded from the country and city aggregation. (#1917)
+- Visited-country statistics no longer count countries that were merely flown over. Points moving faster than 500 km/h are now excluded from the country and city aggregation. Trains and high-altitude cities (Denver, Mexico City, La Paz, Lhasa, …) continue to count as visited. Previously-saved monthly stats are not recomputed automatically — re-run stats calculation to refresh historic months. (#1917)
 
 ## [1.7.4] - 2026-05-03
 

@@ -4,8 +4,7 @@ class CountriesAndCities
   CountryData = Struct.new(:country, :cities, keyword_init: true)
   CityData = Struct.new(:city, :points, :timestamp, :stayed_for, keyword_init: true)
 
-  FLYOVER_ALTITUDE_THRESHOLD_METERS = 1000
-  FLYOVER_VELOCITY_THRESHOLD_KMH = 250
+  FLYOVER_VELOCITY_THRESHOLD_KMH = 500
   MS_TO_KMH = 3.6
 
   def initialize(points, min_minutes_spent_in_city: 60, max_gap_minutes: 120)
@@ -27,11 +26,7 @@ class CountriesAndCities
   attr_reader :points, :min_minutes_spent_in_city, :max_gap_minutes
 
   def flyover?(point)
-    altitude = point[:altitude]
-    velocity_ms = point[:velocity].to_f
-
-    altitude.to_i > FLYOVER_ALTITUDE_THRESHOLD_METERS ||
-      (velocity_ms * MS_TO_KMH) > FLYOVER_VELOCITY_THRESHOLD_KMH
+    (point[:velocity].to_f * MS_TO_KMH) > FLYOVER_VELOCITY_THRESHOLD_KMH
   end
 
   def canonical_country_name(point)

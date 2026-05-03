@@ -9,7 +9,7 @@ RSpec.describe 'Flyovers excluded from visited-country statistics' do
   let(:base_ts) { DateTime.new(year, month, 5, 12).to_i }
   let!(:import) { create(:import, user: user) }
 
-  let!(:berlin_points) do
+  let!(:berlin_ground_stay) do
     [0, 30, 70, 90].map do |minute_offset|
       create(:point, user: user, import: import,
                      timestamp: base_ts + minute_offset.minutes,
@@ -19,8 +19,30 @@ RSpec.describe 'Flyovers excluded from visited-country statistics' do
     end
   end
 
-  let!(:moscow_flyover_points) do
-    flyover_start = base_ts + 6.hours.to_i
+  let!(:la_paz_high_altitude_stay) do
+    start = base_ts + 4.hours.to_i
+    [0, 30, 70, 90].map do |minute_offset|
+      create(:point, user: user, import: import,
+                     timestamp: start + minute_offset.minutes,
+                     city: 'La Paz', country_name: 'Bolivia',
+                     altitude: 3640, velocity: '1',
+                     lonlat: 'POINT(-68.1193 -16.4897)')
+    end
+  end
+
+  let!(:tgv_high_speed_train) do
+    start = base_ts + 8.hours.to_i
+    [0, 30, 70, 90].map do |minute_offset|
+      create(:point, user: user, import: import,
+                     timestamp: start + minute_offset.minutes,
+                     city: 'Lyon', country_name: 'France',
+                     altitude: 200, velocity: '80',
+                     lonlat: 'POINT(4.8357 45.7640)')
+    end
+  end
+
+  let!(:moscow_flyover) do
+    flyover_start = base_ts + 12.hours.to_i
     (0..240).step(5).map do |minute_offset|
       create(:point, user: user, import: import,
                      timestamp: flyover_start + minute_offset.minutes,
@@ -30,8 +52,8 @@ RSpec.describe 'Flyovers excluded from visited-country statistics' do
     end
   end
 
-  let!(:kazakhstan_flyover_points) do
-    flyover_start = base_ts + 12.hours.to_i
+  let!(:kazakhstan_flyover) do
+    flyover_start = base_ts + 18.hours.to_i
     %w[Aktobe Kostanay Astana Karaganda Almaty].each_with_index.flat_map do |city, idx|
       (0..30).step(5).map do |minute_offset|
         create(:point, user: user, import: import,
@@ -43,8 +65,8 @@ RSpec.describe 'Flyovers excluded from visited-country statistics' do
     end
   end
 
-  let!(:zero_altitude_flight_points) do
-    flight_start = base_ts + 20.hours.to_i
+  let!(:zero_altitude_flight) do
+    flight_start = base_ts + 26.hours.to_i
     (0..240).step(5).map do |minute_offset|
       create(:point, user: user, import: import,
                      timestamp: flight_start + minute_offset.minutes,
@@ -65,20 +87,20 @@ RSpec.describe 'Flyovers excluded from visited-country statistics' do
         .sort
   end
 
-  it 'records only the ground-stay country with validated cities' do
-    expect(countries_with_validated_cities).to eq(['Germany'])
+  it 'records ground-stay countries (including high-altitude cities and high-speed trains)' do
+    expect(countries_with_validated_cities).to eq(%w[Bolivia France Germany])
   end
 
-  it 'reports a single visited country via StatsHelper' do
+  it 'reports the ground-stay countries via StatsHelper' do
     helper_class = Class.new { include StatsHelper }
-    expect(helper_class.new.countries_visited(stat)).to eq(1)
+    expect(helper_class.new.countries_visited(stat)).to eq(3)
   end
 
-  it 'reports a single visited country via Insights::YearTotalsCalculator' do
+  it 'reports the ground-stay countries via Insights::YearTotalsCalculator' do
     stats = user.stats.where(year: year)
     result = Insights::YearTotalsCalculator.new(stats, distance_unit: 'km').call
 
-    expect(result.countries_count).to eq(1)
-    expect(result.countries_list).to eq(['Germany'])
+    expect(result.countries_count).to eq(3)
+    expect(result.countries_list).to eq(%w[Bolivia France Germany])
   end
 end
