@@ -6,7 +6,7 @@ RSpec.describe Timeline::TrackDayShares do
   let(:tz) { 'Europe/Berlin' }
 
   def track_double(start_at:, end_at:)
-    instance_double('Track', start_at: start_at, end_at: end_at)
+    instance_double(Track, start_at: start_at, end_at: end_at)
   end
 
   def shares(start_at:, end_at:, timezone: tz)
@@ -89,6 +89,22 @@ RSpec.describe Timeline::TrackDayShares do
       )
       expect(result.keys).to eq([Date.new(2026, 10, 24), Date.new(2026, 10, 25)])
       expect(result.values.sum).to be_within(0.0001).of(1.0)
+    end
+
+    it 'attributes a track ending exactly at local midnight fully to its start day' do
+      result = shares(
+        start_at: Time.zone.local(2026, 4, 27, 22, 0).in_time_zone(tz),
+        end_at: Time.zone.local(2026, 4, 28, 0, 0).in_time_zone(tz)
+      )
+      expect(result).to eq(Date.new(2026, 4, 27) => 1.0)
+    end
+
+    it 'attributes a track starting exactly at local midnight fully to that day when it ends within it' do
+      result = shares(
+        start_at: Time.zone.local(2026, 4, 28, 0, 0).in_time_zone(tz),
+        end_at: Time.zone.local(2026, 4, 28, 4, 0).in_time_zone(tz)
+      )
+      expect(result).to eq(Date.new(2026, 4, 28) => 1.0)
     end
 
     it 'defaults to UTC when timezone is nil' do

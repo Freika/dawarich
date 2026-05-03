@@ -84,8 +84,18 @@ RSpec.describe 'Timeline daily attribution for tracks crossing midnight' do
       expect(journey[:day_duration]).to be_nil
     end
 
-    it 'sorts a continuation-day journey at the top of the day, before morning visits' do
+    it 'sorts a continuation-day journey to its arrival time within the day' do
+      pre_arrival_place = create(:place, :with_geodata, name: 'Gas station', latitude: 52.45, longitude: 13.30)
       morning_place = create(:place, :with_geodata, name: 'Cafe', latitude: 52.52, longitude: 13.40)
+      # Visit during the trip continuation (00:30, before the 02:00 arrival).
+      create(:visit,
+             user: user,
+             place: pre_arrival_place,
+             name: 'Gas station',
+             started_at: Time.zone.local(2026, 4, 28, 0, 30),
+             ended_at: Time.zone.local(2026, 4, 28, 0, 45),
+             duration: 15)
+      # Visit after the trip arrives.
       create(:visit,
              user: user,
              place: morning_place,
@@ -95,10 +105,14 @@ RSpec.describe 'Timeline daily attribution for tracks crossing midnight' do
              duration: 60)
 
       day_b_entry = assemble(day_b).find { |d| d[:date] == day_b.to_s }
-      types_in_order = day_b_entry[:entries].map { |e| e[:type] }
-      expect(types_in_order.first).to eq('journey'),
-                                      'Continuation-day journey should clamp to day-start and lead the day'
-      expect(types_in_order).to include('visit')
+      ordered = day_b_entry[:entries].map { |e| [e[:type], e[:name] || e[:dominant_mode]] }
+      expect(ordered).to eq([
+                              ['visit', 'Gas station'],
+                              ['journey', overnight_track.dominant_mode],
+                              ['visit', 'Cafe']
+                            ]),
+                         'Continuation journey should sort to its 02:00 arrival time, between the ' \
+                         "00:30 visit and the 08:00 visit. Got #{ordered.inspect}"
     end
 
     it 'preserves track_count as start-day-only in the calendar grid' do

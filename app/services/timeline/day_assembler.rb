@@ -57,6 +57,10 @@ module Timeline
 
     attr_reader :user, :start_at, :end_at, :distance_unit
 
+    def timezone
+      @timezone ||= user.safe_settings.timezone
+    end
+
     def fetch_visits
       user.scoped_visits
           .includes(:area, suggested_places: :tags, place: :tags)
@@ -76,8 +80,7 @@ module Timeline
     end
 
     def group_by_day(visits, tracks)
-      tz = user.safe_settings.timezone
-      Time.use_zone(tz) do
+      Time.use_zone(timezone) do
         grouped = {}
         window = start_at.in_time_zone.to_date..end_at.in_time_zone.to_date
 
@@ -91,7 +94,7 @@ module Timeline
 
         tracks.each do |track|
           start_day = track.start_at.in_time_zone.to_date
-          TrackDayShares.shares_for(track, tz).each do |day_key, fraction|
+          TrackDayShares.shares_for(track, timezone).each do |day_key, fraction|
             next unless window.cover?(day_key)
 
             grouped[day_key] ||= empty_day_bucket
@@ -127,20 +130,24 @@ module Timeline
       }
     end
 
-    # Sort key clamps continuation-day journeys to the day's 00:00 anchor so
-    # they appear at the top of the day rather than ahead of all visits at
-    # the previous evening's wall-clock. Visits never cross midnight in the
-    # bucket (group_by_day keys them on their own start), so their sort key
-    # is unchanged.
+    # Continuation journeys anchor to their arrival time within the day (so a
+    # 00:30 visit correctly sorts before a 02:00 trip arrival). For multi-day
+    # passes-through where arrival also falls outside the day, the anchor is
+    # clamped into the day window.
     def interleave(date, visits, tracks, track_shares)
-      day_start_iso = date.in_time_zone(user.safe_settings.timezone).beginning_of_day.iso8601
+      day_local = date.in_time_zone(timezone)
+      day_start_iso = day_local.beginning_of_day.iso8601
+      day_end_iso = day_local.end_of_day.iso8601
       visit_entries = visits.map { |v| build_visit_entry(v) }
       track_entries = tracks.map { |t| build_journey_entry(t, date: date, day_share: track_shares.fetch(t.id, 1.0)) }
 
       (visit_entries + track_entries).sort_by do |entry|
-        sort_key = entry[:started_at]
-        sort_key = day_start_iso if sort_key < day_start_iso
-        [sort_key, entry[:started_at]]
+        anchor = if entry[:continuation_of_date]
+                   [[entry[:ended_at], day_end_iso].min, day_start_iso].max
+                 else
+                   entry[:started_at]
+                 end
+        [anchor, entry[:started_at]]
       end
     end
 
@@ -188,8 +195,7 @@ module Timeline
     end
 
     def build_journey_entry(track, date: nil, day_share: 1.0)
-      tz = user.safe_settings.timezone
-      start_day = track.start_at.in_time_zone(tz).to_date
+      start_day = track.start_at.in_time_zone(timezone).to_date
       continuation = date.present? && date != start_day
 
       {
