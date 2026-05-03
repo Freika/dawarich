@@ -62,7 +62,7 @@ module Tracks
       return if segments.empty?
 
       dominant = segments.max_by { |s| s.duration || 0 }
-      track.update(dominant_mode: dominant.transportation_mode)
+      track.update!(dominant_mode: dominant.transportation_mode)
     end
 
     def success
