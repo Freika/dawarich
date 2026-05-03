@@ -87,6 +87,9 @@ Rails.application.routes.draw do
   get 'trial/welcome', to: 'trial/welcome#show', as: :trial_welcome
 
   resources :imports
+  resources :tracks, only: [] do
+    resources :segments, controller: 'tracks/segments', only: %i[index update]
+  end
   # Temporary (302) during the unified-timeline rollout; promote to :moved_permanently (301)
   # once the redesign is known-stable so browsers cache the redirect.
   get '/visits', to: redirect(status: 302) { |_params, req|

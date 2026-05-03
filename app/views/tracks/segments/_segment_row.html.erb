@@ -1,0 +1,45 @@
+<%= turbo_frame_tag "segment-row-#{segment.id}",
+                    class: "segment-row flex items-center gap-2 py-1",
+                    data: {
+                      controller: "segment-mode-editor",
+                      segment_mode_editor_segment_id_value: segment.id,
+                      segment_mode_editor_track_id_value: segment.track_id,
+                      segment_mode_editor_mode_value: segment.transportation_mode,
+                      action: "mouseenter->segment-mode-editor#hover mouseleave->segment-mode-editor#unhover",
+                      testid: "segment-row-#{segment.id}"
+                    } do %>
+  <div class="segment-summary flex items-center gap-2 grow">
+    <span class="text-lg"><%= mode_emoji(segment.transportation_mode) %></span>
+    <span class="font-medium"><%= segment.transportation_mode.titleize %></span>
+    <span class="text-xs text-base-content/60">
+      <%= segment_distance(segment) %> · <%= segment_duration(segment) %>
+    </span>
+    <% if segment.manually_corrected? %>
+      <span class="badge badge-sm badge-info"
+            title="Edited <%= time_ago_in_words(segment.corrected_at) %> ago">
+        edited
+      </span>
+    <% end %>
+  </div>
+
+  <%= form_with model: segment,
+                url: track_segment_path(segment.track, segment),
+                method: :patch,
+                class: "segment-mode-form flex items-center gap-1",
+                data: { turbo_frame: "segment-row-#{segment.id}" } do |f| %>
+    <%= f.select :transportation_mode,
+                 modes_for_segment(segment, current_user),
+                 { selected: segment.transportation_mode },
+                 class: "select select-xs select-bordered",
+                 data: {
+                   action: "change->segment-mode-editor#submit",
+                   testid: "segment-mode-select-#{segment.id}"
+                 } %>
+    <% if segment.manually_corrected? %>
+      <%= f.button "↻", name: "reset", value: "true",
+                   class: "btn btn-ghost btn-xs",
+                   title: "Restore auto-detection",
+                   data: { testid: "segment-reset-#{segment.id}" } %>
+    <% end %>
+  <% end %>
+<% end %>
