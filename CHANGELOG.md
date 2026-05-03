@@ -9,7 +9,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 - Track duration and average speed are now refreshed whenever a track's path is rebuilt (e.g. after a merge), instead of keeping their pre-merge values. To heal tracks already affected, click Map v2 → Settings → **Recalculate tracks & stats** once after upgrading.
+- Server-rendered timestamps (Points, Places, Imports, Exports, account settings, trial banner) now display in the user's profile timezone, matching the Maps tab. Previously, the time and tooltip could fall back to the server's default zone, drifting by hours. Invalid stored timezones no longer raise. (#1824)
+- "Start Reverse Geocoding" now actually re-runs for every point in your database — previously it silently skipped any point that had already been geocoded, even though the button promised a full re-run. (#2141)
+- Map v2 date-navigation arrows (`<` / `>`) now shift the time window by exactly one day, matching Map v1. Previously they shifted by the current window width, so a 00:00–23:59 selection paged back by 23h59m instead of 24h. (#2548)
+- Daily track generation now merges a newly-created track with the immediately-preceding existing track when they are seconds apart, instead of leaving a permanent split each time live tracking briefly pauses. To heal splits that have already accumulated in your database, open Map v2 → Settings → **Recalculate tracks & stats** once after upgrading; from then on the daily job will keep adjacent tracks merged on its own. (#2265)
 
+
+### Changed
+
+- "Start Reverse Geocoding" and "Continue Reverse Geocoding" now enqueue Sidekiq jobs in bulk batches of 1,000 instead of one round-trip per point. For large databases (millions of points) this drops the enqueue phase from minutes to seconds. Per-point geocoder rate-limit behavior is unchanged. (#2141)
+- Map (Leaflet) on mobile browsers no longer clips the bottom of the map and routes after the address bar collapses or the date is changed. (#2000)
+- Visit suggestions are now generated from live tracking (Dawarich iOS app, OwnTracks, Overland, Traccar), not just from imports. Previously, only imported data triggered visit detection. Visit suggestion still requires a configured reverse geocoder (Photon, Geoapify, Nominatim, or LocationIQ). (#1749, #1966)
 
 ## [1.7.4] - 2026-05-03
 
