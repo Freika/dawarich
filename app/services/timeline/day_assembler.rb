@@ -79,18 +79,25 @@ module Timeline
       tz = user.safe_settings.timezone
       Time.use_zone(tz) do
         grouped = {}
+        window = start_at.in_time_zone.to_date..end_at.in_time_zone.to_date
 
         visits.each do |visit|
           day_key = visit.started_at.in_time_zone.to_date
-          grouped[day_key] ||= { visits: [], tracks: [], track_shares: {} }
+          next unless window.cover?(day_key)
+
+          grouped[day_key] ||= empty_day_bucket
           grouped[day_key][:visits] << visit
         end
 
         tracks.each do |track|
-          TrackDayShares.for(track, tz).each do |day_key, fraction|
-            grouped[day_key] ||= { visits: [], tracks: [], track_shares: {} }
+          start_day = track.start_at.in_time_zone.to_date
+          TrackDayShares.shares_for(track, tz).each do |day_key, fraction|
+            next unless window.cover?(day_key)
+
+            grouped[day_key] ||= empty_day_bucket
             grouped[day_key][:tracks] << track
             grouped[day_key][:track_shares][track.id] = fraction
+            grouped[day_key][:originating_tracks] << track if day_key == start_day
           end
         end
 
@@ -98,16 +105,24 @@ module Timeline
       end
     end
 
-    def build_days(days)
-      days.map { |date, data| build_day(date, data[:visits], data[:tracks], data[:track_shares] || {}) }
+    # Continuation-day buckets share polyline geometry with their start day.
+    # Auto-fit bounds use only `originating_tracks` so the camera frames "what
+    # happened today" instead of zooming out to a city visited the prior
+    # evening; the route layer still renders the full polyline independently.
+    def empty_day_bucket
+      { visits: [], tracks: [], originating_tracks: [], track_shares: {} }
     end
 
-    def build_day(date, visits, tracks, track_shares)
-      entries = interleave(visits, tracks)
+    def build_days(days)
+      days.map { |date, data| build_day(date, data) }
+    end
+
+    def build_day(date, data)
+      entries = interleave(data[:visits], data[:tracks])
       {
         date: date.to_s,
-        summary: build_summary(visits, tracks, track_shares),
-        bounds: build_bounds(visits, tracks),
+        summary: build_summary(data[:visits], data[:tracks], data[:track_shares]),
+        bounds: build_bounds(data[:visits], data[:originating_tracks]),
         entries: entries
       }
     end

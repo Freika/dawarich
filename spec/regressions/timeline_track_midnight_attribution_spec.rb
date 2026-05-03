@@ -34,11 +34,12 @@ RSpec.describe 'Timeline daily attribution for tracks crossing midnight' do
     end
 
     it 'distributes overnight track distance across both calendar days in the user timezone' do
-      days_a = assemble(day_a)
-      days_b = assemble(day_b)
+      day_a_entry = assemble(day_a).find { |d| d[:date] == day_a.to_s }
+      day_b_entry = assemble(day_b).find { |d| d[:date] == day_b.to_s }
 
-      day_a_distance = days_a.first&.dig(:summary, :total_distance) || 0
-      day_b_distance = days_b.first&.dig(:summary, :total_distance) || 0
+      day_a_distance = day_a_entry&.dig(:summary, :total_distance) || 0
+      day_b_distance = day_b_entry&.dig(:summary, :total_distance) || 0
+      total_km = (overnight_track.distance / 1000.0).round(1)
 
       expect(day_a_distance).to be > 0,
                                 "Day A (#{day_a}) should have some distance, got #{day_a_distance}"
@@ -47,6 +48,20 @@ RSpec.describe 'Timeline daily attribution for tracks crossing midnight' do
                                 "extends past midnight, got #{day_b_distance}. " \
                                 'Currently the entire track is attributed to its start day, leaving ' \
                                 'the continuation day with zero km even though points are present on the map.'
+      expect(day_a_distance + day_b_distance).to be_within(0.2).of(total_km)
+      expect(day_b_distance).to be > day_a_distance,
+                                'Most of the track happened after midnight, so Day B should hold the ' \
+                                "larger share. Got Day A=#{day_a_distance} Day B=#{day_b_distance}."
+    end
+
+    it 'does not include the prior-day track polyline in the continuation-day bounds' do
+      day_b_entry = assemble(day_b).find { |d| d[:date] == day_b.to_s }
+      expect(day_b_entry[:bounds]).to be_nil
+    end
+
+    it 'returns only the requested day even when a track spreads shares to adjacent days' do
+      result = assemble(day_b)
+      expect(result.map { |d| d[:date] }).to eq([day_b.to_s])
     end
   end
 

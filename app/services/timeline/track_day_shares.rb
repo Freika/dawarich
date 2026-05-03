@@ -4,9 +4,10 @@ module Timeline
   module TrackDayShares
     module_function
 
-    def for(track, timezone)
-      start_local = track.start_at.in_time_zone(timezone)
-      end_local = track.end_at.in_time_zone(timezone)
+    def shares_for(track, timezone)
+      tz = timezone.presence || 'UTC'
+      start_local = track.start_at.in_time_zone(tz)
+      end_local = track.end_at.in_time_zone(tz)
 
       total = (end_local - start_local).to_f
       return { start_local.to_date => 1.0 } if total <= 0

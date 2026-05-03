@@ -37,7 +37,7 @@ module Timeline
       d = normalize_month(date)
       tz = user.safe_settings.timezone.presence || 'UTC'
       plan_segment = user.plan_restricted? ? 'lite' : 'pro'
-      ['timeline_month_summary', user.id, d.strftime('%Y-%m'), tz, plan_segment]
+      ['timeline_month_summary', user.id, d.strftime('%Y-%m'), tz, plan_segment, 'v2']
     end
 
     def self.normalize_month(date)
@@ -162,7 +162,7 @@ module Timeline
         seconds = Hash.new(0.0)
         count = Hash.new(0)
         overlapping_tracks.find_each do |track|
-          TrackDayShares.for(track, tz).each do |day, fraction|
+          TrackDayShares.shares_for(track, tz).each do |day, fraction|
             seconds[day.to_s] += track.duration.to_f * fraction
             count[day.to_s] += 1
           end
