@@ -157,14 +157,18 @@ module Timeline
       @track_count ||= track_day_attributions[:count]
     end
 
+    # `seconds` is pro-rated across days a track spans (so the heat grid
+    # reflects actual presence on each day). `count` stays start-day-only,
+    # preserving the field's prior meaning of "tracks that began this day".
     def track_day_attributions
       @track_day_attributions ||= begin
         seconds = Hash.new(0.0)
         count = Hash.new(0)
         overlapping_tracks.find_each do |track|
+          start_day = track.start_at.in_time_zone(tz).to_date.to_s
+          count[start_day] += 1
           TrackDayShares.shares_for(track, tz).each do |day, fraction|
             seconds[day.to_s] += track.duration.to_f * fraction
-            count[day.to_s] += 1
           end
         end
         { seconds: seconds, count: count }

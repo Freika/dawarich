@@ -15,9 +15,17 @@
   }
   mode = entry[:dominant_mode].presence || 'unknown'
   config = mode_config[mode] || mode_config['unknown']
-  start_time = Time.zone.parse(entry[:started_at]).strftime('%H:%M')
-  duration = format_duration_short(entry[:duration])
-  distance_text = entry[:distance] > 0 ? "#{entry[:distance]} #{entry[:distance_unit]}" : nil
+  continuation_date = entry[:continuation_of_date]
+  if continuation_date
+    leg_time = Time.zone.parse(entry[:ended_at]).strftime('%H:%M')
+    duration = format_duration_short(entry[:day_duration] || entry[:duration])
+    day_distance = entry[:day_distance] || entry[:distance]
+    distance_text = day_distance > 0 ? "#{day_distance} #{entry[:distance_unit]} of #{entry[:distance]} #{entry[:distance_unit]}" : nil
+  else
+    leg_time = Time.zone.parse(entry[:started_at]).strftime('%H:%M')
+    duration = format_duration_short(entry[:duration])
+    distance_text = entry[:distance] > 0 ? "#{entry[:distance]} #{entry[:distance_unit]}" : nil
+  end
   track_id = entry[:track_id]
   frame_id = "track-info-#{track_id}"
 %>
@@ -36,13 +44,17 @@
          data-frame-id="<%= frame_id %>"
          data-track-start="<%= entry[:started_at] %>"
        <% end %>>
-    <div class="journey-leg__time"><%= start_time %></div>
+    <div class="journey-leg__time"><%= leg_time %></div>
     <div class="journey-leg__rail-col" aria-hidden="true">
       <span class="journey-leg__rail"></span>
     </div>
     <div class="journey-leg__summary">
-      <% if config[:emoji] %><span class="journey-leg__emoji"><%= config[:emoji] %></span><% end %>
-      <span class="journey-leg__verb"><%= config[:verb] %></span>
+      <% if continuation_date %>
+        <span class="journey-leg__verb">continued from <%= Date.parse(continuation_date).strftime('%b %-d') %>, arrived</span>
+      <% else %>
+        <% if config[:emoji] %><span class="journey-leg__emoji"><%= config[:emoji] %></span><% end %>
+        <span class="journey-leg__verb"><%= config[:verb] %></span>
+      <% end %>
       <% if distance_text %>
         <span class="journey-leg__sep">&middot;</span>
         <span><%= distance_text %></span>

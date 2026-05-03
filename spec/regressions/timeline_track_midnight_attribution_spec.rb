@@ -63,6 +63,53 @@ RSpec.describe 'Timeline daily attribution for tracks crossing midnight' do
       result = assemble(day_b)
       expect(result.map { |d| d[:date] }).to eq([day_b.to_s])
     end
+
+    it 'flags the continuation-day journey entry with continuation_of_date and pro-rata day_distance / day_duration' do
+      day_b_entry = assemble(day_b).find { |d| d[:date] == day_b.to_s }
+      journey = day_b_entry[:entries].find { |e| e[:type] == 'journey' }
+
+      expect(journey[:continuation_of_date]).to eq(day_a.to_s)
+      expect(journey[:day_distance]).to be < journey[:distance]
+      expect(journey[:day_duration]).to be < journey[:duration]
+      expect(journey[:day_distance]).to be > 0
+      expect(journey[:day_duration]).to be > 0
+    end
+
+    it 'leaves continuation_of_date / day_distance / day_duration nil on the originating day' do
+      day_a_entry = assemble(day_a).find { |d| d[:date] == day_a.to_s }
+      journey = day_a_entry[:entries].find { |e| e[:type] == 'journey' }
+
+      expect(journey[:continuation_of_date]).to be_nil
+      expect(journey[:day_distance]).to be_nil
+      expect(journey[:day_duration]).to be_nil
+    end
+
+    it 'sorts a continuation-day journey at the top of the day, before morning visits' do
+      morning_place = create(:place, :with_geodata, name: 'Cafe', latitude: 52.52, longitude: 13.40)
+      create(:visit,
+             user: user,
+             place: morning_place,
+             name: 'Cafe',
+             started_at: Time.zone.local(2026, 4, 28, 8, 0),
+             ended_at: Time.zone.local(2026, 4, 28, 9, 0),
+             duration: 60)
+
+      day_b_entry = assemble(day_b).find { |d| d[:date] == day_b.to_s }
+      types_in_order = day_b_entry[:entries].map { |e| e[:type] }
+      expect(types_in_order.first).to eq('journey'),
+                                      'Continuation-day journey should clamp to day-start and lead the day'
+      expect(types_in_order).to include('visit')
+    end
+
+    it 'preserves track_count as start-day-only in the calendar grid' do
+      summary = Time.use_zone(tz) do
+        Timeline::MonthSummary.new(user: user, month: Date.new(2026, 4, 1)).call
+      end
+      cells = summary[:weeks].flatten.index_by { |c| c[:date] }
+      expect(cells['2026-04-27'][:track_count]).to eq(1)
+      expect(cells['2026-04-28'][:track_count]).to eq(0)
+      expect(cells['2026-04-28'][:tracked_seconds]).to be > 0
+    end
   end
 
   describe Timeline::MonthSummary do

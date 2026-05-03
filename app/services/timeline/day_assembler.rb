@@ -118,7 +118,7 @@ module Timeline
     end
 
     def build_day(date, data)
-      entries = interleave(data[:visits], data[:tracks])
+      entries = interleave(date, data[:visits], data[:tracks], data[:track_shares])
       {
         date: date.to_s,
         summary: build_summary(data[:visits], data[:tracks], data[:track_shares]),
@@ -127,11 +127,21 @@ module Timeline
       }
     end
 
-    def interleave(visits, tracks)
+    # Sort key clamps continuation-day journeys to the day's 00:00 anchor so
+    # they appear at the top of the day rather than ahead of all visits at
+    # the previous evening's wall-clock. Visits never cross midnight in the
+    # bucket (group_by_day keys them on their own start), so their sort key
+    # is unchanged.
+    def interleave(date, visits, tracks, track_shares)
+      day_start_iso = date.in_time_zone(user.safe_settings.timezone).beginning_of_day.iso8601
       visit_entries = visits.map { |v| build_visit_entry(v) }
-      track_entries = tracks.map { |t| build_journey_entry(t) }
+      track_entries = tracks.map { |t| build_journey_entry(t, date: date, day_share: track_shares.fetch(t.id, 1.0)) }
 
-      (visit_entries + track_entries).sort_by { |e| e[:started_at] }
+      (visit_entries + track_entries).sort_by do |entry|
+        sort_key = entry[:started_at]
+        sort_key = day_start_iso if sort_key < day_start_iso
+        [sort_key, entry[:started_at]]
+      end
     end
 
     # NOTE: visit.duration is stored in MINUTES. See the public #build_visit_entry
@@ -177,7 +187,11 @@ module Timeline
       seen.values
     end
 
-    def build_journey_entry(track)
+    def build_journey_entry(track, date: nil, day_share: 1.0)
+      tz = user.safe_settings.timezone
+      start_day = track.start_at.in_time_zone(tz).to_date
+      continuation = date.present? && date != start_day
+
       {
         type: 'journey',
         track_id: track.id,
@@ -190,7 +204,10 @@ module Timeline
         avg_speed: convert_speed(track.avg_speed.to_f),
         speed_unit: speed_unit_label,
         elevation_gain: track.elevation_gain,
-        elevation_loss: track.elevation_loss
+        elevation_loss: track.elevation_loss,
+        continuation_of_date: continuation ? start_day.to_s : nil,
+        day_distance: continuation ? convert_distance(track.distance.to_f * day_share) : nil,
+        day_duration: continuation ? (track.duration.to_f * day_share).round : nil
       }
     end
 
