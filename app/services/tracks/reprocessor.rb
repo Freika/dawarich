@@ -74,7 +74,7 @@ module Tracks
         segment_data = drop_overlapping(segment_data, preserved)
 
         create_segments(track, segment_data)
-        update_dominant_mode_with_preserved(track, preserved)
+        recompute_dominant_mode(track)
       end
     rescue StandardError => e
       Rails.logger.error "Failed to reprocess track #{track.id}: #{e.message}"
@@ -126,7 +126,7 @@ module Tracks
       end
     end
 
-    def update_dominant_mode_with_preserved(track, _preserved)
+    def recompute_dominant_mode(track)
       all_segments = track.track_segments.reload.to_a
       return if all_segments.empty?
 
