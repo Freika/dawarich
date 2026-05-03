@@ -1,0 +1,9 @@
+<%= turbo_frame_tag "track-#{@track.id}-segments", class: "track-segments-list" do %>
+  <% if @segments.empty? %>
+    <p class="text-sm text-base-content/60">No segments for this track yet.</p>
+  <% else %>
+    <% @segments.each do |segment| %>
+      <%= render partial: "tracks/segments/segment_row", locals: { segment: segment } %>
+    <% end %>
+  <% end %>
+<% end %>

@@ -48,6 +48,7 @@ RSpec.describe Users::SafeSettings do
               'time_gap_threshold' => 180,
               'min_flight_distance_km' => 100
             },
+            enabled_transportation_modes: Track::TRANSPORTATION_MODES.keys.map(&:to_s),
             transportation_expert_mode: false,
             min_minutes_spent_in_city: 60,
             max_gap_minutes_in_city: 120,
@@ -176,6 +177,7 @@ RSpec.describe Users::SafeSettings do
               'time_gap_threshold' => 180,
               'min_flight_distance_km' => 100
             },
+            enabled_transportation_modes: Track::TRANSPORTATION_MODES.keys.map(&:to_s),
             transportation_expert_mode: false,
             min_minutes_spent_in_city: 60,
             max_gap_minutes_in_city: 120,
@@ -604,6 +606,59 @@ RSpec.describe Users::SafeSettings do
 
       it 'returns true for transportation expert mode' do
         expect(safe_settings.transportation_expert_mode?).to be true
+      end
+    end
+  end
+
+  describe '#enabled_transportation_modes' do
+    let(:safe_settings) { described_class.new(settings) }
+    let(:canonical) { Track::TRANSPORTATION_MODES.keys.map(&:to_s) }
+
+    context 'when settings hash is empty' do
+      let(:settings) { {} }
+
+      it 'returns the canonical list of transportation modes' do
+        expect(safe_settings.enabled_transportation_modes).to eq(canonical)
+      end
+    end
+
+    context 'when value is nil' do
+      let(:settings) { { 'enabled_transportation_modes' => nil } }
+
+      it 'returns the canonical list of transportation modes' do
+        expect(safe_settings.enabled_transportation_modes).to eq(canonical)
+      end
+    end
+
+    context 'when value is an empty array' do
+      let(:settings) { { 'enabled_transportation_modes' => [] } }
+
+      it 'returns the canonical list of transportation modes' do
+        expect(safe_settings.enabled_transportation_modes).to eq(canonical)
+      end
+    end
+
+    context 'when value is a valid subset' do
+      let(:settings) { { 'enabled_transportation_modes' => %w[walking cycling driving] } }
+
+      it 'returns the subset' do
+        expect(safe_settings.enabled_transportation_modes).to eq(%w[walking cycling driving])
+      end
+    end
+
+    context 'when value contains a mix of valid and bogus modes' do
+      let(:settings) { { 'enabled_transportation_modes' => %w[walking teleporting cycling jetpack] } }
+
+      it 'filters out the bogus values' do
+        expect(safe_settings.enabled_transportation_modes).to eq(%w[walking cycling])
+      end
+    end
+
+    context 'when value contains only bogus modes' do
+      let(:settings) { { 'enabled_transportation_modes' => %w[teleporting jetpack] } }
+
+      it 'falls back to the canonical list' do
+        expect(safe_settings.enabled_transportation_modes).to eq(canonical)
       end
     end
   end

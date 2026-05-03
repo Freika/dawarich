@@ -138,6 +138,8 @@ export default class extends Controller {
     // Transportation apply button
     "transportationApplyButton",
     "transportationDirtyMessage",
+    // Transportation enabled modes allowlist
+    "enabledModeCheckbox",
     // Replay
     "replayPanel",
     "replayScrubber",
@@ -342,6 +344,7 @@ export default class extends Controller {
     this.settingsController?.stopRecalculationPolling()
     this.searchManager?.destroy()
     this.visitsManager?.destroy()
+    this.eventHandlers?.destroy()
     cancelAllPreviews()
     this.cleanup.cleanup()
     this.map?.remove()

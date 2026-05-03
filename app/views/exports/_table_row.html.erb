@@ -14,7 +14,7 @@
   <td class="px-4 py-3">
     <%= status_badge(export) %>
   </td>
-  <td class="px-4 py-3 text-sm text-base-content/50"><%= human_datetime(export.created_at) %></td>
+  <td class="px-4 py-3 text-sm text-base-content/50"><%= human_datetime(export.created_at, current_user.safe_settings.timezone) %></td>
   <td class="px-4 py-3 text-right">
     <div class="flex items-center gap-1 justify-end">
       <% if export.completed? %>

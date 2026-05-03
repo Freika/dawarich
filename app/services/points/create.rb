@@ -11,7 +11,7 @@ class Points::Create
   def call
     data = Points::Params.new(params, user.id).call
 
-    deduplicated_data = data.uniq { |point| [point[:lonlat], point[:timestamp].to_i, point[:user_id]] }
+    deduplicated_data = data.uniq { |point| Point.dedup_key(point) }
 
     created_points = []
     inserted_count = 0
@@ -33,6 +33,7 @@ class Points::Create
       timestamps = deduplicated_data.filter_map { |p| p[:timestamp]&.to_i }
       Points::AnomalyFilterJob.perform_later(user.id, timestamps.min, timestamps.max) if timestamps.any?
       Tracks::RealtimeDebouncer.new(user.id).trigger
+      Visits::RealtimeDebouncer.new(user.id).trigger
       Points::LiveBroadcaster.new(user.id, created_points, deduplicated_data).call
     end
 

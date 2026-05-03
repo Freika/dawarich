@@ -76,6 +76,36 @@ RSpec.describe 'Map::TimelineFeeds', type: :request do
           expect(response.body).to include("track-info-#{track.id}")
         end
       end
+
+      context 'with a track that crosses midnight in the user timezone' do
+        let(:user) { create(:user, settings: { 'timezone' => 'Europe/Berlin' }) }
+        let(:day_b) { Date.new(2026, 4, 28) }
+
+        before do
+          Time.use_zone('Europe/Berlin') do
+            create(
+              :track,
+              user: user,
+              start_at: Time.zone.local(2026, 4, 27, 23, 30),
+              end_at: Time.zone.local(2026, 4, 28, 2, 0),
+              distance: 180_000,
+              duration: 9_000,
+              dominant_mode: :driving
+            )
+          end
+        end
+
+        it 'renders the continuation card with arrival time and pro-rata distance copy' do
+          get map_timeline_feeds_path(
+            start_at: day_b.in_time_zone('Europe/Berlin').beginning_of_day.iso8601,
+            end_at: day_b.in_time_zone('Europe/Berlin').end_of_day.iso8601
+          )
+
+          expect(response).to have_http_status(:success)
+          expect(response.body).to include('continued from Apr 27, arrived')
+          expect(response.body).to match(/\d+\.\d+ km of 180\.0 km/)
+        end
+      end
     end
   end
 

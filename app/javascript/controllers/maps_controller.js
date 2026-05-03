@@ -152,6 +152,13 @@ export default class extends BaseController {
       14,
     )
 
+    if (typeof ResizeObserver !== "undefined") {
+      this.containerResizeObserver = new ResizeObserver(() => {
+        this.map?.invalidateSize()
+      })
+      this.containerResizeObserver.observe(this.containerTarget)
+    }
+
     // Add scale control
     this.scaleControl = L.control
       .scale({
@@ -359,6 +366,11 @@ export default class extends BaseController {
   disconnect() {
     super.disconnect()
     this.removeEventListeners()
+
+    if (this.containerResizeObserver) {
+      this.containerResizeObserver.disconnect()
+      this.containerResizeObserver = null
+    }
 
     if (this.tracksSubscription) {
       this.tracksSubscription.unsubscribe()
@@ -743,11 +755,9 @@ export default class extends BaseController {
         }
       } else if (event.name === "Tracks") {
         this.handleRouteLayerToggle("tracks")
-      } else if (event.name === "Areas") {
-        // Show draw control when Areas layer is enabled
+      } else if (event.layer === this.areasLayer) {
         if (
           this.drawControl &&
-          !this.map.hasControl &&
           !this.map._controlCorners.topleft.querySelector(".leaflet-draw")
         ) {
           this.map.addControl(this.drawControl)
@@ -813,8 +823,7 @@ export default class extends BaseController {
 
         // Manage pane visibility when layers are manually toggled
         this.updatePaneVisibilityAfterLayerChange()
-      } else if (event.name === "Areas") {
-        // Hide draw control when Areas layer is disabled
+      } else if (event.layer === this.areasLayer) {
         if (
           this.drawControl &&
           this.map._controlCorners.topleft.querySelector(".leaflet-draw")

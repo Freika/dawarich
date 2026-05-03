@@ -206,6 +206,44 @@ RSpec.describe Points::Create do
       end
     end
 
+    context 'with lonlat strings that collapse to the same geography' do
+      # Regression: clients (e.g. Overland on iOS) occasionally emit the same
+      # location in two different WKT-string forms inside a single batch. Ruby
+      # string equality would keep both, but the PostgreSQL UNIQUE index on
+      # (lonlat, timestamp, user_id) treats them as equal — so `upsert_all`
+      # fails with PG::CardinalityViolation and the whole 1000-point slice is
+      # lost.
+      let(:collapsed_processed_data) do
+        current_time = Time.current
+        [
+          {
+            lonlat: 'POINT(-0.1278 51.5074)',
+            timestamp: timestamp,
+            user_id: user.id,
+            created_at: current_time,
+            updated_at: current_time
+          },
+          {
+            lonlat: 'POINT(-0.12780000 51.50740000)', # different string, same point
+            timestamp: timestamp,
+            user_id: user.id,
+            created_at: current_time,
+            updated_at: current_time
+          }
+        ]
+      end
+
+      before do
+        allow_any_instance_of(Points::Params).to receive(:call).and_return(collapsed_processed_data)
+      end
+
+      it 'deduplicates them before upsert_all (prevents PG::CardinalityViolation)' do
+        expect do
+          described_class.new(user, point_params).call
+        end.to change { Point.where(user: user, timestamp: timestamp.to_i).count }.from(0).to(1)
+      end
+    end
+
     context 'with large datasets' do
       let(:many_locations) do
         2001.times.map do |i|
@@ -299,6 +337,22 @@ RSpec.describe Points::Create do
         user.reload
 
         expect(user.points_count).to eq(Point.where(user_id: user.id).count)
+      end
+
+      it 'enqueues VisitSuggestingJob when reverse geocoding is enabled (regression for #1749)' do
+        allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
+
+        expect do
+          described_class.new(user, point_params).call
+        end.to have_enqueued_job(VisitSuggestingJob).with(hash_including(user_id: user.id))
+      end
+
+      it 'does not enqueue VisitSuggestingJob when reverse geocoding is disabled' do
+        allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false)
+
+        expect do
+          described_class.new(user, point_params).call
+        end.not_to have_enqueued_job(VisitSuggestingJob)
       end
 
       it 'does not increment points_count for duplicate upserts' do

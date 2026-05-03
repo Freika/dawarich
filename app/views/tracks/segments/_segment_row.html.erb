@@ -1,0 +1,62 @@
+<%= turbo_frame_tag "segment-row-#{segment.id}",
+                    class: "segment-row flex items-center gap-2 py-1 text-sm",
+                    data: {
+                      controller: "segment-mode-editor",
+                      segment_mode_editor_segment_id_value: segment.id,
+                      segment_mode_editor_track_id_value: segment.track_id,
+                      segment_mode_editor_mode_value: segment.transportation_mode,
+                      action: "mouseenter->segment-mode-editor#hover mouseleave->segment-mode-editor#unhover",
+                      testid: "segment-row-#{segment.id}"
+                    } do %>
+  <span class="text-base leading-none shrink-0" aria-hidden="true">
+    <%= mode_emoji(segment.transportation_mode) %>
+  </span>
+
+  <%= form_with model: segment,
+                url: track_segment_path(segment.track, segment),
+                method: :patch,
+                class: "contents",
+                data: { turbo_frame: "segment-row-#{segment.id}" } do |f| %>
+    <label class="relative inline-flex items-center gap-0.5 shrink-0 cursor-pointer
+                  font-medium underline decoration-dotted underline-offset-4
+                  decoration-base-content/25 hover:decoration-base-content/70
+                  focus-within:decoration-base-content/70 transition-colors">
+      <span><%= segment.transportation_mode.titleize %></span>
+      <span class="text-base-content/40 text-[10px] leading-none mt-px" aria-hidden="true">▾</span>
+      <%= f.select :transportation_mode,
+                   modes_for_segment(segment, current_user),
+                   { selected: segment.transportation_mode },
+                   class: "absolute inset-0 w-full h-full opacity-0 cursor-pointer",
+                   "aria-label": "Transportation mode (currently #{segment.transportation_mode.titleize})",
+                   data: {
+                     action: "change->segment-mode-editor#submit",
+                     testid: "segment-mode-select-#{segment.id}"
+                   } %>
+    </label>
+
+    <% if segment.manually_corrected? %>
+      <span class="shrink-0 text-info/80 leading-none"
+            title="Edited <%= time_ago_in_words(segment.corrected_at) %> ago"
+            aria-label="Manually corrected">
+        <%= icon 'square-pen', class: 'w-3 h-3' %>
+      </span>
+    <% end %>
+
+    <span class="text-xs text-base-content/55 truncate min-w-0 tabular-nums">
+      <span aria-hidden="true" class="opacity-40 mr-1">·</span><%=
+        segment_distance(segment) %><span aria-hidden="true" class="opacity-40 mx-1">·</span><%=
+        segment_duration(segment) %>
+    </span>
+
+    <% if segment.manually_corrected? %>
+      <%= f.button name: "reset", value: "true",
+                   type: "submit",
+                   class: "btn btn-ghost btn-xs btn-square shrink-0 ml-auto opacity-60 hover:opacity-100",
+                   title: "Restore auto-detection",
+                   "aria-label": "Reset to auto-detected mode",
+                   data: { testid: "segment-reset-#{segment.id}" } do %>
+        <%= icon 'rotate-ccw', class: 'w-3.5 h-3.5' %>
+      <% end %>
+    <% end %>
+  <% end %>
+<% end %>

@@ -59,13 +59,14 @@ module TransportationModes
     #   - 'cycling_vs_driving_accel' => 0.4
     #   - 'train_min_speed' => 80
     def initialize(avg_speed_kmh:, max_speed_kmh: nil, avg_acceleration: nil, duration: nil,
-                   user_thresholds: nil, user_expert_thresholds: nil)
+                   user_thresholds: nil, user_expert_thresholds: nil, enabled_modes: nil)
       @avg_speed = avg_speed_kmh || 0
       @max_speed = max_speed_kmh || @avg_speed
       @avg_acceleration = avg_acceleration&.abs || 0
       @duration = duration || 0
       @user_thresholds = normalize_hash_keys(user_thresholds)
       @user_expert_thresholds = normalize_hash_keys(user_expert_thresholds)
+      @enabled_modes = normalize_enabled_modes(enabled_modes)
 
       # Build effective thresholds by merging user settings with defaults
       @speed_thresholds = build_speed_thresholds
@@ -73,11 +74,10 @@ module TransportationModes
     end
 
     def classify
-      return :stationary if stationary?
-      return :flying if likely_flying?
-      return :train if likely_train?
+      result = classify_without_filter
+      return result if @enabled_modes.nil? || @enabled_modes.include?(result)
 
-      classify_medium_speed_mode
+      classify_with_excluded(result)
     end
 
     def confidence
@@ -91,6 +91,39 @@ module TransportationModes
 
     attr_reader :avg_speed, :max_speed, :avg_acceleration, :duration,
                 :speed_thresholds, :classification_thresholds
+
+    def classify_without_filter
+      return :stationary if stationary?
+      return :flying if likely_flying?
+      return :train if likely_train?
+
+      classify_medium_speed_mode
+    end
+
+    def normalize_enabled_modes(modes)
+      return nil if modes.nil?
+
+      Array(modes).map(&:to_sym) & Track::TRANSPORTATION_MODES.keys
+    end
+
+    def classify_with_excluded(excluded)
+      candidate_order = %i[stationary walking running cycling driving motorcycle bus train flying boat]
+      candidate_order.delete(excluded)
+      candidate_order.each do |candidate|
+        next unless @enabled_modes.include?(candidate)
+        next unless candidate_plausible?(candidate)
+
+        return candidate
+      end
+      :unknown
+    end
+
+    def candidate_plausible?(mode)
+      range = @speed_thresholds[mode]
+      return false unless range
+
+      @avg_speed.between?(range[:min], range[:max])
+    end
 
     def normalize_hash_keys(hash)
       return {} if hash.nil?

@@ -31,11 +31,12 @@ module TransportationModes
     #   Expected keys:
     #   - 'min_segment_duration' => 60 (seconds)
     #   - 'time_gap_threshold' => 180 (seconds)
-    def initialize(track, points, user_thresholds: nil, user_expert_thresholds: nil)
+    def initialize(track, points, user_thresholds: nil, user_expert_thresholds: nil, enabled_modes: nil)
       @track = track
       @points = points.sort_by(&:timestamp)
       @user_thresholds = user_thresholds || {}
       @user_expert_thresholds = normalize_hash_keys(user_expert_thresholds)
+      @enabled_modes = enabled_modes
 
       # Apply user settings or use defaults
       @min_segment_duration = extract_min_segment_duration
@@ -334,7 +335,8 @@ module TransportationModes
         avg_acceleration: avg_acceleration,
         duration: total_duration,
         user_thresholds: @user_thresholds,
-        user_expert_thresholds: @user_expert_thresholds
+        user_expert_thresholds: @user_expert_thresholds,
+        enabled_modes: @enabled_modes
       )
 
       mode = classifier.classify

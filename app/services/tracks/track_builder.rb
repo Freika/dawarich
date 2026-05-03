@@ -112,14 +112,7 @@ module Tracks::TrackBuilder
   end
 
   def calculate_average_speed(distance_in_meters, duration_seconds)
-    return 0.0 if duration_seconds <= 0 || distance_in_meters <= 0
-
-    # Speed in meters per second, then convert to km/h for storage
-    speed_mps = distance_in_meters.to_f / duration_seconds
-    speed_kmh = (speed_mps * 3.6).round(2) # m/s to km/h
-
-    # Cap the speed to prevent database precision overflow (max 999999.99)
-    [speed_kmh, 999_999.99].min
+    Track.avg_speed_kmh(distance_in_meters, duration_seconds)
   end
 
   def calculate_elevation_stats(points)
