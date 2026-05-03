@@ -215,6 +215,11 @@ Rails.application.routes.draw do
     namespace :v1 do
       get   'photos', to: 'photos#index'
       get   'health', to: 'health#index'
+post   'route_editor/preview', to: 'route_editor#preview'
+      get    'route_presets',        to: 'route_presets#index'
+      post   'route_presets',        to: 'route_presets#create'
+      patch  'route_presets/:id',    to: 'route_presets#update'
+      delete 'route_presets/:id',    to: 'route_presets#destroy'
       patch 'settings', to: 'settings#update'
       get   'settings', to: 'settings#index'
       get   'settings/transportation_recalculation_status', to: 'settings#transportation_recalculation_status'
@@ -340,3 +345,7 @@ Rails.application.routes.draw do
     end
   end
 end
+
+
+
+
