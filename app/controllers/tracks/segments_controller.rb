@@ -24,6 +24,9 @@ class Tracks::SegmentsController < ApplicationController
              end
 
     if result.success?
+      track = result.segment.track.reload
+      dominant_label = track.dominant_mode&.titleize || 'Unknown'
+
       respond_to do |format|
         format.turbo_stream do
           render turbo_stream: [
@@ -32,6 +35,7 @@ class Tracks::SegmentsController < ApplicationController
               partial: 'tracks/segments/segment_row',
               locals: { segment: result.segment }
             ),
+            turbo_stream.update("track-info-mode-#{track.id}", dominant_label),
             stream_flash(:success, 'Segment updated')
           ]
         end

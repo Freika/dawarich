@@ -22,7 +22,7 @@
     <% if elev_loss.present? && elev_loss > 0 %>
       <span><span class="track-info-stats__label">↓</span> <strong><%= elev_loss.round %> m</strong></span>
     <% end %>
-    <span class="track-info-mode capitalize"><%= mode_label %></span>
+    <span id="track-info-mode-<%= track.id %>" class="track-info-mode capitalize"><%= mode_label %></span>
   </div>
 
   <div class="track-info-actions">

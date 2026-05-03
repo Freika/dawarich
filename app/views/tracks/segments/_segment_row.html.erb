@@ -1,5 +1,5 @@
 <%= turbo_frame_tag "segment-row-#{segment.id}",
-                    class: "segment-row group/seg flex items-center gap-2 py-1 text-sm",
+                    class: "segment-row flex items-center gap-2 py-1 text-sm",
                     data: {
                       controller: "segment-mode-editor",
                       segment_mode_editor_segment_id_value: segment.id,
@@ -18,17 +18,16 @@
                 class: "contents",
                 data: { turbo_frame: "segment-row-#{segment.id}" } do |f| %>
     <label class="relative inline-flex items-center gap-0.5 shrink-0 cursor-pointer
-                  font-medium decoration-dotted underline-offset-4
-                  decoration-base-content/30 hover:underline focus-within:underline
-                  hover:decoration-base-content/60 focus-within:decoration-base-content/60
-                  transition-colors">
+                  font-medium underline decoration-dotted underline-offset-4
+                  decoration-base-content/25 hover:decoration-base-content/70
+                  focus-within:decoration-base-content/70 transition-colors">
       <span><%= segment.transportation_mode.titleize %></span>
       <span class="text-base-content/40 text-[10px] leading-none mt-px" aria-hidden="true">▾</span>
       <%= f.select :transportation_mode,
                    modes_for_segment(segment, current_user),
                    { selected: segment.transportation_mode },
                    class: "absolute inset-0 w-full h-full opacity-0 cursor-pointer",
-                   "aria-label": "Transportation mode for this segment",
+                   "aria-label": "Transportation mode (currently #{segment.transportation_mode.titleize})",
                    data: {
                      action: "change->segment-mode-editor#submit",
                      testid: "segment-mode-select-#{segment.id}"
