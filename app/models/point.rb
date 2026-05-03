@@ -53,6 +53,19 @@ class Point < ApplicationRecord
     ALTITUDE_DECIMAL_SUPPORTED
   end
 
+  # Build a key whose equivalence classes match the PostgreSQL UNIQUE index
+  # on (lonlat, timestamp, user_id). The raw lonlat WKT string from
+  # Points::Params / Overland::Params can differ character-by-character for
+  # points that collapse to the same geography(Point, 4326) double, so a
+  # plain string `uniq` keeps both variants and the subsequent
+  # `Point.upsert_all` fails with `PG::CardinalityViolation: ON CONFLICT DO
+  # UPDATE command cannot affect row a second time` — losing the entire
+  # 1000-point slice. Parsing to Float matches PG's IEEE 754 normalization.
+  def self.dedup_key(attrs)
+    lon, lat = attrs[:lonlat].to_s.scan(/-?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?/).map(&:to_f)
+    [lon, lat, attrs[:timestamp].to_i, attrs[:user_id]]
+  end
+
   def recorded_at
     @recorded_at ||= Time.zone.at(timestamp)
   end

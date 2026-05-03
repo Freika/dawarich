@@ -18,6 +18,7 @@ class Overland::PointsCreator
               .compact
               .reject { |location| location[:lonlat].nil? || location[:timestamp].nil? }
               .map { |location| location.merge(user_id:) }
+              .uniq { |location| Point.dedup_key(location) }
 
     result = upsert_points(payload)
     if result.any?

@@ -11,7 +11,7 @@ class Points::Create
   def call
     data = Points::Params.new(params, user.id).call
 
-    deduplicated_data = data.uniq { |point| [point[:lonlat], point[:timestamp].to_i, point[:user_id]] }
+    deduplicated_data = data.uniq { |point| Point.dedup_key(point) }
 
     created_points = []
     inserted_count = 0
