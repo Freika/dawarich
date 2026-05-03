@@ -49,10 +49,10 @@ class Track < ApplicationRecord
   end
 
   def recalculate_extra_metrics
-    timestamps = points.pluck(:timestamp)
-    return if timestamps.size < 2
+    bounds = points.pick(Arel.sql('MIN(timestamp), MAX(timestamp)'))
+    return if bounds.nil? || bounds.compact.size < 2
 
-    self.duration = timestamps.max - timestamps.min
+    self.duration = bounds[1] - bounds[0]
     self.avg_speed = self.class.avg_speed_kmh(distance, duration)
   end
 

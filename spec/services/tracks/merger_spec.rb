@@ -87,9 +87,8 @@ lonlat: 'POINT(-74.009 40.7158)')
         merger.call
 
         older_track.reload
-        return if older_track.duration.to_i.zero?
-
         expected_kmh = ((older_track.distance.to_f / older_track.duration) * 3.6).round(2)
+
         expect(older_track.avg_speed).to be_within(0.01).of(expected_kmh)
       end
 
