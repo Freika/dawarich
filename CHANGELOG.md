@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Visit suggestions are now generated from live tracking (Dawarich iOS app, OwnTracks, Overland, Traccar), not just from imports. Previously, only imported data triggered visit detection. Visit suggestion still requires a configured reverse geocoder (Photon, Geoapify, Nominatim, or LocationIQ). (#1749, #1966)
+
 ## [1.7.4] - 2026-05-03
 
 ### Fixed
