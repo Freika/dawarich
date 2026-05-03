@@ -142,4 +142,23 @@ RSpec.describe TransportationModes::MovementAnalyzer do
       end
     end
   end
+
+  describe 'enabled_modes pass-through' do
+    it 'forwards enabled_modes to ModeClassifier' do
+      points = create_list(:point, 5, user: user, lonlat: 'POINT(0 0)')
+      received_kwargs = nil
+      allow(TransportationModes::ModeClassifier).to receive(:new).and_wrap_original do |original, **kwargs|
+        received_kwargs = kwargs
+        original.call(**kwargs)
+      end
+
+      analyzer = described_class.new(
+        track, points,
+        enabled_modes: %i[walking cycling]
+      )
+      analyzer.call
+
+      expect(received_kwargs).to include(enabled_modes: %i[walking cycling])
+    end
+  end
 end
