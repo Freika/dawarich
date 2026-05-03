@@ -37,4 +37,11 @@ RSpec.describe 'Points-tab timestamps honor the user profile timezone',
   it 'returns nil when the datetime is missing' do
     expect(helper.human_datetime_with_seconds(nil, 'Australia/Melbourne')).to be_nil
   end
+
+  it 'falls back to the datetime as-is when the user timezone is invalid' do
+    rendered = helper.human_datetime_with_seconds(utc_time.in_time_zone, 'Mars/Phobos')
+
+    expect(rendered).to include('04:04:20')
+    expect(rendered).to include('+01:00')
+  end
 end
