@@ -252,6 +252,10 @@ class Users::SafeSettings
     settings['timezone'] || DEFAULT_VALUES['timezone']
   end
 
+  def persisted_timezone
+    settings['timezone'].presence
+  end
+
   def gps_filtering_enabled?
     value = settings['gps_filtering_enabled']
     return true if value.nil?

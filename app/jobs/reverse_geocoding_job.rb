@@ -3,18 +3,18 @@
 class ReverseGeocodingJob < ApplicationJob
   queue_as :reverse_geocoding
 
-  def perform(klass, id)
+  def perform(klass, id, force: false)
     return unless DawarichSettings.reverse_geocoding_enabled?
 
     rate_limit_for_photon_api
 
-    data_fetcher(klass, id).call
+    data_fetcher(klass, id, force).call
   end
 
   private
 
-  def data_fetcher(klass, id)
-    "ReverseGeocoding::#{klass.pluralize.camelize}::FetchData".constantize.new(id)
+  def data_fetcher(klass, id, force)
+    "ReverseGeocoding::#{klass.pluralize.camelize}::FetchData".constantize.new(id, force: force)
   end
 
   def rate_limit_for_photon_api
