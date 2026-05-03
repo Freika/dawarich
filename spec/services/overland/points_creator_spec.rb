@@ -47,6 +47,19 @@ RSpec.describe Overland::PointsCreator do
 
       expect(user.points_count).to eq(Point.where(user_id: user.id).count)
     end
+
+    it 'enqueues VisitSuggestingJob when reverse geocoding is enabled (regression for #1749)' do
+      allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
+
+      expect { call_service }.to have_enqueued_job(VisitSuggestingJob)
+        .with(hash_including(user_id: user.id))
+    end
+
+    it 'does not enqueue VisitSuggestingJob when reverse geocoding is disabled' do
+      allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false)
+
+      expect { call_service }.not_to have_enqueued_job(VisitSuggestingJob)
+    end
   end
 
   context 'with a locations array payload' do
