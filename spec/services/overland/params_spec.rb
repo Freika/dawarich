@@ -25,7 +25,8 @@ RSpec.describe Overland::Params do
           'motion' => %w[driving stationary],
           'activity' => 'other_navigation'
         },
-        raw_data: json['locations'][0]
+        raw_data: json['locations'][0],
+        altitude_decimal: 0
       }
     end
 
@@ -37,6 +38,7 @@ RSpec.describe Overland::Params do
           battery_status
           battery
           altitude
+          altitude_decimal
           accuracy
           vertical_accuracy
           velocity

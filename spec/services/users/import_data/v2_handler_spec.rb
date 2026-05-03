@@ -312,4 +312,31 @@ RSpec.describe Users::ImportData::V2Handler, type: :service do
       expect(handler.expected_counts).to eq({ 'areas' => 5, 'points' => 100 })
     end
   end
+
+  describe 'manifest path traversal (audit C-2)' do
+    let(:sensitive_file) { Rails.root.join('tmp/v2handler_secret.txt') }
+
+    before do
+      FileUtils.mkdir_p(Rails.root.join('tmp'))
+      File.write(sensitive_file, 'V2HANDLER_SECRET')
+      manifest = {
+        format_version: 2,
+        files: { stats: ['../v2handler_secret.txt'] }
+      }
+      File.write(import_directory.join('manifest.json'), manifest.to_json)
+      %w[settings areas places imports exports trips notifications digests raw_data_archives].each do |entity|
+        File.write(import_directory.join("#{entity}.jsonl"), '')
+      end
+    end
+
+    after { FileUtils.rm_f(sensitive_file) }
+
+    it 'refuses to read manifest paths that escape import_directory' do
+      expect(Rails.logger).to receive(:warn).with(/Rejecting unsafe manifest path/).at_least(:once)
+      allow(Rails.logger).to receive(:warn)
+      handler.process
+
+      expect(import_stats[:stats_created]).to eq(0)
+    end
+  end
 end

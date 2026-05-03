@@ -17,6 +17,8 @@ const DEFAULT_SETTINGS = {
   globeProjection: false,
   minMinutesSpentInCity: 60,
   maxGapMinutesInCity: 120,
+  gpsFilteringEnabled: true,
+  gpsAccuracyThreshold: 100,
   transportationExpertMode: false,
   transportationThresholds: {
     walkingMaxSpeed: 7,
@@ -63,6 +65,8 @@ const BACKEND_SETTINGS_MAP = {
   globeProjection: "globe_projection",
   minMinutesSpentInCity: "min_minutes_spent_in_city",
   maxGapMinutesInCity: "max_gap_minutes_in_city",
+  gpsFilteringEnabled: "gps_filtering_enabled",
+  gpsAccuracyThreshold: "gps_accuracy_threshold",
   transportationExpertMode: "transportation_expert_mode",
   transportationThresholds: "transportation_thresholds",
   transportationExpertThresholds: "transportation_expert_thresholds",
@@ -256,6 +260,13 @@ export class SettingsManager {
                 value,
                 DEFAULT_SETTINGS.maxGapMinutesInCity,
               )
+            } else if (frontendKey === "gpsAccuracyThreshold") {
+              value = SettingsManager._parseIntOr(
+                value,
+                DEFAULT_SETTINGS.gpsAccuracyThreshold,
+              )
+            } else if (frontendKey === "gpsFilteringEnabled") {
+              value = value === true || value === "true"
             } else if (frontendKey === "speedColoredRoutes") {
               value = value === true || value === "true"
             } else if (frontendKey === "globeProjection") {

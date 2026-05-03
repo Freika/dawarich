@@ -1,37 +1,121 @@
 <%
-  date_obj = Date.parse(day[:date])
-  day_label = date_obj.strftime('%A, %B %-d')
-  distance_badge = day[:summary][:total_distance] > 0 ? "#{day[:summary][:total_distance]} #{day[:summary][:distance_unit]}" : nil
-  bounds_json = day[:bounds]&.to_json
+  entries = Array(day[:entries])
+  suggested_count = day[:summary][:suggested_count].to_i
+  total_visits   = day_total_visits_count(day)
+  total_tracks   = entries.count { |e| e[:type] != 'visit' && e[:track_id].present? }
+  moving_minutes = day[:summary][:time_moving_minutes].to_i
+  total_distance = day[:summary][:total_distance]
+  distance_unit  = day[:summary][:distance_unit]
 %>
-<details class="collapse collapse-arrow bg-base-200 rounded-lg mb-2 timeline-day-accordion"
-         data-day="<%= day[:date] %>"
-         data-timeline-feed-target="dayDetails"
-         data-bounds="<%= bounds_json %>"
-         data-action="toggle->timeline-feed#dayToggled">
-  <summary class="collapse-title font-medium py-3 min-h-0 cursor-pointer">
-    <div class="flex justify-between items-center">
-      <span class="text-sm"><%= day_label %></span>
-      <% if distance_badge %>
-        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-primary/10 text-primary"><%= distance_badge %></span>
+<div class="timeline-day" data-day="<%= day[:date] %>" data-bounds="<%= day_bounds_json(day) %>">
+  <div class="timeline-day-header">
+    <div class="timeline-day-header__nav">
+      <button data-testid="day-prev"
+              data-action="click->timeline-feed#navigateDay"
+              data-direction="prev"
+              title="Previous day"
+              aria-label="Previous day"
+              class="btn btn-ghost btn-xs btn-square">
+        <%= icon 'chevron-left', class: 'w-4 h-4' %>
+      </button>
+      <div class="font-semibold text-sm text-center flex-1" data-testid="day-header-label"><%= day_label(day) %></div>
+      <button data-testid="day-next"
+              data-action="click->timeline-feed#navigateDay"
+              data-direction="next"
+              title="Next day"
+              aria-label="Next day"
+              class="btn btn-ghost btn-xs btn-square">
+        <%= icon 'chevron-right', class: 'w-4 h-4' %>
+      </button>
+    </div>
+    <div class="timeline-day-header__meta">
+      <%= pluralize(day_total_visits_count(day), 'visit') %>
+      <% if day_total_visits_count(day) >= 2 %>
+        <button type="button"
+                class="day-select-toggle"
+                data-testid="day-select-toggle"
+                data-action="click->timeline-feed#enterSelection">
+          Select
+        </button>
       <% end %>
     </div>
-  </summary>
-  <div class="collapse-content px-3">
-    <%= render partial: 'map/timeline_feeds/day_summary', locals: { summary: day[:summary] } %>
-    <div class="divider my-1"></div>
-    <% if day[:entries].present? %>
-      <div class="timeline-entries">
-        <% day[:entries].each do |entry| %>
-          <% if entry[:type] == 'visit' %>
-            <%= render partial: 'map/timeline_feeds/visit_entry', locals: { entry: entry } %>
-          <% else %>
-            <%= render partial: 'map/timeline_feeds/journey_entry', locals: { entry: entry } %>
-          <% end %>
-        <% end %>
-      </div>
-    <% else %>
-      <p class="timeline-empty">No activity recorded.</p>
-    <% end %>
   </div>
-</details>
+
+  <%= render partial: 'map/timeline_feeds/day_banner',
+             locals: { date: day[:date], suggested_count: suggested_count } %>
+
+  <dl class="timeline-day-rollup">
+    <div>
+      <dt>Visits</dt>
+      <dd><%= total_visits %></dd>
+    </div>
+    <div>
+      <dt>Tracks</dt>
+      <dd><%= total_tracks %></dd>
+    </div>
+    <% if total_distance.to_f.positive? %>
+      <div>
+        <dt>Distance</dt>
+        <dd><%= total_distance %> <%= distance_unit %></dd>
+      </div>
+    <% end %>
+    <% if moving_minutes.positive? %>
+      <div>
+        <dt>Moving</dt>
+        <dd><%= format_duration_short(moving_minutes * 60) %></dd>
+      </div>
+    <% end %>
+  </dl>
+
+  <%= render partial: 'map/timeline_feeds/day_summary', locals: { summary: day[:summary] } %>
+
+  <%= render partial: 'map/timeline_feeds/selection_bar' %>
+
+  <% if entries.present? %>
+    <ol class="timeline-entries">
+      <% entries.each do |entry| %>
+        <% if entry[:type] == 'visit' %>
+          <%= render partial: 'map/timeline_feeds/visit_entry', locals: { entry: entry, day: day } %>
+        <% else %>
+          <%= render partial: 'map/timeline_feeds/journey_entry', locals: { entry: entry } %>
+        <% end %>
+      <% end %>
+    </ol>
+    <%# Shown by timeline_feed_controller#applyVisibility when every visit row
+        is hidden by an active search/filter/tag combo — otherwise the "N visits"
+        header contradicts the empty list and users think data is missing. %>
+    <div class="timeline-entries-empty-filtered hidden"
+         data-timeline-feed-target="emptyFiltered">
+      <p class="text-sm text-base-content/70">
+        No visits match the current search or filter.
+      </p>
+      <button type="button"
+              class="btn btn-ghost btn-xs"
+              data-action="click->timeline-feed#clearVisitFilters">
+        Clear search & filters
+      </button>
+    </div>
+  <% else %>
+    <p class="text-center text-sm text-base-content/60 py-6">No visits tracked this day.</p>
+  <% end %>
+
+  <footer class="timeline-day-footer">
+    <button type="button"
+            class="btn btn-ghost btn-xs btn-square"
+            data-action="click->timeline-feed#navigateDay"
+            data-direction="prev"
+            title="Previous day"
+            aria-label="Previous day">
+      <%= icon 'chevron-left', class: 'w-4 h-4' %>
+    </button>
+
+    <button type="button"
+            class="btn btn-ghost btn-xs btn-square"
+            data-action="click->timeline-feed#navigateDay"
+            data-direction="next"
+            title="Next day"
+            aria-label="Next day">
+      <%= icon 'chevron-right', class: 'w-4 h-4' %>
+    </button>
+  </footer>
+</div>

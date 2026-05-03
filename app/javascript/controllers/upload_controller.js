@@ -1,9 +1,23 @@
 import { Controller } from "@hotwired/stimulus"
 import { DirectUpload } from "@rails/activestorage"
+import { shouldZip, zipSingleFile } from "services/zip_file"
 import Flash from "./flash_controller"
 
 const MAX_FILE_SIZE = 11 * 1024 * 1024 // 11MB
 const VALID_ZIP_TYPES = ["application/zip", "application/x-zip-compressed"]
+
+const ACCEPTED_EXTENSIONS = [
+  "json",
+  "geojson",
+  "gpx",
+  "kml",
+  "kmz",
+  "tcx",
+  "fit",
+  "csv",
+  "rec",
+  "zip",
+]
 
 export default class extends Controller {
   static targets = ["input", "progress", "progressBar", "submit", "form"]
@@ -42,7 +56,7 @@ export default class extends Controller {
     }
   }
 
-  upload() {
+  async upload() {
     const files = Array.from(this.inputTarget.files)
     if (files.length === 0) return
 
@@ -52,18 +66,24 @@ export default class extends Controller {
 
     this.isUploading = true
     this.disableSubmit()
-    Flash.show(
-      "notice",
-      `Uploading ${filesToUpload.length} file(s), please wait...`,
-    )
     this.createProgressBar()
     this.clearExistingHiddenFields()
 
-    this.totalBytes = filesToUpload.reduce((sum, f) => sum + f.size, 0)
+    const willCompress = filesToUpload.some((f) => shouldZip(f))
+    Flash.show(
+      "notice",
+      willCompress
+        ? `Preparing ${filesToUpload.length} file(s) for upload...`
+        : `Uploading ${filesToUpload.length} file(s), please wait...`,
+    )
+
+    const prepared = await this.prepareForUpload(filesToUpload)
+
+    this.totalBytes = prepared.reduce((sum, f) => sum + f.size, 0)
     this.fileProgress = {}
 
     let completed = 0
-    filesToUpload.forEach((file, index) => {
+    prepared.forEach((file, index) => {
       this.fileProgress[index] = 0
       const upload = new DirectUpload(file, this.urlValue, {
         directUploadWillStoreFileWithXHR: (request) => {
@@ -84,12 +104,50 @@ export default class extends Controller {
           this.fileProgress[index] = file.size
           this.addHiddenField(blob.signed_id)
         }
-        if (completed === filesToUpload.length) this.uploadComplete()
+        if (completed === prepared.length) this.uploadComplete()
       })
     })
   }
 
+  async prepareForUpload(files) {
+    const result = []
+    for (const original of files) {
+      if (!shouldZip(original)) {
+        result.push(original)
+        continue
+      }
+      try {
+        const zipped = await zipSingleFile(original)
+        result.push(zipped)
+      } catch (err) {
+        console.error(
+          "Client-side zip failed, uploading raw:",
+          original.name,
+          err,
+        )
+        Flash.show(
+          "warning",
+          `Could not compress ${original.name}, uploading as-is.`,
+        )
+        result.push(original)
+      }
+    }
+    return result
+  }
+
   validateFiles(files) {
+    const unsupported = files.filter((f) => !this.hasAcceptedExtension(f))
+    if (unsupported.length > 0) {
+      const names = unsupported.map((f) => f.name).join(", ")
+      const accepted = ACCEPTED_EXTENSIONS.map((e) => `.${e}`).join(", ")
+      Flash.show(
+        "error",
+        `Unsupported file type: ${names}. Supported formats: ${accepted}.`,
+      )
+      this.inputTarget.value = ""
+      return false
+    }
+
     if (
       this.userTrialValue &&
       this.maxImportsValue > 0 &&
@@ -218,5 +276,12 @@ export default class extends Controller {
   disableSubmit() {
     this.submitTarget.disabled = true
     this.submitTarget.classList.add("opacity-50", "cursor-not-allowed")
+  }
+
+  hasAcceptedExtension(file) {
+    const dot = file.name.lastIndexOf(".")
+    if (dot < 0 || dot === file.name.length - 1) return false
+    const ext = file.name.slice(dot + 1).toLowerCase()
+    return ACCEPTED_EXTENSIONS.includes(ext)
   }
 }

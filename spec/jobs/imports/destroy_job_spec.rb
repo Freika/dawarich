@@ -8,8 +8,8 @@ RSpec.describe Imports::DestroyJob, type: :job do
     let(:import) { create(:import, user: user, status: :completed) }
 
     describe 'queue configuration' do
-      it 'uses the default queue' do
-        expect(described_class.queue_name).to eq('default')
+      it 'uses the imports queue' do
+        expect(described_class.queue_name).to eq('imports')
       end
     end
 
@@ -185,7 +185,7 @@ RSpec.describe Imports::DestroyJob, type: :job do
       it 'can be performed later with correct arguments' do
         expect do
           described_class.perform_later(import.id)
-        end.to have_enqueued_job(described_class).on_queue('default').with(import.id)
+        end.to have_enqueued_job(described_class).on_queue('imports').with(import.id)
       end
     end
   end

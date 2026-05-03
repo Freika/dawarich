@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class Imports::DestroyJob < ApplicationJob
-  queue_as :default
+  queue_as :imports
 
   def perform(import_id)
     import = Import.find_by(id: import_id)

@@ -105,7 +105,7 @@ RSpec.describe Point, type: :model do
         point.save
 
         expect { point.async_reverse_geocode }.to have_enqueued_job(ReverseGeocodingJob)
-          .with('Point', point.id)
+          .with('Point', point.id, force: false)
       end
 
       context 'when point is imported' do

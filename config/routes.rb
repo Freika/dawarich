@@ -26,7 +26,10 @@ Rails.application.routes.draw do
   } do
     mount Sidekiq::Web => '/sidekiq'
   end
-  mount RailsPulse::Engine => '/rails_pulse'
+
+  authenticate :user, ->(u) { u.admin? } do
+    mount Flipper::UI.app(Flipper) => '/admin/flipper'
+  end
 
   # We want to return a nice error message if the user is not authorized to access Sidekiq
   match '/sidekiq' => redirect { |_, request|
@@ -72,14 +75,33 @@ Rails.application.routes.draw do
   get 'settings/theme', to: 'settings#theme'
   post 'settings/generate_api_key', to: 'settings#generate_api_key', as: :generate_api_key
 
+  get  'auth/account_link', to: 'auth/account_links#show', as: :auth_account_link
+  get  'auth/account_link/challenge', to: 'auth/account_links#challenge', as: :auth_account_link_challenge
+  post 'auth/account_link/challenge', to: 'auth/account_links#confirm', as: :confirm_auth_account_link
+  post 'auth/account_link/email',     to: 'auth/account_links#email_fallback', as: :email_fallback_auth_account_link
+
+  get 'users/me/destroy/confirm', to: 'users/destroy_confirmations#show', as: :user_destroy_confirmation
+
+  get 'trial/upgrade', to: 'trial/upgrades#show', as: :trial_upgrade
+  get 'trial/resume', to: 'trial/resume#show', as: :trial_resume
+  get 'trial/welcome', to: 'trial/welcome#show', as: :trial_welcome
+
   resources :imports
-  resources :visits, only: %i[index update] do
+  # Temporary (302) during the unified-timeline rollout; promote to :moved_permanently (301)
+  # once the redesign is known-stable so browsers cache the redirect.
+  get '/visits', to: redirect(status: 302) { |_params, req|
+    status = req.params[:status]
+    base = '/map/v2?panel=timeline&date=today'
+    status ? "#{base}&status=#{status}" : "#{base}&status=confirmed"
+  }
+  resources :visits, only: %i[update destroy] do
     collection do
       patch :bulk_update
+      post :merge
     end
   end
   resources :areas, only: [:create]
-  resources :places, only: %i[index destroy create update] do
+  resources :places, only: %i[index show destroy create update] do
     collection do
       get 'nearby'
     end
@@ -173,6 +195,7 @@ Rails.application.routes.draw do
     get '/v2', to: 'maplibre#index', as: :v2
     resources :timeline_feeds, only: [:index] do
       get :track_info, on: :member
+      get :calendar, on: :collection
     end
     resource :residency, only: [:show], controller: 'residency'
   end
@@ -189,6 +212,17 @@ Rails.application.routes.draw do
       get   'settings', to: 'settings#index'
       get   'settings/transportation_recalculation_status', to: 'settings#transportation_recalculation_status'
       get   'users/me', to: 'users#me'
+      delete 'users/me', to: 'users/destroy#destroy'
+
+      namespace :users do
+        scope 'me' do
+          resource :two_factor, only: %i[destroy], controller: 'two_factor' do
+            post :setup
+            post :confirm
+            post :backup_codes
+          end
+        end
+      end
 
       resources :areas,     only: %i[index show create update destroy]
       resources :imports,   only: %i[index show create]
@@ -205,6 +239,7 @@ Rails.application.routes.draw do
       resources :points, only: %i[index create update destroy] do
         collection do
           delete :bulk_destroy
+          post :reapply_anomaly_filter
         end
       end
       resources :visits, only: %i[index show create update destroy] do
@@ -216,6 +251,7 @@ Rails.application.routes.draw do
       end
       resource :plan, only: [:show], controller: 'plan'
       resource :residency, only: [:show], controller: 'residency'
+      resources :recalculations, only: [:create]
       resources :stats, only: :index
       resources :insights, only: :index do
         collection do
@@ -235,6 +271,10 @@ Rails.application.routes.draw do
       end
 
       namespace :owntracks do
+        resources :points, only: :create
+      end
+
+      namespace :traccar do
         resources :points, only: :create
       end
 
@@ -281,6 +321,15 @@ Rails.application.routes.draw do
       end
 
       post 'subscriptions/callback', to: 'subscriptions#callback'
+      post 'users/exist', to: 'users#exist'
+
+      namespace :auth do
+        post 'register', to: 'registrations#create'
+        post 'login',    to: 'sessions#create'
+        post 'apple',    to: 'apple#create'
+        post 'google',   to: 'google#create'
+        post 'otp_challenge', to: 'otp_challenges#create'
+      end
     end
   end
 end

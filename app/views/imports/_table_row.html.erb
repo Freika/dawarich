@@ -25,7 +25,7 @@
   <td class="px-4 py-3" data-status-display>
     <%= status_badge(import) %>
   </td>
-  <td class="px-4 py-3 text-sm text-base-content/50"><%= human_datetime(import.created_at) %></td>
+  <td class="px-4 py-3 text-sm text-base-content/50"><%= human_datetime(import.created_at, current_user.safe_settings.timezone) %></td>
   <td class="px-4 py-3 text-right">
     <div class="flex items-center gap-1 justify-end">
       <% if import.deleting? %>
@@ -33,7 +33,7 @@
         <span class="text-xs text-base-content/50">Deleting...</span>
       <% else %>
         <div class="tooltip" data-tip="View on map">
-          <%= link_to map_path(import_id: import.id), class: 'btn btn-ghost btn-xs' do %>
+          <%= link_to preferred_map_path(import_id: import.id), class: 'btn btn-ghost btn-xs' do %>
             <%= icon 'map', class: 'w-4 h-4' %>
           <% end %>
         </div>

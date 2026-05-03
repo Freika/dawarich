@@ -19,10 +19,12 @@ module Csv
 
       return nil if lat.nil? || lon.nil? || timestamp.nil?
 
-      {
+      altitude_value = parse_float(:altitude)
+
+      attrs = {
         lonlat: "POINT(#{lon} #{lat})",
         timestamp: timestamp,
-        altitude: parse_float(:altitude),
+        altitude: altitude_value,
         velocity: parse_float(:speed),
         accuracy: parse_float(:accuracy),
         battery: parse_float(:battery),
@@ -33,6 +35,8 @@ module Csv
         created_at: Time.current,
         updated_at: Time.current
       }
+      attrs[:altitude_decimal] = altitude_value if Point.altitude_decimal_supported?
+      attrs
     end
 
     private

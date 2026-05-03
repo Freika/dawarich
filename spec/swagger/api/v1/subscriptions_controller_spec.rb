@@ -40,7 +40,14 @@ RSpec.describe 'Subscriptions API', type: :request do
         let(:user) { create(:user) }
         let(:token) do
           JWT.encode(
-            { user_id: user.id, status: 'active', active_until: 1.year.from_now.iso8601 },
+            {
+              event_id: SecureRandom.uuid,
+              event_timestamp_ms: (Time.current.to_f * 1000).to_i,
+              user_id: user.id,
+              status: 'active',
+              active_until: 1.year.from_now.iso8601,
+              exp: 5.minutes.from_now.to_i
+            },
             ENV['JWT_SECRET_KEY'],
             'HS256'
           )

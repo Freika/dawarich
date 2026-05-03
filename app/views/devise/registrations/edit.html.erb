@@ -82,7 +82,7 @@
               upload_field_name_value: "archive",
               upload_multiple_value: false,
               upload_validate_zip_value: true,
-              upload_user_trial_value: current_user.trial?,
+              upload_user_trial_value: current_user.legacy_trial?,
               upload_target: "form"
             } do |f| %>
               <div class="form-control">
@@ -124,9 +124,13 @@
               <div class="card bg-base-100 shadow-xl">
                 <div class="card-body p-5 sm:p-6">
                   <h2 class="card-title text-xl">Trial status</h2>
-                  <p class="text-sm text-base-content/70">Your trial period ends at <span class="font-medium text-base-content"><%= human_datetime current_user.active_until %></span>.</p>
+                  <p class="text-sm text-base-content/70">Your trial period ends at <span class="font-medium text-base-content"><%= human_datetime current_user.active_until, current_user.safe_settings.timezone %></span>.</p>
                   <div class="mt-2">
-                    <%= link_to 'Subscribe', "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}", class: 'btn btn-success btn-sm glass' %>
+                    <% if current_user.auto_converting_trial? %>
+                      <%= link_to 'Manage subscription', "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}", class: 'btn btn-primary btn-sm glass' %>
+                    <% else %>
+                      <%= link_to 'Subscribe', "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}", class: 'btn btn-success btn-sm glass' %>
+                    <% end %>
                   </div>
                 </div>
               </div>
@@ -141,6 +145,31 @@
               </div>
             <% end %>
           </div>
+
+          <% if !DawarichSettings.self_hosted? && !current_user.trial? %>
+            <div class="card bg-base-100 shadow-xl">
+              <div class="card-body p-5 sm:p-6">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div>
+                    <h2 class="card-title text-xl">Subscription</h2>
+                    <p class="text-sm text-base-content/70">
+                      <% case %>
+                      <% when current_user.pending_payment? %>
+                        Your signup isn't complete yet — finish setting up your subscription to start your trial.
+                      <% when current_user.active? && current_user.active_until&.future? %>
+                        Change plan, update your payment method, or cancel your subscription on Manager.
+                      <% else %>
+                        Manage your subscription, change plan, or update billing on Manager.
+                      <% end %>
+                    </p>
+                  </div>
+                  <%= link_to 'Manage subscription',
+                              "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}",
+                              class: 'btn btn-primary btn-sm whitespace-nowrap' %>
+                </div>
+              </div>
+            </div>
+          <% end %>
         <% end %>
 
         <div class="card bg-base-100 shadow-xl">

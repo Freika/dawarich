@@ -1,0 +1,64 @@
+<% visible, overflow = split_suggested_places(entry[:suggested_places]) %>
+<div class="suggested-picker" data-visit-id="<%= entry[:visit_id] %>">
+  <%= form_with url: visit_path(entry[:visit_id]), method: :patch, local: false,
+                class: 'suggested-picker__form' do |f| %>
+    <%= f.hidden_field 'visit[status]', value: 'confirmed' %>
+
+    <div class="suggested-picker__header">
+      <div class="suggested-picker__heading">
+        <span class="suggested-picker__badge">Needs review</span>
+        <span class="suggested-picker__prompt">Which place is this?</span>
+      </div>
+      <%= f.submit 'Confirm',
+                   data: { testid: 'visit-confirm' },
+                   class: 'suggested-picker__confirm' %>
+    </div>
+
+    <ul class="suggested-picker__list" role="radiogroup"
+        aria-label="Candidate places for this visit">
+      <% visible.each_with_index do |place, idx| %>
+        <li>
+          <label class="suggested-picker__option">
+            <%= f.radio_button 'visit[place_id]', place[:id],
+                               checked: place[:id] == entry[:place_id] || (entry[:place_id].nil? && idx.zero?),
+                               class: 'suggested-picker__radio' %>
+            <span class="suggested-picker__option-name"><%= place[:name] %></span>
+          </label>
+        </li>
+      <% end %>
+
+      <% if overflow.any? %>
+        <li class="suggested-picker__overflow">
+          <details>
+            <summary class="suggested-picker__more" data-testid="visit-show-more-candidates">
+              <span class="suggested-picker__more-caret" aria-hidden="true">▸</span>
+              <span class="suggested-picker__more-text--closed">
+                Show <%= overflow.size %> more
+              </span>
+              <span class="suggested-picker__more-text--open">
+                Hide <%= pluralize(overflow.size, 'place') %>
+              </span>
+            </summary>
+            <ul class="suggested-picker__list suggested-picker__list--overflow">
+              <% overflow.each do |place| %>
+                <li>
+                  <label class="suggested-picker__option">
+                    <%= f.radio_button 'visit[place_id]', place[:id],
+                                       checked: place[:id] == entry[:place_id],
+                                       class: 'suggested-picker__radio' %>
+                    <span class="suggested-picker__option-name"><%= place[:name] %></span>
+                  </label>
+                </li>
+              <% end %>
+            </ul>
+          </details>
+        </li>
+      <% end %>
+    </ul>
+  <% end %>
+
+  <%= button_to 'Decline', visit_path(entry[:visit_id], visit: { status: :declined }),
+                method: :patch,
+                data: { testid: 'visit-decline' },
+                class: 'suggested-picker__decline' %>
+</div>

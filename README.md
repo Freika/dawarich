@@ -95,7 +95,7 @@ You can use default values or create a `.env` file based on `.env.example` to cu
 
 **Default Credentials**
 - **Username**: `demo@dawarich.app`
-- **Password**: `password`
+- **Password**: `safepassword`
 Feel free to change them in the account settings.
 
 ---

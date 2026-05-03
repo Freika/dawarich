@@ -291,6 +291,333 @@ paths:
           description: area not found
         '401':
           description: unauthorized
+  "/api/v1/auth/apple":
+    post:
+      summary: Sign in with Apple
+      tags:
+      - Auth
+      description: Exchanges an Apple `id_token` for a Dawarich API key. Creates a
+        new account on first use (returns 201) or returns the existing account (returns
+        200).
+      parameters: []
+      responses:
+        '201':
+          description: new user created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user_id:
+                    type: integer
+                  email:
+                    type: string
+                  api_key:
+                    type: string
+                  status:
+                    type: string
+                  plan:
+                    type: string
+                    nullable: true
+                  subscription_source:
+                    type: string
+                    nullable: true
+                  active_until:
+                    type: string
+                    format: date-time
+                    nullable: true
+        '401':
+          description: apple token verification failed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id_token:
+                  type: string
+                  description: Apple-issued ID token (JWT)
+                nonce:
+                  type: string
+                  description: Nonce echoed from the Apple sign-in flow
+                  nullable: true
+              required:
+              - id_token
+  "/api/v1/auth/google":
+    post:
+      summary: Sign in with Google
+      tags:
+      - Auth
+      description: Exchanges a Google `id_token` for a Dawarich API key. Creates a
+        new account on first use (returns 201) or returns the existing account (returns
+        200).
+      parameters: []
+      responses:
+        '201':
+          description: new user created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user_id:
+                    type: integer
+                  email:
+                    type: string
+                  api_key:
+                    type: string
+                  status:
+                    type: string
+                  plan:
+                    type: string
+                    nullable: true
+                  subscription_source:
+                    type: string
+                    nullable: true
+                  active_until:
+                    type: string
+                    format: date-time
+                    nullable: true
+        '401':
+          description: google token verification failed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id_token:
+                  type: string
+                  description: Google-issued ID token (JWT)
+                nonce:
+                  type: string
+                  description: Nonce echoed from the Google sign-in flow
+                  nullable: true
+              required:
+              - id_token
+  "/api/v1/auth/otp_challenge":
+    post:
+      summary: Verifies a two-factor challenge
+      tags:
+      - Auth
+      description: Exchanges a challenge_token issued by `/auth/login` plus a current
+        TOTP (or a backup code) for a full session response with `api_key`.
+      parameters: []
+      responses:
+        '200':
+          description: two-factor verified
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user_id:
+                    type: integer
+                  email:
+                    type: string
+                  api_key:
+                    type: string
+                  status:
+                    type: string
+                  plan:
+                    type: string
+                    nullable: true
+                  subscription_source:
+                    type: string
+                    nullable: true
+                  active_until:
+                    type: string
+                    format: date-time
+                    nullable: true
+        '401':
+          description: invalid challenge or otp code
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                challenge_token:
+                  type: string
+                  description: Token issued by /auth/login when 2FA is required
+                otp_code:
+                  type: string
+                  description: 6-digit TOTP code or one of the user's backup codes
+              required:
+              - challenge_token
+              - otp_code
+  "/api/v1/auth/register":
+    post:
+      summary: Registers a new user
+      tags:
+      - Auth
+      description: Creates a new user account. On Cloud, the user lands in `pending_payment`
+        until the subscription service confirms payment. On self-hosted, the user
+        is active immediately.
+      parameters: []
+      responses:
+        '201':
+          description: user created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user_id:
+                    type: integer
+                    description: The new user ID
+                  email:
+                    type: string
+                  api_key:
+                    type: string
+                    description: API key used to authenticate subsequent requests
+                  status:
+                    type: string
+                    description: User status (e.g. pending_payment, active)
+                  plan:
+                    type: string
+                    nullable: true
+                  subscription_source:
+                    type: string
+                    nullable: true
+                  active_until:
+                    type: string
+                    format: date-time
+                    nullable: true
+        '422':
+          description: validation failed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  details:
+                    type: object
+                    additionalProperties: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  format: password
+                password_confirmation:
+                  type: string
+                  format: password
+              required:
+              - email
+              - password
+              - password_confirmation
+  "/api/v1/auth/login":
+    post:
+      summary: Logs in a user
+      tags:
+      - Auth
+      description: Authenticates a user with email and password. If the user has 2FA
+        enabled, returns a `202` with a one-time challenge token that must be exchanged
+        via `/api/v1/auth/otp_challenge`. Otherwise returns the api_key.
+      parameters: []
+      responses:
+        '200':
+          description: authenticated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user_id:
+                    type: integer
+                  email:
+                    type: string
+                  api_key:
+                    type: string
+                  status:
+                    type: string
+                  plan:
+                    type: string
+                    nullable: true
+                  subscription_source:
+                    type: string
+                    nullable: true
+                  active_until:
+                    type: string
+                    format: date-time
+                    nullable: true
+        '202':
+          description: two-factor authentication required
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  two_factor_required:
+                    type: boolean
+                  challenge_token:
+                    type: string
+                    description: Short-lived token to exchange via /auth/otp_challenge
+                  ttl:
+                    type: integer
+                    description: Token TTL in seconds
+        '401':
+          description: invalid credentials
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  format: password
+              required:
+              - email
+              - password
   "/api/v1/countries/borders":
     get:
       summary: Retrieves country borders GeoJSON data
@@ -710,6 +1037,59 @@ paths:
           description: user not in a family
         '401':
           description: unauthorized
+  "/api/v1/families/locations/history":
+    get:
+      summary: Retrieves family members' location history for a time range
+      tags:
+      - Families
+      description: Returns historical points for each family member with sharing enabled,
+        between `start_at` and `end_at`. Both timestamps are required and must be
+        parseable ISO 8601.
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      - name: start_at
+        in: query
+        required: true
+        description: Start of the time range (ISO 8601)
+        schema:
+          type: string
+      - name: end_at
+        in: query
+        required: true
+        description: End of the time range (ISO 8601)
+        schema:
+          type: string
+      responses:
+        '200':
+          description: history returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  members:
+                    type: array
+                    items:
+                      type: object
+                      description: Per-member historical points
+        '400':
+          description: missing or invalid date parameters
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        '403':
+          description: user not in a family
+        '401':
+          description: unauthorized
   "/api/v1/health":
     get:
       summary: Retrieves application status
@@ -744,6 +1124,108 @@ paths:
                     type: string
                     example: ok
                     description: Application health status
+  "/api/v1/immich/enrich/scan":
+    post:
+      summary: Scans Immich for photos missing geodata
+      tags:
+      - Immich
+      description: Calls the configured Immich instance and returns photos that lack
+        location data along with candidate points from Dawarich within the configured
+        time tolerance.
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      - name: start_date
+        in: query
+        required: false
+        description: Earliest photo capture date (ISO 8601)
+        schema:
+          type: string
+      - name: end_date
+        in: query
+        required: false
+        description: Latest photo capture date (ISO 8601)
+        schema:
+          type: string
+      - name: tolerance
+        in: query
+        required: false
+        description: Match tolerance in seconds. Defaults to 1800 (30 min).
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: scan completed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  matches:
+                    type: array
+                    items:
+                      type: object
+                  total_without_geodata:
+                    type: integer
+                  total_matched:
+                    type: integer
+                  error:
+                    type: string
+                    nullable: true
+        '401':
+          description: unauthorized
+  "/api/v1/immich/enrich":
+    post:
+      summary: Writes location data back to Immich photos
+      tags:
+      - Immich
+      description: Pushes latitude/longitude updates for the supplied Immich asset
+        IDs back to the user's Immich instance.
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      responses:
+        '200':
+          description: enrich completed
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '401':
+          description: unauthorized
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                assets:
+                  type: array
+                  description: List of assets to enrich
+                  items:
+                    type: object
+                    properties:
+                      immich_asset_id:
+                        type: string
+                      latitude:
+                        type: number
+                      longitude:
+                        type: number
+                    required:
+                    - immich_asset_id
+                    - latitude
+                    - longitude
+              required:
+              - assets
   "/api/v1/imports":
     get:
       summary: Lists imports
@@ -2212,6 +2694,71 @@ paths:
           description: place not found
         '401':
           description: unauthorized
+  "/api/v1/plan":
+    get:
+      summary: Returns the current user's plan and feature flags
+      tags:
+      - Plan
+      description: Returns the user's plan (`pro` or `lite`), subscription status,
+        and per-feature flags. On self-hosted, every user is treated as pro and all
+        features return true.
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      responses:
+        '200':
+          description: plan returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  plan:
+                    type: string
+                    enum:
+                    - pro
+                    - lite
+                  status:
+                    type: string
+                  subscription_source:
+                    type: string
+                    nullable: true
+                  active_until:
+                    type: string
+                    format: date-time
+                    nullable: true
+                  features:
+                    type: object
+                    properties:
+                      heatmap:
+                        type: boolean
+                      fog_of_war:
+                        type: boolean
+                      scratch_map:
+                        type: boolean
+                      globe_view:
+                        type: boolean
+                      integrations:
+                        type: boolean
+                      write_api:
+                        oneOf:
+                        - type: boolean
+                        - type: string
+                        description: true (Pro), false, or `create_only` for Lite
+                      sharing:
+                        type: boolean
+                      full_digest:
+                        type: boolean
+                      data_window:
+                        type: string
+                        nullable: true
+                        description: null for Pro, `12_months` for Lite
+        '401':
+          description: unauthorized
   "/api/v1/points/tracked_months":
     get:
       summary: Returns list of tracked years and months
@@ -2663,6 +3210,169 @@ paths:
                   description: Array of point IDs to delete
               required:
               - point_ids
+  "/api/v1/points/reapply_anomaly_filter":
+    post:
+      summary: Re-evaluates anomaly flags for all of the user's points
+      tags:
+      - Points
+      description: Clears existing anomaly flags and re-runs the anomaly detection
+        pipeline against every point belonging to the user. A per-user lock prevents
+        concurrent runs.
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      responses:
+        '202':
+          description: re-evaluation queued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '409':
+          description: re-evaluation already in progress
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        '401':
+          description: unauthorized
+  "/api/v1/recalculations":
+    post:
+      summary: Queues a full recalculation of the user's data
+      tags:
+      - Recalculations
+      description: Enqueues `Users::RecalculateDataJob`, which regenerates tracks,
+        stats, visits, and digests in the background. Optionally scoped to a single
+        year. A per-user lock prevents concurrent recalculations.
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      - name: year
+        in: query
+        required: false
+        description: Restrict the recalculation to a single year (2000..current_year+1)
+        schema:
+          type: integer
+      responses:
+        '202':
+          description: recalculation queued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '400':
+          description: invalid year
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        '409':
+          description: recalculation already in progress
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        '401':
+          description: unauthorized
+  "/api/v1/residency":
+    get:
+      summary: Returns per-country day counts for tax residency calculations
+      tags:
+      - Residency
+      description: Computes per-country day counts and consecutive-day periods for
+        the requested year. Pro-only on Cloud; available to all self-hosted users.
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      - name: year
+        in: query
+        required: false
+        description: Year to compute residency for. Defaults to the latest year that
+          has data for the user.
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: residency computed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  year:
+                    type: integer
+                  counting_mode:
+                    type: string
+                    description: e.g. any_presence
+                  total_tracked_days:
+                    type: integer
+                  available_years:
+                    type: array
+                    items:
+                      type: integer
+                  countries:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        country_name:
+                          type: string
+                        country_code:
+                          type: string
+                          nullable: true
+                        days:
+                          type: integer
+                        periods:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              start_date:
+                                type: string
+                                format: date
+                              end_date:
+                                type: string
+                                format: date
+                              consecutive_days:
+                                type: integer
+        '403':
+          description: pro plan required (cloud lite users)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        '401':
+          description: unauthorized
   "/api/v1/settings":
     patch:
       summary: Updates user settings
@@ -3180,6 +3890,111 @@ paths:
           description: bad request - missing parameters
         '401':
           description: unauthorized
+  "/api/v1/traccar/points":
+    post:
+      summary: Creates a point
+      tags:
+      - Points
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Point created
+        '401':
+          description: Unauthorized
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                device_id:
+                  type: string
+                  description: Tracker / device identifier
+                location:
+                  type: object
+                  properties:
+                    timestamp:
+                      type: string
+                      description: ISO 8601 timestamp of the location fix
+                    latitude:
+                      type: number
+                      description: Latitude in decimal degrees
+                    longitude:
+                      type: number
+                      description: Longitude in decimal degrees
+                    accuracy:
+                      type: number
+                      description: Horizontal accuracy in meters
+                    speed:
+                      type: number
+                      description: Speed in meters per second
+                    heading:
+                      type: number
+                      description: Bearing in degrees (0-360)
+                    altitude:
+                      type: number
+                      description: Altitude in meters
+                    is_moving:
+                      type: boolean
+                      description: Whether the device was moving at the time of the
+                        fix
+                    odometer:
+                      type: number
+                      description: Cumulative distance traveled in meters
+                    event:
+                      type: string
+                      description: Event type that produced the fix (e.g. motionchange,
+                        heartbeat)
+                  required:
+                  - latitude
+                  - longitude
+                  - timestamp
+                battery:
+                  type: object
+                  properties:
+                    level:
+                      type: number
+                      description: Battery level as a 0-1 fraction
+                    is_charging:
+                      type: boolean
+                      description: Whether the device is currently charging
+                activity:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                      description: Detected activity (walking, running, in_vehicle,
+                        ...)
+              required:
+              - device_id
+              - location
+            examples:
+              '0':
+                summary: Creates a point
+                value:
+                  device_id: iphone-jane
+                  location:
+                    timestamp: '2026-04-23T12:34:56Z'
+                    latitude: 52.52
+                    longitude: 13.405
+                    accuracy: 5
+                    speed: 1.4
+                    heading: 90
+                    altitude: 42
+                    is_moving: true
+                    odometer: 1200
+                    event: motionchange
+                  battery:
+                    level: 0.85
+                    is_charging: true
+                  activity:
+                    type: walking
   "/api/v1/tracks/{track_id}/points":
     parameters:
     - name: track_id
@@ -3396,6 +4211,247 @@ paths:
           description: track not found
         '401':
           description: unauthorized
+  "/api/v1/users/exist":
+    post:
+      summary: Checks which user IDs exist in Dawarich
+      tags:
+      - Users
+      description: Internal endpoint used by the Subscription Manager. Authenticated
+        via the `X-Webhook-Secret` header (NOT an api_key). Given a list of user IDs,
+        returns which ones exist and which are missing.
+      parameters:
+      - name: X-Webhook-Secret
+        in: header
+        required: true
+        description: Shared secret matching SUBSCRIPTION_WEBHOOK_SECRET on the server
+        schema:
+          type: string
+      responses:
+        '200':
+          description: check completed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  existing:
+                    type: array
+                    items:
+                      type: integer
+                  missing:
+                    type: array
+                    items:
+                      type: integer
+        '401':
+          description: invalid webhook secret
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        '422':
+          description: ids parameter missing
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ids:
+                  type: array
+                  items:
+                    type: integer
+                  description: User IDs to check for existence
+              required:
+              - ids
+  "/api/v1/users/me/two_factor/setup":
+    post:
+      summary: Begins TOTP enrollment
+      tags:
+      - Users
+      description: Generates a fresh TOTP secret and provisioning URI. The secret
+        is rotated on each call until 2FA is confirmed via `/two_factor/confirm`.
+        Requires the user's current password.
+      security:
+      - bearer_auth: []
+      parameters:
+      - name: Authorization
+        in: header
+        required: true
+        description: 'Bearer token in the format: Bearer {api_key}'
+        schema:
+          type: string
+      responses:
+        '200':
+          description: secret provisioned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  provisioning_uri:
+                    type: string
+                    description: otpauth:// URI for authenticator apps
+                  secret:
+                    type: string
+                    description: Base32-encoded TOTP secret
+        '401':
+          description: wrong or missing password
+        '409':
+          description: two-factor already enabled
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                password:
+                  type: string
+                  format: password
+              required:
+              - password
+  "/api/v1/users/me/two_factor/confirm":
+    post:
+      summary: Confirms TOTP enrollment
+      tags:
+      - Users
+      description: Verifies the supplied TOTP code against the secret provisioned
+        by `/two_factor/setup`. On success, enables 2FA and returns single-use backup
+        codes.
+      security:
+      - bearer_auth: []
+      parameters:
+      - name: Authorization
+        in: header
+        required: true
+        description: 'Bearer token in the format: Bearer {api_key}'
+        schema:
+          type: string
+      responses:
+        '200':
+          description: two-factor enabled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  backup_codes:
+                    type: array
+                    items:
+                      type: string
+                    description: Single-use recovery codes
+        '422':
+          description: invalid otp code
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                password:
+                  type: string
+                  format: password
+                otp_code:
+                  type: string
+                  description: Current 6-digit TOTP code
+              required:
+              - password
+              - otp_code
+  "/api/v1/users/me/two_factor/backup_codes":
+    post:
+      summary: Regenerates two-factor backup codes
+      tags:
+      - Users
+      description: Replaces all existing backup codes with a fresh set. Requires the
+        user's current password.
+      security:
+      - bearer_auth: []
+      parameters:
+      - name: Authorization
+        in: header
+        required: true
+        description: 'Bearer token in the format: Bearer {api_key}'
+        schema:
+          type: string
+      responses:
+        '200':
+          description: backup codes regenerated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  backup_codes:
+                    type: array
+                    items:
+                      type: string
+        '401':
+          description: wrong or missing password
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                password:
+                  type: string
+                  format: password
+              required:
+              - password
+  "/api/v1/users/me/two_factor":
+    delete:
+      summary: Disables two-factor authentication
+      tags:
+      - Users
+      description: Removes the TOTP secret, clears backup codes, and disables 2FA.
+        Requires both the current password AND a valid TOTP code (or unused backup
+        code).
+      security:
+      - bearer_auth: []
+      parameters:
+      - name: Authorization
+        in: header
+        required: true
+        description: 'Bearer token in the format: Bearer {api_key}'
+        schema:
+          type: string
+      responses:
+        '200':
+          description: two-factor disabled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: missing or invalid credentials
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                password:
+                  type: string
+                  format: password
+                  description: Current password
+                otp_code:
+                  type: string
+                  description: Current TOTP code or unused backup code
+              required:
+              - password
+              - otp_code
   "/api/v1/users/me":
     get:
       summary: Returns the current user
@@ -3415,6 +4471,55 @@ paths:
           description: user found
         '401':
           description: unauthorized
+    delete:
+      summary: Requests deletion of the current user account
+      tags:
+      - Users
+      description: On Cloud, sends a confirmation email and returns 202; the account
+        is only deleted after the user clicks the confirmation link. On self-hosted,
+        deletes the account immediately when the correct password is supplied.
+      security:
+      - bearer_auth: []
+      parameters:
+      - name: Authorization
+        in: header
+        required: true
+        description: 'Bearer token in the format: Bearer {api_key}'
+        schema:
+          type: string
+      responses:
+        '202':
+          description: confirmation email sent (cloud)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '422':
+          description: cannot delete account (family owner with members)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+        '401':
+          description: unauthorized
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                password:
+                  type: string
+                  format: password
+                  description: Required on self-hosted to confirm account deletion
   "/api/v1/visits":
     get:
       summary: List visits

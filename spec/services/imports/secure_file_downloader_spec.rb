@@ -106,4 +106,32 @@ RSpec.describe Imports::SecureFileDownloader do
       end
     end
   end
+
+  describe '#download_to_temp_file' do
+    let(:filename) { ActiveStorage::Filename.new('records.json') }
+
+    before do
+      allow(storage_attachment).to receive(:download) do |&block|
+        block.call(file_content)
+      end
+      allow(storage_attachment).to receive(:filename).and_return(filename)
+    end
+
+    it 'returns a path to a file that exists on disk' do
+      path = subject.download_to_temp_file
+
+      expect(File.exist?(path)).to be(true)
+      File.unlink(path) if File.exist?(path)
+    end
+
+    it 'does not leave behind a Tempfile object whose finalizer can delete the file' do
+      before_count = ObjectSpace.each_object(Tempfile).count
+      path = subject.download_to_temp_file
+      created = ObjectSpace.each_object(Tempfile).count - before_count
+
+      expect(created).to eq(0)
+      expect(File.exist?(path)).to be(true)
+      File.unlink(path) if File.exist?(path)
+    end
+  end
 end

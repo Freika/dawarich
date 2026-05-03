@@ -72,17 +72,22 @@ class Users::ImportData::Imports
   end
 
   def restore_import_file(import_record, import_data)
-    file_path = files_directory.join(import_data['file_name'])
+    file_path = Users::ImportData::PathSafety.safe_basename_path(
+      files_directory, import_data['file_name']
+    )
 
-    unless File.exist?(file_path)
-      Rails.logger.warn "Import file not found: #{import_data['file_name']}"
+    unless file_path && File.exist?(file_path)
+      Rails.logger.warn "Import file not found or unsafe: #{import_data['file_name']}"
       return false
     end
 
     begin
+      safe_filename = File.basename(
+        (import_data['original_filename'] || import_data['file_name']).to_s
+      )
       import_record.file.attach(
         io: File.open(file_path),
-        filename: import_data['original_filename'] || import_data['file_name'],
+        filename: safe_filename,
         content_type: import_data['content_type'] || 'application/octet-stream'
       )
 

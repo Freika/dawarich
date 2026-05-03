@@ -14,6 +14,7 @@ pin '@hotwired/turbo-rails', to: 'turbo.min.js', preload: true
 pin '@hotwired/stimulus', to: 'stimulus.min.js', preload: true
 pin '@hotwired/stimulus-loading', to: 'stimulus-loading.js', preload: true
 pin_all_from 'app/javascript/controllers', under: 'controllers'
+pin_all_from 'app/javascript/services', under: 'services'
 
 pin 'leaflet' # @1.9.4
 pin 'leaflet-providers' # @2.0.0
@@ -30,3 +31,4 @@ pin '@rails/actiontext', to: 'actiontext.esm.js'
 pin 'leaflet.control.layers.tree' # @1.2.0
 pin 'emoji-mart' # @5.6.0
 pin 'maplibre-gl' # @5.12.0
+pin 'fflate' # @0.8.2

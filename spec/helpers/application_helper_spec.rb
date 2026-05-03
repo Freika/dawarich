@@ -21,10 +21,13 @@ RSpec.describe ApplicationHelper, type: :helper do
         allow(helper).to receive(:current_user).and_return(fake_user)
         # Stub icon helper used inside pro_badge_tag
         allow(helper).to receive(:icon).and_return('🔒'.html_safe)
-        # Provide a controller context for rails_pulse's link_to override
         allow(helper).to receive(:controller).and_return(
           double(class: double(name: 'ApplicationController'))
         )
+        # Lite users only exist on cloud — `pro_badge_tag` returns nil on
+        # self-hosted via `current_user&.lite?` upstream, so this stub
+        # mirrors the cloud path the test is exercising.
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
       end
 
       it 'renders a DaisyUI tooltip with data-tip attribute' do
@@ -59,6 +62,61 @@ RSpec.describe ApplicationHelper, type: :helper do
         expect(result).to include('target="_blank"')
         expect(result).to include('tabindex="0"')
       end
+    end
+  end
+
+  describe '#subscription_upgrade_url' do
+    let(:user) { build_stubbed(:user) }
+
+    it 'returns trial_resume_path for pending_payment users' do
+      allow(user).to receive(:pending_payment?).and_return(true)
+      expect(helper.subscription_upgrade_url(user)).to eq(Rails.application.routes.url_helpers.trial_resume_path)
+    end
+
+    it 'returns MANAGER_URL/auth/dawarich for non-pending_payment users' do
+      allow(user).to receive(:pending_payment?).and_return(false)
+      allow(user).to receive(:generate_subscription_token).and_return('fake_token')
+      stub_const('MANAGER_URL', 'https://manager.example.com')
+      expect(helper.subscription_upgrade_url(user)).to eq('https://manager.example.com/auth/dawarich?token=fake_token')
+    end
+  end
+
+  describe '#upgrade_url' do
+    context 'on self-hosted instances' do
+      before { allow(DawarichSettings).to receive(:self_hosted?).and_return(true) }
+
+      it 'returns empty string without invoking JWT generation' do
+        # Would raise KeyError on self-hosted (no JWT_SECRET_KEY) if not guarded.
+        expect(helper.upgrade_url).to eq('')
+      end
+    end
+  end
+
+  describe '#subscription_button_label' do
+    let(:user) { build_stubbed(:user, active_until: 3.days.from_now) }
+
+    it 'returns "Finish signup" for pending_payment users' do
+      allow(user).to receive(:pending_payment?).and_return(true)
+      expect(helper.subscription_button_label(user)).to eq('Finish signup')
+    end
+
+    it 'returns the trial days remaining for non-pending_payment users' do
+      allow(user).to receive(:pending_payment?).and_return(false)
+      expect(helper.subscription_button_label(user)).to match(/left|Expired/)
+    end
+  end
+
+  describe '#subscription_cta_label' do
+    let(:user) { build_stubbed(:user) }
+
+    it 'returns "Resume" for pending_payment users' do
+      allow(user).to receive(:pending_payment?).and_return(true)
+      expect(helper.subscription_cta_label(user)).to eq('Resume')
+    end
+
+    it 'returns "Subscribe" for non-pending_payment users' do
+      allow(user).to receive(:pending_payment?).and_return(false)
+      expect(helper.subscription_cta_label(user)).to eq('Subscribe')
     end
   end
 
@@ -416,6 +474,38 @@ RSpec.describe ApplicationHelper, type: :helper do
 
     it 'returns mph when unit is mi' do
       expect(helper.speed_label('mi')).to eq('mph')
+    end
+  end
+
+  describe '#trial_button_class' do
+    it 'returns btn-error for a user with nil active_until' do
+      user = build(:user, active_until: nil)
+      expect(helper.trial_button_class(user)).to eq('btn-error')
+    end
+
+    it 'returns btn-info when trial has 5-8 days left' do
+      user = build(:user, active_until: 6.days.from_now)
+      expect(helper.trial_button_class(user)).to eq('btn-info')
+    end
+
+    it 'returns btn-warning when trial has 2-4 days left' do
+      user = build(:user, active_until: 3.days.from_now)
+      expect(helper.trial_button_class(user)).to eq('btn-warning')
+    end
+
+    it 'returns btn-error when trial has 0-1 days left' do
+      user = build(:user, active_until: 1.day.from_now)
+      expect(helper.trial_button_class(user)).to eq('btn-error')
+    end
+
+    it 'returns btn-success when trial has more than 8 days left' do
+      user = build(:user, active_until: 10.days.from_now)
+      expect(helper.trial_button_class(user)).to eq('btn-success')
+    end
+
+    it 'returns btn-error for an expired active_until' do
+      user = build(:user, active_until: 3.days.ago)
+      expect(helper.trial_button_class(user)).to eq('btn-error')
     end
   end
 

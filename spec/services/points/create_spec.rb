@@ -342,6 +342,22 @@ RSpec.describe Points::Create do
         expect(user.points_count).to eq(Point.where(user_id: user.id).count)
       end
 
+      it 'enqueues VisitSuggestingJob when reverse geocoding is enabled (regression for #1749)' do
+        allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
+
+        expect do
+          described_class.new(user, point_params).call
+        end.to have_enqueued_job(VisitSuggestingJob).with(hash_including(user_id: user.id))
+      end
+
+      it 'does not enqueue VisitSuggestingJob when reverse geocoding is disabled' do
+        allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false)
+
+        expect do
+          described_class.new(user, point_params).call
+        end.not_to have_enqueued_job(VisitSuggestingJob)
+      end
+
       it 'does not increment points_count for duplicate upserts' do
         described_class.new(user, point_params).call
         user.reload

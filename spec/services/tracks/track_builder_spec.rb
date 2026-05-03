@@ -85,6 +85,47 @@ RSpec.describe Tracks::TrackBuilder do
       end
     end
 
+    context 'with an absurdly large pre-calculated distance' do
+      let!(:points) do
+        [
+          create(:point, user: user, timestamp: 2.hours.ago.to_i),
+          create(:point, user: user, timestamp: 1.hour.ago.to_i)
+        ]
+      end
+
+      it 'caps distance at the configured maximum and warns' do
+        absurd_distance = Tracks::TrackBuilder::MAX_DISTANCE_METERS + 1_000_000
+
+        expect(Rails.logger).to receive(:warn).with(/exceeds maximum/)
+
+        track = builder.create_track_from_points(points, absurd_distance)
+
+        expect(track.distance).to eq(Tracks::TrackBuilder::MAX_DISTANCE_METERS)
+      end
+
+      it 'allows tracks longer than the legacy 999_999 m cap' do
+        long_distance = 5_000_000 # 5,000 km — long-haul flight territory
+
+        track = builder.create_track_from_points(points, long_distance)
+
+        expect(track.distance).to eq(long_distance)
+      end
+    end
+
+    context 'with a negative pre-calculated distance' do
+      let!(:points) do
+        [
+          create(:point, user: user, timestamp: 2.hours.ago.to_i),
+          create(:point, user: user, timestamp: 1.hour.ago.to_i)
+        ]
+      end
+
+      it 'clamps to zero' do
+        track = builder.create_track_from_points(points, -100)
+        expect(track.distance).to eq(0)
+      end
+    end
+
     context 'when track save fails' do
       let(:points) do
         [

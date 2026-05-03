@@ -16,8 +16,8 @@ class Import < ApplicationRecord
   before_save :set_processing_started_at, if: :status_changed_to_processing?
 
   validates :name, presence: true, uniqueness: { scope: :user_id }
-  validate :file_size_within_limit, if: -> { user.trial? && !demo }
-  validate :import_count_within_limit, if: -> { user.trial? && !demo }
+  validate :file_size_within_limit, if: -> { user.legacy_trial? && !demo }
+  validate :import_count_within_limit, if: -> { user.legacy_trial? && !demo }
 
   enum :status, { created: 0, processing: 1, completed: 2, failed: 3, deleting: 4 }
 
@@ -25,7 +25,7 @@ class Import < ApplicationRecord
     google_semantic_history: 0, owntracks: 1, google_records: 2,
     google_phone_takeout: 3, gpx: 4, immich_api: 5, geojson: 6, photoprism_api: 7,
     user_data_archive: 8, kml: 9,
-    csv: 10, tcx: 11, fit: 12
+    csv: 10, tcx: 11, fit: 12, polarsteps: 13
   }, allow_nil: true
 
   def process!

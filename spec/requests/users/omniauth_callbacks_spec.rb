@@ -44,8 +44,10 @@ RSpec.describe 'Users::OmniauthCallbacks', type: :request do
       end
     end
 
-    context 'when user already exists' do
-      let!(:existing_user) { create(:user, email: email) }
+    context 'when an OAuth user with this provider/uid already exists (already linked)' do
+      let!(:existing_user) do
+        create(:user, email: email, provider: provider.to_s, uid: '123545')
+      end
 
       it 'signs in the existing user without creating a new one' do
         expect do
@@ -57,20 +59,27 @@ RSpec.describe 'Users::OmniauthCallbacks', type: :request do
       end
     end
 
-    context 'when user creation fails' do
-      before do
-        allow(User).to receive(:create).and_return(
-          User.new(email: email).tap do |u|
-            u.errors.add(:email, 'is invalid')
-          end
-        )
+    context 'when a local-password account exists with the same email (audit C-1)' do
+      let!(:existing_user) { create(:user, email: email, provider: nil, uid: nil) }
+
+      it 'does NOT auto-link and redirects to the password-challenge page' do
+        expect do
+          Rails.application.env_config['omniauth.auth'] = OmniAuth.config.mock_auth[provider]
+          get "/users/auth/#{provider}/callback"
+        end.not_to change(User, :count)
+
+        existing_user.reload
+        expect(existing_user.provider).to be_nil
+        expect(existing_user.uid).to be_nil
+
+        expect(response).to redirect_to(auth_account_link_challenge_path)
       end
 
-      it 'redirects to registration with error message' do
-        Rails.application.env_config['omniauth.auth'] = OmniAuth.config.mock_auth[provider]
-        get "/users/auth/#{provider}/callback"
-
-        expect(response).to redirect_to(new_user_registration_url)
+      it 'does not auto-send the OAuth account-link email (user can opt in)' do
+        expect do
+          Rails.application.env_config['omniauth.auth'] = OmniAuth.config.mock_auth[provider]
+          get "/users/auth/#{provider}/callback"
+        end.not_to have_enqueued_job(Users::MailerSendingJob)
       end
     end
   end
@@ -100,21 +109,33 @@ RSpec.describe 'Users::OmniauthCallbacks', type: :request do
         end
       end
 
-      context 'when user already exists (account linking)' do
-        let!(:existing_user) { create(:user, email: email) }
+      context 'when an OIDC-linked user already exists' do
+        let!(:existing_user) do
+          create(:user, email: email, provider: 'openid_connect', uid: '123545')
+        end
 
-        it 'signs in the existing user and links OIDC provider' do
+        it 'signs in the existing user (already linked by provider+uid)' do
           expect do
             Rails.application.env_config['omniauth.auth'] = OmniAuth.config.mock_auth[:openid_connect]
             get '/users/auth/openid_connect/callback'
           end.not_to change(User, :count)
 
           expect(response).to redirect_to(root_path)
-          expect(flash[:notice]).to include('OpenID Connect')
+        end
+      end
+
+      context 'when a local-password account exists with the same email (audit C-1)' do
+        let!(:existing_user) { create(:user, email: email, provider: nil, uid: nil) }
+
+        it 'refuses to auto-link and routes through verification email' do
+          expect do
+            Rails.application.env_config['omniauth.auth'] = OmniAuth.config.mock_auth[:openid_connect]
+            get '/users/auth/openid_connect/callback'
+          end.not_to change(User, :count)
 
           existing_user.reload
-          expect(existing_user.provider).to eq('openid_connect')
-          expect(existing_user.uid).to be_present
+          expect(existing_user.provider).to be_nil
+          expect(existing_user.uid).to be_nil
         end
       end
     end
@@ -146,6 +167,25 @@ RSpec.describe 'Users::OmniauthCallbacks', type: :request do
         Rails.application.env_config['omniauth.auth'] = OmniAuth.config.mock_auth[:openid_connect]
         get '/users/auth/openid_connect/callback'
       end.not_to raise_error
+    end
+  end
+
+  describe 'pending_payment users' do
+    let(:pending_email) { 'pending_oauth@example.com' }
+    let!(:pending_user) do
+      u = create(:user, email: pending_email, provider: 'openid_connect', uid: '123545',
+                        skip_auto_trial: true)
+      u.update_columns(status: User.statuses[:pending_payment])
+      u
+    end
+
+    before { mock_openid_connect_auth(email: pending_email) }
+
+    it 'redirects pending_payment users to /trial/resume after OAuth sign-in' do
+      Rails.application.env_config['omniauth.auth'] = OmniAuth.config.mock_auth[:openid_connect]
+      get '/users/auth/openid_connect/callback'
+
+      expect(response).to redirect_to(trial_resume_path)
     end
   end
 end

@@ -1,0 +1,59 @@
+<%# locals: (summary:) %>
+<% nav = calendar_month_nav(summary) %>
+<%= turbo_frame_tag 'timeline-calendar-frame' do %>
+  <div class="timeline-calendar" data-testid="timeline-calendar">
+    <div class="flex items-center justify-between mb-2">
+      <%# turbo-stream requests so the prev/next response can update both
+          the calendar grid AND the FILTER pills (which are scoped to the
+          visible month) in a single round-trip. %>
+      <%# `previewMonth` paints a skeleton calendar (correct dates, neutral
+          cells) the moment the user clicks, so the new month feels instant.
+          The turbo_stream response then replaces it with the real
+          heat-colored cells when the network round-trip finishes. %>
+      <%= link_to calendar_map_timeline_feeds_path(month: nav[:prev]),
+                  data: { turbo_stream: true, testid: 'calendar-prev',
+                          target_month: nav[:prev],
+                          action: 'click->timeline-feed#previewMonth' },
+                  class: 'btn btn-ghost btn-xs btn-square',
+                  'aria-label': 'Previous month' do %>
+        <%= icon 'chevron-left', class: 'w-4 h-4' %>
+      <% end %>
+      <div class="font-semibold text-sm" data-testid="calendar-title">
+        <%= nav[:title] %>
+      </div>
+      <%= link_to calendar_map_timeline_feeds_path(month: nav[:next]),
+                  data: { turbo_stream: true, testid: 'calendar-next',
+                          target_month: nav[:next],
+                          action: 'click->timeline-feed#previewMonth' },
+                  class: 'btn btn-ghost btn-xs btn-square',
+                  'aria-label': 'Next month' do %>
+        <%= icon 'chevron-right', class: 'w-4 h-4' %>
+      <% end %>
+    </div>
+
+    <div class="grid grid-cols-7 gap-0.5 text-[10px] text-base-content/60 mb-1">
+      <% calendar_weekday_labels.each do |label| %>
+        <div class="text-center"><%= label %></div>
+      <% end %>
+    </div>
+
+    <div class="grid grid-cols-7 gap-0.5">
+      <% summary[:weeks].each do |week| %>
+        <% week.each do |cell| %>
+          <button type="button"
+                  class="<%= calendar_cell_classes(cell) %>"
+                  data-day="<%= cell[:date] %>"
+                  data-action="click->timeline-feed#selectDay"
+                  data-testid="calendar-day"
+                  data-tracked-seconds="<%= cell[:tracked_seconds] %>"
+                  <% if cell[:disabled] %>disabled<% end %>>
+            <span class="cal-cell__day"><%= calendar_day_number(cell) %></span>
+            <% if cell[:suggested_count].to_i.positive? %>
+              <span class="suggestion-dot" aria-label="Has suggested visits"></span>
+            <% end %>
+          </button>
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+<% end %>
