@@ -50,6 +50,10 @@ class Photos::Search
     asset_type = asset['type'] || asset['Type']
     return if asset_type.downcase == 'video'
 
+    lat = asset.dig('exifInfo', 'latitude') || asset['Lat']
+    lon = asset.dig('exifInfo', 'longitude') || asset['Lng']
+    return if lat.nil? || lon.nil? || lat == 0 || lon == 0
+
     asset.merge(source: source)
   end
 end
