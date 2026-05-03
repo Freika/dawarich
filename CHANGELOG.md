@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Map (Leaflet) on mobile browsers no longer clips the bottom of the map and routes after the address bar collapses or the date is changed. (#2000)
+
 ## [1.7.4] - 2026-05-03
 
 ### Fixed
