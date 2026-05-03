@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Server-rendered timestamps (Points, Places, Imports, Exports, account settings, trial banner) now display in the user's profile timezone, matching the Maps tab. Previously, the time and tooltip could fall back to the server's default zone, drifting by hours. Invalid stored timezones no longer raise. (#1824)
 - "Start Reverse Geocoding" now actually re-runs for every point in your database — previously it silently skipped any point that had already been geocoded, even though the button promised a full re-run. (#2141)
+- Map v2 date-navigation arrows (`<` / `>`) now shift the time window by exactly one day, matching Map v1. Previously they shifted by the current window width, so a 00:00–23:59 selection paged back by 23h59m instead of 24h. (#2548)
 
 ### Changed
 
