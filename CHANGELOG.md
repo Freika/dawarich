@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Manual transportation-mode correction per segment in the map view, with a one-click reset to auto-detection. Manually-corrected segments are preserved across re-classification. (#2405)
+- Per-user transportation-mode allowlist in the map settings panel. Disabled modes are excluded from auto-detection going forward; existing tracks stay as they are until you press "Re-classify my history". (#2405)
+
 ### Fixed
 
 - "Start Reverse Geocoding" now actually re-runs for every point in your database — previously it silently skipped any point that had already been geocoded, even though the button promised a full re-run. (#2141)
