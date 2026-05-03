@@ -2,8 +2,6 @@
 
 require 'rails_helper'
 
-# Regression for https://github.com/Freika/dawarich/issues/2555
-#
 # Verifies the family show page exposes the per-member remove action to the
 # family owner. The backend (route, controller, service, policy) supports
 # member removal, but the view is missing the button — leaving owners unable
@@ -26,7 +24,6 @@ RSpec.describe 'Family#show member-remove action', type: :request do
     expect(response).to have_http_status(:ok)
     expect(response.body).to include(family_member_path(other_member_membership)),
                              'Family#show should render a DELETE link/button to ' \
-                             "#{family_member_path(other_member_membership)} so the owner can " \
-                             'remove the other member. See https://github.com/Freika/dawarich/issues/2555'
+                             "#{family_member_path(other_member_membership)} so the owner can"
   end
 end

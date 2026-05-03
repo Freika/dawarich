@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
-
-# Regression for https://github.com/Freika/dawarich/issues/2581
 RSpec.describe 'Countries-visited consistency between insights and statistics',
                type: :helper do
   helper StatsHelper
@@ -30,7 +28,6 @@ RSpec.describe 'Countries-visited consistency between insights and statistics',
     expect(insights_countries.size).to eq(stats_country_count),
                                        'Insights and statistics views report a different number of countries ' \
                                        "for the same Stat. Insights: #{insights_countries.inspect}, " \
-                                       "Statistics count: #{stats_country_count}. " \
-                                       'See https://github.com/Freika/dawarich/issues/2581'
+                                       "Statistics count: #{stats_country_count}."
   end
 end

@@ -4,15 +4,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [1.7.4] - Unreleased
+## [1.7.4] - 2026-05-03
 
 ### Fixed
 
 - Cloud Trial users are no longer limited to 10 MB import files.
 - Self-hosted instances no longer need to set `JWT_SECRET_KEY`. #2570
-- QR sizes are fixed #2479
-- Family owners can now remove other members directly from the family page (#2555)
-- Insights and statistics now agree on the number of countries visited per month (#2581)
+- QR sizes are fixed. #2479
+- Family owners can now remove other members directly from the family page. #2555
+- Insights and statistics now agree on the number of countries visited per month. #2581
+- The default password for the demo account has been changed to `safepassword`. The old default `password` prevented seeds from running due to the new 12-character minimum password length validation. Existing users were not affected. #2593
 
 
 ## [1.7.3] - 2026-05-02
