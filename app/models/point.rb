@@ -83,10 +83,20 @@ class Point < ApplicationRecord
   end
 
   def lon
+    if lonlat.nil?
+      Rails.logger.warn("Point #{id} has nil lonlat")
+      return nil
+    end
+
     lonlat.x
   end
 
   def lat
+    if lonlat.nil?
+      Rails.logger.warn("Point #{id} has nil lonlat")
+      return nil
+    end
+
     lonlat.y
   end
 
