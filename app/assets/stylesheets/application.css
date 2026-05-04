@@ -173,15 +173,3 @@ table thead th {
   position: static !important;
   z-index: auto !important;
 }
-
-/* Fix: prevent tables from forcing horizontal scroll */
-.table {
-  table-layout: fixed;
-  width: 100%;
-}
-
-.table td,
-.table th {
-  overflow: hidden;
-  text-overflow: ellipsis;
-}

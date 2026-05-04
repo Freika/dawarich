@@ -6,7 +6,7 @@
   <% end %>
 
   <% if @tags.any? %>
-    <div class="border border-base-300 rounded-xl overflow-hidden">
+    <div class="border border-base-300 rounded-xl overflow-x-auto">
       <table class="table table-sm w-full">
         <thead class="bg-base-200">
           <tr>
@@ -49,7 +49,7 @@
                       <%= icon 'square-pen', class: 'w-4 h-4' %>
                     <% end %>
                   </div>
-                  <div class="tooltip" data-tip="Delete tag">
+                  <div class="tooltip tooltip-left" data-tip="Delete tag">
                     <%= button_to tag_path(tag), method: :delete,
                         data: { turbo_confirm: "Are you sure?", turbo_method: :delete },
                         class: "btn btn-ghost btn-xs text-error hover:bg-error/10" do %>
