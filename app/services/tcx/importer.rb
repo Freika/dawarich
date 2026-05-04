@@ -53,8 +53,10 @@ class Tcx::Importer
   end
 
   def prepare_point(trackpoint, sport)
+    return unless trackpoint.is_a?(Hash)
+
     position = trackpoint['Position']
-    return if position.blank?
+    return unless position.is_a?(Hash)
 
     lat = position['LatitudeDegrees']
     lon = position['LongitudeDegrees']

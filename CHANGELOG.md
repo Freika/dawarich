@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- TCX import no longer crashes with `no implicit conversion of String into Integer` when a Trackpoint contains multiple `<Position>` siblings; malformed trackpoints are skipped and the rest of the file imports normally. #2466
+
 ## [1.7.5] - 2026-05-04
 
 ### Added
