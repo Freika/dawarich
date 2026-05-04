@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_05_03_111800) do
+ActiveRecord::Schema[8.0].define(version: 2026_05_04_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
@@ -330,7 +330,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_03_111800) do
   create_table "stats", force: :cascade do |t|
     t.integer "year", null: false
     t.integer "month", null: false
-    t.integer "distance", null: false
+    t.bigint "distance", default: 0, null: false
     t.jsonb "toponyms"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
