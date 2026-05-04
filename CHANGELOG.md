@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Monthly stats calculation no longer fails with an integer overflow error when the computed monthly distance exceeds ~2,147,483 km expressed in meters. Affected months previously stayed stuck on the prior value and surfaced a "Stats update failed" notification. #1996
+
 ## [1.7.5] - 2026-05-04
 
 ### Added
