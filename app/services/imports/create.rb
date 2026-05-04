@@ -35,6 +35,7 @@ class Imports::Create
     filter_anomalies(user, import)
     schedule_stats_creating(user.id)
     schedule_visit_suggesting(user.id, import)
+    schedule_track_generation(user.id, import)
     update_import_points_count(import)
   rescue StandardError => e
     return if import.destroyed?
@@ -114,6 +115,21 @@ class Imports::Create
     end_at = Time.zone.at(min_max[1])
 
     VisitSuggestingJob.perform_later(user_id:, start_at:, end_at:)
+  end
+
+  def schedule_track_generation(user_id, import)
+    min_max = import.points.pick('MIN(timestamp), MAX(timestamp)')
+    return if min_max.compact.empty?
+
+    start_at = Time.zone.at(min_max[0])
+    end_at = Time.zone.at(min_max[1])
+
+    Tracks::ParallelGeneratorJob.perform_later(
+      user_id,
+      start_at: start_at,
+      end_at: end_at,
+      mode: 'bulk'
+    )
   end
 
   def create_import_failed_notification(import, user, error)
