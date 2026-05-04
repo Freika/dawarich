@@ -12,7 +12,11 @@ module Auth
     def call
       raise InvalidToken, 'blank token' if @id_token.blank?
 
-      client_ids = [ENV['GOOGLE_IOS_CLIENT_ID'], ENV['GOOGLE_ANDROID_CLIENT_ID']].compact
+      client_ids = [
+        ENV['GOOGLE_IOS_CLIENT_ID'],
+        ENV['GOOGLE_ANDROID_CLIENT_ID'],
+        ENV['GOOGLE_OAUTH_CLIENT_ID']
+      ].compact
       raise InvalidToken, 'Google client IDs not configured' if client_ids.empty?
 
       claims = GoogleIDToken::Validator.new.check(@id_token, client_ids)
