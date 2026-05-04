@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Imports (GPX, KML, GeoJSON, FIT, TCX, Google Timeline, OwnTracks .rec, CSV, Polarsteps) now generate tracks for the imported point range. Previously, only points coming through the real-time APIs (OwnTracks, Overland, generic Points) had tracks built automatically; bulk imports left their points untracked until a separate manual recalculation was run. (#2224)
+
 ## [1.7.5] - 2026-05-04
 
 ### Added
