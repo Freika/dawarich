@@ -76,7 +76,7 @@ module StatsHelper
     cities = []
 
     year_stats.each do |stat|
-      toponyms = stat.toponyms.flatten
+      toponyms = Array(stat.toponyms).flatten
       toponyms.each do |t|
         city_names = (t['cities'] || []).filter_map { |c| c['city'] }
         cities.concat(city_names)
@@ -91,7 +91,7 @@ module StatsHelper
     grouped = Hash.new { |h, k| h[k] = [] }
 
     year_stats.each do |stat|
-      stat.toponyms.flatten.each do |toponym|
+      Array(stat.toponyms).flatten.each do |toponym|
         country = normalize_country_name(toponym['country'])
         next if country.blank?
 
