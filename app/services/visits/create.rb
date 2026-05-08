@@ -19,6 +19,11 @@ module Visits
         visit = create_visit(place)
         visit
       end
+    rescue ActiveRecord::RecordNotUnique
+      @visit = existing_visit
+      @errors = 'Failed to create visit: duplicate visit' unless @visit
+
+      @visit || false
     rescue ActiveRecord::RecordInvalid => e
       ExceptionReporter.call(e, "Failed to create visit: #{e.message}")
 
@@ -40,6 +45,13 @@ module Visits
       return existing_place if existing_place
 
       create_new_place
+    end
+
+    def existing_visit
+      place = find_existing_place
+      return nil unless place
+
+      user.visits.find_by(place_id: place.id, started_at: Time.zone.parse(params[:started_at]))
     end
 
     def find_existing_place

@@ -29,7 +29,12 @@
     <% end %>
   </td>
   <td class="px-4 py-3" data-status-display>
-    <%= status_badge(import) %>
+    <div class="flex flex-col gap-1 items-start">
+      <%= status_badge(import) %>
+      <% unless import.additional_data_extraction_not_attempted? || import.additional_data_extraction_unsupported? %>
+        <%= extraction_status_badge(import) %>
+      <% end %>
+    </div>
   </td>
   <td class="px-4 py-3 text-sm text-base-content/50"><%= human_datetime(import.created_at, local_assigns[:timezone]) %></td>
   <td class="px-4 py-3 text-right">

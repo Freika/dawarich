@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+### Added
+
+- Imports of Google Takeout (phone takeout, Semantic Location History) and Polarsteps now optionally extract **visits**, **named places**, **tracks**, and the source app's **transportation-mode classification** (driving, walking, cycling, transit, …) in addition to raw GPS points. Frequent places named by Google Takeout (Home, Work, etc.) are imported as Place records with their original names. Open an import in the Imports list and click **Extract additional data** to add this to existing imports; new imports run extraction automatically. Untick **Trust the source app's classification** in the Extract dialog to have Dawarich re-detect transportation modes using your settings. Existing visits detected by Dawarich's smart detection are kept side-by-side with the imported ones. Changed your mind? **Remove extracted data** on the same import deletes everything the extraction added and leaves your imported GPS points untouched.
+
 ### Changed
 
 - Ordering a printed poster from the Poster Studio is now available to everyone, instead of sitting behind a feature flag that was off by default. An instance that would rather not offer it can switch the `poster_ordering` flag off at `/admin/flipper`, or leave `PRINT_ORDER_URL` blank.

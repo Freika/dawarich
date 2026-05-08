@@ -8,6 +8,9 @@
 
     <%= render @import %>
 
+    <%= turbo_stream_from "import_#{@import.id}_extraction" %>
+    <%= render 'imports/extraction_card', import: @import %>
+
     <%= link_to "Edit this import", edit_import_path(@import), class: "mt-2 rounded-lg py-3 px-5 bg-secondary-content inline-block font-medium" %>
     <div class="inline-block ml-2">
       <%= link_to "Destroy this import", import_path(@import), data: { turbo_confirm: "Are you sure? This action will delete all points imported with this file", turbo_method: :delete }, class: "mt-2 rounded-lg py-3 px-5 bg-secondary-content font-medium" %>
