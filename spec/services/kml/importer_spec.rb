@@ -130,8 +130,49 @@ RSpec.describe Kml::Importer do
     context 'when coordinates are missing required fields' do
       let(:file_path) { Rails.root.join('spec/fixtures/files/kml/invalid_coordinates.kml').to_s }
 
-      it 'skips invalid coordinates' do
-        expect { parser }.not_to change(Point, :count)
+      it 'skips invalid coordinates without raising' do
+        expect { parser }.not_to raise_error
+        expect(Point.count).to eq(0)
+      end
+    end
+
+    context 'when KML has no placemarks and no tracks at all' do
+      let(:file_path) { Rails.root.join('spec/fixtures/files/kml/empty_document.kml').to_s }
+
+      it 'raises EmptyImportError mentioning the empty document' do
+        expect { parser }.to raise_error(
+          Kml::Importer::EmptyImportError,
+          /no placemarks|empty/i
+        )
+      end
+    end
+
+    context 'when placemarks have no timestamps anywhere' do
+      let(:file_path) { Rails.root.join('spec/fixtures/files/kml/points_without_timestamps.kml').to_s }
+
+      it 'raises EmptyImportError mentioning missing timestamps' do
+        expect { parser }.to raise_error(
+          Kml::Importer::EmptyImportError,
+          /no timestamps/i
+        )
+      end
+
+      it 'does not insert any points' do
+        expect { parser rescue nil }.not_to change(Point, :count)
+      end
+    end
+
+    context 'when KML contains only polygon/area geometry (no Point/LineString/Track)' do
+      let(:file_path) { Rails.root.join('spec/fixtures/files/kml/polygons_only.kml').to_s }
+
+      it 'raises EmptyImportError explaining the missing-timestamps cause first' do
+        # polygons_only.kml has no timestamps either, so the timestamp check
+        # surfaces first — that is the more actionable hint for the most
+        # common cause (boundary/cadastral KML uploads).
+        expect { parser }.to raise_error(
+          Kml::Importer::EmptyImportError,
+          /no timestamps|polygon/i
+        )
       end
     end
 

@@ -1,0 +1,98 @@
+{
+  "timelineEdits": [
+    {
+      "deviceId": "799010011",
+      "rawSignal": {
+        "signal": {
+          "position": {
+            "point": { "latE7": 679651561, "lngE7": 236850278 },
+            "accuracyMm": 98000,
+            "altitudeMeters": 280.0,
+            "source": "WIFI",
+            "timestamp": "2024-03-13T14:43:36.723Z"
+          }
+        },
+        "additionalTimestamp": "2024-03-13T15:04:27.486Z",
+        "metadata": { "platform": "ANDROID" }
+      }
+    },
+    {
+      "deviceId": "799010011",
+      "rawSignal": {
+        "signal": {
+          "position": {
+            "point": { "latE7": 679646505, "lngE7": 236864785 },
+            "accuracyMm": 9000,
+            "altitudeMeters": 280.0,
+            "source": "GPS",
+            "timestamp": "2024-03-13T14:43:00.805Z",
+            "speedMetersPerSecond": 0.0
+          }
+        },
+        "metadata": { "platform": "ANDROID" }
+      }
+    },
+    {
+      "deviceId": "799010011",
+      "rawSignal": {
+        "signal": {
+          "wifiScan": {
+            "deliveryTime": "2024-03-13T14:43:36.723Z",
+            "devices": [{ "mac": "92494487099310", "rawRssi": -88 }],
+            "source": "ACTIVE_SCAN"
+          }
+        }
+      }
+    },
+    {
+      "deviceId": "799010011",
+      "rawSignal": {
+        "signal": {
+          "activityRecord": {
+            "detectedActivities": [
+              { "activityType": "STILL", "probability": 0.4 }
+            ],
+            "timestamp": "2024-03-13T14:43:35.683Z"
+          }
+        }
+      }
+    },
+    {
+      "deviceId": "0",
+      "placeAggregates": {
+        "placeAggregateInfo": [
+          {
+            "score": 89.0,
+            "point": { "latE7": 667874067, "lngE7": 240053221 },
+            "placeId": "ChIJmXXVYONh1EUR-ZvQEXP64_c"
+          }
+        ]
+      }
+    },
+    {
+      "deviceId": "0",
+      "userEditedSemanticSegment": {
+        "startTime": "2024-03-13T01:40:59Z",
+        "endTime": "2024-03-13T02:45:18Z",
+        "segment": {
+          "activity": {
+            "distanceMeters": 0.0,
+            "topCandidate": { "type": "IN_PASSENGER_VEHICLE", "probability": 0.0 }
+          }
+        }
+      }
+    },
+    {
+      "deviceId": "799010011",
+      "rawSignal": {
+        "signal": {
+          "position": {
+            "point": null,
+            "accuracyMm": 1000,
+            "timestamp": "2024-03-13T14:50:00.000Z"
+          }
+        }
+      }
+    }
+  ]
+}

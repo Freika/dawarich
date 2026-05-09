@@ -4,6 +4,8 @@ require 'rexml/document'
 require 'zip'
 
 class Kml::Importer
+  class EmptyImportError < StandardError; end
+
   include Imports::Broadcaster
   include Imports::BulkInsertable
   include Imports::FileLoader
@@ -20,7 +22,10 @@ class Kml::Importer
     doc = load_and_parse_kml_document
     points_data = extract_all_points(doc)
 
-    return if points_data.empty?
+    if points_data.empty?
+      raise_structural_error_if_applicable(doc)
+      return
+    end
 
     save_points_in_batches(points_data)
   end
@@ -37,6 +42,43 @@ class Kml::Importer
     points_data.concat(extract_points_from_placemarks(doc))
     points_data.concat(extract_points_from_gx_tracks(doc))
     points_data.compact
+  end
+
+  def raise_structural_error_if_applicable(doc)
+    placemark_count = REXML::XPath.match(doc, '//Placemark').length
+    track_count     = REXML::XPath.match(doc, '//gx:Track').length
+
+    raise EmptyImportError, empty_document_message if placemark_count.zero? && track_count.zero?
+    raise EmptyImportError, no_timestamps_message unless any_timestamp_present?(doc)
+    raise EmptyImportError, no_track_geometry_message if track_count.zero? && !any_point_or_linestring_geometry?(doc)
+  end
+
+  def any_timestamp_present?(doc)
+    REXML::XPath.first(doc, '//TimeStamp/when').present? ||
+      REXML::XPath.first(doc, '//TimeSpan/begin').present? ||
+      REXML::XPath.first(doc, '//TimeSpan/end').present? ||
+      REXML::XPath.first(doc, '//gx:Track//when').present?
+  end
+
+  def any_point_or_linestring_geometry?(doc)
+    REXML::XPath.first(doc, '//Point/coordinates').present? ||
+      REXML::XPath.first(doc, '//LineString/coordinates').present?
+  end
+
+  def empty_document_message
+    'This KML file contains no placemarks or tracks. ' \
+      'It may be a styles-only file or otherwise empty. Re-export your location history and try again.'
+  end
+
+  def no_timestamps_message
+    'This KML file has no timestamps, so no location history could be imported. ' \
+      'Dawarich expects each <Placemark> to include a <TimeStamp> or be inside a <gx:Track> with <when> entries. ' \
+      'If you exported a saved-places list, boundary map, or KML from a GIS tool, it does not contain location history.'
+  end
+
+  def no_track_geometry_message
+    'This KML file contains only polygon/area geometry (e.g. boundary or parcel data), not location tracks. ' \
+      'Dawarich imports <Point>, <LineString>, or <gx:Track> geometries with timestamps.'
   end
 
   def save_points_in_batches(points_data)

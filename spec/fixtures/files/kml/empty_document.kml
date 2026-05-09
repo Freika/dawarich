@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>Empty doc — no placemarks, no tracks</name>
+    <description>Style-only KML with nothing to import.</description>
+  </Document>
+</kml>

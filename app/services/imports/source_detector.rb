@@ -18,6 +18,14 @@ class Imports::SourceDetector
         ['locations', 0, 'longitudeE7']
       ]
     },
+    google_timeline_edits: {
+      required_keys: ['timelineEdits'],
+      nested_patterns: [
+        ['timelineEdits', 0, 'rawSignal'],
+        ['timelineEdits', 0, 'placeAggregates'],
+        ['timelineEdits', 0, 'userEditedSemanticSegment']
+      ]
+    },
     google_phone_takeout: {
       alternative_patterns: [
         # Pattern 1: Object with semanticSegments
@@ -228,8 +236,10 @@ class Imports::SourceDetector
     content = read_for_raw_detection
     return nil if content.blank?
 
-    if content.include?('"semanticSegments"') &&
-       (content.include?('"startTime"') || content.include?('"visit"') || content.include?('"activity"'))
+    if content.include?('"timelineEdits"')
+      :google_timeline_edits
+    elsif content.include?('"semanticSegments"') &&
+          (content.include?('"startTime"') || content.include?('"visit"') || content.include?('"activity"'))
       :google_phone_takeout
     elsif content.include?('"timelineObjects"') &&
           (content.include?('"activitySegment"') || content.include?('"placeVisit"'))
@@ -387,9 +397,6 @@ class Imports::SourceDetector
     elsif content.lstrip.start_with?('<!DOCTYPE html', '<!doctype html', '<html', '<HTML')
       'This is an HTML page (likely "archive_browser.html" from your Google Takeout), ' \
         'not the data file. Open the Takeout archive and look for the .json or .kml inside.'
-    elsif content.include?('"timelineEdits"')
-      'Google Timeline Edits format is not yet supported. Please upload Records.json ' \
-        'or the files inside the Timeline/ folder of your Google Takeout instead.'
     elsif content.include?('"deviceSettings"') ||
           (content.include?('"gaiaId"') && content.include?('"hasReportedLocations"'))
       'This file contains your Google Maps settings, not location data. ' \

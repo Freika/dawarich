@@ -94,6 +94,58 @@ RSpec.describe Imports::Create do
       end
     end
 
+    context 'when source is google_timeline_edits' do
+      let(:import) { create(:import, source: 'google_timeline_edits') }
+      let(:file_path) { Rails.root.join('spec/fixtures/files/google/timeline_edits.json') }
+
+      before do
+        import.file.attach(io: File.open(file_path), filename: 'timeline_edits.json',
+                           content_type: 'application/json')
+      end
+
+      it 'completes the import and creates points' do
+        expect { service.call }.to change { import.points.count }.from(0)
+
+        expect(import.reload.status).to eq('completed')
+      end
+    end
+
+    context 'when source on the import is stale and the file is actually a different format' do
+      let(:import) { create(:import, source: 'google_phone_takeout') }
+      let(:file_path) { Rails.root.join('spec/fixtures/files/google/timeline_edits.json') }
+
+      before do
+        import.file.attach(io: File.open(file_path), filename: 'timeline_edits.json',
+                           content_type: 'application/json')
+      end
+
+      it 're-detects the source from the file and uses the correct importer' do
+        service.call
+
+        expect(import.reload.source).to eq('google_timeline_edits')
+        expect(import.points.count).to be > 0
+        expect(import.status).to eq('completed')
+      end
+    end
+
+    context 'when source is one detection cannot produce (immich_api)' do
+      let(:import) { create(:import, source: 'immich_api') }
+      let(:file_path) { Rails.root.join('spec/fixtures/files/immich/geodata.json') }
+
+      before do
+        import.file.attach(io: File.open(file_path), filename: 'geodata.json',
+                           content_type: 'application/json')
+      end
+
+      it 'preserves the explicitly-set source and never calls the detector' do
+        expect(Imports::SourceDetector).not_to receive(:new_from_file_header)
+
+        service.call
+
+        expect(import.reload.source).to eq('immich_api')
+      end
+    end
+
     context 'when source is owntracks' do
       let(:import) { create(:import, source: 'owntracks', name: '2024-03.rec') }
       let(:file_path) { Rails.root.join('spec/fixtures/files/owntracks/2024-03.rec') }

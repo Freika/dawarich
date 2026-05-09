@@ -57,8 +57,15 @@ class Imports::Create
 
   private
 
+  # API-fetched sources — SourceDetector can't recognize their JSON shape, so we never re-detect.
+  NON_DETECTABLE_SOURCES = %w[immich_api photoprism_api].freeze
+
   def run_importer(path)
-    source = import.source.presence || detect_source_from_file(path)
+    source = if NON_DETECTABLE_SOURCES.include?(import.source.to_s)
+               import.source
+             else
+               detect_source_from_file(path)
+             end
     import.update!(source: source) if import.source.to_s != source.to_s
     importer(source).new(import, user.id, path).call
   end
@@ -70,6 +77,7 @@ class Imports::Create
     when 'google_semantic_history'      then GoogleMaps::SemanticHistoryImporter
     when 'google_phone_takeout'         then GoogleMaps::PhoneTakeoutImporter
     when 'google_records'               then GoogleMaps::RecordsStorageImporter
+    when 'google_timeline_edits'        then GoogleMaps::TimelineEditsStorageImporter
     when 'owntracks'                    then OwnTracks::Importer
     when 'gpx'                          then Gpx::TrackImporter
     when 'kml'                          then Kml::Importer

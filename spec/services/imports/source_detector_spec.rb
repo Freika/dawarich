@@ -389,15 +389,22 @@ RSpec.describe Imports::SourceDetector do
       end
     end
 
-    context 'with Google timelineEdits format (recognized but unsupported)' do
-      let(:fixture_path) { file_fixture('google/edge_cases/timeline_edits.json').to_s }
+    context 'with Google Timeline Edits format' do
+      let(:fixture_path) { file_fixture('google/timeline_edits.json').to_s }
 
-      it 'raises UnknownSourceError with a format-specific message' do
+      it 'detects google_timeline_edits' do
         detector = described_class.new_from_file_header(fixture_path)
-        expect { detector.detect_source! }.to raise_error(
-          Imports::SourceDetector::UnknownSourceError,
-          /Google Timeline Edits format/
-        )
+        expect(detector.detect_source).to eq(:google_timeline_edits)
+      end
+    end
+
+    context 'with truncated Google Timeline Edits' do
+      let(:file_content) do
+        '{"timelineEdits": [{"deviceId": "799010011", "rawSignal": {"signal": {"position": {"point": {"latE7": 679651561, "lngE7"'
+      end
+
+      it 'detects google_timeline_edits via raw content fallback' do
+        expect(detector.detect_source).to eq(:google_timeline_edits)
       end
     end
 

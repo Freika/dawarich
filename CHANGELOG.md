@@ -4,7 +4,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [Unreleased]
+## [1.7.6] - Unreleased
+
+### Added
+
+- Support for Timeline Edits.json files, exported from mobile Google Maps Timeline.
 
 ### Added
 
