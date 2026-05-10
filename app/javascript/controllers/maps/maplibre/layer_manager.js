@@ -187,7 +187,7 @@ export class LayerManager {
       const trackFeatures = this.map.queryRenderedFeatures(e.point, {
         layers: ["tracks"],
       })
-      // Track points are part of a selected track, clicking them should not clear the selection
+      // Track points are part of a selected track — clicking them should not clear the selection
       const trackPointFeatures = this.map.getLayer("track-points")
         ? this.map.queryRenderedFeatures(e.point, { layers: ["track-points"] })
         : []

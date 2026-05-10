@@ -7,7 +7,7 @@ class Points::VectorTileQuery
   BUFFER = 256
   LAYER_NAME = 'points'
 
-  def initialize(scope:, z:, x:, y:)
+  def initialize(scope:, z:, x:, y:) # rubocop:disable Naming/MethodParameterName
     @scope = scope
     @z = parse_integer(z)
     @x = parse_integer(x)

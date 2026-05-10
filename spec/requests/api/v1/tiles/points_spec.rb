@@ -41,7 +41,8 @@ RSpec.describe 'Api::V1::Tiles::Points', type: :request do
     end
 
     it 'applies date filtering' do
-      create(:point, user:, timestamp: Time.zone.parse('2024-01-01').to_i, longitude: 0.0, latitude: 0.0, lonlat: 'POINT(0 0)')
+      create(:point, user:, timestamp: Time.zone.parse('2024-01-01').to_i,
+                             longitude: 0.0, latitude: 0.0, lonlat: 'POINT(0 0)')
 
       get path, params: {
         api_key: user.api_key,
