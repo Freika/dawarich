@@ -74,11 +74,11 @@ RSpec.describe Stats::DailyDistanceQuery do
       let(:import_b) { create(:import, user: user) }
 
       let!(:point1) do
-        create(:point, user: user, import: import_a, lonlat: 'POINT(16.3626 48.1730)',
+        create(:point, user: user, import: import_a, lonlat: 'POINT(16.37 48.21)',
                timestamp: DateTime.new(2021, 1, 1, 6, 0, 0).to_i)
       end
       let!(:point2) do
-        create(:point, user: user, import: import_a, lonlat: 'POINT(16.3726 48.1830)',
+        create(:point, user: user, import: import_a, lonlat: 'POINT(16.38 48.22)',
                timestamp: DateTime.new(2021, 1, 1, 6, 1, 0).to_i)
       end
       let!(:point3) do
@@ -94,22 +94,22 @@ RSpec.describe Stats::DailyDistanceQuery do
 
       it 'counts only within-import distances, not the cross-import jump' do
         day1_distance = subject.find { |day, _| day == 1 }&.last
-        # Each import contributes ~1.5km locally; the Vienna→Salzburg jump
+        # Each import contributes ~1.5km locally; the cross-city jump
         # (~260km) must be excluded.
         expect(day1_distance).to be < 10_000
       end
     end
 
     context 'with real-time tracking points that have a large time gap' do
-      # Morning run in Vienna and afternoon walk in Salzburg tracked continuously
-      # without import_id (OwnTracks / Overland style). The gap between the two
-      # activities must NOT be counted as distance.
+      # Morning activity in Vienna and afternoon activity in Salzburg tracked
+      # continuously without import_id (OwnTracks / Overland style). The gap
+      # between the two activities must NOT be counted as distance.
       let!(:point1) do
-        create(:point, user: user, lonlat: 'POINT(16.3626 48.1730)',
+        create(:point, user: user, lonlat: 'POINT(16.37 48.21)',
                timestamp: DateTime.new(2021, 1, 1, 6, 0, 0).to_i)
       end
       let!(:point2) do
-        create(:point, user: user, lonlat: 'POINT(16.3726 48.1830)',
+        create(:point, user: user, lonlat: 'POINT(16.38 48.22)',
                timestamp: DateTime.new(2021, 1, 1, 6, 1, 0).to_i)
       end
       let!(:point3) do
@@ -125,7 +125,7 @@ RSpec.describe Stats::DailyDistanceQuery do
 
       it 'counts only within-segment distances, not the gap between segments' do
         day1_distance = subject.find { |day, _| day == 1 }&.last
-        # Each segment contributes ~1.5km; the Vienna→Salzburg jump (~260km)
+        # Each segment contributes ~1.5km; the cross-city jump (~260km)
         # must be excluded.
         expect(day1_distance).to be < 10_000
       end
