@@ -67,6 +67,70 @@ RSpec.describe Stats::DailyDistanceQuery do
       end
     end
 
+    context 'with points from different imports on the same day' do
+      # Morning activity in Vienna and afternoon activity in Salzburg imported
+      # as two separate GPX files. The cross-import jump must NOT be counted.
+      let(:import_a) { create(:import, user: user) }
+      let(:import_b) { create(:import, user: user) }
+
+      let!(:point1) do
+        create(:point, user: user, import: import_a, lonlat: 'POINT(16.3626 48.1730)',
+               timestamp: DateTime.new(2021, 1, 1, 6, 0, 0).to_i)
+      end
+      let!(:point2) do
+        create(:point, user: user, import: import_a, lonlat: 'POINT(16.3726 48.1830)',
+               timestamp: DateTime.new(2021, 1, 1, 6, 1, 0).to_i)
+      end
+      let!(:point3) do
+        create(:point, user: user, import: import_b, lonlat: 'POINT(13.04 47.80)',
+               timestamp: DateTime.new(2021, 1, 1, 14, 0, 0).to_i)
+      end
+      let!(:point4) do
+        create(:point, user: user, import: import_b, lonlat: 'POINT(13.05 47.81)',
+               timestamp: DateTime.new(2021, 1, 1, 14, 1, 0).to_i)
+      end
+
+      subject { described_class.new(monthly_points, timespan, 'Etc/UTC').call }
+
+      it 'counts only within-import distances, not the cross-import jump' do
+        day1_distance = subject.find { |day, _| day == 1 }&.last
+        # Each import contributes ~1.5km locally; the Vienna→Salzburg jump
+        # (~260km) must be excluded.
+        expect(day1_distance).to be < 10_000
+      end
+    end
+
+    context 'with real-time tracking points that have a large time gap' do
+      # Morning run in Vienna and afternoon walk in Salzburg tracked continuously
+      # without import_id (OwnTracks / Overland style). The gap between the two
+      # activities must NOT be counted as distance.
+      let!(:point1) do
+        create(:point, user: user, lonlat: 'POINT(16.3626 48.1730)',
+               timestamp: DateTime.new(2021, 1, 1, 6, 0, 0).to_i)
+      end
+      let!(:point2) do
+        create(:point, user: user, lonlat: 'POINT(16.3726 48.1830)',
+               timestamp: DateTime.new(2021, 1, 1, 6, 1, 0).to_i)
+      end
+      let!(:point3) do
+        create(:point, user: user, lonlat: 'POINT(13.04 47.80)',
+               timestamp: DateTime.new(2021, 1, 1, 14, 0, 0).to_i)
+      end
+      let!(:point4) do
+        create(:point, user: user, lonlat: 'POINT(13.05 47.81)',
+               timestamp: DateTime.new(2021, 1, 1, 14, 1, 0).to_i)
+      end
+
+      subject { described_class.new(monthly_points, timespan, 'Etc/UTC', minutes_between_routes: 30).call }
+
+      it 'counts only within-segment distances, not the gap between segments' do
+        day1_distance = subject.find { |day, _| day == 1 }&.last
+        # Each segment contributes ~1.5km; the Vienna→Salzburg jump (~260km)
+        # must be excluded.
+        expect(day1_distance).to be < 10_000
+      end
+    end
+
     context 'with no points' do
       subject { described_class.new(monthly_points, timespan, 'Etc/UTC').call }
 

@@ -157,7 +157,12 @@ class Stat < ApplicationRecord
   end
 
   def calculate_daily_distances(monthly_points)
-    Stats::DailyDistanceQuery.new(monthly_points, timespan, user.timezone_iana).call
+    Stats::DailyDistanceQuery.new(
+      monthly_points,
+      timespan,
+      user.timezone_iana,
+      minutes_between_routes: user.safe_settings.minutes_between_routes
+    ).call
   end
 
   def user_timezone
