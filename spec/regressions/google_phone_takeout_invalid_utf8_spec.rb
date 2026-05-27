@@ -38,11 +38,20 @@ RSpec.describe 'Google phone takeout import with invalid UTF-8 bytes' do
   end
 
   it 'imports without raising when content comes from storage download' do
+    downloaded = Tempfile.new(['timeline-download', '.json'])
+    downloaded.binmode
+    downloaded.write(json_with_latin1_degree_signs)
+    downloaded.close
+
     downloader = instance_double(
-      Imports::SecureFileDownloader, download_with_verification: json_with_latin1_degree_signs
+      Imports::SecureFileDownloader,
+      download_with_verification: json_with_latin1_degree_signs,
+      download_to_temp_file: downloaded.path
     )
     allow(Imports::SecureFileDownloader).to receive(:new).and_return(downloader)
 
     expect { GoogleMaps::PhoneTakeoutImporter.new(import, user.id).call }.not_to raise_error
+  ensure
+    downloaded&.unlink
   end
 end

@@ -10,6 +10,7 @@ class Place < ApplicationRecord
   DEFAULT_NAME = 'Suggested place'
 
   belongs_to :user, optional: true # Optional until Stage 2 NOT NULL
+  belongs_to :import, optional: true
   has_many :visits, dependent: :nullify
   has_many :place_visits, dependent: :destroy
   has_many :suggested_visits, -> { distinct }, through: :place_visits, source: :visit
@@ -22,16 +23,17 @@ class Place < ApplicationRecord
   validates :name, presence: true, length: { maximum: 255 }
   validates :lonlat, presence: true
 
-  enum :source, { manual: 0, photon: 1 }
+  enum :source, { manual: 0, photon: 1, gpx_waypoint: 2, geojson_point: 3 }
 
   scope :for_user, ->(user) { where(user: user) }
   scope :ordered, -> { order(:name) }
+  scope :imported, -> { where(source: [sources[:gpx_waypoint], sources[:geojson_point]]) }
   scope :linked_to_confirmed_visits, lambda { |user|
     where(id: user.visits.confirmed.where.not(place_id: nil).select(:place_id))
   }
   scope :tagged, -> { where(id: Tagging.where(taggable_type: 'Place').select(:taggable_id)) }
   scope :map_visible, lambda { |user|
-    manual.or(linked_to_confirmed_visits(user)).or(tagged)
+    manual.or(imported).or(linked_to_confirmed_visits(user)).or(tagged)
   }
 
   def lon

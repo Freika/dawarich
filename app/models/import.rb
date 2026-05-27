@@ -3,6 +3,7 @@
 class Import < ApplicationRecord
   belongs_to :user
   has_many :points, dependent: :destroy
+  has_many :places, dependent: :destroy
 
   has_one_attached :file
 

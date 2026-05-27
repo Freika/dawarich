@@ -22,7 +22,10 @@ class Geojson::Importer
     ActiveRecord::Base.transaction do
       stream_features(path)
       flush_batch
+      flush_places
     end
+
+    raise Imports::NoImportableDataError if nothing_importable?
   ensure
     cleanup_temp_file
   end
@@ -39,7 +42,9 @@ class Geojson::Importer
 
   def initialize_stream
     @points_batch = []
+    @places_batch = []
     @processed_points = 0
+    @processed_places = 0
   end
 
   def stream_features(path)
@@ -55,12 +60,24 @@ class Geojson::Importer
   end
 
   def process_feature(feature)
-    Geojson::Params.new(feature).each_point do |point|
-      next if point[:lonlat].nil?
-
-      @points_batch << point.merge(point_metadata)
-      flush_batch if @points_batch.size >= BATCH_SIZE
+    Geojson::Params.new(feature).each_entry do |kind, payload|
+      case kind
+      when :point then buffer_point(payload)
+      when :place then buffer_place(payload)
+      end
     end
+  end
+
+  def buffer_point(point)
+    return if point[:lonlat].nil?
+
+    @points_batch << point.merge(point_metadata)
+    flush_batch if @points_batch.size >= BATCH_SIZE
+  end
+
+  def buffer_place(feature)
+    @places_batch << feature
+    flush_places if @places_batch.size >= BATCH_SIZE
   end
 
   def point_metadata
@@ -80,6 +97,22 @@ class Geojson::Importer
     bulk_insert_points(batch)
     @processed_points += batch.size
     broadcast_import_progress(import, @processed_points)
+  end
+
+  def flush_places
+    return if @places_batch.empty?
+
+    batch = @places_batch
+    @places_batch = []
+    @processed_places += Places::GeojsonPointImporter.new(import, user_id, batch).call
+  end
+
+  # Counts rows the file actually accounted for — inserted or already present —
+  # rather than features offered, so a feature whose coordinates turn out to be
+  # unusable cannot pass for a successful import. A file that yields nothing at
+  # all is reported the way the GPX importer reports it, not completed silently.
+  def nothing_importable?
+    @processed_points.zero? && @processed_places.zero?
   end
 
   def atomic_bulk_insert?

@@ -16,32 +16,60 @@ class Geojson::Params
   def each_point(&block)
     return enum_for(:each_point) unless block
 
+    each_entry { |kind, payload| block.call(payload) if kind == :point }
+  end
+
+  # Yields [:point, attrs] for timestamped coordinates and [:place, feature]
+  # for Point features that carry no timestamp.
+  def each_entry(&block)
+    return enum_for(:each_entry) unless block
+
     case json['type']
     when 'Feature'
-      each_feature_point(json, &block)
+      classify_feature(json, &block)
     when 'FeatureCollection'
       Array(json['features']).each do |feature|
-        each_feature_point(feature, &block)
+        classify_feature(feature, &block)
       end
     end
   end
 
   private
 
-  def each_feature_point(feature)
+  def classify_feature(feature, &block)
     return if feature[:geometry].blank?
 
     case feature[:geometry][:type]
     when 'Point'
-      yield build_point(feature)
+      classify_point(feature, &block)
     when 'LineString'
-      feature[:geometry][:coordinates].each do |coordinate|
-        yield build_line_point(coordinate)
-      end
+      classify_line_points(feature[:geometry][:coordinates], &block)
     when 'MultiLineString'
-      feature[:geometry][:coordinates].each do |line|
-        line.each { |coordinate| yield build_line_point(coordinate) }
-      end
+      lines = Array(feature[:geometry][:coordinates])
+      classify_line_points(lines.lazy.flat_map { |line| Array(line) }, &block)
+    end
+  end
+
+  # A Point with no timestamp is a saved place — an OsmAnd favourite, a pin
+  # dropped in a mapping app — not a moment on a timeline.
+  def classify_point(feature, &block)
+    attrs = build_point(feature)
+
+    return block.call(:place, feature) if attrs[:timestamp].nil?
+
+    block.call(:point, attrs)
+  end
+
+  # Streams rather than collecting: a LineString can hold hundreds of thousands
+  # of coordinates, and the importer batches them anyway.
+  def classify_line_points(coordinates, &block)
+    return if coordinates.blank?
+
+    coordinates.each do |coordinate|
+      attrs = build_line_point(coordinate)
+      next if attrs[:timestamp].blank?
+
+      block.call(:point, attrs)
     end
   end
 

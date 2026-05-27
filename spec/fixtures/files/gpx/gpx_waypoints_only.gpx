@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<gpx version="1.1" creator="OsmAnd~" xmlns="http://www.topografix.com/GPX/1/1">
+  <wpt lat="52.520008" lon="13.404954">
+    <name>Brandenburg Gate</name>
+    <ele>34.5</ele>
+  </wpt>
+  <wpt lat="48.858844" lon="2.294351">
+    <name>Eiffel Tower</name>
+    <ele>30.0</ele>
+  </wpt>
+  <wpt lat="41.902782" lon="12.496366">
+    <ele>21.0</ele>
+  </wpt>
+</gpx>

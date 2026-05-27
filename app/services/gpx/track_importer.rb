@@ -9,13 +9,6 @@ class Gpx::TrackImporter
   include Imports::FileLoader
 
   BATCH_SIZE = 1000
-  XML_BOMS = [
-    "\xEF\xBB\xBF".b,
-    "\xFE\xFF".b,
-    "\xFF\xFE".b,
-    "\x00\x00\xFE\xFF".b,
-    "\xFF\xFE\x00\x00".b
-  ].freeze
 
   attr_reader :import, :user_id, :file_path
 
@@ -26,11 +19,14 @@ class Gpx::TrackImporter
   end
 
   def call
+    path = resolve_file_path
+    trkpt_count = 0
     batch = []
-    each_trkpt do |point_hash, tracker_id|
+    saw_waypoints = each_trkpt(path) do |point_hash, tracker_id|
       data = prepare_point(point_hash, tracker_id)
       next unless data
 
+      trkpt_count += 1
       batch << data
       next if batch.size < BATCH_SIZE
 
@@ -38,25 +34,29 @@ class Gpx::TrackImporter
       batch = []
     end
     flush(batch) unless batch.empty?
+
+    # Waypoints are saved places (OsmAnd favourites and the like), not moments
+    # on a timeline, so they land in Places rather than Points. Most GPX files
+    # hold none, so the second pass only runs when the first saw one.
+    waypoints = Places::GpxWaypointImporter.new(import, user_id, path)
+    waypoints.call if saw_waypoints
+
+    raise Imports::NoImportableDataError if trkpt_count.zero? && waypoints.parsed_count.zero?
   ensure
     cleanup_temp_file
   end
 
   private
 
-  def each_trkpt(&block)
-    path = resolve_file_path
+  def each_trkpt(path, &block)
+    handler = TrkptStreamHandler.new(import.id, import.name, &block)
+
     File.open(path, 'rb') do |io|
-      seek_to_document_start(io)
-      handler = TrkptStreamHandler.new(import.id, import.name, &block)
+      Gpx::DocumentStart.seek(io)
       Nokogiri::XML::SAX::Parser.new(handler).parse(io)
     end
-  end
 
-  def seek_to_document_start(io)
-    prefix = io.read(256) || ''
-    offset = XML_BOMS.any? { |bom| prefix.start_with?(bom) } ? 0 : prefix.index('<') || 0
-    io.seek(offset)
+    handler.saw_waypoints?
   end
 
   def flush(batch)
@@ -111,9 +111,16 @@ class Gpx::TrackImporter
       @trk_identity_source = nil
       @capturing_trk_field = nil
       @capture_depth = 0
+      @saw_waypoints = false
+    end
+
+    def saw_waypoints?
+      @saw_waypoints
     end
 
     def start_element_namespace(name, attrs = [], _prefix = nil, _uri = nil, _namespaces = [])
+      @saw_waypoints = true if name == 'wpt'
+
       case name
       when 'trk'
         @trk_index += 1

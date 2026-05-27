@@ -60,6 +60,7 @@ class Imports::Create
     run_post_import_step('schedule_track_generation') { schedule_track_generation(user.id, import) }
     run_post_import_step('update_points_count') { update_import_points_count(import) }
     run_post_import_step('notify_if_all_skipped') { notify_if_all_skipped(import) }
+    run_post_import_step('notify_if_places_imported') { notify_if_places_imported(import) }
   end
 
   def run_post_import_step(step)
@@ -118,6 +119,22 @@ class Imports::Create
 
   def update_import_points_count(import)
     Import::UpdatePointsCountJob.perform_later(import.id)
+  end
+
+  # The imports table counts points, so a file of waypoints alone finishes
+  # showing a row of zeroes. Say where those locations went instead.
+  def notify_if_places_imported(import)
+    places_count = import.places.count
+    return if places_count.zero?
+
+    Notification.create!(
+      user_id: import.user_id,
+      title: 'Places imported',
+      content: "Your file #{import.name} contained #{places_count} " \
+               "#{'location'.pluralize(places_count)} without a time, saved to your places " \
+               'rather than your timeline. Find them on the map and in Places.',
+      kind: :info
+    )
   end
 
   def notify_if_all_skipped(import)

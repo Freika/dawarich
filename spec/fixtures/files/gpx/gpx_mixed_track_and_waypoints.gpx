@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<gpx version="1.1" creator="MixedTool" xmlns="http://www.topografix.com/GPX/1/1">
+  <wpt lat="52.520008" lon="13.404954">
+    <name>Start Marker</name>
+  </wpt>
+  <wpt lat="52.521000" lon="13.405000">
+    <name>End Marker</name>
+  </wpt>
+  <trk>
+    <name>Berlin Walk</name>
+    <trkseg>
+      <trkpt lat="52.520100" lon="13.404960">
+        <ele>34.5</ele>
+        <time>2024-06-01T10:00:00Z</time>
+      </trkpt>
+      <trkpt lat="52.520200" lon="13.404970">
+        <ele>35.0</ele>
+        <time>2024-06-01T10:00:30Z</time>
+      </trkpt>
+      <trkpt lat="52.520300" lon="13.404980">
+        <ele>35.5</ele>
+        <time>2024-06-01T10:01:00Z</time>
+      </trkpt>
+    </trkseg>
+  </trk>
+</gpx>

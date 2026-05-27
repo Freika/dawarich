@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_27_130000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_28_190000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -302,6 +302,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_27_130000) do
     t.datetime "created_at", null: false
     t.boolean "demo", default: false, null: false
     t.jsonb "geodata", default: {}, null: false
+    t.bigint "import_id"
     t.decimal "latitude", precision: 10, scale: 6, null: false
     t.decimal "longitude", precision: 10, scale: 6, null: false
     t.geography "lonlat", limit: {srid: 4326, type: "st_point", geographic: true}
@@ -314,7 +315,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_27_130000) do
     t.bigint "user_id"
     t.index "(((geodata -> 'properties'::text) ->> 'osm_id'::text))", name: "index_places_on_geodata_osm_id"
     t.index ["demo"], name: "index_places_on_demo_true", where: "(demo = true)"
+    t.index ["import_id"], name: "index_places_on_import_id", where: "(import_id IS NOT NULL)"
     t.index ["lonlat"], name: "index_places_on_lonlat", using: :gist
+    t.index ["user_id", "name", "latitude", "longitude"], name: "index_imported_places_uniqueness", unique: true, where: "(source = ANY (ARRAY[2, 3]))"
     t.index ["user_id"], name: "index_places_on_user_id"
   end
 

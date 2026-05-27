@@ -6,8 +6,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+### Added
+
+- GPX waypoints (`<wpt>`) and GeoJSON `Point` features without a timestamp are now imported as places instead of being silently discarded. An OsmAnd favourites export imports directly, and a GPX file holding both tracks and waypoints fills the timeline and the places list in one go. Imported places keep their name and appear on the map without needing a tag or a confirmed visit. (#1261)
+
 ### Fixed
 
+- A file with nothing importable in it — a GPX whose track points carry no time, or a GeoJSON of untimed lines, unsupported shapes, or no features at all — now fails with an explanation instead of reporting a successful import of zero points. (#1261)
 - The Dawarich app and Sidekiq containers now restart automatically after a graceful (exit 0) shutdown instead of staying down, so a stray SIGHUP no longer takes an instance offline until manual intervention (#3099).
 - Nightly place- and area-visit calculation no longer fails when an instance contains legacy points without timestamps.
 - Import rows on the Imports page now update their status live as an import processes, instead of staying on "Processing" until the page is manually reloaded. (#3174)
