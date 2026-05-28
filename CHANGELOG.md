@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Imports skip points that have no coordinates instead of saving them, so the points API no longer fails with an error on such points.
+
 ## [1.17.0] - 2026-10-23, Berlin
 
 Dawarich gets lighter and faster in this release. On a test account with a million points over three years, compared with 1.16.0:

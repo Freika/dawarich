@@ -9,7 +9,9 @@ module Imports
     def bulk_insert_points(batch)
       return 0 if batch.empty?
 
-      compacted = batch.compact
+      compacted = reject_blank_lonlat(batch.compact)
+      return 0 if compacted.empty?
+
       unique_batch = compacted
                      .reject { |record| Points::NullIsland.lonlat?(record[:lonlat]) }
                      .uniq { |record| [record[:lonlat], record[:timestamp], record[:user_id]] }
@@ -55,6 +57,14 @@ module Imports
     # (a swallowed error would leave the connection aborted for the notification write).
     def atomic_bulk_insert?
       false
+    end
+
+    def reject_blank_lonlat(records)
+      valid, invalid = records.partition { |record| record[:lonlat].present? }
+
+      Rails.logger.warn("#{importer_name}: skipped #{invalid.size} point(s) with blank lonlat") if invalid.any?
+
+      valid
     end
 
     def record_batch_counters(attempted, skipped)
