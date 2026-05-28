@@ -4,11 +4,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-
 ## [1.7.11] - Unreleased
 
 ### Added
 
+- Onboarding "Load demo data" now seeds a fully populated `/map/v2` instantly: 30 days of Berlin + a Prague-weekend trip, ~80 visits with tags and places, and stats anchored to the current calendar month. "Remove demo data" wipes everything in one click while preserving anything you've confirmed, edited, or built on top of (visits, trips, places, tags adopted by user action stay).
 - Visits can now be manually assigned to one of your saved areas. When you do, the visit takes the area's name automatically — unless you've already given it a custom name, or you've also picked a place (a place name wins over an area name). Available via API now; UI to follow. (#2577)
 
 ### Changed
@@ -22,7 +22,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Map v2 Timeline calendar now lights up days that have raw points even before Track or Visit generation has caught up, matching the Insights → Activity Overview calendar. (#2579)
 - Reverse-geocoding flood: duplicate per-point enqueues are now coalesced for 24 h via a Redis dedup key, retries are capped at 3, and the nightly sweep bypasses (and clears) the dedup so points whose retries were exhausted — or whose key still lingers — are picked up on the next run. Bulk re-runs via Settings → Geocoding respect the same dedup.
 - Map v2 visits layer now honours the selected date range. Since 1.7.10 the viewport-bounded visits fetch silently dropped the `start_at`/`end_at` filter on the backend, so all visits inside the viewport were rendered regardless of the date filter. (#2817)
-
 
 ## [1.7.10] - 2026-05-26
 

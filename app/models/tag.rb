@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Tag < ApplicationRecord
+  include Demoable
+
   belongs_to :user
   has_many :taggings, dependent: :destroy
   has_many :places, through: :taggings, source: :taggable, source_type: 'Place'

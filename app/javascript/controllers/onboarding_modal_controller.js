@@ -88,10 +88,7 @@ export default class extends Controller {
     if (this.hasDemoDataValue) return
 
     this.trackEvent("onboarding_demo_selected")
-
-    if (this.hasDemoButtonTarget) {
-      this.demoButtonTarget.classList.add("opacity-50", "pointer-events-none")
-    }
+    this.showDemoLoading()
 
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content
 
@@ -107,18 +104,54 @@ export default class extends Controller {
         if (!response.ok) throw new Error(`Server error: ${response.status}`)
 
         this.modalTarget.close()
-        window.Turbo.visit(response.url || window.location.href)
+        window.location.href = response.url || window.location.href
       })
       .catch((error) => {
         console.error("Failed to load demo data:", error)
-        if (this.hasDemoButtonTarget) {
-          this.demoButtonTarget.classList.remove(
-            "opacity-50",
-            "pointer-events-none",
-          )
-        }
+        this.hideDemoLoading()
         Flash.show("error", "Failed to load demo data. Please try again.")
       })
+  }
+
+  showDemoLoading() {
+    if (!this.hasDemoButtonTarget) return
+
+    this.demoButtonTarget.classList.add("pointer-events-none")
+    this.demoButtonTarget.dataset.originalContent =
+      this.demoButtonTarget.innerHTML
+    this.demoButtonTarget.innerHTML = `
+      <div class="card-body p-5">
+        <div class="flex items-center gap-3">
+          <span class="loading loading-spinner loading-md text-accent"></span>
+          <div>
+            <h4 class="text-lg font-semibold">Creating your demo data…</h4>
+            <p class="text-sm opacity-70">Seeding a month of Berlin tracking plus a Prague weekend trip. Takes about a second.</p>
+          </div>
+        </div>
+      </div>
+    `
+
+    if (this.element.querySelectorAll("button[data-action]").length > 1) {
+      this.element.querySelectorAll("button[data-action]").forEach((btn) => {
+        if (btn !== this.demoButtonTarget) {
+          btn.classList.add("opacity-50", "pointer-events-none")
+        }
+      })
+    }
+  }
+
+  hideDemoLoading() {
+    if (!this.hasDemoButtonTarget) return
+
+    this.demoButtonTarget.classList.remove("pointer-events-none")
+    if (this.demoButtonTarget.dataset.originalContent) {
+      this.demoButtonTarget.innerHTML =
+        this.demoButtonTarget.dataset.originalContent
+      delete this.demoButtonTarget.dataset.originalContent
+    }
+    this.element.querySelectorAll("button[data-action]").forEach((btn) => {
+      btn.classList.remove("opacity-50", "pointer-events-none")
+    })
   }
 
   updateDemoButton() {

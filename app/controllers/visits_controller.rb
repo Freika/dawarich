@@ -120,6 +120,7 @@ class VisitsController < ApplicationController
     end
 
     if @visit.update(params_to_update)
+      @visit.adopt! unless @visit.status == 'declined'
       respond_to do |format|
         format.turbo_stream do
           render turbo_stream: build_update_streams

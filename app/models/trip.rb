@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 class Trip < ApplicationRecord
+  include Demoable
   include Calculateable
   include DistanceConvertible
 
@@ -13,8 +14,8 @@ class Trip < ApplicationRecord
   validates :name, :started_at, :ended_at, presence: true
   validate :started_at_before_ended_at
 
-  after_create :enqueue_calculation_jobs
-  after_update :enqueue_calculation_jobs, if: -> { saved_change_to_started_at? || saved_change_to_ended_at? }
+  after_create :enqueue_calculation_jobs, unless: :demo?
+  after_update :enqueue_calculation_jobs, if: :should_recalculate_after_update?
 
   def enqueue_calculation_jobs
     Trips::CalculateAllJob.perform_later(id, user.safe_settings.distance_unit)
@@ -41,6 +42,12 @@ class Trip < ApplicationRecord
   end
 
   private
+
+  def should_recalculate_after_update?
+    return false if demo?
+
+    saved_change_to_started_at? || saved_change_to_ended_at?
+  end
 
   def photos
     @photos ||= Trips::Photos.new(self, user).call

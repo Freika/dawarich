@@ -43,6 +43,7 @@ class PlacesController < ApplicationController
 
   def update
     if @place.update(place_params.except(:tag_ids))
+      @place.adopt!
       set_tags if params[:place]&.key?(:tag_ids)
       @place = current_user.places.includes(:tags, :visits).find(@place.id)
 
