@@ -2,6 +2,7 @@
 
 class Track < ApplicationRecord
   include Calculateable
+  include Demoable
   include DistanceConvertible
 
   TRANSPORTATION_MODES = {

@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 class Place < ApplicationRecord
+  include Demoable
   include Nearable
   include Distanceable
   include Taggable

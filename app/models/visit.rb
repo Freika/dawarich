@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Visit < ApplicationRecord
+  include Demoable
+
   belongs_to :area, optional: true
   belongs_to :place, optional: true
   belongs_to :user
@@ -9,6 +11,7 @@ class Visit < ApplicationRecord
   has_many :suggested_places, through: :place_visits, source: :place
 
   after_commit :cleanup_old_place_if_orphan, on: :update
+  after_commit :propagate_adoption_to_dependents, on: %i[create update]
   after_destroy_commit :cleanup_place_if_orphan
   after_commit :bust_timeline_month_summary_cache
 
@@ -49,6 +52,16 @@ class Visit < ApplicationRecord
     end
   end
 
+  def adopt!
+    return unless demo?
+
+    Visit.transaction do
+      super
+      place&.adopt!
+      place&.tags&.demo&.find_each(&:adopt!)
+    end
+  end
+
   private
 
   def center_from_points
@@ -61,6 +74,15 @@ class Visit < ApplicationRecord
     [lat_sum / count, lon_sum / count]
   end
 
+  def propagate_adoption_to_dependents
+    return if demo?
+    return unless previously_new_record? || saved_change_to_demo? || saved_change_to_place_id?
+    return unless place&.demo?
+
+    place.adopt!
+    place.tags.demo.find_each(&:adopt!)
+  end
+
   def cleanup_old_place_if_orphan
     old_id, = previous_changes['place_id']
     return unless old_id
@@ -69,6 +91,7 @@ class Visit < ApplicationRecord
   end
 
   def cleanup_place_if_orphan
+    return if demo?
     return unless place_id
 
     Places::DeleteIfOrphanJob.perform_later(place_id)

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_05_21_223000) do
+ActiveRecord::Schema[8.0].define(version: 2026_05_29_185458) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
@@ -244,7 +244,9 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_21_223000) do
     t.geography "lonlat", limit: {srid: 4326, type: "st_point", geographic: true}
     t.bigint "user_id"
     t.text "note"
+    t.boolean "demo", default: false, null: false
     t.index "(((geodata -> 'properties'::text) ->> 'osm_id'::text))", name: "index_places_on_geodata_osm_id"
+    t.index ["demo"], name: "index_places_on_demo_true", where: "(demo = true)"
     t.index ["lonlat"], name: "index_places_on_lonlat", using: :gist
     t.index ["user_id"], name: "index_places_on_user_id"
   end
@@ -365,6 +367,8 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_21_223000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.integer "privacy_radius_meters"
+    t.boolean "demo", default: false, null: false
+    t.index ["demo"], name: "index_tags_on_demo_true", where: "(demo = true)"
     t.index ["privacy_radius_meters"], name: "index_tags_on_privacy_radius_meters", where: "(privacy_radius_meters IS NOT NULL)"
     t.index ["user_id", "name"], name: "index_tags_on_user_id_and_name", unique: true
     t.index ["user_id"], name: "index_tags_on_user_id"
@@ -406,7 +410,9 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_21_223000) do
     t.datetime "updated_at", null: false
     t.integer "dominant_mode", default: 0
     t.string "tracker_id"
+    t.boolean "demo", default: false, null: false
     t.index "user_id, COALESCE(tracker_id, ''::character varying), start_at, end_at", name: "index_tracks_on_user_tracker_start_end_unique", unique: true
+    t.index ["demo"], name: "index_tracks_on_demo_true", where: "(demo = true)"
     t.index ["dominant_mode"], name: "index_tracks_on_dominant_mode"
     t.index ["user_id", "start_at"], name: "idx_tracks_user_id_start_at"
     t.index ["user_id", "tracker_id", "end_at"], name: "idx_tracks_user_tracker_end_at"
@@ -424,6 +430,8 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_21_223000) do
     t.geometry "path", limit: {srid: 4326, type: "line_string"}
     t.jsonb "visited_countries", default: {}, null: false
     t.datetime "last_recalculated_at"
+    t.boolean "demo", default: false, null: false
+    t.index ["demo"], name: "index_trips_on_demo_true", where: "(demo = true)"
     t.index ["user_id"], name: "index_trips_on_user_id"
   end
 
@@ -494,7 +502,9 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_21_223000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.bigint "place_id"
+    t.boolean "demo", default: false, null: false
     t.index ["area_id"], name: "index_visits_on_area_id"
+    t.index ["demo"], name: "index_visits_on_demo_true", where: "(demo = true)"
     t.index ["place_id"], name: "index_visits_on_place_id"
     t.index ["started_at"], name: "index_visits_on_started_at"
     t.index ["user_id"], name: "index_visits_on_user_id"

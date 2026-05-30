@@ -36,6 +36,7 @@ class TagsController < ApplicationController
     authorize @tag
 
     if @tag.update(tag_params)
+      @tag.adopt!
       redirect_to tags_path, notice: 'Tag was successfully updated.'
     else
       render :edit, status: :unprocessable_entity

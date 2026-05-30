@@ -11,7 +11,7 @@ class Import < ApplicationRecord
 
   after_commit -> { Import::ProcessJob.perform_later(id) unless skip_background_processing }, on: :create
   after_commit :remove_attached_file, on: :destroy
-  before_commit :recalculate_stats, on: :destroy, if: -> { points.exists? }
+  before_commit :recalculate_stats, on: :destroy, if: -> { !demo && points.exists? }
 
   before_save :set_processing_started_at, if: :status_changed_to_processing?
 
