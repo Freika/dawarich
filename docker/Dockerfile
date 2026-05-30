@@ -20,6 +20,7 @@ RUN apt-get update -qq \
     libxml2-dev \
     libxslt-dev \
     libyaml-dev \
+    zlib1g-dev \
     libgeos-dev libgeos++-dev \
     imagemagick \
     tzdata \
