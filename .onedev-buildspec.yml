@@ -26,9 +26,8 @@ jobs:
     output:
       type: RegistryOutput
       # Immutable per-commit tag + a moving `latest` for convenience.
-      tags: |-
-        @server@/@project_path@/dawarich:@commit_hash@
-        @server@/@project_path@/dawarich:latest
+      # Multiple tags MUST be space-separated (a newline becomes part of the tag).
+      tags: '@server@/@project_path@/dawarich:@commit_hash@ @server@/@project_path@/dawarich:latest'
     # amd64 only — fast internal test builds. Add linux/arm64 here if you need to
     # test ARM (requires binfmt/QEMU on the executor host); the public multi-arch
     # build stays in the GitHub workflow.
