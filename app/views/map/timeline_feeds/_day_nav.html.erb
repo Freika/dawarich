@@ -1,0 +1,23 @@
+<%# The "< Weekday, Month D >" day navigator. Shared by the populated day view
+    (_day) and the empty-day state (_feed) so day-stepping works even when a
+    day has no visits. navigateDay reads the controller's selectedDate, so the
+    prev/next buttons need no date attribute. Locals: date - "YYYY-MM-DD" %>
+<div class="timeline-day-header__nav">
+  <button data-testid="day-prev"
+          data-action="click->timeline-feed#navigateDay"
+          data-direction="prev"
+          title="Previous day"
+          aria-label="Previous day"
+          class="btn btn-ghost btn-xs btn-square">
+    <%= icon 'chevron-left', class: 'w-4 h-4' %>
+  </button>
+  <div class="font-semibold text-sm text-center flex-1" data-testid="day-header-label"><%= Date.parse(date.to_s).strftime('%A, %B %-d') %></div>
+  <button data-testid="day-next"
+          data-action="click->timeline-feed#navigateDay"
+          data-direction="next"
+          title="Next day"
+          aria-label="Next day"
+          class="btn btn-ghost btn-xs btn-square">
+    <%= icon 'chevron-right', class: 'w-4 h-4' %>
+  </button>
+</div>

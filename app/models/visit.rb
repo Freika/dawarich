@@ -10,6 +10,7 @@ class Visit < ApplicationRecord
 
   after_commit :cleanup_old_place_if_orphan, on: :update
   after_destroy_commit :cleanup_place_if_orphan
+  after_commit :bust_timeline_month_summary_cache
 
   validates :started_at, :ended_at, :duration, :name, :status, presence: true
 
@@ -71,5 +72,27 @@ class Visit < ApplicationRecord
     return unless place_id
 
     Places::DeleteIfOrphanJob.perform_later(place_id)
+  end
+
+  # Keeps the Timeline calendar/filter-count cache fresh when visits are
+  # created or changed by ANY path — background import/detection jobs as well
+  # as the controller. Without this, MonthSummary (cached 5 min) serves stale
+  # status_counts right after a visit is auto-detected, so the FILTER pills
+  # read 0 until the user happens to act. Busts both the old and new month so
+  # edits that move a visit across a month boundary clear both.
+  def bust_timeline_month_summary_cache
+    return unless user
+
+    tz = user.safe_settings.timezone.presence || 'UTC'
+    times = [started_at]
+    times << saved_change_to_started_at&.first if saved_change_to_started_at?
+
+    Time.use_zone(tz) do
+      times.compact.map { |t| t.in_time_zone.to_date.beginning_of_month }.uniq.each do |month_start|
+        Rails.cache.delete(Timeline::MonthSummary.cache_key_for(user, month_start))
+      end
+    end
+  rescue StandardError => e
+    Rails.logger.warn("[Visit##{id}] timeline month cache bust failed: #{e.class}: #{e.message}")
   end
 end

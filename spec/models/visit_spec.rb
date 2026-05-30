@@ -82,4 +82,35 @@ RSpec.describe Visit, type: :model do
       end
     end
   end
+
+  describe 'timeline month-summary cache invalidation' do
+    let(:user)     { create(:user) }
+    let(:month)    { Time.current.strftime('%Y-%m') }
+    let(:in_month) { Time.current.beginning_of_month.change(hour: 10) }
+
+    def summary_status_counts
+      Timeline::MonthSummary.new(user: user, month: month).call[:status_counts]
+    end
+
+    it 'reflects a newly created visit instead of serving stale cached counts' do
+      expect(summary_status_counts).to eq({}) # warms the 5-minute cache with zero visits
+
+      create(:visit, user: user, area: nil, place: nil, status: :suggested,
+                     started_at: in_month, ended_at: in_month + 1.hour, duration: 60)
+
+      expect(summary_status_counts).to include('suggested' => 1)
+    end
+
+    it 'reflects a status change after the cache is warm' do
+      visit = create(:visit, user: user, area: nil, place: nil, status: :suggested,
+                             started_at: in_month, ended_at: in_month + 1.hour, duration: 60)
+      expect(summary_status_counts).to include('suggested' => 1) # warm cache
+
+      visit.update!(status: :confirmed)
+
+      counts = summary_status_counts
+      expect(counts).to include('confirmed' => 1)
+      expect(counts).not_to include('suggested')
+    end
+  end
 end

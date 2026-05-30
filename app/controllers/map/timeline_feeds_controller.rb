@@ -15,6 +15,10 @@ module Map
         distance_unit: current_user.safe_settings.distance_unit
       ).call
       @distance_unit = current_user.safe_settings.distance_unit
+      # The day the frame was asked to render. Lets the empty state still show
+      # the "< Weekday, Month D >" day navigator so users can step days even
+      # when a day has no visits.
+      @requested_date = parsed_start_at.to_date.iso8601
     end
 
     def track_info

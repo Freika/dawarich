@@ -1,5 +1,6 @@
 <% if user_signed_in? %>
 <div data-controller="onboarding-modal"
+     data-onboarding-modal-auto-value="<%= local_assigns.fetch(:auto_open, false) %>"
      data-onboarding-modal-showable-value="<%= onboarding_modal_showable?(current_user) %>"
      data-onboarding-modal-onboarding-url-value="<%= settings_onboarding_path %>"
      data-onboarding-modal-user-trial-value="<%= current_user.trial? %>"

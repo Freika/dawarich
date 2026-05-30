@@ -157,6 +157,16 @@ RSpec.describe '/visits', type: :request do
         expect_turbo_stream_action('replace', "visit_entry_#{visit.id}")
       end
 
+      it 'refreshes the pending-suggestions badge so it does not go stale' do
+        create_list(:visit, 2, user:, status: :suggested) # 3 suggested total
+
+        patch visit_url(visit), params: { visit: { status: :confirmed } }, as: :turbo_stream
+
+        expect_turbo_stream_action('replace', 'timeline-suggestions-badge')
+        # One of the three was just confirmed → badge should read 2.
+        expect(response.body).to match(/timeline-suggestions-badge.*\b2\b/m)
+      end
+
       it 'sets visit name from place when place_id is provided' do
         place = create(:place, user:, name: 'Coffee Shop')
         patch visit_url(visit), params: { visit: { place_id: place.id } }, as: :turbo_stream

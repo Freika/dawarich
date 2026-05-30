@@ -8,12 +8,7 @@
           aria-keyshortcuts="T"
           title="Timeline (T)">
     <%= icon 'calendar-clock' %>
-    <% count = @suggestions_pending_count.to_i %>
-    <% if count.positive? %>
-      <span class="map-button-cluster__badge" aria-label="<%= count %> suggestions pending">
-        <%= count > 99 ? '99+' : count %>
-      </span>
-    <% end %>
+    <%= render 'map/timeline_feeds/suggestions_badge', count: @suggestions_pending_count.to_i %>
   </button>
 
   <button type="button"

@@ -179,7 +179,15 @@ export default class extends Controller {
 
     // Date selection — "today" means the user's local today, not UTC today.
     // Using toISOString() would shift the date near midnight in non-UTC zones.
-    const date = params.get("date")
+    // Fall back to the range's end date when there's no explicit `date=` param
+    // (arriving via the top date-range form / Search / Last 7 days) so the
+    // panel lands on the most recent day of the range instead of going blank —
+    // keeping the range and the panel in sync (C1).
+    let date = params.get("date")
+    if (!date) {
+      const endAt = params.get("end_at")
+      if (endAt) date = endAt.slice(0, 10)
+    }
     if (date) {
       const isoDate =
         date === "today" ? new Date().toLocaleDateString("en-CA") : date
@@ -291,11 +299,6 @@ export default class extends Controller {
     params.set("date", date)
     window.history.pushState({}, "", `/map/v2?${params.toString()}`)
 
-    const startInput = document.querySelector('input[name="start_at"]')
-    const endInput = document.querySelector('input[name="end_at"]')
-    if (startInput) startInput.value = `${date}T00:00`
-    if (endInput) endInput.value = `${date}T23:59`
-
     document.dispatchEvent(
       new CustomEvent("timeline-feed:date-navigated", {
         detail: { date, startAt: startAtLocal, endAt: endAtLocal },
@@ -353,6 +356,14 @@ export default class extends Controller {
         day: "numeric",
       })
     }
+
+    // Keep the top date-range form inputs aligned with the selected day so the
+    // range and the panel never silently disagree — applies on calendar/arrow
+    // navigation AND on URL hydration (deep-links), both ways (C1).
+    const startInput = document.querySelector('input[name="start_at"]')
+    const endInput = document.querySelector('input[name="end_at"]')
+    if (startInput) startInput.value = `${date}T00:00`
+    if (endInput) endInput.value = `${date}T23:59`
   }
 
   // Pure UI update — no navigation. Called on connect() when URL params

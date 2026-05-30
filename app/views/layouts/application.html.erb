@@ -62,6 +62,8 @@
       </div>
     </div>
 
-    <%= render 'map/onboarding_modal' %>
+    <%# auto_open: false — non-map pages keep the dialog only for the navbar's
+        manual "Getting started" trigger; it never pops open on load (N1). %>
+    <%= render 'map/onboarding_modal', auto_open: false %>
   </body>
 </html>

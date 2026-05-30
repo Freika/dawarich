@@ -1,0 +1,11 @@
+<%# Pending-suggestion badge on the Timeline map button. Lifetime-scoped count.
+    The id wrapper always renders (even at 0) so VisitsController turbo_streams
+    can replace it after confirm/decline/merge/delete and keep it in sync.
+    Locals: count - Integer %>
+<span id="timeline-suggestions-badge">
+  <% if count.to_i.positive? %>
+    <span class="map-button-cluster__badge" aria-label="<%= count.to_i %> suggestions pending">
+      <%= count.to_i > 99 ? '99+' : count.to_i %>
+    </span>
+  <% end %>
+</span>

@@ -10,6 +10,7 @@ export default class extends Controller {
     "demoButton",
   ]
   static values = {
+    auto: Boolean,
     showable: Boolean,
     onboardingUrl: String,
     userTrial: Boolean,
@@ -20,8 +21,17 @@ export default class extends Controller {
   }
 
   connect() {
-    if (this.showableValue) {
+    // Auto-open is gated to the map page (auto=true is set only by the map
+    // layout's render). Other pages still render the dialog for the navbar's
+    // manual "Getting started" trigger, but never pop it open on load.
+    if (this.autoValue && this.showableValue) {
       document.addEventListener("turbo:load", this.handleTurboLoad)
+      // The map page is reached via a full (non-Turbo) navigation after
+      // signup, where turbo:load never fires — so open from connect() too.
+      // Defer one task so a Turbo-swapped <dialog> is ready for showModal();
+      // checkAndShowModal is idempotent (localStorage guard) and only marks
+      // "shown" once the dialog actually opens, so turbo:load can still retry.
+      setTimeout(() => this.checkAndShowModal(), 0)
     }
     this.updateDemoButton()
   }
@@ -34,7 +44,7 @@ export default class extends Controller {
   }
 
   handleTurboLoad = () => {
-    if (this.showableValue) {
+    if (this.autoValue && this.showableValue) {
       this.checkAndShowModal()
     }
   }
@@ -47,6 +57,11 @@ export default class extends Controller {
 
     if (!hasShownModal && this.hasModalTarget) {
       this.modalTarget.showModal()
+      // If showModal didn't take (called too early during a Turbo render),
+      // don't mark it shown — let turbo:load retry instead of silently
+      // burning the one-time guard.
+      if (!this.modalTarget.open) return
+
       localStorage.setItem(storageKey, "true")
       this.trackEvent("onboarding_shown")
 

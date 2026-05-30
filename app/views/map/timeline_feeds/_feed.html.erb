@@ -1,9 +1,18 @@
 <div>
   <% if days.empty? %>
-    <div class="text-center text-base-content/60 py-8">
-      <%= render 'shared/plan_data_window_alert', utm_content: 'timeline_feed' %>
-      <p class="text-sm">No visits tracked this day.</p>
-      <p class="text-xs mt-1">Visits are auto-detected daily from your location data.</p>
+    <%# Keep the day navigator visible on empty days so users can still step
+        between days (otherwise they get stuck with no way to move). %>
+    <div class="timeline-day">
+      <% if local_assigns[:requested_date].present? %>
+        <div class="timeline-day-header">
+          <%= render 'map/timeline_feeds/day_nav', date: requested_date %>
+        </div>
+      <% end %>
+      <div class="text-center text-base-content/60 py-8">
+        <%= render 'shared/plan_data_window_alert', utm_content: 'timeline_feed' %>
+        <p class="text-sm">No visits tracked this day.</p>
+        <p class="text-xs mt-1">Visits are auto-detected daily from your location data.</p>
+      </div>
     </div>
   <% else %>
     <% days.each do |day| %>

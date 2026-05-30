@@ -9,25 +9,7 @@
 %>
 <div class="timeline-day" data-day="<%= day[:date] %>" data-bounds="<%= day_bounds_json(day) %>">
   <div class="timeline-day-header">
-    <div class="timeline-day-header__nav">
-      <button data-testid="day-prev"
-              data-action="click->timeline-feed#navigateDay"
-              data-direction="prev"
-              title="Previous day"
-              aria-label="Previous day"
-              class="btn btn-ghost btn-xs btn-square">
-        <%= icon 'chevron-left', class: 'w-4 h-4' %>
-      </button>
-      <div class="font-semibold text-sm text-center flex-1" data-testid="day-header-label"><%= day_label(day) %></div>
-      <button data-testid="day-next"
-              data-action="click->timeline-feed#navigateDay"
-              data-direction="next"
-              title="Next day"
-              aria-label="Next day"
-              class="btn btn-ghost btn-xs btn-square">
-        <%= icon 'chevron-right', class: 'w-4 h-4' %>
-      </button>
-    </div>
+    <%= render 'map/timeline_feeds/day_nav', date: day[:date] %>
     <div class="timeline-day-header__meta">
       <%= pluralize(day_total_visits_count(day), 'visit') %>
       <% if day_total_visits_count(day) >= 2 %>

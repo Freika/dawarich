@@ -18,11 +18,16 @@
     data-map-controls-target="panel"
     class="hidden lg:!block bg-base-100 rounded-lg p-4 mt-2 lg:mt-0">
     <%= form_with url: map_v2_path(import_id: params[:import_id]), method: :get do |f| %>
+      <%# Keep the Timeline panel open across a Search so the range and the
+          panel stay in sync (C1). A GET form drops the action URL's query, so
+          panel must ride along as a hidden field. The panel reads the new
+          range's end date as its day via timeline_feed#hydrateFromUrl. %>
+      <% if params[:panel].present? %><%= f.hidden_field :panel, value: params[:panel] %><% end %>
       <div class="flex flex-col space-y-4 lg:flex-row lg:space-y-0 lg:space-x-4 lg:items-end">
         <div class="w-full lg:w-1/12">
           <div class="flex flex-col space-y-2">
             <span class="tooltip tooltip-bottom" data-tip="<%= human_date(start_at - 1.day) %>">
-              <%= link_to map_v2_path(start_at: (start_at - 1.day).iso8601, end_at: (end_at - 1.day).iso8601, import_id: params[:import_id]), class: "btn btn-sm border border-base-300 hover:btn-ghost w-full" do %>
+              <%= link_to map_v2_path(start_at: (start_at - 1.day).iso8601, end_at: (end_at - 1.day).iso8601, import_id: params[:import_id], panel: params[:panel]), class: "btn btn-sm border border-base-300 hover:btn-ghost w-full" do %>
                 <%= icon 'chevron-left' %>
               <% end %>
             </span>
@@ -37,7 +42,7 @@
         <div class="w-full lg:w-1/12">
           <div class="flex flex-col space-y-2">
             <span class="tooltip tooltip-bottom" data-tip="<%= human_date(start_at + 1.day) %>">
-              <%= link_to map_v2_path(start_at: (start_at + 1.day).iso8601, end_at: (end_at + 1.day).iso8601, import_id: params[:import_id]), class: "btn btn-sm border border-base-300 hover:btn-ghost w-full" do %>
+              <%= link_to map_v2_path(start_at: (start_at + 1.day).iso8601, end_at: (end_at + 1.day).iso8601, import_id: params[:import_id], panel: params[:panel]), class: "btn btn-sm border border-base-300 hover:btn-ghost w-full" do %>
                 <%= icon 'chevron-right' %>
               <% end %>
             </span>
@@ -51,18 +56,18 @@
         <div class="w-full lg:w-1/12">
           <div class="flex flex-col space-y-2 text-center">
             <%= link_to "Today",
-              map_v2_path(start_at: Time.current.beginning_of_day.iso8601, end_at: Time.current.end_of_day.iso8601, import_id: params[:import_id]),
+              map_v2_path(start_at: Time.current.beginning_of_day.iso8601, end_at: Time.current.end_of_day.iso8601, import_id: params[:import_id], panel: params[:panel]),
               class: "btn btn-sm border border-base-300 hover:btn-ghost w-full" %>
           </div>
         </div>
         <div class="w-full lg:w-2/12">
           <div class="flex flex-col space-y-2 text-center">
-            <%= link_to "Last 7 days", map_v2_path(start_at: 1.week.ago.beginning_of_day.iso8601, end_at: Time.current.end_of_day.iso8601, import_id: params[:import_id]), class: "btn btn-sm border border-base-300 hover:btn-ghost w-full" %>
+            <%= link_to "Last 7 days", map_v2_path(start_at: 1.week.ago.beginning_of_day.iso8601, end_at: Time.current.end_of_day.iso8601, import_id: params[:import_id], panel: params[:panel]), class: "btn btn-sm border border-base-300 hover:btn-ghost w-full" %>
           </div>
         </div>
         <div class="w-full lg:w-2/12">
           <div class="flex flex-col space-y-2 text-center">
-            <%= link_to "Last month", map_v2_path(start_at: 1.month.ago.beginning_of_day.iso8601, end_at: Time.current.end_of_day.iso8601, import_id: params[:import_id]), class: "btn btn-sm border border-base-300 hover:btn-ghost w-full" %>
+            <%= link_to "Last month", map_v2_path(start_at: 1.month.ago.beginning_of_day.iso8601, end_at: Time.current.end_of_day.iso8601, import_id: params[:import_id], panel: params[:panel]), class: "btn btn-sm border border-base-300 hover:btn-ghost w-full" %>
           </div>
         </div>
       </div>
