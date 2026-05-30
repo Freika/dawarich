@@ -12,6 +12,23 @@ jobs:
     withSubmodules: false
     condition: SUCCESSFUL
     optional: false
+  - type: CommandStep
+    name: npm install
+    # Mirrors the GitHub workflow's `npm install` runner step: populates
+    # node_modules in the job workspace so `daisyui` (the only external node dep
+    # the Tailwind build needs — the @tailwindcss/* plugins are bundled inside the
+    # tailwindcss-ruby standalone CLI) is present in the BuildImageStep context and
+    # gets copied into the image by `COPY ../. ./`. --omit=dev skips playwright/biome.
+    runInContainer: true
+    image: node:20-slim
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        npm install --omit=dev --no-audit --no-fund
+    runAs: 0:0
+    useTTY: true
+    condition: SUCCESSFUL
+    optional: false
   - type: BuildImageStep
     name: build and push to built-in registry
     # Build context = repo root (job workspace); Dockerfile uses ../ paths resolved
