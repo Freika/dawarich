@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Onboarding "Load demo data" now seeds a fully populated `/map/v2` instantly: 30 days of Berlin + a Prague-weekend trip, ~80 visits with tags and places, and stats anchored to the current calendar month. "Remove demo data" wipes everything in one click while preserving anything you've confirmed, edited, or built on top of (visits, trips, places, tags adopted by user action stay).
 - Visits can now be manually assigned to one of your saved areas. When you do, the visit takes the area's name automatically — unless you've already given it a custom name, or you've also picked a place (a place name wins over an area name). Available via API now; UI to follow. (#2577)
+- Internal client for the self-hosted Atlas geocoding service (batch geocode/reverse), with a capability allowlist (`ATLAS_ENABLED_TOOLS`) to limit which Atlas tools an instance may call. Not yet wired into geocoding — groundwork for replacing the geocoder gem's API role. (#2834)
 
 ### Changed
 
