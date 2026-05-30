@@ -40,6 +40,7 @@ jobs:
   # if building every feature branch is too noisy.
   - type: BranchUpdateTrigger
     branches: '**'
+    userMatch: anyone
   retryCondition: never
   maxRetries: 3
   retryDelay: 30
