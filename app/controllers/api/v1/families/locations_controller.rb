@@ -2,8 +2,7 @@
 
 class Api::V1::Families::LocationsController < ApiController
   before_action :ensure_family_feature_enabled!
-  before_action :ensure_user_in_family!, only: :index
-  before_action :ensure_member_for_history!, only: :history
+  before_action :ensure_user_in_family!
 
   def index
     family_locations = Families::Locations.new(current_api_user).call
@@ -44,11 +43,5 @@ class Api::V1::Families::LocationsController < ApiController
     return if current_api_user&.in_family?
 
     render json: { error: 'User is not part of a family' }, status: :not_found
-  end
-
-  def ensure_member_for_history!
-    return if current_api_user&.in_family?
-
-    render json: { error: 'User is not part of a family' }, status: :forbidden
   end
 end

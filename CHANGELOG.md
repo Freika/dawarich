@@ -31,7 +31,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
-- `GET /api/v1/families/locations/history` now returns 403 Forbidden (was 404) when the requester is not part of a family, matching the documented API contract.
 - Cloud only: PostHog exception capture is enabled to help diagnose production errors.
 - Map v2 Timeline calendar now lights up days that have raw points even before Track or Visit generation has caught up, matching the Insights → Activity Overview calendar. #2579
 - Reverse-geocoding flood: duplicate per-point enqueues are now coalesced for 24 h via a Redis dedup key, retries are capped at 3, and the nightly sweep bypasses (and clears) the dedup so points whose retries were exhausted — or whose key still lingers — are picked up on the next run.

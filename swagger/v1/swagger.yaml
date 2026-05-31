@@ -1086,7 +1086,7 @@ paths:
                 properties:
                   error:
                     type: string
-        '403':
+        '404':
           description: user not in a family
         '401':
           description: unauthorized
