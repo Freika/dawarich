@@ -19,6 +19,8 @@ class Api::V1::Tracks::PointsController < ApiController
                .order(timestamp: :asc)
     end
 
+    points = privacy_zone_masker.mask_points(points) if mask_privacy_zones?
+
     # Support optional pagination (backward compatible - returns all if no page param)
     if params[:page].present?
       per_page = (params[:per_page].presence&.to_i || 1000).clamp(1, 1000)

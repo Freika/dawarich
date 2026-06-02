@@ -145,6 +145,42 @@ export class RouteSegmenter {
   }
 
   /**
+   * True if the segment prev→curr passes within `radiusMeters` of any zone center.
+   * Uses an equirectangular planar approximation (zones are small, ≤5km).
+   * @param {Object} prev - point with latitude/longitude
+   * @param {Object} curr - point with latitude/longitude
+   * @param {Array} zones - [{ lon, lat, radiusMeters }]
+   */
+  static segmentCrossesZone(prev, curr, zones) {
+    if (!zones || zones.length === 0) return false
+
+    const R = 6371000
+    const toRad = (d) => (d * Math.PI) / 180
+    const project = (lat, lon, lat0) => ({
+      x: R * toRad(lon) * Math.cos(toRad(lat0)),
+      y: R * toRad(lat),
+    })
+
+    return zones.some((zone) => {
+      const lat0 = zone.lat
+      const a = project(Number(prev.latitude), Number(prev.longitude), lat0)
+      const b = project(Number(curr.latitude), Number(curr.longitude), lat0)
+      const c = project(zone.lat, zone.lon, lat0)
+
+      const dx = b.x - a.x
+      const dy = b.y - a.y
+      const lenSq = dx * dx + dy * dy
+      let t = lenSq === 0 ? 0 : ((c.x - a.x) * dx + (c.y - a.y) * dy) / lenSq
+      t = Math.max(0, Math.min(1, t))
+      const px = a.x + t * dx
+      const py = a.y + t * dy
+      const dist = Math.hypot(c.x - px, c.y - py)
+
+      return dist <= zone.radiusMeters
+    })
+  }
+
+  /**
    * Calculate total distance for a segment
    * @param {Array} segment - Array of points
    * @returns {number} Total distance in kilometers
@@ -191,8 +227,18 @@ export class RouteSegmenter {
       // Calculate time difference in minutes
       const timeDiff = (curr.timestamp - prev.timestamp) / 60
 
+      const crossesZone = RouteSegmenter.segmentCrossesZone(
+        prev,
+        curr,
+        options.privacyZones,
+      )
+
       // Split if any threshold is exceeded
-      if (distance > distanceThresholdKm || timeDiff > timeThresholdMinutes) {
+      if (
+        distance > distanceThresholdKm ||
+        timeDiff > timeThresholdMinutes ||
+        crossesZone
+      ) {
         if (currentSegment.length > 1) {
           segments.push(currentSegment)
         }
@@ -277,6 +323,7 @@ export class RouteSegmenter {
       const segments = RouteSegmenter.splitIntoSegments(sorted, {
         distanceThresholdKm,
         timeThresholdMinutes,
+        privacyZones: options.privacyZones,
       })
       return segments.map((segment) => RouteSegmenter.segmentToFeature(segment))
     })

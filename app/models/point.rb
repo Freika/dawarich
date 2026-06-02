@@ -33,6 +33,9 @@ class Point < ApplicationRecord
   scope :not_visited, -> { where(visit_id: nil) }
   scope :not_anomaly, -> { where(anomaly: [false, nil]) }
   scope :anomaly, -> { where(anomaly: true) }
+  scope :outside_privacy_zones, lambda { |user|
+    Maps::PrivacyZoneMasker.new(user).mask_points(all)
+  }
 
   after_create :async_reverse_geocode, if: -> { DawarichSettings.store_geodata? && !reverse_geocoded? }
   after_create :set_country
@@ -147,7 +150,7 @@ class Point < ApplicationRecord
 
   # Metrics/AbcSize
   def broadcast_coordinates
-    if user.safe_settings.live_map_enabled
+    if user.safe_settings.live_map_enabled && !in_privacy_zone?
       PointsChannel.broadcast_to(
         user,
         [
@@ -164,6 +167,10 @@ class Point < ApplicationRecord
     end
 
     broadcast_to_family if should_broadcast_to_family?
+  end
+
+  def in_privacy_zone?
+    Maps::PrivacyZoneMasker.new(user).in_zone?(lon, lat)
   end
 
   def should_broadcast_to_family?

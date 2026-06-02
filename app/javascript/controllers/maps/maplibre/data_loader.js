@@ -63,6 +63,7 @@ export class DataLoader {
     this.api = api
     this.apiKey = apiKey
     this.settings = settings
+    this.privacyZones = []
   }
 
   /**
@@ -70,6 +71,14 @@ export class DataLoader {
    */
   updateSettings(settings) {
     this.settings = settings
+  }
+
+  /**
+   * Set privacy zones used to break route segments at masked areas.
+   * @param {Array} zones - [{ lon, lat, radiusMeters }]
+   */
+  setPrivacyZones(zones) {
+    this.privacyZones = zones || []
   }
 
   /**
@@ -86,6 +95,7 @@ export class DataLoader {
     let routesGeoJSON = RoutesLayer.pointsToRoutes(points, {
       distanceThresholdMeters: this.settings.metersBetweenRoutes || 500,
       timeThresholdMinutes: this.settings.minutesBetweenRoutes || 60,
+      privacyZones: this.privacyZones,
     })
 
     // Keep original routes before speed coloring for low-zoom rendering
@@ -261,6 +271,7 @@ export class DataLoader {
       data.routesGeoJSON = RoutesLayer.pointsToRoutes(data.points, {
         distanceThresholdMeters: this.settings.metersBetweenRoutes || 500,
         timeThresholdMinutes: this.settings.minutesBetweenRoutes || 60,
+        privacyZones: this.privacyZones,
       })
 
       // Keep original routes before speed coloring for low-zoom rendering

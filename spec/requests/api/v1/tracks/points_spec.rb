@@ -198,5 +198,39 @@ RSpec.describe '/api/v1/tracks/:track_id/points', type: :request do
         expect(point_ids).not_to include(other_user_point.id)
       end
     end
+
+    context 'privacy zone masking' do
+      let(:pz_user) { create(:user) }
+      let(:pz_headers) { { 'Authorization' => "Bearer #{pz_user.api_key}" } }
+
+      before do
+        tag = create(:tag, :privacy_zone, user: pz_user, privacy_radius_meters: 1000)
+        place = create(:place, user: pz_user, latitude: 52.444, longitude: 13.500)
+        create(:tagging, tag: tag, taggable: place)
+        @pz_track = create(:track, user: pz_user, start_at: 2.hours.ago, end_at: 1.hour.ago)
+        create(:point, user: pz_user, track: @pz_track,
+               lonlat: 'POINT(13.500 52.444)', timestamp: 90.minutes.ago.to_i)
+        create(:point, user: pz_user, track: @pz_track,
+               lonlat: 'POINT(13.700 52.600)', timestamp: 80.minutes.ago.to_i)
+      end
+
+      it 'omits in-zone track points when flagged' do
+        get api_v1_track_points_url(@pz_track),
+            headers: pz_headers,
+            params: { mask_privacy_zones: 'true' }
+
+        coords = JSON.parse(response.body).map { |p| [p['longitude'].to_f, p['latitude'].to_f] }
+        expect(coords).to include([13.7, 52.6])
+        expect(coords).not_to include([13.5, 52.444])
+      end
+
+      it 'returns all track points without the flag' do
+        get api_v1_track_points_url(@pz_track), headers: pz_headers
+
+        coords = JSON.parse(response.body).map { |p| [p['longitude'].to_f, p['latitude'].to_f] }
+        expect(coords).to include([13.5, 52.444])
+        expect(coords).to include([13.7, 52.6])
+      end
+    end
   end
 end

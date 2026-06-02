@@ -4,6 +4,15 @@ class Api::V1::VisitsController < ApiController
   def index
     visits = Visits::Finder.new(current_api_user, params).call
 
+    if mask_privacy_zones?
+      hidden_place_ids = privacy_zone_masker.in_zone_place_ids
+      if hidden_place_ids.any?
+        visits = visits.where(
+          'visits.place_id IS NULL OR visits.place_id NOT IN (?)', hidden_place_ids
+        )
+      end
+    end
+
     # Support optional pagination (backward compatible - returns all if no page param)
     if params[:page].present?
       per_page = [params[:per_page]&.to_i || 100, 500].min

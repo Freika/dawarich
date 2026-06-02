@@ -234,4 +234,39 @@ RSpec.describe '/api/v1/tracks', type: :request do
       end
     end
   end
+
+  describe 'privacy zone masking' do
+    let(:pz_user) { create(:user) }
+
+    before do
+      tag = create(:tag, :privacy_zone, user: pz_user, privacy_radius_meters: 1000)
+      place = create(:place, user: pz_user, latitude: 52.444, longitude: 13.500)
+      create(:tagging, tag: tag, taggable: place)
+      path = 'LINESTRING(13.300 52.444, 13.350 52.444, 13.500 52.444, 13.650 52.444, 13.700 52.444)'
+      @track = create(:track, user: pz_user,
+                      start_at: 2.hours.ago, end_at: 1.hour.ago,
+                      original_path: path)
+    end
+
+    it 'splits a track that crosses a zone into multiple line features' do
+      get '/api/v1/tracks',
+          params: { api_key: pz_user.api_key, mask_privacy_zones: 'true',
+                    start_at: 3.hours.ago.iso8601, end_at: Time.current.iso8601 }
+
+      features = JSON.parse(response.body)['features']
+      line_features = features.select { |f| f['geometry']['type'] == 'LineString' }
+      all_coords = line_features.flat_map { |f| f['geometry']['coordinates'] }
+      expect(all_coords).not_to include([13.500, 52.444])
+      expect(line_features.length).to be >= 2
+    end
+
+    it 'returns the unsplit track without the flag' do
+      get '/api/v1/tracks',
+          params: { api_key: pz_user.api_key,
+                    start_at: 3.hours.ago.iso8601, end_at: Time.current.iso8601 }
+
+      features = JSON.parse(response.body)['features']
+      expect(features.length).to eq(1)
+    end
+  end
 end

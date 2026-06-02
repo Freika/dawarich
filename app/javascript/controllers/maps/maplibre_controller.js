@@ -343,6 +343,9 @@ export default class extends Controller {
       new Date(this.endDateValue),
     )
 
+    const privacyZones = await this.api.fetchPrivacyZones()
+    this.dataLoader.setPrivacyZones(privacyZones)
+
     this.loadMapData().then(() => {
       if (this.settings?.familyEnabled) {
         this.loadFamilyMembers()

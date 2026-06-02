@@ -27,6 +27,15 @@ RSpec.describe Tag, type: :model do
     end
   end
 
+  describe ':privacy_zone factory trait' do
+    it 'builds a tag that reports as a privacy zone' do
+      tag = create(:tag, :privacy_zone)
+
+      expect(tag.privacy_zone?).to be(true)
+      expect(tag.privacy_radius_meters).to eq(1000)
+    end
+  end
+
   describe 'scopes' do
     let!(:tag1) { create(:tag, name: 'A') }
     let!(:tag2) { create(:tag, name: 'B', user: tag1.user) }

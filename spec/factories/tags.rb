@@ -25,6 +25,10 @@ FactoryBot.define do
       color { '#FF9800' }
     end
 
+    trait :privacy_zone do
+      privacy_radius_meters { 1000 }
+    end
+
     trait :without_color do
       color { nil }
     end

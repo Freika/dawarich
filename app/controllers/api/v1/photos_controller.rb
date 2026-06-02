@@ -9,13 +9,13 @@ class Api::V1::PhotosController < ApiController
   def index
     cache_key = "photos_#{current_api_user.id}_#{params[:start_date]}_#{params[:end_date]}"
     cached_photos = Rails.cache.read(cache_key)
-    return render json: cached_photos, status: :ok if cached_photos.present?
+    return render json: mask_photos(cached_photos), status: :ok if cached_photos.present?
 
     search = Photos::Search.new(current_api_user, start_date: params[:start_date], end_date: params[:end_date])
     @photos = search.call
     Rails.cache.write(cache_key, @photos, expires_in: 30.minutes) if search.errors.blank? && @photos.present?
 
-    render json: @photos, status: :ok
+    render json: mask_photos(@photos), status: :ok
   rescue StandardError => e
     Rails.logger.error("Photo search failed: #{e.message}")
     render json: { error: 'Failed to fetch photos' }, status: :bad_gateway
@@ -59,5 +59,18 @@ class Api::V1::PhotosController < ApiController
   def unauthorized_integration
     render json: { error: "#{params[:source]&.capitalize} integration not configured" },
            status: :unauthorized
+  end
+
+  def mask_photos(photos)
+    return photos unless mask_privacy_zones?
+
+    masker = privacy_zone_masker
+    return photos unless masker.any?
+
+    Array(photos).reject do |photo|
+      lon = photo[:longitude] || photo['longitude']
+      lat = photo[:latitude] || photo['latitude']
+      lon && lat && masker.in_zone?(lon.to_f, lat.to_f)
+    end
   end
 end

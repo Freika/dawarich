@@ -692,6 +692,33 @@ RSpec.describe 'Api::V1::Points', type: :request do
     end
   end
 
+  describe 'privacy zone masking' do
+    let(:pz_user) { create(:user) }
+
+    before do
+      tag = create(:tag, :privacy_zone, user: pz_user, privacy_radius_meters: 1000)
+      place = create(:place, user: pz_user, latitude: 52.444, longitude: 13.500)
+      create(:tagging, tag: tag, taggable: place)
+      create(:point, user: pz_user, lonlat: 'POINT(13.500 52.444)', timestamp: 1.hour.ago.to_i)
+      create(:point, user: pz_user, lonlat: 'POINT(13.700 52.600)', timestamp: 30.minutes.ago.to_i)
+    end
+
+    it 'omits in-zone points when mask_privacy_zones=true' do
+      get api_v1_points_url(api_key: pz_user.api_key, mask_privacy_zones: 'true', per_page: 100)
+
+      coords = JSON.parse(response.body).map { |p| [p['longitude'].to_f, p['latitude'].to_f] }
+      expect(coords).to include([13.700, 52.600])
+      expect(coords).not_to include([13.500, 52.444])
+    end
+
+    it 'returns all points without the flag' do
+      get api_v1_points_url(api_key: pz_user.api_key, per_page: 100)
+
+      coords = JSON.parse(response.body).map { |p| [p['longitude'].to_f, p['latitude'].to_f] }
+      expect(coords).to include([13.700, 52.600], [13.500, 52.444])
+    end
+  end
+
   describe 'GET /index bbox validation' do
     it 'rejects an inverted bbox with 400' do
       get "/api/v1/points?api_key=#{user.api_key}&" \

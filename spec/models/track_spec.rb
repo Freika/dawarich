@@ -306,6 +306,77 @@ RSpec.describe Track, type: :model do
     end
   end
 
+  describe '#broadcast_geojson_updated privacy zone masking' do
+    let(:user) { create(:user) }
+    let(:tag) { create(:tag, :privacy_zone, user: user, privacy_radius_meters: 500) }
+    let(:place) { create(:place, user: user, latitude: 52.444, longitude: 13.500) }
+
+    before do
+      create(:tagging, tag: tag, taggable: place)
+    end
+
+    context 'when a track crosses a privacy zone' do
+      # Two points before the zone, the in-zone vertex, then two points after —
+      # so each surviving segment has ≥2 points after masking.
+      let!(:track) do
+        create(:track, user: user,
+               original_path: 'LINESTRING(13.380 52.390, 13.390 52.395, 13.500 52.444, 13.610 52.493, 13.700 52.600)')
+      end
+
+      it 'broadcasts a masked geometry with in-zone vertex removed' do
+        expect do
+          track.broadcast_geojson_updated
+        end.to have_broadcasted_to(user).from_channel(TracksChannel)
+      end
+
+      it 'broadcasts a MultiLineString geometry with in-zone vertex absent' do
+        broadcasts = []
+        allow(TracksChannel).to receive(:broadcast_to) do |target, payload|
+          broadcasts << [target, payload]
+        end
+
+        track.broadcast_geojson_updated
+
+        geojson_broadcasts = broadcasts.select { |_, p| p[:action] == 'geojson_updated' }
+        expect(geojson_broadcasts.length).to eq(1)
+        _target, payload = geojson_broadcasts.first
+        geometry = payload[:track]['geometry']
+        expect(geometry['type']).to eq('MultiLineString')
+        all_coords = geometry['coordinates'].flatten(1)
+        in_zone_coord = [13.500, 52.444]
+        expect(all_coords).not_to include(in_zone_coord)
+      end
+    end
+
+    context 'when an entire track is inside a privacy zone' do
+      # Both vertices are within 500 m of the zone centre.
+      let!(:track) do
+        create(:track, user: user,
+               original_path: 'LINESTRING(13.500 52.444, 13.502 52.445)')
+      end
+
+      it 'does not broadcast geojson_updated' do
+        expect do
+          track.broadcast_geojson_updated
+        end.not_to have_broadcasted_to(user).from_channel(TracksChannel)
+      end
+    end
+
+    context 'when the user has no privacy zones' do
+      let(:other_user) { create(:user) }
+      let!(:track) do
+        create(:track, user: other_user,
+               original_path: 'LINESTRING(13.400 52.400, 13.600 52.500)')
+      end
+
+      it 'broadcasts the original geometry unchanged' do
+        expect do
+          track.broadcast_geojson_updated
+        end.to have_broadcasted_to(other_user).from_channel(TracksChannel)
+      end
+    end
+  end
+
   describe 'Calculateable concern' do
     let(:user) { create(:user) }
     let(:track) { create(:track, user: user, distance: 1000, avg_speed: 25, duration: 3600) }

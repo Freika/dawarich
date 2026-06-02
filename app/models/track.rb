@@ -223,12 +223,30 @@ class Track < ApplicationRecord
 
     Rails.logger.info "[Track#broadcast_geojson_updated] GeoJSON feature id: #{geojson_feature[:properties][:id]}"
 
-    TracksChannel.broadcast_to(user, { action: 'geojson_updated', track: geojson_feature })
+    masked_feature = mask_geojson_feature(geojson_feature)
+    return if masked_feature.nil?
+
+    TracksChannel.broadcast_to(user, { action: 'geojson_updated', track: masked_feature })
 
     Rails.logger.info "[Track#broadcast_geojson_updated] Broadcast complete for track #{id}"
   end
 
   private
+
+  def mask_geojson_feature(feature)
+    masker = Maps::PrivacyZoneMasker.new(user)
+    return feature unless masker.any?
+
+    collection = masker.mask_track_geojson(
+      { 'type' => 'FeatureCollection', 'features' => [feature.deep_stringify_keys] }
+    )
+    segments = collection['features'].map { |f| f['geometry']['coordinates'] }
+    return nil if segments.empty?
+
+    feature.deep_stringify_keys.merge(
+      'geometry' => { 'type' => 'MultiLineString', 'coordinates' => segments }
+    )
+  end
 
   def broadcast_track_created
     broadcast_track_update('created')

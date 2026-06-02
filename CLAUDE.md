@@ -390,6 +390,7 @@ Even in these cases, wrap the integration in a Stimulus controller and connect i
    - Support UUID-based access in API endpoints when appropriate
    - Respect expiration settings and disable sharing when expired
    - Only expose minimal necessary data in public sharing contexts
+9. **Privacy zones on the map**: Any new map-context read endpoint (one whose payload renders on a map) MUST apply `Maps::PrivacyZoneMasker` when `mask_privacy_zones=true` is present, and MUST be added to `MASKED_MAP_ENDPOINTS` in `spec/requests/api/v1/privacy_zone_masking_spec.rb`. Masking is opt-in per request so exports, the programmatic API, and stats stay complete.
 
 ### Route Drawing Implementation (Critical)
 

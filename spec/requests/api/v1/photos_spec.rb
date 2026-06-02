@@ -91,6 +91,42 @@ RSpec.describe 'Api::V1::Photos', type: :request do
       end
     end
 
+    describe 'privacy zone masking' do
+      let(:pz_user) { create(:user, :with_photoprism_integration) }
+
+      before do
+        Rails.cache.clear
+        tag = create(:tag, :privacy_zone, user: pz_user, privacy_radius_meters: 1000)
+        place = create(:place, user: pz_user, latitude: 52.444, longitude: 13.500)
+        create(:tagging, tag: tag, taggable: place)
+        allow_any_instance_of(Photos::Search).to receive(:errors).and_return([])
+        allow_any_instance_of(Photos::Search).to receive(:call).and_return(
+          [
+            { 'id' => 'in',  'latitude' => 52.444, 'longitude' => 13.500, 'source' => 'photoprism' },
+            { 'id' => 'out', 'latitude' => 52.600, 'longitude' => 13.700, 'source' => 'photoprism' }
+          ]
+        )
+      end
+
+      it 'omits in-zone photos when flagged' do
+        get '/api/v1/photos',
+            params: { api_key: pz_user.api_key, mask_privacy_zones: 'true',
+                      start_date: '2026-01-01', end_date: '2026-12-31' }
+
+        ids = JSON.parse(response.body).map { |p| p['id'] }
+        expect(ids).to eq(['out'])
+      end
+
+      it 'returns all photos without the flag' do
+        get '/api/v1/photos',
+            params: { api_key: pz_user.api_key,
+                      start_date: '2026-01-01', end_date: '2026-12-31' }
+
+        ids = JSON.parse(response.body).map { |p| p['id'] }
+        expect(ids).to contain_exactly('in', 'out')
+      end
+    end
+
     context 'when the integration is not configured' do
       let(:user) { create(:user) }
 

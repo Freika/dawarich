@@ -22,6 +22,8 @@ class Api::V1::PointsController < ApiController
                scoped_points.not_anomaly
              end
 
+    points = privacy_zone_masker.mask_points(points) if mask_privacy_zones?
+
     points = points
              .without_raw_data
              .where(timestamp: start_at..end_at)

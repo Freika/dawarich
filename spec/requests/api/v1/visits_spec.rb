@@ -354,6 +354,45 @@ RSpec.describe 'Api::V1::Visits', type: :request do
     end
   end
 
+  describe 'privacy zone masking' do
+    let(:pz_user) { create(:user) }
+    let(:pz_auth_headers) { { 'Authorization' => "Bearer #{pz_user.api_key}" } }
+
+    before do
+      tag = create(:tag, :privacy_zone, user: pz_user, privacy_radius_meters: 1000)
+      zone_place = create(:place, user: pz_user, latitude: 52.444, longitude: 13.500)
+      create(:tagging, tag: tag, taggable: zone_place)
+      far_place = create(:place, user: pz_user, latitude: 52.600, longitude: 13.700)
+      @hidden = create(:visit, user: pz_user, place: zone_place,
+                       started_at: 2.hours.ago, ended_at: 1.hour.ago)
+      @shown = create(:visit, user: pz_user, place: far_place,
+                      started_at: 2.hours.ago, ended_at: 1.hour.ago)
+      @nil_place_visit = create(:visit, user: pz_user, place: nil,
+                                started_at: 2.hours.ago, ended_at: 1.hour.ago)
+    end
+
+    it 'omits visits whose place is in a zone when flagged' do
+      get '/api/v1/visits',
+          params: { mask_privacy_zones: 'true',
+                    start_at: 3.hours.ago.iso8601, end_at: Time.current.iso8601 },
+          headers: pz_auth_headers
+
+      ids = JSON.parse(response.body).pluck('id')
+      expect(ids).to include(@shown.id)
+      expect(ids).to include(@nil_place_visit.id)
+      expect(ids).not_to include(@hidden.id)
+    end
+
+    it 'returns both visits without the flag' do
+      get '/api/v1/visits',
+          params: { start_at: 3.hours.ago.iso8601, end_at: Time.current.iso8601 },
+          headers: pz_auth_headers
+
+      ids = JSON.parse(response.body).pluck('id')
+      expect(ids).to include(@hidden.id, @shown.id)
+    end
+  end
+
   describe 'DELETE /api/v1/visits/:id' do
     let!(:visit) { create(:visit, user: user, place: place) }
     let!(:other_user_visit) { create(:visit, user: other_user, place: place) }

@@ -15,6 +15,8 @@ class Api::V1::Maps::HexagonsController < ApiController
       end_date: context[:end_date]
     ).call
 
+    result = mask_hexagons(result)
+
     render json: result
   rescue ActionController::ParameterMissing => e
     render json: { error: "Missing required parameter: #{e.param}" }, status: :bad_request
@@ -90,5 +92,21 @@ class Api::V1::Maps::HexagonsController < ApiController
 
   def public_sharing_request?
     params[:uuid].present?
+  end
+
+  def mask_hexagons(result)
+    return result if public_sharing_request?
+    return result unless mask_privacy_zones?
+
+    masker = privacy_zone_masker
+    return result unless masker.any?
+    return result unless result.is_a?(Hash) && result['features'].is_a?(Array)
+
+    features = result['features'].reject do |feature|
+      lon, lat = feature.dig('geometry', 'coordinates')
+      lon && lat && masker.in_zone?(lon.to_f, lat.to_f)
+    end
+
+    result.merge('features' => features)
   end
 end

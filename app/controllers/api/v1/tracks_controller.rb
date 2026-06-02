@@ -6,6 +6,7 @@ class Api::V1::TracksController < ApiController
     paginated_tracks = tracks_query.call
 
     geojson = Tracks::GeojsonSerializer.new(paginated_tracks).call
+    geojson = privacy_zone_masker.mask_track_geojson(geojson) if mask_privacy_zones?
 
     tracks_query.pagination_headers(paginated_tracks).each do |header, value|
       response.set_header(header, value)

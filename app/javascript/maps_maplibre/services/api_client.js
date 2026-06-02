@@ -21,6 +21,7 @@ export class ApiClient {
       per_page: per_page.toString(),
       slim: "true",
       order: "asc",
+      mask_privacy_zones: "true",
     })
 
     const response = await fetch(`${this.baseURL}/points?${params}`, {
@@ -186,6 +187,7 @@ export class ApiClient {
       end_at,
       page: page.toString(),
       per_page: per_page.toString(),
+      mask_privacy_zones: "true",
     })
 
     if (
@@ -282,6 +284,7 @@ export class ApiClient {
     const params = new URLSearchParams({
       page: page.toString(),
       per_page: per_page.toString(),
+      mask_privacy_zones: "true",
     })
 
     if (tag_ids && tag_ids.length > 0) {
@@ -353,6 +356,7 @@ export class ApiClient {
     const params = new URLSearchParams({
       start_date: start_at,
       end_date: end_at,
+      mask_privacy_zones: "true",
     })
 
     const url = `${this.baseURL}/photos?${params}`
@@ -408,6 +412,7 @@ export class ApiClient {
     const params = new URLSearchParams({
       page: page.toString(),
       per_page: per_page.toString(),
+      mask_privacy_zones: "true",
     })
 
     if (start_at) params.append("start_at", start_at)
@@ -772,6 +777,7 @@ export class ApiClient {
     const params = new URLSearchParams({
       page: page.toString(),
       per_page: per_page.toString(),
+      mask_privacy_zones: "true",
     })
 
     const response = await fetch(
@@ -849,6 +855,29 @@ export class ApiClient {
     }
 
     return response.json()
+  }
+
+  /**
+   * Fetch the user's privacy zones as circles for client-side route breaking.
+   * Returns [{ lon, lat, radiusMeters }] flattened across all zone places.
+   */
+  async fetchPrivacyZones() {
+    const response = await fetch(`${this.baseURL}/tags/privacy_zones`, {
+      headers: this.getHeaders(),
+    })
+
+    if (!response.ok) {
+      return []
+    }
+
+    const zones = await response.json()
+    return zones.flatMap((zone) =>
+      (zone.places || []).map((place) => ({
+        lon: place.longitude,
+        lat: place.latitude,
+        radiusMeters: zone.radius_meters,
+      })),
+    )
   }
 
   getHeaders() {

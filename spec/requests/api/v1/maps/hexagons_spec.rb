@@ -283,6 +283,44 @@ RSpec.describe 'Api::V1::Maps::Hexagons', type: :request do
         expect(response).to have_http_status(:unauthorized)
       end
     end
+
+    describe 'privacy zone masking' do
+      let(:pz_user) { create(:user) }
+      let(:pz_headers) { { 'Authorization' => "Bearer #{pz_user.api_key}" } }
+
+      before do
+        tag = create(:tag, :privacy_zone, user: pz_user, privacy_radius_meters: 1000)
+        place = create(:place, user: pz_user, latitude: 52.444, longitude: 13.500)
+        create(:tagging, tag: tag, taggable: place)
+        allow_any_instance_of(Maps::HexagonRequestHandler).to receive(:call).and_return(
+          {
+            'type' => 'FeatureCollection',
+            'features' => [
+              { 'type' => 'Feature', 'geometry' => { 'type' => 'Point', 'coordinates' => [13.500, 52.444] }, 'properties' => {} },
+              { 'type' => 'Feature', 'geometry' => { 'type' => 'Point', 'coordinates' => [13.700, 52.600] }, 'properties' => {} }
+            ]
+          }
+        )
+      end
+
+      it 'drops hexagon features whose center is in a zone when flagged' do
+        get '/api/v1/maps/hexagons',
+            params: { mask_privacy_zones: 'true', start_date: '2026-01-01', end_date: '2026-01-31' },
+            headers: pz_headers
+
+        centers = JSON.parse(response.body)['features'].map { |f| f['geometry']['coordinates'] }
+        expect(centers).to eq([[13.700, 52.600]])
+      end
+
+      it 'returns all hexagons without the flag' do
+        get '/api/v1/maps/hexagons',
+            params: { start_date: '2026-01-01', end_date: '2026-01-31' },
+            headers: pz_headers
+
+        centers = JSON.parse(response.body)['features'].map { |f| f['geometry']['coordinates'] }
+        expect(centers).to contain_exactly([13.500, 52.444], [13.700, 52.600])
+      end
+    end
   end
 
   describe 'GET /api/v1/maps/hexagons/bounds' do

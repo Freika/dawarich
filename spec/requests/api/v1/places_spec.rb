@@ -200,4 +200,31 @@ RSpec.describe 'Api::V1::Places', type: :request do
       expect(response).to have_http_status(:unauthorized)
     end
   end
+
+  describe 'privacy zone masking' do
+    let(:pz_user) { create(:user) }
+    let(:pz_headers) { { 'Authorization' => "Bearer #{pz_user.api_key}" } }
+
+    before do
+      tag = create(:tag, :privacy_zone, user: pz_user, privacy_radius_meters: 1000)
+      @zone_place = create(:place, user: pz_user, latitude: 52.444, longitude: 13.500)
+      create(:tagging, tag: tag, taggable: @zone_place)
+      @far_place = create(:place, user: pz_user, latitude: 52.600, longitude: 13.700)
+    end
+
+    it 'omits in-zone places when flagged' do
+      get '/api/v1/places', params: { mask_privacy_zones: 'true' }, headers: pz_headers
+
+      ids = JSON.parse(response.body).map { |p| p['id'] }
+      expect(ids).to include(@far_place.id)
+      expect(ids).not_to include(@zone_place.id)
+    end
+
+    it 'returns all places without the flag' do
+      get '/api/v1/places', headers: pz_headers
+
+      ids = JSON.parse(response.body).map { |p| p['id'] }
+      expect(ids).to include(@zone_place.id, @far_place.id)
+    end
+  end
 end

@@ -205,6 +205,50 @@ RSpec.describe Point, type: :model do
     end
   end
 
+  describe '#broadcast_coordinates privacy zone suppression' do
+    let(:user) { create(:user) }
+    let(:tag) { create(:tag, :privacy_zone, user: user, privacy_radius_meters: 500) }
+    let(:place) { create(:place, user: user, latitude: 52.444, longitude: 13.500) }
+
+    before do
+      create(:tagging, tag: tag, taggable: place)
+      user.settings['live_map_enabled'] = true
+      user.save!
+    end
+
+    context 'when a point is inside a privacy zone' do
+      it 'does not broadcast to PointsChannel' do
+        expect do
+          create(:point, user: user, lonlat: 'POINT(13.500 52.444)')
+        end.not_to have_broadcasted_to(user).from_channel(PointsChannel)
+      end
+    end
+
+    context 'when a point is outside all privacy zones' do
+      it 'broadcasts to PointsChannel' do
+        expect do
+          create(:point, user: user, lonlat: 'POINT(13.700 52.600)')
+        end.to have_broadcasted_to(user).from_channel(PointsChannel)
+      end
+    end
+  end
+
+  describe '.outside_privacy_zones' do
+    it 'excludes points inside the user\'s privacy zones' do
+      user = create(:user)
+      tag = create(:tag, :privacy_zone, user: user, privacy_radius_meters: 1000)
+      place = create(:place, user: user, latitude: 52.444, longitude: 13.500)
+      create(:tagging, tag: tag, taggable: place)
+      inside = create(:point, user: user, lonlat: 'POINT(13.500 52.444)')
+      outside = create(:point, user: user, lonlat: 'POINT(13.700 52.600)')
+
+      result = Point.outside_privacy_zones(user)
+
+      expect(result).to include(outside)
+      expect(result).not_to include(inside)
+    end
+  end
+
   describe '.dedup_key' do
     let(:timestamp) { Time.zone.at(1_700_000_000) }
 
