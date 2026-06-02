@@ -29,17 +29,21 @@ module Places
     def fetch_and_filter
       Geocoder.search(@query, limit: FETCH_LIMIT, bias: { latitude: @latitude, longitude: @longitude })
               .map { |r| Places::PhotonResultFormatter.call(r, fallback_lat: @latitude, fallback_lon: @longitude) }
-              .select { |place| within_radius?(place) }
+              .filter_map { |place| within_radius(place) }
+              .sort_by { |place| place[:distance] }
               .first(@limit)
+              .map { |place| place.except(:distance) }
     end
 
-    def within_radius?(place)
-      return false if place[:latitude].nil? || place[:longitude].nil?
+    def within_radius(place)
+      return nil if place[:latitude].nil? || place[:longitude].nil?
 
       distance = Geocoder::Calculations.distance_between(
         [@latitude, @longitude], [place[:latitude], place[:longitude]], units: :km
       )
-      distance.is_a?(Numeric) && distance.finite? && distance <= @radius
+      return nil unless distance.is_a?(Numeric) && distance.finite? && distance <= @radius
+
+      place.merge(distance: distance)
     end
   end
 end

@@ -50,6 +50,17 @@ RSpec.describe Places::Search do
       expect(results.map { |r| r[:name] }).to eq(['Near'])
     end
 
+    it 'orders results by distance, nearest first' do
+      nearest = photon(name: 'Nearest', plat: lat, plon: lon)
+      farther = photon(name: 'Farther', plat: 52.520, plon: 13.405) # ~0.9 km away
+
+      allow(Geocoder).to receive(:search).and_return([farther, nearest])
+
+      results = described_class.new(query: 'xx', latitude: lat, longitude: lon, radius: 5.0).call
+
+      expect(results.map { |r| r[:name] }).to eq(%w[Nearest Farther])
+    end
+
     it 'returns [] for a query shorter than 2 chars' do
       expect(Geocoder).not_to receive(:search)
       expect(described_class.new(query: 'a', latitude: lat, longitude: lon, radius: 1.0).call).to eq([])
