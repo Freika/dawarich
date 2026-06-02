@@ -206,6 +206,7 @@ export class VisitPlaceSearch {
     return `
       <div class="visit-search-panel mt-2 border-t border-base-300 pt-2">
         <input type="text" data-search-input placeholder="Search for a place…"
+               maxlength="200"
                class="input input-bordered input-xs w-full mb-2"
                onclick="event.stopPropagation()">
         <ul data-search-results class="flex flex-col w-full max-h-48 overflow-y-auto overflow-x-hidden bg-base-100 rounded-box"></ul>

@@ -31,6 +31,14 @@ RSpec.describe Places::Search do
       expect(results.first).to include(name: 'Café Bravo', source: 'photon')
     end
 
+    it 'biases the Photon search to the visit coordinates' do
+      expect(Geocoder).to receive(:search)
+        .with('Bravo', hash_including(bias: { latitude: lat, longitude: lon }))
+        .and_return([])
+
+      described_class.new(query: 'Bravo', latitude: lat, longitude: lon, radius: 1.0).call
+    end
+
     it 'filters out results beyond the radius' do
       near = photon(name: 'Near', plat: lat, plon: lon)
       far  = photon(name: 'Far', plat: 53.5, plon: 14.5) # ~140 km away

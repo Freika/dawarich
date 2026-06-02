@@ -27,7 +27,7 @@ module Places
     private
 
     def fetch_and_filter
-      Geocoder.search(@query, limit: FETCH_LIMIT)
+      Geocoder.search(@query, limit: FETCH_LIMIT, bias: { latitude: @latitude, longitude: @longitude })
               .map { |r| Places::PhotonResultFormatter.call(r, fallback_lat: @latitude, fallback_lon: @longitude) }
               .select { |place| within_radius?(place) }
               .first(@limit)
