@@ -16,9 +16,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   - Or toggle in `/admin/flipper`
   - Re-detect past history: `Visits::FullHistoryRedetectJob.perform_later(user.id)`
 
+- Map v2 Timeline: every visit now has a search icon. Click it to find the actual place by name — a type-as-you-go lookup against your configured geocoder (Photon), biased to the visit's location, with each result showing its category and distance, plus any of your saved Areas nearby. Pick a result to label the visit, or create a new place on the spot when nothing matches. Choosing a place far from the visit asks before relocating it, and the map marker updates immediately.
+
+### Changed
+
+- Declining a visit is now **deleting** a visit. The Decline action — per-visit, "Delete all" for a day, the bulk selection bar, and the Map v2 area-selection card — is replaced by **Delete**, which asks for confirmation and removes the visit entirely. Your underlying location points are always kept. The "Declined" filter and the Restore action have been removed.
+
 ### Fixed
 
 - Reverse geocoding (and other background work) no longer stalls behind GPS anomaly detection. Every incoming location used to trigger an anomaly check that re-scanned the whole current month of points — up to ~30 seconds late in a busy tracking month — and those jobs monopolized the worker pool, starving the reverse-geocoding queue. The check now inspects only the newly-received points plus their immediate neighbours, so it runs in milliseconds regardless of how full the month is.
+- Renaming a suggested visit no longer auto-confirms it. Editing the name — or just opening the inline rename and clicking away — used to silently mark the visit confirmed and create a place from the typed text. Renaming now only changes the name; confirming happens solely through the suggested-place picker.
+- Map v2 Timeline calendar: the per-day "suggested visits" dot now clears as soon as you confirm or delete the last suggestion for that day, instead of lingering until a full page reload.
 
 ## [1.7.11] - 2026-05-31
 
