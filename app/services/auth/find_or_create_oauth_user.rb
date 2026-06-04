@@ -30,13 +30,15 @@ module Auth
 
     PROVIDERS_REQUIRING_EMAIL = %w[apple].freeze
 
-    def initialize(provider:, provider_label:, claims:, email_verified:, on_email_collision: :send_email)
+    def initialize(provider:, provider_label:, claims:, email_verified:, name_attrs: nil,
+                   on_email_collision: :send_email)
       @provider = provider
       @provider_label = provider_label
       @claims = claims
       @uid = claims[:sub].to_s
       @email = claims[:email].to_s.downcase
       @email_verified = email_verified
+      @name_attrs = name_attrs || {}
       @on_email_collision = on_email_collision
     end
 
@@ -117,7 +119,9 @@ module Auth
         email: @email.presence || "#{@uid}@#{@provider}.dawarich.app",
         password: SecureRandom.hex(32),
         provider: @provider,
-        uid: @uid
+        uid: @uid,
+        first_name: @name_attrs[:first_name].presence,
+        last_name: @name_attrs[:last_name].presence
       }
       attrs.merge!(status: :pending_payment, skip_auto_trial: true) unless DawarichSettings.self_hosted?
 

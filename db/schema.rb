@@ -476,6 +476,8 @@ ActiveRecord::Schema[8.0].define(version: 2026_06_02_125716) do
     t.integer "failed_otp_attempts", default: 0, null: false
     t.datetime "otp_locked_at"
     t.datetime "visits_redetected_at"
+    t.string "first_name"
+    t.string "last_name"
     t.integer "changelog_consent"
     t.index ["api_key"], name: "index_users_on_api_key"
     t.index ["deleted_at"], name: "index_users_on_deleted_at"

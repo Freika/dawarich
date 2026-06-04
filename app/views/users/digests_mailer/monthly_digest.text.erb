@@ -45,8 +45,8 @@ VS PREVIOUS MONTH
   Distance  <%= ascii_trend_from_pct(@digest.distance, @digest.year_over_year['distance_change_percent']) %>
 
 <% end %>
-→ View full insights: <%= insights_url %>
+→ View full insights: <%= insights_url(**digest_utm(campaign: 'monthly_digest', content: 'view_insights')) %>
 
 ─────────────────────────────────────────
 You're receiving this because monthly digest emails are on.
-Manage email preferences: <%= settings_general_index_url(anchor: 'email-digests') %>
+Manage email preferences: <%= settings_general_index_url(anchor: 'email-digests', **digest_utm(campaign: 'monthly_digest', content: 'manage_preferences')) %>

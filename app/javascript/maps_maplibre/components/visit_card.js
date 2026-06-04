@@ -5,7 +5,7 @@ export class VisitCard {
   /**
    * Create HTML for a visit card
    * @param {Object} visit - Visit object with id, name, status, started_at, ended_at, duration, place
-   * @param {Object} options - { isSelected, onSelect, onConfirm, onDecline, onHover }
+   * @param {Object} options - { isSelected, onSelect, onConfirm, onHover }
    * @returns {string} HTML string
    */
   static create(visit, options = {}) {
@@ -89,11 +89,11 @@ export class VisitCard {
             isSuggested
               ? `
             <div class="card-actions justify-end mt-3 gap-1.5">
-              <button class="btn btn-xs btn-outline btn-error" data-visit-decline="${visit.id}">
+              <button class="btn btn-xs btn-outline btn-error" data-visit-delete="${visit.id}">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
-                Decline
+                Delete
               </button>
               <button class="btn btn-xs btn-primary" data-visit-confirm="${visit.id}">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -149,11 +149,11 @@ export class VisitCard {
             </svg>
             Confirm
           </button>
-          <button class="btn btn-sm btn-outline btn-error" data-bulk-decline>
+          <button class="btn btn-sm btn-outline btn-error" data-bulk-delete>
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
-            Decline
+            Delete
           </button>
         </div>
       </div>

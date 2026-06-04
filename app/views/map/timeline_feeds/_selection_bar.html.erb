@@ -23,20 +23,6 @@
       </button>
     <% end %>
 
-    <%= form_with url: bulk_update_visits_path, method: :patch,
-                  data: { timeline_feed_target: 'declineForm',
-                          action: 'submit->timeline-feed#submitBulkDecline' },
-                  class: 'selection-bar__form' do |f| %>
-      <%= f.hidden_field :status, value: 'declined' %>
-      <button type="submit"
-              class="selection-bar__action selection-bar__decline"
-              data-timeline-feed-target="declineButton"
-              title="Mark these visits as declined (no, I wasn't there)"
-              disabled>
-        Decline
-      </button>
-    <% end %>
-
     <%= form_with url: merge_visits_path, method: :post,
                   data: { timeline_feed_target: 'selectionForm',
                           action: 'submit->timeline-feed#submitMerge' },

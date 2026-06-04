@@ -1,0 +1,114 @@
+name: Security
+
+on:
+  pull_request:
+  push:
+    branches: [master, dev]
+  schedule:
+    - cron: '30 4 * * 1' # Mondays 04:30 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  brakeman:
+    name: Brakeman (Rails SAST, report-only)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@afeafc3d1ab54a631816aba4c914a0081c12ff2f # v1.310.0
+        with:
+          bundler-cache: true
+
+      - name: Run Brakeman
+        continue-on-error: true
+        run: bundle exec brakeman --no-progress --format sarif --output brakeman.sarif
+
+      - name: Upload Brakeman SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@48ab28a6f5dbc2a99bf1e0131198dd8f1df78169 # v3.28.0
+        with:
+          sarif_file: brakeman.sarif
+          category: brakeman
+
+  bundler-audit:
+    name: bundler-audit (vulnerable gems)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@afeafc3d1ab54a631816aba4c914a0081c12ff2f # v1.310.0
+        with:
+          bundler-cache: true
+
+      - name: Update advisory database and check Gemfile.lock
+        run: |
+          bundle exec bundle-audit update
+          bundle exec bundle-audit check
+
+  semgrep:
+    name: Semgrep (SAST + secrets, report-only)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Install Semgrep
+        run: python3 -m pip install --no-cache-dir semgrep==1.164.0
+
+      - name: Run Semgrep
+        continue-on-error: true
+        run: |
+          semgrep scan \
+            --config p/ruby \
+            --config p/rails \
+            --config p/secrets \
+            --config p/owasp-top-ten \
+            --sarif --output semgrep.sarif
+        env:
+          SEMGREP_SEND_METRICS: 'off'
+
+      - name: Upload Semgrep SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@48ab28a6f5dbc2a99bf1e0131198dd8f1df78169 # v3.28.0
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep
+
+  gitleaks:
+    name: gitleaks (secret scan, diff)
+    runs-on: ubuntu-latest
+    # Scan only the PR/push diff in CI. Full git history is scanned via the
+    # documented local command (see SECURITY-SCANNING.md), not on a schedule,
+    # to avoid repeatedly flagging already-known historical commits.
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: Run gitleaks
+        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

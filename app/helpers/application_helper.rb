@@ -123,6 +123,11 @@ module ApplicationHelper
       icon_name: 'github',
       label: 'Sign in with GitHub',
       css_class: 'bg-[#24292f] text-white hover:bg-[#383f47] border-[#24292f]'
+    },
+    apple: {
+      icon_name: 'apple',
+      label: 'Sign in with Apple',
+      css_class: 'bg-black text-white hover:bg-gray-900 border-black'
     }
   }.freeze
 
@@ -135,6 +140,12 @@ module ApplicationHelper
     providers = resource_class.omniauth_providers
     providers = providers.reject { |p| p == :google_oauth2 } if mobile_browser?
     providers
+  end
+
+  def apple_web_sign_in_available?
+    return false unless defined?(APPLE_WEB_SIGN_IN_ENABLED) && APPLE_WEB_SIGN_IN_ENABLED
+
+    !mobile_browser?
   end
 
   def oauth_button_config(provider)

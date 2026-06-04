@@ -2,7 +2,5 @@
   <% if !visit.confirmed? %>
     <%= link_to 'Confirm', visit_path(visit, 'visit[status]': :confirmed), data: { turbo_method: :patch }, class: 'btn btn-xs btn-success' %>
   <% end %>
-  <% if !visit.declined? %>
-    <%= link_to 'Decline', visit_path(visit, 'visit[status]': :declined), data: { turbo_method: :patch }, class: 'btn btn-xs btn-error mx-1' %>
-  <% end %>
+  <%= link_to 'Delete', visit_path(visit), data: { turbo_method: :delete, turbo_confirm: 'Delete this visit? Your location points stay.' }, class: 'btn btn-xs btn-error mx-1' %>
 <% end %>

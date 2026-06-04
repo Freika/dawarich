@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 
 - "What's New" changelog notices in the navbar. On self-hosted instances each user is asked once before any external request is made, and the widget script loads only after they opt in; on Cloud signed-in users see it automatically. You can turn notices on or off anytime from Settings → General. Self-hosters can point the widget at their own instance with `CHIBICHANGE_WIDGET_HOST` and `CHIBICHANGE_SLUG`. #2849
+- Sign in with Apple on the web (Dawarich Cloud only). The button appears on the sign-in/sign-up pages when configured, and is hidden on self-hosted instances and inside mobile in-app browsers.
 - Opt-in non-ML "stay-point" visit detection, behind the per-user `stay_point_detection` feature flag (default off). A single-pass dwell detector that fixes the old clusterer's slow-stay false-rejects and dead-battery gap splits, and stores a 0–100 confidence score per suggested visit (exposed via the API). #2832
 
   Enable it (Rails console):
@@ -17,9 +18,22 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   - Or toggle in `/admin/flipper`
   - Re-detect past history: `Visits::FullHistoryRedetectJob.perform_later(user.id)`
 
+- Map v2 Timeline: every visit now has a search icon. Click it to find the actual place by name — a type-as-you-go lookup against your configured geocoder (Photon), biased to the visit's location, with each result showing its category and distance, plus any of your saved Areas nearby. Pick a result to label the visit, or create a new place on the spot when nothing matches. Choosing a place far from the visit asks before relocating it, and the map marker updates immediately.
+
+### Changed
+
+- Declining a visit is now **deleting** a visit. The Decline action — per-visit, "Delete all" for a day, the bulk selection bar, and the Map v2 area-selection card — is replaced by **Delete**, which asks for confirmation and removes the visit entirely. Your underlying location points are always kept. The "Declined" filter and the Restore action have been removed.
+
 ### Fixed
 
+- Deleting a single point on the map (via its info card) now redraws the connecting route immediately, instead of leaving a stale line through the removed point until a page reload. (#2844)
+- The official Traccar client app is now supported directly, as the docs describe. Its location payload nests coordinates, battery and activity one level deeper than Dawarich's own mobile client, so points sent by the Traccar client were silently dropped instead of ingested. Both payload shapes are now accepted. #2741
+- Deleting an import now also removes any tracks left with no points, instead of leaving empty "ghost" tracks visible on the map and timeline. #2825
+- Mobile menu items at the bottom of the list (such as "Family members") are no longer hidden behind the browser's address bar. The map layout now sizes to the dynamic viewport height so content stays reachable when mobile browser chrome is visible. (#2249)
+- Date and time picker icons (and other native form controls) are now legible on the dark theme. The dark theme now declares a dark `color-scheme`, so the browser renders calendar/clock indicators in light-on-dark instead of a near-invisible dark glyph. (#2765)
 - Reverse geocoding (and other background work) no longer stalls behind GPS anomaly detection. Every incoming location used to trigger an anomaly check that re-scanned the whole current month of points — up to ~30 seconds late in a busy tracking month — and those jobs monopolized the worker pool, starving the reverse-geocoding queue. The check now inspects only the newly-received points plus their immediate neighbours, so it runs in milliseconds regardless of how full the month is.
+- Renaming a suggested visit no longer auto-confirms it. Editing the name — or just opening the inline rename and clicking away — used to silently mark the visit confirmed and create a place from the typed text. Renaming now only changes the name; confirming happens solely through the suggested-place picker.
+- Map v2 Timeline calendar: the per-day "suggested visits" dot now clears as soon as you confirm or delete the last suggestion for that day, instead of lingering until a full page reload.
 
 ## [1.7.11] - 2026-05-31
 

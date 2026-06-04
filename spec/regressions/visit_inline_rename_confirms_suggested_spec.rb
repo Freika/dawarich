@@ -27,55 +27,20 @@ RSpec.describe 'Inline rename of a suggested visit', type: :request do
       expect(visit.reload.name).to eq('My Coffee Spot')
     end
 
-    it 'auto-confirms the visit' do
+    it 'does NOT confirm the visit — status stays suggested' do
       patch visit_url(visit), params: { visit: { name: 'My Coffee Spot' } }, as: :turbo_stream
 
-      expect(visit.reload.status).to eq('confirmed')
+      expect(visit.reload.status).to eq('suggested')
     end
 
-    it 'creates a new user-owned Place from the typed name and links it to the visit' do
-      expect do
-        patch visit_url(visit), params: { visit: { name: 'My Coffee Spot' } }, as: :turbo_stream
-      end.to change(Place, :count).by(1)
-
-      created = user.places.find_by(name: 'My Coffee Spot')
-      expect(created).to be_present
-      expect(created.user_id).to eq(user.id)
-      expect(visit.reload.place_id).to eq(created.id)
-    end
-
-    it 'positions the new Place at the visit center' do
-      patch visit_url(visit), params: { visit: { name: 'My Coffee Spot' } }, as: :turbo_stream
-
-      created = user.places.find_by(name: 'My Coffee Spot')
-      lat, lon = visit.reload.center
-      expect(created.latitude.to_f).to be_within(0.0001).of(lat)
-      expect(created.longitude.to_f).to be_within(0.0001).of(lon)
-    end
-
-    it 'reuses an existing user-owned Place near the visit when the typed name matches' do
-      lat, lon = visit.center
-      existing = create(:place, user:, name: 'My Coffee Spot', latitude: lat, longitude: lon)
+    it 'does not create a new Place or change place_id' do
+      original_place_id = visit.place_id
 
       expect do
         patch visit_url(visit), params: { visit: { name: 'My Coffee Spot' } }, as: :turbo_stream
       end.not_to change(Place, :count)
 
-      expect(visit.reload.place_id).to eq(existing.id)
-    end
-
-    it 'does not reuse another user\'s same-name place near the visit center' do
-      lat, lon = visit.center
-      other_user = create(:user)
-      create(:place, user: other_user, name: 'My Coffee Spot', latitude: lat, longitude: lon)
-
-      expect do
-        patch visit_url(visit), params: { visit: { name: 'My Coffee Spot' } }, as: :turbo_stream
-      end.to change(Place, :count).by(1)
-
-      created = user.places.find_by(name: 'My Coffee Spot')
-      expect(created).to be_present
-      expect(created.user_id).to eq(user.id)
+      expect(visit.reload.place_id).to eq(original_place_id)
     end
   end
 
@@ -95,7 +60,7 @@ RSpec.describe 'Inline rename of a suggested visit', type: :request do
   describe 'PATCH /visits/:id with blank visit[name] on a suggested visit' do
     let(:visit) { create(:visit, user:, status: :suggested, name: 'Original') }
 
-    it 'is a no-op for name and does not auto-confirm or create a Place' do
+    it 'is a no-op for name and does not confirm or create a Place' do
       expect do
         patch visit_url(visit), params: { visit: { name: '   ' } }, as: :turbo_stream
       end.not_to change(Place, :count)
@@ -108,14 +73,15 @@ RSpec.describe 'Inline rename of a suggested visit', type: :request do
   describe 'PATCH /visits/:id with rename on a suggested visit that has no resolvable center' do
     let(:visit) { create(:visit, user:, area: nil, place: nil, status: :suggested, name: 'Visit') }
 
-    it 'does not create a Place at [0, 0] and surfaces a 422' do
+    it 'renames the visit without error and leaves status suggested' do
       expect(visit.center).to eq([0, 0])
 
       expect do
         patch visit_url(visit), params: { visit: { name: 'My Coffee Spot' } }, as: :turbo_stream
       end.not_to change(Place, :count)
 
-      expect(response).to have_http_status(:unprocessable_content)
+      expect(response).to have_http_status(:ok)
+      expect(visit.reload.name).to eq('My Coffee Spot')
       expect(visit.reload.status).to eq('suggested')
     end
   end
@@ -130,12 +96,13 @@ RSpec.describe 'Inline rename of a suggested visit', type: :request do
 
     before { create(:place_visit, visit:, place: nearby_place) }
 
-    it 'stores the trimmed name on both visit and Place' do
-      patch visit_url(visit), params: { visit: { name: '  My Coffee Spot  ' } }, as: :turbo_stream
+    it 'stores the trimmed name on the visit and does not create a Place' do
+      expect do
+        patch visit_url(visit), params: { visit: { name: '  My Coffee Spot  ' } }, as: :turbo_stream
+      end.not_to change(Place, :count)
 
-      created = user.places.find_by(name: 'My Coffee Spot')
-      expect(created).to be_present
       expect(visit.reload.name).to eq('My Coffee Spot')
+      expect(visit.reload.status).to eq('suggested')
     end
   end
 

@@ -125,4 +125,53 @@ RSpec.describe Auth::FindOrCreateOauthUser do
         .not_to have_enqueued_job(Users::CreationWebhookJob)
     end
   end
+
+  describe 'name_attrs persistence' do
+    let(:claims) { { sub: '000.apple.web', email: 'newperson@example.com' } }
+
+    it 'persists first_name and last_name when supplied for a newly created user' do
+      user, created = described_class.new(
+        provider: 'apple',
+        provider_label: 'Sign in with Apple',
+        claims: claims,
+        email_verified: true,
+        name_attrs: { first_name: 'Grace', last_name: 'Hopper' }
+      ).call
+
+      expect(created).to be true
+      expect(user.first_name).to eq('Grace')
+      expect(user.last_name).to eq('Hopper')
+    end
+
+    it 'ignores name_attrs for an already-existing identity (no overwrite)' do
+      create(:user,
+             provider: 'apple', uid: '000.apple.web',
+             email: 'newperson@example.com', first_name: 'Original', last_name: 'Name')
+
+      user, created = described_class.new(
+        provider: 'apple',
+        provider_label: 'Sign in with Apple',
+        claims: claims,
+        email_verified: true,
+        name_attrs: { first_name: 'New', last_name: 'Override' }
+      ).call
+
+      expect(created).to be false
+      expect(user.first_name).to eq('Original')
+      expect(user.last_name).to eq('Name')
+    end
+
+    it 'is a no-op when name_attrs is empty or nil' do
+      user, = described_class.new(
+        provider: 'apple',
+        provider_label: 'Sign in with Apple',
+        claims: claims,
+        email_verified: true,
+        name_attrs: nil
+      ).call
+
+      expect(user.first_name).to be_nil
+      expect(user.last_name).to be_nil
+    end
+  end
 end

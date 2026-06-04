@@ -1,0 +1,112 @@
+name: Trivy
+
+on:
+  pull_request:
+  push:
+    branches: [master, dev]
+  schedule:
+    - cron: '30 5 * * 1' # Mondays 05:30 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: trivy-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  TRIVY_IMAGE: ghcr.io/aquasecurity/trivy:0.65.0
+
+jobs:
+  image:
+    name: Trivy image scan (OS/library CVEs, report-only)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      packages: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Install JS dependencies
+        run: npm install
+
+      - name: Build image
+        run: docker build -f docker/Dockerfile -t dawarich:scan .
+
+      - name: Log in to ghcr.io
+        run: echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
+        env:
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Report-only on the first pass (exit-code 0): findings still upload to the
+      # Security tab. To gate merges on fixable HIGH/CRITICAL CVEs, set --exit-code 1.
+      - name: Trivy image scan
+        run: |
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "${{ github.workspace }}:/work" -w /work \
+            -e TRIVY_USERNAME -e TRIVY_PASSWORD \
+            "$TRIVY_IMAGE" \
+            image \
+              --scanners vuln \
+              --severity HIGH,CRITICAL \
+              --ignore-unfixed \
+              --format sarif \
+              --output /work/trivy-image.sarif \
+              --exit-code 0 \
+              dawarich:scan
+        env:
+          TRIVY_USERNAME: ${{ github.actor }}
+          TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Trivy image SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@48ab28a6f5dbc2a99bf1e0131198dd8f1df78169 # v3.28.0
+        with:
+          sarif_file: trivy-image.sarif
+          category: trivy-image
+
+  config:
+    name: Trivy config scan (Dockerfile/IaC misconfig, report-only)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      packages: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Log in to ghcr.io
+        run: echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
+        env:
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Trivy config scan
+        continue-on-error: true
+        run: |
+          docker run --rm \
+            -v "${{ github.workspace }}:/work" -w /work \
+            -e TRIVY_USERNAME -e TRIVY_PASSWORD \
+            "$TRIVY_IMAGE" \
+            config /work \
+              --severity HIGH,CRITICAL \
+              --format sarif \
+              --output /work/trivy-config.sarif \
+              --exit-code 0
+        env:
+          TRIVY_USERNAME: ${{ github.actor }}
+          TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Trivy config SARIF
+        if: always()
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@48ab28a6f5dbc2a99bf1e0131198dd8f1df78169 # v3.28.0
+        with:
+          sarif_file: trivy-config.sarif
+          category: trivy-config

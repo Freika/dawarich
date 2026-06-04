@@ -743,6 +743,43 @@ export class ApiClient {
   }
 
   /**
+   * Delete a single visit
+   * @param {number} visitId - Visit ID to delete
+   * @returns {Promise<Object>} Deleted visit payload
+   */
+  async deleteVisit(visitId) {
+    const response = await fetch(`${this.baseURL}/visits/${visitId}`, {
+      method: "DELETE",
+      headers: this.getHeaders(),
+    })
+
+    if (!response.ok) {
+      throw new Error(`Failed to delete visit: ${response.statusText}`)
+    }
+
+    return response.json()
+  }
+
+  /**
+   * Bulk delete visits
+   * @param {Array<number>} visitIds - Array of visit IDs to delete
+   * @returns {Promise<Object>} { message, count }
+   */
+  async bulkDestroyVisits(visitIds) {
+    const response = await fetch(`${this.baseURL}/visits/bulk_destroy`, {
+      method: "DELETE",
+      headers: this.getHeaders(),
+      body: JSON.stringify({ visit_ids: visitIds }),
+    })
+
+    if (!response.ok) {
+      throw new Error(`Failed to delete visits: ${response.statusText}`)
+    }
+
+    return response.json()
+  }
+
+  /**
    * Bulk update visit status
    * @param {Array<number>} visitIds - Array of visit IDs to update
    * @param {string} status - 'confirmed' or 'declined'

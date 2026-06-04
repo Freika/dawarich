@@ -116,6 +116,16 @@ RSpec.describe Users::DigestsMailer, type: :mailer do
       expect(mail.html_part.body.to_s).to include('email-digests')
     end
 
+    it 'tags outbound links with monthly_digest UTM parameters in both parts' do
+      [mail.html_part.body.to_s, mail.text_part.body.to_s].each do |body|
+        expect(body).to include('utm_source=email')
+        expect(body).to include('utm_medium=email')
+        expect(body).to include('utm_campaign=monthly_digest')
+        expect(body).to include('utm_content=view_insights')
+        expect(body).to include('utm_content=manage_preferences')
+      end
+    end
+
     context 'when monthly_distances is stored as Array of [day, distance] pairs (pre-normalization data)' do
       let(:digest) do
         create(:users_digest,

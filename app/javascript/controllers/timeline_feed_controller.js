@@ -22,8 +22,6 @@ export default class extends Controller {
     "mergeButton",
     "confirmForm",
     "confirmButton",
-    "declineForm",
-    "declineButton",
     "deleteForm",
     "deleteButton",
   ]
@@ -844,14 +842,6 @@ export default class extends Controller {
     return this.scopedQuery('[data-timeline-feed-target="confirmButton"]')
   }
 
-  activeDeclineForm() {
-    return this.scopedQuery('[data-timeline-feed-target="declineForm"]')
-  }
-
-  activeDeclineButton() {
-    return this.scopedQuery('[data-timeline-feed-target="declineButton"]')
-  }
-
   activeDeleteForm() {
     return this.scopedQuery('[data-timeline-feed-target="deleteForm"]')
   }
@@ -890,7 +880,6 @@ export default class extends Controller {
     }
     for (const [getter, label] of [
       [this.activeConfirmButton.bind(this), "Confirm"],
-      [this.activeDeclineButton.bind(this), "Decline"],
       [this.activeDeleteButton.bind(this), "Delete"],
     ]) {
       const btn = getter()
@@ -912,14 +901,6 @@ export default class extends Controller {
     this.submitBulkAction(event, {
       formGetter: this.activeConfirmForm.bind(this),
       buttonGetter: this.activeConfirmButton.bind(this),
-      minSelected: 1,
-    })
-  }
-
-  submitBulkDecline(event) {
-    this.submitBulkAction(event, {
-      formGetter: this.activeDeclineForm.bind(this),
-      buttonGetter: this.activeDeclineButton.bind(this),
       minSelected: 1,
     })
   }

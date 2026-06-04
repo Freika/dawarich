@@ -19,10 +19,11 @@
                       method: :patch,
                       data: { testid: 'bulk-confirm-day' },
                       class: 'btn btn-xs btn-success' %>
-        <%= button_to 'Decline all',
-                      bulk_update_visits_path(status: :declined, source_status: :suggested, date: date),
-                      method: :patch,
-                      class: 'btn btn-xs btn-outline' %>
+        <%= button_to 'Delete all',
+                      bulk_destroy_visits_path(source_status: :suggested, date: date),
+                      method: :delete,
+                      data: { turbo_confirm: "Delete all #{pluralize(suggested_count, 'suggested visit')} for this day? Your location points stay." },
+                      class: 'btn btn-xs btn-outline btn-error' %>
       </div>
     </div>
   <% end %>

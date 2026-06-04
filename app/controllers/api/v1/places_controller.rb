@@ -103,6 +103,33 @@ module Api
         render json: { places: results }
       end
 
+      def search
+        unless params[:lat].present? && params[:lon].present?
+          return render json: { error: 'lat and lon are required' }, status: :bad_request
+        end
+
+        lat = params[:lat].to_f
+        lon = params[:lon].to_f
+        unless lat.between?(-90, 90) && lon.between?(-180, 180)
+          return render json: { error: 'Invalid coordinates' }, status: :bad_request
+        end
+
+        radius = [[params[:radius]&.to_f || 1.0, 0.01].max, 5.0].min
+        limit = params[:limit]&.to_i || 10
+        query = params[:q].to_s.strip
+
+        places =
+          if query.length >= 2
+            Places::Search.new(query: query, latitude: lat, longitude: lon, radius: radius, limit: limit).call
+          else
+            Places::NearbySearch.new(latitude: lat, longitude: lon, radius: radius, limit: limit, cache: true).call
+          end
+
+        areas = Areas::Nearby.new(user: current_api_user, latitude: lat, longitude: lon, radius: radius).call
+
+        render json: { places: places, areas: areas }
+      end
+
       private
 
       def set_place

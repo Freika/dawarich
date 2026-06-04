@@ -1064,14 +1064,6 @@
                 <%= render 'map/timeline_feeds/filter_count',
                            status: 'suggested', count: @status_counts&.dig('suggested').to_i %>
               </label>
-              <label class="timeline-filter-row timeline-filter-row--muted">
-                <input type="checkbox" class="checkbox checkbox-xs"
-                       data-status="declined" data-testid="filter-declined"
-                       data-action="change->timeline-feed#filterChanged" />
-                <span class="flex-1">Declined</span>
-                <%= render 'map/timeline_feeds/filter_count',
-                           status: 'declined', count: @status_counts&.dig('declined').to_i %>
-              </label>
             </div>
 
             <%# Search — filters the currently loaded day's visit rows by

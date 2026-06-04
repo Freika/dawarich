@@ -990,4 +990,12 @@ subscription_source: :none)
       end
     end
   end
+
+  describe 'name columns' do
+    it 'persists first_name and last_name' do
+      user = create(:user, first_name: 'Ada', last_name: 'Lovelace')
+      expect(user.reload.first_name).to eq('Ada')
+      expect(user.reload.last_name).to eq('Lovelace')
+    end
+  end
 end

@@ -54,13 +54,30 @@ class VisitsController < ApplicationController
   end
 
   def bulk_destroy
-    visit_ids = parse_visit_ids(params[:visit_ids])
-    return render_unprocessable('Select at least one visit to delete.') if visit_ids.empty?
-    return render_unprocessable(too_many_visits_message) if visit_ids.length > MAX_BULK_VISIT_IDS
+    explicit_visit_ids = parse_visit_ids(params[:visit_ids])
+
+    if explicit_visit_ids.any?
+      return render_unprocessable(too_many_visits_message) if explicit_visit_ids.length > MAX_BULK_VISIT_IDS
+
+      visits = current_user.scoped_visits.where(id: explicit_visit_ids)
+      if visits.count != explicit_visit_ids.length
+        return render_not_found(message_for_missing_visits(explicit_visit_ids))
+      end
+
+      visit_ids = explicit_visit_ids
+    elsif params[:date].present? && params[:source_status].present?
+      source_status = params[:source_status]
+      scope = current_user.scoped_visits.where(status: source_status)
+      scope = apply_date_scope(scope)
+      return render_unprocessable(too_many_visits_message) if scope.count > MAX_BULK_VISIT_IDS
+
+      visit_ids = scope.pluck(:id)
+      return render_unprocessable('No matching visits found.') if visit_ids.empty?
+    else
+      return render_unprocessable('Select at least one visit to delete.')
+    end
 
     visits = current_user.scoped_visits.where(id: visit_ids)
-    return render_not_found(message_for_missing_visits(visit_ids)) if visits.count != visit_ids.length
-
     @affected_started_at = visits.pluck(:started_at)
 
     service = Visits::BulkDestroy.new(current_user, visit_ids)
@@ -82,10 +99,14 @@ class VisitsController < ApplicationController
 
   def update
     params_to_update = visit_params.to_h
-    params_to_update.delete(:name) if params_to_update[:name].is_a?(String) && params_to_update[:name].strip.empty?
-
-    auto_confirm_result = maybe_auto_confirm_with_user_place!(params_to_update)
-    return render_unprocessable('Could not save the typed name as a place.') if auto_confirm_result == :place_invalid
+    if params_to_update[:name].is_a?(String)
+      stripped = params_to_update[:name].strip
+      if stripped.empty?
+        params_to_update.delete(:name)
+      else
+        params_to_update[:name] = stripped
+      end
+    end
 
     if params_to_update[:place_id].present?
       raw_place_id = params_to_update[:place_id]
@@ -138,15 +159,14 @@ class VisitsController < ApplicationController
   end
 
   def destroy
+    tz = current_user.safe_settings.timezone.presence || 'UTC'
+    day_date = Time.use_zone(tz) { @visit.started_at.in_time_zone.to_date.to_s }
     @affected_started_at = [@visit.started_at]
     @visit.destroy!
 
     respond_to do |format|
       format.turbo_stream do
-        render turbo_stream: [
-          turbo_stream.remove("visit_item_#{@visit.id}"),
-          suggestions_badge_stream
-        ]
+        render turbo_stream: build_destroy_streams(day_date)
       end
       format.html { redirect_to build_timeline_url(date: 'today'), status: :see_other }
     end
@@ -241,9 +261,17 @@ class VisitsController < ApplicationController
     streams << turbo_stream.replace('filter-count-declined',
                                     partial: 'map/timeline_feeds/filter_count',
                                     locals: { status: 'declined', count: status_counts['declined'].to_i })
+    streams << calendar_frame_stream(date_str)
     streams << suggestions_badge_stream
     streams << stream_flash(:notice, "#{count} #{'visit'.pluralize(count)} #{status}.")
     streams
+  end
+
+  def calendar_frame_stream(date)
+    month = date.to_s[0, 7]
+    turbo_stream.replace('timeline-calendar-frame',
+                         partial: 'map/timeline_feeds/calendar',
+                         locals: { summary: Timeline::MonthSummary.new(user: current_user, month: month).call })
   end
 
   # Turbo streams emitted on a successful #update:
@@ -279,6 +307,7 @@ class VisitsController < ApplicationController
       turbo_stream.replace('filter-count-declined',
                            partial: 'map/timeline_feeds/filter_count',
                            locals: { status: 'declined', count: status_counts['declined'].to_i }),
+      calendar_frame_stream(day_date),
       suggestions_badge_stream,
       stream_flash(:notice, "Visit #{@visit.status}.")
     ]
@@ -319,45 +348,6 @@ class VisitsController < ApplicationController
 
   def confirming_suggested_visit?(params_to_update = visit_params)
     params_to_update[:status] == 'confirmed' && @visit.suggested? && params_to_update[:name].blank?
-  end
-
-  PLACE_NAME_MAX_LENGTH = 200
-
-  def maybe_auto_confirm_with_user_place!(params_to_update)
-    return :noop unless @visit.suggested?
-    return :noop if params_to_update[:place_id].present?
-    return :noop if params_to_update[:status].present? && params_to_update[:status] != 'suggested'
-
-    name = params_to_update[:name].to_s.strip
-    return :noop if name.blank?
-
-    name = name[0, PLACE_NAME_MAX_LENGTH]
-    params_to_update[:name] = name
-
-    place = find_or_create_user_place_for_rename(name)
-    return :place_invalid unless place
-
-    params_to_update[:place_id] = place.id
-    params_to_update[:status] = 'confirmed'
-    :auto_confirmed
-  end
-
-  def find_or_create_user_place_for_rename(name)
-    lat, lon = @visit.center
-    return nil if lat.blank? || lon.blank?
-    return nil if lat.to_f.zero? && lon.to_f.zero?
-
-    existing = current_user.places.where(name: name).near([lat, lon], 50, :m).first
-    return existing if existing
-
-    current_user.places.create!(
-      name: name,
-      latitude: lat,
-      longitude: lon,
-      source: :manual
-    )
-  rescue ActiveRecord::RecordInvalid
-    nil
   end
 
   def auto_name_on_confirm
@@ -420,6 +410,34 @@ class VisitsController < ApplicationController
     streams
   end
 
+  def build_destroy_streams(day_date)
+    tz = current_user.safe_settings.timezone.presence || 'UTC'
+    day_range = Time.use_zone(tz) { Date.parse(day_date).in_time_zone.all_day }
+    day_suggested_count = current_user.scoped_visits
+                                      .where(started_at: day_range, status: :suggested)
+                                      .count
+    status_counts = month_status_counts(day_date)
+
+    [
+      turbo_stream.remove("visit_entry_#{@visit.id}"),
+      turbo_stream.replace("day-banner-#{day_date}",
+                           partial: 'map/timeline_feeds/day_banner',
+                           locals: { date: day_date, suggested_count: day_suggested_count }),
+      turbo_stream.replace('filter-count-confirmed',
+                           partial: 'map/timeline_feeds/filter_count',
+                           locals: { status: 'confirmed', count: status_counts['confirmed'].to_i }),
+      turbo_stream.replace('filter-count-suggested',
+                           partial: 'map/timeline_feeds/filter_count',
+                           locals: { status: 'suggested', count: status_counts['suggested'].to_i }),
+      turbo_stream.replace('filter-count-declined',
+                           partial: 'map/timeline_feeds/filter_count',
+                           locals: { status: 'declined', count: status_counts['declined'].to_i }),
+      calendar_frame_stream(day_date),
+      suggestions_badge_stream,
+      stream_flash(:notice, 'Visit removed. Your location points are still here.')
+    ]
+  end
+
   def build_bulk_destroy_streams(count)
     tz = current_user.safe_settings.timezone.presence || 'UTC'
     affected_dates = Time.use_zone(tz) do
@@ -432,6 +450,7 @@ class VisitsController < ApplicationController
     day_stream = build_day_frame_stream(visible_date, tz)
     streams << day_stream if day_stream
     streams.concat(filter_count_streams(counts_date_str))
+    streams << calendar_frame_stream(counts_date_str)
     streams << suggestions_badge_stream
     streams << stream_flash(:notice, bulk_destroy_success_message(count))
     streams

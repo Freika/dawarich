@@ -1797,7 +1797,8 @@ export default class extends Controller {
 
   /**
    * Delete a single point with confirmation, then remove it from the points
-   * source so the map updates without a full reload.
+   * source and rebuild the connecting routes so the map updates without a
+   * full reload.
    */
   async deletePoint(pointId) {
     const confirmed = confirm(
@@ -1818,6 +1819,8 @@ export default class extends Controller {
           (f) => Number(f.properties?.id) !== numericId,
         )
         source.setData(data)
+        pointsLayer.data = data
+        await this.routesManager.reloadRoutes()
       }
 
       this.closeInfo()

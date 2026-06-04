@@ -64,6 +64,14 @@ OIDC_PROVIDER_NAME = ENV.fetch('OIDC_PROVIDER_NAME', 'Openid Connect').freeze
 # OIDC auto-registration setting (default: true for backward compatibility)
 OIDC_AUTO_REGISTER = ENV.fetch('OIDC_AUTO_REGISTER', 'true') == 'true'
 
+APPLE_WEB_SIGN_IN_ENABLED =
+  !SELF_HOSTED &&
+  ENV['APPLE_WEB_SERVICES_ID'].present? &&
+  ENV['APPLE_WEB_TEAM_ID'].present? &&
+  ENV['APPLE_WEB_KEY_ID'].present? &&
+  ENV['APPLE_WEB_P8_BASE64'].present? &&
+  ENV['APPLE_WEB_REDIRECT_URI'].present?
+
 # Email/password registration setting (default: false for self-hosted, true for cloud)
 ALLOW_EMAIL_PASSWORD_REGISTRATION = ENV.fetch('ALLOW_EMAIL_PASSWORD_REGISTRATION', 'false') == 'true'
 

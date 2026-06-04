@@ -11,10 +11,14 @@ class Imports::Destroy
   end
 
   def call
+    track_ids = @import.points.where.not(track_id: nil).distinct.pluck(:track_id)
+
     total_deleted = delete_points_in_batches
     User.update_counters(@user.id, points_count: -total_deleted) if total_deleted.positive?
 
     @import.destroy!
+
+    destroy_orphaned_tracks(track_ids)
 
     Rails.logger.info "Import #{@import.id} deleted with #{total_deleted} points"
 
@@ -22,6 +26,12 @@ class Imports::Destroy
   end
 
   private
+
+  def destroy_orphaned_tracks(track_ids)
+    return if track_ids.empty?
+
+    Track.where(id: track_ids).where.missing(:points).find_each(&:destroy)
+  end
 
   def delete_points_in_batches
     total_deleted = 0

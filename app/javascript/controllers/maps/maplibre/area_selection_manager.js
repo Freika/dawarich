@@ -6,7 +6,7 @@ import { pointsToGeoJSON } from "maps_maplibre/utils/geojson_transformers"
 
 /**
  * Manages area selection and bulk operations for Maps V2
- * Handles selection mode, visit cards, and bulk actions (merge, confirm, decline)
+ * Handles selection mode, visit cards, and bulk actions (merge, confirm, delete)
  */
 export class AreaSelectionManager {
   constructor(controller) {
@@ -227,11 +227,11 @@ export class AreaSelectionManager {
       })
 
     this.controller.element
-      .querySelectorAll("[data-visit-decline]")
+      .querySelectorAll("[data-visit-delete]")
       .forEach((btn) => {
         btn.addEventListener("click", async (e) => {
-          const visitId = parseInt(e.currentTarget.dataset.visitDecline, 10)
-          await this.declineVisit(visitId)
+          const visitId = parseInt(e.currentTarget.dataset.visitDelete, 10)
+          await this.deleteVisit(visitId)
         })
       })
   }
@@ -284,11 +284,11 @@ export class AreaSelectionManager {
                 </svg>
                 Confirm
               </button>
-              <button class="btn btn-xs btn-outline btn-error normal-case" data-bulk-decline>
+              <button class="btn btn-xs btn-outline btn-error normal-case" data-bulk-delete>
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
-                Decline
+                Delete
               </button>
             </div>
           </div>
@@ -298,14 +298,14 @@ export class AreaSelectionManager {
 
         const mergeBtn = bulkActionsDiv.querySelector("[data-bulk-merge]")
         const confirmBtn = bulkActionsDiv.querySelector("[data-bulk-confirm]")
-        const declineBtn = bulkActionsDiv.querySelector("[data-bulk-decline]")
+        const deleteBtn = bulkActionsDiv.querySelector("[data-bulk-delete]")
 
         if (mergeBtn)
           mergeBtn.addEventListener("click", () => this.bulkMergeVisits())
         if (confirmBtn)
           confirmBtn.addEventListener("click", () => this.bulkConfirmVisits())
-        if (declineBtn)
-          declineBtn.addEventListener("click", () => this.bulkDeclineVisits())
+        if (deleteBtn)
+          deleteBtn.addEventListener("click", () => this.bulkDeleteVisits())
       }
     }
   }
@@ -325,15 +325,18 @@ export class AreaSelectionManager {
   }
 
   /**
-   * Decline a single visit
+   * Delete a single visit
    */
-  async declineVisit(visitId) {
+  async deleteVisit(visitId) {
+    if (!window.confirm("Delete this visit? Your location points stay.")) {
+      return
+    }
     try {
-      await this.api.updateVisitStatus(visitId, "declined")
-      Toast.success("Visit declined")
+      await this.api.deleteVisit(visitId)
+      Toast.success("Visit deleted")
       await this.refreshSelectedVisits()
     } catch (_error) {
-      Toast.error("Failed to decline visit")
+      Toast.error("Failed to delete visit")
     }
   }
 
@@ -384,25 +387,31 @@ export class AreaSelectionManager {
   }
 
   /**
-   * Bulk decline selected visits
+   * Bulk delete selected visits
    */
-  async bulkDeclineVisits() {
+  async bulkDeleteVisits() {
     const visitIds = Array.from(this.selectedVisitIds)
 
-    if (!confirm(`Decline ${visitIds.length} visits?`)) {
+    if (
+      !window.confirm(
+        `Delete ${visitIds.length} visit${visitIds.length === 1 ? "" : "s"}? Your location points stay.`,
+      )
+    ) {
       return
     }
 
     try {
-      Toast.info("Declining visits...")
-      await this.api.bulkUpdateVisits(visitIds, "declined")
-      Toast.success(`Declined ${visitIds.length} visits`)
+      Toast.info("Deleting visits...")
+      await this.api.bulkDestroyVisits(visitIds)
+      Toast.success(
+        `Deleted ${visitIds.length} visit${visitIds.length === 1 ? "" : "s"}`,
+      )
 
       this.selectedVisitIds.clear()
       await this.refreshSelectedVisits()
     } catch (error) {
-      console.error("[Maps V2] Failed to decline visits:", error)
-      Toast.error("Failed to decline visits")
+      console.error("[Maps V2] Failed to delete visits:", error)
+      Toast.error("Failed to delete visits")
     }
   }
 
