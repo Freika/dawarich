@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
+- "What's New" changelog notices in the navbar. On self-hosted instances each user is asked once before any external request is made, and the widget script loads only after they opt in; on Cloud signed-in users see it automatically. You can turn notices on or off anytime from Settings → General. Self-hosters can point the widget at their own instance with `CHIBICHANGE_WIDGET_HOST` and `CHIBICHANGE_SLUG`. #2849
 - Opt-in non-ML "stay-point" visit detection, behind the per-user `stay_point_detection` feature flag (default off). A single-pass dwell detector that fixes the old clusterer's slow-stay false-rejects and dead-battery gap splits, and stores a 0–100 confidence score per suggested visit (exposed via the API). #2832
 
   Enable it (Rails console):

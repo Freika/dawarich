@@ -13,7 +13,9 @@ class SettingsController < ApplicationController
 
   def changelog_consent
     decision = params[:decision].to_s
-    current_user.update!(changelog_consent: decision) if CHANGELOG_DECISIONS.include?(decision)
+    return head :unprocessable_entity unless CHANGELOG_DECISIONS.include?(decision)
+
+    current_user.update!(changelog_consent: decision)
 
     respond_to do |format|
       format.turbo_stream

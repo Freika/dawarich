@@ -1,0 +1,30 @@
+<div id="changelog-consent-setting" class="card bg-base-200 shadow-xl">
+  <div class="card-body">
+    <h2 class="text-2xl font-bold mb-4 flex items-center">
+      <%= icon 'bell', class: "text-primary mr-2" %> What's New notices
+    </h2>
+    <div class="bg-base-100 p-5 rounded-lg shadow-sm space-y-4">
+      <% if current_user.changelog_consent_granted? %>
+        <p class="text-sm text-base-content/70">
+          A "What's New" notice is shown when a new Dawarich version ships,
+          including security fixes. It checks for updates about once a day and
+          sends only your version, app name, and site origin — no IP, no tracking.
+        </p>
+        <%= button_to "Turn off notices", changelog_consent_path,
+              method: :patch, params: { decision: "declined" },
+              class: "btn btn-ghost btn-sm",
+              form: { data: { turbo_stream: true } } %>
+      <% else %>
+        <p class="text-sm text-base-content/70">
+          Get a "What's New" notice when a new Dawarich version ships, including
+          security fixes. It checks for updates about once a day and sends only
+          your version, app name, and site origin — no IP, no tracking.
+        </p>
+        <%= button_to "Turn on notices", changelog_consent_path,
+              method: :patch, params: { decision: "granted" },
+              class: "btn btn-primary btn-sm",
+              form: { data: { turbo_stream: true } } %>
+      <% end %>
+    </div>
+  </div>
+</div>

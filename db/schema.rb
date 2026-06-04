@@ -455,13 +455,13 @@ ActiveRecord::Schema[8.0].define(version: 2026_06_02_125716) do
     t.integer "status", default: 0
     t.datetime "active_until"
     t.integer "points_count", default: 0, null: false
+    t.string "provider"
+    t.string "uid"
     t.string "utm_source"
     t.string "utm_medium"
     t.string "utm_campaign"
     t.string "utm_term"
     t.string "utm_content"
-    t.string "provider"
-    t.string "uid"
     t.datetime "deleted_at"
     t.integer "plan", default: 1, null: false
     t.integer "failed_attempts", default: 0, null: false
@@ -503,9 +503,9 @@ ActiveRecord::Schema[8.0].define(version: 2026_06_02_125716) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.bigint "place_id"
+    t.boolean "demo", default: false, null: false
     t.integer "confidence", limit: 2
     t.jsonb "confidence_breakdown", default: {}, null: false
-    t.boolean "demo", default: false, null: false
     t.index ["area_id"], name: "index_visits_on_area_id"
     t.index ["demo"], name: "index_visits_on_demo_true", where: "(demo = true)"
     t.index ["place_id"], name: "index_visits_on_place_id"

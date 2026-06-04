@@ -26,6 +26,16 @@ RSpec.describe ChangelogHelper, type: :helper do
         user = build(:user, changelog_consent: nil)
         expect(helper.changelog_indicator_state(user)).to eq(:widget)
       end
+
+      it 'shows the widget when consent granted' do
+        user = build(:user, changelog_consent: :granted)
+        expect(helper.changelog_indicator_state(user)).to eq(:widget)
+      end
+
+      it 'respects an explicit opt-out by showing the plain badge' do
+        user = build(:user, changelog_consent: :declined)
+        expect(helper.changelog_indicator_state(user)).to eq(:badge)
+      end
     end
 
     context 'on self-hosted, signed in' do
