@@ -62,7 +62,8 @@ module Points
         return {} unless payload
 
         location = payload[:location] || payload['location'] || {}
-        activity = payload[:activity] || payload['activity'] || {}
+        activity = payload[:activity] || payload['activity'] ||
+                   location[:activity] || location['activity'] || {}
 
         data = {}
         activity_type = activity[:type] || activity['type']

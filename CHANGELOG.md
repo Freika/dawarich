@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- The official Traccar client app is now supported directly, as the docs describe. Its location payload nests coordinates, battery and activity one level deeper than Dawarich's own mobile client, so points sent by the Traccar client were silently dropped instead of ingested. Both payload shapes are now accepted. #2741
 - Reverse geocoding (and other background work) no longer stalls behind GPS anomaly detection. Every incoming location used to trigger an anomaly check that re-scanned the whole current month of points — up to ~30 seconds late in a busy tracking month — and those jobs monopolized the worker pool, starving the reverse-geocoding queue. The check now inspects only the newly-received points plus their immediate neighbours, so it runs in milliseconds regardless of how full the month is.
 - Renaming a suggested visit no longer auto-confirms it. Editing the name — or just opening the inline rename and clicking away — used to silently mark the visit confirmed and create a place from the typed text. Renaming now only changes the name; confirming happens solely through the suggested-place picker.
 - Map v2 Timeline calendar: the per-day "suggested visits" dot now clears as soon as you confirm or delete the last suggestion for that day, instead of lingering until a full page reload.
