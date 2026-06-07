@@ -61,10 +61,9 @@ class Gpx::TrackImporter
 
     elevation = point['ele'].to_f
 
-    {
+    attrs = {
       lonlat: "POINT(#{point['lon'].to_d} #{point['lat'].to_d})",
       altitude: elevation,
-      altitude_decimal: elevation,
       timestamp: Time.zone.parse(point['time']).utc.to_i,
       tracker_id: tracker_id,
       import_id: import.id,
@@ -74,6 +73,8 @@ class Gpx::TrackImporter
       created_at: Time.current,
       updated_at: Time.current
     }
+    attrs[:altitude_decimal] = elevation if Point.altitude_decimal_supported?
+    attrs
   end
 
   def importer_name
