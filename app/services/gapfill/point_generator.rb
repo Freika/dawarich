@@ -17,7 +17,7 @@ module Gapfill
     def build_points
       return [] if @coordinates.size <= 2
 
-      cumulative = cumulative_haversine_distances(@coordinates)
+      cumulative = cumulative_distances(@coordinates)
       total_distance = cumulative.last
       return [] if total_distance.zero?
 
@@ -38,22 +38,13 @@ module Gapfill
 
     private
 
-    def cumulative_haversine_distances(coords)
+    def cumulative_distances(coords)
       distances = [0.0]
-      coords.each_cons(2) do |a, b|
-        distances << distances.last + haversine(a, b)
+      coords.each_cons(2) do |from, to|
+        segment = Geocoder::Calculations.distance_between([from[1], from[0]], [to[1], to[0]], units: :km)
+        distances << distances.last + segment
       end
       distances
-    end
-
-    def haversine(a, b) # rubocop:disable Naming/MethodParameterName
-      r = 6_371_000.0
-      lat1 = a[1] * Math::PI / 180
-      lat2 = b[1] * Math::PI / 180
-      d_lat = lat2 - lat1
-      d_lon = (b[0] - a[0]) * Math::PI / 180
-      h = Math.sin(d_lat / 2)**2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(d_lon / 2)**2
-      2 * r * Math.asin(Math.sqrt(h))
     end
   end
 end
