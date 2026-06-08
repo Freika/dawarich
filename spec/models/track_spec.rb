@@ -9,6 +9,38 @@ RSpec.describe Track, type: :model do
     it { is_expected.to have_many(:track_segments).dependent(:destroy) }
   end
 
+  describe '.delete_orphaned' do
+    let(:user) { create(:user) }
+
+    it 'deletes the tracks and their segments' do
+      orphan = create(:track, user: user)
+      create(:track_segment, track: orphan)
+
+      expect { Track.delete_orphaned([orphan.id]) }
+        .to change { Track.exists?(orphan.id) }.from(true).to(false)
+      expect(TrackSegment.where(track_id: orphan.id)).to be_empty
+    end
+
+    it 'broadcasts a destroyed event to the owner for each deleted track' do
+      orphan = create(:track, user: user)
+
+      expect { Track.delete_orphaned([orphan.id]) }
+        .to(have_broadcasted_to(user).from_channel(TracksChannel)
+        .with { |data| expect(data).to include('action' => 'destroyed', 'track_id' => orphan.id) })
+    end
+
+    it 'returns the number of tracks deleted' do
+      orphans = create_list(:track, 2, user: user)
+
+      expect(Track.delete_orphaned(orphans.map(&:id))).to eq(2)
+    end
+
+    it 'does not broadcast for empty input' do
+      expect { Track.delete_orphaned([]) }
+        .not_to have_broadcasted_to(user).from_channel(TracksChannel)
+    end
+  end
+
   describe 'enums' do
     it do
       is_expected.to define_enum_for(:dominant_mode)

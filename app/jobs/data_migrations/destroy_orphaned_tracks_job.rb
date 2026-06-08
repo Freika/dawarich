@@ -12,8 +12,7 @@ class DataMigrations::DestroyOrphanedTracksJob < ApplicationJob
       ids = Track.where.missing(:points).limit(BATCH_SIZE).pluck(:id)
       break if ids.empty?
 
-      TrackSegment.where(track_id: ids).delete_all
-      total += Track.where(id: ids).delete_all
+      total += Track.delete_orphaned(ids)
     end
 
     Rails.logger.info("[DestroyOrphanedTracksJob] removed #{total} orphaned tracks")

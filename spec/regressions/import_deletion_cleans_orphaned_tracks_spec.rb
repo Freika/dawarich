@@ -44,4 +44,14 @@ RSpec.describe 'Import deletion cleans up tracks left without points' do
     expect(Track.exists?(shared_track.id)).to be(true)
     expect(shared_track.reload.points.count).to eq(1)
   end
+
+  it 'broadcasts the destroyed track so live maps drop the stale route' do
+    import = create(:import, user: user)
+    track = create(:track, user: user)
+    point_on(import: import, track: track, offset: 0)
+
+    expect { Imports::Destroy.new(user, import).call }
+      .to(have_broadcasted_to(user).from_channel(TracksChannel)
+      .with { |data| expect(data).to include('action' => 'destroyed', 'track_id' => track.id) })
+  end
 end
