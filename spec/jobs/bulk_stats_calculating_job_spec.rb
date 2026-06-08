@@ -115,6 +115,14 @@ RSpec.describe BulkStatsCalculatingJob, type: :job do
       end
     end
 
+    context 'with archived users' do
+      it 'skips archived users' do
+        archived = create(:user, status: :active, points_archive_state: :archived)
+        expect(Stats::BulkCalculator).not_to receive(:new).with(archived.id)
+        described_class.new.perform
+      end
+    end
+
     context 'with mixed user types' do
       let(:active_user) { create(:user, status: :active) }
       let(:trial_user) { create(:user, status: :trial) }
@@ -124,7 +132,9 @@ RSpec.describe BulkStatsCalculatingJob, type: :job do
         active_users_relation = double('ActiveRecord::Relation')
         trial_users_relation = double('ActiveRecord::Relation')
 
+        allow(active_users_relation).to receive(:points_active).and_return(active_users_relation)
         allow(active_users_relation).to receive(:pluck).with(:id).and_return([active_user.id])
+        allow(trial_users_relation).to receive(:points_active).and_return(trial_users_relation)
         allow(trial_users_relation).to receive(:pluck).with(:id).and_return([trial_user.id])
 
         allow(User).to receive(:active).and_return(active_users_relation)

@@ -35,6 +35,12 @@ RSpec.describe Users::PointsCounterCorrectionJob do
       expect(inactive_user.reload.points_count).to eq(10)
     end
 
+    it 'does not touch archived users' do
+      archived = create(:user, status: :active, points_archive_state: :archived, points_count: 999)
+      described_class.new.perform
+      expect(archived.reload.points_count).to eq(999)
+    end
+
     it 'handles users with zero points' do
       user.update_column(:points_count, 5)
 
