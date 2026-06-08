@@ -393,6 +393,25 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_27_210000) do
     t.index ["visit_id"], name: "index_points_on_visit_id"
   end
 
+  create_table "points_archives", force: :cascade do |t|
+    t.datetime "archived_at", null: false
+    t.integer "chunk_number", default: 1, null: false
+    t.datetime "created_at", null: false
+    t.datetime "deleted_at"
+    t.jsonb "metadata", default: {}, null: false
+    t.integer "month", null: false
+    t.integer "point_count", null: false
+    t.string "point_ids_checksum", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.datetime "verified_at"
+    t.integer "year", null: false
+    t.index ["deleted_at"], name: "index_points_archives_on_deleted_at"
+    t.index ["user_id", "year", "month"], name: "index_points_archives_on_user_id_and_year_and_month"
+    t.index ["user_id"], name: "index_points_archives_on_user_id"
+    t.index ["verified_at"], name: "index_points_archives_on_verified_at"
+  end
+
   create_table "points_raw_data_archives", force: :cascade do |t|
     t.datetime "archived_at", null: false
     t.integer "chunk_number", default: 1, null: false
@@ -689,6 +708,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_27_210000) do
   add_foreign_key "points", "tracks"
   add_foreign_key "points", "users"
   add_foreign_key "points", "visits"
+  add_foreign_key "points_archives", "users", validate: false
   add_foreign_key "points_raw_data_archives", "users"
   add_foreign_key "posters", "users"
   add_foreign_key "route_videos", "users"
