@@ -15,20 +15,8 @@ module Points
           user.update!(points_archive_state: :active)
         end
 
-        broadcast_complete(user)
-      end
-
-      private
-
-      def broadcast_complete(user)
-        Turbo::StreamsChannel.broadcast_replace_to(
-          "user_#{user.id}_points_restore",
-          target: 'points_archive_status',
-          partial: 'points/archival/status',
-          locals: { user: user }
-        )
-      rescue StandardError => e
-        ExceptionReporter.call(e, "Failed to broadcast restore completion for user #{user.id}")
+        # TODO: broadcast a restore-complete update once the restoring-state UI
+        # (and its `points/archival/status` partial) lands.
       end
     end
   end
