@@ -13,12 +13,25 @@ module Points
 
         ActiveRecord::Base.with_advisory_lock("points_archival:#{user_id}", timeout_seconds: 0) do
           user.update!(points_archive_state: :archiving)
-          Archiver.new.archive_user(user_id)
-          user.update!(points_archive_state: :archived, points_archived_at: Time.current)
+          begin
+            Archiver.new.archive_user(user_id)
+            user.update!(points_archive_state: :archived, points_archived_at: Time.current)
+          rescue StandardError
+            cleanup_partial_archives(user_id)
+            user.update!(points_archive_state: :active)
+            raise
+          end
         end
       end
 
       private
+
+      def cleanup_partial_archives(user_id)
+        Points::Archive.where(user_id:, deleted_at: nil).find_each do |archive|
+          archive.file.purge if archive.file.attached?
+          archive.destroy!
+        end
+      end
 
       def recently_ingested?(user_id, months)
         Point.where(user_id:).where('created_at > ?', months.months.ago).exists?

@@ -30,4 +30,11 @@ RSpec.describe Points::Archival::ArchiveUserJob do
     expect(user.reload.points_archive_state_active?).to be(true)
     expect(Points::Archive.where(user_id: user.id)).to be_empty
   end
+
+  it 'resets state to active and cleans up archives if archiving fails partway' do
+    allow_any_instance_of(Points::Archival::Archiver).to receive(:archive_user).and_raise(StandardError, 'boom')
+    expect { described_class.new.perform(user.id) }.to raise_error(StandardError)
+    expect(user.reload.points_archive_state_active?).to be(true)
+    expect(Points::Archive.where(user_id: user.id, deleted_at: nil)).to be_empty
+  end
 end
