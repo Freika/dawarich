@@ -27,4 +27,11 @@ RSpec.describe Points::Archival::DeleteSweepJob do
     described_class.new.perform
     expect(user.points.reload.count).to eq(3)
   end
+
+  it 'does not delete for a user who is no longer archived (e.g. restoring)' do
+    user.update!(points_archive_state: :restoring)
+    described_class.new.perform
+    expect(user.points.reload.count).to eq(3)
+    expect(Points::Archive.where(user_id: user.id).first.deleted_at).to be_nil
+  end
 end

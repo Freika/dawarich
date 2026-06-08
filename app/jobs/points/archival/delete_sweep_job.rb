@@ -7,13 +7,23 @@ module Points
 
       def perform
         delay_days = ENV.fetch('POINTS_ARCHIVAL_DELETE_DELAY_DAYS', 7).to_i
-        Points::Archive.deletable(delay_days.days.ago).find_each do |archive|
-          ids = verified_point_ids(archive)
-          next if ids.nil?
+        before = delay_days.days.ago
+        user_ids = Points::Archive.deletable(before).distinct.pluck(:user_id)
 
-          delete_rows(archive.user_id, ids)
-          archive.update!(deleted_at: Time.current)
-          reset_counters(archive.user_id)
+        user_ids.each do |user_id|
+          ActiveRecord::Base.with_advisory_lock("points_archival:#{user_id}", timeout_seconds: 0) do
+            user = User.find_by(id: user_id)
+            next unless user&.points_archive_state_archived?
+
+            Points::Archive.deletable(before).where(user_id:).find_each do |archive|
+              ids = verified_point_ids(archive)
+              next if ids.nil?
+
+              delete_rows(archive.user_id, ids)
+              archive.update!(deleted_at: Time.current)
+            end
+            reset_counters(user_id)
+          end
         end
       end
 
