@@ -23,6 +23,7 @@ module Points
 
       def self.dump(point)
         attrs = point.attributes_before_type_cast.slice(*scalar_columns)
+        array_columns.each { |col| attrs[col] = point.public_send(col) if attrs.key?(col) }
         attrs[LONLAT] = ewkb_hex(point.id)
         "#{attrs.to_json}\n"
       end
@@ -62,7 +63,13 @@ module Points
               "#{Point.connection.quote(json_str)}::jsonb"
             end
           elsif array_columns.include?(col)
-            val.nil? ? 'NULL' : "ARRAY[#{Array(val).map { |e| Point.connection.quote(e) }.join(', ')}]::text[]"
+            if val.nil?
+              'NULL'
+            elsif Array(val).empty?
+              "'{}'::text[]"
+            else
+              "ARRAY[#{Array(val).map { |e| Point.connection.quote(e) }.join(', ')}]::text[]"
+            end
           else
             Point.connection.quote(val)
           end

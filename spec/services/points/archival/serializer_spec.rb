@@ -39,4 +39,17 @@ RSpec.describe Points::Archival::Serializer do
 
     expect(Point.find(point.id).raw_data).to eq('foo' => 'bar', 'n' => 42)
   end
+
+  it 'preserves text[] array columns exactly through dump/parse/insert' do
+    point.update!(inrids: %w[zone1 zone2], in_regions: [])
+    line = described_class.dump(Point.where(id: point.id).first)
+    attrs = described_class.parse(line)
+
+    point.destroy!
+    Point.connection.execute(described_class.insert_sql([attrs]))
+
+    restored = Point.find(point.id)
+    expect(restored.inrids).to eq(%w[zone1 zone2])
+    expect(restored.in_regions).to eq([])
+  end
 end
