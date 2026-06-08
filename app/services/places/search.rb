@@ -5,9 +5,10 @@ module Places
     MAX_RESULTS = 10
     FETCH_LIMIT = 50
     MIN_QUERY_LENGTH = 2
+    MAX_QUERY_LENGTH = 200
 
     def initialize(query:, latitude:, longitude:, radius:, limit: MAX_RESULTS)
-      @query = query.to_s.strip
+      @query = query.to_s.strip.first(MAX_QUERY_LENGTH)
       @latitude = latitude.to_f
       @longitude = longitude.to_f
       @radius = radius.to_f

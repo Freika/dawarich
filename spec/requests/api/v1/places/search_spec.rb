@@ -64,6 +64,15 @@ RSpec.describe 'Api::V1::Places::Search', type: :request do
     expect(JSON.parse(response.body)['places']).to eq([])
   end
 
+  it 'caps an overlong query before forwarding it to the geocoder' do
+    allow(Geocoder).to receive(:search).and_return([])
+
+    get '/api/v1/places/search', params: { q: 'a' * 500, lat: lat, lon: lon }, headers: headers
+
+    expect(response).to have_http_status(:success)
+    expect(Geocoder).to have_received(:search).with('a' * Places::Search::MAX_QUERY_LENGTH, anything)
+  end
+
   it 'treats a non-positive limit as at least one result' do
     allow(Geocoder).to receive(:search).and_return([photon(name: 'Café Bravo', plat: lat, plon: lon)])
 
