@@ -11,7 +11,7 @@ module Points
         return unless user.points_archive_state_active?
         return if recently_ingested?(user_id, months)
 
-        ActiveRecord::Base.with_advisory_lock("points_archival:#{user_id}", timeout_seconds: 0) do
+        ActiveRecord::Base.with_advisory_lock!("points_archival:#{user_id}", timeout_seconds: 0) do
           user.update!(points_archive_state: :archiving)
           begin
             Archiver.new.archive_user(user_id)

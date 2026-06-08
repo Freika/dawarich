@@ -24,7 +24,7 @@ module Points
       def self.dump(point)
         attrs = point.attributes_before_type_cast.slice(*scalar_columns)
         array_columns.each { |col| attrs[col] = point.public_send(col) if attrs.key?(col) }
-        attrs[LONLAT] = ewkb_hex(point.id)
+        attrs[LONLAT] = point.has_attribute?('lonlat_ewkb_hex') ? point['lonlat_ewkb_hex'] : ewkb_hex(point.id)
         "#{attrs.to_json}\n"
       end
 
@@ -46,7 +46,7 @@ module Points
         values = rows.map { |attrs| value_tuple(attrs, cols) }.join(', ')
         <<~SQL.squish
           INSERT INTO points (#{col_list}) VALUES #{values}
-          ON CONFLICT (id) DO NOTHING
+          ON CONFLICT DO NOTHING
         SQL
       end
 

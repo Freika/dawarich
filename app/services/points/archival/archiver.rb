@@ -15,8 +15,8 @@ module Points
 
       def months(user_id)
         Point.where(user_id:)
-             .pluck(Arel.sql('DISTINCT EXTRACT(YEAR FROM to_timestamp(timestamp))::int, ' \
-                             'EXTRACT(MONTH FROM to_timestamp(timestamp))::int'))
+             .pluck(Arel.sql("DISTINCT EXTRACT(YEAR FROM to_timestamp(timestamp) AT TIME ZONE 'UTC')::int, " \
+                             "EXTRACT(MONTH FROM to_timestamp(timestamp) AT TIME ZONE 'UTC')::int"))
       end
 
       def archive_month(user_id, year, month)

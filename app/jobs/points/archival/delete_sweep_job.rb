@@ -6,6 +6,8 @@ module Points
       queue_as :archival
 
       def perform
+        return unless Flipper.enabled?(:points_archival)
+
         delay_days = ENV.fetch('POINTS_ARCHIVAL_DELETE_DELAY_DAYS', 7).to_i
         before = delay_days.days.ago
         user_ids = Points::Archive.deletable(before).distinct.pluck(:user_id)

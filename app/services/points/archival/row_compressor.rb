@@ -13,7 +13,11 @@ module Points
         count = 0
         uncompressed_size = 0
 
-        @points.order(:id).find_each(batch_size: 1000) do |point|
+        relation = @points.select(
+          Arel.sql("points.*, encode(ST_AsEWKB(lonlat::geometry), 'hex') AS lonlat_ewkb_hex")
+        )
+
+        relation.order(:id).find_each(batch_size: 1000) do |point|
           line = Serializer.dump(point)
           uncompressed_size += line.bytesize
           gz.write(line)

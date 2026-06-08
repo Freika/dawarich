@@ -40,6 +40,16 @@ RSpec.describe Points::Archival::Serializer do
     expect(Point.find(point.id).raw_data).to eq('foo' => 'bar', 'n' => 42)
   end
 
+  it 'skips a row that collides on the lonlat/timestamp/user_id unique index' do
+    line = described_class.dump(Point.where(id: point.id).first)
+    attrs = described_class.parse(line)
+
+    point.destroy!
+    create(:point, user:, longitude: 13.404954, latitude: 52.520008, timestamp: 1_700_000_000)
+
+    expect { Point.connection.execute(described_class.insert_sql([attrs])) }.not_to raise_error
+  end
+
   it 'preserves text[] array columns exactly through dump/parse/insert' do
     point.update!(inrids: %w[zone1 zone2], in_regions: [])
     line = described_class.dump(Point.where(id: point.id).first)

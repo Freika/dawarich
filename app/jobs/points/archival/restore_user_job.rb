@@ -9,7 +9,7 @@ module Points
         user = User.find(user_id)
         return if user.points_archive_state_active?
 
-        ActiveRecord::Base.with_advisory_lock("points_archival:#{user_id}", timeout_seconds: 0) do
+        ActiveRecord::Base.with_advisory_lock!("points_archival:#{user_id}", timeout_seconds: 0) do
           user.update!(points_archive_state: :restoring)
           Restorer.new.restore_user(user_id)
           user.update!(points_archive_state: :active)
