@@ -4,6 +4,7 @@ class ApiController < ApplicationController
   skip_before_action :verify_authenticity_token
   before_action :set_version_header
   before_action :authenticate_api_key
+  before_action :trigger_points_restore_for_api_user
   before_action :reject_pending_payment!
   after_action :set_rate_limit_headers
 
@@ -45,6 +46,10 @@ class ApiController < ApplicationController
     return head :unauthorized unless current_api_user
 
     true
+  end
+
+  def trigger_points_restore_for_api_user
+    trigger_points_restore_if_archived(current_api_user)
   end
 
   # Users in :pending_payment have signed up but not yet completed checkout

@@ -16,4 +16,15 @@ RSpec.describe 'Points archival restore-on-return', type: :request do
     user.update!(points_archive_state: :restoring)
     expect { get root_path }.not_to have_enqueued_job(Points::Archival::RestoreUserJob)
   end
+
+  context 'when authenticated via API key' do
+    let(:api_user) { create(:user, points_archive_state: :archived) }
+
+    it 'enqueues a restore and flips the user to restoring on first API request' do
+      expect do
+        get api_v1_areas_url, headers: { 'Authorization' => "Bearer #{api_user.api_key}" }
+      end.to have_enqueued_job(Points::Archival::RestoreUserJob).with(api_user.id)
+      expect(api_user.reload.points_archive_state_restoring?).to be(true)
+    end
+  end
 end

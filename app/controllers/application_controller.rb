@@ -303,11 +303,11 @@ status: :see_other
       request.headers['X-Moz'].to_s.casecmp?('prefetch')
   end
 
-  def trigger_points_restore_if_archived
-    return unless current_user&.points_archive_state_archived?
+  def trigger_points_restore_if_archived(user = (current_user if respond_to?(:current_user)))
+    return unless user&.points_archive_state_archived?
 
-    current_user.update!(points_archive_state: :restoring)
-    Points::Archival::RestoreUserJob.perform_later(current_user.id)
+    user.update!(points_archive_state: :restoring)
+    Points::Archival::RestoreUserJob.perform_later(user.id)
   end
 
   def sign_out_deleted_users
