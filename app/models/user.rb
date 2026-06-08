@@ -62,8 +62,11 @@ class User < ApplicationRecord
   attribute :points_count, :integer, default: 0
 
   scope :active_or_trial, -> { where(status: %i[active trial]) }
+  scope :points_active, -> { where(points_archive_state: :active) }
 
   enum :status, { inactive: 0, active: 1, trial: 2, pending_payment: 3 }
+  enum :points_archive_state, { active: 0, archiving: 1, archived: 2, restoring: 3 },
+       prefix: :points_archive_state
   # prefix: :sub_source — the `none` value would otherwise generate a
   # `User#none?` predicate that collides with NilClass semantics in
   # conditional chains. Callers use `user.sub_source_none?` etc.

@@ -625,6 +625,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_27_210000) do
     t.boolean "otp_required_for_login", default: false, null: false
     t.string "otp_secret"
     t.integer "plan", default: 1, null: false
+    t.integer "points_archive_state", default: 0, null: false
+    t.datetime "points_archived_at"
     t.integer "points_count", default: 0, null: false
     t.string "provider"
     t.datetime "remember_created_at"
@@ -650,6 +652,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_27_210000) do
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["otp_locked_at"], name: "index_users_on_otp_locked_at_not_null", where: "(otp_locked_at IS NOT NULL)"
     t.index ["plan"], name: "index_users_on_plan"
+    t.index ["points_archive_state"], name: "index_users_on_points_archive_state"
     t.index ["provider", "uid"], name: "index_users_on_provider_and_uid_present", unique: true, where: "((provider IS NOT NULL) AND (uid IS NOT NULL))"
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
     t.index ["signup_variant"], name: "index_users_on_signup_variant_reverse_trial", where: "((signup_variant)::text = 'reverse_trial'::text)"
