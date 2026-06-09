@@ -131,6 +131,13 @@ export class MapDataManager {
           })
       }
 
+      // 8. Reload fog hexagons if fog is visible in hexagon mode — same
+      // reasoning: they own their own fetch pipeline.
+      const fogLayer = this.layerManager.getLayer("fog")
+      if (fogLayer?.visible && fogLayer.mode === "hexagons") {
+        fogLayer.reloadHexagons()
+      }
+
       return data
     } catch (error) {
       console.error("[MapDataManager] Failed to load map data:", error)
