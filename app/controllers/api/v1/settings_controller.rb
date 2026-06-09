@@ -57,7 +57,7 @@ class Api::V1::SettingsController < ApiController
       :time_threshold_minutes, :merge_threshold_minutes, :route_opacity,
       :preferred_map_layer, :points_rendering_mode, :live_map_enabled,
       :immich_url, :immich_api_key, :photoprism_url, :photoprism_api_key,
-      :speed_colored_routes, :speed_color_scale, :fog_of_war_threshold,
+      :speed_colored_routes, :speed_color_scale, :fog_of_war_threshold, :fog_of_war_mode,
       :maps_v2_style, :maps_maplibre_style, :globe_projection,
       :transportation_expert_mode,
       :min_minutes_spent_in_city, :max_gap_minutes_in_city,
