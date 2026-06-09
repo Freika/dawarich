@@ -160,7 +160,6 @@ export class FogLayer {
   }
 
   reloadHexagons() {
-    this._hexFetchKey = null
     if (this.visible && this.mode === "hexagons") {
       this._ensureHexagons()
     }
