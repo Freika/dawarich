@@ -413,6 +413,30 @@
           <!-- Fog of War Settings -->
           <div class="form-control w-full">
             <label class="label">
+              <span class="label-text font-medium">Fog of War Mode</span>
+            </label>
+            <div class="flex gap-4">
+              <label class="label cursor-pointer gap-2">
+                <input type="radio"
+                       name="fogOfWarMode"
+                       value="points"
+                       class="radio radio-sm"
+                       checked />
+                <span class="label-text">Per point</span>
+              </label>
+              <label class="label cursor-pointer gap-2">
+                <input type="radio"
+                       name="fogOfWarMode"
+                       value="hexagons"
+                       class="radio radio-sm" />
+                <span class="label-text">Per hexagon</span>
+              </label>
+            </div>
+            <p class="text-xs text-base-content/60 mt-1">Per hexagon clears whole map cells from precalculated monthly data — much faster for large histories</p>
+          </div>
+
+          <div class="form-control w-full">
+            <label class="label">
               <span class="label-text font-medium">Fog of War Radius</span>
               <span class="label-text-alt" data-maps--maplibre-target="fogRadiusValue">1000m</span>
             </label>

@@ -143,6 +143,14 @@ export class SettingsController {
         : this.settings.globeProjection || false
     }
 
+    // Sync fog of war mode radio
+    const fogModeInput = controller.element.querySelector(
+      `input[name="fogOfWarMode"][value="${this.settings.fogOfWarMode || "points"}"]`,
+    )
+    if (fogModeInput) {
+      fogModeInput.checked = true
+    }
+
     // Sync fog of war settings
     const fogRadiusInput = controller.element.querySelector(
       'input[name="fogOfWarRadius"]',
@@ -1133,6 +1141,7 @@ export class SettingsController {
       routeOpacity: parseFloat(formData.get("routeOpacity")) / 100,
       fogOfWarRadius: parseInt(formData.get("fogOfWarRadius"), 10),
       fogOfWarThreshold: parseInt(formData.get("fogOfWarThreshold"), 10),
+      fogOfWarMode: formData.get("fogOfWarMode") || "points",
       metersBetweenRoutes: parseInt(formData.get("metersBetweenRoutes"), 10),
       minutesBetweenRoutes: parseInt(formData.get("minutesBetweenRoutes"), 10),
       pointsRenderingMode: formData.get("pointsRenderingMode"),
@@ -1265,12 +1274,16 @@ export class SettingsController {
     // Update fog of war settings
     if (
       settings.fogOfWarRadius !== undefined ||
-      settings.fogOfWarThreshold !== undefined
+      settings.fogOfWarThreshold !== undefined ||
+      settings.fogOfWarMode !== undefined
     ) {
       const fogLayer = this.layerManager.getLayer("fog")
       if (fogLayer) {
         if (settings.fogOfWarRadius) {
           fogLayer.clearRadius = settings.fogOfWarRadius
+        }
+        if (settings.fogOfWarMode !== undefined) {
+          fogLayer.setMode(settings.fogOfWarMode)
         }
         // Redraw fog layer if it has data and is visible
         if (fogLayer.visible && fogLayer.data) {
