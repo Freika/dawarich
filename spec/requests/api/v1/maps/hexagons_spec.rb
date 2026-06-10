@@ -472,6 +472,19 @@ RSpec.describe 'Api::V1::Maps::Hexagons', type: :request do
       end
     end
 
+    context 'when the service fails unexpectedly' do
+      before do
+        allow(Maps::FogHexagons).to receive(:new).and_raise(StandardError, 'boom')
+      end
+
+      it 'returns a graceful error' do
+        get '/api/v1/maps/hexagons/fog', params: params, headers: headers
+
+        expect(response).to have_http_status(:internal_server_error)
+        expect(JSON.parse(response.body)['error']).to eq('Failed to generate hexagon grid')
+      end
+    end
+
     context 'without authentication' do
       it 'returns unauthorized' do
         get '/api/v1/maps/hexagons/fog', params: params

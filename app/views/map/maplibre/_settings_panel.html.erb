@@ -311,7 +311,7 @@
                        name="fogOfWarMode"
                        value="points"
                        class="radio radio-sm"
-                       checked
+                       <%= 'checked' if current_user.safe_settings.fog_of_war_mode == 'points' %>
                        data-action="change->maps--maplibre#updateFogMode" />
                 <span class="label-text text-sm">Per point</span>
               </label>
@@ -320,6 +320,7 @@
                        name="fogOfWarMode"
                        value="hexagons"
                        class="radio radio-sm"
+                       <%= 'checked' if current_user.safe_settings.fog_of_war_mode == 'hexagons' %>
                        data-action="change->maps--maplibre#updateFogMode" />
                 <span class="label-text text-sm">Per hexagon</span>
               </label>

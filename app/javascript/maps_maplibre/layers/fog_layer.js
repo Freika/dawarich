@@ -192,19 +192,22 @@ export class FogLayer {
     }
 
     this._hexFetchKey = key
-    this._hexFetchPromise = this._fetchHexagons(start, end)
-    return this._hexFetchPromise
+    const promise = this._fetchHexagons(start, end, key).finally(() => {
+      if (this._hexFetchPromise === promise) this._hexFetchPromise = null
+    })
+    this._hexFetchPromise = promise
+    return promise
   }
 
-  async _fetchHexagons(start, end) {
+  async _fetchHexagons(start, end, key) {
     try {
       await this.hexSource.load(this.api, { start_at: start, end_at: end })
+      if (this._hexFetchKey !== key) return
       this.hexBoundaries = this.hexSource.boundariesFor(this.map.getZoom())
       this.render()
     } catch (error) {
       console.error("[FogLayer] Failed to load fog hexagons:", error)
-    } finally {
-      this._hexFetchPromise = null
+      if (this._hexFetchKey === key) this._hexFetchKey = null
     }
   }
 

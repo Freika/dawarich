@@ -66,6 +66,8 @@ class Api::V1::Maps::HexagonsController < ApiController
     render json: { error: "Missing required parameter: #{e.param}" }, status: :bad_request
   rescue ArgumentError
     render json: { error: 'Invalid date format' }, status: :bad_request
+  rescue StandardError => _e
+    handle_service_error
   end
 
   private
