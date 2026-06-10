@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Insights no longer report a "new country visited" for border-crossing geocoding blips that the statistics pages already filter out; the yearly digest now applies the same rule as the monthly one (#2727)
+
 ## [1.8.0] - 2026-06-08
 
 Upgrade notes:
