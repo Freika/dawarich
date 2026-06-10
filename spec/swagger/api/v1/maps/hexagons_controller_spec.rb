@@ -123,4 +123,56 @@ RSpec.describe 'Maps Hexagons API', type: :request do
       end
     end
   end
+
+  path '/api/v1/maps/hexagons/fog' do
+    get 'Retrieves fog of war hexagon cell ids' do
+      tags 'Maps'
+      description 'Returns precalculated H3 cell ids covering the user\'s visited locations ' \
+                  'within the specified date range, used by the fog of war hexagon rendering mode'
+      produces 'application/json'
+      parameter name: :api_key, in: :query, type: :string, required: false,
+                description: 'API Key'
+      parameter name: :start_date, in: :query, type: :string, required: true,
+                description: 'Start date (ISO 8601 format)'
+      parameter name: :end_date, in: :query, type: :string, required: true,
+                description: 'End date (ISO 8601 format)'
+
+      response '200', 'cell ids found' do
+        schema type: :object,
+               properties: {
+                 h3_indexes: {
+                   type: :array,
+                   description: 'H3 cell ids covering visited locations',
+                   items: { type: :string }
+                 },
+                 metadata: {
+                   type: :object,
+                   properties: {
+                     count: { type: :integer, description: 'Number of cell ids returned' }
+                   }
+                 }
+               }
+
+        let(:start_date) { 1.month.ago.iso8601 }
+        let(:end_date) { Time.current.iso8601 }
+
+        run_test!
+      end
+
+      response '400', 'missing or invalid dates' do
+        let(:start_date) { 'garbage' }
+        let(:end_date) { 'garbage' }
+
+        run_test!
+      end
+
+      response '401', 'unauthorized' do
+        let(:api_key) { 'invalid' }
+        let(:start_date) { 1.month.ago.iso8601 }
+        let(:end_date) { Time.current.iso8601 }
+
+        run_test!
+      end
+    end
+  end
 end

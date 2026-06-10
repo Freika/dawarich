@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Api::V1::Maps::HexagonsController < ApiController
+  PUBLIC_SHARING_ACTIONS = %w[index bounds].freeze
+
   skip_before_action :authenticate_api_key, if: :public_sharing_request?
   skip_before_action :reject_pending_payment!, if: :public_sharing_request?
 
@@ -108,6 +110,6 @@ class Api::V1::Maps::HexagonsController < ApiController
   end
 
   def public_sharing_request?
-    params[:uuid].present?
+    params[:uuid].present? && PUBLIC_SHARING_ACTIONS.include?(action_name)
   end
 end

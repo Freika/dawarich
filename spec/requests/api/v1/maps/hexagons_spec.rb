@@ -491,6 +491,12 @@ RSpec.describe 'Api::V1::Maps::Hexagons', type: :request do
 
         expect(response).to have_http_status(:unauthorized)
       end
+
+      it 'returns unauthorized when a sharing uuid is passed' do
+        get '/api/v1/maps/hexagons/fog', params: params.merge(uuid: SecureRandom.uuid)
+
+        expect(response).to have_http_status(:unauthorized)
+      end
     end
   end
 end
