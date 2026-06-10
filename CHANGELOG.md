@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Months with very small distances on the Stats page now render a visible bar and show their tooltip; months without data no longer render a bar at all (#2864)
+
 ## [1.8.0] - 2026-06-08
 
 Upgrade notes:
