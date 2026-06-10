@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 - Deleting points or anomaly points via the map's "Select Area" tool now removes them from the anomalies layer immediately, without requiring a page reload (#2790)
+- Months with very small distances on the Stats page now render a visible bar and show their tooltip; months without data no longer render a bar at all (#2864)
+- Weekday labels in the Insights "Activity Overview" heatmap now line up with their grid rows (#2896)
 
 ## [1.8.0] - 2026-06-08
 
