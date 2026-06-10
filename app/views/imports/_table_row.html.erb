@@ -34,9 +34,16 @@
   <td class="px-4 py-3 text-sm text-base-content/50"><%= human_datetime(import.created_at, current_user.safe_settings.timezone) %></td>
   <td class="px-4 py-3 text-right">
     <div class="flex items-center gap-1 justify-end">
-      <% if import.deleting? %>
+      <% if import.deleting? && import.updated_at > 1.hour.ago %>
         <span class="loading loading-spinner loading-sm"></span>
         <span class="text-xs text-base-content/50">Deleting...</span>
+      <% elsif import.deleting? %>
+        <span class="text-xs text-base-content/50">Deletion stalled</span>
+        <div class="tooltip tooltip-left" data-tip="Retry deletion">
+          <%= link_to import, data: { turbo_confirm: "Are you sure?", turbo_method: :delete }, class: "btn btn-ghost btn-xs text-error hover:bg-error/10" do %>
+            <%= icon 'trash-2', class: 'w-4 h-4' %>
+          <% end %>
+        </div>
       <% else %>
         <div class="tooltip" data-tip="View on map">
           <%= link_to preferred_map_path(import_id: import.id), class: 'btn btn-ghost btn-xs' do %>
