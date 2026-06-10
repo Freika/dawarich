@@ -1,8 +1,12 @@
+import { FogHexagonSource } from "./fog_hexagon_source"
+
 /**
  * Fog of war layer
  * Shows explored vs unexplored areas using canvas overlay
  * Does not extend BaseLayer as it uses canvas instead of MapLibre layers
  */
+const ZOOM_DEBOUNCE_MS = 250
+
 export class FogLayer {
   constructor(map, options = {}) {
     this.map = map
@@ -17,8 +21,17 @@ export class FogLayer {
     this.points = []
     this.data = null // Store original data for updates
     this.hexBoundaries = []
+    this.hexSource = new FogHexagonSource()
     this._hexFetchKey = null
     this._hexFetchPromise = null
+    this._zoomDebounceTimer = null
+    this._zoomEndHandler = () => {
+      if (this._zoomDebounceTimer) clearTimeout(this._zoomDebounceTimer)
+      this._zoomDebounceTimer = setTimeout(() => {
+        this._zoomDebounceTimer = null
+        this._handleZoomEnd()
+      }, ZOOM_DEBOUNCE_MS)
+    }
   }
 
   add(data) {
@@ -60,6 +73,7 @@ export class FogLayer {
     this.map.on("move", () => this.render())
     this.map.on("zoom", () => this.render())
     this.map.on("resize", () => this.resizeCanvas())
+    this.map.on("zoomend", this._zoomEndHandler)
 
     this.resizeCanvas()
   }
@@ -184,32 +198,24 @@ export class FogLayer {
 
   async _fetchHexagons(start, end) {
     try {
-      const [h3, data] = await Promise.all([
-        import("h3-js"),
-        this.api.fetchFogHexagons({ start_at: start, end_at: end }),
-      ])
-
-      this.hexBoundaries = (data.h3_indexes || []).map((id) => {
-        const coords = h3.cellToBoundary(id, true)
-        let minLng = Infinity
-        let maxLng = -Infinity
-        let minLat = Infinity
-        let maxLat = -Infinity
-        for (const [lng, lat] of coords) {
-          if (lng < minLng) minLng = lng
-          if (lng > maxLng) maxLng = lng
-          if (lat < minLat) minLat = lat
-          if (lat > maxLat) maxLat = lat
-        }
-        return { coords, minLng, maxLng, minLat, maxLat }
-      })
-
+      await this.hexSource.load(this.api, { start_at: start, end_at: end })
+      this.hexBoundaries = this.hexSource.boundariesFor(this.map.getZoom())
       this.render()
     } catch (error) {
       console.error("[FogLayer] Failed to load fog hexagons:", error)
     } finally {
       this._hexFetchPromise = null
     }
+  }
+
+  _handleZoomEnd() {
+    if (!this.visible || this.mode !== "hexagons" || !this.hexSource.loaded) {
+      return
+    }
+    if (!this.hexSource.resolutionChanged(this.map.getZoom())) return
+
+    this.hexBoundaries = this.hexSource.boundariesFor(this.map.getZoom())
+    this.render()
   }
 
   getMetersPerPixel(latitude) {
@@ -256,5 +262,10 @@ export class FogLayer {
     this.map.off("move", this.render)
     this.map.off("zoom", this.render)
     this.map.off("resize", this.resizeCanvas)
+    this.map.off("zoomend", this._zoomEndHandler)
+    if (this._zoomDebounceTimer) {
+      clearTimeout(this._zoomDebounceTimer)
+      this._zoomDebounceTimer = null
+    }
   }
 }

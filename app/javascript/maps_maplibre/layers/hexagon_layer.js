@@ -1,5 +1,6 @@
 import maplibregl from "maplibre-gl"
 import { Toast } from "../components/toast"
+import { resolutionForZoom } from "../utils/h3_resolution"
 import { ProgressiveLoader } from "../utils/progressive_loader"
 import { BaseLayer } from "./base_layer"
 
@@ -13,23 +14,6 @@ async function loadH3() {
   if (!h3LoadingPromise) h3LoadingPromise = import("h3-js")
   h3Module = await h3LoadingPromise
   return h3Module
-}
-
-const ZOOM_TO_RES = [
-  { maxZoom: 3, res: 3 },
-  { maxZoom: 5, res: 4 },
-  { maxZoom: 7, res: 5 },
-  { maxZoom: 9, res: 6 },
-  { maxZoom: 11, res: 7 },
-  { maxZoom: 13, res: 8 },
-  { maxZoom: Infinity, res: 9 },
-]
-
-function resolutionForZoom(zoom) {
-  for (const entry of ZOOM_TO_RES) {
-    if (zoom <= entry.maxZoom) return entry.res
-  }
-  return 9
 }
 
 export class HexagonLayer extends BaseLayer {
