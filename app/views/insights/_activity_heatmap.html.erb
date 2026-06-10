@@ -31,10 +31,10 @@
           <!-- Grid with day labels -->
           <div class="flex">
             <!-- Day labels -->
-            <div class="flex flex-col justify-around mr-2 text-xs text-base-content/60" style="height: 98px;">
-              <span>Mon</span>
-              <span>Wed</span>
-              <span>Fri</span>
+            <div class="flex flex-col gap-0.5 mr-2 text-xs text-base-content/60">
+              <% ['Mon', nil, 'Wed', nil, 'Fri', nil, nil].each do |day_label| %>
+                <span class="h-3 flex items-center leading-none"><%= day_label %></span>
+              <% end %>
             </div>
 
             <!-- Cells grid -->

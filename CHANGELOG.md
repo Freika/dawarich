@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Weekday labels in the Insights "Activity Overview" heatmap now line up with their grid rows (#2896)
+
 ## [1.8.0] - 2026-06-08
 
 Upgrade notes:
