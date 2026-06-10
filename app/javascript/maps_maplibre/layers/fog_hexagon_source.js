@@ -39,6 +39,8 @@ export class FogHexagonSource {
 
     const displayIds = new Set()
     for (const id of this.rawCellIds) {
+      if (!this.h3.isValidCell(id)) continue
+
       const cellRes = this.h3.getResolution(id)
       displayIds.add(cellRes > res ? this.h3.cellToParent(id, res) : id)
     }

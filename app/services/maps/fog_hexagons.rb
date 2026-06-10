@@ -24,7 +24,11 @@ module Maps
       seen = Set.new
 
       stats_in_range.each do |stat|
-        Array(stat.h3_hex_ids).each do |row|
+        next unless stat.h3_hex_ids.is_a?(Array)
+
+        stat.h3_hex_ids.each do |row|
+          next unless row.is_a?(Array)
+
           h3_index, _count, earliest, latest = row
           next if h3_index.blank?
           next unless overlaps_range?(earliest, latest)

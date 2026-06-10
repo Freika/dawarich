@@ -75,6 +75,19 @@ RSpec.describe Maps::FogHexagons do
     end
   end
 
+  context 'with legacy hash-shaped h3_hex_ids' do
+    before do
+      create(:stat, user:, year: 2024, month: 5, h3_hex_ids: { 'area_too_large' => true })
+      create(:stat, user:, year: 2024, month: 6, h3_hex_ids: [
+               ['8828308281fffff', 1, ts('2024-06-01T09:00:00Z'), ts('2024-06-01T09:30:00Z')]
+             ])
+    end
+
+    it 'ignores hash entries and keeps valid rows' do
+      expect(result['h3_indexes']).to contain_exactly('8828308281fffff')
+    end
+  end
+
   context 'with no stats' do
     it 'returns an empty collection' do
       expect(result['h3_indexes']).to eq([])
