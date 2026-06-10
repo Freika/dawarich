@@ -113,5 +113,25 @@ RSpec.describe Maps::BoundsCalculator do
         expect(result[:data][:point_count]).to eq(1)
       end
     end
+
+    context 'query count' do
+      before do
+        create(:point, user:, latitude: 40.7, longitude: -74.0,
+               timestamp: Time.new(2024, 6, 15, 10, 0).to_i)
+      end
+
+      it 'issues exactly one SQL query against points per call' do
+        query_count = 0
+        counter = lambda do |_name, _start, _finish, _id, payload|
+          query_count += 1 unless payload[:name].in?(%w[SCHEMA TRANSACTION])
+        end
+
+        ActiveSupport::Notifications.subscribed(counter, 'sql.active_record') do
+          calculate_bounds
+        end
+
+        expect(query_count).to eq(1)
+      end
+    end
   end
 end
