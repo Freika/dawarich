@@ -62,6 +62,12 @@ RSpec.describe Stats::HexagonCalculator do
         expect(total_points).to eq(2)
       end
 
+      it 'maps asymmetric Berlin coordinates to the correct H3 cell (characterization)' do
+        result = calculate_hexagons
+        hex_strings = result.map(&:first)
+        expect(hex_strings).to include('881f191b27fffff')
+      end
+
       context 'when points are on the last day of the month' do
         let(:last_day_timestamp) { DateTime.new(year, month, 31, 18, 30, 0).to_i }
         let!(:last_day_point) do
@@ -86,9 +92,8 @@ RSpec.describe Stats::HexagonCalculator do
 
         before do
           # Stub to simulate too many hexagons on first call, then acceptable on second
-          allow_any_instance_of(described_class).to receive(:calculate_h3_indexes).and_call_original
           call_count = 0
-          allow_any_instance_of(described_class).to receive(:calculate_h3_indexes) do |_instance, _points, _resolution|
+          allow_any_instance_of(described_class).to receive(:build_h3_hash) do |_instance, _rows, _resolution|
             call_count += 1
             if call_count == 1
               # First call: return too many hexagons
@@ -112,6 +117,25 @@ RSpec.describe Stats::HexagonCalculator do
           # Should have successfully reduced the hexagon count
           expect(result.size).to be < described_class::MAX_HEXAGONS
         end
+      end
+
+      it 'queries the points table exactly once during calculation' do
+        calculator = described_class.new(user.id, year, month)
+
+        points_query_count = 0
+        counter = lambda do |_name, _start, _finish, _id, payload|
+          sql = payload[:sql].to_s
+          points_query_count += 1 if sql =~ /FROM ["']?points["']?/i && payload[:name] != 'SCHEMA'
+        end
+
+        ActiveSupport::Notifications.subscribed(counter, 'sql.active_record') do
+          calculator.call(h3_resolution: 8)
+        end
+
+        expect(points_query_count).to eq(1),
+                                      "Expected exactly 1 points query but got #{points_query_count}. " \
+                                      'The old find_each path issues one query for empty? and one for find_each. ' \
+                                      'After refactor, coordinate_rows memoizes the pluck so only 1 query fires.'
       end
 
       context 'when H3 raises an error' do
