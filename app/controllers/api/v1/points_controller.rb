@@ -32,6 +32,9 @@ class Api::V1::PointsController < ApiController
       return render(json: { error: 'Invalid bounding box' }, status: :bad_request) unless bbox
 
       points = points.where(
+        'lonlat && ST_MakeEnvelope(?, ?, ?, ?, 4326)::geography',
+        bbox[:min_lng], bbox[:min_lat], bbox[:max_lng], bbox[:max_lat]
+      ).where(
         'ST_X(lonlat::geometry) BETWEEN ? AND ? AND ST_Y(lonlat::geometry) BETWEEN ? AND ?',
         bbox[:min_lng], bbox[:max_lng], bbox[:min_lat], bbox[:max_lat]
       )
@@ -52,7 +55,7 @@ class Api::V1::PointsController < ApiController
     if !DawarichSettings.self_hosted? && current_api_user.lite?
       total_in_range = current_api_user.points
                                        .where(timestamp: start_at..end_at).count
-      scoped_count = points.except(:select, :order).count
+      scoped_count = points.total_count
       response.set_header('X-Total-Points-In-Range', total_in_range.to_s)
       response.set_header('X-Scoped-Points', scoped_count.to_s)
     end

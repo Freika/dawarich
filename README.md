@@ -9,6 +9,9 @@
 ![Map](screenshots/map.png)
 *Map View*
 
+![Timeline](screenshots/timeline.png)
+*Timeline View*
+
 ![Insights](screenshots/insights.png)
 *Insights Page*
 

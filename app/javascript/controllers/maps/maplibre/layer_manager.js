@@ -433,6 +433,9 @@ export class LayerManager {
       this.layers.fogLayer = new FogLayer(this.map, {
         clearRadius: this.settings.fogOfWarRadius || 1000,
         visible: this.settings.fogEnabled || false,
+        mode: this.settings.fogOfWarMode || "points",
+        api: this.api,
+        controller: this.controller,
       })
       this.layers.fogLayer.add(pointsGeoJSON)
     } else {

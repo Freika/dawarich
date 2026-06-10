@@ -9,6 +9,7 @@ const DEFAULT_SETTINGS = {
   routeOpacity: 0.6,
   fogOfWarRadius: 50,
   fogOfWarThreshold: 50,
+  fogOfWarMode: "points",
   metersBetweenRoutes: 500,
   minutesBetweenRoutes: 30,
   pointsRenderingMode: "raw",
@@ -63,6 +64,7 @@ const LAYER_NAME_MAP = {
   "Scratch map": "scratchEnabled",
   "Family Members": "familyEnabled",
   Places: "placesEnabled",
+  Anomalies: "anomaliesEnabled",
 }
 
 const BACKEND_SETTINGS_MAP = {
@@ -71,6 +73,7 @@ const BACKEND_SETTINGS_MAP = {
   routeOpacity: "route_opacity",
   fogOfWarRadius: "fog_of_war_meters",
   fogOfWarThreshold: "fog_of_war_threshold",
+  fogOfWarMode: "fog_of_war_mode",
   metersBetweenRoutes: "meters_between_routes",
   minutesBetweenRoutes: "minutes_between_routes",
   pointsRenderingMode: "points_rendering_mode",

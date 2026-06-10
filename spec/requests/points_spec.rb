@@ -61,6 +61,54 @@ RSpec.describe '/points', type: :request do
     end
   end
 
+  describe 'GET /index with lite plan' do
+    let(:user) { create(:user) }
+
+    before do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      user.update_column(:plan, User.plans[:lite])
+      sign_in user
+    end
+
+    context 'when user is on lite plan' do
+      let!(:in_window_point) do
+        create(:point, user:, latitude: 10.0, longitude: 20.0,
+                       lonlat: 'POINT(20.0 10.0)',
+                       timestamp: 1.month.ago.to_i)
+      end
+      let!(:out_of_window_point) do
+        create(:point, user:, latitude: 55.0, longitude: 37.0,
+                       lonlat: 'POINT(37.0 55.0)',
+                       timestamp: 2.years.ago.to_i)
+      end
+
+      it 'hides points outside the 12-month data window' do
+        get points_url(start_at: 3.years.ago.iso8601, end_at: Time.zone.now.iso8601)
+
+        expect(response).to be_successful
+        expect(response.body).to include('10.0, 20.0')
+        expect(response.body).not_to include('55.0, 37.0')
+      end
+    end
+
+    context 'when user is on pro plan' do
+      before { user.update_column(:plan, User.plans[:pro]) }
+
+      let!(:old_point) do
+        create(:point, user:, latitude: 55.0, longitude: 37.0,
+                       lonlat: 'POINT(37.0 55.0)',
+                       timestamp: 2.years.ago.to_i)
+      end
+
+      it 'shows points outside the 12-month window' do
+        get points_url(start_at: 3.years.ago.iso8601, end_at: Time.zone.now.iso8601)
+
+        expect(response).to be_successful
+        expect(response.body).to include('55.0, 37.0')
+      end
+    end
+  end
+
   describe 'DELETE /bulk_destroy' do
     let(:user) { create(:user) }
     let(:point1) { create(:point, user:) }

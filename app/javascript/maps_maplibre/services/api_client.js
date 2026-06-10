@@ -50,6 +50,31 @@ export class ApiClient {
   }
 
   /**
+   * Fetch precalculated fog-of-war H3 cell ids for date range
+   * @param {Object} options - { start_at, end_at }
+   * @returns {Promise<Object>} { h3_indexes, metadata }
+   */
+  async fetchFogHexagons({ start_at, end_at }) {
+    const params = new URLSearchParams({
+      start_date: start_at,
+      end_date: end_at,
+    })
+
+    const response = await fetch(
+      `${this.baseURL}/maps/hexagons/fog?${params}`,
+      {
+        headers: this.getHeaders(),
+      },
+    )
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch fog hexagons: ${response.statusText}`)
+    }
+
+    return response.json()
+  }
+
+  /**
    * Fetch all points for date range (handles pagination with parallel requests)
    * @param {Object} options - { start_at, end_at, onProgress, onBatch, maxConcurrent }
    * @param {Function} options.onBatch - Called with accumulated points array after each batch

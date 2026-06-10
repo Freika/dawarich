@@ -553,6 +553,15 @@ export class AreaSelectionManager {
     Toast.info("Selection cancelled")
   }
 
+  async refreshAnomaliesIfEnabled() {
+    const toggleOn =
+      this.controller.hasAnomaliesToggleTarget &&
+      this.controller.anomaliesToggleTarget.checked
+    if (!toggleOn) return
+
+    await this.controller.routesManager.refreshAnomalies({ enabled: true })
+  }
+
   /**
    * Delete only anomaly points within the current selection. Backed by the
    * same bulkDeletePoints API as deleteSelectedPoints — the filter just
@@ -594,6 +603,7 @@ export class AreaSelectionManager {
           fitBounds: false,
           showToast: false,
         })
+        await this.refreshAnomaliesIfEnabled()
       } catch (reloadError) {
         console.error(
           "[Maps V2] Map refresh failed after anomaly delete:",
@@ -667,6 +677,7 @@ export class AreaSelectionManager {
           fitBounds: false,
           showToast: false,
         })
+        await this.refreshAnomaliesIfEnabled()
       } catch (reloadError) {
         console.error("[Maps V2] Map refresh failed after delete:", reloadError)
         Toast.error(

@@ -6,8 +6,33 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Fog of War (Map v2) can now reveal explored areas per hexagon instead of per point, using precalculated monthly statistics. Switch between "Per point" and "Per hexagon" in the map settings panel. (#2899)
+
+### Changed
+
+- The suggested-visit card no longer promises alternative suggestions that never arrive; it now points to the visit's search button for picking a different place (#2852)
+- Loading points on the map is faster on large histories: the points API now uses the spatial index when filtering by the visible map area, instead of scanning every point in the date range (#2915)
+- Monthly statistics are lighter to calculate for point-heavy months: hexagon aggregation reads coordinates in a single pass without instantiating database records, and no longer re-queries the whole month when it has to fall back to a lower hexagon resolution (#2915)
+- The Timeline day view no longer issues one extra database query per visit, and the initial map view's bounds are computed in a single query instead of two (#2915)
+- Bumped the `oauth2` gem to 2.0.22 to close a known credential-leak advisory (GHSA-pp92-crg2-gfv9) on the Google/GitHub sign-in path (#2915)
+- CI now runs the full RSpec suite on every pull request; the previous workflow had been disabled (#2915)
+
 ### Fixed
 
+- Deleting an import no longer gets stuck on an endless spinner: failed deletions revert to a retriable state, and imports stalled in "Deleting" for over an hour show a retry button (#2835)
+- Insights no longer report a "new country visited" for border-crossing geocoding blips that the statistics pages already filter out; the yearly digest now applies the same rule as the monthly one (#2727)
+- Deleting points or anomaly points via the map's "Select Area" tool now removes them from the anomalies layer immediately, without requiring a page reload (#2790)
+- Months with very small distances on the Stats page now render a visible bar and show their tooltip; months without data no longer render a bar at all (#2864)
+- Weekday labels in the Insights "Activity Overview" heatmap now line up with their grid rows (#2896)
+- OIDC login no longer fails with "undefined method 'with_indifferent_access'" when OIDC_ISSUER is set to the full discovery URL — the trailing /.well-known/openid-configuration is now stripped automatically (#2056)
+- Importing files containing invalid UTF-8 bytes (e.g. Windows-encoded degree signs in Google Timeline phone exports) no longer fails with "invalid byte sequence in UTF-8". Applies to the JSON-based importers as well as OwnTracks and TCX (#2772)
+- Moving a point on Map v2 no longer drags unrelated route lines along with it; routes are rebuilt from the updated points instead of patching nearby line vertices (#2150)
+- An import that finished successfully could still be marked "Failed" — with a failure notification — when a post-import step (stats scheduling, anomaly filtering) raised after all points were already written; post-import steps no longer affect the import's status (#2915)
+- Cloud only: the Lite plan's 12-month data window now applies to the Points page as well, and the "points outside your window" hint no longer caps the visible-points count at the page size (#2915)
+- Data recalculation no longer fails with "Year has already been taken" when duplicate year-end digests exist; duplicates are cleaned up automatically and can no longer be created (#2866)
+- The Anomalies map layer now remembers being enabled across page reloads and day changes, like other layers (#2791)
 - Map v2 Replay now plays back proportionally to real elapsed time (at 1x, one real minute per second; speed multiplier compresses further) instead of one point per tick, so slow and fast journeys of equal duration take equal playback time; long point-free gaps are skipped quickly instead of stalling (#2845)
 
 ## [1.8.0] - 2026-06-08

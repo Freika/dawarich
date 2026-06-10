@@ -52,7 +52,10 @@
         <% end %>
       </ul>
     </div>
-    <%= link_to 'Dawarich<sup>α</sup>'.html_safe, (user_signed_in? ? preferred_map_path : root_path), class: 'btn btn-ghost normal-case text-xl'%>
+    <%= link_to (user_signed_in? ? preferred_map_path : root_path), class: 'btn btn-ghost normal-case text-xl gap-2' do %>
+      <%= image_tag 'logo.svg', alt: 'Dawarich logo', class: 'h-8 w-8 rounded-[20%]' %>
+      <span>Dawarich<sup>β</sup></span>
+    <% end %>
     <%= render "shared/navbar/version_indicator" %>
 
     <% if user_signed_in? %>

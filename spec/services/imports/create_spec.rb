@@ -40,6 +40,31 @@ RSpec.describe Imports::Create do
         end
       end
 
+      context 'when post-import processing raises' do
+        before do
+          allow(Stats::CalculatingJob).to receive(:perform_later).and_raise(StandardError, 'boom')
+        end
+
+        it 'sets status to completed, not failed' do
+          service.call
+          expect(import.reload.status).to eq('completed')
+        end
+
+        it 'does not set an error message on the import' do
+          service.call
+          expect(import.reload.error_message).to be_nil
+        end
+
+        it 'does not create an Import failed notification for the user' do
+          service.call
+          expect(user.notifications.where(title: 'Import failed')).to be_empty
+        end
+
+        it 'still writes the points from the importer' do
+          expect { service.call }.to change { import.points.count }.from(0)
+        end
+      end
+
       context 'when import fails' do
         before do
           allow(OwnTracks::Importer).to receive(:new).with(import, user.id, kind_of(String)).and_raise(StandardError)

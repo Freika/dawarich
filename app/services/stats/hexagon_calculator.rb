@@ -38,10 +38,10 @@ class Stats::HexagonCalculator
 
   # Unified hexagon calculation method
   def calculate_hexagons(h3_resolution)
-    return nil if points.empty?
+    return nil if coordinate_rows.empty?
 
     begin
-      h3_hash = calculate_h3_indexes(points, h3_resolution)
+      h3_hash = build_h3_hash(coordinate_rows, h3_resolution)
 
       if h3_hash.empty?
         Rails.logger.info "No H3 hex IDs calculated for user #{user.id}, #{year}-#{month} (no data)"
@@ -53,7 +53,7 @@ class Stats::HexagonCalculator
         # Try with lower resolution (larger hexagons)
         lower_resolution = [h3_resolution - 2, 0].max
         Rails.logger.info "Recalculating with lower H3 resolution: #{lower_resolution}"
-        # Recursively call with lower resolution
+        # Recursively call with lower resolution; re-aggregates from in-memory rows
         return calculate_hexagons(lower_resolution)
       end
 
@@ -93,28 +93,24 @@ class Stats::HexagonCalculator
               .order(timestamp: :asc)
   end
 
-  def calculate_h3_indexes(points, h3_resolution)
+  def coordinate_rows
+    @coordinate_rows ||= points.unscope(:select, :order).pluck(
+      Arel.sql('ST_Y(lonlat::geometry)'), Arel.sql('ST_X(lonlat::geometry)'), :timestamp
+    )
+  end
+
+  def build_h3_hash(rows, h3_resolution)
     h3_data = {}
-
-    points.find_each do |point|
-      # Extract lat/lng from PostGIS point
-      coordinates = [point.lonlat.y, point.lonlat.x] # [lat, lng] for H3
-
-      # Get H3 index for this point
-      h3_index = H3.from_geo_coordinates(coordinates, h3_resolution.clamp(0, 15))
-      h3_index_string = h3_index.to_s(16) # Convert to hex string immediately
-
-      # Initialize or update data for this hexagon
-      if h3_data[h3_index_string]
-        data = h3_data[h3_index_string]
-        data[0] += 1 # increment count
-        data[1] = [data[1], point.timestamp].min # update earliest
-        data[2] = [data[2], point.timestamp].max # update latest
+    rows.each do |lat, lng, timestamp|
+      h3_index_string = H3.from_geo_coordinates([lat, lng], h3_resolution.clamp(0, 15)).to_s(16)
+      if (data = h3_data[h3_index_string])
+        data[0] += 1
+        data[1] = [data[1], timestamp].min
+        data[2] = [data[2], timestamp].max
       else
-        h3_data[h3_index_string] = [1, point.timestamp, point.timestamp] # [count, earliest, latest]
+        h3_data[h3_index_string] = [1, timestamp, timestamp]
       end
     end
-
     h3_data
   end
 end
