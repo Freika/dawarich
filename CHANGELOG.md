@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
-- Importing Google Timeline phone exports containing invalid UTF-8 bytes (e.g. Windows-encoded degree signs) no longer fails with "invalid byte sequence in UTF-8" (#2772)
+- Importing files containing invalid UTF-8 bytes (e.g. Windows-encoded degree signs in Google Timeline phone exports) no longer fails with "invalid byte sequence in UTF-8". Applies to all text-based importers, including OwnTracks and TCX (#2772)
 
 ## [1.8.0] - 2026-06-08
 

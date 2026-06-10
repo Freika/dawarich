@@ -36,4 +36,13 @@ RSpec.describe 'Google phone takeout import with invalid UTF-8 bytes' do
     expect(point.lat).to be_within(0.0001).of(48.1351)
     expect(point.lon).to be_within(0.0001).of(11.5820)
   end
+
+  it 'imports without raising when content comes from storage download' do
+    downloader = instance_double(
+      Imports::SecureFileDownloader, download_with_verification: json_with_latin1_degree_signs
+    )
+    allow(Imports::SecureFileDownloader).to receive(:new).and_return(downloader)
+
+    expect { GoogleMaps::PhoneTakeoutImporter.new(import, user.id).call }.not_to raise_error
+  end
 end
