@@ -5,9 +5,12 @@ class Users::SafeSettings
 
   GATED_MAP_LAYERS = ['Heatmap', 'Fog of War', 'Scratch map'].freeze
 
+  FOG_OF_WAR_MODES = %w[points hexagons].freeze
+
   DEFAULT_VALUES = {
     'fog_of_war_meters' => 50,
     'fog_of_war_threshold' => 50,
+    'fog_of_war_mode' => 'points',
     'meters_between_routes' => 500,
     'preferred_map_layer' => 'OpenStreetMap',
     'speed_colored_routes' => false,
@@ -90,6 +93,7 @@ class Users::SafeSettings
       visits_suggestions_enabled: visits_suggestions_enabled?,
       speed_color_scale: speed_color_scale,
       fog_of_war_threshold: fog_of_war_threshold,
+      fog_of_war_mode: fog_of_war_mode,
       enabled_map_layers: enabled_map_layers,
       maps_maplibre_style: maps_maplibre_style,
       globe_projection: globe_projection,
@@ -196,6 +200,11 @@ class Users::SafeSettings
 
   def fog_of_war_threshold
     settings['fog_of_war_threshold']
+  end
+
+  def fog_of_war_mode
+    value = settings['fog_of_war_mode'].to_s
+    FOG_OF_WAR_MODES.include?(value) ? value : 'points'
   end
 
   def enabled_map_layers

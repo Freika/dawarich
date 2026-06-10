@@ -1339,6 +1339,10 @@ export default class extends Controller {
   toggleHexagons(event) {
     return this.routesManager.toggleHexagons(event)
   }
+  updateFogMode(event) {
+    return this.settingsController.updateFogMode(event)
+  }
+
   toggleFog(event) {
     return this.routesManager.toggleFog(event)
   }

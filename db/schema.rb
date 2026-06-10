@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_06_04_120000) do
+ActiveRecord::Schema[8.0].define(version: 2026_06_10_090000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
@@ -101,6 +101,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_06_04_120000) do
     t.index ["period_type"], name: "index_digests_on_period_type"
     t.index ["sharing_uuid"], name: "index_digests_on_sharing_uuid", unique: true
     t.index ["user_id", "year", "month", "period_type"], name: "index_digests_on_user_year_month_period_type", unique: true
+    t.index ["user_id", "year", "period_type"], name: "index_digests_on_user_year_period_type_monthless", unique: true, where: "(month IS NULL)"
     t.index ["user_id"], name: "index_digests_on_user_id"
     t.index ["year"], name: "index_digests_on_year"
   end
