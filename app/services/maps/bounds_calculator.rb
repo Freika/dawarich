@@ -17,16 +17,11 @@ module Maps
       start_timestamp = parse_date_parameter(@start_date)
       end_timestamp = parse_date_parameter(@end_date)
 
-      point_count =
-        @user
-        .points
-        .where(timestamp: start_timestamp..end_timestamp)
-        .select(:id)
-        .count
+      bounds_result = execute_bounds_query(start_timestamp, end_timestamp)
+      point_count = bounds_result['point_count'].to_i
 
       return build_no_data_response if point_count.zero?
 
-      bounds_result = execute_bounds_query(start_timestamp, end_timestamp)
       build_success_response(bounds_result, point_count)
     end
 
@@ -39,7 +34,8 @@ module Maps
 
     def execute_bounds_query(start_timestamp, end_timestamp)
       ActiveRecord::Base.connection.exec_query(
-        "SELECT ST_YMin(ST_Extent(lonlat::geometry)) as min_lat,
+        "SELECT COUNT(*) as point_count,
+                ST_YMin(ST_Extent(lonlat::geometry)) as min_lat,
                 ST_YMax(ST_Extent(lonlat::geometry)) as max_lat,
                 ST_XMin(ST_Extent(lonlat::geometry)) as min_lng,
                 ST_XMax(ST_Extent(lonlat::geometry)) as max_lng

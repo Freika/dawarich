@@ -105,15 +105,12 @@ class Tracks::TimeChunkProcessorJob < ApplicationJob
         Rails.logger.error(
           "Invalid distance calculated (#{distance}) for #{points.size} points in chunk #{chunk_data[:chunk_id]}"
         )
-        Rails.logger.debug "Point coordinates: #{points.map { |p| [p.latitude, p.longitude] }.inspect}"
         return nil
       end
 
       track = create_track_from_points(points, distance * 1000) # Convert km to meters
 
-      if track
-        Rails.logger.debug "Created track #{track.id} with #{points.size} points (#{distance.round(2)} km)"
-      else
+      unless track
         Rails.logger.warn "Failed to create track from #{points.size} points with distance #{distance.round(2)} km"
       end
 

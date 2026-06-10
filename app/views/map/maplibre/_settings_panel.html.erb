@@ -305,6 +305,26 @@
               <%= pro_badge_tag %>
             </label>
             <p class="text-sm text-base-content/60 ml-14">Show explored areas</p>
+            <div class="flex gap-4 ml-14 mt-1">
+              <label class="label cursor-pointer gap-2 py-0">
+                <input type="radio"
+                       name="fogOfWarMode"
+                       value="points"
+                       class="radio radio-sm"
+                       <%= 'checked' if current_user.safe_settings.fog_of_war_mode == 'points' %>
+                       data-action="change->maps--maplibre#updateFogMode" />
+                <span class="label-text text-sm">Per point</span>
+              </label>
+              <label class="label cursor-pointer gap-2 py-0">
+                <input type="radio"
+                       name="fogOfWarMode"
+                       value="hexagons"
+                       class="radio radio-sm"
+                       <%= 'checked' if current_user.safe_settings.fog_of_war_mode == 'hexagons' %>
+                       data-action="change->maps--maplibre#updateFogMode" />
+                <span class="label-text text-sm">Per hexagon</span>
+              </label>
+            </div>
           </div>
 
           <div class="divider"></div>

@@ -30,6 +30,7 @@ RSpec.describe Users::SafeSettings do
             visits_suggestions_enabled: true,
             speed_color_scale: nil,
             fog_of_war_threshold: 50,
+          fog_of_war_mode: 'points',
             enabled_map_layers: %w[Tracks Heatmap],
             maps_maplibre_style: 'light',
             globe_projection: true,
@@ -94,6 +95,7 @@ RSpec.describe Users::SafeSettings do
           {
             'fog_of_war_meters' => 100,
             'fog_of_war_threshold' => 50,
+          'fog_of_war_mode' => 'points',
             'meters_between_routes' => 1000,
             'preferred_map_layer' => 'Satellite',
             'speed_colored_routes' => true,
@@ -169,6 +171,7 @@ RSpec.describe Users::SafeSettings do
             visits_suggestions_enabled: false,
             speed_color_scale: nil,
             fog_of_war_threshold: 50,
+          fog_of_war_mode: 'points',
             enabled_map_layers: %w[Points Routes Areas Photos],
             maps_maplibre_style: 'light',
             globe_projection: true,
@@ -813,6 +816,23 @@ RSpec.describe Users::SafeSettings do
 
     it 'returns false for false' do
       expect(described_class.new({ 'visit_density_fill_enabled' => false }).visit_density_fill_enabled?).to be false
+    end
+  end
+  describe '#fog_of_war_mode' do
+    it 'defaults to points' do
+      expect(described_class.new.fog_of_war_mode).to eq('points')
+    end
+
+    it 'returns hexagons when set' do
+      expect(described_class.new({ 'fog_of_war_mode' => 'hexagons' }).fog_of_war_mode).to eq('hexagons')
+    end
+
+    it 'falls back to points for invalid values' do
+      expect(described_class.new({ 'fog_of_war_mode' => 'octagons' }).fog_of_war_mode).to eq('points')
+    end
+
+    it 'is included in config' do
+      expect(described_class.new.config[:fog_of_war_mode]).to eq('points')
     end
   end
 end

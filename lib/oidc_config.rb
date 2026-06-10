@@ -27,13 +27,20 @@ module OidcConfig
     }
 
     if env['OIDC_ISSUER'].to_s.strip != ''
-      config[:issuer] = env['OIDC_ISSUER']
+      config[:issuer] = normalize_issuer(env['OIDC_ISSUER'])
       config[:discovery] = true
     elsif env['OIDC_HOST'].to_s.strip != ''
       config[:client_options].merge!(manual_endpoints(env))
     end
 
     config
+  end
+
+  # Discovery expects the bare issuer; the gem appends the well-known path
+  # itself. Configs pasting the full discovery URL would otherwise request a
+  # doubled path and fail with an opaque NoMethodError.
+  def self.normalize_issuer(issuer)
+    issuer.strip.sub(%r{/\.well-known/openid-configuration\z}, '').chomp('/')
   end
 
   def self.pkce_enabled?(env = ENV)

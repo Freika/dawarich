@@ -324,6 +324,10 @@ export class RoutesManager {
     const fogLayer = this.layerManager.getLayer("fog")
 
     const showFog = async () => {
+      if (fogLayer?.mode === "hexagons") {
+        fogLayer.toggle(true)
+        return
+      }
       await this.controller.mapDataManager.ensurePointsLoaded()
       if (fogLayer) fogLayer.toggle(true)
     }

@@ -1929,6 +1929,56 @@ paths:
                             description: Northeast longitude
         '401':
           description: unauthorized
+  "/api/v1/maps/hexagons/fog":
+    get:
+      summary: Retrieves fog of war hexagon cell ids
+      tags:
+      - Maps
+      description: Returns precalculated H3 cell ids covering the user's visited locations
+        within the specified date range, used by the fog of war hexagon rendering
+        mode
+      parameters:
+      - name: api_key
+        in: query
+        required: false
+        description: API Key
+        schema:
+          type: string
+      - name: start_date
+        in: query
+        required: true
+        description: Start date (ISO 8601 format)
+        schema:
+          type: string
+      - name: end_date
+        in: query
+        required: true
+        description: End date (ISO 8601 format)
+        schema:
+          type: string
+      responses:
+        '200':
+          description: cell ids found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  h3_indexes:
+                    type: array
+                    description: H3 cell ids covering visited locations
+                    items:
+                      type: string
+                  metadata:
+                    type: object
+                    properties:
+                      count:
+                        type: integer
+                        description: Number of cell ids returned
+        '400':
+          description: missing or invalid dates
+        '401':
+          description: unauthorized
   "/api/v1/overland/batches":
     post:
       summary: Creates a batch of points

@@ -143,6 +143,14 @@ export class SettingsController {
         : this.settings.globeProjection || false
     }
 
+    // Sync fog of war mode radio
+    const fogModeInput = controller.element.querySelector(
+      `input[name="fogOfWarMode"][value="${this.settings.fogOfWarMode || "points"}"]`,
+    )
+    if (fogModeInput) {
+      fogModeInput.checked = true
+    }
+
     // Sync fog of war settings
     const fogRadiusInput = controller.element.querySelector(
       'input[name="fogOfWarRadius"]',
@@ -1109,6 +1117,17 @@ export class SettingsController {
   /**
    * Update route opacity in real-time
    */
+  async updateFogMode(event) {
+    const mode = event.target.value
+
+    const fogLayer = this.layerManager.getLayer("fog")
+    if (fogLayer) {
+      fogLayer.setMode(mode)
+    }
+
+    await SettingsManager.updateSetting("fogOfWarMode", mode)
+  }
+
   updateRouteOpacity(event) {
     const opacity = parseInt(event.target.value, 10) / 100
 
