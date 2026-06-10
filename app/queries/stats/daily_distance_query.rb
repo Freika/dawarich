@@ -24,16 +24,10 @@ class Stats::DailyDistanceQuery
         SELECT
           (to_timestamp(timestamp) AT TIME ZONE $1)::date as local_date,
           CASE
-            WHEN LAG(lonlat) OVER (
-              PARTITION BY (to_timestamp(timestamp) AT TIME ZONE $1)::date
-              ORDER BY timestamp
-            ) IS NOT NULL THEN
+            WHEN LAG(lonlat) OVER (ORDER BY timestamp) IS NOT NULL THEN
               ST_Distance(
                 lonlat::geography,
-                LAG(lonlat) OVER (
-                  PARTITION BY (to_timestamp(timestamp) AT TIME ZONE $1)::date
-                  ORDER BY timestamp
-                )::geography
+                LAG(lonlat) OVER (ORDER BY timestamp)::geography
               )
             ELSE 0
           END as segment_distance

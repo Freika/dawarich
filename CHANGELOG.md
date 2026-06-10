@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Daily and monthly distance statistics now include the distance traveled across midnight (e.g. overnight flights); previously the segment between the last point of one day and the first point of the next was silently dropped (#2843)
+
 ## [1.8.0] - 2026-06-08
 
 Upgrade notes:
