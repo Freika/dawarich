@@ -154,12 +154,12 @@ RSpec.describe Imports::DestroyJob, type: :job do
         expect { described_class.perform_now(import.id) }.to raise_error(StandardError, 'Destroy failed')
       end
 
-      it 'has already set status to deleting before service is called' do
+      it 'reverts the status so the import is not stuck in deleting' do
         expect do
           described_class.perform_now(import.id)
         rescue StandardError
           StandardError
-        end.to change { import.reload.status }.to('deleting')
+        end.to change { import.reload.status }.to('failed')
       end
     end
 
