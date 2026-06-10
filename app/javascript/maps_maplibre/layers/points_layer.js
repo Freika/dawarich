@@ -169,11 +169,8 @@ export class PointsLayer extends BaseLayer {
     try {
       await this.updatePointPosition(pointId, coords.lat, coords.lng)
 
-      // Update routes after successful point update
-      await this.updateConnectedRoutes(pointId, originalCoords, [
-        coords.lng,
-        coords.lat,
-      ])
+      // Rebuild routes from the updated points after a successful move
+      await this.reloadConnectedRoutes()
     } catch (error) {
       console.error("Failed to update point:", error)
       // Revert the point position on error
@@ -223,61 +220,22 @@ export class PointsLayer extends BaseLayer {
   }
 
   /**
-   * Update connected route segments when a point is moved
+   * Rebuild the routes layer from the points source after a point moved.
+   * Rewriting individual vertices by coordinate proximity corrupted
+   * unrelated lines passing near the old position; a full rebuild from the
+   * authoritative points keeps every other route intact.
    */
-  async updateConnectedRoutes(_pointId, oldCoords, newCoords) {
-    if (!this.layerManager) {
-      console.warn("LayerManager not configured, cannot update routes")
-      return
+  async reloadConnectedRoutes() {
+    const source = this.map.getSource(this.sourceId)
+    if (source?._data) {
+      this.data = source._data
     }
 
-    const routesLayer = this.layerManager.getLayer("routes")
-    if (!routesLayer) {
-      console.warn("Routes layer not found")
-      return
-    }
+    const routesManager = this.layerManager?.controller?.routesManager
+    const routesLayer = this.layerManager?.getLayer("routes")
+    if (!routesManager || !routesLayer) return
 
-    const routesSource = this.map.getSource(routesLayer.sourceId)
-    if (!routesSource) {
-      console.warn("Routes source not found")
-      return
-    }
-
-    const routesData = routesSource._data
-    if (!routesData || !routesData.features) {
-      return
-    }
-
-    // Tolerance for coordinate comparison (account for floating point precision)
-    const tolerance = 0.0001
-    let routesUpdated = false
-
-    // Find and update route segments that contain the moved point
-    routesData.features.forEach((feature) => {
-      if (feature.geometry.type === "LineString") {
-        const coordinates = feature.geometry.coordinates
-
-        // Check each coordinate in the line
-        for (let i = 0; i < coordinates.length; i++) {
-          const coord = coordinates[i]
-
-          // Check if this coordinate matches the old position
-          if (
-            Math.abs(coord[0] - oldCoords[0]) < tolerance &&
-            Math.abs(coord[1] - oldCoords[1]) < tolerance
-          ) {
-            // Update to new position
-            coordinates[i] = newCoords
-            routesUpdated = true
-          }
-        }
-      }
-    })
-
-    // Update the routes source if any routes were modified
-    if (routesUpdated) {
-      routesSource.setData(routesData)
-    }
+    await routesManager.reloadRoutes()
   }
 
   /**

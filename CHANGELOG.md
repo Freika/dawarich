@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Moving a point on Map v2 no longer drags unrelated route lines along with it; routes are rebuilt from the updated points instead of patching nearby line vertices (#2150)
+
 ## [1.8.0] - 2026-06-08
 
 Upgrade notes:
