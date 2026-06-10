@@ -385,6 +385,48 @@ RSpec.describe Timeline::DayAssembler do
       end
     end
 
+    context 'N+1 guard: query count must not grow with visit count' do
+      let(:day) { Time.zone.parse('2025-01-15 00:00:00') }
+
+      def build_visits(num)
+        tag = create(:tag, user: user)
+        num.times do |i|
+          p = create(:place, :with_geodata, name: "P#{i}", latitude: 52.5 + i * 0.001, longitude: 13.4)
+          p.tags << tag
+          v = create(:visit, user: user, place: p, name: "V#{i}", status: :suggested,
+                              started_at: day + (8 + (i % 14)).hours,
+                              ended_at: day + (9 + (i % 14)).hours,
+                              duration: 60)
+          v.suggested_places << p
+          create_list(:point, 2, user: user, visit: v)
+        end
+      end
+
+      def query_count_for_call
+        user.reload
+        count = 0
+        counter = lambda do |_name, _start, _finish, _id, payload|
+          count += 1 unless payload[:name].in?(%w[SCHEMA TRANSACTION])
+        end
+        assembler = described_class.new(user, start_at: day.iso8601, end_at: (day + 1.day).iso8601)
+        ActiveSupport::Notifications.subscribed(counter, 'sql.active_record') { assembler.call }
+        count
+      end
+
+      it 'issues the same number of queries for 10 visits as for 3 visits (batch COUNT, no N+1)' do
+        build_visits(3)
+        count_small = query_count_for_call
+
+        build_visits(10)
+        count_large = query_count_for_call
+
+        expect(count_large).to be <= count_small + 2,
+                               "Query count grew from #{count_small} (3 visits) to #{count_large} (13 visits). " \
+                               'point_count_for is issuing one COUNT per visit (N+1). ' \
+                               'Expected a single batched GROUP BY count query instead.'
+      end
+    end
+
     context 'summary status counts' do
       let(:day) { Time.zone.parse('2025-01-15 00:00:00') }
 
