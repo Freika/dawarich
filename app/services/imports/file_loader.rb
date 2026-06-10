@@ -7,12 +7,14 @@ module Imports
     private
 
     def load_json_data
-      if file_path && File.exist?(file_path)
-        Oj.load_file(file_path, mode: :compat)
-      else
-        file_content = Imports::SecureFileDownloader.new(import.file).download_with_verification
-        Oj.load(file_content, mode: :compat)
-      end
+      Oj.load(scrub_to_utf8(load_file_content), mode: :compat)
+    end
+
+    # Exports written by some clients (notably Windows) can contain stray
+    # non-UTF-8 bytes; Oj parses them without complaint, so downstream string
+    # operations would raise ArgumentError. Replace invalid bytes upfront.
+    def scrub_to_utf8(content)
+      content.dup.force_encoding(Encoding::UTF_8).scrub
     end
 
     def load_file_content

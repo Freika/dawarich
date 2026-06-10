@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Importing Google Timeline phone exports containing invalid UTF-8 bytes (e.g. Windows-encoded degree signs) no longer fails with "invalid byte sequence in UTF-8" (#2772)
+
 ## [1.8.0] - 2026-06-08
 
 Upgrade notes:
