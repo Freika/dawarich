@@ -2197,6 +2197,10 @@ export default class extends Controller {
       : this.replayCurrentCoords
 
     // Reset timing so interpolation starts fresh from this point
+    this.replaySegmentDurationMs = this._replaySegmentDurationMs(
+      currentPoint,
+      nextPoint,
+    )
     this.replayLastTime = performance.now()
   }
 
@@ -2417,6 +2421,34 @@ export default class extends Controller {
 
     if (this.hasReplaySpeedLabelTarget) {
       this.replaySpeedLabelTarget.textContent = `${this.replaySpeed}x`
+    }
+
+    this._rescaleReplaySegment()
+  }
+
+  /**
+   * Apply the current speed to the in-flight segment, keeping the marker's
+   * progress within the segment so it doesn't jump
+   * @private
+   */
+  _rescaleReplaySegment() {
+    if (!this.replayActive || !this.replayPoints) return
+
+    const previousDuration = this.replaySegmentDurationMs
+    const currentPoint = this.replayPoints[this.replayPointIndex]
+    const nextPoint = this.replayPoints[this.replayPointIndex + 1]
+    this.replaySegmentDurationMs = this._replaySegmentDurationMs(
+      currentPoint,
+      nextPoint,
+    )
+
+    if (previousDuration > 0) {
+      const now = performance.now()
+      const progress = Math.min(
+        (now - this.replayLastTime) / previousDuration,
+        1,
+      )
+      this.replayLastTime = now - progress * this.replaySegmentDurationMs
     }
   }
 
