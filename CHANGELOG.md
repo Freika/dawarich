@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- OIDC login no longer fails with "undefined method 'with_indifferent_access'" when OIDC_ISSUER is set to the full discovery URL — the trailing /.well-known/openid-configuration is now stripped automatically (#2056)
+
 ## [1.8.0] - 2026-06-08
 
 Upgrade notes:
