@@ -30,14 +30,7 @@ class Imports::Create
       run_importer(temp_file_path)
     end
 
-    User.where(id: user.id).update_all(points_count: user.points.count)
-
-    filter_anomalies(user, import)
-    schedule_stats_creating(user.id)
-    schedule_visit_suggesting(user.id, import)
-    schedule_track_generation(user.id, import)
-    update_import_points_count(import)
-    notify_if_all_skipped(import)
+    post_import_processing
   rescue StandardError => e
     return if import.destroyed?
 
@@ -58,6 +51,19 @@ class Imports::Create
   end
 
   private
+
+  def post_import_processing
+    User.where(id: user.id).update_all(points_count: user.points.count)
+
+    filter_anomalies(user, import)
+    schedule_stats_creating(user.id)
+    schedule_visit_suggesting(user.id, import)
+    schedule_track_generation(user.id, import)
+    update_import_points_count(import)
+    notify_if_all_skipped(import)
+  rescue StandardError => e
+    ExceptionReporter.call(e, 'Post-import processing failed')
+  end
 
   def run_importer(path)
     source = import.source.presence || detect_source_from_file(path)

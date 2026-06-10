@@ -15,9 +15,21 @@ class Imports::DestroyJob < ApplicationJob
     broadcast_deletion_complete(import)
   rescue ActiveRecord::RecordNotFound
     Rails.logger.warn "Import #{import_id} not found, may have already been deleted"
+  rescue StandardError
+    revert_deleting_status(import)
+    raise
   end
 
   private
+
+  def revert_deleting_status(import)
+    return unless import && Import.exists?(import.id)
+
+    import.failed!
+    broadcast_status_update(import)
+  rescue StandardError => e
+    Rails.logger.warn "Failed to revert deleting status for import #{import.id}: #{e.message}"
+  end
 
   def broadcast_status_update(import)
     ImportsChannel.broadcast_to(
