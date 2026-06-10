@@ -19,4 +19,11 @@ RSpec.describe Points::Archival::RestoreUserJob do
     expect(user.points.reload.count).to eq(2)
     expect(user.reload.points_archive_state_active?).to be(true)
   end
+
+  it 'resets state to archived and re-raises if restoring fails partway' do
+    allow_any_instance_of(Points::Archival::Restorer).to receive(:restore_user).and_raise(StandardError, 'boom')
+
+    expect { described_class.new.perform(user.id) }.to raise_error(StandardError)
+    expect(user.reload.points_archive_state_archived?).to be(true)
+  end
 end

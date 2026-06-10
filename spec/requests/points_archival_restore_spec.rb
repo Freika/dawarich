@@ -17,6 +17,14 @@ RSpec.describe 'Points archival restore-on-return', type: :request do
     expect { get root_path }.not_to have_enqueued_job(Points::Archival::RestoreUserJob)
   end
 
+  it 'rolls the user back to archived if enqueuing the restore fails' do
+    allow(Points::Archival::RestoreUserJob).to receive(:perform_later).and_raise(StandardError, 'queue down')
+
+    get root_path
+
+    expect(user.reload.points_archive_state_archived?).to be(true)
+  end
+
   context 'when authenticated via API key' do
     let(:api_user) { create(:user, points_archive_state: :archived) }
 

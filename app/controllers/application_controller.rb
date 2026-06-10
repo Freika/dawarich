@@ -308,6 +308,9 @@ status: :see_other
 
     user.update!(points_archive_state: :restoring)
     Points::Archival::RestoreUserJob.perform_later(user.id)
+  rescue StandardError => e
+    user.update!(points_archive_state: :archived) if user&.points_archive_state_restoring?
+    Rails.logger.warn("[points_archival] restore enqueue failed for user #{user&.id}: #{e.class}: #{e.message}")
   end
 
   def sign_out_deleted_users

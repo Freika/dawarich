@@ -56,8 +56,9 @@ module Points
 
       def reset_counters(user_id)
         User.where(id: user_id).update_all(points_count: Point.where(user_id:).count)
+        per_import = Point.where(user_id:).group(:import_id).count
         Import.where(user_id:).find_each do |import|
-          import.update_column(:points_count, Point.where(import_id: import.id).count)
+          import.update_column(:points_count, per_import[import.id].to_i)
         end
       end
     end

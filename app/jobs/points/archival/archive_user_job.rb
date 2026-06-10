@@ -6,6 +6,8 @@ module Points
       queue_as :archival
 
       def perform(user_id)
+        return unless Flipper.enabled?(:points_archival)
+
         months = ENV.fetch('POINTS_ARCHIVAL_DORMANCY_MONTHS', 6).to_i
         user = User.find(user_id)
         return unless user.points_archive_state_active?
