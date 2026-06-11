@@ -80,6 +80,15 @@ RSpec.describe Imports::Create do
           service.call
           expect(import.reload.status).to eq('completed')
         end
+
+        it 'reports the failing step by name' do
+          allow(ExceptionReporter).to receive(:call)
+
+          service.call
+
+          expect(ExceptionReporter).to have_received(:call)
+            .with(instance_of(StandardError), 'Post-import processing failed: filter_anomalies')
+        end
       end
 
       context 'when import fails' do
