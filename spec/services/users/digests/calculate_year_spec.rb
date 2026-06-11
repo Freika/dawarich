@@ -253,6 +253,27 @@ RSpec.describe Users::Digests::CalculateYear do
           expect(existing_digest.reload.distance).to eq(125_000)
         end
       end
+
+      context 'when concurrent calculations keep colliding' do
+        it 'retries until the collision clears' do
+          attempts = 0
+          allow_any_instance_of(Users::Digest).to receive(:save!).and_wrap_original do |original, *args|
+            attempts += 1
+            raise ActiveRecord::RecordNotUnique, 'duplicate key' if attempts < 3
+
+            original.call(*args)
+          end
+
+          expect(calculate_digest).to be_persisted
+        end
+
+        it 'gives up after repeated collisions' do
+          allow_any_instance_of(Users::Digest).to receive(:save!)
+            .and_raise(ActiveRecord::RecordNotUnique, 'duplicate key')
+
+          expect { calculate_digest }.to raise_error(ActiveRecord::RecordNotUnique)
+        end
+      end
     end
 
     context 'with previous year data for comparison' do

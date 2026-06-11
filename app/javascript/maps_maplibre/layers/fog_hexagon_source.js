@@ -1,11 +1,16 @@
 import { resolutionForZoom } from "../utils/h3_resolution"
 
+const KM_PER_DEGREE = 111
+const BBOX_MARGIN_FACTOR = 2
+const MIN_COS_LAT = 0.2
+
 export class FogHexagonSource {
   constructor() {
     this.h3 = null
     this.rawCellIds = []
     this.displayRes = null
-    this._boundariesByRes = new Map()
+    this._cellsByRes = new Map()
+    this._coordsById = new Map()
   }
 
   get loaded() {
@@ -21,7 +26,8 @@ export class FogHexagonSource {
     this.h3 = h3
     this.rawCellIds = data.h3_indexes || []
     this.displayRes = null
-    this._boundariesByRes.clear()
+    this._cellsByRes.clear()
+    this._coordsById.clear()
   }
 
   resolutionChanged(zoom) {
@@ -34,7 +40,7 @@ export class FogHexagonSource {
     const res = resolutionForZoom(zoom)
     this.displayRes = res
 
-    const cached = this._boundariesByRes.get(res)
+    const cached = this._cellsByRes.get(res)
     if (cached) return cached
 
     const displayIds = new Set()
@@ -45,23 +51,37 @@ export class FogHexagonSource {
       displayIds.add(cellRes > res ? this.h3.cellToParent(id, res) : id)
     }
 
-    const boundaries = [...displayIds].map((id) => this._buildBoundary(id))
-    this._boundariesByRes.set(res, boundaries)
-    return boundaries
+    const latMargin =
+      (this.h3.getHexagonEdgeLengthAvg(res, this.h3.UNITS.km) / KM_PER_DEGREE) *
+      BBOX_MARGIN_FACTOR
+    const cells = [...displayIds].map((id) => this._buildCell(id, latMargin))
+    this._cellsByRes.set(res, cells)
+    return cells
   }
 
-  _buildBoundary(id) {
-    const coords = this.h3.cellToBoundary(id, true)
-    let minLng = Infinity
-    let maxLng = -Infinity
-    let minLat = Infinity
-    let maxLat = -Infinity
-    for (const [lng, lat] of coords) {
-      if (lng < minLng) minLng = lng
-      if (lng > maxLng) maxLng = lng
-      if (lat < minLat) minLat = lat
-      if (lat > maxLat) maxLat = lat
+  _buildCell(id, latMargin) {
+    const [lat, lng] = this.h3.cellToLatLng(id)
+    const cosLat = Math.max(Math.cos((lat * Math.PI) / 180), MIN_COS_LAT)
+    const lngMargin = latMargin / cosLat
+    const source = this
+
+    return {
+      minLng: lng - lngMargin,
+      maxLng: lng + lngMargin,
+      minLat: lat - latMargin,
+      maxLat: lat + latMargin,
+      get coords() {
+        return source._coordsFor(id)
+      },
     }
-    return { coords, minLng, maxLng, minLat, maxLat }
+  }
+
+  _coordsFor(id) {
+    let coords = this._coordsById.get(id)
+    if (!coords) {
+      coords = this.h3.cellToBoundary(id, true)
+      this._coordsById.set(id, coords)
+    }
+    return coords
   }
 }

@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [1.8.1] - 2026-06-11
 
+Upgrade notes:
+
+1. A migration removes duplicate year-end digests that could accumulate before this release. If a yearly recap in Insights showed odd numbers, they may change after the upgrade — that's the duplicates being cleaned up.
+
 ### Added
 
 - Fog of War (Map v2) can now reveal explored areas per hexagon instead of per point, using precalculated monthly statistics. Switch between "Per point" and "Per hexagon" in the map settings panel. (#2899)

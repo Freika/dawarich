@@ -29,9 +29,9 @@ module Users
         digest.save!
         digest
       rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique
-        raise if @retried
+        @attempts = @attempts.to_i + 1
+        raise if @attempts >= 3
 
-        @retried = true
         retry
       end
 

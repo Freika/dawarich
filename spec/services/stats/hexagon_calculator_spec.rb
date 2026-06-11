@@ -93,7 +93,7 @@ RSpec.describe Stats::HexagonCalculator do
         before do
           # Stub to simulate too many hexagons on first call, then acceptable on second
           call_count = 0
-          allow_any_instance_of(described_class).to receive(:build_h3_hash) do |_instance, _rows, _resolution|
+          allow_any_instance_of(described_class).to receive(:build_h3_hash) do |_instance, _resolution|
             call_count += 1
             if call_count == 1
               # First call: return too many hexagons
@@ -134,8 +134,27 @@ RSpec.describe Stats::HexagonCalculator do
 
         expect(points_query_count).to eq(1),
                                       "Expected exactly 1 points query but got #{points_query_count}. " \
-                                      'The old find_each path issues one query for empty? and one for find_each. ' \
-                                      'After refactor, coordinate_rows memoizes the pluck so only 1 query fires.'
+                                      'A month that fits in one batch should be read with a single pluck; ' \
+                                      'no per-point or per-check queries are allowed.'
+      end
+
+      it 'aggregates identically when the month spans multiple batches' do
+        stub_const('Stats::HexagonCalculator::BATCH_SIZE', 1)
+
+        points_query_count = 0
+        counter = lambda do |_name, _start, _finish, _id, payload|
+          sql = payload[:sql].to_s
+          points_query_count += 1 if sql =~ /FROM ["']?points["']?/i && payload[:name] != 'SCHEMA'
+        end
+
+        result = nil
+        ActiveSupport::Notifications.subscribed(counter, 'sql.active_record') do
+          result = calculate_hexagons
+        end
+
+        expect(points_query_count).to be > 1
+        expect(result.sum { |record| record[1] }).to eq(2)
+        expect(result.map(&:first)).to include('881f191b27fffff')
       end
 
       context 'when H3 raises an error' do

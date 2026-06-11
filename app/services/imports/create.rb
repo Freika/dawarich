@@ -66,6 +66,24 @@ class Imports::Create
     yield
   rescue StandardError => e
     ExceptionReporter.call(e, "Post-import processing failed: #{step}")
+    create_post_import_failure_notification(step)
+  end
+
+  def create_post_import_failure_notification(step)
+    return if @post_import_failure_notified
+
+    @post_import_failure_notified = true
+
+    Notifications::Create.new(
+      user:,
+      kind: :warning,
+      title: 'Import post-processing incomplete',
+      content: "Your import \"#{import.name}\" finished and all points were saved, but the " \
+               "#{step.tr('_', ' ')} step failed. Statistics, tracks or visit suggestions " \
+               'may be missing or outdated. You can trigger a recalculation from Settings.'
+    ).call
+  rescue StandardError => e
+    ExceptionReporter.call(e, 'Failed to create post-import failure notification')
   end
 
   def run_importer(path)

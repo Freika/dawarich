@@ -63,6 +63,18 @@ RSpec.describe Imports::Create do
         it 'still writes the points from the importer' do
           expect { service.call }.to change { import.points.count }.from(0)
         end
+
+        it 'notifies the user that post-processing is incomplete' do
+          service.call
+
+          expect(user.notifications.warning.where('title ILIKE ?', '%post-processing%')).to exist
+        end
+
+        it 'creates a single notification when multiple steps fail' do
+          allow(Points::AnomalyFilter).to receive(:new).and_raise(StandardError, 'boom')
+
+          expect { service.call }.to change { user.notifications.warning.count }.by(1)
+        end
       end
 
       context 'when an early post-import step raises' do
