@@ -239,6 +239,8 @@ end
 # Flipper admin UI: 30 req / 5 min per IP. The UI sits behind admin auth, but
 # limit hammering so an attacker (or buggy client) can't brute-force or scrape it.
 Rack::Attack.throttle('admin/flipper', limit: 30, period: 5.minutes) do |req|
+  next if DawarichSettings.self_hosted?
+
   req.ip if req.path.start_with?('/admin/flipper')
 end
 
