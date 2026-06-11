@@ -35,6 +35,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - The Anomalies map layer now remembers being enabled across page reloads and day changes, like other layers (#2791)
 - Map v2 Replay now plays back proportionally to real elapsed time (at 1x, one real minute per second; speed multiplier compresses further) instead of one point per tick, so slow and fast journeys of equal duration take equal playback time; long point-free gaps are skipped quickly instead of stalling (#2845)
 - The replay marker now renders above track and route lines instead of being hidden beneath them
+- Deleting a family no longer fails with a 500 error when location-sharing requests exist for it (#2916)
 
 ## [1.8.0] - 2026-06-08
 
