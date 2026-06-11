@@ -18,6 +18,7 @@ Upgrade notes:
 
 ### Changed
 
+- A trip's rich-text **notes** field is renamed to **description**; existing content is migrated automatically.
 - Edit and Delete actions on the trip page moved into the header next to the trip title; the bottom of the page now only carries a "Back to trips" link.
 - Per-day trip stats are now computed in a single PostGIS query (`ST_MakeLine`/`ST_Length`) instead of a Ruby Geocoder loop; cache key now also invalidates when individual trip points are updated.
 

@@ -1,5 +1,7 @@
 <% content_for :title, @trip.name %>
 
+<%= turbo_stream_from @trip %>
+
 <div class="container mx-auto px-4 my-5" data-controller="trip-maplibre"
      data-trip-maplibre-api-key-value="<%= current_user.api_key %>"
      data-trip-maplibre-timezone-value="<%= current_user.timezone %>"

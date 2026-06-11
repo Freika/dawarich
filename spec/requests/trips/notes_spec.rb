@@ -58,6 +58,34 @@ RSpec.describe '/trips/:trip_id/notes', type: :request do
       end
     end
 
+    context 'when a concurrent request already created the note (RecordNotUnique)' do
+      let!(:existing_note) do
+        create(:note, user: user, attachable: trip,
+                      noted_at: trip.started_at.to_date.to_datetime.noon, body: 'First writer')
+      end
+
+      it 'recovers without a 500 and applies the body to the existing note' do
+        fetch_calls = 0
+        allow(Note).to receive(:for_date).and_wrap_original do |original, *args|
+          fetch_calls += 1
+          fetch_calls == 1 ? Note.none : original.call(*args)
+        end
+        allow_any_instance_of(Note).to receive(:save).and_wrap_original do |original, *args|
+          raise ActiveRecord::RecordNotUnique, 'notes unique index' if original.receiver.new_record?
+
+          original.call(*args)
+        end
+
+        expect do
+          post trip_notes_url(trip), params: valid_params
+        end.not_to change(Note, :count)
+
+        expect(fetch_calls).to be >= 2
+        expect(response).to redirect_to(trip)
+        expect(existing_note.reload.body).to eq('Great day exploring!')
+      end
+    end
+
     context 'with date outside trip range' do
       let(:invalid_params) do
         {

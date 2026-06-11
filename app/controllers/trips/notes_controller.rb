@@ -15,16 +15,7 @@ module Trips
       @note.body = note_params[:body]
 
       if @note.save
-        respond_to do |format|
-          format.turbo_stream do
-            render turbo_stream: turbo_stream.replace(
-              "note-#{@trip.id}-#{@note.date}",
-              partial: 'trips/notes/note',
-              locals: { note: @note, trip: @trip }
-            )
-          end
-          format.html { redirect_to @trip }
-        end
+        render_note_saved
       else
         respond_to do |format|
           format.turbo_stream do
@@ -37,20 +28,17 @@ module Trips
           format.html { redirect_to @trip, alert: @note.errors.full_messages.join(', ') }
         end
       end
+    rescue ActiveRecord::RecordNotUnique
+      @note = @trip.notes.for_date(date).first
+      return render_invalid_date if @note.nil?
+
+      @note.update(body: note_params[:body])
+      render_note_saved
     end
 
     def update
       if @note.update(body: note_params[:body])
-        respond_to do |format|
-          format.turbo_stream do
-            render turbo_stream: turbo_stream.replace(
-              "note-#{@trip.id}-#{@note.date}",
-              partial: 'trips/notes/note',
-              locals: { note: @note, trip: @trip }
-            )
-          end
-          format.html { redirect_to @trip }
-        end
+        render_note_saved
       else
         respond_to do |format|
           format.turbo_stream do
@@ -82,6 +70,19 @@ module Trips
     end
 
     private
+
+    def render_note_saved
+      respond_to do |format|
+        format.turbo_stream do
+          render turbo_stream: turbo_stream.replace(
+            "note-#{@trip.id}-#{@note.date}",
+            partial: 'trips/notes/note',
+            locals: { note: @note, trip: @trip }
+          )
+        end
+        format.html { redirect_to @trip }
+      end
+    end
 
     def set_trip
       @trip = current_user.trips.find(params[:trip_id])

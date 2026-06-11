@@ -3,7 +3,7 @@
 class Note < ApplicationRecord
   include Nearable
 
-  ALLOWED_ATTACHABLE_TYPES = %w[Trip Area Visit Place Point].freeze
+  ALLOWED_ATTACHABLE_TYPES = %w[Trip Area Visit Place].freeze
 
   MAX_BODY_LENGTH = 10_000
 
@@ -31,7 +31,7 @@ class Note < ApplicationRecord
   scope :for_user, ->(user) { where(user: user) }
 
   def date
-    noted_at&.to_date
+    noted_at&.utc&.to_date
   end
 
   def date=(val)
@@ -66,7 +66,7 @@ class Note < ApplicationRecord
     return if noted_at.blank? || attachable_id.blank?
 
     scope = self.class.where(attachable_type: attachable_type, attachable_id: attachable_id)
-                .where('CAST(noted_at AS date) = ?', noted_at.to_date)
+                .where('CAST(noted_at AS date) = ?', noted_at.utc.to_date)
     scope = scope.where.not(id: id) if persisted?
 
     errors.add(:date, 'has already been taken') if scope.exists?

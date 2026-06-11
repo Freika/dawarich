@@ -101,6 +101,20 @@ RSpec.describe Note, type: :model do
       note = build(:note, user: user, noted_at: DateTime.new(2025, 3, 15, 14, 30))
       expect(note.date).to eq(Date.new(2025, 3, 15))
     end
+
+    it 'reports the stored UTC calendar date regardless of the viewer timezone' do
+      note = build(:note, user: user, noted_at: Date.new(2026, 5, 23).to_datetime.noon)
+
+      Time.use_zone('Pacific/Auckland') do
+        expect(note.date).to eq(Date.new(2026, 5, 23))
+      end
+    end
+  end
+
+  describe 'ALLOWED_ATTACHABLE_TYPES' do
+    it 'lists only models that include Notable' do
+      expect(Note::ALLOWED_ATTACHABLE_TYPES).to match_array(%w[Trip Area Visit Place])
+    end
   end
 
   describe '#date=' do
@@ -182,7 +196,7 @@ RSpec.describe Note, type: :model do
     let(:user) { create(:user) }
 
     it 'allows valid attachable types' do
-      %w[Trip Area Visit Place Point].each do |type|
+      %w[Trip Area Visit Place].each do |type|
         note = build(:note, user: user, noted_at: Time.current)
         note.attachable_type = type
         note.valid?
