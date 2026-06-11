@@ -216,6 +216,13 @@ export default class extends Controller {
     // Initialize feature managers
     this.areaSelectionManager = new AreaSelectionManager(this)
     this.visitsManager = new VisitsManager(this)
+    // The moveend viewport-refetch normally attaches when the user flips the
+    // Visits toggle on. When the layer starts enabled (saved setting or the
+    // panel=timeline force-enable above), attach it here so panning keeps
+    // the dots in sync with the viewport.
+    if (this.settings.visitsEnabled) {
+      this.visitsManager.attachViewportRefetch()
+    }
     this.placesManager = new PlacesManager(this)
     this.routesManager = new RoutesManager(this)
 

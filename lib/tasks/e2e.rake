@@ -96,6 +96,24 @@ namespace :e2e do
     puts "\n🚀 Invoking demo:seed_data..."
     Rake::Task['demo:seed_data'].invoke(geojson_path)
 
+    # The import enqueues track generation / geocoding / stats jobs. Those
+    # rebuild tracks, which nullifies any track_id assigned below (the #2630
+    # polluter) — wait for the churn to settle before planting fixtures.
+    puts "\n⏳ Waiting for background jobs to settle..."
+    require 'sidekiq/api'
+    deadline = Time.current + 5.minutes
+    loop do
+      busy = Sidekiq::Workers.new.size
+      enqueued = Sidekiq::Queue.all.sum(&:size)
+      break if busy.zero? && enqueued.zero?
+
+      if Time.current > deadline
+        puts "  ↪ still busy after 5 minutes (busy=#{busy} enqueued=#{enqueued}) — continuing anyway"
+        break
+      end
+      sleep 2
+    end
+
     puts "\n⚠️  Planting anomaly fixtures..."
     Rake::Task['e2e:seed_anomalies'].invoke
 
@@ -157,14 +175,26 @@ namespace :e2e do
     count = user.points.where(tracker_id: 'e2e-anomaly').count
     puts "  ↪ planted #{count} anomaly points (#{count == E2E_ANOMALY_FIXTURE.size ? 'ok' : 'MISMATCH'})"
 
-    polluter = user.points.where(tracker_id: 'e2e-anomaly').order(:timestamp).first
+    # The #2630 polluter lives OUTSIDE the shared anomaly bbox (and under its
+    # own tracker_id) so the destructive area-selection specs that delete the
+    # ANOMALY_COORDS cluster never consume it mid-run. Keep in sync with
+    # POLLUTER_COORD in e2e-dawarich-playwright/v2/helpers/anomaly.js.
+    user.points.where(tracker_id: 'e2e-anomaly-polluter').delete_all
+    polluter_ts = (base_day + (16 * 3600).seconds).to_i
+    polluter = user.points.create!(
+      lonlat: 'POINT(13.7 52.7)',
+      timestamp: polluter_ts,
+      anomaly: true,
+      tracker_id: 'e2e-anomaly-polluter',
+      country_name: 'Germany'
+    )
     day_start = base_day.to_i
     day_end   = (base_day + 1.day).to_i
     polluter_track = user.tracks
                          .where('start_at >= ? AND start_at < ?', Time.zone.at(day_start), Time.zone.at(day_end))
                          .order(:start_at)
                          .first
-    if polluter && polluter_track
+    if polluter_track
       polluter.update_columns(track_id: polluter_track.id)
       puts "  ↪ assigned anomaly ##{polluter.id} to track ##{polluter_track.id} as #2630 controller-filter polluter"
     else
