@@ -24,6 +24,7 @@ Upgrade notes:
 
 ### Fixed
 
+- Family Members map layer no longer draws a stray line to the map center when a member location update lacks coordinates (#2863)
 - Trip card preview on `/trips` and the per-day route layer on the trip page now split routes at the International Date Line, so transpacific trips no longer draw an impossible line across the globe. #2731
 
 ## [1.8.1] - 2026-06-11
