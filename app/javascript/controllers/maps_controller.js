@@ -518,9 +518,13 @@ export default class extends BaseController {
         attribution: "&copy; OpenStreetMap contributors",
       })
 
-      // If this is the preferred layer, add it to the map immediately
-      if (selectedLayerName === this.userSettings.maps.name) {
-        // Remove any existing base layers first
+      const preferredIsCustom =
+        selectedLayerName === this.userSettings.maps.name
+      const preferredIsUnset =
+        !this.userSettings.preferred_map_layer ||
+        this.userSettings.preferred_map_layer === "OpenStreetMap"
+
+      if (preferredIsCustom || preferredIsUnset) {
         Object.values(maps).forEach((layer) => {
           if (this.map.hasLayer(layer)) {
             this.map.removeLayer(layer)

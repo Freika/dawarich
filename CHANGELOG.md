@@ -24,6 +24,7 @@ Upgrade notes:
 
 ### Fixed
 
+- Map v1 (Leaflet) now uses a configured custom Tile Server as the active base layer instead of only adding it as a selectable option, so a saved custom tile URL takes effect on the map without manually switching layers. #1263
 - Trip card preview on `/trips` and the per-day route layer on the trip page now split routes at the International Date Line, so transpacific trips no longer draw an impossible line across the globe. #2731
 
 ## [1.8.1] - 2026-06-11
