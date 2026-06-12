@@ -217,7 +217,8 @@ export function addHighlightOnHover(
 
         // Calculate speed if we have both markers
         if (startMarkerData && endMarkerData) {
-          speed = startMarkerData[5] || endMarkerData[5] || 0
+          const velocityMs = startMarkerData[5] || endMarkerData[5] || 0
+          speed = velocityMs * 3.6
         }
       }
     }

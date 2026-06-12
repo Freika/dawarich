@@ -25,6 +25,7 @@ Upgrade notes:
 ### Fixed
 
 - Trip card preview on `/trips` and the per-day route layer on the trip page now split routes at the International Date Line, so transpacific trips no longer draw an impossible line across the globe. #2731
+- The "Current Speed" value in the Map v1 route hover popup was shown ~3.6x too low because the stored velocity (m/s) was not converted to km/h before formatting, unlike the point popup and the route click popup. The hover popup now converts to km/h (and mph) consistently. #1314
 
 ## [1.8.1] - 2026-06-11
 
