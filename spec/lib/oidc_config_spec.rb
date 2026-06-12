@@ -47,10 +47,12 @@ RSpec.describe OidcConfig do
       expect(config[:discovery]).to be true
     end
 
-    it 'strips a trailing slash from the issuer' do
-      config = described_class.build(base_env.merge('OIDC_ISSUER' => 'https://auth.example.com/'))
+    it 'preserves a trailing slash that is part of the issuer' do
+      config = described_class.build(
+        base_env.merge('OIDC_ISSUER' => 'https://auth.example.com/application/o/dawarich/')
+      )
 
-      expect(config[:issuer]).to eq('https://auth.example.com')
+      expect(config[:issuer]).to eq('https://auth.example.com/application/o/dawarich/')
     end
 
     it 'keeps a path-based issuer intact apart from the well-known suffix' do
@@ -59,6 +61,14 @@ RSpec.describe OidcConfig do
       )
 
       expect(config[:issuer]).to eq('https://idp.example.com/realms/main')
+    end
+
+    it 'strips a well-known suffix that itself has a trailing slash' do
+      config = described_class.build(
+        base_env.merge('OIDC_ISSUER' => 'https://auth.example.com/.well-known/openid-configuration/')
+      )
+
+      expect(config[:issuer]).to eq('https://auth.example.com')
     end
 
     it 'builds a manual-mode config when host is present without issuer' do
