@@ -67,6 +67,9 @@ services:
     restart: on-failure
     environment:
       RAILS_ENV: ${RAILS_ENV:-production}
+      ### To run under a non-root user, set PUID/PGID here (do NOT use `user:`).
+      # PUID: ${PUID:-1000}
+      # PGID: ${PGID:-1000}
       REDIS_URL: ${REDIS_URL:-redis://dawarich_redis:6379}
       DATABASE_HOST: ${DATABASE_HOST:-dawarich_db}
       DATABASE_PORT: ${DATABASE_PORT:-5432}
@@ -125,6 +128,9 @@ services:
     restart: on-failure
     environment:
       RAILS_ENV: ${RAILS_ENV:-production}
+      ### To run under a non-root user, set PUID/PGID here (do NOT use `user:`).
+      # PUID: ${PUID:-1000}
+      # PGID: ${PGID:-1000}
       REDIS_URL: ${REDIS_URL:-redis://dawarich_redis:6379}
       DATABASE_HOST: ${DATABASE_HOST:-dawarich_db}
       DATABASE_PORT: ${DATABASE_PORT:-5432}

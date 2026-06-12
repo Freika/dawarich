@@ -40,7 +40,7 @@ module OidcConfig
   # itself. Configs pasting the full discovery URL would otherwise request a
   # doubled path and fail with an opaque NoMethodError.
   def self.normalize_issuer(issuer)
-    issuer.strip.sub(%r{/\.well-known/openid-configuration\z}, '').chomp('/')
+    issuer.strip.sub(%r{/\.well-known/openid-configuration/?\z}, '')
   end
 
   def self.pkce_enabled?(env = ENV)
