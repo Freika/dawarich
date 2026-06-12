@@ -12,6 +12,7 @@ Upgrade notes:
 
 ### Added
 
+- Run the app and Sidekiq containers under a custom user via `PUID`/`PGID` environment variables: the container starts as root, fixes ownership of the mounted volumes, then drops privileges. Use this instead of Compose `user:`, which cannot write to root-owned volumes (#1159).
 - Trip detail page redesigned around MapLibre v2: sticky map on the left, scrollable per-day accordion on the right with first/last point time and per-day distance, day-colored routes, photo overlay toggle, and a timeline replay scrubber.
 - Per-day **trip notes**: add a short plain-text note to any day of a trip directly from the accordion. Notes live in their own `notes` table and are also available via `GET/POST/PATCH/DELETE /api/v1/notes`.
 - Trip cards on `/trips` and the trip create/edit form now render their map with MapLibre instead of Leaflet, matching Map v2. The form map live-updates the route preview when the trip dates change.

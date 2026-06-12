@@ -7,6 +7,24 @@ set -e
 
 echo "⚠️ Starting Rails environment: $RAILS_ENV ⚠️"
 
+# Optional privilege drop. When PUID/PGID are set and the container starts as
+# root, fix ownership of the mounted writable paths, then re-exec as that user.
+# Prefer this over compose `user:`, which starts unprivileged and cannot chown
+# root-owned volumes.
+if [ "$(id -u)" = "0" ] && [ -n "${PUID}${PGID}" ]; then
+  TARGET_UID="${PUID:-1000}"
+  TARGET_GID="${PGID:-1000}"
+  for _dir in public storage tmp db log; do
+    _path="$APP_PATH/$_dir"
+    [ -d "$_path" ] || continue
+    if [ "$(stat -c '%u' "$_path")" != "$TARGET_UID" ]; then
+      echo "🔑 Adjusting ownership of $_path to $TARGET_UID:$TARGET_GID..."
+      chown -R "$TARGET_UID:$TARGET_GID" "$_path"
+    fi
+  done
+  exec gosu "$TARGET_UID:$TARGET_GID" "$0" "$@"
+fi
+
 # Parse DATABASE_URL if present, otherwise use individual variables
 if [ -n "$DATABASE_URL" ]; then
   # Strip scheme (postgres:// or postgresql://)
