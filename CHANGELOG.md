@@ -24,6 +24,7 @@ Upgrade notes:
 
 ### Fixed
 
+- Insights and statistics now report the same number of countries visited, excluding fly-over countries without a qualifying city. (#2929)
 - Trip card preview on `/trips` and the per-day route layer on the trip page now split routes at the International Date Line, so transpacific trips no longer draw an impossible line across the globe. #2731
 
 ## [1.8.1] - 2026-06-11
