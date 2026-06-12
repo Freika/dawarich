@@ -113,6 +113,39 @@ RSpec.describe Tracks::RealtimeGenerationJob, type: :job do
       end
     end
 
+    context 'when the per-user lock is held by a concurrent job' do
+      let(:debouncer) { instance_double(Tracks::RealtimeDebouncer, clear: true, trigger: true) }
+      let(:timeout_error) do
+        Tracks::PerUserLock::AcquisitionTimeout.new(
+          "Tracks::PerUserLock: could not acquire lock for user_id=#{user.id} within 30.0s"
+        )
+      end
+
+      before do
+        allow(Tracks::RealtimeDebouncer).to receive(:new).with(user.id).and_return(debouncer)
+        generator = instance_double(Tracks::IncrementalGenerator)
+        allow(generator).to receive(:call).and_raise(timeout_error)
+        allow(Tracks::IncrementalGenerator).to receive(:new).with(user).and_return(generator)
+        allow(ExceptionReporter).to receive(:call)
+      end
+
+      it 'does not report the contention to Sentry/GlitchTip' do
+        described_class.perform_now(user.id)
+
+        expect(ExceptionReporter).not_to have_received(:call)
+      end
+
+      it 'does not raise the error' do
+        expect { described_class.perform_now(user.id) }.not_to raise_error
+      end
+
+      it 're-arms the debouncer so the points are retried after the holder releases' do
+        described_class.perform_now(user.id)
+
+        expect(debouncer).to have_received(:trigger)
+      end
+    end
+
     describe 'reverse geocoding enqueueing' do
       def reset_dedup_keys
         Sidekiq.redis { |r| r.keys('geocode:enq:*').each { |k| r.del(k) } }

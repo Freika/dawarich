@@ -134,7 +134,9 @@ module Api
             Places::NearbySearch.new(latitude: lat, longitude: lon, radius: radius, limit: limit, cache: true).call
           end
 
-        areas = Areas::Nearby.new(user: current_api_user, latitude: lat, longitude: lon, radius: radius).call
+        areas = Areas::Nearby.new(
+          user: current_api_user, latitude: lat, longitude: lon, radius: radius, query: query
+        ).call
 
         render json: { places: places, areas: areas }
       end

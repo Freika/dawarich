@@ -188,7 +188,18 @@ export class FamilyLayer extends BaseLayer {
   updateMember(member) {
     const features = this.data?.features || []
     const memberId = member.user_id || member.id
-    const coords = [member.longitude, member.latitude]
+    const lon = Number(member.longitude)
+    const lat = Number(member.latitude)
+
+    if (!this._isValidCoord(lon, lat)) {
+      console.warn(
+        "[FamilyLayer] Skipping member update with invalid coordinates:",
+        member,
+      )
+      return
+    }
+
+    const coords = [lon, lat]
     const color = member.color || this.getMemberColor(memberId)
 
     // Find existing or add new
@@ -273,6 +284,13 @@ export class FamilyLayer extends BaseLayer {
 
     this._historyFeatures = features
     source.setData({ type: "FeatureCollection", features })
+  }
+
+  _isValidCoord(lon, lat) {
+    if (!Number.isFinite(lon) || !Number.isFinite(lat)) return false
+    if (lon === 0 && lat === 0) return false
+    if (lon < -180 || lon > 180 || lat < -90 || lat > 90) return false
+    return true
   }
 
   /**
