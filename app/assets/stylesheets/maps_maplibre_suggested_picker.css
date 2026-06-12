@@ -30,8 +30,8 @@
 }
 
 /* Header: badge + prompt on the left, Confirm anchored right.
-   Kept at the top (not below the list) so the primary action never
-   scrolls off-screen when the list is tall or partly expanded. */
+   Kept at the top (not below the note) so the primary action never
+   scrolls off-screen. */
 .suggested-picker__header {
   display: flex;
   align-items: center;
@@ -98,153 +98,16 @@
   outline-offset: 2px;
 }
 
-/* Candidate list — visually compact rows with enough vertical padding to
-   keep the 44px touch-target on coarse pointers. The radio is kept as a
-   real input for accessibility (arrow-key grouping + Space to select). */
-.suggested-picker__list {
-  list-style: none;
+.suggested-picker__note {
   margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.suggested-picker__list--overflow {
-  margin-top: 4px;
-}
-
-.suggested-picker__option {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 8px;
-  min-height: 32px;
-  border-radius: 5px;
-  cursor: pointer;
-  transition:
-    background 120ms ease,
-    box-shadow 120ms ease;
-}
-
-@media (pointer: coarse) {
-  .suggested-picker__option {
-    min-height: 44px;
-  }
-}
-
-.suggested-picker__option:hover {
-  background: oklch(var(--bc) / 0.05);
-}
-
-.suggested-picker__option:has(.suggested-picker__radio:checked) {
-  background: rgba(245, 158, 11, 0.08);
-  box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.4);
-}
-
-.suggested-picker__option:has(.suggested-picker__radio:focus-visible) {
-  outline: 2px solid #f59e0b;
-  outline-offset: 1px;
-}
-
-.suggested-picker__radio {
-  appearance: none;
-  -webkit-appearance: none;
-  width: 14px;
-  height: 14px;
-  min-width: 14px;
-  border-radius: 9999px;
-  border: 1.5px solid oklch(var(--bc) / 0.35);
-  background: transparent;
-  cursor: pointer;
-  position: relative;
-  margin: 0;
-  flex-shrink: 0;
-  transition:
-    border-color 120ms ease,
-    background 120ms ease;
-}
-
-.suggested-picker__radio:checked {
-  border-color: #f59e0b;
-  background: #f59e0b;
-  box-shadow: inset 0 0 0 2.5px oklch(var(--b1));
-}
-
-.suggested-picker__option-name {
-  flex: 1;
-  min-width: 0;
-  color: oklch(var(--bc) / 0.9);
-  /* Allow long place names ("1. FC Union Zapfstelle (Fuel)") to wrap inside
-     the narrow candidate row rather than overflow. `overflow-wrap: anywhere`
-     handles the no-space case; `word-break: break-word` is the widely
-     supported fallback. */
+  color: oklch(var(--bc) / 0.6);
+  font-size: 0.75rem;
   overflow-wrap: anywhere;
   word-break: break-word;
 }
 
-/* "Show N more" disclosure — native <details>, so no extra Stimulus.
-   Styled as a subtle inline link so it doesn't compete with the candidates. */
-.suggested-picker__overflow {
-  margin-top: 2px;
-}
-
-.suggested-picker__overflow details {
-  margin: 0;
-}
-
-.suggested-picker__more {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 8px;
-  border-radius: 5px;
-  cursor: pointer;
-  font-size: 0.75rem;
-  color: oklch(var(--bc) / 0.65);
-  list-style: none;
-  user-select: none;
-}
-
-.suggested-picker__more::-webkit-details-marker {
-  display: none;
-}
-
-.suggested-picker__more:hover {
-  background: oklch(var(--bc) / 0.05);
-  color: oklch(var(--bc) / 0.9);
-}
-
-.suggested-picker__more-caret {
-  display: inline-block;
-  font-size: 0.625rem;
-  transition: transform 150ms ease;
-}
-
-.suggested-picker__overflow details[open] .suggested-picker__more-caret {
-  transform: rotate(90deg);
-}
-
-/* Summary text swaps between "Show N more" (closed) and "Hide N places"
-   (open) via the parent <details>[open] state. Keeps behavior server-side
-   + CSS only — no Stimulus needed. */
-.suggested-picker__more-text--open {
-  display: none;
-}
-
-.suggested-picker__overflow details[open] .suggested-picker__more-text--closed {
-  display: none;
-}
-
-.suggested-picker__overflow details[open] .suggested-picker__more-text--open {
-  display: inline;
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .suggested-picker__confirm,
-  .suggested-picker__option,
-  .suggested-picker__radio,
-  .suggested-picker__more-caret {
+  .suggested-picker__confirm {
     transition: none;
   }
 }

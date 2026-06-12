@@ -87,33 +87,9 @@
 
   <%# Suggested picker spans the full row width (grid-column: 1 / -1) so it
       doesn't squeeze into the narrow content column. %>
-  <% if status == 'suggested' && entry[:suggested_places].present? %>
+  <% if status == 'suggested' %>
     <div class="visit-row__suggested">
       <%= render partial: 'map/timeline_feeds/suggested_picker', locals: { entry: entry } %>
-    </div>
-  <% elsif status == 'suggested' %>
-    <div class="visit-row__suggested">
-      <div class="suggested-picker" data-visit-id="<%= entry[:visit_id] %>">
-        <%= form_with url: visit_path(entry[:visit_id]), method: :patch, local: false,
-                      class: 'suggested-picker__form' do |f| %>
-          <%= f.hidden_field 'visit[status]', value: 'confirmed' %>
-          <div class="suggested-picker__header">
-            <div class="suggested-picker__heading">
-              <span class="suggested-picker__badge">Needs review</span>
-              <span class="suggested-picker__prompt">Confirm this visit?</span>
-            </div>
-            <%= f.submit 'Confirm', data: { testid: 'visit-confirm' }, class: 'suggested-picker__confirm' %>
-          </div>
-          <p class="suggested-picker__note" data-testid="visit-no-alternatives">
-            No place suggestions for this visit. Confirm to keep it as is.
-          </p>
-        <% end %>
-
-        <%= button_to 'Delete', visit_path(entry[:visit_id]),
-                      method: :delete,
-                      data: { testid: 'visit-delete', turbo_confirm: 'Delete this visit? Your location points stay.' },
-                      class: 'suggested-picker__decline' %>
-      </div>
     </div>
   <% end %>
 </li>

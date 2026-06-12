@@ -3,11 +3,6 @@
 module TimelineHelper
   WEEKDAY_HEADER_LABELS = %w[M T W T F S S].freeze
 
-  # Max suggested-place candidates shown before the "Show N more" disclosure
-  # kicks in. The assembler dedupes by name upstream; this just keeps the
-  # visible picker compact regardless of geocoder quality.
-  SUGGESTED_PICKER_VISIBLE_LIMIT = 3
-
   # "YYYY-MM" for the calendar's initial month. Prefers, in order:
   #   1. `params[:date]` (the selected day, e.g. "2025-12-11")
   #   2. `params[:start_at]` (range start, e.g. "2025-12-11T00:00:00")
@@ -115,16 +110,6 @@ module TimelineHelper
 
   def visit_entry_status(entry)
     entry[:status].presence || 'confirmed'
-  end
-
-  # Splits suggested places into [visible, overflow] for the picker UI.
-  # `visible` is rendered as selectable rows; `overflow` lives inside the
-  # <details> disclosure so the default footprint stays compact.
-  def split_suggested_places(places, limit: SUGGESTED_PICKER_VISIBLE_LIMIT)
-    list = Array(places)
-    return [list, []] if list.size <= limit
-
-    [list.first(limit), list.drop(limit)]
   end
 
   def day_label(day)
