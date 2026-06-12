@@ -161,7 +161,7 @@ RSpec.describe Insights::YearTotalsCalculator do
       it 'handles malformed data gracefully' do
         result = calculator.call
 
-        expect(result.countries_count).to eq(2) # Spain and Italy
+        expect(result.countries_count).to eq(1) # Italy only; Spain's cities is not an array
         expect(result.cities_count).to eq(0) # No valid cities
       end
     end
