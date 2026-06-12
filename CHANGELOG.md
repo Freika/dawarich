@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+### Added
+
+- New `SMTP_OPENSSL_VERIFY_MODE` environment variable (`none` or `peer`) lets self-hosters send mail through a LAN SMTP server that presents a self-signed certificate by skipping TLS certificate verification; leaving it unset keeps the default verifying behavior. Setting it to `none` logs a warning at startup. (#2681)
+
 ### Fixed
 
 - The Dawarich app and Sidekiq containers now restart automatically after a graceful (exit 0) shutdown instead of staying down, so a stray SIGHUP no longer takes an instance offline until manual intervention (#3099).
