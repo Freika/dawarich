@@ -25,6 +25,7 @@ Upgrade notes:
 ### Fixed
 
 - Trip card preview on `/trips` and the per-day route layer on the trip page now split routes at the International Date Line, so transpacific trips no longer draw an impossible line across the globe. #2731
+- Suggested visits that have no candidate places now show a Confirm (and Delete) button, so they can be confirmed instead of getting stuck with no way to act on them. #2917
 
 ## [1.8.1] - 2026-06-11
 
