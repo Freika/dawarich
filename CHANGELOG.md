@@ -25,6 +25,7 @@ Upgrade notes:
 ### Fixed
 
 - Trip card preview on `/trips` and the per-day route layer on the trip page now split routes at the International Date Line, so transpacific trips no longer draw an impossible line across the globe. #2731
+- Searching for a place by name now also matches your areas by name, so an area outside the nearby radius shows up in the results instead of being hidden. #2918
 
 ## [1.8.1] - 2026-06-11
 
