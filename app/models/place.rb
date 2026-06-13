@@ -32,11 +32,11 @@ class Place < ApplicationRecord
   }
 
   def lon
-    lonlat.x
+    lonlat&.x || longitude
   end
 
   def lat
-    lonlat.y
+    lonlat&.y || latitude
   end
 
   def osm_id
