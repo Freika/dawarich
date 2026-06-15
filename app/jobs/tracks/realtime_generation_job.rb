@@ -29,6 +29,12 @@ class Tracks::RealtimeGenerationJob < ApplicationJob
 
     # Enqueue reverse geocoding for recent ungeocoded points
     enqueue_reverse_geocoding(user)
+  rescue Tracks::PerUserLock::AcquisitionTimeout => e
+    # Expected contention: another generation/visit job already holds this user's
+    # lock. Re-arm the debouncer so the points are retried once it releases,
+    # instead of reporting routine contention to Sentry.
+    Rails.logger.warn("Tracks::RealtimeGenerationJob lock_busy user_id=#{user_id}: #{e.message}")
+    Tracks::RealtimeDebouncer.new(user_id).trigger
   rescue StandardError => e
     ExceptionReporter.call(e, "Failed real-time track generation for user #{user_id}")
   end

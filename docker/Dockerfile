@@ -28,6 +28,7 @@ RUN apt-get update -qq \
     libjemalloc2 libjemalloc-dev \
     cmake \
     ca-certificates \
+    gosu \
     && mkdir -p $APP_PATH \
     && rm -rf /var/lib/apt/lists/*
 

@@ -48,10 +48,9 @@ module Insights
 
         stat.toponyms.each do |toponym|
           next unless toponym.is_a?(Hash)
-
-          countries.add(toponym['country']) if toponym['country'].present?
-
           next unless toponym['cities'].is_a?(Array)
+
+          countries.add(toponym['country']) if toponym['country'].present? && toponym['cities'].any?
 
           toponym['cities'].each do |city|
             cities.add(city['city']) if city.is_a?(Hash) && city['city'].present?

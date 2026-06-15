@@ -87,7 +87,7 @@
 
   <%# Suggested picker spans the full row width (grid-column: 1 / -1) so it
       doesn't squeeze into the narrow content column. %>
-  <% if status == 'suggested' && entry[:suggested_places].present? %>
+  <% if status == 'suggested' %>
     <div class="visit-row__suggested">
       <%= render partial: 'map/timeline_feeds/suggested_picker', locals: { entry: entry } %>
     </div>

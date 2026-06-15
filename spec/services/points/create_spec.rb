@@ -455,5 +455,49 @@ RSpec.describe Points::Create do
         expect(time_obj).to be_within(1.second).of(expected_time)
       end
     end
+
+    describe 'out-of-range course_accuracy from a near-stationary iOS fix' do
+      let(:user) { create(:user) }
+      let(:batch_params) do
+        {
+          locations: [
+            {
+              type: 'Feature',
+              geometry: { type: 'Point', coordinates: [7.300162333022016, 51.40863363359207] },
+              properties: {
+                timestamp: '2026-01-04T14:32:36.999Z',
+                speed: 0.01308945239267841,
+                course: 4.801180790801141,
+                course_accuracy: 1731.726995484005
+              }
+            },
+            {
+              type: 'Feature',
+              geometry: { type: 'Point', coordinates: [7.299433856659638, 51.40862237973182] },
+              properties: {
+                timestamp: '2026-01-04T14:36:40.999Z',
+                speed: 1.003747182282529,
+                course: 266.37909882602,
+                course_accuracy: 32.15991578317691
+              }
+            }
+          ]
+        }
+      end
+
+      it 'persists the whole batch instead of failing on the overflowing point' do
+        expect { described_class.new(user, batch_params).call }
+          .to change(user.points, :count).by(2)
+      end
+
+      it 'drops the overflowing course_accuracy and keeps the valid one' do
+        described_class.new(user, batch_params).call
+
+        accuracies = user.points.order(:timestamp).pluck(:course_accuracy)
+
+        expect(accuracies.first).to be_nil
+        expect(accuracies.last).to be_within(0.00001).of(32.15992)
+      end
+    end
   end
 end

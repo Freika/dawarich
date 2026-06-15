@@ -310,34 +310,4 @@ RSpec.describe TimelineHelper, type: :helper do
       expect(helper.calendar_cell_classes(high)).to include('cal-cell--light-text')
     end
   end
-
-  describe '#split_suggested_places' do
-    it 'returns empty overflow when list fits the default limit' do
-      places = Array.new(3) { |i| { id: i, name: "P#{i}" } }
-      visible, overflow = helper.split_suggested_places(places)
-      expect(visible).to eq(places)
-      expect(overflow).to eq([])
-    end
-
-    it 'splits a longer list into visible + overflow using the default limit' do
-      places = Array.new(6) { |i| { id: i, name: "P#{i}" } }
-      visible, overflow = helper.split_suggested_places(places)
-      expect(visible.size).to eq(TimelineHelper::SUGGESTED_PICKER_VISIBLE_LIMIT)
-      expect(overflow.size).to eq(6 - TimelineHelper::SUGGESTED_PICKER_VISIBLE_LIMIT)
-      expect(visible + overflow).to eq(places)
-    end
-
-    it 'respects a custom limit' do
-      places = Array.new(5) { |i| { id: i, name: "P#{i}" } }
-      visible, overflow = helper.split_suggested_places(places, limit: 2)
-      expect(visible.size).to eq(2)
-      expect(overflow.size).to eq(3)
-    end
-
-    it 'handles nil input' do
-      visible, overflow = helper.split_suggested_places(nil)
-      expect(visible).to eq([])
-      expect(overflow).to eq([])
-    end
-  end
 end
