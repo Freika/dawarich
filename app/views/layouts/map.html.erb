@@ -22,6 +22,7 @@
     <%= Sentry.get_trace_propagation_meta.html_safe if Sentry.initialized? %>
     <% if !DawarichSettings.self_hosted? %>
       <script async src="https://scripts.simpleanalyticscdn.com/latest.js"></script>
+      <script src="https://rybbit.dwri.xyz/api/script.js" data-site-id="87c1f532b59f" defer></script>
     <% end %>
   </head>
 
