@@ -859,4 +859,45 @@ RSpec.describe 'Users::Registrations', type: :request do
       end
     end
   end
+
+  describe 'PUT /users (account update)' do
+    context 'when an OAuth user sets a password' do
+      let(:oauth_user) do
+        create(:user, provider: 'google_oauth2', uid: '999', password: SecureRandom.hex(16))
+      end
+
+      before { sign_in oauth_user }
+
+      it 'persists the new password so the user can sign in with email/password' do
+        put user_registration_path, params: {
+          user: {
+            password: 'new-password-123',
+            password_confirmation: 'new-password-123'
+          }
+        }
+
+        expect(oauth_user.reload.valid_password?('new-password-123')).to be(true)
+      end
+    end
+
+    context 'when an OAuth user updates profile fields without a password' do
+      let(:oauth_user) do
+        create(:user, provider: 'google_oauth2', uid: '998', password: 'original-secret-1')
+      end
+
+      before { sign_in oauth_user }
+
+      it 'updates the profile and leaves the existing password intact' do
+        put user_registration_path, params: {
+          user: {
+            email: oauth_user.email,
+            password: '',
+            password_confirmation: ''
+          }
+        }
+
+        expect(oauth_user.reload.valid_password?('original-secret-1')).to be(true)
+      end
+    end
+  end
 end
