@@ -59,6 +59,7 @@ class User < ApplicationRecord
   enum :plan, { lite: 0, pro: 1 }, default: :pro
   # No default: nil means the user has not yet been prompted about the
   # changelog widget. prefix avoids `granted?`/`declined?` collisions.
+  attribute :changelog_consent, :integer
   enum :changelog_consent, { declined: 0, granted: 1 }, prefix: :changelog_consent
 
   MAX_FAILED_OTP_ATTEMPTS = 10
