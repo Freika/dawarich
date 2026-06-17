@@ -40,6 +40,10 @@ module Points
         Points::Archive.where(user_id:, deleted_at: nil).find_each do |archive|
           archive.file.purge if archive.file.attached?
           archive.destroy!
+        rescue StandardError => e
+          Rails.logger.warn(
+            "[points_archival] cleanup failed for archive #{archive.id}: #{e.class}: #{e.message}"
+          )
         end
       end
     end

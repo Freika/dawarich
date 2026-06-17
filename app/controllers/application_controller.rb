@@ -306,10 +306,14 @@ status: :see_other
   def trigger_points_restore_if_archived(user = (current_user if respond_to?(:current_user)))
     return unless user&.points_archive_state_archived?
 
-    user.update!(points_archive_state: :restoring)
+    flipped = User.where(id: user.id, points_archive_state: :archived)
+                  .update_all(points_archive_state: User.points_archive_states[:restoring])
+    return unless flipped.positive?
+
     Points::Archival::RestoreUserJob.perform_later(user.id)
   rescue StandardError => e
-    user.update!(points_archive_state: :archived) if user&.points_archive_state_restoring?
+    User.where(id: user&.id, points_archive_state: :restoring)
+        .update_all(points_archive_state: User.points_archive_states[:archived])
     Rails.logger.warn("[points_archival] restore enqueue failed for user #{user&.id}: #{e.class}: #{e.message}")
   end
 

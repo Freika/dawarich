@@ -4,8 +4,8 @@ class ApiController < ApplicationController
   skip_before_action :verify_authenticity_token
   before_action :set_version_header
   before_action :authenticate_api_key
-  before_action :trigger_points_restore_for_api_user
   before_action :reject_pending_payment!
+  before_action :trigger_points_restore_for_api_user
   after_action :set_rate_limit_headers
 
   rescue_from ActiveRecord::RecordNotFound, with: :record_not_found

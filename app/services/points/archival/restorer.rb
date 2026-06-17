@@ -9,9 +9,9 @@ module Points
         archives = Points::Archive.where(user_id:).where.not(verified_at: nil).order(:year, :month, :chunk_number)
         @valid_visit_ids = Visit.where(user_id:).pluck(:id).to_set
         @valid_raw_data_archive_ids = Points::RawDataArchive.where(user_id:).pluck(:id).to_set
-        archives.each { |archive| restore_archive(archive) }
+        purgeable = archives.select { |archive| restore_archive(archive) }
         recompute_counters(user_id)
-        archives.each { |archive| purge(archive) }
+        purgeable.each { |archive| purge(archive) }
       end
 
       private
@@ -20,12 +20,26 @@ module Points
         raw = archive.file.download
         decrypted = Points::RawData::Encryption.decrypt_if_needed(raw, archive)
 
+        ids = []
         rows = []
         Zlib::GzipReader.new(StringIO.new(decrypted)).each_line do |line|
-          rows << sanitize_foreign_keys(Serializer.parse(line))
+          row = sanitize_foreign_keys(Serializer.parse(line))
+          ids << row['id']
+          rows << row
           flush(rows) if rows.size >= BATCH_SIZE
         end
         flush(rows)
+        fully_restored?(archive, ids)
+      end
+
+      def fully_restored?(archive, ids)
+        return true if Point.where(id: ids).count == ids.size
+
+        Rails.logger.warn(
+          "[points_archival] archive #{archive.id} not fully restored " \
+          "(#{Point.where(id: ids).count}/#{ids.size}); keeping it"
+        )
+        false
       end
 
       def sanitize_foreign_keys(row)
