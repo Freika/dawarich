@@ -7,6 +7,8 @@ module Points
 
       def restore_user(user_id)
         archives = Points::Archive.where(user_id:).where.not(verified_at: nil).order(:year, :month, :chunk_number)
+        @valid_visit_ids = Visit.where(user_id:).pluck(:id).to_set
+        @valid_raw_data_archive_ids = Points::RawDataArchive.where(user_id:).pluck(:id).to_set
         archives.each { |archive| restore_archive(archive) }
         recompute_counters(user_id)
         archives.each { |archive| purge(archive) }
@@ -20,10 +22,18 @@ module Points
 
         rows = []
         Zlib::GzipReader.new(StringIO.new(decrypted)).each_line do |line|
-          rows << Serializer.parse(line)
+          rows << sanitize_foreign_keys(Serializer.parse(line))
           flush(rows) if rows.size >= BATCH_SIZE
         end
         flush(rows)
+      end
+
+      def sanitize_foreign_keys(row)
+        row['visit_id'] = nil if row['visit_id'] && @valid_visit_ids.exclude?(row['visit_id'])
+        if row['raw_data_archive_id'] && @valid_raw_data_archive_ids.exclude?(row['raw_data_archive_id'])
+          row['raw_data_archive_id'] = nil
+        end
+        row
       end
 
       def flush(rows)

@@ -114,3 +114,8 @@ points_archival_delete_sweep_job:
   cron: "0 4 * * 3" # every Wednesday at 04:00
   class: "Points::Archival::DeleteSweepJob"
   queue: archival
+
+points_archival_reaper_job:
+  cron: "30 4 * * *" # every day at 04:30
+  class: "Points::Archival::StuckStateReaperJob"
+  queue: archival
