@@ -4,17 +4,18 @@ module Auth
   class VerifyAppleToken
     class InvalidToken < StandardError; end
 
-    def initialize(id_token, nonce: nil)
+    def initialize(id_token, nonce: nil, client_id: nil)
       @id_token = id_token
       @nonce = nonce
+      @client_id = client_id
     end
 
     def call
       raise InvalidToken, 'blank token' if @id_token.blank?
-      raise InvalidToken, 'APPLE_BUNDLE_ID not configured' if bundle_id.blank?
+      raise InvalidToken, 'client_id not configured' if effective_client_id.blank?
 
       decoded = AppleID::IdToken.decode(@id_token)
-      verify_args = { client: bundle_id }
+      verify_args = { client: effective_client_id }
       verify_args[:nonce] = expected_nonce_hash if @nonce.present?
 
       decoded.verify!(**verify_args)
@@ -33,8 +34,8 @@ module Auth
 
     private
 
-    def bundle_id
-      ENV['APPLE_BUNDLE_ID']
+    def effective_client_id
+      @client_id || ENV['APPLE_BUNDLE_ID']
     end
 
     def expected_nonce_hash

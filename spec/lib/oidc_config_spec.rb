@@ -38,6 +38,39 @@ RSpec.describe OidcConfig do
       expect(config[:client_options]).not_to have_key(:host)
     end
 
+    it 'strips a trailing /.well-known/openid-configuration from the issuer' do
+      config = described_class.build(
+        base_env.merge('OIDC_ISSUER' => 'https://auth.example.com/.well-known/openid-configuration')
+      )
+
+      expect(config[:issuer]).to eq('https://auth.example.com')
+      expect(config[:discovery]).to be true
+    end
+
+    it 'preserves a trailing slash that is part of the issuer' do
+      config = described_class.build(
+        base_env.merge('OIDC_ISSUER' => 'https://auth.example.com/application/o/dawarich/')
+      )
+
+      expect(config[:issuer]).to eq('https://auth.example.com/application/o/dawarich/')
+    end
+
+    it 'keeps a path-based issuer intact apart from the well-known suffix' do
+      config = described_class.build(
+        base_env.merge('OIDC_ISSUER' => 'https://idp.example.com/realms/main/.well-known/openid-configuration')
+      )
+
+      expect(config[:issuer]).to eq('https://idp.example.com/realms/main')
+    end
+
+    it 'strips a well-known suffix that itself has a trailing slash' do
+      config = described_class.build(
+        base_env.merge('OIDC_ISSUER' => 'https://auth.example.com/.well-known/openid-configuration/')
+      )
+
+      expect(config[:issuer]).to eq('https://auth.example.com')
+    end
+
     it 'builds a manual-mode config when host is present without issuer' do
       env = base_env.merge(
         'OIDC_HOST' => 'auth.example.com',

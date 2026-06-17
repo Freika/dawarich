@@ -31,6 +31,28 @@ RSpec.describe User, type: :model do
     it { is_expected.to define_enum_for(:plan).with_values(lite: 0, pro: 1) }
   end
 
+  describe 'changelog consent' do
+    it 'defaults to nil (not yet prompted) and reports prompt pending' do
+      user = create(:user)
+      expect(user.changelog_consent).to be_nil
+      expect(user.changelog_prompt_pending?).to be(true)
+    end
+
+    it 'records a granted choice' do
+      user = create(:user)
+      user.update!(changelog_consent: :granted)
+      expect(user.changelog_consent_granted?).to be(true)
+      expect(user.changelog_prompt_pending?).to be(false)
+    end
+
+    it 'records a declined choice' do
+      user = create(:user)
+      user.update!(changelog_consent: :declined)
+      expect(user.changelog_consent_declined?).to be(true)
+      expect(user.changelog_prompt_pending?).to be(false)
+    end
+  end
+
   describe 'callbacks' do
     describe '#create_api_key' do
       let(:user) { create(:user) }
@@ -966,6 +988,14 @@ subscription_source: :none)
         expect(user.failed_otp_attempts).to eq(User::MAX_FAILED_OTP_ATTEMPTS)
         expect(user.otp_locked_at).to be_present
       end
+    end
+  end
+
+  describe 'name columns' do
+    it 'persists first_name and last_name' do
+      user = create(:user, first_name: 'Ada', last_name: 'Lovelace')
+      expect(user.reload.first_name).to eq('Ada')
+      expect(user.reload.last_name).to eq('Lovelace')
     end
   end
 end

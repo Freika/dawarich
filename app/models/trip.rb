@@ -4,10 +4,11 @@ class Trip < ApplicationRecord
   include Demoable
   include Calculateable
   include DistanceConvertible
+  include Notable
 
   RECALCULATE_COOLDOWN = 60.seconds
 
-  has_rich_text :notes
+  has_rich_text :description
 
   belongs_to :user
 

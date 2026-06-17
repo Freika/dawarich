@@ -66,11 +66,17 @@ class PointsController < ApplicationController
   end
 
   def import_points
-    current_user.imports.find(params[:import_id]).points
+    apply_plan_window(current_user.imports.find(params[:import_id]).points)
   end
 
   def user_points
-    current_user.points
+    current_user.scoped_points
+  end
+
+  def apply_plan_window(relation)
+    return relation unless current_user.plan_restricted?
+
+    relation.where('timestamp >= ?', current_user.data_window_start.to_i)
   end
 
   def order_by

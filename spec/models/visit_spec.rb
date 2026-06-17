@@ -29,6 +29,46 @@ RSpec.describe Visit, type: :model do
     it { expect(build(:visit)).to be_valid }
   end
 
+  describe 'confidence' do
+    it 'is valid when nil' do
+      expect(build(:visit, confidence: nil)).to be_valid
+    end
+
+    it 'is valid at the 0 and 100 bounds' do
+      expect(build(:visit, confidence: 0)).to be_valid
+      expect(build(:visit, confidence: 100)).to be_valid
+    end
+
+    it 'is invalid above 100' do
+      expect(build(:visit, confidence: 120)).not_to be_valid
+    end
+
+    it 'is invalid below 0' do
+      expect(build(:visit, confidence: -1)).not_to be_valid
+    end
+
+    describe '#confidence_band' do
+      it 'returns nil when confidence is nil' do
+        expect(build(:visit, confidence: nil).confidence_band).to be_nil
+      end
+
+      it 'returns :high for 70 and above' do
+        expect(build(:visit, confidence: 70).confidence_band).to eq(:high)
+        expect(build(:visit, confidence: 92).confidence_band).to eq(:high)
+      end
+
+      it 'returns :medium for 40..69' do
+        expect(build(:visit, confidence: 40).confidence_band).to eq(:medium)
+        expect(build(:visit, confidence: 69).confidence_band).to eq(:medium)
+      end
+
+      it 'returns :low for 0..39' do
+        expect(build(:visit, confidence: 0).confidence_band).to eq(:low)
+        expect(build(:visit, confidence: 39).confidence_band).to eq(:low)
+      end
+    end
+  end
+
   describe 'self-cleanup callbacks' do
     include ActiveJob::TestHelper
 

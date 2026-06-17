@@ -2,6 +2,7 @@
 
 class Visit < ApplicationRecord
   include Demoable
+  include Notable
 
   belongs_to :area, optional: true
   belongs_to :place, optional: true
@@ -18,8 +19,17 @@ class Visit < ApplicationRecord
   validates :started_at, :ended_at, :duration, :name, :status, presence: true
 
   validates :ended_at, comparison: { greater_than: :started_at }
+  validates :confidence, numericality: { only_integer: true, in: 0..100 }, allow_nil: true
 
   enum :status, { suggested: 0, confirmed: 1, declined: 2 }
+
+  def confidence_band
+    return nil if confidence.nil?
+    return :high if confidence >= 70
+    return :medium if confidence >= 40
+
+    :low
+  end
 
   def coordinates
     points.pluck(:latitude, :longitude).map { [_1[0].to_f, _1[1].to_f] }

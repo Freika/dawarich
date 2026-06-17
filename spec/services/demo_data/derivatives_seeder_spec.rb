@@ -27,7 +27,9 @@ RSpec.describe DemoData::DerivativesSeeder do
     end
 
     it 'creates the demo Prague trip' do
-      expect(user.trips.demo.find_by(name: 'Weekend in Prague')).to be_present
+      trip = user.trips.demo.find_by(name: 'Weekend in Prague')
+      expect(trip).to be_present
+      expect(trip.description.to_plain_text).to eq(fixture['trip']['notes'])
     end
 
     it 'attaches alternates as PlaceVisit rows on suggested visits' do

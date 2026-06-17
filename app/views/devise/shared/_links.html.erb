@@ -41,5 +41,17 @@
         <% end %>
       </div>
     <% end %>
+    <% if apple_web_sign_in_available? %>
+      <% config = oauth_button_config(:apple) %>
+      <div>
+        <%= button_to apple_oauth_request_path,
+            method: :get,
+            class: "btn w-full gap-2 #{config[:css_class]}",
+            data: { turbo: false } do %>
+          <%= config[:icon] %>
+          <%= config[:label] %>
+        <% end %>
+      </div>
+    <% end %>
   <% end %>
 </div>

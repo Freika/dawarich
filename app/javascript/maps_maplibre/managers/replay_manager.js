@@ -343,6 +343,40 @@ export class ReplayManager {
   }
 
   /**
+   * Navigate to a specific day by key
+   * @param {string} dayKey - Day key like '2025-01-15'
+   * @returns {boolean} Whether navigation was successful
+   */
+  goToDay(dayKey) {
+    const index = this.availableDays.indexOf(dayKey)
+    if (index === -1 || index === this.currentDayIndex) return false
+
+    this.currentDayIndex = index
+    this.buildMinuteIndex()
+    this.cycleIndex = 0
+    this.pinnedPoint = null
+    return true
+  }
+
+  /**
+   * Get points for a specific day
+   * @param {string} dayKey - Day key like '2025-01-15'
+   * @returns {Array} Points for that day, or empty array
+   */
+  getPointsForDay(dayKey) {
+    return this.pointsByDay[dayKey] || []
+  }
+
+  /**
+   * Get timestamp from point (handles different point formats)
+   * @param {Object} point - Point object
+   * @returns {number|string|null}
+   */
+  getTimestamp(point) {
+    return this._getTimestamp(point)
+  }
+
+  /**
    * Cycle to previous point in multi-point minute
    */
   cyclePrev() {

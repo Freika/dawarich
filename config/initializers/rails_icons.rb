@@ -20,4 +20,9 @@ RailsIcons.configure do |config|
       }
     }
   )
+
+  # Flags library: use landscape (4x3) as default variant
+  config.libraries.flags.default_variant = 'landscape'
+
+  config.libraries.flags.landscape.default.css = 'inline-block rounded-sm h-4 w-auto'
 end

@@ -55,13 +55,13 @@ class Points::AnomalyFilter
   end
 
   def each_monthly_chunk
-    cursor = Time.zone.at(@start_time).beginning_of_month
-    range_end = Time.zone.at(@end_time)
+    chunk_start = @start_time
 
-    while cursor <= range_end
-      chunk_end_time = cursor.end_of_month
-      yield cursor.to_i, [chunk_end_time.to_i, @end_time].min
-      cursor = cursor.next_month.beginning_of_month
+    while chunk_start <= @end_time
+      month_end = Time.zone.at(chunk_start).end_of_month.to_i
+      chunk_end = [month_end, @end_time].min
+      yield chunk_start, chunk_end
+      chunk_start = chunk_end + 1
     end
   end
 

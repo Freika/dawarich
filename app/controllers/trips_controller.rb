@@ -15,10 +15,14 @@ class TripsController < ApplicationController
   def show
     @photo_previews = @trip.photo_previews
     @photo_sources = @trip.photo_sources
+    @distance_unit = current_user.safe_settings.distance_unit
+    @timezone = current_user.timezone
+    @day_notes = @trip.notes.index_by(&:date)
+    @day_stats = compute_day_stats
 
     return unless @trip.path.blank? || @trip.distance.blank? || @trip.visited_countries.blank?
 
-    Trips::CalculateAllJob.perform_later(@trip.id, current_user.safe_settings.distance_unit)
+    Trips::CalculateAllJob.perform_later(@trip.id, @distance_unit)
   end
 
   def new
@@ -140,6 +144,31 @@ class TripsController < ApplicationController
   end
 
   def trip_params
-    params.require(:trip).permit(:name, :started_at, :ended_at, :notes)
+    params.require(:trip).permit(:name, :started_at, :ended_at, :description)
+  end
+
+  def compute_day_stats
+    max_points_updated = @trip.points.maximum(:updated_at).to_i
+    cache_key = "trip_day_stats/v2/#{@trip.id}/#{@trip.updated_at.to_i}/#{max_points_updated}/#{@timezone}"
+
+    Rails.cache.fetch(cache_key, expires_in: 1.hour) do
+      tz_quoted = ActiveRecord::Base.connection.quote(@timezone)
+      day_expr  = "(to_timestamp(timestamp) AT TIME ZONE 'UTC' AT TIME ZONE #{tz_quoted})::date"
+
+      rows = @trip.points.reorder(nil).group(Arel.sql(day_expr)).pluck(
+        Arel.sql(day_expr),
+        Arel.sql('MIN(timestamp)'),
+        Arel.sql('MAX(timestamp)'),
+        Arel.sql('COALESCE(ST_Length(ST_MakeLine(lonlat::geometry ORDER BY timestamp)::geography), 0)')
+      )
+
+      rows.each_with_object({}) do |(day, first_ts, last_ts, distance_m), acc|
+        acc[day] = {
+          first_time: Time.at(first_ts).in_time_zone(@timezone),
+          last_time:  Time.at(last_ts).in_time_zone(@timezone),
+          distance_m: distance_m.to_f
+        }
+      end
+    end
   end
 end

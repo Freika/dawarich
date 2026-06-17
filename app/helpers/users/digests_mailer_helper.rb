@@ -4,6 +4,10 @@ module Users::DigestsMailerHelper
   BLOCKS         = %w[▁ ▂ ▃ ▄ ▅ ▆ ▇ █].freeze
   HEATMAP_LEVELS = %w[· ░ ▒ ▓ █].freeze
 
+  def digest_utm(campaign:, content:)
+    { utm_source: 'email', utm_medium: 'email', utm_campaign: campaign, utm_content: content }
+  end
+
   # Horizontal bar chart.
   #   values:  numeric array
   #   labels:  same-length string array

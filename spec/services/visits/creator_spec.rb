@@ -422,6 +422,31 @@ longitude: -73.9000)
         expect(point2.reload.visit_id).to be_nil
       end
     end
+
+    context 'confidence scoring' do
+      let(:point1) { create(:point, user: user, accuracy: 10) }
+      let(:point2) { create(:point, user: user, accuracy: 12) }
+      let(:place_finder) { instance_double(Visits::PlaceFinder) }
+
+      before do
+        allow(Visits::PlaceFinder).to receive(:new).with(user).and_return(place_finder)
+        allow(place_finder).to receive(:find_or_create_place).and_return(nil)
+      end
+
+      it 'leaves confidence nil when scoring is off (default)' do
+        visit = described_class.new(user).create_visits([visit_data]).first.reload
+
+        expect(visit.confidence).to be_nil
+        expect(visit.confidence_breakdown).to eq({})
+      end
+
+      it 'sets an integer confidence and a breakdown when scoring is on' do
+        visit = described_class.new(user, scoring_on: true).create_visits([visit_data]).first.reload
+
+        expect(visit.confidence).to be_between(0, 100)
+        expect(visit.confidence_breakdown.keys).to include('dwell', 'tightness', 'density', 'accuracy')
+      end
+    end
   end
 
   describe '#find_matching_area' do

@@ -13,7 +13,7 @@ module Users
       def call
         return nil if monthly_stats.empty?
 
-        digest = Users::Digest.find_or_initialize_by(user: user, year: year, period_type: :yearly)
+        digest = find_or_build_digest
 
         digest.assign_attributes(
           distance: total_distance,
@@ -28,11 +28,23 @@ module Users
 
         digest.save!
         digest
+      rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique
+        @attempts = @attempts.to_i + 1
+        raise if @attempts >= 3
+
+        retry
       end
 
       private
 
       attr_reader :user, :year
+
+      def find_or_build_digest
+        existing = user.digests.yearly.where(year: year).order(:id).to_a
+        existing.drop(1).each(&:destroy)
+
+        existing.first || user.digests.yearly.new(year: year)
+      end
 
       def monthly_stats
         @monthly_stats ||= user.scoped_stats.where(year: year).order(:month)

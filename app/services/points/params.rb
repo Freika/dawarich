@@ -26,8 +26,8 @@ class Points::Params
         ssid:               point[:properties][:wifi],
         accuracy:           point[:properties][:horizontal_accuracy],
         vertical_accuracy:  point[:properties][:vertical_accuracy],
-        course_accuracy:    point[:properties][:course_accuracy],
-        course:             point[:properties][:course],
+        course_accuracy:    column_safe_decimal(point[:properties][:course_accuracy]),
+        course:             column_safe_decimal(point[:properties][:course]),
         motion_data:        Points::MotionDataExtractor.from_overland_properties(point[:properties]),
         raw_data:           point,
         user_id:            user_id
@@ -39,10 +39,21 @@ class Points::Params
 
   private
 
+  COURSE_COLUMN_LIMIT = 1000
+
   def battery_level(level)
     value = (level.to_f * 100).to_i
 
     value.positive? ? value : nil
+  end
+
+  def column_safe_decimal(value)
+    return nil if value.nil?
+
+    number = Float(value, exception: false)
+    return nil if number.nil? || !number.finite? || number.abs >= COURSE_COLUMN_LIMIT
+
+    value
   end
 
   def params_valid?(point)

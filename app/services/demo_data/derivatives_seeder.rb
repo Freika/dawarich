@@ -98,7 +98,7 @@ class DemoData::DerivativesSeeder
       distance: row['distance_meters'],
       demo: true
     )
-    trip.notes = row['notes'] if row['notes'].present?
+    trip.description = row['notes'] if row['notes'].present?
     trip.save!
     trip
   end

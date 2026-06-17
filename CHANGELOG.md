@@ -4,11 +4,109 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## Unreleased
+## [Unreleased]
+
+Upgrade notes:
+
+1. **Trips redesign:** the trip detail page has a new sticky-map layout with per-day accordion and timeline replay. Existing trip rich-text "notes" are renamed to "description" by an automatic migration; nothing to do manually.
 
 ### Added
 
 - AirTrail integration: Dawarich can pull your flight history from a self-hosted [AirTrail](https://github.com/johanohly/AirTrail) instance and draw the flights as arcs on Map v2. Configure it on the Integrations page (with "Test connection" and "Sync now"); flights also re-sync daily, and the Flights map layer hides overlapping GPS points while enabled.
+- Run the app and Sidekiq containers under a custom user via `PUID`/`PGID` environment variables: the container starts as root, fixes ownership of the mounted volumes, then drops privileges. Use this instead of Compose `user:`, which cannot write to root-owned volumes (#1159).
+- Trip detail page redesigned around MapLibre v2: sticky map on the left, scrollable per-day accordion on the right with first/last point time and per-day distance, day-colored routes, photo overlay toggle, and a timeline replay scrubber.
+- Per-day **trip notes**: add a short plain-text note to any day of a trip directly from the accordion. Notes live in their own `notes` table and are also available via `GET/POST/PATCH/DELETE /api/v1/notes`.
+- Trip cards on `/trips` and the trip create/edit form now render their map with MapLibre instead of Leaflet, matching Map v2. The form map live-updates the route preview when the trip dates change.
+
+### Changed
+
+- A trip's rich-text **notes** field is renamed to **description**; existing content is migrated automatically.
+- Edit and Delete actions on the trip page moved into the header next to the trip title; the bottom of the page now only carries a "Back to trips" link.
+- Per-day trip stats are now computed in a single PostGIS query (`ST_MakeLine`/`ST_Length`) instead of a Ruby Geocoder loop; cache key now also invalidates when individual trip points are updated.
+- Ruby version updated to 3.4.9
+
+### Fixed
+
+- Family Members map layer no longer draws a stray line to the map center when a member location update lacks coordinates (#2863)
+- Insights and statistics now report the same number of countries visited, excluding fly-over countries without a qualifying city. (#2929)
+- OIDC login no longer fails with an "Issuer mismatch" error when the provider's issuer ends in a trailing slash (e.g. Authentik); the trailing slash is now preserved instead of being stripped. (#2925)
+- Trip card preview on `/trips` and the per-day route layer on the trip page now split routes at the International Date Line, so transpacific trips no longer draw an impossible line across the globe. #2731
+- Users signed in via Google will now be able to sign in with new password after setting it up, instead of being locked out by the old password being ignored.
+- Suggested visits now always show a Confirm and Delete control, including visits with no matched place — which previously rendered no action and got stuck with no way to confirm or remove them. #2917
+- Searching for a place by name now also matches your areas by name, so an area outside the nearby radius shows up in the results instead of being hidden. #2918
+
+## [1.8.1] - 2026-06-11
+
+Upgrade notes:
+
+1. A migration removes duplicate year-end digests that could accumulate before this release. If a yearly recap in Insights showed odd numbers, they may change after the upgrade — that's the duplicates being cleaned up.
+
+### Added
+
+- Fog of War (Map v2) can now reveal explored areas per hexagon instead of per point, using precalculated monthly statistics. Switch between "Per point" and "Per hexagon" in the map settings panel. (#2899)
+
+### Changed
+
+- The suggested-visit card no longer promises alternative suggestions that never arrive; it now points to the visit's search button for picking a different place (#2852)
+- Loading points on the map is faster on large histories: the points API now uses the spatial index when filtering by the visible map area, instead of scanning every point in the date range
+- Monthly statistics are lighter to calculate for point-heavy months: hexagon aggregation reads coordinates in a single pass without instantiating database records, and no longer re-queries the whole month when it has to fall back to a lower hexagon resolution
+- The Timeline day view no longer issues one extra database query per visit, and the initial map view's bounds are computed in a single query instead of two
+- Bumped the `oauth2` gem to 2.0.22 to close a known credential-leak advisory (GHSA-pp92-crg2-gfv9) on the Google/GitHub sign-in path
+- CI now runs the full RSpec suite on every pull request; the previous workflow had been disabled
+- Globe view is enabled by default for Pro and self-hosted users.
+
+### Fixed
+
+- Deleting an import no longer gets stuck on an endless spinner: failed deletions revert to a retriable state, and imports stalled in "Deleting" for over an hour show a retry button (#2835)
+- Insights no longer report a "new country visited" for border-crossing geocoding blips that the statistics pages already filter out; the yearly digest now applies the same rule as the monthly one (#2727)
+- Deleting points or anomaly points via the map's "Select Area" tool now removes them from the anomalies layer immediately, without requiring a page reload (#2790)
+- Months with very small distances on the Stats page now render a visible bar and show their tooltip; months without data no longer render a bar at all (#2864)
+- Weekday labels in the Insights "Activity Overview" heatmap now line up with their grid rows (#2896)
+- OIDC login no longer fails with "undefined method 'with_indifferent_access'" when OIDC_ISSUER is set to the full discovery URL — the trailing /.well-known/openid-configuration is now stripped automatically (#2056)
+- Importing files containing invalid UTF-8 bytes (e.g. Windows-encoded degree signs in Google Timeline phone exports) no longer fails with "invalid byte sequence in UTF-8". Applies to the JSON-based importers as well as OwnTracks and TCX (#2772)
+- Moving a point on Map v2 no longer drags unrelated route lines along with it; routes are rebuilt from the updated points instead of patching nearby line vertices (#2150)
+- An import that finished successfully could still be marked "Failed" — with a failure notification — when a post-import step (stats scheduling, anomaly filtering) raised after all points were already written; post-import steps no longer affect the import's status
+- Cloud only: the Lite plan's 12-month data window now applies to the Points page as well, and the "points outside your window" hint no longer caps the visible-points count at the page size
+- Data recalculation no longer fails with "Year has already been taken" when duplicate year-end digests exist; duplicates are cleaned up automatically and can no longer be created (#2866)
+- The Anomalies map layer now remembers being enabled across page reloads and day changes, like other layers (#2791)
+- Map v2 Replay now plays back proportionally to real elapsed time (at 1x, one real minute per second; speed multiplier compresses further) instead of one point per tick, so slow and fast journeys of equal duration take equal playback time; long point-free gaps are skipped quickly instead of stalling (#2845)
+- The replay marker now renders above track and route lines instead of being hidden beneath them
+- Deleting a family no longer fails with a 500 error when location-sharing requests exist for it (#2916)
+- Self-hosted: the /admin/flipper feature-flag UI is no longer rate-limited, which made it unusable after a few clicks (#2897)
+
+
+## [1.8.0] - 2026-06-08
+
+Upgrade notes:
+
+1. New visit suggestions mode is available, read below on how to enable it. Based on the feedback, it will be enabled for everyone in a future release.
+2. If you'd like to delete all suggested visits, run `Visit.suggested.destroy_all` in the Rails console. This will not delete any confirmed visits or places, but it will clear out all suggestions so you can start fresh with the new algorithm. Also, if you'd like to delete all declined visits, run `Visit.declined.destroy_all` to clear those out as well.
+
+### Added
+
+- "What's New" changelog notices in the navbar. Self-hosted users are asked once before any external request and the widget loads only after opt-in; Cloud users see it automatically. Toggle anytime in Settings → General, or point it at your own instance with `CHIBICHANGE_WIDGET_HOST` and `CHIBICHANGE_SLUG`. ChibiChange will be open-sourced soon.
+- Sign in with Apple on the web (Dawarich Cloud only)
+- Opt-in non-ML "stay-point" visit detection, behind the per-user `stay_point_detection` flag (default off). A single-pass dwell detector that fixes the old clusterer's slow-stay false-rejects and dead-battery gap splits, and stores a 0–100 confidence score per suggested visit (exposed via the API). #2832
+
+  Enable (Rails console): `Flipper.enable_actor(:stay_point_detection, user)` for one user, `Flipper.enable(:stay_point_detection)` for everyone, or toggle in `/admin/flipper`. Re-detect past history with `Visits::FullHistoryRedetectJob.perform_later(user.id)`. Tune the longest gap counted as one stay via `stay_max_gap_minutes` (default 60, clamped 5–720).
+
+- Map v2 Timeline: every visit now has a search icon to find the real place by name — a type-as-you-go geocoder (Photon) lookup biased to the visit's location, each result showing category, distance, and nearby saved Areas. Pick a result to label the visit or create a new place on the spot; choosing a far-away place asks before relocating it.
+
+### Changed
+
+- Declining a visit is now **deleting** a visit. Decline (per-visit, "Delete all" for a day, the bulk bar, and the Map v2 area-selection card) is replaced by **Delete**, which confirms and removes the visit entirely; your location points are always kept. The "Declined" filter and Restore action are removed.
+
+### Fixed
+
+- The map's Places layer no longer floods with a marker for every suggested visit — it now shows only places you created manually, attached to a confirmed visit, or tagged. **Heads-up after upgrading:** long-time accounts will see far fewer markers, since every suggested visit used to create its own place (often thousands). Nothing is deleted; suggested-only places are hidden until you confirm the visit or tag the place. `GET /api/v1/places` accepts a `filter` parameter to override: `all`, `manual`, `confirmed`, or `tagged`.
+- Deleting a single point on the map (via its info card) now redraws the connecting route immediately instead of leaving a stale line until reload. (#2844)
+- The official Traccar client app is now supported directly. Its payload nests coordinates, battery and activity one level deeper than Dawarich's own client, so its points were silently dropped; both shapes are now accepted. #2741
+- Deleting an import now also removes any tracks left with no points, instead of leaving empty "ghost" tracks on the map and timeline. Connected maps drop the removed track right away. #2825
+- Mobile menu items at the bottom of the list (e.g. "Family members") are no longer hidden behind the browser's address bar; the map layout now sizes to the dynamic viewport height. (#2249)
+- Date/time picker icons and other native form controls are now legible on the dark theme, which now declares a dark `color-scheme`. (#2765)
+- Reverse geocoding no longer stalls behind GPS anomaly detection. The check used to re-scan the whole current month on every incoming location (~30 s late in a busy month) and starve the geocoding queue; it now inspects only the new points plus their immediate neighbours.
+- Renaming a suggested visit no longer auto-confirms it. Renaming now only changes the name; confirming happens solely through the suggested-place picker.
+- Map v2 Timeline calendar: the per-day "suggested visits" dot now clears as soon as you confirm or delete the last suggestion for that day, instead of lingering until reload.
 
 ## [1.7.11] - 2026-05-31
 

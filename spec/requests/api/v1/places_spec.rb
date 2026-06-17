@@ -38,6 +38,103 @@ RSpec.describe 'Api::V1::Places', type: :request do
       json = JSON.parse(response.body)
       expect(json.map { |p| p['name'] }).not_to include('Private Place')
     end
+
+    context 'map visibility (manual + confirmed + tagged only)' do
+      it 'excludes a suggested-only photon place' do
+        suggested = create(:place, user: user, name: 'Suggested Only', source: :photon)
+        create(:visit, user: user, place: suggested, area: nil, status: :suggested)
+
+        get '/api/v1/places', headers: headers
+
+        json = JSON.parse(response.body)
+        expect(json.map { |p| p['name'] }).not_to include('Suggested Only')
+      end
+
+      it 'includes a photon place linked to a confirmed visit' do
+        confirmed = create(:place, user: user, name: 'Confirmed Place', source: :photon)
+        create(:visit, user: user, place: confirmed, area: nil, status: :confirmed)
+
+        get '/api/v1/places', headers: headers
+
+        json = JSON.parse(response.body)
+        expect(json.map { |p| p['name'] }).to include('Confirmed Place')
+      end
+
+      it 'includes a manual place with no visits' do
+        create(:place, user: user, name: 'Manual Pin', source: :manual)
+
+        get '/api/v1/places', headers: headers
+
+        json = JSON.parse(response.body)
+        expect(json.map { |p| p['name'] }).to include('Manual Pin')
+      end
+
+      it 'includes a tagged photon place even when its only visit is suggested' do
+        tagged = create(:place, user: user, name: 'Tagged Suggested', source: :photon)
+        create(:tagging, taggable: tagged, tag: tag)
+        create(:visit, user: user, place: tagged, area: nil, status: :suggested)
+
+        get '/api/v1/places', headers: headers
+
+        json = JSON.parse(response.body)
+        expect(json.map { |p| p['name'] }).to include('Tagged Suggested')
+      end
+    end
+
+    context 'with filter param' do
+      let!(:suggested) do
+        place = create(:place, user: user, name: 'Suggested Only', source: :photon)
+        create(:visit, user: user, place: place, area: nil, status: :suggested)
+        place
+      end
+      let!(:confirmed) do
+        place = create(:place, user: user, name: 'Confirmed Place', source: :photon)
+        create(:visit, user: user, place: place, area: nil, status: :confirmed)
+        place
+      end
+
+      it 'filter=all returns every place including suggested-only' do
+        get '/api/v1/places', params: { filter: 'all' }, headers: headers
+
+        names = JSON.parse(response.body).map { |p| p['name'] }
+        expect(names).to include('Suggested Only', 'Confirmed Place', 'Home')
+      end
+
+      it 'filter=manual returns only manually created places' do
+        get '/api/v1/places', params: { filter: 'manual' }, headers: headers
+
+        names = JSON.parse(response.body).map { |p| p['name'] }
+        expect(names).to include('Home')
+        expect(names).not_to include('Suggested Only', 'Confirmed Place')
+      end
+
+      it 'filter=confirmed returns only places linked to confirmed visits' do
+        get '/api/v1/places', params: { filter: 'confirmed' }, headers: headers
+
+        names = JSON.parse(response.body).map { |p| p['name'] }
+        expect(names).to include('Confirmed Place')
+        expect(names).not_to include('Suggested Only', 'Home')
+      end
+
+      it 'filter=tagged returns only tagged places' do
+        tagged = create(:place, user: user, name: 'Tagged Place', source: :photon)
+        create(:tagging, taggable: tagged, tag: tag)
+
+        get '/api/v1/places', params: { filter: 'tagged' }, headers: headers
+
+        names = JSON.parse(response.body).map { |p| p['name'] }
+        expect(names).to include('Tagged Place')
+        expect(names).not_to include('Home', 'Suggested Only', 'Confirmed Place')
+      end
+
+      it 'defaults to map-visible filtering when filter is unknown' do
+        get '/api/v1/places', params: { filter: 'bogus' }, headers: headers
+
+        names = JSON.parse(response.body).map { |p| p['name'] }
+        expect(names).not_to include('Suggested Only')
+        expect(names).to include('Confirmed Place', 'Home')
+      end
+    end
   end
 
   describe 'GET /api/v1/places/:id' do

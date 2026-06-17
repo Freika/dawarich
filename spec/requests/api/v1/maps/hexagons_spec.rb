@@ -424,4 +424,79 @@ RSpec.describe 'Api::V1::Maps::Hexagons', type: :request do
       end
     end
   end
+  describe 'GET /api/v1/maps/hexagons/fog' do
+    let(:headers) { { 'Authorization' => "Bearer #{user.api_key}" } }
+    let(:params) { { start_date: '2024-06-01T00:00:00Z', end_date: '2024-06-30T23:59:59Z' } }
+
+    context 'with precalculated stats' do
+      before do
+        create(:stat, user:, year: 2024, month: 6, h3_hex_ids: [
+                 ['8828308281fffff', 3, Time.zone.parse('2024-06-10T10:00:00Z').to_i,
+                  Time.zone.parse('2024-06-10T12:00:00Z').to_i]
+               ])
+      end
+
+      it 'returns the cell ids' do
+        get '/api/v1/maps/hexagons/fog', params: params, headers: headers
+
+        expect(response).to have_http_status(:success)
+        json = JSON.parse(response.body)
+        expect(json['h3_indexes']).to eq(['8828308281fffff'])
+        expect(json['metadata']['count']).to eq(1)
+      end
+    end
+
+    context 'without stats' do
+      it 'returns an empty collection' do
+        get '/api/v1/maps/hexagons/fog', params: params, headers: headers
+
+        expect(response).to have_http_status(:success)
+        expect(JSON.parse(response.body)['h3_indexes']).to eq([])
+      end
+    end
+
+    context 'with missing params' do
+      it 'returns bad request' do
+        get '/api/v1/maps/hexagons/fog', params: { start_date: '2024-06-01' }, headers: headers
+
+        expect(response).to have_http_status(:bad_request)
+      end
+    end
+
+    context 'with unparseable dates' do
+      it 'returns bad request' do
+        get '/api/v1/maps/hexagons/fog',
+            params: { start_date: 'garbage', end_date: 'garbage' }, headers: headers
+
+        expect(response).to have_http_status(:bad_request)
+      end
+    end
+
+    context 'when the service fails unexpectedly' do
+      before do
+        allow(Maps::FogHexagons).to receive(:new).and_raise(StandardError, 'boom')
+      end
+
+      it 'returns a graceful error' do
+        get '/api/v1/maps/hexagons/fog', params: params, headers: headers
+
+        expect(response).to have_http_status(:internal_server_error)
+        expect(JSON.parse(response.body)['error']).to eq('Failed to generate hexagon grid')
+      end
+    end
+
+    context 'without authentication' do
+      it 'returns unauthorized' do
+        get '/api/v1/maps/hexagons/fog', params: params
+
+        expect(response).to have_http_status(:unauthorized)
+      end
+
+      it 'returns unauthorized when a sharing uuid is passed' do
+        get '/api/v1/maps/hexagons/fog', params: params.merge(uuid: SecureRandom.uuid)
+
+        expect(response).to have_http_status(:unauthorized)
+      end
+    end
+  end
 end

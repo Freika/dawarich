@@ -5,6 +5,7 @@ class Place < ApplicationRecord
   include Nearable
   include Distanceable
   include Taggable
+  include Notable
 
   DEFAULT_NAME = 'Suggested place'
 
@@ -15,13 +16,20 @@ class Place < ApplicationRecord
 
   before_validation :build_lonlat, if: -> { latitude.present? && longitude.present? }
 
-  validates :name, presence: true
+  validates :name, presence: true, length: { maximum: 255 }
   validates :lonlat, presence: true
 
   enum :source, { manual: 0, photon: 1 }
 
   scope :for_user, ->(user) { where(user: user) }
   scope :ordered, -> { order(:name) }
+  scope :linked_to_confirmed_visits, lambda { |user|
+    where(id: user.visits.confirmed.where.not(place_id: nil).select(:place_id))
+  }
+  scope :tagged, -> { where(id: Tagging.where(taggable_type: 'Place').select(:taggable_id)) }
+  scope :map_visible, lambda { |user|
+    manual.or(linked_to_confirmed_visits(user)).or(tagged)
+  }
 
   def lon
     lonlat.x

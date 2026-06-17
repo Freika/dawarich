@@ -94,10 +94,12 @@ class Users::RegistrationsController < Devise::RegistrationsController
   end
 
   def update_resource(resource, params)
-    if resource.oauth_user?
-      resource.update_without_password(params)
+    return super unless resource.oauth_user?
+
+    if params[:password].present?
+      resource.update(params.except(:current_password))
     else
-      super
+      resource.update_without_password(params)
     end
   end
 

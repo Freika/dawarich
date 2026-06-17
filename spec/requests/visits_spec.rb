@@ -281,11 +281,51 @@ RSpec.describe '/visits', type: :request do
       expect { delete visit_url(visit), as: :turbo_stream }.to change(Visit, :count).by(-1)
     end
 
-    it 'returns turbo_stream removing the visit row' do
+    it 'returns turbo_stream removing the correct visit_entry row' do
       delete visit_url(visit), as: :turbo_stream
 
       expect_turbo_stream_response
-      expect_turbo_stream_action('remove', "visit_item_#{visit.id}")
+      expect_turbo_stream_action('remove', "visit_entry_#{visit.id}")
+    end
+
+    it 'does NOT emit the old visit_item target' do
+      delete visit_url(visit), as: :turbo_stream
+
+      expect(response.body).not_to include("visit_item_#{visit.id}")
+    end
+
+    it 'includes the day banner stream' do
+      delete visit_url(visit), as: :turbo_stream
+
+      tz = user.safe_settings.timezone.presence || 'UTC'
+      day_date = Time.use_zone(tz) { visit.started_at.in_time_zone.to_date.to_s }
+      expect_turbo_stream_action('replace', "day-banner-#{day_date}")
+    end
+
+    it 'includes the filter-count streams' do
+      delete visit_url(visit), as: :turbo_stream
+
+      expect_turbo_stream_action('replace', 'filter-count-confirmed')
+      expect_turbo_stream_action('replace', 'filter-count-suggested')
+      expect(response.body).not_to include('filter-count-declined')
+    end
+
+    it 'includes the calendar frame stream' do
+      delete visit_url(visit), as: :turbo_stream
+
+      expect_turbo_stream_action('replace', 'timeline-calendar-frame')
+    end
+
+    it 'includes the suggestions badge stream' do
+      delete visit_url(visit), as: :turbo_stream
+
+      expect_turbo_stream_action('replace', 'timeline-suggestions-badge')
+    end
+
+    it 'includes the success flash message' do
+      delete visit_url(visit), as: :turbo_stream
+
+      expect_flash_stream('Visit removed. Your location points are still here.')
     end
 
     it 'busts the MonthSummary cache for the visit month' do
@@ -486,7 +526,12 @@ RSpec.describe '/visits', type: :request do
     it 'busts the month-summary cache for affected months' do
       month_start = visit_a.started_at.beginning_of_month.to_date
       cache_key = Timeline::MonthSummary.cache_key_for(user, month_start)
-      Rails.cache.write(cache_key, 'sentinel')
+      # Pre-populate with a valid MonthSummary shape so the calendar stream can
+      # render during the action, then verify the after_action busts the key.
+      sentinel = { month: month_start.strftime('%Y-%m'), weeks: [], days: {}, status_counts: {} }
+      Rails.cache.write(cache_key, sentinel)
+
+      expect(Rails.cache.read(cache_key)).to be_present
 
       delete bulk_destroy_visits_url(format: :turbo_stream),
              params: { visit_ids: [visit_a.id] }
@@ -545,6 +590,98 @@ RSpec.describe '/visits', type: :request do
 
       expect(Rails.cache.read(apr_key)).to be_nil
       expect(Rails.cache.read(may_key)).to be_nil
+    end
+
+    it 'includes the calendar frame stream in the turbo response' do
+      delete bulk_destroy_visits_url(format: :turbo_stream),
+             params: { visit_ids: [visit_a.id] }
+
+      expect_turbo_stream_response
+      expect_turbo_stream_action('replace', 'timeline-calendar-frame')
+    end
+
+    context 'with date + source_status instead of visit_ids (Delete all path)' do
+      let(:tz) { 'UTC' }
+
+      before do
+        user.settings ||= {}
+        user.settings['timezone'] = tz
+        user.save!
+        Visit.delete_all
+      end
+
+      let!(:suggested_today) do
+        create(:visit, user:, status: :suggested,
+                       started_at: Time.zone.today.beginning_of_day + 9.hours,
+                       ended_at: Time.zone.today.beginning_of_day + 10.hours)
+      end
+      let!(:suggested_today_2) do
+        create(:visit, user:, status: :suggested,
+                       started_at: Time.zone.today.beginning_of_day + 11.hours,
+                       ended_at: Time.zone.today.beginning_of_day + 12.hours)
+      end
+      let!(:confirmed_today) do
+        create(:visit, user:, status: :confirmed,
+                       started_at: Time.zone.today.beginning_of_day + 13.hours,
+                       ended_at: Time.zone.today.beginning_of_day + 14.hours)
+      end
+
+      it 'deletes all visits with the given status on the given date' do
+        delete bulk_destroy_visits_url(format: :turbo_stream),
+               params: { date: Time.zone.today.to_s, source_status: 'suggested' }
+
+        expect(response).to have_http_status(:ok)
+        expect(Visit.where(id: [suggested_today.id, suggested_today_2.id])).to be_empty
+        expect(Visit.where(id: confirmed_today.id)).to exist
+      end
+
+      it 'returns the turbo stream response with calendar frame' do
+        delete bulk_destroy_visits_url(format: :turbo_stream),
+               params: { date: Time.zone.today.to_s, source_status: 'suggested' }
+
+        expect_turbo_stream_response
+        expect_turbo_stream_action('replace', 'timeline-calendar-frame')
+      end
+
+      it 'does not touch visits of other users' do
+        other_visit = create(:visit, user: create(:user), status: :suggested,
+                                     started_at: Time.zone.today.beginning_of_day + 9.hours,
+                                     ended_at: Time.zone.today.beginning_of_day + 10.hours)
+
+        delete bulk_destroy_visits_url(format: :turbo_stream),
+               params: { date: Time.zone.today.to_s, source_status: 'suggested' }
+
+        expect { other_visit.reload }.not_to raise_error
+      end
+
+      it 'returns unprocessable when no visits match date + source_status' do
+        delete bulk_destroy_visits_url(format: :turbo_stream),
+               params: { date: '1900-01-01', source_status: 'suggested' }
+
+        expect(response).to have_http_status(:unprocessable_content)
+      end
+
+      it 'returns unprocessable when neither visit_ids nor date+source_status are given' do
+        delete bulk_destroy_visits_url(format: :turbo_stream), params: {}
+
+        expect(response).to have_http_status(:unprocessable_content)
+      end
+
+      it 'returns unprocessable for an unknown source_status without raising' do
+        delete bulk_destroy_visits_url(format: :turbo_stream),
+               params: { date: Time.zone.today.to_s, source_status: 'bogus' }
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(Visit.where(id: suggested_today.id)).to exist
+      end
+
+      it 'rejects source_status=confirmed so confirmed visits cannot be bulk-deleted by date' do
+        delete bulk_destroy_visits_url(format: :turbo_stream),
+               params: { date: Time.zone.today.to_s, source_status: 'confirmed' }
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(Visit.where(id: confirmed_today.id)).to exist
+      end
     end
   end
 end

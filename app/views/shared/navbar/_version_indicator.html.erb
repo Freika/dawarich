@@ -1,0 +1,26 @@
+<% state = changelog_indicator_state %>
+<% github_update = state != :widget && new_version_available? %>
+<div id="version-indicator" class="relative inline-flex items-center">
+  <div class="badge mx-4 <%= 'badge-outline' if github_update %>">
+    <a href="https://github.com/Freika/dawarich/releases/latest" target="_blank" class="inline-flex items-center">
+      <% if github_update %>
+        <span class="tooltip tooltip-bottom" data-tip="New version available! Check out Github releases!">
+          <span class="hidden sm:inline"><%= APP_VERSION %>&nbsp;!</span>
+        </span>
+      <% else %>
+        <span class="hidden sm:inline"><%= APP_VERSION %></span>
+      <% end %>
+    </a>
+  </div>
+
+  <% if state == :widget %>
+    <div id="chgtool-mount"
+         class="inline-flex items-center"
+         data-controller="changelog-widget"
+         data-changelog-widget-src-value="<%= chibichange_widget_src %>"
+         data-changelog-widget-slug-value="<%= CHIBICHANGE_SLUG %>"
+         data-changelog-widget-version-value="<%= APP_VERSION %>"></div>
+  <% elsif state == :prompt %>
+    <%= render "shared/navbar/changelog_prompt" %>
+  <% end %>
+</div>

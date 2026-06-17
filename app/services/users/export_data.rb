@@ -314,26 +314,29 @@ class Users::ExportData
       user.raw_data_archives.find_each do |archive|
         archive_hash = archive.as_json(except: %w[user_id id])
 
-        if archive.file.attached?
-          file_name = "raw_data_archive_#{archive.year}_#{format('%02d', archive.month)}_#{archive.chunk_number}.gz"
-          archive_hash['file_name'] = file_name
-          archive_hash['original_filename'] = archive.file.filename.to_s
-          archive_hash['content_type'] = archive.file.content_type
-
-          dest_path = files_directory.join(file_name)
-          begin
-            File.open(dest_path, 'wb') { |f| archive.file.download { |chunk| f.write(chunk) } }
-          rescue StandardError => e
-            FileUtils.rm_f(dest_path)
-            raise e
-          end
-        end
+        add_archive_file_data(archive, archive_hash) if archive.file.attached?
 
         file.puts(archive_hash.to_json)
         count += 1
       end
     end
     Rails.logger.info "Exported #{count} raw data archives"
+  end
+
+  def add_archive_file_data(archive, archive_hash)
+    file_name = "raw_data_archive_#{archive.year}_#{format('%02d', archive.month)}_#{archive.chunk_number}.gz"
+    dest_path = files_directory.join(file_name)
+
+    File.open(dest_path, 'wb') { |f| archive.file.download { |chunk| f.write(chunk) } }
+
+    archive_hash['file_name'] = file_name
+    archive_hash['original_filename'] = archive.file.filename.to_s
+    archive_hash['content_type'] = archive.file.content_type
+  rescue StandardError => e
+    FileUtils.rm_f(dest_path)
+    ExceptionReporter.call(e)
+
+    archive_hash['file_error'] = "Failed to download: #{e.message}"
   end
 
   def write_manifest

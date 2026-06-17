@@ -72,4 +72,39 @@ RSpec.describe Visits::PlaceFinder do
         .not_to have_enqueued_job(Places::NameFetchingJob)
     end
   end
+
+  describe '#find_or_create_place with stay_point_detection enabled' do
+    before { allow(Flipper).to receive(:enabled?).with(:stay_point_detection, user).and_return(true) }
+
+    def place_at(lat, lon, name:, source:)
+      create(:place, user: user, name: name, source: source,
+                     latitude: lat, longitude: lon, lonlat: "POINT(#{lon} #{lat})", geodata: {})
+    end
+
+    it 'prefers a manual place over a photon place at the same location' do
+      photon = place_at(52.5126, 13.4012, name: 'Photon', source: :photon)
+      manual = place_at(52.5126, 13.4012, name: 'Manual', source: :manual)
+
+      result = described_class.new(user).find_or_create_place(visit_data)
+
+      expect(result).to eq(manual)
+      expect(result).not_to eq(photon)
+    end
+
+    it 'prefers an exact name match within the radius' do
+      place_at(52.51262, 13.40122, name: 'Other', source: :photon)
+      named = place_at(52.5126, 13.4012, name: 'Cafe', source: :photon)
+
+      result = described_class.new(user).find_or_create_place(visit_data.merge(suggested_name: 'Cafe'))
+
+      expect(result).to eq(named)
+    end
+
+    it 'reuses a nearby place instead of minting a duplicate' do
+      place_at(52.5126, 13.4012, name: 'Cafe', source: :photon)
+
+      expect { described_class.new(user).find_or_create_place(visit_data.merge(suggested_name: 'Cafe')) }
+        .not_to(change { Place.count })
+    end
+  end
 end

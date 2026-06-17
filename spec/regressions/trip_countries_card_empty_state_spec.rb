@@ -36,19 +36,11 @@ RSpec.describe 'Trip countries card empty-state honesty' do
       expect(trip.reload.visited_countries).to eq([])
     end
 
-    it 'renders an em-dash placeholder in the card, not an indefinite spinner' do
+    it 'renders an em-dash placeholder, not an indefinite spinner' do
       html = render_partial
-      card_segment = html.split('<dialog').first
 
-      expect(card_segment).to include('&mdash;')
-      expect(card_segment).not_to include('loading loading-dots')
-    end
-
-    it 'still explains the empty state in the modal' do
-      html = render_partial
-      modal_segment = html.partition('<dialog').last
-
-      expect(modal_segment).to include('No countries data available yet.')
+      expect(html).to include('&mdash;')
+      expect(html).not_to include('loading loading-dots')
     end
   end
 
@@ -64,11 +56,10 @@ RSpec.describe 'Trip countries card empty-state honesty' do
       trip.save!
     end
 
-    it 'shows the count in the card and the country in the modal' do
+    it 'shows the country count without spinner or placeholder' do
       html = render_partial
 
-      expect(html).to match(%r{Countries</div>\s*<div[^>]*>\s*1\s*</div>}m)
-      expect(html).to include('Germany')
+      expect(html).to include('1 country')
       expect(html).not_to include('loading loading-dots')
       expect(html).not_to include('&mdash;')
     end

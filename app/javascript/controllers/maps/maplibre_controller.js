@@ -156,8 +156,6 @@ export default class extends Controller {
     "replayDataIndicator",
     "replayCycleControls",
     "replayPointCounter",
-    "replayPrevDayButton",
-    "replayNextDayButton",
     // Timeline feed
     "timelineFeedContainer",
     // Replay playback
@@ -219,6 +217,13 @@ export default class extends Controller {
     // Initialize feature managers
     this.areaSelectionManager = new AreaSelectionManager(this)
     this.visitsManager = new VisitsManager(this)
+    // The moveend viewport-refetch normally attaches when the user flips the
+    // Visits toggle on. When the layer starts enabled (saved setting or the
+    // panel=timeline force-enable above), attach it here so panning keeps
+    // the dots in sync with the viewport.
+    if (this.settings.visitsEnabled) {
+      this.visitsManager.attachViewportRefetch()
+    }
     this.placesManager = new PlacesManager(this)
     this.routesManager = new RoutesManager(this)
 
@@ -1342,6 +1347,10 @@ export default class extends Controller {
   toggleHexagons(event) {
     return this.routesManager.toggleHexagons(event)
   }
+  updateFogMode(event) {
+    return this.settingsController.updateFogMode(event)
+  }
+
   toggleFog(event) {
     return this.routesManager.toggleFog(event)
   }
@@ -1801,7 +1810,8 @@ export default class extends Controller {
 
   /**
    * Delete a single point with confirmation, then remove it from the points
-   * source so the map updates without a full reload.
+   * source and rebuild the connecting routes so the map updates without a
+   * full reload.
    */
   async deletePoint(pointId) {
     const confirmed = confirm(
@@ -1822,6 +1832,8 @@ export default class extends Controller {
           (f) => Number(f.properties?.id) !== numericId,
         )
         source.setData(data)
+        pointsLayer.data = data
+        await this.routesManager.reloadRoutes()
       }
 
       this.closeInfo()
@@ -1983,7 +1995,6 @@ export default class extends Controller {
       this.replayManager.buildMinuteIndex()
       this._updateReplayDayDisplay()
       this._updateReplayDayCount()
-      this._updateReplayDayButtons()
       this._renderReplayDensity()
     }
 
@@ -2045,7 +2056,6 @@ export default class extends Controller {
     // Update UI
     this._updateReplayDayDisplay()
     this._updateReplayDayCount()
-    this._updateReplayDayButtons()
     this._renderReplayDensity()
 
     // Initialize replay controls
@@ -2202,49 +2212,11 @@ export default class extends Controller {
       : this.replayCurrentCoords
 
     // Reset timing so interpolation starts fresh from this point
+    this.replaySegmentDurationMs = this._replaySegmentDurationMs(
+      currentPoint,
+      nextPoint,
+    )
     this.replayLastTime = performance.now()
-  }
-
-  /**
-   * Navigate to previous day
-   */
-  replayPrevDay() {
-    if (!this.replayManager) return
-
-    // Stop replay when manually changing days
-    this._stopReplayPlayback()
-
-    if (this.replayManager.prevDay()) {
-      this._updateReplayDayDisplay()
-      this._updateReplayDayCount()
-      this._updateReplayDayButtons()
-      this._renderReplayDensity()
-      this._setInitialScrubberPosition()
-      this._clearReplayMarker()
-      this._clearReplayRouteHighlight()
-      this._hideReplayCycleControls()
-    }
-  }
-
-  /**
-   * Navigate to next day
-   */
-  replayNextDay() {
-    if (!this.replayManager) return
-
-    // Stop replay when manually changing days
-    this._stopReplayPlayback()
-
-    if (this.replayManager.nextDay()) {
-      this._updateReplayDayDisplay()
-      this._updateReplayDayCount()
-      this._updateReplayDayButtons()
-      this._renderReplayDensity()
-      this._setInitialScrubberPosition()
-      this._clearReplayMarker()
-      this._clearReplayRouteHighlight()
-      this._hideReplayCycleControls()
-    }
   }
 
   /**
@@ -2293,22 +2265,6 @@ export default class extends Controller {
     if (!this.hasReplayDayDisplayTarget || !this.replayManager) return
     this.replayDayDisplayTarget.textContent =
       this.replayManager.getCurrentDayDisplay()
-  }
-
-  /**
-   * Update day navigation button states
-   * @private
-   */
-  _updateReplayDayButtons() {
-    if (!this.replayManager) return
-
-    if (this.hasReplayPrevDayButtonTarget) {
-      this.replayPrevDayButtonTarget.disabled = !this.replayManager.canGoPrev()
-    }
-
-    if (this.hasReplayNextDayButtonTarget) {
-      this.replayNextDayButtonTarget.disabled = !this.replayManager.canGoNext()
-    }
   }
 
   /**
@@ -2382,17 +2338,15 @@ export default class extends Controller {
   }
 
   /**
-   * Update day count display
+   * Update the current day's point count display
    * @private
    */
   _updateReplayDayCount() {
     if (!this.hasReplayDayCountTarget || !this.replayManager) return
 
-    const dayCount = this.replayManager.getDayCount()
-    const currentIndex = this.replayManager.currentDayIndex + 1
     const pointCount = this.replayManager.getCurrentDayPointCount()
 
-    this.replayDayCountTarget.textContent = `Day ${currentIndex} of ${dayCount} • ${pointCount.toLocaleString()} points`
+    this.replayDayCountTarget.textContent = `${pointCount.toLocaleString()} points`
   }
 
   /**
@@ -2483,6 +2437,34 @@ export default class extends Controller {
     if (this.hasReplaySpeedLabelTarget) {
       this.replaySpeedLabelTarget.textContent = `${this.replaySpeed}x`
     }
+
+    this._rescaleReplaySegment()
+  }
+
+  /**
+   * Apply the current speed to the in-flight segment, keeping the marker's
+   * progress within the segment so it doesn't jump
+   * @private
+   */
+  _rescaleReplaySegment() {
+    if (!this.replayActive || !this.replayPoints) return
+
+    const previousDuration = this.replaySegmentDurationMs
+    const currentPoint = this.replayPoints[this.replayPointIndex]
+    const nextPoint = this.replayPoints[this.replayPointIndex + 1]
+    this.replaySegmentDurationMs = this._replaySegmentDurationMs(
+      currentPoint,
+      nextPoint,
+    )
+
+    if (previousDuration > 0) {
+      const now = performance.now()
+      const progress = Math.min(
+        (now - this.replayLastTime) / previousDuration,
+        1,
+      )
+      this.replayLastTime = now - progress * this.replaySegmentDurationMs
+    }
   }
 
   /**
@@ -2529,6 +2511,10 @@ export default class extends Controller {
     this.replayNextCoords = nextPoint
       ? this.replayManager.getCoordinates(nextPoint)
       : this.replayCurrentCoords
+    this.replaySegmentDurationMs = this._replaySegmentDurationMs(
+      startPoint,
+      nextPoint,
+    )
 
     // Show marker at starting point immediately
     if (startPoint) {
@@ -2608,6 +2594,33 @@ export default class extends Controller {
   }
 
   /**
+   * Playback duration for the segment between two points, proportional to
+   * the real time elapsed between them so a 20-minute slow drive and a
+   * 20-minute motorway drive take the same playback time. At 1x one real
+   * minute plays in one second; the speed multiplier compresses further.
+   * Clamped so dense bursts stay visible and huge gaps (overnight pauses)
+   * don't stall playback.
+   * @private
+   */
+  _replaySegmentDurationMs(currentPoint, nextPoint) {
+    const fallback = 500 / this.replaySpeed
+    if (!currentPoint || !nextPoint || !this.replayManager) return fallback
+
+    const startTime = this._parseReplayTimestamp(
+      this.replayManager._getTimestamp(currentPoint),
+    )
+    const endTime = this._parseReplayTimestamp(
+      this.replayManager._getTimestamp(nextPoint),
+    )
+    if (!startTime || !endTime || endTime <= startTime) return fallback
+
+    const realGapMs = endTime - startTime
+    const playbackMs = realGapMs / (60 * this.replaySpeed)
+
+    return Math.min(Math.max(playbackMs, 50), 4000)
+  }
+
+  /**
    * Replay animation frame - iterates over points with smooth interpolation
    * @private
    */
@@ -2617,9 +2630,9 @@ export default class extends Controller {
     const now = performance.now()
     const elapsed = now - this.replayLastTime
 
-    // Calculate interval between points based on speed
-    // Speed 1x = 1 point per 500ms, Speed 10x = 1 point per 50ms
-    const intervalMs = 500 / this.replaySpeed
+    // Playback duration of the current segment, proportional to the real
+    // time gap between the two points (see _replaySegmentDurationMs)
+    const intervalMs = this.replaySegmentDurationMs || 500 / this.replaySpeed
 
     // Calculate interpolation progress (0 to 1) - use linear for smooth constant speed
     const progress = Math.min(elapsed / intervalMs, 1)
@@ -2655,7 +2668,6 @@ export default class extends Controller {
           this.replayManager.nextDay()
           this._updateReplayDayDisplay()
           this._updateReplayDayCount()
-          this._updateReplayDayButtons()
           this._renderReplayDensity()
 
           // Get points for new day
@@ -2688,6 +2700,10 @@ export default class extends Controller {
       this.replayNextCoords = nextPoint
         ? this.replayManager.getCoordinates(nextPoint)
         : this.replayCurrentCoords
+      this.replaySegmentDurationMs = this._replaySegmentDurationMs(
+        currentPoint,
+        nextPoint,
+      )
 
       // Update speed display for current point
       this._updateReplaySpeedDisplay(this._getPointVelocity(currentPoint))
@@ -2720,30 +2736,57 @@ export default class extends Controller {
   }
 
   /**
-   * Smoothly pan map to keep marker visible during replay
-   * Only pans when marker is near the edge of the viewport
+   * Smoothly pan map to follow the replay marker.
+   * Eases the camera a fraction toward the marker each frame so following is
+   * gradual rather than snapping. Yields control once the user pans the map.
    * @private
    */
   _panMapToFollowMarker(lon, lat) {
     if (!this.map) return
 
-    // Get current map bounds
-    const bounds = this.map.getBounds()
-    const center = this.map.getCenter()
+    // User grabbed the map during replay — stop auto-following so they can
+    // freely explore. Following resumes when the replay panel is reopened.
+    if (this.replayUserPanned) return
 
-    // Calculate how far the marker is from the edges (as a percentage of viewport)
+    const center = this.map.getCenter()
+    const bounds = this.map.getBounds()
     const lngSpan = bounds.getEast() - bounds.getWest()
     const latSpan = bounds.getNorth() - bounds.getSouth()
+    if (lngSpan <= 0 || latSpan <= 0) return
 
-    // Calculate distance from center as percentage of viewport
-    const lngOffset = (lon - center.lng) / lngSpan
-    const latOffset = (lat - center.lat) / latSpan
+    const lngOffset = Math.abs((lon - center.lng) / lngSpan)
+    const latOffset = Math.abs((lat - center.lat) / latSpan)
 
-    // If marker is more than 30% from center, reposition immediately
-    const threshold = 0.3
-    if (Math.abs(lngOffset) > threshold || Math.abs(latOffset) > threshold) {
+    // Marker jumped far outside the viewport (e.g. a day change) — snap to it
+    // instead of slowly drifting the whole map across.
+    if (lngOffset > 0.75 || latOffset > 0.75) {
       this.map.setCenter([lon, lat])
+      return
     }
+
+    // Ease toward the marker: move a fraction of the remaining distance each
+    // frame for a smooth, continuous follow.
+    const ease = 0.08
+    this.map.setCenter([
+      center.lng + (lon - center.lng) * ease,
+      center.lat + (lat - center.lat) * ease,
+    ])
+  }
+
+  /**
+   * Stop auto-following once the user manually moves the map during replay.
+   * Programmatic camera moves (setCenter/flyTo) carry no originalEvent, so
+   * only genuine user gestures (drag, zoom, rotate) flip the flag.
+   * @private
+   */
+  _bindReplayFollowInterrupt() {
+    if (this._replayFollowInterruptBound || !this.map) return
+    this._replayFollowInterruptBound = true
+    this.map.on("movestart", (event) => {
+      if (this.replayActive && event.originalEvent) {
+        this.replayUserPanned = true
+      }
+    })
   }
 
   /**
@@ -2772,6 +2815,8 @@ export default class extends Controller {
     this.replayAnimationId = null
     this.replayCurrentCoords = null
     this.replayNextCoords = null
+    this.replayUserPanned = false
+    this._bindReplayFollowInterrupt()
     // Set initial speed label
     if (this.hasReplaySpeedLabelTarget) {
       this.replaySpeedLabelTarget.textContent = "2x"

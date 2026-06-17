@@ -264,7 +264,7 @@ RSpec.describe 'Users Export-Import Integration', type: :service do
       content_type: 'application/json'
     )
 
-    export2 = create(:export, user: user, name: 'Q2 2024 Export', file_format: :json, file_type: :user_data)
+    export2 = create(:export, user: user, name: 'Q2 2024 Export', file_format: :json, file_type: :points)
     export2.file.attach(
       io: StringIO.new('{"type": "FeatureCollection", "features": []}'),
       filename: 'q2_2024.json',

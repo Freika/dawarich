@@ -19,8 +19,13 @@ class Api::V1::Traccar::PointsController < ApiController
   def point_params
     params.permit(
       :device_id,
-      location: %i[timestamp latitude longitude accuracy speed heading altitude
-                   is_moving odometer event],
+      location: [
+        :timestamp, :latitude, :longitude, :accuracy, :speed, :heading, :altitude,
+        :is_moving, :odometer, :event, :manual,
+        { coords: %i[latitude longitude accuracy speed heading altitude],
+          battery: %i[level is_charging],
+          activity: %i[type] }
+      ],
       battery: %i[level is_charging],
       activity: %i[type]
     )

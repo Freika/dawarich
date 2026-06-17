@@ -170,6 +170,50 @@ RSpec.describe Users::ExportData, type: :service do
       end
     end
 
+    context 'when a raw data archive blob is missing from storage' do
+      before do
+        allow(Users::ExportData::Imports).to receive(:new).and_return(double(call: []))
+        allow(Users::ExportData::Exports).to receive(:new).and_return(double(call: []))
+        allow(Notifications::Create).to receive(:new).and_return(double(call: true))
+
+        archive = create(:points_raw_data_archive, user: user)
+        blob = archive.file.blob
+        blob.service.delete(blob.key)
+      end
+
+      after do
+        FileUtils.rm_rf(export_directory) if File.directory?(export_directory)
+      end
+
+      it 'completes the export instead of aborting' do
+        result = service.export
+
+        expect(result.status).to eq('completed')
+      end
+
+      it 'records a file_error for the missing archive' do
+        result = service.export
+
+        temp_dir = Rails.root.join('tmp/test_extract_missing_blob')
+        FileUtils.mkdir_p(temp_dir)
+
+        begin
+          temp_zip = temp_dir.join('test.zip')
+          File.binwrite(temp_zip, result.file.download)
+
+          Zip::File.open(temp_zip) do |zip_file|
+            entry = zip_file.find_entry('raw_data_archives.jsonl')
+            record = JSON.parse(entry.get_input_stream.read)
+
+            expect(record['file_error']).to be_present
+            expect(record['file_name']).to be_nil
+          end
+        ensure
+          FileUtils.rm_rf(temp_dir)
+        end
+      end
+    end
+
     context 'when export record creation fails' do
       before do
         exports_relation = user.exports

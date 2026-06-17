@@ -52,6 +52,28 @@ RSpec.describe '/trips', type: :request do
 
       expect(response).to be_successful
     end
+
+    it 'renders the recalculate button' do
+      get trip_url(trip)
+
+      expect(response.body).to include('Recalculate')
+    end
+
+    it 'renders header edit and delete actions' do
+      get trip_url(trip)
+
+      expect(response.body).to include(edit_trip_path(trip))
+      expect(response.body).to include('Delete this trip')
+    end
+
+    it 'computes day stats with PostGIS (no Ruby Geocoder fallback)' do
+      allow(Geocoder::Calculations).to receive(:distance_between).and_call_original
+
+      get trip_url(trip)
+
+      expect(response).to be_successful
+      expect(Geocoder::Calculations).not_to have_received(:distance_between)
+    end
   end
 
   describe 'GET /new' do
@@ -131,7 +153,7 @@ RSpec.describe '/trips', type: :request do
       let(:new_attributes) do
         {
           name: 'Updated Trip Name',
-          notes: 'Changed trip notes'
+          description: 'Changed trip notes'
         }
       end
       let(:trip) { create(:trip, :with_points, user:) }
@@ -141,8 +163,8 @@ RSpec.describe '/trips', type: :request do
         trip.reload
 
         expect(trip.name).to eq('Updated Trip Name')
-        expect(trip.notes.body.to_plain_text).to eq('Changed trip notes')
-        expect(trip.notes).to be_an(ActionText::RichText)
+        expect(trip.description.body.to_plain_text).to eq('Changed trip notes')
+        expect(trip.description).to be_an(ActionText::RichText)
       end
 
       it 'redirects to the trip' do

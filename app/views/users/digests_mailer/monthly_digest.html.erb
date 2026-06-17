@@ -69,11 +69,11 @@ Cities         <%= @digest.time_spent_by_location.to_h['cities'].to_a.size %>
 </pre>
   <% end %>
 
-  <p><a href="<%= insights_url %>">View full insights &rarr;</a></p>
+  <p><a href="<%= insights_url(**digest_utm(campaign: 'monthly_digest', content: 'view_insights')) %>">View full insights &rarr;</a></p>
 
   <div class="footer">
     You're receiving this because monthly digest emails are on for your account.
-    <a href="<%= settings_general_index_url(anchor: 'email-digests') %>">Manage email preferences</a>.
+    <a href="<%= settings_general_index_url(anchor: 'email-digests', **digest_utm(campaign: 'monthly_digest', content: 'manage_preferences')) %>">Manage email preferences</a>.
   </div>
 </body>
 </html>

@@ -12,18 +12,14 @@
     </div>
   <% end %>
 
-  <div class="flex flex-col lg:flex-row gap-4 my-4" data-controller="trips">
+  <div class="flex flex-col lg:flex-row gap-4 my-4">
     <div class="w-full lg:w-1/2">
       <div
-        id='map trips-container'
-        class="w-full h-full rounded-lg"
-        data-trips-target="container"
-        data-api_key="<%= current_user.api_key %>"
-        data-user_settings="<%= current_user.safe_settings.settings.to_json %>"
-        data-path="<%= trip.path.to_json %>"
-        data-started_at="<%= trip.started_at %>"
-        data-ended_at="<%= trip.ended_at %>"
-        data-timezone="<%= current_user.timezone %>">
+        class="w-full h-[40vh] lg:h-full rounded-lg overflow-hidden"
+        data-controller="trip-maplibre-preview"
+        data-trip-maplibre-preview-path-value="<%= trip.path&.coordinates&.to_json %>"
+        data-trip-maplibre-preview-interactive-value="true"
+        data-trip-maplibre-preview-map-style-value="<%= current_user.safe_settings.settings['maps_maplibre_style'] || 'light' %>">
       </div>
     </div>
 
@@ -63,8 +59,8 @@
       </div>
 
       <div class="form-control">
-        <%= form.label :notes %>
-        <%= form.rich_text_area :notes, class: 'trix-content-editor' %>
+        <%= form.label :description %>
+        <%= form.rich_text_area :description, class: 'trix-content-editor' %>
       </div>
 
       <div>

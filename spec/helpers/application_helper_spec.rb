@@ -234,6 +234,31 @@ RSpec.describe ApplicationHelper, type: :helper do
     end
   end
 
+  describe '#apple_web_sign_in_available?' do
+    context 'when APPLE_WEB_SIGN_IN_ENABLED is true' do
+      before { stub_const('APPLE_WEB_SIGN_IN_ENABLED', true) }
+
+      it 'is available on a desktop browser' do
+        allow(helper).to receive(:mobile_browser?).and_return(false)
+        expect(helper.apple_web_sign_in_available?).to be true
+      end
+
+      it 'is hidden on a mobile browser (embedded webview cannot complete the flow)' do
+        allow(helper).to receive(:mobile_browser?).and_return(true)
+        expect(helper.apple_web_sign_in_available?).to be false
+      end
+    end
+
+    context 'when APPLE_WEB_SIGN_IN_ENABLED is false' do
+      before { stub_const('APPLE_WEB_SIGN_IN_ENABLED', false) }
+
+      it 'is hidden even on a desktop browser' do
+        allow(helper).to receive(:mobile_browser?).and_return(false)
+        expect(helper.apple_web_sign_in_available?).to be false
+      end
+    end
+  end
+
   describe '#oauth_button_config' do
     context 'when provider is google_oauth2' do
       subject(:config) { helper.oauth_button_config(:google_oauth2) }

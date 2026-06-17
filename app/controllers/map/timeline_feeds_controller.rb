@@ -45,10 +45,7 @@ module Map
                                  locals: { status: 'confirmed', count: counts['confirmed'].to_i }),
             turbo_stream.replace('filter-count-suggested',
                                  partial: 'filter_count',
-                                 locals: { status: 'suggested', count: counts['suggested'].to_i }),
-            turbo_stream.replace('filter-count-declined',
-                                 partial: 'filter_count',
-                                 locals: { status: 'declined', count: counts['declined'].to_i })
+                                 locals: { status: 'suggested', count: counts['suggested'].to_i })
           ]
         end
         # Initial frame load on page open is an HTML request — fall back to

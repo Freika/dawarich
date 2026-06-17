@@ -5,22 +5,22 @@ git_source(:github) { |repo| "https://github.com/#{repo}.git" }
 
 ruby File.read('.ruby-version').strip
 
-gem 'activerecord-postgis-adapter', '11.0'
+gem 'activerecord-postgis-adapter', '11.1.1'
 # https://meta.discourse.org/t/cant-rebuild-due-to-aws-sdk-gem-bump-and-new-aws-data-integrity-protections/354217/40
 gem 'apple_id', '~> 1.2'
-gem 'aws-sdk-core', '~> 3.234', require: false
-gem 'aws-sdk-kms', '~> 1.96', require: false
-gem 'aws-sdk-s3', '~> 1.208', require: false
+gem 'aws-sdk-core', '~> 3.252', require: false
+gem 'aws-sdk-kms', '~> 1.129', require: false
+gem 'aws-sdk-s3', '~> 1.225', require: false
 gem 'bootsnap', require: false
 gem 'chartkick'
-gem 'connection_pool', '< 3' # Pin to 2.x - version 3.0+ has breaking API changes with Rails RedisCacheStore
+gem 'connection_pool', '< 4' # Pin to 2.x - version 3.0+ has breaking API changes with Rails RedisCacheStore
 gem 'data_migrate'
 gem 'devise', '>= 5.0.4'
 gem 'devise-two-factor'
 gem 'fit4ruby', '~> 3.13'
-gem 'flipper', '~> 1.3'
-gem 'flipper-active_record', '~> 1.3'
-gem 'flipper-ui', '~> 1.3'
+gem 'flipper', '~> 1.4'
+gem 'flipper-active_record', '~> 1.4'
+gem 'flipper-ui', '~> 1.4'
 gem 'foreman'
 gem 'geocoder', github: 'Freika/geocoder', branch: 'master'
 gem 'google-id-token', '~> 1.4'
@@ -45,7 +45,7 @@ gem 'puma'
 gem 'pundit', '>= 2.5.1'
 gem 'rack-attack'
 gem 'rack-session', '>= 2.1.2'
-gem 'rails', '~> 8.0.5'
+gem 'rails', '~> 8.1.3'
 gem 'addressable', '>= 2.9.0'
 gem 'bcrypt', '>= 3.1.22'
 gem 'faraday', '>= 2.14.2'
@@ -57,15 +57,15 @@ gem 'redis'
 gem 'resolv-replace', '~> 0.2.0'
 gem 'rexml'
 gem 'rgeo'
-gem 'rgeo-activerecord', '~> 8.0.0'
+gem 'rgeo-activerecord', '~> 8.1.0'
 gem 'rgeo-geojson'
-gem 'rqrcode', '~> 3.0'
+gem 'rqrcode', '~> 3.2'
 gem 'rswag-api'
 gem 'rswag-ui'
-gem 'rubyzip', '~> 3.2'
+gem 'rubyzip', '~> 3.3'
 gem 'sentry-rails', '>= 5.27.0'
 gem 'sentry-ruby'
-gem 'sidekiq', '8.0.10' # Pin to 8.0.x - sidekiq 8.1+ requires connection_pool 3.0+ breaking Rails
+gem 'sidekiq', '8.1.6' # Pin to 8.0.x - sidekiq 8.1+ requires connection_pool 3.0+ breaking Rails
 gem 'sidekiq-cron', '>= 2.4.0'
 gem 'sidekiq-limit_fetch'
 gem 'sprockets-rails'

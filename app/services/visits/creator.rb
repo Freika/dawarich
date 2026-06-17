@@ -5,8 +5,9 @@ module Visits
   class Creator
     attr_reader :user
 
-    def initialize(user)
+    def initialize(user, scoring_on: false)
       @user = user
+      @scoring_on = scoring_on
     end
 
     def create_visits(visits)
@@ -19,12 +20,14 @@ module Visits
           main_place = area ? nil : PlaceFinder.new(user).find_or_create_place(visit_data)
 
           visit_instance = Visit.create!(
-            user: user, area: area, place: main_place,
-            started_at: Time.zone.at(visit_data[:start_time]),
-            ended_at:   Time.zone.at(visit_data[:end_time]),
-            duration:   visit_data[:duration] / 60,
-            name:       generate_visit_name(area, main_place, visit_data[:suggested_name]),
-            status:     :suggested
+            {
+              user: user, area: area, place: main_place,
+              started_at: Time.zone.at(visit_data[:start_time]),
+              ended_at:   Time.zone.at(visit_data[:end_time]),
+              duration:   visit_data[:duration] / 60,
+              name:       generate_visit_name(area, main_place, visit_data[:suggested_name]),
+              status:     :suggested
+            }.merge(confidence_attributes(visit_data, area, main_place))
           )
 
           Point.where(id: visit_data[:points].map(&:id)).update_all(visit_id: visit_instance.id)
@@ -34,6 +37,38 @@ module Visits
     end
 
     private
+
+    def confidence_attributes(visit_data, area, main_place)
+      return {} unless @scoring_on
+
+      result = Visits::ConfidenceScorer.new(
+        duration_seconds:   visit_data[:end_time] - visit_data[:start_time],
+        point_count:        visit_data[:points].size,
+        accuracies:         visit_data[:points].map(&:accuracy),
+        radius_meters:      visit_data[:radius],
+        stay_radius_meters: stay_radius_meters,
+        min_points:         min_points_setting,
+        place_match:        place_match_kind(area, main_place)
+      ).call
+
+      { confidence: result[:score], confidence_breakdown: result[:breakdown] }
+    end
+
+    # Constant per job run — read once and memoize instead of per visit in the loop.
+    def stay_radius_meters
+      @stay_radius_meters ||= user.safe_settings.visit_radius_meters
+    end
+
+    def min_points_setting
+      @min_points_setting ||= user.safe_settings.visit_min_points
+    end
+
+    def place_match_kind(area, main_place)
+      return :area if area
+      return :place if main_place && main_place.name != Place::DEFAULT_NAME
+
+      nil
+    end
 
     # Find if there's already a confirmed/suggested/declined visit at this location within a similar time
     def find_existing_visit(visit_data)

@@ -77,6 +77,49 @@ RSpec.describe 'Map::TimelineFeeds', type: :request do
         end
       end
 
+      context 'with a suggested visit that has no place suggestions' do
+        let!(:bare_suggested) do
+          create(:visit,
+                 user: user,
+                 place: nil,
+                 name: 'Mystery Stop',
+                 status: :suggested,
+                 started_at: day + 9.hours,
+                 ended_at: day + 10.hours,
+                 duration: 3600)
+        end
+
+        it 'still renders a confirm control' do
+          get map_timeline_feeds_path(start_at: day.iso8601, end_at: (day + 1.day).iso8601)
+
+          expect(response).to have_http_status(:success)
+          expect(response.body).to include('data-testid="visit-confirm"')
+        end
+      end
+
+      context 'with a suggested visit that has a place' do
+        let(:suggested_place) { create(:place, name: 'Cafe Central') }
+        let!(:placed_suggested) do
+          create(:visit,
+                 user: user,
+                 place: suggested_place,
+                 name: 'Cafe Central',
+                 status: :suggested,
+                 started_at: day + 11.hours,
+                 ended_at: day + 12.hours,
+                 duration: 3600)
+        end
+
+        it 'renders a single confirm control without a place radio picker' do
+          get map_timeline_feeds_path(start_at: day.iso8601, end_at: (day + 1.day).iso8601)
+
+          expect(response).to have_http_status(:success)
+          expect(response.body).to include('data-testid="visit-confirm"')
+          expect(response.body).not_to include('name="visit[place_id]"')
+          expect(response.body).not_to include('suggested-picker__radio')
+        end
+      end
+
       context 'with a track that crosses midnight in the user timezone' do
         let(:user) { create(:user, settings: { 'timezone' => 'Europe/Berlin' }) }
         let(:day_b) { Date.new(2026, 4, 28) }

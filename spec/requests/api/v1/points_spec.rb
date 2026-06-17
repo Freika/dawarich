@@ -128,6 +128,50 @@ RSpec.describe 'Api::V1::Points', type: :request do
         expect(json_response.first['timestamp']).to be > json_response.last['timestamp']
       end
     end
+
+    context 'when user is on lite plan and result spans multiple pages' do
+      let!(:lite_user) do
+        u = create(:user)
+        u.update_columns(plan: User.plans[:lite])
+        u
+      end
+
+      let(:window_start) { DawarichSettings::LITE_DATA_WINDOW.ago }
+
+      let!(:scoped_point_1) { create(:point, user: lite_user, timestamp: (window_start + 1.day).to_i) }
+      let!(:scoped_point_2) { create(:point, user: lite_user, timestamp: (window_start + 2.days).to_i) }
+      let!(:scoped_point_3) { create(:point, user: lite_user, timestamp: (window_start + 3.days).to_i) }
+      let!(:out_of_window_point_1) { create(:point, user: lite_user, timestamp: (window_start - 1.day).to_i) }
+      let!(:out_of_window_point_2) { create(:point, user: lite_user, timestamp: (window_start - 2.days).to_i) }
+
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      end
+
+      it 'sets X-Scoped-Points to the total filtered count, not the page size' do
+        get api_v1_points_url(
+          api_key: lite_user.api_key,
+          start_at: (window_start - 3.days).to_i,
+          end_at: Time.current.to_i,
+          per_page: 2
+        )
+
+        expect(response).to have_http_status(:ok)
+        expect(response.headers['X-Total-Points-In-Range']).to eq('5')
+        expect(response.headers['X-Scoped-Points']).to eq('3')
+      end
+
+      it 'does not set Lite headers for a pro user' do
+        pro_user = create(:user)
+        pro_user.update_columns(plan: User.plans[:pro])
+
+        get api_v1_points_url(api_key: pro_user.api_key)
+
+        expect(response).to have_http_status(:ok)
+        expect(response.headers['X-Total-Points-In-Range']).to be_nil
+        expect(response.headers['X-Scoped-Points']).to be_nil
+      end
+    end
   end
 
   describe 'POST /create' do
@@ -712,6 +756,45 @@ RSpec.describe 'Api::V1::Points', type: :request do
           'min_longitude=foo&max_longitude=10&min_latitude=0&max_latitude=10'
 
       expect(response).to have_http_status(:bad_request)
+    end
+  end
+
+  describe 'GET /index bbox boundary semantics' do
+    let(:now) { Time.zone.now }
+
+    let!(:inside_point) do
+      create(:point, user:, timestamp: now.to_i,
+             latitude: 52.5, longitude: 13.5,
+             lonlat: 'POINT(13.5 52.5)')
+    end
+
+    let!(:boundary_point) do
+      create(:point, user:, timestamp: now.to_i + 60,
+             latitude: 52.5, longitude: 13.0,
+             lonlat: 'POINT(13.0 52.5)')
+    end
+
+    let!(:outside_point) do
+      create(:point, user:, timestamp: now.to_i + 120,
+             latitude: 52.5, longitude: 12.9,
+             lonlat: 'POINT(12.9 52.5)')
+    end
+
+    let(:time_range) do
+      "start_at=#{(now - 1.hour).to_i}&end_at=#{(now + 1.hour).to_i}"
+    end
+
+    it 'includes the inside point, the boundary point, and excludes the outside point' do
+      get "/api/v1/points?api_key=#{user.api_key}&#{time_range}&" \
+          'min_longitude=13.0&max_longitude=14.0&min_latitude=52.0&max_latitude=53.0&include_anomalies=true'
+
+      expect(response).to have_http_status(:ok)
+
+      returned_ids = JSON.parse(response.body).map { |p| p['id'] }
+
+      expect(returned_ids).to include(inside_point.id)
+      expect(returned_ids).to include(boundary_point.id)
+      expect(returned_ids).not_to include(outside_point.id)
     end
   end
 end

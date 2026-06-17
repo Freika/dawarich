@@ -72,6 +72,37 @@ RSpec.describe Auth::FindOrCreateOauthUser do
     # verification path covered above.
   end
 
+  describe 'concurrent sign-in race (existing row appears between lookup and insert)' do
+    # Reproduces the production 422 "Email has already been taken": a second
+    # concurrent request created the row after our up-front find_by(email:)
+    # returned nil, so create! hits the email-uniqueness *validation*
+    # (RecordInvalid, not RecordNotUnique). Stubbing the lookup is the
+    # deterministic way to simulate the TOCTOU window without real threads.
+    it 'recovers a different-identity email collision into the link-verification flow' do
+      existing = create(:user, email: 'race@example.com')
+      allow(User).to receive(:find_by).and_call_original
+      allow(User).to receive(:find_by).with(email: 'race@example.com').and_return(nil, existing)
+
+      expect do
+        build(provider: 'google', provider_label: 'Google',
+              claims: { sub: 'g-race', email: 'race@example.com' }, email_verified: true).call
+      end.to raise_error(Auth::FindOrCreateOauthUser::LinkVerificationSent)
+    end
+
+    it 'logs in the existing identity when the same (provider, uid) was just created' do
+      existing = create(:user, provider: 'google', uid: 'g-dup', email: 'dup@example.com')
+      allow(User).to receive(:find_by).and_call_original
+      allow(User).to receive(:find_by).with(provider: 'google', uid: 'g-dup').and_return(nil, existing)
+      allow(User).to receive(:find_by).with(email: 'dup@example.com').and_return(nil)
+
+      user, created = build(provider: 'google', provider_label: 'Google',
+                            claims: { sub: 'g-dup', email: 'dup@example.com' }, email_verified: true).call
+
+      expect(user).to eq(existing)
+      expect(created).to be(false)
+    end
+  end
+
   describe 'missing email from apple (subsequent sign-in with no local record)' do
     it 'raises MissingOauthEmail instead of fabricating a synthetic address' do
       error = nil
@@ -123,6 +154,55 @@ RSpec.describe Auth::FindOrCreateOauthUser do
 
       expect { build(claims: { sub: 'apple-6', email: 'selfhost-2@example.com' }).call }
         .not_to have_enqueued_job(Users::CreationWebhookJob)
+    end
+  end
+
+  describe 'name_attrs persistence' do
+    let(:claims) { { sub: '000.apple.web', email: 'newperson@example.com' } }
+
+    it 'persists first_name and last_name when supplied for a newly created user' do
+      user, created = described_class.new(
+        provider: 'apple',
+        provider_label: 'Sign in with Apple',
+        claims: claims,
+        email_verified: true,
+        name_attrs: { first_name: 'Grace', last_name: 'Hopper' }
+      ).call
+
+      expect(created).to be true
+      expect(user.first_name).to eq('Grace')
+      expect(user.last_name).to eq('Hopper')
+    end
+
+    it 'ignores name_attrs for an already-existing identity (no overwrite)' do
+      create(:user,
+             provider: 'apple', uid: '000.apple.web',
+             email: 'newperson@example.com', first_name: 'Original', last_name: 'Name')
+
+      user, created = described_class.new(
+        provider: 'apple',
+        provider_label: 'Sign in with Apple',
+        claims: claims,
+        email_verified: true,
+        name_attrs: { first_name: 'New', last_name: 'Override' }
+      ).call
+
+      expect(created).to be false
+      expect(user.first_name).to eq('Original')
+      expect(user.last_name).to eq('Name')
+    end
+
+    it 'is a no-op when name_attrs is empty or nil' do
+      user, = described_class.new(
+        provider: 'apple',
+        provider_label: 'Sign in with Apple',
+        claims: claims,
+        email_verified: true,
+        name_attrs: nil
+      ).call
+
+      expect(user.first_name).to be_nil
+      expect(user.last_name).to be_nil
     end
   end
 end

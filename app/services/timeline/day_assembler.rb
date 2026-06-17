@@ -25,6 +25,8 @@ module Timeline
 
       return [] if visits.empty? && tracks.empty?
 
+      @visit_point_counts = Point.where(visit_id: visits.map(&:id)).group(:visit_id).count
+
       days = group_by_day(visits, tracks)
       build_days(days)
     end
@@ -72,7 +74,10 @@ module Timeline
 
     def point_count_for(visit)
       assoc = visit.association(:points)
-      assoc.loaded? ? assoc.target.length : visit.points.count
+      return assoc.target.length if assoc.loaded?
+      return @visit_point_counts.fetch(visit.id, 0) if @visit_point_counts
+
+      visit.points.count
     end
 
     def fetch_tracks

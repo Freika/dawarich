@@ -73,7 +73,7 @@ class ApplicationController < ActionController::Base
       payload = { api_key: resource.api_key, exp: 5.minutes.from_now.to_i }
 
       token = Subscription::EncodeJwtToken.new(
-        payload, ENV['AUTH_JWT_SECRET_KEY']
+        payload, Auth::MobileHandoffSecret.call
       ).call
 
       ios_success_path(token:)

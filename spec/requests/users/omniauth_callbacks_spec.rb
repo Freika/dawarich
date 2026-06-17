@@ -6,12 +6,14 @@ RSpec.describe 'Users::OmniauthCallbacks', type: :request do
   let(:email) { 'oauth_user@example.com' }
 
   before(:all) do
-    # Add OpenID Connect callback route for testing
+    # Add OAuth callback routes for testing
     # This is needed because OMNIAUTH_PROVIDERS may be empty in test environment
     Rails.application.routes.append do
       devise_scope :user do
         get 'users/auth/openid_connect/callback', to: 'users/omniauth_callbacks#openid_connect'
         post 'users/auth/openid_connect/callback', to: 'users/omniauth_callbacks#openid_connect'
+        get 'users/auth/google_oauth2/callback', to: 'users/omniauth_callbacks#google_oauth2'
+        get 'users/auth/github/callback', to: 'users/omniauth_callbacks#github'
       end
     end
     # Force route recompilation so appended routes are recognized even when
@@ -41,6 +43,14 @@ RSpec.describe 'Users::OmniauthCallbacks', type: :request do
         user = User.find_by(email: email)
         expect(user).to be_present
         expect(user.encrypted_password).to be_present
+
+        if provider == :google_oauth2
+          expect(user.first_name).to eq('Ada')
+          expect(user.last_name).to eq('Lovelace')
+        elsif provider == :github
+          expect(user.first_name).to eq('Ada')
+          expect(user.last_name).to eq('Lovelace')
+        end
       end
     end
 
@@ -82,6 +92,22 @@ RSpec.describe 'Users::OmniauthCallbacks', type: :request do
         end.not_to have_enqueued_job(Users::MailerSendingJob)
       end
     end
+  end
+
+  describe 'GET /users/auth/google_oauth2/callback' do
+    before do
+      mock_google_auth(email: email)
+    end
+
+    include_examples 'successful OAuth authentication', :google_oauth2, 'Google'
+  end
+
+  describe 'GET /users/auth/github/callback' do
+    before do
+      mock_github_auth(email: email)
+    end
+
+    include_examples 'successful OAuth authentication', :github, 'GitHub'
   end
 
   # Self-hosted configuration (SELF_HOSTED=true) uses OpenID Connect

@@ -40,12 +40,14 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  /* Reserve space on the right so the action controls clear the close button */
+  padding-right: 34px;
   margin-bottom: 6px;
   position: relative;
   z-index: 2;
 }
 
-/* Day navigation (left) */
+/* Current day (left) */
 .replay-day-nav {
   display: flex;
   align-items: center;
@@ -53,6 +55,7 @@
   flex-shrink: 0;
 }
 
+/* Day navigation buttons (multi-day contexts, e.g. trip replay) */
 .replay-day-nav button {
   width: 26px;
   height: 26px;
@@ -421,7 +424,8 @@
   transition: all 0.15s;
   font-size: 20px;
   line-height: 1;
-  z-index: 1;
+  /* Above the controls row (z-index: 2) so the full button stays hoverable */
+  z-index: 3;
 }
 
 .replay-close:hover {
@@ -468,6 +472,7 @@
   .replay-controls-row {
     flex-wrap: wrap;
     gap: 6px;
+    padding-right: 30px;
   }
 
   .replay-day-nav {

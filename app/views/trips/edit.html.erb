@@ -7,7 +7,9 @@
   <div class="bg-base-100 items-center mt-8 mb-4">
     <div class="flex flex-wrap gap-2 justify-center">
       <%= link_to "Show this trip", @trip, class: "btn" %>
-      <%= link_to "Back to trips", trips_path, class: "btn" %>
+      <%= link_to trips_path, class: "btn btn-sm btn-ghost gap-1" do %>
+        <%= icon 'arrow-left', class: 'w-4 h-4' %> Back to trips
+      <% end %>
     </div>
   </div>
 </div>

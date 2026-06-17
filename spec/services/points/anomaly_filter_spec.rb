@@ -172,5 +172,41 @@ RSpec.describe Points::AnomalyFilter do
         expect(above_user_threshold.reload.anomaly).to be true
       end
     end
+
+    context 'Pass 2: narrow realtime window does not rescan the whole month' do
+      let(:base_lat) { 52.52 }
+      let(:base_lon) { 13.405 }
+      let(:month_start) { Time.current.beginning_of_month }
+      let(:early_base) { (month_start + 2.days).to_i }
+      let(:late_base) { (month_start + 20.days).to_i }
+
+      def normal_point(timestamp)
+        create(:point, user: user, latitude: base_lat, longitude: base_lon,
+               lonlat: "POINT(#{base_lon} #{base_lat})", timestamp: timestamp, accuracy: 10)
+      end
+
+      def spike_point(timestamp)
+        create(:point, user: user, latitude: base_lat + 10.0, longitude: base_lon + 10.0,
+               lonlat: "POINT(#{base_lon + 10.0} #{base_lat + 10.0})", timestamp: timestamp, accuracy: 10)
+      end
+
+      let!(:early_before) { normal_point(early_base) }
+      let!(:early_spike)  { spike_point(early_base + 60) }
+      let!(:early_after)  { normal_point(early_base + 120) }
+
+      let!(:late_before) { normal_point(late_base) }
+      let!(:late_spike)  { spike_point(late_base + 60) }
+      let!(:late_after)  { normal_point(late_base + 120) }
+
+      before { described_class.new(user.id, late_spike.timestamp, late_spike.timestamp).call }
+
+      it 'flags the spike inside the window using context points' do
+        expect(late_spike.reload.anomaly).to be true
+      end
+
+      it 'leaves an earlier spike outside the window untouched' do
+        expect(early_spike.reload.anomaly).not_to be true
+      end
+    end
   end
 end

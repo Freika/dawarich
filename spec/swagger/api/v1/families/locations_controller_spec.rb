@@ -95,7 +95,7 @@ RSpec.describe 'Families Locations API', type: :request do
         run_test!
       end
 
-      response '403', 'user not in a family' do
+      response '404', 'user not in a family' do
         let(:start_at) { 1.day.ago.iso8601 }
         let(:end_at) { Time.current.iso8601 }
 

@@ -23,12 +23,45 @@ module Visits
     private
 
     def find_existing_place(lat, lon, name)
+      return ranked_existing_place(lat, lon, name) if ranked?
+
       by_location = user.places.near([lat, lon], SIMILARITY_RADIUS, :m).first
       return by_location if by_location
 
       return nil if name.blank?
 
       user.places.where(name: name).near([lat, lon], SIMILARITY_RADIUS * 2, :m).first
+    end
+
+    # Flag-on: rank candidates within the radius by exact-name, then manual-over-photon, then distance.
+    # Avoids minting duplicate "Suggested place" rows and prefers user-curated places.
+    def ranked_existing_place(lat, lon, name)
+      candidates = user.places.near([lat, lon], SIMILARITY_RADIUS, :m).to_a
+      return nil if candidates.empty?
+
+      candidates.min_by do |place|
+        [
+          name.present? && place.name == name ? 0 : 1,
+          place.manual? ? 0 : 1,
+          distance_meters(lat, lon, place.lat, place.lon)
+        ]
+      end
+    end
+
+    def distance_meters(lat, lon, other_lat, other_lon)
+      Geocoder::Calculations.distance_between([lat, lon], [other_lat, other_lon], units: :km) * 1000
+    end
+
+    def ranked?
+      return @ranked if defined?(@ranked)
+
+      @ranked =
+        begin
+          Flipper.enabled?(:stay_point_detection, user)
+        rescue StandardError => e
+          Rails.logger.warn("[Visits::PlaceFinder] Flipper unavailable, unranked lookup: #{e.class}: #{e.message}")
+          false
+        end
     end
 
     def create_default_place(lat, lon, suggested_name)

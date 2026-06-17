@@ -53,6 +53,34 @@ class Track < ApplicationRecord
     [speed_kmh, 999_999.99].min
   end
 
+  # Bulk-delete tracks (and their segments) by id. delete_all skips the
+  # after_destroy callback, so the destroyed broadcast is replayed explicitly
+  # to keep live maps from showing the removed route until reload.
+  def self.delete_orphaned(ids)
+    ids = Array(ids).uniq
+    return 0 if ids.empty?
+
+    owners = where(id: ids).pluck(:id, :user_id)
+    return 0 if owners.empty?
+
+    TrackSegment.where(track_id: ids).delete_all
+    deleted = where(id: ids).delete_all
+    broadcast_destroyed(owners)
+    deleted
+  end
+
+  def self.broadcast_destroyed(track_owner_pairs)
+    users = User.where(id: track_owner_pairs.map(&:last).uniq).index_by(&:id)
+
+    track_owner_pairs.each do |track_id, user_id|
+      user = users[user_id]
+      next unless user
+
+      TracksChannel.broadcast_to(user, { action: 'destroyed', track_id: track_id })
+    end
+  end
+  private_class_method :broadcast_destroyed
+
   def recalculate_extra_metrics
     bounds = points.pick(Arel.sql('MIN(timestamp), MAX(timestamp)'))
     return if bounds.nil? || bounds.compact.size < 2

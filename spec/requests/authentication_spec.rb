@@ -99,6 +99,21 @@ RSpec.describe 'Authentication', type: :request do
       expect(response.location).to include('token=')
     end
 
+    it 'does not 500 on Android sign-in when AUTH_JWT_SECRET_KEY is blank (self-hosted fallback)' do
+      allow(ENV).to receive(:[]).and_call_original
+      allow(ENV).to receive(:[]).with('AUTH_JWT_SECRET_KEY').and_return(nil)
+
+      post user_session_path, params: {
+        user: { email: user.email, password: 'password123456' }
+      }, headers: {
+        'X-Dawarich-Client' => 'android',
+        'Accept' => 'text/html'
+      }
+
+      expect(response).to redirect_to(%r{auth/ios/success\?token=})
+      expect(response.location).to include('token=')
+    end
+
     it 'returns plain text response for iOS success endpoint with token' do
       # Generate a test JWT token using the same service as the controller
       payload = { api_key: user.api_key, exp: 5.minutes.from_now.to_i }

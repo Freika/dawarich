@@ -141,6 +141,13 @@ Rack::Attack.throttle('oauth/token_exchange', limit: 30, period: 1.minute) do |r
   req.ip
 end
 
+Rack::Attack.throttle('apple_web_callback_per_ip', limit: 20, period: 1.minute) do |req|
+  next if DawarichSettings.self_hosted?
+  next unless req.path == '/users/auth/apple/callback' && req.post?
+
+  req.ip
+end
+
 Rack::Attack.throttle('users/exist', limit: 600, period: 1.hour) do |req|
   next if DawarichSettings.self_hosted?
   next unless req.path == '/api/v1/users/exist' && req.post?
@@ -232,6 +239,8 @@ end
 # Flipper admin UI: 30 req / 5 min per IP. The UI sits behind admin auth, but
 # limit hammering so an attacker (or buggy client) can't brute-force or scrape it.
 Rack::Attack.throttle('admin/flipper', limit: 30, period: 5.minutes) do |req|
+  next if DawarichSettings.self_hosted?
+
   req.ip if req.path.start_with?('/admin/flipper')
 end
 

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_05_29_185458) do
+ActiveRecord::Schema[8.0].define(version: 2026_06_10_090000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
@@ -101,6 +101,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_29_185458) do
     t.index ["period_type"], name: "index_digests_on_period_type"
     t.index ["sharing_uuid"], name: "index_digests_on_sharing_uuid", unique: true
     t.index ["user_id", "year", "month", "period_type"], name: "index_digests_on_user_year_month_period_type", unique: true
+    t.index ["user_id", "year", "period_type"], name: "index_digests_on_user_year_period_type_monthless", unique: true, where: "(month IS NULL)"
     t.index ["user_id"], name: "index_digests_on_user_id"
     t.index ["year"], name: "index_digests_on_year"
   end
@@ -238,6 +239,23 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_29_185458) do
     t.index ["source"], name: "index_imports_on_source"
     t.index ["status"], name: "index_imports_on_status"
     t.index ["user_id"], name: "index_imports_on_user_id"
+  end
+
+  create_table "notes", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "title"
+    t.text "body"
+    t.geography "lonlat", limit: {srid: 4326, type: "st_point", geographic: true}
+    t.string "attachable_type"
+    t.bigint "attachable_id"
+    t.datetime "noted_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index "attachable_type, attachable_id, ((noted_at)::date)", name: "index_notes_on_attachable_and_noted_date", unique: true, where: "(attachable_id IS NOT NULL)"
+    t.index ["attachable_type", "attachable_id"], name: "index_notes_on_attachable_type_and_attachable_id"
+    t.index ["lonlat"], name: "index_notes_on_lonlat", using: :gist
+    t.index ["user_id", "noted_at"], name: "index_notes_on_user_id_and_noted_at"
+    t.index ["user_id"], name: "index_notes_on_user_id"
   end
 
   create_table "notifications", force: :cascade do |t|
@@ -486,13 +504,13 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_29_185458) do
     t.integer "status", default: 0
     t.datetime "active_until"
     t.integer "points_count", default: 0, null: false
-    t.string "provider"
-    t.string "uid"
     t.string "utm_source"
     t.string "utm_medium"
     t.string "utm_campaign"
     t.string "utm_term"
     t.string "utm_content"
+    t.string "provider"
+    t.string "uid"
     t.datetime "deleted_at"
     t.integer "plan", default: 1, null: false
     t.integer "failed_attempts", default: 0, null: false
@@ -507,6 +525,9 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_29_185458) do
     t.integer "failed_otp_attempts", default: 0, null: false
     t.datetime "otp_locked_at"
     t.datetime "visits_redetected_at"
+    t.integer "changelog_consent"
+    t.string "first_name"
+    t.string "last_name"
     t.index ["api_key"], name: "index_users_on_api_key"
     t.index ["deleted_at"], name: "index_users_on_deleted_at"
     t.index ["email"], name: "index_users_on_email", unique: true
@@ -533,6 +554,8 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_29_185458) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.bigint "place_id"
+    t.integer "confidence", limit: 2
+    t.jsonb "confidence_breakdown", default: {}, null: false
     t.boolean "demo", default: false, null: false
     t.index ["area_id"], name: "index_visits_on_area_id"
     t.index ["demo"], name: "index_visits_on_demo_true", where: "(demo = true)"
@@ -554,6 +577,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_29_185458) do
   add_foreign_key "family_memberships", "families"
   add_foreign_key "family_memberships", "users"
   add_foreign_key "flights", "users"
+  add_foreign_key "notes", "users"
   add_foreign_key "notifications", "users"
   add_foreign_key "place_visits", "places"
   add_foreign_key "place_visits", "visits"

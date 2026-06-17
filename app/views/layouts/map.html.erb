@@ -22,10 +22,11 @@
     <%= Sentry.get_trace_propagation_meta.html_safe if Sentry.initialized? %>
     <% if !DawarichSettings.self_hosted? %>
       <script async src="https://scripts.simpleanalyticscdn.com/latest.js"></script>
+      <script src="https://rybbit.dwri.xyz/api/script.js" data-site-id="87c1f532b59f" defer></script>
     <% end %>
   </head>
 
-  <body class='h-screen h-[100dvh] overflow-hidden relative'>
+  <body class='h-screen !h-[100dvh] overflow-hidden relative'>
     <!-- Fixed Navbar -->
     <div class='fixed w-full z-40 h-[calc(4rem+env(safe-area-inset-top))] pt-[env(safe-area-inset-top)] border-b border-base-content/10'>
       <div class='container mx-auto h-full w-full flex items-center'>

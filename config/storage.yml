@@ -17,6 +17,8 @@ s3:
   secret_access_key: <%= ENV.fetch("AWS_SECRET_ACCESS_KEY") %>
   region: <%= ENV.fetch("AWS_REGION") %>
   bucket: <%= ENV.fetch("AWS_BUCKET") %>
+  request_checksum_calculation: when_required
+  response_checksum_validation: when_required
 <% if endpoint_url %>
   endpoint: <%= endpoint_url %>
 <% end %>

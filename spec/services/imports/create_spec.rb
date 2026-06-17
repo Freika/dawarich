@@ -40,6 +40,69 @@ RSpec.describe Imports::Create do
         end
       end
 
+      context 'when post-import processing raises' do
+        before do
+          allow(Stats::CalculatingJob).to receive(:perform_later).and_raise(StandardError, 'boom')
+        end
+
+        it 'sets status to completed, not failed' do
+          service.call
+          expect(import.reload.status).to eq('completed')
+        end
+
+        it 'does not set an error message on the import' do
+          service.call
+          expect(import.reload.error_message).to be_nil
+        end
+
+        it 'does not create an Import failed notification for the user' do
+          service.call
+          expect(user.notifications.where(title: 'Import failed')).to be_empty
+        end
+
+        it 'still writes the points from the importer' do
+          expect { service.call }.to change { import.points.count }.from(0)
+        end
+
+        it 'notifies the user that post-processing is incomplete' do
+          service.call
+
+          expect(user.notifications.warning.where('title ILIKE ?', '%post-processing%')).to exist
+        end
+
+        it 'creates a single notification when multiple steps fail' do
+          allow(Points::AnomalyFilter).to receive(:new).and_raise(StandardError, 'boom')
+
+          expect { service.call }.to change { user.notifications.warning.count }.by(1)
+        end
+      end
+
+      context 'when an early post-import step raises' do
+        before do
+          allow(Points::AnomalyFilter).to receive(:new).and_raise(StandardError, 'boom')
+        end
+
+        it 'still schedules the later steps' do
+          Sidekiq::Testing.inline! do
+            expect { service.call }.to have_enqueued_job(Stats::CalculatingJob).with(user.id, 2024, 3)
+          end
+        end
+
+        it 'still completes the import' do
+          service.call
+          expect(import.reload.status).to eq('completed')
+        end
+
+        it 'reports the failing step by name' do
+          allow(ExceptionReporter).to receive(:call)
+
+          service.call
+
+          expect(ExceptionReporter).to have_received(:call)
+            .with(instance_of(StandardError), 'Post-import processing failed: filter_anomalies')
+        end
+      end
+
       context 'when import fails' do
         before do
           allow(OwnTracks::Importer).to receive(:new).with(import, user.id, kind_of(String)).and_raise(StandardError)

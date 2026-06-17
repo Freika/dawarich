@@ -66,4 +66,43 @@ RSpec.describe Points::Params do
       expect(params.first).to eq(expected_json)
     end
   end
+
+  describe 'course sanitization' do
+    let(:user) { create(:user) }
+
+    def build_payload(course:, course_accuracy: 0)
+      {
+        locations: [
+          {
+            type: 'Feature',
+            geometry: { type: 'Point', coordinates: [13.404954, 52.520008] },
+            properties: {
+              timestamp: '2026-06-13T09:03:57Z',
+              course: course,
+              course_accuracy: course_accuracy
+            }
+          }
+        ]
+      }
+    end
+
+    it 'nils out course whose absolute value exceeds the numeric(8,5) limit' do
+      result = described_class.new(build_payload(course: 1000.0), user.id).call
+
+      expect(result.first[:course]).to be_nil
+    end
+
+    it 'nils out course_accuracy whose absolute value exceeds the numeric(8,5) limit' do
+      result = described_class.new(build_payload(course: 27.07, course_accuracy: 9999.0), user.id).call
+
+      expect(result.first[:course_accuracy]).to be_nil
+    end
+
+    it 'keeps valid course and course_accuracy values' do
+      result = described_class.new(build_payload(course: 359.99, course_accuracy: 12.5), user.id).call
+
+      expect(result.first[:course]).to eq(359.99)
+      expect(result.first[:course_accuracy]).to eq(12.5)
+    end
+  end
 end

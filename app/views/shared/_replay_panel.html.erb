@@ -1,0 +1,118 @@
+<%# Replay Panel - Bottom scrubber for navigating through location data by time.
+    Locals:
+      stimulus     - Stimulus controller identifier the targets/actions bind to
+      show_day_nav - render previous/next day buttons (for multi-day contexts) %>
+<% show_day_nav = local_assigns.fetch(:show_day_nav, false) %>
+<div class="replay-panel hidden" data-<%= stimulus %>-target="replayPanel">
+  <%# Close button %>
+  <button type="button"
+          class="replay-close"
+          data-action="click-><%= stimulus %>#toggleReplay"
+          title="Close replay"
+          aria-label="Close replay">
+    &times;
+  </button>
+
+  <%# Controls row: Day nav | Time display | Replay + Cycle controls %>
+  <div class="replay-controls-row">
+    <%# Left: Current day %>
+    <div class="replay-day-nav">
+      <% if show_day_nav %>
+        <button type="button"
+                data-action="click-><%= stimulus %>#replayPrevDay"
+                data-<%= stimulus %>-target="replayPrevDayButton"
+                title="Previous day"
+                aria-label="Previous day">
+          &larr;
+        </button>
+      <% end %>
+      <div class="replay-day-info">
+        <span class="replay-day-display" data-<%= stimulus %>-target="replayDayDisplay">
+          No data loaded
+        </span>
+        <span class="replay-day-count" data-<%= stimulus %>-target="replayDayCount"></span>
+      </div>
+      <% if show_day_nav %>
+        <button type="button"
+                data-action="click-><%= stimulus %>#replayNextDay"
+                data-<%= stimulus %>-target="replayNextDayButton"
+                title="Next day"
+                aria-label="Next day">
+          &rarr;
+        </button>
+      <% end %>
+    </div>
+
+    <%# Center: Time display %>
+    <div class="replay-time-block">
+      <span class="replay-time-display" data-<%= stimulus %>-target="replayTimeDisplay" aria-live="polite">
+        --:--
+      </span>
+      <span class="replay-speed-display" data-<%= stimulus %>-target="replaySpeedDisplay">
+      </span>
+      <span class="replay-data-indicator hidden" data-<%= stimulus %>-target="replayDataIndicator" role="status">
+        No data
+      </span>
+    </div>
+
+    <%# Right: Replay controls + Cycle controls %>
+    <div class="replay-action-controls">
+      <button type="button"
+              class="replay-play-btn"
+              data-<%= stimulus %>-target="replayPlayButton"
+              data-action="click-><%= stimulus %>#replayTogglePlayback"
+              title="Play/Pause"
+              aria-label="Play or pause replay">
+        <span class="play-icon" data-<%= stimulus %>-target="replayPlayIcon">&#9658;</span>
+        <span class="pause-icon hidden" data-<%= stimulus %>-target="replayPauseIcon">&#10074;&#10074;</span>
+      </button>
+      <div class="replay-speed-control">
+        <input type="range"
+               class="replay-speed-slider"
+               min="1"
+               max="4"
+               value="2"
+               step="1"
+               data-<%= stimulus %>-target="replaySpeedSlider"
+               data-action="input-><%= stimulus %>#replaySpeedChange"
+               title="Replay speed"
+               aria-label="Replay speed">
+        <span class="replay-speed-label" data-<%= stimulus %>-target="replaySpeedLabel">2x</span>
+      </div>
+      <div class="replay-cycle-controls hidden" data-<%= stimulus %>-target="replayCycleControls">
+        <button type="button"
+                data-action="click-><%= stimulus %>#replayCyclePrev"
+                title="Previous point"
+                aria-label="Previous point">
+          &larr;
+        </button>
+        <span class="replay-point-counter" data-<%= stimulus %>-target="replayPointCounter">
+          Point 1 of 1
+        </span>
+        <button type="button"
+                data-action="click-><%= stimulus %>#replayCycleNext"
+                title="Next point"
+                aria-label="Next point">
+          &rarr;
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <%# Scrubber with data density visualization %>
+  <div class="replay-scrubber-wrapper">
+    <span class="replay-time-label">00:00</span>
+    <div class="replay-scrubber-track" data-<%= stimulus %>-target="replayScrubberTrack">
+      <div class="replay-density-container" data-<%= stimulus %>-target="replayDensityContainer"></div>
+      <input type="range"
+             class="replay-scrubber"
+             min="0"
+             max="1439"
+             value="720"
+             data-<%= stimulus %>-target="replayScrubber"
+             data-action="input-><%= stimulus %>#replayScrubberHover"
+             aria-label="Replay scrubber - time of day">
+    </div>
+    <span class="replay-time-label">23:59</span>
+  </div>
+</div>

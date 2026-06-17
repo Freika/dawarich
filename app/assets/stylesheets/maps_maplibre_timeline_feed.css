@@ -608,6 +608,12 @@
   min-width: 0;
 }
 
+/* Search panel spans the full row so the input + results have room. */
+.visit-row__place-search {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
 /* All-day visits collapse to 3 columns (no actions column). */
 .visit-row--all-day {
   grid-template-columns: 56px 16px minmax(0, 1fr);
@@ -665,6 +671,10 @@
 }
 
 .visit-row__actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
   opacity: 0;
   transition: opacity 120ms;
 }

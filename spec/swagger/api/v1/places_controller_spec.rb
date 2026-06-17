@@ -13,6 +13,10 @@ RSpec.describe 'Places API', type: :request do
       parameter name: :api_key, in: :query, type: :string, required: true, description: 'API key for authentication'
       parameter name: :tag_ids, in: :query, type: :array, items: { type: :integer }, required: false,
                 description: 'Filter places by tag IDs'
+      parameter name: :filter, in: :query, type: :string, required: false,
+                enum: %w[all manual confirmed tagged],
+                description: 'Visibility filter. Defaults to manual + confirmed-visit + tagged places. ' \
+                             'Use "all" for every place (including suggested-only), or "manual"/"confirmed"/"tagged".'
 
       response '200', 'places found' do
         schema type: :array,

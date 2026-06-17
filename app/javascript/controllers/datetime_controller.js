@@ -115,13 +115,13 @@ export default class extends BaseController {
             composed: true,
           })
 
-          const tripsElement = document.querySelector(
-            '[data-controller="trips"]',
+          const previewElement = document.querySelector(
+            '[data-controller~="trip-maplibre-preview"]',
           )
-          if (tripsElement) {
-            tripsElement.dispatchEvent(event)
+          if (previewElement) {
+            previewElement.dispatchEvent(event)
           } else {
-            console.error("Trips controller element not found")
+            console.error("Trip map preview element not found")
           }
         } catch (error) {
           console.error("Error:", error)
