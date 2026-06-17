@@ -1,9 +1,12 @@
 # frozen_string_literal: true
 
 class Api::V1::FlightsController < ApiController
+  MAX_FLIGHTS = 2_000
+
   def index
-    flights = current_api_user.flights
+    flights = current_api_user.flights.mappable
     flights = apply_date_filter(flights)
+    flights = flights.order(:departure_time).limit(MAX_FLIGHTS)
 
     render json: {
       type: 'FeatureCollection',

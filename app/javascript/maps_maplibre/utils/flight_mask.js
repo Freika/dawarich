@@ -53,10 +53,25 @@ export function maskPoints(featureCollection, windows) {
   }
 }
 
+function toUnixSeconds(value) {
+  if (value == null) return null
+  if (typeof value === "number") return value
+  const parsed = Date.parse(value) / 1000
+  return Number.isNaN(parsed) ? null : parsed
+}
+
 function lineSpan(feature) {
   const props = feature.properties || {}
-  const start = props.startTime ?? props.start_timestamp ?? props.startTimestamp
-  const end = props.endTime ?? props.end_timestamp ?? props.endTimestamp
+  const start =
+    props.startTime ??
+    props.start_timestamp ??
+    props.startTimestamp ??
+    toUnixSeconds(props.start_at)
+  const end =
+    props.endTime ??
+    props.end_timestamp ??
+    props.endTimestamp ??
+    toUnixSeconds(props.end_at)
   return [start, end]
 }
 

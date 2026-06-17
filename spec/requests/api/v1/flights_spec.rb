@@ -39,4 +39,23 @@ RSpec.describe 'Api::V1::Flights', type: :request do
     expect(response).to have_http_status(:ok)
     expect(response.parsed_body['features'].size).to eq(1)
   end
+
+  it 'excludes flights without airport coordinates' do
+    create(:flight, user: user)
+    create(:flight, user: user, from_lat: nil, from_lon: nil)
+    create(:flight, user: user, to_lat: nil)
+
+    get '/api/v1/flights', params: { api_key: user.api_key }
+
+    expect(response.parsed_body['features'].size).to eq(1)
+  end
+
+  it 'caps the number of returned flights' do
+    stub_const('Api::V1::FlightsController::MAX_FLIGHTS', 2)
+    create_list(:flight, 3, user: user)
+
+    get '/api/v1/flights', params: { api_key: user.api_key }
+
+    expect(response.parsed_body['features'].size).to eq(2)
+  end
 end
