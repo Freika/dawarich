@@ -31,6 +31,42 @@ export class EventHandlers {
       "dawarich:segment-mode-changed",
       this._boundOnSegmentModeChanged,
     )
+
+    // Gap-fill mode state and event listeners
+    this._gapfillActive = false
+    this._gapfillMarkers = []
+    this._onGapfillEnter = () => {
+      this._gapfillActive = true
+      const pointsLayer = this.controller.layerManager?.getLayer("points")
+      if (pointsLayer && !pointsLayer.visible) {
+        const toggle = this.controller.pointsToggleTarget
+        if (toggle && !toggle.checked) {
+          toggle.checked = true
+          toggle.dispatchEvent(new Event("change"))
+        }
+      }
+    }
+    this._onGapfillExit = () => {
+      this._gapfillActive = false
+      this._clearGapfillMarkers()
+    }
+    this._onGapfillPreview = (e) => {
+      this._drawGapfillPreview(e.detail.coordinates)
+    }
+    this._onGapfillClearPreview = () => {
+      this._clearGapfillPreview()
+    }
+    this._onGapfillMarker = (e) => {
+      this._updateGapfillMarker(e.detail)
+    }
+    document.addEventListener("gapfill:enter", this._onGapfillEnter)
+    document.addEventListener("gapfill:exit", this._onGapfillExit)
+    document.addEventListener("gapfill:preview", this._onGapfillPreview)
+    document.addEventListener(
+      "gapfill:clear-preview",
+      this._onGapfillClearPreview,
+    )
+    document.addEventListener("gapfill:marker", this._onGapfillMarker)
   }
 
   /**
@@ -48,10 +84,12 @@ export class EventHandlers {
     }
     this._clearRouteMarkers()
     this._clearTrackMarkers()
+    this.cleanupGapfill()
   }
 
   /**
-   * Handle point click — shows instant info from GeoJSON, address loaded via Turbo Frame
+   * Handle point click — shows instant info from GeoJSON, address loaded via Turbo Frame.
+   * When gap-fill mode is active, dispatches a selection event instead.
    */
   handlePointClick(e) {
     // Check if the click is a follow-on event from a drag operation
@@ -59,6 +97,23 @@ export class EventHandlers {
     if (pointsLayer?.justDragged) return
 
     const feature = e.features[0]
+
+    // If gap-fill mode is active, dispatch selection event instead of showing info
+    if (this._gapfillActive) {
+      const coords = feature.geometry.coordinates
+      document.dispatchEvent(
+        new CustomEvent("gapfill:point-selected", {
+          detail: {
+            pointId: feature.properties.id,
+            lon: coords[0],
+            lat: coords[1],
+            timestamp: feature.properties.timestamp,
+          },
+        }),
+      )
+      return
+    }
+
     const pointId = feature.properties.id
     const actions = pointId
       ? [
@@ -1128,5 +1183,124 @@ export class EventHandlers {
     // Reset to uniform appearance
     this.map.setPaintProperty(segmentLayerId, "line-opacity", 0.9)
     this.map.setPaintProperty(segmentLayerId, "line-width", 6)
+  }
+
+  /**
+   * Highlight a segment list item in the info panel
+   * @param {number} segmentIndex - Index of the segment to highlight
+   */
+  _highlightSegmentListItem(segmentIndex) {
+    const listItems = document.querySelectorAll(".segment-list-item")
+    listItems.forEach((item) => {
+      if (parseInt(item.dataset.segmentIndex, 10) === segmentIndex) {
+        item.classList.add("bg-primary", "bg-opacity-20")
+      } else {
+        item.classList.add("opacity-50")
+      }
+    })
+  }
+
+  /**
+   * Clear segment list item highlight
+   */
+  _clearSegmentListHighlight() {
+    const listItems = document.querySelectorAll(".segment-list-item")
+    listItems.forEach((item) => {
+      item.classList.remove("bg-primary", "bg-opacity-20", "opacity-50")
+    })
+  }
+
+  /**
+   * Draw a dashed preview line on the map for gap-fill routing.
+   * @param {Array} coordinates - Array of [lon, lat] pairs
+   */
+  _drawGapfillPreview(coordinates) {
+    this._clearGapfillPreview()
+
+    const geojson = {
+      type: "Feature",
+      geometry: {
+        type: "LineString",
+        coordinates: coordinates,
+      },
+    }
+
+    this.map.addSource("gapfill-preview", {
+      type: "geojson",
+      data: geojson,
+    })
+
+    this.map.addLayer({
+      id: "gapfill-preview-line",
+      type: "line",
+      source: "gapfill-preview",
+      paint: {
+        "line-color": "#f59e0b",
+        "line-width": 3,
+        "line-dasharray": [3, 2],
+      },
+    })
+  }
+
+  /**
+   * Remove the gap-fill preview line from the map.
+   */
+  _clearGapfillPreview() {
+    if (this.map.getLayer("gapfill-preview-line")) {
+      this.map.removeLayer("gapfill-preview-line")
+    }
+    if (this.map.getSource("gapfill-preview")) {
+      this.map.removeSource("gapfill-preview")
+    }
+  }
+
+  /**
+   * Add or update an A/B marker on the map for gap-fill point selection.
+   * @param {Object} detail - { label: "A"|"B", lon, lat }
+   */
+  _updateGapfillMarker({ label, lon, lat }) {
+    // Remove existing marker for this label
+    this._gapfillMarkers = this._gapfillMarkers.filter((m) => {
+      if (m._gapfillLabel === label) {
+        m.remove()
+        return false
+      }
+      return true
+    })
+
+    const el = document.createElement("div")
+    el.className = "gapfill-map-marker"
+    el.textContent = label
+    const marker = new maplibregl.Marker({ element: el, anchor: "center" })
+    marker._gapfillLabel = label
+    marker.setLngLat([lon, lat]).addTo(this.map)
+    this._gapfillMarkers.push(marker)
+  }
+
+  /**
+   * Remove all gap-fill markers from the map.
+   */
+  _clearGapfillMarkers() {
+    for (const marker of this._gapfillMarkers) {
+      marker.remove()
+    }
+    this._gapfillMarkers = []
+  }
+
+  /**
+   * Clean up gap-fill event listeners.
+   * Call this from the controller's disconnect.
+   */
+  cleanupGapfill() {
+    document.removeEventListener("gapfill:enter", this._onGapfillEnter)
+    document.removeEventListener("gapfill:exit", this._onGapfillExit)
+    document.removeEventListener("gapfill:preview", this._onGapfillPreview)
+    document.removeEventListener(
+      "gapfill:clear-preview",
+      this._onGapfillClearPreview,
+    )
+    document.removeEventListener("gapfill:marker", this._onGapfillMarker)
+    this._clearGapfillPreview()
+    this._clearGapfillMarkers()
   }
 }

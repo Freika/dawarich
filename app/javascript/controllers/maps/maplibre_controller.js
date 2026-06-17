@@ -286,6 +286,20 @@ export default class extends Controller {
       this.boundHandleDateNavigated,
     )
 
+    // Listen for replay:stop from other panels (e.g. gap-fill)
+    this.cleanup.addEventListener(document, "replay:stop", () => {
+      if (
+        this.hasReplayPanelTarget &&
+        !this.replayPanelTarget.classList.contains("hidden")
+      ) {
+        this._stopReplayPlayback()
+        this.replayPanelTarget.classList.add("hidden")
+        this._clearReplayMarker()
+        this._clearReplayRouteHighlight()
+        this._updateReplaySpeedDisplay(null)
+      }
+    })
+
     // Initialize search manager
     this.initializeSearch()
 
@@ -1930,6 +1944,15 @@ export default class extends Controller {
     }
   }
 
+  // ===== Gap-fill Methods =====
+
+  /**
+   * Toggle gap-fill panel visibility
+   */
+  toggleGapfill() {
+    document.dispatchEvent(new CustomEvent("gapfill:start"))
+  }
+
   // ===== Replay Methods =====
 
   /**
@@ -1948,6 +1971,8 @@ export default class extends Controller {
       this._clearReplayRouteHighlight()
       this._updateReplaySpeedDisplay(null)
     } else {
+      // Close gap-fill if active
+      document.dispatchEvent(new CustomEvent("gapfill:stop"))
       // Show replay and initialize with loaded points
       await this._initializeReplay()
       this.replayPanelTarget.classList.remove("hidden")

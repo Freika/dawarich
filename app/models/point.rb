@@ -26,8 +26,11 @@ class Point < ApplicationRecord
     settings_monitoring_event: 7
   }, suffix: true
   enum :connection, { mobile: 0, wifi: 1, offline: 2, unknown: 4 }, suffix: true
+  enum :source, { measured: 0, inferred: 1 }, suffix: true
 
   scope :reverse_geocoded, -> { where.not(reverse_geocoded_at: nil) }
+  scope :measured_only, -> { where(source: :measured) }
+  scope :inferred_only, -> { where(source: :inferred) }
   scope :not_reverse_geocoded, -> { where(reverse_geocoded_at: nil) }
   scope :visited, -> { where.not(visit_id: nil) }
   scope :not_visited, -> { where(visit_id: nil) }

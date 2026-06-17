@@ -60,6 +60,11 @@
   <!-- Place creation modal (shared) -->
   <%= render 'shared/place_creation_modal' %>
 
+  <!-- Gap-fill panel (bottom bar, like replay) -->
+  <% if DawarichSettings.gapfill_enabled? %>
+    <%= render 'map/maplibre/gapfill_panel' %>
+  <% end %>
+
   <% if DawarichSettings.self_hosted? || current_user.pro? %>
     <!-- Residency day counter modal -->
     <%= render 'map/maplibre/residency_modal' %>

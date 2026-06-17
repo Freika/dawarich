@@ -62,9 +62,10 @@ class Exports::PointGpxSerializer
 
     io.write("        <time>#{point.recorded_at.xmlschema}</time>\n")
 
-    if point.course.present?
+    if point.course.present? || point.inferred_source?
       io.write("        <extensions>\n")
-      io.write("          <course>#{point.course.to_f}</course>\n")
+      io.write("          <course>#{point.course.to_f}</course>\n") if point.course.present?
+      io.write("          <source>inferred</source>\n") if point.inferred_source?
       io.write("        </extensions>\n")
     end
 
