@@ -11,7 +11,6 @@ import { BaseLayer } from "./base_layer"
 export class FlightsLayer extends BaseLayer {
   constructor(map, options = {}) {
     super(map, { id: "flights", ...options })
-    this.style = options.style || "light"
     this.popup = new maplibregl.Popup({
       closeButton: true,
       closeOnClick: true,
@@ -21,7 +20,7 @@ export class FlightsLayer extends BaseLayer {
   }
 
   lineColor() {
-    return this.style === "dark" ? "#f59e0b" : "#b45309"
+    return "#6366F1"
   }
 
   getSourceConfig() {
@@ -39,10 +38,14 @@ export class FlightsLayer extends BaseLayer {
         source: this.sourceId,
         layout: { "line-join": "round", "line-cap": "round" },
         paint: {
-          "line-color": this.lineColor(),
-          "line-width": 2,
-          "line-opacity": 0.8,
-          "line-dasharray": [2, 1],
+          "line-color": [
+            "case",
+            ["has", "color"],
+            ["get", "color"],
+            this.lineColor(),
+          ],
+          "line-width": 4,
+          "line-opacity": 0.7,
         },
       },
     ]
