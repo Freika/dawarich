@@ -225,21 +225,6 @@ RSpec.describe Users::ExportData::Points, type: :service do
         point
       end
 
-      let!(:point_with_coordinates_only) do
-        # Point with coordinates but missing lonlat
-        point = create(:point, user: user, longitude: 15.0, latitude: 55.0, external_track_id: 'coords-only')
-        # Clear lonlat field to simulate missing geometry
-        point.update_columns(lonlat: nil)
-        point
-      end
-
-      let!(:point_without_coordinates) do
-        # Point with no coordinate data at all
-        point = create(:point, user: user, external_track_id: 'no-coords')
-        point.update_columns(longitude: nil, latitude: nil, lonlat: nil)
-        point
-      end
-
       it 'includes all coordinate fields for points with lonlat only' do
         point_data = subject.find { |p| p['external_track_id'] == 'lonlat-only' }
 
@@ -247,21 +232,6 @@ RSpec.describe Users::ExportData::Points, type: :service do
         expect(point_data['lonlat']).to be_present
         expect(point_data['longitude']).to eq(10.0)
         expect(point_data['latitude']).to eq(50.0)
-      end
-
-      it 'includes all coordinate fields for points with coordinates only' do
-        point_data = subject.find { |p| p['external_track_id'] == 'coords-only' }
-
-        expect(point_data).to be_present
-        expect(point_data['lonlat']).to eq('POINT(15.0 55.0)')
-        expect(point_data['longitude']).to eq(15.0)
-        expect(point_data['latitude']).to eq(55.0)
-      end
-
-      it 'skips points without any coordinate data' do
-        point_data = subject.find { |p| p['external_track_id'] == 'no-coords' }
-
-        expect(point_data).to be_nil
       end
     end
 

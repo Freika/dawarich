@@ -9,7 +9,10 @@ module Imports
     def bulk_insert_points(batch)
       return 0 if batch.empty?
 
-      unique_batch = batch.compact.uniq { |record| [record[:lonlat], record[:timestamp], record[:user_id]] }
+      records = reject_blank_lonlat(batch.compact)
+      return 0 if records.empty?
+
+      unique_batch = records.uniq { |record| [record[:lonlat], record[:timestamp], record[:user_id]] }
 
       result = Point.upsert_all(
         unique_batch,
@@ -27,6 +30,14 @@ module Imports
       on_bulk_insert_error(e)
       create_import_error_notification("Failed to process #{importer_name} data: #{e.message}")
       0
+    end
+
+    def reject_blank_lonlat(records)
+      valid, invalid = records.partition { |record| record[:lonlat].present? }
+
+      Rails.logger.warn("#{importer_name}: skipped #{invalid.size} point(s) with blank lonlat") if invalid.any?
+
+      valid
     end
 
     def record_batch_counters(attempted, skipped)

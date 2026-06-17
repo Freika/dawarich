@@ -122,9 +122,7 @@ module Points
           { id: id, raw_data: raw_data, raw_data_archived: false, raw_data_archive_id: nil }
         end
 
-        Point.upsert_all(updates, unique_by: :id,
-                          update_only: %i[raw_data raw_data_archived raw_data_archive_id])
-        # rubocop:enable Rails/SkipsModelValidations
+        Points::BulkUpdater.call(updates, %i[raw_data raw_data_archived raw_data_archive_id])
       end
 
       def restore_archive_to_cache(archive, cache_key_prefix)

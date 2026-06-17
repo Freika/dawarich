@@ -333,7 +333,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_06_10_090000) do
     t.decimal "course", precision: 8, scale: 5
     t.decimal "course_accuracy", precision: 8, scale: 5
     t.string "external_track_id"
-    t.geography "lonlat", limit: {srid: 4326, type: "st_point", geographic: true}
+    t.geography "lonlat", limit: {srid: 4326, type: "st_point", geographic: true}, null: false
     t.bigint "country_id"
     t.bigint "track_id"
     t.string "country_name"

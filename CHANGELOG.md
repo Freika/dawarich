@@ -10,6 +10,19 @@ Upgrade notes:
 
 1. **Trips redesign:** the trip detail page has a new sticky-map layout with per-day accordion and timeline replay. Existing trip rich-text "notes" are renamed to "description" by an automatic migration; nothing to do manually.
 
+2. **Points with missing coordinates:** the `points.lonlat` column is now `NOT NULL` at the database level. Older versions could save points without coordinates (the bug behind the points-API 500s fixed in this release); a migration resolves them automatically before adding the constraint — it rebuilds `lonlat` from the legacy `latitude`/`longitude` columns wherever those still hold values, deletes any remaining points that have no coordinates at all (`lonlat`, `latitude`, and `longitude` all NULL) and re-syncs the affected users' `points_count`, then sets the `NOT NULL` constraint via a validated check constraint (so the change does not lock the table for a full scan). To preview how many points will be affected before upgrading, run with `bundle exec rails dbconsole` (or `psql`):
+
+   ```sql
+   -- Points missing coordinates (the migration will recover or remove these)
+   SELECT COUNT(*) FROM points WHERE lonlat IS NULL;
+
+   -- Of those, how many are recoverable from the legacy columns
+   SELECT COUNT(*) FROM points
+   WHERE lonlat IS NULL AND latitude IS NOT NULL AND longitude IS NOT NULL;
+   ```
+
+   The difference between the two counts is the number of points that will be deleted as unrecoverable.
+
 ### Added
 
 - AirTrail integration: Dawarich can pull your flight history from a self-hosted [AirTrail](https://github.com/johanohly/AirTrail) instance and draw the flights as arcs on Map v2. Configure it on the Integrations page (with "Test connection" and "Sync now"); flights also re-sync daily, and the Flights map layer hides overlapping GPS points while enabled.
@@ -24,6 +37,7 @@ Upgrade notes:
 - Edit and Delete actions on the trip page moved into the header next to the trip title; the bottom of the page now only carries a "Back to trips" link.
 - Per-day trip stats are now computed in a single PostGIS query (`ST_MakeLine`/`ST_Length`) instead of a Ruby Geocoder loop; cache key now also invalidates when individual trip points are updated.
 - Ruby version updated to 3.4.9
+- The `points.lonlat` column is now `NOT NULL` at the database level, enforcing that every point has coordinates.
 
 ### Fixed
 
@@ -34,6 +48,7 @@ Upgrade notes:
 - Users signed in via Google will now be able to sign in with new password after setting it up, instead of being locked out by the old password being ignored.
 - Suggested visits now always show a Confirm and Delete control, including visits with no matched place — which previously rendered no action and got stuck with no way to confirm or remove them. #2917
 - Searching for a place by name now also matches your areas by name, so an area outside the nearby radius shows up in the results instead of being hidden. #2918
+- Importers no longer persist points with missing coordinates, which previously caused the points API to return a 500 when serializing them. (#2519)
 
 ## [1.8.1] - 2026-06-11
 
@@ -130,7 +145,6 @@ Upgrade notes:
 - `POST /api/v1/visits` no longer links a new visit to a place owned by another user. Passing a foreign `place_id` is ignored — the visit gets a place owned by the requester at the requested coordinates, and the response no longer echoes the other user's place id or coordinates.
 - Map v2 settings panel: "Apply Settings" now actually saves your changes. Points rendering mode, speed-colored routes, live mode, and fog-of-war toggles all persist on click and reload. Apply/Reset buttons moved above the Transportation Mode section so they sit inside the outer form. #2680
 - The app no longer trips firewall blocks by repeatedly checking family status when you're not part of a family.
-
 
 ## [1.7.10] - 2026-05-26
 
