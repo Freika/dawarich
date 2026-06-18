@@ -26,6 +26,12 @@ RSpec.describe Points::Archival::EligibilityQuery do
     expect(described_class.new.candidates).not_to include(recent)
   end
 
+  it 'excludes users mid-signup (pending_payment)' do
+    pending = create(:user, skip_auto_trial: true, status: :pending_payment, active_until: nil,
+                            last_sign_in_at: 1.year.ago, points_count: 100)
+    expect(described_class.new.candidates).not_to include(pending)
+  end
+
   it 'excludes already-archived users' do
     archived = create(:user, skip_auto_trial: true, status: :inactive, active_until: 2.years.ago,
                              last_sign_in_at: 1.year.ago, points_count: 100,

@@ -13,23 +13,31 @@ module Points
         user_ids = Points::Archive.deletable(before).distinct.pluck(:user_id)
 
         user_ids.each do |user_id|
-          ActiveRecord::Base.with_advisory_lock("points_archival:#{user_id}", timeout_seconds: 0) do
-            user = User.find_by(id: user_id)
-            next unless user&.points_archive_state_archived?
-
-            Points::Archive.deletable(before).where(user_id:).find_each do |archive|
-              ids = verified_point_ids(archive)
-              next if ids.nil?
-
-              delete_rows(archive.user_id, ids)
-              archive.update!(deleted_at: Time.current)
-            end
-            reset_counters(user_id)
+          locked = ActiveRecord::Base.with_advisory_lock("points_archival:#{user_id}", timeout_seconds: 0) do
+            sweep_user(user_id, before)
+            true
           end
+          next if locked
+
+          Rails.logger.info("[points_archival] delete sweep skipped locked user #{user_id}")
         end
       end
 
       private
+
+      def sweep_user(user_id, before)
+        user = User.find_by(id: user_id)
+        return unless user&.points_archive_state_archived?
+
+        Points::Archive.deletable(before).where(user_id:).find_each do |archive|
+          ids = verified_point_ids(archive)
+          next if ids.nil?
+
+          delete_rows(archive.user_id, ids)
+          archive.update!(deleted_at: Time.current)
+        end
+        reset_counters(user_id)
+      end
 
       # Re-verify the S3 object downloads AND its content checksum matches,
       # then return the exact point ids the archive contains. Returns nil if

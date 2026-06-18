@@ -11,6 +11,7 @@ module Points
         return User.none if DawarichSettings.self_hosted?
 
         User.points_active
+            .where.not(status: :pending_payment)
             .where('active_until IS NULL OR active_until < ?', Time.current)
             .where('last_sign_in_at IS NULL OR last_sign_in_at < ?', @cutoff)
             .where('points_count > 0')

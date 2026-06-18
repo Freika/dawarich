@@ -33,11 +33,11 @@ module Points
       end
 
       def fully_restored?(archive, ids)
-        return true if Point.where(id: ids).count == ids.size
+        present = Point.where(id: ids).count
+        return true if present == ids.size
 
         Rails.logger.warn(
-          "[points_archival] archive #{archive.id} not fully restored " \
-          "(#{Point.where(id: ids).count}/#{ids.size}); keeping it"
+          "[points_archival] archive #{archive.id} not fully restored (#{present}/#{ids.size}); keeping it"
         )
         false
       end
