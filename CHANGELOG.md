@@ -26,7 +26,7 @@ Upgrade notes:
 - A trip's rich-text **notes** field is renamed to **description**; existing content is migrated automatically.
 - Edit and Delete actions on the trip page moved into the header next to the trip title; the bottom of the page now only carries a "Back to trips" link.
 - Per-day trip stats are now computed in a single PostGIS query (`ST_MakeLine`/`ST_Length`) instead of a Ruby Geocoder loop; cache key now also invalidates when individual trip points are updated.
-- Self-hosted instances no longer rate-limit public shared pages (`/s/:id` and the shared API); the per-IP throttle now applies to cloud only.
+- Self-hosted instances no longer rate-limit public shared pages (`/s/:id`, the shared API, and the live-share WebSocket); the per-IP throttle now applies to cloud only.
 - Trip replay now plays back proportional to the real time between points, and the map/trip/public-share pages all share one replay implementation.
 - Ruby version updated to 3.4.9
 

@@ -30,7 +30,7 @@ class Rack::Attack
     attr_accessor :api_rate_limits, :shared_links_viewer_limit
   end
   self.api_rate_limits = { 'lite' => 200, 'pro' => 1_000 }
-  self.shared_links_viewer_limit = 60
+  self.shared_links_viewer_limit = 120
 end
 
 # Dynamic per-user rate limiting keyed by API token.
@@ -254,6 +254,16 @@ Rack::Attack.throttle('shared_links/viewer',
   next if DawarichSettings.self_hosted?
 
   req.ip if req.path.match?(%r{\A/s/[^/]+\z}) || req.path.start_with?('/api/v1/shared/')
+end
+
+# Anonymous share WebSocket upgrades (/cable?share_id=...), keyed on IP. Matched
+# only when share_id is present so authenticated multi-tab users are unaffected.
+Rack::Attack.throttle('shared_links/cable',
+                      limit: proc { Rack::Attack.shared_links_viewer_limit },
+                      period: 1.minute) do |req|
+  next if DawarichSettings.self_hosted?
+
+  req.ip if req.path == '/cable' && req.params['share_id'].present?
 end
 
 # Magic-phrase unlock attempts: 5 per (IP, link) per 5 minutes.

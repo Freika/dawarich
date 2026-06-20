@@ -9,7 +9,7 @@ class SharedLink
     end
 
     def call(word_count:)
-      Array.new(word_count) { wordlist.sample }.join('-')
+      Array.new(word_count) { wordlist[SecureRandom.random_number(wordlist.size)] }.join('-')
     end
 
     private
