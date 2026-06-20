@@ -38,6 +38,20 @@ RSpec.describe Points::Archival::DeleteSweepJob do
     expect(Points::Archive.where(user_id: user.id).first.deleted_at).to be_nil
   end
 
+  it 'skips deletion if the user begins restoring after verification (mid-sweep race)' do
+    user.update_column(:points_count, 3)
+    allow_any_instance_of(described_class).to receive(:verified_point_ids).and_wrap_original do |orig, archive|
+      ids = orig.call(archive)
+      User.where(id: user.id).update_all(points_archive_state: User.points_archive_states[:restoring])
+      ids
+    end
+
+    described_class.new.perform
+
+    expect(user.points.reload.count).to eq(3)
+    expect(Points::Archive.where(user_id: user.id).first.deleted_at).to be_nil
+  end
+
   it 'does nothing when the points_archival flag is disabled' do
     Flipper.disable(:points_archival)
     user.update_column(:points_count, 3)

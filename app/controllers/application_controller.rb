@@ -306,8 +306,10 @@ status: :see_other
   def trigger_points_restore_if_archived(user = (current_user if respond_to?(:current_user)))
     return unless user&.points_archive_state_archived?
 
-    flipped = User.where(id: user.id, points_archive_state: :archived)
-                  .update_all(points_archive_state: User.points_archive_states[:restoring])
+    flipped = Points::Archival::AdvisoryLock.with_lock(user.id) do
+      User.where(id: user.id, points_archive_state: :archived)
+          .update_all(points_archive_state: User.points_archive_states[:restoring])
+    end
     return unless flipped.positive?
 
     Points::Archival::RestoreUserJob.perform_later(user.id)

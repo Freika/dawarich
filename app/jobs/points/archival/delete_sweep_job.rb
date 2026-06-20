@@ -12,31 +12,38 @@ module Points
         before = delay_days.days.ago
         user_ids = Points::Archive.deletable(before).distinct.pluck(:user_id)
 
-        user_ids.each do |user_id|
-          locked = ActiveRecord::Base.with_advisory_lock("points_archival:#{user_id}", timeout_seconds: 0) do
-            sweep_user(user_id, before)
-            true
-          end
-          next if locked
-
-          Rails.logger.info("[points_archival] delete sweep skipped locked user #{user_id}")
-        end
+        user_ids.each { |user_id| sweep_user(user_id, before) }
       end
 
       private
 
       def sweep_user(user_id, before)
-        user = User.find_by(id: user_id)
-        return unless user&.points_archive_state_archived?
+        return unless archived?(user_id)
 
         Points::Archive.deletable(before).where(user_id:).find_each do |archive|
           ids = verified_point_ids(archive)
           next if ids.nil?
 
-          delete_rows(archive.user_id, ids)
-          archive.update!(deleted_at: Time.current)
+          delete_archive(user_id, archive, ids)
         end
         reset_counters(user_id)
+      end
+
+      # Delete the archived points under a transaction-scoped advisory lock, after
+      # re-confirming the user is still archived. A returning user is flipped to
+      # :restoring under the same lock, so this never deletes rows out from under
+      # an in-flight restore. The slow S3 re-verify stays outside the lock.
+      def delete_archive(user_id, archive, ids)
+        Points::Archival::AdvisoryLock.with_lock(user_id) do
+          next unless archived?(user_id)
+
+          delete_rows(user_id, ids)
+          archive.update!(deleted_at: Time.current)
+        end
+      end
+
+      def archived?(user_id)
+        User.exists?(id: user_id, points_archive_state: User.points_archive_states[:archived])
       end
 
       # Re-verify the S3 object downloads AND its content checksum matches,

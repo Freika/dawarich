@@ -17,21 +17,19 @@ module Points
 
       def reap_archiving(cutoff)
         User.where(points_archive_state: :archiving).where('updated_at < ?', cutoff).find_each do |user|
-          ActiveRecord::Base.with_advisory_lock("points_archival:#{user.id}", timeout_seconds: 0) do
-            next unless user.reload.points_archive_state_archiving?
-
-            cleanup_partial_archives(user.id)
-            user.update!(points_archive_state: :active)
+          reset = Points::Archival::AdvisoryLock.with_lock(user.id) do
+            User.where(id: user.id, points_archive_state: User.points_archive_states[:archiving])
+                .update_all(points_archive_state: User.points_archive_states[:active]).positive?
           end
+          cleanup_partial_archives(user.id) if reset
         end
       end
 
       def reap_restoring(cutoff)
         User.where(points_archive_state: :restoring).where('updated_at < ?', cutoff).find_each do |user|
-          ActiveRecord::Base.with_advisory_lock("points_archival:#{user.id}", timeout_seconds: 0) do
-            next unless user.reload.points_archive_state_restoring?
-
-            user.update!(points_archive_state: :archived)
+          Points::Archival::AdvisoryLock.with_lock(user.id) do
+            User.where(id: user.id, points_archive_state: User.points_archive_states[:restoring])
+                .update_all(points_archive_state: User.points_archive_states[:archived])
           end
         end
       end

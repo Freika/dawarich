@@ -9,24 +9,43 @@ module Points
         return unless Flipper.enabled?(:points_archival)
 
         months = ENV.fetch('POINTS_ARCHIVAL_DORMANCY_MONTHS', 6).to_i
-        user = User.find(user_id)
-        return unless user.points_archive_state_active?
         return if recently_ingested?(user_id, months)
+        return unless claim_archiving(user_id)
 
-        ActiveRecord::Base.with_advisory_lock!("points_archival:#{user_id}", timeout_seconds: 0) do
-          user.update!(points_archive_state: :archiving)
-          begin
-            Archiver.new.archive_user(user_id)
-            user.update!(points_archive_state: :archived, points_archived_at: Time.current)
-          rescue StandardError
-            cleanup_partial_archives(user_id)
-            user.update!(points_archive_state: :active)
-            raise
-          end
+        begin
+          Archiver.new.archive_user(user_id)
+          complete_archiving(user_id)
+        rescue StandardError
+          abort_archiving(user_id)
+          raise
         end
       end
 
       private
+
+      def claim_archiving(user_id)
+        Points::Archival::AdvisoryLock.with_lock(user_id) do
+          User.where(id: user_id, points_archive_state: User.points_archive_states[:active])
+              .update_all(points_archive_state: User.points_archive_states[:archiving]).positive?
+        end
+      end
+
+      def complete_archiving(user_id)
+        done = Points::Archival::AdvisoryLock.with_lock(user_id) do
+          User.where(id: user_id, points_archive_state: User.points_archive_states[:archiving])
+              .update_all(points_archive_state: User.points_archive_states[:archived],
+                          points_archived_at: Time.current).positive?
+        end
+        cleanup_partial_archives(user_id) unless done
+      end
+
+      def abort_archiving(user_id)
+        cleanup_partial_archives(user_id)
+        Points::Archival::AdvisoryLock.with_lock(user_id) do
+          User.where(id: user_id, points_archive_state: User.points_archive_states[:archiving])
+              .update_all(points_archive_state: User.points_archive_states[:active])
+        end
+      end
 
       def cleanup_partial_archives(user_id)
         Points::Archive.where(user_id:, deleted_at: nil).find_each do |archive|
