@@ -59,7 +59,11 @@ module Api
         end
 
         def allowed_ids_cache_key
-          "shared_link/#{link.id}/photo_ids"
+          "shared_link/#{link.id}/photo_ids/#{privacy_zones_fingerprint}"
+        end
+
+        def privacy_zones_fingerprint
+          Digest::MD5.hexdigest(privacy_zones.sort_by { |z| [z[:lat], z[:lon], z[:radius]] }.to_s)
         end
 
         # Use Photos::Search (not Trips::Photos) because the shared map needs each

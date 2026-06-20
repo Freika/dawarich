@@ -42,7 +42,7 @@ module SharedLinks
       tz_quoted = ActiveRecord::Base.connection.quote(@timezone)
       day_expr  = "(to_timestamp(timestamp) AT TIME ZONE 'UTC' AT TIME ZONE #{tz_quoted})::date"
 
-      @trip.points.reorder(nil).group(Arel.sql(day_expr)).pluck(
+      points_outside_privacy_zones.reorder(nil).group(Arel.sql(day_expr)).pluck(
         Arel.sql(day_expr),
         Arel.sql('MIN(timestamp)'),
         Arel.sql('MAX(timestamp)'),
@@ -54,6 +54,23 @@ module SharedLinks
           last_time:  Time.at(last_ts).in_time_zone(@timezone),
           distance_m: distance_m.to_f
         }
+      end
+    end
+
+    def points_outside_privacy_zones
+      zones = privacy_zones
+      return @trip.points if zones.empty?
+
+      condition = zones.map { 'ST_DWithin(lonlat, ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography, ?)' }
+                       .join(' OR ')
+      @trip.points.where.not(condition, *zones.flat_map { |z| [z[:lon], z[:lat], z[:radius]] })
+    end
+
+    def privacy_zones
+      @privacy_zones ||= @trip.user.tags.privacy_zones.includes(:places).flat_map do |tag|
+        tag.places.map do |place|
+          { lon: place.longitude.to_f, lat: place.latitude.to_f, radius: tag.privacy_radius_meters }
+        end
       end
     end
 

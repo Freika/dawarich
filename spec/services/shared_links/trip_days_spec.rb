@@ -33,6 +33,16 @@ RSpec.describe SharedLinks::TripDays do
     expect(day1[:color]).to match(/\A#[0-9a-f]{6}\z/i)
   end
 
+  it 'excludes points inside a privacy zone from day stats' do
+    home = create(:place, user: user, latitude: 52.0, longitude: 13.0)
+    tag = create(:tag, user: user, privacy_radius_meters: 500)
+    create(:tagging, tag: tag, taggable: home)
+
+    rows = described_class.new(trip, timezone: 'Etc/UTC', unit: 'km').call
+
+    expect(rows.first[:first_time].strftime('%H:%M')).to eq('12:00')
+  end
+
   it 'marks days without points as no-data' do
     other = create(:trip, user: user, started_at: Time.utc(2025, 7, 1), ended_at: Time.utc(2025, 7, 2, 23, 59))
     rows = described_class.new(other, timezone: 'Etc/UTC', unit: 'km').call
