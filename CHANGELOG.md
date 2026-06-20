@@ -44,7 +44,7 @@ Upgrade notes:
 
 ### Added
 
-- Map v2 settings panel: a **Visit Max Gap** slider to tune the stay-point visit detector's maximum gap (minutes) between points within a single visit. Shown only when stay-point detection is enabled.
+- Map v2 settings panel: a **Visit Max Gap** slider to tune the stay-point visit detector's maximum gap (minutes) between points within a single visit. Only shown when the `stay_point_detection` feature flag is enabled (off by default).
 - Fog of War (Map v2) can now reveal explored areas per hexagon instead of per point, using precalculated monthly statistics. Switch between "Per point" and "Per hexagon" in the map settings panel. (#2899)
 
 ### Changed
