@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Re-running visit detection no longer creates duplicate suggestions for a visit you already confirmed, even after correcting its address moved the place marker away from the underlying points (#2952)
+
 ## [1.9.0] - 2026-06-21
 
 ### Added

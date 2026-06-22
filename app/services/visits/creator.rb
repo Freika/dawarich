@@ -72,6 +72,9 @@ module Visits
 
     # Find if there's already a confirmed/suggested/declined visit at this location within a similar time
     def find_existing_visit(visit_data)
+      confirmed = confirmed_visit_owning_points(visit_data)
+      return confirmed if confirmed
+
       # Define time window to look for existing visits (slightly wider than the visit)
       start_time = Time.zone.at(visit_data[:start_time]) - 1.hour
       end_time = Time.zone.at(visit_data[:end_time]) + 1.hour
@@ -83,21 +86,28 @@ module Visits
             start: start_time, end: end_time
           )
           .find_each do |visit|
-            visit_lat, visit_lon = visit.center
-            next unless visit_lat && visit_lon
+        visit_lat, visit_lon = visit.center
+        next unless visit_lat && visit_lon
 
-            # Calculate distance between centers
-            distance = Geocoder::Calculations.distance_between(
-              [visit_data[:center_lat], visit_data[:center_lon]],
-              [visit_lat, visit_lon],
-              units: :km
-            )
+        # Calculate distance between centers
+        distance = Geocoder::Calculations.distance_between(
+          [visit_data[:center_lat], visit_data[:center_lon]],
+          [visit_lat, visit_lon],
+          units: :km
+        )
 
-            # If this visit is within 100 meters of the new suggestion
-            return visit if distance <= 0.1
+        # If this visit is within 100 meters of the new suggestion
+        return visit if distance <= 0.1
       end
 
       nil
+    end
+
+    def confirmed_visit_owning_points(visit_data)
+      visit_ids = Array(visit_data[:points]).filter_map(&:visit_id).uniq
+      return nil if visit_ids.empty?
+
+      user.visits.confirmed.find_by(id: visit_ids)
     end
 
     def find_matching_area(visit_data)
