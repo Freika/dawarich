@@ -17,6 +17,14 @@ class DawarichSettings
       @photon_uses_komoot_io ||= PHOTON_API_HOST == 'photon.komoot.io'
     end
 
+    def photon_https_only_host?
+      @photon_https_only_host ||= PHOTON_HTTPS_ONLY_HOSTS.include?(PHOTON_API_HOST)
+    end
+
+    def photon_use_https?
+      @photon_use_https ||= PHOTON_API_USE_HTTPS || photon_https_only_host?
+    end
+
     def geoapify_enabled?
       @geoapify_enabled ||= GEOAPIFY_API_KEY.present?
     end

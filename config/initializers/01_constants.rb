@@ -16,6 +16,7 @@ APP_VERSION = File.read('.app_version').strip
 PHOTON_API_HOST = ENV.fetch('PHOTON_API_HOST', nil)
 PHOTON_API_KEY = ENV.fetch('PHOTON_API_KEY', nil)
 PHOTON_API_USE_HTTPS = ENV.fetch('PHOTON_API_USE_HTTPS', 'false') == 'true'
+PHOTON_HTTPS_ONLY_HOSTS = %w[photon.dawarich.app photon.komoot.io].freeze
 
 NOMINATIM_API_HOST = ENV.fetch('NOMINATIM_API_HOST', nil)
 NOMINATIM_API_KEY = ENV.fetch('NOMINATIM_API_KEY', nil)
