@@ -16,7 +16,7 @@ settings = {
 
 if PHOTON_API_HOST.present?
   settings[:lookup] = :photon
-  settings[:use_https] = PHOTON_API_USE_HTTPS
+  settings[:use_https] = DawarichSettings.photon_use_https?
   settings[:photon] = { host: PHOTON_API_HOST }
   settings[:http_headers]['X-Api-Key'] = PHOTON_API_KEY if PHOTON_API_KEY.present?
 elsif GEOAPIFY_API_KEY.present?
