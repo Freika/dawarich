@@ -18,7 +18,11 @@ class DawarichSettings
     end
 
     def photon_https_only_host?
-      @photon_https_only_host ||= PHOTON_HTTPS_ONLY_HOSTS.include?(PHOTON_API_HOST)
+      @photon_https_only_host ||= PHOTON_HTTPS_ONLY_HOSTS.include?(normalized_photon_host)
+    end
+
+    def normalized_photon_host
+      PHOTON_API_HOST.to_s.strip.downcase.split(':').first
     end
 
     def photon_use_https?
