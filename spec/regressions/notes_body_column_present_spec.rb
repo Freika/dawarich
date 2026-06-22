@@ -3,7 +3,7 @@
 require 'rails_helper'
 require Rails.root.join('db/migrate/20260622090000_backfill_notes_columns')
 
-RSpec.describe BackfillNotesColumns do
+RSpec.describe BackfillNotesColumns, :non_transactional do
   def column?(name)
     ActiveRecord::Base.connection.column_exists?(:notes, name)
   end
@@ -33,5 +33,30 @@ RSpec.describe BackfillNotesColumns do
     expect(column?(:body)).to be(true)
     expect { described_class.new.up }.not_to raise_error
     expect(column?(:body)).to be(true)
+  end
+
+  it 'raises a clear error when duplicate attachable dates would violate the unique index' do
+    connection = ActiveRecord::Base.connection
+    user = create(:user)
+    noted_at = Time.current
+
+    connection.execute("DROP INDEX IF EXISTS #{described_class::UNIQUE_INDEX_NAME}")
+    Note.insert_all(
+      Array.new(2) do
+        { user_id: user.id, body: 'dup', noted_at: noted_at, attachable_type: 'Trip',
+          attachable_id: 999_999, created_at: Time.current, updated_at: Time.current }
+      end
+    )
+
+    expect { described_class.new.up }.to raise_error(/duplicate/i)
+  ensure
+    Note.where(attachable_id: 999_999).delete_all
+    unless connection.index_name_exists?(:notes, described_class::UNIQUE_INDEX_NAME)
+      connection.execute(<<~SQL.squish)
+        CREATE UNIQUE INDEX IF NOT EXISTS #{described_class::UNIQUE_INDEX_NAME}
+        ON notes (attachable_type, attachable_id, (CAST(noted_at AS date)))
+        WHERE attachable_id IS NOT NULL
+      SQL
+    end
   end
 end

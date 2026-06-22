@@ -107,7 +107,7 @@ module Visits
       visit_ids = Array(visit_data[:points]).filter_map(&:visit_id).uniq
       return nil if visit_ids.empty?
 
-      user.visits.confirmed.find_by(id: visit_ids)
+      user.visits.confirmed.order(:id).find_by(id: visit_ids)
     end
 
     def find_matching_area(visit_data)
