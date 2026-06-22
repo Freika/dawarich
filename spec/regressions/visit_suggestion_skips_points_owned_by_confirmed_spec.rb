@@ -46,4 +46,26 @@ RSpec.describe Visits::Creator do
       expect(user.visits.suggested.count).to eq(0)
     end
   end
+
+  describe '#create_visits when the candidate points are not owned by any visit' do
+    let(:visit_data) do
+      {
+        start_time: 2.hours.ago.to_i,
+        end_time: 1.hour.ago.to_i,
+        duration: 60.minutes.to_i,
+        center_lat: 40.7128,
+        center_lon: -74.0060,
+        radius: 50,
+        suggested_name: 'Fresh Place',
+        points: [point1, point2]
+      }
+    end
+
+    it 'creates a suggestion through the normal distance path' do
+      created = subject.create_visits([visit_data])
+
+      expect(created.size).to eq(1)
+      expect(user.visits.suggested.count).to eq(1)
+    end
+  end
 end
