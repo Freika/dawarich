@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Adding a per-day trip note no longer fails with "Content missing" on instances upgraded from a pre-release build; a migration backfills the `notes` table columns that an earlier `if_not_exists` table creation could have skipped (#2987)
+
 ## [1.9.0] - 2026-06-21
 
 ### Added

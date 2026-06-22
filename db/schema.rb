@@ -10,40 +10,40 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_06_10_090000) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_22_090000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
 
   create_table "action_text_rich_texts", force: :cascade do |t|
-    t.string "name", null: false
     t.text "body"
-    t.string "record_type", null: false
-    t.bigint "record_id", null: false
     t.datetime "created_at", null: false
+    t.string "name", null: false
+    t.bigint "record_id", null: false
+    t.string "record_type", null: false
     t.datetime "updated_at", null: false
     t.index ["record_type", "record_id", "name"], name: "index_action_text_rich_texts_uniqueness", unique: true
   end
 
   create_table "active_storage_attachments", force: :cascade do |t|
-    t.string "name", null: false
-    t.string "record_type", null: false
-    t.bigint "record_id", null: false
     t.bigint "blob_id", null: false
     t.datetime "created_at", null: false
+    t.string "name", null: false
+    t.bigint "record_id", null: false
+    t.string "record_type", null: false
     t.index ["blob_id"], name: "index_active_storage_attachments_on_blob_id"
     t.index ["record_type", "record_id", "name", "blob_id"], name: "index_active_storage_attachments_uniqueness", unique: true
   end
 
   create_table "active_storage_blobs", force: :cascade do |t|
-    t.string "key", null: false
-    t.string "filename", null: false
-    t.string "content_type"
-    t.text "metadata"
-    t.string "service_name", null: false
     t.bigint "byte_size", null: false
     t.string "checksum"
+    t.string "content_type"
     t.datetime "created_at", null: false
+    t.string "filename", null: false
+    t.string "key", null: false
+    t.text "metadata"
+    t.string "service_name", null: false
     t.index ["key"], name: "index_active_storage_blobs_on_key", unique: true
   end
 
@@ -54,22 +54,22 @@ ActiveRecord::Schema[8.0].define(version: 2026_06_10_090000) do
   end
 
   create_table "areas", force: :cascade do |t|
-    t.string "name", null: false
-    t.bigint "user_id", null: false
-    t.decimal "longitude", precision: 10, scale: 6, null: false
-    t.decimal "latitude", precision: 10, scale: 6, null: false
-    t.integer "radius", null: false
     t.datetime "created_at", null: false
+    t.decimal "latitude", precision: 10, scale: 6, null: false
+    t.decimal "longitude", precision: 10, scale: 6, null: false
+    t.string "name", null: false
+    t.integer "radius", null: false
     t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
     t.index ["user_id"], name: "index_areas_on_user_id"
   end
 
   create_table "countries", force: :cascade do |t|
-    t.string "name", null: false
+    t.datetime "created_at", null: false
+    t.geometry "geom", limit: {srid: 4326, type: "multi_polygon"}
     t.string "iso_a2", null: false
     t.string "iso_a3", null: false
-    t.geometry "geom", limit: {srid: 4326, type: "multi_polygon"}
-    t.datetime "created_at", null: false
+    t.string "name", null: false
     t.datetime "updated_at", null: false
     t.index ["geom"], name: "index_countries_on_geom", using: :gist
     t.index ["iso_a2"], name: "index_countries_on_iso_a2"
@@ -81,23 +81,23 @@ ActiveRecord::Schema[8.0].define(version: 2026_06_10_090000) do
   end
 
   create_table "digests", force: :cascade do |t|
-    t.bigint "user_id", null: false
-    t.integer "year", null: false
-    t.integer "period_type", default: 0, null: false
-    t.bigint "distance", default: 0, null: false
-    t.jsonb "toponyms", default: {}
-    t.jsonb "monthly_distances", default: {}
-    t.jsonb "time_spent_by_location", default: {}
-    t.jsonb "first_time_visits", default: {}
-    t.jsonb "year_over_year", default: {}
     t.jsonb "all_time_stats", default: {}
+    t.datetime "created_at", null: false
+    t.bigint "distance", default: 0, null: false
+    t.jsonb "first_time_visits", default: {}
+    t.integer "month"
+    t.jsonb "monthly_distances", default: {}
+    t.integer "period_type", default: 0, null: false
+    t.datetime "sent_at"
     t.jsonb "sharing_settings", default: {}
     t.uuid "sharing_uuid"
-    t.datetime "sent_at"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.integer "month"
+    t.jsonb "time_spent_by_location", default: {}
+    t.jsonb "toponyms", default: {}
     t.jsonb "travel_patterns", default: {}
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.integer "year", null: false
+    t.jsonb "year_over_year", default: {}
     t.index ["period_type"], name: "index_digests_on_period_type"
     t.index ["sharing_uuid"], name: "index_digests_on_sharing_uuid", unique: true
     t.index ["user_id", "year", "month", "period_type"], name: "index_digests_on_user_year_month_period_type", unique: true
@@ -107,39 +107,39 @@ ActiveRecord::Schema[8.0].define(version: 2026_06_10_090000) do
   end
 
   create_table "exports", force: :cascade do |t|
-    t.string "name", null: false
-    t.string "url"
-    t.integer "status", default: 0, null: false
-    t.bigint "user_id", null: false
     t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.integer "file_format", default: 0
-    t.datetime "start_at"
     t.datetime "end_at"
-    t.integer "file_type", default: 0, null: false
-    t.datetime "processing_started_at"
     t.text "error_message"
+    t.integer "file_format", default: 0
+    t.integer "file_type", default: 0, null: false
+    t.string "name", null: false
+    t.datetime "processing_started_at"
+    t.datetime "start_at"
+    t.integer "status", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.string "url"
+    t.bigint "user_id", null: false
     t.index ["file_type"], name: "index_exports_on_file_type"
     t.index ["status"], name: "index_exports_on_status"
     t.index ["user_id"], name: "index_exports_on_user_id"
   end
 
   create_table "families", force: :cascade do |t|
-    t.string "name", limit: 50, null: false
-    t.bigint "creator_id", null: false
     t.datetime "created_at", null: false
+    t.bigint "creator_id", null: false
+    t.string "name", limit: 50, null: false
     t.datetime "updated_at", null: false
     t.index ["creator_id"], name: "index_families_on_creator_id"
   end
 
   create_table "family_invitations", force: :cascade do |t|
-    t.bigint "family_id", null: false
+    t.datetime "created_at", null: false
     t.string "email", null: false
-    t.string "token", null: false
     t.datetime "expires_at", null: false
+    t.bigint "family_id", null: false
     t.bigint "invited_by_id", null: false
     t.integer "status", default: 0, null: false
-    t.datetime "created_at", null: false
+    t.string "token", null: false
     t.datetime "updated_at", null: false
     t.index ["family_id", "email"], name: "index_family_invitations_on_family_id_and_email"
     t.index ["family_id", "status", "expires_at"], name: "index_family_invitations_on_family_status_expires"
@@ -149,14 +149,14 @@ ActiveRecord::Schema[8.0].define(version: 2026_06_10_090000) do
   end
 
   create_table "family_location_requests", force: :cascade do |t|
-    t.bigint "requester_id", null: false
-    t.bigint "target_user_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "expires_at", null: false
     t.bigint "family_id", null: false
+    t.bigint "requester_id", null: false
+    t.datetime "responded_at"
     t.integer "status", default: 0, null: false
     t.string "suggested_duration", default: "24h", null: false
-    t.datetime "expires_at", null: false
-    t.datetime "responded_at"
-    t.datetime "created_at", null: false
+    t.bigint "target_user_id", null: false
     t.datetime "updated_at", null: false
     t.index ["expires_at", "status"], name: "idx_family_loc_requests_expires_status"
     t.index ["family_id"], name: "index_family_location_requests_on_family_id"
@@ -165,92 +165,93 @@ ActiveRecord::Schema[8.0].define(version: 2026_06_10_090000) do
   end
 
   create_table "family_memberships", force: :cascade do |t|
-    t.bigint "family_id", null: false
-    t.bigint "user_id", null: false
-    t.integer "role", default: 1, null: false
     t.datetime "created_at", null: false
+    t.bigint "family_id", null: false
+    t.integer "role", default: 1, null: false
     t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
     t.index ["family_id", "role"], name: "index_family_memberships_on_family_and_role"
     t.index ["user_id"], name: "index_family_memberships_on_user_id", unique: true
   end
 
   create_table "flights", force: :cascade do |t|
-    t.bigint "user_id", null: false
-    t.integer "external_id", null: false
-    t.date "flight_date"
-    t.string "date_precision", default: "day", null: false
-    t.datetime "departure_time"
-    t.datetime "arrival_time"
-    t.string "from_code"
-    t.string "from_name"
-    t.float "from_lat"
-    t.float "from_lon"
-    t.string "to_code"
-    t.string "to_name"
-    t.float "to_lat"
-    t.float "to_lon"
-    t.string "airline_name"
-    t.string "airline_iata"
     t.string "aircraft_name"
     t.string "aircraft_reg"
+    t.string "airline_iata"
+    t.string "airline_name"
+    t.datetime "arrival_time"
+    t.datetime "created_at", null: false
+    t.string "date_precision", default: "day", null: false
+    t.datetime "departure_time"
+    t.float "distance_km"
+    t.integer "external_id", null: false
+    t.date "flight_date"
     t.string "flight_number"
+    t.string "from_code"
+    t.float "from_lat"
+    t.float "from_lon"
+    t.string "from_name"
+    t.text "note"
+    t.jsonb "raw", default: {}, null: false
     t.string "seat"
     t.string "seat_class"
-    t.text "note"
-    t.float "distance_km"
-    t.jsonb "raw", default: {}, null: false
-    t.datetime "created_at", null: false
+    t.string "to_code"
+    t.float "to_lat"
+    t.float "to_lon"
+    t.string "to_name"
     t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
     t.index ["user_id", "departure_time"], name: "index_flights_on_user_id_and_departure_time"
     t.index ["user_id", "external_id"], name: "index_flights_on_user_id_and_external_id", unique: true
     t.index ["user_id"], name: "index_flights_on_user_id"
   end
+
   create_table "flipper_features", force: :cascade do |t|
-    t.string "key", null: false
     t.datetime "created_at", null: false
+    t.string "key", null: false
     t.datetime "updated_at", null: false
     t.index ["key"], name: "index_flipper_features_on_key", unique: true
   end
 
   create_table "flipper_gates", force: :cascade do |t|
+    t.datetime "created_at", null: false
     t.string "feature_key", null: false
     t.string "key", null: false
-    t.text "value"
-    t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.text "value"
     t.index ["feature_key", "key", "value"], name: "index_flipper_gates_on_feature_key_and_key_and_value", unique: true
   end
 
   create_table "imports", force: :cascade do |t|
-    t.string "name", null: false
-    t.bigint "user_id", null: false
-    t.integer "source"
     t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.integer "raw_points", default: 0
-    t.integer "doubles", default: 0
-    t.integer "processed", default: 0
-    t.jsonb "raw_data"
-    t.integer "points_count", default: 0
-    t.integer "status", default: 0, null: false
-    t.datetime "processing_started_at"
-    t.text "error_message"
     t.boolean "demo", default: false, null: false
+    t.integer "doubles", default: 0
+    t.text "error_message"
+    t.string "name", null: false
+    t.integer "points_count", default: 0
+    t.integer "processed", default: 0
+    t.datetime "processing_started_at"
+    t.jsonb "raw_data"
+    t.integer "raw_points", default: 0
+    t.integer "source"
+    t.integer "status", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
     t.index ["source"], name: "index_imports_on_source"
     t.index ["status"], name: "index_imports_on_status"
     t.index ["user_id"], name: "index_imports_on_user_id"
   end
 
   create_table "notes", force: :cascade do |t|
-    t.bigint "user_id", null: false
-    t.string "title"
-    t.text "body"
-    t.geography "lonlat", limit: {srid: 4326, type: "st_point", geographic: true}
-    t.string "attachable_type"
     t.bigint "attachable_id"
-    t.datetime "noted_at"
+    t.string "attachable_type"
+    t.text "body"
     t.datetime "created_at", null: false
+    t.geography "lonlat", limit: {srid: 4326, type: "st_point", geographic: true}
+    t.datetime "noted_at"
+    t.string "title"
     t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
     t.index "attachable_type, attachable_id, ((noted_at)::date)", name: "index_notes_on_attachable_and_noted_date", unique: true, where: "(attachable_id IS NOT NULL)"
     t.index ["attachable_type", "attachable_id"], name: "index_notes_on_attachable_type_and_attachable_id"
     t.index ["lonlat"], name: "index_notes_on_lonlat", using: :gist
@@ -259,41 +260,41 @@ ActiveRecord::Schema[8.0].define(version: 2026_06_10_090000) do
   end
 
   create_table "notifications", force: :cascade do |t|
-    t.string "title", null: false
     t.text "content", null: false
-    t.bigint "user_id", null: false
+    t.datetime "created_at", null: false
     t.integer "kind", default: 0, null: false
     t.datetime "read_at"
-    t.datetime "created_at", null: false
+    t.string "title", null: false
     t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
     t.index ["kind"], name: "index_notifications_on_kind"
     t.index ["user_id"], name: "index_notifications_on_user_id"
   end
 
   create_table "place_visits", force: :cascade do |t|
-    t.bigint "place_id", null: false
-    t.bigint "visit_id", null: false
     t.datetime "created_at", null: false
+    t.bigint "place_id", null: false
     t.datetime "updated_at", null: false
+    t.bigint "visit_id", null: false
     t.index ["place_id"], name: "index_place_visits_on_place_id"
     t.index ["visit_id", "place_id"], name: "idx_place_visits_visit_id_place_id", unique: true
   end
 
   create_table "places", force: :cascade do |t|
-    t.string "name", null: false
-    t.decimal "longitude", precision: 10, scale: 6, null: false
-    t.decimal "latitude", precision: 10, scale: 6, null: false
     t.string "city"
     t.string "country"
-    t.integer "source", default: 0
-    t.jsonb "geodata", default: {}, null: false
-    t.datetime "reverse_geocoded_at"
     t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.geography "lonlat", limit: {srid: 4326, type: "st_point", geographic: true}
-    t.bigint "user_id"
-    t.text "note"
     t.boolean "demo", default: false, null: false
+    t.jsonb "geodata", default: {}, null: false
+    t.decimal "latitude", precision: 10, scale: 6, null: false
+    t.decimal "longitude", precision: 10, scale: 6, null: false
+    t.geography "lonlat", limit: {srid: 4326, type: "st_point", geographic: true}
+    t.string "name", null: false
+    t.text "note"
+    t.datetime "reverse_geocoded_at"
+    t.integer "source", default: 0
+    t.datetime "updated_at", null: false
+    t.bigint "user_id"
     t.index "(((geodata -> 'properties'::text) ->> 'osm_id'::text))", name: "index_places_on_geodata_osm_id"
     t.index ["demo"], name: "index_places_on_demo_true", where: "(demo = true)"
     t.index ["lonlat"], name: "index_places_on_lonlat", using: :gist
@@ -301,47 +302,47 @@ ActiveRecord::Schema[8.0].define(version: 2026_06_10_090000) do
   end
 
   create_table "points", force: :cascade do |t|
-    t.integer "battery_status"
-    t.string "ping"
-    t.integer "battery"
-    t.string "tracker_id"
-    t.string "topic"
-    t.integer "altitude"
-    t.decimal "longitude", precision: 10, scale: 6
-    t.string "velocity"
-    t.integer "trigger"
-    t.string "bssid"
-    t.string "ssid"
-    t.integer "connection"
-    t.integer "vertical_accuracy"
     t.integer "accuracy"
-    t.integer "timestamp"
-    t.decimal "latitude", precision: 10, scale: 6
-    t.integer "mode"
-    t.text "inrids", default: [], array: true
-    t.text "in_regions", default: [], array: true
-    t.jsonb "raw_data", default: {}
-    t.bigint "import_id"
-    t.string "city"
-    t.string "country"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.bigint "user_id"
-    t.jsonb "geodata", default: {}, null: false
-    t.bigint "visit_id"
-    t.datetime "reverse_geocoded_at"
-    t.decimal "course", precision: 8, scale: 5
-    t.decimal "course_accuracy", precision: 8, scale: 5
-    t.string "external_track_id"
-    t.geography "lonlat", limit: {srid: 4326, type: "st_point", geographic: true}
-    t.bigint "country_id"
-    t.bigint "track_id"
-    t.string "country_name"
-    t.boolean "raw_data_archived", default: false, null: false
-    t.bigint "raw_data_archive_id"
-    t.jsonb "motion_data", default: {}, null: false
+    t.integer "altitude"
     t.decimal "altitude_decimal", precision: 10, scale: 2
     t.boolean "anomaly"
+    t.integer "battery"
+    t.integer "battery_status"
+    t.string "bssid"
+    t.string "city"
+    t.integer "connection"
+    t.string "country"
+    t.bigint "country_id"
+    t.string "country_name"
+    t.decimal "course", precision: 8, scale: 5
+    t.decimal "course_accuracy", precision: 8, scale: 5
+    t.datetime "created_at", null: false
+    t.string "external_track_id"
+    t.jsonb "geodata", default: {}, null: false
+    t.bigint "import_id"
+    t.text "in_regions", default: [], array: true
+    t.text "inrids", default: [], array: true
+    t.decimal "latitude", precision: 10, scale: 6
+    t.decimal "longitude", precision: 10, scale: 6
+    t.geography "lonlat", limit: {srid: 4326, type: "st_point", geographic: true}
+    t.integer "mode"
+    t.jsonb "motion_data", default: {}, null: false
+    t.string "ping"
+    t.jsonb "raw_data", default: {}
+    t.bigint "raw_data_archive_id"
+    t.boolean "raw_data_archived", default: false, null: false
+    t.datetime "reverse_geocoded_at"
+    t.string "ssid"
+    t.integer "timestamp"
+    t.string "topic"
+    t.bigint "track_id"
+    t.string "tracker_id"
+    t.integer "trigger"
+    t.datetime "updated_at", null: false
+    t.bigint "user_id"
+    t.string "velocity"
+    t.integer "vertical_accuracy"
+    t.bigint "visit_id"
     t.index ["id"], name: "index_points_on_not_reverse_geocoded", where: "(reverse_geocoded_at IS NULL)"
     t.index ["import_id"], name: "index_points_on_import_id"
     t.index ["lonlat", "timestamp", "user_id"], name: "index_points_on_lonlat_timestamp_user_id", unique: true
@@ -359,17 +360,17 @@ ActiveRecord::Schema[8.0].define(version: 2026_06_10_090000) do
   end
 
   create_table "points_raw_data_archives", force: :cascade do |t|
-    t.bigint "user_id", null: false
-    t.integer "year", null: false
-    t.integer "month", null: false
+    t.datetime "archived_at", null: false
     t.integer "chunk_number", default: 1, null: false
+    t.datetime "created_at", null: false
+    t.jsonb "metadata", default: {}, null: false
+    t.integer "month", null: false
     t.integer "point_count", null: false
     t.string "point_ids_checksum", null: false
-    t.jsonb "metadata", default: {}, null: false
-    t.datetime "archived_at", null: false
-    t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
     t.datetime "verified_at"
+    t.integer "year", null: false
     t.index ["archived_at"], name: "index_points_raw_data_archives_on_archived_at"
     t.index ["user_id", "year", "month", "chunk_number"], name: "index_raw_data_archives_uniqueness", unique: true
     t.index ["user_id", "year", "month"], name: "index_points_raw_data_archives_on_user_id_and_year_and_month"
@@ -377,35 +378,35 @@ ActiveRecord::Schema[8.0].define(version: 2026_06_10_090000) do
   end
 
   create_table "shared_links", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
-    t.bigint "user_id", null: false
-    t.integer "resource_type", null: false
-    t.bigint "resource_id"
-    t.string "name", limit: 255, null: false
-    t.string "magic_phrase", limit: 255
+    t.datetime "created_at", null: false
     t.datetime "expires_at"
+    t.datetime "last_accessed_at"
+    t.string "magic_phrase", limit: 255
+    t.string "name", limit: 255, null: false
+    t.bigint "resource_id"
+    t.integer "resource_type", null: false
     t.datetime "revoked_at"
     t.jsonb "settings", default: {}, null: false
-    t.integer "view_count", default: 0, null: false
-    t.datetime "last_accessed_at"
-    t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.integer "view_count", default: 0, null: false
     t.index ["resource_type", "resource_id"], name: "index_shared_links_on_resource_type_and_resource_id", where: "(resource_id IS NOT NULL)"
     t.index ["user_id"], name: "index_shared_links_active_by_user", where: "(revoked_at IS NULL)"
     t.index ["user_id"], name: "index_shared_links_on_user_id"
   end
 
   create_table "stats", force: :cascade do |t|
-    t.integer "year", null: false
-    t.integer "month", null: false
-    t.bigint "distance", null: false
-    t.jsonb "toponyms"
     t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.bigint "user_id", null: false
     t.jsonb "daily_distance", default: {}
+    t.bigint "distance", null: false
+    t.jsonb "h3_hex_ids", default: {}
+    t.integer "month", null: false
     t.jsonb "sharing_settings", default: {}
     t.uuid "sharing_uuid"
-    t.jsonb "h3_hex_ids", default: {}
+    t.jsonb "toponyms"
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.integer "year", null: false
     t.index ["distance"], name: "index_stats_on_distance"
     t.index ["h3_hex_ids"], name: "index_stats_on_h3_hex_ids", where: "((h3_hex_ids IS NOT NULL) AND (h3_hex_ids <> '{}'::jsonb))", using: :gin
     t.index ["month"], name: "index_stats_on_month"
@@ -416,10 +417,10 @@ ActiveRecord::Schema[8.0].define(version: 2026_06_10_090000) do
   end
 
   create_table "taggings", force: :cascade do |t|
-    t.string "taggable_type", null: false
-    t.bigint "taggable_id", null: false
-    t.bigint "tag_id", null: false
     t.datetime "created_at", null: false
+    t.bigint "tag_id", null: false
+    t.bigint "taggable_id", null: false
+    t.string "taggable_type", null: false
     t.datetime "updated_at", null: false
     t.index ["tag_id"], name: "index_taggings_on_tag_id"
     t.index ["taggable_type", "taggable_id", "tag_id"], name: "index_taggings_on_taggable_and_tag", unique: true
@@ -427,14 +428,14 @@ ActiveRecord::Schema[8.0].define(version: 2026_06_10_090000) do
   end
 
   create_table "tags", force: :cascade do |t|
-    t.string "name", null: false
-    t.string "icon"
     t.string "color"
-    t.bigint "user_id", null: false
     t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.integer "privacy_radius_meters"
     t.boolean "demo", default: false, null: false
+    t.string "icon"
+    t.string "name", null: false
+    t.integer "privacy_radius_meters"
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
     t.index ["demo"], name: "index_tags_on_demo_true", where: "(demo = true)"
     t.index ["privacy_radius_meters"], name: "index_tags_on_privacy_radius_meters", where: "(privacy_radius_meters IS NOT NULL)"
     t.index ["user_id", "name"], name: "index_tags_on_user_id_and_name", unique: true
@@ -442,42 +443,42 @@ ActiveRecord::Schema[8.0].define(version: 2026_06_10_090000) do
   end
 
   create_table "track_segments", force: :cascade do |t|
-    t.bigint "track_id", null: false
-    t.integer "transportation_mode", default: 0, null: false
-    t.integer "start_index", null: false
-    t.integer "end_index", null: false
+    t.float "avg_acceleration"
+    t.float "avg_speed"
+    t.integer "confidence", default: 0
+    t.datetime "corrected_at"
+    t.datetime "created_at", null: false
     t.integer "distance"
     t.integer "duration"
-    t.float "avg_speed"
+    t.integer "end_index", null: false
     t.float "max_speed"
-    t.float "avg_acceleration"
-    t.integer "confidence", default: 0
     t.string "source"
-    t.datetime "created_at", null: false
+    t.integer "start_index", null: false
+    t.bigint "track_id", null: false
+    t.integer "transportation_mode", default: 0, null: false
     t.datetime "updated_at", null: false
-    t.datetime "corrected_at"
     t.index ["corrected_at"], name: "index_track_segments_on_corrected_at", where: "(corrected_at IS NOT NULL)"
     t.index ["track_id", "start_index", "end_index"], name: "index_track_segments_on_track_and_indices"
     t.index ["track_id", "transportation_mode"], name: "index_track_segments_on_track_id_and_transportation_mode"
   end
 
   create_table "tracks", force: :cascade do |t|
-    t.datetime "start_at", null: false
-    t.datetime "end_at", null: false
-    t.bigint "user_id", null: false
-    t.geometry "original_path", limit: {srid: 4326, type: "line_string"}, null: false
-    t.bigint "distance"
     t.float "avg_speed"
+    t.datetime "created_at", null: false
+    t.boolean "demo", default: false, null: false
+    t.bigint "distance"
+    t.integer "dominant_mode", default: 0
     t.integer "duration"
     t.integer "elevation_gain"
     t.integer "elevation_loss"
     t.integer "elevation_max"
     t.integer "elevation_min"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.integer "dominant_mode", default: 0
+    t.datetime "end_at", null: false
+    t.geometry "original_path", limit: {srid: 4326, type: "line_string"}, null: false
+    t.datetime "start_at", null: false
     t.string "tracker_id"
-    t.boolean "demo", default: false, null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
     t.index "user_id, COALESCE(tracker_id, ''::character varying), start_at, end_at", name: "index_tracks_on_user_tracker_start_end_unique", unique: true
     t.index ["demo"], name: "index_tracks_on_demo_true", where: "(demo = true)"
     t.index ["dominant_mode"], name: "index_tracks_on_dominant_mode"
@@ -487,65 +488,65 @@ ActiveRecord::Schema[8.0].define(version: 2026_06_10_090000) do
   end
 
   create_table "trips", force: :cascade do |t|
-    t.string "name", null: false
-    t.datetime "started_at", null: false
-    t.datetime "ended_at", null: false
-    t.integer "distance"
-    t.bigint "user_id", null: false
     t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.geometry "path", limit: {srid: 4326, type: "line_string"}
-    t.jsonb "visited_countries", default: {}, null: false
-    t.datetime "last_recalculated_at"
     t.boolean "demo", default: false, null: false
+    t.integer "distance"
+    t.datetime "ended_at", null: false
+    t.datetime "last_recalculated_at"
+    t.string "name", null: false
+    t.geometry "path", limit: {srid: 4326, type: "line_string"}
+    t.datetime "started_at", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.jsonb "visited_countries", default: {}, null: false
     t.index ["demo"], name: "index_trips_on_demo_true", where: "(demo = true)"
     t.index ["user_id"], name: "index_trips_on_user_id"
   end
 
   create_table "users", force: :cascade do |t|
+    t.datetime "active_until"
+    t.boolean "admin", default: false
+    t.string "api_key", default: "", null: false
+    t.integer "changelog_consent"
+    t.integer "consumed_timestep"
+    t.datetime "created_at", null: false
+    t.datetime "current_sign_in_at"
+    t.string "current_sign_in_ip"
+    t.datetime "deleted_at"
     t.string "email", default: "", null: false
     t.string "encrypted_password", default: "", null: false
-    t.string "reset_password_token"
-    t.datetime "reset_password_sent_at"
-    t.datetime "remember_created_at"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.string "api_key", default: "", null: false
-    t.string "theme", default: "dark", null: false
-    t.jsonb "settings", default: {"fog_of_war_meters" => "100", "meters_between_routes" => "1000", "minutes_between_routes" => "60"}
-    t.boolean "admin", default: false
-    t.integer "sign_in_count", default: 0, null: false
-    t.datetime "current_sign_in_at"
-    t.datetime "last_sign_in_at"
-    t.string "current_sign_in_ip"
-    t.string "last_sign_in_ip"
-    t.integer "status", default: 0
-    t.datetime "active_until"
-    t.integer "points_count", default: 0, null: false
-    t.string "utm_source"
-    t.string "utm_medium"
-    t.string "utm_campaign"
-    t.string "utm_term"
-    t.string "utm_content"
-    t.string "provider"
-    t.string "uid"
-    t.datetime "deleted_at"
-    t.integer "plan", default: 1, null: false
     t.integer "failed_attempts", default: 0, null: false
-    t.datetime "locked_at"
-    t.string "unlock_token"
-    t.string "otp_secret"
-    t.integer "consumed_timestep"
-    t.boolean "otp_required_for_login", default: false, null: false
-    t.text "otp_backup_codes", array: true
-    t.integer "subscription_source", default: 0, null: false
-    t.string "signup_variant"
     t.integer "failed_otp_attempts", default: 0, null: false
-    t.datetime "otp_locked_at"
-    t.datetime "visits_redetected_at"
-    t.integer "changelog_consent"
     t.string "first_name"
     t.string "last_name"
+    t.datetime "last_sign_in_at"
+    t.string "last_sign_in_ip"
+    t.datetime "locked_at"
+    t.text "otp_backup_codes", array: true
+    t.datetime "otp_locked_at"
+    t.boolean "otp_required_for_login", default: false, null: false
+    t.string "otp_secret"
+    t.integer "plan", default: 1, null: false
+    t.integer "points_count", default: 0, null: false
+    t.string "provider"
+    t.datetime "remember_created_at"
+    t.datetime "reset_password_sent_at"
+    t.string "reset_password_token"
+    t.jsonb "settings", default: {"fog_of_war_meters" => "100", "meters_between_routes" => "1000", "minutes_between_routes" => "60"}
+    t.integer "sign_in_count", default: 0, null: false
+    t.string "signup_variant"
+    t.integer "status", default: 0
+    t.integer "subscription_source", default: 0, null: false
+    t.string "theme", default: "dark", null: false
+    t.string "uid"
+    t.string "unlock_token"
+    t.datetime "updated_at", null: false
+    t.string "utm_campaign"
+    t.string "utm_content"
+    t.string "utm_medium"
+    t.string "utm_source"
+    t.string "utm_term"
+    t.datetime "visits_redetected_at"
     t.index ["api_key"], name: "index_users_on_api_key"
     t.index ["deleted_at"], name: "index_users_on_deleted_at"
     t.index ["email"], name: "index_users_on_email", unique: true
@@ -563,18 +564,18 @@ ActiveRecord::Schema[8.0].define(version: 2026_06_10_090000) do
 
   create_table "visits", force: :cascade do |t|
     t.bigint "area_id"
-    t.bigint "user_id", null: false
-    t.datetime "started_at", null: false
-    t.datetime "ended_at", null: false
-    t.integer "duration", null: false
-    t.string "name", null: false
-    t.integer "status", default: 0, null: false
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.bigint "place_id"
     t.integer "confidence", limit: 2
     t.jsonb "confidence_breakdown", default: {}, null: false
+    t.datetime "created_at", null: false
     t.boolean "demo", default: false, null: false
+    t.integer "duration", null: false
+    t.datetime "ended_at", null: false
+    t.string "name", null: false
+    t.bigint "place_id"
+    t.datetime "started_at", null: false
+    t.integer "status", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
     t.index ["area_id"], name: "index_visits_on_area_id"
     t.index ["demo"], name: "index_visits_on_demo_true", where: "(demo = true)"
     t.index ["place_id"], name: "index_visits_on_place_id"
