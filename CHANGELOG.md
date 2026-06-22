@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 - Re-running visit detection no longer creates duplicate suggestions for a visit you already confirmed, even after correcting its address moved the place marker away from the underlying points (#2952)
+- Adding a per-day trip note no longer fails with "Content missing" on instances upgraded from a pre-release build; a migration backfills the `notes` table columns that an earlier `if_not_exists` table creation could have skipped (#2987)
+- Reverse geocoding against the hosted `photon.dawarich.app` (and `photon.komoot.io`) now always uses HTTPS, even when `PHOTON_API_USE_HTTPS` is unset or not exactly `true`, fixing the `Geocoder::ResponseParseError` caused by Cloudflare's HTTP→HTTPS redirect (#2982)
 
 ## [1.9.0] - 2026-06-21
 
