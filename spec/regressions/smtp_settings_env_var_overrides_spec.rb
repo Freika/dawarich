@@ -73,6 +73,22 @@ RSpec.describe SmtpConfig do
         described_class.smtp_settings('SMTP_OPEN_TIMEOUT' => '', 'SMTP_READ_TIMEOUT' => '   ')
       ).to include(open_timeout: 5, read_timeout: 5)
     end
+
+    it 'defaults openssl_verify_mode to VERIFY_PEER so certificates are validated' do
+      expect(described_class.smtp_settings({})[:openssl_verify_mode]).to eq(OpenSSL::SSL::VERIFY_PEER)
+    end
+
+    it 'sets openssl_verify_mode to VERIFY_NONE when SMTP_IGNORE_CERT_ERRORS=true' do
+      expect(
+        described_class.smtp_settings('SMTP_IGNORE_CERT_ERRORS' => 'true')[:openssl_verify_mode]
+      ).to eq(OpenSSL::SSL::VERIFY_NONE)
+    end
+
+    it 'keeps VERIFY_PEER for SMTP_IGNORE_CERT_ERRORS=false' do
+      expect(
+        described_class.smtp_settings('SMTP_IGNORE_CERT_ERRORS' => 'false')[:openssl_verify_mode]
+      ).to eq(OpenSSL::SSL::VERIFY_PEER)
+    end
   end
 
   describe '.mailer_url_options' do
