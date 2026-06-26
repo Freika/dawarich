@@ -4,7 +4,7 @@ class Places::Visits::Create
   attr_reader :user, :places
 
   # Default radius for place visit detection (in meters)
-  DEFAULT_PLACE_RADIUS = 100
+  DEFAULT_PLACE_RADIUS = 100.0
 
   def initialize(user, places)
     @user = user
