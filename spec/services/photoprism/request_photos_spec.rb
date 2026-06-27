@@ -152,7 +152,7 @@ RSpec.describe Photoprism::RequestPhotos do
   end
 
   let(:expected_params) do
-  { q: '', public: true, quality: 3, after: expected_after_date, count: 1000, before: expected_before_date }
+    { q: '', public: true, quality: 3, after: expected_after_date, count: 1000, before: expected_before_date }
   end
 
   describe '#call' do
