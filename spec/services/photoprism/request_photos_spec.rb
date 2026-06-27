@@ -151,6 +151,10 @@ RSpec.describe Photoprism::RequestPhotos do
     ]
   end
 
+  let(:expected_params) do
+  { q: '', public: true, quality: 3, after: expected_after_date, count: 1000, before: expected_before_date }
+  end
+
   describe '#call' do
     context 'when end_date is provided' do
       it 'sends before param as end_date + 1 day to include photos from end_date' do
@@ -225,11 +229,7 @@ RSpec.describe Photoprism::RequestPhotos do
 
       it 'logs the error' do
         expect(Rails.logger).to receive(:error).with('Photoprism photo fetch failed: Request failed: 400')
-        expect(Rails.logger).to receive(:debug).with(
-          "Photoprism API request params: #{{ q: '', public: true, quality: 3, after=#{expected_after_date}, count: 1000,
-before: expected_before_date }}"
-        )
-
+        expect(Rails.logger).to receive(:debug).with("Photoprism API request params: #{expected_params}")
         service.call
       end
     end
