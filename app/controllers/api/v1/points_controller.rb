@@ -31,21 +31,32 @@ class Api::V1::PointsController < ApiController
       bbox = parse_bbox(params)
       return render(json: { error: 'Invalid bounding box' }, status: :bad_request) unless bbox
 
+      envelope = 'ST_MakeEnvelope(?, ?, ?, ?, 4326)'
       points = points.where(
-        'lonlat && ST_MakeEnvelope(?, ?, ?, ?, 4326)::geography',
+        "lonlat && #{envelope}::geography AND ST_Intersects(lonlat::geometry, #{envelope})",
+        bbox[:min_lng], bbox[:min_lat], bbox[:max_lng], bbox[:max_lat],
         bbox[:min_lng], bbox[:min_lat], bbox[:max_lng], bbox[:max_lat]
-      ).where(
-        'ST_X(lonlat::geometry) BETWEEN ? AND ? AND ST_Y(lonlat::geometry) BETWEEN ? AND ?',
-        bbox[:min_lng], bbox[:max_lng], bbox[:min_lat], bbox[:max_lat]
       )
     end
+
+    cache_max_ts = points.maximum(:timestamp)
+    fresh_when(
+      etag: points_index_etag(start_at, end_at, order, cache_max_ts),
+      last_modified: cache_max_ts && Time.zone.at(cache_max_ts),
+      public: false
+    )
+    return if performed?
 
     points = points
              .order(timestamp: order)
              .page(params[:page])
              .per(params[:per_page] || 100)
 
-    serialized_points = points.map { |point| point_serializer.new(point).call }
+    serialized_points = if slim_points?
+                          Points::SlimCollectionQuery.new(points).call
+                        else
+                          points.map { |point| point_serializer.new(point).call }
+                        end
 
     response.set_header('X-Current-Page', points.current_page.to_s)
     response.set_header('X-Total-Pages', points.total_pages.to_s)
@@ -184,8 +195,23 @@ class Api::V1::PointsController < ApiController
     params.permit(point_ids: [])
   end
 
+  def slim_points?
+    params[:slim] == 'true'
+  end
+
+  def points_index_etag(start_at, end_at, order, max_timestamp)
+    [
+      'points/index', current_api_user.id, start_at, end_at, order, slim_points?,
+      params[:page], params[:per_page] || 100,
+      params[:anomalies_only], params[:include_anomalies],
+      params[:min_longitude], params[:max_longitude],
+      params[:min_latitude], params[:max_latitude],
+      max_timestamp
+    ]
+  end
+
   def point_serializer
-    params[:slim] == 'true' ? Api::SlimPointSerializer : Api::PointSerializer
+    slim_points? ? Api::SlimPointSerializer : Api::PointSerializer
   end
 
   # Validate and parse a bbox from request params. Rejects non-finite values
