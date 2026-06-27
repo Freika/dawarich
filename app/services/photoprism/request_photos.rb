@@ -96,7 +96,7 @@ class Photoprism::RequestPhotos
       q: '',
       public: true,
       quality: 3,
-      after: start_date,
+      after: start_date.to_date.beginning_of_day.iso8601,
       count: 1000
     }
   end
