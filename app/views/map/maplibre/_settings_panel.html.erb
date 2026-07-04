@@ -709,6 +709,21 @@
 
           <div class="divider"></div>
 
+          <!-- Point Dragging -->
+          <div class="form-control">
+            <label class="label cursor-pointer justify-start gap-3">
+              <input type="checkbox"
+                     name="pointDraggingEnabled"
+                     class="toggle toggle-primary"
+                     data-maps--maplibre-target="pointDraggingToggle"
+                     data-action="input->maps--maplibre#updatePointDraggingEnabled" />
+              <span class="label-text font-medium">Point Dragging</span>
+            </label>
+            <p class="text-sm text-base-content/60 mt-1">Allow modifying point coordinates by dragging them on the map.</p>
+          </div>
+
+          <div class="divider"></div>
+
           <!-- Update Button -->
           <button type="submit" class="btn btn-sm btn-primary btn-block">
             <%= icon 'save' %>

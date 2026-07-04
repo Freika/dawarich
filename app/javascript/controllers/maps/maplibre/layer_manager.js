@@ -411,6 +411,7 @@ export class LayerManager {
         apiClient: this.api,
         layerManager: this,
         styleName: this.settings.mapStyle,
+        pointDraggingEnabled: this.settings.pointDraggingEnabled !== false, // Default true unless explicitly false
       })
       this.layers.pointsLayer.add(pointsGeoJSON)
     } else {

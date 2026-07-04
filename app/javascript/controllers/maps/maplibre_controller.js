@@ -77,6 +77,8 @@ export default class extends Controller {
     "speedColoredToggle",
     "speedColorScaleContainer",
     "speedColorScaleInput",
+    // Point dragging
+    "pointDraggingToggle",
     // Globe projection
     "globeToggle",
     // Family members
@@ -1228,6 +1230,9 @@ export default class extends Controller {
   }
   applyTransportationSettings(event) {
     return this.settingsController.applyTransportationSettings(event)
+  }
+  updatePointDraggingEnabled(event) {
+    return this.settingsController.updatePointDraggingEnabled(event)
   }
 
   // Area Selection Manager methods

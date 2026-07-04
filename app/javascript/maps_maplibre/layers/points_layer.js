@@ -12,6 +12,7 @@ export class PointsLayer extends BaseLayer {
     this.apiClient = options.apiClient
     this.layerManager = options.layerManager
     this.styleName = options.styleName
+    this.pointDraggingEnabled = options.pointDraggingEnabled !== false
     this.isDragging = false
     this.hasMoved = false
     this.justDragged = false
@@ -244,10 +245,12 @@ export class PointsLayer extends BaseLayer {
   add(data) {
     super.add(data)
 
-    // Wait for next tick to ensure layers are fully added before enabling dragging
-    setTimeout(() => {
-      this.enableDragging()
-    }, 100)
+    if(this.pointDraggingEnabled) {
+      // Wait for next tick to ensure layers are fully added before enabling dragging
+      setTimeout(() => {
+        this.enableDragging()
+      }, 100)
+    }
   }
 
   /**

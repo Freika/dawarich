@@ -282,6 +282,14 @@ export class SettingsController {
 
     // Sync transportation mode settings
     this.syncTransportationSettings()
+
+    // Sync point dragging toggle
+    const pointDraggingToggle = controller.element.querySelector(
+      'input[name="pointDraggingEnabled"]',
+    )
+    if (pointDraggingToggle) {
+      pointDraggingToggle.checked = this.settings.pointDraggingEnabled !== false
+    }
   }
 
   /**
@@ -1152,6 +1160,24 @@ export class SettingsController {
   }
 
   /**
+   * Update point dragging setting on existing pointsLayer
+   */
+  updatePointDraggingEnabled(event) {
+    const enabled = event.target.checked
+
+    if (this.layerManager.layers.pointsLayer) {
+      this.layerManager.layers.pointsLayer.pointDraggingEnabled = enabled
+      if (enabled) {
+        this.layerManager.layers.pointsLayer.enableDragging()
+      } else {
+        this.layerManager.layers.pointsLayer.disableDragging()
+      }
+    }
+
+    SettingsManager.updateSetting("pointDraggingEnabled", enabled)
+  }
+
+  /**
    * Update advanced settings from form submission
    */
   async updateAdvancedSettings(event) {
@@ -1175,6 +1201,7 @@ export class SettingsController {
       maxGapMinutesInCity: parseInt(formData.get("maxGapMinutesInCity"), 10),
       gpsFilteringEnabled: formData.get("gpsFilteringEnabled") === "on",
       gpsAccuracyThreshold: parseInt(formData.get("gpsAccuracyThreshold"), 10),
+      pointDraggingEnabled: formData.get("pointDraggingEnabled") === "on",
     }
 
     if (formData.has("stayMaxGapMinutes")) {

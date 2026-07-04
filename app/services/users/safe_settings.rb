@@ -66,7 +66,8 @@ class Users::SafeSettings
     'visit_min_points' => 3,
     'visit_min_duration_minutes' => 5,
     'visit_density_fill_enabled' => true,
-    'stay_max_gap_minutes' => 60
+    'stay_max_gap_minutes' => 60,
+    'point_dragging_enabled' => true
   }.freeze
 
   GPS_ACCURACY_THRESHOLD_MIN = 50
@@ -117,7 +118,8 @@ class Users::SafeSettings
       visit_min_points: visit_min_points,
       visit_min_duration_minutes: visit_min_duration_minutes,
       visit_density_fill_enabled: visit_density_fill_enabled?,
-      stay_max_gap_minutes: stay_max_gap_minutes
+      stay_max_gap_minutes: stay_max_gap_minutes,
+      point_dragging_enabled: point_dragging_enabled?
     }
   end
 
@@ -339,6 +341,13 @@ class Users::SafeSettings
 
   def stay_max_gap_minutes
     settings['stay_max_gap_minutes'].to_i.clamp(5, 720)
+  end
+
+  def point_dragging_enabled?
+    value = settings['point_dragging_enabled']
+    return true if value.nil?
+
+    ActiveModel::Type::Boolean.new.cast(value)
   end
 
   private

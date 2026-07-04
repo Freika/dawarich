@@ -50,6 +50,7 @@ const DEFAULT_SETTINGS = {
     timeGapThreshold: 180,
     minFlightDistanceKm: 100,
   },
+  pointDraggingEnabled: true
 }
 
 const LAYER_NAME_MAP = {
@@ -93,6 +94,7 @@ const BACKEND_SETTINGS_MAP = {
   transportationExpertThresholds: "transportation_expert_thresholds",
   distance_unit: "distance_unit",
   liveMapEnabled: "live_map_enabled",
+  pointDraggingEnabled: "point_dragging_enabled",
 }
 
 const TRANSPORTATION_THRESHOLD_MAP = {
