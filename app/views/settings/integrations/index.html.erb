@@ -191,5 +191,27 @@
         </div>
       </div>
     <% end %>
+
+    <div class="card bg-base-200 shadow-xl mt-6">
+      <div class="card-body">
+        <h2 class="text-lg font-bold flex items-center mb-2">
+          <%= icon 'file-up', class: 'mr-2 text-primary' %> Import AirTrail JSON
+        </h2>
+        <p class="label-text-alt mb-4">
+          Upload an AirTrail v3 JSON export to merge flights into Dawarich.
+          Export from AirTrail under Settings &rarr; Export, or via the
+          <a href="https://airtrail.johan.ohly.dk/docs/features/export" target="_blank" rel="noopener" class="link link-primary">backup API</a>.
+          Existing flights are updated; none are deleted.
+        </p>
+        <%= form_with url: settings_import_flights_integrations_path, method: :post, multipart: true,
+                      data: { turbo: false }, class: 'flex flex-wrap items-end gap-3' do |f| %>
+          <%= f.file_field :file, accept: '.json,application/json', class: 'file-input file-input-bordered w-full max-w-md', required: true %>
+          <%= f.submit 'Import flights', class: 'btn btn-primary btn-sm' %>
+        <% end %>
+        <% if current_user.safe_settings.settings['airtrail_last_imported_at'].present? %>
+          <p class="label-text-alt mt-3">Last imported: <%= current_user.safe_settings.settings['airtrail_last_imported_at'] %></p>
+        <% end %>
+      </div>
+    </div>
   <% end %>
 </div>

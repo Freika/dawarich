@@ -44,6 +44,7 @@ Rails.application.routes.draw do
 
     resources :integrations, only: [:index]
     patch 'integrations', to: 'integrations#update'
+    post 'integrations/import_flights', to: 'integrations#import_flights', as: :import_flights_integrations
 
     resources :background_jobs, only: %i[index create]
     patch 'background_jobs', to: 'background_jobs#update'

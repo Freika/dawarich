@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_07_14_090000) do
+ActiveRecord::Schema[8.0].define(version: 2026_07_16_152809) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -177,7 +177,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_07_14_090000) do
 
   create_table "flights", force: :cascade do |t|
     t.bigint "user_id", null: false
-    t.integer "external_id", null: false
+    t.bigint "external_id", null: false
     t.date "flight_date"
     t.string "date_precision", default: "day", null: false
     t.datetime "departure_time"

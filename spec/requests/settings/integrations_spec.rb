@@ -153,4 +153,77 @@ RSpec.describe 'Settings::Integrations', type: :request do
       end
     end
   end
+
+  describe 'POST /settings/integrations/import_flights' do
+    let(:user) { create(:user) }
+    let(:json_body) { file_fixture('air_trail/export_v3.json').read }
+
+    before { sign_in user }
+
+    it 'enqueues a flight import job for a valid JSON file' do
+      file = Rack::Test::UploadedFile.new(
+        StringIO.new(json_body),
+        'application/json',
+        original_filename: 'airtrail.json'
+      )
+
+      expect do
+        post settings_import_flights_integrations_path, params: { file: file }
+      end.to have_enqueued_job(Flights::ImportFromJsonJob).with(user.id, json_body)
+
+      expect(response).to redirect_to(settings_integrations_path)
+      follow_redirect!
+      expect(flash[:notice]).to include('Flight import started')
+    end
+
+    it 'rejects a missing file' do
+      post settings_import_flights_integrations_path
+
+      expect(response).to redirect_to(settings_integrations_path)
+      follow_redirect!
+      expect(flash[:alert]).to include('Please select')
+    end
+
+    it 'rejects non-json files' do
+      file = Rack::Test::UploadedFile.new(
+        StringIO.new('not json'),
+        'text/plain',
+        original_filename: 'flights.txt'
+      )
+
+      post settings_import_flights_integrations_path, params: { file: file }
+
+      expect(response).to redirect_to(settings_integrations_path)
+      follow_redirect!
+      expect(flash[:alert]).to include('Invalid file')
+    end
+
+    it 'requires authentication' do
+      sign_out user
+
+      post settings_import_flights_integrations_path
+
+      expect(response).to redirect_to(new_user_session_path)
+    end
+
+    context 'when user is on Lite plan (Cloud)' do
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        user.update_column(:plan, User.plans[:lite])
+      end
+
+      it 'redirects with pro required alert' do
+        file = Rack::Test::UploadedFile.new(
+          StringIO.new(json_body),
+          'application/json',
+          original_filename: 'airtrail.json'
+        )
+
+        post settings_import_flights_integrations_path, params: { file: file }
+
+        expect(response).to redirect_to(root_path)
+        expect(flash[:alert]).to include('Pro plan')
+      end
+    end
+  end
 end
