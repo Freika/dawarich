@@ -604,15 +604,57 @@ RSpec.describe 'Users::Registrations', type: :request do
       it 'rejects deletion without a password' do
         delete user_registration_path
 
-        expect(response).to have_http_status(:unauthorized)
+        expect(response).to redirect_to(edit_user_registration_path)
+        expect(flash[:alert]).to be_present
         expect(user.reload.deleted_at).to be_nil
       end
 
       it 'rejects deletion with the wrong password' do
         delete user_registration_path, params: { password: 'wrong' }
 
-        expect(response).to have_http_status(:unauthorized)
+        expect(response).to redirect_to(edit_user_registration_path)
+        expect(flash[:alert]).to be_present
         expect(user.reload.deleted_at).to be_nil
+      end
+
+      context 'when the user is an OIDC user (unknowable password)' do
+        let(:oauth_user) do
+          create(:user, provider: 'openid_connect', uid: 'oidc-123', password: SecureRandom.hex(16))
+        end
+
+        before { sign_in oauth_user }
+
+        it 'soft-deletes when confirm_email matches (case-insensitive)' do
+          expect do
+            delete user_registration_path, params: { confirm_email: oauth_user.email.upcase }
+          end.to have_enqueued_job(Users::DestroyJob).with(oauth_user.id)
+
+          expect(oauth_user.reload.deleted_at).to be_present
+        end
+
+        it 'rejects deletion when confirm_email is missing' do
+          delete user_registration_path
+
+          expect(response).to redirect_to(edit_user_registration_path)
+          expect(flash[:alert]).to be_present
+          expect(oauth_user.reload.deleted_at).to be_nil
+        end
+
+        it 'rejects deletion when confirm_email is wrong' do
+          delete user_registration_path, params: { confirm_email: 'someone-else@example.com' }
+
+          expect(response).to redirect_to(edit_user_registration_path)
+          expect(flash[:alert]).to be_present
+          expect(oauth_user.reload.deleted_at).to be_nil
+        end
+
+        it 'ignores a password param and still requires confirm_email' do
+          delete user_registration_path, params: { password: oauth_user.password }
+
+          expect(response).to redirect_to(edit_user_registration_path)
+          expect(flash[:alert]).to be_present
+          expect(oauth_user.reload.deleted_at).to be_nil
+        end
       end
     end
 
