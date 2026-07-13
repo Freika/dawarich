@@ -131,7 +131,7 @@ module Api
         limit = [[params[:limit]&.to_i || 10, 1].max, 50].min
         query = params[:q].to_s.strip
 
-        places =
+        external_places =
           if query.length >= 2
             Places::Search.new(user: current_api_user, query: query, latitude: lat, longitude: lon,
                                radius: radius, limit: limit).call
@@ -139,6 +139,17 @@ module Api
             Places::NearbySearch.new(user: current_api_user, latitude: lat, longitude: lon,
                                      radius: radius, limit: limit, cache: true).call
           end
+
+        user_places = Places::UserSearch.new(
+          user: current_api_user, latitude: lat, longitude: lon, radius: radius, limit: limit, query: query
+        ).call
+        user_place_names = user_places.to_h do |place|
+          [place[:name].to_s.strip.downcase, true]
+        end
+        external_places.reject! do |place|
+          user_place_names.key?(place[:name].to_s.strip.downcase)
+        end
+        places = (user_places + external_places).first(limit)
 
         areas = Areas::Nearby.new(
           user: current_api_user, latitude: lat, longitude: lon, radius: radius, query: query
