@@ -16,7 +16,6 @@ module Flights
     rescue Flights::Parsers::Error => e
       ExceptionReporter.call(e, "Flight file import failed for user #{user_id}")
       notify_import_failed(user, e)
-      raise e
     ensure
       blob&.purge
     end

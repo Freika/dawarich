@@ -30,7 +30,7 @@ RSpec.describe Flights::ImportFromFileJob, type: :job do
     expect(ActiveStorage::Blob.exists?(blob_id)).to be false
   end
 
-  it 'notifies the user and re-raises on parser errors' do
+  it 'notifies the user on parser errors without raising' do
     bad_blob = ActiveStorage::Blob.create_and_upload!(
       io: StringIO.new('not json'),
       filename: 'bad.json',
@@ -38,7 +38,7 @@ RSpec.describe Flights::ImportFromFileJob, type: :job do
     )
 
     expect { described_class.perform_now(user.id, bad_blob.id, 'airtrail_json') }
-      .to raise_error(Flights::Parsers::Error)
+      .not_to raise_error
 
     notification = user.notifications.last
     expect(notification.kind).to eq('error')
@@ -53,8 +53,7 @@ RSpec.describe Flights::ImportFromFileJob, type: :job do
     )
     blob_id = bad_blob.id
 
-    expect { described_class.perform_now(user.id, blob_id, 'airtrail_json') }
-      .to raise_error(Flights::Parsers::Error)
+    described_class.perform_now(user.id, blob_id, 'airtrail_json')
 
     expect(ActiveStorage::Blob.exists?(blob_id)).to be false
   end
