@@ -198,9 +198,9 @@ RSpec.describe 'Settings::Integrations', type: :request do
 
     it 'rejects unsupported files' do
       file = Rack::Test::UploadedFile.new(
-        StringIO.new('not json'),
-        'text/plain',
-        original_filename: 'flights.txt'
+        StringIO.new('not a flight export'),
+        'application/pdf',
+        original_filename: 'flights.pdf'
       )
 
       post settings_import_flights_integrations_path, params: { file: file }
@@ -224,6 +224,20 @@ RSpec.describe 'Settings::Integrations', type: :request do
       expect(response.body).to include('Import flights from file')
       expect(response.body).to include('Auto-detect')
       expect(response.body).to include('AirTrail JSON')
+      expect(response.body).to include('FlightDiary CSV')
+    end
+
+    it 'enqueues a flight import job for a FlightDiary CSV file' do
+      csv_body = file_fixture('flight_diary/export.csv').read
+      file = Rack::Test::UploadedFile.new(
+        StringIO.new(csv_body),
+        'text/csv',
+        original_filename: 'flightdiary.csv'
+      )
+
+      expect do
+        post settings_import_flights_integrations_path, params: { file: file, format: 'auto' }
+      end.to have_enqueued_job(Flights::ImportFromFileJob).with(user.id, csv_body, nil)
     end
 
     context 'when user is on Lite plan (Cloud)' do

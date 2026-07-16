@@ -42,4 +42,24 @@ RSpec.describe Flights::ImportFromFile do
 
     expect(result[:created]).to eq(1)
   end
+
+  it 'imports flights from a FlightDiary CSV file' do
+    csv = file_fixture('flight_diary/export.csv').read
+
+    result = described_class.new(user, csv).call
+
+    expect(result[:created]).to eq(4)
+    expect(user.flights.find_by(flight_number: 'AF6116').from_code).to eq('LFPG')
+    expect(user.flights.find_by(flight_number: 'AF6116').from_lat).to be_present
+  end
+
+  it 'is idempotent for FlightDiary CSV re-import' do
+    csv = file_fixture('flight_diary/export.csv').read
+
+    described_class.new(user, csv).call
+    result = described_class.new(user, csv).call
+
+    expect(user.flights.count).to eq(4)
+    expect(result).to include(created: 0, updated: 4, deleted: 0)
+  end
 end

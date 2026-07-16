@@ -207,6 +207,7 @@
           <%= @flight_import_formats.map { |fmt| fmt[:label] }.to_sentence %>.
           For AirTrail, export under Settings &rarr; Export, or via the
           <a href="https://airtrail.johan.ohly.dk/docs/features/export" target="_blank" rel="noopener" class="link link-primary">backup API</a>.
+          FlightDiary CSV airports are matched via ICAO/IATA; unmatched airports import without map arcs.
         </p>
         <%= form_with url: settings_import_flights_integrations_path, method: :post, multipart: true,
                       data: { turbo: false }, class: 'flex flex-wrap items-end gap-3' do |f| %>

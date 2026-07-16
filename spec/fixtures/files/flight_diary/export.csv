@@ -1,0 +1,5 @@
+Date,"Flight number",From,To,"Dep time","Arr time",Duration,Airline,Aircraft,Registration,"Seat number","Seat type","Flight class","Flight reason",Note,Dep_id,Arr_id,Airline_id,Aircraft_id
+2006-10-20,AF6116,"Paris / Charles de Gaulle (CDG/LFPG)","Toulouse / Toulouse Blagnac (TLS/LFBO)",13:20:00,14:30:00,01:10:00,"Air France (AF/AFR)"," ()",,,0,1,1,,509,2961,34,0
+2006-06-09,AI314M,"Delhi / Indira Gandhi (DEL/VIDP)","Osaka / Kansai (KIX/RJBB)",23:15:00,12:35:00,09:20:00,"Air India (AI/AIC)","Airbus A310 (A310)",,,0,1,1,,689,3597,43,24
+2004-04-08,,"Paris / Charles de Gaulle (CDG/LFPG)","Bangkok / Suvarnabhumi (BKK/VTBS)",00:00:00,06:00:00,13:01:00," (/)"," ()",,,0,1,1,,509,331,0,0
+2008-03-31,AF6114,"Paris / Orly (ORY/LFPO)","Toulouse / Toulouse Blagnac (TLS/LFBO)",10:50:00,12:00:00,01:10:00,"Air France (AF/AFR)"," ()",,,0,2,2,,2215,2961,34,0

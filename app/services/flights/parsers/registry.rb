@@ -4,8 +4,12 @@ module Flights
   module Parsers
     class Registry
       PARSERS = [
-        AirTrailJson
+        AirTrailJson,
+        FlightDiaryCsv
       ].freeze
+
+      CSV_CONTENT_TYPES = %w[text/csv application/csv application/vnd.ms-excel].freeze
+      JSON_CONTENT_TYPES = %w[application/json text/json].freeze
 
       def self.parsers
         PARSERS
@@ -20,7 +24,7 @@ module Flights
       end
 
       def self.accept_attribute
-        (accepted_extensions + %w[application/json text/json]).join(',')
+        (accepted_extensions + JSON_CONTENT_TYPES + CSV_CONTENT_TYPES).uniq.join(',')
       end
 
       def self.find(key)
@@ -63,7 +67,11 @@ module Flights
         return true if accepted_extensions.include?(ext)
 
         type = content_type.to_s
-        type.in?(%w[application/json text/json application/octet-stream]) || type.end_with?('+json')
+        return true if type.in?(JSON_CONTENT_TYPES) || type.end_with?('+json')
+        return true if type.in?(CSV_CONTENT_TYPES)
+        return true if type == 'application/octet-stream'
+
+        false
       end
 
       def self.resolve_parser(content, format)

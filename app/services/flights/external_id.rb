@@ -3,6 +3,7 @@
 module Flights
   module ExternalId
     FILE_ID_OFFSET = 2_000_000_000
+    FLIGHTDIARY_FILE_ID_OFFSET = 3_000_000_000
 
     module_function
 
@@ -23,6 +24,19 @@ module Flights
       ].join('|')
 
       FILE_ID_OFFSET + (Zlib.crc32(key) % 1_000_000_000)
+    end
+
+    def for_flightdiary_file(parts)
+      key = [
+        'flightdiary',
+        parts[:date],
+        parts[:from_icao],
+        parts[:to_icao],
+        parts[:departure],
+        parts[:flight_number]
+      ].join('|')
+
+      FLIGHTDIARY_FILE_ID_OFFSET + (Zlib.crc32(key) % 1_000_000_000)
     end
   end
 end
