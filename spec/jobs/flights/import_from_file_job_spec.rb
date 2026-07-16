@@ -58,6 +58,22 @@ RSpec.describe Flights::ImportFromFileJob, type: :job do
     expect(ActiveStorage::Blob.exists?(blob_id)).to be false
   end
 
+  it 'notifies the user on validation errors without raising' do
+    invalid_flight = Flight.new
+    invalid_flight.valid?
+    import = instance_double(Flights::ImportFromFile)
+    allow(Flights::ImportFromFile).to receive(:new).and_return(import)
+    allow(import).to receive(:call).and_raise(ActiveRecord::RecordInvalid.new(invalid_flight))
+
+    expect { described_class.perform_now(user.id, blob.id) }.not_to raise_error
+
+    notification = user.notifications.last
+    expect(notification.kind).to eq('error')
+    expect(notification.title).to eq('Flight import failed')
+    expect(notification.content).to include('Validation failed')
+    expect(ActiveStorage::Blob.exists?(blob.id)).to be false
+  end
+
   it 'no-ops for a missing user' do
     expect { described_class.perform_now(-1, blob.id) }.not_to raise_error
   end

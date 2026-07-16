@@ -13,7 +13,7 @@ module Flights
 
       counts = Flights::ImportFromFile.new(user, blob.download, format: format).call
       notify_import_succeeded(user, counts)
-    rescue Flights::Parsers::Error => e
+    rescue Flights::Parsers::Error, ActiveRecord::RecordInvalid => e
       ExceptionReporter.call(e, "Flight file import failed for user #{user_id}")
       notify_import_failed(user, e)
     ensure
