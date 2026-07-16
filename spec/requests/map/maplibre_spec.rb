@@ -102,4 +102,29 @@ RSpec.describe 'Map v2 (maplibre)', type: :request do
       expect(response.body).to include('share-link-modal')
     end
   end
+
+  describe 'Flights layer toggle' do
+    it 'hides the Flights toggle without AirTrail URL or flights' do
+      get map_v2_path
+
+      expect(response.body).not_to include('data-maps--maplibre-target="flightsToggle"')
+    end
+
+    it 'shows the Flights toggle when the user has mappable flights' do
+      create(:flight, user: user)
+
+      get map_v2_path
+
+      expect(response.body).to include('data-maps--maplibre-target="flightsToggle"')
+      expect(response.body).to include('Flights')
+    end
+
+    it 'shows the Flights toggle when AirTrail URL is configured' do
+      user.update!(settings: user.settings.merge('airtrail_url' => 'https://airtrail.example'))
+
+      get map_v2_path
+
+      expect(response.body).to include('data-maps--maplibre-target="flightsToggle"')
+    end
+  end
 end

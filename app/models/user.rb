@@ -166,6 +166,12 @@ class User < ApplicationRecord
     settings['photoprism_url'].present? && settings['photoprism_api_key'].present?
   end
 
+  # Show the Flights map layer when AirTrail sync is configured or when flights
+  # already exist (e.g. imported from an AirTrail JSON export without API URL).
+  def flights_layer_available?
+    safe_settings.airtrail_url.present? || flights.mappable.exists?
+  end
+
   def years_tracked
     Rails.cache.fetch("dawarich/user_#{id}_years_tracked", expires_in: 1.day) do
       # Use select_all for better performance with large datasets

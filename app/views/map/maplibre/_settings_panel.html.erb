@@ -146,7 +146,7 @@
           </div>
 
           <!-- Flights Layer -->
-          <% if current_user.safe_settings.airtrail_url.present? %>
+          <% if current_user.flights_layer_available? %>
             <div class="form-control">
               <label class="label cursor-pointer justify-start gap-3">
                 <input type="checkbox"

@@ -87,6 +87,32 @@ RSpec.describe User, type: :model do
     end
   end
 
+  describe '#flights_layer_available?' do
+    let(:user) { create(:user) }
+
+    it 'is false without AirTrail URL or flights' do
+      expect(user.flights_layer_available?).to be(false)
+    end
+
+    it 'is true when AirTrail URL is configured' do
+      user.update!(settings: user.settings.merge('airtrail_url' => 'https://airtrail.example'))
+
+      expect(user.flights_layer_available?).to be(true)
+    end
+
+    it 'is true when mappable flights exist without AirTrail URL' do
+      create(:flight, user: user)
+
+      expect(user.flights_layer_available?).to be(true)
+    end
+
+    it 'ignores flights missing coordinates' do
+      create(:flight, user: user, from_lat: nil, from_lon: nil, to_lat: nil, to_lon: nil)
+
+      expect(user.flights_layer_available?).to be(false)
+    end
+  end
+
   describe 'changelog consent' do
     it 'defaults to nil (not yet prompted) and reports prompt pending' do
       user = create(:user)

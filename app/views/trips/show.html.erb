@@ -104,7 +104,7 @@
           </button>
         <% end %>
 
-        <% if current_user.safe_settings.airtrail_url.present? %>
+        <% if current_user.flights_layer_available? %>
           <button type="button"
                   class="btn btn-sm btn-outline gap-1"
                   data-trip-maplibre-target="flightsToggleBtn"
