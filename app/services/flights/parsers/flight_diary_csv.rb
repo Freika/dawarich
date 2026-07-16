@@ -204,6 +204,7 @@ module Flights
         to_rad = ->(d) { d * Math::PI / 180 }
         dlat = to_rad.call(lat2 - lat1)
         dlon = to_rad.call(lon2 - lon1)
+        a = a.clamp(0.0, 1.0)
         a = (Math.sin(dlat / 2)**2) +
             (Math.cos(to_rad.call(lat1)) * Math.cos(to_rad.call(lat2)) * (Math.sin(dlon / 2)**2))
         (earth_radius_km * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))).round(1)
