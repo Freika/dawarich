@@ -19,7 +19,7 @@ module Flights
 
     def record_imported_at
       User.where(id: @user.id).update_all(
-        ["settings = jsonb_set(settings, '{flights_last_imported_at}', to_jsonb(?::text)), updated_at = ?",
+        ["settings = jsonb_set(COALESCE(settings, '{}'::jsonb), '{flights_last_imported_at}', to_jsonb(?::text)), updated_at = ?",
          Time.current.iso8601, Time.current]
       )
     end

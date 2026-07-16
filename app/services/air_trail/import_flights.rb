@@ -26,7 +26,7 @@ module AirTrail
 
     def record_synced_at
       User.where(id: @user.id).update_all(
-        ["settings = jsonb_set(settings, '{airtrail_last_synced_at}', to_jsonb(?::text)), updated_at = ?",
+        ["settings = jsonb_set(COALESCE(settings, '{}'::jsonb), '{airtrail_last_synced_at}', to_jsonb(?::text)), updated_at = ?",
          Time.current.iso8601, Time.current]
       )
     end
