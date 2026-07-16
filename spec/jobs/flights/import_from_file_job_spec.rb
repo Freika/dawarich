@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe Flights::ImportFromJsonJob, type: :job do
+RSpec.describe Flights::ImportFromFileJob, type: :job do
   let(:user) { create(:user) }
   let(:json_string) { file_fixture('air_trail/export_v3.json').read }
 
@@ -16,7 +16,7 @@ RSpec.describe Flights::ImportFromJsonJob, type: :job do
   end
 
   it 'notifies the user and re-raises on parser errors' do
-    expect { described_class.perform_now(user.id, 'not json') }
+    expect { described_class.perform_now(user.id, 'not json', 'airtrail_json') }
       .to raise_error(Flights::Parsers::Error)
 
     notification = user.notifications.last

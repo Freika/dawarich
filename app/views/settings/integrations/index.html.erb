@@ -21,6 +21,9 @@
       </div>
     </div>
   <% else %>
+    <% last_imported = current_user.safe_settings.settings['flights_last_imported_at'].presence ||
+                       current_user.safe_settings.settings['airtrail_last_imported_at'] %>
+
     <div class="card bg-base-200 shadow-xl">
       <%= form_for :settings, url: settings_integrations_path, method: :patch, data: { turbo_method: :patch, turbo: false } do |f| %>
         <div class="card-body">
@@ -194,22 +197,42 @@
 
     <div class="card bg-base-200 shadow-xl mt-6">
       <div class="card-body">
-        <h2 class="text-lg font-bold flex items-center mb-2">
-          <%= icon 'file-up', class: 'mr-2 text-primary' %> Import AirTrail JSON
+        <h2 class="text-2xl font-bold flex items-center mb-2">
+          <%= icon 'plane', class: 'mr-2 text-primary' %> Import flights from file
         </h2>
         <p class="label-text-alt mb-4">
-          Upload an AirTrail v3 JSON export to merge flights into Dawarich.
-          Export from AirTrail under Settings &rarr; Export, or via the
-          <a href="https://airtrail.johan.ohly.dk/docs/features/export" target="_blank" rel="noopener" class="link link-primary">backup API</a>.
+          Upload a flight export file to merge into Dawarich (no AirTrail API required).
           Existing flights are updated; none are deleted.
+          Currently supported:
+          <%= @flight_import_formats.map { |fmt| fmt[:label] }.to_sentence %>.
+          For AirTrail, export under Settings &rarr; Export, or via the
+          <a href="https://airtrail.johan.ohly.dk/docs/features/export" target="_blank" rel="noopener" class="link link-primary">backup API</a>.
         </p>
         <%= form_with url: settings_import_flights_integrations_path, method: :post, multipart: true,
                       data: { turbo: false }, class: 'flex flex-wrap items-end gap-3' do |f| %>
-          <%= f.file_field :file, accept: '.json,application/json', class: 'file-input file-input-bordered w-full max-w-md', required: true %>
-          <%= f.submit 'Import flights', class: 'btn btn-primary btn-sm' %>
+          <div class="form-control">
+            <label class="label py-1"><span class="label-text text-sm">Format</span></label>
+            <%= select_tag :format,
+                  options_for_select(
+                    [['Auto-detect', 'auto']] + @flight_import_formats.map { |fmt| [fmt[:label], fmt[:key]] },
+                    'auto'
+                  ),
+                  class: 'select select-bordered' %>
+          </div>
+          <div class="form-control">
+            <label class="label py-1"><span class="label-text text-sm">File</span></label>
+            <%= f.file_field :file,
+                  accept: @flight_import_accept,
+                  class: 'file-input file-input-bordered w-full max-w-md',
+                  required: true %>
+          </div>
+          <div class="form-control">
+            <label class="label py-1"><span class="label-text text-sm">&nbsp;</span></label>
+            <%= f.submit 'Import file', class: 'btn btn-primary' %>
+          </div>
         <% end %>
-        <% if current_user.safe_settings.settings['airtrail_last_imported_at'].present? %>
-          <p class="label-text-alt mt-3">Last imported: <%= current_user.safe_settings.settings['airtrail_last_imported_at'] %></p>
+        <% if last_imported.present? %>
+          <p class="label-text-alt mt-3">Last imported: <%= last_imported %></p>
         <% end %>
       </div>
     </div>

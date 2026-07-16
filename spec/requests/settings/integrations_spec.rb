@@ -168,12 +168,24 @@ RSpec.describe 'Settings::Integrations', type: :request do
       )
 
       expect do
-        post settings_import_flights_integrations_path, params: { file: file }
-      end.to have_enqueued_job(Flights::ImportFromJsonJob).with(user.id, json_body)
+        post settings_import_flights_integrations_path, params: { file: file, format: 'auto' }
+      end.to have_enqueued_job(Flights::ImportFromFileJob).with(user.id, json_body, nil)
 
       expect(response).to redirect_to(settings_integrations_path)
       follow_redirect!
       expect(flash[:notice]).to include('Flight import started')
+    end
+
+    it 'passes an explicit format to the job' do
+      file = Rack::Test::UploadedFile.new(
+        StringIO.new(json_body),
+        'application/json',
+        original_filename: 'airtrail.json'
+      )
+
+      expect do
+        post settings_import_flights_integrations_path, params: { file: file, format: 'airtrail_json' }
+      end.to have_enqueued_job(Flights::ImportFromFileJob).with(user.id, json_body, 'airtrail_json')
     end
 
     it 'rejects a missing file' do
@@ -184,7 +196,7 @@ RSpec.describe 'Settings::Integrations', type: :request do
       expect(flash[:alert]).to include('Please select')
     end
 
-    it 'rejects non-json files' do
+    it 'rejects unsupported files' do
       file = Rack::Test::UploadedFile.new(
         StringIO.new('not json'),
         'text/plain',
@@ -204,6 +216,14 @@ RSpec.describe 'Settings::Integrations', type: :request do
       post settings_import_flights_integrations_path
 
       expect(response).to redirect_to(new_user_session_path)
+    end
+
+    it 'renders a generic Import flights from file section' do
+      get settings_integrations_path
+
+      expect(response.body).to include('Import flights from file')
+      expect(response.body).to include('Auto-detect')
+      expect(response.body).to include('AirTrail JSON')
     end
 
     context 'when user is on Lite plan (Cloud)' do

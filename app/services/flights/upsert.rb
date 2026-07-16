@@ -4,9 +4,10 @@ module Flights
   class Upsert
     MODES = %i[merge replace].freeze
 
-    def initialize(user, raw_flights, mode: :merge)
+    # @param flight_attrs [Array<Hash>] Flight-ready attribute hashes (not raw provider payloads)
+    def initialize(user, flight_attrs, mode: :merge)
       @user = user
-      @raw_flights = raw_flights
+      @flight_attrs = flight_attrs
       @mode = mode.to_sym
       raise ArgumentError, "Invalid mode: #{mode}" unless MODES.include?(@mode)
     end
@@ -17,8 +18,7 @@ module Flights
       seen = []
 
       Flight.transaction do
-        @raw_flights.each do |raw|
-          attrs = AirTrail::FlightMapper.new(raw).attributes
+        @flight_attrs.each do |attrs|
           seen << attrs[:external_id]
 
           begin

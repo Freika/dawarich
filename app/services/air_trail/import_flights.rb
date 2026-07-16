@@ -16,7 +16,8 @@ module AirTrail
         url, api_key, skip_ssl_verification: @settings.airtrail_skip_ssl_verification
       ).flights
 
-      counts = Flights::Upsert.new(@user, payload, mode: :replace).call
+      attrs = Array(payload).map { |raw| AirTrail::FlightMapper.new(raw).attributes }
+      counts = Flights::Upsert.new(@user, attrs, mode: :replace).call
       record_synced_at
       counts
     end

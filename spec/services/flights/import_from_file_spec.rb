@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe Flights::ImportFromJson do
+RSpec.describe Flights::ImportFromFile do
   let(:user) { create(:user) }
   let(:json_string) { file_fixture('air_trail/export_v3.json').read }
 
@@ -13,7 +13,7 @@ RSpec.describe Flights::ImportFromJson do
     expect(user.flights.first.from_code).to eq('EDDB')
     expect(user.flights.first.flight_number).to eq('AF1235')
     expect(result[:created]).to eq(1)
-    expect(user.reload.settings['airtrail_last_imported_at']).to be_present
+    expect(user.reload.settings['flights_last_imported_at']).to be_present
   end
 
   it 'is idempotent on re-import' do
@@ -33,7 +33,13 @@ RSpec.describe Flights::ImportFromJson do
   end
 
   it 'raises on invalid JSON' do
-    expect { described_class.new(user, 'not json').call }
+    expect { described_class.new(user, 'not json', format: :airtrail_json).call }
       .to raise_error(Flights::Parsers::Error, /Invalid JSON/)
+  end
+
+  it 'accepts an explicit format' do
+    result = described_class.new(user, json_string, format: :airtrail_json).call
+
+    expect(result[:created]).to eq(1)
   end
 end

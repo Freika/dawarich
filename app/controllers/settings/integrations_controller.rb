@@ -9,6 +9,8 @@ class Settings::IntegrationsController < ApplicationController
 
   def index
     @pro_required = !current_user.full_access?
+    @flight_import_formats = Flights::Parsers::Registry.formats
+    @flight_import_accept = Flights::Parsers::Registry.accept_attribute
   end
 
   def update
@@ -27,17 +29,21 @@ class Settings::IntegrationsController < ApplicationController
   def import_flights
     file = params[:file]
     if file.blank?
-      redirect_to settings_integrations_path, alert: 'Please select an AirTrail JSON file to import.'
+      redirect_to settings_integrations_path, alert: 'Please select a flight export file to import.'
       return
     end
 
     unless valid_flight_import_file?(file)
+      extensions = Flights::Parsers::Registry.accepted_extensions.join(', ')
       redirect_to settings_integrations_path,
-                  alert: 'Invalid file. Please upload a .json file (max 10 MB).'
+                  alert: "Invalid file. Please upload a supported flight export (#{extensions}, max 10 MB)."
       return
     end
 
-    Flights::ImportFromJsonJob.perform_later(current_user.id, file.read)
+    format = params[:format].presence
+    format = nil if format == 'auto'
+
+    Flights::ImportFromFileJob.perform_later(current_user.id, file.read, format)
 
     redirect_to settings_integrations_path,
                 notice: 'Flight import started. You will be notified when it completes.'
@@ -48,12 +54,10 @@ class Settings::IntegrationsController < ApplicationController
   def valid_flight_import_file?(file)
     return false if file.size > MAX_FLIGHT_IMPORT_SIZE
 
-    json_content_type?(file) || file.original_filename.to_s.downcase.end_with?('.json')
-  end
-
-  def json_content_type?(file)
-    type = file.content_type.to_s
-    type.in?(%w[application/json text/json application/octet-stream]) || type.end_with?('+json')
+    Flights::Parsers::Registry.supported_format?(
+      filename: file.original_filename,
+      content_type: file.content_type
+    )
   end
 
   def settings_params
