@@ -4,15 +4,21 @@ module Flights
   class ImportFromFileJob < ApplicationJob
     queue_as :imports
 
-    def perform(user_id, content, format = nil)
-      user = find_user_or_skip(user_id) || return
+    def perform(user_id, blob_id, format = nil)
+      blob = ActiveStorage::Blob.find_by(id: blob_id)
+      return if blob.blank?
 
-      counts = Flights::ImportFromFile.new(user, content, format: format).call
+      user = find_user_or_skip(user_id)
+      return if user.blank?
+
+      counts = Flights::ImportFromFile.new(user, blob.download, format: format).call
       notify_import_succeeded(user, counts)
     rescue Flights::Parsers::Error => e
       ExceptionReporter.call(e, "Flight file import failed for user #{user_id}")
       notify_import_failed(user, e)
       raise e
+    ensure
+      blob&.purge
     end
 
     private

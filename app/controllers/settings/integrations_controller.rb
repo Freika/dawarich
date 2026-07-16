@@ -43,7 +43,12 @@ class Settings::IntegrationsController < ApplicationController
     format = params[:format].presence
     format = nil if format == 'auto'
 
-    Flights::ImportFromFileJob.perform_later(current_user.id, file.read, format)
+    blob = ActiveStorage::Blob.create_and_upload!(
+      io: file.to_io,
+      filename: file.original_filename,
+      content_type: file.content_type
+    )
+    Flights::ImportFromFileJob.perform_later(current_user.id, blob.id, format)
 
     redirect_to settings_integrations_path,
                 notice: 'Flight import started. You will be notified when it completes.'

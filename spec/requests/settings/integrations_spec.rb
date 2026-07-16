@@ -169,7 +169,12 @@ RSpec.describe 'Settings::Integrations', type: :request do
 
       expect do
         post settings_import_flights_integrations_path, params: { file: file, format: 'auto' }
-      end.to have_enqueued_job(Flights::ImportFromFileJob).with(user.id, json_body, nil)
+      end.to change(ActiveStorage::Blob, :count).by(1)
+         .and have_enqueued_job(Flights::ImportFromFileJob).with(user.id, kind_of(Integer), nil)
+
+      blob = ActiveStorage::Blob.last
+      expect(blob.download).to eq(json_body)
+      expect(blob.filename.to_s).to eq('airtrail.json')
 
       expect(response).to redirect_to(settings_integrations_path)
       follow_redirect!
@@ -185,7 +190,7 @@ RSpec.describe 'Settings::Integrations', type: :request do
 
       expect do
         post settings_import_flights_integrations_path, params: { file: file, format: 'airtrail_json' }
-      end.to have_enqueued_job(Flights::ImportFromFileJob).with(user.id, json_body, 'airtrail_json')
+      end.to have_enqueued_job(Flights::ImportFromFileJob).with(user.id, kind_of(Integer), 'airtrail_json')
     end
 
     it 'rejects a missing file' do
@@ -237,7 +242,10 @@ RSpec.describe 'Settings::Integrations', type: :request do
 
       expect do
         post settings_import_flights_integrations_path, params: { file: file, format: 'auto' }
-      end.to have_enqueued_job(Flights::ImportFromFileJob).with(user.id, csv_body, nil)
+      end.to change(ActiveStorage::Blob, :count).by(1)
+         .and have_enqueued_job(Flights::ImportFromFileJob).with(user.id, kind_of(Integer), nil)
+
+      expect(ActiveStorage::Blob.last.download).to eq(csv_body)
     end
 
     context 'when user is on Lite plan (Cloud)' do
