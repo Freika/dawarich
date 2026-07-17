@@ -1,0 +1,42 @@
+<% content_for :title, 'Fog of War' %>
+
+<%= render 'shared/map/date_navigation_fog', start_at: @start_at, end_at: @end_at %>
+
+<div id="fog-map-container"
+     data-controller="maps--fog-map"
+     data-maps--fog-map-api-key-value="<%= current_user.api_key %>"
+     data-maps--fog-map-start-date-value="<%= @start_at.iso8601 %>"
+     data-maps--fog-map-end-date-value="<%= @end_at.iso8601 %>"
+     data-maps--fog-map-timezone-value="<%= current_user.timezone %>"
+     style="width: 100%; height: 100%; position: relative;">
+
+  <!-- Map container takes full width and height -->
+  <div data-maps--fog-map-target="container"
+       class="maps-maplibre-container"
+       style="width: 100%; height: 100%;">
+  </div>
+
+  <!-- Loading progress badge -->
+  <div data-maps--fog-map-target="progressBadge" class="map-progress-badge">
+    <span class="map-progress-badge-dot"></span>
+    <span data-maps--fog-map-target="progressBadgeText">Loading...</span>
+  </div>
+
+  <!-- Fog mode toggle -->
+  <div class="absolute top-4 left-4 z-30 flex gap-2">
+    <label class="btn btn-sm btn-ghost bg-base-100/90 backdrop-blur-sm shadow-sm border border-base-300 cursor-pointer">
+      <input type="radio" name="fog-mode" value="hexagons" checked
+             data-maps--fog-map-target="hexagonsMode"
+             data-action="change->maps--fog-map#switchMode"
+             class="radio radio-primary radio-xs" />
+      <span class="ml-1 text-xs">Hexagons</span>
+    </label>
+    <label class="btn btn-sm btn-ghost bg-base-100/90 backdrop-blur-sm shadow-sm border border-base-300 cursor-pointer">
+      <input type="radio" name="fog-mode" value="points"
+             data-maps--fog-map-target="pointsMode"
+             data-action="change->maps--fog-map#switchMode"
+             class="radio radio-primary radio-xs" />
+      <span class="ml-1 text-xs">Points</span>
+    </label>
+  </div>
+</div>

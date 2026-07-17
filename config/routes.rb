@@ -267,6 +267,7 @@ Rails.application.routes.draw do
   namespace :map do
     get '/v1', to: 'leaflet#index', as: :v1
     get '/v2', to: 'maplibre#index', as: :v2
+    get '/fog-of-war', to: 'fog#index', as: :fog
     resources :timeline_feeds, only: [:index] do
       get :track_info, on: :member
       get :calendar, on: :collection
