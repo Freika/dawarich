@@ -114,6 +114,43 @@ RSpec.describe Areas::Visits::Create do
           expect { create_visits }.not_to(change { Visit.count })
         end
       end
+
+      # Nightly job must not un-merge confirmed visits.
+      context 'when a confirmed visit spans points across a grouping gap (e.g. after a manual merge)' do
+        # Two clusters 3h apart, so Visits::Group re-splits them.
+        let(:cluster_a_start) { home_visit_date + 3.hours }
+        let(:cluster_b_start) { home_visit_date + 6.hours }
+        let!(:cluster_a1) { create(:point, user:, lonlat: 'POINT(0 0)', timestamp: cluster_a_start) }
+        let!(:cluster_a2) { create(:point, user:, lonlat: 'POINT(0 0)', timestamp: cluster_a_start + 15.minutes) }
+        let!(:cluster_b1) { create(:point, user:, lonlat: 'POINT(0 0)', timestamp: cluster_b_start) }
+        let!(:cluster_b2) { create(:point, user:, lonlat: 'POINT(0 0)', timestamp: cluster_b_start + 15.minutes) }
+
+        let(:merged_points) { [cluster_a1, cluster_a2, cluster_b1, cluster_b2] }
+
+        let!(:confirmed_home_visit) do
+          create(:visit,
+                 user:,
+                 status: :confirmed,
+                 started_at: Time.zone.at(cluster_a1.timestamp),
+                 name: 'Home',
+                 area: home_area,
+                 points: merged_points)
+        end
+
+        it 'does not steal the later-cluster points into a new suggested visit' do
+          described_class.new(user, [home_area]).call
+
+          expect(cluster_b1.reload.visit_id).to eq(confirmed_home_visit.id)
+          expect(cluster_b2.reload.visit_id).to eq(confirmed_home_visit.id)
+        end
+
+        it 'leaves the confirmed visit and its points intact' do
+          described_class.new(user, [home_area]).call
+
+          expect(confirmed_home_visit.reload.status).to eq('confirmed')
+          expect(confirmed_home_visit.points).to match_array(merged_points)
+        end
+      end
     end
   end
 end

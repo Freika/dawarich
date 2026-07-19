@@ -35,6 +35,14 @@ class Areas::Visits::Create
         create_or_update_visit(area, time_range, visit_points)
       end
     end
+
+    cleanup_orphaned_visits(area) if months.any?
+  end
+
+  def cleanup_orphaned_visits(area)
+    Visit.where(area_id: area.id, user_id: user.id, status: :suggested)
+         .where.missing(:points)
+         .destroy_all
   end
 
   def distinct_months_for_area(area)
@@ -46,6 +54,7 @@ class Areas::Visits::Create
       end
 
     relation = Point.where(user_id: user.id)
+                    .where(visit_id: nil)
                     .near([area.latitude, area.longitude], area_radius, user.safe_settings.distance_unit)
     sql = <<~SQL.squish
       SELECT DISTINCT TO_CHAR(TO_TIMESTAMP(timestamp), 'YYYY-MM') AS month
@@ -63,10 +72,13 @@ class Areas::Visits::Create
     month_start = Time.utc(year, month_num, 1).to_i
     month_end = (Time.utc(year, month_num, 1) + 1.month).to_i - 1
 
+    editable_visit_ids = Visit.where(area_id: area.id, user_id: user.id, status: :suggested).pluck(:id)
+
     Point.where(user_id: user.id)
          .without_raw_data
          .near([area.latitude, area.longitude], area_radius, user.safe_settings.distance_unit)
          .where(timestamp: month_start..month_end)
+         .where(visit_id: [nil, *editable_visit_ids])
          .order(timestamp: :asc)
          .to_a
   end
