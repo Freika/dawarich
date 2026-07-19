@@ -39,10 +39,28 @@ RSpec.describe GoogleMaps::RecordsImporter do
     end
 
     context 'with regular timestamp' do
-      let(:locations) { super()[0].merge('timestamp' => time.to_s).to_json }
+      let(:locations) { [super()[0].merge('timestamp' => time.to_s)] }
 
       it 'creates a point' do
         expect { parser }.to change(Point, :count).by(1)
+      end
+
+      it 'derives the tracker id from the deviceTag' do
+        parser
+
+        expect(Point.last.tracker_id).to eq('google-records-device-1234567890')
+      end
+    end
+
+    context 'without a deviceTag' do
+      let(:locations) do
+        [super()[0].except('deviceTag').merge('timestamp' => time.to_s)]
+      end
+
+      it 'falls back to the per-import tracker id' do
+        parser
+
+        expect(Point.last.tracker_id).to eq("google-records-#{import.id}")
       end
     end
 

@@ -26,6 +26,8 @@ class GoogleMaps::SemanticHistoryImporter
 
   def process_batch(batch)
     records = batch.map { |point_data| prepare_point_data(point_data) }
+                   .reject { |record| Points::NullIsland.lonlat?(record[:lonlat]) }
+    return if records.empty?
 
     Point.upsert_all(
       records,
@@ -45,7 +47,7 @@ class GoogleMaps::SemanticHistoryImporter
       accuracy: point_data[:accuracy],
       motion_data: point_data[:motion_data],
       topic: 'Google Maps Timeline Export',
-      tracker_id: 'google-maps-timeline-export',
+      tracker_id: "google-semantic-#{import.id}",
       import_id: import.id,
       user_id: user_id,
       created_at: Time.current,

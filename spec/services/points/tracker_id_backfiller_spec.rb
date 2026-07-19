@@ -60,6 +60,42 @@ RSpec.describe Points::TrackerIdBackfiller do
     expect(point.reload.tracker_id).to eq('iphone')
   end
 
+  it 'rewrites the legacy semantic-import constant to the per-import value' do
+    import = create(:import, user: user)
+    point = create(:point, user: user, tracker_id: 'google-maps-timeline-export', raw_data: {}, import: import)
+
+    described_class.new(user).call
+
+    expect(point.reload.tracker_id).to eq("legacy-import-#{import.id}")
+  end
+
+  it 'upgrades a legacy-constant point to its deviceTag when raw_data still has one' do
+    import = create(:import, user: user)
+    point = create(:point, user: user, tracker_id: 'google-maps-timeline-export',
+                           raw_data: { 'deviceTag' => 3_333_333_333 }, import: import)
+
+    described_class.new(user).call
+
+    expect(point.reload.tracker_id).to eq('google-records-device-3333333333')
+  end
+
+  it 'rewrites the legacy phone-takeout constant to the per-import value' do
+    import = create(:import, user: user)
+    point = create(:point, user: user, tracker_id: 'google-maps-phone-timeline-export', raw_data: {}, import: import)
+
+    described_class.new(user).call
+
+    expect(point.reload.tracker_id).to eq("legacy-import-#{import.id}")
+  end
+
+  it 'leaves per-device records tracker ids untouched' do
+    point = create(:point, user: user, tracker_id: 'google-records-device-123', raw_data: {})
+
+    described_class.new(user).call
+
+    expect(point.reload.tracker_id).to eq('google-records-device-123')
+  end
+
   it 'only updates points belonging to the passed user' do
     other_user = create(:user)
     other_point = create(:point, user: other_user, tracker_id: nil, raw_data: { 'tid' => 'wt' })

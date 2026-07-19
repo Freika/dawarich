@@ -381,6 +381,26 @@ RSpec.describe 'Api::V1::Points', type: :request do
           delete "/api/v1/points/#{trackless_point.id}?api_key=#{user.api_key}"
         end.not_to have_enqueued_job(Tracks::RecalculateJob)
       end
+
+      it 'enqueues a stats recalculation for the point month' do
+        expect do
+          delete "/api/v1/points/#{trackless_point.id}?api_key=#{user.api_key}"
+        end.to have_enqueued_job(Stats::CalculatingJob)
+          .with(user.id, Time.zone.at(trackless_point.timestamp).year, Time.zone.at(trackless_point.timestamp).month)
+      end
+    end
+
+    context 'when recalculating stats' do
+      let(:track) { create(:track, user: user) }
+      let!(:tracked_point) do
+        create(:point, user: user, track: track, timestamp: Time.zone.local(2024, 5, 10, 12).to_i)
+      end
+
+      it 'enqueues a stats recalculation for the point month' do
+        expect do
+          delete "/api/v1/points/#{tracked_point.id}?api_key=#{user.api_key}"
+        end.to have_enqueued_job(Stats::CalculatingJob).with(user.id, 2024, 5)
+      end
     end
 
     context 'when user is inactive' do

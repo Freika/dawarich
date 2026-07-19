@@ -105,4 +105,31 @@ RSpec.describe Points::Params do
       expect(result.first[:course_accuracy]).to eq(12.5)
     end
   end
+
+  describe 'Null Island filtering' do
+    let(:user) { create(:user) }
+    let(:params) do
+      {
+        locations: [
+          {
+            type: 'Feature',
+            geometry: { type: 'Point', coordinates: [0.0, 0.0] },
+            properties: { timestamp: '2025-01-17T21:03:01Z' }
+          },
+          {
+            type: 'Feature',
+            geometry: { type: 'Point', coordinates: [13.5, 52.4] },
+            properties: { timestamp: '2025-01-17T21:04:01Z' }
+          }
+        ]
+      }
+    end
+
+    it 'drops locations at exactly (0,0) and keeps the rest' do
+      result = described_class.new(params, user.id).call
+
+      expect(result.size).to eq(1)
+      expect(result.first[:lonlat]).to eq('POINT(13.5 52.4)')
+    end
+  end
 end

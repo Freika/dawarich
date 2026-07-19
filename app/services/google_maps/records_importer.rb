@@ -52,7 +52,7 @@ class GoogleMaps::RecordsImporter
 
   def tracker_id_for(location)
     device_tag = location['deviceTag']
-    return 'google-maps-timeline-export' if device_tag.nil? || device_tag.to_s.strip.empty?
+    return "google-records-#{import.id}" if device_tag.nil? || device_tag.to_s.strip.empty?
 
     "google-records-device-#{device_tag}"
   end

@@ -27,6 +27,16 @@ RSpec.describe Visits::StayPointDetector do
   # Defaults: radius 100 m, min_dwell 300 s, min_points 3, max_gap 3600 s, merge_gap 900 s, drift_cap 1.5.
 
   describe '#call' do
+    it 'ignores points at exactly (0,0)' do
+      6.times do |i|
+        create(:point, user: user, latitude: 0.0, longitude: 0.0,
+                       lonlat: 'POINT(0.0 0.0)', timestamp: base_ts + (i * 120),
+                       accuracy: 10, visit_id: nil)
+      end
+
+      expect(detect).to be_empty
+    end
+
     it '(a) groups a tight stationary cluster into one visit' do
       6.times { |i| make_point(at: base_ts + i * 120, dnorth: (i.even? ? 5 : -5)) }
 

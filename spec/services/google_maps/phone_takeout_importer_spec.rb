@@ -25,6 +25,12 @@ RSpec.describe GoogleMaps::PhoneTakeoutImporter do
           # 2 frequentPlaces from userLocationProfile
           expect { parser }.to change { Point.count }.by(6)
         end
+
+        it 'stamps the per-import tracker id on every point' do
+          parser
+
+          expect(Point.distinct.pluck(:tracker_id)).to eq(["google-phone-#{import.id}"])
+        end
       end
     end
 
