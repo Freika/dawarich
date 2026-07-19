@@ -34,6 +34,8 @@ class Places::Visits::Create
         "place_id=#{place.id} months=#{months.inspect} count=#{months.size}"
     )
 
+    confirmed_visit_ids = Visit.where(place_id: place.id, user_id: user.id, status: :confirmed).pluck(:id).to_set
+
     months.each do |month|
       points = place_points_for_month(place, month)
       visits = Visits::Group.new(
@@ -42,7 +44,7 @@ class Places::Visits::Create
       ).call(points, already_sorted: true)
 
       visits.each do |time_range, visit_points|
-        create_or_update_visit(place, time_range, visit_points)
+        create_or_update_visit(place, time_range, visit_points, confirmed_visit_ids)
       end
     end
 
@@ -83,7 +85,10 @@ class Places::Visits::Create
     month_start = Time.utc(year, month_num, 1).to_i
     month_end = (Time.utc(year, month_num, 1) + 1.month).to_i - 1
 
-    editable_visit_ids = Visit.where(place_id: place.id, user_id: user.id, status: :suggested).pluck(:id)
+    # suggested + confirmed re-enter clustering (confirmed so they can be extended);
+    # declined stay excluded. Theft guard below prevents un-merging confirmed visits.
+    editable_visit_ids =
+      Visit.where(place_id: place.id, user_id: user.id, status: %i[suggested confirmed]).pluck(:id)
 
     Point.where(user_id: user.id)
          .without_raw_data
@@ -94,15 +99,24 @@ class Places::Visits::Create
          .to_a
   end
 
-  def create_or_update_visit(place, time_range, visit_points)
-    Rails.logger.info("Visit from #{time_range}, Points: #{visit_points.size}")
+  def create_or_update_visit(place, time_range, visit_points, confirmed_visit_ids)
+    visit = find_or_initialize_visit(place.id, visit_points.first.timestamp)
+
+    # Theft guard: don't move a point owned by a different confirmed visit (would un-merge it).
+    assignable = visit_points.reject do |p|
+      confirmed_visit_ids.include?(p.visit_id) && p.visit_id != visit.id
+    end
+    return if assignable.empty?
+
+    Rails.logger.info("Visit from #{time_range}, Points: #{assignable.size}")
 
     ActiveRecord::Base.transaction do
-      visit = find_or_initialize_visit(place.id, visit_points.first.timestamp)
+      group_ended_at = Time.zone.at(assignable.last.timestamp)
 
       visit.tap do |v|
-        v.ended_at = Time.zone.at(visit_points.last.timestamp)
-        v.duration = (visit_points.last.timestamp - visit_points.first.timestamp) / 60
+        # Grow-only: never shrink a visit that already spans past this group.
+        v.ended_at = v.ended_at && v.ended_at > group_ended_at ? v.ended_at : group_ended_at
+        v.duration = ((v.ended_at.to_i - v.started_at.to_i) / 60)
         if v.new_record?
           v.name = "#{place.name}, #{time_range}"
           v.status = :suggested
@@ -111,7 +125,7 @@ class Places::Visits::Create
 
       visit.save!
 
-      Point.where(id: visit_points.map(&:id)).update_all(visit_id: visit.id)
+      Point.where(id: assignable.map(&:id)).update_all(visit_id: visit.id)
     end
   end
 

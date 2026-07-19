@@ -97,5 +97,18 @@ RSpec.describe 'Visit status is preserved across visit-recompute services' do
       described_class.new(user, [place]).call
       expect(Visit.find_by!(place_id: place.id).status).to eq('suggested')
     end
+
+    it 'still extends ended_at on existing visits when new points arrive' do
+      described_class.new(user, [place]).call
+      visit = Visit.find_by!(place_id: place.id)
+      visit.update!(status: :confirmed)
+      original_ended_at = visit.ended_at
+
+      create(:point, user:, lonlat: 'POINT(5 5)', timestamp: visit_date + 25.minutes)
+
+      described_class.new(user, [place]).call
+
+      expect(visit.reload.ended_at).to be > original_ended_at
+    end
   end
 end
