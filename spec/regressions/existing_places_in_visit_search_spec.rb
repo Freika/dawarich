@@ -68,6 +68,53 @@ RSpec.describe 'Existing places in visit search', type: :request do
     expect(JSON.parse(response.body).fetch('places').count { |place| place['name'] == 'Coffee Shop' }).to eq(2)
   end
 
+  it 'keeps a nearby geocoder result when a saved place with the same name is far away' do
+    create(
+      :place,
+      user: user,
+      name: 'Office',
+      source: :manual,
+      latitude: latitude + 0.1,
+      longitude: longitude + 0.1
+    )
+    results = [
+      { id: nil, name: 'Office', latitude: latitude, longitude: longitude, source: 'photon' }
+    ]
+    search = instance_double(Places::Search, call: results)
+    allow(Places::Search).to receive(:new).and_return(search)
+
+    get '/api/v1/places/search',
+        params: { q: 'Office', lat: latitude, lon: longitude },
+        headers: headers
+
+    places = JSON.parse(response.body).fetch('places')
+    expect(places).to include(include('name' => 'Office', 'source' => 'photon'))
+  end
+
+  it 'suppresses a geocoder result co-located with a saved place of the same name' do
+    create(
+      :place,
+      user: user,
+      name: 'Cafe',
+      source: :manual,
+      latitude: latitude,
+      longitude: longitude
+    )
+    results = [
+      { id: nil, name: 'Cafe', latitude: latitude, longitude: longitude, source: 'photon' }
+    ]
+    search = instance_double(Places::Search, call: results)
+    allow(Places::Search).to receive(:new).and_return(search)
+
+    get '/api/v1/places/search',
+        params: { q: 'Cafe', lat: latitude, lon: longitude },
+        headers: headers
+
+    places = JSON.parse(response.body).fetch('places')
+    expect(places.count { |place| place['name'] == 'Cafe' }).to eq(1)
+    expect(places).not_to include(include('name' => 'Cafe', 'source' => 'photon'))
+  end
+
   it 'does not expose another users saved places' do
     other_place = create(
       :place,
