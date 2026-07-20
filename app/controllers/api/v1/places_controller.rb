@@ -149,7 +149,9 @@ module Api
         external_places.reject! do |place|
           co_located_saved_place?(place, user_places_by_name)
         end
-        places = (user_places + external_places).first(limit)
+        places = (user_places + external_places)
+                 .sort_by { |place| distance_from_query(place, lat, lon) }
+                 .first(limit)
 
         areas = Areas::Nearby.new(
           user: current_api_user, latitude: lat, longitude: lon, radius: radius, query: query
@@ -159,6 +161,17 @@ module Api
       end
 
       private
+
+      def distance_from_query(place, latitude, longitude)
+        return Float::INFINITY if place[:latitude].nil? || place[:longitude].nil?
+
+        distance = Geocoder::Calculations.distance_between(
+          [latitude, longitude],
+          [place[:latitude], place[:longitude]],
+          units: :km
+        )
+        distance.is_a?(Numeric) && distance.finite? ? distance : Float::INFINITY
+      end
 
       def co_located_saved_place?(external, user_places_by_name)
         return false if external[:latitude].nil? || external[:longitude].nil?

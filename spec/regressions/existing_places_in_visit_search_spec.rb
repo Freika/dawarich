@@ -91,6 +91,40 @@ RSpec.describe 'Existing places in visit search', type: :request do
     expect(places).to include(include('name' => 'Office', 'source' => 'photon'))
   end
 
+  it 'surfaces a nearby geocoder result even when saved places fill every result slot' do
+    ['Park One', 'Park Two'].each_with_index do |name, index|
+      create(
+        :place,
+        user: user,
+        name: name,
+        source: :manual,
+        latitude: latitude + (0.001 * (index + 1)),
+        longitude: longitude
+      )
+    end
+    create(
+      :place,
+      user: user,
+      name: 'Park Three',
+      source: :manual,
+      latitude: latitude + 0.01,
+      longitude: longitude
+    )
+    results = [
+      { id: nil, name: 'Park Cafe', latitude: latitude + 0.005, longitude: longitude, source: 'photon' }
+    ]
+    search = instance_double(Places::Search, call: results)
+    allow(Places::Search).to receive(:new).and_return(search)
+
+    get '/api/v1/places/search',
+        params: { q: 'Park', lat: latitude, lon: longitude, radius: 1.0, limit: 3 },
+        headers: headers
+
+    places = JSON.parse(response.body).fetch('places')
+    expect(places.length).to eq(3)
+    expect(places).to include(include('name' => 'Park Cafe', 'source' => 'photon'))
+  end
+
   it 'suppresses a geocoder result co-located with a saved place of the same name' do
     create(
       :place,
