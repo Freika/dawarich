@@ -111,4 +111,54 @@ RSpec.describe 'Visit status is preserved across visit-recompute services' do
       expect(visit.reload.ended_at).to be > original_ended_at
     end
   end
+
+  # Cross-type: area recompute must not steal a confirmed
+  # place visit's points nor spawn a suggested area twin over the same spot.
+  describe 'cross-type: area recompute over a confirmed place visit' do
+    let(:area) { create(:area, user:, latitude: 0, longitude: 0, radius: 100) }
+    let(:place) { create(:place, user:, latitude: 0, longitude: 0) }
+    let!(:confirmed_place_visit) do
+      create(:visit, user:, place:, area: nil, status: :confirmed,
+                     started_at: visit_date, ended_at: visit_date + 20.minutes, duration: 20)
+    end
+
+    before do
+      [visit_date, visit_date + 10.minutes, visit_date + 20.minutes].each do |ts|
+        create(:point, user:, lonlat: 'POINT(0 0)', timestamp: ts, visit_id: confirmed_place_visit.id)
+      end
+    end
+
+    it 'does not steal the place visit points and creates no suggested area twin' do
+      expect { Areas::Visits::Create.new(user, [area]).call }
+        .not_to change { confirmed_place_visit.reload.points.count }.from(3)
+
+      expect(Visit.where(area_id: area.id).count).to eq(0)
+      expect(user.visits.suggested.count).to eq(0)
+    end
+  end
+
+  # Vice-versa: place recompute must not steal a confirmed area visit's points nor
+  # spawn a suggested place twin over the same spot.
+  describe 'cross-type: place recompute over a confirmed area visit' do
+    let(:area) { create(:area, user:, latitude: 0, longitude: 0, radius: 100) }
+    let(:place) { create(:place, user:, latitude: 0, longitude: 0) }
+    let!(:confirmed_area_visit) do
+      create(:visit, user:, area:, place: nil, status: :confirmed,
+                     started_at: visit_date, ended_at: visit_date + 20.minutes, duration: 20)
+    end
+
+    before do
+      [visit_date, visit_date + 10.minutes, visit_date + 20.minutes].each do |ts|
+        create(:point, user:, lonlat: 'POINT(0 0)', timestamp: ts, visit_id: confirmed_area_visit.id)
+      end
+    end
+
+    it 'does not steal the area visit points and creates no suggested place twin' do
+      expect { Places::Visits::Create.new(user, [place]).call }
+        .not_to change { confirmed_area_visit.reload.points.count }.from(3)
+
+      expect(Visit.where(place_id: place.id).count).to eq(0)
+      expect(user.visits.suggested.count).to eq(0)
+    end
+  end
 end
