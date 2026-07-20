@@ -59,20 +59,20 @@ export class PlacesManager {
   /**
    * Initialize place tag filters (enable all by default or restore saved state)
    */
-  async initializePlaceTagFilters() {
+  async initializePlaceTagFilters({ reloadPlaces = true } = {}) {
     const savedFilters = this.settings.placesTagFilters
 
-    if (savedFilters && savedFilters.length > 0) {
-      return this.restoreSavedTagFilters(savedFilters)
+    if (Array.isArray(savedFilters)) {
+      return this.restoreSavedTagFilters(savedFilters, { reloadPlaces })
     } else {
-      return this.enableAllTagsInitial()
+      return this.enableAllTagsInitial({ reloadPlaces })
     }
   }
 
   /**
    * Restore saved tag filters
    */
-  restoreSavedTagFilters(savedFilters) {
+  restoreSavedTagFilters(savedFilters, { reloadPlaces = true } = {}) {
     const tagCheckboxes = document.querySelectorAll(
       'input[name="place_tag_ids[]"]',
     )
@@ -103,13 +103,15 @@ export class PlacesManager {
     })
 
     this.syncEnableAllTagsToggle()
-    return this.loadPlacesWithTags(savedFilters)
+    return reloadPlaces
+      ? this.loadPlacesWithTags(savedFilters)
+      : Promise.resolve()
   }
 
   /**
    * Enable all tags initially
    */
-  enableAllTagsInitial() {
+  enableAllTagsInitial({ reloadPlaces = true } = {}) {
     if (this.controller.hasEnableAllPlaceTagsToggleTarget) {
       this.controller.enableAllPlaceTagsToggleTarget.checked = true
     }
@@ -135,8 +137,9 @@ export class PlacesManager {
       allTagIds.push(value)
     })
 
+    this.settings.placesTagFilters = allTagIds
     SettingsManager.updateSetting("placesTagFilters", allTagIds)
-    return this.loadPlacesWithTags(allTagIds)
+    return reloadPlaces ? this.loadPlacesWithTags(allTagIds) : Promise.resolve()
   }
 
   /**
@@ -171,6 +174,7 @@ export class PlacesManager {
     this.syncEnableAllTagsToggle()
 
     const checkedTags = this.getSelectedPlaceTags()
+    this.settings.placesTagFilters = checkedTags
     SettingsManager.updateSetting("placesTagFilters", checkedTags)
     this.loadPlacesWithTags(checkedTags)
   }
@@ -240,6 +244,7 @@ export class PlacesManager {
     })
 
     const selectedTags = this.getSelectedPlaceTags()
+    this.settings.placesTagFilters = selectedTags
     SettingsManager.updateSetting("placesTagFilters", selectedTags)
     this.loadPlacesWithTags(selectedTags)
   }

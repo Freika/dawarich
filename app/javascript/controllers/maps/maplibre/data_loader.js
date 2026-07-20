@@ -223,25 +223,33 @@ export class DataLoader {
           })
       : Promise.resolve([])
 
-    const placesPromise = this.settings.placesEnabled
-      ? this.api
-          .fetchPlaces()
-          .then((result) => {
-            if (counter) {
-              counter.update("places", result.length)
-              counter.complete("places")
-            }
-            if (onLayerData) {
-              onLayerData("places", this.placesToGeoJSON(result))
-            }
-            return result
-          })
-          .catch((error) => {
-            console.warn("Failed to fetch places:", error)
-            if (counter) counter.complete("places")
-            return []
-          })
+    const savedPlacesTagFilters = this.settings.placesTagFilters
+    const placesRequest = this.settings.placesEnabled
+      ? Array.isArray(savedPlacesTagFilters) &&
+        savedPlacesTagFilters.length === 0
+        ? Promise.resolve([])
+        : this.api.fetchPlaces(
+            Array.isArray(savedPlacesTagFilters)
+              ? { tag_ids: savedPlacesTagFilters }
+              : {},
+          )
       : Promise.resolve([])
+    const placesPromise = placesRequest
+      .then((result) => {
+        if (counter) {
+          counter.update("places", result.length)
+          counter.complete("places")
+        }
+        if (onLayerData) {
+          onLayerData("places", this.placesToGeoJSON(result))
+        }
+        return result
+      })
+      .catch((error) => {
+        console.warn("Failed to fetch places:", error)
+        if (counter) counter.complete("places")
+        return []
+      })
 
     const flightsPromise = this.settings.flightsEnabled
       ? this.api

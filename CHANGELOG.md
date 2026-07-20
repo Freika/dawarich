@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Map v2 Places tag filters now remain applied after switching tabs and returning to the map (#3003).
 - Google Semantic History and phone Timeline imports now tag points with a per-import tracker id instead of one shared constant, so tracks from different devices are no longer braided together. A one-time backfill rewrites existing points and regenerates affected tracks per user.
 - Points at exactly (0,0) — a common GPS glitch — are no longer accepted from any ingestion path (API, OwnTracks, Overland, Traccar, file imports) and no longer produce suggested visits at "Null Island". Existing (0,0) points are flagged as anomalies by a one-time cleanup that also removes visits placed at (0,0) and recalculates affected stats and tracks.
 

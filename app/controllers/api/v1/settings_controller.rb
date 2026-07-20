@@ -81,6 +81,7 @@ class Api::V1::SettingsController < ApiController
       :stay_max_gap_minutes,
       :gps_filtering_enabled, :gps_accuracy_threshold,
       enabled_map_layers: [],
+      places_tag_filters: [],
       enabled_transportation_modes: [],
       maps_maplibre_custom_theme: [
         :base,

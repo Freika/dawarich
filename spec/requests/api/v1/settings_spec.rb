@@ -109,6 +109,17 @@ RSpec.describe 'Api::V1::Settings', type: :request do
         expect(user.safe_settings.track_color).to eq('#654321')
       end
 
+      it 'persists Places tag filters across map reconnects' do
+        filters = [11, 'untagged']
+
+        patch "/api/v1/settings?api_key=#{api_key}",
+              params: { settings: { places_tag_filters: filters } }
+
+        expect(response).to have_http_status(:success)
+        expect(user.reload.safe_settings.places_tag_filters).to eq(filters)
+        expect(response.parsed_body.dig('settings', 'places_tag_filters')).to eq(filters)
+      end
+
       it 'updates maps_maplibre_tiles_url' do
         patch "/api/v1/settings?api_key=#{api_key}",
               params: { settings: { maps_maplibre_tiles_url: 'https://tiles.example.com/{z}/{x}/{y}.mvt' } }
