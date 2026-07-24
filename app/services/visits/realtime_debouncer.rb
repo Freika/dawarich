@@ -35,6 +35,10 @@ class Visits::RealtimeDebouncer
         redis.expire(key, REDIS_KEY_TTL.to_i)
       end
     end
+  rescue RedisClient::ConnectionError, ConnectionPool::TimeoutError => e
+    Rails.logger.warn(
+      "event=visits.realtime_debounce_unavailable user_id=#{@user_id} error=#{e.class}"
+    )
   end
 
   def clear
