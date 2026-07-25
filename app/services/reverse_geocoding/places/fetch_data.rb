@@ -65,14 +65,34 @@ class ReverseGeocoding::Places::FetchData
   end
 
   def place_name(data)
-    name = data.dig('properties', 'name')
-    type = data.dig('properties', 'osm_value')&.capitalize&.gsub('_', ' ')
-    address = "#{data.dig('properties', 'postcode')} #{data.dig('properties', 'street')}"
+    name = meaningful_place_name(data.dig('properties', 'name'))
+    type = formatted_place_type(data.dig('properties', 'osm_value'))
+    address = "#{data.dig('properties', 'postcode')} #{data.dig('properties', 'street')}".strip
     address += " #{data.dig('properties', 'housenumber')}" if data.dig('properties', 'housenumber').present?
 
-    name ||= address
+    name ||= address.presence || Place::DEFAULT_NAME
+
+    return name if type.blank?
 
     "#{name} (#{type})"
+  end
+
+  def meaningful_place_name(value)
+    normalized = value.to_s.strip
+    return nil if generic_osm_value?(normalized)
+
+    normalized.presence
+  end
+
+  def formatted_place_type(value)
+    normalized = value.to_s.strip
+    return nil if generic_osm_value?(normalized)
+
+    normalized.capitalize.gsub('_', ' ').presence
+  end
+
+  def generic_osm_value?(value)
+    value.blank? || %w[yes no].include?(value.downcase)
   end
 
   def extract_osm_ids(places)

@@ -260,6 +260,35 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
         result = service.send(:place_name, data)
         expect(result).to eq('Test (Fast food restaurant)')
       end
+
+      it 'omits generic boolean osm values from place names' do
+        data = {
+          'properties' => {
+            'name' => 'Gas Station',
+            'osm_value' => 'yes',
+            'postcode' => '10115',
+            'street' => 'Main Street'
+          }
+        }
+
+        result = service.send(:place_name, data)
+        expect(result).to eq('Gas Station')
+      end
+
+      it 'falls back to the address when Photon returns a generic name' do
+        data = {
+          'properties' => {
+            'name' => 'Yes',
+            'osm_value' => 'yes',
+            'postcode' => '10115',
+            'street' => 'Main Street',
+            'housenumber' => '42'
+          }
+        }
+
+        result = service.send(:place_name, data)
+        expect(result).to eq('10115 Main Street 42')
+      end
     end
 
     describe '#extract_osm_ids' do
