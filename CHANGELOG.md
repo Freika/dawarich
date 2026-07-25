@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+### Added
+
+- Exploration achievements: every country gets a collectible card, and 183 of them a grid of their first-level regions. A region counts as explored once time spent inside it passes your "minimum minutes spent in city" setting, so pass-throughs don't count. Earned regions are never revoked. Behind the `achievements` feature flag. (#3121)
+
 ### Fixed
 
 - Trial lifecycle email jobs left over from older releases are now discarded instead of retrying forever in the background queue. Mail addressed to a record that has since been deleted is also discarded rather than retried.

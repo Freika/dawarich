@@ -1,0 +1,63 @@
+
+<div class="container mx-auto px-4 py-8">
+  <div class="ach-page" data-controller="card-modal">
+    <div class="ach-layout">
+      <%= render 'sidebar', continents: @continents, summary: @summary,
+                            active_key: @sidebar_key %>
+
+      <div class="ach-main">
+        <% if @set.parent_key %>
+          <div class="ach-breadcrumb">
+            <%= link_to 'Achievements', achievements_path %>
+            <span>›</span>
+            <%= link_to @set.definition.continent, achievement_path(@set.parent_key) %>
+          </div>
+        <% end %>
+
+        <div class="ach-set-hero">
+          <%= render 'card', celebrate: @set.celebrate?, **@set.card_attributes %>
+
+          <div class="ach-actions">
+            <%= button_to @set.sharing_enabled? ? 'Disable sharing' : 'Share',
+                          toggle_sharing_achievement_path(@set.definition.key),
+                          method: :patch, class: 'btn btn-sm btn-primary' %>
+            <% if @set.sharing_enabled? %>
+              <%= link_to 'Public link', shared_achievement_path(@set.sharing_uuid), class: 'btn btn-sm' %>
+            <% end %>
+          </div>
+        </div>
+
+        <div class="ach-divider">
+          <span><%= @set.level == :country ? 'Countries' : 'Regions' %> —
+            <%= @set.display_count %>/<%= @set.target %></span>
+        </div>
+
+        <div class="ach-child-grid">
+          <% @children.each_with_index do |region_card, index| %>
+            <% key = region_card[:key] %>
+            <% card = region_card.except(:key, :code, :share, :share_key) %>
+            <% if key %>
+              <%= link_to achievement_path(key), class: 'ach-card-link' do %>
+                <%= render 'card', size: :sm, reveal_delay: 0.05 * [index, 10].min, **card %>
+              <% end %>
+            <% else %>
+              <%= render 'card', size: :sm, reveal_delay: 0.05 * [index, 10].min,
+                                 modal: true, share: region_card[:share], **card %>
+            <% end %>
+          <% end %>
+        </div>
+
+        <div class="ach-pagination"><%= paginate @children %></div>
+
+        <%= render 'card_modal' %>
+
+        <p class="ach-footnote">
+          Region detection is based on approximate boundaries.
+          Boundaries: Natural Earth (public domain) and
+          <%= link_to 'geoBoundaries', 'https://www.geoboundaries.org', target: '_blank', rel: 'noopener' %> (CC BY 4.0).
+          Map art: Protomaps © OpenStreetMap contributors
+        </p>
+      </div>
+    </div>
+  </div>
+</div>

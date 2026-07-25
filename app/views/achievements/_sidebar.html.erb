@@ -1,0 +1,18 @@
+<% active_key = local_assigns.fetch(:active_key, nil) %>
+<nav class="ach-side">
+  <%= link_to achievements_path,
+              class: "ach-side-link ach-side-link--summary #{'ach-side-link--active' if active_key.nil?}" do %>
+    <span>Summary</span>
+    <span class="ach-side-count"><%= summary.earned_countries %>/<%= summary.total_countries %></span>
+  <% end %>
+
+  <div class="ach-side-group">Continents</div>
+  <% continents.each do |set| %>
+    <%= link_to achievement_path(set.definition.key),
+                class: "ach-side-link #{'ach-side-link--active' if active_key == set.definition.key}" do %>
+      <span><%= set.definition.continent %></span>
+      <span class="ach-side-count"><%= set.display_count %>/<%= set.target %></span>
+      <span class="ach-side-bar"><span style="width: <%= set.percent %>%;"></span></span>
+    <% end %>
+  <% end %>
+</nav>

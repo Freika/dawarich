@@ -6,6 +6,7 @@
 # aren't present yet (e.g. during `db:migrate` on a brand-new database).
 Rails.application.config.after_initialize do
   Flipper.add(:poster_ordering) unless Flipper.exist?(:poster_ordering)
+  Flipper.add(:achievements) unless Flipper.exist?(:achievements)
 
   # Retired flags — the features shipped unconditionally.
   Flipper.remove(:posters) if Flipper.exist?(:posters)

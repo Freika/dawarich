@@ -1,0 +1,58 @@
+
+<div class="container mx-auto px-4 py-8">
+  <div class="ach-page" data-controller="card-modal">
+    <div class="ach-layout">
+      <%= render 'sidebar', continents: @sets, summary: @summary %>
+
+      <div class="ach-main">
+        <h1 class="ach-page-title">Achievements</h1>
+
+        <div class="ach-stats">
+          <div class="ach-stat">
+            <div class="ach-stat-value ach-stat-value--gold">
+              <%= @summary.earned_countries %><span class="ach-stat-total">/<%= @summary.total_countries %></span>
+            </div>
+            <div class="ach-stat-label">Countries</div>
+          </div>
+          <div class="ach-stat">
+            <div class="ach-stat-value ach-stat-value--teal">
+              <%= @summary.earned_subdivisions %><span class="ach-stat-total">/<%= @summary.total_subdivisions %></span>
+            </div>
+            <div class="ach-stat-label">Regions</div>
+          </div>
+          <div class="ach-stat">
+            <div class="ach-stat-value ach-stat-value--blue"><%= @summary.percent %>%</div>
+            <div class="ach-stat-label">World explored</div>
+          </div>
+        </div>
+
+        <div class="ach-divider"><span>Continents</span></div>
+
+        <div class="ach-grid">
+          <% @sets.each_with_index do |set, index| %>
+            <%= link_to achievement_path(set.definition.key), class: 'ach-card-link' do %>
+              <%= render 'card', reveal_delay: 0.1 + (0.15 * [index, 10].min),
+                                 celebrate: set.celebrate?,
+                                 **set.card_attributes %>
+            <% end %>
+          <% end %>
+          <% @orphans.each_with_index do |set, index| %>
+            <%= render 'card', reveal_delay: 0.1 + (0.15 * [@sets.size + index, 10].min),
+                               celebrate: set.celebrate?, modal: true,
+                               share: { key: set.definition.key, shared: set.sharing_enabled?, uuid: set.sharing_uuid },
+                               **set.card_attributes %>
+          <% end %>
+        </div>
+
+        <%= render 'card_modal' %>
+
+        <p class="ach-footnote">
+          Region detection is based on approximate boundaries.
+          Boundaries: Natural Earth (public domain) and
+          <%= link_to 'geoBoundaries', 'https://www.geoboundaries.org', target: '_blank', rel: 'noopener' %> (CC BY 4.0).
+          Map art: Protomaps © OpenStreetMap contributors
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
