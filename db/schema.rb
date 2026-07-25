@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_07_19_190000) do
+ActiveRecord::Schema[8.0].define(version: 2026_07_20_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -356,6 +356,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_07_19_190000) do
     t.jsonb "motion_data", default: {}, null: false
     t.decimal "altitude_decimal", precision: 10, scale: 2
     t.boolean "anomaly"
+    t.datetime "visits_scanned_at"
     t.index ["id"], name: "index_points_on_not_reverse_geocoded", where: "(reverse_geocoded_at IS NULL)"
     t.index ["import_id"], name: "index_points_on_import_id"
     t.index ["lonlat", "timestamp", "user_id"], name: "index_points_on_lonlat_timestamp_user_id", unique: true

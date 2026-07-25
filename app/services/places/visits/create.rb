@@ -34,8 +34,10 @@ class Places::Visits::Create
         "place_id=#{place.id} months=#{months.inspect} count=#{months.size}"
     )
 
+    scanned_point_ids = []
     months.each do |month|
       points = place_points_for_month(place, month)
+      scanned_point_ids.concat(points.map(&:id))
       visits = Visits::Group.new(
         time_threshold_minutes: @time_threshold_minutes,
         merge_threshold_minutes: @merge_threshold_minutes
@@ -46,9 +48,18 @@ class Places::Visits::Create
       end
     end
 
+    mark_scanned(scanned_point_ids)
     cleanup_orphaned_visits(place) if months.any?
 
     months.any?
+  end
+
+  def mark_scanned(point_ids)
+    return if point_ids.empty?
+
+    point_ids.each_slice(1000) do |batch|
+      Point.where(id: batch, visit_id: nil).update_all(visits_scanned_at: Time.current)
+    end
   end
 
   def cleanup_orphaned_visits(place)
@@ -66,7 +77,9 @@ class Places::Visits::Create
 
     relation = Point.where(user_id: user.id)
                     .where(visit_id: nil)
+                    .where(visits_scanned_at: nil)
                     .near([place.latitude, place.longitude], place_radius, user.safe_settings.distance_unit)
+                    .where(nearest_place_condition(place))
     sql = <<~SQL.squish
       SELECT DISTINCT TO_CHAR(TO_TIMESTAMP(timestamp), 'YYYY-MM') AS month
       FROM (#{relation.to_sql}) AS sub
@@ -90,8 +103,24 @@ class Places::Visits::Create
          .near([place.latitude, place.longitude], place_radius, user.safe_settings.distance_unit)
          .where(timestamp: month_start..month_end)
          .where(visit_id: [nil, *editable_visit_ids])
+         .where(nearest_place_condition(place))
          .order(timestamp: :asc)
          .to_a
+  end
+
+  def nearest_place_condition(place)
+    <<~SQL.squish
+      NOT EXISTS (
+        SELECT 1 FROM places other_places
+        WHERE other_places.user_id = #{user.id.to_i}
+          AND other_places.id <> #{place.id.to_i}
+          AND ST_Distance(points.lonlat::geography, other_places.lonlat::geography)
+              < ST_Distance(
+                  points.lonlat::geography,
+                  (SELECT lonlat FROM places WHERE id = #{place.id.to_i})
+                )
+      )
+    SQL
   end
 
   def create_or_update_visit(place, time_range, visit_points)
