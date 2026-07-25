@@ -10,9 +10,17 @@ class ReverseGeocodingJob < ApplicationJob
     rate_limit_for_photon_api
 
     data_fetcher(klass, id, force).call
+  ensure
+    release_dedup_key(klass, id)
   end
 
   private
+
+  def release_dedup_key(klass, id)
+    return unless klass == 'Point'
+
+    Sidekiq.redis { |r| r.del(Point.geocode_dedup_key(id)) }
+  end
 
   def data_fetcher(klass, id, force)
     "ReverseGeocoding::#{klass.pluralize.camelize}::FetchData".constantize.new(id, force: force)
