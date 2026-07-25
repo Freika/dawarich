@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Import rows on the Imports page now update their status live as an import processes, instead of staying on "Processing" until the page is manually reloaded. (#3174)
 - Reverse geocoding and place-name provider outages no longer flood error reporting with handled timeouts, dropped TLS connections, or invalid provider responses. A misconfigured or rate-limited provider — a bad API key, for example — is still reported.
 - Reverse geocoding retries point updates that time out while waiting on concurrent writes.
 - Google Semantic History and phone Timeline imports now tag points with a per-import tracker id instead of one shared constant, so tracks from different devices are no longer braided together. A one-time backfill rewrites existing points and regenerates affected tracks per user.
