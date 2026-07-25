@@ -134,8 +134,8 @@ RSpec.describe Visits::FindInTime do
         }
       end
 
-      it 'raises an ArgumentError' do
-        expect { described_class.new(user, params).call }.to raise_error(ArgumentError)
+      it 'raises Visits::InvalidTimeRange' do
+        expect { described_class.new(user, params).call }.to raise_error(Visits::InvalidTimeRange)
       end
     end
   end

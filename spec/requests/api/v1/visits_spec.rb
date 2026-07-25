@@ -37,6 +37,15 @@ RSpec.describe 'Api::V1::Visits', type: :request do
         json_response = JSON.parse(response.body)
         expect(json_response.pluck('id')).not_to include(other_user_visit.id)
       end
+
+      it 'returns a bad request for an out-of-range time' do
+        get '/api/v1/visits',
+            params: { start_at: '999999999999999', end_at: Time.zone.now.iso8601 },
+            headers: auth_headers
+
+        expect(response).to have_http_status(:bad_request)
+        expect(response.parsed_body).to eq('error' => 'Invalid date format')
+      end
     end
 
     context 'when requesting area-based visits' do
@@ -60,6 +69,22 @@ RSpec.describe 'Api::V1::Visits', type: :request do
         json_response = JSON.parse(response.body)
         expect(json_response.pluck('id')).to include(visit_inside.id)
         expect(json_response.pluck('id')).not_to include(visit1.id, visit2.id)
+      end
+
+      it 'returns a bad request for a malformed time' do
+        get '/api/v1/visits',
+            params: params.merge(start_at: 'not-a-date', end_at: Time.zone.now.iso8601),
+            headers: auth_headers
+
+        expect(response).to have_http_status(:bad_request)
+        expect(response.parsed_body).to eq('error' => 'Invalid date format')
+      end
+
+      it 'returns area visits unfiltered when no date range is given' do
+        get '/api/v1/visits', params: params, headers: auth_headers
+
+        expect(response).to have_http_status(:ok)
+        expect(response.parsed_body.pluck('id')).to include(visit_inside.id)
       end
     end
   end
