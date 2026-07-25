@@ -43,6 +43,23 @@ RSpec.describe Places::Visits::Create do
     expect(Point.where(user_id: user.id).where.not(visit_id: nil).count).to eq(3)
   end
 
+  it 'skips visit creation when the loaded place has been deleted' do
+    points = [
+      near_point(base_ts, seq: 1),
+      near_point(base_ts + 5.minutes, seq: 2),
+      near_point(base_ts + 10.minutes, seq: 3)
+    ]
+    place.delete
+
+    expect do
+      described_class.new(user, [place], throttle_seconds: 0)
+                     .send(:create_or_update_visit, place, '2024-05', points)
+    end.not_to raise_error
+
+    expect(Visit.where(place_id: place.id)).to be_empty
+    expect(Point.where(id: points.map(&:id)).where.not(visit_id: nil)).to be_empty
+  end
+
   it 'is idempotent — a second run creates no duplicate visit' do
     near_point(base_ts, seq: 1)
     near_point(base_ts + 5.minutes, seq: 2)

@@ -98,13 +98,16 @@ class Places::Visits::Create
     Rails.logger.info("Visit from #{time_range}, Points: #{visit_points.size}")
 
     ActiveRecord::Base.transaction do
-      visit = find_or_initialize_visit(place.id, visit_points.first.timestamp)
+      current_place = Place.lock.find_by(id: place.id)
+      next unless current_place
+
+      visit = find_or_initialize_visit(current_place.id, visit_points.first.timestamp)
 
       visit.tap do |v|
         v.ended_at = Time.zone.at(visit_points.last.timestamp)
         v.duration = (visit_points.last.timestamp - visit_points.first.timestamp) / 60
         if v.new_record?
-          v.name = "#{place.name}, #{time_range}"
+          v.name = "#{current_place.name}, #{time_range}"
           v.status = :suggested
         end
       end
