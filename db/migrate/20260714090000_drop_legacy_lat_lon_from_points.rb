@@ -43,9 +43,10 @@ class DropLegacyLatLonFromPoints < ActiveRecord::Migration[8.0]
   # aborted the whole migration, which crash-looped the container: the next boot
   # replayed the migration from scratch and lost the race again.
   #
-  # The lock timeout stays short so a waiting drop never queues ahead of writers
-  # and stalls the app. If every attempt loses, the drop is handed to a
-  # background job that keeps retrying, so boot completes instead of looping.
+  # A queued ACCESS EXCLUSIVE request does block the writers behind it, so the
+  # lock timeout stays short to bound each stall to DROP_LOCK_TIMEOUT. If every
+  # attempt loses, the drop is handed to a background job that keeps retrying,
+  # so boot completes instead of looping.
   def drop_legacy_columns
     attempts = 0
 
@@ -77,10 +78,11 @@ class DropLegacyLatLonFromPoints < ActiveRecord::Migration[8.0]
 
   # Redis may not be reachable yet when migrations run, and an unreachable queue
   # must not abort the migration — that is the crash loop this change removes.
-  # The columns are unused, so leaving them in place is safe.
+  # The columns are unused, so leaving them in place is safe. Only connection
+  # failures are swallowed; anything else is a bug worth surfacing.
   def enqueue_drop_job
     DataMigrations::DropLegacyLatLonJob.perform_later
-  rescue StandardError => e
+  rescue RedisClient::Error, SocketError, IOError, SystemCallError => e
     Rails.logger.warn(
       "[DropLegacyLatLonFromPoints] could not enqueue DataMigrations::DropLegacyLatLonJob: #{e.message}; " \
       'the legacy columns remain and will be dropped on a later boot'

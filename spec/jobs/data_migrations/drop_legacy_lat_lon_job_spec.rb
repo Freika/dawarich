@@ -27,6 +27,16 @@ RSpec.describe DataMigrations::DropLegacyLatLonJob do
     )
   end
 
+  it 'clears any statement timeout inherited from the pooled connection' do
+    allow(connection).to receive(:column_exists?).and_return(true)
+    allow(connection).to receive(:execute)
+
+    described_class.perform_now
+
+    expect(connection).to have_received(:execute).with('SET statement_timeout = 0')
+    expect(connection).to have_received(:execute).with('RESET statement_timeout')
+  end
+
   it 'resets the lock timeout even when the drop loses the lock race' do
     allow(connection).to receive(:column_exists?).and_return(true)
     allow(connection).to receive(:execute) do |sql|
