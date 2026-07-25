@@ -1,3 +1,13 @@
+<% content_for :title, "#{@set.definition.name} — Dawarich" %>
+<% content_for :head do %>
+  <meta property="og:title" content="<%= @set.definition.name %> — Dawarich">
+  <meta property="og:description" content="<%= @set.display_count %> of <%= @set.target %> regions explored. Tracked with Dawarich.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="<%= request.original_url %>">
+  <meta property="og:image" content="<%= image_url('favicon/apple-touch-icon.png') %>">
+  <meta name="twitter:card" content="summary">
+<% end %>
+
 <div class="container mx-auto px-4 py-12 max-w-2xl">
   <div class="ach-page">
     <div class="ach-header">

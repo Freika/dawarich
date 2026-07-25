@@ -1,28 +1,36 @@
 <% interactive = local_assigns.fetch(:interactive, true) %>
+<% attrs = set.card_attributes %>
+<% unless interactive %>
+  <%# On the public badge a grayscale lock reads as broken; show the card as
+      in-progress with an honest label instead. %>
+  <% attrs = attrs.merge(locked: false, earned_label: set.locked? ? 'Not yet explored' : attrs[:earned_label]) %>
+<% end %>
 <div class="ach-slot">
   <%= render 'achievements/card',
              reveal_delay: local_assigns.fetch(:reveal_delay, 0.1),
-             **set.card_attributes %>
+             **attrs %>
 
-  <details class="ach-details">
-    <summary><%= set.display_count %>/<%= set.target %> regions</summary>
-    <ul class="ach-regions">
-      <% set.regions.each do |region| %>
-        <li class="<%= 'ach-region--pending' unless region[:earned_at] %>">
-          <span><%= region[:name] %></span>
-          <span><%= region[:earned_at] ? Date.parse(region[:earned_at]).strftime('%-d %b %Y') : '—' %></span>
-        </li>
-      <% end %>
-    </ul>
-  </details>
+  <% if set.total > 1 %>
+    <details class="ach-details">
+      <summary><%= set.display_count %>/<%= set.target %> regions</summary>
+      <ul class="ach-regions">
+        <% set.regions.each do |region| %>
+          <li class="<%= 'ach-region--pending' unless region[:earned_at] %>">
+            <span><%= region[:name] %></span>
+            <span><%= region[:earned_at] ? Date.parse(region[:earned_at]).strftime('%-d %b %Y') : '—' %></span>
+          </li>
+        <% end %>
+      </ul>
+    </details>
+  <% end %>
 
   <% if interactive %>
     <div class="ach-actions">
       <%= button_to set.sharing_enabled? ? 'Disable sharing' : 'Share',
                     toggle_sharing_achievement_path(set.definition.key),
-                    method: :patch, class: 'ach-btn' %>
+                    method: :patch, class: 'btn btn-sm btn-primary' %>
       <% if set.sharing_enabled? %>
-        <%= link_to 'Public link', shared_achievement_path(set.sharing_uuid), class: 'ach-btn' %>
+        <%= link_to 'Public link', shared_achievement_path(set.sharing_uuid), class: 'btn btn-sm' %>
       <% end %>
     </div>
   <% end %>

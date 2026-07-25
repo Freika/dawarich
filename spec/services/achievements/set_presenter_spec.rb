@@ -27,7 +27,7 @@ RSpec.describe Achievements::SetPresenter do
       expect(set.percent).to eq(13)
       expect(set).not_to be_locked
       expect(set).not_to be_completed
-      expect(set.earned_label).to eq('In progress — 13%')
+      expect(set.earned_label).to eq('2/16 regions')
     end
 
     it 'reports completion dated at the last region' do
@@ -82,7 +82,7 @@ RSpec.describe Achievements::SetPresenter do
       expect(germany[:percent]).to eq(19)
       expect(germany[:completed]).to be(false)
       expect(germany[:locked]).to be(false)
-      expect(germany[:earned_label]).to eq('In progress — 19%')
+      expect(germany[:earned_label]).to eq('3/16 regions')
     end
 
     it 'marks a visited country with no earned subdivisions as visited, not locked' do
@@ -186,7 +186,7 @@ RSpec.describe Achievements::SetPresenter do
         percent: 13,
         completed: false,
         locked: false,
-        earned_label: 'In progress — 13%'
+        earned_label: '2/16 regions'
       )
       expect(set.card_attributes[:map_zoom]).to be_positive
     end

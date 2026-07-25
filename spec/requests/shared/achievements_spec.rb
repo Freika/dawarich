@@ -27,6 +27,29 @@ RSpec.describe 'Shared achievements' do
       expect(response.body).to include('1/16')
     end
 
+    it 'is embeddable in third-party iframes' do
+      get shared_achievement_path(progress.sharing_uuid)
+
+      expect(response.headers['X-Frame-Options']).to be_nil
+      expect(response.headers['Content-Security-Policy']).to include('frame-ancestors *')
+    end
+
+    it 'uses the public shared layout, not the app shell' do
+      get shared_achievement_path(progress.sharing_uuid)
+
+      expect(response.body).to include('Try Dawarich Cloud')
+      expect(response.body).not_to include('data-controller="family-navbar-indicator"')
+    end
+
+    it 'carries social preview metadata' do
+      get shared_achievement_path(progress.sharing_uuid)
+
+      expect(response.body).to include('property="og:title"')
+      expect(response.body).to include('Germany Explorer')
+      expect(response.body).to include('property="og:description"')
+      expect(response.body).to include('<title>Germany Explorer — Dawarich</title>')
+    end
+
     it 'redirects when sharing is disabled' do
       progress.update!(sharing_enabled: false)
 

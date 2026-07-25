@@ -1,7 +1,7 @@
 // Pure localStorage-backed cache for rendered achievement map snapshots.
 // Storage and clock are injected so the logic is unit-testable without a DOM.
 // Bump the version segment to invalidate every cached image at once.
-export const CACHE_PREFIX = "ach-map:v1:"
+export const CACHE_PREFIX = "ach-map:v3:"
 
 export function readCache(store, key) {
   if (!store) return null

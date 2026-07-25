@@ -15,6 +15,8 @@ class AchievementsController < ApplicationController
   def show
     definition = Achievements::Registry.find(params[:key])
     raise ActiveRecord::RecordNotFound if definition.nil?
+    # World tiers are awarded in the background but have no UI entry point.
+    return redirect_to achievements_path if definition.kind == 'region_set'
     raise ActiveRecord::RecordNotFound if definition.flat? && definition.parent_key.nil?
     return redirect_to achievement_path(definition.parent_key) if definition.flat?
 
@@ -22,6 +24,7 @@ class AchievementsController < ApplicationController
     @sidebar_key = definition.parent_key || definition.key
     children = @set.compact? ? @set.region_rows : attach_sharing(@set.region_cards)
     @children = paginate(children)
+    attach_silhouettes(@children) unless @set.compact?
 
     mark_celebrated([@set])
   end
@@ -75,6 +78,19 @@ class AchievementsController < ApplicationController
     Kaminari.paginate_array(collection).page(params[:page]).per(ROWS_PER_PAGE)
   end
 
+  # Locked cards on the current page swap their map art for the region's
+  # geometry outline. Mutates the paginated hashes in place so Kaminari's
+  # pagination metadata survives.
+  def attach_silhouettes(cards)
+    locked = cards.select { |card| card[:locked] && card[:code] }
+    return if locked.empty?
+
+    shapes = Achievements::RegionSilhouettes.new(
+      level: @set.level, codes: locked.map { |card| card[:code] }
+    ).call
+    locked.each { |card| card[:silhouette] = shapes[card[:code]] }
+  end
+
   # A leaf country card carries its own achievement key, so resolve that key's
   # current sharing state for the fullscreen Share/Embed controls.
   def attach_sharing(cards)
@@ -88,6 +104,9 @@ class AchievementsController < ApplicationController
     end
   end
 
+  # Deliberate write-on-GET: the celebration animation must fire exactly once,
+  # on the first render that shows the completed card, so the page view itself
+  # is the event being recorded.
   def mark_celebrated(sets)
     keys = sets.select(&:celebrate?).map { |set| set.definition.key }
     return if keys.empty? || !@exploration.persisted?

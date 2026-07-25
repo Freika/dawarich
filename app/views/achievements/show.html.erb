@@ -20,9 +20,9 @@
           <div class="ach-actions">
             <%= button_to @set.sharing_enabled? ? 'Disable sharing' : 'Share',
                           toggle_sharing_achievement_path(@set.definition.key),
-                          method: :patch, class: 'ach-btn' %>
+                          method: :patch, class: 'btn btn-sm btn-primary' %>
             <% if @set.sharing_enabled? %>
-              <%= link_to 'Public link', shared_achievement_path(@set.sharing_uuid), class: 'ach-btn' %>
+              <%= link_to 'Public link', shared_achievement_path(@set.sharing_uuid), class: 'btn btn-sm' %>
             <% end %>
           </div>
         </div>
@@ -38,7 +38,7 @@
           <div class="ach-child-grid">
             <% @children.each_with_index do |region_card, index| %>
               <% key = region_card[:key] %>
-              <% card = region_card.except(:key, :share, :share_key) %>
+              <% card = region_card.except(:key, :code, :share, :share_key) %>
               <% if key %>
                 <%= link_to achievement_path(key), class: 'ach-card-link' do %>
                   <%= render 'card', size: :sm, reveal_delay: 0.05 * [index, 10].min, **card %>

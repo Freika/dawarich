@@ -2,6 +2,10 @@
 
 module Achievements
   class RegionSetChecker
+    # Above this many newly earned regions in one run (a big import backfill),
+    # collapse the per-region announcements into a single digest notification.
+    REGION_NOTIFY_CAP = 5
+
     def initialize(user, notify: true, oldest_timestamp: nil)
       @user = user
       @notify = notify
@@ -75,13 +79,15 @@ module Achievements
 
     def award_and_notify(progress, newly_earned)
       earned = progress.state.fetch('earned', {})
-      completed = Registry.all.filter_map { |definition| definition if award?(definition, earned) }
+      awarded = user.user_achievements.pluck(:achievement_key).to_set
+      completed = Registry.all.filter_map { |definition| definition if award?(definition, earned, awarded) }
 
       notify_regions(newly_earned, earned)
       completed.each { |definition| notify_completion(definition) }
     end
 
-    def award?(definition, earned)
+    def award?(definition, earned, awarded)
+      return false if awarded.include?(definition.key)
       return false if (definition.region_codes & earned.keys).size < definition.target
 
       UserAchievement.find_or_create_by!(user: user, achievement_key: definition.key) do |award|
@@ -93,6 +99,7 @@ module Achievements
 
     def notify_regions(newly_earned, earned)
       return unless notify
+      return notify_region_digest(newly_earned) if newly_earned.size > REGION_NOTIFY_CAP
 
       newly_earned.each do |code|
         definition = announcer_for(code)
@@ -107,8 +114,18 @@ module Achievements
       end
     end
 
+    def notify_region_digest(newly_earned)
+      ::Notifications::Create.new(
+        user: user, kind: :info,
+        title: "#{newly_earned.size} new regions explored!",
+        content: 'Your latest data unlocked new regions — see them all on the Achievements page.'
+      ).call
+    end
+
     def notify_completion(definition)
       return unless notify
+      # World tiers are currently hidden from the UI; award silently.
+      return if definition.kind == 'region_set'
 
       ::Notifications::Create.new(
         user: user, kind: :info,

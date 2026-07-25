@@ -68,7 +68,9 @@ module Achievements
       return 'Locked' if locked?
       return "Unlocked · #{completed_on.strftime('%-d %b %Y')}" if completed?
 
-      "In progress — #{percent}%"
+      # Absolute count, not a percent: the plate bar already shows how far,
+      # so the label carries the number the bar can't.
+      "#{display_count}/#{target} #{level == :country ? 'countries' : 'regions'}"
     end
 
     def celebrate?
@@ -146,7 +148,7 @@ module Achievements
       definition.regions.map do |code, name|
         lat, lon = region_centroids[code] || [art['lat'], art['lon']]
 
-        child_card(name: name, rarity: rarities.fetch(code, 'Common'), lat: lat, lon: lon,
+        child_card(name: name, code: code, rarity: rarities.fetch(code, 'Common'), lat: lat, lon: lon,
                    zoom: zoom, earned_at: earned[code])
       end
     end
@@ -167,6 +169,7 @@ module Achievements
 
       {
         name: child.card['place'],
+        code: child.country,
         key: link_key,
         share_key: link_key ? nil : child.key,
         rarity: child.card['rarity'],
@@ -189,9 +192,10 @@ module Achievements
       'Locked'
     end
 
-    def child_card(name:, rarity:, lat:, lon:, zoom:, earned_at:, key: nil)
+    def child_card(name:, code:, rarity:, lat:, lon:, zoom:, earned_at:, key: nil)
       {
         name: name,
+        code: code,
         key: key,
         rarity: rarity,
         map_lat: lat,
@@ -206,12 +210,15 @@ module Achievements
       }
     end
 
+    # ST_PointOnSurface, not ST_Centroid: a ring-shaped region's centroid can
+    # land inside an enclave hole (Brandenburg's falls in Berlin), which made
+    # its card art a picture of the wrong region.
     def region_centroids
       @region_centroids ||= Region
                             .where(code: definition.region_codes)
                             .pluck(:code,
-                                   Arel.sql('ST_Y(ST_Centroid(geom::geometry))'),
-                                   Arel.sql('ST_X(ST_Centroid(geom::geometry))'))
+                                   Arel.sql('ST_Y(ST_PointOnSurface(geom::geometry))'),
+                                   Arel.sql('ST_X(ST_PointOnSurface(geom::geometry))'))
                             .to_h { |code, lat, lon| [code, [lat, lon]] }
     end
   end

@@ -5,13 +5,25 @@
       <%= render 'sidebar', continents: @sets, summary: @summary %>
 
       <div class="ach-main">
-        <div class="ach-header">
-          <div class="ach-kicker">Dawarich</div>
-          <h1 class="ach-title">Achievements</h1>
-          <p class="ach-hint">
-            <%= @summary.earned_countries %> of <%= @summary.total_countries %> countries ·
-            <%= @summary.earned_subdivisions %> of <%= @summary.total_subdivisions %> regions
-          </p>
+        <h1 class="ach-page-title">Achievements</h1>
+
+        <div class="ach-stats">
+          <div class="ach-stat">
+            <div class="ach-stat-value ach-stat-value--gold">
+              <%= @summary.earned_countries %><span class="ach-stat-total">/<%= @summary.total_countries %></span>
+            </div>
+            <div class="ach-stat-label">Countries</div>
+          </div>
+          <div class="ach-stat">
+            <div class="ach-stat-value ach-stat-value--teal">
+              <%= @summary.earned_subdivisions %><span class="ach-stat-total">/<%= @summary.total_subdivisions %></span>
+            </div>
+            <div class="ach-stat-label">Regions</div>
+          </div>
+          <div class="ach-stat">
+            <div class="ach-stat-value ach-stat-value--blue"><%= @summary.percent %>%</div>
+            <div class="ach-stat-label">World explored</div>
+          </div>
         </div>
 
         <div class="ach-divider"><span>Continents</span></div>

@@ -8,6 +8,15 @@ let active = 0
 const MAX_CONCURRENT = 2
 const RENDER_TIMEOUT = 8000
 
+// Snapshots are oversampled beyond the card's on-page size so they stay crisp
+// when the fullscreen showcase scales the card up (1.45–2.1×). JPEG keeps the
+// larger renders from blowing up the localStorage cache.
+const SNAPSHOT_QUALITY = 0.85
+
+function snapshotPixelRatio() {
+  return Math.min(2 * (window.devicePixelRatio || 1), 3)
+}
+
 function schedule(task) {
   queue.push(task)
   pump()
@@ -121,6 +130,7 @@ export default class extends Controller {
         attributionControl: false,
         preserveDrawingBuffer: true,
         fadeDuration: 0,
+        pixelRatio: snapshotPixelRatio(),
       })
       this.map = map
 
@@ -138,7 +148,9 @@ export default class extends Controller {
           try {
             const pin = this.computePin(map)
             if (pin) this.applyPin(pin)
-            const dataUrl = map.getCanvas().toDataURL("image/png")
+            const dataUrl = map
+              .getCanvas()
+              .toDataURL("image/jpeg", SNAPSHOT_QUALITY)
             const image = document.createElement("img")
             image.alt = ""
             image.src = dataUrl
@@ -182,10 +194,14 @@ export default class extends Controller {
   computePin(map) {
     if (!this.hasPinTarget || !this.hasMarkerLatValue) return null
 
+    // map.project returns CSS pixels. Derive the CSS size from the canvas
+    // buffer and the map's own pixel ratio — the buffer is oversampled beyond
+    // devicePixelRatio, and the host's clientHeight reads 0 mid-animation.
     const point = map.project([this.markerLngValue, this.markerLatValue])
     const canvas = map.getCanvas()
-    const width = canvas.width / window.devicePixelRatio
-    const height = canvas.height / window.devicePixelRatio
+    const ratio = map.getPixelRatio?.() || window.devicePixelRatio || 1
+    const width = canvas.width / ratio
+    const height = canvas.height / ratio
     if (width === 0 || height === 0) return null
 
     return {

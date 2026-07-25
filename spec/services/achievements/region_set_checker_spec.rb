@@ -96,6 +96,16 @@ RSpec.describe Achievements::RegionSetChecker do
       expect(user.notifications.pluck(:title)).to include('Germany explored!')
     end
 
+    it 'collapses a bulk earn into one digest instead of a notification flood' do
+      stub_const("#{described_class}::REGION_NOTIFY_CAP", 1)
+
+      described_class.new(user, notify: true).call
+
+      titles = user.notifications.pluck(:title)
+      expect(titles).to include('2 new regions explored!')
+      expect(titles).not_to include('Bavaria explored!')
+    end
+
     it 'sends nothing when notifications are off' do
       described_class.new(user, notify: false).call
 

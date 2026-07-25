@@ -33,10 +33,76 @@
   color: #f2ede0;
 }
 
-.ach-hint {
-  margin: 0;
+/* App-style page chrome: the header and stat strip mirror the Stats page so
+   the frame reads as Dawarich; gold stays reserved for the cards themselves. */
+.ach-page-title {
+  font-family: Archivo, ui-sans-serif, system-ui, sans-serif;
+  font-size: 32px;
+  font-weight: 700;
+  color: #f2f2f2;
+  margin: 0 0 18px;
+}
+
+.ach-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin-bottom: 36px;
+  border: 1px solid #2b333c;
+  border-radius: 14px;
+  background: rgba(18, 22, 27, 0.7);
+  overflow: hidden;
+}
+
+.ach-stat {
+  padding: 18px 22px;
+  text-align: center;
+}
+
+.ach-stat + .ach-stat {
+  border-left: 1px solid #2b333c;
+}
+
+.ach-stat-value {
+  font-family: Archivo, ui-sans-serif, system-ui, sans-serif;
+  font-size: 30px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.ach-stat-total {
   font-size: 17px;
+  font-weight: 600;
+  color: #7d858e;
+}
+
+.ach-stat-value--gold {
+  color: #d8b45a;
+}
+
+.ach-stat-value--teal {
+  color: #2dd4bf;
+}
+
+.ach-stat-value--blue {
+  color: #60a5fa;
+}
+
+.ach-stat-label {
+  margin-top: 4px;
+  font-size: 13.5px;
   color: #9aa4ad;
+}
+
+@media (max-width: 640px) {
+  .ach-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .ach-stat + .ach-stat {
+    border-left: none;
+    border-top: 1px solid #2b333c;
+  }
 }
 
 .ach-grid {
@@ -262,6 +328,32 @@
   stroke: #c4cbd2;
 }
 
+/* Locked regions show their geometry as an embossed scratch-map shape
+   waiting to be filled, instead of a bare lock on an empty map. */
+.ach-art-silhouette {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 22px;
+  background: radial-gradient(ellipse at 50% 42%, #171d24 0%, #10141a 78%);
+}
+
+.ach-silhouette-svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.ach-silhouette-svg path {
+  fill: #28303a;
+  stroke: #414b57;
+  stroke-width: 1.5px;
+  vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.55));
+}
+
 .ach-pin {
   position: absolute;
   left: 50%;
@@ -306,6 +398,22 @@
   font-size: 17px;
   color: #f2ede0;
   text-wrap: balance;
+}
+
+/* Quest-log progress under the name: scannable across a whole grid. */
+.ach-plate-bar {
+  margin-top: 7px;
+  height: 3px;
+  border-radius: 2px;
+  background: rgb(255 255 255 / 10%);
+  overflow: hidden;
+}
+
+.ach-plate-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #b6903e, #e6c877);
 }
 
 .ach-body {
@@ -390,22 +498,6 @@
   /* Above the holo (z-index 4) so the shimmer is overlapped BY the badge,
      not painted over it. */
   z-index: 5;
-}
-
-.ach-badge--progress {
-  background: #1a1f26;
-}
-
-.ach-badge-ring {
-  position: absolute;
-  inset: 3px;
-  border-radius: 50%;
-  background: conic-gradient(
-    var(--frame) var(--progress-deg, 0deg),
-    rgba(255, 255, 255, 0.1) 0
-  );
-  -webkit-mask-image: radial-gradient(circle, transparent 62%, #000 63%);
-  mask-image: radial-gradient(circle, transparent 62%, #000 63%);
 }
 
 .ach-badge-text {
@@ -723,24 +815,6 @@
   margin-top: 12px;
 }
 
-.ach-btn {
-  font-size: 13px;
-  padding: 6px 14px;
-  border-radius: 8px;
-  border: 1px solid #3d4854;
-  background: #1a2027;
-  color: #c4cbd2;
-  cursor: pointer;
-  transition:
-    border-color 0.2s ease,
-    color 0.2s ease;
-}
-
-.ach-btn:hover {
-  border-color: #d8b45a;
-  color: #f0d080;
-}
-
 .ach-footnote {
   text-align: center;
   margin: 48px 0 0;
@@ -853,7 +927,7 @@
   font-size: 11px;
   letter-spacing: 2.5px;
   text-transform: uppercase;
-  color: #d8b45a;
+  color: #8a929b;
   padding: 12px 10px 4px;
 }
 
@@ -879,8 +953,8 @@
 }
 
 .ach-side-link--active {
-  background: rgba(216, 180, 90, 0.08);
-  border-left-color: #d8b45a;
+  background: rgb(96 165 250 / 10%);
+  border-left-color: #60a5fa;
   color: #f2ede0;
 }
 
@@ -910,7 +984,7 @@
   display: block;
   height: 100%;
   border-radius: 2px;
-  background: #d8b45a;
+  background: #60a5fa;
 }
 
 .ach-card-link {
@@ -946,7 +1020,7 @@
   font-size: 13px;
   letter-spacing: 2.5px;
   text-transform: uppercase;
-  color: #d8b45a;
+  color: #8a929b;
 }
 
 .ach-divider::before,
@@ -1023,8 +1097,15 @@
     grid-template-columns: 1fr;
   }
 
+  /* Content first on small screens: the title and cards lead, the nav
+     follows, instead of the sidebar filling the first viewport. */
   .ach-side {
     position: static;
+    order: 2;
+  }
+
+  .ach-main {
+    order: 1;
   }
 }
 
@@ -1106,7 +1187,7 @@
 
 .ach-row-code,
 .ach-row-date {
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 12px;
   font-variant-numeric: tabular-nums;
   color: #6f7780;
@@ -1144,23 +1225,8 @@
 }
 
 .ach-pagination .current {
-  background: rgb(216 180 90 / 16%);
-  color: #d8b45a;
-}
-
-.ach-progression {
-  display: inline-flex;
-  align-items: center;
-  padding: 3px 11px;
-  border-radius: 999px;
-  border: 1px solid rgb(148 163 184 / 22%);
-  background: rgb(255 255 255 / 4%);
-  font-family: "JetBrains Mono", ui-monospace, monospace;
-  font-size: 10.5px;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: #9aa2ac;
+  background: rgb(96 165 250 / 14%);
+  color: #60a5fa;
 }
 
 /* Fullscreen card expansion */
@@ -1248,6 +1314,10 @@
   z-index: 2;
   display: flex;
   gap: 10px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  border: 1px solid #2b333c;
+  background: rgb(18 22 27 / 85%);
 }
 
 .ach-modal-tools[hidden],
@@ -1301,7 +1371,7 @@
   border: 1px solid #333b45;
   background: #0f1318;
   color: #e8e4da;
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 12px;
 }
 
@@ -1315,8 +1385,28 @@
   cursor: pointer;
 }
 
+/* Phones are taller than the max-height breakpoint above, so the showcase
+   scale must also clamp on width or the card overflows the screen. */
 @media (max-width: 640px) {
   .ach-modal-stage {
+    min-height: 70vh;
+  }
+
+  .ach-modal-stage .ach-card-wrap {
+    transform: scale(1.1);
+  }
+
+  .ach-modal-stage .ach-card-wrap:has(.ach-card--sm) {
+    transform: scale(1.7);
+  }
+}
+
+@media (max-width: 360px) {
+  .ach-modal-stage .ach-card-wrap {
     transform: scale(1);
+  }
+
+  .ach-modal-stage .ach-card-wrap:has(.ach-card--sm) {
+    transform: scale(1.5);
   }
 }

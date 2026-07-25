@@ -31,7 +31,8 @@ RSpec.describe 'Achievements' do
 
         get achievements_path
 
-        expect(response.body).to include('2 of 238 countries')
+        expect(response.body).to include('ach-stats')
+        expect(response.body).to include('<span class="ach-stat-total">/238</span>')
       end
 
       describe 'first-view celebration' do
@@ -82,6 +83,22 @@ RSpec.describe 'Achievements' do
           expect(response.body).not_to include(%(href="#{achievement_path('country_fr')}"))
         end
 
+        it 'renders locked regions as geometry silhouettes when shapes exist' do
+          create(:region, code: 'DE-BW',
+                          geom: 'MULTIPOLYGON (((8.0 47.5, 8.0 49.8, 10.5 49.8, 10.5 47.5, 8.0 47.5)))')
+          exploration('DE-BY' => '2026-07-01T10:00:00Z')
+
+          get achievement_path('country_de')
+
+          expect(response.body).to include('ach-art-silhouette')
+        end
+
+        it 'redirects a hidden world tier page to the index' do
+          get achievement_path('border_hopper')
+
+          expect(response).to redirect_to(achievements_path)
+        end
+
         it 'sends a flat country to its continent instead of 404ing' do
           get achievement_path('country_fr')
 
@@ -92,26 +109,6 @@ RSpec.describe 'Achievements' do
           get achievement_path('country_aq')
 
           expect(response).to have_http_status(:not_found)
-        end
-
-        it 'renders a world tier as a paginated compact list, earned first' do
-          exploration('ZW' => '2026-07-01T10:00:00Z')
-
-          get achievement_path('border_hopper')
-
-          expect(response.body).to include('ach-list')
-          expect(response.body).not_to include('ach-child-grid')
-          expect(response.body.index('Zimbabwe')).to be < response.body.index('Afghanistan')
-        end
-
-        it 'paginates the tier list at ten per page' do
-          get achievement_path('border_hopper')
-          first_page = response.body.scan(/<li class="ach-row/).size
-
-          get achievement_path('border_hopper', page: 2)
-
-          expect(first_page).to eq(10)
-          expect(response.body).to include('ach-row')
         end
 
         it 'returns 404 for the old pre-rename keys' do

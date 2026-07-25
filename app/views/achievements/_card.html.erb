@@ -1,4 +1,4 @@
-<%# locals: (name:, rarity:, map_lat:, map_lon:, map_zoom:, marker_lat: nil, marker_lon: nil, description: nil, flavor: nil, place: nil, size: :md, percent: 0, completed: false, locked: false, earned_label: nil, celebrate: false, reveal_delay: 0.1, progression: nil, modal: false, share: nil) %>
+<%# locals: (name:, rarity:, map_lat:, map_lon:, map_zoom:, marker_lat: nil, marker_lon: nil, description: nil, flavor: nil, place: nil, size: :md, percent: 0, completed: false, locked: false, earned_label: nil, celebrate: false, reveal_delay: 0.1, modal: false, share: nil, silhouette: nil) %>
 <% actions = 'mousemove->achievement-card#move mouseleave->achievement-card#leave'
    actions += ' click->card-modal#open keydown->card-modal#openOnKey' if modal %>
 <div class="ach-card-wrap <%= 'ach-card-wrap--celebrate' if celebrate %> <%= 'ach-card-wrap--expandable' if modal %>"
@@ -6,7 +6,7 @@
      data-controller="achievement-card"
      data-achievement-card-locked-value="<%= locked %>"
      data-action="<%= actions %>"
-     <%= 'role=button tabindex=0'.html_safe if modal %>
+     <% if modal %>role="button" tabindex="0"<% end %>
      <% if share %>
        data-share-key="<%= share[:key] %>"
        data-share-shared="<%= share[:shared] %>"
@@ -16,37 +16,43 @@
   <% state_class = locked ? 'ach-card--locked' : (completed ? '' : 'ach-card--partial') %>
   <div class="ach-card <%= 'ach-card--sm' if size == :sm %> ach-card--<%= rarity.downcase %> <%= state_class %>">
     <div class="ach-frame">
-      <div class="ach-art" role="img" aria-label="<%= place || name %>"
-           data-controller="achievement-map"
-           data-achievement-map-lat-value="<%= map_lat %>"
-           data-achievement-map-lng-value="<%= map_lon %>"
-           data-achievement-map-zoom-value="<%= map_zoom %>"
-           <% if marker_lat %>
-             data-achievement-map-marker-lat-value="<%= marker_lat %>"
-             data-achievement-map-marker-lng-value="<%= marker_lon %>"
-           <% end %>>
-        <div class="ach-art-canvas" data-achievement-map-target="host"></div>
-        <div class="ach-art-shade"></div>
-        <% if !locked && !completed %>
-          <div class="ach-art-fog" style="opacity: <%= ((1 - (percent / 100.0)) * 0.9).round(2) %>;"></div>
-        <% end %>
-        <% if locked %>
-          <div class="ach-art-lock"><%= icon 'lock' %></div>
-        <% else %>
-          <div class="ach-pin" data-achievement-map-target="pin">
-            <div class="ach-pin-head"></div>
-            <div class="ach-pin-shadow"></div>
-          </div>
-        <% end %>
-      </div>
+      <% if silhouette %>
+        <div class="ach-art" role="img" aria-label="<%= place || name %>">
+          <div class="ach-art-silhouette"><%= region_silhouette(silhouette) %></div>
+        </div>
+      <% else %>
+        <div class="ach-art" role="img" aria-label="<%= place || name %>"
+             data-controller="achievement-map"
+             data-achievement-map-lat-value="<%= map_lat %>"
+             data-achievement-map-lng-value="<%= map_lon %>"
+             data-achievement-map-zoom-value="<%= map_zoom %>"
+             <% if marker_lat %>
+               data-achievement-map-marker-lat-value="<%= marker_lat %>"
+               data-achievement-map-marker-lng-value="<%= marker_lon %>"
+             <% end %>>
+          <div class="ach-art-canvas" data-achievement-map-target="host"></div>
+          <div class="ach-art-shade"></div>
+          <% if !locked && !completed %>
+            <div class="ach-art-fog" style="opacity: <%= ((1 - (percent / 100.0)) * 0.9).round(2) %>;"></div>
+          <% end %>
+          <% if locked %>
+            <div class="ach-art-lock"><%= icon 'lock' %></div>
+          <% else %>
+            <div class="ach-pin" data-achievement-map-target="pin">
+              <div class="ach-pin-head"></div>
+              <div class="ach-pin-shadow"></div>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
       <div class="ach-plate">
         <div class="ach-plate-name"><%= name %></div>
+        <% if !locked && !completed && percent.positive? %>
+          <div class="ach-plate-bar"><span style="width: <%= percent %>%;"></span></div>
+        <% end %>
       </div>
-      <% if description || flavor || progression %>
+      <% if description || flavor %>
         <div class="ach-body">
-          <% if progression %>
-            <div class="ach-progression"><%= progression %></div>
-          <% end %>
           <p class="ach-desc"><%= description %></p>
           <div class="ach-flavor"><%= flavor %></div>
         </div>
@@ -58,14 +64,15 @@
         <div class="ach-earned"><%= earned_label %></div>
       <% end %>
     </div>
-    <div class="ach-badge <%= 'ach-badge--progress' unless locked %>">
-      <% if locked %>
-        <%= icon 'lock' %>
-      <% else %>
-        <div class="ach-badge-ring" style="--progress-deg: <%= (percent * 3.6).round %>deg;"></div>
-        <div class="ach-badge-text"><%= completed ? '✓' : "#{percent}%" %></div>
-      <% end %>
-    </div>
+    <% if locked || completed %>
+      <div class="ach-badge">
+        <% if locked %>
+          <%= icon 'lock' %>
+        <% else %>
+          <div class="ach-badge-text">✓</div>
+        <% end %>
+      </div>
+    <% end %>
     <div class="ach-holo"></div>
     <% if rarity == 'Legendary' && completed %>
       <div class="ach-shimmer"></div>
