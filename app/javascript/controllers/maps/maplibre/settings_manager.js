@@ -1116,25 +1116,64 @@ export class SettingsController {
   async applyMapStyle(styleName) {
     this.syncStyleDependentToggles(styleName)
     const style = await getMapStyle(styleName, {
-      hiddenTileCategories:
-        SettingsManager.getSetting("hiddenTileCategories") || [],
-      disabledPoiGroups: SettingsManager.getSetting("disabledPoiGroups") || [],
-      customTheme: SettingsManager.getSetting("customTheme"),
+      ...this.mapStyleOptions(),
       vectorTilesUrl: SettingsManager.getSetting("vectorTilesUrl"),
     })
 
     // Clear layer references
     this.layerManager.clearLayerReferences()
 
-    this.map.setStyle(style)
+    if (typeof style === "string") {
+      this.applyUserStyleUrl(style, styleName)
+      return
+    }
 
-    // Reload layers after style change. setStyle replaces the whole style
-    // document — including the projection — so globe mode must be restored
-    // or every style/theme change silently drops back to mercator.
-    this.map.once("style.load", () => {
-      this.restoreGlobeProjection()
-      this.controller.loadMapData()
-    })
+    this.map.setStyle(style)
+    this.map.once("style.load", () => this.restoreStyleLayers())
+  }
+
+  mapStyleOptions() {
+    return {
+      hiddenTileCategories:
+        SettingsManager.getSetting("hiddenTileCategories") || [],
+      disabledPoiGroups: SettingsManager.getSetting("disabledPoiGroups") || [],
+      customTheme: SettingsManager.getSetting("customTheme"),
+    }
+  }
+
+  // Reload layers after a style change. setStyle replaces the whole style
+  // document — including the projection — so globe mode must be restored
+  // or every style/theme change silently drops back to mercator.
+  restoreStyleLayers() {
+    this.restoreGlobeProjection()
+    this.controller.loadMapData()
+  }
+
+  applyUserStyleUrl(styleUrl, styleName) {
+    let settled = false
+
+    const onLoad = () => {
+      if (settled) return
+      settled = true
+      this.map.off("error", onError)
+      this.restoreStyleLayers()
+    }
+
+    const onError = async () => {
+      if (settled) return
+      settled = true
+      this.map.off("style.load", onLoad)
+      Toast.error(
+        "Custom map style could not be loaded; reverting to the default style.",
+      )
+      const fallback = await getMapStyle(styleName, this.mapStyleOptions())
+      this.map.setStyle(fallback)
+      this.map.once("style.load", () => this.restoreStyleLayers())
+    }
+
+    this.map.once("style.load", onLoad)
+    this.map.once("error", onError)
+    this.map.setStyle(styleUrl)
   }
 
   restoreGlobeProjection() {
@@ -1354,7 +1393,9 @@ export class SettingsController {
     const raw = event.target.value.trim()
 
     if (!SettingsManager.validVectorTilesUrl(raw)) {
-      Toast.error("Tile URL must include {z}, {x}, and {y} placeholders")
+      Toast.error(
+        "Tile URL must include {z}, {x}, and {y} placeholders, or be a MapLibre style URL ending in .json",
+      )
       return
     }
 

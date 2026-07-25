@@ -2,6 +2,13 @@ import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
 import test from "node:test"
 
+const basemapUrlSource = await readFile(
+  new URL(
+    "../../app/javascript/maps_maplibre/utils/basemap_url.js",
+    import.meta.url,
+  ),
+  "utf8",
+)
 const source = await readFile(
   new URL(
     "../../app/javascript/maps_maplibre/utils/settings_manager.js",
@@ -9,7 +16,9 @@ const source = await readFile(
   ),
   "utf8",
 )
-const moduleUrl = `data:text/javascript;base64,${Buffer.from(source).toString("base64")}`
+const withoutImports = source.replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
+const combinedSource = `${basemapUrlSource}\n${withoutImports}`
+const moduleUrl = `data:text/javascript;base64,${Buffer.from(combinedSource).toString("base64")}`
 const { LAYER_COLOR_DEFAULTS, SettingsManager } = await import(moduleUrl)
 
 async function loadSettingsController(settingsManager) {
@@ -53,6 +62,21 @@ test("vector tile URLs require z, x, and y placeholders", () => {
     false,
   )
   assert.equal(SettingsManager.validVectorTilesUrl(""), true)
+})
+
+test("basemap URLs also accept raster XYZ and full style.json URLs", () => {
+  assert.equal(
+    SettingsManager.validVectorTilesUrl("https://t.example/{z}/{x}/{y}.png"),
+    true,
+  )
+  assert.equal(
+    SettingsManager.validVectorTilesUrl("https://t.example/style.json?key=a"),
+    true,
+  )
+  assert.equal(
+    SettingsManager.validVectorTilesUrl("https://t.example/basemap"),
+    false,
+  )
 })
 
 test("multiple setting updates are persisted in one complete snapshot", async () => {
