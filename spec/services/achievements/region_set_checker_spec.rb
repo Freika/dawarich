@@ -53,6 +53,15 @@ RSpec.describe Achievements::RegionSetChecker do
 
       expect(exploration.state['earned']).to have_key('DE-BY')
     end
+
+    it 'does not accumulate dwell twice when re-run against an unchanged cursor' do
+      described_class.new(user, notify: false).call
+      dwell = exploration.state['dwell'].dup
+
+      described_class.new(user, notify: false).call
+
+      expect(exploration.state['dwell']).to eq(dwell)
+    end
   end
 
   describe 'flat countries' do
@@ -143,6 +152,22 @@ RSpec.describe Achievements::RegionSetChecker do
 
       expect(exploration.state['dwell']['DE-BY']).to eq(600)
       expect(exploration.state['earned']).to be_empty
+    end
+  end
+
+  describe 'when the user has no usable points' do
+    it 'creates no progress row at all' do
+      described_class.new(user, notify: false).call
+
+      expect(exploration).to be_nil
+    end
+
+    it 'ignores points that carry no coordinates' do
+      create(:point, user:, timestamp: base_ts).update_column(:lonlat, nil)
+
+      described_class.new(user, notify: false).call
+
+      expect(exploration).to be_nil
     end
   end
 end

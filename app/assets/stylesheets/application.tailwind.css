@@ -3,24 +3,6 @@
 @tailwind utilities;
 @tailwind daisyui;
 
-@layer base {
-  h1,
-  h2,
-  h3 {
-    @apply font-display;
-    letter-spacing: -0.01em;
-  }
-
-  .stats .stat-value,
-  time,
-  code,
-  kbd,
-  samp {
-    @apply font-mono;
-    font-variant-numeric: tabular-nums;
-  }
-}
-
 /*
 
 @layer components {

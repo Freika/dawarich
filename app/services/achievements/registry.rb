@@ -40,7 +40,15 @@ module Achievements
       end
 
       def subdivision_sets
-        all.select { |definition| definition.level == :subdivision }
+        @subdivision_sets ||= all.select { |definition| definition.level == :subdivision }
+      end
+
+      def country_codes
+        @country_codes ||= all.select { |definition| definition.kind == 'country' }.map(&:country).to_set
+      end
+
+      def subdivision_codes
+        @subdivision_codes ||= subdivision_sets.flat_map(&:region_codes).to_set
       end
 
       def find(key)
@@ -53,6 +61,9 @@ module Achievements
         @planet = nil
         @hand_yaml = nil
         @country_universe = nil
+        @subdivision_sets = nil
+        @country_codes = nil
+        @subdivision_codes = nil
       end
 
       private

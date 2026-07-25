@@ -6,6 +6,8 @@ module Achievements
     # collapse the per-region announcements into a single digest notification.
     REGION_NOTIFY_CAP = 5
 
+    COMMIT_ATTEMPTS = 2
+
     def initialize(user, notify: true, oldest_timestamp: nil)
       @user = user
       @notify = notify
@@ -13,22 +15,24 @@ module Achievements
     end
 
     def call
-      cursor = latest_timestamp
-      return if cursor.nil?
+      @cursor = latest_timestamp
+      return if @cursor.nil?
 
-      progress = fetch_progress
-      newly_earned = []
+      @progress = fetch_progress
+      @newly_earned = []
 
-      progress.with_lock do
-        previous = progress.state['cursor'].to_i
-        next if previous.positive? && cursor <= previous && !recompute?(previous)
+      COMMIT_ATTEMPTS.times do
+        previous = @progress.reload.state['cursor'].to_i
+        break if settled?(previous)
 
         replace = recompute?(previous)
         deltas = collect_deltas(replace ? 0 : previous)
-        progress.update!(state: merged_state(progress.state, deltas, newly_earned, replace: replace, cursor: cursor))
+        break if commit(deltas, replace: replace, expected: previous)
+
+        @newly_earned.clear
       end
 
-      award_and_notify(progress.reload, newly_earned)
+      award_and_notify(@progress.reload, @newly_earned)
     end
 
     private
@@ -43,6 +47,25 @@ module Achievements
     end
 
     attr_reader :user, :notify, :oldest_timestamp
+
+    def settled?(previous)
+      previous.positive? && @cursor <= previous && !recompute?(previous)
+    end
+
+    def commit(deltas, replace:, expected:)
+      committed = false
+
+      @progress.with_lock do
+        next unless @progress.state['cursor'].to_i == expected
+
+        @progress.update!(
+          state: merged_state(@progress.state, deltas, @newly_earned, replace: replace, cursor: @cursor)
+        )
+        committed = true
+      end
+
+      committed
+    end
 
     def latest_timestamp
       user.points.not_anomaly.where.not(lonlat: nil).maximum(:timestamp)

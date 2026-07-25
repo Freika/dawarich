@@ -5,6 +5,10 @@ require 'rails_helper'
 RSpec.describe Achievements::CheckJob do
   let(:user) { create(:user) }
 
+  before { Flipper.enable(:achievements) }
+
+  after { Flipper.disable(:achievements) }
+
   it 'runs the checker for the user' do
     checker = instance_double(Achievements::RegionSetChecker, call: nil)
     allow(Achievements::RegionSetChecker).to receive(:new)
@@ -16,7 +20,6 @@ RSpec.describe Achievements::CheckJob do
   end
 
   it 'forwards the oldest timestamp to the checker' do
-    Flipper.enable(:achievements)
     checker = instance_double(Achievements::RegionSetChecker, call: nil)
     allow(Achievements::RegionSetChecker).to receive(:new)
       .with(user, notify: true, oldest_timestamp: 123).and_return(checker)
@@ -24,22 +27,27 @@ RSpec.describe Achievements::CheckJob do
     described_class.perform_now(user.id, oldest_timestamp: 123)
 
     expect(checker).to have_received(:call)
-  ensure
-    Flipper.disable(:achievements)
   end
 
   it 'does nothing for a missing user' do
     expect { described_class.perform_now(-1) }.not_to raise_error
   end
 
-  it 'suppresses notifications while the feature flag is disabled' do
-    checker = instance_double(Achievements::RegionSetChecker, call: nil)
-    allow(Flipper).to receive(:enabled?).with(:achievements).and_return(false)
-    allow(Achievements::RegionSetChecker).to receive(:new)
-      .with(user, notify: false, oldest_timestamp: nil).and_return(checker)
+  it 'skips computation entirely while the feature flag is disabled' do
+    Flipper.disable(:achievements)
+    create(:point, user: user, timestamp: 1)
 
     described_class.perform_now(user.id, notify: true)
 
-    expect(checker).to have_received(:call)
+    expect(Achievements::Progress.where(user: user)).to be_empty
+  end
+
+  it 'still computes for a forced backfill while the feature flag is disabled' do
+    Flipper.disable(:achievements)
+    create(:point, user: user, timestamp: 1)
+
+    described_class.perform_now(user.id, notify: false, force: true)
+
+    expect(Achievements::Progress.where(user: user)).to be_present
   end
 end

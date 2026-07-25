@@ -32,7 +32,7 @@ class AchievementsController < ApplicationController
   def toggle_sharing
     raise ActiveRecord::RecordNotFound unless Achievements::Registry.find(params[:key])
 
-    progress = current_user.achievement_progresses.find_or_create_by!(achievement_key: params[:key])
+    progress = sharing_carrier(params[:key])
     progress.update!(
       sharing_enabled: desired_sharing_state(progress),
       sharing_uuid: progress.sharing_uuid || SecureRandom.uuid
@@ -51,6 +51,12 @@ class AchievementsController < ApplicationController
   end
 
   private
+
+  def sharing_carrier(key)
+    current_user.achievement_progresses.find_or_create_by!(achievement_key: key)
+  rescue ActiveRecord::RecordNotUnique
+    current_user.achievement_progresses.find_by!(achievement_key: key)
+  end
 
   def load_exploration
     @exploration = Achievements::Progress.exploration_for(current_user)

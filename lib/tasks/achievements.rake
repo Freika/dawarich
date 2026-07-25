@@ -7,7 +7,7 @@ namespace :achievements do
       warn 'Skipping achievements backfill: countries table is empty (run db:seed first).'
     else
       Achievements::LoadRegions.new.call
-      Achievements::BulkCheckJob.perform_later(notify: false)
+      Achievements::BulkCheckJob.perform_later(notify: false, force: true)
     end
   end
 end

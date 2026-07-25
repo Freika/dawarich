@@ -6,8 +6,9 @@ module Achievements
     COVERAGE_THRESHOLD = 0.9
 
     SQL = <<~SQL
-      WITH pts AS (
+      WITH pts AS MATERIALIZED (
         SELECT p."timestamp" AS ts,
+               p.country_id AS country_id,
                c.iso_a2 AS code,
                LEAD(p."timestamp") OVER (ORDER BY p."timestamp", p.id) AS next_ts,
                LEAD(c.iso_a2) OVER (ORDER BY p."timestamp", p.id) AS next_code
@@ -18,19 +19,17 @@ module Achievements
           AND p.lonlat IS NOT NULL
           AND (p.anomaly IS DISTINCT FROM TRUE)
       )
-      SELECT code, SUM(LEAST(next_ts - ts, %<cap>d))::bigint
+      SELECT NULL::text AS code,
+             NULL::bigint AS dwell,
+             COUNT(*) FILTER (WHERE country_id IS NOT NULL)::float / NULLIF(COUNT(*), 0) AS coverage
+      FROM pts
+      UNION ALL
+      SELECT code,
+             SUM(LEAST(next_ts - ts, %<cap>d))::bigint AS dwell,
+             NULL::float AS coverage
       FROM pts
       WHERE code IS NOT NULL AND code = next_code AND next_ts > ts
       GROUP BY code
-    SQL
-
-    COVERAGE_SQL = <<~SQL
-      SELECT COUNT(*) FILTER (WHERE country_id IS NOT NULL)::float / NULLIF(COUNT(*), 0)
-      FROM points
-      WHERE user_id = %<user_id>d
-        AND "timestamp" >= %<since>d
-        AND lonlat IS NOT NULL
-        AND (anomaly IS DISTINCT FROM TRUE)
     SQL
 
     def initialize(user, since: 0)
@@ -39,9 +38,11 @@ module Achievements
     end
 
     def call
-      return spatial_fallback unless country_ids_populated?
+      rows = ApplicationRecord.connection.select_rows(sql)
+      return spatial_fallback unless country_ids_populated?(rows)
 
-      ApplicationRecord.connection.select_rows(sql).to_h { |code, dwell| [code, dwell.to_i] }
+      rows.reject { |code, _dwell, _coverage| code.nil? }
+          .to_h { |code, dwell, _coverage| [code, dwell.to_i] }
     end
 
     private
@@ -50,10 +51,8 @@ module Achievements
       format(SQL, user_id: @user.id, since: @since, cap: PAIR_CAP_SECONDS)
     end
 
-    def country_ids_populated?
-      coverage = ApplicationRecord.connection.select_value(
-        format(COVERAGE_SQL, user_id: @user.id, since: @since)
-      )
+    def country_ids_populated?(rows)
+      coverage = rows.find { |code, _dwell, _coverage| code.nil? }&.last
 
       coverage.nil? || coverage.to_f >= COVERAGE_THRESHOLD
     end

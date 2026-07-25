@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+### Added
+
+- Exploration achievements: every country gets a collectible card, and 183 of them a grid of their first-level regions. A region counts as explored once time spent inside it passes your "minimum minutes spent in city" setting, so pass-throughs don't count. Earned regions are never revoked. Behind the `achievements` feature flag. (#3121)
+
 ### Fixed
 
 - Google Semantic History and phone Timeline imports now tag points with a per-import tracker id instead of one shared constant, so tracks from different devices are no longer braided together. A one-time backfill rewrites existing points and regenerates affected tracks per user.

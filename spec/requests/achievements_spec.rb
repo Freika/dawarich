@@ -153,6 +153,18 @@ RSpec.describe 'Achievements' do
           expect(response).to have_http_status(:not_found)
         end
 
+        it 'recovers when a concurrent request creates the carrier first' do
+          carrier = create(:achievement_progress, user:, achievement_key: 'country_de')
+          allow_any_instance_of(ActiveRecord::Relation).to receive(:find_or_create_by!)
+            .and_raise(ActiveRecord::RecordNotUnique,
+                       'index_achievement_progresses_on_user_id_and_achievement_key')
+
+          patch toggle_sharing_achievement_path('country_de')
+
+          expect(response).to have_http_status(:redirect)
+          expect(carrier.reload.sharing_enabled).to be(true)
+        end
+
         it 'returns the sharing state and public url as JSON' do
           patch toggle_sharing_achievement_path('country_de'), as: :json
 

@@ -37,13 +37,11 @@ module Achievements
     end
 
     def country_codes
-      @country_codes ||= Registry.all
-                                 .select { |definition| definition.kind == 'country' }
-                                 .map(&:country).to_set
+      Registry.country_codes
     end
 
     def subdivision_codes
-      @subdivision_codes ||= Registry.subdivision_sets.flat_map(&:region_codes).to_set
+      Registry.subdivision_codes
     end
   end
 end
