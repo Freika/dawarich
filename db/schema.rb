@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_07_19_190000) do
+ActiveRecord::Schema[8.0].define(version: 2026_07_24_164000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -626,6 +626,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_07_19_190000) do
   add_foreign_key "place_visits", "places"
   add_foreign_key "place_visits", "visits"
   add_foreign_key "points", "points_raw_data_archives", column: "raw_data_archive_id", on_delete: :restrict
+  add_foreign_key "points", "tracks", column: "track_id", on_delete: :restrict
   add_foreign_key "points", "users"
   add_foreign_key "points", "visits"
   add_foreign_key "points_raw_data_archives", "users"

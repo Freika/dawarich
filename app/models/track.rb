@@ -62,13 +62,23 @@ class Track < ApplicationRecord
     ids = Array(ids).uniq
     return 0 if ids.empty?
 
-    owners = where(id: ids).pluck(:id, :user_id)
-    return 0 if owners.empty?
+    deleted_owners = []
+    transaction do
+      owners = where(id: ids).where.missing(:points).lock('FOR UPDATE OF tracks').pluck(:id, :user_id)
+      return 0 if owners.empty?
 
-    TrackSegment.where(track_id: ids).delete_all
-    deleted = where(id: ids).delete_all
-    broadcast_destroyed(owners)
-    deleted
+      orphan_ids = owners.map(&:first)
+      TrackSegment.where(track_id: orphan_ids).delete_all
+      where(id: orphan_ids).delete_all
+      deleted_owners = owners
+    end
+
+    broadcast_destroyed(deleted_owners)
+    deleted_owners.size
+  rescue ActiveRecord::InvalidForeignKey
+    # A point was assigned after the orphan check. The transaction is rolled
+    # back, leaving both the track and its segments intact for recalculation.
+    0
   end
 
   def self.broadcast_destroyed(track_owner_pairs)

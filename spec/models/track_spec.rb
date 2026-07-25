@@ -21,6 +21,16 @@ RSpec.describe Track, type: :model do
       expect(TrackSegment.where(track_id: orphan.id)).to be_empty
     end
 
+    it 'does not delete tracks that still have points' do
+      track = create(:track, user: user)
+      segment = create(:track_segment, track: track)
+      create(:point, user: user, track: track)
+
+      expect(Track.delete_orphaned([track.id])).to eq(0)
+      expect(Track.exists?(track.id)).to be true
+      expect(TrackSegment.exists?(segment.id)).to be true
+    end
+
     it 'broadcasts a destroyed event to the owner for each deleted track' do
       orphan = create(:track, user: user)
 

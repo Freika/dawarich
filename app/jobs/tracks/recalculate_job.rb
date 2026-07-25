@@ -10,6 +10,12 @@ class Tracks::RecalculateJob < ApplicationJob
       return
     end
 
+    unless track.points.exists?
+      return if Track.delete_orphaned([track.id]).positive?
+
+      track.reload
+    end
+
     track.recalculate_path_and_distance!
 
     track.broadcast_geojson_updated

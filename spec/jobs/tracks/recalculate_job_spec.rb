@@ -9,6 +9,7 @@ RSpec.describe Tracks::RecalculateJob, type: :job do
 
     before do
       allow(ExceptionReporter).to receive(:call)
+      create_list(:point, 2, user: user, track: track)
     end
 
     it 'recalculates path and distance for the track' do
@@ -34,6 +35,38 @@ RSpec.describe Tracks::RecalculateJob, type: :job do
       it 'does not attempt to recalculate' do
         expect_any_instance_of(Track).not_to receive(:recalculate_path_and_distance!)
         described_class.perform_now(-1)
+      end
+    end
+
+    context 'when track has no points' do
+      before { track.points.delete_all }
+
+      it 'deletes the orphaned track instead of reporting an invalid path' do
+        track
+
+        expect do
+          described_class.perform_now(track.id)
+        end.to change(Track, :count).by(-1)
+
+        expect(ExceptionReporter).not_to have_received(:call)
+        expect(Track.exists?(track.id)).to be false
+      end
+    end
+
+    context 'when a point is reattached after the orphan check' do
+      before { track.points.delete_all }
+
+      it 'keeps and recalculates the track' do
+        allow(track.points).to receive(:exists?).and_return(false)
+        allow(Track).to receive(:delete_orphaned).with([track.id]) do
+          create(:point, user: user, track: track)
+          0
+        end
+
+        expect_any_instance_of(Track).to receive(:recalculate_path_and_distance!)
+        described_class.perform_now(track.id)
+
+        expect(Track.exists?(track.id)).to be true
       end
     end
 
