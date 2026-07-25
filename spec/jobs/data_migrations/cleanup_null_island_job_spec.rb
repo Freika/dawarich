@@ -42,6 +42,16 @@ RSpec.describe DataMigrations::CleanupNullIslandJob do
       .and have_enqueued_job(Tracks::RecalculateJob).with(track.id)
   end
 
+  it 'flags legacy points without timestamps and recalculates their tracks' do
+    zero_point.update_column(:timestamp, nil)
+
+    expect { described_class.perform_now(user.id) }.not_to raise_error
+
+    expect(Tracks::RecalculateJob).to have_been_enqueued.with(track.id)
+    expect(Stats::CalculatingJob).not_to have_been_enqueued
+    expect(zero_point.reload.anomaly).to be(true)
+  end
+
   describe 'fan out' do
     it 'enqueues a per-user job for every user with (0,0) points' do
       other_user = create(:user)

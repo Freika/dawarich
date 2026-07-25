@@ -41,9 +41,16 @@ module Places
         place.visits.where(name: Place::DEFAULT_NAME).update_all(name: name) if name.present?
         place
       end
+    rescue *ReverseGeocoding::ProviderErrors::TRANSIENT => e
+      Rails.logger.warn("Geocoding provider error in NameFetcher for place #{place.id}: #{e.message}")
+      nil
     rescue StandardError => e
-      Rails.logger.error("Geocoding error in NameFetcher for place #{place.id}: #{e.message}")
-      ExceptionReporter.call(e)
+      if ReverseGeocoding::ProviderErrors.transient_tls?(e)
+        Rails.logger.warn("Geocoding provider error in NameFetcher for place #{place.id}: #{e.message}")
+      else
+        Rails.logger.error("Geocoding error in NameFetcher for place #{place.id}: #{e.message}")
+        ExceptionReporter.call(e)
+      end
       nil
     end
 

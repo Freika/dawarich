@@ -436,6 +436,17 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
         expect(existing_place.reload.name).to eq('New Name')
       end
 
+      it 'orders bulk updates by primary key' do
+        first_place = create(:place)
+        second_place = create(:place)
+        allow(Place).to receive(:upsert_all)
+
+        service.send(:save_places, [], [second_place, first_place])
+
+        expect(Place).to have_received(:upsert_all)
+          .with(satisfy { |attributes| attributes.pluck(:id) == [first_place.id, second_place.id] }, unique_by: :id)
+      end
+
       it 'handles empty arrays gracefully' do
         expect { service.send(:save_places, [], []) }.not_to raise_error
       end

@@ -141,6 +141,34 @@ RSpec.describe Places::NameFetcher do
       end
     end
 
+    context 'when the geocoder provider times out' do
+      before do
+        allow(ExceptionReporter).to receive(:call)
+        allow(Rails.logger).to receive(:warn)
+        allow(Geocoder).to receive(:search).and_raise(Geocoder::LookupTimeout.new('execution expired'))
+      end
+
+      it 'returns nil without reporting an application exception' do
+        expect(service.call).to be_nil
+        expect(ExceptionReporter).not_to have_received(:call)
+        expect(Rails.logger).to have_received(:warn).with(/Geocoding provider error in NameFetcher/)
+      end
+    end
+
+    context 'when geocoding fails unexpectedly' do
+      let(:error) { StandardError.new('unexpected failure') }
+
+      before do
+        allow(ExceptionReporter).to receive(:call)
+        allow(Geocoder).to receive(:search).and_raise(error)
+      end
+
+      it 'reports the application exception' do
+        expect(service.call).to be_nil
+        expect(ExceptionReporter).to have_received(:call).with(error)
+      end
+    end
+
     context 'when geocoding returns no results' do
       before do
         allow(Geocoder).to receive(:search).and_return([])
