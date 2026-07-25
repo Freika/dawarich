@@ -51,6 +51,49 @@ RSpec.describe Points::RawData::Archiver do
       expect(old_points.map(&:raw_data_archive_id).uniq.compact.size).to eq(1)
     end
 
+    it 'uses the shared conflict-key order when locking points to flag' do
+      expect(Point).to receive(:raw_data_lock_order).and_call_original
+
+      archiver.archive_user(user.id)
+    end
+
+    it 'does not link changed raw data to the stale archive snapshot' do
+      changed_point = old_points.first
+      stale_archive_id = nil
+      allow(archiver).to receive(:verify_archive_full!).and_wrap_original do |method, archive, *args|
+        unless stale_archive_id
+          stale_archive_id = archive.id
+          changed_point.update_column(:raw_data, { source: 'concurrent ingest' })
+        end
+        method.call(archive, *args)
+      end
+
+      archiver.archive_user(user.id)
+
+      expect(changed_point.reload).to have_attributes(
+        raw_data_archived: true,
+        raw_data: { 'source' => 'concurrent ingest' }
+      )
+      expect(changed_point.raw_data_archive_id).not_to eq(stale_archive_id)
+      expect(old_points.drop(1).map { |point| point.reload.raw_data_archive_id }).to all(eq(stale_archive_id))
+    end
+
+    it 'retries point flagging after write contention' do
+      attempts = 0
+      allow(archiver).to receive(:sleep)
+      allow(Point).to receive(:transaction).and_wrap_original do |method, *args, &block|
+        attempts += 1
+        raise ActiveRecord::Deadlocked if attempts == 1
+
+        method.call(*args, &block)
+      end
+
+      archiver.archive_user(user.id)
+
+      expect(attempts).to be > 1
+      expect(old_points.map { |point| point.reload.raw_data_archived }).to all(be true)
+    end
+
     it 'does not archive recent points' do
       recent_point = create(:point, user: user,
                                     timestamp: 1.week.ago.to_i,

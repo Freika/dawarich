@@ -10,6 +10,12 @@ module Points
       SAFE_ARCHIVE_LAG = 2.months
       CHUNK_SIZE = 50_000
       FLAG_BATCH_SIZE = 5_000
+      FLAG_MAX_RETRIES = 3
+      FLAG_CONTENTION_ERRORS = [
+        ActiveRecord::Deadlocked,
+        ActiveRecord::LockWaitTimeout,
+        ActiveRecord::QueryCanceled
+      ].freeze
 
       def initialize
         @stats = { processed: 0, archived: 0, failed: 0 }
@@ -69,9 +75,9 @@ module Points
           point_ids = group.map(&:first)
 
           begin
-            archive_chunk(user_id, point_ids, year, month)
+            archived_count = archive_chunk(user_id, point_ids, year, month)
             @stats[:processed] += 1
-            @stats[:archived] += point_ids.size
+            @stats[:archived] += archived_count
           rescue StandardError => e
             @stats[:failed] += 1
             Rails.logger.error(
@@ -109,15 +115,18 @@ module Points
         verify_archive_full!(archive, point_ids)
         archive.update!(verified_at: Time.current)
 
-        # Only flag points after verification succeeds
-        flag_points_batched(point_ids, archive.id)
+        # Only flag points after verification succeeds, and only while their
+        # raw_data still matches the snapshot stored in this archive.
+        archived_count = flag_points_batched(point_ids, archive.id, compressed[:raw_data_checksums])
 
-        report_metrics(archive, point_ids.size, compressed)
+        report_metrics(archive, archived_count, compressed)
 
         Rails.logger.info(
-          "Archived chunk #{archive.id}: #{point_ids.size} points " \
+          "Archived chunk #{archive.id}: #{archived_count}/#{point_ids.size} points " \
           "(IDs #{point_ids.first}..#{point_ids.last})"
         )
+
+        archived_count
       end
 
       def find_month_point_ids(user_id, year, month)
@@ -209,12 +218,43 @@ module Points
         Rails.logger.error("Failed to clean up archive #{archive.id}: #{e.message}")
       end
 
-      def flag_points_batched(point_ids, archive_id)
+      def flag_points_batched(point_ids, archive_id, raw_data_checksums)
+        total_flagged = 0
+
         point_ids.each_slice(FLAG_BATCH_SIZE) do |batch|
-          Point.where(id: batch).update_all(
-            raw_data_archived: true,
-            raw_data_archive_id: archive_id
-          )
+          with_flag_contention_retry do
+            Point.transaction do
+              unchanged_ids = Point.raw_data_lock_order
+                                   .where(id: batch, raw_data_archived: false, raw_data_archive_id: nil)
+                                   .lock
+                                   .pluck(:id, :raw_data)
+                                   .filter_map do |id, raw_data|
+                checksum = Digest::SHA256.hexdigest(raw_data.to_json)
+                id if checksum == raw_data_checksums[id]
+              end
+
+              next if unchanged_ids.empty?
+
+              total_flagged += Point.where(id: unchanged_ids, raw_data_archived: false, raw_data_archive_id: nil)
+                                    .update_all(raw_data_archived: true, raw_data_archive_id: archive_id)
+            end
+          end
+        end
+
+        total_flagged
+      end
+
+      def with_flag_contention_retry
+        retries = 0
+
+        begin
+          yield
+        rescue *FLAG_CONTENTION_ERRORS => e
+          retries += 1
+          raise e if retries > FLAG_MAX_RETRIES
+
+          sleep(0.05 * retries)
+          retry
         end
       end
 
