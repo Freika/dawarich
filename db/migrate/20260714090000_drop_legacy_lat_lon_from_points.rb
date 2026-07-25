@@ -23,20 +23,19 @@ class DropLegacyLatLonFromPoints < ActiveRecord::Migration[8.0]
     # to the drop instead of referencing a missing column.
     if column_exists?(:points, :latitude) && column_exists?(:points, :longitude)
       backfilled = 0
-      loop do
-        updated = execute(<<~SQL.squish).cmd_tuples
-          UPDATE points
-          SET lonlat = ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)
-          WHERE id IN (
-            SELECT id FROM points
-            WHERE lonlat IS NULL AND longitude IS NOT NULL AND latitude IS NOT NULL
-            LIMIT #{BATCH_SIZE}
-          )
-        SQL
-        backfilled += updated
-        break if updated.zero?
+      deduplicated = 0
+      cursor = 0
+
+      while (batch_end = next_batch_end(cursor))
+        deduplicated += remove_duplicate_legacy_points(cursor, batch_end)
+        backfilled += backfill_legacy_points(cursor, batch_end)
+        cursor = batch_end
       end
-      Rails.logger.info "[DropLegacyLatLonFromPoints] backfilled lonlat for #{backfilled} points"
+
+      Rails.logger.info(
+        "[DropLegacyLatLonFromPoints] backfilled lonlat for #{backfilled} points; " \
+        "removed #{deduplicated} duplicates"
+      )
     end
 
     drop_legacy_columns
@@ -107,5 +106,105 @@ class DropLegacyLatLonFromPoints < ActiveRecord::Migration[8.0]
   def down
     execute 'ALTER TABLE points ADD COLUMN IF NOT EXISTS latitude numeric(10,6), ' \
             'ADD COLUMN IF NOT EXISTS longitude numeric(10,6)'
+  end
+
+  private
+
+  def next_batch_end(cursor)
+    select_value(<<~SQL.squish)&.to_i
+      SELECT MAX(id)
+      FROM (
+        SELECT id
+        FROM points
+        WHERE id > #{cursor}
+          AND lonlat IS NULL
+          AND longitude IS NOT NULL
+          AND latitude IS NOT NULL
+        ORDER BY id
+        LIMIT #{BATCH_SIZE}
+      ) candidates
+    SQL
+  end
+
+  def backfill_legacy_points(cursor, batch_end)
+    execute(<<~SQL.squish).cmd_tuples
+      UPDATE points
+      SET lonlat = ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)
+      WHERE id > #{cursor}
+        AND id <= #{batch_end}
+        AND lonlat IS NULL
+        AND longitude IS NOT NULL
+        AND latitude IS NOT NULL
+    SQL
+  end
+
+  # A legacy row is dropped when the coordinate it would be backfilled to is
+  # already taken for that (user_id, timestamp) — either by a row that carries a
+  # lonlat already, or by an earlier legacy row in the same batch that will be
+  # backfilled to the identical point. The second case has to be handled here
+  # too: a unique btree index is checked per row inside a statement, so a single
+  # UPDATE that gives two rows the same key raises the violation on its own.
+  #
+  # DISTINCT ON picks the survivor through a sort, which uses the same btree
+  # opclass the unique index is built on. Grouping the geography by hash instead
+  # reports duplicates the index would not, and this statement deletes rows.
+  def remove_duplicate_legacy_points(cursor, batch_end)
+    result = execute(<<~SQL.squish)
+      WITH candidates AS (
+        SELECT legacy.id,
+               legacy.user_id,
+               legacy.timestamp,
+               ST_SetSRID(ST_MakePoint(legacy.longitude, legacy.latitude), 4326)::geography AS target_lonlat
+        FROM points legacy
+        WHERE legacy.id > #{cursor}
+          AND legacy.id <= #{batch_end}
+          AND legacy.lonlat IS NULL
+          AND legacy.longitude IS NOT NULL
+          AND legacy.latitude IS NOT NULL
+      ), keepers AS (
+        SELECT DISTINCT ON (user_id, timestamp, target_lonlat) id
+        FROM candidates
+        ORDER BY user_id, timestamp, target_lonlat, id
+      ), duplicate_points AS (
+        SELECT candidates.id
+        FROM candidates
+        WHERE candidates.id NOT IN (SELECT keepers.id FROM keepers)
+           OR EXISTS (
+             SELECT 1
+             FROM points existing
+             WHERE existing.id != candidates.id
+               AND existing.user_id = candidates.user_id
+               AND existing.timestamp = candidates.timestamp
+               AND existing.lonlat = candidates.target_lonlat
+           )
+      ), deleted AS (
+        DELETE FROM points
+        USING duplicate_points
+        WHERE points.id = duplicate_points.id
+        RETURNING points.user_id, points.import_id
+      ), deleted_user_counts AS (
+        SELECT user_id, COUNT(*) AS count
+        FROM deleted
+        GROUP BY user_id
+      ), updated_users AS (
+        UPDATE users
+        SET points_count = GREATEST(users.points_count - deleted_user_counts.count, 0)
+        FROM deleted_user_counts
+        WHERE users.id = deleted_user_counts.user_id
+      ), deleted_import_counts AS (
+        SELECT import_id, COUNT(*) AS count
+        FROM deleted
+        WHERE import_id IS NOT NULL
+        GROUP BY import_id
+      ), updated_imports AS (
+        UPDATE imports
+        SET points_count = GREATEST(imports.points_count - deleted_import_counts.count, 0)
+        FROM deleted_import_counts
+        WHERE imports.id = deleted_import_counts.import_id
+      )
+      SELECT COUNT(*) AS count FROM deleted
+    SQL
+
+    result.first['count'].to_i
   end
 end
