@@ -22,9 +22,8 @@ class AchievementsController < ApplicationController
 
     @set = presenters_for([definition]).first
     @sidebar_key = definition.parent_key || definition.key
-    children = @set.compact? ? @set.region_rows : attach_sharing(@set.region_cards)
-    @children = paginate(children)
-    attach_silhouettes(@children) unless @set.compact?
+    @children = paginate(attach_sharing(@set.region_cards))
+    attach_silhouettes(@children)
 
     mark_celebrated([@set])
   end

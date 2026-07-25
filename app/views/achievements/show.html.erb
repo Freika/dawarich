@@ -32,26 +32,22 @@
             <%= @set.display_count %>/<%= @set.target %></span>
         </div>
 
-        <% if @set.compact? %>
-          <%= render 'compact_list', rows: @children %>
-        <% else %>
-          <div class="ach-child-grid">
-            <% @children.each_with_index do |region_card, index| %>
-              <% key = region_card[:key] %>
-              <% card = region_card.except(:key, :code, :share, :share_key) %>
-              <% if key %>
-                <%= link_to achievement_path(key), class: 'ach-card-link' do %>
-                  <%= render 'card', size: :sm, reveal_delay: 0.05 * [index, 10].min, **card %>
-                <% end %>
-              <% else %>
-                <%= render 'card', size: :sm, reveal_delay: 0.05 * [index, 10].min,
-                                   modal: true, share: region_card[:share], **card %>
+        <div class="ach-child-grid">
+          <% @children.each_with_index do |region_card, index| %>
+            <% key = region_card[:key] %>
+            <% card = region_card.except(:key, :code, :share, :share_key) %>
+            <% if key %>
+              <%= link_to achievement_path(key), class: 'ach-card-link' do %>
+                <%= render 'card', size: :sm, reveal_delay: 0.05 * [index, 10].min, **card %>
               <% end %>
+            <% else %>
+              <%= render 'card', size: :sm, reveal_delay: 0.05 * [index, 10].min,
+                                 modal: true, share: region_card[:share], **card %>
             <% end %>
-          </div>
+          <% end %>
+        </div>
 
-          <div class="ach-pagination"><%= paginate @children %></div>
-        <% end %>
+        <div class="ach-pagination"><%= paginate @children %></div>
 
         <%= render 'card_modal' %>
 

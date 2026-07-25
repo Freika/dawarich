@@ -14,10 +14,6 @@ module Achievements
 
     delegate :total, :target, :flat?, :level, :parent_key, to: :definition
 
-    def compact?
-      definition.kind == 'region_set'
-    end
-
     def earned
       @earned ||= state.fetch('earned', {}).slice(*definition.region_codes)
     end
@@ -121,24 +117,7 @@ module Achievements
       cards.sort_by { |card| [card[:locked] ? 1 : 0, card[:name]] }
     end
 
-    def region_rows
-      definition.regions
-                .map { |code, name| region_row(code, name) }
-                .sort_by { |row| [row[:earned_at] ? 0 : 1, row[:name]] }
-    end
-
     private
-
-    def region_row(code, name)
-      child = level == :country ? Registry.find("country_#{code.downcase}") : nil
-
-      {
-        code: code,
-        name: child ? child.card['place'] : name,
-        earned_at: earned[code],
-        key: child&.level == :subdivision ? child.key : nil
-      }
-    end
 
     def subdivision_cards
       art = definition.card['art']
