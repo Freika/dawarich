@@ -1,4 +1,5 @@
 import maplibregl from "maplibre-gl"
+import { Toast } from "maps_maplibre/components/toast"
 import { getMapStyle } from "maps_maplibre/utils/style_manager"
 
 /**
@@ -40,6 +41,33 @@ export class MapInitializer {
     }
 
     const map = new maplibregl.Map(mapOptions)
+
+    if (typeof style === "string") {
+      let settled = false
+
+      const onStyleLoad = () => {
+        if (settled) return
+        settled = true
+        map.off("error", onError)
+      }
+      const onError = async () => {
+        if (settled) return
+        settled = true
+        map.off("style.load", onStyleLoad)
+        Toast.error(
+          "Custom map style could not be loaded; reverting to the default style.",
+        )
+        const fallbackStyle = await getMapStyle(mapStyle, {
+          hiddenTileCategories,
+          disabledPoiGroups,
+          customTheme,
+        })
+        map.setStyle(fallbackStyle)
+      }
+
+      map.once("style.load", onStyleLoad)
+      map.once("error", onError)
+    }
 
     // Set globe projection after map loads
     if (globeProjection === true || globeProjection === "true") {
