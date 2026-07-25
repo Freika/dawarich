@@ -43,6 +43,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Points added retroactively through the API or trackers (with timestamps in the past) now get their routes generated, instead of only connecting after a manual data recalculation (#3036).
 - Photoprism photo imports no longer fail with an HTTP 400: the `after` and `before` filters are now sent as plain `YYYY-MM-DD` dates, which Photoprism's search API requires (recent Photoprism rejects full timestamps, including the `before` value shipped in 1.9.2). Since a bare `before` date is coarser than the requested range, results are additionally bounded in-app by the exact end timestamp, and a blank start date no longer breaks the import (#3034).
 - Cloud: for Lite users viewing a single import on the map, the points counter no longer includes unrelated points from the same date range (the `X-Total-Points-In-Range` header is now scoped to the import).
+- Map v2 Places tag filters now remain applied after switching tabs and returning to the map (#3003).
 
 
 ## [1.9.2] - 2026-06-25

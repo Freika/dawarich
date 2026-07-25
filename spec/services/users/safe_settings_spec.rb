@@ -36,6 +36,7 @@ RSpec.describe Users::SafeSettings do
             fog_of_war_threshold: 50,
           fog_of_war_mode: 'points',
             enabled_map_layers: %w[Tracks Heatmap],
+            places_tag_filters: nil,
             maps_maplibre_style: 'light',
             maps_maplibre_tiles_url: nil,
             maps_maplibre_custom_theme: {
@@ -210,6 +211,7 @@ RSpec.describe Users::SafeSettings do
             fog_of_war_threshold: 50,
           fog_of_war_mode: 'points',
             enabled_map_layers: %w[Points Routes Areas Photos],
+            places_tag_filters: nil,
             maps_maplibre_style: 'light',
             maps_maplibre_tiles_url: nil,
             maps_maplibre_custom_theme: {

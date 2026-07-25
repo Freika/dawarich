@@ -363,6 +363,12 @@ export default class extends Controller {
       new Date(this.endDateValue),
     )
 
+    if (this.settings.placesEnabled) {
+      await this.placesManager.initializePlaceTagFilters({
+        reloadPlaces: false,
+      })
+    }
+
     this.loadMapData().then(() => {
       if (this.settings?.familyEnabled) {
         this.loadFamilyMembers()

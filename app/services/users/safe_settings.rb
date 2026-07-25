@@ -119,6 +119,7 @@ class Users::SafeSettings
       fog_of_war_threshold: fog_of_war_threshold,
       fog_of_war_mode: fog_of_war_mode,
       enabled_map_layers: enabled_map_layers,
+      places_tag_filters: places_tag_filters,
       maps_maplibre_style: maps_maplibre_style,
       maps_maplibre_tiles_url: maps_maplibre_tiles_url,
       maps_maplibre_custom_theme: maps_maplibre_custom_theme,
@@ -256,6 +257,13 @@ class Users::SafeSettings
   def enabled_map_layers
     layers = settings['enabled_map_layers']
     lite? ? layers - GATED_MAP_LAYERS : layers
+  end
+
+  def places_tag_filters
+    filters = settings['places_tag_filters']
+    return if filters.nil?
+
+    Array(filters).map { |value| value == 'untagged' ? value : value.to_i }
   end
 
   def maps_maplibre_style
