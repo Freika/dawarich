@@ -41,6 +41,9 @@ module Places
         units: :km
       )
       format_results(results)
+    rescue Geocoder::InvalidRequest => e
+      Rails.logger.warn("Nearby search provider error: #{e.message}")
+      []
     rescue StandardError => e
       ExceptionReporter.call(e, "NearbySearch failed for #{@latitude},#{@longitude}")
       []

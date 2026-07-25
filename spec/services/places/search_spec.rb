@@ -71,7 +71,17 @@ RSpec.describe Places::Search do
       expect(described_class.new(query: 'cafe', latitude: lat, longitude: lon, radius: 1.0).call).to eq([])
     end
 
-    it 'rescues Geocoder errors and returns []' do
+    it 'handles invalid provider requests without reporting an application exception' do
+      allow(Geocoder).to receive(:search).and_raise(Geocoder::InvalidRequest)
+      allow(ExceptionReporter).to receive(:call)
+      allow(Rails.logger).to receive(:warn)
+
+      expect(described_class.new(query: 'cafe', latitude: lat, longitude: lon, radius: 1.0).call).to eq([])
+      expect(ExceptionReporter).not_to have_received(:call)
+      expect(Rails.logger).to have_received(:warn).with(/Place search provider error/)
+    end
+
+    it 'reports unexpected errors and returns []' do
       allow(Geocoder).to receive(:search).and_raise(StandardError, 'photon down')
       expect(ExceptionReporter).to receive(:call).with(instance_of(StandardError), anything)
       expect(described_class.new(query: 'cafe', latitude: lat, longitude: lon, radius: 1.0).call).to eq([])

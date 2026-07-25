@@ -20,6 +20,9 @@ module Places
       return [] if @query.length < MIN_QUERY_LENGTH
 
       fetch_and_filter
+    rescue Geocoder::InvalidRequest => e
+      Rails.logger.warn("Place search provider error: #{e.message}")
+      []
     rescue StandardError => e
       ExceptionReporter.call(e, "Places::Search failed for '#{@query}' near #{@latitude},#{@longitude}")
       []
