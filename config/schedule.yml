@@ -93,6 +93,12 @@ yearly_digest_scheduling_job:
   class: "Users::Digests::Yearly::SchedulingJob"
   queue: digests
 
+trial_weekly_digest_scheduling_job:
+  cron: "15 2 * * *" # every day at 02:15 UTC
+  class: "Users::Digests::Trial::SchedulingJob"
+  queue: digests
+  description: "Compute weekly digests for trials ending within two days"
+
 pending_imports_cleanup:
   cron: "15 3 * * *" # every day at 03:15 UTC
   class: "PendingImports::CleanupJob"
