@@ -283,6 +283,41 @@ longitude: -73.9000)
       end
     end
 
+    context 'when a confirmed area visit has points sitting off the area centre' do
+      let!(:area) { create(:area, user: user, latitude: 51.3402, longitude: 12.3712, radius: 100) }
+      let!(:existing_visit) do
+        create(
+          :visit,
+          user: user, place: nil, area: area, status: :confirmed,
+          started_at: 1.5.hours.ago, ended_at: 45.minutes.ago, duration: 45
+        )
+      end
+      let(:visit_data) do
+        {
+          start_time: 1.hour.ago.to_i,
+          end_time: 30.minutes.ago.to_i,
+          duration: 30.minutes.to_i,
+          center_lat: 51.3402,
+          center_lon: 12.3712,
+          radius: 50,
+          suggested_name: 'Home',
+          points: [point1, point2]
+        }
+      end
+
+      before do
+        create(:point, user: user, visit: existing_visit, lonlat: 'POINT(12.3812 51.3502)')
+        create(:point, user: user, visit: existing_visit, lonlat: 'POINT(12.3822 51.3512)')
+      end
+
+      it 'dedups against the area centre despite off-centre points' do
+        visits = subject.create_visits([visit_data])
+
+        expect(visits).to be_empty
+        expect(user.visits.reload.count).to eq(1)
+      end
+    end
+
     context 'when matching an area' do
       let!(:area) { create(:area, user: user, latitude: 40.7128, longitude: -74.0060, radius: 100) }
 

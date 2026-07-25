@@ -86,7 +86,7 @@ module Visits
             start: start_time, end: end_time
           )
           .find_each do |visit|
-        visit_lat, visit_lon = visit.center
+        visit_lat, visit_lon = dedup_center(visit)
         next unless visit_lat && visit_lon
 
         # Calculate distance between centers
@@ -101,6 +101,16 @@ module Visits
       end
 
       nil
+    end
+
+    def dedup_center(visit)
+      return visit.center unless visit.place_id
+
+      lat, lon = visit.points.pick(
+        Arel.sql('ST_Y(ST_Centroid(ST_Collect(lonlat::geometry)))'),
+        Arel.sql('ST_X(ST_Centroid(ST_Collect(lonlat::geometry)))')
+      )
+      lat && lon ? [lat, lon] : visit.center
     end
 
     def confirmed_visit_owning_points(visit_data)
