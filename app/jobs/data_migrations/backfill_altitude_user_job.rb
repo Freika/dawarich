@@ -86,17 +86,19 @@ class DataMigrations::BackfillAltitudeUserJob < ApplicationJob
       updates << update
 
       if updates.size >= batch_size
-        flush_updates(updates, stats)
+        flush_updates(updates, stats, archive_id: archive.id)
         updates = []
       end
     end
 
-    flush_updates(updates, stats) if updates.any?
+    flush_updates(updates, stats, archive_id: archive.id) if updates.any?
   end
 
-  def flush_updates(updates, stats)
+  def flush_updates(updates, stats, archive_id: nil)
     point_ids = updates.map { |u| u[:id] }
-    existing = Point.where(id: point_ids).pluck(:id, :altitude).to_h
+    scope = Point.where(id: point_ids)
+    scope = scope.where(raw_data_archived: true, raw_data_archive_id: archive_id) if archive_id
+    existing = scope.pluck(:id, :altitude).to_h
 
     meaningful_updates = updates.select do |u|
       next false unless existing.key?(u[:id])

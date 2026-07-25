@@ -150,6 +150,19 @@ RSpec.describe DataMigrations::BackfillAltitudeUserJob do
 
         expect(point.reload.altitude.to_f).to eq(719.2)
       end
+
+      it 'ignores a stale snapshot after the point is detached from its archive' do
+        archive
+        point.update_columns(
+          raw_data: { 'ele' => '800.5' },
+          raw_data_archived: false,
+          raw_data_archive_id: nil
+        )
+
+        described_class.new.perform(user.id)
+
+        expect(point.reload.altitude.to_f).to eq(800.5)
+      end
     end
 
     context 'does not touch other users' do

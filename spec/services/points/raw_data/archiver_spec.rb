@@ -166,6 +166,21 @@ RSpec.describe Points::RawData::Archiver do
       expect(empty_point.reload.raw_data_archived).to be false
     end
 
+    it 'does not repeatedly select points with inconsistent legacy archive links' do
+      stale_archive = create(:points_raw_data_archive, user: user)
+      stale_point = create(:point, user: user,
+                                   timestamp: 3.months.ago.to_i,
+                                   raw_data: { lon: 14.0, lat: 53.0 })
+      stale_point.update_columns(raw_data_archived: false, raw_data_archive_id: stale_archive.id)
+
+      expect(archiver).to receive(:archive_month_groups) do |_user_id, rows|
+        expect(rows.map(&:first)).not_to include(stale_point.id)
+        false
+      end
+
+      archiver.archive_user(user.id)
+    end
+
     context 'with points from multiple months' do
       let!(:june_points) do
         june_date = 4.months.ago.beginning_of_month

@@ -26,6 +26,7 @@ module Points
         loop do
           rows = Point
                  .where(user_id: user_id, raw_data_archived: false)
+                 .where(raw_data_archive_id: nil)
                  .where('timestamp < ?', cutoff)
                  .where('id > ?', cursor)
                  .where.not(raw_data: [nil, {}])

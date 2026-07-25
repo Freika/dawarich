@@ -209,6 +209,19 @@ RSpec.describe Points::RawData::Clearer do
       expect(other_points.pluck(:raw_data)).to all(eq({}))
     end
 
+    it 'does not clear a point relinked to another archive after selection' do
+      source_archive = Points::RawDataArchive.where(user: user).first
+      relinked_point = Point.where(user: user, raw_data_archive_id: source_archive.id).first
+      replacement_archive = create(:points_raw_data_archive, user: user, verified_at: Time.current)
+      relinked_point.update_columns(raw_data_archive_id: replacement_archive.id,
+                                    raw_data: { 'newer' => true })
+
+      cleared = clearer.send(:clear_points_in_batches, [relinked_point.id], source_archive.id)
+
+      expect(cleared).to eq(0)
+      expect(relinked_point.reload.raw_data).to eq({ 'newer' => true })
+    end
+
     it 'increments operations_total with clear/success tags' do
       expect do
         clearer.call

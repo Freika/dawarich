@@ -76,7 +76,7 @@ module Points
           return
         end
 
-        cleared_count = clear_points_in_batches(point_ids)
+        cleared_count = clear_points_in_batches(point_ids, archive.id)
         @stats[:cleared] += cleared_count
         Rails.logger.info("✓ Cleared #{cleared_count} points for archive #{archive.id}")
 
@@ -89,15 +89,17 @@ module Points
         Yabeda.dawarich_archive.operations_total.increment({ operation: 'clear', status: 'failure' })
       end
 
-      def clear_points_in_batches(point_ids)
+      def clear_points_in_batches(point_ids, archive_id)
         total_cleared = 0
 
         point_ids.each_slice(BATCH_SIZE) do |batch|
           Point.transaction do
-            cleared = Point.where(id: batch, raw_data_archived: true).update_all(
-              raw_data: {},
-              lock_version: Arel.sql('lock_version')
-            )
+            linked_ids = Point.raw_data_lock_order
+                              .where(id: batch, raw_data_archived: true, raw_data_archive_id: archive_id)
+                              .lock
+                              .pluck(:id)
+            cleared = Point.where(id: linked_ids, raw_data_archived: true, raw_data_archive_id: archive_id)
+                           .update_all(raw_data: {}, lock_version: Arel.sql('lock_version'))
             # rubocop:enable Rails/SkipsModelValidations
             total_cleared += cleared
           end
