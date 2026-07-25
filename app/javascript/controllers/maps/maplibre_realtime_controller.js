@@ -1,6 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 import { createMapChannel } from "maps_maplibre/channels/map_channel"
 import { Toast } from "maps_maplibre/components/toast"
+import { pointMatchesActiveDateRange } from "maps_maplibre/utils/realtime_date_filter"
 import { SettingsManager } from "maps_maplibre/utils/settings_manager"
 
 /**
@@ -175,6 +176,15 @@ export default class extends Controller {
 
     const [lat, lon, battery, altitude, timestamp, velocity, id, countryName] =
       pointData
+
+    if (
+      !pointMatchesActiveDateRange(
+        timestamp,
+        mapsController.realtimeDateRange(),
+      )
+    ) {
+      return
+    }
 
     const pointsLayer = mapsController.layerManager?.getLayer("points")
     if (!pointsLayer) {

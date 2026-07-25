@@ -7,6 +7,7 @@ import { featureToPhoto } from "maps_maplibre/utils/feature_to_photo"
 import { cancelAllPreviews } from "maps_maplibre/utils/layer_gate"
 import { loadLastView, saveView } from "maps_maplibre/utils/map_view_store"
 import { performanceMonitor } from "maps_maplibre/utils/performance_monitor"
+import { parseTimestamp } from "maps_maplibre/utils/realtime_date_filter"
 import { SearchManager } from "maps_maplibre/utils/search_manager"
 import { SettingsManager } from "maps_maplibre/utils/settings_manager"
 import { AreaSelectionManager } from "./maplibre/area_selection_manager"
@@ -363,6 +364,16 @@ export default class extends Controller {
       new Date(this.endDateValue),
     )
 
+    // Snapshot the load-time window so realtime filtering can tell the default
+    // "today" view (whose frozen end goes stale across local midnight) apart
+    // from an explicitly selected past range.
+    const loadEnd = parseTimestamp(this.endDateValue)
+    this.defaultDateRange = {
+      startValue: this.startDateValue,
+      endValue: this.endDateValue,
+      reachesNow: loadEnd !== null && loadEnd >= Date.now(),
+    }
+
     this.loadMapData().then(() => {
       if (this.settings?.familyEnabled) {
         this.loadFamilyMembers()
@@ -522,6 +533,26 @@ export default class extends Controller {
     })
     this.refreshTimelineFeedIfActive?.()
     this.debouncedLoadFamilyHistory?.()
+  }
+
+  /**
+   * The active window realtime points are filtered against. When the range is
+   * still the untouched load-time window that reached the present, the end is
+   * left open so live points recorded after local midnight keep showing.
+   */
+  realtimeDateRange() {
+    const startValue = this.startDateValue
+    const endValue = this.endDateValue
+    const unchanged =
+      this.defaultDateRange &&
+      startValue === this.defaultDateRange.startValue &&
+      endValue === this.defaultDateRange.endValue
+
+    return {
+      startValue,
+      endValue,
+      treatEndAsOpen: Boolean(unchanged && this.defaultDateRange.reachesNow),
+    }
   }
 
   debouncedLoadFamilyHistory() {
