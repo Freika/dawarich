@@ -62,13 +62,25 @@ RSpec.describe Posters::Generate do
     end
   end
 
-  context 'when the requested distance exceeds the limit' do
-    let(:poster) { create(:poster, settings: attributes_for(:poster)[:settings].merge('distance' => 150_000)) }
+  context 'when the requested distance fits within the poster studio range' do
+    let(:poster) { create(:poster, settings: attributes_for(:poster)[:settings].merge('distance' => 2_924_948)) }
 
     before { allow_any_instance_of(Posters::TrackBuilder).to receive(:call).and_return(track) }
 
-    it 'clamps the distance to 20km' do
-      expect(Posters::NativeRenderer).to receive(:new).with(hash_including(distance: 20_000)).and_return(renderer)
+    it 'renders with the requested distance' do
+      expect(Posters::NativeRenderer).to receive(:new).with(hash_including(distance: 2_924_948)).and_return(renderer)
+
+      run_generate
+    end
+  end
+
+  context 'when the requested distance exceeds the poster studio limit' do
+    let(:poster) { create(:poster, settings: attributes_for(:poster)[:settings].merge('distance' => 6_000_000)) }
+
+    before { allow_any_instance_of(Posters::TrackBuilder).to receive(:call).and_return(track) }
+
+    it 'clamps the distance to 5,000km' do
+      expect(Posters::NativeRenderer).to receive(:new).with(hash_including(distance: 5_000_000)).and_return(renderer)
 
       run_generate
     end

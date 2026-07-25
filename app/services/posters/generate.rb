@@ -2,7 +2,7 @@
 
 module Posters
   class Generate
-    MAX_DISTANCE = 20_000
+    MAX_DISTANCE = 5_000_000
     MIN_DISTANCE = 500
     METERS_PER_DEGREE = 111_320.0
 
