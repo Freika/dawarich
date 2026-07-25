@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Imports::SecureFileDownloader
+  class EmptyFileError < StandardError; end
+
   DOWNLOAD_TIMEOUT = 300 # 5 minutes timeout
   MAX_RETRIES = 3
 
@@ -52,7 +54,9 @@ class Imports::SecureFileDownloader
       raise
     end
 
-    raise 'Download completed but no content was received' if temp_file.size.zero? # rubocop:disable Style/ZeroLengthPredicate -- Tempfile has no .empty?
+    if temp_file.size.zero? # rubocop:disable Style/ZeroLengthPredicate -- Tempfile has no .empty?
+      raise_empty_download_error
+    end
 
     verify_temp_file_integrity(temp_file)
     temp_file.path
@@ -106,7 +110,7 @@ class Imports::SecureFileDownloader
       raise
     end
 
-    raise 'Download completed but no content was received' if file_content.blank?
+    raise_empty_download_error if file_content.blank?
 
     file_content
   end
@@ -115,6 +119,11 @@ class Imports::SecureFileDownloader
     extension = File.extname(storage_attachment.filename.to_s)
     basename = File.basename(storage_attachment.filename.to_s, extension)
     Tempfile.create(["#{basename}_#{Time.now.to_i}_", extension], binmode: true)
+  end
+
+  def raise_empty_download_error
+    error_class = storage_attachment.blob.byte_size.zero? ? EmptyFileError : RuntimeError
+    raise error_class, 'Download completed but no content was received'
   end
 
   def cleanup_temp_file(temp_file)

@@ -37,7 +37,7 @@ class Imports::Create
     import.update!(status: :failed, error_message: e.message)
     broadcast_status_update
 
-    ExceptionReporter.call(e, 'Import failed')
+    ExceptionReporter.call(e, 'Import failed') unless expected_import_failure?(e)
 
     create_import_failed_notification(import, user, e)
   ensure
@@ -51,6 +51,13 @@ class Imports::Create
   end
 
   private
+
+  def expected_import_failure?(error)
+    error.is_a?(Imports::SourceDetector::UnknownSourceError) ||
+      error.is_a?(Imports::SecureFileDownloader::EmptyFileError) ||
+      error.is_a?(Archive::Unzipper::ArchiveTooLarge) ||
+      error.is_a?(Csv::Detector::DetectionError)
+  end
 
   def post_import_processing
     run_post_import_step('points_count') { User.where(id: user.id).update_all(points_count: user.points.count) }
