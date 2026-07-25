@@ -39,6 +39,20 @@ RSpec.describe DataMigrations::DropLegacyLatLonJob do
   end
 
   it 'retries rather than failing when the lock is unavailable' do
-    expect(described_class.rescue_handlers.map(&:first)).to include('ActiveRecord::LockWaitTimeout')
+    allow(connection).to receive(:column_exists?).and_return(true)
+    allow(connection).to receive(:execute) do |sql|
+      raise ActiveRecord::LockWaitTimeout, 'lock timeout' if sql.include?('DROP COLUMN')
+    end
+
+    expect { described_class.perform_now }.to have_enqueued_job(described_class)
+  end
+
+  it 'retries when a statement_timeout cancels the drop' do
+    allow(connection).to receive(:column_exists?).and_return(true)
+    allow(connection).to receive(:execute) do |sql|
+      raise ActiveRecord::QueryCanceled, 'statement timeout' if sql.include?('DROP COLUMN')
+    end
+
+    expect { described_class.perform_now }.to have_enqueued_job(described_class)
   end
 end

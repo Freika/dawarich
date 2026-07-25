@@ -61,4 +61,19 @@ RSpec.describe DropLegacyLatLonFromPoints, :non_transactional do
 
     expect(migration).to have_received(:execute).with('RESET lock_timeout')
   end
+
+  it 'hands off rather than aborting when a statement_timeout cancels the drop' do
+    stub_drop_raising(ActiveRecord::QueryCanceled)
+
+    expect { migration.send(:drop_legacy_columns) }.to have_enqueued_job(DataMigrations::DropLegacyLatLonJob)
+  end
+
+  it 'does not abort the migration when the job cannot be enqueued' do
+    stub_drop_raising(ActiveRecord::LockWaitTimeout)
+    allow(DataMigrations::DropLegacyLatLonJob).to receive(:perform_later).and_raise(
+      RedisClient::CannotConnectError, 'connection refused'
+    )
+
+    expect { migration.send(:drop_legacy_columns) }.not_to raise_error
+  end
 end

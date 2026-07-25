@@ -7,8 +7,10 @@ class DataMigrations::DropLegacyLatLonJob < ApplicationJob
 
   # Losing the lock race is the expected case on a busy instance, so back off
   # and try again over the next few hours rather than reporting a failure.
-  retry_on ActiveRecord::LockWaitTimeout, wait: :polynomially_longer, attempts: 25
-  retry_on ActiveRecord::StatementTimeout, wait: :polynomially_longer, attempts: 25
+  # QueryAborted covers both LockWaitTimeout's sibling StatementTimeout and the
+  # QueryCanceled that PostgreSQL raises when statement_timeout fires.
+  retry_on ActiveRecord::LockWaitTimeout, wait: 5.minutes, attempts: 25
+  retry_on ActiveRecord::QueryAborted, wait: 5.minutes, attempts: 25
 
   def perform
     connection = ActiveRecord::Base.connection

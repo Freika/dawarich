@@ -56,7 +56,7 @@ class DropLegacyLatLonFromPoints < ActiveRecord::Migration[8.0]
       # only one of them missing.
       execute 'ALTER TABLE points DROP COLUMN IF EXISTS latitude, DROP COLUMN IF EXISTS longitude'
       Rails.logger.info '[DropLegacyLatLonFromPoints] done'
-    rescue ActiveRecord::LockWaitTimeout, ActiveRecord::StatementTimeout => e
+    rescue ActiveRecord::LockWaitTimeout, ActiveRecord::QueryAborted => e
       if attempts < DROP_MAX_ATTEMPTS
         Rails.logger.warn(
           "[DropLegacyLatLonFromPoints] could not acquire lock (attempt #{attempts}/#{DROP_MAX_ATTEMPTS}): #{e.message}"
@@ -69,10 +69,22 @@ class DropLegacyLatLonFromPoints < ActiveRecord::Migration[8.0]
         "[DropLegacyLatLonFromPoints] could not acquire lock in #{DROP_MAX_ATTEMPTS} attempts; " \
         'handing the drop to DataMigrations::DropLegacyLatLonJob'
       )
-      DataMigrations::DropLegacyLatLonJob.perform_later
+      enqueue_drop_job
     ensure
       execute 'RESET lock_timeout'
     end
+  end
+
+  # Redis may not be reachable yet when migrations run, and an unreachable queue
+  # must not abort the migration — that is the crash loop this change removes.
+  # The columns are unused, so leaving them in place is safe.
+  def enqueue_drop_job
+    DataMigrations::DropLegacyLatLonJob.perform_later
+  rescue StandardError => e
+    Rails.logger.warn(
+      "[DropLegacyLatLonFromPoints] could not enqueue DataMigrations::DropLegacyLatLonJob: #{e.message}; " \
+      'the legacy columns remain and will be dropped on a later boot'
+    )
   end
 
   def down
