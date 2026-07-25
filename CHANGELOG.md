@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Google Semantic History and phone Timeline imports now tag points with a per-import tracker id instead of one shared constant, so tracks from different devices are no longer braided together. A one-time backfill rewrites existing points and regenerates affected tracks per user.
 - Points at exactly (0,0) — a common GPS glitch — are no longer accepted from any ingestion path (API, OwnTracks, Overland, Traccar, file imports) and no longer produce suggested visits at "Null Island". Existing (0,0) points are flagged as anomalies by a one-time cleanup that also removes visits placed at (0,0), tolerates legacy points without timestamps, and recalculates affected stats and tracks.
 - Point uploads from all ingestion paths (REST API, OwnTracks, Overland, Traccar) now retry transient statement and lock-wait timeouts, not just deadlocks, instead of failing the upload.
+- Google Timeline imports now keep path points in order when several share the same minute-resolution timestamp: tied points on a path are spaced one second apart so their sequence survives, while genuine repeats at the same coordinate still collapse into a single point. Caveat: re-importing the same Timeline file before deleting its existing date range can leave partial duplicates, because the synthetic spacing shifts the deduplication key — delete the affected date range first when re-importing. (#3115)
 
 ## [1.10.1] - 2026-07-19, Berlin
 
