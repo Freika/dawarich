@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.15.1] - Unreleased
+
+### Fixed
+
+- Account deletion now removes saved posters, flights, and notes instead of failing while permanently deleting the user.
+
 ## [1.15.0] - 2026-09-20, Berlin
 
 ### Added
