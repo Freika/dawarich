@@ -4,6 +4,8 @@ module Posters
   class Generate
     MAX_DISTANCE = 5_000_000
     MIN_DISTANCE = 500
+    MIN_ROUTE_WIDTH = 0.5
+    MAX_ROUTE_WIDTH = 3.0
     METERS_PER_DEGREE = 111_320.0
 
     def initialize(poster)
@@ -49,6 +51,7 @@ module Posters
         track: track,
         distance: distance,
         route_opacity: route_opacity,
+        route_width: route_width,
         subtitle: subtitle
       ).call
       attach_image(result[:png])
@@ -60,6 +63,13 @@ module Posters
       raw /= 100.0 if raw > 1
       raw = 1.0 if raw <= 0
       raw.clamp(0.05, 1.0)
+    end
+
+    def route_width
+      raw = @poster.settings.fetch('route_width', 100).to_f
+      return 1.0 if raw <= 0
+
+      (raw / 100.0).clamp(MIN_ROUTE_WIDTH, MAX_ROUTE_WIDTH)
     end
 
     def distance

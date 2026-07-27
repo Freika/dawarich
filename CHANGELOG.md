@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+### Added
+
+- Poster Studio has a track width control: a 50–300% slider beside track opacity that scales the route line on the saved poster.
+
 ### Fixed
 
 - Saving a zoomed-out Poster Studio view to the gallery no longer rejects routes that are visibly inside the poster frame (#3204).
