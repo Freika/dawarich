@@ -110,6 +110,72 @@ RSpec.describe Visits::Suggest do
       end
     end
 
+    context 'when detection raises' do
+      before do
+        allow(Visits::SmartDetect).to receive(:new).and_raise(StandardError, 'detector exploded')
+        Sidekiq.redis { |redis| redis.del("visit_suggest_error:user:#{user.id}") }
+      end
+
+      after do
+        Sidekiq.redis { |redis| redis.del("visit_suggest_error:user:#{user.id}") }
+      rescue StandardError
+        nil
+      end
+
+      it 'returns an empty collection' do
+        expect(described_class.new(user, start_at:, end_at:).call).to eq([])
+      end
+
+      it 'logs the failure with a backtrace for self-hosted operators' do
+        allow(Rails.logger).to receive(:error)
+
+        described_class.new(user, start_at:, end_at:).call
+
+        expect(Rails.logger).to have_received(:error).with(/detector exploded/)
+      end
+
+      it 'does not repeat the notification while an unread one is recent' do
+        3.times { described_class.new(user, start_at:, end_at:).call }
+
+        expect(user.notifications.where(title: 'Error suggesting visits').count).to eq(1)
+      end
+
+      it 'notifies again once the dedup window has passed' do
+        described_class.new(user, start_at:, end_at:).call
+        Sidekiq.redis { |redis| redis.del("visit_suggest_error:user:#{user.id}") }
+
+        described_class.new(user, start_at:, end_at:).call
+
+        expect(user.notifications.where(title: 'Error suggesting visits').count).to eq(2)
+      end
+
+      it 'suppresses the notification when another run already claimed the window' do
+        Sidekiq.redis { |redis| redis.set("visit_suggest_error:user:#{user.id}", 1, ex: 3600) }
+
+        described_class.new(user, start_at:, end_at:).call
+
+        expect(user.notifications.where(title: 'Error suggesting visits')).to be_empty
+      end
+
+      it 'still notifies when Redis is unavailable' do
+        allow(Sidekiq).to receive(:redis).and_raise(RedisClient::CannotConnectError, 'redis down')
+
+        described_class.new(user, start_at:, end_at:).call
+
+        expect(user.notifications.where(title: 'Error suggesting visits').count).to eq(1)
+      end
+
+      it 'notifies the user without leaking a backtrace' do
+        described_class.new(user, start_at:, end_at:).call
+
+        notification = user.notifications.order(:id).last
+
+        expect(notification.kind).to eq('error')
+        expect(notification.content).to include('detector exploded')
+        expect(notification.content).not_to match(/\.rb:\d+/)
+      end
+    end
+
     # The Lite plan window is enforced inside `Visits::SmartDetect` (which is
     # what `Visits::Suggest#call` delegates to). The corresponding regression
     # test lives in spec/services/visits/smart_detect_spec.rb.
