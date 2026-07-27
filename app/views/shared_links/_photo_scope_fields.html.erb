@@ -1,0 +1,91 @@
+<% id_prefix = local_assigns.fetch(:id_prefix, 'shared-link') %>
+
+<div class="form-control mt-4" data-photo-scope-selector>
+  <span class="label-text font-semibold mb-2">Photos</span>
+
+  <%= hidden_field_tag 'shared_link[settings][show_photos]',
+                       '0',
+                       data: { photo_scope_show_photos: true } %>
+
+  <%= hidden_field_tag 'shared_link[settings][photo_scope]',
+                       'public',
+                       data: { photo_scope_value: true } %>
+
+  <label class="label cursor-pointer justify-start gap-3">
+    <%= radio_button_tag "#{id_prefix}_photo_selection",
+                         'none',
+                         true,
+                         id: "#{id_prefix}_photo_selection_none",
+                         class: 'radio',
+                         data: { photo_scope_choice: true } %>
+    <span class="label-text">No photos</span>
+  </label>
+
+  <label class="label cursor-pointer justify-start gap-3">
+    <%= radio_button_tag "#{id_prefix}_photo_selection",
+                         'public',
+                         false,
+                         id: "#{id_prefix}_photo_selection_public",
+                         class: 'radio',
+                         data: { photo_scope_choice: true } %>
+    <span class="label-text">Public photos only</span>
+  </label>
+
+  <label class="label cursor-pointer justify-start gap-3">
+    <%= radio_button_tag "#{id_prefix}_photo_selection",
+                         'family',
+                         false,
+                         id: "#{id_prefix}_photo_selection_family",
+                         class: 'radio',
+                         data: { photo_scope_choice: true } %>
+    <span class="label-text">Public + family photos</span>
+  </label>
+
+  <span class="label-text-alt mt-1">
+    Photo visibility is controlled by the corresponding Immich tags.
+  </span>
+</div>
+
+<script>
+  (() => {
+    if (window.sharedLinkPhotoScopeSelectorInstalled) return;
+
+    window.sharedLinkPhotoScopeSelectorInstalled = true;
+
+    document.addEventListener("change", (event) => {
+      const choice = event.target.closest("[data-photo-scope-choice]");
+
+      if (!choice) return;
+
+      const wrapper = choice.closest("[data-photo-scope-selector]");
+
+      if (!wrapper) return;
+
+      const showPhotos = wrapper.querySelector(
+        "[data-photo-scope-show-photos]"
+      );
+
+      const photoScope = wrapper.querySelector(
+        "[data-photo-scope-value]"
+      );
+
+      if (!showPhotos || !photoScope) return;
+
+      switch (choice.value) {
+        case "family":
+          showPhotos.value = "1";
+          photoScope.value = "family";
+          break;
+
+        case "public":
+          showPhotos.value = "1";
+          photoScope.value = "public";
+          break;
+
+        default:
+          showPhotos.value = "0";
+          photoScope.value = "public";
+      }
+    });
+  })();
+</script>

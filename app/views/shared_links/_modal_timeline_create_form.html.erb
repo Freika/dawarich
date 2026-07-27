@@ -9,6 +9,7 @@
                        class: 'input input-bordered',
                        required: true %>
     </div>
+
     <div class="form-control">
       <label class="label"><span class="label-text">End date</span></label>
       <%= f.date_field :end_date,
@@ -30,13 +31,8 @@
     <span class="label-text-alt mt-1">Leave blank for a link that never expires.</span>
   </div>
 
-  <div class="form-control mt-4">
-    <label class="label cursor-pointer">
-      <span class="label-text">Show photos</span>
-      <%= hidden_field_tag 'shared_link[settings][show_photos]', '0' %>
-      <%= check_box_tag 'shared_link[settings][show_photos]', '1', false, class: 'checkbox' %>
-    </label>
-  </div>
+  <%= render 'shared_links/photo_scope_fields',
+             id_prefix: 'timeline' %>
 
   <% if @shared_link&.errors&.any? %>
     <div class="alert alert-error mt-4 text-sm">

@@ -6,23 +6,26 @@
     <%= f.text_field :magic_phrase, class: 'input input-bordered', value: SharedLink::PhraseGenerator.call %>
     <span class="label-text-alt mt-1">Leave blank to share without a phrase, or use the auto-generated one.</span>
   </div>
+
   <div class="form-control mt-4">
     <label class="label"><span class="label-text">Expires (optional)</span></label>
     <%= f.date_field :expires_at, class: 'input input-bordered', min: Date.current.tomorrow, value: 7.days.from_now.to_date %>
     <span class="label-text-alt mt-1">Leave blank for a link that never expires.</span>
   </div>
+
   <div class="form-control mt-4">
     <span class="label-text font-semibold">What to include on the public page</span>
+
     <%
       sections = [
         ['show_route',       'Route map',                              true],
         ['show_stats',       'Stats & countries (distance, duration)', true],
         ['show_days',        'Day-by-day breakdown',                   true],
         ['show_day_notes',   'Per-day notes',                          false],
-        ['show_description', 'Trip description',                       true],
-        ['show_photos',      'Photos on map',                          false]
+        ['show_description', 'Trip description',                       true]
       ]
     %>
+
     <% sections.each do |key, label, checked| %>
       <label class="label cursor-pointer">
         <span class="label-text"><%= label %></span>
@@ -31,6 +34,10 @@
       </label>
     <% end %>
   </div>
+
+  <%= render 'shared_links/photo_scope_fields',
+             id_prefix: 'trip' %>
+
   <div class="modal-action">
     <%= link_to 'Cancel', close_path, class: 'btn btn-ghost', data: { turbo_frame: '_top', action: 'share-link-modal#close' } %>
     <%= f.submit 'Create share link', class: 'btn btn-primary' %>
