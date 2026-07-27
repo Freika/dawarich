@@ -63,18 +63,32 @@
                   <% if has_note %>
                     <p class="whitespace-pre-wrap text-sm text-base-content/80"><%= note.body %></p>
                   <% end %>
+
                   <% if day_photos.any? %>
-                    <div class="grid grid-cols-3 gap-2 mt-3">
-                      <% day_photos.each do |photo| %>
-                        <div class="aspect-square overflow-hidden rounded-lg">
-                          <img src="<%= url_for(controller: 'api/v1/shared/photos', action: 'thumbnail', id: link.id, photo_id: photo[:id], source: photo[:source], only_path: true) %>"
-                               loading="lazy"
-                               alt=""
-                               class="h-full w-full object-cover">
+                    <div data-trip-day-photos>
+                      <div data-trip-day-photos-container></div>
+                  
+                      <template data-trip-day-photos-template>
+                        <div class="grid grid-cols-3 gap-2 mt-3">
+                          <% day_photos.each do |photo| %>
+                            <div class="aspect-square overflow-hidden rounded-lg">
+                              <img src="<%= url_for(controller: 'api/v1/shared/photos',
+                                                     action: 'thumbnail',
+                                                     id: link.id,
+                                                     photo_id: photo[:id],
+                                                     source: photo[:source],
+                                                     only_path: true) %>"
+                                   loading="lazy"
+                                   decoding="async"
+                                   alt=""
+                                   class="h-full w-full object-cover">
+                            </div>
+                          <% end %>
                         </div>
-                      <% end %>
+                      </template>
                     </div>
                   <% end %>
+
                 </div>
               <% end %>
             <% else %>
@@ -88,3 +102,36 @@
     </div>
   </div>
 <% end %>
+<script>
+  (() => {
+    if (window.sharedTripPhotoLoaderInstalled) return;
+    window.sharedTripPhotoLoaderInstalled = true;
+
+    document.addEventListener("toggle", (event) => {
+      const details = event.target;
+
+      if (!(details instanceof HTMLDetailsElement)) return;
+
+      const wrapper = details.querySelector("[data-trip-day-photos]");
+      if (!wrapper) return;
+
+      const container = wrapper.querySelector(
+        "[data-trip-day-photos-container]"
+      );
+
+      const template = wrapper.querySelector(
+        "[data-trip-day-photos-template]"
+      );
+
+      if (!container || !template) return;
+
+      if (details.open) {
+        if (!container.hasChildNodes()) {
+          container.appendChild(template.content.cloneNode(true));
+        }
+      } else {
+        container.replaceChildren();
+      }
+    }, true);
+  })();
+</script>
