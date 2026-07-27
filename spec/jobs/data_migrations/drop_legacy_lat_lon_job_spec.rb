@@ -27,6 +27,10 @@ RSpec.describe DataMigrations::DropLegacyLatLonJob do
     )
   end
 
+  it 'waits long enough to catch the gap between batched writes' do
+    expect(described_class::LOCK_TIMEOUT).to eq('5s')
+  end
+
   it 'scopes both timeouts to the transaction so pooling cannot separate them' do
     allow(connection).to receive(:column_exists?).and_return(true)
     allow(connection).to receive(:execute)

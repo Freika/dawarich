@@ -53,6 +53,11 @@ RSpec.describe DropLegacyLatLonFromPoints, :non_transactional do
     expect(DataMigrations::DropLegacyLatLonJob).not_to have_received(:perform_later)
   end
 
+  it 'keeps the boot-time lock wait and attempt budget short' do
+    expect(described_class::DROP_LOCK_TIMEOUT).to eq('1s')
+    expect(described_class::DROP_MAX_ATTEMPTS).to eq(3)
+  end
+
   it 'scopes both timeouts to the transaction so pooling cannot separate them' do
     stub_drop_raising(ActiveRecord::LockWaitTimeout, times: 0)
 

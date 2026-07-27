@@ -3,10 +3,13 @@
 class DataMigrations::DropLegacyLatLonJob < ApplicationJob
   queue_as :data_migrations
 
-  # Each attempt queues an ACCESS EXCLUSIVE request that holds up every points
-  # reader and writer behind it, so keep the wait short: the lock is either free
-  # almost immediately or held by a long transaction a longer wait cannot outlast.
-  LOCK_TIMEOUT = '1s'
+  # Long enough to catch the gap between two batched writes. The same release
+  # backfills tracker ids and clears raw_data in 5k/10k-row batches that each
+  # hold RowExclusive on points for seconds at a time, so a one-second wait
+  # would expire inside a batch and lose every attempt. Each try does stall
+  # points behind an ACCESS EXCLUSIVE request, but at one try per five minutes
+  # that is a fraction of a percent of the time.
+  LOCK_TIMEOUT = '5s'
 
   MAX_ATTEMPTS = 288
 
@@ -28,7 +31,8 @@ class DataMigrations::DropLegacyLatLonJob < ApplicationJob
     Rails.logger.error(
       "[DataMigrations::DropLegacyLatLon] gave up after #{MAX_ATTEMPTS} attempts (#{error.class}: #{error.message}); " \
       'points.latitude / points.longitude are still present. Drop them once traffic is quiet with: ' \
-      'ALTER TABLE points DROP COLUMN IF EXISTS latitude, DROP COLUMN IF EXISTS longitude;'
+      "BEGIN; SET LOCAL lock_timeout = '#{LOCK_TIMEOUT}'; " \
+      'ALTER TABLE points DROP COLUMN IF EXISTS latitude, DROP COLUMN IF EXISTS longitude; COMMIT;'
     )
   end
 

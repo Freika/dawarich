@@ -99,7 +99,8 @@ class DropLegacyLatLonFromPoints < ActiveRecord::Migration[8.0]
       '[DropLegacyLatLonFromPoints] could not enqueue DataMigrations::DropLegacyLatLonJob ' \
       "(#{e.class}: #{e.message}); points.latitude / points.longitude are still present. " \
       'Drop them once traffic is quiet with: ' \
-      'ALTER TABLE points DROP COLUMN IF EXISTS latitude, DROP COLUMN IF EXISTS longitude;'
+      "BEGIN; SET LOCAL lock_timeout = '#{DROP_LOCK_TIMEOUT}'; " \
+      'ALTER TABLE points DROP COLUMN IF EXISTS latitude, DROP COLUMN IF EXISTS longitude; COMMIT;'
     )
   end
 
