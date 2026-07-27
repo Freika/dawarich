@@ -3,8 +3,6 @@
  * Loads settings from backend API only (no localStorage)
  */
 
-import { classifyBasemapUrl } from "maps_maplibre/utils/basemap_url"
-
 // Route fallback matches Map v1's blue; track color matches the backend
 // Tracks::GeojsonSerializer::DEFAULT_COLOR — keep them in sync.
 export const LAYER_COLOR_DEFAULTS = {
@@ -510,7 +508,10 @@ export class SettingsManager {
   }
 
   static validVectorTilesUrl(url) {
-    return !url || classifyBasemapUrl(url) !== null
+    return (
+      !url ||
+      ["{z}", "{x}", "{y}"].every((placeholder) => url.includes(placeholder))
+    )
   }
 
   /**

@@ -2,13 +2,6 @@ import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
 import test from "node:test"
 
-const basemapUrlSource = await readFile(
-  new URL(
-    "../../app/javascript/maps_maplibre/utils/basemap_url.js",
-    import.meta.url,
-  ),
-  "utf8",
-)
 const source = await readFile(
   new URL(
     "../../app/javascript/maps_maplibre/utils/settings_manager.js",
@@ -16,12 +9,10 @@ const source = await readFile(
   ),
   "utf8",
 )
-const withoutImports = source.replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
-const combinedSource = `${basemapUrlSource}\n${withoutImports}`
-const moduleUrl = `data:text/javascript;base64,${Buffer.from(combinedSource).toString("base64")}`
+const moduleUrl = `data:text/javascript;base64,${Buffer.from(source).toString("base64")}`
 const { LAYER_COLOR_DEFAULTS, SettingsManager } = await import(moduleUrl)
 
-async function loadSettingsController(settingsManager, overrides = {}) {
+async function loadSettingsController(settingsManager) {
   const controllerSource = await readFile(
     new URL(
       "../../app/javascript/controllers/maps/maplibre/settings_manager.js",
@@ -34,20 +25,13 @@ async function loadSettingsController(settingsManager, overrides = {}) {
     "",
   )
   globalThis.__settingsManagerTestDouble = settingsManager
-  globalThis.__settingsManagerToast = overrides.Toast ?? {
-    error() {},
-    success() {},
-  }
-  globalThis.__settingsManagerGetMapStyle =
-    overrides.getMapStyle ?? (async () => ({}))
   const dependencies = `
-    const Toast = globalThis.__settingsManagerToast
+    const Toast = { error() {}, success() {} }
     const UpgradeBanner = {}
     const isGatedPlan = () => false
     const LAYER_COLOR_DEFAULTS = ${JSON.stringify(LAYER_COLOR_DEFAULTS)}
     const SettingsManager = globalThis.__settingsManagerTestDouble
-    const getMapStyle = globalThis.__settingsManagerGetMapStyle
-    ${basemapUrlSource.replace(/^export /gm, "")}
+    const getMapStyle = async () => ({})
   `
   const url = `data:text/javascript;base64,${Buffer.from(`${dependencies}\n${withoutImports}`).toString("base64")}`
   return await import(`${url}#${Date.now()}`)
@@ -69,21 +53,6 @@ test("vector tile URLs require z, x, and y placeholders", () => {
     false,
   )
   assert.equal(SettingsManager.validVectorTilesUrl(""), true)
-})
-
-test("basemap URLs also accept raster XYZ and full style.json URLs", () => {
-  assert.equal(
-    SettingsManager.validVectorTilesUrl("https://t.example/{z}/{x}/{y}.png"),
-    true,
-  )
-  assert.equal(
-    SettingsManager.validVectorTilesUrl("https://t.example/style.json?key=a"),
-    true,
-  )
-  assert.equal(
-    SettingsManager.validVectorTilesUrl("https://t.example/basemap"),
-    false,
-  )
 })
 
 test("multiple setting updates are persisted in one complete snapshot", async () => {
@@ -168,131 +137,4 @@ test("resetting layer colors cancels stale debounced saves", async () => {
   await new Promise((resolve) => setTimeout(resolve, 25))
 
   assert.deepEqual(updates, [LAYER_COLOR_DEFAULTS])
-})
-
-// Minimal stand-in for maplibregl.Map's Evented interface.
-class FakeMap {
-  constructor() {
-    this.listeners = { "style.load": [], error: [] }
-    this.setStyleCalls = []
-  }
-
-  on(event, callback) {
-    this.listeners[event].push(callback)
-  }
-
-  once(event, callback) {
-    const wrapped = (payload) => {
-      this.off(event, wrapped)
-      callback(payload)
-    }
-    this.on(event, wrapped)
-  }
-
-  off(event, callback) {
-    this.listeners[event] = this.listeners[event].filter((c) => c !== callback)
-  }
-
-  emit(event, payload) {
-    for (const callback of [...this.listeners[event]]) callback(payload)
-  }
-
-  setStyle(style, options) {
-    this.setStyleCalls.push({ style, options })
-  }
-}
-
-async function styleSwapController({ getMapStyle } = {}) {
-  const { SettingsController } = await loadSettingsController(
-    { getSetting: () => null },
-    { getMapStyle, Toast: { error: (m) => toasts.push(m), success() {} } },
-  )
-  const controller = new SettingsController({
-    element: { querySelector: () => null, querySelectorAll: () => [] },
-    map: new FakeMap(),
-    layerManager: { clearLayerReferences() {} },
-    settings: {},
-    loadMapData: () => restored.push("loadMapData"),
-  })
-  controller.restoreGlobeProjection = () => {}
-  return controller
-}
-
-let toasts = []
-let restored = []
-
-test("a custom style URL is applied with diff disabled so style.load fires", async () => {
-  toasts = []
-  restored = []
-  const controller = await styleSwapController()
-
-  controller.applyUserStyleUrl("https://tiles.example/style.json", "light")
-
-  assert.deepEqual(controller.map.setStyleCalls, [
-    { style: "https://tiles.example/style.json", options: { diff: false } },
-  ])
-
-  controller.map.emit("style.load")
-  assert.deepEqual(restored, ["loadMapData"])
-  assert.deepEqual(toasts, [])
-})
-
-test("a failed tile request does not discard a working custom style", async () => {
-  toasts = []
-  restored = []
-  const controller = await styleSwapController()
-
-  controller.applyUserStyleUrl("https://tiles.example/style.json", "light")
-  controller.map.emit("error", {
-    error: { url: "https://tiles.example/tiles/3/4/5.pbf" },
-  })
-
-  assert.deepEqual(toasts, [])
-  assert.equal(controller.map.setStyleCalls.length, 1)
-
-  controller.map.emit("style.load")
-  assert.deepEqual(restored, ["loadMapData"])
-})
-
-test("a failed style document reverts to the default style and reloads layers", async () => {
-  toasts = []
-  restored = []
-  const fallback = { version: 8, sources: {}, layers: [] }
-  const controller = await styleSwapController({
-    getMapStyle: async () => fallback,
-  })
-
-  controller.applyUserStyleUrl("https://tiles.example/style.json", "light")
-  controller.map.emit("error", {
-    error: { url: "https://tiles.example/style.json" },
-  })
-  await new Promise((resolve) => setTimeout(resolve, 0))
-
-  assert.equal(toasts.length, 1)
-  assert.deepEqual(controller.map.setStyleCalls.at(-1), {
-    style: fallback,
-    options: { diff: false },
-  })
-
-  controller.map.emit("style.load")
-  assert.deepEqual(restored, ["loadMapData"])
-})
-
-test("a stale style.load after the fallback does not double-reload", async () => {
-  toasts = []
-  restored = []
-  const controller = await styleSwapController({
-    getMapStyle: async () => ({ version: 8, sources: {}, layers: [] }),
-  })
-
-  controller.applyUserStyleUrl("https://tiles.example/style.json", "light")
-  controller.map.emit("error", {
-    error: { url: "https://tiles.example/style.json" },
-  })
-  await new Promise((resolve) => setTimeout(resolve, 0))
-
-  controller.map.emit("style.load")
-  controller.map.emit("style.load")
-
-  assert.deepEqual(restored, ["loadMapData"])
 })

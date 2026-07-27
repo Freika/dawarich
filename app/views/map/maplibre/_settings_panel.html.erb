@@ -571,17 +571,17 @@
 
           <div class="divider"></div>
 
-          <!-- Custom Basemap -->
+          <!-- Custom Vector Tiles -->
           <div class="form-control w-full">
             <label class="label">
-              <span class="label-text font-medium">Custom Basemap URL</span>
+              <span class="label-text font-medium">Vector Tiles URL</span>
             </label>
             <input type="url"
                    name="vectorTilesUrl"
                    placeholder="https://tiles.example.com/{z}/{x}/{y}.mvt"
                    class="input input-bordered input-sm w-full"
                    data-action="change->maps--maplibre#updateVectorTilesUrl" />
-            <p class="text-xs text-base-content/60 mt-1">Serve the base map from your own source. Accepts Protomaps-schema vector tiles or raster XYZ tiles (both must include {z}, {x}, and {y}), or a full MapLibre style URL ending in .json. Leave empty for the built-in tiles.</p>
+            <p class="text-xs text-base-content/60 mt-1">Serve the base map from your own Protomaps-schema vector tile server. Leave empty for the built-in tiles. Must include {z}, {x}, and {y}.</p>
           </div>
             </div>
           </details>

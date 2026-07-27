@@ -10,7 +10,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 
 - Poster Studio has a track width control: a 50–300% slider beside track opacity that scales the route line on the saved poster.
-- The Map v2 custom basemap field now accepts raster XYZ tiles (`.png`/`.jpg`/`.jpeg`/`.webp`) and full MapLibre style URLs ending in `.json`, in addition to Protomaps-schema vector tiles. Previously a raster URL rendered as a blank grey map and a style URL was rejected. (#3146)
 
 ### Fixed
 
