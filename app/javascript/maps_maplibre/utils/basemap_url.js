@@ -16,9 +16,11 @@ export function classifyBasemapUrl(url) {
     trimmed.includes("{x}") &&
     trimmed.includes("{y}")
 
-  if (path.endsWith(".json") && !hasXyz) return "style"
-
-  if (!hasXyz) return null
+  if (!hasXyz) {
+    return path.endsWith(".json") && isStyleDocumentLocation(trimmed)
+      ? "style"
+      : null
+  }
 
   if (
     path.endsWith(".png") ||
@@ -30,4 +32,28 @@ export function classifyBasemapUrl(url) {
   }
 
   return "vector"
+}
+
+// Matches Api::V1::SettingsController#style_json_url?: an absolute http(s) URL,
+// or a root-relative path for a style served from this instance. A
+// protocol-relative "//host/style.json" is neither, and the two validators must
+// agree or the browser accepts a URL the API then rejects.
+function isStyleDocumentLocation(url) {
+  if (/^https?:\/\//i.test(url)) return true
+
+  return url.startsWith("/") && !url.startsWith("//")
+}
+
+/**
+ * Whether a MapLibre `error` event reports a failure of the style document
+ * itself rather than one of the requests it spawns.
+ * @param {Object} event - MapLibre ErrorEvent
+ * @param {string} styleUrl - Style URL handed to setStyle
+ * @returns {boolean} True when the style document is what failed
+ */
+export function styleDocumentFailed(event, styleUrl) {
+  const failedUrl = event?.error?.url
+  if (!failedUrl) return true
+
+  return failedUrl === styleUrl
 }

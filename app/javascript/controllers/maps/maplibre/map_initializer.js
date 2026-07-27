@@ -1,5 +1,6 @@
 import maplibregl from "maplibre-gl"
 import { Toast } from "maps_maplibre/components/toast"
+import { styleDocumentFailed } from "maps_maplibre/utils/basemap_url"
 import { getMapStyle } from "maps_maplibre/utils/style_manager"
 
 /**
@@ -50,10 +51,14 @@ export class MapInitializer {
         settled = true
         map.off("error", onError)
       }
-      const onError = async () => {
-        if (settled) return
+      // Tile, sprite and glyph failures also surface as `error`. Reverting on
+      // those would discard a custom style that loaded perfectly well, so only
+      // a failure of the style document itself counts.
+      const onError = async (event) => {
+        if (settled || !styleDocumentFailed(event, style)) return
         settled = true
         map.off("style.load", onStyleLoad)
+        map.off("error", onError)
         Toast.error(
           "Custom map style could not be loaded; reverting to the default style.",
         )
@@ -62,11 +67,11 @@ export class MapInitializer {
           disabledPoiGroups,
           customTheme,
         })
-        map.setStyle(fallbackStyle)
+        map.setStyle(fallbackStyle, { diff: false })
       }
 
       map.once("style.load", onStyleLoad)
-      map.once("error", onError)
+      map.on("error", onError)
     }
 
     // Set globe projection after map loads

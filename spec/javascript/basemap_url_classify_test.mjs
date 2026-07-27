@@ -10,7 +10,7 @@ const source = await readFile(
   "utf8",
 )
 const moduleUrl = `data:text/javascript;base64,${Buffer.from(source).toString("base64")}`
-const { classifyBasemapUrl } = await import(moduleUrl)
+const { classifyBasemapUrl, styleDocumentFailed } = await import(moduleUrl)
 
 test("classifies a raster XYZ URL with a jpg extension as raster", () => {
   assert.equal(
@@ -128,4 +128,48 @@ test("trims surrounding whitespace before classifying", () => {
     classifyBasemapUrl("  https://t.example/{z}/{x}/{y}.png  "),
     "raster",
   )
+})
+
+test("classifies a root-relative style path as a style", () => {
+  assert.equal(classifyBasemapUrl("/maps/styles/mine.json"), "style")
+})
+
+test("rejects style paths the API would reject", () => {
+  assert.equal(classifyBasemapUrl("//evil.example/style.json"), null)
+  assert.equal(classifyBasemapUrl("ftp://example.com/style.json"), null)
+  assert.equal(classifyBasemapUrl("styles/mine.json"), null)
+})
+
+test("treats a failed request for the style document as a style failure", () => {
+  const styleUrl = "https://api.maptiler.com/maps/streets/style.json"
+  assert.equal(
+    styleDocumentFailed({ error: { url: styleUrl } }, styleUrl),
+    true,
+  )
+})
+
+test("treats a failed tile, sprite or glyph request as unrelated", () => {
+  const styleUrl = "https://api.maptiler.com/maps/streets/style.json"
+  assert.equal(
+    styleDocumentFailed(
+      { error: { url: "https://api.maptiler.com/tiles/3/4/5.pbf" } },
+      styleUrl,
+    ),
+    false,
+  )
+  assert.equal(
+    styleDocumentFailed(
+      { error: { url: "https://api.maptiler.com/sprites/v4.png" } },
+      styleUrl,
+    ),
+    false,
+  )
+})
+
+test("treats an error carrying no URL as a style failure", () => {
+  assert.equal(
+    styleDocumentFailed({ error: new Error("bad style") }, "s"),
+    true,
+  )
+  assert.equal(styleDocumentFailed(undefined, "s"), true)
 })

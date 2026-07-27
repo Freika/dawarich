@@ -123,6 +123,8 @@ RSpec.describe 'Api::V1::Settings', type: :request do
               params: { settings: { maps_maplibre_tiles_url: 'https://tiles.example.com/{z}.mvt' } }
 
         expect(response).to have_http_status(:unprocessable_content)
+        expect(response.parsed_body['errors'])
+          .to include(a_string_including('or be a MapLibre style URL ending in .json'))
         expect(user.reload.safe_settings.maps_maplibre_tiles_url).to be_nil
       end
 
@@ -152,9 +154,25 @@ RSpec.describe 'Api::V1::Settings', type: :request do
           .to eq('https://api.maptiler.com/maps/streets/style.json?key=abc')
       end
 
+      it 'accepts a root-relative style URL served from this instance' do
+        patch "/api/v1/settings?api_key=#{api_key}",
+              params: { settings: { maps_maplibre_tiles_url: '/maps_maplibre/styles/mine.json' } }
+
+        expect(response).to have_http_status(:success)
+        expect(user.reload.safe_settings.maps_maplibre_tiles_url).to eq('/maps_maplibre/styles/mine.json')
+      end
+
       it 'rejects a non-http style.json URL' do
         patch "/api/v1/settings?api_key=#{api_key}",
               params: { settings: { maps_maplibre_tiles_url: 'ftp://example.com/style.json' } }
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(user.reload.safe_settings.maps_maplibre_tiles_url).to be_nil
+      end
+
+      it 'rejects a protocol-relative style.json URL' do
+        patch "/api/v1/settings?api_key=#{api_key}",
+              params: { settings: { maps_maplibre_tiles_url: '//tiles.example.com/style.json' } }
 
         expect(response).to have_http_status(:unprocessable_content)
         expect(user.reload.safe_settings.maps_maplibre_tiles_url).to be_nil

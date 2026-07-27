@@ -126,12 +126,16 @@ class Api::V1::SettingsController < ApiController
     TILE_URL_PLACEHOLDERS.all? { |placeholder| url.include?(placeholder) }
   end
 
+  # Mirrors classifyBasemapUrl in app/javascript/maps_maplibre/utils/basemap_url.js:
+  # an absolute http(s) URL, or a root-relative path for a style served from
+  # this instance. Keep the two in sync or the browser accepts a URL this
+  # rejects.
   def style_json_url?(url)
     uri = URI.parse(url)
-    return false unless uri.is_a?(URI::HTTP)
-    return false if uri.host.blank?
+    return false unless uri.path.to_s.downcase.end_with?('.json')
+    return uri.host.present? if uri.is_a?(URI::HTTP)
 
-    uri.path.to_s.downcase.end_with?('.json')
+    uri.scheme.nil? && uri.host.nil? && uri.path.start_with?('/')
   rescue URI::InvalidURIError
     false
   end

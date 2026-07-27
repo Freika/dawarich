@@ -1,5 +1,9 @@
 import { Toast } from "maps_maplibre/components/toast"
 import { UpgradeBanner } from "maps_maplibre/components/upgrade_banner"
+import {
+  classifyBasemapUrl,
+  styleDocumentFailed,
+} from "maps_maplibre/utils/basemap_url"
 import { isGatedPlan } from "maps_maplibre/utils/layer_gate"
 import {
   LAYER_COLOR_DEFAULTS,
@@ -1128,8 +1132,16 @@ export class SettingsController {
       return
     }
 
-    this.map.setStyle(style)
+    this.swapStyle(style)
+  }
+
+  // MapLibre only fires style.load when it builds a Style from scratch. Its
+  // default path diffs the new document into the live style and stays silent,
+  // which would leave the app layers stripped and never re-added, so the
+  // rebuild has to be forced.
+  swapStyle(style) {
     this.map.once("style.load", () => this.restoreStyleLayers())
+    this.map.setStyle(style, { diff: false })
   }
 
   mapStyleOptions() {
@@ -1159,21 +1171,24 @@ export class SettingsController {
       this.restoreStyleLayers()
     }
 
-    const onError = async () => {
-      if (settled) return
+    // MapLibre reports every failed request through `error`, tiles included.
+    // Only a failure of the style document may discard the user's basemap —
+    // one unreachable tile from an otherwise valid style must not.
+    const onError = async (event) => {
+      if (settled || !styleDocumentFailed(event, styleUrl)) return
       settled = true
       this.map.off("style.load", onLoad)
+      this.map.off("error", onError)
       Toast.error(
         "Custom map style could not be loaded; reverting to the default style.",
       )
       const fallback = await getMapStyle(styleName, this.mapStyleOptions())
-      this.map.setStyle(fallback)
-      this.map.once("style.load", () => this.restoreStyleLayers())
+      this.swapStyle(fallback)
     }
 
     this.map.once("style.load", onLoad)
-    this.map.once("error", onError)
-    this.map.setStyle(styleUrl)
+    this.map.on("error", onError)
+    this.map.setStyle(styleUrl, { diff: false })
   }
 
   restoreGlobeProjection() {
@@ -1358,15 +1373,22 @@ export class SettingsController {
 
   /**
    * The Custom style draws no labels or POIs, so their toggles are
-   * disabled while it's active, with a tooltip explaining why.
+   * disabled while it's active, with a tooltip explaining why. A raster or
+   * foreign-style basemap carries no Protomaps layers at all, so there every
+   * toggle goes dead, not just the unsupported ones.
    */
   syncStyleDependentToggles(styleName) {
+    const basemap = classifyBasemapUrl(
+      SettingsManager.getSetting("vectorTilesUrl"),
+    )
+    const foreignBasemap = basemap === "raster" || basemap === "style"
     const custom = styleName === "custom"
     const inputs = this.controller.element.querySelectorAll(
       "input[data-tile-category], input[data-poi-group]",
     )
     inputs.forEach((input) => {
-      const unavailable = custom && input.dataset.customSupported !== "true"
+      const unavailable =
+        foreignBasemap || (custom && input.dataset.customSupported !== "true")
       input.disabled = unavailable
 
       const label = input.closest("label")
@@ -1375,8 +1397,9 @@ export class SettingsController {
       label.classList.toggle("tooltip", unavailable)
       label.style.cursor = unavailable ? "not-allowed" : ""
       if (unavailable) {
-        label.dataset.tip =
-          "Not available with the Custom map style — it draws no labels or points of interest"
+        label.dataset.tip = foreignBasemap
+          ? "Not available with a custom raster or style basemap — these layers come from the built-in vector tiles"
+          : "Not available with the Custom map style — it draws no labels or points of interest"
       } else {
         delete label.dataset.tip
       }
