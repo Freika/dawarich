@@ -37,6 +37,21 @@ RSpec.describe Visits::SelectPlace do
       expect(visit.name).to eq('Café Bravo')
     end
 
+    it 'locks the name of a place the user picked so reverse geocoding cannot rewrite it' do
+      place = described_class.new(user: user, visit: visit, photon: photon_payload).call
+
+      expect(place.reload).to be_name_locked
+    end
+
+    it 'locks the name of an existing place the user picked' do
+      existing = create(:place, user: user, name: photon_payload[:name],
+                                latitude: photon_payload[:latitude], longitude: photon_payload[:longitude])
+
+      described_class.new(user: user, visit: visit, photon: photon_payload.except(:osm_id, :geodata)).call
+
+      expect(existing.reload).to be_name_locked
+    end
+
     it 'does not match another user\'s place at the same name and coords (isolation)' do
       other = create(:user)
       create(:place, user: other, name: 'Café Bravo', latitude: 52.5126, longitude: 13.4012)

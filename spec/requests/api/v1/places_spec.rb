@@ -297,4 +297,23 @@ RSpec.describe 'Api::V1::Places', type: :request do
       expect(response).to have_http_status(:unauthorized)
     end
   end
+
+  describe 'name lock exposure' do
+    let(:user) { create(:user) }
+    let(:place) { create(:place, user: user, name: Place::DEFAULT_NAME) }
+
+    it 'reports the lock state so Map v2 can surface it' do
+      place.update!(name: "Mum's house")
+
+      get api_v1_place_path(place), headers: { 'Authorization' => "Bearer #{user.api_key}" }
+
+      expect(response.parsed_body['name_locked']).to be(true)
+    end
+
+    it 'reports an auto-named place as unlocked' do
+      get api_v1_place_path(place), headers: { 'Authorization' => "Bearer #{user.api_key}" }
+
+      expect(response.parsed_body['name_locked']).to be(false)
+    end
+  end
 end
