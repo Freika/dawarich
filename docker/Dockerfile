@@ -18,7 +18,7 @@ RUN if [ "$TARGETARCH" = "amd64" ] || [ "$TARGETARCH" = "arm64" ]; then \
        /usr/lib/*/libXext.so.6* /out/; \
     else mkdir /out; fi
 
-FROM ruby:3.4.9-slim
+FROM ruby:4.0.6-slim
 
 ARG RAILS_ENV=production
 
