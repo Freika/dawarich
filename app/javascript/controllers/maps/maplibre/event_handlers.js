@@ -191,6 +191,11 @@ export class EventHandlers {
       <div class="space-y-2">
         ${properties.tag ? `<div class="badge badge-sm badge-primary">${escapeHtml(properties.tag)}</div>` : ""}
         ${properties.description ? `<div>${escapeHtml(properties.description)}</div>` : ""}
+        ${
+          properties.nameLocked
+            ? `<div class="text-xs opacity-70" data-testid="place-name-lock">🔒 You named this place, so automatic naming won't change it. Rename it to "Suggested place" to hand it back.</div>`
+            : ""
+        }
       </div>
     `
 
