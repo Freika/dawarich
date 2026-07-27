@@ -68,6 +68,36 @@ RSpec.describe Places::NameFetcher do
         service.call
       end
 
+      context 'when the name is locked by the user' do
+        let(:place) do
+          create(
+            :place,
+            name: "Mum's house",
+            name_locked_at: 1.day.ago,
+            city: nil,
+            country: nil,
+            geodata: {},
+            lonlat: 'POINT(10.0 10.0)'
+          )
+        end
+
+        it 'keeps the user-supplied name' do
+          expect { service.call }.not_to change(place, :name)
+        end
+
+        it 'still refreshes city and country' do
+          expect { service.call }.to change(place, :city).from(nil).to('New York')
+        end
+
+        it 'propagates the locked name to visits still using the default name' do
+          visit = create(:visit, place: place, user: place.user, name: Place::DEFAULT_NAME)
+
+          service.call
+
+          expect(visit.reload.name).to eq("Mum's house")
+        end
+      end
+
       context 'when DawarichSettings.store_geodata? is enabled' do
         before do
           allow(DawarichSettings).to receive(:store_geodata?).and_return(true)
@@ -138,6 +168,34 @@ RSpec.describe Places::NameFetcher do
         result = service.call
         expect(result).to eq(place)
         expect(result.name).to eq('Central Park, New York')
+      end
+    end
+
+    context 'when the geocoder provider times out' do
+      before do
+        allow(ExceptionReporter).to receive(:call)
+        allow(Rails.logger).to receive(:warn)
+        allow(Geocoder).to receive(:search).and_raise(Geocoder::LookupTimeout.new('execution expired'))
+      end
+
+      it 'returns nil without reporting an application exception' do
+        expect(service.call).to be_nil
+        expect(ExceptionReporter).not_to have_received(:call)
+        expect(Rails.logger).to have_received(:warn).with(/Geocoding provider error in NameFetcher/)
+      end
+    end
+
+    context 'when geocoding fails unexpectedly' do
+      let(:error) { StandardError.new('unexpected failure') }
+
+      before do
+        allow(ExceptionReporter).to receive(:call)
+        allow(Geocoder).to receive(:search).and_raise(error)
+      end
+
+      it 'reports the application exception' do
+        expect(service.call).to be_nil
+        expect(ExceptionReporter).to have_received(:call).with(error)
       end
     end
 

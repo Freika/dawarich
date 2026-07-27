@@ -292,6 +292,43 @@ RSpec.describe Archivable, type: :model do
         expect(Point).to have_received(:sleep).exactly(3).times
       end
     end
+
+    context 'when the upsert is canceled by a transient statement or lock timeout' do
+      [ActiveRecord::QueryCanceled, ActiveRecord::LockWaitTimeout].each do |error_class|
+        it "retries #{error_class} and returns the result" do
+          attempts = 0
+          allow(Point).to receive(:upsert_all).and_wrap_original do |original, *args, **kwargs|
+            attempts += 1
+            raise error_class, 'canceling statement' if attempts == 1
+
+            original.call(*args, **kwargs)
+          end
+          allow(Point).to receive(:sleep)
+
+          result = Point.archival_safe_upsert_all(
+            [base_row.merge(timestamp: 1_700_000_240)],
+            returning: Arel.sql('id, xmax')
+          )
+
+          expect(attempts).to eq(2)
+          expect(Point.exists?(result.first['id'])).to be true
+        end
+
+        it "raises #{error_class} after exhausting retries" do
+          allow(Point).to receive(:upsert_all).and_raise(error_class, 'canceling statement')
+          allow(Point).to receive(:sleep)
+
+          expect do
+            Point.archival_safe_upsert_all(
+              [base_row.merge(timestamp: 1_700_000_300)],
+              returning: Arel.sql('id, xmax')
+            )
+          end.to raise_error(error_class)
+
+          expect(Point).to have_received(:sleep).exactly(3).times
+        end
+      end
+    end
   end
 
   describe 'raw_data mutation guard' do
