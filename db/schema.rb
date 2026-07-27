@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_07_19_190000) do
+ActiveRecord::Schema[8.0].define(version: 2026_07_27_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -310,6 +310,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_07_19_190000) do
     t.bigint "user_id"
     t.text "note"
     t.boolean "demo", default: false, null: false
+    t.datetime "name_locked_at"
     t.index "(((geodata -> 'properties'::text) ->> 'osm_id'::text))", name: "index_places_on_geodata_osm_id"
     t.index ["demo"], name: "index_places_on_demo_true", where: "(demo = true)"
     t.index ["lonlat"], name: "index_places_on_lonlat", using: :gist
