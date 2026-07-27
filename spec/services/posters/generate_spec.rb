@@ -212,6 +212,57 @@ RSpec.describe Posters::Generate do
     end
   end
 
+  context 'when the poster frame straddles the antimeridian' do
+    let(:poster) do
+      create(:poster, settings: attributes_for(:poster)[:settings].merge(
+        'lat' => '-18.0', 'lon' => '178.0', 'distance' => '2000000'
+      ))
+    end
+    let(:track_across_the_dateline) do
+      { 'type' => 'MultiLineString', 'coordinates' => [[[-179.0, -18.0], [-178.9, -18.1]]] }
+    end
+
+    before { allow_any_instance_of(Posters::TrackBuilder).to receive(:call).and_return(track_across_the_dateline) }
+
+    it 'accepts a track three degrees east of the frame centre' do
+      run_generate
+
+      expect(poster.reload).to be_completed
+      expect(poster.settings['error']).to be_nil
+    end
+  end
+
+  context 'when a high-latitude frame is stretched by the Mercator projection' do
+    let(:poster) do
+      create(:poster, settings: attributes_for(:poster)[:settings].merge(
+        'lat' => '60.0', 'lon' => '10.0', 'distance' => '5000000'
+      ))
+    end
+
+    before { allow_any_instance_of(Posters::TrackBuilder).to receive(:call).and_return(track) }
+
+    context 'with a track inside the rendered frame but south of a flat-degree box' do
+      let(:track) { { 'type' => 'MultiLineString', 'coordinates' => [[[10.0, 42.0], [10.1, 42.1]]] } }
+
+      it 'accepts the track' do
+        run_generate
+
+        expect(poster.reload).to be_completed
+      end
+    end
+
+    context 'with a track north of the rendered frame but inside a flat-degree box' do
+      let(:track) { { 'type' => 'MultiLineString', 'coordinates' => [[[10.0, 73.0], [10.1, 73.1]]] } }
+
+      it 'rejects the track' do
+        run_generate
+
+        expect(poster.reload).to be_failed
+        expect(poster.settings['error']).to match(/does not pass through/)
+      end
+    end
+  end
+
   context 'when the track does not pass through the poster area' do
     let(:distant_track) { { 'type' => 'MultiLineString', 'coordinates' => [[[14.42, 50.08], [14.43, 50.09]]] } }
 
