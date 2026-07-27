@@ -9,13 +9,13 @@ class SharedLink < ApplicationRecord
 
   DEFAULT_SETTINGS = {
     trip: {
-      'show_photos' => false, 'show_stats' => false
+      'show_photos' => false, 'show_stats' => false, 'photo_scope' => 'public'
     }.freeze,
     track: {
-      'show_photos' => false, 'show_stats' => false
+      'show_photos' => false, 'show_stats' => false, 'photo_scope' => 'public'
     }.freeze,
     timeline: {
-      'show_photos' => false
+      'show_photos' => false, 'photo_scope' => 'public'
     }.freeze,
     live: {
       'show_photos' => false, 'show_route' => false

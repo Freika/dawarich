@@ -115,9 +115,36 @@ module ShareLinks
       raw = params.fetch(:shared_link, {})[:settings]
       return {} if raw.blank?
 
-      keys = %i[show_photos show_stats show_route show_countries show_description show_days show_day_notes]
-      permitted = raw.respond_to?(:permit) ? raw.permit(*keys) : raw.slice(*keys.map(&:to_s))
-      permitted.to_h.transform_values { |v| ActiveModel::Type::Boolean.new.cast(v) }
+      boolean_keys = %i[
+        show_photos
+        show_stats
+        show_route
+        show_countries
+        show_description
+        show_days
+        show_day_notes
+      ]
+
+      permitted =
+        if raw.respond_to?(:permit)
+          raw.permit(*boolean_keys, :photo_scope)
+        else
+          raw.slice(*(boolean_keys.map(&:to_s) + ['photo_scope']))
+        end
+
+      values = permitted.to_h.stringify_keys
+
+      settings = boolean_keys.each_with_object({}) do |key, result|
+        string_key = key.to_s
+        next unless values.key?(string_key)
+
+        result[string_key] = ActiveModel::Type::Boolean.new.cast(values[string_key])
+      end
+
+      scope = values['photo_scope'].to_s
+      settings['photo_scope'] = %w[public family].include?(scope) ? scope : 'public'
+
+      settings
     end
 
     def broadcast_live_share_ended(share)

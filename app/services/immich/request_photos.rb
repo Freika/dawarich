@@ -3,19 +3,25 @@
 class Immich::RequestPhotos
   include SslConfigurable
 
-  attr_reader :user, :immich_api_base_url, :immich_api_key, :start_date, :end_date
+  attr_reader :user,
+              :immich_api_base_url,
+              :immich_api_key,
+              :start_date,
+              :end_date,
+              :tag_ids
 
-  def initialize(user, start_date: '1970-01-01', end_date: nil)
+  def initialize(user, start_date: '1970-01-01', end_date: nil, tag_ids: nil)
     @user = user
     @immich_api_base_url = "#{user.safe_settings.immich_url}/api/search/metadata"
     @immich_api_key = user.safe_settings.immich_api_key
     @start_date = start_date
     @end_date = end_date
+    @tag_ids = Array(tag_ids).compact_blank
   end
 
   def call
     raise ArgumentError, 'Immich API key is missing' if immich_api_key.blank?
-    raise ArgumentError, 'Immich URL is missing'     if user.safe_settings.immich_url.blank?
+    raise ArgumentError, 'Immich URL is missing' if user.safe_settings.immich_url.blank?
 
     data = retrieve_immich_data
     return nil if data.nil?
@@ -35,7 +41,9 @@ class Immich::RequestPhotos
       response = HTTParty.post(
         immich_api_base_url,
         http_options_with_ssl(
-          @user, :immich, {
+          user,
+          :immich,
+          {
             headers: headers,
             body: request_body(page).to_json,
             timeout: 10
@@ -50,14 +58,10 @@ class Immich::RequestPhotos
         return nil
       end
 
-      Rails.logger.debug('==== IMMICH RESPONSE ====')
-      Rails.logger.debug(result[:data])
       items = result[:data].dig('assets', 'items')
-
       break if items.blank?
 
       data << items
-
       page += 1
     end
 
@@ -84,9 +88,10 @@ class Immich::RequestPhotos
       withExif: true
     }
 
-    return body unless end_date
+    body[:takenBefore] = normalize_date(end_date) if end_date
+    body[:tagIds] = tag_ids if tag_ids.present?
 
-    body.merge(takenBefore: normalize_date(end_date))
+    body
   end
 
   def time_framed_data(data)
