@@ -76,6 +76,8 @@ export default class extends Controller {
     "fontSelect",
     "trackOpacity",
     "trackOpacityLabel",
+    "trackWidth",
+    "trackWidthLabel",
     "summary",
     "format",
     "dpi",
@@ -95,6 +97,7 @@ export default class extends Controller {
     "saveEndAt",
     "saveSource",
     "saveOpacity",
+    "saveWidth",
     "dateStart",
     "dateEnd",
     "loadButton",
@@ -133,6 +136,7 @@ export default class extends Controller {
     this.populateSizePicker()
     this.populateFonts()
     this.trackOpacityLabelTarget.textContent = `${this.trackOpacityTarget.value}%`
+    this.trackWidthLabelTarget.textContent = `${this.trackWidthTarget.value}%`
   }
 
   disconnect() {
@@ -237,6 +241,7 @@ export default class extends Controller {
       extras: true,
       hiddenCategories: [...this.hidden],
       trackOpacity: this.trackOpacityValue(),
+      trackWidth: this.trackWidthValue(),
     })
   }
 
@@ -460,11 +465,16 @@ export default class extends Controller {
       if (!toggle.checked) this.hidden.add(toggle.dataset.layerCategory)
     })
     this.trackOpacityLabelTarget.textContent = `${this.trackOpacityTarget.value}%`
+    this.trackWidthLabelTarget.textContent = `${this.trackWidthTarget.value}%`
     this.scheduleRestyle()
   }
 
   trackOpacityValue() {
     return Number.parseInt(this.trackOpacityTarget.value, 10) / 100
+  }
+
+  trackWidthValue() {
+    return Number.parseInt(this.trackWidthTarget.value, 10) / 100
   }
 
   // ===== Date range =====
@@ -776,6 +786,7 @@ export default class extends Controller {
     this.saveEndAtTarget.value = endAt || ""
     this.saveSourceTarget.value = this.provider.trackSource()
     this.saveOpacityTarget.value = this.trackOpacityTarget.value
+    this.saveWidthTarget.value = this.trackWidthTarget.value
     this.saveFormTarget.requestSubmit()
     this.setStatus("Queued — rendering server-side into Recent posters…")
   }
