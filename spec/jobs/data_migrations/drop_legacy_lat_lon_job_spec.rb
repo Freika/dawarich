@@ -27,25 +27,24 @@ RSpec.describe DataMigrations::DropLegacyLatLonJob do
     )
   end
 
-  it 'clears any statement timeout inherited from the pooled connection' do
+  it 'scopes both timeouts to the transaction so pooling cannot separate them' do
     allow(connection).to receive(:column_exists?).and_return(true)
     allow(connection).to receive(:execute)
 
     described_class.perform_now
 
-    expect(connection).to have_received(:execute).with('SET statement_timeout = 0')
-    expect(connection).to have_received(:execute).with('RESET statement_timeout')
+    expect(connection).to have_received(:execute).with('SET LOCAL statement_timeout = 0')
+    expect(connection).to have_received(:execute).with("SET LOCAL lock_timeout = '5s'")
   end
 
-  it 'resets the lock timeout even when the drop loses the lock race' do
+  it 'runs the drop inside a transaction' do
     allow(connection).to receive(:column_exists?).and_return(true)
-    allow(connection).to receive(:execute) do |sql|
-      raise ActiveRecord::LockWaitTimeout, 'lock timeout' if sql.include?('DROP COLUMN')
-    end
+    allow(connection).to receive(:execute)
+    allow(connection).to receive(:transaction).and_call_original
 
     described_class.perform_now
 
-    expect(connection).to have_received(:execute).with('RESET lock_timeout')
+    expect(connection).to have_received(:transaction)
   end
 
   it 'retries rather than failing when the lock is unavailable' do

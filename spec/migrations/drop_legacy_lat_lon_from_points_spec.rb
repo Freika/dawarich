@@ -53,13 +53,13 @@ RSpec.describe DropLegacyLatLonFromPoints, :non_transactional do
     expect(DataMigrations::DropLegacyLatLonJob).not_to have_received(:perform_later)
   end
 
-  it 'always resets the lock timeout it set' do
-    stub_drop_raising(ActiveRecord::LockWaitTimeout)
-    allow(DataMigrations::DropLegacyLatLonJob).to receive(:perform_later)
+  it 'scopes both timeouts to the transaction so pooling cannot separate them' do
+    stub_drop_raising(ActiveRecord::LockWaitTimeout, times: 0)
 
     migration.send(:drop_legacy_columns)
 
-    expect(migration).to have_received(:execute).with('RESET lock_timeout')
+    expect(migration).to have_received(:execute).with('SET LOCAL statement_timeout = 0')
+    expect(migration).to have_received(:execute).with("SET LOCAL lock_timeout = '5s'")
   end
 
   it 'hands off rather than aborting when a statement_timeout cancels the drop' do

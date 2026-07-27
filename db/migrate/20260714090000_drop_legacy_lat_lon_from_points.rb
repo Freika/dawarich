@@ -52,10 +52,15 @@ class DropLegacyLatLonFromPoints < ActiveRecord::Migration[8.0]
 
     begin
       attempts += 1
-      execute "SET lock_timeout = '#{DROP_LOCK_TIMEOUT}'"
-      # Single statement so both columns drop atomically and a rerun never sees
-      # only one of them missing.
-      execute 'ALTER TABLE points DROP COLUMN IF EXISTS latitude, DROP COLUMN IF EXISTS longitude'
+      # SET LOCAL keeps both timeouts on the same backend as the ALTER under
+      # PgBouncer transaction pooling; a bare SET can land elsewhere and leave
+      # the drop unbounded. Single ALTER statement so both columns drop
+      # atomically and a rerun never sees only one of them missing.
+      transaction do
+        execute 'SET LOCAL statement_timeout = 0'
+        execute "SET LOCAL lock_timeout = '#{DROP_LOCK_TIMEOUT}'"
+        execute 'ALTER TABLE points DROP COLUMN IF EXISTS latitude, DROP COLUMN IF EXISTS longitude'
+      end
       Rails.logger.info '[DropLegacyLatLonFromPoints] done'
     rescue ActiveRecord::LockWaitTimeout, ActiveRecord::QueryAborted => e
       if attempts < DROP_MAX_ATTEMPTS
@@ -71,21 +76,20 @@ class DropLegacyLatLonFromPoints < ActiveRecord::Migration[8.0]
         'handing the drop to DataMigrations::DropLegacyLatLonJob'
       )
       enqueue_drop_job
-    ensure
-      execute 'RESET lock_timeout'
     end
   end
 
-  # Redis may not be reachable yet when migrations run, and an unreachable queue
-  # must not abort the migration — that is the crash loop this change removes.
-  # The columns are unused, so leaving them in place is safe. Only connection
-  # failures are swallowed; anything else is a bug worth surfacing.
+  # Redis may not be reachable yet when migrations run, and no enqueue failure
+  # may abort the migration — that is the crash loop this change removes. The
+  # rescue is deliberately broad: a malformed REDIS_URL, an exhausted pool and a
+  # refused connection all reach here, and none of them are worth a restart loop.
+  # The columns are unused, so leaving them in place is safe.
   def enqueue_drop_job
     DataMigrations::DropLegacyLatLonJob.perform_later
-  rescue RedisClient::Error, SocketError, IOError, SystemCallError => e
-    Rails.logger.warn(
-      "[DropLegacyLatLonFromPoints] could not enqueue DataMigrations::DropLegacyLatLonJob: #{e.message}; " \
-      'the legacy columns remain and will be dropped on a later boot'
+  rescue StandardError => e
+    Rails.logger.error(
+      '[DropLegacyLatLonFromPoints] could not enqueue DataMigrations::DropLegacyLatLonJob ' \
+      "(#{e.class}: #{e.message}); the legacy columns remain and will be dropped on a later boot"
     )
   end
 
