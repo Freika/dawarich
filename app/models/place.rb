@@ -14,7 +14,10 @@ class Place < ApplicationRecord
   has_many :place_visits, dependent: :destroy
   has_many :suggested_visits, -> { distinct }, through: :place_visits, source: :visit
 
+  attr_accessor :machine_named, :user_named
+
   before_validation :build_lonlat, if: -> { latitude.present? && longitude.present? }
+  before_save :lock_name_on_user_edit
 
   validates :name, presence: true, length: { maximum: 255 }
   validates :lonlat, presence: true
@@ -39,6 +42,10 @@ class Place < ApplicationRecord
     lonlat.y
   end
 
+  def name_locked?
+    name_locked_at.present?
+  end
+
   def osm_id
     geodata.dig('properties', 'osm_id')
   end
@@ -59,5 +66,15 @@ class Place < ApplicationRecord
 
   def build_lonlat
     self.lonlat = "POINT(#{longitude} #{latitude})"
+  end
+
+  def lock_name_on_user_edit
+    return if machine_named
+    return unless will_save_change_to_name?
+
+    return self.name_locked_at = nil if name == DEFAULT_NAME
+    return if new_record? && !user_named
+
+    self.name_locked_at = Time.current
   end
 end

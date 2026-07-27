@@ -95,6 +95,30 @@ RSpec.describe Users::MailerSendingJob, type: :job do
       end
     end
 
+    context 'when email_type is a legacy trial lifecycle email' do
+      %w[trial_expired trial_expires_soon post_trial_reminder_early post_trial_reminder_late].each do |email_type|
+        it "skips #{email_type}" do
+          expect do
+            described_class.perform_now(user.id, email_type)
+          end.not_to have_enqueued_job(ActionMailer::MailDeliveryJob)
+        end
+
+        it "logs that #{email_type} was skipped" do
+          allow(Rails.logger).to receive(:info)
+
+          described_class.perform_now(user.id, email_type)
+
+          expect(Rails.logger).to have_received(:info).with(/skipping legacy Manager-owned email_type=#{email_type}/)
+        end
+
+        it "delivers nothing for #{email_type} when a stale ActionMailer job bypasses this wrapper" do
+          expect do
+            UsersMailer.with(user: user).public_send(email_type).deliver_now
+          end.not_to(change { ActionMailer::Base.deliveries.size })
+        end
+      end
+    end
+
     context 'registry coverage' do
       # Prove every entry in MAILER_REGISTRY actually resolves to a real mailer
       # action. A typo in the registry would otherwise silently break production.
