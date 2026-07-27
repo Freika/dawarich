@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Instances with heavy write traffic no longer crash-loop on the 1.10.1 upgrade. Dropping the legacy `points.latitude`/`points.longitude` columns needs an exclusive lock that busy instances could not win in one attempt, which aborted the migration and restarted the container in a loop. The drop is now retried, and if it still cannot get the lock it is handed to a background job so startup completes. If that job cannot get the lock either, the columns stay and the log prints the statement to run by hand — they are unused, so nothing breaks in the meantime (#3176)
 - Trial lifecycle email jobs left over from older releases are now discarded instead of retrying forever in the background queue. Mail addressed to a record that has since been deleted is also discarded rather than retried.
 - Reverse geocoding and place-name provider outages no longer flood error reporting with handled timeouts, dropped TLS connections, or invalid provider responses. A misconfigured or rate-limited provider — a bad API key, for example — is still reported.
 - Reverse geocoding retries point updates that time out while waiting on concurrent writes.
