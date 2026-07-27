@@ -3,7 +3,10 @@
 class DataMigrations::DropLegacyLatLonJob < ApplicationJob
   queue_as :data_migrations
 
-  LOCK_TIMEOUT = '5s'
+  # Each attempt queues an ACCESS EXCLUSIVE request that holds up every points
+  # reader and writer behind it, so keep the wait short: the lock is either free
+  # almost immediately or held by a long transaction a longer wait cannot outlast.
+  LOCK_TIMEOUT = '1s'
 
   MAX_ATTEMPTS = 288
 
@@ -24,7 +27,8 @@ class DataMigrations::DropLegacyLatLonJob < ApplicationJob
   def self.log_exhaustion(error)
     Rails.logger.error(
       "[DataMigrations::DropLegacyLatLon] gave up after #{MAX_ATTEMPTS} attempts (#{error.class}: #{error.message}); " \
-      'points.latitude / points.longitude are still present and must be dropped manually'
+      'points.latitude / points.longitude are still present. Drop them once traffic is quiet with: ' \
+      'ALTER TABLE points DROP COLUMN IF EXISTS latitude, DROP COLUMN IF EXISTS longitude;'
     )
   end
 

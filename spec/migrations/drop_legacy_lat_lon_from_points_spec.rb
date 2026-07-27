@@ -59,7 +59,9 @@ RSpec.describe DropLegacyLatLonFromPoints, :non_transactional do
     migration.send(:drop_legacy_columns)
 
     expect(migration).to have_received(:execute).with('SET LOCAL statement_timeout = 0')
-    expect(migration).to have_received(:execute).with("SET LOCAL lock_timeout = '5s'")
+    expect(migration).to have_received(:execute).with(
+      "SET LOCAL lock_timeout = '#{described_class::DROP_LOCK_TIMEOUT}'"
+    )
   end
 
   it 'hands off rather than aborting when a statement_timeout cancels the drop' do

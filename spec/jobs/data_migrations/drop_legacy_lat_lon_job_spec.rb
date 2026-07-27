@@ -34,7 +34,9 @@ RSpec.describe DataMigrations::DropLegacyLatLonJob do
     described_class.perform_now
 
     expect(connection).to have_received(:execute).with('SET LOCAL statement_timeout = 0')
-    expect(connection).to have_received(:execute).with("SET LOCAL lock_timeout = '5s'")
+    expect(connection).to have_received(:execute).with(
+      "SET LOCAL lock_timeout = '#{described_class::LOCK_TIMEOUT}'"
+    )
   end
 
   it 'runs the drop inside a transaction' do

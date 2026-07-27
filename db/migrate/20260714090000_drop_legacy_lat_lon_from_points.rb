@@ -4,8 +4,12 @@ class DropLegacyLatLonFromPoints < ActiveRecord::Migration[8.0]
   disable_ddl_transaction!
 
   BATCH_SIZE = 50_000
-  DROP_LOCK_TIMEOUT = '5s'
-  DROP_MAX_ATTEMPTS = 10
+  # Every attempt queues an ACCESS EXCLUSIVE request that holds up each points
+  # reader and writer behind it, so keep the wait short: the lock is either free
+  # almost immediately or held by a long transaction that a longer wait will not
+  # outlast. Boot only needs a couple of tries — the job is the real fallback.
+  DROP_LOCK_TIMEOUT = '1s'
+  DROP_MAX_ATTEMPTS = 3
   DROP_BACKOFF_SECONDS = 3
 
   def up
@@ -84,12 +88,18 @@ class DropLegacyLatLonFromPoints < ActiveRecord::Migration[8.0]
   # rescue is deliberately broad: a malformed REDIS_URL, an exhausted pool and a
   # refused connection all reach here, and none of them are worth a restart loop.
   # The columns are unused, so leaving them in place is safe.
+  #
+  # Nothing retries this. The migration is recorded as applied either way and
+  # this is the only place that enqueues the job, so the log has to carry the
+  # manual remedy rather than promise a later boot will pick it up.
   def enqueue_drop_job
     DataMigrations::DropLegacyLatLonJob.perform_later
   rescue StandardError => e
     Rails.logger.error(
       '[DropLegacyLatLonFromPoints] could not enqueue DataMigrations::DropLegacyLatLonJob ' \
-      "(#{e.class}: #{e.message}); the legacy columns remain and will be dropped on a later boot"
+      "(#{e.class}: #{e.message}); points.latitude / points.longitude are still present. " \
+      'Drop them once traffic is quiet with: ' \
+      'ALTER TABLE points DROP COLUMN IF EXISTS latitude, DROP COLUMN IF EXISTS longitude;'
     )
   end
 
