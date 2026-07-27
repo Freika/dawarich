@@ -100,6 +100,34 @@ RSpec.describe Posters::Generate do
     end
   end
 
+  context 'when settings request a track width below the slider range' do
+    let(:poster) do
+      create(:poster, settings: attributes_for(:poster)[:settings].merge('route_width' => '10'))
+    end
+
+    before { allow_any_instance_of(Posters::TrackBuilder).to receive(:call).and_return(track) }
+
+    it 'clamps the width to the minimum multiplier' do
+      expect(Posters::NativeRenderer).to receive(:new).with(hash_including(route_width: 0.5)).and_return(renderer)
+
+      run_generate
+    end
+  end
+
+  context 'when settings request a negative track width' do
+    let(:poster) do
+      create(:poster, settings: attributes_for(:poster)[:settings].merge('route_width' => '-50'))
+    end
+
+    before { allow_any_instance_of(Posters::TrackBuilder).to receive(:call).and_return(track) }
+
+    it 'falls back to the unscaled width' do
+      expect(Posters::NativeRenderer).to receive(:new).with(hash_including(route_width: 1.0)).and_return(renderer)
+
+      run_generate
+    end
+  end
+
   context 'when the requested distance fits within the poster studio range' do
     let(:poster) { create(:poster, settings: attributes_for(:poster)[:settings].merge('distance' => 2_924_948)) }
 
