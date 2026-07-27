@@ -21,6 +21,11 @@ module Archivable
   UPSERT_MAX_RETRIES = 3
   UPSERT_BACKOFF_BASE = 0.1
   UPSERT_BACKOFF_JITTER = 0.05
+  UPSERT_CONTENTION_ERRORS = [
+    ActiveRecord::Deadlocked,
+    ActiveRecord::LockWaitTimeout,
+    ActiveRecord::QueryCanceled
+  ].freeze
 
   class_methods do
     # Bulk-ingest counterpart of the reset_archival_on_raw_data_change
@@ -40,7 +45,7 @@ module Archivable
       set_clauses << '"updated_at" = CURRENT_TIMESTAMP' unless update_columns.include?(:updated_at)
       set_clauses.concat(archival_reset_clauses) if update_columns.include?(:raw_data)
 
-      with_deadlock_retry do
+      with_write_contention_retry do
         upsert_all(
           rows,
           unique_by: UPSERT_CONFLICT_KEYS,
@@ -52,12 +57,12 @@ module Archivable
 
     private
 
-    def with_deadlock_retry
+    def with_write_contention_retry
       retries = 0
 
       begin
         yield
-      rescue ActiveRecord::Deadlocked => e
+      rescue *UPSERT_CONTENTION_ERRORS => e
         retries += 1
         raise e if retries > UPSERT_MAX_RETRIES
 

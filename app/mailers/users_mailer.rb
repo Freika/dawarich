@@ -47,4 +47,12 @@ class UsersMailer < ApplicationMailer
 
     mail(to: @user.email, subject: 'Dawarich account temporarily locked')
   end
+
+  def trial_expired; end
+
+  def trial_expires_soon; end
+
+  def post_trial_reminder_early; end
+
+  def post_trial_reminder_late; end
 end

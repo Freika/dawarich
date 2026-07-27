@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Trial lifecycle email jobs left over from older releases are now discarded instead of retrying forever in the background queue. Mail addressed to a record that has since been deleted is also discarded rather than retried.
+- Reverse geocoding and place-name provider outages no longer flood error reporting with handled timeouts, dropped TLS connections, or invalid provider responses. A misconfigured or rate-limited provider — a bad API key, for example — is still reported.
+- Reverse geocoding retries point updates that time out while waiting on concurrent writes.
 - Google Semantic History and phone Timeline imports now tag points with a per-import tracker id instead of one shared constant, so tracks from different devices are no longer braided together. A one-time backfill rewrites existing points and regenerates affected tracks per user.
 - Points at exactly (0,0) — a common GPS glitch — are no longer accepted from any ingestion path (API, OwnTracks, Overland, Traccar, file imports) and no longer produce suggested visits at "Null Island". Existing (0,0) points are flagged as anomalies by a one-time cleanup that also removes visits placed at (0,0) and recalculates affected stats and tracks.
 - Place names you set yourself are no longer overwritten by nightly reverse geocoding. Renaming a place, creating one by hand, or picking one on the timeline locks its name; renaming it back to "Suggested place" hands it back to auto-naming. Map v2 and the place drawer show when a name is locked (#3086, #3175)
@@ -16,6 +19,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - The nightly visit suggestion job no longer scans forward to the end of the calendar year; it processes only the day it was asked for.
 - Merged visits now report the correct duration, centre, radius and suggested name instead of keeping the values of the first cluster in the merge.
 - Visit suggestion failures no longer show a raw stack trace in your notifications, and repeated failures within an hour no longer create a notification each time (#3091)
+- Points at exactly (0,0) — a common GPS glitch — are no longer accepted from any ingestion path (API, OwnTracks, Overland, Traccar, file imports) and no longer produce suggested visits at "Null Island". Existing (0,0) points are flagged as anomalies by a one-time cleanup that also removes visits placed at (0,0), tolerates legacy points without timestamps, and recalculates affected stats and tracks.
+- Point uploads from all ingestion paths (REST API, OwnTracks, Overland, Traccar) now retry transient statement and lock-wait timeouts, not just deadlocks, instead of failing the upload.
+- The DNS caching layer no longer crashes with a misleading `NoMethodError` when the SMTP server is not configured in the background worker, so email delivery surfaces the real configuration error instead. (#3038)
 
 ## [1.10.1] - 2026-07-19, Berlin
 
@@ -45,6 +51,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Track generation and user data recalculations now retry a bounded number of times when another job is already processing the same user's tracks, instead of dropping the request and reporting an error; a genuinely stuck lock is logged after the retries are exhausted. The per-user lock also renews itself while a job runs and frees within a minute if a worker dies, so a crashed job no longer blocks a user's track processing for up to half an hour.
 - Dawarich added to an iOS Home Screen now opens Map v2 instead of an unrelated previously visited page (#3097)
 - Point uploads (REST API, OwnTracks, Overland, Traccar) now write batches in a consistent order so concurrent uploads no longer deadlock each other, and both uploads and anomaly filtering recover automatically from any remaining transient database deadlocks instead of failing the upload or background job.
+- Reverse geocoding overlapping places no longer exhausts retries because of concurrent database deadlocks.
 - The app and Sidekiq containers no longer crash-loop on startup when `WEB_CONCURRENCY` or `BACKGROUND_PROCESSING_CONCURRENCY` reach the container as an unexpanded `${VAR:-default}` string (seen with some podman-compose versions); the entrypoint now warns and falls back to the default value (#3124)
 - Cache preheating no longer times out for accounts with large location histories.
 - Cloud: Changing plans resets the Lite archival-warning state, so a user downgraded to Lite again is notified about archived data again.
