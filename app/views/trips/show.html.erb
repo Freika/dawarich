@@ -8,6 +8,7 @@
      data-trip-maplibre-started-at-value="<%= @trip.started_at.iso8601 %>"
      data-trip-maplibre-ended-at-value="<%= @trip.ended_at.iso8601 %>"
      data-trip-maplibre-trip-id-value="<%= @trip.id %>"
+     data-trip-maplibre-trip-name-value="<%= @trip.name %>"
      data-trip-maplibre-path-data-value="<%= @trip.path&.coordinates&.to_json %>"
      data-trip-maplibre-map-style-value="<%= current_user.safe_settings.settings['maps_maplibre_style'] || 'light' %>">
 
@@ -132,6 +133,16 @@
           <span class="hidden sm:inline">Show all days</span>
         </button>
 
+        <button type="button"
+                class="btn btn-sm btn-outline gap-1"
+                data-trip-maplibre-target="posterBtn"
+                data-action="click->trip-maplibre#openPosterStudio"
+                title="<%= @trip.path.blank? ? 'Available once the trip route is calculated' : 'Create a poster of this trip' %>"
+                <% if @trip.path.blank? %>disabled<% end %>>
+          <%= icon 'image', class: 'w-4 h-4' %>
+          <span class="hidden sm:inline">Poster</span>
+        </button>
+
         <%= render "trips/recalculate_button", trip: @trip %>
       </div>
 
@@ -227,3 +238,7 @@
   </div>
 
 </div>
+
+<%= render 'posters/studio',
+           show_date_controls: false,
+           date_range_label: "#{human_date(@trip.started_at)} – #{human_date(@trip.ended_at)}" %>

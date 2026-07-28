@@ -9,6 +9,13 @@ class Gpx::TrackImporter
   include Imports::FileLoader
 
   BATCH_SIZE = 1000
+  XML_BOMS = [
+    "\xEF\xBB\xBF".b,
+    "\xFE\xFF".b,
+    "\xFF\xFE".b,
+    "\x00\x00\xFE\xFF".b,
+    "\xFF\xFE\x00\x00".b
+  ].freeze
 
   attr_reader :import, :user_id, :file_path
 
@@ -48,7 +55,8 @@ class Gpx::TrackImporter
 
   def seek_to_document_start(io)
     prefix = io.read(256) || ''
-    io.seek(prefix.index('<') || 0)
+    offset = XML_BOMS.any? { |bom| prefix.start_with?(bom) } ? 0 : prefix.index('<') || 0
+    io.seek(offset)
   end
 
   def flush(batch)
@@ -69,7 +77,6 @@ class Gpx::TrackImporter
       tracker_id: tracker_id,
       import_id: import.id,
       velocity: speed(point),
-      raw_data: point,
       user_id: user_id,
       created_at: Time.current,
       updated_at: Time.current

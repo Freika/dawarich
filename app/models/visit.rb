@@ -32,7 +32,8 @@ class Visit < ApplicationRecord
   end
 
   def coordinates
-    points.pluck(:latitude, :longitude).map { [_1[0].to_f, _1[1].to_f] }
+    points.pluck(Arel.sql('ST_Y(lonlat::geometry)'), Arel.sql('ST_X(lonlat::geometry)'))
+          .map { [_1[0].to_f, _1[1].to_f] }
   end
 
   def default_name

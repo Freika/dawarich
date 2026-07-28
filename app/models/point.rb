@@ -5,6 +5,8 @@ class Point < ApplicationRecord
   include Distanceable
   include Archivable
 
+  self.ignored_columns += %w[latitude longitude]
+
   belongs_to :import, optional: true, counter_cache: true
   belongs_to :visit, optional: true
   belongs_to :user
@@ -33,6 +35,7 @@ class Point < ApplicationRecord
   scope :not_visited, -> { where(visit_id: nil) }
   scope :not_anomaly, -> { where(anomaly: [false, nil]) }
   scope :anomaly, -> { where(anomaly: true) }
+  scope :null_island, -> { where('lonlat = ST_SetSRID(ST_MakePoint(0, 0), 4326)::geography') }
 
   after_create :async_reverse_geocode, if: -> { DawarichSettings.store_geodata? && !reverse_geocoded? }
   after_create :set_country

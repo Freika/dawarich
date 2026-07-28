@@ -74,7 +74,7 @@
             data-user-id="<%= current_user.id %>"
           >
             <% @imports.each do |import| %>
-              <%= render 'imports/table_row', import: import %>
+              <%= render 'imports/table_row', import: import, timezone: current_user.safe_settings.timezone %>
             <% end %>
           </tbody>
         </table>

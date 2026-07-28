@@ -22,6 +22,16 @@ RSpec.describe Traccar::PointCreator do
     }
   end
 
+  context 'when the payload is at Null Island (0,0)' do
+    let(:point_params) do
+      super().tap { |params| params[:location] = params[:location].merge(latitude: 0.0, longitude: 0.0) }
+    end
+
+    it 'drops the point and returns an empty array' do
+      expect { expect(call_service).to eq([]) }.not_to(change { Point.where(user:).count })
+    end
+  end
+
   it 'creates a point' do
     expect { call_service }.to change { Point.where(user:).count }.by(1)
   end

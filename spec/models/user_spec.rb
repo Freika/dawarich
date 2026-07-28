@@ -42,6 +42,54 @@ RSpec.describe User, type: :model do
     end
   end
 
+  describe 'archival warning reset on plan change' do
+    it 'clears archival warnings and stale lite_since when the plan leaves lite' do
+      user = create(:user, skip_auto_trial: true)
+      user.update_column(:plan, User.plans[:lite])
+      user.update_column(:settings, user.settings.merge(
+                                      'lite_since' => 1.day.ago.iso8601,
+                                      'archival_warnings' => { '11mo' => 1.day.ago.iso8601 }
+                                    ))
+
+      user.update!(plan: :pro)
+
+      expect(user.reload.settings).not_to have_key('lite_since')
+      expect(user.settings).not_to have_key('archival_warnings')
+    end
+
+    it 'resets stale archival warnings when re-entering lite without stamping lite_since' do
+      user = create(:user, skip_auto_trial: true)
+      user.update_column(:plan, User.plans[:pro])
+      user.update_column(:settings, user.settings.merge('archival_warnings' => { '12mo' => 1.year.ago.iso8601 }))
+
+      user.update!(plan: :lite)
+
+      expect(user.reload.settings).not_to have_key('archival_warnings')
+      expect(user.settings).not_to have_key('lite_since')
+    end
+
+    it 'preserves other settings keys when resetting' do
+      user = create(:user, skip_auto_trial: true)
+      user.update_column(:plan, User.plans[:pro])
+      user.update_column(:settings, user.settings.merge('maps' => { 'distance_unit' => 'km' },
+                                                        'archival_warnings' => { '11mo' => 1.day.ago.iso8601 }))
+
+      user.update!(plan: :lite)
+
+      expect(user.reload.settings).not_to have_key('archival_warnings')
+      expect(user.settings['maps']).to eq('distance_unit' => 'km')
+    end
+
+    it 'does not touch settings when the plan does not change' do
+      user = create(:user, skip_auto_trial: true)
+      user.update_column(:plan, User.plans[:lite])
+      user.update_column(:settings, user.settings.merge('archival_warnings' => { '11mo' => 1.day.ago.iso8601 }))
+
+      expect { user.update!(email: 'new-address@example.com') }
+        .not_to(change { user.reload.settings['archival_warnings'] })
+    end
+  end
+
   describe 'changelog consent' do
     it 'defaults to nil (not yet prompted) and reports prompt pending' do
       user = create(:user)
@@ -535,13 +583,28 @@ RSpec.describe User, type: :model do
 
     describe '#years_tracked' do
       let!(:points) do
-        (1..3).map do |i|
-          create(:point, user:, timestamp: DateTime.new(2024, 1, 1, 5, 0, 0) + i.minutes)
+        [
+          DateTime.new(2024, 1, 1, 5, 0, 0),
+          DateTime.new(2024, 3, 1, 5, 0, 0),
+          DateTime.new(2023, 12, 1, 5, 0, 0)
+        ].flat_map do |month|
+          (1..3).map { |i| create(:point, user:, timestamp: month + i.minutes) }
         end
       end
 
-      it 'returns years tracked' do
-        expect(user.years_tracked).to eq([{ year: 2024, months: ['Jan'] }])
+      it 'returns only tracked months in calendar order for each year' do
+        expect(user.years_tracked).to eq([
+                                           { year: 2024, months: %w[Jan Mar] },
+                                           { year: 2023, months: ['Dec'] }
+                                         ])
+      end
+
+      context 'when the user has no points' do
+        let(:user_without_points) { create(:user) }
+
+        it 'returns an empty array' do
+          expect(user_without_points.years_tracked).to eq([])
+        end
       end
     end
 

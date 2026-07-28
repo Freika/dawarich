@@ -7,6 +7,7 @@ class Kml::Importer
   include Imports::Broadcaster
   include Imports::BulkInsertable
   include Imports::FileLoader
+  include Imports::XmlAmpersandEscaping
 
   attr_reader :import, :user_id, :file_path
 
@@ -29,7 +30,7 @@ class Kml::Importer
 
   def load_and_parse_kml_document
     file_content = load_kml_content
-    REXML::Document.new(file_content)
+    REXML::Document.new(escape_raw_ampersands(file_content))
   end
 
   def extract_all_points(doc)
@@ -206,7 +207,6 @@ class Kml::Importer
       timestamp: time,
       import_id: import.id,
       velocity: 0.0,
-      raw_data: { source: 'gx_track', index: index },
       user_id: user_id,
       created_at: Time.current,
       updated_at: Time.current
@@ -266,7 +266,6 @@ class Kml::Importer
       timestamp: timestamp,
       import_id: import.id,
       velocity: extract_velocity(placemark),
-      raw_data: extract_extended_data(placemark),
       user_id: user_id,
       created_at: Time.current,
       updated_at: Time.current
@@ -294,40 +293,6 @@ class Kml::Importer
     REXML::XPath.first(placemark, ".//Data[@name='speed']/value") ||
       REXML::XPath.first(placemark, ".//Data[@name='Speed']/value") ||
       REXML::XPath.first(placemark, ".//Data[@name='velocity']/value")
-  end
-
-  def extract_extended_data(placemark)
-    data = {}
-    data.merge!(extract_name_and_description(placemark))
-    data.merge!(extract_custom_data_fields(placemark))
-    data
-  rescue StandardError => e
-    Rails.logger.warn("Failed to extract extended data: #{e.message}")
-    {}
-  end
-
-  def extract_name_and_description(placemark)
-    data = {}
-
-    name_node = REXML::XPath.first(placemark, './/name')
-    data['name'] = name_node.text.strip if name_node
-
-    desc_node = REXML::XPath.first(placemark, './/description')
-    data['description'] = desc_node.text.strip if desc_node
-
-    data
-  end
-
-  def extract_custom_data_fields(placemark)
-    data = {}
-
-    REXML::XPath.each(placemark, './/ExtendedData/Data') do |data_node|
-      name = data_node.attributes['name']
-      value_node = REXML::XPath.first(data_node, './value')
-      data[name] = value_node.text if name && value_node
-    end
-
-    data
   end
 
   def importer_name

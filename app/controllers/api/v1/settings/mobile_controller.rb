@@ -69,7 +69,13 @@ class Api::V1::Settings::MobileController < ApiController
     sanitized.delete('tracking_mode') unless TRACKING_MODES.include?(sanitized['tracking_mode'])
 
     NUMERIC_CLAMPS.each do |key, range|
-      sanitized[key] = sanitized[key].to_i.clamp(range.min, range.max) if sanitized.key?(key)
+      next unless sanitized.key?(key)
+
+      if sanitized[key].to_s.strip.empty?
+        sanitized.delete(key)
+      else
+        sanitized[key] = sanitized[key].to_i.clamp(range.min, range.max)
+      end
     end
 
     BOOLEAN_KEYS.each do |key|

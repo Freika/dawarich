@@ -64,4 +64,19 @@ RSpec.describe OwnTracks::PointCreator do
       expect(call_service).to eq([])
     end
   end
+
+  context 'when the payload is at Null Island (0,0)' do
+    let(:point_params) do
+      parsed = OwnTracks::RecParser.new(File.read(file_path)).call.first
+      parsed.merge('lat' => 0.0, 'lon' => 0.0, lat: 0.0, lon: 0.0)
+    end
+
+    it 'drops the point' do
+      expect { call_service }.not_to(change { Point.where(user:).count })
+    end
+
+    it 'returns an empty array' do
+      expect(call_service).to eq([])
+    end
+  end
 end

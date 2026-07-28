@@ -17,7 +17,7 @@ export class PointsLayer extends BaseLayer {
     this.justDragged = false
     this.draggedFeature = null
     this.canvas = null
-    this.editModeEnabled = false
+    this.editModeEnabled = options.editModeEnabled === true
 
     // Bind event handlers once and store references for proper cleanup
     this._onMouseEnter = this.onMouseEnter.bind(this)
@@ -182,6 +182,18 @@ export class PointsLayer extends BaseLayer {
     // Update the point on the backend
     try {
       await this.updatePointPosition(pointId, coords.lat, coords.lng)
+
+      // Keep the cached full point set in sync — route rebuilds and the
+      // scratch layer read from it in simplified rendering mode.
+      const cachedPoints =
+        this.layerManager?.controller?.mapDataManager?.lastLoadedData?.points
+      const cachedPoint = cachedPoints?.find(
+        (p) => Number(p.id) === Number(pointId),
+      )
+      if (cachedPoint) {
+        cachedPoint.latitude = coords.lat
+        cachedPoint.longitude = coords.lng
+      }
 
       // Rebuild routes from the updated points after a successful move
       await this.reloadConnectedRoutes()

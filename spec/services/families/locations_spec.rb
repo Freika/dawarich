@@ -79,6 +79,15 @@ RSpec.describe Families::Locations do
         expect(point_data.length).to eq(3)
       end
 
+      it 'derives coordinates from lonlat, not the legacy latitude/longitude columns' do
+        timestamp = 1.hour.ago.to_i
+        create(:point, user: other_user, timestamp: timestamp,
+                       latitude: nil, longitude: nil, lonlat: 'POINT(13.404954 52.520008)')
+
+        result = described_class.new(user).history(start_at: 1.day.ago, end_at: Time.current)
+        expect(result.first[:points].first).to eq([52.520008, 13.404954, timestamp])
+      end
+
       it 'does not include current user in results' do
         user.update_family_location_sharing!(true, duration: 'permanent')
         user.update!(

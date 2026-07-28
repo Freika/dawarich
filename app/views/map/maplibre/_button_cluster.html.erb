@@ -54,16 +54,14 @@
     <%= icon 'play', class: 'w-5 h-5', aria: { hidden: true } %>
   </button>
 
-  <% if posters_enabled? %>
-    <button type="button"
-            class="map-button-cluster__btn"
-            data-action="click->map-panel#openPosterStudio"
-            data-testid="map-button-poster"
-            aria-label="Poster Studio"
-            title="Poster Studio">
-      <%= icon 'image' %>
-    </button>
-  <% end %>
+  <button type="button"
+          class="map-button-cluster__btn"
+          data-action="click->map-panel#openPosterStudio"
+          data-testid="map-button-poster"
+          aria-label="Poster Studio"
+          title="Poster Studio">
+    <%= icon 'image' %>
+  </button>
 
   <div class="map-button-cluster__divider" aria-hidden="true"></div>
 

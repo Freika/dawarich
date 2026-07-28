@@ -18,6 +18,14 @@ module Archivable
   end
 
   UPSERT_CONFLICT_KEYS = %i[lonlat timestamp user_id].freeze
+  UPSERT_MAX_RETRIES = 3
+  UPSERT_BACKOFF_BASE = 0.1
+  UPSERT_BACKOFF_JITTER = 0.05
+  UPSERT_CONTENTION_ERRORS = [
+    ActiveRecord::Deadlocked,
+    ActiveRecord::LockWaitTimeout,
+    ActiveRecord::QueryCanceled
+  ].freeze
 
   class_methods do
     # Bulk-ingest counterpart of the reset_archival_on_raw_data_change
@@ -27,6 +35,7 @@ module Archivable
     def archival_safe_upsert_all(rows, returning:)
       return [] if rows.empty?
 
+      rows = rows.sort_by { |row| dedup_key(row).map { |value| value.nil? ? Float::INFINITY : value } }
       update_columns = rows.first.keys.map(&:to_sym) - UPSERT_CONFLICT_KEYS - %i[created_at]
 
       set_clauses = update_columns.map do |column|
@@ -36,15 +45,31 @@ module Archivable
       set_clauses << '"updated_at" = CURRENT_TIMESTAMP' unless update_columns.include?(:updated_at)
       set_clauses.concat(archival_reset_clauses) if update_columns.include?(:raw_data)
 
-      upsert_all(
-        rows,
-        unique_by: UPSERT_CONFLICT_KEYS,
-        on_duplicate: Arel.sql(set_clauses.join(', ')),
-        returning: returning
-      )
+      with_write_contention_retry do
+        upsert_all(
+          rows,
+          unique_by: UPSERT_CONFLICT_KEYS,
+          on_duplicate: Arel.sql(set_clauses.join(', ')),
+          returning: returning
+        )
+      end
     end
 
     private
+
+    def with_write_contention_retry
+      retries = 0
+
+      begin
+        yield
+      rescue *UPSERT_CONTENTION_ERRORS => e
+        retries += 1
+        raise e if retries > UPSERT_MAX_RETRIES
+
+        sleep((UPSERT_BACKOFF_BASE * retries) + (rand * UPSERT_BACKOFF_JITTER))
+        retry
+      end
+    end
 
     def archival_reset_clauses
       table = connection.quote_table_name(table_name)

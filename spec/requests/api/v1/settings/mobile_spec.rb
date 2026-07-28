@@ -93,6 +93,17 @@ RSpec.describe 'Api::V1::Settings::Mobile', type: :request do
       expect(mobile['distance_filter']).to eq(1)
     end
 
+    it 'ignores blank numeric values instead of clamping them to the minimum' do
+      patch "/api/v1/settings/mobile?api_key=#{api_key}",
+            params: { settings: { distance_filter: 50 } }
+      patch "/api/v1/settings/mobile?api_key=#{api_key}",
+            params: { settings: { batch_size: 20, distance_filter: '' } }
+
+      mobile = user.reload.settings['mobile']
+      expect(mobile['batch_size']).to eq(20)
+      expect(mobile['distance_filter']).to eq(50)
+    end
+
     it 'casts boolean values' do
       patch "/api/v1/settings/mobile?api_key=#{api_key}",
             params: { settings: { upload_automatically: 'true' } }

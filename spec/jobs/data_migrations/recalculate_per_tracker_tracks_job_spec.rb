@@ -54,6 +54,16 @@ RSpec.describe DataMigrations::RecalculatePerTrackerTracksJob do
         described_class.perform_now
       end.not_to have_enqueued_job(described_class)
     end
+
+    it 'enqueues users whose points still carry a legacy importer constant' do
+      Track.where(tracker_id: nil).update_all(tracker_id: 'backfilled')
+      user_with_legacy_points = create(:user)
+      create(:point, user: user_with_legacy_points, tracker_id: 'google-maps-timeline-export')
+
+      expect do
+        described_class.perform_now
+      end.to have_enqueued_job(described_class).with(user_with_legacy_points.id).exactly(:once)
+    end
   end
 
   describe 'with user_id: processing one user' do

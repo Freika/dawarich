@@ -59,6 +59,37 @@ RSpec.describe ReverseGeocoding::Points::FetchData do
         expect(Geocoder).to have_received(:search).with([point.lat, point.lon])
       end
 
+      described_class::WRITE_CONTENTION_ERRORS.each do |error_class|
+        it "retries when the point update raises #{error_class}" do
+          attempts = 0
+          allow(Point).to receive(:find).with(point.id).and_return(point)
+          allow(point).to receive(:update!).and_wrap_original do |method, *args|
+            attempts += 1
+            raise error_class, 'write contention' if attempts == 1
+
+            method.call(*args)
+          end
+          service = described_class.new(point.id)
+          allow(service).to receive(:sleep)
+
+          expect { service.call }.to change { point.reload.city }.from(nil).to('Berlin')
+          expect(attempts).to eq(2)
+        end
+      end
+
+      it 'gives up after exhausting the retry budget and reports the failure' do
+        allow(ExceptionReporter).to receive(:call)
+        allow(Point).to receive(:find).with(point.id).and_return(point)
+        allow(point).to receive(:update!).and_raise(ActiveRecord::QueryCanceled, 'write contention')
+        service = described_class.new(point.id)
+        allow(service).to receive(:sleep)
+
+        service.call
+
+        expect(point).to have_received(:update!).exactly(described_class::WRITE_MAX_RETRIES + 1).times
+        expect(ExceptionReporter).to have_received(:call)
+      end
+
       context 'when store_geodata? is disabled' do
         before do
           allow(DawarichSettings).to receive(:store_geodata?).and_return(false)
@@ -167,6 +198,97 @@ RSpec.describe ReverseGeocoding::Points::FetchData do
 
     it 'does not update point' do
       expect { fetch_data }.not_to(change { point.reload.city })
+    end
+  end
+
+  context 'when the geocoder provider is temporarily unavailable' do
+    before do
+      allow(ExceptionReporter).to receive(:call)
+      allow(Rails.logger).to receive(:warn)
+      allow(Geocoder).to receive(:search).and_raise(Geocoder::LookupTimeout.new('execution expired'))
+    end
+
+    it 'does not report a handled provider outage as an application exception' do
+      expect { fetch_data }.not_to raise_error
+      expect(ExceptionReporter).not_to have_received(:call)
+      expect(Rails.logger).to have_received(:warn).with(/Reverse geocoding provider error for point #{point.id}/)
+    end
+  end
+
+  context 'when the geocoder provider is unreachable' do
+    before do
+      allow(ExceptionReporter).to receive(:call)
+      allow(Rails.logger).to receive(:warn)
+    end
+
+    it 'does not report a refused connection as an application exception' do
+      allow(Geocoder).to receive(:search).and_raise(Errno::ECONNREFUSED)
+
+      expect { fetch_data }.not_to raise_error
+      expect(ExceptionReporter).not_to have_received(:call)
+      expect(Rails.logger).to have_received(:warn).with(/Reverse geocoding provider error for point #{point.id}/)
+    end
+
+    it 'does not report an unresolvable hostname as an application exception' do
+      allow(Geocoder).to receive(:search).and_raise(SocketError)
+
+      expect { fetch_data }.not_to raise_error
+      expect(ExceptionReporter).not_to have_received(:call)
+      expect(Rails.logger).to have_received(:warn).with(/Reverse geocoding provider error for point #{point.id}/)
+    end
+  end
+
+  context 'when the geocoder provider returns an invalid response' do
+    before do
+      allow(ExceptionReporter).to receive(:call)
+      allow(Rails.logger).to receive(:warn)
+      allow(Geocoder).to receive(:search).and_raise(Geocoder::ResponseParseError.new('bad gateway'))
+    end
+
+    it 'does not report a handled provider response as an application exception' do
+      expect { fetch_data }.not_to raise_error
+      expect(ExceptionReporter).not_to have_received(:call)
+      expect(Rails.logger).to have_received(:warn).with(/Reverse geocoding provider error for point #{point.id}/)
+    end
+  end
+
+  context 'when the geocoder is misconfigured rather than briefly unavailable' do
+    [Geocoder::InvalidApiKey, Geocoder::ConfigurationError, Geocoder::OverQueryLimitError].each do |error_class|
+      it "still reports #{error_class} so the outage is not silent" do
+        allow(ExceptionReporter).to receive(:call)
+        allow(Geocoder).to receive(:search).and_raise(error_class.new('misconfigured'))
+
+        expect { fetch_data }.not_to raise_error
+        expect(ExceptionReporter).to have_received(:call)
+      end
+    end
+  end
+
+  context 'when the geocoder provider closes the TLS connection unexpectedly' do
+    before do
+      allow(ExceptionReporter).to receive(:call)
+      allow(Rails.logger).to receive(:warn)
+      allow(Geocoder).to receive(:search).and_raise(OpenSSL::SSL::SSLError.new('unexpected eof while reading'))
+    end
+
+    it 'does not report a handled provider connection failure as an application exception' do
+      expect { fetch_data }.not_to raise_error
+      expect(ExceptionReporter).not_to have_received(:call)
+      expect(Rails.logger).to have_received(:warn).with(/Reverse geocoding provider error for point #{point.id}/)
+    end
+  end
+
+  context 'when the geocoder TLS failure is not transient' do
+    let(:error) { OpenSSL::SSL::SSLError.new('certificate verify failed') }
+
+    before do
+      allow(ExceptionReporter).to receive(:call)
+      allow(Geocoder).to receive(:search).and_raise(error)
+    end
+
+    it 'reports the application exception' do
+      expect { fetch_data }.not_to raise_error
+      expect(ExceptionReporter).to have_received(:call).with(error)
     end
   end
 end

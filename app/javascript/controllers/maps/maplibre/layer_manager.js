@@ -13,8 +13,10 @@ import { ReplayMarkerLayer } from "maps_maplibre/layers/replay_marker_layer"
 import { RoutesLayer } from "maps_maplibre/layers/routes_layer"
 import { TracksLayer } from "maps_maplibre/layers/tracks_layer"
 import { VisitsLayer } from "maps_maplibre/layers/visits_layer"
+import { isGatedPlan } from "maps_maplibre/utils/layer_gate"
 import { lazyLoader } from "maps_maplibre/utils/lazy_loader"
 import { performanceMonitor } from "maps_maplibre/utils/performance_monitor"
+import { SettingsManager } from "maps_maplibre/utils/settings_manager"
 
 /**
  * Manages all map layers lifecycle and visibility
@@ -224,6 +226,10 @@ export class LayerManager {
     if (this.layers.tracksLayer?._stopFlowAnimation) {
       this.layers.tracksLayer._stopFlowAnimation()
     }
+    // Drag handlers live on the map, not the style, so an orphaned points
+    // layer keeps moving points. setEditMode, not disableDragging: add() arms
+    // enableDragging on a timer that re-checks editModeEnabled.
+    this.layers.pointsLayer?.setEditMode(false)
     this.layers = {}
     this.eventHandlersSetup = false
   }
@@ -411,6 +417,11 @@ export class LayerManager {
         apiClient: this.api,
         layerManager: this,
         styleName: this.settings.mapStyle,
+        // Live cache, not this.settings: that snapshot is replaced wholesale
+        // when advanced settings are saved. Lite can't write points.
+        editModeEnabled:
+          SettingsManager.getSetting("pointDraggingEnabled") === true &&
+          !isGatedPlan(this.controller?.userPlanValue),
       })
       this.layers.pointsLayer.add(pointsGeoJSON)
     } else {
