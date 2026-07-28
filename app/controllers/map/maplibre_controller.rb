@@ -4,6 +4,7 @@ module Map
   class MaplibreController < ApplicationController
     include SafeTimestampParser
     include ImportTimeWindow
+    include PosterStudioContext
 
     before_action :authenticate_user!
     layout 'map'
@@ -11,6 +12,7 @@ module Map
     def index
       @start_at = parsed_start_at
       @end_at = parsed_end_at
+      @import_id = import_record&.id
 
       # Status counts shown in the Timeline tab's FILTER section — scoped to
       # the calendar's currently-visible month so the numbers reflect "what
@@ -25,6 +27,10 @@ module Map
 
       # Tag chips displayed in the rail; capped so the list doesn't explode.
       @timeline_tags = current_user.tags.order(:name).limit(8)
+
+      # Theme tokens power both the poster studio and the Appearance section's
+      # custom map colors.
+      load_poster_studio_context
     end
 
     private

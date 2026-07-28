@@ -71,7 +71,71 @@ RSpec.describe Places::Search do
       expect(described_class.new(query: 'cafe', latitude: lat, longitude: lon, radius: 1.0).call).to eq([])
     end
 
-    it 'rescues Geocoder errors and returns []' do
+    it 'handles invalid provider requests without reporting an application exception' do
+      allow(Geocoder).to receive(:search).and_raise(Geocoder::InvalidRequest)
+      allow(ExceptionReporter).to receive(:call)
+      allow(Rails.logger).to receive(:warn)
+
+      expect(described_class.new(query: 'cafe', latitude: lat, longitude: lon, radius: 1.0).call).to eq([])
+      expect(ExceptionReporter).not_to have_received(:call)
+      expect(Rails.logger).to have_received(:warn).with(/Place search provider error: Geocoder::InvalidRequest/)
+    end
+
+    it 'keeps the search text out of the handled provider error log' do
+      allow(Geocoder).to receive(:search).and_raise(Geocoder::InvalidRequest)
+      allow(Rails.logger).to receive(:warn)
+
+      described_class.new(query: 'Bergmannstraße 1', latitude: lat, longitude: lon, radius: 1.0).call
+
+      expect(Rails.logger).to have_received(:warn).with(satisfy { |line| !line.include?('Bergmannstraße') })
+    end
+
+    it 'handles transient provider outages without reporting an application exception' do
+      allow(Geocoder).to receive(:search).and_raise(Geocoder::LookupTimeout.new('execution expired'))
+      allow(ExceptionReporter).to receive(:call)
+      allow(Rails.logger).to receive(:warn)
+
+      expect(described_class.new(query: 'cafe', latitude: lat, longitude: lon, radius: 1.0).call).to eq([])
+      expect(ExceptionReporter).not_to have_received(:call)
+      expect(Rails.logger).to have_received(:warn).with(/Place search provider error: Geocoder::LookupTimeout/)
+    end
+
+    it 'handles a dropped TLS connection without reporting an application exception' do
+      allow(Geocoder).to receive(:search).and_raise(OpenSSL::SSL::SSLError, 'unexpected eof while reading')
+      allow(ExceptionReporter).to receive(:call)
+      allow(Rails.logger).to receive(:warn)
+
+      expect(described_class.new(query: 'cafe', latitude: lat, longitude: lon, radius: 1.0).call).to eq([])
+      expect(ExceptionReporter).not_to have_received(:call)
+      expect(Rails.logger).to have_received(:warn).with(/Place search provider error/)
+    end
+
+    it 'logs a reported error so self-hosted instances are not left silent' do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+      allow(Geocoder).to receive(:search).and_raise(StandardError, 'photon down')
+      allow(Rails.logger).to receive(:error)
+
+      expect(described_class.new(query: 'cafe', latitude: lat, longitude: lon, radius: 1.0).call).to eq([])
+      expect(Rails.logger).to have_received(:error).with(/Place search failed: StandardError/)
+    end
+
+    it 'reports a misconfigured provider' do
+      allow(Geocoder).to receive(:search).and_raise(Geocoder::RequestDenied)
+      allow(ExceptionReporter).to receive(:call)
+
+      expect(described_class.new(query: 'cafe', latitude: lat, longitude: lon, radius: 1.0).call).to eq([])
+      expect(ExceptionReporter).to have_received(:call).with(instance_of(Geocoder::RequestDenied), anything)
+    end
+
+    it 'reports a rate-limited provider' do
+      allow(Geocoder).to receive(:search).and_raise(Geocoder::OverQueryLimitError)
+      allow(ExceptionReporter).to receive(:call)
+
+      expect(described_class.new(query: 'cafe', latitude: lat, longitude: lon, radius: 1.0).call).to eq([])
+      expect(ExceptionReporter).to have_received(:call).with(instance_of(Geocoder::OverQueryLimitError), anything)
+    end
+
+    it 'reports unexpected errors and returns []' do
       allow(Geocoder).to receive(:search).and_raise(StandardError, 'photon down')
       expect(ExceptionReporter).to receive(:call).with(instance_of(StandardError), anything)
       expect(described_class.new(query: 'cafe', latitude: lat, longitude: lon, radius: 1.0).call).to eq([])

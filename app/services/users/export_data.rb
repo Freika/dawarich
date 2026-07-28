@@ -323,20 +323,32 @@ class Users::ExportData
     Rails.logger.info "Exported #{count} raw data archives"
   end
 
+  # Archives are stored encrypted with this instance's key. Exports must be
+  # importable on other instances, so the content is decrypted to plain gzip
+  # and the metadata rewritten to format_version 1 (plaintext) accordingly.
   def add_archive_file_data(archive, archive_hash)
-    file_name = "raw_data_archive_#{archive.year}_#{format('%02d', archive.month)}_#{archive.chunk_number}.gz"
+    file_name = "raw_data_archive_#{archive.year}_#{format('%02d', archive.month)}_#{archive.chunk_number}.jsonl.gz"
     dest_path = files_directory.join(file_name)
 
-    File.open(dest_path, 'wb') { |f| archive.file.download { |chunk| f.write(chunk) } }
+    content = ::Points::RawData::Encryption.decrypt_if_needed(archive.file.download, archive)
+    File.binwrite(dest_path, content)
 
+    archive_hash['metadata'] = portable_archive_metadata(archive_hash['metadata'], content)
     archive_hash['file_name'] = file_name
-    archive_hash['original_filename'] = archive.file.filename.to_s
-    archive_hash['content_type'] = archive.file.content_type
+    archive_hash['original_filename'] = file_name
+    archive_hash['content_type'] = 'application/gzip'
   rescue StandardError => e
     FileUtils.rm_f(dest_path)
     ExceptionReporter.call(e)
 
-    archive_hash['file_error'] = "Failed to download: #{e.message}"
+    archive_hash['file_error'] = "Failed to export archive file: #{e.message}"
+  end
+
+  def portable_archive_metadata(metadata, content)
+    (metadata || {}).except('encryption').merge(
+      'format_version' => 1,
+      'content_checksum' => Digest::SHA256.hexdigest(content)
+    )
   end
 
   def write_manifest

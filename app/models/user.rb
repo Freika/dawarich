@@ -22,6 +22,7 @@ class User < ApplicationRecord
   has_many :imports,        dependent: :destroy
   has_many :stats,          dependent: :destroy
   has_many :exports,        dependent: :destroy
+  has_many :posters,        dependent: :destroy
   has_many :notifications,  dependent: :destroy
   has_many :areas,          dependent: :destroy
   has_many :visits,         dependent: :destroy
@@ -42,6 +43,7 @@ class User < ApplicationRecord
   after_commit :trigger_creation_webhook, on: :create,
                                             if: -> { !DawarichSettings.self_hosted? && skip_auto_trial }
   after_update :invalidate_plan_rate_limit_cache, if: :saved_change_to_plan?
+  after_update :reset_archival_warnings, if: :saved_change_to_plan?
 
   before_save :sanitize_input
 
@@ -58,7 +60,7 @@ class User < ApplicationRecord
   # `User#none?` predicate that collides with NilClass semantics in
   # conditional chains. Callers use `user.sub_source_none?` etc.
   enum :subscription_source, { none: 0, paddle: 1, apple_iap: 2, google_play: 3 }, default: :none, prefix: :sub_source
-  enum :plan, { lite: 0, pro: 1 }, default: :pro
+  enum :plan, { lite: 0, pro: 1, family: 2 }, default: :pro
   # No default: nil means the user has not yet been prompted about the
   # changelog widget. prefix avoids `granted?`/`declined?` collisions.
   attribute :changelog_consent, :integer
@@ -166,17 +168,39 @@ class User < ApplicationRecord
 
   def years_tracked
     Rails.cache.fetch("dawarich/user_#{id}_years_tracked", expires_in: 1.day) do
-      # Use select_all for better performance with large datasets
-      sql = <<-SQL
-        SELECT DISTINCT
+      sql = <<~SQL
+        WITH RECURSIVE tracked_months AS (
+          SELECT MAX(timestamp) AS timestamp
+          FROM points
+          WHERE user_id = $1
+
+          UNION ALL
+
+          SELECT (
+            SELECT MAX(points.timestamp)
+            FROM points
+            WHERE points.user_id = $1
+              AND points.timestamp < EXTRACT(
+                EPOCH FROM DATE_TRUNC('month', TO_TIMESTAMP(tracked_months.timestamp))
+              )::bigint
+          )
+          FROM tracked_months
+          WHERE tracked_months.timestamp IS NOT NULL
+        )
+        SELECT
           EXTRACT(YEAR FROM TO_TIMESTAMP(timestamp)) AS year,
-          TO_CHAR(TO_TIMESTAMP(timestamp), 'Mon') AS month
-        FROM points
-        WHERE user_id = #{id}
-        ORDER BY year DESC, month ASC
+          TO_CHAR(TO_TIMESTAMP(timestamp), 'Mon') AS month,
+          EXTRACT(MONTH FROM TO_TIMESTAMP(timestamp)) AS month_number
+        FROM tracked_months
+        WHERE timestamp IS NOT NULL
+        ORDER BY year DESC, month_number ASC
       SQL
 
-      result = ActiveRecord::Base.connection.select_all(sql)
+      binds = [
+        ActiveRecord::Relation::QueryAttribute.new('user_id', id, ActiveRecord::Type::Integer.new)
+      ]
+
+      result = ActiveRecord::Base.connection.exec_query(sql, 'YearsTracked', binds)
 
       result
         .map { |r| [r['year'].to_i, r['month']] }
@@ -341,5 +365,15 @@ class User < ApplicationRecord
   def invalidate_plan_rate_limit_cache
     key = api_key_previously_was || api_key_was || api_key
     Rails.cache.delete("rack_attack/plan/#{key}") if key.present?
+  end
+
+  def reset_archival_warnings
+    # Atomic JSONB key removal at the SQL level so a concurrent settings write
+    # (e.g. the archival warning job's merge) is never clobbered by a stale
+    # full-column overwrite.
+    User.where(id: id).update_all(
+      "settings = COALESCE(settings, '{}'::jsonb) - 'archival_warnings' - 'lite_since'"
+    )
+    settings&.except!('archival_warnings', 'lite_since')
   end
 end

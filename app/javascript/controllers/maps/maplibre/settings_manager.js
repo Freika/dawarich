@@ -1,7 +1,14 @@
 import { Toast } from "maps_maplibre/components/toast"
 import { UpgradeBanner } from "maps_maplibre/components/upgrade_banner"
+import {
+  classifyBasemapUrl,
+  styleDocumentFailed,
+} from "maps_maplibre/utils/basemap_url"
 import { isGatedPlan } from "maps_maplibre/utils/layer_gate"
-import { SettingsManager } from "maps_maplibre/utils/settings_manager"
+import {
+  LAYER_COLOR_DEFAULTS,
+  SettingsManager,
+} from "maps_maplibre/utils/settings_manager"
 import { getMapStyle } from "maps_maplibre/utils/style_manager"
 
 // Polling interval for recalculation status (5 seconds)
@@ -127,12 +134,40 @@ export class SettingsController {
         (this.settings.routeOpacity || 1.0) * 100
     }
 
-    // Sync map style dropdown
+    // Sync layer color pickers
+    Object.entries(LAYER_COLOR_DEFAULTS).forEach(([key, fallback]) => {
+      const color = this.settings[key] || fallback
+      const input = controller.element.querySelector(`input[name="${key}"]`)
+      if (input) input.value = color
+      this.syncLayerColorLabel(key, color)
+    })
+
+    // Sync distance unit radio
+    const distanceUnitInput = controller.element.querySelector(
+      `input[name="distanceUnit"][value="${this.getDistanceUnit()}"]`,
+    )
+    if (distanceUnitInput) distanceUnitInput.checked = true
+
+    // Sync vector tiles URL input
+    const tilesUrlInput = controller.element.querySelector(
+      'input[name="vectorTilesUrl"]',
+    )
+    if (tilesUrlInput) tilesUrlInput.value = this.settings.vectorTilesUrl || ""
+
+    // Sync map style dropdown. Setting .value doesn't fire "change", so
+    // notify the map-theme-editor controller separately — it shows/hides
+    // the custom color block based on the synced style.
     const mapStyleSelect = controller.element.querySelector(
       'select[name="mapStyle"]',
     )
     if (mapStyleSelect) {
       mapStyleSelect.value = this.settings.mapStyle || "light"
+      this.syncStyleDependentToggles(this.settings.mapStyle || "light")
+      document.dispatchEvent(
+        new CustomEvent("map-style:synced", {
+          detail: { style: this.settings.mapStyle || "light" },
+        }),
+      )
     }
 
     // Sync globe projection toggle (force off for Lite users)
@@ -290,6 +325,9 @@ export class SettingsController {
     if (pointDraggingToggle) {
       pointDraggingToggle.checked = this.settings.pointDraggingEnabled !== false
     }
+
+    // All form inputs are seeded now — let the dirty tracker snapshot them
+    document.dispatchEvent(new CustomEvent("map-settings:synced"))
   }
 
   /**
@@ -498,6 +536,11 @@ export class SettingsController {
   resetTransportationDirtyState() {
     this.transportationSettingsDirty = false
     this.updateTransportationApplyButton()
+    document.dispatchEvent(
+      new CustomEvent("map-settings:saved", {
+        detail: { scope: "transportation" },
+      }),
+    )
   }
 
   /**
@@ -1074,22 +1117,105 @@ export class SettingsController {
   async updateMapStyle(event) {
     const styleName = event.target.value
     SettingsManager.updateSetting("mapStyle", styleName)
+    await this.applyMapStyle(styleName)
+  }
 
-    const hiddenTileCategories = this.settings.hiddenTileCategories || []
-    const disabledPoiGroups = this.settings.disabledPoiGroups || []
+  /**
+   * Apply a style to the live map and reload app layers on top.
+   * Also called by the map-theme-editor controller to re-apply the
+   * custom theme after a preset or token change.
+   */
+  async applyMapStyle(styleName) {
+    this.syncStyleDependentToggles(styleName)
     const style = await getMapStyle(styleName, {
-      hiddenTileCategories,
-      disabledPoiGroups,
+      ...this.mapStyleOptions(),
+      vectorTilesUrl: SettingsManager.getSetting("vectorTilesUrl"),
     })
 
     // Clear layer references
     this.layerManager.clearLayerReferences()
 
-    this.map.setStyle(style)
+    if (typeof style === "string") {
+      this.applyUserStyleUrl(style, styleName)
+      return
+    }
 
-    // Reload layers after style change
-    this.map.once("style.load", () => {
-      this.controller.loadMapData()
+    this.swapStyle(style)
+  }
+
+  // MapLibre only fires style.load when it builds a Style from scratch. Its
+  // default path diffs the new document into the live style and stays silent,
+  // which would leave the app layers stripped and never re-added, so the
+  // rebuild has to be forced.
+  swapStyle(style) {
+    this.map.once("style.load", () => this.restoreStyleLayers())
+    this.map.setStyle(style, { diff: false })
+  }
+
+  mapStyleOptions() {
+    return {
+      hiddenTileCategories:
+        SettingsManager.getSetting("hiddenTileCategories") || [],
+      disabledPoiGroups: SettingsManager.getSetting("disabledPoiGroups") || [],
+      customTheme: SettingsManager.getSetting("customTheme"),
+    }
+  }
+
+  // Reload layers after a style change. setStyle replaces the whole style
+  // document — including the projection — so globe mode must be restored
+  // or every style/theme change silently drops back to mercator.
+  restoreStyleLayers() {
+    this.restoreGlobeProjection()
+    this.controller.loadMapData()
+  }
+
+  applyUserStyleUrl(styleUrl, styleName) {
+    let settled = false
+
+    const onLoad = () => {
+      if (settled) return
+      settled = true
+      this.map.off("error", onError)
+      this.restoreStyleLayers()
+    }
+
+    // MapLibre reports every failed request through `error`, tiles included.
+    // Only a failure of the style document may discard the user's basemap —
+    // one unreachable tile from an otherwise valid style must not.
+    const onError = async (event) => {
+      if (settled || !styleDocumentFailed(event, styleUrl)) return
+      settled = true
+      this.map.off("style.load", onLoad)
+      this.map.off("error", onError)
+      Toast.error(
+        "Custom map style could not be loaded; reverting to the default style.",
+      )
+      const fallback = await getMapStyle(styleName, this.mapStyleOptions())
+      this.swapStyle(fallback)
+    }
+
+    this.map.once("style.load", onLoad)
+    this.map.on("error", onError)
+    this.map.setStyle(styleUrl, { diff: false })
+  }
+
+  restoreGlobeProjection() {
+    const globe = this.settings.globeProjection
+    if (globe !== true && globe !== "true") return
+
+    this.map.setProjection({ type: "globe" })
+    this.map.setSky({
+      "atmosphere-blend": [
+        "interpolate",
+        ["linear"],
+        ["zoom"],
+        0,
+        1,
+        5,
+        1,
+        7,
+        0,
+      ],
     })
   }
 
@@ -1175,6 +1301,155 @@ export class SettingsController {
     }
 
     SettingsManager.updateSetting("pointDraggingEnabled", enabled)
+  }
+
+  /**
+   * Layer colors (routes / tracks): paint applies immediately, the save
+   * is debounced because color inputs fire rapidly while dragging.
+   */
+  updateRouteColor(event) {
+    const color = event.target.value
+    this.applyRouteColor(color)
+    this.syncLayerColorLabel("routeColor", color)
+    this.scheduleLayerColorSave("routeColor", color)
+  }
+
+  updateTrackColor(event) {
+    const color = event.target.value
+    this.applyTrackColor(color)
+    this.syncLayerColorLabel("trackColor", color)
+    this.scheduleLayerColorSave("trackColor", color)
+  }
+
+  resetLayerColors() {
+    Object.values(this.layerColorTimers || {}).forEach(clearTimeout)
+    this.layerColorTimers = {}
+
+    Object.entries(LAYER_COLOR_DEFAULTS).forEach(([key, color]) => {
+      const input = this.controller.element.querySelector(
+        `input[name="${key}"]`,
+      )
+      if (input) input.value = color
+      this.syncLayerColorLabel(key, color)
+    })
+    SettingsManager.updateSettings(LAYER_COLOR_DEFAULTS)
+    this.applyRouteColor(LAYER_COLOR_DEFAULTS.routeColor)
+    this.applyTrackColor(LAYER_COLOR_DEFAULTS.trackColor)
+  }
+
+  applyRouteColor(color) {
+    if (this.map.getLayer("routes")) {
+      this.map.setPaintProperty("routes", "line-color", [
+        "case",
+        ["has", "color"],
+        ["get", "color"],
+        color,
+      ])
+    }
+    if (this.map.getLayer("routes-base")) {
+      this.map.setPaintProperty("routes-base", "line-color", color)
+    }
+  }
+
+  applyTrackColor(color) {
+    if (this.map.getLayer("tracks")) {
+      this.map.setPaintProperty("tracks", "line-color", color)
+    }
+  }
+
+  syncLayerColorLabel(key, color) {
+    const label = this.controller.element.querySelector(
+      `[data-layer-color-value="${key}"]`,
+    )
+    if (label) label.textContent = color.toUpperCase()
+  }
+
+  scheduleLayerColorSave(key, color) {
+    this.layerColorTimers = this.layerColorTimers || {}
+    clearTimeout(this.layerColorTimers[key])
+    this.layerColorTimers[key] = setTimeout(() => {
+      SettingsManager.updateSetting(key, color)
+    }, 150)
+  }
+
+  /**
+   * Base map tile categories / POI groups (moved from /settings/maps).
+   * Unchecked toggles form the hidden/disabled lists; the style is
+   * rebuilt live so changes are visible immediately.
+   */
+  async toggleTileCategory() {
+    const hidden = this.uncheckedValues("data-tile-category")
+    await SettingsManager.updateSetting("hiddenTileCategories", hidden)
+    this.applyMapStyle(SettingsManager.getSetting("mapStyle"))
+  }
+
+  async togglePoiGroup() {
+    const disabled = this.uncheckedValues("data-poi-group")
+    await SettingsManager.updateSetting("disabledPoiGroups", disabled)
+    this.applyMapStyle(SettingsManager.getSetting("mapStyle"))
+  }
+
+  uncheckedValues(attribute) {
+    return Array.from(
+      this.controller.element.querySelectorAll(`input[${attribute}]`),
+    )
+      .filter((input) => !input.checked)
+      .map((input) => input.getAttribute(attribute))
+  }
+
+  /**
+   * The Custom style draws no labels or POIs, so their toggles are
+   * disabled while it's active, with a tooltip explaining why. A raster or
+   * foreign-style basemap carries no Protomaps layers at all, so there every
+   * toggle goes dead, not just the unsupported ones.
+   */
+  syncStyleDependentToggles(styleName) {
+    const basemap = classifyBasemapUrl(
+      SettingsManager.getSetting("vectorTilesUrl"),
+    )
+    const foreignBasemap = basemap === "raster" || basemap === "style"
+    const custom = styleName === "custom"
+    const inputs = this.controller.element.querySelectorAll(
+      "input[data-tile-category], input[data-poi-group]",
+    )
+    inputs.forEach((input) => {
+      const unavailable =
+        foreignBasemap || (custom && input.dataset.customSupported !== "true")
+      input.disabled = unavailable
+
+      const label = input.closest("label")
+      if (!label) return
+      label.classList.toggle("opacity-40", unavailable)
+      label.classList.toggle("tooltip", unavailable)
+      label.style.cursor = unavailable ? "not-allowed" : ""
+      if (unavailable) {
+        label.dataset.tip = foreignBasemap
+          ? "Not available with a custom raster or style basemap — these layers come from the built-in vector tiles"
+          : "Not available with the Custom map style — it draws no labels or points of interest"
+      } else {
+        delete label.dataset.tip
+      }
+    })
+  }
+
+  updateDistanceUnit(event) {
+    const unit = event.target.value
+    this.settings.distance_unit = unit
+    SettingsManager.updateSetting("distance_unit", unit)
+  }
+
+  updateVectorTilesUrl(event) {
+    const raw = event.target.value.trim()
+
+    if (!SettingsManager.validVectorTilesUrl(raw)) {
+      Toast.error(
+        "Tile URL must include {z}, {x}, and {y} placeholders, or be a MapLibre style URL ending in .json",
+      )
+      return
+    }
+
+    SettingsManager.updateSetting("vectorTilesUrl", raw || null)
+    this.applyMapStyle(SettingsManager.getSetting("mapStyle"))
   }
 
   /**
@@ -1307,6 +1582,10 @@ export class SettingsController {
     for (const [key, value] of Object.entries(settings)) {
       await SettingsManager.updateSetting(key, value)
     }
+
+    document.dispatchEvent(
+      new CustomEvent("map-settings:saved", { detail: { scope: "form" } }),
+    )
 
     Toast.success("Settings updated successfully")
   }

@@ -78,6 +78,206 @@ RSpec.describe 'Api::V1::Settings', type: :request do
         expect(user.reload.safe_settings.fog_of_war_mode).to eq('points')
       end
 
+      it 'updates maps_maplibre_custom_theme' do
+        theme = {
+          base: 'blueprint',
+          tokens: {
+            bg: '#1E3A5F', water: '#152C4A', parks: '#1A3557',
+            road_motorway: '#FFFFFF', road_primary: '#E8F0F8',
+            road_secondary: '#C4D4E4', road_tertiary: '#A0B8CC',
+            road_residential: '#7A94AC', road_default: '#8AA4BC'
+          }
+        }
+
+        patch "/api/v1/settings?api_key=#{api_key}",
+              params: { settings: { maps_maplibre_style: 'custom', maps_maplibre_custom_theme: theme } }
+
+        expect(response).to have_http_status(:success)
+
+        stored = user.reload.safe_settings.maps_maplibre_custom_theme
+        expect(stored['base']).to eq('blueprint')
+        expect(stored['tokens']['bg']).to eq('#1E3A5F')
+        expect(user.safe_settings.maps_maplibre_style).to eq('custom')
+      end
+
+      it 'updates route_color and track_color' do
+        patch "/api/v1/settings?api_key=#{api_key}",
+              params: { settings: { route_color: '#123456', track_color: '#654321' } }
+
+        expect(response).to have_http_status(:success)
+        expect(user.reload.safe_settings.route_color).to eq('#123456')
+        expect(user.safe_settings.track_color).to eq('#654321')
+      end
+
+      it 'updates maps_maplibre_tiles_url' do
+        patch "/api/v1/settings?api_key=#{api_key}",
+              params: { settings: { maps_maplibre_tiles_url: 'https://tiles.example.com/{z}/{x}/{y}.mvt' } }
+
+        expect(response).to have_http_status(:success)
+        expect(user.reload.safe_settings.maps_maplibre_tiles_url)
+          .to eq('https://tiles.example.com/{z}/{x}/{y}.mvt')
+      end
+
+      it 'rejects a maps_maplibre_tiles_url missing a coordinate placeholder' do
+        patch "/api/v1/settings?api_key=#{api_key}",
+              params: { settings: { maps_maplibre_tiles_url: 'https://tiles.example.com/{z}.mvt' } }
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(response.parsed_body['errors'])
+          .to include(a_string_including('or be a MapLibre style URL ending in .json'))
+        expect(user.reload.safe_settings.maps_maplibre_tiles_url).to be_nil
+      end
+
+      it 'accepts a raster XYZ maps_maplibre_tiles_url' do
+        patch "/api/v1/settings?api_key=#{api_key}",
+              params: {
+                settings: {
+                  maps_maplibre_tiles_url: 'https://api.maptiler.com/maps/hybrid/256/{z}/{x}/{y}.jpg?key=abc'
+                }
+              }
+
+        expect(response).to have_http_status(:success)
+        expect(user.reload.safe_settings.maps_maplibre_tiles_url)
+          .to eq('https://api.maptiler.com/maps/hybrid/256/{z}/{x}/{y}.jpg?key=abc')
+      end
+
+      it 'accepts a full style URL ending in .json' do
+        patch "/api/v1/settings?api_key=#{api_key}",
+              params: {
+                settings: {
+                  maps_maplibre_tiles_url: 'https://api.maptiler.com/maps/streets/style.json?key=abc'
+                }
+              }
+
+        expect(response).to have_http_status(:success)
+        expect(user.reload.safe_settings.maps_maplibre_tiles_url)
+          .to eq('https://api.maptiler.com/maps/streets/style.json?key=abc')
+      end
+
+      it 'accepts a root-relative style URL served from this instance' do
+        patch "/api/v1/settings?api_key=#{api_key}",
+              params: { settings: { maps_maplibre_tiles_url: '/maps_maplibre/styles/mine.json' } }
+
+        expect(response).to have_http_status(:success)
+        expect(user.reload.safe_settings.maps_maplibre_tiles_url).to eq('/maps_maplibre/styles/mine.json')
+      end
+
+      it 'rejects a non-http style.json URL' do
+        patch "/api/v1/settings?api_key=#{api_key}",
+              params: { settings: { maps_maplibre_tiles_url: 'ftp://example.com/style.json' } }
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(user.reload.safe_settings.maps_maplibre_tiles_url).to be_nil
+      end
+
+      it 'rejects a protocol-relative style.json URL' do
+        patch "/api/v1/settings?api_key=#{api_key}",
+              params: { settings: { maps_maplibre_tiles_url: '//tiles.example.com/style.json' } }
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(user.reload.safe_settings.maps_maplibre_tiles_url).to be_nil
+      end
+
+      it 'rejects a maps_maplibre_tiles_url that is neither an XYZ tile URL nor a style.json' do
+        patch "/api/v1/settings?api_key=#{api_key}",
+              params: { settings: { maps_maplibre_tiles_url: 'https://tiles.example.com/basemap' } }
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(user.reload.safe_settings.maps_maplibre_tiles_url).to be_nil
+      end
+
+      it 'rejects a non-string maps_maplibre_tiles_url without raising' do
+        patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { maps_maplibre_tiles_url: 123 } }
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(user.reload.safe_settings.maps_maplibre_tiles_url).to be_nil
+      end
+
+      it 'normalizes a whitespace-only maps_maplibre_tiles_url to nil' do
+        patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { maps_maplibre_tiles_url: '   ' } }
+
+        expect(response).to have_http_status(:success)
+        expect(user.reload.safe_settings.maps_maplibre_tiles_url).to be_nil
+      end
+
+      it 'merges nested maps settings without clobbering v1 keys' do
+        user.settings['maps'] = {
+          'name' => 'OSM', 'url' => +'https://tile.example/{z}/{x}/{y}.png', 'distance_unit' => 'km'
+        }
+        user.save!
+
+        patch "/api/v1/settings?api_key=#{api_key}",
+              params: {
+                settings: {
+                  maps: {
+                    distance_unit: 'mi',
+                    hidden_tile_categories: ['roads'],
+                    disabled_poi_groups: ['shopping']
+                  }
+                }
+              }
+
+        expect(response).to have_http_status(:success)
+
+        maps = user.reload.settings['maps']
+        expect(maps['name']).to eq('OSM')
+        expect(maps['url']).to eq('https://tile.example/{z}/{x}/{y}.png')
+        expect(maps['distance_unit']).to eq('mi')
+        expect(maps['hidden_tile_categories']).to eq(['roads'])
+        expect(maps['disabled_poi_groups']).to eq(['shopping'])
+      end
+
+      context 'when user is on the lite plan (cloud)' do
+        let!(:lite_user) do
+          u = create(:user)
+          u.update_columns(plan: User.plans[:lite])
+          u
+        end
+        let(:lite_api_key) { lite_user.api_key }
+
+        before do
+          allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        end
+
+        it 'does not persist map customization settings' do
+          patch "/api/v1/settings?api_key=#{lite_api_key}",
+                params: {
+                  settings: {
+                    maps_maplibre_style: 'custom',
+                    maps_maplibre_tiles_url: 'https://tiles.example.com/{z}/{x}/{y}.mvt',
+                    route_color: '#123456',
+                    track_color: '#654321',
+                    maps_maplibre_custom_theme: { base: 'blueprint', tokens: { bg: '#111111' } }
+                  }
+                }
+
+          expect(response).to have_http_status(:success)
+
+          settings = lite_user.reload.safe_settings
+          expect(settings.maps_maplibre_style).to eq('light')
+          expect(settings.maps_maplibre_tiles_url).to be_nil
+          expect(settings.route_color).to eq('#0000ff')
+          expect(settings.track_color).to eq('#6366F1')
+          expect(settings.maps_maplibre_custom_theme['base']).to eq('noir')
+        end
+
+        it 'still persists built-in style switches' do
+          patch "/api/v1/settings?api_key=#{lite_api_key}",
+                params: { settings: { maps_maplibre_style: 'dark' } }
+
+          expect(response).to have_http_status(:success)
+          expect(lite_user.reload.safe_settings.maps_maplibre_style).to eq('dark')
+        end
+      end
+
+      it 'returns maps_maplibre_custom_theme in the settings payload' do
+        get "/api/v1/settings?api_key=#{api_key}"
+
+        theme = response.parsed_body['settings']['maps_maplibre_custom_theme']
+        expect(theme['base']).to eq('noir')
+        expect(theme['tokens']['bg']).to eq('#000000')
+      end
+
       it 'updates stay_max_gap_minutes' do
         patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { stay_max_gap_minutes: 90 } }
 
@@ -226,6 +426,49 @@ RSpec.describe 'Api::V1::Settings', type: :request do
       expect(response.parsed_body['status']).to eq('processing')
       expect(response.parsed_body['total_tracks']).to eq(100)
       expect(response.parsed_body['processed_tracks']).to eq(50)
+    end
+  end
+
+  describe 'PATCH /update with maps.distance_unit' do
+    it 'updates the distance unit' do
+      patch "/api/v1/settings?api_key=#{api_key}",
+            params: { settings: { maps: { distance_unit: 'mi' } } }
+
+      expect(response).to have_http_status(:success)
+      expect(user.reload.settings.dig('maps', 'distance_unit')).to eq('mi')
+      expect(response.parsed_body['settings']['distance_unit']).to eq('mi')
+    end
+
+    it 'preserves other maps subkeys' do
+      user.settings['maps'] = { 'distance_unit' => 'km', 'hidden_tile_categories' => ['poi'] }
+      user.save!
+
+      patch "/api/v1/settings?api_key=#{api_key}",
+            params: { settings: { maps: { distance_unit: 'mi' } } }
+
+      expect(user.reload.settings.dig('maps', 'hidden_tile_categories')).to eq(['poi'])
+    end
+
+    it 'rejects invalid distance units' do
+      user.settings['maps'] = { 'distance_unit' => 'km' }
+      user.save!
+
+      patch "/api/v1/settings?api_key=#{api_key}",
+            params: { settings: { maps: { distance_unit: 'banana' } } }
+
+      expect(response).to have_http_status(:success)
+      expect(user.reload.settings.dig('maps', 'distance_unit')).to eq('km')
+    end
+
+    it 'ignores maps sent as an array' do
+      user.settings['maps'] = { 'distance_unit' => 'km' }
+      user.save!
+
+      patch "/api/v1/settings?api_key=#{api_key}",
+            params: { settings: { maps: [{ distance_unit: 'mi' }] } }
+
+      expect(response).to have_http_status(:success)
+      expect(user.reload.settings['maps']).to eq('distance_unit' => 'km')
     end
   end
 end

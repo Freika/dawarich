@@ -62,6 +62,50 @@ RSpec.describe 'API Rate Limiting', type: :request do
       end
     end
 
+    context 'when user is on family plan' do
+      let!(:user) do
+        u = create(:user)
+        u.update_columns(plan: User.plans[:family])
+        u
+      end
+
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      end
+
+      it 'includes rate limit headers with a limit of 1000' do
+        get api_v1_points_url(api_key: user.api_key)
+
+        expect(response.headers['X-RateLimit-Limit']).to eq('1000')
+      end
+    end
+
+    context 'when user is a lite member of a family-plan family' do
+      let!(:owner) do
+        u = create(:user)
+        u.update_columns(plan: User.plans[:family])
+        u
+      end
+      let!(:family) { create(:family, creator: owner) }
+      let!(:member) do
+        u = create(:user)
+        u.update_columns(plan: User.plans[:lite])
+        u
+      end
+
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        create(:family_membership, :owner, family: family, user: owner)
+        create(:family_membership, family: family, user: member)
+      end
+
+      it 'gets the full 1000 limit via effective plan' do
+        get api_v1_points_url(api_key: member.api_key)
+
+        expect(response.headers['X-RateLimit-Limit']).to eq('1000')
+      end
+    end
+
     context 'when on a self-hosted instance' do
       let!(:user) { create(:user) }
 

@@ -113,10 +113,11 @@ RSpec.describe '/settings/users', type: :request do
               end.to change(User, :count).by(0)
             end
 
-            it 'renders a response with 422 status (i.e. to display the "new" template)' do
+            it 'redirects back with an alert explaining the failure' do
               post settings_users_url, params: { user: invalid_attributes }
 
-              expect(response).to have_http_status(:unprocessable_content)
+              expect(response).to have_http_status(:see_other)
+              expect(flash[:alert]).to include('User could not be created')
             end
           end
         end
@@ -372,10 +373,10 @@ RSpec.describe '/settings/users', type: :request do
               end.not_to(change { user.reload.deleted_at })
             end
 
-            it 'returns unprocessable content with error message' do
+            it 'redirects back with an error message' do
               delete settings_user_url(user)
 
-              expect(response).to have_http_status(:unprocessable_content)
+              expect(response).to have_http_status(:see_other)
               expect(flash[:alert]).to eq(
                 'Cannot delete account while being owner of a family which has other members.'
               )

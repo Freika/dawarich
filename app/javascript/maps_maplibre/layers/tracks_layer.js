@@ -1,3 +1,7 @@
+import {
+  LAYER_COLOR_DEFAULTS,
+  SettingsManager,
+} from "maps_maplibre/utils/settings_manager"
 import { BaseLayer } from "./base_layer"
 
 /**
@@ -40,7 +44,9 @@ export class TracksLayer extends BaseLayer {
 
   getLayerConfigs() {
     return [
-      // Main tracks layer (bottom)
+      // Main tracks layer (bottom). Track features all carry the backend's
+      // uniform default color, so the user's track color setting replaces
+      // it directly; mode-colored segments live in their own layer.
       {
         id: this.id,
         type: "line",
@@ -50,7 +56,9 @@ export class TracksLayer extends BaseLayer {
           "line-cap": "round",
         },
         paint: {
-          "line-color": ["get", "color"],
+          "line-color":
+            SettingsManager.getSetting("trackColor") ||
+            LAYER_COLOR_DEFAULTS.trackColor,
           "line-width": 4,
           "line-opacity": 0.7,
         },

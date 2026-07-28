@@ -20,6 +20,10 @@ class Users::SafeSettings
     'merge_threshold_minutes' => 15,
     'live_map_enabled' => true,
     'route_opacity' => 0.6,
+    # Layer colors: route fallback matches Map v1's blue, track color matches
+    # Tracks::GeojsonSerializer::DEFAULT_COLOR — keep them in sync.
+    'route_color' => '#0000ff',
+    'track_color' => '#6366F1',
     'immich_url' => nil,
     'immich_api_key' => nil,
     'immich_skip_ssl_verification' => false,
@@ -34,6 +38,17 @@ class Users::SafeSettings
     'visits_suggestions_enabled' => 'true',
     'enabled_map_layers' => %w[Tracks Heatmap],
     'maps_maplibre_style' => 'light',
+    'maps_maplibre_tiles_url' => nil,
+    'maps_maplibre_custom_theme' => {
+      'base' => 'noir',
+      'tokens' => {
+        'bg' => '#000000', 'water' => '#0A0A0A', 'parks' => '#111111',
+        'buildings' => '#141414', 'railway' => '#808080', 'boundaries' => '#4D4D4D',
+        'road_motorway' => '#FFFFFF', 'road_primary' => '#E0E0E0',
+        'road_secondary' => '#B0B0B0', 'road_tertiary' => '#808080',
+        'road_residential' => '#505050', 'road_default' => '#808080'
+      }
+    },
     'news_emails_enabled' => true,
     'globe_projection' => true,
     'supporter_email' => nil,
@@ -90,6 +105,8 @@ class Users::SafeSettings
       merge_threshold_minutes: merge_threshold_minutes,
       live_map_enabled: live_map_enabled,
       route_opacity: route_opacity,
+      route_color: route_color,
+      track_color: track_color,
       immich_url: immich_url,
       immich_api_key: immich_api_key,
       photoprism_url: photoprism_url,
@@ -104,6 +121,8 @@ class Users::SafeSettings
       fog_of_war_mode: fog_of_war_mode,
       enabled_map_layers: enabled_map_layers,
       maps_maplibre_style: maps_maplibre_style,
+      maps_maplibre_tiles_url: maps_maplibre_tiles_url,
+      maps_maplibre_custom_theme: maps_maplibre_custom_theme,
       globe_projection: globe_projection,
       transportation_thresholds: transportation_thresholds,
       transportation_expert_thresholds: transportation_expert_thresholds,
@@ -161,6 +180,14 @@ class Users::SafeSettings
 
   def route_opacity
     settings['route_opacity']
+  end
+
+  def route_color
+    settings['route_color']
+  end
+
+  def track_color
+    settings['track_color']
   end
 
   def immich_url
@@ -235,6 +262,14 @@ class Users::SafeSettings
 
   def maps_maplibre_style
     settings['maps_maplibre_style']
+  end
+
+  def maps_maplibre_custom_theme
+    settings['maps_maplibre_custom_theme']
+  end
+
+  def maps_maplibre_tiles_url
+    settings['maps_maplibre_tiles_url']
   end
 
   def globe_projection

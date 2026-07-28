@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Users::OtpChallengeController < ApplicationController
+  include PendingImportClaimable
+
   OTP_CHALLENGE_TTL = 5.minutes
   MAX_FAILED_ATTEMPTS = 5
 
@@ -39,6 +41,13 @@ class Users::OtpChallengeController < ApplicationController
       flash.now[:alert] = 'Invalid two-factor code.'
       render 'devise/sessions/otp_challenge', status: :unprocessable_entity
     end
+  end
+
+  protected
+
+  def after_sign_in_path_for(resource)
+    claim_pending_import_for(resource)
+    super
   end
 
   private

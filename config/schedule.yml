@@ -97,3 +97,9 @@ yearly_digest_scheduling_job:
   cron: "0 6 2 1 *" # January 2nd at 06:00 UTC
   class: "Users::Digests::Yearly::SchedulingJob"
   queue: digests
+
+pending_imports_cleanup:
+  cron: "15 3 * * *" # every day at 03:15 UTC
+  class: "PendingImports::CleanupJob"
+  queue: low_priority
+  description: "Sweep expired or old-claimed pending imports"

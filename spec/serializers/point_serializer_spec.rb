@@ -14,7 +14,7 @@ RSpec.describe PointSerializer do
         'battery' => point.battery,
         'tracker_id' => point.tracker_id,
         'topic' => point.topic,
-        'altitude' => point.altitude,
+        'altitude' => point.altitude.to_s,
         'longitude' => point.lon.to_s,
         'velocity' => point.velocity,
         'trigger' => point.trigger,
@@ -44,7 +44,7 @@ RSpec.describe PointSerializer do
     end
 
     it 'returns JSON with correct attributes' do
-      expect(serializer.to_json).to eq(expected_json.to_json)
+      expect(JSON.parse(serializer.to_json)).to eq(expected_json)
     end
   end
 end

@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Users::AppleOauthController < ApplicationController
+  include PendingImportClaimable
+
   skip_before_action :verify_authenticity_token, only: :callback
   before_action :ensure_enabled
 
@@ -14,12 +16,21 @@ class Users::AppleOauthController < ApplicationController
     cookies.encrypted[:apple_oauth_nonce] = COOKIE_OPTS.merge(value: nonce, expires: COOKIE_TTL.from_now)
     cookies.encrypted[:apple_oauth_state] = COOKIE_OPTS.merge(value: state, expires: COOKIE_TTL.from_now)
 
+    # Apple's callback is a cross-site form POST, so the SameSite=Lax session
+    # cookie won't accompany it. Relay the pending-import ticket through an
+    # encrypted SameSite=None cookie, same as the nonce/state above.
+    if session[:pending_import_ticket].present?
+      cookies.encrypted[:apple_pending_import_ticket] =
+        COOKIE_OPTS.merge(value: session[:pending_import_ticket], expires: COOKIE_TTL.from_now)
+    end
+
     redirect_to authorize_url(nonce: nonce, state: state), allow_other_host: true
   end
 
   def callback
     expected_state = cookies.encrypted[:apple_oauth_state]
     expected_nonce = cookies.encrypted[:apple_oauth_nonce]
+    restore_pending_import_ticket
     cookies.delete(:apple_oauth_state)
     cookies.delete(:apple_oauth_nonce)
 
@@ -68,7 +79,22 @@ class Users::AppleOauthController < ApplicationController
     capture_apple_breadcrumb('missing_email', level: :warning, extra: { uid: e.uid })
   end
 
+  protected
+
+  def after_sign_in_path_for(resource)
+    claim_pending_import_for(resource)
+    super
+  end
+
   private
+
+  def restore_pending_import_ticket
+    ticket = cookies.encrypted[:apple_pending_import_ticket]
+    cookies.delete(:apple_pending_import_ticket)
+    return if ticket.blank?
+
+    session[:pending_import_ticket] ||= ticket
+  end
 
   def ensure_enabled
     head :not_found unless APPLE_WEB_SIGN_IN_ENABLED

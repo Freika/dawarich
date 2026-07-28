@@ -11,9 +11,9 @@ class DataMigrations::RecalculatePerTrackerTracksJob < ApplicationJob
     user = User.find_by(id: user_id)
     return unless user
 
-    Points::TrackerIdBackfiller.new(user).call
+    backfilled = Points::TrackerIdBackfiller.new(user).call
 
-    return unless user.tracks.where(tracker_id: nil).exists?
+    return unless backfilled.positive? || user.tracks.where(tracker_id: nil).exists?
 
     Users::RecalculateDataJob.perform_now(user.id, notify: false)
   end
@@ -22,7 +22,11 @@ class DataMigrations::RecalculatePerTrackerTracksJob < ApplicationJob
 
   def enqueue_pending_users
     user_ids = User
-               .where('EXISTS (SELECT 1 FROM tracks WHERE tracks.user_id = users.id AND tracks.tracker_id IS NULL)')
+               .where(
+                 'EXISTS (SELECT 1 FROM tracks WHERE tracks.user_id = users.id AND tracks.tracker_id IS NULL) ' \
+                 'OR EXISTS (SELECT 1 FROM points WHERE points.user_id = users.id AND points.tracker_id IN (?))',
+                 Points::TrackerIdBackfiller::LEGACY_CONSTANTS
+               )
                .pluck(:id)
     return if user_ids.empty?
 

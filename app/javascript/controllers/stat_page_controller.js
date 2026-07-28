@@ -107,7 +107,7 @@ export default class extends BaseController {
 
     while (true) {
       const response = await fetch(
-        `/api/v1/points?start_at=${encodeURIComponent(startDate)}&end_at=${encodeURIComponent(endDate)}&per_page=1000&page=${page}`,
+        `/api/v1/points?slim=true&start_at=${encodeURIComponent(startDate)}&end_at=${encodeURIComponent(endDate)}&per_page=1000&page=${page}`,
         {
           method: "GET",
           headers: {

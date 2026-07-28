@@ -7,6 +7,9 @@ set -e
 
 echo "⚠️ Starting Sidekiq in $RAILS_ENV environment ⚠️"
 
+. "$(dirname "$0")/entrypoint-env-guard.sh"
+sanitize_integer_env BACKGROUND_PROCESSING_CONCURRENCY 3
+
 # Optional privilege drop. When PUID/PGID are set and the container starts as
 # root, fix ownership of the mounted writable paths, then re-exec as that user.
 # Prefer this over compose `user:`, which starts unprivileged and cannot chown

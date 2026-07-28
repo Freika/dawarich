@@ -1,0 +1,15 @@
+{
+  "name": "Forest",
+  "description": "Deep greens and sage tones - organic botanical aesthetic",
+  "bg": "#F0F4F0",
+  "text": "#2D4A3E",
+  "gradient_color": "#F0F4F0",
+  "water": "#B8D4D4",
+  "parks": "#D4E8D4",
+  "road_motorway": "#2D4A3E",
+  "road_primary": "#3D6B55",
+  "road_secondary": "#5A8A70",
+  "road_tertiary": "#7AAA90",
+  "road_residential": "#A0C8B0",
+  "road_default": "#7AAA90"
+}

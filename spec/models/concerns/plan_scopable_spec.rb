@@ -32,6 +32,46 @@ RSpec.describe PlanScopable do
         user.update!(plan: :pro)
         expect(user.plan_restricted?).to be false
       end
+
+      it 'returns false for family owners' do
+        owner = create(:user, plan: :family, skip_auto_trial: true)
+        family = create(:family, creator: owner)
+        create(:family_membership, :owner, family: family, user: owner)
+
+        expect(owner.plan_restricted?).to be false
+      end
+
+      it 'returns false for a lite member of a family-plan family' do
+        owner = create(:user, plan: :family, skip_auto_trial: true)
+        family = create(:family, creator: owner)
+        create(:family_membership, :owner, family: family, user: owner)
+        member = create(:user, plan: :lite, skip_auto_trial: true)
+        create(:family_membership, family: family, user: member)
+
+        expect(member.plan_restricted?).to be false
+      end
+    end
+  end
+
+  describe 'scoped relations for a lite family member' do
+    let(:owner) { create(:user, plan: :family, skip_auto_trial: true) }
+    let(:family) { create(:family, creator: owner) }
+    let(:member) { create(:user, plan: :lite, skip_auto_trial: true) }
+
+    before do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      create(:family_membership, :owner, family: family, user: owner)
+      create(:family_membership, family: family, user: member)
+    end
+
+    it 'returns unscoped points, tracks, visits and stats' do
+      recent_point = create(:point, user: member, timestamp: 1.month.ago.to_i)
+      old_point = create(:point, user: member, timestamp: 2.years.ago.to_i)
+      recent_track = create(:track, user: member, start_at: 1.month.ago)
+      old_track = create(:track, user: member, start_at: 2.years.ago)
+
+      expect(member.scoped_points).to include(recent_point, old_point)
+      expect(member.scoped_tracks).to include(recent_track, old_track)
     end
   end
 

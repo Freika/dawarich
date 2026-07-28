@@ -4,6 +4,132 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+
+### Fixed
+
+- The Dawarich app and Sidekiq containers now restart automatically after a graceful (exit 0) shutdown instead of staying down, so a stray SIGHUP no longer takes an instance offline until manual intervention (#3099).
+- Nightly place- and area-visit calculation no longer fails when an instance contains legacy points without timestamps.
+- Import rows on the Imports page now update their status live as an import processes, instead of staying on "Processing" until the page is manually reloaded. (#3174)
+- Public live-share links now update in real time for signed-in visitors, instead of only refreshing the location on a full page reload. (#3111)
+- Reverse geocoding and place-name provider outages no longer flood error reporting with handled timeouts, dropped TLS connections, refused connections, unresolvable hostnames, or invalid provider responses. A misconfigured or rate-limited provider — a bad API key, for example — is still reported.
+- The place search box behind visit naming and the Map v2 place picker gets the same treatment: a query the geocoder rejects, or a provider that is briefly unreachable, is logged and returns no matches instead of raising an application error. Self-hosted logs now name the failing error class, and a misconfigured or rate-limited provider is still reported.
+- Place visit detection no longer fails when an unused suggested place is deleted while the nightly calculation is running.
+- Clicking "Continue reverse geocoding" again now re-processes points that were left ungeocoded by a previous run, instead of skipping them for up to a day. (#3071)
+- Public share links now expire at the start of the selected date in the owner's timezone instead of remaining active through that day (#3112).
+- The share link form now spells out that a link stays active only through the day before the selected expiry date.
+
+
+## [1.10.2] - 2026-07-27, Berlin
+
+### Added
+
+- Poster Studio has a track width control: a 50–300% slider beside track opacity that scales the route line on the saved poster.
+- The Map v2 custom basemap field now accepts raster XYZ tiles (`.png`/`.jpg`/`.jpeg`/`.webp`) and full MapLibre style URLs ending in `.json`, in addition to Protomaps-schema vector tiles. Previously a raster URL rendered as a blank grey map and a style URL was rejected. (#3146)
+
+### Fixed
+
+- Saving a zoomed-out Poster Studio view to the gallery no longer rejects routes that are visibly inside the poster frame (#3204). The area check now uses the same Mercator framing as the renderer and wraps across the antimeridian, so high-latitude and Pacific-centred posters are judged against the frame you actually see. Poster Studio also warns when a view is too wide for the largest poster area instead of silently zooming the saved poster in.
+- Instances with heavy write traffic no longer crash-loop on the 1.10.1 upgrade. Dropping the legacy `points.latitude`/`points.longitude` columns needs an exclusive lock that busy instances could not win in one attempt, which aborted the migration and restarted the container in a loop. The drop is now retried, and if it still cannot get the lock it is handed to a background job so startup completes. If that job cannot get the lock either, the columns stay and the log prints the statement to run by hand — they are unused, so nothing breaks in the meantime (#3176)
+- Trial lifecycle email jobs left over from older releases are now discarded instead of retrying forever in the background queue. Mail addressed to a record that has since been deleted is also discarded rather than retried.
+- Reverse geocoding and place-name provider outages no longer flood error reporting with handled timeouts, dropped TLS connections, or invalid provider responses. A misconfigured or rate-limited provider — a bad API key, for example — is still reported.
+- Reverse geocoding retries point updates that time out while waiting on concurrent writes.
+- Google Semantic History and phone Timeline imports now tag points with a per-import tracker id instead of one shared constant, so tracks from different devices are no longer braided together. A one-time backfill rewrites existing points and regenerates affected tracks per user.
+- Place names you set yourself are no longer overwritten by nightly reverse geocoding. Renaming a place, creating one by hand, or picking one on the timeline locks its name; renaming it back to "Suggested place" hands it back to auto-naming. Map v2 and the place drawer show when a name is locked. A one-time backfill locks names that were customised before this release (#3086, #3175)
+- Real-time visit detection no longer stops after the first run for users who track continuously — the debounce key is now released when the job runs.
+- The nightly visit suggestion job no longer scans forward to the end of the calendar year; it processes only the day it was asked for.
+- Merged visits now report the correct duration, centre, radius and suggested name instead of keeping the values of the first cluster in the merge.
+- Visit suggestion failures no longer show a raw stack trace in your notifications, and repeated failures within an hour no longer create a notification each time (#3091)
+- Points at exactly (0,0) — a common GPS glitch — are no longer accepted from any ingestion path (API, OwnTracks, Overland, Traccar, file imports) and no longer produce suggested visits at "Null Island". Existing (0,0) points are flagged as anomalies by a one-time cleanup that also removes visits placed at (0,0), tolerates legacy points without timestamps, and recalculates affected stats and tracks.
+- Point uploads from all ingestion paths (REST API, OwnTracks, Overland, Traccar) now retry transient statement and lock-wait timeouts, not just deadlocks, instead of failing the upload.
+- The DNS caching layer no longer crashes with a misleading `NoMethodError` when the SMTP server is not configured in the background worker, so email delivery surfaces the real configuration error instead. (#3038)
+
+
+## [1.10.1] - 2026-07-19, Berlin
+
+### Added
+
+- Google Photos Takeout metadata sidecars can now add geotagged photos as sparse timeline points; sidecars without usable coordinates are skipped.
+- The Poster Studio can now be opened directly from a trip's page, pre-loaded with the trip's route, date range, and name.
+- Dawarich can now be installed to the phone home screen as a web app (PWA): all pages link the web app manifest and Apple touch icon, and the installed app opens straight into Map v2.
+
+### Changed
+
+- The legacy `latitude`/`longitude` columns on `points` are dropped — the PostGIS `lonlat` column has been the single source of truth since 0.25.0. The migration copies any remaining legacy-only coordinates into `lonlat` before dropping, so upgrades from older versions are safe.
+- File imports no longer store a copy of each source record in the point's `raw_data` — the uploaded file stays attached to the import as the source of truth. API responses return `raw_data: {}` for newly imported points, and FIT/TCX health fields (heart rate, cadence, power, temperature) as well as Google phone takeout HOME/WORK place labels are no longer stored.
+- TCX and FIT imports now store their activity type in `motion_data`: transportation-mode detection works for TCX imports for the first time, and FIT driving activities are classified correctly.
+- Google phone takeout imports now store the mapped activity type in `motion_data`, so transportation-mode detection (driving, walking, cycling, bus, train, flying) works for activity segments from phone takeout files.
+
+### Fixed
+
+- Deleting a single point from the map now recalculates your monthly distance and statistics, instead of leaving them counting the deleted point.
+- Large GeoJSON imports now stream features in bounded batches instead of loading the entire file into memory, preventing worker memory exhaustion on exports with hundreds of thousands of points.
+- Google phone Timeline imports now stream semantic segments and raw signals in bounded batches instead of loading the entire export into memory, preventing worker memory exhaustion on large Timeline files.
+- FIT activities without a `device_info` section now import their location records instead of failing strict FIT validation.
+- GPX imports now preserve XML byte-order marks, allowing files whose BOM correctly identifies the encoding despite an incorrect XML declaration to import successfully.
+- ZIP imports now accept large activity exports containing up to 25,000 files, while retaining file-count and expanded-size safety checks.
+- OwnTracks `_type: waypoint` sync messages are no longer stored as location points, so syncing your saved OwnTracks places no longer creates phantom distance/track spikes (#3137)
+- Map v2 date pickers now keep the time component when a range with a specific time is loaded from the URL, instead of resetting to the start/end of the day (#3106)
+- Track generation and user data recalculations now retry a bounded number of times when another job is already processing the same user's tracks, instead of dropping the request and reporting an error; a genuinely stuck lock is logged after the retries are exhausted. The per-user lock also renews itself while a job runs and frees within a minute if a worker dies, so a crashed job no longer blocks a user's track processing for up to half an hour.
+- Dawarich added to an iOS Home Screen now opens Map v2 instead of an unrelated previously visited page (#3097)
+- Point uploads (REST API, OwnTracks, Overland, Traccar) now write batches in a consistent order so concurrent uploads no longer deadlock each other, and both uploads and anomaly filtering recover automatically from any remaining transient database deadlocks instead of failing the upload or background job.
+- Reverse geocoding overlapping places no longer exhausts retries because of concurrent database deadlocks.
+- The app and Sidekiq containers no longer crash-loop on startup when `WEB_CONCURRENCY` or `BACKGROUND_PROCESSING_CONCURRENCY` reach the container as an unexpanded `${VAR:-default}` string (seen with some podman-compose versions); the entrypoint now warns and falls back to the default value (#3124)
+- Cache preheating no longer times out for accounts with large location histories.
+- Cloud: Changing plans resets the Lite archival-warning state, so a user downgraded to Lite again is notified about archived data again.
+- TCX and KML imports no longer fail when text fields contain raw ampersands.
+- The Map v2 "Share" button no longer renders its label below the button bounds on narrow layouts (#3007)
+- Outgoing email now works with local unauthenticated SMTP relays: set `SMTP_AUTHENTICATION=none` (also `off`/`false`/`disabled`) to disable SMTP AUTH instead of hitting "SMTP-AUTH requested but missing user name" (#3147, #2690, #1469, #1463)
+- Deleting a place from the Places list no longer jumps back to the first page — you stay on the page you were viewing (#3145)
+- Map v2 now applies the existing simplified point-rendering mode, so dense point streams are thinned on the map when that setting is selected. Only the points layer is thinned — heatmap, fog of war, scratch map, and routes are still built from the full point set (#946).
+- Statistics pages no longer fail to load when older monthly data contains malformed country or city entries. Recalculating stats for an affected month repairs the stored data.
+
+
+## [1.10.0] - 2026-07-15, Malmö
+
+⚠️ Important: ⚠️ there are some changes to defaults in the docker-compose.yml for self-hosted users. You may want to adjust environment variables to reduce memory usage or increase concurrency. See the "Changed" section below.
+
+### Added
+
+- Poster Studio: design a printable poster of your travels in a full-screen studio opened from Map v2, with live preview, theme and layout presets, text controls, and PNG/PDF export. Posters can be saved to a server-rendered gallery or — in the future releases — ordered as a print via Stripe. Self-hosters: the Docker image grows by ~100 MB for the server-side renderer, and gallery rendering is unavailable on 32-bit ARM (armv7) hosts.
+- New API endpoints `GET`/`POST`/`DELETE /api/v1/demo_data` to check, load and remove demo data, enabling demo-data onboarding in the mobile app.
+- New API endpoints `GET`/`PATCH /api/v1/settings/mobile` for syncing mobile app settings between devices (most recent write wins). The existing settings API now also accepts `maps.distance_unit` and merges the `maps` hash instead of replacing it, so partial updates no longer wipe other map settings.
+- Map v2 now reopens at your last viewport instead of the zoomed-out globe when the selected date range has no data to fit.
+- Custom map colors: pick from theme presets or edit individual color tokens for the map, and a reorganized, collapsible Settings tab to manage them.
+- The classic map (v1) now shows a dismissible banner announcing its retirement in August 2026, plus — when your family shares location — a second banner noting that family location history is only visible on Map v2. Dismissals are remembered per browser.
+
+### Changed
+
+- The default self-hosted stack now idles about 20% lighter (app container 452 → 325 MB, whole stack 843 → 690 MB): `docker-compose.yml` defaults to one Puma worker (`WEB_CONCURRENCY=1`) and 3 background job threads (`BACKGROUND_PROCESSING_CONCURRENCY=3`) — raise either env var for busier instances — and jemalloc now returns freed memory to the OS promptly. Installations that already set these variables are unaffected (#3119).
+- Deleting a point on Map v2 now removes it instantly and restores it if the delete request fails.
+- During replay, photos now stack up as a tilted, Polaroid-style pile in the top-left corner as the playhead reaches them (newest on top, up to five shown); click a photo to open it. The pile stays in sync as you play, scrub, or rewind, and works on map, trip, and public shared-trip replays.
+- Toggling the photos layer during a running replay now adds or removes its photos live (corner pile and map markers) — previously photos only appeared if the layer was enabled before starting the replay.
+- Replay panel: a new **recenter & follow** button. The camera follows the moving marker during playback; dragging the map turns following off, and the button re-centers and resumes it.
+- The replay panel no longer shows the per-day point count.
+- `GET /api/v1/points` is significantly faster over large date ranges: slim responses are built from a single SQL query (~5× faster, byte-identical output), the bounding-box filter runs as a single PostGIS predicate, and repeat requests answer `304 Not Modified` via ETags. Map v2 and the monthly stats map both use this path (#3026).
+- Public shared-trip pages now query Immich/Photoprism once per view instead of twice: the photo search result is briefly cached and reused.
+
+### Fixed
+
+- Family location history now actually shows up on Map v2: the history endpoint read coordinates from the legacy `latitude`/`longitude` columns, which are empty on instances that only store the PostGIS `lonlat` value, so nothing was drawn. Coordinates are now derived from `lonlat` (#2977)
+- Declining the "Move the visit here?" prompt when picking a distant place for a Map v2 visit no longer renames the visit to that place.
+- Place visit detection no longer leaves an empty duplicate visit behind when a new point bridges two previously separate visits at the same place — they are now merged into one. The nightly re-scan also leaves confirmed visits untouched, so a new nearby point can no longer pull points out of a visit you already confirmed.
+- Re-evaluating anomalous points now refreshes the map immediately instead of occasionally serving a cached copy of the points until the next change.
+- Raw data archival: reading archived `raw_data` back works again (it silently returned nothing before), archive chunks are labeled with the points' actual month, archives are verified at write time, and the previously broken `points:raw_data:archive`/`archive_full` rake tasks work again.
+- Raw data archival, continued: re-importing a duplicate point with different `raw_data` now detaches it from its stale archive so the newer data can't be cleared away, and clearing archived data now waits out a 7-day cooling window. Restores are reported under the `restored` metric label instead of `removed` — update dashboards reading `points_total{operation="removed"}` accordingly.
+- User data exports now include archived `raw_data` as plain gzip files, so an export can be imported on a different instance (previously the archives were encrypted with the exporting instance's key and unreadable elsewhere).
+- Creating, updating, or deleting a user in Settings no longer shows a blank "HTTP ERROR 422" page when validation fails — the admin is redirected back with a message explaining what went wrong (e.g. password too short) (#3051)
+- Email delivery no longer times out with providers that use implicit TLS (SMTP port 465, e.g. many hosted mail services): set `SMTP_SSL=true` to enable it, and it is enabled automatically when `SMTP_PORT=465`. STARTTLS remains the default for all other ports (#3068)
+- Points on Map v2 can no longer be moved by accident: dragging a point now requires enabling the new "Edit points" toggle in the layers panel. The toggle resets on every page load, so points stay put unless you deliberately turn editing on (#3060)
+- The family "Location history" toggle is clearer: the settings page now explains it is distinct from live location, powers the recent-track view on Map v2, and only shares points recorded after enabling it. The default history window grew from 24 hours to 7 days, so newly-shared members show a useful track.
+- Place-based visit suggestions now work for users whose distance unit is kilometres — an integer-rounding bug set the detection radius to zero. Self-hosters on kilometres: the first nightly run after upgrading processes your whole history at once; on large databases raise `PLACE_VISITS_THROTTLE_SECONDS` beforehand to make it gentler (#2963)
+- The nightly place-visit job now only processes points that don't yet belong to a visit and pauses briefly between places, so it no longer saturates the database and delays incoming location uploads. The pause is tunable via `PLACE_VISITS_THROTTLE_SECONDS` (default `0.1`) (#2963)
+- Opening "View on map" for an import on Map v2 now shows only that import's points, instead of every point within the import's date range (#2734)
+- Place and area visit detection no longer silently finds zero visits for users whose distance unit is kilometers (the search radius was being truncated to 0 by integer division) (#3031).
+- Points added retroactively through the API or trackers (with timestamps in the past) now get their routes generated, instead of only connecting after a manual data recalculation (#3036).
+- Photoprism photo imports no longer fail with an HTTP 400: the `after`/`before` filters are now sent as plain `YYYY-MM-DD` dates, as recent Photoprism requires (it rejects the full timestamps shipped in 1.9.2). Results are still bounded in-app by the exact end timestamp, and a blank start date no longer breaks the import (#3034).
+
+
 ## [1.9.2] - 2026-06-25
 
 ### Added
@@ -26,7 +152,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Re-running visit detection no longer creates duplicate suggestions for a visit you already confirmed, even after correcting its address moved the place marker away from the underlying points (#2952)
 - Adding a per-day trip note no longer fails with "Content missing" on instances upgraded from a pre-release build; a migration backfills the `notes` table columns that an earlier `if_not_exists` table creation could have skipped (#2987)
 - Reverse geocoding against the hosted `photon.dawarich.app` (and `photon.komoot.io`) now always uses HTTPS, even when `PHOTON_API_USE_HTTPS` is unset or not exactly `true`, fixing the `Geocoder::ResponseParseError` caused by Cloudflare's HTTP→HTTPS redirect (#2982)
-
 
 ## [1.9.0] - 2026-06-21
 

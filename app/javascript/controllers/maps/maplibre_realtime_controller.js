@@ -211,6 +211,22 @@ export default class extends Controller {
       features,
     })
 
+    // Keep the cached full point set in sync — route rebuilds and the
+    // scratch layer read from it in simplified rendering mode.
+    const cachedPoints = mapsController.mapDataManager?.lastLoadedData?.points
+    if (cachedPoints) {
+      cachedPoints.push({
+        id: parseInt(id, 10),
+        latitude: parseFloat(lat),
+        longitude: parseFloat(lon),
+        timestamp: timestamp,
+        battery: parseFloat(battery) || null,
+        altitude: parseFloat(altitude) || null,
+        velocity: parseFloat(velocity) || null,
+        country_name: countryName || null,
+      })
+    }
+
     this.updateRecentPoint(parseFloat(lon), parseFloat(lat), {
       id: parseInt(id, 10),
       battery: parseFloat(battery) || null,

@@ -204,7 +204,7 @@ export default class extends Controller {
     if (date) {
       const isoDate =
         date === "today" ? new Date().toLocaleDateString("en-CA") : date
-      requestAnimationFrame(() => this.selectDayByDate(isoDate))
+      requestAnimationFrame(() => this.selectDayByDate(isoDate, false))
     }
 
     // Specific visit selection — deferred until the visit list frame loads
@@ -337,6 +337,8 @@ export default class extends Controller {
     const startAtLocal = `${date}T00:00:00`
     const endAtLocal = `${date}T23:59:59`
 
+    this.alignRangeInputsToDay(date)
+
     const params = new URLSearchParams(window.location.search)
     params.set("start_at", startAtLocal)
     params.set("end_at", endAtLocal)
@@ -401,22 +403,15 @@ export default class extends Controller {
         day: "numeric",
       })
     }
-
-    // Keep the top date-range form inputs aligned with the selected day so the
-    // range and the panel never silently disagree — applies on calendar/arrow
-    // navigation AND on URL hydration (deep-links), both ways (C1).
-    const startInput = document.querySelector('input[name="start_at"]')
-    const endInput = document.querySelector('input[name="end_at"]')
-    if (startInput) startInput.value = `${date}T00:00`
-    if (endInput) endInput.value = `${date}T23:59`
   }
 
   // Pure UI update — no navigation. Called on connect() when URL params
   // already reflect the date (hydrating after a Turbo page load) and from the
   // `timeline:open-visit` event path.
-  selectDayByDate(date) {
+  selectDayByDate(date, alignInputs = true) {
     if (this.selectionMode) this.exitSelection()
     this.applySelectedDayUI(date)
+    if (alignInputs) this.alignRangeInputsToDay(date)
 
     // Tell the map — bounds are not known yet (visit list frame is async).
     // The map's visits_manager can re-center when it receives data, or listen
@@ -426,6 +421,17 @@ export default class extends Controller {
         detail: { date },
       }),
     )
+  }
+
+  // Collapse the top date-range form inputs to a single day. Navigation and
+  // visit-pin selection do this so the form and panel stay in sync; URL
+  // hydration passes alignInputs=false so the server-rendered inputs keep the
+  // range's time component.
+  alignRangeInputsToDay(date) {
+    const startInput = document.querySelector('input[name="start_at"]')
+    const endInput = document.querySelector('input[name="end_at"]')
+    if (startInput) startInput.value = `${date}T00:00`
+    if (endInput) endInput.value = `${date}T23:59`
   }
 
   // ---------- Visit selection ----------

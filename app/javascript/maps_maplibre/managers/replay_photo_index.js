@@ -23,10 +23,12 @@ export class ReplayPhotoIndex {
     return this.photosByDay[dayKey] || []
   }
 
+  revealedPhotos(dayKey, playheadMs) {
+    return this.dayPhotos(dayKey).filter((photo) => photo.tsMs <= playheadMs)
+  }
+
   idsToReveal(dayKey, playheadMs) {
-    return this.dayPhotos(dayKey)
-      .filter((photo) => photo.tsMs <= playheadMs)
-      .map((photo) => photo.id)
+    return this.revealedPhotos(dayKey, playheadMs).map((photo) => photo.id)
   }
 
   hasPhotos() {

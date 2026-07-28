@@ -46,14 +46,11 @@ class Polarsteps::Importer
     timestamp = parse_timestamp(loc['time'] || loc['timestamp'])
     return nil if timestamp.nil?
 
-    raw_data = { 'segment_id' => loc['id'], 'type' => loc['type'] }.compact
-
     {
       lonlat: "POINT(#{lon} #{lat})",
       timestamp: timestamp,
       user_id: user_id,
       import_id: import.id,
-      raw_data: raw_data,
       created_at: Time.current,
       updated_at: Time.current
     }

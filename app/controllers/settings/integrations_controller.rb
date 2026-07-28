@@ -6,7 +6,7 @@ class Settings::IntegrationsController < ApplicationController
   before_action :require_pro!, only: %i[update]
 
   def index
-    @pro_required = !DawarichSettings.self_hosted? && !current_user.pro?
+    @pro_required = !current_user.full_access?
   end
 
   def update

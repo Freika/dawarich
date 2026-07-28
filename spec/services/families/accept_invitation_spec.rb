@@ -38,6 +38,28 @@ RSpec.describe Families::AcceptInvitation do
       end
     end
 
+    context 'effective access lifecycle (cloud, family-plan owner)' do
+      let(:owner) { create(:user, plan: :family, skip_auto_trial: true) }
+      let(:family) { create(:family, creator: owner) }
+      let(:invitee) { create(:user, plan: :lite, email: 'invitee@example.com', skip_auto_trial: true) }
+
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        create(:family_membership, :owner, family: family, user: owner)
+      end
+
+      it 'grants full access immediately upon joining without changing the stored plan' do
+        expect(invitee.full_access?).to be false
+
+        service.call
+        invitee.reload
+
+        expect(invitee.plan).to eq('lite')
+        expect(invitee.full_access?).to be true
+        expect(invitee.plan_restricted?).to be false
+      end
+    end
+
     context 'when user is already in another family' do
       let(:other_family) { create(:family) }
       let!(:existing_membership) { create(:family_membership, user: invitee, family: other_family) }

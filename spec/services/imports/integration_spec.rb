@@ -62,5 +62,17 @@ RSpec.describe 'Import format integration' do
 
       expect(import.reload.status).to eq('completed')
     end
+
+    it 'detects and routes a Google Photos metadata sidecar' do
+      import = create(:import, user: user, name: 'anonymized-photo.jpg.json')
+      file_path = Rails.root.join('spec/fixtures/files/google_photos/sidecar.json')
+      import.file.attach(io: File.open(file_path), filename: 'anonymized-photo.jpg.json',
+                         content_type: 'application/json')
+
+      expect { Imports::Create.new(user, import).call }.to change { import.points.count }.by(1)
+
+      expect(import.reload).to be_completed
+      expect(import.source).to eq('google_photos')
+    end
   end
 end

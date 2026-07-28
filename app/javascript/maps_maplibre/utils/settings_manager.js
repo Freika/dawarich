@@ -3,8 +3,39 @@
  * Loads settings from backend API only (no localStorage)
  */
 
+import { classifyBasemapUrl } from "maps_maplibre/utils/basemap_url"
+
+// Route fallback matches Map v1's blue; track color matches the backend
+// Tracks::GeojsonSerializer::DEFAULT_COLOR — keep them in sync.
+export const LAYER_COLOR_DEFAULTS = {
+  routeColor: "#0000ff",
+  trackColor: "#6366F1",
+}
+
+// hiddenTileCategories / disabledPoiGroups deliberately have no defaults:
+// they enter the cache only via backend sync or an explicit set, so an
+// early save can't wipe the stored values with empty arrays.
 const DEFAULT_SETTINGS = {
   mapStyle: "light",
+  vectorTilesUrl: null,
+  ...LAYER_COLOR_DEFAULTS,
+  customTheme: {
+    base: "noir",
+    tokens: {
+      bg: "#000000",
+      water: "#0A0A0A",
+      parks: "#111111",
+      buildings: "#141414",
+      railway: "#808080",
+      boundaries: "#4D4D4D",
+      road_motorway: "#FFFFFF",
+      road_primary: "#E0E0E0",
+      road_secondary: "#B0B0B0",
+      road_tertiary: "#808080",
+      road_residential: "#505050",
+      road_default: "#808080",
+    },
+  },
   enabledMapLayers: ["Heatmap", "Tracks"],
   routeOpacity: 0.6,
   fogOfWarRadius: 50,
@@ -72,6 +103,10 @@ const LAYER_NAME_MAP = {
 
 const BACKEND_SETTINGS_MAP = {
   mapStyle: "maps_maplibre_style",
+  customTheme: "maps_maplibre_custom_theme",
+  vectorTilesUrl: "maps_maplibre_tiles_url",
+  routeColor: "route_color",
+  trackColor: "track_color",
   enabledMapLayers: "enabled_map_layers",
   routeOpacity: "route_opacity",
   fogOfWarRadius: "fog_of_war_meters",
@@ -117,6 +152,7 @@ const TRANSPORTATION_EXPERT_THRESHOLD_MAP = {
 export class SettingsManager {
   static apiKey = null
   static cachedSettings = null
+  static saveQueue = Promise.resolve()
 
   /**
    * Initialize settings manager with API key
@@ -425,6 +461,25 @@ export class SettingsManager {
         },
       )
 
+      // distance_unit, tile categories, and POI groups live inside the
+      // nested `maps` hash on the backend — the API merges it so the V1
+      // keys managed by the settings page survive.
+      // biome-ignore lint/performance/noDelete: key must be absent, not undefined
+      delete backendSettings.distance_unit
+      const mapsPayload = {}
+      if (settings.distance_unit != null) {
+        mapsPayload.distance_unit = settings.distance_unit
+      }
+      if (Array.isArray(settings.hiddenTileCategories)) {
+        mapsPayload.hidden_tile_categories = settings.hiddenTileCategories
+      }
+      if (Array.isArray(settings.disabledPoiGroups)) {
+        mapsPayload.disabled_poi_groups = settings.disabledPoiGroups
+      }
+      if (Object.keys(mapsPayload).length > 0) {
+        backendSettings.maps = mapsPayload
+      }
+
       const response = await fetch("/api/v1/settings", {
         method: "PATCH",
         headers: {
@@ -456,6 +511,10 @@ export class SettingsManager {
     return SettingsManager.getSettings()[key]
   }
 
+  static validVectorTilesUrl(url) {
+    return !url || classifyBasemapUrl(url) !== null
+  }
+
   /**
    * Update a specific setting and save to backend
    * @param {string} key - Setting key
@@ -463,10 +522,16 @@ export class SettingsManager {
    * @returns {Promise<Object|null>} API response data
    */
   static async updateSetting(key, value) {
-    const settings = SettingsManager.getSettings()
-    settings[key] = value
+    return await SettingsManager.updateSettings({ [key]: value })
+  }
 
-    const isLayerSetting = Object.values(LAYER_NAME_MAP).includes(key)
+  static async updateSettings(updates) {
+    const settings = SettingsManager.getSettings()
+    Object.assign(settings, updates)
+
+    const isLayerSetting = Object.keys(updates).some((key) =>
+      Object.values(LAYER_NAME_MAP).includes(key),
+    )
     if (isLayerSetting) {
       settings.enabledMapLayers =
         SettingsManager._collapseLayerSettings(settings)
@@ -474,7 +539,13 @@ export class SettingsManager {
 
     SettingsManager.updateCache(settings)
 
-    return await SettingsManager.saveToBackend(settings)
+    const previousSave = SettingsManager.saveQueue.catch(() => null)
+    const save = previousSave.then(() =>
+      SettingsManager.saveToBackend(settings),
+    )
+    SettingsManager.saveQueue = save
+
+    return await save
   }
 
   /**

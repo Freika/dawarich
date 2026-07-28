@@ -21,6 +21,8 @@ RSpec.describe Users::SafeSettings do
             merge_threshold_minutes: 15,
             live_map_enabled: true,
             route_opacity: 0.6,
+            route_color: '#0000ff',
+            track_color: '#6366F1',
             immich_url: nil,
             immich_api_key: nil,
             photoprism_url: nil,
@@ -35,6 +37,17 @@ RSpec.describe Users::SafeSettings do
           fog_of_war_mode: 'points',
             enabled_map_layers: %w[Tracks Heatmap],
             maps_maplibre_style: 'light',
+            maps_maplibre_tiles_url: nil,
+            maps_maplibre_custom_theme: {
+              'base' => 'noir',
+              'tokens' => {
+                'bg' => '#000000', 'water' => '#0A0A0A', 'parks' => '#111111',
+                'buildings' => '#141414', 'railway' => '#808080', 'boundaries' => '#4D4D4D',
+                'road_motorway' => '#FFFFFF', 'road_primary' => '#E0E0E0',
+                'road_secondary' => '#B0B0B0', 'road_tertiary' => '#808080',
+                'road_residential' => '#505050', 'road_default' => '#808080'
+              }
+            },
             globe_projection: true,
             transportation_thresholds: {
               'walking_max_speed' => 7,
@@ -107,6 +120,8 @@ RSpec.describe Users::SafeSettings do
             'merge_threshold_minutes' => 20,
             'live_map_enabled' => false,
             'route_opacity' => 80,
+            'route_color' => '#0000ff',
+            'track_color' => '#6366F1',
             'immich_url' => 'https://immich.example.com',
             'immich_api_key' => 'immich-key',
             'immich_skip_ssl_verification' => false,
@@ -121,6 +136,17 @@ RSpec.describe Users::SafeSettings do
             'visits_suggestions_enabled' => false,
             'enabled_map_layers' => %w[Points Routes Areas Photos],
             'maps_maplibre_style' => 'light',
+            'maps_maplibre_tiles_url' => nil,
+            'maps_maplibre_custom_theme' => {
+              'base' => 'noir',
+              'tokens' => {
+                'bg' => '#000000', 'water' => '#0A0A0A', 'parks' => '#111111',
+                'buildings' => '#141414', 'railway' => '#808080', 'boundaries' => '#4D4D4D',
+                'road_motorway' => '#FFFFFF', 'road_primary' => '#E0E0E0',
+                'road_secondary' => '#B0B0B0', 'road_tertiary' => '#808080',
+                'road_residential' => '#505050', 'road_default' => '#808080'
+              }
+            },
             'news_emails_enabled' => true,
             'globe_projection' => true,
             'supporter_email' => nil,
@@ -169,6 +195,8 @@ RSpec.describe Users::SafeSettings do
             merge_threshold_minutes: 20,
             live_map_enabled: false,
             route_opacity: 80,
+            route_color: '#0000ff',
+            track_color: '#6366F1',
             immich_url: 'https://immich.example.com',
             immich_api_key: 'immich-key',
             photoprism_url: 'https://photoprism.example.com',
@@ -183,6 +211,17 @@ RSpec.describe Users::SafeSettings do
           fog_of_war_mode: 'points',
             enabled_map_layers: %w[Points Routes Areas Photos],
             maps_maplibre_style: 'light',
+            maps_maplibre_tiles_url: nil,
+            maps_maplibre_custom_theme: {
+              'base' => 'noir',
+              'tokens' => {
+                'bg' => '#000000', 'water' => '#0A0A0A', 'parks' => '#111111',
+                'buildings' => '#141414', 'railway' => '#808080', 'boundaries' => '#4D4D4D',
+                'road_motorway' => '#FFFFFF', 'road_primary' => '#E0E0E0',
+                'road_secondary' => '#B0B0B0', 'road_tertiary' => '#808080',
+                'road_residential' => '#505050', 'road_default' => '#808080'
+              }
+            },
             globe_projection: true,
             transportation_thresholds: {
               'walking_max_speed' => 7,
@@ -842,6 +881,96 @@ RSpec.describe Users::SafeSettings do
 
     it 'is included in config' do
       expect(described_class.new.config[:fog_of_war_mode]).to eq('points')
+    end
+  end
+
+  describe '#maps_maplibre_custom_theme' do
+    let(:noir_tokens) do
+      {
+        'bg' => '#000000', 'water' => '#0A0A0A', 'parks' => '#111111',
+        'buildings' => '#141414', 'railway' => '#808080', 'boundaries' => '#4D4D4D',
+        'road_motorway' => '#FFFFFF', 'road_primary' => '#E0E0E0',
+        'road_secondary' => '#B0B0B0', 'road_tertiary' => '#808080',
+        'road_residential' => '#505050', 'road_default' => '#808080'
+      }
+    end
+
+    it 'defaults to the noir preset' do
+      expect(described_class.new.maps_maplibre_custom_theme).to eq(
+        'base' => 'noir', 'tokens' => noir_tokens
+      )
+    end
+
+    it 'returns stored base and tokens' do
+      settings = {
+        'maps_maplibre_custom_theme' => {
+          'base' => 'blueprint',
+          'tokens' => noir_tokens.merge('bg' => '#1E3A5F')
+        }
+      }
+
+      theme = described_class.new(settings).maps_maplibre_custom_theme
+
+      expect(theme['base']).to eq('blueprint')
+      expect(theme['tokens']['bg']).to eq('#1E3A5F')
+    end
+
+    it 'resolves every token when a stored hash is partial' do
+      settings = {
+        'maps_maplibre_custom_theme' => { 'tokens' => { 'bg' => '#123456' } }
+      }
+
+      theme = described_class.new(settings).maps_maplibre_custom_theme
+
+      expect(theme['tokens']['bg']).to eq('#123456')
+      expect(theme['tokens']['water']).to eq('#0A0A0A')
+      expect(theme['base']).to eq('noir')
+    end
+
+    it 'is included in config' do
+      expect(described_class.new.config[:maps_maplibre_custom_theme]['base']).to eq('noir')
+    end
+  end
+
+  describe '#maps_maplibre_tiles_url' do
+    it 'defaults to nil (built-in tiles)' do
+      expect(described_class.new.maps_maplibre_tiles_url).to be_nil
+    end
+
+    it 'returns the stored URL' do
+      settings = described_class.new(
+        { 'maps_maplibre_tiles_url' => 'https://tiles.example.com/{z}/{x}/{y}.mvt' }
+      )
+
+      expect(settings.maps_maplibre_tiles_url).to eq('https://tiles.example.com/{z}/{x}/{y}.mvt')
+    end
+
+    it 'is included in config' do
+      expect(described_class.new.config).to have_key(:maps_maplibre_tiles_url)
+    end
+  end
+
+  describe 'layer colors' do
+    it 'defaults route_color to v1 blue' do
+      expect(described_class.new.route_color).to eq('#0000ff')
+    end
+
+    it 'defaults track_color to the serializer default' do
+      expect(described_class.new.track_color).to eq('#6366F1')
+    end
+
+    it 'returns stored values' do
+      settings = described_class.new({ 'route_color' => '#ff0000', 'track_color' => '#00ff00' })
+
+      expect(settings.route_color).to eq('#ff0000')
+      expect(settings.track_color).to eq('#00ff00')
+    end
+
+    it 'is included in config' do
+      config = described_class.new.config
+
+      expect(config[:route_color]).to eq('#0000ff')
+      expect(config[:track_color]).to eq('#6366F1')
     end
   end
 end

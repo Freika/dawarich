@@ -70,6 +70,13 @@
               <span class="label-text font-medium">Points</span>
             </label>
             <p class="text-sm text-base-content/60 ml-14">Show individual location points</p>
+            <label class="label cursor-pointer justify-start gap-3 ml-14 mt-1">
+              <input type="checkbox"
+                     class="toggle toggle-primary toggle-sm"
+                     data-action="change->maps--maplibre#togglePointsEditing" />
+              <span class="label-text">Edit points</span>
+            </label>
+            <p class="text-sm text-base-content/60 ml-24">Allow dragging points to correct their position</p>
           </div>
 
           <div class="divider"></div>
@@ -387,22 +394,84 @@
 
       <!-- Settings Tab -->
       <div class="tab-content" data-tab-content="settings" data-map-panel-target="tabContent">
-        <form data-action="submit->maps--maplibre#updateAdvancedSettings" class="space-y-4">
-          <!-- Map Style -->
-          <div class="form-control w-full">
-            <label class="label">
-              <span class="label-text font-medium">Map Style</span>
-            </label>
-            <select class="select select-bordered w-full"
-                    name="mapStyle"
-                    data-action="change->maps--maplibre#updateMapStyle">
-              <option value="light" selected>Light</option>
-              <option value="dark">Dark</option>
-              <option value="white">White</option>
-              <option value="black">Black</option>
-              <option value="grayscale">Grayscale</option>
-            </select>
-          </div>
+        <form data-controller="map-settings-dirty"
+              data-action="submit->maps--maplibre#updateAdvancedSettings input->map-settings-dirty#check change->map-settings-dirty#check"
+              class="space-y-4">
+          <details open class="collapse collapse-arrow bg-base-200 rounded-lg">
+            <summary class="collapse-title font-medium min-h-0 cursor-pointer">
+              <span class="flex items-center gap-2">
+              <%= icon 'palette', class: 'h-4 w-4 opacity-70 shrink-0' %>
+              Appearance
+              </span>
+            </summary>
+            <div class="collapse-content space-y-4">
+              <% if current_user.plan_restricted? %>
+                <p class="text-xs text-warning">Custom map colors, layer colors, and vector tiles are Pro features — you can preview them here, but they won't be saved on the Lite plan.</p>
+              <% end %>
+              <div data-controller="map-theme-editor">
+                <!-- Map Style -->
+                <div class="form-control w-full">
+                  <label class="label">
+                    <span class="label-text font-medium">Map Style</span>
+                  </label>
+                  <select class="select select-bordered w-full"
+                          name="mapStyle"
+                          data-map-theme-editor-target="styleSelect"
+                          data-action="change->maps--maplibre#updateMapStyle change->map-theme-editor#styleChanged">
+                    <option value="light" selected>Light</option>
+                    <option value="dark">Dark</option>
+                    <option value="white">White</option>
+                    <option value="black">Black</option>
+                    <option value="grayscale">Grayscale</option>
+                    <option value="custom">Custom</option>
+                  </select>
+                </div>
+
+                <!-- Color themes: always visible; clicking a swatch switches
+                     the map to the Custom style with that theme applied -->
+                <div class="mt-3 space-y-3">
+                  <div>
+                    <span class="label-text text-sm">Color themes</span>
+                    <div class="grid grid-cols-6 gap-1.5 mt-1">
+                      <% Array(@poster_themes).each do |theme| %>
+                        <button type="button"
+                                class="w-full overflow-hidden rounded-md border border-base-300 ring-primary ring-offset-base-100 transition hover:scale-105 focus:outline-none focus-visible:ring-2"
+                                style="height: 32px; background-image: url('<%= asset_path("poster_themes/#{theme['key']}.webp") %>'); background-size: cover; background-position: center;"
+                                title="<%= theme['name'] %>"
+                                aria-label="<%= theme['name'] %> theme"
+                                data-map-theme-editor-target="swatch"
+                                data-key="<%= theme['key'] %>"
+                                data-name="<%= theme['name'] %>"
+                                data-action="click->map-theme-editor#pickPreset"></button>
+                      <% end %>
+                    </div>
+                    <p class="text-xs opacity-70 mt-1" data-map-theme-editor-target="presetLabel"></p>
+                  </div>
+
+                  <!-- Fine-tuning (shown when the Custom style is active) -->
+                  <details class="hidden collapse collapse-arrow bg-base-100 rounded-lg" data-map-theme-editor-target="block">
+                    <summary class="collapse-title text-sm min-h-0 cursor-pointer select-none">Customize colors</summary>
+                    <div class="collapse-content space-y-1">
+                      <% [
+                        %w[bg Background], %w[water Water], %w[parks Parks],
+                        %w[buildings Buildings], %w[railway Railways], %w[boundaries Boundaries],
+                        ['road_motorway', 'Motorway roads'], ['road_primary', 'Primary roads'],
+                        ['road_residential', 'Residential roads'], ['road_default', 'Other roads']
+                      ].each do |token, token_label| %>
+                        <label class="flex items-center gap-2">
+                          <input type="color"
+                                 class="h-7 w-9 cursor-pointer rounded border border-base-300 bg-base-100 p-0.5"
+                                 data-map-theme-editor-target="token"
+                                 data-token="<%= token %>"
+                                 data-action="input->map-theme-editor#tokenChanged">
+                          <span class="label-text text-sm flex-1"><%= token_label %></span>
+                          <span class="text-xs opacity-60 tabular-nums" data-map-theme-editor-target="tokenValue" data-token="<%= token %>"></span>
+                        </label>
+                      <% end %>
+                    </div>
+                  </details>
+                </div>
+              </div>
 
           <!-- Globe Projection -->
           <div class="form-control">
@@ -444,51 +513,176 @@
 
           <div class="divider"></div>
 
-          <!-- Fog of War Settings -->
-          <div class="form-control w-full">
+          <!-- Layer Colors -->
+          <div class="form-control w-full space-y-1">
             <label class="label">
-              <span class="label-text font-medium">Fog of War Radius</span>
-              <span class="label-text-alt" data-maps--maplibre-target="fogRadiusValue">1000m</span>
+              <span class="label-text font-medium">Layer Colors</span>
             </label>
-            <input type="range"
-                   name="fogOfWarRadius"
-                   min="5"
-                   max="2000"
-                   step="5"
-                   value="1000"
-                   class="range range-sm"
-                   data-action="input->maps--maplibre#updateFogRadiusDisplay" />
-            <div class="w-full flex justify-between text-xs px-2 mt-1">
-              <span>5m</span>
-              <span>1000m</span>
-              <span>2000m</span>
-            </div>
-            <p class="text-xs text-base-content/60 mt-1">Clear radius around visited points</p>
-          </div>
-
-          <div class="form-control w-full">
-            <label class="label">
-              <span class="label-text font-medium">Fog of War Threshold</span>
-              <span class="label-text-alt" data-maps--maplibre-target="fogThresholdValue">1</span>
+            <label class="flex items-center gap-2">
+              <input type="color"
+                     name="routeColor"
+                     class="h-7 w-9 cursor-pointer rounded border border-base-300 bg-base-100 p-0.5"
+                     data-action="input->maps--maplibre#updateRouteColor">
+              <span class="label-text text-sm flex-1">Routes</span>
+              <span class="text-xs opacity-60 tabular-nums" data-layer-color-value="routeColor"></span>
             </label>
-            <input type="range"
-                   name="fogOfWarThreshold"
-                   min="1"
-                   max="10"
-                   step="1"
-                   value="1"
-                   class="range range-sm"
-                   data-action="input->maps--maplibre#updateFogThresholdDisplay" />
-            <div class="w-full flex justify-between text-xs px-2 mt-1">
-              <span>1</span>
-              <span>5</span>
-              <span>10</span>
-            </div>
-            <p class="text-xs text-base-content/60 mt-1">Minimum points to clear fog</p>
+            <label class="flex items-center gap-2">
+              <input type="color"
+                     name="trackColor"
+                     class="h-7 w-9 cursor-pointer rounded border border-base-300 bg-base-100 p-0.5"
+                     data-action="input->maps--maplibre#updateTrackColor">
+              <span class="label-text text-sm flex-1">Tracks</span>
+              <span class="text-xs opacity-60 tabular-nums" data-layer-color-value="trackColor"></span>
+            </label>
+            <button type="button"
+                    class="btn btn-xs btn-ghost self-start"
+                    data-action="click->maps--maplibre#resetLayerColors">
+              <%= icon 'rotate-ccw', class: 'h-3 w-3' %>
+              Reset to defaults
+            </button>
           </div>
 
           <div class="divider"></div>
 
+          <!-- Distance Unit -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Distance Unit</span>
+            </label>
+            <div class="flex gap-4">
+              <label class="label cursor-pointer gap-2 py-0">
+                <input type="radio"
+                       name="distanceUnit"
+                       value="km"
+                       class="radio radio-sm radio-primary"
+                       data-action="change->maps--maplibre#updateDistanceUnit" />
+                <span class="label-text text-sm">Kilometers</span>
+              </label>
+              <label class="label cursor-pointer gap-2 py-0">
+                <input type="radio"
+                       name="distanceUnit"
+                       value="mi"
+                       class="radio radio-sm radio-primary"
+                       data-action="change->maps--maplibre#updateDistanceUnit" />
+                <span class="label-text text-sm">Miles</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <!-- Custom Basemap -->
+          <div class="form-control w-full">
+            <label class="label">
+              <span class="label-text font-medium">Custom Basemap URL</span>
+            </label>
+            <input type="url"
+                   name="vectorTilesUrl"
+                   placeholder="https://tiles.example.com/{z}/{x}/{y}.mvt"
+                   class="input input-bordered input-sm w-full"
+                   data-action="change->maps--maplibre#updateVectorTilesUrl" />
+            <p class="text-xs text-base-content/60 mt-1">Serve the base map from your own source. Accepts Protomaps-schema vector tiles or raster XYZ tiles (both must include {z}, {x}, and {y}), or a full MapLibre style URL ending in .json. Leave empty for the built-in tiles.</p>
+          </div>
+            </div>
+          </details>
+
+          <% can_customize_layers = current_user.full_access? %>
+          <details class="collapse collapse-arrow bg-base-200 rounded-lg">
+            <summary class="collapse-title font-medium min-h-0 cursor-pointer">
+              <span class="flex items-center gap-2">
+              <%= icon 'layer', class: 'h-4 w-4 opacity-70 shrink-0' %>
+              Base Map Layers <%= pro_badge_tag(preview: false) %>
+              </span>
+            </summary>
+            <div class="collapse-content space-y-1">
+              <% if can_customize_layers %>
+                <p class="text-xs text-base-content/60 mb-2">Toggle base map elements. Changes apply immediately.</p>
+              <% else %>
+                <p class="text-xs text-warning mb-2">Pro feature — you can preview changes here, but they won't be saved on the Lite plan.</p>
+              <% end %>
+              <% hidden_categories = current_user.safe_settings.maps&.dig('hidden_tile_categories') || [] %>
+              <% [
+                ['roads', 'Roads', 'Streets, highways, and paths', true],
+                ['road_labels', 'Road Labels', 'Street names and route shields', false],
+                ['rail', 'Railways', 'Train tracks and rail lines', true],
+                ['buildings', 'Buildings', 'Building footprints', true],
+                ['address_labels', 'Address Labels', 'Building numbers (visible at high zoom)', false],
+                ['pois', 'Points of Interest', 'Master toggle for all POI groups below', false],
+                ['place_labels', 'Place Names', 'Cities, neighborhoods, regions, and countries', false],
+                ['water_labels', 'Water Labels', 'Ocean, lake, and river names', false],
+                ['water', 'Water', 'Oceans, lakes, rivers, and streams', true],
+                ['landuse', 'Land Use', 'Parks, schools, hospitals, airports, etc.', true],
+                ['boundaries', 'Boundaries', 'Country and administrative borders', true],
+              ].each do |key, label, description, custom_supported| %>
+                <div class="form-control">
+                  <label class="label cursor-pointer justify-start gap-3 py-1">
+                    <input type="checkbox"
+                           class="toggle toggle-sm toggle-primary"
+                           data-tile-category="<%= key %>"
+                           data-custom-supported="<%= custom_supported %>"
+                           data-action="change->maps--maplibre#toggleTileCategory"
+                           <%= 'checked' unless hidden_categories.include?(key) %> />
+                    <div>
+                      <span class="label-text text-sm font-medium"><%= label %></span>
+                      <p class="text-xs text-base-content/60"><%= description %></p>
+                    </div>
+                  </label>
+                </div>
+              <% end %>
+              <p class="text-xs text-base-content/60 mt-2">The Custom style draws no labels or points of interest — those toggles are disabled while it's active.</p>
+            </div>
+          </details>
+
+          <details class="collapse collapse-arrow bg-base-200 rounded-lg">
+            <summary class="collapse-title font-medium min-h-0 cursor-pointer">
+              <span class="flex items-center gap-2">
+              <%= icon 'map-pin', class: 'h-4 w-4 opacity-70 shrink-0' %>
+              Points of Interest <%= pro_badge_tag(preview: false) %>
+              </span>
+            </summary>
+            <div class="collapse-content space-y-1">
+              <% if can_customize_layers %>
+                <p class="text-xs text-base-content/60 mb-2">Choose which POI categories appear on the map.</p>
+              <% else %>
+                <p class="text-xs text-warning mb-2">Pro feature — you can preview changes here, but they won't be saved on the Lite plan.</p>
+              <% end %>
+              <% disabled_poi_groups = current_user.safe_settings.maps&.dig('disabled_poi_groups') || [] %>
+              <% [
+                ['food_drink', 'Food & Drink', 'Restaurants, cafes, bars, bakeries, fast food'],
+                ['shopping', 'Shopping', 'Supermarkets, clothes, electronics, books, beauty'],
+                ['transport', 'Transport', 'Stations, bus stops, airports, fuel, parking'],
+                ['cycling', 'Cycling', 'Bike parking, rental, and repair stations'],
+                ['nature_leisure', 'Nature & Leisure', 'Parks, forests, beaches, playgrounds, stadiums'],
+                ['tourism', 'Tourism & Culture', 'Museums, theatres, attractions, viewpoints, hotels'],
+                ['services', 'Services & Civic', 'Post offices, libraries, schools, hospitals, police, banks'],
+                ['urban_amenities', 'Urban Amenities', 'Benches, toilets, drinking water, fountains, recycling, shelters'],
+              ].each do |key, label, description| %>
+                <div class="form-control">
+                  <label class="label cursor-pointer justify-start gap-3 py-1">
+                    <input type="checkbox"
+                           class="toggle toggle-sm toggle-accent"
+                           data-poi-group="<%= key %>"
+                           data-action="change->maps--maplibre#togglePoiGroup"
+                           <%= 'checked' unless disabled_poi_groups.include?(key) %> />
+                    <div>
+                      <span class="label-text text-sm font-medium"><%= label %></span>
+                      <p class="text-xs text-base-content/60"><%= description %></p>
+                    </div>
+                  </label>
+                </div>
+              <% end %>
+            </div>
+          </details>
+
+          <details class="collapse collapse-arrow bg-base-200 rounded-lg" data-map-settings-dirty-target="section">
+            <summary class="collapse-title font-medium min-h-0 cursor-pointer">
+              <span class="flex items-center gap-2">
+              <%= icon 'route', class: 'h-4 w-4 opacity-70 shrink-0' %>
+              Routes
+              <span class="badge badge-outline badge-warning badge-sm tooltip tooltip-left ml-auto mr-1 self-center hidden" data-dirty-badge></span>
+              </span>
+            </summary>
+            <div class="collapse-content space-y-4">
           <!-- Route Generation Settings -->
           <div class="form-control w-full">
             <label class="label">
@@ -534,6 +728,106 @@
 
           <div class="divider"></div>
 
+          <!-- Points Rendering Mode -->
+          <div class="form-control w-full">
+            <label class="label">
+              <span class="label-text font-medium">Points Rendering Mode</span>
+            </label>
+            <div class="flex flex-col gap-2">
+              <label class="label cursor-pointer justify-start gap-3 py-1">
+                <input type="radio"
+                       name="pointsRenderingMode"
+                       value="raw"
+                       class="radio radio-primary radio-sm"
+                       checked />
+                <span class="label-text">Raw (all points)</span>
+              </label>
+              <label class="label cursor-pointer justify-start gap-3 py-1">
+                <input type="radio"
+                       name="pointsRenderingMode"
+                       value="simplified"
+                       class="radio radio-primary radio-sm" />
+                <span class="label-text">Simplified (reduced points)</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Speed-Colored Routes -->
+          <div class="form-control">
+            <label class="label cursor-pointer justify-start gap-3">
+              <input type="checkbox"
+                     name="speedColoredRoutes"
+                     class="toggle toggle-primary" />
+              <span class="label-text font-medium">Speed-Colored Routes</span>
+            </label>
+            <p class="text-sm text-base-content/60 mt-1">Color routes by speed</p>
+          </div>
+            </div>
+          </details>
+
+          <details class="collapse collapse-arrow bg-base-200 rounded-lg" data-map-settings-dirty-target="section">
+            <summary class="collapse-title font-medium min-h-0 cursor-pointer">
+              <span class="flex items-center gap-2">
+              <%= icon 'cloud-fog', class: 'h-4 w-4 opacity-70 shrink-0' %>
+              Fog of War
+              <span class="badge badge-outline badge-warning badge-sm tooltip tooltip-left ml-auto mr-1 self-center hidden" data-dirty-badge></span>
+              </span>
+            </summary>
+            <div class="collapse-content space-y-4">
+          <!-- Fog of War Settings -->
+          <div class="form-control w-full">
+            <label class="label">
+              <span class="label-text font-medium">Fog of War Radius</span>
+              <span class="label-text-alt" data-maps--maplibre-target="fogRadiusValue">1000m</span>
+            </label>
+            <input type="range"
+                   name="fogOfWarRadius"
+                   min="5"
+                   max="2000"
+                   step="5"
+                   value="1000"
+                   class="range range-sm"
+                   data-action="input->maps--maplibre#updateFogRadiusDisplay" />
+            <div class="w-full flex justify-between text-xs px-2 mt-1">
+              <span>5m</span>
+              <span>1000m</span>
+              <span>2000m</span>
+            </div>
+            <p class="text-xs text-base-content/60 mt-1">Clear radius around visited points</p>
+          </div>
+
+          <div class="form-control w-full">
+            <label class="label">
+              <span class="label-text font-medium">Fog of War Threshold</span>
+              <span class="label-text-alt" data-maps--maplibre-target="fogThresholdValue">1</span>
+            </label>
+            <input type="range"
+                   name="fogOfWarThreshold"
+                   min="1"
+                   max="10"
+                   step="1"
+                   value="1"
+                   class="range range-sm"
+                   data-action="input->maps--maplibre#updateFogThresholdDisplay" />
+            <div class="w-full flex justify-between text-xs px-2 mt-1">
+              <span>1</span>
+              <span>5</span>
+              <span>10</span>
+            </div>
+            <p class="text-xs text-base-content/60 mt-1">Minimum points to clear fog</p>
+          </div>
+            </div>
+          </details>
+
+          <details class="collapse collapse-arrow bg-base-200 rounded-lg" data-map-settings-dirty-target="section">
+            <summary class="collapse-title font-medium min-h-0 cursor-pointer">
+              <span class="flex items-center gap-2">
+              <%= icon 'satellite', class: 'h-4 w-4 opacity-70 shrink-0' %>
+              GPS Noise Filtering
+              <span class="badge badge-outline badge-warning badge-sm tooltip tooltip-left ml-auto mr-1 self-center hidden" data-dirty-badge></span>
+              </span>
+            </summary>
+            <div class="collapse-content space-y-4">
           <!-- GPS Noise Filtering -->
           <div class="form-control">
             <label class="label cursor-pointer justify-start gap-3">
@@ -582,9 +876,18 @@
             Recalculate tracks &amp; stats
           </button>
           <p class="text-xs text-base-content/60 mt-1">Rebuild tracks, stats, and digests from your current points without touching anomaly flags. Useful after changing route-splitting thresholds.</p>
+            </div>
+          </details>
 
-          <div class="divider"></div>
-
+          <details class="collapse collapse-arrow bg-base-200 rounded-lg" data-map-settings-dirty-target="section">
+            <summary class="collapse-title font-medium min-h-0 cursor-pointer">
+              <span class="flex items-center gap-2">
+              <%= icon 'chart-column', class: 'h-4 w-4 opacity-70 shrink-0' %>
+              City Statistics
+              <span class="badge badge-outline badge-warning badge-sm tooltip tooltip-left ml-auto mr-1 self-center hidden" data-dirty-badge></span>
+              </span>
+            </summary>
+            <div class="collapse-content space-y-4">
           <!-- City Statistics Settings -->
           <div class="form-control w-full">
             <label class="label">
@@ -628,73 +931,40 @@
             <p class="text-xs text-base-content/60 mt-1">Max gap between points before assuming you left the city</p>
           </div>
 
-          <% if Flipper.enabled?(:stay_point_detection, current_user) %>
-            <div class="divider"></div>
-
-            <!-- Visit Detection Settings -->
-            <div class="form-control w-full">
-              <label class="label">
-                <span class="label-text font-medium">Visit Max Gap</span>
-                <span class="label-text-alt" data-maps--maplibre-target="stayMaxGapMinutesValue">60 min</span>
-              </label>
-              <input type="range"
-                     name="stayMaxGapMinutes"
-                     min="5"
-                     max="720"
-                     step="5"
-                     value="60"
-                     class="range range-sm"
-                     data-action="input->maps--maplibre#updateStayMaxGapMinutesDisplay" />
-              <div class="w-full flex justify-between text-xs px-2 mt-1">
-                <span>5min</span>
-                <span>360min</span>
-                <span>720min</span>
-              </div>
-              <p class="text-xs text-base-content/60 mt-1">Max time gap between points within one visit. Longer gaps (e.g. dead battery) split it into separate visits. Default 60.</p>
-            </div>
-          <% end %>
-
           <div class="divider"></div>
 
-          <!-- Points Rendering Mode -->
+          <!-- Visit Detection Settings -->
           <div class="form-control w-full">
             <label class="label">
-              <span class="label-text font-medium">Points Rendering Mode</span>
+              <span class="label-text font-medium">Visit Max Gap</span>
+              <span class="label-text-alt" data-maps--maplibre-target="stayMaxGapMinutesValue">60 min</span>
             </label>
-            <div class="flex flex-col gap-2">
-              <label class="label cursor-pointer justify-start gap-3 py-1">
-                <input type="radio"
-                       name="pointsRenderingMode"
-                       value="raw"
-                       class="radio radio-primary radio-sm"
-                       checked />
-                <span class="label-text">Raw (all points)</span>
-              </label>
-              <label class="label cursor-pointer justify-start gap-3 py-1">
-                <input type="radio"
-                       name="pointsRenderingMode"
-                       value="simplified"
-                       class="radio radio-primary radio-sm" />
-                <span class="label-text">Simplified (reduced points)</span>
-              </label>
+            <input type="range"
+                   name="stayMaxGapMinutes"
+                   min="5"
+                   max="720"
+                   step="5"
+                   value="60"
+                   class="range range-sm"
+                   data-action="input->maps--maplibre#updateStayMaxGapMinutesDisplay" />
+            <div class="w-full flex justify-between text-xs px-2 mt-1">
+              <span>5min</span>
+              <span>360min</span>
+              <span>720min</span>
             </div>
+            <p class="text-xs text-base-content/60 mt-1">Max time gap between points within one visit. Longer gaps (e.g. dead battery) split it into separate visits. Default 60.</p>
           </div>
+            </div>
+          </details>
 
-          <div class="divider"></div>
-
-          <!-- Speed-Colored Routes -->
-          <div class="form-control">
-            <label class="label cursor-pointer justify-start gap-3">
-              <input type="checkbox"
-                     name="speedColoredRoutes"
-                     class="toggle toggle-primary" />
-              <span class="label-text font-medium">Speed-Colored Routes</span>
-            </label>
-            <p class="text-sm text-base-content/60 mt-1">Color routes by speed</p>
-          </div>
-
-          <div class="divider"></div>
-
+          <details class="collapse collapse-arrow bg-base-200 rounded-lg">
+            <summary class="collapse-title font-medium min-h-0 cursor-pointer">
+              <span class="flex items-center gap-2">
+              <%= icon 'radio', class: 'h-4 w-4 opacity-70 shrink-0' %>
+              Live Mode
+              </span>
+            </summary>
+            <div class="collapse-content space-y-4">
           <!-- Live Mode -->
           <div class="form-control">
             <label class="label cursor-pointer justify-start gap-3">
@@ -706,8 +976,8 @@
             </label>
             <p class="text-sm text-base-content/60 mt-1">Show new points in real-time</p>
           </div>
-
-          <div class="divider"></div>
+            </div>
+          </details>
 
           <!-- Point Dragging -->
           <div class="form-control">
@@ -741,9 +1011,15 @@
           <div class="divider"></div>
 
           <!-- Transportation Mode Detection Thresholds -->
-          <details class="collapse collapse-arrow bg-base-200 rounded-lg">
+          <details class="collapse collapse-arrow bg-base-200 rounded-lg"
+                   data-map-settings-dirty-target="section"
+                   data-dirty-scope="transportation">
             <summary class="collapse-title font-medium min-h-0 cursor-pointer">
+              <span class="flex items-center gap-2">
+              <%= icon 'car', class: 'h-4 w-4 opacity-70 shrink-0' %>
               Transportation Mode Detection
+              <span class="badge badge-outline badge-warning badge-sm tooltip tooltip-left ml-auto mr-1 self-center hidden" data-dirty-badge></span>
+              </span>
             </summary>
             <div class="collapse-content">
               <!-- Recalculation Status Alert -->
@@ -797,6 +1073,7 @@
                   <input type="checkbox"
                          name="transportationExpertMode"
                          class="toggle toggle-sm toggle-warning"
+                         data-dirty-ignore
                          data-maps--maplibre-target="transportationExpertToggle"
                          data-action="change->maps--maplibre#toggleTransportationExpertMode" />
                   <span class="label-text text-sm">Expert Mode</span>
@@ -1242,7 +1519,7 @@
               <span class="text-xs">Replay</span>
             </button>
 
-            <% if DawarichSettings.self_hosted? || current_user.pro? %>
+            <% if current_user.full_access? %>
               <button type="button"
                       class="btn btn-sm btn-outline flex flex-col items-center gap-1 h-auto py-3"
                       onclick="document.dispatchEvent(new CustomEvent('residency:open'))">
@@ -1251,7 +1528,7 @@
               </button>
             <% end %>
 
-            <% if current_user.immich_integration_configured? && (DawarichSettings.self_hosted? || current_user.pro?) %>
+            <% if current_user.immich_integration_configured? && current_user.full_access? %>
               <button type="button"
                       class="btn btn-sm btn-outline flex flex-col items-center gap-1 h-auto py-3"
                       id="immich-enrich-toggle-btn">
@@ -1262,7 +1539,7 @@
           </div>
 
           <!-- Immich Enrich Panel -->
-          <% if current_user.immich_integration_configured? && (DawarichSettings.self_hosted? || current_user.pro?) %>
+          <% if current_user.immich_integration_configured? && current_user.full_access? %>
             <div class="hidden mt-4"
                  data-controller="maps--immich-enrich"
                  data-maps--immich-enrich-api-key-value="<%= current_user.api_key %>"
@@ -1484,6 +1761,7 @@
           </div>
         </div>
       <% end %>
+
     </div>
   </div>
 </div>

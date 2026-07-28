@@ -10,13 +10,20 @@ class ApplicationController < ActionController::Base
   around_action :set_user_time_zone
   before_action :unread_notifications, :set_self_hosted_status, :store_client_header
 
-  helper_method :current_user_safe_settings
+  helper_method :current_user_safe_settings, :poster_ordering_enabled?
 
   # Memoized per-request SafeSettings for the current user. Use this instead of
   # `current_user.safe_settings` in partials/helpers that may render many rows
   # — User#safe_settings allocates a fresh deep_dup'd hash on every call.
   def current_user_safe_settings
     @current_user_safe_settings ||= current_user&.safe_settings
+  end
+
+  def poster_ordering_enabled?
+    Flipper.enabled?(:poster_ordering, current_user)
+  rescue StandardError => e
+    Rails.logger.warn("[poster_ordering] Flipper unavailable: #{e.class}: #{e.message}")
+    false
   end
 
   protected
@@ -96,7 +103,7 @@ class ApplicationController < ActionController::Base
       return
     end
 
-    return if current_user.pro?
+    return if current_user.full_access?
 
     respond_to do |format|
       format.html do

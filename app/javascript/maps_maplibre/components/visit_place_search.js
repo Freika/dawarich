@@ -115,8 +115,7 @@ export class VisitPlaceSearch {
           `This place is ~${Math.round(distance)} m from the visit. Move the visit here?`,
         )
         if (!move) {
-          await this.patchVisit({ name: place.name })
-          return this.done()
+          return
         }
       }
       await this.postJson(`/api/v1/visits/${this.visitId}/select_place`, {

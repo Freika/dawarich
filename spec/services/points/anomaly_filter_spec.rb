@@ -8,6 +8,18 @@ RSpec.describe Points::AnomalyFilter do
   let(:end_time) { Time.current.to_i }
 
   describe '#call' do
+    it 'bumps updated_at when flagging an anomaly so cached point reads invalidate' do
+      point = create(:point, user: user, accuracy: 500, timestamp: 30.minutes.ago.to_i,
+                             latitude: 52.52, longitude: 13.405, lonlat: 'POINT(13.405 52.52)')
+      point.update_column(:updated_at, 2.days.ago)
+      before_updated = point.reload.updated_at
+
+      described_class.new(user.id, start_time, end_time).call
+
+      expect(point.reload.anomaly).to be true
+      expect(point.updated_at).to be > before_updated
+    end
+
     context 'Pass 1: accuracy filter' do
       # Use nearby coordinates so Pass 2 speed filter does not interfere
       let(:base_lat) { 52.52 }
@@ -206,6 +218,38 @@ RSpec.describe Points::AnomalyFilter do
 
       it 'leaves an earlier spike outside the window untouched' do
         expect(early_spike.reload.anomaly).not_to be true
+      end
+    end
+
+    context 'Pass 3: Null Island (0,0)' do
+      let(:start_time) { 2.hours.ago.to_i }
+      let(:end_time) { Time.current.to_i }
+
+      let!(:before_zero) do
+        create(:point, user: user, latitude: 52.5, longitude: 13.4,
+                       lonlat: 'POINT(13.4 52.5)', accuracy: 10, timestamp: 90.minutes.ago.to_i)
+      end
+      let!(:zero_run) do
+        3.times.map do |i|
+          create(:point, user: user, latitude: 0.0, longitude: 0.0,
+                         lonlat: 'POINT(0.0 0.0)', accuracy: 10,
+                         timestamp: (80 - (i * 10)).minutes.ago.to_i)
+        end
+      end
+      let!(:after_zero) do
+        create(:point, user: user, latitude: 52.5001, longitude: 13.4001,
+                       lonlat: 'POINT(13.4001 52.5001)', accuracy: 10, timestamp: 40.minutes.ago.to_i)
+      end
+
+      before { described_class.new(user.id, start_time, end_time).call }
+
+      it 'flags every point of a sustained (0,0) run' do
+        expect(zero_run.map { |p| p.reload.anomaly }).to all(be(true))
+      end
+
+      it 'does not flag the surrounding real points' do
+        expect(before_zero.reload.anomaly).not_to be true
+        expect(after_zero.reload.anomaly).not_to be true
       end
     end
   end
