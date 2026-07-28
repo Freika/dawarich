@@ -138,7 +138,8 @@ export class DataLoader {
 
     // Determine whether any layer that depends on points data is enabled
     const needsPoints =
-      this.settings.pointsVisible !== false ||
+      (this.settings.pointsTiledRendering !== true &&
+        this.settings.pointsVisible !== false) ||
       this.settings.routesVisible !== false ||
       this.settings.heatmapEnabled ||
       this.settings.fogEnabled ||

@@ -1,6 +1,6 @@
 import { Toast } from "maps_maplibre/components/toast"
 import { pointsToGeoJSON } from "maps_maplibre/utils/geojson_transformers"
-import { gatedToggle } from "maps_maplibre/utils/layer_gate"
+import { gatedToggle, isGatedPlan } from "maps_maplibre/utils/layer_gate"
 import { lazyLoader } from "maps_maplibre/utils/lazy_loader"
 import { SettingsManager } from "maps_maplibre/utils/settings_manager"
 
@@ -623,16 +623,22 @@ export class RoutesManager {
     const element = event.currentTarget
     const visible = element.checked
 
-    if (visible) {
+    await this.applyPointsRenderer({
+      visible,
+      tiled: SettingsManager.getSetting("pointsTiledRendering") === true,
+    })
+
+    SettingsManager.updateSetting("pointsVisible", visible)
+  }
+
+  // Only one renderer draws. Classic needs its GeoJSON, tiled fetches per tile.
+  async applyPointsRenderer({ visible, tiled }) {
+    if (visible && !tiled) {
       await this.controller.mapDataManager.ensurePointsLoaded()
     }
 
-    const pointsLayer = this.layerManager.getLayer("points")
-    if (pointsLayer) {
-      pointsLayer.toggle(visible)
-    }
-
-    SettingsManager.updateSetting("pointsVisible", visible)
+    this.layerManager.getLayer("points")?.toggle(visible && !tiled)
+    this.layerManager.getLayer("points-mvt")?.toggle(visible && tiled)
   }
 
   async toggleAnomalies(event) {
@@ -685,19 +691,26 @@ export class RoutesManager {
     }
   }
 
-  /**
-   * Toggle vector-tile points layer visibility
-   */
-  async togglePointsMvt(event) {
-    const element = event.currentTarget
-    const visible = element.checked
+  // Beta renderer switch. The Points toggle still owns visibility.
+  async togglePointsTiledRendering(event) {
+    const tiled = event.currentTarget.checked
+    const visible = this.controller.hasPointsToggleTarget
+      ? this.controller.pointsToggleTarget.checked
+      : this.settings.pointsVisible !== false
 
-    const pointsMvtLayer = this.layerManager.getLayer("points-mvt")
-    if (pointsMvtLayer) {
-      pointsMvtLayer.toggle(visible)
-    }
+    const pointsLayer = this.layerManager.getLayer("points")
 
-    SettingsManager.updateSetting("pointsMvtEnabled", visible)
+    // Tiles have no draggable features, so editing follows the renderer.
+    pointsLayer?.setEditMode(
+      !tiled &&
+        SettingsManager.getSetting("pointDraggingEnabled") === true &&
+        !isGatedPlan(this.controller.userPlanValue),
+    )
+
+    await this.applyPointsRenderer({ visible, tiled })
+    await SettingsManager.updateSetting("pointsTiledRendering", tiled)
+
+    this.controller.settingsController?.syncPointsEditAvailability()
   }
 
   /**

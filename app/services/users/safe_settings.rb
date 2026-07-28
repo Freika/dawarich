@@ -81,7 +81,8 @@ class Users::SafeSettings
     'visit_min_duration_minutes' => 5,
     'visit_density_fill_enabled' => true,
     'stay_max_gap_minutes' => 60,
-    'point_dragging_enabled' => false
+    'point_dragging_enabled' => false,
+    'points_tiled_rendering' => false
   }.freeze
 
   def initialize(settings = {}, plan: nil)
@@ -133,7 +134,8 @@ class Users::SafeSettings
       visit_min_duration_minutes: visit_min_duration_minutes,
       visit_density_fill_enabled: visit_density_fill_enabled?,
       stay_max_gap_minutes: stay_max_gap_minutes,
-      point_dragging_enabled: point_dragging_enabled?
+      point_dragging_enabled: point_dragging_enabled?,
+      points_tiled_rendering: points_tiled_rendering?
     }
   end
 
@@ -349,6 +351,10 @@ class Users::SafeSettings
 
   def point_dragging_enabled?
     ActiveModel::Type::Boolean.new.cast(settings['point_dragging_enabled']) || false
+  end
+
+  def points_tiled_rendering?
+    ActiveModel::Type::Boolean.new.cast(settings['points_tiled_rendering']) || false
   end
 
   def visit_radius_meters

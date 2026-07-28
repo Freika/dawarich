@@ -35,13 +35,13 @@ class Points::VectorTileQuery
           ),
           points_in_tile AS (
             SELECT
-              points.id::text AS point_id,
-              points.timestamp::text AS timestamp,
-              points.battery::text AS battery,
-              points.altitude::text AS altitude,
-              points.velocity::text AS velocity,
-              points.track_id::text AS track_id,
-              points.visit_id::text AS visit_id,
+              points.id AS id,
+              points.timestamp AS timestamp,
+              points.battery AS battery,
+              points.altitude AS altitude,
+              points.velocity AS velocity,
+              points.track_id AS track_id,
+              points.visit_id AS visit_id,
               ST_AsMVTGeom(
                 ST_Transform(points.lonlat::geometry, 3857),
                 bounds.geom_3857,

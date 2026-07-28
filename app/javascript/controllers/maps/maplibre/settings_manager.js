@@ -61,7 +61,7 @@ export class SettingsController {
     const toggleMap = {
       pointsToggle: "pointsVisible",
       pointsEditToggle: "pointDraggingEnabled",
-      pointsMvtToggle: "pointsMvtEnabled",
+      pointsTiledToggle: "pointsTiledRendering",
       routesToggle: "routesVisible",
       heatmapToggle: "heatmapEnabled",
       hexagonsToggle: "hexagonsEnabled",
@@ -102,6 +102,8 @@ export class SettingsController {
         }
       }
     })
+
+    this.syncPointsEditAvailability()
 
     // Show/hide visits search based on initial toggle state
     if (controller.hasVisitsToggleTarget && controller.hasVisitsSearchTarget) {
@@ -1265,6 +1267,34 @@ export class SettingsController {
     this.layerManager.getLayer("points")?.setEditMode(enabled)
 
     SettingsManager.updateSetting("pointDraggingEnabled", enabled)
+  }
+
+  // Dim Edit points while tiled rendering is on. The saved preference survives.
+  syncPointsEditAvailability() {
+    const controller = this.controller
+    if (!controller.hasPointsEditToggleTarget) return
+
+    const input = controller.pointsEditToggleTarget
+    const tiled = SettingsManager.getSetting("pointsTiledRendering") === true
+
+    // Keep the checkbox in step with the layer's real edit mode.
+    input.disabled = tiled
+    input.checked =
+      !tiled &&
+      SettingsManager.getSetting("pointDraggingEnabled") === true &&
+      !isGatedPlan(controller.userPlanValue)
+
+    const label = input.closest("label")
+    if (!label) return
+    label.classList.toggle("opacity-40", tiled)
+    label.classList.toggle("tooltip", tiled)
+    label.style.cursor = tiled ? "not-allowed" : ""
+    if (tiled) {
+      label.dataset.tip =
+        "Not available with tiled rendering, vector tiles have no draggable points"
+    } else {
+      delete label.dataset.tip
+    }
   }
 
   updateRouteOpacity(event) {

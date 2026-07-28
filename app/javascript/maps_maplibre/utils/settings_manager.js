@@ -52,6 +52,7 @@ const DEFAULT_SETTINGS = {
   stayMaxGapMinutes: 60,
   gpsFilteringEnabled: true,
   pointDraggingEnabled: false,
+  pointsTiledRendering: false,
   transportationExpertMode: false,
   enabledTransportationModes: [
     "unknown",
@@ -85,7 +86,6 @@ const DEFAULT_SETTINGS = {
 
 const LAYER_NAME_MAP = {
   Points: "pointsVisible",
-  "Points (MVT)": "pointsMvtEnabled",
   Routes: "routesVisible",
   Heatmap: "heatmapEnabled",
   Hexagons: "hexagonsEnabled",
@@ -123,6 +123,7 @@ const BACKEND_SETTINGS_MAP = {
   stayMaxGapMinutes: "stay_max_gap_minutes",
   gpsFilteringEnabled: "gps_filtering_enabled",
   pointDraggingEnabled: "point_dragging_enabled",
+  pointsTiledRendering: "points_tiled_rendering",
   transportationExpertMode: "transportation_expert_mode",
   enabledTransportationModes: "enabled_transportation_modes",
   transportationThresholds: "transportation_thresholds",
@@ -327,6 +328,8 @@ export class SettingsManager {
               value = value === true || value === "true"
             } else if (frontendKey === "pointDraggingEnabled") {
               value = value === true || value === "true"
+            } else if (frontendKey === "pointsTiledRendering") {
+              value = value === true || value === "true"
             } else if (frontendKey === "speedColoredRoutes") {
               value = value === true || value === "true"
             } else if (frontendKey === "globeProjection") {
@@ -436,6 +439,8 @@ export class SettingsManager {
             } else if (frontendKey === "liveMapEnabled") {
               value = Boolean(value)
             } else if (frontendKey === "pointDraggingEnabled") {
+              value = Boolean(value)
+            } else if (frontendKey === "pointsTiledRendering") {
               value = Boolean(value)
             } else if (frontendKey === "transportationThresholds" && value) {
               value = SettingsManager._convertTransportationThresholds(

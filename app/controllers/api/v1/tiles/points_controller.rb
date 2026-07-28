@@ -11,11 +11,10 @@ class Api::V1::Tiles::PointsController < ApiController
       y: params[:y]
     ).call
 
-    return head :no_content if tile.blank?
+    # PostGIS returns a zero-length bytea for an empty tile, blank only once unpacked
+    tile = decode_bytea(tile)
 
-    # Postgres bytea may come back as a hex-encoded string (for example "\x1a2b...").
-    # MapLibre expects raw protobuf bytes, not the escaped hex representation.
-    tile = [tile.delete_prefix('\x')].pack('H*') if tile.is_a?(String) && tile.start_with?('\x')
+    return head :no_content if tile.blank?
 
     response.headers['Cache-Control'] = 'no-store'
     send_data tile, type: 'application/vnd.mapbox-vector-tile', disposition: 'inline'
@@ -24,6 +23,13 @@ class Api::V1::Tiles::PointsController < ApiController
   end
 
   private
+
+  # Postgres bytea arrives hex-encoded, MapLibre needs raw protobuf bytes
+  def decode_bytea(value)
+    return value unless value.is_a?(String) && value.start_with?('\x')
+
+    [value.delete_prefix('\x')].pack('H*')
+  end
 
   def filtered_points
     scope = scoped_points.without_raw_data

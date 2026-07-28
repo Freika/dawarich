@@ -441,8 +441,10 @@ export class LayerManager {
 
   _addPointsLayer(pointsGeoJSON) {
     if (!this.layers.pointsLayer) {
+      const tiled = SettingsManager.getSetting("pointsTiledRendering") === true
       this.layers.pointsLayer = new PointsLayer(this.map, {
-        visible: this.settings.pointsVisible !== false, // Default true unless explicitly false
+        // Only one points renderer draws at a time
+        visible: this.settings.pointsVisible !== false && !tiled,
         apiClient: this.api,
         layerManager: this,
         styleName: this.settings.mapStyle,
@@ -450,6 +452,7 @@ export class LayerManager {
         // when advanced settings are saved. Lite can't write points.
         editModeEnabled:
           SettingsManager.getSetting("pointDraggingEnabled") === true &&
+          !tiled &&
           !isGatedPlan(this.controller?.userPlanValue),
       })
       this.layers.pointsLayer.add(pointsGeoJSON)
@@ -461,7 +464,9 @@ export class LayerManager {
   _addPointsMvtLayer() {
     if (!this.layers.pointsMvtLayer) {
       this.layers.pointsMvtLayer = new PointsMvtLayer(this.map, {
-        visible: this.settings.pointsMvtEnabled || false,
+        visible:
+          this.settings.pointsVisible !== false &&
+          SettingsManager.getSetting("pointsTiledRendering") === true,
         apiKey: this.apiKey,
         ...this.pointTileRange,
       })

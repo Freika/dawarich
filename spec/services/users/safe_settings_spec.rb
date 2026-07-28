@@ -75,7 +75,8 @@ RSpec.describe Users::SafeSettings do
             visit_min_duration_minutes: 5,
             visit_density_fill_enabled: true,
             stay_max_gap_minutes: 60,
-            point_dragging_enabled: false
+            point_dragging_enabled: false,
+            points_tiled_rendering: false
           }
         )
       end
@@ -177,7 +178,8 @@ RSpec.describe Users::SafeSettings do
             'visit_min_duration_minutes' => 5,
             'visit_density_fill_enabled' => true,
             'stay_max_gap_minutes' => 60,
-            'point_dragging_enabled' => false
+            'point_dragging_enabled' => false,
+            'points_tiled_rendering' => false
           }
         )
       end
@@ -249,7 +251,8 @@ RSpec.describe Users::SafeSettings do
             visit_min_duration_minutes: 5,
             visit_density_fill_enabled: true,
             stay_max_gap_minutes: 60,
-            point_dragging_enabled: false
+            point_dragging_enabled: false,
+            points_tiled_rendering: false
           }
         )
       end
@@ -854,6 +857,36 @@ RSpec.describe Users::SafeSettings do
 
     it 'is included in #config' do
       expect(described_class.new({}).config).to include(point_dragging_enabled: false)
+    end
+  end
+
+  describe '#points_tiled_rendering?' do
+    it 'returns false when missing' do
+      expect(described_class.new({}).points_tiled_rendering?).to be false
+    end
+
+    it 'returns false when explicitly nil' do
+      expect(described_class.new({ 'points_tiled_rendering' => nil }).points_tiled_rendering?).to be false
+    end
+
+    it 'returns true for true' do
+      expect(described_class.new({ 'points_tiled_rendering' => true }).points_tiled_rendering?).to be true
+    end
+
+    it 'returns true for "1"' do
+      expect(described_class.new({ 'points_tiled_rendering' => '1' }).points_tiled_rendering?).to be true
+    end
+
+    it 'returns false for "0"' do
+      expect(described_class.new({ 'points_tiled_rendering' => '0' }).points_tiled_rendering?).to be false
+    end
+
+    it 'returns false for "false"' do
+      expect(described_class.new({ 'points_tiled_rendering' => 'false' }).points_tiled_rendering?).to be false
+    end
+
+    it 'is included in #config' do
+      expect(described_class.new({}).config).to include(points_tiled_rendering: false)
     end
   end
 

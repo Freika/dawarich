@@ -17,6 +17,16 @@ RSpec.describe 'Api::V1::Tiles::Points', type: :request do
       expect(response.body.bytesize).to be_positive
     end
 
+    it 'names properties to match the map point popup contract' do
+      create(:point, user:, longitude: 0.0, latitude: 0.0, lonlat: 'POINT(0 0)')
+
+      get path, params: { api_key: user.api_key }
+
+      # MVT stores property keys as literal strings, so no decoder is needed
+      expect(response.body).to include('id', 'timestamp', 'battery', 'altitude', 'velocity')
+      expect(response.body).not_to include('point_id')
+    end
+
     it 'accepts bearer authentication' do
       create(:point, user:, longitude: 0.0, latitude: 0.0, lonlat: 'POINT(0 0)')
 

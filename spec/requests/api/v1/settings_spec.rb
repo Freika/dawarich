@@ -86,6 +86,28 @@ RSpec.describe 'Api::V1::Settings', type: :request do
         expect(user.reload.safe_settings.point_dragging_enabled?).to be false
       end
 
+      it 'updates points_tiled_rendering' do
+        patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { points_tiled_rendering: true } }
+
+        expect(response).to have_http_status(:success)
+        expect(user.reload.safe_settings.points_tiled_rendering?).to be true
+      end
+
+      it 'returns points_tiled_rendering in the response' do
+        patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { points_tiled_rendering: true } }
+
+        expect(response.parsed_body['settings']['points_tiled_rendering']).to be true
+      end
+
+      it 'turns points_tiled_rendering back off' do
+        user.update!(settings: user.settings.merge('points_tiled_rendering' => true))
+
+        patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { points_tiled_rendering: false } }
+
+        expect(response).to have_http_status(:success)
+        expect(user.reload.safe_settings.points_tiled_rendering?).to be false
+      end
+
       it 'updates fog_of_war_mode' do
         patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { fog_of_war_mode: 'hexagons' } }
 

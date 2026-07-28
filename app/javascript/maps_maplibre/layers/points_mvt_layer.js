@@ -10,6 +10,17 @@ export class PointsMvtLayer extends BaseLayer {
     this.endAt = options.endAt || null
     this.apiKey = options.apiKey || null
     this._tileUrl = null
+    this._cacheBuster = 0
+  }
+
+  // MapLibre caches tiles by URL, so bump a nonce to force a re-fetch.
+  refresh() {
+    this._cacheBuster += 1
+
+    const wasVisible = this.visible
+    this.remove()
+    this.add({ startAt: this.startAt, endAt: this.endAt })
+    this.setVisibility(wasVisible)
   }
 
   getSourceConfig() {
@@ -65,6 +76,7 @@ export class PointsMvtLayer extends BaseLayer {
     if (startAt) params.set("start_at", startAt)
     if (endAt) params.set("end_at", endAt)
     if (this.apiKey) params.set("api_key", this.apiKey)
+    if (this._cacheBuster) params.set("_", String(this._cacheBuster))
 
     const query = params.toString()
     const path = "/api/v1/tiles/points/{z}/{x}/{y}.mvt"

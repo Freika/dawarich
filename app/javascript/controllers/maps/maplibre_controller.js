@@ -62,7 +62,7 @@ export default class extends Controller {
     // Layer toggles
     "pointsToggle",
     "pointsEditToggle",
-    "pointsMvtToggle",
+    "pointsTiledToggle",
     "routesToggle",
     "heatmapToggle",
     "hexagonsToggle",
@@ -1408,8 +1408,8 @@ export default class extends Controller {
     return this.settingsController.togglePointsEditing(event)
   }
 
-  togglePointsMvt(event) {
-    return this.routesManager.togglePointsMvt(event)
+  togglePointsTiledRendering(event) {
+    return this.routesManager.togglePointsTiledRendering(event)
   }
   toggleRoutes(event) {
     return this.routesManager.toggleRoutes(event)
@@ -1932,6 +1932,11 @@ export default class extends Controller {
 
     try {
       await this.api.deletePoint(pointId)
+
+      // Cached tiles still contain the deleted point.
+      const tiledLayer = this.layerManager.getLayer("points-mvt")
+      if (tiledLayer?.visible) tiledLayer.refresh()
+
       this.closeInfo()
       Toast.success("Point deleted successfully")
     } catch (_error) {
