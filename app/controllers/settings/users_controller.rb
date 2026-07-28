@@ -27,7 +27,9 @@ class Settings::UsersController < ApplicationController
     if @user.update(update_params)
       redirect_to settings_users_url, notice: 'User was successfully updated.'
     else
-      redirect_to settings_users_url, notice: 'User could not be updated.', status: :unprocessable_content
+      redirect_to settings_users_url,
+                  alert: "User could not be updated: #{@user.errors.full_messages.to_sentence}",
+                  status: :see_other
     end
   end
 
@@ -41,7 +43,9 @@ class Settings::UsersController < ApplicationController
     if @user.save
       redirect_to settings_users_url, notice: 'User was successfully created'
     else
-      redirect_to settings_users_url, notice: 'User could not be created.', status: :unprocessable_content
+      redirect_to settings_users_url,
+                  alert: "User could not be created: #{@user.errors.full_messages.to_sentence}",
+                  status: :see_other
     end
   end
 
@@ -51,7 +55,7 @@ class Settings::UsersController < ApplicationController
     unless @user.can_delete_account?
       redirect_to settings_users_url,
                   alert: 'Cannot delete account while being owner of a family which has other members.',
-                  status: :unprocessable_content
+                  status: :see_other
       return
     end
 

@@ -34,7 +34,7 @@ module Points
           end
 
           Yabeda.dawarich_archive.operations_total.increment({ operation: 'restore', status: 'success' })
-          Yabeda.dawarich_archive.points_total.increment({ operation: 'removed' }, by: total_restored)
+          Yabeda.dawarich_archive.points_total.increment({ operation: 'restored' }, by: total_restored)
         rescue StandardError
           Yabeda.dawarich_archive.operations_total.increment({ operation: 'restore', status: 'failure' })
 
@@ -49,7 +49,7 @@ module Points
 
         Rails.logger.info("Loading #{archives.count} archives into cache...")
 
-        cache_key_prefix = "raw_data:temp:#{user_id}:#{year}:#{month}"
+        cache_key_prefix = "raw_data:temp:#{user_id}"
         count = 0
 
         archives.each do |archive|

@@ -6,7 +6,6 @@ class Visits::FullHistoryRedetectJob < ApplicationJob
 
   BATCH_OVERLAP_SECONDS = 1.hour.to_i
   COOLDOWN = 1.hour
-  LOCK_TTL = 2.hours
 
   def perform(user_id)
     user = User.find(user_id)
@@ -16,7 +15,7 @@ class Visits::FullHistoryRedetectJob < ApplicationJob
       return
     end
 
-    Tracks::PerUserLock.with_user_lock(user_id, ttl: LOCK_TTL) do
+    Tracks::PerUserLock.with_user_lock(user_id) do
       user.reload
       if recently_redetected?(user)
         Rails.logger.info("[Visits::FullHistoryRedetectJob skip] user_id=#{user.id} reason=cooldown_active_after_lock")

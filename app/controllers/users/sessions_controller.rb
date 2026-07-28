@@ -1,11 +1,20 @@
 # frozen_string_literal: true
 
 class Users::SessionsController < Devise::SessionsController
+  include PendingImportClaimable
+
   before_action :load_invitation_context, only: [:new]
   before_action :check_email_password_login_allowed, only: [:create]
   prepend_before_action :check_otp_required, only: [:create]
 
   def new
+    super
+  end
+
+  protected
+
+  def after_sign_in_path_for(resource)
+    claim_pending_import_for(resource)
     super
   end
 

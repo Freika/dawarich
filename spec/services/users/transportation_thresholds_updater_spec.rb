@@ -111,6 +111,8 @@ RSpec.describe Users::TransportationThresholdsUpdater do
         u.reload
       end
 
+      before { allow(DawarichSettings).to receive(:self_hosted?).and_return(false) }
+
       it 'strips gated layers from enabled_map_layers before saving' do
         params = { 'enabled_map_layers' => ['Tracks', 'Heatmap', 'Fog of War', 'Scratch map', 'Points'] }
         described_class.new(user, params).call

@@ -156,20 +156,46 @@ RSpec.describe UserFamily do
       end
     end
 
-    it 'rejects invalid history_window and falls back to 24h' do
+    it 'rejects invalid history_window and falls back to the default window' do
       user.update_family_location_sharing!(true, duration: 'permanent', history_window: 'invalid')
-      expect(user.family_history_window).to eq('24h')
+      expect(user.family_history_window).to eq(UserFamily::DEFAULT_HISTORY_WINDOW)
     end
 
     it 'rejects XSS payloads in history_window' do
       user.update_family_location_sharing!(true, duration: 'permanent', history_window: '<script>alert(1)</script>')
-      expect(user.family_history_window).to eq('24h')
+      expect(user.family_history_window).to eq(UserFamily::DEFAULT_HISTORY_WINDOW)
     end
 
     it 'preserves existing valid window when nil is passed' do
       user.update_family_location_sharing!(true, duration: 'permanent', history_window: '30d')
       user.update_family_location_sharing!(true, duration: 'permanent', history_window: nil)
       expect(user.family_history_window).to eq('30d')
+    end
+  end
+
+  describe '#family_history_window default' do
+    it 'defaults to 7 days when never configured' do
+      expect(user.family_history_window).to eq('7d')
+    end
+
+    it 'uses the default window on first enable without an explicit window' do
+      user.update_family_location_sharing!(true, duration: 'permanent')
+      expect(user.family_history_window).to eq(UserFamily::DEFAULT_HISTORY_WINDOW)
+    end
+  end
+
+  describe '#family_map_sharing_active?' do
+    it 'is false when the user is not in a family' do
+      expect(create(:user).family_map_sharing_active?).to be(false)
+    end
+
+    it 'is false when in a family but nobody is sharing' do
+      expect(user.family_map_sharing_active?).to be(false)
+    end
+
+    it 'is true when a family member has sharing enabled' do
+      user.update_family_location_sharing!(true, duration: 'permanent')
+      expect(user.reload.family_map_sharing_active?).to be(true)
     end
   end
 end

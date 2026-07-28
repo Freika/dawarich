@@ -27,7 +27,7 @@ class Points::AnomalyBackfillUserJob < ApplicationJob
   private
 
   def reset_existing_flags(user)
-    cleared = user.points.where(anomaly: true).update_all(anomaly: false)
+    cleared = user.points.where(anomaly: true).update_all(anomaly: false, updated_at: Time.current)
     Rails.logger.info("[AnomalyBackfill] User #{user.id}: cleared #{cleared} anomaly flags before re-evaluation")
   end
 

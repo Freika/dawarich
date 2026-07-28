@@ -1,0 +1,15 @@
+{
+  "name": "Monochrome Blue",
+  "description": "Single blue color family with varying saturation - clean and cohesive",
+  "bg": "#F5F8FA",
+  "text": "#1A3A5C",
+  "gradient_color": "#F5F8FA",
+  "water": "#D0E0F0",
+  "parks": "#E0EAF2",
+  "road_motorway": "#1A3A5C",
+  "road_primary": "#2A5580",
+  "road_secondary": "#4A7AA8",
+  "road_tertiary": "#7AA0C8",
+  "road_residential": "#A8C4E0",
+  "road_default": "#4A7AA8"
+}

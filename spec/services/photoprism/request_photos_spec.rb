@@ -15,7 +15,8 @@ RSpec.describe Photoprism::RequestPhotos do
 
   let(:start_date) { '2024-01-01' }
   let(:end_date) { '2024-12-31' }
-  let(:expected_before_date) { '2025-01-01T00:00:00Z' }
+  let(:expected_after_date) { '2024-01-01' }
+  let(:expected_before_date) { '2025-01-01' }
   let(:service) { described_class.new(user, start_date: start_date, end_date: end_date) }
 
   around { |example| Time.use_zone('UTC') { example.run } }
@@ -169,7 +170,7 @@ RSpec.describe Photoprism::RequestPhotos do
         stub_request(
           :any,
           "#{user.settings['photoprism_url']}/api/v1/photos?" \
-            "after=#{start_date}&before=#{expected_before_date}&count=1000&public=true&q=&quality=3"
+            "after=#{expected_after_date}&before=#{expected_before_date}&count=1000&public=true&q=&quality=3"
         ).with(
           headers: {
             'Accept' => 'application/json',
@@ -187,7 +188,8 @@ RSpec.describe Photoprism::RequestPhotos do
         stub_request(
           :any,
           "#{user.settings['photoprism_url']}/api/v1/photos?" \
-            "after=#{start_date}&before=#{expected_before_date}&count=1000&public=true&q=&quality=3&offset=1000"
+            "after=#{expected_after_date}&before=#{expected_before_date}" \
+            '&count=1000&public=true&q=&quality=3&offset=1000'
         ).to_return(status: 200, body: [].to_json, headers: { 'Content-Type' => 'application/json' })
       end
 
@@ -218,14 +220,14 @@ RSpec.describe Photoprism::RequestPhotos do
         stub_request(
           :get,
           "#{user.settings['photoprism_url']}/api/v1/photos?" \
-            "after=#{start_date}&before=#{expected_before_date}&count=1000&public=true&q=&quality=3"
+            "after=#{expected_after_date}&before=#{expected_before_date}&count=1000&public=true&q=&quality=3"
         ).to_return(status: 400, body: { status: 400, error: 'Unable to do that' }.to_json)
       end
 
       it 'logs the error' do
         expect(Rails.logger).to receive(:error).with('Photoprism photo fetch failed: Request failed: 400')
         expect(Rails.logger).to receive(:debug).with(
-          "Photoprism API request params: #{{ q: '', public: true, quality: 3, after: start_date, count: 1000,
+          "Photoprism API request params: #{{ q: '', public: true, quality: 3, after: expected_after_date, count: 1000,
 before: expected_before_date }}"
         )
 
@@ -253,7 +255,7 @@ before: expected_before_date }}"
           .with(
             headers: common_headers,
             query: {
-              after: start_date,
+              after: expected_after_date,
               before: expected_before_date,
               count: '1000',
               public: 'true',
@@ -268,7 +270,7 @@ before: expected_before_date }}"
           .with(
             headers: common_headers,
             query: {
-              after: start_date,
+              after: expected_after_date,
               before: expected_before_date,
               count: '1000',
               public: 'true',
@@ -284,7 +286,7 @@ before: expected_before_date }}"
           .with(
             headers: common_headers,
             query: {
-              after: start_date,
+              after: expected_after_date,
               before: expected_before_date,
               count: '1000',
               public: 'true',

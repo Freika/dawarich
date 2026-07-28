@@ -4,9 +4,9 @@ require 'rails_helper'
 
 RSpec.describe ApplicationHelper, type: :helper do
   describe '#pro_badge_tag' do
-    context 'when user is not lite' do
+    context 'when user has full access' do
       before do
-        allow(helper).to receive(:current_user).and_return(double(lite?: false))
+        allow(helper).to receive(:current_user).and_return(double(plan_restricted?: false))
       end
 
       it 'returns nil' do
@@ -14,8 +14,8 @@ RSpec.describe ApplicationHelper, type: :helper do
       end
     end
 
-    context 'when user is lite' do
-      let(:fake_user) { double(lite?: true, generate_subscription_token: 'test_token') }
+    context 'when user is plan-restricted' do
+      let(:fake_user) { double(plan_restricted?: true, generate_subscription_token: 'test_token') }
 
       before do
         allow(helper).to receive(:current_user).and_return(fake_user)
@@ -88,6 +88,46 @@ RSpec.describe ApplicationHelper, type: :helper do
       it 'returns empty string without invoking JWT generation' do
         # Would raise KeyError on self-hosted (no JWT_SECRET_KEY) if not guarded.
         expect(helper.upgrade_url).to eq('')
+      end
+    end
+  end
+
+  describe '#family_upgrade_url' do
+    let(:secret) { ENV.fetch('JWT_SECRET_KEY', 'test_secret') }
+
+    def token_from(url)
+      url[/token=([^&]+)/, 1]
+    end
+
+    def decode(token)
+      JWT.decode(token, secret, true, { algorithm: 'HS256' }).first
+    end
+
+    context 'on cloud instances' do
+      let(:user) { create(:user) }
+
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        allow(helper).to receive(:current_user).and_return(user)
+        stub_const('MANAGER_URL', 'https://manager.example.com')
+      end
+
+      it 'embeds a token whose payload carries the family plan and annual interval' do
+        url = helper.family_upgrade_url
+
+        expect(url).to start_with('https://manager.example.com/auth/dawarich?token=')
+        payload = decode(token_from(url))
+        expect(payload['plan']).to eq('family')
+        expect(payload['interval']).to eq('annual')
+        expect(payload['user_id']).to eq(user.id)
+      end
+    end
+
+    context 'on self-hosted instances' do
+      before { allow(DawarichSettings).to receive(:self_hosted?).and_return(true) }
+
+      it 'returns an empty string' do
+        expect(helper.family_upgrade_url).to eq('')
       end
     end
   end

@@ -21,7 +21,7 @@ class Shared::DigestsController < ApplicationController
     @user = @digest.user
     @distance_unit = @user.safe_settings.distance_unit || 'km'
     @is_public_view = true
-    @full_digest = DawarichSettings.self_hosted? || @user.pro?
+    @full_digest = @user.full_access?
 
     render 'users/digests/public_year'
   end

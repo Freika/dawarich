@@ -27,6 +27,16 @@ RSpec.describe Visits::StayPointDetector do
   # Defaults: radius 100 m, min_dwell 300 s, min_points 3, max_gap 3600 s, merge_gap 900 s, drift_cap 1.5.
 
   describe '#call' do
+    it 'ignores points at exactly (0,0)' do
+      6.times do |i|
+        create(:point, user: user, latitude: 0.0, longitude: 0.0,
+                       lonlat: 'POINT(0.0 0.0)', timestamp: base_ts + (i * 120),
+                       accuracy: 10, visit_id: nil)
+      end
+
+      expect(detect).to be_empty
+    end
+
     it '(a) groups a tight stationary cluster into one visit' do
       6.times { |i| make_point(at: base_ts + i * 120, dnorth: (i.even? ? 5 : -5)) }
 
@@ -65,15 +75,26 @@ RSpec.describe Visits::StayPointDetector do
       expect(merged[:end_time]).to eq(base_ts + 560 + 3 * 120) # last point of the returned cluster
     end
 
-    it '(e) continues one visit across a gap longer than max_gap at the same place (dead battery)' do
+    it '(e) splits visits across a gap longer than max_gap at the same place' do
       [0, 150, 300].each { |t| make_point(at: base_ts + t, dnorth: 5) }
       [7200, 7350, 7500].each { |t| make_point(at: base_ts + t, dnorth: -5) } # +2h, same spot
 
       clusters = detect
 
-      expect(clusters.size).to eq(1)
-      expect(clusters.first[:point_count]).to eq(6)
-      expect(clusters.first[:end_time] - clusters.first[:start_time]).to eq(7500)
+      expect(clusters.size).to eq(2)
+      expect(clusters.map { |cluster| cluster[:point_count] }).to eq([3, 3])
+      expect(clusters.first[:end_time]).to eq(base_ts + 300)
+      expect(clusters.last[:start_time]).to eq(base_ts + 7200)
+    end
+
+    it 'does not merge same-place stays back together when their gap exceeds max_gap' do
+      user.update!(
+        settings: user.settings.merge('stay_max_gap_minutes' => 5, 'merge_threshold_minutes' => 15)
+      )
+      [0, 150, 300].each { |t| make_point(at: base_ts + t, dnorth: 5) }
+      [900, 1050, 1200].each { |t| make_point(at: base_ts + t, dnorth: -5) }
+
+      expect(detect.size).to eq(2)
     end
 
     it '(f) splits into two visits across a long gap at different places' do
@@ -114,19 +135,15 @@ RSpec.describe Visits::StayPointDetector do
       expect(detect.size).to eq(2)
     end
 
-    it '(m) re-anchors drift after a long gap but keeps the original start (drift_ref != first)' do
-      # pre-gap stay at spot A
+    it '(m) starts a new stay after max_gap even when the later points remain near the previous anchor' do
       [0, 150, 300].each { |t| make_point(at: base_ts + t, dnorth: 0) }
-      # after a > MAX_GAP gap, a co-located re-entry (within radius of the anchor) that then drifts north;
-      # the gap branch re-anchors the drift reference to the post-gap point, but `first` (start_time) is preserved.
-      [7200, 7320, 7440].each_with_index { |t, i| make_point(at: base_ts + t, dnorth: 40 + (i * 30)) }
+      [7200, 7320, 7440, 7560].each_with_index { |t, i| make_point(at: base_ts + t, dnorth: 20 + (i * 20)) }
 
       clusters = detect
 
-      expect(clusters.size).to eq(1)
-      expect(clusters.first[:point_count]).to eq(6)
-      expect(clusters.first[:start_time]).to eq(base_ts)       # first member preserved across the gap
-      expect(clusters.first[:end_time]).to eq(base_ts + 7440)  # one visit spans the dead-battery gap
+      expect(clusters.size).to eq(2)
+      expect(clusters.first[:end_time]).to eq(base_ts + 300)
+      expect(clusters.last[:start_time]).to eq(base_ts + 7200)
     end
 
     it 'returns the DbscanClusterer cluster-hash shape with positive real point ids' do

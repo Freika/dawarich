@@ -46,7 +46,9 @@ module Points
         verification_result = perform_verification(archive)
 
         if verification_result[:success]
-          archive.update!(verified_at: Time.current)
+          # First verification stamps the archive; re-checks must not bump the
+          # timestamp, or spot checks would keep restarting the clear cooling window.
+          archive.update!(verified_at: Time.current) if archive.verified_at.blank?
           @stats[:verified] += 1
           Rails.logger.info("✓ Archive #{archive.id} verified successfully")
 
@@ -54,16 +56,19 @@ module Points
 
           report_verification_metric(start_time, 'success')
         else
+          check_name = extract_check_name_from_error(verification_result[:error])
+          context = failure_context(archive, check_name)
+
+          # A previously verified archive failing a re-check may be corrupted in
+          # storage — unset verified_at so clearing is blocked until investigated.
+          # Transient download errors are not integrity failures and keep the stamp.
+          archive.update!(verified_at: nil) if archive.verified_at.present? && check_name != 'download_failed'
           @stats[:failed] += 1
           Rails.logger.error("✗ Archive #{archive.id} verification failed: #{verification_result[:error]}")
-          ExceptionReporter.call(
-            StandardError.new(verification_result[:error]),
-            "Archive verification failed for archive #{archive.id}"
-          )
+          ExceptionReporter.call(StandardError.new(verification_result[:error]), context)
 
           Yabeda.dawarich_archive.operations_total.increment({ operation: 'verify', status: 'failure' })
 
-          check_name = extract_check_name_from_error(verification_result[:error])
           report_verification_metric(start_time, 'failure', check_name)
         end
       rescue StandardError => e
@@ -74,6 +79,15 @@ module Points
         Yabeda.dawarich_archive.operations_total.increment({ operation: 'verify', status: 'failure' })
 
         report_verification_metric(start_time, 'failure', 'exception')
+      end
+
+      def failure_context(archive, check_name)
+        context = "Archive verification failed for archive #{archive.id}"
+        return context unless archive.verified_at.present? && check_name != 'download_failed'
+
+        cleared = Point.where(raw_data_archive_id: archive.id, raw_data: {}).count
+        "#{context} (previously verified; #{cleared}/#{archive.point_count} linked points already cleared " \
+          'and recoverable only from this archive)'
       end
 
       def perform_verification(archive)
@@ -90,12 +104,20 @@ module Points
       def download_and_verify_content(archive)
         return { success: false, error: 'File not attached' } unless archive.file.attached?
 
-        raw_content = archive.file.blob.download
+        begin
+          raw_content = archive.file.blob.download
+        rescue StandardError => e
+          # Only I/O errors get the download_failed label — it exempts the
+          # archive from the verified_at unset, so decrypt/integrity errors
+          # must never be classified here.
+          return { success: false, error: "File download failed: #{e.message}" }
+        end
+
         return { success: false, error: 'File is empty' } if raw_content.bytesize.zero?
 
         verify_content_integrity(raw_content, archive)
       rescue StandardError => e
-        { success: false, error: "File download failed: #{e.message}" }
+        { success: false, error: "Decryption failed: #{e.message}" }
       end
 
       def verify_content_integrity(raw_content, archive)
@@ -138,7 +160,7 @@ module Points
         end
 
         if existing_count.positive?
-          verification_result = verify_raw_data_matches(sampled_data)
+          verification_result = verify_raw_data_matches(archive, sampled_data)
           return verification_result unless verification_result[:success]
         else
           Rails.logger.info(
@@ -189,7 +211,7 @@ module Points
         (0...sample_size).map { |i| (i * stride).floor }.to_set
       end
 
-      def verify_raw_data_matches(sampled_data)
+      def verify_raw_data_matches(archive, sampled_data)
         existing_point_ids = Point.where(id: sampled_data.keys).pluck(:id)
 
         if existing_point_ids.empty?
@@ -202,6 +224,8 @@ module Points
         Point.where(id: existing_point_ids).find_each do |point|
           archived_raw_data = sampled_data[point.id]
           next if archived_raw_data.nil?
+          next if point.raw_data_archive_id != archive.id
+          next if point.raw_data_archived? && point.raw_data.blank?
 
           mismatches << { point_id: point.id } if archived_raw_data != point.raw_data
         end
@@ -238,6 +262,8 @@ module Points
           'empty_file'
         when /Content checksum mismatch/i
           'content_checksum_mismatch'
+        when /Decryption failed/i
+          'decryption_failed'
         when %r{Decompression/parsing failed}i
           'decompression_failed'
         when /Point count mismatch/i

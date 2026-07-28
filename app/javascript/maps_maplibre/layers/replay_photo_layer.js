@@ -74,7 +74,9 @@ export class ReplayPhotoLayer {
 
     const inner = document.createElement("div")
     inner.className = "replay-photo-marker-inner replay-photo-pop"
-    inner.style.backgroundImage = `url("${encodeURI(photo.thumbnail_url)}")`
+    if (photo.thumbnail_url) {
+      inner.style.backgroundImage = `url("${encodeURI(photo.thumbnail_url)}")`
+    }
     el.appendChild(inner)
 
     el.addEventListener("click", (event) => {

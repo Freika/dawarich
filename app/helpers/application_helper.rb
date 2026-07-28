@@ -2,7 +2,7 @@
 
 module ApplicationHelper
   def show_plan_data_window_alert?
-    !DawarichSettings.self_hosted? && current_user&.lite?
+    current_user&.plan_restricted? || false
   end
 
   def year_timespan(year)
@@ -212,8 +212,17 @@ module ApplicationHelper
     utm.any? ? "#{base}&#{utm.to_query}" : base
   end
 
+  def family_upgrade_url(utm_source: 'app', utm_medium: nil, utm_campaign: 'family_upgrade', utm_content: nil)
+    return '' if DawarichSettings.self_hosted?
+
+    token = current_user.generate_subscription_token(plan: 'family', interval: 'annual')
+    base = "#{MANAGER_URL}/auth/dawarich?token=#{token}"
+    utm = { utm_source:, utm_medium:, utm_campaign:, utm_content: }.compact
+    utm.any? ? "#{base}&#{utm.to_query}" : base
+  end
+
   def pro_badge_tag(preview: true)
-    return unless current_user&.lite?
+    return unless current_user&.plan_restricted?
 
     tooltip = preview ? 'Available on Pro — click to preview' : 'Available on Pro'
     link_to upgrade_url(utm_medium: 'badge', utm_content: 'pro_badge'),

@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Users::OmniauthCallbacksController < Devise::OmniauthCallbacksController
+  include PendingImportClaimable
+
   def github
     handle_auth('GitHub')
   end
@@ -37,6 +39,13 @@ class Users::OmniauthCallbacksController < Devise::OmniauthCallbacksController
       end
 
     redirect_to root_path, alert: error_message
+  end
+
+  protected
+
+  def after_sign_in_path_for(resource)
+    claim_pending_import_for(resource)
+    super
   end
 
   private

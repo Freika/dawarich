@@ -2,13 +2,17 @@
 
 class Users::RegistrationsController < Devise::RegistrationsController
   include UtmTrackable
+  include PendingImportClaimable
 
+  prepend_before_action :handle_logged_in_with_ticket, only: :new
   before_action :set_invitation, only: %i[new create]
   before_action :check_registration_allowed, only: %i[new create]
   before_action :store_utm_params, only: %i[new], unless: -> { DawarichSettings.self_hosted? }
   before_action :store_gads_linker, only: %i[new], unless: -> { DawarichSettings.self_hosted? }
 
   def new
+    session[:pending_import_ticket] = params[:import_ticket] if params[:import_ticket].present?
+
     build_resource({})
 
     resource.email = @invitation.email if @invitation
@@ -26,16 +30,23 @@ class Users::RegistrationsController < Devise::RegistrationsController
     if resource.persisted?
       post_signup_setup(resource)
 
+      # The claim happens in every branch (not in after_sign_up_path_for):
+      # the reverse-trial redirect below never consults the sign-up path, and
+      # the ticket must not outlive the signup that owns it. It runs after
+      # each flash decision so the "Importing..." notice isn't overwritten.
       if @signup_variant == 'reverse_trial'
         resource.update!(status: :pending_payment)
+        claim_pending_import_for(resource)
         redirect_to manager_checkout_url(resource), allow_other_host: true
       elsif resource.active_for_authentication?
         set_flash_message!(:notice, :signed_up)
         sign_up(resource_name, resource)
+        claim_pending_import_for(resource)
         respond_with(resource, location: after_sign_up_path_for(resource))
       else
         set_flash_message!(:notice, :"signed_up_but_#{resource.inactive_message}")
         expire_data_after_sign_in!
+        claim_pending_import_for(resource)
         respond_with(resource, location: after_inactive_sign_up_path_for(resource))
       end
     else
@@ -116,6 +127,15 @@ class Users::RegistrationsController < Devise::RegistrationsController
   end
 
   private
+
+  def handle_logged_in_with_ticket
+    return unless user_signed_in? && params[:import_ticket].present?
+
+    session[:pending_import_ticket] = params[:import_ticket]
+    claim_pending_import_for(current_user)
+
+    redirect_to imports_path
+  end
 
   def post_signup_setup(resource)
     assign_utm_params(resource)

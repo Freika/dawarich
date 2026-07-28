@@ -27,6 +27,7 @@ export default class extends Controller {
     "replaySpeedDisplay",
     "replayDataIndicator",
     "replayPlayButton",
+    "replayFollowButton",
     "replayPlayIcon",
     "replayPauseIcon",
     "replaySpeedSlider",
@@ -266,6 +267,10 @@ export default class extends Controller {
 
   replayTogglePlayback() {
     this.replayPanel?.togglePlayback()
+  }
+
+  replayRecenterFollow() {
+    this.replayPanel?.recenterFollow()
   }
 
   replaySpeedChange(event) {

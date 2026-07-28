@@ -65,8 +65,6 @@ RSpec.describe DemoData::Destroyer do
         Point.create!(
           user_id: user.id,
           import_id: import.id,
-          latitude: 52.5,
-          longitude: 13.4,
           lonlat: 'POINT(13.4 52.5)',
           timestamp: timestamp
         )

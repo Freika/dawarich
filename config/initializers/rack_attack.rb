@@ -29,7 +29,7 @@ class Rack::Attack
   class << self
     attr_accessor :api_rate_limits, :shared_links_viewer_limit
   end
-  self.api_rate_limits = { 'lite' => 200, 'pro' => 1_000 }
+  self.api_rate_limits = { 'lite' => 200, 'pro' => 1_000, 'family' => 1_000 }
   self.shared_links_viewer_limit = 120
 end
 
@@ -46,7 +46,7 @@ Rack::Attack.throttle('api/token',
   next if api_key.blank?
 
   user_plan = Rails.cache.fetch("rack_attack/plan/#{api_key}", expires_in: 2.minutes) do
-    User.where(api_key: api_key).pick(:plan)
+    User.find_by(api_key: api_key)&.effective_plan&.to_s
   end
   next if user_plan.nil?
 
@@ -271,6 +271,18 @@ Rack::Attack.throttle('shared_links/unlock', limit: 5, period: 5.minutes) do |re
   if req.post? && (match = req.path.match(%r{\A/s/([^/]+)/unlock\z}))
     "#{req.ip}:#{match[1]}"
   end
+end
+
+# Unauthenticated tools/signup-handoff endpoint: 60 uploads/hour per IP.
+# Prevents abuse of the public pending-import surface (no API key required,
+# accepts up to 100MB files).
+Rack::Attack.throttle('api/v1/imports/pending CREATE', limit: 60, period: 1.hour) do |req|
+  req.ip if req.post? && req.path.start_with?('/api/v1/imports/pending')
+end
+
+# Companion throttle for the signup claim path that consumes ?import_ticket=.
+Rack::Attack.throttle('imports/claim attempts', limit: 30, period: 1.hour) do |req|
+  req.ip if req.get? && req.path.start_with?('/users/sign_up') && req.params['import_ticket'].present?
 end
 
 Rack::Attack.throttled_responder = lambda do |request|

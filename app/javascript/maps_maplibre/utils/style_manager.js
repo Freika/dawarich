@@ -3,7 +3,14 @@
  * Loads and configures local map styles with dynamic tile source
  */
 
+import { classifyBasemapUrl } from "maps_maplibre/utils/basemap_url"
+import { resolveTheme } from "poster_studio/data/theme_loader"
+import { buildBasemapStyle } from "poster_studio/render/style_builder"
+
 const TILE_SOURCE_URL = "https://tyles.dwri.xyz/planet/{z}/{x}/{y}.mvt"
+
+const BASEMAP_ATTRIBUTION =
+  '<a href="https://github.com/protomaps/basemaps">Protomaps</a> © <a href="https://openstreetmap.org">OpenStreetMap</a>'
 
 // Cache for loaded styles
 const styleCache = {}
@@ -39,6 +46,37 @@ async function loadStyleFile(styleName) {
   const style = await response.json()
   styleCache[styleName] = style
   return style
+}
+
+/**
+ * Build a raster basemap style from an XYZ tile URL.
+ * Reuses the light style's glyphs/sprite so re-added app label layers render.
+ * @param {string} url - Raster XYZ tile URL
+ * @returns {Promise<Object>} MapLibre style object
+ */
+async function buildRasterStyle(url) {
+  const base = await loadStyleFile("light")
+  return {
+    version: 8,
+    glyphs: base.glyphs,
+    sprite: base.sprite,
+    sources: {
+      protomaps: {
+        type: "raster",
+        tiles: [url],
+        tileSize: 256,
+        attribution: "",
+      },
+    },
+    layers: [
+      {
+        id: "background",
+        type: "background",
+        paint: { "background-color": "#e0e0e0" },
+      },
+      { id: "basemap-raster", type: "raster", source: "protomaps" },
+    ],
+  }
 }
 
 /**
@@ -321,6 +359,34 @@ function hiddenLayerIds(hiddenCategories) {
  */
 export async function getMapStyle(styleName = "light", options = {}) {
   try {
+    const customUrl = options.vectorTilesUrl
+    const basemapType = customUrl ? classifyBasemapUrl(customUrl) : null
+
+    // A full MapLibre style URL replaces the whole document. Hand it to
+    // setStyle/new Map, which fetch it; app layers are re-added on style.load.
+    if (basemapType === "style") return customUrl
+
+    // Raster XYZ tiles need their own source and layer — the vendored vector
+    // layers cannot draw against a raster source.
+    if (basemapType === "raster") return await buildRasterStyle(customUrl)
+
+    const tilesUrl = customUrl || TILE_SOURCE_URL
+
+    // Custom themes are built client-side from the user's stored color
+    // tokens (poster-minimal basemap) — no vendored JSON to fetch. Base-map
+    // categories map onto the minimal layer set; label/POI options have no
+    // counterpart there and are ignored.
+    if (styleName === "custom") {
+      const tokens = options.customTheme?.tokens
+      if (!tokens) throw new Error("Custom map style has no theme tokens")
+      return buildBasemapStyle({
+        theme: resolveTheme(tokens),
+        tileUrl: tilesUrl,
+        extras: true,
+        hiddenCategories: options.hiddenTileCategories || [],
+      })
+    }
+
     // Load the style file
     const style = await loadStyleFile(styleName)
 
@@ -331,12 +397,11 @@ export async function getMapStyle(styleName = "light", options = {}) {
     if (clonedStyle.sources?.protomaps) {
       clonedStyle.sources.protomaps = {
         type: "vector",
-        tiles: [TILE_SOURCE_URL],
+        tiles: [tilesUrl],
         minzoom: 0,
         maxzoom: 15,
         attribution:
-          clonedStyle.sources.protomaps.attribution ||
-          '<a href="https://github.com/protomaps/basemaps">Protomaps</a> © <a href="https://openstreetmap.org">OpenStreetMap</a>',
+          clonedStyle.sources.protomaps.attribution || BASEMAP_ATTRIBUTION,
       }
     }
 

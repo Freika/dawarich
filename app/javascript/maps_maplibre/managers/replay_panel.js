@@ -1,3 +1,4 @@
+import { ReplayPhotoStack } from "maps_maplibre/components/replay_photo_stack"
 import { ReplayMarkerLayer } from "maps_maplibre/layers/replay_marker_layer"
 import { ReplayPhotoLayer } from "maps_maplibre/layers/replay_photo_layer"
 import { ReplayManager } from "maps_maplibre/managers/replay_manager"
@@ -21,6 +22,8 @@ export class ReplayPanel {
     this._onReplayPhotosActive = opts.onReplayPhotosActive || (() => {})
     this._replayPhotoLayer = null
     this._photoIndex = null
+    this._replayPhotoStack = null
+    this._lastPlayheadMs = null
   }
 
   get isOpen() {
@@ -106,34 +109,54 @@ export class ReplayPanel {
       timezone: this.timezone,
     })
     this._replayPhotoLayer.setPhotos(this._photoIndex.allPhotos())
+    this._replayPhotoStack = new ReplayPhotoStack(this.map, {
+      timezone: this.timezone,
+    })
     this._onReplayPhotosActive(true)
   }
 
   updateRevealedPhotos(playheadMs) {
-    if (!this._replayPhotoLayer || !this._photoIndex) return
     if (playheadMs === null || playheadMs === undefined) return
+    this._lastPlayheadMs = playheadMs
+    if (!this._replayPhotoLayer || !this._photoIndex) return
 
     const day = this.replayManager?.getCurrentDay()
     if (!day) return
 
-    const reveal = new Set(this._photoIndex.idsToReveal(day, playheadMs))
+    const revealed = this._photoIndex.revealedPhotos(day, playheadMs)
+    const revealIds = new Set(revealed.map((photo) => photo.id))
     for (const photo of this._photoIndex.dayPhotos(day)) {
-      if (reveal.has(photo.id)) {
+      if (revealIds.has(photo.id)) {
         this._replayPhotoLayer.reveal(photo.id)
       } else {
         this._replayPhotoLayer.hide(photo.id)
       }
     }
+    this._replayPhotoStack?.sync(revealed)
   }
 
   resetReplayPhotos() {
     if (this._replayPhotoLayer) this._replayPhotoLayer.hideAll()
+    if (this._replayPhotoStack) this._replayPhotoStack.clear()
+  }
+
+  refreshReplayPhotos() {
+    if (!this.replayManager) return
+    this.teardownReplayPhotos()
+    this.setupReplayPhotos()
+    if (this._lastPlayheadMs !== null && this._lastPlayheadMs !== undefined) {
+      this.updateRevealedPhotos(this._lastPlayheadMs)
+    }
   }
 
   teardownReplayPhotos() {
     if (this._replayPhotoLayer) {
       this._replayPhotoLayer.clear()
       this._replayPhotoLayer = null
+    }
+    if (this._replayPhotoStack) {
+      this._replayPhotoStack.destroy()
+      this._replayPhotoStack = null
     }
     if (this._photoIndex) {
       this._photoIndex = null
@@ -154,6 +177,7 @@ export class ReplayPanel {
     this.clearMarker()
     this.clearHighlight()
     this.teardownReplayPhotos()
+    this.unbindFollowInterrupt()
     this.replayManager = null
   }
 
@@ -374,8 +398,7 @@ export class ReplayPanel {
     if (!this.c.hasReplayDayCountTarget || !this.replayManager) return
     const dayCount = this.replayManager.getDayCount()
     const currentIndex = this.replayManager.currentDayIndex + 1
-    const pointCount = this.replayManager.getCurrentDayPointCount()
-    this.c.replayDayCountTarget.textContent = `Day ${currentIndex} of ${dayCount} • ${pointCount.toLocaleString()} points`
+    this.c.replayDayCountTarget.textContent = `Day ${currentIndex} of ${dayCount}`
   }
 
   renderDensity() {
@@ -465,6 +488,8 @@ export class ReplayPanel {
     this.replaySpeed = this.replaySpeed || 2
     this.replayPoints = dayPoints
     this.replayPointIndex = 0
+    this.userPanned = false
+    this.setFollowActive(true)
 
     const currentMinute = parseInt(this.c.replayScrubberTarget.value, 10)
     for (let i = 0; i < dayPoints.length; i++) {
@@ -535,6 +560,7 @@ export class ReplayPanel {
     this.replayNextCoords = null
     this.replaySegmentDurationMs = 0
     this.userPanned = false
+    this.setFollowActive(false)
     if (this.c.hasReplaySpeedLabelTarget)
       this.c.replaySpeedLabelTarget.textContent = "2x"
     if (this.c.hasReplaySpeedSliderTarget)
@@ -639,9 +665,25 @@ export class ReplayPanel {
   bindFollowInterrupt() {
     if (this._followInterruptBound || !this.map) return
     this._followInterruptBound = true
-    this.map.on("movestart", (event) => {
-      if (this.replayActive && event.originalEvent) this.userPanned = true
-    })
+    this._followEvents = ["mousedown", "touchstart", "wheel", "dragstart"]
+    this._followHandler = () => {
+      if (!this.userPanned) {
+        this.userPanned = true
+        this.setFollowActive(false)
+      }
+    }
+    for (const event of this._followEvents) {
+      this.map.on(event, this._followHandler)
+    }
+  }
+
+  unbindFollowInterrupt() {
+    if (!this._followInterruptBound || !this.map || !this._followHandler) return
+    for (const event of this._followEvents) {
+      this.map.off(event, this._followHandler)
+    }
+    this._followHandler = null
+    this._followInterruptBound = false
   }
 
   panToFollow(lon, lat) {
@@ -670,6 +712,7 @@ export class ReplayPanel {
     const coords = this.replayManager?.getCoordinates(point)
     const layer = this.markerLayer
     if (!coords || !layer) return
+    this._markerLngLat = [coords.lon, coords.lat]
     layer.showMarker(coords.lon, coords.lat, {
       timestamp: this.replayManager.getTimestamp(point),
     })
@@ -677,8 +720,22 @@ export class ReplayPanel {
 
   showMarkerAt(lon, lat) {
     if (lon === undefined || lat === undefined) return
+    this._markerLngLat = [lon, lat]
     const layer = this.markerLayer
     if (layer) layer.showMarker(lon, lat)
+  }
+
+  recenterFollow() {
+    this.userPanned = false
+    this.setFollowActive(true)
+    if (this.map && this._markerLngLat) {
+      this.map.easeTo({ center: this._markerLngLat, duration: 400 })
+    }
+  }
+
+  setFollowActive(active) {
+    if (!this.c.hasReplayFollowButtonTarget) return
+    this.c.replayFollowButtonTarget.classList.toggle("following", active)
   }
 
   clearMarker() {

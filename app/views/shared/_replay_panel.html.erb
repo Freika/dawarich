@@ -66,6 +66,14 @@
         <span class="play-icon" data-<%= stimulus %>-target="replayPlayIcon">&#9658;</span>
         <span class="pause-icon hidden" data-<%= stimulus %>-target="replayPauseIcon">&#10074;&#10074;</span>
       </button>
+      <button type="button"
+              class="replay-follow-btn"
+              data-<%= stimulus %>-target="replayFollowButton"
+              data-action="click-><%= stimulus %>#replayRecenterFollow"
+              title="Recenter & follow marker"
+              aria-label="Recenter and follow the marker">
+        <%= icon "locate-fixed", class: "replay-follow-icon" %>
+      </button>
       <div class="replay-speed-control">
         <input type="range"
                class="replay-speed-slider"

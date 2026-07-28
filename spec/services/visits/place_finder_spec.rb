@@ -73,9 +73,7 @@ RSpec.describe Visits::PlaceFinder do
     end
   end
 
-  describe '#find_or_create_place with stay_point_detection enabled' do
-    before { allow(Flipper).to receive(:enabled?).with(:stay_point_detection, user).and_return(true) }
-
+  describe '#find_or_create_place candidate ranking' do
     def place_at(lat, lon, name:, source:)
       create(:place, user: user, name: name, source: source,
                      latitude: lat, longitude: lon, lonlat: "POINT(#{lon} #{lat})", geodata: {})

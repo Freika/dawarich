@@ -1,0 +1,30 @@
+<div id="<%= dom_id(poster) %>" class="card bg-base-200 shadow-sm">
+  <% if poster.completed? && poster.image.attached? %>
+    <figure><%= image_tag rails_blob_path(poster.image, only_path: true), class: 'w-full rounded-t-lg' %></figure>
+  <% end %>
+  <div class="card-body p-3">
+    <h4 class="card-title text-sm"><%= poster.name %></h4>
+    <% if poster.failed? %>
+      <p class="text-error text-xs"><%= poster.settings['error'] %></p>
+    <% elsif !poster.completed? %>
+      <% phase = poster_render_phase(poster) %>
+      <p class="text-xs opacity-70 flex items-center gap-2">
+        <span class="loading loading-spinner loading-xs"></span> <%= phase[:label] %>
+      </p>
+      <progress class="progress progress-primary w-full" value="<%= phase[:step] %>" max="4"></progress>
+    <% end %>
+    <div class="card-actions justify-end">
+      <% if poster.completed? && poster.image.attached? %>
+        <%= link_to 'Download PNG', rails_blob_path(poster.image, disposition: 'attachment', only_path: true),
+              class: 'btn btn-xs btn-ghost' %>
+      <% end %>
+      <% if poster.completed? && poster.print_pdf.attached? %>
+        <%= link_to 'Download PDF', rails_blob_path(poster.print_pdf, disposition: 'attachment', only_path: true),
+              class: 'btn btn-xs btn-primary' %>
+      <% end %>
+      <%= link_to 'Delete', poster_path(poster),
+            class: 'btn btn-xs btn-ghost',
+            data: { turbo_method: :delete, turbo_confirm: 'Delete this poster?' } %>
+    </div>
+  </div>
+</div>

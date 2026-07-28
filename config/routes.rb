@@ -127,6 +127,7 @@ Rails.application.routes.draw do
     end
   end
   resources :exports, only: %i[index create destroy]
+  resources :posters, only: %i[create destroy]
   resources :trips do
     member do
       post :recalculate
@@ -284,6 +285,8 @@ Rails.application.routes.draw do
       patch 'settings', to: 'settings#update'
       get   'settings', to: 'settings#index'
       get   'settings/transportation_recalculation_status', to: 'settings#transportation_recalculation_status'
+      get   'settings/mobile', to: 'settings/mobile#show'
+      patch 'settings/mobile', to: 'settings/mobile#update'
       get   'users/me', to: 'users#me'
       delete 'users/me', to: 'users/destroy#destroy'
 
@@ -299,7 +302,10 @@ Rails.application.routes.draw do
 
       resources :areas,     only: %i[index show create update destroy]
       resources :imports,   only: %i[index show create]
-      resources :places,    only: %i[index show create update destroy] do
+      namespace :imports do
+        post :pending, to: 'pending#create'
+      end
+      resources :places, only: %i[index show create update destroy] do
         collection do
           get 'nearby'
           get 'search'
@@ -326,6 +332,7 @@ Rails.application.routes.draw do
       end
       resource :plan, only: [:show], controller: 'plan'
       resource :residency, only: [:show], controller: 'residency'
+      resource :demo_data, only: %i[show create destroy], controller: 'demo_data'
       resources :recalculations, only: [:create]
       resources :stats, only: :index
       resources :insights, only: :index do

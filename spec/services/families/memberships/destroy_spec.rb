@@ -43,6 +43,33 @@ RSpec.describe Families::Memberships::Destroy do
       end
     end
 
+    context 'effective access lifecycle (cloud, family-plan owner)' do
+      let(:user) { create(:user, plan: :family, skip_auto_trial: true) }
+      let(:family) { create(:family, creator: user) }
+      let(:member) { create(:user, plan: :lite, skip_auto_trial: true) }
+      let!(:owner_membership) { create(:family_membership, user: user, family: family, role: :owner) }
+      let!(:member_membership) { create(:family_membership, user: member, family: family, role: :member) }
+      let(:service) { described_class.new(user: user, member_to_remove: member) }
+
+      before { allow(DawarichSettings).to receive(:self_hosted?).and_return(false) }
+
+      it 'revokes full access when the member is removed, without deleting their data' do
+        recent_point = create(:point, user: member, timestamp: 1.month.ago.to_i)
+        old_point = create(:point, user: member, timestamp: 2.years.ago.to_i)
+
+        expect(member.full_access?).to be true
+
+        service.call
+        member.reload
+
+        expect(member.full_access?).to be false
+        expect(member.plan_restricted?).to be true
+        expect(member.points).to include(recent_point, old_point)
+        expect(member.scoped_points).to include(recent_point)
+        expect(member.scoped_points).not_to include(old_point)
+      end
+    end
+
     context 'when user is family owner with no other members' do
       let!(:membership) { create(:family_membership, user: user, family: family, role: :owner) }
 

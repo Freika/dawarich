@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Auth::AccountLinksController < ApplicationController
+  include PendingImportClaimable
+
   MAX_FAILED_PASSWORD_ATTEMPTS = 5
 
   before_action :no_store_headers
@@ -36,6 +38,7 @@ class Auth::AccountLinksController < ApplicationController
       )
     else
       sign_in(user)
+      claim_pending_import_for(user)
       redirect_to root_path, notice: "#{provider_label(result.provider)} is now linked to your account."
     end
   end
@@ -82,6 +85,7 @@ class Auth::AccountLinksController < ApplicationController
                           'Sign in with your password and 2FA code to continue.'
     else
       sign_in(user)
+      claim_pending_import_for(user)
       redirect_to root_path,
                   notice: "#{label_for(pending)} is now linked to your account."
     end

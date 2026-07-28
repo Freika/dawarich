@@ -31,7 +31,20 @@ RSpec.describe Points::RawData::VerifyRandomJob, type: :job do
       end
     end
 
-    context 'when there are no unverified archives' do
+    context 'when there are only verified archives' do
+      let(:user) { create(:user) }
+      let!(:archive) do
+        create(:points_raw_data_archive, user: user, verified_at: 1.month.ago)
+      end
+
+      it 'spot-checks them for bit rot' do
+        expect(verifier).to receive(:verify_specific_archive).with(archive.id)
+
+        described_class.perform_now
+      end
+    end
+
+    context 'when there are no archives at all' do
       it 'does nothing' do
         expect(verifier).not_to receive(:verify_specific_archive)
 

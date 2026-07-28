@@ -115,10 +115,10 @@ RSpec.describe Families::UpdateLocationSharing do
         let(:share_history) { nil }
         let(:history_window) { 'invalid_value' }
 
-        it 'falls back to 24h' do
+        it 'falls back to the default window' do
           call_service
           user.reload
-          expect(user.family_history_window).to eq('24h')
+          expect(user.family_history_window).to eq(UserFamily::DEFAULT_HISTORY_WINDOW)
         end
       end
 
