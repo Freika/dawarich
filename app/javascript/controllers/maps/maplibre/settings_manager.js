@@ -60,6 +60,7 @@ export class SettingsController {
     // Sync layer toggles
     const toggleMap = {
       pointsToggle: "pointsVisible",
+      pointsEditToggle: "pointDraggingEnabled",
       routesToggle: "routesVisible",
       heatmapToggle: "heatmapEnabled",
       hexagonsToggle: "hexagonsEnabled",
@@ -82,6 +83,7 @@ export class SettingsController {
       "hexagonsToggle",
       "fogToggle",
       "scratchToggle",
+      "pointsEditToggle",
     ])
 
     Object.entries(toggleMap).forEach(([targetName, settingKey]) => {
@@ -317,14 +319,6 @@ export class SettingsController {
 
     // Sync transportation mode settings
     this.syncTransportationSettings()
-
-    // Sync point dragging toggle
-    const pointDraggingToggle = controller.element.querySelector(
-      'input[name="pointDraggingEnabled"]',
-    )
-    if (pointDraggingToggle) {
-      pointDraggingToggle.checked = this.settings.pointDraggingEnabled !== false
-    }
 
     // All form inputs are seeded now — let the dirty tracker snapshot them
     document.dispatchEvent(new CustomEvent("map-settings:synced"))
@@ -1274,6 +1268,14 @@ export class SettingsController {
     await SettingsManager.updateSetting("fogOfWarMode", mode)
   }
 
+  togglePointsEditing(event) {
+    const enabled = event.target.checked
+
+    this.layerManager.getLayer("points")?.setEditMode(enabled)
+
+    SettingsManager.updateSetting("pointDraggingEnabled", enabled)
+  }
+
   updateRouteOpacity(event) {
     const opacity = parseInt(event.target.value, 10) / 100
 
@@ -1283,24 +1285,6 @@ export class SettingsController {
     }
 
     SettingsManager.updateSetting("routeOpacity", opacity)
-  }
-
-  /**
-   * Update point dragging setting on existing pointsLayer
-   */
-  updatePointDraggingEnabled(event) {
-    const enabled = event.target.checked
-
-    if (this.layerManager.layers.pointsLayer) {
-      this.layerManager.layers.pointsLayer.pointDraggingEnabled = enabled
-      if (enabled) {
-        this.layerManager.layers.pointsLayer.enableDragging()
-      } else {
-        this.layerManager.layers.pointsLayer.disableDragging()
-      }
-    }
-
-    SettingsManager.updateSetting("pointDraggingEnabled", enabled)
   }
 
   /**
@@ -1476,7 +1460,6 @@ export class SettingsController {
       maxGapMinutesInCity: parseInt(formData.get("maxGapMinutesInCity"), 10),
       gpsFilteringEnabled: formData.get("gpsFilteringEnabled") === "on",
       gpsAccuracyThreshold: parseInt(formData.get("gpsAccuracyThreshold"), 10),
-      pointDraggingEnabled: formData.get("pointDraggingEnabled") === "on",
     }
 
     if (formData.has("stayMaxGapMinutes")) {

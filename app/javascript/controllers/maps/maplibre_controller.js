@@ -62,6 +62,7 @@ export default class extends Controller {
     "searchResults",
     // Layer toggles
     "pointsToggle",
+    "pointsEditToggle",
     "routesToggle",
     "heatmapToggle",
     "hexagonsToggle",
@@ -79,8 +80,6 @@ export default class extends Controller {
     "speedColoredToggle",
     "speedColorScaleContainer",
     "speedColorScaleInput",
-    // Point dragging
-    "pointDraggingToggle",
     // Globe projection
     "globeToggle",
     // Family members
@@ -1289,9 +1288,6 @@ export default class extends Controller {
   applyTransportationSettings(event) {
     return this.settingsController.applyTransportationSettings(event)
   }
-  updatePointDraggingEnabled(event) {
-    return this.settingsController.updatePointDraggingEnabled(event)
-  }
 
   // Area Selection Manager methods
   startSelectArea() {
@@ -1408,8 +1404,7 @@ export default class extends Controller {
   }
 
   togglePointsEditing(event) {
-    const pointsLayer = this.layerManager.getLayer("points")
-    pointsLayer?.setEditMode(event.currentTarget.checked)
+    return this.settingsController.togglePointsEditing(event)
   }
   toggleRoutes(event) {
     return this.routesManager.toggleRoutes(event)

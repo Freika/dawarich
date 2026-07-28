@@ -64,6 +64,28 @@ RSpec.describe 'Api::V1::Settings', type: :request do
         expect(user.reload.timezone).to eq('UTC')
       end
 
+      it 'updates point_dragging_enabled' do
+        patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { point_dragging_enabled: true } }
+
+        expect(response).to have_http_status(:success)
+        expect(user.reload.safe_settings.point_dragging_enabled?).to be true
+      end
+
+      it 'returns point_dragging_enabled in the response' do
+        patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { point_dragging_enabled: true } }
+
+        expect(response.parsed_body['settings']['point_dragging_enabled']).to be true
+      end
+
+      it 'turns point_dragging_enabled back off' do
+        user.update!(settings: user.settings.merge('point_dragging_enabled' => true))
+
+        patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { point_dragging_enabled: false } }
+
+        expect(response).to have_http_status(:success)
+        expect(user.reload.safe_settings.point_dragging_enabled?).to be false
+      end
+
       it 'updates fog_of_war_mode' do
         patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { fog_of_war_mode: 'hexagons' } }
 
@@ -267,6 +289,14 @@ RSpec.describe 'Api::V1::Settings', type: :request do
 
           expect(response).to have_http_status(:success)
           expect(lite_user.reload.safe_settings.maps_maplibre_style).to eq('dark')
+        end
+
+        it 'still persists point_dragging_enabled so it applies after an upgrade' do
+          patch "/api/v1/settings?api_key=#{lite_api_key}",
+                params: { settings: { point_dragging_enabled: true } }
+
+          expect(response).to have_http_status(:success)
+          expect(lite_user.reload.safe_settings.point_dragging_enabled?).to be true
         end
       end
 

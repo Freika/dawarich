@@ -73,10 +73,16 @@
             <label class="label cursor-pointer justify-start gap-3 ml-14 mt-1">
               <input type="checkbox"
                      class="toggle toggle-primary toggle-sm"
+                     data-maps--maplibre-target="pointsEditToggle"
                      data-action="change->maps--maplibre#togglePointsEditing" />
               <span class="label-text">Edit points</span>
             </label>
-            <p class="text-sm text-base-content/60 ml-24">Allow dragging points to correct their position</p>
+            <% if current_user.plan_restricted? %>
+              <p class="text-sm text-base-content/60 ml-24">Allow dragging points to correct their position.</p>
+              <p class="text-xs text-warning ml-24 mt-1">Editing points is a Pro feature — this stays on for the current session only, and moves aren't saved on the Lite plan.</p>
+            <% else %>
+              <p class="text-sm text-base-content/60 ml-24">Allow dragging points to correct their position. Remembered across sessions.</p>
+            <% end %>
           </div>
 
           <div class="divider"></div>
@@ -978,21 +984,6 @@
           </div>
             </div>
           </details>
-
-          <!-- Point Dragging -->
-          <div class="form-control">
-            <label class="label cursor-pointer justify-start gap-3">
-              <input type="checkbox"
-                     name="pointDraggingEnabled"
-                     class="toggle toggle-primary"
-                     data-maps--maplibre-target="pointDraggingToggle"
-                     data-action="input->maps--maplibre#updatePointDraggingEnabled" />
-              <span class="label-text font-medium">Point Dragging</span>
-            </label>
-            <p class="text-sm text-base-content/60 mt-1">Allow modifying point coordinates by dragging them on the map.</p>
-          </div>
-
-          <div class="divider"></div>
 
           <!-- Update Button -->
           <button type="submit" class="btn btn-sm btn-primary btn-block">
