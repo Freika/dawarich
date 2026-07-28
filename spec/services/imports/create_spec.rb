@@ -213,6 +213,31 @@ RSpec.describe Imports::Create do
       end
     end
 
+    context 'when a multi-entry archive exceeds the file-count limit' do
+      let(:import) { create(:import, user:, source: nil, status: 'created') }
+
+      before do
+        archive = Zip::OutputStream.write_buffer do |zip|
+          zip.put_next_entry('first.gpx')
+          zip.write('x')
+          zip.put_next_entry('second.gpx')
+          zip.write('y')
+        end
+        archive.rewind
+        import.file.attach(io: archive, filename: 'rides.zip', content_type: 'application/zip')
+        stub_const('Imports::ZipExtractor::MAX_FILES', 1)
+        allow(ExceptionReporter).to receive(:call)
+      end
+
+      it 'fails the import without reporting an application exception' do
+        service.call
+
+        expect(import.reload).to be_failed
+        expect(import.error_message).to eq('Too many files in archive (max 1)')
+        expect(ExceptionReporter).not_to have_received(:call)
+      end
+    end
+
     context 'when a CSV is missing required columns' do
       let(:import) { create(:import, user:, source: 'csv', status: 'created') }
 

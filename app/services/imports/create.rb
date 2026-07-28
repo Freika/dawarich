@@ -66,6 +66,7 @@ class Imports::Create
     error.is_a?(Imports::SourceDetector::UnknownSourceError) ||
       error.is_a?(Imports::SecureFileDownloader::EmptyFileError) ||
       error.is_a?(Archive::Unzipper::ArchiveTooLarge) ||
+      error.is_a?(Imports::ZipExtractor::TooManyFiles) ||
       error.is_a?(Csv::Detector::DetectionError)
   end
 

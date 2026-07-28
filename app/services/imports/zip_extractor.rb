@@ -4,6 +4,8 @@ require 'zip'
 
 module Imports
   class ZipExtractor
+    class TooManyFiles < StandardError; end
+
     SUPPORTED_EXTENSIONS = %w[.gpx .json .geojson .kml .kmz .csv .tcx .fit .rec].freeze
     MAX_FILES = 25_000
 
@@ -58,7 +60,7 @@ module Imports
 
       ::Zip::File.open(@stable_zip_path) do |zip_file|
         entries = zip_file.select { |entry| extractable_entry?(entry) }
-        raise "Too many files in archive (max #{MAX_FILES})" if entries.size > MAX_FILES
+        raise TooManyFiles, "Too many files in archive (max #{MAX_FILES})" if entries.size > MAX_FILES
 
         entries.each do |entry|
           dest = File.join(temp_dir, entry.name)
