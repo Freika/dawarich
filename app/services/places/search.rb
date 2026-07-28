@@ -20,12 +20,24 @@ module Places
       return [] if @query.length < MIN_QUERY_LENGTH
 
       fetch_and_filter
+    rescue *ReverseGeocoding::ProviderErrors::SEARCH_HANDLED => e
+      log_provider_error(e)
+      []
     rescue StandardError => e
-      ExceptionReporter.call(e, "Places::Search failed for '#{@query}' near #{@latitude},#{@longitude}")
+      if ReverseGeocoding::ProviderErrors.transient_tls?(e)
+        log_provider_error(e)
+      else
+        Rails.logger.error("Place search failed: #{e.class}: #{e.message}")
+        ExceptionReporter.call(e, 'Places::Search failed')
+      end
       []
     end
 
     private
+
+    def log_provider_error(error)
+      Rails.logger.warn("Place search provider error: #{error.class} (query length: #{@query.length})")
+    end
 
     def fetch_and_filter
       Geocoder.search(@query, limit: FETCH_LIMIT, bias: { latitude: @latitude, longitude: @longitude })

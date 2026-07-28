@@ -505,6 +505,7 @@ export class DataLoader {
           latitude: place.latitude,
           longitude: place.longitude,
           note: place.note,
+          nameLocked: Boolean(place.name_locked),
           // Stringify tags for MapLibre GL JS compatibility
           tags: JSON.stringify(place.tags || []),
           // Use first tag's color if available

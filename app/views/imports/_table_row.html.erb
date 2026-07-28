@@ -31,7 +31,7 @@
   <td class="px-4 py-3" data-status-display>
     <%= status_badge(import) %>
   </td>
-  <td class="px-4 py-3 text-sm text-base-content/50"><%= human_datetime(import.created_at, current_user.safe_settings.timezone) %></td>
+  <td class="px-4 py-3 text-sm text-base-content/50"><%= human_datetime(import.created_at, local_assigns[:timezone]) %></td>
   <td class="px-4 py-3 text-right">
     <div class="flex items-center gap-1 justify-end">
       <% if import.deleting? && import.updated_at > 1.hour.ago %>
