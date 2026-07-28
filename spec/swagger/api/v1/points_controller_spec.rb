@@ -46,7 +46,9 @@ describe 'Points API', type: :request do
                    mode: { type: :number, nullable: true, description: 'Tracking mode' },
                    inrids: { type: :array, items: { type: :string }, nullable: true, description: 'Region IDs' },
                    in_regions: { type: :array, items: { type: :string }, nullable: true, description: 'Region names' },
-                   raw_data: { type: :string, nullable: true, description: 'Raw data from the tracking device' },
+                   raw_data: { type: :string, nullable: true,
+                               description: 'Raw payload from live tracking devices. Empty for points ' \
+                                            'imported from files — the uploaded file keeps the original data.' },
                    import_id: { type: :string, nullable: true, description: 'Import ID if point was imported' },
                    city: { type: :string, nullable: true, description: 'Reverse-geocoded city name' },
                    country: { type: :string, nullable: true, description: 'Reverse-geocoded country name' },

@@ -15,6 +15,7 @@ class Points::AnomalyFilter
     return 0 unless filtering_enabled?
 
     count = 0
+    count += filter_null_island
     count += filter_by_accuracy
     count += filter_by_speed
     count
@@ -32,6 +33,15 @@ class Points::AnomalyFilter
 
   def accuracy_threshold
     @accuracy_threshold ||= user_settings.gps_accuracy_threshold
+  end
+
+  # Pass 0: Null Island — a sustained (0,0) run defeats the speed sandwich
+  # (internal speeds are 0), so exact zeros are flagged unconditionally.
+  def filter_null_island
+    Point.where(user_id: @user_id, timestamp: @start_time..@end_time)
+         .not_anomaly
+         .null_island
+         .update_all(anomaly: true, updated_at: Time.current)
   end
 
   # Pass 1: Mark points with accuracy > threshold

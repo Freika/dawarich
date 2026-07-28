@@ -40,6 +40,10 @@ class Imports::SourceDetector
         }
       ]
     },
+    google_photos: {
+      required_keys: %w[title creationTime imageViews],
+      nested_patterns: [%w[creationTime timestamp]]
+    },
     geojson: {
       required_keys: %w[type features],
       required_values: { 'type' => 'FeatureCollection' },
@@ -143,6 +147,7 @@ class Imports::SourceDetector
       else
         file_content
       end
+    content_to_check = strip_bom(content_to_check)
     (
       content_to_check.strip.start_with?('<?xml') ||
       content_to_check.strip.start_with?('<gpx')
@@ -159,6 +164,7 @@ class Imports::SourceDetector
       else
         file_content
       end
+    content_to_check = strip_bom(content_to_check)
 
     # Check if it's a KMZ file (ZIP archive)
     if filename&.downcase&.end_with?('.kmz')
@@ -245,6 +251,9 @@ class Imports::SourceDetector
       :google_phone_takeout
     elsif content.include?('"topCandidate"') && content.include?('"placeLocation"')
       :google_phone_takeout
+    elsif content.include?('"title"') && content.include?('"imageViews"') &&
+          content.include?('"creationTime"')
+      :google_photos
     elsif content.include?('"arrived"') && content.include?('"departed"') && content.include?('"segment-')
       :polarsteps
     end

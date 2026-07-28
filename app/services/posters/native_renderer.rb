@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'open3'
+require 'timeout'
 
 module Posters
   # Renders a poster in-process via the vendored maplibre-native Node
@@ -15,12 +16,14 @@ module Posters
     SIZE = { width: 1200, height: 1600, ratio: 2 }.freeze
     PRINT = { width_mm: 300, height_mm: 400, dpi: 203 }.freeze
     RENDER_TIMEOUT = 180
+    TERMINATE_TIMEOUT = 5
 
-    def initialize(poster:, track:, distance:, route_opacity:, subtitle:, command: nil)
+    def initialize(poster:, track:, distance:, route_opacity:, subtitle:, route_width: 1, command: nil)
       @poster = poster
       @track = track
       @distance = distance
       @route_opacity = route_opacity
+      @route_width = route_width
       @subtitle = subtitle
       @command = command || default_command
     end
@@ -45,6 +48,7 @@ module Posters
         tokens: theme_tokens,
         trackGeojson: { type: 'Feature', properties: {}, geometry: @track },
         trackOpacity: @route_opacity,
+        trackWidth: @route_width,
         view: {
           lat: @poster.settings['lat'].to_f,
           lon: @poster.settings['lon'].to_f,
@@ -78,10 +82,55 @@ module Posters
     end
 
     def run_renderer(job_path)
-      stdout, stderr, status = Open3.capture3(*@command, job_path)
+      stdout = stderr = status = nil
+
+      Open3.popen3(*@command, job_path, pgroup: true) do |stdin, stdout_io, stderr_io, wait_thread|
+        stdin.close
+        stdout_reader = Thread.new { stdout_io.read }
+        stderr_reader = Thread.new { stderr_io.read }
+
+        begin
+          Timeout.timeout(RENDER_TIMEOUT) do
+            status = wait_thread.value
+            stdout = stdout_reader.value
+            stderr = stderr_reader.value
+          end
+        rescue Timeout::Error
+          terminate_process_group(wait_thread, [stdout_reader, stderr_reader])
+          raise Error, "Poster renderer timed out after #{RENDER_TIMEOUT} seconds"
+        end
+      end
+
       return if status.success?
 
       raise Error, "Poster renderer failed (#{status.exitstatus}): #{stderr.presence || stdout}".strip
+    end
+
+    def terminate_process_group(wait_thread, readers)
+      process_group_id = wait_thread.pid
+      signal_process_group('TERM', process_group_id)
+      readers.each { |reader| reader.join(TERMINATE_TIMEOUT) }
+      wait_thread.join(TERMINATE_TIMEOUT)
+
+      signal_process_group('KILL', process_group_id) if process_group_alive?(process_group_id)
+      wait_thread.join(TERMINATE_TIMEOUT)
+    ensure
+      readers&.each { |reader| reader.join(TERMINATE_TIMEOUT) || reader.kill }
+    end
+
+    def signal_process_group(signal, process_group_id)
+      Process.kill(signal, -process_group_id)
+    rescue Errno::ESRCH
+      nil
+    end
+
+    def process_group_alive?(process_group_id)
+      Process.kill(0, -process_group_id)
+      true
+    rescue Errno::ESRCH
+      false
+    rescue Errno::EPERM
+      true
     end
 
     def default_command

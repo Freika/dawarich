@@ -70,7 +70,7 @@ module Visits
         grouped_visits   = group_nearby_visits(merged_visits).flatten
 
         created.concat(
-          Visits::Creator.new(user, scoring_on: stay_point_detection_enabled?).create_visits(grouped_visits)
+          Visits::Creator.new(user, scoring_on: true).create_visits(grouped_visits)
         )
       end
 
@@ -79,39 +79,13 @@ module Visits
     end
 
     def detect_clusters(batch_start, batch_end)
-      clusterer_for(batch_start, batch_end).call
+      Visits::StayPointDetector.new(user, start_at: batch_start, end_at: batch_end).call
     rescue StandardError => e
-      # Flag off → DBSCAN is the source of truth; let its errors surface unchanged.
-      raise unless stay_point_detection_enabled?
-
       Rails.logger.warn(
         "[Visits::SmartDetect] StayPointDetector failed, falling back to DbscanClusterer: #{e.class}: #{e.message}"
       )
       ExceptionReporter.call(e, '[Visits::SmartDetect] StayPointDetector failed, falling back to DbscanClusterer')
       Visits::DbscanClusterer.new(user, start_at: batch_start, end_at: batch_end).call
-    end
-
-    def clusterer_for(batch_start, batch_end)
-      if stay_point_detection_enabled?
-        Visits::StayPointDetector.new(user, start_at: batch_start, end_at: batch_end)
-      else
-        Visits::DbscanClusterer.new(user, start_at: batch_start, end_at: batch_end)
-      end
-    end
-
-    def stay_point_detection_enabled?
-      return @stay_point_detection_enabled if defined?(@stay_point_detection_enabled)
-
-      @stay_point_detection_enabled =
-        begin
-          Flipper.enabled?(:stay_point_detection, user)
-        rescue StandardError => e
-          Rails.logger.warn(
-            "[Visits::SmartDetect] Flipper unavailable, using DbscanClusterer: #{e.class}: #{e.message}"
-          )
-          ExceptionReporter.call(e, '[Visits::SmartDetect] Flipper unavailable, using DbscanClusterer')
-          false
-        end
     end
 
     def batch_ranges
@@ -170,7 +144,7 @@ module Visits
       duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - started_at) * 1000).to_i
       Rails.logger.info(
         "[Visits::SmartDetect] user_id=#{user.id} range=#{@start_at}..#{@end_at} " \
-        "detector=#{stay_point_detection_enabled? ? 'stay_point' : 'dbscan'} " \
+        'detector=stay_point ' \
         "batches=#{batch_count} points_in=#{points_in} clusters=#{clusters} " \
         "visits_created=#{visits_created} duration_ms=#{duration_ms}"
       )

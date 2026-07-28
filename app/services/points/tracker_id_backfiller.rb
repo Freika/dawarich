@@ -2,6 +2,7 @@
 
 class Points::TrackerIdBackfiller
   BATCH_SIZE = 5_000
+  LEGACY_CONSTANTS = %w[google-maps-timeline-export google-maps-phone-timeline-export].freeze
 
   attr_reader :user
 
@@ -34,7 +35,10 @@ class Points::TrackerIdBackfiller
         SELECT id FROM points
         WHERE user_id = #{user.id.to_i}
           AND id > #{cursor.to_i}
-          AND tracker_id IS NULL
+          AND (
+            tracker_id IS NULL
+            OR tracker_id IN (#{LEGACY_CONSTANTS.map { |c| "'#{c}'" }.join(', ')})
+          )
           AND (
             length(btrim(raw_data->>'deviceTag')) > 0
             OR length(btrim(raw_data->>'tid')) > 0

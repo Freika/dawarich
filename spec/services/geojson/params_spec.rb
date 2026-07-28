@@ -3,6 +3,29 @@
 require 'rails_helper'
 
 RSpec.describe Geojson::Params do
+  describe '#each_point' do
+    let(:json) do
+      {
+        'type' => 'Feature',
+        'geometry' => {
+          'type' => 'LineString',
+          'coordinates' => [
+            [13.4, 52.5, 0, 1_609_459_201],
+            [13.5, 52.6, 0, 1_609_459_262]
+          ]
+        },
+        'properties' => {}
+      }
+    end
+
+    it 'returns an enumerator that yields points individually' do
+      points = described_class.new(json).each_point
+
+      expect(points).to be_an(Enumerator)
+      expect(points.map { |point| point[:timestamp] }).to eq([1_609_459_201, 1_609_459_262])
+    end
+  end
+
   describe 'field alias detection' do
     let(:fixture_path) { Rails.root.join('spec/fixtures/files/geojson/various_fields.geojson') }
     let(:json) { JSON.parse(File.read(fixture_path)) }
@@ -56,6 +79,64 @@ RSpec.describe Geojson::Params do
   describe '#call' do
     subject { described_class.new(json).call }
 
+    context 'when the feature is a LineString' do
+      let(:json) do
+        {
+          'type' => 'Feature',
+          'geometry' => {
+            'type' => 'LineString',
+            'coordinates' => [
+              [13.4, 52.5, 0, 1_609_459_201],
+              [13.5, 52.6, 0, 1_609_459_262]
+            ]
+          },
+          'properties' => {}
+        }
+      end
+
+      it 'builds a point for every coordinate' do
+        expect(subject.size).to eq(2)
+        expect(subject.first[:lonlat]).to eq('POINT(13.4 52.5)')
+        expect(subject.first[:timestamp]).to eq(1_609_459_201)
+        expect(subject.last[:lonlat]).to eq('POINT(13.5 52.6)')
+      end
+
+      it 'does not include raw_data in point attributes' do
+        expect(subject).to all(satisfy { |attrs| !attrs.key?(:raw_data) })
+      end
+    end
+
+    context 'when the feature is a MultiLineString' do
+      let(:json) do
+        {
+          'type' => 'Feature',
+          'geometry' => {
+            'type' => 'MultiLineString',
+            'coordinates' => [
+              [
+                [13.4, 52.5, 0, 1_609_459_201],
+                [13.5, 52.6, 0, 1_609_459_262]
+              ],
+              [
+                [13.6, 52.7, 0, 1_609_459_323]
+              ]
+            ]
+          },
+          'properties' => {}
+        }
+      end
+
+      it 'builds points across all line segments' do
+        expect(subject.size).to eq(3)
+        expect(subject.map { |attrs| attrs[:timestamp] })
+          .to eq([1_609_459_201, 1_609_459_262, 1_609_459_323])
+      end
+
+      it 'does not include raw_data in point attributes' do
+        expect(subject).to all(satisfy { |attrs| !attrs.key?(:raw_data) })
+      end
+    end
+
     context 'when the json is an Overland export' do
       let(:file_path) { Rails.root.join('spec/fixtures/files/geojson/export.json') }
       let(:json) { JSON.parse(File.read(file_path)) }
@@ -97,9 +178,8 @@ RSpec.describe Geojson::Params do
         expect(subject.first[:tracker_id]).to eq('MyString')
       end
 
-      it 'stores raw_data as the original feature' do
-        expect(subject.first[:raw_data]).to be_a(Hash)
-        expect(subject.first[:raw_data]['type']).to eq('Feature')
+      it 'does not include raw_data in point attributes' do
+        expect(subject).to all(satisfy { |attrs| !attrs.key?(:raw_data) })
       end
     end
 
@@ -127,9 +207,8 @@ RSpec.describe Geojson::Params do
         expect(subject.first[:accuracy]).to eq(4.7551565)
       end
 
-      it 'stores raw_data as the original feature' do
-        expect(subject.first[:raw_data]).to be_a(Hash)
-        expect(subject.first[:raw_data]['type']).to eq('Feature')
+      it 'does not include raw_data in point attributes' do
+        expect(subject).to all(satisfy { |attrs| !attrs.key?(:raw_data) })
       end
     end
 
@@ -156,9 +235,8 @@ RSpec.describe Geojson::Params do
         expect(first[:battery]).to be_nil
       end
 
-      it 'stores raw_data as the original feature' do
-        expect(subject.first[:raw_data]).to be_a(Hash)
-        expect(subject.first[:raw_data]['type']).to eq('Feature')
+      it 'does not include raw_data in point attributes' do
+        expect(subject).to all(satisfy { |attrs| !attrs.key?(:raw_data) })
       end
     end
   end

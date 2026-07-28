@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe 'POST /api/v1/imports/pending' do
+  include ActiveSupport::Testing::TimeHelpers
+
   before { allow(DawarichSettings).to receive(:self_hosted?).and_return(false) }
 
   context 'on a self-hosted instance' do
@@ -150,6 +152,42 @@ RSpec.describe 'POST /api/v1/imports/pending' do
            headers: headers.merge('REMOTE_ADDR' => '1.2.3.4')
 
       expect(response).to have_http_status(:too_many_requests)
+    end
+  end
+
+  context 'storage quota' do
+    let(:quota_cache) { ActiveSupport::Cache::MemoryStore.new }
+
+    before do
+      allow(Rails).to receive(:cache).and_return(quota_cache)
+      stub_const('Api::V1::Imports::PendingController::STORAGE_QUOTA_BYTES', file.size)
+    end
+
+    it 'rejects uploads that exceed the aggregate daily byte quota' do
+      post '/api/v1/imports/pending', params: params, headers: headers
+      expect(response).to have_http_status(:created)
+
+      expect do
+        post '/api/v1/imports/pending', params: params, headers: headers
+      end.not_to change(PendingImport, :count)
+
+      expect(response).to have_http_status(:too_many_requests)
+      expect(response.parsed_body['error']).to eq('Pending import storage capacity exceeded')
+    end
+
+    it 'releases the original quota reservation when persistence fails after midnight' do
+      allow_any_instance_of(PendingImport).to receive(:save!) do
+        travel 2.seconds
+        raise ActiveRecord::RecordInvalid
+      end
+
+      travel_to(Time.utc(2026, 7, 10, 23, 59, 59)) do
+        post '/api/v1/imports/pending', params: params, headers: headers
+
+        expect(response).to have_http_status(:internal_server_error)
+        expect(quota_cache.read('pending_imports/storage_bytes/2026-07-10')).to eq(0)
+        expect(quota_cache.read('pending_imports/storage_bytes/2026-07-11')).to be_nil
+      end
     end
   end
 end

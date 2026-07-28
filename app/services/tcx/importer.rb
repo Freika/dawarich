@@ -5,6 +5,7 @@ class Tcx::Importer
   include Imports::BulkInsertable
   include Imports::FileLoader
   include Imports::ActivityTypeMapping
+  include Imports::XmlAmpersandEscaping
 
   BATCH_SIZE = 1000
 
@@ -17,7 +18,7 @@ class Tcx::Importer
   end
 
   def call
-    json = Hash.from_xml(load_file_content)
+    json = Hash.from_xml(xml_content)
 
     activities = Array.wrap(json.dig('TrainingCenterDatabase', 'Activities', 'Activity'))
 
@@ -30,6 +31,10 @@ class Tcx::Importer
   end
 
   private
+
+  def xml_content
+    escape_raw_ampersands(load_file_content)
+  end
 
   def parse_activity(activity)
     return [] if activity.blank?
@@ -71,7 +76,7 @@ class Tcx::Importer
       velocity: extract_speed(trackpoint),
       import_id: import.id,
       user_id: user_id,
-      raw_data: trackpoint.merge('sport' => map_activity_type(sport)),
+      motion_data: { 'activity_type' => map_activity_type(sport) }.compact,
       created_at: Time.current,
       updated_at: Time.current
     }

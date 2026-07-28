@@ -1,4 +1,7 @@
 {
+  "scripts": {
+    "test": "node --test spec/javascript/*_test.mjs"
+  },
   "dependencies": {
     "@hotwired/turbo-rails": "^8.0.21",
     "@rails/actiontext": "^8.0.0",

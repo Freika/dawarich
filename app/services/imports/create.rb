@@ -99,6 +99,7 @@ class Imports::Create
     when 'google_semantic_history'      then GoogleMaps::SemanticHistoryImporter
     when 'google_phone_takeout'         then GoogleMaps::PhoneTakeoutImporter
     when 'google_records'               then GoogleMaps::RecordsStorageImporter
+    when 'google_photos'                then GooglePhotos::Importer
     when 'owntracks'                    then OwnTracks::Importer
     when 'gpx'                          then Gpx::TrackImporter
     when 'kml'                          then Kml::Importer
@@ -121,17 +122,37 @@ class Imports::Create
 
   def notify_if_all_skipped(import)
     import.reload
-    return unless import.doubles.to_i.positive? && import.points.count.zero?
+    return unless import.points.count.zero?
 
-    Notification.create!(
-      user_id: import.user_id,
-      title: 'Import completed with no new points',
-      content: "Your file #{import.name} contained #{import.raw_points} points, all of which " \
-               'already exist in your timeline at the same coordinates and timestamps. ' \
-               'Nothing was imported. If this was unexpected, delete the existing points ' \
-               'for that date range and re-import.',
-      kind: :info
-    )
+    if import.doubles.to_i.positive?
+      Notification.create!(
+        user_id: import.user_id,
+        title: 'Import completed with no new points',
+        content: "Your file #{import.name} contained #{import.raw_points} points, all of which " \
+                 'already exist in your timeline at the same coordinates and timestamps. ' \
+                 'Nothing was imported. If this was unexpected, delete the existing points ' \
+                 'for that date range and re-import.',
+        kind: :info
+      )
+    else
+      Notification.create!(
+        user_id: import.user_id,
+        title: 'Import completed with no points',
+        content: zero_points_content(import),
+        kind: :warning
+      )
+    end
+  end
+
+  def zero_points_content(import)
+    if import.gpx? || import.kml?
+      "Your file #{import.name} imported 0 points. No location points with " \
+        'timestamps were found. GPX and KML imports require a per-point ' \
+        '<time>/<when> value for each coordinate.'
+    else
+      "Your file #{import.name} imported 0 points. No new location points " \
+        'were found in this file.'
+    end
   end
 
   def filter_anomalies(user, import)

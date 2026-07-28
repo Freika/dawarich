@@ -10,7 +10,17 @@ class Stat < ApplicationRecord
   before_create :generate_sharing_uuid
 
   def toponyms
-    super || []
+    @toponyms ||= sanitize_toponyms(super)
+  end
+
+  def toponyms=(value)
+    @toponyms = nil
+    super
+  end
+
+  def reload(...)
+    @toponyms = nil
+    super
   end
 
   def distance_by_day
@@ -139,6 +149,30 @@ class Stat < ApplicationRecord
   end
 
   private
+
+  def sanitize_toponyms(raw)
+    entries = raw.is_a?(Array) ? raw.flatten : []
+    sanitized = entries.filter_map do |toponym|
+      next unless toponym.is_a?(Hash)
+      next unless toponym['country'].nil? || toponym['country'].is_a?(String)
+
+      toponym.merge('cities' => sanitized_toponym_cities(toponym['cities']))
+    end
+
+    report_malformed_toponyms(raw, sanitized) if raw.present? && raw != sanitized
+
+    sanitized
+  end
+
+  def report_malformed_toponyms(raw, sanitized)
+    source = raw.is_a?(Array) ? "#{raw.flatten.size} entries" : "#{raw.class.name.downcase} value"
+    Rails.logger.warn("Stat##{id} sanitized malformed toponym entries (#{source}, #{sanitized.size} kept)")
+    ExceptionReporter.call('Malformed Stat toponyms sanitized', 'Stat ids are logged to the Rails log')
+  end
+
+  def sanitized_toponym_cities(cities)
+    Array(cities).select { |city| city.is_a?(Hash) && city['city'].is_a?(String) && city['city'].present? }
+  end
 
   def generate_sharing_uuid
     self.sharing_uuid ||= SecureRandom.uuid

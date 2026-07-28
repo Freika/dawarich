@@ -3,6 +3,8 @@
  * Loads settings from backend API only (no localStorage)
  */
 
+import { classifyBasemapUrl } from "maps_maplibre/utils/basemap_url"
+
 // Route fallback matches Map v1's blue; track color matches the backend
 // Tracks::GeojsonSerializer::DEFAULT_COLOR — keep them in sync.
 export const LAYER_COLOR_DEFAULTS = {
@@ -50,6 +52,7 @@ const DEFAULT_SETTINGS = {
   stayMaxGapMinutes: 60,
   gpsFilteringEnabled: true,
   gpsAccuracyThreshold: 100,
+  pointDraggingEnabled: false,
   transportationExpertMode: false,
   enabledTransportationModes: [
     "unknown",
@@ -120,6 +123,7 @@ const BACKEND_SETTINGS_MAP = {
   stayMaxGapMinutes: "stay_max_gap_minutes",
   gpsFilteringEnabled: "gps_filtering_enabled",
   gpsAccuracyThreshold: "gps_accuracy_threshold",
+  pointDraggingEnabled: "point_dragging_enabled",
   transportationExpertMode: "transportation_expert_mode",
   enabledTransportationModes: "enabled_transportation_modes",
   transportationThresholds: "transportation_thresholds",
@@ -148,6 +152,7 @@ const TRANSPORTATION_EXPERT_THRESHOLD_MAP = {
 export class SettingsManager {
   static apiKey = null
   static cachedSettings = null
+  static saveQueue = Promise.resolve()
 
   /**
    * Initialize settings manager with API key
@@ -326,6 +331,8 @@ export class SettingsManager {
               )
             } else if (frontendKey === "gpsFilteringEnabled") {
               value = value === true || value === "true"
+            } else if (frontendKey === "pointDraggingEnabled") {
+              value = value === true || value === "true"
             } else if (frontendKey === "speedColoredRoutes") {
               value = value === true || value === "true"
             } else if (frontendKey === "globeProjection") {
@@ -434,6 +441,8 @@ export class SettingsManager {
               value = Boolean(value)
             } else if (frontendKey === "liveMapEnabled") {
               value = Boolean(value)
+            } else if (frontendKey === "pointDraggingEnabled") {
+              value = Boolean(value)
             } else if (frontendKey === "transportationThresholds" && value) {
               value = SettingsManager._convertTransportationThresholds(
                 value,
@@ -506,6 +515,10 @@ export class SettingsManager {
     return SettingsManager.getSettings()[key]
   }
 
+  static validVectorTilesUrl(url) {
+    return !url || classifyBasemapUrl(url) !== null
+  }
+
   /**
    * Update a specific setting and save to backend
    * @param {string} key - Setting key
@@ -513,10 +526,16 @@ export class SettingsManager {
    * @returns {Promise<Object|null>} API response data
    */
   static async updateSetting(key, value) {
-    const settings = SettingsManager.getSettings()
-    settings[key] = value
+    return await SettingsManager.updateSettings({ [key]: value })
+  }
 
-    const isLayerSetting = Object.values(LAYER_NAME_MAP).includes(key)
+  static async updateSettings(updates) {
+    const settings = SettingsManager.getSettings()
+    Object.assign(settings, updates)
+
+    const isLayerSetting = Object.keys(updates).some((key) =>
+      Object.values(LAYER_NAME_MAP).includes(key),
+    )
     if (isLayerSetting) {
       settings.enabledMapLayers =
         SettingsManager._collapseLayerSettings(settings)
@@ -524,7 +543,13 @@ export class SettingsManager {
 
     SettingsManager.updateCache(settings)
 
-    return await SettingsManager.saveToBackend(settings)
+    const previousSave = SettingsManager.saveQueue.catch(() => null)
+    const save = previousSave.then(() =>
+      SettingsManager.saveToBackend(settings),
+    )
+    SettingsManager.saveQueue = save
+
+    return await save
   }
 
   /**

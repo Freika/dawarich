@@ -62,10 +62,38 @@ export function trackBounds(geojson) {
   ]
 }
 
-// Largest frame with the given aspect that fits the stage with breathing room.
+// Largest frame with the given aspect that fits the stage alongside its
+// sibling controls (Recenter button, hint text). The frame is a flex item —
+// without reserving the controls' height up front, flexbox would shrink the
+// frame vertically and silently break the preview's aspect ratio.
 export function fitFrame(stage, aspect) {
-  const maxWidth = stage.clientWidth * 0.82
-  const maxHeight = stage.clientHeight * 0.86
+  const styles = window.getComputedStyle(stage)
+  const controlsHeight = [...stage.children]
+    .filter((el) => {
+      const targetName = el.dataset?.posterStudioEditorTarget
+      return targetName !== "frame" && targetName !== "backdrop"
+    })
+    .reduce((sum, el) => {
+      const childStyles = window.getComputedStyle(el)
+      return (
+        sum +
+        el.offsetHeight +
+        Number.parseFloat(childStyles.marginTop) +
+        Number.parseFloat(childStyles.marginBottom)
+      )
+    }, 0)
+
+  const maxWidth =
+    (stage.clientWidth -
+      Number.parseFloat(styles.paddingLeft) -
+      Number.parseFloat(styles.paddingRight)) *
+    0.9
+  const maxHeight =
+    (stage.clientHeight -
+      Number.parseFloat(styles.paddingTop) -
+      Number.parseFloat(styles.paddingBottom) -
+      controlsHeight) *
+    0.96
   let width = maxWidth
   let height = width / aspect
   if (height > maxHeight) {

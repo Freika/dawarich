@@ -20,9 +20,24 @@ module Places
       return [] if @latitude.zero? && @longitude.zero?
 
       @cache ? Rails.cache.fetch(cache_key, expires_in: CACHE_TTL) { fetch_and_format } : fetch_and_format
+    rescue *ReverseGeocoding::ProviderErrors::SEARCH_HANDLED => e
+      log_provider_error(e)
+      []
+    rescue StandardError => e
+      if ReverseGeocoding::ProviderErrors.transient_tls?(e)
+        log_provider_error(e)
+      else
+        Rails.logger.error("Nearby search failed: #{e.class}: #{e.message}")
+        ExceptionReporter.call(e, 'Places::NearbySearch failed')
+      end
+      []
     end
 
     private
+
+    def log_provider_error(error)
+      Rails.logger.warn("Nearby search provider error: #{error.class} (radius: #{@radius}, limit: #{@limit})")
+    end
 
     def reverse_geocoding_enabled?
       DawarichSettings.reverse_geocoding_enabled?
@@ -41,9 +56,6 @@ module Places
         units: :km
       )
       format_results(results)
-    rescue StandardError => e
-      ExceptionReporter.call(e, "NearbySearch failed for #{@latitude},#{@longitude}")
-      []
     end
 
     def format_results(results)
