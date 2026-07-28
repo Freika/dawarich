@@ -23,6 +23,7 @@ import {
   resolveTheme,
 } from "poster_studio/data/theme_loader"
 import { downloadBlob } from "poster_studio/export/download"
+import { frameCovers } from "poster_studio/render/frame_geometry"
 import { drawOverlay } from "poster_studio/render/overlay"
 import { buildPosterStyle } from "poster_studio/render/style_builder"
 import { formatCoords } from "poster_studio/render/text_layout"
@@ -76,6 +77,8 @@ export default class extends Controller {
     "fontSelect",
     "trackOpacity",
     "trackOpacityLabel",
+    "trackWidth",
+    "trackWidthLabel",
     "summary",
     "format",
     "dpi",
@@ -95,6 +98,7 @@ export default class extends Controller {
     "saveEndAt",
     "saveSource",
     "saveOpacity",
+    "saveWidth",
     "dateStart",
     "dateEnd",
     "loadButton",
@@ -133,6 +137,7 @@ export default class extends Controller {
     this.populateSizePicker()
     this.populateFonts()
     this.trackOpacityLabelTarget.textContent = `${this.trackOpacityTarget.value}%`
+    this.trackWidthLabelTarget.textContent = `${this.trackWidthTarget.value}%`
   }
 
   disconnect() {
@@ -237,6 +242,7 @@ export default class extends Controller {
       extras: true,
       hiddenCategories: [...this.hidden],
       trackOpacity: this.trackOpacityValue(),
+      trackWidth: this.trackWidthValue(),
     })
   }
 
@@ -460,11 +466,16 @@ export default class extends Controller {
       if (!toggle.checked) this.hidden.add(toggle.dataset.layerCategory)
     })
     this.trackOpacityLabelTarget.textContent = `${this.trackOpacityTarget.value}%`
+    this.trackWidthLabelTarget.textContent = `${this.trackWidthTarget.value}%`
     this.scheduleRestyle()
   }
 
   trackOpacityValue() {
     return Number.parseInt(this.trackOpacityTarget.value, 10) / 100
+  }
+
+  trackWidthValue() {
+    return Number.parseInt(this.trackWidthTarget.value, 10) / 100
   }
 
   // ===== Date range =====
@@ -776,18 +787,26 @@ export default class extends Controller {
     this.saveEndAtTarget.value = endAt || ""
     this.saveSourceTarget.value = this.provider.trackSource()
     this.saveOpacityTarget.value = this.trackOpacityTarget.value
+    this.saveWidthTarget.value = this.trackWidthTarget.value
     this.saveFormTarget.requestSubmit()
     this.setStatus("Queued — rendering server-side into Recent posters…")
   }
 
-  sidecarDistance() {
+  framedDistance() {
     const bounds = this.previewMap.getBounds()
     const heightMeters =
       (bounds.getNorth() - bounds.getSouth()) * METERS_PER_DEGREE
+    return heightMeters * SIDECAR_DISTANCE_FACTOR
+  }
+
+  sidecarDistance() {
     const [min, max] = SIDECAR_DISTANCE_RANGE
-    return Math.round(
-      Math.min(max, Math.max(min, heightMeters * SIDECAR_DISTANCE_FACTOR)),
-    )
+    return Math.round(Math.min(max, Math.max(min, this.framedDistance())))
+  }
+
+  frameIsClamped() {
+    const [, max] = SIDECAR_DISTANCE_RANGE
+    return this.framedDistance() > max
   }
 
   // The server refuses renders without track data in the frame — mirror
@@ -803,26 +822,21 @@ export default class extends Controller {
       reason =
         "No tracks inside the frame — move or zoom the map over your route to save to the gallery."
     }
+    const message =
+      reason ||
+      (this.frameIsClamped()
+        ? "This view is wider than the largest poster area — the saved poster will be more zoomed in than the preview."
+        : null)
     this.saveButtonTarget.disabled = Boolean(reason)
-    this.saveNoticeTarget.textContent = reason || ""
-    this.saveNoticeTarget.classList.toggle("hidden", !reason)
+    this.saveNoticeTarget.textContent = message || ""
+    this.saveNoticeTarget.classList.toggle("hidden", !message)
   }
 
-  // Mirrors the server's track_intersects_area? box: ±distance/3 latitude,
-  // ±distance/4 longitude around the frame center.
+  // Mirrors the server's track_intersects_area?.
   frameCoversTrack(coords) {
     const center = this.previewMap.getCenter()
-    const distance = this.sidecarDistance()
-    const latDelta = distance / 3 / METERS_PER_DEGREE
-    const cosLat = Math.max(Math.cos((center.lat * Math.PI) / 180), 0.01)
-    const lonDelta = distance / 4 / (METERS_PER_DEGREE * cosLat)
-    return coords.some(
-      ([lng, lat]) =>
-        lng >= center.lng - lonDelta &&
-        lng <= center.lng + lonDelta &&
-        lat >= center.lat - latDelta &&
-        lat <= center.lat + latDelta,
-    )
+
+    return frameCovers(coords, center.lat, center.lng, this.sidecarDistance())
   }
 
   updateSummary() {

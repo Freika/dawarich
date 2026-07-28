@@ -73,12 +73,10 @@
       <% if user_signed_in? && DawarichSettings.family_feature_enabled? %>
         <li>
           <% if current_user.in_family? %>
-            <div class="<%= active_class?(family_path) %>">
-              <%= link_to family_path, class: "mx-1 flex items-center space-x-2" do %>
-                <span>Family<sup>α</sup></span>
-                <%= render 'families/navbar_indicator', user: current_user %>
-              <% end %>
-            </div>
+            <%= link_to family_path, class: "mx-1 #{active_class?(family_path)} flex items-center space-x-2" do %>
+              <span>Family<sup>α</sup></span>
+              <%= render 'families/navbar_indicator', user: current_user %>
+            <% end %>
           <% else %>
             <%= link_to 'Family<sup>α</sup>'.html_safe, new_family_path, class: "mx-1 #{active_class?(new_family_path)}" %>
           <% end %>
