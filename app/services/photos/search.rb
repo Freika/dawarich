@@ -50,19 +50,40 @@ class Photos::Search
   private
 
   def request_immich
-    assets = Immich::RequestPhotos.new(
-      user,
-      start_date: start_date,
-      end_date: end_date,
-      tag_ids: tag_ids
-    ).call
+    assets =
+      if tag_ids.present? && tag_ids.many?
+        request_immich_for_multiple_tags
+      else
+        request_immich_assets(tag_ids)
+      end
 
     if assets.nil?
       errors << :immich
       return nil
     end
 
-    assets.map { |asset| transform_asset(asset, 'immich') }.compact
+    assets
+      .uniq { |asset| asset['id'] || asset[:id] }
+      .map { |asset| transform_asset(asset, 'immich') }
+      .compact
+  end
+
+  def request_immich_for_multiple_tags
+    tag_ids.each_with_object([]) do |tag_id, assets|
+      tagged_assets = request_immich_assets([tag_id])
+      return nil if tagged_assets.nil?
+
+      assets.concat(tagged_assets)
+    end
+  end
+
+  def request_immich_assets(request_tag_ids)
+    Immich::RequestPhotos.new(
+      user,
+      start_date: start_date,
+      end_date: end_date,
+      tag_ids: request_tag_ids
+    ).call
   end
 
   def request_photoprism
