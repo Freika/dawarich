@@ -51,6 +51,50 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
           .and change { place.reload.country }.to('Germany')
       end
 
+      context 'when the place name is locked by the user' do
+        let(:place) { create(:place, name: "Mum's house", name_locked_at: 1.day.ago) }
+
+        it 'keeps the user-supplied name' do
+          expect { service.call }.not_to change { place.reload.name }
+        end
+
+        it 'still refreshes city and country' do
+          expect { service.call }.to change { place.reload.city }.to('Berlin')
+        end
+      end
+
+      context 'when a sibling place has a locked name' do
+        let(:sibling) do
+          create(:place, user: place.user, name: 'Sibling I named', name_locked_at: 1.day.ago,
+                         geodata: { 'properties' => { 'osm_id' => 99_999 } })
+        end
+
+        let(:sibling_geocoded_place) do
+          double(
+            data: {
+              'geometry' => { 'coordinates' => [13.0948638, 54.2905245] },
+              'properties' => {
+                'osm_id' => 99_999, 'name' => 'Photon Override', 'osm_value' => 'cafe',
+                'city' => 'Hamburg', 'country' => 'Germany'
+              }
+            }
+          )
+        end
+
+        before do
+          sibling
+          allow(Geocoder).to receive(:search).and_return([mock_geocoded_place, sibling_geocoded_place])
+        end
+
+        it 'keeps the locked sibling name through the bulk upsert' do
+          expect { service.call }.not_to change { sibling.reload.name }
+        end
+
+        it 'still refreshes the locked sibling city' do
+          expect { service.call }.to change { sibling.reload.city }.to('Hamburg')
+        end
+      end
+
       it 'sets reverse_geocoded_at timestamp' do
         expect { service.call }.to change { place.reload.reverse_geocoded_at }
           .from(nil)

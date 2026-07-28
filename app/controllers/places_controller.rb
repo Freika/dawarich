@@ -19,6 +19,7 @@ class PlacesController < ApplicationController
 
   def create
     @place = current_user.places.build(place_params.except(:tag_ids))
+    @place.user_named = true
 
     if @place.save
       add_tags if tag_ids.present?
