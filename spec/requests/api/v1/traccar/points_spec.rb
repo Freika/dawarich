@@ -49,6 +49,22 @@ RSpec.describe 'Api::V1::Traccar::Points', type: :request do
         end.to have_enqueued_job(Points::AnomalyFilterJob)
       end
 
+      context 'when point creation exhausts deadlock retries' do
+        before do
+          allow(Traccar::PointCreator).to receive(:new)
+            .and_raise(ActiveRecord::Deadlocked, 'deadlock detected')
+          allow(Rails.logger).to receive(:error)
+        end
+
+        it 'logs the failure and returns a JSON 500' do
+          post "/api/v1/traccar/points?api_key=#{user.api_key}", params: payload, as: :json
+
+          expect(response).to have_http_status(:internal_server_error)
+          expect(JSON.parse(response.body)).to include('error')
+          expect(Rails.logger).to have_received(:error).with(/Point creation failed: ActiveRecord::Deadlocked/)
+        end
+      end
+
       context 'when payload is malformed' do
         before { payload[:location][:timestamp] = 'not-a-date' }
 

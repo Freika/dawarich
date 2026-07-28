@@ -16,7 +16,7 @@ class Overland::PointsCreator
 
     payload = data
               .compact
-              .reject { |location| location[:lonlat].nil? || location[:timestamp].nil? }
+              .reject { |location| unusable_location?(location) }
               .map { |location| location.merge(user_id:) }
               .uniq { |location| Point.dedup_key(location) }
 
@@ -36,6 +36,11 @@ class Overland::PointsCreator
   end
 
   private
+
+  def unusable_location?(location)
+    location[:lonlat].nil? || location[:timestamp].nil? ||
+      Points::NullIsland.lonlat?(location[:lonlat])
+  end
 
   def upsert_points(locations)
     created_points = []

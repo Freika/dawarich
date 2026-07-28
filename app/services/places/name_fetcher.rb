@@ -33,17 +33,28 @@ module Places
       name = ::Visits::Names::Builder.build_from_properties(properties)
 
       ActiveRecord::Base.transaction do
-        place.name = name if name.present?
+        place.machine_named = true
+        place.name = name if name.present? && !place.name_locked?
         place.city = properties['city'] if properties['city'].present?
         place.country = properties['country'] if properties['country'].present?
         place.geodata = result.data if DawarichSettings.store_geodata?
         place.save!
-        place.visits.where(name: Place::DEFAULT_NAME).update_all(name: name) if name.present?
+
+        propagated_name = place.name
+        place.visits.where(name: Place::DEFAULT_NAME).update_all(name: propagated_name) if propagated_name.present?
+
         place
       end
+    rescue *ReverseGeocoding::ProviderErrors::TRANSIENT => e
+      Rails.logger.warn("Geocoding provider error in NameFetcher for place #{place.id}: #{e.message}")
+      nil
     rescue StandardError => e
-      Rails.logger.error("Geocoding error in NameFetcher for place #{place.id}: #{e.message}")
-      ExceptionReporter.call(e)
+      if ReverseGeocoding::ProviderErrors.transient_tls?(e)
+        Rails.logger.warn("Geocoding provider error in NameFetcher for place #{place.id}: #{e.message}")
+      else
+        Rails.logger.error("Geocoding error in NameFetcher for place #{place.id}: #{e.message}")
+        ExceptionReporter.call(e)
+      end
       nil
     end
 

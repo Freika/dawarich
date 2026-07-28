@@ -29,14 +29,16 @@ module FitFixtureHelper
     Fit4Ruby.write(path, a)
   end
 
-  def generate_fit_fixture(path)
+  def generate_fit_fixture(path, include_device_info: true)
     require 'fit4ruby'
 
     ts = Time.utc(2024, 6, 15, 10, 30, 0)
     a = Fit4Ruby::Activity.new
     a.total_timer_time = 180.0
-    a.new_device_info({ timestamp: ts, device_index: 0, manufacturer: 'garmin',
-                        garmin_product: 'fenix3', serial_number: 123_456_789 })
+    if include_device_info
+      a.new_device_info({ timestamp: ts, device_index: 0, manufacturer: 'garmin',
+                          garmin_product: 'fenix3', serial_number: 123_456_789 })
+    end
     3.times do |i|
       a.new_record({ timestamp: ts + (i * 60), position_lat: 52.52 + i * 0.001,
                      position_long: 13.405 + i * 0.001, altitude: (34 + i).to_f,
@@ -59,6 +61,10 @@ module FitFixtureHelper
                     nec_lat: 52.522, nec_long: 13.407,
                     swc_lat: 52.520, swc_long: 13.405 })
     Fit4Ruby.write(path, a)
+  end
+
+  def generate_fit_fixture_without_device_info(path)
+    generate_fit_fixture(path, include_device_info: false)
   end
 end
 

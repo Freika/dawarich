@@ -14,7 +14,15 @@ class Api::V1::SettingsController < ApiController
   # are silently stripped before persistence by TransportationThresholdsUpdater.
   # The response reflects the filtered state via safe_settings.config.
   def update
-    result = Users::TransportationThresholdsUpdater.new(current_api_user, settings_params).call
+    settings = settings_params
+    unless valid_tiles_url?(settings)
+      return render json: {
+        message: 'Something went wrong',
+        errors: [TILE_URL_ERROR]
+      }, status: :unprocessable_content
+    end
+
+    result = Users::TransportationThresholdsUpdater.new(current_api_user, settings).call
 
     if result.success?
       render json: {
@@ -56,6 +64,9 @@ class Api::V1::SettingsController < ApiController
   # users are unaffected — plan_restricted? is false for them).
   MAP_CUSTOMIZATION_KEYS = %i[maps_maplibre_custom_theme maps_maplibre_tiles_url
                               route_color track_color].freeze
+  TILE_URL_PLACEHOLDERS = %w[{z} {x} {y}].freeze
+  TILE_URL_ERROR = 'Tile URL must include {z}, {x}, and {y} placeholders, ' \
+                   'or be a MapLibre style URL ending in .json'
 
   def settings_params
     permitted = params.require(:settings).permit(
@@ -92,6 +103,10 @@ class Api::V1::SettingsController < ApiController
       permitted.delete(:maps)
     end
 
+    if permitted.key?(:maps_maplibre_tiles_url) && permitted[:maps_maplibre_tiles_url].is_a?(String)
+      permitted[:maps_maplibre_tiles_url] = permitted[:maps_maplibre_tiles_url].strip.presence
+    end
+
     # Strip Pro-only integration keys for Lite cloud users. Self-hosted
     # users always have full access (`plan_restricted?` returns false).
     if current_api_user.plan_restricted?
@@ -100,5 +115,28 @@ class Api::V1::SettingsController < ApiController
     end
 
     permitted
+  end
+
+  def valid_tiles_url?(settings)
+    url = settings[:maps_maplibre_tiles_url]
+    return true if url.nil?
+    return false unless url.is_a?(String)
+    return true if style_json_url?(url)
+
+    TILE_URL_PLACEHOLDERS.all? { |placeholder| url.include?(placeholder) }
+  end
+
+  # Mirrors classifyBasemapUrl in app/javascript/maps_maplibre/utils/basemap_url.js:
+  # an absolute http(s) URL, or a root-relative path for a style served from
+  # this instance. Keep the two in sync or the browser accepts a URL this
+  # rejects.
+  def style_json_url?(url)
+    uri = URI.parse(url)
+    return false unless uri.path.to_s.downcase.end_with?('.json')
+    return uri.host.present? if uri.is_a?(URI::HTTP)
+
+    uri.scheme.nil? && uri.host.nil? && uri.path.start_with?('/')
+  rescue URI::InvalidURIError
+    false
   end
 end

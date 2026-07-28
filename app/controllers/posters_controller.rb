@@ -4,7 +4,6 @@ class PostersController < ApplicationController
   include FlashStreamable
 
   before_action :authenticate_user!
-  before_action :ensure_posters_enabled
 
   def create
     poster = current_user.posters.create!(
@@ -52,12 +51,6 @@ class PostersController < ApplicationController
 
   def poster_params
     params.require(:poster).permit(:name, :title, :lat, :lon, :distance, :theme, :start_at, :end_at, :source,
-                                   :route_fill, :route_opacity)
-  end
-
-  def ensure_posters_enabled
-    return if posters_enabled?
-
-    redirect_to root_path, alert: 'Posters are not available.'
+                                   :route_fill, :route_opacity, :route_width)
   end
 end

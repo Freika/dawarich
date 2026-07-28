@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe 'POST /api/v1/auth/login', type: :request do
+  include ActiveSupport::Testing::TimeHelpers
+
   let!(:user) { create(:user, email: 'me@example.com', password: 'secret123456') }
 
   before do
@@ -107,6 +109,13 @@ RSpec.describe 'POST /api/v1/auth/login', type: :request do
   end
 
   describe 'brute-force protection' do
+    # Rack::Attack throttle windows are aligned to epoch minutes, so a
+    # multi-second burst of slow bcrypt requests can straddle a window
+    # boundary and split the counter across two windows. Freeze time so
+    # every request in an example lands in the same window.
+    before { freeze_time }
+    after { travel_back }
+
     it 'throttles repeated attempts against the same email to 5 per minute' do
       5.times do
         post '/api/v1/auth/login',

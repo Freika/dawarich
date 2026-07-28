@@ -183,6 +183,18 @@ export class PointsLayer extends BaseLayer {
     try {
       await this.updatePointPosition(pointId, coords.lat, coords.lng)
 
+      // Keep the cached full point set in sync — route rebuilds and the
+      // scratch layer read from it in simplified rendering mode.
+      const cachedPoints =
+        this.layerManager?.controller?.mapDataManager?.lastLoadedData?.points
+      const cachedPoint = cachedPoints?.find(
+        (p) => Number(p.id) === Number(pointId),
+      )
+      if (cachedPoint) {
+        cachedPoint.latitude = coords.lat
+        cachedPoint.longitude = coords.lng
+      }
+
       // Rebuild routes from the updated points after a successful move
       await this.reloadConnectedRoutes()
     } catch (error) {

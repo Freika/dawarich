@@ -31,7 +31,6 @@ RSpec.describe 'GET /auth/account_link', type: :request do
       allow(DawarichSettings).to receive(:registration_enabled?).and_return(true)
       allow(DawarichSettings).to receive(:oidc_enabled?).and_return(false)
       stub_const('MANAGER_URL', 'https://manager.example.com')
-      Flipper.disable(:reverse_trial_signup)
     end
 
     it 'claims the ticket when the token link signs the user in' do
@@ -264,7 +263,6 @@ RSpec.describe 'OAuth account-link password challenge', type: :request do
       allow(DawarichSettings).to receive(:registration_enabled?).and_return(true)
       allow(DawarichSettings).to receive(:oidc_enabled?).and_return(false)
       stub_const('MANAGER_URL', 'https://manager.example.com')
-      Flipper.disable(:reverse_trial_signup)
     end
 
     it 'claims the stashed ticket after successful password confirm' do

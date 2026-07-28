@@ -2,6 +2,7 @@
 
 module SmtpConfig
   ALLOWED_AUTHENTICATIONS = %i[plain login cram_md5 digest_md5 gssapi ntlm xoauth2].freeze
+  NO_AUTHENTICATION_VALUES = %w[none nil false off disabled].freeze
   DEFAULT_TIMEOUT = 5
 
   IMPLICIT_TLS_PORT = 465
@@ -34,11 +35,15 @@ module SmtpConfig
     raw = env.fetch('SMTP_AUTHENTICATION', 'plain').to_s.strip
     return :plain if raw.empty?
 
-    sym = raw.downcase.to_sym
+    normalized = raw.downcase
+    return nil if NO_AUTHENTICATION_VALUES.include?(normalized)
+
+    sym = normalized.to_sym
     return sym if ALLOWED_AUTHENTICATIONS.include?(sym)
 
     raise ArgumentError,
-          "SMTP_AUTHENTICATION=#{raw.inspect} is not supported; expected one of #{ALLOWED_AUTHENTICATIONS.inspect}"
+          "SMTP_AUTHENTICATION=#{raw.inspect} is not supported; expected one of " \
+          "#{ALLOWED_AUTHENTICATIONS.inspect} or 'none' to disable authentication"
   end
   private_class_method :authentication
 

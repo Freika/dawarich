@@ -8,6 +8,22 @@ class Users::RecalculateDataJob < ApplicationJob
 
   queue_as :stats
 
+  retry_on Tracks::PerUserLock::AcquisitionTimeout, wait: :polynomially_longer, attempts: 5 do |job, error|
+    user_id, options = job.arguments
+    Rails.logger.error(
+      'Users::RecalculateDataJob lock contention retries exhausted ' \
+      "user_id=#{user_id}: #{error.message}"
+    )
+    notify = options.is_a?(Hash) ? options.symbolize_keys.fetch(:notify, true) : true
+    user = User.find_by(id: user_id) if notify
+    if user
+      Notifications::Create.new(
+        user: user, kind: :warning, title: 'Data recalculation busy',
+        content: 'Another recalculation is already running. Please try again in a few minutes.'
+      ).call
+    end
+  end
+
   def perform(user_id, year: nil, notify: true)
     @user = find_user_or_skip(user_id) || return
 
@@ -28,6 +44,8 @@ class Users::RecalculateDataJob < ApplicationJob
 
       create_success_notification(years_to_process) if @notify
     end
+  rescue Tracks::PerUserLock::AcquisitionTimeout
+    raise
   rescue StandardError => e
     create_failure_notification(e) if @notify
     raise
