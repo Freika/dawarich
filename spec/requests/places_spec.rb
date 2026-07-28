@@ -344,4 +344,54 @@ RSpec.describe '/places', type: :request do
       expect_turbo_stream_action('replace', 'place-drawer')
     end
   end
+
+  describe 'name locking' do
+    let(:user) { create(:user) }
+
+    before { sign_in user }
+
+    it 'locks the name of a place the user creates by hand' do
+      post places_path, params: { place: { name: "Mum's house", latitude: 51.3402, longitude: 12.3712 } },
+                        as: :turbo_stream
+
+      expect(user.places.last).to be_name_locked
+    end
+
+    it 'shows a lock indicator on the drawer for a locked place' do
+      place = create(:place, user: user, name: Place::DEFAULT_NAME)
+      place.update!(name: "Mum's house")
+
+      get place_path(place)
+
+      expect(response.body).to include('place-name-lock')
+    end
+
+    it 'shows the lock in the drawer response right after a rename' do
+      place = create(:place, user: user, name: Place::DEFAULT_NAME)
+
+      patch place_path(place), params: { place: { name: "Mum's house" } },
+                               headers: { 'Turbo-Frame' => 'place-drawer' }, as: :turbo_stream
+
+      expect(response.body).to include('place-name-lock')
+    end
+
+    it 'drops the lock from the drawer when the name is reset to the default' do
+      place = create(:place, user: user, name: Place::DEFAULT_NAME)
+      place.update!(name: "Mum's house")
+
+      patch place_path(place), params: { place: { name: Place::DEFAULT_NAME } },
+                               headers: { 'Turbo-Frame' => 'place-drawer' }, as: :turbo_stream
+
+      expect(place.reload).not_to be_name_locked
+      expect(response.body).not_to include('place-name-lock')
+    end
+
+    it 'shows no lock indicator for an auto-named place' do
+      place = create(:place, user: user, name: Place::DEFAULT_NAME)
+
+      get place_path(place)
+
+      expect(response.body).not_to include('place-name-lock')
+    end
+  end
 end

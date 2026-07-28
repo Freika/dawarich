@@ -64,7 +64,8 @@ module Visits
         latitude: lat_f,
         longitude: lon_f,
         lonlat: "POINT(#{lon_f} #{lat_f})",
-        source: :manual
+        source: :manual,
+        user_named: true
       )
     rescue ActiveRecord::RecordInvalid => e
       ExceptionReporter.call(e, "Failed to create place: #{e.message}")

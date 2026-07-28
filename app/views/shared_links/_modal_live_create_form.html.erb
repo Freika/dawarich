@@ -9,11 +9,7 @@
     <%= f.text_field :magic_phrase, class: 'input input-bordered', value: SharedLink::PhraseGenerator.call %>
     <span class="label-text-alt mt-1">Leave blank to share without a phrase, or use the auto-generated one.</span>
   </div>
-  <div class="form-control mt-4">
-    <label class="label"><span class="label-text">Expires</span></label>
-    <%= f.date_field :expires_at, class: 'input input-bordered', min: Date.current.tomorrow, value: 7.days.from_now.to_date %>
-    <span class="label-text-alt mt-1">Defaults to 7 days. Leave blank for a link that never expires.</span>
-  </div>
+  <%= render 'shared_links/expires_field', f: f %>
   <div class="form-control mt-4">
     <label class="label cursor-pointer justify-start gap-3">
       <%= check_box_tag 'shared_link[settings][show_route]', '1', false, class: 'checkbox checkbox-primary' %>
