@@ -65,6 +65,22 @@ RSpec.describe 'Shared link expiry dates', type: :request do
     end
   end
 
+  it 'offers tomorrow in the owner timezone as the earliest selectable expiry date' do
+    trip  = create(:trip, user: user)
+    track = create(:track, user: user)
+
+    # 12:00 UTC is already the 15th in Auckland, so tomorrow there is the 16th;
+    # config.time_zone would offer the 15th, which resolves to a past expiry.
+    travel_to creation_moment do
+      [new_share_links_live_path, new_share_links_timeline_path,
+       new_trip_share_link_path(trip), new_track_share_link_path(track)].each do |path|
+        get path
+
+        expect(response.body).to include('min="2026-07-16"')
+      end
+    end
+  end
+
   it 'leaves the link permanent when no expiry date is given' do
     travel_to creation_moment do
       post share_links_live_path, params: { shared_link: { expires_at: '' } }
