@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - The Docker image no longer ships ImageMagick — nothing in the app used it, so the image gets smaller. (#3139)
 
+### Added
+
+- New `SMTP_OPENSSL_VERIFY_MODE` environment variable (`none` or `peer`) lets self-hosters send mail through a LAN SMTP server that presents a self-signed certificate by skipping TLS certificate verification; leaving it unset keeps the default verifying behavior. Setting it to `none` logs a warning at startup. (#2681)
+
 ### Fixed
 
 - Turning "Edit points" off on Map v2 now reliably disables point dragging. Changing the map style while editing was on left a stale drag handler attached, so points stayed draggable no matter what the toggle said.
