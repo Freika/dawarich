@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Self-hosted mode is now recognised from common `SELF_HOSTED` values (quoted `"true"`, `TRUE`, whitespace-padded, `1`, `yes`, `on`), not only the exact string `true`, so a non-canonical value no longer silently flips a self-hosted instance into cloud mode and blocks LAN integration URLs (such as Immich) as SSRF. (#2522)
 - Outgoing email no longer fails against slower SMTP servers: the default connection open/read timeouts now match net-smtp's own 30s and 60s instead of a 5-second cap that made digest reports and other emails fail with `Net::OpenTimeout`. Tune with `SMTP_OPEN_TIMEOUT`/`SMTP_READ_TIMEOUT` if needed (#3096)
+- FIT files that carry developer data fields (such as those from Wahoo devices) now import their location records instead of failing to parse. (#2945)
 
 ## [1.10.3] - 2026-07-28, Berlin
 
