@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Visit detection no longer turns long slow walks into one large suggested visit centered somewhere the user never stopped (#2970).
 - Photon place names no longer show generic "Yes" categories in visits (https://github.com/Freika/dawarich/issues/3050)
 - Imports that finish with zero saved points now notify you instead of completing silently. GPX and KML files are called out when they lack per-point timestamps; other sources get a source-neutral message. (#3062)
-
+- Traccar KML exports now import LineString points using the time range in each track name instead of completing with zero points (#3120)
 
 ## [1.10.3] - 2026-07-28, Berlin
 
