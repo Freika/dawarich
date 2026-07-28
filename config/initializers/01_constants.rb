@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-SELF_HOSTED = ENV.fetch('SELF_HOSTED', 'true') == 'true'
+SELF_HOSTED = %w[true 1 yes on t].include?(ENV.fetch('SELF_HOSTED', 'true').to_s.delete(%q("')).strip.downcase)
 
 DISTANCE_UNITS = {
   km: 1000,    # to meters

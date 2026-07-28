@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+
+### Fixed
+
+- Self-hosted mode is now recognised from common `SELF_HOSTED` values (quoted `"true"`, `TRUE`, whitespace-padded, `1`, `yes`, `on`), not only the exact string `true`, so a non-canonical value no longer silently flips a self-hosted instance into cloud mode and blocks LAN integration URLs (such as Immich) as SSRF. (#2522)
+
 ## [1.10.3] - 2026-07-28, Berlin
 
 ### Added
