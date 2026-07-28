@@ -198,6 +198,137 @@ RSpec.describe Archivable, type: :model do
       expect(point.raw_data_archived).to be false
       expect(point.raw_data).to eq({ 'src' => 'original' })
     end
+
+    it 'upserts rows in a deterministic order regardless of input order' do
+      captured = nil
+      allow(Point).to receive(:upsert_all) do |rows, **|
+        captured = rows
+        []
+      end
+
+      later = base_row.merge(timestamp: 1_700_000_300)
+      earlier = base_row.merge(timestamp: 1_700_000_240)
+      Point.archival_safe_upsert_all([later, earlier], returning: Arel.sql('id'))
+
+      expect(captured).to eq([earlier, later])
+    end
+
+    it 'orders rows chronologically regardless of timestamp type or UTC offset' do
+      captured = nil
+      allow(Point).to receive(:upsert_all) do |rows, **|
+        captured = rows
+        []
+      end
+
+      later = base_row.merge(timestamp: DateTime.parse('2026-07-18T09:30:00+01:00'))
+      earlier = base_row.merge(timestamp: DateTime.parse('2026-07-18T10:00:00+03:00'))
+      Point.archival_safe_upsert_all([later, earlier], returning: Arel.sql('id'))
+
+      expect(captured).to eq([earlier, later])
+    end
+
+    it 'orders rows by geographic coordinate rather than lexical WKT string' do
+      captured = nil
+      allow(Point).to receive(:upsert_all) do |rows, **|
+        captured = rows
+        []
+      end
+
+      east = base_row.merge(lonlat: 'POINT(13 52)', timestamp: 1_700_000_400)
+      west = base_row.merge(lonlat: 'POINT(9 52)', timestamp: 1_700_000_460)
+      Point.archival_safe_upsert_all([east, west], returning: Arel.sql('id'))
+
+      expect(captured).to eq([west, east])
+    end
+
+    it 'does not raise while sorting a batch containing a malformed lonlat' do
+      captured = nil
+      allow(Point).to receive(:upsert_all) do |rows, **|
+        captured = rows
+        []
+      end
+
+      valid = base_row.merge(timestamp: 1_700_000_600)
+      malformed = base_row.merge(lonlat: 'not-a-point', timestamp: 1_700_000_660)
+
+      expect do
+        Point.archival_safe_upsert_all([malformed, valid], returning: Arel.sql('id'))
+      end.not_to raise_error
+      expect(captured.first).to eq(valid)
+    end
+
+    context 'when the upsert hits a transient deadlock' do
+      it 'retries with jittered backoff and returns the result' do
+        attempts = 0
+        allow(Point).to receive(:upsert_all).and_wrap_original do |original, *args, **kwargs|
+          attempts += 1
+          raise ActiveRecord::Deadlocked, 'deadlock detected' if attempts == 1
+
+          original.call(*args, **kwargs)
+        end
+        allow(Point).to receive(:sleep)
+
+        result = Point.archival_safe_upsert_all(
+          [base_row.merge(timestamp: 1_700_000_120)],
+          returning: Arel.sql('id, xmax')
+        )
+
+        expect(attempts).to eq(2)
+        expect(Point.exists?(result.first['id'])).to be true
+        expect(Point).to have_received(:sleep).with(be_between(0.1, 0.15)).once
+      end
+
+      it 'raises after exhausting retries' do
+        allow(Point).to receive(:upsert_all).and_raise(ActiveRecord::Deadlocked, 'deadlock detected')
+        allow(Point).to receive(:sleep)
+
+        expect do
+          Point.archival_safe_upsert_all(
+            [base_row.merge(timestamp: 1_700_000_180)],
+            returning: Arel.sql('id, xmax')
+          )
+        end.to raise_error(ActiveRecord::Deadlocked)
+
+        expect(Point).to have_received(:sleep).exactly(3).times
+      end
+    end
+
+    context 'when the upsert is canceled by a transient statement or lock timeout' do
+      [ActiveRecord::QueryCanceled, ActiveRecord::LockWaitTimeout].each do |error_class|
+        it "retries #{error_class} and returns the result" do
+          attempts = 0
+          allow(Point).to receive(:upsert_all).and_wrap_original do |original, *args, **kwargs|
+            attempts += 1
+            raise error_class, 'canceling statement' if attempts == 1
+
+            original.call(*args, **kwargs)
+          end
+          allow(Point).to receive(:sleep)
+
+          result = Point.archival_safe_upsert_all(
+            [base_row.merge(timestamp: 1_700_000_240)],
+            returning: Arel.sql('id, xmax')
+          )
+
+          expect(attempts).to eq(2)
+          expect(Point.exists?(result.first['id'])).to be true
+        end
+
+        it "raises #{error_class} after exhausting retries" do
+          allow(Point).to receive(:upsert_all).and_raise(error_class, 'canceling statement')
+          allow(Point).to receive(:sleep)
+
+          expect do
+            Point.archival_safe_upsert_all(
+              [base_row.merge(timestamp: 1_700_000_300)],
+              returning: Arel.sql('id, xmax')
+            )
+          end.to raise_error(error_class)
+
+          expect(Point).to have_received(:sleep).exactly(3).times
+        end
+      end
+    end
   end
 
   describe 'raw_data mutation guard' do

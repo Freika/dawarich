@@ -3,6 +3,29 @@
 require 'rails_helper'
 
 RSpec.describe Geojson::Params do
+  describe '#each_point' do
+    let(:json) do
+      {
+        'type' => 'Feature',
+        'geometry' => {
+          'type' => 'LineString',
+          'coordinates' => [
+            [13.4, 52.5, 0, 1_609_459_201],
+            [13.5, 52.6, 0, 1_609_459_262]
+          ]
+        },
+        'properties' => {}
+      }
+    end
+
+    it 'returns an enumerator that yields points individually' do
+      points = described_class.new(json).each_point
+
+      expect(points).to be_an(Enumerator)
+      expect(points.map { |point| point[:timestamp] }).to eq([1_609_459_201, 1_609_459_262])
+    end
+  end
+
   describe 'field alias detection' do
     let(:fixture_path) { Rails.root.join('spec/fixtures/files/geojson/various_fields.geojson') }
     let(:json) { JSON.parse(File.read(fixture_path)) }

@@ -2,10 +2,9 @@
 
 require 'rails_helper'
 
-# Exercises the reverse_trial signup variant (A/B bucketing via Flipper) through
-# the full HTTP stack. The companion controller bucketing code runs inside
-# `build_resource`, before the record has an id — `Signup::BucketVariant` needs
-# the full request lifecycle to assign a stable variant.
+# Exercises the reverse_trial signup variant through the full HTTP stack. On
+# Cloud, reverse_trial is the default (and only) variant assigned by
+# `Signup::BucketVariant` during `build_resource`, before the record has an id.
 RSpec.describe 'Users::Registrations signup variant', type: :request do
   before do
     allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
@@ -13,10 +12,6 @@ RSpec.describe 'Users::Registrations signup variant', type: :request do
     allow(DawarichSettings).to receive(:registration_enabled?).and_return(true)
     allow(DawarichSettings).to receive(:oidc_enabled?).and_return(false)
     stub_const('MANAGER_URL', 'https://manager.example.com')
-
-    # Flipper's ActiveRecord adapter persists flag state across examples —
-    # transactional fixtures only roll back the `users` table we touch.
-    Flipper.disable(:reverse_trial_signup)
   end
 
   let(:unique_email) { "variant-user-#{SecureRandom.hex(4)}@example.com" }
@@ -31,33 +26,7 @@ RSpec.describe 'Users::Registrations signup variant', type: :request do
   end
 
   describe 'POST /users' do
-    context 'when reverse_trial_signup is disabled (legacy_trial bucket)' do
-      before { Flipper.disable(:reverse_trial_signup) }
-
-      it 'creates the user in trial status with signup_variant=legacy_trial' do
-        post user_registration_path, params: valid_params
-
-        user = User.find_by(email: unique_email)
-        expect(user).to be_present
-        expect(user.signup_variant).to eq('legacy_trial')
-        expect(user.status).to eq('trial')
-      end
-
-      it 'does not redirect to Manager checkout' do
-        post user_registration_path, params: valid_params
-
-        expect(response.location.to_s).not_to include('manager.example.com/checkout')
-      end
-
-      it 'enqueues the Manager creation webhook exactly once (via start_trial)' do
-        expect { post user_registration_path, params: valid_params }
-          .to have_enqueued_job(Users::CreationWebhookJob).exactly(:once)
-      end
-    end
-
-    context 'when reverse_trial_signup is enabled (reverse_trial bucket)' do
-      before { Flipper.enable(:reverse_trial_signup) }
-
+    context 'on Cloud (reverse_trial is the default variant)' do
       it 'places the user in pending_payment with subscription_source=none' do
         post user_registration_path, params: valid_params
 
@@ -96,17 +65,6 @@ RSpec.describe 'Users::Registrations signup variant', type: :request do
       end
     end
 
-    context 'when gated by percentage_of_actors' do
-      it 'still assigns a concrete variant to the resulting user' do
-        Flipper.enable_percentage_of_actors(:reverse_trial_signup, 50)
-
-        post user_registration_path, params: valid_params
-
-        user = User.find_by(email: unique_email)
-        expect(user.signup_variant).to be_in(%w[legacy_trial reverse_trial])
-      end
-    end
-
     context 'when the submitted params fail validation' do
       it 'returns 422 and does not create the user (invalid email)' do
         post user_registration_path, params: {
@@ -132,8 +90,6 @@ RSpec.describe 'Users::Registrations signup variant', type: :request do
       end
 
       it 'does not redirect to Manager checkout when validation fails' do
-        Flipper.enable(:reverse_trial_signup)
-
         post user_registration_path, params: {
           user: { email: 'bad', password: '1', password_confirmation: '1' }
         }

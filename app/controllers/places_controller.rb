@@ -19,6 +19,7 @@ class PlacesController < ApplicationController
 
   def create
     @place = current_user.places.build(place_params.except(:tag_ids))
+    @place.user_named = true
 
     if @place.save
       add_tags if tag_ids.present?
@@ -96,7 +97,7 @@ class PlacesController < ApplicationController
   def destroy
     @place.destroy!
 
-    redirect_to places_url, notice: 'Place was successfully destroyed.', status: :see_other
+    redirect_to places_url(page: params[:page]), notice: 'Place was successfully destroyed.', status: :see_other
   end
 
   private

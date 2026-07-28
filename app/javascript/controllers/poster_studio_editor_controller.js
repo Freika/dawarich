@@ -16,12 +16,14 @@ import {
   PRINT_PRODUCTS,
   printProductFor,
 } from "poster_studio/data/print_products"
+import { MapPageProvider } from "poster_studio/data/providers"
 import {
   extendTokens,
   loadThemeTokens,
   resolveTheme,
 } from "poster_studio/data/theme_loader"
 import { downloadBlob } from "poster_studio/export/download"
+import { frameCovers } from "poster_studio/render/frame_geometry"
 import { drawOverlay } from "poster_studio/render/overlay"
 import { buildPosterStyle } from "poster_studio/render/style_builder"
 import { formatCoords } from "poster_studio/render/text_layout"
@@ -75,6 +77,8 @@ export default class extends Controller {
     "fontSelect",
     "trackOpacity",
     "trackOpacityLabel",
+    "trackWidth",
+    "trackWidthLabel",
     "summary",
     "format",
     "dpi",
@@ -94,6 +98,7 @@ export default class extends Controller {
     "saveEndAt",
     "saveSource",
     "saveOpacity",
+    "saveWidth",
     "dateStart",
     "dateEnd",
     "loadButton",
@@ -106,9 +111,14 @@ export default class extends Controller {
     "sizePickerOptions",
     "orderDialog",
     "orderSummary",
-    "orderStatus",
     "orderError",
-    "orderConfirmButton",
+    "orderActions",
+    "orderSteps",
+    "orderStep",
+    "uploadBar",
+    "checkoutLink",
+    "orderPageLink",
+    "orderDoneButton",
   ]
   static values = { fonts: Object, printOrderUrl: String }
 
@@ -120,13 +130,14 @@ export default class extends Controller {
       document.body.appendChild(this.element)
       return
     }
-    this.onOpen = () => this.open()
+    this.onOpen = (event) => this.open(event.detail?.provider)
     document.addEventListener("poster-studio:open", this.onOpen)
     this.onResize = () => this.resizeFrame()
     this.populateLayouts()
     this.populateSizePicker()
     this.populateFonts()
     this.trackOpacityLabelTarget.textContent = `${this.trackOpacityTarget.value}%`
+    this.trackWidthLabelTarget.textContent = `${this.trackWidthTarget.value}%`
   }
 
   disconnect() {
@@ -135,14 +146,18 @@ export default class extends Controller {
     if (this.backdropUrl) URL.revokeObjectURL(this.backdropUrl)
   }
 
-  async open() {
+  async open(provider = null) {
     if (!this.element.classList.contains("hidden")) return
+    this.provider =
+      provider ?? new MapPageProvider({ application: this.application })
     this.element.classList.remove("hidden")
     window.addEventListener("resize", this.onResize)
 
     try {
       this.hidden ??= new Set(DEFAULT_HIDDEN)
       if (!this.tokens) await this.seedTheme(this.initialThemeKey())
+      if (!this.titleInputTarget.value)
+        this.titleInputTarget.value = this.provider.defaultTitle()
       if (!this.subtitleInputTarget.value)
         this.subtitleInputTarget.value = this.dateRangeLabel()
       this.seedDateInputs()
@@ -173,7 +188,8 @@ export default class extends Controller {
 
   createMap() {
     this.teardown()
-    const bounds = trackBounds(this.trackGeojson) ?? this.mainMapBounds()
+    const bounds =
+      trackBounds(this.trackGeojson) ?? this.provider.fallbackBounds()
     this.previewMap = createPreviewMap({
       container: this.mapContainerTarget,
       style: this.posterStyle(),
@@ -226,6 +242,7 @@ export default class extends Controller {
       extras: true,
       hiddenCategories: [...this.hidden],
       trackOpacity: this.trackOpacityValue(),
+      trackWidth: this.trackWidthValue(),
     })
   }
 
@@ -346,8 +363,9 @@ export default class extends Controller {
     this.syncOrderAvailability()
     // Keep an open order view in sync with the new size: an orderable size
     // refreshes the dialog (and its price); a non-orderable one falls back to
-    // the size picker.
-    if (this.orderViewOpen) this.openOrder()
+    // the size picker. Skipped while an order is rendering/uploading so the
+    // step list isn't reset mid-flight.
+    if (this.orderViewOpen && !this.busy) this.openOrder()
   }
 
   get orderViewOpen() {
@@ -432,11 +450,11 @@ export default class extends Controller {
   }
 
   dateRangeLabel() {
-    const controller = this.mapController
-    if (!controller?.startDateValue || !controller?.endDateValue) return ""
+    const { startAt, endAt } = this.provider?.dateRange() ?? {}
+    if (!startAt || !endAt) return ""
     const options = { day: "numeric", month: "short", year: "numeric" }
-    const start = new Date(controller.startDateValue)
-    const end = new Date(controller.endDateValue)
+    const start = new Date(startAt)
+    const end = new Date(endAt)
     return `${start.toLocaleDateString("en-GB", options)} – ${end.toLocaleDateString("en-GB", options)}`
   }
 
@@ -448,6 +466,7 @@ export default class extends Controller {
       if (!toggle.checked) this.hidden.add(toggle.dataset.layerCategory)
     })
     this.trackOpacityLabelTarget.textContent = `${this.trackOpacityTarget.value}%`
+    this.trackWidthLabelTarget.textContent = `${this.trackWidthTarget.value}%`
     this.scheduleRestyle()
   }
 
@@ -455,41 +474,33 @@ export default class extends Controller {
     return Number.parseInt(this.trackOpacityTarget.value, 10) / 100
   }
 
+  trackWidthValue() {
+    return Number.parseInt(this.trackWidthTarget.value, 10) / 100
+  }
+
   // ===== Date range =====
 
   seedDateInputs() {
-    const controller = this.mapController
-    if (!controller?.startDateValue) return
-    this.dateStartTarget.value = toLocalInput(
-      new Date(controller.startDateValue),
-    )
-    this.dateEndTarget.value = toLocalInput(new Date(controller.endDateValue))
+    if (!this.hasDateStartTarget || !this.hasDateEndTarget) return
+    const { startAt, endAt } = this.provider.dateRange()
+    if (!startAt) return
+    this.dateStartTarget.value = toLocalInput(new Date(startAt))
+    this.dateEndTarget.value = toLocalInput(new Date(endAt))
   }
 
-  // SPA date change, same as the timeline: dispatch the shared event so the
-  // main map reloads its layers in place — the studio never closes. The URL
-  // is pushed for browser-state consistency.
+  // SPA date change delegated to the provider — the studio never closes.
   async applyDates() {
+    if (!this.provider?.supportsDateNavigation) return
     const start = this.dateStartTarget.value
     const end = this.dateEndTarget.value
-    if (!start || !end || !this.mapController) return
-
-    const params = new URLSearchParams(window.location.search)
-    params.set("start_at", start)
-    params.set("end_at", end)
-    window.history.pushState({}, "", `/map/v2?${params.toString()}`)
+    if (!start || !end) return
 
     const subtitleWasAuto =
       this.subtitleInputTarget.value === this.dateRangeLabel()
     this.setLoadBusy(true)
     this.setStatus("Loading tracks for the new range…")
     try {
-      document.dispatchEvent(
-        new CustomEvent("timeline-feed:date-navigated", {
-          detail: { startAt: start, endAt: end },
-        }),
-      )
-      await this.waitForTrackReload()
+      await this.provider.applyDates(start, end)
 
       if (subtitleWasAuto)
         this.subtitleInputTarget.value = this.dateRangeLabel()
@@ -507,35 +518,6 @@ export default class extends Controller {
     this.loadButtonTarget.disabled = value
     this.loadSpinnerTarget.classList.toggle("hidden", !value)
     this.loadLabelTarget.textContent = value ? "Loading…" : "Load"
-  }
-
-  // The reload replaces the layer data objects; wait for the identity to
-  // change and then stay stable for two polls (progressive loading lands
-  // in several passes), capped at ~16s.
-  async waitForTrackReload() {
-    const layerManager = this.mapController?.layerManager
-    const snapshot = () => ({
-      routes: layerManager?.getLayer("routes")?.data,
-      tracks: layerManager?.getLayer("tracks")?.data,
-    })
-    const before = snapshot()
-    let changed = false
-    let stable = 0
-    let last = before
-    for (let i = 0; i < 40; i++) {
-      await new Promise((resolve) => setTimeout(resolve, 400))
-      const current = snapshot()
-      if (current.routes !== before.routes || current.tracks !== before.tracks)
-        changed = true
-      if (changed) {
-        stable =
-          current.routes === last.routes && current.tracks === last.tracks
-            ? stable + 1
-            : 0
-        if (stable >= 2) return
-      }
-      last = current
-    }
   }
 
   presetRange(event) {
@@ -560,7 +542,8 @@ export default class extends Controller {
   // ===== Map interaction =====
 
   recenter() {
-    const bounds = trackBounds(this.trackGeojson) ?? this.mainMapBounds()
+    const bounds =
+      trackBounds(this.trackGeojson) ?? this.provider.fallbackBounds()
     if (bounds) this.previewMap?.fitBounds(bounds, { padding: 24 })
   }
 
@@ -654,7 +637,7 @@ export default class extends Controller {
   showOrderDialog(product) {
     this.orderSummaryTarget.textContent = `${this.layout.name} poster — ${product.priceLabel}`
     this.orderErrorTarget.classList.add("hidden")
-    this.orderStatusTarget.textContent = ""
+    this.resetOrderSteps()
     this.showOrderView("dialog")
   }
 
@@ -683,12 +666,10 @@ export default class extends Controller {
     const product = printProductFor(layout.id)
     if (!product) return
 
-    const checkoutTab = window.open("", "_blank")
     try {
       this.setBusy(true)
-      this.orderConfirmButtonTarget.disabled = true
       this.orderErrorTarget.classList.add("hidden")
-      this.orderStatusTarget.textContent = "Rendering print PDF…"
+      this.beginOrderSteps()
 
       const mapBounds = this.previewMap.getBounds()
       const { blob } = await exportPoster({
@@ -709,34 +690,77 @@ export default class extends Controller {
         },
       })
 
-      this.orderStatusTarget.textContent = "Uploading…"
-      const { checkoutUrl } = await submitPrintOrder({
+      this.setOrderStep("prepare", "done")
+      this.setOrderStep("upload", "active")
+      const { token, checkoutUrl } = await submitPrintOrder({
         url: this.printOrderUrlValue,
         blob,
         sku: product.sku,
         title: this.titleInputTarget.value.trim(),
         themeBase: this.themeBase,
         layoutId: layout.id,
+        onProgress: (fraction) => {
+          this.uploadBarTarget.value = Math.round(fraction * 100)
+        },
       })
 
-      this.orderStatusTarget.textContent = "Redirecting to checkout…"
-      if (checkoutTab) {
-        checkoutTab.location = checkoutUrl
-      } else {
-        window.location.assign(checkoutUrl)
-      }
-      this.closeOrder()
-      this.setStatus("Order started — finish payment in the checkout tab.")
+      this.setOrderStep("upload", "done")
+      this.enableCheckout(checkoutUrl, token)
     } catch (error) {
-      checkoutTab?.close()
-      this.orderDialogTarget.classList.remove("hidden")
+      this.resetOrderSteps()
       this.orderErrorTarget.textContent = error.message
       this.orderErrorTarget.classList.remove("hidden")
-      this.orderStatusTarget.textContent = ""
     } finally {
       this.setBusy(false)
-      this.orderConfirmButtonTarget.disabled = false
     }
+  }
+
+  // The checkout link is a real user-clicked anchor: window.open after the
+  // long render/upload would land outside the popup-blocker gesture window.
+  beginOrderSteps() {
+    this.orderActionsTarget.classList.add("hidden")
+    this.orderStepsTarget.classList.remove("hidden")
+    this.uploadBarTarget.value = 0
+    this.setOrderStep("prepare", "active")
+    this.setOrderStep("upload", "pending")
+    this.setOrderStep("checkout", "pending")
+    this.checkoutLinkTarget.classList.add("btn-disabled")
+    this.checkoutLinkTarget.setAttribute("aria-disabled", "true")
+    this.checkoutLinkTarget.removeAttribute("href")
+    this.orderPageLinkTarget.classList.add("hidden")
+    this.orderDoneButtonTarget.classList.add("hidden")
+  }
+
+  resetOrderSteps() {
+    this.orderStepsTarget.classList.add("hidden")
+    this.orderActionsTarget.classList.remove("hidden")
+  }
+
+  setOrderStep(name, state) {
+    const step = this.orderStepTargets.find((el) => el.dataset.step === name)
+    if (!step) return
+    step.classList.toggle("opacity-40", state === "pending")
+    step
+      .querySelector("[data-role='spinner']")
+      ?.classList.toggle("hidden", state !== "active")
+    step
+      .querySelector("[data-role='done']")
+      ?.classList.toggle("hidden", state !== "done")
+    step
+      .querySelector("[data-role='bar']")
+      ?.classList.toggle("hidden", state !== "active")
+  }
+
+  enableCheckout(checkoutUrl, token) {
+    this.setOrderStep("checkout", "active")
+    this.checkoutLinkTarget.href = checkoutUrl
+    this.checkoutLinkTarget.classList.remove("btn-disabled")
+    this.checkoutLinkTarget.removeAttribute("aria-disabled")
+    if (token) {
+      this.orderPageLinkTarget.href = `${new URL(this.printOrderUrlValue).origin}/orders/${token}`
+      this.orderPageLinkTarget.classList.remove("hidden")
+    }
+    this.orderDoneButtonTarget.classList.remove("hidden")
   }
 
   // Server-side render through the sidecar: fills the hidden posters form
@@ -758,22 +782,31 @@ export default class extends Controller {
     this.saveLatTarget.value = center.lat
     this.saveLonTarget.value = center.lng
     this.saveDistanceTarget.value = distance
-    this.saveStartAtTarget.value = this.mapController?.startDateValue || ""
-    this.saveEndAtTarget.value = this.mapController?.endDateValue || ""
-    this.saveSourceTarget.value = this.trackSource
+    const { startAt, endAt } = this.provider.dateRange()
+    this.saveStartAtTarget.value = startAt || ""
+    this.saveEndAtTarget.value = endAt || ""
+    this.saveSourceTarget.value = this.provider.trackSource()
     this.saveOpacityTarget.value = this.trackOpacityTarget.value
+    this.saveWidthTarget.value = this.trackWidthTarget.value
     this.saveFormTarget.requestSubmit()
     this.setStatus("Queued — rendering server-side into Recent posters…")
   }
 
-  sidecarDistance() {
+  framedDistance() {
     const bounds = this.previewMap.getBounds()
     const heightMeters =
       (bounds.getNorth() - bounds.getSouth()) * METERS_PER_DEGREE
+    return heightMeters * SIDECAR_DISTANCE_FACTOR
+  }
+
+  sidecarDistance() {
     const [min, max] = SIDECAR_DISTANCE_RANGE
-    return Math.round(
-      Math.min(max, Math.max(min, heightMeters * SIDECAR_DISTANCE_FACTOR)),
-    )
+    return Math.round(Math.min(max, Math.max(min, this.framedDistance())))
+  }
+
+  frameIsClamped() {
+    const [, max] = SIDECAR_DISTANCE_RANGE
+    return this.framedDistance() > max
   }
 
   // The server refuses renders without track data in the frame — mirror
@@ -789,26 +822,21 @@ export default class extends Controller {
       reason =
         "No tracks inside the frame — move or zoom the map over your route to save to the gallery."
     }
+    const message =
+      reason ||
+      (this.frameIsClamped()
+        ? "This view is wider than the largest poster area — the saved poster will be more zoomed in than the preview."
+        : null)
     this.saveButtonTarget.disabled = Boolean(reason)
-    this.saveNoticeTarget.textContent = reason || ""
-    this.saveNoticeTarget.classList.toggle("hidden", !reason)
+    this.saveNoticeTarget.textContent = message || ""
+    this.saveNoticeTarget.classList.toggle("hidden", !message)
   }
 
-  // Mirrors the server's track_intersects_area? box: ±distance/3 latitude,
-  // ±distance/4 longitude around the frame center.
+  // Mirrors the server's track_intersects_area?.
   frameCoversTrack(coords) {
     const center = this.previewMap.getCenter()
-    const distance = this.sidecarDistance()
-    const latDelta = distance / 3 / METERS_PER_DEGREE
-    const cosLat = Math.max(Math.cos((center.lat * Math.PI) / 180), 0.01)
-    const lonDelta = distance / 4 / (METERS_PER_DEGREE * cosLat)
-    return coords.some(
-      ([lng, lat]) =>
-        lng >= center.lng - lonDelta &&
-        lng <= center.lng + lonDelta &&
-        lat >= center.lat - latDelta &&
-        lat <= center.lat + latDelta,
-    )
+
+    return frameCovers(coords, center.lat, center.lng, this.sidecarDistance())
   }
 
   updateSummary() {
@@ -827,41 +855,12 @@ export default class extends Controller {
 
   // ===== Data plumbing =====
 
-  get trackSource() {
-    const layerManager = this.mapController?.layerManager
-    if (layerManager?.getLayer("routes")?.data?.features?.length)
-      return "routes"
-    if (layerManager?.getLayer("tracks")?.data?.features?.length)
-      return "tracks"
-    return "routes"
-  }
-
   get trackGeojson() {
     return (
-      this.mapController?.layerManager?.getLayer(this.trackSource)?.data ?? {
+      this.provider?.trackGeojson() ?? {
         type: "FeatureCollection",
         features: [],
       }
-    )
-  }
-
-  mainMapBounds() {
-    const bounds = this.mapController?.map?.getBounds()
-    if (!bounds) return null
-    return [
-      [bounds.getWest(), bounds.getSouth()],
-      [bounds.getEast(), bounds.getNorth()],
-    ]
-  }
-
-  get mapController() {
-    const container = document.getElementById("maps-maplibre-container")
-    return (
-      container &&
-      this.application.getControllerForElementAndIdentifier(
-        container,
-        "maps--maplibre",
-      )
     )
   }
 

@@ -5,6 +5,7 @@ module ImportsHelper
     'google_semantic_history' => { css: 'bg-error/10 text-error', icon: 'google', library: 'brands' },
     'google_phone_takeout'   => { css: 'bg-error/10 text-error', icon: 'google', library: 'brands' },
     'google_records'         => { css: 'bg-error/10 text-error', icon: 'google', library: 'brands' },
+    'google_photos'          => { css: 'bg-error/10 text-error', icon: 'google', library: 'brands' },
     'gpx'                    => { css: 'bg-success/10 text-success', icon: 'route' },
     'owntracks'              => { css: 'bg-primary/10 text-primary', icon: 'map-pin' },
     'geojson'                => { css: 'bg-warning/10 text-warning', icon: 'earth' },

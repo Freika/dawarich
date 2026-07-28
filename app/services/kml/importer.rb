@@ -7,6 +7,7 @@ class Kml::Importer
   include Imports::Broadcaster
   include Imports::BulkInsertable
   include Imports::FileLoader
+  include Imports::XmlAmpersandEscaping
 
   attr_reader :import, :user_id, :file_path
 
@@ -29,7 +30,7 @@ class Kml::Importer
 
   def load_and_parse_kml_document
     file_content = load_kml_content
-    REXML::Document.new(file_content)
+    REXML::Document.new(escape_raw_ampersands(file_content))
   end
 
   def extract_all_points(doc)

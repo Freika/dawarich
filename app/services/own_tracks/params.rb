@@ -90,6 +90,8 @@ class OwnTracks::Params
   end
 
   def valid_point?
+    return false if params[:_type].to_s == 'waypoint'
+
     params[:lon].present? && params[:lat].present? && params[:tst].present?
   end
 end

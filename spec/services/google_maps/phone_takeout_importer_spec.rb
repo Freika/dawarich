@@ -25,6 +25,12 @@ RSpec.describe GoogleMaps::PhoneTakeoutImporter do
           # 2 frequentPlaces from userLocationProfile
           expect { parser }.to change { Point.count }.by(6)
         end
+
+        it 'stamps the per-import tracker id on every point' do
+          parser
+
+          expect(Point.distinct.pluck(:tracker_id)).to eq(["google-phone-#{import.id}"])
+        end
       end
     end
 
@@ -390,6 +396,116 @@ RSpec.describe GoogleMaps::PhoneTakeoutImporter do
         )
         expect(positive_offset_point).to be_present
         expect(positive_offset_point.lat).to eq(48.862)
+      end
+    end
+
+    context 'when streaming a timeline file' do
+      let(:file_path) { Rails.root.join('spec/fixtures/files/google/timeline_new_format.json') }
+      let(:import) { create(:import, user:, name: 'streaming-timeline.json', source: :google_phone_takeout) }
+      let(:service) { described_class.new(import, user.id, file_path.to_s) }
+
+      it 'does not load the complete JSON document into memory' do
+        allow(service).to receive(:load_json_data).and_raise('full document load attempted')
+
+        expect { service.call }.to change { Point.count }.by(8)
+      end
+
+      it 'flushes points in bounded batches' do
+        stub_const('GoogleMaps::PhoneTakeoutImporter::BATCH_SIZE', 3)
+        allow(service).to receive(:bulk_insert_points).and_call_original
+
+        service.call
+
+        expect(service).to have_received(:bulk_insert_points).exactly(3).times
+      end
+
+      it 'does not insert partial data when the JSON document is truncated' do
+        malformed = <<~JSON
+          {
+            "semanticSegments": [
+              {
+                "startTime": "2024-06-15T09:00:00Z",
+                "timelinePath": [
+                  { "point": "48.8566,2.3522", "time": "2024-06-15T09:05:00Z" }
+                ]
+              }
+        JSON
+
+        Tempfile.create(['truncated-timeline', '.json']) do |file|
+          file.write(malformed)
+          file.flush
+          malformed_service = described_class.new(import, user.id, file.path)
+          original_count = Point.count
+
+          expect { malformed_service.call }.to raise_error(Oj::ParseError)
+          expect(Point.count).to eq(original_count)
+        end
+      end
+
+      it 'scrubs invalid UTF-8 while streaming' do
+        invalid_utf8 = <<~JSON.b.sub('INVALID', "invalid \xFF")
+          {
+            "semanticSegments": [
+              {
+                "startTime": "2024-06-15T09:00:00Z",
+                "timelinePath": [
+                  {
+                    "point": "48.8566,2.3522",
+                    "time": "2024-06-15T09:05:00Z",
+                    "description": "INVALID"
+                  }
+                ]
+              }
+            ]
+          }
+        JSON
+
+        Tempfile.create(['invalid-utf8-timeline', '.json'], binmode: true) do |file|
+          file.write(invalid_utf8)
+          file.flush
+          invalid_utf8_service = described_class.new(import, user.id, file.path)
+
+          expect { invalid_utf8_service.call }.to change { Point.count }.by(1)
+        end
+      end
+
+      it 'rolls back and surfaces the real error when a batch insert fails mid-stream' do
+        stub_const('GoogleMaps::PhoneTakeoutImporter::BATCH_SIZE', 2)
+        call_count = 0
+        allow(Point).to receive(:upsert_all).and_wrap_original do |original, *args, **kwargs|
+          call_count += 1
+          raise ActiveRecord::StatementInvalid, 'simulated batch failure' if call_count == 2
+
+          original.call(*args, **kwargs)
+        end
+        original_count = Point.count
+
+        expect { service.call }.to raise_error(ActiveRecord::StatementInvalid, /simulated batch failure/)
+        expect(Point.count).to eq(original_count)
+      end
+
+      it 'rolls back all points when a segment raises after an earlier batch flushed' do
+        stub_const('GoogleMaps::PhoneTakeoutImporter::BATCH_SIZE', 2)
+
+        document = <<~JSON
+          {
+            "semanticSegments": [
+              { "startTime": "2024-06-15T09:00:00Z", "visit": { "topCandidate": { "placeLocation": { "latLng": "48.8566°, 2.3522°" } } } },
+              { "startTime": "2024-06-15T10:00:00Z", "visit": { "topCandidate": { "placeLocation": { "latLng": "48.8570°, 2.3525°" } } } },
+              { "startTime": "not-a-real-date", "visit": { "topCandidate": { "placeLocation": { "latLng": "48.8580°, 2.3530°" } } } }
+            ]
+          }
+        JSON
+
+        Tempfile.create(['partial-timeline', '.json']) do |file|
+          file.write(document)
+          file.flush
+          partial_service = described_class.new(import, user.id, file.path)
+          original_count = Point.count
+
+          expect { partial_service.call }.to raise_error(Date::Error)
+          expect(Point.count).to eq(original_count)
+        end
       end
     end
   end

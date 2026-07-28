@@ -17,45 +17,110 @@ class GoogleMaps::PhoneTakeoutImporter
   BATCH_SIZE = 1000
 
   def call
-    points_data = parse_json.compact.map do |point_data|
-      point_data.merge(
-        import_id: import.id,
-        topic: 'Google Maps Phone Timeline Export',
-        tracker_id: 'google-maps-phone-timeline-export',
-        user_id: user_id,
-        created_at: Time.current,
-        updated_at: Time.current
-      )
+    path = resolve_file_path
+    validate_json(path)
+    initialize_stream
+    ActiveRecord::Base.transaction do
+      stream_entries(path)
+      process_user_location_profile
+      flush_batch
     end
-
-    points_data.each_slice(BATCH_SIZE).with_index do |batch, batch_index|
-      bulk_insert_points(batch)
-      broadcast_import_progress(import, (batch_index + 1) * BATCH_SIZE)
-    end
+  ensure
+    cleanup_temp_file
   end
 
   private
 
-  def parse_json
-    # location-history.json could contain an array of data points
-    # or an object with semanticSegments, rawSignals and rawArray
-    semantic_segments = []
-    raw_signals       = []
-    raw_array         = []
+  def validate_json(path)
+    parser = Oj::Parser.new(:validate)
+    File.open(path, 'rb') { |io| parser.load(io) }
+  rescue EncodingError, JSON::ParserError
+    @legacy_parser_required = true
+    File.open(path, 'rb') { |io| Oj.saj_parse(nil, io) }
+  end
 
-    json = load_json_data
+  def initialize_stream
+    @points_batch = []
+    @processed_points = 0
+    @first_semantic_start_time = nil
+    @seen_first_semantic_segment = false
+    @user_location_profile = nil
+  end
 
-    if json.is_a?(Array)
-      raw_array = parse_raw_array(json)
-    else
-      semantic_segments = parse_semantic_segments(json['semanticSegments']) if json['semanticSegments']
-      raw_signals = parse_raw_signals(json['rawSignals']) if json['rawSignals']
+  def stream_entries(path)
+    handler = GoogleMaps::PhoneTakeoutStreamHandler.new(
+      on_entry: ->(section, value) { process_stream_entry(section, value) },
+      on_profile: ->(profile) { @user_location_profile = profile }
+    )
+
+    File.open(path, 'rb') do |io|
+      if @legacy_parser_required
+        Oj.saj_parse(handler, io)
+      else
+        Oj::Parser.new(:saj, handler:).load(io)
+      end
     end
+  end
 
-    frequent_places = []
-    frequent_places = parse_user_location_profile(json) if json.is_a?(Hash) && json['userLocationProfile']
+  def process_stream_entry(section, value)
+    points = case section
+             when :semantic_segment
+               capture_first_semantic_start_time(value)
+               parse_semantic_segments([value])
+             when :raw_signal
+               parse_raw_signals([value])
+             when :raw_array
+               parse_raw_array([value])
+             else
+               []
+             end
 
-    semantic_segments + raw_signals + raw_array + frequent_places
+    enqueue_points(points)
+  end
+
+  def capture_first_semantic_start_time(segment)
+    return if @seen_first_semantic_segment
+
+    @first_semantic_start_time = segment['startTime']
+    @seen_first_semantic_segment = true
+  end
+
+  def enqueue_points(points)
+    Array(points).flatten.compact.each do |point|
+      @points_batch << point.merge(point_metadata)
+      flush_batch if @points_batch.size >= BATCH_SIZE
+    end
+  end
+
+  def point_metadata
+    {
+      import_id: import.id,
+      topic: 'Google Maps Phone Timeline Export',
+      tracker_id: "google-phone-#{import.id}",
+      user_id: user_id,
+      created_at: Time.current,
+      updated_at: Time.current
+    }
+  end
+
+  def process_user_location_profile
+    return unless @user_location_profile
+
+    enqueue_points(parse_user_location_profile(@user_location_profile, @first_semantic_start_time))
+  end
+
+  def flush_batch
+    return if @points_batch.empty?
+
+    batch = @points_batch
+    @points_batch = []
+    bulk_insert_points(batch)
+    @processed_points += batch.size
+    broadcast_import_progress(import, @processed_points)
+  end
+
+  def atomic_bulk_insert?
+    true
   end
 
   def parse_coordinates(coord_string)
@@ -219,13 +284,12 @@ class GoogleMaps::PhoneTakeoutImporter
     end
   end
 
-  def parse_user_location_profile(json)
-    places = json.dig('userLocationProfile', 'frequentPlaces')
+  def parse_user_location_profile(profile, reference_time)
+    places = profile['frequentPlaces']
     return [] if places.blank?
 
     # Use midnight of the first semantic segment's date as a base,
     # offset negatively to avoid collisions with actual data points
-    reference_time = json.dig('semanticSegments', 0, 'startTime')
     base_timestamp = if reference_time
                        DateTime.parse(reference_time).beginning_of_day.utc.to_i
                      else

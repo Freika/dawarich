@@ -22,8 +22,16 @@ module Visits
         @geocoder_results ||= Geocoder.search(
           center, limit: 10, distance_sort: true, radius: 1, units: :km
         )
+      rescue *ReverseGeocoding::ProviderErrors::TRANSIENT => e
+        Rails.logger.warn("Geocoding provider error while fetching a visit name: #{e.message}")
+
+        []
       rescue StandardError => e
-        ExceptionReporter.call(e)
+        if ReverseGeocoding::ProviderErrors.transient_tls?(e)
+          Rails.logger.warn("Geocoding provider error while fetching a visit name: #{e.message}")
+        else
+          ExceptionReporter.call(e)
+        end
 
         []
       end

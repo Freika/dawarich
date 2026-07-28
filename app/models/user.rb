@@ -43,7 +43,7 @@ class User < ApplicationRecord
   after_commit :trigger_creation_webhook, on: :create,
                                             if: -> { !DawarichSettings.self_hosted? && skip_auto_trial }
   after_update :invalidate_plan_rate_limit_cache, if: :saved_change_to_plan?
-  after_update :stamp_lite_transition, if: :saved_change_to_plan?
+  after_update :reset_archival_warnings, if: :saved_change_to_plan?
 
   before_save :sanitize_input
 
@@ -367,10 +367,13 @@ class User < ApplicationRecord
     Rails.cache.delete("rack_attack/plan/#{key}") if key.present?
   end
 
-  def stamp_lite_transition
-    updated_settings = (settings || {}).except('lite_since', 'archival_warnings')
-    updated_settings['lite_since'] = Time.zone.now.iso8601 if lite?
-
-    update_column(:settings, updated_settings)
+  def reset_archival_warnings
+    # Atomic JSONB key removal at the SQL level so a concurrent settings write
+    # (e.g. the archival warning job's merge) is never clobbered by a stale
+    # full-column overwrite.
+    User.where(id: id).update_all(
+      "settings = COALESCE(settings, '{}'::jsonb) - 'archival_warnings' - 'lite_since'"
+    )
+    settings&.except!('archival_warnings', 'lite_since')
   end
 end

@@ -26,7 +26,6 @@ RSpec.describe 'OAuth sign-in with pending import ticket', type: :request do
       allow(DawarichSettings).to receive(:registration_enabled?).and_return(true)
       allow(DawarichSettings).to receive(:oidc_enabled?).and_return(false)
       stub_const('MANAGER_URL', 'https://manager.example.com')
-      Flipper.disable(:reverse_trial_signup)
       Rails.application.env_config['devise.mapping'] = Devise.mappings[:user]
       mock_google_auth(email: email)
     end

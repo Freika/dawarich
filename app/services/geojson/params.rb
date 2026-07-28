@@ -10,35 +10,39 @@ class Geojson::Params
   end
 
   def call
-    result = case json['type']
-             when 'Feature' then process_feature(json)
-             when 'FeatureCollection' then process_feature_collection(json)
-             end
+    each_point.to_a
+  end
 
-    Array(result).flatten
+  def each_point(&block)
+    return enum_for(:each_point) unless block
+
+    case json['type']
+    when 'Feature'
+      each_feature_point(json, &block)
+    when 'FeatureCollection'
+      Array(json['features']).each do |feature|
+        each_feature_point(feature, &block)
+      end
+    end
   end
 
   private
 
-  def process_feature(json)
-    return [] if json[:geometry].blank?
+  def each_feature_point(feature)
+    return if feature[:geometry].blank?
 
-    case json[:geometry][:type]
+    case feature[:geometry][:type]
     when 'Point'
-      build_point(json)
+      yield build_point(feature)
     when 'LineString'
-      build_line(json)
+      feature[:geometry][:coordinates].each do |coordinate|
+        yield build_line_point(coordinate)
+      end
     when 'MultiLineString'
-      build_multi_line(json)
-    else
-      []
+      feature[:geometry][:coordinates].each do |line|
+        line.each { |coordinate| yield build_line_point(coordinate) }
+      end
     end
-  end
-
-  def process_feature_collection(json)
-    return [] if json['features'].blank?
-
-    json['features'].map { |feature| process_feature(feature) }
   end
 
   def build_point(feature)
@@ -61,20 +65,6 @@ class Geojson::Params
     }
     attrs[:altitude_decimal] = altitude_value if Point.altitude_decimal_supported?
     attrs
-  end
-
-  def build_line(feature)
-    feature[:geometry][:coordinates].map do |point|
-      build_line_point(point)
-    end
-  end
-
-  def build_multi_line(feature)
-    feature[:geometry][:coordinates].map do |line|
-      line.map do |point|
-        build_line_point(point)
-      end
-    end
   end
 
   def build_line_point(point)

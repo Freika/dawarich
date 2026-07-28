@@ -25,15 +25,15 @@ RSpec.describe 'Google records.json import scopes tracker_id by device_tag' do
     expect(tracker_ids).to contain_exactly(
       'google-records-device-1111111111',
       'google-records-device-2222222222',
-      'google-maps-timeline-export'
+      "google-records-#{import.id}"
     )
   end
 
-  it 'falls back to the legacy tracker_id when device_tag is missing' do
+  it 'falls back to the per-import tracker_id when device_tag is missing' do
     run_import
 
-    legacy_count = Point.where(import_id: import.id, tracker_id: 'google-maps-timeline-export').count
-    expect(legacy_count).to eq(1)
+    fallback_count = Point.where(import_id: import.id, tracker_id: "google-records-#{import.id}").count
+    expect(fallback_count).to eq(1)
   end
 
   def build_location(_label, device_tag:, lat:, lon:, offset:)

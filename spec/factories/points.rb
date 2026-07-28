@@ -35,8 +35,12 @@ FactoryBot.define do
 
     transient do
       country { nil }
-      longitude { FFaker::Geolocation.lng }
-      latitude  { FFaker::Geolocation.lat }
+      # Sequential coordinates for the same reason as timestamps above:
+      # FFaker::Geolocation draws from only ~66 values per axis, which
+      # collides with the (user, lonlat, timestamp) uniqueness validation
+      # whenever a spec pins the same timestamp across several points.
+      sequence(:longitude) { |n| -179.0 + ((n * 0.37) % 358.0) }
+      sequence(:latitude)  { |n| -89.0 + ((n * 0.19) % 178.0) }
     end
 
     # Keep user.points_count in sync (counter_cache was removed from belongs_to :user)

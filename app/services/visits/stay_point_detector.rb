@@ -188,6 +188,7 @@ module Visits
               AND timestamp BETWEEN ? AND ?
               AND lonlat IS NOT NULL
               AND (anomaly IS NULL OR anomaly = FALSE)
+              AND NOT (ST_X(lonlat::geometry) = 0 AND ST_Y(lonlat::geometry) = 0)
             ORDER BY timestamp ASC
           SQL
           user.id, start_at, end_at
@@ -210,6 +211,7 @@ module Visits
            .where(timestamp: start_at..end_at)
            .where('lonlat IS NOT NULL')
            .where('anomaly IS NULL OR anomaly = FALSE')
+           .where("NOT #{Points::NullIsland.sql_predicate}")
            .count
     end
 

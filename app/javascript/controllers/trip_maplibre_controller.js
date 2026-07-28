@@ -9,6 +9,7 @@ import { ReplayPanel } from "maps_maplibre/managers/replay_panel"
 import { ApiClient } from "maps_maplibre/services/api_client"
 import { featureToPhoto } from "maps_maplibre/utils/feature_to_photo"
 import { flightWindows } from "maps_maplibre/utils/flight_mask"
+import { buildTripGeojson, TripProvider } from "poster_studio/data/providers"
 import Flash from "./flash_controller"
 
 /**
@@ -22,6 +23,7 @@ export default class extends Controller {
     "daysAccordion",
     "expandAllBtn",
     "loadingIndicator",
+    "posterBtn",
     // Photos button
     "photosToggleBtn",
     // Flights button
@@ -56,6 +58,7 @@ export default class extends Controller {
     startedAt: String,
     endedAt: String,
     tripId: Number,
+    tripName: String,
     pathData: String,
     mapStyle: { type: String, default: "light" },
   }
@@ -398,6 +401,34 @@ export default class extends Controller {
     if (this.hasLoadingIndicatorTarget) {
       this.loadingIndicatorTarget.classList.toggle("hidden", !show)
     }
+  }
+
+  // ===== Poster studio =====
+
+  openPosterStudio() {
+    document.dispatchEvent(
+      new CustomEvent("poster-studio:open", {
+        detail: { provider: this.posterProvider() },
+      }),
+    )
+  }
+
+  posterProvider() {
+    return new TripProvider({
+      geojson: this.posterGeojson(),
+      startAt: this.startedAtValue,
+      endAt: this.endedAtValue,
+      title: this.tripNameValue,
+    })
+  }
+
+  posterGeojson() {
+    return buildTripGeojson({
+      dayRouteCollections: this.dayRoutesLayer
+        ? [...this.dayRoutesLayer.dayRouteData.values()]
+        : [],
+      pathData: this.getPathData(),
+    })
   }
 
   // ===== Photos layer toggle (button-based) =====

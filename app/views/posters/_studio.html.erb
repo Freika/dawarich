@@ -1,3 +1,4 @@
+<% show_date_controls = local_assigns.fetch(:show_date_controls, true) %>
 <% poster_font_urls = %w[inter oswald playfair-display jetbrains-mono].flat_map do |key|
      %w[400 700].map { |weight| ["#{key}-#{weight}", asset_path("poster/#{key}-#{weight}.woff2")] }
    end.to_h %>
@@ -16,30 +17,35 @@
         <%= icon 'map', class: 'h-4 w-4 opacity-70' %>
         Poster Studio
       </h2>
-      <%# Changing dates reloads the map page (that's how track data loads);
-          the studio stashes its state and reopens itself afterwards. %>
-      <div class="flex items-center gap-2 min-w-0">
-        <input type="datetime-local" class="input input-bordered input-sm"
-               data-poster-studio-editor-target="dateStart">
-        <span class="text-xs opacity-60">–</span>
-        <input type="datetime-local" class="input input-bordered input-sm"
-               data-poster-studio-editor-target="dateEnd">
-        <button type="button" class="btn btn-sm btn-primary"
-                data-poster-studio-editor-target="loadButton"
-                data-action="poster-studio-editor#applyDates">
-          <span class="hidden h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-r-transparent"
-                data-poster-studio-editor-target="loadSpinner"></span>
-          <span data-poster-studio-editor-target="loadLabel">Load</span>
-        </button>
-        <div class="hidden items-center gap-1 lg:flex">
-          <button type="button" class="btn btn-sm btn-ghost"
-                  data-range="today" data-action="poster-studio-editor#presetRange">Today</button>
-          <button type="button" class="btn btn-sm btn-ghost"
-                  data-range="week" data-action="poster-studio-editor#presetRange">Last 7 days</button>
-          <button type="button" class="btn btn-sm btn-ghost"
-                  data-range="month" data-action="poster-studio-editor#presetRange">Last month</button>
+      <% if show_date_controls %>
+        <div class="flex items-center gap-2 min-w-0">
+          <input type="datetime-local" class="input input-bordered input-sm"
+                 data-poster-studio-editor-target="dateStart">
+          <span class="text-xs opacity-60">–</span>
+          <input type="datetime-local" class="input input-bordered input-sm"
+                 data-poster-studio-editor-target="dateEnd">
+          <button type="button" class="btn btn-sm btn-primary"
+                  data-poster-studio-editor-target="loadButton"
+                  data-action="poster-studio-editor#applyDates">
+            <span class="hidden h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-r-transparent"
+                  data-poster-studio-editor-target="loadSpinner"></span>
+            <span data-poster-studio-editor-target="loadLabel">Load</span>
+          </button>
+          <div class="hidden items-center gap-1 lg:flex">
+            <button type="button" class="btn btn-sm btn-ghost"
+                    data-range="today" data-action="poster-studio-editor#presetRange">Today</button>
+            <button type="button" class="btn btn-sm btn-ghost"
+                    data-range="week" data-action="poster-studio-editor#presetRange">Last 7 days</button>
+            <button type="button" class="btn btn-sm btn-ghost"
+                    data-range="month" data-action="poster-studio-editor#presetRange">Last month</button>
+          </div>
         </div>
-      </div>
+      <% else %>
+        <div class="flex items-center gap-2 min-w-0 text-sm opacity-70">
+          <%= icon 'calendar-clock', class: 'h-4 w-4' %>
+          <span><%= local_assigns[:date_range_label] %></span>
+        </div>
+      <% end %>
       <button type="button" class="btn btn-ghost btn-sm btn-circle shrink-0" title="Close studio"
               data-action="poster-studio-editor#close">
         <%= icon 'x' %>
@@ -215,9 +221,20 @@
                   <span class="text-xs font-medium tabular-nums opacity-80"
                         data-poster-studio-editor-target="trackOpacityLabel"></span>
                 </div>
-                <input type="range" min="10" max="100" step="5" value="30"
+                <input type="range" min="10" max="100" step="5" value="100"
                        class="range range-primary range-xs"
                        data-poster-studio-editor-target="trackOpacity"
+                       data-action="input->poster-studio-editor#layersChanged">
+              </div>
+              <div class="pt-2">
+                <div class="flex items-center justify-between py-1">
+                  <span class="label-text text-xs">Track width</span>
+                  <span class="text-xs font-medium tabular-nums opacity-80"
+                        data-poster-studio-editor-target="trackWidthLabel"></span>
+                </div>
+                <input type="range" min="50" max="300" step="10" value="100"
+                       class="range range-primary range-xs"
+                       data-poster-studio-editor-target="trackWidth"
                        data-action="input->poster-studio-editor#layersChanged">
               </div>
             </div>
@@ -323,15 +340,46 @@
                 statutory 14-day right of withdrawal does not apply once
                 production starts (§312g Abs. 2 Nr. 1 BGB).
               </p>
-              <p class="text-xs" data-poster-studio-editor-target="orderStatus"></p>
               <p class="text-xs text-error hidden" data-poster-studio-editor-target="orderError"></p>
-              <div class="flex gap-2">
+              <div class="flex gap-2" data-poster-studio-editor-target="orderActions">
                 <button type="button" class="btn btn-primary btn-sm flex-1"
-                        data-poster-studio-editor-target="orderConfirmButton"
-                        data-action="poster-studio-editor#confirmOrder">Continue to checkout</button>
+                        data-action="poster-studio-editor#confirmOrder">Order this poster</button>
                 <button type="button" class="btn btn-ghost btn-sm"
                         data-action="poster-studio-editor#openSizePicker">Back</button>
               </div>
+
+              <%# Order progress: steps activate one after another; the checkout
+                  link stays disabled until the print file is uploaded. %>
+              <ol class="hidden space-y-3" data-poster-studio-editor-target="orderSteps">
+                <li class="space-y-1.5 opacity-40" data-poster-studio-editor-target="orderStep" data-step="prepare">
+                  <p class="flex items-center gap-1.5 text-xs font-medium">
+                    <span class="hidden h-3 w-3 shrink-0 animate-spin rounded-full border-2 border-current border-r-transparent" data-role="spinner"></span>
+                    <span class="hidden text-success" data-role="done"><%= icon 'circle-check', class: 'h-3.5 w-3.5' %></span>
+                    <span>1. Preparing poster</span>
+                  </p>
+                  <progress class="progress progress-primary hidden h-1.5 w-full" data-role="bar"></progress>
+                </li>
+                <li class="space-y-1.5 opacity-40" data-poster-studio-editor-target="orderStep" data-step="upload">
+                  <p class="flex items-center gap-1.5 text-xs font-medium">
+                    <span class="hidden h-3 w-3 shrink-0 animate-spin rounded-full border-2 border-current border-r-transparent" data-role="spinner"></span>
+                    <span class="hidden text-success" data-role="done"><%= icon 'circle-check', class: 'h-3.5 w-3.5' %></span>
+                    <span>2. Uploading poster</span>
+                  </p>
+                  <progress class="progress progress-primary hidden h-1.5 w-full" value="0" max="100"
+                            data-role="bar" data-poster-studio-editor-target="uploadBar"></progress>
+                </li>
+                <li class="space-y-1.5 opacity-40" data-poster-studio-editor-target="orderStep" data-step="checkout">
+                  <p class="text-xs font-medium">3. Continue to order</p>
+                  <a class="btn btn-primary btn-sm btn-disabled w-full" aria-disabled="true"
+                     target="_blank" rel="noopener"
+                     data-poster-studio-editor-target="checkoutLink">Continue to payment</a>
+                  <a class="link hidden text-xs" target="_blank" rel="noopener"
+                     data-poster-studio-editor-target="orderPageLink">Checkout not working? Open your order page</a>
+                  <button type="button" class="btn btn-ghost btn-xs hidden w-full"
+                          data-poster-studio-editor-target="orderDoneButton"
+                          data-action="poster-studio-editor#closeOrder">Close</button>
+                </li>
+              </ol>
             </div>
           </div>
           <% end %>
@@ -354,6 +402,7 @@
             <%= f.hidden_field :end_at, data: { poster_studio_editor_target: 'saveEndAt' } %>
             <%= f.hidden_field :source, data: { poster_studio_editor_target: 'saveSource' } %>
             <%= f.hidden_field :route_opacity, data: { poster_studio_editor_target: 'saveOpacity' } %>
+            <%= f.hidden_field :route_width, data: { poster_studio_editor_target: 'saveWidth' } %>
           <% end %>
         </div>
       </aside>

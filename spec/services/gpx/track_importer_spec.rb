@@ -98,5 +98,53 @@ RSpec.describe Gpx::TrackImporter do
         end
       end
     end
+
+    context 'when a UTF-8 BOM overrides an incorrect UTF-16 declaration' do
+      let(:file_path) do
+        path = Rails.root.join('tmp', "gpx_mismatched_encoding_#{SecureRandom.hex(4)}.gpx")
+        content = <<~XML
+          <?xml version="1.0" encoding="utf-16"?>
+          <gpx version="1.1" creator="Anonymized Export" xmlns="http://www.topografix.com/GPX/1/1">
+            <trk><trkseg>
+              <trkpt lat="52.5200" lon="13.4050">
+                <ele>34.0</ele><time>2024-06-15T10:30:00Z</time>
+              </trkpt>
+            </trkseg></trk>
+          </gpx>
+        XML
+        File.binwrite(path, "\xEF\xBB\xBF".b + content)
+        path
+      end
+
+      after { File.delete(file_path) if File.exist?(file_path) }
+
+      it 'uses the BOM to import the track point' do
+        expect { parser }.to change { Point.count }.by(1)
+      end
+    end
+
+    context 'when a UTF-16BE BOM identifies genuinely multi-byte content' do
+      let(:file_path) do
+        path = Rails.root.join('tmp', "gpx_utf16be_#{SecureRandom.hex(4)}.gpx")
+        content = <<~XML
+          <?xml version="1.0" encoding="utf-16"?>
+          <gpx version="1.1" creator="Anonymized Export" xmlns="http://www.topografix.com/GPX/1/1">
+            <trk><trkseg>
+              <trkpt lat="52.5200" lon="13.4050">
+                <ele>34.0</ele><time>2024-06-15T10:30:00Z</time>
+              </trkpt>
+            </trkseg></trk>
+          </gpx>
+        XML
+        File.binwrite(path, "\xFE\xFF".b + content.encode('UTF-16BE').b)
+        path
+      end
+
+      after { File.delete(file_path) if File.exist?(file_path) }
+
+      it 'decodes the UTF-16 track via the preserved BOM' do
+        expect { parser }.to change { Point.count }.by(1)
+      end
+    end
   end
 end
