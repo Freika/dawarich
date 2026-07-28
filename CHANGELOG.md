@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+
+### Fixed
+
+- The Dawarich app and Sidekiq containers now restart automatically after a graceful (exit 0) shutdown instead of staying down, so a stray SIGHUP no longer takes an instance offline until manual intervention (#3099).
 
 ## [1.10.2] - 2026-07-27, Berlin
 
