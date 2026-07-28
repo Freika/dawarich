@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Public live-share links now update in real time for signed-in visitors, instead of only refreshing the location on a full page reload. (#3111)
 - Reverse geocoding and place-name provider outages no longer flood error reporting with handled timeouts, dropped TLS connections, refused connections, unresolvable hostnames, or invalid provider responses. A misconfigured or rate-limited provider — a bad API key, for example — is still reported.
 - The place search box behind visit naming and the Map v2 place picker gets the same treatment: a query the geocoder rejects, or a provider that is briefly unreachable, is logged and returns no matches instead of raising an application error. Self-hosted logs now name the failing error class, and a misconfigured or rate-limited provider is still reported.
+- Unexpected place search errors no longer include the search query or coordinates in error reports.
 - Place visit detection no longer fails when an unused suggested place is deleted while the nightly calculation is running.
 - Clicking "Continue reverse geocoding" again now re-processes points that were left ungeocoded by a previous run, instead of skipping them for up to a day. (#3071)
 - Public share links now expire at the start of the selected date in the owner's timezone instead of remaining active through that day (#3112).

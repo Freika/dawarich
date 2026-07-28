@@ -125,6 +125,17 @@ RSpec.describe Places::NearbySearch do
       expect(ExceptionReporter).to have_received(:call)
     end
 
+    it 'keeps the coordinates out of the exception report' do
+      allow(Geocoder).to receive(:search).and_raise(StandardError, 'photon down')
+      allow(ExceptionReporter).to receive(:call)
+
+      described_class.new(latitude: lat, longitude: lon).call
+
+      expect(ExceptionReporter).to have_received(:call) do |_error, context|
+        expect(context).not_to include(lat.to_s, lon.to_s)
+      end
+    end
+
     context 'with cache: true' do
       before { Rails.cache.clear }
 

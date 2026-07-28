@@ -140,5 +140,16 @@ RSpec.describe Places::Search do
       expect(ExceptionReporter).to receive(:call).with(instance_of(StandardError), anything)
       expect(described_class.new(query: 'cafe', latitude: lat, longitude: lon, radius: 1.0).call).to eq([])
     end
+
+    it 'keeps the query and coordinates out of the exception report' do
+      allow(Geocoder).to receive(:search).and_raise(StandardError, 'photon down')
+      allow(ExceptionReporter).to receive(:call)
+
+      described_class.new(query: 'cafe', latitude: lat, longitude: lon, radius: 1.0).call
+
+      expect(ExceptionReporter).to have_received(:call) do |_error, context|
+        expect(context).not_to include('cafe', lat.to_s, lon.to_s)
+      end
+    end
   end
 end
