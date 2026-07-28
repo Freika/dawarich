@@ -13,9 +13,16 @@ module Visits
           properties['housenumber'],
           properties['city'],
           properties['state']
-        ].compact.reject(&:empty?).uniq
+        ].filter_map { |component| meaningful_component(component) }.uniq
 
         name_components.any? ? name_components.join(', ') : nil
+      end
+
+      def self.meaningful_component(component)
+        normalized = component.to_s.strip
+        return nil if normalized.blank? || %w[yes no].include?(normalized.downcase)
+
+        normalized
       end
 
       def initialize(features, feature_type, name)

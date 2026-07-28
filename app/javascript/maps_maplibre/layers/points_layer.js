@@ -17,7 +17,7 @@ export class PointsLayer extends BaseLayer {
     this.justDragged = false
     this.draggedFeature = null
     this.canvas = null
-    this.editModeEnabled = false
+    this.editModeEnabled = options.editModeEnabled === true
 
     // Bind event handlers once and store references for proper cleanup
     this._onMouseEnter = this.onMouseEnter.bind(this)

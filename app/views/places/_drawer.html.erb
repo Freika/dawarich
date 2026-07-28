@@ -11,7 +11,14 @@
       <% end %>
     </div>
     <div class="place-drawer__titles">
-      <h2 class="place-drawer__name"><%= place.name %></h2>
+      <h2 class="place-drawer__name">
+        <%= place.name %>
+        <% if place.name_locked? %>
+          <span class="place-drawer__name-lock"
+                title="You named this place, so automatic naming will not change it. Rename it to &quot;<%= Place::DEFAULT_NAME %>&quot; to hand it back to automatic naming."
+                data-testid="place-name-lock"><%= icon 'lock', class: 'w-4 h-4 inline' %></span>
+        <% end %>
+      </h2>
       <% if stats[:location_line].present? %>
         <p class="place-drawer__location"><%= stats[:location_line] %></p>
       <% end %>

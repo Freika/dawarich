@@ -42,7 +42,6 @@ RUN apt-get update -qq \
     libyaml-dev \
     zlib1g-dev \
     libgeos-dev libgeos++-dev \
-    imagemagick \
     tzdata \
     less \
     libjemalloc2 libjemalloc-dev \

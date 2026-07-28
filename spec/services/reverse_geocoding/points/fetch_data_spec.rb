@@ -215,6 +215,29 @@ RSpec.describe ReverseGeocoding::Points::FetchData do
     end
   end
 
+  context 'when the geocoder provider is unreachable' do
+    before do
+      allow(ExceptionReporter).to receive(:call)
+      allow(Rails.logger).to receive(:warn)
+    end
+
+    it 'does not report a refused connection as an application exception' do
+      allow(Geocoder).to receive(:search).and_raise(Errno::ECONNREFUSED)
+
+      expect { fetch_data }.not_to raise_error
+      expect(ExceptionReporter).not_to have_received(:call)
+      expect(Rails.logger).to have_received(:warn).with(/Reverse geocoding provider error for point #{point.id}/)
+    end
+
+    it 'does not report an unresolvable hostname as an application exception' do
+      allow(Geocoder).to receive(:search).and_raise(SocketError)
+
+      expect { fetch_data }.not_to raise_error
+      expect(ExceptionReporter).not_to have_received(:call)
+      expect(Rails.logger).to have_received(:warn).with(/Reverse geocoding provider error for point #{point.id}/)
+    end
+  end
+
   context 'when the geocoder provider returns an invalid response' do
     before do
       allow(ExceptionReporter).to receive(:call)

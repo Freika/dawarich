@@ -61,17 +61,17 @@ RSpec.describe SmtpConfig do
       expect(described_class.smtp_settings('SMTP_STARTTLS' => 'false')[:enable_starttls]).to be(false)
     end
 
-    it 'defaults timeouts to 5 seconds and accepts overrides' do
-      expect(described_class.smtp_settings({})).to include(open_timeout: 5, read_timeout: 5)
+    it "defaults open/read timeouts to net-smtp's own 30 and 60 seconds and accepts overrides" do
+      expect(described_class.smtp_settings({})).to include(open_timeout: 30, read_timeout: 60)
       expect(
         described_class.smtp_settings('SMTP_OPEN_TIMEOUT' => '25', 'SMTP_READ_TIMEOUT' => '30')
       ).to include(open_timeout: 25, read_timeout: 30)
     end
 
-    it 'falls back to the 5-second default when a timeout env var is set but blank' do
+    it 'falls back to the net-smtp default timeouts when a timeout env var is set but blank' do
       expect(
         described_class.smtp_settings('SMTP_OPEN_TIMEOUT' => '', 'SMTP_READ_TIMEOUT' => '   ')
-      ).to include(open_timeout: 5, read_timeout: 5)
+      ).to include(open_timeout: 30, read_timeout: 60)
     end
   end
 

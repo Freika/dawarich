@@ -62,6 +62,7 @@ export default class extends Controller {
     "searchResults",
     // Layer toggles
     "pointsToggle",
+    "pointsEditToggle",
     "routesToggle",
     "heatmapToggle",
     "hexagonsToggle",
@@ -1403,8 +1404,7 @@ export default class extends Controller {
   }
 
   togglePointsEditing(event) {
-    const pointsLayer = this.layerManager.getLayer("points")
-    pointsLayer?.setEditMode(event.currentTarget.checked)
+    return this.settingsController.togglePointsEditing(event)
   }
   toggleRoutes(event) {
     return this.routesManager.toggleRoutes(event)
