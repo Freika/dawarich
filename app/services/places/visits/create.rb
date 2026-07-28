@@ -42,7 +42,7 @@ class Places::Visits::Create
       ).call(points, already_sorted: true)
 
       visits.each do |time_range, visit_points|
-        create_or_update_visit(place, time_range, visit_points)
+        return true unless create_or_update_visit(place, time_range, visit_points)
       end
     end
 
@@ -99,7 +99,10 @@ class Places::Visits::Create
 
     ActiveRecord::Base.transaction do
       current_place = Place.lock.find_by(id: place.id)
-      next unless current_place
+      unless current_place
+        Rails.logger.warn("[Places::Visits::Create] place_id=#{place.id} deleted mid-run, skipping visit")
+        next false
+      end
 
       visit = find_or_initialize_visit(current_place.id, visit_points.first.timestamp)
 
@@ -115,6 +118,7 @@ class Places::Visits::Create
       visit.save!
 
       Point.where(id: visit_points.map(&:id)).update_all(visit_id: visit.id)
+      true
     end
   end
 
