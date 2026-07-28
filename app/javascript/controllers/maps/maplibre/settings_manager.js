@@ -60,6 +60,7 @@ export class SettingsController {
     // Sync layer toggles
     const toggleMap = {
       pointsToggle: "pointsVisible",
+      pointsEditToggle: "pointDraggingEnabled",
       routesToggle: "routesVisible",
       heatmapToggle: "heatmapEnabled",
       hexagonsToggle: "hexagonsEnabled",
@@ -82,6 +83,7 @@ export class SettingsController {
       "hexagonsToggle",
       "fogToggle",
       "scratchToggle",
+      "pointsEditToggle",
     ])
 
     Object.entries(toggleMap).forEach(([targetName, settingKey]) => {
@@ -1264,6 +1266,14 @@ export class SettingsController {
     }
 
     await SettingsManager.updateSetting("fogOfWarMode", mode)
+  }
+
+  togglePointsEditing(event) {
+    const enabled = event.target.checked
+
+    this.layerManager.getLayer("points")?.setEditMode(enabled)
+
+    SettingsManager.updateSetting("pointDraggingEnabled", enabled)
   }
 
   updateRouteOpacity(event) {

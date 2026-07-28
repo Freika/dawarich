@@ -4,6 +4,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.10.3] - 2026-07-28, Berlin
+
+### Added
+
+- The Map v2 "Edit points" toggle is now remembered between sessions instead of resetting to off on every page load; it still defaults to off, so points stay protected from accidental drags until you opt in. On the Lite plan it stays session-only, since editing points requires Pro. (#3085)
+
+### Changed
+
+- The Docker image no longer ships ImageMagick — nothing in the app used it, so the image gets smaller. (#3139)
+
+### Fixed
+
+- Turning "Edit points" off on Map v2 now reliably disables point dragging. Changing the map style while editing was on left a stale drag handler attached, so points stayed draggable no matter what the toggle said.
+- The Family entry in the navigation bar is now clickable across its entire button area instead of only the label text. (#3100)
+- The Dawarich app and Sidekiq containers now restart automatically after a graceful (exit 0) shutdown instead of staying down, so a stray SIGHUP no longer takes an instance offline until manual intervention (#3099).
+- Nightly place- and area-visit calculation no longer fails when an instance contains legacy points without timestamps.
+- Import rows on the Imports page now update their status live as an import processes, instead of staying on "Processing" until the page is manually reloaded. (#3174)
+- Public live-share links now update in real time for signed-in visitors, instead of only refreshing the location on a full page reload. (#3111)
+- Reverse geocoding and place-name provider outages no longer flood error reporting with handled timeouts, dropped TLS connections, refused connections, unresolvable hostnames, or invalid provider responses. A misconfigured or rate-limited provider — a bad API key, for example — is still reported.
+- The place search box behind visit naming and the Map v2 place picker gets the same treatment: a query the geocoder rejects, or a provider that is briefly unreachable, is logged and returns no matches instead of raising an application error. Self-hosted logs now name the failing error class, and a misconfigured or rate-limited provider is still reported.
+- Unexpected place search errors no longer include the search query or coordinates in error reports.
+- Place visit detection no longer fails when an unused suggested place is deleted while the nightly calculation is running.
+- Clicking "Continue reverse geocoding" again now re-processes points that were left ungeocoded by a previous run, instead of skipping them for up to a day. (#3071)
+- Public share links now expire at the start of the selected date in the owner's timezone instead of remaining active through that day (#3112).
+- The share link form now spells out that a link stays active only through the day before the selected expiry date.
+
 
 ## [1.10.2] - 2026-07-27, Berlin
 

@@ -131,7 +131,7 @@ module ShareLinks
 
       date = Date.iso8601(raw.to_s)
       zone = Time.find_zone(current_user.timezone_iana) || Time.zone
-      zone.local(date.year, date.month, date.day).end_of_day
+      zone.local(date.year, date.month, date.day)
     rescue ArgumentError
       nil
     end

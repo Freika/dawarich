@@ -2,12 +2,16 @@
 
 module ReverseGeocoding
   module ProviderErrors
-    TRANSIENT = [
+    UNREACHABLE = [Errno::ECONNREFUSED, SocketError].freeze
+
+    TRANSIENT = ([
       Geocoder::LookupTimeout,
       Geocoder::NetworkError,
       Geocoder::ServiceUnavailable,
       Geocoder::ResponseParseError
-    ].freeze
+    ] + UNREACHABLE).freeze
+
+    SEARCH_HANDLED = (TRANSIENT + [Geocoder::InvalidRequest]).freeze
 
     TRANSIENT_TLS_MESSAGE = 'unexpected eof while reading'
 
