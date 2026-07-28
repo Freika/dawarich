@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Google Timeline imports now keep path points in order when several share the same minute-resolution timestamp: tied points on a path are spaced one second apart so their sequence survives, while genuine repeats at the same coordinate still collapse into a single point. Caveat: re-importing the same Timeline file before deleting its existing date range can leave partial duplicates, because the synthetic spacing shifts the deduplication key — delete the affected date range first when re-importing. (#3115)
 - Visit detection no longer turns long slow walks into one large suggested visit centered somewhere the user never stopped (#2970).
 - Photon place names no longer show generic "Yes" categories in visits (https://github.com/Freika/dawarich/issues/3050)
+- Imports that finish with zero saved points now notify you instead of completing silently. GPX and KML files are called out when they lack per-point timestamps; other sources get a source-neutral message. (#3062)
 
 
 ## [1.10.3] - 2026-07-28, Berlin
