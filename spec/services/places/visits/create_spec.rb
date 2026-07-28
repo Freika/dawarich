@@ -166,4 +166,15 @@ RSpec.describe Places::Visits::Create do
     expect(Visit.count).to eq(1)
     expect(new_point.reload.visit_id).to eq(original_visit_id)
   end
+
+  it 'ignores nearby persisted points without timestamps' do
+    invalid_point = near_point(base_ts, seq: 1)
+    invalid_point.update_column(:timestamp, nil)
+    near_point(base_ts + 5.minutes, seq: 2)
+    near_point(base_ts + 10.minutes, seq: 3)
+    near_point(base_ts + 15.minutes, seq: 4)
+
+    expect { run }.to change(Visit, :count).by(1)
+    expect(invalid_point.reload.visit_id).to be_nil
+  end
 end
