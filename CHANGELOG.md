@@ -12,7 +12,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Nightly place- and area-visit calculation no longer fails when an instance contains legacy points without timestamps.
 - Import rows on the Imports page now update their status live as an import processes, instead of staying on "Processing" until the page is manually reloaded. (#3174)
 - Public live-share links now update in real time for signed-in visitors, instead of only refreshing the location on a full page reload. (#3111)
-
+- Reverse geocoding and place-name provider outages no longer flood error reporting with handled timeouts, dropped TLS connections, refused connections, unresolvable hostnames, or invalid provider responses. A misconfigured or rate-limited provider — a bad API key, for example — is still reported.
+- The place search box behind visit naming and the Map v2 place picker gets the same treatment: a query the geocoder rejects, or a provider that is briefly unreachable, is logged and returns no matches instead of raising an application error. Self-hosted logs now name the failing error class, and a misconfigured or rate-limited provider is still reported.
 
 ## [1.10.2] - 2026-07-27, Berlin
 
