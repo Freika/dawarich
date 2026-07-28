@@ -16,17 +16,32 @@
         <div class="text-center mb-6">
           <h3 class="text-2xl font-bold text-primary mb-2">Welcome to Dawarich!</h3>
           <p class="text-base-content/70">
-            Let's get your location data on the map.
+            Your map starts with your next step — literally.
           </p>
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <%# Path A: Import %>
-          <button class="card bg-base-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer text-left border-2 border-transparent hover:border-primary"
+          <%# Path A: Track (primary) %>
+          <button class="card bg-base-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer text-left border-2 border-primary/40 hover:border-primary sm:col-span-2"
+                  data-action="onboarding-modal#showTrack">
+            <div class="card-body p-5">
+              <div class="flex items-center gap-2 mb-2">
+                <%= icon 'smartphone', class: 'w-6 h-6 text-primary' %>
+                <h4 class="text-lg font-semibold">Start tracking now</h4>
+                <span class="badge badge-primary badge-sm">2 minutes</span>
+              </div>
+              <p class="text-sm text-base-content/70">
+                Get the app, scan a QR code, and watch your first points appear on the map today.
+              </p>
+            </div>
+          </button>
+
+          <%# Path B: Import %>
+          <button class="card bg-base-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer text-left border-2 border-transparent hover:border-secondary"
                   data-action="onboarding-modal#showImport">
             <div class="card-body p-5">
               <div class="flex items-center gap-2 mb-2">
-                <%= icon 'file-up', class: 'w-6 h-6 text-primary' %>
+                <%= icon 'file-up', class: 'w-6 h-6 text-secondary' %>
                 <h4 class="text-lg font-semibold">I have data</h4>
               </div>
               <p class="text-sm text-base-content/70">
@@ -35,22 +50,8 @@
             </div>
           </button>
 
-          <%# Path B: Track %>
-          <button class="card bg-base-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer text-left border-2 border-transparent hover:border-secondary"
-                  data-action="onboarding-modal#showTrack">
-            <div class="card-body p-5">
-              <div class="flex items-center gap-2 mb-2">
-                <%= icon 'smartphone', class: 'w-6 h-6 text-secondary' %>
-                <h4 class="text-lg font-semibold">Start tracking</h4>
-              </div>
-              <p class="text-sm text-base-content/70">
-                Download the app and connect it to start recording your location.
-              </p>
-            </div>
-          </button>
-
           <%# Path C: Demo Data %>
-          <button class="card bg-base-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer text-left border-2 border-transparent hover:border-accent sm:col-span-2"
+          <button class="card bg-base-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer text-left border-2 border-transparent hover:border-accent"
                   data-action="onboarding-modal#loadDemoData"
                   data-onboarding-modal-target="demoButton">
             <div class="card-body p-5">
@@ -191,6 +192,11 @@
               and follow the
               <%= link_to 'setup guide', 'https://dawarich.app/docs/tutorials/track-your-location?utm_source=app&utm_medium=referral&utm_campaign=onboarding',
                   class: 'link link-primary font-medium', target: '_blank', rel: 'noopener' %>.
+            </p>
+
+            <p class="text-xs text-base-content/60">
+              Have old location history, like a Google Takeout? Tracking works right away —
+              you can <button type="button" class="link link-primary" data-action="onboarding-modal#showImport">import your history anytime</button>.
             </p>
           </div>
         </div>
