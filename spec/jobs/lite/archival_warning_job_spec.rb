@@ -149,5 +149,36 @@ RSpec.describe Lite::ArchivalWarningJob, type: :job do
         expect { described_class.perform_now }.not_to change(Notification, :count)
       end
     end
+
+    context 'when a Pro user with years of history is freshly downgraded to Lite' do
+      let!(:downgraded) { create(:user).tap { |u| u.update_column(:plan, User.plans[:pro]) } }
+
+      before do
+        create(:point, user: downgraded, timestamp: 14.months.ago.to_i)
+        downgraded.update!(plan: :lite)
+      end
+
+      it 'sends the archived notification on the first run' do
+        expect { described_class.perform_now }
+          .to change { Notification.where(user: downgraded).count }.by(1)
+
+        notification = Notification.where(user: downgraded).order(:created_at).last
+        expect(notification.title).to include('archived')
+      end
+
+      it 'does not enqueue the email when all thresholds are crossed at once' do
+        expect { described_class.perform_now }
+          .not_to have_enqueued_job(Users::MailerSendingJob)
+      end
+
+      it 'notifies again when the user upgrades and is downgraded again' do
+        described_class.perform_now
+        downgraded.update!(plan: :pro)
+        downgraded.update!(plan: :lite)
+
+        expect { described_class.perform_now }
+          .to change { Notification.where(user: downgraded).count }.by(1)
+      end
+    end
   end
 end

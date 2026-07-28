@@ -82,7 +82,8 @@ export class DataLoader {
       end_at: endDate,
     })
     const points = result.points
-    const pointsGeoJSON = pointsToGeoJSON(points)
+    const allPointsGeoJSON = pointsToGeoJSON(points)
+    const pointsGeoJSON = this.pointsGeoJSON(points, allPointsGeoJSON)
     let routesGeoJSON = RoutesLayer.pointsToRoutes(points, {
       distanceThresholdMeters: this.settings.metersBetweenRoutes || 500,
       timeThresholdMinutes: this.settings.minutesBetweenRoutes || 60,
@@ -98,7 +99,13 @@ export class DataLoader {
       routesGeoJSON = applySpeedColors(routesGeoJSON, points, speedColorScale)
     }
 
-    return { points, pointsGeoJSON, routesGeoJSON, routesBaseGeoJSON }
+    return {
+      points,
+      pointsGeoJSON,
+      allPointsGeoJSON,
+      routesGeoJSON,
+      routesBaseGeoJSON,
+    }
   }
 
   /**
@@ -162,9 +169,10 @@ export class DataLoader {
             : null,
           onBatch: onLayerData
             ? (accumulatedPoints) => {
-                const geoJSON = pointsToGeoJSON(accumulatedPoints)
-                onLayerData("points", geoJSON)
-                onLayerData("heatmap", geoJSON)
+                // Stream raw points; simplification runs once on completion
+                const rawGeoJSON = pointsToGeoJSON(accumulatedPoints)
+                onLayerData("points", rawGeoJSON)
+                onLayerData("heatmap", rawGeoJSON)
                 if (counter) counter.update("points", accumulatedPoints.length)
               }
             : null,
@@ -283,7 +291,8 @@ export class DataLoader {
       // Transform points to GeoJSON
       performanceMonitor.mark("transform-geojson")
       data.points = points
-      data.pointsGeoJSON = pointsToGeoJSON(data.points)
+      const allPointsGeoJSON = pointsToGeoJSON(data.points)
+      data.pointsGeoJSON = this.pointsGeoJSON(data.points, allPointsGeoJSON)
       data.routesGeoJSON = RoutesLayer.pointsToRoutes(data.points, {
         distanceThresholdMeters: this.settings.metersBetweenRoutes || 500,
         timeThresholdMinutes: this.settings.minutesBetweenRoutes || 60,
@@ -310,10 +319,10 @@ export class DataLoader {
         onLayerData("routes-base", data.routesBaseGeoJSON)
         // Final points/heatmap update with complete dataset
         onLayerData("points", data.pointsGeoJSON)
-        onLayerData("heatmap", data.pointsGeoJSON)
-        // Fog and scratch need all points — update once
-        onLayerData("fog", data.pointsGeoJSON)
-        onLayerData("scratch", data.pointsGeoJSON)
+        // Heatmap, fog and scratch need all points
+        onLayerData("heatmap", allPointsGeoJSON)
+        onLayerData("fog", allPointsGeoJSON)
+        onLayerData("scratch", allPointsGeoJSON)
       }
     } else {
       data.points = []
@@ -496,6 +505,7 @@ export class DataLoader {
           latitude: place.latitude,
           longitude: place.longitude,
           note: place.note,
+          nameLocked: Boolean(place.name_locked),
           // Stringify tags for MapLibre GL JS compatibility
           tags: JSON.stringify(place.tags || []),
           // Use first tag's color if available
@@ -533,6 +543,14 @@ export class DataLoader {
         }
       }),
     }
+  }
+
+  pointsGeoJSON(points, rawGeoJSON = null) {
+    if (this.settings.pointsRenderingMode !== "simplified") {
+      return rawGeoJSON || pointsToGeoJSON(points)
+    }
+
+    return pointsToGeoJSON(points, { simplified: true })
   }
 
   /**

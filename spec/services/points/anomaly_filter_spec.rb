@@ -220,5 +220,37 @@ RSpec.describe Points::AnomalyFilter do
         expect(early_spike.reload.anomaly).not_to be true
       end
     end
+
+    context 'Pass 3: Null Island (0,0)' do
+      let(:start_time) { 2.hours.ago.to_i }
+      let(:end_time) { Time.current.to_i }
+
+      let!(:before_zero) do
+        create(:point, user: user, latitude: 52.5, longitude: 13.4,
+                       lonlat: 'POINT(13.4 52.5)', accuracy: 10, timestamp: 90.minutes.ago.to_i)
+      end
+      let!(:zero_run) do
+        3.times.map do |i|
+          create(:point, user: user, latitude: 0.0, longitude: 0.0,
+                         lonlat: 'POINT(0.0 0.0)', accuracy: 10,
+                         timestamp: (80 - (i * 10)).minutes.ago.to_i)
+        end
+      end
+      let!(:after_zero) do
+        create(:point, user: user, latitude: 52.5001, longitude: 13.4001,
+                       lonlat: 'POINT(13.4001 52.5001)', accuracy: 10, timestamp: 40.minutes.ago.to_i)
+      end
+
+      before { described_class.new(user.id, start_time, end_time).call }
+
+      it 'flags every point of a sustained (0,0) run' do
+        expect(zero_run.map { |p| p.reload.anomaly }).to all(be(true))
+      end
+
+      it 'does not flag the surrounding real points' do
+        expect(before_zero.reload.anomaly).not_to be true
+        expect(after_zero.reload.anomaly).not_to be true
+      end
+    end
   end
 end

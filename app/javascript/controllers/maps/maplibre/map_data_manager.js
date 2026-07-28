@@ -215,11 +215,16 @@ export class MapDataManager {
         isComplete: false,
       })
 
-      const { points, pointsGeoJSON, routesGeoJSON, routesBaseGeoJSON } =
-        await this.dataLoader.fetchPointsData(
-          this.controller.startDateValue,
-          this.controller.endDateValue,
-        )
+      const {
+        points,
+        pointsGeoJSON,
+        allPointsGeoJSON,
+        routesGeoJSON,
+        routesBaseGeoJSON,
+      } = await this.dataLoader.fetchPointsData(
+        this.controller.startDateValue,
+        this.controller.endDateValue,
+      )
 
       if (!this.lastLoadedData) this.lastLoadedData = {}
       this.lastLoadedData.points = points
@@ -228,11 +233,12 @@ export class MapDataManager {
       this.lastLoadedData.routesBaseGeoJSON = routesBaseGeoJSON
 
       this._updateLayerBySource("points", pointsGeoJSON)
-      this._updateLayerBySource("heatmap", pointsGeoJSON)
+      // Heatmap, fog and scratch need all points
+      this._updateLayerBySource("heatmap", allPointsGeoJSON)
       this._updateLayerBySource("routes", routesGeoJSON)
       this._updateLayerBySource("routes-base", routesBaseGeoJSON)
-      this._updateLayerBySource("fog", pointsGeoJSON)
-      this._updateLayerBySource("scratch", pointsGeoJSON)
+      this._updateLayerBySource("fog", allPointsGeoJSON)
+      this._updateLayerBySource("scratch", allPointsGeoJSON)
 
       this.controller.updateLoadingCounts({
         counts: { points: points.length },

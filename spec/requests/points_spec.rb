@@ -125,6 +125,16 @@ RSpec.describe '/points', type: :request do
       expect(Point.find_by(id: point2.id)).to be_nil
     end
 
+    it 'enqueues stats and track recalculation' do
+      track = create(:track, user:)
+      tracked = create(:point, user:, track:, timestamp: Time.zone.local(2024, 5, 10, 12).to_i)
+
+      expect do
+        delete bulk_destroy_points_url, params: { point_ids: [tracked.id] }
+      end.to have_enqueued_job(Stats::CalculatingJob).with(user.id, 2024, 5)
+                                                     .and have_enqueued_job(Tracks::RecalculateJob).with(track.id)
+    end
+
     it 'returns a 303 status code' do
       delete bulk_destroy_points_url, params: { point_ids: [point1.id, point2.id] }
 

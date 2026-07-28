@@ -31,7 +31,7 @@ RSpec.describe Visits::SmartDetect do
   end
 
   describe 'happy path' do
-    it 'creates visits when DBSCAN finds clusters' do
+    it 'creates visits when the detector finds clusters' do
       6.times do |i|
         create(:point, user: user, latitude: 52.5, longitude: 13.4, lonlat: 'POINT(13.4 52.5)',
                        timestamp: base_ts + i * 60, accuracy: 10, visit_id: nil)
@@ -55,7 +55,7 @@ RSpec.describe Visits::SmartDetect do
     end
   end
 
-  describe 'detector selection (stay_point_detection flag)' do
+  describe 'detector' do
     before do
       6.times do |i|
         create(:point, user: user, latitude: 52.5, longitude: 13.4, lonlat: 'POINT(13.4 52.5)',
@@ -63,32 +63,7 @@ RSpec.describe Visits::SmartDetect do
       end
     end
 
-    it 'uses DbscanClusterer when the flag is off (default path unchanged)' do
-      allow(Flipper).to receive(:enabled?).with(:stay_point_detection, user).and_return(false)
-      allow(Rails.logger).to receive(:info)
-      expect(Rails.logger).to receive(:info).with(/detector=dbscan/).at_least(:once)
-
-      visits = described_class.new(user, start_at: base_ts - 1, end_at: base_ts + 600).call
-
-      expect(visits).not_to be_empty
-    end
-
-    it 'flag-off (DBSCAN) produces the expected visit for a known fixture (regression)' do
-      allow(Flipper).to receive(:enabled?).with(:stay_point_detection, user).and_return(false)
-
-      visits = described_class.new(user, start_at: base_ts - 1, end_at: base_ts + 600).call
-
-      expect(visits.size).to eq(1)
-      visit = visits.first
-      expect(visit.points.count).to eq(6)
-      expect(visit.started_at.to_i).to eq(base_ts)
-      expect(visit.ended_at.to_i).to eq(base_ts + 300)
-      expect(visit.status).to eq('suggested')
-      expect(visit.confidence).to be_nil
-    end
-
-    it 'uses StayPointDetector when the flag is on for the user' do
-      allow(Flipper).to receive(:enabled?).with(:stay_point_detection, user).and_return(true)
+    it 'uses StayPointDetector' do
       allow(Rails.logger).to receive(:info)
       expect(Rails.logger).to receive(:info).with(/detector=stay_point/).at_least(:once)
 
@@ -97,22 +72,19 @@ RSpec.describe Visits::SmartDetect do
       expect(visits).not_to be_empty
     end
 
-    it 'falls back to DbscanClusterer and logs when Flipper raises' do
-      allow(Flipper).to receive(:enabled?).with(:stay_point_detection, user).and_raise(StandardError, 'flipper down')
-      allow(ExceptionReporter).to receive(:call)
-      allow(Rails.logger).to receive(:warn)
-      allow(Rails.logger).to receive(:info)
-      # Both SmartDetect and (on the fallback create path) PlaceFinder log the Flipper outage.
-      expect(Rails.logger).to receive(:warn).with(/Flipper unavailable/).at_least(:once)
-      expect(Rails.logger).to receive(:info).with(/detector=dbscan/).at_least(:once)
-
+    it 'produces the expected scored visit for a known fixture (regression)' do
       visits = described_class.new(user, start_at: base_ts - 1, end_at: base_ts + 600).call
 
-      expect(visits).not_to be_empty
+      expect(visits.size).to eq(1)
+      visit = visits.first
+      expect(visit.points.count).to eq(6)
+      expect(visit.started_at.to_i).to eq(base_ts)
+      expect(visit.ended_at.to_i).to eq(base_ts + 300)
+      expect(visit.status).to eq('suggested')
+      expect(visit.confidence).to be_present
     end
 
-    it 'falls back to DbscanClusterer when StayPointDetector raises and the flag is on' do
-      allow(Flipper).to receive(:enabled?).with(:stay_point_detection, user).and_return(true)
+    it 'falls back to DbscanClusterer when StayPointDetector raises' do
       allow_any_instance_of(Visits::StayPointDetector).to receive(:call)
         .and_raise(ActiveRecord::StatementInvalid, 'statement timeout')
       allow(ExceptionReporter).to receive(:call)
@@ -126,12 +98,16 @@ RSpec.describe Visits::SmartDetect do
   end
 
   describe 'failure handling' do
-    it 're-raises ActiveRecord::StatementInvalid from the clusterer' do
+    it 're-raises when the fallback clusterer also fails' do
       create(:point, user: user, latitude: 52.5, longitude: 13.4, lonlat: 'POINT(13.4 52.5)',
                      timestamp: base_ts, accuracy: 10, visit_id: nil)
 
+      allow_any_instance_of(Visits::StayPointDetector).to receive(:call)
+        .and_raise(ActiveRecord::StatementInvalid, 'statement timeout')
       allow_any_instance_of(Visits::DbscanClusterer).to receive(:call)
         .and_raise(ActiveRecord::StatementInvalid, 'boom')
+      allow(ExceptionReporter).to receive(:call)
+      allow(Rails.logger).to receive(:warn)
 
       expect { described_class.new(user, start_at: base_ts - 1, end_at: base_ts + 1).call }
         .to raise_error(ActiveRecord::StatementInvalid, /boom/)

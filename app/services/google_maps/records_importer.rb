@@ -39,7 +39,6 @@ class GoogleMaps::RecordsImporter
       course: location['heading'],
       battery: parse_battery_charging(location['batteryCharging']),
       motion_data: Points::MotionDataExtractor.from_google_records(location),
-      raw_data: location,
       topic: 'Google Maps Timeline Export',
       tracker_id: tracker_id_for(location),
       import_id: @import.id,
@@ -53,7 +52,7 @@ class GoogleMaps::RecordsImporter
 
   def tracker_id_for(location)
     device_tag = location['deviceTag']
-    return 'google-maps-timeline-export' if device_tag.nil? || device_tag.to_s.strip.empty?
+    return "google-records-#{import.id}" if device_tag.nil? || device_tag.to_s.strip.empty?
 
     "google-records-device-#{device_tag}"
   end

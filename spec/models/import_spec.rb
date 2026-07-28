@@ -149,7 +149,8 @@ RSpec.describe Import, type: :model do
         csv: 10,
         tcx: 11,
         fit: 12,
-        polarsteps: 13
+        polarsteps: 13,
+        google_photos: 14
       )
     end
   end

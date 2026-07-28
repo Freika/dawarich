@@ -9,6 +9,7 @@ class Api::V1::Owntracks::PointsController < ApiController
 
     render json: [], status: :ok
   rescue StandardError => e
+    Rails.logger.error("Point creation failed: #{e.class}: #{e.message}")
     Sentry.capture_exception(e) if defined?(Sentry)
 
     render json: { error: 'Point creation failed' }, status: :internal_server_error

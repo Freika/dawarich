@@ -64,7 +64,7 @@
         </div>
         <div class="w-full lg:w-1/12 relative">
           <%= link_to share_links_hub_path(start_date: start_at.to_date, end_date: end_at.to_date),
-                      class: "btn btn-sm border border-base-300 hover:btn-ghost w-full",
+                      class: "btn btn-sm border border-base-300 hover:btn-ghost w-full flex-nowrap",
                       data: { turbo_frame: "share-link-modal", testid: "timeline-share-button" } do %>
             <%= icon 'share', class: 'w-4 h-4' %>
             <span class="ml-1">Share</span>

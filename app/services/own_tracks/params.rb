@@ -3,8 +3,9 @@
 class OwnTracks::Params
   attr_reader :params
 
-  def initialize(params)
+  def initialize(params, include_raw_data: true)
     @params = params.to_h.deep_symbolize_keys
+    @include_raw_data = include_raw_data
   end
 
   def call
@@ -30,9 +31,9 @@ class OwnTracks::Params
       battery_status:,
       connection:,
       trigger:,
-      motion_data:        Points::MotionDataExtractor.from_owntracks(params),
-      raw_data:           params.deep_stringify_keys
+      motion_data:        Points::MotionDataExtractor.from_owntracks(params)
     }
+    attrs[:raw_data] = params.deep_stringify_keys if @include_raw_data
     attrs[:altitude_decimal] = altitude_value if Point.altitude_decimal_supported?
     attrs
   end
@@ -89,6 +90,8 @@ class OwnTracks::Params
   end
 
   def valid_point?
+    return false if params[:_type].to_s == 'waypoint'
+
     params[:lon].present? && params[:lat].present? && params[:tst].present?
   end
 end

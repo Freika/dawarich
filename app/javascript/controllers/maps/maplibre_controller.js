@@ -1902,6 +1902,18 @@ export default class extends Controller {
       removedIndex >= 0 ? data.features[removedIndex] : undefined
     const canReconcile = Boolean(data?.features && removedFeature)
 
+    // The cached full point set feeds route rebuilds and the scratch layer
+    // in simplified rendering mode — keep it in sync with the layer data.
+    const cachedPoints = this.mapDataManager?.lastLoadedData?.points
+    const removedCacheIndex =
+      cachedPoints?.findIndex((p) => Number(p.id) === numericId) ?? -1
+    const removedCachePoint =
+      removedCacheIndex >= 0 ? cachedPoints[removedCacheIndex] : undefined
+
+    // The API delete fires regardless of layer reconciliation, so the cache
+    // must always drop the point too.
+    if (removedCachePoint) cachedPoints.splice(removedCacheIndex, 1)
+
     // Optimistically remove the point so the map updates instantly; the API
     // call and route rebuild run in the background and are reverted on error.
     if (canReconcile) {
@@ -1918,6 +1930,16 @@ export default class extends Controller {
       this.closeInfo()
       Toast.success("Point deleted successfully")
     } catch (_error) {
+      // The point still exists server-side, so restore it in the cache even
+      // when the layer reconcile below is skipped.
+      if (removedCachePoint && !cachedPoints.includes(removedCachePoint)) {
+        cachedPoints.splice(
+          Math.min(removedCacheIndex, cachedPoints.length),
+          0,
+          removedCachePoint,
+        )
+      }
+
       // Reconcile against the source's CURRENT data, re-read fresh: a realtime
       // broadcast may have replaced it while the request was in flight, so the
       // snapshot captured above could be stale and would clobber that update.

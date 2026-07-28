@@ -54,14 +54,22 @@ RSpec.describe DemoData::DerivativesSeeder do
 
     it 'marks May (with the Prague weekend) as Berlin+Prague' do
       may_stat = user.stats.find_by(year: 2026, month: 5)
-      expect(may_stat.toponyms['cities']).to include('Prague')
-      expect(may_stat.toponyms['countries']).to include('Czech Republic')
+      expect(toponym_cities(may_stat)).to include('Prague')
+      expect(toponym_countries(may_stat)).to include('Czech Republic')
     end
 
     it 'marks April (Berlin-only) without Prague toponyms' do
       apr_stat = user.stats.find_by(year: 2026, month: 4)
-      expect(apr_stat.toponyms['cities']).not_to include('Prague')
+      expect(toponym_cities(apr_stat)).not_to include('Prague')
     end
+  end
+
+  def toponym_cities(stat)
+    stat.toponyms.flat_map { |toponym| toponym['cities'].map { |city| city['city'] } }
+  end
+
+  def toponym_countries(stat)
+    stat.toponyms.map { |toponym| toponym['country'] }
   end
 
   describe 'Stat anchor shift' do

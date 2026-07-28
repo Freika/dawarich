@@ -8,6 +8,9 @@ export const PAPER_SIZES = {
   A1: { wmm: 594, hmm: 841 },
   A0: { wmm: 841, hmm: 1189 },
   LETTER: { wmm: 216, hmm: 279 },
+  P30X40: { wmm: 300, hmm: 400 },
+  P50X70: { wmm: 500, hmm: 700 },
+  P70X100: { wmm: 700, hmm: 1000 },
 }
 
 export const DPI_PRESETS = [96, 150, 300]

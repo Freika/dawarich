@@ -1,4 +1,5 @@
 import { Toast } from "maps_maplibre/components/toast"
+import { pointsToGeoJSON } from "maps_maplibre/utils/geojson_transformers"
 import { gatedToggle } from "maps_maplibre/utils/layer_gate"
 import { lazyLoader } from "maps_maplibre/utils/lazy_loader"
 import { SettingsManager } from "maps_maplibre/utils/settings_manager"
@@ -190,13 +191,22 @@ export class RoutesManager {
     this.controller.showLoading("Reloading routes...")
 
     try {
+      // In simplified mode the points layer holds a thinned subset, so
+      // rebuild routes from the cached full point set. Otherwise the layer
+      // data is authoritative — it reflects point edits immediately.
+      const cachedPoints =
+        this.controller.mapDataManager?.lastLoadedData?.points
+      const useCachedPoints =
+        this.settings.pointsRenderingMode === "simplified" &&
+        cachedPoints?.length > 0
       const pointsLayer = this.layerManager.getLayer("points")
-      const points =
-        pointsLayer?.data?.features?.map((f) => ({
-          latitude: f.geometry.coordinates[1],
-          longitude: f.geometry.coordinates[0],
-          timestamp: f.properties.timestamp,
-        })) || []
+      const points = useCachedPoints
+        ? cachedPoints
+        : pointsLayer?.data?.features?.map((f) => ({
+            latitude: f.geometry.coordinates[1],
+            longitude: f.geometry.coordinates[0],
+            timestamp: f.properties.timestamp,
+          })) || []
 
       const { RoutesLayer } = await import("maps_maplibre/layers/routes_layer")
       const { applySpeedColors } = await import(
@@ -371,11 +381,12 @@ export class RoutesManager {
           visible: true,
           apiClient: this.controller.api,
         })
-        const pointsLayer = this.layerManager.getLayer("points")
-        const pointsData = pointsLayer?.data || {
-          type: "FeatureCollection",
-          features: [],
-        }
+        // Scratch needs all points, so build from the full point set rather
+        // than the points layer, which may hold a simplified subset.
+        const allPoints = this.controller.mapDataManager?.lastLoadedData?.points
+        const pointsData = allPoints?.length
+          ? pointsToGeoJSON(allPoints)
+          : { type: "FeatureCollection", features: [] }
         await newScratchLayer.add(pointsData)
         this.layerManager.layers.scratchLayer = newScratchLayer
       } else {
