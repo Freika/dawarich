@@ -165,4 +165,60 @@ RSpec.describe Place, type: :model do
       end
     end
   end
+
+  describe 'name locking' do
+    let(:place) { create(:place, name: Place::DEFAULT_NAME) }
+
+    it 'is unlocked when created' do
+      expect(place.name_locked?).to be(false)
+    end
+
+    it 'locks the name when it is renamed' do
+      expect { place.update!(name: "Mum's house") }
+        .to change { place.reload.name_locked? }.from(false).to(true)
+    end
+
+    it 'does not lock when another attribute changes' do
+      place.update!(city: 'Leipzig')
+
+      expect(place.reload.name_locked?).to be(false)
+    end
+
+    it 'does not lock a machine-named place' do
+      machine_place = build(:place, name: 'Photon Suggestion')
+      machine_place.machine_named = true
+      machine_place.save!
+
+      expect(machine_place.reload.name_locked?).to be(false)
+    end
+
+    it 'does not lock a place minted by detection' do
+      expect(create(:place, name: 'Photon Suggestion').name_locked?).to be(false)
+    end
+
+    it 'locks a place created with a user-supplied name' do
+      user_place = build(:place, name: "Mum's house")
+      user_place.user_named = true
+      user_place.save!
+
+      expect(user_place.reload.name_locked?).to be(true)
+    end
+
+    it 'clears the lock when the name is reset to the default' do
+      place.update!(name: "Mum's house")
+
+      expect { place.update!(name: Place::DEFAULT_NAME) }
+        .to change { place.reload.name_locked? }.from(true).to(false)
+    end
+
+    it 'keeps an existing lock when a machine write touches other attributes' do
+      place.update!(name: "Mum's house")
+      locked_at = place.reload.name_locked_at
+
+      place.machine_named = true
+      place.update!(city: 'Leipzig')
+
+      expect(place.reload.name_locked_at).to be_within(1.second).of(locked_at)
+    end
+  end
 end

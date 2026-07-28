@@ -43,6 +43,40 @@ RSpec.describe Places::Visits::Create do
     expect(Point.where(user_id: user.id).where.not(visit_id: nil).count).to eq(3)
   end
 
+  it 'skips visit creation and warns when the loaded place has been deleted' do
+    points = [
+      near_point(base_ts, seq: 1),
+      near_point(base_ts + 5.minutes, seq: 2),
+      near_point(base_ts + 10.minutes, seq: 3)
+    ]
+    loaded_places = user.reload.places.to_a
+    deleted_place_id = place.id
+    place.delete
+
+    allow(Rails.logger).to receive(:warn)
+
+    expect { described_class.new(user, loaded_places, throttle_seconds: 0).call }.not_to raise_error
+
+    expect(Visit.where(place_id: deleted_place_id)).to be_empty
+    expect(Point.where(id: points.map(&:id)).where.not(visit_id: nil)).to be_empty
+    expect(Rails.logger).to have_received(:warn).with(/place_id=#{deleted_place_id} deleted mid-run/)
+  end
+
+  it 'stops scanning a deleted place after the first skipped visit group' do
+    near_point(base_ts, seq: 1)
+    near_point(base_ts + 10.minutes, seq: 2)
+    near_point(base_ts + 80.minutes, seq: 3)
+    near_point(base_ts + 90.minutes, seq: 4)
+    loaded_places = user.reload.places.to_a
+    place.delete
+
+    allow(Rails.logger).to receive(:warn)
+
+    described_class.new(user, loaded_places, throttle_seconds: 0).call
+
+    expect(Rails.logger).to have_received(:warn).with(/deleted mid-run/).once
+  end
+
   it 'is idempotent — a second run creates no duplicate visit' do
     near_point(base_ts, seq: 1)
     near_point(base_ts + 5.minutes, seq: 2)
@@ -165,5 +199,16 @@ RSpec.describe Places::Visits::Create do
 
     expect(Visit.count).to eq(1)
     expect(new_point.reload.visit_id).to eq(original_visit_id)
+  end
+
+  it 'ignores nearby persisted points without timestamps' do
+    invalid_point = near_point(base_ts, seq: 1)
+    invalid_point.update_column(:timestamp, nil)
+    near_point(base_ts + 5.minutes, seq: 2)
+    near_point(base_ts + 10.minutes, seq: 3)
+    near_point(base_ts + 15.minutes, seq: 4)
+
+    expect { run }.to change(Visit, :count).by(1)
+    expect(invalid_point.reload.visit_id).to be_nil
   end
 end

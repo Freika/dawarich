@@ -36,15 +36,18 @@ class ReverseGeocoding::Places::FetchData
 
     data = normalize_geocoder_data(reverse_geocoded_place.data)
 
-    place.update!(
-      name:       place_name(data),
+    attributes = {
       lonlat:     build_point_coordinates(data['geometry']['coordinates']),
       city:       data['properties']['city'],
       country:    data['properties']['country'],
       geodata:    data,
       source:     Place.sources[:photon],
       reverse_geocoded_at: Time.current
-    )
+    }
+    attributes[:name] = place_name(data) unless place.name_locked?
+
+    place.machine_named = true
+    place.update!(attributes)
   end
 
   def find_place(place_data, existing_places)
@@ -107,7 +110,7 @@ class ReverseGeocoding::Places::FetchData
   end
 
   def populate_place_attributes(place, data)
-    place.name = place_name(data)
+    place.name = place_name(data) unless place.name_locked?
     place.city = data['properties']['city']
     place.country = data['properties']['country']
     place.geodata = data
