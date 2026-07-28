@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Outgoing email no longer fails against slower SMTP servers: the default connection open/read timeouts now match net-smtp's own 30s and 60s instead of a 5-second cap that made digest reports and other emails fail with `Net::OpenTimeout`. Tune with `SMTP_OPEN_TIMEOUT`/`SMTP_READ_TIMEOUT` if needed (#3096)
 - FIT files that carry developer data fields (such as those from Wahoo devices) now import their location records instead of failing to parse. (#2945)
 - Google Timeline imports now keep path points in order when several share the same minute-resolution timestamp: tied points on a path are spaced one second apart so their sequence survives, while genuine repeats at the same coordinate still collapse into a single point. Caveat: re-importing the same Timeline file before deleting its existing date range can leave partial duplicates, because the synthetic spacing shifts the deduplication key — delete the affected date range first when re-importing. (#3115)
-
+- Visit detection no longer turns long slow walks into one large suggested visit centered somewhere the user never stopped (#2970).
 
 ## [1.10.3] - 2026-07-28, Berlin
 
