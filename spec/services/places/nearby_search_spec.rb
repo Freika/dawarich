@@ -60,7 +60,61 @@ RSpec.describe Places::NearbySearch do
 
       expect(described_class.new(latitude: lat, longitude: lon).call).to eq([])
       expect(ExceptionReporter).not_to have_received(:call)
+      expect(Rails.logger).to have_received(:warn).with(/Nearby search provider error: Geocoder::InvalidRequest/)
+    end
+
+    it 'handles transient provider outages without reporting an application exception' do
+      allow(Geocoder).to receive(:search).and_raise(Geocoder::LookupTimeout.new('execution expired'))
+      allow(ExceptionReporter).to receive(:call)
+      allow(Rails.logger).to receive(:warn)
+
+      expect(described_class.new(latitude: lat, longitude: lon).call).to eq([])
+      expect(ExceptionReporter).not_to have_received(:call)
+      expect(Rails.logger).to have_received(:warn).with(/Nearby search provider error: Geocoder::LookupTimeout/)
+    end
+
+    it 'handles a dropped TLS connection without reporting an application exception' do
+      allow(Geocoder).to receive(:search).and_raise(OpenSSL::SSL::SSLError, 'unexpected eof while reading')
+      allow(ExceptionReporter).to receive(:call)
+      allow(Rails.logger).to receive(:warn)
+
+      expect(described_class.new(latitude: lat, longitude: lon).call).to eq([])
+      expect(ExceptionReporter).not_to have_received(:call)
       expect(Rails.logger).to have_received(:warn).with(/Nearby search provider error/)
+    end
+
+    it 'keeps the coordinates out of the handled provider error log' do
+      allow(Geocoder).to receive(:search).and_raise(Geocoder::InvalidRequest)
+      allow(Rails.logger).to receive(:warn)
+
+      described_class.new(latitude: lat, longitude: lon).call
+
+      expect(Rails.logger).to have_received(:warn).with(satisfy { |line| !line.include?('52.51') })
+    end
+
+    it 'logs a reported error so self-hosted instances are not left silent' do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+      allow(Geocoder).to receive(:search).and_raise(StandardError, 'photon down')
+      allow(Rails.logger).to receive(:error)
+
+      expect(described_class.new(latitude: lat, longitude: lon).call).to eq([])
+      expect(Rails.logger).to have_received(:error).with(/Nearby search failed: StandardError/)
+    end
+
+    it 'reports a misconfigured provider' do
+      allow(Geocoder).to receive(:search).and_raise(Geocoder::RequestDenied)
+      allow(ExceptionReporter).to receive(:call)
+
+      expect(described_class.new(latitude: lat, longitude: lon).call).to eq([])
+      expect(ExceptionReporter).to have_received(:call).with(instance_of(Geocoder::RequestDenied), anything)
+    end
+
+    it 'reports a rate-limited provider' do
+      allow(Geocoder).to receive(:search).and_raise(Geocoder::OverQueryLimitError)
+      allow(ExceptionReporter).to receive(:call)
+
+      expect(described_class.new(latitude: lat, longitude: lon).call).to eq([])
+      expect(ExceptionReporter).to have_received(:call).with(instance_of(Geocoder::OverQueryLimitError), anything)
     end
 
     it 'reports unexpected errors and returns []' do
@@ -81,6 +135,28 @@ RSpec.describe Places::NearbySearch do
         described_class.new(latitude: lat, longitude: lon, cache: true).call
 
         expect(Geocoder).to have_received(:search).once
+      end
+
+      it 'does not cache the empty result of a handled provider error' do
+        allow(Rails.logger).to receive(:warn)
+        allow(Geocoder).to receive(:search).and_raise(Geocoder::InvalidRequest)
+
+        expect(described_class.new(latitude: lat, longitude: lon, cache: true).call).to eq([])
+
+        allow(Geocoder).to receive(:search).and_return([photon_result])
+
+        expect(described_class.new(latitude: lat, longitude: lon, cache: true).call.size).to eq(1)
+      end
+
+      it 'does not cache the empty result of a reported error' do
+        allow(ExceptionReporter).to receive(:call)
+        allow(Geocoder).to receive(:search).and_raise(StandardError, 'photon down')
+
+        expect(described_class.new(latitude: lat, longitude: lon, cache: true).call).to eq([])
+
+        allow(Geocoder).to receive(:search).and_return([photon_result])
+
+        expect(described_class.new(latitude: lat, longitude: lon, cache: true).call.size).to eq(1)
       end
     end
 
