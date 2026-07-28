@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - The Dawarich app and Sidekiq containers now restart automatically after a graceful (exit 0) shutdown instead of staying down, so a stray SIGHUP no longer takes an instance offline until manual intervention (#3099).
 - Nightly place- and area-visit calculation no longer fails when an instance contains legacy points without timestamps.
 - Import rows on the Imports page now update their status live as an import processes, instead of staying on "Processing" until the page is manually reloaded. (#3174)
+- Public live-share links now update in real time for signed-in visitors, instead of only refreshing the location on a full page reload. (#3111)
+
 
 ## [1.10.2] - 2026-07-27, Berlin
 
