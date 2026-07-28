@@ -68,6 +68,36 @@ RSpec.describe Places::NameFetcher do
         service.call
       end
 
+      context 'when the name is locked by the user' do
+        let(:place) do
+          create(
+            :place,
+            name: "Mum's house",
+            name_locked_at: 1.day.ago,
+            city: nil,
+            country: nil,
+            geodata: {},
+            lonlat: 'POINT(10.0 10.0)'
+          )
+        end
+
+        it 'keeps the user-supplied name' do
+          expect { service.call }.not_to change(place, :name)
+        end
+
+        it 'still refreshes city and country' do
+          expect { service.call }.to change(place, :city).from(nil).to('New York')
+        end
+
+        it 'propagates the locked name to visits still using the default name' do
+          visit = create(:visit, place: place, user: place.user, name: Place::DEFAULT_NAME)
+
+          service.call
+
+          expect(visit.reload.name).to eq("Mum's house")
+        end
+      end
+
       context 'when DawarichSettings.store_geodata? is enabled' do
         before do
           allow(DawarichSettings).to receive(:store_geodata?).and_return(true)
