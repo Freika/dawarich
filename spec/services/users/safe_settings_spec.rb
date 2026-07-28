@@ -75,7 +75,8 @@ RSpec.describe Users::SafeSettings do
             visit_min_points: 3,
             visit_min_duration_minutes: 5,
             visit_density_fill_enabled: true,
-            stay_max_gap_minutes: 60
+            stay_max_gap_minutes: 60,
+            point_dragging_enabled: false
           }
         )
       end
@@ -177,7 +178,8 @@ RSpec.describe Users::SafeSettings do
             'visit_min_points' => 3,
             'visit_min_duration_minutes' => 5,
             'visit_density_fill_enabled' => true,
-            'stay_max_gap_minutes' => 60
+            'stay_max_gap_minutes' => 60,
+            'point_dragging_enabled' => false
           }
         )
       end
@@ -249,7 +251,8 @@ RSpec.describe Users::SafeSettings do
             visit_min_points: 3,
             visit_min_duration_minutes: 5,
             visit_density_fill_enabled: true,
-            stay_max_gap_minutes: 60
+            stay_max_gap_minutes: 60,
+            point_dragging_enabled: false
           }
         )
       end
@@ -846,6 +849,36 @@ RSpec.describe Users::SafeSettings do
 
     it 'is included in #config' do
       expect(described_class.new({}).config).to include(stay_max_gap_minutes: 60)
+    end
+  end
+
+  describe '#point_dragging_enabled?' do
+    it 'returns false when missing' do
+      expect(described_class.new({}).point_dragging_enabled?).to be false
+    end
+
+    it 'returns false when explicitly nil' do
+      expect(described_class.new({ 'point_dragging_enabled' => nil }).point_dragging_enabled?).to be false
+    end
+
+    it 'returns true for true' do
+      expect(described_class.new({ 'point_dragging_enabled' => true }).point_dragging_enabled?).to be true
+    end
+
+    it 'returns true for "1"' do
+      expect(described_class.new({ 'point_dragging_enabled' => '1' }).point_dragging_enabled?).to be true
+    end
+
+    it 'returns false for "0"' do
+      expect(described_class.new({ 'point_dragging_enabled' => '0' }).point_dragging_enabled?).to be false
+    end
+
+    it 'returns false for "false"' do
+      expect(described_class.new({ 'point_dragging_enabled' => 'false' }).point_dragging_enabled?).to be false
+    end
+
+    it 'is included in #config' do
+      expect(described_class.new({}).config).to include(point_dragging_enabled: false)
     end
   end
 
