@@ -30,7 +30,7 @@ RSpec.describe Families::Locations do
     end
 
     # A point with a NULL timestamp sorts
-    # NULLS FIRST under ORDER BY timestamp DESC and 
+    # NULLS FIRST under ORDER BY timestamp DESC and
     # used to become the "latest" point, and point.timestamp.to_i => 0
     # rendered "Last seen: Jan 1, 1970" on the map instead of the real fix.
     it 'ignores points with a nil timestamp when picking the latest' do
