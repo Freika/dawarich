@@ -33,14 +33,14 @@ module SharedLinks
       trip = @link.resource
       return [] if trip.nil?
 
-      tag_ids = SharedLinks::PhotoScope.new(@link).tag_ids
-      return [] if tag_ids.nil?
+      album = SharedLinks::PhotoAlbum.new(@link)
+      return [] unless album.selected?
 
       Photos::Search.cached(
         @link.user,
         start_date: trip.started_at.iso8601,
         end_date: trip.ended_at.iso8601,
-        tag_ids: tag_ids
+        album_id: album.album_id
       )
     end
 

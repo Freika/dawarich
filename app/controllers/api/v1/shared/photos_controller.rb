@@ -68,14 +68,14 @@ module Api
           range = photo_range
           return [] if range.nil?
 
-          tag_ids = SharedLinks::PhotoScope.new(link).tag_ids
-          return [] if tag_ids.nil?
+          album = SharedLinks::PhotoAlbum.new(link)
+          return [] unless album.selected?
 
           Photos::Search.cached(
             link.user,
             start_date: range.first,
             end_date: range.last,
-            tag_ids: tag_ids
+            album_id: album.album_id
           )
         end
 

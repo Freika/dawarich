@@ -12,6 +12,7 @@ module ShareLinks
 
     def new
       @shared_link = SharedLink.new(build_attributes_for_new) unless @share
+      @immich_albums = Immich::Albums.new(current_user).call
       render layout: false if turbo_frame_request?
     end
 
@@ -127,9 +128,18 @@ module ShareLinks
 
       permitted =
         if raw.respond_to?(:permit)
-          raw.permit(*boolean_keys, :photo_scope)
+          raw.permit(
+            *boolean_keys,
+            :photo_album_id,
+            :photo_album_name
+          )
         else
-          raw.slice(*(boolean_keys.map(&:to_s) + ['photo_scope']))
+          raw.slice(
+            *(
+              boolean_keys.map(&:to_s) +
+              %w[photo_album_id photo_album_name]
+            )
+          )
         end
 
       values = permitted.to_h.stringify_keys
@@ -141,8 +151,11 @@ module ShareLinks
         result[string_key] = ActiveModel::Type::Boolean.new.cast(values[string_key])
       end
 
-      scope = values['photo_scope'].to_s
-      settings['photo_scope'] = %w[public family].include?(scope) ? scope : 'public'
+      album_id = values['photo_album_id'].to_s.presence
+      album_name = values['photo_album_name'].to_s.presence
+
+      settings['photo_album_id'] = album_id if album_id
+      settings['photo_album_name'] = album_name if album_name
 
       settings
     end

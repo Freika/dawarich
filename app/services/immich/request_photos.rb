@@ -8,15 +8,17 @@ class Immich::RequestPhotos
               :immich_api_key,
               :start_date,
               :end_date,
-              :tag_ids
+              :tag_ids,
+              :album_id
 
-  def initialize(user, start_date: '1970-01-01', end_date: nil, tag_ids: nil)
+  def initialize(user, start_date: '1970-01-01', end_date: nil, tag_ids: nil, album_id: nil)
     @user = user
     @immich_api_base_url = "#{user.safe_settings.immich_url}/api/search/metadata"
     @immich_api_key = user.safe_settings.immich_api_key
     @start_date = start_date
     @end_date = end_date
     @tag_ids = Array(tag_ids).compact_blank
+    @album_id = album_id.to_s.presence
   end
 
   def call
@@ -90,6 +92,7 @@ class Immich::RequestPhotos
 
     body[:takenBefore] = normalize_date(end_date) if end_date
     body[:tagIds] = tag_ids if tag_ids.present?
+    body[:albumIds] = [album_id] if album_id.present?
 
     body
   end
