@@ -15,9 +15,9 @@ describe 'Visits API', type: :request do
       produces 'application/json'
       parameter name: :Authorization, in: :header, type: :string, required: true, description: 'Bearer token'
       parameter name: :start_at, in: :query, type: :string, required: false,
-                description: 'Start date (ISO 8601); required for time searches, optional when selection=true'
+                description: 'Required for time searches; optional with selection=true and all bounding-box coordinates'
       parameter name: :end_at, in: :query, type: :string, required: false,
-                description: 'End date (ISO 8601); required for time searches, optional when selection=true'
+                description: 'Required for time searches; optional with selection=true and all bounding-box coordinates'
       parameter name: :selection, in: :query, type: :string, required: false,
                 description: 'Set to "true" for area-based search'
       parameter name: :sw_lat, in: :query, type: :number, required: false,
