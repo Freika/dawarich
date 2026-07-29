@@ -10,11 +10,13 @@ module Imports
       return 0 if batch.empty?
 
       compacted = batch.compact
-      unique_batch = compacted
-                     .reject { |record| Points::NullIsland.lonlat?(record[:lonlat]) }
-                     .uniq { |record| [record[:lonlat], record[:timestamp], record[:user_id]] }
-      zero_skipped = compacted.size - compacted.count { |r| !Points::NullIsland.lonlat?(r[:lonlat]) }
-      Rails.logger.info("[#{importer_name}] skipped #{zero_skipped} Null Island (0,0) points") if zero_skipped.positive?
+      # Nil timestamp/lonlat bypass model validations via upsert_all and later break read paths.
+      usable = compacted.reject do |record|
+        record[:timestamp].nil? || record[:lonlat].nil? || Points::NullIsland.lonlat?(record[:lonlat])
+      end
+      unique_batch = usable.uniq { |record| [record[:lonlat], record[:timestamp], record[:user_id]] }
+      zero_skipped = compacted.size - usable.size
+      Rails.logger.info("[#{importer_name}] skipped #{zero_skipped} invalid points") if zero_skipped.positive?
       return 0 if unique_batch.empty?
 
       result = Point.upsert_all(
