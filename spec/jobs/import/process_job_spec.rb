@@ -23,6 +23,22 @@ RSpec.describe Import::ProcessJob, type: :job do
       expect { perform }.to have_enqueued_job(Stats::CalculatingJob).with(user.id, 2024, 3)
     end
 
+    context 'when the import owner is soft-deleted' do
+      before { user.mark_as_deleted! }
+
+      it 'skips processing' do
+        expect { perform }.not_to change(Point, :count)
+      end
+    end
+
+    context 'when the import was deleted' do
+      before { import.destroy! }
+
+      it 'skips processing' do
+        expect { perform }.not_to raise_error
+      end
+    end
+
     context 'when there is an error' do
       before do
         allow_any_instance_of(OwnTracks::Importer).to receive(:call).and_raise(StandardError)
