@@ -46,6 +46,13 @@ RSpec.describe 'Api::V1::Visits', type: :request do
         expect(response).to have_http_status(:bad_request)
         expect(response.parsed_body).to eq('error' => 'Invalid date format')
       end
+
+      it 'returns a bad request when the time range is missing' do
+        get '/api/v1/visits', headers: auth_headers
+
+        expect(response).to have_http_status(:bad_request)
+        expect(response.parsed_body).to eq('error' => 'Invalid date format')
+      end
     end
 
     context 'when requesting area-based visits' do
