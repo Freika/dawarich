@@ -5195,15 +5195,15 @@ paths:
       - name: start_at
         in: query
         required: false
-        description: Required for time searches; optional with selection=true and
-          all bounding-box coordinates
+        description: ISO 8601; required for time searches; optional only for complete
+          bounding-box selections
         schema:
           type: string
       - name: end_at
         in: query
         required: false
-        description: Required for time searches; optional with selection=true and
-          all bounding-box coordinates
+        description: ISO 8601; required for time searches; optional only for complete
+          bounding-box selections
         schema:
           type: string
       - name: selection
