@@ -42,7 +42,7 @@ class Families::Locations
 
   def build_family_locations(sharing_members)
     latest_points =
-      sharing_members.map { _1.points.order(timestamp: :desc).first }.compact
+      sharing_members.map { _1.points.where.not(timestamp: nil).order(timestamp: :desc).first }.compact
 
     latest_points.map do |point|
       {
