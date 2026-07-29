@@ -132,6 +132,28 @@ RSpec.describe Fit::Importer do
       end
     end
 
+    context 'when a record has a nil timestamp' do
+      # fit4ruby's writer backfills nil timestamps, so stub the read to emit one
+      let(:fake_record) do
+        Struct.new(:position_lat, :position_long, :timestamp, :altitude, :speed)
+      end
+      let(:activity) do
+        instance_double(Fit4Ruby::Activity,
+                        sessions: [], laps: [],
+                        records: [fake_record.new(52.52, 13.405, nil, 34.0, 5.0),
+                                  fake_record.new(52.521, 13.406, Time.utc(2024, 6, 15, 10, 31), 35.0, 5.5)])
+      end
+
+      before { allow(Fit4Ruby).to receive(:read).and_return(activity) }
+
+      it 'skips it instead of persisting an epoch-0 point' do
+        described_class.new(import, user.id, fit_fixture_path).call
+
+        expect(user.points.count).to eq(1)
+        expect(user.points.pluck(:timestamp)).not_to include(0)
+      end
+    end
+
     context 'with corrupted FIT file' do
       it 'sets import to failed without raising' do
         bad_file = Tempfile.new(['bad', '.fit'])
