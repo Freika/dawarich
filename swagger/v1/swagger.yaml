@@ -5195,13 +5195,15 @@ paths:
       - name: start_at
         in: query
         required: false
-        description: Start date (ISO 8601)
+        description: Start date (ISO 8601); required for time searches, optional when
+          selection=true
         schema:
           type: string
       - name: end_at
         in: query
         required: false
-        description: End date (ISO 8601)
+        description: End date (ISO 8601); required for time searches, optional when
+          selection=true
         schema:
           type: string
       - name: selection
@@ -5285,6 +5287,17 @@ paths:
                   - started_at
                   - ended_at
                   - duration
+        '400':
+          description: invalid or missing time range
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required:
+                - error
         '401':
           description: unauthorized
     post:
