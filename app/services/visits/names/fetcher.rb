@@ -9,6 +9,7 @@ module Visits
       end
 
       def call
+        return nil unless DawarichSettings.reverse_geocoding_enabled?
         return nil if geocoder_results.blank?
 
         build_place_name
