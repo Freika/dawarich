@@ -158,6 +158,7 @@ module UserFamily
 
     latest_point =
       points.select(:lonlat, :timestamp)
+            .where.not(timestamp: nil)
             .order(timestamp: :desc)
             .limit(1)
             .first
