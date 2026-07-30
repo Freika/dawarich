@@ -23,6 +23,7 @@ module Visits
     attr_reader :user, :start_at, :end_at
 
     def parse_time(time_string)
+      DateTime.iso8601(time_string)
       Time.zone.parse(time_string) || raise(Visits::InvalidTimeRange)
     rescue ArgumentError, TypeError
       raise Visits::InvalidTimeRange

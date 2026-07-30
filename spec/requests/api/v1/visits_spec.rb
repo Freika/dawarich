@@ -44,14 +44,14 @@ RSpec.describe 'Api::V1::Visits', type: :request do
             headers: auth_headers
 
         expect(response).to have_http_status(:bad_request)
-        expect(response.parsed_body).to eq('error' => 'Invalid date format')
+        expect(response.parsed_body).to eq('error' => 'Invalid time range')
       end
 
       it 'returns a bad request when the time range is missing' do
         get '/api/v1/visits', headers: auth_headers
 
         expect(response).to have_http_status(:bad_request)
-        expect(response.parsed_body).to eq('error' => 'Invalid date format')
+        expect(response.parsed_body).to eq('error' => 'Invalid time range')
       end
 
       it 'returns a bad request when the time range is reversed' do
@@ -60,7 +60,7 @@ RSpec.describe 'Api::V1::Visits', type: :request do
             headers: auth_headers
 
         expect(response).to have_http_status(:bad_request)
-        expect(response.parsed_body).to eq('error' => 'Invalid date format')
+        expect(response.parsed_body).to eq('error' => 'Invalid time range')
       end
     end
 
@@ -93,7 +93,7 @@ RSpec.describe 'Api::V1::Visits', type: :request do
             headers: auth_headers
 
         expect(response).to have_http_status(:bad_request)
-        expect(response.parsed_body).to eq('error' => 'Invalid date format')
+        expect(response.parsed_body).to eq('error' => 'Invalid time range')
       end
 
       it 'returns area visits unfiltered when no date range is given' do
@@ -109,7 +109,7 @@ RSpec.describe 'Api::V1::Visits', type: :request do
             headers: auth_headers
 
         expect(response).to have_http_status(:bad_request)
-        expect(response.parsed_body).to eq('error' => 'Invalid date format')
+        expect(response.parsed_body).to eq('error' => 'Invalid time range')
       end
     end
   end
@@ -182,7 +182,7 @@ RSpec.describe 'Api::V1::Visits', type: :request do
              headers: auth_headers
 
         expect(response).to have_http_status(:unprocessable_content)
-        expect(response.parsed_body.fetch('error')).to include('Invalid date format')
+        expect(response.parsed_body.fetch('error')).to include('Invalid time range')
       end
 
       context 'when required fields are missing' do

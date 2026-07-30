@@ -234,6 +234,23 @@ RSpec.describe Visits::FindWithinBoundingBox do
           expect { result }.to raise_error(Visits::InvalidTimeRange)
         end
       end
+
+      context 'when a calendar timestamp is impossible' do
+        let(:params) do
+          {
+            sw_lat: sw_lat.to_s,
+            sw_lng: sw_lng.to_s,
+            ne_lat: ne_lat.to_s,
+            ne_lng: ne_lng.to_s,
+            start_at: '2025-02-30T12:00:00Z',
+            end_at: Time.zone.now.iso8601
+          }
+        end
+
+        it 'rejects the malformed range' do
+          expect { result }.to raise_error(Visits::InvalidTimeRange)
+        end
+      end
     end
   end
 end

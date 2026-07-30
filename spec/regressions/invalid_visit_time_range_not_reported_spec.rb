@@ -28,7 +28,16 @@ RSpec.describe 'Invalid visit time range reporting' do
 
     expect(ExceptionReporter).not_to receive(:call)
     expect(service.call).to be(false)
-    expect(service.errors).to include('Invalid date format')
+    expect(service.errors).to include('Invalid time range')
+    expect(user.visits).to be_empty
+  end
+
+  it 'rejects impossible calendar timestamps without reporting them' do
+    service = Visits::Create.new(user, params.merge(started_at: '2025-02-30T12:00:00Z'))
+
+    expect(ExceptionReporter).not_to receive(:call)
+    expect(service.call).to be(false)
+    expect(service.errors).to include('Invalid time range')
     expect(user.visits).to be_empty
   end
 end

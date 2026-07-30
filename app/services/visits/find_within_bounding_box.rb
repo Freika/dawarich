@@ -49,6 +49,7 @@ module Visits
     def parse_time(time_string)
       return nil if time_string.blank?
 
+      DateTime.iso8601(time_string)
       Time.zone.parse(time_string) || raise(Visits::InvalidTimeRange)
     rescue ArgumentError, TypeError
       raise Visits::InvalidTimeRange

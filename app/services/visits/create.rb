@@ -87,9 +87,10 @@ module Visits
     end
 
     def parse_time(value)
-      Time.zone.parse(value) || raise(Visits::InvalidTimeRange, 'Invalid date format')
+      DateTime.iso8601(value)
+      Time.zone.parse(value) || raise(Visits::InvalidTimeRange)
     rescue ArgumentError, TypeError
-      raise Visits::InvalidTimeRange, 'Invalid date format'
+      raise Visits::InvalidTimeRange
     end
   end
 end

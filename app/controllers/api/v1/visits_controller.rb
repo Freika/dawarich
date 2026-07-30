@@ -20,7 +20,7 @@ class Api::V1::VisitsController < ApiController
 
     render json: serialized_visits
   rescue Visits::InvalidTimeRange
-    render json: { error: 'Invalid date format' }, status: :bad_request
+    render json: { error: 'Invalid time range' }, status: :bad_request
   end
 
   def show
