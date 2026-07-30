@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+### Changed
+
+- Ordering a printed poster from the Poster Studio is now available to everyone, instead of sitting behind a feature flag that was off by default. An instance that would rather not offer it can switch the `poster_ordering` flag off at `/admin/flipper`, or leave `PRINT_ORDER_URL` blank.
+
 ### Fixed
 
 - Self-hosted mode is now recognised from common `SELF_HOSTED` values (quoted `"true"`, `TRUE`, whitespace-padded, `1`, `yes`, `on`), not only the exact string `true`, so a non-canonical value no longer silently flips a self-hosted instance into cloud mode and blocks LAN integration URLs (such as Immich) as SSRF. (#2522)
