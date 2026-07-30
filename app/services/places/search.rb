@@ -28,7 +28,7 @@ module Places
         log_provider_error(e)
       else
         Rails.logger.error("Place search failed: #{e.class}: #{e.message}")
-        ExceptionReporter.call(e, "Places::Search failed for '#{@query}' near #{@latitude},#{@longitude}")
+        ExceptionReporter.call(e, 'Places::Search failed')
       end
       []
     end

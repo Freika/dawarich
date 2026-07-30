@@ -23,4 +23,21 @@ module Fit4Ruby
   end
 
   Activity.prepend(ActivityWithoutDeviceInfo) unless Activity < ActivityWithoutDeviceInfo
+
+  module FieldDescriptionEntityCoercion
+    def full_field_name(developer_data_ids)
+      developer_data_ids =
+        if developer_data_ids.respond_to?(:top_level_record)
+          developer_data_ids.top_level_record&.developer_data_ids || []
+        elsif developer_data_ids.respond_to?(:developer_data_ids)
+          developer_data_ids.developer_data_ids
+        else
+          developer_data_ids
+        end
+
+      super(developer_data_ids)
+    end
+  end
+
+  FieldDescription.prepend(FieldDescriptionEntityCoercion) unless FieldDescription < FieldDescriptionEntityCoercion
 end
