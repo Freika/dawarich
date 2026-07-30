@@ -7,7 +7,7 @@ RSpec.describe Points::AnomalyBackfillUserJob, type: :job do
 
   describe '#perform with reset: true' do
     let!(:legitimate_anomaly) do
-      create(:point, user: user, accuracy: 5000, anomaly: true,
+      create(:point, user: user, accuracy: 50_000, anomaly: true,
              timestamp: 30.minutes.ago.to_i,
              latitude: 52.52, longitude: 13.405,
              lonlat: 'POINT(13.405 52.52)')
@@ -18,8 +18,6 @@ RSpec.describe Points::AnomalyBackfillUserJob, type: :job do
              latitude: 52.5201, longitude: 13.4051,
              lonlat: 'POINT(13.4051 52.5201)')
     end
-
-    before { user.update!(settings: { 'gps_accuracy_threshold' => 200 }) }
 
     it 'clears existing anomaly flags and re-evaluates with current settings' do
       described_class.new.perform(user.id, reset: true)
@@ -57,8 +55,6 @@ RSpec.describe Points::AnomalyBackfillUserJob, type: :job do
     let(:sparse_user) { create(:user) }
 
     before do
-      sparse_user.update!(settings: { 'gps_accuracy_threshold' => 200 })
-
       [22.months.ago, 12.months.ago, 1.month.ago].each do |bucket_anchor|
         2.times do |i|
           create(:point, user: sparse_user, accuracy: 60, anomaly: false,
