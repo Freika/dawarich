@@ -11,7 +11,11 @@ class DataMigrations::RecalculatePerTrackerTracksJob < ApplicationJob
     user = User.find_by(id: user_id)
     return unless user
 
-    backfilled = Points::TrackerIdBackfiller.new(user).call
+    # Read deviceTag out of the uploaded Records.json first: the importer never
+    # stored it in raw_data, so this is the only accurate source. Whatever it
+    # cannot resolve falls through to the raw_data/import-based backfiller.
+    backfilled = backfill_google_records_devices(user)
+    backfilled += Points::TrackerIdBackfiller.new(user).call
 
     return unless backfilled.positive? || user.tracks.where(tracker_id: nil).exists?
 
@@ -19,6 +23,12 @@ class DataMigrations::RecalculatePerTrackerTracksJob < ApplicationJob
   end
 
   private
+
+  def backfill_google_records_devices(user)
+    user.imports.where(source: :google_records).sum do |import|
+      Points::DeviceTagBackfiller.new(import).call
+    end
+  end
 
   def enqueue_pending_users
     user_ids = User

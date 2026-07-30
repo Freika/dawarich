@@ -64,6 +64,7 @@ class Users::ImportData
     ActiveRecord::Base.transaction do
       extract_archive
       process_archive_data
+      filter_restored_anomalies
       create_success_notification
 
       @import_stats
@@ -150,6 +151,26 @@ class Users::ImportData
 
     expected_counts = handler.expected_counts
     validate_import_completeness(expected_counts) if expected_counts.present?
+  end
+
+  # The archive carries no `anomaly` column, so every restored point arrives
+  # unflagged no matter what the source instance had already filtered out.
+  # Recompute instead of importing the flags: it also covers archives written
+  # before a filtering improvement shipped. Honours the user's own
+  # gps_filtering_enabled setting, which was restored moments ago.
+  def filter_restored_anomalies
+    min_timestamp, max_timestamp = user.points.pick(
+      Arel.sql('MIN(timestamp)'), Arel.sql('MAX(timestamp)')
+    )
+    return if min_timestamp.nil?
+
+    # Leading :: is required — Users::ImportData::Points is the points handler
+    # and would otherwise shadow the top-level Points namespace.
+    flagged = ::Points::AnomalyFilter.new(user.id, min_timestamp, max_timestamp).call
+    Rails.logger.info "Flagged #{flagged} anomalous points after restore for user: #{user.email}"
+  rescue StandardError => e
+    # A filtering failure must not discard an otherwise complete restore.
+    ExceptionReporter.call(e, 'Anomaly filtering failed after data import')
   end
 
   def detect_format_version

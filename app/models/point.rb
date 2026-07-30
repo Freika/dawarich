@@ -35,7 +35,19 @@ class Point < ApplicationRecord
   scope :not_visited, -> { where(visit_id: nil) }
   scope :not_anomaly, -> { where(anomaly: [false, nil]) }
   scope :anomaly, -> { where(anomaly: true) }
-  scope :null_island, -> { where('lonlat = ST_SetSRID(ST_MakePoint(0, 0), 4326)::geography') }
+  # Radius around the origin treated as a broken coordinate rather than a real
+  # position. Exact (0, 0) is the classic sentinel, but Google Timeline exports
+  # also emit values a fraction of a degree off zero (e.g. -0.0098, -0.0056),
+  # which an equality check silently lets through. The neighbourhood is open
+  # ocean ~570km off West Africa, so nothing legitimate lands inside it.
+  NULL_ISLAND_RADIUS_METERS = 5_000
+
+  scope :null_island, lambda {
+    where(
+      'ST_DWithin(lonlat, ST_SetSRID(ST_MakePoint(0, 0), 4326)::geography, ?)',
+      NULL_ISLAND_RADIUS_METERS
+    )
+  }
 
   after_create :async_reverse_geocode, if: -> { DawarichSettings.store_geodata? && !reverse_geocoded? }
   after_create :set_country
