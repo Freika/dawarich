@@ -730,11 +730,11 @@ RSpec.describe 'Users::Registrations', type: :request do
         end.not_to(change { user.reload.deleted_at })
       end
 
-      it 'returns unprocessable content with error message' do
+      it 'redirects back with an error message the browser can follow' do
         delete user_registration_path
 
-        expect(response).to have_http_status(:unprocessable_content)
-        expect(response.location).to eq(edit_user_registration_url)
+        expect(response).to redirect_to(edit_user_registration_path)
+        expect(response).to have_http_status(:found)
         expect(flash[:alert]).to eq('Cannot delete your account while you own a family with other members.')
       end
 
@@ -757,7 +757,7 @@ RSpec.describe 'Users::Registrations', type: :request do
           delete user_registration_path, params: { password: 'password123456' }
         end.not_to have_enqueued_job(Users::DestroyJob)
 
-        expect(response).to have_http_status(:unprocessable_content)
+        expect(response).to redirect_to(edit_user_registration_path)
         expect(user.reload.deleted_at).to be_nil
       end
     end

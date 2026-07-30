@@ -60,7 +60,7 @@ class Users::RegistrationsController < Devise::RegistrationsController
   def destroy
     unless resource.can_delete_account?
       set_flash_message! :alert, :cannot_delete
-      redirect_to edit_user_registration_path, status: :unprocessable_content
+      redirect_to edit_user_registration_path
       return
     end
 
