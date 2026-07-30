@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Photon place names no longer show generic "Yes" categories in visits (https://github.com/Freika/dawarich/issues/3050)
 - Imports that finish with zero saved points now notify you instead of completing silently. GPX and KML files are called out when they lack per-point timestamps; other sources get a source-neutral message. (#3062)
 - Traccar KML exports now import LineString points using the time range in each track name instead of completing with zero points (#3120)
+- "Cancel my account" now works on self-hosted instances. It never sent a password, so the request failed silently with a 401 and no feedback; deletion now asks for confirmation in a dialog and reports failures instead. Accounts registered through OIDC, which never had a password to enter, can confirm with their email address, both on the web and via the API. (#3107)
 
 ## [1.10.3] - 2026-07-28, Berlin
 

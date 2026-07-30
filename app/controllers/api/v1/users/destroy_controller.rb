@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Api::V1::Users::DestroyController < ApiController
+  include AccountDeletionConfirmable
+
   skip_before_action :reject_pending_payment!
 
   SUBSCRIPTION_NOTE = ' If you have an active Apple or Google subscription, cancel it in your ' \
@@ -21,9 +23,11 @@ class Api::V1::Users::DestroyController < ApiController
   private
 
   def destroy_self_hosted
-    unless current_api_user.valid_password?(params[:password].to_s)
+    unless account_deletion_confirmed?(current_api_user)
+      log_failed_account_deletion(current_api_user)
+
       return render(json: { error: 'password_required',
-                            message: 'Provide your current password to delete your account.' },
+                            message: account_deletion_confirmation_error(current_api_user) },
                     status: :unauthorized)
     end
 

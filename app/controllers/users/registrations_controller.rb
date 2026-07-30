@@ -3,6 +3,7 @@
 class Users::RegistrationsController < Devise::RegistrationsController
   include UtmTrackable
   include PendingImportClaimable
+  include AccountDeletionConfirmable
 
   prepend_before_action :handle_logged_in_with_ticket, only: :new
   before_action :set_invitation, only: %i[new create]
@@ -69,10 +70,9 @@ class Users::RegistrationsController < Devise::RegistrationsController
   protected
 
   def destroy_self_hosted
-    unless resource.valid_password?(params[:password].to_s)
-      redirect_to edit_user_registration_path,
-                  alert: 'Provide your current password to delete your account.',
-                  status: :unauthorized
+    unless account_deletion_confirmed?(resource)
+      log_failed_account_deletion(resource)
+      redirect_to edit_user_registration_path, alert: account_deletion_confirmation_error(resource)
       return
     end
 
