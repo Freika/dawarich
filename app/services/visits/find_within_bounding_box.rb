@@ -17,8 +17,11 @@ module Visits
       @sw_lng = params[:sw_lng].to_f
       @ne_lat = params[:ne_lat].to_f
       @ne_lng = params[:ne_lng].to_f
+      raise Visits::InvalidTimeRange if params[:start_at].present? != params[:end_at].present?
+
       @start_at = parse_time(params[:start_at])
       @end_at = parse_time(params[:end_at])
+      raise Visits::InvalidTimeRange if @start_at && @start_at > @end_at
     end
 
     def call

@@ -6,6 +6,7 @@ module Visits
       @user = user
       @start_at = parse_time(params[:start_at])
       @end_at = parse_time(params[:end_at])
+      raise Visits::InvalidTimeRange if @start_at > @end_at
     end
 
     def call

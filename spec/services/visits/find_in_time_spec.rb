@@ -138,5 +138,18 @@ RSpec.describe Visits::FindInTime do
         expect { described_class.new(user, params).call }.to raise_error(Visits::InvalidTimeRange)
       end
     end
+
+    context 'when the time range is reversed' do
+      let(:params) do
+        {
+          start_at: (reference_time + 4.hours).to_s,
+          end_at: reference_time.to_s
+        }
+      end
+
+      it 'raises Visits::InvalidTimeRange' do
+        expect { described_class.new(user, params).call }.to raise_error(Visits::InvalidTimeRange)
+      end
+    end
   end
 end

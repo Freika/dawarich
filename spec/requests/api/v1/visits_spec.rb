@@ -53,6 +53,15 @@ RSpec.describe 'Api::V1::Visits', type: :request do
         expect(response).to have_http_status(:bad_request)
         expect(response.parsed_body).to eq('error' => 'Invalid date format')
       end
+
+      it 'returns a bad request when the time range is reversed' do
+        get '/api/v1/visits',
+            params: { start_at: Time.zone.now.iso8601, end_at: 1.day.ago.iso8601 },
+            headers: auth_headers
+
+        expect(response).to have_http_status(:bad_request)
+        expect(response.parsed_body).to eq('error' => 'Invalid date format')
+      end
     end
 
     context 'when requesting area-based visits' do
@@ -92,6 +101,15 @@ RSpec.describe 'Api::V1::Visits', type: :request do
 
         expect(response).to have_http_status(:ok)
         expect(response.parsed_body.pluck('id')).to include(visit_inside.id)
+      end
+
+      it 'returns a bad request for a partial time range' do
+        get '/api/v1/visits',
+            params: params.merge(start_at: 1.day.ago.iso8601),
+            headers: auth_headers
+
+        expect(response).to have_http_status(:bad_request)
+        expect(response.parsed_body).to eq('error' => 'Invalid date format')
       end
     end
   end
@@ -156,6 +174,17 @@ RSpec.describe 'Api::V1::Visits', type: :request do
     end
 
     context 'with invalid parameters' do
+      it 'returns validation feedback for a malformed time without reporting it' do
+        expect(ExceptionReporter).not_to receive(:call)
+
+        post '/api/v1/visits',
+             params: valid_create_params.deep_merge(visit: { started_at: 'not-a-date' }),
+             headers: auth_headers
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(response.parsed_body.fetch('error')).to include('Invalid date format')
+      end
+
       context 'when required fields are missing' do
         let(:missing_name_params) do
           valid_create_params.deep_merge(visit: { name: '' })

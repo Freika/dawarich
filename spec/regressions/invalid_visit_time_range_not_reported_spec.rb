@@ -22,4 +22,13 @@ RSpec.describe 'Invalid visit time range reporting' do
     expect(service.errors).to include('Ended at must be greater than')
     expect(user.visits).to be_empty
   end
+
+  it 'handles malformed timestamps without reporting an application exception' do
+    service = Visits::Create.new(user, params.merge(started_at: 'not-a-date'))
+
+    expect(ExceptionReporter).not_to receive(:call)
+    expect(service.call).to be(false)
+    expect(service.errors).to include('Invalid date format')
+    expect(user.visits).to be_empty
+  end
 end

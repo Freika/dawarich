@@ -196,8 +196,25 @@ RSpec.describe Visits::FindWithinBoundingBox do
           }
         end
 
-        it 'ignores the partial date range' do
-          expect(result).to include(visit_inside_1, visit_inside_2, old_visit_inside)
+        it 'rejects the partial date range' do
+          expect { result }.to raise_error(Visits::InvalidTimeRange)
+        end
+      end
+
+      context 'when the time range is reversed' do
+        let(:params) do
+          {
+            sw_lat: sw_lat.to_s,
+            sw_lng: sw_lng.to_s,
+            ne_lat: ne_lat.to_s,
+            ne_lng: ne_lng.to_s,
+            start_at: Time.zone.now.iso8601,
+            end_at: 1.day.ago.iso8601
+          }
+        end
+
+        it 'rejects the reversed range' do
+          expect { result }.to raise_error(Visits::InvalidTimeRange)
         end
       end
 

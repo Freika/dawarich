@@ -19,7 +19,7 @@ module Visits
         visit = create_visit(place)
         visit
       end
-    rescue ActiveRecord::RecordInvalid => e
+    rescue ActiveRecord::RecordInvalid, Visits::InvalidTimeRange => e
       @errors = "Failed to create visit: #{e.message}"
 
       false
@@ -70,8 +70,8 @@ module Visits
     end
 
     def create_visit(place)
-      started_at = Time.zone.parse(params[:started_at])
-      ended_at = Time.zone.parse(params[:ended_at])
+      started_at = parse_time(params[:started_at])
+      ended_at = parse_time(params[:ended_at])
       duration_minutes = ((ended_at - started_at) / 60).to_i
 
       @visit = user.visits.create!(
@@ -84,6 +84,12 @@ module Visits
       )
 
       @visit
+    end
+
+    def parse_time(value)
+      Time.zone.parse(value) || raise(Visits::InvalidTimeRange, 'Invalid date format')
+    rescue ArgumentError, TypeError
+      raise Visits::InvalidTimeRange, 'Invalid date format'
     end
   end
 end
