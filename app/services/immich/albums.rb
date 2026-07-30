@@ -13,7 +13,7 @@ class Immich::Albums
 
   def call
     cached_albums = Rails.cache.read(cache_key)
-    return cached_albums if cached_albums.present?
+    return cached_albums unless cached_albums.nil?
 
     result = fetch_albums
     return [] unless result[:success]

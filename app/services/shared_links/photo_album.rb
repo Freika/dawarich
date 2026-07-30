@@ -22,25 +22,35 @@ module SharedLinks
       album_id.present?
     end
 
-    def album_url
-      immich_url_for('albums', album_id)
+    def shared_link_slug
+      link.settings['immich_shared_link_slug'].to_s.presence
+    end
+
+    def public_link?
+      selected? &&
+        link.settings['immich_shared_link_id'].to_s.match?(ID_PATTERN) &&
+        shared_link_slug.to_s.match?(ID_PATTERN) &&
+        valid_immich_url.present?
     end
 
     def photo_url(photo_id)
-      immich_url_for('photos', photo_id) || album_url
+      return unless public_link?
+      return unless photo_id.to_s.match?(ID_PATTERN)
+
+      base_url = valid_immich_url
+      return if base_url.nil?
+
+      "#{base_url}/s/#{shared_link_slug}/photos/#{photo_id}"
     end
 
     private
 
-    def immich_url_for(resource, id)
-      return unless selected?
-      return unless id.to_s.match?(ID_PATTERN)
-
+    def valid_immich_url
       base_url = link.user.safe_settings.immich_url.to_s.sub(%r{/+\z}, '')
       uri = URI.parse(base_url)
       return unless uri.is_a?(URI::HTTP) && uri.host.present?
 
-      "#{base_url}/#{resource}/#{id}"
+      base_url
     rescue URI::InvalidURIError
       nil
     end

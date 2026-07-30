@@ -122,7 +122,9 @@ RSpec.describe 'Shared::Links', type: :request do
                                     'show_days' => true,
                                     'show_photos' => true,
                                     'show_immich' => true,
-                                    'photo_album_id' => 'album-1'
+                                    'photo_album_id' => 'album-1',
+                                    'immich_shared_link_id' => 'shared-1',
+                                    'immich_shared_link_slug' => 'summer-public'
                                   })
       allow(SharedLinks::TripPhotos).to receive(:new).and_return(
         instance_double(SharedLinks::TripPhotos,
@@ -132,15 +134,19 @@ RSpec.describe 'Shared::Links', type: :request do
       get "/s/#{link.id}"
 
       page = Nokogiri::HTML(response.body)
-      expect(page.at_css('[data-shared-photo-immich]')['href'])
-        .to eq('https://immich.example.com/albums/album-1')
+      expect(page.at_css('[data-shared-photo-immich]')).to be_present
       expect(page.at_css('[data-shared-photo-image]')['data-immich-url'])
-        .to eq('https://immich.example.com/photos/asset-9')
+        .to eq('https://immich.example.com/s/summer-public/photos/asset-9')
     end
 
-    it 'omits the Immich overlay link when all photos are selected' do
+    it 'omits the Immich overlay link when no Immich shared link was selected' do
       link = create(:shared_link, user: owner, resource_type: :trip, resource_id: trip.id,
-                                  settings: { 'show_days' => true, 'show_photos' => true, 'show_immich' => true })
+                                  settings: {
+                                    'show_days' => true,
+                                    'show_photos' => true,
+                                    'show_immich' => true,
+                                    'photo_album_id' => 'legacy-album'
+                                  })
 
       get "/s/#{link.id}"
 

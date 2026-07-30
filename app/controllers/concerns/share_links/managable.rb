@@ -12,9 +12,9 @@ module ShareLinks
 
     def new
       @shared_link = SharedLink.new(build_attributes_for_new) unless @share
-      @immich_albums =
+      @immich_shared_links =
         if current_user.immich_integration_configured?
-          Immich::Albums.new(current_user).call
+          Immich::SharedLinks.new(current_user).call
         else
           []
         end
@@ -138,13 +138,15 @@ module ShareLinks
           raw.permit(
             *boolean_keys,
             :photo_album_id,
-            :photo_album_name
+            :photo_album_name,
+            :immich_shared_link_id,
+            :immich_shared_link_slug
           )
         else
           raw.slice(
             *(
               boolean_keys.map(&:to_s) +
-              %w[photo_album_id photo_album_name]
+              %w[photo_album_id photo_album_name immich_shared_link_id immich_shared_link_slug]
             )
           )
         end
@@ -166,10 +168,14 @@ module ShareLinks
 
       album_id = values['photo_album_id'].to_s.presence
       album_name = values['photo_album_name'].to_s.presence
+      shared_link_id = values['immich_shared_link_id'].to_s.presence
+      shared_link_slug = values['immich_shared_link_slug'].to_s.presence
 
       if settings['show_immich']
         settings['photo_album_id'] = album_id if album_id
         settings['photo_album_name'] = album_name if album_name
+        settings['immich_shared_link_id'] = shared_link_id if shared_link_id
+        settings['immich_shared_link_slug'] = shared_link_slug if shared_link_slug
       end
 
       settings

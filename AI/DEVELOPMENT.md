@@ -109,9 +109,11 @@ Die Compose-Umgebung enthält diese Hauptcontainer:
 
 Das Makefile im Projektstamm bildet den lokalen dreistufigen Workflow ab:
 
-- `make testvscode` führt die Immich-/PhotoPrism-relevanten Specs im bereits
-  laufenden Service `dawarich_dev` aus. Das Target baut keine Images und
-  erstellt oder löscht keine Volumes.
+- `make testvscode` führt die Immich-/PhotoPrism-relevanten Specs im Service
+  `dawarich_dev` aus. Läuft der DevContainer noch nicht, wird er inklusive
+  eines nötigen Image-Builds über die `devcontainer`-Vorbedingung gestartet;
+  ist er bereits aktiv, wird nichts neu gebaut. Volumes werden in keinem Fall
+  erstellt oder gelöscht.
 - `make testdawarich` führt zuerst diese Tests aus, baut anschließend über
   `docker/Dockerfile` das vorhandene Image `dawarich-immich-tags:test` und
   erstellt ausschließlich `dawarich_app` und `dawarich_sidekiq` unter

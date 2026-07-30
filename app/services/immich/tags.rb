@@ -13,7 +13,7 @@ class Immich::Tags
 
   def call
     cached_tags = Rails.cache.read(cache_key)
-    return cached_tags if cached_tags.present?
+    return cached_tags unless cached_tags.nil?
 
     result = fetch_tags
     return {} unless result[:success]

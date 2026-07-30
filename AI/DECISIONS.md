@@ -74,7 +74,7 @@ Belegt durch:
 - app/services/shared_links/photo_sources.rb
 - app/services/photos/search.rb
 - app/controllers/concerns/share_links/managable.rb
-- app/views/shared_links/_photo_scope_fields.html.erb
+- app/views/shared_links/_immich_shared_link_fields.html.erb
 
 ## Noch zu klären
 
@@ -86,10 +86,13 @@ Die folgenden Punkte sind im Repository nicht vollständig belegt und sollten be
 - Die vollständige Liste aller Sonderfälle, die in der Git-Historie dokumentiert sind
 ## Immich-Deep-Link im Foto-Overlay
 
-Bei einem Share-Link mit ausgewähltem Immich-Album wird die Album-ID aus den
-gespeicherten Share-Einstellungen mit der bereits konfigurierten Immich-URL
-kombiniert. Im Vollbild-Overlay verweist das Immich-Logo direkt auf das
-angezeigte Asset (`/photos/:id`) und fällt bei einer ungültigen Asset-ID auf
-das ausgewählte Album (`/albums/:id`) zurück. Dafür erfolgt beim Anzeigen des
-Overlays keine zusätzliche Immich-API-Anfrage. Shares ohne Album bleiben
-unverändert und rendern den Link nicht.
+Im Dawarich-Share-Dialog werden albumgebundene öffentliche Immich-Shared-Links
+über `GET /api/shared-links` geladen. Shared-Link-ID und Slug sowie ID und Name
+des eingebetteten Albums werden gemeinsam in den Share-Einstellungen
+gespeichert. Die Album-ID begrenzt weiterhin die Immich-Fotosuche. Im
+Vollbild-Overlay verweist das Immich-Logo ausschließlich auf das angezeigte
+Asset innerhalb der öffentlichen Freigabe (`/s/:slug/photos/:asset_id`).
+Direkte Links auf `/photos/:id` oder `/albums/:id` und entsprechende Fallbacks
+sind aus Sicherheitsgründen nicht zulässig. Beim Anzeigen des Overlays erfolgt
+keine zusätzliche Immich-API-Anfrage. Alte Shares ohne gespeicherten
+Shared-Link-Slug rendern keinen Immich-Link.

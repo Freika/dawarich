@@ -21,9 +21,9 @@
     </label>
   </div>
 
-  <%= render 'shared_links/photo_scope_fields',
+  <%= render 'shared_links/immich_shared_link_fields',
              id_prefix: 'track',
-             immich_albums: @immich_albums %>
+             immich_shared_links: @immich_shared_links %>
 
   <div class="modal-action">
     <%= link_to 'Cancel', close_path, class: 'btn btn-ghost', data: { turbo_frame: '_top', action: 'share-link-modal#close' } %>

@@ -119,8 +119,8 @@
     &times;
   </button>
 
-  <% if trip.immich_album_url.present? %>
-    <a href="<%= trip.immich_album_url %>"
+  <% if trip.immich_shared_link? %>
+    <a href="#"
        target="_blank"
        rel="noopener noreferrer"
        class="hidden absolute right-4 top-20 h-12 w-12 items-center justify-center rounded-full bg-black/60 p-2.5 opacity-60 shadow-lg transition-opacity hover:opacity-100 focus:opacity-100"
@@ -180,9 +180,9 @@
 
       if (immichLink) {
         const immichUrl = image.dataset.immichUrl;
-        immichLink.href = immichUrl || "<%= j trip.immich_album_url.to_s %>";
-        immichLink.classList.toggle("hidden", !immichLink.href);
-        immichLink.classList.toggle("flex", Boolean(immichLink.href));
+        if (immichUrl) immichLink.href = immichUrl;
+        immichLink.classList.toggle("hidden", !immichUrl);
+        immichLink.classList.toggle("flex", Boolean(immichUrl));
       }
 
       overlay.classList.remove("hidden");

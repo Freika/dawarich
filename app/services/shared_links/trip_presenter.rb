@@ -74,8 +74,8 @@ module SharedLinks
       photos_by_day[day[:date]] || []
     end
 
-    def immich_album_url
-      photo_album.album_url
+    def immich_shared_link?
+      photo_album.public_link?
     end
 
     def immich_photo_url(photo)

@@ -20,10 +20,14 @@ FORK_REMOTE := origin
 FORK_URL_SUFFIX := cleniemeyer-collab/dawarich.git
 
 RSPEC_FILES := \
-	spec/services/photos/search_spec.rb \
-	spec/services/shared_links/photo_sources_spec.rb \
-	spec/services/shared_links/trip_photos_spec.rb \
-	spec/requests/api/v1/shared/photos_spec.rb
+		spec/services/immich/shared_links_spec.rb \
+		spec/services/photos/search_spec.rb \
+		spec/services/shared_links/photo_album_spec.rb \
+		spec/services/shared_links/photo_sources_spec.rb \
+		spec/services/shared_links/trip_photos_spec.rb \
+		spec/requests/api/v1/shared/photos_spec.rb \
+		spec/requests/share_links/timelines_spec.rb \
+		spec/requests/shared/links_spec.rb
 
 export MESSAGE
 export CONFIRM

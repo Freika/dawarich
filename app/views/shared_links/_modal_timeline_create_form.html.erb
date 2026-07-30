@@ -31,9 +31,9 @@
     <span class="label-text-alt mt-1">Leave blank for a link that never expires.</span>
   </div>
 
-  <%= render 'shared_links/photo_scope_fields',
+  <%= render 'shared_links/immich_shared_link_fields',
              id_prefix: 'timeline',
-             immich_albums: @immich_albums %>
+             immich_shared_links: @immich_shared_links %>
 
   <% if @shared_link&.errors&.any? %>
     <div class="alert alert-error mt-4 text-sm">
