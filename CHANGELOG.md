@@ -21,7 +21,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Imports that finish with zero saved points now notify you instead of completing silently. GPX and KML files are called out when they lack per-point timestamps; other sources get a source-neutral message. (#3062)
 - Traccar KML exports now import LineString points using the time range in each track name instead of completing with zero points (#3120)
 - "Cancel my account" now works on self-hosted instances. It never sent a password, so the request failed silently with a 401 and no feedback; deletion now asks for confirmation in a dialog and reports failures instead. Accounts registered through OIDC, which never had a password to enter, can confirm with their email address, both on the web and via the API. (#3107)
-- The Map v2 custom basemap field now accepts MapLibre style URLs whose path has no `.json` suffix, such as `https://tiles.openfreemap.org/styles/liberty`. A URL with no `{z}`/`{x}`/`{y}` placeholders that ends in a tile file extension is still rejected as a malformed tile template. (#3256)
+- The Map v2 custom basemap field now accepts MapLibre style URLs whose path has no `.json` suffix, such as `https://tiles.openfreemap.org/styles/liberty`. A tile URL that is missing one of the `{z}`/`{x}`/`{y}` placeholders, or that ends in a tile file extension, is still rejected as a malformed template. (#3256)
 
 ## [1.10.3] - 2026-07-28, Berlin
 

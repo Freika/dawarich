@@ -123,6 +123,25 @@ test("classifies a placeholderless style path with a query string as a style", (
   )
 })
 
+test("returns null for a malformed tile template missing a placeholder", () => {
+  for (const url of [
+    "https://t.example/{Z}/{X}/{Y}",
+    "https://t.example/{z}/{x}",
+    "https://t.example/{z}/{x}/{y-1}",
+    "https://t.example/styles/{name}",
+  ]) {
+    assert.equal(
+      classifyBasemapUrl(url),
+      null,
+      `expected ${url} to be rejected rather than treated as a style`,
+    )
+  }
+})
+
+test("returns null for a host that ends in a tile extension", () => {
+  assert.equal(classifyBasemapUrl("https://foo.png"), null)
+})
+
 test("returns null for a placeholderless URL ending in a tile extension", () => {
   for (const extension of ["png", "jpg", "jpeg", "webp", "mvt", "pbf"]) {
     assert.equal(

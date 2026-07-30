@@ -19,6 +19,8 @@ export function classifyBasemapUrl(url) {
     trimmed.includes("{y}")
 
   if (!hasXyz) {
+    if (/[{}]/.test(trimmed)) return null
+
     if (TILE_FILE_EXTENSIONS.some((extension) => path.endsWith(extension))) {
       return null
     }

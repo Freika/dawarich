@@ -174,6 +174,27 @@ RSpec.describe 'Api::V1::Settings', type: :request do
           .to eq('https://tiles.openfreemap.org/styles/liberty')
       end
 
+      it 'rejects a malformed tile template missing a placeholder' do
+        ['https://tiles.example.com/{Z}/{X}/{Y}',
+         'https://tiles.example.com/{z}/{x}',
+         'https://tiles.example.com/{z}/{x}/{y-1}',
+         'https://tiles.example.com/styles/{name}'].each do |tiles_url|
+          patch "/api/v1/settings?api_key=#{api_key}",
+                params: { settings: { maps_maplibre_tiles_url: tiles_url } }
+
+          expect(response).to have_http_status(:unprocessable_content)
+          expect(user.reload.safe_settings.maps_maplibre_tiles_url).to be_nil
+        end
+      end
+
+      it 'rejects a host that ends in a tile file extension' do
+        patch "/api/v1/settings?api_key=#{api_key}",
+              params: { settings: { maps_maplibre_tiles_url: 'https://foo.png' } }
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(user.reload.safe_settings.maps_maplibre_tiles_url).to be_nil
+      end
+
       it 'rejects a placeholderless URL ending in a tile file extension' do
         %w[png jpg jpeg webp mvt pbf].each do |extension|
           patch "/api/v1/settings?api_key=#{api_key}",

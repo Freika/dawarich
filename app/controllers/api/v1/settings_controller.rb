@@ -133,9 +133,12 @@ class Api::V1::SettingsController < ApiController
   # this instance. Keep the two in sync or the browser accepts a URL this
   # rejects.
   def style_document_url?(url)
+    return false if url.match?(/[{}]/)
+
+    locator = url.split(/[?#]/).first.to_s.downcase
+    return false if TILE_FILE_EXTENSIONS.any? { |extension| locator.end_with?(extension) }
+
     uri = URI.parse(url)
-    path = uri.path.to_s.downcase
-    return false if TILE_FILE_EXTENSIONS.any? { |extension| path.end_with?(extension) }
     return uri.host.present? if uri.is_a?(URI::HTTP)
 
     uri.scheme.nil? && uri.host.nil? && uri.path.start_with?('/')
