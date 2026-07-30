@@ -114,6 +114,38 @@ RSpec.describe 'Shared::Links', type: :request do
       expect(img['src']).to include("/api/v1/shared/#{link.id}/photos/asset-9/thumbnail")
       expect(img['src']).to include('source=immich')
     end
+
+    it 'links an Immich album photo from the fullscreen overlay' do
+      owner.update!(settings: owner.settings.merge('immich_url' => 'https://immich.example.com'))
+      link = create(:shared_link, user: owner, resource_type: :trip, resource_id: trip.id,
+                                  settings: {
+                                    'show_days' => true,
+                                    'show_photos' => true,
+                                    'show_immich' => true,
+                                    'photo_album_id' => 'album-1'
+                                  })
+      allow(SharedLinks::TripPhotos).to receive(:new).and_return(
+        instance_double(SharedLinks::TripPhotos,
+                        call: { Date.new(2026, 4, 1) => [{ id: 'asset-9', source: 'immich' }] })
+      )
+
+      get "/s/#{link.id}"
+
+      page = Nokogiri::HTML(response.body)
+      expect(page.at_css('[data-shared-photo-immich]')['href'])
+        .to eq('https://immich.example.com/albums/album-1')
+      expect(page.at_css('[data-shared-photo-image]')['data-immich-url'])
+        .to eq('https://immich.example.com/photos/asset-9')
+    end
+
+    it 'omits the Immich overlay link when all photos are selected' do
+      link = create(:shared_link, user: owner, resource_type: :trip, resource_id: trip.id,
+                                  settings: { 'show_days' => true, 'show_photos' => true, 'show_immich' => true })
+
+      get "/s/#{link.id}"
+
+      expect(Nokogiri::HTML(response.body).at_css('[data-shared-photo-immich]')).to be_nil
+    end
   end
 
   describe 'happy-path GET /s/:id for a track' do

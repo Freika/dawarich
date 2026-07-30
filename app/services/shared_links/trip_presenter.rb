@@ -74,6 +74,16 @@ module SharedLinks
       photos_by_day[day[:date]] || []
     end
 
+    def immich_album_url
+      photo_album.album_url
+    end
+
+    def immich_photo_url(photo)
+      return unless photo[:source] == 'immich'
+
+      photo_album.photo_url(photo[:id])
+    end
+
     def interactive_class
       show_map? ? ' cursor-pointer transition-colors hover:bg-base-300' : ''
     end
@@ -82,6 +92,12 @@ module SharedLinks
       return {} unless show_map?
 
       { day_key: day_key, action: ROW_ACTIONS, 'shared-trip-map-day-key-param': day_key }
+    end
+
+    private
+
+    def photo_album
+      @photo_album ||= SharedLinks::PhotoAlbum.new(@link)
     end
   end
 end

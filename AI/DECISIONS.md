@@ -84,3 +84,12 @@ Die folgenden Punkte sind im Repository nicht vollständig belegt und sollten be
 - Die vollständige historische Abgrenzung zum Upstream-Dawarich
 - Die genaue Ausprägung aller Immich-Features über alle Branches und Releases hinweg
 - Die vollständige Liste aller Sonderfälle, die in der Git-Historie dokumentiert sind
+## Immich-Deep-Link im Foto-Overlay
+
+Bei einem Share-Link mit ausgewähltem Immich-Album wird die Album-ID aus den
+gespeicherten Share-Einstellungen mit der bereits konfigurierten Immich-URL
+kombiniert. Im Vollbild-Overlay verweist das Immich-Logo direkt auf das
+angezeigte Asset (`/photos/:id`) und fällt bei einer ungültigen Asset-ID auf
+das ausgewählte Album (`/albums/:id`) zurück. Dafür erfolgt beim Anzeigen des
+Overlays keine zusätzliche Immich-API-Anfrage. Shares ohne Album bleiben
+unverändert und rendern den Link nicht.
