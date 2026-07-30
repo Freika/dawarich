@@ -65,8 +65,9 @@ class Api::V1::SettingsController < ApiController
   MAP_CUSTOMIZATION_KEYS = %i[maps_maplibre_custom_theme maps_maplibre_tiles_url
                               route_color track_color].freeze
   TILE_URL_PLACEHOLDERS = %w[{z} {x} {y}].freeze
+  TILE_FILE_EXTENSIONS = %w[.png .jpg .jpeg .webp .mvt .pbf].freeze
   TILE_URL_ERROR = 'Tile URL must include {z}, {x}, and {y} placeholders, ' \
-                   'or be a MapLibre style URL ending in .json'
+                   'or be a MapLibre style URL'
 
   def settings_params
     permitted = params.require(:settings).permit(
@@ -122,7 +123,7 @@ class Api::V1::SettingsController < ApiController
     url = settings[:maps_maplibre_tiles_url]
     return true if url.nil?
     return false unless url.is_a?(String)
-    return true if style_json_url?(url)
+    return true if style_document_url?(url)
 
     TILE_URL_PLACEHOLDERS.all? { |placeholder| url.include?(placeholder) }
   end
@@ -131,9 +132,10 @@ class Api::V1::SettingsController < ApiController
   # an absolute http(s) URL, or a root-relative path for a style served from
   # this instance. Keep the two in sync or the browser accepts a URL this
   # rejects.
-  def style_json_url?(url)
+  def style_document_url?(url)
     uri = URI.parse(url)
-    return false unless uri.path.to_s.downcase.end_with?('.json')
+    path = uri.path.to_s.downcase
+    return false if TILE_FILE_EXTENSIONS.any? { |extension| path.end_with?(extension) }
     return uri.host.present? if uri.is_a?(URI::HTTP)
 
     uri.scheme.nil? && uri.host.nil? && uri.path.start_with?('/')
