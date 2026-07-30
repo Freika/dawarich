@@ -55,6 +55,27 @@ RSpec.describe DataMigrations::RecalculatePerTrackerTracksJob do
       end.not_to have_enqueued_job(described_class)
     end
 
+    it 'enqueues users whose Google Records points were collapsed onto one import tracker' do
+      Track.where(tracker_id: nil).update_all(tracker_id: 'backfilled')
+      user_with_collapsed_points = create(:user)
+      collapsed_import = create(:import, user: user_with_collapsed_points, source: :google_records)
+      create(:point, user: user_with_collapsed_points, import: collapsed_import,
+                     tracker_id: "legacy-import-#{collapsed_import.id}")
+
+      expect do
+        described_class.perform_now
+      end.to have_enqueued_job(described_class).with(user_with_collapsed_points.id).exactly(:once)
+    end
+
+    it 'leaves alone users whose legacy-import points came from another source' do
+      Track.where(tracker_id: nil).update_all(tracker_id: 'backfilled')
+      gpx_user = create(:user)
+      gpx_import = create(:import, user: gpx_user, source: :gpx)
+      create(:point, user: gpx_user, import: gpx_import, tracker_id: "legacy-import-#{gpx_import.id}")
+
+      expect { described_class.perform_now }.not_to have_enqueued_job(described_class)
+    end
+
     it 'enqueues users whose points still carry a legacy importer constant' do
       Track.where(tracker_id: nil).update_all(tracker_id: 'backfilled')
       user_with_legacy_points = create(:user)
@@ -121,6 +142,46 @@ RSpec.describe DataMigrations::RecalculatePerTrackerTracksJob do
 
       tracker_ids = user.points.reload.pluck(:tracker_id).uniq
       expect(tracker_ids).to eq(['google-records-device-1111111111'])
+    end
+  end
+
+  # The Records importer never wrote raw_data, so points from a pre-1.10.0
+  # Google Records import have no deviceTag to recover from the database. The
+  # uploaded file is the only place it still exists.
+  describe 'Google Records imports with no raw_data' do
+    let(:user) { create(:user) }
+    let(:import) { create(:import, user: user, source: :google_records, name: 'Records.json') }
+    let(:base_time) { Time.zone.parse('2024-06-22T20:08:58Z') }
+
+    before do
+      payload = {
+        'locations' => [
+          { 'latitudeE7' => 525_320_000, 'longitudeE7' => 135_170_000,
+            'deviceTag' => -2_008_693_898, 'timestamp' => '2024-06-22T20:08:58.000Z' },
+          { 'latitudeE7' => 544_392_000, 'longitudeE7' => 127_081_000,
+            'deviceTag' => -1_849_312_274, 'timestamp' => '2024-06-22T20:10:58.000Z' }
+        ]
+      }
+      file = Tempfile.new(['records', '.json'])
+      file.write(Oj.dump(payload, mode: :compat))
+      file.rewind
+      import.file.attach(io: file, filename: 'Records.json', content_type: 'application/json')
+      file.close
+
+      create(:point, user: user, import: import, tracker_id: 'google-maps-timeline-export',
+                     raw_data: {}, timestamp: base_time.to_i, lonlat: 'POINT(13.517 52.532)')
+      create(:point, user: user, import: import, tracker_id: 'google-maps-timeline-export',
+                     raw_data: {}, timestamp: (base_time + 2.minutes).to_i,
+                     lonlat: 'POINT(12.7081 54.4392)')
+    end
+
+    it 'separates the devices using the uploaded file' do
+      described_class.new.perform(user.id)
+
+      expect(user.points.reload.pluck(:tracker_id)).to contain_exactly(
+        'google-records-device--2008693898',
+        'google-records-device--1849312274'
+      )
     end
   end
 end

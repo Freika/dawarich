@@ -271,16 +271,6 @@ export class SettingsController {
       gpsFilteringToggle.checked = this.settings.gpsFilteringEnabled !== false
     }
 
-    const gpsAccuracyInput = controller.element.querySelector(
-      'input[name="gpsAccuracyThreshold"]',
-    )
-    if (gpsAccuracyInput) {
-      gpsAccuracyInput.value = this.settings.gpsAccuracyThreshold || 100
-      if (controller.hasGpsAccuracyThresholdValueTarget) {
-        controller.gpsAccuracyThresholdValueTarget.textContent = `${gpsAccuracyInput.value}m`
-      }
-    }
-
     // Sync speed-colored routes settings
     if (controller.hasSpeedColorScaleInputTarget) {
       const colorScale =
@@ -1459,7 +1449,6 @@ export class SettingsController {
       ),
       maxGapMinutesInCity: parseInt(formData.get("maxGapMinutesInCity"), 10),
       gpsFilteringEnabled: formData.get("gpsFilteringEnabled") === "on",
-      gpsAccuracyThreshold: parseInt(formData.get("gpsAccuracyThreshold"), 10),
     }
 
     if (formData.has("stayMaxGapMinutes")) {
@@ -1656,12 +1645,6 @@ export class SettingsController {
   updateStayMaxGapMinutesDisplay(event) {
     if (this.controller.hasStayMaxGapMinutesValueTarget) {
       this.controller.stayMaxGapMinutesValueTarget.textContent = `${event.target.value} min`
-    }
-  }
-
-  updateGpsAccuracyThresholdDisplay(event) {
-    if (this.controller.hasGpsAccuracyThresholdValueTarget) {
-      this.controller.gpsAccuracyThresholdValueTarget.textContent = `${event.target.value}m`
     }
   }
 
