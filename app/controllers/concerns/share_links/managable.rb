@@ -12,7 +12,12 @@ module ShareLinks
 
     def new
       @shared_link = SharedLink.new(build_attributes_for_new) unless @share
-      @immich_albums = Immich::Albums.new(current_user).call
+      @immich_albums =
+        if current_user.immich_integration_configured?
+          Immich::Albums.new(current_user).call
+        else
+          []
+        end
       render layout: false if turbo_frame_request?
     end
 
@@ -118,6 +123,8 @@ module ShareLinks
 
       boolean_keys = %i[
         show_photos
+        show_photoprism
+        show_immich
         show_stats
         show_route
         show_countries
@@ -151,11 +158,19 @@ module ShareLinks
         result[string_key] = ActiveModel::Type::Boolean.new.cast(values[string_key])
       end
 
+      if values.key?('show_photoprism') || values.key?('show_immich')
+        settings['show_photoprism'] = false unless settings.key?('show_photoprism')
+        settings['show_immich'] = false unless settings.key?('show_immich')
+        settings['show_photos'] = settings['show_photoprism'] || settings['show_immich']
+      end
+
       album_id = values['photo_album_id'].to_s.presence
       album_name = values['photo_album_name'].to_s.presence
 
-      settings['photo_album_id'] = album_id if album_id
-      settings['photo_album_name'] = album_name if album_name
+      if settings['show_immich']
+        settings['photo_album_id'] = album_id if album_id
+        settings['photo_album_name'] = album_name if album_name
+      end
 
       settings
     end

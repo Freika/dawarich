@@ -104,3 +104,21 @@ Die Compose-Umgebung enthält diese Hauptcontainer:
   - Passwort: safepassword
 - Für lokale Tests wird dotenv verwendet, und .env.test wird automatisch geladen.
 - Für Docker- oder lokale Datenbank-Setups ist PostgreSQL mit PostGIS erforderlich.
+
+## Make-Workflow
+
+Das Makefile im Projektstamm bildet den lokalen dreistufigen Workflow ab:
+
+- `make testvscode` führt die Immich-/PhotoPrism-relevanten Specs im bereits
+  laufenden Service `dawarich_dev` aus. Das Target baut keine Images und
+  erstellt oder löscht keine Volumes.
+- `make testdawarich` führt zuerst diese Tests aus, baut anschließend über
+  `docker/Dockerfile` das vorhandene Image `dawarich-immich-tags:test` und
+  erstellt ausschließlich `dawarich_app` und `dawarich_sidekiq` unter
+  `/root/dawarich-test` neu.
+- `make dawarich CONFIRM=PRODUCTION` verlangt zusätzlich einen sauberen
+  Git-Stand und aktualisiert ausschließlich dieselben Anwendungsdienste unter
+  `/root/dawarich`.
+
+Keines der Deployment-Targets löscht Docker-Volumes oder verwendet
+`docker compose down -v`.

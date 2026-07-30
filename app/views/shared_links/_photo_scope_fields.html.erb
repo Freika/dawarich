@@ -71,7 +71,12 @@
     [
       album_name,
       album_id,
-      { data: { album_name: album_name } }
+      {
+        data: {
+          album_name: album_name,
+          show_photos: '1'
+        }
+      }
     ]
   rescue ArgumentError
     next
@@ -79,94 +84,160 @@
 
   album_options.sort_by! { |option| option.first.to_s.downcase }
 %>
-<div class="form-control mt-4" data-photo-album-selector>
-  <label for="<%= "#{id_prefix}_photo_album_id" %>">
-    <span class="label-text font-semibold">Photos</span>
+<div class="form-control mt-4 rounded-lg border border-base-300 p-4"
+     data-photo-source-selector>
+  <span class="label-text font-semibold">Photos</span>
+
+  <%= hidden_field_tag 'shared_link[settings][show_photos]', '0',
+                       data: { photo_sources_show_photos: true } %>
+
+  <label class="label cursor-pointer px-0">
+    <span class="label-text">No photos</span>
+    <%= check_box_tag nil, '1', true,
+                      id: "#{id_prefix}_no_photos",
+                      class: 'checkbox',
+                      data: { no_photos_choice: true } %>
   </label>
 
-  <%= hidden_field_tag 'shared_link[settings][show_photos]',
-                       '0',
-                       data: { photo_album_show_photos: true } %>
+  <div class="mt-2 border-t border-base-300 pt-2">
+    <label class="label cursor-pointer px-0">
+      <span>
+        <span class="label-text font-medium">PhotoPrism</span>
+        <% unless current_user.photoprism_integration_configured? %>
+          <span class="block text-xs text-base-content/60">Not configured</span>
+        <% end %>
+      </span>
+      <%= hidden_field_tag 'shared_link[settings][show_photoprism]', '0' %>
+      <%= check_box_tag 'shared_link[settings][show_photoprism]', '1', false,
+                        id: "#{id_prefix}_show_photoprism",
+                        class: 'toggle',
+                        disabled: true,
+                        data: {
+                          photo_source_choice: true,
+                          integration_configured: current_user.photoprism_integration_configured?
+                        } %>
+    </label>
+  </div>
 
-  <%= hidden_field_tag 'shared_link[settings][photo_album_name]',
-                       '',
-                       data: { photo_album_name: true } %>
+  <div class="mt-2 border-t border-base-300 pt-2">
+    <label class="label cursor-pointer px-0">
+      <span>
+        <span class="label-text font-medium">Immich</span>
+        <% unless current_user.immich_integration_configured? %>
+          <span class="block text-xs text-base-content/60">Not configured</span>
+        <% end %>
+      </span>
+      <%= hidden_field_tag 'shared_link[settings][show_immich]', '0' %>
+      <%= check_box_tag 'shared_link[settings][show_immich]', '1', false,
+                        id: "#{id_prefix}_show_immich",
+                        class: 'toggle',
+                        disabled: true,
+                        data: {
+                          photo_source_choice: true,
+                          immich_choice: true,
+                          integration_configured: current_user.immich_integration_configured?
+                        } %>
+    </label>
 
-  <%= select_tag 'shared_link[settings][photo_album_id]',
-                 options_for_select(
-                   [
-                     [
-                       'No photos',
-                       '',
-                       { data: { album_name: '' } }
-                     ]
-                   ] + album_options
-                 ),
-                 id: "#{id_prefix}_photo_album_id",
-                 class: 'select select-bordered w-full mt-2',
-                 data: { photo_album_choice: true } %>
+    <div class="mt-2" data-immich-album-fields>
+      <%= hidden_field_tag 'shared_link[settings][photo_album_name]',
+                           '',
+                           data: { photo_album_name: true } %>
 
-  <% if album_options.empty? %>
-    <span class="label-text-alt mt-1">
-      No Immich albums were found.
-    </span>
-  <% else %>
-    <span class="label-text-alt mt-1">
-      Only photos from the selected Immich album will be shared.
-    </span>
-  <% end %>
+      <label for="<%= "#{id_prefix}_photo_album_id" %>"
+             class="label-text text-sm">
+        Immich album
+      </label>
+
+      <%= select_tag 'shared_link[settings][photo_album_id]',
+                     options_for_select(
+                       [['All photos / no album', '', { data: { album_name: '' } }]] + album_options
+                     ),
+                     id: "#{id_prefix}_photo_album_id",
+                     class: 'select select-bordered w-full mt-1',
+                     disabled: true,
+                     data: { photo_album_choice: true } %>
+
+      <% if current_user.immich_integration_configured? && album_options.empty? %>
+        <span class="label-text-alt mt-1">No matching Immich albums were found.</span>
+      <% else %>
+        <span class="label-text-alt mt-1">
+          “All photos” uses the previous unfiltered Immich search.
+        </span>
+      <% end %>
+    </div>
+  </div>
 </div>
 
 <script>
   (() => {
-    const syncPhotoAlbumSelection = (wrapper) => {
+    const syncPhotoSources = (wrapper) => {
+      const noPhotos = wrapper.querySelector("[data-no-photos-choice]");
+      const sources = Array.from(
+        wrapper.querySelectorAll("[data-photo-source-choice]")
+      );
+      const showPhotos = wrapper.querySelector(
+        "[data-photo-sources-show-photos]"
+      );
+      const immich = wrapper.querySelector("[data-immich-choice]");
       const albumChoice = wrapper.querySelector(
         "[data-photo-album-choice]"
       );
-
-      const showPhotos = wrapper.querySelector(
-        "[data-photo-album-show-photos]"
-      );
-
       const albumName = wrapper.querySelector(
         "[data-photo-album-name]"
       );
 
-      if (!albumChoice || !showPhotos || !albumName) return;
+      if (!noPhotos || !showPhotos) return;
+
+      sources.forEach((source) => {
+        const configured = source.dataset.integrationConfigured === "true";
+        source.disabled = noPhotos.checked || !configured;
+        if (noPhotos.checked || !configured) source.checked = false;
+      });
+
+      const anySource = sources.some((source) => source.checked);
+      showPhotos.value = anySource ? "1" : "0";
+
+      if (albumChoice) {
+        albumChoice.disabled = !immich?.checked;
+      }
 
       const selectedOption =
-        albumChoice.options[albumChoice.selectedIndex];
+        albumChoice?.options[albumChoice.selectedIndex];
 
-      const selectedAlbumId = albumChoice.value;
       const selectedAlbumName =
         selectedOption?.dataset.albumName || "";
 
-      showPhotos.value = selectedAlbumId ? "1" : "0";
-      albumName.value = selectedAlbumName;
+      if (albumName) albumName.value = immich?.checked ? selectedAlbumName : "";
     };
 
     document
-      .querySelectorAll("[data-photo-album-selector]")
-      .forEach(syncPhotoAlbumSelection);
+      .querySelectorAll("[data-photo-source-selector]")
+      .forEach(syncPhotoSources);
 
-    if (window.sharedLinkPhotoAlbumSelectorInstalled) return;
+    if (window.sharedLinkPhotoSourceSelectorInstalled) return;
 
-    window.sharedLinkPhotoAlbumSelectorInstalled = true;
+    window.sharedLinkPhotoSourceSelectorInstalled = true;
 
     document.addEventListener("change", (event) => {
-      const albumChoice = event.target.closest(
-        "[data-photo-album-choice]"
+      const choice = event.target.closest(
+        "[data-no-photos-choice], [data-photo-source-choice], [data-photo-album-choice]"
       );
 
-      if (!albumChoice) return;
+      if (!choice) return;
 
-      const wrapper = albumChoice.closest(
-        "[data-photo-album-selector]"
+      const wrapper = choice.closest(
+        "[data-photo-source-selector]"
       );
 
       if (!wrapper) return;
 
-      syncPhotoAlbumSelection(wrapper);
+      const noPhotos = wrapper.querySelector("[data-no-photos-choice]");
+      if (choice.matches("[data-photo-source-choice]") && choice.checked) {
+        noPhotos.checked = false;
+      }
+
+      syncPhotoSources(wrapper);
     });
   })();
 </script>

@@ -32,7 +32,8 @@
   </div>
 
   <%= render 'shared_links/photo_scope_fields',
-             id_prefix: 'timeline' %>
+             id_prefix: 'timeline',
+             immich_albums: @immich_albums %>
 
   <% if @shared_link&.errors&.any? %>
     <div class="alert alert-error mt-4 text-sm">

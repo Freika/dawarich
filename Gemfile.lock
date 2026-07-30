@@ -206,6 +206,7 @@ GEM
     faraday-net_http (3.4.3)
       net-http (~> 0.5)
     ffaker (2.25.0)
+    ffi (1.17.2)
     ffi (1.17.2-aarch64-linux-gnu)
     ffi (1.17.2-arm-linux-gnu)
     ffi (1.17.2-arm64-darwin)
@@ -719,6 +720,7 @@ PLATFORMS
   aarch64-linux
   arm-linux
   arm64-darwin
+  ruby
   x86-linux
   x86_64-darwin
   x86_64-linux

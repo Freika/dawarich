@@ -55,6 +55,27 @@ Belegt durch:
 - app/javascript/application.js
 - Stimulus-Controller im Verzeichnis app/javascript/controllers
 
+### 7. Fotoquellen in neuen Shared Links werden explizit ausgewählt
+
+Über die neue Oberfläche erzeugte Shared Links speichern neben `show_photos`
+die beiden Einstellungen `show_photoprism` und `show_immich`.
+
+- Sind beide Einstellungen `false`, werden keine Fotos geladen.
+- PhotoPrism kann ohne Immich-spezifische Filter über den bisherigen Suchpfad
+  verwendet werden.
+- Immich kann optional auf ein Album eingeschränkt werden. Eine leere Album-ID
+  bedeutet „alle Bilder“ und verwendet die bisherige ungefilterte Immich-Suche.
+- Beide Quellen können gleichzeitig aktiviert werden.
+- Bei bestehenden Shared Links ohne die beiden neuen Schlüssel bleibt die
+  bisherige automatische Auswahl aller konfigurierten Integrationen erhalten.
+
+Belegt durch:
+
+- app/services/shared_links/photo_sources.rb
+- app/services/photos/search.rb
+- app/controllers/concerns/share_links/managable.rb
+- app/views/shared_links/_photo_scope_fields.html.erb
+
 ## Noch zu klären
 
 Die folgenden Punkte sind im Repository nicht vollständig belegt und sollten bei Bedarf separat geprüft werden:

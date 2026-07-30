@@ -109,6 +109,43 @@ RSpec.describe Photos::Search do
       it 'fetches and transforms photos from both services' do
         expect(service.call).to eq([serialized_immich, serialized_photoprism])
       end
+
+      it 'can select only PhotoPrism without changing the legacy default' do
+        selected_service = described_class.new(
+          user,
+          start_date: start_date,
+          end_date: end_date,
+          sources: ['photoprism']
+        )
+
+        expect(Immich::RequestPhotos).not_to receive(:new)
+        expect(selected_service.call).to eq([serialized_photoprism])
+      end
+
+      it 'can select only Immich' do
+        selected_service = described_class.new(
+          user,
+          start_date: start_date,
+          end_date: end_date,
+          sources: ['immich']
+        )
+
+        expect(Photoprism::RequestPhotos).not_to receive(:new)
+        expect(selected_service.call).to eq([serialized_immich])
+      end
+
+      it 'does not request either integration when no source is selected' do
+        selected_service = described_class.new(
+          user,
+          start_date: start_date,
+          end_date: end_date,
+          sources: []
+        )
+
+        expect(Immich::RequestPhotos).not_to receive(:new)
+        expect(Photoprism::RequestPhotos).not_to receive(:new)
+        expect(selected_service.call).to eq([])
+      end
     end
 
     context 'when filtering out videos' do

@@ -69,13 +69,14 @@ module Api
           return [] if range.nil?
 
           album = SharedLinks::PhotoAlbum.new(link)
-          return [] unless album.selected?
+          sources = SharedLinks::PhotoSources.new(link).enabled
 
           Photos::Search.cached(
             link.user,
             start_date: range.first,
             end_date: range.last,
-            album_id: album.album_id
+            album_id: album.album_id,
+            sources: sources
           )
         end
 

@@ -1,48 +1,56 @@
 # frozen_string_literal: true
 
 class Photos::Search
-  attr_reader :user, :start_date, :end_date, :tag_ids, :album_id, :errors
+  attr_reader :user, :start_date, :end_date, :tag_ids, :album_id, :sources, :errors
 
-  def self.cached(user, start_date: '1970-01-01', end_date: nil, tag_ids: nil, album_id: nil, expires_in: 1.minute)
+  def self.cached(user, start_date: '1970-01-01', end_date: nil, tag_ids: nil, album_id: nil, sources: nil,
+                  expires_in: 1.minute)
     normalized_tag_ids = Array(tag_ids).compact_blank.sort
     tag_fingerprint = normalized_tag_ids.presence&.join('-') || 'all'
     album_fingerprint = album_id.to_s.presence || 'all'
-    key = "photos_search/#{user.id}/#{start_date}/#{end_date}/#{tag_fingerprint}/#{album_fingerprint}"
+    source_fingerprint = sources.nil? ? 'legacy' : Array(sources).compact_blank.sort.join('-').presence || 'none'
+    key = [
+      'photos_search', user.id, start_date, end_date, tag_fingerprint, album_fingerprint, source_fingerprint
+    ].join('/')
 
     cached = Rails.cache.read(key)
     return cached if cached.present?
 
-    result = new(
-      user,
+    search_options = {
       start_date: start_date,
       end_date: end_date,
       tag_ids: tag_ids,
       album_id: album_id
-    ).call
+    }
+    search_options[:sources] = sources unless sources.nil?
+
+    result = new(user, **search_options).call
 
     Rails.cache.write(key, result, expires_in: expires_in) if result.present?
     result
   end
 
-  def initialize(user, start_date: '1970-01-01', end_date: nil, tag_ids: nil, album_id: nil)
+  def initialize(user, start_date: '1970-01-01', end_date: nil, tag_ids: nil, album_id: nil, sources: nil)
     @user = user
     @start_date = start_date
     @end_date = end_date
     @tag_ids = tag_ids.nil? ? nil : Array(tag_ids).compact_blank
     @album_id = album_id.to_s.presence
+    @sources = sources.nil? ? nil : Array(sources).compact_blank.map(&:to_s)
     @errors = []
   end
 
   def call
     photos = []
 
-    immich_photos = request_immich if user.immich_integration_configured?
+    immich_photos = request_immich if source_enabled?('immich') && user.immich_integration_configured?
 
     # Immich tag IDs cannot be applied to PhotoPrism. A tag-scoped search
     # therefore returns only matching Immich assets and never unfiltered
     # PhotoPrism assets.
     photoprism_photos =
-      request_photoprism if tag_ids.nil? && album_id.nil? && user.photoprism_integration_configured?
+      request_photoprism if source_enabled?('photoprism') &&
+                            tag_ids.nil? && album_id.nil? && user.photoprism_integration_configured?
 
     photos << immich_photos if immich_photos.present?
     photos << photoprism_photos if photoprism_photos.present?
@@ -51,6 +59,10 @@ class Photos::Search
   end
 
   private
+
+  def source_enabled?(source)
+    sources.nil? || sources.include?(source)
+  end
 
   def request_immich
     assets =

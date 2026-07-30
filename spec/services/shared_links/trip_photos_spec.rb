@@ -41,4 +41,26 @@ RSpec.describe SharedLinks::TripPhotos do
 
     expect(result.values.flatten.map { _1[:id] }).to eq(['p2'])
   end
+
+  it 'passes an explicit Immich source and album to the search' do
+    link.update!(
+      settings: {
+        'show_photos' => true,
+        'show_photoprism' => false,
+        'show_immich' => true,
+        'photo_album_id' => 'album-1'
+      }
+    )
+
+    expect(Photos::Search).to receive(:new).with(
+      owner,
+      start_date: trip.started_at.iso8601,
+      end_date: trip.ended_at.iso8601,
+      tag_ids: nil,
+      album_id: 'album-1',
+      sources: ['immich']
+    ).and_return(instance_double(Photos::Search, call: found_photos))
+
+    described_class.new(link, timezone: 'Europe/Berlin').call
+  end
 end

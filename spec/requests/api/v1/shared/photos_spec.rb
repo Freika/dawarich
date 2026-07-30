@@ -136,7 +136,11 @@ RSpec.describe 'Api::V1::Shared::Photos', type: :request do
 
     it 'searches photos within the track start_at..end_at range' do
       expect(Photos::Search).to receive(:new).with(
-        owner, start_date: track.start_at.iso8601, end_date: track.end_at.iso8601
+        owner,
+        start_date: track.start_at.iso8601,
+        end_date: track.end_at.iso8601,
+        tag_ids: nil,
+        album_id: nil
       ).and_return(instance_double(Photos::Search, call: found_photos))
 
       get "/api/v1/shared/#{link.id}/photos"
