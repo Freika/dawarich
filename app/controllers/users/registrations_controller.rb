@@ -2,6 +2,7 @@
 
 class Users::RegistrationsController < Devise::RegistrationsController
   include UtmTrackable
+  include AccountDeletionConfirmable
 
   before_action :set_invitation, only: %i[new create]
   before_action :check_registration_allowed, only: %i[new create]
@@ -58,8 +59,9 @@ class Users::RegistrationsController < Devise::RegistrationsController
   protected
 
   def destroy_self_hosted
-    unless deletion_confirmed?
-      redirect_to edit_user_registration_path, alert: deletion_confirm_error
+    unless account_deletion_confirmed?(resource)
+      log_failed_account_deletion(resource)
+      redirect_to edit_user_registration_path, alert: account_deletion_confirmation_error(resource)
       return
     end
 
@@ -69,24 +71,6 @@ class Users::RegistrationsController < Devise::RegistrationsController
 
     redirect_to after_sign_out_path_for(resource_name),
                 notice: 'Your account has been scheduled for deletion.'
-  end
-
-  # OIDC users have an unknowable random password (SecureRandom.hex at first login),
-  # so confirm deletion by typing email instead of a password.
-  def deletion_confirmed?
-    if resource.oauth_user?
-      params[:confirm_email].to_s.strip.casecmp?(resource.email)
-    else
-      resource.valid_password?(params[:password].to_s)
-    end
-  end
-
-  def deletion_confirm_error
-    if resource.oauth_user?
-      'Type your email address to confirm deletion.'
-    else
-      'Provide your current password to delete your account.'
-    end
   end
 
   def destroy_cloud

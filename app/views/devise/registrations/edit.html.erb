@@ -214,28 +214,34 @@
             <dialog id="delete_account_modal" class="modal" onclose="this.querySelector('.modal-box form')?.reset()">
               <div class="modal-box">
                 <h3 class="mb-4 text-lg font-bold">Delete your account</h3>
-                <p class="mb-4 text-sm text-base-content/70">This is permanent and removes all your data. This cannot be undone.</p>
+                <% if DawarichSettings.self_hosted? %>
+                  <p class="mb-4 text-sm text-base-content/70">This is permanent and removes all your data. This cannot be undone.</p>
+                <% else %>
+                  <p class="mb-4 text-sm text-base-content/70">This is permanent and removes all your data. This cannot be undone. We'll email you a link to confirm — your account is deleted only after you click it.</p>
+                <% end %>
 
                 <%= form_with url: registration_path(resource_name), method: :delete, class: 'space-y-4', data: { turbo: false } do %>
-                  <% if current_user.oauth_user? %>
-                    <div class="form-control">
-                      <%= label_tag :confirm_email, class: 'label' do %>
-                        <span class="label-text">Type your email (<span class="font-medium"><%= current_user.email %></span>) to confirm</span>
-                      <% end %>
-                      <%= text_field_tag :confirm_email, nil, autocomplete: "off", required: true, class: 'input input-bordered w-full' %>
-                    </div>
-                  <% else %>
-                    <div class="form-control">
-                      <%= label_tag :password, class: 'label' do %>
-                        <span class="label-text">Enter your current password to confirm</span>
-                      <% end %>
-                      <%= password_field_tag :password, nil, autocomplete: "current-password", required: true, class: 'input input-bordered w-full' %>
-                    </div>
+                  <% if DawarichSettings.self_hosted? %>
+                    <% if current_user.oauth_user? %>
+                      <div class="form-control">
+                        <%= label_tag :confirm_email, class: 'label' do %>
+                          <span class="label-text">Type your email (<span class="font-medium"><%= current_user.email %></span>) to confirm</span>
+                        <% end %>
+                        <%= text_field_tag :confirm_email, nil, autocomplete: "off", required: true, class: 'input input-bordered w-full' %>
+                      </div>
+                    <% else %>
+                      <div class="form-control">
+                        <%= label_tag :password, class: 'label' do %>
+                          <span class="label-text">Enter your current password to confirm</span>
+                        <% end %>
+                        <%= password_field_tag :password, nil, autocomplete: "current-password", required: true, class: 'input input-bordered w-full' %>
+                      </div>
+                    <% end %>
                   <% end %>
 
                   <div class="modal-action flex-col-reverse sm:flex-row">
                     <button type="button" class="btn w-full sm:w-auto" onclick="delete_account_modal.close()">Cancel</button>
-                    <%= submit_tag "Delete my account", class: 'btn btn-error w-full sm:w-auto' %>
+                    <%= submit_tag(DawarichSettings.self_hosted? ? 'Delete my account' : 'Email me the confirmation link', class: 'btn btn-error w-full sm:w-auto') %>
                   </div>
                 <% end %>
               </div>

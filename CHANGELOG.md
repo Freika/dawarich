@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+
+### Fixed
+
+- "Cancel my account" now works on self-hosted instances. It never sent a password, so the request failed silently with a 401 and no feedback; deletion now asks for confirmation in a dialog and reports failures instead. Accounts registered through OIDC, which never had a password to enter, can confirm with their email address, both on the web and via the API. (#3107)
+
 ## [1.9.2] - 2026-06-25
 
 ### Added
