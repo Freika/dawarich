@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - "Cancel my account" now works on self-hosted instances. It never sent a password, so the request failed silently with a 401 and no feedback; deletion now asks for confirmation in a dialog and reports failures instead. Accounts registered through OIDC, which never had a password to enter, can confirm with their email address, both on the web and via the API. (#3107)
 - Tracks no longer connect two different devices. Google's Records.json contains every device on the account, and imports made before 1.10.0 stamped them all as one device, so a phone left at home was stitched to the one that travelled — drawing long straight lines between them. Existing imports are repaired automatically by re-reading the uploaded file.
 - Restoring a data archive now recomputes GPS noise flags. The archive carries none, so restored points previously arrived unfiltered and tracks were rebuilt from noise the instance had already learned to ignore.
+- The Map v2 custom basemap field now accepts MapLibre style URLs whose path has no `.json` suffix, such as `https://tiles.openfreemap.org/styles/liberty`. A tile URL that is missing one of the `{z}`/`{x}`/`{y}` placeholders, or that ends in a tile file extension, is still rejected as a malformed template. (#3256)
 
 ## [1.10.3] - 2026-07-28, Berlin
 

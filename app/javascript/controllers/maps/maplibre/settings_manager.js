@@ -1417,7 +1417,7 @@ export class SettingsController {
 
     if (!SettingsManager.validVectorTilesUrl(raw)) {
       Toast.error(
-        "Tile URL must include {z}, {x}, and {y} placeholders, or be a MapLibre style URL ending in .json",
+        "Tile URL must include {z}, {x}, and {y} placeholders, or be a MapLibre style URL",
       )
       return
     }
