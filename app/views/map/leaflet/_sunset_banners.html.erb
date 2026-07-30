@@ -1,0 +1,28 @@
+<% if family_map_sharing_active %>
+  <div class="pointer-events-auto alert alert-info shadow-lg py-2 px-3 text-sm flex items-start gap-2"
+       data-controller="dismissible"
+       data-dismissible-key-value="map_v1_family_history_v2_only">
+    <span class="flex-1">
+      Family location history is only shown on the new map (v2).
+      <%= link_to 'Open the new map', map_v2_path, class: 'link link-primary font-medium' %>
+      to see where your family has been.
+    </span>
+    <button type="button"
+            class="btn btn-ghost btn-xs btn-circle"
+            data-action="dismissible#dismiss"
+            aria-label="Dismiss">✕</button>
+  </div>
+<% end %>
+
+<div class="pointer-events-auto alert alert-warning shadow-lg py-2 px-3 text-sm flex items-start gap-2"
+     data-controller="dismissible"
+     data-dismissible-key-value="map_v1_sunset_aug_2026">
+  <span class="flex-1">
+    You're using the classic map (v1), which will be retired in <strong>August 2026</strong>.
+    <%= link_to 'Switch to the new map', map_v2_path, class: 'link link-primary font-medium' %>.
+  </span>
+  <button type="button"
+          class="btn btn-ghost btn-xs btn-circle"
+          data-action="dismissible#dismiss"
+          aria-label="Dismiss">✕</button>
+</div>

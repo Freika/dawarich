@@ -3,8 +3,19 @@
 module PlanScopable
   extend ActiveSupport::Concern
 
+  def effective_plan
+    return plan.to_sym if DawarichSettings.self_hosted?
+    return :family if in_family? && family&.owner&.family?
+
+    plan.to_sym
+  end
+
+  def full_access?
+    DawarichSettings.self_hosted? || effective_plan != :lite
+  end
+
   def plan_restricted?
-    !DawarichSettings.self_hosted? && lite?
+    !DawarichSettings.self_hosted? && effective_plan == :lite
   end
 
   def data_window_start

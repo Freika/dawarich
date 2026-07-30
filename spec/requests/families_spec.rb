@@ -48,6 +48,43 @@ RSpec.describe 'Family', type: :request do
         expect(response).to redirect_to(family_path)
       end
     end
+
+    context 'when cloud and the user is not on the family plan' do
+      let(:cloud_user) { create(:user, plan: :pro, skip_auto_trial: true) }
+
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        allow(DawarichSettings).to receive(:family_feature_enabled?).and_return(true)
+        stub_const('MANAGER_URL', 'https://manager.example.com')
+        sign_in cloud_user
+      end
+
+      it 'renders the upgrade CTA instead of the create form' do
+        get '/family/new'
+
+        expect(response).to have_http_status(:ok)
+        expect(response.body).to include('Upgrade to Family')
+        expect(response.body).to include('https://manager.example.com/auth/dawarich')
+        expect(response.body).not_to include('name="family[name]"')
+      end
+    end
+
+    context 'when cloud and the user is on the family plan' do
+      let(:cloud_family_user) { create(:user, plan: :family, skip_auto_trial: true) }
+
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        allow(DawarichSettings).to receive(:family_feature_enabled?).and_return(true)
+        sign_in cloud_family_user
+      end
+
+      it 'renders the create form' do
+        get '/family/new'
+
+        expect(response).to have_http_status(:ok)
+        expect(response.body).to include('name="family[name]"')
+      end
+    end
   end
 
   describe 'POST /family' do

@@ -24,7 +24,10 @@ class FamiliesController < ApplicationController
     redirect_to family_path and return if current_user.in_family?
 
     @family = Family.new
-    authorize @family
+    @can_create_family = FamilyPolicy.new(current_user, @family).create?
+    return if @can_create_family
+
+    @family_upgrade_url = helpers.family_upgrade_url(utm_medium: 'family', utm_content: 'create_family')
   end
 
   def create

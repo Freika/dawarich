@@ -16,6 +16,7 @@ class OwnTracks::PointCreator
 
     payload = parsed_params.merge(user_id:)
     return [] if payload[:timestamp].nil? || payload[:lonlat].nil?
+    return [] if Points::NullIsland.lonlat?(payload[:lonlat])
 
     result = upsert_points([payload])
     if result.any?
@@ -24,6 +25,7 @@ class OwnTracks::PointCreator
       timestamps = [payload].filter_map { |p| p[:timestamp]&.to_i }
       Points::AnomalyFilterJob.perform_later(user_id, timestamps.min, timestamps.max) if timestamps.any?
       Tracks::RealtimeDebouncer.new(user_id).trigger
+      Tracks::BackfillScheduler.new(user_id, timestamps).call
       Visits::RealtimeDebouncer.new(user_id).trigger
       Points::LiveBroadcaster.new(user_id, result, [payload]).call
     end
@@ -37,9 +39,8 @@ class OwnTracks::PointCreator
     created_points = []
 
     locations.each_slice(1000) do |batch|
-      result = Point.upsert_all(
+      result = Point.archival_safe_upsert_all(
         batch,
-        unique_by: %i[lonlat timestamp user_id],
         returning: Arel.sql(RETURNING_COLUMNS)
       )
       created_points.concat(result) if result

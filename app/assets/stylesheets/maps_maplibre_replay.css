@@ -181,6 +181,36 @@
   display: none;
 }
 
+.replay-follow-btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 2px solid oklch(var(--p));
+  background: oklch(var(--b1));
+  color: oklch(var(--p));
+  cursor: pointer;
+  transition: all 0.15s;
+  font-size: 15px;
+  line-height: 1;
+}
+
+.replay-follow-btn:hover {
+  background: oklch(var(--p) / 0.1);
+}
+
+.replay-follow-btn.following {
+  background: oklch(var(--p));
+  color: oklch(var(--pc));
+}
+
+.replay-follow-icon {
+  width: 16px;
+  height: 16px;
+}
+
 .replay-speed-control {
   display: flex;
   align-items: center;
@@ -579,5 +609,76 @@
   .replay-cycle-controls button {
     width: 20px;
     height: 20px;
+  }
+}
+
+/* Replay corner photo stack (tilted pile revealed during replay) */
+.replay-photo-stack {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  width: 90px;
+  height: 90px;
+  z-index: 450;
+  pointer-events: none;
+}
+
+.replay-photo-stack-card {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 90px;
+  height: 90px;
+  cursor: pointer;
+  pointer-events: auto;
+  transform: translate(calc(var(--depth, 0) * 7px), calc(var(--depth, 0) * 7px))
+    rotate(var(--rot, 0deg));
+  transition: transform 0.25s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+}
+
+.replay-photo-stack-img {
+  width: 100%;
+  height: 100%;
+  background-size: cover;
+  background-position: center;
+  background-color: oklch(var(--b1));
+  border: 4px solid white;
+  border-radius: 3px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
+}
+
+.replay-photo-stack-card:hover {
+  z-index: 1000 !important;
+}
+
+.replay-photo-stack-card:hover .replay-photo-stack-img {
+  transform: scale(1.08);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+}
+
+.replay-photo-stack-pop .replay-photo-stack-img {
+  animation: replay-photo-stack-pop 0.35s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+}
+
+@keyframes replay-photo-stack-pop {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .replay-photo-stack-card {
+    transition: none;
+  }
+  .replay-photo-stack-pop .replay-photo-stack-img {
+    animation: none;
   }
 }

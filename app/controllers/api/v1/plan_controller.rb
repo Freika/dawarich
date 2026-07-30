@@ -4,14 +4,11 @@ class Api::V1::PlanController < ApiController
   skip_before_action :reject_pending_payment!, only: :show
 
   def show
-    features = if DawarichSettings.self_hosted? || current_api_user.pro?
-                 full_features
-               else
-                 lite_features
-               end
+    features = current_api_user.full_access? ? full_features : lite_features
 
     render json: {
       plan: current_api_user.plan,
+      effective_plan: current_api_user.effective_plan,
       status: current_api_user.status,
       subscription_source: current_api_user.subscription_source,
       active_until: current_api_user.active_until&.iso8601,

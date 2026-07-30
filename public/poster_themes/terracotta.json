@@ -1,0 +1,15 @@
+{
+  "name": "Terracotta",
+  "description": "Mediterranean warmth - burnt orange and clay tones on cream",
+  "bg": "#F5EDE4",
+  "text": "#8B4513",
+  "gradient_color": "#F5EDE4",
+  "water": "#A8C4C4",
+  "parks": "#E8E0D0",
+  "road_motorway": "#A0522D",
+  "road_primary": "#B8653A",
+  "road_secondary": "#C9846A",
+  "road_tertiary": "#D9A08A",
+  "road_residential": "#E5C4B0",
+  "road_default": "#D9A08A"
+}

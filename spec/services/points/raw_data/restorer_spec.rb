@@ -203,7 +203,7 @@ RSpec.describe Points::RawData::Restorer do
       restorer.restore_to_memory(user.id, 2024, 6)
 
       archived_points.each do |point|
-        cache_key = "raw_data:temp:#{user.id}:2024:6:#{point.id}"
+        cache_key = "raw_data:temp:#{user.id}:#{point.id}"
         cached_value = Rails.cache.read(cache_key)
         expect(cached_value).to eq({ 'lon' => 13.4, 'lat' => 52.5 })
       end
@@ -224,7 +224,7 @@ RSpec.describe Points::RawData::Restorer do
       archive # Ensure archive is created before restore
       restorer.restore_to_memory(user.id, 2024, 6)
 
-      cache_key = "raw_data:temp:#{user.id}:2024:6:#{archived_points.first.id}"
+      cache_key = "raw_data:temp:#{user.id}:#{archived_points.first.id}"
 
       # Cache should exist now
       expect(Rails.cache.exist?(cache_key)).to be true

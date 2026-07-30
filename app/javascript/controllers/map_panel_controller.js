@@ -166,6 +166,12 @@ export default class extends Controller {
     this.openTabByName(tabName)
   }
 
+  // The poster button skips the panel entirely — the full-screen studio
+  // (rendered outside the panel) listens for this event.
+  openPosterStudio() {
+    document.dispatchEvent(new CustomEvent("poster-studio:open"))
+  }
+
   /**
    * Programmatic equivalent of openTab(event). Opens the settings panel
    * (via the maps--maplibre controller) and activates the given tab on the

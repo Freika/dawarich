@@ -68,7 +68,7 @@ module Api
           range = photo_range
           return [] if range.nil?
 
-          Photos::Search.new(link.user, start_date: range.first, end_date: range.last).call
+          Photos::Search.cached(link.user, start_date: range.first, end_date: range.last)
         end
 
         def photo_range

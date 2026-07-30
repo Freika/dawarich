@@ -5,7 +5,7 @@ module Points
     # Service for archiving raw_data from points.
     #
     # Primary path: ArchiveUserJob calls this per-user with PK cursor (fast).
-    # Legacy path: archive_specific_month still works for rake tasks and ReArchiveMonthJob.
+    # Legacy path: archive_specific_month still works for rake tasks.
     class Archiver
       SAFE_ARCHIVE_LAG = 2.months
       CHUNK_SIZE = 50_000
@@ -17,39 +17,29 @@ module Points
 
       # Called by ArchiveUserJob — archives all eligible points for a user.
       # Walks forward by PK, never scans the whole table.
+      # Each fetched batch is partitioned by the points' own UTC month so that
+      # archive year/month labels stay truthful for month-scoped restore/verify/clear.
       def archive_user(user_id)
         cutoff = SAFE_ARCHIVE_LAG.ago.to_i
 
         loop do
-          point_ids = Point
-                      .where(user_id: user_id, raw_data_archived: false)
-                      .where('timestamp < ?', cutoff)
-                      .where.not(raw_data: [nil, {}])
-                      .order(:id)
-                      .limit(CHUNK_SIZE)
-                      .pluck(:id)
+          rows = Point
+                 .where(user_id: user_id, raw_data_archived: false)
+                 .where('timestamp < ?', cutoff)
+                 .where.not(raw_data: [nil, {}])
+                 .order(:id)
+                 .limit(CHUNK_SIZE)
+                 .pluck(:id, :timestamp)
 
-          break if point_ids.empty?
+          break if rows.empty?
 
-          begin
-            archive_chunk(user_id, point_ids)
-            @stats[:processed] += 1
-            @stats[:archived] += point_ids.size
-          rescue StandardError => e
-            @stats[:failed] += 1
-            Rails.logger.error(
-              "Failed to archive chunk for user #{user_id} " \
-              "(IDs #{point_ids.first}..#{point_ids.last}): #{e.message}"
-            )
-            ExceptionReporter.call(e, "Archive chunk failed for user #{user_id}")
-            break # Stop processing — failed points stay unarchived and would be re-fetched infinitely
-          end
+          break unless archive_month_groups(user_id, rows)
         end
 
         @stats
       end
 
-      # Legacy: archive a specific month (used by rake tasks and ReArchiveMonthJob).
+      # Legacy: archive a specific month (used by rake tasks).
       def archive_specific_month(user_id, year, month)
         lock_key = "archive_points:#{user_id}:#{year}:#{month}"
 
@@ -59,7 +49,7 @@ module Points
 
           # Process in chunks for large months
           point_ids.each_slice(CHUNK_SIZE) do |chunk_ids|
-            archive_chunk(user_id, chunk_ids)
+            archive_chunk(user_id, chunk_ids, year, month)
           end
           true
         end
@@ -69,25 +59,55 @@ module Points
 
       private
 
-      def archive_chunk(user_id, point_ids)
+      # Returns false when any group failed, so the caller stops instead of
+      # re-fetching the same unarchived points forever. Sibling month groups in
+      # the same batch are independent and still attempted before stopping.
+      def archive_month_groups(user_id, rows)
+        batch_succeeded = true
+
+        rows.group_by { |_id, timestamp| utc_month(timestamp) }.each do |(year, month), group|
+          point_ids = group.map(&:first)
+
+          begin
+            archive_chunk(user_id, point_ids, year, month)
+            @stats[:processed] += 1
+            @stats[:archived] += point_ids.size
+          rescue StandardError => e
+            @stats[:failed] += 1
+            Rails.logger.error(
+              "Failed to archive chunk for user #{user_id} " \
+              "(IDs #{point_ids.first}..#{point_ids.last}): #{e.message}"
+            )
+            ExceptionReporter.call(e, "Archive chunk failed for user #{user_id}")
+            batch_succeeded = false
+          end
+        end
+
+        batch_succeeded
+      end
+
+      def utc_month(timestamp)
+        time = Time.at(timestamp).utc
+        [time.year, time.month]
+      end
+
+      def archive_chunk(user_id, point_ids, year, month)
         points = Point.where(id: point_ids).select(:id, :raw_data)
 
         compressed = ChunkCompressor.new(points).compress
-        validate_count!(user_id, point_ids, compressed[:count])
+        validate_count!(user_id, point_ids, compressed[:count], year, month)
 
         encrypted = Encryption.encrypt(compressed[:data])
 
-        first_ts = Point.where(id: point_ids.first).pick(:timestamp)
-        time = Time.at(first_ts).utc
-
         archive = nil
         ActiveRecord::Base.transaction do
-          archive = create_archive_record(user_id, time, point_ids, encrypted, compressed)
+          archive = create_archive_record(user_id, year, month, point_ids, encrypted, compressed)
         end
 
         # Full verification OUTSIDE transaction to avoid holding DB connection during I/O.
         # Downloads the archive, decrypts, decompresses, and verifies point count + checksum.
         verify_archive_full!(archive, point_ids)
+        archive.update!(verified_at: Time.current)
 
         # Only flag points after verification succeeds
         flag_points_batched(point_ids, archive.id)
@@ -111,15 +131,12 @@ module Points
              .pluck(:id)
       end
 
-      def validate_count!(user_id, point_ids, actual_count)
+      def validate_count!(user_id, point_ids, actual_count, year, month)
         expected_count = point_ids.size
         return if actual_count == expected_count
 
-        first_ts = Point.where(id: point_ids.first).pick(:timestamp)
-        time = first_ts ? Time.at(first_ts).utc : Time.current.utc
-
         Yabeda.dawarich_archive.count_mismatches_total.increment(
-          { year: time.year.to_s, month: time.month.to_s }
+          { year: year.to_s, month: month.to_s }
         )
         Yabeda.dawarich_archive.count_difference.set(
           { user_id: user_id.to_s }, (expected_count - actual_count).abs
@@ -201,17 +218,17 @@ module Points
         end
       end
 
-      def create_archive_record(user_id, time, point_ids, encrypted, compressed)
+      def create_archive_record(user_id, year, month, point_ids, encrypted, compressed)
         chunk_number = Points::RawDataArchive
-                       .where(user_id: user_id, year: time.year, month: time.month)
+                       .where(user_id: user_id, year: year, month: month)
                        .maximum(:chunk_number).to_i + 1
 
         chunk_filename = "#{format('%03d', chunk_number)}.jsonl.gz.enc"
 
         archive = Points::RawDataArchive.create!(
           user_id: user_id,
-          year: time.year,
-          month: time.month,
+          year: year,
+          month: month,
           chunk_number: chunk_number,
           point_count: point_ids.size,
           point_ids_checksum: Digest::SHA256.hexdigest(point_ids.sort.join(',')),
@@ -228,8 +245,8 @@ module Points
           }
         )
 
-        storage_key = "raw_data_archives/#{user_id}/#{time.year}/" \
-                      "#{format('%02d', time.month)}/#{chunk_filename}"
+        storage_key = "raw_data_archives/#{user_id}/#{year}/" \
+                      "#{format('%02d', month)}/#{chunk_filename}"
 
         archive.file.attach(
           io: StringIO.new(encrypted),

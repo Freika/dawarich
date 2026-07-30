@@ -217,45 +217,23 @@ RSpec.describe Users::ExportData::Points, type: :service do
     end
 
     context 'when points have missing coordinate data' do
-      let!(:point_with_lonlat_only) do
-        # Point with lonlat but missing individual coordinates
-        point = create(:point, user: user, lonlat: 'POINT(10.0 50.0)', external_track_id: 'lonlat-only')
-        # Clear individual coordinate fields to simulate legacy data
-        point.update_columns(longitude: nil, latitude: nil)
-        point
+      let!(:point_with_lonlat) do
+        create(:point, user: user, lonlat: 'POINT(10.0 50.0)', external_track_id: 'lonlat-only')
       end
 
-      let!(:point_with_coordinates_only) do
-        # Point with coordinates but missing lonlat
-        point = create(:point, user: user, longitude: 15.0, latitude: 55.0, external_track_id: 'coords-only')
-        # Clear lonlat field to simulate missing geometry
+      let!(:point_without_coordinates) do
+        point = create(:point, user: user, external_track_id: 'no-coords')
         point.update_columns(lonlat: nil)
         point
       end
 
-      let!(:point_without_coordinates) do
-        # Point with no coordinate data at all
-        point = create(:point, user: user, external_track_id: 'no-coords')
-        point.update_columns(longitude: nil, latitude: nil, lonlat: nil)
-        point
-      end
-
-      it 'includes all coordinate fields for points with lonlat only' do
+      it 'derives longitude / latitude from lonlat in the export payload' do
         point_data = subject.find { |p| p['external_track_id'] == 'lonlat-only' }
 
         expect(point_data).to be_present
         expect(point_data['lonlat']).to be_present
         expect(point_data['longitude']).to eq(10.0)
         expect(point_data['latitude']).to eq(50.0)
-      end
-
-      it 'includes all coordinate fields for points with coordinates only' do
-        point_data = subject.find { |p| p['external_track_id'] == 'coords-only' }
-
-        expect(point_data).to be_present
-        expect(point_data['lonlat']).to eq('POINT(15.0 55.0)')
-        expect(point_data['longitude']).to eq(15.0)
-        expect(point_data['latitude']).to eq(55.0)
       end
 
       it 'skips points without any coordinate data' do

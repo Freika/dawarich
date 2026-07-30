@@ -29,6 +29,30 @@ RSpec.describe 'Users::Sessions OTP Challenge', type: :request do
       end
     end
 
+    context 'with a stashed pending-import ticket' do
+      let!(:pending) { create(:pending_import, :with_file) }
+
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        allow(DawarichSettings).to receive(:family_feature_enabled?).and_return(false)
+        allow(DawarichSettings).to receive(:registration_enabled?).and_return(true)
+        allow(DawarichSettings).to receive(:oidc_enabled?).and_return(false)
+        stub_const('MANAGER_URL', 'https://manager.example.com')
+      end
+
+      it 'claims the ticket after a successful 2FA sign-in' do
+        get "/users/sign_up?import_ticket=#{pending.claim_ticket}"
+        expect(session[:pending_import_ticket]).to eq(pending.claim_ticket)
+
+        post user_session_path, params: { user: { email: user.email, password: password } }
+
+        expect { post user_otp_challenge_path, params: { otp_attempt: user.current_otp } }
+          .to change(user.imports, :count).by(1)
+
+        expect(pending.reload.claimed_by_user_id).to eq(user.id)
+      end
+    end
+
     context 'when OTP challenge is submitted with valid code' do
       it 'signs in the user and clears session' do
         post user_session_path, params: { user: { email: user.email, password: password } }

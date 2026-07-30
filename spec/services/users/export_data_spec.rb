@@ -214,6 +214,48 @@ RSpec.describe Users::ExportData, type: :service do
       end
     end
 
+    context 'when exporting encrypted raw data archives' do
+      before do
+        allow(Users::ExportData::Imports).to receive(:new).and_return(double(call: []))
+        allow(Users::ExportData::Exports).to receive(:new).and_return(double(call: []))
+        allow(Notifications::Create).to receive(:new).and_return(double(call: true))
+
+        create(:points_raw_data_archive, :encrypted, user: user)
+      end
+
+      after do
+        FileUtils.rm_rf(export_directory) if File.directory?(export_directory)
+      end
+
+      it 'writes a portable plaintext gzip and rewrites the archive metadata' do
+        result = service.export
+
+        temp_dir = Rails.root.join('tmp/test_extract_portable_archive')
+        FileUtils.mkdir_p(temp_dir)
+
+        begin
+          temp_zip = temp_dir.join('test.zip')
+          File.binwrite(temp_zip, result.file.download)
+
+          Zip::File.open(temp_zip) do |zip_file|
+            record = JSON.parse(zip_file.find_entry('raw_data_archives.jsonl').get_input_stream.read)
+
+            expect(record['metadata']['format_version']).to eq(1)
+            expect(record['metadata']).not_to have_key('encryption')
+
+            content = zip_file.find_entry("files/#{record['file_name']}").get_input_stream.read
+            expect(Digest::SHA256.hexdigest(content)).to eq(record['metadata']['content_checksum'])
+
+            lines = Zlib::GzipReader.new(StringIO.new(content)).readlines
+            expect(lines.size).to eq(2)
+            expect(JSON.parse(lines.first)).to include('id', 'raw_data')
+          end
+        ensure
+          FileUtils.rm_rf(temp_dir)
+        end
+      end
+    end
+
     context 'when export record creation fails' do
       before do
         exports_relation = user.exports

@@ -80,7 +80,11 @@ class Families::Locations
         email: member.email,
         email_initial: member.email.first.upcase,
         sharing_since: member.family_sharing_started_at&.iso8601,
-        points: sampled.pluck(:latitude, :longitude, :timestamp)
+        points: sampled.pluck(
+          Arel.sql('ST_Y(lonlat::geometry)'),
+          Arel.sql('ST_X(lonlat::geometry)'),
+          :timestamp
+        )
       }
     end
   end

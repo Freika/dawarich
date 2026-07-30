@@ -3,7 +3,11 @@
 <%= render 'shared/map/date_navigation', start_at: @start_at, end_at: @end_at %>
 
 <!-- Map Container - Fills remaining space -->
-<div class="w-full h-full">
+<div class="w-full h-full relative">
+  <div class="absolute top-2 left-1/2 -translate-x-1/2 w-full max-w-2xl px-2 space-y-2 pointer-events-none"
+       style="z-index: 1200;">
+    <%= render 'map/leaflet/sunset_banners', family_map_sharing_active: @family_map_sharing_active %>
+  </div>
   <div
     id='map'
     class="w-full h-full relative"
@@ -11,7 +15,7 @@
     data-points-target="map"
     data-api_key="<%= current_user.api_key %>"
     data-self_hosted="<%= @self_hosted %>"
-    data-user_plan="<%= current_user.plan %>"
+    data-user_plan="<%= current_user.effective_plan %>"
     data-start_date="<%= @start_at.iso8601 %>"
     data-upgrade_url="<%= upgrade_url(utm_medium: 'map', utm_content: 'leaflet') %>"
     data-user_settings='<%= current_user.safe_settings.settings.to_json %>'

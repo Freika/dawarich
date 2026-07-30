@@ -51,14 +51,15 @@ module Visits
           next
         end
 
-        over_gap = (point.timestamp - open[:last].timestamp) > max_gap_seconds
-        joins = over_gap ? near_anchor?(open, point) : colocated?(open, point)
+        if (point.timestamp - open[:last].timestamp) > max_gap_seconds
+          finished = build_stay(open)
+          stays << finished if finished
+          open = open_stay(point)
+          next
+        end
 
-        if joins
+        if colocated?(open, point)
           add_member(open, point)
-          # After bridging a long gap, the pre-gap drift reference is stale; re-anchor the drift
-          # check to this post-gap point. `first` is left untouched so start_time spans the gap.
-          open[:drift_ref] = point if over_gap
         else
           finished = build_stay(open)
           stays << finished if finished
@@ -78,12 +79,6 @@ module Visits
       d_ref = distance_meters(open[:drift_ref].lat, open[:drift_ref].lon, point.lat, point.lon)
 
       d <= stay_radius_meters && d_ref <= stay_radius_meters * DRIFT_CAP_FACTOR
-    end
-
-    # After a gap longer than stay_max_gap_minutes (e.g. dead battery): judge only by the
-    # running-mean center. The pre-gap first-member reference is stale, so the drift cap is skipped.
-    def near_anchor?(open, point)
-      distance_meters(open[:anchor_lat], open[:anchor_lon], point.lat, point.lon) <= stay_radius_meters
     end
 
     def open_stay(point)
@@ -158,7 +153,7 @@ module Visits
 
     def mergeable?(previous, stay)
       gap = stay[:start_time] - previous[:end_time]
-      return false if gap > merge_gap_seconds
+      return false if gap > merge_gap_seconds || gap > max_gap_seconds
 
       distance_meters(previous[:center_lat], previous[:center_lon],
                       stay[:center_lat], stay[:center_lon]) <= stay_radius_meters
@@ -193,6 +188,7 @@ module Visits
               AND timestamp BETWEEN ? AND ?
               AND lonlat IS NOT NULL
               AND (anomaly IS NULL OR anomaly = FALSE)
+              AND NOT (ST_X(lonlat::geometry) = 0 AND ST_Y(lonlat::geometry) = 0)
             ORDER BY timestamp ASC
           SQL
           user.id, start_at, end_at
@@ -215,6 +211,7 @@ module Visits
            .where(timestamp: start_at..end_at)
            .where('lonlat IS NOT NULL')
            .where('anomaly IS NULL OR anomaly = FALSE')
+           .where("NOT #{Points::NullIsland.sql_predicate}")
            .count
     end
 

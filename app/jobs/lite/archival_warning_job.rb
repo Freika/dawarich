@@ -15,6 +15,8 @@ class Lite::ArchivalWarningJob < ApplicationJob
     return if DawarichSettings.self_hosted?
 
     User.where(plan: :lite).find_each do |user|
+      next if user.full_access?
+
       check_thresholds(user)
     end
   end

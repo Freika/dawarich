@@ -9,6 +9,7 @@ module Points
       queue_as :archival
 
       BATCH_SIZE = 5_000
+      COOLING_PERIOD = Clearer::COOLING_PERIOD
 
       def perform(user_id)
         user = find_user_or_skip(user_id) || return
@@ -31,7 +32,7 @@ module Points
       def clear_user(user)
         verified_archive_ids = Points::RawDataArchive
                                .where(user_id: user.id)
-                               .where.not(verified_at: nil)
+                               .where(verified_at: ..COOLING_PERIOD.ago)
                                .pluck(:id)
 
         return if verified_archive_ids.empty?

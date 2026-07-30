@@ -262,7 +262,8 @@ RSpec.describe 'Users::Registrations', type: :request do
         expect(response.body).to include('Almost there!')
       end
 
-      it 'allows account creation' do
+      it 'creates the account and redirects to Manager checkout (reverse_trial default)' do
+        stub_const('MANAGER_URL', 'https://manager.example.com')
         unique_email = "newuser-#{Time.current.to_i}@example.com"
 
         expect do
@@ -275,8 +276,11 @@ RSpec.describe 'Users::Registrations', type: :request do
           }
         end.to change(User, :count).by(1)
 
-        expect(response).to redirect_to(root_path)
-        expect(User.find_by(email: unique_email)).to be_present
+        user = User.find_by(email: unique_email)
+        expect(user).to be_present
+        expect(user.signup_variant).to eq('reverse_trial')
+        expect(response).to have_http_status(:redirect)
+        expect(response.location).to start_with('https://manager.example.com/checkout')
       end
     end
   end

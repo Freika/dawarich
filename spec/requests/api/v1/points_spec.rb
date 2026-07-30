@@ -129,6 +129,46 @@ RSpec.describe 'Api::V1::Points', type: :request do
       end
     end
 
+    context 'when import_id param is provided' do
+      let!(:import_a) { create(:import, user:) }
+      let!(:import_b) { create(:import, user:) }
+      let!(:points_from_a) do
+        (1..3).map { |i| create(:point, user:, import: import_a, timestamp: 2.days.ago + i.minutes) }
+      end
+      let!(:points_from_b) do
+        (1..2).map { |i| create(:point, user:, import: import_b, timestamp: 2.days.ago + i.minutes) }
+      end
+
+      it 'returns only points belonging to that import' do
+        get api_v1_points_url(api_key: user.api_key, import_id: import_a.id, per_page: 1000)
+
+        expect(response).to have_http_status(:ok)
+        json_response = JSON.parse(response.body)
+
+        expect(json_response.map { |p| p['id'] }).to match_array(points_from_a.map(&:id))
+      end
+
+      it 'does not return points from another import' do
+        get api_v1_points_url(api_key: user.api_key, import_id: import_b.id, per_page: 1000)
+
+        json_response = JSON.parse(response.body)
+
+        expect(json_response.map { |p| p['id'] }).to match_array(points_from_b.map(&:id))
+        expect(json_response.map { |p| p['id'] }).not_to include(*points_from_a.map(&:id))
+      end
+
+      it 'returns no points for an import_id owned by another user' do
+        other_user = create(:user)
+        other_import = create(:import, user: other_user)
+        create(:point, user: other_user, import: other_import, timestamp: 2.days.ago)
+
+        get api_v1_points_url(api_key: user.api_key, import_id: other_import.id, per_page: 1000)
+
+        expect(response).to have_http_status(:ok)
+        expect(JSON.parse(response.body)).to be_empty
+      end
+    end
+
     context 'when user is on lite plan and result spans multiple pages' do
       let!(:lite_user) do
         u = create(:user)
@@ -161,6 +201,23 @@ RSpec.describe 'Api::V1::Points', type: :request do
         expect(response.headers['X-Scoped-Points']).to eq('3')
       end
 
+      it 'import-scopes X-Total-Points-In-Range when import_id is provided' do
+        import = create(:import, user: lite_user)
+        create(:point, user: lite_user, import: import, timestamp: (window_start + 4.days).to_i)
+        create(:point, user: lite_user, import: import, timestamp: (window_start + 5.days).to_i)
+
+        get api_v1_points_url(
+          api_key: lite_user.api_key,
+          start_at: (window_start - 3.days).to_i,
+          end_at: Time.current.to_i,
+          import_id: import.id,
+          per_page: 10
+        )
+
+        expect(response).to have_http_status(:ok)
+        expect(response.headers['X-Total-Points-In-Range']).to eq('2')
+      end
+
       it 'does not set Lite headers for a pro user' do
         pro_user = create(:user)
         pro_user.update_columns(plan: User.plans[:pro])
@@ -186,6 +243,21 @@ RSpec.describe 'Api::V1::Points', type: :request do
       expect(json_response.first['latitude']).to eq(1.0)
       expect(json_response.first['longitude']).to eq(1.0)
       expect(json_response.first['timestamp']).to be_an_instance_of(Integer)
+    end
+
+    context 'when the upsert exhausts deadlock retries' do
+      before do
+        allow(Points::Create).to receive(:new).and_raise(ActiveRecord::Deadlocked, 'deadlock detected')
+        allow(Rails.logger).to receive(:error)
+      end
+
+      it 'logs the failure and returns a JSON error with a 500 status' do
+        post "/api/v1/points?api_key=#{user.api_key}", params: point_params
+
+        expect(response).to have_http_status(:internal_server_error)
+        expect(JSON.parse(response.body)).to include('error')
+        expect(Rails.logger).to have_received(:error).with(/Point creation failed: ActiveRecord::Deadlocked/)
+      end
     end
 
     context 'when user is inactive' do
@@ -308,6 +380,26 @@ RSpec.describe 'Api::V1::Points', type: :request do
         expect do
           delete "/api/v1/points/#{trackless_point.id}?api_key=#{user.api_key}"
         end.not_to have_enqueued_job(Tracks::RecalculateJob)
+      end
+
+      it 'enqueues a stats recalculation for the point month' do
+        expect do
+          delete "/api/v1/points/#{trackless_point.id}?api_key=#{user.api_key}"
+        end.to have_enqueued_job(Stats::CalculatingJob)
+          .with(user.id, Time.zone.at(trackless_point.timestamp).year, Time.zone.at(trackless_point.timestamp).month)
+      end
+    end
+
+    context 'when recalculating stats' do
+      let(:track) { create(:track, user: user) }
+      let!(:tracked_point) do
+        create(:point, user: user, track: track, timestamp: Time.zone.local(2024, 5, 10, 12).to_i)
+      end
+
+      it 'enqueues a stats recalculation for the point month' do
+        expect do
+          delete "/api/v1/points/#{tracked_point.id}?api_key=#{user.api_key}"
+        end.to have_enqueued_job(Stats::CalculatingJob).with(user.id, 2024, 5)
       end
     end
 

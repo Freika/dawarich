@@ -13,7 +13,7 @@ class Photoprism::RequestPhotos
     @user = user
     @photoprism_api_base_url = "#{user.safe_settings.photoprism_url}/api/v1/photos"
     @photoprism_api_key = user.safe_settings.photoprism_api_key
-    @start_date = start_date
+    @start_date = start_date.presence || '1970-01-01'
     @end_date = end_date
   end
 
@@ -87,7 +87,7 @@ class Photoprism::RequestPhotos
 
   def request_params(offset = 0)
     params = offset.zero? ? default_params : default_params.merge(offset: offset)
-    params[:before] = (end_date.to_date + 1.day).beginning_of_day.iso8601 if end_date.present?
+    params[:before] = (end_date.to_date + 1.day).iso8601 if end_date.present?
     params
   end
 
@@ -96,17 +96,16 @@ class Photoprism::RequestPhotos
       q: '',
       public: true,
       quality: 3,
-      after: start_date,
+      after: start_date.to_date.iso8601,
       count: 1000
     }
   end
 
   def time_framed_data(data, start_date, end_date)
+    range_start = start_date.to_datetime
+    range_end = (end_date || Time.current).to_datetime
     data.flatten.select do |photo|
-      taken_at = DateTime.parse(photo['TakenAtLocal'])
-      end_date ||= Time.current
-
-      taken_at.between?(start_date.to_datetime, end_date.to_datetime)
+      DateTime.parse(photo['TakenAtLocal']).between?(range_start, range_end)
     end
   end
 

@@ -13,6 +13,75 @@ module Archivable
     scope :with_archived_raw_data, lambda {
       includes(raw_data_archive: { file_attachment: :blob })
     }
+
+    before_save :reset_archival_on_raw_data_change
+  end
+
+  UPSERT_CONFLICT_KEYS = %i[lonlat timestamp user_id].freeze
+  UPSERT_MAX_RETRIES = 3
+  UPSERT_BACKOFF_BASE = 0.1
+  UPSERT_BACKOFF_JITTER = 0.05
+  UPSERT_CONTENTION_ERRORS = [
+    ActiveRecord::Deadlocked,
+    ActiveRecord::LockWaitTimeout,
+    ActiveRecord::QueryCanceled
+  ].freeze
+
+  class_methods do
+    # Bulk-ingest counterpart of the reset_archival_on_raw_data_change
+    # callback, which raw SQL upserts bypass: on conflict, archival flags are
+    # reset only when the incoming raw_data actually differs from the stored
+    # one, so a stale archive is never left pointing at diverged data.
+    def archival_safe_upsert_all(rows, returning:)
+      return [] if rows.empty?
+
+      rows = rows.sort_by { |row| dedup_key(row).map { |value| value.nil? ? Float::INFINITY : value } }
+      update_columns = rows.first.keys.map(&:to_sym) - UPSERT_CONFLICT_KEYS - %i[created_at]
+
+      set_clauses = update_columns.map do |column|
+        quoted = connection.quote_column_name(column)
+        "#{quoted} = excluded.#{quoted}"
+      end
+      set_clauses << '"updated_at" = CURRENT_TIMESTAMP' unless update_columns.include?(:updated_at)
+      set_clauses.concat(archival_reset_clauses) if update_columns.include?(:raw_data)
+
+      with_write_contention_retry do
+        upsert_all(
+          rows,
+          unique_by: UPSERT_CONFLICT_KEYS,
+          on_duplicate: Arel.sql(set_clauses.join(', ')),
+          returning: returning
+        )
+      end
+    end
+
+    private
+
+    def with_write_contention_retry
+      retries = 0
+
+      begin
+        yield
+      rescue *UPSERT_CONTENTION_ERRORS => e
+        retries += 1
+        raise e if retries > UPSERT_MAX_RETRIES
+
+        sleep((UPSERT_BACKOFF_BASE * retries) + (rand * UPSERT_BACKOFF_JITTER))
+        retry
+      end
+    end
+
+    def archival_reset_clauses
+      table = connection.quote_table_name(table_name)
+      raw_data_changed = "#{table}.\"raw_data\" IS DISTINCT FROM excluded.\"raw_data\""
+
+      [
+        "\"raw_data_archived\" = CASE WHEN #{raw_data_changed} THEN FALSE " \
+        "ELSE #{table}.\"raw_data_archived\" END",
+        "\"raw_data_archive_id\" = CASE WHEN #{raw_data_changed} THEN NULL " \
+        "ELSE #{table}.\"raw_data_archive_id\" END"
+      ]
+    end
   end
 
   # Main method: Get raw_data with fallback to archive
@@ -44,19 +113,25 @@ module Archivable
     handle_archive_fetch_error(e)
   end
 
-  def check_temporary_restore_cache
-    return nil unless respond_to?(:timestamp)
+  def reset_archival_on_raw_data_change
+    return if new_record?
+    return unless raw_data_archived? && will_save_change_to_raw_data?
 
-    recorded_time = Time.zone.at(timestamp)
-    cache_key = "raw_data:temp:#{user_id}:#{recorded_time.year}:#{recorded_time.month}:#{id}"
-    Rails.cache.read(cache_key)
+    self.raw_data_archived = false
+    self.raw_data_archive_id = nil
+  end
+
+  def check_temporary_restore_cache
+    Rails.cache.read("raw_data:temp:#{user_id}:#{id}")
   end
 
   def fetch_from_archive_file
     return {} unless raw_data_archive&.file&.attached?
 
     # Download and search through JSONL
-    compressed_content = raw_data_archive.file.blob.download
+    compressed_content = Points::RawData::Encryption.decrypt_if_needed(
+      raw_data_archive.file.blob.download, raw_data_archive
+    )
     io = StringIO.new(compressed_content)
     gz = Zlib::GzipReader.new(io)
 

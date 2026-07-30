@@ -76,9 +76,7 @@ module Families
     def can_create_family?
       return true if DawarichSettings.self_hosted?
 
-      # TODO: Add cloud plan validation here when needed
-      # For now, allow all users to create families
-      true
+      user.family?
     end
 
     def create_family

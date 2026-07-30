@@ -110,9 +110,9 @@ class Users::ExportData::Points
         p.vertical_accuracy, p.mode, p.inrids, p.in_regions, p.raw_data,
         p.city, p.country, p.geodata, p.reverse_geocoded_at, p.course,
         p.course_accuracy, p.external_track_id, p.created_at, p.updated_at,
-        p.lonlat, p.longitude, p.latitude,
-        COALESCE(p.longitude, ST_X(p.lonlat::geometry)) as computed_longitude,
-        COALESCE(p.latitude, ST_Y(p.lonlat::geometry)) as computed_latitude,
+        p.lonlat,
+        ST_X(p.lonlat::geometry) as computed_longitude,
+        ST_Y(p.lonlat::geometry) as computed_latitude,
         i.name as import_name,
         i.source as import_source,
         i.created_at as import_created_at,
@@ -139,9 +139,9 @@ class Users::ExportData::Points
         p.vertical_accuracy, p.mode, p.inrids, p.in_regions, p.raw_data,
         p.city, p.country, p.geodata, p.reverse_geocoded_at, p.course,
         p.course_accuracy, p.external_track_id, p.created_at, p.updated_at,
-        p.lonlat, p.longitude, p.latitude,
-        COALESCE(p.longitude, ST_X(p.lonlat::geometry)) as computed_longitude,
-        COALESCE(p.latitude, ST_Y(p.lonlat::geometry)) as computed_latitude,
+        p.lonlat,
+        ST_X(p.lonlat::geometry) as computed_longitude,
+        ST_Y(p.lonlat::geometry) as computed_latitude,
         i.name as import_name,
         i.source as import_source,
         i.created_at as import_created_at,
@@ -161,10 +161,7 @@ class Users::ExportData::Points
   end
 
   def build_point_hash(row)
-    has_lonlat = row['lonlat'].present?
-    has_coordinates = row['computed_longitude'].present? && row['computed_latitude'].present?
-
-    unless has_lonlat || has_coordinates
+    if row['lonlat'].blank?
       Rails.logger.debug "Skipping point without coordinates: id=#{row['id'] || 'unknown'}"
       return nil
     end
@@ -237,20 +234,8 @@ class Users::ExportData::Points
   end
 
   def populate_coordinate_fields(point_hash, row)
-    longitude = row['computed_longitude']
-    latitude = row['computed_latitude']
-    lonlat = row['lonlat']
-
-    # If lonlat is present, use it and the computed coordinates
-    if lonlat.present?
-      point_hash['lonlat'] = lonlat
-      point_hash['longitude'] = longitude
-      point_hash['latitude'] = latitude
-    elsif longitude.present? && latitude.present?
-      # If lonlat is missing but we have coordinates, reconstruct lonlat
-      point_hash['longitude'] = longitude
-      point_hash['latitude'] = latitude
-      point_hash['lonlat'] = "POINT(#{longitude} #{latitude})"
-    end
+    point_hash['lonlat']    = row['lonlat']
+    point_hash['longitude'] = row['computed_longitude']
+    point_hash['latitude']  = row['computed_latitude']
   end
 end

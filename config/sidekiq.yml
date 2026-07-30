@@ -15,6 +15,7 @@
   - reverse_geocoding
   - visit_suggesting
   - places
+  - posters
   - app_version_checking
   - cache
   - archival

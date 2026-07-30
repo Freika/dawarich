@@ -60,10 +60,9 @@ RSpec.describe Points::Create do
       end
 
       it 'upserts the processed data' do
-        expect(Point).to receive(:upsert_all)
+        expect(Point).to receive(:archival_safe_upsert_all)
           .with(
             processed_data,
-            unique_by: %i[lonlat timestamp user_id],
             returning: Arel.sql(
               'id, xmax, timestamp, ST_X(lonlat::geometry) AS longitude, ST_Y(lonlat::geometry) AS latitude'
             )
@@ -74,7 +73,7 @@ RSpec.describe Points::Create do
       end
 
       it 'returns the upsert result' do
-        allow(Point).to receive(:upsert_all).and_return(upsert_result)
+        allow(Point).to receive(:archival_safe_upsert_all).and_return(upsert_result)
         result = described_class.new(user, point_params).call
         expect(result).to eq(upsert_result)
       end
@@ -420,10 +419,9 @@ RSpec.describe Points::Create do
       before do
         allow(Points::Params).to receive(:new).with(geojson_data, user.id).and_return(params_service)
         allow(params_service).to receive(:call).and_return(all_processed_data)
-        allow(Point).to receive(:upsert_all)
+        allow(Point).to receive(:archival_safe_upsert_all)
           .with(
             all_processed_data,
-            unique_by: %i[lonlat timestamp user_id],
             returning: Arel.sql(
               'id, xmax, timestamp, ST_X(lonlat::geometry) AS longitude, ST_Y(lonlat::geometry) AS latitude'
             )

@@ -8,7 +8,8 @@
      data-maps--maplibre-start-date-value="<%= @start_at.iso8601 %>"
      data-maps--maplibre-end-date-value="<%= @end_at.iso8601 %>"
      data-maps--maplibre-timezone-value="<%= current_user.timezone %>"
-     data-maps--maplibre-user-plan-value="<%= current_user.plan %>"
+     data-maps--maplibre-user-plan-value="<%= current_user.effective_plan %>"
+     data-maps--maplibre-import-id-value="<%= @import_id %>"
      data-maps--maplibre-upgrade-url-value="<%= upgrade_url(utm_medium: 'map', utm_content: 'maplibre') %>"
      data-maps--maplibre-realtime-enabled-value="true"
      data-maps--maplibre-realtime-live-mode-value="<%= current_user.safe_settings.live_map_enabled %>"
@@ -24,7 +25,8 @@
   <% timeline_panel_open = params[:panel] == 'timeline' %>
   <div data-maps--maplibre-target="container"
        class="maps-maplibre-container<%= ' panel-open panel-timeline-expanded' if timeline_panel_open %>"
-       style="width: 100%; height: 100%;"></div>
+       style="width: 100%; height: 100%;">
+  </div>
 
   <!-- Loading progress badge -->
   <div data-maps--maplibre-target="progressBadge" class="map-progress-badge">
@@ -48,6 +50,9 @@
   <!-- Settings panel -->
   <%= render 'map/maplibre/settings_panel' %>
 
+  <!-- Poster studio (full-screen WYSIWYG editor) -->
+  <%= render 'posters/studio' %>
+
   <!-- Replay panel -->
   <%= render 'map/maplibre/replay_panel' %>
 
@@ -60,7 +65,7 @@
   <!-- Place creation modal (shared) -->
   <%= render 'shared/place_creation_modal' %>
 
-  <% if DawarichSettings.self_hosted? || current_user.pro? %>
+  <% if current_user.full_access? %>
     <!-- Residency day counter modal -->
     <%= render 'map/maplibre/residency_modal' %>
   <% end %>

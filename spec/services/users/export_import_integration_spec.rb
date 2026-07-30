@@ -366,12 +366,9 @@ RSpec.describe 'Users Export-Import Integration', type: :service do
     target_visits_with_places = target_user.visits.where.not(place_id: nil).count
     expect(target_visits_with_places).to eq(original_visits_with_places)
 
-    original_office_points = original_user.points.where(
-      latitude: 40.7589, longitude: -73.9851
-    ).first
-    target_office_points = target_user.points.where(
-      latitude: 40.7589, longitude: -73.9851
-    ).first
+    office_lonlat = 'POINT(-73.9851 40.7589)'
+    original_office_points = original_user.points.where(lonlat: office_lonlat).first
+    target_office_points   = target_user.points.where(lonlat: office_lonlat).first
 
     return unless original_office_points && target_office_points
 

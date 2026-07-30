@@ -3,9 +3,10 @@
  * Wraps all API endpoints with consistent error handling
  */
 export class ApiClient {
-  constructor(apiKey) {
+  constructor(apiKey, importId = null) {
     this.apiKey = apiKey
     this.baseURL = "/api/v1"
+    this.importId = importId
   }
 
   /**
@@ -22,6 +23,8 @@ export class ApiClient {
       slim: "true",
       order: "asc",
     })
+
+    if (this.importId) params.append("import_id", this.importId)
 
     const response = await fetch(`${this.baseURL}/points?${params}`, {
       headers: this.getHeaders(),
@@ -633,6 +636,8 @@ export class ApiClient {
       include_anomalies: "true",
       per_page: "10000", // Get all points in area (up to 10k)
     })
+
+    if (this.importId) params.append("import_id", this.importId)
 
     const response = await fetch(`${this.baseURL}/points?${params}`, {
       headers: this.getHeaders(),

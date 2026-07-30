@@ -11,6 +11,21 @@
       </p>
     </div>
 
+    <% if @can_create_family == false %>
+      <div class="bg-base-200 rounded-lg p-6 text-center">
+        <h2 class="text-xl font-bold mb-2">
+          <%= t('families.new.upgrade_title', default: 'Family plan required') %>
+        </h2>
+        <p class="text-base-content opacity-60 mb-6">
+          <%= t('families.new.upgrade_description',
+                default: 'Creating a family requires the Family plan. Upgrade to invite up to 5 members and share full access.') %>
+        </p>
+        <%= link_to t('families.new.upgrade_cta', default: 'Upgrade to Family'),
+              @family_upgrade_url,
+              target: '_blank', rel: 'noopener noreferrer',
+              class: 'btn btn-primary' %>
+      </div>
+    <% else %>
     <div class="bg-base-200 rounded-lg p-6">
       <%= form_with url: family_path, model: @family, local: true, class: "space-y-6" do |form| %>
         <% if @family.errors.any? %>
@@ -64,5 +79,6 @@
         </div>
       <% end %>
     </div>
+    <% end %>
   </div>
 </div>

@@ -68,12 +68,12 @@ RSpec.describe 'GPS Noise Filtering Integration' do
     end
 
     it 'marks teleportation spike as anomaly' do
-      spike = user.points.where(latitude: 62.52).first
+      spike = user.points.where(lonlat: 'POINT(23.405 62.52)').first
       expect(spike.anomaly).to be true
     end
 
     it 'keeps normal points clean' do
-      normal = user.points.where('latitude < 53')
+      normal = user.points.where('ST_Y(lonlat::geometry) < 53')
       expect(normal.pluck(:anomaly).compact).to all(be false)
     end
   end

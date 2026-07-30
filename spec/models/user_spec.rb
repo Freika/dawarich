@@ -28,7 +28,66 @@ RSpec.describe User, type: :model do
         .with_values(none: 0, paddle: 1, apple_iap: 2, google_play: 3)
         .with_prefix(:sub_source)
     }
-    it { is_expected.to define_enum_for(:plan).with_values(lite: 0, pro: 1) }
+    it { is_expected.to define_enum_for(:plan).with_values(lite: 0, pro: 1, family: 2) }
+  end
+
+  describe 'plan enum' do
+    it 'supports the family plan' do
+      user = create(:user, plan: :family, skip_auto_trial: true)
+      expect(user.family?).to be true
+    end
+
+    it 'has integer value 2 for family' do
+      expect(User.plans['family']).to eq(2)
+    end
+  end
+
+  describe 'archival warning reset on plan change' do
+    it 'clears archival warnings and stale lite_since when the plan leaves lite' do
+      user = create(:user, skip_auto_trial: true)
+      user.update_column(:plan, User.plans[:lite])
+      user.update_column(:settings, user.settings.merge(
+                                      'lite_since' => 1.day.ago.iso8601,
+                                      'archival_warnings' => { '11mo' => 1.day.ago.iso8601 }
+                                    ))
+
+      user.update!(plan: :pro)
+
+      expect(user.reload.settings).not_to have_key('lite_since')
+      expect(user.settings).not_to have_key('archival_warnings')
+    end
+
+    it 'resets stale archival warnings when re-entering lite without stamping lite_since' do
+      user = create(:user, skip_auto_trial: true)
+      user.update_column(:plan, User.plans[:pro])
+      user.update_column(:settings, user.settings.merge('archival_warnings' => { '12mo' => 1.year.ago.iso8601 }))
+
+      user.update!(plan: :lite)
+
+      expect(user.reload.settings).not_to have_key('archival_warnings')
+      expect(user.settings).not_to have_key('lite_since')
+    end
+
+    it 'preserves other settings keys when resetting' do
+      user = create(:user, skip_auto_trial: true)
+      user.update_column(:plan, User.plans[:pro])
+      user.update_column(:settings, user.settings.merge('maps' => { 'distance_unit' => 'km' },
+                                                        'archival_warnings' => { '11mo' => 1.day.ago.iso8601 }))
+
+      user.update!(plan: :lite)
+
+      expect(user.reload.settings).not_to have_key('archival_warnings')
+      expect(user.settings['maps']).to eq('distance_unit' => 'km')
+    end
+
+    it 'does not touch settings when the plan does not change' do
+      user = create(:user, skip_auto_trial: true)
+      user.update_column(:plan, User.plans[:lite])
+      user.update_column(:settings, user.settings.merge('archival_warnings' => { '11mo' => 1.day.ago.iso8601 }))
+
+      expect { user.update!(email: 'new-address@example.com') }
+        .not_to(change { user.reload.settings['archival_warnings'] })
+    end
   end
 
   describe 'changelog consent' do
@@ -50,6 +109,136 @@ RSpec.describe User, type: :model do
       user.update!(changelog_consent: :declined)
       expect(user.changelog_consent_declined?).to be(true)
       expect(user.changelog_prompt_pending?).to be(false)
+    end
+  end
+
+  describe '#effective_plan' do
+    context 'when self-hosted' do
+      before { allow(DawarichSettings).to receive(:self_hosted?).and_return(true) }
+
+      it 'returns the raw plan regardless of family membership' do
+        user = create(:user, plan: :lite, skip_auto_trial: true)
+
+        expect(user.effective_plan).to eq(:lite)
+      end
+    end
+
+    context 'when cloud' do
+      before { allow(DawarichSettings).to receive(:self_hosted?).and_return(false) }
+
+      it 'returns :pro for a cloud pro user' do
+        user = create(:user, plan: :pro, skip_auto_trial: true)
+
+        expect(user.effective_plan).to eq(:pro)
+      end
+
+      it 'returns :family for a family owner' do
+        owner = create(:user, plan: :family, skip_auto_trial: true)
+        family = create(:family, creator: owner)
+        create(:family_membership, :owner, family: family, user: owner)
+
+        expect(owner.effective_plan).to eq(:family)
+      end
+
+      it 'returns :lite for a lite user not in a family' do
+        user = create(:user, plan: :lite, skip_auto_trial: true)
+
+        expect(user.effective_plan).to eq(:lite)
+      end
+
+      it 'returns :family for a lite member of a family-plan family' do
+        owner = create(:user, plan: :family, skip_auto_trial: true)
+        family = create(:family, creator: owner)
+        create(:family_membership, :owner, family: family, user: owner)
+        member = create(:user, plan: :lite, skip_auto_trial: true)
+        create(:family_membership, family: family, user: member)
+
+        expect(member.effective_plan).to eq(:family)
+      end
+
+      it 'returns the raw plan for a lite member whose family owner is not on the family plan' do
+        owner = create(:user, plan: :pro, skip_auto_trial: true)
+        family = create(:family, creator: owner)
+        create(:family_membership, :owner, family: family, user: owner)
+        member = create(:user, plan: :lite, skip_auto_trial: true)
+        create(:family_membership, family: family, user: member)
+
+        expect(member.effective_plan).to eq(:lite)
+      end
+
+      it 'reverts to the raw plan after the member leaves the family' do
+        owner = create(:user, plan: :family, skip_auto_trial: true)
+        family = create(:family, creator: owner)
+        create(:family_membership, :owner, family: family, user: owner)
+        member = create(:user, plan: :lite, skip_auto_trial: true)
+        membership = create(:family_membership, family: family, user: member)
+
+        membership.destroy!
+        member.reload
+
+        expect(member.effective_plan).to eq(:lite)
+      end
+
+      it 'reverts all members when the owner plan drops below family, leaving the family dormant' do
+        owner = create(:user, plan: :family, skip_auto_trial: true)
+        family = create(:family, creator: owner)
+        create(:family_membership, :owner, family: family, user: owner)
+        member = create(:user, plan: :lite, skip_auto_trial: true)
+        create(:family_membership, family: family, user: member)
+
+        expect(member.full_access?).to be true
+
+        owner.update!(plan: :pro)
+        member.reload
+
+        expect(member.full_access?).to be false
+        expect(member.effective_plan).to eq(:lite)
+        expect(member.in_family?).to be true
+        expect(Family.exists?(family.id)).to be true
+        expect(family.members).to include(member, owner)
+      end
+    end
+  end
+
+  describe '#full_access?' do
+    context 'when self-hosted' do
+      before { allow(DawarichSettings).to receive(:self_hosted?).and_return(true) }
+
+      it 'is true even for a lite user' do
+        user = create(:user, plan: :lite, skip_auto_trial: true)
+
+        expect(user.full_access?).to be true
+      end
+    end
+
+    context 'when cloud' do
+      before { allow(DawarichSettings).to receive(:self_hosted?).and_return(false) }
+
+      it 'is true for pro' do
+        expect(create(:user, plan: :pro, skip_auto_trial: true).full_access?).to be true
+      end
+
+      it 'is true for a family owner' do
+        owner = create(:user, plan: :family, skip_auto_trial: true)
+        family = create(:family, creator: owner)
+        create(:family_membership, :owner, family: family, user: owner)
+
+        expect(owner.full_access?).to be true
+      end
+
+      it 'is false for a lite user not in a family' do
+        expect(create(:user, plan: :lite, skip_auto_trial: true).full_access?).to be false
+      end
+
+      it 'is true for a lite member of a family-plan family' do
+        owner = create(:user, plan: :family, skip_auto_trial: true)
+        family = create(:family, creator: owner)
+        create(:family_membership, :owner, family: family, user: owner)
+        member = create(:user, plan: :lite, skip_auto_trial: true)
+        create(:family_membership, family: family, user: member)
+
+        expect(member.full_access?).to be true
+      end
     end
   end
 
@@ -394,13 +583,28 @@ RSpec.describe User, type: :model do
 
     describe '#years_tracked' do
       let!(:points) do
-        (1..3).map do |i|
-          create(:point, user:, timestamp: DateTime.new(2024, 1, 1, 5, 0, 0) + i.minutes)
+        [
+          DateTime.new(2024, 1, 1, 5, 0, 0),
+          DateTime.new(2024, 3, 1, 5, 0, 0),
+          DateTime.new(2023, 12, 1, 5, 0, 0)
+        ].flat_map do |month|
+          (1..3).map { |i| create(:point, user:, timestamp: month + i.minutes) }
         end
       end
 
-      it 'returns years tracked' do
-        expect(user.years_tracked).to eq([{ year: 2024, months: ['Jan'] }])
+      it 'returns only tracked months in calendar order for each year' do
+        expect(user.years_tracked).to eq([
+                                           { year: 2024, months: %w[Jan Mar] },
+                                           { year: 2023, months: ['Dec'] }
+                                         ])
+      end
+
+      context 'when the user has no points' do
+        let(:user_without_points) { create(:user) }
+
+        it 'returns an empty array' do
+          expect(user_without_points.years_tracked).to eq([])
+        end
       end
     end
 
