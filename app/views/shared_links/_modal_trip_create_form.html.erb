@@ -37,8 +37,7 @@
 
   <%= render 'shared_links/immich_shared_link_fields',
              id_prefix: 'trip',
-             immich_shared_links: @immich_shared_links,
-             resource: resource %>
+             immich_shared_links: @immich_shared_links %>
 
   <div class="modal-action">
     <%= link_to 'Cancel', close_path, class: 'btn btn-ghost', data: { turbo_frame: '_top', action: 'share-link-modal#close' } %>

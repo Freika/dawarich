@@ -19,7 +19,7 @@ RSpec.describe 'ShareLinks::Timelines', type: :request do
       expect(response.body).to include('2026-04-14')
     end
 
-    it 'offers album-based Immich shared links instead of private albums' do
+    it 'offers album-based Immich shared links with incomplete embedded album statistics' do
       user.update!(
         settings: user.settings.merge(
           'immich_url' => 'https://immich.example.com',
@@ -33,7 +33,13 @@ RSpec.describe 'ShareLinks::Timelines', type: :request do
             {
               'id' => 'shared-1',
               'slug' => 'summer-public',
-              'album' => { 'id' => 'album-1', 'albumName' => 'Summer', 'assetCount' => 12 }
+              'album' => {
+                'id' => 'album-1',
+                'albumName' => 'Summer',
+                'assetCount' => 0,
+                'startDate' => nil,
+                'endDate' => nil
+              }
             }
           ]
         )

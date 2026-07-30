@@ -32,7 +32,7 @@ RSPEC_FILES := \
 export MESSAGE
 export CONFIRM
 
-.PHONY: help status diff devcontainer testvscode testdawarich commit push dawarich
+.PHONY: help status diff devcontainer testvscode review testdawarich commit push dawarich
 
 help: ## Zeigt alle verfügbaren Targets.
 	@printf '%s\n' \
@@ -40,6 +40,7 @@ help: ## Zeigt alle verfügbaren Targets.
 		'make status                       Git-Status, Branch und Commit anzeigen' \
 		'make diff                         Arbeits- und Staging-Diff anzeigen' \
 		'make testvscode                   Relevante Specs im laufenden DevContainer ausführen' \
+		'make review                       Pflichtprüfung von Diff, Repository-Hygiene und Tests' \
 		'make testdawarich                 Testen, Testimage bauen und Testinstanz aktualisieren' \
 		'make commit MESSAGE="..."         Sichere Projektänderungen lokal committen' \
 		'make push                         Aktuellen Branch ausschließlich zum Fork pushen' \
@@ -117,8 +118,50 @@ testvscode: devcontainer ## Führt die relevanten RSpec-Tests im DevContainer au
 	docker exec "$(DEV_CONTAINER)" \
 		sh -lc "bundle exec rails db:test:prepare && bundle exec rspec $(RSPEC_FILES)"
 
-testdawarich: ## Testet, baut das Testimage und aktualisiert nur die Testinstanz.
+review: ## Prüft den vollständigen Diff, Repository-Hygiene und die relevanten Tests.
+	@printf '\n%s\n' '===== VERPFLICHTENDE TECHNISCHE PRÜFUNG ====='
+	@git -C "$(REPO_DIR)" status --short
+	@git -C "$(REPO_DIR)" diff --check
+	@git -C "$(REPO_DIR)" diff --cached --check
+	@failed=0; \
+	mapfile -d '' -t changed_files < <( \
+		{ \
+			git -C "$(REPO_DIR)" diff --name-only -z --diff-filter=ACMR; \
+			git -C "$(REPO_DIR)" diff --cached --name-only -z --diff-filter=ACMR; \
+			git -C "$(REPO_DIR)" ls-files --others --exclude-standard -z; \
+		} | sort -zu \
+	); \
+	for path in "$${changed_files[@]}"; do \
+		case "$$path" in \
+			.env|.env.*|*/.env|*/.env.*|*.bak|*.tmp|*.swp|*.orig|*.rej|*~|*.log|*.sqlite|*.sqlite3|*.sqlite3-shm|*.sqlite3-wal|log/*|tmp/*|storage/*|coverage/*|config/master.key|config/credentials/*.key) \
+				printf 'Fehler: Unerwünschte Datei in den Änderungen: %s\n' "$$path" >&2; \
+				failed=1 ;; \
+		esac; \
+	done; \
+	[[ "$$failed" -eq 0 ]]
+	@failed=0; \
+	mapfile -d '' -t repository_files < <( \
+		{ \
+			git -C "$(REPO_DIR)" ls-files -z; \
+			git -C "$(REPO_DIR)" ls-files --others --exclude-standard -z; \
+		} \
+	); \
+	for path in "$${repository_files[@]}"; do \
+		file="$(REPO_DIR)/$$path"; \
+		if [[ -f "$$file" ]] && grep -Iq . "$$file"; then \
+			if grep -nHE '^(<<<<<<<( .*)?|=======|>>>>>>>( .*)?)$$' "$$file"; then \
+				failed=1; \
+			fi; \
+		fi; \
+	done; \
+	if [[ "$$failed" -ne 0 ]]; then \
+		printf 'Fehler: Nicht aufgelöste Merge-Konfliktmarker gefunden.\n' >&2; \
+		exit 1; \
+	fi
 	@$(MAKE) --no-print-directory testvscode
+	@printf '%s\n\n' '===== REVIEW ERFOLGREICH: ALLE PRÜFUNGEN BESTANDEN ====='
+
+testdawarich: review ## Prüft, baut das Testimage und aktualisiert nur die Testinstanz.
 	@cd "$(REPO_DIR)"; \
 	docker build -f docker/Dockerfile -t "$(IMAGE)" .
 	@cd "$(TEST_DIR)"; \
@@ -162,12 +205,11 @@ push: ## Pusht den aktuellen Branch ohne Force ausschließlich zum Fork.
 	printf 'Branch: %s\nPush-Ziel: %s (%s)\n' "$$branch" "$(FORK_REMOTE)" "$$target"; \
 	git -C "$(REPO_DIR)" push "$(FORK_REMOTE)" "$$branch"
 
-dawarich: ## Aktualisiert nach Bestätigung ausschließlich das Produktionssystem.
+dawarich: review ## Aktualisiert nach Prüfung und Bestätigung ausschließlich das Produktionssystem.
 	@if [[ "$${CONFIRM:-}" != "PRODUCTION" ]]; then \
 		printf 'Fehler: Produktion nur mit CONFIRM=PRODUCTION aktualisieren.\n' >&2; \
 		exit 1; \
 	fi; \
-	$(MAKE) --no-print-directory testvscode; \
 	branch="$$(git -C "$(REPO_DIR)" branch --show-current)"; \
 	commit="$$(git -C "$(REPO_DIR)" rev-parse --short HEAD)"; \
 	printf 'Branch: %s\nCommit: %s\n' "$$branch" "$$commit"; \

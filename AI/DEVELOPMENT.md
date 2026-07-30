@@ -107,20 +107,64 @@ Die Compose-Umgebung enthält diese Hauptcontainer:
 
 ## Make-Workflow
 
-Das Makefile im Projektstamm bildet den lokalen dreistufigen Workflow ab:
+Das Makefile im Projektstamm bildet den abgesicherten lokalen Workflow ab:
 
 - `make testvscode` führt die Immich-/PhotoPrism-relevanten Specs im Service
   `dawarich_dev` aus. Läuft der DevContainer noch nicht, wird er inklusive
   eines nötigen Image-Builds über die `devcontainer`-Vorbedingung gestartet;
   ist er bereits aktiv, wird nichts neu gebaut. Volumes werden in keinem Fall
   erstellt oder gelöscht.
-- `make testdawarich` führt zuerst diese Tests aus, baut anschließend über
-  `docker/Dockerfile` das vorhandene Image `dawarich-immich-tags:test` und
-  erstellt ausschließlich `dawarich_app` und `dawarich_sidekiq` unter
-  `/root/dawarich-test` neu.
-- `make dawarich CONFIRM=PRODUCTION` verlangt zusätzlich einen sauberen
-  Git-Stand und aktualisiert ausschließlich dieselben Anwendungsdienste unter
-  `/root/dawarich`.
+- `make review` prüft Git-Status, staged und unstaged Whitespace-Fehler,
+  unerwünschte Dateien, Merge-Konfliktmarker und führt anschließend
+  `make testvscode` aus.
+- `make testdawarich` verlangt zuerst ein erfolgreiches `make review`, baut
+  anschließend über `docker/Dockerfile` das vorhandene Image
+  `dawarich-immich-tags:test` und erstellt ausschließlich `dawarich_app` und
+  `dawarich_sidekiq` unter `/root/dawarich-test` neu.
+- `make commit MESSAGE="..."` erstellt unabhängig vom Review-Status einen
+  lokalen Zwischenstand und behält dabei seine Prüfungen auf unerwünschte
+  Dateien und leere Commits bei.
+- `make dawarich CONFIRM=PRODUCTION` verlangt zuerst ein erfolgreiches
+  `make review` sowie einen sauberen Git-Stand und aktualisiert ausschließlich
+  dieselben Anwendungsdienste unter `/root/dawarich`.
 
 Keines der Deployment-Targets löscht Docker-Volumes oder verwendet
 `docker compose down -v`.
+
+## Mandatory review and deployment workflow
+
+Diese Reihenfolge ist für jede Änderung verbindlich:
+
+1. Änderung im Entwicklungsrepository implementieren.
+2. Den vollständigen staged und unstaged Git-Diff untersuchen.
+3. Die verpflichtende semantische KI-Codeprüfung durchführen.
+4. Alle blockierenden Befunde beheben und den vollständigen Diff erneut prüfen.
+5. `make review` ausführen.
+6. `make testdawarich` ausführen.
+7. Das Feature in der Testinstanz manuell prüfen.
+8. Mit `make commit MESSAGE="..."` committen.
+9. Den sauberen, committeten Stand mit
+   `make dawarich CONFIRM=PRODUCTION` produktiv bereitstellen.
+10. Die Produktionsinstanz manuell validieren.
+11. Erst danach mit `make push` zum konfigurierten Fork pushen.
+
+Produktion darf niemals verändert werden, bevor die semantische KI-Prüfung
+und `make review` erfolgreich waren. Ein uncommitteter Working Tree darf
+niemals produktiv bereitgestellt werden. Vor erfolgreicher
+Produktionsvalidierung darf nicht gepusht werden. Eine erfolgreiche
+RSpec-Suite ersetzt keine semantische Codeprüfung. Der KI-Assistent muss seine
+Review-Befunde melden, bevor er Test- oder Deployment-Befehle vorschlägt.
+
+Für Immich-Shared-Link-Änderungen sind in der Test- und später in der
+Produktionsinstanz mindestens diese manuellen Prüfungen erforderlich:
+
+1. Einen Dawarich-Share erstellen.
+2. Einen Immich Shared Link auswählen.
+3. Den Dawarich-Share ohne Anmeldung öffnen.
+4. Ein Foto im Vollbild-Viewer öffnen.
+5. Dem Immich-Link folgen.
+6. Prüfen, dass die URL `/s/:slug/photos/:asset_id` verwendet.
+7. Prüfen, dass keine angemeldete Immich-Sitzung erforderlich ist.
+8. Prüfen, dass keine anderen Immich-Assets durchsucht werden können.
+9. Desktop- und Mobilansicht prüfen.
+10. Browser-Konsole und Anwendungslogs auf Fehler kontrollieren.

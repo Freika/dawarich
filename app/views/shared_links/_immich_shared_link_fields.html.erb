@@ -1,22 +1,7 @@
 <% id_prefix = local_assigns.fetch(:id_prefix, 'shared-link') %>
 <% shared_links = Array(local_assigns[:immich_shared_links] || @immich_shared_links) %>
-<% resource = local_assigns[:resource] %>
 
 <%
-  trip_start =
-    if resource.respond_to?(:started_at)
-      resource.started_at
-    elsif resource.respond_to?(:start_at)
-      resource.start_at
-    end
-
-  trip_end =
-    if resource.respond_to?(:ended_at)
-      resource.ended_at
-    elsif resource.respond_to?(:end_at)
-      resource.end_at
-    end
-
   shared_link_options = shared_links.filter_map do |shared_link|
     shared_link_id = shared_link[:id] || shared_link['id']
     shared_link_slug = shared_link[:slug] || shared_link['slug']
@@ -26,34 +11,7 @@
     album_id = album[:id] || album['id']
     album_name = album[:album_name] || album['album_name'] || album[:albumName] || album['albumName']
 
-    album_start_raw =
-      album[:start_date] ||
-      album['start_date'] ||
-      album[:startDate] ||
-      album['startDate']
-
-    album_end_raw =
-      album[:end_date] ||
-      album['end_date'] ||
-      album[:endDate] ||
-      album['endDate']
-
-    asset_count =
-      album[:asset_count] ||
-      album['asset_count'] ||
-      album[:assetCount] ||
-      album['assetCount']
-
     next if shared_link_id.blank? || shared_link_slug.blank? || album_id.blank? || album_name.blank?
-    next if asset_count.to_i.zero?
-
-    if trip_start.present? && trip_end.present?
-      album_start = Time.zone.parse(album_start_raw.to_s) if album_start_raw.present?
-      album_end = Time.zone.parse(album_end_raw.to_s) if album_end_raw.present?
-
-      next if album_start.blank? || album_end.blank?
-      next unless album_end >= trip_start && album_start <= trip_end
-    end
 
     [
       "#{album_name} (#{shared_link_slug})",
@@ -67,8 +25,6 @@
         }
       }
     ]
-  rescue ArgumentError
-    next
   end
 
   shared_link_options.sort_by! { |option| option.first.to_s.downcase }
