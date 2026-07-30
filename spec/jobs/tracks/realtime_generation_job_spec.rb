@@ -113,6 +113,37 @@ RSpec.describe Tracks::RealtimeGenerationJob, type: :job do
       end
     end
 
+    context 'when track generation hits a statement timeout' do
+      let(:timeout_error) { ActiveRecord::QueryCanceled.new('canceling statement due to statement timeout') }
+
+      before do
+        generator = instance_double(Tracks::IncrementalGenerator)
+        allow(generator).to receive(:call).and_raise(timeout_error)
+        allow(Tracks::IncrementalGenerator).to receive(:new).with(user).and_return(generator)
+        allow(ExceptionReporter).to receive(:call)
+      end
+
+      it 'retries the generation job without reporting the transient failure' do
+        expect { described_class.perform_now(user.id) }
+          .to have_enqueued_job(described_class).with(user.id)
+
+        expect(ExceptionReporter).not_to have_received(:call)
+      end
+
+      it 'reports the failure after bounded retries are exhausted' do
+        allow(Rails.logger).to receive(:error)
+        job = described_class.new(user.id)
+        job.exception_executions = { '[ActiveRecord::QueryCanceled]' => 2 }
+
+        expect { job.perform_now }.not_to have_enqueued_job(described_class)
+
+        expect(ExceptionReporter).to have_received(:call).with(
+          timeout_error,
+          "Failed real-time track generation for user #{user.id} after retries"
+        )
+      end
+    end
+
     context 'when the per-user lock is held by a concurrent job' do
       let(:debouncer) { instance_double(Tracks::RealtimeDebouncer, clear: true, trigger: true) }
       let(:timeout_error) do
