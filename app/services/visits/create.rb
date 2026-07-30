@@ -20,8 +20,6 @@ module Visits
         visit
       end
     rescue ActiveRecord::RecordInvalid => e
-      ExceptionReporter.call(e, "Failed to create visit: #{e.message}")
-
       @errors = "Failed to create visit: #{e.message}"
 
       false

@@ -196,10 +196,26 @@ RSpec.describe Visits::Create do
         expect(service.call).to be(false)
       end
 
-      it 'calls ExceptionReporter' do
-        expect(ExceptionReporter).to receive(:call)
+      it 'does not report the validation error' do
+        expect(ExceptionReporter).not_to receive(:call)
 
         service.call
+      end
+    end
+
+    context 'when an unexpected visit creation error occurs' do
+      subject(:service) { described_class.new(user, valid_params) }
+
+      before do
+        visits_association = user.visits
+        allow(user).to receive(:visits).and_return(visits_association)
+        allow(visits_association).to receive(:create!).and_raise(StandardError, 'unexpected failure')
+      end
+
+      it 'reports the error' do
+        expect(ExceptionReporter).to receive(:call).with(instance_of(StandardError), include('unexpected failure'))
+
+        expect(service.call).to be(false)
       end
     end
 
