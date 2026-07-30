@@ -55,6 +55,27 @@ RSpec.describe DataMigrations::RecalculatePerTrackerTracksJob do
       end.not_to have_enqueued_job(described_class)
     end
 
+    it 'enqueues users whose Google Records points were collapsed onto one import tracker' do
+      Track.where(tracker_id: nil).update_all(tracker_id: 'backfilled')
+      user_with_collapsed_points = create(:user)
+      collapsed_import = create(:import, user: user_with_collapsed_points, source: :google_records)
+      create(:point, user: user_with_collapsed_points, import: collapsed_import,
+                     tracker_id: "legacy-import-#{collapsed_import.id}")
+
+      expect do
+        described_class.perform_now
+      end.to have_enqueued_job(described_class).with(user_with_collapsed_points.id).exactly(:once)
+    end
+
+    it 'leaves alone users whose legacy-import points came from another source' do
+      Track.where(tracker_id: nil).update_all(tracker_id: 'backfilled')
+      gpx_user = create(:user)
+      gpx_import = create(:import, user: gpx_user, source: :gpx)
+      create(:point, user: gpx_user, import: gpx_import, tracker_id: "legacy-import-#{gpx_import.id}")
+
+      expect { described_class.perform_now }.not_to have_enqueued_job(described_class)
+    end
+
     it 'enqueues users whose points still carry a legacy importer constant' do
       Track.where(tracker_id: nil).update_all(tracker_id: 'backfilled')
       user_with_legacy_points = create(:user)

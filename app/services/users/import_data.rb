@@ -64,11 +64,12 @@ class Users::ImportData
     ActiveRecord::Base.transaction do
       extract_archive
       process_archive_data
-      filter_restored_anomalies
       create_success_notification
-
-      @import_stats
     end
+
+    filter_restored_anomalies
+
+    @import_stats
   rescue UnsupportedFormatError => e
     create_failure_notification(e)
     nil
@@ -158,6 +159,11 @@ class Users::ImportData
   # Recompute instead of importing the flags: it also covers archives written
   # before a filtering improvement shipped. Honours the user's own
   # gps_filtering_enabled setting, which was restored moments ago.
+  #
+  # Runs AFTER the import transaction commits. Inside it, a database error here
+  # would leave the transaction aborted, and the next statement — the success
+  # notification — would fail with PG::InFailedSqlTransaction, discarding an
+  # otherwise complete restore over a filtering problem.
   def filter_restored_anomalies
     min_timestamp, max_timestamp = user.points.pick(
       Arel.sql('MIN(timestamp)'), Arel.sql('MAX(timestamp)')

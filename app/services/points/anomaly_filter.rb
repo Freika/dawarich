@@ -195,13 +195,13 @@ class Points::AnomalyFilter
   # True when the fixes either side belong to one stay and the run leaps away
   # from it without spending any time there. See STAY_RADIUS_METERS.
   def contradicts_stay?(run, previous_point, next_point)
-    return false if haversine_meters(previous_point, next_point) > STAY_RADIUS_METERS
+    return false if distance_meters(previous_point, next_point) > STAY_RADIUS_METERS
 
     dwell = run.last.timestamp - run.first.timestamp
     return false if dwell > MAX_EXCURSION_SPAN_SECONDS
 
-    haversine_meters(previous_point, run.first) > MIN_EXCURSION_METERS &&
-      haversine_meters(run.last, next_point) > MIN_EXCURSION_METERS
+    distance_meters(previous_point, run.first) > MIN_EXCURSION_METERS &&
+      distance_meters(run.last, next_point) > MIN_EXCURSION_METERS
   end
 
   # An excursion has to arrive or leave faster than any ground travel to be worth
@@ -230,27 +230,19 @@ class Points::AnomalyFilter
     seconds = next_point.timestamp - previous_point.timestamp
     return 0.0 unless seconds.positive?
 
-    via_run = haversine_meters(previous_point, run.first) + haversine_meters(run.last, next_point)
-    direct  = haversine_meters(previous_point, next_point)
+    via_run = distance_meters(previous_point, run.first) + distance_meters(run.last, next_point)
+    direct  = distance_meters(previous_point, next_point)
 
     [via_run - direct, 0.0].max / seconds
   end
 
-  EARTH_RADIUS_METERS = 6_371_008.8
+  def distance_meters(from, to)
+    kilometers = Geocoder::Calculations.distance_between(
+      [from.lonlat.y, from.lonlat.x], [to.lonlat.y, to.lonlat.x], units: :km
+    )
 
-  def haversine_meters(from, to)
-    from_lat = to_radians(from.lonlat.y)
-    to_lat   = to_radians(to.lonlat.y)
-    delta_lat = to_lat - from_lat
-    delta_lon = to_radians(to.lonlat.x - from.lonlat.x)
-
-    a = (Math.sin(delta_lat / 2)**2) +
-        (Math.cos(from_lat) * Math.cos(to_lat) * (Math.sin(delta_lon / 2)**2))
-
-    2 * EARTH_RADIUS_METERS * Math.asin([1.0, Math.sqrt(a)].min)
+    kilometers * 1_000
   end
-
-  def to_radians(degrees) = degrees * Math::PI / 180
 
   def fetch_points_with_context(start_time, end_time)
     before_ctx = Point.where(user_id: @user_id).not_anomaly

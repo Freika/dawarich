@@ -34,8 +34,12 @@ class DataMigrations::RecalculatePerTrackerTracksJob < ApplicationJob
     user_ids = User
                .where(
                  'EXISTS (SELECT 1 FROM tracks WHERE tracks.user_id = users.id AND tracks.tracker_id IS NULL) ' \
-                 'OR EXISTS (SELECT 1 FROM points WHERE points.user_id = users.id AND points.tracker_id IN (?))',
-                 Points::TrackerIdBackfiller::LEGACY_CONSTANTS
+                 'OR EXISTS (SELECT 1 FROM points WHERE points.user_id = users.id AND points.tracker_id IN (?)) ' \
+                 'OR EXISTS (SELECT 1 FROM points INNER JOIN imports ON imports.id = points.import_id ' \
+                 'WHERE points.user_id = users.id AND imports.source = ? AND points.tracker_id LIKE ?)',
+                 Points::TrackerIdBackfiller::LEGACY_CONSTANTS,
+                 Import.sources[:google_records],
+                 "#{Points::DeviceTagBackfiller::LEGACY_IMPORT_PREFIX}%"
                )
                .pluck(:id)
     return if user_ids.empty?

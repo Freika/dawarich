@@ -75,7 +75,6 @@ class Users::SafeSettings
     'max_gap_minutes_in_city' => 120,
     # GPS noise filtering (Points::AnomalyFilter)
     'gps_filtering_enabled' => true,
-    'gps_accuracy_threshold' => 100,
     'timezone' => ENV.fetch('TIME_ZONE', 'UTC'),
     'visit_radius_meters' => 100,
     'visit_min_points' => 3,
@@ -84,9 +83,6 @@ class Users::SafeSettings
     'stay_max_gap_minutes' => 60,
     'point_dragging_enabled' => false
   }.freeze
-
-  GPS_ACCURACY_THRESHOLD_MIN = 50
-  GPS_ACCURACY_THRESHOLD_MAX = 1000
 
   def initialize(settings = {}, plan: nil)
     @settings = DEFAULT_VALUES.deep_dup.deep_merge(settings)
@@ -131,7 +127,6 @@ class Users::SafeSettings
       min_minutes_spent_in_city: min_minutes_spent_in_city,
       max_gap_minutes_in_city: max_gap_minutes_in_city,
       gps_filtering_enabled: gps_filtering_enabled?,
-      gps_accuracy_threshold: gps_accuracy_threshold,
       timezone: timezone,
       visit_radius_meters: visit_radius_meters,
       visit_min_points: visit_min_points,
@@ -350,11 +345,6 @@ class Users::SafeSettings
     return true if value.nil?
 
     ActiveModel::Type::Boolean.new.cast(value)
-  end
-
-  def gps_accuracy_threshold
-    raw = settings['gps_accuracy_threshold'] || DEFAULT_VALUES['gps_accuracy_threshold']
-    raw.to_i.clamp(GPS_ACCURACY_THRESHOLD_MIN, GPS_ACCURACY_THRESHOLD_MAX)
   end
 
   def point_dragging_enabled?

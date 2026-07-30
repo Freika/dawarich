@@ -51,7 +51,6 @@ const DEFAULT_SETTINGS = {
   maxGapMinutesInCity: 120,
   stayMaxGapMinutes: 60,
   gpsFilteringEnabled: true,
-  gpsAccuracyThreshold: 100,
   pointDraggingEnabled: false,
   transportationExpertMode: false,
   enabledTransportationModes: [
@@ -122,7 +121,6 @@ const BACKEND_SETTINGS_MAP = {
   maxGapMinutesInCity: "max_gap_minutes_in_city",
   stayMaxGapMinutes: "stay_max_gap_minutes",
   gpsFilteringEnabled: "gps_filtering_enabled",
-  gpsAccuracyThreshold: "gps_accuracy_threshold",
   pointDraggingEnabled: "point_dragging_enabled",
   transportationExpertMode: "transportation_expert_mode",
   enabledTransportationModes: "enabled_transportation_modes",
@@ -323,11 +321,6 @@ export class SettingsManager {
               value = SettingsManager._parseIntOr(
                 value,
                 DEFAULT_SETTINGS.stayMaxGapMinutes,
-              )
-            } else if (frontendKey === "gpsAccuracyThreshold") {
-              value = SettingsManager._parseIntOr(
-                value,
-                DEFAULT_SETTINGS.gpsAccuracyThreshold,
               )
             } else if (frontendKey === "gpsFilteringEnabled") {
               value = value === true || value === "true"

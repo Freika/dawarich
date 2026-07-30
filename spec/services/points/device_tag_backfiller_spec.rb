@@ -75,6 +75,31 @@ RSpec.describe Points::DeviceTagBackfiller do
         .not_to(change { already_done.reload.updated_at })
     end
 
+    # Every 1.10.1+ install already ran the legacy backfill migration, which
+    # stamped these points 'legacy-import-<id>'. Skipping that value would make
+    # this repair a no-op on exactly the instances that need it.
+    it 're-stamps points the earlier backfill collapsed onto one import tracker' do
+      collapsed = point_at('2024-06-22T19:41:31Z', tracker: "legacy-import-#{import.id}")
+
+      described_class.new(import).call
+
+      expect(collapsed.reload.tracker_id).to eq('google-records-device--2008693898')
+    end
+
+    it 'does nothing on a second run' do
+      point_at('2024-06-22T19:41:31Z')
+      described_class.new(import).call
+
+      expect(described_class.new(import).call).to eq(0)
+    end
+
+    it 'survives a storage failure without taking the caller down' do
+      allow(import.file.blob.service).to receive(:path_for).and_raise(StandardError, 'S3 timeout')
+      allow(import.file).to receive(:open).and_raise(StandardError, 'S3 timeout')
+
+      expect { expect(described_class.new(import).call).to eq(0) }.not_to raise_error
+    end
+
     it 'leaves points from other imports alone' do
       other_import = create(:import, user: user, source: :google_records)
       stranger = create(:point, user: user, import: other_import,
