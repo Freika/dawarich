@@ -145,5 +145,42 @@ RSpec.describe Entitlements do
         expect(entitlements.data_window).to be_nil
       end
     end
+
+    context 'with a lite user whose family owner subscription lapsed' do
+      let(:user) { create(:user, plan: :lite, skip_auto_trial: true) }
+
+      def build_family_with_owner(active_until:, status: :inactive)
+        owner = create(:user, plan: :family, skip_auto_trial: true, status: status,
+                              active_until: active_until)
+        family = create(:family, creator: owner)
+        create(:family_membership, :owner, family: family, user: owner)
+        create(:family_membership, family: family, user: user)
+      end
+
+      it 'reverts the member to their raw plan once the owner subscription lapses' do
+        build_family_with_owner(active_until: 1.day.ago)
+
+        expect(entitlements.effective_plan).to eq(:lite)
+        expect(entitlements.full_access?).to be false
+      end
+
+      it 'keeps family access while a cancelled owner is still inside the paid period' do
+        build_family_with_owner(active_until: 10.days.from_now)
+
+        expect(entitlements.effective_plan).to eq(:family)
+      end
+
+      it 'grants family access while the owner is on a trial' do
+        build_family_with_owner(active_until: 7.days.from_now, status: :trial)
+
+        expect(entitlements.effective_plan).to eq(:family)
+      end
+
+      it 'reverts the member when the owner has no subscription window at all' do
+        build_family_with_owner(active_until: nil)
+
+        expect(entitlements.effective_plan).to eq(:lite)
+      end
+    end
   end
 end

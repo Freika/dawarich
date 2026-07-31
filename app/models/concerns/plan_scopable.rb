@@ -3,7 +3,7 @@
 module PlanScopable
   extend ActiveSupport::Concern
 
-  delegate :effective_plan, :full_access?, to: :entitlements
+  delegate :effective_plan, :full_access?, :inherited_family_access?, to: :entitlements
 
   def entitlements
     @entitlements ||= Entitlements.for(self)

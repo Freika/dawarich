@@ -11,9 +11,18 @@ class Entitlements
 
   def effective_plan
     return @user.plan.to_sym if self_hosted?
-    return :family if @user.in_family? && @user.family&.owner&.family?
+    return :family if inherited_family_access?
 
     @user.plan.to_sym
+  end
+
+  def inherited_family_access?
+    return false unless @user.in_family?
+
+    owner = @user.family&.owner
+    return false unless owner&.family?
+
+    owner.active_until&.future? || false
   end
 
   def full_access?
