@@ -5,9 +5,18 @@ module PlanScopable
 
   def effective_plan
     return plan.to_sym if DawarichSettings.self_hosted?
-    return :family if in_family? && family&.owner&.family?
+    return :family if inherited_family_access?
 
     plan.to_sym
+  end
+
+  def inherited_family_access?
+    return false unless in_family?
+
+    owner = family&.owner
+    return false unless owner&.family?
+
+    owner.active_until&.future? || false
   end
 
   def full_access?
