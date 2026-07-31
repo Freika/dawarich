@@ -141,13 +141,25 @@
   background: linear-gradient(160deg, #2a3038 0%, #171b20 100%);
   border: 1px solid var(--frame);
   box-shadow:
+    calc(var(--rimx, 0px) * 0.1) calc(var(--rimy, 0.6px) * 0.1) 0 #39424e,
+    calc(var(--rimx, 0px) * 0.2) calc(var(--rimy, 0.6px) * 0.2) 0 #353d48,
+    calc(var(--rimx, 0px) * 0.3) calc(var(--rimy, 0.6px) * 0.3) 0 #303843,
+    calc(var(--rimx, 0px) * 0.4) calc(var(--rimy, 0.6px) * 0.4) 0 #2c333d,
+    calc(var(--rimx, 0px) * 0.5) calc(var(--rimy, 0.6px) * 0.5) 0 #282e37,
+    calc(var(--rimx, 0px) * 0.6) calc(var(--rimy, 0.6px) * 0.6) 0 #232a32,
+    calc(var(--rimx, 0px) * 0.7) calc(var(--rimy, 0.6px) * 0.7) 0 #1f252c,
+    calc(var(--rimx, 0px) * 0.8) calc(var(--rimy, 0.6px) * 0.8) 0 #1b2026,
+    calc(var(--rimx, 0px) * 0.9) calc(var(--rimy, 0.6px) * 0.9) 0 #161b21,
+    calc(var(--rimx, 0px) * 1) calc(var(--rimy, 0.6px) * 1) 0 #12161b,
     0 12px 30px rgba(0, 0, 0, 0.55),
+    var(--sx, 0px) calc(14px + var(--sy, 0px)) 34px rgba(0, 0, 0, var(--sa, 0)),
     0 0 var(--glow-idle) var(--glow),
     0 0 calc(var(--glow-size) * var(--gl, 0)) var(--glow),
     0 0 calc(var(--glow-size-far) * var(--gl, 0)) var(--glow-soft);
 }
 
 .ach-card--common {
+  --holo-mesh: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'60'%20height%3D'34.641'%20viewBox%3D'0%200%2060%2034.641'%3E%3Cpath%20d%3D'M-20%200%20L-10.0%20-17.32%20L10.0%20-17.32%20L20%200%20L10.0%2017.32%20L-10.0%2017.32%20Z%20M40%200%20L50.0%20-17.32%20L70.0%20-17.32%20L80%200%20L70.0%2017.32%20L50.0%2017.32%20Z%20M-20%2034.641%20L-10.0%2017.320999999999998%20L10.0%2017.320999999999998%20L20%2034.641%20L10.0%2051.961%20L-10.0%2051.961%20Z%20M40%2034.641%20L50.0%2017.320999999999998%20L70.0%2017.320999999999998%20L80%2034.641%20L70.0%2051.961%20L50.0%2051.961%20Z%20M10.0%2017.3205%20L20.0%200.0004999999999988347%20L40.0%200.0004999999999988347%20L50.0%2017.3205%20L40.0%2034.6405%20L20.0%2034.6405%20Z'%20fill%3D'none'%20stroke%3D'rgb(220%2C228%2C235)'%20stroke-opacity%3D'0.5'%20stroke-width%3D'3'%2F%3E%3C%2Fsvg%3E");
   --frame: #8a9199;
   --gem: #6d7680;
   --glow: rgba(170, 180, 190, 0.3);
@@ -166,6 +178,7 @@
 }
 
 .ach-card--rare {
+  --holo-mesh: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'60'%20height%3D'34.641'%20viewBox%3D'0%200%2060%2034.641'%3E%3Cpath%20d%3D'M-20%200%20L-10.0%20-17.32%20L10.0%20-17.32%20L20%200%20L10.0%2017.32%20L-10.0%2017.32%20Z%20M40%200%20L50.0%20-17.32%20L70.0%20-17.32%20L80%200%20L70.0%2017.32%20L50.0%2017.32%20Z%20M-20%2034.641%20L-10.0%2017.320999999999998%20L10.0%2017.320999999999998%20L20%2034.641%20L10.0%2051.961%20L-10.0%2051.961%20Z%20M40%2034.641%20L50.0%2017.320999999999998%20L70.0%2017.320999999999998%20L80%2034.641%20L70.0%2051.961%20L50.0%2051.961%20Z%20M10.0%2017.3205%20L20.0%200.0004999999999988347%20L40.0%200.0004999999999988347%20L50.0%2017.3205%20L40.0%2034.6405%20L20.0%2034.6405%20Z'%20fill%3D'none'%20stroke%3D'rgb(80%2C180%2C255)'%20stroke-opacity%3D'0.5'%20stroke-width%3D'3'%2F%3E%3C%2Fsvg%3E");
   --frame: #4a90d9;
   --gem: #2f6db3;
   --glow: rgba(90, 170, 255, 0.6);
@@ -184,6 +197,7 @@
 }
 
 .ach-card--epic {
+  --holo-mesh: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'60'%20height%3D'34.641'%20viewBox%3D'0%200%2060%2034.641'%3E%3Cpath%20d%3D'M-20%200%20L-10.0%20-17.32%20L10.0%20-17.32%20L20%200%20L10.0%2017.32%20L-10.0%2017.32%20Z%20M40%200%20L50.0%20-17.32%20L70.0%20-17.32%20L80%200%20L70.0%2017.32%20L50.0%2017.32%20Z%20M-20%2034.641%20L-10.0%2017.320999999999998%20L10.0%2017.320999999999998%20L20%2034.641%20L10.0%2051.961%20L-10.0%2051.961%20Z%20M40%2034.641%20L50.0%2017.320999999999998%20L70.0%2017.320999999999998%20L80%2034.641%20L70.0%2051.961%20L50.0%2051.961%20Z%20M10.0%2017.3205%20L20.0%200.0004999999999988347%20L40.0%200.0004999999999988347%20L50.0%2017.3205%20L40.0%2034.6405%20L20.0%2034.6405%20Z'%20fill%3D'none'%20stroke%3D'rgb(255%2C80%2C80)'%20stroke-opacity%3D'0.5'%20stroke-width%3D'3'%2F%3E%3C%2Fsvg%3E");
   --frame: #a45ee5;
   --gem: #7f3ec2;
   --glow: rgba(180, 100, 255, 0.7);
@@ -203,6 +217,7 @@
 }
 
 .ach-card--legendary {
+  --holo-mesh: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'60'%20height%3D'34.641'%20viewBox%3D'0%200%2060%2034.641'%3E%3Cpath%20d%3D'M-20%200%20L-10.0%20-17.32%20L10.0%20-17.32%20L20%200%20L10.0%2017.32%20L-10.0%2017.32%20Z%20M40%200%20L50.0%20-17.32%20L70.0%20-17.32%20L80%200%20L70.0%2017.32%20L50.0%2017.32%20Z%20M-20%2034.641%20L-10.0%2017.320999999999998%20L10.0%2017.320999999999998%20L20%2034.641%20L10.0%2051.961%20L-10.0%2051.961%20Z%20M40%2034.641%20L50.0%2017.320999999999998%20L70.0%2017.320999999999998%20L80%2034.641%20L70.0%2051.961%20L50.0%2051.961%20Z%20M10.0%2017.3205%20L20.0%200.0004999999999988347%20L40.0%200.0004999999999988347%20L50.0%2017.3205%20L40.0%2034.6405%20L20.0%2034.6405%20Z'%20fill%3D'none'%20stroke%3D'rgb(255%2C190%2C70)'%20stroke-opacity%3D'0.55'%20stroke-width%3D'3'%2F%3E%3C%2Fsvg%3E");
   --frame: #e0a13e;
   --gem: #c07f22;
   --glow: rgba(255, 185, 60, 0.8);
@@ -358,7 +373,8 @@
   position: absolute;
   left: 50%;
   top: 42%;
-  transform: translate(-50%, -100%);
+  transform: translate(-50%, -100%) translate(var(--px, 0px), var(--py, 0px));
+  transition: transform 0.18s ease-out;
 }
 
 .ach-pin-head {
@@ -515,6 +531,63 @@
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6));
 }
 
+/* Paper grain (::before) and laminate glare (::after). Both sit on .ach-card
+   rather than inside .ach-frame: the frame paints below .ach-holo (z-index 4),
+   so nothing nested in it can reach the glare's layer above the foil. They also
+   stay clear of the holo's mask this way.
+   feTurbulence writes noise into ALPHA as well as RGB, so its raw output is
+   mostly transparent and blends to nothing over a dark card; the feColorMatrix
+   flattens it to opaque greyscale centred on ~0.5, which is what `overlay`
+   needs to push light and dark symmetrically. */
+.ach-card::before,
+.ach-card::after {
+  content: "";
+  position: absolute;
+  inset: 7px;
+  border-radius: 13px;
+  pointer-events: none;
+}
+
+.ach-card::before {
+  z-index: 3;
+  opacity: 0.1;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0.33 0.33 0.33 0 0 0.33 0.33 0.33 0 0 0.33 0.33 0.33 0 0 0 0 0 0 1'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 160px 160px;
+}
+
+.ach-card::after {
+  z-index: 6;
+  opacity: 0.18;
+  mix-blend-mode: screen;
+  background-image: linear-gradient(
+    105deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.42) 47%,
+    rgba(255, 255, 255, 0.16) 54%,
+    transparent 68%
+  );
+  background-size: 250% 250%;
+  background-position: var(--gx, 50%) var(--gy, 50%);
+  transition: background-position 0.18s ease-out;
+}
+
+/* Layer parallax: the art sits below the glass, so it lags the frame as the
+   card turns. `.ach-art-canvas` is inset -4px purely as bleed — the map image
+   is exactly host-sized (`.ach-art-canvas img { transform: none }` cancels the
+   1.06 scale `.ach-art img` applies elsewhere), so without it a shift of a few
+   px exposes bare frame at one edge. --px/--py peak at ~2.8px for the shipped
+   tilt, well inside that 4px budget. */
+.ach-art-canvas,
+.ach-art-silhouette {
+  transform: translate(var(--px, 0px), var(--py, 0px));
+  transition: transform 0.18s ease-out;
+}
+
+.ach-art-silhouette {
+  transform: translate(var(--px, 0px), var(--py, 0px)) scale(1.03);
+}
+
 .ach-holo {
   position: absolute;
   inset: 7px;
@@ -530,36 +603,38 @@
       rgba(255, 255, 255, 0.55) 0%,
       rgba(255, 255, 255, 0) 45%
     ),
-    var(--holo);
+    var(--holo-mesh), var(--holo);
   background-position:
     var(--mx, 50%) 0%,
-    calc(var(--mx, 50%) * 1.5) 0%;
+    0 0,
+    calc(50% + (var(--mx, 50%) - 50%) * 0.6) 0%;
   background-size:
     100% 100%,
+    58px 33.49px,
     300% 300%;
   -webkit-mask-image:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='27.7128' height='48' viewBox='0 0 27.7128 48'%3E%3Cpath d='M13.8564 0 L27.7128 8 L27.7128 24 L13.8564 32 L0 24 L0 8 Z M13.8564 32 L13.8564 48' fill='none' stroke='%23ffffff' stroke-width='2.5'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'60'%20height%3D'34.641'%20viewBox%3D'0%200%2060%2034.641'%3E%3Cpath%20d%3D'M-20%200%20L-10.0%20-17.32%20L10.0%20-17.32%20L20%200%20L10.0%2017.32%20L-10.0%2017.32%20Z%20M40%200%20L50.0%20-17.32%20L70.0%20-17.32%20L80%200%20L70.0%2017.32%20L50.0%2017.32%20Z%20M-20%2034.641%20L-10.0%2017.320999999999998%20L10.0%2017.320999999999998%20L20%2034.641%20L10.0%2051.961%20L-10.0%2051.961%20Z%20M40%2034.641%20L50.0%2017.320999999999998%20L70.0%2017.320999999999998%20L80%2034.641%20L70.0%2051.961%20L50.0%2051.961%20Z%20M10.0%2017.3205%20L20.0%200.0004999999999988347%20L40.0%200.0004999999999988347%20L50.0%2017.3205%20L40.0%2034.6405%20L20.0%2034.6405%20Z'%20fill%3D'none'%20stroke%3D'%2523ffffff'%20stroke-opacity%3D'1'%20stroke-width%3D'3'%2F%3E%3C%2Fsvg%3E"),
     radial-gradient(
       circle at var(--mx, 50%) var(--my, 50%),
       rgba(0, 0, 0, 1) 0%,
       rgba(0, 0, 0, 0) 60%
     );
   -webkit-mask-size:
-    34.641px 60px,
+    58px 33.49px,
     100% 100%;
   -webkit-mask-position:
     0 0,
     0 0;
   -webkit-mask-composite: source-in;
   mask-image:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='27.7128' height='48' viewBox='0 0 27.7128 48'%3E%3Cpath d='M13.8564 0 L27.7128 8 L27.7128 24 L13.8564 32 L0 24 L0 8 Z M13.8564 32 L13.8564 48' fill='none' stroke='%23ffffff' stroke-width='2.5'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'60'%20height%3D'34.641'%20viewBox%3D'0%200%2060%2034.641'%3E%3Cpath%20d%3D'M-20%200%20L-10.0%20-17.32%20L10.0%20-17.32%20L20%200%20L10.0%2017.32%20L-10.0%2017.32%20Z%20M40%200%20L50.0%20-17.32%20L70.0%20-17.32%20L80%200%20L70.0%2017.32%20L50.0%2017.32%20Z%20M-20%2034.641%20L-10.0%2017.320999999999998%20L10.0%2017.320999999999998%20L20%2034.641%20L10.0%2051.961%20L-10.0%2051.961%20Z%20M40%2034.641%20L50.0%2017.320999999999998%20L70.0%2017.320999999999998%20L80%2034.641%20L70.0%2051.961%20L50.0%2051.961%20Z%20M10.0%2017.3205%20L20.0%200.0004999999999988347%20L40.0%200.0004999999999988347%20L50.0%2017.3205%20L40.0%2034.6405%20L20.0%2034.6405%20Z'%20fill%3D'none'%20stroke%3D'%2523ffffff'%20stroke-opacity%3D'1'%20stroke-width%3D'3'%2F%3E%3C%2Fsvg%3E"),
     radial-gradient(
       circle at var(--mx, 50%) var(--my, 50%),
       rgba(0, 0, 0, 1) 0%,
       rgba(0, 0, 0, 0) 60%
     );
   mask-size:
-    34.641px 60px,
+    58px 33.49px,
     100% 100%;
   mask-position:
     0 0,
@@ -994,7 +1069,11 @@
 
 .ach-art-canvas {
   position: absolute;
-  inset: 0;
+  /* bleed for the parallax drift: the map image is exactly host-sized (the
+     rule below cancels the 1.06 scale `.ach-art img` applies elsewhere), so
+     without it a shift of a few px exposes bare frame at one edge. --px/--py
+     peak at ~2.8px for the shipped tilt, inside this 4px budget. */
+  inset: -4px;
   background: #1a222c;
 }
 
