@@ -295,9 +295,11 @@
           </button>
           <p class="text-xs text-warning hidden" data-poster-studio-editor-target="saveNotice"></p>
 
-          <%# ── Order a print ── rendered only behind the poster_ordering flag,
-              then hidden until PRINT_ORDER_URL is set; only one of
-              {CTA, size picker, dialog} shows at a time. %>
+          <%# ── Order a print ── ships on: the poster_ordering flag drops this
+              block on an instance that turns it off, and the controller hides
+              it when PRINT_ORDER_URL is blanked (it otherwise defaults to the
+              hosted service); only one of {CTA, size picker, dialog} shows at
+              a time. %>
           <% if poster_ordering_enabled? %>
           <div class="hidden space-y-2" data-poster-studio-editor-target="orderSection">
             <div class="divider my-0 text-xs font-medium opacity-50">Order a print</div>

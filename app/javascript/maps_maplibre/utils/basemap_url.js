@@ -1,3 +1,5 @@
+const TILE_FILE_EXTENSIONS = [".png", ".jpg", ".jpeg", ".webp", ".mvt", ".pbf"]
+
 /**
  * Classify a custom basemap URL into the kind of MapLibre source it describes.
  * @param {string} url - Trimmed or untrimmed basemap URL
@@ -17,9 +19,13 @@ export function classifyBasemapUrl(url) {
     trimmed.includes("{y}")
 
   if (!hasXyz) {
-    return path.endsWith(".json") && isStyleDocumentLocation(trimmed)
-      ? "style"
-      : null
+    if (/[{}]/.test(trimmed)) return null
+
+    if (TILE_FILE_EXTENSIONS.some((extension) => path.endsWith(extension))) {
+      return null
+    }
+
+    return isStyleDocumentLocation(trimmed) ? "style" : null
   }
 
   if (
