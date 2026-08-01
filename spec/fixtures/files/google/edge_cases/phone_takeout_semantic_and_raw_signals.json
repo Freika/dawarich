@@ -1,0 +1,40 @@
+{
+  "semanticSegments": [
+    {
+      "startTime": "2026-06-20T10:00:00.000+02:00",
+      "endTime": "2026-06-20T10:02:00.000+02:00",
+      "timelinePath": [
+        {
+          "point": "52.520000°, 13.405000°",
+          "time": "2026-06-20T10:00:00.000+02:00"
+        },
+        {
+          "point": "52.521000°, 13.406000°",
+          "time": "2026-06-20T10:01:00.000+02:00"
+        }
+      ]
+    }
+  ],
+  "rawSignals": [
+    {
+      "position": {
+        "LatLng": "52.520500°, 13.405500°",
+        "accuracyMeters": 8,
+        "altitudeMeters": 40.0,
+        "source": "UNKNOWN",
+        "timestamp": "2026-06-20T10:00:31.000+02:00",
+        "speedMetersPerSecond": 0.5
+      }
+    },
+    {
+      "position": {
+        "LatLng": "52.520700°, 13.405700°",
+        "accuracyMeters": 9,
+        "altitudeMeters": 41.0,
+        "source": "WIFI_ONLY",
+        "timestamp": "2026-06-20T10:01:22.000+02:00",
+        "speedMetersPerSecond": 0.4
+      }
+    }
+  ]
+}

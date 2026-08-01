@@ -1,0 +1,24 @@
+{
+  "rawSignals": [
+    {
+      "position": {
+        "LatLng": "52.520500°, 13.405500°",
+        "accuracyMeters": 8,
+        "altitudeMeters": 40.0,
+        "source": "UNKNOWN",
+        "timestamp": "2026-06-20T10:00:31.000+02:00",
+        "speedMetersPerSecond": 0.5
+      }
+    },
+    {
+      "position": {
+        "LatLng": "52.520700°, 13.405700°",
+        "accuracyMeters": 9,
+        "altitudeMeters": 41.0,
+        "source": "WIFI_ONLY",
+        "timestamp": "2026-06-20T10:01:22.000+02:00",
+        "speedMetersPerSecond": 0.4
+      }
+    }
+  ]
+}
