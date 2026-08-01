@@ -3,6 +3,8 @@
 require 'fit4ruby'
 
 class Fit::Importer
+  class UnsupportedProfileError < StandardError; end
+
   include Imports::Broadcaster
   include Imports::BulkInsertable
   include Imports::FileLoader
@@ -32,6 +34,10 @@ class Fit::Importer
     unless activity
       import.update!(status: :failed, error_message: I18n.t('services.fit.importer.no_activities_found_in_fit_file'))
       return
+    end
+
+    unless activity.is_a?(Fit4Ruby::Activity)
+      raise UnsupportedProfileError, 'This FIT file does not contain an activity with GPS records'
     end
 
     points_data = []

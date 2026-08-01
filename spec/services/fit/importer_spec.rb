@@ -150,6 +150,23 @@ RSpec.describe Fit::Importer do
       end
     end
 
+    context 'with a non-activity FIT profile' do
+      [Fit4Ruby::Monitoring_B, Fit4Ruby::Metrics].each do |profile_class|
+        it "rejects #{profile_class}" do
+          allow(Fit4Ruby).to receive(:read).and_return(profile_class.new)
+
+          expect do
+            described_class.new(import, user.id, fit_fixture_path).call
+          end.to raise_error(
+            Fit::Importer::UnsupportedProfileError,
+            'This FIT file does not contain an activity with GPS records'
+          )
+
+          expect(user.points).to be_empty
+        end
+      end
+    end
+
     context 'fit4ruby strict-validation overrides' do
       it 'HeartRateZones#check is a no-op on lap_index mismatch' do
         zones = Fit4Ruby::HeartRateZones.new({})

@@ -147,6 +147,43 @@ RSpec.describe Imports::Create do
       end
     end
 
+    context 'when a FIT file contains a non-activity profile' do
+      let(:import) { create(:import, user:, source: 'fit', status: 'created') }
+
+      before do
+        import.file.attach(io: StringIO.new('synthetic FIT payload'), filename: 'metrics.fit',
+                           content_type: 'application/octet-stream')
+        allow(ExceptionReporter).to receive(:call)
+        allow(Turbo::StreamsChannel).to receive(:broadcast_replace_to)
+        allow(Import::UpdatePointsCountJob).to receive(:perform_later)
+        allow(Stats::CalculatingJob).to receive(:perform_later)
+        allow(VisitSuggestingJob).to receive(:perform_later)
+        allow(Tracks::ParallelGeneratorJob).to receive(:perform_later)
+      end
+
+      [Fit4Ruby::Monitoring_B, Fit4Ruby::Metrics].each do |profile_class|
+        it "fails #{profile_class} through the expected import lifecycle" do
+          allow(Fit4Ruby).to receive(:read).and_return(profile_class.new)
+
+          expect { service.call }.to change { user.notifications.error.where(title: 'Import failed').count }.by(1)
+
+          expect(import.reload).to be_failed
+          expect(import.error_message).to eq('This FIT file does not contain an activity with GPS records')
+          expect(ExceptionReporter).not_to have_received(:call)
+          expect(Turbo::StreamsChannel).to have_received(:broadcast_replace_to).with(
+            [user, :imports],
+            target: ActionView::RecordIdentifier.dom_id(import),
+            partial: 'imports/table_row',
+            locals: hash_including(import: import)
+          ).twice
+          expect(Import::UpdatePointsCountJob).not_to have_received(:perform_later)
+          expect(Stats::CalculatingJob).not_to have_received(:perform_later)
+          expect(VisitSuggestingJob).not_to have_received(:perform_later)
+          expect(Tracks::ParallelGeneratorJob).not_to have_received(:perform_later)
+        end
+      end
+    end
+
     context 'when the uploaded file is empty' do
       let(:import) { create(:import, user:, source: nil, status: 'created') }
 
