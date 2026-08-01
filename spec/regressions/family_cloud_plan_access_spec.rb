@@ -201,6 +201,17 @@ RSpec.describe 'Family access on cloud', type: :request do
       expect(member.reload.family_sharing_enabled?).to be(false)
     end
 
+    it 'shows a lapsed owner the pending invitations page' do
+      create(:family_invitation, family: family, invited_by: owner, email: 'someone@example.com')
+      owner.update!(plan: :pro)
+      sign_in owner
+
+      get family_invitations_path
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include(new_family_path)
+    end
+
     it 'lets a lapsed owner revoke a pending invitation' do
       invitation = create(:family_invitation, family: family, invited_by: owner, email: 'someone@example.com')
       owner.update!(plan: :pro)
