@@ -20,8 +20,16 @@ RSpec.describe Visits::Create do
 
       it 'creates a visit successfully' do
         expect { service.call }.to change { user.visits.count }.by(1)
-        expect(service.call).to be_truthy
         expect(service.visit).to be_persisted
+      end
+
+      it 'returns the existing visit instead of duplicating it on a repeated call' do
+        first = described_class.new(user, valid_params)
+        first.call
+
+        expect { service.call }.not_to(change { user.visits.count })
+        expect(service.call).to be_truthy
+        expect(service.visit).to eq(first.visit)
       end
 
       it 'creates a visit with correct attributes' do

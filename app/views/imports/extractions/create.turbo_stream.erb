@@ -1,0 +1,3 @@
+<%= turbo_stream.replace "import-#{@import.id}-extraction" do %>
+  <%= render 'imports/extraction_card', import: @import %>
+<% end %>

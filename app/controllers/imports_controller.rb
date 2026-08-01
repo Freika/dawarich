@@ -17,7 +17,8 @@ class ImportsController < ApplicationController
 
   def index
     scope = policy_scope(Import)
-            .select(:id, :name, :source, :created_at, :updated_at, :processed, :doubles, :status, :error_message, :demo)
+            .select(:id, :name, :source, :created_at, :updated_at, :processed, :doubles, :status, :error_message, :demo,
+                    :additional_data_extraction_status)
             .with_attached_file
 
     @imports = sorted(scope).page(params[:page])

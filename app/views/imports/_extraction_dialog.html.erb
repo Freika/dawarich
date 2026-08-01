@@ -1,0 +1,45 @@
+<dialog id="extraction-dialog-<%= import.id %>" class="modal">
+  <div class="modal-box max-w-xl">
+    <h3 class="font-bold text-lg">Extract additional data from this import</h3>
+
+    <div class="prose prose-sm mt-4 text-base-content/80">
+      <p>
+        Dawarich originally imported your file as raw GPS points. The file also contains:
+      </p>
+      <ul>
+        <li><strong>Visits</strong> — places where the source app recorded you spending time, with start and end times.</li>
+        <li><strong>Tracks</strong> — journeys identified between those visits, with their classified transportation mode (driving, walking, cycling, transit, …).</li>
+        <li><strong>Places</strong> — the named places (home, work, frequent restaurants) the source app associated with your visits.</li>
+      </ul>
+      <p>
+        Click <strong>Extract</strong> to add this data to your Dawarich account. Existing points are not modified.
+        Visits and places already detected from your points by Dawarich are kept side-by-side with the imported ones.
+      </p>
+    </div>
+
+    <%= form_with url: import_extraction_path(import), method: :post, data: { turbo_frame: "import-#{import.id}-extraction" } do |f| %>
+      <div class="form-control mt-4">
+        <label class="label cursor-pointer justify-start gap-3">
+          <%= f.check_box :trust_source, { checked: true, class: 'checkbox checkbox-primary' }, 'true', 'false' %>
+          <div>
+            <div class="label-text font-medium">Trust the source app's classification</div>
+            <div class="label-text-alt text-base-content/60">
+              When checked, transportation modes (driving, walking, cycling, transit) the source app
+              assigned are kept as-is. When unchecked, Dawarich re-runs its own detector using your settings.
+            </div>
+          </div>
+        </label>
+      </div>
+
+      <div class="modal-action">
+        <button type="button" class="btn btn-ghost"
+                data-action="click->import-extraction#close"
+                data-import-extraction-dialog-id-param="extraction-dialog-<%= import.id %>">
+          Cancel
+        </button>
+        <%= f.submit 'Extract', class: 'btn btn-primary' %>
+      </div>
+    <% end %>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>

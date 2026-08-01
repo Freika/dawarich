@@ -15,28 +15,36 @@ module Visits
         existing_visit = find_existing_visit(visit_data)
         next nil if existing_visit
 
-        ActiveRecord::Base.transaction do
-          area = find_matching_area(visit_data)
-          main_place = area ? nil : PlaceFinder.new(user).find_or_create_place(visit_data)
-
-          visit_instance = Visit.create!(
-            {
-              user: user, area: area, place: main_place,
-              started_at: Time.zone.at(visit_data[:start_time]),
-              ended_at:   Time.zone.at(visit_data[:end_time]),
-              duration:   visit_data[:duration] / 60,
-              name:       generate_visit_name(area, main_place, visit_data[:suggested_name]),
-              status:     :suggested
-            }.merge(confidence_attributes(visit_data, area, main_place))
-          )
-
-          Point.where(id: visit_data[:points].map(&:id)).update_all(visit_id: visit_instance.id)
-          visit_instance
-        end
+        create_visit(visit_data)
       end.compact
     end
 
     private
+
+    # The fuzzy `find_existing_visit` lookup can miss a visit the unique index
+    # still rejects; drop that one instead of losing the rest of the batch.
+    def create_visit(visit_data)
+      ActiveRecord::Base.transaction(requires_new: true) do
+        area = find_matching_area(visit_data)
+        main_place = area ? nil : PlaceFinder.new(user).find_or_create_place(visit_data)
+
+        visit_instance = Visit.create!(
+          {
+            user: user, area: area, place: main_place,
+            started_at: Time.zone.at(visit_data[:start_time]),
+            ended_at:   Time.zone.at(visit_data[:end_time]),
+            duration:   visit_data[:duration] / 60,
+            name:       generate_visit_name(area, main_place, visit_data[:suggested_name]),
+            status:     :suggested
+          }.merge(confidence_attributes(visit_data, area, main_place))
+        )
+
+        Point.where(id: visit_data[:points].map(&:id)).update_all(visit_id: visit_instance.id)
+        visit_instance
+      end
+    rescue ActiveRecord::RecordNotUnique
+      nil
+    end
 
     def confidence_attributes(visit_data, area, main_place)
       return {} unless @scoring_on

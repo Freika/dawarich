@@ -96,7 +96,9 @@ Rails.application.routes.draw do
   get 'trial/resume', to: 'trial/resume#show', as: :trial_resume
   get 'trial/welcome', to: 'trial/welcome#show', as: :trial_welcome
 
-  resources :imports
+  resources :imports do
+    resource :extraction, only: %i[create destroy], controller: 'imports/extractions'
+  end
   resources :tracks, only: [] do
     resources :segments, controller: 'tracks/segments', only: %i[index update]
 

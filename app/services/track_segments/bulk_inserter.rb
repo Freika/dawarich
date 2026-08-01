@@ -14,7 +14,7 @@ module TrackSegments
     def call
       return [] if segment_data.empty?
 
-      TrackSegment.insert_all(rows)
+      TrackSegment.insert_all(rows, unique_by: %i[track_id start_index])
       segment_data
     end
 
