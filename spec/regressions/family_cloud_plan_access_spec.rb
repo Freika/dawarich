@@ -246,6 +246,28 @@ RSpec.describe 'Family access on cloud', type: :request do
       expect(response).to redirect_to(new_family_path)
     end
 
+    it 'warns an invitee on the invitation page when the family plan has lapsed' do
+      invitation = create(:family_invitation, family: family, invited_by: owner, email: member.email)
+      owner.update!(plan: :pro)
+      sign_in member
+
+      get family_invitation_path(invitation.token)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include('currently inactive')
+      expect(response.body).not_to include(accept_family_invitation_path(token: invitation.token))
+    end
+
+    it 'keeps location requests blocked for a lapsed family' do
+      create(:family_membership, user: member, family: family)
+      owner.update!(plan: :pro)
+      sign_in member
+
+      post family_location_requests_path, params: { target_user_id: owner.id }
+
+      expect(response).to redirect_to(new_family_path)
+    end
+
     it 'cannot accept an invitation into a family whose plan has lapsed' do
       invitation = create(:family_invitation, family: family, invited_by: owner, email: member.email)
       owner.update!(plan: :pro)

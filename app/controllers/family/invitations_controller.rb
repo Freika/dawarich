@@ -20,9 +20,11 @@ class Family::InvitationsController < ApplicationController
 
     redirect_to root_path, alert: 'This invitation has expired.' and return if @invitation.expired?
 
-    return if @invitation.pending?
+    redirect_to root_path, alert: 'This invitation is no longer valid.' and return unless @invitation.pending?
 
-    redirect_to root_path, alert: 'This invitation is no longer valid.' and return
+    # Warns the invitee up front instead of letting them click Accept only to
+    # be refused by the plan validation in Families::AcceptInvitation.
+    @family_plan_active = DawarichSettings.family_feature_available_for?(@invitation.family.owner)
   end
 
   def create
