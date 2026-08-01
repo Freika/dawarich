@@ -166,6 +166,19 @@ RSpec.describe Points::RawData::Archiver do
       expect(empty_point.reload.raw_data_archived).to be false
     end
 
+    it 'archives points at the timezone-shifted lower timestamp boundary' do
+      epoch_point = create(:point, user: user,
+                                   timestamp: -1.hour.to_i,
+                                   raw_data: { lon: 13.4, lat: 52.5 })
+
+      result = archiver.archive_user(user.id)
+
+      epoch_archive = epoch_point.reload.raw_data_archive
+      expect(epoch_archive).to be_present
+      expect([epoch_archive.year, epoch_archive.month]).to eq([1970, 1])
+      expect(result[:failed]).to eq(0)
+    end
+
     context 'with points from multiple months' do
       let!(:june_points) do
         june_date = 4.months.ago.beginning_of_month

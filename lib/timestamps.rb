@@ -2,8 +2,8 @@
 
 module Timestamps
   def self.parse_timestamp(timestamp)
-    min_timestamp = Time.zone.parse('1970-01-01').to_i
-    max_timestamp = Time.zone.parse('2100-01-01').to_i
+    min_timestamp = Time.utc(1970, 1, 1).to_i
+    max_timestamp = Time.utc(2100, 1, 1).to_i
 
     parsed = DateTime.parse(timestamp).to_time.to_i
 
