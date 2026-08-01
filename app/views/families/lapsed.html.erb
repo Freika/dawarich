@@ -1,0 +1,68 @@
+<% content_for :title, "Family" %>
+
+<div class="container mx-auto px-4 py-8">
+  <div class="max-w-2xl mx-auto">
+    <div class="text-center mb-8">
+      <h1 class="text-3xl font-bold text-base-content mb-4">
+        <%= t('families.lapsed.title', default: 'Family plan no longer active') %>
+      </h1>
+      <p class="text-base-content opacity-60">
+        <% if current_user.family_owner? %>
+          <%= t('families.lapsed.owner_description',
+                default: 'Your Family plan is no longer active, so family features are paused for everyone. Your family and its members are kept — renewing restores full access.') %>
+        <% else %>
+          <%= t('families.lapsed.member_description',
+                default: "Your family's plan is no longer active, so family features are paused. They come back when the family owner renews — you don't need a subscription of your own.") %>
+        <% end %>
+      </p>
+    </div>
+
+    <div class="bg-base-200 rounded-lg p-6">
+      <% if current_user.family_owner? %>
+        <div class="text-center mb-6">
+          <%= link_to t('families.lapsed.renew_cta', default: 'Renew Family plan'),
+                @family_upgrade_url,
+                target: '_blank', rel: 'noopener noreferrer',
+                class: 'btn btn-primary' %>
+        </div>
+
+        <% other_members = @members.to_a.reject { |member| member == current_user } %>
+        <% if other_members.any? %>
+          <div class="mb-6">
+            <h2 class="text-sm font-medium mb-2">
+              <%= t('families.lapsed.members_title', default: 'Members') %>
+            </h2>
+            <ul class="space-y-2">
+              <% other_members.each do |member| %>
+                <li class="flex items-center justify-between">
+                  <span class="text-sm"><%= member.email %></span>
+                  <%= link_to family_member_path(member.family_membership),
+                        data: { turbo_confirm: "Remove #{member.email} from the family?", turbo_method: :delete },
+                        class: 'btn btn-ghost btn-xs text-warning' do %>
+                    <%= t('families.lapsed.remove_member', default: 'Remove') %>
+                  <% end %>
+                </li>
+              <% end %>
+            </ul>
+          </div>
+        <% end %>
+      <% end %>
+
+      <div class="flex gap-2 justify-end">
+        <% if current_user.family_owner? %>
+          <%= link_to family_path,
+                data: { turbo_confirm: 'Delete this family? This cannot be undone.', turbo_method: :delete },
+                class: 'btn btn-ghost btn-xs text-error' do %>
+            <%= icon 'trash-2', class: 'w-3.5 h-3.5' %> Delete Family
+          <% end %>
+        <% else %>
+          <%= link_to family_member_path(current_user.family_membership),
+                data: { turbo_confirm: 'Are you sure you want to leave this family?', turbo_method: :delete },
+                class: 'btn btn-ghost btn-xs text-warning' do %>
+            Leave Family
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>

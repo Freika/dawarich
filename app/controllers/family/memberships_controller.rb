@@ -53,10 +53,10 @@ class Family::MembershipsController < ApplicationController
       if member_user == current_user
         redirect_to new_family_path, notice: 'You have left the family'
       else
-        redirect_to family_path, notice: "#{member_user.email} has been removed from the family"
+        redirect_to family_home_path, notice: "#{member_user.email} has been removed from the family"
       end
     else
-      redirect_to family_path, alert: service.error_message || 'Failed to remove member'
+      redirect_to family_home_path, alert: service.error_message || 'Failed to remove member'
     end
   end
 

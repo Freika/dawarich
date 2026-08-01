@@ -24,9 +24,17 @@ class FamiliesController < ApplicationController
   end
 
   def new
-    # Members of a lapsed family fall through to the upgrade CTA: sending them
+    # Members of a lapsed family fall through to the lapsed panel: sending them
     # to #show would bounce them straight back here in a redirect loop.
     redirect_to family_path and return if current_user.in_family? && family_feature_available?
+
+    if current_user.in_family?
+      @family = current_user.family
+      @members = @family.members.includes(:family_membership).order(:email) if current_user.family_owner?
+      @family_upgrade_url = helpers.family_upgrade_url(utm_medium: 'family', utm_content: 'renew_family')
+
+      render :lapsed and return
+    end
 
     @family = Family.new
     @can_create_family = FamilyPolicy.new(current_user, @family).create?
@@ -80,7 +88,7 @@ class FamiliesController < ApplicationController
     authorize @family
 
     if @family.members.count > 1
-      redirect_to family_path, alert: 'Cannot delete family with members. Remove all members first.'
+      redirect_to family_home_path, alert: 'Cannot delete family with members. Remove all members first.'
     else
       @family.destroy
       redirect_to new_family_path, notice: 'Family deleted successfully!'

@@ -139,7 +139,7 @@ RSpec.describe 'Family access on cloud', type: :request do
     end
 
     it 'loses access when the owner stops paying' do
-      create(:family_membership, user: member, family: family)
+      membership = create(:family_membership, user: member, family: family)
       owner.update!(plan: :pro)
       sign_in member
 
@@ -150,7 +150,42 @@ RSpec.describe 'Family access on cloud', type: :request do
       follow_redirect!
 
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include('Upgrade to Family')
+      expect(response.body).to include('no longer active')
+      expect(response.body).to include(family_member_path(membership))
+    end
+
+    it 'shows the lapsed owner member removal and family deletion controls' do
+      membership = create(:family_membership, user: member, family: family)
+      owner.update!(plan: :pro)
+      sign_in owner
+
+      get new_family_path
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include(family_member_path(membership))
+      expect(response.body).to include('Delete Family')
+    end
+
+    it 'keeps the removal notice when a lapsed owner removes a member' do
+      membership = create(:family_membership, user: member, family: family)
+      owner.update!(plan: :pro)
+      sign_in owner
+
+      delete family_member_path(membership)
+
+      expect(response).to redirect_to(new_family_path)
+      expect(flash[:notice]).to include('removed')
+    end
+
+    it 'keeps the alert when a lapsed owner deletes a family that still has members' do
+      create(:family_membership, user: member, family: family)
+      owner.update!(plan: :pro)
+      sign_in owner
+
+      expect { delete family_path }.not_to change(Family, :count)
+
+      expect(response).to redirect_to(new_family_path)
+      expect(flash[:alert]).to include('Cannot delete family with members')
     end
 
     it 'can leave the family after the owner stops paying' do
@@ -173,6 +208,28 @@ RSpec.describe 'Family access on cloud', type: :request do
         .not_to change(Family::Membership, :count)
 
       expect(response).to redirect_to(root_path)
+    end
+  end
+
+  describe 'non-HTML requests against the web guard' do
+    let(:non_subscriber) { create(:user, plan: :pro, skip_auto_trial: true) }
+
+    it 'returns JSON 403 for JSON requests' do
+      sign_in non_subscriber
+
+      get family_path(format: :json)
+
+      expect(response).to have_http_status(:forbidden)
+      expect(JSON.parse(response.body)['error']).to eq('family_plan_required')
+    end
+
+    it 'redirects turbo stream requests to the upgrade page' do
+      sign_in non_subscriber
+
+      get family_path, headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+
+      expect(response).to redirect_to(new_family_path)
+      expect(response).to have_http_status(:see_other)
     end
   end
 

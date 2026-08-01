@@ -10,7 +10,8 @@ class ApplicationController < ActionController::Base
   around_action :set_user_time_zone
   before_action :unread_notifications, :set_self_hosted_status, :store_client_header
 
-  helper_method :current_user_safe_settings, :poster_ordering_enabled?, :family_feature_available?
+  helper_method :current_user_safe_settings, :poster_ordering_enabled?, :family_feature_available?,
+                :current_user_features
 
   # Memoized per-request SafeSettings for the current user. Use this instead of
   # `current_user.safe_settings` in partials/helpers that may render many rows
@@ -19,12 +20,21 @@ class ApplicationController < ActionController::Base
     @current_user_safe_settings ||= current_user&.safe_settings
   end
 
-  # Memoized per request: the navbar asks twice (mobile and desktop menus) and
-  # the answer hits the family_memberships table for cloud users.
-  def family_feature_available?
-    return @family_feature_available if defined?(@family_feature_available)
+  # Memoized per request: the map serializes the whole hash and the navbar asks
+  # for the family flag twice; one plan lookup serves all of them.
+  def current_user_features
+    @current_user_features ||= DawarichSettings.features_for(current_user)
+  end
 
-    @family_feature_available = DawarichSettings.family_feature_available_for?(current_user)
+  def family_feature_available?
+    current_user_features[:family]
+  end
+
+  # Where "back to the family" should land: the family page while the plan is
+  # active, the lapsed/upgrade panel when it is not — going through the gated
+  # #show would bounce and overwrite the flash.
+  def family_home_path
+    family_feature_available? ? family_path : new_family_path
   end
 
   def poster_ordering_enabled?

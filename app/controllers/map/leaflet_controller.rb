@@ -15,7 +15,7 @@ class Map::LeafletController < ApplicationController
     @end_at = parsed_end_at
     @years = years_range
     @points_number = points_count
-    @features = DawarichSettings.features_for(current_user)
+    @features = current_user_features
     @home_coordinates = current_user.home_place_coordinates
     @family_map_sharing_active = family_feature_available? && current_user.family_map_sharing_active?
   end
