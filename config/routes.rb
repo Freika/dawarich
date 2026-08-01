@@ -164,24 +164,24 @@ Rails.application.routes.draw do
   get  '/s/:id',         to: 'shared/links#show',     as: :public_shared_link
   post '/s/:id/unlock',  to: 'shared/links#unlock',   as: :unlock_public_shared_link
 
-  # Family management routes (only if feature is enabled)
-  if DawarichSettings.family_feature_enabled?
-    resource :family, only: %i[show new create edit update destroy] do
-      resources :invitations, except: %i[edit update], controller: 'family/invitations'
-      resources :members, only: %i[destroy], controller: 'family/memberships'
-      resources :location_requests, only: %i[show create], controller: 'family/location_requests' do
-        member do
-          patch :accept
-          patch :decline
-        end
+  # Family management routes. Always defined — per-user access is enforced by
+  # ApplicationController#ensure_family_feature_available!, since the routes are
+  # built at boot and cannot depend on the current user's plan.
+  resource :family, only: %i[show new create edit update destroy] do
+    resources :invitations, except: %i[edit update], controller: 'family/invitations'
+    resources :members, only: %i[destroy], controller: 'family/memberships'
+    resources :location_requests, only: %i[show create], controller: 'family/location_requests' do
+      member do
+        patch :accept
+        patch :decline
       end
-
-      patch 'location_sharing', to: 'family/location_sharing#update', as: :location_sharing
     end
 
-    get 'invitations/:token', to: 'family/invitations#show', as: :public_invitation
-    post 'family/memberships', to: 'family/memberships#create', as: :accept_family_invitation
+    patch 'location_sharing', to: 'family/location_sharing#update', as: :location_sharing
   end
+
+  get 'invitations/:token', to: 'family/invitations#show', as: :public_invitation
+  post 'family/memberships', to: 'family/memberships#create', as: :accept_family_invitation
 
   resources :points, only: %i[index] do
     collection do

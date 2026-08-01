@@ -2,7 +2,7 @@
 
 class Family::InvitationsController < ApplicationController
   before_action :authenticate_user!, except: %i[show]
-  before_action :ensure_family_feature_enabled!, except: %i[show]
+  before_action :ensure_family_feature_available!, except: %i[show]
   before_action :set_family, except: %i[show]
   before_action :set_invitation_by_id_and_family, only: %i[destroy]
 

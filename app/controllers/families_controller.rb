@@ -2,7 +2,9 @@
 
 class FamiliesController < ApplicationController
   before_action :authenticate_user!
-  before_action :ensure_family_feature_enabled!
+  # #new doubles as the landing page for users without the plan: it renders the
+  # upgrade CTA instead of the create form, so it must stay reachable.
+  before_action :ensure_family_feature_available!, except: %i[new]
   before_action :set_family, only: %i[show edit update destroy]
 
   def show

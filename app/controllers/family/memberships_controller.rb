@@ -2,7 +2,10 @@
 
 class Family::MembershipsController < ApplicationController
   before_action :authenticate_user!
-  before_action :ensure_family_feature_enabled!
+  # #create is the invitation-accepting path: the invitee is not in a family yet
+  # and does not hold the plan themselves, so the plan check would lock them out
+  # of the family they were invited to. Family::MembershipPolicy authorizes it.
+  before_action :ensure_family_feature_available!, except: %i[create]
   before_action :set_family, except: %i[create]
   before_action :set_membership, only: %i[destroy]
   before_action :set_invitation, only: %i[create]

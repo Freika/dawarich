@@ -48,7 +48,7 @@ class Points::LiveBroadcaster
   end
 
   def family_sharing?(user)
-    DawarichSettings.family_feature_enabled? &&
+    DawarichSettings.family_feature_available_for?(user) &&
       user.in_family? &&
       user.family_sharing_enabled?
   end

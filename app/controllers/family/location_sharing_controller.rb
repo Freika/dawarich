@@ -4,7 +4,7 @@ class Family::LocationSharingController < ApplicationController
   include FlashStreamable
 
   before_action :authenticate_user!
-  before_action :ensure_family_feature_enabled!
+  before_action :ensure_family_feature_available!
   before_action :ensure_user_in_family!
 
   def update

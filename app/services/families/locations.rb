@@ -10,7 +10,7 @@ class Families::Locations
   MAX_POINTS_PER_MEMBER = 5000
 
   def call
-    return [] unless family_feature_enabled?
+    return [] unless family_feature_available?
     return [] unless user.in_family?
 
     sharing_members = family_members_with_sharing_enabled
@@ -20,7 +20,7 @@ class Families::Locations
   end
 
   def history(start_at:, end_at:)
-    return [] unless family_feature_enabled?
+    return [] unless family_feature_available?
     return [] unless user.in_family?
 
     sharing_members = family_members_with_sharing_enabled
@@ -31,8 +31,8 @@ class Families::Locations
 
   private
 
-  def family_feature_enabled?
-    DawarichSettings.family_feature_enabled?
+  def family_feature_available?
+    DawarichSettings.family_feature_available_for?(user)
   end
 
   def family_members_with_sharing_enabled
