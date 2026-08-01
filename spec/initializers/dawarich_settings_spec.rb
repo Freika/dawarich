@@ -52,6 +52,21 @@ RSpec.describe DawarichSettings do
         expect(described_class.family_feature_available_for?(member)).to be true
       end
 
+      # Duolingo model: entitlement flows from whoever pays. When the owner's
+      # plan lapses, the whole family drops back to their own plans together.
+      it 'is withdrawn from the whole family when the owner stops paying' do
+        owner = create(:user, plan: :family, skip_auto_trial: true)
+        family = create(:family, creator: owner)
+        member = create(:user, plan: :pro, skip_auto_trial: true)
+        create(:family_membership, user: owner, family: family, role: :owner)
+        create(:family_membership, user: member, family: family)
+
+        owner.update!(plan: :pro)
+
+        expect(described_class.family_feature_available_for?(member.reload)).to be false
+        expect(described_class.family_feature_available_for?(owner.reload)).to be false
+      end
+
       it 'does not leak one user answer into the next' do
         subscriber = create(:user, plan: :family, skip_auto_trial: true)
         non_subscriber = create(:user, plan: :pro, skip_auto_trial: true)

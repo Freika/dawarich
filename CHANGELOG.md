@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
-- The Family plan now works on Dawarich Cloud. Family pages, invitations, members and location sharing were available only on self-hosted instances, so subscribers who paid for the Family plan hit errors on every family route. Access now follows the subscription instead of the hosting mode: Family plan holders can create a family, and everyone they invite gets full family access without needing a subscription of their own. Users without the plan are shown the upgrade page instead of an error. Self-hosted instances are unchanged — the feature stays open to everyone.
+- The Family plan now works on Dawarich Cloud. Family pages, invitations, members and location sharing were available only on self-hosted instances, so subscribers who paid for the Family plan hit errors on every family route. Access now follows the subscription instead of the hosting mode: Family plan holders can create a family, and everyone they invite gets full family access without needing a subscription of their own. Users without the plan are shown the upgrade page instead of an error. If the plan owner stops paying, the whole family loses family features together and everyone falls back to their own plan — the family itself is kept, so resubscribing restores it. Self-hosted instances are unchanged — the feature stays open to everyone.
 
 ## [1.10.3] - 2026-07-28, Berlin
 

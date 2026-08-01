@@ -123,6 +123,16 @@ RSpec.describe 'Family access on cloud', type: :request do
 
       expect(response).to have_http_status(:ok)
     end
+
+    it 'loses access when the owner stops paying' do
+      create(:family_membership, user: member, family: family)
+      owner.update!(plan: :pro)
+      sign_in member
+
+      get family_path
+
+      expect(response).to redirect_to(new_family_path)
+    end
   end
 
   describe 'self-hosted instances' do

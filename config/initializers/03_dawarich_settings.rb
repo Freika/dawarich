@@ -62,10 +62,11 @@ class DawarichSettings
     def family_feature_available_for?(user)
       return true if self_hosted?
       return false if user.nil?
-      return true if user.family? # holds the Family plan
 
-      # Members are invited by a subscriber and don't buy their own plan.
-      user.in_family?
+      # PlanScopable#effective_plan already models the entitlement: the plan
+      # holder gets it, and so does everyone in a family whose owner holds it.
+      # When the owner's plan lapses, the whole family drops back together.
+      user.effective_plan == :family
     end
 
     # Returns true only for self-hosted OIDC (OpenID Connect) setups.
