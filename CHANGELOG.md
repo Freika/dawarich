@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Google phone Timeline exports taken after mid-June 2026 contain the same period twice, and importing both copies merged separate trips into one continuous track that showed journeys on days they didn't happen. The raw signal stream is now skipped when the export also contains the aggregated timeline, with a notification saying how much was skipped; exports carrying only raw signals are unaffected.
 - Family members no longer keep Pro access after the family owner's subscription lapses. Access was inherited from the owner's plan alone, so an expired trial or a cancelled Family subscription left every member on full access indefinitely; members now revert to their own plan once the owner's paid period ends. Cancelling still leaves members with access until the period they paid for is over.
 - Self-hosted mode is now recognised from common `SELF_HOSTED` values (quoted `"true"`, `TRUE`, whitespace-padded, `1`, `yes`, `on`), not only the exact string `true`, so a non-canonical value no longer silently flips a self-hosted instance into cloud mode and blocks LAN integration URLs (such as Immich) as SSRF. (#2522)
 - Outgoing email no longer fails against slower SMTP servers: the default connection open/read timeouts now match net-smtp's own 30s and 60s instead of a 5-second cap that made digest reports and other emails fail with `Net::OpenTimeout`. Tune with `SMTP_OPEN_TIMEOUT`/`SMTP_READ_TIMEOUT` if needed (#3096)

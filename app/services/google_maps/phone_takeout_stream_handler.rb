@@ -10,11 +10,16 @@ class GoogleMaps::PhoneTakeoutStreamHandler < Oj::Saj
   ArrayState = Struct.new(:data, :key)
   StreamState = Data.define(:section)
   DiscardState = Class.new
+  # Counts the entries of a skipped section without materializing them, so callers can
+  # report how much data was passed over.
+  SkippedState = Struct.new(:section, :seen)
 
-  def initialize(on_entry:, on_profile:)
+  def initialize(on_entry:, on_profile:, skip_sections: [], on_skipped: nil)
     super()
     @on_entry = on_entry
     @on_profile = on_profile
+    @skip_sections = Array(skip_sections).to_set
+    @on_skipped = on_skipped
     @stack = []
   end
 
@@ -32,7 +37,12 @@ class GoogleMaps::PhoneTakeoutStreamHandler < Oj::Saj
 
   def hash_end(key = nil, *_)
     state = @stack.pop
-    return if state.is_a?(DiscardState) || state.root
+    if state.is_a?(DiscardState)
+      parent = @stack.last
+      parent.seen += 1 if parent.is_a?(SkippedState)
+      return
+    end
+    return if state.root
 
     dispatch_to_parent(@stack.last, state.data, normalize_string(key) || state.key)
   end
@@ -47,7 +57,13 @@ class GoogleMaps::PhoneTakeoutStreamHandler < Oj::Saj
               DiscardState.new
             elsif parent.is_a?(HashState) && parent.root
               section = STREAMED_ARRAYS[normalized_key]
-              section ? StreamState.new(section) : DiscardState.new
+              if section.nil?
+                DiscardState.new
+              elsif @skip_sections.include?(section)
+                SkippedState.new(section, 0)
+              else
+                StreamState.new(section)
+              end
             else
               ArrayState.new([], normalized_key)
             end
@@ -56,6 +72,10 @@ class GoogleMaps::PhoneTakeoutStreamHandler < Oj::Saj
 
   def array_end(key = nil, *_)
     state = @stack.pop
+    if state.is_a?(SkippedState)
+      @on_skipped&.call(state.section, state.seen)
+      return
+    end
     return if state.is_a?(StreamState) || state.is_a?(DiscardState)
 
     dispatch_to_parent(@stack.last, state.data, normalize_string(key) || state.key)
@@ -68,7 +88,7 @@ class GoogleMaps::PhoneTakeoutStreamHandler < Oj::Saj
   private
 
   def discard_collection?(parent, key)
-    return true if parent.is_a?(DiscardState)
+    return true if parent.is_a?(DiscardState) || parent.is_a?(SkippedState)
 
     parent.is_a?(HashState) && parent.root && key != 'userLocationProfile'
   end

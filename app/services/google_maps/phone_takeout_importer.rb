@@ -16,15 +16,20 @@ class GoogleMaps::PhoneTakeoutImporter
 
   BATCH_SIZE = 1000
   MAX_TIE_OFFSET = 59
+  SEMANTIC_SEGMENTS_KEY = '"semanticSegments"'.b.freeze
+  SCAN_CHUNK_BYTES = 1.megabyte
 
   def call
     path = resolve_file_path
     validate_json(path)
     initialize_stream
     ActiveRecord::Base.transaction do
-      stream_entries(path)
+      @skipped_sections = skipped_sections(path)
+      stream_entries(path, skip_sections: @skipped_sections)
+      replay_skipped_raw_signals(path) if raw_signals_fallback_needed?
       process_user_location_profile
       flush_batch
+      notify_skipped_raw_signals
     end
   ensure
     cleanup_temp_file
@@ -49,12 +54,17 @@ class GoogleMaps::PhoneTakeoutImporter
     @assigned_timestamps = {}
     @previous_tied_timestamp = nil
     @tie_offset = 0
+    @semantic_points = 0
+    @skipped_sections = []
+    @skipped_counts = {}
   end
 
-  def stream_entries(path)
+  def stream_entries(path, skip_sections:)
     handler = GoogleMaps::PhoneTakeoutStreamHandler.new(
       on_entry: ->(section, value) { process_stream_entry(section, value) },
-      on_profile: ->(profile) { @user_location_profile = profile }
+      on_profile: ->(profile) { @user_location_profile = profile },
+      skip_sections: skip_sections,
+      on_skipped: ->(section, count) { @skipped_counts[section] = count }
     )
 
     File.open(path, 'rb') do |io|
@@ -64,6 +74,65 @@ class GoogleMaps::PhoneTakeoutImporter
         Oj::Parser.new(:saj, handler:).load(io)
       end
     end
+  end
+
+  # The presence of a `semanticSegments` key does not guarantee it holds usable data —
+  # Google's server-side aggregation can lag behind fresher on-device signals, leaving an
+  # empty or coordinate-less array. Skipping rawSignals on key presence alone would then
+  # import nothing at all, so replay them when the aggregated pass produced no points.
+  def raw_signals_fallback_needed?
+    @skipped_sections.include?(:raw_signal) && @semantic_points.zero?
+  end
+
+  def replay_skipped_raw_signals(path)
+    Rails.logger.info(
+      "[#{importer_name}] semanticSegments produced no points; falling back to rawSignals"
+    )
+
+    @skipped_counts.delete(:raw_signal)
+    stream_entries(path, skip_sections: [:semantic_segment])
+  end
+
+  # Exports since mid-2026 carry far more raw signals than aggregated segments, so an
+  # import that legitimately drops most of the file would otherwise look like data loss.
+  def notify_skipped_raw_signals
+    skipped = @skipped_counts[:raw_signal].to_i
+    return unless skipped.positive?
+
+    Rails.logger.info("[#{importer_name}] skipped #{skipped} rawSignals entries")
+
+    Notification.create!(
+      user_id: import.user_id,
+      title: 'Raw location signals skipped',
+      content: "Your file #{import.name} contained both Google's aggregated timeline and " \
+               "#{skipped} raw location signals for the same period. The aggregated timeline " \
+               'was imported and the raw signals were skipped, because combining them merges ' \
+               'separate trips into one continuous track. No timeline data was lost.',
+      kind: :info
+    )
+  end
+
+  # Exports taken after mid-June 2026 carry rawSignals alongside semanticSegments for
+  # the same period. The two are sampled independently, so their gaps do not line up and
+  # merging them erases the pauses track segmentation splits on.
+  def skipped_sections(path)
+    semantic_segments_present?(path) ? [:raw_signal] : []
+  end
+
+  def semantic_segments_present?(path)
+    overlap = SEMANTIC_SEGMENTS_KEY.bytesize - 1
+    carry = +''.b
+
+    File.open(path, 'rb') do |io|
+      while (chunk = io.read(SCAN_CHUNK_BYTES))
+        window = carry << chunk
+        return true if window.include?(SEMANTIC_SEGMENTS_KEY)
+
+        carry = window.byteslice(-overlap, overlap) || +''.b
+      end
+    end
+
+    false
   end
 
   def process_stream_entry(section, value)
@@ -78,6 +147,9 @@ class GoogleMaps::PhoneTakeoutImporter
              else
                []
              end
+
+    points = Array(points).flatten.compact
+    @semantic_points += points.size if section == :semantic_segment
 
     enqueue_points(points)
   end

@@ -21,9 +21,9 @@ RSpec.describe GoogleMaps::PhoneTakeoutImporter do
       context 'when file exists' do
         it 'creates points' do
           # 2 timelinePath + 1 visit from semanticSegments
-          # 1 rawSignal position
           # 2 frequentPlaces from userLocationProfile
-          expect { parser }.to change { Point.count }.by(6)
+          # rawSignals are skipped because semanticSegments cover the same period
+          expect { parser }.to change { Point.count }.by(5)
         end
 
         it 'stamps the per-import tracker id on every point' do
@@ -106,13 +106,11 @@ RSpec.describe GoogleMaps::PhoneTakeoutImporter do
         expect(end_point.lon).to eq(2.3376)
       end
 
-      it 'parses rawSignals with plain decimal coordinates (no degree symbol)' do
+      it 'skips rawSignals because semanticSegments cover the same period' do
         parser
 
         raw_signal_point = Point.find_by(timestamp: DateTime.parse('2024-06-15T09:05:00.000Z').utc.to_i)
-        expect(raw_signal_point).to be_present
-        expect(raw_signal_point.lat).to eq(48.8566)
-        expect(raw_signal_point.lon).to eq(2.3522)
+        expect(raw_signal_point).to be_nil
       end
 
       it 'does not persist raw_data for imported points' do
@@ -142,7 +140,7 @@ RSpec.describe GoogleMaps::PhoneTakeoutImporter do
       it 'creates two points from the userLocationProfile frequentPlaces branch' do
         parser
 
-        expect(Point.where(user_id: user.id).count).to eq(8)
+        expect(Point.where(user_id: user.id).count).to eq(7)
       end
 
       it 'parses timelinePath points with timestamps' do
@@ -195,18 +193,13 @@ RSpec.describe GoogleMaps::PhoneTakeoutImporter do
     context 'when coordinate formats vary across the file' do
       let(:json_data) do
         {
-          'semanticSegments' => [
-            {
-              'startTime' => '2024-06-15T09:00:00.000+02:00',
-              'endTime' => '2024-06-15T10:00:00.000+02:00',
-              'visit' => {
-                'topCandidate' => {
-                  'placeLocation' => { 'latLng' => '48.8566°, 2.3522°' }
-                }
-              }
-            }
-          ],
           'rawSignals' => [
+            {
+              'position' => {
+                'LatLng' => '48.8566°, 2.3522°',
+                'timestamp' => '2024-06-15T09:00:00.000Z'
+              }
+            },
             {
               'position' => {
                 'LatLng' => '48.8566,2.3522',
@@ -407,7 +400,7 @@ RSpec.describe GoogleMaps::PhoneTakeoutImporter do
       it 'does not load the complete JSON document into memory' do
         allow(service).to receive(:load_json_data).and_raise('full document load attempted')
 
-        expect { service.call }.to change { Point.count }.by(8)
+        expect { service.call }.to change { Point.count }.by(7)
       end
 
       it 'flushes points in bounded batches' do
