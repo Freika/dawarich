@@ -3,8 +3,9 @@
 class FamiliesController < ApplicationController
   before_action :authenticate_user!
   # #new doubles as the landing page for users without the plan: it renders the
-  # upgrade CTA instead of the create form, so it must stay reachable.
-  before_action :ensure_family_feature_available!, except: %i[new]
+  # upgrade CTA instead of the create form, so it must stay reachable. #destroy
+  # stays open so a lapsed owner can still dissolve the family.
+  before_action :ensure_family_feature_available!, except: %i[new destroy]
   before_action :set_family, only: %i[show edit update destroy]
 
   def show
@@ -23,7 +24,9 @@ class FamiliesController < ApplicationController
   end
 
   def new
-    redirect_to family_path and return if current_user.in_family?
+    # Members of a lapsed family fall through to the upgrade CTA: sending them
+    # to #show would bounce them straight back here in a redirect loop.
+    redirect_to family_path and return if current_user.in_family? && family_feature_available?
 
     @family = Family.new
     @can_create_family = FamilyPolicy.new(current_user, @family).create?

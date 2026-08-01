@@ -48,6 +48,17 @@ RSpec.describe 'Family access on cloud', type: :request do
 
       expect(response).to have_http_status(:ok)
     end
+
+    it 'can delete the family after the plan lapses' do
+      family = create(:family, creator: subscriber)
+      create(:family_membership, user: subscriber, family: family, role: :owner)
+      subscriber.update!(plan: :pro)
+      sign_in subscriber
+
+      expect { delete family_path }.to change(Family, :count).by(-1)
+
+      expect(response).to redirect_to(new_family_path)
+    end
   end
 
   describe 'a user without the family plan' do
@@ -97,7 +108,10 @@ RSpec.describe 'Family access on cloud', type: :request do
     let(:family) { create(:family, creator: owner) }
     let(:member) { create(:user, plan: :pro, skip_auto_trial: true) }
 
-    before { create(:family_membership, user: owner, family: family, role: :owner) }
+    before do
+      create(:family_membership, user: owner, family: family, role: :owner)
+      stub_const('MANAGER_URL', 'https://manager.example.com')
+    end
 
     it 'can accept an invitation without holding the plan' do
       invitation = create(:family_invitation, family: family, invited_by: owner, email: member.email)
@@ -132,6 +146,33 @@ RSpec.describe 'Family access on cloud', type: :request do
       get family_path
 
       expect(response).to redirect_to(new_family_path)
+
+      follow_redirect!
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include('Upgrade to Family')
+    end
+
+    it 'can leave the family after the owner stops paying' do
+      membership = create(:family_membership, user: member, family: family)
+      owner.update!(plan: :pro)
+      sign_in member
+
+      expect { delete family_member_path(membership) }
+        .to change { member.reload.family }.from(family).to(nil)
+
+      expect(response).to redirect_to(new_family_path)
+    end
+
+    it 'cannot accept an invitation into a family whose plan has lapsed' do
+      invitation = create(:family_invitation, family: family, invited_by: owner, email: member.email)
+      owner.update!(plan: :pro)
+      sign_in member
+
+      expect { post accept_family_invitation_path(token: invitation.token) }
+        .not_to change(Family::Membership, :count)
+
+      expect(response).to redirect_to(root_path)
     end
   end
 

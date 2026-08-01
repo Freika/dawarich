@@ -47,10 +47,11 @@ class Points::LiveBroadcaster
     shares.each { |share| SharedLocationChannel.broadcast_to(share, point) }
   end
 
+  # family_sharing_enabled? goes first: it answers from already-loaded data,
+  # while the plan check loads the family and its owner on cloud.
   def family_sharing?(user)
-    DawarichSettings.family_feature_available_for?(user) &&
-      user.in_family? &&
-      user.family_sharing_enabled?
+    user.family_sharing_enabled? &&
+      DawarichSettings.family_feature_available_for?(user)
   end
 
   def broadcast_points(user, result, payload)

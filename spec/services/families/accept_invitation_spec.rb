@@ -38,6 +38,19 @@ RSpec.describe Families::AcceptInvitation do
       end
     end
 
+    context 'when the family owner no longer holds the plan' do
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        family.creator.update!(plan: :pro)
+      end
+
+      it 'refuses the invitation' do
+        expect(service.call).to be false
+        expect(service.error_message).to eq("This family's plan is no longer active.")
+        expect(invitee.reload.family_membership).to be_nil
+      end
+    end
+
     context 'effective access lifecycle (cloud, family-plan owner)' do
       let(:owner) { create(:user, plan: :family, skip_auto_trial: true) }
       let(:family) { create(:family, creator: owner) }
