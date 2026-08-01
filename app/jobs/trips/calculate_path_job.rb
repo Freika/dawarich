@@ -16,11 +16,13 @@ class Trips::CalculatePathJob < ApplicationJob
   end
 
   def perform(trip_id, run_token = nil)
-    trip = Trip.find(trip_id)
-    placeholder_shown = trip.path.blank?
-
-    trip.calculate_path
-    trip.save!
+    trip, placeholder_shown = Trip.transaction do
+      record = Trip.joins(:user).lock.find(trip_id)
+      blank_path = record.path.blank?
+      record.calculate_path
+      record.save!
+      [record, blank_path]
+    end
 
     Turbo::StreamsChannel.broadcast_refresh_to(trip) if placeholder_shown && trip.path.present?
     Trips::CalculateAllJob.tally_completion(trip_id, run_token)
