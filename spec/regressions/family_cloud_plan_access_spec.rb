@@ -95,8 +95,9 @@ RSpec.describe 'Family access on cloud', type: :request do
     it 'is not shown the family link in the navbar' do
       sign_in non_subscriber
 
-      get root_path
+      get stats_path
 
+      expect(response).to have_http_status(:ok)
       expect(response.body).not_to include(new_family_path)
     end
   end
@@ -175,6 +176,41 @@ RSpec.describe 'Family access on cloud', type: :request do
 
       expect(response).to redirect_to(new_family_path)
       expect(flash[:notice]).to include('removed')
+    end
+
+    it 'keeps the Family link in the navbar for members of a lapsed family' do
+      create(:family_membership, user: member, family: family)
+      owner.update!(plan: :pro)
+      sign_in member
+
+      get stats_path
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include(new_family_path)
+    end
+
+    it 'lets a member of a lapsed family turn off location sharing' do
+      create(:family_membership, user: member, family: family)
+      member.update_family_location_sharing!(true)
+      owner.update!(plan: :pro)
+      sign_in member
+
+      patch location_sharing_family_path, params: { enabled: 'false' }, as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(member.reload.family_sharing_enabled?).to be(false)
+    end
+
+    it 'lets a lapsed owner revoke a pending invitation' do
+      invitation = create(:family_invitation, family: family, invited_by: owner, email: 'someone@example.com')
+      owner.update!(plan: :pro)
+      sign_in owner
+
+      expect { delete family_invitation_path(invitation.token) }
+        .to change { invitation.reload.status }.from('pending').to('cancelled')
+
+      expect(response).to redirect_to(new_family_path)
+      expect(flash[:notice]).to eq('Invitation cancelled')
     end
 
     it 'keeps the alert when a lapsed owner deletes a family that still has members' do

@@ -9,10 +9,10 @@
         <li><%= link_to 'Trips'.html_safe, trips_url, class: "#{active_class?(trips_url)}" %></li>
         <li><%= link_to 'Stats', stats_url, class: "#{active_class?(stats_url)}" %></li>
         <li><%= link_to 'Insights<sup>α</sup>'.html_safe, insights_url, class: "#{active_class?(insights_url)}" %></li>
-        <% if user_signed_in? && family_feature_available? %>
+        <% if user_signed_in? && (family_feature_available? || current_user.in_family?) %>
           <li>
             <% if current_user.in_family? %>
-              <%= link_to family_path, class: "#{active_class?(family_path)} flex items-center space-x-2" do %>
+              <%= link_to family_home_path, class: "#{active_class?(family_home_path)} flex items-center space-x-2" do %>
                 <span>Family</span>
                 <%= render 'families/navbar_indicator', user: current_user %>
               <% end %>
@@ -70,10 +70,10 @@
       <li><%= link_to 'Trips'.html_safe, trips_url, class: "mx-1 #{active_class?(trips_url)}" %></li>
       <li><%= link_to 'Stats', stats_url, class: "mx-1 #{active_class?(stats_url)}" %></li>
       <li><%= link_to 'Insights<sup>α</sup>'.html_safe, insights_url, class: "mx-1 #{active_class?(insights_url)}" %></li>
-      <% if user_signed_in? && family_feature_available? %>
+      <% if user_signed_in? && (family_feature_available? || current_user.in_family?) %>
         <li>
           <% if current_user.in_family? %>
-            <%= link_to family_path, class: "mx-1 #{active_class?(family_path)} flex items-center space-x-2" do %>
+            <%= link_to family_home_path, class: "mx-1 #{active_class?(family_home_path)} flex items-center space-x-2" do %>
               <span>Family<sup>α</sup></span>
               <%= render 'families/navbar_indicator', user: current_user %>
             <% end %>

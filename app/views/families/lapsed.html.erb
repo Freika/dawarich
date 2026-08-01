@@ -26,6 +26,13 @@
                 class: 'btn btn-primary' %>
         </div>
 
+        <% if @family.active_invitations.any? %>
+          <div class="text-center mb-6">
+            <%= link_to t('families.lapsed.pending_invitations', default: 'View pending invitations'),
+                  family_invitations_path, class: 'link text-sm' %>
+          </div>
+        <% end %>
+
         <% other_members = @members.to_a.reject { |member| member == current_user } %>
         <% if other_members.any? %>
           <div class="mb-6">
@@ -47,6 +54,13 @@
           </div>
         <% end %>
       <% end %>
+
+      <div class="mb-6">
+        <h2 class="text-sm font-medium mb-2">
+          <%= t('families.lapsed.location_sharing_title', default: 'Your location sharing') %>
+        </h2>
+        <%= render 'families/location_sharing_toggle', member: current_user %>
+      </div>
 
       <div class="flex gap-2 justify-end">
         <% if current_user.family_owner? %>

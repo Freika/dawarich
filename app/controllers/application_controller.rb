@@ -11,7 +11,7 @@ class ApplicationController < ActionController::Base
   before_action :unread_notifications, :set_self_hosted_status, :store_client_header
 
   helper_method :current_user_safe_settings, :poster_ordering_enabled?, :family_feature_available?,
-                :current_user_features
+                :current_user_features, :family_home_path
 
   # Memoized per-request SafeSettings for the current user. Use this instead of
   # `current_user.safe_settings` in partials/helpers that may render many rows
