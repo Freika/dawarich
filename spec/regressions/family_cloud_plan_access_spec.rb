@@ -139,6 +139,26 @@ RSpec.describe 'Family access on cloud', type: :request do
       expect(response).to have_http_status(:ok)
     end
 
+    it "revokes member access when the owner's paid period has expired" do
+      create(:family_membership, user: member, family: family)
+      owner.update!(active_until: 1.day.ago)
+      sign_in member
+
+      get family_path
+
+      expect(response).to redirect_to(new_family_path)
+    end
+
+    it "keeps member access while the owner's paid period still runs" do
+      create(:family_membership, user: member, family: family)
+      owner.update!(active_until: 2.weeks.from_now)
+      sign_in member
+
+      get family_path
+
+      expect(response).to have_http_status(:ok)
+    end
+
     it 'loses access when the owner stops paying' do
       membership = create(:family_membership, user: member, family: family)
       owner.update!(plan: :pro)
