@@ -14,7 +14,6 @@ RSpec.describe Families::Locations do
     travel_to(now)
     create(:family_membership, family: family, user: user, role: :owner)
     create(:family_membership, family: family, user: other_user)
-    allow(DawarichSettings).to receive(:family_feature_enabled?).and_return(true)
   end
 
   after { travel_back }
@@ -28,11 +27,22 @@ RSpec.describe Families::Locations do
       expect(result.length).to eq(1)
       expect(result.first[:user_id]).to eq(other_user.id)
     end
+
+    context 'when the family feature is unavailable to the caller' do
+      before { allow(DawarichSettings).to receive(:self_hosted?).and_return(false) }
+
+      it 'returns an empty array even when members share' do
+        other_user.update_family_location_sharing!(true, duration: 'permanent')
+        create(:point, user: other_user, timestamp: 1.hour.ago.to_i)
+
+        expect(described_class.new(user).call).to eq([])
+      end
+    end
   end
 
   describe '#history' do
     context 'when feature is disabled' do
-      before { allow(DawarichSettings).to receive(:family_feature_enabled?).and_return(false) }
+      before { allow(DawarichSettings).to receive(:family_feature_available_for?).and_return(false) }
 
       it 'returns empty array' do
         result = described_class.new(user).history(start_at: 1.day.ago, end_at: Time.current)

@@ -119,7 +119,14 @@
 
       <!-- Action Buttons -->
       <div class="space-y-4">
-        <% if user_signed_in? %>
+        <% if @family_plan_active == false %>
+          <div class="alert alert-warning">
+            <%= icon 'triangle-alert', class: 'h-5 w-5 shrink-0' %>
+            <span class="text-sm font-medium">
+              This family's plan is currently inactive. You can accept the invitation once the family owner renews it.
+            </span>
+          </div>
+        <% elsif user_signed_in? %>
           <!-- User is logged in, show accept button -->
           <%= link_to accept_family_invitation_path(token: @invitation.token),
                 method: :post,

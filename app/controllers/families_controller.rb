@@ -2,7 +2,10 @@
 
 class FamiliesController < ApplicationController
   before_action :authenticate_user!
-  before_action :ensure_family_feature_enabled!
+  # #new doubles as the landing page for users without the plan: it renders the
+  # upgrade CTA instead of the create form, so it must stay reachable. #destroy
+  # stays open so a lapsed owner can still dissolve the family.
+  before_action :ensure_family_feature_available!, except: %i[new destroy]
   before_action :set_family, only: %i[show edit update destroy]
 
   def show
@@ -21,7 +24,20 @@ class FamiliesController < ApplicationController
   end
 
   def new
-    redirect_to family_path and return if current_user.in_family?
+    # Members of a lapsed family fall through to the lapsed panel: sending them
+    # to #show would bounce them straight back here in a redirect loop.
+    redirect_to family_path and return if current_user.in_family? && family_feature_available?
+
+    if current_user.in_family?
+      @family = current_user.family
+
+      if current_user.family_owner?
+        @members = @family.members.includes(:family_membership).order(:email)
+        @family_upgrade_url = helpers.family_upgrade_url(utm_medium: 'family', utm_content: 'renew_family')
+      end
+
+      render :lapsed and return
+    end
 
     @family = Family.new
     @can_create_family = FamilyPolicy.new(current_user, @family).create?
@@ -75,7 +91,7 @@ class FamiliesController < ApplicationController
     authorize @family
 
     if @family.members.count > 1
-      redirect_to family_path, alert: 'Cannot delete family with members. Remove all members first.'
+      redirect_to family_home_path, alert: 'Cannot delete family with members. Remove all members first.'
     else
       @family.destroy
       redirect_to new_family_path, notice: 'Family deleted successfully!'

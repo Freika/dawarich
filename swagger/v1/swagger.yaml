@@ -1096,8 +1096,8 @@ paths:
       tags:
       - Families
       description: Returns the last known locations of all family members who have
-        enabled location sharing. Requires the family feature to be enabled and the
-        user to be part of a family.
+        enabled location sharing. Requires the Family plan (any plan on self-hosted
+        instances) and the user to be part of a family.
       parameters:
       - name: api_key
         in: query
@@ -1127,6 +1127,23 @@ paths:
                     description: Whether the current user has sharing enabled
         '404':
           description: user not in a family
+        '403':
+          description: family plan required
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Always 'family_plan_required'
+                  message:
+                    type: string
+                    description: Human-readable explanation
+                  upgrade_url:
+                    type: string
+                    nullable: true
+                    description: URL to upgrade to the Family plan
         '401':
           description: unauthorized
   "/api/v1/families/locations/history":
@@ -1180,6 +1197,23 @@ paths:
                     type: string
         '404':
           description: user not in a family
+        '403':
+          description: family plan required
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Always 'family_plan_required'
+                  message:
+                    type: string
+                    description: Human-readable explanation
+                  upgrade_url:
+                    type: string
+                    nullable: true
+                    description: URL to upgrade to the Family plan
         '401':
           description: unauthorized
   "/api/v1/health":

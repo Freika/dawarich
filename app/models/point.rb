@@ -171,12 +171,12 @@ class Point < ApplicationRecord
     broadcast_to_family if should_broadcast_to_family?
   end
 
+  # family_sharing_enabled? goes first: it answers from already-loaded data,
+  # while the plan check loads the family and its owner on cloud.
   def should_broadcast_to_family?
-    return false unless DawarichSettings.family_feature_enabled?
-    return false unless user.in_family?
     return false unless user.family_sharing_enabled?
 
-    true
+    DawarichSettings.family_feature_available_for?(user)
   end
 
   def broadcast_to_family

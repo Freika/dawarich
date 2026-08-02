@@ -251,7 +251,6 @@ RSpec.describe 'Users::Registrations', type: :request do
   describe 'Non-Self-Hosted Mode' do
     before do
       allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
-      allow(DawarichSettings).to receive(:family_feature_enabled?).and_return(false)
     end
 
     context 'when accessing registration without invitation token' do

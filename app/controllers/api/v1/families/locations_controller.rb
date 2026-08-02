@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class Api::V1::Families::LocationsController < ApiController
-  before_action :ensure_family_feature_enabled!
+  before_action :ensure_family_feature_available!
   before_action :ensure_user_in_family!
 
   def index

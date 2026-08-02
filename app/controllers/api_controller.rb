@@ -76,6 +76,19 @@ class ApiController < ApplicationController
     }, status: :forbidden
   end
 
+  # API clients authenticate with an api_key rather than a session, so the plan
+  # check has to look at current_api_user instead of current_user.
+  def ensure_family_feature_available!
+    return unless current_api_user # auth already handled by authenticate_api_key
+    return if DawarichSettings.family_feature_available_for?(current_api_user)
+
+    render json: {
+      error: 'family_plan_required',
+      message: FAMILY_PLAN_REQUIRED_MESSAGE,
+      upgrade_url: upgrade_url_for(current_api_user)
+    }, status: :forbidden
+  end
+
   # Returns points scoped to the user's plan data window.
   # Delegates to PlanScopable concern on User model.
   def scoped_points(user = current_api_user)

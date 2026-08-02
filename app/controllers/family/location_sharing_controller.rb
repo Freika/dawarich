@@ -4,7 +4,8 @@ class Family::LocationSharingController < ApplicationController
   include FlashStreamable
 
   before_action :authenticate_user!
-  before_action :ensure_family_feature_enabled!
+  # No plan gate: turning sharing off is a privacy action and must stay
+  # reachable after the family's plan lapses. Readers are gated on their side.
   before_action :ensure_user_in_family!
 
   def update
