@@ -12,8 +12,10 @@ class EnqueueAnomalyRecalculation < ActiveRecord::Migration[8.0]
   def up
     DataMigrations::RecalculateAnomaliesJob.perform_later
   rescue StandardError => e
-    say "Could not enqueue the GPS noise recalculation: #{e.class}: #{e.message}"
-    say 'Start it later with: DataMigrations::RecalculateAnomaliesJob.perform_later'
+    Rails.logger.error(
+      "[EnqueueAnomalyRecalculation] could not enqueue the GPS noise recalculation: #{e.class}: #{e.message}. " \
+      'Start it later with: DataMigrations::RecalculateAnomaliesJob.perform_later'
+    )
   end
 
   def down; end
