@@ -1266,42 +1266,39 @@ subscription_source: :none)
   end
 
   describe '#gps_noise_recheck_pending?' do
-    let(:cutoff) { DataMigrations::RecalculateAnomaliesUserJob::SCOPE_CUTOFF }
-    let(:user) { create(:user, created_at: cutoff - 1.day) }
+    let(:job) { DataMigrations::RecalculateAnomaliesUserJob }
+    let(:user) { create(:user) }
 
-    it 'is pending for a user with points who has not been recalculated yet' do
-      create(:point, user: user)
+    def stamp(**pairs)
+      user.update!(settings: user.settings.merge(pairs.transform_keys(&:to_s)))
+    end
+
+    it 'is pending once the dispatcher has handed the account to a rebuild' do
+      stamp(job::QUEUED_SETTINGS_KEY => Time.current.iso8601)
 
       expect(user.gps_noise_recheck_pending?).to be true
     end
 
-    it 'is not pending once the recalculation has stamped the user' do
-      create(:point, user: user)
-      user.update!(
-        settings: user.settings.merge(
-          DataMigrations::RecalculateAnomaliesUserJob::RECALCULATED_SETTINGS_KEY => Time.current.iso8601
-        )
+    it 'is not pending once the rebuild has stamped the account' do
+      stamp(
+        job::QUEUED_SETTINGS_KEY => Time.current.iso8601,
+        job::RECALCULATED_SETTINGS_KEY => Time.current.iso8601
       )
 
       expect(user.gps_noise_recheck_pending?).to be false
     end
 
-    it 'is not pending for a user who turned GPS filtering off' do
+    it 'is not pending for an account the dispatcher never handed out' do
       create(:point, user: user)
-      user.update!(settings: user.settings.merge('gps_filtering_enabled' => false))
 
       expect(user.gps_noise_recheck_pending?).to be false
     end
 
-    it 'is not pending for a user with no points' do
+    it 'is not pending for an account the dispatcher settled without running it' do
+      now = Time.current.iso8601
+      stamp(job::QUEUED_SETTINGS_KEY => now, job::RECALCULATED_SETTINGS_KEY => now)
+
       expect(user.gps_noise_recheck_pending?).to be false
-    end
-
-    it 'is not pending for an account created after the migration, which was never in scope' do
-      later_user = create(:user, created_at: cutoff + 1.day)
-      create(:point, user: later_user)
-
-      expect(later_user.gps_noise_recheck_pending?).to be false
     end
   end
 end

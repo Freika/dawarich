@@ -8,13 +8,14 @@ RSpec.describe DataMigrations::RecalculateAnomaliesJob, type: :job do
   let(:user_with_filtering_off) { create(:user, settings: { 'gps_filtering_enabled' => false }) }
 
   let(:user_job) { DataMigrations::RecalculateAnomaliesUserJob }
+  let(:queued_key) { user_job::QUEUED_SETTINGS_KEY }
 
   before do
     create(:point, user: tracking_user)
     create(:point, user: user_with_filtering_off)
   end
 
-  it 'enqueues a per-user recalculation for every user with points' do
+  it 'hands a user with points to the per-user rebuild' do
     expect do
       described_class.perform_now
     end.to have_enqueued_job(user_job).with(tracking_user.id).exactly(:once)
@@ -32,21 +33,41 @@ RSpec.describe DataMigrations::RecalculateAnomaliesJob, type: :job do
     expect(user_job).not_to have_been_enqueued.with(user_with_filtering_off.id)
   end
 
-  it 'skips users that a previous run already recalculated' do
-    tracking_user.update!(
-      settings: tracking_user.settings.merge(
-        DataMigrations::RecalculateAnomaliesUserJob::RECALCULATED_SETTINGS_KEY => Time.current.iso8601
-      )
-    )
+  it 'never runs more users at once than there are slots' do
+    create_list(:user, 5).each { |user| create(:point, user: user) }
+
+    described_class.perform_now
+
+    enqueued = ActiveJob::Base.queue_adapter.enqueued_jobs.count { |job| job[:job] == user_job }
+    expect(enqueued).to eq(described_class::CONCURRENCY)
+  end
+
+  it 'hands out exactly one more user when a finished job asks for a slot' do
+    create_list(:user, 5).each { |user| create(:point, user: user) }
+
+    expect do
+      described_class.perform_now(limit: 1)
+    end.to have_enqueued_job(user_job).exactly(:once)
+  end
+
+  it 'marks the users it hands out so a second pass cannot pick them up again' do
+    described_class.perform_now
+
+    expect(tracking_user.reload.settings[queued_key]).to be_present
 
     expect do
       described_class.perform_now
     end.not_to have_enqueued_job(user_job)
   end
 
-  it 'is safe to run twice: the second run picks up only what is left' do
+  it 'marks a skipped user too, so nothing reports them waiting forever' do
     described_class.perform_now
-    perform_enqueued_jobs(only: user_job)
+
+    expect(user_with_filtering_off.reload.settings[queued_key]).to be_present
+  end
+
+  it 'picks up a straggler on a later pass' do
+    described_class.perform_now
     ActiveJob::Base.queue_adapter.enqueued_jobs.clear
 
     straggler = create(:user)
@@ -55,26 +76,6 @@ RSpec.describe DataMigrations::RecalculateAnomaliesJob, type: :job do
     expect do
       described_class.perform_now
     end.to have_enqueued_job(user_job).with(straggler.id).exactly(:once)
-  end
-
-  it 'staggers every enqueue across a window instead of firing them all at once' do
-    create_list(:user, 3).each { |user| create(:point, user: user) }
-
-    described_class.perform_now
-
-    scheduled = ActiveJob::Base.queue_adapter.enqueued_jobs.select { |job| job[:job] == user_job }
-
-    expect(scheduled.size).to eq(4)
-    scheduled.each do |job|
-      delta = job[:at].to_f - Time.current.to_f
-      expect(delta).to be >= 0
-      expect(delta).to be <= described_class.stagger_window(4) + 5
-    end
-  end
-
-  it 'keeps the window short for a single-user instance and caps it for a large one' do
-    expect(described_class.stagger_window(1)).to eq(described_class::SECONDS_PER_USER)
-    expect(described_class.stagger_window(1_000_000)).to eq(described_class::MAX_STAGGER_WINDOW_SECONDS)
   end
 
   it 'enqueues nothing when no user is eligible' do

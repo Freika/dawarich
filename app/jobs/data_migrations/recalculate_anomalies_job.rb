@@ -6,73 +6,110 @@
 # Stored anomaly flags therefore disagree with the current rules in both
 # directions, and the tracks, stats and digests built on top of them are stale.
 #
-# Dispatcher only: the per-user work is DataMigrations::RecalculateAnomaliesUserJob,
-# which runs on low_priority (last in Sidekiq's strict queue order) so it never
-# starves live traffic. Running this twice is safe — users stamped by a previous
-# pass are skipped, so a re-run only picks up whatever is left.
+# Dispatcher only: the per-user work is DataMigrations::RecalculateAnomaliesUserJob.
+# Running this twice is safe — users already handed out are skipped, so a re-run
+# only picks up whatever is left.
 class DataMigrations::RecalculateAnomaliesJob < ApplicationJob
   queue_as :data_migrations
 
   # Re-evaluating one user costs a filter pass over every month they tracked
-  # plus a full stats/tracks/digests recalculation, so the fleet is spread over
-  # a window that grows with it: a single-user instance starts within seconds,
-  # a large one trickles through a day instead of queueing everything at once.
-  SECONDS_PER_USER = 30
-  MAX_STAGGER_WINDOW_SECONDS = 24.hours.to_i
-  ENQUEUE_BATCH_SIZE = 1_000
+  # plus a full stats/tracks/digests rebuild, and the per-user job holds a
+  # worker for all of it. Strict queue order does not preempt a running job, so
+  # a wide fan-out would fill every Sidekiq thread with migration work no matter
+  # how low its priority. Hand out a fixed number of slots instead and let each
+  # finishing job pull the next user in, which also keeps the track chunks
+  # draining rather than piling up behind a day of backlog.
+  CONCURRENCY = 2
   USER_SCAN_BATCH_SIZE = 1_000
 
-  def self.stagger_window(user_count)
-    [user_count * SECONDS_PER_USER, MAX_STAGGER_WINDOW_SECONDS].min
-  end
+  def perform(limit: CONCURRENCY)
+    runnable, skipped = next_users(limit)
 
-  def perform
-    user_ids = eligible_user_ids
-    return if user_ids.empty?
+    mark_settled(skipped) if skipped.any?
 
-    window = self.class.stagger_window(user_ids.size)
-
-    Rails.logger.info(
-      "[DataMigrations::RecalculateAnomalies] enqueuing #{user_ids.size} user(s) over #{window}s"
-    )
-
-    now = Time.current
-
-    jobs = user_ids.map do |user_id|
-      job = DataMigrations::RecalculateAnomaliesUserJob.new(user_id)
-      job.scheduled_at = now + rand(0..window).seconds
-      job
+    if runnable.empty?
+      # A pass that only settled skipped users would otherwise end without
+      # anyone left to hand the slot back, stalling the chain.
+      self.class.perform_later(limit: limit) if skipped.any?
+      return
     end
 
-    jobs.each_slice(ENQUEUE_BATCH_SIZE) { |batch| ActiveJob.perform_all_later(batch) }
+    mark_queued(runnable)
+
+    Rails.logger.info(
+      "[DataMigrations::RecalculateAnomalies] handing #{runnable.size} user(s) to the rebuild"
+    )
+
+    ActiveJob.perform_all_later(
+      runnable.map { |user_id| DataMigrations::RecalculateAnomaliesUserJob.new(user_id) }
+    )
   end
 
   private
 
   # EXISTS rather than points_count: the counter is corrected on a schedule and
-  # can read zero for a user who has just imported, and a missed user here never
-  # gets a second chance.
+  # can read zero for a user who has just imported.
   #
   # Users who turned filtering off keep the flags they have. Re-running the
   # filter for them marks nothing, so a reset would silently unflag their
-  # history — a change this migration was not asked to make.
+  # history — a change this migration was not asked to make. They are still
+  # marked as handed out, so the queue drains and nothing reports them waiting.
+  #
   # The boolean stays in Ruby rather than SQL: SafeSettings casts it with
   # ActiveModel::Type::Boolean, which treats "0", "f" and "off" as false too,
-  # and a hand-rolled jsonb predicate would quietly disagree on those. Only id
-  # and settings are loaded, in batches, so nothing accumulates but the ids.
-  def eligible_user_ids
-    ids = []
+  # and a hand-rolled jsonb predicate would quietly disagree on those.
+  def next_users(limit)
+    runnable = []
+    skipped = []
 
+    pending_users.find_each(batch_size: USER_SCAN_BATCH_SIZE) do |user|
+      if Users::SafeSettings.new(user.settings || {}).gps_filtering_enabled?
+        runnable << user.id
+        break if runnable.size >= limit
+      else
+        skipped << user.id
+      end
+    end
+
+    [runnable, skipped]
+  end
+
+  def pending_users
     User.where('EXISTS (SELECT 1 FROM points WHERE points.user_id = users.id)')
         .where(
           "NOT jsonb_exists(COALESCE(settings, '{}'::jsonb), ?)",
-          DataMigrations::RecalculateAnomaliesUserJob::RECALCULATED_SETTINGS_KEY
+          DataMigrations::RecalculateAnomaliesUserJob::QUEUED_SETTINGS_KEY
         )
         .select(:id, :settings)
-        .find_each(batch_size: USER_SCAN_BATCH_SIZE) do |user|
-          ids << user.id if Users::SafeSettings.new(user.settings || {}).gps_filtering_enabled?
-        end
+  end
 
-    ids
+  # Marked before the jobs are enqueued, so a second dispatcher pass cannot hand
+  # the same user out twice, and so nothing reports a user as waiting on a pass
+  # that was never scheduled for them.
+  def mark_queued(user_ids)
+    stamp(user_ids, DataMigrations::RecalculateAnomaliesUserJob::QUEUED_SETTINGS_KEY => Time.zone.now.iso8601)
+  end
+
+  # Nothing to run for these, so they are marked queued and done at once: they
+  # drop out of later scans and never report themselves as waiting.
+  def mark_settled(user_ids)
+    now = Time.zone.now.iso8601
+
+    stamp(
+      user_ids,
+      DataMigrations::RecalculateAnomaliesUserJob::QUEUED_SETTINGS_KEY => now,
+      DataMigrations::RecalculateAnomaliesUserJob::RECALCULATED_SETTINGS_KEY => now
+    )
+  end
+
+  def stamp(user_ids, values)
+    placeholders = values.flat_map { |key, value| [key, value] }
+    pairs = Array.new(values.size, '?, ?').join(', ')
+
+    User.where(id: user_ids).update_all(
+      ActiveRecord::Base.sanitize_sql_array(
+        ["settings = COALESCE(settings, '{}'::jsonb) || jsonb_build_object(#{pairs})", *placeholders]
+      )
+    )
   end
 end

@@ -68,9 +68,26 @@ RSpec.describe DataMigrations::RecalculateAnomaliesUserJob, type: :job do
   it 'leaves the user unstamped when the rebuild fails, so a re-run picks them up' do
     allow(Tracks::PerUserLock).to receive(:with_user_lock).and_raise(StandardError, 'rebuild failed')
 
-    expect { described_class.perform_now(user.id) }.to raise_error(StandardError)
+    described_class.perform_now(user.id)
 
     expect(user.reload.settings[described_class::RECALCULATED_SETTINGS_KEY]).to be_nil
+  end
+
+  it 'retries a failing rebuild a bounded number of times rather than Sidekiq default' do
+    allow(Tracks::PerUserLock).to receive(:with_user_lock).and_raise(StandardError, 'rebuild failed')
+
+    expect do
+      described_class.perform_now(user.id)
+    end.to have_enqueued_job(described_class)
+  end
+
+  it 'hands the slot back once a failing rebuild exhausts its attempts' do
+    allow(Tracks::PerUserLock).to receive(:with_user_lock).and_raise(StandardError, 'rebuild failed')
+
+    job = described_class.new(user.id)
+    job.exception_executions = { '[StandardError]' => described_class::MAX_REBUILD_ATTEMPTS }
+
+    expect { job.perform_now }.to have_enqueued_job(DataMigrations::RecalculateAnomaliesJob).with(limit: 1)
   end
 
   it 'records that the user has been recalculated' do
@@ -121,6 +138,28 @@ RSpec.describe DataMigrations::RecalculateAnomaliesUserJob, type: :job do
     expect do
       described_class.perform_now(user.id, attempt: described_class::MAX_LOCK_ATTEMPTS)
     end.not_to have_enqueued_job(described_class)
+  end
+
+  it 'hands its slot back when it finishes, so the next user starts' do
+    expect do
+      described_class.perform_now(user.id)
+    end.to have_enqueued_job(DataMigrations::RecalculateAnomaliesJob).with(limit: 1)
+  end
+
+  it 'hands its slot back when it gives up on a stuck lock' do
+    allow(Points::AnomalyBackfillUserJob).to receive(:perform_now).and_return(false)
+
+    expect do
+      described_class.perform_now(user.id, attempt: described_class::MAX_LOCK_ATTEMPTS)
+    end.to have_enqueued_job(DataMigrations::RecalculateAnomaliesJob).with(limit: 1)
+  end
+
+  it 'keeps its slot while it is waiting on a busy lock' do
+    allow(Points::AnomalyBackfillUserJob).to receive(:perform_now).and_return(false)
+
+    expect do
+      described_class.perform_now(user.id)
+    end.not_to have_enqueued_job(DataMigrations::RecalculateAnomaliesJob)
   end
 
   it 'ignores a user that has since been deleted' do

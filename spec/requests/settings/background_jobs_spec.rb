@@ -194,24 +194,24 @@ RSpec.describe '/settings/background_jobs', type: :request do
   describe 'GPS noise re-check notice' do
     before { allow(DawarichSettings).to receive(:self_hosted?).and_return(true) }
 
-    let(:cutoff) { DataMigrations::RecalculateAnomaliesUserJob::SCOPE_CUTOFF }
-    let(:user) { create(:user, created_at: cutoff - 1.day) }
+    let(:job) { DataMigrations::RecalculateAnomaliesUserJob }
+    let(:user) { create(:user) }
 
     before { sign_in user }
 
-    it 'tells a user with unrecalculated points that a re-check is queued' do
-      create(:point, user: user)
+    it 'tells an account handed to a rebuild that a re-check is queued' do
+      user.update!(settings: user.settings.merge(job::QUEUED_SETTINGS_KEY => Time.current.iso8601))
 
       get settings_background_jobs_url
 
       expect(response.body).to include('queued for a one-time re-check')
     end
 
-    it 'says nothing once the user has been recalculated' do
-      create(:point, user: user)
+    it 'says nothing once the rebuild has stamped the account' do
       user.update!(
         settings: user.settings.merge(
-          DataMigrations::RecalculateAnomaliesUserJob::RECALCULATED_SETTINGS_KEY => Time.current.iso8601
+          job::QUEUED_SETTINGS_KEY => Time.current.iso8601,
+          job::RECALCULATED_SETTINGS_KEY => Time.current.iso8601
         )
       )
 
@@ -220,7 +220,9 @@ RSpec.describe '/settings/background_jobs', type: :request do
       expect(response.body).not_to include('queued for a one-time re-check')
     end
 
-    it 'says nothing to a user with no points' do
+    it 'says nothing to an account the dispatcher never handed out' do
+      create(:point, user: user)
+
       get settings_background_jobs_url
 
       expect(response.body).not_to include('queued for a one-time re-check')

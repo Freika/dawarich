@@ -118,13 +118,15 @@ class User < ApplicationRecord
     Users::SafeSettings.new(settings, plan: plan)
   end
 
+  # Only accounts the migration actually handed to a rebuild are waiting on one.
+  # Deriving this from live state instead would report a permanent "pending" for
+  # anyone the dispatcher never picked up — no points at the time, filtering off
+  # at the time, or created after the migration ran.
   def gps_noise_recheck_pending?
     job = DataMigrations::RecalculateAnomaliesUserJob
-    return false if created_at.blank? || created_at >= job::SCOPE_CUTOFF
-    return false unless safe_settings.gps_filtering_enabled?
-    return false if settings&.dig(job::RECALCULATED_SETTINGS_KEY).present?
+    return false if settings.blank?
 
-    points.exists?
+    settings[job::QUEUED_SETTINGS_KEY].present? && settings[job::RECALCULATED_SETTINGS_KEY].blank?
   end
 
   # nil changelog_consent => user has not been shown the opt-in prompt yet.

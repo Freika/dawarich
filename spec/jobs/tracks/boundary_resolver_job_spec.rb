@@ -81,6 +81,16 @@ RSpec.describe Tracks::BoundaryResolverJob do
       expect(pending_session).not_to have_received(:mark_failed)
     end
 
+    it 'keeps backing off as it polls, so progress does not restart a 30s loop' do
+      allow(pending_session).to receive(:get_session_data).and_return({ 'completed_chunks' => 9 })
+
+      described_class.perform_now(user.id, session_id, 0, 4, 4)
+
+      delay = reschedules.first[:at] - Time.current.to_f
+      expect(delay).to be > 60
+      expect(reschedules.first[:args][4]).to eq(5)
+    end
+
     it 'spends an attempt when no chunk finished since the last look' do
       allow(pending_session).to receive(:get_session_data).and_return({ 'completed_chunks' => 4 })
 
