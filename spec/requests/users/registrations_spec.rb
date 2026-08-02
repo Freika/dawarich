@@ -806,6 +806,11 @@ RSpec.describe 'Users::Registrations', type: :request do
     end
 
     context 'when self-hosted mode is disabled' do
+      # Off the self-hosted grant, joining a family is gated on the owner holding
+      # the Family plan, so the fixture owner has to hold one for the invitation
+      # path to be reachable at all.
+      let(:family_owner) { create(:user, plan: :family, skip_auto_trial: true) }
+
       before do
         allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
       end
