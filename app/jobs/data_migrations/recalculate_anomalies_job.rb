@@ -30,9 +30,10 @@ class DataMigrations::RecalculateAnomaliesJob < ApplicationJob
     claimed = runnable.any? ? claim(runnable) : []
 
     if claimed.empty?
-      # A pass that only settled skipped users would otherwise end without
-      # anyone left to hand the slot back, stalling the chain.
-      self.class.perform_later(limit: limit) if skipped.any?
+      # Nothing was handed out, so nobody will hand the slot back. That happens
+      # when this pass only settled skipped users, and when it lost the claim
+      # race to a concurrent dispatcher — ask again rather than losing a slot.
+      self.class.perform_later(limit: limit) if skipped.any? || runnable.any?
       return
     end
 

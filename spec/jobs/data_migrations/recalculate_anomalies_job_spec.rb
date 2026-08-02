@@ -112,4 +112,13 @@ RSpec.describe DataMigrations::RecalculateAnomaliesJob, type: :job do
 
     expect(tracking_user.reload.settings).not_to have_key(queued_key)
   end
+
+  it 'asks for another pass when it loses the claim race, so no slot is lost' do
+    allow_any_instance_of(described_class).to receive(:next_users).and_return([[tracking_user.id], []])
+    tracking_user.update!(settings: tracking_user.settings.merge(queued_key => Time.current.iso8601))
+
+    expect do
+      described_class.perform_now(limit: 1)
+    end.to have_enqueued_job(described_class).with(limit: 1)
+  end
 end
