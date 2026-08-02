@@ -24,7 +24,7 @@
         <div class="flex flex-wrap gap-2">
           <button class="btn btn-sm btn-outline"
                   data-action="click->import-extraction#open"
-                  data-import-extraction-dialog-id-value="extraction-dialog-<%= import.id %>">
+                  data-import-extraction-dialog-id-param="extraction-dialog-<%= import.id %>">
             Re-extract
           </button>
           <%= render 'imports/extraction_remove_button', import: import %>
@@ -37,7 +37,7 @@
           <div class="flex flex-wrap gap-2">
             <button class="btn btn-sm btn-outline"
                     data-action="click->import-extraction#open"
-                    data-import-extraction-dialog-id-value="extraction-dialog-<%= import.id %>">
+                    data-import-extraction-dialog-id-param="extraction-dialog-<%= import.id %>">
               Start over
             </button>
             <%= render 'imports/extraction_remove_button', import: import %>
@@ -55,7 +55,7 @@
         <div class="flex flex-wrap gap-2">
           <button class="btn btn-sm btn-outline"
                   data-action="click->import-extraction#open"
-                  data-import-extraction-dialog-id-value="extraction-dialog-<%= import.id %>">
+                  data-import-extraction-dialog-id-param="extraction-dialog-<%= import.id %>">
             Retry extraction
           </button>
           <%= render 'imports/extraction_remove_button', import: import %>
@@ -67,7 +67,7 @@
         </p>
         <button class="btn btn-sm btn-primary"
                 data-action="click->import-extraction#open"
-                data-import-extraction-dialog-id-value="extraction-dialog-<%= import.id %>">
+                data-import-extraction-dialog-id-param="extraction-dialog-<%= import.id %>">
           Extract additional data
         </button>
       <% end %>
