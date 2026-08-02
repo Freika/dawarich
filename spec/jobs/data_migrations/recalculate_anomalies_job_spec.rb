@@ -85,4 +85,31 @@ RSpec.describe DataMigrations::RecalculateAnomaliesJob, type: :job do
       described_class.perform_now
     end.not_to have_enqueued_job(user_job)
   end
+
+  it 'skips a user another dispatcher already claimed' do
+    tracking_user.update!(settings: tracking_user.settings.merge(queued_key => Time.current.iso8601))
+
+    expect do
+      described_class.perform_now
+    end.not_to have_enqueued_job(user_job).with(tracking_user.id)
+  end
+
+  # The scan and the claim are separate round trips, so a concurrent dispatcher
+  # can take the user in between. The claim has to notice and drop them.
+  it 'does not hand out a user claimed between the scan and the claim' do
+    allow_any_instance_of(described_class).to receive(:next_users).and_return([[tracking_user.id], []])
+    tracking_user.update!(settings: tracking_user.settings.merge(queued_key => Time.current.iso8601))
+
+    expect do
+      described_class.perform_now
+    end.not_to have_enqueued_job(user_job)
+  end
+
+  it 'releases its claim when the enqueue fails, so a later pass can retry' do
+    allow(ActiveJob).to receive(:perform_all_later).and_raise(StandardError, 'redis down')
+
+    expect { described_class.perform_now }.to raise_error(StandardError)
+
+    expect(tracking_user.reload.settings).not_to have_key(queued_key)
+  end
 end

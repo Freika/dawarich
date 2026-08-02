@@ -32,24 +32,40 @@ class DataMigrations::RecalculateAnomaliesUserJob < ApplicationJob
     user_id = job.arguments.first
     Rails.logger.error(
       "[DataMigrations::RecalculateAnomalies] user #{user_id} failed: #{error.class}: #{error.message}. " \
-      "Re-run with: DataMigrations::RecalculateAnomaliesUserJob.perform_later(#{user_id})"
+      'Released for a later pass.'
     )
+    release_claim([user_id])
     DataMigrations::RecalculateAnomaliesJob.perform_later(limit: 1)
+  end
+
+  # Drops the dispatcher's claim so a later pass can pick the user up again.
+  # Without this a user who never completed would carry the claim forever and be
+  # invisible to every re-run — and report themselves as waiting indefinitely.
+  def self.release_claim(user_ids)
+    User.where(id: user_ids).update_all(
+      ActiveRecord::Base.sanitize_sql_array(['settings = settings - ?', QUEUED_SETTINGS_KEY])
+    )
   end
 
   def perform(user_id, attempt: 1)
     user = User.find_by(id: user_id)
     return release_slot if user.nil?
     return release_slot if recalculated?(user)
-    # Filtering off means the filter marks nothing, so a reset would only strip
-    # flags this migration was never asked to touch.
-    return release_slot unless user.safe_settings.gps_filtering_enabled?
+
+    # Turned filtering off after the dispatcher picked them up. The filter would
+    # mark nothing, so a reset would only strip flags this migration was never
+    # asked to touch — settle them rather than leaving the claim dangling.
+    unless user.safe_settings.gps_filtering_enabled?
+      mark_recalculated(user)
+      return release_slot
+    end
 
     unless Points::AnomalyBackfillUserJob.perform_now(user.id, reset: true, notify: false, rebuild: :inline)
       return retry_after_lock(user_id, attempt)
     end
 
     mark_recalculated(user)
+    notify(user)
     release_slot
   rescue Tracks::PerUserLock::AcquisitionTimeout
     # The track lock is busy, not broken. Retrying the job wholesale would
@@ -74,11 +90,27 @@ class DataMigrations::RecalculateAnomaliesUserJob < ApplicationJob
         "[DataMigrations::RecalculateAnomalies] user #{user_id} still locked after #{attempt} attempts, giving up. " \
         "Re-run with: DataMigrations::RecalculateAnomaliesUserJob.perform_later(#{user_id})"
       )
+      self.class.release_claim([user_id])
       return release_slot
     end
 
     self.class.set(wait: LOCK_RETRY_WAIT).perform_later(user_id, attempt: attempt + 1)
     nil
+  end
+
+  # One notification, once, when the account's own re-check is done. The
+  # Background jobs page carries the same message while it is pending, but that
+  # page is self-hosted only, so this is the only signal a Cloud account gets
+  # that its map may look different.
+  def notify(user)
+    Notifications::Create.new(
+      user: user,
+      kind: :info,
+      title: 'GPS noise re-check finished',
+      content: 'Your points were re-checked against the noise rules introduced in this release, and your ' \
+               'tracks, stats and digests were rebuilt from the result. Some points may appear or disappear ' \
+               'on the map. No points were deleted.'
+    ).call
   end
 
   def recalculated?(user)

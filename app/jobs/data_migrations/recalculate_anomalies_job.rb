@@ -25,24 +25,31 @@ class DataMigrations::RecalculateAnomaliesJob < ApplicationJob
   def perform(limit: CONCURRENCY)
     runnable, skipped = next_users(limit)
 
-    mark_settled(skipped) if skipped.any?
+    settle(skipped) if skipped.any?
 
-    if runnable.empty?
+    claimed = runnable.any? ? claim(runnable) : []
+
+    if claimed.empty?
       # A pass that only settled skipped users would otherwise end without
       # anyone left to hand the slot back, stalling the chain.
       self.class.perform_later(limit: limit) if skipped.any?
       return
     end
 
-    mark_queued(runnable)
-
     Rails.logger.info(
-      "[DataMigrations::RecalculateAnomalies] handing #{runnable.size} user(s) to the rebuild"
+      "[DataMigrations::RecalculateAnomalies] handing #{claimed.size} user(s) to the rebuild"
     )
 
-    ActiveJob.perform_all_later(
-      runnable.map { |user_id| DataMigrations::RecalculateAnomaliesUserJob.new(user_id) }
-    )
+    begin
+      ActiveJob.perform_all_later(
+        claimed.map { |user_id| DataMigrations::RecalculateAnomaliesUserJob.new(user_id) }
+      )
+    rescue StandardError
+      # The claim is only meaningful if a job exists to honour it; leaving it
+      # behind would hide these users from every later pass.
+      DataMigrations::RecalculateAnomaliesUserJob.release_claim(claimed)
+      raise
+    end
   end
 
   private
@@ -83,33 +90,41 @@ class DataMigrations::RecalculateAnomaliesJob < ApplicationJob
         .select(:id, :settings)
   end
 
-  # Marked before the jobs are enqueued, so a second dispatcher pass cannot hand
-  # the same user out twice, and so nothing reports a user as waiting on a pass
-  # that was never scheduled for them.
-  def mark_queued(user_ids)
-    stamp(user_ids, DataMigrations::RecalculateAnomaliesUserJob::QUEUED_SETTINGS_KEY => Time.zone.now.iso8601)
+  # Claim and hand-out are one statement: two dispatchers released at the same
+  # instant would otherwise both read the same unclaimed id and run it twice.
+  # Only the ids this statement actually stamped come back.
+  def claim(user_ids)
+    stamp(user_ids, queued_key => Time.zone.now.iso8601)
   end
 
-  # Nothing to run for these, so they are marked queued and done at once: they
+  # Nothing to run for these, so they are claimed and finished at once: they
   # drop out of later scans and never report themselves as waiting.
-  def mark_settled(user_ids)
+  def settle(user_ids)
     now = Time.zone.now.iso8601
 
     stamp(
       user_ids,
-      DataMigrations::RecalculateAnomaliesUserJob::QUEUED_SETTINGS_KEY => now,
+      queued_key => now,
       DataMigrations::RecalculateAnomaliesUserJob::RECALCULATED_SETTINGS_KEY => now
     )
   end
 
   def stamp(user_ids, values)
-    placeholders = values.flat_map { |key, value| [key, value] }
+    binds = values.flat_map { |key, value| [key, value] }
     pairs = Array.new(values.size, '?, ?').join(', ')
 
-    User.where(id: user_ids).update_all(
+    User.connection.select_values(
       ActiveRecord::Base.sanitize_sql_array(
-        ["settings = COALESCE(settings, '{}'::jsonb) || jsonb_build_object(#{pairs})", *placeholders]
+        [
+          "UPDATE users SET settings = COALESCE(settings, '{}'::jsonb) || jsonb_build_object(#{pairs}) " \
+          "WHERE id IN (?) AND NOT jsonb_exists(COALESCE(settings, '{}'::jsonb), ?) RETURNING id",
+          *binds, user_ids, queued_key
+        ]
       )
     )
+  end
+
+  def queued_key
+    DataMigrations::RecalculateAnomaliesUserJob::QUEUED_SETTINGS_KEY
   end
 end
