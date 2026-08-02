@@ -1264,4 +1264,41 @@ subscription_source: :none)
       expect(user.reload.last_name).to eq('Lovelace')
     end
   end
+
+  describe '#gps_noise_recheck_pending?' do
+    let(:job) { DataMigrations::RecalculateAnomaliesUserJob }
+    let(:user) { create(:user) }
+
+    def stamp(**pairs)
+      user.update!(settings: user.settings.merge(pairs.transform_keys(&:to_s)))
+    end
+
+    it 'is pending once the dispatcher has handed the account to a rebuild' do
+      stamp(job::QUEUED_SETTINGS_KEY => Time.current.iso8601)
+
+      expect(user.gps_noise_recheck_pending?).to be true
+    end
+
+    it 'is not pending once the rebuild has stamped the account' do
+      stamp(
+        job::QUEUED_SETTINGS_KEY => Time.current.iso8601,
+        job::RECALCULATED_SETTINGS_KEY => Time.current.iso8601
+      )
+
+      expect(user.gps_noise_recheck_pending?).to be false
+    end
+
+    it 'is not pending for an account the dispatcher never handed out' do
+      create(:point, user: user)
+
+      expect(user.gps_noise_recheck_pending?).to be false
+    end
+
+    it 'is not pending for an account the dispatcher settled without running it' do
+      now = Time.current.iso8601
+      stamp(job::QUEUED_SETTINGS_KEY => now, job::RECALCULATED_SETTINGS_KEY => now)
+
+      expect(user.gps_noise_recheck_pending?).to be false
+    end
+  end
 end

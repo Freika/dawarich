@@ -24,11 +24,12 @@ class Users::RecalculateDataJob < ApplicationJob
     end
   end
 
-  def perform(user_id, year: nil, notify: true)
+  def perform(user_id, year: nil, notify: true, job_queue: nil)
     @user = find_user_or_skip(user_id) || return
 
     @year = year&.to_i
     @notify = notify
+    @job_queue = job_queue
 
     with_user_timezone(user) do
       years_to_process = determine_years
@@ -53,7 +54,7 @@ class Users::RecalculateDataJob < ApplicationJob
 
   private
 
-  attr_reader :user, :year
+  attr_reader :user, :year, :job_queue
 
   def determine_years
     if year.present?
@@ -78,12 +79,10 @@ class Users::RecalculateDataJob < ApplicationJob
       start_at = Time.zone.local(y, 1, 1).beginning_of_day
       end_at = Time.zone.local(y, 12, 31).end_of_day
 
-      Tracks::ParallelGenerator.new(
-        user,
-        start_at: start_at,
-        end_at: end_at,
-        mode: :bulk
-      ).call
+      options = { start_at: start_at, end_at: end_at, mode: :bulk }
+      options[:job_queue] = job_queue if job_queue
+
+      Tracks::ParallelGenerator.new(user, **options).call
     end
 
     Rails.logger.info "Recalculated tracks for user #{user.id}, years: #{years_to_process.join(', ')}"

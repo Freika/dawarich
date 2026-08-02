@@ -76,6 +76,23 @@ class Tracks::SessionManager
     return false unless session_exists?
 
     atomic_increment(counter_key('completed_chunks'), 1)
+    refresh_ttl
+    true
+  end
+
+  # A fan-out slower than DEFAULT_TTL would otherwise expire while its chunks
+  # are still queued. The remaining chunks then find no session and silently
+  # create nothing, leaving the days whose tracks were already cleaned empty.
+  # Progress keeps the session alive.
+  def refresh_ttl
+    data = Rails.cache.read(cache_key)
+    return false unless data
+
+    Rails.cache.write(cache_key, data, expires_in: DEFAULT_TTL)
+    Rails.cache.redis.with do |redis|
+      redis.expire(counter_key('completed_chunks'), DEFAULT_TTL.to_i)
+      redis.expire(counter_key('tracks_created'), DEFAULT_TTL.to_i)
+    end
     true
   end
 

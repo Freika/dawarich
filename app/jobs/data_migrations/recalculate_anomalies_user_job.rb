@@ -1,0 +1,132 @@
+# frozen_string_literal: true
+
+# Per-user half of the 1.10.4 noise re-evaluation. Idempotent: a user is stamped
+# once their points have been re-checked and their derived data rebuilt, so
+# re-running the migration, or a second dispatcher pass after a restart, skips
+# everyone already done instead of recalculating the whole instance again.
+#
+# Holds one of the dispatcher's slots for its whole run and hands it back when
+# it is finished, so the migration never occupies more workers than that.
+class DataMigrations::RecalculateAnomaliesUserJob < ApplicationJob
+  # Housekeeping nobody is waiting on: low_priority is last in Sidekiq's strict
+  # queue order. The rebuild runs inline so it stays here too, and the track
+  # chunks it fans out are routed to low_priority as well, so a full-history
+  # rebuild never queues ahead of live tracking on :tracks.
+  queue_as :low_priority
+
+  QUEUED_SETTINGS_KEY = 'anomaly_rules_recalculation_queued_at'
+  RECALCULATED_SETTINGS_KEY = 'anomaly_rules_recalculated_at'
+  # Another backfill already holds this user's lock — an import or a manual
+  # re-check. Come back rather than stamping work that never happened.
+  LOCK_RETRY_WAIT = 15.minutes
+  # A lock still held after this many tries is not transient contention any
+  # more; give up loudly instead of re-queueing every 15 minutes forever.
+  MAX_LOCK_ATTEMPTS = 8
+
+  # Bounded, because a failing user re-runs the whole reset and filter pass on
+  # every attempt. Sidekiq's default 25 would do that for days, and would hold
+  # the dispatcher slot the entire time.
+  MAX_REBUILD_ATTEMPTS = 3
+
+  retry_on StandardError, wait: :polynomially_longer, attempts: MAX_REBUILD_ATTEMPTS do |job, error|
+    user_id = job.arguments.first
+    Rails.logger.error(
+      "[DataMigrations::RecalculateAnomalies] user #{user_id} failed: #{error.class}: #{error.message}. " \
+      'Released for a later pass.'
+    )
+    release_claim([user_id])
+    DataMigrations::RecalculateAnomaliesJob.perform_later(limit: 1)
+  end
+
+  # Drops the dispatcher's claim so a later pass can pick the user up again.
+  # Without this a user who never completed would carry the claim forever and be
+  # invisible to every re-run — and report themselves as waiting indefinitely.
+  def self.release_claim(user_ids)
+    User.where(id: user_ids).update_all(
+      ActiveRecord::Base.sanitize_sql_array(['settings = settings - ?', QUEUED_SETTINGS_KEY])
+    )
+  end
+
+  def perform(user_id, attempt: 1)
+    user = User.find_by(id: user_id)
+    return release_slot if user.nil?
+    return release_slot if recalculated?(user)
+
+    # Turned filtering off after the dispatcher picked them up. The filter would
+    # mark nothing, so a reset would only strip flags this migration was never
+    # asked to touch — settle them rather than leaving the claim dangling.
+    unless user.safe_settings.gps_filtering_enabled?
+      mark_recalculated(user)
+      return release_slot
+    end
+
+    unless Points::AnomalyBackfillUserJob.perform_now(user.id, reset: true, notify: false, rebuild: :inline)
+      return retry_after_lock(user_id, attempt)
+    end
+
+    mark_recalculated(user)
+    notify(user)
+    release_slot
+  rescue Tracks::PerUserLock::AcquisitionTimeout
+    # The track lock is busy, not broken. Retrying the job wholesale would
+    # re-run the reset and filter pass each time, so take the bounded path that
+    # lock contention already uses — and leave the user unstamped either way.
+    retry_after_lock(user_id, attempt)
+  end
+
+  private
+
+  # Hand the dispatcher slot back so the next user starts. Every terminal path
+  # goes through here; the retry paths deliberately do not, because they keep
+  # the slot for their own re-run.
+  def release_slot
+    DataMigrations::RecalculateAnomaliesJob.perform_later(limit: 1)
+    nil
+  end
+
+  def retry_after_lock(user_id, attempt)
+    if attempt >= MAX_LOCK_ATTEMPTS
+      Rails.logger.error(
+        "[DataMigrations::RecalculateAnomalies] user #{user_id} still locked after #{attempt} attempts, giving up. " \
+        "Re-run with: DataMigrations::RecalculateAnomaliesUserJob.perform_later(#{user_id})"
+      )
+      self.class.release_claim([user_id])
+      return release_slot
+    end
+
+    self.class.set(wait: LOCK_RETRY_WAIT).perform_later(user_id, attempt: attempt + 1)
+    nil
+  end
+
+  # One notification, once, when the account's own re-check is done. The
+  # Background jobs page carries the same message while it is pending, but that
+  # page is self-hosted only, so this is the only signal a Cloud account gets
+  # that its map may look different.
+  def notify(user)
+    Notifications::Create.new(
+      user: user,
+      kind: :info,
+      title: 'GPS noise re-check finished',
+      content: 'Your points were re-checked against the noise rules introduced in this release, and your ' \
+               'tracks, stats and digests were rebuilt from the result. Some points may appear or disappear ' \
+               'on the map. No points were deleted.'
+    ).call
+  end
+
+  def recalculated?(user)
+    user.settings&.dig(RECALCULATED_SETTINGS_KEY).present?
+  end
+
+  # Atomic JSONB merge in SQL: settings is written from several places, and a
+  # read-modify-write here would drop whatever changed while the filter ran.
+  def mark_recalculated(user)
+    User.where(id: user.id).update_all(
+      ActiveRecord::Base.sanitize_sql_array(
+        [
+          "settings = COALESCE(settings, '{}'::jsonb) || jsonb_build_object(?, ?)",
+          RECALCULATED_SETTINGS_KEY, Time.zone.now.iso8601
+        ]
+      )
+    )
+  end
+end

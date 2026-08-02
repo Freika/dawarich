@@ -5,7 +5,7 @@
 class Points::AnomalyBackfillUserJob < ApplicationJob
   queue_as :low_priority
 
-  def perform(user_id, reset: false)
+  def perform(user_id, reset: false, notify: true, rebuild: :async)
     user = User.find(user_id)
     lock_key = "anomaly_backfill:#{user.id}"
 
@@ -18,13 +18,33 @@ class Points::AnomalyBackfillUserJob < ApplicationJob
     if lock_acquired
       # When we reset & re-evaluated anomalies, the tracks/stats/digests built
       # off the old anomaly state are stale. Rebuild them with the new flags.
-      Users::RecalculateDataJob.perform_later(user.id) if reset
+      # A fleet-wide data migration passes notify: false so an upgrade does not
+      # hand every user a notification they never asked for, and rebuild: :inline
+      # to keep the rebuild on the caller's queue and its failures visible to it.
+      rebuild_data(user, notify: notify, rebuild: rebuild) if reset
     else
       Rails.logger.info("Skipping anomaly backfill for user #{user.id} — already locked")
     end
+
+    # Whether the work actually ran: a caller that records progress must not
+    # record a run that the lock skipped.
+    lock_acquired
   end
 
   private
+
+  # #perform rather than .perform_now: perform_now routes exceptions through
+  # rescue_with_handler, and Users::RecalculateDataJob's retry_on swallows a
+  # PerUserLock::AcquisitionTimeout there — it re-enqueues onto :stats and
+  # returns normally, so an inline caller would record a rebuild that never
+  # happened. Calling perform directly lets the timeout reach us.
+  def rebuild_data(user, notify:, rebuild:)
+    if rebuild == :inline
+      Users::RecalculateDataJob.new.perform(user.id, notify: notify, job_queue: :low_priority)
+    else
+      Users::RecalculateDataJob.perform_later(user.id, notify: notify)
+    end
+  end
 
   def reset_existing_flags(user)
     cleared = user.points.where(anomaly: true).update_all(anomaly: false, updated_at: Time.current)
