@@ -1,7 +1,16 @@
 import assert from "node:assert/strict"
+import { readFile } from "node:fs/promises"
 import { test } from "node:test"
 
-import { stackLeftOffset } from "../../app/javascript/maps_maplibre/components/replay_photo_stack_offset.js"
+const source = await readFile(
+  new URL(
+    "../../app/javascript/maps_maplibre/components/replay_photo_stack_offset.js",
+    import.meta.url,
+  ),
+  "utf8",
+)
+const moduleUrl = `data:text/javascript;base64,${Buffer.from(source).toString("base64")}`
+const { stackLeftOffset } = await import(moduleUrl)
 
 const container = { left: 0, top: 0 }
 
