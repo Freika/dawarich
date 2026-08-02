@@ -30,8 +30,11 @@ class FamiliesController < ApplicationController
 
     if current_user.in_family?
       @family = current_user.family
-      @members = @family.members.includes(:family_membership).order(:email) if current_user.family_owner?
-      @family_upgrade_url = helpers.family_upgrade_url(utm_medium: 'family', utm_content: 'renew_family')
+
+      if current_user.family_owner?
+        @members = @family.members.includes(:family_membership).order(:email)
+        @family_upgrade_url = helpers.family_upgrade_url(utm_medium: 'family', utm_content: 'renew_family')
+      end
 
       render :lapsed and return
     end
