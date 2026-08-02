@@ -29,7 +29,27 @@ RSpec.describe Points::AnomalyBackfillUserJob, type: :job do
     it 'enqueues a tracks/stats/digests recalculation afterwards' do
       expect do
         described_class.new.perform(user.id, reset: true)
-      end.to have_enqueued_job(Users::RecalculateDataJob).with(user.id)
+      end.to have_enqueued_job(Users::RecalculateDataJob).with(user.id, notify: true)
+    end
+
+    it 'notifies the user by default' do
+      described_class.new.perform(user.id, reset: true)
+
+      perform_enqueued_jobs(only: Users::RecalculateDataJob)
+
+      expect(user.notifications.where(title: 'Data recalculation completed')).to exist
+    end
+
+    it 'reports that it did the work, so callers can tell a skipped run apart' do
+      expect(described_class.new.perform(user.id, reset: true)).to be true
+    end
+
+    it 'recalculates without notifying when notify is false' do
+      described_class.new.perform(user.id, reset: true, notify: false)
+
+      perform_enqueued_jobs(only: Users::RecalculateDataJob)
+
+      expect(user.notifications.where(title: 'Data recalculation completed')).not_to exist
     end
   end
 

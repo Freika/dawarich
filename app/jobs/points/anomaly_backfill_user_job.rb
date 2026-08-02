@@ -5,7 +5,7 @@
 class Points::AnomalyBackfillUserJob < ApplicationJob
   queue_as :low_priority
 
-  def perform(user_id, reset: false)
+  def perform(user_id, reset: false, notify: true)
     user = User.find(user_id)
     lock_key = "anomaly_backfill:#{user.id}"
 
@@ -18,10 +18,16 @@ class Points::AnomalyBackfillUserJob < ApplicationJob
     if lock_acquired
       # When we reset & re-evaluated anomalies, the tracks/stats/digests built
       # off the old anomaly state are stale. Rebuild them with the new flags.
-      Users::RecalculateDataJob.perform_later(user.id) if reset
+      # A fleet-wide data migration passes notify: false so an upgrade does not
+      # hand every user a notification they never asked for.
+      Users::RecalculateDataJob.perform_later(user.id, notify: notify) if reset
     else
       Rails.logger.info("Skipping anomaly backfill for user #{user.id} — already locked")
     end
+
+    # Whether the work actually ran: a caller that records progress must not
+    # record a run that the lock skipped.
+    lock_acquired
   end
 
   private
