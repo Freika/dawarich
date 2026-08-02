@@ -46,6 +46,14 @@ RSpec.describe 'Enhanced import extracts visits and places' do
     include_examples 'an adapter that emits one visit and one place'
   end
 
+  context 'with a legacy Google semantic history file using epoch-ms timestamps' do
+    let(:expected_place_id_prefix) { 'google:' }
+    let(:fixture_path) { Rails.root.join('spec/fixtures/files/enhanced_import/google_semantic_history_legacy_ms.json') }
+    let(:import) { build_import_with_file(:google_semantic_history, fixture_path) }
+
+    include_examples 'an adapter that emits one visit and one place'
+  end
+
   context 'with a Polarsteps export' do
     let(:expected_place_id_prefix) { 'polarsteps:' }
     let(:fixture_path) { Rails.root.join('spec/fixtures/files/enhanced_import/polarsteps_segments_minimal.json') }

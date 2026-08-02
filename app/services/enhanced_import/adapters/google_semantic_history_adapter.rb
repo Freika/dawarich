@@ -29,8 +29,8 @@ module EnhancedImport
         return nil if mode.blank?
 
         duration = activity['duration'] || {}
-        started_at = parse_time(duration['startTimestamp'])
-        ended_at   = parse_time(duration['endTimestamp'])
+        started_at = duration_time(duration, 'start')
+        ended_at   = duration_time(duration, 'end')
         return nil if started_at.nil? || ended_at.nil?
 
         Extracted::Track.new(
@@ -62,8 +62,9 @@ module EnhancedImport
         longitude = parse_e7(location['longitudeE7'])
         return nil if latitude.nil? || longitude.nil?
 
-        started_at = parse_time(place_visit.dig('duration', 'startTimestamp'))
-        ended_at   = parse_time(place_visit.dig('duration', 'endTimestamp'))
+        duration = place_visit['duration'] || {}
+        started_at = duration_time(duration, 'start')
+        ended_at   = duration_time(duration, 'end')
         return nil if started_at.nil? || ended_at.nil?
 
         place = Extracted::Place.new(
@@ -84,12 +85,24 @@ module EnhancedImport
         )
       end
 
+      # Exports from before ~2022 carry epoch-ms strings under
+      # startTimestampMs/endTimestampMs instead of ISO8601 timestamps.
+      def duration_time(duration, prefix)
+        parse_time(duration["#{prefix}Timestamp"]) || parse_epoch_ms(duration["#{prefix}TimestampMs"])
+      end
+
       def parse_time(value)
         return nil if value.blank?
 
         Time.zone.parse(value)
       rescue ArgumentError
         nil
+      end
+
+      def parse_epoch_ms(value)
+        return nil unless value.to_s.match?(/\A\d+\z/)
+
+        Time.zone.at(value.to_i / 1000.0)
       end
 
       def humanize_semantic_type(type)
