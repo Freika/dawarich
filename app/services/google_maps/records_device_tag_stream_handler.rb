@@ -68,5 +68,5 @@ class GoogleMaps::RecordsDeviceTagStreamHandler < Oj::Saj
 
   def location_level? = @depth == 1
 
-  def normalize(key) = key.nil? ? nil : key.to_s
+  def normalize(key) = key&.to_s
 end

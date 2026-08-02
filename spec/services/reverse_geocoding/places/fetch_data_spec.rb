@@ -55,7 +55,7 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
         let(:place) { create(:place, name: "Mum's house", name_locked_at: 1.day.ago) }
 
         it 'keeps the user-supplied name' do
-          expect { service.call }.not_to change { place.reload.name }
+          expect { service.call }.not_to(change { place.reload.name })
         end
 
         it 'still refreshes city and country' do
@@ -87,7 +87,7 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
         end
 
         it 'keeps the locked sibling name through the bulk upsert' do
-          expect { service.call }.not_to change { sibling.reload.name }
+          expect { service.call }.not_to(change { sibling.reload.name })
         end
 
         it 'still refreshes the locked sibling city' do
