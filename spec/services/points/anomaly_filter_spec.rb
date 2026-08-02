@@ -187,6 +187,49 @@ RSpec.describe Points::AnomalyFilter do
       end
     end
 
+    context 'Pass 2: same-device outlier sharing a timestamp with a good point' do
+      let(:base_time) { 30.minutes.ago.to_i }
+      let(:base_lat) { 52.52 }
+      let(:base_lon) { 13.405 }
+
+      # The spike is declared first so it takes the LOWER id of the tied pair:
+      # under (timestamp, id) it precedes the good point, the opposite tie
+      # order from the cross-device context above. Both orders must resolve
+      # the same way — only the spike is convicted.
+      let!(:spike) do
+        create(:point, user: user, tracker_id: 'phone', accuracy: 10,
+                       timestamp: base_time + 120,
+                       lonlat: "POINT(#{base_lon + 10.0} #{base_lat + 10.0})")
+      end
+      let!(:tied_good) do
+        create(:point, user: user, tracker_id: 'phone', accuracy: 10,
+                       timestamp: base_time + 120,
+                       lonlat: "POINT(#{base_lon + 0.0001} #{base_lat + 0.0001})")
+      end
+      let!(:before_point) do
+        create(:point, user: user, tracker_id: 'phone', accuracy: 10,
+                       timestamp: base_time,
+                       lonlat: "POINT(#{base_lon} #{base_lat})")
+      end
+      let!(:after_point) do
+        create(:point, user: user, tracker_id: 'phone', accuracy: 10,
+                       timestamp: base_time + 240,
+                       lonlat: "POINT(#{base_lon + 0.0002} #{base_lat + 0.0002})")
+      end
+
+      before { described_class.new(user.id, start_time, end_time).call }
+
+      it 'marks only the spike as anomaly' do
+        expect(spike.reload.anomaly).to be true
+      end
+
+      it 'keeps the good point that shares the spike timestamp' do
+        expect(tied_good.reload.anomaly).not_to be true
+        expect(before_point.reload.anomaly).not_to be true
+        expect(after_point.reload.anomaly).not_to be true
+      end
+    end
+
     context 'Pass 2: a run of consecutive displaced points' do
       let(:base_time) { 30.minutes.ago.to_i }
       let(:base_lat) { 52.52 }

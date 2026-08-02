@@ -245,18 +245,21 @@ class Points::AnomalyFilter
   end
 
   def fetch_points_with_context(start_time, end_time)
+    # Tie order must match the per-device window in calculate_all_speeds
+    # (ORDER BY timestamp, id), or points sharing a timestamp get speeds
+    # attached to the wrong neighbour.
     before_ctx = Point.where(user_id: @user_id).not_anomaly
                       .where('timestamp < ?', start_time)
-                      .order(timestamp: :desc).limit(CONTEXT_POINTS)
+                      .order(timestamp: :desc, id: :desc).limit(CONTEXT_POINTS)
                       .select(:id, :timestamp, :tracker_id, :lonlat).to_a.reverse
 
     main = Point.where(user_id: @user_id, timestamp: start_time..end_time)
-                .not_anomaly.order(:timestamp)
+                .not_anomaly.order(:timestamp, :id)
                 .select(:id, :timestamp, :tracker_id, :lonlat).to_a
 
     after_ctx = Point.where(user_id: @user_id).not_anomaly
                      .where('timestamp > ?', end_time)
-                     .order(:timestamp).limit(CONTEXT_POINTS)
+                     .order(:timestamp, :id).limit(CONTEXT_POINTS)
                      .select(:id, :timestamp, :tracker_id, :lonlat).to_a
 
     [before_ctx + main + after_ctx, main]
