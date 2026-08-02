@@ -33,9 +33,14 @@ class Points::AnomalyBackfillUserJob < ApplicationJob
 
   private
 
+  # #perform rather than .perform_now: perform_now routes exceptions through
+  # rescue_with_handler, and Users::RecalculateDataJob's retry_on swallows a
+  # PerUserLock::AcquisitionTimeout there — it re-enqueues onto :stats and
+  # returns normally, so an inline caller would record a rebuild that never
+  # happened. Calling perform directly lets the timeout reach us.
   def rebuild_data(user, notify:, rebuild:)
     if rebuild == :inline
-      Users::RecalculateDataJob.perform_now(user.id, notify: notify)
+      Users::RecalculateDataJob.new.perform(user.id, notify: notify, job_queue: :low_priority)
     else
       Users::RecalculateDataJob.perform_later(user.id, notify: notify)
     end

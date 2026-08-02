@@ -6,8 +6,9 @@
 # everyone already done instead of recalculating the whole instance again.
 class DataMigrations::RecalculateAnomaliesUserJob < ApplicationJob
   # Housekeeping nobody is waiting on: low_priority is last in Sidekiq's strict
-  # queue order. The rebuild runs inline so it stays here too, apart from the
-  # track chunks Tracks::ParallelGenerator always fans out onto :tracks.
+  # queue order. The rebuild runs inline so it stays here too, and the track
+  # chunks it fans out are routed to low_priority as well, so a full-history
+  # rebuild never queues ahead of live tracking on :tracks.
   queue_as :low_priority
 
   RECALCULATED_SETTINGS_KEY = 'anomaly_rules_recalculated_at'

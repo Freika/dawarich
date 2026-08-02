@@ -1264,4 +1264,36 @@ subscription_source: :none)
       expect(user.reload.last_name).to eq('Lovelace')
     end
   end
+
+  describe '#gps_noise_recheck_pending?' do
+    let(:user) { create(:user) }
+
+    it 'is pending for a user with points who has not been recalculated yet' do
+      create(:point, user: user)
+
+      expect(user.gps_noise_recheck_pending?).to be true
+    end
+
+    it 'is not pending once the recalculation has stamped the user' do
+      create(:point, user: user)
+      user.update!(
+        settings: user.settings.merge(
+          DataMigrations::RecalculateAnomaliesUserJob::RECALCULATED_SETTINGS_KEY => Time.current.iso8601
+        )
+      )
+
+      expect(user.gps_noise_recheck_pending?).to be false
+    end
+
+    it 'is not pending for a user who turned GPS filtering off' do
+      create(:point, user: user)
+      user.update!(settings: user.settings.merge('gps_filtering_enabled' => false))
+
+      expect(user.gps_noise_recheck_pending?).to be false
+    end
+
+    it 'is not pending for a user with no points' do
+      expect(user.gps_noise_recheck_pending?).to be false
+    end
+  end
 end

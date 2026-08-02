@@ -45,20 +45,29 @@ RSpec.describe Points::AnomalyBackfillUserJob, type: :job do
     end
 
     it 'runs the recalculation inline when asked to, keeping it on the caller queue' do
-      allow(Users::RecalculateDataJob).to receive(:perform_now).and_call_original
-
       described_class.new.perform(user.id, reset: true, rebuild: :inline)
 
-      expect(Users::RecalculateDataJob).to have_received(:perform_now).with(user.id, notify: true)
       expect(Users::RecalculateDataJob).not_to have_been_enqueued
+      expect(user.notifications.where(title: 'Data recalculation completed')).to exist
     end
 
-    it 'surfaces an inline recalculation failure to the caller' do
-      allow(Users::RecalculateDataJob).to receive(:perform_now).and_raise(StandardError, 'rebuild failed')
+    it 'routes the inline track rebuild off :tracks so live tracking stays ahead' do
+      described_class.new.perform(user.id, reset: true, rebuild: :inline)
+
+      chunk_jobs = ActiveJob::Base.queue_adapter.enqueued_jobs.select do |job|
+        job[:job] == Tracks::TimeChunkProcessorJob
+      end
+
+      expect(chunk_jobs).not_to be_empty
+      expect(chunk_jobs.map { |job| job[:queue] }.uniq).to eq(['low_priority'])
+    end
+
+    it 'surfaces a track lock timeout instead of letting retry_on swallow it' do
+      allow(Tracks::PerUserLock).to receive(:with_user_lock).and_raise(Tracks::PerUserLock::AcquisitionTimeout)
 
       expect do
         described_class.new.perform(user.id, reset: true, rebuild: :inline)
-      end.to raise_error(StandardError)
+      end.to raise_error(Tracks::PerUserLock::AcquisitionTimeout)
     end
 
     it 'recalculates without notifying when notify is false' do

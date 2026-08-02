@@ -20,6 +20,7 @@ class DataMigrations::RecalculateAnomaliesJob < ApplicationJob
   SECONDS_PER_USER = 30
   MAX_STAGGER_WINDOW_SECONDS = 24.hours.to_i
   ENQUEUE_BATCH_SIZE = 1_000
+  USER_SCAN_BATCH_SIZE = 1_000
 
   def self.stagger_window(user_count)
     [user_count * SECONDS_PER_USER, MAX_STAGGER_WINDOW_SECONDS].min
@@ -55,14 +56,23 @@ class DataMigrations::RecalculateAnomaliesJob < ApplicationJob
   # Users who turned filtering off keep the flags they have. Re-running the
   # filter for them marks nothing, so a reset would silently unflag their
   # history — a change this migration was not asked to make.
+  # The boolean stays in Ruby rather than SQL: SafeSettings casts it with
+  # ActiveModel::Type::Boolean, which treats "0", "f" and "off" as false too,
+  # and a hand-rolled jsonb predicate would quietly disagree on those. Only id
+  # and settings are loaded, in batches, so nothing accumulates but the ids.
   def eligible_user_ids
+    ids = []
+
     User.where('EXISTS (SELECT 1 FROM points WHERE points.user_id = users.id)')
         .where(
           "NOT jsonb_exists(COALESCE(settings, '{}'::jsonb), ?)",
           DataMigrations::RecalculateAnomaliesUserJob::RECALCULATED_SETTINGS_KEY
         )
-        .pluck(:id, :settings)
-        .select { |_id, settings| Users::SafeSettings.new(settings || {}).gps_filtering_enabled? }
-        .map(&:first)
+        .select(:id, :settings)
+        .find_each(batch_size: USER_SCAN_BATCH_SIZE) do |user|
+          ids << user.id if Users::SafeSettings.new(user.settings || {}).gps_filtering_enabled?
+        end
+
+    ids
   end
 end

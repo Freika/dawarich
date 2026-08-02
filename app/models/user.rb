@@ -118,6 +118,13 @@ class User < ApplicationRecord
     Users::SafeSettings.new(settings, plan: plan)
   end
 
+  def gps_noise_recheck_pending?
+    return false unless safe_settings.gps_filtering_enabled?
+    return false if settings&.dig(DataMigrations::RecalculateAnomaliesUserJob::RECALCULATED_SETTINGS_KEY).present?
+
+    points.exists?
+  end
+
   # nil changelog_consent => user has not been shown the opt-in prompt yet.
   def changelog_prompt_pending?
     changelog_consent.nil?

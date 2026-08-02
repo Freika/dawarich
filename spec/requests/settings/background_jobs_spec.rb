@@ -190,4 +190,39 @@ RSpec.describe '/settings/background_jobs', type: :request do
       end
     end
   end
+
+  describe 'GPS noise re-check notice' do
+    before { allow(DawarichSettings).to receive(:self_hosted?).and_return(true) }
+
+    let(:user) { create(:user) }
+
+    before { sign_in user }
+
+    it 'tells a user with unrecalculated points that a re-check is queued' do
+      create(:point, user: user)
+
+      get settings_background_jobs_url
+
+      expect(response.body).to include('queued for a one-time re-check')
+    end
+
+    it 'says nothing once the user has been recalculated' do
+      create(:point, user: user)
+      user.update!(
+        settings: user.settings.merge(
+          DataMigrations::RecalculateAnomaliesUserJob::RECALCULATED_SETTINGS_KEY => Time.current.iso8601
+        )
+      )
+
+      get settings_background_jobs_url
+
+      expect(response.body).not_to include('queued for a one-time re-check')
+    end
+
+    it 'says nothing to a user with no points' do
+      get settings_background_jobs_url
+
+      expect(response.body).not_to include('queued for a one-time re-check')
+    end
+  end
 end

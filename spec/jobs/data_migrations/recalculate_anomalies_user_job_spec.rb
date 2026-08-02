@@ -12,7 +12,9 @@ RSpec.describe DataMigrations::RecalculateAnomaliesUserJob, type: :job do
                    lonlat: 'POINT(13.405 52.52)')
   end
 
-  before { allow(Users::RecalculateDataJob).to receive(:perform_now).and_call_original }
+  def chunk_jobs
+    ActiveJob::Base.queue_adapter.enqueued_jobs.select { |job| job[:job] == Tracks::TimeChunkProcessorJob }
+  end
 
   it 'runs on a queue that yields to live traffic' do
     expect(described_class.new.queue_name).to eq('low_priority')
@@ -27,7 +29,8 @@ RSpec.describe DataMigrations::RecalculateAnomaliesUserJob, type: :job do
   it 'rebuilds tracks, stats and digests without notifying the user' do
     described_class.perform_now(user.id)
 
-    expect(Users::RecalculateDataJob).to have_received(:perform_now).with(user.id, notify: false)
+    expect(chunk_jobs).not_to be_empty
+    expect(user.notifications.where(title: 'Data recalculation completed')).not_to exist
   end
 
   it 'rebuilds on its own queue instead of handing the work to :stats' do
@@ -36,8 +39,24 @@ RSpec.describe DataMigrations::RecalculateAnomaliesUserJob, type: :job do
     expect(Users::RecalculateDataJob).not_to have_been_enqueued
   end
 
+  it 'keeps the track rebuild off :tracks, where live tracking runs' do
+    described_class.perform_now(user.id)
+
+    expect(chunk_jobs.map { |job| job[:queue] }.uniq).to eq(['low_priority'])
+  end
+
+  it 'leaves the user unstamped when the rebuild cannot take the track lock' do
+    allow(Tracks::PerUserLock).to receive(:with_user_lock).and_raise(Tracks::PerUserLock::AcquisitionTimeout)
+
+    expect do
+      described_class.perform_now(user.id)
+    end.to raise_error(Tracks::PerUserLock::AcquisitionTimeout)
+
+    expect(user.reload.settings[described_class::RECALCULATED_SETTINGS_KEY]).to be_nil
+  end
+
   it 'leaves the user unstamped when the rebuild fails, so a re-run picks them up' do
-    allow(Users::RecalculateDataJob).to receive(:perform_now).and_raise(StandardError, 'rebuild failed')
+    allow(Tracks::PerUserLock).to receive(:with_user_lock).and_raise(StandardError, 'rebuild failed')
 
     expect { described_class.perform_now(user.id) }.to raise_error(StandardError)
 
@@ -60,10 +79,11 @@ RSpec.describe DataMigrations::RecalculateAnomaliesUserJob, type: :job do
 
   it 'does nothing on a second run' do
     described_class.perform_now(user.id)
+    after_first_run = chunk_jobs.size
 
     described_class.perform_now(user.id)
 
-    expect(Users::RecalculateDataJob).to have_received(:perform_now).once
+    expect(chunk_jobs.size).to eq(after_first_run)
   end
 
   it 'leaves users who turned GPS filtering off untouched' do
@@ -72,7 +92,7 @@ RSpec.describe DataMigrations::RecalculateAnomaliesUserJob, type: :job do
     described_class.perform_now(user.id)
 
     expect(wrongly_flagged.reload.anomaly).to be true
-    expect(Users::RecalculateDataJob).not_to have_received(:perform_now)
+    expect(chunk_jobs).to be_empty
   end
 
   it 'retries later instead of marking the user done when another backfill holds the lock' do
