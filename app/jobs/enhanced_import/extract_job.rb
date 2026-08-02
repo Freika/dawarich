@@ -4,13 +4,20 @@ module EnhancedImport
   class ExtractJob < ApplicationJob
     queue_as :extractions
 
-    def perform(import_id)
+    # Each requeue rewrites started_at, which is what extraction_stalled? reads,
+    # so an unbounded wait would keep the import on "Queued…" forever with
+    # nothing in the UI to act on. Give up loudly instead: the card then offers
+    # "Retry extraction".
+    MAX_LOCK_ATTEMPTS = 60
+    LOCK_RETRY_WAIT = 1.minute
+
+    def perform(import_id, attempt: 1)
       import = Import.find_by(id: import_id)
       return if import.nil?
 
       return unless EnhancedImport::Translator.supported?(import.source)
 
-      run(import)
+      run(import, attempt)
     rescue ActiveRecord::RecordNotFound => e
       ExceptionReporter.call(e)
     end
@@ -19,7 +26,7 @@ module EnhancedImport
 
     # Import completion schedules track generation too, and both claim the same
     # untracked points. The generator already serialises on this lock.
-    def run(import)
+    def run(import, attempt)
       mark_running!(import)
 
       counts = Tracks::PerUserLock.with_user_lock(import.user_id) do
@@ -27,22 +34,30 @@ module EnhancedImport
       end
 
       mark_completed!(import, counts)
-    rescue Tracks::PerUserLock::AcquisitionTimeout
+    rescue Tracks::PerUserLock::AcquisitionTimeout => e
       # Sibling imports from one archive all finish together; wait our turn
       # rather than surfacing a red card the user can do nothing about.
-      requeue(import)
+      requeue(import, attempt, e)
     rescue StandardError => e
       mark_failed!(import, e)
       ExceptionReporter.call(e)
       raise
     end
 
-    def requeue(import)
+    def requeue(import, attempt, error)
+      if attempt >= MAX_LOCK_ATTEMPTS
+        Rails.logger.error(
+          "[EnhancedImport::ExtractJob] import #{import.id} could not get the user lock after " \
+          "#{attempt} attempts; giving up."
+        )
+        return mark_failed!(import, error)
+      end
+
       import.update_columns(
         additional_data_extraction_status: Import.additional_data_extraction_statuses[:pending],
         additional_data_extraction: import.additional_data_extraction.merge('started_at' => Time.current.iso8601)
       )
-      self.class.set(wait: 1.minute).perform_later(import.id)
+      self.class.set(wait: LOCK_RETRY_WAIT).perform_later(import.id, attempt: attempt + 1)
     end
 
     def process_stream(import)

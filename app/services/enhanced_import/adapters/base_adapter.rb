@@ -30,8 +30,18 @@ module EnhancedImport
       end
 
       # Same unwrapping for the adapters that parse the document whole.
+      #
+      # Scrubbed in place: scrub_to_utf8 returns a second full copy of the file,
+      # so a large export was held twice over before Oj even started building
+      # the object graph. scrub! rewrites the buffer we already have, and does
+      # nothing at all when the bytes are already valid UTF-8 — the usual case.
       def load_json_data
-        stream_file { |io| Oj.load(scrub_to_utf8(io.read), mode: :compat) }
+        stream_file do |io|
+          raw = io.read
+          raw.force_encoding(Encoding::UTF_8)
+          raw.scrub!
+          Oj.load(raw, mode: :compat)
+        end
       end
 
       def unwrapped_path(path)

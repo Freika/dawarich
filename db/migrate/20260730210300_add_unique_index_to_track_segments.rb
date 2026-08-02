@@ -9,10 +9,21 @@ class AddUniqueIndexToTrackSegments < ActiveRecord::Migration[8.0]
     drop_invalid_index(:track_segments, INDEX_NAME)
     return if index_name_exists?(:track_segments, INDEX_NAME)
 
-    add_index :track_segments, %i[track_id start_index],
-              unique: true,
-              algorithm: :concurrently,
-              name: INDEX_NAME
+    build_index
+  rescue ActiveRecord::RecordNotUnique
+    # A segment written between the dedupe migration and this build fails it.
+    # The dedupe is already recorded and never runs again, so without this every
+    # later boot would fail on the same rows forever.
+    drop_invalid_index(:track_segments, INDEX_NAME)
+    execute(<<~SQL.squish)
+      DELETE FROM track_segments WHERE id IN (
+        SELECT id FROM (
+          SELECT id, row_number() OVER (PARTITION BY track_id, start_index ORDER BY id) AS position
+          FROM track_segments
+        ) ranked WHERE ranked.position > 1
+      )
+    SQL
+    build_index
   end
 
   def down
@@ -22,6 +33,13 @@ class AddUniqueIndexToTrackSegments < ActiveRecord::Migration[8.0]
   end
 
   private
+
+  def build_index
+    add_index :track_segments, %i[track_id start_index],
+              unique: true,
+              algorithm: :concurrently,
+              name: INDEX_NAME
+  end
 
   def drop_invalid_index(table, name)
     invalid = select_value(<<~SQL.squish)

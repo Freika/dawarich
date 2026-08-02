@@ -182,12 +182,14 @@ RSpec.describe DataMigrations::RecalculateAnomaliesUserJob, type: :job do
       expect(user.notifications.where(title: 'GPS noise re-check finished')).to exist
     end
 
-    it 'releases the claim when it gives up on a stuck lock, so a re-run finds them' do
+    it 'marks a user failed when it gives up on a stuck lock, instead of re-queueing them' do
       allow(Points::AnomalyBackfillUserJob).to receive(:perform_now).and_return(false)
 
       described_class.perform_now(user.id, attempt: described_class::MAX_LOCK_ATTEMPTS)
 
-      expect(user.reload.settings).not_to have_key(queued_key)
+      settings = user.reload.settings
+      expect(settings[described_class::FAILED_SETTINGS_KEY]).to be_present
+      expect(settings).to have_key(queued_key)
     end
 
     it 'keeps the claim while it is still retrying a busy lock' do
@@ -207,14 +209,16 @@ RSpec.describe DataMigrations::RecalculateAnomaliesUserJob, type: :job do
       expect(user.gps_noise_recheck_pending?).to be false
     end
 
-    it 'releases the claim when the rebuild exhausts its attempts' do
+    it 'marks a user failed when the rebuild exhausts its attempts' do
       allow(Tracks::PerUserLock).to receive(:with_user_lock).and_raise(StandardError, 'rebuild failed')
 
       job = described_class.new(user.id)
       job.exception_executions = { '[StandardError]' => described_class::MAX_REBUILD_ATTEMPTS }
       job.perform_now
 
-      expect(user.reload.settings).not_to have_key(queued_key)
+      settings = user.reload.settings
+      expect(settings[described_class::FAILED_SETTINGS_KEY]).to be_present
+      expect(settings).to have_key(queued_key)
     end
   end
 end

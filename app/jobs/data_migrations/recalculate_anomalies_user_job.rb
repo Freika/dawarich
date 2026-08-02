@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# Per-user half of the 1.10.4 noise re-evaluation. Idempotent: a user is stamped
+# Per-user half of the 1.11.0 noise re-evaluation. Idempotent: a user is stamped
 # once their points have been re-checked and their derived data rebuilt, so
 # re-running the migration, or a second dispatcher pass after a restart, skips
 # everyone already done instead of recalculating the whole instance again.
@@ -16,6 +16,12 @@ class DataMigrations::RecalculateAnomaliesUserJob < ApplicationJob
 
   QUEUED_SETTINGS_KEY = 'anomaly_rules_recalculation_queued_at'
   RECALCULATED_SETTINGS_KEY = 'anomaly_rules_recalculated_at'
+  # Set when a user has been given up on. Distinct from the claim: releasing the
+  # claim would put them straight back at the front of the dispatcher's id-ordered
+  # scan, and they would be handed out, fail, and be released again forever —
+  # occupying a slot nobody else can use. Marked instead, so they drop out of
+  # pending_users and an operator can find them.
+  FAILED_SETTINGS_KEY = 'anomaly_rules_recalculation_failed_at'
   # Another backfill already holds this user's lock — an import or a manual
   # re-check. Come back rather than stamping work that never happened.
   LOCK_RETRY_WAIT = 15.minutes
@@ -32,18 +38,39 @@ class DataMigrations::RecalculateAnomaliesUserJob < ApplicationJob
     user_id = job.arguments.first
     Rails.logger.error(
       "[DataMigrations::RecalculateAnomalies] user #{user_id} failed: #{error.class}: #{error.message}. " \
-      'Released for a later pass.'
+      "Marked failed and skipped. Re-run with: #{name}.perform_later(#{user_id})"
     )
-    release_claim([user_id])
+    mark_failed([user_id])
     DataMigrations::RecalculateAnomaliesJob.perform_later(limit: 1)
   end
 
   # Drops the dispatcher's claim so a later pass can pick the user up again.
-  # Without this a user who never completed would carry the claim forever and be
-  # invisible to every re-run — and report themselves as waiting indefinitely.
+  # Only for work that never started — a job that ran and gave up must use
+  # mark_failed instead, or it is handed straight back to itself.
   def self.release_claim(user_ids)
     User.where(id: user_ids).update_all(
       ActiveRecord::Base.sanitize_sql_array(['settings = settings - ?', QUEUED_SETTINGS_KEY])
+    )
+  end
+
+  # Keeps the claim and records why it stopped, so the user leaves the queue
+  # without being retried on a loop. Re-run one by hand with:
+  #   DataMigrations::RecalculateAnomaliesUserJob.perform_later(<id>)
+  #
+  # Never overwrites a finished rebuild: a run that outlived the staleness
+  # window is handed to a second worker, which then waits on the per-user lock
+  # the first still holds and eventually gives up. Without this guard that
+  # second worker would brand a user whose rebuild had in fact succeeded.
+  def self.mark_failed(user_ids)
+    User.where(id: user_ids).where(
+      "NOT jsonb_exists(COALESCE(settings, '{}'::jsonb), ?)", RECALCULATED_SETTINGS_KEY
+    ).update_all(
+      ActiveRecord::Base.sanitize_sql_array(
+        [
+          "settings = COALESCE(settings, '{}'::jsonb) || jsonb_build_object(?, ?)",
+          FAILED_SETTINGS_KEY, Time.current.utc.iso8601
+        ]
+      )
     )
   end
 
@@ -90,7 +117,7 @@ class DataMigrations::RecalculateAnomaliesUserJob < ApplicationJob
         "[DataMigrations::RecalculateAnomalies] user #{user_id} still locked after #{attempt} attempts, giving up. " \
         "Re-run with: DataMigrations::RecalculateAnomaliesUserJob.perform_later(#{user_id})"
       )
-      self.class.release_claim([user_id])
+      self.class.mark_failed([user_id])
       return release_slot
     end
 

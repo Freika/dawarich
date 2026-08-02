@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# 1.10.4 rewrote GPS noise detection: the user's accuracy threshold no longer
+# 1.11.0 rewrote GPS noise detection: the user's accuracy threshold no longer
 # discards anything, coordinates near (0, 0) are broken everywhere, and new
 # detour/stay passes catch displaced fixes the old speed sandwich let through.
 # Stored anomaly flags therefore disagree with the current rules in both
@@ -21,6 +21,10 @@ class DataMigrations::RecalculateAnomaliesJob < ApplicationJob
   # draining rather than piling up behind a day of backlog.
   CONCURRENCY = 2
   USER_SCAN_BATCH_SIZE = 1_000
+  # How long a claim is trusted before a later pass may take the user back. Long
+  # enough that a legitimately slow rebuild is never stolen mid-run, short enough
+  # that a restart does not strand the account until someone notices.
+  STALE_CLAIM_AFTER = 6.hours
 
   def perform(limit: CONCURRENCY)
     runnable, skipped = next_users(limit)
@@ -84,24 +88,62 @@ class DataMigrations::RecalculateAnomaliesJob < ApplicationJob
 
   def pending_users
     User.where('EXISTS (SELECT 1 FROM points WHERE points.user_id = users.id)')
-        .where(
-          "NOT jsonb_exists(COALESCE(settings, '{}'::jsonb), ?)",
-          DataMigrations::RecalculateAnomaliesUserJob::QUEUED_SETTINGS_KEY
-        )
+        .where(*claimable_condition)
         .select(:id, :settings)
+  end
+
+  # Claimable = never handed out, OR handed out so long ago that the worker
+  # cannot still be alive and it neither finished nor gave up.
+  #
+  # Sidekiq OSS drops in-flight jobs on hard shutdown, so a container restart
+  # during a multi-hour rebuild leaves a user claimed and unstamped. Without the
+  # staleness arm those users are invisible to every later pass, which makes the
+  # "re-running only picks up what is left" contract false for exactly the
+  # users a re-run exists to rescue.
+  #
+  # The timestamp is cast, not compared as text. Text comparison looked cheaper
+  # but is wrong: config.time_zone defaults to Europe/Berlin and is settable per
+  # instance, so a claim can be stored with a "+02:00" or "-07:00" offset. Those
+  # sort by wall-clock digits, and on any zone behind UTC a claim written a
+  # second ago sorts below a UTC cutoff — instantly "stale", handing a second
+  # worker a user the first is still rebuilding.
+  #
+  # The pattern guard keeps the cast from raising on an absent or malformed
+  # value, which would take the dispatcher down; anything unparseable is treated
+  # as stale, since a claim nobody can date is a claim nobody can trust. It
+  # matches the whole date-and-time prefix, not just the date, and COALESCEs
+  # first — a JSON null yields NULL from ->>, which would otherwise make both
+  # arms NULL and leave the user claimable by nobody, forever.
+  def claimable_condition
+    [
+      "(NOT jsonb_exists(COALESCE(settings, '{}'::jsonb), :failed) " \
+      'AND (' \
+      "NOT jsonb_exists(COALESCE(settings, '{}'::jsonb), :queued) " \
+      'OR (' \
+      "NOT jsonb_exists(COALESCE(settings, '{}'::jsonb), :done) " \
+      'AND (' \
+      "COALESCE(settings ->> :queued, '') !~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}' " \
+      'OR (settings ->> :queued)::timestamptz < :stale))))',
+      {
+        queued: queued_key,
+        done: DataMigrations::RecalculateAnomaliesUserJob::RECALCULATED_SETTINGS_KEY,
+        failed: DataMigrations::RecalculateAnomaliesUserJob::FAILED_SETTINGS_KEY,
+        stale: STALE_CLAIM_AFTER.ago
+      }
+    ]
   end
 
   # Claim and hand-out are one statement: two dispatchers released at the same
   # instant would otherwise both read the same unclaimed id and run it twice.
   # Only the ids this statement actually stamped come back.
   def claim(user_ids)
-    stamp(user_ids, queued_key => Time.zone.now.iso8601)
+    stamp(user_ids, queued_key => Time.current.utc.iso8601)
   end
 
   # Nothing to run for these, so they are claimed and finished at once: they
   # drop out of later scans and never report themselves as waiting.
   def settle(user_ids)
-    now = Time.zone.now.iso8601
+    now = Time.current.utc.iso8601
 
     stamp(
       user_ids,
@@ -110,16 +152,26 @@ class DataMigrations::RecalculateAnomaliesJob < ApplicationJob
     )
   end
 
+  # The guard is the SAME predicate pending_users selects on, so a user the scan
+  # considers claimable is one this statement will actually stamp. When the two
+  # drifted apart, a stale claim was handed out and then silently refused, and
+  # the dispatcher lost the slot.
   def stamp(user_ids, values)
-    binds = values.flat_map { |key, value| [key, value] }
-    pairs = Array.new(values.size, '?, ?').join(', ')
+    pairs = Array.new(values.size) { |i| ":k#{i}, :v#{i}" }.join(', ')
+    binds = {}
+    values.each_with_index do |(key, value), i|
+      binds[:"k#{i}"] = key
+      binds[:"v#{i}"] = value
+    end
+
+    condition_sql, condition_binds = claimable_condition
 
     User.connection.select_values(
       ActiveRecord::Base.sanitize_sql_array(
         [
           "UPDATE users SET settings = COALESCE(settings, '{}'::jsonb) || jsonb_build_object(#{pairs}) " \
-          "WHERE id IN (?) AND NOT jsonb_exists(COALESCE(settings, '{}'::jsonb), ?) RETURNING id",
-          *binds, user_ids, queued_key
+          "WHERE id IN (:user_ids) AND #{condition_sql} RETURNING id",
+          binds.merge(condition_binds).merge(user_ids: user_ids)
         ]
       )
     )
