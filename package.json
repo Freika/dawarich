@@ -8,7 +8,7 @@
     "daisyui": "^4.7.3",
     "leaflet": "^1.9.4",
     "maplibre-gl": "^5.13.0",
-    "postcss": "^8.5.15",
+    "postcss": "^8.5.25",
     "trix": "^2.1.19"
   },
   "engines": {
