@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# GPS noise detection changed in 1.10.4, so every anomaly flag stored before the
+# GPS noise detection changed in 1.11.0, so every anomaly flag stored before the
 # upgrade was decided by rules that no longer apply — and the tracks, stats and
 # digests built on those flags with it. Re-evaluate each user's points and
 # rebuild what depends on them, staggered so the queue is not flooded.
