@@ -44,6 +44,23 @@ RSpec.describe Points::AnomalyBackfillUserJob, type: :job do
       expect(described_class.new.perform(user.id, reset: true)).to be true
     end
 
+    it 'runs the recalculation inline when asked to, keeping it on the caller queue' do
+      allow(Users::RecalculateDataJob).to receive(:perform_now).and_call_original
+
+      described_class.new.perform(user.id, reset: true, rebuild: :inline)
+
+      expect(Users::RecalculateDataJob).to have_received(:perform_now).with(user.id, notify: true)
+      expect(Users::RecalculateDataJob).not_to have_been_enqueued
+    end
+
+    it 'surfaces an inline recalculation failure to the caller' do
+      allow(Users::RecalculateDataJob).to receive(:perform_now).and_raise(StandardError, 'rebuild failed')
+
+      expect do
+        described_class.new.perform(user.id, reset: true, rebuild: :inline)
+      end.to raise_error(StandardError)
+    end
+
     it 'recalculates without notifying when notify is false' do
       described_class.new.perform(user.id, reset: true, notify: false)
 

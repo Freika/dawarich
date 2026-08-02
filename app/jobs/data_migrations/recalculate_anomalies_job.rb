@@ -19,6 +19,7 @@ class DataMigrations::RecalculateAnomaliesJob < ApplicationJob
   # a large one trickles through a day instead of queueing everything at once.
   SECONDS_PER_USER = 30
   MAX_STAGGER_WINDOW_SECONDS = 24.hours.to_i
+  ENQUEUE_BATCH_SIZE = 1_000
 
   def self.stagger_window(user_count)
     [user_count * SECONDS_PER_USER, MAX_STAGGER_WINDOW_SECONDS].min
@@ -34,11 +35,15 @@ class DataMigrations::RecalculateAnomaliesJob < ApplicationJob
       "[DataMigrations::RecalculateAnomalies] enqueuing #{user_ids.size} user(s) over #{window}s"
     )
 
-    user_ids.each do |user_id|
-      DataMigrations::RecalculateAnomaliesUserJob
-        .set(wait: rand(0..window).seconds)
-        .perform_later(user_id)
+    now = Time.current
+
+    jobs = user_ids.map do |user_id|
+      job = DataMigrations::RecalculateAnomaliesUserJob.new(user_id)
+      job.scheduled_at = now + rand(0..window).seconds
+      job
     end
+
+    jobs.each_slice(ENQUEUE_BATCH_SIZE) { |batch| ActiveJob.perform_all_later(batch) }
   end
 
   private
@@ -56,8 +61,8 @@ class DataMigrations::RecalculateAnomaliesJob < ApplicationJob
           "NOT jsonb_exists(COALESCE(settings, '{}'::jsonb), ?)",
           DataMigrations::RecalculateAnomaliesUserJob::RECALCULATED_SETTINGS_KEY
         )
-        .find_each
-        .select { |user| user.safe_settings.gps_filtering_enabled? }
-        .map(&:id)
+        .pluck(:id, :settings)
+        .select { |_id, settings| Users::SafeSettings.new(settings || {}).gps_filtering_enabled? }
+        .map(&:first)
   end
 end

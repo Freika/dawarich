@@ -5,12 +5,15 @@
 # digests built on those flags with it. Re-evaluate each user's points and
 # rebuild what depends on them, staggered so the queue is not flooded.
 #
-# Enqueue only: the migration hands the work to Sidekiq and returns immediately,
-# and it never fails the migration run. An instance whose queue is unreachable
-# at upgrade time boots anyway and can start the job by hand afterwards.
+# Enqueue only: the migration hands the work to Sidekiq and returns immediately.
+# An instance whose queue is unreachable at upgrade time boots anyway and can
+# start the job by hand afterwards. A NameError still aborts — that is a broken
+# deploy, not an infrastructure hiccup, and must not be swallowed.
 class EnqueueAnomalyRecalculation < ActiveRecord::Migration[8.0]
   def up
     DataMigrations::RecalculateAnomaliesJob.perform_later
+  rescue NameError
+    raise
   rescue StandardError => e
     Rails.logger.error(
       "[EnqueueAnomalyRecalculation] could not enqueue the GPS noise recalculation: #{e.class}: #{e.message}. " \

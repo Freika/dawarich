@@ -17,6 +17,13 @@ RSpec.describe EnqueueAnomalyRecalculation do
     expect { migration.up }.not_to raise_error
   end
 
+  it 'aborts on a missing constant instead of hiding a broken deploy' do
+    allow(DataMigrations::RecalculateAnomaliesJob)
+      .to receive(:perform_later).and_raise(NameError, 'uninitialized constant')
+
+    expect { migration.up }.to raise_error(NameError)
+  end
+
   it 'logs how to start the recalculation by hand when enqueueing failed' do
     allow(DataMigrations::RecalculateAnomaliesJob)
       .to receive(:perform_later).and_raise(StandardError, 'Connection refused')

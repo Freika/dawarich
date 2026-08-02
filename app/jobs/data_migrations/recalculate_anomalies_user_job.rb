@@ -1,20 +1,24 @@
 # frozen_string_literal: true
 
 # Per-user half of the 1.10.4 noise re-evaluation. Idempotent: a user is stamped
-# once their points have been re-checked and the rebuild is queued, so re-running
-# the migration, or a second dispatcher pass after a restart, skips everyone
-# already done instead of recalculating the whole instance again.
+# once their points have been re-checked and their derived data rebuilt, so
+# re-running the migration, or a second dispatcher pass after a restart, skips
+# everyone already done instead of recalculating the whole instance again.
 class DataMigrations::RecalculateAnomaliesUserJob < ApplicationJob
   # Housekeeping nobody is waiting on: low_priority is last in Sidekiq's strict
-  # queue order, so this only runs when no live work is pending.
+  # queue order. The rebuild runs inline so it stays here too, apart from the
+  # track chunks Tracks::ParallelGenerator always fans out onto :tracks.
   queue_as :low_priority
 
   RECALCULATED_SETTINGS_KEY = 'anomaly_rules_recalculated_at'
   # Another backfill already holds this user's lock — an import or a manual
   # re-check. Come back rather than stamping work that never happened.
   LOCK_RETRY_WAIT = 15.minutes
+  # A lock still held after this many tries is not transient contention any
+  # more; give up loudly instead of re-queueing every 15 minutes forever.
+  MAX_LOCK_ATTEMPTS = 8
 
-  def perform(user_id)
+  def perform(user_id, attempt: 1)
     user = User.find_by(id: user_id)
     return if user.nil?
     return if recalculated?(user)
@@ -22,8 +26,8 @@ class DataMigrations::RecalculateAnomaliesUserJob < ApplicationJob
     # flags this migration was never asked to touch.
     return unless user.safe_settings.gps_filtering_enabled?
 
-    unless Points::AnomalyBackfillUserJob.perform_now(user.id, reset: true, notify: false)
-      self.class.set(wait: LOCK_RETRY_WAIT).perform_later(user.id)
+    unless Points::AnomalyBackfillUserJob.perform_now(user.id, reset: true, notify: false, rebuild: :inline)
+      retry_after_lock(user_id, attempt)
       return
     end
 
@@ -31,6 +35,18 @@ class DataMigrations::RecalculateAnomaliesUserJob < ApplicationJob
   end
 
   private
+
+  def retry_after_lock(user_id, attempt)
+    if attempt >= MAX_LOCK_ATTEMPTS
+      Rails.logger.error(
+        "[DataMigrations::RecalculateAnomalies] user #{user_id} still locked after #{attempt} attempts, giving up. " \
+        "Re-run with: DataMigrations::RecalculateAnomaliesUserJob.perform_later(#{user_id})"
+      )
+      return
+    end
+
+    self.class.set(wait: LOCK_RETRY_WAIT).perform_later(user_id, attempt: attempt + 1)
+  end
 
   def recalculated?(user)
     user.settings&.dig(RECALCULATED_SETTINGS_KEY).present?

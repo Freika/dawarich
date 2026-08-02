@@ -4,7 +4,7 @@ require 'rails_helper'
 
 RSpec.describe DataMigrations::RecalculateAnomaliesJob, type: :job do
   let(:tracking_user) { create(:user) }
-  let(:user_without_points) { create(:user) }
+  let!(:user_without_points) { create(:user) }
   let(:user_with_filtering_off) { create(:user, settings: { 'gps_filtering_enabled' => false }) }
 
   let(:user_job) { DataMigrations::RecalculateAnomaliesUserJob }
