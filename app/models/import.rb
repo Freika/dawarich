@@ -114,6 +114,17 @@ class Import < ApplicationRecord
     additional_data_extraction.dig('options', 'trust_source') != false
   end
 
+  # Two rapid submissions both pass the extraction policy before either
+  # writes; the compare-and-swap lets exactly one of them move the status
+  # to pending and enqueue the job.
+  def claim_additional_data_extraction!(payload)
+    self.class.where(id: id, additional_data_extraction_status: additional_data_extraction_status)
+        .update_all(
+          additional_data_extraction_status: self.class.additional_data_extraction_statuses[:pending],
+          additional_data_extraction: payload
+        ).positive?
+  end
+
   private
 
   def set_processing_started_at

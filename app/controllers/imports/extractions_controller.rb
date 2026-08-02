@@ -14,12 +14,8 @@ module Imports
         'started_at' => Time.current.iso8601
       )
 
-      @import.update_columns(
-        additional_data_extraction_status: Import.additional_data_extraction_statuses[:pending],
-        additional_data_extraction: payload
-      )
-
-      EnhancedImport::ExtractJob.perform_later(@import.id)
+      EnhancedImport::ExtractJob.perform_later(@import.id) if @import.claim_additional_data_extraction!(payload)
+      @import.reload
 
       respond_to do |format|
         format.turbo_stream
