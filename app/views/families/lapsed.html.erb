@@ -4,15 +4,13 @@
   <div class="max-w-2xl mx-auto">
     <div class="text-center mb-8">
       <h1 class="text-3xl font-bold text-base-content mb-4">
-        <%= t('families.lapsed.title', default: 'Family plan no longer active') %>
+        Family plan no longer active
       </h1>
       <p class="text-base-content opacity-60">
         <% if current_user.family_owner? %>
-          <%= t('families.lapsed.owner_description',
-                default: 'Your Family plan is no longer active, so family features are paused for everyone. Your family and its members are kept — renewing restores full access.') %>
+          Your Family plan is no longer active, so family features are paused for everyone. Your family and its members are kept — renewing restores full access.
         <% else %>
-          <%= t('families.lapsed.member_description',
-                default: "Your family's plan is no longer active, so family features are paused. They come back when the family owner renews — you don't need a subscription of your own.") %>
+          Your family's plan is no longer active, so family features are paused. They come back when the family owner renews — you don't need a subscription of your own.
         <% end %>
       </p>
     </div>
@@ -20,7 +18,7 @@
     <div class="bg-base-200 rounded-lg p-6">
       <% if current_user.family_owner? %>
         <div class="text-center mb-6">
-          <%= link_to t('families.lapsed.renew_cta', default: 'Renew Family plan'),
+          <%= link_to 'Renew Family plan',
                 @family_upgrade_url,
                 target: '_blank', rel: 'noopener noreferrer',
                 class: 'btn btn-primary' %>
@@ -28,17 +26,14 @@
 
         <% if @family.active_invitations.any? %>
           <div class="text-center mb-6">
-            <%= link_to t('families.lapsed.pending_invitations', default: 'View pending invitations'),
-                  family_invitations_path, class: 'link text-sm' %>
+            <%= link_to 'View pending invitations', family_invitations_path, class: 'link text-sm' %>
           </div>
         <% end %>
 
         <% other_members = @members.to_a.reject { |member| member == current_user } %>
         <% if other_members.any? %>
           <div class="mb-6">
-            <h2 class="text-sm font-medium mb-2">
-              <%= t('families.lapsed.members_title', default: 'Members') %>
-            </h2>
+            <h2 class="text-sm font-medium mb-2">Members</h2>
             <ul class="space-y-2">
               <% other_members.each do |member| %>
                 <li class="flex items-center justify-between">
@@ -46,7 +41,7 @@
                   <%= link_to family_member_path(member.family_membership),
                         data: { turbo_confirm: "Remove #{member.email} from the family?", turbo_method: :delete },
                         class: 'btn btn-ghost btn-xs text-warning' do %>
-                    <%= t('families.lapsed.remove_member', default: 'Remove') %>
+                    Remove
                   <% end %>
                 </li>
               <% end %>
@@ -56,9 +51,7 @@
       <% end %>
 
       <div class="mb-6">
-        <h2 class="text-sm font-medium mb-2">
-          <%= t('families.lapsed.location_sharing_title', default: 'Your location sharing') %>
-        </h2>
+        <h2 class="text-sm font-medium mb-2">Your location sharing</h2>
         <%= render 'families/location_sharing_toggle', member: current_user %>
       </div>
 
