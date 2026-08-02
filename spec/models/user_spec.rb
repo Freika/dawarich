@@ -410,14 +410,14 @@ RSpec.describe User, type: :model do
         expect { create(:user, :inactive) }.to have_enqueued_job(Users::CreationWebhookJob)
       end
 
-      it 'enqueues the welcome email immediately' do
+      it 'does not enqueue the welcome email (Manager owns onboarding email)' do
         expect { create(:user, :inactive) }
-          .to have_enqueued_job(Users::MailerSendingJob).with(an_instance_of(Integer), 'welcome')
+          .not_to have_enqueued_job(Users::MailerSendingJob).with(an_instance_of(Integer), 'welcome')
       end
 
-      it 'enqueues the explore_features email with a 2-day delay' do
+      it 'does not enqueue the explore_features email (Manager owns onboarding email)' do
         expect { create(:user, :inactive) }
-          .to have_enqueued_job(Users::MailerSendingJob).with(an_instance_of(Integer), 'explore_features')
+          .not_to have_enqueued_job(Users::MailerSendingJob).with(an_instance_of(Integer), 'explore_features')
       end
 
       it 'does not enqueue any billing-related emails (Manager service owns billing emails)' do
@@ -1180,12 +1180,12 @@ subscription_source: :none)
 
     after { clear_enqueued_jobs }
 
-    it 'enqueues welcome and explore_features (product emails only; billing is owned by Manager)' do
+    it 'does not enqueue welcome or explore_features (Manager owns onboarding email)' do
       user = build(:user)
       user.save!
 
-      expect(Users::MailerSendingJob).to have_been_enqueued.with(user.id, 'welcome')
-      expect(Users::MailerSendingJob).to have_been_enqueued.with(user.id, 'explore_features')
+      expect(Users::MailerSendingJob).not_to have_been_enqueued.with(user.id, 'welcome')
+      expect(Users::MailerSendingJob).not_to have_been_enqueued.with(user.id, 'explore_features')
     end
 
     it 'enqueues the creation webhook job so Manager can sync billing state' do
