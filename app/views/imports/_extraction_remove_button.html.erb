@@ -1,0 +1,5 @@
+<%= button_to 'Remove extracted data',
+              import_extraction_path(import),
+              method: :delete,
+              class: 'btn btn-sm btn-ghost text-error',
+              form: { data: { turbo_confirm: 'Remove the visits, places and tracks this extraction created? Your imported GPS points are kept.' } } %>

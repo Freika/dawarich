@@ -3,7 +3,8 @@
 module SmtpConfig
   ALLOWED_AUTHENTICATIONS = %i[plain login cram_md5 digest_md5 gssapi ntlm xoauth2].freeze
   NO_AUTHENTICATION_VALUES = %w[none nil false off disabled].freeze
-  DEFAULT_TIMEOUT = 5
+  DEFAULT_OPEN_TIMEOUT = 30
+  DEFAULT_READ_TIMEOUT = 60
 
   IMPLICIT_TLS_PORT = 465
 
@@ -19,8 +20,8 @@ module SmtpConfig
       authentication:  authentication(env),
       ssl:             ssl,
       enable_starttls: !ssl && env.fetch('SMTP_STARTTLS', 'true') == 'true',
-      open_timeout:    timeout(env, 'SMTP_OPEN_TIMEOUT'),
-      read_timeout:    timeout(env, 'SMTP_READ_TIMEOUT')
+      open_timeout:    timeout(env, 'SMTP_OPEN_TIMEOUT', DEFAULT_OPEN_TIMEOUT),
+      read_timeout:    timeout(env, 'SMTP_READ_TIMEOUT', DEFAULT_READ_TIMEOUT)
     }
   end
 
@@ -55,9 +56,9 @@ module SmtpConfig
   end
   private_class_method :ssl?
 
-  def self.timeout(env, key)
+  def self.timeout(env, key, default)
     raw = env[key]
-    return DEFAULT_TIMEOUT if raw.nil? || raw.strip.empty?
+    return default if raw.nil? || raw.strip.empty?
 
     raw.to_i
   end

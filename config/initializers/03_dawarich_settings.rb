@@ -63,10 +63,10 @@ class DawarichSettings
       return true if self_hosted?
       return false if user.nil?
 
-      # PlanScopable#effective_plan already models the entitlement: the plan
-      # holder gets it, and so does everyone in a family whose owner holds it.
-      # When the owner's plan lapses, the whole family drops back together.
-      user.effective_plan == :family
+      # Entitlements models the rule: the plan holder gets the feature, and so
+      # does everyone in a family whose owner holds it. When the owner's plan
+      # lapses, the whole family drops back together.
+      user.entitlements.families?
     end
 
     # Returns true only for self-hosted OIDC (OpenID Connect) setups.

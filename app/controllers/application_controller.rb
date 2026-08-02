@@ -37,11 +37,16 @@ class ApplicationController < ActionController::Base
     family_feature_available? ? family_path : new_family_path
   end
 
+  # Ordering is on unless this instance turned the flag off, so an install
+  # that never registered the flag — or lost it — still offers prints rather
+  # than silently hiding a shipped feature.
   def poster_ordering_enabled?
+    return true unless Flipper.exist?(:poster_ordering)
+
     Flipper.enabled?(:poster_ordering, current_user)
   rescue StandardError => e
     Rails.logger.warn("[poster_ordering] Flipper unavailable: #{e.class}: #{e.message}")
-    false
+    true
   end
 
   protected

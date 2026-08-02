@@ -9,6 +9,7 @@ module Visits
     DENSITY_MAX_GAP_SECONDS = 12 * 3600
     DENSITY_MAX_DISTANCE_METERS = 50
     STATIONARY_SPEED_MPS = 1.4
+    MAX_CLUSTER_RADIUS_MULTIPLIER = 3
 
     attr_reader :user, :start_at, :end_at
 
@@ -113,6 +114,10 @@ module Visits
       density_enabled? ? DENSITY_MAX_DISTANCE_METERS : 0
     end
 
+    def max_cluster_radius_meters
+      eps_meters * MAX_CLUSTER_RADIUS_MULTIPLIER
+    end
+
     def dbscan_sql
       params = [
         user.id, start_at, end_at,
@@ -120,9 +125,9 @@ module Visits
         density_threshold_seconds, density_max_gap_seconds, density_max_distance_meters,
         eps_meters, min_points,
         time_gap_seconds,
-        min_points, min_duration_seconds, STATIONARY_SPEED_MPS
+        min_points, min_duration_seconds, STATIONARY_SPEED_MPS, max_cluster_radius_meters
       ]
-      ActiveRecord::Base.sanitize_sql_array([<<-SQL.squish, *params])
+      ActiveRecord::Base.sanitize_sql_array([<<~SQL.squish, *params])
         WITH candidate_points AS (
           SELECT id, lonlat, timestamp, accuracy
           FROM points
@@ -227,6 +232,23 @@ module Visits
               ) AS avg_speed_mps
           FROM real_point_motion
           GROUP BY visit_id
+        ),
+        visit_centers AS (
+          SELECT
+            visit_id,
+            ST_Centroid(ST_Collect(lonlat::geometry))::geography AS center
+          FROM visit_groups
+          WHERE id > 0
+          GROUP BY visit_id
+        ),
+        visit_spreads AS (
+          SELECT
+            vg.visit_id,
+            MAX(ST_Distance(vg.lonlat, vc.center)) AS max_radius_m
+          FROM visit_groups vg
+          JOIN visit_centers vc USING (visit_id)
+          WHERE vg.id > 0
+          GROUP BY vg.visit_id
         )
         SELECT
           vg.visit_id,
@@ -236,7 +258,8 @@ module Visits
           COUNT(*) FILTER (WHERE vg.id > 0) AS point_count
         FROM visit_groups vg
         JOIN visit_motion vm USING (visit_id)
-        GROUP BY vg.visit_id, vm.real_point_count, vm.avg_speed_mps
+        JOIN visit_spreads vs USING (visit_id)
+        GROUP BY vg.visit_id, vm.real_point_count, vm.avg_speed_mps, vs.max_radius_m
         HAVING vm.real_point_count >= ?
           AND COALESCE(
                 MAX(vg.timestamp) FILTER (WHERE vg.id > 0)
@@ -244,6 +267,7 @@ module Visits
                 0
               ) >= ?
           AND (vm.avg_speed_mps IS NULL OR vm.avg_speed_mps <= ?::double precision)
+          AND vs.max_radius_m <= ?::double precision
         ORDER BY MIN(vg.timestamp) FILTER (WHERE vg.id > 0)
       SQL
     end

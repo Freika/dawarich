@@ -120,14 +120,14 @@ class Kml::Importer
   end
 
   def parse_placemark(placemark)
-    return [] unless explicit_timestamp?(placemark)
+    timestamp_range = extract_timestamp_range(placemark)
+    return [] unless timestamp_range
 
-    timestamp = extract_timestamp(placemark)
     points = []
 
-    points.concat(extract_point_geometry(placemark, timestamp))
-    points.concat(extract_linestring_geometry(placemark, timestamp))
-    points.concat(extract_multigeometry(placemark, timestamp))
+    points.concat(extract_point_geometry(placemark, timestamp_range.first))
+    points.concat(extract_linestring_geometry(placemark, timestamp_range))
+    points.concat(extract_multigeometry(placemark, timestamp_range.first))
 
     points.compact
   end
@@ -140,12 +140,13 @@ class Kml::Importer
     coords.any? ? [build_point(coords.first, timestamp, placemark)] : []
   end
 
-  def extract_linestring_geometry(placemark, timestamp)
+  def extract_linestring_geometry(placemark, timestamp_range)
     linestring_node = REXML::XPath.first(placemark, './/LineString/coordinates')
     return [] unless linestring_node
 
     coords = parse_coordinates(linestring_node.text)
-    coords.map { |coord| build_point(coord, timestamp, placemark) }
+    timestamps = interpolate_timestamps(timestamp_range, coords.size)
+    coords.zip(timestamps).map { |coord, timestamp| build_point(coord, timestamp, placemark) }
   end
 
   def extract_multigeometry(placemark, timestamp)
@@ -237,6 +238,34 @@ class Kml::Importer
 
   def explicit_timestamp?(placemark)
     find_timestamp_node(placemark).present?
+  end
+
+  def extract_timestamp_range(placemark)
+    if explicit_timestamp?(placemark)
+      timestamp = extract_timestamp(placemark)
+      return [timestamp, timestamp]
+    end
+
+    extract_named_timestamp_range(placemark)
+  end
+
+  def extract_named_timestamp_range(placemark)
+    name = REXML::XPath.first(placemark, './name')&.text&.strip
+    match = name&.match(/\A(\d{4}-\d{2}-\d{2} \d{2}:\d{2}) - (\d{4}-\d{2}-\d{2} \d{2}:\d{2})\z/)
+    return unless match
+
+    [Time.zone.parse(match[1]).to_i, Time.zone.parse(match[2]).to_i]
+  rescue ArgumentError
+    nil
+  end
+
+  def interpolate_timestamps(timestamp_range, count)
+    return [] if count.zero?
+    return [timestamp_range.first] if count == 1
+
+    start_timestamp, end_timestamp = timestamp_range
+    step = (end_timestamp - start_timestamp).fdiv(count - 1)
+    count.times.map { |index| (start_timestamp + (step * index)).round }
   end
 
   def extract_timestamp(placemark)

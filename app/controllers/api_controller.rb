@@ -56,7 +56,7 @@ class ApiController < ApplicationController
 
   def require_pro_api!
     return unless current_api_user # auth already handled by authenticate_api_key
-    return if current_api_user.full_access?
+    return if current_api_user.entitlements.pro_api?
 
     render json: {
       error: 'pro_plan_required',
@@ -67,7 +67,7 @@ class ApiController < ApplicationController
 
   def require_write_api!
     return unless current_api_user # auth already handled by authenticate_api_key
-    return if current_api_user.full_access?
+    return if current_api_user.entitlements.write_api?
 
     render json: {
       error: 'write_api_restricted',
@@ -98,9 +98,10 @@ class ApiController < ApplicationController
   # Applies the 12-month plan window to any point relation.
   # Use this when scoping points that don't start from user.points (e.g. track.points).
   def apply_plan_scope(relation, user = current_api_user)
-    return relation unless user&.plan_restricted?
+    window_start = user&.entitlements&.data_window_start
+    return relation unless window_start
 
-    relation.where('timestamp >= ?', DawarichSettings::LITE_DATA_WINDOW.ago.to_i)
+    relation.where('timestamp >= ?', window_start.to_i)
   end
 
   def upgrade_url_for(user)

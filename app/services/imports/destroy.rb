@@ -13,6 +13,8 @@ class Imports::Destroy
   def call
     track_ids = @import.points.where.not(track_id: nil).distinct.pluck(:track_id)
 
+    EnhancedImport::Destroy.new(@import).call
+
     total_deleted = delete_points_in_batches
     User.update_counters(@user.id, points_count: -total_deleted) if total_deleted.positive?
 

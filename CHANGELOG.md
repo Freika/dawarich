@@ -4,11 +4,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [Unreleased]
+## Unreleased
+
+### Added
+
+- Imports of Google Takeout (phone takeout, Semantic Location History) and Polarsteps now optionally extract **visits**, **named places**, **tracks**, and the source app's **transportation-mode classification** (driving, walking, cycling, transit, …) in addition to raw GPS points. Frequent places named by Google Takeout (Home, Work, etc.) are imported as Place records with their original names. Open an import in the Imports list and click **Extract additional data** to add this to existing imports; new imports run extraction automatically. Untick **Trust the source app's classification** in the Extract dialog to have Dawarich re-detect transportation modes using your settings. Existing visits detected by Dawarich's smart detection are kept side-by-side with the imported ones. Changed your mind? **Remove extracted data** on the same import deletes everything the extraction added and leaves your imported GPS points untouched.
+
+### Changed
+
+- Ordering a printed poster from the Poster Studio is now available to everyone, instead of sitting behind a feature flag that was off by default. An instance that would rather not offer it can switch the `poster_ordering` flag off at `/admin/flipper`, or leave `PRINT_ORDER_URL` blank.
+- GPS noise filtering no longer uses the "Accuracy Threshold" setting, and the slider has been removed. A reported accuracy radius is a confidence estimate, not proof a position is wrong: Google Timeline routinely reports 1-4km for points sitting exactly on the road, and dropping those replaced real route geometry with straight lines. Only radii too large to be a position at all are now discarded; wrong positions are caught by the speed checks instead.
+- Points within 5km of (0, 0) are treated as broken coordinates everywhere — import, cleanup and noise filtering previously disagreed, with only some paths catching near-zero values.
 
 ### Fixed
 
-- The Family plan now works on Dawarich Cloud. Family pages, invitations, members and location sharing were available only on self-hosted instances, so subscribers who paid for the Family plan hit errors on every family route. Access now follows the subscription instead of the hosting mode: Family plan holders can create a family, and everyone they invite gets full family access without needing a subscription of their own. Users without the plan are shown the upgrade page instead of an error. If the plan owner stops paying, the whole family loses family features together and everyone falls back to their own plan — the family itself is kept, so resubscribing restores it; members can still leave it, the owner can still dissolve it, and pending invitations to it can no longer be accepted. Self-hosted instances are unchanged — the feature stays open to everyone.
+- The Family plan now works on Dawarich Cloud. Family pages, invitations, members and location sharing were available only on self-hosted instances, so subscribers who paid for the Family plan hit errors on every family route. Access now follows the subscription instead of the hosting mode: Family plan holders can create a family, and everyone they invite gets full family access without needing a subscription of their own. Users without the plan are shown the upgrade page instead of an error. If the plan owner stops paying, the whole family loses family features together once the owner's paid period ends, and everyone falls back to their own plan — the family itself is kept, so resubscribing restores it; members can still leave it, the owner can still dissolve it, and pending invitations to it can no longer be accepted. Self-hosted instances are unchanged — the feature stays open to everyone.
+- Family members no longer keep Pro access after the family owner's subscription lapses. Access was inherited from the owner's plan alone, so an expired trial or a cancelled Family subscription left every member on full access indefinitely; members now revert to their own plan once the owner's paid period ends. Cancelling still leaves members with access until the period they paid for is over.
+- Self-hosted mode is now recognised from common `SELF_HOSTED` values (quoted `"true"`, `TRUE`, whitespace-padded, `1`, `yes`, `on`), not only the exact string `true`, so a non-canonical value no longer silently flips a self-hosted instance into cloud mode and blocks LAN integration URLs (such as Immich) as SSRF. (#2522)
+- Outgoing email no longer fails against slower SMTP servers: the default connection open/read timeouts now match net-smtp's own 30s and 60s instead of a 5-second cap that made digest reports and other emails fail with `Net::OpenTimeout`. Tune with `SMTP_OPEN_TIMEOUT`/`SMTP_READ_TIMEOUT` if needed (#3096)
+- FIT files that carry developer data fields (such as those from Wahoo devices) now import their location records instead of failing to parse. (#2945)
+- Google Timeline imports now keep path points in order when several share the same minute-resolution timestamp: tied points on a path are spaced one second apart so their sequence survives, while genuine repeats at the same coordinate still collapse into a single point. Caveat: re-importing the same Timeline file before deleting its existing date range can leave partial duplicates, because the synthetic spacing shifts the deduplication key — delete the affected date range first when re-importing. (#3115)
+- Visit detection no longer turns long slow walks into one large suggested visit centered somewhere the user never stopped (#2970).
+- Photon place names no longer show generic "Yes" categories in visits (https://github.com/Freika/dawarich/issues/3050)
+- Imports that finish with zero saved points now notify you instead of completing silently. GPX and KML files are called out when they lack per-point timestamps; other sources get a source-neutral message. (#3062)
+- Traccar KML exports now import LineString points using the time range in each track name instead of completing with zero points (#3120)
+- "Cancel my account" now works on self-hosted instances. It never sent a password, so the request failed silently with a 401 and no feedback; deletion now asks for confirmation in a dialog and reports failures instead. Accounts registered through OIDC, which never had a password to enter, can confirm with their email address, both on the web and via the API. (#3107)
+- Tracks no longer connect two different devices. Google's Records.json contains every device on the account, and imports made before 1.10.0 stamped them all as one device, so a phone left at home was stitched to the one that travelled — drawing long straight lines between them. Existing imports are repaired automatically by re-reading the uploaded file.
+- Restoring a data archive now recomputes GPS noise flags. The archive carries none, so restored points previously arrived unfiltered and tracks were rebuilt from noise the instance had already learned to ignore.
+- The Map v2 custom basemap field now accepts MapLibre style URLs whose path has no `.json` suffix, such as `https://tiles.openfreemap.org/styles/liberty`. A tile URL that is missing one of the `{z}`/`{x}`/`{y}` placeholders, or that ends in a tile file extension, is still rejected as a malformed template. (#3256)
 
 ## [1.10.3] - 2026-07-28, Berlin
 
@@ -30,6 +53,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Public live-share links now update in real time for signed-in visitors, instead of only refreshing the location on a full page reload. (#3111)
 - Reverse geocoding and place-name provider outages no longer flood error reporting with handled timeouts, dropped TLS connections, refused connections, unresolvable hostnames, or invalid provider responses. A misconfigured or rate-limited provider — a bad API key, for example — is still reported.
 - The place search box behind visit naming and the Map v2 place picker gets the same treatment: a query the geocoder rejects, or a provider that is briefly unreachable, is logged and returns no matches instead of raising an application error. Self-hosted logs now name the failing error class, and a misconfigured or rate-limited provider is still reported.
+- Unexpected place search errors no longer include the search query or coordinates in error reports.
 - Place visit detection no longer fails when an unused suggested place is deleted while the nightly calculation is running.
 - Clicking "Continue reverse geocoding" again now re-processes points that were left ungeocoded by a previous run, instead of skipping them for up to a day. (#3071)
 - Public share links now expire at the start of the selected date in the owner's timezone instead of remaining active through that day (#3112).

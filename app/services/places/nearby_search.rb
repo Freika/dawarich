@@ -28,7 +28,7 @@ module Places
         log_provider_error(e)
       else
         Rails.logger.error("Nearby search failed: #{e.class}: #{e.message}")
-        ExceptionReporter.call(e, "NearbySearch failed for #{@latitude},#{@longitude}")
+        ExceptionReporter.call(e, 'Places::NearbySearch failed')
       end
       []
     end

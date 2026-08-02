@@ -35,7 +35,9 @@ class Point < ApplicationRecord
   scope :not_visited, -> { where(visit_id: nil) }
   scope :not_anomaly, -> { where(anomaly: [false, nil]) }
   scope :anomaly, -> { where(anomaly: true) }
-  scope :null_island, -> { where('lonlat = ST_SetSRID(ST_MakePoint(0, 0), 4326)::geography') }
+  # Ingest, cleanup and the anomaly filter must all agree on what counts as a
+  # broken coordinate; Points::NullIsland owns that definition.
+  scope :null_island, -> { where(Points::NullIsland.sql_predicate) }
 
   after_create :async_reverse_geocode, if: -> { DawarichSettings.store_geodata? && !reverse_geocoded? }
   after_create :set_country
