@@ -1266,7 +1266,8 @@ subscription_source: :none)
   end
 
   describe '#gps_noise_recheck_pending?' do
-    let(:user) { create(:user) }
+    let(:cutoff) { DataMigrations::RecalculateAnomaliesUserJob::SCOPE_CUTOFF }
+    let(:user) { create(:user, created_at: cutoff - 1.day) }
 
     it 'is pending for a user with points who has not been recalculated yet' do
       create(:point, user: user)
@@ -1294,6 +1295,13 @@ subscription_source: :none)
 
     it 'is not pending for a user with no points' do
       expect(user.gps_noise_recheck_pending?).to be false
+    end
+
+    it 'is not pending for an account created after the migration, which was never in scope' do
+      later_user = create(:user, created_at: cutoff + 1.day)
+      create(:point, user: later_user)
+
+      expect(later_user.gps_noise_recheck_pending?).to be false
     end
   end
 end

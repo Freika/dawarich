@@ -194,7 +194,8 @@ RSpec.describe '/settings/background_jobs', type: :request do
   describe 'GPS noise re-check notice' do
     before { allow(DawarichSettings).to receive(:self_hosted?).and_return(true) }
 
-    let(:user) { create(:user) }
+    let(:cutoff) { DataMigrations::RecalculateAnomaliesUserJob::SCOPE_CUTOFF }
+    let(:user) { create(:user, created_at: cutoff - 1.day) }
 
     before { sign_in user }
 

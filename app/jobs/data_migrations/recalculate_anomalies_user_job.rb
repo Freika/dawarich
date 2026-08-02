@@ -12,6 +12,11 @@ class DataMigrations::RecalculateAnomaliesUserJob < ApplicationJob
   queue_as :low_priority
 
   RECALCULATED_SETTINGS_KEY = 'anomaly_rules_recalculated_at'
+  # The dispatcher runs once, at migration time. Accounts created after it have
+  # only ever been filtered by the current rules, so they are never enqueued and
+  # never stamped — and must not be reported as waiting on a pass that will
+  # never come.
+  SCOPE_CUTOFF = Time.utc(2026, 8, 2, 12, 0, 0)
   # Another backfill already holds this user's lock — an import or a manual
   # re-check. Come back rather than stamping work that never happened.
   LOCK_RETRY_WAIT = 15.minutes
@@ -33,6 +38,11 @@ class DataMigrations::RecalculateAnomaliesUserJob < ApplicationJob
     end
 
     mark_recalculated(user)
+  rescue Tracks::PerUserLock::AcquisitionTimeout
+    # The track lock is busy, not broken. Sidekiq's default retries would re-run
+    # the whole reset and filter pass each time, so take the bounded path that
+    # lock contention already uses — and leave the user unstamped either way.
+    retry_after_lock(user_id, attempt)
   end
 
   private

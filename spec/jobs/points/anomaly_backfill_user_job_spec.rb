@@ -68,6 +68,8 @@ RSpec.describe Points::AnomalyBackfillUserJob, type: :job do
       expect do
         described_class.new.perform(user.id, reset: true, rebuild: :inline)
       end.to raise_error(Tracks::PerUserLock::AcquisitionTimeout)
+
+      expect(Users::RecalculateDataJob).not_to have_been_enqueued
     end
 
     it 'recalculates without notifying when notify is false' do

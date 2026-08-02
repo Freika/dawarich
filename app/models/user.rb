@@ -119,8 +119,10 @@ class User < ApplicationRecord
   end
 
   def gps_noise_recheck_pending?
+    job = DataMigrations::RecalculateAnomaliesUserJob
+    return false if created_at.blank? || created_at >= job::SCOPE_CUTOFF
     return false unless safe_settings.gps_filtering_enabled?
-    return false if settings&.dig(DataMigrations::RecalculateAnomaliesUserJob::RECALCULATED_SETTINGS_KEY).present?
+    return false if settings&.dig(job::RECALCULATED_SETTINGS_KEY).present?
 
     points.exists?
   end

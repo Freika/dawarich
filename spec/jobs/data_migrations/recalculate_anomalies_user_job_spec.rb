@@ -45,12 +45,22 @@ RSpec.describe DataMigrations::RecalculateAnomaliesUserJob, type: :job do
     expect(chunk_jobs.map { |job| job[:queue] }.uniq).to eq(['low_priority'])
   end
 
-  it 'leaves the user unstamped when the rebuild cannot take the track lock' do
+  it 'retries on the bounded path instead of stamping when the track lock is busy' do
     allow(Tracks::PerUserLock).to receive(:with_user_lock).and_raise(Tracks::PerUserLock::AcquisitionTimeout)
 
     expect do
       described_class.perform_now(user.id)
-    end.to raise_error(Tracks::PerUserLock::AcquisitionTimeout)
+    end.to have_enqueued_job(described_class).with(user.id, attempt: 2)
+
+    expect(user.reload.settings[described_class::RECALCULATED_SETTINGS_KEY]).to be_nil
+  end
+
+  it 'gives up on a busy track lock at the same cap as a busy backfill lock' do
+    allow(Tracks::PerUserLock).to receive(:with_user_lock).and_raise(Tracks::PerUserLock::AcquisitionTimeout)
+
+    expect do
+      described_class.perform_now(user.id, attempt: described_class::MAX_LOCK_ATTEMPTS)
+    end.not_to have_enqueued_job(described_class)
 
     expect(user.reload.settings[described_class::RECALCULATED_SETTINGS_KEY]).to be_nil
   end
