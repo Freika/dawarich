@@ -55,7 +55,6 @@ export default class extends Controller {
     "minMinutesInCityValue",
     "maxGapMinutesValue",
     "stayMaxGapMinutesValue",
-    "gpsAccuracyThresholdValue",
     "gpsFilteringToggle",
     // Search
     "searchInput",
@@ -1263,9 +1262,6 @@ export default class extends Controller {
   }
   updateStayMaxGapMinutesDisplay(event) {
     return this.settingsController.updateStayMaxGapMinutesDisplay(event)
-  }
-  updateGpsAccuracyThresholdDisplay(event) {
-    return this.settingsController.updateGpsAccuracyThresholdDisplay(event)
   }
   reapplyAnomalyFilter() {
     return this.settingsController.reapplyAnomalyFilter()

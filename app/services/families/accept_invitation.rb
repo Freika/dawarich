@@ -39,6 +39,7 @@ module Families
     def can_accept?
       return false unless validate_invitation
       return false unless validate_email_match
+      return false unless validate_family_plan
       return false unless validate_family_capacity
 
       true
@@ -56,6 +57,14 @@ module Families
       return true if invitation.email == user.email
 
       @error_message = 'This invitation is not for your email address.'
+
+      false
+    end
+
+    def validate_family_plan
+      return true if DawarichSettings.family_feature_available_for?(invitation.family.owner)
+
+      @error_message = "This family's plan is no longer active."
 
       false
     end

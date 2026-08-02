@@ -4,8 +4,8 @@ FactoryBot.define do
   factory :track_segment do
     association :track
     transportation_mode { :driving }
-    start_index { 0 }
-    end_index { 10 }
+    sequence(:start_index) { |n| (n - 1) * 11 }
+    end_index { start_index + 10 }
     distance { 1000 }
     duration { 600 }
     avg_speed { 30.0 }

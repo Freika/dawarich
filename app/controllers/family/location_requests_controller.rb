@@ -2,7 +2,7 @@
 
 class Family::LocationRequestsController < ApplicationController
   before_action :authenticate_user!
-  before_action :ensure_family_feature_enabled!
+  before_action :ensure_family_feature_available!
   before_action :ensure_user_in_family!
   before_action :set_request, only: %i[show accept decline]
   before_action :authorize_target_user!, only: %i[show accept decline]

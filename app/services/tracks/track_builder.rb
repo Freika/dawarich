@@ -56,7 +56,8 @@ module Tracks::TrackBuilder
   # but bad data is rarely useful.
   MAX_DISTANCE_METERS = 100_000_000
 
-  def create_track_from_points(points, pre_calculated_distance, tracker_id: nil)
+  def create_track_from_points(points, pre_calculated_distance, tracker_id: nil,
+                               skip_segment_detection: false)
     return nil if points.size < 2
 
     resolved_tracker_id = tracker_id || points.first.tracker_id
@@ -90,7 +91,7 @@ module Tracks::TrackBuilder
     ActiveRecord::Base.transaction(requires_new: true) do
       if track.save
         Point.where(id: points.map(&:id)).update_all(track_id: track.id)
-        detect_and_create_segments(track, points)
+        detect_and_create_segments(track, points) unless skip_segment_detection
         saved_track = track
       else
         Rails.logger.error "Failed to create track for user #{user.id}: #{track.errors.full_messages.join(', ')}"

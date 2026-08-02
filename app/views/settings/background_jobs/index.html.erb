@@ -19,6 +19,23 @@
     <span>Spamming many new jobs at once is a bad idea. Let them work or clear the queue beforehand.</span>
   </div>
 
+  <% if current_user.gps_noise_recheck_pending? %>
+    <div role="alert" class="alert alert-info m-5" data-testid="gps-noise-recheck-pending">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        fill="none"
+        viewBox="0 0 24 24"
+        class="stroke-current h-6 w-6 shrink-0">
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+      </svg>
+      <span>GPS noise detection changed in this release, so your existing points are queued for a one-time re-check. Your tracks, stats and digests are rebuilt from the result, which can take a while on a large history — some points may appear or disappear on the map when it finishes. No points are deleted, and the pass runs on the lowest-priority queue so everything else stays ahead of it.</span>
+    </div>
+  <% end %>
+
   <div class='flex flex-wrap'>
     <div class="card bg-base-300 w-96 shadow-xl m-5">
       <div class="card-body">

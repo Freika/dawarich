@@ -3,10 +3,11 @@
 class PointsLimitExceeded
   def initialize(user)
     @user = user
+    @entitlements = Entitlements.for(user)
   end
 
   def call
-    return false if DawarichSettings.self_hosted?
+    return false if @entitlements.unlimited_points?
 
     Rails.cache.fetch(cache_key, expires_in: 1.day) do
       @user.points_count.to_i >= points_limit
@@ -20,6 +21,6 @@ class PointsLimitExceeded
   end
 
   def points_limit
-    DawarichSettings::BASIC_PAID_PLAN_LIMIT
+    @entitlements.points_limit
   end
 end

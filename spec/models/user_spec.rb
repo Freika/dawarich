@@ -166,6 +166,50 @@ RSpec.describe User, type: :model do
         expect(member.effective_plan).to eq(:lite)
       end
 
+      it 'reverts members to their raw plan once the owner subscription lapses' do
+        owner = create(:user, plan: :family, skip_auto_trial: true, status: :inactive,
+                              active_until: 1.day.ago)
+        family = create(:family, creator: owner)
+        create(:family_membership, :owner, family: family, user: owner)
+        member = create(:user, plan: :lite, skip_auto_trial: true)
+        create(:family_membership, family: family, user: member)
+
+        expect(member.effective_plan).to eq(:lite)
+        expect(member.full_access?).to be false
+      end
+
+      it 'keeps members on family access while a cancelled owner is still inside the paid period' do
+        owner = create(:user, plan: :family, skip_auto_trial: true, status: :inactive,
+                              active_until: 10.days.from_now)
+        family = create(:family, creator: owner)
+        create(:family_membership, :owner, family: family, user: owner)
+        member = create(:user, plan: :lite, skip_auto_trial: true)
+        create(:family_membership, family: family, user: member)
+
+        expect(member.effective_plan).to eq(:family)
+      end
+
+      it 'grants members family access while the owner is on a trial' do
+        owner = create(:user, plan: :family, skip_auto_trial: true, status: :trial,
+                              active_until: 7.days.from_now)
+        family = create(:family, creator: owner)
+        create(:family_membership, :owner, family: family, user: owner)
+        member = create(:user, plan: :lite, skip_auto_trial: true)
+        create(:family_membership, family: family, user: member)
+
+        expect(member.effective_plan).to eq(:family)
+      end
+
+      it 'reverts members when the owner has no subscription window at all' do
+        owner = create(:user, plan: :family, skip_auto_trial: true, active_until: nil)
+        family = create(:family, creator: owner)
+        create(:family_membership, :owner, family: family, user: owner)
+        member = create(:user, plan: :lite, skip_auto_trial: true)
+        create(:family_membership, family: family, user: member)
+
+        expect(member.effective_plan).to eq(:lite)
+      end
+
       it 'reverts to the raw plan after the member leaves the family' do
         owner = create(:user, plan: :family, skip_auto_trial: true)
         family = create(:family, creator: owner)
@@ -1218,6 +1262,43 @@ subscription_source: :none)
       user = create(:user, first_name: 'Ada', last_name: 'Lovelace')
       expect(user.reload.first_name).to eq('Ada')
       expect(user.reload.last_name).to eq('Lovelace')
+    end
+  end
+
+  describe '#gps_noise_recheck_pending?' do
+    let(:job) { DataMigrations::RecalculateAnomaliesUserJob }
+    let(:user) { create(:user) }
+
+    def stamp(**pairs)
+      user.update!(settings: user.settings.merge(pairs.transform_keys(&:to_s)))
+    end
+
+    it 'is pending once the dispatcher has handed the account to a rebuild' do
+      stamp(job::QUEUED_SETTINGS_KEY => Time.current.iso8601)
+
+      expect(user.gps_noise_recheck_pending?).to be true
+    end
+
+    it 'is not pending once the rebuild has stamped the account' do
+      stamp(
+        job::QUEUED_SETTINGS_KEY => Time.current.iso8601,
+        job::RECALCULATED_SETTINGS_KEY => Time.current.iso8601
+      )
+
+      expect(user.gps_noise_recheck_pending?).to be false
+    end
+
+    it 'is not pending for an account the dispatcher never handed out' do
+      create(:point, user: user)
+
+      expect(user.gps_noise_recheck_pending?).to be false
+    end
+
+    it 'is not pending for an account the dispatcher settled without running it' do
+      now = Time.current.iso8601
+      stamp(job::QUEUED_SETTINGS_KEY => now, job::RECALCULATED_SETTINGS_KEY => now)
+
+      expect(user.gps_noise_recheck_pending?).to be false
     end
   end
 end

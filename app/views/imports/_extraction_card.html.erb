@@ -1,0 +1,78 @@
+<%= turbo_frame_tag "import-#{import.id}-extraction", data: { controller: "import-extraction" } do %>
+  <div class="card bg-base-200 mt-6 max-w-2xl">
+    <div class="card-body">
+      <div class="flex items-center gap-2 mb-2">
+        <%= icon 'layer', class: 'w-5 h-5 text-base-content/60' %>
+        <h3 class="text-lg font-semibold">Additional data</h3>
+        <%= extraction_status_badge(import) %>
+      </div>
+
+      <% if import.additional_data_extraction_unsupported? %>
+        <p class="text-sm text-base-content/70">
+          This import format doesn't carry visits, named places, or transportation modes,
+          so there's nothing additional to extract.
+        </p>
+      <% elsif import.additional_data_extraction_completed? %>
+        <% counts = import.extraction_counts %>
+        <p class="text-sm text-base-content/70 mb-4">
+          Extracted
+          <strong><%= counts[:visits] || 0 %></strong> visits,
+          <strong><%= counts[:places] || 0 %></strong> places,
+          <strong><%= counts[:tracks] || 0 %></strong> tracks,
+          <strong><%= counts[:segments] || 0 %></strong> transportation-mode segments.
+        </p>
+        <div class="flex flex-wrap gap-2">
+          <button class="btn btn-sm btn-outline"
+                  data-action="click->import-extraction#open"
+                  data-import-extraction-dialog-id-param="extraction-dialog-<%= import.id %>">
+            Re-extract
+          </button>
+          <%= render 'imports/extraction_remove_button', import: import %>
+        </div>
+      <% elsif import.additional_data_extraction_running? || import.additional_data_extraction_pending? %>
+        <% if import.extraction_stalled? %>
+          <p class="text-sm text-warning mb-2">
+            This extraction stopped responding. It's safe to start it again.
+          </p>
+          <div class="flex flex-wrap gap-2">
+            <button class="btn btn-sm btn-outline"
+                    data-action="click->import-extraction#open"
+                    data-import-extraction-dialog-id-param="extraction-dialog-<%= import.id %>">
+              Start over
+            </button>
+            <%= render 'imports/extraction_remove_button', import: import %>
+          </div>
+        <% else %>
+          <p class="text-sm text-base-content/70 flex items-center gap-2">
+            <span class="loading loading-dots loading-sm shrink-0"></span>
+            <%= import.additional_data_extraction_running? ? 'Extracting…' : 'Queued…' %>
+          </p>
+        <% end %>
+      <% elsif import.additional_data_extraction_failed? %>
+        <p class="text-sm text-error mb-2">
+          Extraction failed: <%= import.extraction_error_message %>
+        </p>
+        <div class="flex flex-wrap gap-2">
+          <button class="btn btn-sm btn-outline"
+                  data-action="click->import-extraction#open"
+                  data-import-extraction-dialog-id-param="extraction-dialog-<%= import.id %>">
+            Retry extraction
+          </button>
+          <%= render 'imports/extraction_remove_button', import: import %>
+        </div>
+      <% else %>
+        <p class="text-sm text-base-content/70 mb-4">
+          Dawarich originally imported your file as raw GPS points. Click below to also
+          extract visits, places, tracks, and transportation modes.
+        </p>
+        <button class="btn btn-sm btn-primary"
+                data-action="click->import-extraction#open"
+                data-import-extraction-dialog-id-param="extraction-dialog-<%= import.id %>">
+          Extract additional data
+        </button>
+      <% end %>
+    </div>
+  </div>
+
+  <%= render 'imports/extraction_dialog', import: import unless import.additional_data_extraction_unsupported? %>
+<% end %>

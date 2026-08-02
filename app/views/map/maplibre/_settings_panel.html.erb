@@ -369,7 +369,7 @@
             <p class="text-sm text-base-content/60 ml-14">Show scratched countries</p>
           </div>
 
-          <% if DawarichSettings.family_feature_enabled? %>
+          <% if family_feature_available? %>
             <div class="divider"></div>
 
             <!-- Family Members Layer -->
@@ -587,7 +587,7 @@
                    placeholder="https://tiles.example.com/{z}/{x}/{y}.mvt"
                    class="input input-bordered input-sm w-full"
                    data-action="change->maps--maplibre#updateVectorTilesUrl" />
-            <p class="text-xs text-base-content/60 mt-1">Serve the base map from your own source. Accepts Protomaps-schema vector tiles or raster XYZ tiles (both must include {z}, {x}, and {y}), or a full MapLibre style URL ending in .json. Leave empty for the built-in tiles.</p>
+            <p class="text-xs text-base-content/60 mt-1">Serve the base map from your own source. Accepts Protomaps-schema vector tiles or raster XYZ tiles (both must include {z}, {x}, and {y}), or a full MapLibre style URL. Leave empty for the built-in tiles.</p>
           </div>
             </div>
           </details>
@@ -843,28 +843,7 @@
                      data-maps--maplibre-target="gpsFilteringToggle" />
               <span class="label-text font-medium">GPS Noise Filtering</span>
             </label>
-            <p class="text-sm text-base-content/60 mt-1">Hide points whose reported accuracy exceeds the threshold below. Disable for trains, indoor, or weak-signal data.</p>
-          </div>
-
-          <div class="form-control w-full">
-            <label class="label">
-              <span class="label-text font-medium">Accuracy Threshold</span>
-              <span class="label-text-alt" data-maps--maplibre-target="gpsAccuracyThresholdValue">100m</span>
-            </label>
-            <input type="range"
-                   name="gpsAccuracyThreshold"
-                   min="50"
-                   max="1000"
-                   step="10"
-                   value="100"
-                   class="range range-sm"
-                   data-action="input->maps--maplibre#updateGpsAccuracyThresholdDisplay" />
-            <div class="w-full flex justify-between text-xs px-2 mt-1">
-              <span>50m</span>
-              <span>500m</span>
-              <span>1000m</span>
-            </div>
-            <p class="text-xs text-base-content/60 mt-1">Points with reported GPS accuracy worse than this are flagged as noise. Lower = stricter, higher = keeps more weak-signal data.</p>
+            <p class="text-sm text-base-content/60 mt-1">Hide readings that cannot be a real position — impossible jumps, broken coordinates. Disable to see every raw point.</p>
           </div>
 
           <button type="button"

@@ -1,7 +1,9 @@
 import maplibregl from "maplibre-gl"
 import { PhotoPopupFactory } from "maps_maplibre/components/photo_popup"
+import { stackLeftOffset } from "maps_maplibre/components/replay_photo_stack_offset"
 
 const MAX_CARDS = 5
+const CLUSTER_SELECTOR = ".map-button-cluster"
 
 export class ReplayPhotoStack {
   constructor(map, options = {}) {
@@ -13,7 +15,23 @@ export class ReplayPhotoStack {
     this.map.getContainer().appendChild(this.container)
   }
 
+  // Keep the stack clear of the button cluster where one exists. Measured on
+  // every sync rather than once, because the cluster shifts right when the
+  // settings panel opens, and the trip map has no cluster at all.
+  _positionClearOfCluster() {
+    const mapEl = this.map.getContainer()
+    if (!mapEl) return
+    const cluster =
+      mapEl.closest("body")?.querySelector(CLUSTER_SELECTOR) ?? null
+    const left = stackLeftOffset({
+      container: mapEl.getBoundingClientRect(),
+      cluster: cluster ? cluster.getBoundingClientRect() : null,
+    })
+    this.container.style.left = `${left}px`
+  }
+
   sync(revealedPhotos) {
+    this._positionClearOfCluster()
     const visible = (revealedPhotos || []).slice(-MAX_CARDS)
     const visibleIds = new Set(visible.map((photo) => photo.id))
 

@@ -8,7 +8,6 @@ RSpec.describe 'Family realtime broadcast survives upsert_all ingest path' do
   let(:sharer) { create(:user) }
 
   before do
-    allow(DawarichSettings).to receive(:family_feature_enabled?).and_return(true)
     create(:family_membership, family: family, user: owner, role: :owner)
     create(:family_membership, family: family, user: sharer, role: :member)
     sharer.update_family_location_sharing!(true, duration: 'permanent')

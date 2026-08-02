@@ -115,7 +115,6 @@ RSpec.describe Points::LiveBroadcaster do
       let(:user) { family.creator }
 
       before do
-        allow(DawarichSettings).to receive(:family_feature_enabled?).and_return(true)
         create(:family_membership, family: family, user: user, role: :owner)
         user.update_family_location_sharing!(true, duration: 'permanent')
       end
@@ -183,8 +182,8 @@ RSpec.describe Points::LiveBroadcaster do
         end
       end
 
-      context 'when family feature is disabled globally' do
-        before { allow(DawarichSettings).to receive(:family_feature_enabled?).and_return(false) }
+      context 'when the family feature is unavailable for the user' do
+        before { allow(DawarichSettings).to receive(:family_feature_available_for?).and_return(false) }
 
         it 'does not broadcast to FamilyLocationsChannel even when user sharing is enabled' do
           expect(FamilyLocationsChannel).not_to receive(:broadcast_to)
@@ -198,7 +197,6 @@ RSpec.describe Points::LiveBroadcaster do
       let(:user) { create(:user) }
 
       before do
-        allow(DawarichSettings).to receive(:family_feature_enabled?).and_return(true)
         user.settings['live_map_enabled'] = false
         user.save!
       end
