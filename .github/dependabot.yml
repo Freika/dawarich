@@ -22,6 +22,14 @@ updates:
       interval: 'weekly'
       day: 'monday'
     open-pull-requests-limit: 5
+    ignore:
+      # The mbgl_libs stage must stay on 24.04: the prebuilt
+      # @maplibre/maplibre-gl-native binding links libicuuc/libicudata/
+      # libicui18n .so.74, and no later Ubuntu ships ICU 74.
+      - dependency-name: 'ubuntu'
+        update-types:
+          - 'version-update:semver-major'
+          - 'version-update:semver-minor'
 
   - package-ecosystem: 'github-actions'
     directory: '/'
