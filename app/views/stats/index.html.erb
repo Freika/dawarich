@@ -1,11 +1,11 @@
-<% content_for :title, 'Statistics' %>
+<% content_for :title, t('.statistics') %>
 <%= render 'shared/chartkick_scripts' %>
 
 <div class="w-full my-5">
-  <%= render layout: 'shared/page_header', locals: { title: 'Statistics' } do %>
+  <%= render layout: 'shared/page_header', locals: { title: t('.statistics') } do %>
     <% if Date.today >= Date.new(2025, 12, 31) %>
       <%= link_to users_digests_path, class: 'btn btn-outline btn-sm' do %>
-        <%= icon 'earth' %> Year-End Digests
+        <%= icon 'earth' %> <%= t('.year_end_digests') %>
       <% end %>
     <% end %>
   <% end %>
@@ -18,14 +18,14 @@
         <div class="stat-value text-primary">
           <%= number_with_delimiter(current_user.total_distance.round) %> <%= current_user.safe_settings.distance_unit %>
         </div>
-        <div class="stat-title">Total distance</div>
+        <div class="stat-title"><%= t('.total_distance') %></div>
       </div>
 
       <div class="stat text-center">
         <div class="stat-value text-success">
           <%= number_with_delimiter @points_total %>
         </div>
-        <div class="stat-title">Geopoints tracked</div>
+        <div class="stat-title"><%= t('.geopoints_tracked') %></div>
       </div>
 
     <% if DawarichSettings.reverse_geocoding_enabled? %>
@@ -36,11 +36,11 @@
   <% end %>
 
   <div class='text-xs text-gray-500 text-center mt-5'>
-    All stats data above except for total distance and number of geopoints tracked is being updated daily
+    <%= t('.all_stats_data_above_except_for_total_distance_and_number') %>
   </div>
 
   <% if current_user.active? %>
-    <%= link_to 'Update stats', update_all_stats_path, data: { turbo_method: :put }, class: 'btn btn-primary mt-5' %>
+    <%= link_to t('.update_stats'), update_all_stats_path, data: { turbo_method: :put }, class: 'btn btn-primary mt-5' %>
   <% end %>
 
   <div class="mt-6 grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
@@ -51,10 +51,10 @@
           <h2 class="card-title justify-between text-<%= header_colors[year % header_colors.size] %>">
             <div>
               <%= link_to year, "/stats/#{year}", class: 'underline hover:no-underline' %>
-              <%= link_to '[Map]', preferred_map_path(year_timespan(year)), class: 'underline hover:no-underline' %>
+              <%= link_to t('.map'), preferred_map_path(year_timespan(year)), class: 'underline hover:no-underline' %>
             </div>
             <div class="flex items-center gap-2">
-              <span class='text-xs text-gray-500'>Last update: <%= human_date(stats.first.updated_at) %></span>
+              <span class='text-xs text-gray-500'><%= t('.last_update') %> <%= human_date(stats.first.updated_at) %></span>
               <%= link_to icon('refresh-ccw'), update_year_month_stats_path(year, :all), data: { turbo_method: :put }, class: 'text-sm text-gray-500 hover:text-primary' %>
             </div>
           </h2>
@@ -64,7 +64,7 @@
           <% if DawarichSettings.reverse_geocoding_enabled? %>
             <div class="card-actions justify-end">
               <% location_data = countries_and_cities_stat_for_year(year, stats) %>
-              <%= link_to "#{location_data[:countries_count]} countries, #{location_data[:cities_count]} cities",
+              <%= link_to t('.countries_count_countries_cities_count_cities', countries_count: location_data[:countries_count], cities_count: location_data[:cities_count]),
                          "#",
                          class: "link link-primary",
                          data: { turbo: false },
@@ -75,7 +75,7 @@
                 <input type="checkbox" id="<%= location_data[:modal_id] %>" class="modal-toggle" />
                 <div class="modal" role="dialog">
                   <div class="modal-box max-w-3xl">
-                    <h3 class="text-lg font-bold mb-4">Countries and Cities visited in <%= location_data[:year] %></h3>
+                    <h3 class="text-lg font-bold mb-4"><%= t('.countries_and_cities_visited_in') %> <%= location_data[:year] %></h3>
                     <div class="max-h-96 overflow-y-auto">
                       <% location_data[:grouped_by_country].each do |country, cities| %>
                         <div class="mb-4">
@@ -90,7 +90,7 @@
                               <% end %>
                             </div>
                           <% else %>
-                            <p class="text-sm text-gray-500 italic pl-4">No specific cities recorded</p>
+                            <p class="text-sm text-gray-500 italic pl-4"><%= t('.no_specific_cities_recorded') %></p>
                           <% end %>
                         </div>
                       <% end %>
@@ -110,8 +110,8 @@
             id: "chart-year-distance-#{year}",
             height: '200px',
             suffix: " #{current_user.safe_settings.distance_unit}",
-            xtitle: 'Days',
-            ytitle: 'Distance',
+            xtitle: t('.days'),
+            ytitle: t('.distance'),
             colors: month_colors,
             library: {
               datasets: {

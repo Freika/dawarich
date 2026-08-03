@@ -1,3 +1,4 @@
+import { translate } from "i18n"
 import { Toast } from "maps_maplibre/components/toast"
 import { SettingsManager } from "maps_maplibre/utils/settings_manager"
 
@@ -249,7 +250,7 @@ export class PlacesManager {
    */
   startCreatePlace() {
     this.controller.map.getCanvas().style.cursor = "crosshair"
-    Toast.info("Click on the map to place a place")
+    Toast.info(translate("messages.click_on_the_map_to_place_a_place"))
 
     this.handleCreatePlaceClick = (e) => {
       const { lng, lat } = e.lngLat

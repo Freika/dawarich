@@ -9,7 +9,7 @@ class Settings::VisitsController < ApplicationController
     merged = (current_user.settings || {}).merge(coerced_settings_params)
     current_user.update!(settings: merged)
 
-    redirect_to settings_visits_path, notice: 'Visit detection settings updated'
+    redirect_to settings_visits_path, notice: I18n.t('controllers.settings.visits.visit_detection_settings_updated')
   end
 
   private

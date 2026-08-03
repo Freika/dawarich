@@ -13,13 +13,13 @@
       </div>
     <% elsif trip.distance.present? %>
       <div style="width: 100%; aspect-ratio: 16/10;" class="flex items-center justify-center bg-base-200">
-        <p class="text-base-content/40 text-sm">No points found</p>
+        <p class="text-base-content/40 text-sm"><%= t('.no_points_found') %></p>
       </div>
     <% else %>
       <div style="width: 100%; aspect-ratio: 16/10;" class="flex items-center justify-center bg-base-200">
         <div class="text-center">
           <div class="loading loading-spinner loading-sm"></div>
-          <p class="text-base-content/40 text-xs mt-1">Calculating...</p>
+          <p class="text-base-content/40 text-xs mt-1"><%= t('.calculating') %></p>
         </div>
       </div>
     <% end %>
@@ -28,7 +28,7 @@
     <div class="px-4 py-3">
       <h3 class="font-semibold text-base group-hover:text-primary transition-colors truncate"><%= trip.name %></h3>
       <p class="text-xs text-base-content/50 mt-0.5">
-        <%= human_date(trip.started_at) %> &ndash; <%= human_date(trip.ended_at) %>
+        <%= human_date(trip.started_at) %> <%= t('.ndash') %> <%= human_date(trip.ended_at) %>
       </p>
 
       <div class="flex items-center justify-between mt-3">
@@ -42,7 +42,7 @@
             </span>
           <% end %>
           <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-primary/10 text-primary">
-            <%= pluralize([((trip.ended_at - trip.started_at) / 1.day).ceil, 1].max, 'day') %>
+            <%= t('.day_count', count: [((trip.ended_at - trip.started_at) / 1.day).ceil, 1].max) %>
           </span>
         </div>
       </div>

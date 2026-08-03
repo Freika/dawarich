@@ -16,7 +16,7 @@ class Point < ApplicationRecord
   validates :timestamp, :lonlat, presence: true
   validates :lonlat, uniqueness: {
     scope: %i[timestamp user_id],
-    message: 'already has a point at this location and time for this user',
+    message: ->(*) { I18n.t('models.point.already_has_a_point_at_this_location_and_time_for') },
     index: true
   }
 

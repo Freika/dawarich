@@ -144,7 +144,7 @@ class Import < ApplicationRecord
 
     return unless file.blob.byte_size > 11.megabytes
 
-    errors.add(:file, 'is too large. Trial users can only upload files up to 10MB.')
+    errors.add(:file, I18n.t('models.import.is_too_large_trial_users_can_only_upload_files_up'))
   end
 
   def import_count_within_limit
@@ -153,7 +153,7 @@ class Import < ApplicationRecord
     existing_imports_count = user.imports.where(demo: false).count
     return unless existing_imports_count >= 5
 
-    errors.add(:base, 'Trial users can only create up to 5 imports. Please subscribe to import more files.')
+    errors.add(:base, I18n.t('models.import.trial_users_can_only_create_up_to_5_imports_please'))
   end
 
   def recalculate_stats

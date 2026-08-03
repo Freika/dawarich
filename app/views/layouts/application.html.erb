@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html data-theme="<%= app_theme %>" data-self-hosted="<%= @self_hosted %>">
+<html lang="<%= I18n.locale %>" data-theme="<%= app_theme %>" data-self-hosted="<%= @self_hosted %>">
   <head>
     <title><%= full_title(yield(:title)) %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -18,6 +18,7 @@
     <% if ENV['POSTHOG_ENABLED'] == 'true' %>
       <%= javascript_include_tag "posthog", "data-turbo-track": "reload" %>
     <% end %>
+    <%= javascript_translations %>
     <%= javascript_importmap_tags %>
     <%= yield :head_scripts %>
     <%= javascript_include_tag "https://unpkg.com/protomaps-leaflet@5.0.0/dist/protomaps-leaflet.js", defer: true %>

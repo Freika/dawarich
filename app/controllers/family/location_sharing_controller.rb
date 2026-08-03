@@ -46,9 +46,15 @@ class Family::LocationSharingController < ApplicationController
 
     respond_to do |format|
       format.turbo_stream do
-        render turbo_stream: stream_flash(:error, 'User is not part of a family'), status: :not_found
+        render turbo_stream: stream_flash(
+          :error,
+          I18n.t('controllers.family.location_sharing.user_is_not_part_of_a_family')
+        ), status: :not_found
       end
-      format.json { render json: { error: 'User is not part of a family' }, status: :not_found }
+      format.json do
+        render json: { error: I18n.t('controllers.family.location_sharing.user_is_not_part_of_a_family') },
+               status: :not_found
+      end
     end
   end
 end

@@ -45,7 +45,7 @@ module Families
       def validate_in_family
         return true if member_to_remove.in_family?
 
-        @error_message = 'User is not currently in a family.'
+        @error_message = I18n.t('services.families.memberships.destroy.user_is_not_currently_in_a_family')
         false
       end
 
@@ -66,28 +66,32 @@ module Families
       def validate_owner_can_leave
         return true unless member_to_remove.family_owner?
 
-        @error_message = 'Family owners cannot remove their own membership. To leave the family, delete it instead.'
+        @error_message = I18n.t(
+          'services.families.memberships.destroy.family_owners_cannot_remove_their_own_membership_to_leave_the'
+        )
         false
       end
 
       def validate_remover_is_owner
         return true if user.family_owner?
 
-        @error_message = 'Only family owners can remove other members.'
+        @error_message = I18n.t('services.families.memberships.destroy.only_family_owners_can_remove_other_members')
         false
       end
 
       def validate_same_family
         return true if user.family == member_to_remove.family
 
-        @error_message = 'Cannot remove members from a different family.'
+        @error_message = I18n.t('services.families.memberships.destroy.cannot_remove_members_from_a_different_family')
         false
       end
 
       def validate_not_removing_owner
         return true unless member_to_remove.family_owner?
 
-        @error_message = 'Cannot remove the family owner. The owner must delete the family or leave on their own.'
+        @error_message = I18n.t(
+          'services.families.memberships.destroy.cannot_remove_the_family_owner_the_owner_must_delete_the'
+        )
         false
       end
 
@@ -107,8 +111,9 @@ module Families
         Notification.create!(
           user: member_to_remove,
           kind: :info,
-          title: 'Left Family',
-          content: "You've left the family \"#{@family_name}\""
+          title: I18n.t('services.families.memberships.destroy.left_family'),
+          content: I18n.t('services.families.memberships.destroy.you_ve_left_the_family_family_name',
+                          family_name: @family_name)
         )
 
         return unless @family_owner&.persisted?
@@ -116,8 +121,9 @@ module Families
         Notification.create!(
           user: @family_owner,
           kind: :info,
-          title: 'Family Member Left',
-          content: "#{member_to_remove.email} has left the family \"#{@family_name}\""
+          title: I18n.t('services.families.memberships.destroy.family_member_left'),
+          content: I18n.t('services.families.memberships.destroy.email_has_left_the_family_family_name',
+                          email: member_to_remove.email, family_name: @family_name)
         )
       end
 
@@ -125,8 +131,9 @@ module Families
         Notification.create!(
           user: member_to_remove,
           kind: :info,
-          title: 'Removed from Family',
-          content: "You have been removed from the family \"#{@family_name}\" by #{user.email}"
+          title: I18n.t('services.families.memberships.destroy.removed_from_family'),
+          content: I18n.t('services.families.memberships.destroy.you_have_been_removed_from_the_family_family_name_by',
+                          family_name: @family_name, email: user.email)
         )
 
         return unless user != member_to_remove
@@ -134,8 +141,9 @@ module Families
         Notification.create!(
           user: user,
           kind: :info,
-          title: 'Member Removed',
-          content: "#{member_to_remove.email} has been removed from the family \"#{@family_name}\""
+          title: I18n.t('services.families.memberships.destroy.member_removed'),
+          content: I18n.t('services.families.memberships.destroy.email_has_been_removed_from_the_family_family_name',
+                          email: member_to_remove.email, family_name: @family_name)
         )
       end
 
@@ -144,13 +152,15 @@ module Families
           if error.record&.errors&.any?
             error.record.errors.full_messages.first
           else
-            "Failed to leave family: #{error.message}"
+            I18n.t('services.families.memberships.destroy.failed_to_leave', message: error.message)
           end
       end
 
       def handle_generic_error(error)
         ExceptionReporter.call(error, "Unexpected error in Families::Memberships::Destroy: #{error.message}")
-        @error_message = 'An unexpected error occurred while removing the membership. Please try again'
+        @error_message = I18n.t(
+          'services.families.memberships.destroy.an_unexpected_error_occurred_while_removing_the_membership_please_try'
+        )
       end
     end
   end

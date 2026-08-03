@@ -24,7 +24,9 @@ class Families::CreateLocationRequest
     Result.new(success?: false, payload: { message: e.message }, status: :unprocessable_content)
   rescue StandardError => e
     ExceptionReporter.call(e, "Error in Families::CreateLocationRequest: #{e.message}")
-    Result.new(success?: false, payload: { message: 'An error occurred' }, status: :internal_server_error)
+    message = I18n.t('services.families.create_location_request.an_error_occurred')
+    Result.new(success?: false,
+               payload: { message: message }, status: :internal_server_error)
   end
 
   private
@@ -54,7 +56,7 @@ class Families::CreateLocationRequest
   def create_notification!(request)
     safe_email = ERB::Util.html_escape(requester.email)
     link = ActionController::Base.helpers.link_to(
-      'View Request',
+      I18n.t('services.families.create_location_request.view_request'),
       Rails.application.routes.url_helpers.family_location_request_path(request),
       class: 'link link-primary'
     )
@@ -62,8 +64,9 @@ class Families::CreateLocationRequest
     Notification.create!(
       user: target_user,
       kind: :info,
-      title: 'Location Request',
-      content: "#{safe_email} is requesting your location. #{link}"
+      title: I18n.t('services.families.create_location_request.location_request'),
+      content: I18n.t('services.families.create_location_request.safe_email_is_requesting_your_location_link',
+                      email: safe_email, link: link)
     )
   rescue StandardError => e
     ExceptionReporter.call(e, "Failed to create notification for location request: #{e.message}")
@@ -74,16 +77,22 @@ class Families::CreateLocationRequest
   end
 
   def not_in_same_family_error
-    Result.new(success?: false, payload: { message: 'Users must be in the same family' }, status: :forbidden)
+    message = I18n.t('services.families.create_location_request.users_must_be_in_the_same_family')
+    Result.new(success?: false,
+               payload: { message: message }, status: :forbidden)
   end
 
   def already_sharing_error
-    Result.new(success?: false, payload: { message: 'Target user is already sharing their location' },
+    message = I18n.t('services.families.create_location_request.target_user_is_already_sharing_their_location')
+    Result.new(success?: false, payload: { message: message },
                status: :unprocessable_content)
   end
 
   def cooldown_error
-    Result.new(success?: false, payload: { message: 'Request cooldown active. Please wait before requesting again.' },
+    message = I18n.t(
+      'services.families.create_location_request.request_cooldown_active_please_wait_before_requesting_again'
+    )
+    Result.new(success?: false, payload: { message: message },
                status: :too_many_requests)
   end
 end

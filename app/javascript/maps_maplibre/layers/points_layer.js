@@ -1,3 +1,4 @@
+import { translate } from "i18n"
 import { Toast } from "maps_maplibre/components/toast"
 import { getMarkerStrokeColor } from "../utils/marker_theme"
 import { BaseLayer } from "./base_layer"
@@ -209,7 +210,9 @@ export class PointsLayer extends BaseLayer {
           source.setData(data)
         }
       }
-      Toast.error("Failed to update point position. Please try again.")
+      Toast.error(
+        translate("messages.failed_to_update_point_position_please_try_again"),
+      )
     }
 
     this.draggedFeature = null

@@ -10,7 +10,7 @@
       <%= formatted_date_range(start_date, end_date) %>
     </h1>
     <p class="text-sm text-base-content/60 mt-1">
-      <%= pluralize(days, 'day') %> · Shared on Dawarich
+      <%= t('.days_shared_on_dawarich', count: days) %>
     </p>
   </header>
 

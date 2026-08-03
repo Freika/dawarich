@@ -2,6 +2,7 @@
 // Handles displaying user places with tag icons and colors on the map
 
 import Flash from "controllers/flash_controller"
+import { translate } from "i18n"
 import L from "leaflet"
 
 export class PlacesManager {
@@ -35,7 +36,7 @@ export class PlacesManager {
       const { place } = event.detail
 
       // Show success message
-      Flash.show("success", `Place "${place.name}" created successfully!`)
+      Flash.show("success", translate("places.created", { name: place.name }))
 
       // Add the place to our local array
       this.places.push(place)
@@ -76,7 +77,7 @@ export class PlacesManager {
       const { place } = event.detail
 
       // Show success message
-      Flash.show("success", `Place "${place.name}" updated successfully!`)
+      Flash.show("success", translate("places.updated", { name: place.name }))
 
       // Update the place in our local array
       const index = this.places.findIndex((p) => p.id === place.id)
@@ -343,7 +344,7 @@ export class PlacesManager {
   }
 
   async deletePlace(placeId) {
-    if (!confirm("Are you sure you want to delete this place?")) return
+    if (!confirm(translate("places.confirm_delete"))) return
 
     try {
       const response = await fetch(`/api/v1/places/${placeId}`, {
@@ -376,17 +377,17 @@ export class PlacesManager {
       // Remove from places array
       this.places = this.places.filter((p) => p.id !== parseInt(placeId, 10))
 
-      Flash.show("success", "Place deleted successfully")
+      Flash.show("success", translate("messages.place_deleted_successfully"))
     } catch (error) {
       console.error("Error deleting place:", error)
-      Flash.show("error", "Failed to delete place")
+      Flash.show("error", translate("messages.failed_to_delete_place"))
     }
   }
 
   enableCreationMode() {
     this.creationMode = true
     this.map.getContainer().style.cursor = "crosshair"
-    this.showNotification("Click on the map to add a place", "info")
+    this.showNotification(translate("places.click_map_to_add"), "info")
   }
 
   disableCreationMode() {

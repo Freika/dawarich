@@ -1,3 +1,4 @@
+import { translate } from "i18n"
 import { createPopupContent } from "./popups"
 
 const MARKER_DATA_INDICES = {
@@ -284,7 +285,7 @@ function addDragHandlers(marker, apiKey, userSettings) {
           e.target.options.originalLat,
           e.target.options.originalLng,
         ])
-        alert("Failed to update point position. Please try again.")
+        alert(translate("map.failed_to_update_point_position"))
       })
   })
 }

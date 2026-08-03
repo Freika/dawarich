@@ -1,3 +1,4 @@
+import { translate } from "i18n"
 import { formatDate } from "./helpers"
 
 export function createPopupContent(marker, timezone, distanceUnit) {
@@ -22,13 +23,13 @@ export function createPopupContent(marker, timezone, distanceUnit) {
   altitude = Math.round(altitude)
 
   return `
-    <strong>Timestamp:</strong> ${formatDate(marker[4], timezone)}<br>
-    <strong>Latitude:</strong> ${marker[0]}<br>
-    <strong>Longitude:</strong> ${marker[1]}<br>
-    <strong>Altitude:</strong> ${altitude}${altitudeUnit}<br>
-    <strong>Speed:</strong> ${speed}${speedUnit}<br>
-    <strong>Battery:</strong> ${marker[2]}%<br>
-    <strong>Id:</strong> ${marker[6]}<br>
-    <a href="#" data-id="${marker[6]}" class="delete-point">[Delete]</a>
+    <strong>${translate("map_info.timestamp")}:</strong> ${formatDate(marker[4], timezone)}<br>
+    <strong>${translate("map_info.latitude")}:</strong> ${marker[0]}<br>
+    <strong>${translate("map_info.longitude")}:</strong> ${marker[1]}<br>
+    <strong>${translate("map_info.altitude")}:</strong> ${altitude}${altitudeUnit}<br>
+    <strong>${translate("map_info.speed")}:</strong> ${speed}${speedUnit}<br>
+    <strong>${translate("map_info.battery")}:</strong> ${marker[2]}%<br>
+    <strong>${translate("map_info.id")}:</strong> ${marker[6]}<br>
+    <a href="#" data-id="${marker[6]}" class="delete-point">[${translate("common.delete")}]</a>
   `
 }

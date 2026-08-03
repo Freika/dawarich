@@ -1,14 +1,14 @@
 <div class="mx-auto md:w-2/3 w-full my-5">
-  <%= render 'shared/page_header', title: 'Editing trip' %>
+  <%= render 'shared/page_header', title: t('.editing_trip') %>
 
   <%= render "form", trip: @trip %>
 
   <!-- Action Buttons Section -->
   <div class="bg-base-100 items-center mt-8 mb-4">
     <div class="flex flex-wrap gap-2 justify-center">
-      <%= link_to "Show this trip", @trip, class: "btn" %>
+      <%= link_to t('.show_this_trip'), @trip, class: "btn" %>
       <%= link_to trips_path, class: "btn btn-sm btn-ghost gap-1" do %>
-        <%= icon 'arrow-left', class: 'w-4 h-4' %> Back to trips
+        <%= icon 'arrow-left', class: 'w-4 h-4' %> <%= t('.back_to_trips') %>
       <% end %>
     </div>
   </div>

@@ -9,7 +9,18 @@ const source = await readFile(
   ),
   "utf8",
 )
-const moduleUrl = `data:text/javascript;base64,${Buffer.from(source).toString("base64")}`
+const translations = {
+  "poster.order_errors.too_large":
+    "The exported PDF is too large (50 MB max). Lower the DPI cap or zoom out.",
+  "poster.order_errors.generic": "Order upload failed — try again.",
+  "poster.order_errors.connection":
+    "Could not reach the order service — check your connection.",
+}
+const localizedSource = source.replace(
+  'import { translate } from "i18n"',
+  `const translate = (key) => (${JSON.stringify(translations)})[key] || key`,
+)
+const moduleUrl = `data:text/javascript;base64,${Buffer.from(localizedSource).toString("base64")}`
 const { submitPrintOrder } = await import(moduleUrl)
 
 class FakeXhr {

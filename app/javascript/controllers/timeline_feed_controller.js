@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { translate } from "i18n"
 
 /**
  * Timeline Feed Controller (Unified Timeline)
@@ -877,22 +878,31 @@ export default class extends Controller {
     const countEl = this.activeSelectionCount()
     if (countEl) {
       countEl.textContent = overCap
-        ? `${n} selected (max ${max})`
-        : `${n} selected`
+        ? translate("timeline.selected_with_max", { count: n, max })
+        : translate("timeline.selected", { count: n })
     }
     const mergeBtn = this.activeMergeButton()
     if (mergeBtn) {
       mergeBtn.disabled = n < 2 || overCap
-      mergeBtn.textContent = n >= 2 ? `Merge ${n}` : "Merge"
+      mergeBtn.textContent =
+        n >= 2
+          ? translate("timeline.merge_count", { count: n })
+          : translate("visits.merge")
     }
-    for (const [getter, label] of [
-      [this.activeConfirmButton.bind(this), "Confirm"],
-      [this.activeDeleteButton.bind(this), "Delete"],
+    for (const [getter, key] of [
+      [this.activeConfirmButton.bind(this), "common.confirm"],
+      [this.activeDeleteButton.bind(this), "common.delete"],
     ]) {
       const btn = getter()
       if (!btn) continue
       btn.disabled = n < 1 || overCap
-      btn.textContent = n >= 1 ? `${label} ${n}` : label
+      btn.textContent =
+        n >= 1
+          ? translate("timeline.action_count", {
+              action: translate(key),
+              count: n,
+            })
+          : translate(key)
     }
   }
 

@@ -7,6 +7,7 @@ pin_all_from 'app/javascript/maps', under: 'maps'
 pin_all_from 'app/javascript/maps_maplibre', under: 'maps_maplibre'
 
 pin 'application', preload: true
+pin 'i18n', preload: true
 pin '@rails/actioncable', to: 'actioncable.esm.js'
 pin '@rails/activestorage', to: 'activestorage.esm.js'
 pin '@rails/ujs', to: 'rails-ujs.js'

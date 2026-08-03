@@ -21,7 +21,7 @@
 
     <div class="flex items-center gap-2 text-sm opacity-70">
       <%= icon 'calendar-range', class: 'w-4 h-4' %>
-      <span><%= @total_tracked_days %> / <%= @days_in_year %> days</span>
+      <span><%= @total_tracked_days %> / <%= @days_in_year %> <%= t('.days') %></span>
     </div>
   </div>
 
@@ -46,9 +46,9 @@
           <!-- Grid with day labels -->
           <div class="flex">
             <div class="flex flex-col justify-around mr-2 text-xs text-base-content/60" style="height: 98px;">
-              <span>Mon</span>
-              <span>Wed</span>
-              <span>Fri</span>
+              <span><%= t('.mon') %></span>
+              <span><%= t('.wed') %></span>
+              <span><%= t('.fri') %></span>
             </div>
 
             <div class="flex gap-0.5">
@@ -66,7 +66,7 @@
 
                     <% if is_in_year && !is_future && cell_color %>
                       <div class="w-3 h-3 rounded-sm cursor-pointer transition-opacity hover:opacity-80 hover:z-50 tooltip tooltip-top <%= cell_color %>"
-                           data-tip="<%= country_name %> — <%= date.strftime('%a, %b %-d') %>">
+                           data-tip="<%= country_name %> — <%= l(date, format: :short_weekday_month_day) %>">
                       </div>
                     <% elsif is_in_year && !is_future %>
                       <div class="w-3 h-3 rounded-sm bg-base-300"></div>
@@ -88,7 +88,7 @@
               </div>
             <% end %>
             <% if @countries.size > 7 %>
-              <span class="opacity-40">+<%= @countries.size - 7 %> more</span>
+              <span class="opacity-40">+<%= @countries.size - 7 %> <%= t('.more') %></span>
             <% end %>
           </div>
         </div>
@@ -126,7 +126,7 @@
             <!-- Days count -->
             <div class="text-right flex-shrink-0">
               <span class="font-mono font-semibold"><%= country[:days] %></span>
-              <span class="text-xs opacity-60 ml-0.5">days</span>
+              <span class="text-xs opacity-60 ml-0.5"><%= t('.days') %></span>
               <span class="text-xs opacity-40 ml-1">(<%= country[:year_percentage] %>%)</span>
             </div>
 
@@ -139,18 +139,18 @@
           <!-- Expanded periods -->
           <div class="px-4 pb-3">
             <div class="border-t border-base-300 pt-2 space-y-1.5">
-              <p class="text-[10px] font-medium opacity-40 uppercase tracking-wider">Stay periods</p>
+              <p class="text-[10px] font-medium opacity-40 uppercase tracking-wider"><%= t('.stay_periods') %></p>
               <% country[:periods].each do |period| %>
                 <div class="flex items-center justify-between text-sm">
                   <div class="flex items-center gap-2">
                     <%= icon 'calendar', class: 'w-3.5 h-3.5 opacity-40' %>
                     <span>
-                      <%= Date.parse(period[:start_date]).strftime('%b %-d') %> –
-                      <%= Date.parse(period[:end_date]).strftime('%b %-d, %Y') %>
+                      <%= l(Date.parse(period[:start_date]), format: :short_month_day) %> –
+                      <%= l(Date.parse(period[:end_date]), format: :medium) %>
                     </span>
                   </div>
                   <span class="font-mono text-xs bg-base-300 px-2 py-0.5 rounded">
-                    <%= period[:consecutive_days] %> days
+                    <%= period[:consecutive_days] %> <%= t('.days') %>
                   </span>
                 </div>
               <% end %>
@@ -163,14 +163,14 @@
     <% if @countries.any? { |c| c[:threshold_warning] } %>
       <div class="flex items-center gap-2 mt-3 text-xs opacity-50 flex-shrink-0">
         <%= icon 'triangle-alert', class: 'w-3.5 h-3.5 text-warning' %>
-        <span>Exceeds 183-day threshold common in many tax jurisdictions.</span>
+        <span><%= t('.exceeds_183_day_threshold_common_in_many_tax_jurisdictions') %></span>
       </div>
     <% end %>
   <% else %>
     <div class="flex flex-col items-center justify-center flex-1 opacity-50">
       <%= icon 'globe', class: 'w-10 h-10 mb-3' %>
-      <p class="text-sm">No country data for <%= @year %>.</p>
-      <p class="text-xs mt-1">Points need reverse geocoding to detect countries.</p>
+      <p class="text-sm"><%= t('.no_country_data_for') %> <%= @year %>.</p>
+      <p class="text-xs mt-1"><%= t('.points_need_reverse_geocoding_to_detect_countries') %></p>
     </div>
   <% end %>
 <% end %>

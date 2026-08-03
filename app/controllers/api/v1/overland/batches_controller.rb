@@ -12,7 +12,8 @@ class Api::V1::Overland::BatchesController < ApiController
     Rails.logger.error("Batch creation failed: #{e.class}: #{e.message}")
     Sentry.capture_exception(e) if defined?(Sentry)
 
-    render json: { error: 'Batch creation failed' }, status: :internal_server_error
+    render json: { error: I18n.t('controllers.api.v1.overland.batches.batch_creation_failed') },
+           status: :internal_server_error
   end
 
   private

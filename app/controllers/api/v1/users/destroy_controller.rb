@@ -5,15 +5,10 @@ class Api::V1::Users::DestroyController < ApiController
 
   skip_before_action :reject_pending_payment!
 
-  SUBSCRIPTION_NOTE = ' If you have an active Apple or Google subscription, cancel it in your ' \
-                      'platform settings to avoid further charges.'
-  SELF_HOSTED_DELETED_MESSAGE = 'Your account has been scheduled for deletion.'
-  CANNOT_DELETE_MESSAGE = 'You own a family with other members. Transfer ownership or remove ' \
-                          'members before deleting your account.'
-
   def destroy
     unless current_api_user.can_delete_account?
-      return render(json: { error: 'cannot_delete_account', message: CANNOT_DELETE_MESSAGE },
+      message = I18n.t('controllers.api.v1.users.destroy.cannot_delete')
+      return render(json: { error: 'cannot_delete_account', message: message },
                     status: :unprocessable_content)
     end
 
@@ -34,7 +29,7 @@ class Api::V1::Users::DestroyController < ApiController
     Users::DestroyJob.perform_later(current_api_user.id) \
       if current_api_user.mark_as_deleted_atomically!
 
-    render json: { message: SELF_HOSTED_DELETED_MESSAGE }
+    render json: { message: I18n.t('controllers.api.v1.users.destroy.deletion_scheduled') }
   end
 
   def destroy_cloud
@@ -46,7 +41,9 @@ class Api::V1::Users::DestroyController < ApiController
 
     case result.status
     when :sent
-      render json: { message: result.message + SUBSCRIPTION_NOTE }, status: :accepted
+      render json: {
+        message: I18n.t('controllers.api.v1.users.destroy.request_sent', message: result.message)
+      }, status: :accepted
     when :throttled
       render json: { error: 'rate_limited', message: result.message }, status: :too_many_requests
     else

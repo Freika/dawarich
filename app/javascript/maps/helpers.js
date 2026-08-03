@@ -1,4 +1,5 @@
 // javascript/maps/helpers.js
+import { translate } from "i18n"
 export function formatDistance(distance, unit = "km") {
   let smallUnit, bigUnit
 
@@ -39,15 +40,15 @@ export function minutesToDaysHoursMinutes(minutes) {
   let result = ""
 
   if (days > 0) {
-    result += `${days}d `
+    result += `${translate("time.days_short", { count: days })} `
   }
 
   if (hours > 0) {
-    result += `${hours}h `
+    result += `${translate("time.hours_short", { count: hours })} `
   }
 
   if (minutes > 0) {
-    result += `${minutes}min`
+    result += translate("time.minutes_short", { count: minutes })
   }
 
   return result
@@ -71,12 +72,12 @@ export function formatDate(timestamp, timezone) {
     }
   } else {
     // Invalid input
-    return "Invalid Date"
+    return translate("time.invalid_date")
   }
 
   // Check if date is valid
   if (Number.isNaN(date.getTime())) {
-    return "Invalid Date"
+    return translate("time.invalid_date")
   }
 
   let locale
@@ -85,7 +86,7 @@ export function formatDate(timestamp, timezone) {
   } else if (navigator.language) {
     locale = navigator.language
   } else {
-    locale = "en-GB"
+    locale = document.documentElement.lang || undefined
   }
   return date.toLocaleString(locale, { timeZone: timezone })
 }

@@ -22,19 +22,19 @@
 <div data-controller="hub-tabs" data-hub-tabs-active-value="<%= active_tab %>">
   <div role="tablist" class="tabs tabs-bordered mb-2">
     <a role="tab" class="tab" data-hub-tabs-target="tab" data-tab="live"
-       data-action="click->hub-tabs#select" data-testid="hub-tab-live">Live location</a>
+       data-action="click->hub-tabs#select" data-testid="hub-tab-live"><%= t('.live_location') %></a>
     <a role="tab" class="tab" data-hub-tabs-target="tab" data-tab="timeline"
-       data-action="click->hub-tabs#select" data-testid="hub-tab-timeline">Time period</a>
+       data-action="click->hub-tabs#select" data-testid="hub-tab-timeline"><%= t('.time_period') %></a>
     <% if hub.any_shares? %>
       <a role="tab" class="tab" data-hub-tabs-target="tab" data-tab="shared"
-         data-action="click->hub-tabs#select" data-testid="hub-tab-shared">Shared</a>
+         data-action="click->hub-tabs#select" data-testid="hub-tab-shared"><%= t('.shared') %></a>
     <% end %>
   </div>
 
   <div data-hub-tabs-target="panel" style="min-height: 24rem;" data-tab="live" class="hidden pt-2">
     <% if hub.live_share %>
       <%= render 'shared_links/modal_active', share: hub.live_share, paths: live_paths,
-                 subtitle: 'Your live location is shared via a public link.' %>
+                 subtitle: t('.your_live_location_is_shared_via_a_public_link') %>
     <% else %>
       <%= render 'shared_links/modal_live_create_form', resource: nil, paths: live_paths, close_path: map_v2_path %>
     <% end %>

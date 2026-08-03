@@ -1,3 +1,4 @@
+import { translate } from "i18n"
 import L from "leaflet"
 import { createAllMapLayers } from "../maps/layers"
 import BaseController from "./base_controller"
@@ -274,51 +275,61 @@ export default class extends BaseController {
   buildPopupContent(props) {
     const timezone = this.timezoneValue || "UTC"
     const startDate = props.earliest_point
-      ? new Date(props.earliest_point).toLocaleDateString("en-US", {
-          timeZone: timezone,
-        })
-      : "N/A"
+      ? new Date(props.earliest_point).toLocaleDateString(
+          document.documentElement.lang || undefined,
+          { timeZone: timezone },
+        )
+      : translate("common.not_available")
     const endDate = props.latest_point
-      ? new Date(props.latest_point).toLocaleDateString("en-US", {
-          timeZone: timezone,
-        })
-      : "N/A"
+      ? new Date(props.latest_point).toLocaleDateString(
+          document.documentElement.lang || undefined,
+          {
+            timeZone: timezone,
+          },
+        )
+      : translate("common.not_available")
     const startTime = props.earliest_point
-      ? new Date(props.earliest_point).toLocaleTimeString("en-US", {
-          timeZone: timezone,
-        })
+      ? new Date(props.earliest_point).toLocaleTimeString(
+          document.documentElement.lang || undefined,
+          {
+            timeZone: timezone,
+          },
+        )
       : ""
     const endTime = props.latest_point
-      ? new Date(props.latest_point).toLocaleTimeString("en-US", {
-          timeZone: timezone,
-        })
+      ? new Date(props.latest_point).toLocaleTimeString(
+          document.documentElement.lang || undefined,
+          {
+            timeZone: timezone,
+          },
+        )
       : ""
 
     return `
       <div style="font-size: 12px; line-height: 1.6; max-width: 300px;">
-        <strong style="color: #3388ff;">📍 Location Data</strong><br>
+        <strong style="color: #3388ff;">📍 ${translate("map_info.location_data")}</strong><br>
         <div style="margin: 4px 0;">
-          <strong>Points:</strong> ${props.point_count || 0}
+          <strong>${translate("map_info.points")}:</strong> ${props.point_count || 0}
         </div>
         ${
           props.h3_index
             ? `
         <div style="margin: 4px 0;">
-          <strong>H3 Index:</strong><br>
+          <strong>${translate("map_info.h3_index")}:</strong><br>
           <code style="font-size: 10px; background: #f5f5f5; padding: 2px;">${props.h3_index}</code>
         </div>
         `
             : ""
         }
         <div style="margin: 4px 0;">
-          <strong>Time Range:</strong><br>
+          <strong>${translate("map_info.time_range")}:</strong><br>
           <small>${startDate} ${startTime}<br>→ ${endDate} ${endTime}</small>
         </div>
         ${
           props.center
             ? `
         <div style="margin: 4px 0;">
-          <strong>Center:</strong><br>
+          <strong>${translate("map_info.center")}:</strong><br>
           <small>${props.center[0].toFixed(6)}, ${props.center[1].toFixed(6)}</small>
         </div>
         `

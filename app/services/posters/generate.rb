@@ -19,18 +19,15 @@ module Posters
       @poster.update!(status: :processing)
 
       track = build_track
-      return fail_with('No location data found for the selected period.') if track.nil?
+      return fail_with(I18n.t('services.posters.generate.no_location_data')) if track.nil?
 
-      unless track_intersects_area?(track)
-        return fail_with('Your track does not pass through the selected map area. ' \
-                         'Recenter the map or adjust the dates.')
-      end
+      return fail_with(I18n.t('services.posters.generate.track_outside_area')) unless track_intersects_area?(track)
 
       render_natively(track)
       @poster.update!(status: :completed)
     rescue StandardError => e
       ExceptionReporter.call(e, "Poster render failed for poster #{@poster.id}")
-      fail_with('Poster generation failed. Please try again later.')
+      fail_with(I18n.t('services.posters.generate.failed'))
     end
 
     private

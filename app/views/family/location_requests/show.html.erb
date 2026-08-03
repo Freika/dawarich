@@ -1,68 +1,68 @@
 <div class="container mx-auto max-w-lg py-8 px-4">
   <div class="card bg-base-100 shadow-xl">
     <div class="card-body">
-      <h2 class="card-title text-2xl mb-4">Location Request</h2>
+      <h2 class="card-title text-2xl mb-4"><%= t('.location_request') %></h2>
 
       <div class="space-y-4">
         <div>
-          <span class="text-sm text-base-content/60">Requested by</span>
+          <span class="text-sm text-base-content/60"><%= t('.requested_by') %></span>
           <p class="text-lg font-medium"><%= @request.requester.email %></p>
         </div>
 
         <div>
-          <span class="text-sm text-base-content/60">Requested</span>
-          <p class="text-lg"><%= time_ago_in_words(@request.created_at) %> ago</p>
+          <span class="text-sm text-base-content/60"><%= t('.requested') %></span>
+          <p class="text-lg"><%= time_ago_in_words(@request.created_at) %> <%= t('.ago') %></p>
         </div>
 
         <% if @request.pending? && @request.expires_at > Time.current %>
           <div>
-            <span class="text-sm text-base-content/60">Expires</span>
-            <p class="text-lg"><%= time_ago_in_words(@request.expires_at) %> from now</p>
+            <span class="text-sm text-base-content/60"><%= t('.expires') %></span>
+            <p class="text-lg"><%= time_ago_in_words(@request.expires_at) %> <%= t('.from_now') %></p>
           </div>
 
           <%= form_with url: accept_family_location_request_path(@request), method: :patch, class: "space-y-4 mt-6" do |f| %>
             <div class="form-control">
               <label class="label">
-                <span class="label-text">Share location for</span>
+                <span class="label-text"><%= t('.share_location_for') %></span>
               </label>
               <select name="duration" class="select select-bordered w-full">
-                <option value="1h">1 hour</option>
-                <option value="6h">6 hours</option>
-                <option value="12h">12 hours</option>
-                <option value="24h" selected>24 hours</option>
-                <option value="permanent">Permanently</option>
+                <option value="1h"><%= t('.hour') %></option>
+                <option value="6h"><%= t('.hours') %></option>
+                <option value="12h"><%= t('.hours_2') %></option>
+                <option value="24h" selected><%= t('.hours_3') %></option>
+                <option value="permanent"><%= t('.permanently') %></option>
               </select>
             </div>
 
             <div class="flex gap-3 mt-6">
-              <%= f.submit "Accept & Share Location", class: "btn btn-primary flex-1" %>
+              <%= f.submit t('.accept_share_location'), class: "btn btn-primary flex-1" %>
             </div>
           <% end %>
 
-          <%= button_to "Decline", decline_family_location_request_path(@request),
+          <%= button_to t('.decline'), decline_family_location_request_path(@request),
               method: :patch, class: "btn btn-outline btn-warning w-full mt-2" %>
         <% else %>
           <div class="mt-4">
             <% if @request.expired? || @request.expires_at <= Time.current %>
-              <div class="badge badge-error badge-lg">Expired</div>
+              <div class="badge badge-error badge-lg"><%= t('.expired') %></div>
             <% elsif @request.accepted? %>
-              <div class="badge badge-success badge-lg">Accepted</div>
+              <div class="badge badge-success badge-lg"><%= t('.accepted') %></div>
             <% elsif @request.declined? %>
-              <div class="badge badge-warning badge-lg">Declined</div>
+              <div class="badge badge-warning badge-lg"><%= t('.declined') %></div>
             <% end %>
           </div>
 
           <% if @request.responded_at.present? %>
             <div>
-              <span class="text-sm text-base-content/60">Responded</span>
-              <p><%= time_ago_in_words(@request.responded_at) %> ago</p>
+              <span class="text-sm text-base-content/60"><%= t('.responded') %></span>
+              <p><%= time_ago_in_words(@request.responded_at) %> <%= t('.ago') %></p>
             </div>
           <% end %>
         <% end %>
       </div>
 
       <div class="card-actions justify-end mt-6">
-        <%= link_to "Back to Family", family_path, class: "btn btn-ghost" %>
+        <%= link_to t('.back_to_family'), family_path, class: "btn btn-ghost" %>
       </div>
     </div>
   </div>

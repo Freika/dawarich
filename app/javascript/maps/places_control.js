@@ -1,3 +1,4 @@
+import { translate } from "i18n"
 import L from "leaflet"
 import { applyThemeToPanel } from "./theme_utils"
 
@@ -35,7 +36,7 @@ export function createPlacesControl(placesManager, tags, userTheme = "dark") {
         container,
       )
       this.button.href = "#"
-      this.button.title = "Places Layer"
+      this.button.title = translate("map.places_layer")
       this.button.innerHTML = "📍"
       this.button.style.fontSize = "20px"
       this.button.style.width = "34px"
@@ -78,7 +79,7 @@ export function createPlacesControl(placesManager, tags, userTheme = "dark") {
     buildPanelContent: function () {
       const html = `
         <div style="margin-bottom: 10px; font-weight: bold; font-size: 14px; border-bottom: 1px solid rgba(128,128,128,0.3); padding-bottom: 8px;">
-          📍 Places Layer
+          📍 ${translate("map.places_layer")}
         </div>
 
         <!-- All Places Toggle -->
@@ -90,7 +91,7 @@ export function createPlacesControl(placesManager, tags, userTheme = "dark") {
                  data-filter="all"
                  style="margin-right: 8px; cursor: pointer;"
                  ${this.placesEnabled ? "checked" : ""}>
-          <span style="font-weight: bold;">Show All Places</span>
+          <span style="font-weight: bold;">${translate("places.show_all")}</span>
         </label>
 
         <!-- Untagged Places Toggle -->
@@ -102,7 +103,7 @@ export function createPlacesControl(placesManager, tags, userTheme = "dark") {
                  data-filter="untagged"
                  style="margin-right: 8px; cursor: pointer;"
                  ${this.showUntagged ? "checked" : ""}>
-          <span>Untagged Places</span>
+          <span>${translate("places.untagged")}</span>
         </label>
 
         ${
@@ -110,7 +111,7 @@ export function createPlacesControl(placesManager, tags, userTheme = "dark") {
             ? `
           <div style="border-top: 1px solid rgba(128,128,128,0.3); padding-top: 8px; margin-top: 8px;">
             <div style="font-size: 12px; font-weight: bold; margin-bottom: 6px; opacity: 0.7;">
-              FILTER BY TAG
+              ${translate("places.filter_by_tag")}
             </div>
             <div style="max-height: 250px; overflow-y: auto; margin-right: -5px; padding-right: 5px;">
               ${this.tags
@@ -137,7 +138,7 @@ export function createPlacesControl(placesManager, tags, userTheme = "dark") {
             </div>
           </div>
         `
-            : '<div style="font-size: 12px; opacity: 0.6; padding: 8px; text-align: center;">No tags created yet</div>'
+            : `<div style="font-size: 12px; opacity: 0.6; padding: 8px; text-align: center;">${translate("places.no_tags")}</div>`
         }
       `
 

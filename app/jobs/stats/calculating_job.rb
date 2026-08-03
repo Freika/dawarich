@@ -17,8 +17,9 @@ class Stats::CalculatingJob < ApplicationJob
     Notifications::Create.new(
       user:,
       kind: :error,
-      title: 'Stats update failed',
-      content: "#{error.message}, stacktrace: #{error.backtrace.join("\n")}"
+      title: I18n.t('jobs.stats.calculating_job.stats_update_failed'),
+      content: I18n.t('jobs.stats.calculating_job.message_stacktrace_n', message: error.message,
+                      backtrace: error.backtrace.join("\n"))
     ).call
   end
 end

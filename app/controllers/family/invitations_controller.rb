@@ -18,9 +18,15 @@ class Family::InvitationsController < ApplicationController
     token = params[:token] || params[:id]
     @invitation = Family::Invitation.find_by!(token: token)
 
-    redirect_to root_path, alert: 'This invitation has expired.' and return if @invitation.expired?
+    if @invitation.expired?
+      redirect_to root_path,
+                  alert: I18n.t('controllers.family.invitations.this_invitation_has_expired') and return
+    end
 
-    redirect_to root_path, alert: 'This invitation is no longer valid.' and return unless @invitation.pending?
+    unless @invitation.pending?
+      redirect_to root_path,
+                  alert: I18n.t('controllers.family.invitations.this_invitation_is_no_longer_valid') and return
+    end
 
     # Warns the invitee up front instead of letting them click Accept only to
     # be refused by the plan validation in Families::AcceptInvitation.
@@ -37,9 +43,10 @@ class Family::InvitationsController < ApplicationController
     )
 
     if service.call
-      redirect_to family_path, notice: 'Invitation sent successfully!'
+      redirect_to family_path, notice: I18n.t('controllers.family.invitations.invitation_sent_successfully')
     else
-      redirect_to family_path, alert: service.error_message || 'Failed to send invitation'
+      redirect_to family_path,
+                  alert: service.error_message || I18n.t('controllers.family.invitations.failed_to_send_invitation')
     end
   end
 
@@ -48,13 +55,16 @@ class Family::InvitationsController < ApplicationController
 
     begin
       if @invitation.update(status: :cancelled)
-        redirect_to family_home_path, notice: 'Invitation cancelled'
+        redirect_to family_home_path, notice: I18n.t('controllers.family.invitations.invitation_cancelled')
       else
-        redirect_to family_home_path, alert: 'Failed to cancel invitation. Please try again'
+        redirect_to family_home_path,
+                    alert: I18n.t('controllers.family.invitations.failed_to_cancel_invitation_please_try_again')
       end
     rescue StandardError => e
       Rails.logger.error "Error cancelling family invitation: #{e.message}"
-      redirect_to family_home_path, alert: 'An unexpected error occurred while cancelling the invitation'
+      alert = I18n.t('controllers.family.invitations.an_unexpected_error_occurred_while_cancelling_the_invitation')
+      redirect_to family_home_path,
+                  alert: alert
     end
   end
 
@@ -63,7 +73,10 @@ class Family::InvitationsController < ApplicationController
   def set_family
     @family = current_user.family
 
-    redirect_to new_family_path, alert: 'You are not in a family' and return unless @family
+    return if @family
+
+    redirect_to new_family_path,
+                alert: I18n.t('controllers.family.invitations.you_are_not_in_a_family') and return
   end
 
   def set_invitation_by_id_and_family

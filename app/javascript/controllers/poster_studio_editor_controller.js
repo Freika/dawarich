@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { translate } from "i18n"
 import {
   DEFAULT_FONT_KEY,
   ensurePosterFont,
@@ -168,7 +169,10 @@ export default class extends Controller {
       this.updateSummary()
       this.syncOrderAvailability()
     } catch (error) {
-      Flash.show("error", `Poster studio failed to open: ${error.message}`)
+      Flash.show(
+        "error",
+        translate("poster.open_failed", { error: error.message }),
+      )
       this.close()
     }
   }
@@ -288,7 +292,10 @@ export default class extends Controller {
       this.scheduleRestyle()
       this.updateSummary()
     } catch (error) {
-      Flash.show("error", `Failed to load theme: ${error.message}`)
+      Flash.show(
+        "error",
+        translate("poster.theme_load_failed", { error: error.message }),
+      )
     }
   }
 
@@ -318,11 +325,11 @@ export default class extends Controller {
     select.innerHTML = ""
     LAYOUT_CATEGORIES.forEach((category) => {
       const group = document.createElement("optgroup")
-      group.label = category.name
+      group.label = translate(`poster.categories.${category.id}`)
       category.layouts.forEach((layout) => {
         const option = document.createElement("option")
         option.value = layout.id
-        option.textContent = layout.name
+        option.textContent = translate(`poster.layouts.${layout.id}`)
         group.appendChild(option)
       })
       select.appendChild(group)
@@ -344,7 +351,7 @@ export default class extends Controller {
       button.dataset.action = "poster-studio-editor#pickPrintSize"
 
       const name = document.createElement("span")
-      name.textContent = layout.name
+      name.textContent = translate(`poster.layouts.${layout.id}`)
       const price = document.createElement("span")
       price.className = "opacity-70"
       price.textContent = PRINT_PRODUCTS[id].priceLabel
@@ -498,7 +505,7 @@ export default class extends Controller {
     const subtitleWasAuto =
       this.subtitleInputTarget.value === this.dateRangeLabel()
     this.setLoadBusy(true)
-    this.setStatus("Loading tracks for the new range…")
+    this.setStatus(translate("poster.loading_tracks"))
     try {
       await this.provider.applyDates(start, end)
 
@@ -517,7 +524,9 @@ export default class extends Controller {
     if (!this.hasLoadButtonTarget) return
     this.loadButtonTarget.disabled = value
     this.loadSpinnerTarget.classList.toggle("hidden", !value)
-    this.loadLabelTarget.textContent = value ? "Loading…" : "Load"
+    this.loadLabelTarget.textContent = translate(
+      value ? "poster.loading" : "poster.load",
+    )
   }
 
   presetRange(event) {
@@ -572,7 +581,12 @@ export default class extends Controller {
       const layout = this.layout
       const dpi = Number.parseInt(this.dpiTarget.value, 10)
       const geometry = resolveLayoutGeometry(layout, dpi)
-      this.setStatus(`Rendering ${geometry.width} × ${geometry.height}px…`)
+      this.setStatus(
+        translate("poster.rendering", {
+          width: geometry.width,
+          height: geometry.height,
+        }),
+      )
 
       const mapBounds = this.previewMap.getBounds()
       const { blob, extension } = await exportPoster({
@@ -598,11 +612,16 @@ export default class extends Controller {
       )
       this.setStatus(
         geometry.steppedDown
-          ? `Saved at ${geometry.effectiveDpi} dpi (device GL limit)`
-          : "Saved",
+          ? translate("poster.saved_at_dpi", {
+              dpi: geometry.effectiveDpi,
+            })
+          : translate("poster.saved"),
       )
     } catch (error) {
-      Flash.show("error", `Poster export failed: ${error.message}`)
+      Flash.show(
+        "error",
+        translate("poster.export_failed", { error: error.message }),
+      )
       this.setStatus("")
     } finally {
       this.setBusy(false)
@@ -635,7 +654,10 @@ export default class extends Controller {
   }
 
   showOrderDialog(product) {
-    this.orderSummaryTarget.textContent = `${this.layout.name} poster — ${product.priceLabel}`
+    this.orderSummaryTarget.textContent = translate("poster.order_summary", {
+      layout: translate(`poster.layouts.${this.layout.id}`),
+      price: product.priceLabel,
+    })
     this.orderErrorTarget.classList.add("hidden")
     this.resetOrderSteps()
     this.showOrderView("dialog")
@@ -777,7 +799,7 @@ export default class extends Controller {
     // neutral placeholder so an untitled poster never reads "MY POSTER".
     const title = this.titleInputTarget.value.trim()
     this.saveTitleTarget.value = title
-    this.saveNameTarget.value = title || "Untitled poster"
+    this.saveNameTarget.value = title || translate("poster.untitled")
     this.saveThemeTarget.value = this.themeBase || "blueprint"
     this.saveLatTarget.value = center.lat
     this.saveLonTarget.value = center.lng
@@ -789,7 +811,7 @@ export default class extends Controller {
     this.saveOpacityTarget.value = this.trackOpacityTarget.value
     this.saveWidthTarget.value = this.trackWidthTarget.value
     this.saveFormTarget.requestSubmit()
-    this.setStatus("Queued — rendering server-side into Recent posters…")
+    this.setStatus(translate("poster.queued"))
   }
 
   framedDistance() {
@@ -816,17 +838,13 @@ export default class extends Controller {
     const coords = collectCoords(this.trackGeojson)
     let reason = null
     if (coords.length === 0) {
-      reason =
-        "No location data in this date range — pick a range with tracks in the date bar above."
+      reason = translate("poster.no_location_data")
     } else if (!this.frameCoversTrack(coords)) {
-      reason =
-        "No tracks inside the frame — move or zoom the map over your route to save to the gallery."
+      reason = translate("poster.no_tracks_in_frame")
     }
     const message =
       reason ||
-      (this.frameIsClamped()
-        ? "This view is wider than the largest poster area — the saved poster will be more zoomed in than the preview."
-        : null)
+      (this.frameIsClamped() ? translate("poster.frame_too_wide") : null)
     this.saveButtonTarget.disabled = Boolean(reason)
     this.saveNoticeTarget.textContent = message || ""
     this.saveNoticeTarget.classList.toggle("hidden", !message)
@@ -844,7 +862,7 @@ export default class extends Controller {
     const dpi = Number.parseInt(this.dpiTarget.value, 10)
     const geometry = resolveLayoutGeometry(layout, dpi)
     const lines = [
-      `${layout.name} — ${layout.dimensionsLabel}`,
+      `${translate(`poster.layouts.${layout.id}`)} — ${layout.dimensionsLabel}`,
       `Theme: ${this.themeName || "—"}`,
       `Export: ${geometry.width} × ${geometry.height}px${
         layout.kind === "paper" ? ` @ ${geometry.effectiveDpi} dpi` : ""

@@ -20,7 +20,7 @@ class Shared::LinksController < ApplicationController
       redirect_to public_shared_link_path(@link.id)
     else
       Rails.logger.warn("Shared link unlock failed: link=#{@link.id} ip=#{request.remote_ip}")
-      flash.now[:error] = "That phrase didn't work. Try again."
+      flash.now[:error] = I18n.t('controllers.shared.links.incorrect_phrase')
       render :phrase_prompt, status: :unauthorized
     end
   end

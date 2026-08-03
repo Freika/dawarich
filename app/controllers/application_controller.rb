@@ -76,7 +76,7 @@ class ApplicationController < ActionController::Base
   def authenticate_active_user!
     return if current_user&.active_until&.future?
 
-    redirect_to root_path, notice: 'Your account is not active.', status: :see_other
+    redirect_to root_path, notice: I18n.t('controllers.application.your_account_is_not_active'), status: :see_other
   end
 
   def authenticate_non_self_hosted!
@@ -117,10 +117,16 @@ class ApplicationController < ActionController::Base
 
     unless current_user
       respond_to do |format|
-        format.html { redirect_to new_user_session_path, alert: 'Please sign in to continue.', status: :see_other }
-        format.json { render json: { error: 'You need to sign in first.' }, status: :unauthorized }
+        format.html do
+          redirect_to new_user_session_path, alert: I18n.t('controllers.application.please_sign_in_to_continue'),
+         status: :see_other
+        end
+        format.json do
+          render json: { error: I18n.t('controllers.application.you_need_to_sign_in_first') }, status: :unauthorized
+        end
         format.turbo_stream do
-          redirect_to new_user_session_path, alert: 'Please sign in to continue.', status: :see_other
+          redirect_to new_user_session_path, alert: I18n.t('controllers.application.please_sign_in_to_continue'),
+status: :see_other
         end
       end
       return
@@ -131,19 +137,19 @@ class ApplicationController < ActionController::Base
     respond_to do |format|
       format.html do
         redirect_back fallback_location: root_path,
-                      alert: 'This feature requires a Pro plan.',
+                      alert: I18n.t('controllers.application.this_feature_requires_a_pro_plan'),
                       status: :see_other
       end
-      format.json { render json: { error: 'This feature requires a Pro plan.' }, status: :forbidden }
+      format.json do
+        render json: { error: I18n.t('controllers.application.this_feature_requires_a_pro_plan') }, status: :forbidden
+      end
       format.turbo_stream do
         redirect_back fallback_location: root_path,
-                      alert: 'This feature requires a Pro plan.',
+                      alert: I18n.t('controllers.application.this_feature_requires_a_pro_plan'),
                       status: :see_other
       end
     end
   end
-
-  FAMILY_PLAN_REQUIRED_MESSAGE = 'This feature requires a Family plan.'
 
   # Family routes exist on every instance; access is decided per user. Send web
   # visitors to the family landing page, which explains the plan and carries the
@@ -151,13 +157,14 @@ class ApplicationController < ActionController::Base
   def ensure_family_feature_available!
     return if family_feature_available?
 
+    message = I18n.t('controllers.application.family_plan_required')
     respond_to do |format|
-      format.html { redirect_to new_family_path, alert: FAMILY_PLAN_REQUIRED_MESSAGE, status: :see_other }
+      format.html { redirect_to new_family_path, alert: message, status: :see_other }
       format.turbo_stream do
-        redirect_to new_family_path, alert: FAMILY_PLAN_REQUIRED_MESSAGE, status: :see_other
+        redirect_to new_family_path, alert: message, status: :see_other
       end
       format.json do
-        render json: { error: 'family_plan_required', message: FAMILY_PLAN_REQUIRED_MESSAGE },
+        render json: { error: 'family_plan_required', message: message },
                status: :forbidden
       end
     end
@@ -169,7 +176,7 @@ class ApplicationController < ActionController::Base
     return unless current_user&.deleted?
 
     sign_out current_user
-    redirect_to root_path, alert: 'Your account has been deleted.'
+    redirect_to root_path, alert: I18n.t('controllers.application.your_account_has_been_deleted')
   end
 
   def set_user_time_zone(&block)
@@ -199,7 +206,7 @@ class ApplicationController < ActionController::Base
 
   def user_not_authorized
     redirect_back fallback_location: root_path,
-                  alert: 'You are not authorized to perform this action.',
+                  alert: I18n.t('controllers.application.you_are_not_authorized_to_perform_this_action'),
                   status: :see_other
   end
 end

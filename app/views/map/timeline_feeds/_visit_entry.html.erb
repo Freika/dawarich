@@ -27,13 +27,13 @@
            data-timeline-feed-target="rowCheck"
            data-visit-id="<%= entry[:visit_id] %>"
            data-action="change->timeline-feed#rowCheckChanged click->timeline-feed#stopPropagation"
-           aria-label="Select visit for merge"
+           aria-label="<%= t('.select_visit_for_merge') %>"
            tabindex="-1">
   </span>
 
   <div class="visit-row__time">
     <% if all_day %>
-      <span class="text-xs">All day</span>
+      <span class="text-xs"><%= t('.all_day') %></span>
     <% else %>
       <div class="font-mono text-xs"><%= times[:start_label] %></div>
       <div class="font-mono text-[10px] text-base-content/50"><%= times[:end_label] %></div>
@@ -53,7 +53,7 @@
                  suggested: status == 'suggested' %>
     </div>
     <div class="visit-row__meta text-xs text-base-content/60">
-      <%= format_dwell_minutes(entry[:duration]) %> · <%= entry[:point_count] %> pts
+      <%= format_dwell_minutes(entry[:duration]) %> · <%= entry[:point_count] %> <%= t('.pts') %>
       <% Array(entry[:tags]).each do |t| %>
         <span class="tag-chip" style="background-color: <%= t[:color] %>;">#<%= t[:name] %></span>
       <% end %>
@@ -66,16 +66,16 @@
       <% if coords %>
         <button type="button"
                 class="btn btn-xs btn-ghost btn-square"
-                title="Search for a place"
+                title="<%= t('.search_for_a_place') %>"
                 data-testid="visit-search-trigger"
                 data-action="click->visit-place-search#toggle click->timeline-feed#stopPropagation">
           <%= icon 'search', class: 'w-4 h-4' %>
         </button>
       <% end %>
       <% if status != 'suggested' %>
-        <%= button_to 'Delete', visit_path(entry[:visit_id]),
+        <%= button_to t('.delete'), visit_path(entry[:visit_id]),
                       method: :delete,
-                      data: { testid: 'visit-delete', turbo_confirm: 'Delete this visit? Your location points stay.' },
+                      data: { testid: 'visit-delete', turbo_confirm: t('.delete_this_visit_your_location_points_stay') },
                       class: 'btn btn-xs btn-ghost' %>
       <% end %>
     </div>

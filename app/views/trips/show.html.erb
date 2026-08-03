@@ -22,14 +22,14 @@
           <div data-trip-maplibre-target="loadingIndicator"
                class="absolute bottom-4 left-4 z-10 bg-base-100/80 backdrop-blur-sm rounded-lg px-3 py-2 flex items-center gap-2 hidden">
             <span class="loading loading-spinner loading-sm"></span>
-            <span class="text-sm">Loading route data...</span>
+            <span class="text-sm"><%= t('.loading_route_data') %></span>
           </div>
           <%= render "shared/replay_panel", stimulus: "trip-maplibre", show_day_nav: true %>
         </div>
       <% else %>
         <div class="flex items-center justify-center h-full rounded-lg bg-base-200">
           <div class="text-center">
-            <p class="text-base-content/60">Trip path is being calculated...</p>
+            <p class="text-base-content/60"><%= t('.trip_path_is_being_calculated') %></p>
             <div class="loading loading-spinner loading-lg mt-4"></div>
           </div>
         </div>
@@ -44,17 +44,17 @@
           <h1 class="text-3xl font-bold leading-tight"><%= @trip.name %></h1>
           <div class="flex items-center gap-1 shrink-0">
             <div class="dropdown dropdown-end">
-              <label tabindex="0" class="btn btn-sm btn-ghost" title="Download trip">
+              <label tabindex="0" class="btn btn-sm btn-ghost" title="<%= t('.download_trip') %>">
                 <%= icon 'download', class: 'w-4 h-4' %>
               </label>
               <ul tabindex="0" class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-44 z-10">
                 <li>
-                  <%= link_to 'GPX',
+                  <%= link_to t('.gpx'),
                               export_trip_path(@trip, file_format: 'gpx'),
                               data: { turbo_method: :post } %>
                 </li>
                 <li>
-                  <%= link_to 'GeoJSON',
+                  <%= link_to t('.geojson'),
                               export_trip_path(@trip, file_format: 'json'),
                               data: { turbo_method: :post } %>
                 </li>
@@ -62,30 +62,30 @@
             </div>
             <%= link_to edit_trip_path(@trip),
                 class: "btn btn-sm btn-ghost",
-                title: "Edit trip" do %>
+                title: t('.edit_trip') do %>
               <%= icon 'square-pen', class: 'w-4 h-4' %>
             <% end %>
             <% trip_share = @trip.shared_links.active.first %>
             <%= link_to new_trip_share_link_path(@trip),
                 class: "btn btn-sm btn-ghost relative",
-                title: "Share trip",
+                title: t('.share_trip'),
                 data: { turbo_frame: "share-link-modal" } do %>
               <%= icon 'share', class: 'w-4 h-4' %>
               <% if trip_share %>
-                <span class="badge badge-success badge-xs" aria-label="Currently shared">Public</span>
+                <span class="badge badge-success badge-xs" aria-label="<%= t('.currently_shared') %>"><%= t('.public') %></span>
               <% end %>
             <% end %>
             <%= button_to trip_path(@trip),
                 method: :delete,
-                form: { data: { turbo_confirm: "Delete this trip? This cannot be undone." } },
+                form: { data: { turbo_confirm: t('.delete_this_trip_this_cannot_be_undone') } },
                 class: "btn btn-sm btn-ghost text-error",
-                title: "Delete trip" do %>
+                title: t('.delete_trip') do %>
               <%= icon 'trash-2', class: 'w-4 h-4' %>
             <% end %>
           </div>
         </div>
         <p class="text-md text-base-content/60 mb-4">
-          <%= human_date(@trip.started_at) %> &ndash; <%= human_date(@trip.ended_at) %>
+          <%= human_date(@trip.started_at) %> <%= t('.ndash') %> <%= human_date(@trip.ended_at) %>
         </p>
 
         <%= render "trips/countries", trip: @trip, current_user: current_user, distance_unit: current_user.safe_settings.distance_unit %>
@@ -99,9 +99,9 @@
                   class="btn btn-sm btn-outline gap-1"
                   data-trip-maplibre-target="photosToggleBtn"
                   data-action="click->trip-maplibre#togglePhotos"
-                  title="Toggle photo markers on map">
+                  title="<%= t('.toggle_photo_markers_on_map') %>">
             <%= icon 'camera', class: 'w-4 h-4' %>
-            <span class="hidden sm:inline">Photos</span>
+            <span class="hidden sm:inline"><%= t('.photos') %></span>
           </button>
         <% end %>
 
@@ -110,9 +110,9 @@
                   class="btn btn-sm btn-outline gap-1"
                   data-trip-maplibre-target="flightsToggleBtn"
                   data-action="click->trip-maplibre#toggleFlights"
-                  title="Toggle AirTrail flights on map">
+                  title="<%= t('.toggle_airtrail_flights_on_map') %>">
             <%= icon 'plane', class: 'w-4 h-4' %>
-            <span class="hidden sm:inline">Flights</span>
+            <span class="hidden sm:inline"><%= t('.flights') %></span>
           </button>
         <% end %>
 
@@ -120,9 +120,9 @@
                 class="btn btn-sm btn-outline gap-1"
                 data-trip-maplibre-target="replayToggleBtn"
                 data-action="click->trip-maplibre#toggleReplay"
-                title="Replay the trip">
+                title="<%= t('.replay_the_trip') %>">
           <%= icon 'play', class: 'w-4 h-4' %>
-          <span class="hidden sm:inline">Replay</span>
+          <span class="hidden sm:inline"><%= t('.replay') %></span>
         </button>
 
         <button type="button"
@@ -130,17 +130,17 @@
                 data-trip-maplibre-target="expandAllBtn"
                 data-action="click->trip-maplibre#expandAllDays">
           <%= icon 'chevron-down', class: 'w-4 h-4' %>
-          <span class="hidden sm:inline">Show all days</span>
+          <span class="hidden sm:inline"><%= t('.show_all_days') %></span>
         </button>
 
         <button type="button"
                 class="btn btn-sm btn-outline gap-1"
                 data-trip-maplibre-target="posterBtn"
                 data-action="click->trip-maplibre#openPosterStudio"
-                title="<%= @trip.path.blank? ? 'Available once the trip route is calculated' : 'Create a poster of this trip' %>"
+                title="<%= t(@trip.path.blank? ? '.poster_unavailable' : '.create_poster') %>"
                 <% if @trip.path.blank? %>disabled<% end %>>
           <%= icon 'image', class: 'w-4 h-4' %>
-          <span class="hidden sm:inline">Poster</span>
+          <span class="hidden sm:inline"><%= t('.poster') %></span>
         </button>
 
         <%= render "trips/recalculate_button", trip: @trip %>
@@ -159,22 +159,22 @@
                      data-trip-maplibre-day-key-param="<%= day_key %>">
               <span class="inline-block w-3 h-3 rounded-full flex-shrink-0 bg-base-content/30"
                     data-day-dot="<%= day_key %>"></span>
-              <span><%= date.strftime('%b %-d, %A') %></span>
+              <span><%= l(date, format: :short_month_day_weekday) %></span>
               <% if stats %>
                 <span class="text-base-content/50 text-xs">
-                  <%= stats[:first_time].strftime('%H:%M') %> – <%= stats[:last_time].strftime('%H:%M') %>
+                  <%= l(stats[:first_time], format: :hour_minute) %> – <%= l(stats[:last_time], format: :hour_minute) %>
                 </span>
                 <span class="text-base-content/50 ml-auto mr-6 text-xs">
-                  &middot;
+                  <%= t('.middot') %>
                   <% day_distance = Trip.convert_distance(stats[:distance_m], @distance_unit) %>
                   <% if day_distance < 1 %>
-                    &lt; 1 <%= @distance_unit %>
+                    <%= t('.text') %> <%= @distance_unit %>
                   <% else %>
                     <%= number_with_precision(day_distance, precision: 1) %> <%= @distance_unit %>
                   <% end %>
                 </span>
               <% else %>
-                <span class="text-base-content/50 ml-auto mr-6 text-xs">No data</span>
+                <span class="text-base-content/50 ml-auto mr-6 text-xs"><%= t('.no_data') %></span>
               <% end %>
             </summary>
             <div class="collapse-content">
@@ -205,7 +205,7 @@
       <%# Trip description %>
       <% if @trip.description.body.present? %>
         <div class="mb-6">
-          <h3 class="text-lg font-semibold mb-2">Trip Notes</h3>
+          <h3 class="text-lg font-semibold mb-2"><%= t('.trip_notes') %></h3>
           <div class="prose max-w-none">
             <%= @trip.description.body %>
           </div>
@@ -221,7 +221,7 @@
                   class: "btn btn-sm btn-outline gap-1",
                   target: "_blank",
                   rel: "noopener" do %>
-                <%= icon 'camera', class: 'w-4 h-4' %> More on <%= source.to_s.titleize %>
+                <%= icon 'camera', class: 'w-4 h-4' %> <%= t('.more_on_source', source: t("photo_sources.#{source}")) %>
               <% end %>
             <% end %>
           </div>
@@ -231,7 +231,7 @@
       <%# Back link %>
       <div class="mb-6">
         <%= link_to trips_path, class: "btn btn-sm btn-ghost gap-1" do %>
-          <%= icon 'arrow-left', class: 'w-4 h-4' %> Back to trips
+          <%= icon 'arrow-left', class: 'w-4 h-4' %> <%= t('.back_to_trips') %>
         <% end %>
       </div>
     </div>

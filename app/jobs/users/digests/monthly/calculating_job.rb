@@ -24,8 +24,9 @@ class Users::Digests::Monthly::CalculatingJob < ApplicationJob
     Notifications::Create.new(
       user:,
       kind: :error,
-      title: 'Monthly Digest calculation failed',
-      content: "#{error.message}, stacktrace: #{backtrace}"
+      title: I18n.t('jobs.users.digests.monthly.calculating_job.monthly_digest_calculation_failed'),
+      content: I18n.t('jobs.users.digests.monthly.calculating_job.message_stacktrace_backtrace',
+                      message: error.message, backtrace: backtrace)
     ).call
   rescue ActiveRecord::RecordNotFound
     nil

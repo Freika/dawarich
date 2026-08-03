@@ -24,17 +24,21 @@ class Users::DigestsController < ApplicationController
     if valid_year?(year)
       Users::Digests::Yearly::CalculatingJob.perform_later(current_user.id, year)
       redirect_to users_digests_path,
-                  notice: "Year-end digest for #{year} is being generated. Check back soon!",
+                  notice: I18n.t('controllers.users.digests.year_end_digest_for_year_is_being_generated_check_back',
+                                 year: year),
                   status: :see_other
     else
-      redirect_to users_digests_path, alert: 'Invalid year selected', status: :see_other
+      redirect_to users_digests_path, alert: I18n.t('controllers.users.digests.invalid_year_selected'),
+status: :see_other
     end
   end
 
   def destroy
     year = @digest.year
     @digest.destroy!
-    redirect_to users_digests_path, notice: "Year-end digest for #{year} has been deleted", status: :see_other
+    notice = I18n.t('controllers.users.digests.year_end_digest_for_year_has_been_deleted', year: year)
+    redirect_to users_digests_path,
+                notice: notice, status: :see_other
   end
 
   private
@@ -42,7 +46,7 @@ class Users::DigestsController < ApplicationController
   def set_digest
     @digest = current_user.digests.yearly.find_by!(year: params[:year])
   rescue ActiveRecord::RecordNotFound
-    redirect_to users_digests_path, alert: 'Digest not found'
+    redirect_to users_digests_path, alert: I18n.t('controllers.users.digests.digest_not_found')
   end
 
   def available_years_for_generation

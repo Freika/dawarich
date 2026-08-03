@@ -2,7 +2,7 @@
 
 module DatetimeFormattingHelper
   def human_date(date)
-    date.strftime('%e %B %Y')
+    I18n.l(date.to_date, format: :day_month_year)
   end
 
   def human_datetime(datetime, timezone = nil)
@@ -12,7 +12,7 @@ module DatetimeFormattingHelper
 
     content_tag(
       :span,
-      zoned.strftime('%e %b %Y, %H:%M'),
+      I18n.l(zoned, format: :human),
       class: 'tooltip',
       data: { tip: zoned.iso8601 }
     )
@@ -25,7 +25,7 @@ module DatetimeFormattingHelper
 
     content_tag(
       :span,
-      zoned.strftime('%e %b %Y, %H:%M:%S'),
+      I18n.l(zoned, format: :human_with_seconds),
       class: 'tooltip',
       data: { tip: zoned.iso8601 }
     )
@@ -40,23 +40,23 @@ module DatetimeFormattingHelper
       :span,
       time_words,
       class: 'tooltip',
-      data: { tip: "Expires on #{active_until.iso8601}" }
+      data: { tip: I18n.t('helpers.datetime_formatting.expires_on', date: I18n.l(active_until, format: :human)) }
     )
   end
 
   def format_duration_short(seconds)
-    return '0m' if seconds.nil? || seconds.to_i.zero?
+    return I18n.t('units.minutes_compact', value: 0) if seconds.nil? || seconds.to_i.zero?
 
     total = seconds.to_i
     days = total / 86_400
     hours = (total % 86_400) / 3600
     minutes = (total % 3600) / 60
 
-    return "#{days}d #{hours}h" if days.positive? && hours.positive?
-    return "#{days}d" if days.positive?
-    return "#{hours}h #{minutes}m" if hours.positive?
+    return I18n.t('units.days_hours_compact', days:, hours:) if days.positive? && hours.positive?
+    return I18n.t('units.days_compact', value: days) if days.positive?
+    return I18n.t('units.hours_minutes_compact', hours:, minutes:) if hours.positive?
 
-    "#{minutes}m"
+    I18n.t('units.minutes_compact', value: minutes)
   end
 
   private

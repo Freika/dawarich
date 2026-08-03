@@ -1,7 +1,7 @@
-<% content_for :title, 'Points' %>
+<% content_for :title, t('.points') %>
 
 <div class="w-full my-5">
-  <%= render 'shared/page_header', title: 'Points' %>
+  <%= render 'shared/page_header', title: t('.points') %>
 
   <%# Filter form %>
   <div class="border border-base-300 rounded-xl bg-base-200/50 p-4 mb-5">
@@ -19,7 +19,7 @@
           <%= f.label :import, class: "text-xs font-medium text-base-content/50 uppercase tracking-wider mb-1 block" %>
           <%= f.select :import_id, options_for_select(@imports.map { |i| [i.name, i.id] }, params[:import_id]), { include_blank: 'All imports' }, class: "select select-bordered select-sm text-sm w-full" %>
         </div>
-        <%= f.submit "Search", class: "btn btn-primary btn-sm" %>
+        <%= f.submit t('.search'), class: "btn btn-primary btn-sm" %>
       </div>
     <% end %>
   </div>
@@ -32,18 +32,18 @@
     <div class="flex flex-wrap items-center gap-2">
       <div class="dropdown dropdown-end">
         <label tabindex="0" class="btn btn-outline btn-xs gap-1">
-          <%= icon 'arrow-big-down', class: 'w-3.5 h-3.5' %> Export
+          <%= icon 'arrow-big-down', class: 'w-3.5 h-3.5' %> <%= t('.export') %>
           <%= icon 'chevron-down', class: 'w-3 h-3' %>
         </label>
         <ul tabindex="0" class="dropdown-content z-[50] menu p-2 shadow-lg bg-base-100 rounded-lg w-48 mt-1 border border-base-300">
           <li>
-            <%= link_to exports_path(start_at: @start_at, end_at: @end_at, file_format: :json), data: { turbo_confirm: "Export as GeoJSON?", turbo_method: :post } do %>
-              <%= icon 'earth', class: 'w-4 h-4' %> GeoJSON
+            <%= link_to exports_path(start_at: @start_at, end_at: @end_at, file_format: :json), data: { turbo_confirm: t('.export_as_geojson'), turbo_method: :post } do %>
+              <%= icon 'earth', class: 'w-4 h-4' %> <%= t('.geojson') %>
             <% end %>
           </li>
           <li>
-            <%= link_to exports_path(start_at: @start_at, end_at: @end_at, file_format: :gpx), data: { turbo_confirm: "Export as GPX?", turbo_method: :post } do %>
-              <%= icon 'route', class: 'w-4 h-4' %> GPX
+            <%= link_to exports_path(start_at: @start_at, end_at: @end_at, file_format: :gpx), data: { turbo_confirm: t('.export_as_gpx'), turbo_method: :post } do %>
+              <%= icon 'route', class: 'w-4 h-4' %> <%= t('.gpx') %>
             <% end %>
           </li>
         </ul>
@@ -58,15 +58,16 @@
   <%# Points table %>
   <div id="points" data-controller='checkbox-select-all'>
     <%= form_with url: bulk_destroy_points_path(params.permit!), method: :delete, id: :bulk_destroy_form do |f| %>
-      <%= f.submit "Delete Selected", class: "btn btn-error btn-sm mb-3", data: { turbo_confirm: "Are you sure?", checkbox_select_all_target: "deleteButton" }, style: "display: none;" %>
+      <%= f.submit t('.delete_selected'), class: "btn btn-error btn-sm mb-3", data: { turbo_confirm: t('.are_you_sure'), checkbox_select_all_target: "deleteButton" }, style: "display: none;" %>
 
       <div class="border border-base-300 rounded-xl overflow-x-auto">
         <table class="table table-sm w-full">
           <thead class="bg-base-200">
             <tr>
               <th class="px-3 py-2.5 w-1/12">
-                <%= check_box_tag 'Select all',
+                <%= check_box_tag 'select_all',
                   id: :select_all_points,
+                  'aria-label': t('.select_all'),
                   data: {
                     checkbox_select_all_target: 'parent',
                     action: 'change->checkbox-select-all#toggleChildren'
@@ -75,15 +76,15 @@
                 %>
               </th>
               <% if DawarichSettings.reverse_geocoding_enabled? %>
-                <th class="px-3 py-2.5 text-xs uppercase tracking-wider text-left text-base-content/50 w-4/12">Address</th>
+                <th class="px-3 py-2.5 text-xs uppercase tracking-wider text-left text-base-content/50 w-4/12"><%= t('.address') %></th>
               <% end %>
-              <th class="px-3 py-2.5 text-xs uppercase tracking-wider text-base-content/50 text-right w-1/12">Speed</th>
-              <th class="px-3 py-2.5 text-xs uppercase tracking-wider text-base-content/50 w-3/12">Coordinates</th>
+              <th class="px-3 py-2.5 text-xs uppercase tracking-wider text-base-content/50 text-right w-1/12"><%= t('.speed') %></th>
+              <th class="px-3 py-2.5 text-xs uppercase tracking-wider text-base-content/50 w-3/12"><%= t('.coordinates') %></th>
               <th class="px-3 py-2.5 text-xs uppercase tracking-wider text-base-content/50 w-3/12">
                 <% next_order = params[:order_by] == 'asc' ? 'desc' : 'asc' %>
                 <%= link_to points_path(order_by: next_order, import_id: params[:import_id], start_at: params[:start_at], end_at: params[:end_at]),
                     class: "inline-flex items-center gap-1 link link-hover font-bold" do %>
-                  Recorded at
+                  <%= t('.recorded_at') %>
                   <%= icon(params[:order_by] == 'asc' ? 'chevron-up' : 'chevron-down', class: 'w-4 h-4 inline-block') %>
                 <% end %>
               </th>

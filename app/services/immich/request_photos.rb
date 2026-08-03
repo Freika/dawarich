@@ -14,8 +14,8 @@ class Immich::RequestPhotos
   end
 
   def call
-    raise ArgumentError, 'Immich API key is missing' if immich_api_key.blank?
-    raise ArgumentError, 'Immich URL is missing'     if user.safe_settings.immich_url.blank?
+    raise ArgumentError, I18n.t('services.immich.configuration.api_key_missing') if immich_api_key.blank?
+    raise ArgumentError, I18n.t('services.immich.configuration.url_missing') if user.safe_settings.immich_url.blank?
 
     data = retrieve_immich_data
     return nil if data.nil?

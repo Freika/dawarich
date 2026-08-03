@@ -1,8 +1,8 @@
 <span class="inline-block w-3 h-3 rounded-full flex-shrink-0 bg-base-content/30" data-day-dot="<%= day_key %>"></span>
-<span><%= day[:date].strftime('%b %-d, %A') %></span>
+<span><%= l(day[:date], format: :short_month_day_weekday) %></span>
 <% if day[:has_data] %>
-  <span class="text-base-content/50 text-xs"><%= day[:first_time].strftime('%H:%M') %> – <%= day[:last_time].strftime('%H:%M') %></span>
-  <span class="text-base-content/50 ml-auto mr-6 text-xs">&middot; <%= day[:distance_label] %></span>
+  <span class="text-base-content/50 text-xs"><%= l(day[:first_time], format: :hour_minute) %> – <%= l(day[:last_time], format: :hour_minute) %></span>
+  <span class="text-base-content/50 ml-auto mr-6 text-xs"><%= t('.middot') %> <%= day[:distance_label] %></span>
 <% else %>
-  <span class="text-base-content/50 ml-auto mr-6 text-xs">No data</span>
+  <span class="text-base-content/50 ml-auto mr-6 text-xs"><%= t('.no_data') %></span>
 <% end %>

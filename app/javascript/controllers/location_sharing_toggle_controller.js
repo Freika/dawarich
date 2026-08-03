@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { translate } from "i18n"
 import Flash from "./flash_controller"
 
 export default class extends Controller {
@@ -97,7 +98,7 @@ export default class extends Controller {
         this.durationContainerTarget.classList.add("hidden")
       if (this.hasHistoryContainerTarget)
         this.historyContainerTarget.classList.add("hidden")
-      Flash.show("info", "Location sharing has expired")
+      Flash.show("info", translate("messages.location_sharing_has_expired"))
 
       document.dispatchEvent(
         new CustomEvent("location-sharing:expired", {
@@ -130,7 +131,7 @@ export default class extends Controller {
     const msRemaining = expiresAt.getTime() - Date.now()
 
     if (msRemaining <= 0) {
-      this.expirationInfoTarget.textContent = "Expired"
+      this.expirationInfoTarget.textContent = translate("common.expired")
       this.expirationInfoTarget.classList.remove("hidden")
       return
     }
@@ -142,10 +143,15 @@ export default class extends Controller {
 
     const timeText =
       hoursLeft > 0
-        ? `${hoursLeft}h ${minutesLeft}m remaining`
-        : `${minutesLeft}m remaining`
+        ? translate("sharing.hours_minutes_remaining", {
+            hours: hoursLeft,
+            minutes: minutesLeft,
+          })
+        : translate("sharing.minutes_remaining", { minutes: minutesLeft })
 
-    this.expirationInfoTarget.textContent = `Expires in ${timeText}`
+    this.expirationInfoTarget.textContent = translate("sharing.expires_in", {
+      time: timeText,
+    })
     this.expirationInfoTarget.classList.remove("hidden")
   }
 }

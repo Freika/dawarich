@@ -48,7 +48,7 @@ class Visits::Suggest
     user.notifications.create!(
       kind: :error,
       title: ERROR_TITLE,
-      content: "Error suggesting visits: #{error.message}"
+      content: I18n.t('services.visits.suggest.error_suggesting_visits_message', message: error.message)
     )
   end
 
@@ -68,7 +68,7 @@ class Visits::Suggest
 
     user.notifications.create!(
       kind: :info,
-      title: 'New visits suggested',
+      title: I18n.t('services.visits.suggest.new_visits_suggested'),
       content:
     )
   end

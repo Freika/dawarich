@@ -37,7 +37,7 @@ class ImportsController < ApplicationController
   def update
     @import.update(import_params)
 
-    redirect_to imports_url, notice: 'Import was successfully updated.', status: :see_other
+    redirect_to imports_url, notice: I18n.t('controllers.imports.import_was_successfully_updated'), status: :see_other
   end
 
   def create
@@ -47,7 +47,8 @@ class ImportsController < ApplicationController
 
     raw_files = extract_raw_files
     if raw_files.empty?
-      redirect_to new_import_path, alert: 'No files were selected for upload', status: :unprocessable_content and return
+      redirect_to new_import_path, alert: I18n.t('controllers.imports.no_files_were_selected_for_upload'),
+status: :unprocessable_content and return
     end
 
     @created_imports = []
@@ -55,12 +56,13 @@ class ImportsController < ApplicationController
 
     unless @created_imports.any?
       redirect_to(new_import_path,
-                  alert: 'No valid file references were found. Please upload files using the file selector.',
+                  alert: I18n.t('controllers.imports.no_valid_file_references_were_found_please_upload_files_using'),
                   status: :unprocessable_content) and return
     end
 
     redirect_to imports_url,
-                notice: "#{@created_imports.size} files are queued to be imported in background",
+                notice: I18n.t('controllers.imports.size_files_are_queued_to_be_imported_in_background',
+                               size: @created_imports.size),
                 status: :see_other
   rescue StandardError => e
     cleanup_failed_imports
@@ -74,7 +76,9 @@ class ImportsController < ApplicationController
     Imports::DestroyJob.perform_later(@import.id)
 
     respond_to do |format|
-      format.html { redirect_to imports_url, notice: 'Import is being deleted.', status: :see_other }
+      format.html do
+        redirect_to imports_url, notice: I18n.t('controllers.imports.import_is_being_deleted'), status: :see_other
+      end
       format.turbo_stream
     end
   end
@@ -149,6 +153,9 @@ class ImportsController < ApplicationController
   def validate_points_limit
     limit_exceeded = PointsLimitExceeded.new(current_user).call
 
-    redirect_to imports_path, alert: 'Points limit exceeded', status: :unprocessable_content if limit_exceeded
+    return unless limit_exceeded
+
+    redirect_to imports_path, alert: I18n.t('controllers.imports.points_limit_exceeded'),
+status: :unprocessable_content
   end
 end

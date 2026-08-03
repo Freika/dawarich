@@ -23,6 +23,7 @@ async function loadMapInitializer({ getMapStyle, Toast }) {
     const maplibregl = globalThis.__mapInitializerMaplibre
     const getMapStyle = globalThis.__mapInitializerGetMapStyle
     const Toast = globalThis.__mapInitializerToast
+    const translate = (key) => key
     ${basemapUrlSource.replace(/^export /gm, "")}
   `
   globalThis.__mapInitializerGetMapStyle = getMapStyle

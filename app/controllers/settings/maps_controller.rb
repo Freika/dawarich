@@ -15,7 +15,7 @@ class Settings::MapsController < ApplicationController
       current_user.settings['maps'].to_h.merge(settings_params.to_h)
     current_user.save!
 
-    redirect_to settings_maps_path, notice: 'Settings updated'
+    redirect_to settings_maps_path, notice: I18n.t('controllers.settings.maps.settings_updated')
   end
 
   private

@@ -8,7 +8,7 @@ class Api::V1::Visits::PossiblePlacesController < ApiController
     suggestions = prepend_current_place(visit, suggestions)
     render json: suggestions
   rescue ActiveRecord::RecordNotFound
-    render json: { error: 'Visit not found' }, status: :not_found
+    render json: { error: I18n.t('controllers.api.v1.visits.possible_places.visit_not_found') }, status: :not_found
   end
 
   private

@@ -6,25 +6,25 @@
 
     <div class="suggested-picker__header">
       <div class="suggested-picker__heading">
-        <span class="suggested-picker__badge">Needs review</span>
-        <span class="suggested-picker__prompt">Confirm this visit?</span>
+        <span class="suggested-picker__badge"><%= t('.needs_review') %></span>
+        <span class="suggested-picker__prompt"><%= t('.confirm_this_visit') %></span>
       </div>
-      <%= f.submit 'Confirm',
+      <%= f.submit t('.confirm'),
                    data: { testid: 'visit-confirm' },
                    class: 'suggested-picker__confirm' %>
     </div>
 
     <p class="suggested-picker__note" data-testid="visit-no-alternatives">
       <% if place_name %>
-        Assigned to <%= place_name %>. Use the search button to pick a different place.
+        <%= t('.assigned_to') %> <%= place_name %><%= t('.use_the_search_button_to_pick_a_different_place') %>
       <% else %>
-        No place for this visit. Confirm to keep it as is.
+        <%= t('.no_place_for_this_visit_confirm_to_keep_it_as') %>
       <% end %>
     </p>
   <% end %>
 
-  <%= button_to 'Delete', visit_path(entry[:visit_id]),
+  <%= button_to t('.delete'), visit_path(entry[:visit_id]),
                 method: :delete,
-                data: { testid: 'visit-delete', turbo_confirm: 'Delete this visit? Your location points stay.' },
+                data: { testid: 'visit-delete', turbo_confirm: t('.delete_this_visit_your_location_points_stay') },
                 class: 'suggested-picker__decline' %>
 </div>

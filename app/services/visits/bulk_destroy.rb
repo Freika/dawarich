@@ -23,10 +23,10 @@ module Visits
     private
 
     def validate
-      return errors << 'No visits selected' if visit_ids.blank?
+      return errors << I18n.t('services.visits.bulk_destroy.none_selected') if visit_ids.blank?
       return if visit_ids.length <= MAX_VISIT_IDS
 
-      errors << "Too many visits selected (max #{MAX_VISIT_IDS})"
+      errors << I18n.t('services.visits.bulk_destroy.too_many_selected', max: MAX_VISIT_IDS)
     end
 
     def destroy_visits
@@ -34,7 +34,7 @@ module Visits
       ids = visits.pluck(:id)
 
       if ids.empty?
-        errors << 'No matching visits found'
+        errors << I18n.t('services.visits.bulk_destroy.none_found')
         return false
       end
 
@@ -56,7 +56,7 @@ module Visits
       Rails.logger.warn(
         "Visits::BulkDestroy failed user_id=#{user.id} count=#{ids&.length} error=#{e.class}: #{e.message}"
       )
-      errors << 'Database error: please try again.'
+      errors << I18n.t('services.visits.bulk_destroy.database_error')
       false
     end
 

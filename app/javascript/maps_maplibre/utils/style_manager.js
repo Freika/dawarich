@@ -1,3 +1,4 @@
+import { translate } from "i18n"
 /**
  * Style Manager for MapLibre GL styles
  * Loads and configures local map styles with dynamic tile source
@@ -163,7 +164,7 @@ export const TILE_LAYER_CATEGORIES = {
  */
 export const POI_GROUPS = {
   food_drink: {
-    label: "Food & Drink",
+    label: translate("messages.food_drink"),
     kinds: [
       "restaurant",
       "fast_food",
@@ -176,7 +177,7 @@ export const POI_GROUPS = {
     ],
   },
   shopping: {
-    label: "Shopping",
+    label: translate("messages.shopping"),
     kinds: [
       "supermarket",
       "convenience",
@@ -197,7 +198,7 @@ export const POI_GROUPS = {
     ],
   },
   transport: {
-    label: "Transport",
+    label: translate("messages.transport"),
     kinds: [
       "aerodrome",
       "station",
@@ -213,11 +214,11 @@ export const POI_GROUPS = {
     ],
   },
   cycling: {
-    label: "Cycling",
+    label: translate("messages.cycling"),
     kinds: ["bicycle_parking", "bicycle_rental", "bicycle_repair_station"],
   },
   nature_leisure: {
-    label: "Nature & Leisure",
+    label: translate("messages.nature_leisure"),
     kinds: [
       "park",
       "forest",
@@ -238,7 +239,7 @@ export const POI_GROUPS = {
     ],
   },
   tourism: {
-    label: "Tourism & Culture",
+    label: translate("messages.tourism_culture"),
     kinds: [
       "attraction",
       "museum",
@@ -255,7 +256,7 @@ export const POI_GROUPS = {
     ],
   },
   services: {
-    label: "Services & Civic",
+    label: translate("messages.services_civic"),
     kinds: [
       "post_office",
       "post_box",
@@ -277,7 +278,7 @@ export const POI_GROUPS = {
     ],
   },
   urban_amenities: {
-    label: "Urban Amenities",
+    label: translate("messages.urban_amenities"),
     kinds: [
       "bench",
       "toilets",
@@ -451,11 +452,11 @@ export function getAvailableStyles() {
  */
 export function getStyleDisplayName(styleName) {
   const displayNames = {
-    dark: "Dark",
-    light: "Light",
-    white: "White",
-    black: "Black",
-    grayscale: "Grayscale",
+    dark: translate("map_styles.dark"),
+    light: translate("map_styles.light"),
+    white: translate("map_styles.white"),
+    black: translate("map_styles.black"),
+    grayscale: translate("map_styles.grayscale"),
   }
   return (
     displayNames[styleName] ||
