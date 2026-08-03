@@ -112,7 +112,7 @@
           </div>
           <div class="space-y-2">
             <div class="text-sm text-base-content opacity-60"><%= t('.expires') %></div>
-            <div class="text-base font-semibold text-base-content"><%= l(@invitation.expires_at.to_date, format: :medium) %></div>
+            <div class="text-base font-semibold text-base-content"><%= l(@invitation.expires_at.to_date, format: :medium_padded) %></div>
           </div>
         </div>
       </div>

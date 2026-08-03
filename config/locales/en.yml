@@ -2481,23 +2481,27 @@ en:
       month_name: "%B"
       month_year: "%B %Y"
       short_month_day: "%b %-d"
+      short_month_day_padded: "%b %d"
       medium: "%b %-d, %Y"
+      medium_padded: "%b %d, %Y"
       long: "%B %d, %Y"
       weekday_month_day: "%A, %B %-d"
       short_month_day_weekday: "%b %-d, %A"
       short_weekday_month_day: "%a, %b %-d"
       iso: "%Y-%m-%d"
-      day_month_year: "%-d %B %Y"
+      day_month_year: "%e %B %Y"
       day_month_year_abbreviated: "%-d %b %Y"
       month_day: "%B %-d"
+      month_day_padded: "%B %d"
+      month_day_year: "%B %-d, %Y"
       day_year: "%-d, %Y"
       abbreviated_month_name: "%b"
   time:
     formats:
       hour_minute: "%H:%M"
-      long_with_time: "%B %-d, %Y at %I:%M %p"
-      human: "%-d %b %Y, %H:%M"
-      human_with_seconds: "%-d %b %Y, %H:%M:%S"
+      long_with_time: "%B %d, %Y at %I:%M %p"
+      human: "%e %b %Y, %H:%M"
+      human_with_seconds: "%e %b %Y, %H:%M:%S"
       short_with_time: "%b %d at %I:%M %p"
   common:
     app_name: Dawarich
@@ -4174,8 +4178,12 @@ en:
       invalid_date: Invalid Date
       minutes_short: "%{count}min"
   battery_statuses:
+    unknown: unknown
+    unplugged: unplugged
     charging: charging
     full: full
+    connected_not_charging: not charging
+    discharging: discharging
   family_invitations:
     index:
       back_to_family: Back to Family

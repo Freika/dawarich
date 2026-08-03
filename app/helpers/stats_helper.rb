@@ -55,7 +55,7 @@ module StatsHelper
     distance_value = Stat.convert_distance(peak[1], distance_unit).round
     text = I18n.t(
       'helpers.stats.peak_day',
-      date: I18n.l(date, format: :month_day),
+      date: I18n.l(date, format: :month_day_padded),
       distance: I18n.t('helpers.stats.distance', value: distance_value, unit: distance_unit)
     )
 
@@ -145,8 +145,8 @@ module StatsHelper
     end_date = start_date + 6.days
     I18n.t(
       'helpers.stats.week_range',
-      start_date: I18n.l(start_date, format: :short_month_day),
-      end_date: I18n.l(end_date, format: :short_month_day)
+      start_date: I18n.l(start_date, format: :short_month_day_padded),
+      end_date: I18n.l(end_date, format: :short_month_day_padded)
     )
   end
 end

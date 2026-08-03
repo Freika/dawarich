@@ -35,7 +35,7 @@
           </div>
           <% if @activity_heatmap.longest_streak_start && @activity_heatmap.longest_streak_end %>
             <div class="text-xs text-base-content/40 mt-1">
-              <%= l(@activity_heatmap.longest_streak_start, format: :short_month_day) %> - <%= l(@activity_heatmap.longest_streak_end, format: :short_month_day) %>
+              <%= l(@activity_heatmap.longest_streak_start, format: :short_month_day_padded) %> - <%= l(@activity_heatmap.longest_streak_end, format: :short_month_day_padded) %>
             </div>
           <% end %>
         </div>

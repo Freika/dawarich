@@ -6,7 +6,7 @@ module SharedLinksHelper
     end_date   = Date.parse(end_date.to_s)   unless end_date.is_a?(Date)
 
     if start_date == end_date
-      I18n.l(start_date, format: :long)
+      I18n.l(start_date, format: :month_day_year)
     elsif start_date.year == end_date.year && start_date.month == end_date.month
       I18n.t(
         'helpers.shared_links.date_ranges.same_month',
@@ -17,7 +17,7 @@ module SharedLinksHelper
       I18n.t(
         'helpers.shared_links.date_ranges.same_year',
         start_date: I18n.l(start_date, format: :month_day),
-        end_date: I18n.l(end_date, format: :long)
+        end_date: I18n.l(end_date, format: :month_day_year)
       )
     else
       I18n.t(
