@@ -22,9 +22,11 @@ RSpec.describe 'Api::V1::Tiles::Points', type: :request do
 
       get path, params: { api_key: user.api_key }
 
-      # MVT stores property keys as literal strings, so no decoder is needed
-      expect(response.body).to include('id', 'timestamp', 'battery', 'altitude', 'velocity')
-      expect(response.body).not_to include('point_id')
+      # MVT keys are length-prefixed, so a bare 'id' would also match track_id
+      body = response.body.b
+
+      expect(body).to include("\x1a\x02id".b, 'timestamp', 'battery', 'altitude', 'velocity')
+      expect(body).not_to include('point_id')
     end
 
     it 'accepts bearer authentication' do
