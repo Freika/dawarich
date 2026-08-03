@@ -18,8 +18,11 @@ class Photoprism::RequestPhotos
   end
 
   def call
-    raise ArgumentError, 'Photoprism URL is missing' if user.safe_settings.photoprism_url.blank?
-    raise ArgumentError, 'Photoprism API key is missing' if photoprism_api_key.blank?
+    if user.safe_settings.photoprism_url.blank?
+      raise ArgumentError,
+            I18n.t('services.photoprism.configuration.url_missing')
+    end
+    raise ArgumentError, I18n.t('services.photoprism.configuration.api_key_missing') if photoprism_api_key.blank?
 
     data = retrieve_photoprism_data
 

@@ -39,7 +39,8 @@ class StatsController < ApplicationController
       target = "#{Date::MONTHNAMES[params[:month].to_i]} of #{params[:year]}"
     end
 
-    redirect_to stats_path, notice: "Stats for #{target} are being updated", status: :see_other
+    redirect_to stats_path, notice: I18n.t('controllers.stats.stats_for_target_are_being_updated', target: target),
+status: :see_other
   end
 
   def update_all
@@ -51,7 +52,7 @@ class StatsController < ApplicationController
       end
     end
 
-    redirect_to stats_path, notice: 'Stats are being updated', status: :see_other
+    redirect_to stats_path, notice: I18n.t('controllers.stats.stats_are_being_updated'), status: :see_other
   end
 
   private

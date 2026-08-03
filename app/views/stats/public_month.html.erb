@@ -7,37 +7,37 @@
     <div class="hero-content text-center py-8">
       <div class="max-w-lg">
         <h1 class="text-4xl font-bold flex items-center justify-center gap-2">
-          <%= "#{icon month_icon(@stat)} #{Date::MONTHNAMES[@month]} #{@year}".html_safe %>
+          <%= icon month_icon(@stat) %> <%= l(Date.new(@year, @month, 1), format: :month_year) %>
         </h1>
-        <p class="pt-6 pb-2">Monthly Digest</p>
+        <p class="pt-6 pb-2"><%= t('.monthly_digest') %></p>
       </div>
     </div>
   </div>
 
   <div class="stats shadow mx-auto mb-8 w-full">
     <div class="stat place-items-center text-center">
-      <div class="stat-title">Distance traveled</div>
+      <div class="stat-title"><%= t('.distance_traveled') %></div>
       <div class="stat-value"><%= distance_traveled(@user, @stat) %></div>
-      <div class="stat-desc">Total distance for this month</div>
+      <div class="stat-desc"><%= t('.total_distance_for_this_month') %></div>
     </div>
 
     <div class="stat place-items-center text-center">
-      <div class="stat-title">Active days</div>
+      <div class="stat-title"><%= t('.active_days') %></div>
       <div class="stat-value text-secondary">
         <%= active_days(@stat) %>
       </div>
       <div class="stat-desc text-secondary">
-        Days with tracked activity
+        <%= t('.days_with_tracked_activity') %>
       </div>
     </div>
 
     <div class="stat place-items-center text-center">
-      <div class="stat-title">Countries visited</div>
+      <div class="stat-title"><%= t('.countries_visited') %></div>
       <div class="stat-value">
         <%= countries_visited(@stat) %>
       </div>
       <div class="stat-desc">
-        Different countries
+        <%= t('.different_countries') %>
       </div>
     </div>
   </div>
@@ -50,7 +50,7 @@
         <div class="flex justify-between items-center">
           <div class="flex items-center gap-4">
             <h3 class="font-semibold text-lg flex items-center gap-2">
-              <%= icon 'map' %> Location Hexagons
+              <%= icon 'map' %> <%= t('.location_hexagons') %>
             </h3>
           </div>
         </div>
@@ -72,7 +72,7 @@
         <div id="map-loading" class="absolute inset-0 bg-base-200 bg-opacity-80 flex items-center justify-center z-50">
           <div class="text-center">
             <span class="loading loading-spinner loading-lg text-primary"></span>
-            <p class="text-sm mt-2 text-base-content">Loading hexagons...</p>
+            <p class="text-sm mt-2 text-base-content"><%= t('.loading_hexagons') %></p>
           </div>
         </div>
       </div>
@@ -83,7 +83,7 @@
   <div class="card bg-base-100 shadow-xl mb-8">
     <div class="card-body">
       <h2 class="card-title">
-        <%= icon 'trending-up' %> Daily Activity
+        <%= icon 'trending-up' %> <%= t('.daily_activity') %>
         </h2>
       <div class="w-full h-48 bg-base-200 rounded-lg p-4 relative">
         <%= column_chart(
@@ -91,9 +91,9 @@
               [day, Stat.convert_distance(distance_meters, 'km').round]
             },
             height: '200px',
-            suffix: " km",
-            xtitle: 'Day',
-            ytitle: 'Distance',
+            suffix: t('units.kilometers_suffix'),
+            xtitle: t('.day'),
+            ytitle: t('.distance'),
             colors: [
               '#570df8', '#f000b8', '#ffea00',
               '#00d084', '#3abff8', '#ff5724',
@@ -118,7 +118,7 @@
           ) %>
       </div>
       <div class="text-sm opacity-70 text-center mt-2">
-        Peak day: <%= peak_day(@stat) %> • Quietest week: <%= quietest_week(@stat) %>
+        <%= t('.peak_day') %> <%= peak_day(@stat) %> <%= t('.quietest_week') %> <%= quietest_week(@stat) %>
       </div>
     </div>
   </div>
@@ -127,7 +127,7 @@
   <div class="card bg-base-100 shadow-xl mb-8">
     <div class="card-body">
       <h2 class="card-title">
-        <%= icon 'earth' %> Countries & Cities
+        <%= icon 'earth' %> <%= t('.countries_cities') %>
       </h2>
       <div class="space-y-4">
         <% visited_toponyms = @stat.toponyms.select { |t| t['country'].present? && t['cities']&.any? } %>
@@ -135,7 +135,7 @@
           <div class="space-y-2">
             <div class="flex justify-between items-center">
               <span class="font-semibold"><%= country['country'] %></span>
-              <span class="text-sm"><%= country['cities'].length %> cities</span>
+              <span class="text-sm"><%= country['cities'].length %> <%= t('.cities') %></span>
             </div>
             <progress class="progress progress-primary w-full" value="<%= 100 - (index * 20) %>" max="100"></progress>
           </div>
@@ -145,13 +145,13 @@
       <div class="divider"></div>
 
       <div class="flex flex-wrap gap-2">
-        <span class="text-sm font-medium">Cities visited:</span>
+        <span class="text-sm font-medium"><%= t('.cities_visited') %></span>
         <% visited_toponyms.each do |country| %>
           <% country['cities'].first(5).each do |city| %>
             <div class="badge badge-outline"><%= city['city'] %></div>
           <% end %>
           <% if country['cities'].length > 5 %>
-            <div class="badge badge-ghost">+<%= country['cities'].length - 5 %> more</div>
+            <div class="badge badge-ghost">+<%= country['cities'].length - 5 %> <%= t('.more') %></div>
           <% end %>
         <% end %>
       </div>
@@ -161,7 +161,7 @@
   <!-- Footer -->
   <div class="text-center py-8">
     <div class="text-sm text-gray-500">
-      Powered by <a href="https://dawarich.app" class="link link-primary" target="_blank">Dawarich</a>, your personal memories mapper.
+      <%= t('.powered_by') %> <a href="https://dawarich.app" class="link link-primary" target="_blank"><%= t('.dawarich') %></a><%= t('.your_personal_memories_mapper') %>
     </div>
   </div>
 </div>

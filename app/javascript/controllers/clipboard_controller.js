@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { translate } from "i18n"
 import Flash from "./flash_controller"
 
 export default class extends Controller {
@@ -49,13 +50,16 @@ export default class extends Controller {
     if (succeeded) {
       this.handleSuccess()
     } else {
-      Flash.show("error", "Failed to copy. Please copy manually.")
+      Flash.show(
+        "error",
+        translate("messages.failed_to_copy_please_copy_manually"),
+      )
     }
   }
 
   handleSuccess() {
     this.showButtonFeedback()
-    Flash.show("notice", "Copied to clipboard!")
+    Flash.show("notice", translate("messages.copied_to_clipboard"))
   }
 
   showButtonFeedback() {

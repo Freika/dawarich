@@ -1,5 +1,7 @@
 // Map control buttons and utilities
 // This file contains all button controls that are positioned on the top-right corner of the map
+
+import { translate } from "i18n"
 import L from "leaflet"
 import { applyThemeToButton } from "./theme_utils"
 
@@ -73,7 +75,7 @@ export function createTogglePanelControl(onClickCallback, userTheme = "dark") {
       return createStandardButton(
         "toggle-panel-button",
         svgIcon,
-        "Toggle Panel",
+        translate("map_controls.toggle_panel"),
         userTheme,
         onClickCallback,
       )
@@ -97,7 +99,7 @@ export function createVisitsDrawerControl(onClickCallback, userTheme = "dark") {
       return createStandardButton(
         "leaflet-control-button drawer-button",
         svgIcon,
-        "Toggle Visits Drawer",
+        translate("map_controls.toggle_visits_drawer"),
         userTheme,
         onClickCallback,
       )
@@ -124,7 +126,7 @@ export function createAreaSelectionControl(
       const button = createStandardButton(
         "leaflet-bar leaflet-control leaflet-control-custom",
         svgIcon,
-        "Select Area",
+        translate("map_controls.select_area"),
         userTheme,
         onClickCallback,
       )
@@ -150,7 +152,7 @@ export function createAddVisitControl(onClickCallback, userTheme = "dark") {
       return createStandardButton(
         "leaflet-control-button add-visit-button",
         svgIcon,
-        "Add a visit",
+        translate("map_controls.add_visit"),
         userTheme,
         onClickCallback,
       )
@@ -174,7 +176,7 @@ export function createCreatePlaceControl(onClickCallback, userTheme = "dark") {
       const button = createStandardButton(
         "leaflet-control-button create-place-button",
         svgIcon,
-        "Create a place",
+        translate("map_controls.create_place"),
         userTheme,
         onClickCallback,
       )

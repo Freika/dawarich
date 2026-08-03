@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { translate } from "i18n"
 import Flash from "./flash_controller"
 
 export default class extends Controller {
@@ -109,7 +110,10 @@ export default class extends Controller {
       .catch((error) => {
         console.error("Failed to load demo data:", error)
         this.hideDemoLoading()
-        Flash.show("error", "Failed to load demo data. Please try again.")
+        Flash.show(
+          "error",
+          translate("messages.failed_to_load_demo_data_please_try_again"),
+        )
       })
   }
 
@@ -124,8 +128,8 @@ export default class extends Controller {
         <div class="flex items-center gap-3">
           <span class="loading loading-spinner loading-md text-accent"></span>
           <div>
-            <h4 class="text-lg font-semibold">Creating your demo data…</h4>
-            <p class="text-sm opacity-70">Seeding a month of Berlin tracking plus a Prague weekend trip. Takes about a second.</p>
+            <h4 class="text-lg font-semibold">${translate("demo.creating")}</h4>
+            <p class="text-sm opacity-70">${translate("demo.creating_help")}</p>
           </div>
         </div>
       </div>
@@ -158,7 +162,7 @@ export default class extends Controller {
     if (this.hasDemoDataValue && this.hasDemoButtonTarget) {
       this.demoButtonTarget.classList.add("opacity-50", "pointer-events-none")
       const label = this.demoButtonTarget.querySelector("h4")
-      if (label) label.textContent = "Demo data already loaded"
+      if (label) label.textContent = translate("demo.already_loaded")
     }
   }
 

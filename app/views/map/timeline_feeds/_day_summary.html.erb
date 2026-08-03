@@ -10,16 +10,16 @@
 <div class="space-y-2 py-1">
   <div class="timeline-summary-stats">
     <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-primary/10 text-primary"
-          title="Total distance traveled this day">
+          title="<%= t('.total_distance_traveled_this_day') %>">
       <%= summary[:total_distance] %> <%= summary[:distance_unit] %>
     </span>
     <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-secondary/10 text-secondary"
-          title="Distinct places visited this day">
-      <%= summary[:places_visited] %> places
+          title="<%= t('.distinct_places_visited_this_day') %>">
+      <%= summary[:places_visited] %> <%= t('.places') %>
     </span>
     <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-base-content/5 text-base-content/60"
           title="<%= moving_label %> · <%= stationary_label %>">
-      <%= format_duration_short(moving * 60) %> moving
+      <%= format_duration_short(moving * 60) %> <%= t('.moving') %>
     </span>
   </div>
   <% if total_minutes > 0 %>
@@ -32,8 +32,8 @@
            title="<%= stationary_label %>"></div>
     </div>
     <div class="flex justify-between text-[0.625rem] text-base-content/40 px-0.5">
-      <span title="<%= moving_label %>">moving</span>
-      <span title="<%= stationary_label %>">stationary</span>
+      <span title="<%= moving_label %>"><%= t('.moving') %></span>
+      <span title="<%= stationary_label %>"><%= t('.stationary') %></span>
     </div>
   <% end %>
 </div>

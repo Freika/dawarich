@@ -1,9 +1,9 @@
-Confirm account link
+<%= t('.confirm_account_link') %>
 
-Hi <%= @user.email %>,
+<%= t('.hi') %> <%= @user.email %>,
 
-Someone — hopefully you — is trying to link <%= @provider_label %> sign-in to your Dawarich account. Clicking the link below will allow that sign-in method to access this account going forward.
+<%= t('.someone_hopefully_you_is_trying_to_link') %> <%= @provider_label %> <%= t('.sign_in_to_your_dawarich_account_clicking_the_link_below_2') %>
 
-Link <%= @provider_label %>: <%= @link_url %>
+<%= t('.link') %> <%= @provider_label %>: <%= @link_url %>
 
-Didn't request this? Ignore this email — the link expires in 15 minutes and no change will be made to your account. If you keep getting these emails, change your password.
+<%= t('.didn_t_request_this_ignore_this_email_the_link_expires') %>

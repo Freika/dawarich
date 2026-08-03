@@ -23,7 +23,7 @@ class ApiController < ApplicationController
   end
 
   def record_not_found
-    render json: { error: 'Record not found' }, status: :not_found
+    render json: { error: I18n.t('controllers.api.record_not_found') }, status: :not_found
   end
 
   def set_version_header
@@ -49,7 +49,7 @@ class ApiController < ApplicationController
 
     render json: {
       error: 'payment_required',
-      message: 'Complete your subscription to continue.',
+      message: I18n.t('controllers.api.complete_your_subscription_to_continue'),
       resume_url: upgrade_url_for(current_api_user)
     }, status: :payment_required
   end
@@ -60,7 +60,7 @@ class ApiController < ApplicationController
 
     render json: {
       error: 'pro_plan_required',
-      message: 'This feature requires a Pro plan.',
+      message: I18n.t('controllers.api.this_feature_requires_a_pro_plan'),
       upgrade_url: upgrade_url_for(current_api_user)
     }, status: :forbidden
   end
@@ -71,7 +71,7 @@ class ApiController < ApplicationController
 
     render json: {
       error: 'write_api_restricted',
-      message: 'Write API access requires a Pro plan. Your data was not modified.',
+      message: I18n.t('controllers.api.write_api_access_requires_a_pro_plan_your_data_was'),
       upgrade_url: upgrade_url_for(current_api_user)
     }, status: :forbidden
   end
@@ -84,7 +84,7 @@ class ApiController < ApplicationController
 
     render json: {
       error: 'family_plan_required',
-      message: FAMILY_PLAN_REQUIRED_MESSAGE,
+      message: I18n.t('controllers.application.family_plan_required'),
       upgrade_url: upgrade_url_for(current_api_user)
     }, status: :forbidden
   end
@@ -112,19 +112,20 @@ class ApiController < ApplicationController
 
   def authenticate_active_api_user!
     if current_api_user.nil?
-      render json: { error: 'User account is not active or has been deleted' }, status: :unauthorized
+      render json: { error: I18n.t('controllers.api.user_account_is_not_active_or_has_been_deleted') },
+             status: :unauthorized
 
       return false
     end
 
     if current_api_user.inactive?
-      render json: { error: 'User account is not active' }, status: :unauthorized
+      render json: { error: I18n.t('controllers.api.user_account_is_not_active') }, status: :unauthorized
 
       return false
     end
 
     if current_api_user.active_until&.past?
-      render json: { error: 'User subscription is not active' }, status: :unauthorized
+      render json: { error: I18n.t('controllers.api.user_subscription_is_not_active') }, status: :unauthorized
 
       return false
     end
@@ -151,7 +152,7 @@ class ApiController < ApplicationController
 
     if missing_params.any?
       render json: {
-        error: "Missing required parameters: #{missing_params.join(', ')}"
+        error: I18n.t('controllers.api.missing_required_parameters_join', parameters: missing_params.join(', '))
       }, status: :bad_request and return
     end
 
@@ -165,7 +166,7 @@ class ApiController < ApplicationController
   def validate_points_limit
     limit_exceeded = PointsLimitExceeded.new(current_api_user).call
 
-    render json: { error: 'Points limit exceeded' }, status: :unauthorized if limit_exceeded
+    render json: { error: I18n.t('controllers.api.points_limit_exceeded') }, status: :unauthorized if limit_exceeded
   end
 
   def set_rate_limit_headers

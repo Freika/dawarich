@@ -31,6 +31,9 @@ class TrackSegment < ApplicationRecord
   def end_index_greater_than_or_equal_to_start_index
     return if end_index.nil? || start_index.nil?
 
-    errors.add(:end_index, 'must be greater than or equal to start_index') if end_index < start_index
+    return unless end_index < start_index
+
+    errors.add(:end_index,
+               I18n.t('models.track_segment.must_be_greater_than_or_equal_to_start_index'))
   end
 end

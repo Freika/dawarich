@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { translate } from "i18n"
 import L from "leaflet"
 import Flash from "./flash_controller"
 
@@ -117,9 +118,12 @@ export default class extends Controller {
 
       // Format timestamp for display
       const timezone = this.timezoneValue || "UTC"
-      const lastSeen = new Date(location.updated_at).toLocaleString("en-US", {
-        timeZone: timezone,
-      })
+      const lastSeen = new Date(location.updated_at).toLocaleString(
+        document.documentElement.lang || undefined,
+        {
+          timeZone: timezone,
+        },
+      )
 
       // Create small tooltip that shows automatically
       const tooltipContent = this.createTooltipContent(
@@ -199,7 +203,7 @@ export default class extends Controller {
       // Update tooltip content
       const timezone = this.timezoneValue || "UTC"
       const lastSeen = new Date(locationData.updated_at).toLocaleString(
-        "en-US",
+        document.documentElement.lang || undefined,
         { timeZone: timezone },
       )
       const tooltipContent = this.createTooltipContent(
@@ -246,9 +250,12 @@ export default class extends Controller {
     })
 
     const timezone = this.timezoneValue || "UTC"
-    const lastSeen = new Date(location.updated_at).toLocaleString("en-US", {
-      timeZone: timezone,
-    })
+    const lastSeen = new Date(location.updated_at).toLocaleString(
+      document.documentElement.lang || undefined,
+      {
+        timeZone: timezone,
+      },
+    )
 
     const tooltipContent = this.createTooltipContent(lastSeen, location.battery)
     familyMarker.bindTooltip(tooltipContent, {
@@ -274,8 +281,10 @@ export default class extends Controller {
 
   createTooltipContent(lastSeen, battery) {
     const batteryInfo =
-      battery !== null && battery !== undefined ? ` | Battery: ${battery}%` : ""
-    return `Last seen: ${lastSeen}${batteryInfo}`
+      battery !== null && battery !== undefined
+        ? ` | ${translate("map_info.battery")}: ${battery}%`
+        : ""
+    return `${translate("live_share.last_seen_short")}: ${lastSeen}${batteryInfo}`
   }
 
   createPopupContent(location, lastSeen) {
@@ -335,7 +344,7 @@ export default class extends Controller {
 
       batteryDisplay = `
         <p style="margin: 0 0 8px 0; font-size: 13px;">
-          ${batteryIcon}<strong>Battery:</strong> ${battery}%${batteryStatus ? ` (${batteryStatus})` : ""}
+          ${batteryIcon}<strong>${translate("map_info.battery")}:</strong> ${battery}%${batteryStatus ? ` (${translate(`battery_statuses.${batteryStatus}`)})` : ""}
         </p>
       `
     }
@@ -344,18 +353,18 @@ export default class extends Controller {
       <div class="family-member-popup" style="background-color: ${bgColor}; color: ${textColor}; padding: 12px; border-radius: 8px; min-width: 220px;">
         <h3 style="margin: 0 0 12px 0; color: #10B981; font-size: 15px; font-weight: bold; display: flex; align-items: center; gap: 8px;">
           <span style="background-color: #10B981; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold;">${emailInitial}</span>
-          Family Member
+          ${translate("family.member")}
         </h3>
         <p style="margin: 0 0 8px 0; font-size: 13px;">
-          <strong>Email:</strong> ${location.email || "Unknown"}
+          <strong>${translate("map_info.email")}:</strong> ${location.email || translate("common.unknown")}
         </p>
         <p style="margin: 0 0 8px 0; font-size: 13px;">
-          <strong>Coordinates:</strong><br/>
+          <strong>${translate("map_info.coordinates")}:</strong><br/>
           ${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}
         </p>
         ${batteryDisplay}
         <p style="margin: 0; font-size: 12px; color: ${mutedColor}; padding-top: 8px; border-top: 1px solid ${isDark ? "#374151" : "#e5e7eb"};">
-          <strong>Last seen:</strong> ${lastSeen}
+          <strong>${translate("live_share.last_seen_short")}:</strong> ${lastSeen}
         </p>
       </div>
     `
@@ -413,10 +422,7 @@ export default class extends Controller {
 
     // Listen for when the Family Members layer is added
     this.map.on("overlayadd", (event) => {
-      if (
-        event.name === "Family Members" &&
-        event.layer === this.familyMarkersLayer
-      ) {
+      if (event.layer === this.familyMarkersLayer) {
         // Refresh locations and zoom after data is loaded
         this.refreshFamilyLocations().then(() => {
           this.zoomToFitAllMembers()
@@ -429,10 +435,7 @@ export default class extends Controller {
 
     // Listen for when the Family Members layer is removed
     this.map.on("overlayremove", (event) => {
-      if (
-        event.name === "Family Members" &&
-        event.layer === this.familyMarkersLayer
-      ) {
+      if (event.layer === this.familyMarkersLayer) {
         // Stop periodic refresh when layer is disabled
         this.stopPeriodicRefresh()
       }
@@ -538,7 +541,7 @@ export default class extends Controller {
         const count = data.locations?.length || 0
         this.showFlashMessageToUser(
           "notice",
-          `Family locations updated (${count} members)`,
+          translate("family.locations_updated", { count }),
         )
         this.showUserFeedback = false // Reset flag
       }
@@ -547,10 +550,7 @@ export default class extends Controller {
 
       // Show error to user if this was a manual refresh
       if (this.showUserFeedback) {
-        this.showFlashMessageToUser(
-          "error",
-          "Failed to refresh family locations",
-        )
+        this.showFlashMessageToUser("error", translate("family.refresh_failed"))
         this.showUserFeedback = false // Reset flag
       }
     }

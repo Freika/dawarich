@@ -13,9 +13,9 @@ module AccountDeletionConfirmable
 
   def account_deletion_confirmation_error(user)
     if user.oauth_user?
-      'Type your email address to confirm deletion.'
+      I18n.t('controllers.concerns.account_deletion_confirmable.confirm_with_email')
     else
-      'Provide your current password to delete your account.'
+      I18n.t('controllers.concerns.account_deletion_confirmable.confirm_with_password')
     end
   end
 

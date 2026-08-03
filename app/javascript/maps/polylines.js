@@ -1,3 +1,4 @@
+import { translate } from "i18n"
 import {
   formatDate,
   formatDistance,
@@ -245,11 +246,11 @@ export function addHighlightOnHover(
       endMarker.addTo(map)
 
       const popupContent = `
-            <strong>Start:</strong> ${firstTimestamp}<br>
-            <strong>End:</strong> ${lastTimestamp}<br>
-            <strong>Duration:</strong> ${timeOnRoute}<br>
-            <strong>Total Distance:</strong> ${formatDistance(totalDistance, distanceUnit)}<br>
-            <strong>Current Speed:</strong> ${formatSpeed(speed, distanceUnit)}
+            <strong>${translate("map_info.start")}:</strong> ${firstTimestamp}<br>
+            <strong>${translate("map_info.end")}:</strong> ${lastTimestamp}<br>
+            <strong>${translate("map_info.duration")}:</strong> ${timeOnRoute}<br>
+            <strong>${translate("map_info.total_distance")}:</strong> ${formatDistance(totalDistance, distanceUnit)}<br>
+            <strong>${translate("map_info.current_speed")}:</strong> ${formatSpeed(speed, distanceUnit)}
         `
 
       if (hoverPopup) {
@@ -344,11 +345,11 @@ export function addHighlightOnHover(
     endMarker.addTo(map)
 
     const popupContent = `
-      <strong>Start:</strong> ${firstTimestamp}<br>
-      <strong>End:</strong> ${lastTimestamp}<br>
-      <strong>Duration:</strong> ${timeOnRoute}<br>
-      <strong>Total Distance:</strong> ${formatDistance(totalDistance, distanceUnit)}<br>
-      <strong>Current Speed:</strong> ${formatSpeed(clickedLayer.options.speed || 0, distanceUnit)}
+      <strong>${translate("map_info.start")}:</strong> ${firstTimestamp}<br>
+      <strong>${translate("map_info.end")}:</strong> ${lastTimestamp}<br>
+      <strong>${translate("map_info.duration")}:</strong> ${timeOnRoute}<br>
+      <strong>${translate("map_info.total_distance")}:</strong> ${formatDistance(totalDistance, distanceUnit)}<br>
+      <strong>${translate("map_info.current_speed")}:</strong> ${formatSpeed(clickedLayer.options.speed || 0, distanceUnit)}
     `
 
     if (hoverPopup) {

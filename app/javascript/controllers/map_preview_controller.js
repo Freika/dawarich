@@ -1,3 +1,4 @@
+import { translate } from "i18n"
 import L from "leaflet"
 import BaseController from "./base_controller"
 import Flash from "./flash_controller"
@@ -53,7 +54,10 @@ export default class extends BaseController {
       }).addTo(this.map)
     } catch (e) {
       console.error("Invalid tile URL:", e)
-      Flash.show("error", "Invalid tile URL. Reverting to OpenStreetMap.")
+      Flash.show(
+        "error",
+        translate("messages.invalid_tile_url_reverting_to_openstreetmap"),
+      )
 
       // Reset input to default OSM URL
       this.urlInputTarget.value = this.DEFAULT_TILE_URL

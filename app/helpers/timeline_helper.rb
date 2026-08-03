@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 module TimelineHelper
-  WEEKDAY_HEADER_LABELS = %w[M T W T F S S].freeze
-
   # "YYYY-MM" for the calendar's initial month. Prefers, in order:
   #   1. `params[:date]` (the selected day, e.g. "2025-12-11")
   #   2. `params[:start_at]` (range start, e.g. "2025-12-11T00:00:00")
@@ -53,14 +51,14 @@ module TimelineHelper
   # minutes -> "Xh Ym" (or "Xm" when < 1h)
   def format_dwell_minutes(minutes)
     minutes = minutes.to_i
-    return '0m' if minutes <= 0
+    return I18n.t('units.minutes_compact', value: 0) if minutes <= 0
 
     h = minutes / 60
     m = minutes % 60
-    return "#{h}h" if m.zero? && h.positive?
-    return "#{m}m" if h.zero?
+    return I18n.t('units.hours_compact', value: h) if m.zero? && h.positive?
+    return I18n.t('units.minutes_compact', value: m) if h.zero?
 
-    "#{h}h #{m}m"
+    I18n.t('units.hours_minutes_compact', hours: h, minutes: m)
   end
 
   # Tracked seconds -> bucket index 0..5
@@ -85,7 +83,7 @@ module TimelineHelper
     entry[:name].presence ||
       entry[:place]&.dig(:name).presence ||
       entry[:area]&.dig(:name).presence ||
-      'Unnamed'
+      I18n.t('helpers.timeline.unnamed')
   end
 
   # Duration-based heuristic for hash entries. Avoids N+1 Visit lookups.
@@ -103,8 +101,8 @@ module TimelineHelper
     {
       start_at: started,
       ended_at: ended,
-      start_label: started.strftime('%H:%M'),
-      end_label: ended.strftime('%H:%M')
+      start_label: I18n.l(started, format: :hour_minute),
+      end_label: I18n.l(ended, format: :hour_minute)
     }
   end
 
@@ -113,7 +111,7 @@ module TimelineHelper
   end
 
   def day_label(day)
-    Date.parse(day[:date].to_s).strftime('%A, %B %-d')
+    I18n.l(Date.parse(day[:date].to_s), format: :weekday_month_day)
   end
 
   def day_total_visits_count(day)
@@ -130,12 +128,12 @@ module TimelineHelper
     {
       prev: (month_date - 1.month).strftime('%Y-%m'),
       next: (month_date + 1.month).strftime('%Y-%m'),
-      title: month_date.strftime('%B %Y')
+      title: I18n.l(month_date, format: :month_year)
     }
   end
 
   def calendar_weekday_labels
-    WEEKDAY_HEADER_LABELS
+    I18n.t('calendar.weekday_initials')
   end
 
   def calendar_day_number(cell)

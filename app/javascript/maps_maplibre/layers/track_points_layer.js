@@ -1,3 +1,4 @@
+import { translate } from "i18n"
 import { Toast } from "maps_maplibre/components/toast"
 import { BaseLayer } from "./base_layer"
 
@@ -82,7 +83,7 @@ export class TrackPointsLayer extends BaseLayer {
       )
     } catch (error) {
       console.error("[TrackPointsLayer] Failed to load track points:", error)
-      Toast.error("Failed to load track points")
+      Toast.error(translate("messages.failed_to_load_track_points"))
       throw error
     }
   }
@@ -221,7 +222,9 @@ export class TrackPointsLayer extends BaseLayer {
     // Update the point on the backend
     try {
       await this.updatePointPosition(pointId, coords.lat, coords.lng)
-      Toast.success("Point updated. Track will be recalculated.")
+      Toast.success(
+        translate("messages.point_updated_track_will_be_recalculated"),
+      )
     } catch (error) {
       console.error("Failed to update point:", error)
       // Revert the point position on error
@@ -234,7 +237,9 @@ export class TrackPointsLayer extends BaseLayer {
           source.setData(data)
         }
       }
-      Toast.error("Failed to update point position. Please try again.")
+      Toast.error(
+        translate("messages.failed_to_update_point_position_please_try_again"),
+      )
     }
 
     this.draggedFeature = null

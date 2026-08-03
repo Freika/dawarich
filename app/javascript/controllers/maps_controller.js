@@ -1,3 +1,4 @@
+import { translate } from "i18n"
 import L from "leaflet"
 import "leaflet.heat"
 import "leaflet.control.layers.tree"
@@ -185,7 +186,11 @@ export default class extends BaseController {
         }
 
         const unit = this.distanceUnit === "km" ? "km" : "mi"
-        div.innerHTML = `${distance} ${unit} | ${pointsNumber} points`
+        div.innerHTML = translate("map.stats_summary", {
+          distance,
+          unit,
+          count: pointsNumber,
+        })
         applyThemeToControl(div, this.userTheme, {
           padding: "0 5px",
           marginRight: "5px",
@@ -356,7 +361,9 @@ export default class extends BaseController {
 
     if (startDate < twelveMonthsAgo) {
       UpgradeBanner.show({
-        message: "Your Lite plan includes the last 12 months of data.",
+        message: translate(
+          "messages.your_lite_plan_includes_the_last_12_months_of_data",
+        ),
         upgradeUrl: this.element.dataset.upgrade_url,
         utmContent: "data_retention",
       })
@@ -554,7 +561,7 @@ export default class extends BaseController {
   createTreeLayerControl(additionalLayers = {}) {
     // Build base maps tree structure
     const baseMapsTree = {
-      label: "Map Styles",
+      label: translate("messages.map_styles"),
       children: [],
     }
 
@@ -585,7 +592,7 @@ export default class extends BaseController {
 
     const placesChildren = [
       {
-        label: "Untagged",
+        label: translate("messages.untagged"),
         layer: untaggedLayer,
       },
     ]
@@ -612,11 +619,11 @@ export default class extends BaseController {
     // Build visits subtree
     const visitsChildren = [
       {
-        label: "Suggested",
+        label: translate("messages.suggested"),
         layer: this.visitsManager?.getVisitCirclesLayer() || L.layerGroup(),
       },
       {
-        label: "Confirmed",
+        label: translate("messages.confirmed"),
         layer:
           this.visitsManager?.getConfirmedVisitCirclesLayer() || L.layerGroup(),
       },
@@ -624,48 +631,48 @@ export default class extends BaseController {
 
     // Build the overlays tree structure
     const overlaysTree = {
-      label: "Layers",
+      label: translate("messages.layers"),
       selectAllCheckbox: false,
       children: [
         {
-          label: "Points",
+          label: translate("messages.points"),
           layer: this.markersLayer,
         },
         {
-          label: "Routes",
+          label: translate("messages.routes"),
           layer: this.polylinesLayer,
         },
         {
-          label: "Tracks",
+          label: translate("messages.tracks"),
           layer: this.tracksLayer,
         },
         {
-          label: "Heatmap",
+          label: translate("messages.heatmap"),
           layer: this.heatmapLayer,
         },
         {
-          label: "Fog of War",
+          label: translate("messages.fog_of_war"),
           layer: this.fogOverlay,
         },
         {
-          label: "Scratch map",
+          label: translate("messages.scratch_map"),
           layer: this.scratchLayerManager?.getLayer() || L.layerGroup(),
         },
         {
-          label: "Areas",
+          label: translate("messages.areas"),
           layer: this.areasLayer,
         },
         {
-          label: "Photos",
+          label: translate("messages.photos"),
           layer: this.photoMarkers,
         },
         {
-          label: "Visits",
+          label: translate("messages.visits"),
           selectAllCheckbox: true,
           children: visitsChildren,
         },
         {
-          label: "Places",
+          label: translate("messages.places"),
           selectAllCheckbox: true,
           children: placesChildren,
         },
@@ -675,7 +682,7 @@ export default class extends BaseController {
     // Add Family Members layer if available
     if (additionalLayers["Family Members"]) {
       overlaysTree.children.push({
-        label: "Family Members",
+        label: translate("messages.family_members"),
         layer: additionalLayers["Family Members"],
       })
     }
@@ -700,7 +707,7 @@ export default class extends BaseController {
           event.preventDefault()
           const pointId = event.target.getAttribute("data-id")
 
-          if (confirm("Are you sure you want to delete this point?")) {
+          if (confirm(translate("map.confirm_delete_point"))) {
             this.deletePoint(pointId, this.apiKey)
           }
         }
@@ -874,7 +881,9 @@ export default class extends BaseController {
         if (data.status === "success") {
           Flash.show(
             "notice",
-            `Preferred map layer updated to: ${selectedLayerName}`,
+            translate("map.preferred_layer_updated", {
+              layer: selectedLayerName,
+            }),
           )
         } else {
           Flash.show("error", data.message)
@@ -953,13 +962,18 @@ export default class extends BaseController {
           console.error("Failed to save enabled layers:", data.message)
           Flash.show(
             "error",
-            `Failed to save layer preferences: ${data.message}`,
+            translate("map.layer_preferences_failed", {
+              error: data.message,
+            }),
           )
         }
       })
       .catch((error) => {
         console.error("Error saving enabled layers:", error)
-        Flash.show("error", "Error saving layer preferences")
+        Flash.show(
+          "error",
+          translate("messages.error_saving_layer_preferences"),
+        )
       })
   }
 
@@ -1037,11 +1051,11 @@ export default class extends BaseController {
         }, 100)
 
         // Show success message
-        Flash.show("notice", "Point deleted successfully")
+        Flash.show("notice", translate("messages.point_deleted_successfully"))
       })
       .catch((error) => {
         console.error("There was a problem with the delete request:", error)
-        Flash.show("error", "Failed to delete point")
+        Flash.show("error", translate("messages.failed_to_delete_point"))
       })
   }
 
@@ -1138,7 +1152,7 @@ export default class extends BaseController {
         )
         button.innerHTML =
           '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-cog-icon lucide-cog"><path d="M11 10.27 7 3.34"/><path d="m11 13.73-4 6.93"/><path d="M12 22v-2"/><path d="M12 2v2"/><path d="M14 12h8"/><path d="m17 20.66-1-1.73"/><path d="m17 3.34-1 1.73"/><path d="M2 12h2"/><path d="m20.66 17-1.73-1"/><path d="m20.66 7-1.73 1"/><path d="m3.34 17 1.73-1"/><path d="m3.34 7 1.73 1"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="12" r="8"/></svg>' // Gear icon
-        button.setAttribute("data-tip", "Settings")
+        button.setAttribute("data-tip", translate("common.settings"))
 
         // Style the button with theme-aware styling
         applyThemeToButton(button, this.userTheme)
@@ -1179,7 +1193,7 @@ export default class extends BaseController {
           "map-info-toggle-button tooltip tooltip-right",
           container,
         )
-        button.setAttribute("data-tip", "Toggle footer visibility")
+        button.setAttribute("data-tip", translate("map_controls.toggle_footer"))
 
         // Lucide info icon
         button.innerHTML = `
@@ -1300,7 +1314,7 @@ export default class extends BaseController {
         <form id="settings-form" class="space-y-3">
           <div class="form-control">
             <label class="label py-1">
-              <span class="label-text text-xs">Route Opacity, %</span>
+              <span class="label-text text-xs">${translate("legacy_settings.route_opacity")}</span>
             </label>
             <div class="join join-horizontal w-full">
               <input type="number" class="input input-bordered input-sm join-item flex-1" id="route-opacity" name="route_opacity" min="10" max="100" step="10" value="${Math.round(this.routeOpacity * 100)}">
@@ -1310,7 +1324,7 @@ export default class extends BaseController {
 
           <div class="form-control">
             <label class="label py-1">
-              <span class="label-text text-xs">Fog of War radius</span>
+              <span class="label-text text-xs">${translate("legacy_settings.fog_radius")}</span>
             </label>
             <div class="join join-horizontal w-full">
               <input type="number" class="input input-bordered input-sm join-item flex-1" id="fog_of_war_meters" name="fog_of_war_meters" min="5" max="200" step="1" value="${this.clearFogRadius}">
@@ -1320,7 +1334,7 @@ export default class extends BaseController {
 
           <div class="form-control">
             <label class="label py-1">
-              <span class="label-text text-xs">Fog of War threshold</span>
+              <span class="label-text text-xs">${translate("legacy_settings.fog_threshold")}</span>
             </label>
             <div class="join join-horizontal w-full">
               <input type="number" class="input input-bordered input-sm join-item flex-1" id="fog_of_war_threshold" name="fog_of_war_threshold" step="1" value="${this.userSettings.fog_of_war_threshold}">
@@ -1330,7 +1344,7 @@ export default class extends BaseController {
 
           <div class="form-control">
             <label class="label py-1">
-              <span class="label-text text-xs">Meters between routes</span>
+              <span class="label-text text-xs">${translate("legacy_settings.meters_between_routes")}</span>
             </label>
             <div class="join join-horizontal w-full">
               <input type="number" class="input input-bordered input-sm join-item flex-1" id="meters_between_routes" name="meters_between_routes" step="1" value="${this.userSettings.meters_between_routes}">
@@ -1340,7 +1354,7 @@ export default class extends BaseController {
 
           <div class="form-control">
             <label class="label py-1">
-              <span class="label-text text-xs">Minutes between routes</span>
+              <span class="label-text text-xs">${translate("legacy_settings.minutes_between_routes")}</span>
             </label>
             <div class="join join-horizontal w-full">
               <input type="number" class="input input-bordered input-sm join-item flex-1" id="minutes_between_routes" name="minutes_between_routes" step="1" value="${this.userSettings.minutes_between_routes}">
@@ -1350,7 +1364,7 @@ export default class extends BaseController {
 
           <div class="form-control">
             <label class="label py-1">
-              <span class="label-text text-xs">Time threshold minutes</span>
+              <span class="label-text text-xs">${translate("legacy_settings.time_threshold")}</span>
             </label>
             <div class="join join-horizontal w-full">
               <input type="number" class="input input-bordered input-sm join-item flex-1" id="time_threshold_minutes" name="time_threshold_minutes" step="1" value="${this.userSettings.time_threshold_minutes}">
@@ -1360,7 +1374,7 @@ export default class extends BaseController {
 
           <div class="form-control">
             <label class="label py-1">
-              <span class="label-text text-xs">Merge threshold minutes</span>
+              <span class="label-text text-xs">${translate("legacy_settings.merge_threshold")}</span>
             </label>
             <div class="join join-horizontal w-full">
               <input type="number" class="input input-bordered input-sm join-item flex-1" id="merge_threshold_minutes" name="merge_threshold_minutes" step="1" value="${this.userSettings.merge_threshold_minutes}">
@@ -1370,24 +1384,24 @@ export default class extends BaseController {
 
           <div class="form-control">
             <label class="label py-1">
-              <span class="label-text text-xs">Points rendering mode</span>
+              <span class="label-text text-xs">${translate("legacy_settings.points_rendering_mode")}</span>
               <label for="points_rendering_mode_info" class="btn btn-xs btn-ghost cursor-pointer">?</label>
             </label>
             <div class="flex flex-col gap-2">
               <label class="label cursor-pointer justify-start gap-2 py-1">
                 <input type="radio" id="raw" name="points_rendering_mode" class="radio radio-sm" value="raw" ${this.pointsRenderingModeChecked("raw")} />
-                <span class="label-text text-xs">Raw</span>
+                <span class="label-text text-xs">${translate("legacy_settings.raw")}</span>
               </label>
               <label class="label cursor-pointer justify-start gap-2 py-1">
                 <input type="radio" id="simplified" name="points_rendering_mode" class="radio radio-sm" value="simplified" ${this.pointsRenderingModeChecked("simplified")} />
-                <span class="label-text text-xs">Simplified</span>
+                <span class="label-text text-xs">${translate("legacy_settings.simplified")}</span>
               </label>
             </div>
           </div>
 
           <div class="form-control">
             <label class="label cursor-pointer py-1">
-              <span class="label-text text-xs">Live Map</span>
+              <span class="label-text text-xs">${translate("legacy_settings.live_map")}</span>
               <div class="flex items-center gap-1">
                 <label for="live_map_enabled_info" class="btn btn-xs btn-ghost cursor-pointer">?</label>
                 <input type="checkbox" id="live_map_enabled" name="live_map_enabled" class="checkbox checkbox-sm" ${this.liveMapEnabledChecked(true)} />
@@ -1397,7 +1411,7 @@ export default class extends BaseController {
 
           <div class="form-control">
             <label class="label cursor-pointer py-1">
-              <span class="label-text text-xs">Speed-colored routes</span>
+              <span class="label-text text-xs">${translate("legacy_settings.speed_colored_routes")}</span>
               <div class="flex items-center gap-1">
                 <label for="speed_colored_routes_info" class="btn btn-xs btn-ghost cursor-pointer">?</label>
                 <input type="checkbox" id="speed_colored_routes" name="speed_colored_routes" class="checkbox checkbox-sm" ${this.speedColoredRoutesChecked()} />
@@ -1407,18 +1421,18 @@ export default class extends BaseController {
 
           <div class="form-control">
             <label class="label py-1">
-              <span class="label-text text-xs">Speed color scale</span>
+              <span class="label-text text-xs">${translate("legacy_settings.speed_color_scale")}</span>
             </label>
             <div class="join join-horizontal w-full">
               <input type="text" class="input input-bordered input-sm join-item flex-1" id="speed_color_scale" name="speed_color_scale" value="${this.speedColorScale}">
               <label for="speed_color_scale_info" class="btn btn-sm btn-ghost join-item cursor-pointer">?</label>
             </div>
-            <button type="button" id="edit-gradient-btn" class="btn btn-sm mt-2 w-full">Edit Colors</button>
+            <button type="button" id="edit-gradient-btn" class="btn btn-sm mt-2 w-full">${translate("legacy_settings.edit_colors")}</button>
           </div>
 
           <div class="divider my-2"></div>
 
-          <button type="submit" class="btn btn-sm btn-primary w-full">Update</button>
+          <button type="submit" class="btn btn-sm btn-primary w-full">${translate("common.update")}</button>
         </form>
       `
 
@@ -1523,7 +1537,7 @@ export default class extends BaseController {
       })
       .catch((error) => {
         console.error("Settings update error:", error)
-        Flash.show("error", "Failed to update settings")
+        Flash.show("error", translate("messages.failed_to_update_settings"))
       })
   }
 
@@ -1531,8 +1545,7 @@ export default class extends BaseController {
     // Show loading indicator
     const loadingDiv = document.createElement("div")
     loadingDiv.className = "map-loading-overlay"
-    loadingDiv.innerHTML =
-      '<div class="loading loading-lg">Updating map...</div>'
+    loadingDiv.innerHTML = `<div class="loading loading-lg">${translate("map.updating")}</div>`
     document.body.appendChild(loadingDiv)
 
     try {
@@ -1727,15 +1740,15 @@ export default class extends BaseController {
         const savedPreference = localStorage.getItem("mapRouteMode") || "routes"
 
         container.innerHTML = `
-          <div style="margin-bottom: 4px; font-weight: bold; text-align: center;">Display</div>
+          <div style="margin-bottom: 4px; font-weight: bold; text-align: center;">${translate("map.display")}</div>
           <div>
             <label style="display: block; margin-bottom: 4px; cursor: pointer;">
               <input type="radio" name="route-mode" value="routes" ${savedPreference === "routes" ? "checked" : ""} style="margin-right: 4px;">
-              Routes
+              ${translate("map_info.routes")}
             </label>
             <label style="display: block; cursor: pointer;">
               <input type="radio" name="route-mode" value="tracks" ${savedPreference === "tracks" ? "checked" : ""} style="margin-right: 4px;">
-              Tracks
+              ${translate("map_info.tracks")}
             </label>
           </div>
         `
@@ -2179,14 +2192,14 @@ export default class extends BaseController {
                 ${
                   currentYear
                     ? `<option value="${currentYear}" selected>${currentYear}</option>`
-                    : "<option disabled selected>Loading years...</option>"
+                    : `<option disabled selected>${translate("calendar_panel.loading_years")}</option>`
                 }
               </select>
               <a href="${this.getWholeYearLink()}"
                  id="whole-year-link"
                  class="btn btn-default"
                  style="color: rgb(116 128 255) !important;">
-                Whole year
+                ${translate("calendar_panel.whole_year")}
               </a>
             </div>
 
@@ -2229,10 +2242,10 @@ export default class extends BaseController {
       // Add container for visited cities
       div.innerHTML += `
         <div id="visited-cities-container" class="mt-4">
-          <h3 class="text-lg font-bold mb-2">Visited cities</h3>
+          <h3 class="text-lg font-bold mb-2">${translate("calendar_panel.visited_cities")}</h3>
           <div id="visited-cities-list" class="space-y-2"
                style="max-height: 300px; overflow-y: auto; overflow-x: auto; padding-right: 10px;">
-            <p class="text-gray-500">Loading visited places...</p>
+            <p class="text-gray-500">${translate("calendar_panel.loading_visited_places")}</p>
           </div>
         </div>
       `
@@ -2281,8 +2294,7 @@ export default class extends BaseController {
       const yearSelect = document.getElementById("year-select")
 
       if (!Array.isArray(yearsData) || yearsData.length === 0) {
-        yearSelect.innerHTML =
-          "<option disabled selected>No data available</option>"
+        yearSelect.innerHTML = `<option disabled selected>${translate("calendar_panel.no_data")}</option>`
         return
       }
 
@@ -2307,7 +2319,7 @@ export default class extends BaseController {
         .join("")
 
       yearSelect.innerHTML = `
-        <option disabled>Select year</option>
+        <option disabled>${translate("calendar_panel.select_year")}</option>
         ${options}
       `
 
@@ -2326,7 +2338,10 @@ export default class extends BaseController {
           if (!monthLink) return
 
           // Update the content to show the month name instead of loading dots
-          monthLink.innerHTML = month
+          monthLink.innerHTML = new Intl.DateTimeFormat(
+            document.documentElement.lang || undefined,
+            { month: "short" },
+          ).format(new Date(2020, index, 1))
 
           // Check if this month falls within the selected date range
           const isSelected =
@@ -2403,8 +2418,7 @@ export default class extends BaseController {
       }
     } catch (error) {
       const yearSelect = document.getElementById("year-select")
-      yearSelect.innerHTML =
-        "<option disabled selected>Error loading years</option>"
+      yearSelect.innerHTML = `<option disabled selected>${translate("calendar_panel.years_error")}</option>`
       console.error("Error fetching tracked months:", error)
     }
   }
@@ -2471,8 +2485,7 @@ export default class extends BaseController {
       console.error("Error fetching visited cities:", error)
       const container = document.getElementById("visited-cities-list")
       if (container) {
-        container.innerHTML =
-          '<p class="text-red-500">Error loading visited places</p>'
+        container.innerHTML = `<p class="text-red-500">${translate("calendar_panel.visited_places_error")}</p>`
       }
     }
   }
@@ -2482,8 +2495,7 @@ export default class extends BaseController {
     if (!container) return
 
     if (!citiesData || citiesData.length === 0) {
-      container.innerHTML =
-        '<p class="text-gray-500">No places visited during this period</p>'
+      container.innerHTML = `<p class="text-gray-500">${translate("calendar_panel.no_places_visited")}</p>`
       return
     }
 
@@ -2500,7 +2512,7 @@ export default class extends BaseController {
             <li class="text-sm whitespace-nowrap">
               ${city.city}
               <span class="text-gray-500">
-                (${new Date(city.timestamp * 1000).toLocaleDateString("en-US", { timeZone: timezone })})
+                (${new Date(city.timestamp * 1000).toLocaleDateString(document.documentElement.lang || undefined, { timeZone: timezone })})
               </span>
             </li>
           `,
@@ -2543,7 +2555,7 @@ export default class extends BaseController {
     })
 
     const title = document.createElement("h2")
-    title.textContent = "Edit Speed Color Scale"
+    title.textContent = translate("map.edit_speed_color_scale")
     content.appendChild(title)
 
     const gradientContainer = document.createElement("div")
@@ -2581,7 +2593,10 @@ export default class extends BaseController {
         if (gradientContainer.childElementCount > 1) {
           gradientContainer.removeChild(row)
         } else {
-          Flash.show("error", "At least one gradient stop is required.")
+          Flash.show(
+            "error",
+            translate("messages.at_least_one_gradient_stop_is_required"),
+          )
         }
       })
 
@@ -2605,7 +2620,7 @@ export default class extends BaseController {
     content.appendChild(gradientContainer)
 
     const addRowBtn = document.createElement("button")
-    addRowBtn.textContent = "Add Row"
+    addRowBtn.textContent = translate("common.add_row")
     addRowBtn.style.marginTop = "10px"
     addRowBtn.addEventListener("click", () => {
       const newRow = createRow({ speed: 0, color: "#000000" })
@@ -2620,13 +2635,13 @@ export default class extends BaseController {
     btnContainer.style.marginTop = "15px"
 
     const cancelBtn = document.createElement("button")
-    cancelBtn.textContent = "Cancel"
+    cancelBtn.textContent = translate("common.cancel")
     cancelBtn.addEventListener("click", () => {
       document.body.removeChild(modal)
     })
 
     const saveBtn = document.createElement("button")
-    saveBtn.textContent = "Save"
+    saveBtn.textContent = translate("common.save")
     saveBtn.addEventListener("click", () => {
       const newStops = []
       gradientContainer.querySelectorAll("div").forEach((row) => {
@@ -2730,7 +2745,7 @@ export default class extends BaseController {
       this.placesManager.disableCreationMode()
       if (button) {
         setCreatePlaceButtonInactive(button, this.userTheme)
-        button.setAttribute("data-tip", "Create a place")
+        button.setAttribute("data-tip", translate("map_controls.create_place"))
       }
     } else {
       // Enable creation mode
@@ -2739,7 +2754,7 @@ export default class extends BaseController {
         setCreatePlaceButtonActive(button)
         button.setAttribute(
           "data-tip",
-          "Click map to place marker (click to cancel)",
+          translate("map_controls.place_marker_mode"),
         )
       }
     }
@@ -2757,7 +2772,7 @@ export default class extends BaseController {
       const button = document.getElementById("create-place-btn")
       if (button) {
         setCreatePlaceButtonInactive(button, this.userTheme)
-        button.setAttribute("data-tip", "Create a place")
+        button.setAttribute("data-tip", translate("map_controls.create_place"))
       }
     }
   }

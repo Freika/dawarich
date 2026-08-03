@@ -40,7 +40,8 @@ class Users::SessionsController < Devise::SessionsController
     return unless DawarichSettings.oidc_enabled?
     return if ALLOW_EMAIL_PASSWORD_LOGIN
 
-    redirect_to root_path, alert: 'Email/password login is disabled. Please use OIDC to sign in.'
+    redirect_to root_path,
+                alert: I18n.t('controllers.users.sessions.email_password_login_is_disabled_please_use_oidc_to_sign')
   end
 
   def load_invitation_context

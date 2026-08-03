@@ -25,7 +25,7 @@ class Tracks::SegmentsController < ApplicationController
 
     if result.success?
       track = result.segment.track.reload
-      dominant_label = track.dominant_mode&.titleize || 'Unknown'
+      dominant_label = I18n.t("transportation_modes.#{track.dominant_mode || 'unknown'}")
 
       respond_to do |format|
         format.turbo_stream do
@@ -36,10 +36,12 @@ class Tracks::SegmentsController < ApplicationController
               locals: { segment: result.segment }
             ),
             turbo_stream.update("track-info-mode-#{track.id}", dominant_label),
-            stream_flash(:success, 'Segment updated')
+            stream_flash(:success, I18n.t('controllers.tracks.segments.segment_updated'))
           ]
         end
-        format.html { redirect_back(fallback_location: root_path, notice: 'Segment updated') }
+        format.html do
+          redirect_back(fallback_location: root_path, notice: I18n.t('controllers.tracks.segments.segment_updated'))
+        end
       end
     else
       respond_to do |format|
@@ -66,8 +68,8 @@ class Tracks::SegmentsController < ApplicationController
 
   def error_message_for(code)
     case code
-    when :mode_not_enabled then "That mode isn't enabled in your settings"
-    else 'Could not update segment'
+    when :mode_not_enabled then I18n.t('controllers.tracks.segments.mode_not_enabled')
+    else I18n.t('controllers.tracks.segments.update_failed')
     end
   end
 end

@@ -8,21 +8,21 @@
     <!-- Left Column -->
     <div class="space-y-6">
       <% if show_plan_data_window_alert? %>
-        <%= render 'pro_locked_card', title: 'Year Comparison', utm_content: 'year_comparison' %>
+        <%= render 'pro_locked_card', title: t('.year_comparison'), utm_content: 'year_comparison' %>
       <% else %>
         <% cache insights_cache_key + ["year_comparison"], expires_in: 24.hours do %>
           <%= render 'year_comparison' %>
         <% end %>
       <% end %>
       <% if show_plan_data_window_alert? %>
-        <%= render 'pro_locked_card', title: 'Activity Breakdown', utm_content: 'activity_breakdown' %>
+        <%= render 'pro_locked_card', title: t('.activity_breakdown'), utm_content: 'activity_breakdown' %>
       <% else %>
         <% cache insights_cache_key + ["activity_breakdown"], expires_in: 24.hours do %>
           <%= render 'activity_breakdown' %>
         <% end %>
       <% end %>
       <% if show_plan_data_window_alert? %>
-        <%= render 'pro_locked_card', title: 'Location Clusters', utm_content: 'location_clusters' %>
+        <%= render 'pro_locked_card', title: t('.location_clusters'), utm_content: 'location_clusters' %>
       <% else %>
         <% cache insights_cache_key + ["location_clusters"], expires_in: 24.hours do %>
           <%= render 'location_clusters' %>
@@ -33,14 +33,14 @@
     <!-- Right Column -->
     <div class="space-y-6">
       <% if show_plan_data_window_alert? %>
-        <%= render 'pro_locked_card', title: 'Monthly Digest', utm_content: 'monthly_digest' %>
+        <%= render 'pro_locked_card', title: t('.monthly_digest'), utm_content: 'monthly_digest' %>
       <% else %>
         <% cache insights_cache_key + ["monthly_digest", @selected_month], expires_in: 24.hours do %>
           <%= render 'monthly_digest' %>
         <% end %>
       <% end %>
       <% if show_plan_data_window_alert? %>
-        <%= render 'pro_locked_card', title: 'Travel Patterns', utm_content: 'travel_patterns' %>
+        <%= render 'pro_locked_card', title: t('.travel_patterns'), utm_content: 'travel_patterns' %>
       <% else %>
         <% cache insights_cache_key + ["travel_patterns"], expires_in: 24.hours do %>
           <%= render 'travel_patterns' %>
@@ -50,7 +50,7 @@
   </div>
 
   <% if show_plan_data_window_alert? %>
-    <%= render 'pro_locked_card', title: 'Movement & Wellness', utm_content: 'movement_wellness' %>
+    <%= render 'pro_locked_card', title: t('.movement_wellness'), utm_content: 'movement_wellness' %>
   <% else %>
     <% cache insights_cache_key + ["movement_wellness"], expires_in: 24.hours do %>
       <%= render 'movement_wellness' %>

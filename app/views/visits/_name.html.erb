@@ -19,12 +19,12 @@
       data-visit-name-target="name"
       data-action="click->visit-name#edit"
       data-testid="visit-rename-trigger"
-      data-tip="Click to rename"
+      data-tip="<%= t('.click_to_rename') %>"
       class="hover:cursor-pointer tooltip">
       <% if resolved_name.present? %>
         <%= resolved_name %>
       <% else %>
-        <span class="text-base-content/40 italic">Unnamed visit</span>
+        <span class="text-base-content/40 italic"><%= t('.unnamed_visit') %></span>
       <% end %>
     </span>
 

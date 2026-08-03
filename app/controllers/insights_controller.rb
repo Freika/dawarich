@@ -58,13 +58,13 @@ class InsightsController < ApplicationController
     if @all_time
       @year_stats = current_user.scoped_stats.order(year: :desc, month: :desc)
       @previous_year_stats = Stat.none
-      @display_label = 'All Time'
+      @display_label = I18n.t('controllers.insights.all_time')
     else
       @selected_year = @selected_year.to_i
       @previous_year = @selected_year - 1
       @year_stats = current_user.scoped_stats.where(year: @selected_year).order(:month)
       @previous_year_stats = current_user.scoped_stats.where(year: @previous_year).order(:month)
-      @display_label = "#{@selected_year} Overview"
+      @display_label = I18n.t('controllers.insights.year_overview', year: @selected_year)
     end
   end
 

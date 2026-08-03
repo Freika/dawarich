@@ -133,10 +133,10 @@ class DataMigrations::RecalculateAnomaliesUserJob < ApplicationJob
     Notifications::Create.new(
       user: user,
       kind: :info,
-      title: 'GPS noise re-check finished',
-      content: 'Your points were re-checked against the noise rules introduced in this release, and your ' \
-               'tracks, stats and digests were rebuilt from the result. Some points may appear or disappear ' \
-               'on the map. No points were deleted.'
+      title: I18n.t('jobs.data_migrations.recalculate_anomalies_user_job.gps_noise_re_check_finished'),
+      content: I18n.t(
+        'jobs.data_migrations.recalculate_anomalies_user_job.rules_recheck_finished'
+      )
     ).call
   end
 

@@ -22,20 +22,20 @@ module Visits
 
     def validate
       if visit_ids.blank?
-        errors << 'No visits selected'
+        errors << I18n.t('services.visits.bulk_update.none_selected')
         return
       end
 
       return if Visit.statuses.keys.include?(status)
 
-      errors << 'Invalid status'
+      errors << I18n.t('services.visits.bulk_update.invalid_status')
     end
 
     def update_visits
       visits = user.visits.where(id: visit_ids)
 
       if visits.empty?
-        errors << 'No matching visits found'
+        errors << I18n.t('services.visits.bulk_update.none_found')
         return false
       end
 

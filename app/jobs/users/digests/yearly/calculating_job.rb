@@ -30,8 +30,10 @@ class Users::Digests::Yearly::CalculatingJob < ApplicationJob
     Notifications::Create.new(
       user:,
       kind: :error,
-      title: "#{period_label} calculation failed",
-      content: "#{error.message}, stacktrace: #{backtrace}"
+      title: I18n.t('jobs.users.digests.yearly.calculating_job.period_label_calculation_failed',
+                    period_label: period_label),
+      content: I18n.t('jobs.users.digests.yearly.calculating_job.message_stacktrace_backtrace', message: error.message,
+backtrace: backtrace)
     ).call
   rescue ActiveRecord::RecordNotFound
     nil

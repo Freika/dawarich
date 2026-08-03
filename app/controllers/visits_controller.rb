@@ -42,15 +42,19 @@ class VisitsController < ApplicationController
         end
         format.html do
           redirect_to redirect_target,
-                      notice: "#{result[:count]} #{'visit'.pluralize(result[:count])} #{status}."
+                      notice: I18n.t(
+                        'controllers.visits.bulk_updated',
+                        count: result[:count],
+                        status: I18n.t("visit_statuses.#{status}")
+                      )
         end
       end
     else
       respond_to do |format|
         format.turbo_stream do
-          render turbo_stream: stream_flash(:error, 'Failed to update visits.')
+          render turbo_stream: stream_flash(:error, I18n.t('controllers.visits.failed_to_update_visits'))
         end
-        format.html { redirect_to redirect_target, alert: 'Failed to update visits.' }
+        format.html { redirect_to redirect_target, alert: I18n.t('controllers.visits.failed_to_update_visits') }
       end
     end
   end
@@ -74,9 +78,9 @@ class VisitsController < ApplicationController
       return render_unprocessable(too_many_visits_message) if scope.count > MAX_BULK_VISIT_IDS
 
       visit_ids = scope.pluck(:id)
-      return render_unprocessable('No matching visits found.') if visit_ids.empty?
+      return render_unprocessable(I18n.t('controllers.visits.no_matching_visits')) if visit_ids.empty?
     else
-      return render_unprocessable('Select at least one visit to delete.')
+      return render_unprocessable(I18n.t('controllers.visits.select_visit_to_delete'))
     end
 
     visits = current_user.scoped_visits.where(id: visit_ids)
@@ -95,7 +99,7 @@ class VisitsController < ApplicationController
         end
       end
     else
-      render_unprocessable(service.errors.join(', ').presence || 'Failed to delete visits.')
+      render_unprocessable(service.errors.join(', ').presence || I18n.t('controllers.visits.failed_to_delete_visits'))
     end
   end
 
@@ -114,13 +118,13 @@ class VisitsController < ApplicationController
       raw_place_id = params_to_update[:place_id]
       allowed = current_user.places.where(id: raw_place_id).exists? ||
                 @visit.suggested_places.where(id: raw_place_id).exists?
-      return render_unprocessable('Invalid place') unless allowed
+      return render_unprocessable(I18n.t('controllers.visits.invalid_place')) unless allowed
     end
 
     selected_area = nil
     if params_to_update[:area_id].present?
       selected_area = current_user.areas.find_by(id: params_to_update[:area_id])
-      return render_unprocessable('Invalid area') unless selected_area
+      return render_unprocessable(I18n.t('controllers.visits.invalid_area')) unless selected_area
     end
 
     # Capture both old and new month so cache busts cover edits that move
@@ -153,7 +157,7 @@ class VisitsController < ApplicationController
     else
       respond_to do |format|
         format.turbo_stream do
-          render turbo_stream: stream_flash(:error, 'Failed to update visit.')
+          render turbo_stream: stream_flash(:error, I18n.t('controllers.visits.failed_to_update_visit'))
         end
         format.html { render :edit, status: :unprocessable_content }
       end
@@ -176,12 +180,12 @@ class VisitsController < ApplicationController
 
   def merge
     visit_ids = parse_visit_ids(params[:visit_ids])
-    return render_unprocessable('Select at least 2 visits to merge.') if visit_ids.length < 2
+    return render_unprocessable(I18n.t('controllers.visits.select_visits_to_merge')) if visit_ids.length < 2
 
     visits = current_user.scoped_visits.where(id: visit_ids).order(:started_at)
     return render_not_found(message_for_missing_visits(visit_ids)) if visits.length != visit_ids.length
 
-    return render_unprocessable('Visits must be on the same day.') unless same_day?(visits)
+    return render_unprocessable(I18n.t('controllers.visits.visits_must_share_day')) unless same_day?(visits)
 
     @affected_started_at = visits.map(&:started_at)
 
@@ -194,7 +198,7 @@ class VisitsController < ApplicationController
         format.html { redirect_back(fallback_location: build_timeline_url(date: 'today')) }
       end
     else
-      render_unprocessable(service.errors.join(', ').presence || 'Failed to merge visits.')
+      render_unprocessable(service.errors.join(', ').presence || I18n.t('controllers.visits.failed_to_merge_visits'))
     end
   end
 
@@ -204,7 +208,7 @@ class VisitsController < ApplicationController
     return if params[:source_status].blank?
     return if ALLOWED_SOURCE_STATUSES.include?(params[:source_status].to_s)
 
-    render_unprocessable('Unsupported source status.')
+    render_unprocessable(I18n.t('controllers.visits.unsupported_source_status'))
   end
 
   def set_visit
@@ -312,7 +316,10 @@ class VisitsController < ApplicationController
                            locals: { status: 'suggested', count: status_counts['suggested'].to_i }),
       calendar_frame_stream(day_date),
       suggestions_badge_stream,
-      stream_flash(:notice, "Visit #{@visit.status}.")
+      stream_flash(
+        :notice,
+        I18n.t('controllers.visits.visit_updated', status: I18n.t("visit_statuses.#{@visit.status}"))
+      )
     ]
   end
 
@@ -406,7 +413,7 @@ class VisitsController < ApplicationController
                                     partial: 'map/timeline_feeds/filter_count',
                                     locals: { status: 'suggested', count: status_counts['suggested'].to_i })
     streams << suggestions_badge_stream
-    streams << stream_flash(:notice, 'Visits merged.')
+    streams << stream_flash(:notice, I18n.t('controllers.visits.visits_merged'))
     streams
   end
 
@@ -431,7 +438,7 @@ class VisitsController < ApplicationController
                            locals: { status: 'suggested', count: status_counts['suggested'].to_i }),
       calendar_frame_stream(day_date),
       suggestions_badge_stream,
-      stream_flash(:notice, 'Visit removed. Your location points are still here.')
+      stream_flash(:notice, I18n.t('controllers.visits.visit_removed'))
     ]
   end
 
@@ -500,7 +507,7 @@ class VisitsController < ApplicationController
   end
 
   def too_many_visits_message
-    "You can update up to #{MAX_BULK_VISIT_IDS} visits at once. Narrow your selection and try again."
+    I18n.t('controllers.visits.too_many_visits', count: MAX_BULK_VISIT_IDS)
   end
 
   def message_for_missing_visits(ids)
@@ -515,16 +522,15 @@ class VisitsController < ApplicationController
   end
 
   def missing_visits_message
-    "Some of those visits aren't here anymore — probably edited in another tab. Refresh and try again."
+    I18n.t('controllers.visits.missing_visits')
   end
 
   def plan_window_visits_message
-    "Some of those visits are outside your Lite plan's 12-month window. Upgrade to Pro to manage older data."
+    I18n.t('controllers.visits.plan_window_visits')
   end
 
   def bulk_destroy_success_message(count)
-    noun = 'visit'.pluralize(count)
-    "#{count} #{noun} removed. Your location points are still here."
+    I18n.t('controllers.visits.bulk_removed', count:)
   end
 
   def bust_timeline_month_cache

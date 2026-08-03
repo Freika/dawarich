@@ -6,19 +6,18 @@
     </form>
 
     <h3 class="font-bold text-lg mb-4 flex items-center gap-2">
-      <%= icon 'link' %> Sharing Settings
+      <%= icon 'link' %> <%= t('.sharing_settings') %>
     </h3>
 
     <% unless local_assigns.fetch(:sharing_allowed, true) %>
       <%# Upgrade prompt for Lite users %>
       <div class="text-center py-4">
         <p class="text-gray-600 mb-4">
-          Share your monthly stats publicly with friends and family.
-          Public stats sharing is available on the Pro plan.
+          <%= t('.share_your_monthly_stats_publicly_with_friends_and_family_public') %>
         </p>
         <a href="<%= upgrade_url(utm_medium: 'stats', utm_content: 'sharing') %>"
            class="btn btn-primary">
-          Upgrade to Pro
+          <%= t('.upgrade_to_pro') %>
         </a>
       </div>
     <% else %>
@@ -29,7 +28,7 @@
           <%# Enable/Disable Sharing Toggle %>
           <div class="form-control mb-4">
             <label class="label cursor-pointer">
-              <span class="label-text font-medium">Enable public access</span>
+              <span class="label-text font-medium"><%= t('.enable_public_access') %></span>
               <input type="checkbox"
                      name="enabled"
                      value="1"
@@ -39,7 +38,7 @@
                      data-sharing-modal-target="enableToggle" />
             </label>
             <div class="label">
-              <span class="label-text-alt text-gray-500">Allow others to view this monthly digest • Auto-saves on change</span>
+              <span class="label-text-alt text-gray-500"><%= t('.allow_others_to_view_this_monthly_digest_auto_saves_on') %></span>
             </div>
           </div>
 
@@ -49,7 +48,7 @@
 
             <div class="form-control mb-4">
               <label class="label">
-                <span class="label-text font-medium">Link expiration</span>
+                <span class="label-text font-medium"><%= t('.link_expiration') %></span>
               </label>
               <select name="expiration"
                       class="select select-bordered w-full"
@@ -76,10 +75,10 @@
         <div class="alert alert-info mb-4">
           <%= icon 'info' %>
           <div>
-            <h3 class="font-bold">Privacy Protection</h3>
+            <h3 class="font-bold"><%= t('.privacy_protection') %></h3>
             <div class="text-sm">
-              • Exact coordinates are hidden<br>
-              • Personal information is not included
+              <%= t('.exact_coordinates_are_hidden') %><br>
+              <%= t('.personal_information_is_not_included') %>
             </div>
           </div>
         </div>
@@ -89,7 +88,7 @@
           <button type="button"
                   class="btn btn-primary"
                   onclick="sharing_modal.close()">
-            Done
+            <%= t('.done') %>
           </button>
         </div>
       </div>

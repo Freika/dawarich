@@ -17,9 +17,10 @@ class Users::RecalculateDataJob < ApplicationJob
     notify = options.is_a?(Hash) ? options.symbolize_keys.fetch(:notify, true) : true
     user = User.find_by(id: user_id) if notify
     if user
+      content = I18n.t('jobs.users.recalculate_data_job.another_recalculation_is_already_running_please_try_again_in_a')
       Notifications::Create.new(
-        user: user, kind: :warning, title: 'Data recalculation busy',
-        content: 'Another recalculation is already running. Please try again in a few minutes.'
+        user: user, kind: :warning, title: I18n.t('jobs.users.recalculate_data_job.data_recalculation_busy'),
+        content: content
       ).call
     end
   end
@@ -102,8 +103,9 @@ class Users::RecalculateDataJob < ApplicationJob
     Notifications::Create.new(
       user: user,
       kind: :info,
-      title: 'Data recalculation completed',
-      content: "Stats, tracks, and digests have been recalculated for #{year_label}."
+      title: I18n.t('jobs.users.recalculate_data_job.data_recalculation_completed'),
+      content: I18n.t('jobs.users.recalculate_data_job.stats_tracks_and_digests_have_been_recalculated_for_year_label',
+                      year_label: year_label)
     ).call
   end
 
@@ -111,8 +113,9 @@ class Users::RecalculateDataJob < ApplicationJob
     Notifications::Create.new(
       user: user,
       kind: :error,
-      title: 'Data recalculation failed',
-      content: "#{error.message}, stacktrace: #{error.backtrace.first(10).join("\n")}"
+      title: I18n.t('jobs.users.recalculate_data_job.data_recalculation_failed'),
+      content: I18n.t('jobs.users.recalculate_data_job.message_stacktrace_n', message: error.message,
+                      backtrace: error.backtrace.first(10).join("\n"))
     ).call
   rescue ActiveRecord::RecordNotFound
     nil

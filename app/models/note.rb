@@ -69,7 +69,7 @@ class Note < ApplicationRecord
                 .where('CAST(noted_at AS date) = ?', noted_at.utc.to_date)
     scope = scope.where.not(id: id) if persisted?
 
-    errors.add(:date, 'has already been taken') if scope.exists?
+    errors.add(:date, I18n.t('models.note.has_already_been_taken')) if scope.exists?
   end
 
   def date_within_attachable_range
@@ -78,7 +78,7 @@ class Note < ApplicationRecord
     return if attachable.started_at.blank? || attachable.ended_at.blank?
     return unless date < attachable.started_at.to_date || date > attachable.ended_at.to_date
 
-    errors.add(:date, 'must be within the trip date range')
+    errors.add(:date, I18n.t('models.note.must_be_within_the_trip_date_range'))
   end
 
   def attachable_belongs_to_user
@@ -86,6 +86,6 @@ class Note < ApplicationRecord
     return unless attachable.respond_to?(:user_id)
     return if attachable.user_id == user_id
 
-    errors.add(:attachable, 'must belong to the same user')
+    errors.add(:attachable, I18n.t('models.note.must_belong_to_the_same_user'))
   end
 end

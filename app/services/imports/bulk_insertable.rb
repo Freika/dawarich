@@ -53,7 +53,7 @@ module Imports
     def create_import_error_notification(message)
       Notification.create!(
         user_id: import.user_id,
-        title: "#{importer_name} Import Error",
+        title: I18n.t('services.imports.bulk_insertable.importer_name_import_error', importer_name: importer_name),
         content: message,
         kind: :error
       )

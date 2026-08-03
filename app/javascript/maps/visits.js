@@ -1,4 +1,5 @@
 import Flash from "controllers/flash_controller"
+import { translate } from "i18n"
 import L from "leaflet"
 import { createPolylinesLayer } from "./polylines"
 
@@ -98,10 +99,7 @@ export class VisitsManager {
       this.map.dragging.disable()
       this.map.on("mousedown", this.onMouseDown, this)
 
-      Flash.show(
-        "info",
-        "Selection mode enabled. Click and drag to select an area.",
-      )
+      Flash.show("info", translate("selection.enabled"))
     }
   }
 
@@ -187,7 +185,7 @@ export class VisitsManager {
     // Reset drawer title
     const drawerTitle = document.querySelector("#visits-drawer .drawer h2")
     if (drawerTitle) {
-      drawerTitle.textContent = "Recent Visits"
+      drawerTitle.textContent = translate("visits.recent")
     }
   }
 
@@ -241,7 +239,10 @@ export class VisitsManager {
       }, 0)
     } catch (error) {
       console.error("Error fetching visits in selection:", error)
-      Flash.show("error", "Failed to load visits in selected area")
+      Flash.show(
+        "error",
+        translate("messages.failed_to_load_visits_in_selected_area"),
+      )
     }
   }
 
@@ -427,15 +428,14 @@ export class VisitsManager {
     const cancelButton = document.createElement("button")
     cancelButton.id = "cancel-selection-button"
     cancelButton.className = "btn btn-sm btn-warning w-full"
-    cancelButton.textContent = "Cancel Selection"
+    cancelButton.textContent = translate("visits.cancel_selection")
     cancelButton.onclick = () => this.clearSelection()
 
     // Delete all selected points button
     const deleteButton = document.createElement("button")
     deleteButton.id = "delete-selection-button"
     deleteButton.className = "btn btn-sm btn-error w-full"
-    deleteButton.innerHTML =
-      '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline mr-1"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>Delete Points'
+    deleteButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline mr-1"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>${translate("selection.delete_points_label")}`
     deleteButton.onclick = () => this.deleteSelectedPoints()
 
     // Add count badge if we have selected points
@@ -458,15 +458,13 @@ export class VisitsManager {
    */
   async deleteSelectedPoints() {
     if (!this.selectedPoints || this.selectedPoints.length === 0) {
-      Flash.show("warning", "No points selected")
+      Flash.show("warning", translate("messages.no_points_selected"))
       return
     }
 
     const pointCount = this.selectedPoints.length
     const confirmed = confirm(
-      `⚠️ WARNING: This will permanently delete ${pointCount} point${pointCount > 1 ? "s" : ""} from your location history.\n\n` +
-        `This action cannot be undone!\n\n` +
-        `Are you sure you want to continue?`,
+      translate("selection.confirm_delete_points", { count: pointCount }),
     )
 
     if (!confirmed) return
@@ -485,7 +483,7 @@ export class VisitsManager {
       console.log("Point IDs to delete:", pointIds)
 
       if (pointIds.length === 0) {
-        Flash.show("error", "No valid point IDs found")
+        Flash.show("error", translate("messages.no_valid_point_ids_found"))
         return
       }
 
@@ -513,10 +511,7 @@ export class VisitsManager {
 
       // Check if any points were actually deleted
       if (result.count === 0) {
-        Flash.show(
-          "warning",
-          "No points were deleted. They may have already been removed.",
-        )
+        Flash.show("warning", translate("selection.no_points_deleted"))
         this.clearSelection()
         return
       }
@@ -524,7 +519,7 @@ export class VisitsManager {
       // Show success message
       Flash.show(
         "notice",
-        `Successfully deleted ${result.count} point${result.count > 1 ? "s" : ""}`,
+        translate("selection.points_deleted", { count: result.count }),
       )
 
       // Remove deleted points from the map
@@ -562,7 +557,10 @@ export class VisitsManager {
       this.clearSelection()
     } catch (error) {
       console.error("Error deleting points:", error)
-      Flash.show("error", "Failed to delete points. Please try again.")
+      Flash.show(
+        "error",
+        translate("messages.failed_to_delete_points_please_try_again"),
+      )
     }
   }
 
@@ -658,8 +656,8 @@ export class VisitsManager {
       if (container) {
         container.innerHTML = `
           <div class="text-gray-500 text-center p-4">
-            <p class="mb-2">No visits data loaded</p>
-            <p class="text-sm">Enable "Suggested Visits" or "Confirmed Visits" layers from the map controls to view visits.</p>
+            <p class="mb-2">${translate("visits.no_data_loaded")}</p>
+            <p class="text-sm">${translate("visits.enable_layers_help")}</p>
           </div>
         `
       }
@@ -682,12 +680,12 @@ export class VisitsManager {
 
     drawer.innerHTML = `
       <div class="p-3 my-2 drawer flex flex-col items-center relative">
-        <button id="close-visits-drawer" class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" title="Close panel">
+        <button id="close-visits-drawer" class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" title="${translate("common.close_panel")}">
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-x-icon lucide-circle-x"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>
         </button>
-        <h2 class="text-xl font-bold mb-4 text-accent-content w-full text-center">Recent Visits</h2>
+        <h2 class="text-xl font-bold mb-4 text-accent-content w-full text-center">${translate("visits.recent")}</h2>
         <div id="visits-list" class="space-y-2 w-full">
-          <p class="text-gray-500">Loading visits...</p>
+          <p class="text-gray-500">${translate("visits.loading")}</p>
         </div>
       </div>
     `
@@ -798,7 +796,7 @@ export class VisitsManager {
       console.error("Error fetching visits:", error)
       const container = document.getElementById("visits-list")
       if (container) {
-        container.innerHTML = '<p class="text-red-500">Error loading visits</p>'
+        container.innerHTML = `<p class="text-red-500">${translate("visits.loading_error")}</p>`
       }
     }
   }
@@ -902,13 +900,15 @@ export class VisitsManager {
         : 0
       const drawerTitle = document.querySelector("#visits-drawer .drawer h2")
       if (drawerTitle) {
-        drawerTitle.textContent = `${visitsCount} visits found`
+        drawerTitle.textContent = translate("visits.found", {
+          count: visitsCount,
+        })
       }
     } else {
       // Reset title to default when not in selection mode
       const drawerTitle = document.querySelector("#visits-drawer .drawer h2")
       if (drawerTitle) {
-        drawerTitle.textContent = "Recent Visits"
+        drawerTitle.textContent = translate("visits.recent")
       }
     }
 
@@ -923,8 +923,7 @@ export class VisitsManager {
     }
 
     if (!visits || visits.length === 0) {
-      const noVisitsHtml =
-        '<p class="text-gray-500">No visits found in selected timeframe</p>'
+      const noVisitsHtml = `<p class="text-gray-500">${translate("visits.none_in_timeframe")}</p>`
       container.innerHTML = dateGroupsHtml + noVisitsHtml
       return
     }
@@ -1189,7 +1188,7 @@ export class VisitsManager {
         // Merge button
         const mergeButton = document.createElement("button")
         mergeButton.className = "btn btn-xs btn-primary"
-        mergeButton.textContent = "Merge"
+        mergeButton.textContent = translate("visits.merge")
         mergeButton.addEventListener("click", () => {
           this.mergeVisits(Array.from(checkedBoxes).map((cb) => cb.dataset.id))
         })
@@ -1197,7 +1196,7 @@ export class VisitsManager {
         // Confirm button
         const confirmButton = document.createElement("button")
         confirmButton.className = "btn btn-xs btn-success"
-        confirmButton.textContent = "Confirm"
+        confirmButton.textContent = translate("common.confirm")
         confirmButton.addEventListener("click", () => {
           this.bulkUpdateVisitStatus(
             Array.from(checkedBoxes).map((cb) => cb.dataset.id),
@@ -1208,7 +1207,7 @@ export class VisitsManager {
         // Decline button
         const declineButton = document.createElement("button")
         declineButton.className = "btn btn-xs btn-error"
-        declineButton.textContent = "Decline"
+        declineButton.textContent = translate("common.decline")
         declineButton.addEventListener("click", () => {
           this.bulkUpdateVisitStatus(
             Array.from(checkedBoxes).map((cb) => cb.dataset.id),
@@ -1224,12 +1223,14 @@ export class VisitsManager {
         // Add selection count text
         const selectionText = document.createElement("div")
         selectionText.className = "text-sm text-center mt-1 text-gray-500"
-        selectionText.textContent = `${checkedBoxes.length} visits selected`
+        selectionText.textContent = translate("visits.selected", {
+          count: checkedBoxes.length,
+        })
 
         // Add cancel selection button
         const cancelButton = document.createElement("button")
         cancelButton.className = "btn btn-xs btn-neutral w-full mt-2"
-        cancelButton.textContent = "Cancel Selection"
+        cancelButton.textContent = translate("visits.cancel_selection")
         cancelButton.addEventListener("click", () => {
           // Uncheck all checkboxes
           checkedBoxes.forEach((checkbox) => {
@@ -1265,7 +1266,10 @@ export class VisitsManager {
    */
   async mergeVisits(visitIds) {
     if (!visitIds || visitIds.length < 2) {
-      Flash.show("error", "At least 2 visits must be selected for merging")
+      Flash.show(
+        "error",
+        translate("messages.at_least_2_visits_must_be_selected_for_merging"),
+      )
       return
     }
 
@@ -1285,13 +1289,13 @@ export class VisitsManager {
         throw new Error("Failed to merge visits")
       }
 
-      Flash.show("notice", "Visits merged successfully")
+      Flash.show("notice", translate("messages.visits_merged_successfully"))
 
       // Refresh the visits list
       this.fetchAndDisplayVisits()
     } catch (error) {
       console.error("Error merging visits:", error)
-      Flash.show("error", "Failed to merge visits")
+      Flash.show("error", translate("messages.failed_to_merge_visits"))
     }
   }
 
@@ -1302,7 +1306,7 @@ export class VisitsManager {
    */
   async bulkUpdateVisitStatus(visitIds, status) {
     if (!visitIds || visitIds.length === 0) {
-      Flash.show("error", "No visits selected")
+      Flash.show("error", translate("messages.no_visits_selected"))
       return
     }
 
@@ -1325,14 +1329,22 @@ export class VisitsManager {
 
       Flash.show(
         "notice",
-        `${visitIds.length} visits ${status === "confirmed" ? "confirmed" : "declined"} successfully`,
+        translate("visits.bulk_status_updated", {
+          count: visitIds.length,
+          status: translate(`visit_statuses.${status}`),
+        }),
       )
 
       // Refresh the visits list
       this.fetchAndDisplayVisits()
     } catch (error) {
       console.error(`Error ${status}ing visits:`, error)
-      Flash.show("error", `Failed to ${status} visits`)
+      Flash.show(
+        "error",
+        translate("visits.bulk_status_failed", {
+          status: translate(`visit_statuses.${status}`),
+        }),
+      )
     }
   }
 
@@ -1396,10 +1408,13 @@ export class VisitsManager {
 
           // Refresh visits list
           this.fetchAndDisplayVisits()
-          Flash.show("notice", "Visit confirmed successfully")
+          Flash.show(
+            "notice",
+            translate("messages.visit_confirmed_successfully"),
+          )
         } catch (error) {
           console.error("Error confirming visit:", error)
-          Flash.show("error", "Failed to confirm visit")
+          Flash.show("error", translate("messages.failed_to_confirm_visit"))
         }
       })
 
@@ -1426,10 +1441,13 @@ export class VisitsManager {
 
           // Refresh visits list
           this.fetchAndDisplayVisits()
-          Flash.show("notice", "Visit declined successfully")
+          Flash.show(
+            "notice",
+            translate("messages.visit_declined_successfully"),
+          )
         } catch (error) {
           console.error("Error declining visit:", error)
-          Flash.show("error", "Failed to decline visit")
+          Flash.show("error", translate("messages.failed_to_decline_visit"))
         }
       })
     })
@@ -1613,25 +1631,25 @@ export class VisitsManager {
           <h3 class="text-base font-semibold mb-3">${dateTimeDisplay.trim()}</h3>
 
           <div class="space-y-1 mb-4 text-sm">
-            <div>Duration: ${durationText}</div>
-            <div class="${statusColorClass} font-semibold">Status: ${visit.status.charAt(0).toUpperCase() + visit.status.slice(1)}</div>
+            <div>${translate("map_info.duration")}: ${durationText}</div>
+            <div class="${statusColorClass} font-semibold">${translate("map_info.status")}: ${translate(`visit_statuses.${visit.status}`)}</div>
             <div class="text-xs opacity-60 font-mono">${visit.place.latitude}, ${visit.place.longitude}</div>
           </div>
 
           <form class="visit-name-form space-y-3" data-visit-id="${visit.id}">
             <div class="form-control">
               <label class="label">
-                <span class="label-text font-medium">Visit Name:</span>
+                <span class="label-text font-medium">${translate("visits.name")}:</span>
               </label>
               <input type="text"
                      class="input input-bordered w-full"
                      value="${defaultName}"
-                     placeholder="Enter visit name">
+                     placeholder="${translate("visits.enter_name")}">
             </div>
 
             <div class="form-control">
               <label class="label">
-                <span class="label-text font-medium">Location:</span>
+                <span class="label-text font-medium">${translate("map_info.location")}:</span>
               </label>
               <select class="select select-bordered w-full" name="place">
                 ${
@@ -1647,7 +1665,7 @@ export class VisitsManager {
                         .join("")
                     : `
                   <option value="${visit.place.id}" selected>
-                    ${visit.place.name || "Current Location"}
+                    ${visit.place.name || translate("visits.current_location")}
                   </option>
                 `
                 }
@@ -1656,16 +1674,16 @@ export class VisitsManager {
 
             <div class="grid grid-cols-3 gap-2">
               <button type="submit" class="btn btn-primary btn-sm">
-                Save
+                ${translate("common.save")}
               </button>
               ${
                 visit.status !== "confirmed"
                   ? `
                 <button type="button" class="btn btn-success btn-sm confirm-visit" data-id="${visit.id}">
-                  Confirm
+                  ${translate("common.confirm")}
                 </button>
                 <button type="button" class="btn btn-error btn-sm decline-visit" data-id="${visit.id}">
-                  Decline
+                  ${translate("common.decline")}
                 </button>
               `
                   : '<div class="col-span-2"></div>'
@@ -1673,7 +1691,7 @@ export class VisitsManager {
             </div>
 
             <button type="button" class="btn btn-outline btn-error btn-sm w-full delete-visit" data-id="${visit.id}">
-              Delete Visit
+              ${translate("visits.delete")}
             </button>
           </form>
         </div>
@@ -1702,7 +1720,7 @@ export class VisitsManager {
       this.addPopupFormEventListeners(visit)
     } catch (error) {
       console.error("Error fetching possible places:", error)
-      Flash.show("error", "Failed to load possible places")
+      Flash.show("error", translate("messages.failed_to_load_possible_places"))
     }
   }
 
@@ -1725,7 +1743,10 @@ export class VisitsManager {
 
         // Validate that we have a valid place_id
         if (!selectedPlaceId || selectedPlaceId === "") {
-          Flash.show("error", "Please select a valid location")
+          Flash.show(
+            "error",
+            translate("messages.please_select_a_valid_location"),
+          )
           return
         }
 
@@ -1791,10 +1812,10 @@ export class VisitsManager {
           // Close the popup
           this.map.closePopup(this.currentPopup)
           this.currentPopup = null
-          Flash.show("notice", "Visit updated successfully")
+          Flash.show("notice", translate("messages.visit_updated_successfully"))
         } catch (error) {
           console.error("Error updating visit:", error)
-          Flash.show("error", "Failed to update visit")
+          Flash.show("error", translate("messages.failed_to_update_visit"))
         }
       })
 
@@ -1846,10 +1867,20 @@ export class VisitsManager {
       }
 
       this.fetchAndDisplayVisits()
-      Flash.show("notice", `Visit ${status}d successfully`)
+      Flash.show(
+        "notice",
+        translate("visits.status_updated", {
+          status: translate(`visit_statuses.${status}`),
+        }),
+      )
     } catch (error) {
       console.error(`Error ${status}ing visit:`, error)
-      Flash.show("error", `Failed to ${status} visit`)
+      Flash.show(
+        "error",
+        translate("visits.status_failed", {
+          status: translate(`visit_statuses.${status}`),
+        }),
+      )
     }
   }
 
@@ -1864,7 +1895,7 @@ export class VisitsManager {
 
     // Show confirmation dialog
     const confirmDelete = confirm(
-      "Are you sure you want to delete this visit? This action cannot be undone.",
+      translate("visits.confirm_delete_permanently"),
     )
 
     if (!confirmDelete) {
@@ -1888,15 +1919,16 @@ export class VisitsManager {
 
         // Refresh the visits list
         this.fetchAndDisplayVisits()
-        Flash.show("notice", "Visit deleted successfully")
+        Flash.show("notice", translate("messages.visit_deleted_successfully"))
       } else {
         const errorData = await response.json()
-        const errorMessage = errorData.error || "Failed to delete visit"
+        const errorMessage =
+          errorData.error || translate("messages.failed_to_delete_visit")
         Flash.show("error", errorMessage)
       }
     } catch (error) {
       console.error("Error deleting visit:", error)
-      Flash.show("error", "Failed to delete visit")
+      Flash.show("error", translate("messages.failed_to_delete_visit"))
     }
   }
 

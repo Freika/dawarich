@@ -11,13 +11,13 @@
   <div class="timeline-day-header">
     <%= render 'map/timeline_feeds/day_nav', date: day[:date] %>
     <div class="timeline-day-header__meta">
-      <%= pluralize(day_total_visits_count(day), 'visit') %>
+      <%= t('.visit_count', count: day_total_visits_count(day)) %>
       <% if day_total_visits_count(day) >= 2 %>
         <button type="button"
                 class="day-select-toggle"
                 data-testid="day-select-toggle"
                 data-action="click->timeline-feed#enterSelection">
-          Select
+          <%= t('.select') %>
         </button>
       <% end %>
     </div>
@@ -28,22 +28,22 @@
 
   <dl class="timeline-day-rollup">
     <div>
-      <dt>Visits</dt>
+      <dt><%= t('.visits') %></dt>
       <dd><%= total_visits %></dd>
     </div>
     <div>
-      <dt>Tracks</dt>
+      <dt><%= t('.tracks') %></dt>
       <dd><%= total_tracks %></dd>
     </div>
     <% if total_distance.to_f.positive? %>
       <div>
-        <dt>Distance</dt>
+        <dt><%= t('.distance') %></dt>
         <dd><%= total_distance %> <%= distance_unit %></dd>
       </div>
     <% end %>
     <% if moving_minutes.positive? %>
       <div>
-        <dt>Moving</dt>
+        <dt><%= t('.moving') %></dt>
         <dd><%= format_duration_short(moving_minutes * 60) %></dd>
       </div>
     <% end %>
@@ -69,16 +69,16 @@
     <div class="timeline-entries-empty-filtered hidden"
          data-timeline-feed-target="emptyFiltered">
       <p class="text-sm text-base-content/70">
-        No visits match the current search or filter.
+        <%= t('.no_visits_match_the_current_search_or_filter') %>
       </p>
       <button type="button"
               class="btn btn-ghost btn-xs"
               data-action="click->timeline-feed#clearVisitFilters">
-        Clear search & filters
+        <%= t('.clear_search_filters') %>
       </button>
     </div>
   <% else %>
-    <p class="text-center text-sm text-base-content/60 py-6">No visits tracked this day.</p>
+    <p class="text-center text-sm text-base-content/60 py-6"><%= t('.no_visits_tracked_this_day') %></p>
   <% end %>
 
   <footer class="timeline-day-footer">
@@ -86,8 +86,8 @@
             class="btn btn-ghost btn-xs btn-square"
             data-action="click->timeline-feed#navigateDay"
             data-direction="prev"
-            title="Previous day"
-            aria-label="Previous day">
+            title="<%= t('.previous_day') %>"
+            aria-label="<%= t('.previous_day') %>">
       <%= icon 'chevron-left', class: 'w-4 h-4' %>
     </button>
 
@@ -95,8 +95,8 @@
             class="btn btn-ghost btn-xs btn-square"
             data-action="click->timeline-feed#navigateDay"
             data-direction="next"
-            title="Next day"
-            aria-label="Next day">
+            title="<%= t('.next_day') %>"
+            aria-label="<%= t('.next_day') %>">
       <%= icon 'chevron-right', class: 'w-4 h-4' %>
     </button>
   </footer>

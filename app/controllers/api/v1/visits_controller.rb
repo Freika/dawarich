@@ -34,7 +34,7 @@ class Api::V1::VisitsController < ApiController
     if result
       render json: Api::VisitSerializer.new(service.visit).call
     else
-      error_message = service.errors || 'Failed to create visit'
+      error_message = service.errors || I18n.t('controllers.api.v1.visits.failed_to_create_visit')
       render json: { error: error_message }, status: :unprocessable_content
     end
   end
@@ -45,13 +45,19 @@ class Api::V1::VisitsController < ApiController
     if visit_params[:place_id].present?
       place = current_api_user.places.find_by(id: visit_params[:place_id]) ||
               visit.suggested_places.find_by(id: visit_params[:place_id])
-      return render json: { error: 'Invalid place' }, status: :unprocessable_content if place.nil?
+      if place.nil?
+        return render json: { error: I18n.t('controllers.api.v1.visits.invalid_place') },
+                      status: :unprocessable_content
+      end
     end
 
     area = nil
     if visit_params[:area_id].present?
       area = current_api_user.areas.find_by(id: visit_params[:area_id])
-      return render json: { error: 'Invalid area' }, status: :unprocessable_content if area.nil?
+      if area.nil?
+        return render json: { error: I18n.t('controllers.api.v1.visits.invalid_area') },
+                      status: :unprocessable_content
+      end
     end
 
     visit = update_visit(visit, area: area)
@@ -63,7 +69,8 @@ class Api::V1::VisitsController < ApiController
     # Validate that we have at least 2 visit IDs
     visit_ids = params[:visit_ids]
     if visit_ids.blank? || visit_ids.length < 2
-      return render json: { error: 'At least 2 visits must be selected for merging' }, status: :unprocessable_content
+      return render json: { error: I18n.t('controllers.api.v1.visits.at_least_2_visits_must_be_selected_for_merging') },
+                    status: :unprocessable_content
     end
 
     # Find all visits that belong to the current user
@@ -71,7 +78,8 @@ class Api::V1::VisitsController < ApiController
 
     # Ensure we found all the visits
     if visits.length != visit_ids.length
-      return render json: { error: 'One or more visits not found' }, status: :not_found
+      return render json: { error: I18n.t('controllers.api.v1.visits.one_or_more_visits_not_found') },
+                    status: :not_found
     end
 
     # Use the service to merge the visits
@@ -96,7 +104,7 @@ class Api::V1::VisitsController < ApiController
 
     if result
       render json: {
-        message: "#{result[:count]} visits updated successfully",
+        message: I18n.t('controllers.api.v1.visits.count_visits_updated_successfully', count: result[:count]),
         updated_count: result[:count]
       }, status: :ok
     else
@@ -111,12 +119,12 @@ class Api::V1::VisitsController < ApiController
       head :no_content
     else
       render json: {
-        error: 'Failed to delete visit',
+        error: I18n.t('controllers.api.v1.visits.failed_to_delete_visit'),
         errors: visit.errors.full_messages
       }, status: :unprocessable_content
     end
   rescue ActiveRecord::RecordNotFound
-    render json: { error: 'Visit not found' }, status: :not_found
+    render json: { error: I18n.t('controllers.api.v1.visits.visit_not_found') }, status: :not_found
   end
 
   private

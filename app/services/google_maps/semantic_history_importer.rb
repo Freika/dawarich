@@ -37,7 +37,7 @@ class GoogleMaps::SemanticHistoryImporter
     )
     # rubocop:enable Rails/SkipsModelValidations
   rescue StandardError => e
-    create_notification("Failed to process location batch: #{e.message}")
+    create_notification(I18n.t('services.google_maps.semantic_history_importer.batch_failed', message: e.message))
   end
 
   def prepare_point_data(point_data)
@@ -58,7 +58,7 @@ class GoogleMaps::SemanticHistoryImporter
   def create_notification(message)
     Notification.create!(
       user_id: user_id,
-      title: 'Google Maps Timeline Import Error',
+      title: I18n.t('services.google_maps.semantic_history_importer.google_maps_timeline_import_error'),
       content: message,
       kind: :error
     )

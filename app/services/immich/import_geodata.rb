@@ -73,9 +73,9 @@ class Immich::ImportGeodata
     Notifications::Create.new(
       user:,
       kind: :info,
-      title: 'Import was not created',
-      content: "Import with the same name (#{import_name}) already exists. " \
-               'If you want to proceed, delete the existing import and try again.'
+      title: I18n.t('services.immich.import_geodata.import_was_not_created'),
+      content: I18n.t('services.immich.import_geodata.import_with_the_same_name_import_name_already_exists_if',
+                      import_name: import_name)
     ).call
   end
 

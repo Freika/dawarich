@@ -12,22 +12,33 @@ class Immich::ConnectionTester
   end
 
   def call
-    return { success: false, error: 'Immich URL is missing' } if url.blank?
-    return { success: false, error: 'Immich API key is missing' } if api_key.blank?
+    return { success: false, error: I18n.t('services.immich.connection_tester.immich_url_is_missing') } if url.blank?
+    if api_key.blank?
+      return { success: false,
+error: I18n.t('services.immich.connection_tester.immich_api_key_is_missing') }
+    end
 
     test_connection
   rescue HTTParty::Error, Net::OpenTimeout, Net::ReadTimeout, JSON::ParserError => e
-    { success: false, error: "Immich connection failed: #{e.message}" }
+    { success: false,
+error: I18n.t('services.immich.connection_tester.immich_connection_failed_message', message: e.message) }
   end
 
   private
 
   def test_connection
     response = search_metadata
-    return { success: false, error: "Immich connection failed: #{response.code}" } unless response.success?
+    unless response.success?
+      return { success: false,
+error: I18n.t('services.immich.connection_tester.immich_connection_failed_code',
+              code: response.code) }
+    end
 
     asset_id = extract_asset_id(response.body)
-    return { success: true, message: 'Immich connection verified' } if asset_id.blank?
+    if asset_id.blank?
+      return { success: true,
+message: I18n.t('services.immich.connection_tester.immich_connection_verified') }
+    end
 
     test_thumbnail_access(asset_id)
   end
@@ -64,13 +75,18 @@ class Immich::ConnectionTester
                                  })
     )
 
-    return { success: true, message: 'Immich connection verified' } if response.success?
-
-    if missing_asset_view_permission?(response)
-      return { success: false, error: 'Immich API key missing permission: asset.view' }
+    if response.success?
+      return { success: true,
+message: I18n.t('services.immich.connection_tester.immich_connection_verified') }
     end
 
-    { success: false, error: "Immich thumbnail check failed: #{response.code}" }
+    if missing_asset_view_permission?(response)
+      return { success: false,
+error: I18n.t('services.immich.connection_tester.immich_api_key_missing_permission_asset_view') }
+    end
+
+    { success: false,
+error: I18n.t('services.immich.connection_tester.immich_thumbnail_check_failed_code', code: response.code) }
   end
 
   def extract_asset_id(body)

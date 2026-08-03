@@ -158,7 +158,7 @@ class Gpx::TrackImporter
     end
 
     def error(message)
-      raise Nokogiri::XML::SyntaxError, "GPX parse error: #{message}"
+      raise Nokogiri::XML::SyntaxError, I18n.t('services.gpx.track_importer.parse_error', message:)
     end
 
     def end_element_namespace(name, _prefix = nil, _uri = nil)

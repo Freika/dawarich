@@ -2,23 +2,23 @@
 <%= form_with model: SharedLink.new, url: paths[:create], method: :post,
               data: { turbo_frame: "share-link-modal" } do |f| %>
   <div class="alert alert-warning text-sm mb-4">
-    <span>This shares your <strong>current location in real time</strong> with anyone who has the link, until it expires or you revoke it.</span>
+    <span><%= t('.this_shares_your') %> <strong><%= t('.current_location_in_real_time') %></strong> <%= t('.with_anyone_who_has_the_link_until_it_expires_or') %></span>
   </div>
   <div class="form-control">
-    <label class="label"><span class="label-text">Magic phrase (optional)</span></label>
+    <label class="label"><span class="label-text"><%= t('.magic_phrase_optional') %></span></label>
     <%= f.text_field :magic_phrase, class: 'input input-bordered', value: SharedLink::PhraseGenerator.call %>
-    <span class="label-text-alt mt-1">Leave blank to share without a phrase, or use the auto-generated one.</span>
+    <span class="label-text-alt mt-1"><%= t('.leave_blank_to_share_without_a_phrase_or_use_the') %></span>
   </div>
   <%= render 'shared_links/expires_field', f: f %>
   <div class="form-control mt-4">
     <label class="label cursor-pointer justify-start gap-3">
       <%= check_box_tag 'shared_link[settings][show_route]', '1', false, class: 'checkbox checkbox-primary' %>
-      <span class="label-text">Share the route</span>
+      <span class="label-text"><%= t('.share_the_route') %></span>
     </label>
-    <span class="label-text-alt mt-1">Also show the path travelled since this link was created.</span>
+    <span class="label-text-alt mt-1"><%= t('.also_show_the_path_travelled_since_this_link_was_created') %></span>
   </div>
   <div class="modal-action">
-    <%= link_to 'Cancel', close_path, class: 'btn btn-ghost', data: { turbo_frame: '_top', action: 'share-link-modal#close' } %>
-    <%= f.submit 'Create share link', class: 'btn btn-primary' %>
+    <%= link_to t('.cancel'), close_path, class: 'btn btn-ghost', data: { turbo_frame: '_top', action: 'share-link-modal#close' } %>
+    <%= f.submit t('.create_share_link'), class: 'btn btn-primary' %>
   </div>
 <% end %>

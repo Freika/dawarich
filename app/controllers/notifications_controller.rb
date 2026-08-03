@@ -15,17 +15,22 @@ class NotificationsController < ApplicationController
 
   def mark_as_read
     current_user.notifications.unread.update_all(read_at: Time.zone.now)
-    redirect_to notifications_url, notice: 'All notifications marked as read.', status: :see_other
+    redirect_to notifications_url, notice: I18n.t('controllers.notifications.all_notifications_marked_as_read'),
+status: :see_other
   end
 
   def destroy_all
     current_user.notifications.destroy_all
-    redirect_to notifications_url, notice: 'All notifications where successfully destroyed.', status: :see_other
+    notice = I18n.t('controllers.notifications.all_notifications_where_successfully_destroyed')
+    redirect_to notifications_url,
+                notice: notice, status: :see_other
   end
 
   def destroy
     @notification.destroy!
-    redirect_to notifications_url, notice: 'Notification was successfully destroyed.', status: :see_other
+    notice = I18n.t('controllers.notifications.notification_was_successfully_destroyed')
+    redirect_to notifications_url, notice: notice,
+status: :see_other
   end
 
   private

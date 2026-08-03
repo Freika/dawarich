@@ -46,9 +46,8 @@ class Lite::ArchivalWarningJob < ApplicationJob
     Notification.create!(
       user: user,
       kind: :warning,
-      title: 'Your oldest data will archive in 30 days',
-      content: 'Your oldest month of location data will be archived soon. ' \
-               'Upgrade to Pro to keep your full history searchable.'
+      title: I18n.t('jobs.lite.archival_warning_job.your_oldest_data_will_archive_in_30_days'),
+      content: I18n.t('jobs.lite.archival_warning_job.your_oldest_month_of_location_data_will_be_archived_soon')
     )
   end
 
@@ -60,10 +59,8 @@ class Lite::ArchivalWarningJob < ApplicationJob
     Notification.create!(
       user: user,
       kind: :warning,
-      title: 'Data has been archived',
-      content: '1 month of location data has been archived. ' \
-               'Your archived data can be exported at any time. ' \
-               'Upgrade to Pro to make it visible and interactive in-app again.'
+      title: I18n.t('jobs.lite.archival_warning_job.data_has_been_archived'),
+      content: I18n.t('jobs.lite.archival_warning_job.month_of_location_data_has_been_archived_your_archived')
     )
   end
 

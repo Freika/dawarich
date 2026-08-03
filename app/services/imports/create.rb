@@ -77,10 +77,9 @@ class Imports::Create
     Notifications::Create.new(
       user:,
       kind: :warning,
-      title: 'Import post-processing incomplete',
-      content: "Your import \"#{import.name}\" finished and all points were saved, but the " \
-               "#{step.tr('_', ' ')} step failed. Statistics, tracks or visit suggestions " \
-               'may be missing or outdated. You can trigger a recalculation from Settings.'
+      title: I18n.t('services.imports.create.import_post_processing_incomplete'),
+      content: I18n.t('services.imports.create.your_import_name_finished_and_all_points_were_saved_but',
+                      name: import.name, step: step.tr('_', ' '))
     ).call
   rescue StandardError => e
     ExceptionReporter.call(e, 'Failed to create post-import failure notification')
@@ -93,7 +92,7 @@ class Imports::Create
   end
 
   def importer(source)
-    raise ArgumentError, 'Import source cannot be nil' if source.nil?
+    raise ArgumentError, I18n.t('services.imports.create.source_missing') if source.nil?
 
     case source.to_s
     when 'google_semantic_history'      then GoogleMaps::SemanticHistoryImporter
@@ -110,9 +109,9 @@ class Imports::Create
     when 'fit'                          then Fit::Importer
     when 'polarsteps'                   then Polarsteps::Importer
     when 'zip'
-      raise ArgumentError, 'Could not classify zip contents -- file may be corrupted'
+      raise ArgumentError, I18n.t('services.imports.create.zip_unclassified')
     else
-      raise ArgumentError, "Unsupported source: #{source}"
+      raise ArgumentError, I18n.t('services.imports.create.unsupported_source', source:)
     end
   end
 
@@ -127,17 +126,15 @@ class Imports::Create
     if import.doubles.to_i.positive?
       Notification.create!(
         user_id: import.user_id,
-        title: 'Import completed with no new points',
-        content: "Your file #{import.name} contained #{import.raw_points} points, all of which " \
-                 'already exist in your timeline at the same coordinates and timestamps. ' \
-                 'Nothing was imported. If this was unexpected, delete the existing points ' \
-                 'for that date range and re-import.',
+        title: I18n.t('services.imports.create.import_completed_with_no_new_points'),
+        content: I18n.t('services.imports.create.your_file_name_contained_raw_points_points_all_of_which',
+                        name: import.name, raw_points: import.raw_points),
         kind: :info
       )
     else
       Notification.create!(
         user_id: import.user_id,
-        title: 'Import completed with no points',
+        title: I18n.t('services.imports.create.import_completed_with_no_points'),
         content: zero_points_content(import),
         kind: :warning
       )
@@ -210,7 +207,7 @@ class Imports::Create
     Notifications::Create.new(
       user:,
       kind: :error,
-      title: 'Import failed',
+      title: I18n.t('services.imports.create.import_failed'),
       content: message
     ).call
   end

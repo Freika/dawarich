@@ -1,3 +1,4 @@
+import { translate } from "i18n"
 import { Toast } from "maps_maplibre/components/toast"
 import { UpgradeBanner } from "maps_maplibre/components/upgrade_banner"
 import {
@@ -540,8 +541,9 @@ export class SettingsController {
 
     if (controller.hasTransportationDirtyMessageTarget) {
       if (this.transportationSettingsDirty) {
-        controller.transportationDirtyMessageTarget.textContent =
-          "You have unsaved changes. Click Apply to save and recalculate."
+        controller.transportationDirtyMessageTarget.textContent = translate(
+          "settings.unsaved_transportation_changes",
+        )
         controller.transportationDirtyMessageTarget.classList.add(
           "text-warning",
         )
@@ -549,8 +551,9 @@ export class SettingsController {
           "text-base-content/60",
         )
       } else {
-        controller.transportationDirtyMessageTarget.textContent =
-          "Make changes to enable the Apply button"
+        controller.transportationDirtyMessageTarget.textContent = translate(
+          "settings.make_changes_to_apply",
+        )
         controller.transportationDirtyMessageTarget.classList.remove(
           "text-warning",
         )
@@ -577,9 +580,7 @@ export class SettingsController {
 
     // Show confirmation dialog
     const confirmed = confirm(
-      "Applying these changes will recalculate transportation modes for ALL your tracks.\n\n" +
-        "This process may take some time depending on how many tracks you have, and settings will be locked until it completes.\n\n" +
-        "Do you want to continue?",
+      translate("settings.confirm_transportation_recalculation"),
     )
 
     if (!confirmed) return
@@ -696,7 +697,11 @@ export class SettingsController {
 
     // Check result and update UI
     if (result && result.status === "locked") {
-      Toast.error("Cannot update: recalculation is already in progress")
+      Toast.error(
+        translate(
+          "messages.cannot_update_recalculation_is_already_in_progress",
+        ),
+      )
       // Immediately lock the UI
       this.setTransportationSettingsLocked(true)
       // Also start polling for status updates
@@ -705,16 +710,14 @@ export class SettingsController {
     }
 
     if (result?.recalculation_triggered) {
-      Toast.info(
-        "Settings saved. Recalculating transportation modes for all tracks...",
-      )
+      Toast.info(translate("settings.transportation_recalculation_started"))
       this.resetTransportationDirtyState()
       // Immediately lock the UI since recalculation started
       this.setTransportationSettingsLocked(true)
       // Start polling for status updates
       this.startRecalculationPolling()
     } else {
-      Toast.success("Transportation settings saved")
+      Toast.success(translate("messages.transportation_settings_saved"))
       this.resetTransportationDirtyState()
     }
   }
@@ -797,7 +800,14 @@ export class SettingsController {
         spinner.className = "loading loading-spinner loading-xs"
 
         const text = document.createElement("span")
-        text.textContent = `Recalculating transportation modes... (${processedFormatted}/${totalFormatted} tracks, ${progress}%)`
+        text.textContent = translate(
+          "settings.transportation_recalculation_progress",
+          {
+            processed: processedFormatted,
+            total: totalFormatted,
+            progress,
+          },
+        )
 
         container.appendChild(spinner)
         container.appendChild(text)
@@ -806,7 +816,9 @@ export class SettingsController {
         alertEl.classList.add("alert-warning")
       } else if (isCompleted) {
         const text = document.createElement("span")
-        text.textContent = "Transportation mode recalculation completed!"
+        text.textContent = translate(
+          "settings.transportation_recalculation_completed",
+        )
 
         alertEl.appendChild(text)
         alertEl.classList.remove("hidden", "alert-warning", "alert-error")
@@ -817,7 +829,12 @@ export class SettingsController {
         this.resetTransportationDirtyState()
       } else if (isFailed) {
         const text = document.createElement("span")
-        text.textContent = `Recalculation failed: ${status.error_message || "Unknown error"}`
+        text.textContent = translate(
+          "settings.transportation_recalculation_failed",
+          {
+            error: status.error_message || translate("common.unknown_error"),
+          },
+        )
 
         alertEl.appendChild(text)
         alertEl.classList.remove("hidden", "alert-warning", "alert-success")
@@ -1171,9 +1188,7 @@ export class SettingsController {
       settled = true
       this.map.off("style.load", onLoad)
       this.map.off("error", onError)
-      Toast.error(
-        "Custom map style could not be loaded; reverting to the default style.",
-      )
+      Toast.error(translate("settings.custom_style_load_failed"))
       const fallback = await getMapStyle(styleName, this.mapStyleOptions())
       this.swapStyle(fallback)
     }
@@ -1207,7 +1222,7 @@ export class SettingsController {
    * Reset settings to defaults
    */
   resetSettings() {
-    if (confirm("Reset all settings to defaults? This will reload the page.")) {
+    if (confirm(translate("settings.confirm_reset"))) {
       SettingsManager.resetToDefaults()
       window.location.reload()
     }
@@ -1225,7 +1240,7 @@ export class SettingsController {
       // Globe can't do a timed preview (requires reload), so just show upgrade prompt
       toggle.checked = false
       UpgradeBanner.show({
-        message: "Globe View is a Pro feature.",
+        message: translate("messages.globe_view_is_a_pro_feature"),
         upgradeUrl: this.controller.upgradeUrlValue,
         utmContent: "globe_view",
       })
@@ -1234,12 +1249,12 @@ export class SettingsController {
 
     await SettingsManager.updateSetting("globeProjection", enabled)
 
-    Toast.info("Globe view will be applied after page reload")
+    Toast.info(
+      translate("messages.globe_view_will_be_applied_after_page_reload"),
+    )
 
     // Prompt user to reload
-    if (
-      confirm("Globe view requires a page reload to take effect. Reload now?")
-    ) {
+    if (confirm(translate("settings.confirm_globe_reload"))) {
       window.location.reload()
     }
   }
@@ -1398,8 +1413,8 @@ export class SettingsController {
       label.style.cursor = unavailable ? "not-allowed" : ""
       if (unavailable) {
         label.dataset.tip = foreignBasemap
-          ? "Not available with a custom raster or style basemap — these layers come from the built-in vector tiles"
-          : "Not available with the Custom map style — it draws no labels or points of interest"
+          ? translate("settings.layer_unavailable_foreign_basemap")
+          : translate("settings.layer_unavailable_custom_style")
       } else {
         delete label.dataset.tip
       }
@@ -1416,9 +1431,7 @@ export class SettingsController {
     const raw = event.target.value.trim()
 
     if (!SettingsManager.validVectorTilesUrl(raw)) {
-      Toast.error(
-        "Tile URL must include {z}, {x}, and {y} placeholders, or be a MapLibre style URL",
-      )
+      Toast.error(translate("settings.invalid_tile_url"))
       return
     }
 
@@ -1559,7 +1572,7 @@ export class SettingsController {
       new CustomEvent("map-settings:saved", { detail: { scope: "form" } }),
     )
 
-    Toast.success("Settings updated successfully")
+    Toast.success(translate("messages.settings_updated_successfully"))
   }
 
   /**
@@ -1600,7 +1613,7 @@ export class SettingsController {
       settings.pointsRenderingMode ||
       settings.speedColoredRoutes !== undefined
     ) {
-      Toast.info("Reloading map data with new settings...")
+      Toast.info(translate("messages.reloading_map_data_with_new_settings"))
       await this.controller.loadMapData()
     }
   }
@@ -1649,22 +1662,15 @@ export class SettingsController {
   }
 
   async reapplyAnomalyFilter() {
-    if (
-      !window.confirm(
-        "This is destructive and long-running.\n\n" +
-          "• All existing anomaly flags will be cleared and re-computed with your current settings.\n" +
-          "• Tracks, stats, and digests will be rebuilt afterwards.\n" +
-          "• Depending on how many points you have, this can take several minutes (or longer for years of history).\n" +
-          "• During the rebuild, tracks and stats on the map may temporarily look incomplete.\n\n" +
-          "Continue?",
-      )
-    ) {
+    if (!window.confirm(translate("settings.confirm_reapply_anomaly_filter"))) {
       return
     }
 
     const apiKey = this.controller.apiKeyValue
     if (!apiKey) {
-      Toast.error("API key not available; please reload the page.")
+      Toast.error(
+        translate("messages.api_key_not_available_please_reload_the_page"),
+      )
       return
     }
 
@@ -1681,31 +1687,25 @@ export class SettingsController {
         throw new Error(`Request failed: ${response.status}`)
       }
 
-      Toast.success(
-        "Re-evaluation queued. The map will update once the job finishes.",
-      )
+      Toast.success(translate("settings.re_evaluation_queued"))
     } catch (error) {
       console.error("[Settings] reapplyAnomalyFilter failed:", error)
-      Toast.error("Could not queue re-evaluation. Please try again.")
+      Toast.error(
+        translate("messages.could_not_queue_re_evaluation_please_try_again"),
+      )
     }
   }
 
   async recalculateUserData() {
-    if (
-      !window.confirm(
-        "This is long-running and rebuilds derived data.\n\n" +
-          "• Tracks, stats, and digests will be regenerated from scratch using your current points and settings.\n" +
-          "• Existing tracks/stats are replaced — anything you tweaked manually on a track will be overwritten.\n" +
-          "• Depending on your history this can take several minutes; you'll get a notification when it's done.\n\n" +
-          "Continue?",
-      )
-    ) {
+    if (!window.confirm(translate("settings.confirm_recalculate_user_data"))) {
       return
     }
 
     const apiKey = this.controller.apiKeyValue
     if (!apiKey) {
-      Toast.error("API key not available; please reload the page.")
+      Toast.error(
+        translate("messages.api_key_not_available_please_reload_the_page"),
+      )
       return
     }
 
@@ -1722,12 +1722,12 @@ export class SettingsController {
         throw new Error(`Request failed: ${response.status}`)
       }
 
-      Toast.success(
-        "Recalculation queued. You'll get a notification when it finishes.",
-      )
+      Toast.success(translate("settings.recalculation_queued"))
     } catch (error) {
       console.error("[Settings] recalculateUserData failed:", error)
-      Toast.error("Could not queue recalculation. Please try again.")
+      Toast.error(
+        translate("messages.could_not_queue_recalculation_please_try_again"),
+      )
     }
   }
 }

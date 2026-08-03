@@ -1,7 +1,7 @@
-<% content_for :title, "Background jobs" %>
+<% content_for :title, t('.background_jobs') %>
 
 <div class="min-h-content w-full my-5">
-  <%= render 'shared/page_header', title: 'Background jobs' %>
+  <%= render 'shared/page_header', title: t('.background_jobs') %>
   <%= render 'settings/navigation' %>
 
   <div role="alert" class="alert m-5">
@@ -16,7 +16,7 @@
         stroke-width="2"
         d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
     </svg>
-    <span>Spamming many new jobs at once is a bad idea. Let them work or clear the queue beforehand.</span>
+    <span><%= t('.spamming_many_new_jobs_at_once_is_a_bad_idea') %></span>
   </div>
 
   <% if current_user.gps_noise_recheck_pending? %>
@@ -32,27 +32,27 @@
           stroke-width="2"
           d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
       </svg>
-      <span>GPS noise detection changed in this release, so your existing points are queued for a one-time re-check. Your tracks, stats and digests are rebuilt from the result, which can take a while on a large history — some points may appear or disappear on the map when it finishes. No points are deleted, and the pass runs on the lowest-priority queue so everything else stays ahead of it.</span>
+      <span><%= t('.gps_noise_detection_changed_in_this_release_so_your_existing') %></span>
     </div>
   <% end %>
 
   <div class='flex flex-wrap'>
     <div class="card bg-base-300 w-96 shadow-xl m-5">
       <div class="card-body">
-        <h2 class="card-title">Start Reverse Geocoding</h2>
-        <p>This job will re-run reverse geocoding process for all the points in your database. Might take a few days or even weeks based on the amount of points you have!</p>
+        <h2 class="card-title"><%= t('.start_reverse_geocoding') %></h2>
+        <p><%= t('.this_job_will_re_run_reverse_geocoding_process_for_all') %></p>
         <div class="card-actions justify-end">
-          <%= link_to 'Start Job', settings_background_jobs_path(job_name: 'start_reverse_geocoding'), data: { turbo_confirm: 'Are you sure?', turbo_method: :post }, class: 'btn btn-primary' %>
+          <%= link_to t('.start_job'), settings_background_jobs_path(job_name: 'start_reverse_geocoding'), data: { turbo_confirm: t('.are_you_sure'), turbo_method: :post }, class: 'btn btn-primary' %>
         </div>
       </div>
     </div>
 
     <div class="card bg-base-300 w-96 shadow-xl m-5">
       <div class="card-body">
-        <h2 class="card-title">Continue Reverse Geocoding</h2>
-        <p>This job will process reverse geocoding for all points that don't have geocoding data yet.</p>
+        <h2 class="card-title"><%= t('.continue_reverse_geocoding') %></h2>
+        <p><%= t('.this_job_will_process_reverse_geocoding_for_all_points_that') %></p>
         <div class="card-actions justify-end">
-          <%= link_to 'Start Job', settings_background_jobs_path(job_name: 'continue_reverse_geocoding'), data: { turbo_confirm: 'Are you sure?', turbo_method: :post }, class: 'btn btn-primary' %>
+          <%= link_to t('.start_job'), settings_background_jobs_path(job_name: 'continue_reverse_geocoding'), data: { turbo_confirm: t('.are_you_sure'), turbo_method: :post }, class: 'btn btn-primary' %>
         </div>
       </div>
     </div>
@@ -60,10 +60,10 @@
     <% if current_user.admin? %>
       <div class="card bg-base-300 w-96 shadow-xl m-5">
         <div class="card-body">
-          <h2 class="card-title">Background Jobs Dashboard</h2>
-          <p>This will open the background jobs dashboard in a new tab.</p>
+          <h2 class="card-title"><%= t('.background_jobs_dashboard') %></h2>
+          <p><%= t('.this_will_open_the_background_jobs_dashboard_in_a_new') %></p>
           <div class="card-actions justify-end">
-            <%= link_to 'Open Dashboard', '/sidekiq', target: '_blank', class: 'btn btn-primary' %>
+            <%= link_to t('.open_dashboard'), '/sidekiq', target: '_blank', class: 'btn btn-primary' %>
           </div>
         </div>
       </div>
@@ -71,13 +71,13 @@
 
     <div class="card bg-base-300 w-96 shadow-xl m-5">
       <div class="card-body">
-        <h2 class="card-title">Visits suggestions</h2>
-        <p>Enable or disable visits suggestions. It's a background task that runs every day at midnight. Disabling it might be useful if you don't want to receive visits suggestions or if you're using the Dawarich iOS app, which has its own visits suggestions.</p>
+        <h2 class="card-title"><%= t('.visits_suggestions') %></h2>
+        <p><%= t('.enable_or_disable_visits_suggestions_it_s_a_background_task') %></p>
         <div class="card-actions justify-end">
           <% if current_user.safe_settings.visits_suggestions_enabled? %>
-            <%= link_to 'Disable', settings_background_jobs_path(settings: { 'visits_suggestions_enabled' => 'false' }), data: { turbo_confirm: 'Are you sure?', turbo_method: :patch }, class: 'btn btn-error' %>
+            <%= link_to t('.disable'), settings_background_jobs_path(settings: { 'visits_suggestions_enabled' => 'false' }), data: { turbo_confirm: t('.are_you_sure'), turbo_method: :patch }, class: 'btn btn-error' %>
           <% else %>
-            <%= link_to 'Enable', settings_background_jobs_path(settings: { 'visits_suggestions_enabled' => 'true' }), data: { turbo_confirm: 'Are you sure?', turbo_method: :patch }, class: 'btn btn-success' %>
+            <%= link_to t('.enable'), settings_background_jobs_path(settings: { 'visits_suggestions_enabled' => 'true' }), data: { turbo_confirm: t('.are_you_sure'), turbo_method: :patch }, class: 'btn btn-success' %>
           <% end %>
         </div>
       </div>

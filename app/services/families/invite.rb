@@ -40,7 +40,7 @@ module Families
       return errors.full_messages.first if errors.any?
       return @custom_error_message if @custom_error_message
 
-      'Failed to send invitation'
+      I18n.t('services.families.invite.failed_to_send_invitation')
     end
 
     private
@@ -48,11 +48,15 @@ module Families
     def invite_sendable?
       unless invited_by.family_owner?
         return add_error_and_false(:invited_by,
-                                   'You must be a family owner to send invitations')
+                                   I18n.t('services.families.invite.owner_required'))
       end
-      return add_error_and_false(:family, 'Family is full') if family.full?
-      return add_error_and_false(:email, 'User is already in a family') if user_already_in_family?
-      return add_error_and_false(:email, 'Invitation already sent to this email') if pending_invitation_exists?
+      return add_error_and_false(:family, I18n.t('services.families.invite.family_full')) if family.full?
+      if user_already_in_family?
+        return add_error_and_false(:email, I18n.t('services.families.invite.user_already_in_family'))
+      end
+      if pending_invitation_exists?
+        return add_error_and_false(:email, I18n.t('services.families.invite.invitation_already_sent'))
+      end
 
       true
     end
@@ -85,18 +89,15 @@ module Families
     end
 
     def send_notification
-      content = if DawarichSettings.self_hosted?
-                  "Family invitation sent to #{email} if SMTP is configured properly. " \
-                    "If you're not using SMTP, copy the invitation link from the family page " \
-                    'and share it manually.'
-                else
-                  "Family invitation sent to #{email}"
-                end
+      content = I18n.t(
+        DawarichSettings.self_hosted? ? 'services.families.invite.sent_self_hosted' : 'services.families.invite.sent',
+        email:
+      )
 
       Notification.create!(
         user: invited_by,
         kind: :info,
-        title: 'Invitation Sent',
+        title: I18n.t('services.families.invite.invitation_sent'),
         content: content
       )
     rescue StandardError => e
@@ -108,13 +109,13 @@ module Families
       @custom_error_message = if invitation&.errors&.any?
                                 invitation.errors.full_messages.first
                               else
-                                "Failed to create invitation: #{error.message}"
+                                I18n.t('services.families.invite.failed_to_create', message: error.message)
                               end
     end
 
     def handle_email_error(error)
       Rails.logger.error "Email delivery failed for family invitation: #{error.message}"
-      @custom_error_message = 'Failed to send invitation email. Please try again later'
+      @custom_error_message = I18n.t('services.families.invite.failed_to_send_invitation_email_please_try_again_later')
 
       # Clean up the invitation if email fails
       invitation&.destroy
@@ -122,7 +123,9 @@ module Families
 
     def handle_generic_error(error)
       ExceptionReporter.call(error, "Unexpected error in Families::Invite: #{error.message}")
-      @custom_error_message = 'An unexpected error occurred while sending the invitation. Please try again'
+      @custom_error_message = I18n.t(
+        'services.families.invite.an_unexpected_error_occurred_while_sending_the_invitation_please_try'
+      )
     end
   end
 end

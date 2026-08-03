@@ -46,7 +46,7 @@ module Users
     def invalid_allowlist_result
       Result.new(
         success?: false,
-        error: 'Enable at least one transportation mode',
+        error: I18n.t('services.users.transportation_thresholds_updater.enable_at_least_one_transportation_mode'),
         recalculation_triggered?: false
       )
     end
@@ -112,7 +112,9 @@ module Users
     def locked_result
       Result.new(
         success?: false,
-        error: 'Transportation mode recalculation is in progress. Please wait until it completes.',
+        error: I18n.t(
+          'services.users.transportation_thresholds_updater.recalculation_in_progress'
+        ),
         recalculation_triggered?: false
       )
     end

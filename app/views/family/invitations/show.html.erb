@@ -7,17 +7,17 @@
       </div>
 
       <h1 class="text-5xl font-bold text-base-content mb-4">
-        Join <%= @invitation.family.name %>!
+        <%= t('.join') %> <%= @invitation.family.name %>!
       </h1>
 
       <p class="text-xl text-base-content opacity-80 mb-2">
-        You've been invited by <strong class="text-base-content"><%= @invitation.invited_by.email %></strong> to join their family. Create your account to accept the invitation and start sharing location data.
+        <%= t('.you_ve_been_invited_by') %> <strong class="text-base-content"><%= @invitation.invited_by.email %></strong> <%= t('.to_join_their_family_create_your_account_to_accept_the') %>
       </p>
 
       <div class="alert alert-info inline-flex items-center rounded-lg px-4 py-3 mt-4 gap-3">
         <%= icon 'info', class: "h-5 w-5 shrink-0" %>
         <span class="text-sm font-medium">
-          Your email (<%= @invitation.email %>) will be used for this account
+          <%= t('.your_email') %><%= @invitation.email %><%= t('.will_be_used_for_this_account') %>
         </span>
       </div>
     </div>
@@ -25,7 +25,7 @@
     <!-- Benefits Section -->
     <div class="bg-base-200 shadow-xl rounded-2xl p-8 mb-8">
       <h2 class="text-2xl font-bold text-base-content mb-6 text-center">
-        What benefits does joining a family bring?
+        <%= t('.what_benefits_does_joining_a_family_bring') %>
       </h2>
 
       <div class="grid md:grid-cols-2 gap-6 mb-8">
@@ -37,10 +37,10 @@
           </div>
           <div>
             <h3 class="font-semibold text-base-content mb-1">
-              Share Location Data
+              <%= t('.share_location_data') %>
             </h3>
             <p class="text-sm text-base-content opacity-70">
-              Share your location history with family members and see where they are
+              <%= t('.share_your_location_history_with_family_members_and_see_where') %>
             </p>
           </div>
         </div>
@@ -53,10 +53,10 @@
           </div>
           <div>
             <h3 class="font-semibold text-base-content mb-1">
-              Track your location history
+              <%= t('.track_your_location_history') %>
             </h3>
             <p class="text-sm text-base-content opacity-70">
-              Access interactive maps and personal travel statistics
+              <%= t('.access_interactive_maps_and_personal_travel_statistics') %>
             </p>
           </div>
         </div>
@@ -69,10 +69,10 @@
           </div>
           <div>
             <h3 class="font-semibold text-base-content mb-1">
-              Stay Connected
+              <%= t('.stay_connected') %>
             </h3>
             <p class="text-sm text-base-content opacity-70">
-              Keep track of your loved ones' travels and adventures in real-time
+              <%= t('.keep_track_of_your_loved_ones_travels_and_adventures_in') %>
             </p>
           </div>
         </div>
@@ -85,10 +85,10 @@
           </div>
           <div>
             <h3 class="font-semibold text-base-content mb-1">
-              Full Control & Privacy
+              <%= t('.full_control_privacy') %>
             </h3>
             <p class="text-sm text-base-content opacity-70">
-              You control what and how long you share and can leave the family anytime
+              <%= t('.you_control_what_and_how_long_you_share_and_can') %>
             </p>
           </div>
         </div>
@@ -96,23 +96,23 @@
 
       <!-- Invitation Details -->
       <div class="bg-base-300 rounded-lg p-6 mb-6">
-        <h3 class="text-lg font-semibold text-base-content mb-6">Invitation Details</h3>
+        <h3 class="text-lg font-semibold text-base-content mb-6"><%= t('.invitation_details') %></h3>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div class="space-y-2">
-            <div class="text-sm text-base-content opacity-60">Family:</div>
+            <div class="text-sm text-base-content opacity-60"><%= t('.family') %></div>
             <div class="text-base font-semibold text-base-content"><%= @invitation.family.name %></div>
           </div>
           <div class="space-y-2">
-            <div class="text-sm text-base-content opacity-60">Invited by:</div>
+            <div class="text-sm text-base-content opacity-60"><%= t('.invited_by') %></div>
             <div class="text-base font-semibold text-base-content"><%= @invitation.invited_by.email %></div>
           </div>
           <div class="space-y-2">
-            <div class="text-sm text-base-content opacity-60">Your email:</div>
+            <div class="text-sm text-base-content opacity-60"><%= t('.your_email_2') %></div>
             <div class="text-base font-semibold text-base-content"><%= @invitation.email %></div>
           </div>
           <div class="space-y-2">
-            <div class="text-sm text-base-content opacity-60">Expires:</div>
-            <div class="text-base font-semibold text-base-content"><%= @invitation.expires_at.strftime('%b %d, %Y') %></div>
+            <div class="text-sm text-base-content opacity-60"><%= t('.expires') %></div>
+            <div class="text-base font-semibold text-base-content"><%= l(@invitation.expires_at.to_date, format: :medium) %></div>
           </div>
         </div>
       </div>
@@ -123,7 +123,7 @@
           <div class="alert alert-warning">
             <%= icon 'triangle-alert', class: 'h-5 w-5 shrink-0' %>
             <span class="text-sm font-medium">
-              This family's plan is currently inactive. You can accept the invitation once the family owner renews it.
+              <%= t('.this_family_s_plan_is_currently_inactive_you_can_accept') %>
             </span>
           </div>
         <% elsif user_signed_in? %>
@@ -131,30 +131,30 @@
           <%= link_to accept_family_invitation_path(token: @invitation.token),
                 method: :post,
                 class: "btn btn-success btn-lg w-full text-lg shadow-lg" do %>
-            ✓ Accept Invitation & Join Family
+            <%= t('.accept_invitation_join_family') %>
           <% end %>
 
           <p class="text-sm text-base-content opacity-60 text-center">
-            Logged in as <%= current_user.email %>
+            <%= t('.logged_in_as') %> <%= current_user.email %>
             ·
             <%= link_to destroy_user_session_path, method: :delete, class: "link link-info" do %>
-              Logout
+              <%= t('.logout') %>
             <% end %>
           </p>
         <% else %>
           <!-- User is not logged in, show register button prominently -->
           <%= link_to new_user_registration_path(invitation_token: @invitation.token),
                 class: "btn btn-primary btn-lg w-full text-lg shadow-lg" do %>
-            Create Account & Join Family →
+            <%= t('.create_account_join_family') %>
           <% end %>
 
           <div class="text-center">
             <p class="text-sm text-gray-300 mb-2">
-              Already have an account?
+              <%= t('.already_have_an_account') %>
             </p>
             <%= link_to new_user_session_path(invitation_token: @invitation.token),
                   class: "link link-info font-medium" do %>
-              Sign in to accept invitation
+              <%= t('.sign_in_to_accept_invitation') %>
             <% end %>
           </div>
         <% end %>
@@ -162,7 +162,7 @@
         <!-- Decline Option -->
         <div class="pt-6 border-t border-base-300 text-center">
           <p class="text-sm text-base-content opacity-60">
-            Not interested? You can simply close this page.
+            <%= t('.not_interested_you_can_simply_close_this_page') %>
           </p>
         </div>
       </div>

@@ -1,3 +1,5 @@
+import { translate } from "i18n"
+
 /**
  * Visit card component for rendering individual visit cards in the side panel
  */
@@ -17,15 +19,16 @@ export class VisitCard {
     // Format date and time
     const startDate = new Date(visit.started_at)
     const endDate = new Date(visit.ended_at)
-    const dateStr = startDate.toLocaleDateString("en-US", {
+    const locale = document.documentElement.lang || undefined
+    const dateStr = startDate.toLocaleDateString(locale, {
       month: "short",
       day: "numeric",
       year: "numeric",
     })
-    const timeRange = `${startDate.toLocaleTimeString("en-US", {
+    const timeRange = `${startDate.toLocaleTimeString(locale, {
       hour: "2-digit",
       minute: "2-digit",
-    })} - ${endDate.toLocaleTimeString("en-US", {
+    })} - ${endDate.toLocaleTimeString(locale, {
       hour: "2-digit",
       minute: "2-digit",
     })}`
@@ -33,7 +36,10 @@ export class VisitCard {
     // Format duration (duration is in minutes from the backend)
     const hours = Math.floor(visit.duration / 60)
     const minutes = visit.duration % 60
-    const durationStr = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`
+    const durationStr =
+      hours > 0
+        ? translate("map_info.duration_hours_minutes", { hours, minutes })
+        : translate("map_info.duration_minutes", { minutes })
 
     // Border style based on status
     const borderClass = isSuggested ? "border-dashed" : ""
@@ -59,7 +65,7 @@ export class VisitCard {
         <div class="card-body p-3">
           <!-- Visit Name -->
           <h3 class="card-title text-sm font-semibold mb-2">
-            ${visit.name || visit.place?.name || "Unnamed Visit"}
+            ${visit.name || visit.place?.name || translate("visits.unnamed")}
           </h3>
 
           <!-- Date and Time -->
@@ -93,13 +99,13 @@ export class VisitCard {
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
-                Delete
+                ${translate("common.delete")}
               </button>
               <button class="btn btn-xs btn-primary" data-visit-confirm="${visit.id}">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                 </svg>
-                Confirm
+                ${translate("common.confirm")}
               </button>
             </div>
           `
@@ -112,7 +118,7 @@ export class VisitCard {
               ? `
             <div class="mt-2">
               <span class="badge badge-xs ${isConfirmed ? "badge-success" : "badge-error"}">
-                ${visit.status}
+                ${translate(`visit_statuses.${visit.status}`)}
               </span>
             </div>
           `
@@ -134,26 +140,26 @@ export class VisitCard {
     return `
       <div class="bulk-actions-panel sticky bottom-0 bg-base-100 border-t border-base-300 p-4 mt-4 space-y-2">
         <div class="text-sm font-medium mb-3">
-          ${selectedCount} visit${selectedCount === 1 ? "" : "s"} selected
+          ${translate("visits.selected", { count: selectedCount })}
         </div>
         <div class="grid grid-cols-3 gap-2">
           <button class="btn btn-sm btn-outline" data-bulk-merge>
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
             </svg>
-            Merge
+            ${translate("visits.merge")}
           </button>
           <button class="btn btn-sm btn-primary" data-bulk-confirm>
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
             </svg>
-            Confirm
+            ${translate("common.confirm")}
           </button>
           <button class="btn btn-sm btn-outline btn-error" data-bulk-delete>
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
-            Delete
+            ${translate("common.delete")}
           </button>
         </div>
       </div>

@@ -47,6 +47,7 @@ async function loadSettingsController(settingsManager, overrides = {}) {
     const LAYER_COLOR_DEFAULTS = ${JSON.stringify(LAYER_COLOR_DEFAULTS)}
     const SettingsManager = globalThis.__settingsManagerTestDouble
     const getMapStyle = globalThis.__settingsManagerGetMapStyle
+    const translate = (key) => key
     ${basemapUrlSource.replace(/^export /gm, "")}
   `
   const url = `data:text/javascript;base64,${Buffer.from(`${dependencies}\n${withoutImports}`).toString("base64")}`

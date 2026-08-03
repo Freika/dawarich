@@ -1,4 +1,5 @@
 import Flash from "controllers/flash_controller"
+import { translate } from "i18n"
 
 // Add custom CSS for popup styling
 const addPopupStyles = () => {
@@ -97,14 +98,14 @@ export function handleAreaCreated(areasLayer, layer, apiKey) {
   const formHtml = `
     <div class="card w-96 bg-base-100 border border-base-300 shadow-xl">
       <div class="card-body">
-        <h2 class="card-title text-gray-500">New Area</h2>
+        <h2 class="card-title text-gray-500">${translate("areas.new")}</h2>
         <form id="circle-form" class="space-y-4">
           <div class="form-control">
             <input type="text"
                    id="circle-name"
                    name="area[name]"
                    class="input input-bordered input-primary w-full bg-base-200 text-base-content placeholder-base-content/70 border-base-300 focus:border-primary focus:bg-base-100"
-                   placeholder="Enter area name"
+                   placeholder="${translate("areas.enter_name")}"
                    autofocus
                    required>
           </div>
@@ -115,9 +116,9 @@ export function handleAreaCreated(areasLayer, layer, apiKey) {
             <button type="button"
                     class="btn btn-outline btn-neutral text-base-content border-base-300 hover:bg-base-200"
                     onclick="this.closest('.leaflet-popup').querySelector('.leaflet-popup-close-button').click()">
-              Cancel
+              ${translate("common.cancel")}
             </button>
-            <button type="button" id="save-area-btn" class="btn btn-primary">Save Area</button>
+            <button type="button" id="save-area-btn" class="btn btn-primary">${translate("areas.save")}</button>
           </div>
         </form>
       </div>
@@ -207,14 +208,14 @@ export function saveArea(formData, areasLayer, layer, apiKey) {
         <div class="card-body">
           <h3 class="card-title text-base-content text-lg">${data.name}</h3>
           <div class="space-y-2 text-base-content/80">
-            <p><span class="font-medium text-base-content">Radius:</span> ${Math.round(data.radius)} meters</p>
+            <p><span class="font-medium text-base-content">${translate("map_info.radius")}:</span> ${translate("map_info.meters", { count: Math.round(data.radius) })}</p>
           </div>
           <div class="card-actions justify-end mt-4">
             <button class="btn btn-sm btn-error delete-area" data-id="${data.id}">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
               </svg>
-              Delete
+              ${translate("common.delete")}
             </button>
           </div>
         </div>
@@ -262,7 +263,7 @@ export function deleteArea(id, areasLayer, layer, apiKey) {
     .then((_data) => {
       areasLayer.removeLayer(layer) // Remove the layer from the areas layer group
 
-      Flash.show("notice", `Area was successfully deleted!`)
+      Flash.show("notice", translate("areas.deleted"))
     })
     .catch((error) => {
       console.error("There was a problem with the delete request:", error)
@@ -322,22 +323,22 @@ export function fetchAndDrawAreas(areasLayer, apiKey) {
               <div class="space-y-3">
                 <div class="stats stats-vertical shadow bg-base-200">
                   <div class="stat py-2">
-                    <div class="stat-title text-base-content/70 text-sm">Radius</div>
-                    <div class="stat-value text-base-content text-lg">${Math.round(radius)} meters</div>
+                    <div class="stat-title text-base-content/70 text-sm">${translate("map_info.radius")}</div>
+                    <div class="stat-value text-base-content text-lg">${translate("map_info.meters", { count: Math.round(radius) })}</div>
                   </div>
                   <div class="stat py-2">
-                    <div class="stat-title text-base-content/70 text-sm">Center</div>
+                    <div class="stat-title text-base-content/70 text-sm">${translate("map_info.center")}</div>
                     <div class="stat-value text-base-content text-sm">[${lat.toFixed(4)}, ${lng.toFixed(4)}]</div>
                   </div>
                 </div>
               </div>
               <div class="card-actions justify-between items-center mt-6">
-                <div class="badge badge-primary badge-outline">Area ${area.id}</div>
+                <div class="badge badge-primary badge-outline">${translate("map_info.area_number", { id: area.id })}</div>
                 <button class="btn btn-error btn-sm delete-area" data-id="${area.id}">
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                   </svg>
-                  Delete
+                  ${translate("common.delete")}
                 </button>
               </div>
             </div>
@@ -360,7 +361,7 @@ export function fetchAndDrawAreas(areasLayer, apiKey) {
               deleteButton.addEventListener("click", (e) => {
                 e.preventDefault()
                 e.stopPropagation()
-                if (confirm("Are you sure you want to delete this area?")) {
+                if (confirm(translate("areas.confirm_delete"))) {
                   deleteArea(area.id, areasLayer, circle, apiKey)
                 }
               })

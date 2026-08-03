@@ -1,15 +1,15 @@
-Your <%= Date::MONTHNAMES[@digest.month] %> <%= @digest.year %> in review
+<%= t('.month_year_in_review', month: l(Date.new(@digest.year, @digest.month, 1), format: :month_name), year: @digest.year) %>
 ─────────────────────────
 
-Here's what your location history looked like last month.
+<%= t('.here_s_what_your_location_history_looked_like_last_month') %>
 
-OVERVIEW
-  Distance       <%= distance_with_unit(@digest.distance, @distance_unit) %>
-  Active days    <%= @active_days %>
-  Countries      <%= @digest.time_spent_by_location.to_h['countries'].to_a.size %>
-  Cities         <%= @digest.time_spent_by_location.to_h['cities'].to_a.size %>
+<%= t('.overview') %>
+  <%= t('.distance') %>       <%= distance_with_unit(@digest.distance, @distance_unit) %>
+  <%= t('.active_days') %>    <%= @active_days %>
+  <%= t('.countries') %>      <%= @digest.time_spent_by_location.to_h['countries'].to_a.size %>
+  <%= t('.cities') %>         <%= @digest.time_spent_by_location.to_h['cities'].to_a.size %>
 
-WEEKLY PATTERN
+<%= t('.weekly_pattern') %>
 <%= ascii_hbar(
   @weekday_totals,
   labels: %w[Mon Tue Wed Thu Fri Sat Sun],
@@ -17,7 +17,7 @@ WEEKLY PATTERN
   suffix: " #{@distance_unit}"
 ) %>
 
-DAILY DISTANCE
+<%= t('.daily_distance') %>
 <%= ascii_sparkline(
   (1..31).map { |d| @daily_distances[d.to_s].to_f }
          .reject(&:zero?)
@@ -25,28 +25,28 @@ DAILY DISTANCE
 ) %>
 
 <% if @top_countries.any? %>
-TOP COUNTRIES
+<%= t('.top_countries') %>
 <%= ascii_ranked_list(@top_countries, value_key: 'minutes', label_key: 'name', width: 20, format: ->(m) { "#{(m.to_f / 60).round}h" }) %>
 
 <% end %>
 <% if @top_cities.any? %>
-TOP CITIES
+<%= t('.top_cities') %>
 <%= ascii_ranked_list(@top_cities.first(5), value_key: 'minutes', label_key: 'name', width: 20, format: ->(m) { "#{(m.to_f / 60).round}h" }) %>
 
 <% end %>
 <% if @first_countries.any? || @first_cities.any? %>
-FIRST VISITS THIS MONTH
-<% @first_countries.first(2).each do |c| %>→ <%= c %>  (new country)
-<% end %><% @first_cities.first(3 - @first_countries.first(2).size).each do |c| %>→ <%= c %>  (new city)
+<%= t('.first_visits_this_month') %>
+<% @first_countries.first(2).each do |country| %><%= t('.new_country_line', country: country) %>
+<% end %><% @first_cities.first(3 - @first_countries.first(2).size).each do |city| %><%= t('.new_city_line', city: city) %>
 <% end %>
 <% end %>
 <% if @digest.year_over_year.to_h['distance_change_percent'].present? %>
-VS PREVIOUS MONTH
-  Distance  <%= ascii_trend_from_pct(@digest.distance, @digest.year_over_year['distance_change_percent']) %>
+<%= t('.vs_previous_month') %>
+  <%= t('.distance') %>  <%= ascii_trend_from_pct(@digest.distance, @digest.year_over_year['distance_change_percent']) %>
 
 <% end %>
-→ View full insights: <%= insights_url(**digest_utm(campaign: 'monthly_digest', content: 'view_insights')) %>
+<%= t('.view_full_insights') %> <%= insights_url(**digest_utm(campaign: 'monthly_digest', content: 'view_insights')) %>
 
 ─────────────────────────────────────────
-You're receiving this because monthly digest emails are on.
-Manage email preferences: <%= settings_general_index_url(anchor: 'email-digests', **digest_utm(campaign: 'monthly_digest', content: 'manage_preferences')) %>
+<%= t('.you_re_receiving_this_because_monthly_digest_emails_are_on_3') %>
+<%= t('.manage_email_preferences_2') %> <%= settings_general_index_url(anchor: 'email-digests', **digest_utm(campaign: 'monthly_digest', content: 'manage_preferences')) %>

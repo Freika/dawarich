@@ -11,18 +11,18 @@
   <% if suggested_count.to_i.positive? %>
     <div class="timeline-bulk-banner">
       <span class="timeline-bulk-banner__text">
-        <%= pluralize(suggested_count, 'suggestion') %> waiting
+        <%= t('.suggestions_waiting', count: suggested_count) %>
       </span>
       <div class="timeline-bulk-banner__actions">
-        <%= button_to 'Confirm all',
+        <%= button_to t('.confirm_all'),
                       bulk_update_visits_path(status: :confirmed, source_status: :suggested, date: date),
                       method: :patch,
                       data: { testid: 'bulk-confirm-day' },
                       class: 'btn btn-xs btn-success' %>
-        <%= button_to 'Delete all',
+        <%= button_to t('.delete_all'),
                       bulk_destroy_visits_path(source_status: :suggested, date: date),
                       method: :delete,
-                      data: { turbo_confirm: "Delete all #{pluralize(suggested_count, 'suggested visit')} for this day? Your location points stay." },
+                      data: { turbo_confirm: t('.delete_all_suggestions', count: suggested_count) },
                       class: 'btn btn-xs btn-outline btn-error' %>
       </div>
     </div>

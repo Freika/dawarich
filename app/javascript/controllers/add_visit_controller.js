@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { translate } from "i18n"
 import L from "leaflet"
 import {
   setAddVisitButtonActive,
@@ -141,7 +142,10 @@ export default class extends Controller {
       }
     }, 100)
 
-    Flash.show("notice", "Click on the map to place a visit")
+    Flash.show(
+      "notice",
+      translate("messages.click_on_the_map_to_place_a_visit"),
+    )
   }
 
   exitAddVisitMode(button) {
@@ -219,21 +223,21 @@ export default class extends Controller {
     // Create form HTML using DaisyUI classes for automatic theme support
     const formHTML = `
       <div class="visit-form" style="min-width: 280px;">
-        <h3 class="text-base font-semibold mb-4">Add New Visit</h3>
+        <h3 class="text-base font-semibold mb-4">${translate("visits.add_new")}</h3>
 
         <form id="add-visit-form" class="space-y-3">
           <div class="form-control">
             <label for="visit-name" class="label">
-              <span class="label-text font-medium">Name:</span>
+              <span class="label-text font-medium">${translate("common.name")}:</span>
             </label>
             <input type="text" id="visit-name" name="name" required
                    class="input input-bordered w-full"
-                   placeholder="Enter visit name">
+                   placeholder="${translate("visits.enter_name")}">
           </div>
 
           <div class="form-control">
             <label for="visit-start" class="label">
-              <span class="label-text font-medium">Start Time:</span>
+              <span class="label-text font-medium">${translate("visits.start_time")}:</span>
             </label>
             <input type="datetime-local" id="visit-start" name="started_at" required value="${startTime}"
                    max="9999-12-31T23:59" class="input input-bordered w-full">
@@ -241,7 +245,7 @@ export default class extends Controller {
 
           <div class="form-control">
             <label for="visit-end" class="label">
-              <span class="label-text font-medium">End Time:</span>
+              <span class="label-text font-medium">${translate("visits.end_time")}:</span>
             </label>
             <input type="datetime-local" id="visit-end" name="ended_at" required value="${endTime}"
                    max="9999-12-31T23:59" class="input input-bordered w-full">
@@ -252,10 +256,10 @@ export default class extends Controller {
 
           <div class="flex gap-2 mt-4">
             <button type="submit" class="btn btn-success flex-1">
-              Create Visit
+              ${translate("visits.create")}
             </button>
             <button type="button" id="cancel-visit" class="btn btn-error flex-1">
-              Cancel
+              ${translate("common.cancel")}
             </button>
           </div>
         </form>
@@ -322,7 +326,10 @@ export default class extends Controller {
     const endTime = new Date(visitData.visit.ended_at)
 
     if (endTime <= startTime) {
-      Flash.show("error", "End time must be after start time")
+      Flash.show(
+        "error",
+        translate("messages.end_time_must_be_after_start_time"),
+      )
       return
     }
 
@@ -330,7 +337,7 @@ export default class extends Controller {
     const submitButton = form.querySelector('button[type="submit"]')
     const originalText = submitButton.textContent
     submitButton.disabled = true
-    submitButton.textContent = "Creating..."
+    submitButton.textContent = translate("common.creating")
 
     try {
       const response = await fetch(`/api/v1/visits`, {
@@ -348,7 +355,7 @@ export default class extends Controller {
       if (response.ok) {
         Flash.show(
           "notice",
-          `Visit "${visitData.visit.name}" created successfully!`,
+          translate("visits.created", { name: visitData.visit.name }),
         )
 
         // Store the created visit data
@@ -364,12 +371,15 @@ export default class extends Controller {
         )
       } else {
         const errorMessage =
-          data.error || data.message || "Failed to create visit"
+          data.error || data.message || translate("visits.create_failed")
         Flash.show("error", errorMessage)
       }
     } catch (error) {
       console.error("Error creating visit:", error)
-      Flash.show("error", "Network error: Failed to create visit")
+      Flash.show(
+        "error",
+        translate("messages.network_error_failed_to_create_visit"),
+      )
     } finally {
       // Re-enable form
       submitButton.disabled = false

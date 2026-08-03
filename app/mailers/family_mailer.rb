@@ -9,7 +9,7 @@ class FamilyMailer < ApplicationMailer
 
     mail(
       to: @invitation.email,
-      subject: "🎉 You've been invited to join #{@family.name} on Dawarich!"
+      subject: I18n.t('mailers.family.invitation.subject', family: @family.name)
     )
   end
 
@@ -21,7 +21,7 @@ class FamilyMailer < ApplicationMailer
 
     mail(
       to: @target_user.email,
-      subject: "📍 #{@requester.email} is requesting your location on Dawarich"
+      subject: I18n.t('mailers.family.location_request.subject', requester: @requester.email)
     )
   end
 
@@ -31,7 +31,7 @@ class FamilyMailer < ApplicationMailer
 
     mail(
       to: @family.owner.email,
-      subject: "👪 #{@user.name} has joined your family #{@family.name} on Dawarich!"
+      subject: I18n.t('mailers.family.member_joined.subject', user: @user.name, family: @family.name)
     )
   end
 end

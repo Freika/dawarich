@@ -1,3 +1,4 @@
+import { translate } from "i18n"
 // javascript/maps/photos.js
 
 import Flash from "controllers/flash_controller"
@@ -90,7 +91,7 @@ export async function fetchAndDisplayPhotos(
     console.log("Photos loading completed successfully")
   } catch (error) {
     console.error("Error fetching photos:", error)
-    Flash.show("error", "Failed to fetch photos")
+    Flash.show("error", translate("messages.failed_to_fetch_photos"))
 
     if (retryCount < MAX_RETRIES) {
       console.log(
@@ -103,7 +104,10 @@ export async function fetchAndDisplayPhotos(
         )
       }, RETRY_DELAY)
     } else {
-      Flash.show("error", "Failed to fetch photos after multiple attempts")
+      Flash.show(
+        "error",
+        translate("messages.failed_to_fetch_photos_after_multiple_attempts"),
+      )
     }
   } finally {
     map.removeControl(loadingControl)
@@ -186,10 +190,10 @@ export function createPhotoMarker(photo, userSettings, photoMarkers, apiKey) {
             alt="${photo.originalFileName}">
       </a>
       <h3 class="font-bold">${photo.originalFileName}</h3>
-      <p>Taken: ${formatDate(photo.localDateTime, userSettings.timezone)}</p>
-      <p>Location: ${photo.city}, ${photo.state}, ${photo.country}</p>
-      <p>Source: <a href="${source_url}" target="_blank">${photo.source}</a></p>
-      ${photo.type === "VIDEO" ? "🎥 Video" : "📷 Photo"}
+      <p>${translate("map_info.taken")}: ${formatDate(photo.localDateTime, userSettings.timezone)}</p>
+      <p>${translate("map_info.location")}: ${photo.city}, ${photo.state}, ${photo.country}</p>
+      <p>${translate("map_info.source")}: <a href="${source_url}" target="_blank">${photo.source}</a></p>
+      ${photo.type === "VIDEO" ? `🎥 ${translate("map_info.video")}` : `📷 ${translate("map_info.photo")}`}
     </div>
   `
   marker.bindPopup(popupContent)

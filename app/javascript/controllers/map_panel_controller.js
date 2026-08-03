@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { translate } from "i18n"
 
 // Module-level flag so the document-level keyboard shortcuts and tab-change
 // mirror listeners are only bound once, even when multiple map-panel
@@ -15,13 +16,13 @@ export default class extends Controller {
   static targets = ["tabButton", "tabContent", "title"]
 
   // Tab title mappings
-  static titles = {
-    search: "Search",
-    layers: "Map Layers",
-    "timeline-feed": "Timeline",
-    tools: "Tools",
-    links: "Links",
-    settings: "Settings",
+  static titleKeys = {
+    search: "map_panel.search",
+    layers: "map_panel.layers",
+    "timeline-feed": "map_panel.timeline",
+    tools: "map_panel.tools",
+    links: "map_panel.links",
+    settings: "map_panel.settings",
   }
 
   connect() {
@@ -272,7 +273,8 @@ export default class extends Controller {
 
     // Update title
     if (this.hasTitleTarget) {
-      this.titleTarget.textContent = this.constructor.titles[tabName] || tabName
+      const titleKey = this.constructor.titleKeys[tabName]
+      this.titleTarget.textContent = titleKey ? translate(titleKey) : tabName
     }
 
     // Toggle Timeline expansion on panel + container

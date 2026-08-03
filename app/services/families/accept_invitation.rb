@@ -14,7 +14,9 @@ module Families
       return false unless can_accept?
 
       if user.in_family?
-        @error_message = 'You must leave your current family before joining a new one.'
+        @error_message = I18n.t(
+          'services.families.accept_invitation.you_must_leave_your_current_family_before_joining_a_new'
+        )
 
         return false
       end
@@ -48,7 +50,7 @@ module Families
     def validate_invitation
       return true if invitation.can_be_accepted?
 
-      @error_message = 'This invitation is no longer valid or has expired.'
+      @error_message = I18n.t('services.families.accept_invitation.this_invitation_is_no_longer_valid_or_has_expired')
 
       false
     end
@@ -56,7 +58,7 @@ module Families
     def validate_email_match
       return true if invitation.email == user.email
 
-      @error_message = 'This invitation is not for your email address.'
+      @error_message = I18n.t('services.families.accept_invitation.this_invitation_is_not_for_your_email_address')
 
       false
     end
@@ -64,7 +66,7 @@ module Families
     def validate_family_plan
       return true if DawarichSettings.family_feature_available_for?(invitation.family.owner)
 
-      @error_message = "This family's plan is no longer active."
+      @error_message = I18n.t('services.families.accept_invitation.this_family_s_plan_is_no_longer_active')
 
       false
     end
@@ -72,7 +74,9 @@ module Families
     def validate_family_capacity
       return true unless invitation.family.full?
 
-      @error_message = 'This family has reached the maximum number of members.'
+      @error_message = I18n.t(
+        'services.families.accept_invitation.this_family_has_reached_the_maximum_number_of_members'
+      )
 
       false
     end
@@ -98,8 +102,9 @@ module Families
       Notification.create!(
         user: user,
         kind: :info,
-        title: 'Welcome to Family!',
-        content: "You've joined the family '#{invitation.family.name}'"
+        title: I18n.t('services.families.accept_invitation.welcome_to_family'),
+        content: I18n.t('services.families.accept_invitation.you_ve_joined_the_family_name',
+                        name: invitation.family.name)
       )
     end
 
@@ -107,8 +112,8 @@ module Families
       Notification.create!(
         user: invitation.family.creator,
         kind: :info,
-        title: 'New Family Member!',
-        content: "#{user.email} has joined your family"
+        title: I18n.t('services.families.accept_invitation.new_family_member'),
+        content: I18n.t('services.families.accept_invitation.email_has_joined_your_family', email: user.email)
       )
     rescue StandardError => e
       ExceptionReporter.call(e, "Unexpected error in Families::AcceptInvitation: #{e.message}")
@@ -119,14 +124,16 @@ module Families
         if error.record&.errors&.any?
           error.record.errors.full_messages.first
         else
-          "Failed to join family: #{error.message}"
+          I18n.t('services.families.accept_invitation.failed_to_join', message: error.message)
         end
     end
 
     def handle_generic_error(error)
       ExceptionReporter.call(error, "Unexpected error in Families::AcceptInvitation: #{error.message}")
 
-      @error_message = 'An unexpected error occurred while joining the family. Please try again'
+      @error_message = I18n.t(
+        'services.families.accept_invitation.an_unexpected_error_occurred_while_joining_the_family_please_try'
+      )
     end
   end
 end

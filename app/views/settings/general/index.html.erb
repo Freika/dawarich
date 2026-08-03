@@ -1,7 +1,7 @@
-<% content_for :title, "General settings" %>
+<% content_for :title, t('.general_settings') %>
 
 <div class="min-h-content w-full my-5">
-  <%= render 'shared/page_header', title: 'General settings' %>
+  <%= render 'shared/page_header', title: t('.general_settings') %>
   <%= render 'settings/navigation' %>
 
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -12,7 +12,7 @@
             <!-- Email Preferences Section -->
             <div id="email-digests">
               <h2 class="text-2xl font-bold mb-4 flex items-center">
-                <%= icon 'mail', class: "text-primary mr-2" %> Email Preferences
+                <%= icon 'mail', class: "text-primary mr-2" %> <%= t('.email_preferences') %>
               </h2>
               <div class="bg-base-100 p-5 rounded-lg shadow-sm space-y-4">
                 <div class="form-control">
@@ -21,9 +21,9 @@
                                     checked: current_user.safe_settings.monthly_digest_emails_enabled?,
                                     class: "toggle toggle-primary" %>
                     <div>
-                      <span class="label-text font-medium">Monthly Digest Emails</span>
+                      <span class="label-text font-medium"><%= t('.monthly_digest_emails') %></span>
                       <p class="text-sm text-base-content/70 mt-1">
-                        Summary of your last month, sent on the 2nd.
+                        <%= t('.summary_of_your_last_month_sent_on_the_2nd') %>
                       </p>
                     </div>
                   </label>
@@ -34,9 +34,9 @@
                                     checked: current_user.safe_settings.yearly_digest_emails_enabled?,
                                     class: "toggle toggle-primary" %>
                     <div>
-                      <span class="label-text font-medium">Year-End Digest Emails</span>
+                      <span class="label-text font-medium"><%= t('.year_end_digest_emails') %></span>
                       <p class="text-sm text-base-content/70 mt-1">
-                        Receive an annual summary on January 2nd with your year in review.
+                        <%= t('.receive_an_annual_summary_on_january_2nd_with_your_year') %>
                       </p>
                     </div>
                   </label>
@@ -47,9 +47,9 @@
                                     checked: current_user.safe_settings.news_emails_enabled?,
                                     class: "toggle toggle-primary" %>
                     <div>
-                      <span class="label-text font-medium">News & Updates</span>
+                      <span class="label-text font-medium"><%= t('.news_updates') %></span>
                       <p class="text-sm text-base-content/70 mt-1">
-                        Receive occasional emails about new features and important updates
+                        <%= t('.receive_occasional_emails_about_new_features_and_important_updates') %>
                       </p>
                     </div>
                   </label>
@@ -60,12 +60,12 @@
             <!-- Timezone Section -->
             <div>
               <h2 class="text-2xl font-bold mb-4 flex items-center">
-                <%= icon 'clock', class: "text-primary mr-2" %> Timezone
+                <%= icon 'clock', class: "text-primary mr-2" %> <%= t('.timezone') %>
               </h2>
               <div class="bg-base-100 p-5 rounded-lg shadow-sm space-y-4">
                 <div class="form-control">
                   <label class="label">
-                    <span class="label-text font-medium">Your timezone</span>
+                    <span class="label-text font-medium"><%= t('.your_timezone') %></span>
                   </label>
                   <%= f.select :timezone,
                                ActiveSupport::TimeZone.all
@@ -76,7 +76,7 @@
                                { selected: current_user.timezone },
                                class: "select select-bordered w-full" %>
                   <p class="text-sm text-base-content/70 mt-1">
-                    All dates and times will be displayed in this timezone
+                    <%= t('.all_dates_and_times_will_be_displayed_in_this_timezone') %>
                   </p>
                 </div>
               </div>
@@ -86,7 +86,7 @@
               <!-- Badge Toggle (only for verified supporters) -->
               <div>
                 <h2 class="text-2xl font-bold mb-4 flex items-center">
-                  <%= icon 'gem', class: 'mr-2 text-sky-400' %> Supporter Badge
+                  <%= icon 'gem', class: 'mr-2 text-sky-400' %> <%= t('.supporter_badge') %>
                 </h2>
                 <div class="bg-base-100 p-5 rounded-lg shadow-sm space-y-4">
                   <div class="form-control">
@@ -95,9 +95,9 @@
                                       checked: current_user.safe_settings.show_supporter_badge?,
                                       class: "toggle toggle-primary" %>
                       <div>
-                        <span class="label-text font-medium">Show supporter badge in navbar</span>
+                        <span class="label-text font-medium"><%= t('.show_supporter_badge_in_navbar') %></span>
                         <p class="text-sm text-base-content/70 mt-1">
-                          Display a gem icon next to your profile to show your supporter status
+                          <%= t('.display_a_gem_icon_next_to_your_profile_to_show') %>
                         </p>
                       </div>
                     </label>
@@ -107,7 +107,7 @@
             <% end %>
           </div>
           <div class="card-actions justify-end mt-6">
-            <%= f.submit 'Save changes', class: "btn btn-primary" %>
+            <%= f.submit t('.save_changes'), class: "btn btn-primary" %>
           </div>
         </div>
       <% end %>

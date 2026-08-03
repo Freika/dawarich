@@ -6,10 +6,14 @@ module Tracks::SegmentsHelper
     enabled = settings.enabled_transportation_modes
     current_mode = segment.transportation_mode.to_s
 
-    options = enabled.map { |m| [m.titleize, m] }
+    options = enabled.map { |mode| [I18n.t("transportation_modes.#{mode}"), mode] }
     return options if enabled.include?(current_mode)
 
-    options.unshift(["#{current_mode.titleize} (disabled in settings)", current_mode])
+    options.unshift([
+                      I18n.t('helpers.tracks.segments.mode_disabled',
+                             mode: I18n.t("transportation_modes.#{current_mode}")),
+                      current_mode
+                    ])
   end
 
   def mode_emoji(mode)
@@ -27,9 +31,9 @@ module Tracks::SegmentsHelper
     distance_km = segment.distance / 1000.0
     case current_user_safe_settings&.distance_unit
     when 'mi'
-      "#{(distance_km * 0.621371).round(2)} mi"
+      I18n.t('units.miles', value: (distance_km * 0.621371).round(2))
     else
-      "#{distance_km.round(2)} km"
+      I18n.t('units.kilometers', value: distance_km.round(2))
     end
   end
 
@@ -37,8 +41,8 @@ module Tracks::SegmentsHelper
     return '-' unless segment.duration
 
     minutes = segment.duration / 60
-    return "#{minutes} min" if minutes < 60
+    return I18n.t('units.minutes', value: minutes) if minutes < 60
 
-    "#{minutes / 60}h #{minutes % 60}m"
+    I18n.t('units.hours_minutes_compact', hours: minutes / 60, minutes: minutes % 60)
   end
 end

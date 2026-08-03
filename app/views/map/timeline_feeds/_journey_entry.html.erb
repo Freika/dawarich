@@ -18,12 +18,12 @@
   config = mode_config[mode] || mode_config['unknown']
   continuation_date = entry[:continuation_of_date]
   if continuation_date
-    leg_time = Time.zone.parse(entry[:ended_at]).strftime('%H:%M')
+    leg_time = l(Time.zone.parse(entry[:ended_at]), format: :hour_minute)
     duration = format_duration_short(entry[:day_duration] || entry[:duration])
     day_distance = entry[:day_distance] || entry[:distance]
     distance_text = day_distance > 0 ? "#{day_distance} #{entry[:distance_unit]} of #{entry[:distance]} #{entry[:distance_unit]}" : nil
   else
-    leg_time = Time.zone.parse(entry[:started_at]).strftime('%H:%M')
+    leg_time = l(Time.zone.parse(entry[:started_at]), format: :hour_minute)
     duration = format_duration_short(entry[:duration])
     distance_text = entry[:distance] > 0 ? "#{entry[:distance]} #{entry[:distance_unit]}" : nil
   end
@@ -51,16 +51,16 @@
     </div>
     <div class="journey-leg__summary">
       <% if continuation_date %>
-        <span class="journey-leg__verb">continued from <%= Date.parse(continuation_date).strftime('%b %-d') %>, arrived</span>
+        <span class="journey-leg__verb"><%= t('.continued_from_date_arrived', date: l(Date.parse(continuation_date), format: :short_month_day)) %></span>
       <% else %>
         <% if config[:emoji] %><span class="journey-leg__emoji"><%= config[:emoji] %></span><% end %>
         <span class="journey-leg__verb"><%= config[:verb] %></span>
       <% end %>
       <% if distance_text %>
-        <span class="journey-leg__sep">&middot;</span>
+        <span class="journey-leg__sep"><%= t('.middot') %></span>
         <span><%= distance_text %></span>
       <% end %>
-      <span class="journey-leg__sep">&middot;</span>
+      <span class="journey-leg__sep"><%= t('.middot') %></span>
       <span><%= duration %></span>
     </div>
     <% if track_id %>

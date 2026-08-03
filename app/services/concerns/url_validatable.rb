@@ -60,22 +60,26 @@ module UrlValidatable
     return if url.blank?
 
     uri = URI.parse(url)
-    raise BlockedUrlError, "Invalid URL scheme: #{uri.scheme}" unless %w[http https].include?(uri.scheme)
-    raise BlockedUrlError, 'URL must include a host' if uri.host.blank?
+    unless %w[http https].include?(uri.scheme)
+      raise BlockedUrlError, I18n.t('services.concerns.url_validatable.invalid_scheme', scheme: uri.scheme)
+    end
+    raise BlockedUrlError, I18n.t('services.concerns.url_validatable.host_required') if uri.host.blank?
 
     # Cloud refuses URLs that embed credentials. Self-hosters legitimately
     # use http://user:pass@host — homelab Immich behind nginx basic-auth
     # is a real config we don't want to break.
     if uri.userinfo.present? && !DawarichSettings.self_hosted?
-      raise BlockedUrlError, 'URL must not embed credentials (user:pass@host)'
+      raise BlockedUrlError, I18n.t('services.concerns.url_validatable.embedded_credentials')
     end
 
     ip = IPAddr.new(Resolv.getaddress(uri.host))
-    raise BlockedUrlError, 'URL resolves to a blocked address' if blocked_ranges.any? { |range| range.include?(ip) }
+    if blocked_ranges.any? { |range| range.include?(ip) }
+      raise BlockedUrlError, I18n.t('services.concerns.url_validatable.blocked_address')
+    end
   rescue URI::InvalidURIError
-    raise BlockedUrlError, 'Invalid URL format'
+    raise BlockedUrlError, I18n.t('services.concerns.url_validatable.invalid_format')
   rescue Resolv::ResolvError
-    raise BlockedUrlError, "Could not resolve hostname: #{uri.host}"
+    raise BlockedUrlError, I18n.t('services.concerns.url_validatable.unresolvable_host', host: uri.host)
   end
 
   def blocked_ranges

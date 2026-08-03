@@ -9,8 +9,9 @@ class Api::V1::Users::TwoFactorController < ApiController
 
   def setup
     if current_api_user.otp_required_for_login?
+      message = I18n.t('controllers.api.v1.users.two_factor.disable_2fa_first_to_re_provision_the_secret')
       render json: { error: 'two_factor_already_enabled',
-                     message: 'Disable 2FA first to re-provision the secret.' },
+                     message: message },
              status: :conflict
       return
     end
@@ -49,7 +50,7 @@ class Api::V1::Users::TwoFactorController < ApiController
       otp_required_for_login: false,
       otp_backup_codes: []
     )
-    render json: { message: 'Two-factor authentication disabled' }
+    render json: { message: I18n.t('controllers.api.v1.users.two_factor.two_factor_authentication_disabled') }
   end
 
   private
@@ -63,15 +64,17 @@ class Api::V1::Users::TwoFactorController < ApiController
   def ensure_otp_or_backup_provided
     return if consume_otp_or_backup!
 
+    message = I18n.t('controllers.api.v1.users.two_factor.provide_a_valid_two_factor_code_or_backup_code_to')
     render json: { error: 'otp_required',
-                   message: 'Provide a valid two-factor code (or backup code) to disable 2FA.' },
+                   message: message },
            status: :unauthorized
   end
 
   def ensure_password_provided
     return if valid_password?
 
-    render json: { error: 'password_required', message: 'Provide your current password.' },
+    message = I18n.t('controllers.api.v1.users.two_factor.provide_your_current_password')
+    render json: { error: 'password_required', message: message },
            status: :unauthorized
   end
 

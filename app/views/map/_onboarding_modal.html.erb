@@ -14,9 +14,9 @@
       <%# ═══ Choice Screen ═══ %>
       <div data-onboarding-modal-target="choiceScreen">
         <div class="text-center mb-6">
-          <h3 class="text-2xl font-bold text-primary mb-2">Welcome to Dawarich!</h3>
+          <h3 class="text-2xl font-bold text-primary mb-2"><%= t('.welcome_to_dawarich') %></h3>
           <p class="text-base-content/70">
-            Your map starts with your next step — literally.
+            <%= t('.your_map_starts_with_your_next_step_literally') %>
           </p>
         </div>
 
@@ -27,11 +27,11 @@
             <div class="card-body p-5">
               <div class="flex items-center gap-2 mb-2">
                 <%= icon 'smartphone', class: 'w-6 h-6 text-primary' %>
-                <h4 class="text-lg font-semibold">Start tracking now</h4>
-                <span class="badge badge-primary badge-sm">2 minutes</span>
+                <h4 class="text-lg font-semibold"><%= t('.start_tracking_now') %></h4>
+                <span class="badge badge-primary badge-sm"><%= t('.minutes') %></span>
               </div>
               <p class="text-sm text-base-content/70">
-                Get the app, scan a QR code, and watch your first points appear on the map today.
+                <%= t('.get_the_app_scan_a_qr_code_and_watch_your') %>
               </p>
             </div>
           </button>
@@ -42,10 +42,10 @@
             <div class="card-body p-5">
               <div class="flex items-center gap-2 mb-2">
                 <%= icon 'file-up', class: 'w-6 h-6 text-secondary' %>
-                <h4 class="text-lg font-semibold">I have data</h4>
+                <h4 class="text-lg font-semibold"><%= t('.i_have_data') %></h4>
               </div>
               <p class="text-sm text-base-content/70">
-                Import Google Takeout, GPX, KML, GeoJSON, or OwnTracks files.
+                <%= t('.import_google_takeout_gpx_kml_geojson_or_owntracks_files') %>
               </p>
             </div>
           </button>
@@ -57,10 +57,10 @@
             <div class="card-body p-5">
               <div class="flex items-center gap-2 mb-2">
                 <%= icon 'map', class: 'w-6 h-6 text-accent' %>
-                <h4 class="text-lg font-semibold">Explore with demo data</h4>
+                <h4 class="text-lg font-semibold"><%= t('.explore_with_demo_data') %></h4>
               </div>
               <p class="text-sm text-base-content/70">
-                Load sample location data (3 days in Berlin) to see what your map could look like. You can delete it anytime.
+                <%= t('.load_sample_location_data_3_days_in_berlin_to_see') %>
               </p>
             </div>
           </button>
@@ -68,7 +68,7 @@
 
         <div class="text-center mt-6">
           <button class="btn btn-ghost btn-sm" data-action="onboarding-modal#dismiss">
-            Skip for now
+            <%= t('.skip_for_now') %>
           </button>
         </div>
       </div>
@@ -79,26 +79,25 @@
           <button class="btn btn-ghost btn-sm btn-circle" data-action="onboarding-modal#showChoice">
             <%= icon 'arrow-left', class: 'w-4 h-4' %>
           </button>
-          <h3 class="text-xl font-bold">Import your data</h3>
+          <h3 class="text-xl font-bold"><%= t('.import_your_data') %></h3>
         </div>
 
         <div class="card bg-base-100 shadow-sm mb-4">
           <div class="card-body p-4">
-            <h4 class="card-title text-sm">Supported formats</h4>
+            <h4 class="card-title text-sm"><%= t('.supported_formats') %></h4>
             <ul class="text-xs space-y-1">
-              <li><strong>Google Maps:</strong> Records.json, Semantic History, Phone Takeout (.json)</li>
-              <li><strong>GPX:</strong> Track files (.gpx)</li>
-              <li><strong>GeoJSON:</strong> Feature collections (.json)</li>
-              <li><strong>OwnTracks:</strong> Recorder files (.rec)</li>
-              <li><strong>KML:</strong> KML files (.kml, .kmz)</li>
+              <li><strong><%= t('.google_maps') %></strong> <%= t('.records_json_semantic_history_phone_takeout_json') %></li>
+              <li><strong><%= t('.gpx') %></strong> <%= t('.track_files_gpx') %></li>
+              <li><strong><%= t('.geojson') %></strong> <%= t('.feature_collections_json') %></li>
+              <li><strong><%= t('.owntracks') %></strong> <%= t('.recorder_files_rec') %></li>
+              <li><strong><%= t('.kml') %></strong> <%= t('.kml_files_kml_kmz') %></li>
             </ul>
             <div class="text-xs text-base-content/60 mt-2">
-              File format is automatically detected during upload.
+              <%= t('.file_format_is_automatically_detected_during_upload') %>
             </div>
             <% if current_user.legacy_trial? %>
               <div class="text-xs text-warning mt-2 font-medium">
-                Trial limitations: Max 5 imports, 10MB per file.
-                Current imports: <%= current_user.imports.count %>/5
+                <%= t('.trial_limitations_max_5_imports_10mb_per_file_current_imports') %> <%= current_user.imports.count %>/5
               </div>
             <% end %>
           </div>
@@ -116,7 +115,7 @@
         } do |form| %>
           <label class="form-control w-full mb-4">
             <div class="label">
-              <span class="label-text">Select one or multiple files</span>
+              <span class="label-text"><%= t('.select_one_or_multiple_files') %></span>
             </div>
             <%= form.file_field :files,
                 multiple: true,
@@ -125,12 +124,12 @@
                 class: "file-input file-input-bordered w-full",
                 data: { upload_target: "input" } %>
             <div class="text-xs text-base-content/60 mt-2">
-              Files will be uploaded directly to storage. Please be patient during upload.
+              <%= t('.files_will_be_uploaded_directly_to_storage_please_be_patient') %>
             </div>
           </label>
 
           <div class="flex justify-end">
-            <%= form.submit "Import files", class: "btn btn-primary",
+            <%= form.submit t('.import_files'), class: "btn btn-primary",
                 data: { upload_target: "submit" } %>
           </div>
         <% end %>
@@ -142,7 +141,7 @@
           <button class="btn btn-ghost btn-sm btn-circle" data-action="onboarding-modal#showChoice">
             <%= icon 'arrow-left', class: 'w-4 h-4' %>
           </button>
-          <h3 class="text-xl font-bold">Start tracking</h3>
+          <h3 class="text-xl font-bold"><%= t('.start_tracking') %></h3>
         </div>
 
         <div class="card bg-base-100 shadow-sm">
@@ -151,7 +150,7 @@
             <div>
               <div class="flex items-center gap-2 mb-2">
                 <div class="badge badge-primary badge-sm">1</div>
-                <h4 class="font-semibold">Download the app</h4>
+                <h4 class="font-semibold"><%= t('.download_the_app') %></h4>
               </div>
               <div class="flex justify-center items-center gap-3 flex-wrap">
                 <%= link_to 'https://apps.apple.com/de/app/dawarich/id6739544999?itscg=30200&itsct=apps_box_badge&mttnsubad=6739544999',
@@ -172,10 +171,10 @@
             <div>
               <div class="flex items-center gap-2 mb-2">
                 <div class="badge badge-primary badge-sm">2</div>
-                <h4 class="font-semibold">Scan QR code to connect</h4>
+                <h4 class="font-semibold"><%= t('.scan_qr_code_to_connect') %></h4>
               </div>
               <p class="text-sm text-base-content/70 mb-3">
-                Scan this QR code with the Dawarich app to automatically configure your connection.
+                <%= t('.scan_this_qr_code_with_the_dawarich_app_to_automatically') %>
               </p>
               <div class="flex justify-center">
                 <div class="bg-white p-3 rounded-lg shadow-inner">
@@ -185,25 +184,24 @@
             </div>
 
             <%# Manual alternative %>
-            <div class="divider text-xs">OR</div>
+            <div class="divider text-xs"><%= t('.or') %></div>
             <p class="text-sm text-base-content/70">
-              Grab your API key from
-              <%= link_to 'Settings', settings_general_index_path, class: 'link link-primary font-medium' %>
-              and follow the
-              <%= link_to 'setup guide', 'https://dawarich.app/docs/tutorials/track-your-location?utm_source=app&utm_medium=referral&utm_campaign=onboarding',
+              <%= t('.grab_your_api_key_from') %>
+              <%= link_to t('.settings'), settings_general_index_path, class: 'link link-primary font-medium' %>
+              <%= t('.and_follow_the') %>
+              <%= link_to t('.setup_guide'), 'https://dawarich.app/docs/tutorials/track-your-location?utm_source=app&utm_medium=referral&utm_campaign=onboarding',
                   class: 'link link-primary font-medium', target: '_blank', rel: 'noopener' %>.
             </p>
 
             <p class="text-xs text-base-content/60">
-              Have old location history, like a Google Takeout? Tracking works right away —
-              you can <button type="button" class="link link-primary" data-action="onboarding-modal#showImport">import your history anytime</button>.
+              <%= t('.have_old_location_history_like_a_google_takeout_tracking_works') %> <button type="button" class="link link-primary" data-action="onboarding-modal#showImport"><%= t('.import_your_history_anytime') %></button>.
             </p>
           </div>
         </div>
 
         <div class="flex justify-end mt-4">
           <button class="btn btn-primary" data-action="onboarding-modal#dismiss">
-            Got it, let's start!
+            <%= t('.got_it_let_s_start') %>
           </button>
         </div>
       </div>
@@ -212,7 +210,7 @@
 
     <%# Modal backdrop %>
     <form method="dialog" class="modal-backdrop">
-      <button>close</button>
+      <button><%= t('.close') %></button>
     </form>
   </dialog>
 </div>

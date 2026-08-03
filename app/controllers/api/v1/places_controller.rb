@@ -100,7 +100,8 @@ module Api
 
       def nearby
         unless params[:latitude].present? && params[:longitude].present?
-          return render json: { error: 'latitude and longitude are required' }, status: :bad_request
+          return render json: { error: I18n.t('controllers.api.v1.places.latitude_and_longitude_are_required') },
+                        status: :bad_request
         end
 
         results = Places::NearbySearch.new(
@@ -115,13 +116,14 @@ module Api
 
       def search
         unless params[:lat].present? && params[:lon].present?
-          return render json: { error: 'lat and lon are required' }, status: :bad_request
+          return render json: { error: I18n.t('controllers.api.v1.places.lat_and_lon_are_required') },
+                        status: :bad_request
         end
 
         lat = params[:lat].to_f
         lon = params[:lon].to_f
         unless lat.between?(-90, 90) && lon.between?(-180, 180)
-          return render json: { error: 'Invalid coordinates' }, status: :bad_request
+          return render json: { error: I18n.t('controllers.api.v1.places.invalid_coordinates') }, status: :bad_request
         end
 
         radius = [[params[:radius]&.to_f || 1.0, 0.01].max, 5.0].min

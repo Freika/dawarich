@@ -6,7 +6,7 @@ class Api::V1::Visits::SelectPlaceController < ApiController
     place = Visits::SelectPlace.new(user: current_api_user, visit: visit, photon: photon_params).call
     render json: serialize_place(place), status: :created
   rescue ActiveRecord::RecordNotFound
-    render json: { error: 'Visit not found' }, status: :not_found
+    render json: { error: I18n.t('controllers.api.v1.visits.select_place.visit_not_found') }, status: :not_found
   rescue ActiveRecord::RecordInvalid, ActionController::ParameterMissing => e
     render json: { error: e.message }, status: :unprocessable_entity
   end

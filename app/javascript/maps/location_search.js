@@ -1,4 +1,6 @@
 // Location search functionality for the map
+
+import { translate } from "i18n"
 import { applyThemeToButton } from "./theme_utils"
 
 class LocationSearch {
@@ -45,7 +47,7 @@ class LocationSearch {
         button.style.display = "flex"
         button.style.alignItems = "center"
         button.style.justifyContent = "center"
-        button.title = "Search locations"
+        button.title = translate("search.locations")
         button.id = "location-search-toggle"
         return button
       },
@@ -93,7 +95,7 @@ class LocationSearch {
       <div class="flex items-center space-x-2">
         <input
           type="text"
-          placeholder="Search locations..."
+          placeholder="${translate("search.locations_placeholder")}"
           class="flex-1 px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
           id="location-search-input"
         />
@@ -107,13 +109,13 @@ class LocationSearch {
 
       <!-- Suggestions dropdown -->
       <div id="location-search-suggestions-panel" class="hidden mt-2 border-t border-gray-200">
-        <div class="bg-gray-50 px-3 py-2 border-b text-xs font-medium text-gray-700">Suggestions</div>
+        <div class="bg-gray-50 px-3 py-2 border-b text-xs font-medium text-gray-700">${translate("search.suggestions")}</div>
         <div id="location-search-suggestions" class="max-h-48 overflow-y-auto border border-gray-200 rounded-b"></div>
       </div>
 
       <!-- Results dropdown -->
       <div id="location-search-results-panel" class="hidden mt-2 border-t border-gray-200">
-        <div class="bg-gray-50 px-3 py-2 border-b text-xs font-medium text-gray-700">Results</div>
+        <div class="bg-gray-50 px-3 py-2 border-b text-xs font-medium text-gray-700">${translate("search.results")}</div>
         <div id="location-search-results" class="border border-gray-200 rounded-b"></div>
       </div>
     `
@@ -337,7 +339,7 @@ class LocationSearch {
     this.resultsContainer.innerHTML = `
       <div class="p-8 text-center">
         <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-        <div class="text-sm text-gray-600 mt-3">Searching for "${this.escapeHtml(this.currentSearchQuery)}"...</div>
+        <div class="text-sm text-gray-600 mt-3">${translate("search.searching_for", { query: this.escapeHtml(this.currentSearchQuery) })}</div>
       </div>
     `
   }
@@ -350,7 +352,7 @@ class LocationSearch {
     this.resultsContainer.innerHTML = `
       <div class="p-8 text-center">
         <div class="text-4xl mb-3">⚠️</div>
-        <div class="text-sm font-medium text-red-600 mb-2">Search Failed</div>
+        <div class="text-sm font-medium text-red-600 mb-2">${translate("search.failed")}</div>
         <div class="text-xs text-gray-500">${this.escapeHtml(message)}</div>
       </div>
     `
@@ -365,8 +367,8 @@ class LocationSearch {
       this.resultsContainer.innerHTML = `
         <div class="p-6 text-center text-gray-500">
           <div class="text-3xl mb-3">📍</div>
-          <div class="text-sm font-medium">No visits found</div>
-          <div class="text-xs mt-1">No visits found for "${this.escapeHtml(this.currentSearchQuery)}"</div>
+          <div class="text-sm font-medium">${translate("visits.none_found")}</div>
+          <div class="text-xs mt-1">${translate("visits.none_found_for", { query: this.escapeHtml(this.currentSearchQuery) })}</div>
         </div>
       `
       return
@@ -377,8 +379,8 @@ class LocationSearch {
 
     let resultsHtml = `
       <div class="p-4 border-b bg-gray-50">
-        <div class="text-sm font-medium text-gray-700">Found ${data.total_locations} location(s)</div>
-        <div class="text-xs text-gray-500 mt-1">for "${this.escapeHtml(this.currentSearchQuery)}"</div>
+        <div class="text-sm font-medium text-gray-700">${translate("search.locations_found", { count: data.total_locations })}</div>
+        <div class="text-xs text-gray-500 mt-1">${translate("search.for_query", { query: this.escapeHtml(this.currentSearchQuery) })}</div>
       </div>
     `
 
@@ -404,9 +406,9 @@ class LocationSearch {
           <div class="font-medium text-sm">${this.escapeHtml(location.place_name)}</div>
           <div class="text-xs text-gray-600 mt-1">${this.escapeHtml(location.address || "")}</div>
           <div class="flex justify-between items-center mt-3">
-            <div class="text-xs text-blue-600">${location.total_visits} visit(s)</div>
+            <div class="text-xs text-blue-600">${translate("selection.visits", { count: location.total_visits })}</div>
             <div class="text-xs text-gray-500">
-              first ${this.formatDateShort(firstVisit.date)}, last ${this.formatDateShort(lastVisit.date)}
+              ${translate("search.first_last", { first: this.formatDateShort(firstVisit.date), last: this.formatDateShort(lastVisit.date) })}
             </div>
           </div>
         </div>
@@ -420,7 +422,7 @@ class LocationSearch {
               <div class="year-toggle p-3 hover:bg-gray-100 cursor-pointer border-b border-gray-200 flex justify-between items-center"
                    data-location-index="${index}" data-year="${year}">
                 <span class="text-sm font-medium text-gray-700">${year}</span>
-                <span class="text-xs text-blue-600">${yearVisits.length} visits</span>
+                <span class="text-xs text-blue-600">${translate("selection.visits", { count: yearVisits.length })}</span>
                 <span class="year-arrow text-gray-400 transition-transform">▶</span>
               </div>
               <div class="year-visits hidden" id="year-${index}-${year}">
@@ -474,7 +476,7 @@ class LocationSearch {
 
   formatDateShort(dateString) {
     const date = new Date(dateString)
-    return date.toLocaleDateString("en-GB", {
+    return date.toLocaleDateString(document.documentElement.lang || undefined, {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
@@ -599,18 +601,18 @@ class LocationSearch {
         <div class="font-semibold text-green-600">${this.escapeHtml(location.place_name)}</div>
         <div class="text-gray-600 mt-1">${this.escapeHtml(location.address || "")}</div>
         <div class="mt-2">
-          <div class="text-xs text-gray-500">Visit Details:</div>
+          <div class="text-xs text-gray-500">${translate("visits.details")}:</div>
           <div class="text-sm">${this.formatDateTime(visit.date)}</div>
-          <div class="text-xs text-gray-500">Duration: ${visit.duration_estimate}</div>
+          <div class="text-xs text-gray-500">${translate("map_info.duration")}: ${visit.duration_estimate}</div>
         </div>
         <div class="mt-3 pt-2 border-t border-gray-200 flex gap-2">
           <button data-action="create-visit"
                   class="text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 flex-1">
-            Create Visit
+            ${translate("visits.create")}
           </button>
           <button data-action="close-popup"
                   class="text-xs text-blue-600 hover:text-blue-800 px-2">
-            Close
+            ${translate("common.close")}
           </button>
         </div>
       </div>
@@ -828,7 +830,7 @@ class LocationSearch {
     this.suggestionsContainer.innerHTML = `
       <div class="p-6 text-center">
         <div class="text-2xl animate-bounce">⏳</div>
-        <div class="text-sm text-gray-500 mt-2">Finding suggestions...</div>
+        <div class="text-sm text-gray-500 mt-2">${translate("search.finding_suggestions")}</div>
       </div>
     `
   }
@@ -931,7 +933,7 @@ class LocationSearch {
     this.resultsContainer.innerHTML = `
       <div class="p-8 text-center">
         <div class="text-3xl animate-bounce">⏳</div>
-        <div class="text-sm text-gray-600 mt-3">Searching visits to</div>
+        <div class="text-sm text-gray-600 mt-3">${translate("search.searching_visits_to")}</div>
         <div class="text-sm font-medium text-gray-800">${this.escapeHtml(locationName)}</div>
       </div>
     `
@@ -967,7 +969,7 @@ class LocationSearch {
       this.displaySearchResults(data)
     } catch (error) {
       console.error("Coordinate search error:", error)
-      this.showError("Failed to search locations. Please try again.")
+      this.showError(translate("search.locations_failed"))
     }
   }
 
@@ -1040,24 +1042,24 @@ class LocationSearch {
     // Create form HTML
     const formHTML = `
       <div class="visit-form" style="min-width: 280px;">
-        <h3 style="margin-top: 0; margin-bottom: 15px; font-size: 16px; color: #333;">Add New Visit</h3>
+        <h3 style="margin-top: 0; margin-bottom: 15px; font-size: 16px; color: #333;">${translate("visits.add_new")}</h3>
 
         <form id="basic-add-visit-form" style="display: flex; flex-direction: column; gap: 10px;">
           <div>
-            <label for="basic-visit-name" style="display: block; margin-bottom: 5px; font-weight: bold; font-size: 14px;">Name:</label>
+            <label for="basic-visit-name" style="display: block; margin-bottom: 5px; font-weight: bold; font-size: 14px;">${translate("common.name")}:</label>
             <input type="text" id="basic-visit-name" name="name" required value="${this.escapeHtml(placeName)}"
                    style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px;"
-                   placeholder="Enter visit name">
+                   placeholder="${translate("visits.enter_name")}">
           </div>
 
           <div>
-            <label for="basic-visit-start" style="display: block; margin-bottom: 5px; font-weight: bold; font-size: 14px;">Start Time:</label>
+            <label for="basic-visit-start" style="display: block; margin-bottom: 5px; font-weight: bold; font-size: 14px;">${translate("visits.start_time")}:</label>
             <input type="datetime-local" id="basic-visit-start" name="started_at" required value="${startTime}"
                    max="9999-12-31T23:59" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px;">
           </div>
 
           <div>
-            <label for="basic-visit-end" style="display: block; margin-bottom: 5px; font-weight: bold; font-size: 14px;">End Time:</label>
+            <label for="basic-visit-end" style="display: block; margin-bottom: 5px; font-weight: bold; font-size: 14px;">${translate("visits.end_time")}:</label>
             <input type="datetime-local" id="basic-visit-end" name="ended_at" required value="${endTime}"
                    max="9999-12-31T23:59" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px;">
           </div>
@@ -1067,10 +1069,10 @@ class LocationSearch {
 
           <div style="display: flex; gap: 10px; margin-top: 15px;">
             <button type="submit" style="flex: 1; background: #28a745; color: white; border: none; padding: 10px; border-radius: 4px; cursor: pointer; font-weight: bold;">
-              Create Visit
+              ${translate("visits.create")}
             </button>
             <button type="button" id="basic-cancel-visit" style="flex: 1; background: #dc3545; color: white; border: none; padding: 10px; border-radius: 4px; cursor: pointer; font-weight: bold;">
-              Cancel
+              ${translate("common.cancel")}
             </button>
           </div>
         </form>
@@ -1136,7 +1138,7 @@ class LocationSearch {
     const endTime = new Date(visitData.visit.ended_at)
 
     if (endTime <= startTime) {
-      alert("End time must be after start time")
+      alert(translate("visits.end_after_start"))
       return
     }
 
@@ -1144,7 +1146,7 @@ class LocationSearch {
     const submitButton = form.querySelector('button[type="submit"]')
     const originalText = submitButton.textContent
     submitButton.disabled = true
-    submitButton.textContent = "Creating..."
+    submitButton.textContent = translate("common.creating")
 
     try {
       const response = await fetch(`/api/v1/visits`, {
@@ -1160,19 +1162,19 @@ class LocationSearch {
       const data = await response.json()
 
       if (response.ok) {
-        alert(`Visit "${visitData.visit.name}" created successfully!`)
+        alert(translate("visits.created", { name: visitData.visit.name }))
         this.map.closePopup(popup)
 
         // Try to refresh visits layer if available
         this.refreshVisitsIfAvailable()
       } else {
         const errorMessage =
-          data.error || data.message || "Failed to create visit"
+          data.error || data.message || translate("visits.create_failed")
         alert(errorMessage)
       }
     } catch (error) {
       console.error("Error creating visit:", error)
-      alert("Network error: Failed to create visit")
+      alert(translate("visits.network_create_error"))
     } finally {
       // Re-enable form
       submitButton.disabled = false

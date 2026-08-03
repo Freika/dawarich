@@ -31,8 +31,8 @@ class Visits::FullHistoryRedetectJob < ApplicationJob
     user_for_notify = defined?(user) ? user : User.find_by(id: user_id)
     if user_for_notify
       notify!(
-        user_for_notify, kind: :warning, title: 'Visit re-detection busy',
-        content: 'Another re-detection is already running. Try again in a few minutes.'
+        user_for_notify, kind: :warning, title: I18n.t('jobs.visits.full_history_redetect_job.visit_re_detection_busy'),
+        content: I18n.t('jobs.visits.full_history_redetect_job.another_re_detection_is_already_running_try_again_in_a')
       )
     end
   rescue StandardError => e
@@ -55,8 +55,8 @@ class Visits::FullHistoryRedetectJob < ApplicationJob
     max_ts = user.points.maximum(:timestamp)
 
     if min_ts.nil?
-      notify!(user, kind: :info, title: 'Visit re-detection',
-                    content: 'No points to re-detect.')
+      notify!(user, kind: :info, title: I18n.t('jobs.visits.full_history_redetect_job.visit_re_detection'),
+                    content: I18n.t('jobs.visits.full_history_redetect_job.no_points_to_re_detect'))
       return
     end
 
@@ -99,13 +99,26 @@ class Visits::FullHistoryRedetectJob < ApplicationJob
     )
 
     if months_failed.empty?
-      notify!(user, kind: :info, title: 'Visit re-detection complete',
-                    content: "#{visits_created} visits across #{months.size} months.")
+      content = I18n.t(
+        'jobs.visits.full_history_redetect_job.visits_created_visits_across_size_months',
+        visits_created: visits_created,
+        size: months.size
+      )
+      notify!(user, kind: :info,
+                    title: I18n.t('jobs.visits.full_history_redetect_job.visit_re_detection_complete'),
+                    content: content)
     else
       ok_months = months.size - months_failed.size
-      notify!(user, kind: :warning, title: 'Visit re-detection partially complete',
-                    content: "#{visits_created} visits across #{ok_months} of #{months.size} months. " \
-                             "#{months_failed.size} month(s) failed; re-run after the cooldown to retry.")
+      content = I18n.t(
+        'jobs.visits.full_history_redetect_job.visits_created_visits_across_ok_months_of_size_months_size',
+        visits_created: visits_created,
+        ok_months: ok_months,
+        size: months.size,
+        failed_count: months_failed.size
+      )
+      notify!(user, kind: :warning,
+                    title: I18n.t('jobs.visits.full_history_redetect_job.visit_re_detection_partially_complete'),
+                    content: content)
     end
   end
 
@@ -141,7 +154,8 @@ class Visits::FullHistoryRedetectJob < ApplicationJob
   end
 
   def notify_failure(user, error)
-    notify!(user, kind: :error, title: 'Visit re-detection failed', content: error.message)
+    notify!(user, kind: :error, title: I18n.t('jobs.visits.full_history_redetect_job.visit_re_detection_failed'),
+content: error.message)
   end
 
   def notify!(user, kind:, title:, content:)

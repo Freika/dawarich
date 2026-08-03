@@ -1,7 +1,7 @@
-<% content_for :title, "Map settings" %>
+<% content_for :title, t('.map_settings') %>
 
 <div class="min-h-content w-full my-5">
-  <%= render 'shared/page_header', title: 'Map settings' %>
+  <%= render 'shared/page_header', title: t('.map_settings') %>
   <%= render 'settings/navigation' %>
 
   <div class="card bg-base-200 shadow-xl">
@@ -16,32 +16,31 @@
           <div role="alert" class="alert alert-info">
             <%= icon 'info', class: 'h-6 w-6 shrink-0' %>
             <span>
-              Map appearance, colors, layers, and points of interest for the current map (V2)
-              are configured directly on the <%= link_to 'map page', map_v2_path, class: 'link' %>
-              — open the settings panel there. This page only covers the legacy V1 (Leaflet) map.
+              <%= t('.map_appearance_colors_layers_and_points_of_interest_for_the') %> <%= link_to t('.map_page'), map_v2_path, class: 'link' %>
+              <%= t('.open_the_settings_panel_there_this_page_only_covers_the') %>
             </span>
           </div>
 
           <div>
             <h2 class="text-2xl font-bold mb-4 flex items-center">
               <%= icon 'map', class: 'mr-2 text-primary' %>
-              General
+              <%= t('.general') %>
             </h2>
             <div class="bg-base-100 p-5 rounded-lg shadow-sm space-y-4">
               <div class="form-control">
                 <label class="label cursor-pointer justify-start">
                   <span class="label-text mr-4 flex items-center">
                     <%= icon 'map', class: 'mr-2 w-4 h-4' %>
-                    Preferred Map Version
+                    <%= t('.preferred_map_version') %>
                   </span>
                   <div class="flex items-center space-x-2">
-                    <%= f.label :preferred_version_v1, 'V1 (Leaflet)', class: 'cursor-pointer' %>
+                    <%= f.label :preferred_version_v1, t('.v1_leaflet'), class: 'cursor-pointer' %>
                     <%= f.radio_button :preferred_version, 'v1', id: 'maps_preferred_version_v1', class: 'radio radio-primary ml-1 mr-4', checked: @maps['preferred_version'] == 'v1' %>
-                    <%= f.label :preferred_version_v2, 'V2 (MapLibre)', class: 'cursor-pointer' %>
+                    <%= f.label :preferred_version_v2, t('.v2_maplibre'), class: 'cursor-pointer' %>
                     <%= f.radio_button :preferred_version, 'v2', id: 'maps_preferred_version_v2', class: 'radio radio-primary ml-1', checked: @maps['preferred_version'] != 'v1' %>
                   </div>
                 </label>
-                <span class="label-text-alt mt-1">V2 (MapLibre) is the default. V1 (Leaflet) is available for compatibility.</span>
+                <span class="label-text-alt mt-1"><%= t('.v2_maplibre_is_the_default_v1_leaflet_is_available_for') %></span>
               </div>
             </div>
           </div>
@@ -51,27 +50,27 @@
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="h-6 w-6 shrink-0 stroke-current">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
               </svg>
-              <span>Using a custom tile URL may result in extra costs. Check your map tile provider's terms of service.</span>
+              <span><%= t('.using_a_custom_tile_url_may_result_in_extra_costs') %></span>
             </div>
 
             <h2 class="text-2xl font-bold mb-4 flex items-center">
               <%= icon 'map-pin', class: 'mr-2 text-primary' %>
-              Custom Tiles (V1)
+              <%= t('.custom_tiles_v1') %>
             </h2>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6" data-controller="map-preview">
               <div class="bg-base-100 p-5 rounded-lg shadow-sm space-y-4">
                 <div class="form-control w-full">
                   <%= f.label :name, class: 'label' do %>
-                    <span class="label-text font-medium">Map Name</span>
+                    <span class="label-text font-medium"><%= t('.map_name') %></span>
                   <% end %>
                   <div class="relative">
-                    <%= f.text_field :name, value: @maps['name'], placeholder: 'Example: OpenStreetMap', class: "input input-bordered w-full pr-10" %>
+                    <%= f.text_field :name, value: @maps['name'], placeholder: t('.example_openstreetmap'), class: "input input-bordered w-full pr-10" %>
                   </div>
-                  <span class="label-text-alt mt-1">A descriptive name for your map configuration</span>
+                  <span class="label-text-alt mt-1"><%= t('.a_descriptive_name_for_your_map_configuration') %></span>
                 </div>
                 <div class="form-control w-full">
                   <%= f.label :url, class: 'label' do %>
-                    <span class="label-text font-medium">Tile URL</span>
+                    <span class="label-text font-medium"><%= t('.tile_url') %></span>
                   <% end %>
                   <div class="relative">
                     <%= f.text_field :url,
@@ -84,11 +83,11 @@
                         action: "input->map-preview#updatePreview"
                       } %>
                   </div>
-                  <span class="label-text-alt mt-1">URL pattern for map tiles. Must include {x}, {y}, and {z} placeholders</span>
+                  <span class="label-text-alt mt-1"><%= t('.url_pattern_for_map_tiles_must_include_x_y_and') %></span>
                 </div>
               </div>
               <div class="bg-base-100 p-5 rounded-lg shadow-sm">
-                <h3 class="font-semibold mb-2">Map Preview</h3>
+                <h3 class="font-semibold mb-2"><%= t('.map_preview') %></h3>
                 <div class="h-[250px] w-full rounded-lg overflow-hidden border border-base-300">
                   <div class="h-full w-full relative">
                     <div style="height: 500px;">
@@ -105,7 +104,7 @@
         </div>
 
         <div class="card-actions justify-end mt-6">
-          <%= f.submit 'Save changes', class: "btn btn-primary", data: { map_preview_target: "saveButton" } %>
+          <%= f.submit t('.save_changes'), class: "btn btn-primary", data: { map_preview_target: "saveButton" } %>
         </div>
       </div>
     <% end %>

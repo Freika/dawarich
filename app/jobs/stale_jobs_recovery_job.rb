@@ -16,13 +16,15 @@ class StaleJobsRecoveryJob < ApplicationJob
 
   def recover_stale_exports
     Export.processing.where(processing_started_at: ...EXPORT_TIMEOUT.ago).find_each do |export|
-      export.update!(status: :failed, error_message: 'Export timed out after being stuck in processing')
+      error_message = I18n.t('jobs.stale_jobs_recovery_job.export_timed_out_after_being_stuck_in_processing')
+      export.update!(status: :failed, error_message: error_message)
 
       Notifications::Create.new(
         user: export.user,
         kind: :error,
-        title: 'Export failed',
-        content: "Export \"#{export.name}\" was stuck in processing and has been marked as failed."
+        title: I18n.t('jobs.stale_jobs_recovery_job.export_failed'),
+        content: I18n.t('jobs.stale_jobs_recovery_job.export_name_was_stuck_in_processing_and_has_been_marked',
+                        name: export.name)
       ).call
     rescue StandardError => e
       Rails.logger.error("Failed to recover stale export #{export.id}: #{e.message}")
@@ -31,13 +33,15 @@ class StaleJobsRecoveryJob < ApplicationJob
 
   def recover_stale_imports
     Import.processing.where(processing_started_at: ...IMPORT_TIMEOUT.ago).find_each do |import|
-      import.update!(status: :failed, error_message: 'Import timed out after being stuck in processing')
+      error_message = I18n.t('jobs.stale_jobs_recovery_job.import_timed_out_after_being_stuck_in_processing')
+      import.update!(status: :failed, error_message: error_message)
 
       Notifications::Create.new(
         user: import.user,
         kind: :error,
-        title: 'Import failed',
-        content: "Import \"#{import.name}\" was stuck in processing and has been marked as failed."
+        title: I18n.t('jobs.stale_jobs_recovery_job.import_failed'),
+        content: I18n.t('jobs.stale_jobs_recovery_job.import_name_was_stuck_in_processing_and_has_been_marked',
+                        name: import.name)
       ).call
     rescue StandardError => e
       Rails.logger.error("Failed to recover stale import #{import.id}: #{e.message}")

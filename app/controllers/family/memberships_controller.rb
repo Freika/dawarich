@@ -21,26 +21,28 @@ class Family::MembershipsController < ApplicationController
     )
 
     if service.call
-      redirect_to family_path, notice: 'Welcome to the family!'
+      redirect_to family_path, notice: I18n.t('controllers.family.memberships.welcome_to_the_family')
     else
-      redirect_to root_path, alert: service.error_message || 'Unable to accept invitation'
+      redirect_to root_path,
+                  alert: service.error_message || I18n.t('controllers.family.memberships.unable_to_accept_invitation')
     end
   rescue Pundit::NotAuthorizedError
     alert = if @invitation.expired?
-              'This invitation is no longer valid or has expired'
+              I18n.t('controllers.family.memberships.invitation_expired')
             elsif !@invitation.pending?
-              'This invitation has already been processed'
+              I18n.t('controllers.family.memberships.invitation_processed')
             elsif @invitation.email != current_user.email
-              'This invitation is not for your email address'
+              I18n.t('controllers.family.memberships.invitation_email_mismatch')
             else
-              'You are not authorized to accept this invitation'
+              I18n.t('controllers.family.memberships.not_authorized_to_accept')
             end
 
     redirect_to root_path, alert: alert
   rescue StandardError => e
     Rails.logger.error "Error accepting family invitation: #{e.message}"
 
-    redirect_to root_path, alert: 'An unexpected error occurred. Please try again later'
+    redirect_to root_path,
+                alert: I18n.t('controllers.family.memberships.an_unexpected_error_occurred_please_try_again_later')
   end
 
   def destroy
@@ -51,12 +53,15 @@ class Family::MembershipsController < ApplicationController
 
     if service.call
       if member_user == current_user
-        redirect_to new_family_path, notice: 'You have left the family'
+        redirect_to new_family_path, notice: I18n.t('controllers.family.memberships.you_have_left_the_family')
       else
-        redirect_to family_home_path, notice: "#{member_user.email} has been removed from the family"
+        redirect_to family_home_path,
+                    notice: I18n.t('controllers.family.memberships.email_has_been_removed_from_the_family',
+                                   email: member_user.email)
       end
     else
-      redirect_to family_home_path, alert: service.error_message || 'Failed to remove member'
+      redirect_to family_home_path,
+                  alert: service.error_message || I18n.t('controllers.family.memberships.failed_to_remove_member')
     end
   end
 
@@ -65,7 +70,10 @@ class Family::MembershipsController < ApplicationController
   def set_family
     @family = current_user.family
 
-    redirect_to new_family_path, alert: 'You are not in a family' and return unless @family
+    return if @family
+
+    redirect_to new_family_path,
+                alert: I18n.t('controllers.family.memberships.you_are_not_in_a_family') and return
   end
 
   def set_membership

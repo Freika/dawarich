@@ -1,12 +1,12 @@
 <div data-timeline-feed-target="selectionBar"
      data-max-bulk-visits="<%= VisitsController::MAX_BULK_VISIT_IDS %>"
      class="selection-bar" hidden>
-  <span class="selection-bar__count" data-timeline-feed-target="selectionCount">0 selected</span>
+  <span class="selection-bar__count" data-timeline-feed-target="selectionCount"><%= t('.selected') %></span>
   <span class="selection-bar__actions">
     <button type="button"
             class="selection-bar__cancel"
             data-action="click->timeline-feed#exitSelection">
-      Cancel
+      <%= t('.cancel') %>
     </button>
 
     <%= form_with url: bulk_update_visits_path, method: :patch,
@@ -17,9 +17,9 @@
       <button type="submit"
               class="selection-bar__action selection-bar__confirm"
               data-timeline-feed-target="confirmButton"
-              title="Mark these visits as confirmed (yes, I was there)"
+              title="<%= t('.mark_these_visits_as_confirmed_yes_i_was_there') %>"
               disabled>
-        Confirm
+        <%= t('.confirm') %>
       </button>
     <% end %>
 
@@ -30,9 +30,9 @@
       <button type="submit"
               class="selection-bar__action selection-bar__merge"
               data-timeline-feed-target="mergeButton"
-              title="Combine the selected visits into one"
+              title="<%= t('.combine_the_selected_visits_into_one') %>"
               disabled>
-        Merge
+        <%= t('.merge') %>
       </button>
     <% end %>
 
@@ -43,9 +43,9 @@
       <button type="submit"
               class="selection-bar__action selection-bar__delete"
               data-timeline-feed-target="deleteButton"
-              title="Remove the visit grouping (your location points stay)"
+              title="<%= t('.remove_the_visit_grouping_your_location_points_stay') %>"
               disabled>
-        Delete
+        <%= t('.delete') %>
       </button>
     <% end %>
   </span>

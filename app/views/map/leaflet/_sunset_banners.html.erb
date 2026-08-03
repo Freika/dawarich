@@ -3,14 +3,14 @@
        data-controller="dismissible"
        data-dismissible-key-value="map_v1_family_history_v2_only">
     <span class="flex-1">
-      Family location history is only shown on the new map (v2).
-      <%= link_to 'Open the new map', map_v2_path, class: 'link link-primary font-medium' %>
-      to see where your family has been.
+      <%= t('.family_location_history_is_only_shown_on_the_new_map') %>
+      <%= link_to t('.open_the_new_map'), map_v2_path, class: 'link link-primary font-medium' %>
+      <%= t('.to_see_where_your_family_has_been') %>
     </span>
     <button type="button"
             class="btn btn-ghost btn-xs btn-circle"
             data-action="dismissible#dismiss"
-            aria-label="Dismiss">✕</button>
+            aria-label="<%= t('.dismiss') %>">✕</button>
   </div>
 <% end %>
 
@@ -18,11 +18,11 @@
      data-controller="dismissible"
      data-dismissible-key-value="map_v1_sunset_aug_2026">
   <span class="flex-1">
-    You're using the classic map (v1), which will be retired in <strong>August 2026</strong>.
-    <%= link_to 'Switch to the new map', map_v2_path, class: 'link link-primary font-medium' %>.
+    <%= t('.you_re_using_the_classic_map_v1_which_will_be') %> <strong><%= t('.august_2026') %></strong>.
+    <%= link_to t('.switch_to_the_new_map'), map_v2_path, class: 'link link-primary font-medium' %>.
   </span>
   <button type="button"
           class="btn btn-ghost btn-xs btn-circle"
           data-action="dismissible#dismiss"
-          aria-label="Dismiss">✕</button>
+          aria-label="<%= t('.dismiss') %>">✕</button>
 </div>
