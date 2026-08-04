@@ -5,6 +5,11 @@ class Points::VectorTileQuery
 
   EXTENT = 4096
   BUFFER = 256
+  # Candidate rows must cover the ST_AsMVTGeom buffer, or markers clip at tile seams
+  MARGIN = (BUFFER.to_f / EXTENT)
+  # Below this zoom the envelope is large enough that its geodetic bounding box
+  # no longer contains the planar rectangle, which would silently drop points
+  MIN_PREFILTER_ZOOM = 5
   LAYER_NAME = 'points'
 
   def initialize(scope:, z:, x:, y:) # rubocop:disable Naming/MethodParameterName
@@ -25,42 +30,53 @@ class Points::VectorTileQuery
   attr_reader :scope, :z, :x, :y
 
   def sql
-    Point.sanitize_sql_array(
-      [
-        <<~SQL.squish,
-          WITH bounds AS (
-            SELECT
-              ST_TileEnvelope(?, ?, ?) AS geom_3857,
-              ST_Transform(ST_TileEnvelope(?, ?, ?), 4326) AS geom_4326
-          ),
-          points_in_tile AS (
-            SELECT
-              points.id AS id,
-              points.timestamp AS timestamp,
-              points.battery AS battery,
-              points.altitude AS altitude,
-              points.velocity AS velocity,
-              points.track_id AS track_id,
-              points.visit_id AS visit_id,
-              ST_AsMVTGeom(
-                ST_Transform(points.lonlat::geometry, 3857),
-                bounds.geom_3857,
-                #{EXTENT},
-                #{BUFFER},
-                true
-              ) AS geom
-            FROM (#{tile_scope.to_sql}) AS points
-            CROSS JOIN bounds
-            WHERE points.lonlat IS NOT NULL
-              AND ST_Intersects(points.lonlat::geometry, bounds.geom_4326)
+    Point.sanitize_sql_array([sql_template, *bind_values])
+  end
+
+  def sql_template
+    <<~SQL.squish
+      WITH points_in_tile AS (
+        SELECT
+          points.id AS id,
+          points.timestamp AS timestamp,
+          points.battery AS battery,
+          points.altitude AS altitude,
+          points.velocity AS velocity,
+          points.track_id AS track_id,
+          points.visit_id AS visit_id,
+          ST_AsMVTGeom(
+            ST_Transform(points.lonlat::geometry, 3857),
+            ST_TileEnvelope(?, ?, ?),
+            #{EXTENT},
+            #{BUFFER},
+            true
+          ) AS geom
+        FROM (#{tile_scope.to_sql}) AS points
+        WHERE points.lonlat IS NOT NULL
+          #{spatial_prefilter}
+          AND ST_Intersects(
+            points.lonlat::geometry,
+            ST_Transform(ST_TileEnvelope(?, ?, ?, margin => #{MARGIN}), 4326)
           )
-          SELECT ST_AsMVT(points_in_tile.*, ?, #{EXTENT}, 'geom')
-          FROM points_in_tile
-          WHERE geom IS NOT NULL
-        SQL
-        z, x, y, z, x, y, LAYER_NAME
-      ]
-    )
+        ORDER BY points.id
+      )
+      SELECT ST_AsMVT(points_in_tile.*, ?, #{EXTENT}, 'geom')
+      FROM points_in_tile
+      WHERE geom IS NOT NULL
+    SQL
+  end
+
+  # lonlat is geography, so the planar test alone cannot use the GiST index
+  def spatial_prefilter
+    return '' if z < MIN_PREFILTER_ZOOM
+
+    "AND points.lonlat && ST_Transform(ST_TileEnvelope(?, ?, ?, margin => #{MARGIN}), 4326)::geography"
+  end
+
+  def bind_values
+    values = [z, x, y]
+    values += [z, x, y] if z >= MIN_PREFILTER_ZOOM
+    values + [z, x, y, LAYER_NAME]
   end
 
   def tile_scope
