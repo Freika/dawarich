@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
-- Account deletion now removes saved posters, flights, and notes instead of failing while permanently deleting the user.
+- Account deletion no longer fails when saved posters, flights, notes, or suggested-place links remain.
 
 ## [1.15.0] - 2026-09-20, Berlin
 

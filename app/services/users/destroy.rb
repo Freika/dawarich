@@ -44,13 +44,15 @@ class Users::Destroy
       user.flights.delete_all
       user.notes.delete_all
 
-      # Delete place_visits BEFORE visits (place_visits has FK to visits)
+      # Delete place_visits BEFORE visits and places
       PlaceVisit.where(visit_id: user.visits.select(:id)).delete_all
+      PlaceVisit.where(place_id: user.places.select(:id)).delete_all
 
       # Delete visits BEFORE areas (visits has FK to areas)
       user.visits.delete_all
       user.areas.delete_all
 
+      Visit.where(place_id: user.places.select(:id)).update_all(place_id: nil)
       user.places.delete_all
 
       # Delete taggings BEFORE tags (taggings has FK to tags)

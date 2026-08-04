@@ -342,6 +342,19 @@ RSpec.describe Users::Destroy do
         expect(PlaceVisit.where(id: place_visit_id).count).to eq(0)
         expect(Visit.where(id: visit_id).count).to eq(0)
       end
+
+      it "removes another user's links to the deleted user's place" do
+        other_user = create(:user)
+        direct_visit = create(:visit, user: other_user, place:)
+        suggested_visit = create(:visit, user: other_user)
+        other_place_visit = create(:place_visit, place:, visit: suggested_visit)
+
+        expect { service.call }.not_to raise_error
+
+        expect(PlaceVisit.where(id: other_place_visit.id)).not_to exist
+        expect(Visit.where(id: [direct_visit.id, suggested_visit.id]).count).to eq(2)
+        expect(direct_visit.reload.place_id).to be_nil
+      end
     end
 
     context 'with family associations' do
