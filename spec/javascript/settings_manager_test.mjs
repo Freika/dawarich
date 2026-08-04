@@ -19,7 +19,12 @@ const source = await readFile(
 const withoutImports = source.replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
 const combinedSource = `${basemapUrlSource}\n${withoutImports}`
 const moduleUrl = `data:text/javascript;base64,${Buffer.from(combinedSource).toString("base64")}`
-const { LAYER_COLOR_DEFAULTS, SettingsManager } = await import(moduleUrl)
+const {
+  bulkPointsRequired,
+  LAYER_COLOR_DEFAULTS,
+  SettingsManager,
+  tiledPointsActive,
+} = await import(moduleUrl)
 
 async function loadSettingsController(settingsManager, overrides = {}) {
   const controllerSource = await readFile(
@@ -299,4 +304,72 @@ test("a stale style.load after the fallback does not double-reload", async () =>
   controller.map.emit("style.load")
 
   assert.deepEqual(restored, ["loadMapData"])
+})
+
+// Layer settings as _expandLayerSettings produces them: every layer key is an
+// explicit boolean, and the stock enabled_map_layers is ["Tracks","Heatmap"]
+function layerSettings(overrides = {}) {
+  return {
+    pointsVisible: true,
+    routesVisible: false,
+    heatmapEnabled: true,
+    fogEnabled: false,
+    scratchEnabled: false,
+    fogOfWarMode: "points",
+    ...overrides,
+  }
+}
+
+test("tiled rendering stays off until it is asked for", () => {
+  assert.equal(tiledPointsActive(layerSettings()), false)
+  assert.equal(
+    tiledPointsActive(layerSettings({ pointsTiledRendering: false })),
+    false,
+  )
+})
+
+test("the stock layer set does not block tiled rendering", () => {
+  // Heatmap ships enabled, so blocking on it would make the beta inert for
+  // everyone who never touched their layer settings
+  const settings = layerSettings({ pointsTiledRendering: true })
+
+  assert.equal(bulkPointsRequired(settings), false)
+  assert.equal(tiledPointsActive(settings), true)
+})
+
+test("heatmap still needs the bulk fetch when tiles were not asked for", () => {
+  assert.equal(bulkPointsRequired(layerSettings()), true)
+})
+
+test("layers that read the whole point set switch tiles back off", () => {
+  for (const blocker of [
+    { routesVisible: true },
+    { scratchEnabled: true },
+    { fogEnabled: true, fogOfWarMode: "points" },
+  ]) {
+    const settings = layerSettings({ pointsTiledRendering: true, ...blocker })
+
+    assert.equal(bulkPointsRequired(settings), true, JSON.stringify(blocker))
+    assert.equal(tiledPointsActive(settings), false, JSON.stringify(blocker))
+  }
+})
+
+test("hexagon fog fetches its own data, so it leaves tiles alone", () => {
+  const settings = layerSettings({
+    pointsTiledRendering: true,
+    fogEnabled: true,
+    fogOfWarMode: "hexagons",
+  })
+
+  assert.equal(bulkPointsRequired(settings), false)
+  assert.equal(tiledPointsActive(settings), true)
+})
+
+test("a missing routesVisible counts as routes being on", () => {
+  // needsPoints has always treated absent as visible, so the guard must agree
+  // rather than quietly skipping a fetch the routes layer depends on
+  const settings = { pointsTiledRendering: true, heatmapEnabled: false }
+
+  assert.equal(bulkPointsRequired(settings), true)
+  assert.equal(tiledPointsActive(settings), false)
 })
