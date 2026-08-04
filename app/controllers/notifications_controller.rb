@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class NotificationsController < ApplicationController
+  self.page_refresh_morphing = true
+
   before_action :authenticate_user!
   before_action :set_notification, only: %i[show destroy]
 
