@@ -17,7 +17,10 @@ import { VisitsLayer } from "maps_maplibre/layers/visits_layer"
 import { isGatedPlan } from "maps_maplibre/utils/layer_gate"
 import { lazyLoader } from "maps_maplibre/utils/lazy_loader"
 import { performanceMonitor } from "maps_maplibre/utils/performance_monitor"
-import { SettingsManager } from "maps_maplibre/utils/settings_manager"
+import {
+  SettingsManager,
+  tiledPointsActive,
+} from "maps_maplibre/utils/settings_manager"
 
 /**
  * Manages all map layers lifecycle and visibility
@@ -285,7 +288,9 @@ export class LayerManager {
   _addHeatmapLayer(pointsGeoJSON) {
     if (!this.layers.heatmapLayer) {
       this.layers.heatmapLayer = new HeatmapLayer(this.map, {
-        visible: this.settings.heatmapEnabled,
+        visible:
+          this.settings.heatmapEnabled &&
+          !tiledPointsActive(SettingsManager.getSettings()),
       })
       this.layers.heatmapLayer.add(pointsGeoJSON)
     } else {
@@ -441,7 +446,7 @@ export class LayerManager {
 
   _addPointsLayer(pointsGeoJSON) {
     if (!this.layers.pointsLayer) {
-      const tiled = SettingsManager.getSetting("pointsTiledRendering") === true
+      const tiled = tiledPointsActive(SettingsManager.getSettings())
       this.layers.pointsLayer = new PointsLayer(this.map, {
         // Only one points renderer draws at a time
         visible: this.settings.pointsVisible !== false && !tiled,
@@ -464,9 +469,12 @@ export class LayerManager {
   _addPointsMvtLayer() {
     if (!this.layers.pointsMvtLayer) {
       this.layers.pointsMvtLayer = new PointsMvtLayer(this.map, {
+        heatmapVisible:
+          Boolean(this.settings.heatmapEnabled) &&
+          tiledPointsActive(SettingsManager.getSettings()),
         visible:
           this.settings.pointsVisible !== false &&
-          SettingsManager.getSetting("pointsTiledRendering") === true,
+          tiledPointsActive(SettingsManager.getSettings()),
         apiKey: this.apiKey,
         ...this.pointTileRange,
       })

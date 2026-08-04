@@ -6,8 +6,10 @@ import {
 } from "maps_maplibre/utils/basemap_url"
 import { isGatedPlan } from "maps_maplibre/utils/layer_gate"
 import {
+  bulkPointsRequired,
   LAYER_COLOR_DEFAULTS,
   SettingsManager,
+  tiledPointsActive,
 } from "maps_maplibre/utils/settings_manager"
 import { getMapStyle } from "maps_maplibre/utils/style_manager"
 
@@ -104,6 +106,7 @@ export class SettingsController {
     })
 
     this.syncPointsEditAvailability()
+    this.syncTiledRenderingNote()
 
     // Show/hide visits search based on initial toggle state
     if (controller.hasVisitsToggleTarget && controller.hasVisitsSearchTarget) {
@@ -1259,6 +1262,7 @@ export class SettingsController {
     }
 
     await SettingsManager.updateSetting("fogOfWarMode", mode)
+    await this.controller.routesManager?.reapplyPointsRenderer()
   }
 
   togglePointsEditing(event) {
@@ -1270,12 +1274,36 @@ export class SettingsController {
   }
 
   // Dim Edit points while tiled rendering is on. The saved preference survives.
+  // Tiles are pointless while another layer already needs the whole point set
+  syncTiledRenderingNote() {
+    const controller = this.controller
+    if (!controller.hasPointsTiledInactiveNoteTarget) return
+
+    const settings = SettingsManager.getSettings()
+    const note = controller.pointsTiledInactiveNoteTarget
+    const inactive =
+      settings.pointsTiledRendering === true && bulkPointsRequired(settings)
+
+    note.classList.toggle("hidden", !inactive)
+    if (!inactive) return
+
+    const blockers = [
+      settings.routesVisible !== false && "Routes",
+      settings.fogEnabled &&
+        settings.fogOfWarMode !== "hexagons" &&
+        "Fog of War",
+      settings.scratchEnabled && "Scratch map",
+    ].filter(Boolean)
+
+    note.textContent = `Inactive while ${blockers.join(", ")} ${blockers.length > 1 ? "are" : "is"} on, those need the full point set.`
+  }
+
   syncPointsEditAvailability() {
     const controller = this.controller
     if (!controller.hasPointsEditToggleTarget) return
 
     const input = controller.pointsEditToggleTarget
-    const tiled = SettingsManager.getSetting("pointsTiledRendering") === true
+    const tiled = tiledPointsActive(SettingsManager.getSettings())
 
     // Keep the checkbox in step with the layer's real edit mode.
     input.disabled = tiled

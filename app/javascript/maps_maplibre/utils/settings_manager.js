@@ -149,6 +149,24 @@ const TRANSPORTATION_EXPERT_THRESHOLD_MAP = {
   minFlightDistanceKm: "min_flight_distance_km",
 }
 
+// Layers that can only be drawn from the full point set. Heatmap is absent
+// when tiles are requested because it can read the tiled source instead.
+export function bulkPointsRequired(settings = {}) {
+  const tiledRequested = settings.pointsTiledRendering === true
+
+  return (
+    settings.routesVisible !== false ||
+    Boolean(settings.heatmapEnabled && !tiledRequested) ||
+    Boolean(settings.fogEnabled && settings.fogOfWarMode !== "hexagons") ||
+    Boolean(settings.scratchEnabled)
+  )
+}
+
+// Tiles only save anything when nothing else already needs the full set
+export function tiledPointsActive(settings = {}) {
+  return settings.pointsTiledRendering === true && !bulkPointsRequired(settings)
+}
+
 export class SettingsManager {
   static apiKey = null
   static cachedSettings = null

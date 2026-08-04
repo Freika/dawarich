@@ -2,6 +2,11 @@ import { RoutesLayer } from "maps_maplibre/layers/routes_layer"
 import { pointsToGeoJSON } from "maps_maplibre/utils/geojson_transformers"
 import { createCircle } from "maps_maplibre/utils/geometry"
 import { performanceMonitor } from "maps_maplibre/utils/performance_monitor"
+import {
+  bulkPointsRequired,
+  SettingsManager,
+  tiledPointsActive,
+} from "maps_maplibre/utils/settings_manager"
 import { applySpeedColors } from "maps_maplibre/utils/speed_colors"
 
 /**
@@ -137,13 +142,11 @@ export class DataLoader {
     const counter = onUpdate ? new LoadingCounter(onUpdate) : null
 
     // Determine whether any layer that depends on points data is enabled
+    // Live cache, not this.settings: that snapshot misses layer toggles
+    const current = { ...this.settings, ...SettingsManager.getSettings() }
     const needsPoints =
-      (this.settings.pointsTiledRendering !== true &&
-        this.settings.pointsVisible !== false) ||
-      this.settings.routesVisible !== false ||
-      this.settings.heatmapEnabled ||
-      this.settings.fogEnabled ||
-      this.settings.scratchEnabled
+      (!tiledPointsActive(current) && current.pointsVisible !== false) ||
+      bulkPointsRequired(current)
 
     // Register every source that will be fetched so the badge stays visible
     // until each one finishes. Tracks and photos load in parallel after the

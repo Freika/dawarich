@@ -2,7 +2,11 @@ import { Toast } from "maps_maplibre/components/toast"
 import { pointsToGeoJSON } from "maps_maplibre/utils/geojson_transformers"
 import { gatedToggle, isGatedPlan } from "maps_maplibre/utils/layer_gate"
 import { lazyLoader } from "maps_maplibre/utils/lazy_loader"
-import { SettingsManager } from "maps_maplibre/utils/settings_manager"
+import {
+  bulkPointsRequired,
+  SettingsManager,
+  tiledPointsActive,
+} from "maps_maplibre/utils/settings_manager"
 
 /**
  * Manages routes-related operations for Maps V2
@@ -40,6 +44,7 @@ export class RoutesManager {
     }
 
     SettingsManager.updateSetting("routesVisible", visible)
+    await this.reapplyPointsRenderer()
   }
 
   /**
@@ -251,15 +256,15 @@ export class RoutesManager {
    */
   async toggleHeatmap(event) {
     const toggle = event.target
-    const heatmapLayer = this.layerManager.getLayer("heatmap")
 
     const showHeatmap = async () => {
-      await this.controller.mapDataManager.ensurePointsLoaded()
-      if (heatmapLayer) heatmapLayer.show()
+      const tiled = tiledPointsActive(SettingsManager.getSettings())
+      if (!tiled) await this.controller.mapDataManager.ensurePointsLoaded()
+      this.applyHeatmapRenderer({ enabled: true, tiled })
     }
 
     const hideHeatmap = () => {
-      if (heatmapLayer) heatmapLayer.hide()
+      this.applyHeatmapRenderer({ enabled: false, tiled: false })
     }
 
     const intercepted = gatedToggle({
@@ -274,6 +279,7 @@ export class RoutesManager {
 
     const enabled = toggle.checked
     SettingsManager.updateSetting("heatmapEnabled", enabled)
+    await this.reapplyPointsRenderer()
 
     if (enabled) {
       await showHeatmap()
@@ -358,6 +364,7 @@ export class RoutesManager {
 
     const enabled = toggle.checked
     SettingsManager.updateSetting("fogEnabled", enabled)
+    await this.reapplyPointsRenderer()
 
     if (enabled) {
       await showFog()
@@ -411,6 +418,7 @@ export class RoutesManager {
 
     const enabled = toggle.checked
     SettingsManager.updateSetting("scratchEnabled", enabled)
+    await this.reapplyPointsRenderer()
 
     try {
       if (enabled) {
@@ -620,20 +628,52 @@ export class RoutesManager {
    * Toggle points layer visibility
    */
   async togglePoints(event) {
-    const element = event.currentTarget
-    const visible = element.checked
+    SettingsManager.updateSetting("pointsVisible", event.currentTarget.checked)
+
+    await this.reapplyPointsRenderer()
+  }
+
+  // Bulk-set layers flip the guard mid-session, so the renderer must follow
+  async reapplyPointsRenderer() {
+    const settings = SettingsManager.getSettings()
+    const tiled = tiledPointsActive(settings)
+    const visible = this.controller.hasPointsToggleTarget
+      ? this.controller.pointsToggleTarget.checked
+      : settings.pointsVisible !== false
+
+    // Tiles have no draggable features, so editing follows the renderer
+    this.layerManager
+      .getLayer("points")
+      ?.setEditMode(
+        !tiled &&
+          settings.pointDraggingEnabled === true &&
+          !isGatedPlan(this.controller.userPlanValue),
+      )
 
     await this.applyPointsRenderer({
       visible,
-      tiled: SettingsManager.getSetting("pointsTiledRendering") === true,
+      tiled,
+      needsBulk: bulkPointsRequired(settings),
     })
+    this.applyHeatmapRenderer({
+      enabled: Boolean(settings.heatmapEnabled),
+      tiled,
+    })
+    this.controller.settingsController?.syncPointsEditAvailability()
+    this.controller.settingsController?.syncTiledRenderingNote()
+  }
 
-    SettingsManager.updateSetting("pointsVisible", visible)
+  // The tiled heatmap is a sub-layer of points-mvt, only one heatmap may draw
+  applyHeatmapRenderer({ enabled, tiled }) {
+    this.layerManager.getLayer("heatmap")?.toggle(enabled && !tiled)
+    this.layerManager
+      .getLayer("points-mvt")
+      ?.setHeatmapVisible(enabled && tiled)
   }
 
   // Only one renderer draws. Classic needs its GeoJSON, tiled fetches per tile.
-  async applyPointsRenderer({ visible, tiled }) {
-    if (visible && !tiled) {
+  async applyPointsRenderer({ visible, tiled, needsBulk = false }) {
+    if ((visible || needsBulk) && !tiled) {
       await this.controller.mapDataManager.ensurePointsLoaded()
     }
 
@@ -693,24 +733,12 @@ export class RoutesManager {
 
   // Beta renderer switch. The Points toggle still owns visibility.
   async togglePointsTiledRendering(event) {
-    const tiled = event.currentTarget.checked
-    const visible = this.controller.hasPointsToggleTarget
-      ? this.controller.pointsToggleTarget.checked
-      : this.settings.pointsVisible !== false
-
-    const pointsLayer = this.layerManager.getLayer("points")
-
-    // Tiles have no draggable features, so editing follows the renderer.
-    pointsLayer?.setEditMode(
-      !tiled &&
-        SettingsManager.getSetting("pointDraggingEnabled") === true &&
-        !isGatedPlan(this.controller.userPlanValue),
+    await SettingsManager.updateSetting(
+      "pointsTiledRendering",
+      event.currentTarget.checked,
     )
 
-    await this.applyPointsRenderer({ visible, tiled })
-    await SettingsManager.updateSetting("pointsTiledRendering", tiled)
-
-    this.controller.settingsController?.syncPointsEditAvailability()
+    await this.reapplyPointsRenderer()
   }
 
   /**
