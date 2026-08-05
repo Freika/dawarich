@@ -17,7 +17,7 @@ class Lite::ArchivalWarningJob < ApplicationJob
     User.where(plan: :lite).find_each do |user|
       next if user.full_access?
 
-      check_thresholds(user)
+      I18n.with_locale(user.locale) { check_thresholds(user) }
     end
   end
 

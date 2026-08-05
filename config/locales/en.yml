@@ -76,6 +76,7 @@ en:
         you_have_used: You have used
         points_of: points of
         available: available.
+        summary_html: You have used %{used} points of %{limit} available.
       edit:
         account_settings: Account settings
         profile: Profile
@@ -160,6 +161,7 @@ en:
         sign_in_using_your_organization_s_identity_provider: Sign in using your organization's identity provider
         create_one_here: Create one here
         sign_in_accept_invitation: Sign in & Accept Invitation
+        log_in: Log in
       otp_challenge:
         two_factor_authentication: Two-Factor Authentication
         enter_the_6_digit_code_from_your_authenticator_app_to: Enter the 6-digit code from your authenticator app to continue.
@@ -379,6 +381,8 @@ en:
     invitation:
       you_ve_been_invited_to_join_a_family: You've been invited to join a family!
       hi_there: Hi there!
+      invited_by_family_html: <strong>%{email}</strong> has invited you to join their family "<strong>%{family}</strong>" on Dawarich.
+      invited_by_family_text: '%{email} has invited you to join their family "%{family}" on Dawarich.'
       has_invited_you_to_join_their_family: has invited you to join their family "
       on_dawarich: "\" on Dawarich."
       by_joining_this_family_you_ll_be_able_to: 'By joining this family, you''ll be able to:'
@@ -423,6 +427,18 @@ en:
     member_joined:
       great_news_someone_joined_your_family: "\U0001F389 Great news! Someone joined your family!"
       hi: Hi
+      member_joined_family_html: We're excited to let you know that <strong>%{email}</strong> has just joined your family "<strong>%{family}</strong>" on Dawarich!
+      member_joined_family_text: 'We''re excited to let you know that %{email} has just joined your family "%{family}" on Dawarich!'
+      see_current_location_html: See <strong>%{email}</strong>'s current location (if they've enabled sharing)
+      see_current_location_text: See %{email}'s current location (if they've enabled sharing)
+      share_location_with_html: Share your location with <strong>%{email}</strong>
+      share_location_with_text: Share your location with %{email}
+      member_count_html:
+        one: Your family now has <strong>%{count}</strong> member.
+        other: Your family now has <strong>%{count}</strong> members.
+      member_count:
+        one: Your family now has %{count} member.
+        other: Your family now has %{count} members.
       we_re_excited_to_let_you_know_that: We're excited to let you know that
       has_just_joined_your_family: has just joined your family "
       on_dawarich: "\" on Dawarich!"
@@ -497,6 +513,7 @@ en:
       the_named_places_home_work_frequent_restaurants_the_source_app: "— the named places (home, work, frequent restaurants) the source app associated with your visits."
       click: Click
       extract: Extract
+      extract_to_add_html: Click <strong>Extract</strong> to add this data to your Dawarich account. Existing points are not modified. Visits and places already detected from your points by Dawarich are kept side-by-side with the imported ones.
       to_add_this_data_to_your_dawarich_account_existing_points: to add this data to your Dawarich account. Existing points are not modified. Visits and places already detected from your points by Dawarich are kept side-by-side with the imported ones.
       trust_the_source_app_s_classification: Trust the source app's classification
       when_checked_transportation_modes_driving_walking_cycling_transit_the_so: When checked, transportation modes (driving, walking, cycling, transit) the source app assigned are kept as-is. When unchecked, Dawarich re-runs its own detector using your settings.
@@ -1765,6 +1782,8 @@ en:
       settings: Settings
       subscription: Subscription
       logout: Logout
+      switch_language: Deutsch
+      switch_language_aria_label: Switch language to German
       see_all: See all
       you_re_an_admin_harry: You're an admin, Harry!
       dawarich_supporter: Dawarich Supporter
@@ -2312,6 +2331,8 @@ en:
         new_country_line: "→ %{country}  (new country)"
         new_city_line: "→ %{city}  (new city)"
       year_end_digest:
+        year_in_review_title: Your %{year} Year in Review
+        year_at_a_glance: Here's your %{year} at a glance.
         your: Your
         year_in_review: Year in Review
         here_s_your: Here's your
@@ -2415,6 +2436,8 @@ en:
     oauth_account_link:
       confirm_account_link: Confirm account link
       hi: Hi
+      account_link_request_html: Someone — hopefully you — is trying to link <strong>%{provider}</strong> sign-in to your Dawarich account. Clicking the button below will allow that sign-in method to access this account going forward.
+      account_link_request_text: Someone — hopefully you — is trying to link %{provider} sign-in to your Dawarich account. Clicking the link below will allow that sign-in method to access this account going forward.
       someone_hopefully_you_is_trying_to_link: Someone — hopefully you — is trying to link
       sign_in_to_your_dawarich_account_clicking_the_button_below: sign-in to your Dawarich account. Clicking the button below will allow that sign-in method to access this account going forward.
       link: Link
@@ -2506,6 +2529,8 @@ en:
   common:
     app_name: Dawarich
     not_available: N/A
+    time_ago: "%{time} ago"
+    time_from_now: "%{time} from now"
   enums:
     export:
       file_type:

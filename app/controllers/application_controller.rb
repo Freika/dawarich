@@ -5,13 +5,14 @@ class ApplicationController < ActionController::Base
 
   rescue_from Pundit::NotAuthorizedError, with: :user_not_authorized
 
+  around_action :switch_locale
   before_action :sign_out_deleted_users
   before_action :configure_permitted_parameters, if: :devise_controller?
   around_action :set_user_time_zone
   before_action :unread_notifications, :set_self_hosted_status, :store_client_header
 
   helper_method :current_user_safe_settings, :poster_ordering_enabled?, :family_feature_available?,
-                :current_user_features, :family_home_path
+                :current_user_features, :family_home_path, :alternate_locale
 
   # Memoized per-request SafeSettings for the current user. Use this instead of
   # `current_user.safe_settings` in partials/helpers that may render many rows
@@ -171,6 +172,45 @@ status: :see_other
   end
 
   private
+
+  def switch_locale(&action)
+    parameter_locale = supported_locale(params[:locale])
+    session[:locale] = parameter_locale.to_s if parameter_locale
+    locale = parameter_locale || current_user&.preferred_locale || supported_locale(session[:locale]) ||
+             locale_from_accept_language || I18n.default_locale
+
+    I18n.with_locale(locale) do
+      action.call
+      persist_user_locale(locale) if parameter_locale
+    end
+  end
+
+  def supported_locale(value)
+    locale = value.to_s.downcase.to_sym
+    locale if I18n.available_locales.include?(locale)
+  end
+
+  def locale_from_accept_language
+    candidates = request.headers['Accept-Language'].to_s.split(',').each_with_index.filter_map do |language, index|
+      locale_tag, *parameters = language.split(';').map(&:strip)
+      locale = supported_locale(locale_tag.to_s.split('-').first)
+      quality = parameters.find { |parameter| parameter.start_with?('q=') }&.delete_prefix('q=')&.to_f || 1.0
+      [locale, quality, index] if locale && quality.positive?
+    end
+
+    candidates.max_by { |_locale, quality, index| [quality, -index] }&.first
+  end
+
+  def alternate_locale
+    I18n.locale == :de ? :en : :de
+  end
+
+  def persist_user_locale(locale)
+    return unless current_user
+    return if current_user.preferred_locale == locale
+
+    current_user.persist_locale!(locale)
+  end
 
   def sign_out_deleted_users
     return unless current_user&.deleted?

@@ -42,6 +42,22 @@ RSpec.describe User, type: :model do
     end
   end
 
+  describe '#persist_locale!' do
+    it 'updates only the locale when its settings snapshot is stale' do
+      stale_user = create(:user)
+      User.where(id: stale_user.id).update_all(
+        settings: stale_user.settings.merge('concurrent_preference' => 'preserved')
+      )
+
+      stale_user.persist_locale!(:de)
+
+      expect(stale_user.reload.settings).to include(
+        'locale' => 'de',
+        'concurrent_preference' => 'preserved'
+      )
+    end
+  end
+
   describe 'archival warning reset on plan change' do
     it 'clears archival warnings and stale lite_since when the plan leaves lite' do
       user = create(:user, skip_auto_trial: true)

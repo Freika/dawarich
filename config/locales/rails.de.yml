@@ -67,6 +67,44 @@ de:
       x_years:
         one: ein Jahr
         other: '%{count} Jahre'
+      dative:
+        about_x_hours:
+          one: etwa einer Stunde
+          other: etwa %{count} Stunden
+        about_x_months:
+          one: etwa einem Monat
+          other: etwa %{count} Monaten
+        about_x_years:
+          one: etwa einem Jahr
+          other: etwa %{count} Jahren
+        almost_x_years:
+          one: fast einem Jahr
+          other: fast %{count} Jahren
+        half_a_minute: einer halben Minute
+        less_than_x_seconds:
+          one: weniger als einer Sekunde
+          other: weniger als %{count} Sekunden
+        less_than_x_minutes:
+          one: weniger als einer Minute
+          other: weniger als %{count} Minuten
+        over_x_years:
+          one: mehr als einem Jahr
+          other: mehr als %{count} Jahren
+        x_seconds:
+          one: einer Sekunde
+          other: '%{count} Sekunden'
+        x_minutes:
+          one: einer Minute
+          other: '%{count} Minuten'
+        x_days:
+          one: einem Tag
+          other: '%{count} Tagen'
+        x_months:
+          one: einem Monat
+          other: '%{count} Monaten'
+        x_years:
+          one: einem Jahr
+          other: '%{count} Jahren'
     prompts:
       second: Sekunde
       minute: Minute

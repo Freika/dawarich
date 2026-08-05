@@ -1,0 +1,6 @@
+<%= link_to url_for(request.query_parameters.merge(locale: alternate_locale)),
+            lang: alternate_locale,
+            hreflang: alternate_locale,
+            aria: { label: t('shared.navbar.switch_language_aria_label') } do %>
+  <%= t('shared.navbar.switch_language') %>
+<% end %>
