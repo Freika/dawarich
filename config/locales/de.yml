@@ -73,9 +73,6 @@ de:
         generate_new_api_key: Neuen API-Schlüssel generieren
         are_you_sure_this_will_invalidate_the_current_api_key: Bist du sicher? Dies wird den aktuellen API-Schlüssel ungültig machen.
       points_usage:
-        you_have_used: Du hast verwendet
-        points_of: Punkte von
-        available: verfügbar.
         summary_html: Du hast %{used} von %{limit} verfügbaren Punkten verwendet.
       edit:
         account_settings: Kontoeinstellungen
@@ -383,8 +380,6 @@ de:
       hi_there: Hallo!
       invited_by_family_html: <strong>%{email}</strong> hat dich eingeladen, der Familie „<strong>%{family}</strong>“ auf Dawarich beizutreten.
       invited_by_family_text: "%{email} hat dich eingeladen, der Familie „%{family}“ auf Dawarich beizutreten."
-      has_invited_you_to_join_their_family: hat dich eingeladen, ihre Familie "
-      on_dawarich: "\" auf Dawarich."
       by_joining_this_family_you_ll_be_able_to: 'Indem du dieser Familie beitrittst, kannst du:'
       share_your_current_location_with_family_members: Deinen aktuellen Standort mit Familienmitgliedern teilen
       see_the_current_location_of_other_family_members: Den aktuellen Standort anderer Familienmitglieder sehen
@@ -396,9 +391,6 @@ de:
       if_you_didn_t_expect_this_invitation_you_can_safely: Wenn du diese Einladung nicht erwartet hast, kannst du diese E-Mail einfach ignorieren.
       best_regards: Mit freundlichen Grüßen,
       evgenii_from_dawarich: Evgenii von Dawarich
-      you_ve_been_invited_to_join_a_family_hi_there: Du wurdest eingeladen, einer Familie beizutreten! Hallo!
-      on_dawarich_by_joining_this_family_you_ll_be_able: "\" auf Dawarich. Durch das Beitreten dieser Familie wirst du in der Lage sein: • Deinen aktuellen Standort mit Familienmitgliedern zu teilen • Den aktuellen Standort anderer Familienmitglieder zu sehen • Mit deinen Lieben in Verbindung zu bleiben • Deine Privatsphäre vollständig zu kontrollieren Akzeptiere die Einladung hier:"
-      important_this_invitation_will_expire_in_7_days_if_you: 'WICHTIG: Diese Einladung läuft in 7 Tagen ab. Wenn du noch kein Dawarich-Konto hast, kannst du eines erstellen, sobald du die Einladung annimmst. Wenn du diese Einladung nicht erwartet hast, kannst du diese E-Mail einfach ignorieren. Mit freundlichen Grüßen, Evgenii von Dawarich'
       accept_invitation: Einladung annehmen
       share_your_current_location_with_family_members_2: "• Deinen aktuellen Standort mit Familienmitgliedern teilen"
       see_the_current_location_of_other_family_members_2: "• Den aktuellen Standort anderer Familienmitglieder sehen"
@@ -439,31 +431,15 @@ de:
       member_count:
         one: Deine Familie hat jetzt %{count} Mitglied.
         other: Deine Familie hat jetzt %{count} Mitglieder.
-      we_re_excited_to_let_you_know_that: Wir freuen uns, dir mitzuteilen, dass
-      has_just_joined_your_family: ist gerade deiner Familie „
-      on_dawarich: "\" auf Dawarich!"
       now_you_can: 'Jetzt kannst du:'
-      see: sehen
-      s_current_location_if_they_ve_enabled_sharing: "'s aktuellen Standort (falls sie Standortfreigabe aktiviert haben)"
       stay_connected_with_your_growing_family: Mit deiner wachsenden Familie verbunden bleiben
-      share_your_location_with: Deinen Standort mit
       manage_family_members_and_settings_from_your_family_page: Verwalte Familienmitglieder und Einstellungen auf deiner Familienseite
       tip: "\U0001F4A1 Tipp:"
       you_can_manage_your_family_members_and_privacy_settings_at: Du kannst deine Familienmitglieder und Datenschutzeinstellungen jederzeit in der Familienübersicht verwalten.
-      your_family_now_has: Deine Familie hat jetzt
-      member: Mitglied
       best_regards: Mit freundlichen Grüßen,
       evgenii_from_dawarich: Evgenii von Dawarich
-      great_news_someone_joined_your_family_hi: Gute Nachrichten! Jemand ist deiner Familie beigetreten! Hallo
-      we_re_excited_to_let_you_know_that_2: "! Wir freuen uns, dir mitzuteilen, dass"
-      on_dawarich_now_you_can_see: "\" auf Dawarich! Jetzt kannst du: • Deinen"
-      s_current_location_if_they_ve_enabled_sharing_stay_connected: "'s aktuellen Standort (falls sie Standortfreigabe aktiviert haben) • Mit deiner wachsenden Familie in Verbindung bleiben • Deinen Standort mit"
-      manage_family_members_and_settings_from_your_family_page_tip: "• Familie und Einstellungen von deiner Familien-Übersicht verwalten TIP: Du kannst deine Familie und Privatsphäre-Einstellungen jederzeit von deiner Familien-Übersicht verwalten. Deine Familie hat jetzt"
-      best_regards_evgenii_from_dawarich: ". Mit freundlichen Grüßen, Evgenii von Dawarich"
       great_news_someone_joined_your_family_2: Gute Nachrichten! Jemand ist deiner Familie beigetreten!
-      see_2: "• Deinen"
       stay_connected_with_your_growing_family_2: "• Mit deiner wachsenden Familie in Verbindung bleiben"
-      share_your_location_with_2: "• Deinen Standort mit"
       manage_family_members_and_settings_from_your_family_page_2: "• Familie und Einstellungen von deiner Familien-Übersicht verwalten"
       tip_you_can_manage_your_family_members_and_privacy_settings: 'TIP: Du kannst deine Familie und Privatsphäre-Einstellungen jederzeit von deiner Familien-Übersicht verwalten.'
   home:
@@ -511,10 +487,8 @@ de:
       journeys_identified_between_those_visits_with_their_classified_transport: "— Reisen, die zwischen diesen Aufenthalten erkannt wurden, mit ihrer klassifizierten Fortbewegungsmethode (Fahren, Gehen, Radfahren, ÖPNV, …)."
       places: Orte
       the_named_places_home_work_frequent_restaurants_the_source_app: "— die benannten Orte (Zuhause, Arbeit, häufige Restaurants), die die Quell-App mit deinen Aufenthalten verknüpft."
-      click: Klick
       extract: Extrahieren
       extract_to_add_html: Klicke auf <strong>Extrahieren</strong>, um diese Daten deinem Dawarich-Konto hinzuzufügen. Bestehende Punkte werden nicht verändert. Aufenthalte und Orte, die Dawarich bereits aus deinen Punkten erkannt hat, bleiben parallel zu den importierten Einträgen erhalten.
-      to_add_this_data_to_your_dawarich_account_existing_points: um diese Daten deinem Dawarich-Konto hinzuzufügen. Bestehende Punkte werden nicht verändert. Aufenthalte und Orte, die Dawarich bereits aus deinen Punkten erkannt hat, bleiben parallel zu den importierten Einträgen erhalten.
       trust_the_source_app_s_classification: Vertraue der Klassifizierung der Quelle-App
       when_checked_transportation_modes_driving_walking_cycling_transit_the_so: Wenn aktiviert, werden Fortbewegungsmethoden (Fahren, Gehen, Radfahren, ÖPNV) so beibehalten, wie sie die Quelle-App zugeteilt hat. Wenn deaktiviert, führt Dawarich erneut seinen eigenen Erkennungsalgorithmus mit deinen Einstellungen aus.
       cancel: Abbrechen
@@ -2333,10 +2307,6 @@ de:
       year_end_digest:
         year_in_review_title: Dein Jahresrückblick %{year}
         year_at_a_glance: Dein Jahr %{year} auf einen Blick.
-        your: Dein
-        year_in_review: Jahr im Überblick
-        here_s_your: Hier ist dein
-        at_a_glance: in Kürze.
         the_numbers: DIE ZAHLEN
         distance: Entfernung
         countries: Länder
@@ -2350,16 +2320,8 @@ de:
         share_your_year_rarr: Dein Jahr teilen →
         you_re_receiving_this_because_yearly_digest_emails_are_on: Du erhältst diese E-Mail, weil jährliche Zusammenfassungen für dein Konto aktiviert sind.
         manage_email_preferences: E-Mail-Einstellungen verwalten
-        year_in_review_here_s_your: Jahr in der Übersicht ────────────────────────────── Hier ist dein
-        at_a_glance_the_numbers_distance: im Überblick. DIE ZAHLEN Entfernung
-        vs_previous_year_distance: IM VERGLEICH ZUM VORJAHR Strecke
         view_full_insights: "-> Vollständige Einblicke:"
         share_your_year: "-> Dein Jahr teilen:"
-        you_re_receiving_this_because_yearly_digest_emails_are_on_2: "───────────────────────────────────────── Du erhältst diese E-Mail, weil jährliche Zusammenfassungen aktiviert sind. E-Mail-Einstellungen verwalten:"
-        12_map_m_monthly_distances_m_to_s_to: "(1..12).map { |m| @monthly_distances[m.to_s].to_f.round },"
-        labels_date_abbr_monthnames_1_12: 'labels: Date::ABBR_MONTHNAMES[1..12],'
-        width_24: 'width: 24,'
-        suffix_distance_unit: 'suffix: " #{@distance_unit}"'
         you_re_receiving_this_because_yearly_digest_emails_are_on_3: Du erhältst diese E-Mail, weil jährliche Zusammenfassungen aktiviert sind.
         manage_email_preferences_2: 'E-Mail-Einstellungen verwalten:'
   users_mailer:
@@ -2438,17 +2400,11 @@ de:
       hi: Hallo
       account_link_request_html: Jemand – hoffentlich du – versucht, die Anmeldemethode <strong>%{provider}</strong> mit deinem Dawarich-Konto zu verknüpfen. Mit der Schaltfläche unten erlaubst du dieser Anmeldemethode künftig den Zugriff auf dieses Konto.
       account_link_request_text: Jemand – hoffentlich du – versucht, die Anmeldemethode %{provider} mit deinem Dawarich-Konto zu verknüpfen. Mit dem Link unten erlaubst du dieser Anmeldemethode künftig den Zugriff auf dieses Konto.
-      someone_hopefully_you_is_trying_to_link: Jemand – hoffentlich du – versucht, eine Verknüpfung herzustellen
-      sign_in_to_your_dawarich_account_clicking_the_button_below: Anmeldung bei deinem Dawarich-Konto zu verknüpfen. Klicke auf die Schaltfläche unten, damit diese Anmeldemethode künftig auf das Konto zugreifen kann.
       link: Verknüpfen
       didn_t_request_this: Warst du das nicht?
       ignore_this_email_the_link_expires_in_15_minutes_and: Ignoriere diese E-Mail — der Link läuft in 15 Minuten ab und wird keine Änderungen an deinem Konto vornehmen. Wenn du diese E-Mails weiterhin erhältst, ändere dein Passwort.
       link_2: 'Link:'
-      confirm_account_link_hi: Bestätige die Kontoverknüpfung Hi
-      someone_hopefully_you_is_trying_to_link_2: ", Jemand — hoffentlich du — versucht, sich"
-      sign_in_to_your_dawarich_account_clicking_the_link_below: Anmeldung bei deinem Dawarich-Konto zu verknüpfen. Klicke auf den Link unten, damit diese Anmeldemethode künftig auf das Konto zugreifen kann. Link
       didn_t_request_this_ignore_this_email_the_link_expires: Warst du das nicht? Ignoriere diese E-Mail — der Link läuft in 15 Minuten ab und es werden keine Änderungen an deinem Konto vorgenommen. Wenn du solche E-Mails weiterhin erhältst, ändere dein Passwort.
-      sign_in_to_your_dawarich_account_clicking_the_link_below_2: Anmeldung bei deinem Dawarich-Konto zu verknüpfen. Klicke auf den Link unten, damit diese Anmeldemethode künftig auf das Konto zugreifen kann.
     otp_account_locked:
       account_temporarily_locked: Konto vorübergehend gesperrt
       hi: Hallo

@@ -27,14 +27,16 @@ class Users::Digests::Yearly::CalculatingJob < ApplicationJob
 
     backtrace = error.backtrace&.first(BACKTRACE_LINE_LIMIT)&.join("\n")
 
-    Notifications::Create.new(
-      user:,
-      kind: :error,
-      title: I18n.t('jobs.users.digests.yearly.calculating_job.period_label_calculation_failed',
-                    period_label: period_label),
-      content: I18n.t('jobs.users.digests.yearly.calculating_job.message_stacktrace_backtrace', message: error.message,
-backtrace: backtrace)
-    ).call
+    I18n.with_locale(user.locale) do
+      Notifications::Create.new(
+        user:,
+        kind: :error,
+        title: I18n.t('jobs.users.digests.yearly.calculating_job.period_label_calculation_failed',
+                      period_label: period_label),
+        content: I18n.t('jobs.users.digests.yearly.calculating_job.message_stacktrace_backtrace',
+                        message: error.message, backtrace: backtrace)
+      ).call
+    end
   rescue ActiveRecord::RecordNotFound
     nil
   end

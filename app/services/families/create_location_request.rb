@@ -61,13 +61,15 @@ class Families::CreateLocationRequest
       class: 'link link-primary'
     )
 
-    Notification.create!(
-      user: target_user,
-      kind: :info,
-      title: I18n.t('services.families.create_location_request.location_request'),
-      content: I18n.t('services.families.create_location_request.safe_email_is_requesting_your_location_link',
-                      email: safe_email, link: link)
-    )
+    I18n.with_locale(target_user.locale) do
+      Notification.create!(
+        user: target_user,
+        kind: :info,
+        title: I18n.t('services.families.create_location_request.location_request'),
+        content: I18n.t('services.families.create_location_request.safe_email_is_requesting_your_location_link',
+                        email: safe_email, link: link)
+      )
+    end
   rescue StandardError => e
     ExceptionReporter.call(e, "Failed to create notification for location request: #{e.message}")
   end

@@ -43,12 +43,14 @@ class Lite::ArchivalWarningJob < ApplicationJob
   end
 
   def notify_approaching(user)
-    Notification.create!(
-      user: user,
-      kind: :warning,
-      title: I18n.t('jobs.lite.archival_warning_job.your_oldest_data_will_archive_in_30_days'),
-      content: I18n.t('jobs.lite.archival_warning_job.your_oldest_month_of_location_data_will_be_archived_soon')
-    )
+    I18n.with_locale(user.locale) do
+      Notification.create!(
+        user: user,
+        kind: :warning,
+        title: I18n.t('jobs.lite.archival_warning_job.your_oldest_data_will_archive_in_30_days'),
+        content: I18n.t('jobs.lite.archival_warning_job.your_oldest_month_of_location_data_will_be_archived_soon')
+      )
+    end
   end
 
   def notify_email(user)
@@ -56,12 +58,14 @@ class Lite::ArchivalWarningJob < ApplicationJob
   end
 
   def notify_archived(user)
-    Notification.create!(
-      user: user,
-      kind: :warning,
-      title: I18n.t('jobs.lite.archival_warning_job.data_has_been_archived'),
-      content: I18n.t('jobs.lite.archival_warning_job.month_of_location_data_has_been_archived_your_archived')
-    )
+    I18n.with_locale(user.locale) do
+      Notification.create!(
+        user: user,
+        kind: :warning,
+        title: I18n.t('jobs.lite.archival_warning_job.data_has_been_archived'),
+        content: I18n.t('jobs.lite.archival_warning_job.month_of_location_data_has_been_archived_your_archived')
+      )
+    end
   end
 
   def mark_warning_sent(user, key)

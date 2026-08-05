@@ -100,23 +100,29 @@ class Users::RecalculateDataJob < ApplicationJob
   def create_success_notification(years_to_process)
     year_label = years_to_process.size == 1 ? years_to_process.first.to_s : "#{years_to_process.size} years"
 
-    Notifications::Create.new(
-      user: user,
-      kind: :info,
-      title: I18n.t('jobs.users.recalculate_data_job.data_recalculation_completed'),
-      content: I18n.t('jobs.users.recalculate_data_job.stats_tracks_and_digests_have_been_recalculated_for_year_label',
-                      year_label: year_label)
-    ).call
+    I18n.with_locale(user.locale) do
+      Notifications::Create.new(
+        user: user,
+        kind: :info,
+        title: I18n.t('jobs.users.recalculate_data_job.data_recalculation_completed'),
+        content: I18n.t(
+          'jobs.users.recalculate_data_job.stats_tracks_and_digests_have_been_recalculated_for_year_label',
+          year_label: year_label
+        )
+      ).call
+    end
   end
 
   def create_failure_notification(error)
-    Notifications::Create.new(
-      user: user,
-      kind: :error,
-      title: I18n.t('jobs.users.recalculate_data_job.data_recalculation_failed'),
-      content: I18n.t('jobs.users.recalculate_data_job.message_stacktrace_n', message: error.message,
-                      backtrace: error.backtrace.first(10).join("\n"))
-    ).call
+    I18n.with_locale(user.locale) do
+      Notifications::Create.new(
+        user: user,
+        kind: :error,
+        title: I18n.t('jobs.users.recalculate_data_job.data_recalculation_failed'),
+        content: I18n.t('jobs.users.recalculate_data_job.message_stacktrace_n', message: error.message,
+                        backtrace: error.backtrace.first(10).join("\n"))
+      ).call
+    end
   rescue ActiveRecord::RecordNotFound
     nil
   end

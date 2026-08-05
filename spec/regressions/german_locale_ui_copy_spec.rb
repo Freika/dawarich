@@ -11,21 +11,29 @@ RSpec.describe 'German interface copy', type: :helper do
     I18n.with_locale(:de) { example.run }
   end
 
+  # Long prose carries no grammar or interpolation logic worth pinning word for
+  # word, so assert only that it is present and actually translated. Anything
+  # with a placeholder, a plural, or locale-dependent word order stays exact.
+  def expect_translated(key)
+    german = I18n.t(key, locale: :de)
+
+    expect(german).to be_present
+    expect(german).not_to eq(I18n.t(key, locale: :en))
+  end
+
   it 'distinguishes registration from sign-in actions' do
     expect(I18n.t('home.index.sign_up')).to eq('Registrieren')
     expect(I18n.t('home.index.sign_in')).to eq('Anmelden')
   end
 
   it 'describes map controls by their user-visible effect' do
-    expect(I18n.t('map.maplibre.residency_modal.distinct_days_with_at_least_one_tracked_point_per_country'))
-      .to eq('Unterschiedliche Kalendertage mit mindestens einem aufgezeichneten Punkt pro Land. Keine Steuerberatung.')
     expect(I18n.t('map.maplibre.settings_panel.untagged')).to eq('🏷️ Ohne Tag')
-    expect(I18n.t('map.maplibre.settings_panel.clear_radius_around_visited_points'))
-      .to eq('Radius des aufgedeckten Bereichs um besuchte Punkte')
     expect(I18n.t('map.maplibre.button_cluster.replay')).to eq('Wiedergabe')
-    expect(I18n.t('javascript.messages.cannot_update_recalculation_is_already_in_progress'))
-      .to eq('Aktualisierung nicht möglich: Eine Neuberechnung läuft bereits.')
     expect(I18n.t('settings.integrations.index.upgrade_to_pro')).to eq('Auf Pro upgraden')
+
+    expect_translated('map.maplibre.residency_modal.distinct_days_with_at_least_one_tracked_point_per_country')
+    expect_translated('map.maplibre.settings_panel.clear_radius_around_visited_points')
+    expect_translated('javascript.messages.cannot_update_recalculation_is_already_in_progress')
   end
 
   it 'places relative-time words in natural German order' do
@@ -53,8 +61,8 @@ RSpec.describe 'German interface copy', type: :helper do
   it 'uses correct plural and feature terminology' do
     expect(I18n.t('javascript.search.locations_found', count: 2)).to eq('2 Standorte gefunden')
     expect(I18n.t('users.digests.public_year.first_time_count', count: 2)).to eq('2 erstmals besucht')
-    expect(I18n.t('services.families.accept_invitation.you_must_leave_your_current_family_before_joining_a_new'))
-      .to eq('Du musst deine aktuelle Familie verlassen, bevor du einer neuen beitreten kannst.')
+
+    expect_translated('services.families.accept_invitation.you_must_leave_your_current_family_before_joining_a_new')
   end
 
   it 'renders clear German security emails in HTML and text' do

@@ -12,7 +12,7 @@ class ApplicationController < ActionController::Base
   before_action :unread_notifications, :set_self_hosted_status, :store_client_header
 
   helper_method :current_user_safe_settings, :poster_ordering_enabled?, :family_feature_available?,
-                :current_user_features, :family_home_path, :alternate_locale
+                :current_user_features, :family_home_path, :alternate_locale, :locale_switch_path
 
   # Memoized per-request SafeSettings for the current user. Use this instead of
   # `current_user.safe_settings` in partials/helpers that may render many rows
@@ -205,11 +205,34 @@ status: :see_other
     I18n.locale == :de ? :en : :de
   end
 
+  # Built from `request.path` rather than `url_for` so that query parameters
+  # never reach route generation: `?host=`, `?controller=` and `?action=` would
+  # otherwise send the link off-site or raise on every page carrying the navbar.
+  # Non-GET requests fall back to the root path because a re-rendered form sits
+  # on a path that only answers to POST/PATCH.
+  def locale_switch_path
+    return "#{root_path}?#{{ 'locale' => alternate_locale.to_s }.to_query}" unless request.get?
+
+    query = request.query_parameters.merge('locale' => alternate_locale.to_s)
+
+    "#{request.path}?#{query.to_query}"
+  end
+
   def persist_user_locale(locale)
     return unless current_user
+    return if prefetch_request?
     return if current_user.preferred_locale == locale
 
     current_user.persist_locale!(locale)
+  end
+
+  # Turbo Drive prefetches links on hover, so a pointer passing over the switch
+  # link would otherwise save a language the user never chose.
+  def prefetch_request?
+    request.headers['Sec-Purpose'].to_s.include?('prefetch') ||
+      request.headers['X-Sec-Purpose'].to_s.include?('prefetch') ||
+      request.headers['Purpose'].to_s.include?('prefetch') ||
+      request.headers['X-Moz'].to_s.casecmp?('prefetch')
   end
 
   def sign_out_deleted_users
