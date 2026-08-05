@@ -880,7 +880,7 @@ es:
     maplibre:
       area_creation_modal:
         create_new_area: Crear nueva área
-        area_name: Nombre de la zona *
+        area_name: Nombre del área *
         radius: Radio
         meters: metros
         cancel: Cancelar
@@ -2844,7 +2844,7 @@ es:
       this_feature_requires_a_pro_plan: Esta función requiere un plan Pro.
       your_account_has_been_deleted: Tu cuenta ha sido eliminada.
       you_are_not_authorized_to_perform_this_action: No estás autorizado a realizar esta acción.
-      family_plan_required: Esta función requiere un plan Familiar.
+      family_plan_required: Esta función requiere un plan familiar.
     areas:
       created: Área creada con éxito!
       updated: Área actualizada con éxito!

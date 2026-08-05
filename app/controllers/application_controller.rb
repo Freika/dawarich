@@ -228,11 +228,12 @@ status: :see_other
   end
 
   # A language is always named in its own words, so a reader can find their own
-  # language without already understanding the one they are looking at. The
-  # default matters: fallbacks are on in production, so a locale that forgets
-  # `language_name` would otherwise offer itself under English's name.
+  # language without already understanding the one they are looking at.
+  # `fallback: false` is load-bearing: fallbacks are on in production, and a
+  # locale that forgets `language_name` would otherwise resolve to the English
+  # value and offer itself as "English" rather than reaching the default.
   def locale_native_name(locale)
-    I18n.t('language_name', locale: locale, default: locale.to_s.upcase)
+    I18n.t('language_name', locale: locale, default: locale.to_s.upcase, fallback: false)
   end
 
   # Built from `request.path` rather than `url_for` so that query parameters

@@ -1,0 +1,11 @@
+<% selectable_locales.each do |locale| %>
+  <li>
+    <%= link_to locale_native_name(locale),
+                locale_path(locale),
+                lang: locale,
+                hreflang: locale,
+                data: { testid: "locale-switch-#{scope}-#{locale}" },
+                aria: { label: t('shared.navbar.switch_language_aria_label',
+                                 language: locale_native_name(locale)) } %>
+  </li>
+<% end %>

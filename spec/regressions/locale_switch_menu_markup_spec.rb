@@ -3,46 +3,56 @@
 require 'rails_helper'
 
 RSpec.describe 'Locale switch menu markup', type: :request do
-  def document(body)
-    Nokogiri::HTML(body)
+  def language_links(body)
+    Nokogiri::HTML(body).css('a[data-testid^="locale-switch-"]')
   end
 
   it 'gives every language link its own menu item' do
     get root_path
 
-    links = document(response.body).css('a[data-testid^="locale-switch-"]')
+    links = language_links(response.body)
     expect(links.size).to eq(2)
     expect(links.map { |a| a.parent.name }.uniq).to eq(['li'])
+    expect(links.map { |a| a.parent.css('a').size }.uniq).to eq([1])
   end
 
-  it 'puts one language per menu item so each is styled like its siblings' do
+  # Nokogiri silently repairs `<li><li>…</li></li>`, so the parsed tree looks
+  # correct even when the markup is not. Only the raw body catches a caller
+  # that wraps the partial again.
+  it 'does not nest the language items inside another menu item' do
     get root_path
 
-    items = document(response.body).css('li').select { |li| li.at_css('a[data-testid^="locale-switch-"]') }
-    expect(items.size).to eq(2)
-    expect(items.map { |li| li.css('a').size }.uniq).to eq([1])
+    expect(response.body).not_to match(/<li>\s*<li[\s>]/)
   end
 
-  it 'does not wrap the links in a layout-erasing element' do
+  it 'identifies each link by the menu it belongs to and the language it leads to' do
     get root_path
 
-    expect(response.body).not_to include('class="contents"')
+    expect(language_links(response.body).map { |a| a['data-testid'] })
+      .to eq(%w[locale-switch-guest-de locale-switch-guest-es])
   end
 
-  it 'identifies each link by the language it leads to' do
-    get root_path
-
-    ids = document(response.body).css('a[data-testid^="locale-switch-"]').map { |a| a['data-testid'] }
-    expect(ids).to eq(%w[locale-switch-de locale-switch-es])
-  end
-
-  it 'keeps the language links unique on an authenticated page' do
+  it 'keeps every language link addressable by a unique test id' do
     sign_in create(:user)
 
     get map_path
 
-    ids = document(response.body).css('a[data-testid="locale-switch-de"]')
-    expect(ids.size).to be >= 1
-    expect(document(response.body).css('[data-testid="locale-switch"]')).to be_empty
+    ids = language_links(response.body).map { |a| a['data-testid'] }
+    expect(ids).to eq(ids.uniq)
+    expect(ids).to include('locale-switch-mobile-de', 'locale-switch-account-de')
+  end
+
+  # The guest navbar sits inline, so the languages live behind one dropdown
+  # rather than adding an item apiece as more locales ship.
+  it 'folds the guest navbar languages into a single menu item' do
+    get root_path
+
+    guest_menu = Nokogiri::HTML(response.body).css('ul.menu-horizontal').last
+    items_holding_languages = guest_menu.css('> li').select do |li|
+      li.at_css('a[data-testid^="locale-switch-"]')
+    end
+
+    expect(items_holding_languages.size).to eq(1)
+    expect(items_holding_languages.first.css('details > ul > li > a').size).to eq(2)
   end
 end

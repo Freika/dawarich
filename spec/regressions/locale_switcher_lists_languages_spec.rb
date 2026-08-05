@@ -11,6 +11,19 @@ RSpec.describe 'Locale switcher with more than two languages', type: :request do
     expect(I18n.available_locales).to match_array(%i[en de es])
   end
 
+  # Fallbacks are on in production, so a locale whose catalogue lacks
+  # `language_name` must not quietly offer itself under English's name.
+  # Fallbacks are on in production, where a locale missing `language_name`
+  # would resolve to the English value and offer itself as "English". Only
+  # `fallback: false` lets the default through, and asserting the option is the
+  # only way to pin it: enabling fallbacks on the real backend is irreversible
+  # and would leak into every later example.
+  it 'asks for a language name without falling back to another language' do
+    expect(I18n).to receive(:t).with('language_name', hash_including(fallback: false)).and_return('PT')
+
+    expect(ApplicationController.new.send(:locale_native_name, :pt)).to eq('PT')
+  end
+
   it 'offers every language except the one being read' do
     get root_path
 

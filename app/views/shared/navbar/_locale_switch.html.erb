@@ -1,13 +1,17 @@
-<%# Emits its own <li> per language: DaisyUI styles the direct child of a menu
-    item, so a shared wrapper would swallow the padding and hover state. %>
-<% selectable_locales.each do |locale| %>
+<%# Each language gets its own <li>: DaisyUI styles the direct child of a menu
+    item, so a shared wrapper would swallow the padding and hover state.
+    `collapsed` folds them into one dropdown for the guest navbar, which sits
+    inline and would otherwise grow by an item with every language added.
+    `scope` keeps the test ids unique — the navbar renders this more than once. %>
+<% if local_assigns.fetch(:collapsed, false) %>
   <li>
-    <%= link_to locale_native_name(locale),
-                locale_path(locale),
-                lang: locale,
-                hreflang: locale,
-                data: { testid: "locale-switch-#{locale}" },
-                aria: { label: t('shared.navbar.switch_language_aria_label',
-                                 language: locale_native_name(locale)) } %>
+    <details>
+      <summary lang="<%= I18n.locale %>"><%= locale_native_name(I18n.locale) %></summary>
+      <ul class="p-2 bg-base-100 z-[50]">
+        <%= render 'shared/navbar/locale_links', scope: scope %>
+      </ul>
+    </details>
   </li>
+<% else %>
+  <%= render 'shared/navbar/locale_links', scope: scope %>
 <% end %>
