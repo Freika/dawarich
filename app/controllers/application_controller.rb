@@ -12,7 +12,7 @@ class ApplicationController < ActionController::Base
   before_action :unread_notifications, :set_self_hosted_status, :store_client_header
 
   helper_method :current_user_safe_settings, :poster_ordering_enabled?, :family_feature_available?,
-                :current_user_features, :family_home_path, :alternate_locale, :locale_switch_path,
+                :current_user_features, :family_home_path, :selectable_locales, :locale_native_name,
                 :suggested_locale, :locale_path
 
   # Memoized per-request SafeSettings for the current user. Use this instead of
@@ -222,8 +222,15 @@ status: :see_other
     candidates.max_by { |_locale, quality, index| [quality, -index] }&.first
   end
 
-  def alternate_locale
-    I18n.locale == :de ? :en : :de
+  # Every language except the one being read, in the order they are declared.
+  def selectable_locales
+    I18n.available_locales - [I18n.locale]
+  end
+
+  # A language is always named in its own words, so a reader can find their own
+  # language without already understanding the one they are looking at.
+  def locale_native_name(locale)
+    I18n.t('language_name', locale: locale)
   end
 
   # Built from `request.path` rather than `url_for` so that query parameters
@@ -231,10 +238,6 @@ status: :see_other
   # otherwise send the link off-site or raise on every page carrying the navbar.
   # Non-GET requests fall back to the root path because a re-rendered form sits
   # on a path that only answers to POST/PATCH.
-  def locale_switch_path
-    locale_path(alternate_locale)
-  end
-
   def locale_path(locale)
     return "#{root_path}?#{{ 'locale' => locale.to_s }.to_query}" unless request.get?
 

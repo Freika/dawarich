@@ -1,4 +1,5 @@
 en:
+  language_name: English
   auth:
     account_links:
       challenge:
@@ -1760,8 +1761,7 @@ en:
       settings: Settings
       subscription: Subscription
       logout: Logout
-      switch_language: Deutsch
-      switch_language_aria_label: Switch language to German
+      switch_language_aria_label: Switch language to %{language}
       see_all: See all
       you_re_an_admin_harry: You're an admin, Harry!
       dawarich_supporter: Dawarich Supporter

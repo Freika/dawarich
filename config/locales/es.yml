@@ -1,4 +1,5 @@
 es:
+  language_name: Español
   auth:
     account_links:
       challenge:
@@ -73,9 +74,7 @@ es:
         generate_new_api_key: Generar nueva clave API
         are_you_sure_this_will_invalidate_the_current_api_key: "¿Estás seguro? Esto invalidará la clave API actual."
       points_usage:
-        you_have_used: Has utilizado
-        points_of: puntos de
-        available: disponibles.
+        summary_html: "Has usado %{used} de %{limit} puntos disponibles."
       edit:
         account_settings: Configuración de cuenta
         profile: Perfil
@@ -160,6 +159,7 @@ es:
         sign_in_using_your_organization_s_identity_provider: Inicia sesión con el proveedor de identidad de tu organización
         create_one_here: Crear una aquí
         sign_in_accept_invitation: Iniciar sesión y aceptar invitación
+        log_in: "Iniciar sesión"
       otp_challenge:
         two_factor_authentication: Autenticación de dos factores
         enter_the_6_digit_code_from_your_authenticator_app_to: Introduce el código de 6 dígitos de tu aplicación autenticadora para continuar.
@@ -379,8 +379,6 @@ es:
     invitation:
       you_ve_been_invited_to_join_a_family: "¡Has sido invitado a unirte a una familia!"
       hi_there: Hola!
-      has_invited_you_to_join_their_family: te ha invitado a unirte a su familia "
-      on_dawarich: "\" en Dawarich."
       by_joining_this_family_you_ll_be_able_to: 'Al unirte a esta familia, podrás:'
       share_your_current_location_with_family_members: Compartir tu ubicación actual con los miembros de la familia
       see_the_current_location_of_other_family_members: Ver la ubicación actual de otros miembros de la familia
@@ -392,9 +390,6 @@ es:
       if_you_didn_t_expect_this_invitation_you_can_safely: Si no esperabas esta invitación, puedes ignorar este correo electrónico con seguridad.
       best_regards: Un saludo,
       evgenii_from_dawarich: Evgenii de Dawarich
-      you_ve_been_invited_to_join_a_family_hi_there: Has sido invitado a unirte a una familia! Hola!
-      on_dawarich_by_joining_this_family_you_ll_be_able: "\" en Dawarich. Al unirte a esta familia, podrás: • Compartir tu ubicación actual con los miembros de la familia • Ver la ubicación actual de otros miembros de la familia • Mantente conectado con tus seres queridos • Controla tu privacidad con controles de compartición completos. Accepta tu invitación aquí:"
-      important_this_invitation_will_expire_in_7_days_if_you: 'IMPORTANTE: Esta invitación expirará en 7 días. Si aún no tienes una cuenta de Dawarich, podrás crearla cuando aceptes la invitación. Si no esperabas esta invitación, puedes ignorar este correo electrónico con seguridad. Atentamente, Evgenii desde Dawarich'
       accept_invitation: Aceptar Invitación
       share_your_current_location_with_family_members_2: "• Compartir tu ubicación actual con los miembros de la familia"
       see_the_current_location_of_other_family_members_2: "• Ver la ubicación actual de otros miembros de la familia"
@@ -402,6 +397,8 @@ es:
       control_your_privacy_with_full_sharing_controls_2: "• Controla tu privacidad con controles de compartición completos"
       accept_your_invitation_here: 'Aceptar tu invitación aquí:'
       important_this_invitation_will_expire_in_7_days: 'IMPORTANTE: Esta invitación expirará en 7 días.'
+      invited_by_family_html: "<strong>%{email}</strong> te ha invitado a unirte a su familia «<strong>%{family}</strong>» en Dawarich."
+      invited_by_family_text: "%{email} te ha invitado a unirte a su familia «%{family}» en Dawarich."
     location_request:
       location_request: Solicitud de ubicación
       hi_there: Hola!
@@ -423,33 +420,29 @@ es:
     member_joined:
       great_news_someone_joined_your_family: "¡Excelente noticia! Alguien ha unido a tu familia!"
       hi: Hola
-      we_re_excited_to_let_you_know_that: Estamos emocionados de decirte que
-      has_just_joined_your_family: ha unido recientemente a tu familia "
-      on_dawarich: "\" en Dawarich!"
       now_you_can: 'Ahora puedes:'
-      see: Ver
-      s_current_location_if_they_ve_enabled_sharing: "'s ubicación actual (si han habilitado la compartición)"
       stay_connected_with_your_growing_family: Mantente conectado con tu familia que crece
-      share_your_location_with: Comparte tu ubicación con
       manage_family_members_and_settings_from_your_family_page: Administra miembros de familia y ajustes desde la página de tu familia
       tip: "\U0001F4A1 Consejo:"
       you_can_manage_your_family_members_and_privacy_settings_at: Puedes administrar a los miembros de tu familia y ajustes de privacidad en cualquier momento desde la consola de tu familia.
-      your_family_now_has: Tu familia ahora tiene
-      member: miembro
       best_regards: Un saludo,
       evgenii_from_dawarich: Evgenii de Dawarich
-      great_news_someone_joined_your_family_hi: "¡Noticia emocionante! Alguien se unió a tu familia. Hola"
-      we_re_excited_to_let_you_know_that_2: "! Estamos emocionados de informarte que"
-      on_dawarich_now_you_can_see: "\" en Dawarich ahora puedes: • Ver"
-      s_current_location_if_they_ve_enabled_sharing_stay_connected: "'s ubicación actual (si han habilitado la compartición) • Mantente conectado con tu familia creciente • Comparte tu ubicación con"
-      manage_family_members_and_settings_from_your_family_page_tip: "• Administra miembros de familia y ajustes desde la página de tu familia CONSEJO: Puedes administrar a los miembros de tu familia y ajustes de privacidad en cualquier momento desde la consola de tu familia. Tu familia ahora tiene"
-      best_regards_evgenii_from_dawarich: ". Atentamente, Evgenii de Dawarich"
       great_news_someone_joined_your_family_2: "¡Noticia emocionante! Alguien se unió a tu familia!"
-      see_2: "• Ver"
       stay_connected_with_your_growing_family_2: "• Mantente conectado con tu familia creciente"
-      share_your_location_with_2: "• Comparte tu ubicación con"
       manage_family_members_and_settings_from_your_family_page_2: "• Administra miembros de familia y ajustes desde la página de tu familia"
       tip_you_can_manage_your_family_members_and_privacy_settings: 'CONSEJO: Puedes administrar a los miembros de tu familia y ajustes de privacidad en cualquier momento desde la consola de tu familia.'
+      member_joined_family_html: "Nos alegra informarte de que <strong>%{email}</strong> acaba de unirse a tu familia «<strong>%{family}</strong>» en Dawarich."
+      member_joined_family_text: "Nos alegra informarte de que %{email} acaba de unirse a tu familia «%{family}» en Dawarich."
+      see_current_location_html: "Ver la ubicación actual de <strong>%{email}</strong> (si ha activado el uso compartido)"
+      see_current_location_text: "Ver la ubicación actual de %{email} (si ha activado el uso compartido)"
+      share_location_with_html: "Compartir tu ubicación con <strong>%{email}</strong>"
+      share_location_with_text: "Compartir tu ubicación con %{email}"
+      member_count_html:
+        one: "Tu familia ahora tiene <strong>%{count}</strong> miembro."
+        other: "Tu familia ahora tiene <strong>%{count}</strong> miembros."
+      member_count:
+        one: "Tu familia ahora tiene %{count} miembro."
+        other: "Tu familia ahora tiene %{count} miembros."
   home:
     index:
       dawarich: Dawarich
@@ -495,13 +488,12 @@ es:
       journeys_identified_between_those_visits_with_their_classified_transport: "— trayectos identificados entre esas visitas, con su modo de transporte clasificado (conducir, caminar, andar en bici, transporte público, …)."
       places: Lugares
       the_named_places_home_work_frequent_restaurants_the_source_app: "— los lugares con nombre (casa, trabajo, restaurantes frecuentes) que la aplicación de origen asoció a tus visitas."
-      click: Haz clic
       extract: Extraer
-      to_add_this_data_to_your_dawarich_account_existing_points: para agregar esta información a tu cuenta Dawarich. Los puntos existentes no se modifican. Las visitas y lugares ya detectados por Dawarich desde tus puntos se mantienen junto con los importados.
       trust_the_source_app_s_classification: Confiar en la clasificación de la aplicación de origen
       when_checked_transportation_modes_driving_walking_cycling_transit_the_so: Si está marcada, se conservarán los modos de transporte asignados por la aplicación de origen (coche, a pie, bicicleta, transporte público). Si no lo está, Dawarich volverá a ejecutar su propio detector con tus ajustes.
       cancel: Cancelar
       close: Cerrar
+      extract_to_add_html: "Haz clic en <strong>Extraer</strong> para añadir estos datos a tu cuenta de Dawarich. Los puntos existentes no se modifican. Las visitas y los lugares que Dawarich ya ha detectado a partir de tus puntos se conservan junto a los importados."
     extraction_remove_button:
       remove_extracted_data: Eliminar datos extraídos
       remove_the_visits_places_and_tracks_this_extraction_created_your: "¿Quieres eliminar las visitas, lugares y trayectos creados por esta extracción? Tus puntos GPS importados se mantienen."
@@ -1723,7 +1715,12 @@ es:
       refund_policy: Política de devolución
       impressum: Imprenta
       blog: Blog
+    locale_suggestion:
+      message: "Dawarich también está disponible en español."
+      switch: "Cambiar a español"
+      dismiss: "Cerrar"
     navbar:
+      switch_language_aria_label: Cambiar idioma a %{language}
       family: Familia
       my_data: Mis datos
       help: Ayuda
@@ -2312,10 +2309,6 @@ es:
         new_country_line: "→ %{country}  (nuevo país)"
         new_city_line: "→ %{city}  (nueva ciudad)"
       year_end_digest:
-        your: Tu
-        year_in_review: Resumen del año
-        here_s_your: Aquí tienes tu
-        at_a_glance: a una vista de pájaro.
         the_numbers: LOS NÚMEROS
         distance: Distancia
         countries: Países
@@ -2329,18 +2322,12 @@ es:
         share_your_year_rarr: Compartir tu año →
         you_re_receiving_this_because_yearly_digest_emails_are_on: Estás recibiendo este correo porque los correos de resumen anual están habilitados para tu cuenta.
         manage_email_preferences: Gestiona preferencias de correo electrónico
-        year_in_review_here_s_your: Año en revisión ────────────────────────────── Aquí tienes tus
-        at_a_glance_the_numbers_distance: En una ojeada. LOS NÚMEROS Distancia
-        vs_previous_year_distance: VS AÑO ANTERIOR Distancia
         view_full_insights: "-> Ver detalles completos:"
         share_your_year: "-> Compartir tu año:"
-        you_re_receiving_this_because_yearly_digest_emails_are_on_2: "───────────────────────────────────────── Estás recibiendo este correo porque los correos de resumen anual están habilitados. Gestiona preferencias de correo electrónico:"
-        12_map_m_monthly_distances_m_to_s_to: "(1..12).map { |m| @monthly_distances[m.to_s].to_f.round },"
-        labels_date_abbr_monthnames_1_12: 'etiquetas: Date::ABBR_MONTHNAMES[1..12],'
-        width_24: 'ancho: 24,'
-        suffix_distance_unit: 'suffix: " #{@distance_unit}"'
         you_re_receiving_this_because_yearly_digest_emails_are_on_3: Estás recibiendo este correo porque los correos de resumen anual están habilitados.
         manage_email_preferences_2: 'Gestiona preferencias de correo electrónico:'
+        year_in_review_title: "Tu resumen del año %{year}"
+        year_at_a_glance: "Aquí tienes un vistazo a tu %{year}."
   users_mailer:
     account_destroy_confirmation:
       confirm_account_deletion: Confirmar eliminación de cuenta
@@ -2415,17 +2402,13 @@ es:
     oauth_account_link:
       confirm_account_link: Confirmar enlace de cuenta
       hi: Hola
-      someone_hopefully_you_is_trying_to_link: Alguien — esperamos que tú — está intentando unirte
-      sign_in_to_your_dawarich_account_clicking_the_button_below: Inicia sesión en tu cuenta de Dawarich. Al hacer clic en el botón debajo, permitirá ese método de inicio de sesión acceder a esta cuenta en lo sucesivo.
       link: Enlace
       didn_t_request_this: "¿No solicitaste esto?"
       ignore_this_email_the_link_expires_in_15_minutes_and: Ignora este correo electrónico — el enlace expira en 15 minutos y no se realizará ningún cambio en tu cuenta. Si sigues recibiendo estos correos electrónicos, cambia tu contraseña.
       link_2: 'Enlace:'
-      confirm_account_link_hi: Confirmar enlace Hola
-      someone_hopefully_you_is_trying_to_link_2: ", Alguien — esperamos que tú — está intentando unirte"
-      sign_in_to_your_dawarich_account_clicking_the_link_below: Inicia sesión en tu cuenta de Dawarich. Al hacer clic en el enlace debajo, permitirá ese método de inicio de sesión acceder a esta cuenta en lo sucesivo. Enlace
       didn_t_request_this_ignore_this_email_the_link_expires: No solicitaste esto? Ignora este correo electrónico — el enlace expira en 15 minutos y no se realizará ningún cambio en tu cuenta. Si sigues recibiendo estos correos electrónicos, cambia tu contraseña.
-      sign_in_to_your_dawarich_account_clicking_the_link_below_2: Inicia sesión en tu cuenta de Dawarich. Al hacer clic en el enlace debajo, permitirá ese método de inicio de sesión acceder a esta cuenta en lo sucesivo.
+      account_link_request_html: "Alguien — con suerte tú — está intentando vincular el inicio de sesión con <strong>%{provider}</strong> a tu cuenta de Dawarich. Al hacer clic en el botón de abajo, ese método de inicio de sesión podrá acceder a esta cuenta a partir de ahora."
+      account_link_request_text: "Alguien — con suerte tú — está intentando vincular el inicio de sesión con %{provider} a tu cuenta de Dawarich. Al hacer clic en el enlace de abajo, ese método de inicio de sesión podrá acceder a esta cuenta a partir de ahora."
     otp_account_locked:
       account_temporarily_locked: Cuenta temporalmente bloqueada
       hi: Hola
@@ -2506,6 +2489,8 @@ es:
   common:
     app_name: Dawarich
     not_available: No disponible
+    time_ago: "hace %{time}"
+    time_from_now: "dentro de %{time}"
   enums:
     export:
       file_type:
@@ -3536,6 +3521,9 @@ es:
         stats_tracks_and_digests_have_been_recalculated_for_year_label: Se han recalculado las estadísticas, los trayectos y los resúmenes de %{year_label}.
         data_recalculation_failed: El recálculo de datos ha fallado
         message_stacktrace_n: "%{message}, stacktrace: %{backtrace}"
+        year_count:
+          one: "%{count} año"
+          other: "%{count} años"
     visits:
       full_history_redetect_job:
         visit_re_detection_busy: Re-detección de visitas ocupada

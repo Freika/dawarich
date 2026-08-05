@@ -1,6 +1,10 @@
-<%= link_to locale_switch_path,
-            lang: alternate_locale,
-            hreflang: alternate_locale,
-            aria: { label: t('shared.navbar.switch_language_aria_label') } do %>
-  <%= t('shared.navbar.switch_language') %>
-<% end %>
+<span data-testid="locale-switch" class="contents">
+  <% selectable_locales.each do |locale| %>
+    <%= link_to locale_native_name(locale),
+                locale_path(locale),
+                lang: locale,
+                hreflang: locale,
+                aria: { label: t('shared.navbar.switch_language_aria_label',
+                                 language: locale_native_name(locale)) } %>
+  <% end %>
+</span>
