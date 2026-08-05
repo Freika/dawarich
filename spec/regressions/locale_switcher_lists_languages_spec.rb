@@ -4,7 +4,7 @@ require 'rails_helper'
 
 RSpec.describe 'Locale switcher with more than two languages', type: :request do
   def switch_links(body)
-    Nokogiri::HTML(body).css('[data-testid="locale-switch"] a')
+    Nokogiri::HTML(body).css('a[data-testid^="locale-switch-"]')
   end
 
   it 'registers every shipped locale' do

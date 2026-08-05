@@ -1109,7 +1109,7 @@ es:
         privacy_policy: Política de privacidad
         terms_and_conditions: Términos y condiciones
         refund_policy: Política de devolución
-        impressum: Imprenta
+        impressum: Aviso legal
         blog: Blog
         re_classify_my_history: Reclasificar mi historia
         manage: Administrar
@@ -1713,7 +1713,7 @@ es:
       privacy_policy: Política de privacidad
       terms_and_conditions: Términos y condiciones
       refund_policy: Política de devolución
-      impressum: Imprenta
+      impressum: Aviso legal
       blog: Blog
     locale_suggestion:
       message: "Dawarich también está disponible en español."
