@@ -2,7 +2,7 @@
 
 <%= t('.hi') %> <%= @user.email %>,
 
-<%= t('.someone_hopefully_you_is_trying_to_link') %> <%= @provider_label %> <%= t('.sign_in_to_your_dawarich_account_clicking_the_link_below_2') %>
+<%= t('.account_link_request_text', provider: @provider_label) %>
 
 <%= t('.link') %> <%= @provider_label %>: <%= @link_url %>
 

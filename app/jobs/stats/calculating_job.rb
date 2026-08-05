@@ -14,12 +14,14 @@ class Stats::CalculatingJob < ApplicationJob
   def create_stats_update_failed_notification(user_id, error)
     user = find_user_or_skip(user_id) || return
 
-    Notifications::Create.new(
-      user:,
-      kind: :error,
-      title: I18n.t('jobs.stats.calculating_job.stats_update_failed'),
-      content: I18n.t('jobs.stats.calculating_job.message_stacktrace_n', message: error.message,
-                      backtrace: error.backtrace.join("\n"))
-    ).call
+    I18n.with_locale(user.locale) do
+      Notifications::Create.new(
+        user:,
+        kind: :error,
+        title: I18n.t('jobs.stats.calculating_job.stats_update_failed'),
+        content: I18n.t('jobs.stats.calculating_job.message_stacktrace_n', message: error.message,
+                        backtrace: error.backtrace.join("\n"))
+      ).call
+    end
   end
 end

@@ -55,7 +55,7 @@
     <span class="flex items-center gap-1.5">
       <%= icon 'clock', class: 'w-4 h-4' %>
       <% if share.last_accessed_at %>
-        <%= t('.last_viewed') %> <%= time_ago_in_words(share.last_accessed_at) %> <%= t('.ago') %>
+        <%= t('.last_viewed') %> <%= t('common.time_ago', time: relative_distance_in_words(share.last_accessed_at)) %>
       <% else %>
         <%= t('.not_viewed_yet') %>
       <% end %>

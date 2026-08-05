@@ -74,13 +74,15 @@ class Imports::Create
 
     @post_import_failure_notified = true
 
-    Notifications::Create.new(
-      user:,
-      kind: :warning,
-      title: I18n.t('services.imports.create.import_post_processing_incomplete'),
-      content: I18n.t('services.imports.create.your_import_name_finished_and_all_points_were_saved_but',
-                      name: import.name, step: step.tr('_', ' '))
-    ).call
+    I18n.with_locale(user.locale) do
+      Notifications::Create.new(
+        user:,
+        kind: :warning,
+        title: I18n.t('services.imports.create.import_post_processing_incomplete'),
+        content: I18n.t('services.imports.create.your_import_name_finished_and_all_points_were_saved_but',
+                        name: import.name, step: step.tr('_', ' '))
+      ).call
+    end
   rescue StandardError => e
     ExceptionReporter.call(e, 'Failed to create post-import failure notification')
   end
@@ -124,20 +126,24 @@ class Imports::Create
     return unless import.points.count.zero?
 
     if import.doubles.to_i.positive?
-      Notification.create!(
-        user_id: import.user_id,
-        title: I18n.t('services.imports.create.import_completed_with_no_new_points'),
-        content: I18n.t('services.imports.create.your_file_name_contained_raw_points_points_all_of_which',
-                        name: import.name, raw_points: import.raw_points),
-        kind: :info
-      )
+      I18n.with_locale(import.user.locale) do
+        Notification.create!(
+          user_id: import.user_id,
+          title: I18n.t('services.imports.create.import_completed_with_no_new_points'),
+          content: I18n.t('services.imports.create.your_file_name_contained_raw_points_points_all_of_which',
+                          name: import.name, raw_points: import.raw_points),
+          kind: :info
+        )
+      end
     else
-      Notification.create!(
-        user_id: import.user_id,
-        title: I18n.t('services.imports.create.import_completed_with_no_points'),
-        content: zero_points_content(import),
-        kind: :warning
-      )
+      I18n.with_locale(import.user.locale) do
+        Notification.create!(
+          user_id: import.user_id,
+          title: I18n.t('services.imports.create.import_completed_with_no_points'),
+          content: zero_points_content(import),
+          kind: :warning
+        )
+      end
     end
   end
 
@@ -204,12 +210,14 @@ class Imports::Create
   def create_import_failed_notification(import, user, error)
     message = import_failed_message(import, error)
 
-    Notifications::Create.new(
-      user:,
-      kind: :error,
-      title: I18n.t('services.imports.create.import_failed'),
-      content: message
-    ).call
+    I18n.with_locale(user.locale) do
+      Notifications::Create.new(
+        user:,
+        kind: :error,
+        title: I18n.t('services.imports.create.import_failed'),
+        content: message
+      ).call
+    end
   end
 
   def detect_source_from_file(file_path)
