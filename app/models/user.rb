@@ -118,6 +118,27 @@ class User < ApplicationRecord
     Users::SafeSettings.new(settings, plan: plan)
   end
 
+  def preferred_locale
+    locale = settings&.fetch('locale', nil).to_s.to_sym
+    locale if I18n.available_locales.include?(locale)
+  end
+
+  def locale
+    preferred_locale || I18n.default_locale
+  end
+
+  def persist_locale!(locale)
+    self.class.where(id: id).update_all(
+      ActiveRecord::Base.sanitize_sql_array(
+        [
+          "settings = COALESCE(settings, '{}'::jsonb) || jsonb_build_object('locale', ?), updated_at = ?",
+          locale.to_s,
+          Time.current
+        ]
+      )
+    )
+  end
+
   # Only accounts the migration actually handed to a rebuild are waiting on one.
   # Deriving this from live state instead would report a permanent "pending" for
   # anyone the dispatcher never picked up — no points at the time, filtering off

@@ -70,13 +70,15 @@ class Immich::ImportGeodata
   end
 
   def create_import_failed_notification(import_name)
-    Notifications::Create.new(
-      user:,
-      kind: :info,
-      title: I18n.t('services.immich.import_geodata.import_was_not_created'),
-      content: I18n.t('services.immich.import_geodata.import_with_the_same_name_import_name_already_exists_if',
-                      import_name: import_name)
-    ).call
+    I18n.with_locale(user.locale) do
+      Notifications::Create.new(
+        user:,
+        kind: :info,
+        title: I18n.t('services.immich.import_geodata.import_was_not_created'),
+        content: I18n.t('services.immich.import_geodata.import_with_the_same_name_import_name_already_exists_if',
+                        import_name: import_name)
+      ).call
+    end
   end
 
   def file_name(immich_data_json)

@@ -36,7 +36,7 @@
 
     <% if segment.manually_corrected? %>
       <span class="shrink-0 text-info/80 leading-none"
-            title="<%= t('.edited_ago', time: time_ago_in_words(segment.corrected_at)) %>"
+            title="<%= t('.edited_ago', time: relative_distance_in_words(segment.corrected_at)) %>"
             aria-label="<%= t('.manually_corrected') %>">
         <%= icon 'square-pen', class: 'w-3 h-3' %>
       </span>

@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- The interface is now available in German. Pick a language from the navbar; the choice is saved to your account and used for emails and notifications too. English stays the default and is never changed for you — if your browser prefers German, Dawarich offers the switch in a banner you can dismiss, and takes no as an answer. API responses stay in English so integrations keep working.
+
+### Fixed
+
+- The "someone joined your family" email no longer fails to send.
+
 ## [1.11.0] - 2026-08-02, Berlin
 
 ### Added

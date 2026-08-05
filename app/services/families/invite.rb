@@ -94,12 +94,14 @@ module Families
         email:
       )
 
-      Notification.create!(
-        user: invited_by,
-        kind: :info,
-        title: I18n.t('services.families.invite.invitation_sent'),
-        content: content
-      )
+      I18n.with_locale(invited_by.locale) do
+        Notification.create!(
+          user: invited_by,
+          kind: :info,
+          title: I18n.t('services.families.invite.invitation_sent'),
+          content: content
+        )
+      end
     rescue StandardError => e
       # Don't fail the entire operation if notification fails
       ExceptionReporter.call(e, "Unexpected error in Families::Invite: #{e.message}")

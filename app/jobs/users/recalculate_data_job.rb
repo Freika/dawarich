@@ -17,11 +17,15 @@ class Users::RecalculateDataJob < ApplicationJob
     notify = options.is_a?(Hash) ? options.symbolize_keys.fetch(:notify, true) : true
     user = User.find_by(id: user_id) if notify
     if user
-      content = I18n.t('jobs.users.recalculate_data_job.another_recalculation_is_already_running_please_try_again_in_a')
-      Notifications::Create.new(
-        user: user, kind: :warning, title: I18n.t('jobs.users.recalculate_data_job.data_recalculation_busy'),
-        content: content
-      ).call
+      I18n.with_locale(user.locale) do
+        content = I18n.t(
+          'jobs.users.recalculate_data_job.another_recalculation_is_already_running_please_try_again_in_a'
+        )
+        Notifications::Create.new(
+          user: user, kind: :warning, title: I18n.t('jobs.users.recalculate_data_job.data_recalculation_busy'),
+          content: content
+        ).call
+      end
     end
   end
 
@@ -98,25 +102,36 @@ class Users::RecalculateDataJob < ApplicationJob
   end
 
   def create_success_notification(years_to_process)
-    year_label = years_to_process.size == 1 ? years_to_process.first.to_s : "#{years_to_process.size} years"
+    I18n.with_locale(user.locale) do
+      year_label =
+        if years_to_process.size == 1
+          years_to_process.first.to_s
+        else
+          I18n.t('jobs.users.recalculate_data_job.year_count', count: years_to_process.size)
+        end
 
-    Notifications::Create.new(
-      user: user,
-      kind: :info,
-      title: I18n.t('jobs.users.recalculate_data_job.data_recalculation_completed'),
-      content: I18n.t('jobs.users.recalculate_data_job.stats_tracks_and_digests_have_been_recalculated_for_year_label',
-                      year_label: year_label)
-    ).call
+      Notifications::Create.new(
+        user: user,
+        kind: :info,
+        title: I18n.t('jobs.users.recalculate_data_job.data_recalculation_completed'),
+        content: I18n.t(
+          'jobs.users.recalculate_data_job.stats_tracks_and_digests_have_been_recalculated_for_year_label',
+          year_label: year_label
+        )
+      ).call
+    end
   end
 
   def create_failure_notification(error)
-    Notifications::Create.new(
-      user: user,
-      kind: :error,
-      title: I18n.t('jobs.users.recalculate_data_job.data_recalculation_failed'),
-      content: I18n.t('jobs.users.recalculate_data_job.message_stacktrace_n', message: error.message,
-                      backtrace: error.backtrace.first(10).join("\n"))
-    ).call
+    I18n.with_locale(user.locale) do
+      Notifications::Create.new(
+        user: user,
+        kind: :error,
+        title: I18n.t('jobs.users.recalculate_data_job.data_recalculation_failed'),
+        content: I18n.t('jobs.users.recalculate_data_job.message_stacktrace_n', message: error.message,
+                        backtrace: error.backtrace.first(10).join("\n"))
+      ).call
+    end
   rescue ActiveRecord::RecordNotFound
     nil
   end

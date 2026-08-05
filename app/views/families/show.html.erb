@@ -100,7 +100,7 @@
                       </span>
                       <% if location %>
                         <span class="text-xs text-base-content/40">
-                          <%= t('.middot') %> <%= time_ago_in_words(Time.zone.at(location[:timestamp])) %> <%= t('.ago') %>
+                          <%= t('.middot') %> <%= t('common.time_ago', time: relative_distance_in_words(Time.zone.at(location[:timestamp]))) %>
                         </span>
                       <% end %>
                     <% else %>
@@ -153,7 +153,7 @@
                   <div class="min-w-0 flex-1 mr-2">
                     <div class="text-sm font-medium"><%= invitation.email %></div>
                     <div class="text-xs text-base-content/40">
-                      <%= t('.invited_ago_expires', ago: time_ago_in_words(invitation.created_at), date: l(invitation.expires_at.to_date, format: :short_month_day_padded)) %>
+                      <%= t('.invited_ago_expires', ago: relative_distance_in_words(invitation.created_at), date: l(invitation.expires_at.to_date, format: :short_month_day_padded)) %>
                     </div>
                     <div class="text-xs text-base-content/50 font-mono break-all select-all mt-1">
                       <%= public_invitation_url(invitation.token) %>
