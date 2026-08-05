@@ -1714,6 +1714,10 @@ de:
       refund_policy: Rückgabepolitik
       impressum: Impressum
       blog: Blog
+    locale_suggestion:
+      message: Dawarich ist auch auf Deutsch verfügbar.
+      switch: Auf Deutsch wechseln
+      dismiss: Schließen
     navbar:
       family: Familie
       my_data: Meine Daten

@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
-- The interface is now available in German. Pick a language from the navbar; the choice is saved to your account and used for emails and notifications too. Dawarich also follows your browser's preferred language on first visit, so a German-language browser gets a German interface without changing anything — switch back to English from the same menu. API responses stay in English so integrations keep working.
+- The interface is now available in German. Pick a language from the navbar; the choice is saved to your account and used for emails and notifications too. English stays the default and is never changed for you — if your browser prefers German, Dawarich offers the switch in a banner you can dismiss, and takes no as an answer. API responses stay in English so integrations keep working.
 
 ### Fixed
 

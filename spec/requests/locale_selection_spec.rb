@@ -3,19 +3,12 @@
 require 'rails_helper'
 
 RSpec.describe 'Locale selection', type: :request do
-  it 'uses the best supported browser language' do
-    get root_path, headers: { 'Accept-Language' => 'fr;q=1.0, en;q=0.9, de-DE;q=0.8' }
+  it 'defaults to English regardless of the browser language' do
+    get root_path, headers: { 'Accept-Language' => 'de-DE,de;q=0.9,en;q=0.8' }
 
     expect(response.body).to include('<html lang="en"')
     expect(response.body).to include('The only location history tracker')
-  end
-
-  it 'renders German for a German browser language' do
-    get root_path, headers: { 'Accept-Language' => 'de-DE,de;q=0.9,en;q=0.8' }
-
-    expect(response.body).to include('<html lang="de"')
-    expect(response.body).to include('Der einzige Standortverlaufstracker')
-    expect(response.body).to include('English')
+    expect(response.body).not_to include('Der einzige Standortverlaufstracker')
   end
 
   it 'localizes the primary sign-in action' do
@@ -57,13 +50,13 @@ RSpec.describe 'Locale selection', type: :request do
     expect(response.body).to include('<html lang="en"')
   end
 
-  it 'does not persist an inferred locale while browsing as a signed-in user' do
+  it 'leaves a signed-in user in English until they choose otherwise' do
     user = create(:user, settings: { 'timezone' => 'Europe/Berlin' })
     sign_in user
 
     get edit_user_registration_path, headers: { 'Accept-Language' => 'de' }
 
-    expect(response.body).to include('<html lang="de"')
+    expect(response.body).to include('<html lang="en"')
     expect(user.reload.settings).to eq('timezone' => 'Europe/Berlin')
   end
 

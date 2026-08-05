@@ -1,0 +1,19 @@
+<% if suggested_locale %>
+  <div class="alert alert-info rounded-none py-2 px-4 text-sm flex items-start gap-2"
+       data-testid="locale-suggestion"
+       data-controller="dismissible"
+       data-dismissible-key-value="locale_suggestion_<%= suggested_locale %>"
+       lang="<%= suggested_locale %>">
+    <span class="flex-1">
+      <%= t('shared.locale_suggestion.message', locale: suggested_locale) %>
+      <%= link_to t('shared.locale_suggestion.switch', locale: suggested_locale),
+                  locale_path(suggested_locale),
+                  lang: suggested_locale,
+                  class: 'link link-primary font-medium' %>
+    </span>
+    <button type="button"
+            class="btn btn-ghost btn-xs btn-circle"
+            data-action="dismissible#dismiss"
+            aria-label="<%= t('shared.locale_suggestion.dismiss', locale: suggested_locale) %>">✕</button>
+  </div>
+<% end %>
