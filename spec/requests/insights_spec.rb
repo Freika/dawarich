@@ -66,6 +66,19 @@ RSpec.describe '/insights', type: :request do
         end
       end
 
+      context 'when a legacy stat has an invalid month' do
+        before do
+          stat = create(:stat, user:, year: 2024, month: 12, distance: 100_000)
+          stat.update_column(:month, 13)
+        end
+
+        it 'ignores the invalid row instead of returning an error' do
+          get insights_url(year: '2024')
+
+          expect(response).to be_successful
+        end
+      end
+
       context 'when there are stats for the current year' do
         let!(:stat) do
           create(:stat,

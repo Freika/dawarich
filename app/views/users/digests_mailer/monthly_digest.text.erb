@@ -12,7 +12,7 @@
 <%= t('.weekly_pattern') %>
 <%= ascii_hbar(
   @weekday_totals,
-  labels: %w[Mon Tue Wed Thu Fri Sat Sun],
+  labels: I18n.t('date.abbr_day_names').rotate,
   width: 20,
   suffix: " #{@distance_unit}"
 ) %>

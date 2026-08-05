@@ -17,4 +17,8 @@ class ApplicationJob < ActiveJob::Base
       Rails.logger.info "#{self.class.name}: User #{user_id} not found, skipping" unless user
     end
   end
+
+  def with_user_locale(user, &block)
+    I18n.with_locale(user.preferred_locale || I18n.default_locale, &block)
+  end
 end

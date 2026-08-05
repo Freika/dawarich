@@ -23,7 +23,7 @@ fr:
       confirmation_instructions:
         subject: Instructions de confirmation
       reset_password_instructions:
-        subject: Instructions pour changer le mot de passe
+        subject: Instructions de réinitialisation du mot de passe
       unlock_instructions:
         subject: Instructions pour déverrouiller le compte
       email_changed:

@@ -33,6 +33,16 @@ RSpec.describe Families::AcceptInvitation do
         expect(owner_notification).to be_present
       end
 
+      it 'localizes each notification for its recipient' do
+        invitee.update!(settings: { 'locale' => 'fr' })
+        family.creator.update!(settings: { 'locale' => 'en' })
+
+        I18n.with_locale(:en) { service.call }
+
+        expect(invitee.notifications.last.title).to eq('Bienvenue dans la famille !')
+        expect(family.creator.notifications.last.title).to eq('New Family Member!')
+      end
+
       it 'returns true' do
         expect(service.call).to be true
       end

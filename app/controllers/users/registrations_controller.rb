@@ -29,6 +29,7 @@ class Users::RegistrationsController < Devise::RegistrationsController
     yield resource if block_given?
 
     if resource.persisted?
+      persist_signup_locale(resource)
       post_signup_setup(resource)
 
       # The claim happens in every branch (not in after_sign_up_path_for):
@@ -141,6 +142,13 @@ class Users::RegistrationsController < Devise::RegistrationsController
     assign_utm_params(resource)
     store_signup_intent(resource)
     accept_invitation_for_user(resource) if @invitation
+  end
+
+  def persist_signup_locale(resource)
+    locale = I18n.locale.to_s
+    resource.settings = (resource.settings || {}).merge('locale' => locale)
+    resource.save!
+    cookies.delete(:locale_account_sync)
   end
 
   def manager_checkout_url(user)

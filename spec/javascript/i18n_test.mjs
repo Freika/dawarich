@@ -28,3 +28,17 @@ test("translates strings, interpolation, and count-based plural forms", async ()
     delete globalThis.document
   }
 })
+
+test("formats numbers with the selected interface locale", async () => {
+  globalThis.document = { documentElement: { lang: "en" } }
+
+  try {
+    const { formatNumber } = await import(moduleUrl)
+
+    assert.equal(formatNumber(1234), "1,234")
+    globalThis.document.documentElement.lang = "fr"
+    assert.equal(formatNumber(1234), "1 234")
+  } finally {
+    delete globalThis.document
+  }
+})

@@ -7,6 +7,8 @@ class Posters::CreateJob < ApplicationJob
   def perform(poster_id)
     poster = Poster.find(poster_id)
 
-    Posters::Generate.new(poster).call
+    with_user_locale(poster.user) do
+      Posters::Generate.new(poster).call
+    end
   end
 end

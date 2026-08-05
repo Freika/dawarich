@@ -4,6 +4,7 @@ class Stat < ApplicationRecord
   include DistanceConvertible
 
   validates :year, :month, presence: true
+  validates :month, inclusion: { in: 1..12 }
 
   belongs_to :user
 
@@ -32,7 +33,7 @@ class Stat < ApplicationRecord
     stats_by_month = where(year:, user:).order(:month).index_by(&:month)
 
     (1..12).map do |month|
-      month_name = Date::MONTHNAMES[month]
+      month_name = I18n.l(Date.new(year, month, 1), format: :month_name)
       distance = stats_by_month[month]&.distance || 0
 
       [month_name, distance]

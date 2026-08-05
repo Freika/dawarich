@@ -99,24 +99,33 @@ module Families
     end
 
     def send_user_notification
-      Notification.create!(
-        user: user,
-        kind: :info,
-        title: I18n.t('services.families.accept_invitation.welcome_to_family'),
-        content: I18n.t('services.families.accept_invitation.you_ve_joined_the_family_name',
-                        name: invitation.family.name)
-      )
+      with_recipient_locale(user) do
+        Notification.create!(
+          user: user,
+          kind: :info,
+          title: I18n.t('services.families.accept_invitation.welcome_to_family'),
+          content: I18n.t('services.families.accept_invitation.you_ve_joined_the_family_name',
+                          name: invitation.family.name)
+        )
+      end
     end
 
     def send_owner_notification
-      Notification.create!(
-        user: invitation.family.creator,
-        kind: :info,
-        title: I18n.t('services.families.accept_invitation.new_family_member'),
-        content: I18n.t('services.families.accept_invitation.email_has_joined_your_family', email: user.email)
-      )
+      owner = invitation.family.creator
+      with_recipient_locale(owner) do
+        Notification.create!(
+          user: owner,
+          kind: :info,
+          title: I18n.t('services.families.accept_invitation.new_family_member'),
+          content: I18n.t('services.families.accept_invitation.email_has_joined_your_family', email: user.email)
+        )
+      end
     rescue StandardError => e
       ExceptionReporter.call(e, "Unexpected error in Families::AcceptInvitation: #{e.message}")
+    end
+
+    def with_recipient_locale(recipient, &block)
+      I18n.with_locale(recipient.preferred_locale || I18n.default_locale, &block)
     end
 
     def handle_record_invalid_error(error)

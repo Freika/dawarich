@@ -118,6 +118,26 @@ class User < ApplicationRecord
     Users::SafeSettings.new(settings, plan: plan)
   end
 
+  def preferred_locale
+    return unless settings.is_a?(Hash)
+
+    locale_value = settings['locale']
+    return unless locale_value.is_a?(String)
+
+    normalized_locale = locale_value.strip.downcase
+    I18n.available_locales.find { |locale| locale.to_s == normalized_locale }
+  end
+
+  def update_preferred_locale!(locale)
+    normalized_locale = I18n.available_locales.find do |available_locale|
+      available_locale.to_s == locale.to_s.strip.downcase
+    end
+    raise ArgumentError, "Unsupported locale: #{locale.inspect}" unless normalized_locale
+
+    normalized_settings = settings.is_a?(Hash) ? settings.dup : {}
+    update!(settings: normalized_settings.merge('locale' => normalized_locale.to_s))
+  end
+
   # Only accounts the migration actually handed to a rebuild are waiting on one.
   # Deriving this from live state instead would report a permanent "pending" for
   # anyone the dispatcher never picked up — no points at the time, filtering off
@@ -355,6 +375,8 @@ class User < ApplicationRecord
   end
 
   def sanitize_input
+    return unless settings.is_a?(Hash)
+
     settings['immich_url']&.gsub!(%r{/+\z}, '')
     settings['photoprism_url']&.gsub!(%r{/+\z}, '')
     settings.try(:[], 'maps')&.try(:[], 'url')&.strip!

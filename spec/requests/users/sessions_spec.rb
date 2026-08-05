@@ -112,6 +112,26 @@ RSpec.describe 'Users::Sessions', type: :request do
 
         expect(response).to have_http_status(:ok)
         expect(response.body).to include('type="password"')
+        expect(response.body).to include('value="Log in"')
+      end
+
+      it 'renders the French persistent-session label' do
+        I18n.with_locale(:fr) { get new_user_session_path }
+
+        expect(response.body).to include('Se souvenir de moi')
+        expect(response.body).to include('value="Se connecter"')
+      end
+
+      it 'renders an invited user French heading as one complete sentence' do
+        family = create(:family, name: 'Famille Test')
+        invitation = create(:family_invitation, family:, invited_by: family.creator)
+
+        I18n.with_locale(:fr) do
+          get new_user_session_path(invitation_token: invitation.token)
+        end
+
+        expect(response.body).to include('Se connecter pour rejoindre Famille Test !')
+        expect(response.body).not_to include('Se connecter pour rejoindre.')
       end
     end
   end

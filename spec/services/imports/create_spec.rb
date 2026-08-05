@@ -207,6 +207,14 @@ RSpec.describe Imports::Create do
             expect(user.notifications.last.content).to \
               include('Import "2024-03.rec" failed: StandardError, stacktrace: ')
           end
+
+          it 'localizes the failed notification' do
+            I18n.with_locale(:fr) { service.call }
+
+            expect(user.notifications.last.title).to eq("L'importation a échoué")
+            expect(user.notifications.last.content).to \
+              include("L'importation « 2024-03.rec » a échoué : StandardError, détail de l'erreur : ")
+          end
         end
 
         context 'when not self-hosted' do
@@ -223,6 +231,13 @@ RSpec.describe Imports::Create do
 
             expect(user.notifications.last.content).to \
               include('Import "2024-03.rec" failed, please contact us at hi@dawarich.com')
+          end
+
+          it 'localizes the failed notification' do
+            I18n.with_locale(:fr) { service.call }
+
+            expect(user.notifications.last.content).to \
+              include("L'importation « 2024-03.rec » a échoué. Contactez-nous à hi@dawarich.com")
           end
         end
       end

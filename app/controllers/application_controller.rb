@@ -5,13 +5,15 @@ class ApplicationController < ActionController::Base
 
   rescue_from Pundit::NotAuthorizedError, with: :user_not_authorized
 
+  around_action :switch_locale
+  around_action :set_user_time_zone
   before_action :sign_out_deleted_users
   before_action :configure_permitted_parameters, if: :devise_controller?
-  around_action :set_user_time_zone
   before_action :unread_notifications, :set_self_hosted_status, :store_client_header
+  after_action :persist_detected_locale
 
   helper_method :current_user_safe_settings, :poster_ordering_enabled?, :family_feature_available?,
-                :current_user_features, :family_home_path
+                :current_user_features, :family_home_path, :supported_locales
 
   # Memoized per-request SafeSettings for the current user. Use this instead of
   # `current_user.safe_settings` in partials/helpers that may render many rows
@@ -35,6 +37,10 @@ class ApplicationController < ActionController::Base
   # #show would bounce and overwrite the flash.
   def family_home_path
     family_feature_available? ? family_path : new_family_path
+  end
+
+  def supported_locales
+    I18n.available_locales
   end
 
   # Ordering is on unless this instance turned the flag off, so an install
@@ -171,6 +177,50 @@ status: :see_other
   end
 
   private
+
+  def switch_locale(&block)
+    I18n.with_locale(request_locale, &block)
+  end
+
+  def request_locale
+    current_user&.preferred_locale || cookie_locale || browser_locale || I18n.locale || I18n.default_locale
+  end
+
+  def cookie_locale
+    normalize_locale(cookies[:locale])
+  end
+
+  def browser_locale
+    candidates = request.headers['Accept-Language'].to_s.split(',').each_with_index.filter_map do |entry, index|
+      language_range, *parameters = entry.split(';').map(&:strip)
+      quality_parameter = parameters.find { |parameter| parameter.start_with?('q=') }
+      quality = quality_parameter ? quality_parameter.delete_prefix('q=').to_f : 1.0
+      locale = normalize_locale(language_range.to_s.split('-').first)
+
+      [locale, quality, index] if locale && quality.positive?
+    end
+
+    candidates.max_by { |_locale, quality, index| [quality, -index] }&.first
+  end
+
+  def normalize_locale(locale)
+    candidate = locale.to_s.downcase.to_sym
+
+    candidate if supported_locales.include?(candidate)
+  end
+
+  def persist_detected_locale
+    return unless current_user
+
+    sync_explicit_choice = cookies[:locale_account_sync] == '1'
+    locale = cookie_locale if sync_explicit_choice
+    locale ||= cookie_locale || browser_locale if current_user.preferred_locale.nil?
+    return unless locale
+
+    current_user.update_preferred_locale!(locale) if current_user.preferred_locale != locale
+
+    cookies.delete(:locale_account_sync) if sync_explicit_choice
+  end
 
   def sign_out_deleted_users
     return unless current_user&.deleted?

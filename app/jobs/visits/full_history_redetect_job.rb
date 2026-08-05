@@ -10,38 +10,48 @@ class Visits::FullHistoryRedetectJob < ApplicationJob
   def perform(user_id)
     user = User.find(user_id)
 
-    if recently_redetected?(user)
-      Rails.logger.info("[Visits::FullHistoryRedetectJob skip] user_id=#{user.id} reason=cooldown_active")
-      return
-    end
-
-    Tracks::PerUserLock.with_user_lock(user_id) do
-      user.reload
+    with_user_locale(user) do
       if recently_redetected?(user)
-        Rails.logger.info("[Visits::FullHistoryRedetectJob skip] user_id=#{user.id} reason=cooldown_active_after_lock")
-        next
+        Rails.logger.info("[Visits::FullHistoryRedetectJob skip] user_id=#{user.id} reason=cooldown_active")
+        return
       end
 
-      run_redetection(user)
+      Tracks::PerUserLock.with_user_lock(user_id) do
+        user.reload
+        if recently_redetected?(user)
+          Rails.logger.info(
+            "[Visits::FullHistoryRedetectJob skip] user_id=#{user.id} reason=cooldown_active_after_lock"
+          )
+          next
+        end
+
+        run_redetection(user)
+      end
     end
   rescue Tracks::PerUserLock::AcquisitionTimeout => e
     Rails.logger.warn(
       "[Visits::FullHistoryRedetectJob lock_timeout] user_id=#{user_id} message=#{e.message}"
     )
-    user_for_notify = defined?(user) ? user : User.find_by(id: user_id)
+    user_for_notify = user || User.find_by(id: user_id)
     if user_for_notify
-      notify!(
-        user_for_notify, kind: :warning, title: I18n.t('jobs.visits.full_history_redetect_job.visit_re_detection_busy'),
-        content: I18n.t('jobs.visits.full_history_redetect_job.another_re_detection_is_already_running_try_again_in_a')
-      )
+      with_user_locale(user_for_notify) do
+        notify!(
+          user_for_notify,
+          kind: :warning,
+          title: I18n.t('jobs.visits.full_history_redetect_job.visit_re_detection_busy'),
+          content: I18n.t(
+            'jobs.visits.full_history_redetect_job.another_re_detection_is_already_running_try_again_in_a'
+          )
+        )
+      end
     end
   rescue StandardError => e
     Rails.logger.error(
       "[Visits::FullHistoryRedetectJob error] user_id=#{user_id} " \
       "class=#{e.class} message=#{e.message}"
     )
-    user_for_notify = defined?(user) ? user : User.find_by(id: user_id)
-    notify_failure(user_for_notify, e) if user_for_notify
+    user_for_notify = user || User.find_by(id: user_id)
+    with_user_locale(user_for_notify) { notify_failure(user_for_notify, e) } if user_for_notify
     ExceptionReporter.call(e)
     raise
   end
@@ -99,22 +109,27 @@ class Visits::FullHistoryRedetectJob < ApplicationJob
     )
 
     if months_failed.empty?
+      visits = localized_count('visits_count', visits_created)
+      months_count = localized_count('months_count', months.size)
       content = I18n.t(
         'jobs.visits.full_history_redetect_job.visits_created_visits_across_size_months',
-        visits_created: visits_created,
-        size: months.size
+        visits:,
+        months: months_count
       )
       notify!(user, kind: :info,
                     title: I18n.t('jobs.visits.full_history_redetect_job.visit_re_detection_complete'),
                     content: content)
     else
       ok_months = months.size - months_failed.size
+      visits = localized_count('visits_count', visits_created)
+      ok_months_count = localized_count('months_count', ok_months)
+      months_count = localized_count('months_count', months.size)
       content = I18n.t(
         'jobs.visits.full_history_redetect_job.visits_created_visits_across_ok_months_of_size_months_size',
-        visits_created: visits_created,
-        ok_months: ok_months,
-        size: months.size,
-        failed_count: months_failed.size
+        count: months_failed.size,
+        visits:,
+        ok_months: ok_months_count,
+        months: months_count
       )
       notify!(user, kind: :warning,
                     title: I18n.t('jobs.visits.full_history_redetect_job.visit_re_detection_partially_complete'),
@@ -125,6 +140,10 @@ class Visits::FullHistoryRedetectJob < ApplicationJob
   def recently_redetected?(user)
     last = user.visits_redetected_at
     last.present? && last > COOLDOWN.ago
+  end
+
+  def localized_count(key, count)
+    I18n.t("jobs.visits.full_history_redetect_job.#{key}", count:)
   end
 
   def monthly_ranges(min_ts, max_ts)
@@ -154,8 +173,12 @@ class Visits::FullHistoryRedetectJob < ApplicationJob
   end
 
   def notify_failure(user, error)
-    notify!(user, kind: :error, title: I18n.t('jobs.visits.full_history_redetect_job.visit_re_detection_failed'),
-content: error.message)
+    notify!(
+      user,
+      kind: :error,
+      title: I18n.t('jobs.visits.full_history_redetect_job.visit_re_detection_failed'),
+      content: error.message
+    )
   end
 
   def notify!(user, kind:, title:, content:)

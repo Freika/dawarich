@@ -130,14 +130,16 @@ class DataMigrations::RecalculateAnomaliesUserJob < ApplicationJob
   # page is self-hosted only, so this is the only signal a Cloud account gets
   # that its map may look different.
   def notify(user)
-    Notifications::Create.new(
-      user: user,
-      kind: :info,
-      title: I18n.t('jobs.data_migrations.recalculate_anomalies_user_job.gps_noise_re_check_finished'),
-      content: I18n.t(
-        'jobs.data_migrations.recalculate_anomalies_user_job.rules_recheck_finished'
-      )
-    ).call
+    with_user_locale(user) do
+      Notifications::Create.new(
+        user: user,
+        kind: :info,
+        title: I18n.t('jobs.data_migrations.recalculate_anomalies_user_job.gps_noise_re_check_finished'),
+        content: I18n.t(
+          'jobs.data_migrations.recalculate_anomalies_user_job.rules_recheck_finished'
+        )
+      ).call
+    end
   end
 
   def recalculated?(user)
