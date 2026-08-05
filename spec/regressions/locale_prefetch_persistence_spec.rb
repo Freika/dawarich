@@ -21,4 +21,23 @@ RSpec.describe 'Locale persistence and link prefetching', type: :request do
 
     expect(user.reload.preferred_locale).to eq(:de)
   end
+
+  it 'does not carry a prefetched locale into the next request' do
+    get edit_user_registration_path,
+        params: { locale: 'de' },
+        headers: { 'Sec-Purpose' => 'prefetch' }
+
+    get edit_user_registration_path
+
+    expect(response.body).to include('<html lang="en"')
+  end
+
+  it 'does not carry a prefetched locale into the next request for a visitor' do
+    sign_out user
+
+    get root_path, params: { locale: 'de' }, headers: { 'Sec-Purpose' => 'prefetch' }
+    get root_path
+
+    expect(response.body).to include('<html lang="en"')
+  end
 end

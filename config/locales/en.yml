@@ -3514,6 +3514,9 @@ en:
         data_recalculation_busy: Data recalculation busy
         another_recalculation_is_already_running_please_try_again_in_a: Another recalculation is already running. Please try again in a few minutes.
         data_recalculation_completed: Data recalculation completed
+        year_count:
+          one: "%{count} year"
+          other: "%{count} years"
         stats_tracks_and_digests_have_been_recalculated_for_year_label: Stats, tracks, and digests have been recalculated for %{year_label}.
         data_recalculation_failed: Data recalculation failed
         message_stacktrace_n: "%{message}, stacktrace: %{backtrace}"

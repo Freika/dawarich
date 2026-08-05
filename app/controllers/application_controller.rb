@@ -175,14 +175,19 @@ status: :see_other
 
   def switch_locale(&action)
     parameter_locale = supported_locale(params[:locale])
-    session[:locale] = parameter_locale.to_s if parameter_locale
+    remember_locale(parameter_locale) if parameter_locale && !prefetch_request?
     locale = parameter_locale || current_user&.preferred_locale || supported_locale(session[:locale]) ||
              locale_from_accept_language || I18n.default_locale
 
-    I18n.with_locale(locale) do
-      action.call
-      persist_user_locale(locale) if parameter_locale
-    end
+    I18n.with_locale(locale, &action)
+  end
+
+  # A prefetched response is still rendered in the requested language so the
+  # preview matches what a click would show; only the choice is withheld until
+  # the user actually navigates.
+  def remember_locale(locale)
+    session[:locale] = locale.to_s
+    persist_user_locale(locale)
   end
 
   def supported_locale(value)
@@ -220,7 +225,6 @@ status: :see_other
 
   def persist_user_locale(locale)
     return unless current_user
-    return if prefetch_request?
     return if current_user.preferred_locale == locale
 
     current_user.persist_locale!(locale)
