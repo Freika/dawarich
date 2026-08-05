@@ -3,16 +3,19 @@
 module TransportationModes
   # Orchestrates the detection pipeline for one track:
   # FeatureExtractor (SQL) -> Preprocessor -> Windower -> Decoder -> SegmentAssembler.
-  # Never raises to callers — any failure degrades to a single unknown segment.
+  # With fallback (default), failures degrade to a single unknown segment;
+  # with fallback: false, errors propagate so callers that replace existing
+  # segments can roll back instead of committing a destructive overwrite.
   #
   # Usage:
   #   TransportationModes::Detector.new(track, enabled_modes: [...], preserved: [...]).call
   #   # => array of segment hashes for TrackSegments::BulkInserter
   class Detector
-    def initialize(track, enabled_modes: nil, preserved: [])
+    def initialize(track, enabled_modes: nil, preserved: [], fallback: true)
       @track = track
       @enabled_modes = (enabled_modes.presence || Track::TRANSPORTATION_MODES.keys).map(&:to_sym)
       @preserved = preserved
+      @fallback = fallback
     end
 
     def call
@@ -25,7 +28,9 @@ module TransportationModes
       decoded = Decoder.call(windows, enabled: @enabled_modes)
       SegmentAssembler.call(rows: rows, windows: windows, decoded: decoded, preserved: @preserved)
     rescue StandardError => e
-      Rails.logger.error "[TransportationModes] track=#{@track.id} #{e.class}: #{e.message}"
+      ExceptionReporter.call(e, "Transportation mode detection failed for track #{@track.id}")
+      raise unless @fallback
+
       default_unknown_segment
     end
 

@@ -28,6 +28,8 @@ module TransportationModes
       result
     end
 
+    # Two-pointer slicing: window starts are monotonic, so the left cursor
+    # only ever advances — O(points), not O(windows × points).
     def self.chain_windows(rows)
       return [] if rows.empty?
 
@@ -36,10 +38,17 @@ module TransportationModes
       span = adaptive_span(rows)
       step = span / 2
 
-      (first_ts..[last_ts - span, first_ts].max).step(step).filter_map do |window_start|
-        window_rows = rows.select { |r| r[:ts] >= window_start && r[:ts] < window_start + span }
-        build_window(window_rows, window_start, window_start + span)
+      windows = []
+      left = 0
+      (first_ts..[last_ts - span, first_ts].max).step(step) do |window_start|
+        window_end = window_start + span
+        left += 1 while left < rows.size && rows[left][:ts] < window_start
+        right = left
+        right += 1 while right < rows.size && rows[right][:ts] < window_end
+        window = build_window(rows[left...right], window_start, window_end)
+        windows << window if window
       end
+      windows
     end
 
     # Sparse chains (large dt) widen the window so every window still holds

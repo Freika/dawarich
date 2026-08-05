@@ -60,4 +60,37 @@ RSpec.describe TransportationModes::ReclassifyTrackJob do
     expect(status.data['processed_tracks']).to eq(1)
     expect(status.current_status).to eq('completed')
   end
+
+  it 'still counts progress when reclassification fails, so the status can complete' do
+    track = create_track_with_points
+    status = Tracks::TransportationRecalculationStatus.new(user.id)
+    status.start(total_tracks: 1)
+    allow(TransportationModes::FeatureExtractor).to receive(:call).and_raise(ActiveRecord::StatementInvalid)
+
+    expect do
+      described_class.perform_now(track.id, report_progress: true, user_id: user.id)
+    end.to raise_error(ActiveRecord::StatementInvalid)
+
+    expect(status.current_status).to eq('completed')
+  end
+
+  it 'preserves existing segments when detection fails instead of overwriting with unknown' do
+    track = create_track_with_points
+    described_class.perform_now(track.id)
+    before_ids = track.track_segments.reload.pluck(:id)
+    allow(TransportationModes::FeatureExtractor).to receive(:call).and_raise(ActiveRecord::StatementInvalid)
+
+    expect { described_class.perform_now(track.id) }.to raise_error(ActiveRecord::StatementInvalid)
+
+    expect(track.track_segments.reload.pluck(:id)).to match_array(before_ids)
+  end
+
+  it 'still counts progress when the track was deleted mid-run' do
+    status = Tracks::TransportationRecalculationStatus.new(user.id)
+    status.start(total_tracks: 1)
+
+    described_class.perform_now(-1, report_progress: true, user_id: user.id)
+
+    expect(status.current_status).to eq('completed')
+  end
 end

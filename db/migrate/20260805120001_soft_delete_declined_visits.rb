@@ -6,12 +6,20 @@
 # detector never re-suggests them.
 class SoftDeleteDeclinedVisits < ActiveRecord::Migration[8.0]
   DECLINED = 2
+  BATCH_SIZE = 10_000
 
   def up
-    execute(<<~SQL.squish)
-      UPDATE visits SET deleted_at = NOW()
-      WHERE status = #{DECLINED} AND deleted_at IS NULL
-    SQL
+    loop do
+      affected = connection.update(<<~SQL.squish)
+        UPDATE visits SET deleted_at = NOW()
+        WHERE id IN (
+          SELECT id FROM visits
+          WHERE status = #{DECLINED} AND deleted_at IS NULL
+          LIMIT #{BATCH_SIZE}
+        )
+      SQL
+      break if affected < BATCH_SIZE
+    end
   end
 
   def down

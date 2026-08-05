@@ -98,6 +98,7 @@ class Tracks::SegmentsController < ApplicationController
   def error_message_for(code)
     case code
     when :mode_not_enabled then I18n.t('controllers.tracks.segments.mode_not_enabled')
+    when :reprocess_failed then I18n.t('controllers.tracks.segments.reprocess_failed')
     else I18n.t('controllers.tracks.segments.update_failed')
     end
   end

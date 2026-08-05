@@ -27,12 +27,18 @@ module Tracks
 
     # Clearing a correction re-runs full detection for the track: per-segment
     # re-classification is meaningless in the windowed HMM pipeline. The
-    # segment row is replaced by fresh auto-classified segments.
+    # segment row is replaced by fresh auto-classified segments. One
+    # transaction: a failed re-detection must not eat the manual correction.
     def reset_to_auto
       track = @segment.track
-      @segment.update!(corrected_at: nil, source: 'inferred')
-      Tracks::Reprocessor.reprocess(track)
+      Track.transaction do
+        @segment.update!(corrected_at: nil, source: 'inferred')
+        Tracks::Reprocessor.reprocess(track)
+      end
       Result.new(success?: true, segment: nil, track: track.reload)
+    rescue StandardError => e
+      ExceptionReporter.call(e, "Failed to reset segment #{@segment.id} to auto")
+      failure(:reprocess_failed)
     end
 
     private

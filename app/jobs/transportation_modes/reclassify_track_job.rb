@@ -7,12 +7,16 @@ module TransportationModes
     queue_as :tracks
     sidekiq_options retry: 1
 
-    def perform(track_id, report_progress: false)
+    def perform(track_id, report_progress: false, user_id: nil)
       track = Track.find_by(id: track_id)
-      return unless track
-
-      reclassify(track)
-      report(track) if report_progress
+      @report_user_id = user_id || track&.user_id
+      reclassify(track) if track
+    ensure
+      # Progress must advance even on failure or a deleted track, or the
+      # recalculation status never completes and mode settings stay locked
+      # for the cache TTL. A retried failure may overshoot the counter;
+      # complete is idempotent, so that only ends the progress display early.
+      report if report_progress
     end
 
     private
@@ -25,7 +29,8 @@ module TransportationModes
         detector = Detector.new(
           track,
           enabled_modes: enabled_modes(track.user),
-          preserved: preserved
+          preserved: preserved,
+          fallback: false
         )
         segment_data = detector.call
         TrackSegments::BulkInserter.call(track, segment_data) if segment_data.any?
@@ -46,8 +51,10 @@ module TransportationModes
       track.update_column(:dominant_mode, mode || :unknown)
     end
 
-    def report(track)
-      Tracks::TransportationRecalculationStatus.new(track.user_id).increment_processed!
+    def report
+      return unless @report_user_id
+
+      Tracks::TransportationRecalculationStatus.new(@report_user_id).increment_processed!
     end
   end
 end

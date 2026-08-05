@@ -18,7 +18,19 @@ EVAL_SCENARIOS = {
     'sparse_drive' => [{ mode: :driving, duration_s: 1800, dt_s: 60 }]
 }.freeze
 
-RSpec.describe 'Transportation mode eval', :eval do
+# Regression floors per scenario, set from the recorded baselines
+# (spec/eval/baselines) minus a small tolerance. Failing a floor means a
+# tuning change made detection measurably worse.
+EVAL_GATES = {
+  'walk' => { point_accuracy: 0.95, boundary_f1: 0.9 },
+  'commute_mixed' => { point_accuracy: 0.9, boundary_f1: 0.9 },
+  'run' => { point_accuracy: 0.95, boundary_f1: 0.9 },
+  'bike_errand' => { point_accuracy: 0.9, boundary_f1: 0.9 },
+  'train_trip' => { point_accuracy: 0.9, boundary_f1: 0.65 },
+  'sparse_drive' => { point_accuracy: 0.95, boundary_f1: 0.9 }
+}.freeze
+
+RSpec.describe 'Transportation mode eval' do
   def relative_timeline(entries, trip)
     origin = trip[:points].first[:timestamp]
     entries.map { |e| [e[:mode], e[:start_ts] - origin, e[:end_ts] - origin] }
@@ -62,7 +74,14 @@ RSpec.describe 'Transportation mode eval', :eval do
     end
 
     File.write(Rails.root.join('tmp/transportation_eval_report.json'), JSON.pretty_generate(report))
-    puts JSON.pretty_generate(report)
     expect(report.size).to eq(EVAL_SCENARIOS.size)
+
+    EVAL_GATES.each do |name, gates|
+      scores = report[name]
+      expect(scores[:point_accuracy]).to be >= gates[:point_accuracy],
+                                         "#{name}: accuracy #{scores[:point_accuracy]} < #{gates[:point_accuracy]}"
+      expect(scores[:boundary_f1]).to be >= gates[:boundary_f1],
+                                      "#{name}: boundary F1 #{scores[:boundary_f1]} < #{gates[:boundary_f1]}"
+    end
   end
 end

@@ -358,6 +358,33 @@ RSpec.describe 'Api::V1::Visits', type: :request do
     let!(:visit) { create(:visit, user: user, place: place) }
     let!(:other_user_visit) { create(:visit, user: other_user, place: place) }
 
+    context 'when the visit is already soft-deleted' do
+      let!(:tombstone) { create(:visit, user: user, place: place, deleted_at: 1.day.ago) }
+
+      it 'is not found by update' do
+        patch "/api/v1/visits/#{tombstone.id}", params: { visit: { name: 'Ghost' } }.to_json,
+              headers: auth_headers.merge('Content-Type' => 'application/json')
+
+        expect(response).to have_http_status(:not_found)
+        expect(tombstone.reload.name).not_to eq('Ghost')
+      end
+
+      it 'is not found by destroy' do
+        delete "/api/v1/visits/#{tombstone.id}", headers: auth_headers
+
+        expect(response).to have_http_status(:not_found)
+      end
+
+      it 'cannot be merged' do
+        alive = create(:visit, user: user, place: place)
+
+        post '/api/v1/visits/merge', params: { visit_ids: [alive.id, tombstone.id] }.to_json,
+             headers: auth_headers.merge('Content-Type' => 'application/json')
+
+        expect(response).to have_http_status(:not_found)
+      end
+    end
+
     context 'when visit exists and belongs to current user' do
       it 'soft-deletes the visit and responds with no content' do
         expect do

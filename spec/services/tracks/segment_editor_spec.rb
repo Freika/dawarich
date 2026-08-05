@@ -64,5 +64,15 @@ RSpec.describe Tracks::SegmentEditor do
       described_class.new(segment, user).reset_to_auto
       expect(track.track_segments.reload.pluck(:source)).not_to include('user')
     end
+
+    it 'keeps the manual correction and reports failure when re-detection fails' do
+      allow(TransportationModes::FeatureExtractor).to receive(:call).and_raise(ActiveRecord::StatementInvalid)
+
+      result = described_class.new(segment, user).reset_to_auto
+
+      expect(result.success?).to be false
+      expect(result.error_code).to eq(:reprocess_failed)
+      expect(segment.reload.corrected_at).to be_present
+    end
   end
 end

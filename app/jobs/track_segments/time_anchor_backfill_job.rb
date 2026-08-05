@@ -17,8 +17,10 @@ module TrackSegments
 
       anchor_rows(ids)
 
-      # Rows whose index range matched no points (corrupt indexes) would loop
-      # forever: drop their indexes so the cursor query stops selecting them.
+      # Rows whose index range matched no points, or matched an incomplete
+      # slice (points deleted since the indexes were computed — anchoring a
+      # truncated slice would place the segment at the wrong times), would
+      # loop forever: drop their indexes so the cursor stops selecting them.
       TrackSegment.where(id: ids, start_at: nil).update_all(start_index: nil, end_index: nil)
 
       self.class.perform_later(ids.last)
@@ -54,6 +56,7 @@ module TrackSegments
           GROUP BY ts2.id
         ) sub
         WHERE ts.id = sub.id AND ts.start_at IS NULL
+          AND sub.n = ts.end_index - ts.start_index + 1
       SQL
     end
 

@@ -2970,6 +2970,7 @@ en:
         segment_updated: Segment updated
         mode_not_enabled: That mode isn't enabled in your settings
         update_failed: Could not update segment
+        reprocess_failed: Re-detection failed — your correction was kept
       share_links:
         not_found: Not found
     trial:

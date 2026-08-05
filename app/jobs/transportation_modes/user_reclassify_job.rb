@@ -21,7 +21,7 @@ module TransportationModes
 
       track_ids.each_slice(SLICE).with_index do |slice, slice_index|
         jobs = slice.map do |track_id|
-          job = ReclassifyTrackJob.new(track_id, report_progress: true)
+          job = ReclassifyTrackJob.new(track_id, report_progress: true, user_id: user.id)
           job.scheduled_at = (slice_index * SLICE_STAGGER).from_now
           job
         end

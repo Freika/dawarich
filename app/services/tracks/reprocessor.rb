@@ -32,10 +32,12 @@ module Tracks
       count
     end
 
+    # Raises on failure so single-track callers (segment reset) can roll
+    # back alongside their own writes instead of committing half a change.
     def reprocess_single
       return false unless @track
 
-      reprocess_track(@track)
+      reprocess_track!(@track, fallback: false)
       true
     end
 
@@ -45,7 +47,14 @@ module Tracks
 
     private
 
+    # Batch path: one broken track must not abort the rest of the import.
     def reprocess_track(track)
+      reprocess_track!(track)
+    rescue StandardError => e
+      ExceptionReporter.call(e, "Failed to reprocess track #{track.id}")
+    end
+
+    def reprocess_track!(track, fallback: true)
       Track.transaction do
         preserved = track.track_segments.manually_corrected.to_a
         track.track_segments.auto_classified.delete_all
@@ -53,13 +62,12 @@ module Tracks
         detector = TransportationModes::Detector.new(
           track,
           enabled_modes: extract_enabled_modes(track.user),
-          preserved: preserved
+          preserved: preserved,
+          fallback: fallback
         )
         create_segments(track, detector.call)
         recompute_dominant_mode(track)
       end
-    rescue StandardError => e
-      Rails.logger.error "Failed to reprocess track #{track.id}: #{e.message}"
     end
 
     def extract_enabled_modes(user)

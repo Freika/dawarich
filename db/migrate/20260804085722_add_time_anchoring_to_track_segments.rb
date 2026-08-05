@@ -14,6 +14,27 @@ class AddTimeAnchoringToTrackSegments < ActiveRecord::Migration[8.0]
     change_column_null :track_segments, :start_index, true
     change_column_null :track_segments, :end_index, true
 
+    # A failed CREATE INDEX CONCURRENTLY leaves an INVALID index behind that
+    # if_not_exists would silently keep — and an invalid index cannot serve
+    # as the ON CONFLICT arbiter for BulkInserter. Drop it so a rerun
+    # rebuilds it cleanly.
+    reversible do |dir|
+      dir.up do
+        execute(<<~SQL.squish)
+          DO $$
+          BEGIN
+            IF EXISTS (
+              SELECT 1 FROM pg_index i
+              JOIN pg_class c ON c.oid = i.indexrelid
+              WHERE c.relname = 'idx_track_segments_track_start_at_unique' AND NOT i.indisvalid
+            ) THEN
+              EXECUTE 'DROP INDEX idx_track_segments_track_start_at_unique';
+            END IF;
+          END $$;
+        SQL
+      end
+    end
+
     add_index :track_segments, %i[track_id start_at],
               unique: true, where: 'start_at IS NOT NULL',
               name: 'idx_track_segments_track_start_at_unique',

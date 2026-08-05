@@ -52,4 +52,18 @@ RSpec.describe TrackSegments::TimeAnchorBackfillJob do
     expect(seg.start_index).to be_nil
     expect(seg.end_index).to be_nil
   end
+
+  it 'refuses to anchor a segment whose point slice is incomplete (points deleted since)' do
+    track = build_track_with_points(legs: [{ mode: :walking, duration_s: 120, dt_s: 10 }])
+    # Index range reaches past the surviving points — a truncated slice would
+    # otherwise anchor to the wrong end timestamp.
+    seg = create(:track_segment, track: track, transportation_mode: :walking,
+                                 start_index: 8, end_index: 30, start_at: nil, end_at: nil)
+
+    described_class.perform_now
+
+    seg.reload
+    expect(seg.start_at).to be_nil
+    expect(seg.start_index).to be_nil
+  end
 end

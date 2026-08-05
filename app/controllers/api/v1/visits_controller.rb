@@ -40,7 +40,7 @@ class Api::V1::VisitsController < ApiController
   end
 
   def update
-    visit = current_api_user.visits.find(params[:id])
+    visit = current_api_user.scoped_visits.find(params[:id])
 
     if visit_params[:place_id].present?
       place = current_api_user.places.find_by(id: visit_params[:place_id]) ||
@@ -74,7 +74,7 @@ class Api::V1::VisitsController < ApiController
     end
 
     # Find all visits that belong to the current user
-    visits = current_api_user.visits.where(id: visit_ids).order(started_at: :asc)
+    visits = current_api_user.scoped_visits.where(id: visit_ids).order(started_at: :asc)
 
     # Ensure we found all the visits
     if visits.length != visit_ids.length
@@ -113,7 +113,7 @@ class Api::V1::VisitsController < ApiController
   end
 
   def destroy
-    visit = current_api_user.visits.find(params[:id])
+    visit = current_api_user.scoped_visits.find(params[:id])
 
     # Soft delete keeps the row as a tombstone so visit detection never
     # re-suggests it. Same contract as before: 204, points untouched.
