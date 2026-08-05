@@ -3,7 +3,6 @@
 module Visits
   class BulkDestroy
     MAX_VISIT_IDS = 500
-    POINT_NULLIFY_BATCH = 50
 
     attr_reader :user, :visit_ids, :errors
 
@@ -41,13 +40,9 @@ module Visits
       started_ats = visits.pluck(:started_at)
       started_at = Time.current
 
-      ids.each_slice(POINT_NULLIFY_BATCH) do |chunk|
-        Visit.transaction do
-          Point.where(visit_id: chunk).update_all(visit_id: nil)
-          PlaceVisit.where(visit_id: chunk).delete_all
-          Visit.where(id: chunk).delete_all
-        end
-      end
+      # Soft delete: rows stay as tombstones (points and place links intact)
+      # so visit detection never re-suggests what the user removed.
+      Visit.where(id: ids).update_all(deleted_at: Time.current)
 
       log_success(ids.length, Time.current - started_at)
 

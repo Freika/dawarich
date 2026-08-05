@@ -142,6 +142,10 @@ class VisitsController < ApplicationController
       auto_name_on_confirm
     end
 
+    # Editing a suggested visit is an assertion that it happened — confirm
+    # it silently unless the request set a status itself (e.g. decline).
+    params_to_update[:status] = 'confirmed' if @visit.suggested? && params_to_update[:status].blank?
+
     if @visit.update(params_to_update)
       @visit.adopt! unless @visit.status == 'declined'
       respond_to do |format|
@@ -164,7 +168,9 @@ class VisitsController < ApplicationController
     tz = current_user.safe_settings.timezone.presence || 'UTC'
     day_date = Time.use_zone(tz) { @visit.started_at.in_time_zone.to_date.to_s }
     @affected_started_at = [@visit.started_at]
-    @visit.destroy!
+    # Soft delete: the row stays as a tombstone so visit detection never
+    # re-suggests it; the user's points are untouched either way.
+    @visit.soft_delete!
 
     respond_to do |format|
       format.turbo_stream do

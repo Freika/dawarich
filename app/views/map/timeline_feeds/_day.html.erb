@@ -1,11 +1,8 @@
 <%
   entries = Array(day[:entries])
-  suggested_count = day[:summary][:suggested_count].to_i
-  total_visits   = day_total_visits_count(day)
-  total_tracks   = entries.count { |e| e[:type] != 'visit' && e[:track_id].present? }
   moving_minutes = day[:summary][:time_moving_minutes].to_i
-  total_distance = day[:summary][:total_distance]
   distance_unit  = day[:summary][:distance_unit]
+  mode_distances = day[:summary][:mode_distances] || {}
 %>
 <div class="timeline-day" data-day="<%= day[:date] %>" data-bounds="<%= day_bounds_json(day) %>">
   <div class="timeline-day-header">
@@ -23,33 +20,22 @@
     </div>
   </div>
 
-  <%= render partial: 'map/timeline_feeds/day_banner',
-             locals: { date: day[:date], suggested_count: suggested_count } %>
-
-  <dl class="timeline-day-rollup">
-    <div>
-      <dt><%= t('.visits') %></dt>
-      <dd><%= total_visits %></dd>
+  <%# One summary line for the whole day: how you moved, and for how long.
+      Total distance, visit count, and the moving/stationary bar were all
+      restatements of information already on screen. %>
+  <% if mode_distances.any? || moving_minutes.positive? %>
+    <div class="timeline-day-modes">
+      <% mode_distances.each do |mode, dist| %>
+        <span class="mode-chip" title="<%= t("transportation_modes.#{mode}") %>">
+          <span aria-hidden="true"><%= mode_emoji(mode) %></span>
+          <%= dist %> <%= distance_unit %>
+        </span>
+      <% end %>
+      <% if moving_minutes.positive? %>
+        <span class="mode-chip mode-chip--muted"><%= t('.moving_duration', duration: format_duration_short(moving_minutes * 60)) %></span>
+      <% end %>
     </div>
-    <div>
-      <dt><%= t('.tracks') %></dt>
-      <dd><%= total_tracks %></dd>
-    </div>
-    <% if total_distance.to_f.positive? %>
-      <div>
-        <dt><%= t('.distance') %></dt>
-        <dd><%= total_distance %> <%= distance_unit %></dd>
-      </div>
-    <% end %>
-    <% if moving_minutes.positive? %>
-      <div>
-        <dt><%= t('.moving') %></dt>
-        <dd><%= format_duration_short(moving_minutes * 60) %></dd>
-      </div>
-    <% end %>
-  </dl>
-
-  <%= render partial: 'map/timeline_feeds/day_summary', locals: { summary: day[:summary] } %>
+  <% end %>
 
   <%= render partial: 'map/timeline_feeds/selection_bar' %>
 

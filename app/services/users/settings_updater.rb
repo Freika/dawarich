@@ -1,17 +1,19 @@
 # frozen_string_literal: true
 
 module Users
-  # Handles updating transportation threshold settings for a user.
-  # Detects changes and triggers recalculation when needed.
-  class TransportationThresholdsUpdater
+  # Applies user settings updates from the API: plan-gated sanitization,
+  # allowlist validation, and reclassification when the transportation mode
+  # allowlist changes (the former threshold settings are gone — the detection
+  # pipeline tunes itself).
+  class SettingsUpdater
     Result = Struct.new(:success?, :error, :recalculation_triggered?, keyword_init: true)
 
-    THRESHOLD_KEYS = %w[transportation_thresholds transportation_expert_thresholds].freeze
+    MODES_KEY = 'enabled_transportation_modes'
 
     def initialize(user, settings_params)
       @user = user
       @settings_params = settings_params
-      @old_thresholds = capture_current_thresholds
+      @old_enabled_modes = user.settings[MODES_KEY]&.dup
     end
 
     def call
@@ -28,14 +30,17 @@ module Users
     private
 
     def recalculation_in_progress?
-      return false unless threshold_params_present?
+      return false unless modes_param_present?
 
       status_manager.in_progress?
     end
 
+    def modes_param_present?
+      @settings_params.key?(MODES_KEY) || @settings_params.key?(MODES_KEY.to_sym)
+    end
+
     def invalid_allowlist?
-      raw = @settings_params['enabled_transportation_modes'] ||
-            @settings_params[:enabled_transportation_modes]
+      raw = @settings_params[MODES_KEY] || @settings_params[MODES_KEY.to_sym]
       return false if raw.nil?
 
       valid = Track::TRANSPORTATION_MODES.keys.map(&:to_s)
@@ -46,13 +51,9 @@ module Users
     def invalid_allowlist_result
       Result.new(
         success?: false,
-        error: I18n.t('services.users.transportation_thresholds_updater.enable_at_least_one_transportation_mode'),
+        error: I18n.t('services.users.settings_updater.enable_at_least_one_transportation_mode'),
         recalculation_triggered?: false
       )
-    end
-
-    def capture_current_thresholds
-      THRESHOLD_KEYS.index_with { |key| @user.settings[key]&.dup }
     end
 
     def apply_settings
@@ -87,22 +88,11 @@ module Users
     end
 
     def trigger_recalculation_if_needed
-      return unless thresholds_changed?
+      return unless modes_param_present?
+      return if @old_enabled_modes == @user.settings[MODES_KEY]
 
-      Tracks::TransportationModeRecalculationJob.perform_later(@user.id)
+      TransportationModes::UserReclassifyJob.perform_later(@user.id)
       @recalculation_triggered = true
-    end
-
-    def thresholds_changed?
-      return false unless threshold_params_present?
-
-      THRESHOLD_KEYS.any? do |key|
-        @old_thresholds[key] != @user.settings[key]
-      end
-    end
-
-    def threshold_params_present?
-      THRESHOLD_KEYS.any? { |key| @settings_params.key?(key) || @settings_params.key?(key.to_sym) }
     end
 
     def status_manager
@@ -112,9 +102,7 @@ module Users
     def locked_result
       Result.new(
         success?: false,
-        error: I18n.t(
-          'services.users.transportation_thresholds_updater.recalculation_in_progress'
-        ),
+        error: I18n.t('services.users.settings_updater.recalculation_in_progress'),
         recalculation_triggered?: false
       )
     end

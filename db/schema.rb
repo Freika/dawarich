@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_02_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_05_120001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -376,7 +376,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_02_120000) do
     t.index ["user_id", "id"], name: "index_points_on_unarchived", where: "((raw_data_archived = false) AND (raw_data <> '{}'::jsonb))"
     t.index ["user_id", "timestamp"], name: "idx_points_user_visit_null_timestamp", where: "(visit_id IS NULL)"
     t.index ["user_id", "timestamp"], name: "index_points_on_user_id_and_timestamp", order: { timestamp: :desc }
-    t.index ["user_id"], name: "idx_points_user_id_legacy_tracker", where: "((tracker_id)::text = ANY (ARRAY[('google-maps-timeline-export'::character varying)::text, ('google-maps-phone-timeline-export'::character varying)::text]))"
+    t.index ["user_id"], name: "idx_points_user_id_legacy_tracker", where: "((tracker_id)::text = ANY ((ARRAY['google-maps-timeline-export'::character varying, 'google-maps-phone-timeline-export'::character varying])::text[]))"
     t.index ["user_id"], name: "index_points_on_user_id"
     t.index ["visit_id"], name: "index_points_on_visit_id"
   end
@@ -478,18 +478,23 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_02_120000) do
     t.float "avg_acceleration"
     t.float "avg_speed"
     t.integer "confidence", default: 0
+    t.float "confidence_score"
     t.datetime "corrected_at"
     t.datetime "created_at", null: false
     t.integer "distance"
     t.integer "duration"
-    t.integer "end_index", null: false
+    t.timestamptz "end_at"
+    t.integer "end_index"
     t.float "max_speed"
+    t.geometry "path", limit: {srid: 4326, type: "line_string"}
     t.string "source"
-    t.integer "start_index", null: false
+    t.timestamptz "start_at"
+    t.integer "start_index"
     t.bigint "track_id", null: false
     t.integer "transportation_mode", default: 0, null: false
     t.datetime "updated_at", null: false
     t.index ["corrected_at"], name: "index_track_segments_on_corrected_at", where: "(corrected_at IS NOT NULL)"
+    t.index ["track_id", "start_at"], name: "idx_track_segments_track_start_at_unique", unique: true, where: "(start_at IS NOT NULL)"
     t.index ["track_id", "start_index", "end_index"], name: "index_track_segments_on_track_and_indices"
     t.index ["track_id", "start_index"], name: "idx_track_segments_track_start_index_unique", unique: true
     t.index ["track_id", "transportation_mode"], name: "index_track_segments_on_track_id_and_transportation_mode"
@@ -602,6 +607,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_02_120000) do
     t.integer "confidence", limit: 2
     t.jsonb "confidence_breakdown", default: {}, null: false
     t.datetime "created_at", null: false
+    t.datetime "deleted_at"
     t.boolean "demo", default: false, null: false
     t.integer "duration", null: false
     t.datetime "ended_at", null: false

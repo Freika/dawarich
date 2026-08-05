@@ -252,31 +252,6 @@
   white-space: nowrap;
 }
 
-/* --- Summary stats and bar --- */
-.timeline-summary-stats {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
-.timeline-summary-bar {
-  height: 0.375rem;
-  border-radius: 9999px;
-  overflow: hidden;
-  display: flex;
-  background: oklch(var(--bc) / 0.08);
-}
-
-.timeline-summary-bar-moving {
-  background: oklch(var(--p));
-  transition: width 0.3s ease;
-}
-
-.timeline-summary-bar-stationary {
-  background: oklch(var(--bc) / 0.15);
-  transition: width 0.3s ease;
-}
-
 /* --- Empty state --- */
 .timeline-empty {
   color: oklch(var(--bc) / 0.5);
@@ -438,17 +413,6 @@
   color: white;
 }
 
-.suggestion-dot {
-  position: absolute;
-  top: 2px;
-  right: 2px;
-  width: 6px;
-  height: 6px;
-  border-radius: 9999px;
-  background: #f59e0b;
-  outline: 1px solid white;
-}
-
 /* The day fills its column so the footer can anchor to the bottom (via
    `margin-top: auto` on the footer) and the empty space below short days
    gets reclaimed for at-a-glance rollup + quick day nav. */
@@ -590,22 +554,59 @@
   box-shadow: inset 3px 0 0 #22c55e;
 }
 
-/* Suggested visit row — subtle amber tint + left accent so the "needs
-   decision" state is visible at the row level, not just in the status dot. */
-.visit-row--suggested {
-  background-color: rgba(245, 158, 11, 0.05);
-  box-shadow: inset 3px 0 0 #f59e0b;
-}
-
-/* When a suggested row is also selected, green wins (user intent > status). */
-.visit-row--suggested.visit-row--selected {
-  box-shadow: inset 3px 0 0 #22c55e;
-}
-
-/* Picker spans the full row so long candidate names have room to breathe. */
-.visit-row__suggested {
+/* Inline visit editor — spans the full row below the content columns. */
+.visit-row__editor {
   grid-column: 1 / -1;
   min-width: 0;
+  margin-top: 6px;
+  padding: 10px 12px;
+  border: 1px solid oklch(var(--bc) / 0.1);
+  border-radius: 10px;
+  background: oklch(var(--b2) / 0.5);
+}
+
+.visit-editor__label {
+  display: block;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: oklch(var(--bc) / 0.45);
+  margin-bottom: 4px;
+}
+
+.visit-editor__name-form {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.visit-editor__foot {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+.visit-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1;
+  padding: 4px 10px;
+  border-radius: 8px;
+  border: 1px solid oklch(var(--bc) / 0.15);
+  background: oklch(var(--b2));
+  color: oklch(var(--bc) / 0.85);
+  cursor: pointer;
+}
+
+.visit-edit-btn:hover,
+.visit-edit-btn:focus-visible,
+.visit-edit-btn[aria-expanded="true"] {
+  border-color: oklch(var(--in));
+  color: oklch(var(--in));
 }
 
 /* Search panel spans the full row so the input + results have room. */
@@ -683,25 +684,14 @@
   opacity: 1;
 }
 
-/* Status dots: confirmed (green) / suggested (amber) / declined (grey). */
+/* One neutral dot for every visit — detection status is not a UI state. */
 .visit-status-dot {
   display: inline-block;
   width: 10px;
   height: 10px;
   border-radius: 9999px;
+  background: #38bdf8;
   box-shadow: 0 0 0 2px white;
-}
-
-.visit-status-dot--confirmed {
-  background: #22c55e;
-}
-
-.visit-status-dot--suggested {
-  background: #f59e0b;
-}
-
-.visit-status-dot--declined {
-  background: #9ca3af;
 }
 
 /* Tag chips — background color applied inline by the view. */
@@ -795,7 +785,7 @@
 }
 
 [data-selection-mode="true"] .visit-row__actions,
-[data-selection-mode="true"] .visit-row__suggested {
+[data-selection-mode="true"] .visit-row__editor {
   pointer-events: none;
   opacity: 0.45;
 }
@@ -868,26 +858,25 @@
   cursor: pointer;
 }
 
+/* Icon-only exit control at the right end of the actions. */
 .selection-bar__cancel {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
   background: transparent;
-  border: 1px solid oklch(var(--bc) / 0.2);
-  color: oklch(var(--bc) / 0.7);
+  border: 1px solid transparent;
+  color: oklch(var(--bc) / 0.6);
+}
+
+.selection-bar__cancel:hover,
+.selection-bar__cancel:focus-visible {
+  border-color: oklch(var(--bc) / 0.25);
+  color: oklch(var(--bc) / 0.9);
 }
 
 .selection-bar__action {
   font-weight: 600;
-}
-
-.selection-bar__confirm {
-  background: oklch(var(--su));
-  border: 1px solid oklch(var(--su));
-  color: oklch(var(--suc));
-}
-
-.selection-bar__decline {
-  background: transparent;
-  border: 1px solid oklch(var(--bc) / 0.3);
-  color: oklch(var(--bc) / 0.85);
 }
 
 .selection-bar__merge {
@@ -905,4 +894,137 @@
 .selection-bar__action:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* ── Simplified segment legs (first expansion level of a journey) ── */
+.segment-ribbon {
+  display: flex;
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+  margin: 4px 0 8px;
+  background: oklch(var(--bc) / 0.08);
+}
+
+.segment-ribbon i {
+  display: block;
+  height: 100%;
+  min-width: 2px;
+}
+
+.segment-ribbon__gap {
+  background: transparent;
+  min-width: 0;
+}
+
+.segment-ribbon__uncertain {
+  background: repeating-linear-gradient(
+    135deg,
+    oklch(var(--bc) / 0.35) 0 4px,
+    oklch(var(--bc) / 0.12) 4px 8px
+  );
+}
+
+.segment-leg {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 3px 0;
+  font-size: 0.85rem;
+}
+
+.segment-stop {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 0;
+  font-size: 0.72rem;
+  font-style: italic;
+  color: oklch(var(--bc) / 0.45);
+}
+
+.segment-stop::before,
+.segment-stop::after {
+  content: "";
+  flex: 1;
+  border-top: 1px dashed oklch(var(--bc) / 0.15);
+}
+
+.segment-leg + .segment-leg,
+.segment-leg + .segment-stop,
+.segment-stop + .segment-leg {
+  border-top: 1px solid oklch(var(--bc) / 0.06);
+}
+
+.segment-leg__emoji {
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+.segment-leg__mode {
+  font-weight: 600;
+}
+
+.segment-leg__nums {
+  font-size: 0.78rem;
+  color: oklch(var(--bc) / 0.6);
+  font-variant-numeric: tabular-nums;
+}
+
+.segment-leg__mid {
+  opacity: 0.4;
+  margin: 0 3px;
+}
+
+.segment-leg--neutral .segment-leg__mode {
+  font-weight: 500;
+  font-style: italic;
+  color: oklch(var(--bc) / 0.6);
+}
+
+.segment-rawlist {
+  margin-top: 8px;
+}
+
+.segment-rawlist > summary {
+  list-style: none;
+  cursor: pointer;
+  font-size: 0.72rem;
+  color: oklch(var(--in));
+  user-select: none;
+}
+
+.segment-rawlist > summary::-webkit-details-marker {
+  display: none;
+}
+
+.segment-rawlist > summary:hover {
+  text-decoration: underline;
+}
+
+/* ── Day mode chips ── */
+.timeline-day-modes {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+.timeline-day-modes .mode-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: oklch(var(--b2));
+  border: 1px solid oklch(var(--bc) / 0.08);
+}
+
+.timeline-day-modes .mode-chip--muted {
+  font-weight: 500;
+  color: oklch(var(--bc) / 0.55);
+  background: transparent;
 }

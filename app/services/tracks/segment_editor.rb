@@ -2,7 +2,7 @@
 
 module Tracks
   class SegmentEditor
-    Result = Struct.new(:success?, :segment, :error_code, keyword_init: true)
+    Result = Struct.new(:success?, :segment, :track, :error_code, keyword_init: true)
 
     def initialize(segment, user)
       @segment = segment
@@ -17,43 +17,32 @@ module Tracks
           transportation_mode: mode,
           corrected_at: Time.current,
           confidence: :high,
+          confidence_score: 1.0,
           source: 'user'
         )
         recompute_dominant_mode!
       end
-      success
+      Result.new(success?: true, segment: @segment, track: @segment.track)
     end
 
+    # Clearing a correction re-runs full detection for the track: per-segment
+    # re-classification is meaningless in the windowed HMM pipeline. The
+    # segment row is replaced by fresh auto-classified segments.
     def reset_to_auto
-      @segment.transaction do
-        classifier = TransportationModes::ModeClassifier.new(
-          avg_speed_kmh: @segment.avg_speed,
-          max_speed_kmh: @segment.max_speed,
-          avg_acceleration: @segment.avg_acceleration,
-          duration: @segment.duration,
-          user_thresholds: safe_settings.transportation_thresholds,
-          user_expert_thresholds: safe_settings.transportation_expert_thresholds,
-          enabled_modes: safe_settings.enabled_transportation_modes
-        )
-        @segment.update!(
-          transportation_mode: classifier.classify,
-          confidence: classifier.confidence,
-          corrected_at: nil,
-          source: 'gps'
-        )
-        recompute_dominant_mode!
-      end
-      success
+      track = @segment.track
+      @segment.update!(corrected_at: nil, source: 'inferred')
+      Tracks::Reprocessor.reprocess(track)
+      Result.new(success?: true, segment: nil, track: track.reload)
     end
 
     private
 
-    def safe_settings
-      @safe_settings ||= Users::SafeSettings.new(@user.settings || {})
+    def failure(code)
+      Result.new(success?: false, error_code: code)
     end
 
     def allows?(mode)
-      safe_settings.enabled_transportation_modes.include?(mode.to_s)
+      Users::SafeSettings.new(@user.settings || {}).enabled_transportation_modes.include?(mode.to_s)
     end
 
     def recompute_dominant_mode!
@@ -63,14 +52,6 @@ module Tracks
 
       mode = Track.pick_dominant_mode(segments)
       track.update!(dominant_mode: mode) if mode
-    end
-
-    def success
-      Result.new(success?: true, segment: @segment)
-    end
-
-    def failure(code)
-      Result.new(success?: false, error_code: code)
     end
   end
 end

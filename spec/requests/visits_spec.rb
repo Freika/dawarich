@@ -152,6 +152,19 @@ RSpec.describe '/visits', type: :request do
         expect(response).not_to have_http_status(:unprocessable_content)
         expect(visit.reload.name).to eq('Original Name')
       end
+
+      it 'silently confirms a suggested visit when the user edits it' do
+        patch visit_url(visit), params: { visit: { name: 'Renamed by user' } }
+
+        expect(visit.reload.status).to eq('confirmed')
+        expect(visit.name).to eq('Renamed by user')
+      end
+
+      it 'does not override an explicit status from the edit' do
+        patch visit_url(visit), params: { visit: { status: :declined, name: 'Still declined' } }
+
+        expect(visit.reload.status).to eq('declined')
+      end
     end
 
     context 'with turbo_stream format' do
@@ -295,8 +308,11 @@ RSpec.describe '/visits', type: :request do
   describe 'DELETE /destroy' do
     let!(:visit) { create(:visit, user:, status: :confirmed) }
 
-    it 'removes the visit' do
-      expect { delete visit_url(visit), as: :turbo_stream }.to change(Visit, :count).by(-1)
+    it 'soft-deletes the visit, keeping the row as a tombstone' do
+      expect { delete visit_url(visit), as: :turbo_stream }.not_to change(Visit, :count)
+
+      expect(visit.reload.deleted_at).to be_present
+      expect(Visit.active).not_to include(visit)
     end
 
     it 'returns turbo_stream removing the correct visit_entry row' do
@@ -514,13 +530,14 @@ RSpec.describe '/visits', type: :request do
     let!(:visit_b) { create(:visit, user:, status: :confirmed) }
     let!(:visit_c) { create(:visit, user:, status: :suggested) }
 
-    it 'destroys the selected visits' do
+    it 'soft-deletes the selected visits, keeping tombstones' do
       delete bulk_destroy_visits_url(format: :turbo_stream),
              params: { visit_ids: [visit_a.id, visit_b.id] }
 
       expect(response).to have_http_status(:ok)
-      expect(Visit.where(id: [visit_a.id, visit_b.id])).to be_empty
-      expect(Visit.where(id: visit_c.id)).to exist
+      expect(Visit.where(id: [visit_a.id, visit_b.id]).pluck(:deleted_at)).to all(be_present)
+      expect(Visit.active.where(id: [visit_a.id, visit_b.id])).to be_empty
+      expect(Visit.active.where(id: visit_c.id)).to exist
     end
 
     it 'rejects when no visit_ids are submitted' do
@@ -557,14 +574,14 @@ RSpec.describe '/visits', type: :request do
       expect(Rails.cache.read(cache_key)).to be_nil
     end
 
-    it 'nullifies points\' visit_id rather than deleting them' do
+    it 'keeps points attached to the tombstoned visit' do
       point = create(:point, user: user, visit: visit_a)
 
       delete bulk_destroy_visits_url(format: :turbo_stream),
              params: { visit_ids: [visit_a.id] }
 
       expect(Point.where(id: point.id)).to exist
-      expect(point.reload.visit_id).to be_nil
+      expect(point.reload.visit_id).to eq(visit_a.id)
     end
 
     it 'rejects when more than the maximum number of visit_ids are submitted' do
@@ -644,13 +661,14 @@ RSpec.describe '/visits', type: :request do
                        ended_at: Time.zone.today.beginning_of_day + 14.hours)
       end
 
-      it 'deletes all visits with the given status on the given date' do
+      it 'soft-deletes all visits with the given status on the given date' do
         delete bulk_destroy_visits_url(format: :turbo_stream),
                params: { date: Time.zone.today.to_s, source_status: 'suggested' }
 
         expect(response).to have_http_status(:ok)
-        expect(Visit.where(id: [suggested_today.id, suggested_today_2.id])).to be_empty
-        expect(Visit.where(id: confirmed_today.id)).to exist
+        expect(Visit.active.where(id: [suggested_today.id, suggested_today_2.id])).to be_empty
+        expect(Visit.where(id: [suggested_today.id, suggested_today_2.id]).pluck(:deleted_at)).to all(be_present)
+        expect(Visit.active.where(id: confirmed_today.id)).to exist
       end
 
       it 'returns the turbo stream response with calendar frame' do

@@ -1153,10 +1153,7 @@ en:
         previous_month: Previous month
       day:
         select: Select
-        visits: Visits
-        tracks: Tracks
-        distance: Distance
-        moving: Moving
+        moving_duration: "%{duration} moving"
         no_visits_match_the_current_search_or_filter: No visits match the current search or filter.
         clear_search_filters: Clear search & filters
         no_visits_tracked_this_day: No visits tracked this day.
@@ -1183,12 +1180,6 @@ en:
         unreviewed_visits:
           one: "%{count} unreviewed visit"
           other: "%{count} unreviewed visits"
-      day_summary:
-        total_distance_traveled_this_day: Total distance traveled this day
-        distinct_places_visited_this_day: Distinct places visited this day
-        places: places
-        moving: moving
-        stationary: stationary
       feed:
         no_visits_tracked_this_day: No visits tracked this day.
         visits_are_auto_detected_daily_from_your_location_data: Visits are auto-detected daily from your location data.
@@ -1197,24 +1188,14 @@ en:
         arrived: ", arrived"
         middot: "·"
         continued_from_date_arrived: continued from %{date}, arrived
+        duration_moving: "%{duration} moving"
       selection_bar:
         selected: 0 selected
         cancel: Cancel
-        mark_these_visits_as_confirmed_yes_i_was_there: Mark these visits as confirmed (yes, I was there)
-        confirm: Confirm
         combine_the_selected_visits_into_one: Combine the selected visits into one
         merge: Merge
         remove_the_visit_grouping_your_location_points_stay: Remove the visit grouping (your location points stay)
         delete: Delete
-      suggested_picker:
-        needs_review: Needs review
-        confirm_this_visit: Confirm this visit?
-        assigned_to: Assigned to
-        use_the_search_button_to_pick_a_different_place: ". Use the search button to pick a different place."
-        no_place_for_this_visit_confirm_to_keep_it_as: No place for this visit. Confirm to keep it as is.
-        confirm: Confirm
-        delete: Delete
-        delete_this_visit_your_location_points_stay: Delete this visit? Your location points stay.
       track_info:
         track: 'Track #'
         dist: Dist
@@ -1227,7 +1208,11 @@ en:
         select_visit_for_merge: Select visit for merge
         all_day: All day
         pts: pts
-        search_for_a_place: Search for a place
+        unnamed_visit: Unnamed visit
+        edit: Edit
+        name: Name
+        save: Save
+        attached_place: Attached place
         delete: Delete
         delete_this_visit_your_location_points_stay: Delete this visit? Your location points stay.
   notifications:
@@ -2014,6 +1999,18 @@ en:
         transportation_mode_currently: Transportation mode (currently %{mode})
         reset_to_auto_detected_mode: Reset to auto-detected mode
         edited_ago: Edited %{time} ago
+        detection_confidence: Detection confidence
+        confidence_percent: "%{percent}%"
+      legs:
+        stop_duration: stop · %{duration}
+        transfer: transfer
+        moving: moving
+        mode_unclear: Mode unclear — detection confidence too low to claim one
+        short_segments:
+          one: 1 short segment
+          other: "%{count} short segments"
+      list:
+        all_segments_edit: All segments (%{count}) · edit
       index:
         no_segments_for_this_track_yet: No segments for this track yet.
     share_links:
@@ -2392,9 +2389,6 @@ en:
       confirm: Confirm
       delete: Delete
       delete_this_visit_your_location_points_stay: Delete this visit? Your location points stay.
-    name:
-      unnamed_visit: Unnamed visit
-      click_to_rename: Click to rename
   date:
     formats:
       month_name: "%B"
@@ -3377,7 +3371,7 @@ en:
           read_failed: 'Failed to read JSON data: %{message}'
         v2_handler:
           manifest_missing: 'Manifest file not found in archive: manifest.json'
-      transportation_thresholds_updater:
+      settings_updater:
         enable_at_least_one_transportation_mode: Enable at least one transportation mode
         recalculation_in_progress: Transportation mode recalculation is in progress. Please wait until it completes.
     visits:

@@ -54,23 +54,6 @@ class Users::SafeSettings
     'supporter_email' => nil,
     'supporter_github_username' => nil,
     'show_supporter_badge' => true,
-    # Transportation mode thresholds (speeds in km/h, distances in km)
-    'transportation_thresholds' => {
-      'walking_max_speed' => 7,
-      'cycling_max_speed' => 45,
-      'driving_max_speed' => 220,
-      'flying_min_speed' => 150
-    },
-    'transportation_expert_thresholds' => {
-      'stationary_max_speed' => 1,
-      'running_vs_cycling_accel' => 0.25,
-      'cycling_vs_driving_accel' => 0.4,
-      'train_min_speed' => 80,
-      'min_segment_duration' => 60,
-      'time_gap_threshold' => 180,
-      'min_flight_distance_km' => 100
-    },
-    'transportation_expert_mode' => false,
     'min_minutes_spent_in_city' => 60,
     'max_gap_minutes_in_city' => 120,
     # GPS noise filtering (Points::AnomalyFilter)
@@ -122,10 +105,7 @@ class Users::SafeSettings
       maps_maplibre_tiles_url: maps_maplibre_tiles_url,
       maps_maplibre_custom_theme: maps_maplibre_custom_theme,
       globe_projection: globe_projection,
-      transportation_thresholds: transportation_thresholds,
-      transportation_expert_thresholds: transportation_expert_thresholds,
       enabled_transportation_modes: enabled_transportation_modes,
-      transportation_expert_mode: transportation_expert_mode?,
       min_minutes_spent_in_city: min_minutes_spent_in_city,
       max_gap_minutes_in_city: max_gap_minutes_in_city,
       gps_filtering_enabled: gps_filtering_enabled?,
@@ -303,18 +283,6 @@ class Users::SafeSettings
     return true if value.nil?
 
     ActiveModel::Type::Boolean.new.cast(value)
-  end
-
-  def transportation_thresholds
-    settings['transportation_thresholds'] || DEFAULT_VALUES['transportation_thresholds']
-  end
-
-  def transportation_expert_thresholds
-    settings['transportation_expert_thresholds'] || DEFAULT_VALUES['transportation_expert_thresholds']
-  end
-
-  def transportation_expert_mode?
-    ActiveModel::Type::Boolean.new.cast(settings['transportation_expert_mode'])
   end
 
   def enabled_transportation_modes

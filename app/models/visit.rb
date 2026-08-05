@@ -23,6 +23,19 @@ class Visit < ApplicationRecord
 
   enum :status, { suggested: 0, confirmed: 1, declined: 2 }
 
+  # Visible visits. Soft-deleted rows and legacy declines are tombstones:
+  # hidden everywhere, but still found by Visits::Creator's dedup so the
+  # detector never resurrects a visit the user removed.
+  scope :active, -> { where(deleted_at: nil).where.not(status: :declined) }
+
+  def soft_delete!
+    update!(deleted_at: Time.current)
+  end
+
+  def soft_deleted?
+    deleted_at.present?
+  end
+
   def confidence_band
     return nil if confidence.nil?
     return :high if confidence >= 70

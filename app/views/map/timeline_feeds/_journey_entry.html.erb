@@ -24,7 +24,14 @@
     distance_text = day_distance > 0 ? "#{day_distance} #{entry[:distance_unit]} of #{entry[:distance]} #{entry[:distance_unit]}" : nil
   else
     leg_time = l(Time.zone.parse(entry[:started_at]), format: :hour_minute)
-    duration = format_duration_short(entry[:duration])
+    moving = entry[:moving_duration].to_i
+    # When dwell dominates the track span (short ride, long stand), the span
+    # duration misleads — show the time actually spent moving instead.
+    duration = if moving.positive? && moving < entry[:duration].to_i * 0.8
+                 t('.duration_moving', duration: format_duration_short(moving))
+               else
+                 format_duration_short(entry[:duration])
+               end
     distance_text = entry[:distance] > 0 ? "#{entry[:distance]} #{entry[:distance_unit]}" : nil
   end
   track_id = entry[:track_id]

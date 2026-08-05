@@ -359,18 +359,19 @@ RSpec.describe 'Api::V1::Visits', type: :request do
     let!(:other_user_visit) { create(:visit, user: other_user, place: place) }
 
     context 'when visit exists and belongs to current user' do
-      it 'deletes the visit' do
+      it 'soft-deletes the visit and responds with no content' do
         expect do
           delete "/api/v1/visits/#{visit.id}", headers: auth_headers
-        end.to change { user.visits.count }.by(-1)
+        end.to change { user.scoped_visits.count }.by(-1)
 
         expect(response).to have_http_status(:no_content)
       end
 
-      it 'removes the visit from the database' do
+      it 'keeps the row as a tombstone hidden from readers' do
         delete "/api/v1/visits/#{visit.id}", headers: auth_headers
 
-        expect { visit.reload }.to raise_error(ActiveRecord::RecordNotFound)
+        expect(visit.reload.deleted_at).to be_present
+        expect(Visit.active).not_to include(visit)
       end
     end
 

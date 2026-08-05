@@ -53,20 +53,16 @@ RSpec.describe Tracks::SegmentEditor do
              corrected_at: 1.day.ago, source: 'user', confidence: :high)
     end
 
-    it 'clears corrected_at and re-runs ModeClassifier on stored summary metrics' do
+    it 'clears the correction and re-runs detection for the track' do
       result = described_class.new(segment, user).reset_to_auto
       expect(result.success?).to be true
-      segment.reload
-      expect(segment.corrected_at).to be_nil
-      expect(segment.source).to eq('gps')
+      expect(result.track).to eq(track)
+      expect(track.track_segments.manually_corrected.count).to eq(0)
     end
 
-    it 'respects the current allowlist when re-classifying' do
-      user.settings['enabled_transportation_modes'] = %w[walking running]
-      user.save!
-
+    it 'replaces the corrected segment with fresh auto-classified output' do
       described_class.new(segment, user).reset_to_auto
-      expect(segment.reload.transportation_mode).to be_in(%w[walking running unknown])
+      expect(track.track_segments.reload.pluck(:source)).not_to include('user')
     end
   end
 end

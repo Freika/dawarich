@@ -69,6 +69,26 @@ RSpec.describe Visit, type: :model do
     end
   end
 
+  describe 'soft deletion' do
+    let(:user) { create(:user) }
+
+    it 'excludes soft-deleted and declined visits from .active' do
+      kept = create(:visit, user: user, status: :confirmed)
+      tombstone = create(:visit, user: user, status: :confirmed, deleted_at: 1.day.ago)
+      declined = create(:visit, user: user, status: :declined)
+
+      expect(Visit.active).to include(kept)
+      expect(Visit.active).not_to include(tombstone, declined)
+    end
+
+    it 'stamps deleted_at via #soft_delete!' do
+      visit = create(:visit, user: user)
+
+      expect { visit.soft_delete! }.to change { visit.reload.deleted_at }.from(nil)
+      expect(Visit.count).to eq(1)
+    end
+  end
+
   describe 'self-cleanup callbacks' do
     include ActiveJob::TestHelper
 

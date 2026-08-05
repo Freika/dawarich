@@ -115,7 +115,9 @@ class Api::V1::VisitsController < ApiController
   def destroy
     visit = current_api_user.visits.find(params[:id])
 
-    if visit.destroy
+    # Soft delete keeps the row as a tombstone so visit detection never
+    # re-suggests it. Same contract as before: 204, points untouched.
+    if visit.update(deleted_at: Time.current)
       head :no_content
     else
       render json: {

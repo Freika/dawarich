@@ -26,15 +26,29 @@ module Tracks::SegmentsHelper
   end
 
   def segment_distance(segment)
-    return '-' unless segment.distance
+    display_distance_m(segment.distance)
+  end
 
-    distance_km = segment.distance / 1000.0
+  def display_distance_m(meters)
+    return '-' unless meters
+
+    distance_km = meters / 1000.0
     case current_user_safe_settings&.distance_unit
     when 'mi'
       I18n.t('units.miles', value: (distance_km * 0.621371).round(2))
     else
       I18n.t('units.kilometers', value: distance_km.round(2))
     end
+  end
+
+  def mode_color(mode)
+    Tracks::GeojsonSerializer::MODE_COLORS.fetch(mode.to_s, Tracks::GeojsonSerializer::MODE_COLORS['unknown'])
+  end
+
+  def segment_confidence_percent(segment)
+    return nil unless segment.confidence_score
+
+    (segment.confidence_score * 100).round
   end
 
   def segment_duration(segment)

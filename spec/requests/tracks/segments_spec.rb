@@ -52,7 +52,7 @@ RSpec.describe 'Tracks::Segments', type: :request do
       expect(segment.reload.transportation_mode).to eq('cycling')
     end
 
-    it 'resets to auto when reset=true' do
+    it 'resets to auto by re-running detection and replacing the segment list' do
       segment.update!(transportation_mode: 'walking', corrected_at: 1.day.ago, source: 'user')
 
       patch track_segment_path(track, segment),
@@ -60,8 +60,8 @@ RSpec.describe 'Tracks::Segments', type: :request do
             headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
 
       expect(response).to have_http_status(:ok)
-      expect(segment.reload.corrected_at).to be_nil
-      expect(segment.source).to eq('gps')
+      expect(response.body).to include("track-#{track.id}-segments")
+      expect(track.track_segments.manually_corrected.count).to eq(0)
     end
   end
 end

@@ -45,7 +45,7 @@
     <span class="text-xs text-base-content/55 truncate min-w-0 tabular-nums">
       <span aria-hidden="true" class="opacity-40 mr-1">·</span><%=
         segment_distance(segment) %><span aria-hidden="true" class="opacity-40 mx-1">·</span><%=
-        segment_duration(segment) %>
+        segment_duration(segment) %><% if (percent = segment_confidence_percent(segment)) && !segment.manually_corrected? %><span aria-hidden="true" class="opacity-40 mx-1">·</span><span title="<%= t('.detection_confidence') %>"><%= t('.confidence_percent', percent: percent) %></span><% end %>
     </span>
 
     <% if segment.manually_corrected? %>

@@ -101,6 +101,16 @@ RSpec.describe Visits::Creator do
         expect(visits).to be_empty
         expect(user.visits.reload.count).to eq(1)
       end
+
+      it 'does not resurrect a soft-deleted visit — the tombstone suppresses re-creation' do
+        existing_visit.update!(deleted_at: 1.day.ago)
+
+        visits = subject.create_visits([visit_data])
+
+        expect(visits).to be_empty
+        expect(user.visits.reload.count).to eq(1)
+        expect(existing_visit.reload.deleted_at).to be_present
+      end
     end
 
     context 'when a suggested visit already exists at the same location' do
