@@ -44,4 +44,20 @@ RSpec.describe 'Locale switch link', type: :request do
     expect(href).to be_present
     expect(Rails.application.routes.recognize_path(href.split('?').first, method: :get)).to be_present
   end
+
+  # `request.path` is interpolated into the href, so it must always root the
+  # link on this host: a path beginning with `//` would otherwise become a
+  # protocol-relative URL pointing somewhere else entirely.
+  it 'roots the link on this host even when the path begins with a double slash' do
+    controller = ApplicationController.new
+    request = ActionDispatch::TestRequest.create
+    request.path_info = '//evil.example.com/x'
+    allow(controller).to receive(:request).and_return(request)
+
+    path = controller.send(:locale_path, :de)
+
+    expect(path).to start_with('/')
+    expect(path).not_to start_with('//')
+    expect(URI.parse(path).host).to be_nil
+  end
 end

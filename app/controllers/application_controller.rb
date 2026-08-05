@@ -246,7 +246,13 @@ status: :see_other
 
     query = request.query_parameters.merge('locale' => locale.to_s)
 
-    "#{request.path}?#{query.to_query}"
+    "#{rooted_path}?#{query.to_query}"
+  end
+
+  # Collapsed to a single leading slash: a path of `//host/x` would otherwise
+  # make the link a protocol-relative URL and carry the reader off the site.
+  def rooted_path
+    "/#{request.path.to_s.sub(%r{\A/+}, '')}"
   end
 
   def persist_user_locale(locale)
