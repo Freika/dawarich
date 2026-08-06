@@ -1,5 +1,6 @@
 es:
   language_name: Español
+  language_flag: es
   auth:
     account_links:
       challenge:
@@ -1465,6 +1466,9 @@ es:
         supporter_thanks: Gracias por apoyar a Dawarich %{platform}!
         supporter_platform: " vía %{platform}"
       index:
+        language: Idioma
+        your_language: Tu idioma
+        the_interface_emails_and_notifications_will_use_this_language: La interfaz, los correos y las notificaciones usarán este idioma.
         email_preferences: Preferencias de correo electrónico
         monthly_digest_emails: Correos electrónicos resumen mensual
         summary_of_your_last_month_sent_on_the_2nd: Resumen de tu último mes, enviado el 2.
@@ -1720,7 +1724,6 @@ es:
       switch: "Cambiar a español"
       dismiss: "Cerrar"
     navbar:
-      switch_language_aria_label: Cambiar idioma a %{language}
       family: Familia
       my_data: Mis datos
       help: Ayuda

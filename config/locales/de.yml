@@ -1,5 +1,6 @@
 de:
   language_name: Deutsch
+  language_flag: de
   auth:
     account_links:
       challenge:
@@ -1465,6 +1466,9 @@ de:
         supporter_thanks: Danke für deine Unterstützung von Dawarich%{platform}!
         supporter_platform: " via %{platform}"
       index:
+        language: Sprache
+        your_language: Deine Sprache
+        the_interface_emails_and_notifications_will_use_this_language: Oberfläche, E-Mails und Benachrichtigungen verwenden diese Sprache.
         email_preferences: E-Mail-Präferenzen
         monthly_digest_emails: Monatliche Zusammenfassung per E-Mail
         summary_of_your_last_month_sent_on_the_2nd: Zusammenfassung des vergangenen Monats, die jeweils am 2. versendet wird.
@@ -1761,7 +1765,6 @@ de:
       settings: Einstellungen
       subscription: Abonnement
       logout: Abmelden
-      switch_language_aria_label: Sprache auf %{language} umstellen
       see_all: Alle ansehen
       you_re_an_admin_harry: Du bist Admin, Harry!
       dawarich_supporter: Dawarich-Unterstützer

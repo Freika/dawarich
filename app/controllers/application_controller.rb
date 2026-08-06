@@ -12,7 +12,7 @@ class ApplicationController < ActionController::Base
   before_action :unread_notifications, :set_self_hosted_status, :store_client_header
 
   helper_method :current_user_safe_settings, :poster_ordering_enabled?, :family_feature_available?,
-                :current_user_features, :family_home_path, :selectable_locales, :locale_native_name,
+                :current_user_features, :family_home_path, :locale_native_name, :locale_flag,
                 :suggested_locale, :locale_path
 
   # Memoized per-request SafeSettings for the current user. Use this instead of
@@ -222,11 +222,6 @@ status: :see_other
     candidates.max_by { |_locale, quality, index| [quality, -index] }&.first
   end
 
-  # Every language except the one being read, in the order they are declared.
-  def selectable_locales
-    I18n.available_locales - [I18n.locale]
-  end
-
   # A language is always named in its own words, so a reader can find their own
   # language without already understanding the one they are looking at.
   # `fallback: false` is load-bearing: fallbacks are on in production, and a
@@ -234,6 +229,13 @@ status: :see_other
   # value and offer itself as "English" rather than reaching the default.
   def locale_native_name(locale)
     I18n.t('language_name', locale: locale, default: locale.to_s.upcase, fallback: false)
+  end
+
+  # Each locale names its own flag, so adding a language stays a one-file
+  # change. A language is not a country, so this is a label, not a claim about
+  # where it is spoken — the native name next to it is what identifies it.
+  def locale_flag(locale)
+    I18n.t('language_flag', locale: locale, default: nil, fallback: false)
   end
 
   # Built from `request.path` rather than `url_for` so that query parameters

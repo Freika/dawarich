@@ -41,7 +41,6 @@
         <% if user_signed_in? %>
           <div class="divider my-1"></div>
           <li><%= render 'shared/navbar/theme_toggle', show_label: true, css_class: 'flex items-center gap-2' %></li>
-          <%= render 'shared/navbar/locale_switch', scope: 'mobile' %>
           <li>
             <details>
               <summary><%= icon 'message-circle-question-mark' %> <%= t('.help') %></summary>
@@ -217,7 +216,6 @@
             <ul class="p-2 bg-base-100 rounded-t-none z-[50]">
               <li><%= link_to t('.account'), edit_user_registration_path %></li>
               <li><%= link_to t('.settings'), settings_general_index_path %></li>
-              <%= render 'shared/navbar/locale_switch', scope: 'account' %>
               <% if !DawarichSettings.self_hosted? %>
                 <li><%= link_to t('.subscription'), "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}" %></li>
               <% end %>
@@ -238,7 +236,6 @@
       </div>
     <% else %>
       <ul class="menu menu-horizontal bg-base-100 rounded-box px-1">
-        <%= render 'shared/navbar/locale_switch', scope: 'guest', collapsed: true %>
         <li><%= link_to t('.login'), new_user_session_path %></li>
         <% if !SELF_HOSTED && defined?(devise_mapping) && devise_mapping&.registerable? %>
           <li><%= link_to t('.register'), new_user_registration_path %></li>

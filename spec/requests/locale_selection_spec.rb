@@ -39,8 +39,6 @@ RSpec.describe 'Locale selection', type: :request do
 
     get edit_user_registration_path, params: { locale: 'de' }
     expect(user.reload.preferred_locale).to eq(:de)
-    switch_link = Nokogiri::HTML(response.body).at_css('a[hreflang="en"]')
-    expect(switch_link['href']).to eq('/users/edit?locale=en')
 
     get edit_user_registration_path, headers: { 'Accept-Language' => 'en' }
     expect(response.body).to include('<html lang="de"')

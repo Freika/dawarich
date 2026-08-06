@@ -57,6 +57,42 @@
               </div>
             </div>
 
+            <!-- Language Section -->
+            <div>
+              <h2 class="text-2xl font-bold mb-4 flex items-center">
+                <%= icon 'globe', class: "text-primary mr-2" %> <%= t('.language') %>
+              </h2>
+              <div class="bg-base-100 p-5 rounded-lg shadow-sm space-y-4">
+                <div class="form-control">
+                  <label class="label">
+                    <span class="label-text font-medium"><%= t('.your_language') %></span>
+                  </label>
+                  <div class="grid grid-cols-1 sm:grid-cols-3 gap-3" role="radiogroup"
+                       aria-label="<%= t('.your_language') %>">
+                    <% I18n.available_locales.each do |locale| %>
+                      <label class="cursor-pointer" data-testid="language-choice">
+                        <%= f.radio_button :locale, locale,
+                                           checked: locale == I18n.locale,
+                                           class: 'peer sr-only' %>
+                        <div class="flex items-center gap-3 rounded-lg border-2 border-base-300 p-3
+                                    transition-colors hover:border-base-content/30
+                                    peer-checked:border-primary peer-checked:bg-primary/10
+                                    peer-focus-visible:ring-2 peer-focus-visible:ring-primary">
+                          <%= icon locale_flag(locale), library: 'flags',
+                                   class: 'inline-block rounded-sm h-5 w-auto shadow-sm shrink-0' %>
+                          <span class="font-medium truncate" lang="<%= locale %>"
+                                data-testid="language-name"><%= locale_native_name(locale) %></span>
+                        </div>
+                      </label>
+                    <% end %>
+                  </div>
+                  <p class="text-sm text-base-content/70 mt-3">
+                    <%= t('.the_interface_emails_and_notifications_will_use_this_language') %>
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <!-- Timezone Section -->
             <div>
               <h2 class="text-2xl font-bold mb-4 flex items-center">

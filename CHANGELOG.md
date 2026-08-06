@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
-- Dawarich can now be used in a language other than English. Pick one from the navbar — each is listed in its own words — and the choice is saved to your account and used for emails and notifications too. English stays the default and is never changed for you: if your browser prefers another language, Dawarich offers the switch in a banner you can dismiss, and takes no as an answer. API responses stay in English so integrations keep working.
+- Dawarich can now be used in a language other than English. Pick one under Settings → General — each is listed in its own words — and the choice is saved to your account and used for emails and notifications too. English stays the default and is never changed for you: if your browser prefers another language, Dawarich offers the switch in a banner you can dismiss, and takes no as an answer. API responses stay in English so integrations keep working.
 - Available languages: German, Spanish.
 
 ### Fixed
