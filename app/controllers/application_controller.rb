@@ -185,7 +185,7 @@ status: :see_other
   # behalf.
   def switch_locale(&action)
     parameter_locale = supported_locale(params[:locale])
-    remember_locale(parameter_locale) if parameter_locale && !prefetch_request?
+    remember_locale(parameter_locale) if parameter_locale && chosen_by_the_reader?
     locale = parameter_locale || current_user&.preferred_locale || supported_locale(session[:locale]) ||
              I18n.default_locale
 
@@ -206,7 +206,15 @@ status: :see_other
 
   # A prefetched response is still rendered in the requested language so the
   # preview matches what a click would show; only the choice is withheld until
-  # the user actually navigates.
+  # the user actually navigates. A request another site made on the reader's
+  # behalf is withheld for good: `?locale=` on an `<img>` somewhere else would
+  # otherwise rewrite a signed-in account's language without anyone asking.
+  def chosen_by_the_reader?
+    return false if prefetch_request?
+
+    request.headers['Sec-Fetch-Site'].to_s != 'cross-site'
+  end
+
   def remember_locale(locale)
     session[:locale] = locale.to_s
     persist_user_locale(locale)
