@@ -20,6 +20,8 @@
     <% end %>
     <%= javascript_translations %>
     <%= javascript_importmap_tags %>
+    <%= turbo_refreshes_with(method: :morph, scroll: :preserve) if morph_page_refreshes? %>
+    <%= yield :head %>
     <%= yield :head_scripts %>
     <%= javascript_include_tag "https://unpkg.com/protomaps-leaflet@5.0.0/dist/protomaps-leaflet.js", defer: true %>
 

@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Settings::GeneralController < ApplicationController
+  self.page_refresh_morphing = true
+
   before_action :authenticate_user!
 
   def index; end

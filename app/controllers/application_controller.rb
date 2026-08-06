@@ -3,6 +3,8 @@
 class ApplicationController < ActionController::Base
   include Pundit::Authorization
 
+  class_attribute :page_refresh_morphing, instance_accessor: false, default: false
+
   rescue_from Pundit::NotAuthorizedError, with: :user_not_authorized
 
   around_action :switch_locale
@@ -14,6 +16,10 @@ class ApplicationController < ActionController::Base
   helper_method :current_user_safe_settings, :poster_ordering_enabled?, :family_feature_available?,
                 :current_user_features, :family_home_path, :locale_native_name, :locale_flag,
                 :suggested_locale, :locale_path
+
+  def morph_page_refreshes?
+    self.class.page_refresh_morphing
+  end
 
   # Memoized per-request SafeSettings for the current user. Use this instead of
   # `current_user.safe_settings` in partials/helpers that may render many rows
