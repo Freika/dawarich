@@ -1492,119 +1492,6 @@ fr:
       import_files: Importer des fichiers
       settings: Paramètres
       setup_guide: Guide de configuration
-    leaflet:
-      settings_modals:
-        route_opacity: Opacité des itinéraires
-        value_in_percent: Valeur en pourcentage.
-        this_value_is_the_opacity_of_the_route_on_the: Cette valeur est l'opacité
-          de l'itinéraire sur la carte. La valeur se situe entre 0 et 100. La valeur
-          par défaut est 100, ce qui signifie que l'itinéraire est entièrement visible.
-          Si vous définissez la valeur à 0, l'itinéraire sera invisible.
-        close: Fermer
-        fog_of_war: Brouillard de guerre
-        value_in_meters: Valeur en mètres.
-        here_you_can_set_the_radius_of_the_cleared_area: Ici, vous pouvez définir
-          le rayon de la zone révélée autour d'un point lorsque le mode Brouillard
-          de guerre est activée. L'aire autour du point sera nettoyée et le reste
-          de la carte sera recouvert par un brouillard. L'aire nettoyée sera un cercle
-          centré sur le point avec le rayon défini ici.
-        fog_of_war_line_threshold: Seuil de ligne pour le Brouillard de guerre
-        value_in_seconds: Valeur en secondes.
-        points_in_the_fog_are_connected_by_lines_this_value: Les points dans le brouillard
-          sont connectés par des lignes. Cette valeur est la durée maximale entre
-          deux points à être connectés par une ligne. Si la durée entre deux points
-          est supérieure à cette valeur, ils ne seront pas connectés.
-        meters_between_routes: Mètres entre les itinéraires
-        points_on_the_map_are_connected_by_lines_this_value: Les points sur la carte
-          sont connectés par des lignes. Cette valeur est la distance maximale entre
-          deux points à être connectés par une ligne. Si la distance entre deux points
-          est supérieure à cette valeur, ils ne seront pas connectés et la ligne ne
-          sera pas dessinée.
-        minutes_between_routes: Minutes entre les itinéraires
-        value_in_minutes: Valeur en minutes.
-        points_on_the_map_are_connected_by_lines_this_value_2: Les points sur la carte
-          sont connectés par des lignes. Cette valeur est la durée maximale entre
-          deux points à être connectés par une ligne. Si la durée entre deux points
-          est supérieure à cette valeur, ils ne seront pas connectés.
-        visit_time_threshold: Seuil de temps pour les visites
-        this_value_is_the_threshold_based_on_which_a_visit: Cette valeur est le seuil,
-          en fonction duquel une visite est calculée. Si la durée entre deux points
-          consécutifs est supérieure à cette valeur, la visite est considérée comme
-          nouvelle. Si la durée entre deux points est inférieure à cette valeur, la
-          visite est considérée comme une continuation de la visite précédente.
-        for_example_if_you_set_this_value_to_30_minutes: Par exemple, si vous définissez
-          cette valeur à 30 minutes et que vous avez quatre points avec une différence
-          de temps de 20 minutes entre eux, ils seront considérés comme une seule
-          visite. Si la différence de temps entre les deux premiers points est de
-          20 minutes et entre le troisième et le quatrième point est de 40 minutes,
-          la visite sera divisée en deux visites.
-        default_value_is_30_minutes: La valeur par défaut est de 30 minutes.
-        merge_threshold: Seuil de fusion
-        this_value_is_the_threshold_based_on_which_two_visits: Cette valeur est le
-          seuil, en fonction duquel deux visites sont fusionnées en une. Si la durée
-          entre deux visites consécutives est inférieure à cette valeur, les visites
-          sont fusionnées en une visite. Si la durée entre deux visites est supérieure
-          à cette valeur, les visites sont considérées comme des visites distinctes.
-        for_example_if_you_set_this_value_to_30_minutes_2: Par exemple, si vous définissez
-          cette valeur à 30 minutes et que vous avez deux visites avec une différence
-          de temps de 20 minutes entre elles, elles seront fusionnées en une visite.
-          Si la différence de temps entre les deux visites est de 40 minutes, les
-          visites seront considérées comme des visites distinctes.
-        default_value_is_15_minutes: La valeur par défaut est de 15 minutes.
-        points_rendering_mode: Mode de rendu des points
-        to_improve_map_performance_you_can_set_the_rendering_mode: Pour améliorer
-          les performances de la carte, vous pouvez définir le mode de rendu des points
-          sur « Simplifié ».
-        in_this_mode_the_points_that_are_closer_to_each: Dans ce mode, les points
-          qui sont plus proches l'un de l'autre que 20 secondes ou 50 mètres ne seront
-          pas affichés. Cela peut considérablement améliorer les performances de la
-          carte, surtout si vous avez beaucoup de points sur la carte.
-        the_raw_mode_will_render_all_points_on_the_map: Le mode « Brut » affichera
-          tous les points sur la carte, quel que soit la distance dans l'espace et
-          le temps entre eux.
-        speed_colored_routes: Itinéraires colorés en fonction de la vitesse
-        this_checkbox_will_color_the_routes_based_on_the_speed: Cette case à cocher
-          coloriera les itinéraires en fonction de la vitesse de chaque segment.
-        uncheck_this_checkbox_if_you_want_to_disable_the_speed: Désactivez cette case
-          à cocher si vous souhaitez désactiver les itinéraires colorés par la vitesse.
-        speed_coloring_is_based_on_the_following_color_stops: 'La coloration de la
-          vitesse repose sur les arrêts de couleur suivants :'
-        km_h_green_stationary_or_walking: 0 km/h — vert, stationnaire ou en marche
-        km_h_cyan_jogging: 15 km/h — cyan, course à pied
-        km_h_magenta_cycling: 30 km/h — magenta, cyclisme
-        km_h_yellow_urban_driving: 50 km/h — jaune, conduite urbaine
-        km_h_orange_red_highway_driving: 100 km/h — orange-rouge, conduite sur autoroute
-        live_map: Carte en temps réel
-        this_checkbox_will_enable_the_live_map: Cette case à cocher permettra d'activer
-          la carte en temps réel.
-        uncheck_this_checkbox_if_you_want_to_disable_the_live: Désactivez cette case
-          à cocher si vous souhaitez désactiver la carte en temps réel.
-        when_the_live_map_is_enabled_the_map_will_update: Lorsque la carte en temps
-          réel est activée, la carte se mettra à jour en temps réel avec les points
-          les plus récents.
-        speed_color_scale: Échelle de couleur de vitesse
-        value_in_format: Valeur au format
-        speed_kmh_hex_color: vitesse_kmh:couleur_hexadécimale|...
-        here_you_can_set_a_custom_color_scale_for_speed: Vous pouvez ici définir une
-          échelle de couleur personnalisée pour les itinéraires colorés par la vitesse.
-          Elle utilise des arrêts de couleur spécifiés en km/h et crée un gradient
-          à partir d'eux. La valeur par défaut est
-        00ff00_15_00ffff_30_ff00ff_50_ffff00_100_ff3300: '0 : #00ff00 | 15 : #00ffff
-          | 30 : #ff00ff | 50 : #ffff00 | 100 : #ff3300'
-        you_can_also_use_the_edit_colors_button_to_edit: Vous pouvez également utiliser
-          le bouton Modifier les couleurs pour l'éditer à l'aide d'une interface utilisateur.
-      sunset_banners:
-        family_location_history_is_only_shown_on_the_new_map: La localisation de la
-          famille n'est visible que sur la nouvelle carte (v2).
-        to_see_where_your_family_has_been: Pour voir où votre famille a été.
-        dismiss: Fermer
-        you_re_using_the_classic_map_v1_which_will_be: Vous utilisez la carte classique
-          (v1), qui sera retirée en
-        august_2026: août 2026
-        open_the_new_map: Ouvrez la nouvelle carte
-        switch_to_the_new_map: Passez à la nouvelle carte
-      index:
-        map: Carte
     maplibre:
       area_creation_modal:
         create_new_area: Créer un nouveau secteur
@@ -1960,10 +1847,6 @@ fr:
         map_v2_requires_webgl_to_render_maps_please_enable_hardware: La carte v2 nécessite
           WebGL pour afficher les cartes. Activez l'accélération matérielle dans vos
           paramètres de navigateur ou utilisez un autre navigateur.
-        map_v1_leaflet_is_available_at: La carte v1 (Leaflet) est disponible à
-        but_will_be_deprecated_and_removed_in_one_of_future: mais sera dépréciée et
-          supprimée dans une prochaine version.
-        map_v1: "/map/v1"
       index:
         loading: Chargement...
         pick_a_day: Choisissez une journée
@@ -2406,35 +2289,6 @@ fr:
         save_test_connection: Enregistrer et tester la connexion
         sync_now: Synchroniser maintenant
         settings: Paramètres
-    maps:
-      index:
-        map_appearance_colors_layers_and_points_of_interest_for_the: L'apparence,
-          les couleurs, les couches et les points d'intérêt de la carte actuelle (V2)
-          se configurent directement sur la
-        open_the_settings_panel_there_this_page_only_covers_the: "— ouvrez-y le panneau
-          des paramètres. Cette page ne concerne que l'ancienne version V1 (Leaflet)."
-        general: Général
-        preferred_map_version: Version de carte préférée
-        v2_maplibre_is_the_default_v1_leaflet_is_available_for: La version V2 (MapLibre)
-          est par défaut. La version V1 (Leaflet) est disponible pour des raisons
-          de compatibilité.
-        using_a_custom_tile_url_may_result_in_extra_costs: Utiliser une URL personnalisée
-          pour les tuiles peut entraîner des coûts supplémentaires. Consultez les
-          conditions d'utilisation de votre fournisseur de tuiles de cartes.
-        custom_tiles_v1: Tuiles personnalisées (V1)
-        map_name: Nom de la carte
-        a_descriptive_name_for_your_map_configuration: Un nom décrivant votre configuration
-          de carte
-        tile_url: URL de la tuile
-        url_pattern_for_map_tiles_must_include_x_y_and: Modèle d'URL pour les tuiles
-          de carte. Doit inclure les variables {x}, {y} et {z}
-        map_preview: Prévisualisation de la carte
-        map_settings: Paramètres de la carte
-        map_page: carte
-        v1_leaflet: V1 (Leaflet)
-        v2_maplibre: V2 (MapLibre)
-        example_openstreetmap: 'Exemple : OpenStreetMap'
-        save_changes: Enregistrer les modifications
     subscriptions:
       index:
         hello_there: Bonjour !
@@ -2829,13 +2683,6 @@ fr:
         name_shared_on_dawarich: "%{name} — Partagé sur Dawarich"
         shared_from_dawarich: Partagé depuis Dawarich
     map:
-      date_navigation:
-        start_date_and_time: Date et heure de début
-        end_date_and_time: Date et heure de fin
-        search: Rechercher
-        today: Aujourd'hui
-        last_7_days: Les 7 derniers jours
-        last_month: Le mois dernier
       date_navigation_v2:
         share: Partager
         start_date_and_time: Date et heure de début
@@ -4067,8 +3914,6 @@ fr:
         not_found_in_supporter_list_make_sure_you_re_using: Non trouvé dans la liste
           des donateurs. Assurez-vous d'utiliser la même adresse e-mail ou le même
           nom d'utilisateur GitHub que votre plateforme de dons.
-      maps:
-        settings_updated: Paramètres mis à jour.
       onboardings:
         demo_data_loaded: Données de démo chargées.
         demo_data_is_already_loaded: Les données de démo sont déjà chargées.

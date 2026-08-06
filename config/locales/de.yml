@@ -839,64 +839,6 @@ de:
       import_files: Dateien importieren
       settings: Einstellungen
       setup_guide: Einrichtungsanleitung
-    leaflet:
-      settings_modals:
-        route_opacity: Deckkraft der Route
-        value_in_percent: Wert in Prozent.
-        this_value_is_the_opacity_of_the_route_on_the: Dieser Wert bestimmt die Deckkraft der Route auf der Karte. Er wird in Prozent angegeben und kann zwischen 0 und 100 liegen. Bei 100 ist die Route vollständig sichtbar, bei 0 unsichtbar.
-        close: Schließen
-        fog_of_war: Kartennebel
-        value_in_meters: Wert in Metern.
-        here_you_can_set_the_radius_of_the_cleared_area: Hier kannst du den Radius des aufgedeckten Bereichs um jeden Punkt festlegen, wenn der Kartennebel aktiviert ist. Innerhalb dieses Radius bleibt die Karte sichtbar; der übrige Bereich wird vom Nebel verdeckt.
-        fog_of_war_line_threshold: Linien-Schwellenwert des Kartennebels
-        value_in_seconds: Wert in Sekunden.
-        points_in_the_fog_are_connected_by_lines_this_value: Punkte im Nebel werden durch Linien verbunden. Dieser Wert ist die maximale Zeit zwischen zwei Punkten, um durch eine Linie verbunden zu werden. Wenn die Zeit zwischen zwei Punkten größer als dieser Wert ist, werden sie nicht verbunden.
-        meters_between_routes: Meter zwischen Routen
-        points_on_the_map_are_connected_by_lines_this_value: Punkte auf der Karte werden durch Linien verbunden. Dieser Wert ist die maximale Distanz zwischen zwei Punkten, um durch eine Linie verbunden zu werden. Wenn die Distanz zwischen zwei Punkten größer als dieser Wert ist, werden sie nicht verbunden und die Linie wird nicht gezeichnet. Dies ermöglicht es, die Route in kleinere Abschnitte zu unterteilen und Linien zwischen Punkten zu vermeiden, die sich weit voneinander entfernt sind.
-        minutes_between_routes: Minuten zwischen Routen
-        value_in_minutes: Wert in Minuten.
-        points_on_the_map_are_connected_by_lines_this_value_2: Punkte auf der Karte werden durch Linien verbunden. Dieser Wert ist die maximale Zeit zwischen zwei Punkten, um durch eine Linie verbunden zu werden. Wenn die Zeit zwischen zwei Punkten größer als dieser Wert ist, werden sie nicht verbunden. Dies ermöglicht es, die Route in kleinere Abschnitte zu unterteilen und Linien zwischen Punkten zu vermeiden, die sich weit voneinander entfernt sind.
-        visit_time_threshold: Schwellenwert für Aufenthaltsdauer
-        this_value_is_the_threshold_based_on_which_a_visit: Dieser Wert bestimmt, wann ein Aufenthalt beginnt. Ist der zeitliche Abstand zwischen zwei aufeinanderfolgenden Punkten größer, beginnt ein neuer Aufenthalt. Ist er kleiner, wird der vorherige Aufenthalt fortgesetzt.
-        for_example_if_you_set_this_value_to_30_minutes: 'Beispiel: Bei einem Wert von 30 Minuten gelten vier Punkte mit jeweils 20 Minuten Abstand als ein Aufenthalt. Liegen zwischen den ersten beiden Punkten 20 Minuten und zwischen dem dritten und vierten Punkt 40 Minuten, wird der Aufenthalt in zwei Aufenthalte aufgeteilt.'
-        default_value_is_30_minutes: Standardwert ist 30 Minuten.
-        merge_threshold: Verschmelzschwellwert
-        this_value_is_the_threshold_based_on_which_two_visits: Dieser Schwellenwert bestimmt, wann zwei Aufenthalte zusammengeführt werden. Ist der zeitliche Abstand kleiner als der Wert, werden sie zu einem Aufenthalt zusammengeführt. Ist er größer, bleiben sie getrennte Aufenthalte.
-        for_example_if_you_set_this_value_to_30_minutes_2: 'Beispiel: Bei einem Wert von 30 Minuten werden zwei Aufenthalte mit 20 Minuten Abstand zusammengeführt. Bei 40 Minuten Abstand bleiben sie getrennt.'
-        default_value_is_15_minutes: Der Standardwert ist 15 Minuten.
-        points_rendering_mode: Darstellungsmodus der Punkte
-        to_improve_map_performance_you_can_set_the_rendering_mode: Um die Kartenleistung zu verbessern, kannst du den Darstellungsmodus der Punkte auf "Vereinfacht" setzen.
-        in_this_mode_the_points_that_are_closer_to_each: In diesem Modus werden Punkte, die näher als 20 Sekunden oder 50 Meter voneinander entfernt sind, nicht dargestellt. Dies kann die Kartenleistung deutlich verbessern, besonders wenn du viele Punkte auf der Karte hast.
-        the_raw_mode_will_render_all_points_on_the_map: Der "Rohmodus" wird alle Punkte auf der Karte darstellen, unabhängig vom Abstand in Raum und Zeit zwischen ihnen.
-        speed_colored_routes: Geschwindigkeitsfarbige Routen
-        this_checkbox_will_color_the_routes_based_on_the_speed: Diese Option färbt die Routen anhand der Geschwindigkeit jedes Abschnitts.
-        uncheck_this_checkbox_if_you_want_to_disable_the_speed: Deaktiviere diese Option, wenn du die geschwindigkeitsfarbigen Routen deaktivieren möchtest.
-        speed_coloring_is_based_on_the_following_color_stops: 'Die Geschwindigkeitsfärbung basiert auf den folgenden Farbstopps:'
-        km_h_green_stationary_or_walking: 0 km/h — grün, stillstehend oder zu Fuß
-        km_h_cyan_jogging: 15 km/h — cyan, Laufen
-        km_h_magenta_cycling: 30 km/h — magenta, Fahrrad fahren
-        km_h_yellow_urban_driving: 50 km/h — gelb, Stadtverkehr
-        km_h_orange_red_highway_driving: 100 km/h — Orangerot, Autobahnfahrt
-        live_map: Live-Karte
-        this_checkbox_will_enable_the_live_map: Diese Checkbox aktiviert die Live-Karte.
-        uncheck_this_checkbox_if_you_want_to_disable_the_live: Deaktiviere diese Checkbox, wenn du die Live-Karte deaktivieren möchtest.
-        when_the_live_map_is_enabled_the_map_will_update: Wenn die Live-Karte aktiviert ist, aktualisiert sich die Karte in Echtzeit mit den neuesten Punkten.
-        speed_color_scale: Farbskala für Geschwindigkeit
-        value_in_format: Wert im Format
-        speed_kmh_hex_color: speed_kmh:hex_color|...
-        here_you_can_set_a_custom_color_scale_for_speed: Hier kannst du eine benutzerdefinierte Farbskala für Geschwindigkeitsfarbverläufe festlegen. Sie verwendet Farbstopps bei angegebenen km/h-Werten und erstellt einen Farbverlauf daraus. Der Standardwert ist
-        00ff00_15_00ffff_30_ff00ff_50_ffff00_100_ff3300: 0:#00ff00|15:#00ffff|30:#ff00ff|50:#ffff00|100:#ff3300
-        you_can_also_use_the_edit_colors_button_to_edit: Du kannst auch den 'Farben bearbeiten'-Button verwenden, um es über eine Oberfläche zu bearbeiten.
-      sunset_banners:
-        family_location_history_is_only_shown_on_the_new_map: Der Standortverlauf deiner Familie wird nur auf der neuen Karte (v2) angezeigt.
-        to_see_where_your_family_has_been: um zu sehen, wo deine Familie gewesen ist.
-        dismiss: Verwerfen
-        you_re_using_the_classic_map_v1_which_will_be: Du verwendest die klassische Karte (v1), die im
-        august_2026: August 2026 auslaufen wird
-        open_the_new_map: Den neuen Kartenansicht öffnen
-        switch_to_the_new_map: Zur neuen Kartenansicht wechseln
-      index:
-        map: Karte
     maplibre:
       area_creation_modal:
         create_new_area: Neues Gebiet erstellen
@@ -1189,9 +1131,6 @@ de:
       webgl_error:
         webgl_is_not_available: WebGL ist nicht verfügbar
         map_v2_requires_webgl_to_render_maps_please_enable_hardware: Map v2 benötigt WebGL, um Karten anzuzeigen. Aktiviere die Hardwarebeschleunigung in den Einstellungen deines Browsers oder versuche einen anderen Browser.
-        map_v1_leaflet_is_available_at: Map v1 (Leaflet) ist unter
-        but_will_be_deprecated_and_removed_in_one_of_future: verfügbar, aber wird in einer zukünftigen Version deaktiviert und entfernt.
-        map_v1: "/map/v1"
       index:
         loading: Lädt...
         pick_a_day: Wähle einen Tag aus
@@ -1548,26 +1487,6 @@ de:
         save_test_connection: Speichern & Verbindung testen
         sync_now: Jetzt synchronisieren
         settings: Einstellungen
-    maps:
-      index:
-        map_appearance_colors_layers_and_points_of_interest_for_the: Kartendarstellung, Farben, Ebenen und interessante Orte für die aktuelle Karte (V2) findest du direkt in der
-        open_the_settings_panel_there_this_page_only_covers_the: "— öffne das Einstellungspanel dort. Diese Seite beschreibt nur die alte V1 (Leaflet)-Karte."
-        general: Allgemein
-        preferred_map_version: Bevorzugte Kartenversion
-        v2_maplibre_is_the_default_v1_leaflet_is_available_for: V2 (MapLibre) ist die Standardversion. V1 (Leaflet) ist für die Kompatibilität verfügbar.
-        using_a_custom_tile_url_may_result_in_extra_costs: Die Nutzung eines benutzerdefinierten Kachel-URLs kann zusätzliche Kosten verursachen. Prüfe die Nutzungsbedingungen deines Karten-Tile-Anbieters.
-        custom_tiles_v1: Benutzerdefinierte Kacheln (V1)
-        map_name: Kartenname
-        a_descriptive_name_for_your_map_configuration: Ein beschreibender Name für deine Kartenkonfiguration
-        tile_url: Kachel-URL
-        url_pattern_for_map_tiles_must_include_x_y_and: URL-Muster für Kacheln. Muss die Platzhalter {x}, {y} und {z} enthalten
-        map_preview: Kartenvorschau
-        map_settings: Karten-Einstellungen
-        map_page: Kartenseite
-        v1_leaflet: V1 (Leaflet)
-        v2_maplibre: V2 (MapLibre)
-        example_openstreetmap: 'Beispiel: OpenStreetMap'
-        save_changes: Änderungen speichern
     subscriptions:
       index:
         hello_there: Hallo!
@@ -1898,13 +1817,6 @@ de:
         name_shared_on_dawarich: "%{name} — Geteilt auf Dawarich"
         shared_from_dawarich: Von Dawarich geteilt
     map:
-      date_navigation:
-        start_date_and_time: Startdatum und -zeit
-        end_date_and_time: Enddatum und -zeit
-        search: Suche
-        today: Heute
-        last_7_days: Letzte 7 Tage
-        last_month: Letzter Monat
       date_navigation_v2:
         share: Teilen
         start_date_and_time: Startdatum und -zeit
@@ -3053,8 +2965,6 @@ de:
         please_enter_an_email_address_or_github_username: Gib bitte eine E-Mail-Adresse oder GitHub-Nutzername ein
         verified_thank_you_for_supporting_dawarich_via_platform: Verifiziert! Danke für deine Unterstützung von Dawarich über %{platform}.
         not_found_in_supporter_list_make_sure_you_re_using: Nicht in der Unterstützerliste gefunden. Stelle sicher, dass du dieselbe E-Mail-Adresse oder GitHub-Nutzername verwendest, wie dein Spenden-Plattform.
-      maps:
-        settings_updated: Einstellungen aktualisiert
       onboardings:
         demo_data_loaded: Demo-Daten geladen.
         demo_data_is_already_loaded: Demo-Daten sind bereits geladen.

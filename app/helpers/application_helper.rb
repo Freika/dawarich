@@ -201,16 +201,7 @@ module ApplicationHelper
   end
 
   def preferred_map_path(params = {})
-    signed_in =
-      begin
-        user_signed_in?
-      rescue Devise::MissingWarden
-        false
-      end
-    return map_v2_path(params) unless signed_in
-
-    preferred_version = current_user.safe_settings.maps&.dig('preferred_version')
-    preferred_version == 'v1' ? map_v1_path(params) : map_v2_path(params)
+    map_v2_path(params)
   end
 
   # Generates a user-specific upgrade URL that authenticates the user

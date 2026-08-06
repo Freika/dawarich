@@ -11,8 +11,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Dawarich can now be used in a language other than English. Pick one under Settings → General — each is listed in its own words — and the choice is saved to your account and used for emails and notifications too. English stays the default and is never changed for you: if your browser prefers another language, Dawarich offers the switch in a banner you can dismiss, and takes no as an answer. API responses stay in English so integrations keep working.
 - Available languages: German, Spanish, French.
 
+### Removed
+
+- Map v1 (Leaflet) has been removed. `/map` now opens the MapLibre map, and `/map/v1` redirects to `/map/v2`. The Settings → Maps page (the v1-only custom tile URL and the map version toggle) was removed as well — map appearance settings live in the map's own settings panel. Note that all maps now require WebGL: browsers with hardware acceleration disabled will see an error message instead of a map, as the Leaflet fallback no longer exists.
+
 ### Changed
 
+- Monthly statistics maps and publicly shared month maps are now rendered with MapLibre GL instead of Leaflet, matching the main map's basemaps.
 - The top navigation now collapses into the menu button below 1280px rather than below 1024px, so the longer translations fit on one line.
 
 ### Fixed

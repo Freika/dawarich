@@ -272,7 +272,6 @@ RSpec.describe 'Rendered French copy' do
                         'disabling_ssl_verification_makes_your_connection_vulnerable_to_man_in'
       expect(I18n.t(tls_warning_key))
         .to include("attaques de l'homme du milieu", 'certificats auto-signés auxquels vous faites confiance')
-      expect(I18n.t('map.maplibre.webgl_error.map_v1')).to eq('/map/v1')
       expect(I18n.t('layouts.shared.self_hostable')).to eq('Auto-hébergeable')
       expect(I18n.t('layouts.shared.dawarich_turns_your_own_location_history_into_maps_worth_sharing'))
         .to include('logiciel libre et auto-hébergeable', 'contrôle de vos données')
@@ -291,8 +290,6 @@ RSpec.describe 'Rendered French copy' do
       expect(api_import_error).to include("lors du traitement de l'importation")
       expect(hexagon_error).to eq('La génération de la grille hexagonale a échoué.')
       expect(thumbnail_error).to eq('La récupération de la miniature a échoué.')
-      expect(I18n.t('settings.maps.index.open_the_settings_panel_there_this_page_only_covers_the'))
-        .to include('ouvrez-y le panneau des paramètres', "l'ancienne version V1")
       expect(I18n.t('settings.general.index.display_a_gem_icon_next_to_your_profile_to_show'))
         .to include('une icône en forme de gemme')
       expect(I18n.t('controllers.api.missing_required_parameters_join', parameters: 'lat, lon'))

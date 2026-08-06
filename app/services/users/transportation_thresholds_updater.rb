@@ -69,9 +69,9 @@ module Users
       sanitize_gated_layers if @user.plan_restricted?
     end
 
-    # The `maps` hash also carries V1 keys (name, url, preferred_version)
-    # managed by the settings page — merge instead of replacing so an API
-    # update from the map panel can't clobber them.
+    # The `maps` hash may still carry legacy Map v1 keys (name, url,
+    # preferred_version) on existing accounts — merge instead of replacing
+    # so an API update from the map panel can't clobber other keys.
     def merge_maps_settings(value)
       incoming = value.to_h
       incoming = incoming.except('hidden_tile_categories', 'disabled_poi_groups') if @user.plan_restricted?
