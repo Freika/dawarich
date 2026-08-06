@@ -85,8 +85,6 @@
     },
     {
       "includes": [
-        "app/assets/stylesheets/leaflet_theme.css",
-        "app/assets/stylesheets/leaflet.control.layers.tree.css",
         "app/assets/stylesheets/application.css",
         "app/assets/stylesheets/actiontext.css",
         "app/assets/stylesheets/maps_maplibre_panel.css",

@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+
+### Removed
+
+- Map v1 (Leaflet) has been removed. `/map` now opens the MapLibre map, and `/map/v1` redirects to `/map/v2`. The Settings → Maps page (the v1-only custom tile URL and the map version toggle) was removed as well — map appearance settings live in the map's own settings panel.
+
+### Changed
+
+- Monthly statistics maps and publicly shared month maps are now rendered with MapLibre GL instead of Leaflet, matching the main map's basemaps.
+
 ## [1.11.0] - 2026-08-02, Berlin
 
 ### Added

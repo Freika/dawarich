@@ -601,92 +601,28 @@ RSpec.describe ApplicationHelper, type: :helper do
   end
 
   describe '#preferred_map_path' do
-    context 'when user is not signed in' do
-      before do
-        allow(helper).to receive(:user_signed_in?).and_return(false)
-      end
-
-      it 'returns map_v2_path by default' do
-        expect(helper.preferred_map_path).to eq(helper.map_v2_path)
-      end
+    it 'returns map_v2_path' do
+      expect(helper.preferred_map_path).to eq(helper.map_v2_path)
     end
 
-    context 'when user is signed in' do
+    it 'passes query params through' do
+      params = { start_at: '2025-01-01T00:00', end_at: '2025-12-31T23:59' }
+
+      expect(helper.preferred_map_path(params)).to eq(helper.map_v2_path(params))
+    end
+
+    context 'when a user still carries the legacy v1 preference' do
       let(:user) { create(:user) }
 
       before do
         allow(helper).to receive(:user_signed_in?).and_return(true)
         allow(helper).to receive(:current_user).and_return(user)
+        user.settings['maps'] = { 'preferred_version' => 'v1', 'distance_unit' => 'km' }
+        user.save
       end
 
-      context 'when user has no preferred_version set' do
-        before do
-          user.settings['maps'] = { 'distance_unit' => 'km' }
-          user.save
-        end
-
-        it 'returns map_v2_path as the default' do
-          expect(helper.preferred_map_path).to eq(helper.map_v2_path)
-        end
-      end
-
-      context 'when user has preferred_version set to v1' do
-        before do
-          user.settings['maps'] = { 'preferred_version' => 'v1', 'distance_unit' => 'km' }
-          user.save
-        end
-
-        it 'returns map_v1_path' do
-          expect(helper.preferred_map_path).to eq(helper.map_v1_path)
-        end
-      end
-
-      context 'when user has preferred_version set to v2' do
-        before do
-          user.settings['maps'] = { 'preferred_version' => 'v2', 'distance_unit' => 'km' }
-          user.save
-        end
-
-        it 'returns map_v2_path' do
-          expect(helper.preferred_map_path).to eq(helper.map_v2_path)
-        end
-      end
-
-      context 'when user has no maps settings at all' do
-        before do
-          user.settings.delete('maps')
-          user.save
-        end
-
-        it 'returns map_v2_path as the default' do
-          expect(helper.preferred_map_path).to eq(helper.map_v2_path)
-        end
-      end
-
-      context 'when called with query params' do
-        let(:params) { { start_at: '2025-01-01T00:00', end_at: '2025-12-31T23:59' } }
-
-        context 'when preferred version is v1' do
-          before do
-            user.settings['maps'] = { 'preferred_version' => 'v1' }
-            user.save
-          end
-
-          it 'returns map_v1_path with query params' do
-            expect(helper.preferred_map_path(params)).to eq(helper.map_v1_path(params))
-          end
-        end
-
-        context 'when preferred version is v2' do
-          before do
-            user.settings['maps'] = { 'preferred_version' => 'v2' }
-            user.save
-          end
-
-          it 'returns map_v2_path with query params' do
-            expect(helper.preferred_map_path(params)).to eq(helper.map_v2_path(params))
-          end
-        end
+      it 'still returns map_v2_path' do
+        expect(helper.preferred_map_path).to eq(helper.map_v2_path)
       end
     end
   end

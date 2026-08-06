@@ -1,27 +1,22 @@
-import { translate } from "i18n"
-import L from "leaflet"
-import { createAllMapLayers } from "../maps/layers"
+import maplibregl from "maplibre-gl"
+import { buildHexagonPopup } from "maps_maplibre/utils/hexagon_popup"
+import { getMapStyle } from "maps_maplibre/utils/style_manager"
 import BaseController from "./base_controller"
 
 export default class extends BaseController {
-  static targets = ["container"]
   static values = {
     year: Number,
     month: Number,
     uuid: String,
     dataBounds: Object,
     hexagonsAvailable: Boolean,
-    selfHosted: String,
     timezone: String,
   }
 
   connect() {
     super.connect()
-    console.log("🏁 Controller connected - loading overlay should be visible")
-    this.selfHosted = this.selfHostedValue || "false"
-    this.currentHexagonLayer = null
+    this.hoveredId = null
     this.initializeMap()
-    this.loadHexagons()
   }
 
   disconnect() {
@@ -30,84 +25,50 @@ export default class extends BaseController {
     }
   }
 
-  initializeMap() {
-    // Initialize map with interactive controls enabled
-    this.map = L.map(this.element, {
-      zoomControl: true,
-      scrollWheelZoom: true,
-      doubleClickZoom: true,
-      touchZoom: true,
-      dragging: true,
-      keyboard: false,
-    })
-
-    // Add dynamic tile layer based on self-hosted setting
-    this.addMapLayers()
-
-    // Default view with higher zoom level for better hexagon detail
-    this.map.setView([40.0, -100.0], 9)
-  }
-
-  addMapLayers() {
+  async initializeMap() {
     try {
-      // Use appropriate default layer based on self-hosted mode
-      const selectedLayerName =
-        this.selfHosted === "true" ? "OpenStreetMap" : "Light"
-      const maps = createAllMapLayers(
-        this.map,
-        selectedLayerName,
-        this.selfHosted,
-        "dark",
+      const style = await getMapStyle(this.styleName())
+      this.map = new maplibregl.Map({
+        container: this.element,
+        style,
+        center: [-100.0, 40.0],
+        zoom: 9,
+      })
+      this.map.addControl(
+        new maplibregl.NavigationControl({ showCompass: false }),
+        "top-right",
       )
-
-      // If no layers were created, fall back to OSM
-      if (Object.keys(maps).length === 0) {
-        console.warn("No map layers available, falling back to OSM")
-        this.addFallbackOSMLayer()
-      }
+      this.map.on("load", () => this.loadHexagons())
     } catch (error) {
-      console.error("Error creating map layers:", error)
-      console.log("Falling back to OSM tile layer")
-      this.addFallbackOSMLayer()
+      console.error("Error initializing map:", error)
+      this.hideLoadingOverlay()
     }
   }
 
-  addFallbackOSMLayer() {
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: "© OpenStreetMap contributors",
-      maxZoom: 15,
-    }).addTo(this.map)
+  styleName() {
+    return document.documentElement.dataset.theme === "dawarich"
+      ? "light"
+      : "dark"
   }
 
   async loadHexagons() {
-    const _initialLoadingElement = document.getElementById("map-loading")
-
     try {
-      // Use server-provided data bounds
       const dataBounds = this.dataBoundsValue
 
       if (dataBounds && dataBounds.point_count > 0) {
-        // Set map view to data bounds BEFORE creating hexagon grid
         this.map.fitBounds(
           [
-            [dataBounds.min_lat, dataBounds.min_lng],
-            [dataBounds.max_lat, dataBounds.max_lng],
+            [dataBounds.min_lng, dataBounds.min_lat],
+            [dataBounds.max_lng, dataBounds.max_lat],
           ],
-          { padding: [20, 20] },
-        )
-
-        // Wait for the map to finish fitting bounds
-        console.log(
-          "⏳ About to wait for map moveend - overlay should still be visible",
+          { padding: 20, duration: 0 },
         )
         await new Promise((resolve) => {
           this.map.once("moveend", resolve)
-          // Fallback timeout in case moveend doesn't fire
           setTimeout(resolve, 1000)
         })
       }
 
-      // Load hexagons only if they are pre-calculated and data exists
       if (
         dataBounds &&
         dataBounds.point_count > 0 &&
@@ -115,64 +76,21 @@ export default class extends BaseController {
       ) {
         await this.loadStaticHexagons()
       } else {
-        if (!this.hexagonsAvailableValue) {
-          console.log(
-            "📋 No pre-calculated hexagons available for public sharing - skipping hexagon loading",
-          )
-        } else {
-          console.warn(
-            "⚠️ No data bounds or points available - not showing hexagons",
-          )
-        }
-        // Hide loading indicator if no hexagons to load
-        const loadingElement = document.getElementById("map-loading")
-        if (loadingElement) {
-          loadingElement.style.display = "none"
-        }
+        this.hideLoadingOverlay()
       }
     } catch (error) {
       console.error("Error initializing hexagon grid:", error)
-
-      // Hide loading indicator on initialization error
-      const loadingElement = document.getElementById("map-loading")
-      if (loadingElement) {
-        loadingElement.style.display = "none"
-      }
+      this.hideLoadingOverlay()
     }
-
-    // Do NOT hide loading overlay here - let loadStaticHexagons() handle it completely
   }
 
   async loadStaticHexagons() {
-    console.log("🔄 Loading static hexagons for public sharing...")
-
-    // Ensure loading overlay is visible and disable map interaction
-    const loadingElement = document.getElementById("map-loading")
-
-    if (loadingElement) {
-      loadingElement.style.display = "flex"
-      loadingElement.style.visibility = "visible"
-      loadingElement.style.zIndex = "9999"
-    }
-
-    // Disable map interaction during loading
-    this.map.dragging.disable()
-    this.map.touchZoom.disable()
-    this.map.doubleClickZoom.disable()
-    this.map.scrollWheelZoom.disable()
-    this.map.boxZoom.disable()
-    this.map.keyboard.disable()
-    if (this.map.tap) this.map.tap.disable()
-
-    // Add delay to ensure loading overlay is visible
-    await new Promise((resolve) => setTimeout(resolve, 500))
+    this.showLoadingOverlay()
+    this.setInteractions(false)
 
     try {
-      // Calculate date range for the month
       const startDate = new Date(this.yearValue, this.monthValue - 1, 1)
       const endDate = new Date(this.yearValue, this.monthValue, 0, 23, 59, 59)
-
-      // Use the full data bounds for hexagon request (not current map viewport)
       const dataBounds = this.dataBoundsValue
 
       const params = new URLSearchParams({
@@ -185,183 +103,150 @@ export default class extends BaseController {
         uuid: this.uuidValue,
       })
 
-      const url = `/api/v1/maps/hexagons?${params}`
-      console.log("📍 Fetching static hexagons from:", url)
-
-      const response = await fetch(url, {
-        headers: {
-          "Content-Type": "application/json",
-        },
+      const response = await fetch(`/api/v1/maps/hexagons?${params}`, {
+        headers: { "Content-Type": "application/json" },
       })
 
       if (!response.ok) {
-        const errorText = await response.text()
-        console.error(
-          "Hexagon API error:",
-          response.status,
-          response.statusText,
-          errorText,
-        )
         throw new Error(`HTTP ${response.status}: ${response.statusText}`)
       }
 
       const geojsonData = await response.json()
-
-      // Add hexagons directly to map as a static layer
       if (geojsonData.features && geojsonData.features.length > 0) {
-        this.addStaticHexagonsToMap(geojsonData)
+        this.addHexagonLayers(geojsonData)
       }
     } catch (error) {
       console.error("Failed to load static hexagons:", error)
     } finally {
-      // Re-enable map interaction after loading (success or failure)
-      this.map.dragging.enable()
-      this.map.touchZoom.enable()
-      this.map.doubleClickZoom.enable()
-      this.map.scrollWheelZoom.enable()
-      this.map.boxZoom.enable()
-      this.map.keyboard.enable()
-      if (this.map.tap) this.map.tap.enable()
-
-      // Hide loading overlay
-      const loadingElement = document.getElementById("map-loading")
-      if (loadingElement) {
-        loadingElement.style.display = "none"
-      }
+      this.setInteractions(true)
+      this.hideLoadingOverlay()
     }
   }
 
-  addStaticHexagonsToMap(geojsonData) {
-    // Remove existing hexagon layer if it exists
-    if (this.currentHexagonLayer) {
-      this.map.removeLayer(this.currentHexagonLayer)
+  addHexagonLayers(geojsonData) {
+    const existing = this.map.getSource("hexagons")
+    if (existing) {
+      existing.setData(geojsonData)
+      return
     }
 
-    // Calculate max point count for color scaling
-    const _maxPoints = Math.max(
-      ...geojsonData.features.map((f) => f.properties.point_count),
-    )
-
-    const staticHexagonLayer = L.geoJSON(geojsonData, {
-      style: (_feature) => this.styleHexagon(),
-      onEachFeature: (feature, layer) => {
-        // Add popup with statistics
-        const props = feature.properties
-        const popupContent = this.buildPopupContent(props)
-        layer.bindPopup(popupContent)
-
-        // Add hover effects
-        layer.on({
-          mouseover: (e) => this.onHexagonMouseOver(e),
-          mouseout: (e) => this.onHexagonMouseOut(e),
-        })
+    this.map.addSource("hexagons", {
+      type: "geojson",
+      data: geojsonData,
+      generateId: true,
+    })
+    this.map.addLayer({
+      id: "hexagons-fill",
+      type: "fill",
+      source: "hexagons",
+      paint: {
+        "fill-color": "#3388ff",
+        "fill-opacity": [
+          "case",
+          ["boolean", ["feature-state", "hover"], false],
+          0.8,
+          0.3,
+        ],
+      },
+    })
+    this.map.addLayer({
+      id: "hexagons-line",
+      type: "line",
+      source: "hexagons",
+      paint: {
+        "line-color": "#3388ff",
+        "line-width": [
+          "case",
+          ["boolean", ["feature-state", "hover"], false],
+          2,
+          1,
+        ],
+        "line-opacity": [
+          "case",
+          ["boolean", ["feature-state", "hover"], false],
+          1,
+          0.3,
+        ],
       },
     })
 
-    this.currentHexagonLayer = staticHexagonLayer
-    staticHexagonLayer.addTo(this.map)
+    this.map.on("click", "hexagons-fill", (event) => this.openPopup(event))
+    this.map.on("mousemove", "hexagons-fill", (event) =>
+      this.handleHover(event),
+    )
+    this.map.on("mouseleave", "hexagons-fill", () => this.clearHover())
   }
 
-  styleHexagon() {
-    return {
-      fillColor: "#3388ff",
-      fillOpacity: 0.3,
-      color: "#3388ff",
-      weight: 1,
-      opacity: 0.3,
+  openPopup(event) {
+    const feature = event.features?.[0]
+    if (!feature) return
+
+    new maplibregl.Popup({ maxWidth: "320px" })
+      .setLngLat(event.lngLat)
+      .setHTML(buildHexagonPopup(feature.properties, this.timezoneValue))
+      .addTo(this.map)
+  }
+
+  handleHover(event) {
+    const feature = event.features?.[0]
+    if (!feature) return
+
+    this.map.getCanvas().style.cursor = "pointer"
+    if (this.hoveredId !== null && this.hoveredId !== feature.id) {
+      this.map.setFeatureState(
+        { source: "hexagons", id: this.hoveredId },
+        { hover: false },
+      )
+    }
+    this.hoveredId = feature.id
+    this.map.setFeatureState(
+      { source: "hexagons", id: feature.id },
+      { hover: true },
+    )
+  }
+
+  clearHover() {
+    this.map.getCanvas().style.cursor = ""
+    if (this.hoveredId !== null) {
+      this.map.setFeatureState(
+        { source: "hexagons", id: this.hoveredId },
+        { hover: false },
+      )
+      this.hoveredId = null
     }
   }
 
-  buildPopupContent(props) {
-    const timezone = this.timezoneValue || "UTC"
-    const startDate = props.earliest_point
-      ? new Date(props.earliest_point).toLocaleDateString(
-          document.documentElement.lang || undefined,
-          { timeZone: timezone },
-        )
-      : translate("common.not_available")
-    const endDate = props.latest_point
-      ? new Date(props.latest_point).toLocaleDateString(
-          document.documentElement.lang || undefined,
-          {
-            timeZone: timezone,
-          },
-        )
-      : translate("common.not_available")
-    const startTime = props.earliest_point
-      ? new Date(props.earliest_point).toLocaleTimeString(
-          document.documentElement.lang || undefined,
-          {
-            timeZone: timezone,
-          },
-        )
-      : ""
-    const endTime = props.latest_point
-      ? new Date(props.latest_point).toLocaleTimeString(
-          document.documentElement.lang || undefined,
-          {
-            timeZone: timezone,
-          },
-        )
-      : ""
-
-    return `
-      <div style="font-size: 12px; line-height: 1.6; max-width: 300px;">
-        <strong style="color: #3388ff;">📍 ${translate("map_info.location_data")}</strong><br>
-        <div style="margin: 4px 0;">
-          <strong>${translate("map_info.points")}:</strong> ${props.point_count || 0}
-        </div>
-        ${
-          props.h3_index
-            ? `
-        <div style="margin: 4px 0;">
-          <strong>${translate("map_info.h3_index")}:</strong><br>
-          <code style="font-size: 10px; background: #f5f5f5; padding: 2px;">${props.h3_index}</code>
-        </div>
-        `
-            : ""
-        }
-        <div style="margin: 4px 0;">
-          <strong>${translate("map_info.time_range")}:</strong><br>
-          <small>${startDate} ${startTime}<br>→ ${endDate} ${endTime}</small>
-        </div>
-        ${
-          props.center
-            ? `
-        <div style="margin: 4px 0;">
-          <strong>${translate("map_info.center")}:</strong><br>
-          <small>${props.center[0].toFixed(6)}, ${props.center[1].toFixed(6)}</small>
-        </div>
-        `
-            : ""
-        }
-      </div>
-    `
-  }
-
-  onHexagonMouseOver(e) {
-    const layer = e.target
-    // Store original style before changing
-    if (!layer._originalStyle) {
-      layer._originalStyle = {
-        fillOpacity: layer.options.fillOpacity,
-        weight: layer.options.weight,
-        opacity: layer.options.opacity,
+  setInteractions(enabled) {
+    const handlers = [
+      this.map.dragPan,
+      this.map.scrollZoom,
+      this.map.doubleClickZoom,
+      this.map.touchZoomRotate,
+      this.map.boxZoom,
+      this.map.keyboard,
+    ]
+    for (const handler of handlers) {
+      if (enabled) {
+        handler.enable()
+      } else {
+        handler.disable()
       }
     }
-
-    layer.setStyle({
-      fillOpacity: 0.8,
-      weight: 2,
-      opacity: 1.0,
-    })
   }
 
-  onHexagonMouseOut(e) {
-    const layer = e.target
-    // Reset to stored original style
-    if (layer._originalStyle) {
-      layer.setStyle(layer._originalStyle)
+  showLoadingOverlay() {
+    const loadingElement = document.getElementById("map-loading")
+    if (loadingElement) {
+      loadingElement.style.display = "flex"
+      loadingElement.style.visibility = "visible"
+      loadingElement.style.zIndex = "9999"
+    }
+  }
+
+  hideLoadingOverlay() {
+    const loadingElement = document.getElementById("map-loading")
+    if (loadingElement) {
+      loadingElement.style.display = "none"
     }
   }
 }
