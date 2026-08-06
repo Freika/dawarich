@@ -155,6 +155,21 @@ RSpec.describe Users::ImportData::Stats, type: :service do
       end
     end
 
+    context 'with zero-padded month strings' do
+      let(:stats_data) do
+        [
+          { 'year' => 2024, 'month' => '08', 'distance' => 100 },
+          { 'year' => 2024, 'month' => '09', 'distance' => 200 }
+        ]
+      end
+
+      it 'imports them as calendar months' do
+        expect { service.call }.to change { user.stats.count }.by(2)
+
+        expect(user.stats.pluck(:month).sort).to eq([8, 9])
+      end
+    end
+
     context 'with nil stats data' do
       let(:stats_data) { nil }
 

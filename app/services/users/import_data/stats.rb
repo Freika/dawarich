@@ -130,7 +130,13 @@ class Users::ImportData::Stats
     end
 
     month_value = stat_data['month']
-    month = Integer(month_value, exception: false)
+    month = if month_value.is_a?(String)
+              # Base 10 explicitly: `Integer("08")` reads a leading zero as octal
+              # and returns nil, so a zero-padded month would be rejected.
+              Integer(month_value, 10, exception: false)
+            else
+              Integer(month_value, exception: false)
+            end
     integer_value = !month_value.is_a?(Float) || (month_value % 1).zero?
     unless month&.between?(1, 12) && integer_value
       Rails.logger.error 'Failed to create stat: Validation failed: Month must be between 1 and 12'
