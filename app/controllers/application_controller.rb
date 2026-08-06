@@ -259,8 +259,13 @@ status: :see_other
 
   # Collapsed to a single leading slash: a path of `//host/x` would otherwise
   # make the link a protocol-relative URL and carry the reader off the site.
+  # Anything a path cannot legally carry is dropped rather than spliced back in:
+  # a `#` would swallow the query string the link exists to set, and `<` or `"`
+  # would be markup arriving where only a path belongs.
   def rooted_path
-    "/#{request.path.to_s.sub(%r{\A/+}, '')}"
+    path = request.path.to_s.gsub(%r{[^\w\-.~!$&'()*+,;=:@%/]}, '')
+
+    "/#{path.sub(%r{\A/+}, '')}"
   end
 
   def persist_user_locale(locale)

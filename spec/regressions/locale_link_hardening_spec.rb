@@ -55,19 +55,42 @@ RSpec.describe 'Locale link hardening', type: :request do
     expect(Rails.application.routes.recognize_path(href.split('?').first, method: :get)).to be_present
   end
 
+  def locale_path_for(path_info)
+    controller = ApplicationController.new
+    request = ActionDispatch::TestRequest.create
+    request.path_info = path_info
+    allow(controller).to receive(:request).and_return(request)
+
+    controller.send(:locale_path, :de)
+  end
+
   # `request.path` is interpolated into the href, so it must always root the
   # link on this host: a path beginning with `//` would otherwise become a
   # protocol-relative URL pointing somewhere else entirely.
   it 'roots the link on this host even when the path begins with a double slash' do
-    controller = ApplicationController.new
-    request = ActionDispatch::TestRequest.create
-    request.path_info = '//evil.example.com/x'
-    allow(controller).to receive(:request).and_return(request)
-
-    path = controller.send(:locale_path, :de)
+    path = locale_path_for('//evil.example.com/x')
 
     expect(path).to start_with('/')
     expect(path).not_to start_with('//')
     expect(URI.parse(path).host).to be_nil
+  end
+
+  it 'still reaches the query string when the path carries a fragment marker' do
+    path = locale_path_for('/trips/1#anchor')
+
+    expect(URI.parse(path).fragment).to be_nil
+    expect(URI.parse(path).query).to eq('locale=de')
+  end
+
+  it 'drops markup characters that a path cannot carry' do
+    path = locale_path_for(%(/trips/1"><script>alert(1)</script>))
+
+    expect(path).not_to include('<')
+    expect(path).not_to include('>')
+    expect(path).not_to include('"')
+  end
+
+  it 'leaves an ordinary path untouched' do
+    expect(locale_path_for('/trips/1')).to eq('/trips/1?locale=de')
   end
 end

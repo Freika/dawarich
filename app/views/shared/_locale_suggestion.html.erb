@@ -7,7 +7,7 @@
     <span class="flex-1">
       <%= t('shared.locale_suggestion.message', locale: suggested_locale) %>
       <%= link_to t('shared.locale_suggestion.switch', locale: suggested_locale),
-                  locale_path(suggested_locale),
+                  h(locale_path(suggested_locale)),
                   lang: suggested_locale,
                   class: 'link link-primary font-medium' %>
     </span>
