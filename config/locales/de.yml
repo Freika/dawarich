@@ -4050,7 +4050,7 @@ de:
       tracks: Tracks
       video: Video
       area_number: Bereich %{id}
-      place_name_locked: "\U0001F512 Du hast diesen Ort benannt, daher ändert sich der automatische Name nicht. Benenne ihn um zu „Vorgeschlagener Ort“, um ihn zurückzugeben."
+      place_name_locked: "\U0001F512 Du hast diesen Ort benannt, daher ändert sich der automatische Name nicht. Benenne ihn um zu „Suggested place“, um ihn zurückzugeben."
     map_controls:
       add_visit: Füge einen Aufenthalt hinzu
       create_place: Erstelle einen Ort

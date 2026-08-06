@@ -5314,7 +5314,7 @@ fr:
       video: Vidéo
       area_number: Zone %{id}
       place_name_locked: Vous avez nommé ce lieu, il ne sera donc plus renommé automatiquement.
-        Renommez-le « Suggestion de lieu » pour réactiver la dénomination automatique.
+        Renommez-le « Suggested place » pour réactiver la dénomination automatique.
     map_controls:
       add_visit: Ajouter une visite
       create_place: Créer un lieu

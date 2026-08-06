@@ -3994,7 +3994,7 @@ es:
       tracks: Trayectos
       video: Video
       area_number: Área %{id}
-      place_name_locked: "\U0001F512 Tú le diste un nombre a este lugar, por lo que no se cambiará automáticamente. Renómbralo como “Lugar sugerido” para devolvérselo."
+      place_name_locked: "\U0001F512 Tú le diste un nombre a este lugar, por lo que no se cambiará automáticamente. Renómbralo como “Suggested place” para devolvérselo."
     map_controls:
       add_visit: Agregar visita
       create_place: Crear lugar
