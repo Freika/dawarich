@@ -11,7 +11,7 @@ module ApplicationHelper
       json_escape(translations.to_json).html_safe,
       id: 'i18n-translations',
       type: 'application/json',
-      data: { turbo_permanent: true }
+      data: { turbo_track: 'reload' }
     )
   end
 

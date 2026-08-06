@@ -3,6 +3,15 @@
 require 'rails_helper'
 
 RSpec.describe ApplicationHelper, type: :helper do
+  describe '#javascript_translations' do
+    it 'forces a Turbo reload when the locale-dependent payload changes' do
+      script = Nokogiri::HTML.fragment(helper.javascript_translations).at_css('#i18n-translations')
+
+      expect(script['data-turbo-track']).to eq('reload')
+      expect(script['data-turbo-permanent']).to be_nil
+    end
+  end
+
   describe '#pro_badge_tag' do
     context 'when user has full access' do
       before do

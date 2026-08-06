@@ -2,7 +2,7 @@
   <div class="hero-content flex-col lg:flex-row-reverse w-full my-10">
     <div class="text-center lg:text-left">
       <% if @invitation %>
-        <h1 class="text-5xl font-bold text-base-content"><%= t('.join') %> <%= @invitation.family.name %>!</h1>
+        <h1 class="text-5xl font-bold text-base-content"><%= t('.join_family', family: @invitation.family.name) %></h1>
         <p class="py-6 text-base-content opacity-70">
           <%= t('.you_ve_been_invited_by') %> <strong><%= @invitation.invited_by.email %></strong> <%= t('.to_join_their_family_create_your_account_to_accept_the') %>
         </p>
@@ -73,7 +73,7 @@
               <% end %>
               <%= select_tag 'user[signup_intent]',
                     options_for_select([
-                      ["I want to use the cloud version", "cloud"],
+                      [t('.i_want_to_use_the_cloud_version'), "cloud"],
                       [t('.i_m_self_hosting_and_exploring_the_demo'), "self_hosted_demo"]
                     ]),
                     class: 'select select-bordered w-full' %>

@@ -32,7 +32,7 @@
   <h2><%= t('.weekly_pattern') %></h2>
   <pre class="ascii" style="<%= pre_style %>"><%= ascii_hbar(
       @weekday_totals,
-      labels: %w[Mon Tue Wed Thu Fri Sat Sun],
+      labels: I18n.t('date.abbr_day_names').rotate,
       width: 20,
       suffix: " #{@distance_unit}"
     ) %></pre>

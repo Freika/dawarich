@@ -17,7 +17,7 @@
         </div>
         <div class="flex-1">
           <%= f.label :import, class: "text-xs font-medium text-base-content/50 uppercase tracking-wider mb-1 block" %>
-          <%= f.select :import_id, options_for_select(@imports.map { |i| [i.name, i.id] }, params[:import_id]), { include_blank: 'All imports' }, class: "select select-bordered select-sm text-sm w-full" %>
+          <%= f.select :import_id, options_for_select(@imports.map { |i| [i.name, i.id] }, params[:import_id]), { include_blank: t('.all_imports') }, class: "select select-bordered select-sm text-sm w-full" %>
         </div>
         <%= f.submit t('.search'), class: "btn btn-primary btn-sm" %>
       </div>

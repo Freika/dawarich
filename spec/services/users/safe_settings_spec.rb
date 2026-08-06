@@ -3,6 +3,17 @@
 require 'rails_helper'
 
 RSpec.describe Users::SafeSettings do
+  describe '#initialize' do
+    it 'falls back to defaults for malformed settings containers' do
+      [nil, false, []].each do |settings|
+        safe_settings = described_class.new(settings)
+
+        expect(safe_settings.timezone).to eq('UTC')
+        expect(safe_settings.distance_unit).to eq('km')
+      end
+    end
+  end
+
   describe '#config' do
     context 'with default values' do
       let(:settings) { {} }

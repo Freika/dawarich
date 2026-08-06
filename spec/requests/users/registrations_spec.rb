@@ -27,6 +27,13 @@ RSpec.describe 'Users::Registrations', type: :request do
         expect(response.body).to include('Create Account &amp; Join Family')
       end
 
+      it 'renders the French invitation heading as one complete sentence' do
+        get new_user_registration_path(invitation_token: invitation.token, locale: 'fr')
+
+        expect(response.body).to include("Rejoindre #{family.name} !")
+        expect(response.body).not_to include('Rejoindre.')
+      end
+
       it 'pre-fills email field with invitation email' do
         get new_user_registration_path(invitation_token: invitation.token)
 
@@ -84,6 +91,14 @@ RSpec.describe 'Users::Registrations', type: :request do
         expect(new_user).to be_present
         expect(new_user.family).to eq(family)
         expect(family.reload.members).to include(new_user)
+      end
+
+      it 'persists the chosen locale before creating the welcome notification' do
+        post user_registration_path, params: request_params.merge(locale: 'fr')
+
+        new_user = User.find_by!(email: invitation.email)
+        expect(new_user.preferred_locale).to eq(:fr)
+        expect(new_user.notifications.last.title).to eq('Bienvenue dans la famille !')
       end
 
       it 'redirects to family page after successful registration' do

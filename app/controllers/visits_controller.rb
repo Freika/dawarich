@@ -42,11 +42,7 @@ class VisitsController < ApplicationController
         end
         format.html do
           redirect_to redirect_target,
-                      notice: I18n.t(
-                        'controllers.visits.bulk_updated',
-                        count: result[:count],
-                        status: I18n.t("visit_statuses.#{status}")
-                      )
+                      notice: bulk_update_success_message(status, result[:count])
         end
       end
     else
@@ -273,7 +269,7 @@ class VisitsController < ApplicationController
                                     locals: { status: 'suggested', count: status_counts['suggested'].to_i })
     streams << calendar_frame_stream(date_str)
     streams << suggestions_badge_stream
-    streams << stream_flash(:notice, "#{count} #{'visit'.pluralize(count)} #{status}.")
+    streams << stream_flash(:notice, bulk_update_success_message(status, count))
     streams
   end
 
@@ -318,7 +314,7 @@ class VisitsController < ApplicationController
       suggestions_badge_stream,
       stream_flash(
         :notice,
-        I18n.t('controllers.visits.visit_updated', status: I18n.t("visit_statuses.#{@visit.status}"))
+        I18n.t("controllers.visits.visit_updated.#{@visit.status}")
       )
     ]
   end
@@ -531,6 +527,10 @@ class VisitsController < ApplicationController
 
   def bulk_destroy_success_message(count)
     I18n.t('controllers.visits.bulk_removed', count:)
+  end
+
+  def bulk_update_success_message(status, count)
+    I18n.t("controllers.visits.bulk_updated.#{status}", count:)
   end
 
   def bust_timeline_month_cache

@@ -98,6 +98,12 @@ RSpec.describe '/digests', type: :request do
           expect(response.body).to include('All-Time Stats')
           expect(response.body).to include('Countries & Cities')
         end
+
+        it 'uses German month abbreviations in the yearly chart' do
+          get users_digest_url(year: 2024), params: { locale: 'de' }
+
+          %w[Mär Mai Okt Dez].each { |month| expect(response.body).to include(month) }
+        end
       end
 
       context 'when user is on Lite plan' do
