@@ -25,6 +25,24 @@ RSpec.describe 'Signing up and the language suggestion', type: :request do
     expect(response.body).to include('data-testid="locale-suggestion"')
   end
 
+  it 'ignores a language it does not ship and keeps offering the browser one' do
+    post user_registration_path, params: params.merge(locale: 'xx')
+
+    expect(User.find_by!(email: 'nouveau@example.com').preferred_locale).to be_nil
+
+    get root_path, headers: { 'Accept-Language' => 'fr-FR,fr;q=0.9' }
+
+    expect(response.body).to include('data-testid="locale-suggestion"')
+  end
+
+  it 'records a language chosen before the form was submitted' do
+    get new_user_registration_path, params: { locale: 'fr' }
+
+    post user_registration_path, params: params
+
+    expect(User.find_by!(email: 'nouveau@example.com').preferred_locale).to eq(:fr)
+  end
+
   it 'records the language the reader picked during sign-up' do
     post user_registration_path, params: params.merge(locale: 'fr')
 

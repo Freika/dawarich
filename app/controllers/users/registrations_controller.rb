@@ -149,7 +149,7 @@ class Users::RegistrationsController < Devise::RegistrationsController
   # chosen?" question for every new account, so someone signing up from a French
   # browser would never be offered French again.
   def persist_signup_locale(resource)
-    return if params[:locale].blank? && session[:locale].blank?
+    return if supported_locale(params[:locale]).nil? && session[:locale].blank?
 
     resource.settings = (resource.settings || {}).merge('locale' => I18n.locale.to_s)
     resource.save!

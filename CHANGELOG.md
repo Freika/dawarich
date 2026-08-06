@@ -20,7 +20,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - The "someone joined your family" email no longer fails to send.
 - Re-detecting your whole visit history no longer fails outright when Dawarich is set to German or Spanish.
 - The "family is full" notice now shows how many seats are taken instead of stopping mid-sentence in German and Spanish.
-- Notifications about a failed import, a family invitation and the year-end digest are no longer part in your language and part in English.
+- Notifications about a failed import, a family invitation and the year-end digest are no longer partly in your language and partly in English.
 
 ## [1.11.0] - 2026-08-02, Berlin
 
