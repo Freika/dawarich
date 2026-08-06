@@ -85,6 +85,8 @@ class Users::SafeSettings
   }.freeze
 
   def initialize(settings = {}, plan: nil)
+    settings = {} unless settings.is_a?(Hash)
+
     @settings = DEFAULT_VALUES.deep_dup.deep_merge(settings)
     @plan = plan
   end

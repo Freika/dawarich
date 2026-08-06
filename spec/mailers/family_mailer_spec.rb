@@ -30,5 +30,33 @@ RSpec.describe FamilyMailer, type: :mailer do
     it 'renders the html body with a link' do
       expect(mail.body.encoded).to include('View Request')
     end
+
+    context 'when the recipient prefers French' do
+      let(:target_user) { create(:user, settings: { 'locale' => 'fr' }) }
+
+      it 'uses the recipient locale rather than the requester locale' do
+        expect(mail.subject).to include('vous demande votre emplacement')
+        expect(mail.body.encoded).to include('Demande de localisation')
+        expect(mail.body.encoded).not_to include('View Request')
+      end
+    end
+  end
+
+  describe '#member_joined' do
+    let(:owner) { create(:user, settings: { 'locale' => 'fr' }) }
+    let(:family) { create(:family, creator: owner) }
+    let(:member) { create(:user) }
+
+    before do
+      create(:family_membership, family:, user: owner, role: :owner)
+      create(:family_membership, family:, user: member)
+    end
+
+    it 'uses the family owner locale' do
+      mail = described_class.member_joined(family, member)
+
+      expect(mail.subject).to include('a rejoint votre famille')
+      expect(mail.body.encoded).to include("Quelqu'un a rejoint votre famille")
+    end
   end
 end

@@ -1329,9 +1329,8 @@ export class VisitsManager {
 
       Flash.show(
         "notice",
-        translate("visits.bulk_status_updated", {
+        translate(`visits.bulk_status_updated.${status}`, {
           count: visitIds.length,
-          status: translate(`visit_statuses.${status}`),
         }),
       )
 
@@ -1339,12 +1338,7 @@ export class VisitsManager {
       this.fetchAndDisplayVisits()
     } catch (error) {
       console.error(`Error ${status}ing visits:`, error)
-      Flash.show(
-        "error",
-        translate("visits.bulk_status_failed", {
-          status: translate(`visit_statuses.${status}`),
-        }),
-      )
+      Flash.show("error", translate(`visits.bulk_status_failed.${status}`))
     }
   }
 
@@ -1867,20 +1861,10 @@ export class VisitsManager {
       }
 
       this.fetchAndDisplayVisits()
-      Flash.show(
-        "notice",
-        translate("visits.status_updated", {
-          status: translate(`visit_statuses.${status}`),
-        }),
-      )
+      Flash.show("notice", translate(`visits.status_updated.${status}`))
     } catch (error) {
       console.error(`Error ${status}ing visit:`, error)
-      Flash.show(
-        "error",
-        translate("visits.status_failed", {
-          status: translate(`visit_statuses.${status}`),
-        }),
-      )
+      Flash.show("error", translate(`visits.status_failed.${status}`))
     }
   }
 

@@ -37,6 +37,16 @@ RSpec.describe '/visits', type: :request do
       expect(response.location).to include('/map')
     end
 
+    it 'renders a plural-aware French success message in the Turbo response' do
+      user.persist_locale!(:fr)
+
+      patch bulk_update_visits_url(format: :turbo_stream),
+            params: { status: 'confirmed', source_status: 'suggested' }
+
+      expect(response).to have_http_status(:ok)
+      expect_flash_stream('3 visites confirmées.')
+    end
+
     it 'does not affect visits of other users' do
       other_user = create(:user)
       other_visit = create(:visit, user: other_user, status: :suggested)
@@ -155,6 +165,14 @@ RSpec.describe '/visits', type: :request do
         expect(visit.reload.status).to eq('confirmed')
         expect_turbo_stream_response
         expect_turbo_stream_action('replace', "visit_entry_#{visit.id}")
+      end
+
+      it 'uses a feminine French status in the success message' do
+        user.persist_locale!(:fr)
+
+        patch visit_url(visit), params: { visit: { status: :confirmed } }, as: :turbo_stream
+
+        expect_flash_stream('Visite confirmée.')
       end
 
       it 'refreshes the pending-suggestions badge so it does not go stale' do

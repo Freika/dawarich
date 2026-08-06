@@ -233,22 +233,27 @@ class Users::ImportData
       "#{@import_stats[:files_restored]} files restored, " \
       "#{@import_stats[:notifications_created]} notifications"
 
-    ::Notifications::Create.new(
-      user: user,
-      title: I18n.t('services.users.import_data.data_import_completed'),
-      content: I18n.t('services.users.import_data.your_data_has_been_imported_successfully_summary', summary: summary),
-      kind: :info
-    ).call
+    I18n.with_locale(user.locale) do
+      ::Notifications::Create.new(
+        user: user,
+        title: I18n.t('services.users.import_data.data_import_completed'),
+        content: I18n.t('services.users.import_data.your_data_has_been_imported_successfully_summary',
+                        summary: summary),
+        kind: :info
+      ).call
+    end
   end
 
   def create_failure_notification(error)
-    ::Notifications::Create.new(
-      user: user,
-      title: I18n.t('services.users.import_data.data_import_failed'),
-      content: I18n.t('services.users.import_data.your_data_import_failed_with_error_message_please_check_the',
-                      message: error.message),
-      kind: :error
-    ).call
+    I18n.with_locale(user.locale) do
+      ::Notifications::Create.new(
+        user: user,
+        title: I18n.t('services.users.import_data.data_import_failed'),
+        content: I18n.t('services.users.import_data.your_data_import_failed_with_error_message_please_check_the',
+                        message: error.message),
+        kind: :error
+      ).call
+    end
   end
 
   def validate_import_completeness(expected_counts)

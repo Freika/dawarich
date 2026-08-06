@@ -4,6 +4,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Dawarich can now be used in a language other than English. Pick one under Settings → General — each is listed in its own words — and the choice is saved to your account and used for emails and notifications too. English stays the default and is never changed for you: if your browser prefers another language, Dawarich offers the switch in a banner you can dismiss, and takes no as an answer. API responses stay in English so integrations keep working.
+- Available languages: German, Spanish, French.
+
+### Changed
+
+- The top navigation now collapses into the menu button below 1280px rather than below 1024px, so the longer translations fit on one line.
+
+### Fixed
+
+- The "someone joined your family" email no longer fails to send.
+- Re-detecting your whole visit history no longer fails outright when Dawarich is set to German or Spanish.
+- The "family is full" notice now shows how many seats are taken instead of stopping mid-sentence in German and Spanish.
+- Notifications about a failed import, a family invitation and the year-end digest are no longer partly in your language and partly in English.
+
 ## [1.11.0] - 2026-08-02, Berlin
 
 ### Added
