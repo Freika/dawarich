@@ -94,6 +94,8 @@ export default class extends BaseController {
   }
 
   async loadMonthData() {
+    this.messageShown = false
+
     try {
       this.showLoading(true)
 
@@ -123,7 +125,7 @@ export default class extends BaseController {
       console.error("Error loading month data:", error)
       this.showError(translate("stats.location_data_load_failed"))
     } finally {
-      if (!this.disconnected) this.showLoading(false)
+      if (!this.disconnected && !this.messageShown) this.showLoading(false)
     }
   }
 
@@ -254,6 +256,7 @@ export default class extends BaseController {
   showError(message) {
     if (!this.hasLoadingTarget) return
 
+    this.messageShown = true
     const container = document.createElement("div")
     container.className = "alert alert-error"
     const span = document.createElement("span")
@@ -266,6 +269,7 @@ export default class extends BaseController {
   showNoData() {
     if (!this.hasLoadingTarget) return
 
+    this.messageShown = true
     const dateLabel = new Date(this.year, this.month - 1).toLocaleDateString(
       document.documentElement.lang || undefined,
       { month: "long", year: "numeric" },
