@@ -37,5 +37,11 @@ RSpec.describe 'Map routing', type: :request do
       expect(location.path).to eq('/map/v2')
       expect(Rack::Utils.parse_query(location.query)).to eq('start_at' => '2026-08-01T00:00:00')
     end
+
+    it 'rejects a malformed query string without a server error' do
+      get '/map/v1?start_at=%C3%28'
+
+      expect(response).to have_http_status(:bad_request)
+    end
   end
 end

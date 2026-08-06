@@ -65,7 +65,9 @@ export default class extends BaseController {
 
   async initializeMap() {
     try {
-      const style = await getMapStyle(getCurrentTheme())
+      const style = await getMapStyle(getCurrentTheme(), {
+        vectorTilesUrl: this.element.dataset.tilesUrl || null,
+      })
       if (this.disconnected) return
 
       this.map = new maplibregl.Map({
@@ -100,6 +102,8 @@ export default class extends BaseController {
       const endDate = `${this.year}-${this.month.toString().padStart(2, "0")}-${lastDay}T23:59:59`
 
       const points = await this.fetchAllPoints(startDate, endDate)
+      if (this.disconnected) return
+
       const coordinates = points
         .map((point) => [
           Number.parseFloat(point.longitude),
@@ -119,7 +123,7 @@ export default class extends BaseController {
       console.error("Error loading month data:", error)
       this.showError(translate("stats.location_data_load_failed"))
     } finally {
-      this.showLoading(false)
+      if (!this.disconnected) this.showLoading(false)
     }
   }
 

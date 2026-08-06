@@ -67,6 +67,7 @@ export default class extends BaseController {
           setTimeout(resolve, 1000)
         })
       }
+      if (this.disconnected) return
 
       if (
         dataBounds &&
@@ -111,14 +112,18 @@ export default class extends BaseController {
       }
 
       const geojsonData = await response.json()
+      if (this.disconnected) return
+
       if (geojsonData.features && geojsonData.features.length > 0) {
         this.addHexagonLayers(geojsonData)
       }
     } catch (error) {
       console.error("Failed to load static hexagons:", error)
     } finally {
-      this.setInteractions(true)
-      this.hideLoadingOverlay()
+      if (!this.disconnected) {
+        this.setInteractions(true)
+        this.hideLoadingOverlay()
+      }
     }
   }
 
