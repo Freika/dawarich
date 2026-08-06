@@ -50,22 +50,26 @@ class Exports::Create
   end
 
   def notify_export_finished
-    Notifications::Create.new(
-      user:,
-      kind: :info,
-      title: I18n.t('services.exports.create.export_finished'),
-      content: I18n.t('services.exports.create.export_name_successfully_finished', name: export.name)
-    ).call
+    I18n.with_locale(user.locale) do
+      Notifications::Create.new(
+        user:,
+        kind: :info,
+        title: I18n.t('services.exports.create.export_finished'),
+        content: I18n.t('services.exports.create.export_name_successfully_finished', name: export.name)
+      ).call
+    end
   end
 
   def notify_export_failed(error)
-    Notifications::Create.new(
-      user:,
-      kind: :error,
-      title: I18n.t('services.exports.create.export_failed'),
-      content: I18n.t('services.exports.create.export_name_failed_message_stacktrace_n', name: export.name,
-                      message: error.message, backtrace: error.backtrace.join("\n"))
-    ).call
+    I18n.with_locale(user.locale) do
+      Notifications::Create.new(
+        user:,
+        kind: :error,
+        title: I18n.t('services.exports.create.export_failed'),
+        content: I18n.t('services.exports.create.export_name_failed_message_stacktrace_n', name: export.name,
+                        message: error.message, backtrace: error.backtrace.join("\n"))
+      ).call
+    end
   end
 
   def attach_export_file(zipped_tempfile)

@@ -7,8 +7,13 @@ class FamilyMailer < ApplicationMailer
     @invited_by = invitation.invited_by
     @accept_url = family_invitation_url(@invitation.token)
 
+    # The invitation is read by the person being invited, so it follows their
+    # own preference once they have an account. Someone who does not yet have
+    # one falls back to the inviter's language: the two are usually in the same
+    # household, which is a better guess than the site default.
     recipient = User.find_by(email: @invitation.email)
-    with_recipient_locale(recipient) do
+
+    with_user_locale(recipient || @invited_by) do
       mail(
         to: @invitation.email,
         subject: I18n.t('mailers.family.invitation.subject', family: @family.name)
@@ -22,7 +27,7 @@ class FamilyMailer < ApplicationMailer
     @target_user = request.target_user
     @request_url = family_location_request_url(request)
 
-    with_recipient_locale(@target_user) do
+    with_user_locale(@target_user) do
       mail(
         to: @target_user.email,
         subject: I18n.t('mailers.family.location_request.subject', requester: @requester.email)
@@ -34,17 +39,11 @@ class FamilyMailer < ApplicationMailer
     @family = family
     @user = user
 
-    with_recipient_locale(@family.owner) do
+    with_user_locale(@family.owner) do
       mail(
         to: @family.owner.email,
         subject: I18n.t('mailers.family.member_joined.subject', user: @user.email, family: @family.name)
       )
     end
-  end
-
-  private
-
-  def with_recipient_locale(recipient, &block)
-    I18n.with_locale(recipient&.preferred_locale || I18n.locale, &block)
   end
 end

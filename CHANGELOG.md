@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Dawarich can now be used in a language other than English. Pick one under Settings → General — each is listed in its own words — and the choice is saved to your account and used for emails and notifications too. English stays the default and is never changed for you: if your browser prefers another language, Dawarich offers the switch in a banner you can dismiss, and takes no as an answer. API responses stay in English so integrations keep working.
+- Available languages: German, Spanish.
+
+### Fixed
+
+- The "someone joined your family" email no longer fails to send.
+
 ## [1.11.0] - 2026-08-02, Berlin
 
 ### Added

@@ -148,7 +148,6 @@ class Users::RegistrationsController < Devise::RegistrationsController
     locale = I18n.locale.to_s
     resource.settings = (resource.settings || {}).merge('locale' => locale)
     resource.save!
-    cookies.delete(:locale_account_sync)
   end
 
   def manager_checkout_url(user)

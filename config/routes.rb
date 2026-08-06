@@ -3,8 +3,6 @@
 require 'sidekiq/web'
 
 Rails.application.routes.draw do
-  patch 'locale', to: 'locales#update', as: :locale
-
   mount ActionCable.server => '/cable'
   mount Rswag::Api::Engine => '/api-docs'
   mount Rswag::Ui::Engine => '/api-docs'

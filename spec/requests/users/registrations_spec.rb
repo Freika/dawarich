@@ -28,9 +28,7 @@ RSpec.describe 'Users::Registrations', type: :request do
       end
 
       it 'renders the French invitation heading as one complete sentence' do
-        I18n.with_locale(:fr) do
-          get new_user_registration_path(invitation_token: invitation.token)
-        end
+        get new_user_registration_path(invitation_token: invitation.token, locale: 'fr')
 
         expect(response.body).to include("Rejoindre #{family.name} !")
         expect(response.body).not_to include('Rejoindre.')
@@ -95,10 +93,8 @@ RSpec.describe 'Users::Registrations', type: :request do
         expect(family.reload.members).to include(new_user)
       end
 
-      it 'persists the negotiated locale before creating the welcome notification' do
-        post user_registration_path,
-             params: request_params,
-             headers: { 'Accept-Language' => 'fr-FR, en;q=0.8' }
+      it 'persists the chosen locale before creating the welcome notification' do
+        post user_registration_path, params: request_params.merge(locale: 'fr')
 
         new_user = User.find_by!(email: invitation.email)
         expect(new_user.preferred_locale).to eq(:fr)

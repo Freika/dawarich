@@ -38,7 +38,7 @@ RSpec.describe '/visits', type: :request do
     end
 
     it 'renders a plural-aware French success message in the Turbo response' do
-      user.update_preferred_locale!(:fr)
+      user.persist_locale!(:fr)
 
       patch bulk_update_visits_url(format: :turbo_stream),
             params: { status: 'confirmed', source_status: 'suggested' }
@@ -168,7 +168,7 @@ RSpec.describe '/visits', type: :request do
       end
 
       it 'uses a feminine French status in the success message' do
-        user.update_preferred_locale!(:fr)
+        user.persist_locale!(:fr)
 
         patch visit_url(visit), params: { visit: { status: :confirmed } }, as: :turbo_stream
 

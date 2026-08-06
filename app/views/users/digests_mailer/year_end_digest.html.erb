@@ -18,8 +18,8 @@
   </style>
 </head>
 <body>
-  <h1><%= t('.year_heading', year: @digest.year) %></h1>
-  <p class="meta"><%= t('.year_intro', year: @digest.year) %></p>
+  <h1><%= t('.year_in_review_title', year: @digest.year) %></h1>
+  <p class="meta"><%= t('.year_at_a_glance', year: @digest.year) %></p>
 
   <h2><%= t('.the_numbers') %></h2>
   <pre class="ascii" style="<%= pre_style %>">
@@ -38,7 +38,7 @@
   <h2><%= t('.monthly_distance') %></h2>
   <pre class="ascii" style="<%= pre_style %>"><%= ascii_hbar(
       (1..12).map { |m| @monthly_distances[m.to_s].to_f.round },
-      labels: I18n.t('date.abbr_month_names')[1..12],
+      labels: I18n.t('date.abbr_month_names').compact,
       width: 24,
       suffix: " #{@distance_unit}"
     ) %></pre>

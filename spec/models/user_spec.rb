@@ -11,7 +11,7 @@ RSpec.describe User, type: :model do
     end
 
     it 'treats malformed and unsupported locale values as unset' do
-      [false, 42, { 'language' => 'fr' }, %w[fr], 'de'].each do |locale|
+      [false, 42, { 'language' => 'fr' }, %w[fr], 'xx'].each do |locale|
         user = build(:user, settings: { 'locale' => locale })
 
         expect { user.preferred_locale }.not_to raise_error
@@ -29,12 +29,12 @@ RSpec.describe User, type: :model do
     end
   end
 
-  describe '#update_preferred_locale!' do
+  describe '#persist_locale!' do
     it 'normalizes a malformed settings container before saving the locale' do
       user = create(:user)
       user.update_column(:settings, [])
 
-      expect { user.reload.update_preferred_locale!(:fr) }.not_to raise_error
+      expect { user.reload.persist_locale!(:fr) }.not_to raise_error
 
       expect(user.reload.settings).to eq('locale' => 'fr')
       expect(user.preferred_locale).to eq(:fr)
@@ -77,6 +77,22 @@ RSpec.describe User, type: :model do
 
     it 'has integer value 2 for family' do
       expect(User.plans['family']).to eq(2)
+    end
+  end
+
+  describe '#persist_locale!' do
+    it 'updates only the locale when its settings snapshot is stale' do
+      stale_user = create(:user)
+      User.where(id: stale_user.id).update_all(
+        settings: stale_user.settings.merge('concurrent_preference' => 'preserved')
+      )
+
+      stale_user.persist_locale!(:de)
+
+      expect(stale_user.reload.settings).to include(
+        'locale' => 'de',
+        'concurrent_preference' => 'preserved'
+      )
     end
   end
 

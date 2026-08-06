@@ -1,4 +1,6 @@
 en:
+  language_name: English
+  language_flag: gb
   auth:
     account_links:
       challenge:
@@ -75,9 +77,7 @@ en:
         generate_new_api_key: Generate new API key
         are_you_sure_this_will_invalidate_the_current_api_key: Are you sure? This will invalidate the current API key.
       points_usage:
-        you_have_used: You have used
-        points_of: points of
-        available: available.
+        summary_html: You have used %{used} points of %{limit} available.
       edit:
         account_settings: Account settings
         profile: Profile
@@ -163,6 +163,7 @@ en:
         sign_in_using_your_organization_s_identity_provider: Sign in using your organization's identity provider
         create_one_here: Create one here
         sign_in_accept_invitation: Sign in & Accept Invitation
+        log_in: Log in
       otp_challenge:
         two_factor_authentication: Two-Factor Authentication
         enter_the_6_digit_code_from_your_authenticator_app_to: Enter the 6-digit code from your authenticator app to continue.
@@ -381,8 +382,8 @@ en:
     invitation:
       you_ve_been_invited_to_join_a_family: You've been invited to join a family!
       hi_there: Hi there!
-      has_invited_you_to_join_their_family: has invited you to join their family "
-      on_dawarich: "\" on Dawarich."
+      invited_by_family_html: <strong>%{email}</strong> has invited you to join their family "<strong>%{family}</strong>" on Dawarich.
+      invited_by_family_text: '%{email} has invited you to join their family "%{family}" on Dawarich.'
       by_joining_this_family_you_ll_be_able_to: 'By joining this family, you''ll be able to:'
       share_your_current_location_with_family_members: Share your current location with family members
       see_the_current_location_of_other_family_members: See the current location of other family members
@@ -394,9 +395,6 @@ en:
       if_you_didn_t_expect_this_invitation_you_can_safely: If you didn't expect this invitation, you can safely ignore this email.
       best_regards: Best regards,
       evgenii_from_dawarich: Evgenii from Dawarich
-      you_ve_been_invited_to_join_a_family_hi_there: You've been invited to join a family! Hi there!
-      on_dawarich_by_joining_this_family_you_ll_be_able: "\" on Dawarich. By joining this family, you'll be able to: • Share your current location with family members • See the current location of other family members • Stay connected with your loved ones • Control your privacy with full sharing controls Accept your invitation here:"
-      important_this_invitation_will_expire_in_7_days_if_you: 'IMPORTANT: This invitation will expire in 7 days. If you don''t have a Dawarich account yet, you''ll be able to create one when you accept the invitation. If you didn''t expect this invitation, you can safely ignore this email. Best regards, Evgenii from Dawarich'
       accept_invitation: Accept Invitation
       share_your_current_location_with_family_members_2: "• Share your current location with family members"
       see_the_current_location_of_other_family_members_2: "• See the current location of other family members"
@@ -425,31 +423,27 @@ en:
     member_joined:
       great_news_someone_joined_your_family: "\U0001F389 Great news! Someone joined your family!"
       hi: Hi
-      we_re_excited_to_let_you_know_that: We're excited to let you know that
-      has_just_joined_your_family: has just joined your family "
-      on_dawarich: "\" on Dawarich!"
+      member_joined_family_html: We're excited to let you know that <strong>%{email}</strong> has just joined your family "<strong>%{family}</strong>" on Dawarich!
+      member_joined_family_text: 'We''re excited to let you know that %{email} has just joined your family "%{family}" on Dawarich!'
+      see_current_location_html: See <strong>%{email}</strong>'s current location (if they've enabled sharing)
+      see_current_location_text: See %{email}'s current location (if they've enabled sharing)
+      share_location_with_html: Share your location with <strong>%{email}</strong>
+      share_location_with_text: Share your location with %{email}
+      member_count_html:
+        one: Your family now has <strong>%{count}</strong> member.
+        other: Your family now has <strong>%{count}</strong> members.
+      member_count:
+        one: Your family now has %{count} member.
+        other: Your family now has %{count} members.
       now_you_can: 'Now you can:'
-      see: See
-      s_current_location_if_they_ve_enabled_sharing: "'s current location (if they've enabled sharing)"
       stay_connected_with_your_growing_family: Stay connected with your growing family
-      share_your_location_with: Share your location with
       manage_family_members_and_settings_from_your_family_page: Manage family members and settings from your family page
       tip: "\U0001F4A1 Tip:"
       you_can_manage_your_family_members_and_privacy_settings_at: You can manage your family members and privacy settings at any time from your family dashboard.
-      your_family_now_has: Your family now has
-      member: member
       best_regards: Best regards,
       evgenii_from_dawarich: Evgenii from Dawarich
-      great_news_someone_joined_your_family_hi: Great news! Someone joined your family! Hi
-      we_re_excited_to_let_you_know_that_2: "! We're excited to let you know that"
-      on_dawarich_now_you_can_see: "\" on Dawarich! Now you can: • See"
-      s_current_location_if_they_ve_enabled_sharing_stay_connected: "'s current location (if they've enabled sharing) • Stay connected with your growing family • Share your location with"
-      manage_family_members_and_settings_from_your_family_page_tip: "• Manage family members and settings from your family page TIP: You can manage your family members and privacy settings at any time from your family dashboard. Your family now has"
-      best_regards_evgenii_from_dawarich: ". Best regards, Evgenii from Dawarich"
       great_news_someone_joined_your_family_2: Great news! Someone joined your family!
-      see_2: "• See"
       stay_connected_with_your_growing_family_2: "• Stay connected with your growing family"
-      share_your_location_with_2: "• Share your location with"
       manage_family_members_and_settings_from_your_family_page_2: "• Manage family members and settings from your family page"
       tip_you_can_manage_your_family_members_and_privacy_settings: 'TIP: You can manage your family members and privacy settings at any time from your family dashboard.'
   home:
@@ -497,9 +491,8 @@ en:
       journeys_identified_between_those_visits_with_their_classified_transport: "— journeys identified between those visits, with their classified transportation mode (driving, walking, cycling, transit, …)."
       places: Places
       the_named_places_home_work_frequent_restaurants_the_source_app: "— the named places (home, work, frequent restaurants) the source app associated with your visits."
-      click: Click
       extract: Extract
-      to_add_this_data_to_your_dawarich_account_existing_points: to add this data to your Dawarich account. Existing points are not modified. Visits and places already detected from your points by Dawarich are kept side-by-side with the imported ones.
+      extract_to_add_html: Click <strong>Extract</strong> to add this data to your Dawarich account. Existing points are not modified. Visits and places already detected from your points by Dawarich are kept side-by-side with the imported ones.
       trust_the_source_app_s_classification: Trust the source app's classification
       when_checked_transportation_modes_driving_walking_cycling_transit_the_so: When checked, transportation modes (driving, walking, cycling, transit) the source app assigned are kept as-is. When unchecked, Dawarich re-runs its own detector using your settings.
       cancel: Cancel
@@ -1494,6 +1487,9 @@ en:
         supporter_thanks: Thank you for supporting Dawarich%{platform}!
         supporter_platform: " via %{platform}"
       index:
+        language: Language
+        your_language: Your language
+        the_interface_emails_and_notifications_will_use_this_language: The interface, emails and notifications will use this language.
         email_preferences: Email Preferences
         monthly_digest_emails: Monthly Digest Emails
         summary_of_your_last_month_sent_on_the_2nd: Summary of your last month, sent on the 2nd.
@@ -1744,6 +1740,10 @@ en:
       refund_policy: Refund policy
       impressum: Impressum
       blog: Blog
+    locale_suggestion:
+      message: Dawarich is also available in English.
+      switch: Switch to English
+      dismiss: Dismiss
     navbar:
       family: Family
       my_data: My data
@@ -1792,12 +1792,6 @@ en:
       dawarich_supporter: Dawarich Supporter
       login: Login
       register: Register
-      locale_switcher:
-        language: Language
-        current_language: "Language: %{language}"
-        locales:
-          en: English
-          fr: Français
       trial_ends_in: Your trial will end in %{time}
       theme_toggle:
         dark_mode: Dark mode
@@ -2331,10 +2325,6 @@ en:
         view_full_insights: "→ View full insights:"
         you_re_receiving_this_because_monthly_digest_emails_are_on_2: "───────────────────────────────────────── You're receiving this because monthly digest emails are on. Manage email preferences:"
         weekday_totals: "@weekday_totals,"
-        labels_w_mon_tue_wed_thu_fri_sat_sun: 'labels: %w[Mon Tue Wed Thu Fri Sat Sun],'
-        width_20: 'width: 20,'
-        suffix_distance_unit: 'suffix: " #{@distance_unit}"'
-        31_map_d_daily_distances_d_to_s_to: "(1..31).map { |d| @daily_distances[d.to_s].to_f }"
         reject_zero: ".reject(&:zero?)"
         presence_0: ".presence || [0]"
         you_re_receiving_this_because_monthly_digest_emails_are_on_3: You're receiving this because monthly digest emails are on.
@@ -2343,12 +2333,8 @@ en:
         new_country_line: "→ %{country}  (new country)"
         new_city_line: "→ %{city}  (new city)"
       year_end_digest:
-        your: Your
-        year_in_review: Year in Review
-        here_s_your: Here's your
-        at_a_glance: at a glance.
-        year_heading: Your %{year} Year in Review
-        year_intro: Here's your %{year} at a glance.
+        year_in_review_title: Your %{year} Year in Review
+        year_at_a_glance: Here's your %{year} at a glance.
         the_numbers: THE NUMBERS
         distance: Distance
         countries: Countries
@@ -2362,16 +2348,8 @@ en:
         share_your_year_rarr: Share your year →
         you_re_receiving_this_because_yearly_digest_emails_are_on: You're receiving this because yearly digest emails are on for your account.
         manage_email_preferences: Manage email preferences
-        year_in_review_here_s_your: Year in Review ────────────────────────────── Here's your
-        at_a_glance_the_numbers_distance: at a glance. THE NUMBERS Distance
-        vs_previous_year_distance: VS PREVIOUS YEAR Distance
         view_full_insights: "-> View full insights:"
         share_your_year: "-> Share your year:"
-        you_re_receiving_this_because_yearly_digest_emails_are_on_2: "───────────────────────────────────────── You're receiving this because yearly digest emails are on. Manage email preferences:"
-        12_map_m_monthly_distances_m_to_s_to: "(1..12).map { |m| @monthly_distances[m.to_s].to_f.round },"
-        labels_date_abbr_monthnames_1_12: 'labels: Date::ABBR_MONTHNAMES[1..12],'
-        width_24: 'width: 24,'
-        suffix_distance_unit: 'suffix: " #{@distance_unit}"'
         you_re_receiving_this_because_yearly_digest_emails_are_on_3: You're receiving this because yearly digest emails are on.
         manage_email_preferences_2: 'Manage email preferences:'
   users_mailer:
@@ -2448,17 +2426,13 @@ en:
     oauth_account_link:
       confirm_account_link: Confirm account link
       hi: Hi
-      someone_hopefully_you_is_trying_to_link: Someone — hopefully you — is trying to link
-      sign_in_to_your_dawarich_account_clicking_the_button_below: sign-in to your Dawarich account. Clicking the button below will allow that sign-in method to access this account going forward.
+      account_link_request_html: Someone — hopefully you — is trying to link <strong>%{provider}</strong> sign-in to your Dawarich account. Clicking the button below will allow that sign-in method to access this account going forward.
+      account_link_request_text: Someone — hopefully you — is trying to link %{provider} sign-in to your Dawarich account. Clicking the link below will allow that sign-in method to access this account going forward.
       link: Link
       didn_t_request_this: Didn't request this?
       ignore_this_email_the_link_expires_in_15_minutes_and: Ignore this email — the link expires in 15 minutes and no change will be made to your account. If you keep getting these emails, change your password.
       link_2: 'Link:'
-      confirm_account_link_hi: Confirm account link Hi
-      someone_hopefully_you_is_trying_to_link_2: ", Someone — hopefully you — is trying to link"
-      sign_in_to_your_dawarich_account_clicking_the_link_below: sign-in to your Dawarich account. Clicking the link below will allow that sign-in method to access this account going forward. Link
       didn_t_request_this_ignore_this_email_the_link_expires: Didn't request this? Ignore this email — the link expires in 15 minutes and no change will be made to your account. If you keep getting these emails, change your password.
-      sign_in_to_your_dawarich_account_clicking_the_link_below_2: sign-in to your Dawarich account. Clicking the link below will allow that sign-in method to access this account going forward.
     otp_account_locked:
       account_temporarily_locked: Account temporarily locked
       hi: Hi
@@ -2539,6 +2513,8 @@ en:
   common:
     app_name: Dawarich
     not_available: N/A
+    time_ago: "%{time} ago"
+    time_from_now: "%{time} from now"
   enums:
     user:
       status:
@@ -3590,6 +3566,9 @@ en:
         data_recalculation_busy: Data recalculation busy
         another_recalculation_is_already_running_please_try_again_in_a: Another recalculation is already running. Please try again in a few minutes.
         data_recalculation_completed: Data recalculation completed
+        year_count:
+          one: "%{count} year"
+          other: "%{count} years"
         stats_tracks_and_digests_have_been_recalculated_for_year_label: Stats, tracks, and digests have been recalculated for %{year_label}.
         year_count:
           one: "%{count} year"

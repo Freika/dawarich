@@ -53,7 +53,6 @@
             </details>
           </li>
         <% end %>
-        <li><%= render 'shared/navbar/locale_switcher', show_label: true %></li>
       </ul>
     </details>
     <%= link_to (user_signed_in? ? preferred_map_path : root_path), class: 'btn btn-ghost normal-case text-xl gap-2' do %>
@@ -161,8 +160,8 @@
                 <% else %>
                   <% days_left = [(expiry.to_date - Time.zone.today).to_i, 0].max %>
                   <span class="tooltip tooltip-bottom"
-                        data-tip="<%= t('.trial_ends_in', time: distance_of_time_in_words(expiry, Time.current)) %>"
-                        title="<%= t('.trial_ends_in', time: distance_of_time_in_words(expiry, Time.current)) %>">
+                        data-tip="<%= t('.trial_ends_in', time: relative_distance_in_words(expiry)) %>"
+                        title="<%= t('.trial_ends_in', time: relative_distance_in_words(expiry)) %>">
                     <%= t('.days_remaining', count: days_left) %>
                   </span>
                 <% end %>
@@ -174,7 +173,6 @@
         <% end %>
 
         <ul class="menu menu-horizontal px-1 flex-nowrap">
-          <li><%= render 'shared/navbar/locale_switcher' %></li>
           <%= turbo_stream_from current_user, :notifications %>
           <li data-controller="notifications">
             <details>
@@ -241,7 +239,6 @@
       </div>
     <% else %>
       <ul class="menu menu-horizontal bg-base-100 rounded-box px-1">
-        <li class="hidden xl:block"><%= render 'shared/navbar/locale_switcher' %></li>
         <li><%= link_to t('.login'), new_user_session_path %></li>
         <% if !SELF_HOSTED && defined?(devise_mapping) && devise_mapping&.registerable? %>
           <li><%= link_to t('.register'), new_user_registration_path %></li>

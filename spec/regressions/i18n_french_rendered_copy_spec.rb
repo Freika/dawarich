@@ -33,12 +33,12 @@ RSpec.describe 'Rendered French copy' do
       member_parts = normalized_parts(FamilyMailer.member_joined(family, member))
 
       invitation_parts.each do |body|
-        expected_invitation = "#{family.creator.email} vous a invité à rejoindre " \
+        expected_invitation = "#{family.creator.email} vous invite à rejoindre " \
                               "sa famille « Famille d'Élodie » sur Dawarich."
         expect(body).to include(expected_invitation)
       end
       member_parts.each do |body|
-        expect(body).to include('membre@example.com : sa localisation actuelle (si le partage est activé)')
+        expect(body).to include('Voir la position actuelle de membre@example.com (si le partage est activé)')
         expect(body).not_to include("'s")
       end
     end
@@ -85,7 +85,7 @@ RSpec.describe 'Rendered French copy' do
       expect(yearly_mail.subject).to eq('Bilan annuel 2026 — Dawarich')
       expect(monthly_mail.subject).to eq('Bilan mensuel — août 2026 — Dawarich')
       yearly_parts.each do |body|
-        expect(body).to include("Bilan de l'année 2026")
+        expect(body).to include('Votre année 2026 en revue')
         expect(body).to include("Voici votre année 2026 en un coup d'œil.")
         expect(body).to include('jan.')
         expect(body).not_to match(/\bJan\b/)
@@ -355,9 +355,9 @@ RSpec.describe 'Rendered French copy' do
     insights_details = Rails.root.join('app/views/insights/details.html.erb').read
     stats_index = Rails.root.join('app/views/stats/index.html.erb').read
 
-    expect(insights_index).to include('[current_user.id, I18n.locale, "insights"')
-    expect(insights_details).to include('[current_user.id, I18n.locale, "insights"')
-    expect(stats_index.scan('[current_user.id, I18n.locale').size).to eq(2)
+    expect(insights_index).to match(/insights_cache_key = \[[^\]]*I18n\.locale/)
+    expect(insights_details).to match(/insights_cache_key = \[[^\]]*I18n\.locale/)
+    expect(stats_index.scan(/cache \[[^\]]*I18n\.locale/).size).to eq(2)
   end
 
   it 'renders the live-location privacy warning as one complete sentence' do

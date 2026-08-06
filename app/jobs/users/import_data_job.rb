@@ -63,7 +63,7 @@ class Users::ImportDataJob < ApplicationJob
   end
 
   def create_import_failed_notification(user, error)
-    with_user_locale(user) do
+    I18n.with_locale(user.locale) do
       ::Notifications::Create.new(
         user: user,
         title: I18n.t('jobs.users.import_data_job.data_import_failed'),

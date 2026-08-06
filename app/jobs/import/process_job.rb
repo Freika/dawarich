@@ -6,6 +6,6 @@ class Import::ProcessJob < ApplicationJob
   def perform(import_id)
     import = Import.find(import_id)
 
-    with_user_locale(import.user) { import.process! }
+    I18n.with_locale(import.user.locale) { import.process! }
   end
 end

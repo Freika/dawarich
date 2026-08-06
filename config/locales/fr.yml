@@ -1,5 +1,7 @@
 ---
 fr:
+  language_name: "Français"
+  language_flag: "fr"
   activerecord:
     attributes:
       user:
@@ -103,9 +105,9 @@ fr:
     - novembre
     - décembre
     order:
-    - :day
-    - :month
-    - :year
+    - day
+    - month
+    - year
   datetime:
     distance_in_words:
       about_x_hours:
@@ -490,6 +492,7 @@ fr:
         you_have_used: Vous avez utilisé
         points_of: points de
         available: disponibles.
+        summary_html: "Vous avez utilisé %{used} points sur %{limit} disponibles."
       edit:
         account_settings: Paramètres du compte
         profile: Profil
@@ -605,6 +608,7 @@ fr:
           l'identifiant de votre organisation
         create_one_here: Créez-en un ici
         sign_in_accept_invitation: Se connecter & Accepter l'invitation
+        log_in: "Se connecter"
       otp_challenge:
         two_factor_authentication: Authentification à deux facteurs
         enter_the_6_digit_code_from_your_authenticator_app_to: Entrez le code à 6
@@ -912,6 +916,8 @@ fr:
       accept_your_invitation_here: 'Accepter votre invitation ici :'
       important_this_invitation_will_expire_in_7_days: 'IMPORTANT : Cette invitation
         expirera dans 7 jours.'
+      invited_by_family_html: "<strong>%{email}</strong> vous invite à rejoindre sa famille « <strong>%{family}</strong> » sur Dawarich."
+      invited_by_family_text: "%{email} vous invite à rejoindre sa famille « %{family} » sur Dawarich."
     location_request:
       location_request: Demande de localisation
       hi_there: Salut !
@@ -996,6 +1002,18 @@ fr:
       tip_you_can_manage_your_family_members_and_privacy_settings: 'CONSEIL : Vous
         pouvez gérer les membres de votre famille et les paramètres de confidentialité
         à tout moment depuis votre tableau de bord de famille.'
+      member_joined_family_html: "Bonne nouvelle : <strong>%{email}</strong> vient de rejoindre votre famille « <strong>%{family}</strong> » sur Dawarich !"
+      member_joined_family_text: "Bonne nouvelle : %{email} vient de rejoindre votre famille « %{family} » sur Dawarich !"
+      see_current_location_html: "Voir la position actuelle de <strong>%{email}</strong> (si le partage est activé)"
+      see_current_location_text: "Voir la position actuelle de %{email} (si le partage est activé)"
+      share_location_with_html: "Partager votre position avec <strong>%{email}</strong>"
+      share_location_with_text: "Partager votre position avec %{email}"
+      member_count_html:
+        one: "Votre famille compte désormais <strong>%{count}</strong> membre."
+        other: "Votre famille compte désormais <strong>%{count}</strong> membres."
+      member_count:
+        one: "Votre famille compte désormais %{count} membre."
+        other: "Votre famille compte désormais %{count} membres."
   home:
     index:
       dawarich: Dawarich
@@ -1082,6 +1100,7 @@ fr:
         relance son propre détecteur selon vos paramètres.
       cancel: Annuler
       close: Fermer
+      extract_to_add_html: "Cliquez sur <strong>Extraire</strong> pour ajouter ces données à votre compte Dawarich. Les points existants ne sont pas modifiés. Les visites et les lieux déjà détectés par Dawarich à partir de vos points sont conservés à côté de ceux qui sont importés."
     extraction_remove_button:
       remove_extracted_data: Supprimer les données extraites
       remove_the_visits_places_and_tracks_this_extraction_created_your: Supprimer
@@ -2328,6 +2347,9 @@ fr:
           de gemme à côté de votre profil pour indiquer votre statut de supporteur
         general_settings: Paramètres généraux
         save_changes: Enregistrer les modifications
+        language: "Langue"
+        your_language: "Votre langue"
+        the_interface_emails_and_notifications_will_use_this_language: "L'interface, les e-mails et les notifications utiliseront cette langue."
     integrations:
       index:
         immich_photoprism_integrations: Intégrations Immich & Photoprism
@@ -2688,12 +2710,6 @@ fr:
       dawarich_supporter: Supporter Dawarich
       login: Connexion
       register: S'inscrire
-      locale_switcher:
-        language: Langue
-        current_language: "Langue : %{language}"
-        locales:
-          en: English
-          fr: Français
       trial_ends_in: Votre essai se terminera dans %{time}
       theme_toggle:
         dark_mode: Mode sombre
@@ -2835,6 +2851,10 @@ fr:
           les 12 derniers mois de données.
         upgrade_to_pro: Passer à Pro
         dismiss: Fermer
+    locale_suggestion:
+      message: "Dawarich est aussi disponible en français."
+      switch: "Passer au français"
+      dismiss: "Fermer"
   shared_links:
     expires_field:
       expires_optional: Expire (facultatif)
@@ -3292,12 +3312,6 @@ fr:
           Vous recevez ce message car les e-mails de résumé mensuels sont activés.
           Gérer vos préférences d'e-mail :"
         weekday_totals: "@weekday_totals,"
-        labels_w_mon_tue_wed_thu_fri_sat_sun: 'étiquettes : %w[Dim Lundi Mardi Mercredi
-          Jeudi Vendredi Samedi Dimanche],'
-        width_20: 'largeur : 20,'
-        suffix_distance_unit: 'suffixe : " #{@distance_unit}"'
-        31_map_d_daily_distances_d_to_s_to: "(1..31).map { |d| @daily_distances[d.to_s].to_f
-          }"
         reject_zero: ".reject(&:zero?)"
         presence_0: ".presence || [0]"
         you_re_receiving_this_because_monthly_digest_emails_are_on_3: Vous recevez
@@ -3336,14 +3350,11 @@ fr:
         you_re_receiving_this_because_yearly_digest_emails_are_on_2: "─────────────────────────────────────────
           Vous recevez ce message car les e-mails de résumé annuels sont activés.
           Gérer vos préférences d'e-mail :"
-        12_map_m_monthly_distances_m_to_s_to: "(1..12).map { |m| @monthly_distances[m.to_s].to_f.round
-          }"
-        labels_date_abbr_monthnames_1_12: 'labels: Date::ABBR_MONTHNAMES[1..12],'
-        width_24: 'width: 24,'
-        suffix_distance_unit: 'suffix: " #{@distance_unit}"'
         you_re_receiving_this_because_yearly_digest_emails_are_on_3: Vous recevez
           ce message car les emails de résumé annuel sont activés.
         manage_email_preferences_2: 'Gérer vos préférences d''email :'
+        year_in_review_title: "Votre année %{year} en revue"
+        year_at_a_glance: "Voici votre année %{year} en un coup d'œil."
   users_mailer:
     account_destroy_confirmation:
       confirm_account_deletion: Confirmer la suppression de votre compte
@@ -3515,6 +3526,8 @@ fr:
         changez votre mot de passe.
       sign_in_to_your_dawarich_account_clicking_the_link_below_2: à votre compte Dawarich.
         Cliquez sur le lien ci-dessous pour autoriser ce mode de connexion.
+      account_link_request_html: "Quelqu'un — vous, nous l'espérons — tente d'associer le mode de connexion <strong>%{provider}</strong> à votre compte Dawarich. En cliquant sur le bouton ci-dessous, vous autoriserez cette méthode de connexion à accéder à ce compte à l'avenir."
+      account_link_request_text: "Quelqu'un — vous, nous l'espérons — tente d'associer le mode de connexion %{provider} à votre compte Dawarich. En cliquant sur le lien ci-dessous, vous autoriserez cette méthode de connexion à accéder à ce compte à l'avenir."
     otp_account_locked:
       account_temporarily_locked: Compte temporairement bloqué
       hi: Bonjour
@@ -3601,6 +3614,8 @@ fr:
   common:
     app_name: Dawarich
     not_available: N/A
+    time_ago: "il y a %{time}"
+    time_from_now: "dans %{time}"
   enums:
     user:
       status:

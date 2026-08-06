@@ -17,7 +17,7 @@ class Users::RecalculateDataJob < ApplicationJob
     notify = options.is_a?(Hash) ? options.symbolize_keys.fetch(:notify, true) : true
     user = User.find_by(id: user_id) if notify
     if user
-      I18n.with_locale(user.preferred_locale || I18n.default_locale) do
+      I18n.with_locale(user.locale) do
         content = I18n.t(
           'jobs.users.recalculate_data_job.another_recalculation_is_already_running_please_try_again_in_a'
         )
@@ -37,7 +37,7 @@ class Users::RecalculateDataJob < ApplicationJob
     @job_queue = job_queue
 
     with_user_timezone(user) do
-      with_user_locale(user) do
+      I18n.with_locale(user.locale) do
         years_to_process = determine_years
 
         if years_to_process.empty?
@@ -104,12 +104,14 @@ class Users::RecalculateDataJob < ApplicationJob
   end
 
   def create_success_notification(years_to_process)
-    with_user_locale(user) do
-      year_label = if years_to_process.size == 1
-                     years_to_process.first.to_s
-                   else
-                     I18n.t('jobs.users.recalculate_data_job.year_count', count: years_to_process.size)
-                   end
+    I18n.with_locale(user.locale) do
+      year_label =
+        if years_to_process.size == 1
+          years_to_process.first.to_s
+        else
+          I18n.t('jobs.users.recalculate_data_job.year_count', count: years_to_process.size)
+        end
+
       Notifications::Create.new(
         user: user,
         kind: :info,
@@ -123,7 +125,7 @@ class Users::RecalculateDataJob < ApplicationJob
   end
 
   def create_failure_notification(error)
-    with_user_locale(user) do
+    I18n.with_locale(user.locale) do
       Notifications::Create.new(
         user: user,
         kind: :error,

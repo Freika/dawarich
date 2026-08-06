@@ -116,7 +116,7 @@ RSpec.describe 'Users::Sessions', type: :request do
       end
 
       it 'renders the French persistent-session label' do
-        I18n.with_locale(:fr) { get new_user_session_path }
+        get new_user_session_path(locale: 'fr')
 
         expect(response.body).to include('Se souvenir de moi')
         expect(response.body).to include('value="Se connecter"')
@@ -126,9 +126,7 @@ RSpec.describe 'Users::Sessions', type: :request do
         family = create(:family, name: 'Famille Test')
         invitation = create(:family_invitation, family:, invited_by: family.creator)
 
-        I18n.with_locale(:fr) do
-          get new_user_session_path(invitation_token: invitation.token)
-        end
+        get new_user_session_path(invitation_token: invitation.token, locale: 'fr')
 
         expect(response.body).to include('Se connecter pour rejoindre Famille Test !')
         expect(response.body).not_to include('Se connecter pour rejoindre.')

@@ -16,7 +16,7 @@ class StaleJobsRecoveryJob < ApplicationJob
 
   def recover_stale_exports
     Export.processing.where(processing_started_at: ...EXPORT_TIMEOUT.ago).find_each do |export|
-      I18n.with_locale(export.user.preferred_locale || I18n.default_locale) do
+      I18n.with_locale(export.user.locale) do
         error_message = I18n.t('jobs.stale_jobs_recovery_job.export_timed_out_after_being_stuck_in_processing')
         export.update!(status: :failed, error_message: error_message)
 
@@ -35,7 +35,7 @@ class StaleJobsRecoveryJob < ApplicationJob
 
   def recover_stale_imports
     Import.processing.where(processing_started_at: ...IMPORT_TIMEOUT.ago).find_each do |import|
-      I18n.with_locale(import.user.preferred_locale || I18n.default_locale) do
+      I18n.with_locale(import.user.locale) do
         error_message = I18n.t('jobs.stale_jobs_recovery_job.import_timed_out_after_being_stuck_in_processing')
         import.update!(status: :failed, error_message: error_message)
 

@@ -6,7 +6,7 @@ class Stats::CalculatingJob < ApplicationJob
   def perform(user_id, year, month)
     user = find_user_or_skip(user_id) || return
 
-    with_user_locale(user) do
+    I18n.with_locale(user.locale) do
       Stats::CalculateMonth.new(user_id, year, month).call
     end
   rescue StandardError => e
@@ -18,7 +18,7 @@ class Stats::CalculatingJob < ApplicationJob
   def create_stats_update_failed_notification(user_id, error)
     user = find_user_or_skip(user_id) || return
 
-    with_user_locale(user) do
+    I18n.with_locale(user.locale) do
       Notifications::Create.new(
         user:,
         kind: :error,

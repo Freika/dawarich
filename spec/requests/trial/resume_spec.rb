@@ -25,7 +25,7 @@ RSpec.describe 'Trial::Resume', type: :request do
       end
 
       it 'explains the free-trial checkout clearly in French' do
-        I18n.with_locale(:fr) { get trial_resume_path }
+        get trial_resume_path(locale: 'fr')
         rendered_copy = Nokogiri::HTML(response.body).text.squish
 
         expect(rendered_copy).to include('finalisez votre abonnement')

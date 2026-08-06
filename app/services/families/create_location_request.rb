@@ -54,7 +54,7 @@ class Families::CreateLocationRequest
   end
 
   def create_notification!(request)
-    I18n.with_locale(target_user.preferred_locale || I18n.default_locale) do
+    I18n.with_locale(target_user.locale) do
       safe_email = ERB::Util.html_escape(requester.email)
       link = ActionController::Base.helpers.link_to(
         I18n.t('services.families.create_location_request.view_request'),

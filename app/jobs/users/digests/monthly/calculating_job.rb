@@ -6,7 +6,7 @@ class Users::Digests::Monthly::CalculatingJob < ApplicationJob
   def perform(user_id, year, month)
     user = find_user_or_skip(user_id) || return
 
-    with_user_locale(user) do
+    I18n.with_locale(user.locale) do
       Stats::CalculateMonth.new(user_id, year, month).call
       Users::Digests::CalculateMonth.new(user_id, year, month).call
 
@@ -25,7 +25,7 @@ class Users::Digests::Monthly::CalculatingJob < ApplicationJob
 
     backtrace = error.backtrace&.first(BACKTRACE_LINE_LIMIT)&.join("\n")
 
-    with_user_locale(user) do
+    I18n.with_locale(user.locale) do
       Notifications::Create.new(
         user:,
         kind: :error,

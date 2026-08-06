@@ -10,7 +10,7 @@ class Visits::FullHistoryRedetectJob < ApplicationJob
   def perform(user_id)
     user = User.find(user_id)
 
-    with_user_locale(user) do
+    I18n.with_locale(user.locale) do
       if recently_redetected?(user)
         Rails.logger.info("[Visits::FullHistoryRedetectJob skip] user_id=#{user.id} reason=cooldown_active")
         return
@@ -34,7 +34,7 @@ class Visits::FullHistoryRedetectJob < ApplicationJob
     )
     user_for_notify = user || User.find_by(id: user_id)
     if user_for_notify
-      with_user_locale(user_for_notify) do
+      I18n.with_locale(user_for_notify.locale) do
         notify!(
           user_for_notify,
           kind: :warning,
@@ -51,7 +51,7 @@ class Visits::FullHistoryRedetectJob < ApplicationJob
       "class=#{e.class} message=#{e.message}"
     )
     user_for_notify = user || User.find_by(id: user_id)
-    with_user_locale(user_for_notify) { notify_failure(user_for_notify, e) } if user_for_notify
+    I18n.with_locale(user_for_notify.locale) { notify_failure(user_for_notify, e) } if user_for_notify
     ExceptionReporter.call(e)
     raise
   end

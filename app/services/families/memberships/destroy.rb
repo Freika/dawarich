@@ -108,48 +108,51 @@ module Families
       end
 
       def send_self_removal_notifications
-        create_notification(
-          member_to_remove,
-          'services.families.memberships.destroy.left_family',
-          'services.families.memberships.destroy.you_ve_left_the_family_family_name',
-          family_name: @family_name
-        )
+        I18n.with_locale(member_to_remove.locale) do
+          Notification.create!(
+            user: member_to_remove,
+            kind: :info,
+            title: I18n.t('services.families.memberships.destroy.left_family'),
+            content: I18n.t('services.families.memberships.destroy.you_ve_left_the_family_family_name',
+                            family_name: @family_name)
+          )
+        end
 
         return unless @family_owner&.persisted?
 
-        create_notification(
-          @family_owner,
-          'services.families.memberships.destroy.family_member_left',
-          'services.families.memberships.destroy.email_has_left_the_family_family_name',
-          email: member_to_remove.email, family_name: @family_name
-        )
+        I18n.with_locale(@family_owner.locale) do
+          Notification.create!(
+            user: @family_owner,
+            kind: :info,
+            title: I18n.t('services.families.memberships.destroy.family_member_left'),
+            content: I18n.t('services.families.memberships.destroy.email_has_left_the_family_family_name',
+                            email: member_to_remove.email, family_name: @family_name)
+          )
+        end
       end
 
       def send_member_removed_notifications
-        create_notification(
-          member_to_remove,
-          'services.families.memberships.destroy.removed_from_family',
-          'services.families.memberships.destroy.you_have_been_removed_from_the_family_family_name_by',
-          family_name: @family_name, email: user.email
-        )
+        I18n.with_locale(member_to_remove.locale) do
+          Notification.create!(
+            user: member_to_remove,
+            kind: :info,
+            title: I18n.t('services.families.memberships.destroy.removed_from_family'),
+            content: I18n.t(
+              'services.families.memberships.destroy.you_have_been_removed_from_the_family_family_name_by',
+              family_name: @family_name, email: user.email
+            )
+          )
+        end
 
         return unless user != member_to_remove
 
-        create_notification(
-          user,
-          'services.families.memberships.destroy.member_removed',
-          'services.families.memberships.destroy.email_has_been_removed_from_the_family_family_name',
-          email: member_to_remove.email, family_name: @family_name
-        )
-      end
-
-      def create_notification(recipient, title_key, content_key, **content_options)
-        I18n.with_locale(recipient.preferred_locale || I18n.default_locale) do
+        I18n.with_locale(user.locale) do
           Notification.create!(
-            user: recipient,
+            user: user,
             kind: :info,
-            title: I18n.t(title_key),
-            content: I18n.t(content_key, **content_options)
+            title: I18n.t('services.families.memberships.destroy.member_removed'),
+            content: I18n.t('services.families.memberships.destroy.email_has_been_removed_from_the_family_family_name',
+                            email: member_to_remove.email, family_name: @family_name)
           )
         end
       end

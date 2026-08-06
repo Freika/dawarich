@@ -1,7 +1,7 @@
 <% content_for :title, t('.insights') %>
 <%= render 'shared/chartkick_scripts' %>
 
-<% insights_cache_key = [current_user.id, I18n.locale, "insights", @selected_year, @year_stats&.maximum(:updated_at), current_user.safe_settings.distance_unit] %>
+<% insights_cache_key = [current_user.id, "insights", I18n.locale, @selected_year, @year_stats&.maximum(:updated_at), current_user.safe_settings.distance_unit] %>
 
 <div class="w-full my-5">
   <%= render 'header' %>

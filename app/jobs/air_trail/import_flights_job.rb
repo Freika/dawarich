@@ -18,7 +18,7 @@ module AirTrail
     private
 
     def notify_sync_failed(user, error)
-      with_user_locale(user) do
+      I18n.with_locale(user.locale) do
         Notifications::Create.new(
           user: user,
           title: I18n.t('jobs.air_trail.import_flights_job.airtrail_sync_failed'),

@@ -209,7 +209,9 @@ RSpec.describe Imports::Create do
           end
 
           it 'localizes the failed notification' do
-            I18n.with_locale(:fr) { service.call }
+            user.persist_locale!(:fr)
+
+            service.call
 
             expect(user.notifications.last.title).to eq("L'importation a échoué")
             expect(user.notifications.last.content).to \
@@ -234,7 +236,9 @@ RSpec.describe Imports::Create do
           end
 
           it 'localizes the failed notification' do
-            I18n.with_locale(:fr) { service.call }
+            user.persist_locale!(:fr)
+
+            service.call
 
             expect(user.notifications.last.content).to \
               include("L'importation « 2024-03.rec » a échoué. Contactez-nous à hi@dawarich.com")

@@ -130,7 +130,7 @@ class DataMigrations::RecalculateAnomaliesUserJob < ApplicationJob
   # page is self-hosted only, so this is the only signal a Cloud account gets
   # that its map may look different.
   def notify(user)
-    with_user_locale(user) do
+    I18n.with_locale(user.locale) do
       Notifications::Create.new(
         user: user,
         kind: :info,

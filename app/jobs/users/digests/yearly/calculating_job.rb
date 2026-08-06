@@ -6,7 +6,7 @@ class Users::Digests::Yearly::CalculatingJob < ApplicationJob
   def perform(user_id, year)
     user = find_user_or_skip(user_id) || return
 
-    with_user_locale(user) do
+    I18n.with_locale(user.locale) do
       recalculate_monthly_stats(user_id, year)
       Users::Digests::CalculateYear.new(user_id, year).call
 
@@ -31,7 +31,7 @@ class Users::Digests::Yearly::CalculatingJob < ApplicationJob
 
     backtrace = error.backtrace&.first(BACKTRACE_LINE_LIMIT)&.join("\n")
 
-    with_user_locale(user) do
+    I18n.with_locale(user.locale) do
       period_label = I18n.t('jobs.users.digests.yearly.calculating_job.year_end_digest')
       Notifications::Create.new(
         user:,
