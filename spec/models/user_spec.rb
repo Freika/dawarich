@@ -3,6 +3,44 @@
 require 'rails_helper'
 
 RSpec.describe User, type: :model do
+  describe '#preferred_locale' do
+    it 'normalizes a supported string locale' do
+      user = build(:user, settings: { 'locale' => ' FR ' })
+
+      expect(user.preferred_locale).to eq(:fr)
+    end
+
+    it 'treats malformed and unsupported locale values as unset' do
+      [false, 42, { 'language' => 'fr' }, %w[fr], 'xx'].each do |locale|
+        user = build(:user, settings: { 'locale' => locale })
+
+        expect { user.preferred_locale }.not_to raise_error
+        expect(user.preferred_locale).to be_nil
+      end
+    end
+
+    it 'treats a malformed settings container as unset' do
+      [false, []].each do |settings|
+        user = build(:user, settings:)
+
+        expect { user.preferred_locale }.not_to raise_error
+        expect(user.preferred_locale).to be_nil
+      end
+    end
+  end
+
+  describe '#persist_locale!' do
+    it 'normalizes a malformed settings container before saving the locale' do
+      user = create(:user)
+      user.update_column(:settings, [])
+
+      expect { user.reload.persist_locale!(:fr) }.not_to raise_error
+
+      expect(user.reload.settings).to eq('locale' => 'fr')
+      expect(user.preferred_locale).to eq(:fr)
+    end
+  end
+
   describe 'associations' do
     it { is_expected.to have_many(:imports).dependent(:destroy) }
     it { is_expected.to have_many(:stats) }

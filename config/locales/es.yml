@@ -17,6 +17,8 @@ es:
         go_back_to_sign_in: vuelve a iniciar sesión
         confirm_account_linking: Confirmar vinculación de cuenta
         link_provider_and_sign_in: Vincula %{provider} y inicia sesión
+        link_provider_to_your_dawarich_account: "Vincula %{provider} a tu cuenta de Dawarich"
+        existing_account_link_instructions_html: "Encontramos una cuenta de Dawarich existente para %{email}. Introduce tu contraseña para vincular tu identidad de %{provider} a esa cuenta e iniciar sesión."
   devise:
     confirmations:
       new:
@@ -146,6 +148,8 @@ es:
         i_m_self_hosting_and_exploring_the_demo: Estoy auto-hospedando y explorando la demo
         create_account_join_family: Crear cuenta y unir familia
         sign_up: Registrarse
+        join_family: "¡Únete a %{family}!"
+        i_want_to_use_the_cloud_version: "Quiero usar la versión en la nube"
     sessions:
       new:
         sign_in_to_join: Inicia sesión para unirte
@@ -161,6 +165,7 @@ es:
         create_one_here: Crear una aquí
         sign_in_accept_invitation: Iniciar sesión y aceptar invitación
         log_in: "Iniciar sesión"
+        sign_in_to_join_family: "¡Inicia sesión para unirte a %{family}!"
       otp_challenge:
         two_factor_authentication: Autenticación de dos factores
         enter_the_6_digit_code_from_your_authenticator_app_to: Introduce el código de 6 dígitos de tu aplicación autenticadora para continuar.
@@ -266,7 +271,7 @@ es:
       invitations: Invitaciones
       invited: Invitado
       ago_middot_expires: hace · vence
-      family_at_capacity: Familia a capacidad (
+      family_at_capacity: "Familia completa (%{count}/%{max} miembros)"
       members_max: miembros max)
       leave_family: Salir de la familia
       delete_family: Eliminar Familia
@@ -563,6 +568,7 @@ es:
       points: Puntos
       status: Estado
       created: Creado
+      file_size: "Tamaño del archivo"
     new:
       back_to_imports: Volver a importaciones
       google_timeline_file_too_large: "¿El archivo de la Cronología de Google es demasiado grande?"
@@ -602,6 +608,9 @@ es:
       activity_streak: Racha de actividad
       current: actual
       longest_streak: Racha más larga
+      day:
+        one: "día"
+        other: "días"
     header:
       insights: Análisis
       your_personal_movement_analytics_and_travel_patterns: Tu análisis personal de movimiento y patrones de viaje
@@ -613,6 +622,9 @@ es:
       total_time: tiempo total
       no_visit_data_available_for_this_period: No hay datos de visita disponibles para este período.
       confirmed_visits_will_appear_here: Las visitas confirmadas aparecerán aquí.
+      visit_count:
+        one: "visita"
+        other: "visitas"
     monthly_digest:
       total_distance: Distancia total
       active_days: Días activos
@@ -668,6 +680,9 @@ es:
       total_time: tiempo total
       no_visit_data_available_for_this_period: No hay datos de visita disponibles para este período.
       confirmed_visits_will_appear_here: Las visitas confirmadas aparecerán aquí.
+      visit_count:
+        one: "visita"
+        other: "visitas"
     travel_patterns:
       when_do_you_travel: "¿Cuándo viajas tú?"
       time_of_day_distribution: DISTRIBUCIÓN HORARIA
@@ -751,6 +766,10 @@ es:
       travel_patterns: Patrones de viaje
       movement_wellness: Movimiento y bienestar
       insights: Análisis
+      total_distance: "Distancia total"
+      countries: "Países"
+      cities: "Ciudades"
+      days_traveling: "Días de viaje"
   kaminari:
     first_page:
       laquo: "«"
@@ -1271,6 +1290,10 @@ es:
         search_for_a_place: Buscar un lugar
         delete: Eliminar
         delete_this_visit_your_location_points_stay: "¿Eliminar esta visita? Tus puntos de ubicación se conservarán."
+      suggestions_badge:
+        unreviewed_visits:
+          one: "%{count} visita sin revisar"
+          other: "%{count} visitas sin revisar"
   notifications:
     notification:
       ago: hace
@@ -1342,6 +1365,7 @@ es:
       delete_selected: Eliminar seleccionados
       are_you_sure: "¿Estás seguro?"
       select_all: Selecciona todo
+      all_imports: "Todas las importaciones"
   posters:
     poster:
       download_png: Descargar PNG
@@ -1777,6 +1801,7 @@ es:
       days_remaining:
         one: "%{count} día restante"
         other: "%{count} días restantes"
+      open_navigation_menu: "Abrir el menú de navegación"
     place_creation_modal:
       create_new_place: Crear nuevo lugar
       place_name: Nombre del lugar *
@@ -1933,6 +1958,7 @@ es:
       also_show_the_path_travelled_since_this_link_was_created: También muestra el camino recorrido desde que se creó este enlace.
       cancel: Cancelar
       create_share_link: Crear enlace de compartición
+      this_shares_your_location_with_anyone_html: "Esto comparte %{location} con cualquiera que tenga el enlace, hasta que caduque o lo revoques."
     modal_timeline_create_form:
       start_date: Fecha de inicio
       end_date: Fecha de fin
@@ -2121,6 +2147,9 @@ es:
       day_count:
         one: "%{count} día"
         other: "%{count} días"
+      country_count:
+        one: "%{count} país"
+        other: "%{count} países"
     edit:
       back_to_trips: Volver a viajes
       editing_trip: Editando un viaje
@@ -2225,6 +2254,7 @@ es:
         first_time_count:
           one: "%{count} por primera vez"
           other: "%{count} por primera vez"
+        year_year_in_review: "Resumen del año %{year}"
       show:
         year_in_review: Resumen del año
         your_journey_by_the_numbers: Tu viaje, por números
@@ -2300,10 +2330,6 @@ es:
         view_full_insights: "→ Ver detalles completos:"
         you_re_receiving_this_because_monthly_digest_emails_are_on_2: "───────────────────────────────────────── Estás recibiendo este mensaje porque los correos electrónicos de resumen mensual están activados. Gestiona preferencias de correo electrónico:"
         weekday_totals: "@weekday_totals,"
-        labels_w_mon_tue_wed_thu_fri_sat_sun: 'etiquetas: %w[Dom Lun Mar Mié Jue Vie Sáb],'
-        width_20: 'ancho: 20,'
-        suffix_distance_unit: 'suffix: " #{@distance_unit}"'
-        31_map_d_daily_distances_d_to_s_to: "(1..31).map { |d| @daily_distances[d.to_s].to_f }"
         reject_zero: ".reject(&:zero?)"
         presence_0: ".presence || [0]"
         you_re_receiving_this_because_monthly_digest_emails_are_on_3: Estás recibiendo este mensaje porque los correos electrónicos de resumen mensual están activados.
@@ -2526,6 +2552,12 @@ es:
         track: Trayecto
         timeline: Cronología
         live: En vivo
+    user:
+      status:
+        inactive: "Inactiva"
+        active: "Activa"
+        trial: "Prueba"
+        pending_payment: "Pago pendiente"
   photo_sources:
     immich: Immich
     photoprism: PhotoPrism
@@ -3024,6 +3056,9 @@ es:
     stats:
       stats_for_target_are_being_updated: Las estadísticas para %{target} están siendo actualizadas.
       stats_are_being_updated: Las estadísticas están siendo actualizadas.
+      whole_year: "todo el año %{year}"
+      month_of_year: "%{month} de %{year}"
+      invalid_period: "Selecciona un mes válido antes de actualizar las estadísticas"
     tags:
       tag_was_successfully_created: La etiqueta ha sido creada con éxito.
       tag_was_successfully_updated: El etiqueta se actualizó con éxito.
@@ -3113,6 +3148,15 @@ es:
       bulk_updated:
         one: "%{count} visita %{status}."
         other: "%{count} visitas %{status}."
+        confirmed:
+          one: "%{count} visita confirmada."
+          other: "%{count} visitas confirmadas."
+        declined:
+          one: "%{count} visita rechazada."
+          other: "%{count} visitas rechazadas."
+        suggested:
+          one: "%{count} visita sugerida."
+          other: "%{count} visitas sugeridas."
       no_matching_visits: No se encontraron visitas coincidentes.
       select_visit_to_delete: Selecciona al menos una visita para eliminar.
       failed_to_delete_visits: Falló la eliminación de visitas.
@@ -3123,7 +3167,10 @@ es:
       visits_must_share_day: Las visitas deben estar en el mismo día.
       failed_to_merge_visits: Falló la fusión de visitas.
       unsupported_source_status: Estado de origen no soportado.
-      visit_updated: Visita %{status}.
+      visit_updated:
+        confirmed: "Visita confirmada."
+        declined: "Visita rechazada."
+        suggested: "Visita sugerida."
       visits_merged: Se fusionaron las visitas.
       visit_removed: Eliminada la visita. Tus puntos de ubicación siguen aquí.
       too_many_visits: Puedes actualizar hasta %{count} visitas a la vez. Estrecha tu selección y vuelve a intentarlo.
@@ -3333,6 +3380,10 @@ es:
         source_missing: La fuente de importación no puede estar vacía
         unsupported_source: 'Fuente no soportada: %{source}'
         zip_unclassified: No se pudo clasificar el contenido del archivo ZIP; puede que esté dañado
+        zero_points_with_timestamps: "Tu archivo %{name} importó 0 puntos. No se encontraron puntos de ubicación con marcas de tiempo. Las importaciones GPX y KML necesitan un valor &lt;time&gt;/&lt;when&gt; por cada coordenada."
+        zero_points: "Tu archivo %{name} importó 0 puntos. No se encontraron puntos de ubicación nuevos en este archivo."
+        import_failed_self_hosted: "La importación \"%{name}\" falló: %{message}, traza: %{backtrace}"
+        import_failed_cloud: "La importación \"%{name}\" falló, contáctanos en hi@dawarich.com"
       source_detector:
         amazon_order: Este es un archivo de exportación de pedidos de Amazon, no contiene datos de ubicación. Dawarich importa historiales de ubicaciones de Google Takeout, OwnTracks, GPX y fuentes similares.
         apple_plist: Los archivos binarios de listas de propiedades de Apple (.plist) no son compatibles.
@@ -3514,6 +3565,7 @@ es:
           calculating_job:
             period_label_calculation_failed: "%{period_label} cálculo fallido"
             message_stacktrace_backtrace: "%{message}, stacktrace: %{backtrace}"
+            year_end_digest: "Resumen anual"
       import_data_job:
         data_import_failed: No se pudieron importar los datos
         your_data_import_failed_with_error_message_please_check_the: 'La importación de tus datos falló con el error: %{message}. Revisa el formato del archivo e inténtalo de nuevo.'
@@ -3534,10 +3586,18 @@ es:
         visit_re_detection: Detección de visita
         no_points_to_re_detect: No hay puntos para re-detectar.
         visit_re_detection_complete: Detección de visita completa
-        visits_created_visits_across_size_months: "%{visits_created} visitas en %{size} meses."
+        visits_created_visits_across_size_months: "%{visits} en %{months}."
         visit_re_detection_partially_complete: Detección de visita parcialmente completa
         visit_re_detection_failed: Detección de visita fallida
-        visits_created_visits_across_ok_months_of_size_months_size: "%{visits_created} visitas en %{ok_months} de %{size} meses. %{failed_count} mes(es) fallido(s); vuelve a intentarlo después del tiempo de espera para reintentar."
+        visits_created_visits_across_ok_months_of_size_months_size:
+          one: "%{visits} en %{ok_months} de %{months}. 1 mes falló; vuelve a ejecutarlo después del periodo de espera."
+          other: "%{visits} en %{ok_months} de %{months}. %{count} meses fallaron; vuelve a ejecutarlo después del periodo de espera."
+        visits_count:
+          one: "%{count} visita"
+          other: "%{count} visitas"
+        months_count:
+          one: "%{count} mes"
+          other: "%{count} meses"
   javascript:
     messages:
       click_on_the_map_to_place_a_visit: Haz clic en el mapa para colocar una visita
@@ -3780,8 +3840,20 @@ es:
       confirm_delete_keep_points: "¿Eliminar esta visita? Tus puntos de ubicación se conservarán."
       end_after_start: La hora de finalización debe ser posterior a la de inicio
       network_create_error: 'Error de red: no se pudo crear la visita'
-      bulk_status_failed: No se pudieron marcar las visitas como %{status}
-      bulk_status_updated: "%{count} visitas marcadas como %{status}"
+      bulk_status_failed:
+        confirmed: "No se pudieron confirmar las visitas"
+        declined: "No se pudieron rechazar las visitas"
+        suggested: "No se pudieron marcar las visitas como sugeridas"
+      bulk_status_updated:
+        confirmed:
+          one: "%{count} visita confirmada correctamente"
+          other: "%{count} visitas confirmadas correctamente"
+        declined:
+          one: "%{count} visita rechazada correctamente"
+          other: "%{count} visitas rechazadas correctamente"
+        suggested:
+          one: "%{count} visita marcada como sugerida"
+          other: "%{count} visitas marcadas como sugeridas"
       confirm_delete_count_keep_points:
         one: "¿Quieres eliminar %{count} visita? Tus puntos de ubicación permanecen."
         other: "¿Quieres eliminar %{count} visitas? Tus puntos de ubicación permanecen."
@@ -3795,8 +3867,14 @@ es:
       deleted_count:
         one: "%{count} visita eliminada"
         other: "%{count} visitas eliminadas"
-      status_failed: No se pudo marcar la visita como %{status}
-      status_updated: Visita marcada como %{status}
+      status_failed:
+        confirmed: "No se pudo confirmar la visita"
+        declined: "No se pudo rechazar la visita"
+        suggested: "No se pudo marcar la visita como sugerida"
+      status_updated:
+        confirmed: "Visita confirmada correctamente"
+        declined: "Visita rechazada correctamente"
+        suggested: "Visita marcada como sugerida"
       unnamed: Visita sin nombre
     sharing:
       expires_in: Vence en %{time}
@@ -4167,6 +4245,37 @@ es:
       hours_short: "%{count}h"
       invalid_date: Fecha inválida
       minutes_short: "%{count}min"
+    loading_sources:
+      anomalies:
+        one: "%{formatted_count} anomalía"
+        other: "%{formatted_count} anomalías"
+      areas:
+        one: "%{formatted_count} área"
+        other: "%{formatted_count} áreas"
+      family:
+        one: "%{formatted_count} miembro de la familia"
+        other: "%{formatted_count} miembros de la familia"
+      flights:
+        one: "%{formatted_count} vuelo"
+        other: "%{formatted_count} vuelos"
+      hexagons:
+        one: "%{formatted_count} hexágono"
+        other: "%{formatted_count} hexágonos"
+      photos:
+        one: "%{formatted_count} foto"
+        other: "%{formatted_count} fotos"
+      places:
+        one: "%{formatted_count} lugar"
+        other: "%{formatted_count} lugares"
+      points:
+        one: "%{formatted_count} punto"
+        other: "%{formatted_count} puntos"
+      tracks:
+        one: "%{formatted_count} trayecto"
+        other: "%{formatted_count} trayectos"
+      visits:
+        one: "%{formatted_count} visita"
+        other: "%{formatted_count} visitas"
   battery_statuses:
     unknown: desconocido
     unplugged: desconectado

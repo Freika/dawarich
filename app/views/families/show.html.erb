@@ -198,7 +198,9 @@
           <div class="px-4 py-3 border-t border-base-200">
             <p class="text-xs text-warning">
               <%= icon 'triangle-alert', class: 'w-3.5 h-3.5 inline' %>
-              <%= t('.family_at_capacity') %><%= @family.class::MAX_MEMBERS %> <%= t('.members_max') %>
+              <%= t('.family_at_capacity',
+                    count: @family.member_count + @family.pending_invitations_count,
+                    max: @family.class::MAX_MEMBERS) %>
             </p>
           </div>
         <% end %>

@@ -4,6 +4,8 @@ en:
   auth:
     account_links:
       challenge:
+        link_provider_to_your_dawarich_account: Link %{provider} to your Dawarich account
+        existing_account_link_instructions_html: We found an existing Dawarich account for %{email}. Enter your password to link your %{provider} identity to that account and sign in.
         link: Link
         to_your_dawarich_account: to your Dawarich account
         we_found_an_existing_dawarich_account_for: We found an existing Dawarich account for
@@ -127,7 +129,7 @@ en:
         delete_my_account: Delete my account
         email_me_the_confirmation_link: Email me the confirmation link
       new:
-        join: Join
+        join_family: Join %{family}!
         you_ve_been_invited_by: You've been invited by
         to_join_their_family_create_your_account_to_accept_the: to join their family. Create your account to accept the invitation and start sharing location data.
         your_email: Your email (
@@ -143,12 +145,13 @@ en:
         characters_minimum: characters minimum)
         password_confirmation: Password Confirmation
         how_do_you_plan_to_use_dawarich: How do you plan to use Dawarich?
+        i_want_to_use_the_cloud_version: I want to use the cloud version
         i_m_self_hosting_and_exploring_the_demo: I'm self-hosting and exploring the demo
         create_account_join_family: Create Account & Join Family
         sign_up: Sign up
     sessions:
       new:
-        sign_in_to_join: Sign in to join
+        sign_in_to_join_family: Sign in to join %{family}!
         you_ve_been_invited_by: You've been invited by
         to_join_their_family_sign_in_to_your_account_to: to join their family. Sign in to your account to accept the invitation.
         don_t_have_an_account_yet: Don't have an account yet?
@@ -266,8 +269,7 @@ en:
       invitations: Invitations
       invited: Invited
       ago_middot_expires: ago · expires
-      family_at_capacity: Family at capacity (
-      members_max: members max)
+      family_at_capacity: Family full (%{count}/%{max} members)
       leave_family: Leave Family
       delete_family: Delete Family
       request: Request
@@ -551,6 +553,7 @@ en:
       back_to_imports: Back to imports
     index:
       new_import: New import
+      file_size: File size
       import_from_immich: Import from Immich
       import_from_photoprism: Import from Photoprism
       no_imports_yet: No imports yet
@@ -601,6 +604,9 @@ en:
     activity_streak:
       activity_streak: Activity Streak
       current: current
+      day:
+        one: day
+        other: days
       longest_streak: Longest Streak
     header:
       insights: Insights
@@ -611,6 +617,9 @@ en:
     location_clusters:
       top_visited_locations: Top Visited Locations
       total_time: total time
+      visit_count:
+        one: visit
+        other: visits
       no_visit_data_available_for_this_period: No visit data available for this period.
       confirmed_visits_will_appear_here: Confirmed visits will appear here.
     monthly_digest:
@@ -666,6 +675,9 @@ en:
     top_visited_locations:
       top_visited_locations: Top Visited Locations
       total_time: total time
+      visit_count:
+        one: visit
+        other: visits
       no_visit_data_available_for_this_period: No visit data available for this period.
       confirmed_visits_will_appear_here: Confirmed visits will appear here.
     travel_patterns:
@@ -742,6 +754,10 @@ en:
       movement_wellness: Movement & Wellness
     index:
       geodata_insights_bull_powered_by_your_location_history: Geodata Insights • Powered by your location history
+      total_distance: Total Distance
+      countries: Countries
+      cities: Cities
+      days_traveling: Days Traveling
       activity_heatmap: Activity Heatmap
       activity_streak: Activity Streak
       year_comparison: Year Comparison
@@ -1224,6 +1240,10 @@ en:
       day_nav:
         previous_day: Previous day
         next_day: Next day
+      suggestions_badge:
+        unreviewed_visits:
+          one: "%{count} unreviewed visit"
+          other: "%{count} unreviewed visits"
       day_summary:
         total_distance_traveled_this_day: Total distance traveled this day
         distinct_places_visited_this_day: Distinct places visited this day
@@ -1328,6 +1348,7 @@ en:
     address:
       address: 'Address:'
     index:
+      all_imports: All imports
       export: Export
       geojson: GeoJSON
       gpx: GPX
@@ -1760,6 +1781,7 @@ en:
       imports: Imports
       exports: Exports
       tags: Tags
+      open_navigation_menu: Open navigation menu
       subscribe: Subscribe
       account: Account
       settings: Settings
@@ -1924,9 +1946,8 @@ en:
         one: "%{count} view"
         other: "%{count} views"
     modal_live_create_form:
-      this_shares_your: This shares your
       current_location_in_real_time: current location in real time
-      with_anyone_who_has_the_link_until_it_expires_or: with anyone who has the link, until it expires or you revoke it.
+      this_shares_your_location_with_anyone_html: This shares your %{location} with anyone who has the link, until it expires or you revoke it.
       magic_phrase_optional: Magic phrase (optional)
       leave_blank_to_share_without_a_phrase_or_use_the: Leave blank to share without a phrase, or use the auto-generated one.
       share_the_route: Share the route
@@ -2118,6 +2139,9 @@ en:
       no_points_found: No points found
       calculating: Calculating...
       ndash: "–"
+      country_count:
+        one: "%{count} country"
+        other: "%{count} countries"
       day_count:
         one: "%{count} day"
         other: "%{count} days"
@@ -2202,6 +2226,7 @@ en:
         view_details: View Details
       public_year:
         year_in_review: Year in Review
+        year_year_in_review: "%{year} Year in Review"
         your_journey_by_the_numbers: Your journey, by the numbers
         distance_traveled: Distance traveled
         countries_visited: Countries visited
@@ -2300,10 +2325,6 @@ en:
         view_full_insights: "→ View full insights:"
         you_re_receiving_this_because_monthly_digest_emails_are_on_2: "───────────────────────────────────────── You're receiving this because monthly digest emails are on. Manage email preferences:"
         weekday_totals: "@weekday_totals,"
-        labels_w_mon_tue_wed_thu_fri_sat_sun: 'labels: %w[Mon Tue Wed Thu Fri Sat Sun],'
-        width_20: 'width: 20,'
-        suffix_distance_unit: 'suffix: " #{@distance_unit}"'
-        31_map_d_daily_distances_d_to_s_to: "(1..31).map { |d| @daily_distances[d.to_s].to_f }"
         reject_zero: ".reject(&:zero?)"
         presence_0: ".presence || [0]"
         you_re_receiving_this_because_monthly_digest_emails_are_on_3: You're receiving this because monthly digest emails are on.
@@ -2495,6 +2516,12 @@ en:
     time_ago: "%{time} ago"
     time_from_now: "%{time} from now"
   enums:
+    user:
+      status:
+        inactive: Inactive
+        active: Active
+        trial: Trial
+        pending_payment: Pending payment
     export:
       file_type:
         points: Points
@@ -3022,6 +3049,9 @@ en:
         sharing_disabled: Sharing disabled successfully
         auto_saved: Auto-saved
     stats:
+      whole_year: the whole %{year}
+      month_of_year: "%{month} of %{year}"
+      invalid_period: Select a valid month before updating statistics
       stats_for_target_are_being_updated: Stats for %{target} are being updated
       stats_are_being_updated: Stats are being updated
     tags:
@@ -3111,8 +3141,15 @@ en:
         re_detection_queued_we_ll_notify_you_when_it_finishes: Re-detection queued. We'll notify you when it finishes.
       failed_to_update_visits: Failed to update visits.
       bulk_updated:
-        one: "%{count} visit %{status}."
-        other: "%{count} visits %{status}."
+        confirmed:
+          one: "%{count} visit confirmed."
+          other: "%{count} visits confirmed."
+        declined:
+          one: "%{count} visit declined."
+          other: "%{count} visits declined."
+        suggested:
+          one: "%{count} visit suggested."
+          other: "%{count} visits suggested."
       no_matching_visits: No matching visits found.
       select_visit_to_delete: Select at least one visit to delete.
       failed_to_delete_visits: Failed to delete visits.
@@ -3123,7 +3160,10 @@ en:
       visits_must_share_day: Visits must be on the same day.
       failed_to_merge_visits: Failed to merge visits.
       unsupported_source_status: Unsupported source status.
-      visit_updated: Visit %{status}.
+      visit_updated:
+        confirmed: Visit confirmed.
+        declined: Visit declined.
+        suggested: Visit suggested.
       visits_merged: Visits merged.
       visit_removed: Visit removed. Your location points are still here.
       too_many_visits: You can update up to %{count} visits at once. Narrow your selection and try again.
@@ -3328,6 +3368,10 @@ en:
         import_completed_with_no_new_points: Import completed with no new points
         import_completed_with_no_points: Import completed with no points
         import_failed: Import failed
+        zero_points_with_timestamps: Your file %{name} imported 0 points. No location points with timestamps were found. GPX and KML imports require a per-point &lt;time&gt;/&lt;when&gt; value for each coordinate.
+        zero_points: Your file %{name} imported 0 points. No new location points were found in this file.
+        import_failed_self_hosted: 'Import "%{name}" failed: %{message}, stacktrace: %{backtrace}'
+        import_failed_cloud: 'Import "%{name}" failed, please contact us at hi@dawarich.com'
         your_import_name_finished_and_all_points_were_saved_but: Your import "%{name}" finished and all points were saved, but the %{step} step failed. Statistics, tracks or visit suggestions may be missing or outdated. You can trigger a recalculation from Settings.
         your_file_name_contained_raw_points_points_all_of_which: Your file %{name} contained %{raw_points} points, all of which already exist in your timeline at the same coordinates and timestamps. Nothing was imported. If this was unexpected, delete the existing points for that date range and re-import.
         source_missing: Import source cannot be nil
@@ -3512,6 +3556,7 @@ en:
             message_stacktrace_backtrace: "%{message}, stacktrace: %{backtrace}"
         yearly:
           calculating_job:
+            year_end_digest: Year-End Digest
             period_label_calculation_failed: "%{period_label} calculation failed"
             message_stacktrace_backtrace: "%{message}, stacktrace: %{backtrace}"
       import_data_job:
@@ -3525,6 +3570,9 @@ en:
           one: "%{count} year"
           other: "%{count} years"
         stats_tracks_and_digests_have_been_recalculated_for_year_label: Stats, tracks, and digests have been recalculated for %{year_label}.
+        year_count:
+          one: "%{count} year"
+          other: "%{count} years"
         data_recalculation_failed: Data recalculation failed
         message_stacktrace_n: "%{message}, stacktrace: %{backtrace}"
     visits:
@@ -3534,11 +3582,50 @@ en:
         visit_re_detection: Visit re-detection
         no_points_to_re_detect: No points to re-detect.
         visit_re_detection_complete: Visit re-detection complete
-        visits_created_visits_across_size_months: "%{visits_created} visits across %{size} months."
+        visits_count:
+          one: "%{count} visit"
+          other: "%{count} visits"
+        months_count:
+          one: "%{count} month"
+          other: "%{count} months"
+        visits_created_visits_across_size_months: "%{visits} across %{months}."
         visit_re_detection_partially_complete: Visit re-detection partially complete
         visit_re_detection_failed: Visit re-detection failed
-        visits_created_visits_across_ok_months_of_size_months_size: "%{visits_created} visits across %{ok_months} of %{size} months. %{failed_count} month(s) failed; re-run after the cooldown to retry."
+        visits_created_visits_across_ok_months_of_size_months_size:
+          one: "%{visits} across %{ok_months} of %{months}. 1 month failed; re-run after the cooldown to retry."
+          other: "%{visits} across %{ok_months} of %{months}. %{count} months failed; re-run after the cooldown to retry."
   javascript:
+    loading_sources:
+      anomalies:
+        one: "%{formatted_count} anomaly"
+        other: "%{formatted_count} anomalies"
+      areas:
+        one: "%{formatted_count} area"
+        other: "%{formatted_count} areas"
+      family:
+        one: "%{formatted_count} family member"
+        other: "%{formatted_count} family members"
+      flights:
+        one: "%{formatted_count} flight"
+        other: "%{formatted_count} flights"
+      hexagons:
+        one: "%{formatted_count} hexagon"
+        other: "%{formatted_count} hexagons"
+      photos:
+        one: "%{formatted_count} photo"
+        other: "%{formatted_count} photos"
+      places:
+        one: "%{formatted_count} place"
+        other: "%{formatted_count} places"
+      points:
+        one: "%{formatted_count} point"
+        other: "%{formatted_count} points"
+      tracks:
+        one: "%{formatted_count} track"
+        other: "%{formatted_count} tracks"
+      visits:
+        one: "%{formatted_count} visit"
+        other: "%{formatted_count} visits"
     messages:
       click_on_the_map_to_place_a_visit: Click on the map to place a visit
       end_time_must_be_after_start_time: End time must be after start time
@@ -3780,8 +3867,20 @@ en:
       confirm_delete_keep_points: Delete this visit? Your location points stay.
       end_after_start: End time must be after start time
       network_create_error: 'Network error: Failed to create visit'
-      bulk_status_failed: Failed to mark visits %{status}
-      bulk_status_updated: "%{count} visits %{status} successfully"
+      bulk_status_failed:
+        confirmed: Failed to confirm visits
+        declined: Failed to decline visits
+        suggested: Failed to mark visits as suggested
+      bulk_status_updated:
+        confirmed:
+          one: "%{count} visit confirmed successfully"
+          other: "%{count} visits confirmed successfully"
+        declined:
+          one: "%{count} visit declined successfully"
+          other: "%{count} visits declined successfully"
+        suggested:
+          one: "%{count} visit marked as suggested"
+          other: "%{count} visits marked as suggested"
       confirm_delete_count_keep_points:
         one: Delete %{count} visit? Your location points stay.
         other: Delete %{count} visits? Your location points stay.
@@ -3795,8 +3894,14 @@ en:
       deleted_count:
         one: Deleted %{count} visit
         other: Deleted %{count} visits
-      status_failed: Failed to mark visit %{status}
-      status_updated: Visit marked %{status} successfully
+      status_failed:
+        confirmed: Failed to confirm visit
+        declined: Failed to decline visit
+        suggested: Failed to mark visit as suggested
+      status_updated:
+        confirmed: Visit confirmed successfully
+        declined: Visit declined successfully
+        suggested: Visit marked as suggested
       unnamed: Unnamed Visit
     sharing:
       expires_in: Expires in %{time}

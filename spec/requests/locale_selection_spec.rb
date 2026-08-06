@@ -27,7 +27,7 @@ RSpec.describe 'Locale selection', type: :request do
   end
 
   it 'ignores an unsupported explicit locale' do
-    get root_path, params: { locale: 'fr' }
+    get root_path, params: { locale: 'xx' }
 
     expect(response.body).to include('<html lang="en"')
     expect(response.body).to include('The only location history tracker')

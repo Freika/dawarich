@@ -7,7 +7,13 @@ class FamilyMailer < ApplicationMailer
     @invited_by = invitation.invited_by
     @accept_url = family_invitation_url(@invitation.token)
 
-    with_user_locale(@invited_by) do
+    # The invitation is read by the person being invited, so it follows their
+    # own preference once they have an account. Someone who does not yet have
+    # one falls back to the inviter's language: the two are usually in the same
+    # household, which is a better guess than the site default.
+    recipient = User.find_by(email: @invitation.email)
+
+    with_user_locale(recipient || @invited_by) do
       mail(
         to: @invitation.email,
         subject: I18n.t('mailers.family.invitation.subject', family: @family.name)

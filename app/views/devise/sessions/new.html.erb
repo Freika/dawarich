@@ -2,7 +2,7 @@
   <div class="hero-content flex-col lg:flex-row-reverse w-full my-10">
     <div class="text-center lg:text-left">
       <% if @invitation %>
-        <h1 class="text-5xl font-bold text-base-content"><%= t('.sign_in_to_join') %> <%= @invitation.family.name %>!</h1>
+        <h1 class="text-5xl font-bold text-base-content"><%= t('.sign_in_to_join_family', family: @invitation.family.name) %></h1>
         <p class="py-6 text-base-content opacity-70">
           <%= t('.you_ve_been_invited_by') %> <strong><%= @invitation.invited_by.email %></strong> <%= t('.to_join_their_family_sign_in_to_your_account_to') %>
         </p>

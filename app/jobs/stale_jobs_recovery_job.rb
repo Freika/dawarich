@@ -16,10 +16,10 @@ class StaleJobsRecoveryJob < ApplicationJob
 
   def recover_stale_exports
     Export.processing.where(processing_started_at: ...EXPORT_TIMEOUT.ago).find_each do |export|
-      error_message = I18n.t('jobs.stale_jobs_recovery_job.export_timed_out_after_being_stuck_in_processing')
-      export.update!(status: :failed, error_message: error_message)
-
       I18n.with_locale(export.user.locale) do
+        error_message = I18n.t('jobs.stale_jobs_recovery_job.export_timed_out_after_being_stuck_in_processing')
+        export.update!(status: :failed, error_message: error_message)
+
         Notifications::Create.new(
           user: export.user,
           kind: :error,
@@ -35,10 +35,10 @@ class StaleJobsRecoveryJob < ApplicationJob
 
   def recover_stale_imports
     Import.processing.where(processing_started_at: ...IMPORT_TIMEOUT.ago).find_each do |import|
-      error_message = I18n.t('jobs.stale_jobs_recovery_job.import_timed_out_after_being_stuck_in_processing')
-      import.update!(status: :failed, error_message: error_message)
-
       I18n.with_locale(import.user.locale) do
+        error_message = I18n.t('jobs.stale_jobs_recovery_job.import_timed_out_after_being_stuck_in_processing')
+        import.update!(status: :failed, error_message: error_message)
+
         Notifications::Create.new(
           user: import.user,
           kind: :error,

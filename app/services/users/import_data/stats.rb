@@ -129,6 +129,14 @@ class Users::ImportData::Stats
       return false
     end
 
+    month_value = stat_data['month']
+    month = Integer(month_value, exception: false)
+    integer_value = !month_value.is_a?(Float) || (month_value % 1).zero?
+    unless month&.between?(1, 12) && integer_value
+      Rails.logger.error 'Failed to create stat: Validation failed: Month must be between 1 and 12'
+      return false
+    end
+
     if stat_data['distance'].blank?
       Rails.logger.error "Failed to create stat: Validation failed: Distance can't be blank"
       return false

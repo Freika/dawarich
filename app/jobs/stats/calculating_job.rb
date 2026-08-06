@@ -4,7 +4,11 @@ class Stats::CalculatingJob < ApplicationJob
   queue_as :stats
 
   def perform(user_id, year, month)
-    Stats::CalculateMonth.new(user_id, year, month).call
+    user = find_user_or_skip(user_id) || return
+
+    I18n.with_locale(user.locale) do
+      Stats::CalculateMonth.new(user_id, year, month).call
+    end
   rescue StandardError => e
     create_stats_update_failed_notification(user_id, e)
   end

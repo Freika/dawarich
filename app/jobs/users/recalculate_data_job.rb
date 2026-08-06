@@ -37,18 +37,20 @@ class Users::RecalculateDataJob < ApplicationJob
     @job_queue = job_queue
 
     with_user_timezone(user) do
-      years_to_process = determine_years
+      I18n.with_locale(user.locale) do
+        years_to_process = determine_years
 
-      if years_to_process.empty?
-        Rails.logger.info "No data to recalculate for user #{user_id}"
-        return
+        if years_to_process.empty?
+          Rails.logger.info "No data to recalculate for user #{user_id}"
+          return
+        end
+
+        recalculate_stats(years_to_process)
+        recalculate_tracks(years_to_process)
+        recalculate_digests(years_to_process)
+
+        create_success_notification(years_to_process) if @notify
       end
-
-      recalculate_stats(years_to_process)
-      recalculate_tracks(years_to_process)
-      recalculate_digests(years_to_process)
-
-      create_success_notification(years_to_process) if @notify
     end
   rescue Tracks::PerUserLock::AcquisitionTimeout
     raise

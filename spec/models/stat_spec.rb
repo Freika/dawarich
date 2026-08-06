@@ -7,6 +7,13 @@ RSpec.describe Stat, type: :model do
     it { is_expected.to belong_to(:user) }
     it { is_expected.to validate_presence_of(:year) }
     it { is_expected.to validate_presence_of(:month) }
+
+    it 'accepts only calendar months' do
+      expect(build(:stat, month: 1)).to be_valid
+      expect(build(:stat, month: 12)).to be_valid
+      expect(build(:stat, month: 0)).not_to be_valid
+      expect(build(:stat, month: 13)).not_to be_valid
+    end
   end
 
   describe 'methods' do

@@ -17,6 +17,8 @@ de:
         go_back_to_sign_in: Zurück zur Anmeldung
         confirm_account_linking: Kontoverknüpfung bestätigen
         link_provider_and_sign_in: Verknüpfe %{provider} und melde dich an
+        link_provider_to_your_dawarich_account: "%{provider} mit deinem Dawarich-Konto verknüpfen"
+        existing_account_link_instructions_html: "Wir haben ein bestehendes Dawarich-Konto für %{email} gefunden. Gib dein Passwort ein, um deine %{provider}-Identität mit diesem Konto zu verknüpfen und dich anzumelden."
   devise:
     confirmations:
       new:
@@ -146,6 +148,8 @@ de:
         i_m_self_hosting_and_exploring_the_demo: Ich hoste selbst und erkunde die Demo
         create_account_join_family: Konto erstellen & Familie beitreten
         sign_up: Registrieren
+        join_family: "Tritt %{family} bei!"
+        i_want_to_use_the_cloud_version: "Ich möchte die Cloud-Version nutzen"
     sessions:
       new:
         sign_in_to_join: Anmelden, um beizutreten
@@ -161,6 +165,7 @@ de:
         create_one_here: Eines hier erstellen
         sign_in_accept_invitation: Anmelden & Einladung annehmen
         log_in: Anmelden
+        sign_in_to_join_family: "Melde dich an, um %{family} beizutreten!"
       otp_challenge:
         two_factor_authentication: Zwei-Faktor-Authentifizierung
         enter_the_6_digit_code_from_your_authenticator_app_to: Gib den 6-stelligen Code aus deiner Authenticator-App ein, um fortzufahren.
@@ -266,7 +271,7 @@ de:
       invitations: Einladungen
       invited: Eingeladen
       ago_middot_expires: vor · verfällt
-      family_at_capacity: Familie ist voll (
+      family_at_capacity: "Familie ist voll (%{count}/%{max} Mitglieder)"
       members_max: Mitglieder max)
       leave_family: Von der Familie trennen
       delete_family: Familie löschen
@@ -563,6 +568,7 @@ de:
       points: Punkte
       status: Status
       created: Erstellt
+      file_size: "Dateigröße"
     new:
       back_to_imports: Zurück zu den Importen
       google_timeline_file_too_large: Google Timeline-Datei zu groß?
@@ -602,6 +608,9 @@ de:
       activity_streak: Aktivitätsstreak
       current: aktuell
       longest_streak: Längster Streak
+      day:
+        one: "Tag"
+        other: "Tage"
     header:
       insights: Einblicke
       your_personal_movement_analytics_and_travel_patterns: Deine persönlichen Bewegungsanalysen und Reisemuster
@@ -613,6 +622,9 @@ de:
       total_time: Gesamtzeit
       no_visit_data_available_for_this_period: Für diesen Zeitraum sind keine Aufenthaltsdaten verfügbar.
       confirmed_visits_will_appear_here: Bestätigte Aufenthalte werden hier angezeigt.
+      visit_count:
+        one: "Aufenthalt"
+        other: "Aufenthalte"
     monthly_digest:
       total_distance: Gesamtdistanz
       active_days: Aktive Tage
@@ -668,6 +680,9 @@ de:
       total_time: Gesamtzeit
       no_visit_data_available_for_this_period: Für diesen Zeitraum sind keine Aufenthaltsdaten verfügbar.
       confirmed_visits_will_appear_here: Bestätigte Aufenthalte werden hier angezeigt.
+      visit_count:
+        one: "Aufenthalt"
+        other: "Aufenthalte"
     travel_patterns:
       when_do_you_travel: Wann reist du?
       time_of_day_distribution: ZEIT DES TAGES VERTEILUNG
@@ -751,6 +766,10 @@ de:
       travel_patterns: Reise Muster
       movement_wellness: Bewegung & Wohlbefinden
       insights: Einblicke
+      total_distance: "Gesamtstrecke"
+      countries: "Länder"
+      cities: "Städte"
+      days_traveling: "Reisetage"
   kaminari:
     first_page:
       laquo: "«"
@@ -1271,6 +1290,10 @@ de:
         search_for_a_place: Suche nach einem Ort
         delete: Löschen
         delete_this_visit_your_location_points_stay: Diesen Aufenthalt löschen? Deine Standortpunkte bleiben.
+      suggestions_badge:
+        unreviewed_visits:
+          one: "%{count} ungeprüfter Aufenthalt"
+          other: "%{count} ungeprüfte Aufenthalte"
   notifications:
     notification:
       ago: vor
@@ -1342,6 +1365,7 @@ de:
       delete_selected: Ausgewählte löschen
       are_you_sure: Bist du sicher?
       select_all: Alles auswählen
+      all_imports: "Alle Importe"
   posters:
     poster:
       download_png: PNG herunterladen
@@ -1777,6 +1801,7 @@ de:
       days_remaining:
         one: "%{count} Tag verbleibend"
         other: "%{count} Tage verbleibend"
+      open_navigation_menu: "Navigationsmenü öffnen"
     place_creation_modal:
       create_new_place: Neuer Ort erstellen
       place_name: Ortsname *
@@ -1933,6 +1958,7 @@ de:
       also_show_the_path_travelled_since_this_link_was_created: Zeige auch den Weg, den du seit der Erstellung dieses Links zurückgelegt hast.
       cancel: Abbrechen
       create_share_link: Teilen-Link erstellen
+      this_shares_your_location_with_anyone_html: "Damit teilst du %{location} mit allen, die den Link haben — bis er abläuft oder du ihn widerrufst."
     modal_timeline_create_form:
       start_date: Startdatum
       end_date: Enddatum
@@ -2121,6 +2147,9 @@ de:
       day_count:
         one: "%{count} Tag"
         other: "%{count} Tage"
+      country_count:
+        one: "%{count} Land"
+        other: "%{count} Länder"
     edit:
       back_to_trips: Zurück zu Reisen
       editing_trip: Reise bearbeiten
@@ -2225,6 +2254,7 @@ de:
         first_time_count:
           one: "%{count} erstmals besucht"
           other: "%{count} erstmals besucht"
+        year_year_in_review: "Jahresrückblick %{year}"
       show:
         year_in_review: Jahresrückblick
         your_journey_by_the_numbers: Deine Reise, im Überblick
@@ -2300,10 +2330,6 @@ de:
         view_full_insights: "→ Vollständige Einblicke:"
         you_re_receiving_this_because_monthly_digest_emails_are_on_2: "───────────────────────────────────────── Du erhältst diese E-Mail, weil monatliche Zusammenfassungen aktiviert sind. E-Mail-Einstellungen verwalten:"
         weekday_totals: "@weekday_totals,"
-        labels_w_mon_tue_wed_thu_fri_sat_sun: 'labels: %w[Montag Dienstag Mittwoch Donnerstag Freitag Samstag Sonntag],'
-        width_20: 'width: 20,'
-        suffix_distance_unit: 'suffix: " #{@distance_unit}"'
-        31_map_d_daily_distances_d_to_s_to: "(1..31).map { |d| @daily_distances[d.to_s].to_f }"
         reject_zero: ".reject(&:zero?)"
         presence_0: ".presence || [0]"
         you_re_receiving_this_because_monthly_digest_emails_are_on_3: Du erhältst diese E-Mail, weil monatliche Zusammenfassungen aktiviert sind.
@@ -2581,6 +2607,12 @@ de:
         track: Track
         timeline: Zeitleiste
         live: Live
+    user:
+      status:
+        inactive: "Inaktiv"
+        active: "Aktiv"
+        trial: "Testphase"
+        pending_payment: "Zahlung ausstehend"
   photo_sources:
     immich: Immich
     photoprism: PhotoPrism
@@ -3079,6 +3111,9 @@ de:
     stats:
       stats_for_target_are_being_updated: Statistiken für %{target} werden aktualisiert
       stats_are_being_updated: Statistiken werden aktualisiert
+      whole_year: "das ganze Jahr %{year}"
+      month_of_year: "%{month} %{year}"
+      invalid_period: "Wähle einen gültigen Monat, bevor du die Statistiken aktualisierst"
     tags:
       tag_was_successfully_created: Tag wurde erfolgreich erstellt.
       tag_was_successfully_updated: Tag wurde erfolgreich aktualisiert.
@@ -3168,6 +3203,15 @@ de:
       bulk_updated:
         one: "%{count} Aufenthalt %{status}."
         other: "%{count} Aufenthalte %{status}."
+        confirmed:
+          one: "%{count} Aufenthalt bestätigt."
+          other: "%{count} Aufenthalte bestätigt."
+        declined:
+          one: "%{count} Aufenthalt abgelehnt."
+          other: "%{count} Aufenthalte abgelehnt."
+        suggested:
+          one: "%{count} Aufenthalt vorgeschlagen."
+          other: "%{count} Aufenthalte vorgeschlagen."
       no_matching_visits: Keine passenden Aufenthalte gefunden.
       select_visit_to_delete: Wähle mindestens einen Aufenthalt zum Löschen.
       failed_to_delete_visits: Löschen der Aufenthalte fehlgeschlagen.
@@ -3178,7 +3222,10 @@ de:
       visits_must_share_day: Aufenthalte müssen am selben Tag sein.
       failed_to_merge_visits: Verbinden der Aufenthalte fehlgeschlagen.
       unsupported_source_status: Unbekannter Quellstatus.
-      visit_updated: Aufenthalt %{status} aktualisiert.
+      visit_updated:
+        confirmed: "Aufenthalt bestätigt."
+        declined: "Aufenthalt abgelehnt."
+        suggested: "Aufenthalt vorgeschlagen."
       visits_merged: Aufenthalte verbunden.
       visit_removed: Aufenthalt entfernt. Deine Standortpunkte sind immer noch hier.
       too_many_visits: Du kannst bis zu %{count} Aufenthalte gleichzeitig aktualisieren. Schränke deine Auswahl ein und versuche es erneut.
@@ -3388,6 +3435,10 @@ de:
         source_missing: Importquelle darf nicht null sein
         unsupported_source: 'Nicht unterstützte Quelle: %{source}'
         zip_unclassified: Zip-Inhalt konnte nicht klassifiziert werden – Datei könnte beschädigt sein
+        zero_points_with_timestamps: "Deine Datei %{name} hat 0 Punkte importiert. Es wurden keine Standortpunkte mit Zeitstempeln gefunden. GPX- und KML-Importe benötigen für jede Koordinate einen eigenen &lt;time&gt;/&lt;when&gt;-Wert."
+        zero_points: "Deine Datei %{name} hat 0 Punkte importiert. In dieser Datei wurden keine neuen Standortpunkte gefunden."
+        import_failed_self_hosted: "Import \"%{name}\" fehlgeschlagen: %{message}, Stacktrace: %{backtrace}"
+        import_failed_cloud: "Import \"%{name}\" fehlgeschlagen, bitte kontaktiere uns unter hi@dawarich.com"
       source_detector:
         amazon_order: Dies ist eine Amazon-Exportdatei, nicht Standortdaten. Dawarich importiert Standortverläufe aus Google Takeout, OwnTracks, GPX und ähnlichen Quellen.
         apple_plist: Binäre Apple-Property-List-Dateien (.plist) werden nicht unterstützt.
@@ -3569,6 +3620,7 @@ de:
           calculating_job:
             period_label_calculation_failed: "%{period_label} Berechnung fehlgeschlagen"
             message_stacktrace_backtrace: "%{message}, stacktrace: %{backtrace}"
+            year_end_digest: "Jahresrückblick"
       import_data_job:
         data_import_failed: Datenimport fehlgeschlagen
         your_data_import_failed_with_error_message_please_check_the: 'Dein Datenimport ist mit folgendem Fehler fehlgeschlagen: %{message}. Bitte prüfe das Archivformat und versuche es erneut.'
@@ -3589,10 +3641,18 @@ de:
         visit_re_detection: Aufenthalte neu erkennen
         no_points_to_re_detect: Keine Punkte zum erneuten Erkennen.
         visit_re_detection_complete: Neuerkennung der Aufenthalte abgeschlossen
-        visits_created_visits_across_size_months: "%{visits_created} Aufenthalte in %{size} Monaten."
+        visits_created_visits_across_size_months: "%{visits} in %{months}."
         visit_re_detection_partially_complete: Neuerkennung der Aufenthalte teilweise abgeschlossen
         visit_re_detection_failed: Neuerkennung der Aufenthalte fehlgeschlagen
-        visits_created_visits_across_ok_months_of_size_months_size: "%{visits_created} Aufenthalte in %{ok_months} von %{size} Monaten. %{failed_count} Monat(e) fehlgeschlagen; starte den Vorgang nach der Wartezeit erneut."
+        visits_created_visits_across_ok_months_of_size_months_size:
+          one: "%{visits} in %{ok_months} von %{months}. 1 Monat ist fehlgeschlagen; starte den Vorgang nach der Abkühlzeit erneut."
+          other: "%{visits} in %{ok_months} von %{months}. %{count} Monate sind fehlgeschlagen; starte den Vorgang nach der Abkühlzeit erneut."
+        visits_count:
+          one: "%{count} Aufenthalt"
+          other: "%{count} Aufenthalte"
+        months_count:
+          one: "%{count} Monat"
+          other: "%{count} Monate"
   javascript:
     messages:
       click_on_the_map_to_place_a_visit: Klicke auf die Karte, um einen Aufenthalt zu platzieren
@@ -3835,8 +3895,20 @@ de:
       confirm_delete_keep_points: Diesen Aufenthalt löschen? Deine Standortpunkte bleiben erhalten.
       end_after_start: Endzeit muss nach Startzeit liegen
       network_create_error: 'Netzwerkfehler: Erstellung des Aufenthalts fehlgeschlagen'
-      bulk_status_failed: Markierung der Aufenthalte %{status} fehlgeschlagen
-      bulk_status_updated: "%{count} Aufenthalte %{status} erfolgreich"
+      bulk_status_failed:
+        confirmed: "Aufenthalte konnten nicht bestätigt werden"
+        declined: "Aufenthalte konnten nicht abgelehnt werden"
+        suggested: "Aufenthalte konnten nicht als vorgeschlagen markiert werden"
+      bulk_status_updated:
+        confirmed:
+          one: "%{count} Aufenthalt erfolgreich bestätigt"
+          other: "%{count} Aufenthalte erfolgreich bestätigt"
+        declined:
+          one: "%{count} Aufenthalt erfolgreich abgelehnt"
+          other: "%{count} Aufenthalte erfolgreich abgelehnt"
+        suggested:
+          one: "%{count} Aufenthalt als vorgeschlagen markiert"
+          other: "%{count} Aufenthalte als vorgeschlagen markiert"
       confirm_delete_count_keep_points:
         one: Lösche %{count} Aufenthalt? Deine Standortpunkte bleiben.
         other: Lösche %{count} Aufenthalte? Deine Standortpunkte bleiben.
@@ -3850,8 +3922,14 @@ de:
       deleted_count:
         one: Gelöschter %{count} Aufenthalt
         other: Gelöschte %{count} Aufenthalte
-      status_failed: Fehler beim Kennzeichnen des Aufenthalts %{status}
-      status_updated: Aufenthalt %{status} erfolgreich markiert
+      status_failed:
+        confirmed: "Aufenthalt konnte nicht bestätigt werden"
+        declined: "Aufenthalt konnte nicht abgelehnt werden"
+        suggested: "Aufenthalt konnte nicht als vorgeschlagen markiert werden"
+      status_updated:
+        confirmed: "Aufenthalt erfolgreich bestätigt"
+        declined: "Aufenthalt erfolgreich abgelehnt"
+        suggested: "Aufenthalt als vorgeschlagen markiert"
       unnamed: Unbenannter Aufenthalt
     sharing:
       expires_in: Verfällt in %{time}
@@ -4223,6 +4301,37 @@ de:
       hours_short: "%{count}h"
       invalid_date: Ungültiges Datum
       minutes_short: "%{count}min"
+    loading_sources:
+      anomalies:
+        one: "%{formatted_count} Anomalie"
+        other: "%{formatted_count} Anomalien"
+      areas:
+        one: "%{formatted_count} Bereich"
+        other: "%{formatted_count} Bereiche"
+      family:
+        one: "%{formatted_count} Familienmitglied"
+        other: "%{formatted_count} Familienmitglieder"
+      flights:
+        one: "%{formatted_count} Flug"
+        other: "%{formatted_count} Flüge"
+      hexagons:
+        one: "%{formatted_count} Hexagon"
+        other: "%{formatted_count} Hexagone"
+      photos:
+        one: "%{formatted_count} Foto"
+        other: "%{formatted_count} Fotos"
+      places:
+        one: "%{formatted_count} Ort"
+        other: "%{formatted_count} Orte"
+      points:
+        one: "%{formatted_count} Punkt"
+        other: "%{formatted_count} Punkte"
+      tracks:
+        one: "%{formatted_count} Track"
+        other: "%{formatted_count} Tracks"
+      visits:
+        one: "%{formatted_count} Aufenthalt"
+        other: "%{formatted_count} Aufenthalte"
   battery_statuses:
     unknown: unbekannt
     unplugged: nicht angeschlossen

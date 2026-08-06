@@ -149,12 +149,9 @@ class Imports::Create
 
   def zero_points_content(import)
     if import.gpx? || import.kml?
-      "Your file #{import.name} imported 0 points. No location points with " \
-        'timestamps were found. GPX and KML imports require a per-point ' \
-        '<time>/<when> value for each coordinate.'
+      I18n.t('services.imports.create.zero_points_with_timestamps', name: import.name)
     else
-      "Your file #{import.name} imported 0 points. No new location points " \
-        'were found in this file.'
+      I18n.t('services.imports.create.zero_points', name: import.name)
     end
   end
 
@@ -208,14 +205,15 @@ class Imports::Create
   end
 
   def create_import_failed_notification(import, user, error)
-    message = import_failed_message(import, error)
-
+    # The message is built inside the block: translating it a line earlier left
+    # the notification with a title in the reader's language and a body in
+    # whatever language the request happened to run in.
     I18n.with_locale(user.locale) do
       Notifications::Create.new(
         user:,
         kind: :error,
         title: I18n.t('services.imports.create.import_failed'),
-        content: message
+        content: import_failed_message(import, error)
       ).call
     end
   end
@@ -228,9 +226,14 @@ class Imports::Create
 
   def import_failed_message(import, error)
     if DawarichSettings.self_hosted?
-      "Import \"#{import.name}\" failed: #{error.message}, stacktrace: #{error.backtrace.join("\n")}"
+      I18n.t(
+        'services.imports.create.import_failed_self_hosted',
+        name: import.name,
+        message: error.message,
+        backtrace: error.backtrace.join("\n")
+      )
     else
-      "Import \"#{import.name}\" failed, please contact us at hi@dawarich.com"
+      I18n.t('services.imports.create.import_failed_cloud', name: import.name)
     end
   end
 end

@@ -46,7 +46,7 @@
           <% season_colors = { 'winter' => 'info', 'spring' => 'success', 'summer' => 'warning', 'fall' => 'error' } %>
           <% %w[winter spring summer fall].each do |season| %>
             <div class="flex items-center gap-2">
-              <span class="w-14 capitalize"><%= season.capitalize %></span>
+              <span class="w-14 capitalize"><%= t("services.insights.travel_insight_generator.seasons.#{season}") %></span>
               <progress class="progress progress-<%= season_colors[season] %> flex-1 h-2"
                         value="<%= @seasonality[season] || 0 %>" max="100"></progress>
               <span class="w-10 text-right text-base-content/60"><%= @seasonality[season] || 0 %>%</span>

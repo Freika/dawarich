@@ -67,7 +67,7 @@
                   <label class="label">
                     <span class="label-text font-medium"><%= t('.your_language') %></span>
                   </label>
-                  <div class="grid grid-cols-1 sm:grid-cols-3 gap-3" role="radiogroup"
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3" role="radiogroup"
                        aria-label="<%= t('.your_language') %>">
                     <% I18n.available_locales.each do |locale| %>
                       <label class="cursor-pointer" data-testid="language-choice">

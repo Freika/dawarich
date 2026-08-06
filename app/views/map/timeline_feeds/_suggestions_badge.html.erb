@@ -4,7 +4,7 @@
     Locals: count - Integer %>
 <span id="timeline-suggestions-badge">
   <% if count.to_i.positive? %>
-    <% tooltip = "#{count.to_i} unreviewed #{'visit'.pluralize(count.to_i)}" %>
+    <% tooltip = t('.unreviewed_visits', count: count.to_i) %>
     <span class="map-button-cluster__badge"
           aria-label="<%= tooltip %>"
           title="<%= tooltip %>">

@@ -5,7 +5,7 @@
   <div class="hero text-white rounded-lg shadow-lg mb-8" style="background: linear-gradient(135deg, #0f766e, #0284c7);">
     <div class="hero-content text-center py-12">
       <div class="max-w-lg">
-        <h1 class="text-4xl font-bold"><%= @digest.year %> <%= t('.year_in_review') %></h1>
+        <h1 class="text-4xl font-bold"><%= t('.year_year_in_review', year: @digest.year) %></h1>
         <p class="py-4"><%= t('.your_journey_by_the_numbers') %></p>
       </div>
     </div>
