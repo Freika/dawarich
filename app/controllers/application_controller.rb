@@ -15,7 +15,7 @@ class ApplicationController < ActionController::Base
 
   helper_method :current_user_safe_settings, :poster_ordering_enabled?, :family_feature_available?,
                 :current_user_features, :family_home_path, :locale_native_name, :locale_flag,
-                :suggested_locale, :locale_path
+                :suggested_locale, :locale_path, :morph_page_refreshes?
 
   def morph_page_refreshes?
     self.class.page_refresh_morphing
