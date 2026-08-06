@@ -79,6 +79,38 @@ namespace :e2e do
     abort '✋ Refusing to run e2e:reset in production. Set ALLOW_E2E_RESET=1 to override.'
   end
 
+  # Parallel-worker seeding: E2E_PARALLEL_USERS=N clones the full demo dataset
+  # onto N-1 extra users (e2e-worker1..@dawarich.app, each with its own family)
+  # so each Playwright worker owns an isolated copy. Worker 0 stays
+  # demo@dawarich.app. Naming must stay in sync with
+  # e2e-dawarich-playwright/v2/helpers/constants.js and setup/auth.setup.js.
+  def e2e_parallel_users
+    [ENV.fetch('E2E_PARALLEL_USERS', '1').to_i, 1].max
+  end
+
+  def e2e_worker_emails
+    (1...e2e_parallel_users).flat_map do |i|
+      ["e2e-worker#{i}@dawarich.app"] +
+        (1..3).map { |n| "family.member#{n}.w#{i}@dawarich.app" }
+    end
+  end
+
+  def wait_for_sidekiq_to_settle
+    require 'sidekiq/api'
+    deadline = Time.current + 5.minutes
+    loop do
+      busy = Sidekiq::Workers.new.size
+      enqueued = Sidekiq::Queue.all.sum(&:size)
+      break if busy.zero? && enqueued.zero?
+
+      if Time.current > deadline
+        puts "  ↪ still busy after 5 minutes (busy=#{busy} enqueued=#{enqueued}) — continuing anyway"
+        break
+      end
+      sleep 2
+    end
+  end
+
   desc 'Reset demo + lite + family users to a clean state and re-seed canonical e2e data'
   task reset_and_seed: :environment do
     assert_safe_environment!
@@ -93,41 +125,50 @@ namespace :e2e do
     File.write(geojson_path, geojson)
     puts "✅ Wrote #{File.size(geojson_path)} bytes"
 
-    puts "\n🚀 Invoking demo:seed_data..."
-    Rake::Task['demo:seed_data'].invoke(geojson_path)
+    seed_tasks = %w[
+      demo:seed_data
+      e2e:seed_anomalies
+      e2e:seed_demo_trip
+      e2e:seed_tag_fixtures
+      e2e:seed_fixture_tracks
+    ]
 
-    # The import enqueues track generation / geocoding / stats jobs. Those
-    # rebuild tracks, which nullifies any track_id assigned below (the #2630
-    # polluter) — wait for the churn to settle before planting fixtures.
-    puts "\n⏳ Waiting for background jobs to settle..."
-    require 'sidekiq/api'
-    deadline = Time.current + 5.minutes
-    loop do
-      busy = Sidekiq::Workers.new.size
-      enqueued = Sidekiq::Queue.all.sum(&:size)
-      break if busy.zero? && enqueued.zero?
-
-      if Time.current > deadline
-        puts "  ↪ still busy after 5 minutes (busy=#{busy} enqueued=#{enqueued}) — continuing anyway"
-        break
+    (0...e2e_parallel_users).each do |worker|
+      if worker.zero?
+        %w[E2E_SEED_EMAIL E2E_SEED_API_KEY E2E_SEED_SUFFIX E2E_SEED_SKIP_LITE]
+          .each { |key| ENV.delete(key) }
+      else
+        ENV['E2E_SEED_EMAIL']     = "e2e-worker#{worker}@dawarich.app"
+        ENV['E2E_SEED_API_KEY']   = "demo_api_key_w#{worker}"
+        ENV['E2E_SEED_SUFFIX']    = ".w#{worker}"
+        ENV['E2E_SEED_SKIP_LITE'] = '1'
       end
-      sleep 2
+
+      puts "\n🚀 Seeding worker #{worker} (#{ENV.fetch('E2E_SEED_EMAIL', 'demo@dawarich.app')})..."
+      seed_tasks.each { |name| Rake::Task[name].reenable }
+      Rake::Task['demo:seed_data'].invoke(geojson_path)
+
+      # The import enqueues track generation / geocoding / stats jobs. Those
+      # rebuild tracks, which nullifies any track_id assigned below (the #2630
+      # polluter) — wait for the churn to settle before planting fixtures.
+      puts "\n⏳ Waiting for background jobs to settle..."
+      wait_for_sidekiq_to_settle
+
+      puts "\n⚠️  Planting anomaly fixtures..."
+      Rake::Task['e2e:seed_anomalies'].invoke
+
+      puts "\n🧭 Seeding the anomaly-window demo trip..."
+      Rake::Task['e2e:seed_demo_trip'].invoke
+
+      puts "\n🏷️  Seeding tag fixtures..."
+      Rake::Task['e2e:seed_tag_fixtures'].invoke
+
+      puts "\n🛤️  Seeding fixture tracks (timeline-replay + journey-leg specs)..."
+      Rake::Task['e2e:seed_fixture_tracks'].invoke
     end
 
-    puts "\n⚠️  Planting anomaly fixtures..."
-    Rake::Task['e2e:seed_anomalies'].invoke
-
-    puts "\n🧭 Seeding the anomaly-window demo trip..."
-    Rake::Task['e2e:seed_demo_trip'].invoke
-
-    puts "\n🏷️  Seeding tag fixtures..."
-    Rake::Task['e2e:seed_tag_fixtures'].invoke
-
-    puts "\n🛤️  Seeding fixture tracks (timeline-replay + journey-leg specs)..."
-    Rake::Task['e2e:seed_fixture_tracks'].invoke
-
     puts "\n🔕 Suppressing the changelog prompt + onboarding modal for e2e users..."
-    User.where(email: E2E_USER_EMAILS).find_each do |user|
+    User.where(email: E2E_USER_EMAILS + e2e_worker_emails).find_each do |user|
       user.update_columns(
         changelog_consent: User.changelog_consents[:declined],
         settings: (user.settings || {}).merge('onboarding_completed' => true)
@@ -139,7 +180,7 @@ namespace :e2e do
   task seed_anomalies: :environment do
     assert_safe_environment!
 
-    user = User.find_by!(email: 'demo@dawarich.app')
+    user = User.find_by!(email: ENV.fetch('E2E_SEED_EMAIL', 'demo@dawarich.app'))
     base_day = Time.zone.parse('2025-10-15')
 
     user.points.where(tracker_id: %w[e2e-anomaly e2e-backbone]).delete_all
@@ -206,7 +247,7 @@ namespace :e2e do
   task seed_demo_trip: :environment do
     assert_safe_environment!
 
-    user = User.find_by!(email: 'demo@dawarich.app')
+    user = User.find_by!(email: ENV.fetch('E2E_SEED_EMAIL', 'demo@dawarich.app'))
 
     user.trips.where(name: E2E_ANOMALY_TRIP_NAME).destroy_all
 
@@ -227,7 +268,7 @@ namespace :e2e do
   task seed_tag_fixtures: :environment do
     assert_safe_environment!
 
-    user = User.find_by!(email: 'demo@dawarich.app')
+    user = User.find_by!(email: ENV.fetch('E2E_SEED_EMAIL', 'demo@dawarich.app'))
 
     tags = E2E_TAG_NAMES.map do |name|
       user.tags.find_or_create_by!(name: name)
@@ -251,7 +292,7 @@ namespace :e2e do
   task seed_fixture_tracks: :environment do
     assert_safe_environment!
 
-    user = User.find_by!(email: 'demo@dawarich.app')
+    user = User.find_by!(email: ENV.fetch('E2E_SEED_EMAIL', 'demo@dawarich.app'))
 
     _seed_fixture_track(
       user,
@@ -317,7 +358,7 @@ namespace :e2e do
   task reset: :environment do
     assert_safe_environment!
 
-    User.where(email: E2E_USER_EMAILS).find_each do |user|
+    User.where(email: E2E_USER_EMAILS + e2e_worker_emails).find_each do |user|
       print "  ↪ #{user.email} ... "
       reset_user_data!(user)
       puts 'done'
