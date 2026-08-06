@@ -88,12 +88,15 @@ class Gpx::TrackImporter
   def prepare_point(point, tracker_id)
     return if point['lat'].blank? || point['lon'].blank? || point['time'].blank?
 
+    timestamp = parse_timestamp(point['time'])
+    return unless timestamp
+
     elevation = point['ele'].to_f
 
     attrs = {
       lonlat: "POINT(#{point['lon'].to_d} #{point['lat'].to_d})",
       altitude: elevation,
-      timestamp: Time.zone.parse(point['time']).utc.to_i,
+      timestamp: timestamp.utc.to_i,
       tracker_id: tracker_id,
       import_id: import.id,
       velocity: speed(point),
@@ -107,6 +110,12 @@ class Gpx::TrackImporter
 
   def importer_name
     'GPX'
+  end
+
+  def parse_timestamp(value)
+    DateTime.iso8601(value).to_time
+  rescue ArgumentError, TypeError
+    nil
   end
 
   def speed(point)

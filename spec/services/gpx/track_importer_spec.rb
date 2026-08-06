@@ -100,6 +100,31 @@ RSpec.describe Gpx::TrackImporter do
       end
     end
 
+    context 'when a track point has an invalid timestamp' do
+      let(:file_path) do
+        path = Rails.root.join('tmp', "gpx_invalid_timestamp_#{SecureRandom.hex(4)}.gpx")
+        File.write(path, <<~XML)
+          <?xml version="1.0" encoding="UTF-8"?>
+          <gpx version="1.1" creator="Synthetic Export" xmlns="http://www.topografix.com/GPX/1/1">
+            <trk><trkseg>
+              <trkpt lat="52.5200" lon="13.4050"><time>not-a-timestamp</time></trkpt>
+              <trkpt lat="51.5072" lon="-0.1276"><time>2026-00-00T00:00:00Z</time></trkpt>
+              <trkpt lat="40.7128" lon="-74.0060"><time>2026-02-30T00:00:00Z</time></trkpt>
+              <trkpt lat="48.8566" lon="2.3522"><time>2026-08-06T15:56:21Z</time></trkpt>
+            </trkseg></trk>
+          </gpx>
+        XML
+        path
+      end
+
+      after { File.delete(file_path) if File.exist?(file_path) }
+
+      it 'skips the invalid point and imports valid points' do
+        expect { parser }.to change { Point.count }.by(1)
+        expect(user.points.last.timestamp).to eq(Time.zone.parse('2026-08-06T15:56:21Z').to_i)
+      end
+    end
+
     context 'when file exported from Garmin' do
       let(:file_path) { Rails.root.join('spec/fixtures/files/gpx/garmin_example.gpx') }
 
