@@ -4,6 +4,7 @@
 import { Controller } from "@hotwired/stimulus"
 import maplibregl from "maplibre-gl"
 import { getCurrentTheme } from "maps_maplibre/utils/popup_theme"
+import { RouteSegmenter } from "maps_maplibre/utils/route_segmenter"
 import { getMapStyle } from "maps_maplibre/utils/style_manager"
 
 export default class extends Controller {
@@ -52,16 +53,17 @@ export default class extends Controller {
   }
 
   showRoute() {
-    const coordinates = this.getCoordinates(this.pathValue)
-    if (coordinates.length < 2) return
+    const segments = this.getCoordinates(this.pathValue)
+    const flattened = segments.flat()
+    if (flattened.length < 2) return
 
     this.map.addSource("trip-route", {
       type: "geojson",
       data: {
         type: "Feature",
         geometry: {
-          type: "LineString",
-          coordinates,
+          type: "MultiLineString",
+          coordinates: segments,
         },
       },
     })
@@ -83,7 +85,7 @@ export default class extends Controller {
 
     // Fit bounds to route
     const bounds = new maplibregl.LngLatBounds()
-    for (const coord of coordinates) bounds.extend(coord)
+    for (const coord of flattened) bounds.extend(coord)
     this.map.fitBounds(bounds, { padding: 30, maxZoom: 15, duration: 0 })
   }
 
@@ -95,13 +97,20 @@ export default class extends Controller {
       }
 
       // Coordinates are already [lng, lat] from PostGIS — MapLibre uses the same order
-      return coordinates.filter(
+      const filtered = coordinates.filter(
         (coord) =>
           Array.isArray(coord) &&
           coord.length >= 2 &&
           !Number.isNaN(coord[0]) &&
           !Number.isNaN(coord[1]),
       )
+
+      const segment = filtered.map(([lng, lat]) => ({
+        longitude: lng,
+        latitude: lat,
+      }))
+
+      return RouteSegmenter.unwrapCoordinates(segment)
     } catch (error) {
       console.error("Error processing coordinates:", error)
       return []

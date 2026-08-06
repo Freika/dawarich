@@ -44,6 +44,22 @@ namespace :e2e do
   E2E_ANOMALY_TRIP_START = '2025-10-15 11:00:00'
   E2E_ANOMALY_TRIP_END   = '2025-10-15 18:00:00'
 
+  # Japan → Hawaii route that crosses the International Date Line. Longitude
+  # jumps from positive (Japan) to negative (Hawaii), a > 180° delta. Keep in
+  # sync with e2e-dawarich-playwright/v2/helpers/antimeridian.js.
+  E2E_ANTIMERIDIAN_FIXTURE = [
+    { lat: 35.6800, lon: 139.7700, hour: 9.0,  country: 'Japan' },
+    { lat: 33.5900, lon: 152.0000, hour: 11.0, country: 'Japan' },
+    { lat: 28.0000, lon: 170.0000, hour: 13.0, country: 'Japan' },
+    { lat: 24.0000, lon: -170.000, hour: 15.0, country: 'United States' },
+    { lat: 21.3100, lon: -157.860, hour: 17.0, country: 'United States' }
+  ].freeze
+
+  E2E_ANTIMERIDIAN_TRIP_NAME = 'E2E Antimeridian Crossing'.freeze
+  E2E_ANTIMERIDIAN_DAY = '2025-09-20'.freeze
+  E2E_ANTIMERIDIAN_TRIP_START = '2025-09-20 08:00:00'.freeze
+  E2E_ANTIMERIDIAN_TRIP_END   = '2025-09-20 18:00:00'.freeze
+
   # Tag fixtures for timeline-filters spec "Tag chips" describe. Three tags
   # plus one "tag-holder" place that carries all three — so the e2e suite
   # can look up tag IDs via /api/v1/places (which exposes place.tags),
@@ -119,6 +135,9 @@ namespace :e2e do
 
     puts "\n🧭 Seeding the anomaly-window demo trip..."
     Rake::Task['e2e:seed_demo_trip'].invoke
+
+    puts "\n🌏 Seeding the antimeridian-crossing demo trip..."
+    Rake::Task['e2e:seed_antimeridian_trip'].invoke
 
     puts "\n🏷️  Seeding tag fixtures..."
     Rake::Task['e2e:seed_tag_fixtures'].invoke
@@ -214,6 +233,44 @@ namespace :e2e do
       name: E2E_ANOMALY_TRIP_NAME,
       started_at: Time.zone.parse(E2E_ANOMALY_TRIP_START),
       ended_at:   Time.zone.parse(E2E_ANOMALY_TRIP_END)
+    )
+
+    trip.recalculate_path_and_distance!
+    trip.calculate_countries
+    trip.update!(last_recalculated_at: Time.current)
+
+    puts "  ↪ trip ##{trip.id} \"#{trip.name}\" countries=#{trip.visited_countries.inspect}"
+  end
+
+  desc 'Seed a Japan→Hawaii trip whose path crosses the International Date Line.'
+  task seed_antimeridian_trip: :environment do
+    assert_safe_environment!
+
+    user = User.find_by!(email: 'demo@dawarich.app')
+    base_day = Time.zone.parse(E2E_ANTIMERIDIAN_DAY)
+
+    user.points.where(tracker_id: 'e2e-antimeridian').delete_all
+
+    E2E_ANTIMERIDIAN_FIXTURE.each do |row|
+      ts = (base_day + (row[:hour] * 3600).to_i.seconds).to_i
+
+      next if user.points.exists?(timestamp: ts, lonlat: "POINT(#{row[:lon]} #{row[:lat]})")
+
+      user.points.create!(
+        lonlat: "POINT(#{row[:lon]} #{row[:lat]})",
+        timestamp: ts,
+        anomaly: false,
+        tracker_id: 'e2e-antimeridian',
+        country_name: row[:country]
+      )
+    end
+
+    user.trips.where(name: E2E_ANTIMERIDIAN_TRIP_NAME).destroy_all
+
+    trip = user.trips.create!(
+      name: E2E_ANTIMERIDIAN_TRIP_NAME,
+      started_at: Time.zone.parse(E2E_ANTIMERIDIAN_TRIP_START),
+      ended_at:   Time.zone.parse(E2E_ANTIMERIDIAN_TRIP_END)
     )
 
     trip.recalculate_path_and_distance!
