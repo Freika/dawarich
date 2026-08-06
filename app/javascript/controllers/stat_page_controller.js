@@ -1,5 +1,6 @@
 import { translate } from "i18n"
 import maplibregl from "maplibre-gl"
+import { getCurrentTheme } from "maps_maplibre/utils/popup_theme"
 import { getMapStyle } from "maps_maplibre/utils/style_manager"
 import BaseController from "./base_controller"
 
@@ -56,6 +57,7 @@ export default class extends BaseController {
   }
 
   disconnect() {
+    this.disconnected = true
     if (this.map) {
       this.map.remove()
     }
@@ -63,7 +65,9 @@ export default class extends BaseController {
 
   async initializeMap() {
     try {
-      const style = await getMapStyle(this.styleName())
+      const style = await getMapStyle(getCurrentTheme())
+      if (this.disconnected) return
+
       this.map = new maplibregl.Map({
         container: this.mapTarget,
         style,
@@ -85,12 +89,6 @@ export default class extends BaseController {
       console.error("Error initializing map:", error)
       this.showError(translate("stats.map_initialization_failed"))
     }
-  }
-
-  styleName() {
-    return document.documentElement.dataset.theme === "dawarich"
-      ? "light"
-      : "dark"
   }
 
   async loadMonthData() {

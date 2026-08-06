@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Removed
 
-- Map v1 (Leaflet) has been removed. `/map` now opens the MapLibre map, and `/map/v1` redirects to `/map/v2`. The Settings → Maps page (the v1-only custom tile URL and the map version toggle) was removed as well — map appearance settings live in the map's own settings panel.
+- Map v1 (Leaflet) has been removed. `/map` now opens the MapLibre map, and `/map/v1` redirects to `/map/v2`. The Settings → Maps page (the v1-only custom tile URL and the map version toggle) was removed as well — map appearance settings live in the map's own settings panel. Note that all maps now require WebGL: browsers with hardware acceleration disabled will see an error message instead of a map, as the Leaflet fallback no longer exists.
 
 ### Changed
 

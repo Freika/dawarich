@@ -1,5 +1,7 @@
+import { translate } from "i18n"
 import maplibregl from "maplibre-gl"
 import { buildHexagonPopup } from "maps_maplibre/utils/hexagon_popup"
+import { getCurrentTheme } from "maps_maplibre/utils/popup_theme"
 import { getMapStyle } from "maps_maplibre/utils/style_manager"
 import BaseController from "./base_controller"
 
@@ -20,6 +22,7 @@ export default class extends BaseController {
   }
 
   disconnect() {
+    this.disconnected = true
     if (this.map) {
       this.map.remove()
     }
@@ -27,7 +30,9 @@ export default class extends BaseController {
 
   async initializeMap() {
     try {
-      const style = await getMapStyle(this.styleName())
+      const style = await getMapStyle(getCurrentTheme())
+      if (this.disconnected) return
+
       this.map = new maplibregl.Map({
         container: this.element,
         style,
@@ -41,14 +46,8 @@ export default class extends BaseController {
       this.map.on("load", () => this.loadHexagons())
     } catch (error) {
       console.error("Error initializing map:", error)
-      this.hideLoadingOverlay()
+      this.showLoadError()
     }
-  }
-
-  styleName() {
-    return document.documentElement.dataset.theme === "dawarich"
-      ? "light"
-      : "dark"
   }
 
   async loadHexagons() {
@@ -248,5 +247,18 @@ export default class extends BaseController {
     if (loadingElement) {
       loadingElement.style.display = "none"
     }
+  }
+
+  showLoadError() {
+    const loadingElement = document.getElementById("map-loading")
+    if (!loadingElement) return
+
+    const container = document.createElement("div")
+    container.className = "alert alert-error"
+    const span = document.createElement("span")
+    span.textContent = translate("stats.map_initialization_failed")
+    container.appendChild(span)
+    loadingElement.replaceChildren(container)
+    loadingElement.style.display = "flex"
   }
 }

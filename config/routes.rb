@@ -264,9 +264,7 @@ Rails.application.routes.draw do
 
   # Map namespace with versioning
   namespace :map do
-    get '/v1', to: redirect { |_params, request|
-      ['/map/v2', request.query_string.presence].compact.join('?')
-    }
+    get '/v1', to: redirect(path: '/map/v2')
     get '/v2', to: 'maplibre#index', as: :v2
     resources :timeline_feeds, only: [:index] do
       get :track_info, on: :member
