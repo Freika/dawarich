@@ -12,7 +12,7 @@ class ApplicationController < ActionController::Base
   before_action :unread_notifications, :set_self_hosted_status, :store_client_header
 
   helper_method :current_user_safe_settings, :poster_ordering_enabled?, :family_feature_available?,
-                :current_user_features, :family_home_path, :alternate_locale, :locale_switch_path,
+                :current_user_features, :family_home_path, :locale_native_name, :locale_flag,
                 :suggested_locale, :locale_path
 
   # Memoized per-request SafeSettings for the current user. Use this instead of
@@ -222,8 +222,20 @@ status: :see_other
     candidates.max_by { |_locale, quality, index| [quality, -index] }&.first
   end
 
-  def alternate_locale
-    I18n.locale == :de ? :en : :de
+  # A language is always named in its own words, so a reader can find their own
+  # language without already understanding the one they are looking at.
+  # `fallback: false` is load-bearing: fallbacks are on in production, and a
+  # locale that forgets `language_name` would otherwise resolve to the English
+  # value and offer itself as "English" rather than reaching the default.
+  def locale_native_name(locale)
+    I18n.t('language_name', locale: locale, default: locale.to_s.upcase, fallback: false)
+  end
+
+  # Each locale names its own flag, so adding a language stays a one-file
+  # change. A language is not a country, so this is a label, not a claim about
+  # where it is spoken — the native name next to it is what identifies it.
+  def locale_flag(locale)
+    I18n.t('language_flag', locale: locale, default: nil, fallback: false)
   end
 
   # Built from `request.path` rather than `url_for` so that query parameters
@@ -231,16 +243,18 @@ status: :see_other
   # otherwise send the link off-site or raise on every page carrying the navbar.
   # Non-GET requests fall back to the root path because a re-rendered form sits
   # on a path that only answers to POST/PATCH.
-  def locale_switch_path
-    locale_path(alternate_locale)
-  end
-
   def locale_path(locale)
     return "#{root_path}?#{{ 'locale' => locale.to_s }.to_query}" unless request.get?
 
     query = request.query_parameters.merge('locale' => locale.to_s)
 
-    "#{request.path}?#{query.to_query}"
+    "#{rooted_path}?#{query.to_query}"
+  end
+
+  # Collapsed to a single leading slash: a path of `//host/x` would otherwise
+  # make the link a protocol-relative URL and carry the reader off the site.
+  def rooted_path
+    "/#{request.path.to_s.sub(%r{\A/+}, '')}"
   end
 
   def persist_user_locale(locale)

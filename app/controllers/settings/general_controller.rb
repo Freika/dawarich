@@ -6,6 +6,7 @@ class Settings::GeneralController < ApplicationController
   def index; end
 
   def update
+    update_locale
     update_timezone
     update_email_settings
     update_supporter_settings
@@ -49,6 +50,16 @@ class Settings::GeneralController < ApplicationController
   end
 
   private
+
+  # Written here rather than left to the locale around_action: that one saves
+  # with `update_all`, which the `current_user.save` below would overwrite with
+  # the settings this request loaded.
+  def update_locale
+    locale = supported_locale(params[:locale])
+    return unless locale
+
+    current_user.settings['locale'] = locale.to_s
+  end
 
   def update_timezone
     return unless params.key?(:timezone) && ActiveSupport::TimeZone[params[:timezone]]
