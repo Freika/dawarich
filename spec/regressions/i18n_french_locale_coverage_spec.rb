@@ -25,8 +25,8 @@ RSpec.describe 'French I18n locale coverage' do
     'config/locales/devise.en.yml' => 'config/locales/devise.fr.yml'
   }.each do |english_path, french_path|
     it "covers every key and interpolation in #{english_path}" do
-      english = flatten(YAML.load_file(Rails.root.join(english_path)).fetch('en'))
-      french = flatten(YAML.load_file(Rails.root.join(french_path)).fetch('fr'))
+      english = flatten(YAML.safe_load_file(Rails.root.join(english_path), aliases: true).fetch('en'))
+      french = flatten(YAML.safe_load_file(Rails.root.join(french_path), aliases: true).fetch('fr'))
       missing = english.keys - french.keys
       type_mismatches = english.keys.filter_map do |path|
         next unless french.key?(path)

@@ -144,9 +144,14 @@ class Users::RegistrationsController < Devise::RegistrationsController
     accept_invitation_for_user(resource) if @invitation
   end
 
+  # Only a language the reader actually picked is worth pinning to the account.
+  # Recording the default here would answer `suggested_locale`'s "has the reader
+  # chosen?" question for every new account, so someone signing up from a French
+  # browser would never be offered French again.
   def persist_signup_locale(resource)
-    locale = I18n.locale.to_s
-    resource.settings = (resource.settings || {}).merge('locale' => locale)
+    return if params[:locale].blank? && session[:locale].blank?
+
+    resource.settings = (resource.settings || {}).merge('locale' => I18n.locale.to_s)
     resource.save!
   end
 
