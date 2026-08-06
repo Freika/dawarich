@@ -1162,24 +1162,9 @@ en:
         visit_count:
           one: "%{count} visit"
           other: "%{count} visits"
-      day_banner:
-        waiting: waiting
-        confirm_all: Confirm all
-        delete_all: Delete all
-        delete_all_visits_for_this_day_your_location_points_stay: Delete all %{visits} for this day? Your location points stay.
-        suggestions_waiting:
-          one: "%{count} suggestion waiting"
-          other: "%{count} suggestions waiting"
-        delete_all_suggestions:
-          one: Delete the suggested visit for this day? Your location points stay.
-          other: Delete all %{count} suggested visits for this day? Your location points stay.
       day_nav:
         previous_day: Previous day
         next_day: Next day
-      suggestions_badge:
-        unreviewed_visits:
-          one: "%{count} unreviewed visit"
-          other: "%{count} unreviewed visits"
       feed:
         no_visits_tracked_this_day: No visits tracked this day.
         visits_are_auto_detected_daily_from_your_location_data: Visits are auto-detected daily from your location data.

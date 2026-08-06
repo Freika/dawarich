@@ -1155,6 +1155,7 @@ es:
         next_month: Mes próximo
         previous_month: Mes anterior
       day:
+        moving_duration: "%{duration} en movimiento"
         select: Seleccionar
         visits: Visitas
         tracks: Trayectos
@@ -1168,17 +1169,6 @@ es:
         visit_count:
           one: "%{count} visita"
           other: "%{count} visitas"
-      day_banner:
-        waiting: esperando
-        confirm_all: Confirmar todo
-        delete_all: Eliminar todo
-        delete_all_visits_for_this_day_your_location_points_stay: "¿Eliminar todas %{visits} para este día? Tus puntos de ubicación permanecen."
-        suggestions_waiting:
-          one: "%{count} sugerencia pendiente"
-          other: "%{count} sugerencias pendientes"
-        delete_all_suggestions:
-          one: "¿Eliminar la visita sugerida para este día? Tus puntos de ubicación permanecen."
-          other: "¿Eliminar todas %{count} visitas sugeridas para este día? Tus puntos de ubicación permanecen."
       day_nav:
         previous_day: Día anterior
         next_day: Día siguiente
@@ -1192,6 +1182,7 @@ es:
         no_visits_tracked_this_day: No se registraron visitas este día.
         visits_are_auto_detected_daily_from_your_location_data: Las visitas se detectan automáticamente todos los días a partir de tus datos de ubicación.
       journey_entry:
+        duration_moving: "%{duration} en movimiento"
         continued_from: continuado desde
         arrived: ", llegó"
         middot: "·"
@@ -1223,16 +1214,17 @@ es:
         share: Compartir
         unknown: Desconocido
       visit_entry:
+        unnamed_visit: Visita sin nombre
+        edit: Editar
+        name: Nombre
+        save: Guardar
+        attached_place: Lugar vinculado
         select_visit_for_merge: Selecciona visita para fusionar
         all_day: Todo el día
         pts: pts
         search_for_a_place: Buscar un lugar
         delete: Eliminar
         delete_this_visit_your_location_points_stay: "¿Eliminar esta visita? Tus puntos de ubicación se conservarán."
-      suggestions_badge:
-        unreviewed_visits:
-          one: "%{count} visita sin revisar"
-          other: "%{count} visitas sin revisar"
   notifications:
     notification:
       ago: hace
@@ -2013,7 +2005,19 @@ es:
       create_a_new_tag_to_organize_your_places: Crear una nueva etiqueta para organizar tus lugares
   tracks:
     segments:
+      legs:
+        stop_duration: "parada · %{duration}"
+        transfer: transbordo
+        moving: en movimiento
+        mode_unclear: Modo de transporte incierto; la confianza de la detección es demasiado baja para asignar uno
+        short_segments:
+          one: "1 segmento corto"
+          other: "%{count} segmentos cortos"
+      list:
+        all_segments_edit: "Todos los segmentos (%{count}) · editar"
       segment_row:
+        detection_confidence: Confianza de la detección
+        confidence_percent: "%{percent} %"
         manually_corrected: Corregido manualmente
         restore_auto_detection: Restaurar detección automática
         transportation_mode_currently: Modo de transporte (actualmente %{mode})
@@ -2978,6 +2982,7 @@ es:
         re_classification_already_running: La re-clasificación ya está en curso.
         re_classification_started_your_tracks_will_update_over_the_next: Se inició la re-clasificación — tus trayectos se actualizarán en unos minutos.
       segments:
+        reprocess_failed: La redetección falló; tu corrección se ha conservado
         segment_updated: trayecto actualizada.
         mode_not_enabled: Ese modo no está habilitado en tus ajustes.
         update_failed: No se pudo actualizar la trayecto.
@@ -3366,6 +3371,9 @@ es:
         stats_update_failed: No se pudieron actualizar las estadísticas
         message_stacktrace_n: "%{message}, stacktrace: %{backtrace}"
     users:
+      settings_updater:
+        enable_at_least_one_transportation_mode: Activa al menos un modo de transporte
+        recalculation_in_progress: El recálculo de los modos de transporte está en curso. Espera a que termine.
       destroy:
         cannot_delete_user_who_owns_a_family_with_other_members: No se puede eliminar al usuario que es dueño de una familia con otros miembros
       export_data:

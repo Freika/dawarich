@@ -26,7 +26,8 @@ module TransportationModes
       return default_unknown_segment if windows.empty?
 
       decoded = Decoder.call(windows, enabled: @enabled_modes)
-      SegmentAssembler.call(rows: rows, windows: windows, decoded: decoded, preserved: @preserved)
+      SegmentAssembler.call(rows: rows, windows: windows, decoded: decoded,
+                            preserved: anchored_preserved)
     rescue StandardError => e
       ExceptionReporter.call(e, "Transportation mode detection failed for track #{@track.id}")
       raise unless @fallback
@@ -35,6 +36,18 @@ module TransportationModes
     end
 
     private
+
+    # Legacy corrections may still be index-anchored (async backfill hasn't
+    # reached their track). The assembler can only clip around time ranges,
+    # so resolve them now — otherwise auto segments would overlap the
+    # correction. Rows that cannot anchor (points gone) stay skipped.
+    def anchored_preserved
+      unanchored_ids = @preserved.select { |s| s.start_at.nil? && s.start_index.present? }.map(&:id)
+      return @preserved if unanchored_ids.empty?
+
+      TrackSegments::TimeAnchorBackfillJob.anchor_now(unanchored_ids)
+      TrackSegment.where(id: @preserved.map(&:id)).to_a
+    end
 
     def degenerate?(rows)
       return true if rows.size < 2

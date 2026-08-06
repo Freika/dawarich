@@ -1155,6 +1155,7 @@ de:
         next_month: Nächster Monat
         previous_month: Vorheriger Monat
       day:
+        moving_duration: "%{duration} in Bewegung"
         select: Auswählen
         visits: Aufenthalte
         tracks: Tracks
@@ -1168,17 +1169,6 @@ de:
         visit_count:
           one: "%{count} Aufenthalt"
           other: "%{count} Aufenthalte"
-      day_banner:
-        waiting: Warte
-        confirm_all: Alle bestätigen
-        delete_all: Alle löschen
-        delete_all_visits_for_this_day_your_location_points_stay: Alle %{visits} für diesen Tag löschen? Deine Standortpunkte bleiben.
-        suggestions_waiting:
-          one: "%{count} Vorschlag wartet"
-          other: "%{count} Vorschläge warten"
-        delete_all_suggestions:
-          one: Den vorgeschlagenen Aufenthalt für diesen Tag löschen? Deine Standortpunkte bleiben.
-          other: Alle %{count} vorgeschlagenen Aufenthalte für diesen Tag löschen? Deine Standortpunkte bleiben.
       day_nav:
         previous_day: Vorheriger Tag
         next_day: Nächster Tag
@@ -1192,6 +1182,7 @@ de:
         no_visits_tracked_this_day: Keine Aufenthalte dieses Tag verfolgt.
         visits_are_auto_detected_daily_from_your_location_data: Aufenthalte werden täglich automatisch aus deinen Standortdaten erkannt.
       journey_entry:
+        duration_moving: "%{duration} in Bewegung"
         continued_from: fortgesetzt von
         arrived: ", angekommen"
         middot: "·"
@@ -1223,16 +1214,17 @@ de:
         share: Teilen
         unknown: Unbekannt
       visit_entry:
+        unnamed_visit: Unbenannter Besuch
+        edit: Bearbeiten
+        name: Name
+        save: Speichern
+        attached_place: Verknüpfter Ort
         select_visit_for_merge: Aufenthalt zum Zusammenführen auswählen
         all_day: Ganz Tag
         pts: pts
         search_for_a_place: Suche nach einem Ort
         delete: Löschen
         delete_this_visit_your_location_points_stay: Diesen Aufenthalt löschen? Deine Standortpunkte bleiben.
-      suggestions_badge:
-        unreviewed_visits:
-          one: "%{count} ungeprüfter Aufenthalt"
-          other: "%{count} ungeprüfte Aufenthalte"
   notifications:
     notification:
       ago: vor
@@ -2013,7 +2005,19 @@ de:
       create_a_new_tag_to_organize_your_places: Erstelle einen neuen Tag, um deine Orte zu organisieren
   tracks:
     segments:
+      legs:
+        stop_duration: "Halt · %{duration}"
+        transfer: Umstieg
+        moving: unterwegs
+        mode_unclear: Verkehrsmittel unklar — die Erkennungssicherheit ist zu niedrig für eine Zuordnung
+        short_segments:
+          one: "1 kurzes Segment"
+          other: "%{count} kurze Segmente"
+      list:
+        all_segments_edit: "Alle Segmente (%{count}) · bearbeiten"
       segment_row:
+        detection_confidence: Erkennungssicherheit
+        confidence_percent: "%{percent} %"
         manually_corrected: Manuell korrigiert
         restore_auto_detection: Automatische Erkennung wiederherstellen
         transportation_mode_currently: Verkehrsmittel (derzeit %{mode})
@@ -3033,6 +3037,7 @@ de:
         re_classification_already_running: Re-Klassifizierung läuft bereits
         re_classification_started_your_tracks_will_update_over_the_next: Re-Klassifizierung gestartet — deine Tracks werden in den nächsten Minuten aktualisiert
       segments:
+        reprocess_failed: Neuerkennung fehlgeschlagen — deine Korrektur wurde beibehalten
         segment_updated: Segment aktualisiert
         mode_not_enabled: Dieser Modus ist in deinen Einstellungen nicht aktiviert
         update_failed: Segment konnte nicht aktualisiert werden
@@ -3421,6 +3426,9 @@ de:
         stats_update_failed: Statistikaktualisierung fehlgeschlagen
         message_stacktrace_n: "%{message}, Stacktrace: %{backtrace}"
     users:
+      settings_updater:
+        enable_at_least_one_transportation_mode: Aktiviere mindestens ein Verkehrsmittel
+        recalculation_in_progress: Die Neuberechnung der Verkehrsmittel läuft noch. Bitte warte, bis sie abgeschlossen ist.
       destroy:
         cannot_delete_user_who_owns_a_family_with_other_members: Benutzer kann nicht gelöscht werden, der ein Familienkonto mit anderen Mitgliedern besitzt
       export_data:

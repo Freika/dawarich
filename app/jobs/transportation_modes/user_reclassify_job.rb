@@ -19,6 +19,18 @@ module TransportationModes
 
       return status.complete if track_ids.empty?
 
+      enqueue_slices(user, track_ids)
+    rescue StandardError => e
+      # Without this the status cache stays 'in_progress' forever and the
+      # UI spins with no way to retry.
+      status&.fail(e.message)
+      ExceptionReporter.call(e, 'Transportation reclassification fan-out failed')
+      raise
+    end
+
+    private
+
+    def enqueue_slices(user, track_ids)
       track_ids.each_slice(SLICE).with_index do |slice, slice_index|
         jobs = slice.map do |track_id|
           job = ReclassifyTrackJob.new(track_id, report_progress: true, user_id: user.id)

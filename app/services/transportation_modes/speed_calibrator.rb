@@ -3,10 +3,12 @@
 module TransportationModes
   # Per-track sanity check for stored velocities: compares them against
   # GPS-derived speeds and rescales when the tracker clearly reports km/h,
-  # knots, or mph where the pipeline expects m/s. An unrecognizable ratio
-  # drops stored velocities entirely so derived speeds take over. This
-  # immunizes detection against per-source unit bugs, present and future
-  # (e.g. OsmAnd-style trackers posting through the OwnTracks endpoint).
+  # knots, or mph where the pipeline expects m/s. This immunizes detection
+  # against per-source unit bugs, present and future (e.g. OsmAnd-style
+  # trackers posting through the OwnTracks endpoint). A ratio matching no
+  # band leaves velocities untouched — noisy m/s traces routinely drift
+  # outside the m/s band, and nulling them would throw away the trace's
+  # best speed signal (per-sample accuracy masks still apply downstream).
   class SpeedCalibrator
     MIN_SAMPLES = 20
     MIN_DERIVED_MPS = 1.0
@@ -24,13 +26,13 @@ module TransportationModes
       return rows if ratio.nil?
 
       unit, (scale, _band) = UNIT_BANDS.find { |_unit, (_scale, band)| band.cover?(ratio) }
-      return rows if unit == :mps
+      return rows if unit.nil? || unit == :mps
 
       rows.each do |row|
         velocity = row[:velocity]
         next if velocity.nil? || velocity.negative?
 
-        row[:velocity] = unit ? velocity * scale : nil
+        row[:velocity] = velocity * scale
       end
       rows
     end

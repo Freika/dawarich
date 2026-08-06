@@ -36,6 +36,17 @@ RSpec.describe Visits::FullHistoryRedetectJob, type: :job do
       expect(Visit.where(id: confirmed.id)).to exist
       expect(Visit.where(id: declined.id)).to exist
     end
+
+    it 'preserves tombstoned suggested visits so user-deleted visits are never re-suggested' do
+      tombstone = create(:visit, user: user, status: :suggested, deleted_at: 1.day.ago,
+                                 started_at: Time.zone.at(base_ts),
+                                 ended_at: Time.zone.at(base_ts + 600),
+                                 duration: 600, name: 'deleted by user')
+
+      described_class.new.perform(user.id)
+
+      expect(Visit.where(id: tombstone.id)).to exist
+    end
   end
 
   describe 'orphan place cleanup' do

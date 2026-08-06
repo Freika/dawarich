@@ -45,6 +45,10 @@ module Tracks
     # is race-free under Rails.cache.increment; the merged status hash is
     # advisory display state.
     def increment_processed!
+      # A retried per-track job can report after completion; rewriting the
+      # hash would resurrect the short-lived 'completed' entry with CACHE_TTL.
+      return data['processed_tracks'].to_i if current_status == 'completed'
+
       count = Rails.cache.increment(counter_key, 1, expires_in: CACHE_TTL) || 1
       total = data['total_tracks']
       update_progress(processed_tracks: count, total_tracks: total)

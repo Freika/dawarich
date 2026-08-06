@@ -25,4 +25,12 @@ RSpec.describe TransportationModes::UserReclassifyJob do
   it 'silently skips missing users' do
     expect { described_class.perform_now(-1) }.not_to raise_error
   end
+
+  it 'marks the status failed when the fan-out raises so the UI never spins forever' do
+    create(:track, user: user)
+    allow(ActiveJob).to receive(:perform_all_later).and_raise(RedisClient::CannotConnectError, 'redis down')
+
+    expect { described_class.perform_now(user.id) }.to raise_error(RedisClient::CannotConnectError)
+    expect(Tracks::TransportationRecalculationStatus.new(user.id).current_status).to eq('failed')
+  end
 end

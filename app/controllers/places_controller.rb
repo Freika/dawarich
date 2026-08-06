@@ -12,7 +12,7 @@ class PlacesController < ApplicationController
 
   def show
     @place = current_user.places.includes(:tags).find(params[:id])
-    @recent_visits = @place.visits.order(started_at: :desc).limit(5)
+    @recent_visits = @place.visits.active.order(started_at: :desc).limit(5)
 
     render layout: false
   end
@@ -23,7 +23,7 @@ class PlacesController < ApplicationController
 
     if @place.save
       add_tags if tag_ids.present?
-      @place = current_user.places.includes(:tags, :visits).find(@place.id)
+      @place = current_user.places.includes(:tags, :active_visits).find(@place.id)
 
       respond_to do |format|
         format.turbo_stream do
@@ -46,12 +46,12 @@ class PlacesController < ApplicationController
     if @place.update(place_params.except(:tag_ids))
       @place.adopt!
       set_tags if params[:place]&.key?(:tag_ids)
-      @place = current_user.places.includes(:tags, :visits).find(@place.id)
+      @place = current_user.places.includes(:tags, :active_visits).find(@place.id)
 
       respond_to do |format|
         format.turbo_stream do
           if drawer_request?
-            recent_visits = @place.visits.order(started_at: :desc).limit(5)
+            recent_visits = @place.visits.active.order(started_at: :desc).limit(5)
             render turbo_stream: [
               turbo_stream.replace(
                 'place-drawer',
@@ -144,7 +144,7 @@ status: :see_other
     {
       id: place.id, name: place.name, latitude: place.lat, longitude: place.lon,
       source: place.source, note: place.note, icon: place.tags.first&.icon,
-      color: place.tags.first&.color, visits_count: place.visits.size,
+      color: place.tags.first&.color, visits_count: place.active_visits.size,
       tags: place.tags.map { |t| { id: t.id, name: t.name, icon: t.icon, color: t.color } }
     }
   end

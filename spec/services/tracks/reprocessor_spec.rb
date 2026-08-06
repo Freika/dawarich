@@ -28,6 +28,26 @@ RSpec.describe Tracks::Reprocessor do
         source: 'inferred' }
     end
 
+    it 'anchors legacy index-anchored corrections before assembling so autos never overlap them' do
+      corrected = create(:track_segment, track: track, transportation_mode: :cycling,
+                                         corrected_at: 1.day.ago,
+                                         start_index: 10, end_index: 19,
+                                         start_at: nil, end_at: nil)
+
+      described_class.new(track: track).reprocess_single
+
+      corrected.reload
+      expect(corrected.start_at.to_i).to eq(base_ts + (10 * 60))
+      expect(corrected.end_at.to_i).to eq(base_ts + (19 * 60))
+
+      track.track_segments.auto_classified.each do |seg|
+        no_overlap = seg.end_at <= corrected.start_at || seg.start_at >= corrected.end_at
+        expect(no_overlap).to be(true),
+                              "auto #{seg.start_at}..#{seg.end_at} overlaps " \
+                              "corrected #{corrected.start_at}..#{corrected.end_at}"
+      end
+    end
+
     it 'deletes only auto-classified segments and preserves manually-corrected ones' do
       preserved = create(:track_segment, :anchored, track: track,
                                                     transportation_mode: :cycling, corrected_at: 1.day.ago)

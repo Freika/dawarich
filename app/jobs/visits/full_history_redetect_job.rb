@@ -75,7 +75,9 @@ class Visits::FullHistoryRedetectJob < ApplicationJob
       "point_range=#{min_ts}..#{max_ts}"
     )
 
-    visit_ids = user.visits.where(status: :suggested).pluck(:id)
+    # .active keeps tombstoned suggestions alive — destroying them here would
+    # erase the dedup marker and re-detection would resurrect deleted visits.
+    visit_ids = user.visits.active.where(status: :suggested).pluck(:id)
     place_ids_direct    = Visit.where(id: visit_ids).where.not(place_id: nil).pluck(:place_id)
     place_ids_suggested = PlaceVisit.where(visit_id: visit_ids).pluck(:place_id)
     candidate_place_ids = (place_ids_direct + place_ids_suggested).uniq

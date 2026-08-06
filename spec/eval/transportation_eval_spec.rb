@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 # Labeled-scenario evaluation of the transportation mode detection pipeline.
-# Excluded from normal runs; execute with: bundle exec rspec spec/eval --tag eval
+# Runs as part of the normal suite (and CI) so accuracy regressions fail fast.
 EVAL_SCENARIOS = {
   'walk' => [{ mode: :walking, duration_s: 900, dt_s: 5 }],
     'commute_mixed' => [{ mode: :walking, duration_s: 300, dt_s: 5 },

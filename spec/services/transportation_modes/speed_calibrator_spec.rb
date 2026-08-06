@@ -33,10 +33,16 @@ RSpec.describe TransportationModes::SpeedCalibrator do
     expect(rows.first[:velocity]).to be_within(0.1).of(15.0)
   end
 
-  it 'drops stored velocities entirely when the ratio matches no known unit' do
+  it 'trusts stored velocities when the ratio matches no known unit band' do
     rows = rows_with_ratio(8.0)
     described_class.call(rows)
-    expect(rows.map { |r| r[:velocity] }).to all(be_nil)
+    expect(rows.first[:velocity]).to be_within(0.1).of(120.0)
+  end
+
+  it 'trusts noisy m/s traces whose ratio drifts into the gap below the knots band' do
+    rows = rows_with_ratio(1.5)
+    described_class.call(rows)
+    expect(rows.first[:velocity]).to be_within(0.1).of(22.5)
   end
 
   it 'does nothing below the sample floor' do

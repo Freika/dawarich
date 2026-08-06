@@ -214,7 +214,7 @@ RSpec.describe 'Rendered French copy' do
     end
   end
 
-  it 'localizes trip, insight, badge, and bulk-action plural copy' do
+  it 'localizes trip, insight, and bulk-action plural copy' do
     I18n.with_locale(:fr) do
       expect(I18n.t('trips.trip.country_count', count: 1)).to eq('1 pays')
       expect(I18n.t('trips.trip.country_count', count: 2)).to eq('2 pays')
@@ -227,11 +227,8 @@ RSpec.describe 'Rendered French copy' do
       expect(I18n.t('controllers.visits.bulk_updated.declined', count: 2)).to eq('2 visites refusées.')
       expect(I18n.t('controllers.visits.visit_updated.confirmed')).to eq('Visite confirmée.')
       expect(I18n.t('controllers.visits.visit_updated.declined')).to eq('Visite refusée.')
-
-      html = ApplicationController.render(partial: 'map/timeline_feeds/suggestions_badge', locals: { count: 2 })
-      badge = Nokogiri::HTML.fragment(html).at_css('.map-button-cluster__badge')
-      expect(badge['aria-label']).to eq('2 visites à vérifier')
-      expect(badge['title']).to eq('2 visites à vérifier')
+      # The pending-suggestions badge partial is gone: the timeline no longer
+      # has a review flow, so there is no badge copy left to localize.
     end
 
     trip_source = Rails.root.join('app/views/trips/_trip.html.erb').read

@@ -188,14 +188,12 @@ RSpec.describe '/visits', type: :request do
         expect_flash_stream('Visite confirmée.')
       end
 
-      it 'refreshes the pending-suggestions badge so it does not go stale' do
-        create_list(:visit, 2, user:, status: :suggested) # 3 suggested total
-
+      it 'does not emit the removed review-flow streams (badge, day banner, filter counts)' do
         patch visit_url(visit), params: { visit: { status: :confirmed } }, as: :turbo_stream
 
-        expect_turbo_stream_action('replace', 'timeline-suggestions-badge')
-        # One of the three was just confirmed → badge should read 2.
-        expect(response.body).to match(/timeline-suggestions-badge.*\b2\b/m)
+        expect(response.body).not_to include('timeline-suggestions-badge')
+        expect(response.body).not_to include('day-banner-')
+        expect(response.body).not_to include('filter-count-')
       end
 
       it 'sets visit name from place when place_id is provided' do
@@ -328,32 +326,18 @@ RSpec.describe '/visits', type: :request do
       expect(response.body).not_to include("visit_item_#{visit.id}")
     end
 
-    it 'includes the day banner stream' do
+    it 'does not emit the removed review-flow streams (banner, filter counts, badge)' do
       delete visit_url(visit), as: :turbo_stream
 
-      tz = user.safe_settings.timezone.presence || 'UTC'
-      day_date = Time.use_zone(tz) { visit.started_at.in_time_zone.to_date.to_s }
-      expect_turbo_stream_action('replace', "day-banner-#{day_date}")
-    end
-
-    it 'includes the filter-count streams' do
-      delete visit_url(visit), as: :turbo_stream
-
-      expect_turbo_stream_action('replace', 'filter-count-confirmed')
-      expect_turbo_stream_action('replace', 'filter-count-suggested')
-      expect(response.body).not_to include('filter-count-declined')
+      expect(response.body).not_to include('day-banner-')
+      expect(response.body).not_to include('filter-count-')
+      expect(response.body).not_to include('timeline-suggestions-badge')
     end
 
     it 'includes the calendar frame stream' do
       delete visit_url(visit), as: :turbo_stream
 
       expect_turbo_stream_action('replace', 'timeline-calendar-frame')
-    end
-
-    it 'includes the suggestions badge stream' do
-      delete visit_url(visit), as: :turbo_stream
-
-      expect_turbo_stream_action('replace', 'timeline-suggestions-badge')
     end
 
     it 'includes the success flash message' do

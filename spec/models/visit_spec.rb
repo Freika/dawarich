@@ -123,6 +123,26 @@ RSpec.describe Visit, type: :model do
       end
     end
 
+    describe 'on decline' do
+      it 'enqueues orphan-check because declined visits no longer keep a place alive' do
+        expect { visit.update!(status: :declined) }
+          .to have_enqueued_job(Places::DeleteIfOrphanJob).with(old_place.id)
+      end
+    end
+
+    describe 'on soft delete' do
+      it 'enqueues orphan-check when a visit is tombstoned' do
+        expect { visit.soft_delete! }
+          .to have_enqueued_job(Places::DeleteIfOrphanJob).with(old_place.id)
+      end
+
+      it 'deletes the place after the job runs when only the tombstone references it' do
+        perform_enqueued_jobs { visit.soft_delete! }
+
+        expect(Place.exists?(old_place.id)).to be false
+      end
+    end
+
     describe 'after_destroy_commit' do
       it 'enqueues orphan-check for the destroyed visit place' do
         expect { visit.destroy! }
