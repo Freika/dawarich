@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [Unreleased]
+## [1.12.0] - 2026-08-07, Berlin
 
 ### Added
 
@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Monthly statistics maps and publicly shared month maps are now rendered with MapLibre GL instead of Leaflet, matching the main map's basemaps.
 - The top navigation now collapses into the menu button below 1280px rather than below 1024px, so the longer translations fit on one line.
+- Deleting an import or a notification now updates the list in place instead of repainting the page and jumping back to the top. Stats, insights and digests still reload fully, because their charts do not survive an in-place update.
+- Backfills that walk your whole history now resume where they stopped when a restart interrupts them, instead of starting over from the first row.
 
 ### Fixed
 
