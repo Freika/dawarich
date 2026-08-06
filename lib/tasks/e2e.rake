@@ -88,11 +88,13 @@ namespace :e2e do
     [ENV.fetch('E2E_PARALLEL_USERS', '1').to_i, 1].max
   end
 
-  def e2e_worker_emails
-    (1...e2e_parallel_users).flat_map do |i|
-      ["e2e-worker#{i}@dawarich.app"] +
-        (1..3).map { |n| "family.member#{n}.w#{i}@dawarich.app" }
-    end
+  # Matches ALL worker clones by email pattern, regardless of the current
+  # E2E_PARALLEL_USERS value, so e2e:reset cannot strand clones left behind
+  # by a prior seed with a higher N.
+  def e2e_seeded_users
+    User.where(email: E2E_USER_EMAILS)
+        .or(User.where("email LIKE 'e2e-worker%@dawarich.app'"))
+        .or(User.where("email LIKE 'family.member_.w%@dawarich.app'"))
   end
 
   def wait_for_sidekiq_to_settle
@@ -133,42 +135,47 @@ namespace :e2e do
       e2e:seed_fixture_tracks
     ]
 
-    (0...e2e_parallel_users).each do |worker|
-      if worker.zero?
-        %w[E2E_SEED_EMAIL E2E_SEED_API_KEY E2E_SEED_SUFFIX E2E_SEED_SKIP_LITE]
-          .each { |key| ENV.delete(key) }
-      else
-        ENV['E2E_SEED_EMAIL']     = "e2e-worker#{worker}@dawarich.app"
-        ENV['E2E_SEED_API_KEY']   = "demo_api_key_w#{worker}"
-        ENV['E2E_SEED_SUFFIX']    = ".w#{worker}"
-        ENV['E2E_SEED_SKIP_LITE'] = '1'
+    seed_env_keys = %w[E2E_SEED_EMAIL E2E_SEED_API_KEY E2E_SEED_SUFFIX E2E_SEED_SKIP_LITE]
+
+    begin
+      (0...e2e_parallel_users).each do |worker|
+        if worker.zero?
+          seed_env_keys.each { |key| ENV.delete(key) }
+        else
+          ENV['E2E_SEED_EMAIL']     = "e2e-worker#{worker}@dawarich.app"
+          ENV['E2E_SEED_API_KEY']   = "demo_api_key_w#{worker}"
+          ENV['E2E_SEED_SUFFIX']    = ".w#{worker}"
+          ENV['E2E_SEED_SKIP_LITE'] = '1'
+        end
+
+        puts "\n🚀 Seeding worker #{worker} (#{ENV.fetch('E2E_SEED_EMAIL', 'demo@dawarich.app')})..."
+        seed_tasks.each { |name| Rake::Task[name].reenable }
+        Rake::Task['demo:seed_data'].invoke(geojson_path)
+
+        # The import enqueues track generation / geocoding / stats jobs. Those
+        # rebuild tracks, which nullifies any track_id assigned below (the #2630
+        # polluter) — wait for the churn to settle before planting fixtures.
+        puts "\n⏳ Waiting for background jobs to settle..."
+        wait_for_sidekiq_to_settle
+
+        puts "\n⚠️  Planting anomaly fixtures..."
+        Rake::Task['e2e:seed_anomalies'].invoke
+
+        puts "\n🧭 Seeding the anomaly-window demo trip..."
+        Rake::Task['e2e:seed_demo_trip'].invoke
+
+        puts "\n🏷️  Seeding tag fixtures..."
+        Rake::Task['e2e:seed_tag_fixtures'].invoke
+
+        puts "\n🛤️  Seeding fixture tracks (timeline-replay + journey-leg specs)..."
+        Rake::Task['e2e:seed_fixture_tracks'].invoke
       end
-
-      puts "\n🚀 Seeding worker #{worker} (#{ENV.fetch('E2E_SEED_EMAIL', 'demo@dawarich.app')})..."
-      seed_tasks.each { |name| Rake::Task[name].reenable }
-      Rake::Task['demo:seed_data'].invoke(geojson_path)
-
-      # The import enqueues track generation / geocoding / stats jobs. Those
-      # rebuild tracks, which nullifies any track_id assigned below (the #2630
-      # polluter) — wait for the churn to settle before planting fixtures.
-      puts "\n⏳ Waiting for background jobs to settle..."
-      wait_for_sidekiq_to_settle
-
-      puts "\n⚠️  Planting anomaly fixtures..."
-      Rake::Task['e2e:seed_anomalies'].invoke
-
-      puts "\n🧭 Seeding the anomaly-window demo trip..."
-      Rake::Task['e2e:seed_demo_trip'].invoke
-
-      puts "\n🏷️  Seeding tag fixtures..."
-      Rake::Task['e2e:seed_tag_fixtures'].invoke
-
-      puts "\n🛤️  Seeding fixture tracks (timeline-replay + journey-leg specs)..."
-      Rake::Task['e2e:seed_fixture_tracks'].invoke
+    ensure
+      seed_env_keys.each { |key| ENV.delete(key) }
     end
 
     puts "\n🔕 Suppressing the changelog prompt + onboarding modal for e2e users..."
-    User.where(email: E2E_USER_EMAILS + e2e_worker_emails).find_each do |user|
+    e2e_seeded_users.find_each do |user|
       user.update_columns(
         changelog_consent: User.changelog_consents[:declined],
         settings: (user.settings || {}).merge('onboarding_completed' => true)
@@ -358,7 +365,7 @@ namespace :e2e do
   task reset: :environment do
     assert_safe_environment!
 
-    User.where(email: E2E_USER_EMAILS + e2e_worker_emails).find_each do |user|
+    e2e_seeded_users.find_each do |user|
       print "  ↪ #{user.email} ... "
       reset_user_data!(user)
       puts 'done'
