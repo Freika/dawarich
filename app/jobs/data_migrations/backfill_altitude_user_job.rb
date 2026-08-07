@@ -63,6 +63,8 @@ class DataMigrations::BackfillAltitudeUserJob < ApplicationJob
 
       archives.each do |archive|
         process_archive(archive, batch_size, stats)
+      rescue *Archivable::UPSERT_CONTENTION_ERRORS
+        raise
       rescue StandardError => e
         Rails.logger.error("Failed to process archive #{archive.id}: #{e.message}")
       end

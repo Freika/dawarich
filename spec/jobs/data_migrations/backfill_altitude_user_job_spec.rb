@@ -197,6 +197,15 @@ RSpec.describe DataMigrations::BackfillAltitudeUserJob do
 
         expect(point.reload.altitude.to_f).to eq(800.5)
       end
+
+      it 're-raises database contention so the job can retry the archive' do
+        archive
+        allow_any_instance_of(described_class)
+          .to receive(:altitude_case_expression)
+          .and_raise(ActiveRecord::Deadlocked)
+
+        expect { described_class.new.perform(user.id) }.to raise_error(ActiveRecord::Deadlocked)
+      end
     end
 
     context 'does not touch other users' do
