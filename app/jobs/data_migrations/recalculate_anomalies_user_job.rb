@@ -87,9 +87,16 @@ class DataMigrations::RecalculateAnomaliesUserJob < ApplicationJob
       return release_slot
     end
 
-    unless Points::AnomalyBackfillUserJob.perform_now(user.id, reset: true, notify: false, rebuild: :inline)
-      return retry_after_lock(user_id, attempt)
-    end
+    # Three outcomes, and nil is not the same as false: the backfill returns
+    # `false` when the advisory lock was busy, but `nil` when a shutdown
+    # interrupted it — ActiveJob's continuation swallows the return value and
+    # puts the job back on the queue itself. Retrying an interrupted run would
+    # repeat the whole reset and filter pass against the copy already resuming,
+    # so let it finish. The user stays unstamped and is picked up again.
+    backfill = Points::AnomalyBackfillUserJob.perform_now(user.id, reset: true, notify: false, rebuild: :inline)
+
+    return release_slot if backfill.nil?
+    return retry_after_lock(user_id, attempt) unless backfill
 
     mark_recalculated(user)
     notify(user)
