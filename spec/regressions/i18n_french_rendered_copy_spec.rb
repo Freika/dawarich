@@ -330,11 +330,23 @@ RSpec.describe 'Rendered French copy' do
   end
 
   it 'uses localized plural nouns in the activity-streak view' do
-    source = Rails.root.join('app/views/insights/_activity_streak.html.erb').read
+    heatmap = double(
+      current_streak: 1, longest_streak: 5,
+      longest_streak_start: nil, longest_streak_end: nil,
+      total_active_days: 5, weeks: []
+    )
 
-    expect(source).to include("t('.day', count: @activity_heatmap.current_streak)")
-    expect(source).to include("t('.day', count: @activity_heatmap.longest_streak)")
-    expect(source).not_to include("'day'.pluralize")
+    rendered = I18n.with_locale(:fr) do
+      ApplicationController.render(
+        partial: 'insights/activity_streak',
+        assigns: { activity_heatmap: heatmap, selected_year: Time.current.year, all_time: false }
+      )
+    end
+    text = Nokogiri::HTML(rendered).text.squish
+
+    expect(text).to include('1 jour')
+    expect(text).to include('5 jours')
+    expect(text).not_to include('1 jours')
   end
 
   it 'pluralizes French visit-redetection completion copy' do
@@ -347,14 +359,14 @@ RSpec.describe 'Rendered French copy' do
     end
   end
 
-  it 'varies every localized insights and statistics fragment cache by locale' do
-    insights_index = Rails.root.join('app/views/insights/index.html.erb').read
+  # The insights index and the statistics index are covered by rendering them
+  # in two locales in localized_fragment_cache_spec.rb. The details page needs
+  # several years of stats before it renders anything cacheable, so its key is
+  # guarded here instead.
+  it 'varies the insight details fragment cache by locale' do
     insights_details = Rails.root.join('app/views/insights/details.html.erb').read
-    stats_index = Rails.root.join('app/views/stats/index.html.erb').read
 
-    expect(insights_index).to match(/insights_cache_key = \[[^\]]*I18n\.locale/)
     expect(insights_details).to match(/insights_cache_key = \[[^\]]*I18n\.locale/)
-    expect(stats_index.scan(/cache \[[^\]]*I18n\.locale/).size).to eq(2)
   end
 
   it 'renders the live-location privacy warning as one complete sentence' do
