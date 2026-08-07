@@ -577,6 +577,7 @@ fr:
           restent à faire avant que vous ayez le contrôle sur vos données de localisation
           !
         create_your_account: 1. Créer votre compte.
+        ellipsis: "4. ..."
         configure_your_mobile_app: 2. Configurer votre application mobile.
         start_tracking_your_location_data_securely: 3. Commencer à suivre vos données
           de localisation de manière sécurisée.

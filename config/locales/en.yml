@@ -137,6 +137,7 @@ en:
         almost_there: Almost there!
         only_a_few_steps_left_until_you_get_control_over: Only a few steps left until you get control over your location data!
         create_your_account: 1. Create your account
+        ellipsis: "4. ..."
         configure_your_mobile_app: 2. Configure your mobile app
         start_tracking_your_location_data_securely: 3. Start tracking your location data securely
         you_re_beautiful: 5. You're beautiful!
