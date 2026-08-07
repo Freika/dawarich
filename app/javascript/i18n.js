@@ -12,11 +12,17 @@ function loadTranslations() {
   }
 }
 
+function currentTranslations() {
+  if (translations && Object.keys(translations).length > 0) return translations
+
+  translations = loadTranslations()
+  return translations
+}
+
 export function translate(key, values = {}) {
-  translations ||= loadTranslations()
   let value = key
     .split(".")
-    .reduce((current, part) => current?.[part], translations)
+    .reduce((current, part) => current?.[part], currentTranslations())
   if (value && typeof value === "object" && values.count !== undefined) {
     value = value[Number(values.count) === 1 ? "one" : "other"]
   }
