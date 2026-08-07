@@ -160,6 +160,7 @@ module Points
         end_of_month = (Time.utc(year, month, 1) + 1.month).to_i
 
         Point.where(user_id: user_id, raw_data_archived: false)
+             .where(raw_data_archive_id: nil)
              .where(timestamp: start_of_month...end_of_month)
              .where.not(raw_data: [nil, {}])
              .order(:id)

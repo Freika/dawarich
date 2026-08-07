@@ -107,12 +107,25 @@ class DataMigrations::BackfillAltitudeUserJob < ApplicationJob
       current.nil? || current.to_d != BigDecimal(u[:altitude].to_s)
     end
 
-    return unless meaningful_updates.any?
+    return if meaningful_updates.empty?
 
-    update_cols = [:altitude]
-    update_cols << :altitude_decimal if Point.altitude_decimal_supported?
-    Point.upsert_all(meaningful_updates, unique_by: :id, update_only: update_cols)
-    stats[:archived] += meaningful_updates.size
+    update_values = {
+      altitude: altitude_case_expression(meaningful_updates, :altitude),
+      lock_version: Arel.sql('lock_version')
+    }
+    if Point.altitude_decimal_supported?
+      update_values[:altitude_decimal] = altitude_case_expression(meaningful_updates, :altitude_decimal)
+    end
+    stats[:archived] += scope.where(id: meaningful_updates.map { |u| u[:id] }).update_all(update_values)
+  end
+
+  def altitude_case_expression(updates, column)
+    cases = updates.map do |update|
+      value = update.fetch(column, update[:altitude])
+      "WHEN #{Point.connection.quote(update[:id])} THEN #{Point.connection.quote(value)}"
+    end.join(' ')
+
+    Arel.sql("CASE id #{cases} ELSE #{column} END")
   end
 
   def build_update(point)

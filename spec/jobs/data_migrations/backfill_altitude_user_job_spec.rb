@@ -151,6 +151,11 @@ RSpec.describe DataMigrations::BackfillAltitudeUserJob do
         expect(point.reload.altitude.to_f).to eq(719.2)
       end
 
+      it 'keeps the point revision unchanged' do
+        expect { described_class.new.perform(user.id) }.not_to(change { point.reload.lock_version })
+        expect(point.reload.altitude.to_f).to eq(719.2)
+      end
+
       it 'ignores a stale snapshot after the point is detached from its archive' do
         archive
         point.update_columns(
@@ -158,6 +163,35 @@ RSpec.describe DataMigrations::BackfillAltitudeUserJob do
           raw_data_archived: false,
           raw_data_archive_id: nil
         )
+
+        described_class.new.perform(user.id)
+
+        expect(point.reload.altitude.to_f).to eq(800.5)
+      end
+
+      it 'does not overwrite altitude when ingest detaches the point during the archived update' do
+        archive
+        detach = lambda do
+          attributes = {
+            raw_data: { 'ele' => '800.5' },
+            raw_data_archived: false,
+            raw_data_archive_id: nil,
+            altitude: 800.5
+          }
+          attributes[:altitude_decimal] = 800.5 if Point.altitude_decimal_supported?
+          point.update_columns(attributes)
+        end
+
+        detached = false
+        allow_any_instance_of(described_class)
+          .to receive(:altitude_case_expression)
+          .and_wrap_original do |method, *args|
+          unless detached
+            detach.call
+            detached = true
+          end
+          method.call(*args)
+        end
 
         described_class.new.perform(user.id)
 

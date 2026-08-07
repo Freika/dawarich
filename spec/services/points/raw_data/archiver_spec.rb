@@ -328,6 +328,28 @@ RSpec.describe Points::RawData::Archiver do
       june_points.each(&:reload)
       expect(june_points.all?(&:raw_data_archived)).to be true
     end
+
+    it 'does not rearchive points with inconsistent legacy archive links' do
+      stale_archive = Points::RawDataArchive.create!(
+        user: user,
+        year: test_date.year,
+        month: test_date.month,
+        chunk_number: 99,
+        point_count: 1,
+        point_ids_checksum: 'stale',
+        archived_at: Time.current
+      )
+      stale_point = june_points.first
+      stale_point.update_columns(raw_data_archived: false, raw_data_archive_id: stale_archive.id)
+
+      archiver.archive_specific_month(user.id, test_date.year, test_date.month)
+
+      expect(stale_point.reload).to have_attributes(
+        raw_data_archived: false,
+        raw_data_archive_id: stale_archive.id
+      )
+      expect(user.raw_data_archives.last.point_count).to eq(2)
+    end
   end
 
   describe 'append-only architecture' do
