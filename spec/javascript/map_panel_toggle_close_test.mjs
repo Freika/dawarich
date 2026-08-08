@@ -87,7 +87,11 @@ function buildEnvironment({ open, activeTab, stubMarkActive = true }) {
         }
       }
       if (element === panel && identifier === "map-panel") {
-        return { switchToTab: (tab) => (calls.switchedTo = tab) }
+        return {
+          switchToTab: (tab) => {
+            calls.switchedTo = tab
+          },
+        }
       }
       return null
     },
