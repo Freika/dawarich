@@ -132,18 +132,17 @@ de:
         join: Beitreten
         you_ve_been_invited_by: Du wurdest von
         to_join_their_family_create_your_account_to_accept_the: eingeladen, der Familie beizutreten. Erstelle dein Konto, um die Einladung anzunehmen und Standortdaten zu teilen.
-        your_email: Deine E-Mail (
-        will_be_used_for_this_account: ") wird für dieses Konto verwendet"
         almost_there: Fast fertig!
         only_a_few_steps_left_until_you_get_control_over: Nur noch wenige Schritte, bis du Kontrolle über deine Standortdaten hast!
-        create_your_account: 1. Erstelle dein Konto
-        ellipsis: "4. ..."
-        configure_your_mobile_app: 2. Konfiguriere deine mobile App
-        start_tracking_your_location_data_securely: 3. Beginne mit der sicheren Aufzeichnung deiner Standortdaten
-        you_re_beautiful: 5. Du bist wunderschön!
+        create_your_account: Erstelle dein Konto
+        configure_your_mobile_app: Konfiguriere deine mobile App
+        start_tracking_your_location_data_securely: Beginne mit der sicheren Aufzeichnung deiner Standortdaten
+        ellipsis: "…"
+        you_re_beautiful: Du bist wunderschön!
+        invitation_email_notice: Deine E-Mail (%{email}) wird für dieses Konto verwendet
         email: E-Mail
         password: Passwort
-        characters_minimum: Zeichen erforderlich)
+        characters_minimum: "Mindestens %{count} Zeichen"
         password_confirmation: Passwortbestätigung
         how_do_you_plan_to_use_dawarich: Wie planst du, Dawarich zu nutzen?
         i_m_self_hosting_and_exploring_the_demo: Ich hoste selbst und erkunde die Demo

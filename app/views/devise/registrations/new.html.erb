@@ -1,35 +1,35 @@
-<div class="hero min-h-content bg-base-200">
-  <div class="hero-content flex-col lg:flex-row-reverse w-full my-10">
-    <div class="text-center lg:text-left">
+<div class="hero bg-base-200">
+  <div class="hero-content flex-col lg:flex-row-reverse w-full my-10 items-start gap-10">
+    <div class="text-center lg:text-left max-w-md">
       <% if @invitation %>
-        <h1 class="text-5xl font-bold text-base-content"><%= t('.join_family', family: @invitation.family.name) %></h1>
-        <p class="py-6 text-base-content opacity-70">
+        <h1 class="text-4xl font-bold text-base-content"><%= t('.join_family', family: @invitation.family.name) %></h1>
+        <p class="py-6 text-base-content/70">
           <%= t('.you_ve_been_invited_by') %> <strong><%= @invitation.invited_by.email %></strong> <%= t('.to_join_their_family_create_your_account_to_accept_the') %>
         </p>
         <div class="alert alert-info mb-4">
-          <svg class="h-5 w-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
-          </svg>
+          <%= icon 'info', class: 'h-5 w-5 shrink-0' %>
           <span class="text-sm">
-            <%= t('.your_email') %><%= @invitation.email %><%= t('.will_be_used_for_this_account') %>
+            <%= t('.invitation_email_notice', email: @invitation.email) %>
           </span>
         </div>
       <% else %>
-        <h1 class="text-5xl font-bold text-base-content"><%= t('.almost_there') %></h1>
+        <h1 class="text-4xl font-bold text-base-content"><%= t('.almost_there') %></h1>
       <% end %>
-        <p class="py-6 text-base-content opacity-70">
-          <%= t('.only_a_few_steps_left_until_you_get_control_over') %>
-        </p>
-        <ol>
-          <li class="mb-2"><%= t('.create_your_account') %></li>
-          <li class="mb-2"><%= t('.configure_your_mobile_app') %></li>
-          <li class="mb-2"><%= t('.start_tracking_your_location_data_securely') %></li>
-          <li class="mb-2"><%= t('.ellipsis') %></li>
-          <li class="mb-2"><%= t('.you_re_beautiful') %></li>
-        </ol>
 
+      <p class="py-6 text-base-content/70">
+        <%= t('.only_a_few_steps_left_until_you_get_control_over') %>
+      </p>
+
+      <ol class="list-decimal list-inside space-y-2 text-base-content/80">
+        <li><%= t('.create_your_account') %></li>
+        <li><%= t('.configure_your_mobile_app') %></li>
+        <li><%= t('.start_tracking_your_location_data_securely') %></li>
+        <li><%= t('.ellipsis') %></li>
+        <li><%= t('.you_re_beautiful') %></li>
+      </ol>
     </div>
-    <div class="card flex-shrink-0 w-full max-w-sm shadow-2xl bg-base-100 px-5 py-5">
+
+    <div class="card flex-shrink-0 w-full max-w-sm shadow-lg bg-base-100 px-5 py-5">
       <%= form_for(resource, as: resource_name, url: registration_path(resource_name), class: 'form-body', html: { data: { turbo: false } }) do |f| %>
         <%= render "devise/shared/error_messages", resource: resource %>
         <% if @invitation %>
@@ -49,19 +49,20 @@
           <%= f.label :password, class: 'label' do %>
             <span class="label-text"><%= t('.password') %></span>
           <% end %>
+          <%= f.password_field :password, autocomplete: "new-password",
+                aria: { describedby: 'password-hint' },
+                class: 'input input-bordered w-full' %>
           <% if @minimum_password_length %>
-            <em class="text-base-content opacity-60 text-sm">(<%= @minimum_password_length %> <%= t('.characters_minimum') %></em>
-          <% end %><br />
-          <%= f.password_field :password, autocomplete: "new-password", class: 'input input-bordered w-full' %>
+            <span id="password-hint" class="label-text-alt text-base-content/60 mt-1">
+              <%= t('.characters_minimum', count: @minimum_password_length) %>
+            </span>
+          <% end %>
         </div>
 
         <div class="form-control">
           <%= f.label :password_confirmation, class: 'label' do %>
             <span class="label-text"><%= t('.password_confirmation') %></span>
           <% end %>
-          <% if @minimum_password_length %>
-            <em class="text-base-content opacity-60 text-sm">(<%= @minimum_password_length %> <%= t('.characters_minimum') %></em>
-          <% end %><br />
           <%= f.password_field :password_confirmation, autocomplete: "new-password", class: 'input input-bordered w-full' %>
         </div>
 
@@ -80,7 +81,7 @@
             </div>
           <% end %>
 
-          <div class="cf-turnstile" data-sitekey="<%= ENV['TURNSTILE_SITE_KEY'] %>" data-theme="dark"></div>
+          <div class="cf-turnstile mt-4" data-sitekey="<%= ENV['TURNSTILE_SITE_KEY'] %>" data-theme="auto"></div>
         <% end %>
 
         <div class="form-control mt-6">
