@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Trip pages no longer fail with a 500 when Immich or Photoprism is unreachable — the trip loads without photos instead. (#3308)
+
 ## [1.11.0] - 2026-08-02, Berlin
 
 ### Added

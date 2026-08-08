@@ -62,7 +62,7 @@ class Immich::RequestPhotos
     end
 
     data.flatten
-  rescue HTTParty::Error, Net::OpenTimeout, Net::ReadTimeout => e
+  rescue *Photos::ConnectionErrors::HANDLED => e
     Rails.logger.error("Immich photo fetch failed: #{e.message}")
     nil
   end

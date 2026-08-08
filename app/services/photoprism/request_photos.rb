@@ -50,7 +50,7 @@ class Photoprism::RequestPhotos
     end
 
     data.flatten
-  rescue HTTParty::Error, Net::OpenTimeout, Net::ReadTimeout, JSON::ParserError => e
+  rescue *Photos::ConnectionErrors::HANDLED => e
     Rails.logger.error("Photoprism photo fetch failed: #{e.message}")
     []
   end
