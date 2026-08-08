@@ -259,7 +259,9 @@ export default class extends Controller {
    * dismissed (no tab is "active" because the panel itself is hidden).
    */
   markActiveClusterButton(activeTab) {
-    const buttons = document.querySelectorAll(".map-button-cluster__btn")
+    const buttons = document.querySelectorAll(
+      ".map-button-cluster__btn[data-tab]",
+    )
     for (const btn of buttons) {
       const isActive = Boolean(activeTab) && btn.dataset.tab === activeTab
       btn.classList.toggle("map-button-cluster__btn--active", isActive)

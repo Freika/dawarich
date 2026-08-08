@@ -48,21 +48,28 @@ function buildEnvironment({ open, activeTab, stubMarkActive = true }) {
 
   const mapContainer = {}
   const calls = { toggleSettings: 0, clusterCleared: 0 }
-  const clusterButtons = ["settings", "layers"].map((tab) => ({
-    dataset: { tab },
+  const makeButton = (tab) => ({
+    dataset: tab ? { tab } : {},
     classList: classes([]),
     attributes: {},
     setAttribute(name, value) {
       this.attributes[name] = value
     },
-  }))
+  })
+  // The Replay and Poster buttons share the cluster class but carry no
+  // data-tab, because they don't drive the panel.
+  const nonPanelButton = makeButton(null)
+  const clusterButtons = [makeButton("settings"), makeButton("layers")]
 
   globalThis.document = {
     querySelector: (selector) =>
       selector === ".map-control-panel" ? panel : null,
     getElementById: (id) =>
       id === "maps-maplibre-container" ? mapContainer : null,
-    querySelectorAll: () => clusterButtons,
+    querySelectorAll: (selector) =>
+      selector.includes("[data-tab]")
+        ? clusterButtons
+        : [...clusterButtons, nonPanelButton],
     addEventListener() {},
     removeEventListener() {},
     dispatchEvent() {},
@@ -92,7 +99,7 @@ function buildEnvironment({ open, activeTab, stubMarkActive = true }) {
     }
   }
 
-  return { controller, panel, calls, clusterButtons }
+  return { controller, panel, calls, clusterButtons, nonPanelButton }
 }
 
 function clickOn(tab) {
@@ -189,4 +196,16 @@ test("cluster buttons report their expanded state to assistive tech", () => {
   controller.markActiveClusterButton(null)
 
   assert.equal(clusterButtons[1].attributes["aria-expanded"], "false")
+})
+
+test("buttons that don't drive the panel are left untouched", () => {
+  const { controller, nonPanelButton } = buildEnvironment({
+    open: true,
+    activeTab: "settings",
+    stubMarkActive: false,
+  })
+
+  controller.markActiveClusterButton("layers")
+
+  assert.deepEqual(nonPanelButton.attributes, {})
 })
