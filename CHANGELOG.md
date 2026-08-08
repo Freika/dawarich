@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Trip pages no longer fail with a 500 when Immich or Photoprism is unreachable — the trip loads without photos instead. (#3308)
 - `OIDC_ISSUER` set to a discovery URL written with a `#` (such as `https://id.example.com/#.well-known/openid-configuration`) no longer fails sign-in with "Issuer mismatch". (#3289)
 - Clicking a map panel button for the panel already on screen now closes it, instead of only the header's X doing that. (#3317)
+- `/metrics` no longer reports the same metric twice with different values when the web and Sidekiq exporters are merged. Where both processes report the same series, each sample now carries a `process="web"` or `process="sidekiq"` label; every other series is unchanged. (#3304)
 
 
 ## [1.11.0] - 2026-08-02, Berlin
