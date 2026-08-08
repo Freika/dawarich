@@ -38,9 +38,13 @@ module OidcConfig
 
   # Discovery expects the bare issuer; the gem appends the well-known path
   # itself. Configs pasting the full discovery URL would otherwise request a
-  # doubled path and fail with an opaque NoMethodError.
+  # doubled path and fail with an opaque NoMethodError. An issuer identifier
+  # carries no fragment, so anything after "#" is a pasting artefact too.
   def self.normalize_issuer(issuer)
-    issuer.strip.sub(%r{/\.well-known/openid-configuration/?\z}, '')
+    issuer.strip
+          .sub(/#.*\z/m, '')
+          .sub(%r{/\.well-known/openid-configuration/?\z}, '')
+          .sub(%r{\A([a-z][a-z0-9+.-]*://[^/]+)/\z}i, '\1')
   end
 
   def self.pkce_enabled?(env = ENV)

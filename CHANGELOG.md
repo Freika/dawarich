@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- `OIDC_ISSUER` set to a discovery URL written with a `#` (such as `https://id.example.com/#.well-known/openid-configuration`) no longer fails sign-in with "Issuer mismatch". (#3289)
+
 ## [1.11.0] - 2026-08-02, Berlin
 
 ### Added
