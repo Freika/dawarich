@@ -29,6 +29,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - The "family is full" notice now shows how many seats are taken instead of stopping mid-sentence in German and Spanish.
 - Notifications about a failed import, a family invitation and the year-end digest are no longer partly in your language and partly in English.
 - Trip pages no longer fail with a 500 when Immich or Photoprism is unreachable — the trip loads without photos instead. (#3308)
+- `OIDC_ISSUER` set to a discovery URL written with a `#` (such as `https://id.example.com/#.well-known/openid-configuration`) no longer fails sign-in with "Issuer mismatch". (#3289)
+
 
 
 ## [1.11.0] - 2026-08-02, Berlin
