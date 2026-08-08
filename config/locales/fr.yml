@@ -1850,9 +1850,6 @@ fr:
       index:
         loading: Chargement...
         pick_a_day: Choisissez une journée
-        confirmed: Confirmé
-        suggested: Suggéré
-        declined: Décliné
         map: Carte
     residency:
       show:
@@ -1891,6 +1888,8 @@ fr:
         no_visits_tracked_this_day: Aucune visite enregistrée ce jour-là.
         visits_are_auto_detected_daily_from_your_location_data: Les visites sont détectées
           automatiquement chaque jour à partir de vos données de localisation.
+      gap_entry:
+        untracked: "%{duration} non enregistré"
       journey_entry:
         duration_moving: "%{duration} en déplacement"
         continued_from: continué depuis
@@ -2875,7 +2874,7 @@ fr:
           one: "1 segment court"
           other: "%{count} segments courts"
       list:
-        all_segments_edit: "Tous les segments (%{count}) · modifier"
+        all_segments: Tous les segments (%{count})
       segment_row:
         detection_confidence: Confiance de la détection
         confidence_percent: "%{percent} %"

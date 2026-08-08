@@ -8,9 +8,7 @@
                       action: "mouseenter->segment-mode-editor#hover mouseleave->segment-mode-editor#unhover",
                       testid: "segment-row-#{segment.id}"
                     } do %>
-  <span class="text-base leading-none shrink-0" aria-hidden="true">
-    <%= mode_emoji(segment.transportation_mode) %>
-  </span>
+  <%= icon mode_icon_name(segment.transportation_mode), class: 'segment-row__icon' %>
 
   <%= form_with model: segment,
                 url: track_segment_path(segment.track, segment),

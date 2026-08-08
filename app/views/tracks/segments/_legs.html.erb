@@ -17,24 +17,45 @@
       <div class="segment-stop"><%= t('.stop_duration', duration: format_duration_short(item.duration)) %></div>
     <% when :transfer %>
       <div class="segment-leg segment-leg--neutral" title="<%= t('.short_segments', count: item.segment_count) %>">
-        <span class="segment-leg__emoji" aria-hidden="true">〰️</span>
+        <%= icon 'line-squiggle', class: 'segment-leg__icon' %>
         <span class="segment-leg__mode"><%= t('.transfer') %></span>
         <span class="segment-leg__nums"><span class="segment-leg__mid" aria-hidden="true">·</span><%=
           display_distance_m(item.distance) %><span class="segment-leg__mid" aria-hidden="true">·</span><%=
           format_duration_short(item.duration) %></span>
       </div>
     <% when :uncertain %>
-      <div class="segment-leg segment-leg--neutral" title="<%= t('.mode_unclear') %>">
-        <span class="segment-leg__emoji" aria-hidden="true">〰️</span>
-        <span class="segment-leg__mode"><%= t('.moving') %></span>
+      <%# Detection could not claim a mode. Making this one editable in place is
+          the highest-value edit on the panel: the row is already asking a
+          question, so it may as well take the answer. %>
+      <div class="segment-leg segment-leg--neutral"
+           title="<%= t('.mode_unclear') %>"
+           data-controller="segment-mode-editor"
+           data-segment-mode-editor-segment-id-value="<%= item.segment_id %>"
+           data-segment-mode-editor-track-id-value="<%= track.id %>"
+           <%# "unknown" rather than blank: the map's segment recolouring reads
+               this off the change event and cannot use an empty string. It
+               also matches what the row is saying — we have not claimed a mode. %>
+           data-segment-mode-editor-mode-value="unknown"
+           data-action="mouseenter->segment-mode-editor#hover mouseleave->segment-mode-editor#unhover">
+        <%= icon 'line-squiggle', class: 'segment-leg__icon' %>
+        <%= render 'tracks/segments/leg_mode',
+                   track: track, segment_id: item.segment_id,
+                   mode: 'unknown', label: t('.moving') %>
         <span class="segment-leg__nums"><span class="segment-leg__mid" aria-hidden="true">·</span><%=
           display_distance_m(item.distance) %><span class="segment-leg__mid" aria-hidden="true">·</span><%=
           format_duration_short(item.duration) %></span>
       </div>
     <% else %>
-      <div class="segment-leg">
-        <span class="segment-leg__emoji" aria-hidden="true"><%= mode_emoji(item.mode) %></span>
-        <span class="segment-leg__mode"><%= t("transportation_modes.#{item.mode}") %></span>
+      <div class="segment-leg"
+           data-controller="segment-mode-editor"
+           data-segment-mode-editor-segment-id-value="<%= item.segment_id %>"
+           data-segment-mode-editor-track-id-value="<%= track.id %>"
+           data-segment-mode-editor-mode-value="<%= item.mode %>"
+           data-action="mouseenter->segment-mode-editor#hover mouseleave->segment-mode-editor#unhover">
+        <%= icon mode_icon_name(item.mode), class: 'segment-leg__icon' %>
+        <%= render 'tracks/segments/leg_mode',
+                   track: track, segment_id: item.segment_id,
+                   mode: item.mode, label: t("transportation_modes.#{item.mode}") %>
         <span class="segment-leg__nums"><span class="segment-leg__mid" aria-hidden="true">·</span><%=
           display_distance_m(item.distance) %><span class="segment-leg__mid" aria-hidden="true">·</span><%=
           format_duration_short(item.duration) %></span>

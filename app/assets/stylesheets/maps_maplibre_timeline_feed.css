@@ -40,6 +40,64 @@
   list-style: none;
   padding: 0;
   margin: 0;
+
+  /* Single source of truth for the row grid. Visit rows, journey legs and
+     gap legs all read these, which is what keeps the spine unbroken and
+     dead straight across three different row types. */
+  --tl-time-col: 52px;
+  --tl-rail-col: 18px;
+  --tl-col-gap: 0.5rem;
+  --tl-pad-x: 0.5rem;
+  /* Centre of the rail column, measured from a row's left border edge. */
+  --tl-rail-x: calc(
+    var(--tl-pad-x) +
+    var(--tl-time-col) +
+    var(--tl-col-gap) +
+    var(--tl-rail-col) /
+    2
+  );
+  /* Dot centre, measured from a visit row's top border edge. Also where the
+     spine starts on the first row and stops on the last. */
+  --tl-dot-y: 1.15rem;
+  --tl-rail-color: oklch(var(--bc) / 0.16);
+  /* Every piece of secondary text on a row shares one tone, set at the
+     lowest alpha that still clears 4.5:1 in both themes. Hierarchy below the
+     place name comes from size, order and grouping — fading text past
+     legibility is not a hierarchy technique. */
+  --tl-text-2: oklch(var(--bc) / 0.66);
+}
+
+/* --- The spine ---
+   Each row paints its own segment across its full padded height. Rows abut,
+   so the segments fuse into one continuous line without the container having
+   to know how many rows there are or how tall they got. */
+.timeline-entries > * {
+  position: relative;
+}
+
+.timeline-entries > *::before {
+  content: "";
+  position: absolute;
+  left: var(--tl-rail-x);
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: var(--tl-rail-color);
+  pointer-events: none;
+}
+
+/* Cap the line at the first and last dot so it reads as a day with a
+   beginning and an end, not a line that got cut off. Only visit rows carry a
+   dot — when a drive opens or closes the day its rail runs the full row,
+   because the movement itself is the record. */
+.timeline-entries > .visit-row:first-child::before {
+  top: var(--tl-dot-y);
+}
+
+.timeline-entries > .visit-row:last-child::before {
+  bottom: calc(100% - var(--tl-dot-y));
 }
 
 /* Helper shown when search/filter hides every visit row on a day that has
@@ -63,83 +121,56 @@
   display: flex;
   gap: 0.75rem;
   padding: 0.5rem 0;
-  border-bottom: 1px solid oklch(var(--bc) / 0.08);
   transition: background-color 0.15s ease;
 }
 
-.timeline-entry:last-child {
-  border-bottom: none;
-}
-
-.timeline-entry:hover {
-  background: oklch(var(--p) / 0.04);
-  margin: 0 -0.75rem;
-  padding-left: 0.75rem;
-  padding-right: 0.75rem;
-  border-radius: 0.375rem;
-}
-
 /* --- Journey leg: a "between-visits" connector, not a peer row --- */
-/* Override the visit-style entry layout so legs read as transitions:
-   no time column, no row border, lighter visual weight, vertical rail. */
+/* Legs read as transitions: lighter weight, no dot, and a rail whose height
+   grows with the duration of the leg. */
 .timeline-entry--journey {
   display: block;
   padding: 0;
-  border-bottom: none;
-}
-
-.timeline-entry--journey:hover {
-  background: transparent;
-  margin: 0;
-  padding: 0;
-  border-radius: 0;
 }
 
 /* Mirrors `.visit-row` so the time / rail / content columns line up
    between visit rows and the connecting legs — gives the day a steady
    left edge regardless of entry type. */
-.journey-leg {
+.journey-leg,
+.gap-leg {
   display: grid;
-  grid-template-columns: 56px 16px minmax(0, 1fr) auto;
-  gap: 0.5rem;
+  grid-template-columns: var(--tl-time-col) var(--tl-rail-col) minmax(0, 1fr) auto;
+  gap: var(--tl-col-gap);
   align-items: center;
-  padding: 0.2rem 0.5rem;
+  padding: 0.3rem var(--tl-pad-x);
   font-size: 0.7rem;
-  color: oklch(var(--bc) / 0.55);
-  border-radius: 0.25rem;
+  color: var(--tl-text-2);
+  border-radius: 8px;
   transition: background-color 0.15s ease;
 }
 
-.journey-leg:hover {
-  background: oklch(var(--p) / 0.04);
-  color: oklch(var(--bc) / 0.75);
+/* Time is the vertical axis. `--tl-leg-extra` is set per row from the leg's
+   own duration, so the spine physically lengthens for a long drive and the
+   shape of the day becomes readable before a single number is. */
+.journey-leg,
+.gap-leg {
+  min-height: calc(1.5rem + var(--tl-leg-extra, 0px));
 }
 
-.journey-leg__time {
+.journey-leg:hover {
+  background: oklch(var(--bc) / 0.05);
+  color: oklch(var(--bc) / 0.8);
+}
+
+.journey-leg__time,
+.gap-leg__time {
   text-align: right;
   font-size: 0.65rem;
   font-variant-numeric: tabular-nums;
-  color: oklch(var(--bc) / 0.4);
+  color: var(--tl-text-2);
 }
 
-/* Vertical rail in the dot column — visually connects the visit rows
-   above and below. Sized to span the row's edges so the rail reads as a
-   continuous line through the leg. */
-.journey-leg__rail-col {
-  display: flex;
-  justify-content: center;
-  position: relative;
-  align-self: stretch;
-}
-
-.journey-leg__rail {
-  width: 2px;
-  background: oklch(var(--bc) / 0.18);
-  border-radius: 1px;
-  margin: -0.2rem 0;
-}
-
-.journey-leg__summary {
+.journey-leg__summary,
+.gap-leg__summary {
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
@@ -147,18 +178,36 @@
   flex-wrap: wrap;
 }
 
-.journey-leg__emoji {
-  font-size: 0.85rem;
-  line-height: 1;
-}
-
 .journey-leg__verb {
   font-weight: 500;
-  color: oklch(var(--bc) / 0.7);
+  color: oklch(var(--bc) / 0.72);
 }
 
 .journey-leg__sep {
-  color: oklch(var(--bc) / 0.35);
+  color: oklch(var(--bc) / 0.45);
+}
+
+/* --- Gap: an interior stretch with no record at all ---
+   Solid rail means "we have this"; dotted means "we don't". That is the
+   whole distinction, and it is the one the old feed silently collapsed. */
+.timeline-entry--gap {
+  display: block;
+  padding: 0;
+}
+
+/* Reads at least as strongly as the solid rail — this segment is carrying
+   the message, so it must not be the faintest thing on the row. */
+.timeline-entry--gap::before {
+  width: 0;
+  background: none;
+  border-left: 2px dotted oklch(var(--bc) / 0.42);
+}
+
+.gap-leg__summary {
+  font-size: 0.65rem;
+  font-style: italic;
+  letter-spacing: 0.01em;
+  color: var(--tl-text-2);
 }
 
 .journey-leg__chevron {
@@ -169,8 +218,15 @@
   color: oklch(var(--bc) / 0.5);
 }
 
-/* Track info panel inside entry content */
+/* Track info panel inside entry content.
+   Stacked above the spine: the row's rail is an absolutely-positioned
+   ::before, which paints over in-flow content, so an expanded card would
+   otherwise get a line drawn straight down its middle. The rail still enters
+   the top edge and leaves the bottom — the day continues, and this card is
+   detail hung off it. */
 .timeline-entry .track-info-panel {
+  position: relative;
+  z-index: 1;
   margin-top: 0.375rem;
 }
 
@@ -536,33 +592,45 @@
   /* minmax(0, 1fr) so the content column can shrink below its natural
      content width — otherwise long place names push the row beyond the
      panel and trigger horizontal scroll. */
-  grid-template-columns: 56px 16px minmax(0, 1fr) auto;
-  gap: 0.5rem;
+  grid-template-columns: var(--tl-time-col) var(--tl-rail-col) minmax(0, 1fr) auto;
+  gap: var(--tl-col-gap);
   align-items: start;
-  padding: 0.6rem 0.5rem;
-  border-bottom: 1px solid oklch(var(--bc) / 0.08);
+  /* No row border. Hairlines between every entry imposed table rhythm and
+     fought the spine; the rail and the whitespace do the separating now. */
+  padding: 0.55rem var(--tl-pad-x) 0.6rem;
+  border-radius: 8px;
   cursor: pointer;
-  transition: background-color 120ms ease;
+  transition:
+    background-color 120ms ease,
+    box-shadow 120ms ease;
 }
 
 .visit-row:hover {
-  background-color: oklch(var(--bc) / 0.03);
+  background-color: oklch(var(--bc) / 0.055);
+}
+
+.visit-row:focus-visible {
+  outline: 2px solid oklch(var(--p));
+  outline-offset: -2px;
 }
 
 .visit-row--selected {
-  background-color: rgba(34, 197, 94, 0.08);
-  box-shadow: inset 3px 0 0 #22c55e;
+  background-color: oklch(var(--p) / 0.12);
 }
 
-/* Inline visit editor — spans the full row below the content columns. */
+/* Inline visit editor — spans the full row below the content columns.
+   Opaque and stacked above the spine, which runs the full height of the row
+   and would otherwise strike through the panel. */
 .visit-row__editor {
+  position: relative;
+  z-index: 1;
   grid-column: 1 / -1;
   min-width: 0;
-  margin-top: 6px;
+  margin-top: 8px;
   padding: 10px 12px;
   border: 1px solid oklch(var(--bc) / 0.1);
   border-radius: 10px;
-  background: oklch(var(--b2) / 0.5);
+  background: oklch(var(--b2));
 }
 
 .visit-editor__label {
@@ -587,18 +655,18 @@
   margin-top: 8px;
 }
 
+/* Icon-only: the row already says what it is, and the label was the widest
+   thing in a column that has to stay narrow. */
 .visit-edit-btn {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  font-size: 0.72rem;
-  font-weight: 600;
-  line-height: 1;
-  padding: 4px 10px;
-  border-radius: 8px;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
   border: 1px solid oklch(var(--bc) / 0.15);
   background: oklch(var(--b2));
-  color: oklch(var(--bc) / 0.85);
+  color: oklch(var(--bc) / 0.7);
   cursor: pointer;
 }
 
@@ -615,11 +683,6 @@
   min-width: 0;
 }
 
-/* All-day visits collapse to 3 columns (no actions column). */
-.visit-row--all-day {
-  grid-template-columns: 56px 16px minmax(0, 1fr);
-}
-
 /* Belt + suspenders — ensure the content cell (and anything inside it like
    the suggested picker) can shrink below intrinsic content width. */
 .visit-row__content {
@@ -630,22 +693,43 @@
 
 .visit-row__time {
   text-align: right;
+  font-size: 0.7rem;
+  line-height: 1.45rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--tl-text-2);
 }
 
+.visit-row__all-day {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Empty spacer; it only reserves the column. The dot positions itself
+   against the row so it lands exactly on the spine. */
 .visit-row__rail {
-  display: flex;
-  justify-content: center;
-  padding-top: 4px;
+  align-self: stretch;
 }
 
+/* The one line that has to be recognizable from across the room. */
 .visit-row__title {
   display: flex;
   align-items: center;
   justify-content: flex-start;
   gap: 0.5rem;
   font-size: 0.8125rem; /* 13px — compact; drops from the default ~16px */
-  line-height: 1.3;
+  font-weight: 600;
+  line-height: 1.45rem;
+  letter-spacing: -0.005em;
+  color: oklch(var(--bc) / 0.95);
   text-align: left;
+}
+
+/* Wraps rather than truncates — a name the user typed themselves is never
+   the thing to cut off. Splitting the address out keeps this short anyway. */
+.visit-row__title > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .visit-row__title .place-link {
@@ -666,32 +750,92 @@
   align-items: center;
   justify-content: flex-start;
   flex-wrap: wrap;
-  gap: 0.4rem;
-  margin-top: 2px;
+  gap: 0.15rem 0.4rem;
+  margin-top: 1px;
+  font-size: 0.6875rem; /* 11px */
+  line-height: 1.35;
+  color: var(--tl-text-2);
   text-align: left;
 }
 
-.visit-row__actions {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.25rem;
-  opacity: 0;
-  transition: opacity 120ms;
+/* The rest of the geocoded string. Present, findable, and never competing
+   with the name above it. */
+.visit-row__address {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
-.visit-row:hover .visit-row__actions {
+/* How many fixes back this visit — a confidence signal, not a headline.
+   Ranked below the address by size, not by fading it out of readability. */
+.visit-row__points {
+  font-size: 0.625rem; /* 10px */
+  font-variant-numeric: tabular-nums;
+  color: var(--tl-text-2);
+}
+
+/* Trails the address rather than leading the point count, so a wrap leaves
+   the separator attached to the line it closes instead of orphaning a bullet
+   at the start of the next one. */
+.visit-row__address::after {
+  content: "·";
+  margin-left: 0.35rem;
+  color: oklch(var(--bc) / 0.45);
+}
+
+/* Duration sits opposite the arrival time, so the row is bracketed by when
+   and how long. Column width is reserved by the always-present duration, so
+   revealing the edit button on hover shifts nothing. */
+.visit-row__actions {
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: center;
+  gap: 0.35rem;
+  line-height: 1.45rem;
+}
+
+.visit-row__duration {
+  font-size: 0.7rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--tl-text-2);
+}
+
+.visit-row .visit-edit-btn {
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.visit-row:hover .visit-edit-btn,
+.visit-row:focus-within .visit-edit-btn,
+.visit-row .visit-edit-btn[aria-expanded="true"] {
   opacity: 1;
 }
 
-/* One neutral dot for every visit — detection status is not a UI state. */
+/* One neutral dot for every visit — detection status is not a UI state.
+   Positioned against the row, not the cell, so it lands dead centre on the
+   spine no matter how tall the row's content grows. */
 .visit-status-dot {
-  display: inline-block;
-  width: 10px;
-  height: 10px;
+  position: absolute;
+  left: var(--tl-rail-x);
+  top: var(--tl-dot-y);
+  transform: translate(-50%, -50%);
+  width: 9px;
+  height: 9px;
   border-radius: 9999px;
-  background: #38bdf8;
-  box-shadow: 0 0 0 2px white;
+  background: var(--visit-marker);
+  box-shadow: 0 0 0 2px oklch(var(--b1));
+  transition:
+    background-color 120ms ease,
+    box-shadow 120ms ease;
+}
+
+/* Selection reads on the rail rather than as a coloured slab edge — the dot
+   is the thing the map is also highlighting, so it is what should change. */
+.visit-row--selected .visit-status-dot {
+  background: oklch(var(--p));
+  box-shadow:
+    0 0 0 2px oklch(var(--b1)),
+    0 0 0 4px oklch(var(--p) / 0.45);
 }
 
 /* Tag chips — background color applied inline by the view. */
@@ -702,6 +846,27 @@
   font-size: 10px;
   line-height: 1.6;
   color: white;
+}
+
+/* Inside a row, a filled pill was the loudest thing on screen — louder than
+   the place name it annotates. The rail's filter chips stay pills because
+   there they are the control; here the tag is an annotation, so the user's
+   colour becomes a dot and the label joins the secondary tone. That also
+   sidesteps white-on-user-colour contrast, which we cannot predict. */
+.visit-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.625rem;
+  line-height: 1.35;
+  color: var(--tl-text-2);
+}
+
+.visit-tag__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  flex-shrink: 0;
 }
 
 /* Suggested picker styles live in maps_maplibre_suggested_picker.css. */
@@ -731,24 +896,6 @@
 .timeline-map-overlay--scope {
   top: 12px;
   left: 12px;
-}
-
-.timeline-map-overlay--legend {
-  bottom: 12px;
-  left: 12px;
-  display: none;
-}
-
-.maps-maplibre-container.panel-timeline-expanded .timeline-map-overlay--legend {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.timeline-map-overlay--legend > div {
-  display: flex;
-  align-items: center;
-  gap: 6px;
 }
 
 .visit-row__check {
@@ -956,13 +1103,69 @@
   border-top: 1px solid oklch(var(--bc) / 0.06);
 }
 
-.segment-leg__emoji {
-  font-size: 0.9rem;
-  line-height: 1;
+.segment-leg__icon,
+.segment-row__icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  align-self: center;
+  color: oklch(var(--bc) / 0.6);
 }
 
 .segment-leg__mode {
   font-weight: 600;
+}
+
+/* The label is the control. It reads as text until you approach it, then a
+   dotted underline and a caret admit it is editable — the row never turns
+   into a form, and there is nothing to save. */
+.segment-leg__form {
+  display: contents;
+}
+
+.segment-leg__mode--editable {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  cursor: pointer;
+  border-bottom: 1px dashed oklch(var(--bc) / 0.28);
+  transition: border-color 120ms ease;
+}
+
+.segment-leg:hover .segment-leg__mode--editable,
+.segment-leg__mode--editable:focus-within {
+  border-bottom-color: oklch(var(--bc) / 0.7);
+}
+
+.segment-leg__caret {
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+  opacity: 0;
+  color: oklch(var(--bc) / 0.55);
+  transition: opacity 120ms ease;
+}
+
+.segment-leg:hover .segment-leg__caret,
+.segment-leg__mode--editable:focus-within .segment-leg__caret {
+  opacity: 1;
+}
+
+/* Stretched over the label so the text itself is the hit target. */
+.segment-leg__select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.segment-leg__mode--editable:focus-within {
+  outline: 2px solid oklch(var(--p));
+  outline-offset: 3px;
+  border-radius: 2px;
 }
 
 .segment-leg__nums {
@@ -982,8 +1185,35 @@
   color: oklch(var(--bc) / 0.6);
 }
 
+/* Opening "All segments · edit" swaps the condensed list for the editable
+   one rather than stacking a second copy underneath it. When DisplayLegs
+   happens not to condense anything — no stationary rows, no short runs, all
+   confident — the two lists are the same segments twice over.
+   The ribbon deliberately survives: it indexes both views.
+   Without :has() support both lists show, which is the previous behaviour. */
+.track-segments:has(.segment-rawlist[open]) .segment-leg,
+.track-segments:has(.segment-rawlist[open]) .segment-stop {
+  display: none;
+}
+
+/* The toggle stays anchored at the bottom of the card in both states: the
+   rows it reveals are ordered above it, so opening does not yank the link
+   upward into the space the condensed list just vacated. */
 .segment-rawlist {
+  display: flex;
+  flex-direction: column;
   margin-top: 8px;
+}
+
+.segment-rawlist > summary {
+  order: 1;
+}
+
+/* Belt and braces. Giving <details> a non-block display has historically let
+   engines render the collapsed content anyway; this states the collapse
+   outright rather than trusting each UA stylesheet to survive the change. */
+.segment-rawlist:not([open]) .segment-rawlist__rows {
+  display: none;
 }
 
 .segment-rawlist > summary {
@@ -1017,10 +1247,19 @@
   font-size: 0.75rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  padding: 2px 9px;
+  padding: 3px 10px;
   border-radius: 999px;
   background: oklch(var(--b2));
   border: 1px solid oklch(var(--bc) / 0.08);
+}
+
+/* Drawn icons, not emoji: these inherit currentColor and share the stroke
+   weight of every other icon on the panel. */
+.timeline-day-modes .mode-chip__icon {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+  color: oklch(var(--bc) / 0.6);
 }
 
 .timeline-day-modes .mode-chip--muted {

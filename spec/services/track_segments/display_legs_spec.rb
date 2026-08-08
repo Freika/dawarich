@@ -21,6 +21,39 @@ RSpec.describe TrackSegments::DisplayLegs do
     expect(described_class.call([legacy])).to be_nil
   end
 
+  describe 'segment identity' do
+    it 'carries the segment id on a leg that maps to exactly one segment' do
+      segment = seg(:walking, 0, 600, 800)
+
+      expect(described_class.call([segment]).items.first.segment_id).to eq(segment.id)
+    end
+
+    it 'carries the segment id on an unclaimed-mode leg so its mode can be set in place' do
+      segment = seg(:unknown, 0, 300, 50, conf: 0.0)
+      item = described_class.call([segment]).items.first
+
+      expect(item.kind).to eq(:uncertain)
+      expect(item.segment_id).to eq(segment.id)
+    end
+
+    it 'leaves a merged transfer without an id — it is more than one segment' do
+      segments = [seg(:walking, 0, 60, 30), seg(:walking, 70, 60, 30), seg(:driving, 200, 900, 5000)]
+      items = described_class.call(segments).items
+      transfer = items.find { |i| i.kind == :transfer }
+
+      expect(transfer).not_to be_nil
+      expect(transfer.segment_id).to be_nil
+    end
+
+    it 'leaves an inferred stop without an id — no segment underlies it' do
+      segments = [seg(:walking, 0, 600, 800), seg(:walking, 1800, 600, 800)]
+      stop = described_class.call(segments).items.find { |i| i.kind == :stop }
+
+      expect(stop).not_to be_nil
+      expect(stop.segment_id).to be_nil
+    end
+  end
+
   it 'returns nil when every segment is stationary' do
     expect(described_class.call([seg(:stationary, 0, 600, 20)])).to be_nil
   end

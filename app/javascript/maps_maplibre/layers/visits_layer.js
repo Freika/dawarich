@@ -1,8 +1,11 @@
+import { getVisitMarkerColor } from "../utils/marker_theme"
 import { BaseLayer } from "./base_layer"
 
 /**
- * Visits layer showing suggested, confirmed, and declined visits.
- * Green = confirmed, Amber = suggested, Grey = declined.
+ * Visits layer. Every visit draws in one colour — the same colour the
+ * timeline's rail dot uses — because showing a visit is asserting it, and
+ * confirmed / suggested / declined is not a visual state. Status still
+ * drives filtering (setStatusFilter), just not appearance.
  *
  * Adds a halo ring for the currently selected visit, a dashed day-route
  * polyline through the day's visits in chronological order, and support
@@ -70,14 +73,7 @@ export class VisitsLayer extends BaseLayer {
         source: this.sourceId,
         paint: {
           "circle-radius": 12,
-          "circle-color": [
-            "case",
-            ["==", ["get", "status"], "confirmed"],
-            "#22c55e",
-            ["==", ["get", "status"], "declined"],
-            "#9ca3af",
-            "#eab308", // suggested (default)
-          ],
+          "circle-color": getVisitMarkerColor(),
           "circle-stroke-width": 2,
           "circle-stroke-color": "#ffffff",
           "circle-opacity": 0.9,

@@ -1134,9 +1134,6 @@ de:
       index:
         loading: Lädt...
         pick_a_day: Wähle einen Tag aus
-        confirmed: Bestätigt
-        suggested: Vorgeschlagen
-        declined: Abgelehnt
         map: Karte
     residency:
       show:
@@ -1171,6 +1168,8 @@ de:
       feed:
         no_visits_tracked_this_day: Keine Aufenthalte dieses Tag verfolgt.
         visits_are_auto_detected_daily_from_your_location_data: Aufenthalte werden täglich automatisch aus deinen Standortdaten erkannt.
+      gap_entry:
+        untracked: "%{duration} nicht erfasst"
       journey_entry:
         duration_moving: "%{duration} in Bewegung"
         continued_from: fortgesetzt von
@@ -1992,7 +1991,7 @@ de:
           one: "1 kurzes Segment"
           other: "%{count} kurze Segmente"
       list:
-        all_segments_edit: "Alle Segmente (%{count}) · bearbeiten"
+        all_segments: Alle Segmente (%{count})
       segment_row:
         detection_confidence: Erkennungssicherheit
         confidence_percent: "%{percent} %"

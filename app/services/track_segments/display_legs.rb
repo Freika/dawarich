@@ -12,7 +12,10 @@ module TrackSegments
     SHORT_LEG_S = 300
     STOP_GAP_S = 240
 
-    Item = Struct.new(:kind, :mode, :distance, :duration, :segment_count, keyword_init: true)
+    # segment_id is present only when the item maps to exactly one segment —
+    # a merged transfer spans several and an inferred stop has none, so
+    # neither can be edited as a single unit.
+    Item = Struct.new(:kind, :mode, :distance, :duration, :segment_count, :segment_id, keyword_init: true)
     Span = Struct.new(:kind, :mode, :percent, keyword_init: true)
     Result = Struct.new(:items, :spans, keyword_init: true)
 
@@ -49,6 +52,7 @@ module TrackSegments
       {
         kind: uncertain ? :uncertain : :leg,
         mode: uncertain ? nil : segment.transportation_mode,
+        segment_id: segment.id,
         distance: segment.distance.to_i,
         duration: segment.duration.to_i,
         start_at: segment.start_at,
@@ -103,7 +107,8 @@ module TrackSegments
           items << Item.new(kind: :stop, duration: gap) if gap >= STOP_GAP_S
         end
         items << Item.new(kind: unit[:kind], mode: unit[:mode], distance: unit[:distance],
-                          duration: unit[:duration], segment_count: unit[:segment_count])
+                          duration: unit[:duration], segment_count: unit[:segment_count],
+                          segment_id: unit[:segment_id])
       end
 
       items

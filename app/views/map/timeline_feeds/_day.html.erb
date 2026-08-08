@@ -26,8 +26,9 @@
   <% if mode_distances.any? || moving_minutes.positive? %>
     <div class="timeline-day-modes">
       <% mode_distances.each do |mode, dist| %>
-        <span class="mode-chip" title="<%= t("transportation_modes.#{mode}") %>">
-          <span aria-hidden="true"><%= mode_emoji(mode) %></span>
+        <span class="mode-chip">
+          <%= icon mode_icon_name(mode), class: 'mode-chip__icon' %>
+          <span class="sr-only"><%= t("transportation_modes.#{mode}") %></span>
           <%= dist %> <%= distance_unit %>
         </span>
       <% end %>
@@ -41,9 +42,12 @@
 
   <% if entries.present? %>
     <ol class="timeline-entries">
-      <% entries.each do |entry| %>
-        <% if entry[:type] == 'visit' %>
+      <% timeline_entries_with_gaps(entries).each do |entry| %>
+        <% case entry[:type] %>
+        <% when 'visit' %>
           <%= render partial: 'map/timeline_feeds/visit_entry', locals: { entry: entry, day: day } %>
+        <% when 'gap' %>
+          <%= render partial: 'map/timeline_feeds/gap_entry', locals: { entry: entry } %>
         <% else %>
           <%= render partial: 'map/timeline_feeds/journey_entry', locals: { entry: entry } %>
         <% end %>

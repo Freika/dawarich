@@ -40,6 +40,19 @@ RSpec.describe 'Tracks::Segments', type: :request do
       expect(segment.corrected_at).to be_present
     end
 
+    it 'refreshes the condensed legs, which is where the mode was edited' do
+      # The leg's inline select posts here; without this stream the row the
+      # user just changed would keep showing the old mode.
+      segment.update!(start_at: Time.current, end_at: Time.current + 600, distance: 900)
+
+      patch track_segment_path(track, segment),
+            params: { track_segment: { transportation_mode: 'walking' } },
+            headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+
+      expect(response.body).to include("track-#{track.id}-legs")
+      expect(response.body).to include("leg-mode-select-#{segment.id}")
+    end
+
     it 'returns 422 when mode is not in user allowlist' do
       user.settings['enabled_transportation_modes'] = %w[walking cycling]
       user.save!

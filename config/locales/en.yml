@@ -1131,9 +1131,6 @@ en:
       index:
         loading: Loading...
         pick_a_day: Pick a day
-        confirmed: Confirmed
-        suggested: Suggested
-        declined: Declined
         map: Map
     residency:
       show:
@@ -1168,6 +1165,8 @@ en:
       feed:
         no_visits_tracked_this_day: No visits tracked this day.
         visits_are_auto_detected_daily_from_your_location_data: Visits are auto-detected daily from your location data.
+      gap_entry:
+        untracked: "%{duration} untracked"
       journey_entry:
         continued_from: continued from
         arrived: ", arrived"
@@ -1995,7 +1994,7 @@ en:
           one: 1 short segment
           other: "%{count} short segments"
       list:
-        all_segments_edit: All segments (%{count}) · edit
+        all_segments: All segments (%{count})
       index:
         no_segments_for_this_track_yet: No segments for this track yet.
     share_links:

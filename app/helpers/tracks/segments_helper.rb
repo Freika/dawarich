@@ -2,11 +2,17 @@
 
 module Tracks::SegmentsHelper
   def modes_for_segment(segment, user)
+    modes_for_mode(segment.transportation_mode, user)
+  end
+
+  # Same options list keyed off a bare mode string, for surfaces that hold a
+  # derived leg rather than the segment record itself.
+  def modes_for_mode(mode, user)
     settings = (current_user == user && current_user_safe_settings) || user.safe_settings
     enabled = settings.enabled_transportation_modes
-    current_mode = segment.transportation_mode.to_s
+    current_mode = mode.to_s
 
-    options = enabled.map { |mode| [I18n.t("transportation_modes.#{mode}"), mode] }
+    options = enabled.map { |m| [I18n.t("transportation_modes.#{m}"), m] }
     return options if enabled.include?(current_mode)
 
     options.unshift([
@@ -23,6 +29,20 @@ module Tracks::SegmentsHelper
       'bus' => '🚌', 'train' => '🚆', 'flying' => '✈️',
       'boat' => '⛵', 'motorcycle' => "\u{1F3CD}️"
     }[mode.to_s] || '❓'
+  end
+
+  # Lucide name for a mode, for surfaces that draw icons rather than emoji.
+  # Emoji arrive as OS-supplied color bitmaps that ignore currentColor and
+  # size inconsistently next to the rest of the icon set.
+  # Motorcycle shares the bike glyph — lucide ships no motorcycle, and the
+  # two never appear together without a verb to tell them apart.
+  def mode_icon_name(mode)
+    {
+      'unknown' => 'route', 'stationary' => 'pause', 'walking' => 'footprints',
+      'running' => 'activity', 'cycling' => 'bike', 'driving' => 'car',
+      'bus' => 'bus', 'train' => 'train-front', 'flying' => 'plane',
+      'boat' => 'ship', 'motorcycle' => 'bike'
+    }[mode.to_s] || 'route'
   end
 
   def segment_distance(segment)
