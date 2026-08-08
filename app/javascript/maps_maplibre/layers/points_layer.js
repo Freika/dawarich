@@ -7,6 +7,14 @@ import { BaseLayer } from "./base_layer"
  * Points layer for displaying individual location points
  * Supports dragging points to update their positions
  */
+/**
+ * A stored coordinate is usable only when it is neither nullish nor blank —
+ * legacy points with no lonlat serialize to an empty string.
+ */
+function storedOr(value, fallback) {
+  return value == null || value === "" ? fallback : value
+}
+
 export class PointsLayer extends BaseLayer {
   constructor(map, options = {}) {
     super(map, { id: "points", ...options })
@@ -213,10 +221,14 @@ export class PointsLayer extends BaseLayer {
         const feature = data.features.find((f) => f.properties.id === pointId)
         if (feature && originalCoords) {
           feature.geometry.coordinates = originalCoords
-          feature.properties.longitude =
-            originalPosition.longitude ?? originalCoords[0]
-          feature.properties.latitude =
-            originalPosition.latitude ?? originalCoords[1]
+          feature.properties.longitude = storedOr(
+            originalPosition.longitude,
+            originalCoords[0],
+          )
+          feature.properties.latitude = storedOr(
+            originalPosition.latitude,
+            originalCoords[1],
+          )
           source.setData(data)
         }
       }
