@@ -18,6 +18,12 @@ module Api
 
         private
 
+        # Matches ApiController: these render JSON for API clients, so the
+        # payload must not follow the caller's Accept-Language.
+        def switch_locale(&block)
+          I18n.with_locale(I18n.default_locale, &block)
+        end
+
         def load_link
           @link = SharedLink.active.find_by(id: params[:id])
           return if @link

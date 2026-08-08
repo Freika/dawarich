@@ -1,23 +1,37 @@
 # frozen_string_literal: true
 
 class DataMigrations::BackfillCountryNameJob < ApplicationJob
+  include Resumable
+
   queue_as :data_migrations
 
-  def perform(batch_size: 1000)
+  BATCH_SIZE = 1000
+
+  def perform(batch_size: BATCH_SIZE)
     Rails.logger.info('Starting country_name backfill job')
 
-    total_count = Point.where(country_name: nil).count
     processed_count = 0
 
-    Point.where(country_name: nil).find_in_batches(batch_size: batch_size) do |points|
-      points.each do |point|
-        country_name = country_name(point)
-        point.update_column(:country_name, country_name) if country_name.present?
+    step :backfill, start: 0 do |step|
+      loop do
+        points = Point.where(country_name: nil)
+                      .where('id > ?', step.cursor)
+                      .order(:id)
+                      .limit(batch_size)
 
-        processed_count += 1
+        break if points.empty?
+
+        points.each do |point|
+          name = country_name(point)
+          point.update_column(:country_name, name) if name.present?
+
+          processed_count += 1
+        end
+
+        Rails.logger.info("Backfilled country_name for #{processed_count} points")
+
+        step.set!(points.last.id)
       end
-
-      Rails.logger.info("Backfilled country_name for #{processed_count}/#{total_count} points")
     end
 
     Rails.logger.info("Completed country_name backfill job. Processed #{processed_count} points")
