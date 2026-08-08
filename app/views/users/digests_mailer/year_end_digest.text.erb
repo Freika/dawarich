@@ -1,7 +1,7 @@
-<%= t('.your') %> <%= @digest.year %> <%= t('.year_in_review') %>
+<%= t('.year_in_review_title', year: @digest.year) %>
 ──────────────────────────────
 
-<%= t('.here_s_your') %> <%= @digest.year %> <%= t('.at_a_glance') %>
+<%= t('.year_at_a_glance', year: @digest.year) %>
 
 <%= t('.the_numbers') %>
   <%= t('.distance') %>       <%= distance_with_unit(@digest.distance, @distance_unit) %>
@@ -18,7 +18,7 @@
 <%= t('.monthly_distance') %>
 <%= ascii_hbar(
   (1..12).map { |m| @monthly_distances[m.to_s].to_f.round },
-  labels: Date::ABBR_MONTHNAMES[1..12],
+  labels: I18n.t('date.abbr_month_names').compact,
   width: 24,
   suffix: " #{@distance_unit}"
 ) %>

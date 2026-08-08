@@ -19,7 +19,7 @@
     <div class="content">
       <p><%= t('.hi') %> <%= @user.email %>,</p>
 
-      <p><%= t('.someone_hopefully_you_is_trying_to_link') %> <strong><%= @provider_label %></strong> <%= t('.sign_in_to_your_dawarich_account_clicking_the_button_below') %></p>
+      <p><%= t('.account_link_request_html', provider: @provider_label) %></p>
 
       <p><a href="<%= @link_url %>" class="cta"><%= t('.link') %> <%= @provider_label %></a></p>
 

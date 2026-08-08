@@ -1,5 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
-import { translate } from "i18n"
+import { formatNumber, translate } from "i18n"
 import { Toast } from "maps_maplibre/components/toast"
 import { ReplayPanel } from "maps_maplibre/managers/replay_panel"
 import { ApiClient } from "maps_maplibre/services/api_client"
@@ -585,13 +585,23 @@ export default class extends Controller {
     const counts = this._lastLoadingCounts || {}
     const parts = []
     for (const [source, count] of Object.entries(counts)) {
-      parts.push(`${count.toLocaleString()} ${source}`)
+      parts.push(
+        translate(`loading_sources.${source}`, {
+          count,
+          formatted_count: formatNumber(count),
+        }),
+      )
     }
 
     // Append family count if family layer is enabled
-    if (this.settings?.familyEnabled) {
+    if (this.settings?.familyEnabled && counts.family === undefined) {
       const familyCount = this._familyMemberCount || 0
-      parts.push(`${familyCount.toLocaleString()} family members`)
+      parts.push(
+        translate("loading_sources.family", {
+          count: familyCount,
+          formatted_count: formatNumber(familyCount),
+        }),
+      )
     }
 
     // Detect when a new data source appears and trigger a pop animation

@@ -22,7 +22,7 @@ error: I18n.t('services.photoprism.connection_tester.photoprism_api_key_is_missi
     end
 
     test_connection
-  rescue HTTParty::Error, Net::OpenTimeout, Net::ReadTimeout, JSON::ParserError => e
+  rescue *Photos::ConnectionErrors::HANDLED => e
     { success: false,
 error: I18n.t('services.photoprism.connection_tester.photoprism_connection_failed_message', message: e.message) }
   end

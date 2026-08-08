@@ -3,6 +3,8 @@
 # Per-user anomaly backfill. Processes points in monthly chunks,
 # guarded by an advisory lock so duplicate enqueues are harmless.
 class Points::AnomalyBackfillUserJob < ApplicationJob
+  include Resumable
+
   queue_as :low_priority
 
   def perform(user_id, reset: false, notify: true, rebuild: :async)
@@ -10,8 +12,14 @@ class Points::AnomalyBackfillUserJob < ApplicationJob
     lock_key = "anomaly_backfill:#{user.id}"
 
     lock_acquired = ActiveRecord::Base.with_advisory_lock(lock_key, timeout_seconds: 0) do
-      reset_existing_flags(user) if reset
-      run_filter_in_monthly_chunks(user)
+      step :reset_flags do
+        reset_existing_flags(user) if reset
+      end
+
+      step :filter_months, start: 0 do |step|
+        run_filter_in_monthly_chunks(user, step)
+      end
+
       true
     end
 
@@ -51,7 +59,7 @@ class Points::AnomalyBackfillUserJob < ApplicationJob
     Rails.logger.info("[AnomalyBackfill] User #{user.id}: cleared #{cleared} anomaly flags before re-evaluation")
   end
 
-  def run_filter_in_monthly_chunks(user)
+  def run_filter_in_monthly_chunks(user, step)
     populated_months = user.points
                            .distinct
                            .pluck(Arel.sql("date_trunc('month', to_timestamp(timestamp))"))
@@ -63,12 +71,16 @@ class Points::AnomalyBackfillUserJob < ApplicationJob
 
     populated_months.each_with_index do |month_start, index|
       chunk_start = month_start.to_i
+      next if chunk_start <= step.cursor
+
       chunk_end = (month_start + 1.month).to_i
 
       marked = Points::AnomalyFilter.new(user.id, chunk_start, chunk_end).call
       Rails.logger.info(
         "[AnomalyBackfill] User #{user.id}: month #{index + 1}/#{total_months}, marked #{marked} anomalies"
       )
+
+      step.set!(chunk_start)
     end
   end
 end
