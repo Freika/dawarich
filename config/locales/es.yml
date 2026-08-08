@@ -1672,6 +1672,7 @@ es:
       my_data: Mis datos
       help: Ayuda
       dawarich: Dawarich
+      dawarich_logo: Logo de Dawarich
       get_started: Empezar
       finish_setting_up_your_account: Finalizar la configuración de tu cuenta
       finish_signup: Finalizar el registro
@@ -3392,6 +3393,8 @@ es:
       suggest:
         error_suggesting_visits_message: 'Error al sugerir visitas: %{message}'
         new_visits_suggested: Se sugirieron nuevas visitas
+        error_suggesting_visits: 'Error al sugerir visitas'
+        new_visits_suggested_message: 'Se han sugerido nuevas visitas a partir de tus datos de ubicación del %{start_at} al %{end_at}. Puedes revisarlas en la página <a href="%{url}" class="link">Cronología</a>.'
       merge_service:
         minimum_visits: Deben seleccionarse al menos 2 visitas para fusionarlas
       bulk_destroy:

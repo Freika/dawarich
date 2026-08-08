@@ -1669,6 +1669,7 @@ en:
       my_data: My data
       help: Help
       dawarich: Dawarich
+      dawarich_logo: Dawarich logo
       get_started: Get started
       finish_setting_up_your_account: Finish setting up your account
       finish_signup: Finish signup
@@ -3385,6 +3386,8 @@ en:
       suggest:
         error_suggesting_visits_message: 'Error suggesting visits: %{message}'
         new_visits_suggested: New visits suggested
+        error_suggesting_visits: 'Error suggesting visits'
+        new_visits_suggested_message: 'New visits have been suggested based on your location data from %{start_at} to %{end_at}. You can review them on the <a href="%{url}" class="link">Timeline</a> page.'
       merge_service:
         minimum_visits: At least 2 visits must be selected for merging
       bulk_destroy:
