@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- `/metrics` no longer reports the same metric twice with different values when the web and Sidekiq exporters are merged. Where both processes report the same series, each sample now carries a `process="web"` or `process="sidekiq"` label; every other series is unchanged. (#3304)
+
 ## [1.11.0] - 2026-08-02, Berlin
 
 ### Added

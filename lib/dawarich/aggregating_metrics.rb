@@ -15,6 +15,10 @@ module Dawarich
   class AggregatingMetrics
     HELP_PREFIX = '# HELP '
     TYPE_PREFIX = '# TYPE '
+    LOCAL_PROCESS = 'web'
+    REMOTE_PROCESS = 'sidekiq'
+    PROCESS_LABEL = 'process'
+    SAMPLE_LINE = /\A([a-zA-Z_:][a-zA-Z0-9_:]*)(\{.*\})?(\s+.*)\z/
 
     def initialize(local_app, remote_url:, remote_user:, remote_password:, timeout: 5)
       @local_app = local_app
@@ -52,27 +56,72 @@ module Dawarich
     end
 
     # Concatenates local and remote bodies. Deduplicates `# HELP <name> ...` and
-    # `# TYPE <name> ...` lines so the same metric name doesn't appear twice
-    # in metadata.
+    # `# TYPE <name> ...` lines so the same metric name doesn't appear twice in
+    # metadata.
+    #
+    # Both processes register some collectors independently, so the same metric
+    # name and label set can arrive from each with a different value — which
+    # OpenMetrics forbids and strict ingesters reject. Those samples, and only
+    # those, get a `process` label naming where they came from, so the series
+    # stay distinct without renaming anything that isn't ambiguous.
     def merge(local, remote)
       return local if remote.empty?
+
+      collisions = sample_identities(local) & sample_identities(remote)
 
       seen = Set.new
       out = String.new
 
-      [local, remote].each do |body|
+      { LOCAL_PROCESS => local, REMOTE_PROCESS => remote }.each do |process, body|
         body.each_line do |line|
           if line.start_with?(HELP_PREFIX) || line.start_with?(TYPE_PREFIX)
             metric_name = line.split(/\s+/, 4)[2]
             prefix = line.start_with?(HELP_PREFIX) ? HELP_PREFIX : TYPE_PREFIX
             key = "#{prefix}#{metric_name}"
             next unless seen.add?(key)
+
+            out << line
+            next
           end
-          out << line
+
+          out << disambiguate(line, process, collisions)
         end
       end
 
       out
+    end
+
+    def sample_identities(body)
+      body.each_line.filter_map { |line| identity_of(line) }.to_set
+    end
+
+    def identity_of(line)
+      return if line.start_with?('#')
+
+      match = SAMPLE_LINE.match(line.strip)
+      return if match.nil?
+
+      "#{match[1]}#{match[2]}"
+    end
+
+    def disambiguate(line, process, collisions)
+      identity = identity_of(line)
+      return line unless collisions.include?(identity)
+
+      match = SAMPLE_LINE.match(line.strip)
+      name = match[1]
+      labels = match[2]
+      value = match[3]
+      return line if labels.to_s.include?("#{PROCESS_LABEL}=")
+
+      label = %(#{PROCESS_LABEL}="#{process}")
+      labels = if labels.nil? || labels == '{}'
+                 "{#{label}}"
+               else
+                 "{#{label},#{labels[1..]}"
+               end
+
+      "#{name}#{labels}#{value}\n"
     end
 
     def read_body(body)
