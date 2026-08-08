@@ -6,6 +6,7 @@
 
 class Photoprism::RequestPhotos
   include SslConfigurable
+  include DayBoundable
 
   attr_reader :user, :photoprism_api_base_url, :photoprism_api_key, :start_date, :end_date
 
@@ -114,10 +115,6 @@ class Photoprism::RequestPhotos
     data.flatten.select do |photo|
       DateTime.parse(photo['TakenAtLocal']).between?(range_start, range_end)
     end
-  end
-
-  def date_only?(value)
-    value.to_s.strip.match?(/\A\d{4}-\d{1,2}-\d{1,2}\z/)
   end
 
   def cache_preview_token(headers)

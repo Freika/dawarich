@@ -2,6 +2,7 @@
 
 class Immich::RequestPhotos
   include SslConfigurable
+  include DayBoundable
 
   attr_reader :user, :immich_api_base_url, :immich_api_key, :start_date, :end_date
 
@@ -118,9 +119,5 @@ class Immich::RequestPhotos
     Time.parse(value.to_s).utc
   rescue ArgumentError, TypeError
     nil
-  end
-
-  def date_only?(value)
-    value.to_s.strip.match?(/\A\d{4}-\d{1,2}-\d{1,2}\z/)
   end
 end
