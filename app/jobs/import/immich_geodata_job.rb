@@ -2,6 +2,7 @@
 
 class Import::ImmichGeodataJob < ApplicationJob
   queue_as :imports
+  retry_on(*Photos::ConnectionErrors::RETRYABLE, wait: :polynomially_longer, attempts: 5)
 
   def perform(user_id)
     user = find_user_or_skip(user_id) || return

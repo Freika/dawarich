@@ -32,6 +32,10 @@ class Photoprism::RequestPhotos
     time_framed_data(data, start_date, end_date)
   end
 
+  def connection_failed?
+    @connection_failed.present?
+  end
+
   private
 
   def retrieve_photoprism_data
@@ -53,6 +57,7 @@ class Photoprism::RequestPhotos
     data.flatten
   rescue *Photos::ConnectionErrors::HANDLED => e
     Rails.logger.error("Photoprism photo fetch failed: #{e.message}")
+    @connection_failed = true
     raise if @raise_on_connection_error && Photos::ConnectionErrors.retryable?(e)
 
     []

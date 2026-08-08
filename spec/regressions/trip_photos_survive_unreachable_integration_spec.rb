@@ -23,8 +23,9 @@ RSpec.describe 'Trip photos survive an unreachable photo integration', type: :re
       it "returns no photos instead of raising on #{description}" do
         allow(HTTParty).to receive(:post) { raiser.call }
 
-        expect { Immich::RequestPhotos.new(immich_user).call }.not_to raise_error
-        expect(Immich::RequestPhotos.new(immich_user).call).to be_nil
+        result = nil
+        expect { result = Immich::RequestPhotos.new(immich_user).call }.not_to raise_error
+        expect(result).to be_nil
       end
     end
   end
@@ -34,9 +35,19 @@ RSpec.describe 'Trip photos survive an unreachable photo integration', type: :re
       it "returns no photos instead of raising on #{description}" do
         allow(HTTParty).to receive(:get) { raiser.call }
 
-        expect { Photoprism::RequestPhotos.new(photoprism_user).call }.not_to raise_error
-        expect(Photoprism::RequestPhotos.new(photoprism_user).call).to eq([])
+        result = nil
+        expect { result = Photoprism::RequestPhotos.new(photoprism_user).call }.not_to raise_error
+        expect(result).to eq([])
       end
+    end
+
+    it 'records the failure so a degraded result is not cached as a real one' do
+      allow(HTTParty).to receive(:get).and_raise(SocketError, 'Hostname not known')
+
+      search = Photos::Search.new(photoprism_user)
+      search.call
+
+      expect(search.errors).to include(:photoprism)
     end
   end
 
