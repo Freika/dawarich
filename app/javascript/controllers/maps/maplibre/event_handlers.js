@@ -13,6 +13,23 @@ import {
 /**
  * Handles map interaction events (clicks, info display)
  */
+/**
+ * Format the coordinates a feature carries in its properties. Returns null when
+ * either is absent or blank, so the caller can fall back to the geometry.
+ * `Number("")` is 0 and finite, so a plain isFinite check is not enough.
+ */
+function storedCoordinates(properties) {
+  const { latitude, longitude } = properties
+  if (latitude == null || longitude == null) return null
+  if (latitude === "" || longitude === "") return null
+
+  const lat = Number(latitude)
+  const lon = Number(longitude)
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null
+
+  return `${lat.toFixed(6)}, ${lon.toFixed(6)}`
+}
+
 export class EventHandlers {
   constructor(map, controller) {
     this.map = map
@@ -127,15 +144,13 @@ export class EventHandlers {
     // Prefer the stored values carried in the properties. A clicked feature's
     // geometry comes back snapped to the tile grid, so reading coordinates off
     // it shows a position that doesn't match the one in the points list.
-    const lat = Number(properties.latitude)
-    const lon = Number(properties.longitude)
+    const stored = storedCoordinates(properties)
     const coords = geometry?.coordinates
     const coordStr =
-      Number.isFinite(lat) && Number.isFinite(lon)
-        ? `${lat.toFixed(6)}, ${lon.toFixed(6)}`
-        : coords && coords.length >= 2
-          ? `${coords[1].toFixed(6)}, ${coords[0].toFixed(6)}`
-          : null
+      stored ??
+      (coords && coords.length >= 2
+        ? `${coords[1].toFixed(6)}, ${coords[0].toFixed(6)}`
+        : null)
     const pointId = properties.id
     const addressFrame = pointId
       ? `<turbo-frame id="point-address-${pointId}" src="/points/${pointId}/address" loading="lazy"></turbo-frame>`

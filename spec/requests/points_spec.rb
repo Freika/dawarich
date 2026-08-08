@@ -86,8 +86,8 @@ RSpec.describe '/points', type: :request do
         get points_url(start_at: 3.years.ago.iso8601, end_at: Time.zone.now.iso8601)
 
         expect(response).to be_successful
-        expect(response.body).to include('10.0, 20.0')
-        expect(response.body).not_to include('55.0, 37.0')
+        expect(response.body).to include('10.000000, 20.000000')
+        expect(response.body).not_to include('55.000000, 37.000000')
       end
     end
 
@@ -104,7 +104,7 @@ RSpec.describe '/points', type: :request do
         get points_url(start_at: 3.years.ago.iso8601, end_at: Time.zone.now.iso8601)
 
         expect(response).to be_successful
-        expect(response.body).to include('55.0, 37.0')
+        expect(response.body).to include('55.000000, 37.000000')
       end
     end
   end

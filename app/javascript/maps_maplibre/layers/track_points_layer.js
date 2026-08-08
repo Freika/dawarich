@@ -114,6 +114,8 @@ export class TrackPointsLayer extends BaseLayer {
           accuracy: point.accuracy,
           country_name: point.country_name,
           track_id: this.trackId,
+          latitude: point.latitude,
+          longitude: point.longitude,
         },
       })),
     }

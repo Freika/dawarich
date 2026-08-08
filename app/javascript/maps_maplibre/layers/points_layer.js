@@ -148,6 +148,8 @@ export class PointsLayer extends BaseLayer {
       )
       if (feature) {
         feature.geometry.coordinates = [coords.lng, coords.lat]
+        feature.properties.latitude = coords.lat
+        feature.properties.longitude = coords.lng
         source.setData(data)
       }
     }
@@ -207,6 +209,8 @@ export class PointsLayer extends BaseLayer {
         const feature = data.features.find((f) => f.properties.id === pointId)
         if (feature && originalCoords) {
           feature.geometry.coordinates = originalCoords
+          feature.properties.longitude = originalCoords[0]
+          feature.properties.latitude = originalCoords[1]
           source.setData(data)
         }
       }

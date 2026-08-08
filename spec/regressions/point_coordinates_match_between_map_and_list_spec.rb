@@ -23,23 +23,29 @@ RSpec.describe 'Point coordinates match between the map and the points list', ty
     end
   end
 
-  describe 'the API payload the map popup reads' do
-    it 'carries the stored coordinates in the feature properties' do
-      properties = PointSerializer.new(point).call
+  # The map builds its features client-side from this payload, so these are the
+  # coordinates the popup ends up showing.
+  describe 'the points API payload the map consumes' do
+    it 'carries the stored coordinates' do
+      %w[latitude longitude].each do |key|
+        expect(Api::SlimPointSerializer.new(point).call).to have_key(key.to_sym)
+      end
 
-      expect(properties['latitude'].to_f).to be_within(0.0000001).of(51.340298765)
-      expect(properties['longitude'].to_f).to be_within(0.0000001).of(12.371234567)
+      payload = Api::SlimPointSerializer.new(point).call
+
+      expect(payload[:latitude].to_f).to be_within(0.0000001).of(51.340298765)
+      expect(payload[:longitude].to_f).to be_within(0.0000001).of(12.371234567)
     end
 
     it 'formats to exactly the string the list shows' do
-      properties = PointSerializer.new(point).call
-      from_properties = format(
+      payload = Api::SlimPointSerializer.new(point).call
+      from_payload = format(
         '%<lat>.6f, %<lon>.6f',
-        lat: properties['latitude'].to_f,
-        lon: properties['longitude'].to_f
+        lat: payload[:latitude].to_f,
+        lon: payload[:longitude].to_f
       )
 
-      expect(from_properties).to eq(point_coordinates(point))
+      expect(from_payload).to eq(point_coordinates(point))
     end
   end
 
