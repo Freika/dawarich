@@ -10,6 +10,29 @@ RSpec.describe Points::RawData::Clearer do
     allow(PointsChannel).to receive(:broadcast_to)
   end
 
+  describe '#clear_user' do
+    let(:clearer) { described_class.new(cooling_period: 7.days) }
+    let(:other_user) { create(:user) }
+    let!(:archive) { create(:points_raw_data_archive, user: user, verified_at: 8.days.ago) }
+    let!(:other_archive) { create(:points_raw_data_archive, user: other_user, verified_at: 8.days.ago) }
+    let!(:point) do
+      create(:point, user: user, raw_data_archived: true,
+                     raw_data_archive_id: archive.id, raw_data: { 'source' => 'selected' })
+    end
+    let!(:other_point) do
+      create(:point, user: other_user, raw_data_archived: true,
+                     raw_data_archive_id: other_archive.id, raw_data: { 'source' => 'other' })
+    end
+
+    it 'clears only archives owned by the selected user' do
+      result = clearer.clear_user(user.id)
+
+      expect(result[:cleared]).to eq(1)
+      expect(point.reload.raw_data).to eq({})
+      expect(other_point.reload.raw_data).to eq({ 'source' => 'other' })
+    end
+  end
+
   describe '#clear_specific_archive' do
     let(:test_date) { 3.months.ago.beginning_of_month.utc }
     let!(:points) do

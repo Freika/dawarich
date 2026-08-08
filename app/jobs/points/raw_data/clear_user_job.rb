@@ -8,7 +8,6 @@ module Points
     class ClearUserJob < ApplicationJob
       queue_as :archival
 
-      BATCH_SIZE = 5_000
       COOLING_PERIOD = Clearer::COOLING_PERIOD
 
       def perform(user_id)
@@ -30,34 +29,7 @@ module Points
       private
 
       def clear_user(user)
-        verified_archive_ids = Points::RawDataArchive
-                               .where(user_id: user.id)
-                               .where(verified_at: ..COOLING_PERIOD.ago)
-                               .pluck(:id)
-
-        return if verified_archive_ids.empty?
-
-        total = 0
-
-        loop do
-          cleared = Point
-                    .where(user_id: user.id, raw_data_archived: true)
-                    .where(raw_data_archive_id: verified_archive_ids)
-                    .where.not(raw_data: {})
-                    .order(:id)
-                    .limit(BATCH_SIZE)
-                    .update_all(raw_data: {})
-
-          total += cleared
-          break if cleared.zero?
-        end
-
-        return unless total.positive?
-
-        Rails.logger.info("Cleared raw_data for #{total} points (user #{user.id})")
-
-        Yabeda.dawarich_archive.operations_total.increment({ operation: 'clear', status: 'success' })
-        Yabeda.dawarich_archive.points_total.increment({ operation: 'removed' }, by: total)
+        Clearer.new(cooling_period: COOLING_PERIOD).clear_user(user.id)
       end
     end
   end

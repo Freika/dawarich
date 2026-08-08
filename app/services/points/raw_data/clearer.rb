@@ -25,6 +25,17 @@ module Points
         @stats
       end
 
+      def clear_user(user_id)
+        Rails.logger.info("Starting raw_data clearing for user #{user_id}...")
+
+        verified_archives(user_id: user_id).find_each do |archive|
+          clear_archive_points(archive)
+        end
+
+        Rails.logger.info("Clearing complete for user #{user_id}: #{@stats}")
+        @stats
+      end
+
       def clear_specific_archive(archive_id)
         archive = Points::RawDataArchive.find(archive_id)
 
@@ -47,9 +58,10 @@ module Points
 
       private
 
-      def verified_archives
+      def verified_archives(user_id: nil)
         # Only archives that are verified but have points with non-empty raw_data
         scope = Points::RawDataArchive.where.not(verified_at: nil)
+        scope = scope.where(user_id: user_id) if user_id
         scope = scope.where(verified_at: ..@cooling_period.ago) if @cooling_period
         scope.where(id: points_needing_clearing.select(:raw_data_archive_id).distinct)
       end
