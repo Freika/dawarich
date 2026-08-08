@@ -2,6 +2,7 @@
 
 class Immich::RequestPhotos
   include SslConfigurable
+  include DayBoundable
 
   attr_reader :user, :immich_api_base_url, :immich_api_key, :start_date, :end_date
 
@@ -89,12 +90,12 @@ class Immich::RequestPhotos
 
     return body unless end_date
 
-    body.merge(takenBefore: normalize_date(end_date))
+    body.merge(takenBefore: normalize_date(end_date, end_of_day: true))
   end
 
   def time_framed_data(data)
     start_time = parse_time(start_date)
-    end_time = parse_time(end_date)
+    end_time = parse_time(end_date, end_of_day: true)
     return data unless start_time
 
     data.select do |photo|
@@ -105,13 +106,18 @@ class Immich::RequestPhotos
     end
   end
 
-  def normalize_date(value)
-    parsed = parse_time(value)
+  def normalize_date(value, end_of_day: false)
+    parsed = parse_time(value, end_of_day: end_of_day)
     parsed ? parsed.iso8601 : value
   end
 
-  def parse_time(value)
+  # A bare date names a whole day, so an end bound written that way has to
+  # reach its last instant before the shift to UTC. Only the end bound is
+  # widened; the start bound keeps the parsing it has always had.
+  def parse_time(value, end_of_day: false)
     return if value.blank?
+
+    return Time.zone.parse(value.to_s).end_of_day.utc if end_of_day && date_only?(value)
 
     Time.parse(value.to_s).utc
   rescue ArgumentError, TypeError

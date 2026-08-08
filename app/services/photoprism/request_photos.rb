@@ -6,6 +6,7 @@
 
 class Photoprism::RequestPhotos
   include SslConfigurable
+  include DayBoundable
 
   attr_reader :user, :photoprism_api_base_url, :photoprism_api_key, :start_date, :end_date
 
@@ -113,9 +114,13 @@ class Photoprism::RequestPhotos
     }
   end
 
+  # A bare date names a whole day, so an end bound written that way has to
+  # reach its last instant or the final day is dropped.
   def time_framed_data(data, start_date, end_date)
     range_start = start_date.to_datetime
     range_end = (end_date || Time.current).to_datetime
+    range_end = range_end.end_of_day if date_only?(end_date)
+
     data.flatten.select do |photo|
       DateTime.parse(photo['TakenAtLocal']).between?(range_start, range_end)
     end
