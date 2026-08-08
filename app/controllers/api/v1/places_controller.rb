@@ -6,7 +6,7 @@ module Api
       before_action :set_place, only: %i[show update destroy]
 
       def index
-        @places = current_api_user.places.includes(:tags, :visits)
+        @places = current_api_user.places.includes(:tags, :active_visits)
 
         if params[:tag_ids].present?
           tag_ids = Array(params[:tag_ids])
@@ -20,7 +20,7 @@ module Api
             tagged_ids = current_api_user.places.with_tags(numeric_tag_ids).pluck(:id)
             untagged_ids = current_api_user.places.without_tags.pluck(:id)
             combined_ids = (tagged_ids + untagged_ids).uniq
-            @places = current_api_user.places.includes(:tags, :visits).where(id: combined_ids)
+            @places = current_api_user.places.includes(:tags, :active_visits).where(id: combined_ids)
           elsif numeric_tag_ids.any?
             # Only tagged places with ANY of the selected tags (OR logic)
             @places = @places.with_tags(numeric_tag_ids)
@@ -73,7 +73,7 @@ module Api
 
         if @place.save
           add_tags if tag_ids.present?
-          @place = current_api_user.places.includes(:tags, :visits).find(@place.id)
+          @place = current_api_user.places.includes(:tags, :active_visits).find(@place.id)
 
           render json: serialize_place(@place), status: :created
         else
@@ -84,7 +84,7 @@ module Api
       def update
         if @place.update(place_params)
           set_tags if params[:place][:tag_ids]
-          @place = current_api_user.places.includes(:tags, :visits).find(@place.id)
+          @place = current_api_user.places.includes(:tags, :active_visits).find(@place.id)
 
           render json: serialize_place(@place)
         else
@@ -147,7 +147,7 @@ module Api
       private
 
       def set_place
-        @place = current_api_user.places.includes(:tags, :visits).find(params[:id])
+        @place = current_api_user.places.includes(:tags, :active_visits).find(params[:id])
       end
 
       def place_params
@@ -182,7 +182,7 @@ module Api
           note: place.note,
           icon: place.tags.first&.icon,
           color: place.tags.first&.color,
-          visits_count: place.visits.size,
+          visits_count: place.active_visits.size,
           name_locked: place.name_locked?,
           created_at: place.created_at,
           tags: place.tags.map do |tag|

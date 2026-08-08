@@ -1,6 +1,16 @@
 # frozen_string_literal: true
 
 module TimelineHelper
+  # Interior holes shorter than this are the ordinary seams between a visit
+  # ending and the next track starting — real days are full of them, and
+  # marking each one costs the marker its meaning. An hour and a half with no
+  # visit and no track is unambiguous: something was not recorded.
+  TIMELINE_GAP_MIN_MINUTES = 90
+
+  # Ceiling on how far a long leg may stretch the rail, in px. Past this the
+  # day column scrolls more than it communicates.
+  JOURNEY_LEG_MAX_EXTRA_PX = 80
+
   # "YYYY-MM" for the calendar's initial month. Prefers, in order:
   #   1. `params[:date]` (the selected day, e.g. "2025-12-11")
   #   2. `params[:start_at]` (range start, e.g. "2025-12-11T00:00:00")
@@ -84,6 +94,67 @@ module TimelineHelper
       entry[:place]&.dig(:name).presence ||
       entry[:area]&.dig(:name).presence ||
       I18n.t('helpers.timeline.unnamed')
+  end
+
+  # Geocoders hand back one flat string — "Good Lood, Tadeusza Romanowicza, 4,
+  # Krakow, Lesser Poland Voivodeship" — in which the only token a person
+  # recognizes is the first. Split it so the row can print the recognizable
+  # part loud and the rest as a quiet address line.
+  def visit_entry_name_parts(entry)
+    tokens = visit_entry_display_name(entry).split(',').map(&:strip).reject(&:blank?)
+    return { primary: visit_entry_display_name(entry), secondary: nil } if tokens.empty?
+
+    tokens = merge_house_numbers(tokens)
+    primary = tokens.shift
+    # The last token is the province / voivodeship / state — always the widest
+    # and least useful unit. Drop it, unless it is the only context we have.
+    tokens = tokens[0...-1] if tokens.length > 1
+
+    { primary: primary, secondary: tokens.join(', ').presence }
+  end
+
+  # Walks the day's rows and calls out interior stretches nothing was recorded
+  # for. Journeys overlap the visits that sort between their endpoints, so the
+  # hole is measured against the furthest point already covered — diffing
+  # consecutive rows would invent gaps inside a tracked drive.
+  def timeline_entries_with_gaps(entries)
+    covered_until = nil
+
+    Array(entries).flat_map do |entry|
+      started_at = Time.iso8601(entry[:started_at].to_s)
+      ended_at = Time.iso8601(entry[:ended_at].to_s)
+      gap_minutes = covered_until ? ((started_at - covered_until) / 60).floor : 0
+      gap_start = covered_until
+      covered_until = [covered_until, ended_at].compact.max
+
+      next [entry] if gap_minutes < TIMELINE_GAP_MIN_MINUTES
+
+      # Stamped with where the record stops rather than where it resumes —
+      # that is the moment the user is being told about.
+      [{ type: 'gap', minutes: gap_minutes, started_at: gap_start.iso8601 }, entry]
+    end
+  end
+
+  # Extra px of rail a leg earns for its duration, so a three-hour drive
+  # visibly outweighs a nine-minute hop. Square root, not linear: the day
+  # needs to keep its proportions readable inside one scroll.
+  def journey_leg_extra_height(seconds)
+    minutes = seconds.to_i / 60
+    return 0 if minutes <= 0
+
+    (Math.sqrt(minutes) * 3.2).round.clamp(0, JOURNEY_LEG_MAX_EXTRA_PX)
+  end
+
+  # "Tadeusza Romanowicza", "4" arrives as two tokens because the geocoder
+  # comma-separates the house number. Rejoin them with a space.
+  def merge_house_numbers(tokens)
+    tokens.each_with_object([]) do |token, merged|
+      if merged.any? && token.match?(/\A\d+[a-z]?\z/i)
+        merged[-1] = "#{merged.last} #{token}"
+      else
+        merged << token
+      end
+    end
   end
 
   # Duration-based heuristic for hash entries. Avoids N+1 Visit lookups.

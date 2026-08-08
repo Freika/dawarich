@@ -60,23 +60,7 @@ RSpec.describe Users::SafeSettings do
               }
             },
             globe_projection: true,
-            transportation_thresholds: {
-              'walking_max_speed' => 7,
-              'cycling_max_speed' => 45,
-              'driving_max_speed' => 220,
-              'flying_min_speed' => 150
-            },
-            transportation_expert_thresholds: {
-              'stationary_max_speed' => 1,
-              'running_vs_cycling_accel' => 0.25,
-              'cycling_vs_driving_accel' => 0.4,
-              'train_min_speed' => 80,
-              'min_segment_duration' => 60,
-              'time_gap_threshold' => 180,
-              'min_flight_distance_km' => 100
-            },
             enabled_transportation_modes: Track::TRANSPORTATION_MODES.keys.map(&:to_s),
-            transportation_expert_mode: false,
             min_minutes_spent_in_city: 60,
             max_gap_minutes_in_city: 120,
             gps_filtering_enabled: true,
@@ -163,22 +147,6 @@ RSpec.describe Users::SafeSettings do
             'supporter_email' => nil,
             'supporter_github_username' => nil,
             'show_supporter_badge' => true,
-            'transportation_thresholds' => {
-              'walking_max_speed' => 7,
-              'cycling_max_speed' => 45,
-              'driving_max_speed' => 220,
-              'flying_min_speed' => 150
-            },
-            'transportation_expert_thresholds' => {
-              'stationary_max_speed' => 1,
-              'running_vs_cycling_accel' => 0.25,
-              'cycling_vs_driving_accel' => 0.4,
-              'train_min_speed' => 80,
-              'min_segment_duration' => 60,
-              'time_gap_threshold' => 180,
-              'min_flight_distance_km' => 100
-            },
-            'transportation_expert_mode' => false,
             'min_minutes_spent_in_city' => 60,
             'max_gap_minutes_in_city' => 120,
             'gps_filtering_enabled' => true,
@@ -234,23 +202,7 @@ RSpec.describe Users::SafeSettings do
               }
             },
             globe_projection: true,
-            transportation_thresholds: {
-              'walking_max_speed' => 7,
-              'cycling_max_speed' => 45,
-              'driving_max_speed' => 220,
-              'flying_min_speed' => 150
-            },
-            transportation_expert_thresholds: {
-              'stationary_max_speed' => 1,
-              'running_vs_cycling_accel' => 0.25,
-              'cycling_vs_driving_accel' => 0.4,
-              'train_min_speed' => 80,
-              'min_segment_duration' => 60,
-              'time_gap_threshold' => 180,
-              'min_flight_distance_km' => 100
-            },
             enabled_transportation_modes: Track::TRANSPORTATION_MODES.keys.map(&:to_s),
-            transportation_expert_mode: false,
             min_minutes_spent_in_city: 60,
             max_gap_minutes_in_city: 120,
             gps_filtering_enabled: true,
@@ -625,90 +577,6 @@ RSpec.describe Users::SafeSettings do
 
       it 'prefers the new key over the legacy key' do
         expect(safe_settings.yearly_digest_emails_enabled?).to be false
-      end
-    end
-  end
-
-  describe 'transportation threshold settings' do
-    let(:safe_settings) { described_class.new(settings) }
-
-    context 'with default values' do
-      let(:settings) { {} }
-
-      it 'returns default transportation thresholds' do
-        expect(safe_settings.transportation_thresholds).to eq(
-          {
-            'walking_max_speed' => 7,
-            'cycling_max_speed' => 45,
-            'driving_max_speed' => 220,
-            'flying_min_speed' => 150
-          }
-        )
-      end
-
-      it 'returns default transportation expert thresholds' do
-        expect(safe_settings.transportation_expert_thresholds).to eq(
-          {
-            'stationary_max_speed' => 1,
-            'running_vs_cycling_accel' => 0.25,
-            'cycling_vs_driving_accel' => 0.4,
-            'train_min_speed' => 80,
-            'min_segment_duration' => 60,
-            'time_gap_threshold' => 180,
-            'min_flight_distance_km' => 100
-          }
-        )
-      end
-
-      it 'returns false for transportation expert mode' do
-        expect(safe_settings.transportation_expert_mode?).to be false
-      end
-    end
-
-    context 'with custom values' do
-      let(:settings) do
-        {
-          'transportation_thresholds' => {
-            'walking_max_speed' => 8,
-            'cycling_max_speed' => 50,
-            'driving_max_speed' => 200,
-            'flying_min_speed' => 180
-          },
-          'transportation_expert_thresholds' => {
-            'stationary_max_speed' => 2,
-            'train_min_speed' => 100
-          },
-          'transportation_expert_mode' => true
-        }
-      end
-
-      it 'returns custom transportation thresholds' do
-        expect(safe_settings.transportation_thresholds).to eq(
-          {
-            'walking_max_speed' => 8,
-            'cycling_max_speed' => 50,
-            'driving_max_speed' => 200,
-            'flying_min_speed' => 180
-          }
-        )
-      end
-
-      it 'returns custom transportation expert thresholds merged with defaults' do
-        expect(safe_settings.transportation_expert_thresholds).to eq(
-          {
-            'stationary_max_speed' => 2,
-            'running_vs_cycling_accel' => 0.25,
-            'cycling_vs_driving_accel' => 0.4,
-            'train_min_speed' => 100,
-            'min_segment_duration' => 60,
-            'time_gap_threshold' => 180,
-            'min_flight_distance_km' => 100
-          }
-        )
-      end
-
-      it 'returns true for transportation expert mode' do
-        expect(safe_settings.transportation_expert_mode?).to be true
       end
     end
   end

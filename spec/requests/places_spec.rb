@@ -90,6 +90,18 @@ RSpec.describe '/places', type: :request do
         expect(response.body).to include('data-updated="true"')
       end
 
+      it 'excludes tombstoned visits from the serialized visits_count' do
+        base_time = Time.zone.parse('2026-04-01 12:00')
+        create(:visit, place:, user:, area: nil,
+                       started_at: base_time, ended_at: base_time + 30.minutes)
+        create(:visit, place:, user:, area: nil, deleted_at: 1.day.ago,
+                       started_at: base_time + 1.hour, ended_at: base_time + 90.minutes)
+
+        patch place_url(place), params: { place: { name: 'Renamed' } }, as: :turbo_stream
+
+        expect(response.body).to include('visits_count&quot;:1')
+      end
+
       it 'returns turbo_stream flash error with invalid params' do
         patch place_url(place), params: { place: { name: '' } }, as: :turbo_stream
 
@@ -245,6 +257,19 @@ RSpec.describe '/places', type: :request do
 
         # avg = 90 min = 1h 30m
         expect(response.body).to include('1h 30m')
+      end
+
+      it 'hides tombstoned visits from the recent-visits list' do
+        base_time = Time.zone.parse('2026-04-01 12:00')
+        create(:visit, place:, user:, name: 'Living Visit', area: nil,
+                       started_at: base_time, ended_at: base_time + 30.minutes)
+        create(:visit, place:, user:, name: 'Ghost Visit', area: nil, deleted_at: 1.day.ago,
+                       started_at: base_time + 1.hour, ended_at: base_time + 90.minutes)
+
+        get place_url(place)
+
+        expect(response.body).to include('Living Visit')
+        expect(response.body).not_to include('Ghost Visit')
       end
 
       it 'lists up to 5 most recent visits ordered by started_at DESC' do

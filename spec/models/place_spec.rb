@@ -9,6 +9,19 @@ RSpec.describe Place, type: :model do
     it { is_expected.to have_many(:suggested_visits).through(:place_visits) }
   end
 
+  describe '.linked_to_confirmed_visits' do
+    it 'excludes places linked only through tombstoned visits' do
+      user = create(:user)
+      alive_place = create(:place, user: user)
+      ghost_place = create(:place, user: user)
+      create(:visit, user: user, place: alive_place, status: 'confirmed', area: nil)
+      create(:visit, user: user, place: ghost_place, status: 'confirmed', deleted_at: 1.day.ago, area: nil)
+
+      expect(Place.linked_to_confirmed_visits(user)).to include(alive_place)
+      expect(Place.linked_to_confirmed_visits(user)).not_to include(ghost_place)
+    end
+  end
+
   describe 'destroying a place' do
     it 'nullifies place_id on associated visits, does not delete them' do
       user = create(:user)

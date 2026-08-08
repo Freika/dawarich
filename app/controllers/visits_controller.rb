@@ -142,6 +142,10 @@ class VisitsController < ApplicationController
       auto_name_on_confirm
     end
 
+    # Editing a suggested visit is an assertion that it happened — confirm
+    # it silently unless the request set a status itself (e.g. decline).
+    params_to_update[:status] = 'confirmed' if @visit.suggested? && params_to_update[:status].blank?
+
     if @visit.update(params_to_update)
       @visit.adopt! unless @visit.status == 'declined'
       respond_to do |format|
@@ -164,7 +168,9 @@ class VisitsController < ApplicationController
     tz = current_user.safe_settings.timezone.presence || 'UTC'
     day_date = Time.use_zone(tz) { @visit.started_at.in_time_zone.to_date.to_s }
     @affected_started_at = [@visit.started_at]
-    @visit.destroy!
+    # Soft delete: the row stays as a tombstone so visit detection never
+    # re-suggests it; the user's points are untouched either way.
+    @visit.soft_delete!
 
     respond_to do |format|
       format.turbo_stream do
@@ -231,10 +237,9 @@ class VisitsController < ApplicationController
   end
 
   # Turbo streams for #bulk_update: swaps the day's visit-list contents with
-  # a freshly-assembled day (so every row's status is current), refreshes the
-  # three filter counts in the rail, and shows the "N visits confirmed." flash.
-  # `turbo_stream.update` targets the frame's children — we keep the frame
-  # element (its id + Stimulus target) intact.
+  # a freshly-assembled day (so every row's state is current) and shows the
+  # "N visits confirmed." flash. `turbo_stream.update` targets the frame's
+  # children — we keep the frame element (its id + Stimulus target) intact.
   def build_bulk_update_streams(status, count)
     tz = current_user.safe_settings.timezone.presence || 'UTC'
     date_str = params[:date].presence || Time.use_zone(tz) { Date.current.to_s }
@@ -248,11 +253,6 @@ class VisitsController < ApplicationController
     ).call
     day = days.first
 
-    # Filter pills are scoped to the calendar's currently-visible month, so
-    # the streamed counts must be too — otherwise after a bulk action the
-    # pills swap from a monthly count to an all-time count and look wrong.
-    status_counts = month_status_counts(date_str)
-
     streams = []
     streams << if day
                  turbo_stream.update('timeline-feed-frame',
@@ -261,14 +261,7 @@ class VisitsController < ApplicationController
                else
                  turbo_stream.update('timeline-feed-frame', '')
                end
-    streams << turbo_stream.replace('filter-count-confirmed',
-                                    partial: 'map/timeline_feeds/filter_count',
-                                    locals: { status: 'confirmed', count: status_counts['confirmed'].to_i })
-    streams << turbo_stream.replace('filter-count-suggested',
-                                    partial: 'map/timeline_feeds/filter_count',
-                                    locals: { status: 'suggested', count: status_counts['suggested'].to_i })
     streams << calendar_frame_stream(date_str)
-    streams << suggestions_badge_stream
     streams << stream_flash(:notice, bulk_update_success_message(status, count))
     streams
   end
@@ -280,38 +273,18 @@ class VisitsController < ApplicationController
                          locals: { summary: Timeline::MonthSummary.new(user: current_user, month: month).call })
   end
 
-  # Turbo streams emitted on a successful #update:
-  #   - Replace the visit row (status dot, picker, tags, everything)
-  #   - Re-render the day's suggestion banner (disappears when count hits 0)
-  #   - Re-render the three rail filter-count badges (confirmed/suggested/declined)
-  # Keeps the panel's state consistent after any confirm/decline/rename.
+  # Turbo streams emitted on a successful #update: replace the visit row
+  # (name, picker, tags, everything) and refresh the calendar so day dots
+  # stay accurate. Keeps the panel consistent after any edit.
   def build_update_streams
     tz = current_user.safe_settings.timezone.presence || 'UTC'
     day_date = Time.use_zone(tz) { @visit.started_at.in_time_zone.to_date.to_s }
-    day_range = Time.use_zone(tz) { Date.parse(day_date).in_time_zone.all_day }
-
-    day_suggested_count = current_user.scoped_visits
-                                      .where(started_at: day_range, status: :suggested)
-                                      .count
-    # Match the FILTER pills' month-scoped counts — they would otherwise
-    # flip from monthly (initial render) to all-time (after an edit).
-    status_counts = month_status_counts(day_date)
 
     [
       turbo_stream.replace("visit_entry_#{@visit.id}",
                            partial: 'map/timeline_feeds/visit_entry',
                            locals: { entry: timeline_entry_for(@visit) }),
-      turbo_stream.replace("day-banner-#{day_date}",
-                           partial: 'map/timeline_feeds/day_banner',
-                           locals: { date: day_date, suggested_count: day_suggested_count }),
-      turbo_stream.replace('filter-count-confirmed',
-                           partial: 'map/timeline_feeds/filter_count',
-                           locals: { status: 'confirmed', count: status_counts['confirmed'].to_i }),
-      turbo_stream.replace('filter-count-suggested',
-                           partial: 'map/timeline_feeds/filter_count',
-                           locals: { status: 'suggested', count: status_counts['suggested'].to_i }),
       calendar_frame_stream(day_date),
-      suggestions_badge_stream,
       stream_flash(
         :notice,
         I18n.t("controllers.visits.visit_updated.#{@visit.status}")
@@ -323,27 +296,6 @@ class VisitsController < ApplicationController
     params = { panel: 'timeline', date: date }
     params[:status] = status if status.present?
     "/map/v2?#{params.to_query}"
-  end
-
-  # Refreshes the lifetime pending-suggestion badge on the Timeline map button
-  # so it doesn't go stale after a confirm/decline/merge/delete (it would
-  # otherwise keep the count from the initial page render).
-  def suggestions_badge_stream
-    turbo_stream.replace('timeline-suggestions-badge',
-                         partial: 'map/timeline_feeds/suggestions_badge',
-                         locals: { count: current_user.scoped_visits.suggested.count })
-  end
-
-  # Visits-by-status counts scoped to the month containing `date_str`. Used by
-  # the FILTER pills, which are intentionally month-bound so users see "this
-  # month's" totals next to the calendar grid.
-  def month_status_counts(date_str)
-    tz = current_user.safe_settings.timezone.presence || 'UTC'
-    month_range = Time.use_zone(tz) { Date.parse(date_str).in_time_zone.all_month }
-    current_user.scoped_visits
-                .where(started_at: month_range)
-                .group(:status)
-                .count
   end
 
   def update_visit_name_from_place(place_id)
@@ -392,8 +344,6 @@ class VisitsController < ApplicationController
     ).call
     day = days.first
 
-    status_counts = month_status_counts(day_date)
-
     streams = []
     streams << if day
                  turbo_stream.update('timeline-feed-frame',
@@ -402,38 +352,14 @@ class VisitsController < ApplicationController
                else
                  turbo_stream.update('timeline-feed-frame', '')
                end
-    streams << turbo_stream.replace('filter-count-confirmed',
-                                    partial: 'map/timeline_feeds/filter_count',
-                                    locals: { status: 'confirmed', count: status_counts['confirmed'].to_i })
-    streams << turbo_stream.replace('filter-count-suggested',
-                                    partial: 'map/timeline_feeds/filter_count',
-                                    locals: { status: 'suggested', count: status_counts['suggested'].to_i })
-    streams << suggestions_badge_stream
     streams << stream_flash(:notice, I18n.t('controllers.visits.visits_merged'))
     streams
   end
 
   def build_destroy_streams(day_date)
-    tz = current_user.safe_settings.timezone.presence || 'UTC'
-    day_range = Time.use_zone(tz) { Date.parse(day_date).in_time_zone.all_day }
-    day_suggested_count = current_user.scoped_visits
-                                      .where(started_at: day_range, status: :suggested)
-                                      .count
-    status_counts = month_status_counts(day_date)
-
     [
       turbo_stream.remove("visit_entry_#{@visit.id}"),
-      turbo_stream.replace("day-banner-#{day_date}",
-                           partial: 'map/timeline_feeds/day_banner',
-                           locals: { date: day_date, suggested_count: day_suggested_count }),
-      turbo_stream.replace('filter-count-confirmed',
-                           partial: 'map/timeline_feeds/filter_count',
-                           locals: { status: 'confirmed', count: status_counts['confirmed'].to_i }),
-      turbo_stream.replace('filter-count-suggested',
-                           partial: 'map/timeline_feeds/filter_count',
-                           locals: { status: 'suggested', count: status_counts['suggested'].to_i }),
       calendar_frame_stream(day_date),
-      suggestions_badge_stream,
       stream_flash(:notice, I18n.t('controllers.visits.visit_removed'))
     ]
   end
@@ -449,9 +375,7 @@ class VisitsController < ApplicationController
     streams = []
     day_stream = build_day_frame_stream(visible_date, tz)
     streams << day_stream if day_stream
-    streams.concat(filter_count_streams(counts_date_str))
     streams << calendar_frame_stream(counts_date_str)
-    streams << suggestions_badge_stream
     streams << stream_flash(:notice, bulk_destroy_success_message(count))
     streams
   end
@@ -477,15 +401,6 @@ class VisitsController < ApplicationController
                           locals: { day: day })
     else
       turbo_stream.update('timeline-feed-frame', '')
-    end
-  end
-
-  def filter_count_streams(date_str)
-    status_counts = month_status_counts(date_str)
-    %w[confirmed suggested].map do |status|
-      turbo_stream.replace("filter-count-#{status}",
-                           partial: 'map/timeline_feeds/filter_count',
-                           locals: { status: status, count: status_counts[status].to_i })
     end
   end
 

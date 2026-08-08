@@ -21,8 +21,6 @@ export default class extends Controller {
     "selectionForm",
     "selectionCount",
     "mergeButton",
-    "confirmForm",
-    "confirmButton",
     "deleteForm",
     "deleteButton",
   ]
@@ -89,8 +87,8 @@ export default class extends Controller {
     // without this the newly-rendered row wouldn't honor the active filters).
     // Also fire `visit:updated` whenever a visit row is replaced or removed
     // or the day frame is replaced — VisitsController emits these streams on
-    // confirm / rename / destroy / bulk actions, and the map's visits layer
-    // needs to refetch so its dots reflect the new state.
+    // edit / destroy / bulk actions, and the map's visits layer needs to
+    // refetch so its dots reflect the new state.
     this.boundStreamRender = (event) => {
       const target = event?.detail?.newStream?.getAttribute?.("target") || ""
       const action = event?.detail?.newStream?.getAttribute?.("action") || ""
@@ -447,11 +445,9 @@ export default class extends Controller {
       return
     }
 
-    // Don't trigger when activating a nested control: rename trigger span,
-    // submit button, form field, or the [data-controller="visit-name"]
-    // wrapper whose click opens the inline rename form.
+    // Don't trigger when activating a nested control: submit button, form
+    // field, or anything inside the inline visit editor.
     if (
-      event.target.closest("[data-controller='visit-name']") ||
       event.target.closest("button[type='submit']") ||
       event.target.closest("input") ||
       event.target.closest("form")
@@ -631,8 +627,10 @@ export default class extends Controller {
     this.applyVisibility()
   }
 
+  // Built from whatever status checkboxes exist in the DOM. With none
+  // rendered (stateless visits), the empty detail filters nothing.
   readFilterDetail() {
-    const detail = { confirmed: false, suggested: false, declined: false }
+    const detail = {}
     const checkboxes = this.element.querySelectorAll(
       'input[type="checkbox"][data-status]',
     )
@@ -842,14 +840,6 @@ export default class extends Controller {
     return this.scopedQuery('[data-timeline-feed-target="mergeButton"]')
   }
 
-  activeConfirmForm() {
-    return this.scopedQuery('[data-timeline-feed-target="confirmForm"]')
-  }
-
-  activeConfirmButton() {
-    return this.scopedQuery('[data-timeline-feed-target="confirmButton"]')
-  }
-
   activeDeleteForm() {
     return this.scopedQuery('[data-timeline-feed-target="deleteForm"]')
   }
@@ -890,7 +880,6 @@ export default class extends Controller {
           : translate("visits.merge")
     }
     for (const [getter, key] of [
-      [this.activeConfirmButton.bind(this), "common.confirm"],
       [this.activeDeleteButton.bind(this), "common.delete"],
     ]) {
       const btn = getter()
@@ -911,14 +900,6 @@ export default class extends Controller {
       formGetter: this.activeSelectionForm.bind(this),
       buttonGetter: this.activeMergeButton.bind(this),
       minSelected: 2,
-    })
-  }
-
-  submitBulkConfirm(event) {
-    this.submitBulkAction(event, {
-      formGetter: this.activeConfirmForm.bind(this),
-      buttonGetter: this.activeConfirmButton.bind(this),
-      minSelected: 1,
     })
   }
 

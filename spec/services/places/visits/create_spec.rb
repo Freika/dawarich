@@ -211,4 +211,30 @@ RSpec.describe Places::Visits::Create do
     expect { run }.to change(Visit, :count).by(1)
     expect(invalid_point.reload.visit_id).to be_nil
   end
+
+  context 'with a tombstoned visit at the place' do
+    let!(:tombstone) do
+      near_point(base_ts, seq: 1)
+      near_point(base_ts + 5.minutes, seq: 2)
+      near_point(base_ts + 10.minutes, seq: 3)
+      run
+      Visit.last.tap(&:soft_delete!)
+    end
+
+    it 'does not re-suggest a removed visit when a new point shifts the grouping' do
+      near_point(base_ts - 5.minutes, seq: 4)
+
+      expect { run }.not_to change(Visit.active, :count).from(0)
+    end
+
+    it 'keeps a point-less tombstone instead of sweeping it as an orphan' do
+      tombstone.points.destroy_all
+      near_point(base_ts + 6.hours, seq: 5)
+      near_point(base_ts + 6.hours + 5.minutes, seq: 6)
+
+      run
+
+      expect(Visit.find_by(id: tombstone.id)).to be_present
+    end
+  end
 end

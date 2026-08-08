@@ -13,7 +13,12 @@ class Visit < ApplicationRecord
 
   after_commit :cleanup_old_place_if_orphan, on: :update
   after_commit :propagate_adoption_to_dependents, on: %i[create update]
-  after_destroy_commit :cleanup_place_if_orphan
+  # Soft deletion never fires destroy callbacks, so tombstoning must trigger
+  # the same orphan-place check or auto-created photon places leak forever;
+  # declining hides the visit the same way, so it re-evaluates the place too.
+  # One combined callback: registering the same method for separate
+  # after_*_commit hooks would silently keep only the last registration.
+  after_commit :cleanup_place_if_orphan, on: %i[update destroy], if: :left_active_state?
   after_commit :bust_timeline_month_summary_cache, unless: :demo?
 
   validates :started_at, :ended_at, :duration, :name, :status, presence: true
@@ -22,6 +27,19 @@ class Visit < ApplicationRecord
   validates :confidence, numericality: { only_integer: true, in: 0..100 }, allow_nil: true
 
   enum :status, { suggested: 0, confirmed: 1, declined: 2 }
+
+  # Visible visits. Soft-deleted rows and legacy declines are tombstones:
+  # hidden everywhere, but still found by Visits::Creator's dedup so the
+  # detector never resurrects a visit the user removed.
+  scope :active, -> { where(deleted_at: nil).where.not(status: :declined) }
+
+  def soft_delete!
+    update!(deleted_at: Time.current)
+  end
+
+  def soft_deleted?
+    deleted_at.present?
+  end
 
   def confidence_band
     return nil if confidence.nil?
@@ -106,6 +124,12 @@ class Visit < ApplicationRecord
     return unless place_id
 
     Places::DeleteIfOrphanJob.perform_later(place_id)
+  end
+
+  def left_active_state?
+    destroyed? ||
+      (saved_change_to_deleted_at? && deleted_at.present?) ||
+      (saved_change_to_status? && declined?)
   end
 
   # Keeps the Timeline calendar/filter-count cache fresh when visits are

@@ -3,26 +3,6 @@
      class="selection-bar" hidden>
   <span class="selection-bar__count" data-timeline-feed-target="selectionCount"><%= t('.selected') %></span>
   <span class="selection-bar__actions">
-    <button type="button"
-            class="selection-bar__cancel"
-            data-action="click->timeline-feed#exitSelection">
-      <%= t('.cancel') %>
-    </button>
-
-    <%= form_with url: bulk_update_visits_path, method: :patch,
-                  data: { timeline_feed_target: 'confirmForm',
-                          action: 'submit->timeline-feed#submitBulkConfirm' },
-                  class: 'selection-bar__form' do |f| %>
-      <%= f.hidden_field :status, value: 'confirmed' %>
-      <button type="submit"
-              class="selection-bar__action selection-bar__confirm"
-              data-timeline-feed-target="confirmButton"
-              title="<%= t('.mark_these_visits_as_confirmed_yes_i_was_there') %>"
-              disabled>
-        <%= t('.confirm') %>
-      </button>
-    <% end %>
-
     <%= form_with url: merge_visits_path, method: :post,
                   data: { timeline_feed_target: 'selectionForm',
                           action: 'submit->timeline-feed#submitMerge' },
@@ -48,5 +28,13 @@
         <%= t('.delete') %>
       </button>
     <% end %>
+
+    <button type="button"
+            class="selection-bar__cancel"
+            title="<%= t('.cancel') %>"
+            aria-label="<%= t('.cancel') %>"
+            data-action="click->timeline-feed#exitSelection">
+      <%= icon 'x', class: 'w-3.5 h-3.5' %>
+    </button>
   </span>
 </div>

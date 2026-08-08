@@ -1134,9 +1134,6 @@ es:
       index:
         loading: Cargando…
         pick_a_day: Elige un día
-        confirmed: Confirmado
-        suggested: Sugerido
-        declined: Rechazado
         map: Mapa
     residency:
       show:
@@ -1155,11 +1152,8 @@ es:
         next_month: Mes próximo
         previous_month: Mes anterior
       day:
+        moving_duration: "%{duration} en movimiento"
         select: Seleccionar
-        visits: Visitas
-        tracks: Trayectos
-        distance: Distancia
-        moving: En movimiento
         no_visits_match_the_current_search_or_filter: No hay visitas que coincidan con la búsqueda o filtro actual.
         clear_search_filters: Limpiar búsqueda y filtros
         no_visits_tracked_this_day: No se registraron visitas este día.
@@ -1168,30 +1162,16 @@ es:
         visit_count:
           one: "%{count} visita"
           other: "%{count} visitas"
-      day_banner:
-        waiting: esperando
-        confirm_all: Confirmar todo
-        delete_all: Eliminar todo
-        delete_all_visits_for_this_day_your_location_points_stay: "¿Eliminar todas %{visits} para este día? Tus puntos de ubicación permanecen."
-        suggestions_waiting:
-          one: "%{count} sugerencia pendiente"
-          other: "%{count} sugerencias pendientes"
-        delete_all_suggestions:
-          one: "¿Eliminar la visita sugerida para este día? Tus puntos de ubicación permanecen."
-          other: "¿Eliminar todas %{count} visitas sugeridas para este día? Tus puntos de ubicación permanecen."
       day_nav:
         previous_day: Día anterior
         next_day: Día siguiente
-      day_summary:
-        total_distance_traveled_this_day: Distancia total recorrida hoy
-        distinct_places_visited_this_day: Lugares distintos visitados hoy
-        places: lugares
-        moving: en movimiento
-        stationary: inmóvil
       feed:
         no_visits_tracked_this_day: No se registraron visitas este día.
         visits_are_auto_detected_daily_from_your_location_data: Las visitas se detectan automáticamente todos los días a partir de tus datos de ubicación.
+      gap_entry:
+        untracked: "%{duration} sin registrar"
       journey_entry:
+        duration_moving: "%{duration} en movimiento"
         continued_from: continuado desde
         arrived: ", llegó"
         middot: "·"
@@ -1199,21 +1179,10 @@ es:
       selection_bar:
         selected: 0 seleccionados
         cancel: Cancelar
-        mark_these_visits_as_confirmed_yes_i_was_there: Marcar estas visitas como confirmadas (sí, estaba allí)
-        confirm: Confirmar
         combine_the_selected_visits_into_one: Combinar las visitas seleccionadas en una sola
         merge: Unir
         remove_the_visit_grouping_your_location_points_stay: Eliminar el agrupamiento de visitas (los puntos de ubicación permanecen)
         delete: Eliminar
-      suggested_picker:
-        needs_review: Necesita revisión
-        confirm_this_visit: "¿Confirmar esta visita?"
-        assigned_to: Asignado a
-        use_the_search_button_to_pick_a_different_place: ". Utiliza el botón de búsqueda para seleccionar un lugar diferente."
-        no_place_for_this_visit_confirm_to_keep_it_as: No hay lugar para esta visita. Confirma para mantenerla como está.
-        confirm: Confirmar
-        delete: Eliminar
-        delete_this_visit_your_location_points_stay: "¿Eliminar esta visita? Tus puntos de ubicación se conservarán."
       track_info:
         track: 'Trayecto n.º '
         dist: Dist
@@ -1223,16 +1192,16 @@ es:
         share: Compartir
         unknown: Desconocido
       visit_entry:
+        unnamed_visit: Visita sin nombre
+        edit: Editar
+        name: Nombre
+        save: Guardar
+        attached_place: Lugar vinculado
         select_visit_for_merge: Selecciona visita para fusionar
         all_day: Todo el día
         pts: pts
-        search_for_a_place: Buscar un lugar
         delete: Eliminar
         delete_this_visit_your_location_points_stay: "¿Eliminar esta visita? Tus puntos de ubicación se conservarán."
-      suggestions_badge:
-        unreviewed_visits:
-          one: "%{count} visita sin revisar"
-          other: "%{count} visitas sin revisar"
   notifications:
     notification:
       ago: hace
@@ -2014,7 +1983,19 @@ es:
       create_a_new_tag_to_organize_your_places: Crear una nueva etiqueta para organizar tus lugares
   tracks:
     segments:
+      legs:
+        stop_duration: "parada · %{duration}"
+        transfer: transbordo
+        moving: en movimiento
+        mode_unclear: Modo de transporte incierto; la confianza de la detección es demasiado baja para asignar uno
+        short_segments:
+          one: "1 segmento corto"
+          other: "%{count} segmentos cortos"
+      list:
+        all_segments: Todos los segmentos (%{count})
       segment_row:
+        detection_confidence: Confianza de la detección
+        confidence_percent: "%{percent} %"
         manually_corrected: Corregido manualmente
         restore_auto_detection: Restaurar detección automática
         transportation_mode_currently: Modo de transporte (actualmente %{mode})
@@ -2398,9 +2379,6 @@ es:
       confirm: Confirmar
       delete: Eliminar
       delete_this_visit_your_location_points_stay: "¿Eliminar esta visita? Tus puntos de ubicación se conservarán."
-    name:
-      unnamed_visit: Visita sin nombre
-      click_to_rename: Haz clic para renombrar
   date:
     formats:
       month_name: "%B"
@@ -2478,6 +2456,18 @@ es:
     github: GitHub
     patreon: Patreon
     ko_fi: Ko-fi
+  transportation_verbs:
+    unknown: "viajó"
+    stationary: "se quedó"
+    walking: "caminó"
+    running: "corrió"
+    cycling: "pedaleó"
+    driving: "condujo"
+    bus: "tomó el autobús"
+    train: "tomó el tren"
+    flying: "voló"
+    boat: "navegó"
+    motorcycle: "fue en moto"
   transportation_modes:
     unknown: Desconocido
     stationary: Sin desplazamiento
@@ -2979,6 +2969,7 @@ es:
         re_classification_already_running: La re-clasificación ya está en curso.
         re_classification_started_your_tracks_will_update_over_the_next: Se inició la re-clasificación — tus trayectos se actualizarán en unos minutos.
       segments:
+        reprocess_failed: La redetección falló; tu corrección se ha conservado
         segment_updated: trayecto actualizada.
         mode_not_enabled: Ese modo no está habilitado en tus ajustes.
         update_failed: No se pudo actualizar la trayecto.
@@ -3367,6 +3358,9 @@ es:
         stats_update_failed: No se pudieron actualizar las estadísticas
         message_stacktrace_n: "%{message}, stacktrace: %{backtrace}"
     users:
+      settings_updater:
+        enable_at_least_one_transportation_mode: Activa al menos un modo de transporte
+        recalculation_in_progress: El recálculo de los modos de transporte está en curso. Espera a que termine.
       destroy:
         cannot_delete_user_who_owns_a_family_with_other_members: No se puede eliminar al usuario que es dueño de una familia con otros miembros
       export_data:
@@ -3385,9 +3379,6 @@ es:
           read_failed: 'Falló la lectura de los datos JSON: %{message}'
         v2_handler:
           manifest_missing: 'No se encontró el archivo de manifest en la carpeta: manifest.json'
-      transportation_thresholds_updater:
-        enable_at_least_one_transportation_mode: Habilita al menos un modo de transporte
-        recalculation_in_progress: Está en curso la recálculo del modo de transporte. Por favor, espera a que termine.
     visits:
       suggest:
         error_suggesting_visits_message: 'Error al sugerir visitas: %{message}'

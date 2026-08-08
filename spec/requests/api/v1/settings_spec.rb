@@ -425,22 +425,15 @@ RSpec.describe 'Api::V1::Settings', type: :request do
       end
     end
 
-    context 'with transportation thresholds' do
-      let(:threshold_params) do
-        {
-          settings: {
-            transportation_thresholds: {
-              walking_max_speed: 8,
-              cycling_max_speed: 50
-            }
-          }
-        }
+    context 'with a changed transportation mode allowlist' do
+      let(:allowlist_params) do
+        { settings: { enabled_transportation_modes: %w[walking cycling driving] } }
       end
 
-      it 'triggers recalculation when thresholds change' do
+      it 'triggers reclassification' do
         expect do
-          patch "/api/v1/settings?api_key=#{api_key}", params: threshold_params
-        end.to have_enqueued_job(Tracks::TransportationModeRecalculationJob).with(user.id)
+          patch "/api/v1/settings?api_key=#{api_key}", params: allowlist_params
+        end.to have_enqueued_job(TransportationModes::UserReclassifyJob).with(user.id)
 
         expect(response).to have_http_status(:success)
         expect(response.parsed_body['recalculation_triggered']).to be true
@@ -452,7 +445,7 @@ RSpec.describe 'Api::V1::Settings', type: :request do
         end
 
         it 'returns locked status' do
-          patch "/api/v1/settings?api_key=#{api_key}", params: threshold_params
+          patch "/api/v1/settings?api_key=#{api_key}", params: allowlist_params
 
           expect(response).to have_http_status(:locked)
           expect(response.parsed_body['status']).to eq('locked')

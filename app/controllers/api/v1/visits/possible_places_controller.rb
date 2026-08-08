@@ -2,7 +2,7 @@
 
 class Api::V1::Visits::PossiblePlacesController < ApiController
   def index
-    visit = current_api_user.visits.find(params[:id])
+    visit = current_api_user.scoped_visits.find(params[:id])
     lat, lon = visit.center
     suggestions = Places::NearbySearch.new(latitude: lat, longitude: lon, cache: true).call
     suggestions = prepend_current_place(visit, suggestions)

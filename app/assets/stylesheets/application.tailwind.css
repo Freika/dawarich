@@ -17,7 +17,6 @@
 @import "maps_maplibre_timeline_feed.css";
 @import "maps_maplibre_timeline_rail.css";
 @import "maps_maplibre_place_drawer.css";
-@import "maps_maplibre_suggested_picker.css";
 
 @layer components {
   .fade-out {

@@ -69,6 +69,26 @@ RSpec.describe Visit, type: :model do
     end
   end
 
+  describe 'soft deletion' do
+    let(:user) { create(:user) }
+
+    it 'excludes soft-deleted and declined visits from .active' do
+      kept = create(:visit, user: user, status: :confirmed)
+      tombstone = create(:visit, user: user, status: :confirmed, deleted_at: 1.day.ago)
+      declined = create(:visit, user: user, status: :declined)
+
+      expect(Visit.active).to include(kept)
+      expect(Visit.active).not_to include(tombstone, declined)
+    end
+
+    it 'stamps deleted_at via #soft_delete!' do
+      visit = create(:visit, user: user)
+
+      expect { visit.soft_delete! }.to change { visit.reload.deleted_at }.from(nil)
+      expect(Visit.count).to eq(1)
+    end
+  end
+
   describe 'self-cleanup callbacks' do
     include ActiveJob::TestHelper
 
@@ -100,6 +120,26 @@ RSpec.describe Visit, type: :model do
         perform_enqueued_jobs { visit.update!(place: new_place) }
 
         expect(Place.exists?(old_place.id)).to be true
+      end
+    end
+
+    describe 'on decline' do
+      it 'enqueues orphan-check because declined visits no longer keep a place alive' do
+        expect { visit.update!(status: :declined) }
+          .to have_enqueued_job(Places::DeleteIfOrphanJob).with(old_place.id)
+      end
+    end
+
+    describe 'on soft delete' do
+      it 'enqueues orphan-check when a visit is tombstoned' do
+        expect { visit.soft_delete! }
+          .to have_enqueued_job(Places::DeleteIfOrphanJob).with(old_place.id)
+      end
+
+      it 'deletes the place after the job runs when only the tombstone references it' do
+        perform_enqueued_jobs { visit.soft_delete! }
+
+        expect(Place.exists?(old_place.id)).to be false
       end
     end
 

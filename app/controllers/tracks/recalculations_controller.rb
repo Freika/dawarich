@@ -22,7 +22,7 @@ class Tracks::RecalculationsController < ApplicationController
         end
       end
     else
-      Tracks::TransportationModeRecalculationJob.perform_later(current_user.id)
+      TransportationModes::UserReclassifyJob.perform_later(current_user.id)
       respond_to do |format|
         format.turbo_stream do
           render turbo_stream: stream_flash(

@@ -89,11 +89,12 @@ RSpec.describe 'Map::TimelineFeeds', type: :request do
                  duration: 3600)
         end
 
-        it 'still renders a confirm control' do
+        it 'renders it as a plain visit row with an edit control, no confirm' do
           get map_timeline_feeds_path(start_at: day.iso8601, end_at: (day + 1.day).iso8601)
 
           expect(response).to have_http_status(:success)
-          expect(response.body).to include('data-testid="visit-confirm"')
+          expect(response.body).to include('data-testid="visit-edit"')
+          expect(response.body).not_to include('data-testid="visit-confirm"')
         end
       end
 
@@ -110,13 +111,13 @@ RSpec.describe 'Map::TimelineFeeds', type: :request do
                  duration: 3600)
         end
 
-        it 'renders a single confirm control without a place radio picker' do
+        it 'renders identically to a confirmed visit — edit control, no review card' do
           get map_timeline_feeds_path(start_at: day.iso8601, end_at: (day + 1.day).iso8601)
 
           expect(response).to have_http_status(:success)
-          expect(response.body).to include('data-testid="visit-confirm"')
-          expect(response.body).not_to include('name="visit[place_id]"')
-          expect(response.body).not_to include('suggested-picker__radio')
+          expect(response.body).to include('data-testid="visit-edit"')
+          expect(response.body).not_to include('data-testid="visit-confirm"')
+          expect(response.body).not_to include('suggested-picker')
         end
       end
 

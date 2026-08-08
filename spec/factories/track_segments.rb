@@ -61,5 +61,12 @@ FactoryBot.define do
       source { 'overland' }
       confidence { :high }
     end
+
+    trait :anchored do
+      start_index { nil }
+      end_index { nil }
+      sequence(:start_at) { |n| Time.zone.at(1_735_689_600 + (n * 3600)) }
+      end_at { start_at + 600 }
+    end
   end
 end

@@ -108,40 +108,8 @@ export default class extends Controller {
     "routeSpeed",
     "routeSpeedContainer",
     "routePoints",
-    // Transportation mode thresholds
+    // Transportation mode detection
     "transportationCollapseToggle",
-    "transportationExpertToggle",
-    "transportationBasicSettings",
-    "transportationExpertSettings",
-    // Transportation speed inputs
-    "walkingMaxSpeedInput",
-    "cyclingMaxSpeedInput",
-    "drivingMaxSpeedInput",
-    "flyingMinSpeedInput",
-    // Transportation speed value displays
-    "walkingMaxSpeedValue",
-    "cyclingMaxSpeedValue",
-    "drivingMaxSpeedValue",
-    "flyingMinSpeedValue",
-    // Transportation expert inputs
-    "stationaryMaxSpeedInput",
-    "trainMinSpeedInput",
-    "runningVsCyclingAccelInput",
-    "cyclingVsDrivingAccelInput",
-    "minSegmentDurationInput",
-    "timeGapThresholdInput",
-    "minFlightDistanceInput",
-    // Transportation expert value displays
-    "stationaryMaxSpeedValue",
-    "trainMinSpeedValue",
-    "runningVsCyclingAccelValue",
-    "cyclingVsDrivingAccelValue",
-    "minSegmentDurationValue",
-    "timeGapThresholdValue",
-    "minFlightDistanceValue",
-    // Transportation unit labels
-    "speedUnitLabel",
-    "distanceUnitLabel",
     // Transportation recalculation status
     "transportationRecalculationAlert",
     "transportationLockedMessage",
@@ -1282,12 +1250,6 @@ export default class extends Controller {
   }
   toggleGlobe(event) {
     return this.settingsController.toggleGlobe(event)
-  }
-  toggleTransportationExpertMode(event) {
-    return this.settingsController.toggleTransportationExpertMode(event)
-  }
-  updateTransportationThresholdDisplay(event) {
-    return this.settingsController.updateTransportationThresholdDisplay(event)
   }
   markTransportationSettingsDirty(event) {
     return this.settingsController.markTransportationSettingsDirty(event)

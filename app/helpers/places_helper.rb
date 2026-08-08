@@ -12,8 +12,8 @@ module PlacesHelper
   #   location_line: 'City, Country' (blank parts omitted)
   # }
   def place_dwell_stats(place)
-    total_minutes = place.visits.sum(:duration).to_i
-    visit_count = place.visits.size
+    total_minutes = place.active_visits.sum(:duration).to_i
+    visit_count = place.active_visits.size
     avg_minutes = visit_count.positive? ? (total_minutes / visit_count) : 0
 
     {
