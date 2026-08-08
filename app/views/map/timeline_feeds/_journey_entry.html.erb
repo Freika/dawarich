@@ -2,9 +2,8 @@
   # The verb carries the mode; no glyph is repeated alongside it. Unknown gets
   # no icon at all — the row reads as a connector between visits, and a
   # stand-in marker there looks like a broken render rather than information.
-  known_modes = %w[walking running cycling driving bus train flying boat motorcycle stationary unknown]
   mode = entry[:dominant_mode].presence
-  mode = 'unknown' unless known_modes.include?(mode)
+  mode = 'unknown' unless Track::TRANSPORTATION_MODES.key?(mode&.to_sym)
   verb = t("transportation_verbs.#{mode}")
   continuation_date = entry[:continuation_of_date]
   if continuation_date

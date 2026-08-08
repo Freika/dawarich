@@ -48,13 +48,20 @@ RSpec.describe 'Time-anchor backfill index mapping' do
   end
 
   it 'leaves a segment whose index range exceeds the track unanchored' do
-    track = track_with_points(5)
-    seg = create(:track_segment, track: track, transportation_mode: :walking,
-                                 start_index: 0, end_index: 40, start_at: nil, end_at: nil,
-                                 corrected_at: Time.current)
+    track = track_with_points(10)
+    # corrected_at only spares the row from the unanchorable-cleanup delete;
+    # the job still selects and attempts it.
+    over_range = create(:track_segment, track: track, transportation_mode: :walking,
+                                        start_index: 0, end_index: 40,
+                                        start_at: nil, end_at: nil, corrected_at: Time.current)
+    in_range = create(:track_segment, track: track, transportation_mode: :driving,
+                                      start_index: 5, end_index: 9, start_at: nil, end_at: nil)
 
     TrackSegments::TimeAnchorBackfillJob.perform_now
 
-    expect(seg.reload.start_at).to be_nil
+    # The sibling anchoring proves the job reached this track, so the
+    # over-range row staying nil is the SQL rejecting it, not a no-op run.
+    expect(in_range.reload.start_at).to be_present
+    expect(over_range.reload.start_at).to be_nil
   end
 end

@@ -2511,7 +2511,7 @@ de:
     patreon: Patreon
     ko_fi: Ko-fi
   transportation_verbs:
-    unknown: "unterwegs"
+    unknown: "gereist"
     stationary: "geblieben"
     walking: "gelaufen"
     running: "gejoggt"
