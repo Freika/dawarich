@@ -87,7 +87,7 @@ export default class extends Controller {
       const tab = keyToTab[e.key]
       if (tab) {
         e.preventDefault()
-        this.openTabByName(tab)
+        this.requestTab(tab)
         return
       }
 
@@ -165,10 +165,16 @@ export default class extends Controller {
     const tabName = button?.dataset?.tab
     if (!tabName) return
 
-    // Pressing the button of the tab already on screen dismisses the panel,
-    // the way the header X does. Only this click path toggles: programmatic
-    // opens go through openTabByName, so a visit or track click can still
-    // switch to Timeline without dismissing the panel.
+    this.requestTab(tabName)
+  }
+
+  /**
+   * A deliberate user gesture — a cluster button click or its keyboard
+   * shortcut. Asking for the tab already on screen dismisses the panel, the
+   * way the header X does. Programmatic callers use openTabByName instead, so
+   * a visit or track click can switch to Timeline without dismissing it.
+   */
+  requestTab(tabName) {
     if (this.panelShowingTab(tabName)) {
       this.closePanel()
       return
@@ -211,10 +217,10 @@ export default class extends Controller {
   /**
    * Programmatic equivalent of openTab(event). Opens the settings panel
    * (via the maps--maplibre controller) and activates the given tab on the
-   * panel's map-panel controller instance. The panel only closes via the
-   * header X button — clicking a cluster button for the already-active tab
-   * is a no-op so map-driven flows (visit/track click → switch to timeline)
-   * don't accidentally dismiss the panel.
+   * panel's map-panel controller instance. This path never closes the panel,
+   * so map-driven flows (visit/track click → switch to timeline) can't
+   * accidentally dismiss it. User gestures go through requestTab, which
+   * toggles.
    */
   openTabByName(tabName) {
     const panel = document.querySelector(".map-control-panel")
@@ -255,10 +261,9 @@ export default class extends Controller {
   markActiveClusterButton(activeTab) {
     const buttons = document.querySelectorAll(".map-button-cluster__btn")
     for (const btn of buttons) {
-      btn.classList.toggle(
-        "map-button-cluster__btn--active",
-        Boolean(activeTab) && btn.dataset.tab === activeTab,
-      )
+      const isActive = Boolean(activeTab) && btn.dataset.tab === activeTab
+      btn.classList.toggle("map-button-cluster__btn--active", isActive)
+      btn.setAttribute("aria-expanded", String(isActive))
     }
   }
 

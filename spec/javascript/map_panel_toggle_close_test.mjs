@@ -20,7 +20,7 @@ const moduleUrl = `data:text/javascript;base64,${Buffer.from(
 const { default: MapPanelController } = await import(moduleUrl)
 
 // Minimal stand-ins for the pieces of the DOM and Stimulus that openTab reads.
-function buildEnvironment({ open, activeTab }) {
+function buildEnvironment({ open, activeTab, stubMarkActive = true }) {
   const classes = (initial) => {
     const set = new Set(initial)
     return {
@@ -48,7 +48,14 @@ function buildEnvironment({ open, activeTab }) {
 
   const mapContainer = {}
   const calls = { toggleSettings: 0, clusterCleared: 0 }
-  const clusterButtons = []
+  const clusterButtons = ["settings", "layers"].map((tab) => ({
+    dataset: { tab },
+    classList: classes([]),
+    attributes: {},
+    setAttribute(name, value) {
+      this.attributes[name] = value
+    },
+  }))
 
   globalThis.document = {
     querySelector: (selector) =>
@@ -78,12 +85,14 @@ function buildEnvironment({ open, activeTab }) {
       return null
     },
   }
-  controller.markActiveClusterButton = (tab) => {
-    calls.markedActive = tab
-    if (tab === null) calls.clusterCleared += 1
+  if (stubMarkActive) {
+    controller.markActiveClusterButton = (tab) => {
+      calls.markedActive = tab
+      if (tab === null) calls.clusterCleared += 1
+    }
   }
 
-  return { controller, panel, calls }
+  return { controller, panel, calls, clusterButtons }
 }
 
 function clickOn(tab) {
@@ -151,4 +160,33 @@ test("a click without a tab name does nothing", () => {
 
   assert.equal(panel.classList.contains("open"), true)
   assert.equal(calls.toggleSettings, 0)
+})
+
+test("the keyboard shortcut toggles the same way the button does", () => {
+  const { controller, panel, calls } = buildEnvironment({
+    open: true,
+    activeTab: "settings",
+  })
+
+  controller.requestTab("settings")
+
+  assert.equal(panel.classList.contains("open"), false)
+  assert.equal(calls.toggleSettings, 1)
+})
+
+test("cluster buttons report their expanded state to assistive tech", () => {
+  const { controller, clusterButtons } = buildEnvironment({
+    open: true,
+    activeTab: "settings",
+    stubMarkActive: false,
+  })
+
+  controller.markActiveClusterButton("layers")
+
+  assert.equal(clusterButtons[0].attributes["aria-expanded"], "false")
+  assert.equal(clusterButtons[1].attributes["aria-expanded"], "true")
+
+  controller.markActiveClusterButton(null)
+
+  assert.equal(clusterButtons[1].attributes["aria-expanded"], "false")
 })
