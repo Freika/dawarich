@@ -35,6 +35,25 @@ RSpec.describe 'Notification recipient locale' do
     expect(german_user.notifications.last.title).to eq('Export fehlgeschlagen')
   end
 
+  it 'localizes both halves of the suggested-visits notification' do
+    allow_any_instance_of(Visits::SmartDetect).to receive(:call).and_return([build(:visit)])
+
+    Visits::Suggest.new(german_user, start_at: 1.day.ago.to_i, end_at: Time.current.to_i).call
+
+    notification = german_user.notifications.last
+    expect(notification.title).to eq('Neue Aufenthalte vorgeschlagen')
+    expect(notification.content).to include('Zeitleiste')
+    expect(notification.content).not_to include('have been suggested')
+  end
+
+  it 'localizes the suggested-visits failure notification' do
+    allow_any_instance_of(Visits::SmartDetect).to receive(:call).and_raise(StandardError, 'boom')
+
+    Visits::Suggest.new(german_user, start_at: 1.day.ago.to_i, end_at: Time.current.to_i).call
+
+    expect(german_user.notifications.last.title).to eq('Fehler beim Vorschlagen von Aufenthalten')
+  end
+
   it 'leaves the ambient locale untouched after notifying' do
     allow(Stats::CalculateMonth).to receive(:new).and_raise(StandardError, 'boom')
 

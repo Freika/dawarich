@@ -570,20 +570,19 @@ fr:
         to_join_their_family_create_your_account_to_accept_the: pour rejoindre leur
           famille. Créez votre compte pour accepter l'invitation et commencer à partager
           vos données de localisation.
-        your_email: Votre adresse e-mail (
-        will_be_used_for_this_account: ") sera utilisée pour ce compte."
         almost_there: Presque là !
         only_a_few_steps_left_until_you_get_control_over: Seulement quelques étapes
           restent à faire avant que vous ayez le contrôle sur vos données de localisation
           !
-        create_your_account: 1. Créer votre compte.
-        configure_your_mobile_app: 2. Configurer votre application mobile.
-        start_tracking_your_location_data_securely: 3. Commencer à suivre vos données
-          de localisation de manière sécurisée.
-        you_re_beautiful: 5. Vous êtes beau(e) !
+        create_your_account: Créer votre compte
+        configure_your_mobile_app: Configurer votre application mobile
+        start_tracking_your_location_data_securely: Commencer à suivre vos données de localisation de manière sécurisée
+        ellipsis: "…"
+        you_re_beautiful: Vous êtes beau(e) !
+        invitation_email_notice: Votre adresse e-mail (%{email}) sera utilisée pour ce compte
         email: Adresse e-mail.
         password: Mot de passe.
-        characters_minimum: caractères minimum).
+        characters_minimum: "%{count} caractères minimum"
         password_confirmation: Confirmation du mot de passe.
         how_do_you_plan_to_use_dawarich: Comment comptez-vous utiliser Dawarich ?
         i_want_to_use_the_cloud_version: Je souhaite utiliser la version Cloud
@@ -2476,6 +2475,7 @@ fr:
       my_data: Mes données
       help: Aide
       dawarich: Dawarich
+      dawarich_logo: Logo Dawarich
       get_started: Commencer
       finish_setting_up_your_account: Terminer la configuration de votre compte
       finish_signup: Terminer l'inscription
@@ -4575,6 +4575,8 @@ fr:
         error_suggesting_visits_message: 'Erreur lors de la suggestion de visites :
           %{message}'
         new_visits_suggested: Nouvelles visites suggérées
+        error_suggesting_visits: 'Erreur lors de la suggestion de visites'
+        new_visits_suggested_message: 'De nouvelles visites ont été suggérées à partir de vos données de localisation du %{start_at} au %{end_at}. Vous pouvez les consulter sur la page <a href="%{url}" class="link">Chronologie</a>.'
       merge_service:
         minimum_visits: Au moins 2 visites doivent être sélectionnées pour les fusionner
       bulk_destroy:

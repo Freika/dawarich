@@ -40,6 +40,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Re-detecting your whole visit history no longer fails outright when Dawarich is set to German or Spanish.
 - The "family is full" notice now shows how many seats are taken instead of stopping mid-sentence in German and Spanish.
 - Notifications about a failed import, a family invitation and the year-end digest are no longer partly in your language and partly in English.
+- Trip pages no longer fail with a 500 when Immich or Photoprism is unreachable — the trip loads without photos instead. (#3308)
+- `OIDC_ISSUER` set to a discovery URL written with a `#` (such as `https://id.example.com/#.well-known/openid-configuration`) no longer fails sign-in with "Issuer mismatch". (#3289)
+- Clicking a map panel button for the panel already on screen now closes it, instead of only the header's X doing that. (#3317)
+- `/metrics` no longer reports the same metric twice with different values when the web and Sidekiq exporters are merged. Where both processes report the same series, each sample now carries a `process="web"` or `process="sidekiq"` label; every other series is unchanged. (#3304)
+- Uploading points no longer logs `unknown OID 28: failed to recognize type of 'xmax'`. (#3309)
+- The coordinates shown when you click a point on the map now match the ones in the points list, so you can search for them. (#3264)
+- Photo search now covers the whole of the end date, so photos taken after midnight on the last day of the range are found instead of needing the range extended by a day. (#3263)
+
 
 ## [1.11.0] - 2026-08-02, Berlin
 

@@ -132,17 +132,17 @@ es:
         join: Unirte
         you_ve_been_invited_by: Has recibido una invitación de
         to_join_their_family_create_your_account_to_accept_the: para unirte a su familia. Crea tu cuenta para aceptar la invitación y empezar a compartir datos de ubicación.
-        your_email: Tu correo electrónico (
-        will_be_used_for_this_account: ") se usará para esta cuenta"
         almost_there: "¡Estás casi allí!"
         only_a_few_steps_left_until_you_get_control_over: Solo quedan unos pocos pasos hasta que tengas control sobre tus datos de ubicación.
-        create_your_account: 1. Crea tu cuenta
-        configure_your_mobile_app: 2. Configura tu aplicación móvil
-        start_tracking_your_location_data_securely: 3. Comienza a rastrear tus datos de ubicación de manera segura
-        you_re_beautiful: 5. ¡Eres hermoso!
+        create_your_account: Crea tu cuenta
+        configure_your_mobile_app: Configura tu aplicación móvil
+        start_tracking_your_location_data_securely: Comienza a rastrear tus datos de ubicación de manera segura
+        ellipsis: "…"
+        you_re_beautiful: ¡Eres hermoso!
+        invitation_email_notice: Tu correo electrónico (%{email}) se usará para esta cuenta
         email: Correo electrónico
         password: Contraseña
-        characters_minimum: caracteres mínimo)
+        characters_minimum: "%{count} caracteres mínimo"
         password_confirmation: Confirmación de contraseña
         how_do_you_plan_to_use_dawarich: "¿Cómo planeas utilizar Dawarich?"
         i_m_self_hosting_and_exploring_the_demo: Estoy auto-hospedando y explorando la demo
@@ -1640,6 +1640,7 @@ es:
       my_data: Mis datos
       help: Ayuda
       dawarich: Dawarich
+      dawarich_logo: Logo de Dawarich
       get_started: Empezar
       finish_setting_up_your_account: Finalizar la configuración de tu cuenta
       finish_signup: Finalizar el registro
@@ -3382,6 +3383,8 @@ es:
       suggest:
         error_suggesting_visits_message: 'Error al sugerir visitas: %{message}'
         new_visits_suggested: Se sugirieron nuevas visitas
+        error_suggesting_visits: 'Error al sugerir visitas'
+        new_visits_suggested_message: 'Se han sugerido nuevas visitas a partir de tus datos de ubicación del %{start_at} al %{end_at}. Puedes revisarlas en la página <a href="%{url}" class="link">Cronología</a>.'
       merge_service:
         minimum_visits: Deben seleccionarse al menos 2 visitas para fusionarlas
       bulk_destroy:

@@ -2,15 +2,17 @@
 
 class Immich::RequestPhotos
   include SslConfigurable
+  include DayBoundable
 
   attr_reader :user, :immich_api_base_url, :immich_api_key, :start_date, :end_date
 
-  def initialize(user, start_date: '1970-01-01', end_date: nil)
+  def initialize(user, start_date: '1970-01-01', end_date: nil, raise_on_connection_error: false)
     @user = user
     @immich_api_base_url = "#{user.safe_settings.immich_url}/api/search/metadata"
     @immich_api_key = user.safe_settings.immich_api_key
     @start_date = start_date
     @end_date = end_date
+    @raise_on_connection_error = raise_on_connection_error
   end
 
   def call
@@ -62,8 +64,10 @@ class Immich::RequestPhotos
     end
 
     data.flatten
-  rescue HTTParty::Error, Net::OpenTimeout, Net::ReadTimeout => e
+  rescue *Photos::ConnectionErrors::HANDLED => e
     Rails.logger.error("Immich photo fetch failed: #{e.message}")
+    raise if @raise_on_connection_error && Photos::ConnectionErrors.retryable?(e)
+
     nil
   end
 
@@ -86,12 +90,12 @@ class Immich::RequestPhotos
 
     return body unless end_date
 
-    body.merge(takenBefore: normalize_date(end_date))
+    body.merge(takenBefore: normalize_date(end_date, end_of_day: true))
   end
 
   def time_framed_data(data)
     start_time = parse_time(start_date)
-    end_time = parse_time(end_date)
+    end_time = parse_time(end_date, end_of_day: true)
     return data unless start_time
 
     data.select do |photo|
@@ -102,13 +106,18 @@ class Immich::RequestPhotos
     end
   end
 
-  def normalize_date(value)
-    parsed = parse_time(value)
+  def normalize_date(value, end_of_day: false)
+    parsed = parse_time(value, end_of_day: end_of_day)
     parsed ? parsed.iso8601 : value
   end
 
-  def parse_time(value)
+  # A bare date names a whole day, so an end bound written that way has to
+  # reach its last instant before the shift to UTC. Only the end bound is
+  # widened; the start bound keeps the parsing it has always had.
+  def parse_time(value, end_of_day: false)
     return if value.blank?
+
+    return Time.zone.parse(value.to_s).end_of_day.utc if end_of_day && date_only?(value)
 
     Time.parse(value.to_s).utc
   rescue ArgumentError, TypeError
