@@ -3,9 +3,11 @@
 module TimelineHelper
   # Interior holes shorter than this are the ordinary seams between a visit
   # ending and the next track starting — real days are full of them, and
-  # marking each one costs the marker its meaning. An hour and a half with no
-  # visit and no track is unambiguous: something was not recorded.
-  TIMELINE_GAP_MIN_MINUTES = 90
+  # marking each one costs the marker its meaning. Detection v3 snaps visit
+  # boundaries to movement edges, so the ragged 30–60 minute seams the old
+  # detector produced are gone; what remains at 45+ minutes is genuinely
+  # unrecorded time (a 79-minute dark dinner must earn its row).
+  TIMELINE_GAP_MIN_MINUTES = 45
 
   # Ceiling on how far a long leg may stretch the rail, in px. Past this the
   # day column scrolls more than it communicates.
@@ -179,6 +181,17 @@ module TimelineHelper
 
   def visit_entry_status(entry)
     entry[:status].presence || 'confirmed'
+  end
+
+  # Confidence gating applies only to machine suggestions — a visit the user
+  # confirmed renders at full strength whatever the detector thought of it.
+  # Rows without a score (legacy, pre-backfill) also render normally.
+  def visit_entry_subdued?(entry)
+    visit_entry_status(entry) != 'confirmed' && entry[:confidence_band] == :medium
+  end
+
+  def visit_entry_low_confidence?(entry)
+    visit_entry_status(entry) != 'confirmed' && entry[:confidence_band] == :low
   end
 
   def day_label(day)

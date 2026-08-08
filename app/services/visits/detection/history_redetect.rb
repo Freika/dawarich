@@ -1,0 +1,108 @@
+# frozen_string_literal: true
+
+module Visits
+  module Detection
+    # Re-runs detection over a user's entire point history, month by month
+    # (with a one-hour overlap so the Runner's window widening can stitch
+    # stays across month edges), then backfills confidence onto legacy rows
+    # that predate scoring. Shared by the user-facing FullHistoryRedetectJob
+    # and the fleet rollout.
+    class HistoryRedetect
+      BATCH_OVERLAP_SECONDS = 1.hour.to_i
+
+      Result = Struct.new(:visits_created, :months_total, :months_failed, keyword_init: true)
+
+      def initialize(user)
+        @user = user
+      end
+
+      def call
+        min_ts = user.points.minimum(:timestamp)
+        return Result.new(visits_created: 0, months_total: 0, months_failed: []) if min_ts.nil?
+
+        max_ts = user.points.maximum(:timestamp)
+        months = monthly_ranges(min_ts, max_ts)
+        visits_created = 0
+        months_failed = []
+
+        months.each do |range_start, range_end|
+          visits_created += Visits::SmartDetect.new(user, start_at: range_start, end_at: range_end).call.size
+        rescue StandardError => e
+          months_failed << [range_start, range_end]
+          Rails.logger.error(
+            "[Visits::Detection::HistoryRedetect month_failed] user_id=#{user.id} " \
+            "range=#{range_start}..#{range_end} class=#{e.class} message=#{e.message}"
+          )
+          ExceptionReporter.call(e)
+        end
+
+        backfill_legacy_confidence
+
+        Result.new(visits_created: visits_created, months_total: months.size, months_failed: months_failed)
+      end
+
+      private
+
+      attr_reader :user
+
+      def monthly_ranges(min_ts, max_ts)
+        result = []
+        cursor = Time.zone.at(min_ts).beginning_of_month
+        while cursor.to_i < max_ts
+          batch_start = [cursor.to_i, min_ts].max
+          batch_end_raw = (cursor.end_of_month + 1.day).beginning_of_day.to_i - 1
+          batch_end = [batch_end_raw + BATCH_OVERLAP_SECONDS, max_ts].min
+          result << [batch_start, batch_end]
+          cursor = cursor.next_month
+        end
+        result
+      end
+
+      # Confirmed rows survive re-detection untouched, but the UI gates on
+      # confidence — give pre-scoring rows a score computed from their own
+      # points. detection_version stays NULL: these are user-owned rows, not
+      # regenerated machine output.
+      def backfill_legacy_confidence
+        policy = Policy.for(user)
+
+        user.visits.active.where(confidence: nil).find_each do |visit|
+          score_legacy_visit(visit, policy)
+        end
+      end
+
+      def score_legacy_visit(visit, policy)
+        points = visit.points.to_a
+        center = visit.center
+        return if center&.first.blank?
+
+        result = ConfidenceScorer.new(
+          duration_seconds: visit.ended_at.to_i - visit.started_at.to_i,
+          point_count: points.size,
+          accuracies: points.map(&:accuracy),
+          radius_meters: radius_from(points, center),
+          stay_radius_meters: policy.stay_radius_m,
+          min_points: policy.min_points,
+          place_match: legacy_place_match(visit)
+        ).call
+
+        visit.update_columns(confidence: result[:score], confidence_breakdown: result[:breakdown])
+      end
+
+      def legacy_place_match(visit)
+        return :area if visit.area_id
+        return :place if visit.place_id
+
+        nil
+      end
+
+      def radius_from(points, center)
+        return 15 if points.empty?
+
+        max = points.map do |point|
+          Geocoder::Calculations.distance_between(center, [point.lat, point.lon], units: :km) * 1000
+        end.max
+        [max, 15].max
+      end
+    end
+  end
+end

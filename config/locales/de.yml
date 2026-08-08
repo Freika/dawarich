@@ -982,9 +982,7 @@ de:
         min_10: 195 min
         min_11: 360 min
         max_gap_between_points_before_assuming_you_left_the_city: Maximaler Zeitabstand zwischen Punkten, bevor angenommen wird, dass du die Stadt verlassen hast
-        visit_max_gap: Max. Zeitabstand innerhalb eines Aufenthalts
         min_12: 720 min
-        max_time_gap_between_points_within_one_visit_longer_gaps: 'Max. Zeitabstand zwischen Punkten innerhalb eines Aufenthalts. Längere Abstände (z. B. leerer Akku) teilen den Aufenthalt in separate Einträge. Standardwert: 60.'
         live_mode: Live-Modus
         show_new_points_in_real_time: Neue Punkte in Echtzeit anzeigen
         apply_settings: Einstellungen anwenden
@@ -1153,6 +1151,9 @@ de:
         previous_month: Vorheriger Monat
       day:
         moving_duration: "%{duration} in Bewegung"
+        low_confidence_stops:
+          one: "%{count} unsicherer Stopp"
+          other: "%{count} unsichere Stopps"
         select: Auswählen
         no_visits_match_the_current_search_or_filter: Keine Aufenthalte passen zur aktuellen Suche oder Filter.
         clear_search_filters: Suche & Filter löschen
@@ -1575,8 +1576,6 @@ de:
         points_within_this_radius_are_treated_as_the_same_visit: Punkte innerhalb dieses Radius werden als der gleiche Aufenthalt betrachtet. Standard 100.
         lower_more_visits_suggested_including_brief_stops_default_3: Niedriger = mehr Aufenthalte werden vorgeschlagen, einschließlich kurzer Halte. Standard 3.
         skip_stops_shorter_than_this_raise_to_ignore_short_drive: Übergehe Halte, die kürzer als dies sind. Erhöhe, um kurze Durchfahrten zu ignorieren; senke, um kurze Einkäufe zu erfassen. Standard 5.
-        smart_density_fill: Intelligente Dichteausfüllung
-        better_visits_when_your_tracker_reports_points_unevenly_leave_on: Bessere Aufenthalte, wenn dein Tracker Punkte ungleichmäßig berichtet. Aktiviert, es sei denn, du weißt, dass du es deaktivieren möchtest.
         visit_detection: Aufenthaltserkennung
         visit_radius_meters: Aufenthaltsradius (Meter)
         minimum_points_to_count_as_a_visit: Mindestanzahl an Punkten für einen Aufenthalt

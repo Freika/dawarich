@@ -1048,4 +1048,18 @@ RSpec.describe Timeline::DayAssembler do
       expect(entry[:suggested_places].map { |p| p[:id] }).to eq([place_other.id])
     end
   end
+
+  describe 'confidence band exposure' do
+    let(:day) { Time.zone.parse('2025-03-10 00:00:00') }
+
+    it 'exposes the visit confidence band on the entry for UI gating' do
+      create(:visit, user: user, place: nil, area: nil, status: :suggested, confidence: 30,
+                     started_at: day + 9.hours, ended_at: day + 10.hours, duration: 60)
+
+      days = described_class.new(user, start_at: day.iso8601, end_at: (day + 1.day).iso8601).call
+      entry = days.first[:entries].first
+
+      expect(entry[:confidence_band]).to eq(:low)
+    end
+  end
 end

@@ -49,7 +49,6 @@ const DEFAULT_SETTINGS = {
   globeProjection: false,
   minMinutesSpentInCity: 60,
   maxGapMinutesInCity: 120,
-  stayMaxGapMinutes: 60,
   gpsFilteringEnabled: true,
   pointDraggingEnabled: false,
   enabledTransportationModes: [
@@ -103,7 +102,6 @@ const BACKEND_SETTINGS_MAP = {
   globeProjection: "globe_projection",
   minMinutesSpentInCity: "min_minutes_spent_in_city",
   maxGapMinutesInCity: "max_gap_minutes_in_city",
-  stayMaxGapMinutes: "stay_max_gap_minutes",
   gpsFilteringEnabled: "gps_filtering_enabled",
   pointDraggingEnabled: "point_dragging_enabled",
   enabledTransportationModes: "enabled_transportation_modes",
@@ -250,11 +248,6 @@ export class SettingsManager {
                 value,
                 DEFAULT_SETTINGS.maxGapMinutesInCity,
               )
-            } else if (frontendKey === "stayMaxGapMinutes") {
-              value = SettingsManager._parseIntOr(
-                value,
-                DEFAULT_SETTINGS.stayMaxGapMinutes,
-              )
             } else if (frontendKey === "gpsFilteringEnabled") {
               value = value === true || value === "true"
             } else if (frontendKey === "pointDraggingEnabled") {
@@ -338,8 +331,7 @@ export class SettingsManager {
               frontendKey === "metersBetweenRoutes" ||
               frontendKey === "minutesBetweenRoutes" ||
               frontendKey === "minMinutesSpentInCity" ||
-              frontendKey === "maxGapMinutesInCity" ||
-              frontendKey === "stayMaxGapMinutes"
+              frontendKey === "maxGapMinutesInCity"
             ) {
               value = parseInt(value, 10).toString()
             } else if (frontendKey === "speedColoredRoutes") {

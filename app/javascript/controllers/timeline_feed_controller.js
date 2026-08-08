@@ -481,6 +481,16 @@ export default class extends Controller {
     )
   }
 
+  // Low-confidence rows are display-gated by CSS via a day-level class so
+  // the search/filter `hidden` mechanics stay untouched.
+  toggleLowConfidence(event) {
+    const button = event.currentTarget
+    const day = button.closest(".timeline-day")
+    if (!day) return
+    const open = day.classList.toggle("timeline-day--show-lowconf")
+    button.setAttribute("aria-expanded", String(open))
+  }
+
   deselectVisit() {
     this.selectedVisitId = null
     for (const el of this.element.querySelectorAll(".visit-row--selected")) {

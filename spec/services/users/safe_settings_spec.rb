@@ -68,8 +68,6 @@ RSpec.describe Users::SafeSettings do
             visit_radius_meters: 100,
             visit_min_points: 3,
             visit_min_duration_minutes: 5,
-            visit_density_fill_enabled: true,
-            stay_max_gap_minutes: 60,
             point_dragging_enabled: false
           }
         )
@@ -154,8 +152,6 @@ RSpec.describe Users::SafeSettings do
             'visit_radius_meters' => 100,
             'visit_min_points' => 3,
             'visit_min_duration_minutes' => 5,
-            'visit_density_fill_enabled' => true,
-            'stay_max_gap_minutes' => 60,
             'point_dragging_enabled' => false
           }
         )
@@ -210,8 +206,6 @@ RSpec.describe Users::SafeSettings do
             visit_radius_meters: 100,
             visit_min_points: 3,
             visit_min_duration_minutes: 5,
-            visit_density_fill_enabled: true,
-            stay_max_gap_minutes: 60,
             point_dragging_enabled: false
           }
         )
@@ -684,28 +678,6 @@ RSpec.describe Users::SafeSettings do
     end
   end
 
-  describe '#stay_max_gap_minutes' do
-    it 'returns 60 when missing' do
-      expect(described_class.new({}).stay_max_gap_minutes).to eq(60)
-    end
-
-    it 'clamps below the minimum to 5' do
-      expect(described_class.new({ 'stay_max_gap_minutes' => 1 }).stay_max_gap_minutes).to eq(5)
-    end
-
-    it 'clamps above the maximum to 720' do
-      expect(described_class.new({ 'stay_max_gap_minutes' => 1000 }).stay_max_gap_minutes).to eq(720)
-    end
-
-    it 'returns the user value within range' do
-      expect(described_class.new({ 'stay_max_gap_minutes' => 90 }).stay_max_gap_minutes).to eq(90)
-    end
-
-    it 'is included in #config' do
-      expect(described_class.new({}).config).to include(stay_max_gap_minutes: 60)
-    end
-  end
-
   describe '#point_dragging_enabled?' do
     it 'returns false when missing' do
       expect(described_class.new({}).point_dragging_enabled?).to be false
@@ -733,41 +705,6 @@ RSpec.describe Users::SafeSettings do
 
     it 'is included in #config' do
       expect(described_class.new({}).config).to include(point_dragging_enabled: false)
-    end
-  end
-
-  describe '#visit_density_fill_enabled?' do
-    it 'returns true when missing' do
-      expect(described_class.new({}).visit_density_fill_enabled?).to be true
-    end
-
-    it 'returns false for "0"' do
-      expect(described_class.new({ 'visit_density_fill_enabled' => '0' }).visit_density_fill_enabled?).to be false
-    end
-
-    it 'returns true for "1"' do
-      expect(described_class.new({ 'visit_density_fill_enabled' => '1' }).visit_density_fill_enabled?).to be true
-    end
-
-    it 'returns false for false' do
-      expect(described_class.new({ 'visit_density_fill_enabled' => false }).visit_density_fill_enabled?).to be false
-    end
-  end
-  describe '#fog_of_war_mode' do
-    it 'defaults to points' do
-      expect(described_class.new.fog_of_war_mode).to eq('points')
-    end
-
-    it 'returns hexagons when set' do
-      expect(described_class.new({ 'fog_of_war_mode' => 'hexagons' }).fog_of_war_mode).to eq('hexagons')
-    end
-
-    it 'falls back to points for invalid values' do
-      expect(described_class.new({ 'fog_of_war_mode' => 'octagons' }).fog_of_war_mode).to eq('points')
-    end
-
-    it 'is included in config' do
-      expect(described_class.new.config[:fog_of_war_mode]).to eq('points')
     end
   end
 

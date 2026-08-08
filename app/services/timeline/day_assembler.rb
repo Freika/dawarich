@@ -53,6 +53,7 @@ module Timeline
         name: visit.name,
         editable_name: visit.name,
         status: visit.status,
+        confidence_band: visit.confidence_band,
         place_id: visit.place_id,
         point_count: point_count_for(visit),
         tags: build_tags(visit.place),

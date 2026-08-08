@@ -40,16 +40,6 @@
             <span class="text-xs opacity-70 mt-1"><%= t('.skip_stops_shorter_than_this_raise_to_ignore_short_drive') %></span>
           </div>
 
-          <div class="form-control mb-4">
-            <label class="label cursor-pointer justify-start gap-3">
-              <%= sf.check_box :visit_density_fill_enabled,
-                               { checked: current_user.safe_settings.visit_density_fill_enabled?,
-                                 class: 'checkbox' },
-                               '1', '0' %>
-              <span class="label-text font-semibold"><%= t('.smart_density_fill') %></span>
-            </label>
-            <span class="text-xs opacity-70 mt-1"><%= t('.better_visits_when_your_tracker_reports_points_unevenly_leave_on') %></span>
-          </div>
         <% end %>
 
         <div class="card-actions justify-end">
