@@ -23,26 +23,21 @@ RSpec.describe 'Point coordinates match between the map and the points list', ty
     end
   end
 
-  # The map builds its features client-side from this payload, so these are the
-  # coordinates the popup ends up showing.
-  describe 'the points API payload the map consumes' do
+  # The map requests points with slim=true, which this query serves directly —
+  # not through a serializer. Its rows become the feature properties.
+  describe 'the slim points payload the map consumes' do
+    subject(:row) { Points::SlimCollectionQuery.new(user.points.where(id: point.id)).call.first }
+
     it 'carries the stored coordinates' do
-      %w[latitude longitude].each do |key|
-        expect(Api::SlimPointSerializer.new(point).call).to have_key(key.to_sym)
-      end
-
-      payload = Api::SlimPointSerializer.new(point).call
-
-      expect(payload[:latitude].to_f).to be_within(0.0000001).of(51.340298765)
-      expect(payload[:longitude].to_f).to be_within(0.0000001).of(12.371234567)
+      expect(row[:latitude].to_f).to be_within(0.0000001).of(51.340298765)
+      expect(row[:longitude].to_f).to be_within(0.0000001).of(12.371234567)
     end
 
     it 'formats to exactly the string the list shows' do
-      payload = Api::SlimPointSerializer.new(point).call
       from_payload = format(
         '%<lat>.6f, %<lon>.6f',
-        lat: payload[:latitude].to_f,
-        lon: payload[:longitude].to_f
+        lat: row[:latitude].to_f,
+        lon: row[:longitude].to_f
       )
 
       expect(from_payload).to eq(point_coordinates(point))

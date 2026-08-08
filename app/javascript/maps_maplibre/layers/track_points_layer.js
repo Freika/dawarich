@@ -189,6 +189,8 @@ export class TrackPointsLayer extends BaseLayer {
       )
       if (feature) {
         feature.geometry.coordinates = [coords.lng, coords.lat]
+        feature.properties.latitude = coords.lat
+        feature.properties.longitude = coords.lng
         source.setData(data)
       }
     }
@@ -200,6 +202,10 @@ export class TrackPointsLayer extends BaseLayer {
     const coords = e.lngLat
     const pointId = this.draggedFeature.properties.id
     const originalCoords = this.draggedFeature.geometry.coordinates
+    const originalPosition = {
+      latitude: this.draggedFeature.properties.latitude,
+      longitude: this.draggedFeature.properties.longitude,
+    }
     const wasDrag = this.hasMoved
 
     // Clean up drag state
@@ -236,6 +242,10 @@ export class TrackPointsLayer extends BaseLayer {
         const feature = data.features.find((f) => f.properties.id === pointId)
         if (feature && originalCoords) {
           feature.geometry.coordinates = originalCoords
+          feature.properties.longitude =
+            originalPosition.longitude ?? originalCoords[0]
+          feature.properties.latitude =
+            originalPosition.latitude ?? originalCoords[1]
           source.setData(data)
         }
       }
