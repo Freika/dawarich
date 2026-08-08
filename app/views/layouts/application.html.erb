@@ -4,14 +4,10 @@
     <title><%= full_title(yield(:title)) %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <%= render 'layouts/pwa_meta' %>
-    <link rel="preconnect" href="https://unpkg.com" crossorigin>
-    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
     <%= action_cable_meta_tag %>
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
 
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css"/>
 
     <%= stylesheet_link_tag "tailwind", "inter-font", "data-turbo-track": "reload" %>
     <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
@@ -20,8 +16,9 @@
     <% end %>
     <%= javascript_translations %>
     <%= javascript_importmap_tags %>
+    <%= turbo_refreshes_with(method: :morph, scroll: :preserve) if morph_page_refreshes? %>
+    <%= yield :head %>
     <%= yield :head_scripts %>
-    <%= javascript_include_tag "https://unpkg.com/protomaps-leaflet@5.0.0/dist/protomaps-leaflet.js", defer: true %>
 
     <%= render 'application/favicon' %>
     <%= Sentry.get_trace_propagation_meta.html_safe if Sentry.initialized? %>
@@ -54,6 +51,7 @@
   <body class='min-h-screen flex flex-col'>
     <div class='container mx-auto flex flex-col flex-1'>
       <%= render 'shared/navbar' %>
+      <%= render 'shared/locale_suggestion' %>
       <%= render 'shared/flash' %>
       <div class="w-full px-4 sm:px-5 flex-1">
         <div class="flex w-full min-w-0 gap-5">

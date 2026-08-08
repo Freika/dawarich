@@ -29,6 +29,7 @@ class Users::RegistrationsController < Devise::RegistrationsController
     yield resource if block_given?
 
     if resource.persisted?
+      persist_signup_locale(resource)
       post_signup_setup(resource)
 
       # The claim happens in every branch (not in after_sign_up_path_for):
@@ -141,6 +142,17 @@ class Users::RegistrationsController < Devise::RegistrationsController
     assign_utm_params(resource)
     store_signup_intent(resource)
     accept_invitation_for_user(resource) if @invitation
+  end
+
+  # Only a language the reader actually picked is worth pinning to the account.
+  # Recording the default here would answer `suggested_locale`'s "has the reader
+  # chosen?" question for every new account, so someone signing up from a French
+  # browser would never be offered French again.
+  def persist_signup_locale(resource)
+    return if supported_locale(params[:locale]).nil? && session[:locale].blank?
+
+    resource.settings = (resource.settings || {}).merge('locale' => I18n.locale.to_s)
+    resource.save!
   end
 
   def manager_checkout_url(user)

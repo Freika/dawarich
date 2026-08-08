@@ -4,7 +4,7 @@ import {
   formatDistance,
   formatSpeed,
   minutesToDaysHoursMinutes,
-} from "maps/helpers"
+} from "maps_maplibre/utils/format_helpers"
 import {
   escapeHtml,
   formatTimestamp,
@@ -852,7 +852,7 @@ export class EventHandlers {
         <div><span class="font-semibold">${translate("map_info.duration")}:</span> ${minutesToDaysHoursMinutes(durationMinutes)}</div>
         <div><span class="font-semibold">${translate("map_info.distance")}:</span> ${formatDistance(trackDistanceKm, distanceUnit)}</div>
         <div><span class="font-semibold">${translate("map_info.average_speed")}:</span> ${formatSpeed(properties.avg_speed || 0, distanceUnit)}</div>
-        ${properties.dominant_mode ? `<div><span class="font-semibold">${translate("map_info.mode")}:</span> ${escapeHtml(properties.dominant_mode_emoji)} ${translate(`transportation_modes.${properties.dominant_mode}`)}</div>` : ""}
+        ${properties.dominant_mode ? `<div><span class="font-semibold">${translate("map_info.mode")}:</span> ${escapeHtml(properties.dominant_mode_emoji)} ${escapeHtml(translate(`transportation_modes.${properties.dominant_mode}`))}</div>` : ""}
         ${showPointsToggle}
         <div id="track-point-info-container"></div>
         ${replayButton}
