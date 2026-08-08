@@ -10,6 +10,7 @@ require 'yabeda/rspec'
 require 'rswag/specs'
 require 'sidekiq/testing'
 require 'super_diff/rspec-rails'
+require 'active_job/continuation/test_helper'
 
 require 'rake'
 require 'shoulda/matchers'
@@ -39,6 +40,7 @@ RSpec.configure do |config|
 
   config.include FactoryBot::Syntax::Methods
   config.include ActiveJob::TestHelper
+  config.include ActiveJob::Continuation::TestHelper
 
   config.rswag_dry_run = false
 

@@ -53,7 +53,7 @@
           <% if member.family_sharing_enabled? && member.family_sharing_expires_at.present? %>
             <span class="text-xs text-base-content/50"
                   data-location-sharing-toggle-target="expirationInfo">
-              <%= t('.expires_in_time', time: time_ago_in_words(member.family_sharing_expires_at)) %>
+              <%= t('.expires_in_time', time: relative_distance_in_words(member.family_sharing_expires_at)) %>
             </span>
           <% else %>
             <span class="text-xs text-base-content/50 hidden"

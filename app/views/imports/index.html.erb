@@ -61,7 +61,7 @@
           <thead class="bg-base-200">
             <tr>
               <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50 w-auto"><%= sortable_column t('.name'), :name, :imports_path %></th>
-              <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50 w-[10%]"><%= sortable_column 'File size', :byte_size, :imports_path %></th>
+              <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50 w-[10%]"><%= sortable_column t('.file_size'), :byte_size, :imports_path %></th>
               <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50 text-right w-[10%]"><%= sortable_column t('.points'), :processed, :imports_path %></th>
               <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50 w-[12%]"><%= sortable_column t('.status'), :status, :imports_path %></th>
               <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50 w-[18%]"><%= sortable_column t('.created'), :created_at, :imports_path %></th>

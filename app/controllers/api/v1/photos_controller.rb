@@ -24,6 +24,9 @@ class Api::V1::PhotosController < ApiController
   def thumbnail
     upstream = Photos::Thumbnail.new(current_api_user, params[:source], params[:id]).call
     handle_thumbnail_response(upstream)
+  rescue *Photos::ConnectionErrors::HANDLED => e
+    Rails.logger.error("Photo thumbnail fetch failed: #{e.message}")
+    render json: { error: I18n.t('controllers.api.v1.photos.failed_to_fetch_photos') }, status: :bad_gateway
   end
 
   private

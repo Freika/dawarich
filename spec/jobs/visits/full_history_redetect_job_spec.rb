@@ -106,7 +106,19 @@ RSpec.describe Visits::FullHistoryRedetectJob, type: :job do
 
       warning = user.notifications.where(kind: :warning).last
       expect(warning).to be_present
-      expect(warning.content).to match(/1 month\(s\) failed/)
+      expect(warning.content).to match(/1 month failed/)
+    end
+
+    it 'persists French copy with singular month grammar in the user saved locale' do
+      user.update!(settings: { 'locale' => 'fr' })
+      allow_any_instance_of(Visits::SmartDetect).to receive(:call).and_raise(StandardError, 'boom')
+
+      I18n.with_locale(:en) { described_class.new.perform(user.id) }
+
+      warning = user.notifications.where(kind: :warning).last
+      expect(warning.title).to eq('Redétection des visites partiellement terminée')
+      expect(warning.content).to include('1 mois a échoué')
+      expect(warning.content).not_to include('mois(s)')
     end
 
     it 'wraps the rest of perform in the outer rescue so non-month errors still notify and re-raise' do

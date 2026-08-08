@@ -56,12 +56,14 @@ class GoogleMaps::SemanticHistoryImporter
   end
 
   def create_notification(message)
-    Notification.create!(
-      user_id: user_id,
-      title: I18n.t('services.google_maps.semantic_history_importer.google_maps_timeline_import_error'),
-      content: message,
-      kind: :error
-    )
+    I18n.with_locale(User.find_by(id: user_id)&.locale || I18n.locale) do
+      Notification.create!(
+        user_id: user_id,
+        title: I18n.t('services.google_maps.semantic_history_importer.google_maps_timeline_import_error'),
+        content: message,
+        kind: :error
+      )
+    end
   end
 
   def points_data

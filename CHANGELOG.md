@@ -4,11 +4,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [Unreleased]
+## [1.12.0] - 2026-08-07, Berlin
+
+### Added
+
+- Dawarich can now be used in a language other than English. Pick one under Settings → General — each is listed in its own words — and the choice is saved to your account and used for emails and notifications too. English stays the default and is never changed for you: if your browser prefers another language, Dawarich offers the switch in a banner you can dismiss, and takes no as an answer. API responses stay in English so integrations keep working.
+- Available languages: German, Spanish, French.
+
+### Removed
+
+- Map v1 (Leaflet) has been removed. `/map` now opens the MapLibre map, and `/map/v1` redirects to `/map/v2`. The Settings → Maps page (the v1-only custom tile URL and the map version toggle) was removed as well — map appearance settings live in the map's own settings panel. Note that all maps now require WebGL: browsers with hardware acceleration disabled will see an error message instead of a map, as the Leaflet fallback no longer exists.
+
+### Changed
+
+- Monthly statistics maps and publicly shared month maps are now rendered with MapLibre GL instead of Leaflet, matching the main map's basemaps.
+- The top navigation now collapses into the menu button below 1280px rather than below 1024px, so the longer translations fit on one line.
+- Deleting an import or a notification now updates the list in place instead of repainting the page and jumping back to the top. Stats, insights and digests still reload fully, because their charts do not survive an in-place update.
+- Backfills that walk your whole history now resume where they stopped when a restart interrupts them, instead of starting over from the first row.
 
 ### Fixed
 
+- The "someone joined your family" email no longer fails to send.
+- Re-detecting your whole visit history no longer fails outright when Dawarich is set to German or Spanish.
+- The "family is full" notice now shows how many seats are taken instead of stopping mid-sentence in German and Spanish.
+- Notifications about a failed import, a family invitation and the year-end digest are no longer partly in your language and partly in English.
+- Trip pages no longer fail with a 500 when Immich or Photoprism is unreachable — the trip loads without photos instead. (#3308)
+- `OIDC_ISSUER` set to a discovery URL written with a `#` (such as `https://id.example.com/#.well-known/openid-configuration`) no longer fails sign-in with "Issuer mismatch". (#3289)
 - `/metrics` no longer reports the same metric twice with different values when the web and Sidekiq exporters are merged. Where both processes report the same series, each sample now carries a `process="web"` or `process="sidekiq"` label; every other series is unchanged. (#3304)
+
 
 ## [1.11.0] - 2026-08-02, Berlin
 
