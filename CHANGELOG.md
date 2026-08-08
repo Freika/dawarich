@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
-- Uploading points no longer logs `unknown OID 28: failed to recognize type of 'xmax'` on every batch. (#3309)
+- Uploading points no longer logs `unknown OID 28: failed to recognize type of 'xmax'`. (#3309)
 
 ## [1.11.0] - 2026-08-02, Berlin
 

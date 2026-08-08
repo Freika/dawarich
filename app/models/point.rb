@@ -9,8 +9,9 @@ class Point < ApplicationRecord
 
   # Every ingest path upserts points and then counts the rows whose `xmax` is
   # zero to tell inserts from updates. `xmax` is Postgres' `xid`, an OID the
-  # adapter has no type for, so returning it raw makes the adapter warn on
-  # every upsert. Casting to text keeps `to_i` working and the log quiet.
+  # adapter has no type for, so returning it raw makes the adapter warn the
+  # first time each connection sees it. Casting to text keeps `to_i` working
+  # and the log quiet.
   UPSERT_RETURNING_COLUMNS =
     'id, xmax::text AS xmax, timestamp, ' \
     'ST_X(lonlat::geometry) AS longitude, ST_Y(lonlat::geometry) AS latitude'

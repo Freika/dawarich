@@ -174,7 +174,12 @@ RSpec.describe Points::Create do
 
         it 'uses the correct returning clause' do
           expect(Point).to receive(:upsert_all) do |_data, options|
-            expect(options[:returning]).to eq(Arel.sql(Point::UPSERT_RETURNING_COLUMNS))
+            expect(options[:returning]).to eq(
+              Arel.sql(
+                'id, xmax::text AS xmax, timestamp, ' \
+                'ST_X(lonlat::geometry) AS longitude, ST_Y(lonlat::geometry) AS latitude'
+              )
+            )
             deduplicated_upsert_result
           end
 
