@@ -18,7 +18,8 @@ module Dawarich
     LOCAL_PROCESS = 'web'
     REMOTE_PROCESS = 'sidekiq'
     PROCESS_LABEL = 'process'
-    SAMPLE_LINE = /\A([a-zA-Z_:][a-zA-Z0-9_:]*)(\{.*\})?(\s+.*)\z/
+    SAMPLE_LINE = /\A([a-zA-Z_:][a-zA-Z0-9_:]*)(\{.*?\})?(\s+.*)\z/
+    PROCESS_LABEL_PRESENT = /[{,]process="/
 
     def initialize(local_app, remote_url:, remote_user:, remote_password:, timeout: 5)
       @local_app = local_app
@@ -74,6 +75,7 @@ module Dawarich
 
       { LOCAL_PROCESS => local, REMOTE_PROCESS => remote }.each do |process, body|
         body.each_line do |line|
+          line = "#{line}\n" unless line.end_with?("\n")
           if line.start_with?(HELP_PREFIX) || line.start_with?(TYPE_PREFIX)
             metric_name = line.split(/\s+/, 4)[2]
             prefix = line.start_with?(HELP_PREFIX) ? HELP_PREFIX : TYPE_PREFIX
@@ -101,7 +103,10 @@ module Dawarich
       match = SAMPLE_LINE.match(line.strip)
       return if match.nil?
 
-      "#{match[1]}#{match[2]}"
+      labels = match[2]
+      labels = nil if labels == '{}'
+
+      "#{match[1]}#{labels}"
     end
 
     def disambiguate(line, process, collisions)
@@ -112,7 +117,7 @@ module Dawarich
       name = match[1]
       labels = match[2]
       value = match[3]
-      return line if labels.to_s.include?("#{PROCESS_LABEL}=")
+      return line if PROCESS_LABEL_PRESENT.match?(labels.to_s)
 
       label = %(#{PROCESS_LABEL}="#{process}")
       labels = if labels.nil? || labels == '{}'

@@ -98,6 +98,58 @@ RSpec.describe 'Merged /metrics never repeats a label set' do
     expect(output).not_to match(/rails_requests_total\{[^}]*process=/)
   end
 
+  context 'with label shapes that resemble the process label' do
+    let(:local_body) { %(collides{subprocess="a"} 5.0\n) }
+    let(:remote_body) { %(collides{subprocess="a"} 9.0\n) }
+
+    it 'still disambiguates when another label merely ends in "process"' do
+      output = merged_output
+
+      expect(repeated_series(output)).to be_empty
+      expect(output).to include('process="web"')
+      expect(output).to include('process="sidekiq"')
+    end
+  end
+
+  context 'when a sample already carries a process label' do
+    let(:local_body) { %(already{process="web"} 5.0\n) }
+    let(:remote_body) { %(already{process="web"} 9.0\n) }
+
+    it 'leaves it alone rather than nesting a second process label' do
+      expect(merged_output.scan('process=').size).to eq(2)
+    end
+  end
+
+  context 'when one side writes an empty label set explicitly' do
+    let(:local_body) { %(bare 5.0\n) }
+    let(:remote_body) { %(bare{} 9.0\n) }
+
+    it 'treats the bare name and the empty label set as the same series' do
+      expect(repeated_series(merged_output)).to be_empty
+    end
+  end
+
+  context 'when a label value contains a closing brace' do
+    let(:local_body) { %(braced{path="}"} 5.0\n) }
+    let(:remote_body) { %(braced{path="}"} 9.0\n) }
+
+    it 'splits the label set from the value correctly' do
+      output = merged_output
+
+      expect(repeated_series(output)).to be_empty
+      expect(output).to include(%(braced{process="web",path="}"} 5.0))
+    end
+  end
+
+  context 'when a body has no trailing newline' do
+    let(:local_body) { %(first{a="1"} 5.0) }
+    let(:remote_body) { %(second{b="2"} 9.0\n) }
+
+    it 'does not glue the two bodies into one malformed line' do
+      expect(merged_output).to eq(%(first{a="1"} 5.0\nsecond{b="2"} 9.0\n))
+    end
+  end
+
   it 'still deduplicates HELP and TYPE metadata' do
     output = merged_output
 
