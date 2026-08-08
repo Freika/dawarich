@@ -1157,10 +1157,6 @@ es:
       day:
         moving_duration: "%{duration} en movimiento"
         select: Seleccionar
-        visits: Visitas
-        tracks: Trayectos
-        distance: Distancia
-        moving: En movimiento
         no_visits_match_the_current_search_or_filter: No hay visitas que coincidan con la búsqueda o filtro actual.
         clear_search_filters: Limpiar búsqueda y filtros
         no_visits_tracked_this_day: No se registraron visitas este día.
@@ -1172,12 +1168,6 @@ es:
       day_nav:
         previous_day: Día anterior
         next_day: Día siguiente
-      day_summary:
-        total_distance_traveled_this_day: Distancia total recorrida hoy
-        distinct_places_visited_this_day: Lugares distintos visitados hoy
-        places: lugares
-        moving: en movimiento
-        stationary: inmóvil
       feed:
         no_visits_tracked_this_day: No se registraron visitas este día.
         visits_are_auto_detected_daily_from_your_location_data: Las visitas se detectan automáticamente todos los días a partir de tus datos de ubicación.
@@ -1190,21 +1180,10 @@ es:
       selection_bar:
         selected: 0 seleccionados
         cancel: Cancelar
-        mark_these_visits_as_confirmed_yes_i_was_there: Marcar estas visitas como confirmadas (sí, estaba allí)
-        confirm: Confirmar
         combine_the_selected_visits_into_one: Combinar las visitas seleccionadas en una sola
         merge: Unir
         remove_the_visit_grouping_your_location_points_stay: Eliminar el agrupamiento de visitas (los puntos de ubicación permanecen)
         delete: Eliminar
-      suggested_picker:
-        needs_review: Necesita revisión
-        confirm_this_visit: "¿Confirmar esta visita?"
-        assigned_to: Asignado a
-        use_the_search_button_to_pick_a_different_place: ". Utiliza el botón de búsqueda para seleccionar un lugar diferente."
-        no_place_for_this_visit_confirm_to_keep_it_as: No hay lugar para esta visita. Confirma para mantenerla como está.
-        confirm: Confirmar
-        delete: Eliminar
-        delete_this_visit_your_location_points_stay: "¿Eliminar esta visita? Tus puntos de ubicación se conservarán."
       track_info:
         track: 'Trayecto n.º '
         dist: Dist
@@ -1222,7 +1201,6 @@ es:
         select_visit_for_merge: Selecciona visita para fusionar
         all_day: Todo el día
         pts: pts
-        search_for_a_place: Buscar un lugar
         delete: Eliminar
         delete_this_visit_your_location_points_stay: "¿Eliminar esta visita? Tus puntos de ubicación se conservarán."
   notifications:
@@ -2401,9 +2379,6 @@ es:
       confirm: Confirmar
       delete: Eliminar
       delete_this_visit_your_location_points_stay: "¿Eliminar esta visita? Tus puntos de ubicación se conservarán."
-    name:
-      unnamed_visit: Visita sin nombre
-      click_to_rename: Haz clic para renombrar
   date:
     formats:
       month_name: "%B"
@@ -3392,9 +3367,6 @@ es:
           read_failed: 'Falló la lectura de los datos JSON: %{message}'
         v2_handler:
           manifest_missing: 'No se encontró el archivo de manifest en la carpeta: manifest.json'
-      transportation_thresholds_updater:
-        enable_at_least_one_transportation_mode: Habilita al menos un modo de transporte
-        recalculation_in_progress: Está en curso la recálculo del modo de transporte. Por favor, espera a que termine.
     visits:
       suggest:
         error_suggesting_visits_message: 'Error al sugerir visitas: %{message}'

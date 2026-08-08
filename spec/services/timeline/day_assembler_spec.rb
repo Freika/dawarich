@@ -184,6 +184,30 @@ RSpec.describe Timeline::DayAssembler do
       end
     end
 
+    context 'with a track spanning midnight' do
+      let(:day) { Time.zone.parse('2025-03-10 00:00:00') }
+
+      let!(:track) do
+        create(:track, user: user, start_at: day + 22.hours, end_at: day + 26.hours,
+                       distance: 12_000, duration: 14_400).tap do |t|
+          create(:track_segment, track: t, transportation_mode: :driving,
+                                 start_at: day + 22.hours, end_at: day + 26.hours,
+                                 distance: 12_000, duration: 14_400, confidence_score: 0.95)
+        end
+      end
+
+      subject do
+        described_class.new(user, start_at: day.iso8601, end_at: (day + 2.days).iso8601).call
+      end
+
+      it 'scales moving duration by the day share on the continuation day' do
+        continuation = subject.flat_map { |d| d[:entries] }
+                              .find { |e| e[:type] == 'journey' && e[:continuation_of_date].present? }
+
+        expect(continuation[:moving_duration]).to eq(continuation[:day_duration])
+      end
+    end
+
     context 'with tombstoned visits' do
       let(:day) { Time.zone.parse('2025-01-15 00:00:00') }
 

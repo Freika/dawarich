@@ -180,8 +180,6 @@ RSpec.describe 'Rendered French copy' do
       expect(I18n.t('map.maplibre.settings_panel.enrich_photos')).to eq('Enrichir les photos')
       expect(I18n.t('map.timeline_feeds.day.no_visits_tracked_this_day'))
         .to eq('Aucune visite enregistrée ce jour-là.')
-      expect(I18n.t('map.timeline_feeds.day_summary.total_distance_traveled_this_day'))
-        .to eq('Distance totale parcourue ce jour-là')
       expect(I18n.t('insights.activity_heatmap.mon')).to eq('Lun')
       expect(I18n.t('insights.activity_heatmap.wed')).to eq('Mer')
       expect(I18n.t('insights.activity_heatmap.fri')).to eq('Ven')

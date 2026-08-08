@@ -11,8 +11,15 @@ class AddTimeAnchoringToTrackSegments < ActiveRecord::Migration[8.0]
     end
     add_column :track_segments, :confidence_score, :float unless column_exists?(:track_segments, :confidence_score)
 
-    change_column_null :track_segments, :start_index, true
-    change_column_null :track_segments, :end_index, true
+    # Relaxing only. Inverting these on rollback would issue SET NOT NULL,
+    # which scans the whole table and fails outright once the new writer has
+    # produced a single time-anchored segment.
+    reversible do |dir|
+      dir.up do
+        change_column_null :track_segments, :start_index, true
+        change_column_null :track_segments, :end_index, true
+      end
+    end
 
     # A failed CREATE INDEX CONCURRENTLY leaves an INVALID index behind that
     # if_not_exists would silently keep — and an invalid index cannot serve

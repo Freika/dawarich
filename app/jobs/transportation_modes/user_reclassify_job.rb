@@ -5,6 +5,10 @@ module TransportationModes
   # tracking and fans out per-track jobs that report back on completion.
   class UserReclassifyJob < ApplicationJob
     queue_as :tracks
+    # A blind retry would call status.start again — resetting the counter to
+    # zero and re-enqueuing every track while the first attempt's jobs are
+    # still running. The failed status is the user-facing retry path.
+    sidekiq_options retry: false
 
     SLICE = 100
     SLICE_STAGGER = 10.seconds

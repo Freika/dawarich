@@ -245,8 +245,17 @@ module Timeline
         continuation_of_date: continuation ? start_day.to_s : nil,
         day_distance: continuation ? convert_distance(track.distance.to_f * day_share) : nil,
         day_duration: continuation ? (track.duration.to_f * day_share).round : nil,
-        moving_duration: @segment_stats[:moving][track.id]
+        moving_duration: day_moving_duration(track, continuation, day_share)
       }
+    end
+
+    # Continuation rows describe one day's slice of the track, so moving time
+    # has to be apportioned the same way distance and duration are.
+    def day_moving_duration(track, continuation, day_share)
+      moving = @segment_stats[:moving][track.id]
+      return moving unless continuation && moving
+
+      (moving.to_f * day_share).round
     end
 
     def build_place(place)

@@ -1157,10 +1157,6 @@ de:
       day:
         moving_duration: "%{duration} in Bewegung"
         select: Auswählen
-        visits: Aufenthalte
-        tracks: Tracks
-        distance: Entfernung
-        moving: In Bewegung
         no_visits_match_the_current_search_or_filter: Keine Aufenthalte passen zur aktuellen Suche oder Filter.
         clear_search_filters: Suche & Filter löschen
         no_visits_tracked_this_day: Keine Aufenthalte wurden an diesem Tag erfasst.
@@ -1172,12 +1168,6 @@ de:
       day_nav:
         previous_day: Vorheriger Tag
         next_day: Nächster Tag
-      day_summary:
-        total_distance_traveled_this_day: Gesamte Strecke dieses Tages
-        distinct_places_visited_this_day: Unterschiedliche Orte dieses Tages
-        places: Orte
-        moving: in Bewegung
-        stationary: statisch
       feed:
         no_visits_tracked_this_day: Keine Aufenthalte dieses Tag verfolgt.
         visits_are_auto_detected_daily_from_your_location_data: Aufenthalte werden täglich automatisch aus deinen Standortdaten erkannt.
@@ -1190,21 +1180,10 @@ de:
       selection_bar:
         selected: 0 ausgewählt
         cancel: Abbrechen
-        mark_these_visits_as_confirmed_yes_i_was_there: Diese Aufenthalte als bestätigt markieren (ja, ich war dort)
-        confirm: Bestätigen
         combine_the_selected_visits_into_one: Die ausgewählten Aufenthalte zu einem kombinieren
         merge: Zusammenführen
         remove_the_visit_grouping_your_location_points_stay: Den Aufenthalt gruppiert entfernen (deine Standortpunkte bleiben)
         delete: Löschen
-      suggested_picker:
-        needs_review: Zur Überprüfung
-        confirm_this_visit: Diesen Aufenthalt bestätigen?
-        assigned_to: Zugeordnet zu
-        use_the_search_button_to_pick_a_different_place: ". Nutze die Suchschaltfläche, um einen anderen Ort auszuwählen."
-        no_place_for_this_visit_confirm_to_keep_it_as: Kein Ort für diesen Aufenthalt. Bestätige, um ihn so zu lassen.
-        confirm: Bestätigen
-        delete: Löschen
-        delete_this_visit_your_location_points_stay: Diesen Aufenthalt löschen? Deine Standortpunkte bleiben.
       track_info:
         track: 'Track #'
         dist: Dist
@@ -1222,7 +1201,6 @@ de:
         select_visit_for_merge: Aufenthalt zum Zusammenführen auswählen
         all_day: Ganz Tag
         pts: pts
-        search_for_a_place: Suche nach einem Ort
         delete: Löschen
         delete_this_visit_your_location_points_stay: Diesen Aufenthalt löschen? Deine Standortpunkte bleiben.
   notifications:
@@ -2401,9 +2379,6 @@ de:
       confirm: Bestätigen
       delete: Löschen
       delete_this_visit_your_location_points_stay: Diesen Aufenthalt löschen? Deine Standortpunkte bleiben.
-    name:
-      unnamed_visit: Unbenannter Aufenthalt
-      click_to_rename: Klicken, um umzubenennen
   date:
     formats:
       month_name: "%B"
@@ -3447,9 +3422,6 @@ de:
           read_failed: 'Fehler beim Lesen der JSON-Daten: %{message}'
         v2_handler:
           manifest_missing: 'Manifest-Datei nicht im Archiv gefunden: manifest.json'
-      transportation_thresholds_updater:
-        enable_at_least_one_transportation_mode: Aktiviere mindestens einen Verkehrsmodus
-        recalculation_in_progress: Der Modusberechnung für Verkehrsmittel läuft. Bitte warte, bis sie abgeschlossen ist.
     visits:
       suggest:
         error_suggesting_visits_message: 'Fehler beim Vorschlagen von Aufenthalten: %{message}'

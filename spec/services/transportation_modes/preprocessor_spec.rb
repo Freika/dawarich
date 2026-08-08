@@ -63,4 +63,13 @@ RSpec.describe TransportationModes::Preprocessor do
     rows = [row(ts: 0), row(ts: 10, dt: 10, bearing_deg: 350.0), row(ts: 20, dt: 10, bearing_deg: 10.0)]
     expect(described_class.call(rows)[2][:bearing_delta_deg]).to be_within(0.1).of(20.0)
   end
+
+  it 'does not derive a speed sample across a tracking gap' do
+    gap = TransportationModes::Emissions::TUNING[:gap_reset_s] + 900
+    rows = [row(ts: 0), row(ts: gap, dt: gap, dist_m: 15_000.0)]
+
+    out = described_class.call(rows)
+
+    expect(out[1][:speed_valid]).to be false
+  end
 end

@@ -13,16 +13,27 @@ class SoftDeleteDeclinedVisits < ActiveRecord::Migration[8.0]
   BATCH_SIZE = 10_000
 
   def up
+    # Keyset, not LIMIT-on-a-predicate: nothing indexes
+    # `status = 2 AND deleted_at IS NULL`, so a re-filtered batch would
+    # re-scan the heap from block 0 every iteration and skip the rows it
+    # just wrote — quadratic in the number of declined visits.
+    last_id = 0
+
     loop do
-      affected = connection.update(<<~SQL.squish)
-        UPDATE visits SET deleted_at = NOW()
-        WHERE id IN (
-          SELECT id FROM visits
-          WHERE status = #{DECLINED} AND deleted_at IS NULL
-          LIMIT #{BATCH_SIZE}
-        )
+      ids = connection.select_values(<<~SQL.squish)
+        SELECT id FROM visits
+        WHERE id > #{last_id} AND status = #{DECLINED}
+        ORDER BY id
+        LIMIT #{BATCH_SIZE}
       SQL
-      break if affected < BATCH_SIZE
+      break if ids.empty?
+
+      connection.update(<<~SQL.squish)
+        UPDATE visits SET deleted_at = NOW()
+        WHERE id IN (#{ids.join(',')}) AND deleted_at IS NULL
+      SQL
+
+      last_id = ids.last
     end
   end
 

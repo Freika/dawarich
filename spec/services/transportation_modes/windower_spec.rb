@@ -60,4 +60,17 @@ RSpec.describe TransportationModes::Windower do
     expect(windows.first[:hints][:driving])
       .to be_within(0.01).of(TransportationModes::HintScorer::OVERLAND_BOOST)
   end
+
+  it 'ignores the across-gap dt when sizing a post-gap chain\'s windows' do
+    before_gap = rows_for([1.3] * 24)
+    after_gap = rows_for([1.3] * 24, start_ts: before_gap.last[:ts] + 3600)
+    after_gap.first[:dt] = 3600
+    after_gap.first[:dist_m] = 4680.0
+
+    windows = described_class.call(before_gap + after_gap)
+    post_gap = windows.select { |w| w[:start_ts] >= after_gap.first[:ts] }
+
+    expect(post_gap.first[:sparse]).to be false
+    expect(post_gap.size).to be > 1
+  end
 end

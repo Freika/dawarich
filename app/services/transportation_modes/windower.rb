@@ -21,6 +21,10 @@ module TransportationModes
         if current.any? && row[:dt] && row[:dt] > Emissions::TUNING[:gap_reset_s]
           result << { rows: current }
           current = []
+          # The gap belongs to neither chain: carrying its dt into the new
+          # one inflates mean_dt, widening every window and mislabelling the
+          # chain as sparse.
+          row = row.merge(dt: nil, dist_m: nil)
         end
         current << row
       end

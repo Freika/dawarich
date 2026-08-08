@@ -39,8 +39,12 @@ module TransportationModes
       row[:speed_valid] = valid_sample?(row, speed, previous_valid_speed, stored)
     end
 
+    # Displacement across a tracking gap says nothing about how the user
+    # moved during it — 15 km over a 20 minute hole is not a 45 km/h sample.
+    # A stored velocity is an instantaneous reading and stays trusted.
     def self.derived_speed(row)
       return nil if row[:dt].nil? || row[:dt] <= 0 || row[:dist_m].nil?
+      return nil if row[:dt] > Emissions::TUNING[:gap_reset_s]
 
       row[:dist_m] / row[:dt]
     end

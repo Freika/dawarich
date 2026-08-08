@@ -1875,10 +1875,6 @@ fr:
       day:
         moving_duration: "%{duration} en déplacement"
         select: Sélectionner
-        visits: Visites
-        tracks: Trajets
-        distance: Distance
-        moving: En mouvement
         no_visits_match_the_current_search_or_filter: Aucune visite ne correspond
           à la recherche ou au filtre actuel.
         clear_search_filters: Effacer les recherches et les filtres
@@ -1891,12 +1887,6 @@ fr:
       day_nav:
         previous_day: Jour précédent
         next_day: Prochain jour
-      day_summary:
-        total_distance_traveled_this_day: Distance totale parcourue ce jour-là
-        distinct_places_visited_this_day: Lieux distincts visités ce jour-là
-        places: lieux
-        moving: en mouvement
-        stationary: stationnaire
       feed:
         no_visits_tracked_this_day: Aucune visite enregistrée ce jour-là.
         visits_are_auto_detected_daily_from_your_location_data: Les visites sont détectées
@@ -1907,31 +1897,15 @@ fr:
         arrived: ", arrivé"
         middot: "·"
         continued_from_date_arrived: continué depuis %{date}, arrivé
-        track: Trajet n°
       selection_bar:
         selected: 0 sélectionné
         cancel: Annuler
-        mark_these_visits_as_confirmed_yes_i_was_there: Marquer ces visites comme
-          confirmées (oui, j'y étais)
-        confirm: Confirmer
         combine_the_selected_visits_into_one: Combinez les visites sélectionnées en
           une seule
         merge: Fusionner
         remove_the_visit_grouping_your_location_points_stay: Supprimer le regroupement
           de visites (vos points de localisation restent)
         delete: Supprimer
-      suggested_picker:
-        needs_review: À revoir
-        confirm_this_visit: Confirmer cette visite ?
-        assigned_to: Attribué à
-        use_the_search_button_to_pick_a_different_place: Utilisez le bouton Recherche
-          pour choisir un autre endroit.
-        no_place_for_this_visit_confirm_to_keep_it_as: Aucun endroit pour cette visite.
-          Confirmer pour la conserver telle quelle.
-        confirm: Confirmer
-        delete: Supprimer
-        delete_this_visit_your_location_points_stay: Supprimer cette visite ? Vos
-          points de localisation seront conservés.
       track_info:
         track: Trajet n°
         dist: Dist
@@ -1949,7 +1923,6 @@ fr:
         select_visit_for_merge: Sélectionnez une visite pour fusionner
         all_day: Toute la journée
         pts: pts
-        search_for_a_place: Recherchez un endroit
         delete: Supprimer
         delete_this_visit_your_location_points_stay: Voulez-vous supprimer cette visite ?
           Vos points de localisation restent.
@@ -3456,9 +3429,6 @@ fr:
       delete: Supprimer
       delete_this_visit_your_location_points_stay: Voulez-vous supprimer cette visite ?
         Vos points de localisation resteront.
-    name:
-      unnamed_visit: Visite non nommée
-      click_to_rename: Cliquez pour renommer
   common:
     app_name: Dawarich
     not_available: N/A
@@ -4589,10 +4559,6 @@ fr:
         v2_handler:
           manifest_missing: 'Le fichier de manifeste n''a pas été trouvé dans l''archive :
             manifest.json'
-      transportation_thresholds_updater:
-        enable_at_least_one_transportation_mode: Activez au moins un mode de transport
-        recalculation_in_progress: Le recalcul des modes de transport est en cours.
-          Veuillez attendre qu'il se termine.
     visits:
       suggest:
         error_suggesting_visits_message: 'Erreur lors de la suggestion de visites :
