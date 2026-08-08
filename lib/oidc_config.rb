@@ -26,8 +26,10 @@ module OidcConfig
       }
     }
 
-    if env['OIDC_ISSUER'].to_s.strip != ''
-      config[:issuer] = normalize_issuer(env['OIDC_ISSUER'])
+    issuer = normalize_issuer(env['OIDC_ISSUER'].to_s)
+
+    if issuer != ''
+      config[:issuer] = issuer
       config[:discovery] = true
     elsif env['OIDC_HOST'].to_s.strip != ''
       config[:client_options].merge!(manual_endpoints(env))
@@ -41,10 +43,13 @@ module OidcConfig
   # doubled path and fail with an opaque NoMethodError. An issuer identifier
   # carries no fragment, so anything after "#" is a pasting artefact too.
   def self.normalize_issuer(issuer)
-    issuer.strip
-          .sub(/#.*\z/m, '')
-          .sub(%r{/\.well-known/openid-configuration/?\z}, '')
-          .sub(%r{\A([a-z][a-z0-9+.-]*://[^/]+)/\z}i, '\1')
+    normalized = issuer.strip
+    fragment_removed = normalized.sub!(/#.*\z/m, '')
+    normalized = normalized.strip.sub(%r{/\.well-known/openid-configuration/?\z}, '')
+
+    return normalized unless fragment_removed
+
+    normalized.sub(%r{\A([a-z][a-z0-9+.-]*://[^/]+)/\z}i, '\1')
   end
 
   def self.pkce_enabled?(env = ENV)
