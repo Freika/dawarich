@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Uploading points no longer logs `unknown OID 28: failed to recognize type of 'xmax'` on every batch. (#3309)
+
 ## [1.11.0] - 2026-08-02, Berlin
 
 ### Added

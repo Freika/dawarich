@@ -19,9 +19,7 @@ class Points::Create
     deduplicated_data.each_slice(1000) do |location_batch|
       result = Point.archival_safe_upsert_all(
         location_batch,
-        returning: Arel.sql(
-          'id, xmax, timestamp, ST_X(lonlat::geometry) AS longitude, ST_Y(lonlat::geometry) AS latitude'
-        )
+        returning: Arel.sql(Point::UPSERT_RETURNING_COLUMNS)
       )
       inserted_count += result.count { |row| row['xmax'].to_i.zero? }
       created_points.concat(result)
