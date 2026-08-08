@@ -32,6 +32,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - `OIDC_ISSUER` set to a discovery URL written with a `#` (such as `https://id.example.com/#.well-known/openid-configuration`) no longer fails sign-in with "Issuer mismatch". (#3289)
 - Clicking a map panel button for the panel already on screen now closes it, instead of only the header's X doing that. (#3317)
 - `/metrics` no longer reports the same metric twice with different values when the web and Sidekiq exporters are merged. Where both processes report the same series, each sample now carries a `process="web"` or `process="sidekiq"` label; every other series is unchanged. (#3304)
+- Photo search now covers the whole of the end date, so photos taken after midnight on the last day of the range are found instead of needing the range extended by a day. (#3263)
 
 
 ## [1.11.0] - 2026-08-02, Berlin
