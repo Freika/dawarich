@@ -11,7 +11,7 @@ Bundler.require(*Rails.groups)
 module Dawarich
   class Application < Rails::Application
     # Initialize configuration defaults for originally generated Rails version.
-    config.load_defaults 8.0
+    config.load_defaults 8.1
 
     # Please, add to the `ignore` list any other `lib` subdirectories that do
     # not contain `.rb` files, or that should not be reloaded or eager loaded.
@@ -28,6 +28,8 @@ module Dawarich
     # in config/environments, which are processed later.
     #
     config.time_zone = ENV.fetch('TIME_ZONE', 'Europe/Berlin')
+    config.i18n.available_locales = %i[en de es fr]
+    config.i18n.default_locale = :en
     # config.eager_load_paths << Rails.root.join("extras")
 
     # Don't generate system test files.

@@ -1,7 +1,7 @@
 <% content_for :title, t('.insights') %>
 <%= render 'shared/chartkick_scripts' %>
 
-<% insights_cache_key = [current_user.id, "insights", @selected_year, @year_stats&.maximum(:updated_at), current_user.safe_settings.distance_unit] %>
+<% insights_cache_key = [current_user.id, "insights", I18n.locale, @selected_year, @year_stats&.maximum(:updated_at), current_user.safe_settings.distance_unit] %>
 
 <div class="w-full my-5">
   <%= render 'header' %>
@@ -9,8 +9,8 @@
 
   <% if @year_locked %>
     <div class="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
-      <% %w[Total\ Distance Countries Cities Days\ Traveling].each do |title| %>
-        <%= render 'pro_locked_card', title: title, utm_content: "insights_#{title.parameterize}" %>
+      <% %w[total_distance countries cities days_traveling].each do |metric| %>
+        <%= render 'pro_locked_card', title: t(".#{metric}"), utm_content: "insights_#{metric}" %>
       <% end %>
     </div>
     <div class="flex flex-col lg:flex-row gap-6">

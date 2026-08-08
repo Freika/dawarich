@@ -32,7 +32,7 @@ This file contains essential information for Claude to work effectively with the
 ### Frontend
 - **CSS Framework**: Tailwind CSS with DaisyUI components
 - **JavaScript**: Stimulus, Turbo Rails, Hotwired
-- **Maps**: Leaflet.js
+- **Maps**: MapLibre GL JS
 - **Charts**: Chartkick
 
 ## Conventions
@@ -281,7 +281,7 @@ bundle exec bundle-audit             # Dependency security
 
 ## Frontend: Hotwire-First Approach
 
-**Always prefer Turbo + Stimulus over custom JavaScript.** This project uses the Hotwire stack (Turbo Drive, Turbo Frames, Turbo Streams, Stimulus) as its primary frontend architecture. Direct `fetch()` calls, manual DOM manipulation, and standalone JS modules should only be used when Hotwire cannot handle the use case (e.g., map rendering with Leaflet/MapLibre).
+**Always prefer Turbo + Stimulus over custom JavaScript.** This project uses the Hotwire stack (Turbo Drive, Turbo Frames, Turbo Streams, Stimulus) as its primary frontend architecture. Direct `fetch()` calls, manual DOM manipulation, and standalone JS modules should only be used when Hotwire cannot handle the use case (e.g., map rendering with MapLibre).
 
 ### Decision Hierarchy
 
@@ -291,7 +291,7 @@ When adding frontend behavior, follow this order of preference:
 2. **Turbo Frames** — Partial page updates. Wrap a section in `<turbo-frame>` and target it from links/forms.
 3. **Turbo Streams** — Server-pushed DOM updates. Use for CRUD operations that need to update multiple page sections. Respond with `turbo_stream` format from controllers.
 4. **Stimulus controller** — Client-side behavior that Turbo can't handle (toggles, form validation, UI interactions). Keep controllers thin.
-5. **Direct JS** — Last resort. Only for complex map interactions, canvas rendering, or third-party library integration (Leaflet, MapLibre, Chartkick).
+5. **Direct JS** — Last resort. Only for complex map interactions, canvas rendering, or third-party library integration (MapLibre, Chartkick).
 
 ### Turbo Stream Responses
 
@@ -368,7 +368,7 @@ Use the unified `upload` controller (`upload_controller.js`) for all file upload
 
 ### When Direct JS Is Acceptable
 
-- **Map rendering**: Leaflet (Maps v1) and MapLibre GL JS (Maps v2) require imperative JS for layers, markers, and interactions.
+- **Map rendering**: MapLibre GL JS requires imperative JS for layers, markers, and interactions.
 - **Chart rendering**: Chartkick handles its own DOM.
 - **Third-party integrations**: Libraries that don't have Hotwire adapters.
 - **Complex client-side computation**: Haversine distance, coordinate transforms, etc.
@@ -395,10 +395,10 @@ Even in these cases, wrap the integration in a Stimulus controller and connect i
 
 ⚠️ **IMPORTANT: Unit Mismatch in Route Splitting Logic**
 
-Both Map v1 (Leaflet) and Map v2 (MapLibre) contain an **intentional unit mismatch** in route drawing that must be preserved for consistency:
+The map's route drawing contains an **intentional unit mismatch** (inherited from the retired Map v1) that must be preserved:
 
 **The Issue**:
-- `haversineDistance()` function returns distance in **kilometers** (e.g., 0.5 km)
+- `haversineDistance()` returns distance in **kilometers** (e.g., 0.5 km)
 - Route splitting threshold is stored and compared as **meters** (e.g., 500)
 - The code compares them directly: `0.5 > 500` = always **FALSE**
 
@@ -407,30 +407,23 @@ Both Map v1 (Leaflet) and Map v2 (MapLibre) contain an **intentional unit mismat
 - Routes only split on **time gaps** (default: 60 minutes between points)
 - This creates longer, more continuous routes that users expect
 
-**Code Locations**:
-- **Map v1**: `app/javascript/maps/polylines.js:390`
-  - Uses `haversineDistance()` from `maps/helpers.js` (returns km)
-  - Compares to `distanceThresholdMeters` variable (value in meters)
-
-- **Map v2**: `app/javascript/maps_maplibre/layers/routes_layer.js:82-104`
-  - Has built-in `haversineDistance()` method (returns km)
-  - Intentionally skips `/1000` conversion to replicate v1 behavior
-  - Comment explains this is matching v1's unit mismatch
+**Code Location**:
+- `app/javascript/maps_maplibre/layers/routes_layer.js:82-104`
+  - Built-in `haversineDistance()` method (returns km)
+  - Intentionally skips the `/1000` conversion; a comment explains the historical mismatch
 
 **Critical Rules**:
 1. ❌ **DO NOT "fix" the unit mismatch** - this would break user expectations
-2. ✅ **Keep both versions synchronized** - they must behave identically
-3. ✅ **Document any changes** - route drawing changes affect all users
-4. ⚠️ If you ever fix this bug:
-   - You MUST update both v1 and v2 simultaneously
+2. ✅ **Document any changes** - route drawing changes affect all users
+3. ⚠️ If you ever fix this bug:
    - You MUST migrate user settings (multiply existing values by 1000 or divide by 1000 depending on direction)
    - You MUST communicate the breaking change to users
 
 **Additional Route Drawing Details**:
 - **Time threshold**: 60 minutes (default) - actually functional
 - **Distance threshold**: 500 meters (default) - currently non-functional due to unit bug
-- **Sorting**: Map v2 sorts points by timestamp client-side; v1 relies on backend ASC order
-- **API ordering**: Map v2 must request `order: 'asc'` to match v1's chronological data flow
+- **Sorting**: points are sorted by timestamp client-side
+- **API ordering**: the map requests `order: 'asc'` for chronological data flow
 
 ## Plan System (Lite vs Pro)
 

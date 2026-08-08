@@ -3,7 +3,7 @@
     <h3 class="font-bold text-xl">
       <%= link_to notification.title, notification, class: "link hover:no-underline #{notification_link_color(notification)}" %>
     </h3>
-    <div class="text-sm text-gray-500"><%= time_ago_in_words notification.created_at %> <%= t('.ago') %></div>
+    <div class="text-sm text-gray-500"><%= t('common.time_ago', time: relative_distance_in_words(notification.created_at)) %></div>
 
     <% if params[:action] == 'show' %>
       <div class="mt-2">
