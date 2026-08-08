@@ -4,6 +4,8 @@ class ImportsController < ApplicationController
   include ActiveStorage::SetCurrent
   include Sortable
 
+  self.page_refresh_morphing = true
+
   SORTABLE_COLUMNS = %w[name status created_at processed byte_size].freeze
 
   before_action :authenticate_user!

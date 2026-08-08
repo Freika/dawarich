@@ -24,6 +24,15 @@ RSpec.describe '/points', type: :request do
         expect(response).to be_successful
       end
 
+      it 'renders the page-entry summary in French without missing translations' do
+        user.update!(settings: { 'locale' => 'fr' })
+
+        get points_url
+
+        expect(response.body).to include('Aucun résultat')
+        expect(response.body).not_to include('translation_missing')
+      end
+
       context 'when reverse geocoding is enabled' do
         let(:recent_timestamp) { 1.day.ago.to_i }
 
