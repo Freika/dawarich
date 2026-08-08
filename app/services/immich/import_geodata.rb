@@ -35,7 +35,7 @@ class Immich::ImportGeodata
   private
 
   def retrieve_immich_data
-    Immich::RequestPhotos.new(user, start_date:, end_date:).call
+    Immich::RequestPhotos.new(user, start_date:, end_date:, raise_on_connection_error: true).call
   end
 
   def parse_immich_data(immich_data)
