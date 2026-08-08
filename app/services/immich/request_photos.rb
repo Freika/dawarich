@@ -5,12 +5,13 @@ class Immich::RequestPhotos
 
   attr_reader :user, :immich_api_base_url, :immich_api_key, :start_date, :end_date
 
-  def initialize(user, start_date: '1970-01-01', end_date: nil)
+  def initialize(user, start_date: '1970-01-01', end_date: nil, raise_on_connection_error: false)
     @user = user
     @immich_api_base_url = "#{user.safe_settings.immich_url}/api/search/metadata"
     @immich_api_key = user.safe_settings.immich_api_key
     @start_date = start_date
     @end_date = end_date
+    @raise_on_connection_error = raise_on_connection_error
   end
 
   def call
@@ -64,6 +65,8 @@ class Immich::RequestPhotos
     data.flatten
   rescue *Photos::ConnectionErrors::HANDLED => e
     Rails.logger.error("Immich photo fetch failed: #{e.message}")
+    raise if @raise_on_connection_error
+
     nil
   end
 

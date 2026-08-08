@@ -40,7 +40,7 @@ class Photoprism::ImportGeodata
   end
 
   def retrieve_photoprism_data
-    Photoprism::RequestPhotos.new(user, start_date:, end_date:).call
+    Photoprism::RequestPhotos.new(user, start_date:, end_date:, raise_on_connection_error: true).call
   end
 
   def parse_photoprism_data(photoprism_data)

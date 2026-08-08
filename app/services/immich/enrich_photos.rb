@@ -55,7 +55,7 @@ class Immich::EnrichPhotos
       { success: false,
 error: I18n.t('services.immich.enrich_photos.http_code_message', code: response.code, message: response.message) }
     end
-  rescue HTTParty::Error, Net::OpenTimeout, Net::ReadTimeout, Errno::ECONNREFUSED => e
+  rescue *Photos::ConnectionErrors::HANDLED => e
     { success: false, error: e.message }
   end
 

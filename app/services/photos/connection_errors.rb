@@ -9,6 +9,9 @@ module Photos
       Errno::ECONNRESET,
       Errno::EHOSTUNREACH,
       Errno::ENETUNREACH,
+      Errno::EPIPE,
+      EOFError,
+      Net::HTTPBadResponse,
       OpenSSL::SSL::SSLError
     ].freeze
 
