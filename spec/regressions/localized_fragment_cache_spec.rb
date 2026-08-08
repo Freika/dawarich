@@ -32,6 +32,20 @@ RSpec.describe 'Localized fragment caching', type: :request do
     expect(response.body).not_to include('Total distance')
   end
 
+  # The summary and the per-year cards are separate cache blocks with separate
+  # keys, so a locale missing from one of them leaks independently.
+  it 'does not serve an English year card to a German request' do
+    english = I18n.t('stats.index.last_update', locale: :en)
+
+    get stats_path, params: { locale: 'en' }
+    expect(response.body).to include(english)
+
+    get stats_path, params: { locale: 'de' }
+
+    expect(response.body).to include(I18n.t('stats.index.last_update', locale: :de))
+    expect(response.body).not_to include(english)
+  end
+
   it 'does not serve English insights markup to a German request' do
     get insights_path, params: { locale: 'en' }
     expect(response.body).to include('Activity Overview')
