@@ -164,7 +164,42 @@ export default class extends Controller {
     const button = event.currentTarget
     const tabName = button?.dataset?.tab
     if (!tabName) return
+
+    // Pressing the button of the tab already on screen dismisses the panel,
+    // the way the header X does. Only this click path toggles: programmatic
+    // opens go through openTabByName, so a visit or track click can still
+    // switch to Timeline without dismissing the panel.
+    if (this.panelShowingTab(tabName)) {
+      this.closePanel()
+      return
+    }
+
     this.openTabByName(tabName)
+  }
+
+  panelShowingTab(tabName) {
+    const panel = document.querySelector(".map-control-panel")
+    if (!panel?.classList.contains("open")) return false
+
+    const activeContent = panel.querySelector("[data-tab-content].active")
+
+    return activeContent?.dataset?.tabContent === tabName
+  }
+
+  closePanel() {
+    const mapContainer = document.getElementById("maps-maplibre-container")
+    const maplibreController =
+      mapContainer &&
+      this.application.getControllerForElementAndIdentifier(
+        mapContainer,
+        "maps--maplibre",
+      )
+
+    if (maplibreController?.toggleSettings) {
+      maplibreController.toggleSettings()
+    }
+
+    this.markActiveClusterButton(null)
   }
 
   // The poster button skips the panel entirely — the full-screen studio
