@@ -2,21 +2,10 @@
   # The verb carries the mode; no glyph is repeated alongside it. Unknown gets
   # no icon at all — the row reads as a connector between visits, and a
   # stand-in marker there looks like a broken render rather than information.
-  mode_config = {
-    'walking'    => { verb: 'walked' },
-    'running'    => { verb: 'ran' },
-    'cycling'    => { verb: 'cycled' },
-    'driving'    => { verb: 'drove' },
-    'bus'        => { verb: 'bus' },
-    'train'      => { verb: 'train' },
-    'flying'     => { verb: 'flew' },
-    'boat'       => { verb: 'sailed' },
-    'motorcycle' => { verb: 'rode' },
-    'stationary' => { verb: 'stayed' },
-    'unknown'    => { verb: 'traveled' }
-  }
-  mode = entry[:dominant_mode].presence || 'unknown'
-  config = mode_config[mode] || mode_config['unknown']
+  known_modes = %w[walking running cycling driving bus train flying boat motorcycle stationary unknown]
+  mode = entry[:dominant_mode].presence
+  mode = 'unknown' unless known_modes.include?(mode)
+  verb = t("transportation_verbs.#{mode}")
   continuation_date = entry[:continuation_of_date]
   if continuation_date
     leg_time = l(Time.zone.parse(entry[:ended_at]), format: :hour_minute)
@@ -63,7 +52,7 @@
       <% if continuation_date %>
         <span class="journey-leg__verb"><%= t('.continued_from_date_arrived', date: l(Date.parse(continuation_date), format: :short_month_day)) %></span>
       <% else %>
-        <span class="journey-leg__verb"><%= config[:verb] %></span>
+        <span class="journey-leg__verb"><%= verb %></span>
       <% end %>
       <% if distance_text %>
         <span class="journey-leg__sep"><%= t('.middot') %></span>

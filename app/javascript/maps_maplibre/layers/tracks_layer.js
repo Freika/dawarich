@@ -343,7 +343,7 @@ export class TracksLayer extends BaseLayer {
    * @param {Array} segments - Array of segment data with mode, color, start_index, end_index
    */
   showSegments(trackFeature, segments) {
-    if (trackFeature.geometry?.type !== "LineString") {
+    if (trackFeature?.geometry?.type !== "LineString") {
       return
     }
 

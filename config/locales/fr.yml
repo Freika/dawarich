@@ -3478,6 +3478,18 @@ fr:
     github: GitHub
     patreon: Patreon
     ko_fi: Ko-fi
+  transportation_verbs:
+    unknown: "voyagé"
+    stationary: "resté"
+    walking: "marché"
+    running: "couru"
+    cycling: "pédalé"
+    driving: "conduit"
+    bus: "pris le bus"
+    train: "pris le train"
+    flying: "volé"
+    boat: "navigué"
+    motorcycle: "roulé à moto"
   transportation_modes:
     unknown: Inconnu
     stationary: À l'arrêt

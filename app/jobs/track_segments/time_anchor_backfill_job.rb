@@ -67,23 +67,33 @@ module TrackSegments
       end
     end
 
+    # Points are numbered once per track and range-joined, rather than
+    # re-scanned per segment with OFFSET start_index. Segments partition their
+    # track, so numbering reads the same rows once instead of once per segment.
     def anchor_sql(ids)
       <<~SQL.squish
         UPDATE track_segments ts SET
           start_at = to_timestamp(sub.min_ts), end_at = to_timestamp(sub.max_ts),
           path = CASE WHEN sub.n >= 2 THEN sub.line ELSE NULL END
         FROM (
-          SELECT ts2.id, MIN(p.timestamp) AS min_ts, MAX(p.timestamp) AS max_ts,
-                 COUNT(*) AS n, ST_MakeLine(p.lonlat::geometry ORDER BY p.timestamp, p.id) AS line
-          FROM track_segments ts2
-          JOIN LATERAL (
-            SELECT p.timestamp, p.id, p.lonlat FROM points p
-            WHERE p.track_id = ts2.track_id
-            ORDER BY p.timestamp, p.id
-            OFFSET ts2.start_index LIMIT GREATEST(ts2.end_index - ts2.start_index + 1, 0)
-          ) p ON TRUE
-          WHERE ts2.id IN (#{ids.join(',')})
-          GROUP BY ts2.id
+          WITH target AS (
+            SELECT id, track_id, start_index, end_index
+            FROM track_segments WHERE id IN (#{ids.join(',')})
+          ),
+          numbered AS (
+            SELECT p.track_id, p.timestamp, p.id, p.lonlat,
+                   ROW_NUMBER() OVER (
+                     PARTITION BY p.track_id ORDER BY p.timestamp, p.id
+                   ) - 1 AS idx
+            FROM points p
+            WHERE p.track_id IN (SELECT DISTINCT track_id FROM target)
+          )
+          SELECT t.id, MIN(n.timestamp) AS min_ts, MAX(n.timestamp) AS max_ts,
+                 COUNT(*) AS n, ST_MakeLine(n.lonlat::geometry ORDER BY n.timestamp, n.id) AS line
+          FROM target t
+          JOIN numbered n
+            ON n.track_id = t.track_id AND n.idx BETWEEN t.start_index AND t.end_index
+          GROUP BY t.id
         ) sub
         WHERE ts.id = sub.id AND ts.start_at IS NULL
           AND sub.n = ts.end_index - ts.start_index + 1
@@ -95,21 +105,32 @@ module TrackSegments
     def remove_duplicate_anchors(ids)
       ActiveRecord::Base.connection.execute(<<~SQL.squish)
         DELETE FROM track_segments del USING (
-          SELECT ts2.id,
+          WITH target AS (
+            SELECT id, track_id, start_index, end_index, corrected_at
+            FROM track_segments
+            WHERE id IN (#{ids.join(',')}) AND start_at IS NULL
+          ),
+          numbered AS (
+            SELECT p.track_id, p.timestamp, p.id,
+                   ROW_NUMBER() OVER (
+                     PARTITION BY p.track_id ORDER BY p.timestamp, p.id
+                   ) - 1 AS idx
+            FROM points p
+            WHERE p.track_id IN (SELECT DISTINCT track_id FROM target)
+          ),
+          computed AS (
+            SELECT t.id, t.track_id, t.corrected_at, MIN(n.timestamp) AS min_ts
+            FROM target t
+            JOIN numbered n
+              ON n.track_id = t.track_id AND n.idx BETWEEN t.start_index AND t.end_index
+            GROUP BY t.id, t.track_id, t.corrected_at
+          )
+          SELECT c.id,
                  ROW_NUMBER() OVER (
-                   PARTITION BY ts2.track_id, computed.min_ts
-                   ORDER BY (ts2.corrected_at IS NOT NULL) DESC, ts2.id
+                   PARTITION BY c.track_id, c.min_ts
+                   ORDER BY (c.corrected_at IS NOT NULL) DESC, c.id
                  ) AS rn
-          FROM track_segments ts2
-          JOIN LATERAL (
-            SELECT MIN(p.timestamp) AS min_ts FROM (
-              SELECT p2.timestamp FROM points p2
-              WHERE p2.track_id = ts2.track_id
-              ORDER BY p2.timestamp, p2.id
-              OFFSET ts2.start_index LIMIT GREATEST(ts2.end_index - ts2.start_index + 1, 0)
-            ) p
-          ) computed ON TRUE
-          WHERE ts2.id IN (#{ids.join(',')}) AND ts2.start_at IS NULL
+          FROM computed c
         ) ranked
         WHERE del.id = ranked.id AND ranked.rn > 1 AND del.corrected_at IS NULL
       SQL

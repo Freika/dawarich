@@ -42,6 +42,10 @@ module TransportationModes
         velocity = row[:velocity]
         next nil if velocity.nil? || velocity <= 0
         next nil if row[:dt].nil? || row[:dt] <= 0 || row[:dist_m].nil?
+        # Across a tracking gap the straight-line distance understates the
+        # distance travelled, so the derived speed is too low and the ratio
+        # too high — the same bound the preprocessor applies.
+        next nil if row[:dt] > Emissions::TUNING[:gap_reset_s]
 
         derived = row[:dist_m] / row[:dt]
         next nil if derived < MIN_DERIVED_MPS

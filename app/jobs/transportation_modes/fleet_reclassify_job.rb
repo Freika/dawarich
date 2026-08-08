@@ -20,7 +20,15 @@ module TransportationModes
 
     def perform(from_track_id = 0)
       ids = Track.where(id: (from_track_id + 1)..).order(:id).limit(BATCH).pluck(:id)
-      return if ids.empty?
+      if ids.empty?
+        Rails.logger.info("[FleetReclassify] finished; last cursor #{from_track_id}")
+        return
+      end
+
+      # The cursor lives only in the re-enqueued argument, so a job that dies
+      # for good takes the walk's position with it. Logged so it can be resumed
+      # with perform_later(<cursor>).
+      Rails.logger.info("[FleetReclassify] cursor #{from_track_id} -> #{ids.last} (#{ids.size} tracks)")
 
       ids.each_slice(SLICE).with_index do |slice, slice_index|
         jobs = slice.map do |track_id|

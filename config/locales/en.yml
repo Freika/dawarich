@@ -2450,6 +2450,18 @@ en:
     github: GitHub
     patreon: Patreon
     ko_fi: Ko-fi
+  transportation_verbs:
+    unknown: "traveled"
+    stationary: "stayed"
+    walking: "walked"
+    running: "ran"
+    cycling: "cycled"
+    driving: "drove"
+    bus: "took the bus"
+    train: "took the train"
+    flying: "flew"
+    boat: "sailed"
+    motorcycle: "rode"
   transportation_modes:
     unknown: Unknown
     stationary: Stationary

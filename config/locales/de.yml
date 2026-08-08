@@ -2510,6 +2510,18 @@ de:
     github: GitHub
     patreon: Patreon
     ko_fi: Ko-fi
+  transportation_verbs:
+    unknown: "unterwegs"
+    stationary: "geblieben"
+    walking: "gelaufen"
+    running: "gejoggt"
+    cycling: "geradelt"
+    driving: "gefahren"
+    bus: "Bus gefahren"
+    train: "Zug gefahren"
+    flying: "geflogen"
+    boat: "gesegelt"
+    motorcycle: "Motorrad gefahren"
   transportation_modes:
     unknown: Unbekannt
     stationary: Stationär
