@@ -78,5 +78,16 @@ RSpec.describe Users::ImportData::Settings, type: :service do
         service.call
       end
     end
+
+    context 'with malformed imported locale values' do
+      it 'leaves locale resolution safe and unset' do
+        [false, 42, { 'language' => 'fr' }].each do |locale|
+          imported_user = create(:user)
+
+          expect(described_class.new(imported_user, { 'locale' => locale }).call).to be(true)
+          expect(imported_user.reload.preferred_locale).to be_nil
+        end
+      end
+    end
   end
 end

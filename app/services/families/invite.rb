@@ -89,17 +89,20 @@ module Families
     end
 
     def send_notification
-      content = I18n.t(
-        DawarichSettings.self_hosted? ? 'services.families.invite.sent_self_hosted' : 'services.families.invite.sent',
-        email:
-      )
+      I18n.with_locale(invited_by.locale) do
+        content_key = if DawarichSettings.self_hosted?
+                        'services.families.invite.sent_self_hosted'
+                      else
+                        'services.families.invite.sent'
+                      end
 
-      Notification.create!(
-        user: invited_by,
-        kind: :info,
-        title: I18n.t('services.families.invite.invitation_sent'),
-        content: content
-      )
+        Notification.create!(
+          user: invited_by,
+          kind: :info,
+          title: I18n.t('services.families.invite.invitation_sent'),
+          content: I18n.t(content_key, email:)
+        )
+      end
     rescue StandardError => e
       # Don't fail the entire operation if notification fails
       ExceptionReporter.call(e, "Unexpected error in Families::Invite: #{e.message}")

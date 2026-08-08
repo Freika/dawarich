@@ -14,9 +14,10 @@
           <div class="text-center mb-2">
             <div class="text-3xl font-bold text-primary">
               <%= @activity_heatmap.current_streak %>
+              <span class="text-sm"><%= t('.day', count: @activity_heatmap.current_streak) %></span>
             </div>
             <div class="text-xs text-base-content/60">
-              <%= t('.current') %> <%= 'day'.pluralize(@activity_heatmap.current_streak) %>
+              <%= t('.current') %>
             </div>
           </div>
 
@@ -31,7 +32,7 @@
           </div>
           <div class="text-xl font-bold">
             <%= @activity_heatmap.longest_streak %>
-            <%= 'day'.pluralize(@activity_heatmap.longest_streak) %>
+            <%= t('.day', count: @activity_heatmap.longest_streak) %>
           </div>
           <% if @activity_heatmap.longest_streak_start && @activity_heatmap.longest_streak_end %>
             <div class="text-xs text-base-content/40 mt-1">

@@ -56,7 +56,7 @@
      data-api-key="<%= current_user.api_key %>"
      data-year="<%= year %>"
      data-month="<%= month %>"
-     data-self-hosted="<%= @self_hosted %>">
+     data-tiles-url="<%= current_user.safe_settings.maps_maplibre_tiles_url %>">
   <div class="card-body">
     <div class="flex justify-between items-center mb-4">
       <h2 class="card-title">
@@ -73,7 +73,7 @@
       </div>
     </div>
 
-    <!-- Leaflet Map Container -->
+    <!-- Map container -->
     <div class="w-full h-96 rounded-lg border border-base-300 relative overflow-hidden">
       <div id="monthly-stats-map" data-stat-page-target="map" class="w-full h-full"></div>
 

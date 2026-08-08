@@ -127,7 +127,7 @@ module Posters
       start_at = Time.zone.parse(@poster.settings['start_at']).utc
       end_at = Time.zone.parse(@poster.settings['end_at']).utc
 
-      "#{start_at.strftime('%-d %b %Y')} – #{end_at.strftime('%-d %b %Y')}"
+      "#{I18n.l(start_at.to_date, format: :medium)} – #{I18n.l(end_at.to_date, format: :medium)}"
     end
 
     def attach_image(image)
