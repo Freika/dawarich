@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Photo search now covers the whole of the end date, so photos taken after midnight on the last day of the range are found instead of needing the range extended by a day. (#3263)
+
 ## [1.11.0] - 2026-08-02, Berlin
 
 ### Added

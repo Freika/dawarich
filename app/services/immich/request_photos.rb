@@ -86,12 +86,12 @@ class Immich::RequestPhotos
 
     return body unless end_date
 
-    body.merge(takenBefore: normalize_date(end_date))
+    body.merge(takenBefore: normalize_date(end_date, end_of_day: true))
   end
 
   def time_framed_data(data)
     start_time = parse_time(start_date)
-    end_time = parse_time(end_date)
+    end_time = parse_time(end_date, end_of_day: true)
     return data unless start_time
 
     data.select do |photo|
@@ -102,16 +102,27 @@ class Immich::RequestPhotos
     end
   end
 
-  def normalize_date(value)
-    parsed = parse_time(value)
+  def normalize_date(value, end_of_day: false)
+    parsed = parse_time(value, end_of_day: end_of_day)
     parsed ? parsed.iso8601 : value
   end
 
-  def parse_time(value)
+  # A bare date names a whole day in the instance's zone, so an end bound
+  # written that way has to reach its last instant before the shift to UTC.
+  def parse_time(value, end_of_day: false)
     return if value.blank?
+
+    if date_only?(value)
+      day = Time.zone.parse(value.to_s)
+      return (end_of_day ? day.end_of_day : day).utc
+    end
 
     Time.parse(value.to_s).utc
   rescue ArgumentError, TypeError
     nil
+  end
+
+  def date_only?(value)
+    value.to_s.strip.match?(/\A\d{4}-\d{2}-\d{2}\z/)
   end
 end
