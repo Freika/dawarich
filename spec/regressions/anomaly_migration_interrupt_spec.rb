@@ -32,7 +32,7 @@ RSpec.describe 'Anomaly migration interrupted mid-backfill', type: :job do
       DataMigrations::RecalculateAnomaliesUserJob.new.perform(user.id)
     end
 
-    expect(user.reload.settings).not_to have_key('anomalies_recalculated_at')
+    expect(user.reload.settings).not_to have_key(DataMigrations::RecalculateAnomaliesUserJob::RECALCULATED_SETTINGS_KEY)
   end
 
   it 'still treats a busy advisory lock as contention worth retrying' do
