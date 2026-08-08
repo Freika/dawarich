@@ -132,18 +132,17 @@ en:
         join_family: Join %{family}!
         you_ve_been_invited_by: You've been invited by
         to_join_their_family_create_your_account_to_accept_the: to join their family. Create your account to accept the invitation and start sharing location data.
-        your_email: Your email (
-        will_be_used_for_this_account: ") will be used for this account"
         almost_there: Almost there!
         only_a_few_steps_left_until_you_get_control_over: Only a few steps left until you get control over your location data!
-        create_your_account: 1. Create your account
-        ellipsis: "4. ..."
-        configure_your_mobile_app: 2. Configure your mobile app
-        start_tracking_your_location_data_securely: 3. Start tracking your location data securely
-        you_re_beautiful: 5. You're beautiful!
+        create_your_account: Create your account
+        configure_your_mobile_app: Configure your mobile app
+        start_tracking_your_location_data_securely: Start tracking your location data securely
+        ellipsis: "…"
+        you_re_beautiful: You're beautiful!
+        invitation_email_notice: Your email (%{email}) will be used for this account
         email: Email
         password: Password
-        characters_minimum: characters minimum)
+        characters_minimum: "%{count} characters minimum"
         password_confirmation: Password Confirmation
         how_do_you_plan_to_use_dawarich: How do you plan to use Dawarich?
         i_want_to_use_the_cloud_version: I want to use the cloud version
