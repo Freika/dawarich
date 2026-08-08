@@ -107,15 +107,13 @@ class Immich::RequestPhotos
     parsed ? parsed.iso8601 : value
   end
 
-  # A bare date names a whole day in the instance's zone, so an end bound
-  # written that way has to reach its last instant before the shift to UTC.
+  # A bare date names a whole day, so an end bound written that way has to
+  # reach its last instant before the shift to UTC. Only the end bound is
+  # widened; the start bound keeps the parsing it has always had.
   def parse_time(value, end_of_day: false)
     return if value.blank?
 
-    if date_only?(value)
-      day = Time.zone.parse(value.to_s)
-      return (end_of_day ? day.end_of_day : day).utc
-    end
+    return Time.zone.parse(value.to_s).end_of_day.utc if end_of_day && date_only?(value)
 
     Time.parse(value.to_s).utc
   rescue ArgumentError, TypeError
@@ -123,6 +121,6 @@ class Immich::RequestPhotos
   end
 
   def date_only?(value)
-    value.to_s.strip.match?(/\A\d{4}-\d{2}-\d{2}\z/)
+    value.to_s.strip.match?(/\A\d{4}-\d{1,2}-\d{1,2}\z/)
   end
 end

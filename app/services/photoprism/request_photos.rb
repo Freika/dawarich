@@ -117,7 +117,7 @@ class Photoprism::RequestPhotos
   end
 
   def date_only?(value)
-    value.to_s.strip.match?(/\A\d{4}-\d{2}-\d{2}\z/)
+    value.to_s.strip.match?(/\A\d{4}-\d{1,2}-\d{1,2}\z/)
   end
 
   def cache_preview_token(headers)

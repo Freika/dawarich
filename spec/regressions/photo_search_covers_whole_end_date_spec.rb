@@ -57,6 +57,19 @@ RSpec.describe 'Photo search covers the whole end date' do
       expect(Time.zone.parse(taken_before)).to be > Time.zone.parse(late_night_photo_utc)
     end
 
+    it 'leaves the start bound exactly where it was' do
+      stub_immich_page([])
+
+      described_immich_call
+
+      taken_after = nil
+      expect(HTTParty).to have_received(:post) { |_url, options|
+        taken_after = JSON.parse(options[:body])['takenAfter']
+      }.at_least(:once)
+
+      expect(taken_after).to eq(Time.parse('2026-06-10').utc.iso8601)
+    end
+
     it 'still honours an explicit time on the end bound' do
       stub_immich_page([asset])
 
