@@ -15,11 +15,12 @@ module Photos
       OpenSSL::SSL::SSLError
     ].freeze
 
-    HANDLED = ([
-      HTTParty::Error,
-      Net::OpenTimeout,
-      Net::ReadTimeout,
-      JSON::ParserError
-    ] + UNREACHABLE).freeze
+    RETRYABLE = (UNREACHABLE + [Net::OpenTimeout, Net::ReadTimeout]).freeze
+
+    HANDLED = (RETRYABLE + [HTTParty::Error, JSON::ParserError]).freeze
+
+    def self.retryable?(error)
+      RETRYABLE.any? { |klass| error.is_a?(klass) }
+    end
   end
 end

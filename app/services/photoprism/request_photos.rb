@@ -53,7 +53,7 @@ class Photoprism::RequestPhotos
     data.flatten
   rescue *Photos::ConnectionErrors::HANDLED => e
     Rails.logger.error("Photoprism photo fetch failed: #{e.message}")
-    raise if @raise_on_connection_error
+    raise if @raise_on_connection_error && Photos::ConnectionErrors.retryable?(e)
 
     []
   end

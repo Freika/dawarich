@@ -65,7 +65,7 @@ class Immich::RequestPhotos
     data.flatten
   rescue *Photos::ConnectionErrors::HANDLED => e
     Rails.logger.error("Immich photo fetch failed: #{e.message}")
-    raise if @raise_on_connection_error
+    raise if @raise_on_connection_error && Photos::ConnectionErrors.retryable?(e)
 
     nil
   end

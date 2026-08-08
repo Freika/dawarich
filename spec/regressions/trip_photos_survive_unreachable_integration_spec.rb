@@ -87,5 +87,30 @@ RSpec.describe 'Trip photos survive an unreachable photo integration', type: :re
       expect { Photoprism::ImportGeodata.new(photoprism_user).call }.to raise_error(SocketError)
       expect(photoprism_user.imports).to be_empty
     end
+
+    it 'keeps swallowing a malformed upstream response so the job is not retried forever' do
+      allow(HTTParty).to receive(:post).and_raise(JSON::ParserError, 'unexpected token')
+
+      expect { Immich::ImportGeodata.new(immich_user).call }.not_to raise_error
+      expect(immich_user.imports).to be_empty
+    end
+
+    it 'lets the Photoprism import job retry a transient connection failure' do
+      allow(HTTParty).to receive(:get).and_raise(SocketError, 'Hostname not known')
+
+      expect { Import::PhotoprismGeodataJob.perform_now(photoprism_user.id) }
+        .to have_enqueued_job(Import::PhotoprismGeodataJob).with(photoprism_user.id)
+    end
+  end
+
+  describe 'thumbnail proxying' do
+    it 'responds with 502 instead of raising when the photo host does not resolve' do
+      allow(HTTParty).to receive(:get).and_raise(SocketError, 'Hostname not known')
+
+      get thumbnail_api_v1_photo_path(id: 'abc'),
+          params: { source: 'immich', api_key: immich_user.api_key }
+
+      expect(response).to have_http_status(:bad_gateway)
+    end
   end
 end
