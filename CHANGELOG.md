@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- The coordinates shown when you click a point on the map now match the ones in the points list, so you can search for them. (#3264)
+
 ## [1.11.0] - 2026-08-02, Berlin
 
 ### Added

@@ -124,11 +124,18 @@ export class EventHandlers {
    */
   _buildPointInfoContent(properties, geometry) {
     const distanceUnit = this.controller.settings.distance_unit || "km"
+    // Prefer the stored values carried in the properties. A clicked feature's
+    // geometry comes back snapped to the tile grid, so reading coordinates off
+    // it shows a position that doesn't match the one in the points list.
+    const lat = Number(properties.latitude)
+    const lon = Number(properties.longitude)
     const coords = geometry?.coordinates
     const coordStr =
-      coords && coords.length >= 2
-        ? `${coords[1].toFixed(6)}, ${coords[0].toFixed(6)}`
-        : null
+      Number.isFinite(lat) && Number.isFinite(lon)
+        ? `${lat.toFixed(6)}, ${lon.toFixed(6)}`
+        : coords && coords.length >= 2
+          ? `${coords[1].toFixed(6)}, ${coords[0].toFixed(6)}`
+          : null
     const pointId = properties.id
     const addressFrame = pointId
       ? `<turbo-frame id="point-address-${pointId}" src="/points/${pointId}/address" loading="lazy"></turbo-frame>`
