@@ -44,10 +44,10 @@ module OidcConfig
   # carries no fragment, so anything after "#" is a pasting artefact too.
   def self.normalize_issuer(issuer)
     normalized = issuer.strip
-    fragment_removed = normalized.sub!(/#.*\z/m, '')
+    fragment = normalized.slice!(/#.*\z/m)
     normalized = normalized.strip.sub(%r{/\.well-known/openid-configuration/?\z}, '')
 
-    return normalized unless fragment_removed
+    return normalized unless fragment.to_s.start_with?('#.well-known', '#/.well-known')
 
     normalized.sub(%r{\A([a-z][a-z0-9+.-]*://[^/]+)/\z}i, '\1')
   end

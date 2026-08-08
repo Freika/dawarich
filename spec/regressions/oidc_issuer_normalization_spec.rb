@@ -15,6 +15,7 @@ RSpec.describe 'OIDC issuer normalization' do
     'https://auth.example.com/application/o/dawarich/#.well-known/openid-configuration' =>
       'https://auth.example.com/application/o/dawarich/',
     'https://tenant.auth0.com/' => 'https://tenant.auth0.com/',
+    'https://tenant.auth0.com/ # sso' => 'https://tenant.auth0.com/',
     'https://auth.example.com/application/o/dawarich/' => 'https://auth.example.com/application/o/dawarich/'
   }.each do |configured, expected|
     it "normalizes #{configured.inspect} to #{expected.inspect}" do
