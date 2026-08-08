@@ -80,6 +80,7 @@ class Photoprism::RequestPhotos
     unless result[:success]
       Rails.logger.error("Photoprism photo fetch failed: #{result[:error]}")
       Rails.logger.debug("Photoprism API request params: #{request_params(offset).inspect}")
+      @connection_failed = true
       return nil
     end
 
