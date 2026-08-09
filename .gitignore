@@ -91,3 +91,6 @@ node_modules/
 .worktrees/
 .superpowers/
 .security-audit/
+
+.impeccable/
+DESIGN.md
