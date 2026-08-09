@@ -68,6 +68,7 @@ class Imports::Create
       error.is_a?(Archive::Unzipper::ArchiveTooLarge) ||
       error.is_a?(Imports::ZipExtractor::TooManyFiles) ||
       error.is_a?(Fit::Importer::UnsupportedProfileError) ||
+      error.is_a?(GoogleMaps::PhoneTakeoutImporter::InvalidJsonError) ||
       error.is_a?(Csv::Detector::DetectionError)
   end
 

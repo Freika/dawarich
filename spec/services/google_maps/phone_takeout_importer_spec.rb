@@ -519,7 +519,9 @@ RSpec.describe GoogleMaps::PhoneTakeoutImporter do
           malformed_service = described_class.new(import, user.id, file.path)
           original_count = Point.count
 
-          expect { malformed_service.call }.to raise_error(Oj::ParseError)
+          expect { malformed_service.call }
+            .to raise_error(GoogleMaps::PhoneTakeoutImporter::InvalidJsonError,
+                            'Google Timeline file contains invalid JSON')
           expect(Point.count).to eq(original_count)
         end
       end

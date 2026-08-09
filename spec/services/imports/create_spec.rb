@@ -201,6 +201,27 @@ RSpec.describe Imports::Create do
       end
     end
 
+    context 'when a Google Timeline file contains malformed JSON' do
+      let(:import) { create(:import, user:, source: 'google_phone_takeout', status: 'created') }
+
+      before do
+        import.file.attach(
+          io: StringIO.new('{"semanticSegments":[{"startTime":"2024-01-01T00:00:00Z"}'),
+          filename: 'timeline.json',
+          content_type: 'application/json'
+        )
+        allow(ExceptionReporter).to receive(:call)
+      end
+
+      it 'fails the import without reporting an application exception' do
+        service.call
+
+        expect(import.reload).to be_failed
+        expect(import.error_message).to eq('Google Timeline file contains invalid JSON')
+        expect(ExceptionReporter).not_to have_received(:call)
+      end
+    end
+
     context 'when a single archive entry exceeds the extraction limit' do
       let(:import) { create(:import, user:, source: nil, status: 'created') }
 
