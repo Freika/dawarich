@@ -33,22 +33,18 @@ RSpec.describe Visits::Detection::StayAssembler do
     described_class.new(policy).call(fragments, points.index_by(&:id))
   end
 
-  it 'drops a stay whose snapped interval keeps too few points' do
-    points = [pt(1, at: 0), pt(2, at: 300), pt(3, at: 900), pt(4, at: 1200)]
-    snapped = fragment([1, 2, 3, 4], 900, 1200)
-
-    expect(assemble([snapped], points)).to be_empty
-  end
-
-  it 'drops points outside a snapped interval from the stay' do
-    points = [pt(1, at: 0), pt(2, at: 600), pt(3, at: 900), pt(4, at: 1200)]
-    snapped = fragment([1, 2, 3, 4], 600, 1200)
+  it 'keeps a dark-venue stay whose evidence sits at the snapped-off edges' do
+    # One fix on arrival, four reacquired on departure — the show happened in
+    # the dark. Departure snapping moved the end before the trailing fixes.
+    points = [pt(1, at: 0), pt(2, at: 4700), pt(3, at: 4730),
+              pt(4, at: 4760), pt(5, at: 4800)]
+    snapped = fragment([1, 2, 3, 4, 5], 0, 4690)
 
     result = assemble([snapped], points)
 
     expect(result.size).to eq(1)
-    expect(result.first[:point_ids]).to eq([2, 3, 4])
-    expect(result.first[:count]).to eq(3)
+    expect(result.first[:point_ids]).to eq([1, 2, 3, 4, 5])
+    expect(result.first[:count]).to eq(5)
   end
 
   def pre_pipeline(scenario)
