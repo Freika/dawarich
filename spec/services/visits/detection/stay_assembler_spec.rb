@@ -33,6 +33,13 @@ RSpec.describe Visits::Detection::StayAssembler do
     described_class.new(policy).call(fragments, points.index_by(&:id))
   end
 
+  it 'drops a stay whose snapped interval keeps too few points' do
+    points = [pt(1, at: 0), pt(2, at: 300), pt(3, at: 900), pt(4, at: 1200)]
+    snapped = fragment([1, 2, 3, 4], 900, 1200)
+
+    expect(assemble([snapped], points)).to be_empty
+  end
+
   it 'drops points outside a snapped interval from the stay' do
     points = [pt(1, at: 0), pt(2, at: 600), pt(3, at: 900), pt(4, at: 1200)]
     snapped = fragment([1, 2, 3, 4], 600, 1200)
@@ -66,12 +73,13 @@ RSpec.describe Visits::Detection::StayAssembler do
   end
 
   it 'refuses to merge across more than the merge gap or across distance' do
-    points = (1..12).map { |i| pt(i, at: i * 60) }
+    early = (1..6).map { |i| pt(i, at: i * 60) }
+    late = (7..12).map { |i| pt(i, at: 1261 + ((i - 7) * 60)) }
     far_apart_time = [fragment((1..6).to_a, 0, 360), fragment((7..12).to_a, 360 + 901, 2500)]
     far_apart_space = [fragment((1..6).to_a, 0, 360), fragment((7..12).to_a, 600, 1200, deast: 300.0)]
 
-    expect(assemble(far_apart_time, points).size).to eq(2)
-    expect(assemble(far_apart_space, points).size).to eq(2)
+    expect(assemble(far_apart_time, early + late).size).to eq(2)
+    expect(assemble(far_apart_space, (1..12).map { |i| pt(i, at: i * 100) }).size).to eq(2)
   end
 
   it 'drops fragments below min dwell or min points — and only here' do

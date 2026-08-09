@@ -64,6 +64,17 @@ RSpec.describe Visits::Detection::HistoryRedetect do
     expect(bare.reload.confidence).to be_nil
   end
 
+  it 'treats a capped month as failed instead of silently clean' do
+    seed_cluster
+    allow(Visits::Detection::CandidateLoader).to receive(:new)
+      .and_return(instance_double(Visits::Detection::CandidateLoader,
+                                  call: { points: [], segments: [], skipped: true }))
+
+    result = described_class.new(user).call
+
+    expect(result.months_failed).not_to be_empty
+  end
+
   it 'wipes stale machine visits outside the current point range' do
     seed_cluster
     stale = create(:visit, user: user, status: :suggested,

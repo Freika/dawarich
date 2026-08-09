@@ -21,7 +21,16 @@ module Visits
       return [] if @start_at >= @end_at
       return [] unless points_exist?
 
-      Visits::Detection::Runner.new(user, start_at: @start_at, end_at: @end_at).call
+      runner = Visits::Detection::Runner.new(user, start_at: @start_at, end_at: @end_at)
+      visits = runner.call
+      @skipped_ranges = runner.skipped_ranges
+      visits
+    end
+
+    # Batches the Runner refused (over the candidate-point cap) — callers
+    # doing whole-history work must not report those as cleanly re-detected.
+    def skipped_ranges
+      @skipped_ranges || []
     end
 
     private

@@ -11,11 +11,14 @@ module Visits
     class Runner
       BATCH_THRESHOLD_DAYS = 31
 
+      attr_reader :skipped_ranges
+
       def initialize(user, start_at:, end_at:)
         @user = user
         @start_at = start_at.to_i
         @end_at = end_at.to_i
         @policy = Policy.for(user)
+        @skipped_ranges = []
       end
 
       def call
@@ -50,7 +53,10 @@ module Visits
       # signal to clear stale machine output in the window.
       def run_batch(batch_start, batch_end)
         evidence = CandidateLoader.new(user, start_at: batch_start, end_at: batch_end, policy: policy).call
-        return [] if evidence[:skipped]
+        if evidence[:skipped]
+          @skipped_ranges << [batch_start, batch_end]
+          return []
+        end
 
         points_by_id = evidence[:points].index_by(&:id)
         stays = detect_stays(evidence, points_by_id)

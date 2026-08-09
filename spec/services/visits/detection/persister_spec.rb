@@ -117,6 +117,18 @@ RSpec.describe Visits::Detection::Persister do
     expect(created.first.ended_at.to_i).to eq(base_ts + 6000)
   end
 
+  it 'drops a trimmed stay left with too few points' do
+    visit_row(2400, 9800, status: :confirmed)
+    points = Array.new(3) do |i|
+      create(:point, user: user, timestamp: base_ts + 3000 + (i * 600))
+    end
+
+    created = persist([stay(0, 10_000, point_ids: points.map(&:id))],
+                      points_by_id: points.index_by(&:id))
+
+    expect(created).to be_empty
+  end
+
   it 'rescores a trimmed stay from the trimmed evidence' do
     visit_row(2400, 9800, status: :confirmed)
 

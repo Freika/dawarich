@@ -197,13 +197,21 @@ module TimelineHelper
 
   # Confidence gating applies only to machine suggestions — a visit the user
   # confirmed renders at full strength whatever the detector thought of it.
-  # Rows without a score (legacy, pre-backfill) also render normally.
+  # Rows without a score (legacy, pre-backfill) also render normally, and the
+  # gate stays off entirely until the history has been re-detected: old
+  # scores came from a different scorer and must not hide visits.
   def visit_entry_subdued?(entry)
-    visit_entry_status(entry) != 'confirmed' && entry[:confidence_band] == :medium
+    confidence_gating_active? &&
+      visit_entry_status(entry) != 'confirmed' && entry[:confidence_band] == :medium
   end
 
   def visit_entry_low_confidence?(entry)
-    visit_entry_status(entry) != 'confirmed' && entry[:confidence_band] == :low
+    confidence_gating_active? &&
+      visit_entry_status(entry) != 'confirmed' && entry[:confidence_band] == :low
+  end
+
+  def confidence_gating_active?
+    current_user&.visits_redetected_at.present?
   end
 
   def day_label(day)

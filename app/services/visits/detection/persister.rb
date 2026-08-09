@@ -111,7 +111,10 @@ module Visits
         bounds = shrink_around(stay, overlapping)
         return nil if bounds.nil? || (bounds[1] - bounds[0]) < policy.min_dwell_s
 
-        retimed(stay, bounds, points_by_id)
+        trimmed = retimed(stay, bounds, points_by_id)
+        return nil if points_by_id.any? && trimmed[:count] < policy.min_points
+
+        trimmed
       end
 
       # A trimmed stay is a different stay: its confidence must reflect the

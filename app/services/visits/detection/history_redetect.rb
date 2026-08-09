@@ -27,7 +27,9 @@ module Visits
         months_failed = []
 
         months.each do |range_start, range_end|
-          visits_created += Visits::SmartDetect.new(user, start_at: range_start, end_at: range_end).call.size
+          detector = Visits::SmartDetect.new(user, start_at: range_start, end_at: range_end)
+          visits_created += detector.call.size
+          months_failed << [range_start, range_end] if detector.skipped_ranges.any?
         rescue StandardError => e
           months_failed << [range_start, range_end]
           Rails.logger.error(

@@ -350,6 +350,23 @@ RSpec.describe TimelineHelper, type: :helper do
   end
 
   describe 'confidence gating' do
+    before do
+      allow(helper).to receive(:current_user)
+        .and_return(build_stubbed(:user, visits_redetected_at: Time.current))
+    end
+
+    context 'before the user history has been re-detected' do
+      before do
+        allow(helper).to receive(:current_user)
+          .and_return(build_stubbed(:user, visits_redetected_at: nil))
+      end
+
+      it 'renders legacy-scored suggestions at full strength' do
+        expect(helper.visit_entry_subdued?({ status: 'suggested', confidence_band: :medium })).to be false
+        expect(helper.visit_entry_low_confidence?({ status: 'suggested', confidence_band: :low })).to be false
+      end
+    end
+
     it 'subdues medium-band suggestions only' do
       expect(helper.visit_entry_subdued?({ status: 'suggested', confidence_band: :medium })).to be true
       expect(helper.visit_entry_subdued?({ status: 'confirmed', confidence_band: :medium })).to be false

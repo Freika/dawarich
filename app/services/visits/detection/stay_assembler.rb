@@ -15,10 +15,13 @@ module Visits
         @policy = policy
       end
 
+      # Finalize before gating: boundary snapping may have dropped fixes from
+      # the interval, and the dwell/point floors must judge what actually
+      # persists.
       def call(fragments, points_by_id)
-        merged = chain_merge(fragments)
-        merged.select { |f| keep?(f) }
-              .map { |f| finalize(f, points_by_id) }
+        chain_merge(fragments)
+          .map { |f| finalize(f, points_by_id) }
+          .select { |stay| keep?(stay) }
       end
 
       private
