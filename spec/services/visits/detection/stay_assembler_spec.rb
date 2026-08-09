@@ -38,7 +38,7 @@ RSpec.describe Visits::Detection::StayAssembler do
     swept = Visits::Detection::DwellSweep.new(policy).call(points)
     bridged = Visits::Detection::GapBridger.new(policy).call(swept)
     segments = as_detection_segments(scenario[:segments])
-    reconciled = Visits::Detection::MovementReconciler.new(policy).call(bridged[:fragments], segments)
+    reconciled = Visits::Detection::MovementReconciler.new(policy).call(bridged, segments)
     [reconciled, points]
   end
 

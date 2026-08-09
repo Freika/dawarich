@@ -32,4 +32,20 @@ RSpec.describe Visits::UserRedetectJob do
 
     expect { described_class.perform_now(user.id) }.not_to raise_error
   end
+
+  it 're-enqueues itself with a delay when the per-user lock is busy' do
+    allow(Tracks::PerUserLock).to receive(:with_user_lock)
+      .and_raise(Tracks::PerUserLock::AcquisitionTimeout, 'busy')
+
+    expect { described_class.perform_now(user.id) }
+      .to have_enqueued_job(described_class).with(user.id, 1)
+  end
+
+  it 'gives up after the retry budget instead of re-enqueueing forever' do
+    allow(Tracks::PerUserLock).to receive(:with_user_lock)
+      .and_raise(Tracks::PerUserLock::AcquisitionTimeout, 'busy')
+
+    expect { described_class.perform_now(user.id, 3) }
+      .not_to have_enqueued_job(described_class)
+  end
 end

@@ -79,6 +79,20 @@ RSpec.describe Visits::Detection::Persister do
     expect(overlap).to be <= 0
   end
 
+  it 'never overlaps any anchor when several anchors overlap one stay' do
+    anchors = [visit_row(9000, 9500, status: :confirmed),
+               visit_row(9200, 9800, status: :confirmed)]
+
+    created = persist([stay(0, 10_000)])
+
+    expect(created).not_to be_empty
+    created.product(anchors).each do |visit, anchor|
+      overlap = [visit.ended_at.to_i, anchor.ended_at.to_i].min -
+                [visit.started_at.to_i, anchor.started_at.to_i].max
+      expect(overlap).to be <= 0
+    end
+  end
+
   it 'drops a machine stay swallowed by a confirmed anchor' do
     visit_row(0, 7200, status: :confirmed)
 
@@ -114,6 +128,27 @@ RSpec.describe Visits::Detection::Persister do
 
     expect(created.size).to eq(1)
     expect(user.visits.count).to eq(1)
+  end
+
+  it 'enqueues one place cleanup per distinct place when replacing machine output' do
+    place = create(:place, user: user)
+    visit_row(0, 900).update_columns(place_id: place.id)
+    visit_row(1800, 2700).update_columns(place_id: place.id)
+
+    expect { persist([stay(7200, 10_800)]) }
+      .to have_enqueued_job(Places::DeleteIfOrphanJob).with(place.id).once
+  end
+
+  it 'clears the point cache and join rows of replaced machine visits' do
+    place = create(:place, user: user)
+    stale = visit_row(0, 1800)
+    point = create(:point, user: user, visit_id: stale.id)
+    join = PlaceVisit.create!(visit: stale, place: place)
+
+    persist([stay(7200, 10_800)])
+
+    expect(point.reload.visit_id).to be_nil
+    expect(PlaceVisit.exists?(join.id)).to be(false)
   end
 
   it 'stores confidence when provided' do

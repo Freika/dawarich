@@ -65,7 +65,7 @@ module Visits
 
         fragments = DwellSweep.new(policy).call(evidence[:points])
         bridged = GapBridger.new(policy).call(fragments)
-        reconciled = MovementReconciler.new(policy).call(bridged[:fragments], evidence[:segments])
+        reconciled = MovementReconciler.new(policy).call(bridged, evidence[:segments])
         StayAssembler.new(policy).call(reconciled, points_by_id)
       end
 

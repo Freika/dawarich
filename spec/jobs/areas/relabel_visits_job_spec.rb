@@ -39,6 +39,37 @@ RSpec.describe Areas::RelabelVisitsJob do
     expect(visit.reload.area_id).to eq(area.id)
   end
 
+  it 'leaves a visit with no place and no points alone' do
+    bare = create(:visit, user: user, place: nil, area: nil,
+                          started_at: Time.zone.now - 1.day, ended_at: Time.zone.now - 1.day + 1.hour,
+                          duration: 60)
+
+    expect { described_class.perform_now(area.id) }.not_to raise_error
+    expect(bare.reload.area_id).to be_nil
+  end
+
+  it 'resolves point-backed centers in one grouped query, not one per visit' do
+    2.times do |i|
+      visit = create(:visit, user: user, place: nil, area: nil,
+                             started_at: Time.zone.now - (i + 1).days,
+                             ended_at: Time.zone.now - (i + 1).days + 1.hour, duration: 60)
+      create(:point, user: user, visit_id: visit.id, latitude: lat0, longitude: lon0,
+                     lonlat: "POINT(#{lon0} #{lat0})")
+    end
+
+    point_queries = []
+    listener = lambda do |_name, _start, _finish, _id, payload|
+      point_queries << payload[:sql] if payload[:sql].to_s.match?(/SELECT.*FROM "points"/m)
+    end
+
+    ActiveSupport::Notifications.subscribed(listener, 'sql.active_record') do
+      described_class.perform_now(area.id)
+    end
+
+    expect(user.visits.where(area_id: area.id).count).to eq(2)
+    expect(point_queries.length).to eq(1)
+  end
+
   it 'never relabels visits already attributed to an area, tombstoned or declined' do
     other_area = create(:area, user: user, latitude: lat0, longitude: lon0, radius: 300)
     claimed = visit_at(lat0, lon0, area: other_area)

@@ -26,14 +26,16 @@ module Visits
         prepared = stays.filter_map { |stay| trim_to_anchors(stay, anchors, points_by_id) }
 
         created = []
+        replaced = []
         ActiveRecord::Base.transaction do
           acquire_user_lock
-          machine_scope.find_each(&:destroy!)
+          replaced = delete_machine_rows
           prepared.each do |stay|
             visit = insert_stay(stay)
             created << visit if visit
           end
         end
+        flush_replacement_side_effects(replaced)
 
         created
       end
@@ -66,6 +68,40 @@ module Visits
         window_overlap(user.visits.where('deleted_at IS NOT NULL OR status != 0')).to_a
       end
 
+      # Bulk replacement of a whole window: per-row destroy callbacks would
+      # enqueue one orphan-cleanup job and one cache delete per visit, so the
+      # side effects run batched after the transaction instead.
+      def delete_machine_rows
+        doomed = machine_scope.pluck(:id, :place_id, :started_at, :demo)
+        return doomed if doomed.empty?
+
+        ids = doomed.map(&:first)
+        Point.where(visit_id: ids).update_all(visit_id: nil)
+        PlaceVisit.where(visit_id: ids).delete_all
+        Visit.where(id: ids).delete_all
+        doomed
+      end
+
+      def flush_replacement_side_effects(replaced)
+        rows = replaced.reject { |_id, _place_id, _started_at, demo| demo }
+        return if rows.empty?
+
+        place_ids = rows.filter_map { |_id, place_id, _started_at, _demo| place_id }.uniq
+        ActiveJob.perform_all_later(place_ids.map { |id| Places::DeleteIfOrphanJob.new(id) })
+        bust_month_caches(rows.map { |_id, _place_id, started_at, _demo| started_at })
+      end
+
+      def bust_month_caches(times)
+        tz = user.safe_settings.timezone.presence || 'UTC'
+        Time.use_zone(tz) do
+          times.map { |t| t.in_time_zone.to_date.beginning_of_month }.uniq.each do |month_start|
+            Rails.cache.delete(Timeline::MonthSummary.cache_key_for(user, month_start))
+          end
+        end
+      rescue StandardError => e
+        Rails.logger.warn("[Visits::Detection::Persister] month cache bust failed: #{e.class}: #{e.message}")
+      end
+
       def trim_to_anchors(stay, anchors, points_by_id)
         overlapping = anchors.select do |anchor|
           anchor.started_at.to_i < stay[:end_ts] && anchor.ended_at.to_i > stay[:start_ts]
@@ -88,6 +124,7 @@ module Visits
         anchors.sort_by(&:started_at).each do |anchor|
           anchor_start = anchor.started_at.to_i
           anchor_end = anchor.ended_at.to_i
+          next if anchor_end <= from || anchor_start >= to
 
           if anchor_start <= from && anchor_end >= to
             return nil

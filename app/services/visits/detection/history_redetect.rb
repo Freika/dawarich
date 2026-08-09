@@ -65,15 +65,19 @@ module Visits
       def backfill_legacy_confidence
         policy = Policy.for(user)
 
-        user.visits.active.where(confidence: nil).find_each do |visit|
-          score_legacy_visit(visit, policy)
+        user.visits.active.where(confidence: nil)
+            .includes(:area, :place)
+            .find_in_batches(batch_size: 200) do |batch|
+          points_by_visit = Point.where(visit_id: batch.map(&:id))
+                                 .select(:id, :visit_id, :accuracy, :lonlat)
+                                 .group_by(&:visit_id)
+          batch.each { |visit| score_legacy_visit(visit, policy, points_by_visit[visit.id] || []) }
         end
       end
 
-      def score_legacy_visit(visit, policy)
-        points = visit.points.to_a
-        center = visit.center
-        return if center&.first.blank?
+      def score_legacy_visit(visit, policy, points)
+        center = legacy_center(visit, points)
+        return if center && center.first.blank?
 
         result = ConfidenceScorer.new(
           duration_seconds: visit.ended_at.to_i - visit.started_at.to_i,
@@ -93,6 +97,18 @@ module Visits
         return :place if visit.place_id
 
         nil
+      end
+
+      # Visit#center, minus the per-visit point query: the caller batch-loads
+      # slim point rows, and area/place come preloaded.
+      def legacy_center(visit, points)
+        if visit.area
+          [visit.area.lat, visit.area.lon]
+        elsif visit.place
+          [visit.place.lat, visit.place.lon]
+        elsif points.any?
+          [points.sum(&:lat) / points.size.to_f, points.sum(&:lon) / points.size.to_f]
+        end
       end
 
       def radius_from(points, center)

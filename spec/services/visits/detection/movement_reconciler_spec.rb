@@ -103,7 +103,7 @@ RSpec.describe Visits::Detection::MovementReconciler do
     swept = Visits::Detection::DwellSweep.new(policy).call(as_detection_points(scenario[:points]))
     bridged = Visits::Detection::GapBridger.new(policy).call(swept)
 
-    result = reconcile(bridged[:fragments], as_detection_segments(scenario[:segments]))
+    result = reconcile(bridged, as_detection_segments(scenario[:segments]))
 
     expected = scenario[:expected][:stays].first
     stay = result.max_by { |f| f[:count] }
@@ -116,7 +116,7 @@ RSpec.describe Visits::Detection::MovementReconciler do
     swept = Visits::Detection::DwellSweep.new(policy).call(as_detection_points(scenario[:points]))
     bridged = Visits::Detection::GapBridger.new(policy).call(swept)
 
-    result = reconcile(bridged[:fragments], as_detection_segments(scenario[:segments]))
+    result = reconcile(bridged, as_detection_segments(scenario[:segments]))
 
     survivors = result.select do |f|
       (f[:end_ts] - f[:start_ts]) >= policy.min_dwell_s && f[:count] >= policy.min_points

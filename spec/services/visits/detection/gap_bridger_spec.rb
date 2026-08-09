@@ -29,13 +29,16 @@ RSpec.describe Visits::Detection::GapBridger do
     described_class.new(policy).call(fragments)
   end
 
+  def seams(fragments)
+    fragments.each_cons(2).map { |a, b| [a[:end_ts], b[:start_ts]] }
+  end
+
   it 'bridges a long same-place silence into one fragment and records the bridged time' do
     result = bridge([fragment([1, 2, 3], 0, 1200), fragment([4, 5], 1200 + (4 * 3600), 1200 + (4 * 3600) + 600)])
 
-    expect(result[:untracked]).to be_empty
-    expect(result[:fragments].size).to eq(1)
+    expect(result.size).to eq(1)
 
-    merged = result[:fragments].first
+    merged = result.first
     expect(merged[:point_ids]).to eq([1, 2, 3, 4, 5])
     expect(merged[:end_ts] - merged[:start_ts]).to eq(1200 + (4 * 3600) + 600)
     expect(merged[:bridged_s]).to eq(4 * 3600)
@@ -44,35 +47,30 @@ RSpec.describe Visits::Detection::GapBridger do
   it 'does not count sub-sweep-gap radius blips as bridged silence' do
     result = bridge([fragment([1, 2], 0, 600), fragment([3, 4], 900, 1500)])
 
-    expect(result[:fragments].size).to eq(1)
-    expect(result[:fragments].first[:bridged_s]).to eq(0)
+    expect(result.size).to eq(1)
+    expect(result.first[:bridged_s]).to eq(0)
   end
 
-  it 'refuses to bridge beyond the cap and emits an untracked interval instead' do
+  it 'refuses to bridge beyond the cap and leaves the silence a hole' do
     eight_days = 8 * 24 * 3600
     result = bridge([fragment([1, 2, 3], 0, 1200), fragment([4, 5, 6], eight_days, eight_days + 1200)])
 
-    expect(result[:fragments].size).to eq(2)
-    expect(result[:untracked].size).to eq(1)
-    expect(result[:untracked].first[:start_ts]).to eq(base_ts + 1200)
-    expect(result[:untracked].first[:end_ts]).to eq(base_ts + eight_days)
+    expect(result.size).to eq(2)
+    expect(seams(result)).to eq([[base_ts + 1200, base_ts + eight_days]])
   end
 
-  it 'emits an untracked interval for a displaced gap and keeps the fragments apart' do
+  it 'keeps displaced fragments apart with their boundaries intact' do
     result = bridge([fragment([1, 2, 3], 0, 1200),
                      fragment([4, 5], 1200 + (79 * 60), 1200 + (79 * 60) + 900, deast: 700.0)])
 
-    expect(result[:fragments].size).to eq(2)
-    expect(result[:untracked]).to eq(
-      [{ start_ts: base_ts + 1200, end_ts: base_ts + 1200 + (79 * 60), last_fix: { lat: lat0, lon: lon0 } }]
-    )
+    expect(result.size).to eq(2)
+    expect(seams(result)).to eq([[base_ts + 1200, base_ts + 1200 + (79 * 60)]])
   end
 
-  it 'stays silent about short displaced gaps' do
+  it 'keeps short displaced gaps apart too' do
     result = bridge([fragment([1], 0, 300), fragment([2], 600, 900, deast: 500.0)])
 
-    expect(result[:fragments].size).to eq(2)
-    expect(result[:untracked]).to be_empty
+    expect(result.size).to eq(2)
   end
 
   it 'chain-bridges through a lone same-place fix inside the silence' do
@@ -84,8 +82,8 @@ RSpec.describe Visits::Detection::GapBridger do
       ]
     )
 
-    expect(result[:fragments].size).to eq(1)
-    expect(result[:fragments].first[:point_ids]).to eq([1, 2, 3, 4, 5, 6])
+    expect(result.size).to eq(1)
+    expect(result.first[:point_ids]).to eq([1, 2, 3, 4, 5, 6])
   end
 
   it 'breaks the bridge on a mid-silence fix somewhere else' do
@@ -97,8 +95,7 @@ RSpec.describe Visits::Detection::GapBridger do
       ]
     )
 
-    expect(result[:fragments].size).to eq(3)
-    expect(result[:untracked].size).to eq(2)
+    expect(result.size).to eq(3)
   end
 
   it 'resolves the home-gap scenario to one bridged home fragment' do
@@ -107,23 +104,20 @@ RSpec.describe Visits::Detection::GapBridger do
 
     result = bridge(sweep)
 
-    expect(result[:untracked]).to be_empty
-    home = result[:fragments].max_by { |f| f[:count] }
+    home = result.max_by { |f| f[:count] }
     expected = scenario[:expected][:stays].first
     expect(home[:start_ts]).to eq(expected[:start_ts])
     expect(home[:end_ts]).to be >= expected[:end_ts]
     expect(home[:bridged_s]).to be >= 3.5 * 3600
   end
 
-  it 'resolves the dark-dinner scenario to a stay plus an untracked interval' do
+  it 'resolves the dark-dinner scenario by keeping the displaced silence unbridged' do
     scenario = VisitScenarioGenerator.scenario(:dark_dinner, start_time: Time.zone.at(base_ts))
     sweep = Visits::Detection::DwellSweep.new(policy).call(as_detection_points(scenario[:points]))
 
     result = bridge(sweep)
 
-    expected_untracked = scenario[:expected][:untracked].first
-    expect(result[:untracked].size).to eq(1)
-    expect(result[:untracked].first[:start_ts]).to eq(expected_untracked[:start_ts])
-    expect(result[:untracked].first[:end_ts]).to eq(expected_untracked[:end_ts])
+    expected = scenario[:expected][:untracked].first
+    expect(seams(result)).to include([expected[:start_ts], expected[:end_ts]])
   end
 end

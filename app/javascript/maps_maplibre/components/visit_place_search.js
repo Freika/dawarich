@@ -133,7 +133,7 @@ export class VisitPlaceSearch {
 
   async selectArea(area) {
     try {
-      await this.patchVisit({ area_id: area.id })
+      await this.patchVisit({ area_id: area.id, status: "confirmed" })
       this.done()
     } catch (_e) {
       this.renderError()

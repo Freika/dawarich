@@ -29,7 +29,6 @@ RSpec.describe Visits::Detection::Policy do
 
       expect(policy.sweep_gap_s).to eq(60 * 60)
       expect(policy.bridge_cap_s).to eq(7.days.to_i)
-      expect(policy.untracked_min_s).to eq(10 * 60)
       expect(policy.snap_max_s).to eq(15 * 60)
       expect(policy.attribution_radius_m).to eq(50)
     end

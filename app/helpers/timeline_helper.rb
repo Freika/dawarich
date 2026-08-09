@@ -9,6 +9,11 @@ module TimelineHelper
   # unrecorded time (a 79-minute dark dinner must earn its row).
   TIMELINE_GAP_MIN_MINUTES = 45
 
+  # Until a user's history has been re-detected, their visits still carry the
+  # old detector's ragged 30–60 minute seams — the marker keeps the old bar so
+  # those seams don't flood the day with false "untracked" rows.
+  LEGACY_TIMELINE_GAP_MIN_MINUTES = 90
+
   # Ceiling on how far a long leg may stretch the rail, in px. Past this the
   # day column scrolls more than it communicates.
   JOURNEY_LEG_MAX_EXTRA_PX = 80
@@ -121,6 +126,7 @@ module TimelineHelper
   # consecutive rows would invent gaps inside a tracked drive.
   def timeline_entries_with_gaps(entries)
     covered_until = nil
+    threshold = timeline_gap_min_minutes
 
     Array(entries).flat_map do |entry|
       started_at = Time.iso8601(entry[:started_at].to_s)
@@ -129,12 +135,18 @@ module TimelineHelper
       gap_start = covered_until
       covered_until = [covered_until, ended_at].compact.max
 
-      next [entry] if gap_minutes < TIMELINE_GAP_MIN_MINUTES
+      next [entry] if gap_minutes < threshold
 
       # Stamped with where the record stops rather than where it resumes —
       # that is the moment the user is being told about.
       [{ type: 'gap', minutes: gap_minutes, started_at: gap_start.iso8601 }, entry]
     end
+  end
+
+  def timeline_gap_min_minutes
+    return TIMELINE_GAP_MIN_MINUTES if current_user&.visits_redetected_at
+
+    LEGACY_TIMELINE_GAP_MIN_MINUTES
   end
 
   # Extra px of rail a leg earns for its duration, so a three-hour drive

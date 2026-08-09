@@ -119,7 +119,7 @@ RSpec.describe 'Visit detection eval' do
     # GapBridger and the Runner's row-level stitcher) — a real regression
     # means losing both, so the probe disables both.
     allow_any_instance_of(Visits::Detection::GapBridger)
-      .to receive(:call) { |_, fragments| { fragments: fragments, untracked: [] } }
+      .to receive(:call) { |_, fragments| fragments }
     allow_any_instance_of(Visits::Detection::Runner)
       .to receive(:stitch_adjacent) { |_, created| created }
 

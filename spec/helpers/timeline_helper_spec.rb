@@ -372,6 +372,32 @@ RSpec.describe TimelineHelper, type: :helper do
       { type: 'journey', started_at: "2026-02-23T#{start_hm}:00+00:00", ended_at: "2026-02-23T#{end_hm}:00+00:00" }
     end
 
+    before do
+      allow(helper).to receive(:current_user)
+        .and_return(build_stubbed(:user, visits_redetected_at: Time.current))
+    end
+
+    context 'before the user history has been re-detected' do
+      before do
+        allow(helper).to receive(:current_user)
+          .and_return(build_stubbed(:user, visits_redetected_at: nil))
+      end
+
+      it 'keeps the legacy 90-minute threshold for a 79-minute hole' do
+        entries = [visit('16:00', '16:42'), journey('18:01', '19:30')]
+
+        expect(helper.timeline_entries_with_gaps(entries)).to eq(entries)
+      end
+
+      it 'still marks a hole at the legacy threshold' do
+        entries = [visit('09:00', '09:30'), visit('11:00', '11:30')]
+        result = helper.timeline_entries_with_gaps(entries)
+
+        expect(result[1][:type]).to eq('gap')
+        expect(result[1][:minutes]).to eq(90)
+      end
+    end
+
     it 'returns entries untouched when every hole is under the threshold' do
       entries = [visit('09:00', '09:30'), visit('10:00', '10:30')]
 

@@ -14,11 +14,14 @@ class Areas::RelabelVisitsJob < ApplicationJob
     return unless area
 
     labeled = 0
-    candidate_visits(area).find_each do |visit|
-      next unless inside?(area, visit.center)
+    candidate_visits(area).find_in_batches(batch_size: 500) do |batch|
+      centers = centers_for(batch)
+      batch.each do |visit|
+        next unless inside?(area, centers[visit.id])
 
-      visit.update_columns(area_id: area.id)
-      labeled += 1
+        visit.update_columns(area_id: area.id)
+        labeled += 1
+      end
     end
 
     Rails.logger.info("[Areas::RelabelVisitsJob] area_id=#{area.id} labeled=#{labeled}")
@@ -30,7 +33,24 @@ class Areas::RelabelVisitsJob < ApplicationJob
     area.user.visits.active.where(area_id: nil).includes(:place)
   end
 
+  # Place coords come preloaded; the point-backed rest resolves through one
+  # grouped centroid query instead of a per-visit Visit#center point load.
+  def centers_for(visits)
+    with_place, point_backed = visits.partition(&:place)
+    centers = with_place.to_h { |visit| [visit.id, [visit.place.lat, visit.place.lon]] }
+    return centers if point_backed.empty?
+
+    Point.where(visit_id: point_backed.map(&:id))
+         .group(:visit_id)
+         .pluck(:visit_id, Arel.sql('AVG(ST_Y(lonlat::geometry))'), Arel.sql('AVG(ST_X(lonlat::geometry))'))
+         .each { |visit_id, lat, lon| centers[visit_id] = [lat, lon] }
+
+    centers
+  end
+
   def inside?(area, center)
+    return false if center.nil?
+
     lat, lon = center
     return false if lat.blank? || (lat.zero? && lon.zero?)
 

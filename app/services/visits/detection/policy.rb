@@ -12,8 +12,6 @@ module Visits
       SWEEP_GAP_S = 60 * 60
       # Longest same-place silence still bridged into one continuous stay.
       BRIDGE_CAP_S = 7 * 24 * 60 * 60
-      # Displaced-gap silences shorter than this don't earn an untracked row.
-      UNTRACKED_MIN_S = 10 * 60
       # How far back/forward a stay boundary may snap to an adjacent moving
       # segment's edge (GPS cold start on arrival, warm-up on departure).
       SNAP_MAX_S = 15 * 60
@@ -44,7 +42,6 @@ module Visits
 
       def sweep_gap_s = SWEEP_GAP_S
       def bridge_cap_s = BRIDGE_CAP_S
-      def untracked_min_s = UNTRACKED_MIN_S
       def snap_max_s = SNAP_MAX_S
       def attribution_radius_m = ATTRIBUTION_RADIUS_M
     end
