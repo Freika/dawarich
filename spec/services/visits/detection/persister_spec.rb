@@ -110,6 +110,15 @@ RSpec.describe Visits::Detection::Persister do
     end
   end
 
+  it 'keeps split flanks stable across re-runs' do
+    visit_row(6000, 7200, status: :confirmed)
+    stays = [stay(0, 10_000)]
+    persist(stays)
+
+    expect { persist(stays) }
+      .not_to(change { user.visits.active.order(:started_at).pluck(:id) })
+  end
+
   it 'splits a stay around an interior anchor into both flanks' do
     visit_row(6000, 7200, status: :confirmed)
 

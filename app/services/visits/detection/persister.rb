@@ -95,11 +95,7 @@ module Visits
       end
 
       def flush_replacement_side_effects(replaced)
-        return if replaced.rows.empty?
-
-        place_ids = (replaced.rows.filter_map(&:place_id) + replaced.suggested_place_ids).uniq
-        ActiveJob.perform_all_later(place_ids.map { |id| Places::DeleteIfOrphanJob.new(id) })
-        MachineVisitWipe.bust_month_caches(user, replaced.rows.map(&:started_at))
+        MachineVisitWipe.flush_side_effects(user, replaced)
       end
 
       # Anchors are cut out of the stay by exact interval subtraction; every

@@ -58,8 +58,7 @@ module Visits
                                   Time.zone.at(max_ts), Time.zone.at(min_ts))
         end
 
-        wiped = MachineVisitWipe.call(scope)
-        MachineVisitWipe.bust_month_caches(user, wiped.rows.map(&:started_at))
+        MachineVisitWipe.flush_side_effects(user, MachineVisitWipe.call(scope))
       end
 
       def monthly_ranges(min_ts, max_ts)

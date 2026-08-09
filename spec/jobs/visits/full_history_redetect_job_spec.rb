@@ -56,8 +56,8 @@ RSpec.describe Visits::FullHistoryRedetectJob, type: :job do
       place = create(:place, user: user)
       2.times do |i|
         create(:visit, user: user, status: :suggested,
-                       started_at: Time.zone.at(base_ts + (i * 700)),
-                       ended_at: Time.zone.at(base_ts + (i * 700) + 600),
+                       started_at: Time.zone.at(base_ts + (i * 100)),
+                       ended_at: Time.zone.at(base_ts + (i * 100) + 600),
                        duration: 600, name: 'old').update_columns(place_id: place.id)
       end
 
@@ -107,6 +107,14 @@ RSpec.describe Visits::FullHistoryRedetectJob, type: :job do
   end
 
   describe 'cooldown timestamp' do
+    it 'does not stamp visits_redetected_at when months fail' do
+      allow(Visits::SmartDetect).to receive(:new).and_raise(ActiveRecord::StatementInvalid, 'boom')
+
+      described_class.new.perform(user.id)
+
+      expect(user.reload.visits_redetected_at).to be_nil
+    end
+
     it 'sets visits_redetected_at on success' do
       user.update_columns(visits_redetected_at: nil)
       travel_to(Time.current) do
@@ -124,7 +132,7 @@ RSpec.describe Visits::FullHistoryRedetectJob, type: :job do
       expect { described_class.new.perform(user.id) }.not_to raise_error
 
       expect(user.notifications.where(kind: :warning)).to exist
-      expect(user.reload.visits_redetected_at).to be_present
+      expect(user.reload.visits_redetected_at).to be_nil
     end
 
     it 'continues across months, completing successful ones when one month fails' do

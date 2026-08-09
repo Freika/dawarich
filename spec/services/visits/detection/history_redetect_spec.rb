@@ -75,6 +75,18 @@ RSpec.describe Visits::Detection::HistoryRedetect do
     expect(result.months_failed).not_to be_empty
   end
 
+  it 'enqueues orphan cleanup for places of purged out-of-range visits' do
+    seed_cluster
+    place = create(:place, user: user)
+    stale = create(:visit, user: user, status: :suggested,
+                   started_at: Time.zone.at(base_ts - 5.years.to_i),
+                   ended_at: Time.zone.at(base_ts - 5.years.to_i + 3600), duration: 60)
+    stale.update_columns(place_id: place.id)
+
+    expect { described_class.new(user).call }
+      .to have_enqueued_job(Places::DeleteIfOrphanJob).with(place.id)
+  end
+
   it 'wipes stale machine visits outside the current point range' do
     seed_cluster
     stale = create(:visit, user: user, status: :suggested,

@@ -22,6 +22,17 @@ module Visits
         Result.new(rows, suggested_place_ids)
       end
 
+      # Every wipe owes the same debts: orphan-cleanup for the places the
+      # rows referenced (directly or through suggested-place joins) and a
+      # month-summary cache bust for the days they occupied.
+      def self.flush_side_effects(user, result)
+        return if result.rows.empty?
+
+        place_ids = (result.rows.filter_map(&:place_id) + result.suggested_place_ids).uniq
+        ActiveJob.perform_all_later(place_ids.map { |id| Places::DeleteIfOrphanJob.new(id) })
+        bust_month_caches(user, result.rows.map(&:started_at))
+      end
+
       def self.bust_month_caches(user, times)
         return if times.empty?
 

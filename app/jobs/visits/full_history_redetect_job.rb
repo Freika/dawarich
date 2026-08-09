@@ -83,7 +83,9 @@ class Visits::FullHistoryRedetectJob < ApplicationJob
     months_failed = result.months_failed
     months_total = result.months_total
 
-    user.update!(visits_redetected_at: Time.current)
+    # A partial run must not unlock post-redetect behavior (and leaving the
+    # cooldown unset lets the user retry immediately).
+    user.update!(visits_redetected_at: Time.current) if months_failed.empty?
 
     duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - started) * 1000).to_i
     Rails.logger.info(
