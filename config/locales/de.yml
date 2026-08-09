@@ -1133,6 +1133,9 @@ de:
         map: Karte
     residency:
       show:
+        countries: Länder
+        days_per_country: Tage pro Land
+        distinct_days_with_at_least_one_tracked_point_per_country: Unterschiedliche Kalendertage mit mindestens einem aufgezeichneten Punkt pro Land. Keine Steuerberatung.
         days: Tage
         mon: Mo
         wed: Mi
@@ -1602,10 +1605,6 @@ de:
       new:
         share_a_date_range: Ein Datum bereich teilen
   shared:
-    days_per_country:
-      days_country: Tage / Land
-      days_per_country: Tage pro Land
-      distinct_days_with_at_least_one_tracked_point_per_country: Unterschiedliche Kalendertage mit mindestens einem aufgezeichneten Punkt pro Land. Keine Steuerberatung.
     flash_message:
       close: Schließen
     footer:

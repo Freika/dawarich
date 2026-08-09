@@ -1130,6 +1130,9 @@ en:
         map: Map
     residency:
       show:
+        countries: Countries
+        days_per_country: Days per Country
+        distinct_days_with_at_least_one_tracked_point_per_country: Distinct days with at least one tracked point per country. Not tax advice.
         days: days
         mon: Mon
         wed: Wed
@@ -1599,10 +1602,6 @@ en:
       new:
         share_a_date_range: Share a date range
   shared:
-    days_per_country:
-      days_country: Days / Country
-      days_per_country: Days per Country
-      distinct_days_with_at_least_one_tracked_point_per_country: Distinct days with at least one tracked point per country. Not tax advice.
     flash_message:
       close: Close
     footer:

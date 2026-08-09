@@ -1847,6 +1847,9 @@ fr:
         map: Carte
     residency:
       show:
+        countries: Pays
+        days_per_country: Jours par pays
+        distinct_days_with_at_least_one_tracked_point_per_country: Journées distinctes avec au moins un point suivi par pays. Pas de conseils fiscaux.
         days: jours
         mon: Lun
         wed: Mer
@@ -2440,10 +2443,6 @@ fr:
       new:
         share_a_date_range: Partager une plage de dates
   shared:
-    days_per_country:
-      days_country: Jours / Pays
-      days_per_country: Jours par pays
-      distinct_days_with_at_least_one_tracked_point_per_country: Journées distinctes avec au moins un point suivi par pays. Pas de conseils fiscaux.
     flash_message:
       close: Fermer
     footer:

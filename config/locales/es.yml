@@ -1133,6 +1133,9 @@ es:
         map: Mapa
     residency:
       show:
+        countries: Países
+        days_per_country: Días por país
+        distinct_days_with_at_least_one_tracked_point_per_country: Días distintos con al menos un punto rastreado por país. No es asesoría fiscal.
         days: días
         mon: Lun
         wed: Mié
@@ -1602,10 +1605,6 @@ es:
       new:
         share_a_date_range: Compartir una fecha rango
   shared:
-    days_per_country:
-      days_country: Días / País
-      days_per_country: Días por país
-      distinct_days_with_at_least_one_tracked_point_per_country: Días distintos con al menos un punto rastreado por país. No es asesoría fiscal.
     flash_message:
       close: Cerrar
     footer:

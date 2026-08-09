@@ -58,16 +58,21 @@ RSpec.describe '/insights', type: :request do
         expect(response.status).to eq(200)
       end
 
-      it 'offers the Days per Country report' do
-        get insights_url
+      it 'loads days per country for the year the page is showing' do
+        create(:stat, user:, year: 2026, month: 3, distance: 1000)
 
-        expect(response.body).to include(I18n.t('shared.days_per_country.days_country'))
+        get insights_url(year: 2026)
+
+        expect(response.body).to include('residency-content')
+        expect(response.body).to include(map_residency_path(year: 2026))
       end
 
-      it 'renders the Days per Country modal so the entry point has something to open' do
-        get insights_url
+      it 'omits days per country on All Time, which has no calendar year to count' do
+        create(:stat, user:, year: 2026, month: 3, distance: 1000)
 
-        expect(response.body).to include('data-controller="residency"')
+        get insights_url(year: 'all')
+
+        expect(response.body).not_to include('residency-content')
       end
 
       context 'when there are no stats' do
