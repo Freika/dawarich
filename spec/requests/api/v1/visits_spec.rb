@@ -193,6 +193,20 @@ RSpec.describe 'Api::V1::Visits', type: :request do
 
         expect(response).to have_http_status(:ok)
       end
+
+      it 'confirms a suggested visit on edit so the change survives re-detection' do
+        put "/api/v1/visits/#{visit.id}", params: valid_attributes, headers: auth_headers
+
+        expect(visit.reload.status).to eq('confirmed')
+      end
+
+      it 'keeps an explicitly requested status' do
+        put "/api/v1/visits/#{visit.id}",
+            params: { visit: { name: 'New name', status: 'declined' } },
+            headers: auth_headers
+
+        expect(visit.reload.status).to eq('declined')
+      end
     end
 
     context 'with invalid parameters' do

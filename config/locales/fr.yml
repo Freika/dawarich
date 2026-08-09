@@ -1664,12 +1664,7 @@ fr:
         min_11: 360min
         max_gap_between_points_before_assuming_you_left_the_city: Écart maximal entre
           les points avant de considérer que vous avez quitté la ville
-        visit_max_gap: Écart maximal entre les visites
         min_12: 720min
-        max_time_gap_between_points_within_one_visit_longer_gaps: 'Écart de temps
-          maximum entre points au sein d''une visite. Les écarts plus longs (par exemple,
-          batterie déchargée) les séparent en visites distinctes. Valeur par défaut :
-          60.'
         live_mode: Mode en direct
         show_new_points_in_real_time: Afficher les nouveaux points en temps réel
         apply_settings: Appliquer les paramètres
@@ -1868,6 +1863,9 @@ fr:
         previous_month: Mois précédent
       day:
         moving_duration: "%{duration} en déplacement"
+        low_confidence_stops:
+          one: "%{count} arrêt incertain"
+          other: "%{count} arrêts incertains"
         select: Sélectionner
         no_visits_match_the_current_search_or_filter: Aucune visite ne correspond
           à la recherche ou au filtre actuel.
@@ -2406,10 +2404,6 @@ fr:
         skip_stops_shorter_than_this_raise_to_ignore_short_drive: 'Ignorez les arrêts
           plus courts que cette durée. Augmentez-la pour ignorer les passages rapides ;
           réduisez-la pour détecter les arrêts brefs. Valeur par défaut : 5.'
-        smart_density_fill: Remplissage intelligent de densité
-        better_visits_when_your_tracker_reports_points_unevenly_leave_on: Visites
-          améliorées lorsque votre traceur signale des points inégaux. Désactivez
-          uniquement si vous le souhaitez.
         visit_detection: Détection de visites
         visit_radius_meters: Rayon de visite (mètres)
         minimum_points_to_count_as_a_visit: Points minimum pour compter comme une

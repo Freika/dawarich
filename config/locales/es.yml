@@ -979,9 +979,7 @@ es:
         min_10: 195min
         min_11: 360min
         max_gap_between_points_before_assuming_you_left_the_city: Maxima distancia entre puntos antes de suponer que has salido de la ciudad
-        visit_max_gap: Separación máxima entre visitas
         min_12: 720min
-        max_time_gap_between_points_within_one_visit_longer_gaps: Maxima diferencia de tiempo entre puntos dentro de una visita. Las diferencias más largas (por ejemplo, batería muerta) las divide en visitas separadas. Por defecto 60.
         live_mode: Modo en vivo
         show_new_points_in_real_time: Mostrar nuevos puntos en tiempo real
         apply_settings: Aplicar configuración
@@ -1152,6 +1150,9 @@ es:
         previous_month: Mes anterior
       day:
         moving_duration: "%{duration} en movimiento"
+        low_confidence_stops:
+          one: "%{count} parada de baja confianza"
+          other: "%{count} paradas de baja confianza"
         select: Seleccionar
         no_visits_match_the_current_search_or_filter: No hay visitas que coincidan con la búsqueda o filtro actual.
         clear_search_filters: Limpiar búsqueda y filtros
@@ -1574,8 +1575,6 @@ es:
         points_within_this_radius_are_treated_as_the_same_visit: Puntos dentro de este radio se tratan como la misma visita. Por defecto 100.
         lower_more_visits_suggested_including_brief_stops_default_3: Menos = más visitas sugeridas, incluyendo paradas breves. Por defecto 3.
         skip_stops_shorter_than_this_raise_to_ignore_short_drive: Ignora paradas más cortas que esto. Aumenta para ignorar paseos cortos; baja para capturar erratas breves. Por defecto 5.
-        smart_density_fill: Relleno de densidad inteligente
-        better_visits_when_your_tracker_reports_points_unevenly_leave_on: Mejores visitas cuando tu rastreador informe puntos desiguales. Mantén encendido a menos que sepas que quieres apagarlo.
         visit_detection: Deteción de visitas
         visit_radius_meters: Radio de visita (metros)
         minimum_points_to_count_as_a_visit: Puntos mínimos para contar como una visita

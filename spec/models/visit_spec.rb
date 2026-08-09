@@ -3,6 +3,15 @@
 require 'rails_helper'
 
 RSpec.describe Visit, type: :model do
+  describe 'detection_version' do
+    it 'persists which detector generation produced the visit and defaults to nil for legacy rows' do
+      visit = create(:visit, detection_version: 3)
+
+      expect(visit.reload.detection_version).to eq(3)
+      expect(create(:visit).reload.detection_version).to be_nil
+    end
+  end
+
   describe 'associations' do
     it { is_expected.to belong_to(:area).optional }
     it { is_expected.to belong_to(:place).optional }

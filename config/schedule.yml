@@ -5,11 +5,6 @@ bulk_stats_calculating_job:
   class: "BulkStatsCalculatingJob"
   queue: stats
 
-area_visits_calculation_scheduling_job:
-  cron: "0 0 * * *" # every day at 0:00
-  class: "AreaVisitsCalculationSchedulingJob"
-  queue: visit_suggesting
-
 visit_suggesting_job:
   cron: "5 0 * * *" # every day at 00:05
   class: "BulkVisitsSuggestingJob"

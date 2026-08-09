@@ -916,29 +916,6 @@
             <p class="text-xs text-base-content/60 mt-1"><%= t('.max_gap_between_points_before_assuming_you_left_the_city') %></p>
           </div>
 
-          <div class="divider"></div>
-
-          <!-- Visit Detection Settings -->
-          <div class="form-control w-full">
-            <label class="label">
-              <span class="label-text font-medium"><%= t('.visit_max_gap') %></span>
-              <span class="label-text-alt" data-maps--maplibre-target="stayMaxGapMinutesValue"><%= t('.min_5') %></span>
-            </label>
-            <input type="range"
-                   name="stayMaxGapMinutes"
-                   min="5"
-                   max="720"
-                   step="5"
-                   value="60"
-                   class="range range-sm"
-                   data-action="input->maps--maplibre#updateStayMaxGapMinutesDisplay" />
-            <div class="w-full flex justify-between text-xs px-2 mt-1">
-              <span><%= t('.min_6') %></span>
-              <span><%= t('.min_11') %></span>
-              <span><%= t('.min_12') %></span>
-            </div>
-            <p class="text-xs text-base-content/60 mt-1"><%= t('.max_time_gap_between_points_within_one_visit_longer_gaps') %></p>
-          </div>
             </div>
           </details>
 

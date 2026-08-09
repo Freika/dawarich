@@ -4,7 +4,6 @@ class Visits::FullHistoryRedetectJob < ApplicationJob
   queue_as :visit_suggesting
   sidekiq_options retry: 0
 
-  BATCH_OVERLAP_SECONDS = 1.hour.to_i
   COOLDOWN = 1.hour
 
   def perform(user_id)
@@ -75,44 +74,29 @@ class Visits::FullHistoryRedetectJob < ApplicationJob
       "point_range=#{min_ts}..#{max_ts}"
     )
 
-    # .active keeps tombstoned suggestions alive — destroying them here would
-    # erase the dedup marker and re-detection would resurrect deleted visits.
-    visit_ids = user.visits.active.where(status: :suggested).pluck(:id)
-    place_ids_direct    = Visit.where(id: visit_ids).where.not(place_id: nil).pluck(:place_id)
-    place_ids_suggested = PlaceVisit.where(visit_id: visit_ids).pluck(:place_id)
-    candidate_place_ids = (place_ids_direct + place_ids_suggested).uniq
+    # Old machine output is replaced per window by the Persister — a month
+    # that fails or gets skipped keeps its existing rows instead of being
+    # wiped and never regenerated. Rows outside the point range are purged
+    # by HistoryRedetect itself.
+    result = Visits::Detection::HistoryRedetect.new(user).call
+    visits_created = result.visits_created
+    months_failed = result.months_failed
+    months_total = result.months_total
 
-    Visit.where(id: visit_ids).find_each(&:destroy)
-
-    months = monthly_ranges(min_ts, max_ts)
-    visits_created = 0
-    months_failed = []
-
-    months.each do |range_start, range_end|
-      visits_created += Visits::SmartDetect.new(user, start_at: range_start, end_at: range_end).call.size
-    rescue StandardError => e
-      months_failed << [range_start, range_end]
-      Rails.logger.error(
-        "[Visits::FullHistoryRedetectJob month_failed] user_id=#{user.id} " \
-        "range=#{range_start}..#{range_end} class=#{e.class} message=#{e.message}"
-      )
-      ExceptionReporter.call(e)
-    end
-
-    places_deleted = cleanup_orphan_places(user, candidate_place_ids)
-
-    user.update!(visits_redetected_at: Time.current)
+    # A partial run must not unlock post-redetect behavior (and leaving the
+    # cooldown unset lets the user retry immediately).
+    user.update!(visits_redetected_at: Time.current) if months_failed.empty?
 
     duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - started) * 1000).to_i
     Rails.logger.info(
       "[Visits::FullHistoryRedetectJob done] user_id=#{user.id} " \
-      "visits_created=#{visits_created} places_deleted=#{places_deleted} " \
-      "months_processed=#{months.size - months_failed.size}/#{months.size} duration_ms=#{duration_ms}"
+      "visits_created=#{visits_created} " \
+      "months_processed=#{months_total - months_failed.size}/#{months_total} duration_ms=#{duration_ms}"
     )
 
     if months_failed.empty?
       visits = localized_count('visits_count', visits_created)
-      months_count = localized_count('months_count', months.size)
+      months_count = localized_count('months_count', months_total)
       content = I18n.t(
         'jobs.visits.full_history_redetect_job.visits_created_visits_across_size_months',
         visits:,
@@ -122,10 +106,10 @@ class Visits::FullHistoryRedetectJob < ApplicationJob
                     title: I18n.t('jobs.visits.full_history_redetect_job.visit_re_detection_complete'),
                     content: content)
     else
-      ok_months = months.size - months_failed.size
+      ok_months = months_total - months_failed.size
       visits = localized_count('visits_count', visits_created)
       ok_months_count = localized_count('months_count', ok_months)
-      months_count = localized_count('months_count', months.size)
+      months_count = localized_count('months_count', months_total)
       content = I18n.t(
         'jobs.visits.full_history_redetect_job.visits_created_visits_across_ok_months_of_size_months_size',
         count: months_failed.size,
@@ -146,32 +130,6 @@ class Visits::FullHistoryRedetectJob < ApplicationJob
 
   def localized_count(key, count)
     I18n.t("jobs.visits.full_history_redetect_job.#{key}", count:)
-  end
-
-  def monthly_ranges(min_ts, max_ts)
-    result = []
-    cursor = Time.zone.at(min_ts).beginning_of_month
-    while cursor.to_i < max_ts
-      batch_start = [cursor.to_i, min_ts].max
-      batch_end_raw = (cursor.end_of_month + 1.day).beginning_of_day.to_i - 1
-      batch_end = [batch_end_raw + BATCH_OVERLAP_SECONDS, max_ts].min
-      result << [batch_start, batch_end]
-      cursor = cursor.next_month
-    end
-    result
-  end
-
-  def cleanup_orphan_places(user, candidate_place_ids)
-    return 0 if candidate_place_ids.empty?
-
-    deleted = 0
-    Place.photon.where(id: candidate_place_ids, user_id: user.id).find_each do |place|
-      next if place.visits.exists? || place.place_visits.exists?
-
-      place.destroy
-      deleted += 1
-    end
-    deleted
   end
 
   def notify_failure(user, error)

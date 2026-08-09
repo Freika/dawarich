@@ -41,6 +41,12 @@ RSpec.describe User, type: :model do
     end
   end
 
+  describe 'visit detection v3 stamp' do
+    it 'marks new accounts as v3-native so confidence gating applies from day one' do
+      expect(create(:user).reload.visits_redetected_at).to be_present
+    end
+  end
+
   describe 'associations' do
     it { is_expected.to have_many(:imports).dependent(:destroy) }
     it { is_expected.to have_many(:stats) }

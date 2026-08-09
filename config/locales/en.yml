@@ -976,9 +976,7 @@ en:
         min_10: 195min
         min_11: 360min
         max_gap_between_points_before_assuming_you_left_the_city: Max gap between points before assuming you left the city
-        visit_max_gap: Visit Max Gap
         min_12: 720min
-        max_time_gap_between_points_within_one_visit_longer_gaps: Max time gap between points within one visit. Longer gaps (e.g. dead battery) split it into separate visits. Default 60.
         live_mode: Live Mode
         show_new_points_in_real_time: Show new points in real-time
         apply_settings: Apply Settings
@@ -1150,6 +1148,9 @@ en:
       day:
         select: Select
         moving_duration: "%{duration} moving"
+        low_confidence_stops:
+          one: "%{count} low-confidence stop"
+          other: "%{count} low-confidence stops"
         no_visits_match_the_current_search_or_filter: No visits match the current search or filter.
         clear_search_filters: Clear search & filters
         no_visits_tracked_this_day: No visits tracked this day.
@@ -1571,8 +1572,6 @@ en:
         points_within_this_radius_are_treated_as_the_same_visit: Points within this radius are treated as the same visit. Default 100.
         lower_more_visits_suggested_including_brief_stops_default_3: Lower = more visits suggested, including brief stops. Default 3.
         skip_stops_shorter_than_this_raise_to_ignore_short_drive: Skip stops shorter than this. Raise to ignore short drive-bys; lower to catch brief errands. Default 5.
-        smart_density_fill: Smart density fill
-        better_visits_when_your_tracker_reports_points_unevenly_leave_on: Better visits when your tracker reports points unevenly. Leave on unless you know you want it off.
         visit_detection: Visit detection
         visit_radius_meters: Visit radius (meters)
         minimum_points_to_count_as_a_visit: Minimum points to count as a visit

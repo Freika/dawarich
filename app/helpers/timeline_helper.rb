@@ -3,9 +3,16 @@
 module TimelineHelper
   # Interior holes shorter than this are the ordinary seams between a visit
   # ending and the next track starting — real days are full of them, and
-  # marking each one costs the marker its meaning. An hour and a half with no
-  # visit and no track is unambiguous: something was not recorded.
-  TIMELINE_GAP_MIN_MINUTES = 90
+  # marking each one costs the marker its meaning. Detection v3 snaps visit
+  # boundaries to movement edges, so the ragged 30–60 minute seams the old
+  # detector produced are gone; what remains at 45+ minutes is genuinely
+  # unrecorded time (a 79-minute dark dinner must earn its row).
+  TIMELINE_GAP_MIN_MINUTES = 45
+
+  # Until a user's history has been re-detected, their visits still carry the
+  # old detector's ragged 30–60 minute seams — the marker keeps the old bar so
+  # those seams don't flood the day with false "untracked" rows.
+  LEGACY_TIMELINE_GAP_MIN_MINUTES = 90
 
   # Ceiling on how far a long leg may stretch the rail, in px. Past this the
   # day column scrolls more than it communicates.
@@ -119,6 +126,7 @@ module TimelineHelper
   # consecutive rows would invent gaps inside a tracked drive.
   def timeline_entries_with_gaps(entries)
     covered_until = nil
+    threshold = timeline_gap_min_minutes
 
     Array(entries).flat_map do |entry|
       started_at = Time.iso8601(entry[:started_at].to_s)
@@ -127,12 +135,18 @@ module TimelineHelper
       gap_start = covered_until
       covered_until = [covered_until, ended_at].compact.max
 
-      next [entry] if gap_minutes < TIMELINE_GAP_MIN_MINUTES
+      next [entry] if gap_minutes < threshold
 
       # Stamped with where the record stops rather than where it resumes —
       # that is the moment the user is being told about.
       [{ type: 'gap', minutes: gap_minutes, started_at: gap_start.iso8601 }, entry]
     end
+  end
+
+  def timeline_gap_min_minutes
+    return TIMELINE_GAP_MIN_MINUTES if current_user&.visits_redetected_at
+
+    LEGACY_TIMELINE_GAP_MIN_MINUTES
   end
 
   # Extra px of rail a leg earns for its duration, so a three-hour drive
@@ -179,6 +193,25 @@ module TimelineHelper
 
   def visit_entry_status(entry)
     entry[:status].presence || 'confirmed'
+  end
+
+  # Confidence gating applies only to machine suggestions — a visit the user
+  # confirmed renders at full strength whatever the detector thought of it.
+  # Rows without a score (legacy, pre-backfill) also render normally, and the
+  # gate stays off entirely until the history has been re-detected: old
+  # scores came from a different scorer and must not hide visits.
+  def visit_entry_subdued?(entry)
+    confidence_gating_active? &&
+      visit_entry_status(entry) != 'confirmed' && entry[:confidence_band] == :medium
+  end
+
+  def visit_entry_low_confidence?(entry)
+    confidence_gating_active? &&
+      visit_entry_status(entry) != 'confirmed' && entry[:confidence_band] == :low
+  end
+
+  def confidence_gating_active?
+    current_user&.visits_redetected_at.present?
   end
 
   def day_label(day)

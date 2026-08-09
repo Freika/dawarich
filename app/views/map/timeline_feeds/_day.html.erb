@@ -53,6 +53,16 @@
         <% end %>
       <% end %>
     </ol>
+    <% low_count = entries.count { |e| e[:type] == 'visit' && visit_entry_low_confidence?(e) } %>
+    <% if low_count.positive? %>
+      <button type="button"
+              class="timeline-lowconf-toggle"
+              data-testid="lowconf-toggle"
+              data-action="click->timeline-feed#toggleLowConfidence"
+              aria-expanded="false">
+        <%= t('.low_confidence_stops', count: low_count) %>
+      </button>
+    <% end %>
     <%# Shown by timeline_feed_controller#applyVisibility when every visit row
         is hidden by an active search/filter/tag combo — otherwise the "N visits"
         header contradicts the empty list and users think data is missing. %>

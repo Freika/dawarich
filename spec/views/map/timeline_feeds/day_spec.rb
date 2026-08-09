@@ -27,7 +27,7 @@ RSpec.describe 'map/timeline_feeds/_day' do
     [
       visit_entry(id: 1, name: 'Saturn, Przemysłowa, Krakow, Lesser Poland Voivodeship',
                   start_hm: '09:59', end_hm: '10:24', duration: 24, points: 33),
-      journey_entry(id: 11, mode: 'driving', start_hm: '11:23', end_hm: '14:43',
+      journey_entry(id: 11, mode: 'driving', start_hm: '11:04', end_hm: '14:43',
                     duration: 12_000, distance: 170.1),
       visit_entry(id: 2, name: 'Arge, Chyżne, Lesser Poland Voivodeship',
                   start_hm: '13:06', end_hm: '13:16', duration: 10, points: 17),
@@ -76,7 +76,7 @@ RSpec.describe 'map/timeline_feeds/_day' do
   end
 
   it 'does not invent a gap inside a journey that overlaps the visit within it' do
-    # The 11:23–14:43 drive covers the 13:06 visit, and the 59m seam before it
+    # The 11:04–14:43 drive covers the 13:06 visit, and the 40m seam before it
     # is below the threshold. Only the 14:43 → 18:59 hole is worth naming.
     expect(rendered).to have_css('.timeline-entry--gap', count: 1)
   end

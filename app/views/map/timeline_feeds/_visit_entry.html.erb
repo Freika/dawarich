@@ -4,10 +4,11 @@
 <%# A visit renders the same regardless of detection status — showing it is
     asserting it. The only affordance is Edit: rename, re-attach a place,
     or delete. data-status stays for API/JS compatibility. %>
-<li class="visit-row<%= ' visit-row--all-day' if all_day %>"
+<li class="visit-row<%= ' visit-row--all-day' if all_day %><%= ' visit-row--subdued' if visit_entry_subdued?(entry) %><%= ' visit-row--lowconf' if visit_entry_low_confidence?(entry) %>"
     id="visit_entry_<%= entry[:visit_id] %>"
     data-visit-id="<%= entry[:visit_id] %>"
     data-status="<%= visit_entry_status(entry) %>"
+    data-confidence-band="<%= entry[:confidence_band] %>"
     data-testid="visit-row"
     tabindex="0"
     role="button"

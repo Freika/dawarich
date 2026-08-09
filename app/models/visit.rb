@@ -29,9 +29,17 @@ class Visit < ApplicationRecord
   enum :status, { suggested: 0, confirmed: 1, declined: 2 }
 
   # Visible visits. Soft-deleted rows and legacy declines are tombstones:
-  # hidden everywhere, but still found by Visits::Creator's dedup so the
-  # detector never resurrects a visit the user removed.
+  # hidden everywhere, but treated as fixed anchors by
+  # Visits::Detection::Persister so the detector never resurrects a visit
+  # the user removed.
   scope :active, -> { where(deleted_at: nil).where.not(status: :declined) }
+  # Rows the detector may regenerate wholesale. Everything else — confirmed,
+  # declined, tombstoned, imported, demo-seeded, or annotated with a note —
+  # is user-owned and anchors re-detection.
+  scope :machine_detected, lambda {
+    active.where(status: :suggested, import_id: nil, demo: false)
+          .where.not(id: Note.where(attachable_type: 'Visit').select(:attachable_id))
+  }
 
   def soft_delete!
     update!(deleted_at: Time.current)

@@ -78,7 +78,6 @@ class Api::V1::SettingsController < ApiController
       :speed_colored_routes, :speed_color_scale, :fog_of_war_threshold, :fog_of_war_mode,
       :maps_v2_style, :maps_maplibre_style, :maps_maplibre_tiles_url, :globe_projection,
       :min_minutes_spent_in_city, :max_gap_minutes_in_city,
-      :stay_max_gap_minutes,
       :gps_filtering_enabled,
       :point_dragging_enabled,
       enabled_map_layers: [],

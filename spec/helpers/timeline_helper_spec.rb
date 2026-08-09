@@ -349,6 +349,37 @@ RSpec.describe TimelineHelper, type: :helper do
     end
   end
 
+  describe 'confidence gating' do
+    before do
+      allow(helper).to receive(:current_user)
+        .and_return(build_stubbed(:user, visits_redetected_at: Time.current))
+    end
+
+    context 'before the user history has been re-detected' do
+      before do
+        allow(helper).to receive(:current_user)
+          .and_return(build_stubbed(:user, visits_redetected_at: nil))
+      end
+
+      it 'renders legacy-scored suggestions at full strength' do
+        expect(helper.visit_entry_subdued?({ status: 'suggested', confidence_band: :medium })).to be false
+        expect(helper.visit_entry_low_confidence?({ status: 'suggested', confidence_band: :low })).to be false
+      end
+    end
+
+    it 'subdues medium-band suggestions only' do
+      expect(helper.visit_entry_subdued?({ status: 'suggested', confidence_band: :medium })).to be true
+      expect(helper.visit_entry_subdued?({ status: 'confirmed', confidence_band: :medium })).to be false
+      expect(helper.visit_entry_subdued?({ status: 'suggested', confidence_band: nil })).to be false
+    end
+
+    it 'low-gates low-band suggestions but never confirmed or unscored rows' do
+      expect(helper.visit_entry_low_confidence?({ status: 'suggested', confidence_band: :low })).to be true
+      expect(helper.visit_entry_low_confidence?({ status: 'confirmed', confidence_band: :low })).to be false
+      expect(helper.visit_entry_low_confidence?({ status: 'suggested', confidence_band: nil })).to be false
+    end
+  end
+
   describe '#timeline_entries_with_gaps' do
     def visit(start_hm, end_hm)
       { type: 'visit', started_at: "2026-02-23T#{start_hm}:00+00:00", ended_at: "2026-02-23T#{end_hm}:00+00:00" }
@@ -358,16 +389,50 @@ RSpec.describe TimelineHelper, type: :helper do
       { type: 'journey', started_at: "2026-02-23T#{start_hm}:00+00:00", ended_at: "2026-02-23T#{end_hm}:00+00:00" }
     end
 
+    before do
+      allow(helper).to receive(:current_user)
+        .and_return(build_stubbed(:user, visits_redetected_at: Time.current))
+    end
+
+    context 'before the user history has been re-detected' do
+      before do
+        allow(helper).to receive(:current_user)
+          .and_return(build_stubbed(:user, visits_redetected_at: nil))
+      end
+
+      it 'keeps the legacy 90-minute threshold for a 79-minute hole' do
+        entries = [visit('16:00', '16:42'), journey('18:01', '19:30')]
+
+        expect(helper.timeline_entries_with_gaps(entries)).to eq(entries)
+      end
+
+      it 'still marks a hole at the legacy threshold' do
+        entries = [visit('09:00', '09:30'), visit('11:00', '11:30')]
+        result = helper.timeline_entries_with_gaps(entries)
+
+        expect(result[1][:type]).to eq('gap')
+        expect(result[1][:minutes]).to eq(90)
+      end
+    end
+
     it 'returns entries untouched when every hole is under the threshold' do
       entries = [visit('09:00', '09:30'), visit('10:00', '10:30')]
 
       expect(helper.timeline_entries_with_gaps(entries)).to eq(entries)
     end
 
-    it 'leaves the ordinary hour-long seam between a visit and the next track alone' do
-      entries = [visit('10:00', '10:24'), visit('11:23', '11:33')]
+    it 'leaves the ordinary sub-threshold seam between a visit and the next track alone' do
+      entries = [visit('10:00', '10:24'), visit('11:04', '11:14')]
 
       expect(helper.timeline_entries_with_gaps(entries)).to eq(entries)
+    end
+
+    it 'marks a 79-minute silence — the dark-dinner case earns its row' do
+      entries = [visit('16:00', '16:42'), journey('18:01', '19:30')]
+      result = helper.timeline_entries_with_gaps(entries)
+
+      expect(result[1][:type]).to eq('gap')
+      expect(result[1][:minutes]).to eq(79)
     end
 
     it 'inserts a gap entry for an interior hole at or over the threshold' do

@@ -253,17 +253,6 @@ export class SettingsController {
       }
     }
 
-    // Sync visit detection settings
-    const stayMaxGapInput = controller.element.querySelector(
-      'input[name="stayMaxGapMinutes"]',
-    )
-    if (stayMaxGapInput) {
-      stayMaxGapInput.value = this.settings.stayMaxGapMinutes || 60
-      if (controller.hasStayMaxGapMinutesValueTarget) {
-        controller.stayMaxGapMinutesValueTarget.textContent = `${stayMaxGapInput.value} min`
-      }
-    }
-
     // Sync GPS noise filtering settings
     const gpsFilteringToggle = controller.element.querySelector(
       'input[name="gpsFilteringEnabled"]',
@@ -1018,13 +1007,6 @@ export class SettingsController {
       gpsFilteringEnabled: formData.get("gpsFilteringEnabled") === "on",
     }
 
-    if (formData.has("stayMaxGapMinutes")) {
-      settings.stayMaxGapMinutes = parseInt(
-        formData.get("stayMaxGapMinutes"),
-        10,
-      )
-    }
-
     // Update controller settings and dataLoader BEFORE applying,
     // so that loadMapData() sees the new values
     this.controller.settings = { ...this.controller.settings, ...settings }
@@ -1125,12 +1107,6 @@ export class SettingsController {
   updateMaxGapMinutesDisplay(event) {
     if (this.controller.hasMaxGapMinutesValueTarget) {
       this.controller.maxGapMinutesValueTarget.textContent = `${event.target.value} min`
-    }
-  }
-
-  updateStayMaxGapMinutesDisplay(event) {
-    if (this.controller.hasStayMaxGapMinutesValueTarget) {
-      this.controller.stayMaxGapMinutesValueTarget.textContent = `${event.target.value} min`
     }
   }
 
