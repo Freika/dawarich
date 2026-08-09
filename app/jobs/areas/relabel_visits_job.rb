@@ -13,18 +13,19 @@ class Areas::RelabelVisitsJob < ApplicationJob
     area = Area.find_by(id: area_id)
     return unless area
 
-    labeled = 0
+    labeled_at = []
     candidate_visits(area).find_in_batches(batch_size: 500) do |batch|
       centers = centers_for(batch)
       batch.each do |visit|
         next unless inside?(area, centers[visit.id])
 
         visit.update_columns(label_attributes(area, visit))
-        labeled += 1
+        labeled_at << visit.started_at
       end
     end
 
-    Rails.logger.info("[Areas::RelabelVisitsJob] area_id=#{area.id} labeled=#{labeled}")
+    Visits::Detection::MachineVisitWipe.bust_month_caches(area.user, labeled_at)
+    Rails.logger.info("[Areas::RelabelVisitsJob] area_id=#{area.id} labeled=#{labeled_at.size}")
   end
 
   private

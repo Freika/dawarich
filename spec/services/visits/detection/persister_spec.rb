@@ -73,10 +73,11 @@ RSpec.describe Visits::Detection::Persister do
     created = persist([stay(3000, 9000)])
 
     expect(confirmed.reload.status).to eq('confirmed')
-    expect(created.size).to eq(1)
-    trimmed = created.first
-    overlap = [trimmed.ended_at.to_i, base_ts + 7200].min - [trimmed.started_at.to_i, base_ts + 3600].max
-    expect(overlap).to be <= 0
+    expect(created.size).to eq(2)
+    created.each do |trimmed|
+      overlap = [trimmed.ended_at.to_i, base_ts + 7200].min - [trimmed.started_at.to_i, base_ts + 3600].max
+      expect(overlap).to be <= 0
+    end
   end
 
   it 'preserves imported visits and trims machine stays around them' do
@@ -87,10 +88,12 @@ RSpec.describe Visits::Detection::Persister do
     created = persist([stay(3000, 9000)])
 
     expect(Visit.exists?(imported.id)).to be(true)
-    expect(created.size).to eq(1)
-    overlap = [created.first.ended_at.to_i, base_ts + 7200].min -
-              [created.first.started_at.to_i, base_ts + 3600].max
-    expect(overlap).to be <= 0
+    expect(created.size).to eq(2)
+    created.each do |trimmed|
+      overlap = [trimmed.ended_at.to_i, base_ts + 7200].min -
+                [trimmed.started_at.to_i, base_ts + 3600].max
+      expect(overlap).to be <= 0
+    end
   end
 
   it 'never overlaps any anchor when several anchors overlap one stay' do
@@ -107,21 +110,24 @@ RSpec.describe Visits::Detection::Persister do
     end
   end
 
-  it 'keeps the longer flank when an anchor sits strictly inside a stay' do
+  it 'splits a stay around an interior anchor into both flanks' do
     visit_row(6000, 7200, status: :confirmed)
 
     created = persist([stay(0, 10_000)])
 
-    expect(created.size).to eq(1)
-    expect(created.first.started_at.to_i).to eq(base_ts)
-    expect(created.first.ended_at.to_i).to eq(base_ts + 6000)
+    expect(created.map { |v| [v.started_at.to_i - base_ts, v.ended_at.to_i - base_ts] })
+      .to contain_exactly([0, 6000], [7200, 10_000])
   end
 
   it 'drops a trimmed stay left with too few points' do
     visit_row(2400, 9800, status: :confirmed)
-    points = Array.new(3) do |i|
+    inside_anchor = Array.new(2) do |i|
       create(:point, user: user, timestamp: base_ts + 3000 + (i * 600))
     end
+    on_flank = Array.new(2) do |i|
+      create(:point, user: user, timestamp: base_ts + 500 + (i * 600))
+    end
+    points = inside_anchor + on_flank
 
     created = persist([stay(0, 10_000, point_ids: points.map(&:id))],
                       points_by_id: points.index_by(&:id))

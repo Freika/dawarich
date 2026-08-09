@@ -27,6 +27,7 @@ RSpec.describe Visits::UserRedetectJob do
   end
 
   it 'skips users who disabled visit suggestions' do
+    user.update_columns(visits_redetected_at: nil)
     user.update!(settings: user.settings.merge('visits_suggestions_enabled' => false))
     create(:point, user: user, latitude: 51.3402, longitude: 12.3712,
                    lonlat: 'POINT(12.3712 51.3402)', timestamp: base_ts, accuracy: 10)
@@ -38,6 +39,7 @@ RSpec.describe Visits::UserRedetectJob do
   end
 
   it 'does not stamp visits_redetected_at when months fail' do
+    user.update_columns(visits_redetected_at: nil)
     create(:point, user: user, latitude: 51.3402, longitude: 12.3712,
                    lonlat: 'POINT(12.3712 51.3402)', timestamp: base_ts, accuracy: 10)
     allow(Visits::SmartDetect).to receive(:new).and_raise(ActiveRecord::StatementInvalid, 'boom')

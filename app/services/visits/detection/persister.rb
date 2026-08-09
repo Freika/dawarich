@@ -29,7 +29,7 @@ module Visits
         ActiveRecord::Base.transaction do
           acquire_user_lock
           anchors = anchor_visits
-          prepared = stays.filter_map { |stay| trim_to_anchors(stay, anchors, points_by_id) }
+          prepared = stays.flat_map { |stay| trim_to_anchors(stay, anchors, points_by_id) }
           next if unchanged?(prepared)
 
           replaced = delete_machine_rows
@@ -102,19 +102,39 @@ module Visits
         MachineVisitWipe.bust_month_caches(user, replaced.rows.map(&:started_at))
       end
 
+      # Anchors are cut out of the stay by exact interval subtraction; every
+      # surviving flank persists on its own, so no dwell silently vanishes
+      # behind an interior anchor.
       def trim_to_anchors(stay, anchors, points_by_id)
         overlapping = anchors.select do |anchor|
           anchor.started_at.to_i < stay[:end_ts] && anchor.ended_at.to_i > stay[:start_ts]
         end
-        return stay if overlapping.empty?
+        return [stay] if overlapping.empty?
 
-        bounds = shrink_around(stay, overlapping)
-        return nil if bounds.nil? || (bounds[1] - bounds[0]) < policy.min_dwell_s
+        subtract_anchors([[stay[:start_ts], stay[:end_ts]]], overlapping).filter_map do |from, to|
+          next if (to - from) < policy.min_dwell_s
 
-        trimmed = retimed(stay, bounds, points_by_id)
-        return nil if points_by_id.any? && trimmed[:count] < policy.min_points
+          trimmed = retimed(stay, [from, to], points_by_id)
+          next if points_by_id.any? && trimmed[:count] < policy.min_points
 
-        trimmed
+          trimmed
+        end
+      end
+
+      def subtract_anchors(intervals, anchors)
+        anchors.reduce(intervals) do |pieces, anchor|
+          anchor_start = anchor.started_at.to_i
+          anchor_end = anchor.ended_at.to_i
+
+          pieces.flat_map do |from, to|
+            next [[from, to]] if anchor_end <= from || anchor_start >= to
+
+            kept = []
+            kept << [from, anchor_start] if anchor_start > from
+            kept << [anchor_end, to] if anchor_end < to
+            kept
+          end
+        end
       end
 
       # A trimmed stay is a different stay: its confidence must reflect the
@@ -140,34 +160,6 @@ module Visits
             [stay[:center_lat], stay[:center_lon]], [point.lat, point.lon], units: :km
           ) * 1000
         end.max
-      end
-
-      def shrink_around(stay, anchors)
-        from = stay[:start_ts]
-        to = stay[:end_ts]
-
-        anchors.sort_by(&:started_at).each do |anchor|
-          anchor_start = anchor.started_at.to_i
-          anchor_end = anchor.ended_at.to_i
-          next if anchor_end <= from || anchor_start >= to
-
-          if anchor_start <= from && anchor_end >= to
-            return nil
-          elsif anchor_start > from && anchor_end < to
-            # Anchor strictly inside: keep the longer flank.
-            if (anchor_start - from) >= (to - anchor_end)
-              to = anchor_start
-            else
-              from = anchor_end
-            end
-          elsif anchor_start <= from
-            from = anchor_end
-          else
-            to = anchor_start
-          end
-        end
-
-        [from, to]
       end
 
       def ids_within(point_ids, bounds, points_by_id)

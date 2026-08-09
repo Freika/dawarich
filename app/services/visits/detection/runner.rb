@@ -121,9 +121,19 @@ module Visits
         gap = visit.started_at.to_i - previous.ended_at.to_i
         return false if gap > policy.bridge_cap_s
         return false unless same_place?(previous, visit)
+        return false if anchor_between?(previous.ended_at.to_i, visit.started_at.to_i)
         return true if gap <= policy.merge_gap_s
 
         no_points_between?(previous.ended_at.to_i, visit.started_at.to_i)
+      end
+
+      # A point-free silence can still hold a user-owned visit (imported or
+      # manually created rows own no points) — bridging over it would overlap
+      # an anchor.
+      def anchor_between?(from_ts, to_ts)
+        user.visits.where.not(id: user.visits.machine_detected.select(:id))
+            .where('started_at < ? AND ended_at > ?', Time.zone.at(to_ts), Time.zone.at(from_ts))
+            .exists?
       end
 
       def same_place?(previous, visit)

@@ -586,7 +586,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_09_090100) do
     t.string "utm_medium"
     t.string "utm_source"
     t.string "utm_term"
-    t.datetime "visits_redetected_at"
+    t.datetime "visits_redetected_at", default: -> { "CURRENT_TIMESTAMP" }
     t.index ["api_key"], name: "index_users_on_api_key"
     t.index ["deleted_at"], name: "index_users_on_deleted_at"
     t.index ["email"], name: "index_users_on_email", unique: true

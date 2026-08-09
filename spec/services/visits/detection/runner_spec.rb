@@ -96,6 +96,34 @@ RSpec.describe Visits::Detection::Runner do
     expect((created.first.ended_at - created.first.started_at) / 60).to be_within(10).of(120)
   end
 
+  it 'never stitches across a point-less anchor sitting in the silence' do
+    month_edge = Time.zone.parse('2026-02-01 00:00:00')
+    [-30, -27, -24, -21, -18, -15].each do |m|
+      create(:point, user: user, latitude: 51.3402, longitude: 12.3712,
+                     lonlat: 'POINT(12.3712 51.3402)',
+                     timestamp: (month_edge + m.minutes).to_i, accuracy: 10)
+    end
+    [30, 33, 36, 39, 42, 45].each do |m|
+      create(:point, user: user, latitude: 51.3402, longitude: 12.3712,
+                     lonlat: 'POINT(12.3712 51.3402)',
+                     timestamp: (month_edge + m.minutes).to_i, accuracy: 10)
+    end
+    import = create(:import, user: user)
+    anchor = create(:visit, user: user, status: :suggested,
+                            started_at: month_edge - 10.minutes, ended_at: month_edge + 10.minutes,
+                            duration: 20, name: 'Imported stop')
+    anchor.update_columns(import_id: import.id)
+
+    created = run(from: Time.zone.parse('2026-01-01 00:00:00').to_i,
+                  to: Time.zone.parse('2026-02-28 00:00:00').to_i)
+
+    created.each do |visit|
+      overlap = [visit.ended_at.to_i, anchor.ended_at.to_i].min -
+                [visit.started_at.to_i, anchor.started_at.to_i].max
+      expect(overlap).to be <= 0
+    end
+  end
+
   it 'rescores the stitched visit from the merged evidence' do
     month_edge = Time.zone.parse('2026-02-01 00:00:00')
     first_fix = month_edge - 15.minutes

@@ -74,23 +74,21 @@ class Visits::FullHistoryRedetectJob < ApplicationJob
       "point_range=#{min_ts}..#{max_ts}"
     )
 
-    wiped = Visits::Detection::MachineVisitWipe.call(user.visits.machine_detected)
-    candidate_place_ids = (wiped.rows.filter_map(&:place_id) + wiped.suggested_place_ids).uniq
-    Visits::Detection::MachineVisitWipe.bust_month_caches(user, wiped.rows.map(&:started_at))
-
+    # Old machine output is replaced per window by the Persister — a month
+    # that fails or gets skipped keeps its existing rows instead of being
+    # wiped and never regenerated. Rows outside the point range are purged
+    # by HistoryRedetect itself.
     result = Visits::Detection::HistoryRedetect.new(user).call
     visits_created = result.visits_created
     months_failed = result.months_failed
     months_total = result.months_total
-
-    places_deleted = cleanup_orphan_places(user, candidate_place_ids)
 
     user.update!(visits_redetected_at: Time.current)
 
     duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - started) * 1000).to_i
     Rails.logger.info(
       "[Visits::FullHistoryRedetectJob done] user_id=#{user.id} " \
-      "visits_created=#{visits_created} places_deleted=#{places_deleted} " \
+      "visits_created=#{visits_created} " \
       "months_processed=#{months_total - months_failed.size}/#{months_total} duration_ms=#{duration_ms}"
     )
 
@@ -130,19 +128,6 @@ class Visits::FullHistoryRedetectJob < ApplicationJob
 
   def localized_count(key, count)
     I18n.t("jobs.visits.full_history_redetect_job.#{key}", count:)
-  end
-
-  def cleanup_orphan_places(user, candidate_place_ids)
-    return 0 if candidate_place_ids.empty?
-
-    deleted = 0
-    Place.photon.where(id: candidate_place_ids, user_id: user.id).find_each do |place|
-      next if place.visits.exists? || place.place_visits.exists?
-
-      place.destroy
-      deleted += 1
-    end
-    deleted
   end
 
   def notify_failure(user, error)
