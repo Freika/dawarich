@@ -31,6 +31,15 @@ RSpec.describe Points::RawData::Clearer do
       expect(point.reload.raw_data).to eq({})
       expect(other_point.reload.raw_data).to eq({ 'source' => 'other' })
     end
+
+    [ActiveRecord::Deadlocked, ActiveRecord::QueryCanceled, ActiveRecord::LockWaitTimeout].each do |error_class|
+      it "re-raises #{error_class} so the scheduled job can retry" do
+        allow(clearer).to receive(:clear_points_in_batches).and_raise(error_class, 'write contention')
+        allow(ExceptionReporter).to receive(:call)
+
+        expect { clearer.clear_user(user.id) }.to raise_error(error_class)
+      end
+    end
   end
 
   describe '#clear_specific_archive' do

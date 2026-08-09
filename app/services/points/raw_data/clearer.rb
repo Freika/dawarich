@@ -99,6 +99,7 @@ module Points
         Rails.logger.error("✗ Failed to clear archive #{archive.id}: #{e.message}")
 
         Yabeda.dawarich_archive.operations_total.increment({ operation: 'clear', status: 'failure' })
+        raise if Archivable::UPSERT_CONTENTION_ERRORS.any? { |error_class| e.is_a?(error_class) }
       end
 
       def clear_points_in_batches(point_ids, archive_id)
