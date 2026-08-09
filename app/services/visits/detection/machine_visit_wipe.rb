@@ -31,6 +31,10 @@ module Visits
         place_ids = (result.rows.filter_map(&:place_id) + result.suggested_place_ids).uniq
         ActiveJob.perform_all_later(place_ids.map { |id| Places::DeleteIfOrphanJob.new(id) })
         bust_month_caches(user, result.rows.map(&:started_at))
+        Rails.logger.info(
+          "[Visits::Detection::MachineVisitWipe] user_id=#{user.id} " \
+          "wiped=#{result.rows.size} orphan_candidates=#{place_ids.size}"
+        )
       end
 
       def self.bust_month_caches(user, times)
