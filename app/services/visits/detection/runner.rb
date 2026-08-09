@@ -36,7 +36,7 @@ module Visits
       # range — otherwise a narrow realtime window would truncate a stay that
       # started before it.
       def widen_window_to_machine_visits
-        overlapping = user.visits.active.where(status: :suggested)
+        overlapping = user.visits.active.where(status: :suggested, import_id: nil)
                           .where('started_at <= ? AND ended_at >= ?',
                                  Time.zone.at(end_at), Time.zone.at(start_at))
         earliest = overlapping.minimum(:started_at)
@@ -74,25 +74,9 @@ module Visits
         attributor = PlaceAttributor.new(user, policy)
 
         stays.map do |stay|
-          attribution = attributor.call(stay)
-          stay.merge(attribution).merge(confidence_attributes(stay, attribution, points_by_id))
+          attributed = stay.merge(attributor.call(stay))
+          attributed.merge(StayScoring.attributes(attributed, points_by_id, policy))
         end
-      end
-
-      def confidence_attributes(stay, attribution, points_by_id)
-        result = ConfidenceScorer.new(
-          duration_seconds: stay[:duration_s],
-          point_count: stay[:count],
-          accuracies: stay[:point_ids].filter_map { |id| points_by_id[id]&.accuracy },
-          radius_meters: stay[:radius],
-          stay_radius_meters: policy.stay_radius_m,
-          min_points: policy.min_points,
-          place_match: attribution[:evidence] == :none ? nil : attribution[:evidence],
-          bridged_fraction: stay[:duration_s].positive? ? stay[:bridged_s].fdiv(stay[:duration_s]) : 0.0,
-          corroborated: stay[:corroborated]
-        ).call
-
-        { confidence: result[:score], confidence_breakdown: result[:breakdown] }
       end
 
       def batch_ranges
@@ -157,6 +141,7 @@ module Visits
           )
           visit.destroy!
         end
+        VisitRescore.call(previous, policy)
       end
 
       def log_summary(created_count, started_clock)

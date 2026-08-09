@@ -96,6 +96,22 @@ RSpec.describe Visits::Detection::Runner do
     expect((created.first.ended_at - created.first.started_at) / 60).to be_within(10).of(120)
   end
 
+  it 'rescores the stitched visit from the merged evidence' do
+    month_edge = Time.zone.parse('2026-02-01 00:00:00')
+    first_fix = month_edge - 15.minutes
+    25.times do |i|
+      create(:point, user: user, latitude: 51.3402, longitude: 12.3712,
+                     lonlat: 'POINT(12.3712 51.3402)',
+                     timestamp: first_fix.to_i + (i * 180), accuracy: 10)
+    end
+
+    created = run(from: Time.zone.parse('2026-01-01 00:00:00').to_i,
+                  to: Time.zone.parse('2026-02-28 00:00:00').to_i)
+
+    expect(created.size).to eq(1)
+    expect(created.first.confidence_breakdown['dwell'].to_f).to eq(1.0)
+  end
+
   it 'is idempotent across full re-runs' do
     seed_scenario(:home_gap)
 

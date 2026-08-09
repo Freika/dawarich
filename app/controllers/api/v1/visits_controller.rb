@@ -146,6 +146,10 @@ class Api::V1::VisitsController < ApiController
   def update_visit(visit, area: nil)
     attributes = visit_params.to_h.except('latitude', 'longitude')
     user_provided_name = attributes['name'].present?
+    # Editing a suggested visit is an assertion that it happened — mirror the
+    # web controller and confirm it unless the request set a status itself,
+    # so the edit survives re-detection.
+    attributes['status'] = 'confirmed' if visit.suggested? && attributes['status'].blank?
 
     visit.assign_attributes(attributes)
 

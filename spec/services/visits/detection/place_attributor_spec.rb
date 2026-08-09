@@ -73,6 +73,18 @@ RSpec.describe Visits::Detection::PlaceAttributor do
     expect(result[:place].name).to eq('Café Central')
   end
 
+  it 'skips the reverse lookup when point geodata already names the stay' do
+    points = create_list(:point, 3, user: user, geodata: {
+                           'features' => [{ 'properties' => { 'type' => 'cafe', 'name' => 'Café Central' } }]
+                         })
+    allow(Geocoder).to receive(:search)
+
+    result = attribute(stay(point_ids: points.map(&:id)))
+
+    expect(result[:evidence]).to eq(:poi)
+    expect(Geocoder).not_to have_received(:search)
+  end
+
   it 'promotes a reverse-geocoded venue sitting inside the stay to a minted place' do
     geocoder_result = double(data: {
                                'geometry' => { 'coordinates' => [lon0, lat0] },

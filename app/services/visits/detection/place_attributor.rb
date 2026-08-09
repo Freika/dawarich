@@ -25,8 +25,9 @@ module Visits
         place = known_place(stay)
         return { area: nil, place: place, name: place.name, evidence: :place } if place
 
-        lookup = reverse_lookup(stay)
-        poi_name = poi_vote(stay) || venue_name(stay, lookup)
+        poi_name = poi_vote(stay)
+        lookup = poi_name ? nil : reverse_lookup(stay)
+        poi_name ||= venue_name(stay, lookup)
         if poi_name
           minted = PlaceFinder.new(user).find_or_create_place(
             center_lat: stay[:center_lat], center_lon: stay[:center_lon], suggested_name: poi_name

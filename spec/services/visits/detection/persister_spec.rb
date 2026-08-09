@@ -79,6 +79,20 @@ RSpec.describe Visits::Detection::Persister do
     expect(overlap).to be <= 0
   end
 
+  it 'preserves imported visits and trims machine stays around them' do
+    import = create(:import, user: user)
+    imported = visit_row(3600, 7200)
+    imported.update_columns(import_id: import.id)
+
+    created = persist([stay(3000, 9000)])
+
+    expect(Visit.exists?(imported.id)).to be(true)
+    expect(created.size).to eq(1)
+    overlap = [created.first.ended_at.to_i, base_ts + 7200].min -
+              [created.first.started_at.to_i, base_ts + 3600].max
+    expect(overlap).to be <= 0
+  end
+
   it 'never overlaps any anchor when several anchors overlap one stay' do
     anchors = [visit_row(9000, 9500, status: :confirmed),
                visit_row(9200, 9800, status: :confirmed)]
@@ -91,6 +105,25 @@ RSpec.describe Visits::Detection::Persister do
                 [visit.started_at.to_i, anchor.started_at.to_i].max
       expect(overlap).to be <= 0
     end
+  end
+
+  it 'keeps the longer flank when an anchor sits strictly inside a stay' do
+    visit_row(6000, 7200, status: :confirmed)
+
+    created = persist([stay(0, 10_000)])
+
+    expect(created.size).to eq(1)
+    expect(created.first.started_at.to_i).to eq(base_ts)
+    expect(created.first.ended_at.to_i).to eq(base_ts + 6000)
+  end
+
+  it 'rescores a trimmed stay from the trimmed evidence' do
+    visit_row(2400, 9800, status: :confirmed)
+
+    created = persist([stay(0, 10_000, confidence: 100, confidence_breakdown: { 'dwell' => 1.0 })])
+
+    expect(created.size).to eq(1)
+    expect(created.first.confidence).to be < 100
   end
 
   it 'drops a machine stay swallowed by a confirmed anchor' do

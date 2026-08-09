@@ -708,6 +708,24 @@ RSpec.describe Users::SafeSettings do
     end
   end
 
+  describe '#fog_of_war_mode' do
+    it 'defaults to points' do
+      expect(described_class.new.fog_of_war_mode).to eq('points')
+    end
+
+    it 'returns hexagons when set' do
+      expect(described_class.new({ 'fog_of_war_mode' => 'hexagons' }).fog_of_war_mode).to eq('hexagons')
+    end
+
+    it 'falls back to points for invalid values' do
+      expect(described_class.new({ 'fog_of_war_mode' => 'octagons' }).fog_of_war_mode).to eq('points')
+    end
+
+    it 'is included in config' do
+      expect(described_class.new.config[:fog_of_war_mode]).to eq('points')
+    end
+  end
+
   describe '#maps_maplibre_custom_theme' do
     let(:noir_tokens) do
       {

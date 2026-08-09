@@ -37,6 +37,32 @@ RSpec.describe Visits::FullHistoryRedetectJob, type: :job do
       expect(Visit.where(id: declined.id)).to exist
     end
 
+    it 'preserves imported visits' do
+      import = create(:import, user: user)
+      imported = create(:visit, user: user, status: :suggested,
+                                started_at: Time.zone.at(base_ts),
+                                ended_at: Time.zone.at(base_ts + 600),
+                                duration: 600, name: 'from the source file')
+      imported.update_columns(import_id: import.id)
+
+      described_class.new.perform(user.id)
+
+      expect(Visit.where(id: imported.id)).to exist
+    end
+
+    it 'clears suggested visits without enqueueing a place-cleanup job per row' do
+      place = create(:place, user: user)
+      2.times do |i|
+        create(:visit, user: user, status: :suggested,
+                       started_at: Time.zone.at(base_ts + (i * 700)),
+                       ended_at: Time.zone.at(base_ts + (i * 700) + 600),
+                       duration: 600, name: 'old').update_columns(place_id: place.id)
+      end
+
+      expect { described_class.new.perform(user.id) }
+        .not_to have_enqueued_job(Places::DeleteIfOrphanJob)
+    end
+
     it 'preserves tombstoned suggested visits so user-deleted visits are never re-suggested' do
       tombstone = create(:visit, user: user, status: :suggested, deleted_at: 1.day.ago,
                                  started_at: Time.zone.at(base_ts),

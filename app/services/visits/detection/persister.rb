@@ -21,14 +21,15 @@ module Visits
         @policy = policy
       end
 
+      # Anchors are read under the lock so a visit confirmed mid-run can't be
+      # overlapped; trimming is pure arithmetic and cheap enough to hold it.
       def call(stays, points_by_id: {})
-        anchors = anchor_visits
-        prepared = stays.filter_map { |stay| trim_to_anchors(stay, anchors, points_by_id) }
-
         created = []
         replaced = []
         ActiveRecord::Base.transaction do
           acquire_user_lock
+          anchors = anchor_visits
+          prepared = stays.filter_map { |stay| trim_to_anchors(stay, anchors, points_by_id) }
           replaced = delete_machine_rows
           prepared.each do |stay|
             visit = insert_stay(stay)
@@ -58,48 +59,31 @@ module Visits
         scope.where('started_at <= ? AND ended_at >= ?', Time.zone.at(end_at), Time.zone.at(start_at))
       end
 
-      # Machine output = active suggested rows; everything else in the window
-      # (confirmed, declined, soft-deleted) is a user-owned anchor.
+      # Machine output = active suggested rows this detector produced;
+      # everything else in the window (confirmed, declined, soft-deleted, and
+      # importer-written visits, which cannot be re-derived from points) is an
+      # anchor.
       def machine_scope
-        window_overlap(user.visits.active.where(status: :suggested))
+        window_overlap(user.visits.active.where(status: :suggested, import_id: nil))
       end
 
       def anchor_visits
-        window_overlap(user.visits.where('deleted_at IS NOT NULL OR status != 0')).to_a
+        window_overlap(
+          user.visits.where('deleted_at IS NOT NULL OR status != 0 OR import_id IS NOT NULL')
+        ).to_a
       end
 
-      # Bulk replacement of a whole window: per-row destroy callbacks would
-      # enqueue one orphan-cleanup job and one cache delete per visit, so the
-      # side effects run batched after the transaction instead.
       def delete_machine_rows
-        doomed = machine_scope.pluck(:id, :place_id, :started_at, :demo)
-        return doomed if doomed.empty?
-
-        ids = doomed.map(&:first)
-        Point.where(visit_id: ids).update_all(visit_id: nil)
-        PlaceVisit.where(visit_id: ids).delete_all
-        Visit.where(id: ids).delete_all
-        doomed
+        MachineVisitWipe.call(machine_scope)
       end
 
       def flush_replacement_side_effects(replaced)
-        rows = replaced.reject { |_id, _place_id, _started_at, demo| demo }
+        rows = replaced.reject(&:demo)
         return if rows.empty?
 
-        place_ids = rows.filter_map { |_id, place_id, _started_at, _demo| place_id }.uniq
+        place_ids = rows.filter_map(&:place_id).uniq
         ActiveJob.perform_all_later(place_ids.map { |id| Places::DeleteIfOrphanJob.new(id) })
-        bust_month_caches(rows.map { |_id, _place_id, started_at, _demo| started_at })
-      end
-
-      def bust_month_caches(times)
-        tz = user.safe_settings.timezone.presence || 'UTC'
-        Time.use_zone(tz) do
-          times.map { |t| t.in_time_zone.to_date.beginning_of_month }.uniq.each do |month_start|
-            Rails.cache.delete(Timeline::MonthSummary.cache_key_for(user, month_start))
-          end
-        end
-      rescue StandardError => e
-        Rails.logger.warn("[Visits::Detection::Persister] month cache bust failed: #{e.class}: #{e.message}")
+        MachineVisitWipe.bust_month_caches(user, rows.map(&:started_at))
       end
 
       def trim_to_anchors(stay, anchors, points_by_id)
@@ -111,10 +95,32 @@ module Visits
         bounds = shrink_around(stay, overlapping)
         return nil if bounds.nil? || (bounds[1] - bounds[0]) < policy.min_dwell_s
 
-        stay.merge(
-          start_ts: bounds[0], end_ts: bounds[1], duration_s: bounds[1] - bounds[0],
-          point_ids: ids_within(stay[:point_ids], bounds, points_by_id)
+        retimed(stay, bounds, points_by_id)
+      end
+
+      # A trimmed stay is a different stay: its confidence must reflect the
+      # interval that actually persists, not the one detection scored.
+      def retimed(stay, bounds, points_by_id)
+        duration = bounds[1] - bounds[0]
+        point_ids = ids_within(stay[:point_ids], bounds, points_by_id)
+        trimmed = stay.merge(
+          start_ts: bounds[0], end_ts: bounds[1], duration_s: duration,
+          point_ids: point_ids, count: point_ids.size,
+          bridged_s: [stay[:bridged_s].to_i, duration].min,
+          radius: radius_within(stay, point_ids, points_by_id)
         )
+        trimmed.merge(StayScoring.attributes(trimmed, points_by_id, policy))
+      end
+
+      def radius_within(stay, point_ids, points_by_id)
+        points = point_ids.filter_map { |id| points_by_id[id] }
+        return stay[:radius] if points.empty?
+
+        points.map do |point|
+          Geocoder::Calculations.distance_between(
+            [stay[:center_lat], stay[:center_lon]], [point.lat, point.lon], units: :km
+          ) * 1000
+        end.max
       end
 
       def shrink_around(stay, anchors)

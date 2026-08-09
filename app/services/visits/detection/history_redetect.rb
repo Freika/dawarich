@@ -71,53 +71,8 @@ module Visits
           points_by_visit = Point.where(visit_id: batch.map(&:id))
                                  .select(:id, :visit_id, :accuracy, :lonlat)
                                  .group_by(&:visit_id)
-          batch.each { |visit| score_legacy_visit(visit, policy, points_by_visit[visit.id] || []) }
+          batch.each { |visit| VisitRescore.call(visit, policy, points: points_by_visit[visit.id] || []) }
         end
-      end
-
-      def score_legacy_visit(visit, policy, points)
-        center = legacy_center(visit, points)
-        return if center && center.first.blank?
-
-        result = ConfidenceScorer.new(
-          duration_seconds: visit.ended_at.to_i - visit.started_at.to_i,
-          point_count: points.size,
-          accuracies: points.map(&:accuracy),
-          radius_meters: radius_from(points, center),
-          stay_radius_meters: policy.stay_radius_m,
-          min_points: policy.min_points,
-          place_match: legacy_place_match(visit)
-        ).call
-
-        visit.update_columns(confidence: result[:score], confidence_breakdown: result[:breakdown])
-      end
-
-      def legacy_place_match(visit)
-        return :area if visit.area_id
-        return :place if visit.place_id
-
-        nil
-      end
-
-      # Visit#center, minus the per-visit point query: the caller batch-loads
-      # slim point rows, and area/place come preloaded.
-      def legacy_center(visit, points)
-        if visit.area
-          [visit.area.lat, visit.area.lon]
-        elsif visit.place
-          [visit.place.lat, visit.place.lon]
-        elsif points.any?
-          [points.sum(&:lat) / points.size.to_f, points.sum(&:lon) / points.size.to_f]
-        end
-      end
-
-      def radius_from(points, center)
-        return 15 if points.empty?
-
-        max = points.map do |point|
-          Geocoder::Calculations.distance_between(center, [point.lat, point.lon], units: :km) * 1000
-        end.max
-        [max, 15].max
       end
     end
   end

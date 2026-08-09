@@ -76,12 +76,15 @@ class Visits::FullHistoryRedetectJob < ApplicationJob
 
     # .active keeps tombstoned suggestions alive — destroying them here would
     # erase the dedup marker and re-detection would resurrect deleted visits.
-    visit_ids = user.visits.active.where(status: :suggested).pluck(:id)
-    place_ids_direct    = Visit.where(id: visit_ids).where.not(place_id: nil).pluck(:place_id)
-    place_ids_suggested = PlaceVisit.where(visit_id: visit_ids).pluck(:place_id)
-    candidate_place_ids = (place_ids_direct + place_ids_suggested).uniq
+    # Importer-written visits stay: they cannot be re-derived from points.
+    doomed_scope = user.visits.active.where(status: :suggested, import_id: nil)
+    place_ids_suggested = PlaceVisit.where(visit_id: doomed_scope.select(:id)).pluck(:place_id)
 
-    Visit.where(id: visit_ids).find_each(&:destroy)
+    wiped = Visits::Detection::MachineVisitWipe.call(doomed_scope)
+    candidate_place_ids = (wiped.filter_map(&:place_id) + place_ids_suggested).uniq
+    Visits::Detection::MachineVisitWipe.bust_month_caches(
+      user, wiped.reject(&:demo).map(&:started_at)
+    )
 
     result = Visits::Detection::HistoryRedetect.new(user).call
     visits_created = result.visits_created

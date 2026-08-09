@@ -150,7 +150,11 @@ export class VisitPlaceSearch {
           source: "manual",
         },
       })
-      await this.patchVisit({ place_id: created.id, name: created.name })
+      await this.patchVisit({
+        place_id: created.id,
+        name: created.name,
+        status: "confirmed",
+      })
       this.done()
     } catch (_e) {
       this.renderError()
