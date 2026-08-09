@@ -56,5 +56,14 @@
         "end_offset": 6900
       }
     ]
+  },
+  "dark_venue": {
+    "count": 1,
+    "visits": [
+      {
+        "start_offset": 0,
+        "end_offset": 4670
+      }
+    ]
   }
 }

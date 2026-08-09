@@ -16,7 +16,8 @@ VISITS_EVAL_SCENARIOS = {
   reentry: '2026-01-08 10:00',
   cold_start: '2026-01-09 08:00',
   day_boundary: '2026-01-10 23:00',
-  batch_boundary: '2026-01-31 23:00'
+  batch_boundary: '2026-01-31 23:00',
+  dark_venue: '2026-01-11 16:30'
 }.freeze
 
 # Hard gates: what each scenario MUST produce, whatever the tuning.
@@ -27,7 +28,8 @@ VISITS_EVAL_GATES = {
   reentry: { count: 1, min_duration_s: 45 * 60, max_duration_s: 65 * 60 },
   cold_start: { count: 1 },
   day_boundary: { count: 1 },
-  batch_boundary: { count: 1 }
+  batch_boundary: { count: 1 },
+  dark_venue: { count: 1, min_duration_s: 70 * 60 }
 }.freeze
 
 VISITS_EVAL_TOLERANCE_S = 120

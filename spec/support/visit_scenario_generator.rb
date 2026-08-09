@@ -15,7 +15,8 @@ module VisitScenarioGenerator
     reentry: :build_reentry,
     cold_start: :build_cold_start,
     day_boundary: :build_day_boundary,
-    batch_boundary: :build_batch_boundary
+    batch_boundary: :build_batch_boundary,
+    dark_venue: :build_dark_venue
   }.freeze
 
   module_function
@@ -175,6 +176,29 @@ module VisitScenarioGenerator
   end
 
   # -- primitives --------------------------------------------------------
+
+  # One fix on arrival, 78 min of GPS-dark silence inside the venue, four
+  # fixes reacquired on the way out with the departure walk already under
+  # way — the walking segment starts between those fixes, so the stay's end
+  # snaps ahead of most of its own evidence. Ground truth: ONE stay spanning
+  # the silence; the edge fixes ARE the evidence and must keep counting.
+  def build_dark_venue(rng, start_ts)
+    venue = offset(HOME, north_m: 2200, east_m: -600)
+    arrival = stationary(rng, at: venue, from_ts: start_ts, duration_s: 60, dt_s: 60)
+    reacquire_ts = start_ts + (78 * 60)
+    departure = stationary(rng, at: venue, from_ts: reacquire_ts, duration_s: 160, dt_s: 40)
+    walk, = travel(rng, from: venue, heading: 210.0, speed: 1.4,
+                   from_ts: reacquire_ts - 10, duration_s: 8 * 60, dt_s: 20)
+
+    {
+      points: (arrival + departure + walk).sort_by { |p| p[:timestamp] },
+      segments: [segment('walking', walk, 0.9)],
+      expected: {
+        stays: [expected_stay(venue, start_ts, reacquire_ts - 10)],
+        untracked: []
+      }
+    }
+  end
 
   def stationary(rng, at:, from_ts:, duration_s:, dt_s: 60, jitter_m: 10, accuracy: 12.0)
     (duration_s / dt_s).times.map do |i|
