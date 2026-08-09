@@ -39,6 +39,23 @@ RSpec.describe Areas::RelabelVisitsJob do
     expect(visit.reload.area_id).to eq(area.id)
   end
 
+  it 'renames suggested machine visits to the area name, leaving user rows alone' do
+    machine = create(:visit, user: user, place: nil, area: nil, status: :suggested,
+                             detection_version: Visits::Detection::VERSION, name: 'Some Street 5',
+                             started_at: Time.zone.now - 3.days, ended_at: Time.zone.now - 3.days + 1.hour,
+                             duration: 60)
+    create(:point, user: user, visit_id: machine.id, latitude: lat0, longitude: lon0,
+                   lonlat: "POINT(#{lon0} #{lat0})")
+    confirmed = visit_at(lat0, lon0, status: :confirmed, name: 'My spot')
+
+    described_class.perform_now(area.id)
+
+    expect(machine.reload.name).to eq(area.name)
+    expect(machine.area_id).to eq(area.id)
+    expect(confirmed.reload.name).to eq('My spot')
+    expect(confirmed.area_id).to eq(area.id)
+  end
+
   it 'leaves a visit with no place and no points alone' do
     bare = create(:visit, user: user, place: nil, area: nil,
                           started_at: Time.zone.now - 1.day, ended_at: Time.zone.now - 1.day + 1.hour,

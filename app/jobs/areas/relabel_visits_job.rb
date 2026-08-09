@@ -19,7 +19,7 @@ class Areas::RelabelVisitsJob < ApplicationJob
       batch.each do |visit|
         next unless inside?(area, centers[visit.id])
 
-        visit.update_columns(area_id: area.id)
+        visit.update_columns(label_attributes(area, visit))
         labeled += 1
       end
     end
@@ -31,6 +31,14 @@ class Areas::RelabelVisitsJob < ApplicationJob
 
   def candidate_visits(area)
     area.user.visits.active.where(area_id: nil).includes(:place)
+  end
+
+  # Machine visits take the area's name, matching what detection itself does
+  # for area-attributed stays; anything user-owned keeps its name.
+  def label_attributes(area, visit)
+    attrs = { area_id: area.id }
+    attrs[:name] = area.name if visit.status == 'suggested' && visit.detection_version.present? && area.name.present?
+    attrs
   end
 
   # Place coords come preloaded; the point-backed rest resolves through one

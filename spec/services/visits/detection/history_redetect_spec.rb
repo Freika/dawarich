@@ -41,6 +41,9 @@ RSpec.describe Visits::Detection::HistoryRedetect do
     legacy = create(:visit, user: user, status: :confirmed, confidence: nil,
                     started_at: Time.zone.at(base_ts + 10.days.to_i),
                     ended_at: Time.zone.at(base_ts + 10.days.to_i + 3600), duration: 60)
+    create(:point, user: user, latitude: 51.3402, longitude: 12.3712,
+                   lonlat: 'POINT(12.3712 51.3402)', accuracy: 10,
+                   timestamp: base_ts + 10.days.to_i + 600, visit_id: legacy.id)
 
     described_class.new(user).call
 
@@ -48,6 +51,28 @@ RSpec.describe Visits::Detection::HistoryRedetect do
     expect(legacy.confidence).to be_present
     expect(legacy.status).to eq('confirmed')
     expect(legacy.detection_version).to be_nil
+  end
+
+  it 'leaves a point-less visit scoreless so it renders at full strength' do
+    seed_cluster
+    bare = create(:visit, user: user, status: :confirmed, confidence: nil,
+                  started_at: Time.zone.at(base_ts + 12.days.to_i),
+                  ended_at: Time.zone.at(base_ts + 12.days.to_i + 3600), duration: 60)
+
+    described_class.new(user).call
+
+    expect(bare.reload.confidence).to be_nil
+  end
+
+  it 'wipes stale machine visits outside the current point range' do
+    seed_cluster
+    stale = create(:visit, user: user, status: :suggested,
+                   started_at: Time.zone.at(base_ts - 5.years.to_i),
+                   ended_at: Time.zone.at(base_ts - 5.years.to_i + 3600), duration: 60)
+
+    described_class.new(user).call
+
+    expect(Visit.exists?(stale.id)).to be(false)
   end
 
   it 'records failed months and keeps going' do

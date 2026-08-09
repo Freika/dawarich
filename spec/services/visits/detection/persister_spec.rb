@@ -132,6 +132,25 @@ RSpec.describe Visits::Detection::Persister do
     expect(persist([stay(600, 3600)])).to be_empty
   end
 
+  it 'keeps identical machine rows in place on a no-change re-run' do
+    stays = [stay(0, 3600), stay(7200, 10_800, name: 'Elsewhere')]
+    persist(stays)
+
+    expect { persist(stays) }
+      .not_to(change { user.visits.active.order(:started_at).pluck(:id) })
+  end
+
+  it 'treats a declined visit as an anchor' do
+    declined = visit_row(3600, 7200, status: :declined)
+
+    created = persist([stay(3000, 9000)])
+
+    expect(Visit.exists?(declined.id)).to be(true)
+    overlap = [created.first.ended_at.to_i, base_ts + 7200].min -
+              [created.first.started_at.to_i, base_ts + 3600].max
+    expect(overlap).to be <= 0
+  end
+
   it 'lets tombstones keep their interval dead (I1)' do
     visit_row(0, 3600, deleted_at: Time.zone.at(base_ts))
 

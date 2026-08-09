@@ -18,9 +18,10 @@ module Visits
 
       def call
         min_ts = user.points.minimum(:timestamp)
+        max_ts = user.points.maximum(:timestamp)
+        purge_out_of_range_machine_visits(min_ts, max_ts)
         return Result.new(visits_created: 0, months_total: 0, months_failed: []) if min_ts.nil?
 
-        max_ts = user.points.maximum(:timestamp)
         months = monthly_ranges(min_ts, max_ts)
         visits_created = 0
         months_failed = []
@@ -44,6 +45,20 @@ module Visits
       private
 
       attr_reader :user
+
+      # Machine rows whose backing points are gone (deleted imports, pruned
+      # history) sit outside every regeneration window and would otherwise
+      # survive a "successful" redetect.
+      def purge_out_of_range_machine_visits(min_ts, max_ts)
+        scope = user.visits.active.where(status: :suggested, import_id: nil)
+        if min_ts
+          scope = scope.where.not('started_at <= ? AND ended_at >= ?',
+                                  Time.zone.at(max_ts), Time.zone.at(min_ts))
+        end
+
+        wiped = MachineVisitWipe.call(scope)
+        MachineVisitWipe.bust_month_caches(user, wiped.reject(&:demo).map(&:started_at))
+      end
 
       def monthly_ranges(min_ts, max_ts)
         result = []

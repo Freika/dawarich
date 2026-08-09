@@ -8,6 +8,10 @@ module Visits
     class VisitRescore
       def self.call(visit, policy, points: nil)
         points ||= Point.where(visit_id: visit.id).select(:id, :accuracy, :lonlat).to_a
+        # No point evidence means any score would be fabricated — an unscored
+        # visit renders at full strength instead of a false low band.
+        return if points.empty?
+
         center = center_for(visit, points)
         return if center && center.first.blank?
 

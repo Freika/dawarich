@@ -78,6 +78,14 @@ RSpec.describe Visits::Suggest do
       expect { subject }.to change(Notification, :count).by(1)
     end
 
+    it 'does not notify again when a re-run merely regenerates the same stays' do
+      described_class.new(user, start_at:, end_at:).call
+      create(:point, :with_known_location, user:, timestamp: start_at + 191.minutes)
+
+      expect { described_class.new(user, start_at:, end_at:).call }
+        .not_to change(Notification, :count)
+    end
+
     context 'when reverse geocoding is enabled' do
       let(:reverse_geocoding_start_at) { Time.zone.local(2020, 6, 1, 0, 0, 0) }
       let(:reverse_geocoding_end_at) { Time.zone.local(2020, 6, 1, 5, 0, 0) }

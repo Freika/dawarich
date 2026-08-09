@@ -30,6 +30,8 @@ module Visits
           acquire_user_lock
           anchors = anchor_visits
           prepared = stays.filter_map { |stay| trim_to_anchors(stay, anchors, points_by_id) }
+          next if unchanged?(prepared)
+
           replaced = delete_machine_rows
           prepared.each do |stay|
             visit = insert_stay(stay)
@@ -71,6 +73,22 @@ module Visits
         window_overlap(
           user.visits.where('deleted_at IS NOT NULL OR status != 0 OR import_id IS NOT NULL')
         ).to_a
+      end
+
+      # A run that would recreate exactly what already stands is a no-op:
+      # leaving the rows in place keeps ids and point claims stable and keeps
+      # the debounced realtime path from rewriting the window every few
+      # minutes.
+      def unchanged?(prepared)
+        existing = machine_scope.order(:started_at)
+                                .pluck(:started_at, :ended_at, :name, :place_id, :area_id, :confidence)
+                                .map { |row| [row[0].to_i, row[1].to_i, *row[2..]] }
+        wanted = prepared.sort_by { |stay| stay[:start_ts] }.map do |stay|
+          [stay[:start_ts], stay[:end_ts], stay[:name].presence || DEFAULT_NAME,
+           stay[:place]&.id, stay[:area]&.id, stay[:confidence]]
+        end
+
+        existing == wanted
       end
 
       def delete_machine_rows
