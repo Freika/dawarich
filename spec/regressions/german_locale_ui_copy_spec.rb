@@ -17,7 +17,7 @@ RSpec.describe 'German interface copy', type: :helper do
   end
 
   it 'describes map controls by their user-visible effect' do
-    expect(I18n.t('map.maplibre.residency_modal.distinct_days_with_at_least_one_tracked_point_per_country'))
+    expect(I18n.t('shared.days_per_country.distinct_days_with_at_least_one_tracked_point_per_country'))
       .to eq('Unterschiedliche Kalendertage mit mindestens einem aufgezeichneten Punkt pro Land. Keine Steuerberatung.')
     expect(I18n.t('map.maplibre.settings_panel.untagged')).to eq('🏷️ Ohne Tag')
     expect(I18n.t('map.maplibre.settings_panel.clear_radius_around_visited_points'))

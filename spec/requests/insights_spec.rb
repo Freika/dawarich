@@ -58,6 +58,18 @@ RSpec.describe '/insights', type: :request do
         expect(response.status).to eq(200)
       end
 
+      it 'offers the Days per Country report' do
+        get insights_url
+
+        expect(response.body).to include(I18n.t('shared.days_per_country.days_country'))
+      end
+
+      it 'renders the Days per Country modal so the entry point has something to open' do
+        get insights_url
+
+        expect(response.body).to include('data-controller="residency"')
+      end
+
       context 'when there are no stats' do
         it 'renders the page without errors' do
           get insights_url

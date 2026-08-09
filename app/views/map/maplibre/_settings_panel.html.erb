@@ -1198,15 +1198,6 @@
               <span class="text-xs"><%= t('.replay') %></span>
             </button>
 
-            <% if current_user.full_access? %>
-              <button type="button"
-                      class="btn btn-sm btn-outline flex flex-col items-center gap-1 h-auto py-3"
-                      onclick="document.dispatchEvent(new CustomEvent('residency:open'))">
-                <%= icon 'calendar-range' %>
-                <span class="text-xs"><%= t('.days_country') %></span>
-              </button>
-            <% end %>
-
             <% if current_user.immich_integration_configured? && current_user.full_access? %>
               <button type="button"
                       class="btn btn-sm btn-outline flex flex-col items-center gap-1 h-auto py-3"

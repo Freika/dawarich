@@ -8,14 +8,11 @@ export default class extends Controller {
   }
 
   connect() {
-    this._boundOpen = () => this.open()
     this._boundLoaded = () => this._hideLoading()
-    document.addEventListener("residency:open", this._boundOpen)
     this.frameTarget.addEventListener("turbo:frame-load", this._boundLoaded)
   }
 
   disconnect() {
-    document.removeEventListener("residency:open", this._boundOpen)
     this.frameTarget.removeEventListener("turbo:frame-load", this._boundLoaded)
   }
 

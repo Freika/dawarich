@@ -1,5 +1,12 @@
 <div data-controller="residency"
      data-residency-url-value="<%= map_residency_path %>">
+  <button type="button"
+          class="btn btn-sm btn-outline"
+          data-action="click->residency#open">
+    <%= icon 'calendar-range', class: 'w-4 h-4' %>
+    <%= t('.days_country') %>
+  </button>
+
   <div class="modal z-[10000]" data-residency-target="modal">
     <div class="modal-box max-w-4xl w-11/12 h-[36rem] flex flex-col">
       <!-- Header -->

@@ -866,9 +866,6 @@ de:
         settings: Einstellungen
         settings_s: Einstellungen (S)
         links: Links
-      residency_modal:
-        days_per_country: Tage pro Land
-        distinct_days_with_at_least_one_tracked_point_per_country: Unterschiedliche Kalendertage mit mindestens einem aufgezeichneten Punkt pro Land. Keine Steuerberatung.
       settings_panel:
         close_panel: Fenster schließen
         layers: Ebenen
@@ -1037,7 +1034,6 @@ de:
         select_area: Bereich auswählen
         create_area: Bereich erstellen
         replay: Wiedergabe
-        days_country: Tage / Land
         enrich_photos: Fotos bereichern
         close: Schließen
         match_immich_photos_without_gps_to_your_location_history: Immich-Fotos ohne GPS mit deinem Standortverlauf abgleichen.
@@ -1606,6 +1602,10 @@ de:
       new:
         share_a_date_range: Ein Datum bereich teilen
   shared:
+    days_per_country:
+      days_country: Tage / Land
+      days_per_country: Tage pro Land
+      distinct_days_with_at_least_one_tracked_point_per_country: Unterschiedliche Kalendertage mit mindestens einem aufgezeichneten Punkt pro Land. Keine Steuerberatung.
     flash_message:
       close: Schließen
     footer:

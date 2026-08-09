@@ -863,9 +863,6 @@ en:
         settings: Settings
         settings_s: Settings (S)
         links: Links
-      residency_modal:
-        days_per_country: Days per Country
-        distinct_days_with_at_least_one_tracked_point_per_country: Distinct days with at least one tracked point per country. Not tax advice.
       settings_panel:
         close_panel: Close panel
         layers: Layers
@@ -1034,7 +1031,6 @@ en:
         select_area: Select Area
         create_area: Create Area
         replay: Replay
-        days_country: Days / Country
         enrich_photos: Enrich Photos
         close: Close
         match_immich_photos_without_gps_to_your_location_history: Match Immich photos without GPS to your location history.
@@ -1603,6 +1599,10 @@ en:
       new:
         share_a_date_range: Share a date range
   shared:
+    days_per_country:
+      days_country: Days / Country
+      days_per_country: Days per Country
+      distinct_days_with_at_least_one_tracked_point_per_country: Distinct days with at least one tracked point per country. Not tax advice.
     flash_message:
       close: Close
     footer:

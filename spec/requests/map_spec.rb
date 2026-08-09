@@ -19,6 +19,12 @@ RSpec.describe 'Map', type: :request do
 
         expect(response).to have_http_status(:success)
       end
+
+      it 'no longer offers Days per Country, which now lives on Insights' do
+        get map_path
+
+        expect(response.body).not_to include('residency:open')
+      end
     end
 
     context 'when user not signed in' do
