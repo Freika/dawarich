@@ -17,6 +17,7 @@ class GoogleMaps::PhoneTakeoutImporter
   end
 
   BATCH_SIZE = 1000
+  JSON_WHITESPACE_BYTES = [9, 10, 13, 32].freeze
   MAX_TIE_OFFSET = 59
 
   def call
@@ -35,6 +36,8 @@ class GoogleMaps::PhoneTakeoutImporter
   private
 
   def validate_json(path)
+    raise InvalidJsonError, 'Google Timeline file contains invalid JSON' unless json_content_present?(path)
+
     parser = Oj::Parser.new(:validate)
     File.open(path, 'rb') { |io| parser.load(io) }
   rescue EncodingError, JSON::ParserError
@@ -45,6 +48,16 @@ class GoogleMaps::PhoneTakeoutImporter
     File.open(path, 'rb') { |io| Oj.saj_parse(nil, io) }
   rescue Oj::ParseError
     raise InvalidJsonError, 'Google Timeline file contains invalid JSON'
+  end
+
+  def json_content_present?(path)
+    File.open(path, 'rb') do |io|
+      while (chunk = io.read(64.kilobytes))
+        return true if chunk.each_byte.any? { |byte| JSON_WHITESPACE_BYTES.exclude?(byte) }
+      end
+    end
+
+    false
   end
 
   def initialize_stream

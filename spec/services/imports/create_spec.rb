@@ -222,6 +222,23 @@ RSpec.describe Imports::Create do
       end
     end
 
+    context 'when a Google Timeline file contains only whitespace' do
+      let(:import) { create(:import, user:, source: 'google_phone_takeout', status: 'created') }
+
+      before do
+        import.file.attach(io: StringIO.new(" \n\t"), filename: 'timeline.json', content_type: 'application/json')
+        allow(ExceptionReporter).to receive(:call)
+      end
+
+      it 'fails the import without reporting an application exception' do
+        service.call
+
+        expect(import.reload).to be_failed
+        expect(import.error_message).to eq('Google Timeline file contains invalid JSON')
+        expect(ExceptionReporter).not_to have_received(:call)
+      end
+    end
+
     context 'when a single archive entry exceeds the extraction limit' do
       let(:import) { create(:import, user:, source: nil, status: 'created') }
 
