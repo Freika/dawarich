@@ -83,6 +83,7 @@ module Points
       # the same batch are independent and still attempted before stopping.
       def archive_month_groups(user_id, rows)
         batch_succeeded = true
+        retryable_error = nil
 
         rows.group_by { |_id, timestamp| utc_month(timestamp) }.each do |(year, month), group|
           point_ids = group.map(&:first)
@@ -99,8 +100,11 @@ module Points
             )
             ExceptionReporter.call(e, "Archive chunk failed for user #{user_id}")
             batch_succeeded = false
+            retryable_error ||= e if Archivable::UPSERT_CONTENTION_ERRORS.any? { |error_class| e.is_a?(error_class) }
           end
         end
+
+        raise retryable_error if retryable_error
 
         batch_succeeded
       end

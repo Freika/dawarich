@@ -255,6 +255,14 @@ RSpec.describe Points::RawData::Archiver do
         expect(old_points.each(&:reload).map(&:raw_data_archived)).to all(be false)
         expect(newer_points.each(&:reload).map(&:raw_data_archived)).to all(be true)
       end
+
+      it 're-raises exhausted flag contention after attempting sibling months' do
+        allow(archiver).to receive(:flag_points_batched)
+          .twice
+          .and_raise(ActiveRecord::Deadlocked, 'write contention')
+
+        expect { archiver.archive_user(user.id) }.to raise_error(ActiveRecord::Deadlocked)
+      end
     end
 
     it 'stores min and max point IDs in metadata' do
