@@ -48,6 +48,16 @@
       <% end %>
     </div>
 
+    <%# Days per country follows the page's year selector, so it has nothing to
+        show for All Time — same reasoning as the heatmap and streak cards. %>
+    <% if current_user.full_access? && !@all_time %>
+      <%= turbo_frame_tag "residency-content",
+                          src: map_residency_path(year: @selected_year),
+                          loading: :lazy do %>
+        <%= render 'days_per_country_skeleton' %>
+      <% end %>
+    <% end %>
+
     <!-- Lazy-loaded below-the-fold details -->
     <%= turbo_frame_tag "insights_details", src: details_insights_path(year: @selected_year, month: params[:month]), loading: :lazy do %>
       <%= render 'details_skeleton' %>

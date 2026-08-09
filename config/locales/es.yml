@@ -866,9 +866,6 @@ es:
         settings: Ajustes
         settings_s: Configuración (S)
         links: Enlaces
-      residency_modal:
-        days_per_country: Días por país
-        distinct_days_with_at_least_one_tracked_point_per_country: Días distintos con al menos un punto rastreado por país. No es asesoría fiscal.
       settings_panel:
         close_panel: Cerrar panel
         layers: Capas
@@ -1037,7 +1034,6 @@ es:
         select_area: Seleccionar área
         create_area: Crear área
         replay: Reproducir
-        days_country: Días / País
         enrich_photos: Mejorar Fotos
         close: Cerrar
         match_immich_photos_without_gps_to_your_location_history: Coincidir fotos de Immich sin GPS con tu historia de ubicaciones.
@@ -1137,6 +1133,9 @@ es:
         map: Mapa
     residency:
       show:
+        countries: Países
+        days_per_country: Días por país
+        distinct_days_with_at_least_one_tracked_point_per_country: Días distintos con al menos un punto rastreado por país. No es asesoría fiscal.
         days: días
         mon: Lun
         wed: Mié

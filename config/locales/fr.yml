@@ -1519,10 +1519,6 @@ fr:
         settings: Paramètres
         settings_s: Paramètres (S)
         links: Liens
-      residency_modal:
-        days_per_country: Jours par pays
-        distinct_days_with_at_least_one_tracked_point_per_country: Journées distinctes
-          avec au moins un point suivi par pays. Pas de conseils fiscaux.
       settings_panel:
         close_panel: Fermer le panneau
         layers: Couches
@@ -1736,7 +1732,6 @@ fr:
         select_area: Sélectionner une zone
         create_area: Créer Zone
         replay: Rejouer
-        days_country: Jours / Pays
         enrich_photos: Enrichir les photos
         close: Fermer
         match_immich_photos_without_gps_to_your_location_history: Correspondance des
@@ -1852,6 +1847,9 @@ fr:
         map: Carte
     residency:
       show:
+        countries: Pays
+        days_per_country: Jours par pays
+        distinct_days_with_at_least_one_tracked_point_per_country: Journées distinctes avec au moins un point suivi par pays. Pas de conseils fiscaux.
         days: jours
         mon: Lun
         wed: Mer
