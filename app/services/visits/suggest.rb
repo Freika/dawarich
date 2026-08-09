@@ -46,7 +46,7 @@ class Visits::Suggest
   # ongoing stay "creates" visits every few minutes. Only a visit that does
   # not overlap any machine row that stood before the run is news.
   def existing_intervals
-    user.visits.active.where(status: :suggested, import_id: nil)
+    user.visits.machine_detected
         .where('started_at <= ? AND ended_at >= ?', Time.zone.at(end_at), Time.zone.at(start_at))
         .pluck(:started_at, :ended_at)
         .map { |started_at, ended_at| [started_at.to_i, ended_at.to_i] }

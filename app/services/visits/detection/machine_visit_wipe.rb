@@ -8,16 +8,18 @@ module Visits
     # the returned rows.
     class MachineVisitWipe
       Row = Struct.new(:id, :place_id, :started_at, :demo)
+      Result = Struct.new(:rows, :suggested_place_ids)
 
       def self.call(scope)
-        doomed = scope.pluck(:id, :place_id, :started_at, :demo).map { |values| Row.new(*values) }
-        return doomed if doomed.empty?
+        rows = scope.pluck(:id, :place_id, :started_at, :demo).map { |values| Row.new(*values) }
+        return Result.new(rows, []) if rows.empty?
 
-        ids = doomed.map(&:id)
+        ids = rows.map(&:id)
+        suggested_place_ids = PlaceVisit.where(visit_id: ids).distinct.pluck(:place_id)
         Point.where(visit_id: ids).update_all(visit_id: nil)
         PlaceVisit.where(visit_id: ids).delete_all
         Visit.where(id: ids).delete_all
-        doomed
+        Result.new(rows, suggested_place_ids)
       end
 
       def self.bust_month_caches(user, times)

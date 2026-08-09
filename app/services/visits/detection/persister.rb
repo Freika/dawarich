@@ -25,7 +25,7 @@ module Visits
       # overlapped; trimming is pure arithmetic and cheap enough to hold it.
       def call(stays, points_by_id: {})
         created = []
-        replaced = []
+        replaced = MachineVisitWipe::Result.new([], [])
         ActiveRecord::Base.transaction do
           acquire_user_lock
           anchors = anchor_visits
@@ -61,24 +61,21 @@ module Visits
         scope.where('started_at <= ? AND ended_at >= ?', Time.zone.at(end_at), Time.zone.at(start_at))
       end
 
-      # Machine output = active suggested rows this detector produced;
-      # everything else in the window (confirmed, declined, soft-deleted, and
-      # importer-written visits, which cannot be re-derived from points) is an
-      # anchor.
       def machine_scope
-        window_overlap(user.visits.active.where(status: :suggested, import_id: nil))
+        window_overlap(user.visits.machine_detected)
       end
 
       def anchor_visits
         window_overlap(
-          user.visits.where('deleted_at IS NOT NULL OR status != 0 OR import_id IS NOT NULL')
+          user.visits.where.not(id: user.visits.machine_detected.select(:id))
         ).to_a
       end
 
       # A run that would recreate exactly what already stands is a no-op:
       # leaving the rows in place keeps ids and point claims stable and keeps
       # the debounced realtime path from rewriting the window every few
-      # minutes.
+      # minutes. The claimed-point count catches late-arriving points whose
+      # presence doesn't move the row tuple.
       def unchanged?(prepared)
         existing = machine_scope.order(:started_at)
                                 .pluck(:started_at, :ended_at, :name, :place_id, :area_id, :confidence)
@@ -87,8 +84,10 @@ module Visits
           [stay[:start_ts], stay[:end_ts], stay[:name].presence || DEFAULT_NAME,
            stay[:place]&.id, stay[:area]&.id, stay[:confidence]]
         end
+        return false unless existing == wanted
 
-        existing == wanted
+        Point.where(visit_id: machine_scope.select(:id)).count ==
+          prepared.sum { |stay| stay[:point_ids].size }
       end
 
       def delete_machine_rows
@@ -96,12 +95,11 @@ module Visits
       end
 
       def flush_replacement_side_effects(replaced)
-        rows = replaced.reject(&:demo)
-        return if rows.empty?
+        return if replaced.rows.empty?
 
-        place_ids = rows.filter_map(&:place_id).uniq
+        place_ids = (replaced.rows.filter_map(&:place_id) + replaced.suggested_place_ids).uniq
         ActiveJob.perform_all_later(place_ids.map { |id| Places::DeleteIfOrphanJob.new(id) })
-        MachineVisitWipe.bust_month_caches(user, rows.map(&:started_at))
+        MachineVisitWipe.bust_month_caches(user, replaced.rows.map(&:started_at))
       end
 
       def trim_to_anchors(stay, anchors, points_by_id)

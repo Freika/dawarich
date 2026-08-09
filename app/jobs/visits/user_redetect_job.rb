@@ -14,10 +14,13 @@ class Visits::UserRedetectJob < ApplicationJob
   def perform(user_id, lock_attempts = 0)
     user = User.find_by(id: user_id)
     return unless user
+    return unless user.safe_settings.visits_suggestions_enabled?
 
     Tracks::PerUserLock.with_user_lock(user_id) do
-      Visits::Detection::HistoryRedetect.new(user).call
-      user.update!(visits_redetected_at: Time.current)
+      result = Visits::Detection::HistoryRedetect.new(user).call
+      # A partial run must not unlock post-redetect behavior like the tighter
+      # timeline gap bar — the retry or the next rollout pass finishes it.
+      user.update!(visits_redetected_at: Time.current) if result.months_failed.empty?
     end
   rescue Tracks::PerUserLock::AcquisitionTimeout => e
     Rails.logger.warn(

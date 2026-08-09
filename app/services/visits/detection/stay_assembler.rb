@@ -67,22 +67,33 @@ module Visits
           fragment[:count] >= policy.min_points
       end
 
+      # Boundary snapping can move a fragment's interval off some of its own
+      # fixes; those points are movement, not dwell, and must not shape the
+      # center or get claimed.
       def finalize(fragment, points_by_id)
-        points = fragment[:point_ids].filter_map { |id| points_by_id[id] }
+        point_ids = ids_within_interval(fragment, points_by_id)
+        points = point_ids.filter_map { |id| points_by_id[id] }
         center_lat, center_lon = weighted_center(points, fragment)
 
         {
-          point_ids: fragment[:point_ids],
+          point_ids: point_ids,
           start_ts: fragment[:start_ts],
           end_ts: fragment[:end_ts],
           duration_s: fragment[:end_ts] - fragment[:start_ts],
           center_lat: center_lat,
           center_lon: center_lon,
           radius: radius_m(points, center_lat, center_lon),
-          count: fragment[:count],
+          count: point_ids.size,
           bridged_s: fragment.fetch(:bridged_s, 0),
           corroborated: fragment.fetch(:corroborated, false)
         }
+      end
+
+      def ids_within_interval(fragment, points_by_id)
+        Array(fragment[:point_ids]).select do |id|
+          point = points_by_id[id]
+          point.nil? || point.timestamp.between?(fragment[:start_ts], fragment[:end_ts])
+        end
       end
 
       def weighted_center(points, fragment)

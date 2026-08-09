@@ -132,6 +132,46 @@ RSpec.describe Visits::Detection::Persister do
     expect(persist([stay(600, 3600)])).to be_empty
   end
 
+  it 'leaves demo machine visits alone' do
+    demo = visit_row(3600, 7200)
+    demo.update_columns(demo: true)
+
+    persist([stay(7200, 10_800)])
+
+    expect(Visit.exists?(demo.id)).to be(true)
+  end
+
+  it 'anchors a visit the user annotated and keeps the note attached' do
+    noted = visit_row(3600, 7200)
+    note = Note.create!(user: user, body: 'great coffee',
+                        noted_at: Time.zone.at(base_ts + 3700), attachable: noted)
+
+    persist([stay(3000, 9000)])
+
+    expect(Visit.exists?(noted.id)).to be(true)
+    expect(note.reload.attachable_id).to eq(noted.id)
+  end
+
+  it 'enqueues cleanup for places referenced only through suggested-place joins' do
+    place = create(:place, user: user)
+    stale = visit_row(0, 900)
+    PlaceVisit.create!(visit: stale, place: place)
+
+    expect { persist([stay(7200, 10_800)]) }
+      .to have_enqueued_job(Places::DeleteIfOrphanJob).with(place.id).once
+  end
+
+  it 'reclaims late points even when the regenerated rows look identical' do
+    points = create_list(:point, 3, user: user)
+    ids = points.map(&:id)
+    persist([stay(0, 3600, point_ids: ids, confidence: 80)])
+
+    late = create(:point, user: user)
+    persist([stay(0, 3600, point_ids: ids + [late.id], confidence: 80)])
+
+    expect(late.reload.visit_id).to be_present
+  end
+
   it 'keeps identical machine rows in place on a no-change re-run' do
     stays = [stay(0, 3600), stay(7200, 10_800, name: 'Elsewhere')]
     persist(stays)

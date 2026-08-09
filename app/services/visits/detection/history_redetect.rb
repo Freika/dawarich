@@ -50,14 +50,14 @@ module Visits
       # history) sit outside every regeneration window and would otherwise
       # survive a "successful" redetect.
       def purge_out_of_range_machine_visits(min_ts, max_ts)
-        scope = user.visits.active.where(status: :suggested, import_id: nil)
+        scope = user.visits.machine_detected
         if min_ts
           scope = scope.where.not('started_at <= ? AND ended_at >= ?',
                                   Time.zone.at(max_ts), Time.zone.at(min_ts))
         end
 
         wiped = MachineVisitWipe.call(scope)
-        MachineVisitWipe.bust_month_caches(user, wiped.reject(&:demo).map(&:started_at))
+        MachineVisitWipe.bust_month_caches(user, wiped.rows.map(&:started_at))
       end
 
       def monthly_ranges(min_ts, max_ts)

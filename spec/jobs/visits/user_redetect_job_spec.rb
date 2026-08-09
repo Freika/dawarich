@@ -26,6 +26,27 @@ RSpec.describe Visits::UserRedetectJob do
     expect { described_class.perform_now(-1) }.not_to raise_error
   end
 
+  it 'skips users who disabled visit suggestions' do
+    user.update!(settings: user.settings.merge('visits_suggestions_enabled' => false))
+    create(:point, user: user, latitude: 51.3402, longitude: 12.3712,
+                   lonlat: 'POINT(12.3712 51.3402)', timestamp: base_ts, accuracy: 10)
+
+    described_class.perform_now(user.id)
+
+    expect(user.visits.count).to eq(0)
+    expect(user.reload.visits_redetected_at).to be_nil
+  end
+
+  it 'does not stamp visits_redetected_at when months fail' do
+    create(:point, user: user, latitude: 51.3402, longitude: 12.3712,
+                   lonlat: 'POINT(12.3712 51.3402)', timestamp: base_ts, accuracy: 10)
+    allow(Visits::SmartDetect).to receive(:new).and_raise(ActiveRecord::StatementInvalid, 'boom')
+
+    described_class.perform_now(user.id)
+
+    expect(user.reload.visits_redetected_at).to be_nil
+  end
+
   it 'does not blow up the fleet when the per-user lock is busy' do
     allow(Tracks::PerUserLock).to receive(:with_user_lock)
       .and_raise(Tracks::PerUserLock::AcquisitionTimeout, 'busy')

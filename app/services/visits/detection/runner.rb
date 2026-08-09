@@ -36,7 +36,7 @@ module Visits
       # range — otherwise a narrow realtime window would truncate a stay that
       # started before it.
       def widen_window_to_machine_visits
-        overlapping = user.visits.active.where(status: :suggested, import_id: nil)
+        overlapping = user.visits.machine_detected
                           .where('started_at <= ? AND ended_at >= ?',
                                  Time.zone.at(end_at), Time.zone.at(start_at))
         earliest = overlapping.minimum(:started_at)
