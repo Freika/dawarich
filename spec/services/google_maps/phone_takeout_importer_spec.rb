@@ -118,12 +118,13 @@ RSpec.describe GoogleMaps::PhoneTakeoutImporter do
       it 'persists altitude, accuracy and velocity nested under rawSignals position' do
         parser
 
-        raw_signal_point = Point.find_by(timestamp: DateTime.parse('2024-06-15T09:05:00.000Z').utc.to_i)
+raw_signal_point = Point.find_by(timestamp: DateTime.parse('2024-06-15T09:05:00.000Z').utc.to_i)
+expect(raw_signal_point).to be_present
 
-        expect(raw_signal_point.altitude).to eq(35)
-        expect(raw_signal_point.altitude_decimal).to eq(35.0)
-        expect(raw_signal_point.accuracy).to eq(15)
-        expect(raw_signal_point.velocity).to eq('0.0')
+expect(raw_signal_point.altitude).to eq(35.0)
+expect(raw_signal_point.altitude_decimal).to eq(35.0)
+expect(raw_signal_point.accuracy).to eq(15)
+expect(raw_signal_point.velocity).to eq('0.0')
       end
 
       it 'does not persist raw_data for imported points' do
