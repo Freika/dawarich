@@ -87,6 +87,18 @@ RSpec.describe Points::RawData::Clearer do
       expect(result[:cleared]).to eq(0)
     end
 
+    it 'does not clear an archive invalidated after selection' do
+      archive
+      allow(Point).to receive(:transaction).and_wrap_original do |original, *args, &block|
+        archive.update_column(:verified_at, nil)
+        original.call(*args, &block)
+      end
+
+      clearer.clear_specific_archive(archive.id)
+
+      expect(Point.where(user: user).pluck(:raw_data)).to all(eq({ 'lon' => 13.4, 'lat' => 52.5 }))
+    end
+
     it 'is idempotent (safe to run multiple times)' do
       clearer.clear_specific_archive(archive.id)
       first_result = Point.where(user: user).pluck(:raw_data)

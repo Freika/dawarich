@@ -107,6 +107,9 @@ module Points
 
         point_ids.each_slice(BATCH_SIZE) do |batch|
           Point.transaction do
+            archive = Points::RawDataArchive.lock.find_by(id: archive_id)
+            next if archive&.verified_at.blank?
+
             linked_ids = Point.raw_data_lock_order
                               .where(id: batch, raw_data_archived: true, raw_data_archive_id: archive_id)
                               .lock
