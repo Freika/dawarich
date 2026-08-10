@@ -32,6 +32,18 @@ RSpec.describe Points::RawData::Clearer do
       expect(other_point.reload.raw_data).to eq({ 'source' => 'other' })
     end
 
+    it 'does not clear an archive reverified within the cooling period after selection' do
+      allow(Point).to receive(:transaction).and_wrap_original do |original, *args, &block|
+        archive.update_column(:verified_at, Time.current)
+        original.call(*args, &block)
+      end
+
+      result = clearer.clear_user(user.id)
+
+      expect(result[:cleared]).to eq(0)
+      expect(point.reload.raw_data).to eq({ 'source' => 'selected' })
+    end
+
     [ActiveRecord::Deadlocked, ActiveRecord::QueryCanceled, ActiveRecord::LockWaitTimeout].each do |error_class|
       it "re-raises #{error_class} so the scheduled job can retry" do
         allow(clearer).to receive(:clear_points_in_batches).and_raise(error_class, 'write contention')

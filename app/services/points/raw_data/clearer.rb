@@ -108,7 +108,7 @@ module Points
         point_ids.each_slice(BATCH_SIZE) do |batch|
           Point.transaction do
             archive = Points::RawDataArchive.lock.find_by(id: archive_id)
-            next if archive&.verified_at.blank?
+            next unless archive_clearable?(archive)
 
             linked_ids = Point.raw_data_lock_order
                               .where(id: batch, raw_data_archived: true, raw_data_archive_id: archive_id)
@@ -122,6 +122,13 @@ module Points
         end
 
         total_cleared
+      end
+
+      def archive_clearable?(archive)
+        return false if archive&.verified_at.blank?
+        return true unless @cooling_period
+
+        archive.verified_at <= @cooling_period.ago
       end
     end
   end
