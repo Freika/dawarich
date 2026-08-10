@@ -69,13 +69,13 @@ RSpec.describe Users::SafeSettings do
             min_minutes_spent_in_city: 60,
             max_gap_minutes_in_city: 120,
             gps_filtering_enabled: true,
-            gps_accuracy_threshold: 100,
             timezone: 'UTC',
             visit_radius_meters: 100,
             visit_min_points: 3,
             visit_min_duration_minutes: 5,
             visit_density_fill_enabled: true,
-            stay_max_gap_minutes: 60
+            stay_max_gap_minutes: 60,
+            point_dragging_enabled: false
           }
         )
       end
@@ -171,13 +171,13 @@ RSpec.describe Users::SafeSettings do
             'min_minutes_spent_in_city' => 60,
             'max_gap_minutes_in_city' => 120,
             'gps_filtering_enabled' => true,
-            'gps_accuracy_threshold' => 100,
             'timezone' => 'UTC',
             'visit_radius_meters' => 100,
             'visit_min_points' => 3,
             'visit_min_duration_minutes' => 5,
             'visit_density_fill_enabled' => true,
-            'stay_max_gap_minutes' => 60
+            'stay_max_gap_minutes' => 60,
+            'point_dragging_enabled' => false
           }
         )
       end
@@ -243,13 +243,13 @@ RSpec.describe Users::SafeSettings do
             min_minutes_spent_in_city: 60,
             max_gap_minutes_in_city: 120,
             gps_filtering_enabled: true,
-            gps_accuracy_threshold: 100,
             timezone: 'UTC',
             visit_radius_meters: 100,
             visit_min_points: 3,
             visit_min_duration_minutes: 5,
             visit_density_fill_enabled: true,
-            stay_max_gap_minutes: 60
+            stay_max_gap_minutes: 60,
+            point_dragging_enabled: false
           }
         )
       end
@@ -769,28 +769,6 @@ RSpec.describe Users::SafeSettings do
     end
   end
 
-  describe '#gps_accuracy_threshold' do
-    it 'defaults to 100' do
-      expect(described_class.new({}).gps_accuracy_threshold).to eq(100)
-    end
-
-    it 'returns the user-provided integer' do
-      expect(described_class.new({ 'gps_accuracy_threshold' => 250 }).gps_accuracy_threshold).to eq(250)
-    end
-
-    it 'clamps below the minimum' do
-      expect(described_class.new({ 'gps_accuracy_threshold' => 10 }).gps_accuracy_threshold).to eq(50)
-    end
-
-    it 'clamps above the maximum' do
-      expect(described_class.new({ 'gps_accuracy_threshold' => 99_999 }).gps_accuracy_threshold).to eq(1000)
-    end
-
-    it 'coerces string values' do
-      expect(described_class.new({ 'gps_accuracy_threshold' => '300' }).gps_accuracy_threshold).to eq(300)
-    end
-  end
-
   describe '#visit_radius_meters' do
     it 'returns 50 when missing' do
       expect(described_class.new({}).visit_radius_meters).to eq(100)
@@ -846,6 +824,36 @@ RSpec.describe Users::SafeSettings do
 
     it 'is included in #config' do
       expect(described_class.new({}).config).to include(stay_max_gap_minutes: 60)
+    end
+  end
+
+  describe '#point_dragging_enabled?' do
+    it 'returns false when missing' do
+      expect(described_class.new({}).point_dragging_enabled?).to be false
+    end
+
+    it 'returns false when explicitly nil' do
+      expect(described_class.new({ 'point_dragging_enabled' => nil }).point_dragging_enabled?).to be false
+    end
+
+    it 'returns true for true' do
+      expect(described_class.new({ 'point_dragging_enabled' => true }).point_dragging_enabled?).to be true
+    end
+
+    it 'returns true for "1"' do
+      expect(described_class.new({ 'point_dragging_enabled' => '1' }).point_dragging_enabled?).to be true
+    end
+
+    it 'returns false for "0"' do
+      expect(described_class.new({ 'point_dragging_enabled' => '0' }).point_dragging_enabled?).to be false
+    end
+
+    it 'returns false for "false"' do
+      expect(described_class.new({ 'point_dragging_enabled' => 'false' }).point_dragging_enabled?).to be false
+    end
+
+    it 'is included in #config' do
+      expect(described_class.new({}).config).to include(point_dragging_enabled: false)
     end
   end
 

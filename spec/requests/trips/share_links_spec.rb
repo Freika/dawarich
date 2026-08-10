@@ -44,9 +44,14 @@ RSpec.describe 'Trips::ShareLinks', type: :request do
       expect(user.shared_links.last.name).to include(trip.name)
     end
 
-    it 'stores an end-of-day expiry from the form date' do
-      post trip_share_link_path(trip), params: { shared_link: { expires_at: Date.current.tomorrow.iso8601 } }
-      expect(user.shared_links.last.expires_at).to be > Time.current
+    it 'stores a start-of-day expiry from the form date' do
+      user.update!(settings: user.settings.to_h.merge('timezone' => 'Europe/Berlin'))
+      zone = Time.find_zone!('Europe/Berlin')
+      date = zone.today + 2
+
+      post trip_share_link_path(trip), params: { shared_link: { expires_at: date.iso8601 } }
+
+      expect(user.shared_links.last.expires_at).to eq(zone.local(date.year, date.month, date.day))
     end
 
     it 'keeps the existing share when the new one fails validation' do

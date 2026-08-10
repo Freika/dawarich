@@ -57,6 +57,7 @@ class Areas::Visits::Create
 
     relation = Point.where(user_id: user.id)
                     .where(visit_id: nil)
+                    .where.not(timestamp: nil)
                     .near([area.latitude, area.longitude], area_radius, user.safe_settings.distance_unit)
     sql = <<~SQL.squish
       SELECT DISTINCT TO_CHAR(TO_TIMESTAMP(timestamp), 'YYYY-MM') AS month

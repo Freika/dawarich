@@ -12,6 +12,7 @@ Dawarich/PointsLatLonAccess:
   Include:
     - 'app/**/*.rb'
     - 'lib/**/*.rb'
+    - 'lib/**/*.rake'
   Exclude:
     - 'lib/rubocop/**/*.rb'
 

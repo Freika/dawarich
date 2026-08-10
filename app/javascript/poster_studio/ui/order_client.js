@@ -16,6 +16,7 @@ export async function submitPrintOrder({
   title,
   themeBase,
   layoutId,
+  onProgress,
 }) {
   const form = new FormData()
   form.append("file", blob, "poster.pdf")
@@ -24,20 +25,35 @@ export async function submitPrintOrder({
   form.append("theme_base", themeBase || "")
   form.append("layout_id", layoutId)
 
-  let response
-  try {
-    response = await fetch(url, { method: "POST", body: form })
-  } catch {
-    throw new Error(
-      "Could not reach the order service — check your connection.",
-    )
-  }
-
-  const body = await response.json().catch(() => ({}))
-  if (!response.ok) {
+  const { status, body } = await postForm(url, form, onProgress)
+  if (status < 200 || status >= 300) {
     throw new Error(
       ERROR_MESSAGES[body.error] || "Order upload failed — try again.",
     )
   }
   return { token: body.token, checkoutUrl: body.checkout_url }
+}
+
+// XMLHttpRequest instead of fetch solely for upload progress events —
+// print PDFs run tens of MB and fetch has no upload progress API.
+function postForm(url, form, onProgress) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+    xhr.open("POST", url)
+    xhr.responseType = "json"
+    if (onProgress) {
+      xhr.upload.addEventListener("progress", (event) => {
+        if (event.lengthComputable) onProgress(event.loaded / event.total)
+      })
+    }
+    xhr.addEventListener("load", () =>
+      resolve({ status: xhr.status, body: xhr.response || {} }),
+    )
+    xhr.addEventListener("error", () =>
+      reject(
+        new Error("Could not reach the order service — check your connection."),
+      ),
+    )
+    xhr.send(form)
+  })
 }

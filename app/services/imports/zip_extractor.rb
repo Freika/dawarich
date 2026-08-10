@@ -5,7 +5,7 @@ require 'zip'
 module Imports
   class ZipExtractor
     SUPPORTED_EXTENSIONS = %w[.gpx .json .geojson .kml .kmz .csv .tcx .fit .rec].freeze
-    MAX_FILES = 1000
+    MAX_FILES = 25_000
 
     GOOGLE_TAKEOUT_PATTERNS = {
       %r{Semantic Location History/\d{4}/\d{4}_\w+\.json}i => 'google_semantic_history',
@@ -34,10 +34,10 @@ module Imports
 
         extract_files(temp_dir)
         entries = collect_supported_files(temp_dir)
-        google_entries = detect_google_takeout(entries)
+        known_entries = detect_google_takeout(entries) + detect_google_photos(entries)
 
-        if google_entries.any?
-          create_imports_from_entries(google_entries)
+        if known_entries.any?
+          create_imports_from_entries(known_entries)
         else
           create_imports_from_entries(entries)
         end
@@ -55,17 +55,12 @@ module Imports
 
     def extract_files(temp_dir)
       total_size = 0
-      file_count = 0
 
       ::Zip::File.open(@stable_zip_path) do |zip_file|
-        zip_file.each do |entry|
-          next if entry.directory?
-          next if entry.name.include?('..')
-          next if entry.name.start_with?('/')
+        entries = zip_file.select { |entry| extractable_entry?(entry) }
+        raise "Too many files in archive (max #{MAX_FILES})" if entries.size > MAX_FILES
 
-          file_count += 1
-          raise "Too many files in archive (max #{MAX_FILES})" if file_count > MAX_FILES
-
+        entries.each do |entry|
           dest = File.join(temp_dir, entry.name)
           next unless File.expand_path(dest).start_with?("#{File.expand_path(temp_dir)}/")
 
@@ -74,6 +69,10 @@ module Imports
           raise "Archive too large (max #{@max_size} bytes)" if total_size > @max_size
         end
       end
+    end
+
+    def extractable_entry?(entry)
+      !entry.directory? && !entry.name.include?('..') && !entry.name.start_with?('/')
     end
 
     def extract_entry(entry, dest)
@@ -111,28 +110,54 @@ module Imports
       matched.any? ? matched : []
     end
 
+    def detect_google_photos(entries)
+      entries.select do |entry|
+        entry[:source].nil? &&
+          json_entry?(entry) &&
+          Imports::SourceDetector.new_from_file_header(entry[:path]).detect_source == :google_photos &&
+          (entry[:source] = 'google_photos')
+      end
+    end
+
+    def json_entry?(entry)
+      File.extname(entry[:path]).downcase == '.json'
+    end
+
     def create_imports_from_entries(entries)
       user = User.find(@user_id)
+      seen_names = user.imports.where(name: entries.map { |entry| import_name_for(entry) }).pluck(:name).to_set
 
-      entries.each do |entry|
-        filename = File.basename(entry[:path])
-        import_name = "#{filename} (from #{@archive_name})"
+      new_imports = entries.filter_map do |entry|
+        name = import_name_for(entry)
+        next if seen_names.include?(name)
 
-        next if user.imports.exists?(name: import_name)
-
-        new_import = user.imports.build(
-          name: import_name,
-          source: entry[:source],
-          skip_background_processing: true
-        )
-        new_import.file.attach(
-          io: File.open(entry[:path]),
-          filename: filename,
-          content_type: Marcel::MimeType.for(name: filename)
-        )
-        new_import.save!
-        Import::ProcessJob.perform_later(new_import.id)
+        seen_names << name
+        build_import(user, entry, name)
       end
+
+      enqueue_processing(new_imports)
+    end
+
+    def import_name_for(entry)
+      "#{File.basename(entry[:path])} (from #{@archive_name})"
+    end
+
+    def build_import(user, entry, name)
+      filename = File.basename(entry[:path])
+      new_import = user.imports.build(name: name, source: entry[:source], skip_background_processing: true)
+      new_import.file.attach(
+        io: File.open(entry[:path]),
+        filename: filename,
+        content_type: Marcel::MimeType.for(name: filename)
+      )
+      new_import.save!
+      new_import
+    end
+
+    def enqueue_processing(imports)
+      return if imports.empty?
+
+      ActiveJob.perform_all_later(imports.map { |import| Import::ProcessJob.new(import.id) })
     end
   end
 end

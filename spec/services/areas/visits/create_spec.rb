@@ -152,5 +152,25 @@ RSpec.describe Areas::Visits::Create do
         end
       end
     end
+
+    context 'when a nearby point has a null timestamp' do
+      let(:visit_date) { DateTime.new(2021, 1, 1, 10, 0, 0, Time.zone.formatted_offset) }
+      let!(:home_point1) { create(:point, user:, lonlat: 'POINT(0 0)', timestamp: visit_date) }
+      let!(:home_point2) { create(:point, user:, lonlat: 'POINT(0 0)', timestamp: visit_date + 10.minutes) }
+      let!(:home_point3) { create(:point, user:, lonlat: 'POINT(0 0)', timestamp: visit_date + 20.minutes) }
+      let!(:null_timestamp_point) { create(:point, user:, lonlat: 'POINT(0 0)', timestamp: visit_date + 5.minutes) }
+
+      before { null_timestamp_point.update_column(:timestamp, nil) }
+
+      it 'does not crash while extracting months for the area' do
+        expect { create_visits }.to change { Visit.count }.by(1)
+      end
+
+      it 'excludes the null-timestamp point from the detected visit' do
+        create_visits
+
+        expect(null_timestamp_point.reload.visit_id).to be_nil
+      end
+    end
   end
 end

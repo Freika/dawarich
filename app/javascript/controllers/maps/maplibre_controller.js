@@ -55,13 +55,13 @@ export default class extends Controller {
     "minMinutesInCityValue",
     "maxGapMinutesValue",
     "stayMaxGapMinutesValue",
-    "gpsAccuracyThresholdValue",
     "gpsFilteringToggle",
     // Search
     "searchInput",
     "searchResults",
     // Layer toggles
     "pointsToggle",
+    "pointsEditToggle",
     "routesToggle",
     "heatmapToggle",
     "hexagonsToggle",
@@ -1263,9 +1263,6 @@ export default class extends Controller {
   updateStayMaxGapMinutesDisplay(event) {
     return this.settingsController.updateStayMaxGapMinutesDisplay(event)
   }
-  updateGpsAccuracyThresholdDisplay(event) {
-    return this.settingsController.updateGpsAccuracyThresholdDisplay(event)
-  }
   reapplyAnomalyFilter() {
     return this.settingsController.reapplyAnomalyFilter()
   }
@@ -1403,8 +1400,7 @@ export default class extends Controller {
   }
 
   togglePointsEditing(event) {
-    const pointsLayer = this.layerManager.getLayer("points")
-    pointsLayer?.setEditMode(event.currentTarget.checked)
+    return this.settingsController.togglePointsEditing(event)
   }
   toggleRoutes(event) {
     return this.routesManager.toggleRoutes(event)

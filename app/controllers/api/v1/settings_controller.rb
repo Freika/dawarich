@@ -18,7 +18,7 @@ class Api::V1::SettingsController < ApiController
     unless valid_tiles_url?(settings)
       return render json: {
         message: 'Something went wrong',
-        errors: ['Tile URL must include {z}, {x}, and {y} placeholders']
+        errors: [TILE_URL_ERROR]
       }, status: :unprocessable_content
     end
 
@@ -65,6 +65,9 @@ class Api::V1::SettingsController < ApiController
   MAP_CUSTOMIZATION_KEYS = %i[maps_maplibre_custom_theme maps_maplibre_tiles_url
                               route_color track_color].freeze
   TILE_URL_PLACEHOLDERS = %w[{z} {x} {y}].freeze
+  TILE_FILE_EXTENSIONS = %w[.png .jpg .jpeg .webp .mvt .pbf].freeze
+  TILE_URL_ERROR = 'Tile URL must include {z}, {x}, and {y} placeholders, ' \
+                   'or be a MapLibre style URL'
 
   def settings_params
     permitted = params.require(:settings).permit(
@@ -79,7 +82,8 @@ class Api::V1::SettingsController < ApiController
       :transportation_expert_mode,
       :min_minutes_spent_in_city, :max_gap_minutes_in_city,
       :stay_max_gap_minutes,
-      :gps_filtering_enabled, :gps_accuracy_threshold,
+      :gps_filtering_enabled,
+      :point_dragging_enabled,
       enabled_map_layers: [],
       enabled_transportation_modes: [],
       maps_maplibre_custom_theme: [
@@ -119,7 +123,26 @@ class Api::V1::SettingsController < ApiController
     url = settings[:maps_maplibre_tiles_url]
     return true if url.nil?
     return false unless url.is_a?(String)
+    return true if style_document_url?(url)
 
     TILE_URL_PLACEHOLDERS.all? { |placeholder| url.include?(placeholder) }
+  end
+
+  # Mirrors classifyBasemapUrl in app/javascript/maps_maplibre/utils/basemap_url.js:
+  # an absolute http(s) URL, or a root-relative path for a style served from
+  # this instance. Keep the two in sync or the browser accepts a URL this
+  # rejects.
+  def style_document_url?(url)
+    return false if url.match?(/[{}]/)
+
+    locator = url.split(/[?#]/).first.to_s.downcase
+    return false if TILE_FILE_EXTENSIONS.any? { |extension| locator.end_with?(extension) }
+
+    uri = URI.parse(url)
+    return uri.host.present? if uri.is_a?(URI::HTTP)
+
+    uri.scheme.nil? && uri.host.nil? && uri.path.start_with?('/')
+  rescue URI::InvalidURIError
+    false
   end
 end

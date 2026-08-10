@@ -40,6 +40,10 @@ class Imports::SourceDetector
         }
       ]
     },
+    google_photos: {
+      required_keys: %w[title creationTime imageViews],
+      nested_patterns: [%w[creationTime timestamp]]
+    },
     geojson: {
       required_keys: %w[type features],
       required_values: { 'type' => 'FeatureCollection' },
@@ -247,6 +251,9 @@ class Imports::SourceDetector
       :google_phone_takeout
     elsif content.include?('"topCandidate"') && content.include?('"placeLocation"')
       :google_phone_takeout
+    elsif content.include?('"title"') && content.include?('"imageViews"') &&
+          content.include?('"creationTime"')
+      :google_photos
     elsif content.include?('"arrived"') && content.include?('"departed"') && content.include?('"segment-')
       :polarsteps
     end

@@ -44,7 +44,7 @@ class Places::Visits::Create
       ).call(points, already_sorted: true)
 
       visits.each do |time_range, visit_points|
-        create_or_update_visit(place, time_range, visit_points, confirmed_visit_ids)
+        return true unless create_or_update_visit(place, time_range, visit_points, confirmed_visit_ids)
       end
     end
 
@@ -68,6 +68,7 @@ class Places::Visits::Create
 
     relation = Point.where(user_id: user.id)
                     .where(visit_id: nil)
+                    .where.not(timestamp: nil)
                     .near([place.latitude, place.longitude], place_radius, user.safe_settings.distance_unit)
     sql = <<~SQL.squish
       SELECT DISTINCT TO_CHAR(TO_TIMESTAMP(timestamp), 'YYYY-MM') AS month
@@ -100,17 +101,23 @@ class Places::Visits::Create
   end
 
   def create_or_update_visit(place, time_range, visit_points, confirmed_visit_ids)
-    visit = find_or_initialize_visit(place.id, visit_points.first.timestamp)
-
-    # Theft guard: don't move a point owned by a different confirmed visit (would un-merge it).
-    assignable = visit_points.reject do |p|
-      confirmed_visit_ids.include?(p.visit_id) && p.visit_id != visit.id
-    end
-    return if assignable.empty?
-
-    Rails.logger.info("Visit from #{time_range}, Points: #{assignable.size}")
-
     ActiveRecord::Base.transaction do
+      current_place = Place.lock.find_by(id: place.id)
+      unless current_place
+        Rails.logger.warn("[Places::Visits::Create] place_id=#{place.id} deleted mid-run, skipping visit")
+        next false
+      end
+
+      visit = find_or_initialize_visit(current_place.id, visit_points.first.timestamp)
+
+      # Theft guard: don't move a point owned by a different confirmed visit (would un-merge it).
+      assignable = visit_points.reject do |p|
+        confirmed_visit_ids.include?(p.visit_id) && p.visit_id != visit.id
+      end
+      next true if assignable.empty?
+
+      Rails.logger.info("Visit from #{time_range}, Points: #{assignable.size}")
+
       group_ended_at = Time.zone.at(assignable.last.timestamp)
 
       visit.tap do |v|
@@ -118,7 +125,7 @@ class Places::Visits::Create
         v.ended_at = v.ended_at && v.ended_at > group_ended_at ? v.ended_at : group_ended_at
         v.duration = ((v.ended_at.to_i - v.started_at.to_i) / 60)
         if v.new_record?
-          v.name = "#{place.name}, #{time_range}"
+          v.name = "#{current_place.name}, #{time_range}"
           v.status = :suggested
         end
       end
@@ -126,6 +133,7 @@ class Places::Visits::Create
       visit.save!
 
       Point.where(id: assignable.map(&:id)).update_all(visit_id: visit.id)
+      true
     end
   end
 

@@ -51,6 +51,6 @@ class PostersController < ApplicationController
 
   def poster_params
     params.require(:poster).permit(:name, :title, :lat, :lon, :distance, :theme, :start_at, :end_at, :source,
-                                   :route_fill, :route_opacity)
+                                   :route_fill, :route_opacity, :route_width)
   end
 end

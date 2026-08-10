@@ -15,7 +15,7 @@ RSpec.describe 'Map v2 date pickers reflect the time component from the URL', ty
     input = response.body[/<input[^>]*name="start_at"[^>]*>/]
     value = input && input[/value="([^"]*)"/, 1]
 
-    expect(value).to be_present, "no start_at datetime-local input found"
+    expect(value).to be_present, 'no start_at datetime-local input found'
     expect(value).to match(/T14:30/), "start_at picker value was #{value.inspect} (time component missing)"
   end
 end

@@ -69,6 +69,7 @@ module Api
 
       def create
         @place = current_api_user.places.build(place_params.except(:tag_ids))
+        @place.user_named = true
 
         if @place.save
           add_tags if tag_ids.present?
@@ -180,6 +181,7 @@ module Api
           icon: place.tags.first&.icon,
           color: place.tags.first&.color,
           visits_count: place.visits.size,
+          name_locked: place.name_locked?,
           created_at: place.created_at,
           tags: place.tags.map do |tag|
             {

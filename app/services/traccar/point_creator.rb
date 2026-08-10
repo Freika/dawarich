@@ -16,6 +16,7 @@ class Traccar::PointCreator
 
     payload = parsed.merge(user_id:)
     return [] if payload[:lonlat].nil? || payload[:timestamp].nil?
+    return [] if Points::NullIsland.lonlat?(payload[:lonlat])
 
     result = upsert_points([payload])
     if result.any?

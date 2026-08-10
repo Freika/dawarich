@@ -3,6 +3,8 @@
  * Loads settings from backend API only (no localStorage)
  */
 
+import { classifyBasemapUrl } from "maps_maplibre/utils/basemap_url"
+
 // Route fallback matches Map v1's blue; track color matches the backend
 // Tracks::GeojsonSerializer::DEFAULT_COLOR — keep them in sync.
 export const LAYER_COLOR_DEFAULTS = {
@@ -49,7 +51,7 @@ const DEFAULT_SETTINGS = {
   maxGapMinutesInCity: 120,
   stayMaxGapMinutes: 60,
   gpsFilteringEnabled: true,
-  gpsAccuracyThreshold: 100,
+  pointDraggingEnabled: false,
   transportationExpertMode: false,
   enabledTransportationModes: [
     "unknown",
@@ -119,7 +121,7 @@ const BACKEND_SETTINGS_MAP = {
   maxGapMinutesInCity: "max_gap_minutes_in_city",
   stayMaxGapMinutes: "stay_max_gap_minutes",
   gpsFilteringEnabled: "gps_filtering_enabled",
-  gpsAccuracyThreshold: "gps_accuracy_threshold",
+  pointDraggingEnabled: "point_dragging_enabled",
   transportationExpertMode: "transportation_expert_mode",
   enabledTransportationModes: "enabled_transportation_modes",
   transportationThresholds: "transportation_thresholds",
@@ -320,12 +322,9 @@ export class SettingsManager {
                 value,
                 DEFAULT_SETTINGS.stayMaxGapMinutes,
               )
-            } else if (frontendKey === "gpsAccuracyThreshold") {
-              value = SettingsManager._parseIntOr(
-                value,
-                DEFAULT_SETTINGS.gpsAccuracyThreshold,
-              )
             } else if (frontendKey === "gpsFilteringEnabled") {
+              value = value === true || value === "true"
+            } else if (frontendKey === "pointDraggingEnabled") {
               value = value === true || value === "true"
             } else if (frontendKey === "speedColoredRoutes") {
               value = value === true || value === "true"
@@ -435,6 +434,8 @@ export class SettingsManager {
               value = Boolean(value)
             } else if (frontendKey === "liveMapEnabled") {
               value = Boolean(value)
+            } else if (frontendKey === "pointDraggingEnabled") {
+              value = Boolean(value)
             } else if (frontendKey === "transportationThresholds" && value) {
               value = SettingsManager._convertTransportationThresholds(
                 value,
@@ -508,10 +509,7 @@ export class SettingsManager {
   }
 
   static validVectorTilesUrl(url) {
-    return (
-      !url ||
-      ["{z}", "{x}", "{y}"].every((placeholder) => url.includes(placeholder))
-    )
+    return !url || classifyBasemapUrl(url) !== null
   }
 
   /**

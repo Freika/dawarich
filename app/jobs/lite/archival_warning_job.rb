@@ -4,16 +4,11 @@ class Lite::ArchivalWarningJob < ApplicationJob
   queue_as :archival
 
   # Thresholds checked daily for all Lite users.
-  # Each threshold defines the cutoff duration, a dedup key, and the minimum
-  # time the user must have been on Lite (so a fresh downgrade with old data
-  # walks through the warning sequence instead of jumping to "archived").
+  # Each threshold defines the cutoff duration and a dedup key.
   THRESHOLDS = [
-    { duration: DawarichSettings::LITE_DATA_WINDOW - 1.month,            key: '11mo',   action: :notify_approaching,
-      min_lite_age: 0.days },
-    { duration: DawarichSettings::LITE_DATA_WINDOW - 1.month + 15.days,  key: '11_5mo', action: :notify_email,
-      min_lite_age: 15.days },
-    { duration: DawarichSettings::LITE_DATA_WINDOW,                      key: '12mo',   action: :notify_archived,
-      min_lite_age: 1.month }
+    { duration: DawarichSettings::LITE_DATA_WINDOW - 1.month,            key: '11mo',   action: :notify_approaching },
+    { duration: DawarichSettings::LITE_DATA_WINDOW - 1.month + 15.days,  key: '11_5mo', action: :notify_email },
+    { duration: DawarichSettings::LITE_DATA_WINDOW,                      key: '12mo',   action: :notify_archived }
   ].freeze
 
   def perform
@@ -33,14 +28,10 @@ class Lite::ArchivalWarningJob < ApplicationJob
     oldest_timestamp = user.points.minimum(:timestamp)
     return unless oldest_timestamp
 
-    lite_since = parse_lite_since(user)
-
     # Find all crossed thresholds that haven't been sent yet
     unsent_crossed = THRESHOLDS.select do |threshold|
       cutoff = threshold[:duration].ago.to_i
-      oldest_timestamp <= cutoff &&
-        warnings_sent[threshold[:key]].blank? &&
-        lite_long_enough?(lite_since, threshold[:min_lite_age])
+      oldest_timestamp <= cutoff && warnings_sent[threshold[:key]].blank?
     end
 
     return if unsent_crossed.empty?
@@ -74,21 +65,6 @@ class Lite::ArchivalWarningJob < ApplicationJob
                'Your archived data can be exported at any time. ' \
                'Upgrade to Pro to make it visible and interactive in-app again.'
     )
-  end
-
-  def parse_lite_since(user)
-    raw = user.settings&.dig('lite_since')
-    return nil if raw.blank?
-
-    Time.zone.parse(raw.to_s)
-  rescue ArgumentError
-    nil
-  end
-
-  def lite_long_enough?(lite_since, min_lite_age)
-    return true if lite_since.nil?
-
-    lite_since <= min_lite_age.ago
   end
 
   def mark_warning_sent(user, key)

@@ -41,6 +41,25 @@ RSpec.describe Imports::SourceDetector do
       end
     end
 
+    context 'with a Google Photos metadata sidecar' do
+      let(:file_content) { file_fixture('google_photos/sidecar.json').read }
+      let(:filename) { 'anonymized-photo.jpg.json' }
+
+      it 'detects google_photos format' do
+        expect(detector.detect_source).to eq(:google_photos)
+      end
+
+      context 'without geodata' do
+        let(:file_content) do
+          JSON.parse(file_fixture('google_photos/sidecar.json').read).except('geoDataExif').to_json
+        end
+
+        it 'still detects the sidecar so the importer can skip it cleanly' do
+          expect(detector.detect_source).to eq(:google_photos)
+        end
+      end
+    end
+
     context 'with GeoJSON format' do
       let(:file_content) { file_fixture('geojson/export.json').read }
 

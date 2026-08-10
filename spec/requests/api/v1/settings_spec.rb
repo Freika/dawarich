@@ -64,6 +64,28 @@ RSpec.describe 'Api::V1::Settings', type: :request do
         expect(user.reload.timezone).to eq('UTC')
       end
 
+      it 'updates point_dragging_enabled' do
+        patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { point_dragging_enabled: true } }
+
+        expect(response).to have_http_status(:success)
+        expect(user.reload.safe_settings.point_dragging_enabled?).to be true
+      end
+
+      it 'returns point_dragging_enabled in the response' do
+        patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { point_dragging_enabled: true } }
+
+        expect(response.parsed_body['settings']['point_dragging_enabled']).to be true
+      end
+
+      it 'turns point_dragging_enabled back off' do
+        user.update!(settings: user.settings.merge('point_dragging_enabled' => true))
+
+        patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { point_dragging_enabled: false } }
+
+        expect(response).to have_http_status(:success)
+        expect(user.reload.safe_settings.point_dragging_enabled?).to be false
+      end
+
       it 'updates fog_of_war_mode' do
         patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { fog_of_war_mode: 'hexagons' } }
 
@@ -123,7 +145,108 @@ RSpec.describe 'Api::V1::Settings', type: :request do
               params: { settings: { maps_maplibre_tiles_url: 'https://tiles.example.com/{z}.mvt' } }
 
         expect(response).to have_http_status(:unprocessable_content)
-        expect(response.parsed_body['errors']).to include('Tile URL must include {z}, {x}, and {y} placeholders')
+        expect(response.parsed_body['errors'])
+          .to include(a_string_including('or be a MapLibre style URL'))
+        expect(user.reload.safe_settings.maps_maplibre_tiles_url).to be_nil
+      end
+
+      it 'accepts a raster XYZ maps_maplibre_tiles_url' do
+        patch "/api/v1/settings?api_key=#{api_key}",
+              params: {
+                settings: {
+                  maps_maplibre_tiles_url: 'https://api.maptiler.com/maps/hybrid/256/{z}/{x}/{y}.jpg?key=abc'
+                }
+              }
+
+        expect(response).to have_http_status(:success)
+        expect(user.reload.safe_settings.maps_maplibre_tiles_url)
+          .to eq('https://api.maptiler.com/maps/hybrid/256/{z}/{x}/{y}.jpg?key=abc')
+      end
+
+      it 'accepts a style URL whose path has no file extension' do
+        patch "/api/v1/settings?api_key=#{api_key}",
+              params: {
+                settings: { maps_maplibre_tiles_url: 'https://tiles.openfreemap.org/styles/liberty' }
+              }
+
+        expect(response).to have_http_status(:success)
+        expect(user.reload.safe_settings.maps_maplibre_tiles_url)
+          .to eq('https://tiles.openfreemap.org/styles/liberty')
+      end
+
+      it 'rejects a malformed tile template missing a placeholder' do
+        ['https://tiles.example.com/{Z}/{X}/{Y}',
+         'https://tiles.example.com/{z}/{x}',
+         'https://tiles.example.com/{z}/{x}/{y-1}',
+         'https://tiles.example.com/styles/{name}'].each do |tiles_url|
+          patch "/api/v1/settings?api_key=#{api_key}",
+                params: { settings: { maps_maplibre_tiles_url: tiles_url } }
+
+          expect(response).to have_http_status(:unprocessable_content)
+          expect(user.reload.safe_settings.maps_maplibre_tiles_url).to be_nil
+        end
+      end
+
+      it 'rejects a host that ends in a tile file extension' do
+        patch "/api/v1/settings?api_key=#{api_key}",
+              params: { settings: { maps_maplibre_tiles_url: 'https://foo.png' } }
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(user.reload.safe_settings.maps_maplibre_tiles_url).to be_nil
+      end
+
+      it 'rejects a placeholderless URL ending in a tile file extension' do
+        %w[png jpg jpeg webp mvt pbf].each do |extension|
+          patch "/api/v1/settings?api_key=#{api_key}",
+                params: { settings: { maps_maplibre_tiles_url: "https://tiles.example.com/basemap.#{extension}" } }
+
+          expect(response).to have_http_status(:unprocessable_content)
+          expect(user.reload.safe_settings.maps_maplibre_tiles_url).to be_nil
+        end
+      end
+
+      it 'accepts a full style URL ending in .json' do
+        patch "/api/v1/settings?api_key=#{api_key}",
+              params: {
+                settings: {
+                  maps_maplibre_tiles_url: 'https://api.maptiler.com/maps/streets/style.json?key=abc'
+                }
+              }
+
+        expect(response).to have_http_status(:success)
+        expect(user.reload.safe_settings.maps_maplibre_tiles_url)
+          .to eq('https://api.maptiler.com/maps/streets/style.json?key=abc')
+      end
+
+      it 'accepts a root-relative style URL served from this instance' do
+        patch "/api/v1/settings?api_key=#{api_key}",
+              params: { settings: { maps_maplibre_tiles_url: '/maps_maplibre/styles/mine.json' } }
+
+        expect(response).to have_http_status(:success)
+        expect(user.reload.safe_settings.maps_maplibre_tiles_url).to eq('/maps_maplibre/styles/mine.json')
+      end
+
+      it 'rejects a non-http style.json URL' do
+        patch "/api/v1/settings?api_key=#{api_key}",
+              params: { settings: { maps_maplibre_tiles_url: 'ftp://example.com/style.json' } }
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(user.reload.safe_settings.maps_maplibre_tiles_url).to be_nil
+      end
+
+      it 'rejects a protocol-relative style.json URL' do
+        patch "/api/v1/settings?api_key=#{api_key}",
+              params: { settings: { maps_maplibre_tiles_url: '//tiles.example.com/style.json' } }
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(user.reload.safe_settings.maps_maplibre_tiles_url).to be_nil
+      end
+
+      it 'rejects a maps_maplibre_tiles_url that is neither an XYZ tile URL nor a style document' do
+        patch "/api/v1/settings?api_key=#{api_key}",
+              params: { settings: { maps_maplibre_tiles_url: 'styles/liberty' } }
+
+        expect(response).to have_http_status(:unprocessable_content)
         expect(user.reload.safe_settings.maps_maplibre_tiles_url).to be_nil
       end
 
@@ -208,6 +331,14 @@ RSpec.describe 'Api::V1::Settings', type: :request do
 
           expect(response).to have_http_status(:success)
           expect(lite_user.reload.safe_settings.maps_maplibre_style).to eq('dark')
+        end
+
+        it 'still persists point_dragging_enabled so it applies after an upgrade' do
+          patch "/api/v1/settings?api_key=#{lite_api_key}",
+                params: { settings: { point_dragging_enabled: true } }
+
+          expect(response).to have_http_status(:success)
+          expect(lite_user.reload.safe_settings.point_dragging_enabled?).to be true
         end
       end
 

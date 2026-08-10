@@ -251,7 +251,6 @@ RSpec.describe 'Users::Registrations', type: :request do
   describe 'Non-Self-Hosted Mode' do
     before do
       allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
-      allow(DawarichSettings).to receive(:family_feature_enabled?).and_return(false)
     end
 
     context 'when accessing registration without invitation token' do
@@ -580,6 +579,27 @@ RSpec.describe 'Users::Registrations', type: :request do
         expect(response).to redirect_to(edit_user_registration_path)
         expect(flash[:notice]).to include('confirmation email')
       end
+
+      it 'takes the email path without asking for a password or confirm_email' do
+        expect do
+          delete user_registration_path
+        end.to have_enqueued_job(Users::MailerSendingJob)
+
+        expect(flash[:alert]).to be_nil
+      end
+
+      it 'does not render the self-hosted confirmation fields on the account page' do
+        get edit_user_registration_path
+
+        expect(response.body).not_to include('name="confirm_email"')
+        expect(response.body).to include('Email me the confirmation link')
+      end
+
+      it 'still warns that deletion is permanent' do
+        get edit_user_registration_path
+
+        expect(response.body).to include('This is permanent and removes all your data.')
+      end
     end
 
     context 'self-hosted — password-confirmation flow' do
@@ -608,15 +628,89 @@ RSpec.describe 'Users::Registrations', type: :request do
       it 'rejects deletion without a password' do
         delete user_registration_path
 
-        expect(response).to have_http_status(:unauthorized)
+        expect(response).to redirect_to(edit_user_registration_path)
+        expect(flash[:alert]).to be_present
         expect(user.reload.deleted_at).to be_nil
       end
 
       it 'rejects deletion with the wrong password' do
         delete user_registration_path, params: { password: 'wrong' }
 
-        expect(response).to have_http_status(:unauthorized)
+        expect(response).to redirect_to(edit_user_registration_path)
+        expect(flash[:alert]).to be_present
         expect(user.reload.deleted_at).to be_nil
+      end
+
+      it 'logs a warning when confirmation fails' do
+        allow(Rails.logger).to receive(:warn)
+
+        delete user_registration_path, params: { password: 'wrong' }
+
+        expect(Rails.logger).to have_received(:warn).with(/Account deletion confirmation failed/)
+      end
+
+      context 'when the user is an OIDC user (unknowable password)' do
+        let(:oauth_user) do
+          create(:user, provider: 'openid_connect', uid: 'oidc-123', password: SecureRandom.hex(16))
+        end
+
+        before { sign_in oauth_user }
+
+        it 'soft-deletes when confirm_email matches (case-insensitive)' do
+          expect do
+            delete user_registration_path, params: { confirm_email: oauth_user.email.upcase }
+          end.to have_enqueued_job(Users::DestroyJob).with(oauth_user.id)
+
+          expect(oauth_user.reload.deleted_at).to be_present
+        end
+
+        it 'signs out and redirects after a confirmed deletion' do
+          delete user_registration_path, params: { confirm_email: oauth_user.email }
+
+          expect(controller.current_user).to be_nil
+          expect(response).to redirect_to(root_path)
+          expect(flash[:notice]).to include('scheduled for deletion')
+        end
+
+        it 'tolerates surrounding whitespace in confirm_email' do
+          expect do
+            delete user_registration_path, params: { confirm_email: "  #{oauth_user.email.upcase}  " }
+          end.to have_enqueued_job(Users::DestroyJob).with(oauth_user.id)
+
+          expect(oauth_user.reload.deleted_at).to be_present
+        end
+
+        it 'rejects deletion when confirm_email is missing' do
+          delete user_registration_path
+
+          expect(response).to redirect_to(edit_user_registration_path)
+          expect(flash[:alert]).to be_present
+          expect(oauth_user.reload.deleted_at).to be_nil
+        end
+
+        it 'rejects deletion when confirm_email is wrong' do
+          delete user_registration_path, params: { confirm_email: 'someone-else@example.com' }
+
+          expect(response).to redirect_to(edit_user_registration_path)
+          expect(flash[:alert]).to be_present
+          expect(oauth_user.reload.deleted_at).to be_nil
+        end
+
+        it 'accepts a valid password from a linked user who knows one' do
+          expect do
+            delete user_registration_path, params: { password: oauth_user.password }
+          end.to have_enqueued_job(Users::DestroyJob).with(oauth_user.id)
+
+          expect(oauth_user.reload.deleted_at).to be_present
+        end
+
+        it 'rejects a wrong password when no confirm_email is given' do
+          delete user_registration_path, params: { password: 'wrong' }
+
+          expect(response).to redirect_to(edit_user_registration_path)
+          expect(flash[:alert]).to be_present
+          expect(oauth_user.reload.deleted_at).to be_nil
+        end
       end
     end
 
@@ -635,11 +729,11 @@ RSpec.describe 'Users::Registrations', type: :request do
         end.not_to(change { user.reload.deleted_at })
       end
 
-      it 'returns unprocessable content with error message' do
+      it 'redirects back with an error message the browser can follow' do
         delete user_registration_path
 
-        expect(response).to have_http_status(:unprocessable_content)
-        expect(response.location).to eq(edit_user_registration_url)
+        expect(response).to redirect_to(edit_user_registration_path)
+        expect(response).to have_http_status(:found)
         expect(flash[:alert]).to eq('Cannot delete your account while you own a family with other members.')
       end
 
@@ -653,6 +747,17 @@ RSpec.describe 'Users::Registrations', type: :request do
         expect do
           delete user_registration_path
         end.not_to have_enqueued_job(Users::DestroyJob)
+      end
+
+      it 'still refuses on self-hosted even when the password is correct' do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+
+        expect do
+          delete user_registration_path, params: { password: 'password123456' }
+        end.not_to have_enqueued_job(Users::DestroyJob)
+
+        expect(response).to redirect_to(edit_user_registration_path)
+        expect(user.reload.deleted_at).to be_nil
       end
     end
 
@@ -701,6 +806,11 @@ RSpec.describe 'Users::Registrations', type: :request do
     end
 
     context 'when self-hosted mode is disabled' do
+      # Off the self-hosted grant, joining a family is gated on the owner holding
+      # the Family plan, so the fixture owner has to hold one for the invitation
+      # path to be reachable at all.
+      let(:family_owner) { create(:user, plan: :family, skip_auto_trial: true) }
+
       before do
         allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
       end

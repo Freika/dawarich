@@ -1,0 +1,18 @@
+{
+  "semanticSegments": [
+    {
+      "startTime": "2025-04-01T10:00:00Z",
+      "endTime": "2025-04-01T13:00:00Z",
+      "visit": {
+        "topCandidate": {
+          "placeId": "ChIJ_TEST_HOME_123",
+          "semanticType": "INFERRED_HOME",
+          "probability": 0.95,
+          "placeLocation": {
+            "latLng": "52.520000°, 13.405000°"
+          }
+        }
+      }
+    }
+  ]
+}
