@@ -115,6 +115,17 @@ RSpec.describe GoogleMaps::PhoneTakeoutImporter do
         expect(raw_signal_point.lon).to eq(2.3522)
       end
 
+      it 'persists altitude, accuracy and velocity nested under rawSignals position' do
+        parser
+
+        raw_signal_point = Point.find_by(timestamp: DateTime.parse('2024-06-15T09:05:00.000Z').utc.to_i)
+
+        expect(raw_signal_point.altitude).to eq(35)
+        expect(raw_signal_point.altitude_decimal).to eq(35.0)
+        expect(raw_signal_point.accuracy).to eq(15)
+        expect(raw_signal_point.velocity).to eq('0.0')
+      end
+
       it 'does not persist raw_data for imported points' do
         parser
 
@@ -259,6 +270,43 @@ RSpec.describe GoogleMaps::PhoneTakeoutImporter do
 
         geo_point = Point.find_by(timestamp: DateTime.parse('2024-06-15T09:10:00.000Z').utc.to_i)
         expect(geo_point.altitude).to eq(35.0)
+      end
+    end
+
+    context 'when rawSignals carry degree-symbol coordinates and a fractional altitude' do
+      let(:json_data) do
+        {
+          'rawSignals' => [
+            {
+              'position' => {
+                'LatLng' => '52.8899352°, -2.2046753°',
+                'accuracyMeters' => 20,
+                'altitudeMeters' => 170.02252197265625,
+                'source' => 'UNKNOWN',
+                'timestamp' => '2026-07-06T12:11:11.000+01:00',
+                'speedMetersPerSecond' => 0.0
+              }
+            }
+          ]
+        }
+      end
+      let(:temp_file) do
+        f = Tempfile.new(['phone_takeout_raw_signals', '.json'])
+        f.write(json_data.to_json)
+        f.rewind
+        f
+      end
+      let(:import) { create(:import, user:, name: 'phone_takeout.json') }
+
+      after { temp_file.close! }
+
+      it 'reads altitudeMeters from the position object rather than the wrapper' do
+        described_class.new(import, user.id, temp_file.path).call
+
+        point = user.points.sole
+        expect(point.altitude).to eq(170.02)
+        expect(point[:altitude]).to eq(170)
+        expect(point.accuracy).to eq(20)
       end
     end
 
