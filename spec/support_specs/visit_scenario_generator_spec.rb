@@ -3,7 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe VisitScenarioGenerator do
-  scenario_names = %i[home_gap dark_dinner drive_carving reentry cold_start day_boundary batch_boundary]
+  scenario_names = %i[home_gap dark_dinner drive_carving reentry cold_start day_boundary batch_boundary
+                      dark_venue]
 
   let(:start_time) { Time.zone.parse('2026-01-05 09:00:00 UTC') }
 
@@ -13,7 +14,8 @@ RSpec.describe VisitScenarioGenerator do
 
   it 'exposes exactly the documented scenarios' do
     expect(described_class::SCENARIOS.keys)
-      .to match_array(%i[home_gap dark_dinner drive_carving reentry cold_start day_boundary batch_boundary])
+      .to match_array(%i[home_gap dark_dinner drive_carving reentry cold_start day_boundary batch_boundary
+                         dark_venue])
   end
 
   scenario_names.each do |name|
