@@ -1,3 +1,4 @@
+import { translate } from "i18n"
 import maplibregl from "maplibre-gl"
 import { Toast } from "../components/toast"
 import { resolutionForZoom } from "../utils/h3_resolution"
@@ -99,7 +100,7 @@ export class HexagonLayer extends BaseLayer {
     const count = feature.properties.count
     this.popup
       .setLngLat(e.lngLat)
-      .setHTML(`<strong>${count.toLocaleString()}</strong> points`)
+      .setHTML(translate("hexagons.points", { count: count.toLocaleString() }))
       .addTo(this.map)
   }
 
@@ -240,9 +241,7 @@ export class HexagonLayer extends BaseLayer {
       if (generation !== this._loadGeneration) return
       if (result.length >= 100_000 && !this._quotaWarned) {
         this._quotaWarned = true
-        Toast.warning(
-          "Showing the first 100,000 points in this range — narrow the date range for denser detail.",
-        )
+        Toast.warning(translate("hexagons.limit_warning"))
       }
       this.controller?.updateLoadingCounts?.({
         counts: { hexagons: result.length },
@@ -254,7 +253,7 @@ export class HexagonLayer extends BaseLayer {
       console.error("HexagonLayer load failed:", error)
       this.controller?.hideLoading?.()
       if (error.name !== "AbortError" && error.message !== "Load cancelled") {
-        Toast.error(`Couldn't load hexagons: ${error.message}`)
+        Toast.error(translate("hexagons.load_failed", { error: error.message }))
       }
       throw error
     }
@@ -313,7 +312,7 @@ export class HexagonLayer extends BaseLayer {
       console.error("HexagonLayer resumeLoad failed:", error)
       this.controller?.hideLoading?.()
       if (error.name !== "AbortError" && error.message !== "Load cancelled") {
-        Toast.error(`Couldn't load hexagons: ${error.message}`)
+        Toast.error(translate("hexagons.load_failed", { error: error.message }))
       }
       throw error
     }

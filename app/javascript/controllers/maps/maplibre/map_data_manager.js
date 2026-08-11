@@ -1,3 +1,4 @@
+import { translate } from "i18n"
 import maplibregl from "maplibre-gl"
 import { Toast } from "maps_maplibre/components/toast"
 import { UpgradeBanner } from "maps_maplibre/components/upgrade_banner"
@@ -157,7 +158,9 @@ export class MapDataManager {
       if (showLoading) {
         this.controller.hideProgress()
       }
-      Toast.error("Failed to load location data. Please try again.")
+      Toast.error(
+        translate("messages.failed_to_load_location_data_please_try_again"),
+      )
       throw error
     } finally {
       const duration = performanceMonitor.measure("load-map-data")
@@ -513,7 +516,9 @@ export class MapDataManager {
 
     if (startDate < twelveMonthsAgo) {
       UpgradeBanner.show({
-        message: "Your Lite plan includes the last 12 months of data.",
+        message: translate(
+          "messages.your_lite_plan_includes_the_last_12_months_of_data",
+        ),
         upgradeUrl: this.controller.upgradeUrlValue,
         utmContent: "data_retention",
       })

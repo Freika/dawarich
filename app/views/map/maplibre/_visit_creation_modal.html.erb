@@ -1,7 +1,7 @@
 <div data-controller="visit-creation-v2" data-visit-creation-v2-api-key-value="<%= current_user.api_key %>" data-visit-creation-v2-timezone-value="<%= current_user.timezone %>">
   <div class="modal z-[10000]" data-visit-creation-v2-target="modal">
     <div class="modal-box max-w-2xl">
-      <h3 class="font-bold text-lg mb-4" data-visit-creation-v2-target="modalTitle">Create New Visit</h3>
+      <h3 class="font-bold text-lg mb-4" data-visit-creation-v2-target="modalTitle"><%= t('.create_new_visit') %></h3>
 
       <form data-visit-creation-v2-target="form" data-action="submit->visit-creation-v2#submit">
         <input type="hidden" name="latitude" data-visit-creation-v2-target="latitudeInput">
@@ -10,12 +10,12 @@
         <div class="space-y-4">
           <div class="form-control">
             <label class="label">
-              <span class="label-text font-semibold">Visit Name *</span>
+              <span class="label-text font-semibold"><%= t('.visit_name') %></span>
             </label>
             <input
               type="text"
               name="name"
-              placeholder="Enter visit name..."
+              placeholder="<%= t('.enter_visit_name') %>"
               class="input input-bordered w-full"
               data-visit-creation-v2-target="nameInput"
               required>
@@ -24,7 +24,7 @@
           <div class="grid grid-cols-2 gap-4">
             <div class="form-control">
               <label class="label">
-                <span class="label-text font-semibold">Start Time *</span>
+                <span class="label-text font-semibold"><%= t('.start_time') %></span>
               </label>
               <input
                 type="datetime-local"
@@ -37,7 +37,7 @@
 
             <div class="form-control">
               <label class="label">
-                <span class="label-text font-semibold">End Time *</span>
+                <span class="label-text font-semibold"><%= t('.end_time') %></span>
               </label>
               <input
                 type="datetime-local"
@@ -52,8 +52,8 @@
         </div>
 
         <div class="modal-action">
-          <button type="button" class="btn btn-ghost" data-action="click->visit-creation-v2#close">Cancel</button>
-          <button type="submit" class="btn btn-primary" data-visit-creation-v2-target="submitButton">Create Visit</button>
+          <button type="button" class="btn btn-ghost" data-action="click->visit-creation-v2#close"><%= t('.cancel') %></button>
+          <button type="submit" class="btn btn-primary" data-visit-creation-v2-target="submitButton"><%= t('.create_visit') %></button>
         </div>
       </form>
     </div>

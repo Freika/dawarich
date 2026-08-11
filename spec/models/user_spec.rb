@@ -3,6 +3,50 @@
 require 'rails_helper'
 
 RSpec.describe User, type: :model do
+  describe '#preferred_locale' do
+    it 'normalizes a supported string locale' do
+      user = build(:user, settings: { 'locale' => ' FR ' })
+
+      expect(user.preferred_locale).to eq(:fr)
+    end
+
+    it 'treats malformed and unsupported locale values as unset' do
+      [false, 42, { 'language' => 'fr' }, %w[fr], 'xx'].each do |locale|
+        user = build(:user, settings: { 'locale' => locale })
+
+        expect { user.preferred_locale }.not_to raise_error
+        expect(user.preferred_locale).to be_nil
+      end
+    end
+
+    it 'treats a malformed settings container as unset' do
+      [false, []].each do |settings|
+        user = build(:user, settings:)
+
+        expect { user.preferred_locale }.not_to raise_error
+        expect(user.preferred_locale).to be_nil
+      end
+    end
+  end
+
+  describe '#persist_locale!' do
+    it 'normalizes a malformed settings container before saving the locale' do
+      user = create(:user)
+      user.update_column(:settings, [])
+
+      expect { user.reload.persist_locale!(:fr) }.not_to raise_error
+
+      expect(user.reload.settings).to eq('locale' => 'fr')
+      expect(user.preferred_locale).to eq(:fr)
+    end
+  end
+
+  describe 'visit detection v3 stamp' do
+    it 'marks new accounts as v3-native so confidence gating applies from day one' do
+      expect(create(:user).reload.visits_redetected_at).to be_present
+    end
+  end
+
   describe 'associations' do
     it { is_expected.to have_many(:imports).dependent(:destroy) }
     it { is_expected.to have_many(:stats) }
@@ -39,6 +83,22 @@ RSpec.describe User, type: :model do
 
     it 'has integer value 2 for family' do
       expect(User.plans['family']).to eq(2)
+    end
+  end
+
+  describe '#persist_locale!' do
+    it 'updates only the locale when its settings snapshot is stale' do
+      stale_user = create(:user)
+      User.where(id: stale_user.id).update_all(
+        settings: stale_user.settings.merge('concurrent_preference' => 'preserved')
+      )
+
+      stale_user.persist_locale!(:de)
+
+      expect(stale_user.reload.settings).to include(
+        'locale' => 'de',
+        'concurrent_preference' => 'preserved'
+      )
     end
   end
 

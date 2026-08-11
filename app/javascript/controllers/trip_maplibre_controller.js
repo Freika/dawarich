@@ -1,5 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 import { MapInitializer } from "controllers/maps/maplibre/map_initializer"
+import { translate } from "i18n"
 import maplibregl from "maplibre-gl"
 import { DayRoutesLayer } from "maps_maplibre/layers/day_routes_layer"
 import { FlightsLayer } from "maps_maplibre/layers/flights_layer"
@@ -365,14 +366,16 @@ export default class extends Controller {
         d.removeAttribute("open")
       }
       if (this.hasExpandAllBtnTarget) {
-        this.expandAllBtnTarget.textContent = "Show all days"
+        this.expandAllBtnTarget.textContent = translate("trip.show_all_days")
       }
     } else {
       for (const d of allDetails) {
         d.setAttribute("open", "")
       }
       if (this.hasExpandAllBtnTarget) {
-        this.expandAllBtnTarget.textContent = "Collapse all days"
+        this.expandAllBtnTarget.textContent = translate(
+          "trip.collapse_all_days",
+        )
       }
     }
 
@@ -524,7 +527,10 @@ export default class extends Controller {
         this.flightsGeoJSON = null
         this.flightsActive = false
         this._setButtonActive(this.flightsToggleBtnTarget, false)
-        Flash.show("error", "Could not load flights. Please try again.")
+        Flash.show(
+          "error",
+          translate("messages.could_not_load_flights_please_try_again"),
+        )
         return
       }
     }
@@ -535,7 +541,7 @@ export default class extends Controller {
       this.flightsGeoJSON = null
       this.flightsActive = false
       this._setButtonActive(this.flightsToggleBtnTarget, false)
-      Flash.show("notice", "No flights found for this trip.")
+      Flash.show("notice", translate("messages.no_flights_found_for_this_trip"))
       return
     }
 

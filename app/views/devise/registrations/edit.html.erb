@@ -1,9 +1,9 @@
-<% content_for :title, 'Account' %>
+<% content_for :title, t('.account') %>
 
 <div class="w-full min-w-0 my-5">
   <div class="mx-auto w-full max-w-7xl space-y-6">
     <div>
-      <h1 class="text-3xl font-bold sm:text-4xl">Account settings</h1>
+      <h1 class="text-3xl font-bold sm:text-4xl"><%= t('.account_settings') %></h1>
     </div>
 
     <div class="grid gap-6 lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)] lg:items-start">
@@ -11,13 +11,13 @@
         <div class="card bg-base-100 shadow-xl">
           <div class="card-body gap-5 p-5 sm:p-6">
             <div>
-              <h2 class="card-title text-2xl">Profile</h2>
-              <p class="mt-1 text-sm text-base-content/70">Update your email address and password from one place.</p>
+              <h2 class="card-title text-2xl"><%= t('.profile') %></h2>
+              <p class="mt-1 text-sm text-base-content/70"><%= t('.update_your_email_address_and_password_from_one_place') %></p>
             </div>
 
             <% if current_user.oauth_user? %>
               <div class="rounded-xl border border-base-300 bg-base-200/50 px-4 py-3 text-sm font-medium">
-                Connected with <%= oauth_provider_display_name(current_user.provider) %>
+                <%= t('.connected_with') %> <%= oauth_provider_display_name(current_user.provider) %>
               </div>
             <% end %>
 
@@ -26,33 +26,33 @@
 
               <div class="form-control">
                 <%= f.label :email, class: 'label' do %>
-                  <span class="label-text">Email</span>
+                  <span class="label-text"><%= t('.email') %></span>
                 <% end %>
                 <%= f.email_field :email, autofocus: true, autocomplete: "email", class: 'input input-bordered w-full' %>
               </div>
 
               <% if devise_mapping.confirmable? && resource.pending_reconfirmation? %>
                 <div class="mt-4 rounded-xl border border-warning/40 bg-warning/10 px-4 py-3 text-sm">
-                  Currently waiting confirmation for: <span class="font-medium"><%= resource.unconfirmed_email %></span>
+                  <%= t('.currently_waiting_confirmation_for') %> <span class="font-medium"><%= resource.unconfirmed_email %></span>
                 </div>
               <% end %>
 
               <div class="form-control mt-5">
                 <%= f.label :password, class: 'label' do %>
-                  <span class="label-text">New password <span class="text-base-content/60">(leave blank to keep the current one)</span></span>
+                  <span class="label-text"><%= t('.new_password') %> <span class="text-base-content/60"><%= t('.leave_blank_to_keep_the_current_one') %></span></span>
                 <% end %>
                 <% if @minimum_password_length %>
-                  <em class='text-xs text-base-content/60'>(<%= @minimum_password_length %> characters minimum)</em>
+                  <em class='text-xs text-base-content/60'>(<%= @minimum_password_length %> <%= t('.characters_minimum') %></em>
                 <% end %>
                 <%= f.password_field :password, autocomplete: "new-password", class: 'input input-bordered w-full' %>
               </div>
 
               <div class="form-control mt-5">
                 <%= f.label :password_confirmation, class: 'label' do %>
-                  <span class="label-text">Password confirmation</span>
+                  <span class="label-text"><%= t('.password_confirmation') %></span>
                 <% end %>
                 <% if @minimum_password_length %>
-                  <em class='text-xs text-base-content/60'>(<%= @minimum_password_length %> characters minimum)</em>
+                  <em class='text-xs text-base-content/60'>(<%= @minimum_password_length %> <%= t('.characters_minimum') %></em>
                 <% end %>
                 <%= f.password_field :password_confirmation, autocomplete: "new-password", class: 'input input-bordered w-full' %>
               </div>
@@ -60,15 +60,15 @@
               <% unless current_user.oauth_user? %>
                 <div class="form-control mt-5">
                   <%= f.label :current_password, class: 'label' do %>
-                    <span class="label-text">Current password</span>
+                    <span class="label-text"><%= t('.current_password') %></span>
                   <% end %>
-                  <i class='text-xs text-base-content/60'>(required to confirm your changes)</i>
+                  <i class='text-xs text-base-content/60'><%= t('.required_to_confirm_your_changes') %></i>
                   <%= f.password_field :current_password, autocomplete: "current-password", class: 'input input-bordered mt-2 w-full' %>
                 </div>
               <% end %>
 
               <div class="form-control mt-6">
-                <%= f.submit "Save changes", class: 'btn btn-primary w-full sm:w-auto' %>
+                <%= f.submit t('.save_changes'), class: 'btn btn-primary w-full sm:w-auto' %>
               </div>
             <% end %>
 
@@ -78,8 +78,8 @@
 
         <dialog id="import_modal" class="modal">
           <div class="modal-box">
-            <h3 class="mb-4 text-lg font-bold">Import your data</h3>
-            <p class="mb-4 text-sm text-base-content/70">Upload a ZIP file containing your exported Dawarich data to restore your points, trips, and settings.</p>
+            <h3 class="mb-4 text-lg font-bold"><%= t('.import_your_data') %></h3>
+            <p class="mb-4 text-sm text-base-content/70"><%= t('.upload_a_zip_file_containing_your_exported_dawarich_data_to') %></p>
 
             <%= form_with url: import_settings_users_path, method: :post, multipart: true, class: 'space-y-4', data: {
               turbo: false,
@@ -93,7 +93,7 @@
             } do |f| %>
               <div class="form-control">
                 <%= f.label :archive, class: 'label' do %>
-                  <span class="label-text">Select ZIP archive</span>
+                  <span class="label-text"><%= t('.select_zip_archive') %></span>
                 <% end %>
                 <%= f.file_field :archive,
                     accept: '.zip',
@@ -102,23 +102,23 @@
                     class: 'file-input file-input-bordered w-full',
                     data: { upload_target: "input" } %>
                 <div class="mt-2 text-sm text-base-content/60">
-                  File will be uploaded directly to storage. Please be patient during upload.
+                  <%= t('.file_will_be_uploaded_directly_to_storage_please_be_patient') %>
                 </div>
               </div>
 
               <div class="modal-action flex-col-reverse sm:flex-row">
-                <button type="button" class="btn w-full sm:w-auto" onclick="import_modal.close()">Cancel</button>
-                <%= f.submit "Import data",
+                <button type="button" class="btn w-full sm:w-auto" onclick="import_modal.close()"><%= t('.cancel') %></button>
+                <%= f.submit t('.import_data'),
                     class: 'btn btn-primary w-full sm:w-auto',
                     data: {
-                      disable_with: 'Importing...',
+                      disable_with: t('.importing'),
                       upload_target: "submit"
                     } %>
               </div>
             <% end %>
           </div>
           <form method="dialog" class="modal-backdrop">
-            <button>close</button>
+            <button><%= t('.close') %></button>
           </form>
         </dialog>
       </div>
@@ -129,13 +129,13 @@
             <% if current_user.trial? %>
               <div class="card bg-base-100 shadow-xl">
                 <div class="card-body p-5 sm:p-6">
-                  <h2 class="card-title text-xl">Trial status</h2>
-                  <p class="text-sm text-base-content/70">Your trial period ends at <span class="font-medium text-base-content"><%= human_datetime current_user.active_until, current_user.safe_settings.timezone %></span>.</p>
+                  <h2 class="card-title text-xl"><%= t('.trial_status') %></h2>
+                  <p class="text-sm text-base-content/70"><%= t('.your_trial_period_ends_at') %> <span class="font-medium text-base-content"><%= human_datetime current_user.active_until, current_user.safe_settings.timezone %></span>.</p>
                   <div class="mt-2">
                     <% if current_user.auto_converting_trial? %>
-                      <%= link_to 'Manage subscription', "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}", class: 'btn btn-primary btn-sm glass' %>
+                      <%= link_to t('.manage_subscription'), "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}", class: 'btn btn-primary btn-sm glass' %>
                     <% else %>
-                      <%= link_to 'Subscribe', "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}", class: 'btn btn-success btn-sm glass' %>
+                      <%= link_to t('.subscribe'), "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}", class: 'btn btn-success btn-sm glass' %>
                     <% end %>
                   </div>
                 </div>
@@ -145,7 +145,7 @@
             <% if !DawarichSettings.self_hosted? %>
               <div class="card bg-base-100 shadow-xl">
                 <div class="card-body p-5 sm:p-6">
-                  <h2 class="card-title text-xl">Plan usage</h2>
+                  <h2 class="card-title text-xl"><%= t('.plan_usage') %></h2>
                   <%= render 'devise/registrations/points_usage' %>
                 </div>
               </div>
@@ -157,19 +157,19 @@
               <div class="card-body p-5 sm:p-6">
                 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div>
-                    <h2 class="card-title text-xl">Subscription</h2>
+                    <h2 class="card-title text-xl"><%= t('.subscription') %></h2>
                     <p class="text-sm text-base-content/70">
                       <% case %>
                       <% when current_user.pending_payment? %>
-                        Your signup isn't complete yet — finish setting up your subscription to start your trial.
+                        <%= t('.your_signup_isn_t_complete_yet_finish_setting_up_your') %>
                       <% when current_user.active? && current_user.active_until&.future? %>
-                        Change plan, update your payment method, or cancel your subscription on Manager.
+                        <%= t('.change_plan_update_your_payment_method_or_cancel_your_subscription') %>
                       <% else %>
-                        Manage your subscription, change plan, or update billing on Manager.
+                        <%= t('.manage_your_subscription_change_plan_or_update_billing_on_manager') %>
                       <% end %>
                     </p>
                   </div>
-                  <%= link_to 'Manage subscription',
+                  <%= link_to t('.manage_subscription'),
                               "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}",
                               class: 'btn btn-primary btn-sm whitespace-nowrap' %>
                 </div>
@@ -181,8 +181,8 @@
         <div class="card bg-base-100 shadow-xl">
           <div class="card-body p-5 sm:p-6">
             <div class="max-w-3xl">
-              <h2 class="card-title text-2xl">API access</h2>
-              <p class="mt-1 text-sm text-base-content/70">Use your API key for clients, imports, and external integrations.</p>
+              <h2 class="card-title text-2xl"><%= t('.api_access') %></h2>
+              <p class="mt-1 text-sm text-base-content/70"><%= t('.use_your_api_key_for_clients_imports_and_external_integrations') %></p>
             </div>
             <%= render 'devise/registrations/api_key' %>
           </div>
@@ -191,33 +191,33 @@
         <div class="card bg-base-100 shadow-xl">
           <div class="card-body gap-5 p-5 sm:p-6">
             <div>
-              <h2 class="card-title text-2xl">Data tools</h2>
-              <p class="mt-1 text-sm text-base-content/70">Export a backup or restore a previous archive.</p>
+              <h2 class="card-title text-2xl"><%= t('.data_tools') %></h2>
+              <p class="mt-1 text-sm text-base-content/70"><%= t('.export_a_backup_or_restore_a_previous_archive') %></p>
             </div>
 
             <div class='flex flex-col gap-3 sm:flex-row sm:flex-wrap'>
-              <%= link_to "Export my data", export_settings_users_path, class: 'btn btn-primary w-full sm:w-auto', data: {
-                  turbo_confirm: "Are you sure you want to export your data?",
+              <%= link_to t('.export_my_data'), export_settings_users_path, class: 'btn btn-primary w-full sm:w-auto', data: {
+                  turbo_confirm: t('.are_you_sure_you_want_to_export_your_data'),
                   turbo_method: :get
                 } %>
-              <button type="button" class='btn btn-outline w-full sm:w-auto' onclick="import_modal.showModal()">Import my data</button>
+              <button type="button" class='btn btn-outline w-full sm:w-auto' onclick="import_modal.showModal()"><%= t('.import_my_data') %></button>
             </div>
 
             <div class="rounded-2xl border border-error/30 bg-error/5 p-4">
-              <h3 class="text-lg font-semibold">Danger zone</h3>
-              <p class="mt-2 text-sm text-base-content/70">Deleting your account is permanent and removes all your data.</p>
+              <h3 class="text-lg font-semibold"><%= t('.danger_zone') %></h3>
+              <p class="mt-2 text-sm text-base-content/70"><%= t('.deleting_your_account_is_permanent_and_removes_all_your_data') %></p>
               <div class="mt-4">
-                <button type="button" class='btn btn-error btn-outline w-full sm:w-auto' onclick="delete_account_modal.showModal()">Cancel my account</button>
+                <button type="button" class='btn btn-error btn-outline w-full sm:w-auto' onclick="delete_account_modal.showModal()"><%= t('.cancel_my_account') %></button>
               </div>
             </div>
 
             <dialog id="delete_account_modal" class="modal" onclose="this.querySelector('.modal-box form')?.reset()">
               <div class="modal-box">
-                <h3 class="mb-4 text-lg font-bold">Delete your account</h3>
+                <h3 class="mb-4 text-lg font-bold"><%= t('.delete_your_account') %></h3>
                 <% if DawarichSettings.self_hosted? %>
-                  <p class="mb-4 text-sm text-base-content/70">This is permanent and removes all your data. This cannot be undone.</p>
+                  <p class="mb-4 text-sm text-base-content/70"><%= t('.this_is_permanent_and_removes_all_your_data_this_cannot') %></p>
                 <% else %>
-                  <p class="mb-4 text-sm text-base-content/70">This is permanent and removes all your data. This cannot be undone. We'll email you a link to confirm — your account is deleted only after you click it.</p>
+                  <p class="mb-4 text-sm text-base-content/70"><%= t('.this_is_permanent_and_removes_all_your_data_this_cannot_2') %></p>
                 <% end %>
 
                 <%= form_with url: registration_path(resource_name), method: :delete, class: 'space-y-4', data: { turbo: false } do %>
@@ -225,14 +225,14 @@
                     <% if current_user.oauth_user? %>
                       <div class="form-control">
                         <%= label_tag :confirm_email, class: 'label' do %>
-                          <span class="label-text">Type your email (<span class="font-medium"><%= current_user.email %></span>) to confirm</span>
+                          <span class="label-text"><%= t('.type_your_email') %><span class="font-medium"><%= current_user.email %></span><%= t('.to_confirm') %></span>
                         <% end %>
                         <%= text_field_tag :confirm_email, nil, autocomplete: "off", required: true, class: 'input input-bordered w-full' %>
                       </div>
                     <% else %>
                       <div class="form-control">
                         <%= label_tag :password, class: 'label' do %>
-                          <span class="label-text">Enter your current password to confirm</span>
+                          <span class="label-text"><%= t('.enter_your_current_password_to_confirm') %></span>
                         <% end %>
                         <%= password_field_tag :password, nil, autocomplete: "current-password", required: true, class: 'input input-bordered w-full' %>
                       </div>
@@ -240,13 +240,13 @@
                   <% end %>
 
                   <div class="modal-action flex-col-reverse sm:flex-row">
-                    <button type="button" class="btn w-full sm:w-auto" onclick="delete_account_modal.close()">Cancel</button>
-                    <%= submit_tag(DawarichSettings.self_hosted? ? 'Delete my account' : 'Email me the confirmation link', class: 'btn btn-error w-full sm:w-auto') %>
+                    <button type="button" class="btn w-full sm:w-auto" onclick="delete_account_modal.close()"><%= t('.cancel') %></button>
+                    <%= submit_tag(t(DawarichSettings.self_hosted? ? '.delete_my_account' : '.email_me_the_confirmation_link'), class: 'btn btn-error w-full sm:w-auto') %>
                   </div>
                 <% end %>
               </div>
               <form method="dialog" class="modal-backdrop">
-                <button>close</button>
+                <button><%= t('.close') %></button>
               </form>
             </dialog>
           </div>

@@ -3,14 +3,14 @@
               data: { turbo_frame: "share-link-modal" } do |f| %>
   <div class="grid grid-cols-2 gap-3">
     <div class="form-control">
-      <label class="label"><span class="label-text">Start date</span></label>
+      <label class="label"><span class="label-text"><%= t('.start_date') %></span></label>
       <%= f.date_field :start_date,
                        value: (@shared_link&.settings&.dig('start_date') || 7.days.ago.to_date),
                        class: 'input input-bordered',
                        required: true %>
     </div>
     <div class="form-control">
-      <label class="label"><span class="label-text">End date</span></label>
+      <label class="label"><span class="label-text"><%= t('.end_date') %></span></label>
       <%= f.date_field :end_date,
                        value: (@shared_link&.settings&.dig('end_date') || Date.current),
                        class: 'input input-bordered',
@@ -19,16 +19,16 @@
   </div>
 
   <div class="form-control mt-4">
-    <label class="label"><span class="label-text">Magic phrase (optional)</span></label>
+    <label class="label"><span class="label-text"><%= t('.magic_phrase_optional') %></span></label>
     <%= f.text_field :magic_phrase, class: 'input input-bordered', value: SharedLink::PhraseGenerator.call %>
-    <span class="label-text-alt mt-1">Leave blank to share without a phrase, or use the auto-generated one.</span>
+    <span class="label-text-alt mt-1"><%= t('.leave_blank_to_share_without_a_phrase_or_use_the') %></span>
   </div>
 
   <%= render 'shared_links/expires_field', f: f %>
 
   <div class="form-control mt-4">
     <label class="label cursor-pointer">
-      <span class="label-text">Show photos</span>
+      <span class="label-text"><%= t('.show_photos') %></span>
       <%= hidden_field_tag 'shared_link[settings][show_photos]', '0' %>
       <%= check_box_tag 'shared_link[settings][show_photos]', '1', false, class: 'checkbox' %>
     </label>
@@ -41,7 +41,7 @@
   <% end %>
 
   <div class="modal-action">
-    <%= link_to 'Cancel', close_path, class: 'btn btn-ghost', data: { turbo_frame: '_top', action: 'share-link-modal#close' } %>
-    <%= f.submit 'Create share link', class: 'btn btn-primary' %>
+    <%= link_to t('.cancel'), close_path, class: 'btn btn-ghost', data: { turbo_frame: '_top', action: 'share-link-modal#close' } %>
+    <%= f.submit t('.create_share_link'), class: 'btn btn-primary' %>
   </div>
 <% end %>

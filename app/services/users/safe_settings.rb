@@ -54,23 +54,6 @@ class Users::SafeSettings
     'supporter_email' => nil,
     'supporter_github_username' => nil,
     'show_supporter_badge' => true,
-    # Transportation mode thresholds (speeds in km/h, distances in km)
-    'transportation_thresholds' => {
-      'walking_max_speed' => 7,
-      'cycling_max_speed' => 45,
-      'driving_max_speed' => 220,
-      'flying_min_speed' => 150
-    },
-    'transportation_expert_thresholds' => {
-      'stationary_max_speed' => 1,
-      'running_vs_cycling_accel' => 0.25,
-      'cycling_vs_driving_accel' => 0.4,
-      'train_min_speed' => 80,
-      'min_segment_duration' => 60,
-      'time_gap_threshold' => 180,
-      'min_flight_distance_km' => 100
-    },
-    'transportation_expert_mode' => false,
     'min_minutes_spent_in_city' => 60,
     'max_gap_minutes_in_city' => 120,
     # GPS noise filtering (Points::AnomalyFilter)
@@ -79,12 +62,12 @@ class Users::SafeSettings
     'visit_radius_meters' => 100,
     'visit_min_points' => 3,
     'visit_min_duration_minutes' => 5,
-    'visit_density_fill_enabled' => true,
-    'stay_max_gap_minutes' => 60,
     'point_dragging_enabled' => false
   }.freeze
 
   def initialize(settings = {}, plan: nil)
+    settings = {} unless settings.is_a?(Hash)
+
     @settings = DEFAULT_VALUES.deep_dup.deep_merge(settings)
     @plan = plan
   end
@@ -120,10 +103,7 @@ class Users::SafeSettings
       maps_maplibre_tiles_url: maps_maplibre_tiles_url,
       maps_maplibre_custom_theme: maps_maplibre_custom_theme,
       globe_projection: globe_projection,
-      transportation_thresholds: transportation_thresholds,
-      transportation_expert_thresholds: transportation_expert_thresholds,
       enabled_transportation_modes: enabled_transportation_modes,
-      transportation_expert_mode: transportation_expert_mode?,
       min_minutes_spent_in_city: min_minutes_spent_in_city,
       max_gap_minutes_in_city: max_gap_minutes_in_city,
       gps_filtering_enabled: gps_filtering_enabled?,
@@ -131,8 +111,6 @@ class Users::SafeSettings
       visit_radius_meters: visit_radius_meters,
       visit_min_points: visit_min_points,
       visit_min_duration_minutes: visit_min_duration_minutes,
-      visit_density_fill_enabled: visit_density_fill_enabled?,
-      stay_max_gap_minutes: stay_max_gap_minutes,
       point_dragging_enabled: point_dragging_enabled?
     }
   end
@@ -303,18 +281,6 @@ class Users::SafeSettings
     ActiveModel::Type::Boolean.new.cast(value)
   end
 
-  def transportation_thresholds
-    settings['transportation_thresholds'] || DEFAULT_VALUES['transportation_thresholds']
-  end
-
-  def transportation_expert_thresholds
-    settings['transportation_expert_thresholds'] || DEFAULT_VALUES['transportation_expert_thresholds']
-  end
-
-  def transportation_expert_mode?
-    ActiveModel::Type::Boolean.new.cast(settings['transportation_expert_mode'])
-  end
-
   def enabled_transportation_modes
     raw = settings['enabled_transportation_modes']
     valid = Track::TRANSPORTATION_MODES.keys.map(&:to_s)
@@ -362,14 +328,6 @@ class Users::SafeSettings
   def visit_min_duration_minutes
     raw = settings['visit_min_duration_minutes'] || DEFAULT_VALUES['visit_min_duration_minutes']
     raw.to_i.clamp(1, 60)
-  end
-
-  def visit_density_fill_enabled?
-    ActiveModel::Type::Boolean.new.cast(settings['visit_density_fill_enabled'])
-  end
-
-  def stay_max_gap_minutes
-    settings['stay_max_gap_minutes'].to_i.clamp(5, 720)
   end
 
   private

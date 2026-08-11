@@ -1,3 +1,4 @@
+import { translate } from "i18n"
 import maplibregl from "maplibre-gl"
 import { Toast } from "maps_maplibre/components/toast"
 import { styleDocumentFailed } from "maps_maplibre/utils/basemap_url"
@@ -59,9 +60,7 @@ export class MapInitializer {
         settled = true
         map.off("style.load", onStyleLoad)
         map.off("error", onError)
-        Toast.error(
-          "Custom map style could not be loaded; reverting to the default style.",
-        )
+        Toast.error(translate("settings.custom_style_load_failed"))
         const fallbackStyle = await getMapStyle(mapStyle, {
           hiddenTileCategories,
           disabledPoiGroups,

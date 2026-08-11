@@ -35,10 +35,18 @@ RSpec.describe Posters::Generate do
     it 'renders with the poster distance, opacity, subtitle and track' do
       expect(Posters::NativeRenderer).to receive(:new).with(
         poster: poster, track: track, distance: 6000, route_opacity: 1.0, route_width: 1.0,
-        subtitle: '1 Apr 2026 – 30 Apr 2026'
+        subtitle: 'Apr 1, 2026 – Apr 30, 2026'
       ).and_return(renderer)
 
       run_generate
+    end
+
+    it 'localizes the subtitle dates' do
+      expect(Posters::NativeRenderer).to receive(:new).with(
+        hash_including(subtitle: '1 avr. 2026 – 30 avr. 2026')
+      ).and_return(renderer)
+
+      I18n.with_locale(:fr) { run_generate }
     end
 
     it 'records a render phase on the poster' do

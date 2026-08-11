@@ -29,6 +29,7 @@ class Users::RegistrationsController < Devise::RegistrationsController
     yield resource if block_given?
 
     if resource.persisted?
+      persist_signup_locale(resource)
       post_signup_setup(resource)
 
       # The claim happens in every branch (not in after_sign_up_path_for):
@@ -81,7 +82,7 @@ class Users::RegistrationsController < Devise::RegistrationsController
     Devise.sign_out_all_scopes ? sign_out : sign_out(resource_name)
 
     redirect_to after_sign_out_path_for(resource_name),
-                notice: 'Your account has been scheduled for deletion.'
+                notice: I18n.t('controllers.users.registrations.your_account_has_been_scheduled_for_deletion')
   end
 
   def destroy_cloud
@@ -143,6 +144,17 @@ class Users::RegistrationsController < Devise::RegistrationsController
     accept_invitation_for_user(resource) if @invitation
   end
 
+  # Only a language the reader actually picked is worth pinning to the account.
+  # Recording the default here would answer `suggested_locale`'s "has the reader
+  # chosen?" question for every new account, so someone signing up from a French
+  # browser would never be offered French again.
+  def persist_signup_locale(resource)
+    return if supported_locale(params[:locale]).nil? && session[:locale].blank?
+
+    resource.settings = (resource.settings || {}).merge('locale' => I18n.locale.to_s)
+    resource.save!
+  end
+
   def manager_checkout_url(user)
     url = "#{MANAGER_URL}/checkout?token=#{user.generate_subscription_token(variant: 'reverse_trial')}"
     linker = session.delete(:gads_linker)
@@ -170,16 +182,19 @@ class Users::RegistrationsController < Devise::RegistrationsController
     # When OIDC is enabled and email/password registration is disabled,
     # block all email/password registration including family invitations
     if oidc_only_mode?
+      alert = I18n.t('controllers.users.registrations.email_password_registration_is_disabled_please_use_oidc_to_sign')
       redirect_to root_path,
-                  alert: 'Email/password registration is disabled. Please use OIDC to sign in.'
+                  alert: alert
       return
     end
 
     return if valid_invitation_token?
     return if email_password_registration_allowed?
 
-    redirect_to root_path,
-                alert: 'Registration is not available. Please contact your administrator for access.'
+    alert = I18n.t(
+      'controllers.users.registrations.registration_is_not_available_please_contact_your_administrator_for_acce'
+    )
+    redirect_to root_path, alert: alert
   end
 
   def set_invitation
@@ -211,15 +226,18 @@ class Users::RegistrationsController < Devise::RegistrationsController
     )
 
     if service.call
-      flash[:notice] = "Welcome to #{@invitation.family.name}! You're now part of the family."
+      flash[:notice] =
+        I18n.t('controllers.users.registrations.welcome_to_name_you_re_now_part_of_the_family',
+               name: @invitation.family.name)
     else
       flash[:alert] =
-        "Account created successfully, but there was an issue accepting the invitation: #{service.error_message}"
+        I18n.t('controllers.users.registrations.account_created_successfully_but_there_was_an_issue_accepting_the',
+               error_message: service.error_message)
     end
   rescue StandardError => e
     Rails.logger.error "Error accepting invitation during registration: #{e.message}"
     flash[:alert] =
-      'Account created successfully, but there was an issue accepting the invitation. Please try accepting it again.'
+      I18n.t('controllers.users.registrations.account_created_successfully_but_there_was_an_issue_accepting_the_2')
   end
 
   def sign_up_params

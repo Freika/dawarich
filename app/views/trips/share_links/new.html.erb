@@ -1,8 +1,8 @@
 <%= render 'shared_links/modal',
            resource: @trip,
            share: @share,
-           title: "Share #{@trip.name}",
-           subtitle: "#{@trip.name} is shared via a public link.",
+           title: t('.share_trip', trip: @trip.name),
+           subtitle: t('.trip_is_shared_via_a_public_link', trip: @trip.name),
            close_path: trip_path(@trip),
            paths: {
              create:            trip_share_link_path(@trip),

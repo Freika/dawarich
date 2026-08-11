@@ -39,6 +39,18 @@ RSpec.describe 'Api::V1::Places', type: :request do
       expect(json.map { |p| p['name'] }).not_to include('Private Place')
     end
 
+    it 'excludes tombstoned visits from visits_count' do
+      create(:visit, user: user, place: place, area: nil,
+                     started_at: 2.hours.ago, ended_at: 1.hour.ago)
+      create(:visit, user: user, place: place, area: nil, deleted_at: 1.day.ago,
+                     started_at: 5.hours.ago, ended_at: 4.hours.ago)
+
+      get '/api/v1/places', headers: headers
+
+      json = JSON.parse(response.body)
+      expect(json.first['visits_count']).to eq(1)
+    end
+
     context 'map visibility (manual + confirmed + tagged only)' do
       it 'excludes a suggested-only photon place' do
         suggested = create(:place, user: user, name: 'Suggested Only', source: :photon)

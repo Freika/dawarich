@@ -1,7 +1,7 @@
-<% content_for :title, 'Users' %>
+<% content_for :title, t('.users') %>
 
 <div class="min-h-content w-full my-5">
-  <%= render 'shared/page_header', title: 'Users management' %>
+  <%= render 'shared/page_header', title: t('.users_management') %>
   <%= render 'settings/navigation' %>
 
   <!-- Registration Settings -->
@@ -9,8 +9,8 @@
     <div class="card bg-base-200 compact">
       <div class="card-body flex-row items-center justify-between">
         <div>
-          <h3 class="font-semibold">User registration</h3>
-          <p class="text-sm text-base-content/70">Allow new users to register via email and password</p>
+          <h3 class="font-semibold"><%= t('.user_registration') %></h3>
+          <p class="text-sm text-base-content/70"><%= t('.allow_new_users_to_register_via_email_and_password') %></p>
         </div>
         <%= form_with url: update_registration_settings_settings_users_path, method: :patch, data: { turbo: false }, class: 'flex items-center gap-3' do %>
           <input type="hidden" name="registration_enabled" value="0" />
@@ -26,24 +26,24 @@
   <div class="flex flex-col lg:flex-row w-full my-10 space-x-4">
     <div class="overflow-x-auto w-10/12 mx-auto">
       <div class="flex items-center justify-between mb-4">
-        <button class="btn" onclick="create_user.showModal()">Add new user</button>
+        <button class="btn" onclick="create_user.showModal()"><%= t('.add_new_user') %></button>
         <%= form_with url: settings_users_path, method: :get, data: { turbo: false }, class: 'flex gap-2' do %>
-          <input type="text" name="search" value="<%= params[:search] %>" placeholder="Search by email..." class="input input-bordered input-sm w-64" />
-          <button type="submit" class="btn btn-sm btn-ghost">Search</button>
+          <input type="text" name="search" value="<%= params[:search] %>" placeholder="<%= t('.search_by_email') %>" class="input input-bordered input-sm w-64" />
+          <button type="submit" class="btn btn-sm btn-ghost"><%= t('.search') %></button>
           <% if params[:search].present? %>
-            <%= link_to 'Clear', settings_users_path, class: 'btn btn-sm btn-ghost' %>
+            <%= link_to t('.clear'), settings_users_path, class: 'btn btn-sm btn-ghost' %>
           <% end %>
         <% end %>
       </div>
       <table class="table w-full">
         <thead>
           <tr>
-            <th>Email</th>
-            <th>Role</th>
-            <th>Status</th>
-            <th>Points</th>
-            <th>Last sign in</th>
-            <th>Created at</th>
+            <th><%= t('.email') %></th>
+            <th><%= t('.role') %></th>
+            <th><%= t('.status') %></th>
+            <th><%= t('.points') %></th>
+            <th><%= t('.last_sign_in') %></th>
+            <th><%= t('.created_at') %></th>
             <th></th>
           </tr>
         </thead>
@@ -57,18 +57,18 @@
               </td>
               <td>
                 <% if user.admin? %>
-                  <span class="badge badge-primary">Admin</span>
+                  <span class="badge badge-primary"><%= t('.admin') %></span>
                 <% else %>
-                  <span class="badge badge-ghost">User</span>
+                  <span class="badge badge-ghost"><%= t('.user') %></span>
                 <% end %>
               </td>
               <td>
                 <% if user.active? %>
-                  <span class="badge badge-success">Active</span>
+                  <span class="badge badge-success"><%= t('.active') %></span>
                 <% elsif user.inactive? %>
-                  <span class="badge badge-error">Inactive</span>
+                  <span class="badge badge-error"><%= t('.inactive') %></span>
                 <% elsif user.trial? %>
-                  <span class="badge badge-warning">Trial</span>
+                  <span class="badge badge-warning"><%= t('.trial') %></span>
                 <% end %>
               </td>
               <td>
@@ -78,16 +78,16 @@
                 <% if user.last_sign_in_at.present? %>
                   <%= human_datetime(user.last_sign_in_at, current_user.safe_settings.timezone) %>
                 <% else %>
-                  <span class="text-base-content/50">Never</span>
+                  <span class="text-base-content/50"><%= t('.never') %></span>
                 <% end %>
               </td>
               <td>
                 <%= human_datetime(user.created_at, current_user.safe_settings.timezone) %>
               </td>
               <td class="flex gap-2">
-                <%= link_to 'Edit', edit_settings_user_path(user), class: 'btn btn-ghost btn-sm' %>
+                <%= link_to t('.edit'), edit_settings_user_path(user), class: 'btn btn-ghost btn-sm' %>
                 <% unless user == current_user %>
-                  <button class="btn btn-error btn-sm" onclick="delete_user_<%= user.id %>.showModal()">Delete</button>
+                  <button class="btn btn-error btn-sm" onclick="delete_user_<%= user.id %>.showModal()"><%= t('.delete') %></button>
                 <% end %>
               </td>
             </tr>
@@ -104,27 +104,27 @@
 
 <dialog id="create_user" class="modal">
   <div class="modal-box">
-    <h2 class="text-2xl font-bold">Create a new user!</h2>
+    <h2 class="text-2xl font-bold"><%= t('.create_a_new_user') %></h2>
     <%= form_for :user, url: settings_users_path, method: :post, data: { turbo_method: :post, turbo: false } do |f| %>
       <div class="form-control">
         <%= f.label :email do %>
-          Email
+          <%= t('.email') %>
         <% end %>
         <%= f.email_field :email, value: '', class: "input input-bordered" %>
       </div>
       <div class="form-control mt-5">
         <%= f.label :password do %>
-          Password
+          <%= t('.password') %>
         <% end %>
         <%= f.password_field :password, autofocus: true, autocomplete: "new-password", class: "input input-bordered", minlength: 6 %>
       </div>
       <div class="form-control mt-5">
-        <%= f.submit "Create", class: "btn btn-primary" %>
+        <%= f.submit t('.create'), class: "btn btn-primary" %>
       </div>
     <% end %>
   </div>
   <form method="dialog" class="modal-backdrop">
-    <button>close</button>
+    <button><%= t('.close') %></button>
   </form>
 </dialog>
 
@@ -132,21 +132,19 @@
   <% unless user == current_user %>
     <dialog id="delete_user_<%= user.id %>" class="modal">
       <div class="modal-box">
-        <h3 class="text-lg font-bold">Delete user</h3>
+        <h3 class="text-lg font-bold"><%= t('.delete_user') %></h3>
         <p class="py-4">
-          Are you sure you want to delete <strong><%= user.email %></strong>?
-          This will permanently remove their account and all associated data.
-          This action cannot be undone.
+          <%= t('.are_you_sure_you_want_to_delete') %> <strong><%= user.email %></strong><%= t('.this_will_permanently_remove_their_account_and_all_associated_data') %>
         </p>
         <div class="modal-action">
           <form method="dialog">
-            <button class="btn">Cancel</button>
+            <button class="btn"><%= t('.cancel') %></button>
           </form>
-          <%= button_to "Delete", settings_user_path(user), method: :delete, class: "btn btn-error", data: { turbo: false } %>
+          <%= button_to t('.delete'), settings_user_path(user), method: :delete, class: "btn btn-error", data: { turbo: false } %>
         </div>
       </div>
       <form method="dialog" class="modal-backdrop">
-        <button>close</button>
+        <button><%= t('.close') %></button>
       </form>
     </dialog>
   <% end %>

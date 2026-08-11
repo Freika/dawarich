@@ -174,6 +174,14 @@ RSpec.describe 'OAuth account-link password challenge', type: :request do
       expect(response.body).to include(email)
     end
 
+    it 'renders complete French account-link instructions' do
+      trigger_collision
+      get auth_account_link_challenge_path(locale: 'fr')
+
+      expect(response.body).to include('Associer OpenID Connect à votre compte Dawarich')
+      expect(response.body).to include('Saisissez votre mot de passe pour y associer votre identité OpenID Connect')
+    end
+
     it 'redirects to sign-in when no pending link in session' do
       get auth_account_link_challenge_path
       expect(response).to redirect_to(new_user_session_path)

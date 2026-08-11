@@ -16,12 +16,12 @@ module ImportsHelper
   }.freeze
 
   EXTRACTION_STATUS_BADGES = {
-    'not_attempted' => { label: 'Not extracted', css: 'badge-ghost' },
-    'pending'       => { label: 'Queued',        css: 'badge-info' },
-    'running'       => { label: 'Extracting',    css: 'badge-info gap-1', spinner: true },
-    'completed'     => { label: 'Extracted',     css: 'badge-success' },
-    'failed'        => { label: 'Failed',        css: 'badge-error' },
-    'unsupported'   => { label: 'Not available', css: 'badge-ghost' }
+    'not_attempted' => { label_key: 'not_attempted', css: 'badge-ghost' },
+    'pending'       => { label_key: 'pending',       css: 'badge-info' },
+    'running'       => { label_key: 'running',       css: 'badge-info gap-1', spinner: true },
+    'completed'     => { label_key: 'completed',     css: 'badge-success' },
+    'failed'        => { label_key: 'failed',        css: 'badge-error' },
+    'unsupported'   => { label_key: 'unsupported',   css: 'badge-ghost' }
   }.freeze
 
   def extraction_status_badge(import)
@@ -30,7 +30,7 @@ module ImportsHelper
 
     tag.span(class: "badge badge-sm #{badge[:css]}") do
       concat(tag.span(nil, class: 'loading loading-dots loading-xs shrink-0')) if badge[:spinner]
-      concat(badge[:label])
+      concat(I18n.t("helpers.imports.extraction_status.#{badge[:label_key]}"))
     end
   end
 

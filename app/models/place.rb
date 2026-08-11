@@ -11,6 +11,10 @@ class Place < ApplicationRecord
 
   belongs_to :user, optional: true # Optional until Stage 2 NOT NULL
   has_many :visits, dependent: :nullify
+  # Reader surfaces (drawers, serializers, stats) must never count tombstoned
+  # or declined visits; eager-loadable so list endpoints avoid N+1 counts.
+  # dependent: nil — lifecycle belongs to the canonical :visits association.
+  has_many :active_visits, -> { active }, class_name: 'Visit', inverse_of: :place, dependent: nil
   has_many :place_visits, dependent: :destroy
   has_many :suggested_visits, -> { distinct }, through: :place_visits, source: :visit
 
@@ -27,7 +31,7 @@ class Place < ApplicationRecord
   scope :for_user, ->(user) { where(user: user) }
   scope :ordered, -> { order(:name) }
   scope :linked_to_confirmed_visits, lambda { |user|
-    where(id: user.visits.confirmed.where.not(place_id: nil).select(:place_id))
+    where(id: user.visits.active.confirmed.where.not(place_id: nil).select(:place_id))
   }
   scope :tagged, -> { where(id: Tagging.where(taggable_type: 'Place').select(:taggable_id)) }
   scope :map_visible, lambda { |user|

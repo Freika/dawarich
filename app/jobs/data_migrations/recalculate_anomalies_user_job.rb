@@ -87,9 +87,16 @@ class DataMigrations::RecalculateAnomaliesUserJob < ApplicationJob
       return release_slot
     end
 
-    unless Points::AnomalyBackfillUserJob.perform_now(user.id, reset: true, notify: false, rebuild: :inline)
-      return retry_after_lock(user_id, attempt)
-    end
+    # Three outcomes, and nil is not the same as false: the backfill returns
+    # `false` when the advisory lock was busy, but `nil` when a shutdown
+    # interrupted it — ActiveJob's continuation swallows the return value and
+    # puts the job back on the queue itself. Retrying an interrupted run would
+    # repeat the whole reset and filter pass against the copy already resuming,
+    # so let it finish. The user stays unstamped and is picked up again.
+    backfill = Points::AnomalyBackfillUserJob.perform_now(user.id, reset: true, notify: false, rebuild: :inline)
+
+    return release_slot if backfill.nil?
+    return retry_after_lock(user_id, attempt) unless backfill
 
     mark_recalculated(user)
     notify(user)
@@ -130,14 +137,16 @@ class DataMigrations::RecalculateAnomaliesUserJob < ApplicationJob
   # page is self-hosted only, so this is the only signal a Cloud account gets
   # that its map may look different.
   def notify(user)
-    Notifications::Create.new(
-      user: user,
-      kind: :info,
-      title: 'GPS noise re-check finished',
-      content: 'Your points were re-checked against the noise rules introduced in this release, and your ' \
-               'tracks, stats and digests were rebuilt from the result. Some points may appear or disappear ' \
-               'on the map. No points were deleted.'
-    ).call
+    I18n.with_locale(user.locale) do
+      Notifications::Create.new(
+        user: user,
+        kind: :info,
+        title: I18n.t('jobs.data_migrations.recalculate_anomalies_user_job.gps_noise_re_check_finished'),
+        content: I18n.t(
+          'jobs.data_migrations.recalculate_anomalies_user_job.rules_recheck_finished'
+        )
+      ).call
+    end
   end
 
   def recalculated?(user)

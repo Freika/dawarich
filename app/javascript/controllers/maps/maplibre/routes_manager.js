@@ -1,3 +1,4 @@
+import { translate } from "i18n"
 import { Toast } from "maps_maplibre/components/toast"
 import { pointsToGeoJSON } from "maps_maplibre/utils/geojson_transformers"
 import { gatedToggle } from "maps_maplibre/utils/layer_gate"
@@ -110,25 +111,25 @@ export class RoutesManager {
       <input type="checkbox" id="speed-color-editor-toggle" class="modal-toggle" />
       <div class="modal" role="dialog" data-speed-color-editor-target="modal">
         <div class="modal-box max-w-2xl">
-          <h3 class="text-lg font-bold mb-4">Edit Speed Color Gradient</h3>
+          <h3 class="text-lg font-bold mb-4">${translate("speed_gradient.title")}</h3>
 
           <div class="space-y-4">
             <!-- Gradient Preview -->
             <div class="form-control">
               <label class="label">
-                <span class="label-text font-medium">Preview</span>
+                <span class="label-text font-medium">${translate("speed_gradient.preview")}</span>
               </label>
               <div class="h-12 rounded-lg border-2 border-base-300"
                    data-speed-color-editor-target="preview"></div>
               <label class="label">
-                <span class="label-text-alt">This gradient will be applied to routes based on speed</span>
+                <span class="label-text-alt">${translate("speed_gradient.help")}</span>
               </label>
             </div>
 
             <!-- Color Stops List -->
             <div class="form-control">
               <label class="label">
-                <span class="label-text font-medium">Color Stops</span>
+                <span class="label-text font-medium">${translate("speed_gradient.color_stops")}</span>
               </label>
               <div class="space-y-2" data-speed-color-editor-target="stopsList"></div>
             </div>
@@ -140,7 +141,7 @@ export class RoutesManager {
               <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
               </svg>
-              Add Color Stop
+              ${translate("speed_gradient.add_stop")}
             </button>
           </div>
 
@@ -148,17 +149,17 @@ export class RoutesManager {
             <button type="button"
                     class="btn btn-ghost"
                     data-action="click->speed-color-editor#resetToDefault">
-              Reset to Default
+              ${translate("common.reset_to_default")}
             </button>
             <button type="button"
                     class="btn"
                     data-action="click->speed-color-editor#close">
-              Cancel
+              ${translate("common.cancel")}
             </button>
             <button type="button"
                     class="btn btn-primary"
                     data-action="click->speed-color-editor#save">
-              Save
+              ${translate("common.save")}
             </button>
           </div>
         </div>
@@ -188,7 +189,7 @@ export class RoutesManager {
    * Reload routes layer
    */
   async reloadRoutes() {
-    this.controller.showLoading("Reloading routes...")
+    this.controller.showLoading(translate("messages.reloading_routes"))
 
     try {
       // In simplified mode the points layer holds a thinned subset, so
@@ -240,7 +241,7 @@ export class RoutesManager {
       if (routesLayer) routesLayer.update(routesGeoJSON)
     } catch (error) {
       console.error("Failed to reload routes:", error)
-      Toast.error("Failed to reload routes")
+      Toast.error(translate("messages.failed_to_reload_routes"))
     } finally {
       this.controller.hideLoading()
     }
@@ -420,7 +421,7 @@ export class RoutesManager {
       }
     } catch (error) {
       console.error("Failed to toggle scratch layer:", error)
-      Toast.error("Failed to load scratch layer")
+      Toast.error(translate("messages.failed_to_load_scratch_layer"))
     }
   }
 
@@ -480,7 +481,7 @@ export class RoutesManager {
       }
     } catch (error) {
       console.error("Failed to toggle photos layer:", error)
-      Toast.error("Failed to load photos")
+      Toast.error(translate("messages.failed_to_load_photos"))
     }
   }
 
@@ -521,7 +522,7 @@ export class RoutesManager {
       }
     } catch (error) {
       console.error("Failed to toggle areas layer:", error)
-      Toast.error("Failed to load areas")
+      Toast.error(translate("messages.failed_to_load_areas"))
     }
   }
 
@@ -573,7 +574,7 @@ export class RoutesManager {
       }
     } catch (error) {
       console.error("Failed to toggle tracks layer:", error)
-      Toast.error("Failed to load tracks")
+      Toast.error(translate("messages.failed_to_load_tracks"))
     }
   }
 
@@ -612,7 +613,7 @@ export class RoutesManager {
       this.controller.mapDataManager?.applyFlightMask()
     } catch (error) {
       console.error("Failed to toggle flights layer:", error)
-      Toast.error("Failed to load flights")
+      Toast.error(translate("messages.failed_to_load_flights"))
     }
   }
 
@@ -681,7 +682,7 @@ export class RoutesManager {
         counts: { anomalies: 0 },
         isComplete: true,
       })
-      Toast.error("Failed to load anomalies")
+      Toast.error(translate("messages.failed_to_load_anomalies"))
     }
   }
 
