@@ -23,6 +23,12 @@ RSpec.describe Import::ProcessJob, type: :job do
       expect { perform }.to have_enqueued_job(Stats::CalculatingJob).with(user.id, 2024, 3)
     end
 
+    it 'holds a shared user-data lock while processing' do
+      expect(Users::DataLock).to receive(:with_shared).with(user.id).and_call_original
+
+      perform
+    end
+
     context 'when the import owner is soft-deleted' do
       before { user.mark_as_deleted! }
 
