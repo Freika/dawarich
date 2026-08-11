@@ -40,6 +40,33 @@ class Points::AnomalyFilter
   STAY_RADIUS_METERS = 25_000        # how close two fixes must be to be one stay
   MIN_EXCURSION_METERS = 50_000      # how far the excursion must depart from it
   MAX_EXCURSION_SPAN_SECONDS = 1_800 # dwell above this is a visit, not a stray fix
+  # Radius above which a fix whose motion fields are all CoreLocation
+  # sentinels (speed -1, vertical accuracy -1) is treated as a tower position
+  # rather than a reading of the user. Wifi trilateration also reports the
+  # sentinel combination but lands at 150-450 m and is positionally usable —
+  # a stationary indoor point sits where it says. Cell positioning starts
+  # around half a kilometre and lands wherever the tower is. The gate sits
+  # between the two tiers so only the tower tier is judged at all.
+  SENTINEL_ACCURACY_METERS = 500
+  # What counts as the precise fix a sentinel one is judged against — a
+  # radius any GPS or wifi lock beats, and no tower position reaches.
+  PRECISE_FIX_METERS = 100
+  # A sentinel fix is only judged against tracking that could have done
+  # better: it is flagged when a precise fix sits within this many seconds of
+  # it, and kept otherwise. Reduced-accuracy permission, significant-change
+  # tracking and genuinely off-grid stretches produce nothing but coarse
+  # fixes — there the tower position is the only record there is, and erasing
+  # the history it forms is worse than showing its precision honestly. Six
+  # hours spans any GPS dropout inside a tracked day without reaching into a
+  # neighbouring coarse-only era.
+  SENTINEL_PRECISE_NEIGHBOR_SECONDS = 6 * 60 * 60
+  # Where a visit report keeps its departure date. motion_data first: raw_data
+  # is emptied by archival, and a flag that cannot be re-derived would silently
+  # return on the next reset re-run. Both values are untrusted client strings,
+  # so the passes prefix-test them instead of casting — a timestamptz cast
+  # raises on junk and would fail the whole batch.
+  DEPARTURE_DATE_SQL = "COALESCE(motion_data->>'departure_date', " \
+                       "raw_data->'properties'->>'departure_date')"
 
   def initialize(user_id, start_time, end_time)
     @user_id = user_id
@@ -53,6 +80,8 @@ class Points::AnomalyFilter
     count = 0
     count += filter_null_island
     count += filter_by_accuracy
+    count += filter_visit_reports
+    count += filter_sentinel_fixes
     count += filter_by_speed
     count
   end
@@ -84,6 +113,71 @@ class Points::AnomalyFilter
          .not_anomaly
          .where.not(accuracy: nil)
          .where('accuracy > ?', ABSURD_ACCURACY_METERS)
+         .update_all(anomaly: true, updated_at: Time.current)
+  end
+
+  # Visit-report pass: iOS visit monitoring (Overland `action: visit`) delivers
+  # a stay summary AFTER the stay ended — the visit centroid plus arrival and
+  # departure dates, stamped with delivery time. The device is already moving
+  # away by then, so the track leaps to the centroid and back. The coordinate
+  # is right and its radius often single-digit metres; only the timeline
+  # placement is wrong, which no accuracy or speed gate can see. An arrival
+  # report (no departure date yet) is delivered in place and stays useful —
+  # CLVisit marks "not departed" with a distant-future placeholder (year
+  # 4001), so the year guard treats any far-future date the same as none. A
+  # report whose departure date is unrecoverable (raw payload archived before
+  # motion_data kept a copy) cannot be classified and is left alone —
+  # under-flagging is the safer failure.
+  def filter_visit_reports
+    # The departure date is copied into motion_data as part of the flagging
+    # UPDATE: raw_data archival would otherwise strip the only evidence, and a
+    # later reset re-run would silently unflag the point and bring the leap
+    # back.
+    Point.where(user_id: @user_id, timestamp: @start_time..@end_time)
+         .not_anomaly
+         .where("motion_data->>'action' = 'visit'")
+         .where("#{DEPARTURE_DATE_SQL} ~ '^\\d{4}-'")
+         .where("#{DEPARTURE_DATE_SQL} < '3000-'")
+         .update_all(
+           'anomaly = TRUE, updated_at = NOW(), ' \
+           "motion_data = motion_data || jsonb_build_object('departure_date', #{DEPARTURE_DATE_SQL})"
+         )
+  end
+
+  # Sentinel pass: a fix whose motion fields are all invalid markers (speed
+  # -1, vertical accuracy -1) with a coarse radius did not come from GPS at
+  # all — it is a tower or cell-grid position, delivered wherever coverage
+  # begins, and each one drags the track sideways by its full radius, so a
+  # burst inside an otherwise-tracked day is flagged whole. The precise-fix
+  # neighbour test keeps the pass away from histories that are coarse all the
+  # way through: reduced-accuracy permission, significant-change tracking and
+  # off-grid stretches produce nothing better, and there the tower position
+  # is the only record there is. The neighbour must come from the same device
+  # — a second tracker on reduced-accuracy permission stays coarse even when
+  # the account's other device is precise, the same per-stream rule the speed
+  # pass applies. Imported histories are untouched because their points do
+  # not carry the sentinel combination.
+  def filter_sentinel_fixes
+    # The candidate window reaches back past the caller's range: a wake-up
+    # tower fix often arrives in a batch of one, before the precise fixes
+    # that condemn it exist, and the batch that brings those fixes starts
+    # after it. Each run therefore re-judges the recent past.
+    Point.where(user_id: @user_id,
+                timestamp: (@start_time - SENTINEL_PRECISE_NEIGHBOR_SECONDS)..@end_time)
+         .not_anomaly
+         .where(vertical_accuracy: ...0)
+         .where("velocity LIKE '-%'")
+         .where('accuracy > ?', SENTINEL_ACCURACY_METERS)
+         .where(
+           'EXISTS (SELECT 1 FROM points precise ' \
+           'WHERE precise.user_id = points.user_id ' \
+           'AND precise.tracker_id IS NOT DISTINCT FROM points.tracker_id ' \
+           'AND precise.timestamp BETWEEN points.timestamp - :window AND points.timestamp + :window ' \
+           'AND precise.accuracy <= :radius ' \
+           'AND precise.anomaly IS NOT TRUE ' \
+           'AND precise.id <> points.id)',
+           window: SENTINEL_PRECISE_NEIGHBOR_SECONDS, radius: PRECISE_FIX_METERS
+         )
          .update_all(anomaly: true, updated_at: Time.current)
   end
 
