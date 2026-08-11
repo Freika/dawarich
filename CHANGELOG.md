@@ -18,7 +18,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 
 - Monthly statistics maps and publicly shared month maps are now rendered with MapLibre GL instead of Leaflet.
-- The top navigation collapses into the menu button below 1280px instead of 1024px, so longer translations fit.
 - Deleting an import or a notification now updates the list in place instead of repainting the page.
 - Long-running backfills now resume where they stopped after a restart instead of starting over.
 - Visit detection has been rebuilt around stays, movement and honest gaps: a tracking silence that starts and ends at the same place is one continuous visit, a silence that ends somewhere else becomes an explicit "untracked" stretch, and visit times snap to when movement actually stopped. Slow traffic can no longer be carved into fake roadside "visits".
@@ -33,7 +32,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Visits no longer have a review flow: the suggestions banner, "Needs review" cards, filters and bulk Confirm are gone. Every visit row has an Edit button, and editing a suggested visit confirms it.
 - Deleting a visit keeps an invisible tombstone so detection never re-suggests it; your location points are untouched. Previously declined visits become tombstones too.
 - Days per Country moved from the map's Create tab to the Insights page as a pair of cards, following the year you pick at the top of the page.
-- Timeline journey rows ("walked", "drove", "flew") are now translated.
 - After upgrading, restart the app once migrations have run — until then, deleting a visit looks like it worked without saving. A background backfill converts existing track segments to time-based anchoring; progress is visible under Background jobs settings.
 
 ### Fixed
