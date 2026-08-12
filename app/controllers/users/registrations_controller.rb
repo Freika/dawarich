@@ -140,6 +140,7 @@ class Users::RegistrationsController < Devise::RegistrationsController
 
   def post_signup_setup(resource)
     assign_utm_params(resource)
+    attribute_partnero_signup(resource)
     store_signup_intent(resource)
     accept_invitation_for_user(resource) if @invitation
   end

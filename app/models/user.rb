@@ -12,6 +12,11 @@ class User < ApplicationRecord
   # until their subscription source confirms a purchase.
   attr_accessor :skip_auto_trial
 
+  # Set by Omniauthable.from_omniauth. Post-create callbacks re-save the record,
+  # which clears `previously_new_record?`, so signup-vs-login can't be read off
+  # the record afterwards — the lookup has to tell us.
+  attr_accessor :oauth_newly_created
+
   devise :two_factor_authenticatable, :registerable,
          :recoverable, :rememberable, :validatable, :trackable,
          :lockable,

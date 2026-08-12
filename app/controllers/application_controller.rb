@@ -2,6 +2,7 @@
 
 class ApplicationController < ActionController::Base
   include Pundit::Authorization
+  include PartneroTrackable
 
   class_attribute :page_refresh_morphing, instance_accessor: false, default: false
 
