@@ -20,7 +20,9 @@ module PartneroTrackable
   def store_partnero_referral
     return if params[REFERRAL_PARAM].blank?
 
-    session[:partnero_referral] = params[REFERRAL_PARAM].to_s.byteslice(0, MAX_KEY_LENGTH)
+    # truncate, not byteslice: cutting a multi-byte character in half yields a
+    # string the JSON cookie serializer refuses, which would 500 the page.
+    session[:partnero_referral] = params[REFERRAL_PARAM].to_s.truncate(MAX_KEY_LENGTH, omission: '')
   end
 
   # Spends the referral: a key credits exactly one account, so it is deleted from

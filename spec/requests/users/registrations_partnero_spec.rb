@@ -56,6 +56,18 @@ RSpec.describe 'Users::Registrations Partnero attribution', type: :request do
     end
   end
 
+  context 'when the referral key is hostile' do
+    it 'stores an over-long multi-byte key without breaking session serialization' do
+      long_key = 'ф' * 400
+
+      expect { get new_user_registration_path(via: long_key) }.not_to raise_error
+      expect(response).to have_http_status(:ok)
+
+      expect { post user_registration_path, params: valid_params }
+        .to have_enqueued_job(Partnero::CustomerSignupJob)
+    end
+  end
+
   context 'when the visitor arrived directly' do
     it 'creates the user but enqueues no attribution job' do
       get new_user_registration_path
@@ -127,10 +139,20 @@ RSpec.describe 'Users::Registrations Partnero attribution', type: :request do
 
   describe 'the tracking snippet on Cloud' do
     it 'loads PartneroJS for the configured program' do
+      stub_const('ENV', ENV.to_hash.merge('PARTNERO_PROGRAM_ID' => 'PROG123'))
+
       get new_user_registration_path
 
       expect(response.body).to include('app.partnero.com/js/universal.js')
-      expect(response.body).to include("po('program', '1NNVU1NU', 'load')")
+      expect(response.body).to include("po('program', \"PROG123\", 'load')")
+    end
+
+    it 'stays off until a program is configured, so no third-party call is made' do
+      stub_const('ENV', ENV.to_hash.except('PARTNERO_PROGRAM_ID'))
+
+      get new_user_registration_path
+
+      expect(response.body).not_to include('partnero')
     end
   end
 end

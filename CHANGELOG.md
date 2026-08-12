@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Dawarich Cloud can now credit sign-ups to affiliate partners. Self-hosted instances are unaffected — both the tracking script and the attribution call stay off unless the Cloud-only `PARTNERO_PROGRAM_ID` and `PARTNERO_API_KEY` are set.
+
 ## [1.12.0] - 2026-08-11, Berlin
 
 ### Added
