@@ -1,0 +1,34 @@
+# frozen_string_literal: true
+
+# Carries a Partnero affiliate key from a referral link through to the account it
+# creates.
+#
+# PartneroJS scopes its cookie to the host that set it, so a key captured on
+# dawarich.app never reaches this app. The marketing site forwards it as a `via`
+# param instead (see site/src/utils/utm.js); this concern parks that key in the
+# session until a signup actually happens, on whichever page the visitor lands.
+module PartneroTrackable
+  extend ActiveSupport::Concern
+
+  REFERRAL_PARAM = :via
+  MAX_KEY_LENGTH = 255
+
+  included do
+    before_action :store_partnero_referral, unless: -> { DawarichSettings.self_hosted? }
+  end
+
+  def store_partnero_referral
+    return if params[REFERRAL_PARAM].blank?
+
+    session[:partnero_referral] = params[REFERRAL_PARAM].to_s.byteslice(0, MAX_KEY_LENGTH)
+  end
+
+  # Spends the referral: a key credits exactly one account, so it is deleted from
+  # the session whether or not the enqueue happens.
+  def attribute_partnero_signup(user)
+    partner_key = session.delete(:partnero_referral)
+    return if partner_key.blank? || user.nil?
+
+    Partnero::CustomerSignupJob.perform_later(user.id, partner_key)
+  end
+end
