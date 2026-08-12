@@ -18,6 +18,25 @@ RSpec.describe 'Api::V1::Places', type: :request do
       expect(json.first['name']).to eq('Home')
     end
 
+    it 'serializes legacy places without lonlat geometry' do
+      legacy_place = create(
+        :place,
+        :without_lonlat,
+        user: user,
+        name: 'Legacy Import Place',
+        latitude: 52.52,
+        longitude: 13.405
+      )
+
+      get '/api/v1/places', params: { filter: 'all' }, headers: headers
+
+      expect(response).to have_http_status(:success)
+      json = JSON.parse(response.body)
+      serialized = json.find { |place_json| place_json['id'] == legacy_place.id }
+      expect(serialized['latitude'].to_f).to eq(52.52)
+      expect(serialized['longitude'].to_f).to eq(13.405)
+    end
+
     it 'filters by tag_ids' do
       tagged_place = create(:place, user: user)
       create(:tagging, taggable: tagged_place, tag: tag)
