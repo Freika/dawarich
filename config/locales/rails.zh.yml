@@ -1,0 +1,236 @@
+# Simplified Chinese Rails framework translations adapted from rails-i18n:
+# https://github.com/svenfuchs/rails-i18n/blob/master/rails/locale/zh-CN.yml
+#
+# Copyright (c) 2008-2012 Sven Fuchs and contributors
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+zh:
+  activerecord:
+    errors:
+      messages:
+        record_invalid: "验证失败：%{errors}"
+        restrict_dependent_destroy:
+          has_one: "由于 %{record} 需要此记录，因此无法删除"
+          has_many: "由于 %{record} 需要此记录，因此无法删除"
+  date:
+    abbr_day_names:
+      - 周日
+      - 周一
+      - 周二
+      - 周三
+      - 周四
+      - 周五
+      - 周六
+    abbr_month_names:
+      -
+      - 1月
+      - 2月
+      - 3月
+      - 4月
+      - 5月
+      - 6月
+      - 7月
+      - 8月
+      - 9月
+      - 10月
+      - 11月
+      - 12月
+    day_names:
+      - 星期日
+      - 星期一
+      - 星期二
+      - 星期三
+      - 星期四
+      - 星期五
+      - 星期六
+    formats:
+      default: "%Y-%m-%d"
+      long: "%Y年%m月%d日"
+      short: "%m月%d日"
+    month_names:
+      -
+      - 一月
+      - 二月
+      - 三月
+      - 四月
+      - 五月
+      - 六月
+      - 七月
+      - 八月
+      - 九月
+      - 十月
+      - 十一月
+      - 十二月
+    order: [ :year, :month, :day ]
+  datetime:
+    distance_in_words:
+      about_x_hours:
+        one: "大约 1 小时"
+        other: "大约 %{count} 小时"
+      about_x_months:
+        one: "大约 1 个月"
+        other: "大约 %{count} 个月"
+      about_x_years:
+        one: "大约 1 年"
+        other: "大约 %{count} 年"
+      almost_x_years:
+        one: "将近 1 年"
+        other: "将近 %{count} 年"
+      half_a_minute: "半分钟"
+      less_than_x_seconds:
+        one: "不到 1 秒"
+        other: "不到 %{count} 秒"
+      less_than_x_minutes:
+        one: "不到 1 分钟"
+        other: "不到 %{count} 分钟"
+      over_x_years:
+        one: "超过 1 年"
+        other: "超过 %{count} 年"
+      x_seconds:
+        one: "1 秒"
+        other: "%{count} 秒"
+      x_minutes:
+        one: "1 分钟"
+        other: "%{count} 分钟"
+      x_days:
+        one: "1 天"
+        other: "%{count} 天"
+      x_months:
+        one: "1 个月"
+        other: "%{count} 个月"
+      x_years:
+        one: "1 年"
+        other: "%{count} 年"
+    prompts:
+      second: 秒
+      minute: 分钟
+      hour: 小时
+      day: 天
+      month: 月
+      year: 年
+    relative:
+      future: "%{time}后"
+      past: "%{time}前"
+  errors:
+    format: "%{attribute}%{message}"
+    messages:
+      accepted: 必须接受
+      blank: 不能为空字符
+      confirmation: 与 %{attribute} 不匹配
+      empty: 不能为空字符
+      equal_to: 必须等于 %{count}
+      even: 必须为偶数
+      exclusion: 不可用
+      greater_than: 必须大于 %{count}
+      greater_than_or_equal_to: 必须大于或等于 %{count}
+      in: 必须包含于 %{count} 之中
+      inclusion: 不在列表中
+      invalid: 无效
+      model_invalid: "验证失败：%{errors}"
+      not_a_number: 不是数字
+      not_an_integer: 必须是整数
+      odd: 必须为奇数
+      other_than: 不应为 %{count}
+      password_too_long: 太长
+      present: 必须为空
+      required: 必须存在
+      taken: 已经被使用
+      too_long:
+        one: 过长（最长为 %{count} 个字符）
+        other: 过长（最长为 %{count} 个字符）
+      too_short:
+        one: 过短（最短为 %{count} 个字符）
+        other: 过短（最短为 %{count} 个字符）
+      wrong_length:
+        one: 长度错误（必须为 %{count} 个字符）
+        other: 长度错误（必须为 %{count} 个字符）
+    template:
+      body: "请检查以下字段："
+      header:
+        one: "无法保存 %{model}：发现 1 个错误。"
+        other: "无法保存 %{model}：发现 %{count} 个错误。"
+  helpers:
+    select:
+      prompt: 请选择
+    submit:
+      create: "创建 %{model}"
+      submit: "保存 %{model}"
+      update: "更新 %{model}"
+  number:
+    currency:
+      format:
+        delimiter: ","
+        format: "%u%n"
+        precision: 2
+        separator: "."
+        significant: false
+        strip_insignificant_zeros: false
+        unit: "¥"
+    format:
+      delimiter: ","
+      precision: 2
+      round_mode: default
+      separator: "."
+      significant: false
+      strip_insignificant_zeros: false
+    human:
+      decimal_units:
+        format: "%n %u"
+        units:
+          billion: 十亿
+          million: 百万
+          quadrillion: 千万亿
+          thousand: 千
+          trillion: 万亿
+          unit: ""
+      format:
+        delimiter: ""
+        precision: 3
+        significant: true
+        strip_insignificant_zeros: true
+      storage_units:
+        format: "%n %u"
+        units:
+          byte: 字节
+          eb: EB
+          gb: GB
+          kb: KB
+          mb: MB
+          pb: PB
+          tb: TB
+    percentage:
+      format:
+        delimiter: ""
+        format: "%n%"
+    precision:
+      format:
+        delimiter: ""
+  support:
+    array:
+      last_word_connector: "和"
+      two_words_connector: "和"
+      words_connector: "、"
+  time:
+    am: 上午
+    pm: 下午
+    formats:
+      default: "%Y年%m月%d日 %H:%M"
+      long: "%Y年%m月%d日 %H:%M"
+      short: "%m月%d日 %H:%M"
