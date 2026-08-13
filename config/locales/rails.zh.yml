@@ -25,10 +25,10 @@ zh:
   activerecord:
     errors:
       messages:
-        record_invalid: "验证失败：%{errors}"
+        record_invalid: 验证失败：%{errors}
         restrict_dependent_destroy:
-          has_one: "由于 %{record} 需要此记录，因此无法删除"
-          has_many: "由于 %{record} 需要此记录，因此无法删除"
+          has_one: 无法删除记录，因为存在依赖它的 %{record}
+          has_many: 无法删除记录，因为存在依赖它的 %{record}
   date:
     abbr_day_names:
       - 周日
@@ -39,7 +39,7 @@ zh:
       - 周五
       - 周六
     abbr_month_names:
-      -
+      - null
       - 1月
       - 2月
       - 3月
@@ -65,7 +65,7 @@ zh:
       long: "%Y年%m月%d日"
       short: "%m月%d日"
     month_names:
-      -
+      - null
       - 一月
       - 二月
       - 三月
@@ -78,45 +78,48 @@ zh:
       - 十月
       - 十一月
       - 十二月
-    order: [ :year, :month, :day ]
+    order:
+      - :year
+      - :month
+      - :day
   datetime:
     distance_in_words:
       about_x_hours:
-        one: "大约 1 小时"
-        other: "大约 %{count} 小时"
+        one: 大约 %{count} 小时
+        other: 大约 %{count} 小时
       about_x_months:
-        one: "大约 1 个月"
-        other: "大约 %{count} 个月"
+        one: 大约 %{count} 个月
+        other: 大约 %{count} 个月
       about_x_years:
-        one: "大约 1 年"
-        other: "大约 %{count} 年"
+        one: 大约 %{count} 年
+        other: 大约 %{count} 年
       almost_x_years:
-        one: "将近 1 年"
-        other: "将近 %{count} 年"
-      half_a_minute: "半分钟"
+        one: 将近 %{count} 年
+        other: 将近 %{count} 年
+      half_a_minute: 半分钟
       less_than_x_seconds:
-        one: "不到 1 秒"
-        other: "不到 %{count} 秒"
+        one: 不到 %{count} 秒
+        other: 不到 %{count} 秒
       less_than_x_minutes:
-        one: "不到 1 分钟"
-        other: "不到 %{count} 分钟"
+        one: 不到 1 分钟
+        other: 不到 %{count} 分钟
       over_x_years:
-        one: "超过 1 年"
-        other: "超过 %{count} 年"
+        one: 超过 %{count} 年
+        other: 超过 %{count} 年
       x_seconds:
-        one: "1 秒"
+        one: "%{count} 秒"
         other: "%{count} 秒"
       x_minutes:
-        one: "1 分钟"
+        one: "%{count} 分钟"
         other: "%{count} 分钟"
       x_days:
-        one: "1 天"
+        one: "%{count} 天"
         other: "%{count} 天"
       x_months:
-        one: "1 个月"
+        one: "%{count} 个月"
         other: "%{count} 个月"
       x_years:
-        one: "1 年"
+        one: "%{count} 年"
         other: "%{count} 年"
     prompts:
       second: 秒
@@ -132,9 +135,9 @@ zh:
     format: "%{attribute}%{message}"
     messages:
       accepted: 必须接受
-      blank: 不能为空字符
+      blank: 不能为空
       confirmation: 与 %{attribute} 不匹配
-      empty: 不能为空字符
+      empty: 不能为空
       equal_to: 必须等于 %{count}
       even: 必须为偶数
       exclusion: 不可用
@@ -143,7 +146,7 @@ zh:
       in: 必须包含于 %{count} 之中
       inclusion: 不在列表中
       invalid: 无效
-      model_invalid: "验证失败：%{errors}"
+      model_invalid: 验证失败：%{errors}
       not_a_number: 不是数字
       not_an_integer: 必须是整数
       odd: 必须为奇数
@@ -151,7 +154,7 @@ zh:
       password_too_long: 太长
       present: 必须为空
       required: 必须存在
-      taken: 已经被使用
+      taken: 已被使用
       too_long:
         one: 过长（最长为 %{count} 个字符）
         other: 过长（最长为 %{count} 个字符）
@@ -161,35 +164,38 @@ zh:
       wrong_length:
         one: 长度错误（必须为 %{count} 个字符）
         other: 长度错误（必须为 %{count} 个字符）
+      less_than: 必须小于 %{count}
+      less_than_or_equal_to: 必须小于或等于 %{count}
     template:
-      body: "请检查以下字段："
+      body: 以下字段存在问题：
       header:
-        one: "无法保存 %{model}：发现 1 个错误。"
-        other: "无法保存 %{model}：发现 %{count} 个错误。"
+        one: 无法保存 %{model}：发现 %{count} 个错误。
+        other: 无法保存 %{model}：发现 %{count} 个错误。
   helpers:
     select:
       prompt: 请选择
     submit:
-      create: "创建 %{model}"
-      submit: "保存 %{model}"
-      update: "更新 %{model}"
+      create: 创建 %{model}
+      submit: 保存 %{model}
+      update: 更新 %{model}
   number:
     currency:
       format:
         delimiter: ","
         format: "%u%n"
-        precision: 2
-        separator: "."
-        significant: false
-        strip_insignificant_zeros: false
-        unit: "¥"
+        precision: "2"
+        separator: .
+        significant: "false"
+        strip_insignificant_zeros: "false"
+        unit: ¥
+        negative_format: -%u%n
     format:
       delimiter: ","
-      precision: 2
+      precision: "2"
       round_mode: default
-      separator: "."
-      significant: false
-      strip_insignificant_zeros: false
+      separator: .
+      significant: "false"
+      strip_insignificant_zeros: "false"
     human:
       decimal_units:
         format: "%n %u"
@@ -202,19 +208,22 @@ zh:
           unit: ""
       format:
         delimiter: ""
-        precision: 3
-        significant: true
-        strip_insignificant_zeros: true
+        precision: "3"
+        significant: "true"
+        strip_insignificant_zeros: "true"
       storage_units:
         format: "%n %u"
         units:
-          byte: 字节
+          byte:
+            one: 字节
+            other: 字节
           eb: EB
           gb: GB
           kb: KB
           mb: MB
           pb: PB
           tb: TB
+          zb: ZB
     percentage:
       format:
         delimiter: ""
@@ -224,9 +233,9 @@ zh:
         delimiter: ""
   support:
     array:
-      last_word_connector: "和"
-      two_words_connector: "和"
-      words_connector: "、"
+      last_word_connector: 和
+      two_words_connector: 和
+      words_connector: 、
   time:
     am: 上午
     pm: 下午

@@ -76,7 +76,7 @@ RSpec.describe 'Simplified Chinese locale coverage' do
       expect(I18n.l(Date.new(2026, 3, 4), format: :long)).to eq('2026年03月04日')
       expect(I18n.l(Date.new(2026, 3, 8), format: '%A')).to eq('星期日')
       expect(I18n.t('datetime.distance_in_words.x_minutes', count: 3)).to eq('3 分钟')
-      expect(I18n.t('errors.messages.blank')).to eq('不能为空字符')
+      expect(I18n.t('errors.messages.blank')).to eq('不能为空')
     end
   end
 end
