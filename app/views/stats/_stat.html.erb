@@ -1,10 +1,10 @@
-<%= link_to "#{stat.year}/#{stat.month}",
+<%= link_to t('.year_month', year: stat.year, month: stat.month),
     class: "group block p-6 bg-base-100 hover:bg-base-200/50 rounded-xl border border-base-300 hover:border-primary/40 hover:shadow-lg transition-all duration-200 hover:scale-[1.02]" do %>
 
   <!-- Month and Year -->
   <div class="flex items-center justify-between mb-4">
     <h3 class="text-lg font-medium text-base-content group-hover:text-primary transition-colors flex items-center gap-2" style="color: <%= month_color(stat) %>;">
-      <%= "#{icon month_icon(stat)} #{Date::MONTHNAMES[stat.month]} #{stat.year}".html_safe %>
+      <%= icon month_icon(stat) %> <%= l(Date.new(stat.year, stat.month, 1), format: :month_year) %>
     </h3>
     <div class="opacity-0 group-hover:opacity-100 transition-opacity">
       <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -21,7 +21,7 @@
         <%= number_with_delimiter stat.distance_in_unit(current_user.safe_settings.distance_unit).round %>
         <span class="text-sm font-normal text-base-content/60 ml-1"><%= current_user.safe_settings.distance_unit %></span>
       </div>
-      <div class="text-sm text-base-content/60">Total distance</div>
+      <div class="text-sm text-base-content/60"><%= t('.total_distance') %></div>
     </div>
 
     <!-- Location Summary -->

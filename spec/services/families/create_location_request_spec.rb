@@ -43,6 +43,16 @@ RSpec.describe Families::CreateLocationRequest do
         expect(notification.content).not_to include('<script>')
       end
 
+      it 'creates the notification in the target user saved locale' do
+        target_user.update!(settings: { 'locale' => 'fr' })
+
+        I18n.with_locale(:en) { result }
+
+        notification = Notification.where(user: target_user).last
+        expect(notification.title).to eq('Demande de localisation')
+        expect(notification.content).to include('demande votre localisation', 'Voir la demande')
+      end
+
       it 'enqueues an email' do
         expect { result }.to have_enqueued_mail(FamilyMailer, :location_request)
       end

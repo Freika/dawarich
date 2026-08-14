@@ -1,9 +1,10 @@
+import { translate } from "i18n"
 import maplibregl from "maplibre-gl"
 import {
   formatDistance,
   formatSpeed,
   minutesToDaysHoursMinutes,
-} from "maps/helpers"
+} from "maps_maplibre/utils/format_helpers"
 import {
   escapeHtml,
   formatTimestamp,
@@ -12,6 +13,23 @@ import {
 /**
  * Handles map interaction events (clicks, info display)
  */
+/**
+ * Format the coordinates a feature carries in its properties. Returns null when
+ * either is absent or blank, so the caller can fall back to the geometry.
+ * `Number("")` is 0 and finite, so a plain isFinite check is not enough.
+ */
+function storedCoordinates(properties) {
+  const { latitude, longitude } = properties
+  if (latitude == null || longitude == null) return null
+  if (latitude === "" || longitude === "") return null
+
+  const lat = Number(latitude)
+  const lon = Number(longitude)
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null
+
+  return `${lat.toFixed(6)}, ${lon.toFixed(6)}`
+}
+
 export class EventHandlers {
   constructor(map, controller) {
     this.map = map
@@ -67,13 +85,13 @@ export class EventHandlers {
             handler: "handleDelete",
             id: pointId,
             entityType: "point",
-            label: "Delete",
+            label: translate("messages.delete"),
           },
         ]
       : []
 
     this.controller.showInfo(
-      "Location Point",
+      translate("map_info.location_point"),
       this._buildPointInfoContent(feature.properties, feature.geometry),
       actions,
     )
@@ -88,7 +106,7 @@ export class EventHandlers {
     if (!anomaliesLayer) return
 
     const content = anomaliesLayer.buildPopupContent(feature.properties)
-    this.controller.showInfo("Anomaly Point", content)
+    this.controller.showInfo(translate("messages.anomaly_point"), content)
   }
 
   /**
@@ -107,7 +125,7 @@ export class EventHandlers {
     const feature = e.features[0]
     container.innerHTML = `
       <div class="mt-3 pt-3 border-t border-base-300">
-        <div class="text-sm font-semibold mb-1">Selected Point</div>
+        <div class="text-sm font-semibold mb-1">${translate("map_info.selected_point")}</div>
         ${this._buildPointInfoContent(feature.properties, feature.geometry)}
       </div>
     `
@@ -123,11 +141,16 @@ export class EventHandlers {
    */
   _buildPointInfoContent(properties, geometry) {
     const distanceUnit = this.controller.settings.distance_unit || "km"
+    // Prefer the stored values carried in the properties. A clicked feature's
+    // geometry comes back snapped to the tile grid, so reading coordinates off
+    // it shows a position that doesn't match the one in the points list.
+    const stored = storedCoordinates(properties)
     const coords = geometry?.coordinates
     const coordStr =
-      coords && coords.length >= 2
+      stored ??
+      (coords && coords.length >= 2
         ? `${coords[1].toFixed(6)}, ${coords[0].toFixed(6)}`
-        : null
+        : null)
     const pointId = properties.id
     const addressFrame = pointId
       ? `<turbo-frame id="point-address-${pointId}" src="/points/${pointId}/address" loading="lazy"></turbo-frame>`
@@ -135,11 +158,11 @@ export class EventHandlers {
     return `
       <div class="space-y-2">
         ${addressFrame}
-        ${coordStr ? `<div><span class="font-semibold">Coordinates:</span> ${coordStr}</div>` : ""}
-        <div><span class="font-semibold">Time:</span> ${formatTimestamp(properties.timestamp, this.controller.timezoneValue)}</div>
-        ${properties.battery ? `<div><span class="font-semibold">Battery:</span> ${properties.battery}%</div>` : ""}
-        ${properties.altitude ? `<div><span class="font-semibold">Altitude:</span> ${Math.round(properties.altitude)}m</div>` : ""}
-        ${properties.velocity ? `<div><span class="font-semibold">Speed:</span> ${formatSpeed(properties.velocity * 3.6, distanceUnit)}</div>` : ""}
+        ${coordStr ? `<div><span class="font-semibold">${translate("map_info.coordinates")}:</span> ${coordStr}</div>` : ""}
+        <div><span class="font-semibold">${translate("map_info.time")}:</span> ${formatTimestamp(properties.timestamp, this.controller.timezoneValue)}</div>
+        ${properties.battery ? `<div><span class="font-semibold">${translate("map_info.battery")}:</span> ${properties.battery}%</div>` : ""}
+        ${properties.altitude ? `<div><span class="font-semibold">${translate("map_info.altitude")}:</span> ${Math.round(properties.altitude)}m</div>` : ""}
+        ${properties.velocity ? `<div><span class="font-semibold">${translate("map_info.speed")}:</span> ${formatSpeed(properties.velocity * 3.6, distanceUnit)}</div>` : ""}
       </div>
     `
   }
@@ -172,12 +195,12 @@ export class EventHandlers {
 
     const content = `
       <div class="space-y-2">
-        ${properties.photo_url ? `<img src="${escapeHtml(properties.photo_url)}" alt="Photo" class="w-full rounded-lg mb-2" />` : ""}
-        ${properties.taken_at ? `<div><span class="font-semibold">Taken:</span> ${formatTimestamp(properties.taken_at, this.controller.timezoneValue)}</div>` : ""}
+        ${properties.photo_url ? `<img src="${escapeHtml(properties.photo_url)}" alt="${translate("map_info.photo")}" class="w-full rounded-lg mb-2" />` : ""}
+        ${properties.taken_at ? `<div><span class="font-semibold">${translate("map_info.taken")}:</span> ${formatTimestamp(properties.taken_at, this.controller.timezoneValue)}</div>` : ""}
       </div>
     `
 
-    this.controller.showInfo("Photo", content)
+    this.controller.showInfo(translate("map_info.photo"), content)
   }
 
   /**
@@ -193,7 +216,7 @@ export class EventHandlers {
         ${properties.description ? `<div>${escapeHtml(properties.description)}</div>` : ""}
         ${
           properties.nameLocked
-            ? `<div class="text-xs opacity-70" data-testid="place-name-lock">🔒 You named this place, so automatic naming won't change it. Rename it to "Suggested place" to hand it back.</div>`
+            ? `<div class="text-xs opacity-70" data-testid="place-name-lock">${translate("map_info.place_name_locked")}</div>`
             : ""
         }
       </div>
@@ -206,13 +229,13 @@ export class EventHandlers {
             handler: "handleEdit",
             id: properties.id,
             entityType: "place",
-            label: "Edit",
+            label: translate("messages.edit"),
           },
         ]
       : []
 
     this.controller.showInfo(
-      escapeHtml(properties.name) || "Place",
+      escapeHtml(properties.name) || translate("map_info.place"),
       content,
       actions,
     )
@@ -233,8 +256,8 @@ export class EventHandlers {
   _renderAreaInfo(properties) {
     const content = `
       <div class="space-y-2">
-        ${properties.radius ? `<div><span class="font-semibold">Radius:</span> ${Math.round(properties.radius)}m</div>` : ""}
-        ${properties.latitude && properties.longitude ? `<div><span class="font-semibold">Center:</span> ${properties.latitude.toFixed(6)}, ${properties.longitude.toFixed(6)}</div>` : ""}
+        ${properties.radius ? `<div><span class="font-semibold">${translate("map_info.radius")}:</span> ${Math.round(properties.radius)}m</div>` : ""}
+        ${properties.latitude && properties.longitude ? `<div><span class="font-semibold">${translate("map_info.center")}:</span> ${properties.latitude.toFixed(6)}, ${properties.longitude.toFixed(6)}</div>` : ""}
       </div>
     `
 
@@ -245,20 +268,20 @@ export class EventHandlers {
             handler: "openAreaEditModal",
             id: properties.id,
             entityType: "area",
-            label: "Edit",
+            label: translate("messages.edit"),
           },
           {
             type: "button",
             handler: "handleDelete",
             id: properties.id,
             entityType: "area",
-            label: "Delete",
+            label: translate("messages.delete"),
           },
         ]
       : []
 
     this.controller.showInfo(
-      escapeHtml(properties.name) || "Area",
+      escapeHtml(properties.name) || translate("map_info.area"),
       content,
       actions,
     )
@@ -772,7 +795,10 @@ export class EventHandlers {
       trackDistanceKm,
     )
 
-    this.controller.showInfo(`Track #${properties.id}`, content)
+    this.controller.showInfo(
+      translate("map_info.track_number", { id: properties.id }),
+      content,
+    )
 
     // Set up the show points toggle handler (uses event delegation)
     this._setupTrackPointsToggle()
@@ -796,9 +822,9 @@ export class EventHandlers {
                  id="track-points-toggle"
                  class="toggle toggle-sm toggle-success"
                  data-track-id="${properties.id}" />
-          <span class="label-text font-medium">Show Points</span>
+          <span class="label-text font-medium">${translate("map_info.show_points")}</span>
         </label>
-        <p class="text-xs text-base-content/60 ml-10">Enable to view and drag points to edit track</p>
+        <p class="text-xs text-base-content/60 ml-10">${translate("map_info.show_points_help")}</p>
       </div>
     `
 
@@ -814,19 +840,19 @@ export class EventHandlers {
           <svg id="track-replay-pause-icon" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 hidden" viewBox="0 0 20 20" fill="currentColor">
             <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
           </svg>
-          <span id="track-replay-label">Replay</span>
+          <span id="track-replay-label">${translate("replay.replay")}</span>
         </button>
       </div>
     `
 
     return `
       <div class="space-y-2">
-        <div><span class="font-semibold">Start:</span> ${formatTimestamp(properties.start_at, this.controller.timezoneValue)}</div>
-        <div><span class="font-semibold">End:</span> ${formatTimestamp(properties.end_at, this.controller.timezoneValue)}</div>
-        <div><span class="font-semibold">Duration:</span> ${minutesToDaysHoursMinutes(durationMinutes)}</div>
-        <div><span class="font-semibold">Distance:</span> ${formatDistance(trackDistanceKm, distanceUnit)}</div>
-        <div><span class="font-semibold">Avg Speed:</span> ${formatSpeed(properties.avg_speed || 0, distanceUnit)}</div>
-        ${properties.dominant_mode ? `<div><span class="font-semibold">Mode:</span> ${escapeHtml(properties.dominant_mode_emoji)} ${escapeHtml(properties.dominant_mode)}</div>` : ""}
+        <div><span class="font-semibold">${translate("map_info.start")}:</span> ${formatTimestamp(properties.start_at, this.controller.timezoneValue)}</div>
+        <div><span class="font-semibold">${translate("map_info.end")}:</span> ${formatTimestamp(properties.end_at, this.controller.timezoneValue)}</div>
+        <div><span class="font-semibold">${translate("map_info.duration")}:</span> ${minutesToDaysHoursMinutes(durationMinutes)}</div>
+        <div><span class="font-semibold">${translate("map_info.distance")}:</span> ${formatDistance(trackDistanceKm, distanceUnit)}</div>
+        <div><span class="font-semibold">${translate("map_info.average_speed")}:</span> ${formatSpeed(properties.avg_speed || 0, distanceUnit)}</div>
+        ${properties.dominant_mode ? `<div><span class="font-semibold">${translate("map_info.mode")}:</span> ${escapeHtml(properties.dominant_mode_emoji)} ${escapeHtml(translate(`transportation_modes.${properties.dominant_mode}`))}</div>` : ""}
         ${showPointsToggle}
         <div id="track-point-info-container"></div>
         ${replayButton}

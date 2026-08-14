@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class OwnTracks::PointCreator
-  RETURNING_COLUMNS = 'id, xmax, timestamp, ST_X(lonlat::geometry) AS longitude, ST_Y(lonlat::geometry) AS latitude'
+  RETURNING_COLUMNS = Point::UPSERT_RETURNING_COLUMNS
 
   attr_reader :params, :user_id
 

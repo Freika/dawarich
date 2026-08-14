@@ -1,7 +1,42 @@
-import L from "leaflet"
-import "leaflet.heat"
-import { createAllMapLayers } from "../maps/layers"
+import { translate } from "i18n"
+import maplibregl from "maplibre-gl"
+import { getCurrentTheme } from "maps_maplibre/utils/popup_theme"
+import { getMapStyle } from "maps_maplibre/utils/style_manager"
 import BaseController from "./base_controller"
+
+const HEATMAP_PAINT = {
+  "heatmap-weight": 0.5,
+  "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 0, 1, 15, 1.5],
+  "heatmap-color": [
+    "interpolate",
+    ["linear"],
+    ["heatmap-density"],
+    0,
+    "rgba(0,0,255,0)",
+    0.4,
+    "rgb(0,0,255)",
+    0.6,
+    "rgb(0,255,255)",
+    0.7,
+    "rgb(0,255,0)",
+    0.8,
+    "rgb(255,255,0)",
+    1,
+    "rgb(255,0,0)",
+  ],
+  "heatmap-radius": [
+    "interpolate",
+    ["exponential", 1.5],
+    ["zoom"],
+    10,
+    8,
+    13,
+    15,
+    15,
+    25,
+  ],
+  "heatmap-opacity": 0.8,
+}
 
 export default class extends BaseController {
   static targets = ["map", "loading", "heatmapBtn", "pointsBtn"]
@@ -9,95 +44,88 @@ export default class extends BaseController {
   connect() {
     super.connect()
 
-    // Get data attributes from the element (will be passed from the view)
-    this.year = parseInt(
-      this.element.dataset.year || new Date().getFullYear(),
+    this.year = Number.parseInt(
+      this.element.dataset.year || `${new Date().getFullYear()}`,
       10,
     )
-    this.month = parseInt(
-      this.element.dataset.month || new Date().getMonth() + 1,
+    this.month = Number.parseInt(
+      this.element.dataset.month || `${new Date().getMonth() + 1}`,
       10,
     )
     this.apiKey = this.element.dataset.apiKey
-    this.selfHosted = this.element.dataset.selfHosted || this.selfHostedValue
-
-    // Initialize map after a short delay to ensure container is ready
-    setTimeout(() => {
-      this.initializeMap()
-    }, 100)
+    this.initializeMap()
   }
 
   disconnect() {
+    this.disconnected = true
     if (this.map) {
       this.map.remove()
     }
   }
 
-  initializeMap() {
-    if (!this.mapTarget) {
-      console.error("Map target not found")
-      return
-    }
-
+  async initializeMap() {
     try {
-      // Initialize Leaflet map
-      this.map = L.map(this.mapTarget, {
-        zoomControl: true,
-        scrollWheelZoom: true,
-        doubleClickZoom: true,
-        boxZoom: false,
-        keyboard: false,
-        dragging: true,
-        touchZoom: true,
-      }).setView([52.520008, 13.404954], 10) // Default to Berlin
+      const style = await getMapStyle(getCurrentTheme(), {
+        vectorTilesUrl: this.element.dataset.tilesUrl || null,
+      })
+      if (this.disconnected) return
 
-      // Add dynamic tile layer based on self-hosted setting
-      this.addMapLayers()
-
-      // Add small scale control
-      L.control
-        .scale({
-          position: "bottomright",
-          maxWidth: 100,
-          imperial: true,
-          metric: true,
-        })
-        .addTo(this.map)
-
-      // Initialize layers
-      this.markersLayer = L.layerGroup() // Don't add to map initially
-      this.heatmapLayer = null
-
-      // Load data for this month
-      this.loadMonthData()
+      this.map = new maplibregl.Map({
+        container: this.mapTarget,
+        style,
+        center: [13.404954, 52.520008],
+        zoom: 10,
+        attributionControl: false,
+      })
+      this.map.addControl(
+        new maplibregl.NavigationControl({ showCompass: false }),
+        "top-right",
+      )
+      this.map.addControl(new maplibregl.AttributionControl({ compact: true }))
+      this.map.addControl(
+        new maplibregl.ScaleControl({ maxWidth: 100 }),
+        "bottom-right",
+      )
+      this.map.on("load", () => this.loadMonthData())
     } catch (error) {
       console.error("Error initializing map:", error)
-      this.showError("Failed to initialize map")
+      this.showError(translate("stats.map_initialization_failed"))
     }
   }
 
   async loadMonthData() {
+    this.messageShown = false
+
     try {
-      // Show loading
       this.showLoading(true)
 
-      // Calculate date range for the month
       const startDate = `${this.year}-${this.month.toString().padStart(2, "0")}-01T00:00:00`
       const lastDay = new Date(this.year, this.month, 0).getDate()
       const endDate = `${this.year}-${this.month.toString().padStart(2, "0")}-${lastDay}T23:59:59`
 
-      const data = await this.fetchAllPoints(startDate, endDate)
+      const points = await this.fetchAllPoints(startDate, endDate)
+      if (this.disconnected) return
 
-      if (data.length > 0) {
-        this.processPointsData(data)
+      const coordinates = points
+        .map((point) => [
+          Number.parseFloat(point.longitude),
+          Number.parseFloat(point.latitude),
+        ])
+        .filter(
+          ([lng, lat]) =>
+            !Number.isNaN(lat) && !Number.isNaN(lng) && lat !== 0 && lng !== 0,
+        )
+
+      if (coordinates.length > 0) {
+        this.renderLayers(coordinates)
       } else {
         this.showNoData()
       }
     } catch (error) {
       console.error("Error loading month data:", error)
-      this.showError("Failed to load location data")
+      this.showError(translate("stats.location_data_load_failed"))
     } finally {
-      this.showLoading(false)
+      if (!this.disconnected && !this.messageShown) this.showLoading(false)
     }
   }
 
@@ -126,7 +154,10 @@ export default class extends BaseController {
 
       allPoints.push(...data)
 
-      const totalPages = parseInt(response.headers.get("X-Total-Pages"), 10)
+      const totalPages = Number.parseInt(
+        response.headers.get("X-Total-Pages"),
+        10,
+      )
       if (!totalPages || page >= totalPages) break
 
       page++
@@ -135,116 +166,84 @@ export default class extends BaseController {
     return allPoints
   }
 
-  processPointsData(points) {
-    // Clear existing markers
-    this.markersLayer.clearLayers()
-
-    // Convert points to markers (API returns latitude/longitude as strings)
-    // Filter out points with invalid coordinates to prevent Leaflet errors
-    const validPoints = points.filter((point) => {
-      const lat = parseFloat(point.latitude)
-      const lng = parseFloat(point.longitude)
-      return !Number.isNaN(lat) && !Number.isNaN(lng) && lat !== 0 && lng !== 0
+  renderLayers(coordinates) {
+    this.map.addSource("stat-points", {
+      type: "geojson",
+      data: {
+        type: "FeatureCollection",
+        features: coordinates.map((lngLat) => ({
+          type: "Feature",
+          geometry: { type: "Point", coordinates: lngLat },
+          properties: {},
+        })),
+      },
+    })
+    this.map.addLayer({
+      id: "stat-heatmap",
+      type: "heatmap",
+      source: "stat-points",
+      paint: HEATMAP_PAINT,
+    })
+    this.map.addLayer({
+      id: "stat-circles",
+      type: "circle",
+      source: "stat-points",
+      layout: { visibility: "none" },
+      paint: {
+        "circle-radius": 3,
+        "circle-color": "#570df8",
+        "circle-opacity": 0.6,
+        "circle-stroke-width": 1,
+        "circle-stroke-color": "#570df8",
+        "circle-stroke-opacity": 0.8,
+      },
     })
 
-    const markers = validPoints.map((point) => {
-      const lat = parseFloat(point.latitude)
-      const lng = parseFloat(point.longitude)
+    const bounds = coordinates.reduce(
+      (acc, lngLat) => acc.extend(lngLat),
+      new maplibregl.LngLatBounds(coordinates[0], coordinates[0]),
+    )
+    this.map.fitBounds(bounds, { padding: 40, maxZoom: 14, duration: 0 })
 
-      return L.circleMarker([lat, lng], {
-        radius: 3,
-        fillColor: "#570df8",
-        color: "#570df8",
-        weight: 1,
-        opacity: 0.8,
-        fillOpacity: 0.6,
-      })
-    })
+    this.heatmapBtnTarget.classList.add("btn-active")
+    this.pointsBtnTarget.classList.remove("btn-active")
+  }
 
-    // Add markers to layer (but don't add to map yet)
-    markers.forEach((marker) => {
-      this.markersLayer.addLayer(marker)
-    })
+  layerVisible(id) {
+    return this.map.getLayoutProperty(id, "visibility") !== "none"
+  }
 
-    // Prepare data for heatmap (convert strings to numbers)
-    this.heatmapData = validPoints.map((point) => [
-      parseFloat(point.latitude),
-      parseFloat(point.longitude),
-      0.5,
-    ])
-
-    // Show heatmap by default
-    if (this.heatmapData.length > 0) {
-      this.heatmapLayer = L.heatLayer(this.heatmapData, {
-        radius: 25,
-        blur: 15,
-        maxZoom: 17,
-        max: 1.0,
-      }).addTo(this.map)
-
-      // Set button states
-      this.heatmapBtnTarget.classList.add("btn-active")
-      this.pointsBtnTarget.classList.remove("btn-active")
-    }
-
-    // Fit map to show all points
-    if (validPoints.length > 0) {
-      const group = new L.featureGroup(markers)
-      this.map.fitBounds(group.getBounds().pad(0.1))
-    }
+  setLayerVisible(id, visible) {
+    this.map.setLayoutProperty(id, "visibility", visible ? "visible" : "none")
   }
 
   toggleHeatmap() {
-    if (!this.heatmapData || this.heatmapData.length === 0) {
-      console.warn("No heatmap data available")
-      return
-    }
+    if (!this.map?.getLayer("stat-heatmap")) return
 
-    if (this.heatmapLayer && this.map.hasLayer(this.heatmapLayer)) {
-      // Remove heatmap
-      this.map.removeLayer(this.heatmapLayer)
-      this.heatmapLayer = null
+    if (this.layerVisible("stat-heatmap")) {
+      this.setLayerVisible("stat-heatmap", false)
       this.heatmapBtnTarget.classList.remove("btn-active")
-
-      // Show points
-      if (!this.map.hasLayer(this.markersLayer)) {
-        this.map.addLayer(this.markersLayer)
-        this.pointsBtnTarget.classList.add("btn-active")
-      }
+      this.setLayerVisible("stat-circles", true)
+      this.pointsBtnTarget.classList.add("btn-active")
     } else {
-      // Add heatmap
-      this.heatmapLayer = L.heatLayer(this.heatmapData, {
-        radius: 25,
-        blur: 15,
-        maxZoom: 17,
-        max: 1.0,
-      }).addTo(this.map)
-
+      this.setLayerVisible("stat-heatmap", true)
       this.heatmapBtnTarget.classList.add("btn-active")
-
-      // Hide points
-      if (this.map.hasLayer(this.markersLayer)) {
-        this.map.removeLayer(this.markersLayer)
-        this.pointsBtnTarget.classList.remove("btn-active")
-      }
+      this.setLayerVisible("stat-circles", false)
+      this.pointsBtnTarget.classList.remove("btn-active")
     }
   }
 
   togglePoints() {
-    if (this.map.hasLayer(this.markersLayer)) {
-      // Remove points
-      this.map.removeLayer(this.markersLayer)
+    if (!this.map?.getLayer("stat-circles")) return
+
+    if (this.layerVisible("stat-circles")) {
+      this.setLayerVisible("stat-circles", false)
       this.pointsBtnTarget.classList.remove("btn-active")
     } else {
-      // Add points
-      this.map.addLayer(this.markersLayer)
+      this.setLayerVisible("stat-circles", true)
       this.pointsBtnTarget.classList.add("btn-active")
-
-      // Remove heatmap if active
-      if (this.heatmapLayer && this.map.hasLayer(this.heatmapLayer)) {
-        this.map.removeLayer(this.heatmapLayer)
-        this.heatmapBtnTarget.classList.remove("btn-active")
-      }
+      this.setLayerVisible("stat-heatmap", false)
+      this.heatmapBtnTarget.classList.remove("btn-active")
     }
   }
 
@@ -255,62 +254,32 @@ export default class extends BaseController {
   }
 
   showError(message) {
-    if (this.hasLoadingTarget) {
-      const container = document.createElement("div")
-      container.className = "alert alert-error"
-      container.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`
-      const span = document.createElement("span")
-      span.textContent = message
-      container.appendChild(span)
-      this.loadingTarget.replaceChildren(container)
-      this.loadingTarget.style.display = "flex"
-    }
+    if (!this.hasLoadingTarget) return
+
+    this.messageShown = true
+    const container = document.createElement("div")
+    container.className = "alert alert-error"
+    const span = document.createElement("span")
+    span.textContent = message
+    container.appendChild(span)
+    this.loadingTarget.replaceChildren(container)
+    this.loadingTarget.style.display = "flex"
   }
 
   showNoData() {
-    if (this.hasLoadingTarget) {
-      const dateLabel = new Date(this.year, this.month - 1).toLocaleDateString(
-        "en-US",
-        { month: "long", year: "numeric" },
-      )
-      const container = document.createElement("div")
-      container.className = "alert alert-info"
-      container.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`
-      const span = document.createElement("span")
-      span.textContent = `No location data available for ${dateLabel}`
-      container.appendChild(span)
-      this.loadingTarget.replaceChildren(container)
-      this.loadingTarget.style.display = "flex"
-    }
-  }
+    if (!this.hasLoadingTarget) return
 
-  addMapLayers() {
-    try {
-      // Use appropriate default layer based on self-hosted mode
-      const selectedLayerName =
-        this.selfHosted === "true" ? "OpenStreetMap" : "Light"
-      const maps = createAllMapLayers(
-        this.map,
-        selectedLayerName,
-        this.selfHosted,
-        "dark",
-      )
-
-      // If no layers were created, fall back to OSM
-      if (Object.keys(maps).length === 0) {
-        console.warn("No map layers available, falling back to OSM")
-        this.addFallbackOSMLayer()
-      }
-    } catch (error) {
-      console.error("Error creating map layers:", error)
-      this.addFallbackOSMLayer()
-    }
-  }
-
-  addFallbackOSMLayer() {
-    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 19,
-      attribution: "© OpenStreetMap contributors",
-    }).addTo(this.map)
+    this.messageShown = true
+    const dateLabel = new Date(this.year, this.month - 1).toLocaleDateString(
+      document.documentElement.lang || undefined,
+      { month: "long", year: "numeric" },
+    )
+    const container = document.createElement("div")
+    container.className = "alert alert-info"
+    const span = document.createElement("span")
+    span.textContent = translate("stats.no_location_data", { date: dateLabel })
+    container.appendChild(span)
+    this.loadingTarget.replaceChildren(container)
+    this.loadingTarget.style.display = "flex"
   }
 }

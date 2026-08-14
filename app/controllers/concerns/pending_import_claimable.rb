@@ -3,9 +3,6 @@
 module PendingImportClaimable
   extend ActiveSupport::Concern
 
-  EXPIRED_MESSAGE =
-    'Your import link has expired or already been used. You can re-upload from your dashboard.'
-
   private
 
   def claim_pending_import_for(user)
@@ -14,17 +11,20 @@ module PendingImportClaimable
 
     pending = PendingImport.claimable.find_by(claim_ticket: ticket)
     unless pending
-      flash[:alert] = EXPIRED_MESSAGE
+      flash[:alert] = I18n.t('controllers.concerns.pending_import_claimable.expired')
       return
     end
 
     case attempt_claim(pending, user)
     when :claimed
-      flash[:notice] = "Importing #{pending.original_filename}... You'll see it in your dashboard shortly."
+      flash[:notice] = I18n.t(
+        'controllers.concerns.pending_import_claimable.importing',
+        filename: pending.original_filename
+      )
     when :already_claimed
-      flash[:alert] = EXPIRED_MESSAGE
+      flash[:alert] = I18n.t('controllers.concerns.pending_import_claimable.expired')
     else
-      flash[:alert] = "Your import couldn't be queued. Please upload the file from your dashboard."
+      flash[:alert] = I18n.t('controllers.concerns.pending_import_claimable.queue_failed')
     end
   end
 

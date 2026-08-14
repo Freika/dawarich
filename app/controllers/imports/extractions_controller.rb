@@ -19,7 +19,9 @@ module Imports
 
       respond_to do |format|
         format.turbo_stream
-        format.html { redirect_to import_path(@import), notice: 'Extraction queued.' }
+        format.html do
+          redirect_to import_path(@import), notice: I18n.t('controllers.imports.extractions.extraction_queued')
+        end
       end
     end
 
@@ -35,7 +37,9 @@ module Imports
 
       respond_to do |format|
         format.turbo_stream
-        format.html { redirect_to import_path(@import), notice: 'Removing extracted data…' }
+        format.html do
+          redirect_to import_path(@import), notice: I18n.t('controllers.imports.extractions.removing_extracted_data')
+        end
       end
     end
 

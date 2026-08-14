@@ -4,7 +4,7 @@
     <% parts = [props['street'], props['city'], props['country']].compact_blank %>
     <% if parts.any? %>
       <div>
-        <span class="font-semibold">Address:</span> <%= parts.join(', ') %>
+        <span class="font-semibold"><%= t('.address') %></span> <%= parts.join(', ') %>
       </div>
     <% end %>
   <% end %>

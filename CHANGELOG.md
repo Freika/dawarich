@@ -4,6 +4,57 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.12.1] - 2026-08-13, Berlin
+
+### Fixed
+
+- Fix to recently added migrations that could fail on some self-hosted instances with a large number of visits. The migration now runs in smaller batches and is resumable if interrupted.
+
+
+## [1.12.0] - 2026-08-11, Berlin
+
+### Added
+
+- Dawarich can now be used in German, Spanish or French: pick a language under Settings → General. The choice is saved to your account and applies to emails and notifications too; API responses stay in English.
+- If your browser prefers one of those languages, a dismissible banner offers the switch — it never changes your language on its own.
+
+### Removed
+
+- Map v1 (Leaflet) has been removed: `/map` now opens the MapLibre map and `/map/v1` redirects to `/map/v2`. The Settings → Maps page went with it, and all maps now require WebGL.
+
+### Changed
+
+- Monthly statistics maps and publicly shared month maps are now rendered with MapLibre GL instead of Leaflet.
+- Deleting an import or a notification now updates the list in place instead of repainting the page.
+- Long-running backfills now resume where they stopped after a restart instead of starting over.
+- Visit detection has been rebuilt around stays, movement and honest gaps: a tracking silence that starts and ends at the same place is one continuous visit, a silence that ends somewhere else becomes an explicit "untracked" stretch, and visit times snap to when movement actually stopped. Slow traffic can no longer be carved into fake roadside "visits".
+- Visits are only named after a business or POI when the evidence supports it — anything weaker gets a street address instead of a made-up venue name.
+- Every detected visit carries a confidence score: medium-confidence visits render subdued, low-confidence ones collapse into a per-day disclosure, confirmed visits always render at full strength. The gating activates once your history has been re-detected.
+- The "Visit Max Gap" slider and "Smart density fill" toggle are gone — gap handling needs no configuration. Areas now label the visits detection finds instead of running a separate nightly pass, and reshaping an area relabels its historical visits.
+- Machine-detected visits are regenerable: re-detection replaces them wholesale, while anything you confirmed, renamed, re-placed, deleted or noted — and anything imported — survives untouched. **Existing visits keep their old detection until re-detected: press the re-detect button in Settings → Visits.** Self-hosted instances re-detect all accounts automatically after migrating (set `SKIP_VISITS_FLEET_REDETECT=1` before migrating to opt out); Dawarich Cloud is re-detected in a staged rollout.
+- The timeline marks an interior gap as "untracked" from 45 minutes up (previously 90) once your history has been re-detected.
+- Transportation mode detection has been rebuilt: modes are inferred from movement patterns over time windows, segments carry a confidence score, and tracker hints are blended in rather than trusted blindly. Recognized: stationary, walking, running, cycling, driving, train, flying; bus, boat and motorcycle only come from tracker hints or manual edits.
+- The transportation threshold sliders and expert mode are gone. **Existing tracks keep their old classification until re-detected: press "Re-classify my history" in Map settings → Transportation Mode Detection.** Self-hosted admins can redo every account with `TransportationModes::FleetReclassifyJob.perform_later` once the segment backfill has finished.
+- The timeline got quieter: a one-line day header with per-mode distance chips, tracks that expand to a mode ribbon with only the legs that matter, and in-place mode editing — click a leg's mode name to change it. The full segment list lives behind "All segments".
+- Visits no longer have a review flow: the suggestions banner, "Needs review" cards, filters and bulk Confirm are gone. Every visit row has an Edit button, and editing a suggested visit confirms it.
+- Deleting a visit keeps an invisible tombstone so detection never re-suggests it; your location points are untouched. Previously declined visits become tombstones too.
+- Days per Country moved from the map's Create tab to the Insights page as a pair of cards, following the year you pick at the top of the page.
+- After upgrading, restart the app once migrations have run — until then, deleting a visit looks like it worked without saving. A background backfill converts existing track segments to time-based anchoring; progress is visible under Background jobs settings.
+
+### Fixed
+
+- The "someone joined your family" email no longer fails to send.
+- Re-detecting your whole visit history no longer fails when Dawarich is set to German or Spanish.
+- The "family is full" notice now shows how many seats are taken instead of stopping mid-sentence in German and Spanish.
+- Notifications about a failed import, a family invitation and the year-end digest are no longer partly untranslated.
+- Trip pages no longer fail with a 500 when Immich or Photoprism is unreachable — the trip loads without photos. (#3308)
+- `OIDC_ISSUER` written with a `#` fragment no longer fails sign-in with "Issuer mismatch". (#3289)
+- Clicking a map panel's own button now closes it. (#3317)
+- `/metrics` no longer reports duplicate series when the web and Sidekiq exporters merge; shared series carry a `process` label. (#3304)
+- Uploading points no longer logs `unknown OID 28: failed to recognize type of 'xmax'`. (#3309)
+- The coordinates shown when you click a point on the map now match the points list. (#3264)
+- Photo search now covers the whole of the end date. (#3263)
+
 ## [1.11.0] - 2026-08-02, Berlin
 
 ### Added

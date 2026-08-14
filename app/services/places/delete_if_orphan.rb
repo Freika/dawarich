@@ -15,10 +15,14 @@ module Places
       return false unless place
       return false unless place.photon?
       return false if place.note.present?
-      return false if Visit.where(place_id: @place_id).exists?
+      return false if Visit.active.where(place_id: @place_id).exists?
       return false if Tagging.where(taggable_id: @place_id, taggable_type: 'Place').exists?
 
       Place.transaction do
+        # Only hidden visits (tombstones/declines) can still reference the
+        # place here; detach them so the FK allows the delete. Their dedup
+        # role survives — Visit#center falls back to the visit's own points.
+        Visit.where(place_id: @place_id).update_all(place_id: nil)
         PlaceVisit.where(place_id: @place_id).delete_all
         place.delete
       end

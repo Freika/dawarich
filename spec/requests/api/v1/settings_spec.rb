@@ -372,36 +372,12 @@ RSpec.describe 'Api::V1::Settings', type: :request do
         expect(theme['tokens']['bg']).to eq('#000000')
       end
 
-      it 'updates stay_max_gap_minutes' do
+      it 'ignores the retired stay_max_gap_minutes setting' do
         patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { stay_max_gap_minutes: 90 } }
 
         expect(response).to have_http_status(:success)
-        expect(user.reload.safe_settings.stay_max_gap_minutes).to eq(90)
-      end
-
-      it 'returns updated stay_max_gap_minutes in response' do
-        patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { stay_max_gap_minutes: 90 } }
-
-        expect(response.parsed_body['settings']['stay_max_gap_minutes']).to eq(90)
-      end
-
-      it 'clamps stay_max_gap_minutes above the maximum on read' do
-        patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { stay_max_gap_minutes: 1000 } }
-
-        expect(response.parsed_body['settings']['stay_max_gap_minutes']).to eq(720)
-      end
-
-      it 'clamps stay_max_gap_minutes below the minimum on read' do
-        patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { stay_max_gap_minutes: 1 } }
-
-        expect(response.parsed_body['settings']['stay_max_gap_minutes']).to eq(5)
-      end
-
-      it 'preserves stay_max_gap_minutes when a patch omits it' do
-        patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { stay_max_gap_minutes: 90 } }
-        patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { route_opacity: 0.3 } }
-
-        expect(user.reload.safe_settings.stay_max_gap_minutes).to eq(90)
+        expect(user.reload.settings['stay_max_gap_minutes']).to be_nil
+        expect(response.parsed_body['settings']).not_to have_key('stay_max_gap_minutes')
       end
 
       context 'when user is inactive' do
@@ -447,22 +423,15 @@ RSpec.describe 'Api::V1::Settings', type: :request do
       end
     end
 
-    context 'with transportation thresholds' do
-      let(:threshold_params) do
-        {
-          settings: {
-            transportation_thresholds: {
-              walking_max_speed: 8,
-              cycling_max_speed: 50
-            }
-          }
-        }
+    context 'with a changed transportation mode allowlist' do
+      let(:allowlist_params) do
+        { settings: { enabled_transportation_modes: %w[walking cycling driving] } }
       end
 
-      it 'triggers recalculation when thresholds change' do
+      it 'triggers reclassification' do
         expect do
-          patch "/api/v1/settings?api_key=#{api_key}", params: threshold_params
-        end.to have_enqueued_job(Tracks::TransportationModeRecalculationJob).with(user.id)
+          patch "/api/v1/settings?api_key=#{api_key}", params: allowlist_params
+        end.to have_enqueued_job(TransportationModes::UserReclassifyJob).with(user.id)
 
         expect(response).to have_http_status(:success)
         expect(response.parsed_body['recalculation_triggered']).to be true
@@ -474,7 +443,7 @@ RSpec.describe 'Api::V1::Settings', type: :request do
         end
 
         it 'returns locked status' do
-          patch "/api/v1/settings?api_key=#{api_key}", params: threshold_params
+          patch "/api/v1/settings?api_key=#{api_key}", params: allowlist_params
 
           expect(response).to have_http_status(:locked)
           expect(response.parsed_body['status']).to eq('locked')

@@ -7,7 +7,7 @@ class PostersController < ApplicationController
 
   def create
     poster = current_user.posters.create!(
-      name: poster_params[:name].presence || 'Untitled poster',
+      name: poster_params[:name].presence || I18n.t('controllers.posters.untitled'),
       status: :created,
       settings: poster_params.except(:name).to_h
     )
@@ -16,21 +16,25 @@ class PostersController < ApplicationController
       format.turbo_stream do
         render turbo_stream: [
           turbo_stream.prepend('poster-gallery-list', partial: 'posters/poster', locals: { poster: poster }),
-          stream_flash(:notice, 'Poster generation started. This takes about a minute.')
+          stream_flash(:notice, I18n.t('controllers.posters.poster_generation_started_this_takes_about_a_minute'))
         ]
       end
-      format.html { redirect_to map_v2_path, notice: 'Poster generation started. This takes about a minute.' }
+      format.html do
+        redirect_to map_v2_path,
+                    notice: I18n.t('controllers.posters.poster_generation_started_this_takes_about_a_minute')
+      end
     end
   rescue StandardError => e
     ExceptionReporter.call(e, 'Poster creation failed')
 
     respond_to do |format|
       format.turbo_stream do
-        render turbo_stream: stream_flash(:error, 'Failed to start poster generation.'),
+        render turbo_stream: stream_flash(:error, I18n.t('controllers.posters.failed_to_start_poster_generation')),
                status: :unprocessable_content
       end
       format.html do
-        redirect_to map_v2_path, alert: 'Failed to start poster generation.', status: :unprocessable_content
+        redirect_to map_v2_path, alert: I18n.t('controllers.posters.failed_to_start_poster_generation'),
+status: :unprocessable_content
       end
     end
   end
@@ -43,7 +47,7 @@ class PostersController < ApplicationController
       format.turbo_stream do
         render turbo_stream: turbo_stream.remove(ActionView::RecordIdentifier.dom_id(poster))
       end
-      format.html { redirect_to map_v2_path, notice: 'Poster deleted.', status: :see_other }
+      format.html { redirect_to map_v2_path, notice: I18n.t('controllers.posters.poster_deleted'), status: :see_other }
     end
   end
 

@@ -1,7 +1,7 @@
 <div data-controller="area-creation-v2">
   <div class="modal z-[10000]" data-area-creation-v2-target="modal">
     <div class="modal-box max-w-xl">
-      <h3 class="font-bold text-lg mb-4" data-area-creation-v2-target="modalTitle">Create New Area</h3>
+      <h3 class="font-bold text-lg mb-4" data-area-creation-v2-target="modalTitle"><%= t('.create_new_area') %></h3>
 
       <%= form_with url: areas_path, method: :post, data: {
         area_creation_v2_target: "form",
@@ -13,10 +13,10 @@
         <div class="space-y-4">
           <div class="form-control">
             <label class="label">
-              <span class="label-text font-semibold">Area Name *</span>
+              <span class="label-text font-semibold"><%= t('.area_name') %></span>
             </label>
             <%= f.text_field :name,
-                placeholder: "e.g. Home, Office, Gym...",
+                placeholder: t('.e_g_home_office_gym'),
                 class: "input input-bordered w-full",
                 data: { area_creation_v2_target: "nameInput" },
                 required: true %>
@@ -24,14 +24,14 @@
 
           <div class="form-control">
             <label class="label">
-              <span class="label-text font-semibold">Radius</span>
+              <span class="label-text font-semibold"><%= t('.radius') %></span>
               <span class="label-text-alt">
-                <span data-area-creation-v2-target="radiusDisplay">0</span> meters
+                <span data-area-creation-v2-target="radiusDisplay">0</span> <%= t('.meters') %>
               </span>
             </label>
             <%= f.number_field :radius,
                 min: 10,
-                placeholder: "Radius in meters",
+                placeholder: t('.radius_in_meters'),
                 class: "input input-bordered w-full",
                 data: {
                   area_creation_v2_target: "radiusInput",
@@ -42,9 +42,9 @@
         </div>
 
         <div class="modal-action">
-          <button type="button" class="btn btn-ghost" data-action="click->area-creation-v2#close">Cancel</button>
-          <%= f.submit "Create Area", class: "btn btn-primary",
-              data: { area_creation_v2_target: "submitButton", disable_with: "Creating..." } %>
+          <button type="button" class="btn btn-ghost" data-action="click->area-creation-v2#close"><%= t('.cancel') %></button>
+          <%= f.submit t('.create_area'), class: "btn btn-primary",
+              data: { area_creation_v2_target: "submitButton", disable_with: t('.creating') } %>
         </div>
       <% end %>
     </div>

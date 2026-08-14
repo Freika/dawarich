@@ -1,46 +1,49 @@
-<div class="map-button-cluster" data-controller="map-panel" role="toolbar" aria-label="Map controls">
+<div class="map-button-cluster" data-controller="map-panel" role="toolbar" aria-label="<%= t('.map_controls') %>">
   <button type="button"
           class="map-button-cluster__btn"
           data-action="click->map-panel#openTab"
+          aria-expanded="false"
           data-tab="timeline-feed"
           data-testid="map-button-timeline"
-          aria-label="Timeline"
+          aria-label="<%= t('.timeline') %>"
           aria-keyshortcuts="T"
-          title="Timeline (T)">
+          title="<%= t('.timeline_t') %>">
     <%= icon 'calendar-clock' %>
-    <%= render 'map/timeline_feeds/suggestions_badge', count: @suggestions_pending_count.to_i %>
   </button>
 
   <button type="button"
           class="map-button-cluster__btn"
           data-action="click->map-panel#openTab"
+          aria-expanded="false"
           data-tab="layers"
           data-testid="map-button-layers"
-          aria-label="Layers"
+          aria-label="<%= t('.layers') %>"
           aria-keyshortcuts="L"
-          title="Layers (L)">
+          title="<%= t('.layers_l') %>">
     <%= icon 'layer' %>
   </button>
 
   <button type="button"
           class="map-button-cluster__btn"
           data-action="click->map-panel#openTab"
+          aria-expanded="false"
           data-tab="search"
           data-testid="map-button-search"
-          aria-label="Search"
+          aria-label="<%= t('.search') %>"
           aria-keyshortcuts="/"
-          title="Search (/)">
+          title="<%= t('.search_2') %>">
     <%= icon 'search' %>
   </button>
 
   <button type="button"
           class="map-button-cluster__btn map-button-cluster__btn--create"
           data-action="click->map-panel#openTab"
+          aria-expanded="false"
           data-tab="tools"
           data-testid="map-button-create"
-          aria-label="Create"
+          aria-label="<%= t('.create') %>"
           aria-keyshortcuts="C"
-          title="Create (C)">
+          title="<%= t('.create_c') %>">
     <%= icon 'circle-plus' %>
   </button>
 
@@ -48,9 +51,9 @@
           class="map-button-cluster__btn"
           data-action="click->maps--maplibre#toggleReplay"
           data-testid="map-button-replay"
-          aria-label="Replay"
+          aria-label="<%= t('.replay') %>"
           aria-keyshortcuts="R"
-          title="Replay points for the current date range (R)">
+          title="<%= t('.replay_points_for_the_current_date_range_r') %>">
     <%= icon 'play', class: 'w-5 h-5', aria: { hidden: true } %>
   </button>
 
@@ -58,8 +61,8 @@
           class="map-button-cluster__btn"
           data-action="click->map-panel#openPosterStudio"
           data-testid="map-button-poster"
-          aria-label="Poster Studio"
-          title="Poster Studio">
+          aria-label="<%= t('.poster_studio') %>"
+          title="<%= t('.poster_studio') %>">
     <%= icon 'image' %>
   </button>
 
@@ -68,11 +71,12 @@
   <button type="button"
           class="map-button-cluster__btn map-button-cluster__btn--muted"
           data-action="click->map-panel#openTab"
+          aria-expanded="false"
           data-tab="settings"
           data-testid="map-button-settings"
-          aria-label="Settings"
+          aria-label="<%= t('.settings') %>"
           aria-keyshortcuts="S"
-          title="Settings (S)">
+          title="<%= t('.settings_s') %>">
     <%= icon 'settings' %>
   </button>
 
@@ -84,10 +88,11 @@
     <button type="button"
             class="map-button-cluster__btn map-button-cluster__btn--muted"
             data-action="click->map-panel#openTab"
+          aria-expanded="false"
             data-tab="links"
             data-testid="map-button-links"
-            aria-label="Links"
-            title="Links">
+            aria-label="<%= t('.links') %>"
+            title="<%= t('.links') %>">
       <%= icon 'info' %>
     </button>
   <% end %>

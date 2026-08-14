@@ -11,22 +11,22 @@ class Api::V1::SettingsController < ApiController
   end
 
   # NOTE: For Lite plan users, Pro-only settings (gated map layers, globe_projection)
-  # are silently stripped before persistence by TransportationThresholdsUpdater.
+  # are silently stripped before persistence by Users::SettingsUpdater.
   # The response reflects the filtered state via safe_settings.config.
   def update
     settings = settings_params
     unless valid_tiles_url?(settings)
       return render json: {
-        message: 'Something went wrong',
-        errors: [TILE_URL_ERROR]
+        message: I18n.t('controllers.api.v1.settings.something_went_wrong'),
+        errors: [I18n.t('controllers.api.v1.settings.tile_url_error')]
       }, status: :unprocessable_content
     end
 
-    result = Users::TransportationThresholdsUpdater.new(current_api_user, settings).call
+    result = Users::SettingsUpdater.new(current_api_user, settings).call
 
     if result.success?
       render json: {
-        message: 'Settings updated',
+        message: I18n.t('controllers.api.v1.settings.settings_updated'),
         settings: current_api_user.safe_settings.config,
         status: 'success',
         recalculation_triggered: result.recalculation_triggered?
@@ -34,7 +34,8 @@ class Api::V1::SettingsController < ApiController
     elsif result.error&.include?('recalculation is in progress')
       render json: { message: result.error, status: 'locked' }, status: :locked
     else
-      render json: { message: 'Something went wrong', errors: [result.error] }, status: :unprocessable_content
+      render json: { message: I18n.t('controllers.api.v1.settings.something_went_wrong'), errors: [result.error] },
+             status: :unprocessable_content
     end
   end
 
@@ -66,9 +67,6 @@ class Api::V1::SettingsController < ApiController
                               route_color track_color].freeze
   TILE_URL_PLACEHOLDERS = %w[{z} {x} {y}].freeze
   TILE_FILE_EXTENSIONS = %w[.png .jpg .jpeg .webp .mvt .pbf].freeze
-  TILE_URL_ERROR = 'Tile URL must include {z}, {x}, and {y} placeholders, ' \
-                   'or be a MapLibre style URL'
-
   def settings_params
     permitted = params.require(:settings).permit(
       :timezone,
@@ -79,9 +77,7 @@ class Api::V1::SettingsController < ApiController
       :immich_url, :immich_api_key, :photoprism_url, :photoprism_api_key,
       :speed_colored_routes, :speed_color_scale, :fog_of_war_threshold, :fog_of_war_mode,
       :maps_v2_style, :maps_maplibre_style, :maps_maplibre_tiles_url, :globe_projection,
-      :transportation_expert_mode,
       :min_minutes_spent_in_city, :max_gap_minutes_in_city,
-      :stay_max_gap_minutes,
       :gps_filtering_enabled,
       :point_dragging_enabled, :points_tiled_rendering,
       enabled_map_layers: [],
@@ -92,11 +88,7 @@ class Api::V1::SettingsController < ApiController
                      road_motorway road_primary road_secondary
                      road_tertiary road_residential road_default] }
       ],
-      maps: [:distance_unit, { hidden_tile_categories: [], disabled_poi_groups: [] }],
-      transportation_thresholds: %i[walking_max_speed cycling_max_speed driving_max_speed flying_min_speed],
-      transportation_expert_thresholds: %i[stationary_max_speed running_vs_cycling_accel cycling_vs_driving_accel
-                                           train_min_speed min_segment_duration time_gap_threshold
-                                           min_flight_distance_km]
+      maps: [:distance_unit, { hidden_tile_categories: [], disabled_poi_groups: [] }]
     )
 
     if permitted[:maps].is_a?(ActionController::Parameters)

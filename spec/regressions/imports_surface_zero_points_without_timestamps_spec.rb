@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe 'Imports surface zero points with no timestamps' do
+RSpec.describe 'Imports surface zero points with no timestamps', type: :request do
   let(:user) { create(:user) }
 
   def build_import_with(file_path, name:, source:, content_type:)
@@ -35,7 +35,28 @@ RSpec.describe 'Imports surface zero points with no timestamps' do
       expect(notification.kind).to eq('warning')
       expect(notification.content).to include('no_timestamps.gpx')
       expect(notification.content).to include('0 points')
-      expect(notification.content).to include('<time>/<when>')
+      expect(notification.content).to include('&lt;time&gt;/&lt;when&gt;')
+    end
+
+    it 'uses the user language when the import runs in the background' do
+      user.update!(settings: { 'locale' => 'fr' })
+      import = build_import_with(
+        file_path, name: 'sans_horodatage.gpx', source: :gpx, content_type: 'application/gpx+xml'
+      )
+
+      I18n.with_locale(:en) { Import::ProcessJob.perform_now(import.id) }
+
+      notification = user.notifications.order(:created_at).last
+      expect(notification.title).to eq('Importation terminée sans point')
+      expect(notification.content).to include('sans_horodatage.gpx')
+      expect(notification.content).to include("n'a importé aucun point")
+      expect(notification.content).to include('&lt;time&gt;/&lt;when&gt;')
+
+      sign_in user
+      get notification_url(notification)
+
+      rendered_notification = Nokogiri::HTML(response.body).at_css("#notification_#{notification.id}")
+      expect(rendered_notification.text).to include('<time>/<when>')
     end
   end
 
@@ -67,7 +88,7 @@ RSpec.describe 'Imports surface zero points with no timestamps' do
       expect(notification.content).to include('semantic_history_2.json')
       expect(notification.content).to include('0 points')
       expect(notification.content).not_to include('timestamps')
-      expect(notification.content).not_to include('<time>/<when>')
+      expect(notification.content).not_to include('&lt;time&gt;/&lt;when&gt;')
     end
   end
 end

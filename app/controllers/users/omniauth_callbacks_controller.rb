@@ -4,15 +4,15 @@ class Users::OmniauthCallbacksController < Devise::OmniauthCallbacksController
   include PendingImportClaimable
 
   def github
-    handle_auth('GitHub')
+    handle_auth(I18n.t('oauth_providers.github'))
   end
 
   def google_oauth2
-    handle_auth('Google')
+    handle_auth(I18n.t('oauth_providers.google'))
   end
 
   def openid_connect
-    handle_auth('OpenID Connect')
+    handle_auth(I18n.t('oauth_providers.openid_connect'))
   end
 
   def failure
@@ -23,18 +23,19 @@ class Users::OmniauthCallbacksController < Devise::OmniauthCallbacksController
     error_message =
       case error_type
       when :invalid_credentials
-        'Invalid credentials. Please check your username and password.'
+        I18n.t('controllers.users.omniauth_callbacks.invalid_credentials')
       when :timeout
-        'Connection timeout. Please try again.'
+        I18n.t('controllers.users.omniauth_callbacks.connection_timeout')
       when :csrf_detected
-        'Security error detected. Please try again.'
+        I18n.t('controllers.users.omniauth_callbacks.security_error')
       else
         if error&.message&.include?('Discovery')
-          'Unable to connect to authentication provider. Please contact your administrator.'
+          I18n.t('controllers.users.omniauth_callbacks.provider_unavailable')
         elsif error&.message&.include?('Issuer mismatch')
-          'Authentication provider configuration error. Please contact your administrator.'
+          I18n.t('controllers.users.omniauth_callbacks.provider_configuration_error')
         else
-          "Authentication failed: #{params[:message] || error&.message || 'Unknown error'}"
+          detail = params[:message] || error&.message || I18n.t('controllers.users.omniauth_callbacks.unknown_error')
+          I18n.t('controllers.users.omniauth_callbacks.authentication_failed', detail:)
         end
       end
 
@@ -54,15 +55,18 @@ class Users::OmniauthCallbacksController < Devise::OmniauthCallbacksController
     @user = User.from_omniauth(request.env['omniauth.auth'])
 
     if @user&.persisted?
+      # from_omniauth both finds and creates, so only a record born in this
+      # request is a signup — otherwise a returning customer arriving through a
+      # different affiliate link would be re-credited to the wrong partner.
+      attribute_partnero_signup(@user) if @user.oauth_newly_created
       flash[:notice] = I18n.t 'devise.omniauth_callbacks.success', kind: provider
       sign_in_and_redirect @user, event: :authentication
     elsif @user.nil?
       # User creation was rejected (e.g., OIDC auto-register disabled)
-      error_message = if provider == 'OpenID Connect' && !oidc_auto_register_enabled?
-                        'Your account must be created by an administrator before you can sign in with OIDC. ' \
-                        'Please contact your administrator.'
+      error_message = if provider == I18n.t('oauth_providers.openid_connect') && !oidc_auto_register_enabled?
+                        I18n.t('controllers.users.omniauth_callbacks.oidc_account_requires_administrator')
                       else
-                        'Unable to create your account. Please try again or contact support.'
+                        I18n.t('controllers.users.omniauth_callbacks.account_creation_failed')
                       end
       redirect_to root_path, alert: error_message
     else
@@ -79,8 +83,7 @@ class Users::OmniauthCallbacksController < Devise::OmniauthCallbacksController
     redirect_to auth_account_link_challenge_path
   rescue Auth::FindOrCreateOauthUser::UnverifiedEmail
     redirect_to new_user_session_path,
-                alert: "Your #{provider} email is not verified. Verify it with the provider, " \
-                       'then try again — or sign in with your existing password.'
+                alert: I18n.t('controllers.users.omniauth_callbacks.email_not_verified', provider:)
   end
 
   def oidc_auto_register_enabled?

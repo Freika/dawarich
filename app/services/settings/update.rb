@@ -24,19 +24,23 @@ class Settings::Update
 
       validate_integration_url!(updated_settings[key])
     rescue UrlValidatable::BlockedUrlError => e
-      return { success: false, notices: [], alerts: ["#{key.humanize} is not allowed: #{e.message}"] }
+      return {
+        success: false,
+        notices: [],
+        alerts: [I18n.t('services.settings.update.not_allowed', setting: key.humanize, message: e.message)]
+      }
     end
 
     unless user.update(settings: updated_settings)
-      return { success: false, notices: [], alerts: ['Settings could not be updated'] }
+      return { success: false, notices: [], alerts: [I18n.t('services.settings.update.failed')] }
     end
 
-    notices = ['Settings updated']
+    notices = [I18n.t('services.settings.update.updated')]
     alerts = []
 
     if refresh_photos_cache
       Photos::CacheCleaner.new(user).call
-      notices << 'Photo cache refreshed'
+      notices << I18n.t('services.settings.update.photo_cache_refreshed')
     end
 
     test_immich_connection(updated_settings, notices, alerts) if immich_changed

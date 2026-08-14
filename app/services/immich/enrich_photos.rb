@@ -11,8 +11,10 @@ class Immich::EnrichPhotos
   end
 
   def call
-    return error_result('Immich URL is missing') if user.safe_settings.immich_url.blank?
-    return error_result('Immich API key is missing') if user.safe_settings.immich_api_key.blank?
+    return error_result(I18n.t('services.immich.configuration.url_missing')) if user.safe_settings.immich_url.blank?
+    if user.safe_settings.immich_api_key.blank?
+      return error_result(I18n.t('services.immich.configuration.api_key_missing'))
+    end
     return { enriched: 0, failed: 0, errors: [] } if assets.empty?
 
     enriched = 0
@@ -50,9 +52,10 @@ class Immich::EnrichPhotos
     if response.success?
       { success: true }
     else
-      { success: false, error: "HTTP #{response.code}: #{response.message}" }
+      { success: false,
+error: I18n.t('services.immich.enrich_photos.http_code_message', code: response.code, message: response.message) }
     end
-  rescue HTTParty::Error, Net::OpenTimeout, Net::ReadTimeout, Errno::ECONNREFUSED => e
+  rescue *Photos::ConnectionErrors::HANDLED => e
     { success: false, error: e.message }
   end
 

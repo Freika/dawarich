@@ -23,7 +23,7 @@ export function heatmapPaint(opacity = 0.6) {
       2,
     ],
 
-    // Color ramp matching Map v1 (leaflet.heat default gradient)
+    // Color ramp preserved from the retired Map v1 heatmap
     "heatmap-color": [
       "interpolate",
       ["linear"],

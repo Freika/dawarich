@@ -1,18 +1,18 @@
-Location Request
+<%= t('.location_request') %>
 ================
 
-Hi there!
+<%= t('.hi_there') %>
 
-<%= @requester.email %> is requesting your location on Dawarich.
+<%= @requester.email %> <%= t('.is_requesting_your_location_on_dawarich') %>
 
-You can review this request and choose to accept or decline it.
-If you accept, you can select how long to share your location (1 hour, 6 hours, 12 hours, 24 hours, or permanently).
+<%= t('.you_can_review_this_request_and_choose_to_accept_or_2') %>
+<%= t('.if_you_accept_you_can_select_how_long_to_share') %>
 
-View Request: <%= @request_url %>
+<%= t('.view_request_2') %> <%= @request_url %>
 
-⏰ Important: This request will expire in 24 hours if not acted upon.
+<%= t('.important_this_request_will_expire_in_24_hours_if_not_2') %>
 
-If you don't want to share your location, simply ignore this request or decline it.
+<%= t('.if_you_don_t_want_to_share_your_location_simply') %>
 
-Best regards,
-Evgenii from Dawarich
+<%= t('.best_regards') %>
+<%= t('.evgenii_from_dawarich') %>

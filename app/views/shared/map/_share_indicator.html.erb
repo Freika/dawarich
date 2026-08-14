@@ -2,6 +2,6 @@
   <% if current_user.shared_links.active.where(resource_type: :live).exists? %>
     <span class="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse ring-2 ring-base-100 pointer-events-none"
           data-testid="live-share-dot"
-          title="Live location is being shared"></span>
+          title="<%= t('.live_location_is_being_shared') %>"></span>
   <% end %>
 <% end %>

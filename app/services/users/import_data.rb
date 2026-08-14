@@ -194,7 +194,7 @@ class Users::ImportData
     elsif File.exist?(data_json_path)
       1 # Legacy format
     else
-      raise UnsupportedFormatError, 'Unknown export format: neither manifest.json nor data.json found'
+      raise UnsupportedFormatError, I18n.t('services.users.import_data.unknown_export_format')
     end
   end
 
@@ -205,7 +205,7 @@ class Users::ImportData
     when 2
       Users::ImportData::V2Handler.new(user, @import_directory, @import_stats)
     else
-      raise StandardError, "Unsupported export format version: #{format_version}"
+      raise StandardError, I18n.t('services.users.import_data.unsupported_format_version', version: format_version)
     end
   end
 
@@ -233,21 +233,27 @@ class Users::ImportData
       "#{@import_stats[:files_restored]} files restored, " \
       "#{@import_stats[:notifications_created]} notifications"
 
-    ::Notifications::Create.new(
-      user: user,
-      title: 'Data import completed',
-      content: "Your data has been imported successfully (#{summary}).",
-      kind: :info
-    ).call
+    I18n.with_locale(user.locale) do
+      ::Notifications::Create.new(
+        user: user,
+        title: I18n.t('services.users.import_data.data_import_completed'),
+        content: I18n.t('services.users.import_data.your_data_has_been_imported_successfully_summary',
+                        summary: summary),
+        kind: :info
+      ).call
+    end
   end
 
   def create_failure_notification(error)
-    ::Notifications::Create.new(
-      user: user,
-      title: 'Data import failed',
-      content: "Your data import failed with error: #{error.message}. Please check the archive format and try again.",
-      kind: :error
-    ).call
+    I18n.with_locale(user.locale) do
+      ::Notifications::Create.new(
+        user: user,
+        title: I18n.t('services.users.import_data.data_import_failed'),
+        content: I18n.t('services.users.import_data.your_data_import_failed_with_error_message_please_check_the',
+                        message: error.message),
+        kind: :error
+      ).call
+    end
   end
 
   def validate_import_completeness(expected_counts)

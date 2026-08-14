@@ -8,9 +8,7 @@
                       action: "mouseenter->segment-mode-editor#hover mouseleave->segment-mode-editor#unhover",
                       testid: "segment-row-#{segment.id}"
                     } do %>
-  <span class="text-base leading-none shrink-0" aria-hidden="true">
-    <%= mode_emoji(segment.transportation_mode) %>
-  </span>
+  <%= icon mode_icon_name(segment.transportation_mode), class: 'segment-row__icon' %>
 
   <%= form_with model: segment,
                 url: track_segment_path(segment.track, segment),
@@ -21,13 +19,13 @@
                   font-medium underline decoration-dotted underline-offset-4
                   decoration-base-content/25 hover:decoration-base-content/70
                   focus-within:decoration-base-content/70 transition-colors">
-      <span><%= segment.transportation_mode.titleize %></span>
+      <span><%= t("transportation_modes.#{segment.transportation_mode}") %></span>
       <span class="text-base-content/40 text-[10px] leading-none mt-px" aria-hidden="true">▾</span>
       <%= f.select :transportation_mode,
                    modes_for_segment(segment, current_user),
                    { selected: segment.transportation_mode },
                    class: "absolute inset-0 w-full h-full opacity-0 cursor-pointer",
-                   "aria-label": "Transportation mode (currently #{segment.transportation_mode.titleize})",
+                   "aria-label": t('.transportation_mode_currently', mode: t("transportation_modes.#{segment.transportation_mode}")),
                    data: {
                      action: "change->segment-mode-editor#submit",
                      testid: "segment-mode-select-#{segment.id}"
@@ -36,8 +34,8 @@
 
     <% if segment.manually_corrected? %>
       <span class="shrink-0 text-info/80 leading-none"
-            title="Edited <%= time_ago_in_words(segment.corrected_at) %> ago"
-            aria-label="Manually corrected">
+            title="<%= t('.edited_ago', time: relative_distance_in_words(segment.corrected_at)) %>"
+            aria-label="<%= t('.manually_corrected') %>">
         <%= icon 'square-pen', class: 'w-3 h-3' %>
       </span>
     <% end %>
@@ -45,15 +43,15 @@
     <span class="text-xs text-base-content/55 truncate min-w-0 tabular-nums">
       <span aria-hidden="true" class="opacity-40 mr-1">·</span><%=
         segment_distance(segment) %><span aria-hidden="true" class="opacity-40 mx-1">·</span><%=
-        segment_duration(segment) %>
+        segment_duration(segment) %><% if (percent = segment_confidence_percent(segment)) && !segment.manually_corrected? %><span aria-hidden="true" class="opacity-40 mx-1">·</span><span title="<%= t('.detection_confidence') %>"><%= t('.confidence_percent', percent: percent) %></span><% end %>
     </span>
 
     <% if segment.manually_corrected? %>
       <%= f.button name: "reset", value: "true",
                    type: "submit",
                    class: "btn btn-ghost btn-xs btn-square shrink-0 ml-auto opacity-60 hover:opacity-100",
-                   title: "Restore auto-detection",
-                   "aria-label": "Reset to auto-detected mode",
+                   title: t('.restore_auto_detection'),
+                   "aria-label": t('.reset_to_auto_detected_mode'),
                    data: { testid: "segment-reset-#{segment.id}" } do %>
         <%= icon 'rotate-ccw', class: 'w-3.5 h-3.5' %>
       <% end %>
