@@ -25,7 +25,7 @@ RSpec.describe Stats::DailyDistanceQuery do
       end
 
       context 'in Etc/UTC' do
-        subject { described_class.new(monthly_points, timespan, 'Etc/UTC').call }
+        subject { described_class.new(monthly_points, timespan, 'Etc/UTC', minutes_between_routes: 60).call }
 
         it 'assigns both points to day 1' do
           day1_distance = subject.find { |day, _| day == 1 }&.last
@@ -39,7 +39,7 @@ RSpec.describe Stats::DailyDistanceQuery do
       end
 
       context 'in Europe/Berlin (+1)' do
-        subject { described_class.new(monthly_points, timespan, 'Europe/Berlin').call }
+        subject { described_class.new(monthly_points, timespan, 'Europe/Berlin', minutes_between_routes: 60).call }
 
         it 'assigns zero distance to day 1 (both points shift to day 2)' do
           day1_distance = subject.find { |day, _| day == 1 }&.last
@@ -53,7 +53,7 @@ RSpec.describe Stats::DailyDistanceQuery do
       end
 
       context 'in America/New_York (-5)' do
-        subject { described_class.new(monthly_points, timespan, 'America/New_York').call }
+        subject { described_class.new(monthly_points, timespan, 'America/New_York', minutes_between_routes: 60).call }
 
         it 'assigns both points to day 1 (18:00 and 18:30 EST)' do
           day1_distance = subject.find { |day, _| day == 1 }&.last
@@ -172,6 +172,115 @@ RSpec.describe Stats::DailyDistanceQuery do
       it 'counts the segment between the live and imported points' do
         day1_distance = subject.find { |day, _| day == 1 }&.last
         expect(day1_distance).to be_between(1_000, 2_000)
+      end
+    end
+
+    context 'with sparse points inside a single photo-library import' do
+      # Photo integrations (Immich, PhotoPrism, Google Photos) sync the whole
+      # library as one import, so its points are snapshots, not a continuous
+      # track — the gap between photo locations must not be counted.
+      let(:import) { create(:import, user: user, source: :immich_api) }
+
+      let!(:point1) do
+        create(:point, user: user, import: import, lonlat: 'POINT(16.37 48.21)',
+               timestamp: DateTime.new(2021, 1, 1, 6, 0, 0).to_i)
+      end
+      let!(:point2) do
+        create(:point, user: user, import: import, lonlat: 'POINT(16.38 48.22)',
+               timestamp: DateTime.new(2021, 1, 1, 6, 1, 0).to_i)
+      end
+      let!(:point3) do
+        create(:point, user: user, import: import, lonlat: 'POINT(13.04 47.80)',
+               timestamp: DateTime.new(2021, 1, 1, 14, 0, 0).to_i)
+      end
+      let!(:point4) do
+        create(:point, user: user, import: import, lonlat: 'POINT(13.05 47.81)',
+               timestamp: DateTime.new(2021, 1, 1, 14, 1, 0).to_i)
+      end
+
+      subject { described_class.new(monthly_points, timespan, 'Etc/UTC', minutes_between_routes: 30).call }
+
+      it 'excludes the jump between photo clusters despite the shared import' do
+        day1_distance = subject.find { |day, _| day == 1 }&.last
+        expect(day1_distance).to be_between(2_000, 3_500)
+      end
+    end
+
+    context 'with a negative minutes_between_routes setting' do
+      let!(:point1) do
+        create(:point, user: user, lonlat: 'POINT(16.37 48.21)',
+               timestamp: DateTime.new(2021, 1, 1, 6, 0, 0).to_i)
+      end
+      let!(:point2) do
+        create(:point, user: user, lonlat: 'POINT(16.38 48.22)',
+               timestamp: DateTime.new(2021, 1, 1, 6, 20, 0).to_i)
+      end
+
+      subject { described_class.new(monthly_points, timespan, 'Etc/UTC', minutes_between_routes: -5).call }
+
+      it 'falls back to the default threshold and counts the segment' do
+        day1_distance = subject.find { |day, _| day == 1 }&.last
+        expect(day1_distance).to be_between(1_000, 2_000)
+      end
+    end
+
+    context 'with two points sharing the same timestamp' do
+      # Insertion order fixes ids, so the window tiebreak on id makes the
+      # visit order point1 -> point2 -> point3 along a straight line.
+      let!(:point1) do
+        create(:point, user: user, lonlat: 'POINT(16.37 48.21)',
+               timestamp: DateTime.new(2021, 1, 1, 6, 0, 0).to_i)
+      end
+      let!(:point2) do
+        create(:point, user: user, lonlat: 'POINT(16.38 48.22)',
+               timestamp: DateTime.new(2021, 1, 1, 6, 1, 0).to_i)
+      end
+      let!(:point3) do
+        create(:point, user: user, lonlat: 'POINT(16.39 48.23)',
+               timestamp: DateTime.new(2021, 1, 1, 6, 1, 0).to_i)
+      end
+
+      subject { described_class.new(monthly_points, timespan, 'Etc/UTC', minutes_between_routes: 30).call }
+
+      it 'orders tied timestamps deterministically and sums both segments' do
+        day1_distance = subject.find { |day, _| day == 1 }&.last
+        expect(day1_distance).to be_between(2_000, 3_500)
+      end
+    end
+
+    context 'with a gap exactly equal to the threshold' do
+      let!(:point1) do
+        create(:point, user: user, lonlat: 'POINT(16.37 48.21)',
+               timestamp: DateTime.new(2021, 1, 1, 6, 0, 0).to_i)
+      end
+      let!(:point2) do
+        create(:point, user: user, lonlat: 'POINT(16.38 48.22)',
+               timestamp: DateTime.new(2021, 1, 1, 6, 30, 0).to_i)
+      end
+
+      subject { described_class.new(monthly_points, timespan, 'Etc/UTC', minutes_between_routes: 30).call }
+
+      it 'still counts the segment (only a strictly larger gap splits)' do
+        day1_distance = subject.find { |day, _| day == 1 }&.last
+        expect(day1_distance).to be_between(1_000, 2_000)
+      end
+    end
+
+    context 'with a short gap spanning local midnight' do
+      let!(:point1) do
+        create(:point, user: user, lonlat: 'POINT(16.37 48.21)',
+               timestamp: DateTime.new(2021, 1, 1, 23, 50, 0).to_i)
+      end
+      let!(:point2) do
+        create(:point, user: user, lonlat: 'POINT(16.38 48.22)',
+               timestamp: DateTime.new(2021, 1, 2, 0, 10, 0).to_i)
+      end
+
+      subject { described_class.new(monthly_points, timespan, 'Etc/UTC', minutes_between_routes: 30).call }
+
+      it 'does not carry the segment across the day partition' do
+        expect(subject.find { |day, _| day == 1 }&.last).to eq(0)
+        expect(subject.find { |day, _| day == 2 }&.last).to eq(0)
       end
     end
 

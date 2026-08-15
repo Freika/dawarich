@@ -948,7 +948,7 @@ en:
         min_2: 1min
         min_3: 90min
         min_4: 180min
-        time_threshold_for_route_splitting: Time threshold for route splitting
+        time_threshold_for_route_splitting: Time threshold for route splitting; gaps longer than this are also left out of distance stats
         points_rendering_mode: Points Rendering Mode
         raw_all_points: Raw (all points)
         simplified_reduced_points: Simplified (reduced points)

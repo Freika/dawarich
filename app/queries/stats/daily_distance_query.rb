@@ -4,6 +4,10 @@ class Stats::DailyDistanceQuery
   MIN_MINUTES_BETWEEN_ROUTES = 1
   MAX_MINUTES_BETWEEN_ROUTES = 1440
 
+  # Photo integrations sync a whole library as one import, so its points are
+  # snapshots rather than a continuous track.
+  SNAPSHOT_IMPORT_SOURCES = %w[immich_api photoprism_api google_photos].freeze
+
   def initialize(monthly_points, timespan, timezone = nil, minutes_between_routes: nil)
     @monthly_points = monthly_points
     @timespan = timespan
@@ -30,10 +34,17 @@ class Stats::DailyDistanceQuery
           timestamp,
           lonlat,
           import_id,
-          LAG(lonlat)      OVER w AS prev_lonlat,
-          LAG(import_id)   OVER w AS prev_import_id,
-          LAG(timestamp)   OVER w AS prev_timestamp
-        FROM (#{monthly_points.to_sql}) AS points
+          snapshot_import,
+          LAG(lonlat)           OVER w AS prev_lonlat,
+          LAG(import_id)        OVER w AS prev_import_id,
+          LAG(snapshot_import)  OVER w AS prev_snapshot_import,
+          LAG(timestamp)        OVER w AS prev_timestamp
+        FROM (
+          SELECT points.*,
+                 COALESCE(imports.source IN (#{snapshot_source_values}), FALSE) AS snapshot_import
+          FROM (#{monthly_points.to_sql}) AS points
+          LEFT JOIN imports ON imports.id = points.import_id
+        ) AS points
         WINDOW w AS (
           PARTITION BY (to_timestamp(timestamp) AT TIME ZONE $1)::date
           ORDER BY timestamp, id
@@ -48,6 +59,8 @@ class Stats::DailyDistanceQuery
               import_id IS NULL
               OR prev_import_id IS NULL
               OR import_id != prev_import_id
+              OR snapshot_import
+              OR prev_snapshot_import
             ) AND (timestamp - prev_timestamp) > $4 THEN 0
             ELSE ST_Distance(lonlat::geography, prev_lonlat::geography)
           END AS segment_distance
@@ -85,6 +98,10 @@ class Stats::DailyDistanceQuery
       distance_meters = distance_by_day_map[day.day]&.fetch('distance_meters', 0) || 0
       [day.day, distance_meters.to_i]
     end
+  end
+
+  def snapshot_source_values
+    Import.sources.values_at(*SNAPSHOT_IMPORT_SOURCES).join(', ')
   end
 
   def validate_minutes_between_routes(minutes)

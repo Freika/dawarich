@@ -136,7 +136,10 @@ class Users::SafeSettings
   end
 
   def minutes_between_routes
-    settings['minutes_between_routes']
+    minutes = settings['minutes_between_routes'].to_i
+    minutes = DEFAULT_VALUES['minutes_between_routes'] unless minutes.positive?
+
+    minutes.clamp(1, 1440)
   end
 
   def time_threshold_minutes

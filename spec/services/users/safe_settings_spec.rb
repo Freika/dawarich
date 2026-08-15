@@ -213,6 +213,50 @@ RSpec.describe Users::SafeSettings do
     end
   end
 
+  describe '#minutes_between_routes' do
+    let(:safe_settings) { described_class.new(settings) }
+
+    context 'with a blank value' do
+      let(:settings) { { 'minutes_between_routes' => '' } }
+
+      it 'falls back to the default' do
+        expect(safe_settings.minutes_between_routes).to eq(30)
+      end
+    end
+
+    context 'with a zero value' do
+      let(:settings) { { 'minutes_between_routes' => 0 } }
+
+      it 'falls back to the default' do
+        expect(safe_settings.minutes_between_routes).to eq(30)
+      end
+    end
+
+    context 'with a negative value' do
+      let(:settings) { { 'minutes_between_routes' => '-5' } }
+
+      it 'falls back to the default' do
+        expect(safe_settings.minutes_between_routes).to eq(30)
+      end
+    end
+
+    context 'with a value above one day' do
+      let(:settings) { { 'minutes_between_routes' => '2000' } }
+
+      it 'clamps to 1440 minutes' do
+        expect(safe_settings.minutes_between_routes).to eq(1440)
+      end
+    end
+
+    context 'with a valid string value' do
+      let(:settings) { { 'minutes_between_routes' => '45' } }
+
+      it 'returns the integer value' do
+        expect(safe_settings.minutes_between_routes).to eq(45)
+      end
+    end
+  end
+
   describe '#timezone' do
     let(:safe_settings) { described_class.new(settings) }
 
