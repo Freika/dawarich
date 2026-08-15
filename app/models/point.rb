@@ -68,7 +68,7 @@ class Point < ApplicationRecord
   end
 
   # Build a key whose equivalence classes match the PostgreSQL UNIQUE index
-  # on (lonlat, timestamp, user_id). The raw lonlat WKT string from
+  # on (user_id, timestamp, lonlat). The raw lonlat WKT string from
   # Points::Params / Overland::Params can differ character-by-character for
   # points that collapse to the same geography(Point, 4326) double, so a
   # plain string `uniq` keeps both variants and the subsequent

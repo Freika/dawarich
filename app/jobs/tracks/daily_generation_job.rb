@@ -21,6 +21,12 @@ class Tracks::DailyGenerationJob < ApplicationJob
 
   queue_as :tracks
 
+  # A user with no tracks and a history this large is backfill territory, not
+  # daily-catch-up territory: without the guard, a wiped tracks table makes
+  # start_timestamp fall back to the user's very first point and the daily job
+  # rewrites track_id across the entire history (non-HOT updates × every index).
+  BOOTSTRAP_POINTS_LIMIT = 100_000
+
   def perform
     User.active_or_trial.find_each do |user|
       next if user.points_count&.zero?
@@ -38,6 +44,7 @@ class Tracks::DailyGenerationJob < ApplicationJob
       start_timestamp = start_timestamp(user)
 
       return unless user.points.where('timestamp >= ?', start_timestamp).exists?
+      return if full_history_rebuild_blocked?(user)
 
       Tracks::ParallelGeneratorJob.perform_later(
         user.id,
@@ -46,6 +53,18 @@ class Tracks::DailyGenerationJob < ApplicationJob
         mode: 'daily'
       )
     end
+  end
+
+  def full_history_rebuild_blocked?(user)
+    return false if user.tracks.exists?
+    return false if user.points_count.to_i <= BOOTSTRAP_POINTS_LIMIT
+
+    message = "user #{user.id} has no tracks and #{user.points_count} points; " \
+              'skipping full-history rebuild — run Tracks::BackfillGenerationJob explicitly'
+    Rails.logger.warn("Tracks::DailyGenerationJob: #{message}")
+    ExceptionReporter.call('Tracks::DailyGenerationJob full-history rebuild skipped', message)
+
+    true
   end
 
   def start_timestamp(user)

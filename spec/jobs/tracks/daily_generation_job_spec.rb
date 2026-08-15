@@ -107,6 +107,55 @@ RSpec.describe Tracks::DailyGenerationJob, type: :job do
       end
     end
 
+    context 'when a large-history user has no tracks' do
+      let!(:wiped_user) { create(:user) }
+      let!(:wiped_user_points) do
+        [
+          create(:point, user: wiped_user, timestamp: 200.days.ago.to_i),
+          create(:point, user: wiped_user, timestamp: 1.hour.ago.to_i)
+        ]
+      end
+
+      before do
+        wiped_user.update!(points_count: described_class::BOOTSTRAP_POINTS_LIMIT + 1)
+        allow(User).to receive(:active_or_trial)
+          .and_return(User.where(id: [wiped_user.id]))
+        allow(ExceptionReporter).to receive(:call)
+      end
+
+      it 'does not enqueue a full-history rebuild' do
+        expect { described_class.perform_now }.not_to \
+          have_enqueued_job(Tracks::ParallelGeneratorJob)
+      end
+
+      it 'reports the skipped rebuild so a backfill can be run explicitly' do
+        described_class.perform_now
+
+        expect(ExceptionReporter).to have_received(:call).at_least(:once)
+      end
+    end
+
+    context 'when a small-history user has no tracks' do
+      let!(:new_user) { create(:user) }
+      let!(:new_user_points) do
+        create_list(:point, 3, user: new_user, timestamp: 2.hours.ago.to_i)
+      end
+
+      before do
+        new_user.update!(points_count: new_user.points.count)
+        allow(User).to receive(:active_or_trial)
+          .and_return(User.where(id: [new_user.id]))
+      end
+
+      it 'still bootstraps track generation' do
+        expect { described_class.perform_now }.to \
+          have_enqueued_job(Tracks::ParallelGeneratorJob).with(
+            new_user.id,
+            hash_including(mode: 'daily')
+          )
+      end
+    end
+
     context 'when user has tracks but no new points' do
       let!(:user_with_current_tracks) { create(:user) }
       let!(:recent_points) { create_list(:point, 2, user: user_with_current_tracks, timestamp: 1.hour.ago.to_i) }

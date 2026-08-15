@@ -17,7 +17,7 @@ module Archivable
     before_save :reset_archival_on_raw_data_change
   end
 
-  UPSERT_CONFLICT_KEYS = %i[lonlat timestamp user_id].freeze
+  UPSERT_CONFLICT_KEYS = %i[user_id timestamp lonlat].freeze
   UPSERT_MAX_RETRIES = 3
   UPSERT_BACKOFF_BASE = 0.1
   UPSERT_BACKOFF_JITTER = 0.05
