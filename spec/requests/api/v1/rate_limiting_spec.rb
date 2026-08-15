@@ -117,6 +117,71 @@ RSpec.describe 'API Rate Limiting', type: :request do
     end
   end
 
+  describe 'tile requests' do
+    let!(:user) do
+      u = create(:user)
+      # update_columns bypasses the activate callback that resets plan to :pro
+      u.update_columns(plan: User.plans[:lite])
+      u
+    end
+    let(:tile_path) { '/api/v1/tiles/points/0/0/0.mvt' }
+    let(:original_tiles_limit) { Rack::Attack.tiles_limit }
+    let(:original_tiles_burst_limit) { Rack::Attack.tiles_burst_limit }
+
+    before do
+      original_tiles_limit
+      original_tiles_burst_limit
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+    end
+
+    after do
+      Rack::Attack.tiles_limit = original_tiles_limit
+      Rack::Attack.tiles_burst_limit = original_tiles_burst_limit
+    end
+
+    it 'does not count tile requests toward the general api quota' do
+      Rack::Attack.api_rate_limits = { 'lite' => 2, 'pro' => 2 }
+
+      3.times { get tile_path, params: { api_key: user.api_key } }
+      get api_v1_points_url(api_key: user.api_key)
+
+      expect(response).not_to have_http_status(:too_many_requests)
+    end
+
+    it 'throttles tiles on their own limit' do
+      Rack::Attack.tiles_limit = 3
+
+      4.times { get tile_path, params: { api_key: user.api_key } }
+
+      expect(response).to have_http_status(:too_many_requests)
+    end
+
+    it 'throttles sustained tile bursts on the short window' do
+      Rack::Attack.tiles_burst_limit = 3
+
+      4.times { get tile_path, params: { api_key: user.api_key } }
+
+      expect(response).to have_http_status(:too_many_requests)
+    end
+
+    it 'keys the tile throttle off the Bearer header when no api_key param is present' do
+      Rack::Attack.tiles_limit = 3
+
+      4.times { get tile_path, headers: { 'Authorization' => "Bearer #{user.api_key}" } }
+
+      expect(response).to have_http_status(:too_many_requests)
+    end
+
+    it 'does not throttle tiles on self-hosted instances' do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+      Rack::Attack.tiles_limit = 2
+
+      5.times { get tile_path, params: { api_key: user.api_key } }
+
+      expect(response).not_to have_http_status(:too_many_requests)
+    end
+  end
+
   describe 'throttling' do
     context 'when lite user exceeds rate limit' do
       let!(:user) do
