@@ -847,14 +847,19 @@ export class SettingsController {
     if (!inactive) return
 
     const blockers = [
-      settings.routesVisible !== false && "Routes",
+      settings.routesVisible !== false &&
+        translate("map.tiled_rendering.blockers.routes"),
       settings.fogEnabled &&
         settings.fogOfWarMode !== "hexagons" &&
-        "Fog of War",
-      settings.scratchEnabled && "Scratch map",
+        translate("map.tiled_rendering.blockers.fog"),
+      settings.scratchEnabled &&
+        translate("map.tiled_rendering.blockers.scratch"),
     ].filter(Boolean)
 
-    note.textContent = `Inactive while ${blockers.join(", ")} ${blockers.length > 1 ? "are" : "is"} on, those need the full point set.`
+    note.textContent = translate("map.tiled_rendering.inactive_note", {
+      layers: blockers.join(", "),
+      count: blockers.length,
+    })
   }
 
   syncPointsEditAvailability() {
@@ -877,8 +882,7 @@ export class SettingsController {
     label.classList.toggle("tooltip", tiled)
     label.style.cursor = tiled ? "not-allowed" : ""
     if (tiled) {
-      label.dataset.tip =
-        "Not available with tiled rendering, vector tiles have no draggable points"
+      label.dataset.tip = translate("map.tiled_rendering.editing_unavailable")
     } else {
       delete label.dataset.tip
     }

@@ -89,10 +89,10 @@
                      class="toggle toggle-primary toggle-sm"
                      data-maps--maplibre-target="pointsTiledToggle"
                      data-action="change->maps--maplibre#togglePointsTiledRendering" />
-              <span class="label-text">Tiled rendering</span>
-              <span class="badge badge-sm badge-warning badge-outline">Beta</span>
+              <span class="label-text"><%= t('.tiled_rendering') %></span>
+              <span class="badge badge-sm badge-warning badge-outline"><%= t('.beta') %></span>
             </label>
-            <p class="text-sm text-base-content/60 ml-24">Draws points from vector tiles as you pan instead of loading the whole date range up front. Much faster over long ranges. Point editing is unavailable while this is on.</p>
+            <p class="text-sm text-base-content/60 ml-24"><%= t('.tiled_rendering_description') %></p>
             <p class="text-xs text-warning ml-24 mt-1 hidden" data-maps--maplibre-target="pointsTiledInactiveNote"></p>
           </div>
 

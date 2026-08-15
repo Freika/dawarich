@@ -1536,6 +1536,9 @@ fr:
           cours, et les déplacements ne sont pas sauvegardés sur le plan Lite.
         allow_dragging_points_to_correct_their_position_remembered_across_sessio: Autoriser
           la traînée des points pour corriger leur position. Mémorisé entre sessions.
+        tiled_rendering: "Rendu par tuiles"
+        beta: "Bêta"
+        tiled_rendering_description: "Dessine les points à partir de tuiles vectorielles pendant le déplacement, au lieu de charger toute la plage de dates à l'avance. Beaucoup plus rapide sur les longues périodes tant que Itinéraires, Brouillard de guerre et Carte à gratter sont désactivés. La modification des points est indisponible et la trace en direct peut s'actualiser avec quelques minutes de retard."
         routes: Itinéraires
         show_connected_route_lines: Afficher les lignes d'itinéraire connectées
         color_by_speed: Colorer par vitesse
@@ -4922,6 +4925,15 @@ fr:
       show_all_days: Afficher tous les jours
       collapse_all_days: Réduire tous les jours
     map:
+      tiled_rendering:
+        inactive_note:
+          one: "Inactif tant que %{layers} est activé — cette couche nécessite tous les points."
+          other: "Inactif tant que %{layers} sont activés — ces couches nécessitent tous les points."
+        editing_unavailable: "Indisponible avec le rendu par tuiles : les tuiles vectorielles n'ont pas de points déplaçables"
+        blockers:
+          routes: "Itinéraires"
+          fog: "Brouillard de guerre"
+          scratch: "Carte à gratter"
       places_layer: Couche de lieux
       confirm_delete_point: Voulez-vous vraiment supprimer ce point ?
       confirm_delete_point_permanently: |-

@@ -45,6 +45,8 @@ async function loadSettingsController(settingsManager, overrides = {}) {
   }
   globalThis.__settingsManagerGetMapStyle =
     overrides.getMapStyle ?? (async () => ({}))
+  globalThis.__settingsManagerBulkPointsRequired = bulkPointsRequired
+  globalThis.__settingsManagerTiledPointsActive = tiledPointsActive
   const dependencies = `
     const Toast = globalThis.__settingsManagerToast
     const UpgradeBanner = {}
@@ -52,7 +54,9 @@ async function loadSettingsController(settingsManager, overrides = {}) {
     const LAYER_COLOR_DEFAULTS = ${JSON.stringify(LAYER_COLOR_DEFAULTS)}
     const SettingsManager = globalThis.__settingsManagerTestDouble
     const getMapStyle = globalThis.__settingsManagerGetMapStyle
-    const translate = (key) => key
+    const translate = globalThis.__settingsManagerTranslate ?? ((key) => key)
+    const bulkPointsRequired = globalThis.__settingsManagerBulkPointsRequired
+    const tiledPointsActive = globalThis.__settingsManagerTiledPointsActive
     ${basemapUrlSource.replace(/^export /gm, "")}
   `
   const url = `data:text/javascript;base64,${Buffer.from(`${dependencies}\n${withoutImports}`).toString("base64")}`
@@ -373,4 +377,73 @@ test("a missing routesVisible counts as routes being on", () => {
 
   assert.equal(bulkPointsRequired(settings), true)
   assert.equal(tiledPointsActive(settings), false)
+})
+
+test("the tiled-rendering inactive note is translated with plural forms", async () => {
+  const fixtures = {
+    "map.tiled_rendering.blockers.routes": "Routen",
+    "map.tiled_rendering.blockers.scratch": "Rubbelkarte",
+  }
+  const calls = []
+  globalThis.__settingsManagerTranslate = (key, values = {}) => {
+    calls.push({ key, values })
+    if (key === "map.tiled_rendering.inactive_note") {
+      const verb = values.count === 1 ? "ist" : "sind"
+      return `Inaktiv solange ${values.layers} ${verb} an`
+    }
+    return fixtures[key] ?? key
+  }
+
+  try {
+    const settingsFor = (overrides) => ({
+      pointsTiledRendering: true,
+      pointsVisible: true,
+      routesVisible: false,
+      heatmapEnabled: false,
+      fogEnabled: false,
+      scratchEnabled: false,
+      fogOfWarMode: "points",
+      ...overrides,
+    })
+    let settings = settingsFor({ routesVisible: true })
+    const settingsManager = {
+      getSettings: () => settings,
+      getSetting: () => false,
+      updateSetting: () => {},
+    }
+    const { SettingsController } = await loadSettingsController(settingsManager)
+    const note = {
+      textContent: "",
+      classList: {
+        toggle() {},
+      },
+    }
+    const controller = new SettingsController({
+      element: { querySelector: () => null },
+      hasPointsTiledInactiveNoteTarget: true,
+      pointsTiledInactiveNoteTarget: note,
+    })
+
+    controller.syncTiledRenderingNote()
+    let noteCall = calls.find(
+      (call) => call.key === "map.tiled_rendering.inactive_note",
+    )
+    assert.ok(noteCall, "inactive note must go through translate()")
+    assert.equal(noteCall.values.count, 1)
+    assert.equal(note.textContent, "Inaktiv solange Routen ist an")
+
+    calls.length = 0
+    settings = settingsFor({ routesVisible: true, scratchEnabled: true })
+    controller.syncTiledRenderingNote()
+    noteCall = calls.find(
+      (call) => call.key === "map.tiled_rendering.inactive_note",
+    )
+    assert.equal(noteCall.values.count, 2)
+    assert.equal(
+      note.textContent,
+      "Inaktiv solange Routen, Rubbelkarte sind an",
+    )
+  } finally {
+    delete globalThis.__settingsManagerTranslate
+  }
 })
