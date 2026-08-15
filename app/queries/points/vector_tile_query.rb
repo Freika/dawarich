@@ -3,14 +3,26 @@
 class Points::VectorTileQuery
   class InvalidTileCoordinatesError < StandardError; end
 
+  Result = Struct.new(:tile, :feature_count, :limit, keyword_init: true) do
+    def truncated?
+      feature_count >= limit
+    end
+  end
+
   EXTENT = 4096
   BUFFER = 256
   # Candidate rows must cover the ST_AsMVTGeom buffer, or markers clip at tile seams
   MARGIN = (BUFFER.to_f / EXTENT)
-  # Below this zoom the envelope is large enough that its geodetic bounding box
-  # no longer contains the planar rectangle, which would silently drop points
+  # Below this zoom the geodetic bounding box of the envelope no longer contains
+  # the planar rectangle, so the GiST prefilter is unusable and tiles switch to
+  # the aggregate regime: centroid + count per cell, no per-point attributes.
   MIN_PREFILTER_ZOOM = 5
   LAYER_NAME = 'points'
+  TILE_PIXELS = 512
+  WEB_MERCATOR_WORLD = 40_075_016.685578488
+  # Bounds the per-query cost; PgBouncer-safe because SET LOCAL runs inside an
+  # explicit transaction (see Visits::Detection::CandidateLoader for the pattern)
+  QUERY_TIMEOUT_MS = 5_000
 
   def initialize(scope:, z:, x:, y:) # rubocop:disable Naming/MethodParameterName
     @scope = scope
@@ -22,69 +34,217 @@ class Points::VectorTileQuery
   def call
     validate_tile_coordinates!
 
-    Point.connection.select_value(sql)
+    row = with_statement_timeout { |conn| conn.select_one(tile_sql) }
+
+    Result.new(
+      tile: row['tile'],
+      feature_count: row['feature_count'].to_i,
+      limit: tile_feature_limit
+    )
+  end
+
+  # The features the tile is built from, for specs and diagnostics.
+  def feature_rows
+    validate_tile_coordinates!
+
+    with_statement_timeout { |conn| conn.select_all(rows_sql).to_a }
+  end
+
+  # Display-pixels per decimation cell on 512px tiles — coarser below z14 so a
+  # whole viewport stays within budget. Tiers come from the 1M-point benchmark
+  # (lib/perf/vector_tile_benchmark.rb, 2026-08-15): at 1px a dense-city z11
+  # tile carried 243k features / 13.5 MB; at 4px it stays ~15k / <1 MB, and a
+  # 4px cell is smaller than the 12px circle markers, so nothing visible is
+  # lost below z14.
+  def grid_px
+    z < 14 ? 4 : 1
+  end
+
+  # Strictly above the mathematical maximum of distinct grid cells in a
+  # margin-expanded tile: a pure bug-guard, never a legitimate truncator.
+  # (A reachable LIMIT would silently drop an arbitrary subset of cells —
+  # a visibly incomplete tile.)
+  def tile_feature_limit
+    cells_per_axis = ((TILE_PIXELS * (1 + (2 * MARGIN))) / grid_px).ceil + 1
+    (cells_per_axis**2) + 1
   end
 
   private
 
   attr_reader :scope, :z, :x, :y
 
-  def sql
-    Point.sanitize_sql_array([sql_template, *bind_values])
-  end
-
-  def sql_template
+  # z, x, y are validated Integers and every other interpolated value is a
+  # program-computed numeric, so direct interpolation is injection-safe. The
+  # only user-influenced SQL is tile_scope, an ActiveRecord relation.
+  def tile_sql
     <<~SQL.squish
-      WITH points_in_tile AS (
-        SELECT
-          points.id AS id,
-          points.timestamp AS timestamp,
-          points.battery AS battery,
-          points.altitude AS altitude,
-          points.velocity AS velocity,
-          points.track_id AS track_id,
-          points.visit_id AS visit_id,
-          ST_AsMVTGeom(
-            ST_Transform(points.lonlat::geometry, 3857),
-            ST_TileEnvelope(?, ?, ?),
-            #{EXTENT},
-            #{BUFFER},
-            true
-          ) AS geom
-        FROM (#{tile_scope.to_sql}) AS points
-        WHERE points.lonlat IS NOT NULL
-          #{spatial_prefilter}
-          AND ST_Intersects(
-            points.lonlat::geometry,
-            ST_Transform(ST_TileEnvelope(?, ?, ?, margin => #{MARGIN}), 4326)
-          )
-        ORDER BY points.id
-      )
-      SELECT ST_AsMVT(points_in_tile.*, ?, #{EXTENT}, 'geom')
-      FROM points_in_tile
+      #{with_clauses}
+      SELECT #{sanitized_mvt_call} AS tile, COUNT(*) AS feature_count
+      FROM features
       WHERE geom IS NOT NULL
     SQL
   end
 
-  # lonlat is geography, so the planar test alone cannot use the GiST index
-  def spatial_prefilter
-    return '' if z < MIN_PREFILTER_ZOOM
-
-    "AND points.lonlat && ST_Transform(ST_TileEnvelope(?, ?, ?, margin => #{MARGIN}), 4326)::geography"
+  def rows_sql
+    <<~SQL.squish
+      #{with_clauses}
+      SELECT * FROM features WHERE geom IS NOT NULL
+    SQL
   end
 
-  def bind_values
-    values = [z, x, y]
-    values += [z, x, y] if z >= MIN_PREFILTER_ZOOM
-    values + [z, x, y, LAYER_NAME]
+  def sanitized_mvt_call
+    Point.sanitize_sql_array(["ST_AsMVT(features.*, ?, #{EXTENT}, 'geom')", LAYER_NAME])
+  end
+
+  # Both regimes are one-pass hash aggregations — the benchmark showed a
+  # DISTINCT ON + window-count variant pays for a full sort of every candidate
+  # row (1.3s on a dense z11 tile) that GROUP BY avoids. MIN() keeps the
+  # representative deterministic (lowest id); for count = 1 cells every MIN is
+  # the point's exact value and the centroid IS the point, and for merged
+  # cells the popup is suppressed client-side, so mixed MINs are never shown.
+  def with_clauses
+    <<~SQL
+      WITH candidates AS (#{candidates_sql}),
+      features AS (
+        SELECT COUNT(*) AS count,
+          #{point_attribute_aggregates}
+          #{mvt_geom_expression('ST_Centroid(ST_Collect(geom_3857))')} AS geom
+        FROM candidates
+        GROUP BY #{snap_expression}
+        LIMIT #{tile_feature_limit}
+      )
+    SQL
+  end
+
+  def point_attribute_aggregates
+    return '' unless point_regime?
+
+    <<~SQL.squish
+      MIN(id) AS id, MIN(timestamp) AS timestamp, MIN(battery) AS battery,
+      MIN(altitude) AS altitude, MIN(velocity) AS velocity,
+      MIN(latitude) AS latitude, MIN(longitude) AS longitude,
+    SQL
+  end
+
+  def point_regime?
+    z >= MIN_PREFILTER_ZOOM
+  end
+
+  def candidates_sql
+    branches = [candidate_branch_sql(shift: 0)]
+    branches << candidate_branch_sql(shift: antimeridian_shift) unless antimeridian_shift.zero?
+
+    branches.join(' UNION ALL ')
+  end
+
+  # Web-mercator tiles at x = 0 / x = max have buffer bands beyond the
+  # antimeridian. The wrapped branch finds those points under a world-shifted
+  # envelope and translates them into the tile's frame, so edge tiles neither
+  # drop nor double seam points. Translation by the world width preserves grid
+  # alignment because the cell size divides the world width exactly.
+  def antimeridian_shift
+    return 0 if z.zero?
+
+    max_index = (1 << z) - 1
+    return WEB_MERCATOR_WORLD if x.zero?
+    return -WEB_MERCATOR_WORLD if x == max_index
+
+    0
+  end
+
+  def candidate_branch_sql(shift:)
+    columns =
+      if point_regime?
+        <<~SQL.squish
+          points.id AS id, points.timestamp AS timestamp, points.battery AS battery,
+          points.altitude AS altitude, points.velocity AS velocity,
+          ST_Y(points.lonlat::geometry) AS latitude,
+          ST_X(points.lonlat::geometry) AS longitude,
+        SQL
+      else
+        ''
+      end
+
+    <<~SQL.squish
+      SELECT #{columns}
+        #{translated_geom_expression(shift)} AS geom_3857
+      FROM (#{tile_scope.to_sql}) AS points
+      WHERE points.lonlat IS NOT NULL
+        #{spatial_prefilter(shift)}
+        AND ST_Intersects(
+          points.lonlat::geometry,
+          ST_Transform(#{margined_envelope(shift)}, 4326)
+        )
+    SQL
+  end
+
+  def translated_geom_expression(shift)
+    geom = 'ST_Transform(points.lonlat::geometry, 3857)'
+    return geom if shift.zero?
+
+    "ST_Translate(#{geom}, #{-shift}, 0)"
+  end
+
+  # ST_TileEnvelope clamps its margin at the world bound, so an edge tile has no
+  # buffer beyond the antimeridian at all. The wrapped branch therefore searches
+  # a hand-built seam band on the far side of the world instead; it stays inside
+  # the valid web-mercator domain, so its 4326 transform never carries |lon| > 180
+  # (a geography cast of such a polygon would wrap unpredictably).
+  def margined_envelope(shift)
+    return "ST_TileEnvelope(#{z}, #{x}, #{y}, margin => #{MARGIN})" if shift.zero?
+
+    seam_band_envelope
+  end
+
+  def seam_band_envelope
+    half = WEB_MERCATOR_WORLD / 2
+    tile_width = WEB_MERCATOR_WORLD / (1 << z)
+    margin_meters = tile_width * MARGIN
+    y_max = [half - (y * tile_width) + margin_meters, half].min
+    y_min = [half - ((y + 1) * tile_width) - margin_meters, -half].max
+
+    if x.zero? # the west buffer wraps to the far east of the world
+      "ST_MakeEnvelope(#{half - margin_meters}, #{y_min}, #{half}, #{y_max}, 3857)"
+    else # the east buffer wraps to the far west
+      "ST_MakeEnvelope(#{-half}, #{y_min}, #{-half + margin_meters}, #{y_max}, 3857)"
+    end
+  end
+
+  # lonlat is geography, so the planar test alone cannot use the GiST index
+  def spatial_prefilter(shift)
+    return '' unless point_regime?
+
+    "AND points.lonlat && ST_Transform(#{margined_envelope(shift)}, 4326)::geography"
+  end
+
+  def snap_expression
+    "ST_SnapToGrid(geom_3857, #{cell_size})"
+  end
+
+  def mvt_geom_expression(geom)
+    "ST_AsMVTGeom(#{geom}, ST_TileEnvelope(#{z}, #{x}, #{y}), #{EXTENT}, #{BUFFER}, true)"
+  end
+
+  def cell_size
+    WEB_MERCATOR_WORLD / (1 << z) / TILE_PIXELS * grid_px
   end
 
   def tile_scope
     scope.except(:select, :order, :includes, :preload, :eager_load)
-         .select(:id, :timestamp, :battery, :altitude, :velocity, :track_id, :visit_id, :lonlat)
+         .select(:id, :timestamp, :battery, :altitude, :velocity, :lonlat)
+  end
+
+  def with_statement_timeout
+    conn = Point.connection
+    conn.transaction do
+      conn.exec_query("SET LOCAL statement_timeout = #{QUERY_TIMEOUT_MS}", 'VectorTileQuery Timeout')
+      yield conn
+    end
   end
 
   def parse_integer(value)
+    return value if value.is_a?(Integer)
+
     Integer(value, 10)
   rescue ArgumentError, TypeError
     raise InvalidTileCoordinatesError
