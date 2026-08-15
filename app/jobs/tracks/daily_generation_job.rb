@@ -73,7 +73,7 @@ class Tracks::DailyGenerationJob < ApplicationJob
     Rails.logger.info(
       "Tracks::DailyGenerationJob: user #{user.id} has no tracks and more than " \
       "#{BOOTSTRAP_POINTS_LIMIT} points; " \
-      "throttled backfill #{newly_scheduled ? 'scheduled' : 'already in progress'}"
+      "throttled backfill #{newly_scheduled ? 'scheduled' : 'already in progress or recently completed'}"
     )
 
     true

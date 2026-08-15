@@ -79,7 +79,8 @@ class Points::AnomalyBackfillUserJob < ApplicationJob
       chunk_end = (month_start + 1.month).to_i
 
       marked = Points::AnomalyFilter.new(
-        user.id, chunk_start, chunk_end, invalidate_dependents: invalidate_dependents
+        user.id, chunk_start, chunk_end,
+        invalidate_dependents: invalidate_dependents, job_queue: :low_priority
       ).call
       Rails.logger.info(
         "[AnomalyBackfill] User #{user.id}: month #{index + 1}/#{total_months}, marked #{marked} anomalies"

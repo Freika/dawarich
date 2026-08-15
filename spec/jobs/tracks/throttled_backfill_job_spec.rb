@@ -49,6 +49,19 @@ RSpec.describe Tracks::ThrottledBackfillJob, type: :job do
         expect(Tracks::TimeChunkProcessorJob).not_to have_been_enqueued.on_queue('tracks')
       end
 
+      it 'slices the walk into day-sized chunks' do
+        described_class.perform_now(user.id, nil)
+
+        expect(Tracks::TimeChunkProcessorJob).to have_been_enqueued.with(
+          user.id,
+          anything,
+          hash_including(
+            start_timestamp: newest_point.timestamp - 1.day.to_i,
+            end_timestamp: newest_point.timestamp
+          )
+        )
+      end
+
       it 're-enqueues itself with the cursor moved below the slice' do
         described_class.perform_now(user.id, nil)
 
@@ -80,14 +93,21 @@ RSpec.describe Tracks::ThrottledBackfillJob, type: :job do
         Sidekiq.redis { |redis| redis.set(described_class.redis_key(user.id), 1) }
       end
 
-      it 'does not enqueue any generation and releases the dedup key' do
+      it 'does not enqueue any generation and starts the completion backoff' do
         described_class.perform_now(user.id, 300.days.ago.to_i)
 
         expect(Tracks::TimeChunkProcessorJob).not_to have_been_enqueued
         expect(described_class).not_to have_been_enqueued
 
-        key_exists = Sidekiq.redis { |redis| redis.exists(described_class.redis_key(user.id)) }
-        expect(key_exists).to eq(0)
+        ttl = Sidekiq.redis { |redis| redis.ttl(described_class.redis_key(user.id)) }
+        expect(ttl).to be > described_class::DEDUP_KEY_TTL.to_i
+      end
+
+      it 'does not start a new walker during the completion backoff' do
+        described_class.perform_now(user.id, 300.days.ago.to_i)
+
+        expect { described_class.schedule(user) }.not_to \
+          have_enqueued_job(described_class)
       end
     end
 

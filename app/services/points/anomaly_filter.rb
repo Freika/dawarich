@@ -72,11 +72,15 @@ class Points::AnomalyFilter
   # queues the track and the month's stats for a rebuild. The backfill path
   # opts out — it rebuilds every track and stat wholesale after the filter
   # finishes, and per-point enqueues there would only duplicate that work.
-  def initialize(user_id, start_time, end_time, invalidate_dependents: true)
+  # job_queue moves the dependent rebuilds off their home queues; housekeeping
+  # callers pass :low_priority so their per-track recalculations never compete
+  # with realtime generation on :tracks.
+  def initialize(user_id, start_time, end_time, invalidate_dependents: true, job_queue: nil)
     @user_id = user_id
     @start_time = start_time
     @end_time = end_time
     @invalidate_dependents = invalidate_dependents
+    @job_queue = job_queue
   end
 
   def call
@@ -106,21 +110,23 @@ class Points::AnomalyFilter
   # Pass 0: Null Island — a sustained (0,0) run defeats the speed sandwich
   # (internal speeds are 0), so exact zeros are flagged unconditionally.
   def filter_null_island
-    Point.where(user_id: @user_id, timestamp: @start_time..@end_time)
-         .not_anomaly
-         .null_island
-         .update_all(anomaly: true, updated_at: Time.current)
+    flag_anomalies(
+      Point.where(user_id: @user_id, timestamp: @start_time..@end_time)
+           .not_anomaly
+           .null_island
+    )
   end
 
   # Pass 1: Mark points whose reported accuracy radius is so large the reading
   # cannot be a position at all. See ABSURD_ACCURACY_METERS for why this is not
   # the user's gps_accuracy_threshold.
   def filter_by_accuracy
-    Point.where(user_id: @user_id, timestamp: @start_time..@end_time)
-         .not_anomaly
-         .where.not(accuracy: nil)
-         .where('accuracy > ?', ABSURD_ACCURACY_METERS)
-         .update_all(anomaly: true, updated_at: Time.current)
+    flag_anomalies(
+      Point.where(user_id: @user_id, timestamp: @start_time..@end_time)
+           .not_anomaly
+           .where.not(accuracy: nil)
+           .where('accuracy > ?', ABSURD_ACCURACY_METERS)
+    )
   end
 
   # Visit-report pass: iOS visit monitoring (Overland `action: visit`) delivers
@@ -214,7 +220,9 @@ class Points::AnomalyFilter
                                      .map { |time| [time.year, time.month] }.uniq
                                      .map { |year, month| Stats::CalculatingJob.new(@user_id, year, month) }
 
-    ActiveJob.perform_all_later(track_jobs + stats_jobs)
+    jobs = track_jobs + stats_jobs
+    jobs.each { |job| job.queue_name = @job_queue.to_s } if @job_queue
+    ActiveJob.perform_all_later(jobs)
   end
 
   # Pass 2: Speed-based sandwich test (chunked by month to handle large imports)
@@ -261,7 +269,7 @@ class Points::AnomalyFilter
 
     return 0 if anomaly_ids.empty?
 
-    Point.where(id: anomaly_ids).update_all(anomaly: true, updated_at: Time.current)
+    flag_anomalies(Point.where(id: anomaly_ids))
   end
 
   def speed_threshold(speeds_by_point)

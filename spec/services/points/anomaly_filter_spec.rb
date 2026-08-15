@@ -991,6 +991,109 @@ RSpec.describe Points::AnomalyFilter do
         expect(baked_report.reload.anomaly).to be true
         expect(baked_report.track_id).to be_nil
       end
+
+      it 'keeps the rebuilds on their home queues by default' do
+        expect { run_filter }.to have_enqueued_job(Tracks::RecalculateJob).on_queue('tracks')
+      end
+
+      it 'moves the rebuilds to the caller queue when one is given' do
+        expect { run_filter(job_queue: :low_priority) }.to \
+          have_enqueued_job(Tracks::RecalculateJob).on_queue('low_priority')
+      end
+
+      it 'moves the stats refresh to the caller queue too' do
+        expect { run_filter(job_queue: :low_priority) }.to \
+          have_enqueued_job(Stats::CalculatingJob).on_queue('low_priority')
+      end
+    end
+
+    context 'points from the older passes already baked into a track' do
+      let(:base_time) { 1.hour.ago.to_i }
+
+      let!(:walk) do
+        2.times.map do |i|
+          create(:point, user: user, accuracy: 5, timestamp: base_time + (i * 60),
+                 latitude: 51.3421 + (i * 0.0001), longitude: 12.3761,
+                 lonlat: "POINT(12.3761 #{51.3421 + (i * 0.0001)})")
+        end
+      end
+
+      let!(:absurd_accuracy_point) do
+        create(:point, user: user, accuracy: 50_000, timestamp: base_time + 120,
+               latitude: 51.3425, longitude: 12.3761, lonlat: 'POINT(12.3761 51.3425)')
+      end
+
+      let!(:null_island_point) do
+        create(:point, user: user, accuracy: 5, timestamp: base_time + 180,
+               latitude: 0, longitude: 0, lonlat: 'POINT(0 0)')
+      end
+
+      let!(:track) do
+        create(:track, user: user).tap do |t|
+          Point.where(id: walk.map(&:id) + [absurd_accuracy_point.id, null_island_point.id])
+               .update_all(track_id: t.id)
+        end
+      end
+
+      def run_filter
+        described_class.new(user.id, 2.hours.ago.to_i, Time.current.to_i).call
+      end
+
+      it 'detaches the absurd-accuracy point from its track' do
+        run_filter
+        expect(absurd_accuracy_point.reload.track_id).to be_nil
+      end
+
+      it 'detaches the null-island point from its track' do
+        run_filter
+        expect(null_island_point.reload.track_id).to be_nil
+      end
+
+      it 'leaves the clean points attached' do
+        run_filter
+        walk.each { |point| expect(point.reload.track_id).to eq(track.id) }
+      end
+
+      it 'enqueues a recalculation for the affected track' do
+        expect { run_filter }.to have_enqueued_job(Tracks::RecalculateJob).with(track.id)
+      end
+    end
+
+    context 'a speed spike already baked into a track' do
+      let(:base_time) { 30.minutes.ago.to_i }
+      let(:base_lat) { 52.52 }
+      let(:base_lon) { 13.405 }
+
+      let!(:walk) do
+        [0, 60, 180, 240].map do |offset|
+          step = offset / 60
+          create(:point, user: user, accuracy: 10, timestamp: base_time + offset,
+                 latitude: base_lat + (step * 0.0001), longitude: base_lon + (step * 0.0001),
+                 lonlat: "POINT(#{base_lon + (step * 0.0001)} #{base_lat + (step * 0.0001)})")
+        end
+      end
+
+      let!(:spike) do
+        create(:point, user: user, accuracy: 10, timestamp: base_time + 120,
+               latitude: base_lat + 10.0, longitude: base_lon + 10.0,
+               lonlat: "POINT(#{base_lon + 10.0} #{base_lat + 10.0})")
+      end
+
+      let!(:track) do
+        create(:track, user: user).tap do |t|
+          Point.where(id: walk.map(&:id) + [spike.id]).update_all(track_id: t.id)
+        end
+      end
+
+      it 'detaches the spike from its track' do
+        described_class.new(user.id, start_time, end_time).call
+        expect(spike.reload.track_id).to be_nil
+      end
+
+      it 'enqueues a recalculation for the affected track' do
+        expect { described_class.new(user.id, start_time, end_time).call }
+          .to have_enqueued_job(Tracks::RecalculateJob).with(track.id)
+      end
     end
 
     context 'both passes flag points in the same month' do
