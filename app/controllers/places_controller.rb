@@ -12,23 +12,24 @@ class PlacesController < ApplicationController
 
   def show
     @place = current_user.places.includes(:tags).find(params[:id])
-    @recent_visits = @place.visits.order(started_at: :desc).limit(5)
+    @recent_visits = @place.visits.active.order(started_at: :desc).limit(5)
 
     render layout: false
   end
 
   def create
     @place = current_user.places.build(place_params.except(:tag_ids))
+    @place.user_named = true
 
     if @place.save
       add_tags if tag_ids.present?
-      @place = current_user.places.includes(:tags, :visits).find(@place.id)
+      @place = current_user.places.includes(:tags, :active_visits).find(@place.id)
 
       respond_to do |format|
         format.turbo_stream do
           render turbo_stream: [
             turbo_stream.replace('place-creation-data', html: place_data_element),
-            stream_flash(:success, 'Place created successfully!')
+            stream_flash(:success, I18n.t('controllers.places.created'))
           ]
         end
       end
@@ -43,25 +44,26 @@ class PlacesController < ApplicationController
 
   def update
     if @place.update(place_params.except(:tag_ids))
+      @place.adopt!
       set_tags if params[:place]&.key?(:tag_ids)
-      @place = current_user.places.includes(:tags, :visits).find(@place.id)
+      @place = current_user.places.includes(:tags, :active_visits).find(@place.id)
 
       respond_to do |format|
         format.turbo_stream do
           if drawer_request?
-            recent_visits = @place.visits.order(started_at: :desc).limit(5)
+            recent_visits = @place.visits.active.order(started_at: :desc).limit(5)
             render turbo_stream: [
               turbo_stream.replace(
                 'place-drawer',
                 partial: 'places/drawer',
                 locals: { place: @place, recent_visits: recent_visits }
               ),
-              stream_flash(:success, 'Place updated successfully!')
+              stream_flash(:success, I18n.t('controllers.places.updated'))
             ]
           else
             render turbo_stream: [
               turbo_stream.replace('place-creation-data', html: place_data_element(updated: true)),
-              stream_flash(:success, 'Place updated successfully!')
+              stream_flash(:success, I18n.t('controllers.places.updated'))
             ]
           end
         end
@@ -95,7 +97,8 @@ class PlacesController < ApplicationController
   def destroy
     @place.destroy!
 
-    redirect_to places_url, notice: 'Place was successfully destroyed.', status: :see_other
+    redirect_to places_url(page: params[:page]), notice: I18n.t('controllers.places.place_was_successfully_destroyed'),
+status: :see_other
   end
 
   private
@@ -141,7 +144,7 @@ class PlacesController < ApplicationController
     {
       id: place.id, name: place.name, latitude: place.lat, longitude: place.lon,
       source: place.source, note: place.note, icon: place.tags.first&.icon,
-      color: place.tags.first&.color, visits_count: place.visits.size,
+      color: place.tags.first&.color, visits_count: place.active_visits.size,
       tags: place.tags.map { |t| { id: t.id, name: t.name, icon: t.icon, color: t.color } }
     }
   end

@@ -81,12 +81,15 @@ class Stats::CalculateMonth
   end
 
   def create_stats_update_failed_notification(user, error)
-    Notifications::Create.new(
-      user:,
-      kind: :error,
-      title: 'Stats update failed',
-      content: "#{error.message}, stacktrace: #{error.backtrace.join("\n")}"
-    ).call
+    I18n.with_locale(user.locale) do
+      Notifications::Create.new(
+        user:,
+        kind: :error,
+        title: I18n.t('services.stats.calculate_month.stats_update_failed'),
+        content: I18n.t('services.stats.calculate_month.message_stacktrace_n', message: error.message,
+                        backtrace: error.backtrace.join("\n"))
+      ).call
+    end
   end
 
   def reset_month_stats(year, month)
@@ -96,7 +99,7 @@ class Stats::CalculateMonth
     stat.update!(
       daily_distance: {},
       distance: 0,
-      toponyms: nil,
+      toponyms: [],
       h3_hex_ids: {}
     )
 

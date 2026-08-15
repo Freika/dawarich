@@ -1,8 +1,10 @@
 import { AnomaliesLayer } from "maps_maplibre/layers/anomalies_layer"
 import { AreasLayer } from "maps_maplibre/layers/areas_layer"
 import { FamilyLayer } from "maps_maplibre/layers/family_layer"
+import { FlightsLayer } from "maps_maplibre/layers/flights_layer"
 import { FogLayer } from "maps_maplibre/layers/fog_layer"
 import { HeatmapLayer } from "maps_maplibre/layers/heatmap_layer"
+import { HexagonLayer } from "maps_maplibre/layers/hexagon_layer"
 import { PhotosLayer } from "maps_maplibre/layers/photos_layer"
 import { PlacesLayer } from "maps_maplibre/layers/places_layer"
 import { PointsLayer } from "maps_maplibre/layers/points_layer"
@@ -11,17 +13,20 @@ import { ReplayMarkerLayer } from "maps_maplibre/layers/replay_marker_layer"
 import { RoutesLayer } from "maps_maplibre/layers/routes_layer"
 import { TracksLayer } from "maps_maplibre/layers/tracks_layer"
 import { VisitsLayer } from "maps_maplibre/layers/visits_layer"
+import { isGatedPlan } from "maps_maplibre/utils/layer_gate"
 import { lazyLoader } from "maps_maplibre/utils/lazy_loader"
 import { performanceMonitor } from "maps_maplibre/utils/performance_monitor"
+import { SettingsManager } from "maps_maplibre/utils/settings_manager"
 
 /**
  * Manages all map layers lifecycle and visibility
  */
 export class LayerManager {
-  constructor(map, settings, api) {
+  constructor(map, settings, api, controller) {
     this.map = map
     this.settings = settings
     this.api = api
+    this.controller = controller
     this.layers = {}
     this.eventHandlersSetup = false
   }
@@ -37,6 +42,7 @@ export class LayerManager {
     areasGeoJSON,
     tracksGeoJSON,
     placesGeoJSON,
+    flightsGeoJSON,
   ) {
     performanceMonitor.mark("add-layers")
 
@@ -46,9 +52,11 @@ export class LayerManager {
 
     await this._addScratchLayer(pointsGeoJSON)
     this._addHeatmapLayer(pointsGeoJSON)
+    this._addHexagonLayer()
     this._addAreasLayer(areasGeoJSON)
     this._addTracksLayer(tracksGeoJSON)
     this._addRoutesLayer(routesGeoJSON)
+    this._addFlightsLayer(flightsGeoJSON)
     this._addVisitsLayer(visitsGeoJSON)
     this._addPlacesLayer(placesGeoJSON)
 
@@ -218,6 +226,10 @@ export class LayerManager {
     if (this.layers.tracksLayer?._stopFlowAnimation) {
       this.layers.tracksLayer._stopFlowAnimation()
     }
+    // Drag handlers live on the map, not the style, so an orphaned points
+    // layer keeps moving points. setEditMode, not disableDragging: add() arms
+    // enableDragging on a timer that re-checks editModeEnabled.
+    this.layers.pointsLayer?.setEditMode(false)
     this.layers = {}
     this.eventHandlersSetup = false
   }
@@ -252,6 +264,17 @@ export class LayerManager {
     }
   }
 
+  _addHexagonLayer() {
+    if (this.layers.hexagonsLayer) return this.layers.hexagonsLayer
+    this.layers.hexagonsLayer = new HexagonLayer(this.map, {
+      visible: this.settings.hexagonsEnabled || false,
+      api: this.api,
+      controller: this.controller,
+    })
+    this.layers.hexagonsLayer.add({ type: "FeatureCollection", features: [] })
+    return this.layers.hexagonsLayer
+  }
+
   _addAreasLayer(areasGeoJSON) {
     if (!this.layers.areasLayer) {
       this.layers.areasLayer = new AreasLayer(this.map, {
@@ -282,6 +305,18 @@ export class LayerManager {
       this.layers.routesLayer.add(routesGeoJSON)
     } else {
       this.layers.routesLayer.update(routesGeoJSON)
+    }
+  }
+
+  _addFlightsLayer(flightsGeoJSON) {
+    if (!this.layers.flightsLayer) {
+      this.layers.flightsLayer = new FlightsLayer(this.map, {
+        visible: this.settings.flightsEnabled || false,
+        style: this.settings.mapStyle || "light",
+      })
+      this.layers.flightsLayer.add(flightsGeoJSON)
+    } else {
+      this.layers.flightsLayer.update(flightsGeoJSON)
     }
   }
 
@@ -382,6 +417,11 @@ export class LayerManager {
         apiClient: this.api,
         layerManager: this,
         styleName: this.settings.mapStyle,
+        // Live cache, not this.settings: that snapshot is replaced wholesale
+        // when advanced settings are saved. Lite can't write points.
+        editModeEnabled:
+          SettingsManager.getSetting("pointDraggingEnabled") === true &&
+          !isGatedPlan(this.controller?.userPlanValue),
       })
       this.layers.pointsLayer.add(pointsGeoJSON)
     } else {
@@ -419,6 +459,9 @@ export class LayerManager {
       this.layers.fogLayer = new FogLayer(this.map, {
         clearRadius: this.settings.fogOfWarRadius || 1000,
         visible: this.settings.fogEnabled || false,
+        mode: this.settings.fogOfWarMode || "points",
+        api: this.api,
+        controller: this.controller,
       })
       this.layers.fogLayer.add(pointsGeoJSON)
     } else {

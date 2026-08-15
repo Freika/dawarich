@@ -11,7 +11,7 @@ class Imports::Create
   end
 
   def call
-    import.update!(status: :processing)
+    import.update!(status: :processing, raw_points: 0, doubles: 0)
     broadcast_status_update
 
     temp_file_path = Imports::SecureFileDownloader.new(import.file).download_to_temp_file
@@ -30,12 +30,7 @@ class Imports::Create
       run_importer(temp_file_path)
     end
 
-    User.where(id: user.id).update_all(points_count: user.points.count)
-
-    filter_anomalies(user, import)
-    schedule_stats_creating(user.id)
-    schedule_visit_suggesting(user.id, import)
-    update_import_points_count(import)
+    post_import_processing
   rescue StandardError => e
     return if import.destroyed?
 
@@ -57,6 +52,41 @@ class Imports::Create
 
   private
 
+  def post_import_processing
+    run_post_import_step('points_count') { User.where(id: user.id).update_all(points_count: user.points.count) }
+    run_post_import_step('filter_anomalies') { filter_anomalies(user, import) }
+    run_post_import_step('schedule_stats') { schedule_stats_creating(user.id) }
+    run_post_import_step('schedule_visit_suggesting') { schedule_visit_suggesting(user.id, import) }
+    run_post_import_step('schedule_track_generation') { schedule_track_generation(user.id, import) }
+    run_post_import_step('update_points_count') { update_import_points_count(import) }
+    run_post_import_step('notify_if_all_skipped') { notify_if_all_skipped(import) }
+  end
+
+  def run_post_import_step(step)
+    yield
+  rescue StandardError => e
+    ExceptionReporter.call(e, "Post-import processing failed: #{step}")
+    create_post_import_failure_notification(step)
+  end
+
+  def create_post_import_failure_notification(step)
+    return if @post_import_failure_notified
+
+    @post_import_failure_notified = true
+
+    I18n.with_locale(user.locale) do
+      Notifications::Create.new(
+        user:,
+        kind: :warning,
+        title: I18n.t('services.imports.create.import_post_processing_incomplete'),
+        content: I18n.t('services.imports.create.your_import_name_finished_and_all_points_were_saved_but',
+                        name: import.name, step: step.tr('_', ' '))
+      ).call
+    end
+  rescue StandardError => e
+    ExceptionReporter.call(e, 'Failed to create post-import failure notification')
+  end
+
   def run_importer(path)
     source = import.source.presence || detect_source_from_file(path)
     import.update!(source: source) if import.source.to_s != source.to_s
@@ -64,12 +94,13 @@ class Imports::Create
   end
 
   def importer(source)
-    raise ArgumentError, 'Import source cannot be nil' if source.nil?
+    raise ArgumentError, I18n.t('services.imports.create.source_missing') if source.nil?
 
     case source.to_s
     when 'google_semantic_history'      then GoogleMaps::SemanticHistoryImporter
     when 'google_phone_takeout'         then GoogleMaps::PhoneTakeoutImporter
     when 'google_records'               then GoogleMaps::RecordsStorageImporter
+    when 'google_photos'                then GooglePhotos::Importer
     when 'owntracks'                    then OwnTracks::Importer
     when 'gpx'                          then Gpx::TrackImporter
     when 'kml'                          then Kml::Importer
@@ -80,14 +111,48 @@ class Imports::Create
     when 'fit'                          then Fit::Importer
     when 'polarsteps'                   then Polarsteps::Importer
     when 'zip'
-      raise ArgumentError, 'Could not classify zip contents -- file may be corrupted'
+      raise ArgumentError, I18n.t('services.imports.create.zip_unclassified')
     else
-      raise ArgumentError, "Unsupported source: #{source}"
+      raise ArgumentError, I18n.t('services.imports.create.unsupported_source', source:)
     end
   end
 
   def update_import_points_count(import)
     Import::UpdatePointsCountJob.perform_later(import.id)
+  end
+
+  def notify_if_all_skipped(import)
+    import.reload
+    return unless import.points.count.zero?
+
+    if import.doubles.to_i.positive?
+      I18n.with_locale(import.user.locale) do
+        Notification.create!(
+          user_id: import.user_id,
+          title: I18n.t('services.imports.create.import_completed_with_no_new_points'),
+          content: I18n.t('services.imports.create.your_file_name_contained_raw_points_points_all_of_which',
+                          name: import.name, raw_points: import.raw_points),
+          kind: :info
+        )
+      end
+    else
+      I18n.with_locale(import.user.locale) do
+        Notification.create!(
+          user_id: import.user_id,
+          title: I18n.t('services.imports.create.import_completed_with_no_points'),
+          content: zero_points_content(import),
+          kind: :warning
+        )
+      end
+    end
+  end
+
+  def zero_points_content(import)
+    if import.gpx? || import.kml?
+      I18n.t('services.imports.create.zero_points_with_timestamps', name: import.name)
+    else
+      I18n.t('services.imports.create.zero_points', name: import.name)
+    end
   end
 
   def filter_anomalies(user, import)
@@ -107,24 +172,50 @@ class Imports::Create
   def schedule_visit_suggesting(user_id, import)
     return unless user.safe_settings.visits_suggestions_enabled?
 
-    min_max = import.points.pick('MIN(timestamp), MAX(timestamp)')
-    return if min_max.compact.empty?
+    summary = import_points_summary(import)
+    return if summary.nil?
 
-    start_at = Time.zone.at(min_max[0])
-    end_at = Time.zone.at(min_max[1])
+    VisitSuggestingJob.perform_later(user_id:, start_at: summary[:start_at], end_at: summary[:end_at])
+  end
 
-    VisitSuggestingJob.perform_later(user_id:, start_at:, end_at:)
+  def schedule_track_generation(user_id, import)
+    summary = import_points_summary(import)
+    return if summary.nil? || summary[:count] < 2
+
+    Tracks::ParallelGeneratorJob.perform_later(
+      user_id,
+      start_at: summary[:start_at],
+      end_at: summary[:end_at],
+      mode: :bulk,
+      untracked_only: true
+    )
+  end
+
+  def import_points_summary(import)
+    return @import_points_summary if defined?(@import_points_summary)
+
+    count, min_ts, max_ts = import.points.pick(Arel.sql('COUNT(*), MIN(timestamp), MAX(timestamp)'))
+
+    @import_points_summary =
+      if min_ts.nil? || max_ts.nil?
+        nil
+      else
+        { count: count, start_at: Time.zone.at(min_ts), end_at: Time.zone.at(max_ts) }
+      end
   end
 
   def create_import_failed_notification(import, user, error)
-    message = import_failed_message(import, error)
-
-    Notifications::Create.new(
-      user:,
-      kind: :error,
-      title: 'Import failed',
-      content: message
-    ).call
+    # The message is built inside the block: translating it a line earlier left
+    # the notification with a title in the reader's language and a body in
+    # whatever language the request happened to run in.
+    I18n.with_locale(user.locale) do
+      Notifications::Create.new(
+        user:,
+        kind: :error,
+        title: I18n.t('services.imports.create.import_failed'),
+        content: import_failed_message(import, error)
+      ).call
+    end
   end
 
   def detect_source_from_file(file_path)
@@ -135,9 +226,14 @@ class Imports::Create
 
   def import_failed_message(import, error)
     if DawarichSettings.self_hosted?
-      "Import \"#{import.name}\" failed: #{error.message}, stacktrace: #{error.backtrace.join("\n")}"
+      I18n.t(
+        'services.imports.create.import_failed_self_hosted',
+        name: import.name,
+        message: error.message,
+        backtrace: error.backtrace.join("\n")
+      )
     else
-      "Import \"#{import.name}\" failed, please contact us at hi@dawarich.com"
+      I18n.t('services.imports.create.import_failed_cloud', name: import.name)
     end
   end
 end

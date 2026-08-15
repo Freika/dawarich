@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { translate } from "i18n"
 import Flash from "./flash_controller"
 
 export default class extends Controller {
@@ -10,6 +11,7 @@ export default class extends Controller {
     "demoButton",
   ]
   static values = {
+    auto: Boolean,
     showable: Boolean,
     onboardingUrl: String,
     userTrial: Boolean,
@@ -20,8 +22,17 @@ export default class extends Controller {
   }
 
   connect() {
-    if (this.showableValue) {
+    // Auto-open is gated to the map page (auto=true is set only by the map
+    // layout's render). Other pages still render the dialog for the navbar's
+    // manual "Getting started" trigger, but never pop it open on load.
+    if (this.autoValue && this.showableValue) {
       document.addEventListener("turbo:load", this.handleTurboLoad)
+      // The map page is reached via a full (non-Turbo) navigation after
+      // signup, where turbo:load never fires — so open from connect() too.
+      // Defer one task so a Turbo-swapped <dialog> is ready for showModal();
+      // checkAndShowModal is idempotent (localStorage guard) and only marks
+      // "shown" once the dialog actually opens, so turbo:load can still retry.
+      setTimeout(() => this.checkAndShowModal(), 0)
     }
     this.updateDemoButton()
   }
@@ -34,7 +45,7 @@ export default class extends Controller {
   }
 
   handleTurboLoad = () => {
-    if (this.showableValue) {
+    if (this.autoValue && this.showableValue) {
       this.checkAndShowModal()
     }
   }
@@ -47,6 +58,11 @@ export default class extends Controller {
 
     if (!hasShownModal && this.hasModalTarget) {
       this.modalTarget.showModal()
+      // If showModal didn't take (called too early during a Turbo render),
+      // don't mark it shown — let turbo:load retry instead of silently
+      // burning the one-time guard.
+      if (!this.modalTarget.open) return
+
       localStorage.setItem(storageKey, "true")
       this.trackEvent("onboarding_shown")
 
@@ -73,10 +89,7 @@ export default class extends Controller {
     if (this.hasDemoDataValue) return
 
     this.trackEvent("onboarding_demo_selected")
-
-    if (this.hasDemoButtonTarget) {
-      this.demoButtonTarget.classList.add("opacity-50", "pointer-events-none")
-    }
+    this.showDemoLoading()
 
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content
 
@@ -92,25 +105,64 @@ export default class extends Controller {
         if (!response.ok) throw new Error(`Server error: ${response.status}`)
 
         this.modalTarget.close()
-        window.Turbo.visit(response.url || window.location.href)
+        window.location.href = response.url || window.location.href
       })
       .catch((error) => {
         console.error("Failed to load demo data:", error)
-        if (this.hasDemoButtonTarget) {
-          this.demoButtonTarget.classList.remove(
-            "opacity-50",
-            "pointer-events-none",
-          )
-        }
-        Flash.show("error", "Failed to load demo data. Please try again.")
+        this.hideDemoLoading()
+        Flash.show(
+          "error",
+          translate("messages.failed_to_load_demo_data_please_try_again"),
+        )
       })
+  }
+
+  showDemoLoading() {
+    if (!this.hasDemoButtonTarget) return
+
+    this.demoButtonTarget.classList.add("pointer-events-none")
+    this.demoButtonTarget.dataset.originalContent =
+      this.demoButtonTarget.innerHTML
+    this.demoButtonTarget.innerHTML = `
+      <div class="card-body p-5">
+        <div class="flex items-center gap-3">
+          <span class="loading loading-spinner loading-md text-accent"></span>
+          <div>
+            <h4 class="text-lg font-semibold">${translate("demo.creating")}</h4>
+            <p class="text-sm opacity-70">${translate("demo.creating_help")}</p>
+          </div>
+        </div>
+      </div>
+    `
+
+    if (this.element.querySelectorAll("button[data-action]").length > 1) {
+      this.element.querySelectorAll("button[data-action]").forEach((btn) => {
+        if (btn !== this.demoButtonTarget) {
+          btn.classList.add("opacity-50", "pointer-events-none")
+        }
+      })
+    }
+  }
+
+  hideDemoLoading() {
+    if (!this.hasDemoButtonTarget) return
+
+    this.demoButtonTarget.classList.remove("pointer-events-none")
+    if (this.demoButtonTarget.dataset.originalContent) {
+      this.demoButtonTarget.innerHTML =
+        this.demoButtonTarget.dataset.originalContent
+      delete this.demoButtonTarget.dataset.originalContent
+    }
+    this.element.querySelectorAll("button[data-action]").forEach((btn) => {
+      btn.classList.remove("opacity-50", "pointer-events-none")
+    })
   }
 
   updateDemoButton() {
     if (this.hasDemoDataValue && this.hasDemoButtonTarget) {
       this.demoButtonTarget.classList.add("opacity-50", "pointer-events-none")
       const label = this.demoButtonTarget.querySelector("h4")
-      if (label) label.textContent = "Demo data already loaded"
+      if (label) label.textContent = translate("demo.already_loaded")
     }
   }
 

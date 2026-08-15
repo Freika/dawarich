@@ -30,7 +30,7 @@ class Users::ExportData::Exports
 
     export_hash = export.as_json(except: %w[user_id id])
 
-    if export.file.attached?
+    if export.file.attached? && !export.user_data?
       add_file_data_to_export(export, export_hash)
     else
       add_empty_file_data_to_export(export_hash)

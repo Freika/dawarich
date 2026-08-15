@@ -4,9 +4,10 @@ module InsightsHelper
   include CountryFlagHelper
 
   def monthly_digest_title(digest)
-    return 'Monthly Digest' unless digest
+    return I18n.t('helpers.insights.monthly_digest') unless digest
 
-    "#{digest.month_name} #{digest.year} Digest"
+    month = I18n.l(Date.new(digest.year, digest.month, 1), format: :month_name)
+    I18n.t('helpers.insights.monthly_digest_title', month:, year: digest.year)
   end
 
   def monthly_digest_distance(digest, user)
@@ -14,7 +15,7 @@ module InsightsHelper
 
     distance_unit = user.safe_settings.distance_unit
     value = Stat.convert_distance(digest.distance, distance_unit).round
-    "#{number_with_delimiter(value)} #{distance_unit}"
+    I18n.t(distance_unit == 'mi' ? 'units.miles' : 'units.kilometers', value: number_with_delimiter(value))
   end
 
   def monthly_digest_active_days(digest)
@@ -42,7 +43,7 @@ module InsightsHelper
   end
 
   def weekly_pattern_chart_data(digest, user)
-    day_names = %w[Mon Tue Wed Thu Fri Sat Sun]
+    day_names = I18n.t('calendar.abbreviated_weekdays')
     return day_names.map { |day| [day, 0] } unless digest
 
     pattern = digest.weekly_pattern
@@ -88,19 +89,20 @@ module InsightsHelper
   end
 
   def format_location_time(minutes)
-    return '0 min' if minutes.nil? || minutes.to_i.zero?
+    total_minutes = minutes.to_i
+    return I18n.t('helpers.insights.minute_count', count: 0) if minutes.nil? || total_minutes.zero?
 
-    duration = ActiveSupport::Duration.build(minutes.to_i * 60)
-    parts = duration.parts
+    # ActiveSupport::Duration#parts decomposes into months/weeks/days/etc., so
+    # `parts[:days]` only returns the day component within a month (max ~6) and
+    # silently truncates large totals (e.g. 133 actual days renders as "4 days").
+    # Compute the total day/hour count directly from the minutes input instead.
+    days = total_minutes / 1440
+    return I18n.t('helpers.insights.day_count', count: days) if days >= 1
 
-    days = parts[:days] || 0
-    hours = parts[:hours] || 0
-    mins = parts[:minutes] || 0
+    hours = total_minutes / 60
+    return I18n.t('helpers.insights.hour_count', count: hours) if hours >= 1
 
-    return "#{days} #{'day'.pluralize(days)}" if days >= 1
-    return "#{hours} #{'hour'.pluralize(hours)}" if hours >= 1
-
-    "#{mins} min"
+    I18n.t('helpers.insights.minute_count', count: total_minutes)
   end
 
   def first_time_visits_from_digest(digest)
@@ -122,14 +124,14 @@ module InsightsHelper
 
   # Format activity breakdown duration from seconds to human-readable hours
   def format_activity_hours(seconds)
-    return '0h' if seconds.nil? || seconds.to_i.zero?
+    return I18n.t('units.hours_compact', value: 0) if seconds.nil? || seconds.to_i.zero?
 
     hours = (seconds.to_i / 3600.0).round(1)
     if hours >= 1
-      "#{hours.to_i == hours ? hours.to_i : hours}h"
+      I18n.t('units.hours_compact', value: hours.to_i == hours ? hours.to_i : hours)
     else
       minutes = (seconds.to_i / 60.0).round
-      "#{minutes}min"
+      I18n.t('units.minutes_word_compact', value: minutes)
     end
   end
 
@@ -162,7 +164,7 @@ module InsightsHelper
 
   # Calculate activity ratio as "1:X" format (active vs sedentary)
   def activity_ratio(active_seconds, sedentary_seconds)
-    return 'N/A' if active_seconds.to_i.zero? || sedentary_seconds.to_i.zero?
+    return I18n.t('common.not_available') if active_seconds.to_i.zero? || sedentary_seconds.to_i.zero?
 
     ratio = sedentary_seconds.to_f / active_seconds
     "1:#{ratio.round}"
@@ -206,12 +208,12 @@ module InsightsHelper
     if converted < 1
       if unit == 'mi'
         feet = (converted * 5280).round
-        "#{feet} ft"
+        I18n.t('units.feet', value: feet)
       else
-        "#{meters.to_i} m"
+        I18n.t('units.meters', value: meters.to_i)
       end
     else
-      "#{converted.round(1)} #{unit}"
+      I18n.t(unit == 'mi' ? 'units.miles' : 'units.kilometers', value: converted.round(1))
     end
   end
 
@@ -255,7 +257,7 @@ module InsightsHelper
 
       if week_date.month != current_month
         current_month = week_date.month
-        labels << { index: index, name: Date::ABBR_MONTHNAMES[current_month] }
+        labels << { index: index, name: I18n.l(Date.new(year, current_month, 1), format: :abbreviated_month_name) }
       end
     end
 

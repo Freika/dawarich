@@ -31,9 +31,38 @@ class Jobs::Create
     return unless DawarichSettings.reverse_geocoding_enabled?
 
     points_relation.in_batches(of: BULK_ENQUEUE_BATCH_SIZE) do |batch|
-      jobs = batch.pluck(:id).map { |id| ReverseGeocodingJob.new('Point', id, force: force) }
-      ActiveJob.perform_all_later(jobs)
+      ids = batch.pluck(:id)
+      ids = force ? clear_dedup_keys(ids) : claim_dedup_keys(ids)
+      next if ids.empty?
+
+      jobs = ids.map { |id| ReverseGeocodingJob.new('Point', id, force: force) }
+      begin
+        ActiveJob.perform_all_later(jobs)
+      rescue StandardError
+        clear_dedup_keys(ids) unless force
+        raise
+      end
     end
+  end
+
+  def claim_dedup_keys(ids)
+    results = Sidekiq.redis do |redis|
+      redis.pipelined do |pipe|
+        ids.each do |id|
+          pipe.set(Point.geocode_dedup_key(id), 1, nx: true, ex: Point::GEOCODE_DEDUP_TTL)
+        end
+      end
+    end
+    ids.zip(results).filter_map { |id, claimed| id if claimed }
+  end
+
+  def clear_dedup_keys(ids)
+    Sidekiq.redis do |redis|
+      redis.pipelined do |pipe|
+        ids.each { |id| pipe.del(Point.geocode_dedup_key(id)) }
+      end
+    end
+    ids
   end
 
   # Cloud users share the operator's geocoding budget, so a click that

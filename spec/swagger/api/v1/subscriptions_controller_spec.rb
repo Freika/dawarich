@@ -55,8 +55,6 @@ RSpec.describe 'Subscriptions API', type: :request do
         let(:callback_params) { { token: token } }
         let(:'X-Webhook-Secret') { webhook_secret }
 
-        after { |example| SwaggerResponseExample.capture(example, response) }
-
         run_test!
       end
 

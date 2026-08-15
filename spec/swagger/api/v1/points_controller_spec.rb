@@ -3,6 +3,9 @@
 require 'swagger_helper'
 
 describe 'Points API', type: :request do
+  let(:user) { create(:user) }
+  let(:api_key) { user.api_key }
+
   path '/api/v1/points' do
     get 'Retrieves all points' do
       tags 'Points'
@@ -43,7 +46,9 @@ describe 'Points API', type: :request do
                    mode: { type: :number, nullable: true, description: 'Tracking mode' },
                    inrids: { type: :array, items: { type: :string }, nullable: true, description: 'Region IDs' },
                    in_regions: { type: :array, items: { type: :string }, nullable: true, description: 'Region names' },
-                   raw_data: { type: :string, nullable: true, description: 'Raw data from the tracking device' },
+                   raw_data: { type: :string, nullable: true,
+                               description: 'Raw payload from live tracking devices. Empty for points ' \
+                                            'imported from files — the uploaded file keeps the original data.' },
                    import_id: { type: :string, nullable: true, description: 'Import ID if point was imported' },
                    city: { type: :string, nullable: true, description: 'Reverse-geocoded city name' },
                    country: { type: :string, nullable: true, description: 'Reverse-geocoded country name' },
@@ -58,12 +63,8 @@ describe 'Points API', type: :request do
         header 'X-Current-Page', schema: { type: :integer }, description: 'Current page number'
         header 'X-Total-Pages', schema: { type: :integer }, description: 'Total number of pages'
 
-        let(:user) { create(:user) }
-        let(:api_key) { user.api_key }
         let(:start_at) { Time.zone.now - 1.day }
         let(:end_at) { Time.zone.now }
-
-        after { |example| SwaggerResponseExample.capture(example, response) }
 
         run_test!
       end
@@ -199,8 +200,6 @@ describe 'Points API', type: :request do
         let(:locations) { json }
         let(:api_key) { create(:user).api_key }
 
-        after { |example| SwaggerResponseExample.capture(example, response) }
-
         run_test!
       end
 
@@ -239,21 +238,15 @@ describe 'Points API', type: :request do
       }
 
       response '200', 'point updated' do
-        let(:user) { create(:user) }
         let(:existing_point) { create(:point, user:) }
-        let(:api_key) { user.api_key }
         let(:id) { existing_point.id }
         let(:point) { { point: { latitude: 52.52, longitude: 13.405 } } }
-
-        after { |example| SwaggerResponseExample.capture(example, response) }
 
         run_test!
       end
 
       response '422', 'invalid request' do
-        let(:user) { create(:user) }
         let(:existing_point) { create(:point, user:) }
-        let(:api_key) { user.api_key }
         let(:id) { existing_point.id }
         let(:point) { { point: { latitude: nil } } }
 
@@ -280,12 +273,8 @@ describe 'Points API', type: :request do
                  message: { type: :string, description: 'Confirmation message' }
                }
 
-        let(:user) { create(:user) }
         let(:point) { create(:point, user:) }
-        let(:api_key) { user.api_key }
         let(:id) { point.id }
-
-        after { |example| SwaggerResponseExample.capture(example, response) }
 
         run_test!
       end
@@ -325,20 +314,14 @@ describe 'Points API', type: :request do
                  count: { type: :integer, description: 'Number of points deleted' }
                }
 
-        let(:user) { create(:user) }
-        let(:api_key) { user.api_key }
         let(:point1) { create(:point, user:) }
         let(:point2) { create(:point, user:) }
         let(:bulk_params) { { point_ids: [point1.id, point2.id] } }
-
-        after { |example| SwaggerResponseExample.capture(example, response) }
 
         run_test!
       end
 
       response '422', 'no points selected' do
-        let(:user) { create(:user) }
-        let(:api_key) { user.api_key }
         let(:bulk_params) { { point_ids: [] } }
 
         run_test!
@@ -365,21 +348,13 @@ describe 'Points API', type: :request do
       response '202', 're-evaluation queued' do
         schema type: :object, properties: { message: { type: :string } }
 
-        let(:user) { create(:user) }
-        let(:api_key) { user.api_key }
-
         before { Rails.cache.delete("anomaly_backfill_pending:#{user.id}") }
-
-        after { |example| SwaggerResponseExample.capture(example, response) }
 
         run_test!
       end
 
       response '409', 're-evaluation already in progress' do
         schema type: :object, properties: { error: { type: :string } }
-
-        let(:user) { create(:user) }
-        let(:api_key) { user.api_key }
 
         before { Rails.cache.write("anomaly_backfill_pending:#{user.id}", true, expires_in: 30.minutes) }
         after { Rails.cache.delete("anomaly_backfill_pending:#{user.id}") }

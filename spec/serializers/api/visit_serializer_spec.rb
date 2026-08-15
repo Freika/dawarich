@@ -26,5 +26,25 @@ RSpec.describe Api::VisitSerializer do
       expect(result[:place][:latitude]).to eq(place.lat)
       expect(result[:place][:longitude]).to eq(place.lon)
     end
+
+    context 'confidence fields' do
+      it 'exposes confidence and confidence_band when set' do
+        visit.update!(confidence: 85)
+
+        result = described_class.new(visit.reload).call
+
+        expect(result[:confidence]).to eq(85)
+        expect(result[:confidence_band]).to eq(:high)
+      end
+
+      it 'is null-safe when confidence is nil' do
+        visit.update!(confidence: nil)
+
+        result = described_class.new(visit.reload).call
+
+        expect(result[:confidence]).to be_nil
+        expect(result[:confidence_band]).to be_nil
+      end
+    end
   end
 end

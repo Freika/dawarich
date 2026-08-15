@@ -19,7 +19,7 @@ module Archive
       begin
         ::Zip::OutputStream.open(output.path) do |zos|
           entry = ::Zip::Entry.new(zos, entry_name)
-          entry.time = Time.current
+          entry.time = Time.now # rubocop:disable Rails/TimeZone
           zos.put_next_entry(entry)
           while (chunk = source_tempfile.read(64 * 1024))
             zos.write(chunk)

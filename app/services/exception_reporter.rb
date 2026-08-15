@@ -6,10 +6,10 @@ class ExceptionReporter
 
     if exception.is_a?(Exception)
       Rails.logger.error "#{human_message}: #{exception.message}"
-      Sentry.capture_exception(exception)
+      Sentry.capture_exception(exception) if Sentry.initialized?
     else
       Rails.logger.error "#{exception}: #{human_message}"
-      Sentry.capture_message("#{exception}: #{human_message}")
+      Sentry.capture_message("#{exception}: #{human_message}") if Sentry.initialized?
     end
   end
 end

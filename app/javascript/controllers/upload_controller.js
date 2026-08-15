@@ -1,5 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 import { DirectUpload } from "@rails/activestorage"
+import { translate } from "i18n"
 import { shouldZip, zipSingleFile } from "services/zip_file"
 import Flash from "./flash_controller"
 
@@ -52,7 +53,10 @@ export default class extends Controller {
     this.inputTarget.disabled = true
     if (!this.hasUploadedFiles()) {
       event.preventDefault()
-      Flash.show("error", "Please select and upload files first")
+      Flash.show(
+        "error",
+        translate("messages.please_select_and_upload_files_first"),
+      )
     }
   }
 
@@ -73,8 +77,8 @@ export default class extends Controller {
     Flash.show(
       "notice",
       willCompress
-        ? `Preparing ${filesToUpload.length} file(s) for upload...`
-        : `Uploading ${filesToUpload.length} file(s), please wait...`,
+        ? translate("upload.preparing", { count: filesToUpload.length })
+        : translate("upload.uploading", { count: filesToUpload.length }),
     )
 
     const prepared = await this.prepareForUpload(filesToUpload)
@@ -98,7 +102,10 @@ export default class extends Controller {
         if (error) {
           Flash.show(
             "error",
-            `Error uploading ${file.name}: ${error.message || "Unknown error"}`,
+            translate("upload.error", {
+              name: file.name,
+              error: error.message || translate("common.unknown_error"),
+            }),
           )
         } else {
           this.fileProgress[index] = file.size
@@ -127,7 +134,7 @@ export default class extends Controller {
         )
         Flash.show(
           "warning",
-          `Could not compress ${original.name}, uploading as-is.`,
+          translate("upload.compression_failed", { name: original.name }),
         )
         result.push(original)
       }
@@ -142,7 +149,7 @@ export default class extends Controller {
       const accepted = ACCEPTED_EXTENSIONS.map((e) => `.${e}`).join(", ")
       Flash.show(
         "error",
-        `Unsupported file type: ${names}. Supported formats: ${accepted}.`,
+        translate("upload.unsupported_type", { names, accepted }),
       )
       this.inputTarget.value = ""
       return false
@@ -155,7 +162,7 @@ export default class extends Controller {
     ) {
       Flash.show(
         "error",
-        `Import limit reached. Trial users can only create up to ${this.maxImportsValue} imports.`,
+        translate("upload.import_limit", { count: this.maxImportsValue }),
       )
       this.inputTarget.value = ""
       return false
@@ -167,7 +174,10 @@ export default class extends Controller {
         !VALID_ZIP_TYPES.includes(file.type) &&
         !file.name.toLowerCase().endsWith(".zip")
       ) {
-        Flash.show("error", "Please select a valid ZIP file.")
+        Flash.show(
+          "error",
+          translate("messages.please_select_a_valid_zip_file"),
+        )
         this.inputTarget.value = ""
         return false
       }
@@ -176,10 +186,7 @@ export default class extends Controller {
     if (this.userTrialValue) {
       const oversized = files.filter((f) => f.size > MAX_FILE_SIZE)
       if (oversized.length > 0) {
-        Flash.show(
-          "error",
-          `File size limit exceeded. Trial users can only upload files up to 10MB.`,
-        )
+        Flash.show("error", translate("upload.file_size_limit"))
         this.inputTarget.value = ""
         return false
       }
@@ -195,7 +202,7 @@ export default class extends Controller {
     wrapper.className = "w-full mt-4 mb-4"
     wrapper.innerHTML = `
       <div class="text-sm font-medium text-base-content mb-2 flex justify-between items-center">
-        <span>Upload Progress</span>
+        <span>${translate("upload.progress")}</span>
         <span class="text-xs text-base-content/70 progress-percentage">0%</span>
       </div>
       <progress data-upload-target="progress" class="progress progress-primary w-full h-3" value="0" max="100"></progress>
@@ -211,15 +218,9 @@ export default class extends Controller {
     this.submitTarget.classList.toggle("cursor-not-allowed", count === 0)
 
     if (count === 0) {
-      Flash.show(
-        "error",
-        "No files were successfully uploaded. Please try again.",
-      )
+      Flash.show("error", translate("upload.none_uploaded"))
     } else {
-      Flash.show(
-        "notice",
-        `${count} file(s) uploaded successfully. Ready to submit.`,
-      )
+      Flash.show("notice", translate("upload.complete", { count }))
       this.markProgressComplete()
     }
     this.isUploading = false

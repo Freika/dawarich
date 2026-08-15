@@ -47,6 +47,7 @@ Rails.application.routes.draw do
 
     resources :background_jobs, only: %i[index create]
     patch 'background_jobs', to: 'background_jobs#update'
+    resource :visits, only: %i[show update]
     resources :users, only: %i[index show create destroy edit update] do
       member do
         post 'regenerate_api_key'
@@ -58,9 +59,6 @@ Rails.application.routes.draw do
         patch 'update_registration_settings'
       end
     end
-
-    resources :maps, only: %i[index]
-    patch 'maps', to: 'maps#update'
 
     resource :two_factor, only: %i[show create destroy], controller: 'two_factor' do
       post :verify, on: :member
@@ -76,8 +74,13 @@ Rails.application.routes.draw do
     resource :recalculation, only: :create
   end
 
+  namespace :visits do
+    resource :redetections, only: :create
+  end
+
   get 'settings/theme', to: 'settings#theme'
   post 'settings/generate_api_key', to: 'settings#generate_api_key', as: :generate_api_key
+  patch 'settings/changelog_consent', to: 'settings#changelog_consent', as: :changelog_consent
 
   get  'auth/account_link', to: 'auth/account_links#show', as: :auth_account_link
   get  'auth/account_link/challenge', to: 'auth/account_links#challenge', as: :auth_account_link_challenge
@@ -90,9 +93,17 @@ Rails.application.routes.draw do
   get 'trial/resume', to: 'trial/resume#show', as: :trial_resume
   get 'trial/welcome', to: 'trial/welcome#show', as: :trial_welcome
 
-  resources :imports
+  resources :imports do
+    resource :extraction, only: %i[create destroy], controller: 'imports/extractions'
+  end
   resources :tracks, only: [] do
     resources :segments, controller: 'tracks/segments', only: %i[index update]
+
+    resource :share_link, only: %i[new create destroy], controller: 'tracks/share_links' do
+      patch :revoke
+      post  :regenerate
+      post  :regenerate_phrase
+    end
   end
   # Temporary (302) during the unified-timeline rollout; promote to :moved_permanently (301)
   # once the redesign is known-stable so browsers cache the redirect.
@@ -108,38 +119,68 @@ Rails.application.routes.draw do
       post :merge
     end
   end
-  resources :areas, only: [:create]
+  resources :areas, only: %i[create update]
   resources :places, only: %i[index show destroy create update] do
     collection do
       get 'nearby'
     end
   end
   resources :exports, only: %i[index create destroy]
+  resources :posters, only: %i[create destroy]
   resources :trips do
     member do
       post :recalculate
+      post :export
+    end
+    resources :notes, controller: 'trips/notes', only: %i[create update destroy]
+
+    resource :share_link, only: %i[new create destroy], controller: 'trips/share_links' do
+      patch :revoke
+      post  :regenerate
+      post  :regenerate_phrase
+    end
+  end
+
+  namespace :share_links do
+    resource :hub, only: :show, controller: 'hubs'
+    resources :shares, only: [] do
+      member { patch :revoke }
+    end
+    resource :timeline, only: %i[new create destroy], controller: 'timelines' do
+      patch :revoke
+      post  :regenerate
+      post  :regenerate_phrase
+    end
+    resource :live, only: %i[new create destroy], controller: 'lives' do
+      patch :revoke
+      post  :regenerate
+      post  :regenerate_phrase
     end
   end
   resources :tags, except: [:show]
 
-  # Family management routes (only if feature is enabled)
-  if DawarichSettings.family_feature_enabled?
-    resource :family, only: %i[show new create edit update destroy] do
-      resources :invitations, except: %i[edit update], controller: 'family/invitations'
-      resources :members, only: %i[destroy], controller: 'family/memberships'
-      resources :location_requests, only: %i[show create], controller: 'family/location_requests' do
-        member do
-          patch :accept
-          patch :decline
-        end
-      end
+  # Public shared-link viewer
+  get  '/s/:id',         to: 'shared/links#show',     as: :public_shared_link
+  post '/s/:id/unlock',  to: 'shared/links#unlock',   as: :unlock_public_shared_link
 
-      patch 'location_sharing', to: 'family/location_sharing#update', as: :location_sharing
+  # Family management routes. Always defined — per-user access is enforced by
+  # ApplicationController#ensure_family_feature_available!, since the routes are
+  # built at boot and cannot depend on the current user's plan.
+  resource :family, only: %i[show new create edit update destroy] do
+    resources :invitations, except: %i[edit update], controller: 'family/invitations'
+    resources :members, only: %i[destroy], controller: 'family/memberships'
+    resources :location_requests, only: %i[show create], controller: 'family/location_requests' do
+      member do
+        patch :accept
+        patch :decline
+      end
     end
 
-    get 'invitations/:token', to: 'family/invitations#show', as: :public_invitation
-    post 'family/memberships', to: 'family/memberships#create', as: :accept_family_invitation
+    patch 'location_sharing', to: 'family/location_sharing#update', as: :location_sharing
   end
+
+  get 'invitations/:token', to: 'family/invitations#show', as: :public_invitation
+  post 'family/memberships', to: 'family/memberships#create', as: :accept_family_invitation
 
   resources :points, only: %i[index] do
     collection do
@@ -191,6 +232,9 @@ Rails.application.routes.draw do
 
   get 'auth/ios/success', to: 'auth/ios#success', as: :ios_success
 
+  get  'users/auth/apple',          to: 'users/apple_oauth#request_phase', as: :apple_oauth_request
+  post 'users/auth/apple/callback', to: 'users/apple_oauth#callback',      as: :apple_oauth_callback
+
   devise_for :users, controllers: {
     registrations: 'users/registrations',
     sessions: 'users/sessions',
@@ -220,7 +264,7 @@ Rails.application.routes.draw do
 
   # Map namespace with versioning
   namespace :map do
-    get '/v1', to: 'leaflet#index', as: :v1
+    get '/v1', to: redirect(path: '/map/v2')
     get '/v2', to: 'maplibre#index', as: :v2
     resources :timeline_feeds, only: [:index] do
       get :track_info, on: :member
@@ -230,7 +274,7 @@ Rails.application.routes.draw do
   end
 
   # Backward compatibility redirects
-  get '/map', to: 'map/leaflet#index'
+  get '/map', to: 'map/maplibre#index'
   get '/maps/v2', to: redirect('/map/v2')
 
   namespace :api do
@@ -240,6 +284,8 @@ Rails.application.routes.draw do
       patch 'settings', to: 'settings#update'
       get   'settings', to: 'settings#index'
       get   'settings/transportation_recalculation_status', to: 'settings#transportation_recalculation_status'
+      get   'settings/mobile', to: 'settings/mobile#show'
+      patch 'settings/mobile', to: 'settings/mobile#update'
       get   'users/me', to: 'users#me'
       delete 'users/me', to: 'users/destroy#destroy'
 
@@ -255,9 +301,13 @@ Rails.application.routes.draw do
 
       resources :areas,     only: %i[index show create update destroy]
       resources :imports,   only: %i[index show create]
-      resources :places,    only: %i[index show create update destroy] do
+      namespace :imports do
+        post :pending, to: 'pending#create'
+      end
+      resources :places, only: %i[index show create update destroy] do
         collection do
           get 'nearby'
+          get 'search'
         end
       end
       resources :locations, only: %i[index] do
@@ -273,6 +323,7 @@ Rails.application.routes.draw do
       end
       resources :visits, only: %i[index show create update destroy] do
         get 'possible_places', to: 'visits/possible_places#index', on: :member
+        post 'select_place', to: 'visits/select_place#create', on: :member
         collection do
           post 'merge', to: 'visits#merge'
           post 'bulk_update', to: 'visits#bulk_update'
@@ -280,6 +331,7 @@ Rails.application.routes.draw do
       end
       resource :plan, only: [:show], controller: 'plan'
       resource :residency, only: [:show], controller: 'residency'
+      resource :demo_data, only: %i[show create destroy], controller: 'demo_data'
       resources :recalculations, only: [:create]
       resources :stats, only: :index
       resources :insights, only: :index do
@@ -328,10 +380,13 @@ Rails.application.routes.draw do
 
       resources :timeline, only: [:index]
 
+      resources :flights, only: %i[index]
+
       namespace :maps do
         resources :hexagons, only: [:index] do
           collection do
             get :bounds
+            get :fog
           end
         end
       end
@@ -347,6 +402,15 @@ Rails.application.routes.draw do
             get :history
           end
         end
+      end
+
+      resources :notes, only: %i[index show create update destroy]
+      namespace :shared do
+        get ':id/trip',   to: 'trips#show'
+        get ':id/points', to: 'points#index'
+        get ':id/route',  to: 'points#route'
+        get ':id/photos', to: 'photos#index'
+        get ':id/photos/:photo_id/thumbnail', to: 'photos#thumbnail', constraints: { photo_id: %r{[^/]+} }
       end
 
       post 'subscriptions/callback', to: 'subscriptions#callback'

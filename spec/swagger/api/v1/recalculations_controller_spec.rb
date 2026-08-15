@@ -24,8 +24,6 @@ describe 'Recalculations API', type: :request do
 
         before { Rails.cache.delete("recalculation_pending:#{user.id}") }
 
-        after { |example| SwaggerResponseExample.capture(example, response) }
-
         run_test!
       end
 

@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { translate } from "i18n"
 
 const ALERT_CLASSES = {
   error: "alert-error",
@@ -42,12 +43,15 @@ export default class extends Controller {
         </svg>
         <span></span>
       </div>
-      <button type="button" data-action="click->removals#remove" class="btn btn-sm btn-circle btn-ghost" aria-label="Close">
+      <button type="button" data-action="click->removals#remove" class="btn btn-sm btn-circle btn-ghost">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${CLOSE_PATH}" />
         </svg>
       </button>
     `
+    div
+      .querySelector("button")
+      .setAttribute("aria-label", translate("common.close"))
     // Set message text safely (no innerHTML for user content)
     div.querySelector("span").textContent = message
 

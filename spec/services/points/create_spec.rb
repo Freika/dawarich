@@ -60,13 +60,10 @@ RSpec.describe Points::Create do
       end
 
       it 'upserts the processed data' do
-        expect(Point).to receive(:upsert_all)
+        expect(Point).to receive(:archival_safe_upsert_all)
           .with(
             processed_data,
-            unique_by: %i[lonlat timestamp user_id],
-            returning: Arel.sql(
-              'id, xmax, timestamp, ST_X(lonlat::geometry) AS longitude, ST_Y(lonlat::geometry) AS latitude'
-            )
+            returning: Arel.sql(Point::UPSERT_RETURNING_COLUMNS)
           )
           .and_return(upsert_result)
 
@@ -74,7 +71,7 @@ RSpec.describe Points::Create do
       end
 
       it 'returns the upsert result' do
-        allow(Point).to receive(:upsert_all).and_return(upsert_result)
+        allow(Point).to receive(:archival_safe_upsert_all).and_return(upsert_result)
         result = described_class.new(user, point_params).call
         expect(result).to eq(upsert_result)
       end
@@ -168,7 +165,7 @@ RSpec.describe Points::Create do
 
         it 'uses the correct unique constraint' do
           expect(Point).to receive(:upsert_all) do |_data, options|
-            expect(options[:unique_by]).to eq(%i[lonlat timestamp user_id])
+            expect(options[:unique_by]).to eq(%i[user_id timestamp lonlat])
             deduplicated_upsert_result
           end
 
@@ -178,7 +175,10 @@ RSpec.describe Points::Create do
         it 'uses the correct returning clause' do
           expect(Point).to receive(:upsert_all) do |_data, options|
             expect(options[:returning]).to eq(
-              Arel.sql('id, xmax, timestamp, ST_X(lonlat::geometry) AS longitude, ST_Y(lonlat::geometry) AS latitude')
+              Arel.sql(
+                'id, xmax::text AS xmax, timestamp, ' \
+                'ST_X(lonlat::geometry) AS longitude, ST_Y(lonlat::geometry) AS latitude'
+              )
             )
             deduplicated_upsert_result
           end
@@ -420,13 +420,10 @@ RSpec.describe Points::Create do
       before do
         allow(Points::Params).to receive(:new).with(geojson_data, user.id).and_return(params_service)
         allow(params_service).to receive(:call).and_return(all_processed_data)
-        allow(Point).to receive(:upsert_all)
+        allow(Point).to receive(:archival_safe_upsert_all)
           .with(
             all_processed_data,
-            unique_by: %i[lonlat timestamp user_id],
-            returning: Arel.sql(
-              'id, xmax, timestamp, ST_X(lonlat::geometry) AS longitude, ST_Y(lonlat::geometry) AS latitude'
-            )
+            returning: Arel.sql(Point::UPSERT_RETURNING_COLUMNS)
           )
           .and_return(expected_results)
       end
@@ -453,6 +450,50 @@ RSpec.describe Points::Create do
         time_obj = Time.zone.at(result[1].timestamp)
         expected_time = Time.parse('2025-01-17T21:03:02Z')
         expect(time_obj).to be_within(1.second).of(expected_time)
+      end
+    end
+
+    describe 'out-of-range course_accuracy from a near-stationary iOS fix' do
+      let(:user) { create(:user) }
+      let(:batch_params) do
+        {
+          locations: [
+            {
+              type: 'Feature',
+              geometry: { type: 'Point', coordinates: [7.300162333022016, 51.40863363359207] },
+              properties: {
+                timestamp: '2026-01-04T14:32:36.999Z',
+                speed: 0.01308945239267841,
+                course: 4.801180790801141,
+                course_accuracy: 1731.726995484005
+              }
+            },
+            {
+              type: 'Feature',
+              geometry: { type: 'Point', coordinates: [7.299433856659638, 51.40862237973182] },
+              properties: {
+                timestamp: '2026-01-04T14:36:40.999Z',
+                speed: 1.003747182282529,
+                course: 266.37909882602,
+                course_accuracy: 32.15991578317691
+              }
+            }
+          ]
+        }
+      end
+
+      it 'persists the whole batch instead of failing on the overflowing point' do
+        expect { described_class.new(user, batch_params).call }
+          .to change(user.points, :count).by(2)
+      end
+
+      it 'drops the overflowing course_accuracy and keeps the valid one' do
+        described_class.new(user, batch_params).call
+
+        accuracies = user.points.order(:timestamp).pluck(:course_accuracy)
+
+        expect(accuracies.first).to be_nil
+        expect(accuracies.last).to be_within(0.00001).of(32.15992)
       end
     end
   end

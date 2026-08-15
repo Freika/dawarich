@@ -60,20 +60,22 @@ class Tracks::TimeChunkProcessorJob < ApplicationJob
   end
 
   def load_chunk_points
-    user.points
-        .where(timestamp: chunk_data[:buffer_start_timestamp]..chunk_data[:buffer_end_timestamp])
-        .order(:timestamp)
+    relation = user.points
+                   .not_anomaly
+                   .where(timestamp: chunk_data[:buffer_start_timestamp]..chunk_data[:buffer_end_timestamp])
+                   .order(:timestamp)
+    relation = relation.where(track_id: nil) if chunk_data[:untracked_only]
+    relation
   end
 
   def segment_chunk_points(points)
-    # Convert relation to array for in-memory processing
     points_array = points.to_a
 
-    # Use Geocoder-based segmentation
-    segments = split_points_into_segments_geocoder(points_array)
+    segments = points_array
+               .group_by { |p| p.tracker_id.to_s }
+               .values
+               .flat_map { |bucket| split_points_into_segments_geocoder(bucket) }
 
-    # Filter segments to only include those that overlap with the actual chunk range
-    # (not just the buffer range)
     segments.select do |segment|
       segment_overlaps_chunk_range?(segment)
     end
@@ -103,15 +105,12 @@ class Tracks::TimeChunkProcessorJob < ApplicationJob
         Rails.logger.error(
           "Invalid distance calculated (#{distance}) for #{points.size} points in chunk #{chunk_data[:chunk_id]}"
         )
-        Rails.logger.debug "Point coordinates: #{points.map { |p| [p.latitude, p.longitude] }.inspect}"
         return nil
       end
 
       track = create_track_from_points(points, distance * 1000) # Convert km to meters
 
-      if track
-        Rails.logger.debug "Created track #{track.id} with #{points.size} points (#{distance.round(2)} km)"
-      else
+      unless track
         Rails.logger.warn "Failed to create track from #{points.size} points with distance #{distance.round(2)} km"
       end
 

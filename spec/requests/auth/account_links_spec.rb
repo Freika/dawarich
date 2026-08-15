@@ -22,6 +22,28 @@ RSpec.describe 'GET /auth/account_link', type: :request do
     expect(user.uid).to eq('apple-sub-42')
   end
 
+  context 'with a stashed pending-import ticket' do
+    let!(:pending) { create(:pending_import, :with_file) }
+
+    before do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      allow(DawarichSettings).to receive(:registration_enabled?).and_return(true)
+      allow(DawarichSettings).to receive(:oidc_enabled?).and_return(false)
+      stub_const('MANAGER_URL', 'https://manager.example.com')
+    end
+
+    it 'claims the ticket when the token link signs the user in' do
+      get "/users/sign_up?import_ticket=#{pending.claim_ticket}"
+      expect(session[:pending_import_ticket]).to eq(pending.claim_ticket)
+
+      token = issue
+      expect { get "/auth/account_link?token=#{token}" }
+        .to change(user.imports, :count).by(1)
+
+      expect(pending.reload.claimed_by_user_id).to eq(user.id)
+    end
+  end
+
   context 'when the user has 2FA enabled' do
     before do
       user.otp_secret = User.generate_otp_secret
@@ -152,6 +174,14 @@ RSpec.describe 'OAuth account-link password challenge', type: :request do
       expect(response.body).to include(email)
     end
 
+    it 'renders complete French account-link instructions' do
+      trigger_collision
+      get auth_account_link_challenge_path(locale: 'fr')
+
+      expect(response.body).to include('Associer OpenID Connect à votre compte Dawarich')
+      expect(response.body).to include('Saisissez votre mot de passe pour y associer votre identité OpenID Connect')
+    end
+
     it 'redirects to sign-in when no pending link in session' do
       get auth_account_link_challenge_path
       expect(response).to redirect_to(new_user_session_path)
@@ -228,6 +258,28 @@ RSpec.describe 'OAuth account-link password challenge', type: :request do
       expect(response).to redirect_to(new_user_session_path)
 
       expect(user.reload.provider).to be_nil
+    end
+  end
+
+  describe 'pending-import ticket on password confirm' do
+    let!(:pending) { create(:pending_import, :with_file) }
+
+    before do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      allow(DawarichSettings).to receive(:registration_enabled?).and_return(true)
+      allow(DawarichSettings).to receive(:oidc_enabled?).and_return(false)
+      stub_const('MANAGER_URL', 'https://manager.example.com')
+    end
+
+    it 'claims the stashed ticket after successful password confirm' do
+      get "/users/sign_up?import_ticket=#{pending.claim_ticket}"
+      expect(session[:pending_import_ticket]).to eq(pending.claim_ticket)
+      trigger_collision
+
+      expect { post confirm_auth_account_link_path, params: { password: password } }
+        .to change(user.imports, :count).by(1)
+
+      expect(pending.reload.claimed_by_user_id).to eq(user.id)
     end
   end
 

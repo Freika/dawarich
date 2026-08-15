@@ -1,0 +1,63 @@
+# OneDev build spec — INTERNAL test image builds only.
+
+version: 47
+jobs:
+- name: Build Test Image
+  steps:
+  - type: CheckoutStep
+    name: checkout
+    cloneCredential:
+      type: DefaultCredential
+    withLfs: false
+    withSubmodules: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
+    name: npm install
+    # Mirrors the GitHub workflow's `npm install` runner step: populates
+    # node_modules in the job workspace so `daisyui` (the only external node dep
+    # the Tailwind build needs — the @tailwindcss/* plugins are bundled inside the
+    # tailwindcss-ruby standalone CLI) is present in the BuildImageStep context and
+    # gets copied into the image by `COPY ../. ./`. --omit=dev skips playwright/biome.
+    runInContainer: true
+    image: node:20-slim
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        npm install --omit=dev --no-audit --no-fund
+    runAs: 0:0
+    useTTY: true
+    condition: SUCCESSFUL
+    optional: false
+  - type: BuildImageStep
+    name: build and push to built-in registry
+    # Build context = repo root (job workspace); Dockerfile uses ../ paths resolved
+    # against the context root, exactly like the GitHub workflow's `context: .`.
+    dockerfile: docker/Dockerfile
+    # Built-in registry login. Remove this block if the job executor already
+    # provides built-in registry credentials.
+    registryLogins:
+    - registryUrl: '@server_url@'
+      userName: '@job_token@'
+      passwordSecret: onedev-registry-token
+    output:
+      type: RegistryOutput
+      # Immutable per-commit tag + a moving `latest` for convenience.
+      # Multiple tags MUST be space-separated (a newline becomes part of the tag).
+      tags: '@server@/@project_path@/dawarich:@commit_hash@ @server@/@project_path@/dawarich:latest'
+    # amd64 only — fast internal test builds. Add linux/arm64 here if you need to
+    # test ARM (requires binfmt/QEMU on the executor host); the public multi-arch
+    # build stays in the GitHub workflow.
+    platforms: linux/amd64
+    condition: SUCCESSFUL
+    optional: false
+  triggers:
+  # Build on every push to any branch on OneDev. Narrow this (e.g. `dev master`)
+  # if building every feature branch is too noisy.
+  - type: BranchUpdateTrigger
+    branches: '**'
+    userMatch: anyone
+  retryCondition: never
+  maxRetries: 3
+  retryDelay: 30
+  timeout: 7200

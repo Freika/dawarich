@@ -40,6 +40,11 @@ RSpec.describe 'Api::V1::Users', type: :request do
         u
       end
 
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        stub_const('MANAGER_URL', 'https://manager.dawarich.test')
+      end
+
       it 'returns 402 with payment_required envelope' do
         get '/api/v1/users/me', headers: headers
 

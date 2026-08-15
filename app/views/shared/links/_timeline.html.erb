@@ -1,0 +1,23 @@
+<%# Locals: link, resource (always nil for timeline) %>
+<%
+  start_date = Date.parse(link.settings['start_date'].to_s)
+  end_date   = Date.parse(link.settings['end_date'].to_s)
+  days       = (end_date - start_date).to_i + 1
+%>
+<section class="container mx-auto px-4 py-6">
+  <header class="mb-4">
+    <h1 class="text-3xl font-bold leading-tight">
+      <%= formatted_date_range(start_date, end_date) %>
+    </h1>
+    <p class="text-sm text-base-content/60 mt-1">
+      <%= t('.days_shared_on_dawarich', count: days) %>
+    </p>
+  </header>
+
+  <div id="shared-trip-map"
+       data-controller="shared-trip-map"
+       data-shared-trip-map-link-id-value="<%= link.id %>"
+       data-shared-trip-map-show-photos-value="<%= SharedLinkContext.new(link).show_photos? %>"
+       style="height: 60vh; min-height: 400px;"
+       class="rounded-lg overflow-hidden bg-base-200 mb-4 ring-1 ring-base-300"></div>
+</section>

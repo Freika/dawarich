@@ -2,10 +2,11 @@
 
 class TripsController < ApplicationController
   include FlashStreamable
+  include PosterStudioContext
 
   before_action :authenticate_user!
   before_action :authenticate_active_user!, only: %i[new create recalculate]
-  before_action :set_trip, only: %i[show edit update destroy recalculate]
+  before_action :set_trip, only: %i[show edit update destroy recalculate export]
   before_action :set_coordinates, only: %i[show edit]
 
   def index
@@ -13,12 +14,17 @@ class TripsController < ApplicationController
   end
 
   def show
-    @photo_previews = @trip.photo_previews
     @photo_sources = @trip.photo_sources
+    @distance_unit = current_user.safe_settings.distance_unit
+    @timezone = current_user.timezone_iana
+    @photos_by_day = @trip.photos_by_day(@timezone)
+    @day_notes = @trip.notes.index_by(&:date)
+    @day_stats = compute_day_stats
+    load_poster_studio_context
 
     return unless @trip.path.blank? || @trip.distance.blank? || @trip.visited_countries.blank?
 
-    Trips::CalculateAllJob.perform_later(@trip.id, current_user.safe_settings.distance_unit)
+    Trips::CalculateAllJob.perform_later(@trip.id, @distance_unit)
   end
 
   def new
@@ -32,7 +38,8 @@ class TripsController < ApplicationController
     @trip = current_user.trips.build(trip_params)
 
     if @trip.save
-      redirect_to @trip, notice: 'Trip was successfully created. Data is being calculated in the background.'
+      redirect_to @trip,
+                  notice: I18n.t('controllers.trips.trip_was_successfully_created_data_is_being_calculated_in_the')
     else
       render :new, status: :unprocessable_content
     end
@@ -40,7 +47,8 @@ class TripsController < ApplicationController
 
   def update
     if @trip.update(trip_params)
-      redirect_to @trip, notice: 'Trip was successfully updated.', status: :see_other
+      @trip.adopt!
+      redirect_to @trip, notice: I18n.t('controllers.trips.trip_was_successfully_updated'), status: :see_other
     else
       render :edit, status: :unprocessable_content
     end
@@ -48,7 +56,7 @@ class TripsController < ApplicationController
 
   def destroy
     @trip.destroy!
-    redirect_to trips_url, notice: 'Trip was successfully destroyed.', status: :see_other
+    redirect_to trips_url, notice: I18n.t('controllers.trips.trip_was_successfully_destroyed'), status: :see_other
   end
 
   def recalculate
@@ -58,14 +66,14 @@ class TripsController < ApplicationController
                            .update_all(last_recalculated_at: Time.current)
 
     if affected.zero?
+      notice = I18n.t('controllers.trips.already_recalculating_this_page_will_update_when_it_s_done')
       respond_to do |format|
         format.turbo_stream do
-          render turbo_stream: stream_flash(:notice,
-                                            'Already recalculating — this page will update when it\'s done.')
+          render turbo_stream: stream_flash(:notice, notice)
         end
         format.html do
           redirect_to trip_path(@trip),
-                      notice: 'Already recalculating — this page will update when it\'s done.'
+                      notice: notice
         end
       end
       return
@@ -81,14 +89,51 @@ class TripsController < ApplicationController
           turbo_stream.replace('trip_recalculate_frame',
                                partial: 'trips/recalculate_button',
                                locals: { trip: @trip }),
-          stream_flash(:notice, 'Recalculating — the page will update automatically when it\'s ready.')
+          stream_flash(
+            :notice,
+            I18n.t('controllers.trips.recalculating_the_page_will_update_automatically_when_it_s_ready')
+          )
         ]
       end
       format.html do
         redirect_to trip_path(@trip),
-                    notice: 'Recalculating — the page will update automatically when it\'s ready.'
+                    notice: I18n.t('controllers.trips.recalculating_the_page_will_update_automatically_when_it_s_ready')
       end
     end
+  end
+
+  EXPORTABLE_FORMATS = %w[gpx json].freeze
+
+  def export
+    file_format = params[:file_format].to_s
+
+    unless EXPORTABLE_FORMATS.include?(file_format)
+      redirect_to trip_path(@trip),
+                  alert: I18n.t('controllers.trips.unsupported_export_format_choose_gpx_or_geojson'),
+                  status: :unprocessable_content
+      return
+    end
+
+    tz = current_user.safe_settings.timezone.presence || 'UTC'
+    start_date = @trip.started_at.in_time_zone(tz).to_date
+    export_name = "trip_#{@trip.name.to_s.parameterize.presence || @trip.id}_#{start_date}.#{file_format}"
+
+    current_user.exports.create!(
+      name: export_name,
+      status: :created,
+      file_format: file_format,
+      file_type: :points,
+      start_at: @trip.started_at,
+      end_at: @trip.ended_at
+    )
+
+    redirect_to exports_url,
+                notice: I18n.t('controllers.trips.trip_export_initiated_check_the_exports_page_when_it_s')
+  rescue StandardError => e
+    ExceptionReporter.call(e)
+    redirect_to trip_path(@trip),
+                alert: I18n.t('controllers.trips.export_failed_to_initiate_please_try_again'),
+                status: :unprocessable_content
   end
 
   private
@@ -99,12 +144,37 @@ class TripsController < ApplicationController
 
   def set_coordinates
     @coordinates = @trip.points.pluck(
-      :latitude, :longitude, :battery, :altitude, :timestamp, :velocity, :id,
-      :country
+      Arel.sql('ST_Y(lonlat::geometry)'), Arel.sql('ST_X(lonlat::geometry)'),
+      :battery, :altitude, :timestamp, :velocity, :id, :country
     ).map { [_1.to_f, _2.to_f, _3.to_s, _4.to_s, _5.to_s, _6.to_s, _7.to_s, _8.to_s] }
   end
 
   def trip_params
-    params.require(:trip).permit(:name, :started_at, :ended_at, :notes)
+    params.require(:trip).permit(:name, :started_at, :ended_at, :description)
+  end
+
+  def compute_day_stats
+    max_points_updated = @trip.points.maximum(:updated_at).to_i
+    cache_key = "trip_day_stats/v2/#{@trip.id}/#{@trip.updated_at.to_i}/#{max_points_updated}/#{@timezone}"
+
+    Rails.cache.fetch(cache_key, expires_in: 1.hour) do
+      tz_quoted = ActiveRecord::Base.connection.quote(@timezone)
+      day_expr  = "(to_timestamp(timestamp) AT TIME ZONE #{tz_quoted})::date"
+
+      rows = @trip.points.reorder(nil).group(Arel.sql(day_expr)).pluck(
+        Arel.sql(day_expr),
+        Arel.sql('MIN(timestamp)'),
+        Arel.sql('MAX(timestamp)'),
+        Arel.sql('COALESCE(ST_Length(ST_MakeLine(lonlat::geometry ORDER BY timestamp)::geography), 0)')
+      )
+
+      rows.each_with_object({}) do |(day, first_ts, last_ts, distance_m), acc|
+        acc[day] = {
+          first_time: Time.at(first_ts).in_time_zone(@timezone),
+          last_time:  Time.at(last_ts).in_time_zone(@timezone),
+          distance_m: distance_m.to_f
+        }
+      end
+    end
   end
 end

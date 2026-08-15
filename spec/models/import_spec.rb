@@ -149,7 +149,8 @@ RSpec.describe Import, type: :model do
         csv: 10,
         tcx: 11,
         fit: 12,
-        polarsteps: 13
+        polarsteps: 13,
+        google_photos: 14
       )
     end
   end
@@ -208,6 +209,29 @@ RSpec.describe Import, type: :model do
           empty_import.send(:recalculate_stats)
         end.not_to have_enqueued_job(Stats::CalculatingJob)
       end
+    end
+  end
+
+  describe '#claim_additional_data_extraction!' do
+    let(:import) do
+      create(:import, user: user, source: :google_phone_takeout,
+                      additional_data_extraction_status: :completed,
+                      additional_data_extraction: { 'counts' => { 'visits' => 1 } })
+    end
+    let(:payload) { { 'options' => { 'trust_source' => true }, 'started_at' => Time.current.iso8601 } }
+
+    it 'moves the import to pending and stores the payload' do
+      expect(import.claim_additional_data_extraction!(payload)).to be true
+      expect(import.reload.additional_data_extraction_status).to eq('pending')
+      expect(import.additional_data_extraction['options']).to eq('trust_source' => true)
+    end
+
+    it 'refuses when another request already moved the status since this instance was loaded' do
+      stale = described_class.find(import.id)
+      import.claim_additional_data_extraction!(payload)
+
+      expect(stale.claim_additional_data_extraction!(payload)).to be false
+      expect(import.reload.additional_data_extraction_status).to eq('pending')
     end
   end
 end

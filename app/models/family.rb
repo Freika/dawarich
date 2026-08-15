@@ -4,6 +4,7 @@ class Family < ApplicationRecord
   has_many :family_memberships, dependent: :destroy, class_name: 'Family::Membership'
   has_many :members, through: :family_memberships, source: :user
   has_many :family_invitations, dependent: :destroy, class_name: 'Family::Invitation'
+  has_many :location_requests, dependent: :delete_all, class_name: 'Family::LocationRequest'
   belongs_to :creator, class_name: 'User'
 
   validates :name, presence: true, length: { maximum: 50 }

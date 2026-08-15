@@ -1,0 +1,28 @@
+<div class="space-y-2">
+  <% shares.each do |share| %>
+    <div class="flex items-center gap-2 p-2 rounded-lg border border-base-300">
+      <span class="badge badge-sm whitespace-nowrap"><%= t("enums.shared_link.resource_type.#{share.resource_type}") %></span>
+      <input type="text" readonly value="<%= public_shared_link_url(share.id) %>"
+             class="input input-bordered input-sm flex-1 font-mono text-xs" onclick="this.select();">
+      <button type="button" class="btn btn-ghost btn-sm btn-square"
+              data-controller="clipboard"
+              data-clipboard-text-value="<%= public_shared_link_url(share.id) %>"
+              data-action="click->clipboard#copy" title="<%= t('.copy_link') %>" aria-label="<%= t('.copy_link') %>">
+        <%= icon 'copy', class: 'w-4 h-4' %>
+      </button>
+      <%= link_to public_shared_link_path(share.id), target: '_blank', rel: 'noopener',
+                  class: 'btn btn-ghost btn-sm btn-square',
+                  data: { turbo: false }, title: t('.open_in_new_tab'), aria: { label: t('.open_in_new_tab') } do %>
+        <%= icon 'external-link', class: 'w-4 h-4' %>
+      <% end %>
+      <%= button_to revoke_share_links_share_path(share, query), method: :patch,
+                    form: { data: { turbo_frame: "share-link-modal" }, title: t('.revoke_link') },
+                    class: "btn btn-ghost btn-sm btn-square text-warning",
+                    data: { turbo_confirm: t('.revoke_this_link_it_will_stop_working_immediately') },
+                    title: t('.revoke_link'),
+                    aria: { label: t('.revoke') } do %>
+        <%= icon 'shield', class: 'w-4 h-4' %>
+      <% end %>
+    </div>
+  <% end %>
+</div>

@@ -157,5 +157,66 @@ RSpec.describe Visits::FindWithinBoundingBox do
         expect(result).to include(visit_inside_1, visit_inside_2)
       end
     end
+
+    context 'with a date range' do
+      let!(:old_visit_inside) do
+        create(
+          :visit,
+          user: user,
+          place: place_inside_1,
+          started_at: 5.years.ago,
+          ended_at: 5.years.ago + 1.hour
+        )
+      end
+
+      let(:params) do
+        {
+          sw_lat: sw_lat.to_s,
+          sw_lng: sw_lng.to_s,
+          ne_lat: ne_lat.to_s,
+          ne_lng: ne_lng.to_s,
+          start_at: 1.day.ago.iso8601,
+          end_at: Time.zone.now.iso8601
+        }
+      end
+
+      it 'excludes visits whose started_at is outside the range' do
+        expect(result).to include(visit_inside_1, visit_inside_2)
+        expect(result).not_to include(old_visit_inside)
+      end
+
+      context 'when only one of start_at/end_at is provided' do
+        let(:params) do
+          {
+            sw_lat: sw_lat.to_s,
+            sw_lng: sw_lng.to_s,
+            ne_lat: ne_lat.to_s,
+            ne_lng: ne_lng.to_s,
+            start_at: 1.day.ago.iso8601
+          }
+        end
+
+        it 'ignores the partial date range' do
+          expect(result).to include(visit_inside_1, visit_inside_2, old_visit_inside)
+        end
+      end
+
+      context 'when start_at is unparseable' do
+        let(:params) do
+          {
+            sw_lat: sw_lat.to_s,
+            sw_lng: sw_lng.to_s,
+            ne_lat: ne_lat.to_s,
+            ne_lng: ne_lng.to_s,
+            start_at: 'not-a-date',
+            end_at: Time.zone.now.iso8601
+          }
+        end
+
+        it 'ignores the malformed range and returns bbox matches' do
+          expect(result).to include(visit_inside_1, visit_inside_2, old_visit_inside)
+        end
+      end
+    end
   end
 end

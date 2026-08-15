@@ -7,6 +7,7 @@
 # See the ActiveSupport::ParameterFilter documentation for supported notations and behaviors.
 Rails.application.config.filter_parameters += %i[
   passw secret token _key crypt salt certificate otp otp_attempt otp_secret ssn cvv cvc latitude longitude lat lng
+  email name first_name last_name phone
 ]
 
 SENSITIVE_SETTINGS_KEYS = %w[immich_api_key photoprism_api_key].freeze

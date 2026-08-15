@@ -7,7 +7,7 @@ RSpec.describe 'Authentication', type: :request do
 
   describe 'Route Protection' do
     it 'redirects to sign in page when accessing protected routes while signed out' do
-      get map_v1_path
+      get map_v2_path
       expect(response).to redirect_to(new_user_session_path)
     end
 
@@ -95,6 +95,21 @@ RSpec.describe 'Authentication', type: :request do
       }
 
       # Should still redirect to iOS success endpoint using session value
+      expect(response).to redirect_to(%r{auth/ios/success\?token=})
+      expect(response.location).to include('token=')
+    end
+
+    it 'does not 500 on Android sign-in when AUTH_JWT_SECRET_KEY is blank (self-hosted fallback)' do
+      allow(ENV).to receive(:[]).and_call_original
+      allow(ENV).to receive(:[]).with('AUTH_JWT_SECRET_KEY').and_return(nil)
+
+      post user_session_path, params: {
+        user: { email: user.email, password: 'password123456' }
+      }, headers: {
+        'X-Dawarich-Client' => 'android',
+        'Accept' => 'text/html'
+      }
+
       expect(response).to redirect_to(%r{auth/ios/success\?token=})
       expect(response.location).to include('token=')
     end

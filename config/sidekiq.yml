@@ -8,13 +8,15 @@
   - mailers
   - families
   - imports
+  - extractions
   - exports
+  - tracks
   - stats
   - trips
-  - tracks
   - reverse_geocoding
   - visit_suggesting
   - places
+  - posters
   - app_version_checking
   - cache
   - archival

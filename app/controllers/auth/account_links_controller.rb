@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Auth::AccountLinksController < ApplicationController
+  include PendingImportClaimable
+
   MAX_FAILED_PASSWORD_ATTEMPTS = 5
 
   before_action :no_store_headers
@@ -10,20 +12,26 @@ class Auth::AccountLinksController < ApplicationController
       begin
         Auth::VerifyAccountLinkToken.new(params[:token]).call
       rescue Auth::VerifyAccountLinkToken::TokenReplayed
-        return redirect_to(new_user_session_path, alert: 'This link has already been used.')
+        return redirect_to(new_user_session_path,
+                           alert: I18n.t('controllers.auth.account_links.this_link_has_already_been_used'))
       rescue Auth::VerifyAccountLinkToken::InvalidToken
-        return redirect_to(new_user_session_path, alert: 'Link invalid or expired.')
+        return redirect_to(new_user_session_path,
+                           alert: I18n.t('controllers.auth.account_links.link_invalid_or_expired'))
       end
 
     user = result.user
 
     if user.provider.present? && (user.provider != result.provider || user.uid != result.uid)
       return redirect_to(new_user_session_path,
-                         alert: "This account is already linked to a different #{user.provider} identity.")
+                         alert: I18n.t(
+                           'controllers.auth.account_links.already_linked_to_different_identity',
+                           provider: user.provider
+                         ))
     end
 
     unless Auth::VerifyAccountLinkToken.consume!(result.jti)
-      return redirect_to(new_user_session_path, alert: 'This link has already been used.')
+      return redirect_to(new_user_session_path,
+                         alert: I18n.t('controllers.auth.account_links.this_link_has_already_been_used'))
     end
 
     user.update!(provider: result.provider, uid: result.uid)
@@ -31,21 +39,32 @@ class Auth::AccountLinksController < ApplicationController
     if user.otp_required_for_login?
       redirect_to(
         new_user_session_path,
-        notice: "#{provider_label(result.provider)} is now linked to your account. " \
-                'Sign in with your password and 2FA code to continue.'
+        notice: I18n.t(
+          'controllers.auth.account_links.linked_sign_in_with_two_factor',
+          provider: provider_label(result.provider)
+        )
       )
     else
       sign_in(user)
-      redirect_to root_path, notice: "#{provider_label(result.provider)} is now linked to your account."
+      claim_pending_import_for(user)
+      redirect_to root_path,
+                  notice: I18n.t('controllers.auth.account_links.provider_is_now_linked_to_your_account',
+                                 provider: provider_label(result.provider))
     end
   end
 
   def challenge
     pending = pending_oauth_link
-    return redirect_to(new_user_session_path, alert: 'No pending account link.') unless pending
+    unless pending
+      return redirect_to(new_user_session_path,
+                         alert: I18n.t('controllers.auth.account_links.no_pending_account_link'))
+    end
 
     user = User.find_by(id: pending['user_id'])
-    return redirect_to(new_user_session_path, alert: 'Account no longer exists.') unless user
+    unless user
+      return redirect_to(new_user_session_path,
+                         alert: I18n.t('controllers.auth.account_links.account_no_longer_exists'))
+    end
 
     @user_email = user.email
     @provider_label = label_for(pending)
@@ -53,21 +72,28 @@ class Auth::AccountLinksController < ApplicationController
 
   def confirm
     pending = pending_oauth_link
-    return redirect_to(new_user_session_path, alert: 'No pending account link.') unless pending
+    unless pending
+      return redirect_to(new_user_session_path,
+                         alert: I18n.t('controllers.auth.account_links.no_pending_account_link'))
+    end
 
     user = User.find_by(id: pending['user_id'])
-    return redirect_to(new_user_session_path, alert: 'Account no longer exists.') unless user
+    unless user
+      return redirect_to(new_user_session_path,
+                         alert: I18n.t('controllers.auth.account_links.account_no_longer_exists'))
+    end
 
     unless user.valid_password?(params[:password].to_s)
       session[:pending_oauth_link_attempts] = (session[:pending_oauth_link_attempts] || 0) + 1
 
       if session[:pending_oauth_link_attempts] >= MAX_FAILED_PASSWORD_ATTEMPTS
         clear_pending_oauth_link
+        alert = I18n.t('controllers.auth.account_links.too_many_invalid_attempts_start_the_linking_flow_again')
         return redirect_to new_user_session_path,
-                           alert: 'Too many invalid attempts. Start the linking flow again.'
+                           alert: alert
       end
 
-      flash.now[:alert] = 'Incorrect password.'
+      flash.now[:alert] = I18n.t('controllers.auth.account_links.incorrect_password')
       @user_email = user.email
       @provider_label = label_for(pending)
       return render :challenge, status: :unprocessable_entity
@@ -78,21 +104,31 @@ class Auth::AccountLinksController < ApplicationController
 
     if user.otp_required_for_login?
       redirect_to new_user_session_path,
-                  notice: "#{label_for(pending)} is now linked to your account. " \
-                          'Sign in with your password and 2FA code to continue.'
+                  notice: I18n.t(
+                    'controllers.auth.account_links.linked_sign_in_with_two_factor',
+                    provider: label_for(pending)
+                  )
     else
       sign_in(user)
+      claim_pending_import_for(user)
       redirect_to root_path,
-                  notice: "#{label_for(pending)} is now linked to your account."
+                  notice: I18n.t('controllers.auth.account_links.pending_is_now_linked_to_your_account',
+                                 pending: label_for(pending))
     end
   end
 
   def email_fallback
     pending = pending_oauth_link
-    return redirect_to(new_user_session_path, alert: 'No pending account link.') unless pending
+    unless pending
+      return redirect_to(new_user_session_path,
+                         alert: I18n.t('controllers.auth.account_links.no_pending_account_link'))
+    end
 
     user = User.find_by(id: pending['user_id'])
-    return redirect_to(new_user_session_path, alert: 'Account no longer exists.') unless user
+    unless user
+      return redirect_to(new_user_session_path,
+                         alert: I18n.t('controllers.auth.account_links.account_no_longer_exists'))
+    end
 
     cache_key = "#{Auth::FindOrCreateOauthUser::LINK_EMAIL_RATE_LIMIT_KEY_PREFIX}#{user.id}"
     acquired = Rails.cache.write(cache_key, true,
@@ -111,8 +147,7 @@ class Auth::AccountLinksController < ApplicationController
     end
 
     redirect_to new_user_session_path,
-                notice: "We sent a confirmation link to #{user.email}. " \
-                        'Click it to link your account.'
+                notice: I18n.t('controllers.auth.account_links.confirmation_link_sent', email: user.email)
   end
 
   private
@@ -141,11 +176,11 @@ class Auth::AccountLinksController < ApplicationController
 
   def provider_label(provider)
     {
-      'apple' => 'Sign in with Apple',
-      'google' => 'Google',
-      'google_oauth2' => 'Google',
-      'github' => 'GitHub',
-      'openid_connect' => defined?(OIDC_PROVIDER_NAME) ? OIDC_PROVIDER_NAME : 'OpenID Connect'
+      'apple' => I18n.t('oauth_providers.sign_in_with_apple'),
+      'google' => I18n.t('oauth_providers.google'),
+      'google_oauth2' => I18n.t('oauth_providers.google'),
+      'github' => I18n.t('oauth_providers.github'),
+      'openid_connect' => defined?(OIDC_PROVIDER_NAME) ? OIDC_PROVIDER_NAME : I18n.t('oauth_providers.openid_connect')
     }.fetch(provider.to_s, provider.to_s.titleize)
   end
 end

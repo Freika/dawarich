@@ -117,6 +117,7 @@ RSpec.describe Users::Destroy do
 
       context 'when both monthly and yearly digest email jobs are scheduled for the user' do
         before do
+          Sidekiq.redis { |conn| conn.del('schedule') }
           Sidekiq.redis do |conn|
             conn.zadd(
               'schedule',

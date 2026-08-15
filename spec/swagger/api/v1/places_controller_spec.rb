@@ -3,6 +3,9 @@
 require 'swagger_helper'
 
 RSpec.describe 'Places API', type: :request do
+  let(:user) { create(:user) }
+  let(:api_key) { user.api_key }
+
   path '/api/v1/places' do
     get 'Retrieves all places for the authenticated user' do
       tags 'Places'
@@ -10,6 +13,10 @@ RSpec.describe 'Places API', type: :request do
       parameter name: :api_key, in: :query, type: :string, required: true, description: 'API key for authentication'
       parameter name: :tag_ids, in: :query, type: :array, items: { type: :integer }, required: false,
                 description: 'Filter places by tag IDs'
+      parameter name: :filter, in: :query, type: :string, required: false,
+                enum: %w[all manual confirmed tagged],
+                description: 'Visibility filter. Defaults to manual + confirmed-visit + tagged places. ' \
+                             'Use "all" for every place (including suggested-only), or "manual"/"confirmed"/"tagged".'
 
       response '200', 'places found' do
         schema type: :array,
@@ -41,11 +48,7 @@ RSpec.describe 'Places API', type: :request do
                  required: %w[id name latitude longitude]
                }
 
-        let(:user) { create(:user) }
-        let(:api_key) { user.api_key }
         let!(:place) { create(:place, user: user) }
-
-        after { |example| SwaggerResponseExample.capture(example, response) }
 
         run_test! do |response|
           data = JSON.parse(response.body)
@@ -93,9 +96,7 @@ RSpec.describe 'Places API', type: :request do
                  tags: { type: :array }
                }
 
-        let(:user) { create(:user) }
         let(:tag) { create(:tag, user: user) }
-        let(:api_key) { user.api_key }
         let(:place) do
           {
             name: 'Coffee Shop',
@@ -106,8 +107,6 @@ RSpec.describe 'Places API', type: :request do
           }
         end
 
-        after { |example| SwaggerResponseExample.capture(example, response) }
-
         run_test! do |response|
           data = JSON.parse(response.body)
           expect(data['name']).to eq('Coffee Shop')
@@ -116,8 +115,6 @@ RSpec.describe 'Places API', type: :request do
       end
 
       response '422', 'invalid request' do
-        let(:user) { create(:user) }
-        let(:api_key) { user.api_key }
         let(:place) { { name: '' } }
 
         run_test!
@@ -164,14 +161,10 @@ RSpec.describe 'Places API', type: :request do
                  }
                }
 
-        let(:user) { create(:user) }
-        let(:api_key) { user.api_key }
         let(:latitude) { 40.7589 }
         let(:longitude) { -73.9851 }
         let(:radius) { 1.0 }
         let(:limit) { 5 }
-
-        after { |example| SwaggerResponseExample.capture(example, response) }
 
         run_test! do |response|
           data = JSON.parse(response.body)
@@ -213,12 +206,8 @@ RSpec.describe 'Places API', type: :request do
                  tags: { type: :array }
                }
 
-        let(:user) { create(:user) }
-        let(:api_key) { user.api_key }
         let(:place) { create(:place, user: user) }
         let(:id) { place.id }
-
-        after { |example| SwaggerResponseExample.capture(example, response) }
 
         run_test! do |response|
           data = JSON.parse(response.body)
@@ -227,8 +216,6 @@ RSpec.describe 'Places API', type: :request do
       end
 
       response '404', 'place not found' do
-        let(:user) { create(:user) }
-        let(:api_key) { user.api_key }
         let(:id) { 'invalid' }
 
         run_test!
@@ -268,13 +255,9 @@ RSpec.describe 'Places API', type: :request do
                  tags: { type: :array }
                }
 
-        let(:user) { create(:user) }
-        let(:api_key) { user.api_key }
         let(:existing_place) { create(:place, user: user) }
         let(:id) { existing_place.id }
         let(:place) { { name: 'Updated Name' } }
-
-        after { |example| SwaggerResponseExample.capture(example, response) }
 
         run_test! do |response|
           data = JSON.parse(response.body)
@@ -283,8 +266,6 @@ RSpec.describe 'Places API', type: :request do
       end
 
       response '404', 'place not found' do
-        let(:user) { create(:user) }
-        let(:api_key) { user.api_key }
         let(:id) { 'invalid' }
         let(:place) { { name: 'Updated' } }
 
@@ -292,8 +273,6 @@ RSpec.describe 'Places API', type: :request do
       end
 
       response '422', 'invalid request' do
-        let(:user) { create(:user) }
-        let(:api_key) { user.api_key }
         let(:existing_place) { create(:place, user: user) }
         let(:id) { existing_place.id }
         let(:place) { { name: '' } }
@@ -317,8 +296,6 @@ RSpec.describe 'Places API', type: :request do
       parameter name: :api_key, in: :query, type: :string, required: true, description: 'API key for authentication'
 
       response '204', 'place deleted' do
-        let(:user) { create(:user) }
-        let(:api_key) { user.api_key }
         let(:place) { create(:place, user: user) }
         let(:id) { place.id }
 
@@ -326,8 +303,6 @@ RSpec.describe 'Places API', type: :request do
       end
 
       response '404', 'place not found' do
-        let(:user) { create(:user) }
-        let(:api_key) { user.api_key }
         let(:id) { 'invalid' }
 
         run_test!

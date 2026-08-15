@@ -766,6 +766,98 @@ paths:
                   error:
                     type: string
                     example: 'Missing required parameters: start_at, end_at'
+  "/api/v1/demo_data":
+    get:
+      summary: Checks whether demo data exists
+      tags:
+      - Demo Data
+      description: Returns whether the authenticated user has demo data loaded. Responds
+        404 on servers without demo-data support, which clients treat as the capability
+        signal.
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      responses:
+        '200':
+          description: demo data status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  exists:
+                    type: boolean
+                    description: Whether a demo import exists for the user
+                required:
+                - exists
+        '401':
+          description: unauthorized
+    post:
+      summary: Loads demo data
+      tags:
+      - Demo Data
+      description: Seeds the demo dataset (Berlin + Prague) for the authenticated
+        user. Returns 200 with status "exists" when demo data is already loaded.
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      responses:
+        '201':
+          description: demo data created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                    - created
+                    description: Result of the import
+                required:
+                - status
+        '401':
+          description: unauthorized
+    delete:
+      summary: Removes demo data
+      tags:
+      - Demo Data
+      description: Removes all demo data (points, visits, places, tags, tracks and
+        the demo trip) for the authenticated user. Real user data is not touched.
+        Returns status "no_demo_data" when there is nothing to remove.
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      responses:
+        '200':
+          description: demo data removed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                    - destroyed
+                    - no_demo_data
+                    description: Result of the removal
+                required:
+                - status
+        '401':
+          description: unauthorized
   "/api/v1/digests":
     get:
       summary: Lists all yearly digests
@@ -1004,8 +1096,8 @@ paths:
       tags:
       - Families
       description: Returns the last known locations of all family members who have
-        enabled location sharing. Requires the family feature to be enabled and the
-        user to be part of a family.
+        enabled location sharing. Requires the Family plan (any plan on self-hosted
+        instances) and the user to be part of a family.
       parameters:
       - name: api_key
         in: query
@@ -1033,8 +1125,25 @@ paths:
                   sharing_enabled:
                     type: boolean
                     description: Whether the current user has sharing enabled
-        '403':
+        '404':
           description: user not in a family
+        '403':
+          description: family plan required
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Always 'family_plan_required'
+                  message:
+                    type: string
+                    description: Human-readable explanation
+                  upgrade_url:
+                    type: string
+                    nullable: true
+                    description: URL to upgrade to the Family plan
         '401':
           description: unauthorized
   "/api/v1/families/locations/history":
@@ -1086,8 +1195,25 @@ paths:
                 properties:
                   error:
                     type: string
-        '403':
+        '404':
           description: user not in a family
+        '403':
+          description: family plan required
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Always 'family_plan_required'
+                  message:
+                    type: string
+                    description: Human-readable explanation
+                  upgrade_url:
+                    type: string
+                    nullable: true
+                    description: URL to upgrade to the Family plan
         '401':
           description: unauthorized
   "/api/v1/health":
@@ -1929,6 +2055,385 @@ paths:
                             description: Northeast longitude
         '401':
           description: unauthorized
+  "/api/v1/maps/hexagons/fog":
+    get:
+      summary: Retrieves fog of war hexagon cell ids
+      tags:
+      - Maps
+      description: Returns precalculated H3 cell ids covering the user's visited locations
+        within the specified date range, used by the fog of war hexagon rendering
+        mode
+      parameters:
+      - name: api_key
+        in: query
+        required: false
+        description: API Key
+        schema:
+          type: string
+      - name: start_date
+        in: query
+        required: true
+        description: Start date (ISO 8601 format)
+        schema:
+          type: string
+      - name: end_date
+        in: query
+        required: true
+        description: End date (ISO 8601 format)
+        schema:
+          type: string
+      responses:
+        '200':
+          description: cell ids found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  h3_indexes:
+                    type: array
+                    description: H3 cell ids covering visited locations
+                    items:
+                      type: string
+                  metadata:
+                    type: object
+                    properties:
+                      count:
+                        type: integer
+                        description: Number of cell ids returned
+        '400':
+          description: missing or invalid dates
+        '401':
+          description: unauthorized
+  "/api/v1/notes":
+    get:
+      summary: List notes
+      tags:
+      - Notes
+      parameters:
+      - name: Authorization
+        in: header
+        required: true
+        description: Bearer token
+        schema:
+          type: string
+      - name: attachable_type
+        in: query
+        required: false
+        description: Filter by attachable type (e.g. Trip)
+        schema:
+          type: string
+      - name: attachable_id
+        in: query
+        required: false
+        description: Filter by attachable ID
+        schema:
+          type: integer
+      - name: standalone
+        in: query
+        required: false
+        description: Set to "true" to return only standalone notes
+        schema:
+          type: string
+      responses:
+        '200':
+          description: notes found
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    title:
+                      type: string
+                      nullable: true
+                    body:
+                      type: string
+                      nullable: true
+                    latitude:
+                      type: number
+                      nullable: true
+                    longitude:
+                      type: number
+                      nullable: true
+                    attachable_type:
+                      type: string
+                      nullable: true
+                    attachable_id:
+                      type: integer
+                      nullable: true
+                    date:
+                      type: string
+                      nullable: true
+                      format: date
+                    noted_at:
+                      type: string
+                      format: datetime
+                    created_at:
+                      type: string
+                      format: datetime
+                    updated_at:
+                      type: string
+                      format: datetime
+                  required:
+                  - id
+                  - noted_at
+        '401':
+          description: unauthorized
+    post:
+      summary: Create note
+      tags:
+      - Notes
+      parameters:
+      - name: Authorization
+        in: header
+        required: true
+        description: Bearer token
+        schema:
+          type: string
+      responses:
+        '201':
+          description: note created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  title:
+                    type: string
+                    nullable: true
+                  body:
+                    type: string
+                    nullable: true
+                  latitude:
+                    type: number
+                    nullable: true
+                  longitude:
+                    type: number
+                    nullable: true
+                  attachable_type:
+                    type: string
+                    nullable: true
+                  attachable_id:
+                    type: integer
+                    nullable: true
+                  date:
+                    type: string
+                    nullable: true
+                    format: date
+                  noted_at:
+                    type: string
+                    format: datetime
+                  created_at:
+                    type: string
+                    format: datetime
+                  updated_at:
+                    type: string
+                    format: datetime
+        '422':
+          description: invalid request
+        '401':
+          description: unauthorized
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                note:
+                  type: object
+                  properties:
+                    title:
+                      type: string
+                    body:
+                      type: string
+                    latitude:
+                      type: number
+                    longitude:
+                      type: number
+                    attachable_type:
+                      type: string
+                    attachable_id:
+                      type: integer
+                    noted_at:
+                      type: string
+                      format: datetime
+                  required:
+                  - noted_at
+  "/api/v1/notes/{id}":
+    get:
+      summary: Show note
+      tags:
+      - Notes
+      parameters:
+      - name: id
+        in: path
+        required: true
+        description: Note ID
+        schema:
+          type: integer
+      - name: Authorization
+        in: header
+        required: true
+        description: Bearer token
+        schema:
+          type: string
+      responses:
+        '200':
+          description: note found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  title:
+                    type: string
+                    nullable: true
+                  body:
+                    type: string
+                    nullable: true
+                  latitude:
+                    type: number
+                    nullable: true
+                  longitude:
+                    type: number
+                    nullable: true
+                  attachable_type:
+                    type: string
+                    nullable: true
+                  attachable_id:
+                    type: integer
+                    nullable: true
+                  date:
+                    type: string
+                    nullable: true
+                    format: date
+                  noted_at:
+                    type: string
+                    format: datetime
+                  created_at:
+                    type: string
+                    format: datetime
+                  updated_at:
+                    type: string
+                    format: datetime
+        '404':
+          description: note not found
+        '401':
+          description: unauthorized
+    patch:
+      summary: Update note
+      tags:
+      - Notes
+      parameters:
+      - name: id
+        in: path
+        required: true
+        description: Note ID
+        schema:
+          type: integer
+      - name: Authorization
+        in: header
+        required: true
+        description: Bearer token
+        schema:
+          type: string
+      responses:
+        '200':
+          description: note updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  title:
+                    type: string
+                    nullable: true
+                  body:
+                    type: string
+                    nullable: true
+                  latitude:
+                    type: number
+                    nullable: true
+                  longitude:
+                    type: number
+                    nullable: true
+                  attachable_type:
+                    type: string
+                    nullable: true
+                  attachable_id:
+                    type: integer
+                    nullable: true
+                  date:
+                    type: string
+                    nullable: true
+                    format: date
+                  noted_at:
+                    type: string
+                    format: datetime
+                  created_at:
+                    type: string
+                    format: datetime
+                  updated_at:
+                    type: string
+                    format: datetime
+        '404':
+          description: note not found
+        '401':
+          description: unauthorized
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                note:
+                  type: object
+                  properties:
+                    title:
+                      type: string
+                    body:
+                      type: string
+                    latitude:
+                      type: number
+                    longitude:
+                      type: number
+                    noted_at:
+                      type: string
+                      format: datetime
+    delete:
+      summary: Delete note
+      tags:
+      - Notes
+      parameters:
+      - name: id
+        in: path
+        required: true
+        description: Note ID
+        schema:
+          type: integer
+      - name: Authorization
+        in: header
+        required: true
+        description: Bearer token
+        schema:
+          type: string
+      responses:
+        '200':
+          description: note deleted
+        '404':
+          description: note not found
+        '401':
+          description: unauthorized
   "/api/v1/overland/batches":
     post:
       summary: Creates a batch of points
@@ -2373,6 +2878,19 @@ paths:
         description: Filter places by tag IDs
         schema:
           type: array
+      - name: filter
+        in: query
+        required: false
+        enum:
+        - all
+        - manual
+        - confirmed
+        - tagged
+        description: "Visibility filter. Defaults to manual + confirmed-visit + tagged
+          places. Use \"all\" for every place (including suggested-only), or \"manual\"/\"confirmed\"/\"tagged\".:\n
+          * `all` \n * `manual` \n * `confirmed` \n * `tagged` \n "
+        schema:
+          type: string
       responses:
         '200':
           description: places found
@@ -2953,7 +3471,9 @@ paths:
                     raw_data:
                       type: string
                       nullable: true
-                      description: Raw data from the tracking device
+                      description: Raw payload from live tracking devices. Empty for
+                        points imported from files — the uploaded file keeps the original
+                        data.
                     import_id:
                       type: string
                       nullable: true
@@ -3373,6 +3893,168 @@ paths:
                     type: string
         '401':
           description: unauthorized
+  "/api/v1/settings/mobile":
+    get:
+      summary: Retrieves mobile app settings
+      tags:
+      - Settings
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      responses:
+        '200':
+          description: mobile settings found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  settings:
+                    type: object
+                    properties:
+                      tracking_mode:
+                        type: string
+                        example: precise
+                        enum:
+                        - precise
+                        - significant
+                      tracking_visits:
+                        type: boolean
+                        example: true
+                      track_visits_independently:
+                        type: boolean
+                        example: false
+                      auto_start:
+                        type: boolean
+                        example: true
+                      distance_filter:
+                        type: number
+                        example: 100
+                      time_filter:
+                        type: number
+                        example: 10
+                      track_break:
+                        type: number
+                        example: 30
+                      accuracy:
+                        type: number
+                        example: 3
+                      show_background_location_indicator:
+                        type: boolean
+                        example: true
+                      upload_automatically:
+                        type: boolean
+                        example: true
+                      upload_all_on_tracking_stop:
+                        type: boolean
+                        example: false
+                      batch_size:
+                        type: number
+                        example: 100
+                  updated_at:
+                    type: string
+                    nullable: true
+                    example: '2026-07-01T10:00:00Z'
+                  status:
+                    type: string
+                    example: success
+        '401':
+          description: unauthorized
+    patch:
+      summary: Updates mobile app settings
+      tags:
+      - Settings
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      responses:
+        '200':
+          description: mobile settings updated
+        '401':
+          description: unauthorized
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                tracking_mode:
+                  type: string
+                  example: precise
+                  enum:
+                  - precise
+                  - significant
+                  description: Location tracking mode
+                tracking_visits:
+                  type: boolean
+                  example: true
+                  description: Whether visit tracking is enabled
+                track_visits_independently:
+                  type: boolean
+                  example: false
+                  description: Whether visits are tracked independently of route tracking
+                auto_start:
+                  type: boolean
+                  example: true
+                  description: Whether tracking starts automatically
+                distance_filter:
+                  type: number
+                  example: 100
+                  description: Minimum distance between tracked points in meters (1-10000)
+                time_filter:
+                  type: number
+                  example: 10
+                  description: Minimum time between tracked points in seconds (1-3600)
+                track_break:
+                  type: number
+                  example: 30
+                  description: Minutes of inactivity before a track is split (1-1440)
+                accuracy:
+                  type: number
+                  example: 3
+                  description: Location accuracy level (1-6)
+                show_background_location_indicator:
+                  type: boolean
+                  example: true
+                  description: Whether the OS background-location indicator is shown
+                    (iOS)
+                upload_automatically:
+                  type: boolean
+                  example: true
+                  description: Whether points upload automatically while tracking
+                upload_all_on_tracking_stop:
+                  type: boolean
+                  example: false
+                  description: Whether pending points upload when tracking stops
+                batch_size:
+                  type: number
+                  example: 100
+                  description: Number of points per automatic upload batch (1-1000)
+            examples:
+              '0':
+                summary: Updates mobile app settings
+                value:
+                  settings:
+                    tracking_mode: precise
+                    tracking_visits: true
+                    track_visits_independently: false
+                    auto_start: true
+                    distance_filter: 100
+                    time_filter: 10
+                    track_break: 30
+                    accuracy: 3
+                    show_background_location_indicator: true
+                    upload_automatically: true
+                    upload_all_on_tracking_stop: false
+                    batch_size: 100
   "/api/v1/settings":
     patch:
       summary: Updates user settings
@@ -3460,6 +4142,16 @@ paths:
                   type: number
                   example: 100
                   description: Fog of war threshold value
+                maps:
+                  type: object
+                  properties:
+                    distance_unit:
+                      type: string
+                      enum:
+                      - km
+                      - mi
+                      example: km
+                      description: Distance unit used for displayed distances
             examples:
               '0':
                 summary: Updates user settings
@@ -3481,6 +4173,8 @@ paths:
                     photoprism_api_key: your-photoprism-api-key
                     speed_color_scale: viridis
                     fog_of_war_threshold: 100
+                    maps:
+                      distance_unit: km
     get:
       summary: Retrieves user settings
       tags:
@@ -4761,6 +5455,9 @@ paths:
                       type: string
                     place_id:
                       type: integer
+                    area_id:
+                      type: integer
+                      nullable: true
                     status:
                       type: string
                       enum:
@@ -4820,17 +5517,44 @@ paths:
                   type: object
                   properties:
                     id:
-                      type: integer
+                      type:
+                      - integer
+                      - 'null'
                     name:
                       type: string
                     latitude:
                       type: number
                     longitude:
                       type: number
+                    osm_id:
+                      type:
+                      - integer
+                      - string
+                      - 'null'
+                    osm_type:
+                      type:
+                      - string
+                      - 'null'
+                    osm_key:
+                      type:
+                      - string
+                      - 'null'
+                    osm_value:
+                      type:
+                      - string
+                      - 'null'
                     city:
-                      type: string
+                      type:
+                      - string
+                      - 'null'
                     country:
+                      type:
+                      - string
+                      - 'null'
+                    source:
                       type: string
+                    geodata:
+                      type: object
         '404':
           description: visit not found
         '401':

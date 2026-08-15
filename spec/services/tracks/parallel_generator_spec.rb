@@ -280,8 +280,12 @@ RSpec.describe Tracks::ParallelGenerator do
       it 'passes correct parameters to each job' do
         generator.send(:enqueue_chunk_jobs, session_id, chunks)
 
-        expect(Tracks::TimeChunkProcessorJob).to have_been_enqueued.with(user.id, session_id, chunks[0])
-        expect(Tracks::TimeChunkProcessorJob).to have_been_enqueued.with(user.id, session_id, chunks[1])
+        expect(Tracks::TimeChunkProcessorJob).to have_been_enqueued.with(
+          user.id, session_id, chunks[0].merge(untracked_only: false)
+        )
+        expect(Tracks::TimeChunkProcessorJob).to have_been_enqueued.with(
+          user.id, session_id, chunks[1].merge(untracked_only: false)
+        )
       end
     end
 
@@ -366,6 +370,37 @@ RSpec.describe Tracks::ParallelGenerator do
           expect(range.end).to eq(Date.current.end_of_day.to_i)
         end
       end
+    end
+  end
+
+  describe 'job_queue' do
+    let(:user) { create(:user) }
+
+    let!(:earlier_point) { create(:point, user: user, timestamp: 2.days.ago.to_i) }
+    let!(:later_point) { create(:point, user: user, timestamp: 1.day.ago.to_i) }
+
+    def enqueued(job_class)
+      ActiveJob::Base.queue_adapter.enqueued_jobs.select { |job| job[:job] == job_class }
+    end
+
+    it 'keeps chunk and boundary jobs on :tracks by default' do
+      described_class.new(user, mode: :bulk).call
+
+      expect(enqueued(Tracks::TimeChunkProcessorJob).map { |job| job[:queue] }.uniq).to eq(['tracks'])
+      expect(enqueued(Tracks::BoundaryResolverJob).map { |job| job[:queue] }.uniq).to eq(['tracks'])
+    end
+
+    it 'moves both onto the requested queue when one is given' do
+      described_class.new(user, mode: :bulk, job_queue: :low_priority).call
+
+      expect(enqueued(Tracks::TimeChunkProcessorJob).map { |job| job[:queue] }.uniq).to eq(['low_priority'])
+      expect(enqueued(Tracks::BoundaryResolverJob).map { |job| job[:queue] }.uniq).to eq(['low_priority'])
+    end
+
+    it 'still delays the boundary resolver when a queue is given' do
+      described_class.new(user, mode: :bulk, job_queue: :low_priority).call
+
+      expect(enqueued(Tracks::BoundaryResolverJob).first[:at]).to be_present
     end
   end
 end

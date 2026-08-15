@@ -9,21 +9,24 @@ class Api::V1::PhotosController < ApiController
   def index
     cache_key = "photos_#{current_api_user.id}_#{params[:start_date]}_#{params[:end_date]}"
     cached_photos = Rails.cache.read(cache_key)
-    return render json: cached_photos, status: :ok unless cached_photos.nil?
+    return render json: cached_photos, status: :ok if cached_photos.present?
 
     search = Photos::Search.new(current_api_user, start_date: params[:start_date], end_date: params[:end_date])
     @photos = search.call
-    Rails.cache.write(cache_key, @photos, expires_in: 30.minutes) if search.errors.blank?
+    Rails.cache.write(cache_key, @photos, expires_in: 30.minutes) if search.errors.blank? && @photos.present?
 
     render json: @photos, status: :ok
   rescue StandardError => e
     Rails.logger.error("Photo search failed: #{e.message}")
-    render json: { error: 'Failed to fetch photos' }, status: :bad_gateway
+    render json: { error: I18n.t('controllers.api.v1.photos.failed_to_fetch_photos') }, status: :bad_gateway
   end
 
   def thumbnail
     upstream = Photos::Thumbnail.new(current_api_user, params[:source], params[:id]).call
     handle_thumbnail_response(upstream)
+  rescue *Photos::ConnectionErrors::HANDLED => e
+    Rails.logger.error("Photo thumbnail fetch failed: #{e.message}")
+    render json: { error: I18n.t('controllers.api.v1.photos.failed_to_fetch_photos') }, status: :bad_gateway
   end
 
   private
@@ -41,7 +44,7 @@ class Api::V1::PhotosController < ApiController
   def thumbnail_error(response)
     return Immich::ResponseAnalyzer.new(response).error_message if params[:source] == 'immich'
 
-    'Failed to fetch thumbnail'
+    I18n.t('controllers.api.v1.photos.failed_to_fetch_thumbnail')
   end
 
   def integration_configured?
@@ -57,7 +60,11 @@ class Api::V1::PhotosController < ApiController
   end
 
   def unauthorized_integration
-    render json: { error: "#{params[:source]&.capitalize} integration not configured" },
+    error = I18n.t(
+      'controllers.api.v1.photos.capitalize_integration_not_configured',
+      source: params[:source]&.capitalize
+    )
+    render json: { error: error },
            status: :unauthorized
   end
 end

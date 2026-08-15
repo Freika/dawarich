@@ -122,8 +122,6 @@ description: 'Local date and time the photo was taken' },
                  required: %w[id latitude longitude localDateTime originalFileName city state country type source]
                }
 
-        after { |example| SwaggerResponseExample.capture(example, response) }
-
         run_test! do |response|
           data = JSON.parse(response.body)
           expect(data).to be_an(Array)

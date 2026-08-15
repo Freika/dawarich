@@ -3,10 +3,19 @@
 require 'rails_helper'
 
 RSpec.describe ApplicationHelper, type: :helper do
+  describe '#javascript_translations' do
+    it 'forces a Turbo reload when the locale-dependent payload changes' do
+      script = Nokogiri::HTML.fragment(helper.javascript_translations).at_css('#i18n-translations')
+
+      expect(script['data-turbo-track']).to eq('reload')
+      expect(script['data-turbo-permanent']).to be_nil
+    end
+  end
+
   describe '#pro_badge_tag' do
-    context 'when user is not lite' do
+    context 'when user has full access' do
       before do
-        allow(helper).to receive(:current_user).and_return(double(lite?: false))
+        allow(helper).to receive(:current_user).and_return(double(plan_restricted?: false))
       end
 
       it 'returns nil' do
@@ -14,8 +23,8 @@ RSpec.describe ApplicationHelper, type: :helper do
       end
     end
 
-    context 'when user is lite' do
-      let(:fake_user) { double(lite?: true, generate_subscription_token: 'test_token') }
+    context 'when user is plan-restricted' do
+      let(:fake_user) { double(plan_restricted?: true, generate_subscription_token: 'test_token') }
 
       before do
         allow(helper).to receive(:current_user).and_return(fake_user)
@@ -88,6 +97,46 @@ RSpec.describe ApplicationHelper, type: :helper do
       it 'returns empty string without invoking JWT generation' do
         # Would raise KeyError on self-hosted (no JWT_SECRET_KEY) if not guarded.
         expect(helper.upgrade_url).to eq('')
+      end
+    end
+  end
+
+  describe '#family_upgrade_url' do
+    let(:secret) { ENV.fetch('JWT_SECRET_KEY', 'test_secret') }
+
+    def token_from(url)
+      url[/token=([^&]+)/, 1]
+    end
+
+    def decode(token)
+      JWT.decode(token, secret, true, { algorithm: 'HS256' }).first
+    end
+
+    context 'on cloud instances' do
+      let(:user) { create(:user) }
+
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        allow(helper).to receive(:current_user).and_return(user)
+        stub_const('MANAGER_URL', 'https://manager.example.com')
+      end
+
+      it 'embeds a token whose payload carries the family plan and annual interval' do
+        url = helper.family_upgrade_url
+
+        expect(url).to start_with('https://manager.example.com/auth/dawarich?token=')
+        payload = decode(token_from(url))
+        expect(payload['plan']).to eq('family')
+        expect(payload['interval']).to eq('annual')
+        expect(payload['user_id']).to eq(user.id)
+      end
+    end
+
+    context 'on self-hosted instances' do
+      before { allow(DawarichSettings).to receive(:self_hosted?).and_return(true) }
+
+      it 'returns an empty string' do
+        expect(helper.family_upgrade_url).to eq('')
       end
     end
   end
@@ -234,6 +283,31 @@ RSpec.describe ApplicationHelper, type: :helper do
     end
   end
 
+  describe '#apple_web_sign_in_available?' do
+    context 'when APPLE_WEB_SIGN_IN_ENABLED is true' do
+      before { stub_const('APPLE_WEB_SIGN_IN_ENABLED', true) }
+
+      it 'is available on a desktop browser' do
+        allow(helper).to receive(:mobile_browser?).and_return(false)
+        expect(helper.apple_web_sign_in_available?).to be true
+      end
+
+      it 'is hidden on a mobile browser (embedded webview cannot complete the flow)' do
+        allow(helper).to receive(:mobile_browser?).and_return(true)
+        expect(helper.apple_web_sign_in_available?).to be false
+      end
+    end
+
+    context 'when APPLE_WEB_SIGN_IN_ENABLED is false' do
+      before { stub_const('APPLE_WEB_SIGN_IN_ENABLED', false) }
+
+      it 'is hidden even on a desktop browser' do
+        allow(helper).to receive(:mobile_browser?).and_return(false)
+        expect(helper.apple_web_sign_in_available?).to be false
+      end
+    end
+  end
+
   describe '#oauth_button_config' do
     context 'when provider is google_oauth2' do
       subject(:config) { helper.oauth_button_config(:google_oauth2) }
@@ -331,6 +405,34 @@ RSpec.describe ApplicationHelper, type: :helper do
     end
   end
 
+  describe '#oauth_provider_display_name' do
+    it 'maps google_oauth2 to Google' do
+      expect(helper.oauth_provider_display_name('google_oauth2')).to eq('Google')
+    end
+
+    it 'maps the legacy google value to Google' do
+      expect(helper.oauth_provider_display_name('google')).to eq('Google')
+    end
+
+    it 'maps apple to Apple' do
+      expect(helper.oauth_provider_display_name('apple')).to eq('Apple')
+    end
+
+    it 'maps github to GitHub' do
+      expect(helper.oauth_provider_display_name('github')).to eq('GitHub')
+    end
+
+    it 'maps openid_connect to the configured OIDC provider name' do
+      stub_const('OIDC_PROVIDER_NAME', 'Authentik')
+
+      expect(helper.oauth_provider_display_name('openid_connect')).to eq('Authentik')
+    end
+
+    it 'falls back to a humanized name for unknown providers' do
+      expect(helper.oauth_provider_display_name('gitlab')).to eq('Gitlab')
+    end
+  end
+
   describe '#email_password_registration_enabled?' do
     context 'in cloud mode' do
       before do
@@ -385,8 +487,8 @@ RSpec.describe ApplicationHelper, type: :helper do
         allow(DawarichSettings).to receive(:oidc_enabled?).and_return(false)
       end
 
-      it 'returns true regardless of ALLOW_EMAIL_PASSWORD_REGISTRATION' do
-        stub_const('ALLOW_EMAIL_PASSWORD_REGISTRATION', false)
+      it 'returns true regardless of ALLOW_EMAIL_PASSWORD_LOGIN' do
+        stub_const('ALLOW_EMAIL_PASSWORD_LOGIN', false)
 
         expect(helper.email_password_login_enabled?).to be true
       end
@@ -394,13 +496,11 @@ RSpec.describe ApplicationHelper, type: :helper do
 
     context 'in cloud mode with OAuth providers (GitHub/Google)' do
       before do
-        # Cloud mode: self_hosted? is false, so oidc_enabled? returns false
-        # even if there are OAuth providers configured
         allow(DawarichSettings).to receive(:oidc_enabled?).and_return(false)
       end
 
       it 'always returns true (OAuth is supplementary to email/password)' do
-        stub_const('ALLOW_EMAIL_PASSWORD_REGISTRATION', false)
+        stub_const('ALLOW_EMAIL_PASSWORD_LOGIN', false)
 
         expect(helper.email_password_login_enabled?).to be true
       end
@@ -411,9 +511,9 @@ RSpec.describe ApplicationHelper, type: :helper do
         allow(DawarichSettings).to receive(:oidc_enabled?).and_return(true)
       end
 
-      context 'when ALLOW_EMAIL_PASSWORD_REGISTRATION is true' do
+      context 'when ALLOW_EMAIL_PASSWORD_LOGIN is true' do
         before do
-          stub_const('ALLOW_EMAIL_PASSWORD_REGISTRATION', true)
+          stub_const('ALLOW_EMAIL_PASSWORD_LOGIN', true)
         end
 
         it 'returns true' do
@@ -421,9 +521,9 @@ RSpec.describe ApplicationHelper, type: :helper do
         end
       end
 
-      context 'when ALLOW_EMAIL_PASSWORD_REGISTRATION is false' do
+      context 'when ALLOW_EMAIL_PASSWORD_LOGIN is false' do
         before do
-          stub_const('ALLOW_EMAIL_PASSWORD_REGISTRATION', false)
+          stub_const('ALLOW_EMAIL_PASSWORD_LOGIN', false)
         end
 
         it 'returns false (OIDC-only mode)' do
@@ -510,92 +610,28 @@ RSpec.describe ApplicationHelper, type: :helper do
   end
 
   describe '#preferred_map_path' do
-    context 'when user is not signed in' do
-      before do
-        allow(helper).to receive(:user_signed_in?).and_return(false)
-      end
-
-      it 'returns map_v2_path by default' do
-        expect(helper.preferred_map_path).to eq(helper.map_v2_path)
-      end
+    it 'returns map_v2_path' do
+      expect(helper.preferred_map_path).to eq(helper.map_v2_path)
     end
 
-    context 'when user is signed in' do
+    it 'passes query params through' do
+      params = { start_at: '2025-01-01T00:00', end_at: '2025-12-31T23:59' }
+
+      expect(helper.preferred_map_path(params)).to eq(helper.map_v2_path(params))
+    end
+
+    context 'when a user still carries the legacy v1 preference' do
       let(:user) { create(:user) }
 
       before do
         allow(helper).to receive(:user_signed_in?).and_return(true)
         allow(helper).to receive(:current_user).and_return(user)
+        user.settings['maps'] = { 'preferred_version' => 'v1', 'distance_unit' => 'km' }
+        user.save
       end
 
-      context 'when user has no preferred_version set' do
-        before do
-          user.settings['maps'] = { 'distance_unit' => 'km' }
-          user.save
-        end
-
-        it 'returns map_v2_path as the default' do
-          expect(helper.preferred_map_path).to eq(helper.map_v2_path)
-        end
-      end
-
-      context 'when user has preferred_version set to v1' do
-        before do
-          user.settings['maps'] = { 'preferred_version' => 'v1', 'distance_unit' => 'km' }
-          user.save
-        end
-
-        it 'returns map_v1_path' do
-          expect(helper.preferred_map_path).to eq(helper.map_v1_path)
-        end
-      end
-
-      context 'when user has preferred_version set to v2' do
-        before do
-          user.settings['maps'] = { 'preferred_version' => 'v2', 'distance_unit' => 'km' }
-          user.save
-        end
-
-        it 'returns map_v2_path' do
-          expect(helper.preferred_map_path).to eq(helper.map_v2_path)
-        end
-      end
-
-      context 'when user has no maps settings at all' do
-        before do
-          user.settings.delete('maps')
-          user.save
-        end
-
-        it 'returns map_v2_path as the default' do
-          expect(helper.preferred_map_path).to eq(helper.map_v2_path)
-        end
-      end
-
-      context 'when called with query params' do
-        let(:params) { { start_at: '2025-01-01T00:00', end_at: '2025-12-31T23:59' } }
-
-        context 'when preferred version is v1' do
-          before do
-            user.settings['maps'] = { 'preferred_version' => 'v1' }
-            user.save
-          end
-
-          it 'returns map_v1_path with query params' do
-            expect(helper.preferred_map_path(params)).to eq(helper.map_v1_path(params))
-          end
-        end
-
-        context 'when preferred version is v2' do
-          before do
-            user.settings['maps'] = { 'preferred_version' => 'v2' }
-            user.save
-          end
-
-          it 'returns map_v2_path with query params' do
-            expect(helper.preferred_map_path(params)).to eq(helper.map_v2_path(params))
-          end
-        end
+      it 'still returns map_v2_path' do
+        expect(helper.preferred_map_path).to eq(helper.map_v2_path)
       end
     end
   end

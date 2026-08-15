@@ -1,9 +1,12 @@
 import { Controller } from "@hotwired/stimulus"
+import { formatNumber, translate } from "i18n"
 import { Toast } from "maps_maplibre/components/toast"
-import { ReplayManager } from "maps_maplibre/managers/replay_manager"
+import { ReplayPanel } from "maps_maplibre/managers/replay_panel"
 import { ApiClient } from "maps_maplibre/services/api_client"
 import { CleanupHelper } from "maps_maplibre/utils/cleanup_helper"
+import { featureToPhoto } from "maps_maplibre/utils/feature_to_photo"
 import { cancelAllPreviews } from "maps_maplibre/utils/layer_gate"
+import { loadLastView, saveView } from "maps_maplibre/utils/map_view_store"
 import { performanceMonitor } from "maps_maplibre/utils/performance_monitor"
 import { SearchManager } from "maps_maplibre/utils/search_manager"
 import { SettingsManager } from "maps_maplibre/utils/settings_manager"
@@ -32,6 +35,7 @@ export default class extends Controller {
     timezone: String,
     userPlan: { type: String, default: "pro" },
     upgradeUrl: { type: String, default: "" },
+    importId: { type: String, default: "" },
   }
 
   static targets = [
@@ -51,15 +55,16 @@ export default class extends Controller {
     "minutesBetweenValue",
     "minMinutesInCityValue",
     "maxGapMinutesValue",
-    "gpsAccuracyThresholdValue",
     "gpsFilteringToggle",
     // Search
     "searchInput",
     "searchResults",
     // Layer toggles
     "pointsToggle",
+    "pointsEditToggle",
     "routesToggle",
     "heatmapToggle",
+    "hexagonsToggle",
     "visitsToggle",
     "photosToggle",
     "areasToggle",
@@ -68,6 +73,8 @@ export default class extends Controller {
     "scratchToggle",
     "anomaliesToggle",
     "familyToggle",
+    "flightsToggle",
+    "tracksToggle",
     // Speed-colored routes
     "routesOptions",
     "speedColoredToggle",
@@ -81,6 +88,10 @@ export default class extends Controller {
     // Area selection
     "selectAreaButton",
     "selectionActions",
+    "deletePointsButton",
+    "deleteButtonText",
+    "deleteAnomaliesButton",
+    "deleteAnomaliesButtonText",
     "selectedVisitsContainer",
     "selectedVisitsBulkActions",
     // Info display
@@ -97,40 +108,8 @@ export default class extends Controller {
     "routeSpeed",
     "routeSpeedContainer",
     "routePoints",
-    // Transportation mode thresholds
+    // Transportation mode detection
     "transportationCollapseToggle",
-    "transportationExpertToggle",
-    "transportationBasicSettings",
-    "transportationExpertSettings",
-    // Transportation speed inputs
-    "walkingMaxSpeedInput",
-    "cyclingMaxSpeedInput",
-    "drivingMaxSpeedInput",
-    "flyingMinSpeedInput",
-    // Transportation speed value displays
-    "walkingMaxSpeedValue",
-    "cyclingMaxSpeedValue",
-    "drivingMaxSpeedValue",
-    "flyingMinSpeedValue",
-    // Transportation expert inputs
-    "stationaryMaxSpeedInput",
-    "trainMinSpeedInput",
-    "runningVsCyclingAccelInput",
-    "cyclingVsDrivingAccelInput",
-    "minSegmentDurationInput",
-    "timeGapThresholdInput",
-    "minFlightDistanceInput",
-    // Transportation expert value displays
-    "stationaryMaxSpeedValue",
-    "trainMinSpeedValue",
-    "runningVsCyclingAccelValue",
-    "cyclingVsDrivingAccelValue",
-    "minSegmentDurationValue",
-    "timeGapThresholdValue",
-    "minFlightDistanceValue",
-    // Transportation unit labels
-    "speedUnitLabel",
-    "distanceUnitLabel",
     // Transportation recalculation status
     "transportationRecalculationAlert",
     "transportationLockedMessage",
@@ -150,12 +129,11 @@ export default class extends Controller {
     "replayDataIndicator",
     "replayCycleControls",
     "replayPointCounter",
-    "replayPrevDayButton",
-    "replayNextDayButton",
     // Timeline feed
     "timelineFeedContainer",
     // Replay playback
     "replayPlayButton",
+    "replayFollowButton",
     "replayPlayIcon",
     "replayPauseIcon",
     "replaySpeedSlider",
@@ -167,6 +145,10 @@ export default class extends Controller {
   ]
 
   async connect() {
+    // Reset in case this controller instance is reconnected after a prior
+    // disconnect (so the mid-init teardown guard doesn't fire on a fresh map).
+    this._disconnected = false
+
     if (!this.isWebGLSupported()) {
       this.showWebGLError()
       return
@@ -196,10 +178,20 @@ export default class extends Controller {
     this.settingsController.syncToggleStates()
 
     await this.initializeMap()
+    // initializeMap bails without setting this.map if the controller
+    // disconnected mid-init (fast Turbo nav); don't build managers on a
+    // dead controller with an undefined map.
+    if (this._disconnected) return
+
     this.initializeAPI()
 
     // Initialize managers
-    this.layerManager = new LayerManager(this.map, this.settings, this.api)
+    this.layerManager = new LayerManager(
+      this.map,
+      this.settings,
+      this.api,
+      this,
+    )
     this.dataLoader = new DataLoader(this.api, this.apiKeyValue, this.settings)
     this.eventHandlers = new EventHandlers(this.map, this)
     this.filterManager = new FilterManager(this.dataLoader)
@@ -208,6 +200,13 @@ export default class extends Controller {
     // Initialize feature managers
     this.areaSelectionManager = new AreaSelectionManager(this)
     this.visitsManager = new VisitsManager(this)
+    // The moveend viewport-refetch normally attaches when the user flips the
+    // Visits toggle on. When the layer starts enabled (saved setting or the
+    // panel=timeline force-enable above), attach it here so panning keeps
+    // the dots in sync with the viewport.
+    if (this.settings.visitsEnabled) {
+      this.visitsManager.attachViewportRefetch()
+    }
     this.placesManager = new PlacesManager(this)
     this.routesManager = new RoutesManager(this)
 
@@ -317,6 +316,14 @@ export default class extends Controller {
       this.boundHandleAreaCreated,
     )
 
+    // Re-use the same refresh path for area edits — both create and update
+    // need the areas layer rebuilt from the API.
+    this.cleanup.addEventListener(
+      document,
+      "area:updated",
+      this.boundHandleAreaCreated,
+    )
+
     // Format initial dates
     this.startDateValue = DateManager.formatDateForAPI(
       new Date(this.startDateValue),
@@ -329,6 +336,9 @@ export default class extends Controller {
       if (this.settings?.familyEnabled) {
         this.loadFamilyMembers()
       }
+      if (this.settings?.anomaliesEnabled) {
+        this.routesManager.refreshAnomalies({ enabled: true })
+      }
     })
 
     // Show family members list immediately (doesn't depend on layer)
@@ -338,13 +348,15 @@ export default class extends Controller {
   }
 
   disconnect() {
+    this._disconnected = true
     if (this._familyHistoryTimer) clearTimeout(this._familyHistoryTimer)
-    this._stopReplayPlayback()
+    this.replayPanel?.destroy()
     this.settingsController?.stopRecalculationPolling()
     this.searchManager?.destroy()
     this.visitsManager?.destroy()
     this.eventHandlers?.destroy()
     cancelAllPreviews()
+    if (this._persistView) this.map?.off("moveend", this._persistView)
     this.cleanup.cleanup()
     this.map?.remove()
     performanceMonitor.logReport()
@@ -368,19 +380,39 @@ export default class extends Controller {
    * Initialize MapLibre map
    */
   async initializeMap() {
-    this.map = await MapInitializer.initialize(this.containerTarget, {
+    // Reopen at the user's last viewport instead of the zoomed-out globe.
+    // When the date range has data, fitBounds overrides this; when it has
+    // none, the map stays on the last-known view rather than the world.
+    const lastView = loadLastView(this.apiKeyValue)
+
+    const map = await MapInitializer.initialize(this.containerTarget, {
       mapStyle: this.settings.mapStyle,
       globeProjection: this.settings.globeProjection,
       hiddenTileCategories: this.settings.hiddenTileCategories || [],
       disabledPoiGroups: this.settings.disabledPoiGroups || [],
+      customTheme: this.settings.customTheme,
+      vectorTilesUrl: this.settings.vectorTilesUrl,
+      ...(lastView ? { center: lastView.center, zoom: lastView.zoom } : {}),
     })
+
+    // The controller may have disconnected while the style was loading (e.g.
+    // fast Turbo navigation). Tear the map down instead of attaching a listener
+    // to an orphaned instance that disconnect() can no longer reach.
+    if (this._disconnected) {
+      map.remove()
+      return
+    }
+
+    this.map = map
+    this._persistView = () => saveView(this.map, this.apiKeyValue)
+    this.map.on("moveend", this._persistView)
   }
 
   /**
    * Initialize API client
    */
   initializeAPI() {
-    this.api = new ApiClient(this.apiKeyValue)
+    this.api = new ApiClient(this.apiKeyValue, this.importIdValue || null)
   }
 
   /**
@@ -452,7 +484,11 @@ export default class extends Controller {
     this.endDateValue = end
 
     this._clearDayHighlight?.()
-    this.loadMapData()
+    this.loadMapData().then(() => {
+      if (this.settings?.anomaliesEnabled) {
+        this.routesManager.refreshAnomalies({ enabled: true })
+      }
+    })
     this.refreshTimelineFeedIfActive?.()
     this.debouncedLoadFamilyHistory?.()
   }
@@ -472,7 +508,7 @@ export default class extends Controller {
       this.progressBadgeTarget.classList.add("visible")
     }
     if (this.hasProgressBadgeTextTarget) {
-      this.progressBadgeTextTarget.textContent = "Loading..."
+      this.progressBadgeTextTarget.textContent = translate("common.loading")
     }
   }
 
@@ -517,13 +553,23 @@ export default class extends Controller {
     const counts = this._lastLoadingCounts || {}
     const parts = []
     for (const [source, count] of Object.entries(counts)) {
-      parts.push(`${count.toLocaleString()} ${source}`)
+      parts.push(
+        translate(`loading_sources.${source}`, {
+          count,
+          formatted_count: formatNumber(count),
+        }),
+      )
     }
 
     // Append family count if family layer is enabled
-    if (this.settings?.familyEnabled) {
+    if (this.settings?.familyEnabled && counts.family === undefined) {
       const familyCount = this._familyMemberCount || 0
-      parts.push(`${familyCount.toLocaleString()} family members`)
+      parts.push(
+        translate("loading_sources.family", {
+          count: familyCount,
+          formatted_count: formatNumber(familyCount),
+        }),
+      )
     }
 
     // Detect when a new data source appears and trigger a pop animation
@@ -541,7 +587,7 @@ export default class extends Controller {
     this._lastSourceCount = sourceCount
 
     this.progressBadgeTextTarget.textContent =
-      parts.length > 0 ? parts.join(" \u00B7 ") : "Loading..."
+      parts.length > 0 ? parts.join(" \u00B7 ") : translate("common.loading")
 
     if (isComplete) {
       if (this.hasProgressBadgeTarget) {
@@ -762,6 +808,7 @@ export default class extends Controller {
     // Visit labels
     const labelExpr = this._dayRangeExpr("started_at", isoStart, isoEnd, 1, DIM)
     this._safeSetPaint("visits-labels", "text-opacity", labelExpr)
+    this._safeSetLayout("visits-labels", "symbol-sort-key", undefined)
 
     // Tracks: start_at is ISO 8601 string
     const trackExpr = this._dayRangeExpr("start_at", isoStart, isoEnd, 0.7, DIM)
@@ -786,6 +833,7 @@ export default class extends Controller {
     this._safeSetPaint("visits", "circle-opacity", 0.9)
     this._safeSetPaint("visits", "circle-stroke-opacity", 1)
     this._safeSetPaint("visits-labels", "text-opacity", 1)
+    this._safeSetLayout("visits-labels", "symbol-sort-key", undefined)
     this._safeSetPaint("tracks", "line-opacity", 0.7)
   }
 
@@ -846,6 +894,17 @@ export default class extends Controller {
       this._safeSetPaint("visits", "circle-opacity", visitExpr)
       this._safeSetPaint("visits", "circle-stroke-opacity", visitExpr)
       this._safeSetPaint("visits-labels", "text-opacity", visitExpr)
+
+      // Labels collide-hide by default, so a neighbouring (dimmed) visit's
+      // label can win placement over the hovered one and the text under the
+      // bright dot fades out. Give the hovered visit the lowest sort key so
+      // its label is placed first and always survives collision.
+      this._safeSetLayout("visits-labels", "symbol-sort-key", [
+        "case",
+        ["==", ["get", "id"], Number(visitId)],
+        0,
+        1,
+      ])
     } else {
       const VISITS_NEARLY_INVISIBLE = 0.05
       this._safeSetPaint("visits", "circle-opacity", VISITS_NEARLY_INVISIBLE)
@@ -859,6 +918,7 @@ export default class extends Controller {
         "text-opacity",
         VISITS_NEARLY_INVISIBLE,
       )
+      this._safeSetLayout("visits-labels", "symbol-sort-key", undefined)
     }
 
     // Tracks: start_at is ISO 8601 string
@@ -1002,6 +1062,12 @@ export default class extends Controller {
     }
   }
 
+  _safeSetLayout(layerId, property, value) {
+    if (this.map.getLayer(layerId)) {
+      this.map.setLayoutProperty(layerId, property, value)
+    }
+  }
+
   _removeHoverPopup() {
     if (this._hoverPopup) {
       this._hoverPopup.remove()
@@ -1122,8 +1188,32 @@ export default class extends Controller {
   updateMapStyle(event) {
     return this.settingsController.updateMapStyle(event)
   }
+  applyMapStyle(styleName) {
+    return this.settingsController.applyMapStyle(styleName)
+  }
   resetSettings() {
     return this.settingsController.resetSettings()
+  }
+  toggleTileCategory(event) {
+    return this.settingsController.toggleTileCategory(event)
+  }
+  togglePoiGroup(event) {
+    return this.settingsController.togglePoiGroup(event)
+  }
+  updateDistanceUnit(event) {
+    return this.settingsController.updateDistanceUnit(event)
+  }
+  updateVectorTilesUrl(event) {
+    return this.settingsController.updateVectorTilesUrl(event)
+  }
+  updateRouteColor(event) {
+    return this.settingsController.updateRouteColor(event)
+  }
+  updateTrackColor(event) {
+    return this.settingsController.updateTrackColor(event)
+  }
+  resetLayerColors() {
+    return this.settingsController.resetLayerColors()
   }
   updateRouteOpacity(event) {
     return this.settingsController.updateRouteOpacity(event)
@@ -1149,9 +1239,6 @@ export default class extends Controller {
   updateMaxGapMinutesDisplay(event) {
     return this.settingsController.updateMaxGapMinutesDisplay(event)
   }
-  updateGpsAccuracyThresholdDisplay(event) {
-    return this.settingsController.updateGpsAccuracyThresholdDisplay(event)
-  }
   reapplyAnomalyFilter() {
     return this.settingsController.reapplyAnomalyFilter()
   }
@@ -1160,12 +1247,6 @@ export default class extends Controller {
   }
   toggleGlobe(event) {
     return this.settingsController.toggleGlobe(event)
-  }
-  toggleTransportationExpertMode(event) {
-    return this.settingsController.toggleTransportationExpertMode(event)
-  }
-  updateTransportationThresholdDisplay(event) {
-    return this.settingsController.updateTransportationThresholdDisplay(event)
   }
   markTransportationSettingsDirty(event) {
     return this.settingsController.markTransportationSettingsDirty(event)
@@ -1180,6 +1261,12 @@ export default class extends Controller {
   }
   cancelAreaSelection() {
     return this.areaSelectionManager.cancelAreaSelection()
+  }
+  deleteSelectedPoints() {
+    return this.areaSelectionManager.deleteSelectedPoints()
+  }
+  deleteSelectedAnomalies() {
+    return this.areaSelectionManager.deleteSelectedAnomalies()
   }
 
   // Visits Manager methods
@@ -1212,13 +1299,6 @@ export default class extends Controller {
 
   // Area creation
   startCreateArea() {
-    if (
-      this.hasSettingsPanelTarget &&
-      this.settingsPanelTarget.classList.contains("open")
-    ) {
-      this.toggleSettings()
-    }
-
     // Find area drawer controller on the same element
     const drawerController =
       this.application.getControllerForElementAndIdentifier(
@@ -1229,7 +1309,7 @@ export default class extends Controller {
     if (drawerController) {
       drawerController.startDrawing(this.map)
     } else {
-      Toast.error("Area drawer controller not available")
+      Toast.error(translate("messages.area_drawer_controller_not_available"))
     }
   }
 
@@ -1274,9 +1354,13 @@ export default class extends Controller {
         }
       }
 
-      Toast.success("Area created successfully!")
+      // If the area info card is open for an edited area, refresh its name
+      // in place so the side panel matches the map.
+      this.eventHandlers?.refreshActiveAreaInfo(areas)
+
+      Toast.success(translate("messages.area_created_successfully"))
     } catch (_error) {
-      Toast.error("Failed to reload areas")
+      Toast.error(translate("messages.failed_to_reload_areas"))
     }
   }
 
@@ -1284,26 +1368,43 @@ export default class extends Controller {
   togglePoints(event) {
     return this.routesManager.togglePoints(event)
   }
+
+  togglePointsEditing(event) {
+    return this.settingsController.togglePointsEditing(event)
+  }
   toggleRoutes(event) {
     return this.routesManager.toggleRoutes(event)
   }
   toggleHeatmap(event) {
     return this.routesManager.toggleHeatmap(event)
   }
+  toggleHexagons(event) {
+    return this.routesManager.toggleHexagons(event)
+  }
+  updateFogMode(event) {
+    return this.settingsController.updateFogMode(event)
+  }
+
   toggleFog(event) {
     return this.routesManager.toggleFog(event)
   }
   toggleScratch(event) {
     return this.routesManager.toggleScratch(event)
   }
-  togglePhotos(event) {
-    return this.routesManager.togglePhotos(event)
+  async togglePhotos(event) {
+    await this.routesManager.togglePhotos(event)
+    if (!this.replayPanel?.isOpen) return
+    if (!event.target.checked) this._photosWasVisible = false
+    this.replayPanel.refreshReplayPhotos()
   }
   toggleAreas(event) {
     return this.routesManager.toggleAreas(event)
   }
   toggleTracks(event) {
     return this.routesManager.toggleTracks(event)
+  }
+  toggleFlights(event) {
+    return this.routesManager.toggleFlights(event)
   }
   toggleSpeedColoredRoutes(event) {
     return this.routesManager.toggleSpeedColoredRoutes(event)
@@ -1340,7 +1441,7 @@ export default class extends Controller {
 
       if (!response.ok) {
         if (response.status === 403) {
-          Toast.info("Family feature not available")
+          Toast.info(translate("messages.family_feature_not_available"))
           this.updateLoadingCounts({
             counts: { family: 0 },
             isComplete: true,
@@ -1369,13 +1470,15 @@ export default class extends Controller {
       // Render family members list
       this.renderFamilyMembersList(locations)
 
-      Toast.success(`Loaded ${locations.length} family member(s)`)
+      Toast.success(
+        translate("family.loaded_members", { count: locations.length }),
+      )
 
       // Load history polylines
       this.loadFamilyHistory()
     } catch (error) {
       console.error("[Maps V2] Failed to load family members:", error)
-      Toast.error("Failed to load family members")
+      Toast.error(translate("messages.failed_to_load_family_members"))
     }
   }
 
@@ -1439,12 +1542,18 @@ export default class extends Controller {
           (Date.now() - sharingDate.getTime()) / (1000 * 60 * 60 * 24),
         ),
       )
-      const formattedDate = sharingDate.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-      })
+      const formattedDate = sharingDate.toLocaleDateString(
+        document.documentElement.lang || undefined,
+        {
+          month: "short",
+          day: "numeric",
+        },
+      )
 
-      infoEl.textContent = `Sharing since ${formattedDate} (${daysSharing} day${daysSharing !== 1 ? "s" : ""} of history)`
+      infoEl.textContent = translate("family.sharing_since", {
+        date: formattedDate,
+        count: daysSharing,
+      })
     }
   }
 
@@ -1454,8 +1563,7 @@ export default class extends Controller {
     const container = this.familyMembersContainerTarget
 
     if (locations.length === 0) {
-      container.innerHTML =
-        '<p class="text-xs text-base-content/60">No family members sharing location</p>'
+      container.innerHTML = `<p class="text-xs text-base-content/60">${translate("family.none_sharing")}</p>`
       return
     }
 
@@ -1463,13 +1571,16 @@ export default class extends Controller {
       ...locations.map((location) => {
         const emailInitial = location.email?.charAt(0)?.toUpperCase() || "?"
         const color = this.getFamilyMemberColor(location.user_id)
-        const lastSeen = new Date(location.updated_at).toLocaleString("en-US", {
-          timeZone: this.timezoneValue || "UTC",
-          month: "short",
-          day: "numeric",
-          hour: "numeric",
-          minute: "2-digit",
-        })
+        const lastSeen = new Date(location.updated_at).toLocaleString(
+          document.documentElement.lang || undefined,
+          {
+            timeZone: this.timezoneValue || "UTC",
+            month: "short",
+            day: "numeric",
+            hour: "numeric",
+            minute: "2-digit",
+          },
+        )
 
         const row = document.createElement("div")
         row.className =
@@ -1498,7 +1609,7 @@ export default class extends Controller {
 
         const emailDiv = document.createElement("div")
         emailDiv.className = "text-sm font-medium truncate"
-        emailDiv.textContent = location.email || "Unknown"
+        emailDiv.textContent = location.email || translate("common.unknown")
 
         const timeDiv = document.createElement("div")
         timeDiv.className = "text-xs text-base-content/60"
@@ -1539,13 +1650,16 @@ export default class extends Controller {
     const familyLayer = this.layerManager.getLayer("family")
     if (familyLayer) {
       familyLayer.centerOnMember(parseInt(memberId, 10))
-      Toast.success("Centered on family member")
+      Toast.success(translate("messages.centered_on_family_member"))
     }
   }
 
   // Info Display methods
   showInfo(title, content, actions = []) {
     if (!this.hasInfoDisplayTarget) return
+
+    // Reset the tracked entity; area clicks re-tag this after calling showInfo.
+    this._infoEntity = null
 
     // Set title
     this.infoTitleTarget.textContent = title
@@ -1561,7 +1675,7 @@ export default class extends Controller {
             // For button actions (modals, etc.), create a button with data-action
             // Use error styling for delete buttons
             const buttonClass =
-              action.label === "Delete"
+              action.handler === "handleDelete"
                 ? "btn btn-sm btn-error"
                 : "btn btn-sm btn-primary"
             return `<button class="${buttonClass}" data-action="click->maps--maplibre#${action.handler}" data-id="${action.id}" data-entity-type="${action.entityType}">${action.label}</button>`
@@ -1625,7 +1739,7 @@ export default class extends Controller {
     const div = document.createElement("div")
     div.appendChild(fragment)
 
-    this.showInfo("Route Information", div.innerHTML)
+    this.showInfo(translate("map_info.route_information"), div.innerHTML)
   }
 
   closeInfo() {
@@ -1709,39 +1823,118 @@ export default class extends Controller {
       })
       document.dispatchEvent(event)
     } catch (_error) {
-      Toast.error("Failed to load visit details")
+      Toast.error(translate("messages.failed_to_load_visit_details"))
+    }
+  }
+
+  /**
+   * Fetch an area and dispatch `area:edit` so the area_creation_v2
+   * controller opens its modal in edit mode. Triggered from the area
+   * info card's Edit button.
+   */
+  async openAreaEditModal(event) {
+    const areaId = event.currentTarget?.dataset?.id
+    if (!areaId) return
+
+    try {
+      const response = await fetch(`/api/v1/areas/${areaId}`, {
+        headers: {
+          Authorization: `Bearer ${this.apiKeyValue}`,
+          "Content-Type": "application/json",
+        },
+      })
+      if (!response.ok) {
+        throw new Error(`Failed to fetch area: ${response.status}`)
+      }
+      const area = await response.json()
+      document.dispatchEvent(
+        new CustomEvent("area:edit", { detail: { area }, bubbles: true }),
+      )
+    } catch (_error) {
+      Toast.error(translate("messages.failed_to_load_area_details"))
     }
   }
 
   /**
    * Delete a single point with confirmation, then remove it from the points
-   * source so the map updates without a full reload.
+   * source and rebuild the connecting routes so the map updates without a
+   * full reload.
    */
   async deletePoint(pointId) {
-    const confirmed = confirm(
-      "Delete this point?\n\nThis action cannot be undone.",
-    )
+    const confirmed = confirm(translate("map.confirm_delete_point_permanently"))
     if (!confirmed) return
 
-    try {
-      Toast.info("Deleting point...")
-      await this.api.deletePoint(pointId)
+    const numericId = Number(pointId)
+    const pointsLayer = this.layerManager.getLayer("points")
+    const source = pointsLayer && this.map.getSource(pointsLayer.sourceId)
+    const data = source?._data
+    const removedIndex =
+      data?.features?.findIndex(
+        (f) => Number(f.properties?.id) === numericId,
+      ) ?? -1
+    const removedFeature =
+      removedIndex >= 0 ? data.features[removedIndex] : undefined
+    const canReconcile = Boolean(data?.features && removedFeature)
 
-      const numericId = Number(pointId)
-      const pointsLayer = this.layerManager.getLayer("points")
-      const source = pointsLayer && this.map.getSource(pointsLayer.sourceId)
-      if (source?._data?.features) {
-        const data = source._data
-        data.features = data.features.filter(
-          (f) => Number(f.properties?.id) !== numericId,
+    // The cached full point set feeds route rebuilds and the scratch layer
+    // in simplified rendering mode — keep it in sync with the layer data.
+    const cachedPoints = this.mapDataManager?.lastLoadedData?.points
+    const removedCacheIndex =
+      cachedPoints?.findIndex((p) => Number(p.id) === numericId) ?? -1
+    const removedCachePoint =
+      removedCacheIndex >= 0 ? cachedPoints[removedCacheIndex] : undefined
+
+    // The API delete fires regardless of layer reconciliation, so the cache
+    // must always drop the point too.
+    if (removedCachePoint) cachedPoints.splice(removedCacheIndex, 1)
+
+    // Optimistically remove the point so the map updates instantly; the API
+    // call and route rebuild run in the background and are reverted on error.
+    if (canReconcile) {
+      data.features = data.features.filter(
+        (f) => Number(f.properties?.id) !== numericId,
+      )
+      source.setData(data)
+      pointsLayer.data = data
+      this.routesManager.reloadRoutes().catch((error) => console.error(error))
+    }
+
+    try {
+      await this.api.deletePoint(pointId)
+      this.closeInfo()
+      Toast.success(translate("messages.point_deleted_successfully"))
+    } catch (_error) {
+      // The point still exists server-side, so restore it in the cache even
+      // when the layer reconcile below is skipped.
+      if (removedCachePoint && !cachedPoints.includes(removedCachePoint)) {
+        cachedPoints.splice(
+          Math.min(removedCacheIndex, cachedPoints.length),
+          0,
+          removedCachePoint,
         )
-        source.setData(data)
       }
 
-      this.closeInfo()
-      Toast.success("Point deleted successfully")
-    } catch (_error) {
-      Toast.error("Failed to delete point")
+      // Reconcile against the source's CURRENT data, re-read fresh: a realtime
+      // broadcast may have replaced it while the request was in flight, so the
+      // snapshot captured above could be stale and would clobber that update.
+      const currentSource =
+        pointsLayer && this.map?.getSource(pointsLayer.sourceId)
+      const currentData = currentSource?._data
+      if (currentData?.features && removedFeature) {
+        // Splice back at the original index so the restored point keeps its
+        // render order instead of jumping on top of every other point.
+        const features = [...currentData.features]
+        features.splice(
+          Math.min(removedIndex, features.length),
+          0,
+          removedFeature,
+        )
+        currentData.features = features
+        currentSource.setData(currentData)
+        pointsLayer.data = currentData
+        this.routesManager.reloadRoutes().catch((error) => console.error(error))
+      }
+      Toast.error(translate("messages.failed_to_delete_point"))
     }
   }
 
@@ -1755,12 +1948,12 @@ export default class extends Controller {
 
       // Show delete confirmation
       const confirmed = confirm(
-        `Delete area "${area.name}"?\n\nThis action cannot be undone.`,
+        translate("areas.confirm_delete_named", { name: area.name }),
       )
 
       if (!confirmed) return
 
-      Toast.info("Deleting area...")
+      Toast.info(translate("messages.deleting_area"))
 
       // Delete the area
       await this.api.deleteArea(areaId)
@@ -1777,9 +1970,9 @@ export default class extends Controller {
       // Close info display
       this.closeInfo()
 
-      Toast.success("Area deleted successfully")
+      Toast.success(translate("messages.area_deleted_successfully"))
     } catch (_error) {
-      Toast.error("Failed to delete area")
+      Toast.error(translate("messages.failed_to_delete_area"))
     }
   }
 
@@ -1809,7 +2002,7 @@ export default class extends Controller {
       })
       document.dispatchEvent(event)
     } catch (_error) {
-      Toast.error("Failed to load place details")
+      Toast.error(translate("messages.failed_to_load_place_details"))
     }
   }
 
@@ -1832,92 +2025,101 @@ export default class extends Controller {
     }
   }
 
-  // ===== Replay Methods =====
+  // ===== Replay (delegates to the reusable ReplayPanel) =====
 
-  /**
-   * Toggle replay panel visibility
-   */
-  async toggleReplay() {
-    if (!this.hasReplayPanelTarget) return
-
-    const isVisible = !this.replayPanelTarget.classList.contains("hidden")
-
-    if (isVisible) {
-      // Hide replay
-      this._stopReplayPlayback()
-      this.replayPanelTarget.classList.add("hidden")
-      this._clearReplayMarker()
-      this._clearReplayRouteHighlight()
-      this._updateReplaySpeedDisplay(null)
-    } else {
-      // Show replay and initialize with loaded points
-      await this._initializeReplay()
-      this.replayPanelTarget.classList.remove("hidden")
-    }
+  _ensureReplayPanel() {
+    if (this.replayPanel) return
+    this.replayPanel = new ReplayPanel({
+      controller: this,
+      map: this.map,
+      timezone: this.timezoneValue,
+      markerLayer: () => this.layerManager?.getLayer("replayMarker"),
+      loadPoints: async () => {
+        await this.mapDataManager.ensurePointsLoaded()
+        return this._getLoadedPoints()
+      },
+      highlightPoint: (point) => this._highlightReplayRouteSegment(point),
+      clearHighlight: () => this._clearReplayRouteHighlight(),
+      onPlayStateChange: (playing) => this._updateTrackReplayButton(playing),
+      getPhotos: () => {
+        const layer = this.layerManager?.getLayer("photos")
+        const features = layer?.visible ? layer.data?.features : null
+        return features?.length ? features.map(featureToPhoto) : []
+      },
+      onReplayPhotosActive: (active) => {
+        const layer = this.layerManager?.getLayer("photos")
+        if (!layer) return
+        if (active) {
+          this._photosWasVisible = layer.visible
+          layer.hide()
+        } else if (this._photosWasVisible) {
+          layer.show()
+        }
+      },
+    })
   }
 
-  /**
-   * Replay a specific track from its start time (triggered from track info card)
-   */
+  async toggleReplay() {
+    if (!this.hasReplayPanelTarget) return
+    this._ensureReplayPanel()
+    await this.replayPanel.toggle()
+  }
+
+  replayScrubberHover(event) {
+    this.replayPanel?.scrubberHover(event)
+  }
+
+  replayCyclePrev() {
+    this.replayPanel?.cyclePrev()
+  }
+
+  replayCycleNext() {
+    this.replayPanel?.cycleNext()
+  }
+
+  replayTogglePlayback() {
+    this.replayPanel?.togglePlayback()
+  }
+
+  replayRecenterFollow() {
+    this.replayPanel?.recenterFollow()
+  }
+
+  replaySpeedChange(event) {
+    this.replayPanel?.speedChange(event)
+  }
+
   async replayTrack(event) {
     if (!this.hasReplayPanelTarget) return
+    this._ensureReplayPanel()
 
-    // If replay is already active, pause it
-    if (this.replayActive) {
-      this._stopReplayPlayback()
+    if (this.replayPanel.isPlaying) {
+      this.replayPanel.stopPlayback()
       return
     }
 
-    // If replay is already visible and initialized, resume from current position
     const isVisible = !this.replayPanelTarget.classList.contains("hidden")
-    if (isVisible && this.replayManager?.hasData()) {
-      this._startReplayPlayback()
-      this._updateTrackReplayButton(true)
+    if (isVisible && this.replayPanel.manager?.hasData()) {
+      this.replayPanel.startPlayback()
       return
     }
 
     const trackStart = event.currentTarget.dataset.trackStart
     if (!trackStart) return
-
     const trackDate = new Date(trackStart)
     if (Number.isNaN(trackDate.getTime())) return
 
-    // First time: initialize replay and navigate to the track's day
-    await this._initializeReplay()
-    this.replayPanelTarget.classList.remove("hidden")
+    await this.replayPanel.ensureOpen()
+    if (!this.replayPanel.manager?.hasData()) return
 
-    if (!this.replayManager?.hasData()) return
-
-    // Navigate to the day matching the track's start
     const targetDay = `${trackDate.getFullYear()}-${String(trackDate.getMonth() + 1).padStart(2, "0")}-${String(trackDate.getDate()).padStart(2, "0")}`
-    const dayIndex = this.replayManager.availableDays.indexOf(targetDay)
+    this.replayPanel.goToDay(targetDay)
 
-    if (dayIndex >= 0 && dayIndex !== this.replayManager.currentDayIndex) {
-      this.replayManager.currentDayIndex = dayIndex
-      this.replayManager.buildMinuteIndex()
-      this._updateReplayDayDisplay()
-      this._updateReplayDayCount()
-      this._updateReplayDayButtons()
-      this._renderReplayDensity()
-    }
-
-    // Set scrubber to the track's start minute
     const startMinute = trackDate.getHours() * 60 + trackDate.getMinutes()
-    if (this.hasReplayScrubberTarget) {
-      this.replayScrubberTarget.value = startMinute
-      this._handleReplayMinuteChange(startMinute)
-    }
-
-    // Start replay and update card button to Pause
-    this._startReplayPlayback()
-    this._updateTrackReplayButton(true)
+    this.replayPanel.setMinute(startMinute)
+    this.replayPanel.startPlayback()
   }
 
-  /**
-   * Toggle the per-track points layer (triggered from the inline track info
-   * card's "Show points" switch). Delegates the actual layer/opacity work to
-   * EventHandlers — same code path the legacy Tools-tab toggle used.
-   */
   async toggleTrackPoints(event) {
     const target = event?.currentTarget
     if (!target) return
@@ -1929,60 +2131,11 @@ export default class extends Controller {
     }
   }
 
-  /**
-   * Initialize replay with currently loaded points
-   * @private
-   */
-  async _initializeReplay() {
-    // Ensure points are loaded (fetches with progress badge if needed, no-op if cached)
-    await this.mapDataManager.ensurePointsLoaded()
-
-    const points = this._getLoadedPoints()
-
-    if (!points || points.length === 0) {
-      Toast.info("No location data loaded for replay")
-      return
-    }
-
-    // Create or reset replay manager
-    this.replayManager = new ReplayManager({
-      timezone: this.timezoneValue,
-    })
-
-    this.replayManager.setPoints(points)
-
-    if (!this.replayManager.hasData()) {
-      Toast.info("No location data available for replay")
-      return
-    }
-
-    // Update UI
-    this._updateReplayDayDisplay()
-    this._updateReplayDayCount()
-    this._updateReplayDayButtons()
-    this._renderReplayDensity()
-
-    // Initialize replay controls
-    this._initializeReplayState()
-
-    // Set scrubber to first point's time or noon
-    this._setInitialScrubberPosition()
-
-    // Hide cycle controls initially
-    this._hideReplayCycleControls()
-  }
-
-  /**
-   * Get loaded points from the data loader
-   * @private
-   */
   _getLoadedPoints() {
-    // Try to get raw points from mapDataManager's last loaded data
     if (this.mapDataManager?.lastLoadedData?.points) {
       return this.mapDataManager.lastLoadedData.points
     }
 
-    // Fallback: try to get from points layer source (GeoJSON format)
     const pointsSource = this.map?.getSource("points-source")
     if (pointsSource?._data?.features) {
       return pointsSource._data.features
@@ -1991,519 +2144,6 @@ export default class extends Controller {
     return []
   }
 
-  /**
-   * Set initial scrubber position based on first point of the day
-   * @private
-   */
-  _setInitialScrubberPosition() {
-    if (!this.hasReplayScrubberTarget || !this.replayManager) return
-
-    // Find the first minute with data
-    const firstMinute = this.replayManager.findNearestMinuteWithPoints(0)
-    if (firstMinute !== null) {
-      this.replayScrubberTarget.value = firstMinute
-      // Trigger the minute change handler to show marker and highlight
-      this._handleReplayMinuteChange(firstMinute)
-    } else {
-      this.replayScrubberTarget.value = 720 // Noon
-      this._updateReplayTimeDisplay(720, true)
-    }
-  }
-
-  /**
-   * Handle scrubber hover/drag - triggers marker and map movement
-   */
-  replayScrubberHover(event) {
-    const minute = parseInt(event.target.value, 10)
-    this._handleReplayMinuteChange(minute)
-  }
-
-  /**
-   * Handle minute change from scrubber
-   * @private
-   */
-  _handleReplayMinuteChange(minute) {
-    if (!this.replayManager) return
-
-    // Check if this exact minute has data
-    const hasDataAtMinute = this.replayManager.hasDataAtMinute(minute)
-
-    // Find nearest minute with points
-    const nearestMinute = this.replayManager.findNearestMinuteWithPoints(minute)
-
-    // Update time display to show current scrubber position
-    this._updateReplayTimeDisplay(minute, !hasDataAtMinute)
-
-    if (nearestMinute === null) {
-      this._clearReplayMarker()
-      this._clearReplayRouteHighlight()
-      this._hideReplayCycleControls()
-      this._updateReplaySpeedDisplay(null)
-      return
-    }
-
-    // Reset cycle index when moving to a new minute
-    if (!hasDataAtMinute || nearestMinute !== minute) {
-      this.replayManager.resetCycle()
-    }
-
-    // Get point at nearest minute
-    const point = this.replayManager.getPointAtPosition(nearestMinute)
-    if (!point) return
-
-    // Show marker
-    this._showReplayMarker(point)
-
-    // Update speed display
-    this._updateReplaySpeedDisplay(this._getPointVelocity(point))
-
-    // Move map to point (use faster animation during replay)
-    this._flyToReplayPoint(point, this.replayActive)
-
-    // Highlight route segment
-    this._highlightReplayRouteSegment(point)
-
-    // Update cycle controls (only if at exact minute with data)
-    if (hasDataAtMinute) {
-      this._updateReplayCycleControls(minute)
-    } else {
-      this._hideReplayCycleControls()
-    }
-
-    // If replay is active, jump to the new position and continue
-    if (this.replayActive && this.replayPoints?.length > 0) {
-      this._jumpReplayToMinute(minute)
-    }
-  }
-
-  /**
-   * Jump replay to a specific minute and continue from there
-   * @private
-   */
-  _jumpReplayToMinute(minute) {
-    const dayPoints = this.replayPoints
-    if (!dayPoints || dayPoints.length === 0) return
-
-    // Find the point index closest to (or at) the target minute
-    let targetIndex = 0
-    for (let i = 0; i < dayPoints.length; i++) {
-      const timestamp = this.replayManager._getTimestamp(dayPoints[i])
-      const pointTime = this._parseReplayTimestamp(timestamp)
-      if (pointTime) {
-        const date = new Date(pointTime)
-        const pointMinute = date.getHours() * 60 + date.getMinutes()
-        if (pointMinute >= minute) {
-          targetIndex = i
-          break
-        }
-        // Keep updating targetIndex for points before the minute
-        // so we get the closest point if we reach the end
-        targetIndex = i
-      }
-    }
-
-    // Update replay state
-    this.replayPointIndex = targetIndex
-
-    const currentPoint = dayPoints[targetIndex]
-    const nextPoint = dayPoints[targetIndex + 1]
-
-    this.replayCurrentCoords = currentPoint
-      ? this.replayManager.getCoordinates(currentPoint)
-      : null
-    this.replayNextCoords = nextPoint
-      ? this.replayManager.getCoordinates(nextPoint)
-      : this.replayCurrentCoords
-
-    // Reset timing so interpolation starts fresh from this point
-    this.replayLastTime = performance.now()
-  }
-
-  /**
-   * Navigate to previous day
-   */
-  replayPrevDay() {
-    if (!this.replayManager) return
-
-    // Stop replay when manually changing days
-    this._stopReplayPlayback()
-
-    if (this.replayManager.prevDay()) {
-      this._updateReplayDayDisplay()
-      this._updateReplayDayCount()
-      this._updateReplayDayButtons()
-      this._renderReplayDensity()
-      this._setInitialScrubberPosition()
-      this._clearReplayMarker()
-      this._clearReplayRouteHighlight()
-      this._hideReplayCycleControls()
-    }
-  }
-
-  /**
-   * Navigate to next day
-   */
-  replayNextDay() {
-    if (!this.replayManager) return
-
-    // Stop replay when manually changing days
-    this._stopReplayPlayback()
-
-    if (this.replayManager.nextDay()) {
-      this._updateReplayDayDisplay()
-      this._updateReplayDayCount()
-      this._updateReplayDayButtons()
-      this._renderReplayDensity()
-      this._setInitialScrubberPosition()
-      this._clearReplayMarker()
-      this._clearReplayRouteHighlight()
-      this._hideReplayCycleControls()
-    }
-  }
-
-  /**
-   * Cycle to previous point at current minute
-   */
-  replayCyclePrev() {
-    if (!this.replayManager || !this.hasReplayScrubberTarget) return
-
-    const minute = parseInt(this.replayScrubberTarget.value, 10)
-    this.replayManager.cyclePrev()
-
-    const point = this.replayManager.getPointAtPosition(minute)
-    if (point) {
-      this._showReplayMarker(point)
-      this._updateReplaySpeedDisplay(this._getPointVelocity(point))
-      this._flyToReplayPoint(point)
-      this._highlightReplayRouteSegment(point)
-      this._updateReplayCycleControls(minute)
-    }
-  }
-
-  /**
-   * Cycle to next point at current minute
-   */
-  replayCycleNext() {
-    if (!this.replayManager || !this.hasReplayScrubberTarget) return
-
-    const minute = parseInt(this.replayScrubberTarget.value, 10)
-    this.replayManager.cycleNext(minute)
-
-    const point = this.replayManager.getPointAtPosition(minute)
-    if (point) {
-      this._showReplayMarker(point)
-      this._updateReplaySpeedDisplay(this._getPointVelocity(point))
-      this._flyToReplayPoint(point)
-      this._highlightReplayRouteSegment(point)
-      this._updateReplayCycleControls(minute)
-    }
-  }
-
-  /**
-   * Update day display text
-   * @private
-   */
-  _updateReplayDayDisplay() {
-    if (!this.hasReplayDayDisplayTarget || !this.replayManager) return
-    this.replayDayDisplayTarget.textContent =
-      this.replayManager.getCurrentDayDisplay()
-  }
-
-  /**
-   * Update day navigation button states
-   * @private
-   */
-  _updateReplayDayButtons() {
-    if (!this.replayManager) return
-
-    if (this.hasReplayPrevDayButtonTarget) {
-      this.replayPrevDayButtonTarget.disabled = !this.replayManager.canGoPrev()
-    }
-
-    if (this.hasReplayNextDayButtonTarget) {
-      this.replayNextDayButtonTarget.disabled = !this.replayManager.canGoNext()
-    }
-  }
-
-  /**
-   * Update time display
-   * @private
-   * @param {number} minute - Minute of day
-   * @param {boolean} showNoData - Whether to show "No data" indicator
-   */
-  _updateReplayTimeDisplay(minute, showNoData = false) {
-    if (this.hasReplayTimeDisplayTarget) {
-      this.replayTimeDisplayTarget.textContent =
-        ReplayManager.formatMinuteToTime(minute)
-    }
-
-    // Show/hide data indicator
-    if (this.hasReplayDataIndicatorTarget) {
-      if (showNoData) {
-        this.replayDataIndicatorTarget.classList.remove("hidden")
-        this.replayDataIndicatorTarget.textContent = "No data at this time"
-      } else {
-        this.replayDataIndicatorTarget.classList.add("hidden")
-      }
-    }
-  }
-
-  /**
-   * Get velocity from point object (handles GeoJSON and raw formats)
-   * @private
-   * @param {Object} point - Point object (GeoJSON or raw)
-   * @returns {string|null} Velocity value or null
-   */
-  _getPointVelocity(point) {
-    if (!point) return null
-    // GeoJSON format
-    if (point.properties?.velocity !== undefined) {
-      return point.properties.velocity
-    }
-    // Raw format
-    if (point.velocity !== undefined) {
-      return point.velocity
-    }
-    return null
-  }
-
-  /**
-   * Update speed display based on point velocity
-   * @private
-   * @param {string|number|null} velocity - Velocity value in m/s (from API)
-   */
-  _updateReplaySpeedDisplay(velocity) {
-    if (!this.hasReplaySpeedDisplayTarget) return
-
-    const distanceUnit = this.settings?.distance_unit || "km"
-    const unit = distanceUnit === "mi" ? "mph" : "km/h"
-
-    if (velocity !== null && velocity !== undefined && velocity !== "") {
-      const speedMs = parseFloat(velocity)
-      if (!Number.isNaN(speedMs) && speedMs > 0) {
-        // Convert m/s to km/h (multiply by 3.6)
-        const speedKmh = speedMs * 3.6
-        // Convert km/h to mph if needed (multiply by 0.621371)
-        const displaySpeed =
-          distanceUnit === "mi" ? speedKmh * 0.621371 : speedKmh
-        this.replaySpeedDisplayTarget.textContent = `${Math.round(displaySpeed)} ${unit}`
-      } else {
-        this.replaySpeedDisplayTarget.textContent = `?? ${unit}`
-      }
-    } else {
-      this.replaySpeedDisplayTarget.textContent = `?? ${unit}`
-    }
-  }
-
-  /**
-   * Update day count display
-   * @private
-   */
-  _updateReplayDayCount() {
-    if (!this.hasReplayDayCountTarget || !this.replayManager) return
-
-    const dayCount = this.replayManager.getDayCount()
-    const currentIndex = this.replayManager.currentDayIndex + 1
-    const pointCount = this.replayManager.getCurrentDayPointCount()
-
-    this.replayDayCountTarget.textContent = `Day ${currentIndex} of ${dayCount} • ${pointCount.toLocaleString()} points`
-  }
-
-  /**
-   * Render data density visualization on scrubber track
-   * @private
-   */
-  _renderReplayDensity() {
-    if (!this.hasReplayDensityContainerTarget || !this.replayManager) return
-
-    // Use 48 segments (30-minute chunks)
-    const segments = 48
-    const density = this.replayManager.getDataDensity(segments)
-
-    // Clear existing bars using DOM methods
-    while (this.replayDensityContainerTarget.firstChild) {
-      this.replayDensityContainerTarget.removeChild(
-        this.replayDensityContainerTarget.firstChild,
-      )
-    }
-
-    // Create density bars using DOM methods
-    density.forEach((value) => {
-      const bar = document.createElement("div")
-      bar.className = "replay-density-bar"
-
-      if (value > 0) {
-        bar.classList.add("has-data")
-        if (value > 0.5) {
-          bar.classList.add("high-density")
-        }
-      }
-
-      this.replayDensityContainerTarget.appendChild(bar)
-    })
-  }
-
-  /**
-   * Update cycle controls visibility and count
-   * @private
-   */
-  _updateReplayCycleControls(minute) {
-    if (!this.hasReplayCycleControlsTarget || !this.replayManager) return
-
-    const count = this.replayManager.getPointCountAtMinute(minute)
-
-    if (count > 1) {
-      this.replayCycleControlsTarget.classList.remove("hidden")
-      if (this.hasReplayPointCounterTarget) {
-        const currentIndex = (this.replayManager.cycleIndex % count) + 1
-        this.replayPointCounterTarget.textContent = `Point ${currentIndex} of ${count}`
-      }
-    } else {
-      this.replayCycleControlsTarget.classList.add("hidden")
-    }
-  }
-
-  /**
-   * Hide cycle controls
-   * @private
-   */
-  _hideReplayCycleControls() {
-    if (this.hasReplayCycleControlsTarget) {
-      this.replayCycleControlsTarget.classList.add("hidden")
-    }
-  }
-
-  // ===== Replay Playback Methods =====
-
-  /**
-   * Toggle replay play/pause
-   */
-  replayTogglePlayback() {
-    if (this.replayActive) {
-      this._stopReplayPlayback()
-    } else {
-      this._startReplayPlayback()
-    }
-  }
-
-  /**
-   * Handle speed slider change
-   */
-  replaySpeedChange(event) {
-    const speedIndex = parseInt(event.target.value, 10)
-    const speeds = [1, 2, 5, 10]
-    this.replaySpeed = speeds[speedIndex - 1] || 2
-
-    if (this.hasReplaySpeedLabelTarget) {
-      this.replaySpeedLabelTarget.textContent = `${this.replaySpeed}x`
-    }
-  }
-
-  /**
-   * Start replay animation
-   * @private
-   */
-  _startReplayPlayback() {
-    if (this.replayActive) return
-    if (!this.replayManager || !this.hasReplayScrubberTarget) return
-
-    // Get points for current day
-    const currentDay = this.replayManager.getCurrentDay()
-    if (!currentDay) return
-
-    const dayPoints = this.replayManager.pointsByDay[currentDay]
-    if (!dayPoints || dayPoints.length === 0) return
-
-    this.replayActive = true
-    this.replaySpeed = this.replaySpeed || 2
-    this.replayPoints = dayPoints
-    this.replayPointIndex = 0
-
-    // Find starting index based on current scrubber position
-    const currentMinute = parseInt(this.replayScrubberTarget.value, 10)
-    for (let i = 0; i < dayPoints.length; i++) {
-      const timestamp = this.replayManager._getTimestamp(dayPoints[i])
-      const pointTime = this._parseReplayTimestamp(timestamp)
-      if (pointTime) {
-        const date = new Date(pointTime)
-        const pointMinute = date.getHours() * 60 + date.getMinutes()
-        if (pointMinute >= currentMinute) {
-          this.replayPointIndex = i
-          break
-        }
-      }
-    }
-
-    // Initialize interpolation coordinates
-    const startPoint = dayPoints[this.replayPointIndex]
-    const nextPoint = dayPoints[this.replayPointIndex + 1]
-    this.replayCurrentCoords = startPoint
-      ? this.replayManager.getCoordinates(startPoint)
-      : null
-    this.replayNextCoords = nextPoint
-      ? this.replayManager.getCoordinates(nextPoint)
-      : this.replayCurrentCoords
-
-    // Show marker at starting point immediately
-    if (startPoint) {
-      this._showReplayMarker(startPoint)
-      this._flyToReplayPoint(startPoint, true)
-      this._highlightReplayRouteSegment(startPoint)
-    }
-
-    // Update UI
-    if (this.hasReplayPlayButtonTarget) {
-      this.replayPlayButtonTarget.classList.add("playing")
-    }
-    if (this.hasReplayPlayIconTarget) {
-      this.replayPlayIconTarget.classList.add("hidden")
-    }
-    if (this.hasReplayPauseIconTarget) {
-      this.replayPauseIconTarget.classList.remove("hidden")
-    }
-
-    this.replayLastTime = performance.now()
-
-    // Start animation loop
-    this._replayFrame()
-  }
-
-  /**
-   * Stop replay animation
-   * @private
-   */
-  _stopReplayPlayback() {
-    // Guard against early calls before initialization
-    if (this.replayActive === undefined) return
-
-    this.replayActive = false
-
-    // Cancel animation frame
-    if (this.replayAnimationId) {
-      cancelAnimationFrame(this.replayAnimationId)
-      this.replayAnimationId = null
-    }
-
-    // Update UI
-    if (this.hasReplayPlayButtonTarget) {
-      this.replayPlayButtonTarget.classList.remove("playing")
-    }
-    if (this.hasReplayPlayIconTarget) {
-      this.replayPlayIconTarget.classList.remove("hidden")
-    }
-    if (this.hasReplayPauseIconTarget) {
-      this.replayPauseIconTarget.classList.add("hidden")
-    }
-
-    // Also reset the track card replay button
-    this._updateTrackReplayButton(false)
-  }
-
-  /**
-   * Update the Replay/Pause button in the track info card
-   * @param {boolean} playing - Whether replay is active
-   * @private
-   */
   _updateTrackReplayButton(playing) {
     const playIcon = document.getElementById("track-replay-play-icon")
     const pauseIcon = document.getElementById("track-replay-pause-icon")
@@ -2513,260 +2153,36 @@ export default class extends Controller {
     if (playing) {
       playIcon.classList.add("hidden")
       pauseIcon.classList.remove("hidden")
-      label.textContent = "Pause"
+      label.textContent = translate("replay.pause")
     } else {
       playIcon.classList.remove("hidden")
       pauseIcon.classList.add("hidden")
-      label.textContent = "Replay"
+      label.textContent = translate("replay.replay")
     }
   }
 
-  /**
-   * Replay animation frame - iterates over points with smooth interpolation
-   * @private
-   */
-  _replayFrame() {
-    if (!this.replayActive) return
-
-    const now = performance.now()
-    const elapsed = now - this.replayLastTime
-
-    // Calculate interval between points based on speed
-    // Speed 1x = 1 point per 500ms, Speed 10x = 1 point per 50ms
-    const intervalMs = 500 / this.replaySpeed
-
-    // Calculate interpolation progress (0 to 1) - use linear for smooth constant speed
-    const progress = Math.min(elapsed / intervalMs, 1)
-
-    // Interpolate marker position between current and next point
-    let currentLon, currentLat
-    if (this.replayCurrentCoords && this.replayNextCoords) {
-      currentLon =
-        this.replayCurrentCoords.lon +
-        (this.replayNextCoords.lon - this.replayCurrentCoords.lon) * progress
-      currentLat =
-        this.replayCurrentCoords.lat +
-        (this.replayNextCoords.lat - this.replayCurrentCoords.lat) * progress
-
-      // Update marker position smoothly
-      this._showReplayMarkerAt(currentLon, currentLat)
-
-      // Smoothly pan map to keep marker visible (check every frame for smoothness)
-      this._panMapToFollowMarker(currentLon, currentLat)
-    }
-
-    // When interval is complete, move to next point
-    if (elapsed >= intervalMs) {
-      this.replayLastTime = now
-
-      // Move to next point
-      this.replayPointIndex++
-
-      // Check if we've reached the end of points for this day
-      if (this.replayPointIndex >= this.replayPoints.length) {
-        // Try to go to next day
-        if (this.replayManager.canGoNext()) {
-          this.replayManager.nextDay()
-          this._updateReplayDayDisplay()
-          this._updateReplayDayCount()
-          this._updateReplayDayButtons()
-          this._renderReplayDensity()
-
-          // Get points for new day
-          const newDay = this.replayManager.getCurrentDay()
-          this.replayPoints = this.replayManager.pointsByDay[newDay] || []
-          this.replayPointIndex = 0
-
-          if (this.replayPoints.length === 0) {
-            this._stopReplayPlayback()
-            return
-          }
-        } else {
-          // End of data, stop replay
-          this._stopReplayPlayback()
-          return
-        }
-      }
-
-      // Get current and next points for interpolation
-      const currentPoint = this.replayPoints[this.replayPointIndex]
-      const nextPoint = this.replayPoints[this.replayPointIndex + 1]
-
-      if (!currentPoint) {
-        this._stopReplayPlayback()
-        return
-      }
-
-      // Store coordinates for interpolation
-      this.replayCurrentCoords = this.replayManager.getCoordinates(currentPoint)
-      this.replayNextCoords = nextPoint
-        ? this.replayManager.getCoordinates(nextPoint)
-        : this.replayCurrentCoords
-
-      // Update speed display for current point
-      this._updateReplaySpeedDisplay(this._getPointVelocity(currentPoint))
-
-      // Get minute for this point to update scrubber
-      const timestamp = this.replayManager._getTimestamp(currentPoint)
-      const pointTime = this._parseReplayTimestamp(timestamp)
-      if (pointTime) {
-        const date = new Date(pointTime)
-        const minute = date.getHours() * 60 + date.getMinutes()
-
-        // Update scrubber position
-        this.replayScrubberTarget.value = minute
-
-        // Update time display
-        this._updateReplayTimeDisplay(minute, false)
-      }
-
-      // Highlight route segment (less frequently to reduce overhead)
-      if (this.replayPointIndex % 5 === 0) {
-        this._highlightReplayRouteSegment(currentPoint)
-      }
-
-      // Hide cycle controls during replay
-      this._hideReplayCycleControls()
-    }
-
-    // Continue animation
-    this.replayAnimationId = requestAnimationFrame(() => this._replayFrame())
-  }
-
-  /**
-   * Smoothly pan map to keep marker visible during replay
-   * Only pans when marker is near the edge of the viewport
-   * @private
-   */
-  _panMapToFollowMarker(lon, lat) {
-    if (!this.map) return
-
-    // Get current map bounds
-    const bounds = this.map.getBounds()
-    const center = this.map.getCenter()
-
-    // Calculate how far the marker is from the edges (as a percentage of viewport)
-    const lngSpan = bounds.getEast() - bounds.getWest()
-    const latSpan = bounds.getNorth() - bounds.getSouth()
-
-    // Calculate distance from center as percentage of viewport
-    const lngOffset = (lon - center.lng) / lngSpan
-    const latOffset = (lat - center.lat) / latSpan
-
-    // If marker is more than 30% from center, reposition immediately
-    const threshold = 0.3
-    if (Math.abs(lngOffset) > threshold || Math.abs(latOffset) > threshold) {
-      this.map.setCenter([lon, lat])
-    }
-  }
-
-  /**
-   * Show replay marker at specific coordinates (for interpolation)
-   * @private
-   */
-  _showReplayMarkerAt(lon, lat) {
-    if (lon === undefined || lat === undefined) return
-
-    const replayMarkerLayer = this.layerManager?.getLayer("replayMarker")
-    if (replayMarkerLayer) {
-      replayMarkerLayer.showMarker(lon, lat)
-    }
-  }
-
-  /**
-   * Initialize replay state
-   * @private
-   */
-  _initializeReplayState() {
-    this.replayActive = false
-    this.replaySpeed = 2
-    this.replayPoints = []
-    this.replayPointIndex = 0
-    this.replayLastTime = 0
-    this.replayAnimationId = null
-    this.replayCurrentCoords = null
-    this.replayNextCoords = null
-    // Set initial speed label
-    if (this.hasReplaySpeedLabelTarget) {
-      this.replaySpeedLabelTarget.textContent = "2x"
-    }
-    if (this.hasReplaySpeedSliderTarget) {
-      this.replaySpeedSliderTarget.value = 2
-    }
-  }
-
-  /**
-   * Show replay marker at point location
-   * @private
-   */
-  _showReplayMarker(point) {
-    const coords = this.replayManager?.getCoordinates(point)
-    if (!coords) return
-
-    const replayMarkerLayer = this.layerManager?.getLayer("replayMarker")
-    if (replayMarkerLayer) {
-      replayMarkerLayer.showMarker(coords.lon, coords.lat, {
-        timestamp: this.replayManager._getTimestamp(point),
-      })
-    }
-  }
-
-  /**
-   * Clear replay marker
-   * @private
-   */
-  _clearReplayMarker() {
-    const replayMarkerLayer = this.layerManager?.getLayer("replayMarker")
-    if (replayMarkerLayer) {
-      replayMarkerLayer.clear()
-    }
-  }
-
-  /**
-   * Fly map to replay point
-   * @private
-   * @param {Object} point - Point object
-   * @param {boolean} fast - Use faster animation (for replay)
-   */
-  _flyToReplayPoint(point, fast = false) {
-    const coords = this.replayManager?.getCoordinates(point)
-    if (!coords || !this.map) return
-
-    this.map.flyTo({
-      center: [coords.lon, coords.lat],
-      zoom: Math.max(this.map.getZoom(), 14),
-      duration: fast ? 100 : 500,
-    })
-  }
-
-  /**
-   * Highlight route segment containing the replay point
-   * @private
-   */
   _highlightReplayRouteSegment(point) {
     const routesLayer = this.layerManager?.getLayer("routes")
     if (!routesLayer) return
 
-    const coords = this.replayManager?.getCoordinates(point)
+    const manager = this.replayPanel?.manager
+    const coords = manager?.getCoordinates(point)
     if (!coords) return
 
-    // Query the routes source to find feature containing this point
     const routesSource = this.map?.getSource("routes-source")
     if (!routesSource?._data?.features) {
       routesLayer.setHoverRoute(null)
       return
     }
 
-    const timestamp = this.replayManager._getTimestamp(point)
+    const timestamp = manager?.getTimestamp(point)
     if (!timestamp) {
       routesLayer.setHoverRoute(null)
       return
     }
 
-    // Parse timestamp consistently (handle both Unix seconds and milliseconds)
     const pointTime = this._parseReplayTimestamp(timestamp)
 
-    // Find the route segment containing this timestamp
     const matchingFeature = routesSource._data.features.find((feature) => {
       const startTime = feature.properties?.startTime
       const endTime = feature.properties?.endTime
@@ -2786,35 +2202,23 @@ export default class extends Controller {
     }
   }
 
-  /**
-   * Parse timestamp to milliseconds, handling various formats
-   * @private
-   */
   _parseReplayTimestamp(timestamp) {
     if (!timestamp) return 0
 
-    // Handle ISO 8601 string
     if (typeof timestamp === "string") {
       return new Date(timestamp).getTime()
     }
 
-    // Handle Unix timestamp
     if (typeof timestamp === "number") {
-      // Unix timestamp in seconds (< year 2286 in seconds)
       if (timestamp < 10000000000) {
         return timestamp * 1000
       }
-      // Unix timestamp in milliseconds
       return timestamp
     }
 
     return 0
   }
 
-  /**
-   * Clear replay route highlight
-   * @private
-   */
   _clearReplayRouteHighlight() {
     const routesLayer = this.layerManager?.getLayer("routes")
     if (routesLayer) {

@@ -27,6 +27,13 @@ RSpec.describe EnqueueBackgroundJob, type: :job do
     end
   end
 
+  context 'when job_name is start_airtrail_import' do
+    it 'enqueues AirTrail::ImportFlightsJob' do
+      expect { described_class.perform_now('start_airtrail_import', user_id) }
+        .to have_enqueued_job(AirTrail::ImportFlightsJob).with(user_id)
+    end
+  end
+
   context 'when job_name is unknown' do
     it 'raises ArgumentError' do
       expect { described_class.perform_now('invalid_job', user_id) }

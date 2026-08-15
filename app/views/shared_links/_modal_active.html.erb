@@ -1,0 +1,87 @@
+<%# Active-state modal contents. Locals: share, paths %>
+<div class="flex items-center gap-2 mb-4">
+  <h3 class="font-bold text-lg"><%= t('.sharing') %></h3>
+  <span class="badge badge-success badge-sm gap-1">
+    <span class="w-1.5 h-1.5 rounded-full bg-success-content/80"></span>
+    <%= t('.public') %>
+  </span>
+</div>
+
+<% if local_assigns[:subtitle].present? %>
+  <p class="text-sm text-base-content/70 mb-5"><%= subtitle %></p>
+<% end %>
+
+<div class="space-y-4">
+  <div>
+    <label class="text-xs font-medium text-base-content/60 uppercase tracking-wide" for="share-url"><%= t('.public_link') %></label>
+    <div class="join w-full mt-1">
+      <input id="share-url" type="text" readonly value="<%= public_shared_link_url(share.id) %>"
+             class="input input-bordered join-item flex-1 font-mono text-sm" onclick="this.select();">
+      <button type="button" class="btn btn-outline join-item"
+              data-controller="clipboard"
+              data-clipboard-text-value="<%= public_shared_link_url(share.id) %>"
+              data-action="click->clipboard#copy"
+              title="<%= t('.copy_link') %>"
+              aria-label="<%= t('.copy_public_link') %>">
+        <%= icon 'copy', class: 'w-4 h-4' %>
+      </button>
+      <%= link_to public_shared_link_url(share.id), target: '_blank', rel: 'noopener',
+                  class: 'btn btn-outline join-item', data: { turbo: false },
+                  title: t('.open_in_new_tab'), aria: { label: t('.open_in_new_tab') } do %>
+        <%= icon 'external-link', class: 'w-4 h-4' %>
+      <% end %>
+    </div>
+  </div>
+
+  <% if share.magic_phrase.present? %>
+    <div>
+      <label class="text-xs font-medium text-base-content/60 uppercase tracking-wide" for="share-phrase"><%= t('.magic_phrase') %></label>
+      <div class="join w-full mt-1">
+        <input id="share-phrase" type="text" readonly value="<%= share.magic_phrase %>"
+               class="input input-bordered join-item flex-1 font-mono text-sm" onclick="this.select();">
+        <button type="button" class="btn btn-outline join-item"
+                data-controller="clipboard"
+                data-clipboard-text-value="<%= share.magic_phrase %>"
+                data-action="click->clipboard#copy"
+                aria-label="<%= t('.copy_magic_phrase') %>">
+          <%= icon 'copy', class: 'w-4 h-4' %>
+        </button>
+      </div>
+    </div>
+  <% end %>
+
+  <div class="flex flex-wrap gap-4 text-sm text-base-content/70">
+    <span><%= t('.view_count', count: share.view_count) %></span>
+    <span class="flex items-center gap-1.5">
+      <%= icon 'clock', class: 'w-4 h-4' %>
+      <% if share.last_accessed_at %>
+        <%= t('.last_viewed') %> <%= t('common.time_ago', time: relative_distance_in_words(share.last_accessed_at)) %>
+      <% else %>
+        <%= t('.not_viewed_yet') %>
+      <% end %>
+    </span>
+  </div>
+
+  <div class="flex flex-wrap items-center justify-between gap-2 pt-4 border-t border-base-300">
+    <div class="flex flex-wrap gap-2">
+      <%= button_to paths[:regenerate], method: :post,
+                    form: { data: { turbo_frame: "share-link-modal" } },
+                    class: "btn btn-outline btn-sm",
+                    data: { turbo_confirm: t('.generate_a_new_url_the_current_url_will_stop_working') } do %>
+        <%= icon 'refresh-ccw', class: 'w-4 h-4' %> <%= t('.regenerate_url') %>
+      <% end %>
+      <%= button_to paths[:regenerate_phrase], method: :post,
+                    form: { data: { turbo_frame: "share-link-modal" } },
+                    class: "btn btn-outline btn-sm",
+                    data: { turbo_confirm: t('.generate_a_new_phrase') } do %>
+        <%= icon 'refresh-ccw', class: 'w-4 h-4' %> <%= t('.regenerate_phrase') %>
+      <% end %>
+    </div>
+    <%= button_to paths[:revoke], method: :patch,
+                  form: { data: { turbo_frame: "share-link-modal" } },
+                  class: "btn btn-warning btn-sm",
+                  data: { turbo_confirm: t('.revoke_this_link_it_will_stop_working_immediately') } do %>
+      <%= icon 'shield', class: 'w-4 h-4' %> <%= t('.revoke') %>
+    <% end %>
+  </div>
+</div>

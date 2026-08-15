@@ -18,26 +18,26 @@
   </style>
 </head>
 <body>
-  <h1>Your <%= Date::MONTHNAMES[@digest.month] %> <%= @digest.year %> in review</h1>
-  <p class="meta">Here's what your location history looked like last month.</p>
+  <h1><%= t('.month_year_in_review', month: l(Date.new(@digest.year, @digest.month, 1), format: :month_name), year: @digest.year) %></h1>
+  <p class="meta"><%= t('.here_s_what_your_location_history_looked_like_last_month') %></p>
 
-  <h2>OVERVIEW</h2>
+  <h2><%= t('.overview') %></h2>
   <pre class="ascii" style="<%= pre_style %>">
-Distance       <%= distance_with_unit(@digest.distance, @distance_unit) %>
-Active days    <%= @active_days %>
-Countries      <%= @digest.time_spent_by_location.to_h['countries'].to_a.size %>
-Cities         <%= @digest.time_spent_by_location.to_h['cities'].to_a.size %>
+<%= t('.distance') %>       <%= distance_with_unit(@digest.distance, @distance_unit) %>
+<%= t('.active_days') %>    <%= @active_days %>
+<%= t('.countries') %>      <%= @digest.time_spent_by_location.to_h['countries'].to_a.size %>
+<%= t('.cities') %>         <%= @digest.time_spent_by_location.to_h['cities'].to_a.size %>
 </pre>
 
-  <h2>WEEKLY PATTERN</h2>
+  <h2><%= t('.weekly_pattern') %></h2>
   <pre class="ascii" style="<%= pre_style %>"><%= ascii_hbar(
       @weekday_totals,
-      labels: %w[Mon Tue Wed Thu Fri Sat Sun],
+      labels: I18n.t('date.abbr_day_names').rotate,
       width: 20,
       suffix: " #{@distance_unit}"
     ) %></pre>
 
-  <h2>DAILY DISTANCE</h2>
+  <h2><%= t('.daily_distance') %></h2>
   <pre class="ascii" style="<%= pre_style %>"><%= ascii_sparkline(
       (1..31).map { |d| @daily_distances[d.to_s].to_f }
              .reject(&:zero?)
@@ -45,35 +45,35 @@ Cities         <%= @digest.time_spent_by_location.to_h['cities'].to_a.size %>
     ) %></pre>
 
   <% if @top_countries.any? %>
-    <h2>TOP COUNTRIES</h2>
+    <h2><%= t('.top_countries') %></h2>
     <pre class="ascii" style="<%= pre_style %>"><%= ascii_ranked_list(@top_countries, value_key: 'minutes', label_key: 'name', width: 20, format: ->(m) { "#{(m.to_f / 60).round}h" }) %></pre>
   <% end %>
 
   <% if @top_cities.any? %>
-    <h2>TOP CITIES</h2>
+    <h2><%= t('.top_cities') %></h2>
     <pre class="ascii" style="<%= pre_style %>"><%= ascii_ranked_list(@top_cities.first(5), value_key: 'minutes', label_key: 'name', width: 20, format: ->(m) { "#{(m.to_f / 60).round}h" }) %></pre>
   <% end %>
 
   <% if @first_countries.any? || @first_cities.any? %>
-    <h2>FIRST VISITS THIS MONTH</h2>
+    <h2><%= t('.first_visits_this_month') %></h2>
     <pre class="ascii" style="<%= pre_style %>"><%
       lines = []
-      @first_countries.first(2).each { |c| lines << "→ #{c}  (new country)" }
-      @first_cities.first(3 - @first_countries.first(2).size).each { |c| lines << "→ #{c}  (new city)" }
+      @first_countries.first(2).each { |country| lines << t('.new_country_line', country: country) }
+      @first_cities.first(3 - @first_countries.first(2).size).each { |city| lines << t('.new_city_line', city: city) }
     %><%= lines.join("\n") %></pre>
   <% end %>
 
   <% if @digest.year_over_year.to_h['distance_change_percent'].present? %>
-    <h2>VS PREVIOUS MONTH</h2>
-    <pre class="ascii" style="<%= pre_style %>">Distance  <%= ascii_trend_from_pct(@digest.distance, @digest.year_over_year['distance_change_percent']) %>
+    <h2><%= t('.vs_previous_month') %></h2>
+    <pre class="ascii" style="<%= pre_style %>"><%= t('.distance') %>  <%= ascii_trend_from_pct(@digest.distance, @digest.year_over_year['distance_change_percent']) %>
 </pre>
   <% end %>
 
-  <p><a href="<%= insights_url %>">View full insights &rarr;</a></p>
+  <p><a href="<%= insights_url(**digest_utm(campaign: 'monthly_digest', content: 'view_insights')) %>"><%= t('.view_full_insights_rarr') %></a></p>
 
   <div class="footer">
-    You're receiving this because monthly digest emails are on for your account.
-    <a href="<%= settings_general_index_url(anchor: 'email-digests') %>">Manage email preferences</a>.
+    <%= t('.you_re_receiving_this_because_monthly_digest_emails_are_on') %>
+    <a href="<%= settings_general_index_url(anchor: 'email-digests', **digest_utm(campaign: 'monthly_digest', content: 'manage_preferences')) %>"><%= t('.manage_email_preferences') %></a>.
   </div>
 </body>
 </html>

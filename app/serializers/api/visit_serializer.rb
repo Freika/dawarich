@@ -15,6 +15,8 @@ class Api::VisitSerializer
       duration: visit.duration,
       name: visit.name,
       status: visit.status,
+      confidence: visit.confidence,
+      confidence_band: visit.confidence_band,
       place: {
         latitude: visit.place&.lat || visit.area&.latitude,
         longitude: visit.place&.lon || visit.area&.longitude,

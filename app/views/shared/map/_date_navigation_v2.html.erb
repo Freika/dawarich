@@ -16,54 +16,60 @@
   <!-- Expandable Panel (hidden on mobile by default, always visible on desktop) -->
   <div
     data-map-controls-target="panel"
-    class="hidden lg:!block bg-base-100 rounded-lg p-4 mt-2 lg:mt-0">
+    class="hidden lg:!block bg-base-100 rounded-lg p-4 mt-2 lg:mt-0 container mx-auto">
     <%= form_with url: map_v2_path(import_id: params[:import_id]), method: :get do |f| %>
-      <div class="flex flex-col space-y-4 lg:flex-row lg:space-y-0 lg:space-x-4 lg:items-end">
-        <div class="w-full lg:w-1/12">
-          <div class="flex flex-col space-y-2">
-            <span class="tooltip tooltip-bottom" data-tip="<%= human_date(start_at - 1.day) %>">
-              <%= link_to map_v2_path(start_at: (start_at - 1.day).iso8601, end_at: (end_at - 1.day).iso8601, import_id: params[:import_id]), class: "btn btn-sm border border-base-300 hover:btn-ghost w-full" do %>
-                <%= icon 'chevron-left' %>
-              <% end %>
-            </span>
-          </div>
+      <%# Keep the Timeline panel open across a Search so the range and the
+          panel stay in sync (C1). A GET form drops the action URL's query, so
+          panel must ride along as a hidden field. The panel reads the new
+          range's end date as its day via timeline_feed#hydrateFromUrl. %>
+      <% if params[:panel].present? %><%= f.hidden_field :panel, value: params[:panel] %><% end %>
+      <div class="flex flex-col space-y-4 lg:flex-row lg:space-y-0 lg:space-x-4 lg:items-center">
+        <div class="w-full lg:w-1/12 tooltip tooltip-bottom" data-tip="<%= human_date(start_at - 1.day) %>">
+          <%= link_to map_v2_path(start_at: (start_at - 1.day).iso8601, end_at: (end_at - 1.day).iso8601, import_id: params[:import_id], panel: params[:panel]), class: "btn btn-sm border border-base-300 hover:btn-ghost w-full" do %>
+            <%= icon 'chevron-left' %>
+          <% end %>
         </div>
-        <div class="w-full lg:w-2/12 tooltip tooltip-bottom" data-tip="Start date and time">
+        <div class="w-full lg:w-2/12 tooltip tooltip-bottom" data-tip="<%= t('.start_date_and_time') %>">
           <%= f.datetime_local_field :start_at, include_seconds: false, max: "9999-12-31T23:59", class: "input input-sm input-bordered hover:cursor-pointer hover:input-primary w-full", value: start_at %>
         </div>
-        <div class="w-full lg:w-2/12 tooltip tooltip-bottom" data-tip="End date and time">
+        <div class="w-full lg:w-2/12 tooltip tooltip-bottom" data-tip="<%= t('.end_date_and_time') %>">
           <%= f.datetime_local_field :end_at, include_seconds: false, max: "9999-12-31T23:59", class: "input input-sm input-bordered hover:cursor-pointer hover:input-primary w-full", value: end_at %>
         </div>
-        <div class="w-full lg:w-1/12">
-          <div class="flex flex-col space-y-2">
-            <span class="tooltip tooltip-bottom" data-tip="<%= human_date(start_at + 1.day) %>">
-              <%= link_to map_v2_path(start_at: (start_at + 1.day).iso8601, end_at: (end_at + 1.day).iso8601, import_id: params[:import_id]), class: "btn btn-sm border border-base-300 hover:btn-ghost w-full" do %>
-                <%= icon 'chevron-right' %>
-              <% end %>
-            </span>
-          </div>
+        <div class="w-full lg:w-1/12 tooltip tooltip-bottom" data-tip="<%= human_date(start_at + 1.day) %>">
+          <%= link_to map_v2_path(start_at: (start_at + 1.day).iso8601, end_at: (end_at + 1.day).iso8601, import_id: params[:import_id], panel: params[:panel]), class: "btn btn-sm border border-base-300 hover:btn-ghost w-full" do %>
+            <%= icon 'chevron-right' %>
+          <% end %>
         </div>
         <div class="w-full lg:w-1/12">
           <div class="flex flex-col space-y-2">
-            <%= f.submit "Search", class: "btn btn-sm btn-primary hover:btn-info w-full" %>
+            <%= f.submit t('.search'), class: "btn btn-sm btn-primary hover:btn-info w-full" %>
           </div>
         </div>
         <div class="w-full lg:w-1/12">
           <div class="flex flex-col space-y-2 text-center">
-            <%= link_to "Today",
-              map_v2_path(start_at: Time.current.beginning_of_day.iso8601, end_at: Time.current.end_of_day.iso8601, import_id: params[:import_id]),
+            <%= link_to t('.today'),
+              map_v2_path(start_at: Time.current.beginning_of_day.iso8601, end_at: Time.current.end_of_day.iso8601, import_id: params[:import_id], panel: params[:panel]),
               class: "btn btn-sm border border-base-300 hover:btn-ghost w-full" %>
           </div>
         </div>
         <div class="w-full lg:w-2/12">
           <div class="flex flex-col space-y-2 text-center">
-            <%= link_to "Last 7 days", map_v2_path(start_at: 1.week.ago.beginning_of_day.iso8601, end_at: Time.current.end_of_day.iso8601, import_id: params[:import_id]), class: "btn btn-sm border border-base-300 hover:btn-ghost w-full" %>
+            <%= link_to t('.last_7_days'), map_v2_path(start_at: 1.week.ago.beginning_of_day.iso8601, end_at: Time.current.end_of_day.iso8601, import_id: params[:import_id], panel: params[:panel]), class: "btn btn-sm border border-base-300 hover:btn-ghost w-full" %>
           </div>
         </div>
         <div class="w-full lg:w-2/12">
           <div class="flex flex-col space-y-2 text-center">
-            <%= link_to "Last month", map_v2_path(start_at: 1.month.ago.beginning_of_day.iso8601, end_at: Time.current.end_of_day.iso8601, import_id: params[:import_id]), class: "btn btn-sm border border-base-300 hover:btn-ghost w-full" %>
+            <%= link_to t('.last_month'), map_v2_path(start_at: 1.month.ago.beginning_of_day.iso8601, end_at: Time.current.end_of_day.iso8601, import_id: params[:import_id], panel: params[:panel]), class: "btn btn-sm border border-base-300 hover:btn-ghost w-full" %>
           </div>
+        </div>
+        <div class="w-full lg:w-1/12 relative">
+          <%= link_to share_links_hub_path(start_date: start_at.to_date, end_date: end_at.to_date),
+                      class: "btn btn-sm border border-base-300 hover:btn-ghost w-full flex-nowrap",
+                      data: { turbo_frame: "share-link-modal", testid: "timeline-share-button" } do %>
+            <%= icon 'share', class: 'w-4 h-4' %>
+            <span class="ml-1"><%= t('.share') %></span>
+          <% end %>
+          <%= render "shared/map/share_indicator" %>
         </div>
       </div>
     <% end %>

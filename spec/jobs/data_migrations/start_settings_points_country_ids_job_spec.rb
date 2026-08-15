@@ -4,9 +4,15 @@ require 'rails_helper'
 
 RSpec.describe DataMigrations::StartSettingsPointsCountryIdsJob, type: :job do
   describe '#perform' do
-    let!(:point_with_country) { create(:point, country_id: 1) }
-    let!(:point_without_country1) { create(:point, country_id: nil) }
-    let!(:point_without_country2) { create(:point, country_id: nil) }
+    let!(:point_with_country) do
+      create(:point).tap { |p| p.update_columns(country_id: 1) }
+    end
+    let!(:point_without_country1) do
+      create(:point).tap { |p| p.update_columns(country_id: nil) }
+    end
+    let!(:point_without_country2) do
+      create(:point).tap { |p| p.update_columns(country_id: nil) }
+    end
 
     it 'enqueues SetPointsCountryIdsJob for points without country_id' do
       expect { described_class.perform_now }.to \

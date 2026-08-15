@@ -33,8 +33,6 @@ RSpec.describe 'Timeline API', type: :request do
         let(:start_at) { 1.day.ago.iso8601 }
         let(:end_at) { Time.current.iso8601 }
 
-        after { |example| SwaggerResponseExample.capture(example, response) }
-
         run_test!
       end
 

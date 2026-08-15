@@ -2,6 +2,7 @@
 
 class PointsController < ApplicationController
   include SafeTimestampParser
+  include ImportTimeWindow
 
   before_action :authenticate_user!
 
@@ -28,15 +29,14 @@ class PointsController < ApplicationController
 
     if point_ids.blank?
       redirect_to points_url(preserved_params),
-                  alert: 'No points selected.',
+                  alert: I18n.t('controllers.points.no_points_selected'),
                   status: :see_other and return
     end
 
-    deleted_count = current_user.points.where(id: point_ids).destroy_all.count
-    User.update_counters(current_user.id, points_count: -deleted_count) if deleted_count.positive?
+    Points::Destroyer.new(current_user, point_ids).call
 
     redirect_to points_url(preserved_params),
-                notice: 'Points were successfully destroyed.',
+                notice: I18n.t('controllers.points.points_were_successfully_destroyed'),
                 status: :see_other
   end
 
@@ -47,15 +47,17 @@ class PointsController < ApplicationController
   end
 
   def start_at
-    return 1.month.ago.beginning_of_day.to_i if params[:start_at].nil?
+    return safe_timestamp(params[:start_at]) if params[:start_at].present?
+    return import_window_start if import_window_start
 
-    safe_timestamp(params[:start_at])
+    1.month.ago.beginning_of_day.to_i
   end
 
   def end_at
-    return Time.zone.today.end_of_day.to_i if params[:end_at].nil?
+    return safe_timestamp(params[:end_at]) if params[:end_at].present?
+    return import_window_end if import_window_end
 
-    safe_timestamp(params[:end_at])
+    Time.zone.today.end_of_day.to_i
   end
 
   def points
@@ -63,11 +65,17 @@ class PointsController < ApplicationController
   end
 
   def import_points
-    current_user.imports.find(params[:import_id]).points
+    apply_plan_window(current_user.imports.find(params[:import_id]).points)
   end
 
   def user_points
-    current_user.points
+    current_user.scoped_points
+  end
+
+  def apply_plan_window(relation)
+    return relation unless current_user.plan_restricted?
+
+    relation.where('timestamp >= ?', current_user.data_window_start.to_i)
   end
 
   def order_by

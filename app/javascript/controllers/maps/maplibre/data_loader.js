@@ -82,7 +82,8 @@ export class DataLoader {
       end_at: endDate,
     })
     const points = result.points
-    const pointsGeoJSON = pointsToGeoJSON(points)
+    const allPointsGeoJSON = pointsToGeoJSON(points)
+    const pointsGeoJSON = this.pointsGeoJSON(points, allPointsGeoJSON)
     let routesGeoJSON = RoutesLayer.pointsToRoutes(points, {
       distanceThresholdMeters: this.settings.metersBetweenRoutes || 500,
       timeThresholdMinutes: this.settings.minutesBetweenRoutes || 60,
@@ -98,7 +99,13 @@ export class DataLoader {
       routesGeoJSON = applySpeedColors(routesGeoJSON, points, speedColorScale)
     }
 
-    return { points, pointsGeoJSON, routesGeoJSON, routesBaseGeoJSON }
+    return {
+      points,
+      pointsGeoJSON,
+      allPointsGeoJSON,
+      routesGeoJSON,
+      routesBaseGeoJSON,
+    }
   }
 
   /**
@@ -117,7 +124,13 @@ export class DataLoader {
   async fetchMapData(
     startDate,
     endDate,
-    { onUpdate, onLayerData, onTracksLoaded, onPhotosLoaded } = {},
+    {
+      onUpdate,
+      onLayerData,
+      onTracksLoaded,
+      onPhotosLoaded,
+      viewportBounds,
+    } = {},
   ) {
     const data = {}
 
@@ -142,6 +155,7 @@ export class DataLoader {
       if (this.settings.areasEnabled) counter.expect("areas")
       if (this.settings.tracksEnabled) counter.expect("tracks")
       if (this.settings.photosEnabled) counter.expect("photos")
+      if (this.settings.flightsEnabled) counter.expect("flights")
     }
 
     // Start ALL core fetches in parallel for better progress granularity.
@@ -155,9 +169,10 @@ export class DataLoader {
             : null,
           onBatch: onLayerData
             ? (accumulatedPoints) => {
-                const geoJSON = pointsToGeoJSON(accumulatedPoints)
-                onLayerData("points", geoJSON)
-                onLayerData("heatmap", geoJSON)
+                // Stream raw points; simplification runs once on completion
+                const rawGeoJSON = pointsToGeoJSON(accumulatedPoints)
+                onLayerData("points", rawGeoJSON)
+                onLayerData("heatmap", rawGeoJSON)
                 if (counter) counter.update("points", accumulatedPoints.length)
               }
             : null,
@@ -169,6 +184,7 @@ export class DataLoader {
           .fetchVisits({
             start_at: startDate,
             end_at: endDate,
+            ...(viewportBounds || {}),
           })
           .then((result) => {
             if (counter) {
@@ -227,12 +243,37 @@ export class DataLoader {
           })
       : Promise.resolve([])
 
+    const flightsPromise = this.settings.flightsEnabled
+      ? this.api
+          .fetchFlights({ start_at: startDate, end_at: endDate })
+          .then((result) => {
+            const collection = result || {
+              type: "FeatureCollection",
+              features: [],
+            }
+            if (counter) {
+              counter.update("flights", collection.features?.length || 0)
+              counter.complete("flights")
+            }
+            if (onLayerData) {
+              onLayerData("flights", collection)
+            }
+            return collection
+          })
+          .catch((error) => {
+            console.warn("Failed to fetch flights:", error)
+            if (counter) counter.complete("flights")
+            return { type: "FeatureCollection", features: [] }
+          })
+      : Promise.resolve({ type: "FeatureCollection", features: [] })
+
     // Wait for all core data
-    const [pointsResult, visits, areas, places] = await Promise.all([
+    const [pointsResult, visits, areas, places, flights] = await Promise.all([
       pointsPromise,
       visitsPromise,
       areasPromise,
       placesPromise,
+      flightsPromise,
     ])
     const points = pointsResult.points
     const totalPointsInRange = pointsResult.totalPointsInRange || 0
@@ -250,7 +291,8 @@ export class DataLoader {
       // Transform points to GeoJSON
       performanceMonitor.mark("transform-geojson")
       data.points = points
-      data.pointsGeoJSON = pointsToGeoJSON(data.points)
+      const allPointsGeoJSON = pointsToGeoJSON(data.points)
+      data.pointsGeoJSON = this.pointsGeoJSON(data.points, allPointsGeoJSON)
       data.routesGeoJSON = RoutesLayer.pointsToRoutes(data.points, {
         distanceThresholdMeters: this.settings.metersBetweenRoutes || 500,
         timeThresholdMinutes: this.settings.minutesBetweenRoutes || 60,
@@ -277,10 +319,10 @@ export class DataLoader {
         onLayerData("routes-base", data.routesBaseGeoJSON)
         // Final points/heatmap update with complete dataset
         onLayerData("points", data.pointsGeoJSON)
-        onLayerData("heatmap", data.pointsGeoJSON)
-        // Fog and scratch need all points — update once
-        onLayerData("fog", data.pointsGeoJSON)
-        onLayerData("scratch", data.pointsGeoJSON)
+        // Heatmap, fog and scratch need all points
+        onLayerData("heatmap", allPointsGeoJSON)
+        onLayerData("fog", allPointsGeoJSON)
+        onLayerData("scratch", allPointsGeoJSON)
       }
     } else {
       data.points = []
@@ -296,6 +338,7 @@ export class DataLoader {
     data.areasGeoJSON = this.areasToGeoJSON(data.areas)
     data.places = places
     data.placesGeoJSON = this.placesToGeoJSON(data.places)
+    data.flightsGeoJSON = flights || { type: "FeatureCollection", features: [] }
 
     // Initialize empty collections for background-loaded data
     data.photos = []
@@ -431,7 +474,7 @@ export class DataLoader {
             properties: {
               id: photo.id,
               thumbnail_url: thumbnailUrl,
-              taken_at: photo.localDateTime,
+              taken_at: photo.capturedAt || photo.localDateTime,
               filename: photo.originalFileName,
               city: photo.city,
               state: photo.state,
@@ -462,6 +505,7 @@ export class DataLoader {
           latitude: place.latitude,
           longitude: place.longitude,
           note: place.note,
+          nameLocked: Boolean(place.name_locked),
           // Stringify tags for MapLibre GL JS compatibility
           tags: JSON.stringify(place.tags || []),
           // Use first tag's color if available
@@ -499,6 +543,14 @@ export class DataLoader {
         }
       }),
     }
+  }
+
+  pointsGeoJSON(points, rawGeoJSON = null) {
+    if (this.settings.pointsRenderingMode !== "simplified") {
+      return rawGeoJSON || pointsToGeoJSON(points)
+    }
+
+    return pointsToGeoJSON(points, { simplified: true })
   }
 
   /**

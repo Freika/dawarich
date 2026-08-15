@@ -5,26 +5,30 @@ class Users::MailerSendingJob < ApplicationJob
 
   class UnknownEmailType < StandardError; end
 
-  # Trial-reminder entries below are kept transitionally so stale Sidekiq
-  # jobs scheduled before the billing extraction drain cleanly. New code
-  # must NOT enqueue these — Manager owns the trial-reminder lifecycle now.
-  # Earliest safe removal: 2026-05-17 (deploy + 21 days, after the longest
-  # `wait: 14.days` reminder fires for any pre-deploy signup).
   MAILER_REGISTRY = {
-    'welcome'                  => ['UsersMailer', :welcome],
-    'explore_features'         => ['UsersMailer', :explore_features],
-    'archival_approaching'     => ['UsersMailer', :archival_approaching],
-    'trial_expires_soon'       => ['UsersMailer', :trial_expires_soon],
-    'trial_expired'            => ['UsersMailer', :trial_expired],
-    'post_trial_reminder_early' => ['UsersMailer', :post_trial_reminder_early],
-    'post_trial_reminder_late' => ['UsersMailer', :post_trial_reminder_late],
-    'oauth_account_link'       => ['UsersMailer', :oauth_account_link],
+    'welcome'                     => ['UsersMailer', :welcome],
+    'explore_features'            => ['UsersMailer', :explore_features],
+    'archival_approaching'        => ['UsersMailer', :archival_approaching],
+    'oauth_account_link'          => ['UsersMailer', :oauth_account_link],
     'account_destroy_confirmation' => ['UsersMailer', :account_destroy_confirmation]
   }.freeze
 
+  LEGACY_MANAGER_EMAIL_TYPES = %w[
+    trial_expired
+    trial_expires_soon
+    post_trial_reminder_early
+    post_trial_reminder_late
+  ].freeze
+
   def perform(user_id, email_type, **options)
     user = find_user_or_skip(user_id) || return
-    return if should_skip_email?(user, email_type)
+
+    if LEGACY_MANAGER_EMAIL_TYPES.include?(email_type.to_s)
+      Rails.logger.info(
+        "[Users::MailerSendingJob] skipping legacy Manager-owned email_type=#{email_type} user_id=#{user.id}"
+      )
+      return
+    end
 
     mailer_class_name, action = MAILER_REGISTRY.fetch(email_type.to_s) do
       raise UnknownEmailType, "Unknown email_type=#{email_type.inspect} user_id=#{user.id}"
@@ -32,22 +36,5 @@ class Users::MailerSendingJob < ApplicationJob
 
     params = { user: user }.merge(options)
     mailer_class_name.constantize.with(params).public_send(action).deliver_later
-  end
-
-  private
-
-  # Suppress trial-reminder emails for users who upgraded / converted
-  # between when the job was scheduled and when it fires. Otherwise an
-  # active subscriber gets "your trial expires in 2 days" — a classic
-  # support-ticket generator.
-  def should_skip_email?(user, email_type)
-    case email_type.to_s
-    when 'trial_expires_soon', 'trial_expired'
-      user.active? || user.auto_converting_trial?
-    when 'post_trial_reminder_early', 'post_trial_reminder_late'
-      user.active? || !user.trial? || user.auto_converting_trial?
-    else
-      false
-    end
   end
 end

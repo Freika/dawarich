@@ -17,8 +17,8 @@ class Immich::ResponseAnalyzer
   end
 
   def error_message
-    return 'Immich API key missing permission: asset.view' if permission_error?
+    return I18n.t('services.immich.response_analyzer.permission_missing') if permission_error?
 
-    'Failed to fetch thumbnail'
+    I18n.t('services.immich.response_analyzer.thumbnail_failed')
   end
 end

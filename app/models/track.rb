@@ -2,6 +2,7 @@
 
 class Track < ApplicationRecord
   include Calculateable
+  include Demoable
   include DistanceConvertible
 
   TRANSPORTATION_MODES = {
@@ -21,6 +22,8 @@ class Track < ApplicationRecord
   belongs_to :user
   has_many :points, dependent: :nullify
   has_many :track_segments, dependent: :destroy
+  has_many :shared_links, -> { where(resource_type: SharedLink.resource_types[:track]) },
+           foreign_key: :resource_id, inverse_of: false, dependent: :destroy
 
   enum :dominant_mode, TRANSPORTATION_MODES, prefix: true
 
@@ -37,6 +40,10 @@ class Track < ApplicationRecord
   scope :by_mode, ->(mode) { where(dominant_mode: mode) }
   scope :with_unknown_mode, -> { where(dominant_mode: :unknown) }
   scope :with_detected_mode, -> { where.not(dominant_mode: :unknown) }
+  scope :without_phantom_stationary, lambda { |distance_threshold_m|
+    where('NOT (dominant_mode = ? AND distance < ?)',
+          dominant_modes[:stationary], distance_threshold_m)
+  }
 
   # Convert raw distance + duration into a stored avg_speed (km/h),
   # capped to the column's precision limit.
@@ -47,6 +54,34 @@ class Track < ApplicationRecord
     speed_kmh = (speed_mps * 3.6).round(2)
     [speed_kmh, 999_999.99].min
   end
+
+  # Bulk-delete tracks (and their segments) by id. delete_all skips the
+  # after_destroy callback, so the destroyed broadcast is replayed explicitly
+  # to keep live maps from showing the removed route until reload.
+  def self.delete_orphaned(ids)
+    ids = Array(ids).uniq
+    return 0 if ids.empty?
+
+    owners = where(id: ids).pluck(:id, :user_id)
+    return 0 if owners.empty?
+
+    TrackSegment.where(track_id: ids).delete_all
+    deleted = where(id: ids).delete_all
+    broadcast_destroyed(owners)
+    deleted
+  end
+
+  def self.broadcast_destroyed(track_owner_pairs)
+    users = User.where(id: track_owner_pairs.map(&:last).uniq).index_by(&:id)
+
+    track_owner_pairs.each do |track_id, user_id|
+      user = users[user_id]
+      next unless user
+
+      TracksChannel.broadcast_to(user, { action: 'destroyed', track_id: track_id })
+    end
+  end
+  private_class_method :broadcast_destroyed
 
   def recalculate_extra_metrics
     bounds = points.pick(Arel.sql('MIN(timestamp), MAX(timestamp)'))
@@ -83,16 +118,16 @@ class Track < ApplicationRecord
           id,
           timestamp,
           lonlat,
-          LAG(lonlat) OVER (ORDER BY timestamp) as prev_lonlat,
-          LAG(timestamp) OVER (ORDER BY timestamp) as prev_timestamp,
+          tracker_id,
+          LAG(lonlat) OVER (PARTITION BY tracker_id ORDER BY timestamp) as prev_lonlat,
+          LAG(timestamp) OVER (PARTITION BY tracker_id ORDER BY timestamp) as prev_timestamp,
           ST_Distance(
             lonlat::geography,
-            LAG(lonlat) OVER (ORDER BY timestamp)::geography
+            LAG(lonlat) OVER (PARTITION BY tracker_id ORDER BY timestamp)::geography
           ) as distance_meters,
-          (timestamp - LAG(timestamp) OVER (ORDER BY timestamp)) as time_diff_seconds
+          (timestamp - LAG(timestamp) OVER (PARTITION BY tracker_id ORDER BY timestamp)) as time_diff_seconds
         FROM points
         #{where_clause}
-        ORDER BY timestamp
       ),
       segment_breaks AS (
         SELECT *,
@@ -106,10 +141,11 @@ class Track < ApplicationRecord
       ),
       segments AS (
         SELECT *,
-          SUM(is_break) OVER (ORDER BY timestamp ROWS UNBOUNDED PRECEDING) as segment_id
+          SUM(is_break) OVER (PARTITION BY tracker_id ORDER BY timestamp ROWS UNBOUNDED PRECEDING) as segment_id
         FROM segment_breaks
       )
       SELECT
+        tracker_id,
         segment_id,
         array_agg(id ORDER BY timestamp) as point_ids,
         count(*) as point_count,
@@ -117,9 +153,9 @@ class Track < ApplicationRecord
         max(timestamp) as end_timestamp,
         sum(COALESCE(distance_meters, 0)) as total_distance_meters
       FROM segments
-      GROUP BY segment_id
+      GROUP BY tracker_id, segment_id
       HAVING count(*) >= 2
-      ORDER BY segment_id
+      ORDER BY tracker_id NULLS FIRST, segment_id
     SQL
 
     results = Point.connection.exec_query(
@@ -133,6 +169,7 @@ class Track < ApplicationRecord
     results.each do |row|
       segments_data << {
         segment_id: row['segment_id'].to_i,
+        tracker_id: row['tracker_id'],
         point_ids: parse_postgres_array(row['point_ids']),
         point_count: row['point_count'].to_i,
         start_timestamp: row['start_timestamp'].to_i,
@@ -164,7 +201,8 @@ class Track < ApplicationRecord
         points: seg_data[:point_ids].map { |id| points_by_id[id] }.compact,
         pre_calculated_distance: seg_data[:total_distance_meters],
         start_timestamp: seg_data[:start_timestamp],
-        end_timestamp: seg_data[:end_timestamp]
+        end_timestamp: seg_data[:end_timestamp],
+        tracker_id: seg_data[:tracker_id]
       }
     end
   end
@@ -181,12 +219,32 @@ class Track < ApplicationRecord
     track_segments.group(:transportation_mode).sum(:duration)
   end
 
-  def update_dominant_mode!
-    breakdown = activity_breakdown
-    return update_column(:dominant_mode, :unknown) if breakdown.empty?
+  MOVING_DISTANCE_THRESHOLD_M = 50
 
-    dominant = breakdown.max_by { |_mode, duration| duration || 0 }&.first
-    update_column(:dominant_mode, dominant || :unknown)
+  def update_dominant_mode!
+    segments = track_segments.reload
+    return update_column(:dominant_mode, :unknown) if segments.empty?
+
+    update_column(:dominant_mode, self.class.pick_dominant_mode(segments) || :unknown)
+  end
+
+  def self.pick_dominant_mode(segments)
+    distance_by_mode = Hash.new(0)
+    duration_by_mode = Hash.new(0)
+    segments.each do |s|
+      distance_by_mode[s.transportation_mode] += s.distance.to_i
+      duration_by_mode[s.transportation_mode] += s.duration.to_i
+    end
+
+    moving = distance_by_mode.reject do |mode, dist|
+      %w[stationary unknown].include?(mode.to_s) || dist < MOVING_DISTANCE_THRESHOLD_M
+    end
+
+    if moving.any?
+      moving.max_by { |mode, dist| [dist, duration_by_mode[mode]] }&.first
+    else
+      duration_by_mode.max_by { |_, dur| dur }&.first
+    end
   end
 
   def broadcast_geojson_updated

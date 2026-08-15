@@ -57,4 +57,11 @@ RSpec.configure do |config|
   # the key, this may want to be changed to avoid putting yaml in json files.
   # Defaults to json. Accepts ':json' and ':yaml'.
   config.openapi_format = :yaml
+
+  config.after(:each, type: :request) do |example|
+    response_meta = example.metadata[:response]
+    next unless response_meta && response_meta[:code].to_s.start_with?('2')
+
+    SwaggerResponseExample.capture(example, response)
+  end
 end

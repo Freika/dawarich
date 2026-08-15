@@ -4,383 +4,105 @@ require 'rails_helper'
 
 RSpec.describe Visits::PlaceFinder do
   let(:user) { create(:user) }
-  let(:latitude) { 40.7128 }
-  let(:longitude) { -74.0060 }
+  let(:visit_data) do
+    {
+      center_lat: 52.5126,
+      center_lon: 13.4012,
+      suggested_name: nil,
+      points: [],
+      start_time: Time.zone.now.to_i,
+      end_time: (Time.zone.now + 1.hour).to_i,
+      duration: 3600
+    }
+  end
 
-  subject { described_class.new(user) }
+  before do
+    allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
+    allow(DawarichSettings).to receive(:store_geodata?).and_return(false)
+  end
 
   describe '#find_or_create_place' do
-    let(:visit_data) do
-      {
-        center_lat: latitude,
-        center_lon: longitude,
-        suggested_name: 'Test Place',
-        points: []
-      }
+    it 'returns a Place (not a hash)' do
+      result = described_class.new(user).find_or_create_place(visit_data)
+
+      expect(result).to be_a(Place)
     end
 
-    context 'when an existing place is found' do
-      let!(:existing_place) do
-        create(:place, latitude: latitude, longitude: longitude, lonlat: "POINT(#{longitude} #{latitude})")
-      end
-
-      it 'returns the existing place as main_place' do
-        result = subject.find_or_create_place(visit_data)
-
-        expect(result).to be_a(Hash)
-        expect(result[:main_place]).to eq(existing_place)
-      end
-
-      it 'includes suggested places in the result' do
-        result = subject.find_or_create_place(visit_data)
-
-        expect(result[:suggested_places]).to respond_to(:each)
-        expect(result[:suggested_places]).to include(existing_place)
-      end
-
-      it 'finds an existing place by name within search radius' do
-        # Place is outside the global proximity radius (50m) but within the name search radius (100m)
-        offset = 0.0006 # ~67m offset
-        similar_named_place = create(:place,
-                                     name: 'Test Place',
-                                     latitude: latitude + offset,
-                                     longitude: longitude + offset,
-                                     lonlat: "POINT(#{longitude + offset} #{latitude + offset})")
-
-        modified_visit_data = visit_data.merge(
-          suggested_name: 'Test Place',
-          center_lat: latitude + offset + 0.0001,
-          center_lon: longitude + offset + 0.0001
-        )
-
-        result = subject.find_or_create_place(modified_visit_data)
-
-        expect(result[:main_place]).to eq(similar_named_place)
-      end
+    it 'creates exactly ONE place per call (no fan-out)' do
+      expect { described_class.new(user).find_or_create_place(visit_data) }
+        .to change { Place.count }.by(1)
     end
 
-    context 'with places from points data' do
-      let(:point_with_geodata) do
-        build_stubbed(:point,
-                      lonlat: "POINT(#{longitude} #{latitude})",
-                      geodata: {
-                        'properties' => {
-                          'name' => 'POI from Point',
-                          'city' => 'New York',
-                          'country' => 'USA'
-                        }
-                      })
-      end
+    it 'creates the place with Place::DEFAULT_NAME when no suggested_name is given' do
+      result = described_class.new(user).find_or_create_place(visit_data)
 
-      let(:visit_data_with_points) do
-        visit_data.merge(points: [point_with_geodata])
-      end
-
-      before do
-        allow(Geocoder).to receive(:search).and_return([])
-      end
-
-      it 'extracts and creates places from point geodata' do
-        expect do
-          result = subject.find_or_create_place(visit_data_with_points)
-          expect(result[:main_place].name).to include('POI from Point')
-        end.to change(Place, :count).by(1)
-      end
+      expect(result.name).to eq(Place::DEFAULT_NAME)
+      expect(result.source).to eq('photon')
     end
 
-    context 'when no existing place is found' do
-      let(:geocoder_result) do
-        double(
-          data: {
-            'properties' => {
-              'name' => 'Test Location',
-              'street' => 'Test Street',
-              'city' => 'Test City',
-              'country' => 'Test Country'
-            }
-          },
-          latitude: latitude,
-          longitude: longitude
-        )
-      end
+    it 'uses suggested_name when present' do
+      data = visit_data.merge(suggested_name: 'Home')
 
-      let(:other_geocoder_result) do
-        double(
-          data: {
-            'properties' => {
-              'name' => 'Other Location',
-              'street' => 'Other Street',
-              'city' => 'Test City',
-              'country' => 'Test Country'
-            }
-          },
-          latitude: latitude + 0.001,
-          longitude: longitude + 0.001
-        )
-      end
-
-      before do
-        allow(Geocoder).to receive(:search).and_return([geocoder_result, other_geocoder_result])
-      end
-
-      it 'creates a new place with geocoded data' do
-        expect do
-          result = subject.find_or_create_place(visit_data)
-          expect(result[:main_place].name).to include('Test Location')
-        end.to change(Place, :count).by(2)
-
-        place = Place.find_by(name: 'Test Location, Test Street, Test City')
-
-        expect(place.city).to eq('Test City')
-        expect(place.country).to eq('Test Country')
-        expect(place.source).to eq('photon')
-      end
-
-      it 'returns both main place and suggested places' do
-        result = subject.find_or_create_place(visit_data)
-
-        expect(result[:main_place].name).to include('Test Location')
-        expect(result[:suggested_places].length).to eq(2)
-
-        expect(result[:suggested_places].map(&:name)).to include(
-          'Test Location, Test Street, Test City',
-          'Other Location, Other Street, Test City'
-        )
-      end
-
-      context 'when geocoding returns no results' do
-        before do
-          allow(Geocoder).to receive(:search).and_return([])
-        end
-
-        it 'creates a place with the suggested name' do
-          expect do
-            result = subject.find_or_create_place(visit_data)
-            expect(result[:main_place].name).to eq('Test Place')
-          end.to change(Place, :count).by(1)
-
-          place = Place.last
-          expect(place.name).to eq('Test Place')
-          expect(place.source).to eq('manual')
-        end
-
-        it 'returns the created place as both main and the only suggested place' do
-          result = subject.find_or_create_place(visit_data)
-
-          expect(result[:main_place].name).to eq('Test Place')
-          expect(result[:suggested_places]).to eq([result[:main_place]])
-        end
-
-        it 'falls back to default name when suggested name is missing' do
-          visit_data_without_name = visit_data.merge(suggested_name: nil)
-
-          result = subject.find_or_create_place(visit_data_without_name)
-
-          expect(result[:main_place].name).to eq(Place::DEFAULT_NAME)
-        end
-      end
+      expect(described_class.new(user).find_or_create_place(data).name).to eq('Home')
     end
 
-    context 'with multiple potential places' do
-      let!(:place1) { create(:place, name: 'Place 1', latitude: latitude, longitude: longitude) }
-      let!(:place2) { create(:place, name: 'Place 2', latitude: latitude + 0.0005, longitude: longitude + 0.0005) }
-      let!(:place3) { create(:place, name: 'Place 3', latitude: latitude + 0.001, longitude: longitude + 0.001) }
+    it 'reuses an existing user place near the center' do
+      existing = create(:place, user: user, latitude: 52.5126, longitude: 13.4012)
 
-      it 'selects the closest place as main_place' do
-        result = subject.find_or_create_place(visit_data)
-
-        expect(result[:main_place]).to eq(place1)
-      end
-
-      it 'includes nearby places as suggested_places' do
-        result = subject.find_or_create_place(visit_data)
-
-        expect(result[:suggested_places]).to include(place1, place2)
-        # place3 might be outside the search radius depending on the constants defined
-      end
-
-      it 'may include places with the same name' do
-        create(:place, name: 'Place 1', latitude: latitude + 0.0002, longitude: longitude + 0.0002)
-
-        result = subject.find_or_create_place(visit_data)
-
-        names = result[:suggested_places].map(&:name)
-        expect(names.count('Place 1')).to be >= 1
-      end
+      expect { described_class.new(user).find_or_create_place(visit_data) }
+        .not_to have_enqueued_job(Places::NameFetchingJob)
+      expect(described_class.new(user).find_or_create_place(visit_data)).to eq(existing)
     end
 
-    context 'with API place creation failures' do
-      let(:invalid_geocoder_result) do
-        double(
-          data: {
-            'properties' => {
-              # Missing required fields
-            }
-          },
-          latitude: latitude,
-          longitude: longitude
-        )
-      end
+    it 'never persists geodata at creation (filled by Places::NameFetchingJob)' do
+      result = described_class.new(user).find_or_create_place(visit_data)
 
-      before do
-        allow(Geocoder).to receive(:search).and_return([invalid_geocoder_result])
-      end
-
-      it 'gracefully handles errors in place creation' do
-        result = subject.find_or_create_place(visit_data)
-
-        # Should create the default place
-        expect(result[:main_place].name).to eq('Test Place')
-        expect(result[:main_place].source).to eq('manual')
-      end
+      expect(result.geodata).to eq({})
     end
 
-    context 'when Geocoder raises a network error' do
-      before do
-        allow(Geocoder).to receive(:search).and_raise(EOFError.new('end of file reached'))
-        allow(ExceptionReporter).to receive(:call)
-        allow(Rails.logger).to receive(:error)
-      end
+    it 'enqueues Places::NameFetchingJob for the new place when reverse geocoding is enabled' do
+      expect { described_class.new(user).find_or_create_place(visit_data) }
+        .to have_enqueued_job(Places::NameFetchingJob).with(an_instance_of(Integer))
+    end
 
-      it 'handles the error gracefully and continues' do
-        result = subject.find_or_create_place(visit_data)
+    it 'does not enqueue Places::NameFetchingJob when reverse geocoding is disabled' do
+      allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false)
 
-        # Should still return a result with a default place
-        expect(result[:main_place]).to be_a(Place)
-        expect(result[:main_place].name).to eq('Test Place')
-      end
-
-      it 'logs the error' do
-        subject.find_or_create_place(visit_data)
-        expect(Rails.logger).to have_received(:error).with(/Reverse geocoding error in PlaceFinder/)
-      end
-
-      it 'reports the exception' do
-        subject.find_or_create_place(visit_data)
-        expect(ExceptionReporter).to have_received(:call)
-      end
+      expect { described_class.new(user).find_or_create_place(visit_data) }
+        .not_to have_enqueued_job(Places::NameFetchingJob)
     end
   end
 
-  describe 'suggested places limit' do
-    it 'limits suggested places to MAX_SUGGESTED_PLACES' do
-      # Create more places than the limit, all within search radius
-      30.times do |i|
-        tiny_offset = i * 0.00001 # ~1m apart, all within 100m radius
-        create(:place,
-               name: "Place #{i}",
-               latitude: latitude + tiny_offset,
-               longitude: longitude + tiny_offset,
-               lonlat: "POINT(#{longitude + tiny_offset} #{latitude + tiny_offset})")
-      end
-
-      visit_data = {
-        center_lat: latitude,
-        center_lon: longitude,
-        suggested_name: 'Test',
-        points: []
-      }
-
-      result = subject.find_or_create_place(visit_data)
-
-      expect(result[:suggested_places].size).to be <= described_class::MAX_SUGGESTED_PLACES
-    end
-  end
-
-  describe 'cross-user isolation (IDOR)' do
-    # Regression: PlaceFinder.find_suggested_places (Step 9) queries
-    # Place.near(...) UNSCOPED, returning every user's nearby places. When
-    # user B's auto-suggestion path matches a global place at the same
-    # location, suggested_places must NOT leak user A's user-scoped nearby
-    # places.
-    let(:user_a) { create(:user) }
-    let(:user_b) { create(:user) }
-
-    let(:lat) { 52.5200 }
-    let(:lon) { 13.4050 }
-
-    # A global place at the location triggers find_existing_place to return
-    # a match, which is what causes find_suggested_places to be invoked.
-    let!(:global_place) do
-      create(:place,
-             user: nil,
-             name: 'Global Landmark',
-             latitude: lat,
-             longitude: lon,
-             lonlat: "POINT(#{lon} #{lat})")
+  describe '#find_or_create_place candidate ranking' do
+    def place_at(lat, lon, name:, source:)
+      create(:place, user: user, name: name, source: source,
+                     latitude: lat, longitude: lon, lonlat: "POINT(#{lon} #{lat})", geodata: {})
     end
 
-    # User A's private place near the same location. Must NOT be returned
-    # to user B as a suggestion.
-    let!(:user_a_private_place) do
-      offset = 0.0001 # ~11m
-      create(:place,
-             user: user_a,
-             name: "User A's Private Place",
-             latitude: lat + offset,
-             longitude: lon + offset,
-             lonlat: "POINT(#{lon + offset} #{lat + offset})")
+    it 'prefers a manual place over a photon place at the same location' do
+      photon = place_at(52.5126, 13.4012, name: 'Photon', source: :photon)
+      manual = place_at(52.5126, 13.4012, name: 'Manual', source: :manual)
+
+      result = described_class.new(user).find_or_create_place(visit_data)
+
+      expect(result).to eq(manual)
+      expect(result).not_to eq(photon)
     end
 
-    let(:visit_data) do
-      {
-        center_lat: lat,
-        center_lon: lon,
-        suggested_name: 'New Place',
-        points: []
-      }
+    it 'prefers an exact name match within the radius' do
+      place_at(52.51262, 13.40122, name: 'Other', source: :photon)
+      named = place_at(52.5126, 13.4012, name: 'Cafe', source: :photon)
+
+      result = described_class.new(user).find_or_create_place(visit_data.merge(suggested_name: 'Cafe'))
+
+      expect(result).to eq(named)
     end
 
-    before do
-      allow(Geocoder).to receive(:search).and_return([])
-    end
+    it 'reuses a nearby place instead of minting a duplicate' do
+      place_at(52.5126, 13.4012, name: 'Cafe', source: :photon)
 
-    it 'does not return user A\'s user-scoped place to user B' do
-      finder = described_class.new(user_b)
-      result = finder.find_or_create_place(visit_data)
-
-      # The main place is the global one (legitimately shared).
-      expect(result[:main_place]).to eq(global_place)
-
-      # Suggested places must NOT include user A's private place.
-      expect(result[:suggested_places]).not_to include(user_a_private_place)
-
-      foreign_user_ids = result[:suggested_places].map(&:user_id).compact - [user_b.id]
-      expect(foreign_user_ids).to be_empty
-    end
-  end
-
-  describe 'private methods' do
-    context '#build_place_name' do
-      it 'combines name components correctly' do
-        properties = {
-          'name' => 'Coffee Shop',
-          'street' => 'Main St',
-          'housenumber' => '123',
-          'city' => 'New York'
-        }
-
-        name = subject.send(:build_place_name, properties)
-        expect(name).to eq('Coffee Shop, Main St, 123, New York')
-      end
-
-      it 'removes duplicate components' do
-        properties = {
-          'name' => 'Coffee Shop',
-          'street' => 'Coffee Shop', # Duplicate of name
-          'city' => 'New York'
-        }
-
-        name = subject.send(:build_place_name, properties)
-        expect(name).to eq('Coffee Shop, New York')
-      end
-
-      it 'returns default name when no components are available' do
-        properties = { 'other' => 'irrelevant' }
-
-        name = subject.send(:build_place_name, properties)
-        expect(name).to eq(Place::DEFAULT_NAME)
-      end
+      expect { described_class.new(user).find_or_create_place(visit_data.merge(suggested_name: 'Cafe')) }
+        .not_to(change { Place.count })
     end
   end
 end

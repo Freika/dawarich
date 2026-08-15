@@ -98,7 +98,23 @@ export class ReplayMarkerLayer extends BaseLayer {
       this._showCircleLayer()
     }
 
+    if (!this.visible) {
+      this._bringToFront()
+    }
     this.show()
+  }
+
+  /**
+   * Move the marker layers above all other style layers so the marker
+   * renders on top of track and route lines
+   * @private
+   */
+  _bringToFront() {
+    for (const layerId of [`${this.id}-pulse`, this.id]) {
+      if (this.map.getLayer(layerId)) {
+        this.map.moveLayer(layerId)
+      }
+    }
   }
 
   /**

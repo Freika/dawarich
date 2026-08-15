@@ -3,6 +3,50 @@
 require 'rails_helper'
 
 RSpec.describe User, type: :model do
+  describe '#preferred_locale' do
+    it 'normalizes a supported string locale' do
+      user = build(:user, settings: { 'locale' => ' FR ' })
+
+      expect(user.preferred_locale).to eq(:fr)
+    end
+
+    it 'treats malformed and unsupported locale values as unset' do
+      [false, 42, { 'language' => 'fr' }, %w[fr], 'xx'].each do |locale|
+        user = build(:user, settings: { 'locale' => locale })
+
+        expect { user.preferred_locale }.not_to raise_error
+        expect(user.preferred_locale).to be_nil
+      end
+    end
+
+    it 'treats a malformed settings container as unset' do
+      [false, []].each do |settings|
+        user = build(:user, settings:)
+
+        expect { user.preferred_locale }.not_to raise_error
+        expect(user.preferred_locale).to be_nil
+      end
+    end
+  end
+
+  describe '#persist_locale!' do
+    it 'normalizes a malformed settings container before saving the locale' do
+      user = create(:user)
+      user.update_column(:settings, [])
+
+      expect { user.reload.persist_locale!(:fr) }.not_to raise_error
+
+      expect(user.reload.settings).to eq('locale' => 'fr')
+      expect(user.preferred_locale).to eq(:fr)
+    end
+  end
+
+  describe 'visit detection v3 stamp' do
+    it 'marks new accounts as v3-native so confidence gating applies from day one' do
+      expect(create(:user).reload.visits_redetected_at).to be_present
+    end
+  end
+
   describe 'associations' do
     it { is_expected.to have_many(:imports).dependent(:destroy) }
     it { is_expected.to have_many(:stats) }
@@ -28,7 +72,278 @@ RSpec.describe User, type: :model do
         .with_values(none: 0, paddle: 1, apple_iap: 2, google_play: 3)
         .with_prefix(:sub_source)
     }
-    it { is_expected.to define_enum_for(:plan).with_values(lite: 0, pro: 1) }
+    it { is_expected.to define_enum_for(:plan).with_values(lite: 0, pro: 1, family: 2) }
+  end
+
+  describe 'plan enum' do
+    it 'supports the family plan' do
+      user = create(:user, plan: :family, skip_auto_trial: true)
+      expect(user.family?).to be true
+    end
+
+    it 'has integer value 2 for family' do
+      expect(User.plans['family']).to eq(2)
+    end
+  end
+
+  describe '#persist_locale!' do
+    it 'updates only the locale when its settings snapshot is stale' do
+      stale_user = create(:user)
+      User.where(id: stale_user.id).update_all(
+        settings: stale_user.settings.merge('concurrent_preference' => 'preserved')
+      )
+
+      stale_user.persist_locale!(:de)
+
+      expect(stale_user.reload.settings).to include(
+        'locale' => 'de',
+        'concurrent_preference' => 'preserved'
+      )
+    end
+  end
+
+  describe 'archival warning reset on plan change' do
+    it 'clears archival warnings and stale lite_since when the plan leaves lite' do
+      user = create(:user, skip_auto_trial: true)
+      user.update_column(:plan, User.plans[:lite])
+      user.update_column(:settings, user.settings.merge(
+                                      'lite_since' => 1.day.ago.iso8601,
+                                      'archival_warnings' => { '11mo' => 1.day.ago.iso8601 }
+                                    ))
+
+      user.update!(plan: :pro)
+
+      expect(user.reload.settings).not_to have_key('lite_since')
+      expect(user.settings).not_to have_key('archival_warnings')
+    end
+
+    it 'resets stale archival warnings when re-entering lite without stamping lite_since' do
+      user = create(:user, skip_auto_trial: true)
+      user.update_column(:plan, User.plans[:pro])
+      user.update_column(:settings, user.settings.merge('archival_warnings' => { '12mo' => 1.year.ago.iso8601 }))
+
+      user.update!(plan: :lite)
+
+      expect(user.reload.settings).not_to have_key('archival_warnings')
+      expect(user.settings).not_to have_key('lite_since')
+    end
+
+    it 'preserves other settings keys when resetting' do
+      user = create(:user, skip_auto_trial: true)
+      user.update_column(:plan, User.plans[:pro])
+      user.update_column(:settings, user.settings.merge('maps' => { 'distance_unit' => 'km' },
+                                                        'archival_warnings' => { '11mo' => 1.day.ago.iso8601 }))
+
+      user.update!(plan: :lite)
+
+      expect(user.reload.settings).not_to have_key('archival_warnings')
+      expect(user.settings['maps']).to eq('distance_unit' => 'km')
+    end
+
+    it 'does not touch settings when the plan does not change' do
+      user = create(:user, skip_auto_trial: true)
+      user.update_column(:plan, User.plans[:lite])
+      user.update_column(:settings, user.settings.merge('archival_warnings' => { '11mo' => 1.day.ago.iso8601 }))
+
+      expect { user.update!(email: 'new-address@example.com') }
+        .not_to(change { user.reload.settings['archival_warnings'] })
+    end
+  end
+
+  describe 'changelog consent' do
+    it 'defaults to nil (not yet prompted) and reports prompt pending' do
+      user = create(:user)
+      expect(user.changelog_consent).to be_nil
+      expect(user.changelog_prompt_pending?).to be(true)
+    end
+
+    it 'records a granted choice' do
+      user = create(:user)
+      user.update!(changelog_consent: :granted)
+      expect(user.changelog_consent_granted?).to be(true)
+      expect(user.changelog_prompt_pending?).to be(false)
+    end
+
+    it 'records a declined choice' do
+      user = create(:user)
+      user.update!(changelog_consent: :declined)
+      expect(user.changelog_consent_declined?).to be(true)
+      expect(user.changelog_prompt_pending?).to be(false)
+    end
+  end
+
+  describe '#effective_plan' do
+    context 'when self-hosted' do
+      before { allow(DawarichSettings).to receive(:self_hosted?).and_return(true) }
+
+      it 'returns the raw plan regardless of family membership' do
+        user = create(:user, plan: :lite, skip_auto_trial: true)
+
+        expect(user.effective_plan).to eq(:lite)
+      end
+    end
+
+    context 'when cloud' do
+      before { allow(DawarichSettings).to receive(:self_hosted?).and_return(false) }
+
+      it 'returns :pro for a cloud pro user' do
+        user = create(:user, plan: :pro, skip_auto_trial: true)
+
+        expect(user.effective_plan).to eq(:pro)
+      end
+
+      it 'returns :family for a family owner' do
+        owner = create(:user, plan: :family, skip_auto_trial: true)
+        family = create(:family, creator: owner)
+        create(:family_membership, :owner, family: family, user: owner)
+
+        expect(owner.effective_plan).to eq(:family)
+      end
+
+      it 'returns :lite for a lite user not in a family' do
+        user = create(:user, plan: :lite, skip_auto_trial: true)
+
+        expect(user.effective_plan).to eq(:lite)
+      end
+
+      it 'returns :family for a lite member of a family-plan family' do
+        owner = create(:user, plan: :family, skip_auto_trial: true)
+        family = create(:family, creator: owner)
+        create(:family_membership, :owner, family: family, user: owner)
+        member = create(:user, plan: :lite, skip_auto_trial: true)
+        create(:family_membership, family: family, user: member)
+
+        expect(member.effective_plan).to eq(:family)
+      end
+
+      it 'returns the raw plan for a lite member whose family owner is not on the family plan' do
+        owner = create(:user, plan: :pro, skip_auto_trial: true)
+        family = create(:family, creator: owner)
+        create(:family_membership, :owner, family: family, user: owner)
+        member = create(:user, plan: :lite, skip_auto_trial: true)
+        create(:family_membership, family: family, user: member)
+
+        expect(member.effective_plan).to eq(:lite)
+      end
+
+      it 'reverts members to their raw plan once the owner subscription lapses' do
+        owner = create(:user, plan: :family, skip_auto_trial: true, status: :inactive,
+                              active_until: 1.day.ago)
+        family = create(:family, creator: owner)
+        create(:family_membership, :owner, family: family, user: owner)
+        member = create(:user, plan: :lite, skip_auto_trial: true)
+        create(:family_membership, family: family, user: member)
+
+        expect(member.effective_plan).to eq(:lite)
+        expect(member.full_access?).to be false
+      end
+
+      it 'keeps members on family access while a cancelled owner is still inside the paid period' do
+        owner = create(:user, plan: :family, skip_auto_trial: true, status: :inactive,
+                              active_until: 10.days.from_now)
+        family = create(:family, creator: owner)
+        create(:family_membership, :owner, family: family, user: owner)
+        member = create(:user, plan: :lite, skip_auto_trial: true)
+        create(:family_membership, family: family, user: member)
+
+        expect(member.effective_plan).to eq(:family)
+      end
+
+      it 'grants members family access while the owner is on a trial' do
+        owner = create(:user, plan: :family, skip_auto_trial: true, status: :trial,
+                              active_until: 7.days.from_now)
+        family = create(:family, creator: owner)
+        create(:family_membership, :owner, family: family, user: owner)
+        member = create(:user, plan: :lite, skip_auto_trial: true)
+        create(:family_membership, family: family, user: member)
+
+        expect(member.effective_plan).to eq(:family)
+      end
+
+      it 'reverts members when the owner has no subscription window at all' do
+        owner = create(:user, plan: :family, skip_auto_trial: true, active_until: nil)
+        family = create(:family, creator: owner)
+        create(:family_membership, :owner, family: family, user: owner)
+        member = create(:user, plan: :lite, skip_auto_trial: true)
+        create(:family_membership, family: family, user: member)
+
+        expect(member.effective_plan).to eq(:lite)
+      end
+
+      it 'reverts to the raw plan after the member leaves the family' do
+        owner = create(:user, plan: :family, skip_auto_trial: true)
+        family = create(:family, creator: owner)
+        create(:family_membership, :owner, family: family, user: owner)
+        member = create(:user, plan: :lite, skip_auto_trial: true)
+        membership = create(:family_membership, family: family, user: member)
+
+        membership.destroy!
+        member.reload
+
+        expect(member.effective_plan).to eq(:lite)
+      end
+
+      it 'reverts all members when the owner plan drops below family, leaving the family dormant' do
+        owner = create(:user, plan: :family, skip_auto_trial: true)
+        family = create(:family, creator: owner)
+        create(:family_membership, :owner, family: family, user: owner)
+        member = create(:user, plan: :lite, skip_auto_trial: true)
+        create(:family_membership, family: family, user: member)
+
+        expect(member.full_access?).to be true
+
+        owner.update!(plan: :pro)
+        member.reload
+
+        expect(member.full_access?).to be false
+        expect(member.effective_plan).to eq(:lite)
+        expect(member.in_family?).to be true
+        expect(Family.exists?(family.id)).to be true
+        expect(family.members).to include(member, owner)
+      end
+    end
+  end
+
+  describe '#full_access?' do
+    context 'when self-hosted' do
+      before { allow(DawarichSettings).to receive(:self_hosted?).and_return(true) }
+
+      it 'is true even for a lite user' do
+        user = create(:user, plan: :lite, skip_auto_trial: true)
+
+        expect(user.full_access?).to be true
+      end
+    end
+
+    context 'when cloud' do
+      before { allow(DawarichSettings).to receive(:self_hosted?).and_return(false) }
+
+      it 'is true for pro' do
+        expect(create(:user, plan: :pro, skip_auto_trial: true).full_access?).to be true
+      end
+
+      it 'is true for a family owner' do
+        owner = create(:user, plan: :family, skip_auto_trial: true)
+        family = create(:family, creator: owner)
+        create(:family_membership, :owner, family: family, user: owner)
+
+        expect(owner.full_access?).to be true
+      end
+
+      it 'is false for a lite user not in a family' do
+        expect(create(:user, plan: :lite, skip_auto_trial: true).full_access?).to be false
+      end
+
+      it 'is true for a lite member of a family-plan family' do
+        owner = create(:user, plan: :family, skip_auto_trial: true)
+        family = create(:family, creator: owner)
+        create(:family_membership, :owner, family: family, user: owner)
+        member = create(:user, plan: :lite, skip_auto_trial: true)
+        create(:family_membership, family: family, user: member)
+
+        expect(member.full_access?).to be true
+      end
+    end
   end
 
   describe 'callbacks' do
@@ -108,8 +423,7 @@ RSpec.describe User, type: :model do
       it 'does not enqueue any billing-related emails (Manager service owns billing emails)' do
         user = create(:user, :inactive)
 
-        %w[trial_expires_soon trial_expired post_trial_reminder_early post_trial_reminder_late
-           trial_first_payment_soon trial_converted
+        %w[trial_first_payment_soon trial_converted
            pending_payment_day_1 pending_payment_day_3 pending_payment_day_7].each do |billing_type|
           expect(Users::MailerSendingJob).not_to have_been_enqueued.with(user.id, billing_type)
         end
@@ -373,13 +687,28 @@ RSpec.describe User, type: :model do
 
     describe '#years_tracked' do
       let!(:points) do
-        (1..3).map do |i|
-          create(:point, user:, timestamp: DateTime.new(2024, 1, 1, 5, 0, 0) + i.minutes)
+        [
+          DateTime.new(2024, 1, 1, 5, 0, 0),
+          DateTime.new(2024, 3, 1, 5, 0, 0),
+          DateTime.new(2023, 12, 1, 5, 0, 0)
+        ].flat_map do |month|
+          (1..3).map { |i| create(:point, user:, timestamp: month + i.minutes) }
         end
       end
 
-      it 'returns years tracked' do
-        expect(user.years_tracked).to eq([{ year: 2024, months: ['Jan'] }])
+      it 'returns only tracked months in calendar order for each year' do
+        expect(user.years_tracked).to eq([
+                                           { year: 2024, months: %w[Jan Mar] },
+                                           { year: 2023, months: ['Dec'] }
+                                         ])
+      end
+
+      context 'when the user has no points' do
+        let(:user_without_points) { create(:user) }
+
+        it 'returns an empty array' do
+          expect(user_without_points.years_tracked).to eq([])
+        end
       end
     end
 
@@ -670,6 +999,24 @@ subscription_source: :none)
         expect(user.email).to eq(email)
         expect(user.persisted?).to be true
       end
+
+      context 'when the same Google account was first registered via the mobile app' do
+        let!(:mobile_user) do
+          create(:user,
+                 email: email,
+                 provider: Api::V1::Auth::GoogleController::PROVIDER,
+                 uid: '123545')
+        end
+
+        it 'signs in the existing user by identity without prompting to link' do
+          user = nil
+          expect do
+            user = described_class.from_omniauth(auth_hash)
+          end.not_to change(User, :count)
+
+          expect(user).to eq(mobile_user)
+        end
+      end
     end
 
     context 'when email is blank or nil' do
@@ -851,11 +1198,167 @@ subscription_source: :none)
       user = build(:user)
       user.save!
 
-      %w[trial_expires_soon trial_expired post_trial_reminder_early post_trial_reminder_late
-         trial_first_payment_soon trial_converted
+      %w[trial_first_payment_soon trial_converted
          pending_payment_day_1 pending_payment_day_3 pending_payment_day_7].each do |billing_type|
         expect(Users::MailerSendingJob).not_to have_been_enqueued.with(user.id, billing_type)
       end
+    end
+  end
+
+  describe 'OTP lockout' do
+    let(:user) { create(:user) }
+
+    describe '#otp_locked?' do
+      it 'returns false when otp_locked_at is nil' do
+        expect(user.otp_locked?).to be false
+      end
+
+      it 'returns true when locked within the lock duration' do
+        user.update_columns(otp_locked_at: 1.minute.ago)
+        expect(user.otp_locked?).to be true
+      end
+
+      it 'returns false when lock has expired' do
+        user.update_columns(otp_locked_at: 31.minutes.ago)
+        expect(user.otp_locked?).to be false
+      end
+    end
+
+    describe '#register_failed_otp_attempt!' do
+      before  { Rails.cache.delete("otp_lockout_email_throttle/user/#{user.id}") }
+      after   { Rails.cache.delete("otp_lockout_email_throttle/user/#{user.id}") }
+
+      it 'increments failed_otp_attempts' do
+        expect { user.register_failed_otp_attempt! }
+          .to change { user.reload.failed_otp_attempts }.from(0).to(1)
+      end
+
+      it 'does not lock the account below the threshold' do
+        (User::MAX_FAILED_OTP_ATTEMPTS - 1).times { user.register_failed_otp_attempt! }
+        expect(user.reload.otp_locked_at).to be_nil
+      end
+
+      it 'locks the account when threshold is reached' do
+        User::MAX_FAILED_OTP_ATTEMPTS.times { user.register_failed_otp_attempt! }
+        expect(user.reload.otp_locked_at).to be_present
+      end
+
+      it 'enqueues a lockout email when threshold is reached' do
+        (User::MAX_FAILED_OTP_ATTEMPTS - 1).times { user.register_failed_otp_attempt! }
+        expect { user.register_failed_otp_attempt! }
+          .to have_enqueued_mail(UsersMailer, :otp_account_locked)
+      end
+
+      it 'does not enqueue a lockout email below the threshold' do
+        expect { user.register_failed_otp_attempt! }
+          .not_to have_enqueued_mail(UsersMailer, :otp_account_locked)
+      end
+
+      it 'is a no-op while the account is already locked' do
+        User::MAX_FAILED_OTP_ATTEMPTS.times { user.register_failed_otp_attempt! }
+        locked_at = user.reload.otp_locked_at
+        count = user.failed_otp_attempts
+
+        expect { user.register_failed_otp_attempt! }
+          .not_to have_enqueued_mail(UsersMailer, :otp_account_locked)
+        user.reload
+        expect(user.otp_locked_at).to eq(locked_at)
+        expect(user.failed_otp_attempts).to eq(count)
+      end
+
+      it 'resets the counter and starts fresh after the lock has expired' do
+        user.update_columns(failed_otp_attempts: User::MAX_FAILED_OTP_ATTEMPTS, otp_locked_at: 31.minutes.ago)
+
+        expect { user.register_failed_otp_attempt! }
+          .not_to have_enqueued_mail(UsersMailer, :otp_account_locked)
+        user.reload
+        expect(user.otp_locked_at).to be_nil
+        expect(user.failed_otp_attempts).to eq(1)
+      end
+    end
+
+    describe '#reset_failed_otp_attempts!' do
+      it 'clears failed_otp_attempts and otp_locked_at' do
+        user.update_columns(failed_otp_attempts: 5, otp_locked_at: 1.minute.ago)
+        user.reset_failed_otp_attempts!
+        user.reload
+        expect(user.failed_otp_attempts).to eq(0)
+        expect(user.otp_locked_at).to be_nil
+      end
+
+      it 'is a no-op when already at defaults' do
+        user.reset_failed_otp_attempts!
+        user.reload
+        expect(user.failed_otp_attempts).to eq(0)
+        expect(user.otp_locked_at).to be_nil
+      end
+    end
+
+    describe '#reset_password' do
+      it 'clears the OTP lockout when the password is successfully reset' do
+        user.update_columns(failed_otp_attempts: User::MAX_FAILED_OTP_ATTEMPTS, otp_locked_at: 1.minute.ago)
+
+        user.reset_password('newpassword12345', 'newpassword12345')
+        user.reload
+
+        expect(user.failed_otp_attempts).to eq(0)
+        expect(user.otp_locked_at).to be_nil
+      end
+
+      it 'does not clear the OTP lockout when the password reset fails validation' do
+        user.update_columns(failed_otp_attempts: User::MAX_FAILED_OTP_ATTEMPTS, otp_locked_at: 1.minute.ago)
+
+        user.reset_password('short', 'short')
+        user.reload
+
+        expect(user.failed_otp_attempts).to eq(User::MAX_FAILED_OTP_ATTEMPTS)
+        expect(user.otp_locked_at).to be_present
+      end
+    end
+  end
+
+  describe 'name columns' do
+    it 'persists first_name and last_name' do
+      user = create(:user, first_name: 'Ada', last_name: 'Lovelace')
+      expect(user.reload.first_name).to eq('Ada')
+      expect(user.reload.last_name).to eq('Lovelace')
+    end
+  end
+
+  describe '#gps_noise_recheck_pending?' do
+    let(:job) { DataMigrations::RecalculateAnomaliesUserJob }
+    let(:user) { create(:user) }
+
+    def stamp(**pairs)
+      user.update!(settings: user.settings.merge(pairs.transform_keys(&:to_s)))
+    end
+
+    it 'is pending once the dispatcher has handed the account to a rebuild' do
+      stamp(job::QUEUED_SETTINGS_KEY => Time.current.iso8601)
+
+      expect(user.gps_noise_recheck_pending?).to be true
+    end
+
+    it 'is not pending once the rebuild has stamped the account' do
+      stamp(
+        job::QUEUED_SETTINGS_KEY => Time.current.iso8601,
+        job::RECALCULATED_SETTINGS_KEY => Time.current.iso8601
+      )
+
+      expect(user.gps_noise_recheck_pending?).to be false
+    end
+
+    it 'is not pending for an account the dispatcher never handed out' do
+      create(:point, user: user)
+
+      expect(user.gps_noise_recheck_pending?).to be false
+    end
+
+    it 'is not pending for an account the dispatcher settled without running it' do
+      now = Time.current.iso8601
+      stamp(job::QUEUED_SETTINGS_KEY => now, job::RECALCULATED_SETTINGS_KEY => now)
+
+      expect(user.gps_noise_recheck_pending?).to be false
     end
   end
 end

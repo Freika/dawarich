@@ -18,9 +18,10 @@ class StatsQuery
   end
 
   def cached_points_geocoded_stats
-    # Split into two queries to leverage partial indexes:
-    # - index_points_on_user_id_and_reverse_geocoded_at
-    # - index_points_on_user_id_and_empty_geodata
+    # No index serves these filters since the 2026-08 points index
+    # consolidation; both are daily-cached counts that scan the user's rows
+    # via the (user_id, ...) composite index. The without_data count retires
+    # together with the geodata column.
     geocoded_sql = ActiveRecord::Base.sanitize_sql_array(
       [
         <<~SQL.squish,

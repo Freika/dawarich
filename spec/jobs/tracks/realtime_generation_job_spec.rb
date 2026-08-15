@@ -112,5 +112,81 @@ RSpec.describe Tracks::RealtimeGenerationJob, type: :job do
         expect { described_class.perform_now(user.id) }.not_to raise_error
       end
     end
+
+    context 'when the per-user lock is held by a concurrent job' do
+      let(:debouncer) { instance_double(Tracks::RealtimeDebouncer, clear: true, trigger: true) }
+      let(:timeout_error) do
+        Tracks::PerUserLock::AcquisitionTimeout.new(
+          "Tracks::PerUserLock: could not acquire lock for user_id=#{user.id} within 30.0s"
+        )
+      end
+
+      before do
+        allow(Tracks::RealtimeDebouncer).to receive(:new).with(user.id).and_return(debouncer)
+        generator = instance_double(Tracks::IncrementalGenerator)
+        allow(generator).to receive(:call).and_raise(timeout_error)
+        allow(Tracks::IncrementalGenerator).to receive(:new).with(user).and_return(generator)
+        allow(ExceptionReporter).to receive(:call)
+      end
+
+      it 'does not report the contention to Sentry/GlitchTip' do
+        described_class.perform_now(user.id)
+
+        expect(ExceptionReporter).not_to have_received(:call)
+      end
+
+      it 'does not raise the error' do
+        expect { described_class.perform_now(user.id) }.not_to raise_error
+      end
+
+      it 're-arms the debouncer so the points are retried after the holder releases' do
+        described_class.perform_now(user.id)
+
+        expect(debouncer).to have_received(:trigger)
+      end
+    end
+
+    describe 'reverse geocoding enqueueing' do
+      def reset_dedup_keys
+        Sidekiq.redis { |r| r.keys('geocode:enq:*').each { |k| r.del(k) } }
+      end
+
+      before do
+        allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
+        allow(DawarichSettings).to receive(:store_geodata?).and_return(true)
+        allow(Tracks::IncrementalGenerator).to receive(:new).and_return(
+          instance_double(Tracks::IncrementalGenerator, call: true)
+        )
+        reset_dedup_keys
+      end
+
+      it 'enqueues only points created in the last 5 minutes' do
+        old_point = create(:point, user: user, reverse_geocoded_at: nil)
+        old_point.update_columns(created_at: 10.minutes.ago)
+        recent_point = create(:point, user: user, reverse_geocoded_at: nil)
+        reset_dedup_keys
+
+        expect { described_class.perform_now(user.id) }
+          .to have_enqueued_job(ReverseGeocodingJob).exactly(1).times
+          .and have_enqueued_job(ReverseGeocodingJob).with('Point', recent_point.id, force: false)
+      end
+
+      it 'does not enqueue already-geocoded points' do
+        create(:point, user: user, reverse_geocoded_at: 1.minute.ago)
+        reset_dedup_keys
+
+        expect { described_class.perform_now(user.id) }
+          .not_to have_enqueued_job(ReverseGeocodingJob)
+      end
+
+      it 'does not enqueue when reverse geocoding is disabled' do
+        allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false)
+        create(:point, user: user, reverse_geocoded_at: nil)
+        reset_dedup_keys
+
+        expect { described_class.perform_now(user.id) }
+          .not_to have_enqueued_job(ReverseGeocodingJob)
+      end
+    end
   end
 end

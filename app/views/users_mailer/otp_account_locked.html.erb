@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: #dc2626; color: white; padding: 20px; text-align: center; }
+    .content { padding: 20px; background: #f9fafb; }
+    .cta { background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; margin: 20px 0; }
+    .notice { background: #fef3c7; border: 1px solid #f59e0b; padding: 12px; border-radius: 6px; margin: 16px 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1><%= t('.account_temporarily_locked') %></h1>
+    </div>
+    <div class="content">
+      <p><%= t('.hi') %> <%= @user.email %>,</p>
+
+      <p><%= t('.your_dawarich_account_has_been') %> <strong><%= t('.temporarily_locked') %></strong> <%= t('.because_10_consecutive_failed_two_factor_authentication_attempts_were_de') %></p>
+
+      <p><%= t('.the_lock_will_automatically_lift_after') %> <strong><%= t('.minutes') %></strong><%= t('.no_action_is_required_if_this_was_you') %></p>
+
+      <div class="notice">
+        <p><strong><%= t('.didn_t_recognise_this_activity') %></strong> <%= t('.someone_may_be_trying_to_access_your_account_we_recommend') %></p>
+      </div>
+
+      <p><a href="<%= new_user_password_url %>" class="cta"><%= t('.reset_your_password') %></a></p>
+
+      <p><%= t('.if_you_need_further_assistance_contact_us_at') %> <a href="mailto:security@dawarich.app"><%= t('.security_dawarich_app') %></a>.</p>
+    </div>
+  </div>
+</body>
+</html>

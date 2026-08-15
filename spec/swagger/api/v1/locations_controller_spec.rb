@@ -53,8 +53,6 @@ RSpec.describe 'Locations API', type: :request do
         let(:lat) { 52.52 }
         let(:lon) { 13.405 }
 
-        after { |example| SwaggerResponseExample.capture(example, response) }
-
         run_test!
       end
 
@@ -103,8 +101,6 @@ RSpec.describe 'Locations API', type: :request do
                }
 
         let(:q) { 'Berlin' }
-
-        after { |example| SwaggerResponseExample.capture(example, response) }
 
         run_test!
       end

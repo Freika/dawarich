@@ -1,3 +1,4 @@
+import { translate } from "i18n"
 import { Toast } from "maps_maplibre/components/toast"
 import { SettingsManager } from "maps_maplibre/utils/settings_manager"
 
@@ -248,15 +249,8 @@ export class PlacesManager {
    * Start create place mode
    */
   startCreatePlace() {
-    if (
-      this.controller.hasSettingsPanelTarget &&
-      this.controller.settingsPanelTarget.classList.contains("open")
-    ) {
-      this.controller.toggleSettings()
-    }
-
     this.controller.map.getCanvas().style.cursor = "crosshair"
-    Toast.info("Click on the map to place a place")
+    Toast.info(translate("messages.click_on_the_map_to_place_a_place"))
 
     this.handleCreatePlaceClick = (e) => {
       const { lng, lat } = e.lngLat
@@ -274,39 +268,81 @@ export class PlacesManager {
   }
 
   /**
-   * Handle place creation event - reload places and update layer
+   * Handle place creation/update events. The event carries the saved place,
+   * so when the layer already holds data we upsert that single feature in
+   * place instead of re-pulling the whole collection from the backend. A full
+   * fetch happens only on first load, when the layer has no data yet.
    */
-  async handlePlaceCreated(_event) {
+  async handlePlaceCreated(event) {
     try {
-      const selectedTags = this.getSelectedPlaceTags()
-
-      const places = await this.api.fetchPlaces({
-        tag_ids: selectedTags,
-      })
-
-      const placesGeoJSON = this.dataLoader.placesToGeoJSON(places)
-
-      console.log(
-        "[Maps V2] Converted to GeoJSON:",
-        placesGeoJSON.features.length,
-        "features",
-      )
-
       const placesLayer = this.layerManager.getLayer("places")
-      if (placesLayer) {
-        placesLayer.update(placesGeoJSON)
-      } else {
+      if (!placesLayer) {
         console.warn("[Maps V2] Places layer not found, cannot update")
+        return
       }
+
+      const place = event?.detail?.place
+      if (place && placesLayer.data?.features?.length) {
+        this._upsertPlaceFeature(placesLayer, place)
+      } else {
+        await this._reloadPlaces(placesLayer)
+      }
+
+      this._ensurePlacesVisible(placesLayer)
     } catch (error) {
-      console.error("[Maps V2] Failed to reload places:", error)
+      console.error("[Maps V2] Failed to update places:", error)
     }
   }
 
   /**
-   * Handle place update event - reload places and update layer
+   * Handle place update event - same upsert path as creation.
    */
   async handlePlaceUpdated(event) {
     await this.handlePlaceCreated(event)
+  }
+
+  /**
+   * Append or replace a single place feature on the layer without touching
+   * the backend. Replaces by id when the place is already present (edit).
+   */
+  _upsertPlaceFeature(placesLayer, place) {
+    const feature = this.dataLoader.placesToGeoJSON([place]).features[0]
+    if (!feature) return
+
+    const existing = placesLayer.data?.features || []
+    const index = existing.findIndex((f) => f.properties?.id === place.id)
+    const features =
+      index >= 0
+        ? existing.map((f, i) => (i === index ? feature : f))
+        : [...existing, feature]
+
+    placesLayer.update({ type: "FeatureCollection", features })
+  }
+
+  /**
+   * Fetch the full places collection (respecting active tag filters) and
+   * replace the layer's data. Used for the initial load only.
+   */
+  async _reloadPlaces(placesLayer) {
+    const selectedTags = this.getSelectedPlaceTags()
+    const places = await this.api.fetchPlaces({ tag_ids: selectedTags })
+    placesLayer.update(this.dataLoader.placesToGeoJSON(places))
+  }
+
+  /**
+   * Auto-enable the layer if it was off (the default), otherwise a newly
+   * created place would land in a hidden layer and never appear.
+   */
+  _ensurePlacesVisible(placesLayer) {
+    if (placesLayer.visible) return
+
+    placesLayer.show()
+    SettingsManager.updateSetting("placesEnabled", true)
+    if (this.controller.hasPlacesToggleTarget) {
+      this.controller.placesToggleTarget.checked = true
+    }
+    if (this.controller.hasPlacesFiltersTarget) {
+      this.controller.placesFiltersTarget.style.display = "block"
+    }
   }
 }

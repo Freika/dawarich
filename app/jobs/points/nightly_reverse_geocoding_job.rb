@@ -9,7 +9,7 @@ class Points::NightlyReverseGeocodingJob < ApplicationJob
     processed_user_ids = Set.new
 
     Point.not_reverse_geocoded.find_each(batch_size: 1000) do |point|
-      point.async_reverse_geocode
+      point.async_reverse_geocode(force: true)
       processed_user_ids.add(point.user_id)
     end
 

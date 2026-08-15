@@ -5,6 +5,7 @@ require 'swagger_helper'
 describe 'Visits API', type: :request do
   let(:user) { create(:user) }
   let(:api_key) { user.api_key }
+  let(:Authorization) { "Bearer #{api_key}" }
   let(:place) { create(:place) }
   let(:test_visit) { create(:visit, user: user, place: place) }
 
@@ -27,7 +28,6 @@ describe 'Visits API', type: :request do
                 description: 'Northeast longitude for area search'
 
       response '200', 'visits found' do
-        let(:Authorization) { "Bearer #{api_key}" }
         let(:start_at) { 1.week.ago.iso8601 }
         let(:end_at) { Time.current.iso8601 }
 
@@ -55,8 +55,6 @@ describe 'Visits API', type: :request do
                  },
                  required: %w[id name status started_at ended_at duration]
                }
-
-        after { |example| SwaggerResponseExample.capture(example, response) }
 
         run_test!
       end
@@ -90,7 +88,6 @@ describe 'Visits API', type: :request do
       }
 
       response '200', 'visit created' do
-        let(:Authorization) { "Bearer #{api_key}" }
         let(:visit) do
           {
             visit: {
@@ -122,13 +119,10 @@ describe 'Visits API', type: :request do
                  }
                }
 
-        after { |example| SwaggerResponseExample.capture(example, response) }
-
         run_test!
       end
 
       response '422', 'invalid request' do
-        let(:Authorization) { "Bearer #{api_key}" }
         let(:visit) do
           {
             visit: {
@@ -178,6 +172,7 @@ describe 'Visits API', type: :request do
             properties: {
               name: { type: :string },
               place_id: { type: :integer },
+              area_id: { type: :integer, nullable: true },
               status: { type: :string, enum: %w[suggested confirmed declined] }
             }
           }
@@ -185,7 +180,6 @@ describe 'Visits API', type: :request do
       }
 
       response '200', 'visit updated' do
-        let(:Authorization) { "Bearer #{api_key}" }
         let(:id) { test_visit.id }
         let(:visit) { { visit: { name: 'Updated Visit' } } }
 
@@ -200,13 +194,10 @@ describe 'Visits API', type: :request do
                  place: { type: :object }
                }
 
-        after { |example| SwaggerResponseExample.capture(example, response) }
-
         run_test!
       end
 
       response '404', 'visit not found' do
-        let(:Authorization) { "Bearer #{api_key}" }
         let(:id) { 999_999 }
         let(:visit) { { visit: { name: 'Updated Visit' } } }
 
@@ -228,14 +219,12 @@ describe 'Visits API', type: :request do
       parameter name: :Authorization, in: :header, type: :string, required: true, description: 'Bearer token'
 
       response '204', 'visit deleted' do
-        let(:Authorization) { "Bearer #{api_key}" }
         let(:id) { test_visit.id }
 
         run_test!
       end
 
       response '404', 'visit not found' do
-        let(:Authorization) { "Bearer #{api_key}" }
         let(:id) { 999_999 }
 
         run_test!
@@ -258,29 +247,31 @@ describe 'Visits API', type: :request do
       parameter name: :Authorization, in: :header, type: :string, required: true, description: 'Bearer token'
 
       response '200', 'possible places found' do
-        let(:Authorization) { "Bearer #{api_key}" }
         let(:id) { test_visit.id }
 
         schema type: :array,
                items: {
                  type: :object,
                  properties: {
-                   id: { type: :integer },
+                   id: { type: [:integer, 'null'] },
                    name: { type: :string },
                    latitude: { type: :number },
                    longitude: { type: :number },
-                   city: { type: :string },
-                   country: { type: :string }
+                   osm_id: { type: [:integer, :string, 'null'] },
+                   osm_type: { type: [:string, 'null'] },
+                   osm_key: { type: [:string, 'null'] },
+                   osm_value: { type: [:string, 'null'] },
+                   city: { type: [:string, 'null'] },
+                   country: { type: [:string, 'null'] },
+                   source: { type: :string },
+                   geodata: { type: :object }
                  }
                }
-
-        after { |example| SwaggerResponseExample.capture(example, response) }
 
         run_test!
       end
 
       response '404', 'visit not found' do
-        let(:Authorization) { "Bearer #{api_key}" }
         let(:id) { 999_999 }
 
         run_test!
@@ -315,7 +306,6 @@ describe 'Visits API', type: :request do
       }
 
       response '200', 'visits merged' do
-        let(:Authorization) { "Bearer #{api_key}" }
         let(:visit1) { create(:visit, user: user) }
         let(:visit2) { create(:visit, user: user) }
         let(:merge_params) { { visit_ids: [visit1.id, visit2.id] } }
@@ -331,13 +321,10 @@ describe 'Visits API', type: :request do
                  place: { type: :object }
                }
 
-        after { |example| SwaggerResponseExample.capture(example, response) }
-
         run_test!
       end
 
       response '422', 'invalid request' do
-        let(:Authorization) { "Bearer #{api_key}" }
         let(:merge_params) { { visit_ids: [test_visit.id] } }
 
         run_test!
@@ -376,7 +363,6 @@ describe 'Visits API', type: :request do
       }
 
       response '200', 'visits updated' do
-        let(:Authorization) { "Bearer #{api_key}" }
         let(:visit1) { create(:visit, user: user, status: 'suggested') }
         let(:visit2) { create(:visit, user: user, status: 'suggested') }
         let(:bulk_params) { { visit_ids: [visit1.id, visit2.id], status: 'confirmed' } }
@@ -387,13 +373,10 @@ describe 'Visits API', type: :request do
                  updated_count: { type: :integer }
                }
 
-        after { |example| SwaggerResponseExample.capture(example, response) }
-
         run_test!
       end
 
       response '422', 'invalid request' do
-        let(:Authorization) { "Bearer #{api_key}" }
         let(:bulk_params) { { visit_ids: [test_visit.id], status: 'invalid_status' } }
 
         run_test!

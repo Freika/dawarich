@@ -32,8 +32,6 @@ describe 'Health API', type: :request do
                required: true,
                description: 'The version of the application, for example: 1.0.0'
 
-        after { |example| SwaggerResponseExample.capture(example, response) }
-
         run_test!
       end
     end

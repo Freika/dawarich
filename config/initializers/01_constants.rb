@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-SELF_HOSTED = ENV.fetch('SELF_HOSTED', 'true') == 'true'
+SELF_HOSTED = %w[true 1 yes on t].include?(ENV.fetch('SELF_HOSTED', 'true').to_s.delete(%q("')).strip.downcase)
 
 DISTANCE_UNITS = {
   km: 1000,    # to meters
@@ -16,6 +16,7 @@ APP_VERSION = File.read('.app_version').strip
 PHOTON_API_HOST = ENV.fetch('PHOTON_API_HOST', nil)
 PHOTON_API_KEY = ENV.fetch('PHOTON_API_KEY', nil)
 PHOTON_API_USE_HTTPS = ENV.fetch('PHOTON_API_USE_HTTPS', 'false') == 'true'
+PHOTON_HTTPS_ONLY_HOSTS = %w[photon.dawarich.app photon.komoot.io].freeze
 
 NOMINATIM_API_HOST = ENV.fetch('NOMINATIM_API_HOST', nil)
 NOMINATIM_API_KEY = ENV.fetch('NOMINATIM_API_KEY', nil)
@@ -64,8 +65,25 @@ OIDC_PROVIDER_NAME = ENV.fetch('OIDC_PROVIDER_NAME', 'Openid Connect').freeze
 # OIDC auto-registration setting (default: true for backward compatibility)
 OIDC_AUTO_REGISTER = ENV.fetch('OIDC_AUTO_REGISTER', 'true') == 'true'
 
+APPLE_WEB_SIGN_IN_ENABLED =
+  !SELF_HOSTED &&
+  ENV['APPLE_WEB_SERVICES_ID'].present? &&
+  ENV['APPLE_WEB_TEAM_ID'].present? &&
+  ENV['APPLE_WEB_KEY_ID'].present? &&
+  ENV['APPLE_WEB_P8_BASE64'].present? &&
+  ENV['APPLE_WEB_REDIRECT_URI'].present?
+
 # Email/password registration setting (default: false for self-hosted, true for cloud)
 ALLOW_EMAIL_PASSWORD_REGISTRATION = ENV.fetch('ALLOW_EMAIL_PASSWORD_REGISTRATION', 'false') == 'true'
 
+ALLOW_EMAIL_PASSWORD_LOGIN = ENV.fetch('ALLOW_EMAIL_PASSWORD_LOGIN', 'true') == 'true'
+
 # Raw data archival setting
 ARCHIVE_RAW_DATA = ENV.fetch('ARCHIVE_RAW_DATA', 'false') == 'true'
+
+# chibichange "What's New" widget. Rendered only for users who explicitly
+# opt in (see User#changelog_consent). Self-hosters can point this at their
+# own chibichange instance.
+CHIBICHANGE_WIDGET_HOST = ENV.fetch('CHIBICHANGE_WIDGET_HOST', 'https://my.chibichange.com')
+CHIBICHANGE_SLUG = ENV.fetch('CHIBICHANGE_SLUG', 'dawarich')
+CHIBICHANGE_CLOUD_SLUG = ENV.fetch('CHIBICHANGE_CLOUD_SLUG', 'dawarich-cloud')

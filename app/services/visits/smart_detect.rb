@@ -1,42 +1,53 @@
 # frozen_string_literal: true
 
 module Visits
-  # Coordinates the process of detecting and creating visits from tracked points
+  # Entry seam for visit detection: plan-window clamping and the cheap
+  # existence guard live here; the pipeline itself is
+  # Visits::Detection::Runner. Serialization against concurrent runs happens
+  # inside Visits::Detection::Persister's write transaction — compute and
+  # geocoder I/O deliberately run unlocked. There is no fallback detector —
+  # a failing run raises to Visits::Suggest, which owns user-facing error
+  # handling.
   class SmartDetect
-    MINIMUM_VISIT_DURATION = 3.minutes
-    MAXIMUM_VISIT_GAP = 30.minutes
-    MINIMUM_POINTS_FOR_VISIT = 3
-
-    attr_reader :user, :start_at, :end_at, :points
+    attr_reader :user, :start_at, :end_at
 
     def initialize(user, start_at:, end_at:)
       @user = user
-      @start_at = start_at.to_i
+      @start_at = clamp_to_plan_window(start_at.to_i)
       @end_at = end_at.to_i
-      @points = user.scoped_points.not_visited.not_anomaly
-                    .order(timestamp: :asc)
-                    .where(timestamp: start_at..end_at)
     end
 
     def call
-      return [] if points.empty?
+      return [] if @start_at >= @end_at
+      return [] unless points_exist?
 
-      potential_visits = Visits::Detector.new(points).detect_potential_visits
-      merged_visits    = Visits::Merger.new(points).merge_visits(potential_visits)
-      grouped_visits   = group_nearby_visits(merged_visits).flatten
+      runner = Visits::Detection::Runner.new(user, start_at: @start_at, end_at: @end_at)
+      visits = runner.call
+      @skipped_ranges = runner.skipped_ranges
+      visits
+    end
 
-      Visits::Creator.new(user).create_visits(grouped_visits)
+    # Batches the Runner refused (over the candidate-point cap) — callers
+    # doing whole-history work must not report those as cleanly re-detected.
+    def skipped_ranges
+      @skipped_ranges || []
     end
 
     private
 
-    def group_nearby_visits(visits)
-      visits.group_by do |visit|
-        [
-          (visit[:center_lat] * 1000).round / 1000.0,
-          (visit[:center_lon] * 1000).round / 1000.0
-        ]
-      end.values
+    def clamp_to_plan_window(timestamp)
+      return timestamp unless user.respond_to?(:plan_restricted?) && user.plan_restricted?
+
+      [timestamp, user.data_window_start.to_i].max
+    end
+
+    # Detection is stateless over raw points, so ownership by an existing
+    # visit is no reason to skip a run.
+    def points_exist?
+      Point.where(user_id: user.id)
+           .not_anomaly
+           .where(timestamp: @start_at..@end_at)
+           .exists?
     end
   end
 end

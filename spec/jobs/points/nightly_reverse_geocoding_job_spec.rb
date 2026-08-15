@@ -9,6 +9,7 @@ RSpec.describe Points::NightlyReverseGeocodingJob, type: :job do
     before do
       ActiveJob::Base.queue_adapter.enqueued_jobs.clear
       Point.delete_all
+      Sidekiq.redis { |r| r.keys('geocode:enq:*').each { |k| r.del(k) } }
     end
 
     context 'when reverse geocoding is disabled' do
@@ -75,18 +76,33 @@ RSpec.describe Points::NightlyReverseGeocodingJob, type: :job do
           create(:point, user: user, reverse_geocoded_at: 1.day.ago)
         end
 
+        before do
+          Sidekiq.redis { |r| r.keys('geocode:enq:*').each { |k| r.del(k) } }
+        end
+
         it 'processes all points that need reverse geocoding' do
           expect { described_class.perform_now }.to have_enqueued_job(ReverseGeocodingJob).exactly(3).times
         end
 
-        it 'enqueues jobs with correct parameters' do
+        it 'enqueues jobs with force: true to bypass the dedup guard' do
           expect { described_class.perform_now }
             .to have_enqueued_job(ReverseGeocodingJob)
-            .with('Point', point_without_geocoding1.id, force: false)
+            .with('Point', point_without_geocoding1.id, force: true)
             .and have_enqueued_job(ReverseGeocodingJob)
-            .with('Point', point_without_geocoding2.id, force: false)
+            .with('Point', point_without_geocoding2.id, force: true)
             .and have_enqueued_job(ReverseGeocodingJob)
-            .with('Point', point_without_geocoding3.id, force: false)
+            .with('Point', point_without_geocoding3.id, force: true)
+        end
+
+        it 'enqueues even when dedup keys already exist (rescue path)' do
+          Sidekiq.redis do |r|
+            [point_without_geocoding1, point_without_geocoding2, point_without_geocoding3].each do |p|
+              r.set(Point.geocode_dedup_key(p.id), 1, ex: Point::GEOCODE_DEDUP_TTL)
+            end
+          end
+
+          expect { described_class.perform_now }
+            .to have_enqueued_job(ReverseGeocodingJob).exactly(3).times
         end
 
         it 'uses find_each with correct batch size' do

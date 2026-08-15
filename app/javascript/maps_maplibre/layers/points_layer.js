@@ -1,3 +1,4 @@
+import { translate } from "i18n"
 import { Toast } from "maps_maplibre/components/toast"
 import { getMarkerStrokeColor } from "../utils/marker_theme"
 import { BaseLayer } from "./base_layer"
@@ -6,6 +7,14 @@ import { BaseLayer } from "./base_layer"
  * Points layer for displaying individual location points
  * Supports dragging points to update their positions
  */
+/**
+ * A stored coordinate is usable only when it is neither nullish nor blank —
+ * legacy points with no lonlat serialize to an empty string.
+ */
+function storedOr(value, fallback) {
+  return value == null || value === "" ? fallback : value
+}
+
 export class PointsLayer extends BaseLayer {
   constructor(map, options = {}) {
     super(map, { id: "points", ...options })
@@ -17,6 +26,7 @@ export class PointsLayer extends BaseLayer {
     this.justDragged = false
     this.draggedFeature = null
     this.canvas = null
+    this.editModeEnabled = options.editModeEnabled === true
 
     // Bind event handlers once and store references for proper cleanup
     this._onMouseEnter = this.onMouseEnter.bind(this)
@@ -56,6 +66,19 @@ export class PointsLayer extends BaseLayer {
         },
       },
     ]
+  }
+
+  /**
+   * Toggle edit mode: points are draggable only while it is on
+   */
+  setEditMode(enabled) {
+    this.editModeEnabled = enabled
+
+    if (enabled) {
+      this.enableDragging()
+    } else {
+      this.disableDragging()
+    }
   }
 
   /**
@@ -133,6 +156,8 @@ export class PointsLayer extends BaseLayer {
       )
       if (feature) {
         feature.geometry.coordinates = [coords.lng, coords.lat]
+        feature.properties.latitude = coords.lat
+        feature.properties.longitude = coords.lng
         source.setData(data)
       }
     }
@@ -144,6 +169,10 @@ export class PointsLayer extends BaseLayer {
     const coords = e.lngLat
     const pointId = this.draggedFeature.properties.id
     const originalCoords = this.draggedFeature.geometry.coordinates
+    const originalPosition = {
+      latitude: this.draggedFeature.properties.latitude,
+      longitude: this.draggedFeature.properties.longitude,
+    }
     const wasDrag = this.hasMoved
 
     // Clean up drag state
@@ -169,11 +198,20 @@ export class PointsLayer extends BaseLayer {
     try {
       await this.updatePointPosition(pointId, coords.lat, coords.lng)
 
-      // Update routes after successful point update
-      await this.updateConnectedRoutes(pointId, originalCoords, [
-        coords.lng,
-        coords.lat,
-      ])
+      // Keep the cached full point set in sync — route rebuilds and the
+      // scratch layer read from it in simplified rendering mode.
+      const cachedPoints =
+        this.layerManager?.controller?.mapDataManager?.lastLoadedData?.points
+      const cachedPoint = cachedPoints?.find(
+        (p) => Number(p.id) === Number(pointId),
+      )
+      if (cachedPoint) {
+        cachedPoint.latitude = coords.lat
+        cachedPoint.longitude = coords.lng
+      }
+
+      // Rebuild routes from the updated points after a successful move
+      await this.reloadConnectedRoutes()
     } catch (error) {
       console.error("Failed to update point:", error)
       // Revert the point position on error
@@ -183,10 +221,20 @@ export class PointsLayer extends BaseLayer {
         const feature = data.features.find((f) => f.properties.id === pointId)
         if (feature && originalCoords) {
           feature.geometry.coordinates = originalCoords
+          feature.properties.longitude = storedOr(
+            originalPosition.longitude,
+            originalCoords[0],
+          )
+          feature.properties.latitude = storedOr(
+            originalPosition.latitude,
+            originalCoords[1],
+          )
           source.setData(data)
         }
       }
-      Toast.error("Failed to update point position. Please try again.")
+      Toast.error(
+        translate("messages.failed_to_update_point_position_please_try_again"),
+      )
     }
 
     this.draggedFeature = null
@@ -223,72 +271,39 @@ export class PointsLayer extends BaseLayer {
   }
 
   /**
-   * Update connected route segments when a point is moved
+   * Rebuild the routes layer from the points source after a point moved.
+   * Rewriting individual vertices by coordinate proximity corrupted
+   * unrelated lines passing near the old position; a full rebuild from the
+   * authoritative points keeps every other route intact.
    */
-  async updateConnectedRoutes(_pointId, oldCoords, newCoords) {
-    if (!this.layerManager) {
-      console.warn("LayerManager not configured, cannot update routes")
-      return
+  async reloadConnectedRoutes() {
+    const source = this.map.getSource(this.sourceId)
+    if (source?._data) {
+      this.data = source._data
     }
 
-    const routesLayer = this.layerManager.getLayer("routes")
-    if (!routesLayer) {
-      console.warn("Routes layer not found")
-      return
-    }
+    const routesManager = this.layerManager?.controller?.routesManager
+    const routesLayer = this.layerManager?.getLayer("routes")
+    if (!routesManager || !routesLayer) return
 
-    const routesSource = this.map.getSource(routesLayer.sourceId)
-    if (!routesSource) {
-      console.warn("Routes source not found")
-      return
-    }
-
-    const routesData = routesSource._data
-    if (!routesData || !routesData.features) {
-      return
-    }
-
-    // Tolerance for coordinate comparison (account for floating point precision)
-    const tolerance = 0.0001
-    let routesUpdated = false
-
-    // Find and update route segments that contain the moved point
-    routesData.features.forEach((feature) => {
-      if (feature.geometry.type === "LineString") {
-        const coordinates = feature.geometry.coordinates
-
-        // Check each coordinate in the line
-        for (let i = 0; i < coordinates.length; i++) {
-          const coord = coordinates[i]
-
-          // Check if this coordinate matches the old position
-          if (
-            Math.abs(coord[0] - oldCoords[0]) < tolerance &&
-            Math.abs(coord[1] - oldCoords[1]) < tolerance
-          ) {
-            // Update to new position
-            coordinates[i] = newCoords
-            routesUpdated = true
-          }
-        }
-      }
-    })
-
-    // Update the routes source if any routes were modified
-    if (routesUpdated) {
-      routesSource.setData(routesData)
-    }
+    await routesManager.reloadRoutes()
   }
 
   /**
-   * Override add method to enable dragging when layer is added
+   * Override add method to restore edit mode when layer is re-added
    */
   add(data) {
     super.add(data)
 
-    // Wait for next tick to ensure layers are fully added before enabling dragging
+    if (!this.editModeEnabled) return
+
+    // Wait for next tick to ensure layers are fully added before enabling dragging.
+    // Re-check the flag inside the callback: edit mode may have been turned off
+    // while the timeout was pending.
     setTimeout(() => {
-      this.enableDragging()
+      if (this.editModeEnabled) {
+        this.enableDragging()
+      }
     }, 100)
   }
 

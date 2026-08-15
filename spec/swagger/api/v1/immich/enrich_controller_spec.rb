@@ -45,8 +45,6 @@ describe 'Immich Enrich API', type: :request do
           )
         end
 
-        after { |example| SwaggerResponseExample.capture(example, response) }
-
         run_test!
       end
 
@@ -98,8 +96,6 @@ describe 'Immich Enrich API', type: :request do
             updated: 1, failed: 0
           )
         end
-
-        after { |example| SwaggerResponseExample.capture(example, response) }
 
         run_test!
       end

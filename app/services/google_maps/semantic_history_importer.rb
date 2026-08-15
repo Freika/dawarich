@@ -26,16 +26,18 @@ class GoogleMaps::SemanticHistoryImporter
 
   def process_batch(batch)
     records = batch.map { |point_data| prepare_point_data(point_data) }
+                   .reject { |record| Points::NullIsland.lonlat?(record[:lonlat]) }
+    return if records.empty?
 
     Point.upsert_all(
       records,
-      unique_by: %i[lonlat timestamp user_id],
+      unique_by: %i[user_id timestamp lonlat],
       returning: false,
       on_duplicate: :skip
     )
     # rubocop:enable Rails/SkipsModelValidations
   rescue StandardError => e
-    create_notification("Failed to process location batch: #{e.message}")
+    create_notification(I18n.t('services.google_maps.semantic_history_importer.batch_failed', message: e.message))
   end
 
   def prepare_point_data(point_data)
@@ -44,9 +46,8 @@ class GoogleMaps::SemanticHistoryImporter
       timestamp: point_data[:timestamp],
       accuracy: point_data[:accuracy],
       motion_data: point_data[:motion_data],
-      raw_data: point_data[:raw_data],
       topic: 'Google Maps Timeline Export',
-      tracker_id: 'google-maps-timeline-export',
+      tracker_id: "google-semantic-#{import.id}",
       import_id: import.id,
       user_id: user_id,
       created_at: Time.current,
@@ -55,12 +56,14 @@ class GoogleMaps::SemanticHistoryImporter
   end
 
   def create_notification(message)
-    Notification.create!(
-      user_id: user_id,
-      title: 'Google Maps Timeline Import Error',
-      content: message,
-      kind: :error
-    )
+    I18n.with_locale(User.find_by(id: user_id)&.locale || I18n.locale) do
+      Notification.create!(
+        user_id: user_id,
+        title: I18n.t('services.google_maps.semantic_history_importer.google_maps_timeline_import_error'),
+        content: message,
+        kind: :error
+      )
+    end
   end
 
   def points_data
@@ -138,8 +141,7 @@ class GoogleMaps::SemanticHistoryImporter
       lonlat: "POINT(#{longitude.to_f / 10**7} #{latitude.to_f / 10**7})",
       timestamp: Timestamps.parse_timestamp(timestamp),
       accuracy: accuracy,
-      motion_data: Points::MotionDataExtractor.from_google_semantic_history(raw_data),
-      raw_data: raw_data
+      motion_data: Points::MotionDataExtractor.from_google_semantic_history(raw_data)
     }
   end
 end

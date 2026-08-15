@@ -77,6 +77,50 @@ RSpec.describe 'Map::TimelineFeeds', type: :request do
         end
       end
 
+      context 'with a suggested visit that has no place suggestions' do
+        let!(:bare_suggested) do
+          create(:visit,
+                 user: user,
+                 place: nil,
+                 name: 'Mystery Stop',
+                 status: :suggested,
+                 started_at: day + 9.hours,
+                 ended_at: day + 10.hours,
+                 duration: 3600)
+        end
+
+        it 'renders it as a plain visit row with an edit control, no confirm' do
+          get map_timeline_feeds_path(start_at: day.iso8601, end_at: (day + 1.day).iso8601)
+
+          expect(response).to have_http_status(:success)
+          expect(response.body).to include('data-testid="visit-edit"')
+          expect(response.body).not_to include('data-testid="visit-confirm"')
+        end
+      end
+
+      context 'with a suggested visit that has a place' do
+        let(:suggested_place) { create(:place, name: 'Cafe Central') }
+        let!(:placed_suggested) do
+          create(:visit,
+                 user: user,
+                 place: suggested_place,
+                 name: 'Cafe Central',
+                 status: :suggested,
+                 started_at: day + 11.hours,
+                 ended_at: day + 12.hours,
+                 duration: 3600)
+        end
+
+        it 'renders identically to a confirmed visit — edit control, no review card' do
+          get map_timeline_feeds_path(start_at: day.iso8601, end_at: (day + 1.day).iso8601)
+
+          expect(response).to have_http_status(:success)
+          expect(response.body).to include('data-testid="visit-edit"')
+          expect(response.body).not_to include('data-testid="visit-confirm"')
+          expect(response.body).not_to include('suggested-picker')
+        end
+      end
+
       context 'with a track that crosses midnight in the user timezone' do
         let(:user) { create(:user, settings: { 'timezone' => 'Europe/Berlin' }) }
         let(:day_b) { Date.new(2026, 4, 28) }
@@ -190,6 +234,15 @@ RSpec.describe 'Map::TimelineFeeds', type: :request do
         get track_info_map_timeline_feed_path(track)
 
         expect(response).to have_http_status(:not_found)
+      end
+
+      it 'renders a Share button targeting the share-link-modal frame' do
+        track = create(:track, user: user)
+
+        get track_info_map_timeline_feed_path(track)
+
+        expect(response.body).to include(new_track_share_link_path(track))
+        expect(response.body).to include('share-link-modal')
       end
     end
   end

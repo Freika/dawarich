@@ -1,31 +1,32 @@
 <%# Supported Formats Info Card %>
 <div class="card bg-base-200 w-full max-w-md mb-5 mt-5">
   <div class="card-body p-4">
-    <h3 class="card-title text-sm">Supported Import Formats</h3>
+    <h3 class="card-title text-sm"><%= t('.supported_import_formats') %></h3>
     <ul class="text-xs space-y-1.5">
-      <li class="flex items-center gap-1.5"><%= icon 'circle-check', class: 'w-3.5 h-3.5 text-success shrink-0' %> <strong>Google Maps:</strong> Records.json, Semantic History, Phone Takeout (.json)</li>
-      <li class="flex items-center gap-1.5"><%= icon 'circle-check', class: 'w-3.5 h-3.5 text-success shrink-0' %> <strong>GPX:</strong> Track files (.gpx)</li>
-      <li class="flex items-center gap-1.5"><%= icon 'circle-check', class: 'w-3.5 h-3.5 text-success shrink-0' %> <strong>GeoJSON:</strong> Feature collections (.json, .geojson)</li>
-      <li class="flex items-center gap-1.5"><%= icon 'circle-check', class: 'w-3.5 h-3.5 text-success shrink-0' %> <strong>OwnTracks:</strong> Recorder files (.rec)</li>
-      <li class="flex items-center gap-1.5"><%= icon 'circle-check', class: 'w-3.5 h-3.5 text-success shrink-0' %> <strong>KML:</strong> KML files (.kml, .kmz)</li>
-      <li class="flex items-center gap-1.5"><%= icon 'circle-check', class: 'w-3.5 h-3.5 text-success shrink-0' %> <strong>FIT:</strong> Garmin activity files (.fit)</li>
-      <li class="flex items-center gap-1.5"><%= icon 'circle-check', class: 'w-3.5 h-3.5 text-success shrink-0' %> <strong>TCX:</strong> Training Center files (.tcx)</li>
-      <li class="flex items-center gap-1.5"><%= icon 'circle-check', class: 'w-3.5 h-3.5 text-success shrink-0' %> <strong>CSV:</strong> Location data (.csv)</li>
-      <li class="flex items-center gap-1.5"><%= icon 'circle-check', class: 'w-3.5 h-3.5 text-success shrink-0' %> <strong>Polarsteps:</strong> locations.json (.json)</li>
-      <li class="flex items-center gap-1.5"><%= icon 'circle-check', class: 'w-3.5 h-3.5 text-success shrink-0' %> <strong>ZIP:</strong> Archives containing any of the above (.zip)</li>
+      <li class="flex items-center gap-1.5"><%= icon 'circle-check', class: 'w-3.5 h-3.5 text-success shrink-0' %> <strong><%= t('.google_maps') %></strong> <%= t('.records_json_semantic_history_phone_takeout_json') %></li>
+      <li class="flex items-center gap-1.5"><%= icon 'circle-check', class: 'w-3.5 h-3.5 text-success shrink-0' %> <strong><%= t('.google_photos') %></strong> <%= t('.takeout_metadata_sidecars_json') %></li>
+      <li class="flex items-center gap-1.5"><%= icon 'circle-check', class: 'w-3.5 h-3.5 text-success shrink-0' %> <strong><%= t('.gpx') %></strong> <%= t('.track_files_gpx') %></li>
+      <li class="flex items-center gap-1.5"><%= icon 'circle-check', class: 'w-3.5 h-3.5 text-success shrink-0' %> <strong><%= t('.geojson') %></strong> <%= t('.feature_collections_json_geojson') %></li>
+      <li class="flex items-center gap-1.5"><%= icon 'circle-check', class: 'w-3.5 h-3.5 text-success shrink-0' %> <strong><%= t('.owntracks') %></strong> <%= t('.recorder_files_rec') %></li>
+      <li class="flex items-center gap-1.5"><%= icon 'circle-check', class: 'w-3.5 h-3.5 text-success shrink-0' %> <strong><%= t('.kml') %></strong> <%= t('.kml_files_kml_kmz') %></li>
+      <li class="flex items-center gap-1.5"><%= icon 'circle-check', class: 'w-3.5 h-3.5 text-success shrink-0' %> <strong><%= t('.fit') %></strong> <%= t('.garmin_activity_files_fit') %></li>
+      <li class="flex items-center gap-1.5"><%= icon 'circle-check', class: 'w-3.5 h-3.5 text-success shrink-0' %> <strong><%= t('.tcx') %></strong> <%= t('.training_center_files_tcx') %></li>
+      <li class="flex items-center gap-1.5"><%= icon 'circle-check', class: 'w-3.5 h-3.5 text-success shrink-0' %> <strong><%= t('.csv') %></strong> <%= t('.location_data_csv') %></li>
+      <li class="flex items-center gap-1.5"><%= icon 'circle-check', class: 'w-3.5 h-3.5 text-success shrink-0' %> <strong><%= t('.polarsteps') %></strong> <%= t('.locations_json_json') %></li>
+      <li class="flex items-center gap-1.5"><%= icon 'circle-check', class: 'w-3.5 h-3.5 text-success shrink-0' %> <strong><%= t('.zip') %></strong> <%= t('.archives_containing_any_of_the_above_zip') %></li>
     </ul>
     <div class="text-xs text-base-content/50 mt-2">
-      File format is automatically detected during upload.
+      <%= t('.file_format_is_automatically_detected_during_upload') %>
     </div>
     <div class="flex items-start gap-2 text-xs text-info mt-2">
       <%= icon 'info', class: 'w-3.5 h-3.5 shrink-0 mt-0.5' %>
-      <span>For files larger than 200MB, consider compressing them into a ZIP archive before uploading. This significantly reduces upload time and avoids connection timeouts.</span>
+      <span><%= t('.for_files_larger_than_200mb_consider_compressing_them_into_a') %></span>
     </div>
     <% if current_user.legacy_trial? %>
       <div class="text-xs text-warning mt-2 font-medium">
-        Trial limitations: Max 5 imports, 10MB per file.
+        <%= t('.trial_limitations_max_5_imports_10mb_per_file') %>
         <br>
-        Current imports: <%= current_user.imports.count %>/5
+        <%= t('.current_imports') %> <%= current_user.imports.count %>/5
       </div>
     <% end %>
   </div>
@@ -43,7 +44,7 @@
 } do |form| %>
   <label class="form-control w-full max-w-xs my-5">
     <div class="label">
-      <span class="label-text">Select one or multiple files</span>
+      <span class="label-text"><%= t('.select_one_or_multiple_files') %></span>
     </div>
     <%= form.file_field :files,
         multiple: true,
@@ -52,7 +53,7 @@
         class: "file-input file-input-bordered w-full max-w-xs",
         data: { upload_target: "input" } %>
     <div class="text-sm text-gray-500 mt-2">
-      Files will be uploaded directly to storage. Please be patient during upload.
+      <%= t('.files_will_be_uploaded_directly_to_storage_please_be_patient') %>
     </div>
   </label>
 

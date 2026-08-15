@@ -1,3 +1,6 @@
+import { translate } from "i18n"
+import maplibregl from "maplibre-gl"
+import { escapeHtml } from "../utils/geojson_transformers"
 import { BaseLayer } from "./base_layer"
 
 /**
@@ -9,6 +12,90 @@ export class FamilyLayer extends BaseLayer {
     super(map, { id: "family", ...options })
     this.memberColors = {}
     this._historyFeatures = []
+    this._popup = new maplibregl.Popup({
+      closeButton: false,
+      closeOnClick: false,
+      offset: 12,
+    })
+    this._hoverAttached = false
+    this._popupVisible = false
+    this._onLayerMove = (e) => this._showLastSeenPopup(e)
+    this._onMapMove = (e) => {
+      if (!this._popupVisible) return
+      const layerExists = this.map.getLayer(this.id)
+      const hits = layerExists
+        ? this.map.queryRenderedFeatures(e.point, { layers: [this.id] })
+        : []
+      if (!hits.length) this._hidePopup()
+    }
+    this._onCanvasLeave = () => this._hidePopup()
+  }
+
+  add(data) {
+    super.add(data)
+    this._attachHoverHandlers()
+  }
+
+  remove() {
+    this._detachHoverHandlers()
+    this._hidePopup()
+    super.remove()
+  }
+
+  _attachHoverHandlers() {
+    if (this._hoverAttached) return
+    this.map.on("mouseenter", this.id, this._onLayerMove)
+    this.map.on("mousemove", this.id, this._onLayerMove)
+    this.map.on("mousemove", this._onMapMove)
+    this.map.getCanvas().addEventListener("mouseleave", this._onCanvasLeave)
+    this._hoverAttached = true
+  }
+
+  _detachHoverHandlers() {
+    if (!this._hoverAttached) return
+    this.map.off("mouseenter", this.id, this._onLayerMove)
+    this.map.off("mousemove", this.id, this._onLayerMove)
+    this.map.off("mousemove", this._onMapMove)
+    this.map.getCanvas().removeEventListener("mouseleave", this._onCanvasLeave)
+    this._hoverAttached = false
+  }
+
+  _hidePopup() {
+    if (!this._popupVisible) return
+    this.map.getCanvas().style.cursor = ""
+    this._popup.remove()
+    this._popupVisible = false
+  }
+
+  _showLastSeenPopup(e) {
+    if (!e.features?.length) return
+    const props = e.features[0].properties
+    this.map.getCanvas().style.cursor = "pointer"
+
+    const rawTs = props.updatedAt || props.lastUpdate
+    const lastSeen = rawTs
+      ? new Date(
+          typeof rawTs === "number" ? rawTs : Date.parse(rawTs),
+        ).toLocaleString(undefined, {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+        })
+      : translate("common.unknown")
+
+    const name = props.name || translate("family.member")
+    const html = `
+      <div style="min-width:160px">
+        <div style="font-weight:600;margin-bottom:4px">${escapeHtml(name)}</div>
+        <div style="font-size:12px;opacity:0.8">${translate("live_share.last_seen_short")}: ${escapeHtml(lastSeen)}</div>
+      </div>
+    `
+
+    this._popup.setLngLat(e.lngLat).setHTML(html).addTo(this.map)
+    this._popupVisible = true
   }
 
   getSourceConfig() {
@@ -102,7 +189,18 @@ export class FamilyLayer extends BaseLayer {
   updateMember(member) {
     const features = this.data?.features || []
     const memberId = member.user_id || member.id
-    const coords = [member.longitude, member.latitude]
+    const lon = Number(member.longitude)
+    const lat = Number(member.latitude)
+
+    if (!this._isValidCoord(lon, lat)) {
+      console.warn(
+        "[FamilyLayer] Skipping member update with invalid coordinates:",
+        member,
+      )
+      return
+    }
+
+    const coords = [lon, lat]
     const color = member.color || this.getMemberColor(memberId)
 
     // Find existing or add new
@@ -189,6 +287,13 @@ export class FamilyLayer extends BaseLayer {
     source.setData({ type: "FeatureCollection", features })
   }
 
+  _isValidCoord(lon, lat) {
+    if (!Number.isFinite(lon) || !Number.isFinite(lat)) return false
+    if (lon === 0 && lat === 0) return false
+    if (lon < -180 || lon > 180 || lat < -90 || lat > 90) return false
+    return true
+  }
+
   /**
    * Get consistent color for member
    */
@@ -239,7 +344,7 @@ export class FamilyLayer extends BaseLayer {
       },
       properties: {
         id: location.user_id,
-        name: location.email || "Unknown",
+        name: location.email || translate("common.unknown"),
         email: location.email,
         color: location.color || this.getMemberColor(location.user_id),
         lastUpdate: Date.now(),

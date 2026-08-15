@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'oidc_config'
+
 Devise.setup do |config|
   # The secret key used by Devise. Devise uses this key to generate
   # random tokens. Changing this key will render invalid all existing
@@ -19,7 +21,7 @@ Devise.setup do |config|
   config.mailer_sender = ENV['SMTP_FROM']
 
   # Configure the class responsible to send e-mails.
-  # config.mailer = 'Devise::Mailer'
+  config.mailer = 'DeviseMailer'
 
   # Configure the parent class responsible to send e-mails.
   # config.parent_mailer = 'ActionMailer::Base'
@@ -280,44 +282,21 @@ Devise.setup do |config|
     end
   end
 
-  # Self-hosted version: only OpenID Connect (when env vars present)
-  # Generic OpenID Connect provider (Authelia, Authentik, Keycloak, etc.)
-  # Supports both discovery mode (preferred) and manual endpoint configuration
-  if SELF_HOSTED && ENV['OIDC_CLIENT_ID'].present? && ENV['OIDC_CLIENT_SECRET'].present?
-    oidc_config = {
-      name: :openid_connect,
-      scope: %i[openid email profile],
-      response_type: :code,
-      client_options: {
-        identifier: ENV['OIDC_CLIENT_ID'],
-        secret: ENV['OIDC_CLIENT_SECRET'],
-        redirect_uri: ENV.fetch('OIDC_REDIRECT_URI', "#{ENV.fetch('APPLICATION_URL', 'http://localhost:3000')}/users/auth/openid_connect/callback")
-      }
-    }
+  if SELF_HOSTED && OidcConfig.enabled?
+    oidc_config = OidcConfig.build
 
-    # Use OIDC discovery if issuer is provided (recommended for Authelia, Authentik, Keycloak)
-    if ENV['OIDC_ISSUER'].present?
-      oidc_config[:issuer] = ENV['OIDC_ISSUER']
-      oidc_config[:discovery] = true
-      Rails.logger.info "OIDC: Discovery mode enabled with issuer: #{ENV['OIDC_ISSUER']}"
-    # Otherwise use manual endpoint configuration
-    elsif ENV['OIDC_HOST'].present?
-      oidc_config[:client_options].merge!(
-        {
-          host: ENV['OIDC_HOST'],
-          scheme: ENV.fetch('OIDC_SCHEME', 'https'),
-          port: ENV.fetch('OIDC_PORT', 443).to_i,
-          authorization_endpoint: ENV.fetch('OIDC_AUTHORIZATION_ENDPOINT', '/authorize'),
-          token_endpoint: ENV.fetch('OIDC_TOKEN_ENDPOINT', '/token'),
-          userinfo_endpoint: ENV.fetch('OIDC_USERINFO_ENDPOINT', '/userinfo')
-        }
-      )
-      Rails.logger.info "OIDC: Manual mode enabled with host: #{ENV['OIDC_SCHEME']}://#{ENV['OIDC_HOST']}:#{ENV.fetch(
-        'OIDC_PORT', 443
-      )}"
+    if oidc_config[:discovery]
+      Rails.logger.info "OIDC: Discovery mode enabled with issuer: #{oidc_config[:issuer]}"
+    elsif oidc_config[:client_options][:host]
+      host = oidc_config[:client_options][:host]
+      scheme = oidc_config[:client_options][:scheme]
+      port = oidc_config[:client_options][:port]
+      Rails.logger.info "OIDC: Manual mode enabled with host: #{scheme}://#{host}:#{port}"
     end
 
-    Rails.logger.info "OIDC: Client ID: #{ENV['OIDC_CLIENT_ID']}, Redirect URI: #{oidc_config[:client_options][:redirect_uri]}"
+    Rails.logger.info "OIDC: PKCE #{oidc_config[:pkce] ? 'enabled' : 'disabled'}"
+    Rails.logger.info "OIDC: Client ID: #{oidc_config[:client_options][:identifier]}, " \
+                      "Redirect URI: #{oidc_config[:client_options][:redirect_uri]}"
     config.omniauth :openid_connect, oidc_config
   else
     Rails.logger.warn 'OIDC: Not configured (missing OIDC_CLIENT_ID or OIDC_CLIENT_SECRET)'

@@ -8,17 +8,22 @@ module Points
   # The `from_raw_data` method auto-detects the source and is used by the backfill job.
   class MotionDataExtractor
     class << self
-      # Overland / GeoJSON / Points API — motion, activity, action from properties hash
+      # Overland / GeoJSON / Points API — motion, activity, action and visit
+      # departure_date from properties hash. The departure date rides along
+      # because raw_data is emptied by archival, and the anomaly filter must
+      # still tell a departed visit report from an arrival one afterwards.
       def from_overland_properties(properties)
         return {} unless properties
 
         data = {}
-        motion   = properties[:motion] || properties['motion']
-        activity = properties[:activity]  || properties['activity']
-        action   = properties[:action]    || properties['action']
+        motion    = properties[:motion] || properties['motion']
+        activity  = properties[:activity]  || properties['activity']
+        action    = properties[:action]    || properties['action']
+        departure = properties[:departure_date] || properties['departure_date']
         data['motion']   = motion   if motion
         data['activity'] = activity if activity
         data['action']   = action   if action
+        data['departure_date'] = departure if departure
         data
       end
 
@@ -62,7 +67,8 @@ module Points
         return {} unless payload
 
         location = payload[:location] || payload['location'] || {}
-        activity = payload[:activity] || payload['activity'] || {}
+        activity = payload[:activity] || payload['activity'] ||
+                   location[:activity] || location['activity'] || {}
 
         data = {}
         activity_type = activity[:type] || activity['type']

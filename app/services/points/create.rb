@@ -17,12 +17,9 @@ class Points::Create
     inserted_count = 0
 
     deduplicated_data.each_slice(1000) do |location_batch|
-      result = Point.upsert_all(
+      result = Point.archival_safe_upsert_all(
         location_batch,
-        unique_by: %i[lonlat timestamp user_id],
-        returning: Arel.sql(
-          'id, xmax, timestamp, ST_X(lonlat::geometry) AS longitude, ST_Y(lonlat::geometry) AS latitude'
-        )
+        returning: Arel.sql(Point::UPSERT_RETURNING_COLUMNS)
       )
       inserted_count += result.count { |row| row['xmax'].to_i.zero? }
       created_points.concat(result)
@@ -33,6 +30,7 @@ class Points::Create
       timestamps = deduplicated_data.filter_map { |p| p[:timestamp]&.to_i }
       Points::AnomalyFilterJob.perform_later(user.id, timestamps.min, timestamps.max) if timestamps.any?
       Tracks::RealtimeDebouncer.new(user.id).trigger
+      Tracks::BackfillScheduler.new(user.id, timestamps).call
       Visits::RealtimeDebouncer.new(user.id).trigger
       Points::LiveBroadcaster.new(user.id, created_points, deduplicated_data).call
     end

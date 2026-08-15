@@ -17,36 +17,43 @@ class Settings::Update
 
     immich_changed = settings_changed?(existing_settings, updated_settings, %w[immich_url immich_api_key])
     photoprism_changed = settings_changed?(existing_settings, updated_settings, %w[photoprism_url photoprism_api_key])
+    airtrail_changed = settings_changed?(existing_settings, updated_settings, %w[airtrail_url airtrail_api_key])
 
-    %w[immich_url photoprism_url].each do |key|
+    %w[immich_url photoprism_url airtrail_url].each do |key|
       next if updated_settings[key].blank?
 
       validate_integration_url!(updated_settings[key])
     rescue UrlValidatable::BlockedUrlError => e
-      return { success: false, notices: [], alerts: ["#{key.humanize} is not allowed: #{e.message}"] }
+      return {
+        success: false,
+        notices: [],
+        alerts: [I18n.t('services.settings.update.not_allowed', setting: key.humanize, message: e.message)]
+      }
     end
 
     unless user.update(settings: updated_settings)
-      return { success: false, notices: [], alerts: ['Settings could not be updated'] }
+      return { success: false, notices: [], alerts: [I18n.t('services.settings.update.failed')] }
     end
 
-    notices = ['Settings updated']
+    notices = [I18n.t('services.settings.update.updated')]
     alerts = []
 
     if refresh_photos_cache
       Photos::CacheCleaner.new(user).call
-      notices << 'Photo cache refreshed'
+      notices << I18n.t('services.settings.update.photo_cache_refreshed')
     end
 
     test_immich_connection(updated_settings, notices, alerts) if immich_changed
     test_photoprism_connection(updated_settings, notices, alerts) if photoprism_changed
+    test_airtrail_connection(updated_settings, notices, alerts) if airtrail_changed
 
     { success: true, notices: notices, alerts: alerts }
   end
 
   private
 
-  BOOLEAN_KEYS = %w[immich_skip_ssl_verification photoprism_skip_ssl_verification].freeze
+  BOOLEAN_KEYS = %w[immich_skip_ssl_verification photoprism_skip_ssl_verification
+                    airtrail_skip_ssl_verification].freeze
 
   def cast_boolean_params(params)
     params.to_h.tap do |h|
@@ -74,6 +81,15 @@ class Settings::Update
       updated_settings['photoprism_url'],
       updated_settings['photoprism_api_key'],
       skip_ssl_verification: updated_settings['photoprism_skip_ssl_verification']
+    ).call
+    result[:success] ? notices << result[:message] : alerts << result[:error]
+  end
+
+  def test_airtrail_connection(updated_settings, notices, alerts)
+    result = AirTrail::ConnectionTester.new(
+      updated_settings['airtrail_url'],
+      updated_settings['airtrail_api_key'],
+      skip_ssl_verification: updated_settings['airtrail_skip_ssl_verification']
     ).call
     result[:success] ? notices << result[:message] : alerts << result[:error]
   end

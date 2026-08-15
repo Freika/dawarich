@@ -314,26 +314,41 @@ class Users::ExportData
       user.raw_data_archives.find_each do |archive|
         archive_hash = archive.as_json(except: %w[user_id id])
 
-        if archive.file.attached?
-          file_name = "raw_data_archive_#{archive.year}_#{format('%02d', archive.month)}_#{archive.chunk_number}.gz"
-          archive_hash['file_name'] = file_name
-          archive_hash['original_filename'] = archive.file.filename.to_s
-          archive_hash['content_type'] = archive.file.content_type
-
-          dest_path = files_directory.join(file_name)
-          begin
-            File.open(dest_path, 'wb') { |f| archive.file.download { |chunk| f.write(chunk) } }
-          rescue StandardError => e
-            FileUtils.rm_f(dest_path)
-            raise e
-          end
-        end
+        add_archive_file_data(archive, archive_hash) if archive.file.attached?
 
         file.puts(archive_hash.to_json)
         count += 1
       end
     end
     Rails.logger.info "Exported #{count} raw data archives"
+  end
+
+  # Archives are stored encrypted with this instance's key. Exports must be
+  # importable on other instances, so the content is decrypted to plain gzip
+  # and the metadata rewritten to format_version 1 (plaintext) accordingly.
+  def add_archive_file_data(archive, archive_hash)
+    file_name = "raw_data_archive_#{archive.year}_#{format('%02d', archive.month)}_#{archive.chunk_number}.jsonl.gz"
+    dest_path = files_directory.join(file_name)
+
+    content = ::Points::RawData::Encryption.decrypt_if_needed(archive.file.download, archive)
+    File.binwrite(dest_path, content)
+
+    archive_hash['metadata'] = portable_archive_metadata(archive_hash['metadata'], content)
+    archive_hash['file_name'] = file_name
+    archive_hash['original_filename'] = file_name
+    archive_hash['content_type'] = 'application/gzip'
+  rescue StandardError => e
+    FileUtils.rm_f(dest_path)
+    ExceptionReporter.call(e)
+
+    archive_hash['file_error'] = "Failed to export archive file: #{e.message}"
+  end
+
+  def portable_archive_metadata(metadata, content)
+    (metadata || {}).except('encryption').merge(
+      'format_version' => 1,
+      'content_checksum' => Digest::SHA256.hexdigest(content)
+    )
   end
 
   def write_manifest
@@ -396,7 +411,7 @@ class Users::ExportData
         relative_path = file.sub(%r{#{export_directory}/}, '')
 
         entry = ::Zip::Entry.new(zipfile, relative_path)
-        entry.time = Time.current
+        entry.time = Time.now # rubocop:disable Rails/TimeZone
         zipfile.add(entry, file)
       end
     end
@@ -428,12 +443,14 @@ class Users::ExportData
       "#{counts[:digests]} digests, " \
       "#{counts[:notifications]} notifications"
 
-    ::Notifications::Create.new(
-      user: user,
-      title: 'Export completed',
-      content: "Your data export has been processed successfully (#{summary}). " \
-               'You can download it from the exports page.',
-      kind: :info
-    ).call
+    I18n.with_locale(user.locale) do
+      ::Notifications::Create.new(
+        user: user,
+        title: I18n.t('services.users.export_data.export_completed'),
+        content: I18n.t('services.users.export_data.your_data_export_has_been_processed_successfully_summary_you_can',
+                        summary: summary),
+        kind: :info
+      ).call
+    end
   end
 end

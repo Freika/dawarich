@@ -3,6 +3,8 @@
 class Api::V1::PointsController < ApiController
   include SafeTimestampParser
 
+  BULK_DESTROY_MAX = 5_000
+
   before_action :authenticate_active_api_user!, only: %i[create update destroy bulk_destroy reapply_anomaly_filter]
   before_action :require_write_api!, only: %i[update destroy bulk_destroy reapply_anomaly_filter]
   before_action :validate_points_limit, only: %i[create]
@@ -14,6 +16,8 @@ class Api::V1::PointsController < ApiController
 
     points = if ActiveModel::Type::Boolean.new.cast(params[:anomalies_only])
                scoped_points.anomaly
+             elsif ActiveModel::Type::Boolean.new.cast(params[:include_anomalies])
+               scoped_points
              else
                scoped_points.not_anomaly
              end
@@ -22,35 +26,60 @@ class Api::V1::PointsController < ApiController
              .without_raw_data
              .where(timestamp: start_at..end_at)
 
+    points = points.where(import_id: params[:import_id]) if params[:import_id].present?
+
     if params[:min_longitude].present? && params[:max_longitude].present? &&
        params[:min_latitude].present? && params[:max_latitude].present?
       bbox = parse_bbox(params)
-      return render(json: { error: 'Invalid bounding box' }, status: :bad_request) unless bbox
+      unless bbox
+        return render(json: { error: I18n.t('controllers.api.v1.points.invalid_bounding_box') },
+                      status: :bad_request)
+      end
 
+      envelope = 'ST_MakeEnvelope(?, ?, ?, ?, 4326)'
       points = points.where(
-        'ST_X(lonlat::geometry) BETWEEN ? AND ? AND ST_Y(lonlat::geometry) BETWEEN ? AND ?',
-        bbox[:min_lng], bbox[:max_lng], bbox[:min_lat], bbox[:max_lat]
+        "lonlat && #{envelope}::geography AND ST_Intersects(lonlat::geometry, #{envelope})",
+        bbox[:min_lng], bbox[:min_lat], bbox[:max_lng], bbox[:max_lat],
+        bbox[:min_lng], bbox[:min_lat], bbox[:max_lng], bbox[:max_lat]
       )
     end
 
+    cache_count, cache_max_ts, cache_max_updated =
+      points.pick(Arel.sql('COUNT(*)'), Arel.sql('MAX(timestamp)'), Arel.sql('MAX(updated_at)'))
+    fresh_when(
+      etag: points_index_etag(start_at, end_at, order, cache_max_ts, cache_count, cache_max_updated),
+      last_modified: cache_max_ts && Time.zone.at(cache_max_ts),
+      public: false
+    )
+    return if performed?
+
+    per_page = params[:per_page].to_i
+    per_page = 100 unless per_page.positive?
     points = points
              .order(timestamp: order)
              .page(params[:page])
-             .per(params[:per_page] || 100)
+             .per(per_page)
 
-    serialized_points = points.map { |point| point_serializer.new(point).call }
+    serialized_points = if slim_points?
+                          Points::SlimCollectionQuery.new(points).call
+                        else
+                          points.map { |point| point_serializer.new(point).call }
+                        end
 
+    total_count = cache_count.to_i
+    total_pages = (total_count.to_f / per_page).ceil
     response.set_header('X-Current-Page', points.current_page.to_s)
-    response.set_header('X-Total-Pages', points.total_pages.to_s)
+    response.set_header('X-Total-Pages', total_pages.to_s)
 
     # For Lite users on Cloud: include the unscoped count and scoped count
     # so the frontend can show how many points fall outside the 12-month data window.
-    if !DawarichSettings.self_hosted? && current_api_user.lite?
+    if current_api_user.plan_restricted?
       total_in_range = current_api_user.points
-                                       .where(timestamp: start_at..end_at).count
-      scoped_count = points.except(:select, :order).count
+                                       .where(timestamp: start_at..end_at)
+      total_in_range = total_in_range.where(import_id: params[:import_id]) if params[:import_id].present?
+      total_in_range = total_in_range.count
       response.set_header('X-Total-Points-In-Range', total_in_range.to_s)
-      response.set_header('X-Scoped-Points', scoped_count.to_s)
+      response.set_header('X-Scoped-Points', total_count.to_s)
     end
 
     render json: serialized_points
@@ -61,6 +90,11 @@ class Api::V1::PointsController < ApiController
     sanitized = points.map { |row| row.to_h.except('xmax') }
 
     render json: { data: sanitized }
+  rescue StandardError => e
+    Rails.logger.error("Point creation failed: #{e.class}: #{e.message}")
+    Sentry.capture_exception(e) if defined?(Sentry)
+
+    render json: { error: I18n.t('controllers.api.v1.points.point_creation_failed') }, status: :internal_server_error
   end
 
   def update
@@ -81,29 +115,41 @@ class Api::V1::PointsController < ApiController
   end
 
   def destroy
-    point = current_api_user.points.find(params[:id])
-    point.destroy
-    User.update_counters(current_api_user.id, points_count: -1)
+    point = current_api_user.points.without_raw_data.find(params[:id])
+    Points::Destroyer.new(current_api_user, point.id).call
 
-    render json: { message: 'Point deleted successfully' }
+    render json: { message: I18n.t('controllers.api.v1.points.point_deleted_successfully') }
   end
 
   def bulk_destroy
     point_ids = bulk_destroy_params[:point_ids]
 
-    render json: { error: 'No points selected' }, status: :unprocessable_entity and return if point_ids.blank?
+    if point_ids.blank?
+      render json: { error: I18n.t('controllers.api.v1.points.no_points_selected') },
+             status: :unprocessable_entity and return
+    end
 
-    deleted_count = current_api_user.points.where(id: point_ids).destroy_all.count
-    User.update_counters(current_api_user.id, points_count: -deleted_count) if deleted_count.positive?
+    if point_ids.size > BULK_DESTROY_MAX
+      render json: {
+        error: I18n.t('controllers.api.v1.points.too_many_points_selected_maximum_is_bulk_destroy_max_per',
+                      limit: BULK_DESTROY_MAX),
+        limit: BULK_DESTROY_MAX,
+        requested: point_ids.size
+      }, status: :unprocessable_entity and return
+    end
 
-    render json: { message: 'Points were successfully destroyed', count: deleted_count }, status: :ok
+    destroyed = Points::Destroyer.new(current_api_user, point_ids).call
+
+    message = I18n.t('controllers.api.v1.points.points_were_successfully_destroyed')
+    render json: { message: message, count: destroyed.count },
+           status: :ok
   end
 
   def reapply_anomaly_filter
     pending_key = "anomaly_backfill_pending:#{current_api_user.id}"
     if Rails.cache.read(pending_key)
       return render(
-        json: { error: 'Anomaly re-evaluation already in progress.' },
+        json: { error: I18n.t('controllers.api.v1.points.anomaly_re_evaluation_already_in_progress') },
         status: :conflict
       )
     end
@@ -112,7 +158,7 @@ class Api::V1::PointsController < ApiController
     Points::AnomalyBackfillUserJob.perform_later(current_api_user.id, reset: true)
 
     render json: {
-      message: 'Re-evaluation queued. Existing anomaly flags will be cleared and recomputed.'
+      message: I18n.t('controllers.api.v1.points.re_evaluation_queued_existing_anomaly_flags_will_be_cleared_and')
     }, status: :accepted
   end
 
@@ -130,8 +176,23 @@ class Api::V1::PointsController < ApiController
     params.permit(point_ids: [])
   end
 
+  def slim_points?
+    params[:slim] == 'true'
+  end
+
+  def points_index_etag(start_at, end_at, order, max_timestamp, count, max_updated)
+    [
+      'points/index', current_api_user.id, start_at, end_at, order, slim_points?,
+      params[:page], params[:per_page] || 100, params[:import_id],
+      params[:anomalies_only], params[:include_anomalies],
+      params[:min_longitude], params[:max_longitude],
+      params[:min_latitude], params[:max_latitude],
+      max_timestamp, count, max_updated
+    ]
+  end
+
   def point_serializer
-    params[:slim] == 'true' ? Api::SlimPointSerializer : Api::PointSerializer
+    slim_points? ? Api::SlimPointSerializer : Api::PointSerializer
   end
 
   # Validate and parse a bbox from request params. Rejects non-finite values

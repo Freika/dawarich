@@ -29,6 +29,29 @@ RSpec.describe 'Users::Sessions OTP Challenge', type: :request do
       end
     end
 
+    context 'with a stashed pending-import ticket' do
+      let!(:pending) { create(:pending_import, :with_file) }
+
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        allow(DawarichSettings).to receive(:registration_enabled?).and_return(true)
+        allow(DawarichSettings).to receive(:oidc_enabled?).and_return(false)
+        stub_const('MANAGER_URL', 'https://manager.example.com')
+      end
+
+      it 'claims the ticket after a successful 2FA sign-in' do
+        get "/users/sign_up?import_ticket=#{pending.claim_ticket}"
+        expect(session[:pending_import_ticket]).to eq(pending.claim_ticket)
+
+        post user_session_path, params: { user: { email: user.email, password: password } }
+
+        expect { post user_otp_challenge_path, params: { otp_attempt: user.current_otp } }
+          .to change(user.imports, :count).by(1)
+
+        expect(pending.reload.claimed_by_user_id).to eq(user.id)
+      end
+    end
+
     context 'when OTP challenge is submitted with valid code' do
       it 'signs in the user and clears session' do
         post user_session_path, params: { user: { email: user.email, password: password } }
@@ -60,6 +83,35 @@ RSpec.describe 'Users::Sessions OTP Challenge', type: :request do
         post user_otp_challenge_path, params: { otp_attempt: '000000' }
         expect(response).to redirect_to(new_user_session_path)
         expect(flash[:alert]).to include('Too many invalid')
+      end
+
+      it 'increments failed_otp_attempts' do
+        post user_session_path, params: { user: { email: user.email, password: password } }
+        expect do
+          post user_otp_challenge_path, params: { otp_attempt: '000000' }
+        end.to change { user.reload.failed_otp_attempts }.by(1)
+      end
+    end
+
+    context 'when the account is locked' do
+      before do
+        user.update_columns(otp_locked_at: 1.minute.ago)
+        post user_session_path, params: { user: { email: user.email, password: password } }
+      end
+
+      it 'redirects to login with a locked message' do
+        post user_otp_challenge_path, params: { otp_attempt: user.current_otp }
+        expect(response).to redirect_to(new_user_session_path)
+        expect(flash[:alert]).to include('locked')
+      end
+    end
+
+    context 'when OTP succeeds after previous failures' do
+      it 'resets the failed_otp_attempts counter' do
+        user.update_columns(failed_otp_attempts: 5)
+        post user_session_path, params: { user: { email: user.email, password: password } }
+        post user_otp_challenge_path, params: { otp_attempt: user.current_otp }
+        expect(user.reload.failed_otp_attempts).to eq(0)
       end
     end
 

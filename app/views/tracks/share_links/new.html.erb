@@ -1,0 +1,14 @@
+<%= render 'shared_links/modal',
+           resource: @track,
+           share: @share,
+           title: t('.share_track', track: track_share_label(@track, current_user.safe_settings.distance_unit)),
+           subtitle: t('.this_track_is_shared_via_a_public_link'),
+           close_path: map_v2_path,
+           paths: {
+             create:            track_share_link_path(@track),
+             revoke:            revoke_track_share_link_path(@track),
+             regenerate:        regenerate_track_share_link_path(@track),
+             regenerate_phrase: regenerate_phrase_track_share_link_path(@track),
+             destroy:           track_share_link_path(@track)
+           },
+           create_form_partial: 'shared_links/modal_track_create_form' %>

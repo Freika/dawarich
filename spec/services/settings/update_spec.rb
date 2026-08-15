@@ -9,9 +9,28 @@ RSpec.describe Settings::Update do
     allow(Resolv).to receive(:getaddress).and_call_original
     allow(Resolv).to receive(:getaddress).with('immich.test').and_return('93.184.216.34')
     allow(Resolv).to receive(:getaddress).with('photoprism.test').and_return('93.184.216.34')
+    allow(Resolv).to receive(:getaddress).with('airtrail.test').and_return('93.184.216.34')
   end
 
   describe '#call' do
+    context 'when airtrail settings change' do
+      let(:settings_params) do
+        ActionController::Parameters.new(airtrail_url: 'https://airtrail.test', airtrail_api_key: 'k').permit!
+      end
+      let(:service) { described_class.new(user, settings_params) }
+
+      it 'tests the AirTrail connection and reports the result' do
+        tester = instance_double(AirTrail::ConnectionTester,
+                                 call: { success: true, message: 'AirTrail connection verified' })
+        allow(AirTrail::ConnectionTester).to receive(:new).and_return(tester)
+
+        result = service.call
+
+        expect(result[:notices]).to include('AirTrail connection verified')
+        expect(user.reload.settings['airtrail_url']).to eq('https://airtrail.test')
+      end
+    end
+
     context 'when updating basic settings' do
       let(:settings_params) { { 'immich_url' => 'https://immich.test', 'photoprism_url' => 'https://photoprism.test' } }
       let(:service) { described_class.new(user, settings_params) }

@@ -3,6 +3,17 @@
 require 'rails_helper'
 
 RSpec.describe Users::SafeSettings do
+  describe '#initialize' do
+    it 'falls back to defaults for malformed settings containers' do
+      [nil, false, []].each do |settings|
+        safe_settings = described_class.new(settings)
+
+        expect(safe_settings.timezone).to eq('UTC')
+        expect(safe_settings.distance_unit).to eq('km')
+      end
+    end
+  end
+
   describe '#config' do
     context 'with default values' do
       let(:settings) { {} }
@@ -21,43 +32,43 @@ RSpec.describe Users::SafeSettings do
             merge_threshold_minutes: 15,
             live_map_enabled: true,
             route_opacity: 0.6,
+            route_color: '#0000ff',
+            track_color: '#6366F1',
             immich_url: nil,
             immich_api_key: nil,
             photoprism_url: nil,
             photoprism_api_key: nil,
+            airtrail_url: nil,
+            airtrail_api_key: nil,
             maps: { 'distance_unit' => 'km' },
             distance_unit: 'km',
             visits_suggestions_enabled: true,
             speed_color_scale: nil,
             fog_of_war_threshold: 50,
+          fog_of_war_mode: 'points',
             enabled_map_layers: %w[Tracks Heatmap],
             maps_maplibre_style: 'light',
-            globe_projection: false,
-            transportation_thresholds: {
-              'walking_max_speed' => 7,
-              'cycling_max_speed' => 45,
-              'driving_max_speed' => 220,
-              'flying_min_speed' => 150
+            maps_maplibre_tiles_url: nil,
+            maps_maplibre_custom_theme: {
+              'base' => 'noir',
+              'tokens' => {
+                'bg' => '#000000', 'water' => '#0A0A0A', 'parks' => '#111111',
+                'buildings' => '#141414', 'railway' => '#808080', 'boundaries' => '#4D4D4D',
+                'road_motorway' => '#FFFFFF', 'road_primary' => '#E0E0E0',
+                'road_secondary' => '#B0B0B0', 'road_tertiary' => '#808080',
+                'road_residential' => '#505050', 'road_default' => '#808080'
+              }
             },
-            transportation_expert_thresholds: {
-              'stationary_max_speed' => 1,
-              'running_vs_cycling_accel' => 0.25,
-              'cycling_vs_driving_accel' => 0.4,
-              'train_min_speed' => 80,
-              'min_segment_duration' => 60,
-              'time_gap_threshold' => 180,
-              'min_flight_distance_km' => 100
-            },
+            globe_projection: true,
             enabled_transportation_modes: Track::TRANSPORTATION_MODES.keys.map(&:to_s),
-            transportation_expert_mode: false,
             min_minutes_spent_in_city: 60,
             max_gap_minutes_in_city: 120,
             gps_filtering_enabled: true,
-            gps_accuracy_threshold: 100,
             timezone: 'UTC',
             visit_radius_meters: 100,
             visit_min_points: 3,
-            visit_density_fill_enabled: true
+            visit_min_duration_minutes: 5,
+            point_dragging_enabled: false
           }
         )
       end
@@ -92,6 +103,7 @@ RSpec.describe Users::SafeSettings do
           {
             'fog_of_war_meters' => 100,
             'fog_of_war_threshold' => 50,
+          'fog_of_war_mode' => 'points',
             'meters_between_routes' => 1000,
             'preferred_map_layer' => 'Satellite',
             'speed_colored_routes' => true,
@@ -101,44 +113,46 @@ RSpec.describe Users::SafeSettings do
             'merge_threshold_minutes' => 20,
             'live_map_enabled' => false,
             'route_opacity' => 80,
+            'route_color' => '#0000ff',
+            'track_color' => '#6366F1',
             'immich_url' => 'https://immich.example.com',
             'immich_api_key' => 'immich-key',
             'immich_skip_ssl_verification' => false,
             'photoprism_url' => 'https://photoprism.example.com',
             'photoprism_api_key' => 'photoprism-key',
             'photoprism_skip_ssl_verification' => false,
+            'airtrail_url' => nil,
+            'airtrail_api_key' => nil,
+            'airtrail_skip_ssl_verification' => false,
+            'airtrail_last_synced_at' => nil,
             'maps' => { 'distance_unit' => 'km', 'name' => 'custom', 'url' => 'https://custom.example.com' },
             'visits_suggestions_enabled' => false,
             'enabled_map_layers' => %w[Points Routes Areas Photos],
             'maps_maplibre_style' => 'light',
+            'maps_maplibre_tiles_url' => nil,
+            'maps_maplibre_custom_theme' => {
+              'base' => 'noir',
+              'tokens' => {
+                'bg' => '#000000', 'water' => '#0A0A0A', 'parks' => '#111111',
+                'buildings' => '#141414', 'railway' => '#808080', 'boundaries' => '#4D4D4D',
+                'road_motorway' => '#FFFFFF', 'road_primary' => '#E0E0E0',
+                'road_secondary' => '#B0B0B0', 'road_tertiary' => '#808080',
+                'road_residential' => '#505050', 'road_default' => '#808080'
+              }
+            },
             'news_emails_enabled' => true,
-            'globe_projection' => false,
+            'globe_projection' => true,
             'supporter_email' => nil,
+            'supporter_github_username' => nil,
             'show_supporter_badge' => true,
-            'transportation_thresholds' => {
-              'walking_max_speed' => 7,
-              'cycling_max_speed' => 45,
-              'driving_max_speed' => 220,
-              'flying_min_speed' => 150
-            },
-            'transportation_expert_thresholds' => {
-              'stationary_max_speed' => 1,
-              'running_vs_cycling_accel' => 0.25,
-              'cycling_vs_driving_accel' => 0.4,
-              'train_min_speed' => 80,
-              'min_segment_duration' => 60,
-              'time_gap_threshold' => 180,
-              'min_flight_distance_km' => 100
-            },
-            'transportation_expert_mode' => false,
             'min_minutes_spent_in_city' => 60,
             'max_gap_minutes_in_city' => 120,
             'gps_filtering_enabled' => true,
-            'gps_accuracy_threshold' => 100,
             'timezone' => 'UTC',
             'visit_radius_meters' => 100,
             'visit_min_points' => 3,
-            'visit_density_fill_enabled' => true
+            'visit_min_duration_minutes' => 5,
+            'point_dragging_enabled' => false
           }
         )
       end
@@ -156,43 +170,43 @@ RSpec.describe Users::SafeSettings do
             merge_threshold_minutes: 20,
             live_map_enabled: false,
             route_opacity: 80,
+            route_color: '#0000ff',
+            track_color: '#6366F1',
             immich_url: 'https://immich.example.com',
             immich_api_key: 'immich-key',
             photoprism_url: 'https://photoprism.example.com',
             photoprism_api_key: 'photoprism-key',
+            airtrail_url: nil,
+            airtrail_api_key: nil,
             maps: { 'distance_unit' => 'km', 'name' => 'custom', 'url' => 'https://custom.example.com' },
             distance_unit: 'km',
             visits_suggestions_enabled: false,
             speed_color_scale: nil,
             fog_of_war_threshold: 50,
+          fog_of_war_mode: 'points',
             enabled_map_layers: %w[Points Routes Areas Photos],
             maps_maplibre_style: 'light',
-            globe_projection: false,
-            transportation_thresholds: {
-              'walking_max_speed' => 7,
-              'cycling_max_speed' => 45,
-              'driving_max_speed' => 220,
-              'flying_min_speed' => 150
+            maps_maplibre_tiles_url: nil,
+            maps_maplibre_custom_theme: {
+              'base' => 'noir',
+              'tokens' => {
+                'bg' => '#000000', 'water' => '#0A0A0A', 'parks' => '#111111',
+                'buildings' => '#141414', 'railway' => '#808080', 'boundaries' => '#4D4D4D',
+                'road_motorway' => '#FFFFFF', 'road_primary' => '#E0E0E0',
+                'road_secondary' => '#B0B0B0', 'road_tertiary' => '#808080',
+                'road_residential' => '#505050', 'road_default' => '#808080'
+              }
             },
-            transportation_expert_thresholds: {
-              'stationary_max_speed' => 1,
-              'running_vs_cycling_accel' => 0.25,
-              'cycling_vs_driving_accel' => 0.4,
-              'train_min_speed' => 80,
-              'min_segment_duration' => 60,
-              'time_gap_threshold' => 180,
-              'min_flight_distance_km' => 100
-            },
+            globe_projection: true,
             enabled_transportation_modes: Track::TRANSPORTATION_MODES.keys.map(&:to_s),
-            transportation_expert_mode: false,
             min_minutes_spent_in_city: 60,
             max_gap_minutes_in_city: 120,
             gps_filtering_enabled: true,
-            gps_accuracy_threshold: 100,
             timezone: 'UTC',
             visit_radius_meters: 100,
             visit_min_points: 3,
-            visit_density_fill_enabled: true
+            visit_min_duration_minutes: 5,
+            point_dragging_enabled: false
           }
         )
       end
@@ -432,6 +446,32 @@ RSpec.describe Users::SafeSettings do
           expect(safe_settings.globe_projection).to be true
         end
       end
+
+      context 'when no value is stored' do
+        context 'and plan is pro' do
+          let(:safe_settings) { described_class.new({}, plan: :pro) }
+
+          it 'defaults to true' do
+            expect(safe_settings.globe_projection).to be true
+          end
+        end
+
+        context 'and plan is lite' do
+          let(:safe_settings) { described_class.new({}, plan: :lite) }
+
+          it 'stays false' do
+            expect(safe_settings.globe_projection).to be false
+          end
+        end
+      end
+
+      context 'when a pro user explicitly opted out' do
+        let(:safe_settings) { described_class.new({ 'globe_projection' => false }, plan: :pro) }
+
+        it 'preserves the stored false' do
+          expect(safe_settings.globe_projection).to be false
+        end
+      end
     end
   end
 
@@ -535,90 +575,6 @@ RSpec.describe Users::SafeSettings do
     end
   end
 
-  describe 'transportation threshold settings' do
-    let(:safe_settings) { described_class.new(settings) }
-
-    context 'with default values' do
-      let(:settings) { {} }
-
-      it 'returns default transportation thresholds' do
-        expect(safe_settings.transportation_thresholds).to eq(
-          {
-            'walking_max_speed' => 7,
-            'cycling_max_speed' => 45,
-            'driving_max_speed' => 220,
-            'flying_min_speed' => 150
-          }
-        )
-      end
-
-      it 'returns default transportation expert thresholds' do
-        expect(safe_settings.transportation_expert_thresholds).to eq(
-          {
-            'stationary_max_speed' => 1,
-            'running_vs_cycling_accel' => 0.25,
-            'cycling_vs_driving_accel' => 0.4,
-            'train_min_speed' => 80,
-            'min_segment_duration' => 60,
-            'time_gap_threshold' => 180,
-            'min_flight_distance_km' => 100
-          }
-        )
-      end
-
-      it 'returns false for transportation expert mode' do
-        expect(safe_settings.transportation_expert_mode?).to be false
-      end
-    end
-
-    context 'with custom values' do
-      let(:settings) do
-        {
-          'transportation_thresholds' => {
-            'walking_max_speed' => 8,
-            'cycling_max_speed' => 50,
-            'driving_max_speed' => 200,
-            'flying_min_speed' => 180
-          },
-          'transportation_expert_thresholds' => {
-            'stationary_max_speed' => 2,
-            'train_min_speed' => 100
-          },
-          'transportation_expert_mode' => true
-        }
-      end
-
-      it 'returns custom transportation thresholds' do
-        expect(safe_settings.transportation_thresholds).to eq(
-          {
-            'walking_max_speed' => 8,
-            'cycling_max_speed' => 50,
-            'driving_max_speed' => 200,
-            'flying_min_speed' => 180
-          }
-        )
-      end
-
-      it 'returns custom transportation expert thresholds merged with defaults' do
-        expect(safe_settings.transportation_expert_thresholds).to eq(
-          {
-            'stationary_max_speed' => 2,
-            'running_vs_cycling_accel' => 0.25,
-            'cycling_vs_driving_accel' => 0.4,
-            'train_min_speed' => 100,
-            'min_segment_duration' => 60,
-            'time_gap_threshold' => 180,
-            'min_flight_distance_km' => 100
-          }
-        )
-      end
-
-      it 'returns true for transportation expert mode' do
-        expect(safe_settings.transportation_expert_mode?).to be true
-      end
-    end
-  end
-
   describe '#enabled_transportation_modes' do
     let(:safe_settings) { described_class.new(settings) }
     let(:canonical) { Track::TRANSPORTATION_MODES.keys.map(&:to_s) }
@@ -686,25 +642,177 @@ RSpec.describe Users::SafeSettings do
     end
   end
 
-  describe '#gps_accuracy_threshold' do
-    it 'defaults to 100' do
-      expect(described_class.new({}).gps_accuracy_threshold).to eq(100)
+  describe '#visit_radius_meters' do
+    it 'returns 50 when missing' do
+      expect(described_class.new({}).visit_radius_meters).to eq(100)
     end
 
-    it 'returns the user-provided integer' do
-      expect(described_class.new({ 'gps_accuracy_threshold' => 250 }).gps_accuracy_threshold).to eq(250)
+    it 'clamps below the minimum to 5' do
+      expect(described_class.new({ 'visit_radius_meters' => 1 }).visit_radius_meters).to eq(5)
     end
 
-    it 'clamps below the minimum' do
-      expect(described_class.new({ 'gps_accuracy_threshold' => 10 }).gps_accuracy_threshold).to eq(50)
+    it 'clamps above the maximum to 500' do
+      expect(described_class.new({ 'visit_radius_meters' => 9999 }).visit_radius_meters).to eq(500)
     end
 
-    it 'clamps above the maximum' do
-      expect(described_class.new({ 'gps_accuracy_threshold' => 99_999 }).gps_accuracy_threshold).to eq(1000)
+    it 'returns the user value within range' do
+      expect(described_class.new({ 'visit_radius_meters' => 75 }).visit_radius_meters).to eq(75)
+    end
+  end
+
+  describe '#visit_min_points' do
+    it 'returns 3 when missing' do
+      expect(described_class.new({}).visit_min_points).to eq(3)
     end
 
-    it 'coerces string values' do
-      expect(described_class.new({ 'gps_accuracy_threshold' => '300' }).gps_accuracy_threshold).to eq(300)
+    it 'clamps below the minimum to 2' do
+      expect(described_class.new({ 'visit_min_points' => 1 }).visit_min_points).to eq(2)
+    end
+
+    it 'clamps above the maximum to 20' do
+      expect(described_class.new({ 'visit_min_points' => 99 }).visit_min_points).to eq(20)
+    end
+
+    it 'returns the user value within range' do
+      expect(described_class.new({ 'visit_min_points' => 4 }).visit_min_points).to eq(4)
+    end
+  end
+
+  describe '#point_dragging_enabled?' do
+    it 'returns false when missing' do
+      expect(described_class.new({}).point_dragging_enabled?).to be false
+    end
+
+    it 'returns false when explicitly nil' do
+      expect(described_class.new({ 'point_dragging_enabled' => nil }).point_dragging_enabled?).to be false
+    end
+
+    it 'returns true for true' do
+      expect(described_class.new({ 'point_dragging_enabled' => true }).point_dragging_enabled?).to be true
+    end
+
+    it 'returns true for "1"' do
+      expect(described_class.new({ 'point_dragging_enabled' => '1' }).point_dragging_enabled?).to be true
+    end
+
+    it 'returns false for "0"' do
+      expect(described_class.new({ 'point_dragging_enabled' => '0' }).point_dragging_enabled?).to be false
+    end
+
+    it 'returns false for "false"' do
+      expect(described_class.new({ 'point_dragging_enabled' => 'false' }).point_dragging_enabled?).to be false
+    end
+
+    it 'is included in #config' do
+      expect(described_class.new({}).config).to include(point_dragging_enabled: false)
+    end
+  end
+
+  describe '#fog_of_war_mode' do
+    it 'defaults to points' do
+      expect(described_class.new.fog_of_war_mode).to eq('points')
+    end
+
+    it 'returns hexagons when set' do
+      expect(described_class.new({ 'fog_of_war_mode' => 'hexagons' }).fog_of_war_mode).to eq('hexagons')
+    end
+
+    it 'falls back to points for invalid values' do
+      expect(described_class.new({ 'fog_of_war_mode' => 'octagons' }).fog_of_war_mode).to eq('points')
+    end
+
+    it 'is included in config' do
+      expect(described_class.new.config[:fog_of_war_mode]).to eq('points')
+    end
+  end
+
+  describe '#maps_maplibre_custom_theme' do
+    let(:noir_tokens) do
+      {
+        'bg' => '#000000', 'water' => '#0A0A0A', 'parks' => '#111111',
+        'buildings' => '#141414', 'railway' => '#808080', 'boundaries' => '#4D4D4D',
+        'road_motorway' => '#FFFFFF', 'road_primary' => '#E0E0E0',
+        'road_secondary' => '#B0B0B0', 'road_tertiary' => '#808080',
+        'road_residential' => '#505050', 'road_default' => '#808080'
+      }
+    end
+
+    it 'defaults to the noir preset' do
+      expect(described_class.new.maps_maplibre_custom_theme).to eq(
+        'base' => 'noir', 'tokens' => noir_tokens
+      )
+    end
+
+    it 'returns stored base and tokens' do
+      settings = {
+        'maps_maplibre_custom_theme' => {
+          'base' => 'blueprint',
+          'tokens' => noir_tokens.merge('bg' => '#1E3A5F')
+        }
+      }
+
+      theme = described_class.new(settings).maps_maplibre_custom_theme
+
+      expect(theme['base']).to eq('blueprint')
+      expect(theme['tokens']['bg']).to eq('#1E3A5F')
+    end
+
+    it 'resolves every token when a stored hash is partial' do
+      settings = {
+        'maps_maplibre_custom_theme' => { 'tokens' => { 'bg' => '#123456' } }
+      }
+
+      theme = described_class.new(settings).maps_maplibre_custom_theme
+
+      expect(theme['tokens']['bg']).to eq('#123456')
+      expect(theme['tokens']['water']).to eq('#0A0A0A')
+      expect(theme['base']).to eq('noir')
+    end
+
+    it 'is included in config' do
+      expect(described_class.new.config[:maps_maplibre_custom_theme]['base']).to eq('noir')
+    end
+  end
+
+  describe '#maps_maplibre_tiles_url' do
+    it 'defaults to nil (built-in tiles)' do
+      expect(described_class.new.maps_maplibre_tiles_url).to be_nil
+    end
+
+    it 'returns the stored URL' do
+      settings = described_class.new(
+        { 'maps_maplibre_tiles_url' => 'https://tiles.example.com/{z}/{x}/{y}.mvt' }
+      )
+
+      expect(settings.maps_maplibre_tiles_url).to eq('https://tiles.example.com/{z}/{x}/{y}.mvt')
+    end
+
+    it 'is included in config' do
+      expect(described_class.new.config).to have_key(:maps_maplibre_tiles_url)
+    end
+  end
+
+  describe 'layer colors' do
+    it 'defaults route_color to v1 blue' do
+      expect(described_class.new.route_color).to eq('#0000ff')
+    end
+
+    it 'defaults track_color to the serializer default' do
+      expect(described_class.new.track_color).to eq('#6366F1')
+    end
+
+    it 'returns stored values' do
+      settings = described_class.new({ 'route_color' => '#ff0000', 'track_color' => '#00ff00' })
+
+      expect(settings.route_color).to eq('#ff0000')
+      expect(settings.track_color).to eq('#00ff00')
+    end
+
+    it 'is included in config' do
+      config = described_class.new.config
+
+      expect(config[:route_color]).to eq('#0000ff')
+      expect(config[:track_color]).to eq('#6366F1')
     end
   end
 end

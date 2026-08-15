@@ -76,8 +76,6 @@ describe 'Stats API', type: :request do
         end
         let(:api_key) { user.api_key }
 
-        after { |example| SwaggerResponseExample.capture(example, response) }
-
         run_test!
       end
 

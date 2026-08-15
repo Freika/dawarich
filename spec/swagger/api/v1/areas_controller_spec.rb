@@ -49,8 +49,6 @@ description: 'The longitude of the area center' },
 
         let(:area) { { area: { name: 'Home', latitude: 40.7128, longitude: -74.0060, radius: 100 } } }
 
-        after { |example| SwaggerResponseExample.capture(example, response) }
-
         run_test!
       end
 
@@ -92,8 +90,6 @@ description: 'The longitude of the area center' },
 
         let!(:areas) { create_list(:area, 3, user:) }
 
-        after { |example| SwaggerResponseExample.capture(example, response) }
-
         run_test!
       end
 
@@ -127,8 +123,6 @@ description: 'The longitude of the area center' },
 
         let(:area) { create(:area, user:) }
         let(:id) { area.id }
-
-        after { |example| SwaggerResponseExample.capture(example, response) }
 
         run_test!
       end
@@ -183,8 +177,6 @@ description: 'The longitude of the area center' },
         let(:id) { existing_area.id }
         let(:area) { { area: { name: 'Updated Name' } } }
 
-        after { |example| SwaggerResponseExample.capture(example, response) }
-
         run_test!
       end
 
@@ -217,8 +209,6 @@ description: 'The longitude of the area center' },
 
         let(:area) { create(:area, user:) }
         let(:id) { area.id }
-
-        after { |example| SwaggerResponseExample.capture(example, response) }
 
         run_test!
       end

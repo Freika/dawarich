@@ -8,6 +8,7 @@ default: &default
   host: <%= ENV['DATABASE_HOST'] %>
   pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 10 } %>
   timeout: 5000
+  advisory_locks: <%= ENV.fetch('DATABASE_ADVISORY_LOCKS', 'true') %>
 
 development:
   <<: *default

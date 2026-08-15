@@ -12,6 +12,7 @@ class Api::PhotoSerializer
       latitude: latitude,
       longitude: longitude,
       localDateTime: local_date_time,
+      capturedAt: captured_at,
       originalFileName: original_file_name,
       city: city,
       state: state,
@@ -39,7 +40,25 @@ class Api::PhotoSerializer
   end
 
   def local_date_time
-    photo['localDateTime'] || photo['TakenAtLocal']
+    case source
+    when 'immich'
+      photo['localDateTime']
+    when 'photoprism'
+      photo['TakenAtLocal']
+    else
+      photo['localDateTime'] || photo['TakenAtLocal']
+    end
+  end
+
+  def captured_at
+    case source
+    when 'immich'
+      photo['fileCreatedAt']
+    when 'photoprism'
+      photo['TakenAt']
+    else
+      photo['fileCreatedAt'] || photo['TakenAt']
+    end
   end
 
   def original_file_name

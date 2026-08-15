@@ -5,7 +5,11 @@ require 'rails_helper'
 RSpec.describe 'Blank geocoder response marks the point as attempted' do
   subject(:fetch_data) { ReverseGeocoding::Points::FetchData.new(point.id).call }
 
-  let(:point) { create(:point) }
+  let(:point) do
+    pt = create(:point)
+    pt.update_columns(country_id: nil, country_name: nil, city: nil)
+    pt.reload
+  end
 
   context 'when Geocoder returns no results (e.g. point over the ocean)' do
     before { allow(Geocoder).to receive(:search).and_return([]) }

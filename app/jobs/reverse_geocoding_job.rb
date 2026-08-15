@@ -2,6 +2,7 @@
 
 class ReverseGeocodingJob < ApplicationJob
   queue_as :reverse_geocoding
+  sidekiq_options retry: 3
 
   def perform(klass, id, force: false)
     return unless DawarichSettings.reverse_geocoding_enabled?
@@ -9,9 +10,20 @@ class ReverseGeocodingJob < ApplicationJob
     rate_limit_for_photon_api
 
     data_fetcher(klass, id, force).call
+  ensure
+    release_dedup_key(klass, id, force)
   end
 
   private
+
+  def release_dedup_key(klass, id, force)
+    return unless klass == 'Point'
+    return if force
+
+    Sidekiq.redis { |r| r.del(Point.geocode_dedup_key(id)) }
+  rescue StandardError => e
+    Rails.logger.warn("Failed to release geocode dedup key for point #{id}: #{e.message}")
+  end
 
   def data_fetcher(klass, id, force)
     "ReverseGeocoding::#{klass.pluralize.camelize}::FetchData".constantize.new(id, force: force)

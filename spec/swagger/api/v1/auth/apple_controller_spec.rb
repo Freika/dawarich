@@ -43,8 +43,6 @@ describe 'Auth Apple API', type: :request do
 
         let(:payload) { { id_token: 'fake_token' } }
 
-        after { |example| SwaggerResponseExample.capture(example, response) }
-
         run_test!
       end
 

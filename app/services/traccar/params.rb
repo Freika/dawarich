@@ -1,7 +1,10 @@
 # frozen_string_literal: true
 
-# Normalizes the JSON payload sent by the Dawarich mobile client (a Traccar-style
-# tracker built on react-native-background-geolocation) into a point hash.
+# Normalizes the JSON payload sent by a Traccar-style tracker into a point hash.
+# Supports both the flat Dawarich mobile client shape (coords directly on
+# `location`, `battery`/`activity` at the top level) and the nested upstream
+# traccar-client shape (coords under `location.coords`, `battery`/`activity`
+# under `location`).
 class Traccar::Params
   attr_reader :payload
 
@@ -12,21 +15,21 @@ class Traccar::Params
   def call
     return unless valid?
 
-    lon = parse_coordinate(location[:longitude], -180.0, 180.0)
-    lat = parse_coordinate(location[:latitude], -90.0, 90.0)
+    lon = parse_coordinate(coords[:longitude], -180.0, 180.0)
+    lat = parse_coordinate(coords[:latitude], -90.0, 90.0)
     return if lon.nil? || lat.nil?
 
     parsed_timestamp = parse_timestamp(location[:timestamp])
     return if parsed_timestamp.nil?
 
-    altitude_value = location[:altitude]
+    altitude_value = coords[:altitude]
 
     attrs = {
       lonlat:         "POINT(#{lon} #{lat})",
       timestamp:      parsed_timestamp,
       altitude:       altitude_value,
-      accuracy:       location[:accuracy],
-      velocity:       location[:speed]&.to_s,
+      accuracy:       coords[:accuracy],
+      velocity:       coords[:speed]&.to_s,
       tracker_id:     payload[:device_id],
       battery:        battery_level,
       battery_status: battery_status,
@@ -40,9 +43,9 @@ class Traccar::Params
   private
 
   def valid?
-    location.present? &&
-      location[:latitude].present? &&
-      location[:longitude].present? &&
+    coords.present? &&
+      coords[:latitude].present? &&
+      coords[:longitude].present? &&
       location[:timestamp].present?
   end
 
@@ -66,8 +69,12 @@ class Traccar::Params
     @location ||= payload[:location] || {}
   end
 
+  def coords
+    @coords ||= location[:coords].presence || location
+  end
+
   def battery
-    @battery ||= payload[:battery] || {}
+    @battery ||= location[:battery].presence || payload[:battery] || {}
   end
 
   def battery_level

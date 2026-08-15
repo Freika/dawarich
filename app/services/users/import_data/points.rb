@@ -91,7 +91,7 @@ class Users::ImportData::Points
     begin
       result = Point.upsert_all(
         normalized_batch,
-        unique_by: %i[lonlat timestamp user_id],
+        unique_by: %i[user_id timestamp lonlat],
         returning: %w[id],
         on_duplicate: :skip
       )

@@ -18,7 +18,7 @@ class Users::DigestsMailer < ApplicationMailer
 
     mail(
       to: @user.email,
-      subject: "Your #{@digest.year} Year in Review - Dawarich"
+      subject: I18n.t('mailers.users.digests.year_end.subject', year: @digest.year)
     )
   end
 
@@ -37,7 +37,11 @@ class Users::DigestsMailer < ApplicationMailer
 
     mail(
       to: @user.email,
-      subject: "Your #{Date::MONTHNAMES[@digest.month]} #{@digest.year} in review — Dawarich"
+      subject: I18n.t(
+        'mailers.users.digests.monthly.subject',
+        month: I18n.l(Date.new(@digest.year, @digest.month), format: :month_name),
+        year: @digest.year
+      )
     )
   end
 

@@ -2,13 +2,18 @@
 
 class Users::RegistrationsController < Devise::RegistrationsController
   include UtmTrackable
+  include PendingImportClaimable
+  include AccountDeletionConfirmable
 
+  prepend_before_action :handle_logged_in_with_ticket, only: :new
   before_action :set_invitation, only: %i[new create]
   before_action :check_registration_allowed, only: %i[new create]
   before_action :store_utm_params, only: %i[new], unless: -> { DawarichSettings.self_hosted? }
   before_action :store_gads_linker, only: %i[new], unless: -> { DawarichSettings.self_hosted? }
 
   def new
+    session[:pending_import_ticket] = params[:import_ticket] if params[:import_ticket].present?
+
     build_resource({})
 
     resource.email = @invitation.email if @invitation
@@ -24,18 +29,26 @@ class Users::RegistrationsController < Devise::RegistrationsController
     yield resource if block_given?
 
     if resource.persisted?
+      persist_signup_locale(resource)
       post_signup_setup(resource)
 
+      # The claim happens in every branch (not in after_sign_up_path_for):
+      # the reverse-trial redirect below never consults the sign-up path, and
+      # the ticket must not outlive the signup that owns it. It runs after
+      # each flash decision so the "Importing..." notice isn't overwritten.
       if @signup_variant == 'reverse_trial'
         resource.update!(status: :pending_payment)
+        claim_pending_import_for(resource)
         redirect_to manager_checkout_url(resource), allow_other_host: true
       elsif resource.active_for_authentication?
         set_flash_message!(:notice, :signed_up)
         sign_up(resource_name, resource)
+        claim_pending_import_for(resource)
         respond_with(resource, location: after_sign_up_path_for(resource))
       else
         set_flash_message!(:notice, :"signed_up_but_#{resource.inactive_message}")
         expire_data_after_sign_in!
+        claim_pending_import_for(resource)
         respond_with(resource, location: after_inactive_sign_up_path_for(resource))
       end
     else
@@ -48,7 +61,7 @@ class Users::RegistrationsController < Devise::RegistrationsController
   def destroy
     unless resource.can_delete_account?
       set_flash_message! :alert, :cannot_delete
-      redirect_to edit_user_registration_path, status: :unprocessable_content
+      redirect_to edit_user_registration_path
       return
     end
 
@@ -58,10 +71,9 @@ class Users::RegistrationsController < Devise::RegistrationsController
   protected
 
   def destroy_self_hosted
-    unless resource.valid_password?(params[:password].to_s)
-      redirect_to edit_user_registration_path,
-                  alert: 'Provide your current password to delete your account.',
-                  status: :unauthorized
+    unless account_deletion_confirmed?(resource)
+      log_failed_account_deletion(resource)
+      redirect_to edit_user_registration_path, alert: account_deletion_confirmation_error(resource)
       return
     end
 
@@ -70,7 +82,7 @@ class Users::RegistrationsController < Devise::RegistrationsController
     Devise.sign_out_all_scopes ? sign_out : sign_out(resource_name)
 
     redirect_to after_sign_out_path_for(resource_name),
-                notice: 'Your account has been scheduled for deletion.'
+                notice: I18n.t('controllers.users.registrations.your_account_has_been_scheduled_for_deletion')
   end
 
   def destroy_cloud
@@ -94,10 +106,12 @@ class Users::RegistrationsController < Devise::RegistrationsController
   end
 
   def update_resource(resource, params)
-    if resource.oauth_user?
-      resource.update_without_password(params)
+    return super unless resource.oauth_user?
+
+    if params[:password].present?
+      resource.update(params.except(:current_password))
     else
-      super
+      resource.update_without_password(params)
     end
   end
 
@@ -115,10 +129,31 @@ class Users::RegistrationsController < Devise::RegistrationsController
 
   private
 
+  def handle_logged_in_with_ticket
+    return unless user_signed_in? && params[:import_ticket].present?
+
+    session[:pending_import_ticket] = params[:import_ticket]
+    claim_pending_import_for(current_user)
+
+    redirect_to imports_path
+  end
+
   def post_signup_setup(resource)
     assign_utm_params(resource)
+    attribute_partnero_signup(resource)
     store_signup_intent(resource)
     accept_invitation_for_user(resource) if @invitation
+  end
+
+  # Only a language the reader actually picked is worth pinning to the account.
+  # Recording the default here would answer `suggested_locale`'s "has the reader
+  # chosen?" question for every new account, so someone signing up from a French
+  # browser would never be offered French again.
+  def persist_signup_locale(resource)
+    return if supported_locale(params[:locale]).nil? && session[:locale].blank?
+
+    resource.settings = (resource.settings || {}).merge('locale' => I18n.locale.to_s)
+    resource.save!
   end
 
   def manager_checkout_url(user)
@@ -148,16 +183,19 @@ class Users::RegistrationsController < Devise::RegistrationsController
     # When OIDC is enabled and email/password registration is disabled,
     # block all email/password registration including family invitations
     if oidc_only_mode?
+      alert = I18n.t('controllers.users.registrations.email_password_registration_is_disabled_please_use_oidc_to_sign')
       redirect_to root_path,
-                  alert: 'Email/password registration is disabled. Please use OIDC to sign in.'
+                  alert: alert
       return
     end
 
     return if valid_invitation_token?
     return if email_password_registration_allowed?
 
-    redirect_to root_path,
-                alert: 'Registration is not available. Please contact your administrator for access.'
+    alert = I18n.t(
+      'controllers.users.registrations.registration_is_not_available_please_contact_your_administrator_for_acce'
+    )
+    redirect_to root_path, alert: alert
   end
 
   def set_invitation
@@ -189,15 +227,18 @@ class Users::RegistrationsController < Devise::RegistrationsController
     )
 
     if service.call
-      flash[:notice] = "Welcome to #{@invitation.family.name}! You're now part of the family."
+      flash[:notice] =
+        I18n.t('controllers.users.registrations.welcome_to_name_you_re_now_part_of_the_family',
+               name: @invitation.family.name)
     else
       flash[:alert] =
-        "Account created successfully, but there was an issue accepting the invitation: #{service.error_message}"
+        I18n.t('controllers.users.registrations.account_created_successfully_but_there_was_an_issue_accepting_the',
+               error_message: service.error_message)
     end
   rescue StandardError => e
     Rails.logger.error "Error accepting invitation during registration: #{e.message}"
     flash[:alert] =
-      'Account created successfully, but there was an issue accepting the invitation. Please try accepting it again.'
+      I18n.t('controllers.users.registrations.account_created_successfully_but_there_was_an_issue_accepting_the_2')
   end
 
   def sign_up_params

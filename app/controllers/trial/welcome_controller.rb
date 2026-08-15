@@ -9,19 +9,23 @@ class Trial::WelcomeController < ApplicationController
     decoded = Subscription::DecodeJwtToken.new(params[:token], expected_purpose: 'trial_welcome').call
 
     jti = decoded[:jti].to_s
-    return redirect_to(new_user_session_path, alert: 'Link invalid. Please sign in.') if jti.blank?
+    if jti.blank?
+      return redirect_to(new_user_session_path,
+                         alert: I18n.t('controllers.trial.welcome.link_invalid_please_sign_in'))
+    end
 
     @user = User.find(decoded[:user_id])
 
     if user_signed_in? && current_user != @user
-      return redirect_to(root_path, alert: 'Another user is already signed in.')
+      return redirect_to(root_path, alert: I18n.t('controllers.trial.welcome.another_user_is_already_signed_in'))
     end
 
     consumed = !mark_token_consumed!(jti, decoded[:exp])
     if consumed
       return redirect_to(helpers.preferred_map_path) if user_signed_in? && current_user == @user
 
-      return redirect_to(new_user_session_path, alert: 'This welcome link has already been used.')
+      return redirect_to(new_user_session_path,
+                         alert: I18n.t('controllers.trial.welcome.this_welcome_link_has_already_been_used'))
     end
 
     log_event('trial_welcome_consumed', user_id: @user.id, jti: jti, variant: @user.signup_variant)
@@ -29,9 +33,10 @@ class Trial::WelcomeController < ApplicationController
     sign_in(@user) unless current_user == @user
     redirect_to helpers.preferred_map_path, notice: welcome_notice(@user)
   rescue JWT::DecodeError
-    redirect_to new_user_session_path, alert: 'Link invalid or expired. Please sign in.'
+    redirect_to new_user_session_path, alert: I18n.t('controllers.trial.welcome.link_invalid_or_expired_please_sign_in')
   rescue ActiveRecord::RecordNotFound
-    redirect_to new_user_session_path, alert: 'Account no longer exists. Please sign up again.'
+    redirect_to new_user_session_path,
+                alert: I18n.t('controllers.trial.welcome.account_no_longer_exists_please_sign_up_again')
   end
 
   private
@@ -49,9 +54,12 @@ class Trial::WelcomeController < ApplicationController
 
   def welcome_notice(user)
     if user.active_until.present?
-      "Welcome to Dawarich — your 7-day free trial is active until #{user.active_until.strftime('%B %d, %Y')}."
+      I18n.t(
+        'controllers.trial.welcome.trial_active_until',
+        date: I18n.l(user.active_until.to_date, format: :long)
+      )
     else
-      'Welcome to Dawarich — your trial is being activated now.'
+      I18n.t('controllers.trial.welcome.trial_activating')
     end
   end
 

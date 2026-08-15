@@ -9,9 +9,11 @@ class Api::V1::Traccar::PointsController < ApiController
 
     render json: [], status: :ok
   rescue ActiveRecord::RecordInvalid, ActiveRecord::StatementInvalid, ArgumentError => e
-    Sentry.capture_exception(e)
+    Rails.logger.error("Point creation failed: #{e.class}: #{e.message}")
+    Sentry.capture_exception(e) if defined?(Sentry)
 
-    render json: { error: 'Point creation failed' }, status: :internal_server_error
+    render json: { error: I18n.t('controllers.api.v1.traccar.points.point_creation_failed') },
+           status: :internal_server_error
   end
 
   private
@@ -19,8 +21,13 @@ class Api::V1::Traccar::PointsController < ApiController
   def point_params
     params.permit(
       :device_id,
-      location: %i[timestamp latitude longitude accuracy speed heading altitude
-                   is_moving odometer event],
+      location: [
+        :timestamp, :latitude, :longitude, :accuracy, :speed, :heading, :altitude,
+        :is_moving, :odometer, :event, :manual,
+        { coords: %i[latitude longitude accuracy speed heading altitude],
+          battery: %i[level is_charging],
+          activity: %i[type] }
+      ],
       battery: %i[level is_charging],
       activity: %i[type]
     )

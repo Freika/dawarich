@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Api::V1::Maps::HexagonsController < ApiController
+  PUBLIC_SHARING_ACTIONS = %w[index bounds].freeze
+
   skip_before_action :authenticate_api_key, if: :public_sharing_request?
   skip_before_action :reject_pending_payment!, if: :public_sharing_request?
 
@@ -17,11 +19,14 @@ class Api::V1::Maps::HexagonsController < ApiController
 
     render json: result
   rescue ActionController::ParameterMissing => e
-    render json: { error: "Missing required parameter: #{e.param}" }, status: :bad_request
+    error = I18n.t('controllers.api.v1.maps.hexagons.missing_required_parameter_param', parameter: e.param)
+    render json: { error: error },
+           status: :bad_request
   rescue ActionController::BadRequest => e
     render json: { error: e.message }, status: :bad_request
   rescue ActiveRecord::RecordNotFound
-    render json: { error: 'Shared stats not found or no longer available' }, status: :not_found
+    render json: { error: I18n.t('controllers.api.v1.maps.hexagons.shared_stats_not_found_or_no_longer_available') },
+           status: :not_found
   rescue Stats::CalculateMonth::PostGISError => e
     render json: { error: e.message }, status: :bad_request
   rescue StandardError => _e
@@ -46,7 +51,8 @@ class Api::V1::Maps::HexagonsController < ApiController
       }, status: :not_found
     end
   rescue ActiveRecord::RecordNotFound
-    render json: { error: 'Shared stats not found or no longer available' }, status: :not_found
+    render json: { error: I18n.t('controllers.api.v1.maps.hexagons.shared_stats_not_found_or_no_longer_available') },
+           status: :not_found
   rescue ArgumentError => e
     render json: { error: e.message }, status: :bad_request
   rescue Maps::BoundsCalculator::NoUserFoundError => e
@@ -55,7 +61,28 @@ class Api::V1::Maps::HexagonsController < ApiController
     render json: { error: e.message }, status: :bad_request
   end
 
+  def fog
+    start_date = parse_fog_date!(:start_date)
+    end_date = parse_fog_date!(:end_date)
+
+    result = Maps::FogHexagons.new(user: current_api_user, start_date:, end_date:).call
+
+    render json: result
+  rescue ActionController::ParameterMissing => e
+    error = I18n.t('controllers.api.v1.maps.hexagons.missing_required_parameter_param', parameter: e.param)
+    render json: { error: error },
+           status: :bad_request
+  rescue ArgumentError
+    render json: { error: I18n.t('controllers.api.v1.maps.hexagons.invalid_date_format') }, status: :bad_request
+  rescue StandardError => _e
+    handle_service_error
+  end
+
   private
+
+  def parse_fog_date!(key)
+    Time.zone.parse(params.require(key)) || raise(ArgumentError, "invalid #{key}")
+  end
 
   def resolve_hexagon_context
     return resolve_public_sharing_context if public_sharing_request?
@@ -85,10 +112,11 @@ class Api::V1::Maps::HexagonsController < ApiController
   end
 
   def handle_service_error
-    render json: { error: 'Failed to generate hexagon grid' }, status: :internal_server_error
+    render json: { error: I18n.t('controllers.api.v1.maps.hexagons.failed_to_generate_hexagon_grid') },
+           status: :internal_server_error
   end
 
   def public_sharing_request?
-    params[:uuid].present?
+    params[:uuid].present? && PUBLIC_SHARING_ACTIONS.include?(action_name)
   end
 end

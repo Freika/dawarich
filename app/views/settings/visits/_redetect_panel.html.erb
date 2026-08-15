@@ -1,0 +1,25 @@
+<% cooldown_active = current_user.visits_redetected_at.present? && current_user.visits_redetected_at > 1.hour.ago %>
+
+<div class="card bg-base-200 shadow-xl">
+  <div class="card-body">
+    <h3 class="text-xl font-bold"><%= t('.re_run_detection_on_full_history') %></h3>
+    <p class="text-sm opacity-80">
+      <%= t('.replaces_all_suggested_visits_across_your_entire_history_with_fresh') %>
+    </p>
+    <% if current_user.respond_to?(:plan_restricted?) && current_user.plan_restricted? %>
+      <p class="text-xs opacity-70"><%= t('.on_the_lite_plan_re_detection_covers_your_visible_12') %></p>
+    <% end %>
+
+    <%= button_to visits_redetections_path,
+                  method: :post,
+                  data: { turbo_confirm: t('.replace_all_suggested_visits_across_your_full_history_confirmed_visits') },
+                  class: "btn btn-warning #{'btn-disabled' if cooldown_active}",
+                  disabled: cooldown_active do %>
+      <%= t('.re_run_detection_on_full_history') %>
+    <% end %>
+
+    <% if cooldown_active %>
+      <span class="text-xs opacity-70"><%= t('.available_again_at') %> <%= (current_user.visits_redetected_at + 1.hour).to_fs(:short) %>.</span>
+    <% end %>
+  </div>
+</div>

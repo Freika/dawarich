@@ -71,6 +71,24 @@ RSpec.describe 'Api::V1::Photos', type: :request do
           get '/api/v1/photos', params: { api_key: user.api_key, start_date: start_date, end_date: end_date }
         end
       end
+
+      context 'when the upstream returns an empty array' do
+        let(:start_date) { '2024-01-01' }
+        let(:end_date) { '2024-01-02' }
+
+        before do
+          allow_any_instance_of(Photos::Search).to receive(:call).and_return([])
+          allow(Rails.cache).to receive(:read).and_return(nil)
+        end
+
+        it 'does not write the empty result to the cache' do
+          expect(Rails.cache).not_to receive(:write)
+
+          get '/api/v1/photos', params: { api_key: user.api_key, start_date: start_date, end_date: end_date }
+
+          expect(JSON.parse(response.body)).to eq([])
+        end
+      end
     end
 
     context 'when the integration is not configured' do

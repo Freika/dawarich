@@ -38,8 +38,6 @@ describe 'Auth Registrations API', type: :request do
           { email: 'new@example.com', password: 'secret123456', password_confirmation: 'secret123456' }
         end
 
-        after { |example| SwaggerResponseExample.capture(example, response) }
-
         run_test!
       end
 

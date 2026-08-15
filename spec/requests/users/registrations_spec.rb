@@ -27,6 +27,13 @@ RSpec.describe 'Users::Registrations', type: :request do
         expect(response.body).to include('Create Account &amp; Join Family')
       end
 
+      it 'renders the French invitation heading as one complete sentence' do
+        get new_user_registration_path(invitation_token: invitation.token, locale: 'fr')
+
+        expect(response.body).to include("Rejoindre #{family.name} !")
+        expect(response.body).not_to include('Rejoindre.')
+      end
+
       it 'pre-fills email field with invitation email' do
         get new_user_registration_path(invitation_token: invitation.token)
 
@@ -84,6 +91,14 @@ RSpec.describe 'Users::Registrations', type: :request do
         expect(new_user).to be_present
         expect(new_user.family).to eq(family)
         expect(family.reload.members).to include(new_user)
+      end
+
+      it 'persists the chosen locale before creating the welcome notification' do
+        post user_registration_path, params: request_params.merge(locale: 'fr')
+
+        new_user = User.find_by!(email: invitation.email)
+        expect(new_user.preferred_locale).to eq(:fr)
+        expect(new_user.notifications.last.title).to eq('Bienvenue dans la famille !')
       end
 
       it 'redirects to family page after successful registration' do
@@ -251,7 +266,6 @@ RSpec.describe 'Users::Registrations', type: :request do
   describe 'Non-Self-Hosted Mode' do
     before do
       allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
-      allow(DawarichSettings).to receive(:family_feature_enabled?).and_return(false)
     end
 
     context 'when accessing registration without invitation token' do
@@ -262,7 +276,8 @@ RSpec.describe 'Users::Registrations', type: :request do
         expect(response.body).to include('Almost there!')
       end
 
-      it 'allows account creation' do
+      it 'creates the account and redirects to Manager checkout (reverse_trial default)' do
+        stub_const('MANAGER_URL', 'https://manager.example.com')
         unique_email = "newuser-#{Time.current.to_i}@example.com"
 
         expect do
@@ -275,8 +290,11 @@ RSpec.describe 'Users::Registrations', type: :request do
           }
         end.to change(User, :count).by(1)
 
-        expect(response).to redirect_to(root_path)
-        expect(User.find_by(email: unique_email)).to be_present
+        user = User.find_by(email: unique_email)
+        expect(user).to be_present
+        expect(user.signup_variant).to eq('reverse_trial')
+        expect(response).to have_http_status(:redirect)
+        expect(response.location).to start_with('https://manager.example.com/checkout')
       end
     end
   end
@@ -576,6 +594,27 @@ RSpec.describe 'Users::Registrations', type: :request do
         expect(response).to redirect_to(edit_user_registration_path)
         expect(flash[:notice]).to include('confirmation email')
       end
+
+      it 'takes the email path without asking for a password or confirm_email' do
+        expect do
+          delete user_registration_path
+        end.to have_enqueued_job(Users::MailerSendingJob)
+
+        expect(flash[:alert]).to be_nil
+      end
+
+      it 'does not render the self-hosted confirmation fields on the account page' do
+        get edit_user_registration_path
+
+        expect(response.body).not_to include('name="confirm_email"')
+        expect(response.body).to include('Email me the confirmation link')
+      end
+
+      it 'still warns that deletion is permanent' do
+        get edit_user_registration_path
+
+        expect(response.body).to include('This is permanent and removes all your data.')
+      end
     end
 
     context 'self-hosted — password-confirmation flow' do
@@ -604,15 +643,89 @@ RSpec.describe 'Users::Registrations', type: :request do
       it 'rejects deletion without a password' do
         delete user_registration_path
 
-        expect(response).to have_http_status(:unauthorized)
+        expect(response).to redirect_to(edit_user_registration_path)
+        expect(flash[:alert]).to be_present
         expect(user.reload.deleted_at).to be_nil
       end
 
       it 'rejects deletion with the wrong password' do
         delete user_registration_path, params: { password: 'wrong' }
 
-        expect(response).to have_http_status(:unauthorized)
+        expect(response).to redirect_to(edit_user_registration_path)
+        expect(flash[:alert]).to be_present
         expect(user.reload.deleted_at).to be_nil
+      end
+
+      it 'logs a warning when confirmation fails' do
+        allow(Rails.logger).to receive(:warn)
+
+        delete user_registration_path, params: { password: 'wrong' }
+
+        expect(Rails.logger).to have_received(:warn).with(/Account deletion confirmation failed/)
+      end
+
+      context 'when the user is an OIDC user (unknowable password)' do
+        let(:oauth_user) do
+          create(:user, provider: 'openid_connect', uid: 'oidc-123', password: SecureRandom.hex(16))
+        end
+
+        before { sign_in oauth_user }
+
+        it 'soft-deletes when confirm_email matches (case-insensitive)' do
+          expect do
+            delete user_registration_path, params: { confirm_email: oauth_user.email.upcase }
+          end.to have_enqueued_job(Users::DestroyJob).with(oauth_user.id)
+
+          expect(oauth_user.reload.deleted_at).to be_present
+        end
+
+        it 'signs out and redirects after a confirmed deletion' do
+          delete user_registration_path, params: { confirm_email: oauth_user.email }
+
+          expect(controller.current_user).to be_nil
+          expect(response).to redirect_to(root_path)
+          expect(flash[:notice]).to include('scheduled for deletion')
+        end
+
+        it 'tolerates surrounding whitespace in confirm_email' do
+          expect do
+            delete user_registration_path, params: { confirm_email: "  #{oauth_user.email.upcase}  " }
+          end.to have_enqueued_job(Users::DestroyJob).with(oauth_user.id)
+
+          expect(oauth_user.reload.deleted_at).to be_present
+        end
+
+        it 'rejects deletion when confirm_email is missing' do
+          delete user_registration_path
+
+          expect(response).to redirect_to(edit_user_registration_path)
+          expect(flash[:alert]).to be_present
+          expect(oauth_user.reload.deleted_at).to be_nil
+        end
+
+        it 'rejects deletion when confirm_email is wrong' do
+          delete user_registration_path, params: { confirm_email: 'someone-else@example.com' }
+
+          expect(response).to redirect_to(edit_user_registration_path)
+          expect(flash[:alert]).to be_present
+          expect(oauth_user.reload.deleted_at).to be_nil
+        end
+
+        it 'accepts a valid password from a linked user who knows one' do
+          expect do
+            delete user_registration_path, params: { password: oauth_user.password }
+          end.to have_enqueued_job(Users::DestroyJob).with(oauth_user.id)
+
+          expect(oauth_user.reload.deleted_at).to be_present
+        end
+
+        it 'rejects a wrong password when no confirm_email is given' do
+          delete user_registration_path, params: { password: 'wrong' }
+
+          expect(response).to redirect_to(edit_user_registration_path)
+          expect(flash[:alert]).to be_present
+          expect(oauth_user.reload.deleted_at).to be_nil
+        end
       end
     end
 
@@ -631,11 +744,11 @@ RSpec.describe 'Users::Registrations', type: :request do
         end.not_to(change { user.reload.deleted_at })
       end
 
-      it 'returns unprocessable content with error message' do
+      it 'redirects back with an error message the browser can follow' do
         delete user_registration_path
 
-        expect(response).to have_http_status(:unprocessable_content)
-        expect(response.location).to eq(edit_user_registration_url)
+        expect(response).to redirect_to(edit_user_registration_path)
+        expect(response).to have_http_status(:found)
         expect(flash[:alert]).to eq('Cannot delete your account while you own a family with other members.')
       end
 
@@ -649,6 +762,17 @@ RSpec.describe 'Users::Registrations', type: :request do
         expect do
           delete user_registration_path
         end.not_to have_enqueued_job(Users::DestroyJob)
+      end
+
+      it 'still refuses on self-hosted even when the password is correct' do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+
+        expect do
+          delete user_registration_path, params: { password: 'password123456' }
+        end.not_to have_enqueued_job(Users::DestroyJob)
+
+        expect(response).to redirect_to(edit_user_registration_path)
+        expect(user.reload.deleted_at).to be_nil
       end
     end
 
@@ -697,6 +821,11 @@ RSpec.describe 'Users::Registrations', type: :request do
     end
 
     context 'when self-hosted mode is disabled' do
+      # Off the self-hosted grant, joining a family is gated on the owner holding
+      # the Family plan, so the fixture owner has to hold one for the invitation
+      # path to be reachable at all.
+      let(:family_owner) { create(:user, plan: :family, skip_auto_trial: true) }
+
       before do
         allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
       end
@@ -856,6 +985,102 @@ RSpec.describe 'Users::Registrations', type: :request do
         expect(user.utm_campaign).to be_nil
         expect(user.utm_term).to be_nil
         expect(user.utm_content).to be_nil
+      end
+    end
+  end
+
+  describe 'PUT /users (account update)' do
+    context 'when an OAuth user sets a password' do
+      let(:oauth_user) do
+        create(:user, provider: 'google_oauth2', uid: '999', password: SecureRandom.hex(16))
+      end
+
+      before { sign_in oauth_user }
+
+      it 'persists the new password so the user can sign in with email/password' do
+        put user_registration_path, params: {
+          user: {
+            password: 'new-password-123',
+            password_confirmation: 'new-password-123'
+          }
+        }
+
+        expect(oauth_user.reload.valid_password?('new-password-123')).to be(true)
+      end
+    end
+
+    context 'when an OAuth user updates profile fields without a password' do
+      let(:oauth_user) do
+        create(:user, provider: 'google_oauth2', uid: '998', password: 'original-secret-1')
+      end
+
+      before { sign_in oauth_user }
+
+      it 'updates the profile and leaves the existing password intact' do
+        put user_registration_path, params: {
+          user: {
+            email: oauth_user.email,
+            password: '',
+            password_confirmation: ''
+          }
+        }
+
+        expect(oauth_user.reload.valid_password?('original-secret-1')).to be(true)
+      end
+    end
+  end
+
+  describe 'GET /users/edit (account settings)' do
+    context 'when signed in as a Google OAuth user' do
+      let(:oauth_user) { create(:user, provider: 'google_oauth2', uid: '777', password: SecureRandom.hex(16)) }
+
+      # Providers stubbed so the shared partial would render the sign-in buttons
+      # for an unguarded (signed-in) user; the buttons must be hidden instead.
+      before do
+        allow(User).to receive(:omniauth_providers).and_return([:google_oauth2])
+        sign_in oauth_user
+      end
+
+      it 'renders without the "Sign in with Google" button' do
+        get edit_user_registration_path
+
+        expect(response).to have_http_status(:ok)
+        expect(response.body).not_to include('Sign in with Google')
+      end
+
+      it 'shows that the account is connected with Google' do
+        get edit_user_registration_path
+
+        expect(response.body).to include('Connected with Google')
+      end
+    end
+
+    context 'when signed in as an Apple OAuth user' do
+      let(:oauth_user) { create(:user, provider: 'apple', uid: '000.apple', password: SecureRandom.hex(16)) }
+
+      before { sign_in oauth_user }
+
+      it 'shows that the account is connected with Apple' do
+        get edit_user_registration_path
+
+        expect(response.body).to include('Connected with Apple')
+      end
+    end
+
+    context 'when signed in as an email/password user' do
+      let(:password_user) { create(:user, provider: nil, uid: nil) }
+
+      before do
+        allow(User).to receive(:omniauth_providers).and_return([:google_oauth2])
+        sign_in password_user
+      end
+
+      it 'renders without an OAuth sign-in button or a connected indicator' do
+        get edit_user_registration_path
+
+        expect(response).to have_http_status(:ok)
+        expect(response.body).not_to include('Sign in with Google')
+        expect(response.body).not_to include('Connected with')
       end
     end
   end

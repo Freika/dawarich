@@ -6,10 +6,12 @@ RSpec.describe Visit, type: :model do
   let(:user) { create(:user) }
 
   describe 'associations' do
-    it 'is destroyed when associated place is destroyed' do
+    it 'is nullified (place_id set to NULL) when associated place is destroyed' do
       place = create(:place, user: user)
-      create(:visit, user: user, place: place)
-      expect { place.destroy }.to change(Visit, :count).by(-1)
+      visit = create(:visit, user: user, place: place)
+
+      expect { place.destroy }.not_to change(Visit, :count)
+      expect(visit.reload.place_id).to be_nil
     end
 
     it 'is destroyed when associated area is destroyed' do

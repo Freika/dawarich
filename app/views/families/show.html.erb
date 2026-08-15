@@ -6,19 +6,19 @@
     <div class="flex items-center gap-2">
       <% if policy(@family).update? %>
         <%= link_to edit_family_path, class: "btn btn-outline btn-sm" do %>
-          <%= icon 'square-pen', class: 'w-4 h-4' %> Edit
+          <%= icon 'square-pen', class: 'w-4 h-4' %> <%= t('.edit') %>
         <% end %>
       <% end %>
       <% if policy(@family).invite? && @family.can_add_members? %>
         <button class="btn btn-primary btn-sm" onclick="document.getElementById('invite-section').scrollIntoView({behavior:'smooth'})">
-          <%= icon 'circle-plus', class: 'w-4 h-4' %> Invite
+          <%= icon 'circle-plus', class: 'w-4 h-4' %> <%= t('.invite') %>
         </button>
       <% end %>
     </div>
   <% end %>
 
   <div class="text-sm text-base-content/50 -mt-4 mb-6">
-    <%= @member_count %> members &middot; Created <%= @family.created_at.strftime('%B %Y') %>
+    <%= t('.members_created', count: @member_count, date: l(@family.created_at.to_date, format: :month_year)) %>
   </div>
 
   <%# Main layout: Map + Sidebar %>
@@ -36,7 +36,7 @@
               <div class="text-base-content/30 mb-2">
                 <%= icon 'map', class: 'w-12 h-12 mx-auto' %>
               </div>
-              <p class="text-base-content/50 text-sm">No family members are sharing their location</p>
+              <p class="text-base-content/50 text-sm"><%= t('.no_family_members_are_sharing_their_location') %></p>
             </div>
           </div>
         <% end %>
@@ -49,7 +49,7 @@
       <%# Your sharing controls %>
       <div class="border border-base-300 rounded-xl overflow-hidden">
         <div class="bg-base-200 px-4 py-2.5">
-          <h3 class="text-xs font-medium uppercase tracking-wider text-base-content/50">Your Sharing</h3>
+          <h3 class="text-xs font-medium uppercase tracking-wider text-base-content/50"><%= t('.your_sharing') %></h3>
         </div>
         <div class="p-4">
           <%= render 'families/location_sharing_toggle', member: current_user %>
@@ -60,7 +60,7 @@
       <div class="border border-base-300 rounded-xl overflow-hidden">
         <div class="bg-base-200 px-4 py-2.5">
           <h3 class="text-xs font-medium uppercase tracking-wider text-base-content/50">
-            Members <span class="text-base-content/30">(<%= @members.count %>)</span>
+            <%= t('.members') %> <span class="text-base-content/30">(<%= @members.count %>)</span>
           </h3>
         </div>
         <div class="divide-y divide-base-200">
@@ -85,32 +85,33 @@
                   <div class="flex items-center gap-2">
                     <span class="text-sm font-medium truncate"><%= member.email %></span>
                     <% if member.family_membership.role == 'owner' %>
-                      <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-warning/10 text-warning">Owner</span>
+                      <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-warning/10 text-warning"><%= t('.owner') %></span>
                     <% end %>
                     <% if member == current_user %>
-                      <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-primary/10 text-primary">You</span>
+                      <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-primary/10 text-primary"><%= t('.you') %></span>
                     <% end %>
                   </div>
                   <div class="flex items-center gap-2 mt-0.5">
                     <% if member.family_sharing_enabled? %>
                       <div class="w-2 h-2 bg-success rounded-full animate-pulse"></div>
                       <span class="text-xs text-success">
-                        Sharing <%= member.family_sharing_duration == 'permanent' ? 'always' : "for #{member.family_sharing_duration}" %>
+                        <% duration = member.family_sharing_duration == 'permanent' ? t('.always') : t('.for_duration', duration: member.family_sharing_duration) %>
+                        <%= t('.sharing_status', duration: duration) %>
                       </span>
                       <% if location %>
                         <span class="text-xs text-base-content/40">
-                          &middot; <%= time_ago_in_words(Time.zone.at(location[:timestamp])) %> ago
+                          <%= t('.middot') %> <%= t('common.time_ago', time: relative_distance_in_words(Time.zone.at(location[:timestamp]))) %>
                         </span>
                       <% end %>
                     <% else %>
                       <div class="w-2 h-2 bg-base-300 rounded-full"></div>
-                      <span class="text-xs text-base-content/40">Not sharing</span>
+                      <span class="text-xs text-base-content/40"><%= t('.not_sharing') %></span>
                       <% if member != current_user %>
                         <% pending_req = @pending_requests[member.id] %>
                         <% if pending_req %>
-                          <span class="text-xs text-info">Requested</span>
+                          <span class="text-xs text-info"><%= t('.requested') %></span>
                         <% else %>
-                          <%= button_to "Request",
+                          <%= button_to t('.request'),
                               family_location_requests_path(target_user_id: member.id),
                               method: :post,
                               class: "btn btn-outline btn-xs btn-info ml-auto" %>
@@ -123,11 +124,11 @@
                   <%= link_to family_member_path(member.family_membership),
                         method: :delete,
                         data: {
-                          turbo_confirm: "Remove #{member.email} from the family?",
+                          turbo_confirm: t('.remove_email_from_the_family', email: member.email),
                           turbo_method: :delete
                         },
                         class: "btn btn-ghost btn-xs text-error ml-auto" do %>
-                    <%= icon 'x', class: 'w-3.5 h-3.5' %> Remove
+                    <%= icon 'x', class: 'w-3.5 h-3.5' %> <%= t('.remove') %>
                   <% end %>
                 <% end %>
               </div>
@@ -140,7 +141,7 @@
       <div class="border border-base-300 rounded-xl overflow-hidden" id="invite-section">
         <div class="bg-base-200 px-4 py-2.5">
           <h3 class="text-xs font-medium uppercase tracking-wider text-base-content/50">
-            Invitations <span class="text-base-content/30">(<%= @pending_invitations.count %>)</span>
+            <%= t('.invitations') %> <span class="text-base-content/30">(<%= @pending_invitations.count %>)</span>
           </h3>
         </div>
 
@@ -152,8 +153,7 @@
                   <div class="min-w-0 flex-1 mr-2">
                     <div class="text-sm font-medium"><%= invitation.email %></div>
                     <div class="text-xs text-base-content/40">
-                      Invited <%= time_ago_in_words(invitation.created_at) %> ago
-                      &middot; expires <%= invitation.expires_at.strftime('%b %d') %>
+                      <%= t('.invited_ago_expires', ago: relative_distance_in_words(invitation.created_at), date: l(invitation.expires_at.to_date, format: :short_month_day_padded)) %>
                     </div>
                     <div class="text-xs text-base-content/50 font-mono break-all select-all mt-1">
                       <%= public_invitation_url(invitation.token) %>
@@ -169,7 +169,7 @@
                     <% if policy(@family).manage_invitations? %>
                       <%= button_to family_invitation_path(invitation.token),
                             method: :delete,
-                            form: { data: { turbo_confirm: 'Cancel this invitation?', turbo_method: :delete } },
+                            form: { data: { turbo_confirm: t('.cancel_this_invitation'), turbo_method: :delete } },
                             class: "btn btn-ghost btn-xs text-error hover:bg-error/10" do %>
                         <%= icon 'x', class: 'w-3.5 h-3.5' %>
                       <% end %>
@@ -187,9 +187,9 @@
             <%= form_with model: [@family, Family::Invitation.new], url: family_invitations_path(@family), local: true do |form| %>
               <div class="flex gap-2">
                 <%= form.email_field :email,
-                      placeholder: 'Email address',
+                      placeholder: t('.email_address'),
                       class: "input input-bordered input-sm flex-1" %>
-                <%= form.submit 'Invite',
+                <%= form.submit t('.invite'),
                       class: "btn btn-primary btn-sm" %>
               </div>
             <% end %>
@@ -198,7 +198,9 @@
           <div class="px-4 py-3 border-t border-base-200">
             <p class="text-xs text-warning">
               <%= icon 'triangle-alert', class: 'w-3.5 h-3.5 inline' %>
-              Family at capacity (<%= @family.class::MAX_MEMBERS %> members max)
+              <%= t('.family_at_capacity',
+                    count: @family.member_count + @family.pending_invitations_count,
+                    max: @family.class::MAX_MEMBERS) %>
             </p>
           </div>
         <% end %>
@@ -209,17 +211,17 @@
         <% if !current_user.family_owner? && current_user.family_membership %>
           <%= link_to family_member_path(current_user.family_membership),
                 method: :delete,
-                data: { turbo_confirm: 'Are you sure you want to leave this family?', turbo_method: :delete },
+                data: { turbo_confirm: t('.are_you_sure_you_want_to_leave_this_family'), turbo_method: :delete },
                 class: "btn btn-ghost btn-xs text-warning" do %>
-            Leave Family
+            <%= t('.leave_family') %>
           <% end %>
         <% end %>
         <% if policy(@family).destroy? %>
           <%= link_to family_path,
                 method: :delete,
-                data: { turbo_confirm: 'Delete this family? This cannot be undone.', turbo_method: :delete },
+                data: { turbo_confirm: t('.delete_this_family_this_cannot_be_undone'), turbo_method: :delete },
                 class: "btn btn-ghost btn-xs text-error" do %>
-            <%= icon 'trash-2', class: 'w-3.5 h-3.5' %> Delete Family
+            <%= icon 'trash-2', class: 'w-3.5 h-3.5' %> <%= t('.delete_family') %>
           <% end %>
         <% end %>
       </div>

@@ -1,8 +1,22 @@
 # frozen_string_literal: true
 
 module ApplicationHelper
+  def javascript_translations
+    translations = I18n.t('javascript', default: {}).merge(
+      transportation_modes: I18n.t('transportation_modes', default: {}),
+      visit_statuses: I18n.t('visit_statuses', default: {}),
+      battery_statuses: I18n.t('battery_statuses', default: {})
+    )
+    tag.script(
+      json_escape(translations.to_json).html_safe,
+      id: 'i18n-translations',
+      type: 'application/json',
+      data: { turbo_track: 'reload' }
+    )
+  end
+
   def show_plan_data_window_alert?
-    !DawarichSettings.self_hosted? && current_user&.lite?
+    current_user&.plan_restricted? || false
   end
 
   def year_timespan(year)
@@ -29,8 +43,8 @@ module ApplicationHelper
   end
 
   def full_title(page_title = '')
-    base_title = 'Dawarich'
-    page_title.empty? ? base_title : "#{page_title} | #{base_title}"
+    base_title = I18n.t('common.app_name')
+    page_title.empty? ? base_title : I18n.t('helpers.application.full_title', page_title:, app_name: base_title)
   end
 
   def active_tab?(link_path)
@@ -57,7 +71,7 @@ module ApplicationHelper
   end
 
   def speed_label(unit = 'km')
-    unit == 'mi' ? 'mph' : 'km/h'
+    I18n.t(unit == 'mi' ? 'units.miles_per_hour' : 'units.kilometers_per_hour')
   end
 
   def onboarding_modal_showable?(user)
@@ -83,10 +97,10 @@ module ApplicationHelper
 
   def trial_days_remaining_compact(user)
     expiry = user.active_until
-    return 'Expired' if expiry.blank? || expiry.past?
+    return I18n.t('helpers.application.expired') if expiry.blank? || expiry.past?
 
     days_left = [(expiry.to_date - Time.zone.today).to_i, 0].max
-    "#{days_left}d left"
+    I18n.t('helpers.application.days_left', count: days_left)
   end
 
   def subscription_upgrade_url(user)
@@ -98,13 +112,13 @@ module ApplicationHelper
   end
 
   def subscription_button_label(user)
-    return 'Finish signup' if user.pending_payment?
+    return I18n.t('helpers.application.finish_signup') if user.pending_payment?
 
     trial_days_remaining_compact(user)
   end
 
   def subscription_cta_label(user)
-    user.pending_payment? ? 'Resume' : 'Subscribe'
+    I18n.t(user.pending_payment? ? 'helpers.application.resume' : 'helpers.application.subscribe')
   end
 
   def oauth_provider_name(provider)
@@ -113,16 +127,29 @@ module ApplicationHelper
     OmniAuth::Utils.camelize(provider)
   end
 
+  def oauth_provider_display_name(provider)
+    case provider.to_s
+    when 'google_oauth2' then I18n.t('oauth_providers.google')
+    when 'apple' then I18n.t('oauth_providers.apple')
+    else oauth_provider_name(provider.to_sym)
+    end
+  end
+
   OAUTH_PROVIDERS = {
     google_oauth2: {
       icon_name: 'google',
-      label: 'Sign in with Google',
+      label_key: 'oauth_providers.sign_in_with_google',
       css_class: 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
     },
     github: {
       icon_name: 'github',
-      label: 'Sign in with GitHub',
+      label_key: 'oauth_providers.sign_in_with_github',
       css_class: 'bg-[#24292f] text-white hover:bg-[#383f47] border-[#24292f]'
+    },
+    apple: {
+      icon_name: 'apple',
+      label_key: 'oauth_providers.sign_in_with_apple',
+      css_class: 'bg-black text-white hover:bg-gray-900 border-black'
     }
   }.freeze
 
@@ -137,19 +164,25 @@ module ApplicationHelper
     providers
   end
 
+  def apple_web_sign_in_available?
+    return false unless defined?(APPLE_WEB_SIGN_IN_ENABLED) && APPLE_WEB_SIGN_IN_ENABLED
+
+    !mobile_browser?
+  end
+
   def oauth_button_config(provider)
     config = OAUTH_PROVIDERS[provider.to_sym]
 
     if config
       {
         icon: icon(config[:icon_name], library: 'brands', class: 'size-5'),
-        label: config[:label],
+        label: I18n.t(config[:label_key]),
         css_class: config[:css_class]
       }
     else
       {
         icon: nil,
-        label: "Sign in with #{oauth_provider_name(provider)}",
+        label: I18n.t('oauth_providers.sign_in_with_provider', provider: oauth_provider_name(provider)),
         css_class: 'btn-primary'
       }
     end
@@ -164,20 +197,11 @@ module ApplicationHelper
   def email_password_login_enabled?
     return true unless DawarichSettings.oidc_enabled?
 
-    DawarichSettings.registration_enabled?
+    ALLOW_EMAIL_PASSWORD_LOGIN
   end
 
   def preferred_map_path(params = {})
-    signed_in =
-      begin
-        user_signed_in?
-      rescue Devise::MissingWarden
-        false
-      end
-    return map_v2_path(params) unless signed_in
-
-    preferred_version = current_user.safe_settings.maps&.dig('preferred_version')
-    preferred_version == 'v1' ? map_v1_path(params) : map_v2_path(params)
+    map_v2_path(params)
   end
 
   # Generates a user-specific upgrade URL that authenticates the user
@@ -193,16 +217,25 @@ module ApplicationHelper
     utm.any? ? "#{base}&#{utm.to_query}" : base
   end
 
-  def pro_badge_tag(preview: true)
-    return unless current_user&.lite?
+  def family_upgrade_url(utm_source: 'app', utm_medium: nil, utm_campaign: 'family_upgrade', utm_content: nil)
+    return '' if DawarichSettings.self_hosted?
 
-    tooltip = preview ? 'Available on Pro — click to preview' : 'Available on Pro'
+    token = current_user.generate_subscription_token(plan: 'family', interval: 'annual')
+    base = "#{MANAGER_URL}/auth/dawarich?token=#{token}"
+    utm = { utm_source:, utm_medium:, utm_campaign:, utm_content: }.compact
+    utm.any? ? "#{base}&#{utm.to_query}" : base
+  end
+
+  def pro_badge_tag(preview: true)
+    return unless current_user&.plan_restricted?
+
+    tooltip = I18n.t(preview ? 'helpers.application.pro_preview' : 'helpers.application.pro_only')
     link_to upgrade_url(utm_medium: 'badge', utm_content: 'pro_badge'),
             target: '_blank', rel: 'noopener noreferrer',
             class: 'tooltip tooltip-bottom', 'data-tip': tooltip, tabindex: '0' do
       tag.span(class: 'badge badge-sm badge-outline gap-1') do
         concat icon('lock', class: 'w-3 h-3')
-        concat ' Pro'
+        concat I18n.t('helpers.application.pro_badge')
       end
     end
   end
@@ -238,7 +271,7 @@ module ApplicationHelper
     badge_class = STATUS_BADGE_CLASSES[record.status] || 'bg-base-200 text-base-content/50'
 
     badge_css = "inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium #{badge_class}"
-    badge = content_tag(:span, record.status.capitalize, class: badge_css)
+    badge = content_tag(:span, I18n.t("statuses.#{record.status}"), class: badge_css)
 
     if record.failed? && record.respond_to?(:error_message) && record.error_message.present?
       error_icon = content_tag(:span, icon('circle-alert', class: %w[w-3.5 h-3.5 text-error]),

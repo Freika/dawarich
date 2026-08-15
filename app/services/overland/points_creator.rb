@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class Overland::PointsCreator
-  RETURNING_COLUMNS = 'id, xmax, timestamp, ST_X(lonlat::geometry) AS longitude, ST_Y(lonlat::geometry) AS latitude'
+  RETURNING_COLUMNS = Point::UPSERT_RETURNING_COLUMNS
 
   attr_reader :params, :user_id
 
@@ -16,7 +16,7 @@ class Overland::PointsCreator
 
     payload = data
               .compact
-              .reject { |location| location[:lonlat].nil? || location[:timestamp].nil? }
+              .reject { |location| unusable_location?(location) }
               .map { |location| location.merge(user_id:) }
               .uniq { |location| Point.dedup_key(location) }
 
@@ -27,6 +27,7 @@ class Overland::PointsCreator
       timestamps = payload.filter_map { |p| p[:timestamp]&.to_i }
       Points::AnomalyFilterJob.perform_later(user_id, timestamps.min, timestamps.max) if timestamps.any?
       Tracks::RealtimeDebouncer.new(user_id).trigger
+      Tracks::BackfillScheduler.new(user_id, timestamps).call
       Visits::RealtimeDebouncer.new(user_id).trigger
       Points::LiveBroadcaster.new(user_id, result, payload).call
     end
@@ -36,13 +37,17 @@ class Overland::PointsCreator
 
   private
 
+  def unusable_location?(location)
+    location[:lonlat].nil? || location[:timestamp].nil? ||
+      Points::NullIsland.lonlat?(location[:lonlat])
+  end
+
   def upsert_points(locations)
     created_points = []
 
     locations.each_slice(1000) do |batch|
-      result = Point.upsert_all(
+      result = Point.archival_safe_upsert_all(
         batch,
-        unique_by: %i[lonlat timestamp user_id],
         returning: Arel.sql(RETURNING_COLUMNS)
       )
       created_points.concat(result) if result

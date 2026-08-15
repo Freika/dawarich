@@ -17,23 +17,38 @@ module Visits
       @sw_lng = params[:sw_lng].to_f
       @ne_lat = params[:ne_lat].to_f
       @ne_lng = params[:ne_lng].to_f
+      @start_at = parse_time(params[:start_at])
+      @end_at = parse_time(params[:end_at])
     end
 
     def call
-      user.scoped_visits
-          .left_outer_joins(:place, :area)
-          .includes(:place, :area)
-          .references(:place, :area)
-          .where(
-            "(#{PLACE_INSIDE}) OR (#{AREA_INSIDE})",
-            sw_lng, sw_lat, ne_lng, ne_lat,
-            sw_lng, sw_lat, ne_lng, ne_lat
-          )
-          .order(started_at: :desc)
+      relation = user.scoped_visits
+                     .left_outer_joins(:place, :area)
+                     .includes(:place, :area)
+                     .references(:place, :area)
+                     .where(
+                       "(#{PLACE_INSIDE}) OR (#{AREA_INSIDE})",
+                       sw_lng, sw_lat, ne_lng, ne_lat,
+                       sw_lng, sw_lat, ne_lng, ne_lat
+                     )
+
+      # Filter by started_at only — mirrors Visits::FindInTime; adding an
+      # ended_at predicate silently drops boundary-crossing visits.
+      relation = relation.where(started_at: start_at..end_at) if start_at && end_at
+
+      relation.order(started_at: :desc)
     end
 
     private
 
-    attr_reader :user, :sw_lat, :sw_lng, :ne_lat, :ne_lng
+    attr_reader :user, :sw_lat, :sw_lng, :ne_lat, :ne_lng, :start_at, :end_at
+
+    def parse_time(time_string)
+      return nil if time_string.blank?
+
+      Time.zone.parse(time_string.to_s)
+    rescue ArgumentError
+      nil
+    end
   end
 end

@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { translate } from "i18n"
 
 // Module-level flag so the document-level keyboard shortcuts and tab-change
 // mirror listeners are only bound once, even when multiple map-panel
@@ -15,13 +16,13 @@ export default class extends Controller {
   static targets = ["tabButton", "tabContent", "title"]
 
   // Tab title mappings
-  static titles = {
-    search: "Search",
-    layers: "Map Layers",
-    "timeline-feed": "Timeline",
-    tools: "Tools",
-    links: "Links",
-    settings: "Settings",
+  static titleKeys = {
+    search: "map_panel.search",
+    layers: "map_panel.layers",
+    "timeline-feed": "map_panel.timeline",
+    tools: "map_panel.tools",
+    links: "map_panel.links",
+    settings: "map_panel.settings",
   }
 
   connect() {
@@ -86,7 +87,7 @@ export default class extends Controller {
       const tab = keyToTab[e.key]
       if (tab) {
         e.preventDefault()
-        this.openTabByName(tab)
+        this.requestTab(tab)
         return
       }
 
@@ -163,16 +164,63 @@ export default class extends Controller {
     const button = event.currentTarget
     const tabName = button?.dataset?.tab
     if (!tabName) return
+
+    this.requestTab(tabName)
+  }
+
+  /**
+   * A deliberate user gesture — a cluster button click or its keyboard
+   * shortcut. Asking for the tab already on screen dismisses the panel, the
+   * way the header X does. Programmatic callers use openTabByName instead, so
+   * a visit or track click can switch to Timeline without dismissing it.
+   */
+  requestTab(tabName) {
+    if (this.panelShowingTab(tabName)) {
+      this.closePanel()
+      return
+    }
+
     this.openTabByName(tabName)
+  }
+
+  panelShowingTab(tabName) {
+    const panel = document.querySelector(".map-control-panel")
+    if (!panel?.classList.contains("open")) return false
+
+    const activeContent = panel.querySelector("[data-tab-content].active")
+
+    return activeContent?.dataset?.tabContent === tabName
+  }
+
+  closePanel() {
+    const mapContainer = document.getElementById("maps-maplibre-container")
+    const maplibreController =
+      mapContainer &&
+      this.application.getControllerForElementAndIdentifier(
+        mapContainer,
+        "maps--maplibre",
+      )
+
+    if (maplibreController?.toggleSettings) {
+      maplibreController.toggleSettings()
+    }
+
+    this.markActiveClusterButton(null)
+  }
+
+  // The poster button skips the panel entirely — the full-screen studio
+  // (rendered outside the panel) listens for this event.
+  openPosterStudio() {
+    document.dispatchEvent(new CustomEvent("poster-studio:open"))
   }
 
   /**
    * Programmatic equivalent of openTab(event). Opens the settings panel
    * (via the maps--maplibre controller) and activates the given tab on the
-   * panel's map-panel controller instance. If the panel is already open
-   * AND `tabName` is the active tab, toggle the panel closed — gives the
-   * cluster button a "press again to dismiss" affordance now that the
-   * cluster doubles as the panel's tab strip.
+   * panel's map-panel controller instance. This path never closes the panel,
+   * so map-driven flows (visit/track click → switch to timeline) can't
+   * accidentally dismiss it. User gestures go through requestTab, which
+   * toggles.
    */
   openTabByName(tabName) {
     const panel = document.querySelector(".map-control-panel")
@@ -184,20 +232,6 @@ export default class extends Controller {
         mapContainer,
         "maps--maplibre",
       )
-
-    if (panel && panel.classList.contains("open")) {
-      const activeContent = panel.querySelector(
-        ".tab-content.active[data-tab-content]",
-      )
-      const activeTab = activeContent?.dataset?.tabContent
-      if (activeTab === tabName) {
-        if (maplibreController?.toggleSettings) {
-          maplibreController.toggleSettings()
-          this.markActiveClusterButton(null)
-        }
-        return
-      }
-    }
 
     if (panel && mapContainer && !panel.classList.contains("open")) {
       if (maplibreController?.toggleSettings) {
@@ -225,12 +259,13 @@ export default class extends Controller {
    * dismissed (no tab is "active" because the panel itself is hidden).
    */
   markActiveClusterButton(activeTab) {
-    const buttons = document.querySelectorAll(".map-button-cluster__btn")
+    const buttons = document.querySelectorAll(
+      ".map-button-cluster__btn[data-tab]",
+    )
     for (const btn of buttons) {
-      btn.classList.toggle(
-        "map-button-cluster__btn--active",
-        Boolean(activeTab) && btn.dataset.tab === activeTab,
-      )
+      const isActive = Boolean(activeTab) && btn.dataset.tab === activeTab
+      btn.classList.toggle("map-button-cluster__btn--active", isActive)
+      btn.setAttribute("aria-expanded", String(isActive))
     }
   }
 
@@ -280,7 +315,8 @@ export default class extends Controller {
 
     // Update title
     if (this.hasTitleTarget) {
-      this.titleTarget.textContent = this.constructor.titles[tabName] || tabName
+      const titleKey = this.constructor.titleKeys[tabName]
+      this.titleTarget.textContent = titleKey ? translate(titleKey) : tabName
     }
 
     // Toggle Timeline expansion on panel + container

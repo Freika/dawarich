@@ -1,0 +1,57 @@
+<%
+  q = { hub: 1, start_date: hub.default_start_date.iso8601, end_date: hub.default_end_date.iso8601 }
+  live_paths = {
+    create:            share_links_live_path(q),
+    revoke:            revoke_share_links_live_path(q),
+    regenerate:        regenerate_share_links_live_path(q),
+    regenerate_phrase: regenerate_phrase_share_links_live_path(q),
+    destroy:           share_links_live_path(q)
+  }
+  timeline_paths = {
+    create:            share_links_timeline_path(q),
+    revoke:            revoke_share_links_timeline_path(q),
+    regenerate:        regenerate_share_links_timeline_path(q),
+    regenerate_phrase: regenerate_phrase_share_links_timeline_path(q),
+    destroy:           share_links_timeline_path(q)
+  }
+%>
+<% if local_assigns[:errors].present? %>
+  <div class="alert alert-error text-sm mb-3"><%= Array(errors).join(', ') %></div>
+<% end %>
+
+<div data-controller="hub-tabs" data-hub-tabs-active-value="<%= active_tab %>">
+  <div role="tablist" class="tabs tabs-bordered mb-2">
+    <a role="tab" class="tab" data-hub-tabs-target="tab" data-tab="live"
+       data-action="click->hub-tabs#select" data-testid="hub-tab-live"><%= t('.live_location') %></a>
+    <a role="tab" class="tab" data-hub-tabs-target="tab" data-tab="timeline"
+       data-action="click->hub-tabs#select" data-testid="hub-tab-timeline"><%= t('.time_period') %></a>
+    <% if hub.any_shares? %>
+      <a role="tab" class="tab" data-hub-tabs-target="tab" data-tab="shared"
+         data-action="click->hub-tabs#select" data-testid="hub-tab-shared"><%= t('.shared') %></a>
+    <% end %>
+  </div>
+
+  <div data-hub-tabs-target="panel" style="min-height: 24rem;" data-tab="live" class="hidden pt-2">
+    <% if hub.live_share %>
+      <%= render 'shared_links/modal_active', share: hub.live_share, paths: live_paths,
+                 subtitle: t('.your_live_location_is_shared_via_a_public_link') %>
+    <% else %>
+      <%= render 'shared_links/modal_live_create_form', resource: nil, paths: live_paths, close_path: map_v2_path %>
+    <% end %>
+  </div>
+
+  <div data-hub-tabs-target="panel" style="min-height: 24rem;" data-tab="timeline" class="hidden pt-2">
+    <% if hub.timeline_share %>
+      <%= render 'shared_links/modal_active', share: hub.timeline_share, paths: timeline_paths,
+                 subtitle: timeline_share_subtitle(hub.timeline_share) %>
+    <% else %>
+      <%= render 'shared_links/modal_timeline_create_form', resource: nil, paths: timeline_paths, close_path: map_v2_path %>
+    <% end %>
+  </div>
+
+  <% if hub.any_shares? %>
+    <div data-hub-tabs-target="panel" style="min-height: 24rem;" data-tab="shared" class="hidden pt-2">
+      <%= render 'share_links/hubs/shared_list', shares: hub.all_shares, query: q %>
+    </div>
+  <% end %>
+</div>

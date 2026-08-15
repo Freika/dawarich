@@ -63,8 +63,6 @@ description: 'Emoji for transportation mode' }
 
         let!(:track) { create(:track, user: user) }
 
-        after { |example| SwaggerResponseExample.capture(example, response) }
-
         run_test!
       end
 
@@ -94,8 +92,6 @@ description: 'Emoji for transportation mode' }
 
         let!(:track) { create(:track, user: user) }
         let(:id) { track.id }
-
-        after { |example| SwaggerResponseExample.capture(example, response) }
 
         run_test!
       end

@@ -7,7 +7,7 @@ RSpec.describe Points::AnomalyBackfillUserJob, type: :job do
 
   describe '#perform with reset: true' do
     let!(:legitimate_anomaly) do
-      create(:point, user: user, accuracy: 5000, anomaly: true,
+      create(:point, user: user, accuracy: 50_000, anomaly: true,
              timestamp: 30.minutes.ago.to_i,
              latitude: 52.52, longitude: 13.405,
              lonlat: 'POINT(13.405 52.52)')
@@ -19,8 +19,6 @@ RSpec.describe Points::AnomalyBackfillUserJob, type: :job do
              lonlat: 'POINT(13.4051 52.5201)')
     end
 
-    before { user.update!(settings: { 'gps_accuracy_threshold' => 200 }) }
-
     it 'clears existing anomaly flags and re-evaluates with current settings' do
       described_class.new.perform(user.id, reset: true)
 
@@ -31,7 +29,55 @@ RSpec.describe Points::AnomalyBackfillUserJob, type: :job do
     it 'enqueues a tracks/stats/digests recalculation afterwards' do
       expect do
         described_class.new.perform(user.id, reset: true)
-      end.to have_enqueued_job(Users::RecalculateDataJob).with(user.id)
+      end.to have_enqueued_job(Users::RecalculateDataJob).with(user.id, notify: true)
+    end
+
+    it 'notifies the user by default' do
+      described_class.new.perform(user.id, reset: true)
+
+      perform_enqueued_jobs(only: Users::RecalculateDataJob)
+
+      expect(user.notifications.where(title: 'Data recalculation completed')).to exist
+    end
+
+    it 'reports that it did the work, so callers can tell a skipped run apart' do
+      expect(described_class.new.perform(user.id, reset: true)).to be true
+    end
+
+    it 'runs the recalculation inline when asked to, keeping it on the caller queue' do
+      described_class.new.perform(user.id, reset: true, rebuild: :inline)
+
+      expect(Users::RecalculateDataJob).not_to have_been_enqueued
+      expect(user.notifications.where(title: 'Data recalculation completed')).to exist
+    end
+
+    it 'routes the inline track rebuild off :tracks so live tracking stays ahead' do
+      described_class.new.perform(user.id, reset: true, rebuild: :inline)
+
+      chunk_jobs = ActiveJob::Base.queue_adapter.enqueued_jobs.select do |job|
+        job[:job] == Tracks::TimeChunkProcessorJob
+      end
+
+      expect(chunk_jobs).not_to be_empty
+      expect(chunk_jobs.map { |job| job[:queue] }.uniq).to eq(['low_priority'])
+    end
+
+    it 'surfaces a track lock timeout instead of letting retry_on swallow it' do
+      allow(Tracks::PerUserLock).to receive(:with_user_lock).and_raise(Tracks::PerUserLock::AcquisitionTimeout)
+
+      expect do
+        described_class.new.perform(user.id, reset: true, rebuild: :inline)
+      end.to raise_error(Tracks::PerUserLock::AcquisitionTimeout)
+
+      expect(Users::RecalculateDataJob).not_to have_been_enqueued
+    end
+
+    it 'recalculates without notifying when notify is false' do
+      described_class.new.perform(user.id, reset: true, notify: false)
+
+      perform_enqueued_jobs(only: Users::RecalculateDataJob)
+
+      expect(user.notifications.where(title: 'Data recalculation completed')).not_to exist
     end
   end
 
@@ -51,14 +97,25 @@ RSpec.describe Points::AnomalyBackfillUserJob, type: :job do
         described_class.new.perform(user.id)
       end.not_to have_enqueued_job(Users::RecalculateDataJob)
     end
+
+    it 'rebuilds affected tracks itself, since no wholesale rebuild follows' do
+      point = create(:point, user: user, accuracy: 6, timestamp: 30.minutes.ago.to_i,
+                     latitude: 51.3402, longitude: 12.3712, lonlat: 'POINT(12.3712 51.3402)',
+                     motion_data: { 'action' => 'visit',
+                                    'departure_date' => '2026-05-19T18:34:25Z' })
+      track = create(:track, user: user)
+      point.update_column(:track_id, track.id)
+
+      expect do
+        described_class.new.perform(user.id)
+      end.to have_enqueued_job(Tracks::RecalculateJob).with(track.id)
+    end
   end
 
   describe '#perform skips empty chunks for sparse data' do
     let(:sparse_user) { create(:user) }
 
     before do
-      sparse_user.update!(settings: { 'gps_accuracy_threshold' => 200 })
-
       [22.months.ago, 12.months.ago, 1.month.ago].each do |bucket_anchor|
         2.times do |i|
           create(:point, user: sparse_user, accuracy: 60, anomaly: false,
@@ -71,9 +128,9 @@ RSpec.describe Points::AnomalyBackfillUserJob, type: :job do
 
     it 'invokes the AnomalyFilter once per populated month, not per 30-day chunk in the span' do
       filter_calls = 0
-      allow(Points::AnomalyFilter).to receive(:new).and_wrap_original do |original, *args|
+      allow(Points::AnomalyFilter).to receive(:new).and_wrap_original do |original, *args, **kwargs|
         filter_calls += 1
-        original.call(*args)
+        original.call(*args, **kwargs)
       end
 
       described_class.new.perform(sparse_user.id)

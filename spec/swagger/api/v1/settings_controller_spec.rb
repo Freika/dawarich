@@ -22,7 +22,8 @@ describe 'Settings API', type: :request do
           'photoprism_url': 'https://photoprism.example.com',
           'photoprism_api_key': 'your-photoprism-api-key',
           'speed_color_scale': 'viridis',
-          'fog_of_war_threshold': 100
+          'fog_of_war_threshold': 100,
+          'maps': { 'distance_unit': 'km' }
         }
       }
       tags 'Settings'
@@ -109,6 +110,17 @@ describe 'Settings API', type: :request do
             type: :number,
             example: 100,
             description: 'Fog of war threshold value'
+          },
+          maps: {
+            type: :object,
+            properties: {
+              distance_unit: {
+                type: :string,
+                enum: %w[km mi],
+                example: 'km',
+                description: 'Distance unit used for displayed distances'
+              }
+            }
           }
         }
       }
@@ -116,8 +128,6 @@ describe 'Settings API', type: :request do
       response '200', 'settings updated' do
         let(:settings) { { settings: { route_opacity: 60 } } }
         let(:api_key)  { create(:user).api_key }
-
-        after { |example| SwaggerResponseExample.capture(example, response) }
 
         run_test!
       end
@@ -262,8 +272,6 @@ describe 'Settings API', type: :request do
         let(:settings) { { settings: user.settings } }
         let(:api_key)  { user.api_key }
 
-        after { |example| SwaggerResponseExample.capture(example, response) }
-
         run_test!
       end
 
@@ -295,8 +303,6 @@ describe 'Settings API', type: :request do
 
         let(:user) { create(:user) }
         let(:api_key) { user.api_key }
-
-        after { |example| SwaggerResponseExample.capture(example, response) }
 
         run_test!
       end

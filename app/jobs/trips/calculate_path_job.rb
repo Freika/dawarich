@@ -21,18 +21,6 @@ class Trips::CalculatePathJob < ApplicationJob
     trip.calculate_path
     trip.save!
 
-    broadcast_update(trip)
     Trips::CalculateAllJob.tally_completion(trip_id, run_token)
-  end
-
-  private
-
-  def broadcast_update(trip)
-    Turbo::StreamsChannel.broadcast_update_to(
-      trip,
-      target: 'trip_path',
-      partial: 'trips/path',
-      locals: { trip: trip }
-    )
   end
 end

@@ -14,5 +14,4 @@ RSpec.describe Tagging, type: :model do
 
     it { is_expected.to validate_uniqueness_of(:tag_id).scoped_to(%i[taggable_type taggable_id]) }
   end
-
 end

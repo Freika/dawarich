@@ -1,4 +1,6 @@
+import { translate } from "i18n"
 import { Toast } from "maps_maplibre/components/toast"
+import { pointsToGeoJSON } from "maps_maplibre/utils/geojson_transformers"
 import { gatedToggle } from "maps_maplibre/utils/layer_gate"
 import { lazyLoader } from "maps_maplibre/utils/lazy_loader"
 import { SettingsManager } from "maps_maplibre/utils/settings_manager"
@@ -13,6 +15,7 @@ export class RoutesManager {
     this.map = controller.map
     this.layerManager = controller.layerManager
     this.settings = controller.settings
+    this._anomaliesFetchId = 0
   }
 
   /**
@@ -69,7 +72,7 @@ export class RoutesManager {
     let modal = document.getElementById("speed-color-editor-modal")
     if (!modal) {
       modal = this.createSpeedColorEditorModal(currentScale)
-      document.body.appendChild(modal)
+      this.controller.element.appendChild(modal)
     } else {
       const controller =
         this.controller.application.getControllerForElementAndIdentifier(
@@ -108,25 +111,25 @@ export class RoutesManager {
       <input type="checkbox" id="speed-color-editor-toggle" class="modal-toggle" />
       <div class="modal" role="dialog" data-speed-color-editor-target="modal">
         <div class="modal-box max-w-2xl">
-          <h3 class="text-lg font-bold mb-4">Edit Speed Color Gradient</h3>
+          <h3 class="text-lg font-bold mb-4">${translate("speed_gradient.title")}</h3>
 
           <div class="space-y-4">
             <!-- Gradient Preview -->
             <div class="form-control">
               <label class="label">
-                <span class="label-text font-medium">Preview</span>
+                <span class="label-text font-medium">${translate("speed_gradient.preview")}</span>
               </label>
               <div class="h-12 rounded-lg border-2 border-base-300"
                    data-speed-color-editor-target="preview"></div>
               <label class="label">
-                <span class="label-text-alt">This gradient will be applied to routes based on speed</span>
+                <span class="label-text-alt">${translate("speed_gradient.help")}</span>
               </label>
             </div>
 
             <!-- Color Stops List -->
             <div class="form-control">
               <label class="label">
-                <span class="label-text font-medium">Color Stops</span>
+                <span class="label-text font-medium">${translate("speed_gradient.color_stops")}</span>
               </label>
               <div class="space-y-2" data-speed-color-editor-target="stopsList"></div>
             </div>
@@ -138,7 +141,7 @@ export class RoutesManager {
               <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
               </svg>
-              Add Color Stop
+              ${translate("speed_gradient.add_stop")}
             </button>
           </div>
 
@@ -146,17 +149,17 @@ export class RoutesManager {
             <button type="button"
                     class="btn btn-ghost"
                     data-action="click->speed-color-editor#resetToDefault">
-              Reset to Default
+              ${translate("common.reset_to_default")}
             </button>
             <button type="button"
                     class="btn"
                     data-action="click->speed-color-editor#close">
-              Cancel
+              ${translate("common.cancel")}
             </button>
             <button type="button"
                     class="btn btn-primary"
                     data-action="click->speed-color-editor#save">
-              Save
+              ${translate("common.save")}
             </button>
           </div>
         </div>
@@ -186,16 +189,25 @@ export class RoutesManager {
    * Reload routes layer
    */
   async reloadRoutes() {
-    this.controller.showLoading("Reloading routes...")
+    this.controller.showLoading(translate("messages.reloading_routes"))
 
     try {
+      // In simplified mode the points layer holds a thinned subset, so
+      // rebuild routes from the cached full point set. Otherwise the layer
+      // data is authoritative — it reflects point edits immediately.
+      const cachedPoints =
+        this.controller.mapDataManager?.lastLoadedData?.points
+      const useCachedPoints =
+        this.settings.pointsRenderingMode === "simplified" &&
+        cachedPoints?.length > 0
       const pointsLayer = this.layerManager.getLayer("points")
-      const points =
-        pointsLayer?.data?.features?.map((f) => ({
-          latitude: f.geometry.coordinates[1],
-          longitude: f.geometry.coordinates[0],
-          timestamp: f.properties.timestamp,
-        })) || []
+      const points = useCachedPoints
+        ? cachedPoints
+        : pointsLayer?.data?.features?.map((f) => ({
+            latitude: f.geometry.coordinates[1],
+            longitude: f.geometry.coordinates[0],
+            timestamp: f.properties.timestamp,
+          })) || []
 
       const { RoutesLayer } = await import("maps_maplibre/layers/routes_layer")
       const { applySpeedColors } = await import(
@@ -229,7 +241,7 @@ export class RoutesManager {
       if (routesLayer) routesLayer.update(routesGeoJSON)
     } catch (error) {
       console.error("Failed to reload routes:", error)
-      Toast.error("Failed to reload routes")
+      Toast.error(translate("messages.failed_to_reload_routes"))
     } finally {
       this.controller.hideLoading()
     }
@@ -272,6 +284,50 @@ export class RoutesManager {
   }
 
   /**
+   * Toggle hexagons visibility
+   */
+  async toggleHexagons(event) {
+    const toggle = event.target
+
+    const intercepted = gatedToggle({
+      layerName: "Hexagons",
+      userPlan: this.controller.userPlanValue,
+      toggle,
+      showFn: () => this._showHexagons(),
+      hideFn: () => this._hideHexagons(),
+      upgradeUrl: this.controller.upgradeUrlValue,
+    })
+    if (intercepted) return
+
+    const enabled = toggle.checked
+    SettingsManager.updateSetting("hexagonsEnabled", enabled)
+
+    if (enabled) {
+      await this._showHexagons()
+    } else {
+      this._hideHexagons()
+    }
+  }
+
+  async _showHexagons() {
+    let hexagonLayer = this.layerManager.getLayer("hexagons")
+    if (!hexagonLayer) hexagonLayer = this.layerManager._addHexagonLayer()
+    hexagonLayer.show()
+    await hexagonLayer.load({
+      start_at: this.controller.startDateValue,
+      end_at: this.controller.endDateValue,
+    })
+  }
+
+  _hideHexagons() {
+    const hexagonLayer = this.layerManager.getLayer("hexagons")
+    if (hexagonLayer) {
+      hexagonLayer.dispose()
+      hexagonLayer.hide()
+    }
+  }
+
+  /**
    * Toggle fog of war layer
    */
   async toggleFog(event) {
@@ -279,6 +335,10 @@ export class RoutesManager {
     const fogLayer = this.layerManager.getLayer("fog")
 
     const showFog = async () => {
+      if (fogLayer?.mode === "hexagons") {
+        fogLayer.toggle(true)
+        return
+      }
       await this.controller.mapDataManager.ensurePointsLoaded()
       if (fogLayer) fogLayer.toggle(true)
     }
@@ -322,11 +382,12 @@ export class RoutesManager {
           visible: true,
           apiClient: this.controller.api,
         })
-        const pointsLayer = this.layerManager.getLayer("points")
-        const pointsData = pointsLayer?.data || {
-          type: "FeatureCollection",
-          features: [],
-        }
+        // Scratch needs all points, so build from the full point set rather
+        // than the points layer, which may hold a simplified subset.
+        const allPoints = this.controller.mapDataManager?.lastLoadedData?.points
+        const pointsData = allPoints?.length
+          ? pointsToGeoJSON(allPoints)
+          : { type: "FeatureCollection", features: [] }
         await newScratchLayer.add(pointsData)
         this.layerManager.layers.scratchLayer = newScratchLayer
       } else {
@@ -360,7 +421,7 @@ export class RoutesManager {
       }
     } catch (error) {
       console.error("Failed to toggle scratch layer:", error)
-      Toast.error("Failed to load scratch layer")
+      Toast.error(translate("messages.failed_to_load_scratch_layer"))
     }
   }
 
@@ -420,7 +481,7 @@ export class RoutesManager {
       }
     } catch (error) {
       console.error("Failed to toggle photos layer:", error)
-      Toast.error("Failed to load photos")
+      Toast.error(translate("messages.failed_to_load_photos"))
     }
   }
 
@@ -461,7 +522,7 @@ export class RoutesManager {
       }
     } catch (error) {
       console.error("Failed to toggle areas layer:", error)
-      Toast.error("Failed to load areas")
+      Toast.error(translate("messages.failed_to_load_areas"))
     }
   }
 
@@ -513,7 +574,46 @@ export class RoutesManager {
       }
     } catch (error) {
       console.error("Failed to toggle tracks layer:", error)
-      Toast.error("Failed to load tracks")
+      Toast.error(translate("messages.failed_to_load_tracks"))
+    }
+  }
+
+  /**
+   * Toggle AirTrail flights layer visibility (lazy-loads on first enable).
+   */
+  async toggleFlights(event) {
+    const enabled = event.target.checked
+    SettingsManager.updateSetting("flightsEnabled", enabled)
+
+    try {
+      const flightsLayer = this.layerManager.getLayer("flights")
+
+      if (enabled) {
+        if (flightsLayer && flightsLayer.data?.features?.length > 0) {
+          flightsLayer.show()
+        } else {
+          const api = this.controller.api
+          const flightsGeoJSON = await api.fetchFlights({
+            start_at: this.controller.startDateValue,
+            end_at: this.controller.endDateValue,
+          })
+
+          if (flightsLayer) {
+            flightsLayer.update(flightsGeoJSON)
+            flightsLayer.show()
+          }
+
+          const data = this.controller.mapDataManager?.lastLoadedData
+          if (data) data.flightsGeoJSON = flightsGeoJSON
+        }
+      } else if (flightsLayer) {
+        flightsLayer.hide()
+      }
+
+      this.controller.mapDataManager?.applyFlightMask()
+    } catch (error) {
+      console.error("Failed to toggle flights layer:", error)
+      Toast.error(translate("messages.failed_to_load_flights"))
     }
   }
 
@@ -536,50 +636,53 @@ export class RoutesManager {
     SettingsManager.updateSetting("pointsVisible", visible)
   }
 
-  /**
-   * Toggle anomalies layer
-   * Fetches anomaly points from backend on first enable (lazy-load pattern)
-   */
   async toggleAnomalies(event) {
     const enabled = event.target.checked
     SettingsManager.updateSetting("anomaliesEnabled", enabled)
+    await this.refreshAnomalies({ enabled })
+  }
+
+  async refreshAnomalies({ enabled }) {
+    const anomaliesLayer = this.layerManager.getLayer("anomalies")
+    if (!anomaliesLayer) return
+
+    if (!enabled) {
+      anomaliesLayer.hide()
+      return
+    }
+
+    const fetchId = ++this._anomaliesFetchId
+    this.controller.showProgress()
+    this.controller.updateLoadingCounts({
+      counts: { anomalies: 0 },
+      isComplete: false,
+    })
 
     try {
-      const anomaliesLayer = this.layerManager.getLayer("anomalies")
-      if (!anomaliesLayer) return
+      const startDate = this.controller.startDateValue
+      const endDate = this.controller.endDateValue
+      const geoJSON = await anomaliesLayer.fetchAnomalies({
+        start_at: startDate,
+        end_at: endDate,
+      })
 
-      if (enabled) {
-        if (anomaliesLayer.data?.features?.length > 0) {
-          anomaliesLayer.show()
-        } else {
-          // Fetch anomaly points from backend (lazy-load)
-          this.controller.showProgress()
-          this.controller.updateLoadingCounts({
-            counts: { anomalies: 0 },
-            isComplete: false,
-          })
+      if (fetchId !== this._anomaliesFetchId) return
 
-          const startDate = this.controller.startDateValue
-          const endDate = this.controller.endDateValue
-          const geoJSON = await anomaliesLayer.fetchAnomalies({
-            start_at: startDate,
-            end_at: endDate,
-          })
+      this.controller.updateLoadingCounts({
+        counts: { anomalies: geoJSON.features.length },
+        isComplete: true,
+      })
 
-          this.controller.updateLoadingCounts({
-            counts: { anomalies: geoJSON.features.length },
-            isComplete: true,
-          })
-
-          anomaliesLayer.update(geoJSON)
-          anomaliesLayer.show()
-        }
-      } else {
-        anomaliesLayer.hide()
-      }
+      anomaliesLayer.update(geoJSON)
+      anomaliesLayer.show()
     } catch (error) {
-      console.error("Failed to toggle anomalies layer:", error)
-      Toast.error("Failed to load anomalies")
+      if (fetchId !== this._anomaliesFetchId) return
+      console.error("Failed to refresh anomalies layer:", error)
+      this.controller.updateLoadingCounts({
+        counts: { anomalies: 0 },
+        isComplete: true,
+      })
+      Toast.error(translate("messages.failed_to_load_anomalies"))
     }
   }
 

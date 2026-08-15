@@ -24,6 +24,15 @@ RSpec.describe '/points', type: :request do
         expect(response).to be_successful
       end
 
+      it 'renders the page-entry summary in French without missing translations' do
+        user.update!(settings: { 'locale' => 'fr' })
+
+        get points_url
+
+        expect(response.body).to include('Aucun résultat')
+        expect(response.body).not_to include('translation_missing')
+      end
+
       context 'when reverse geocoding is enabled' do
         let(:recent_timestamp) { 1.day.ago.to_i }
 
@@ -61,6 +70,54 @@ RSpec.describe '/points', type: :request do
     end
   end
 
+  describe 'GET /index with lite plan' do
+    let(:user) { create(:user) }
+
+    before do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      user.update_column(:plan, User.plans[:lite])
+      sign_in user
+    end
+
+    context 'when user is on lite plan' do
+      let!(:in_window_point) do
+        create(:point, user:, latitude: 10.0, longitude: 20.0,
+                       lonlat: 'POINT(20.0 10.0)',
+                       timestamp: 1.month.ago.to_i)
+      end
+      let!(:out_of_window_point) do
+        create(:point, user:, latitude: 55.0, longitude: 37.0,
+                       lonlat: 'POINT(37.0 55.0)',
+                       timestamp: 2.years.ago.to_i)
+      end
+
+      it 'hides points outside the 12-month data window' do
+        get points_url(start_at: 3.years.ago.iso8601, end_at: Time.zone.now.iso8601)
+
+        expect(response).to be_successful
+        expect(response.body).to include('10.000000, 20.000000')
+        expect(response.body).not_to include('55.000000, 37.000000')
+      end
+    end
+
+    context 'when user is on pro plan' do
+      before { user.update_column(:plan, User.plans[:pro]) }
+
+      let!(:old_point) do
+        create(:point, user:, latitude: 55.0, longitude: 37.0,
+                       lonlat: 'POINT(37.0 55.0)',
+                       timestamp: 2.years.ago.to_i)
+      end
+
+      it 'shows points outside the 12-month window' do
+        get points_url(start_at: 3.years.ago.iso8601, end_at: Time.zone.now.iso8601)
+
+        expect(response).to be_successful
+        expect(response.body).to include('55.000000, 37.000000')
+      end
+    end
+  end
+
   describe 'DELETE /bulk_destroy' do
     let(:user) { create(:user) }
     let(:point1) { create(:point, user:) }
@@ -75,6 +132,16 @@ RSpec.describe '/points', type: :request do
 
       expect(Point.find_by(id: point1.id)).to be_nil
       expect(Point.find_by(id: point2.id)).to be_nil
+    end
+
+    it 'enqueues stats and track recalculation' do
+      track = create(:track, user:)
+      tracked = create(:point, user:, track:, timestamp: Time.zone.local(2024, 5, 10, 12).to_i)
+
+      expect do
+        delete bulk_destroy_points_url, params: { point_ids: [tracked.id] }
+      end.to have_enqueued_job(Stats::CalculatingJob).with(user.id, 2024, 5)
+                                                     .and have_enqueued_job(Tracks::RecalculateJob).with(track.id)
     end
 
     it 'returns a 303 status code' do

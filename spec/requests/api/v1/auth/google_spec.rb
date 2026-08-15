@@ -19,7 +19,7 @@ RSpec.describe 'POST /api/v1/auth/google', type: :request do
       )
     end
 
-    it 'creates a new user in pending_payment with provider google and uid' do
+    it 'creates a new user in pending_payment with provider google_oauth2 and uid' do
       expect do
         post '/api/v1/auth/google', params: { id_token: 'fake_token' }
       end.to change(User, :count).by(1)
@@ -27,7 +27,7 @@ RSpec.describe 'POST /api/v1/auth/google', type: :request do
       user = User.find_by(email: 'google@example.com')
       expect(user.status).to eq('pending_payment')
       expect(user.subscription_source).to eq('none')
-      expect(user.provider).to eq('google')
+      expect(user.provider).to eq('google_oauth2')
       expect(user.uid).to eq('google-uid-123')
     end
 
@@ -39,7 +39,7 @@ RSpec.describe 'POST /api/v1/auth/google', type: :request do
   end
 
   context 'returning Google user' do
-    let!(:existing) { create(:user, email: 'google@example.com', provider: 'google', uid: 'google-uid-123') }
+    let!(:existing) { create(:user, email: 'google@example.com', provider: 'google_oauth2', uid: 'google-uid-123') }
 
     before do
       allow(verifier_double).to receive(:call).and_return(

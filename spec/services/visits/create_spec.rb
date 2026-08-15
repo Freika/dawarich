@@ -20,8 +20,37 @@ RSpec.describe Visits::Create do
 
       it 'creates a visit successfully' do
         expect { service.call }.to change { user.visits.count }.by(1)
-        expect(service.call).to be_truthy
         expect(service.visit).to be_persisted
+      end
+
+      it 'returns the existing visit instead of duplicating it on a repeated call' do
+        first = described_class.new(user, valid_params)
+        first.call
+
+        expect { service.call }.not_to(change { user.visits.count })
+        expect(service.call).to be_truthy
+        expect(service.visit).to eq(first.visit)
+      end
+
+      it 'resurrects a tombstoned visit when the user re-creates it at the same place and time' do
+        first = described_class.new(user, valid_params)
+        first.call
+        first.visit.soft_delete!
+
+        expect(service.call).to be_truthy
+        expect(service.visit.id).to eq(first.visit.id)
+        expect(service.visit.reload.deleted_at).to be_nil
+        expect(service.visit.status).to eq('confirmed')
+      end
+
+      it 'resurrects a declined (hidden but not tombstoned) visit on re-creation' do
+        first = described_class.new(user, valid_params)
+        first.call
+        first.visit.update!(status: :declined)
+
+        expect(service.call).to be_truthy
+        expect(service.visit.id).to eq(first.visit.id)
+        expect(service.visit.reload.status).to eq('confirmed')
       end
 
       it 'creates a visit with correct attributes' do
@@ -200,6 +229,24 @@ RSpec.describe Visits::Create do
         expect(ExceptionReporter).to receive(:call)
 
         service.call
+      end
+    end
+
+    describe 'no suggested_places attachment on manual visit creation' do
+      let(:user)  { create(:user) }
+      let(:place) { create(:place, user: user, latitude: 52.5126, longitude: 13.4012) }
+      let(:other) { create(:place, user: user, latitude: 52.5127, longitude: 13.4013) }
+
+      it 'does not create PlaceVisit rows when API creates a visit' do
+        place
+        other
+        params = {
+          latitude: 52.5126, longitude: 13.4012,
+          name: 'Test', started_at: 1.hour.ago.iso8601, ended_at: Time.current.iso8601,
+          status: 'suggested'
+        }
+
+        expect { described_class.new(user, params).call }.not_to(change { PlaceVisit.count })
       end
     end
 

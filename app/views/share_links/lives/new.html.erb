@@ -1,0 +1,14 @@
+<%= render 'shared_links/modal',
+           resource: nil,
+           share: @share,
+           title: t('.share_your_live_location'),
+           subtitle: t('.your_live_location_is_shared_via_a_public_link'),
+           close_path: map_v2_path,
+           paths: {
+             create:            share_links_live_path,
+             revoke:            revoke_share_links_live_path,
+             regenerate:        regenerate_share_links_live_path,
+             regenerate_phrase: regenerate_phrase_share_links_live_path,
+             destroy:           share_links_live_path
+           },
+           create_form_partial: 'shared_links/modal_live_create_form' %>

@@ -19,8 +19,16 @@ module UserFamily
              inverse_of: :target_user, dependent: :destroy
   end
 
+  DEFAULT_HISTORY_WINDOW = '7d'
+
   def in_family?
     family_membership.present?
+  end
+
+  def family_map_sharing_active?
+    return false unless in_family?
+
+    family.members.any?(&:family_sharing_enabled?)
   end
 
   def family_owner?
@@ -112,7 +120,7 @@ module UserFamily
   end
 
   def family_history_window
-    settings.dig('family', 'location_sharing', 'history_window') || '24h'
+    settings.dig('family', 'location_sharing', 'history_window') || DEFAULT_HISTORY_WINDOW
   end
 
   # Returns points within the given date range, scoped by sharing start time,
@@ -131,7 +139,7 @@ module UserFamily
                    when '7d' then 7.days.ago
                    when '30d' then 30.days.ago
                    when 'all' then 1.year.ago
-                   else 24.hours.ago
+                   else 7.days.ago
                    end
 
     effective_start = [start_at, started_at, window_start].max
@@ -139,6 +147,7 @@ module UserFamily
     return Point.none if effective_start >= end_at
 
     scoped_points
+      .complete
       .where('timestamp >= ? AND timestamp <= ?', effective_start.to_i, end_at.to_i)
       .order(timestamp: :asc)
   end
@@ -149,7 +158,8 @@ module UserFamily
     return nil unless family_sharing_enabled?
 
     latest_point =
-      points.select(:lonlat, :timestamp)
+      points.complete
+            .select(:lonlat, :timestamp)
             .order(timestamp: :desc)
             .limit(1)
             .first
@@ -169,6 +179,6 @@ module UserFamily
   private
 
   def validate_history_window(window)
-    VALID_HISTORY_WINDOWS.include?(window) ? window : '24h'
+    VALID_HISTORY_WINDOWS.include?(window) ? window : DEFAULT_HISTORY_WINDOW
   end
 end

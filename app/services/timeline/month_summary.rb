@@ -37,7 +37,7 @@ module Timeline
       d = normalize_month(date)
       tz = user.safe_settings.timezone.presence || 'UTC'
       plan_segment = user.plan_restricted? ? 'lite' : 'pro'
-      ['timeline_month_summary', user.id, d.strftime('%Y-%m'), tz, plan_segment, 'v2']
+      ['timeline_month_summary', user.id, d.strftime('%Y-%m'), tz, plan_segment, 'v3']
     end
 
     def self.normalize_month(date)
@@ -117,6 +117,13 @@ module Timeline
           result[date_str][:track_count] += count.to_i
         end
 
+        # Point presence keeps the day active even when track/visit pipelines
+        # haven't produced a record yet — matches Activity Overview coverage.
+        points_by_day.each do |date_str, count|
+          result[date_str] ||= default_day
+          result[date_str][:point_count] += count.to_i
+        end
+
         result
       end
     end
@@ -125,6 +132,7 @@ module Timeline
       {
         tracked_seconds: 0,
         track_count: 0,
+        point_count: 0,
         visit_count: 0,
         suggested_count: 0,
         confirmed_count: 0,
@@ -176,6 +184,14 @@ module Timeline
       @user.scoped_tracks.where('start_at <= ? AND end_at >= ?', month_range.last, month_range.first)
     end
 
+    def points_by_day
+      @points_by_day ||= @user.scoped_points
+                              .where(timestamp: month_range.first.to_i..month_range.last.to_i)
+                              .group(date_sql_expr_epoch('points.timestamp'))
+                              .count
+                              .transform_keys(&:to_s)
+    end
+
     def visit_status_label(status)
       return status.to_s if status.is_a?(String)
 
@@ -185,6 +201,11 @@ module Timeline
     def date_sql_expr(column)
       quoted_tz = ActiveRecord::Base.connection.quote(tz)
       Arel.sql("DATE(#{column} AT TIME ZONE 'UTC' AT TIME ZONE #{quoted_tz})")
+    end
+
+    def date_sql_expr_epoch(column)
+      quoted_tz = ActiveRecord::Base.connection.quote(tz)
+      Arel.sql("DATE(TO_TIMESTAMP(#{column}) AT TIME ZONE #{quoted_tz})")
     end
 
     def weeks
@@ -215,6 +236,7 @@ module Timeline
         in_month: date.month == @month_start.month,
         tracked_seconds: data[:tracked_seconds],
         track_count: data[:track_count],
+        point_count: data[:point_count],
         visit_count: data[:visit_count],
         suggested_count: data[:suggested_count],
         disabled: disabled_cell?(date)
@@ -236,7 +258,8 @@ module Timeline
     def cell_has_activity?(cell)
       cell[:tracked_seconds].to_i.positive? ||
         cell[:visit_count].to_i.positive? ||
-        cell[:track_count].to_i.positive?
+        cell[:track_count].to_i.positive? ||
+        cell[:point_count].to_i.positive?
     end
 
     def disabled_cell?(date)

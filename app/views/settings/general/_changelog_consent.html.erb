@@ -1,0 +1,28 @@
+<div id="changelog-consent-setting" class="card bg-base-200 shadow-xl">
+  <div class="card-body">
+    <h2 class="text-2xl font-bold mb-4 flex items-center">
+      <%= icon 'bell', class: "text-primary mr-2" %> <%= t('.what_s_new_notices') %>
+    </h2>
+    <div class="bg-base-100 p-5 rounded-lg shadow-sm space-y-4">
+      <% if current_user.changelog_consent_granted? %>
+        <p class="text-sm text-base-content/70">
+          <%= t('.a_what_s_new_notice_is_shown_when_a_new') %>
+          <%= changelog_widget_host %><%= t('.which_like_any_web_request_sees_your_ip_address_browser') %>
+        </p>
+        <%= button_to t('.turn_off_notices'), changelog_consent_path,
+              method: :patch, params: { decision: "declined" },
+              class: "btn btn-ghost btn-sm",
+              form: { data: { turbo_stream: true } } %>
+      <% else %>
+        <p class="text-sm text-base-content/70">
+          <%= t('.get_a_what_s_new_notice_when_a_new_dawarich') %>
+          <%= changelog_widget_host %><%= t('.which_like_any_web_request_sees_your_ip_address_browser') %>
+        </p>
+        <%= button_to t('.turn_on_notices'), changelog_consent_path,
+              method: :patch, params: { decision: "granted" },
+              class: "btn btn-primary btn-sm",
+              form: { data: { turbo_stream: true } } %>
+      <% end %>
+    </div>
+  </div>
+</div>

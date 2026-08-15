@@ -1,12 +1,22 @@
 # frozen_string_literal: true
 
 module TimelineHelper
-  WEEKDAY_HEADER_LABELS = %w[M T W T F S S].freeze
+  # Interior holes shorter than this are the ordinary seams between a visit
+  # ending and the next track starting — real days are full of them, and
+  # marking each one costs the marker its meaning. Detection v3 snaps visit
+  # boundaries to movement edges, so the ragged 30–60 minute seams the old
+  # detector produced are gone; what remains at 45+ minutes is genuinely
+  # unrecorded time (a 79-minute dark dinner must earn its row).
+  TIMELINE_GAP_MIN_MINUTES = 45
 
-  # Max suggested-place candidates shown before the "Show N more" disclosure
-  # kicks in. The assembler dedupes by name upstream; this just keeps the
-  # visible picker compact regardless of geocoder quality.
-  SUGGESTED_PICKER_VISIBLE_LIMIT = 3
+  # Until a user's history has been re-detected, their visits still carry the
+  # old detector's ragged 30–60 minute seams — the marker keeps the old bar so
+  # those seams don't flood the day with false "untracked" rows.
+  LEGACY_TIMELINE_GAP_MIN_MINUTES = 90
+
+  # Ceiling on how far a long leg may stretch the rail, in px. Past this the
+  # day column scrolls more than it communicates.
+  JOURNEY_LEG_MAX_EXTRA_PX = 80
 
   # "YYYY-MM" for the calendar's initial month. Prefers, in order:
   #   1. `params[:date]` (the selected day, e.g. "2025-12-11")
@@ -58,14 +68,14 @@ module TimelineHelper
   # minutes -> "Xh Ym" (or "Xm" when < 1h)
   def format_dwell_minutes(minutes)
     minutes = minutes.to_i
-    return '0m' if minutes <= 0
+    return I18n.t('units.minutes_compact', value: 0) if minutes <= 0
 
     h = minutes / 60
     m = minutes % 60
-    return "#{h}h" if m.zero? && h.positive?
-    return "#{m}m" if h.zero?
+    return I18n.t('units.hours_compact', value: h) if m.zero? && h.positive?
+    return I18n.t('units.minutes_compact', value: m) if h.zero?
 
-    "#{h}h #{m}m"
+    I18n.t('units.hours_minutes_compact', hours: h, minutes: m)
   end
 
   # Tracked seconds -> bucket index 0..5
@@ -90,7 +100,75 @@ module TimelineHelper
     entry[:name].presence ||
       entry[:place]&.dig(:name).presence ||
       entry[:area]&.dig(:name).presence ||
-      'Unnamed'
+      I18n.t('helpers.timeline.unnamed')
+  end
+
+  # Geocoders hand back one flat string — "Good Lood, Tadeusza Romanowicza, 4,
+  # Krakow, Lesser Poland Voivodeship" — in which the only token a person
+  # recognizes is the first. Split it so the row can print the recognizable
+  # part loud and the rest as a quiet address line.
+  def visit_entry_name_parts(entry)
+    tokens = visit_entry_display_name(entry).split(',').map(&:strip).reject(&:blank?)
+    return { primary: visit_entry_display_name(entry), secondary: nil } if tokens.empty?
+
+    tokens = merge_house_numbers(tokens)
+    primary = tokens.shift
+    # The last token is the province / voivodeship / state — always the widest
+    # and least useful unit. Drop it, unless it is the only context we have.
+    tokens = tokens[0...-1] if tokens.length > 1
+
+    { primary: primary, secondary: tokens.join(', ').presence }
+  end
+
+  # Walks the day's rows and calls out interior stretches nothing was recorded
+  # for. Journeys overlap the visits that sort between their endpoints, so the
+  # hole is measured against the furthest point already covered — diffing
+  # consecutive rows would invent gaps inside a tracked drive.
+  def timeline_entries_with_gaps(entries)
+    covered_until = nil
+    threshold = timeline_gap_min_minutes
+
+    Array(entries).flat_map do |entry|
+      started_at = Time.iso8601(entry[:started_at].to_s)
+      ended_at = Time.iso8601(entry[:ended_at].to_s)
+      gap_minutes = covered_until ? ((started_at - covered_until) / 60).floor : 0
+      gap_start = covered_until
+      covered_until = [covered_until, ended_at].compact.max
+
+      next [entry] if gap_minutes < threshold
+
+      # Stamped with where the record stops rather than where it resumes —
+      # that is the moment the user is being told about.
+      [{ type: 'gap', minutes: gap_minutes, started_at: gap_start.iso8601 }, entry]
+    end
+  end
+
+  def timeline_gap_min_minutes
+    return TIMELINE_GAP_MIN_MINUTES if current_user&.visits_redetected_at
+
+    LEGACY_TIMELINE_GAP_MIN_MINUTES
+  end
+
+  # Extra px of rail a leg earns for its duration, so a three-hour drive
+  # visibly outweighs a nine-minute hop. Square root, not linear: the day
+  # needs to keep its proportions readable inside one scroll.
+  def journey_leg_extra_height(seconds)
+    minutes = seconds.to_i / 60
+    return 0 if minutes <= 0
+
+    (Math.sqrt(minutes) * 3.2).round.clamp(0, JOURNEY_LEG_MAX_EXTRA_PX)
+  end
+
+  # "Tadeusza Romanowicza", "4" arrives as two tokens because the geocoder
+  # comma-separates the house number. Rejoin them with a space.
+  def merge_house_numbers(tokens)
+    tokens.each_with_object([]) do |token, merged|
+      if merged.any? && token.match?(/\A\d+[a-z]?\z/i)
+        merged[-1] = "#{merged.last} #{token}"
+      else
+        merged << token
+      end
+    end
   end
 
   # Duration-based heuristic for hash entries. Avoids N+1 Visit lookups.
@@ -108,8 +186,8 @@ module TimelineHelper
     {
       start_at: started,
       ended_at: ended,
-      start_label: started.strftime('%H:%M'),
-      end_label: ended.strftime('%H:%M')
+      start_label: I18n.l(started, format: :hour_minute),
+      end_label: I18n.l(ended, format: :hour_minute)
     }
   end
 
@@ -117,18 +195,27 @@ module TimelineHelper
     entry[:status].presence || 'confirmed'
   end
 
-  # Splits suggested places into [visible, overflow] for the picker UI.
-  # `visible` is rendered as selectable rows; `overflow` lives inside the
-  # <details> disclosure so the default footprint stays compact.
-  def split_suggested_places(places, limit: SUGGESTED_PICKER_VISIBLE_LIMIT)
-    list = Array(places)
-    return [list, []] if list.size <= limit
+  # Confidence gating applies only to machine suggestions — a visit the user
+  # confirmed renders at full strength whatever the detector thought of it.
+  # Rows without a score (legacy, pre-backfill) also render normally, and the
+  # gate stays off entirely until the history has been re-detected: old
+  # scores came from a different scorer and must not hide visits.
+  def visit_entry_subdued?(entry)
+    confidence_gating_active? &&
+      visit_entry_status(entry) != 'confirmed' && entry[:confidence_band] == :medium
+  end
 
-    [list.first(limit), list.drop(limit)]
+  def visit_entry_low_confidence?(entry)
+    confidence_gating_active? &&
+      visit_entry_status(entry) != 'confirmed' && entry[:confidence_band] == :low
+  end
+
+  def confidence_gating_active?
+    current_user&.visits_redetected_at.present?
   end
 
   def day_label(day)
-    Date.parse(day[:date].to_s).strftime('%A, %B %-d')
+    I18n.l(Date.parse(day[:date].to_s), format: :weekday_month_day)
   end
 
   def day_total_visits_count(day)
@@ -145,12 +232,12 @@ module TimelineHelper
     {
       prev: (month_date - 1.month).strftime('%Y-%m'),
       next: (month_date + 1.month).strftime('%Y-%m'),
-      title: month_date.strftime('%B %Y')
+      title: I18n.l(month_date, format: :month_year)
     }
   end
 
   def calendar_weekday_labels
-    WEEKDAY_HEADER_LABELS
+    I18n.t('calendar.weekday_initials')
   end
 
   def calendar_day_number(cell)

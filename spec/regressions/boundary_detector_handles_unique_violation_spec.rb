@@ -10,6 +10,8 @@ RSpec.describe 'BoundaryDetector under unique-index conflict', :non_transactiona
   let(:p3_ts) { Time.zone.parse('2026-04-01 10:08:00') }
   let(:p4_ts) { Time.zone.parse('2026-04-01 10:12:00') }
 
+  let(:tracker_id) { 'iphone' }
+
   def make_point(timestamp:, lat:, lon:, track: nil)
     create(
       :point,
@@ -18,6 +20,7 @@ RSpec.describe 'BoundaryDetector under unique-index conflict', :non_transactiona
       latitude: lat,
       longitude: lon,
       altitude: 50,
+      tracker_id: tracker_id,
       track_id: track&.id
     )
   end
@@ -25,6 +28,7 @@ RSpec.describe 'BoundaryDetector under unique-index conflict', :non_transactiona
   def make_track(points:)
     Track.create!(
       user_id: user.id,
+      tracker_id: tracker_id,
       start_at: Time.zone.at(points.first.timestamp),
       end_at: Time.zone.at(points.last.timestamp),
       original_path: 'LINESTRING(13.4 52.5, 13.41 52.51)',
@@ -50,6 +54,7 @@ RSpec.describe 'BoundaryDetector under unique-index conflict', :non_transactiona
 
     third_party = Track.create!(
       user_id: user.id,
+      tracker_id: tracker_id,
       start_at: p1_ts,
       end_at: p4_ts,
       original_path: 'LINESTRING(13.4 52.5, 13.43 52.53)',

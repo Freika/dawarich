@@ -3,9 +3,10 @@
  * Wraps all API endpoints with consistent error handling
  */
 export class ApiClient {
-  constructor(apiKey) {
+  constructor(apiKey, importId = null) {
     this.apiKey = apiKey
     this.baseURL = "/api/v1"
+    this.importId = importId
   }
 
   /**
@@ -13,7 +14,7 @@ export class ApiClient {
    * @param {Object} options - { start_at, end_at, page, per_page }
    * @returns {Promise<Object>} { points, currentPage, totalPages }
    */
-  async fetchPoints({ start_at, end_at, page = 1, per_page = 1000 }) {
+  async fetchPoints({ start_at, end_at, page = 1, per_page = 1000, signal }) {
     const params = new URLSearchParams({
       start_at,
       end_at,
@@ -23,8 +24,11 @@ export class ApiClient {
       order: "asc",
     })
 
+    if (this.importId) params.append("import_id", this.importId)
+
     const response = await fetch(`${this.baseURL}/points?${params}`, {
       headers: this.getHeaders(),
+      signal,
     })
 
     if (!response.ok) {
@@ -46,6 +50,31 @@ export class ApiClient {
         10,
       ),
     }
+  }
+
+  /**
+   * Fetch precalculated fog-of-war H3 cell ids for date range
+   * @param {Object} options - { start_at, end_at }
+   * @returns {Promise<Object>} { h3_indexes, metadata }
+   */
+  async fetchFogHexagons({ start_at, end_at }) {
+    const params = new URLSearchParams({
+      start_date: start_at,
+      end_date: end_at,
+    })
+
+    const response = await fetch(
+      `${this.baseURL}/maps/hexagons/fog?${params}`,
+      {
+        headers: this.getHeaders(),
+      },
+    )
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch fog hexagons: ${response.statusText}`)
+    }
+
+    return response.json()
   }
 
   /**
@@ -164,17 +193,41 @@ export class ApiClient {
   }
 
   /**
-   * Fetch visits for date range (paginated)
-   * @param {Object} options - { start_at, end_at, page, per_page }
+   * Fetch visits for date range (paginated). Optional bounds narrow the
+   * query to visits whose place falls inside the rectangle — backed by
+   * Visits::FindWithinBoundingBox via `selection=true`.
+   * @param {Object} options - { start_at, end_at, page, per_page, sw_lat, sw_lng, ne_lat, ne_lng }
    * @returns {Promise<Object>} { visits, currentPage, totalPages }
    */
-  async fetchVisitsPage({ start_at, end_at, page = 1, per_page = 500 }) {
+  async fetchVisitsPage({
+    start_at,
+    end_at,
+    page = 1,
+    per_page = 500,
+    sw_lat,
+    sw_lng,
+    ne_lat,
+    ne_lng,
+  }) {
     const params = new URLSearchParams({
       start_at,
       end_at,
       page: page.toString(),
       per_page: per_page.toString(),
     })
+
+    if (
+      Number.isFinite(sw_lat) &&
+      Number.isFinite(sw_lng) &&
+      Number.isFinite(ne_lat) &&
+      Number.isFinite(ne_lng)
+    ) {
+      params.set("selection", "true")
+      params.set("sw_lat", sw_lat.toString())
+      params.set("sw_lng", sw_lng.toString())
+      params.set("ne_lat", ne_lat.toString())
+      params.set("ne_lng", ne_lng.toString())
+    }
 
     const response = await fetch(`${this.baseURL}/visits?${params}`, {
       headers: this.getHeaders(),
@@ -194,11 +247,22 @@ export class ApiClient {
   }
 
   /**
-   * Fetch all visits for date range (handles pagination)
-   * @param {Object} options - { start_at, end_at, onProgress }
-   * @returns {Promise<Array>} All visits
+   * Fetch visits for date range, optionally bounded to a viewport bbox.
+   * Loops pages until the API reports no more. When bounds are provided
+   * the result is windowed to that rectangle — fewer pages, smaller
+   * payloads, and the layer no longer hauls every visit at world zoom.
+   * @param {Object} options - { start_at, end_at, sw_lat, sw_lng, ne_lat, ne_lng, onProgress }
+   * @returns {Promise<Array>} Visits in range (and viewport, if bounded)
    */
-  async fetchVisits({ start_at, end_at, onProgress = null }) {
+  async fetchVisits({
+    start_at,
+    end_at,
+    sw_lat,
+    sw_lng,
+    ne_lat,
+    ne_lng,
+    onProgress = null,
+  }) {
     const allVisits = []
     let page = 1
     let totalPages = 1
@@ -208,7 +272,16 @@ export class ApiClient {
         visits,
         currentPage,
         totalPages: total,
-      } = await this.fetchVisitsPage({ start_at, end_at, page, per_page: 500 })
+      } = await this.fetchVisitsPage({
+        start_at,
+        end_at,
+        page,
+        per_page: 500,
+        sw_lat,
+        sw_lng,
+        ne_lat,
+        ne_lng,
+      })
 
       allVisits.push(...visits)
       totalPages = total
@@ -560,8 +633,11 @@ export class ApiClient {
       max_longitude: max_longitude.toString(),
       min_latitude: min_latitude.toString(),
       max_latitude: max_latitude.toString(),
+      include_anomalies: "true",
       per_page: "10000", // Get all points in area (up to 10k)
     })
+
+    if (this.importId) params.append("import_id", this.importId)
 
     const response = await fetch(`${this.baseURL}/points?${params}`, {
       headers: this.getHeaders(),
@@ -627,6 +703,37 @@ export class ApiClient {
   }
 
   /**
+   * Bulk delete points
+   * @param {Array<number>} pointIds - Array of point IDs to delete
+   * @returns {Promise<Object>} { message, count }
+   * @throws {Error} with `body` property holding the parsed JSON error response when available
+   */
+  async bulkDeletePoints(pointIds) {
+    const response = await fetch(`${this.baseURL}/points/bulk_destroy`, {
+      method: "DELETE",
+      headers: this.getHeaders(),
+      body: JSON.stringify({ point_ids: pointIds }),
+    })
+
+    if (!response.ok) {
+      let body = null
+      try {
+        body = await response.json()
+      } catch (_) {
+        // Non-JSON error body — leave body as null.
+      }
+      const error = new Error(
+        body?.error || `Failed to delete points: ${response.statusText}`,
+      )
+      error.status = response.status
+      error.body = body
+      throw error
+    }
+
+    return response.json()
+  }
+
+  /**
    * Update visit status (confirm/decline)
    * @param {number} visitId - Visit ID
    * @param {string} status - 'confirmed' or 'declined'
@@ -660,6 +767,43 @@ export class ApiClient {
 
     if (!response.ok) {
       throw new Error(`Failed to merge visits: ${response.statusText}`)
+    }
+
+    return response.json()
+  }
+
+  /**
+   * Delete a single visit
+   * @param {number} visitId - Visit ID to delete
+   * @returns {Promise<Object>} Deleted visit payload
+   */
+  async deleteVisit(visitId) {
+    const response = await fetch(`${this.baseURL}/visits/${visitId}`, {
+      method: "DELETE",
+      headers: this.getHeaders(),
+    })
+
+    if (!response.ok) {
+      throw new Error(`Failed to delete visit: ${response.statusText}`)
+    }
+
+    return response.json()
+  }
+
+  /**
+   * Bulk delete visits
+   * @param {Array<number>} visitIds - Array of visit IDs to delete
+   * @returns {Promise<Object>} { message, count }
+   */
+  async bulkDestroyVisits(visitIds) {
+    const response = await fetch(`${this.baseURL}/visits/bulk_destroy`, {
+      method: "DELETE",
+      headers: this.getHeaders(),
+      body: JSON.stringify({ visit_ids: visitIds }),
+    })
+
+    if (!response.ok) {
+      throw new Error(`Failed to delete visits: ${response.statusText}`)
     }
 
     return response.json()
@@ -769,6 +913,30 @@ export class ApiClient {
 
     if (!response.ok) {
       throw new Error(`Failed to fetch timeline: ${response.statusText}`)
+    }
+
+    return response.json()
+  }
+
+  /**
+   * Fetch AirTrail flights for a date range as a GeoJSON FeatureCollection.
+   * @param {Object} options - { start_at, end_at }
+   * @returns {Promise<Object>} GeoJSON FeatureCollection
+   */
+  async fetchFlights({ start_at, end_at } = {}) {
+    const params = new URLSearchParams()
+    if (start_at) params.set("start_at", start_at)
+    if (end_at) params.set("end_at", end_at)
+
+    const query = params.toString()
+    const url = query
+      ? `${this.baseURL}/flights?${query}`
+      : `${this.baseURL}/flights`
+
+    const response = await fetch(url, { headers: this.getHeaders() })
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch flights: ${response.statusText}`)
     }
 
     return response.json()

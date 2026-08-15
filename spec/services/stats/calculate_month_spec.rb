@@ -23,7 +23,7 @@ RSpec.describe Stats::CalculateMonth do
           stat.reload
           expect(stat.distance).to eq(0)
           expect(stat.daily_distance).to eq({})
-          expect(stat.toponyms).to be_nil
+          expect(stat.toponyms).to eq([])
           expect(stat.h3_hex_ids).to eq({})
         end
 
@@ -141,13 +141,13 @@ RSpec.describe Stats::CalculateMonth do
           let!(:prague_points) do
             [
               create(:point, user:, import:, timestamp: timestamp_base,
-                     city: 'Prague', country_name: 'Czech Republic',
+                     city: 'Prague', country_name: 'Czechia',
                      lonlat: 'POINT(14.4378 50.0755)'),
               create(:point, user:, import:, timestamp: timestamp_base + 10.minutes,
-                     city: 'Prague', country_name: 'Czech Republic',
+                     city: 'Prague', country_name: 'Czechia',
                      lonlat: 'POINT(14.4378 50.0755)'),
               create(:point, user:, import:, timestamp: timestamp_base + 20.minutes,
-                     city: 'Prague', country_name: 'Czech Republic',
+                     city: 'Prague', country_name: 'Czechia',
                      lonlat: 'POINT(14.4378 50.0755)')
             ]
           end
@@ -159,7 +159,7 @@ RSpec.describe Stats::CalculateMonth do
             expect(stat.toponyms).not_to be_empty
 
             # Country should be listed but with no cities
-            czech_country = stat.toponyms.find { |t| t['country'] == 'Czech Republic' }
+            czech_country = stat.toponyms.find { |t| t['country'] == 'Czechia' }
             expect(czech_country).not_to be_nil
             expect(czech_country['cities']).to be_empty
           end
@@ -182,10 +182,10 @@ RSpec.describe Stats::CalculateMonth do
 
               # Prague: 20 minutes (should be excluded)
               create(:point, user:, import:, timestamp: timestamp_base + 100.minutes,
-                     city: 'Prague', country_name: 'Czech Republic',
+                     city: 'Prague', country_name: 'Czechia',
                      lonlat: 'POINT(14.4378 50.0755)'),
               create(:point, user:, import:, timestamp: timestamp_base + 120.minutes,
-                     city: 'Prague', country_name: 'Czech Republic',
+                     city: 'Prague', country_name: 'Czechia',
                      lonlat: 'POINT(14.4378 50.0755)'),
 
               # Vienna: 90 minutes with continuous presence (should be included)

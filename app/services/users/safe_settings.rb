@@ -5,9 +5,12 @@ class Users::SafeSettings
 
   GATED_MAP_LAYERS = ['Heatmap', 'Fog of War', 'Scratch map'].freeze
 
+  FOG_OF_WAR_MODES = %w[points hexagons].freeze
+
   DEFAULT_VALUES = {
     'fog_of_war_meters' => 50,
     'fog_of_war_threshold' => 50,
+    'fog_of_war_mode' => 'points',
     'meters_between_routes' => 500,
     'preferred_map_layer' => 'OpenStreetMap',
     'speed_colored_routes' => false,
@@ -17,53 +20,54 @@ class Users::SafeSettings
     'merge_threshold_minutes' => 15,
     'live_map_enabled' => true,
     'route_opacity' => 0.6,
+    # Layer colors: route fallback matches Map v1's blue, track color matches
+    # Tracks::GeojsonSerializer::DEFAULT_COLOR — keep them in sync.
+    'route_color' => '#0000ff',
+    'track_color' => '#6366F1',
     'immich_url' => nil,
     'immich_api_key' => nil,
     'immich_skip_ssl_verification' => false,
     'photoprism_url' => nil,
     'photoprism_api_key' => nil,
     'photoprism_skip_ssl_verification' => false,
+    'airtrail_url' => nil,
+    'airtrail_api_key' => nil,
+    'airtrail_skip_ssl_verification' => false,
+    'airtrail_last_synced_at' => nil,
     'maps' => { 'distance_unit' => 'km' },
     'visits_suggestions_enabled' => 'true',
     'enabled_map_layers' => %w[Tracks Heatmap],
     'maps_maplibre_style' => 'light',
+    'maps_maplibre_tiles_url' => nil,
+    'maps_maplibre_custom_theme' => {
+      'base' => 'noir',
+      'tokens' => {
+        'bg' => '#000000', 'water' => '#0A0A0A', 'parks' => '#111111',
+        'buildings' => '#141414', 'railway' => '#808080', 'boundaries' => '#4D4D4D',
+        'road_motorway' => '#FFFFFF', 'road_primary' => '#E0E0E0',
+        'road_secondary' => '#B0B0B0', 'road_tertiary' => '#808080',
+        'road_residential' => '#505050', 'road_default' => '#808080'
+      }
+    },
     'news_emails_enabled' => true,
-    'globe_projection' => false,
+    'globe_projection' => true,
     'supporter_email' => nil,
+    'supporter_github_username' => nil,
     'show_supporter_badge' => true,
-    # Transportation mode thresholds (speeds in km/h, distances in km)
-    'transportation_thresholds' => {
-      'walking_max_speed' => 7,
-      'cycling_max_speed' => 45,
-      'driving_max_speed' => 220,
-      'flying_min_speed' => 150
-    },
-    'transportation_expert_thresholds' => {
-      'stationary_max_speed' => 1,
-      'running_vs_cycling_accel' => 0.25,
-      'cycling_vs_driving_accel' => 0.4,
-      'train_min_speed' => 80,
-      'min_segment_duration' => 60,
-      'time_gap_threshold' => 180,
-      'min_flight_distance_km' => 100
-    },
-    'transportation_expert_mode' => false,
     'min_minutes_spent_in_city' => 60,
     'max_gap_minutes_in_city' => 120,
     # GPS noise filtering (Points::AnomalyFilter)
     'gps_filtering_enabled' => true,
-    'gps_accuracy_threshold' => 100,
     'timezone' => ENV.fetch('TIME_ZONE', 'UTC'),
-    # Visit detection settings (DBSCAN-based clustering)
     'visit_radius_meters' => 100,
     'visit_min_points' => 3,
-    'visit_density_fill_enabled' => true
+    'visit_min_duration_minutes' => 5,
+    'point_dragging_enabled' => false
   }.freeze
 
-  GPS_ACCURACY_THRESHOLD_MIN = 50
-  GPS_ACCURACY_THRESHOLD_MAX = 1000
-
   def initialize(settings = {}, plan: nil)
+    settings = {} unless settings.is_a?(Hash)
+
     @settings = DEFAULT_VALUES.deep_dup.deep_merge(settings)
     @plan = plan
   end
@@ -80,30 +84,34 @@ class Users::SafeSettings
       merge_threshold_minutes: merge_threshold_minutes,
       live_map_enabled: live_map_enabled,
       route_opacity: route_opacity,
+      route_color: route_color,
+      track_color: track_color,
       immich_url: immich_url,
       immich_api_key: immich_api_key,
       photoprism_url: photoprism_url,
       photoprism_api_key: photoprism_api_key,
+      airtrail_url: airtrail_url,
+      airtrail_api_key: airtrail_api_key,
       maps: maps,
       distance_unit: distance_unit,
       visits_suggestions_enabled: visits_suggestions_enabled?,
       speed_color_scale: speed_color_scale,
       fog_of_war_threshold: fog_of_war_threshold,
+      fog_of_war_mode: fog_of_war_mode,
       enabled_map_layers: enabled_map_layers,
       maps_maplibre_style: maps_maplibre_style,
+      maps_maplibre_tiles_url: maps_maplibre_tiles_url,
+      maps_maplibre_custom_theme: maps_maplibre_custom_theme,
       globe_projection: globe_projection,
-      transportation_thresholds: transportation_thresholds,
-      transportation_expert_thresholds: transportation_expert_thresholds,
       enabled_transportation_modes: enabled_transportation_modes,
-      transportation_expert_mode: transportation_expert_mode?,
       min_minutes_spent_in_city: min_minutes_spent_in_city,
       max_gap_minutes_in_city: max_gap_minutes_in_city,
       gps_filtering_enabled: gps_filtering_enabled?,
-      gps_accuracy_threshold: gps_accuracy_threshold,
       timezone: timezone,
       visit_radius_meters: visit_radius_meters,
       visit_min_points: visit_min_points,
-      visit_density_fill_enabled: visit_density_fill_enabled?
+      visit_min_duration_minutes: visit_min_duration_minutes,
+      point_dragging_enabled: point_dragging_enabled?
     }
   end
 
@@ -132,7 +140,7 @@ class Users::SafeSettings
   end
 
   def time_threshold_minutes
-    settings['time_threshold_minutes'].to_i
+    settings['time_threshold_minutes'].to_i.clamp(1, 1440)
   end
 
   def merge_threshold_minutes
@@ -145,6 +153,14 @@ class Users::SafeSettings
 
   def route_opacity
     settings['route_opacity']
+  end
+
+  def route_color
+    settings['route_color']
+  end
+
+  def track_color
+    settings['track_color']
   end
 
   def immich_url
@@ -171,6 +187,18 @@ class Users::SafeSettings
     ActiveModel::Type::Boolean.new.cast(settings['photoprism_skip_ssl_verification'])
   end
 
+  def airtrail_url
+    settings['airtrail_url']
+  end
+
+  def airtrail_api_key
+    settings['airtrail_api_key']
+  end
+
+  def airtrail_skip_ssl_verification
+    ActiveModel::Type::Boolean.new.cast(settings['airtrail_skip_ssl_verification'])
+  end
+
   def maps
     m = settings['maps']
     return m unless lite?
@@ -195,6 +223,11 @@ class Users::SafeSettings
     settings['fog_of_war_threshold']
   end
 
+  def fog_of_war_mode
+    value = settings['fog_of_war_mode'].to_s
+    FOG_OF_WAR_MODES.include?(value) ? value : 'points'
+  end
+
   def enabled_map_layers
     layers = settings['enabled_map_layers']
     lite? ? layers - GATED_MAP_LAYERS : layers
@@ -202,6 +235,14 @@ class Users::SafeSettings
 
   def maps_maplibre_style
     settings['maps_maplibre_style']
+  end
+
+  def maps_maplibre_custom_theme
+    settings['maps_maplibre_custom_theme']
+  end
+
+  def maps_maplibre_tiles_url
+    settings['maps_maplibre_tiles_url']
   end
 
   def globe_projection
@@ -229,23 +270,15 @@ class Users::SafeSettings
     settings['supporter_email']
   end
 
+  def supporter_github_username
+    settings['supporter_github_username']
+  end
+
   def show_supporter_badge?
     value = settings['show_supporter_badge']
     return true if value.nil?
 
     ActiveModel::Type::Boolean.new.cast(value)
-  end
-
-  def transportation_thresholds
-    settings['transportation_thresholds'] || DEFAULT_VALUES['transportation_thresholds']
-  end
-
-  def transportation_expert_thresholds
-    settings['transportation_expert_thresholds'] || DEFAULT_VALUES['transportation_expert_thresholds']
-  end
-
-  def transportation_expert_mode?
-    ActiveModel::Type::Boolean.new.cast(settings['transportation_expert_mode'])
   end
 
   def enabled_transportation_modes
@@ -280,24 +313,21 @@ class Users::SafeSettings
     ActiveModel::Type::Boolean.new.cast(value)
   end
 
-  def gps_accuracy_threshold
-    raw = settings['gps_accuracy_threshold'] || DEFAULT_VALUES['gps_accuracy_threshold']
-    raw.to_i.clamp(GPS_ACCURACY_THRESHOLD_MIN, GPS_ACCURACY_THRESHOLD_MAX)
+  def point_dragging_enabled?
+    ActiveModel::Type::Boolean.new.cast(settings['point_dragging_enabled']) || false
   end
 
   def visit_radius_meters
-    (settings['visit_radius_meters'] || DEFAULT_VALUES['visit_radius_meters']).to_i
+    settings['visit_radius_meters'].to_i.clamp(5, 500)
   end
 
   def visit_min_points
-    (settings['visit_min_points'] || DEFAULT_VALUES['visit_min_points']).to_i
+    settings['visit_min_points'].to_i.clamp(2, 20)
   end
 
-  def visit_density_fill_enabled?
-    value = settings['visit_density_fill_enabled']
-    return DEFAULT_VALUES['visit_density_fill_enabled'] if value.nil?
-
-    ActiveModel::Type::Boolean.new.cast(value)
+  def visit_min_duration_minutes
+    raw = settings['visit_min_duration_minutes'] || DEFAULT_VALUES['visit_min_duration_minutes']
+    raw.to_i.clamp(1, 60)
   end
 
   private

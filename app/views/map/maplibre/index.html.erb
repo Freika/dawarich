@@ -1,4 +1,4 @@
-<% content_for :title, 'Map' %>
+<% content_for :title, t('.map') %>
 
 <%= render 'shared/map/date_navigation_v2', start_at: @start_at, end_at: @end_at %>
 
@@ -8,11 +8,12 @@
      data-maps--maplibre-start-date-value="<%= @start_at.iso8601 %>"
      data-maps--maplibre-end-date-value="<%= @end_at.iso8601 %>"
      data-maps--maplibre-timezone-value="<%= current_user.timezone %>"
-     data-maps--maplibre-user-plan-value="<%= current_user.plan %>"
+     data-maps--maplibre-user-plan-value="<%= current_user.effective_plan %>"
+     data-maps--maplibre-import-id-value="<%= @import_id %>"
      data-maps--maplibre-upgrade-url-value="<%= upgrade_url(utm_medium: 'map', utm_content: 'maplibre') %>"
      data-maps--maplibre-realtime-enabled-value="true"
      data-maps--maplibre-realtime-live-mode-value="<%= current_user.safe_settings.live_map_enabled %>"
-     data-family-members-features-value="<%= DawarichSettings.features.to_json %>"
+     data-family-members-features-value="<%= current_user_features.to_json %>"
      style="width: 100%; height: 100%; position: relative;">
 
   <!-- WebGL error (hidden by default, shown if WebGL unavailable) -->
@@ -24,12 +25,13 @@
   <% timeline_panel_open = params[:panel] == 'timeline' %>
   <div data-maps--maplibre-target="container"
        class="maps-maplibre-container<%= ' panel-open panel-timeline-expanded' if timeline_panel_open %>"
-       style="width: 100%; height: 100%;"></div>
+       style="width: 100%; height: 100%;">
+  </div>
 
   <!-- Loading progress badge -->
   <div data-maps--maplibre-target="progressBadge" class="map-progress-badge">
     <span class="map-progress-badge-dot"></span>
-    <span data-maps--maplibre-target="progressBadgeText">Loading...</span>
+    <span data-maps--maplibre-target="progressBadgeText"><%= t('.loading') %></span>
   </div>
 
   <!-- Map-edge button cluster (top-right corner) -->
@@ -37,16 +39,13 @@
 
   <!-- Timeline map-corner overlays (shown only when Timeline tab is active; CSS handles visibility) -->
   <div class="timeline-map-overlay timeline-map-overlay--scope" data-timeline-feed-target="scopeBadge">
-    <span class="font-semibold">Pick a day</span>
+    <span class="font-semibold"><%= t('.pick_a_day') %></span>
   </div>
-  <div class="timeline-map-overlay timeline-map-overlay--legend">
-    <div><span class="visit-status-dot visit-status-dot--confirmed"></span> Confirmed</div>
-    <div><span class="visit-status-dot visit-status-dot--suggested"></span> Suggested</div>
-    <div><span class="visit-status-dot visit-status-dot--declined"></span> Declined</div>
-  </div>
-
   <!-- Settings panel -->
   <%= render 'map/maplibre/settings_panel' %>
+
+  <!-- Poster studio (full-screen WYSIWYG editor) -->
+  <%= render 'posters/studio' %>
 
   <!-- Replay panel -->
   <%= render 'map/maplibre/replay_panel' %>
@@ -60,8 +59,4 @@
   <!-- Place creation modal (shared) -->
   <%= render 'shared/place_creation_modal' %>
 
-  <% if DawarichSettings.self_hosted? || current_user.pro? %>
-    <!-- Residency day counter modal -->
-    <%= render 'map/maplibre/residency_modal' %>
-  <% end %>
 </div>

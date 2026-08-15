@@ -1,3 +1,4 @@
+import { translate } from "i18n"
 import { Toast } from "maps_maplibre/components/toast"
 import { VisitCard } from "maps_maplibre/components/visit_card"
 import { SelectedPointsLayer } from "maps_maplibre/layers/selected_points_layer"
@@ -6,7 +7,7 @@ import { pointsToGeoJSON } from "maps_maplibre/utils/geojson_transformers"
 
 /**
  * Manages area selection and bulk operations for Maps V2
- * Handles selection mode, visit cards, and bulk actions (merge, confirm, decline)
+ * Handles selection mode, visit cards, and bulk actions (merge, confirm, delete)
  */
 export class AreaSelectionManager {
   constructor(controller) {
@@ -17,6 +18,7 @@ export class AreaSelectionManager {
     this.selectedPointsLayer = null
     this.selectedVisits = []
     this.selectedVisitIds = new Set()
+    this.selectedAnomalyIds = []
   }
 
   /**
@@ -64,7 +66,9 @@ export class AreaSelectionManager {
         "click->maps--maplibre#cancelAreaSelection"
     }
 
-    Toast.info("Draw a rectangle on the map to select points")
+    Toast.info(
+      translate("messages.draw_a_rectangle_on_the_map_to_select_points"),
+    )
   }
 
   /**
@@ -72,7 +76,7 @@ export class AreaSelectionManager {
    */
   async handleAreaSelected(bounds) {
     try {
-      Toast.info("Fetching data in selected area...")
+      Toast.info(translate("messages.fetching_data_in_selected_area"))
 
       const [points, visits] = await Promise.all([
         this.api.fetchPointsInArea({
@@ -102,7 +106,7 @@ export class AreaSelectionManager {
       )
 
       if (points.length === 0 && visits.length === 0) {
-        Toast.info("No data found in selected area")
+        Toast.info(translate("messages.no_data_found_in_selected_area"))
         this.cancelAreaSelection()
         return
       }
@@ -124,19 +128,52 @@ export class AreaSelectionManager {
         this.controller.selectionActionsTarget.classList.remove("hidden")
       }
 
+      // Update delete button text with count
+      if (this.controller.hasDeleteButtonTextTarget) {
+        this.controller.deleteButtonTextTarget.textContent = translate(
+          "selection.delete_points",
+          { count: points.length },
+        )
+      }
+
+      // Track anomaly point IDs separately so the user can opt to delete
+      // only the noisy points (returned by fetchPointsInArea?include_anomalies=true).
+      this.selectedAnomalyIds = points
+        .filter((p) => p.anomaly === true)
+        .map((p) => p.id)
+      if (this.controller.hasDeleteAnomaliesButtonTarget) {
+        const btn = this.controller.deleteAnomaliesButtonTarget
+        const anomalyCount = this.selectedAnomalyIds.length
+        if (anomalyCount > 0) {
+          btn.classList.remove("hidden")
+          if (this.controller.hasDeleteAnomaliesButtonTextTarget) {
+            this.controller.deleteAnomaliesButtonTextTarget.textContent =
+              translate("selection.delete_anomaly_points", {
+                count: anomalyCount,
+              })
+          }
+        } else {
+          btn.classList.add("hidden")
+        }
+      }
+
       // Disable selection mode
       this.selectionLayer.disableSelectionMode()
 
       const messages = []
       if (points.length > 0)
-        messages.push(`${points.length} point${points.length === 1 ? "" : "s"}`)
+        messages.push(translate("selection.points", { count: points.length }))
       if (visits.length > 0)
-        messages.push(`${visits.length} visit${visits.length === 1 ? "" : "s"}`)
+        messages.push(translate("selection.visits", { count: visits.length }))
 
-      Toast.success(`Selected ${messages.join(" and ")}`)
+      Toast.success(
+        translate("selection.selected", {
+          items: messages.join(` ${translate("common.and")} `),
+        }),
+      )
     } catch (error) {
       console.error("[Maps V2] Failed to fetch data in area:", error)
-      Toast.error("Failed to fetch data in selected area")
+      Toast.error(translate("messages.failed_to_fetch_data_in_selected_area"))
       this.cancelAreaSelection()
     }
   }
@@ -161,7 +198,7 @@ export class AreaSelectionManager {
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
           </svg>
-          <h3 class="text-sm font-bold">Visits in Area (${visits.length})</h3>
+          <h3 class="text-sm font-bold">${translate("selection.visits_in_area", { count: visits.length })}</h3>
         </div>
         ${cardsHTML}
       </div>
@@ -203,11 +240,11 @@ export class AreaSelectionManager {
       })
 
     this.controller.element
-      .querySelectorAll("[data-visit-decline]")
+      .querySelectorAll("[data-visit-delete]")
       .forEach((btn) => {
         btn.addEventListener("click", async (e) => {
-          const visitId = parseInt(e.currentTarget.dataset.visitDecline, 10)
-          await this.declineVisit(visitId)
+          const visitId = parseInt(e.currentTarget.dataset.visitDelete, 10)
+          await this.deleteVisit(visitId)
         })
       })
   }
@@ -245,26 +282,26 @@ export class AreaSelectionManager {
               <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <span>${selectedCount} visit${selectedCount === 1 ? "" : "s"} selected</span>
+              <span>${translate("visits.selected", { count: selectedCount })}</span>
             </div>
             <div class="grid grid-cols-3 gap-1.5">
               <button class="btn btn-xs btn-outline normal-case" data-bulk-merge>
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                 </svg>
-                Merge
+                ${translate("visits.merge")}
               </button>
               <button class="btn btn-xs btn-primary normal-case" data-bulk-confirm>
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                 </svg>
-                Confirm
+                ${translate("common.confirm")}
               </button>
-              <button class="btn btn-xs btn-outline btn-error normal-case" data-bulk-decline>
+              <button class="btn btn-xs btn-outline btn-error normal-case" data-bulk-delete>
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
-                Decline
+                ${translate("common.delete")}
               </button>
             </div>
           </div>
@@ -274,14 +311,14 @@ export class AreaSelectionManager {
 
         const mergeBtn = bulkActionsDiv.querySelector("[data-bulk-merge]")
         const confirmBtn = bulkActionsDiv.querySelector("[data-bulk-confirm]")
-        const declineBtn = bulkActionsDiv.querySelector("[data-bulk-decline]")
+        const deleteBtn = bulkActionsDiv.querySelector("[data-bulk-delete]")
 
         if (mergeBtn)
           mergeBtn.addEventListener("click", () => this.bulkMergeVisits())
         if (confirmBtn)
           confirmBtn.addEventListener("click", () => this.bulkConfirmVisits())
-        if (declineBtn)
-          declineBtn.addEventListener("click", () => this.bulkDeclineVisits())
+        if (deleteBtn)
+          deleteBtn.addEventListener("click", () => this.bulkDeleteVisits())
       }
     }
   }
@@ -292,24 +329,27 @@ export class AreaSelectionManager {
   async confirmVisit(visitId) {
     try {
       await this.api.updateVisitStatus(visitId, "confirmed")
-      Toast.success("Visit confirmed")
+      Toast.success(translate("messages.visit_confirmed"))
       await this.refreshSelectedVisits()
     } catch (error) {
       console.error("[Maps V2] Failed to confirm visit:", error)
-      Toast.error("Failed to confirm visit")
+      Toast.error(translate("messages.failed_to_confirm_visit"))
     }
   }
 
   /**
-   * Decline a single visit
+   * Delete a single visit
    */
-  async declineVisit(visitId) {
+  async deleteVisit(visitId) {
+    if (!window.confirm(translate("visits.confirm_delete_keep_points"))) {
+      return
+    }
     try {
-      await this.api.updateVisitStatus(visitId, "declined")
-      Toast.success("Visit declined")
+      await this.api.deleteVisit(visitId)
+      Toast.success(translate("messages.visit_deleted"))
       await this.refreshSelectedVisits()
     } catch (_error) {
-      Toast.error("Failed to decline visit")
+      Toast.error(translate("messages.failed_to_delete_visit"))
     }
   }
 
@@ -320,24 +360,26 @@ export class AreaSelectionManager {
     const visitIds = Array.from(this.selectedVisitIds)
 
     if (visitIds.length < 2) {
-      Toast.error("Select at least 2 visits to merge")
+      Toast.error(translate("messages.select_at_least_2_visits_to_merge"))
       return
     }
 
-    if (!confirm(`Merge ${visitIds.length} visits into one?`)) {
+    if (
+      !confirm(translate("visits.confirm_merge", { count: visitIds.length }))
+    ) {
       return
     }
 
     try {
-      Toast.info("Merging visits...")
+      Toast.info(translate("messages.merging_visits"))
       const mergedVisit = await this.api.mergeVisits(visitIds)
-      Toast.success("Visits merged successfully")
+      Toast.success(translate("messages.visits_merged_successfully"))
 
       this.selectedVisitIds.clear()
       this.replaceVisitsWithMerged(visitIds, mergedVisit)
       this.updateBulkActions()
     } catch (_error) {
-      Toast.error("Failed to merge visits")
+      Toast.error(translate("messages.failed_to_merge_visits"))
     }
   }
 
@@ -348,37 +390,47 @@ export class AreaSelectionManager {
     const visitIds = Array.from(this.selectedVisitIds)
 
     try {
-      Toast.info("Confirming visits...")
+      Toast.info(translate("messages.confirming_visits"))
       await this.api.bulkUpdateVisits(visitIds, "confirmed")
-      Toast.success(`Confirmed ${visitIds.length} visits`)
+      Toast.success(
+        translate("visits.confirmed_count", { count: visitIds.length }),
+      )
 
       this.selectedVisitIds.clear()
       await this.refreshSelectedVisits()
     } catch (_error) {
-      Toast.error("Failed to confirm visits")
+      Toast.error(translate("messages.failed_to_confirm_visits"))
     }
   }
 
   /**
-   * Bulk decline selected visits
+   * Bulk delete selected visits
    */
-  async bulkDeclineVisits() {
+  async bulkDeleteVisits() {
     const visitIds = Array.from(this.selectedVisitIds)
 
-    if (!confirm(`Decline ${visitIds.length} visits?`)) {
+    if (
+      !window.confirm(
+        translate("visits.confirm_delete_count_keep_points", {
+          count: visitIds.length,
+        }),
+      )
+    ) {
       return
     }
 
     try {
-      Toast.info("Declining visits...")
-      await this.api.bulkUpdateVisits(visitIds, "declined")
-      Toast.success(`Declined ${visitIds.length} visits`)
+      Toast.info(translate("messages.deleting_visits"))
+      await this.api.bulkDestroyVisits(visitIds)
+      Toast.success(
+        translate("visits.deleted_count", { count: visitIds.length }),
+      )
 
       this.selectedVisitIds.clear()
       await this.refreshSelectedVisits()
     } catch (error) {
-      console.error("[Maps V2] Failed to decline visits:", error)
-      Toast.error("Failed to decline visits")
+      console.error("[Maps V2] Failed to delete visits:", error)
+      Toast.error(translate("messages.failed_to_delete_visits"))
     }
   }
 
@@ -434,7 +486,9 @@ export class AreaSelectionManager {
 
     const header = container.querySelector("h3")
     if (header) {
-      header.textContent = `Visits in Area (${this.selectedVisits.length})`
+      header.textContent = translate("selection.visits_in_area", {
+        count: this.selectedVisits.length,
+      })
     }
 
     this.attachVisitCardListeners()
@@ -491,6 +545,10 @@ export class AreaSelectionManager {
 
     this.selectedVisits = []
     this.selectedVisitIds = new Set()
+    this.selectedAnomalyIds = []
+    if (this.controller.hasDeleteAnomaliesButtonTarget) {
+      this.controller.deleteAnomaliesButtonTarget.classList.add("hidden")
+    }
 
     if (this.controller.hasSelectAreaButtonTarget) {
       this.controller.selectAreaButtonTarget.innerHTML = `
@@ -513,6 +571,163 @@ export class AreaSelectionManager {
       this.controller.selectionActionsTarget.classList.add("hidden")
     }
 
-    Toast.info("Selection cancelled")
+    Toast.info(translate("messages.selection_cancelled"))
+  }
+
+  async refreshAnomaliesIfEnabled() {
+    const toggleOn =
+      this.controller.hasAnomaliesToggleTarget &&
+      this.controller.anomaliesToggleTarget.checked
+    if (!toggleOn) return
+
+    await this.controller.routesManager.refreshAnomalies({ enabled: true })
+  }
+
+  /**
+   * Delete only anomaly points within the current selection. Backed by the
+   * same bulkDeletePoints API as deleteSelectedPoints — the filter just
+   * narrows the id list to those flagged anomaly=true server-side.
+   */
+  async deleteSelectedAnomalies() {
+    if (this.deletingPoints) return
+
+    const ids = this.selectedAnomalyIds
+    if (!ids.length) {
+      Toast.error(translate("messages.no_anomaly_points_in_selection"))
+      return
+    }
+
+    const confirmed = confirm(
+      translate("selection.confirm_delete_anomaly_points", {
+        count: ids.length,
+      }),
+    )
+    if (!confirmed) return
+
+    this.deletingPoints = true
+    const btn = this.controller.hasDeleteAnomaliesButtonTarget
+      ? this.controller.deleteAnomaliesButtonTarget
+      : null
+    if (btn) btn.disabled = true
+
+    try {
+      Toast.info(translate("messages.deleting_anomaly_points"))
+      const result = await this.api.bulkDeletePoints(ids)
+
+      Toast.success(
+        translate("selection.anomaly_points_deleted", { count: result.count }),
+      )
+
+      this.cancelAreaSelection()
+
+      try {
+        await this.controller.loadMapData({
+          showLoading: false,
+          fitBounds: false,
+          showToast: false,
+        })
+        await this.refreshAnomaliesIfEnabled()
+      } catch (reloadError) {
+        console.error(
+          "[Maps V2] Map refresh failed after anomaly delete:",
+          reloadError,
+        )
+        Toast.error(translate("selection.map_refresh_failed"))
+      }
+    } catch (error) {
+      console.error("[Maps V2] Failed to delete anomaly points:", error)
+      const body = error?.body
+      if (error?.status === 403 && body?.upgrade_url) {
+        Toast.error(
+          `${body.error || translate("selection.write_api_requires_pro")} — ${body.upgrade_url}`,
+        )
+      } else if (error?.status === 422 && body?.limit) {
+        Toast.error(
+          translate("selection.too_many_points", {
+            requested: body.requested,
+            limit: body.limit,
+          }),
+        )
+      } else {
+        Toast.error(
+          error?.message || translate("selection.delete_points_failed"),
+        )
+      }
+    } finally {
+      this.deletingPoints = false
+      if (btn) btn.disabled = false
+    }
+  }
+
+  /**
+   * Delete selected points
+   */
+  async deleteSelectedPoints() {
+    if (this.deletingPoints) return
+
+    const pointCount = this.selectedPointsLayer.getCount()
+    const pointIds = this.selectedPointsLayer.getSelectedPointIds()
+
+    if (pointIds.length === 0) {
+      Toast.error(translate("messages.no_points_selected"))
+      return
+    }
+
+    const confirmed = confirm(
+      translate("selection.confirm_delete_points", { count: pointCount }),
+    )
+
+    if (!confirmed) return
+
+    this.deletingPoints = true
+    const deleteButton = this.controller.hasDeletePointsButtonTarget
+      ? this.controller.deletePointsButtonTarget
+      : null
+    if (deleteButton) deleteButton.disabled = true
+
+    try {
+      Toast.info(translate("messages.deleting_points"))
+      const result = await this.api.bulkDeletePoints(pointIds)
+
+      Toast.success(
+        translate("selection.points_deleted", { count: result.count }),
+      )
+
+      this.cancelAreaSelection()
+
+      try {
+        await this.controller.loadMapData({
+          showLoading: false,
+          fitBounds: false,
+          showToast: false,
+        })
+        await this.refreshAnomaliesIfEnabled()
+      } catch (reloadError) {
+        console.error("[Maps V2] Map refresh failed after delete:", reloadError)
+        Toast.error(translate("selection.map_refresh_failed"))
+      }
+    } catch (error) {
+      console.error("[Maps V2] Failed to delete points:", error)
+      const body = error?.body
+      if (error?.status === 403 && body?.upgrade_url) {
+        Toast.error(
+          `${body.error || translate("selection.write_api_requires_pro")} — ${body.upgrade_url}`,
+        )
+      } else if (error?.status === 422 && body?.limit) {
+        Toast.error(
+          translate("selection.too_many_selected_points", {
+            requested: body.requested,
+            limit: body.limit,
+          }),
+        )
+      } else {
+        Toast.error(
+          error?.message || translate("selection.delete_points_failed"),
+        )
+      }
+    } finally {
+      this.deletingPoints = false
+      if (deleteButton) deleteButton.disabled = false
+    }
   }
 }

@@ -6,10 +6,10 @@
       <div class="flex justify-between items-center mb-4">
         <div class="flex items-center gap-2">
           <%= icon 'calendar', class: 'w-5 h-5 text-base-content/60' %>
-          <h3 class="text-lg font-semibold">Activity Overview</h3>
+          <h3 class="text-lg font-semibold"><%= t('.activity_overview') %></h3>
         </div>
         <div class="badge badge-ghost">
-          <%= @activity_heatmap.active_days %> active days
+          <%= @activity_heatmap.active_days %> <%= t('.active_days') %>
         </div>
       </div>
 
@@ -31,10 +31,10 @@
           <!-- Grid with day labels -->
           <div class="flex">
             <!-- Day labels -->
-            <div class="flex flex-col justify-around mr-2 text-xs text-base-content/60" style="height: 98px;">
-              <span>Mon</span>
-              <span>Wed</span>
-              <span>Fri</span>
+            <div class="flex flex-col gap-0.5 mr-2 text-xs text-base-content/60">
+              <% [t('.mon'), nil, t('.wed'), nil, t('.fri'), nil, nil].each do |day_label| %>
+                <span class="h-3 flex items-center leading-none"><%= day_label %></span>
+              <% end %>
             </div>
 
             <!-- Cells grid -->
@@ -45,7 +45,7 @@
 
           <!-- Legend -->
           <div class="flex items-center justify-end gap-2 mt-4 text-xs text-base-content/60">
-            <span>Less</span>
+            <span><%= t('.less') %></span>
             <div class="flex gap-0.5">
               <div class="w-3 h-3 rounded-sm bg-base-300"></div>
               <div class="w-3 h-3 rounded-sm bg-success/30"></div>
@@ -53,7 +53,7 @@
               <div class="w-3 h-3 rounded-sm bg-success/70"></div>
               <div class="w-3 h-3 rounded-sm bg-success"></div>
             </div>
-            <span>More</span>
+            <span><%= t('.more') %></span>
           </div>
         </div>
       </div>

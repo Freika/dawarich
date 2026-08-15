@@ -19,6 +19,14 @@ module Visits
         visit = create_visit(place)
         visit
       end
+    rescue ActiveRecord::RecordNotUnique
+      @visit = existing_visit
+      # Re-creating a visit over its own tombstone (or an old decline) is an
+      # explicit undo: revive the row instead of returning it still hidden.
+      @visit.update!(deleted_at: nil, status: :confirmed) if @visit && (@visit.soft_deleted? || @visit.declined?)
+      @errors = 'Failed to create visit: duplicate visit' unless @visit
+
+      @visit || false
     rescue ActiveRecord::RecordInvalid => e
       ExceptionReporter.call(e, "Failed to create visit: #{e.message}")
 
@@ -40,6 +48,13 @@ module Visits
       return existing_place if existing_place
 
       create_new_place
+    end
+
+    def existing_visit
+      place = find_existing_place
+      return nil unless place
+
+      user.visits.find_by(place_id: place.id, started_at: Time.zone.parse(params[:started_at]))
     end
 
     def find_existing_place
@@ -64,7 +79,8 @@ module Visits
         latitude: lat_f,
         longitude: lon_f,
         lonlat: "POINT(#{lon_f} #{lat_f})",
-        source: :manual
+        source: :manual,
+        user_named: true
       )
     rescue ActiveRecord::RecordInvalid => e
       ExceptionReporter.call(e, "Failed to create place: #{e.message}")
@@ -84,25 +100,6 @@ module Visits
         duration: duration_minutes,
         status: params[:status].presence || :confirmed
       )
-
-      attach_suggested_places(@visit) if @visit.suggested?
-
-      @visit
-    end
-
-    def attach_suggested_places(visit)
-      lat = visit.place.latitude
-      lon = visit.place.longitude
-      candidates = user.places
-                       .where(
-                         'ST_DWithin(lonlat::geography, ' \
-                         'ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography, 100)',
-                         lon, lat
-                       )
-                       .limit(8)
-      candidates.each { |p| visit.suggested_places << p unless visit.suggested_places.include?(p) }
-    rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
-      ExceptionReporter.call(e, "Failed to attach suggested places: #{e.message}")
 
       @visit
     end

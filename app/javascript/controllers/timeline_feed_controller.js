@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { translate } from "i18n"
 
 /**
  * Timeline Feed Controller (Unified Timeline)
@@ -20,10 +21,6 @@ export default class extends Controller {
     "selectionForm",
     "selectionCount",
     "mergeButton",
-    "confirmForm",
-    "confirmButton",
-    "declineForm",
-    "declineButton",
     "deleteForm",
     "deleteButton",
   ]
@@ -40,6 +37,7 @@ export default class extends Controller {
     this.pendingVisitId = null
 
     this.pendingTrackId = null
+    this.pendingTrackTime = null
 
     // Browsers (Firefox especially) restore the search field's value on a
     // full page reload via the form-autocomplete cache, even with
@@ -87,15 +85,16 @@ export default class extends Controller {
     // Re-apply filter + search visibility after any turbo_stream update
     // (e.g., VisitsController#update replaces the row with fresh state, and
     // without this the newly-rendered row wouldn't honor the active filters).
-    // Also fire `visit:updated` whenever a visit row or the day frame is
-    // replaced — VisitsController emits these streams on confirm / decline /
-    // rename / bulk_update, and the map's visits layer needs to refetch so
-    // its dot color reflects the new status.
+    // Also fire `visit:updated` whenever a visit row is replaced or removed
+    // or the day frame is replaced — VisitsController emits these streams on
+    // edit / destroy / bulk actions, and the map's visits layer needs to
+    // refetch so its dots reflect the new state.
     this.boundStreamRender = (event) => {
       const target = event?.detail?.newStream?.getAttribute?.("target") || ""
       const action = event?.detail?.newStream?.getAttribute?.("action") || ""
       const visitRowReplaced =
-        action === "replace" && target.startsWith("visit_entry_")
+        (action === "replace" || action === "remove") &&
+        target.startsWith("visit_entry_")
       const dayFrameUpdated =
         action === "update" && target === "timeline-feed-frame"
 
@@ -145,14 +144,27 @@ export default class extends Controller {
   }
 
   handleOpenTrack(event) {
-    const { trackId, date } = event.detail || {}
+    const { trackId, date, startAtMs, endAtMs } = event.detail || {}
     const tid = Number.parseInt(trackId, 10)
-    if (!Number.isFinite(tid)) return
-    this.pendingTrackId = tid
+
+    if (Number.isFinite(tid)) {
+      this.pendingTrackId = tid
+    } else if (Number.isFinite(Number(startAtMs))) {
+      // Route click: no track id, so focus the journey whose time range
+      // overlaps the route's. Both are epoch ms, so the match is tz-safe.
+      this.pendingTrackTime = {
+        startAtMs: Number(startAtMs),
+        endAtMs: Number.isFinite(Number(endAtMs))
+          ? Number(endAtMs)
+          : Number(startAtMs),
+      }
+    } else {
+      return
+    }
 
     // If the clicked track is on the already-selected day, the journey
     // entry is already rendered — expand it immediately. Otherwise navigate
-    // to the day; the frame-load handler will consume pendingTrackId once the
+    // to the day; the frame-load handler consumes the pending target once the
     // new day's entries render.
     if (date && date !== this.selectedDate) {
       this.navigateToDay(date)
@@ -179,11 +191,19 @@ export default class extends Controller {
 
     // Date selection — "today" means the user's local today, not UTC today.
     // Using toISOString() would shift the date near midnight in non-UTC zones.
-    const date = params.get("date")
+    // Fall back to the range's end date when there's no explicit `date=` param
+    // (arriving via the top date-range form / Search / Last 7 days) so the
+    // panel lands on the most recent day of the range instead of going blank —
+    // keeping the range and the panel in sync (C1).
+    let date = params.get("date")
+    if (!date) {
+      const endAt = params.get("end_at")
+      if (endAt) date = endAt.slice(0, 10)
+    }
     if (date) {
       const isoDate =
         date === "today" ? new Date().toLocaleDateString("en-CA") : date
-      requestAnimationFrame(() => this.selectDayByDate(isoDate))
+      requestAnimationFrame(() => this.selectDayByDate(isoDate, false))
     }
 
     // Specific visit selection — deferred until the visit list frame loads
@@ -219,7 +239,9 @@ export default class extends Controller {
       }
     }
 
-    if (this.pendingTrackId) this._tryExpandPendingTrack()
+    if (this.pendingTrackId || this.pendingTrackTime) {
+      this._tryExpandPendingTrack()
+    }
 
     if (!this.pendingVisitId) return
     const row = this.element.querySelector(
@@ -237,13 +259,20 @@ export default class extends Controller {
   // collapses via `toggleTrackInfo`, but programmatic expansion only opens
   // a closed entry, never collapses an open one.
   _tryExpandPendingTrack() {
-    const tid = this.pendingTrackId
-    if (!tid) return
-    this.pendingTrackId = null
+    let toggle = null
 
-    const toggle = this.element.querySelector(
-      `.journey-leg[data-track-id="${tid}"]`,
-    )
+    if (this.pendingTrackId) {
+      const tid = this.pendingTrackId
+      this.pendingTrackId = null
+      toggle = this.element.querySelector(
+        `.journey-leg[data-track-id="${tid}"]`,
+      )
+    } else if (this.pendingTrackTime) {
+      const { startAtMs, endAtMs } = this.pendingTrackTime
+      this.pendingTrackTime = null
+      toggle = this._findJourneyToggleByTime(startAtMs, endAtMs)
+    }
+
     if (!toggle) return
 
     const frameId = toggle.dataset.frameId
@@ -258,6 +287,29 @@ export default class extends Controller {
       behavior: "smooth",
       block: "nearest",
     })
+  }
+
+  // Find the journey leg whose [started_at, ended_at] window overlaps the most
+  // with a given epoch-ms range (a clicked route). Returns the `.journey-leg`
+  // toggle so `_tryExpandPendingTrack` can open it. Journey timestamps are
+  // ISO8601 with offset, so Date.parse yields a tz-safe epoch.
+  _findJourneyToggleByTime(startAtMs, endAtMs) {
+    const entries = this.element.querySelectorAll(
+      '.timeline-entry[data-entry-type="journey"]',
+    )
+    let best = null
+    let bestOverlap = 0
+    for (const entry of entries) {
+      const s = new Date(entry.dataset.startedAt).getTime()
+      const e = new Date(entry.dataset.endedAt).getTime()
+      if (!Number.isFinite(s) || !Number.isFinite(e)) continue
+      const overlap = Math.min(e, endAtMs) - Math.max(s, startAtMs)
+      if (overlap > bestOverlap) {
+        bestOverlap = overlap
+        best = entry
+      }
+    }
+    return best?.querySelector(".journey-leg[data-track-id]") || null
   }
 
   // ---------- Calendar ----------
@@ -284,17 +336,14 @@ export default class extends Controller {
     const startAtLocal = `${date}T00:00:00`
     const endAtLocal = `${date}T23:59:59`
 
+    this.alignRangeInputsToDay(date)
+
     const params = new URLSearchParams(window.location.search)
     params.set("start_at", startAtLocal)
     params.set("end_at", endAtLocal)
     params.set("panel", "timeline")
     params.set("date", date)
     window.history.pushState({}, "", `/map/v2?${params.toString()}`)
-
-    const startInput = document.querySelector('input[name="start_at"]')
-    const endInput = document.querySelector('input[name="end_at"]')
-    if (startInput) startInput.value = startAtLocal
-    if (endInput) endInput.value = endAtLocal
 
     document.dispatchEvent(
       new CustomEvent("timeline-feed:date-navigated", {
@@ -358,9 +407,10 @@ export default class extends Controller {
   // Pure UI update — no navigation. Called on connect() when URL params
   // already reflect the date (hydrating after a Turbo page load) and from the
   // `timeline:open-visit` event path.
-  selectDayByDate(date) {
+  selectDayByDate(date, alignInputs = true) {
     if (this.selectionMode) this.exitSelection()
     this.applySelectedDayUI(date)
+    if (alignInputs) this.alignRangeInputsToDay(date)
 
     // Tell the map — bounds are not known yet (visit list frame is async).
     // The map's visits_manager can re-center when it receives data, or listen
@@ -370,6 +420,17 @@ export default class extends Controller {
         detail: { date },
       }),
     )
+  }
+
+  // Collapse the top date-range form inputs to a single day. Navigation and
+  // visit-pin selection do this so the form and panel stay in sync; URL
+  // hydration passes alignInputs=false so the server-rendered inputs keep the
+  // range's time component.
+  alignRangeInputsToDay(date) {
+    const startInput = document.querySelector('input[name="start_at"]')
+    const endInput = document.querySelector('input[name="end_at"]')
+    if (startInput) startInput.value = `${date}T00:00`
+    if (endInput) endInput.value = `${date}T23:59`
   }
 
   // ---------- Visit selection ----------
@@ -384,11 +445,9 @@ export default class extends Controller {
       return
     }
 
-    // Don't trigger when activating a nested control: rename trigger span,
-    // submit button, form field, or the [data-controller="visit-name"]
-    // wrapper whose click opens the inline rename form.
+    // Don't trigger when activating a nested control: submit button, form
+    // field, or anything inside the inline visit editor.
     if (
-      event.target.closest("[data-controller='visit-name']") ||
       event.target.closest("button[type='submit']") ||
       event.target.closest("input") ||
       event.target.closest("form")
@@ -420,6 +479,16 @@ export default class extends Controller {
         },
       }),
     )
+  }
+
+  // Low-confidence rows are display-gated by CSS via a day-level class so
+  // the search/filter `hidden` mechanics stay untouched.
+  toggleLowConfidence(event) {
+    const button = event.currentTarget
+    const day = button.closest(".timeline-day")
+    if (!day) return
+    const open = day.classList.toggle("timeline-day--show-lowconf")
+    button.setAttribute("aria-expanded", String(open))
   }
 
   deselectVisit() {
@@ -568,8 +637,10 @@ export default class extends Controller {
     this.applyVisibility()
   }
 
+  // Built from whatever status checkboxes exist in the DOM. With none
+  // rendered (stateless visits), the empty detail filters nothing.
   readFilterDetail() {
-    const detail = { confirmed: false, suggested: false, declined: false }
+    const detail = {}
     const checkboxes = this.element.querySelectorAll(
       'input[type="checkbox"][data-status]',
     )
@@ -779,22 +850,6 @@ export default class extends Controller {
     return this.scopedQuery('[data-timeline-feed-target="mergeButton"]')
   }
 
-  activeConfirmForm() {
-    return this.scopedQuery('[data-timeline-feed-target="confirmForm"]')
-  }
-
-  activeConfirmButton() {
-    return this.scopedQuery('[data-timeline-feed-target="confirmButton"]')
-  }
-
-  activeDeclineForm() {
-    return this.scopedQuery('[data-timeline-feed-target="declineForm"]')
-  }
-
-  activeDeclineButton() {
-    return this.scopedQuery('[data-timeline-feed-target="declineButton"]')
-  }
-
   activeDeleteForm() {
     return this.scopedQuery('[data-timeline-feed-target="deleteForm"]')
   }
@@ -823,23 +878,30 @@ export default class extends Controller {
     const countEl = this.activeSelectionCount()
     if (countEl) {
       countEl.textContent = overCap
-        ? `${n} selected (max ${max})`
-        : `${n} selected`
+        ? translate("timeline.selected_with_max", { count: n, max })
+        : translate("timeline.selected", { count: n })
     }
     const mergeBtn = this.activeMergeButton()
     if (mergeBtn) {
       mergeBtn.disabled = n < 2 || overCap
-      mergeBtn.textContent = n >= 2 ? `Merge ${n}` : "Merge"
+      mergeBtn.textContent =
+        n >= 2
+          ? translate("timeline.merge_count", { count: n })
+          : translate("visits.merge")
     }
-    for (const [getter, label] of [
-      [this.activeConfirmButton.bind(this), "Confirm"],
-      [this.activeDeclineButton.bind(this), "Decline"],
-      [this.activeDeleteButton.bind(this), "Delete"],
+    for (const [getter, key] of [
+      [this.activeDeleteButton.bind(this), "common.delete"],
     ]) {
       const btn = getter()
       if (!btn) continue
       btn.disabled = n < 1 || overCap
-      btn.textContent = n >= 1 ? `${label} ${n}` : label
+      btn.textContent =
+        n >= 1
+          ? translate("timeline.action_count", {
+              action: translate(key),
+              count: n,
+            })
+          : translate(key)
     }
   }
 
@@ -848,22 +910,6 @@ export default class extends Controller {
       formGetter: this.activeSelectionForm.bind(this),
       buttonGetter: this.activeMergeButton.bind(this),
       minSelected: 2,
-    })
-  }
-
-  submitBulkConfirm(event) {
-    this.submitBulkAction(event, {
-      formGetter: this.activeConfirmForm.bind(this),
-      buttonGetter: this.activeConfirmButton.bind(this),
-      minSelected: 1,
-    })
-  }
-
-  submitBulkDecline(event) {
-    this.submitBulkAction(event, {
-      formGetter: this.activeDeclineForm.bind(this),
-      buttonGetter: this.activeDeclineButton.bind(this),
-      minSelected: 1,
     })
   }
 

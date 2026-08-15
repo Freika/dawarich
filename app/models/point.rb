@@ -5,6 +5,17 @@ class Point < ApplicationRecord
   include Distanceable
   include Archivable
 
+  self.ignored_columns += %w[latitude longitude]
+
+  # Every ingest path upserts points and then counts the rows whose `xmax` is
+  # zero to tell inserts from updates. `xmax` is Postgres' `xid`, an OID the
+  # adapter has no type for, so returning it raw makes the adapter warn the
+  # first time each connection sees it. Casting to text keeps `to_i` working
+  # and the log quiet.
+  UPSERT_RETURNING_COLUMNS =
+    'id, xmax::text AS xmax, timestamp, ' \
+    'ST_X(lonlat::geometry) AS longitude, ST_Y(lonlat::geometry) AS latitude'
+
   belongs_to :import, optional: true, counter_cache: true
   belongs_to :visit, optional: true
   belongs_to :user
@@ -14,7 +25,7 @@ class Point < ApplicationRecord
   validates :timestamp, :lonlat, presence: true
   validates :lonlat, uniqueness: {
     scope: %i[timestamp user_id],
-    message: 'already has a point at this location and time for this user',
+    message: ->(*) { I18n.t('models.point.already_has_a_point_at_this_location_and_time_for') },
     index: true
   }
 
@@ -31,8 +42,12 @@ class Point < ApplicationRecord
   scope :not_reverse_geocoded, -> { where(reverse_geocoded_at: nil) }
   scope :visited, -> { where.not(visit_id: nil) }
   scope :not_visited, -> { where(visit_id: nil) }
+  scope :complete, -> { where.not(timestamp: nil).where.not(lonlat: nil) }
   scope :not_anomaly, -> { where(anomaly: [false, nil]) }
   scope :anomaly, -> { where(anomaly: true) }
+  # Ingest, cleanup and the anomaly filter must all agree on what counts as a
+  # broken coordinate; Points::NullIsland owns that definition.
+  scope :null_island, -> { where(Points::NullIsland.sql_predicate) }
 
   after_create :async_reverse_geocode, if: -> { DawarichSettings.store_geodata? && !reverse_geocoded? }
   after_create :set_country
@@ -54,7 +69,7 @@ class Point < ApplicationRecord
   end
 
   # Build a key whose equivalence classes match the PostgreSQL UNIQUE index
-  # on (lonlat, timestamp, user_id). The raw lonlat WKT string from
+  # on (user_id, timestamp, lonlat). The raw lonlat WKT string from
   # Points::Params / Overland::Params can differ character-by-character for
   # points that collapse to the same geography(Point, 4326) double, so a
   # plain string `uniq` keeps both variants and the subsequent
@@ -72,10 +87,30 @@ class Point < ApplicationRecord
     @recorded_at ||= Time.zone.at(timestamp)
   end
 
+  GEOCODE_DEDUP_TTL = 1.day.to_i
+
+  def self.geocode_dedup_key(id)
+    "geocode:enq:Point:#{id}"
+  end
+
   def async_reverse_geocode(force: false)
     return unless DawarichSettings.reverse_geocoding_enabled?
 
-    ReverseGeocodingJob.perform_later(self.class.to_s, id, force: force)
+    if force
+      Sidekiq.redis { |r| r.del(self.class.geocode_dedup_key(id)) }
+    else
+      claimed = Sidekiq.redis do |r|
+        r.set(self.class.geocode_dedup_key(id), 1, nx: true, ex: GEOCODE_DEDUP_TTL)
+      end
+      return unless claimed
+    end
+
+    begin
+      ReverseGeocodingJob.perform_later(self.class.to_s, id, force: force)
+    rescue StandardError
+      Sidekiq.redis { |r| r.del(self.class.geocode_dedup_key(id)) } unless force
+      raise
+    end
   end
 
   def reverse_geocoded?
@@ -146,12 +181,12 @@ class Point < ApplicationRecord
     broadcast_to_family if should_broadcast_to_family?
   end
 
+  # family_sharing_enabled? goes first: it answers from already-loaded data,
+  # while the plan check loads the family and its owner on cloud.
   def should_broadcast_to_family?
-    return false unless DawarichSettings.family_feature_enabled?
-    return false unless user.in_family?
     return false unless user.family_sharing_enabled?
 
-    true
+    DawarichSettings.family_feature_available_for?(user)
   end
 
   def broadcast_to_family

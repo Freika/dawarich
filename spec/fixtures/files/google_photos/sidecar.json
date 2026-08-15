@@ -1,0 +1,18 @@
+{
+  "title": "anonymized-photo.jpg",
+  "description": "",
+  "imageViews": "0",
+  "creationTime": {
+    "timestamp": "1718448000",
+    "formatted": "Jun 15, 2024, 12:00:00 PM UTC"
+  },
+  "photoTakenTime": {
+    "timestamp": "1718447400",
+    "formatted": "Jun 15, 2024, 11:50:00 AM UTC"
+  },
+  "geoDataExif": {
+    "latitude": 48.12345,
+    "longitude": 11.54321,
+    "altitude": 34.5
+  }
+}

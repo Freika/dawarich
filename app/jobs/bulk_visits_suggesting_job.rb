@@ -7,9 +7,10 @@ class BulkVisitsSuggestingJob < ApplicationJob
   sidekiq_options retry: false
 
   # Passing timespan of more than 3 years somehow results in duplicated Places
-  def perform(start_at: 1.day.ago.beginning_of_day, end_at: 1.day.ago.end_of_day, user_ids: [])
+  def perform(start_at: 1.day.ago.beginning_of_day, end_at: 1.day.ago.end_of_day, user_ids: [], user_id: nil)
     return unless DawarichSettings.reverse_geocoding_enabled?
 
+    user_ids = (Array(user_ids) | Array(user_id)).compact
     users = user_ids.any? ? User.active.where(id: user_ids) : User.active
     start_at = start_at.to_datetime
     end_at = end_at.to_datetime

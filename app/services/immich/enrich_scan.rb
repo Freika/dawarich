@@ -13,8 +13,10 @@ class Immich::EnrichScan
   end
 
   def call
-    return error_result('Immich URL is missing') if user.safe_settings.immich_url.blank?
-    return error_result('Immich API key is missing') if user.safe_settings.immich_api_key.blank?
+    return error_result(I18n.t('services.immich.configuration.url_missing')) if user.safe_settings.immich_url.blank?
+    if user.safe_settings.immich_api_key.blank?
+      return error_result(I18n.t('services.immich.configuration.api_key_missing'))
+    end
 
     immich_data = fetch_immich_photos
     return error_result(immich_data[:error]) if immich_data[:error]
@@ -33,7 +35,7 @@ class Immich::EnrichScan
 
   def fetch_immich_photos
     photos = Immich::RequestPhotos.new(user, start_date: start_date || '1970-01-01', end_date:).call
-    return { error: 'Failed to fetch photos from Immich' } if photos.nil?
+    return { error: I18n.t('services.immich.enrich_scan.failed_to_fetch_photos_from_immich') } if photos.nil?
 
     { photos: photos }
   end
@@ -134,7 +136,9 @@ class Immich::EnrichScan
   end
 
   def parse_photo_timestamp(photo)
-    time_str = photo.dig('exifInfo', 'dateTimeOriginal') || photo['localDateTime']
+    time_str = photo['fileCreatedAt'] ||
+               photo.dig('exifInfo', 'dateTimeOriginal') ||
+               photo['localDateTime']
     return nil if time_str.blank?
 
     Time.parse(time_str).utc.to_i

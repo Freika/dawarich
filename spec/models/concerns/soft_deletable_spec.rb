@@ -35,7 +35,7 @@ RSpec.describe SoftDeletable do
 
       it 'returns empty when all users are deleted' do
         active_user.mark_as_deleted!
-        expect(User.all).to be_empty
+        expect(User.where(id: [active_user.id, deleted_user.id])).to be_empty
       end
 
       it 'can be bypassed with unscoped' do
@@ -56,7 +56,8 @@ RSpec.describe SoftDeletable do
 
       it 'returns all users when all are deleted' do
         active_user.mark_as_deleted!
-        expect(User.deleted.count).to eq(User.unscoped.count)
+        scope = User.unscoped.where(id: [active_user.id, deleted_user.id])
+        expect(User.deleted.where(id: scope.select(:id)).count).to eq(scope.count)
       end
     end
   end

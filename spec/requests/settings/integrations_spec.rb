@@ -12,6 +12,7 @@ RSpec.describe 'Settings::Integrations', type: :request do
       allow(Resolv).to receive(:getaddress).and_call_original
       allow(Resolv).to receive(:getaddress).with('immich.test').and_return('93.184.216.34')
       allow(Resolv).to receive(:getaddress).with('photoprism.test').and_return('93.184.216.34')
+      allow(Resolv).to receive(:getaddress).with('airtrail.test').and_return('93.184.216.34')
     end
 
     it 'updates the user settings' do
@@ -81,6 +82,27 @@ RSpec.describe 'Settings::Integrations', type: :request do
         expect(response).to redirect_to(settings_integrations_path)
         follow_redirect!
         expect(flash[:notice]).to include('Photoprism connection verified')
+      end
+    end
+
+    context 'when airtrail settings change' do
+      let(:airtrail_url) { 'https://airtrail.test' }
+
+      before do
+        stub_request(:get, "#{airtrail_url}/api/flight/list?scope=mine")
+          .to_return(status: 200, body: { success: true, flights: [] }.to_json,
+                     headers: { 'Content-Type' => 'application/json' })
+      end
+
+      it 'persists settings and verifies the airtrail connection' do
+        patch '/settings/integrations', params: {
+          settings: { 'airtrail_url' => airtrail_url, 'airtrail_api_key' => 'k' }
+        }
+
+        expect(response).to redirect_to(settings_integrations_path)
+        follow_redirect!
+        expect(flash[:notice]).to include('AirTrail connection verified')
+        expect(user.reload.settings['airtrail_url']).to eq(airtrail_url)
       end
     end
 

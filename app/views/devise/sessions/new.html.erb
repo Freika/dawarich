@@ -2,22 +2,21 @@
   <div class="hero-content flex-col lg:flex-row-reverse w-full my-10">
     <div class="text-center lg:text-left">
       <% if @invitation %>
-        <h1 class="text-5xl font-bold text-base-content">Sign in to join <%= @invitation.family.name %>!</h1>
+        <h1 class="text-5xl font-bold text-base-content"><%= t('.sign_in_to_join_family', family: @invitation.family.name) %></h1>
         <p class="py-6 text-base-content opacity-70">
-          You've been invited by <strong><%= @invitation.invited_by.email %></strong> to join their family.
-          Sign in to your account to accept the invitation.
+          <%= t('.you_ve_been_invited_by') %> <strong><%= @invitation.invited_by.email %></strong> <%= t('.to_join_their_family_sign_in_to_your_account_to') %>
         </p>
         <% if email_password_login_enabled? %>
           <div class="alert alert-info">
             <p class="text-sm">
-              Don't have an account yet?
-              <%= link_to "Create one here", new_user_registration_path(invitation_token: @invitation.token), class: "font-semibold underline" %>
+              <%= t('.don_t_have_an_account_yet') %>
+              <%= link_to t('.create_one_here'), new_user_registration_path(invitation_token: @invitation.token), class: "font-semibold underline" %>
             </p>
           </div>
         <% end %>
       <% else %>
-        <h1 class="text-5xl font-bold text-base-content">Login now</h1>
-        <p class="py-6 text-base-content opacity-70">and take control over your location data.</p>
+        <h1 class="text-5xl font-bold text-base-content"><%= t('.login_now') %></h1>
+        <p class="py-6 text-base-content opacity-70"><%= t('.and_take_control_over_your_location_data') %></p>
       <% end %>
     </div>
     <div class="card flex-shrink-0 w-full max-w-sm shadow-2xl bg-base-100 px-5 py-5">
@@ -31,26 +30,26 @@
 
           <div class="form-control">
             <%= f.label :email, class: 'label' do %>
-              <span class="label-text">Email</span>
+              <span class="label-text"><%= t('.email') %></span>
             <% end %>
             <%= f.email_field :email, autofocus: true, autocomplete: "email", class: 'input input-bordered' %>
           </div>
           <div class="form-control">
             <%= f.label :password, class: 'label' do %>
-              <span class="label-text">Password</span>
+              <span class="label-text"><%= t('.password') %></span>
             <% end %>
             <%= f.password_field :password, autocomplete: "current-password", class: 'input input-bordered' %>
             <% if devise_mapping.rememberable? %>
               <div class="form-control">
                 <label class="label cursor-pointer">
-                  <span class="label-text">Remember me</span>
+                  <span class="label-text"><%= t('.remember_me') %></span>
                   <%= f.check_box :remember_me, class: 'checkbox checkbox-sm' %>
                 </label>
               </div>
             <% end %>
           </div>
           <div class="form-control mt-6">
-            <%= f.submit (@invitation ? "Sign in & Accept Invitation" : "Log in"), class: 'btn btn-primary' %>
+            <%= f.submit (@invitation ? t('.sign_in_accept_invitation') : t('.log_in')), class: 'btn btn-primary' %>
           </div>
         <% end %>
 
@@ -60,7 +59,7 @@
       <% else %>
         <%# OIDC-only mode: show OIDC login buttons prominently %>
         <div class="text-center mb-4">
-          <p class="text-base-content opacity-70 mb-4">Sign in using your organization's identity provider</p>
+          <p class="text-base-content opacity-70 mb-4"><%= t('.sign_in_using_your_organization_s_identity_provider') %></p>
         </div>
         <% if devise_mapping.omniauthable? %>
           <% visible_omniauth_providers.each do |provider| %>

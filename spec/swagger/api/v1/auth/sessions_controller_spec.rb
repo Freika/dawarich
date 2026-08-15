@@ -35,8 +35,6 @@ describe 'Auth Sessions API', type: :request do
         let(:user) { create(:user, password: 'secret123456') }
         let(:credentials) { { email: user.email, password: 'secret123456' } }
 
-        after { |example| SwaggerResponseExample.capture(example, response) }
-
         run_test!
       end
 

@@ -1,0 +1,90 @@
+<% trip = SharedLinks::TripPresenter.new(link, resource) %>
+
+<%= tag.div class: 'container mx-auto px-4 my-5', data: trip.wrapper_data do %>
+  <div class="flex flex-col lg:flex-row gap-6 <%= 'lg:h-[calc(100dvh-9.75rem)]' if trip.show_map? %>">
+    <% if trip.show_map? %>
+      <div class="w-full lg:w-3/5 h-[50vh] lg:h-full shrink-0">
+        <div data-shared-trip-map-target="map"
+             class="w-full h-full rounded-lg overflow-hidden bg-base-200 relative">
+          <%= render "shared/replay_panel", stimulus: "shared-trip-map", show_day_nav: true %>
+        </div>
+      </div>
+    <% end %>
+
+    <div class="w-full <%= trip.show_map? ? 'lg:w-2/5 lg:h-full lg:overflow-y-auto' : 'max-w-2xl mx-auto' %>">
+      <div class="mb-6">
+        <div class="flex items-start justify-between gap-3 mb-1">
+          <h1 class="text-3xl font-bold leading-tight"><%= resource.name %></h1>
+          <span class="badge badge-success badge-sm shrink-0 gap-1" aria-label="<%= t('.publicly_shared') %>">
+            <%= icon 'map-pin', class: 'w-3 h-3' %> <%= t('.public') %>
+          </span>
+        </div>
+        <p class="text-md text-base-content/60 mb-4">
+          <%= human_date(resource.started_at) %> <%= t('.ndash') %> <%= human_date(resource.ended_at) %>
+        </p>
+
+        <% if trip.show_stats? %>
+          <%= render "trips/countries", trip: resource, current_user: link.user, distance_unit: trip.unit %>
+        <% end %>
+      </div>
+
+      <% if trip.description? %>
+        <div class="mb-6">
+          <h3 class="text-lg font-semibold mb-2"><%= t('.trip_notes') %></h3>
+          <div class="prose max-w-none"><%= resource.description.body %></div>
+        </div>
+      <% end %>
+
+      <% if trip.show_map? %>
+        <div class="flex items-center gap-2 mb-4">
+          <button type="button"
+                  class="btn btn-sm btn-outline gap-1"
+                  data-shared-trip-map-target="replayToggleBtn"
+                  data-action="click->shared-trip-map#toggleReplay">
+            <%= icon 'play', class: 'w-4 h-4' %>
+            <span><%= t('.replay') %></span>
+          </button>
+        </div>
+      <% end %>
+
+      <% if trip.days? %>
+        <div class="space-y-1 mb-6 px-1">
+          <% trip.days.each do |day| %>
+            <% day_key = day[:date].strftime('%Y-%m-%d') %>
+            <% note = trip.note_for(day) %>
+            <% has_note = trip.show_day_notes? && note&.body.present? %>
+            <% day_photos = trip.photos_for(day) %>
+            <% if has_note || day_photos.any? %>
+              <%= tag.details class: "collapse collapse-arrow bg-base-200 rounded-lg#{trip.interactive_class}", data: trip.row_data(day_key) do %>
+                <summary class="collapse-title flex items-center gap-2 text-sm font-medium min-h-0 cursor-pointer">
+                  <%= render "shared/links/trip_day_header", day: day, day_key: day_key %>
+                </summary>
+                <div class="collapse-content">
+                  <% if has_note %>
+                    <p class="whitespace-pre-wrap text-sm text-base-content/80"><%= note.body %></p>
+                  <% end %>
+                  <% if day_photos.any? %>
+                    <div class="grid grid-cols-3 gap-2 mt-3">
+                      <% day_photos.each do |photo| %>
+                        <div class="aspect-square overflow-hidden rounded-lg">
+                          <img src="<%= url_for(controller: 'api/v1/shared/photos', action: 'thumbnail', id: link.id, photo_id: photo[:id], source: photo[:source], only_path: true) %>"
+                               loading="lazy"
+                               alt=""
+                               class="h-full w-full object-cover">
+                        </div>
+                      <% end %>
+                    </div>
+                  <% end %>
+                </div>
+              <% end %>
+            <% else %>
+              <%= tag.div class: "bg-base-200 rounded-lg px-4 py-3 flex items-center gap-2 text-sm font-medium#{trip.interactive_class}", data: trip.row_data(day_key) do %>
+                <%= render "shared/links/trip_day_header", day: day, day_key: day_key %>
+              <% end %>
+            <% end %>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+<% end %>

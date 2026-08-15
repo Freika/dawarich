@@ -1,0 +1,16 @@
+{
+  "name": "Blueprint",
+  "description": "Classic architectural blueprint - technical drawing aesthetic",
+  "bg": "#1A3A5C",
+  "text": "#E8F4FF",
+  "gradient_color": "#1A3A5C",
+  "water": "#0F2840",
+  "parks": "#1E4570",
+  "road_motorway": "#E8F4FF",
+  "road_primary": "#C5DCF0",
+  "road_secondary": "#9FC5E8",
+  "road_tertiary": "#7BAED4",
+  "road_residential": "#5A96C0",
+  "road_default": "#7BAED4",
+  "route": "#FF6B4A"
+}

@@ -6,7 +6,7 @@ class Settings::IntegrationsController < ApplicationController
   before_action :require_pro!, only: %i[update]
 
   def index
-    @pro_required = !DawarichSettings.self_hosted? && !current_user.pro?
+    @pro_required = !current_user.full_access?
   end
 
   def update
@@ -27,7 +27,8 @@ class Settings::IntegrationsController < ApplicationController
   def settings_params
     params.require(:settings).permit(
       :immich_url, :immich_api_key, :immich_skip_ssl_verification,
-      :photoprism_url, :photoprism_api_key, :photoprism_skip_ssl_verification
+      :photoprism_url, :photoprism_api_key, :photoprism_skip_ssl_verification,
+      :airtrail_url, :airtrail_api_key, :airtrail_skip_ssl_verification
     )
   end
 end

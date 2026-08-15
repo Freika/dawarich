@@ -115,8 +115,6 @@ RSpec.describe 'Api::V1::Countries::VisitedCities', type: :request do
         let(:end_at) { '2023-12-31' }
         let(:api_key) { create(:user).api_key }
 
-        after { |example| SwaggerResponseExample.capture(example, response) }
-
         run_test!
       end
 

@@ -1,14 +1,14 @@
 # frozen_string_literal: true
 
 class DemoData::GeojsonGenerator
-  FIXTURE_PATH = Rails.root.join('lib/assets/demo_data.json')
+  DEFAULT_FIXTURE_PATH = Rails.root.parent.join('e2e-dawarich-playwright/fixtures/demo_data.json').to_s
 
   def initialize(base_time: nil)
     @base_time = base_time
   end
 
   def call
-    data = Oj.load(File.read(FIXTURE_PATH))
+    data = Oj.load(File.read(fixture_path))
     features = data['features']
 
     shift_timestamps!(features)
@@ -17,6 +17,13 @@ class DemoData::GeojsonGenerator
   end
 
   private
+
+  def fixture_path
+    path = ENV.fetch('E2E_DEMO_DATA', DEFAULT_FIXTURE_PATH)
+    return path if File.exist?(path)
+
+    raise "e2e demo fixture not found at #{path} — set E2E_DEMO_DATA to demo_data.json in the e2e repo"
+  end
 
   def shift_timestamps!(features)
     return if features.empty?

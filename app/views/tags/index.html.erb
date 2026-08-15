@@ -1,7 +1,7 @@
 <div class="w-full my-5">
-  <%= render layout: 'shared/page_header', locals: { title: 'Tags' } do %>
+  <%= render layout: 'shared/page_header', locals: { title: t('.tags') } do %>
     <%= link_to new_tag_path, class: "btn btn-primary btn-sm" do %>
-      <%= icon 'circle-plus', class: 'w-4 h-4' %> New Tag
+      <%= icon 'circle-plus', class: 'w-4 h-4' %> <%= t('.new_tag') %>
     <% end %>
   <% end %>
 
@@ -10,11 +10,11 @@
       <table class="table table-sm w-full">
         <thead class="bg-base-200">
           <tr>
-            <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50 w-16">Icon</th>
-            <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50">Name</th>
-            <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50">Color</th>
-            <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50 text-right">Places</th>
-            <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50 text-right">Actions</th>
+            <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50 w-16"><%= t('.icon') %></th>
+            <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50"><%= t('.name') %></th>
+            <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50"><%= t('.color') %></th>
+            <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50 text-right"><%= t('.places') %></th>
+            <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50 text-right"><%= t('.actions') %></th>
           </tr>
         </thead>
         <tbody>
@@ -44,14 +44,14 @@
               <td class="px-4 py-3 text-right tabular-nums"><%= tag.places.size %></td>
               <td class="px-4 py-3 text-right">
                 <div class="flex gap-1 justify-end">
-                  <div class="tooltip" data-tip="Edit tag">
+                  <div class="tooltip" data-tip="<%= t('.edit_tag') %>">
                     <%= link_to edit_tag_path(tag), class: "btn btn-ghost btn-xs" do %>
                       <%= icon 'square-pen', class: 'w-4 h-4' %>
                     <% end %>
                   </div>
-                  <div class="tooltip tooltip-left" data-tip="Delete tag">
+                  <div class="tooltip tooltip-left" data-tip="<%= t('.delete_tag') %>">
                     <%= button_to tag_path(tag), method: :delete,
-                        data: { turbo_confirm: "Are you sure?", turbo_method: :delete },
+                        data: { turbo_confirm: t('.are_you_sure'), turbo_method: :delete },
                         class: "btn btn-ghost btn-xs text-error hover:bg-error/10" do %>
                       <%= icon 'trash-2', class: 'w-4 h-4' %>
                     <% end %>
@@ -65,12 +65,12 @@
     </div>
   <% else %>
     <div class="text-center py-16 px-8 bg-base-200 rounded-xl border-2 border-dashed border-base-300">
-      <h3 class="text-xl font-bold mb-3">No tags yet</h3>
+      <h3 class="text-xl font-bold mb-3"><%= t('.no_tags_yet') %></h3>
       <p class="text-base-content/50 mb-6 max-w-sm mx-auto">
-        Create tags to organize your places and add privacy zones.
+        <%= t('.create_tags_to_organize_your_places_and_add_privacy_zones') %>
       </p>
       <%= link_to new_tag_path, class: 'btn btn-primary' do %>
-        <%= icon 'circle-plus', class: 'w-4 h-4' %> Create your first tag
+        <%= icon 'circle-plus', class: 'w-4 h-4' %> <%= t('.create_your_first_tag') %>
       <% end %>
     </div>
   <% end %>

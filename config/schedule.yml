@@ -5,11 +5,6 @@ bulk_stats_calculating_job:
   class: "BulkStatsCalculatingJob"
   queue: stats
 
-area_visits_calculation_scheduling_job:
-  cron: "0 0 * * *" # every day at 0:00
-  class: "AreaVisitsCalculationSchedulingJob"
-  queue: visit_suggesting
-
 visit_suggesting_job:
   cron: "5 0 * * *" # every day at 00:05
   class: "BulkVisitsSuggestingJob"
@@ -18,6 +13,11 @@ visit_suggesting_job:
 watcher_job:
   cron: "0 */1 * * *" # every 1 hour
   class: "Import::WatcherJob"
+  queue: imports
+
+airtrail_flight_import_job:
+  cron: "0 2 * * *" # every day at 02:00
+  class: "AirTrail::SyncSchedulingJob"
   queue: imports
 
 app_version_checking_job:
@@ -29,11 +29,6 @@ cache_preheating_job:
   cron: "0 0 * * *" # every day at 0:00
   class: "Cache::PreheatingJob"
   queue: default
-
-place_name_fetching_job:
-  cron: "30 0 * * *" # every day at 00:30
-  class: "Places::BulkNameFetchingJob"
-  queue: places
 
 daily_track_generation_job:
   cron: "0 */12 * * *" # every 12 hours (real-time generation handles most cases)
@@ -97,3 +92,9 @@ yearly_digest_scheduling_job:
   cron: "0 6 2 1 *" # January 2nd at 06:00 UTC
   class: "Users::Digests::Yearly::SchedulingJob"
   queue: digests
+
+pending_imports_cleanup:
+  cron: "15 3 * * *" # every day at 03:15 UTC
+  class: "PendingImports::CleanupJob"
+  queue: low_priority
+  description: "Sweep expired or old-claimed pending imports"

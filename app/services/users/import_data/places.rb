@@ -68,26 +68,24 @@ class Users::ImportData::Places
 
     return nil unless name.present? && latitude.present? && longitude.present?
 
-    existing_place = Place.where(
+    existing_place = user.places.find_by(
       name: name,
       latitude: latitude,
-      longitude: longitude,
-      user_id: nil
-    ).first
+      longitude: longitude
+    )
 
     if existing_place
       existing_place.define_singleton_method(:previously_new_record?) { false }
       return existing_place
     end
 
-    place_attributes = place_data.except('created_at', 'updated_at', 'latitude', 'longitude')
+    place_attributes = place_data.except('created_at', 'updated_at', 'latitude', 'longitude', 'user', 'user_id')
     place_attributes['lonlat'] = "POINT(#{longitude} #{latitude})"
     place_attributes['latitude'] = latitude
     place_attributes['longitude'] = longitude
-    place_attributes.delete('user')
 
     begin
-      place = Place.create!(place_attributes)
+      place = user.places.create!(place_attributes)
       place.define_singleton_method(:previously_new_record?) { true }
 
       place

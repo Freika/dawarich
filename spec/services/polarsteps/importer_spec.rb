@@ -30,8 +30,9 @@ RSpec.describe Polarsteps::Importer do
 
     context 'with extended segments array format' do
       let(:file_path) { Rails.root.join('spec/fixtures/files/polarsteps/segments.json').to_s }
+      let(:importer) { described_class.new(import, user.id, file_path) }
 
-      before { described_class.new(import, user.id, file_path).call }
+      before { importer.call }
 
       it 'creates one point per segment' do
         expect(user.points.count).to eq(2)
@@ -43,10 +44,8 @@ RSpec.describe Polarsteps::Importer do
         expect(first.lat).to be_within(0.0001).of(35.6900)
       end
 
-      it 'stores segment id and type in raw_data' do
-        first = user.points.order(:timestamp).first
-        expect(first.raw_data['segment_id']).to eq('segment-test001-1')
-        expect(first.raw_data['type']).to eq('place_visit')
+      it 'does not persist raw_data for imported points' do
+        expect(Point.where(import_id: import.id).pluck(:raw_data).uniq).to eq([{}])
       end
     end
 

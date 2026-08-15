@@ -264,7 +264,7 @@ RSpec.describe 'Users Export-Import Integration', type: :service do
       content_type: 'application/json'
     )
 
-    export2 = create(:export, user: user, name: 'Q2 2024 Export', file_format: :json, file_type: :user_data)
+    export2 = create(:export, user: user, name: 'Q2 2024 Export', file_format: :json, file_type: :points)
     export2.file.attach(
       io: StringIO.new('{"type": "FeatureCollection", "features": []}'),
       filename: 'q2_2024.json',
@@ -366,12 +366,9 @@ RSpec.describe 'Users Export-Import Integration', type: :service do
     target_visits_with_places = target_user.visits.where.not(place_id: nil).count
     expect(target_visits_with_places).to eq(original_visits_with_places)
 
-    original_office_points = original_user.points.where(
-      latitude: 40.7589, longitude: -73.9851
-    ).first
-    target_office_points = target_user.points.where(
-      latitude: 40.7589, longitude: -73.9851
-    ).first
+    office_lonlat = 'POINT(-73.9851 40.7589)'
+    original_office_points = original_user.points.where(lonlat: office_lonlat).first
+    target_office_points   = target_user.points.where(lonlat: office_lonlat).first
 
     return unless original_office_points && target_office_points
 
@@ -593,6 +590,51 @@ RSpec.describe 'Users Export-Import Integration', type: :service do
       ensure
         FileUtils.rm_rf(temp_dir)
       end
+    end
+  end
+
+  # The export payload carries no `anomaly` column, so every restored point
+  # arrives unflagged. Without re-running the filter a restored instance
+  # regenerates its tracks from GPS noise it had already learned to ignore.
+  describe 'anomaly flags after a restore' do
+    let(:source_user) { create(:user, email: 'anomaly_source@example.com') }
+    let(:restored_user) { create(:user, email: 'anomaly_target@example.com') }
+    let(:archive_path) { Rails.root.join('tmp/anomaly_restore_test.zip') }
+    let(:base_time) { Time.utc(2024, 3, 10, 12, 0, 0).to_i }
+
+    before do
+      create(:point, user: source_user, accuracy: 10, timestamp: base_time,
+                     lonlat: 'POINT(13.405 52.52)')
+      create(:point, user: source_user, accuracy: 10, timestamp: base_time + 60,
+                     lonlat: 'POINT(13.4051 52.5201)')
+      create(:point, user: source_user, accuracy: 10, timestamp: base_time + 120,
+                     lonlat: 'POINT(0 0)')
+      create(:point, user: source_user, accuracy: 10, timestamp: base_time + 180,
+                     lonlat: 'POINT(13.4052 52.5202)')
+      create(:point, user: source_user, accuracy: 10, timestamp: base_time + 240,
+                     lonlat: 'POINT(13.4053 52.5203)')
+    end
+
+    after { FileUtils.rm_f(archive_path) }
+
+    it 'flags restored Null Island points instead of leaving them unfiltered' do
+      export_record = Users::ExportData.new(source_user).export
+      File.open(archive_path, 'wb') { |file| export_record.file.download { |chunk| file.write(chunk) } }
+
+      Users::ImportData.new(restored_user, archive_path).import
+
+      restored_null_island = restored_user.points.null_island
+      expect(restored_null_island).to be_present
+      expect(restored_null_island.where(anomaly: true).count).to eq(restored_null_island.count)
+    end
+
+    it 'leaves genuine restored points usable for track generation' do
+      export_record = Users::ExportData.new(source_user).export
+      File.open(archive_path, 'wb') { |file| export_record.file.download { |chunk| file.write(chunk) } }
+
+      Users::ImportData.new(restored_user, archive_path).import
+
+      expect(restored_user.points.not_anomaly.count).to eq(4)
     end
   end
 end

@@ -11,13 +11,16 @@ module Omniauthable
         return User.find_by(provider: provider, uid: access_token.uid.to_s)
       end
 
-      user, _created = Auth::FindOrCreateOauthUser.new(
+      user, created = Auth::FindOrCreateOauthUser.new(
         provider: provider,
         provider_label: omniauth_provider_label(provider),
         claims: { sub: access_token.uid.to_s, email: access_token.info&.email.to_s },
         email_verified: omniauth_email_verified?(access_token),
+        name_attrs: omniauth_name_attrs(access_token),
         on_email_collision: :raise_only
       ).call
+
+      user&.oauth_newly_created = created
 
       user
     end
@@ -37,6 +40,22 @@ module Omniauthable
       else
         false
       end
+    end
+
+    def omniauth_name_attrs(access_token)
+      info = access_token.info
+      return {} unless info
+
+      first = info.first_name.presence if info.respond_to?(:first_name)
+      last  = info.last_name.presence  if info.respond_to?(:last_name)
+
+      if (first.blank? || last.blank?) && info.respond_to?(:name) && info.name.present?
+        parts = info.name.to_s.split(' ', 2)
+        first ||= parts.first
+        last  ||= parts.last if parts.length > 1
+      end
+
+      { first_name: first, last_name: last }.compact
     end
 
     def omniauth_provider_label(provider)

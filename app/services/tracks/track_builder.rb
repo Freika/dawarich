@@ -56,11 +56,15 @@ module Tracks::TrackBuilder
   # but bad data is rarely useful.
   MAX_DISTANCE_METERS = 100_000_000
 
-  def create_track_from_points(points, pre_calculated_distance)
+  def create_track_from_points(points, pre_calculated_distance, tracker_id: nil,
+                               skip_segment_detection: false)
     return nil if points.size < 2
+
+    resolved_tracker_id = tracker_id || points.first.tracker_id
 
     track = Track.new(
       user_id: user.id,
+      tracker_id: resolved_tracker_id,
       start_at: Time.zone.at(points.first.timestamp),
       end_at: Time.zone.at(points.last.timestamp),
       original_path: build_path(points)
@@ -87,7 +91,7 @@ module Tracks::TrackBuilder
     ActiveRecord::Base.transaction(requires_new: true) do
       if track.save
         Point.where(id: points.map(&:id)).update_all(track_id: track.id)
-        detect_and_create_segments(track, points)
+        detect_and_create_segments(track, points) unless skip_segment_detection
         saved_track = track
       else
         Rails.logger.error "Failed to create track for user #{user.id}: #{track.errors.full_messages.join(', ')}"
@@ -195,39 +199,35 @@ module Tracks::TrackBuilder
     }
   end
 
-  def detect_and_create_segments(track, points)
-    detector = TransportationModes::Detector.new(track, points)
+  def detect_and_create_segments(track, _points)
+    safe_settings = Users::SafeSettings.new(user.settings || {})
+    detector = TransportationModes::Detector.new(
+      track,
+      enabled_modes: safe_settings.enabled_transportation_modes,
+      preserved: track.track_segments.manually_corrected.to_a
+    )
     segment_data = detector.call
 
     return if segment_data.empty?
 
-    segments = segment_data.map do |data|
-      track.track_segments.create(
-        transportation_mode: data[:mode],
-        start_index: data[:start_index],
-        end_index: data[:end_index],
-        distance: data[:distance],
-        duration: data[:duration],
-        avg_speed: data[:avg_speed],
-        max_speed: data[:max_speed],
-        avg_acceleration: data[:avg_acceleration],
-        confidence: data[:confidence],
-        source: data[:source]
-      )
-    end.select(&:persisted?)
-
-    update_dominant_mode(track, segments)
+    TrackSegments::BulkInserter.call(track, segment_data)
+    update_dominant_mode(track, segment_data)
   rescue StandardError => e
     Rails.logger.error "Failed to detect transportation modes for track #{track.id}: #{e.message}"
   end
 
-  def update_dominant_mode(track, segments)
-    return if segments.empty?
+  def update_dominant_mode(track, segment_data)
+    return if segment_data.empty?
 
-    dominant_segment = segments.max_by { |s| s.duration || 0 }
-    return unless dominant_segment
-
-    track.update_column(:dominant_mode, dominant_segment.transportation_mode)
+    segments = segment_data.map do |d|
+      TrackSegment.new(
+        transportation_mode: d[:mode],
+        distance: d[:distance],
+        duration: d[:duration]
+      )
+    end
+    mode = Track.pick_dominant_mode(segments)
+    track.update_column(:dominant_mode, mode) if mode
   end
 
   private

@@ -12,6 +12,9 @@ RSpec.describe DedupeTracksForUniqueIndex do
     ActiveRecord::Base.connection.execute(
       'DROP INDEX IF EXISTS index_tracks_on_user_start_end_unique'
     )
+    ActiveRecord::Base.connection.execute(
+      'DROP INDEX IF EXISTS index_tracks_on_user_tracker_start_end_unique'
+    )
   end
 
   def make_track(distance: 100)

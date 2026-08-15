@@ -1,11 +1,45 @@
-# To get started with Dependabot version updates, you'll need to specify which
-# package ecosystems to update and where the package manifests are located.
-# Please see the documentation for all configuration options:
-# https://docs.github.com/github/administering-a-repository/configuration-options-for-dependency-updates
-
+# Dependabot version updates.
+# Docs: https://docs.github.com/code-security/dependabot/dependabot-version-updates
 version: 2
 updates:
   - package-ecosystem: 'bundler'
     directory: '/'
+    target-branch: 'dev'
     schedule:
       interval: 'weekly'
+      day: 'monday'
+    open-pull-requests-limit: 10
+    groups:
+      ruby-minor-patch:
+        update-types:
+          - 'minor'
+          - 'patch'
+
+  - package-ecosystem: 'docker'
+    directory: '/docker'
+    target-branch: 'dev'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+    open-pull-requests-limit: 5
+    ignore:
+      # The mbgl_libs stage must stay on 24.04: the prebuilt
+      # @maplibre/maplibre-gl-native binding links libicuuc/libicudata/
+      # libicui18n .so.74, and no later Ubuntu ships ICU 74.
+      - dependency-name: 'ubuntu'
+        update-types:
+          - 'version-update:semver-major'
+          - 'version-update:semver-minor'
+
+  - package-ecosystem: 'github-actions'
+    directory: '/'
+    target-branch: 'dev'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+    open-pull-requests-limit: 5
+    groups:
+      actions-minor-patch:
+        update-types:
+          - 'minor'
+          - 'patch'

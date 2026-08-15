@@ -1,0 +1,15 @@
+{
+  "name": "Warm Beige",
+  "description": "Earthy warm neutrals with sepia tones - vintage map aesthetic",
+  "bg": "#F5F0E8",
+  "text": "#6B5B4F",
+  "gradient_color": "#F5F0E8",
+  "water": "#DDD5C8",
+  "parks": "#E8E4D8",
+  "road_motorway": "#8B7355",
+  "road_primary": "#A08B70",
+  "road_secondary": "#B5A48E",
+  "road_tertiary": "#C9BBAA",
+  "road_residential": "#D9CFC2",
+  "road_default": "#C9BBAA"
+}

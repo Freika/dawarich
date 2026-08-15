@@ -10,6 +10,7 @@ require 'yabeda/rspec'
 require 'rswag/specs'
 require 'sidekiq/testing'
 require 'super_diff/rspec-rails'
+require 'active_job/continuation/test_helper'
 
 require 'rake'
 require 'shoulda/matchers'
@@ -34,10 +35,13 @@ end
 
 RSpec.configure do |config|
   config.use_transactional_fixtures = true
+  config.filter_run_excluding :eval
   config.infer_spec_type_from_file_location!
   config.filter_rails_from_backtrace!
 
   config.include FactoryBot::Syntax::Methods
+  config.include ActiveJob::TestHelper
+  config.include ActiveJob::Continuation::TestHelper
 
   config.rswag_dry_run = false
 

@@ -118,12 +118,42 @@ RSpec.describe 'settings/general', type: :request do
     end
 
     describe 'POST /verify_supporter' do
-      context 'when email is blank' do
+      context 'when both email and github username are blank' do
         it 'redirects with alert' do
-          post settings_verify_supporter_path, params: { supporter_email: '' }
+          post settings_verify_supporter_path, params: { supporter_email: '', supporter_github_username: '' }
 
           expect(response).to redirect_to(settings_general_index_path)
-          expect(flash[:alert]).to eq('Please enter an email address')
+          expect(flash[:alert]).to include('email address or GitHub username')
+        end
+      end
+
+      context 'when github username is a verified supporter' do
+        before do
+          allow_any_instance_of(Supporter::VerifyGithubUsername).to receive(:call)
+            .and_return({ supporter: true, platform: 'github' })
+        end
+
+        it 'saves the username and redirects with success notice' do
+          post settings_verify_supporter_path, params: { supporter_github_username: 'octocat' }
+
+          expect(response).to redirect_to(settings_general_index_path)
+          expect(flash[:notice]).to include('Verified!')
+          expect(user.reload.settings['supporter_github_username']).to eq('octocat')
+        end
+      end
+
+      context 'when github username is not a supporter' do
+        before do
+          allow_any_instance_of(Supporter::VerifyEmail).to receive(:call).and_return({ supporter: false })
+          allow_any_instance_of(Supporter::VerifyGithubUsername).to receive(:call).and_return({ supporter: false })
+        end
+
+        it 'saves the username and redirects with failure alert' do
+          post settings_verify_supporter_path, params: { supporter_github_username: 'nobody' }
+
+          expect(response).to redirect_to(settings_general_index_path)
+          expect(flash[:alert]).to include('supporter list')
+          expect(user.reload.settings['supporter_github_username']).to eq('nobody')
         end
       end
 
@@ -152,8 +182,23 @@ RSpec.describe 'settings/general', type: :request do
           post settings_verify_supporter_path, params: { supporter_email: 'unknown@example.com' }
 
           expect(response).to redirect_to(settings_general_index_path)
-          expect(flash[:alert]).to include('Email not found in supporter list')
+          expect(flash[:alert]).to include('supporter list')
           expect(user.reload.settings['supporter_email']).to eq('unknown@example.com')
+        end
+      end
+
+      context 'when one field is submitted blank while the other was saved' do
+        before do
+          allow_any_instance_of(Supporter::VerifyEmail).to receive(:call).and_return({ supporter: false })
+          allow_any_instance_of(Supporter::VerifyGithubUsername).to receive(:call).and_return({ supporter: false })
+          user.update!(settings: user.settings.merge('supporter_email' => 'saved@example.com'))
+        end
+
+        it 'does not wipe the previously saved email' do
+          post settings_verify_supporter_path, params: { supporter_email: '', supporter_github_username: 'octocat' }
+
+          expect(user.reload.settings['supporter_email']).to eq('saved@example.com')
+          expect(user.reload.settings['supporter_github_username']).to eq('octocat')
         end
       end
     end

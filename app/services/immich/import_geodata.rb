@@ -35,7 +35,7 @@ class Immich::ImportGeodata
   private
 
   def retrieve_immich_data
-    Immich::RequestPhotos.new(user, start_date:, end_date:).call
+    Immich::RequestPhotos.new(user, start_date:, end_date:, raise_on_connection_error: true).call
   end
 
   def parse_immich_data(immich_data)
@@ -53,7 +53,7 @@ class Immich::ImportGeodata
       asset.dig('exifInfo', 'latitude') != 0 &&
       asset.dig('exifInfo', 'longitude') &&
       asset.dig('exifInfo', 'longitude') != 0 &&
-      asset.dig('exifInfo', 'dateTimeOriginal')
+      (asset['fileCreatedAt'] || asset.dig('exifInfo', 'dateTimeOriginal'))
   end
 
   def extract_geodata(asset)
@@ -61,7 +61,7 @@ class Immich::ImportGeodata
       latitude: asset['exifInfo']['latitude'],
       longitude: asset['exifInfo']['longitude'],
       lonlat: "SRID=4326;POINT(#{asset['exifInfo']['longitude']} #{asset['exifInfo']['latitude']})",
-      timestamp: Time.iso8601(asset['exifInfo']['dateTimeOriginal']).utc.to_i
+      timestamp: Time.iso8601(asset['fileCreatedAt'] || asset['exifInfo']['dateTimeOriginal']).utc.to_i
     }
   end
 
@@ -70,13 +70,15 @@ class Immich::ImportGeodata
   end
 
   def create_import_failed_notification(import_name)
-    Notifications::Create.new(
-      user:,
-      kind: :info,
-      title: 'Import was not created',
-      content: "Import with the same name (#{import_name}) already exists. " \
-               'If you want to proceed, delete the existing import and try again.'
-    ).call
+    I18n.with_locale(user.locale) do
+      Notifications::Create.new(
+        user:,
+        kind: :info,
+        title: I18n.t('services.immich.import_geodata.import_was_not_created'),
+        content: I18n.t('services.immich.import_geodata.import_with_the_same_name_import_name_already_exists_if',
+                        import_name: import_name)
+      ).call
+    end
   end
 
   def file_name(immich_data_json)

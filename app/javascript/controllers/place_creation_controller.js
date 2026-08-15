@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { translate } from "i18n"
 
 export default class extends Controller {
   static targets = [
@@ -64,9 +65,9 @@ export default class extends Controller {
     this.removeMethodOverride()
 
     if (this.hasModalTitleTarget)
-      this.modalTitleTarget.textContent = "Create New Place"
+      this.modalTitleTarget.textContent = translate("places.create_new")
     if (this.hasSubmitButtonTarget)
-      this.submitButtonTarget.value = "Create Place"
+      this.submitButtonTarget.value = translate("places.create")
 
     this.modalTarget.classList.add("modal-open")
     this.nameInputTarget.focus()
@@ -90,9 +91,9 @@ export default class extends Controller {
     this.addMethodOverride("patch")
 
     if (this.hasModalTitleTarget)
-      this.modalTitleTarget.textContent = "Edit Place"
+      this.modalTitleTarget.textContent = translate("places.edit")
     if (this.hasSubmitButtonTarget)
-      this.submitButtonTarget.value = "Update Place"
+      this.submitButtonTarget.value = translate("places.update")
 
     // Check appropriate tag checkboxes
     const tagCheckboxes = this.formTarget.querySelectorAll(
@@ -119,8 +120,7 @@ export default class extends Controller {
 
     // Reset nearby frame
     if (this.hasNearbyFrameTarget) {
-      this.nearbyFrameTarget.innerHTML =
-        '<p class="text-sm text-gray-500">Open modal to load nearby suggestions</p>'
+      this.nearbyFrameTarget.innerHTML = `<p class="text-sm text-gray-500">${translate("places.open_for_suggestions")}</p>`
     }
 
     document.dispatchEvent(new CustomEvent("place:create:cancelled"))
@@ -142,6 +142,12 @@ export default class extends Controller {
   onSubmitEnd(event) {
     if (!event.detail.success) return
 
+    // Close the modal immediately on success. If the turbo_stream payload
+    // populated #place-creation-data, also dispatch place:created/updated
+    // so the map can refresh; if it didn't, the modal still closes (the
+    // place was saved on the server either way).
+    this.close()
+
     const dataEl = document.getElementById("place-creation-data")
     if (!dataEl?.dataset.place) return
 
@@ -151,12 +157,9 @@ export default class extends Controller {
 
     document.dispatchEvent(new CustomEvent(eventName, { detail: { place } }))
 
-    // Reset data element
     delete dataEl.dataset.place
     delete dataEl.dataset.created
     delete dataEl.dataset.updated
-
-    this.close()
   }
 
   // --- Private helpers ---

@@ -56,7 +56,7 @@ class Users::ImportData::Visits
 
   def create_visit_record(visit_data)
     visit_attributes = prepare_visit_attributes(visit_data)
-    user.visits.create!(visit_attributes)
+    ActiveRecord::Base.transaction(requires_new: true) { user.visits.create!(visit_attributes) }
   end
 
   def prepare_visit_attributes(visit_data)
@@ -81,20 +81,18 @@ class Users::ImportData::Visits
 
     Rails.logger.debug "Looking for place reference: #{name} at (#{latitude}, #{longitude})"
 
-    # First try exact match (name + coordinates)
-    place = Place.where(
+    place = user.places.find_by(
       name: name,
       latitude: latitude,
       longitude: longitude
-    ).first
+    )
 
     if place
       Rails.logger.debug "Found exact place match for visit: #{name} -> existing place ID #{place.id}"
       return place
     end
 
-    # Try coordinate-only match with close proximity
-    place = Place.where(
+    place = user.places.where(
       'latitude BETWEEN ? AND ? AND longitude BETWEEN ? AND ?',
       latitude - 0.0001, latitude + 0.0001,
       longitude - 0.0001, longitude + 0.0001
@@ -105,12 +103,10 @@ class Users::ImportData::Visits
       return place
     end
 
-    # If no match found, create the place to ensure visit import succeeds
-    # This handles cases where places weren't imported in the places phase
     Rails.logger.info "Creating missing place during visit import: #{name} at (#{latitude}, #{longitude})"
 
     begin
-      place = Place.create!(
+      place = user.places.create!(
         name: name,
         latitude: latitude,
         longitude: longitude,

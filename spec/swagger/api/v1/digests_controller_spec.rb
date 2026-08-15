@@ -37,8 +37,6 @@ RSpec.describe 'Digests API', type: :request do
                  }
                }
 
-        after { |example| SwaggerResponseExample.capture(example, response) }
-
         run_test!
       end
 
@@ -71,8 +69,6 @@ RSpec.describe 'Digests API', type: :request do
 
         let!(:stats) { (1..12).each { |m| create(:stat, year: 2024, month: m, user: user) } }
         let(:digest_params) { { year: 2024 } }
-
-        after { |example| SwaggerResponseExample.capture(example, response) }
 
         run_test!
       end
@@ -186,8 +182,6 @@ RSpec.describe 'Digests API', type: :request do
           )
         end
         let(:year) { 2024 }
-
-        after { |example| SwaggerResponseExample.capture(example, response) }
 
         run_test!
       end

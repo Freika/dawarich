@@ -95,52 +95,26 @@ RSpec.describe Users::MailerSendingJob, type: :job do
       end
     end
 
-    context 'when email_type is a transitional trial-reminder' do
-      # The four trial-reminder types below were enqueued by Dawarich pre-billing
-      # extraction. They're kept in MAILER_REGISTRY through the queue-drain
-      # window so stale Sidekiq jobs fire normally instead of crashing.
-      # Earliest removal: 2026-05-17 (deploy + 21 days). When you delete them,
-      # also delete the registry entries, the mailer methods, and the templates.
-      let(:active_user) { create(:user, skip_auto_trial: true, status: :active, active_until: 1.year.from_now) }
-      let(:auto_converting_user) do
-        create(:user, :trial, skip_auto_trial: true, active_until: 1.week.from_now, subscription_source: :paddle)
-      end
-
-      %w[trial_expires_soon trial_expired].each do |type|
-        it "skips #{type} when the user is already active (no stale 'trial expires soon' to a paying user)" do
-          expect(UsersMailer).not_to receive(:with)
-          described_class.perform_now(active_user.id, type)
+    context 'when email_type is a legacy trial lifecycle email' do
+      %w[trial_expired trial_expires_soon post_trial_reminder_early post_trial_reminder_late].each do |email_type|
+        it "skips #{email_type}" do
+          expect do
+            described_class.perform_now(user.id, email_type)
+          end.not_to have_enqueued_job(ActionMailer::MailDeliveryJob)
         end
 
-        it "skips #{type} for an auto-converting trial (card on file — Paddle owns the lifecycle)" do
-          expect(UsersMailer).not_to receive(:with)
-          described_class.perform_now(auto_converting_user.id, type)
+        it "logs that #{email_type} was skipped" do
+          allow(Rails.logger).to receive(:info)
+
+          described_class.perform_now(user.id, email_type)
+
+          expect(Rails.logger).to have_received(:info).with(/skipping legacy Manager-owned email_type=#{email_type}/)
         end
 
-        it "still delivers #{type} to a legacy trial user (drain path)" do
-          expect(UsersMailer).to receive(:with).with({ user: user })
-          expect(UsersMailer).to receive(type).and_return(mailer_double)
-          expect(mailer_double).to receive(:deliver_later)
-          described_class.perform_now(user.id, type)
-        end
-      end
-
-      %w[post_trial_reminder_early post_trial_reminder_late].each do |type|
-        it "skips #{type} when the user has converted to active" do
-          expect(UsersMailer).not_to receive(:with)
-          described_class.perform_now(active_user.id, type)
-        end
-
-        it "skips #{type} for an auto-converting trial (card on file)" do
-          expect(UsersMailer).not_to receive(:with)
-          described_class.perform_now(auto_converting_user.id, type)
-        end
-
-        it "still delivers #{type} to a legacy trial user (drain path)" do
-          expect(UsersMailer).to receive(:with).with({ user: user })
-          expect(UsersMailer).to receive(type).and_return(mailer_double)
-          expect(mailer_double).to receive(:deliver_later)
-          described_class.perform_now(user.id, type)
+        it "delivers nothing for #{email_type} when a stale ActionMailer job bypasses this wrapper" do
+          expect do
+            UsersMailer.with(user: user).public_send(email_type).deliver_now
+          end.not_to(change { ActionMailer::Base.deliveries.size })
         end
       end
     end

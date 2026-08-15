@@ -6,7 +6,7 @@ module Api
       before_action :set_place, only: %i[show update destroy]
 
       def index
-        @places = current_api_user.places.includes(:tags, :visits)
+        @places = current_api_user.places.includes(:tags, :active_visits)
 
         if params[:tag_ids].present?
           tag_ids = Array(params[:tag_ids])
@@ -20,7 +20,7 @@ module Api
             tagged_ids = current_api_user.places.with_tags(numeric_tag_ids).pluck(:id)
             untagged_ids = current_api_user.places.without_tags.pluck(:id)
             combined_ids = (tagged_ids + untagged_ids).uniq
-            @places = current_api_user.places.includes(:tags, :visits).where(id: combined_ids)
+            @places = current_api_user.places.includes(:tags, :active_visits).where(id: combined_ids)
           elsif numeric_tag_ids.any?
             # Only tagged places with ANY of the selected tags (OR logic)
             @places = @places.with_tags(numeric_tag_ids)
@@ -29,6 +29,15 @@ module Api
             @places = @places.without_tags
           end
         end
+
+        @places =
+          case params[:filter]
+          when 'all'       then @places
+          when 'manual'    then @places.manual
+          when 'confirmed' then @places.linked_to_confirmed_visits(current_api_user)
+          when 'tagged'    then @places.tagged
+          else                  @places.map_visible(current_api_user)
+          end
 
         # Support pagination (defaults to page 1 with all results if no page param)
         page = params[:page].presence || 1
@@ -60,10 +69,11 @@ module Api
 
       def create
         @place = current_api_user.places.build(place_params.except(:tag_ids))
+        @place.user_named = true
 
         if @place.save
           add_tags if tag_ids.present?
-          @place = current_api_user.places.includes(:tags, :visits).find(@place.id)
+          @place = current_api_user.places.includes(:tags, :active_visits).find(@place.id)
 
           render json: serialize_place(@place), status: :created
         else
@@ -74,7 +84,7 @@ module Api
       def update
         if @place.update(place_params)
           set_tags if params[:place][:tag_ids]
-          @place = current_api_user.places.includes(:tags, :visits).find(@place.id)
+          @place = current_api_user.places.includes(:tags, :active_visits).find(@place.id)
 
           render json: serialize_place(@place)
         else
@@ -90,7 +100,8 @@ module Api
 
       def nearby
         unless params[:latitude].present? && params[:longitude].present?
-          return render json: { error: 'latitude and longitude are required' }, status: :bad_request
+          return render json: { error: I18n.t('controllers.api.v1.places.latitude_and_longitude_are_required') },
+                        status: :bad_request
         end
 
         results = Places::NearbySearch.new(
@@ -103,10 +114,40 @@ module Api
         render json: { places: results }
       end
 
+      def search
+        unless params[:lat].present? && params[:lon].present?
+          return render json: { error: I18n.t('controllers.api.v1.places.lat_and_lon_are_required') },
+                        status: :bad_request
+        end
+
+        lat = params[:lat].to_f
+        lon = params[:lon].to_f
+        unless lat.between?(-90, 90) && lon.between?(-180, 180)
+          return render json: { error: I18n.t('controllers.api.v1.places.invalid_coordinates') }, status: :bad_request
+        end
+
+        radius = [[params[:radius]&.to_f || 1.0, 0.01].max, 5.0].min
+        limit = [[params[:limit]&.to_i || 10, 1].max, 50].min
+        query = params[:q].to_s.strip
+
+        places =
+          if query.length >= 2
+            Places::Search.new(query: query, latitude: lat, longitude: lon, radius: radius, limit: limit).call
+          else
+            Places::NearbySearch.new(latitude: lat, longitude: lon, radius: radius, limit: limit, cache: true).call
+          end
+
+        areas = Areas::Nearby.new(
+          user: current_api_user, latitude: lat, longitude: lon, radius: radius, query: query
+        ).call
+
+        render json: { places: places, areas: areas }
+      end
+
       private
 
       def set_place
-        @place = current_api_user.places.includes(:tags, :visits).find(params[:id])
+        @place = current_api_user.places.includes(:tags, :active_visits).find(params[:id])
       end
 
       def place_params
@@ -141,7 +182,8 @@ module Api
           note: place.note,
           icon: place.tags.first&.icon,
           color: place.tags.first&.color,
-          visits_count: place.visits.size,
+          visits_count: place.active_visits.size,
+          name_locked: place.name_locked?,
           created_at: place.created_at,
           tags: place.tags.map do |tag|
             {
