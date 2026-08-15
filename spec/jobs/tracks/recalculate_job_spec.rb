@@ -5,7 +5,11 @@ require 'rails_helper'
 RSpec.describe Tracks::RecalculateJob, type: :job do
   describe '#perform' do
     let(:user) { create(:user) }
-    let(:track) { create(:track, user: user) }
+    let(:track) do
+      create(:track, user: user).tap do |t|
+        create(:point, user: user).update_column(:track_id, t.id)
+      end
+    end
 
     before do
       allow(ExceptionReporter).to receive(:call)
@@ -24,6 +28,15 @@ RSpec.describe Tracks::RecalculateJob, type: :job do
 
     it 'queues in the tracks queue' do
       expect(described_class.new.queue_name).to eq('tracks')
+    end
+
+    context 'when every point has left the track' do
+      it 'destroys the track instead of storing an empty path' do
+        empty_track = create(:track, user: user)
+
+        expect { described_class.perform_now(empty_track.id) }
+          .to change { Track.exists?(empty_track.id) }.to(false)
+      end
     end
 
     context 'when track does not exist' do

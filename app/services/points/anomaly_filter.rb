@@ -68,10 +68,15 @@ class Points::AnomalyFilter
   DEPARTURE_DATE_SQL = "COALESCE(motion_data->>'departure_date', " \
                        "raw_data->'properties'->>'departure_date')"
 
-  def initialize(user_id, start_time, end_time)
+  # invalidate_dependents: flagging detaches points from their tracks and
+  # queues the track and the month's stats for a rebuild. The backfill path
+  # opts out — it rebuilds every track and stat wholesale after the filter
+  # finishes, and per-point enqueues there would only duplicate that work.
+  def initialize(user_id, start_time, end_time, invalidate_dependents: true)
     @user_id = user_id
     @start_time = start_time
     @end_time = end_time
+    @invalidate_dependents = invalidate_dependents
   end
 
   def call
@@ -133,15 +138,16 @@ class Points::AnomalyFilter
     # UPDATE: raw_data archival would otherwise strip the only evidence, and a
     # later reset re-run would silently unflag the point and bring the leap
     # back.
-    Point.where(user_id: @user_id, timestamp: @start_time..@end_time)
-         .not_anomaly
-         .where("motion_data->>'action' = 'visit'")
-         .where("#{DEPARTURE_DATE_SQL} ~ '^\\d{4}-'")
-         .where("#{DEPARTURE_DATE_SQL} < '3000-'")
-         .update_all(
-           'anomaly = TRUE, updated_at = NOW(), ' \
-           "motion_data = motion_data || jsonb_build_object('departure_date', #{DEPARTURE_DATE_SQL})"
-         )
+    relation = Point.where(user_id: @user_id, timestamp: @start_time..@end_time)
+                    .not_anomaly
+                    .where("motion_data->>'action' = 'visit'")
+                    .where("#{DEPARTURE_DATE_SQL} ~ '^\\d{4}-'")
+                    .where("#{DEPARTURE_DATE_SQL} < '3000-'")
+
+    flag_anomalies(
+      relation,
+      "motion_data = motion_data || jsonb_build_object('departure_date', #{DEPARTURE_DATE_SQL})"
+    )
   end
 
   # Sentinel pass: a fix whose motion fields are all invalid markers (speed
@@ -162,23 +168,51 @@ class Points::AnomalyFilter
     # tower fix often arrives in a batch of one, before the precise fixes
     # that condemn it exist, and the batch that brings those fixes starts
     # after it. Each run therefore re-judges the recent past.
-    Point.where(user_id: @user_id,
-                timestamp: (@start_time - SENTINEL_PRECISE_NEIGHBOR_SECONDS)..@end_time)
-         .not_anomaly
-         .where(vertical_accuracy: ...0)
-         .where("velocity LIKE '-%'")
-         .where('accuracy > ?', SENTINEL_ACCURACY_METERS)
-         .where(
-           'EXISTS (SELECT 1 FROM points precise ' \
-           'WHERE precise.user_id = points.user_id ' \
-           'AND precise.tracker_id IS NOT DISTINCT FROM points.tracker_id ' \
-           'AND precise.timestamp BETWEEN points.timestamp - :window AND points.timestamp + :window ' \
-           'AND precise.accuracy <= :radius ' \
-           'AND precise.anomaly IS NOT TRUE ' \
-           'AND precise.id <> points.id)',
-           window: SENTINEL_PRECISE_NEIGHBOR_SECONDS, radius: PRECISE_FIX_METERS
-         )
-         .update_all(anomaly: true, updated_at: Time.current)
+    relation = Point.where(user_id: @user_id,
+                           timestamp: (@start_time - SENTINEL_PRECISE_NEIGHBOR_SECONDS)..@end_time)
+                    .not_anomaly
+                    .where(vertical_accuracy: ...0)
+                    .where("velocity LIKE '-%'")
+                    .where('accuracy > ?', SENTINEL_ACCURACY_METERS)
+                    .where(
+                      'EXISTS (SELECT 1 FROM points precise ' \
+                      'WHERE precise.user_id = points.user_id ' \
+                      'AND precise.tracker_id IS NOT DISTINCT FROM points.tracker_id ' \
+                      'AND precise.timestamp BETWEEN points.timestamp - :window AND points.timestamp + :window ' \
+                      'AND precise.accuracy <= :radius ' \
+                      'AND precise.anomaly IS NOT TRUE ' \
+                      'AND precise.id <> points.id)',
+                      window: SENTINEL_PRECISE_NEIGHBOR_SECONDS, radius: PRECISE_FIX_METERS
+                    )
+
+    flag_anomalies(relation)
+  end
+
+  # A flagged point leaves its track in the same UPDATE: recalculation reads
+  # track.points, so a stale track_id would keep feeding the leap back into
+  # the geometry it exists to fix. The track and the month's stats both baked
+  # the point in, so each gets queued for a rebuild — in one bulk enqueue.
+  def flag_anomalies(relation, extra_set = nil)
+    flagged = relation.pluck(:id, :track_id, :timestamp)
+    return 0 if flagged.empty?
+
+    set_clause = 'anomaly = TRUE, track_id = NULL, updated_at = NOW()'
+    set_clause = "#{set_clause}, #{extra_set}" if extra_set
+    Point.where(id: flagged.map(&:first)).update_all(set_clause)
+
+    enqueue_dependent_rebuilds(flagged) if @invalidate_dependents
+
+    flagged.size
+  end
+
+  def enqueue_dependent_rebuilds(flagged)
+    track_jobs = flagged.filter_map { |_, track_id, _| track_id }.uniq
+                        .map { |track_id| Tracks::RecalculateJob.new(track_id) }
+    stats_jobs = flagged.map { |_, _, timestamp| Time.zone.at(timestamp) }
+                        .map { |time| [time.year, time.month] }.uniq
+                        .map { |year, month| Stats::CalculatingJob.new(@user_id, year, month) }
+
+    ActiveJob.perform_all_later(track_jobs + stats_jobs)
   end
 
   # Pass 2: Speed-based sandwich test (chunked by month to handle large imports)

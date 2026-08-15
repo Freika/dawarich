@@ -115,9 +115,9 @@ RSpec.describe Points::AnomalyBackfillUserJob, type: :job do
 
     it 'invokes the AnomalyFilter once per populated month, not per 30-day chunk in the span' do
       filter_calls = 0
-      allow(Points::AnomalyFilter).to receive(:new).and_wrap_original do |original, *args|
+      allow(Points::AnomalyFilter).to receive(:new).and_wrap_original do |original, *args, **kwargs|
         filter_calls += 1
-        original.call(*args)
+        original.call(*args, **kwargs)
       end
 
       described_class.new.perform(sparse_user.id)

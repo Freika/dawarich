@@ -925,6 +925,74 @@ RSpec.describe Points::AnomalyFilter do
       end
     end
 
+    # A point can be flagged after realtime generation already baked it into a
+    # track: stored geometry and monthly distance keep the leap until both are
+    # rebuilt, and recalculation reads track.points, which a stale track_id
+    # would keep feeding.
+    context 'a departed visit report already baked into a track' do
+      let(:base_time) { 1.hour.ago.to_i }
+
+      let!(:walk) do
+        2.times.map do |i|
+          create(:point, user: user, accuracy: 5, timestamp: base_time + (i * 60),
+                 latitude: 51.3421 + (i * 0.0001), longitude: 12.3761,
+                 lonlat: "POINT(12.3761 #{51.3421 + (i * 0.0001)})")
+        end
+      end
+
+      let!(:baked_report) do
+        create(:point, user: user, accuracy: 6, timestamp: base_time + 90,
+               latitude: 51.3428, longitude: 12.3768, lonlat: 'POINT(12.3768 51.3428)',
+               motion_data: { 'action' => 'visit' },
+               raw_data: { 'properties' => { 'action' => 'visit',
+                                             'departure_date' => '2026-05-19T18:34:25Z' } })
+      end
+
+      let!(:track) do
+        create(:track, user: user,
+               start_at: Time.zone.at(base_time), end_at: Time.zone.at(base_time + 120)).tap do |t|
+          Point.where(id: walk.map(&:id) + [baked_report.id]).update_all(track_id: t.id)
+        end
+      end
+
+      def run_filter(**options)
+        described_class.new(user.id, 2.hours.ago.to_i, Time.current.to_i, **options).call
+      end
+
+      it 'detaches the flagged point from its track' do
+        run_filter
+        expect(baked_report.reload.track_id).to be_nil
+      end
+
+      it 'leaves the clean points attached' do
+        run_filter
+        walk.each { |point| expect(point.reload.track_id).to eq(track.id) }
+      end
+
+      it 'enqueues a recalculation for the affected track' do
+        expect { run_filter }.to have_enqueued_job(Tracks::RecalculateJob).with(track.id)
+      end
+
+      it 'enqueues a stats refresh for the affected month' do
+        time = Time.zone.at(baked_report.timestamp)
+
+        expect { run_filter }
+          .to have_enqueued_job(Stats::CalculatingJob).with(user.id, time.year, time.month)
+      end
+
+      it 'skips the dependent rebuilds when the caller rebuilds wholesale' do
+        expect { run_filter(invalidate_dependents: false) }
+          .not_to have_enqueued_job(Tracks::RecalculateJob)
+      end
+
+      it 'still flags and detaches the point when the rebuilds are skipped' do
+        run_filter(invalidate_dependents: false)
+
+        expect(baked_report.reload.anomaly).to be true
+        expect(baked_report.track_id).to be_nil
+      end
+    end
+
     # At ingest each batch is filtered alone, and a wake-up tower fix often
     # arrives in a batch of one — its precise context only exists a few
     # minutes later, in the next batch, whose window starts after it.

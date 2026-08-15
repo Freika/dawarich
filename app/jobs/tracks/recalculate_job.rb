@@ -10,6 +10,13 @@ class Tracks::RecalculateJob < ApplicationJob
       return
     end
 
+    # A track everyone left cannot be recalculated — an empty path would be
+    # stored and the husk would keep rendering its stale geometry forever.
+    if track.points.none?
+      track.destroy
+      return
+    end
+
     track.recalculate_path_and_distance!
 
     track.broadcast_geojson_updated
