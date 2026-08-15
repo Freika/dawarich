@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Dawarich Cloud can now credit sign-ups to affiliate partners. Self-hosted instances are unaffected — both the tracking script and the attribution call stay off unless the Cloud-only `PARTNERO_PROGRAM_ID` and `PARTNERO_API_KEY` are set.
+
 ### Changed
 
 - Consolidated `points` table indexes: a new `(user_id, timestamp, lonlat)` unique index replaces three redundant indexes, roughly halving the write cost of every point. The index is built concurrently at boot during the upgrade; on instances with millions of points this can take several minutes — the app stays usable while it builds.
