@@ -67,43 +67,8 @@ RSpec.describe Places::OrphanCleanupJob, type: :job do
     end
 
     context 'when called with nil (ownerless pass)' do
-      it 'deletes ownerless orphan photon places that no per-user job can reach' do
-        ownerless = create(:place, user: nil, source: :photon)
-        owned_orphan = create(:place, user: user, source: :photon)
-
-        described_class.new.perform(nil)
-
-        expect(Place.exists?(ownerless.id)).to be(false)
-        expect(Place.exists?(owned_orphan.id)).to be(true)
-      end
-
-      it 'keeps ownerless places that are manual, noted, tagged, or visit-backed' do
-        manual  = create(:place, user: nil, source: :manual)
-        noted   = create(:place, user: nil, source: :photon, note: 'keep me')
-        tagged  = create(:place, user: nil, source: :photon)
-        visited = create(:place, user: nil, source: :photon)
-
-        tagged.tags << create(:tag, user: user)
-        create(:visit, user: user, place: visited, area: nil)
-
-        described_class.new.perform(nil)
-
-        expect(Place.exists?(manual.id)).to be(true)
-        expect(Place.exists?(noted.id)).to be(true)
-        expect(Place.exists?(tagged.id)).to be(true)
-        expect(Place.exists?(visited.id)).to be(true)
-      end
-
-      it 'deletes place_visits rows referencing ownerless orphan places' do
-        manual_place = create(:place, user: nil, source: :manual)
-        orphan       = create(:place, user: nil, source: :photon)
-        visit        = create(:visit, user: user, area: nil, place: manual_place)
-        PlaceVisit.create!(place: orphan, visit: visit)
-
-        described_class.new.perform(nil)
-
-        expect(PlaceVisit.exists?(place_id: orphan.id)).to be(false)
-        expect(Place.exists?(orphan.id)).to be(false)
+      it 'is a no-op because Place.user_id is NOT NULL — no ownerless places can exist' do
+        expect { described_class.new.perform(nil) }.not_to raise_error
       end
     end
   end

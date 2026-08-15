@@ -168,6 +168,7 @@ class ReverseGeocoding::Places::FetchData
     update_attributes = places_to_update.uniq(&:id).sort_by(&:id).map do |place|
       {
         id: place.id,
+        user_id: place.user_id,
         name: place.name,
         latitude: place.latitude,
         longitude: place.longitude,
