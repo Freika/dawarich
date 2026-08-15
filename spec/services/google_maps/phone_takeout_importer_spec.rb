@@ -7,6 +7,12 @@ RSpec.describe GoogleMaps::PhoneTakeoutImporter do
     subject(:parser) { described_class.new(import, user.id).call }
 
     let(:user) { create(:user) }
+    let(:raw_signals_file) do
+      f = Tempfile.new(['phone_takeout_raw_signals', '.json'])
+      f.write(json_data.to_json)
+      f.rewind
+      f
+    end
 
     context 'when file content is an object' do
       # This file contains 3 duplicates
@@ -52,7 +58,7 @@ RSpec.describe GoogleMaps::PhoneTakeoutImporter do
         it 'creates points with correct data' do
           parser
 
-          points = user.points.order(:timestamp)
+          points = user.points.order(:timestamp, :id)
 
           expect(points[6].lat).to eq(27.696576)
           expect(points[6].lon).to eq(-97.376949)
@@ -293,18 +299,12 @@ RSpec.describe GoogleMaps::PhoneTakeoutImporter do
           ]
         }
       end
-      let(:temp_file) do
-        f = Tempfile.new(['phone_takeout_raw_signals', '.json'])
-        f.write(json_data.to_json)
-        f.rewind
-        f
-      end
       let(:import) { create(:import, user:, name: 'phone_takeout.json') }
 
-      after { temp_file.close! }
+      after { raw_signals_file.close! }
 
       it 'reads altitudeMeters from the position object rather than the wrapper' do
-        described_class.new(import, user.id, temp_file.path).call
+        described_class.new(import, user.id, raw_signals_file.path).call
 
         point = user.points.sole
         expect(point.altitude).to eq(170.02)
@@ -318,6 +318,9 @@ RSpec.describe GoogleMaps::PhoneTakeoutImporter do
         {
           'rawSignals' => [
             {
+              'accuracyMeters' => 999,
+              'altitudeMeters' => 888,
+              'speedMetersPerSecond' => 77.7,
               'position' => {
                 'LatLng' => '52.8899352°, -2.2046753°',
                 'source' => 'CELL',
@@ -327,18 +330,12 @@ RSpec.describe GoogleMaps::PhoneTakeoutImporter do
           ]
         }
       end
-      let(:temp_file) do
-        f = Tempfile.new(['phone_takeout_raw_signals', '.json'])
-        f.write(json_data.to_json)
-        f.rewind
-        f
-      end
       let(:import) { create(:import, user:, name: 'phone_takeout.json') }
 
-      after { temp_file.close! }
+      after { raw_signals_file.close! }
 
-      it 'still imports the point and leaves the missing fields nil' do
-        described_class.new(import, user.id, temp_file.path).call
+      it 'leaves them nil rather than falling back to the wrapper' do
+        described_class.new(import, user.id, raw_signals_file.path).call
 
         point = user.points.sole
         expect(point.altitude).to be_nil
