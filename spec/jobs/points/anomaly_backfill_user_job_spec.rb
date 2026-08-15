@@ -97,6 +97,19 @@ RSpec.describe Points::AnomalyBackfillUserJob, type: :job do
         described_class.new.perform(user.id)
       end.not_to have_enqueued_job(Users::RecalculateDataJob)
     end
+
+    it 'rebuilds affected tracks itself, since no wholesale rebuild follows' do
+      point = create(:point, user: user, accuracy: 6, timestamp: 30.minutes.ago.to_i,
+                     latitude: 51.3402, longitude: 12.3712, lonlat: 'POINT(12.3712 51.3402)',
+                     motion_data: { 'action' => 'visit',
+                                    'departure_date' => '2026-05-19T18:34:25Z' })
+      track = create(:track, user: user)
+      point.update_column(:track_id, track.id)
+
+      expect do
+        described_class.new.perform(user.id)
+      end.to have_enqueued_job(Tracks::RecalculateJob).with(track.id)
+    end
   end
 
   describe '#perform skips empty chunks for sparse data' do

@@ -993,6 +993,41 @@ RSpec.describe Points::AnomalyFilter do
       end
     end
 
+    context 'both passes flag points in the same month' do
+      let(:base_time) { 1.hour.ago.to_i }
+
+      let!(:precise_context) do
+        3.times.map do |i|
+          create(:point, user: user, accuracy: 5, velocity: '1', vertical_accuracy: 5,
+                 timestamp: base_time + (i * 60),
+                 latitude: 51.3431 + (i * 0.0001), longitude: 12.3781,
+                 lonlat: "POINT(12.3781 #{51.3431 + (i * 0.0001)})")
+        end
+      end
+
+      let!(:departed_report) do
+        create(:point, user: user, accuracy: 6, timestamp: base_time + 30,
+               latitude: 51.3438, longitude: 12.3788, lonlat: 'POINT(12.3788 51.3438)',
+               motion_data: { 'action' => 'visit' },
+               raw_data: { 'properties' => { 'action' => 'visit',
+                                             'departure_date' => '2026-05-19T18:34:25Z' } })
+      end
+
+      let!(:tower_fix) do
+        create(:point, user: user, accuracy: 1500, velocity: '-1', vertical_accuracy: -1,
+               timestamp: base_time + 90, latitude: 51.3448, longitude: 12.3798,
+               lonlat: 'POINT(12.3798 51.3448)')
+      end
+
+      it 'enqueues one stats refresh for the shared month, not one per pass' do
+        time = Time.zone.at(departed_report.timestamp)
+
+        expect { described_class.new(user.id, 2.hours.ago.to_i, Time.current.to_i).call }
+          .to have_enqueued_job(Stats::CalculatingJob)
+          .with(user.id, time.year, time.month).exactly(:once)
+      end
+    end
+
     # At ingest each batch is filtered alone, and a wake-up tower fix often
     # arrives in a batch of one — its precise context only exists a few
     # minutes later, in the next batch, whose window starts after it.

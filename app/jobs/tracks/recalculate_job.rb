@@ -10,9 +10,11 @@ class Tracks::RecalculateJob < ApplicationJob
       return
     end
 
-    # A track everyone left cannot be recalculated — an empty path would be
-    # stored and the husk would keep rendering its stale geometry forever.
-    if track.points.none?
+    # A track needs two points to form a path: calculate_path nils the path
+    # below that, the presence validation then rejects the save, and the husk
+    # would keep rendering its stale geometry forever. Points are nullified on
+    # destroy, so a survivor goes back to being an ordinary untracked point.
+    if track.points.count < 2
       track.destroy
       return
     end

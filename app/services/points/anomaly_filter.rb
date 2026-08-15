@@ -82,12 +82,14 @@ class Points::AnomalyFilter
   def call
     return 0 unless filtering_enabled?
 
+    @flagged_for_rebuild = []
     count = 0
     count += filter_null_island
     count += filter_by_accuracy
     count += filter_visit_reports
     count += filter_sentinel_fixes
     count += filter_by_speed
+    enqueue_dependent_rebuilds if @invalidate_dependents && @flagged_for_rebuild.any?
     count
   end
 
@@ -190,8 +192,8 @@ class Points::AnomalyFilter
 
   # A flagged point leaves its track in the same UPDATE: recalculation reads
   # track.points, so a stale track_id would keep feeding the leap back into
-  # the geometry it exists to fix. The track and the month's stats both baked
-  # the point in, so each gets queued for a rebuild — in one bulk enqueue.
+  # the geometry it exists to fix. The rows are collected across passes and
+  # their tracks and months rebuilt once, at the end of the run.
   def flag_anomalies(relation, extra_set = nil)
     flagged = relation.pluck(:id, :track_id, :timestamp)
     return 0 if flagged.empty?
@@ -200,17 +202,17 @@ class Points::AnomalyFilter
     set_clause = "#{set_clause}, #{extra_set}" if extra_set
     Point.where(id: flagged.map(&:first)).update_all(set_clause)
 
-    enqueue_dependent_rebuilds(flagged) if @invalidate_dependents
+    @flagged_for_rebuild.concat(flagged)
 
     flagged.size
   end
 
-  def enqueue_dependent_rebuilds(flagged)
-    track_jobs = flagged.filter_map { |_, track_id, _| track_id }.uniq
-                        .map { |track_id| Tracks::RecalculateJob.new(track_id) }
-    stats_jobs = flagged.map { |_, _, timestamp| Time.zone.at(timestamp) }
-                        .map { |time| [time.year, time.month] }.uniq
-                        .map { |year, month| Stats::CalculatingJob.new(@user_id, year, month) }
+  def enqueue_dependent_rebuilds
+    track_jobs = @flagged_for_rebuild.filter_map { |_, track_id, _| track_id }.uniq
+                                     .map { |track_id| Tracks::RecalculateJob.new(track_id) }
+    stats_jobs = @flagged_for_rebuild.map { |_, _, timestamp| Time.zone.at(timestamp) }
+                                     .map { |time| [time.year, time.month] }.uniq
+                                     .map { |year, month| Stats::CalculatingJob.new(@user_id, year, month) }
 
     ActiveJob.perform_all_later(track_jobs + stats_jobs)
   end

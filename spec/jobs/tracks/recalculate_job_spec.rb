@@ -7,7 +7,7 @@ RSpec.describe Tracks::RecalculateJob, type: :job do
     let(:user) { create(:user) }
     let(:track) do
       create(:track, user: user).tap do |t|
-        create(:point, user: user).update_column(:track_id, t.id)
+        2.times { create(:point, user: user).update_column(:track_id, t.id) }
       end
     end
 
@@ -36,6 +36,16 @@ RSpec.describe Tracks::RecalculateJob, type: :job do
 
         expect { described_class.perform_now(empty_track.id) }
           .to change { Track.exists?(empty_track.id) }.to(false)
+      end
+    end
+
+    context 'when a track is left with a single point' do
+      it 'destroys it, since one point cannot form a path' do
+        thin_track = create(:track, user: user)
+        create(:point, user: user).update_column(:track_id, thin_track.id)
+
+        expect { described_class.perform_now(thin_track.id) }
+          .to change { Track.exists?(thin_track.id) }.to(false)
       end
     end
 
