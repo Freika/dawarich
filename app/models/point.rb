@@ -42,6 +42,7 @@ class Point < ApplicationRecord
   scope :not_reverse_geocoded, -> { where(reverse_geocoded_at: nil) }
   scope :visited, -> { where.not(visit_id: nil) }
   scope :not_visited, -> { where(visit_id: nil) }
+  scope :complete, -> { where.not(timestamp: nil).where.not(lonlat: nil) }
   scope :not_anomaly, -> { where(anomaly: [false, nil]) }
   scope :anomaly, -> { where(anomaly: true) }
   # Ingest, cleanup and the anomaly filter must all agree on what counts as a

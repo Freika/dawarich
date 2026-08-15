@@ -42,7 +42,7 @@ class Families::Locations
 
   def build_family_locations(sharing_members)
     latest_points =
-      sharing_members.map { _1.points.where.not(timestamp: nil).order(timestamp: :desc).first }.compact
+      sharing_members.map { _1.points.complete.order(timestamp: :desc).first }.compact
 
     latest_points.map do |point|
       {
@@ -51,8 +51,8 @@ class Families::Locations
         email_initial: point.user.email.first.upcase,
         latitude: point.lat,
         longitude: point.lon,
-        timestamp: point.timestamp.to_i,
-        updated_at: Time.zone.at(point.timestamp.to_i),
+        timestamp: point.timestamp,
+        updated_at: Time.zone.at(point.timestamp),
         battery: point.battery,
         battery_status: point.battery_status
       }
