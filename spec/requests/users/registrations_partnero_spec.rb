@@ -24,6 +24,27 @@ RSpec.describe 'Users::Registrations Partnero attribution', type: :request do
     }
   end
 
+  # Partnero's referral param is configured per program: their docs use `via`,
+  # the snippet generated for this program uses `aff`. Both are accepted so the
+  # attribution cannot be silently lost to a dashboard setting.
+  %i[aff via].each do |param|
+    it "attributes a signup referred via ?#{param}=" do
+      get new_user_registration_path(param => 'PARTNER123')
+
+      expect { post user_registration_path, params: valid_params }
+        .to have_enqueued_job(Partnero::CustomerSignupJob)
+        .with(instance_of(Integer), 'PARTNER123')
+    end
+  end
+
+  it 'prefers aff when a link carries both' do
+    get new_user_registration_path(aff: 'FROM_AFF', via: 'FROM_VIA')
+
+    expect { post user_registration_path, params: valid_params }
+      .to have_enqueued_job(Partnero::CustomerSignupJob)
+      .with(instance_of(Integer), 'FROM_AFF')
+  end
+
   context 'when the visitor arrived through an affiliate link' do
     it 'attributes the created user to the referring partner' do
       get new_user_registration_path(via: 'PARTNER123')

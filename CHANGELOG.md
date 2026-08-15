@@ -4,12 +4,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.12.2] - 2026-08-15, Berlin
+
+### Added
+
+- Dawarich Cloud can now credit sign-ups to affiliate partners. Self-hosted instances are unaffected — both the tracking script and the attribution call stay off unless the Cloud-only `PARTNERO_PROGRAM_ID` and `PARTNERO_API_KEY` are set.
+
+### Changed
+
+- Consolidated `points` table indexes: a new `(user_id, timestamp, lonlat)` unique index replaces three redundant indexes, roughly halving the write cost of every point. The index is built by the boot-time migration; on instances with millions of points this can take several minutes, during which the container waits before serving requests. The `points` table itself stays fully usable while the index builds.
+- Automatic daily track generation no longer rebuilds a user's entire history when their tracks are missing and their history exceeds 100k points. On Dawarich Cloud such histories are backfilled automatically at a throttled rate; self-hosted instances still rebuild directly, as fast as their own hardware allows.
+
+### Fixed
+
+- The map no longer stays blank after an upgrade when the `dawarich_public` Docker volume still holds precompiled assets from an older version. The asset manifest now ships inside the app image instead of the public volume, the boot-time asset sync stages from inside the app directory (a tmpfs-mounted `/tmp` can no longer skip it), and the container logs a warning if the sync still cannot run. (#3346)
+- User data exports no longer fail when a legacy place has no spatial coordinates. (#3344)
+- The Tracks layer toggle on the map now reflects your saved setting after a page reload; previously it always showed as off even though the setting was saved and tracks were loaded. (#736)
+- The map no longer leaps to a just-left place or a phantom spot off your route: iOS visit reports delivered after departure and coarse cell-tower fixes without motion data are now filtered out as anomalies. Existing histories are re-evaluated automatically after the upgrade, and tracks and stats are rebuilt along the way.
+- The Family page no longer fails to load, and the family map no longer places a member at the wrong spot dated 1970, when someone's history contains legacy points missing a timestamp or coordinates. Such points are also left out of shared location history, and a member whose points are all incomplete is omitted from the map rather than shown somewhere wrong. (#3254)
+- Google Timeline phone exports no longer lose altitude, accuracy and speed on points taken from the `rawSignals` section — those fields were read from the wrong nesting level and came back empty. Points already imported keep their empty values, and importing the same file again skips them; delete the old import first, then import the file again. (#3337)
+- Coarse `rawSignals` fixes with an accuracy radius above 10km are now flagged as anomalies on import, the same as points from every other source. They previously slipped through because their accuracy was never read.
+- Daily and monthly distance no longer counts a jump across a tracking gap longer than your "minutes between routes" setting when the two points come from different imports, from live tracking, or from a photo integration (Immich, PhotoPrism, Google Photos). Points inside one imported file still count as continuous history regardless of gaps, so sparse sources such as Google Timeline keep their full distance. Existing months keep their old numbers — run **Map v2 → Settings → Recalculate tracks & stats** once after upgrading to apply the fix to past months. (#2689)
+- Every anomaly-filter pass now detaches the points it flags from their tracks and queues the affected tracks and months for a rebuild, so a point flagged after a track was already built no longer leaves a stale leap baked into the geometry. Rebuilds triggered by the anomaly backfill run on the low-priority queue so live tracking stays ahead.
+- A large history that produces no tracks is no longer re-walked by the throttled track backfill every day; a completed walk now backs off for a week before it can be scheduled again.
+
+
 ## [1.12.1] - 2026-08-13, Berlin
 
 ### Fixed
 
 - Fix to recently added migrations that could fail on some self-hosted instances with a large number of visits. The migration now runs in smaller batches and is resumable if interrupted.
-
 
 ## [1.12.0] - 2026-08-11, Berlin
 

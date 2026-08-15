@@ -165,7 +165,7 @@ RSpec.describe Points::Create do
 
         it 'uses the correct unique constraint' do
           expect(Point).to receive(:upsert_all) do |_data, options|
-            expect(options[:unique_by]).to eq(%i[lonlat timestamp user_id])
+            expect(options[:unique_by]).to eq(%i[user_id timestamp lonlat])
             deduplicated_upsert_result
           end
 

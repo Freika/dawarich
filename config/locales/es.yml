@@ -951,7 +951,7 @@ es:
         min_2: 1min
         min_3: 90min
         min_4: 180min
-        time_threshold_for_route_splitting: Umbral de tiempo para la división de rutas
+        time_threshold_for_route_splitting: Umbral de tiempo para la división de rutas; los intervalos más largos también se excluyen de las estadísticas de distancia
         points_rendering_mode: Modo de renderizado de puntos
         raw_all_points: Crudo (todos los puntos)
         simplified_reduced_points: Simplificado (puntos reducidos)
