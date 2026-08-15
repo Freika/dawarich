@@ -5,6 +5,9 @@ class Users::SafeSettings
 
   GATED_MAP_LAYERS = ['Heatmap', 'Fog of War', 'Scratch map'].freeze
 
+  MIN_MINUTES_BETWEEN_ROUTES = 1
+  MAX_MINUTES_BETWEEN_ROUTES = 1440
+
   FOG_OF_WAR_MODES = %w[points hexagons].freeze
 
   DEFAULT_VALUES = {
@@ -139,7 +142,7 @@ class Users::SafeSettings
     minutes = settings['minutes_between_routes'].to_i
     minutes = DEFAULT_VALUES['minutes_between_routes'] unless minutes.positive?
 
-    minutes.clamp(1, 1440)
+    minutes.clamp(MIN_MINUTES_BETWEEN_ROUTES, MAX_MINUTES_BETWEEN_ROUTES)
   end
 
   def time_threshold_minutes

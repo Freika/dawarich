@@ -1,9 +1,6 @@
 # frozen_string_literal: true
 
 class Stats::DailyDistanceQuery
-  MIN_MINUTES_BETWEEN_ROUTES = 1
-  MAX_MINUTES_BETWEEN_ROUTES = 1440
-
   # Photo integrations sync a whole library as one import, so its points are
   # snapshots rather than a continuous track.
   SNAPSHOT_IMPORT_SOURCES = %w[immich_api photoprism_api google_photos].freeze
@@ -101,14 +98,14 @@ class Stats::DailyDistanceQuery
   end
 
   def snapshot_source_values
-    Import.sources.values_at(*SNAPSHOT_IMPORT_SOURCES).join(', ')
+    Import.sources.fetch_values(*SNAPSHOT_IMPORT_SOURCES).join(', ')
   end
 
   def validate_minutes_between_routes(minutes)
     minutes = minutes.to_i
     minutes = Users::SafeSettings::DEFAULT_VALUES['minutes_between_routes'].to_i unless minutes.positive?
 
-    minutes.clamp(MIN_MINUTES_BETWEEN_ROUTES, MAX_MINUTES_BETWEEN_ROUTES)
+    minutes.clamp(Users::SafeSettings::MIN_MINUTES_BETWEEN_ROUTES, Users::SafeSettings::MAX_MINUTES_BETWEEN_ROUTES)
   end
 
   def validate_timezone(timezone)
