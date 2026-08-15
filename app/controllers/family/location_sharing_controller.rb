@@ -4,7 +4,8 @@ class Family::LocationSharingController < ApplicationController
   include FlashStreamable
 
   before_action :authenticate_user!
-  before_action :ensure_family_feature_enabled!
+  # No plan gate: turning sharing off is a privacy action and must stay
+  # reachable after the family's plan lapses. Readers are gated on their side.
   before_action :ensure_user_in_family!
 
   def update
@@ -45,9 +46,15 @@ class Family::LocationSharingController < ApplicationController
 
     respond_to do |format|
       format.turbo_stream do
-        render turbo_stream: stream_flash(:error, 'User is not part of a family'), status: :not_found
+        render turbo_stream: stream_flash(
+          :error,
+          I18n.t('controllers.family.location_sharing.user_is_not_part_of_a_family')
+        ), status: :not_found
       end
-      format.json { render json: { error: 'User is not part of a family' }, status: :not_found }
+      format.json do
+        render json: { error: I18n.t('controllers.family.location_sharing.user_is_not_part_of_a_family') },
+               status: :not_found
+      end
     end
   end
 end

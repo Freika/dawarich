@@ -65,9 +65,11 @@ class Users::ImportData
       extract_archive
       process_archive_data
       create_success_notification
-
-      @import_stats
     end
+
+    filter_restored_anomalies
+
+    @import_stats
   rescue UnsupportedFormatError => e
     create_failure_notification(e)
     nil
@@ -152,6 +154,31 @@ class Users::ImportData
     validate_import_completeness(expected_counts) if expected_counts.present?
   end
 
+  # The archive carries no `anomaly` column, so every restored point arrives
+  # unflagged no matter what the source instance had already filtered out.
+  # Recompute instead of importing the flags: it also covers archives written
+  # before a filtering improvement shipped. Honours the user's own
+  # gps_filtering_enabled setting, which was restored moments ago.
+  #
+  # Runs AFTER the import transaction commits. Inside it, a database error here
+  # would leave the transaction aborted, and the next statement — the success
+  # notification — would fail with PG::InFailedSqlTransaction, discarding an
+  # otherwise complete restore over a filtering problem.
+  def filter_restored_anomalies
+    min_timestamp, max_timestamp = user.points.pick(
+      Arel.sql('MIN(timestamp)'), Arel.sql('MAX(timestamp)')
+    )
+    return if min_timestamp.nil?
+
+    # Leading :: is required — Users::ImportData::Points is the points handler
+    # and would otherwise shadow the top-level Points namespace.
+    flagged = ::Points::AnomalyFilter.new(user.id, min_timestamp, max_timestamp).call
+    Rails.logger.info "Flagged #{flagged} anomalous points after restore for user: #{user.email}"
+  rescue StandardError => e
+    # A filtering failure must not discard an otherwise complete restore.
+    ExceptionReporter.call(e, 'Anomaly filtering failed after data import')
+  end
+
   def detect_format_version
     manifest_path = @import_directory.join('manifest.json')
     data_json_path = @import_directory.join('data.json')
@@ -167,7 +194,7 @@ class Users::ImportData
     elsif File.exist?(data_json_path)
       1 # Legacy format
     else
-      raise UnsupportedFormatError, 'Unknown export format: neither manifest.json nor data.json found'
+      raise UnsupportedFormatError, I18n.t('services.users.import_data.unknown_export_format')
     end
   end
 
@@ -178,7 +205,7 @@ class Users::ImportData
     when 2
       Users::ImportData::V2Handler.new(user, @import_directory, @import_stats)
     else
-      raise StandardError, "Unsupported export format version: #{format_version}"
+      raise StandardError, I18n.t('services.users.import_data.unsupported_format_version', version: format_version)
     end
   end
 
@@ -206,21 +233,27 @@ class Users::ImportData
       "#{@import_stats[:files_restored]} files restored, " \
       "#{@import_stats[:notifications_created]} notifications"
 
-    ::Notifications::Create.new(
-      user: user,
-      title: 'Data import completed',
-      content: "Your data has been imported successfully (#{summary}).",
-      kind: :info
-    ).call
+    I18n.with_locale(user.locale) do
+      ::Notifications::Create.new(
+        user: user,
+        title: I18n.t('services.users.import_data.data_import_completed'),
+        content: I18n.t('services.users.import_data.your_data_has_been_imported_successfully_summary',
+                        summary: summary),
+        kind: :info
+      ).call
+    end
   end
 
   def create_failure_notification(error)
-    ::Notifications::Create.new(
-      user: user,
-      title: 'Data import failed',
-      content: "Your data import failed with error: #{error.message}. Please check the archive format and try again.",
-      kind: :error
-    ).call
+    I18n.with_locale(user.locale) do
+      ::Notifications::Create.new(
+        user: user,
+        title: I18n.t('services.users.import_data.data_import_failed'),
+        content: I18n.t('services.users.import_data.your_data_import_failed_with_error_message_please_check_the',
+                        message: error.message),
+        kind: :error
+      ).call
+    end
   end
 
   def validate_import_completeness(expected_counts)

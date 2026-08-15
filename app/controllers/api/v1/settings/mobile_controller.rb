@@ -33,10 +33,12 @@ class Api::V1::Settings::MobileController < ApiController
       Rails.logger.info(
         "Mobile settings updated for user #{current_api_user.id}: #{sanitized.keys.join(', ')}"
       )
-      render json: mobile_settings_response.merge(message: 'Settings updated'), status: :ok
+      message = I18n.t('controllers.api.v1.settings.mobile.settings_updated')
+      render json: mobile_settings_response.merge(message: message),
+             status: :ok
     else
       render json: {
-        message: 'Something went wrong',
+        message: I18n.t('controllers.api.v1.settings.mobile.something_went_wrong'),
         errors: current_api_user.errors.full_messages
       }, status: :unprocessable_content
     end

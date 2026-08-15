@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_27_130000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_13_120100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -224,6 +224,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_27_130000) do
   end
 
   create_table "imports", force: :cascade do |t|
+    t.jsonb "additional_data_extraction", default: {}, null: false
+    t.integer "additional_data_extraction_status", default: 0, null: false
     t.datetime "created_at", null: false
     t.boolean "demo", default: false, null: false
     t.integer "doubles", default: 0
@@ -238,6 +240,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_27_130000) do
     t.integer "status", default: 0, null: false
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
+    t.index ["additional_data_extraction_status"], name: "index_imports_on_additional_data_extraction_status"
     t.index ["source"], name: "index_imports_on_source"
     t.index ["status"], name: "index_imports_on_status"
     t.index ["user_id"], name: "index_imports_on_user_id"
@@ -302,6 +305,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_27_130000) do
     t.datetime "created_at", null: false
     t.boolean "demo", default: false, null: false
     t.jsonb "geodata", default: {}, null: false
+    t.bigint "import_id"
     t.decimal "latitude", precision: 10, scale: 6, null: false
     t.decimal "longitude", precision: 10, scale: 6, null: false
     t.geography "lonlat", limit: {srid: 4326, type: "st_point", geographic: true}
@@ -313,7 +317,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_27_130000) do
     t.datetime "updated_at", null: false
     t.bigint "user_id"
     t.index "(((geodata -> 'properties'::text) ->> 'osm_id'::text))", name: "index_places_on_geodata_osm_id"
+    t.index "user_id, ((geodata ->> 'external_place_id'::text))", name: "idx_places_user_external_place_id", unique: true, where: "((geodata ->> 'external_place_id'::text) IS NOT NULL)"
     t.index ["demo"], name: "index_places_on_demo_true", where: "(demo = true)"
+    t.index ["import_id"], name: "idx_places_import_id_extracted", where: "(import_id IS NOT NULL)"
     t.index ["lonlat"], name: "index_places_on_lonlat", using: :gist
     t.index ["user_id"], name: "index_places_on_user_id"
   end
@@ -364,14 +370,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_27_130000) do
     t.index ["lonlat"], name: "index_points_on_lonlat", using: :gist
     t.index ["raw_data_archive_id"], name: "index_points_on_raw_data_archive_id"
     t.index ["track_id", "timestamp"], name: "idx_points_track_id_timestamp"
-    t.index ["track_id"], name: "index_points_on_track_id"
     t.index ["user_id", "country_name"], name: "idx_points_user_country_name"
-    t.index ["user_id", "geodata"], name: "index_points_on_user_id_and_empty_geodata", where: "(geodata = '{}'::jsonb)"
     t.index ["user_id", "id"], name: "index_points_on_unarchived", where: "((raw_data_archived = false) AND (raw_data <> '{}'::jsonb))"
+    t.index ["user_id", "timestamp", "lonlat"], name: "index_points_on_user_id_timestamp_lonlat", unique: true
     t.index ["user_id", "timestamp"], name: "idx_points_user_visit_null_timestamp", where: "(visit_id IS NULL)"
     t.index ["user_id", "timestamp"], name: "index_points_on_user_id_and_timestamp", order: { timestamp: :desc }
-    t.index ["user_id"], name: "idx_points_user_id_legacy_tracker", where: "((tracker_id)::text = ANY ((ARRAY['google-maps-timeline-export'::character varying, 'google-maps-phone-timeline-export'::character varying])::text[]))"
-    t.index ["user_id"], name: "index_points_on_user_id"
+    t.index ["user_id"], name: "idx_points_user_id_legacy_tracker", where: "((tracker_id)::text = ANY (ARRAY[('google-maps-timeline-export'::character varying)::text, ('google-maps-phone-timeline-export'::character varying)::text]))"
     t.index ["visit_id"], name: "index_points_on_visit_id"
   end
 
@@ -472,19 +476,25 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_27_130000) do
     t.float "avg_acceleration"
     t.float "avg_speed"
     t.integer "confidence", default: 0
+    t.float "confidence_score"
     t.datetime "corrected_at"
     t.datetime "created_at", null: false
     t.integer "distance"
     t.integer "duration"
-    t.integer "end_index", null: false
+    t.timestamptz "end_at"
+    t.integer "end_index"
     t.float "max_speed"
+    t.geometry "path", limit: {srid: 4326, type: "line_string"}
     t.string "source"
-    t.integer "start_index", null: false
+    t.timestamptz "start_at"
+    t.integer "start_index"
     t.bigint "track_id", null: false
     t.integer "transportation_mode", default: 0, null: false
     t.datetime "updated_at", null: false
     t.index ["corrected_at"], name: "index_track_segments_on_corrected_at", where: "(corrected_at IS NOT NULL)"
+    t.index ["track_id", "start_at"], name: "idx_track_segments_track_start_at_unique", unique: true, where: "(start_at IS NOT NULL)"
     t.index ["track_id", "start_index", "end_index"], name: "index_track_segments_on_track_and_indices"
+    t.index ["track_id", "start_index"], name: "idx_track_segments_track_start_index_unique", unique: true
     t.index ["track_id", "transportation_mode"], name: "index_track_segments_on_track_id_and_transportation_mode"
   end
 
@@ -500,6 +510,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_27_130000) do
     t.integer "elevation_max"
     t.integer "elevation_min"
     t.datetime "end_at", null: false
+    t.bigint "import_id"
     t.geometry "original_path", limit: {srid: 4326, type: "line_string"}, null: false
     t.datetime "start_at", null: false
     t.string "tracker_id"
@@ -508,6 +519,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_27_130000) do
     t.index "user_id, COALESCE(tracker_id, ''::character varying), start_at, end_at", name: "index_tracks_on_user_tracker_start_end_unique", unique: true
     t.index ["demo"], name: "index_tracks_on_demo_true", where: "(demo = true)"
     t.index ["dominant_mode"], name: "index_tracks_on_dominant_mode"
+    t.index ["import_id"], name: "idx_tracks_import_id_extracted", where: "(import_id IS NOT NULL)"
     t.index ["user_id", "start_at"], name: "idx_tracks_user_id_start_at"
     t.index ["user_id", "tracker_id", "end_at"], name: "idx_tracks_user_tracker_end_at"
     t.index ["user_id"], name: "index_tracks_on_user_id"
@@ -572,7 +584,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_27_130000) do
     t.string "utm_medium"
     t.string "utm_source"
     t.string "utm_term"
-    t.datetime "visits_redetected_at"
+    t.datetime "visits_redetected_at", default: -> { "CURRENT_TIMESTAMP" }
     t.index ["api_key"], name: "index_users_on_api_key"
     t.index ["deleted_at"], name: "index_users_on_deleted_at"
     t.index ["email"], name: "index_users_on_email", unique: true
@@ -593,9 +605,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_27_130000) do
     t.integer "confidence", limit: 2
     t.jsonb "confidence_breakdown", default: {}, null: false
     t.datetime "created_at", null: false
+    t.datetime "deleted_at"
     t.boolean "demo", default: false, null: false
+    t.integer "detection_version", limit: 2
     t.integer "duration", null: false
     t.datetime "ended_at", null: false
+    t.bigint "import_id"
     t.string "name", null: false
     t.bigint "place_id"
     t.datetime "started_at", null: false
@@ -604,8 +619,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_27_130000) do
     t.bigint "user_id", null: false
     t.index ["area_id"], name: "index_visits_on_area_id"
     t.index ["demo"], name: "index_visits_on_demo_true", where: "(demo = true)"
+    t.index ["import_id"], name: "idx_visits_import_id_extracted", where: "(import_id IS NOT NULL)"
     t.index ["place_id"], name: "index_visits_on_place_id"
     t.index ["started_at"], name: "index_visits_on_started_at"
+    t.index ["user_id", "started_at", "place_id"], name: "idx_visits_user_started_at_place_unique", unique: true
     t.index ["user_id"], name: "index_visits_on_user_id"
   end
 

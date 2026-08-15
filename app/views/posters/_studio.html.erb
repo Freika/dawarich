@@ -15,7 +15,7 @@
     <header class="flex items-center justify-between gap-4 border-b border-base-content/10 bg-base-200 px-4 py-2">
       <h2 class="text-sm font-semibold tracking-wide flex items-center gap-2 shrink-0">
         <%= icon 'map', class: 'h-4 w-4 opacity-70' %>
-        Poster Studio
+        <%= t('.poster_studio') %>
       </h2>
       <% if show_date_controls %>
         <div class="flex items-center gap-2 min-w-0">
@@ -29,15 +29,15 @@
                   data-action="poster-studio-editor#applyDates">
             <span class="hidden h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-r-transparent"
                   data-poster-studio-editor-target="loadSpinner"></span>
-            <span data-poster-studio-editor-target="loadLabel">Load</span>
+            <span data-poster-studio-editor-target="loadLabel"><%= t('.load') %></span>
           </button>
           <div class="hidden items-center gap-1 lg:flex">
             <button type="button" class="btn btn-sm btn-ghost"
-                    data-range="today" data-action="poster-studio-editor#presetRange">Today</button>
+                    data-range="today" data-action="poster-studio-editor#presetRange"><%= t('.today') %></button>
             <button type="button" class="btn btn-sm btn-ghost"
-                    data-range="week" data-action="poster-studio-editor#presetRange">Last 7 days</button>
+                    data-range="week" data-action="poster-studio-editor#presetRange"><%= t('.last_7_days') %></button>
             <button type="button" class="btn btn-sm btn-ghost"
-                    data-range="month" data-action="poster-studio-editor#presetRange">Last month</button>
+                    data-range="month" data-action="poster-studio-editor#presetRange"><%= t('.last_month') %></button>
           </div>
         </div>
       <% else %>
@@ -46,7 +46,7 @@
           <span><%= local_assigns[:date_range_label] %></span>
         </div>
       <% end %>
-      <button type="button" class="btn btn-ghost btn-sm btn-circle shrink-0" title="Close studio"
+      <button type="button" class="btn btn-ghost btn-sm btn-circle shrink-0" title="<%= t('.close_studio') %>"
               data-action="poster-studio-editor#close">
         <%= icon 'x' %>
       </button>
@@ -75,11 +75,11 @@
           <button type="button" class="btn btn-sm"
                   data-action="poster-studio-editor#recenter">
             <%= icon 'compass', class: 'h-4 w-4' %>
-            Recenter
+            <%= t('.recenter') %>
           </button>
         </div>
         <p class="mt-2 text-xs opacity-60">
-          Drag to pan, scroll to zoom — the frame is what gets exported.
+          <%= t('.drag_to_pan_scroll_to_zoom_the_frame_is_what') %>
         </p>
       </div>
 
@@ -90,7 +90,7 @@
             <summary class="collapse-title font-medium min-h-0 cursor-pointer">
               <span class="flex items-center gap-2">
                 <%= icon 'grid2x2', class: 'h-4 w-4 opacity-70 shrink-0' %>
-                Layout
+                <%= t('.layout') %>
               </span>
             </summary>
             <div class="collapse-content space-y-2">
@@ -105,7 +105,7 @@
             <summary class="collapse-title font-medium min-h-0 cursor-pointer">
               <span class="flex items-center gap-2">
                 <%= icon 'palette', class: 'h-4 w-4 opacity-70 shrink-0' %>
-                Theme
+                <%= t('.theme') %>
               </span>
             </summary>
             <div class="collapse-content space-y-2">
@@ -115,7 +115,7 @@
                           class="w-full overflow-hidden rounded-md border border-base-300 ring-primary ring-offset-base-100 transition hover:scale-105 focus:outline-none focus-visible:ring-2"
                           style="height: 32px; background-image: url('<%= asset_path("poster_themes/#{theme['key']}.webp") %>'); background-size: cover; background-position: center;"
                           title="<%= theme['name'] %>"
-                          aria-label="<%= theme['name'] %> theme"
+                          aria-label="<%= t('.theme_aria_label', theme: theme['name']) %>"
                           data-poster-studio-editor-target="swatch"
                           data-key="<%= theme['key'] %>"
                           data-name="<%= theme['name'] %>"
@@ -124,14 +124,14 @@
               </div>
               <p class="text-xs opacity-70" data-poster-studio-editor-target="themeLabel"></p>
               <details class="collapse collapse-arrow bg-base-200 rounded-lg">
-                <summary class="collapse-title text-sm min-h-0 cursor-pointer select-none">Customize colors</summary>
+                <summary class="collapse-title text-sm min-h-0 cursor-pointer select-none"><%= t('.customize_colors') %></summary>
                 <div class="collapse-content space-y-1">
                   <% [
-                    %w[bg Background], %w[water Water], %w[parks Parks],
-                    %w[buildings Buildings], %w[railway Railways], %w[boundaries Boundaries],
-                    ['road_motorway', 'Motorway roads'], ['road_primary', 'Primary roads'],
-                    ['road_residential', 'Residential roads'], ['road_default', 'Other roads'],
-                    %w[route Track], %w[text Text]
+                    ['bg', t('.background')], ['water', t('.water')], ['parks', t('.parks')],
+                    ['buildings', t('.buildings')], ['railway', t('.railways')], ['boundaries', t('.boundaries')],
+                    ['road_motorway', t('.motorway_roads')], ['road_primary', t('.primary_roads')],
+                    ['road_residential', t('.residential_roads')], ['road_default', t('.other_roads')],
+                    ['route', t('.track')], ['text', t('.text')]
                   ].each do |token, token_label| %>
                     <label class="flex items-center gap-2">
                       <input type="color"
@@ -154,7 +154,7 @@
             <summary class="collapse-title font-medium min-h-0 cursor-pointer">
               <span class="flex items-center gap-2">
                 <%= icon 'square-pen', class: 'h-4 w-4 opacity-70 shrink-0' %>
-                Text
+                <%= t('.text') %>
               </span>
             </summary>
             <div class="collapse-content space-y-2">
@@ -162,17 +162,17 @@
                 <input type="checkbox" class="toggle toggle-sm toggle-primary" checked
                        data-poster-studio-editor-target="textToggle"
                        data-action="change->poster-studio-editor#textChanged">
-                <span class="label-text text-sm">Show text</span>
+                <span class="label-text text-sm"><%= t('.show_text') %></span>
               </label>
               <label class="form-control">
-                <span class="label-text text-xs">Title</span>
-                <input type="text" class="input input-bordered input-sm w-full" placeholder="Berlin"
+                <span class="label-text text-xs"><%= t('.title') %></span>
+                <input type="text" class="input input-bordered input-sm w-full" placeholder="<%= t('.berlin') %>"
                        data-poster-studio-editor-target="titleInput"
                        data-action="input->poster-studio-editor#textChanged">
               </label>
               <label class="form-control">
-                <span class="label-text text-xs">Subtitle</span>
-                <input type="text" class="input input-bordered input-sm w-full" placeholder="Germany"
+                <span class="label-text text-xs"><%= t('.subtitle') %></span>
+                <input type="text" class="input input-bordered input-sm w-full" placeholder="<%= t('.germany') %>"
                        data-poster-studio-editor-target="subtitleInput"
                        data-action="input->poster-studio-editor#textChanged">
               </label>
@@ -180,10 +180,10 @@
                 <input type="checkbox" class="toggle toggle-sm toggle-primary" checked
                        data-poster-studio-editor-target="coordsToggle"
                        data-action="change->poster-studio-editor#textChanged">
-                <span class="label-text text-sm">Coordinates line</span>
+                <span class="label-text text-sm"><%= t('.coordinates_line') %></span>
               </label>
               <label class="form-control">
-                <span class="label-text text-xs">Font</span>
+                <span class="label-text text-xs"><%= t('.font') %></span>
                 <select class="select select-bordered select-sm py-0 w-full"
                         data-poster-studio-editor-target="fontSelect"
                         data-action="change->poster-studio-editor#fontChanged"></select>
@@ -195,17 +195,17 @@
             <summary class="collapse-title font-medium min-h-0 cursor-pointer">
               <span class="flex items-center gap-2">
                 <%= icon 'layer', class: 'h-4 w-4 opacity-70 shrink-0' %>
-                Layers
+                <%= t('.layers') %>
               </span>
             </summary>
             <div class="collapse-content space-y-1">
               <% [
-                ['roads', 'Roads', true],
-                ['water', 'Water', true],
-                ['landuse', 'Parks & land use', true],
-                ['buildings', 'Buildings', false],
-                ['rail', 'Railways', false],
-                ['boundaries', 'Boundaries', false]
+                ['roads', t('.roads'), true],
+                ['water', t('.water'), true],
+                ['landuse', t('.parks_land_use'), true],
+                ['buildings', t('.buildings'), false],
+                ['rail', t('.railways'), false],
+                ['boundaries', t('.boundaries'), false]
               ].each do |key, label, default_on| %>
                 <label class="label cursor-pointer justify-start gap-3 py-1">
                   <input type="checkbox" class="toggle toggle-sm toggle-primary"
@@ -217,7 +217,7 @@
               <% end %>
               <div class="pt-2">
                 <div class="flex items-center justify-between py-1">
-                  <span class="label-text text-xs">Track opacity</span>
+                  <span class="label-text text-xs"><%= t('.track_opacity') %></span>
                   <span class="text-xs font-medium tabular-nums opacity-80"
                         data-poster-studio-editor-target="trackOpacityLabel"></span>
                 </div>
@@ -228,7 +228,7 @@
               </div>
               <div class="pt-2">
                 <div class="flex items-center justify-between py-1">
-                  <span class="label-text text-xs">Track width</span>
+                  <span class="label-text text-xs"><%= t('.track_width') %></span>
                   <span class="text-xs font-medium tabular-nums opacity-80"
                         data-poster-studio-editor-target="trackWidthLabel"></span>
                 </div>
@@ -244,11 +244,11 @@
             <summary class="collapse-title font-medium min-h-0 cursor-pointer">
               <span class="flex items-center gap-2">
                 <%= icon 'camera', class: 'h-4 w-4 opacity-70 shrink-0' %>
-                Recent posters
+                <%= t('.recent_posters') %>
               </span>
             </summary>
             <div class="collapse-content space-y-3">
-              <p class="text-xs opacity-60">Server-rendered posters from "Save to gallery" — they stay here across sessions.</p>
+              <p class="text-xs opacity-60"><%= t('.server_rendered_posters_from_save_to_gallery_they_stay_here') %></p>
               <div id="poster-gallery-list" class="space-y-3">
                 <%= render partial: 'posters/poster', collection: @recent_posters %>
               </div>
@@ -259,19 +259,19 @@
         <div class="space-y-2 border-t border-base-content/10 p-3">
           <div class="text-xs opacity-70 space-y-0.5" data-poster-studio-editor-target="summary"></div>
 
-          <div class="divider my-0 text-xs font-medium opacity-50">Export a file</div>
+          <div class="divider my-0 text-xs font-medium opacity-50"><%= t('.export_a_file') %></div>
           <div class="grid grid-cols-2 gap-2">
             <label class="form-control">
-              <span class="label-text text-xs">Format</span>
+              <span class="label-text text-xs"><%= t('.format') %></span>
               <select class="select select-bordered select-sm py-0"
                       data-poster-studio-editor-target="format"
                       data-action="change->poster-studio-editor#updateSummary">
-                <option value="png" selected>PNG</option>
-                <option value="pdf">PDF</option>
+                <option value="png" selected><%= t('.png') %></option>
+                <option value="pdf"><%= t('.pdf') %></option>
               </select>
             </label>
             <label class="form-control" data-poster-studio-editor-target="dpiField">
-              <span class="label-text text-xs">Print DPI</span>
+              <span class="label-text text-xs"><%= t('.print_dpi') %></span>
               <select class="select select-bordered select-sm py-0"
                       data-poster-studio-editor-target="dpi"
                       data-action="change->poster-studio-editor#updateSummary">
@@ -284,68 +284,68 @@
                   data-poster-studio-editor-target="downloadButton"
                   data-action="poster-studio-editor#download">
             <%= icon 'download', class: 'h-4 w-4' %>
-            Download
+            <%= t('.download') %>
           </button>
           <button type="button" class="btn btn-ghost btn-xs w-full gap-1 opacity-70"
                   data-poster-studio-editor-target="saveButton"
                   data-action="poster-studio-editor#saveToGallery"
-                  title="Render this area server-side as the classic 3:4 print poster and keep it in Recent posters">
+                  title="<%= t('.render_this_area_server_side_as_the_classic_3_4') %>">
             <%= icon 'camera', class: 'h-3.5 w-3.5' %>
-            Save to gallery
+            <%= t('.save_to_gallery') %>
           </button>
           <p class="text-xs text-warning hidden" data-poster-studio-editor-target="saveNotice"></p>
 
-          <%# ── Order a print ── rendered only behind the poster_ordering flag,
-              then hidden until PRINT_ORDER_URL is set; only one of
-              {CTA, size picker, dialog} shows at a time. %>
+          <%# ── Order a print ── ships on: the poster_ordering flag drops this
+              block on an instance that turns it off, and the controller hides
+              it when PRINT_ORDER_URL is blanked (it otherwise defaults to the
+              hosted service); only one of {CTA, size picker, dialog} shows at
+              a time. %>
           <% if poster_ordering_enabled? %>
           <div class="hidden space-y-2" data-poster-studio-editor-target="orderSection">
-            <div class="divider my-0 text-xs font-medium opacity-50">Order a print</div>
+            <div class="divider my-0 text-xs font-medium opacity-50"><%= t('.order_a_print') %></div>
 
             <div class="space-y-1.5" data-poster-studio-editor-target="orderCta">
               <button type="button" class="btn btn-secondary btn-sm w-full"
                       data-poster-studio-editor-target="orderButton"
                       data-action="poster-studio-editor#openOrder">
                 <%= icon 'package', class: 'h-4 w-4' %>
-                Order a printed poster
+                <%= t('.order_a_printed_poster') %>
               </button>
               <p class="text-xs flex flex-wrap items-center gap-x-2 gap-y-1">
-                <span class="badge badge-success badge-outline badge-sm">Free EU shipping</span>
+                <span class="badge badge-success badge-outline badge-sm"><%= t('.free_eu_shipping') %></span>
                 <span class="badge badge-outline badge-sm"><%= paper_spec %></span>
               </p>
             </div>
 
             <div class="hidden rounded-lg border border-base-300 bg-base-100 p-3 space-y-2"
                  data-poster-studio-editor-target="sizePicker">
-              <p class="text-sm font-semibold">Choose a print size</p>
+              <p class="text-sm font-semibold"><%= t('.choose_a_print_size') %></p>
               <p class="text-xs flex flex-wrap items-center gap-x-1.5 gap-y-1">
-                <span class="badge badge-success badge-outline badge-sm">Free EU shipping</span>
+                <span class="badge badge-success badge-outline badge-sm"><%= t('.free_eu_shipping') %></span>
                 <span class="badge badge-outline badge-sm"><%= paper_spec %></span>
               </p>
               <div class="space-y-1" data-poster-studio-editor-target="sizePickerOptions"></div>
               <button type="button" class="btn btn-ghost btn-xs w-full"
-                      data-action="poster-studio-editor#closeSizePicker">Cancel</button>
+                      data-action="poster-studio-editor#closeSizePicker"><%= t('.cancel') %></button>
             </div>
 
             <div class="hidden rounded-lg border border-base-300 bg-base-100 p-3 space-y-2"
                  data-poster-studio-editor-target="orderDialog">
               <p class="text-sm font-semibold" data-poster-studio-editor-target="orderSummary"></p>
               <p class="text-xs flex flex-wrap items-center gap-x-1.5 gap-y-1">
-                <span class="badge badge-success badge-outline badge-sm">Free EU shipping</span>
+                <span class="badge badge-success badge-outline badge-sm"><%= t('.free_eu_shipping') %></span>
                 <span class="badge badge-outline badge-sm"><%= paper_spec %></span>
-                <span class="opacity-60">· pay via Stripe</span>
+                <span class="opacity-60"><%= t('.pay_via_stripe') %></span>
               </p>
               <p class="text-xs opacity-70 leading-snug">
-                Printed by Gelato, exactly as previewed. Made to order, so the
-                statutory 14-day right of withdrawal does not apply once
-                production starts (§312g Abs. 2 Nr. 1 BGB).
+                <%= t('.printed_by_gelato_exactly_as_previewed_made_to_order_so') %>
               </p>
               <p class="text-xs text-error hidden" data-poster-studio-editor-target="orderError"></p>
               <div class="flex gap-2" data-poster-studio-editor-target="orderActions">
                 <button type="button" class="btn btn-primary btn-sm flex-1"
-                        data-action="poster-studio-editor#confirmOrder">Order this poster</button>
+                        data-action="poster-studio-editor#confirmOrder"><%= t('.order_this_poster') %></button>
                 <button type="button" class="btn btn-ghost btn-sm"
-                        data-action="poster-studio-editor#openSizePicker">Back</button>
+                        data-action="poster-studio-editor#openSizePicker"><%= t('.back') %></button>
               </div>
 
               <%# Order progress: steps activate one after another; the checkout
@@ -355,7 +355,7 @@
                   <p class="flex items-center gap-1.5 text-xs font-medium">
                     <span class="hidden h-3 w-3 shrink-0 animate-spin rounded-full border-2 border-current border-r-transparent" data-role="spinner"></span>
                     <span class="hidden text-success" data-role="done"><%= icon 'circle-check', class: 'h-3.5 w-3.5' %></span>
-                    <span>1. Preparing poster</span>
+                    <span><%= t('.preparing_poster') %></span>
                   </p>
                   <progress class="progress progress-primary hidden h-1.5 w-full" data-role="bar"></progress>
                 </li>
@@ -363,21 +363,21 @@
                   <p class="flex items-center gap-1.5 text-xs font-medium">
                     <span class="hidden h-3 w-3 shrink-0 animate-spin rounded-full border-2 border-current border-r-transparent" data-role="spinner"></span>
                     <span class="hidden text-success" data-role="done"><%= icon 'circle-check', class: 'h-3.5 w-3.5' %></span>
-                    <span>2. Uploading poster</span>
+                    <span><%= t('.uploading_poster') %></span>
                   </p>
                   <progress class="progress progress-primary hidden h-1.5 w-full" value="0" max="100"
                             data-role="bar" data-poster-studio-editor-target="uploadBar"></progress>
                 </li>
                 <li class="space-y-1.5 opacity-40" data-poster-studio-editor-target="orderStep" data-step="checkout">
-                  <p class="text-xs font-medium">3. Continue to order</p>
+                  <p class="text-xs font-medium"><%= t('.continue_to_order') %></p>
                   <a class="btn btn-primary btn-sm btn-disabled w-full" aria-disabled="true"
                      target="_blank" rel="noopener"
-                     data-poster-studio-editor-target="checkoutLink">Continue to payment</a>
+                     data-poster-studio-editor-target="checkoutLink"><%= t('.continue_to_payment') %></a>
                   <a class="link hidden text-xs" target="_blank" rel="noopener"
-                     data-poster-studio-editor-target="orderPageLink">Checkout not working? Open your order page</a>
+                     data-poster-studio-editor-target="orderPageLink"><%= t('.checkout_not_working_open_your_order_page') %></a>
                   <button type="button" class="btn btn-ghost btn-xs hidden w-full"
                           data-poster-studio-editor-target="orderDoneButton"
-                          data-action="poster-studio-editor#closeOrder">Close</button>
+                          data-action="poster-studio-editor#closeOrder"><%= t('.close') %></button>
                 </li>
               </ol>
             </div>

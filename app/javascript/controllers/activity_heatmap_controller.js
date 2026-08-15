@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { translate } from "i18n"
 
 export default class extends Controller {
   static targets = ["tooltip", "tooltipDate", "tooltipDistance"]
@@ -83,12 +84,15 @@ export default class extends Controller {
       day: "numeric",
       year: "numeric",
     }
-    return date.toLocaleDateString("en-US", options)
+    return date.toLocaleDateString(
+      document.documentElement.lang || undefined,
+      options,
+    )
   }
 
   formatDistance(distanceMeters) {
     if (distanceMeters === 0) {
-      return "No activity"
+      return translate("activity.no_activity")
     }
 
     const unit = this.unitValue || "km"

@@ -42,6 +42,18 @@ RSpec.describe StaleJobsRecoveryJob do
       it 'creates a notification for stale exports' do
         expect { described_class.new.perform }.to change { Notification.count }.by(1)
       end
+
+      it 'persists the error and notification in the recipient saved locale' do
+        user.update!(settings: { 'locale' => 'fr' })
+
+        I18n.with_locale(:en) { described_class.new.perform }
+
+        expect(stale_export.reload.error_message)
+          .to eq("Le délai d'exportation a expiré car son traitement était bloqué")
+        notification = Notification.find_by!(user:)
+        expect(notification.title).to eq("L'exportation a échoué")
+        expect(notification.content).to include("L'exportation \"stale.json\" était bloquée")
+      end
     end
 
     context 'with stale imports' do
@@ -77,6 +89,18 @@ RSpec.describe StaleJobsRecoveryJob do
 
       it 'creates a notification for stale imports' do
         expect { described_class.new.perform }.to change { Notification.count }.by(1)
+      end
+
+      it 'persists the error and notification in the recipient saved locale' do
+        user.update!(settings: { 'locale' => 'fr' })
+
+        I18n.with_locale(:en) { described_class.new.perform }
+
+        expect(stale_import.reload.error_message)
+          .to eq("Le délai d'importation a expiré car son traitement était bloqué")
+        notification = Notification.find_by!(user:)
+        expect(notification.title).to eq("L'importation a échoué")
+        expect(notification.content).to include("L'importation de \"#{stale_import.name}\"")
       end
     end
 

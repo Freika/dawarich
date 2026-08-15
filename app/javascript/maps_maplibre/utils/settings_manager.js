@@ -49,11 +49,8 @@ const DEFAULT_SETTINGS = {
   globeProjection: false,
   minMinutesSpentInCity: 60,
   maxGapMinutesInCity: 120,
-  stayMaxGapMinutes: 60,
   gpsFilteringEnabled: true,
-  gpsAccuracyThreshold: 100,
   pointDraggingEnabled: false,
-  transportationExpertMode: false,
   enabledTransportationModes: [
     "unknown",
     "stationary",
@@ -67,21 +64,6 @@ const DEFAULT_SETTINGS = {
     "boat",
     "motorcycle",
   ],
-  transportationThresholds: {
-    walkingMaxSpeed: 7,
-    cyclingMaxSpeed: 45,
-    drivingMaxSpeed: 220,
-    flyingMinSpeed: 150,
-  },
-  transportationExpertThresholds: {
-    stationaryMaxSpeed: 1,
-    runningVsCyclingAccel: 0.25,
-    cyclingVsDrivingAccel: 0.4,
-    trainMinSpeed: 80,
-    minSegmentDuration: 60,
-    timeGapThreshold: 180,
-    minFlightDistanceKm: 100,
-  },
 }
 
 const LAYER_NAME_MAP = {
@@ -120,33 +102,11 @@ const BACKEND_SETTINGS_MAP = {
   globeProjection: "globe_projection",
   minMinutesSpentInCity: "min_minutes_spent_in_city",
   maxGapMinutesInCity: "max_gap_minutes_in_city",
-  stayMaxGapMinutes: "stay_max_gap_minutes",
   gpsFilteringEnabled: "gps_filtering_enabled",
-  gpsAccuracyThreshold: "gps_accuracy_threshold",
   pointDraggingEnabled: "point_dragging_enabled",
-  transportationExpertMode: "transportation_expert_mode",
   enabledTransportationModes: "enabled_transportation_modes",
-  transportationThresholds: "transportation_thresholds",
-  transportationExpertThresholds: "transportation_expert_thresholds",
   distance_unit: "distance_unit",
   liveMapEnabled: "live_map_enabled",
-}
-
-const TRANSPORTATION_THRESHOLD_MAP = {
-  walkingMaxSpeed: "walking_max_speed",
-  cyclingMaxSpeed: "cycling_max_speed",
-  drivingMaxSpeed: "driving_max_speed",
-  flyingMinSpeed: "flying_min_speed",
-}
-
-const TRANSPORTATION_EXPERT_THRESHOLD_MAP = {
-  stationaryMaxSpeed: "stationary_max_speed",
-  runningVsCyclingAccel: "running_vs_cycling_accel",
-  cyclingVsDrivingAccel: "cycling_vs_driving_accel",
-  trainMinSpeed: "train_min_speed",
-  minSegmentDuration: "min_segment_duration",
-  timeGapThreshold: "time_gap_threshold",
-  minFlightDistanceKm: "min_flight_distance_km",
 }
 
 export class SettingsManager {
@@ -210,37 +170,6 @@ export class SettingsManager {
     })
 
     return enabledLayers
-  }
-
-  /**
-   * Convert transportation thresholds between frontend and backend formats
-   * @param {Object} thresholds - Threshold object to convert
-   * @param {Object} keyMap - Mapping between frontend camelCase and backend snake_case keys
-   * @param {boolean} toFrontend - If true, convert from backend to frontend; otherwise, convert to backend
-   * @returns {Object} Converted threshold object
-   */
-  static _convertTransportationThresholds(
-    thresholds,
-    keyMap,
-    toFrontend = false,
-  ) {
-    if (!thresholds) return null
-
-    const converted = {}
-    if (toFrontend) {
-      Object.entries(keyMap).forEach(([frontendKey, backendKey]) => {
-        if (backendKey in thresholds) {
-          converted[frontendKey] = parseFloat(thresholds[backendKey])
-        }
-      })
-    } else {
-      Object.entries(keyMap).forEach(([frontendKey, backendKey]) => {
-        if (frontendKey in thresholds) {
-          converted[backendKey] = thresholds[frontendKey]
-        }
-      })
-    }
-    return converted
   }
 
   static _parseIntOr(value, fallback) {
@@ -319,16 +248,6 @@ export class SettingsManager {
                 value,
                 DEFAULT_SETTINGS.maxGapMinutesInCity,
               )
-            } else if (frontendKey === "stayMaxGapMinutes") {
-              value = SettingsManager._parseIntOr(
-                value,
-                DEFAULT_SETTINGS.stayMaxGapMinutes,
-              )
-            } else if (frontendKey === "gpsAccuracyThreshold") {
-              value = SettingsManager._parseIntOr(
-                value,
-                DEFAULT_SETTINGS.gpsAccuracyThreshold,
-              )
             } else if (frontendKey === "gpsFilteringEnabled") {
               value = value === true || value === "true"
             } else if (frontendKey === "pointDraggingEnabled") {
@@ -337,25 +256,8 @@ export class SettingsManager {
               value = value === true || value === "true"
             } else if (frontendKey === "globeProjection") {
               value = value === true || value === "true"
-            } else if (frontendKey === "transportationExpertMode") {
-              value = value === true || value === "true"
             } else if (frontendKey === "liveMapEnabled") {
               value = value === true || value === "true"
-            } else if (frontendKey === "transportationThresholds" && value) {
-              value = SettingsManager._convertTransportationThresholds(
-                value,
-                TRANSPORTATION_THRESHOLD_MAP,
-                true,
-              )
-            } else if (
-              frontendKey === "transportationExpertThresholds" &&
-              value
-            ) {
-              value = SettingsManager._convertTransportationThresholds(
-                value,
-                TRANSPORTATION_EXPERT_THRESHOLD_MAP,
-                true,
-              )
             }
 
             frontendSettings[frontendKey] = value
@@ -429,35 +331,17 @@ export class SettingsManager {
               frontendKey === "metersBetweenRoutes" ||
               frontendKey === "minutesBetweenRoutes" ||
               frontendKey === "minMinutesSpentInCity" ||
-              frontendKey === "maxGapMinutesInCity" ||
-              frontendKey === "stayMaxGapMinutes"
+              frontendKey === "maxGapMinutesInCity"
             ) {
               value = parseInt(value, 10).toString()
             } else if (frontendKey === "speedColoredRoutes") {
               value = Boolean(value)
             } else if (frontendKey === "globeProjection") {
               value = Boolean(value)
-            } else if (frontendKey === "transportationExpertMode") {
-              value = Boolean(value)
             } else if (frontendKey === "liveMapEnabled") {
               value = Boolean(value)
             } else if (frontendKey === "pointDraggingEnabled") {
               value = Boolean(value)
-            } else if (frontendKey === "transportationThresholds" && value) {
-              value = SettingsManager._convertTransportationThresholds(
-                value,
-                TRANSPORTATION_THRESHOLD_MAP,
-                false,
-              )
-            } else if (
-              frontendKey === "transportationExpertThresholds" &&
-              value
-            ) {
-              value = SettingsManager._convertTransportationThresholds(
-                value,
-                TRANSPORTATION_EXPERT_THRESHOLD_MAP,
-                false,
-              )
             }
 
             backendSettings[backendKey] = value

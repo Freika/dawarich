@@ -1,3 +1,4 @@
+import { translate } from "i18n"
 import { Toast } from "maps_maplibre/components/toast"
 import { BaseLayer } from "./base_layer"
 
@@ -5,6 +6,14 @@ import { BaseLayer } from "./base_layer"
  * Track points layer for displaying and editing points belonging to a specific track.
  * Supports dragging points to update their positions.
  */
+/**
+ * A stored coordinate is usable only when it is neither nullish nor blank —
+ * legacy points with no lonlat serialize to an empty string.
+ */
+function storedOr(value, fallback) {
+  return value == null || value === "" ? fallback : value
+}
+
 export class TrackPointsLayer extends BaseLayer {
   constructor(map, options = {}) {
     super(map, { id: "track-points", ...options })
@@ -82,7 +91,7 @@ export class TrackPointsLayer extends BaseLayer {
       )
     } catch (error) {
       console.error("[TrackPointsLayer] Failed to load track points:", error)
-      Toast.error("Failed to load track points")
+      Toast.error(translate("messages.failed_to_load_track_points"))
       throw error
     }
   }
@@ -113,6 +122,8 @@ export class TrackPointsLayer extends BaseLayer {
           accuracy: point.accuracy,
           country_name: point.country_name,
           track_id: this.trackId,
+          latitude: point.latitude,
+          longitude: point.longitude,
         },
       })),
     }
@@ -186,6 +197,8 @@ export class TrackPointsLayer extends BaseLayer {
       )
       if (feature) {
         feature.geometry.coordinates = [coords.lng, coords.lat]
+        feature.properties.latitude = coords.lat
+        feature.properties.longitude = coords.lng
         source.setData(data)
       }
     }
@@ -197,6 +210,10 @@ export class TrackPointsLayer extends BaseLayer {
     const coords = e.lngLat
     const pointId = this.draggedFeature.properties.id
     const originalCoords = this.draggedFeature.geometry.coordinates
+    const originalPosition = {
+      latitude: this.draggedFeature.properties.latitude,
+      longitude: this.draggedFeature.properties.longitude,
+    }
     const wasDrag = this.hasMoved
 
     // Clean up drag state
@@ -221,7 +238,9 @@ export class TrackPointsLayer extends BaseLayer {
     // Update the point on the backend
     try {
       await this.updatePointPosition(pointId, coords.lat, coords.lng)
-      Toast.success("Point updated. Track will be recalculated.")
+      Toast.success(
+        translate("messages.point_updated_track_will_be_recalculated"),
+      )
     } catch (error) {
       console.error("Failed to update point:", error)
       // Revert the point position on error
@@ -231,10 +250,20 @@ export class TrackPointsLayer extends BaseLayer {
         const feature = data.features.find((f) => f.properties.id === pointId)
         if (feature && originalCoords) {
           feature.geometry.coordinates = originalCoords
+          feature.properties.longitude = storedOr(
+            originalPosition.longitude,
+            originalCoords[0],
+          )
+          feature.properties.latitude = storedOr(
+            originalPosition.latitude,
+            originalCoords[1],
+          )
           source.setData(data)
         }
       }
-      Toast.error("Failed to update point position. Please try again.")
+      Toast.error(
+        translate("messages.failed_to_update_point_position_please_try_again"),
+      )
     }
 
     this.draggedFeature = null

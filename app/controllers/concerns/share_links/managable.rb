@@ -26,7 +26,9 @@ module ShareLinks
       end
 
       if saved
-        respond_with_hub_or(redirect_after_action_path, active_tab: hub_tab, notice: 'Share link created.')
+        notice = I18n.t('controllers.concerns.share_links.managable.created')
+        respond_with_hub_or(redirect_after_action_path, active_tab: hub_tab,
+                                                        notice: notice)
       elsif hub_request?
         render turbo_stream: render_hub_streams(hub_tab, errors: @shared_link.errors.full_messages),
                status: :unprocessable_content
@@ -40,7 +42,9 @@ module ShareLinks
       return ensure_share! unless @share
 
       @share.destroy!
-      respond_with_hub_or(redirect_after_action_path, active_tab: hub_tab, notice: 'Share link deleted.')
+      notice = I18n.t('controllers.concerns.share_links.managable.deleted')
+      respond_with_hub_or(redirect_after_action_path, active_tab: hub_tab,
+                                                      notice: notice)
     end
 
     def revoke
@@ -48,7 +52,9 @@ module ShareLinks
 
       @share.update!(revoked_at: Time.current)
       broadcast_live_share_ended(@share)
-      respond_with_hub_or(redirect_after_action_path, active_tab: hub_tab, notice: 'Share link revoked.')
+      notice = I18n.t('controllers.concerns.share_links.managable.revoked')
+      respond_with_hub_or(redirect_after_action_path, active_tab: hub_tab,
+                                                      notice: notice)
     end
 
     def regenerate
@@ -66,7 +72,9 @@ module ShareLinks
         broadcast_live_share_ended(@share)
         @share.destroy!
       end
-      respond_with_hub_or(redirect_after_action_path, active_tab: hub_tab, notice: 'URL regenerated.')
+      notice = I18n.t('controllers.concerns.share_links.managable.url_regenerated')
+      respond_with_hub_or(redirect_after_action_path, active_tab: hub_tab,
+                                                      notice: notice)
     end
 
     def regenerate_phrase
@@ -74,7 +82,11 @@ module ShareLinks
 
       @share.update!(magic_phrase: SharedLink::PhraseGenerator.call)
       broadcast_live_share_ended(@share)
-      respond_with_hub_or(redirect_after_action_path, active_tab: hub_tab, notice: 'Magic phrase regenerated.')
+      respond_with_hub_or(
+        redirect_after_action_path,
+        active_tab: hub_tab,
+        notice: I18n.t('controllers.concerns.share_links.managable.magic_phrase_regenerated')
+      )
     end
 
     private
@@ -103,7 +115,7 @@ module ShareLinks
     end
 
     def ensure_share!
-      redirect_to fallback_path, alert: 'No active share link.'
+      redirect_to fallback_path, alert: I18n.t('controllers.concerns.share_links.managable.no_active_share_link')
     end
 
     def revoke_existing_active_shares!

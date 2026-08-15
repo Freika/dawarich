@@ -31,13 +31,13 @@ class GoogleMaps::SemanticHistoryImporter
 
     Point.upsert_all(
       records,
-      unique_by: %i[lonlat timestamp user_id],
+      unique_by: %i[user_id timestamp lonlat],
       returning: false,
       on_duplicate: :skip
     )
     # rubocop:enable Rails/SkipsModelValidations
   rescue StandardError => e
-    create_notification("Failed to process location batch: #{e.message}")
+    create_notification(I18n.t('services.google_maps.semantic_history_importer.batch_failed', message: e.message))
   end
 
   def prepare_point_data(point_data)
@@ -56,12 +56,14 @@ class GoogleMaps::SemanticHistoryImporter
   end
 
   def create_notification(message)
-    Notification.create!(
-      user_id: user_id,
-      title: 'Google Maps Timeline Import Error',
-      content: message,
-      kind: :error
-    )
+    I18n.with_locale(User.find_by(id: user_id)&.locale || I18n.locale) do
+      Notification.create!(
+        user_id: user_id,
+        title: I18n.t('services.google_maps.semantic_history_importer.google_maps_timeline_import_error'),
+        content: message,
+        kind: :error
+      )
+    end
   end
 
   def points_data

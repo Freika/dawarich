@@ -19,6 +19,14 @@ module Visits
         visit = create_visit(place)
         visit
       end
+    rescue ActiveRecord::RecordNotUnique
+      @visit = existing_visit
+      # Re-creating a visit over its own tombstone (or an old decline) is an
+      # explicit undo: revive the row instead of returning it still hidden.
+      @visit.update!(deleted_at: nil, status: :confirmed) if @visit && (@visit.soft_deleted? || @visit.declined?)
+      @errors = 'Failed to create visit: duplicate visit' unless @visit
+
+      @visit || false
     rescue ActiveRecord::RecordInvalid => e
       ExceptionReporter.call(e, "Failed to create visit: #{e.message}")
 
@@ -40,6 +48,13 @@ module Visits
       return existing_place if existing_place
 
       create_new_place
+    end
+
+    def existing_visit
+      place = find_existing_place
+      return nil unless place
+
+      user.visits.find_by(place_id: place.id, started_at: Time.zone.parse(params[:started_at]))
     end
 
     def find_existing_place

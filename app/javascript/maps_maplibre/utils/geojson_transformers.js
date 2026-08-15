@@ -57,6 +57,10 @@ export function pointsToGeoJSON(points, options = {}) {
         accuracy: point.accuracy,
         velocity: point.velocity,
         country_name: point.country_name,
+        // Carried alongside the geometry because a clicked feature's geometry
+        // comes back snapped to the tile grid.
+        latitude: point.latitude,
+        longitude: point.longitude,
       },
     })),
   }

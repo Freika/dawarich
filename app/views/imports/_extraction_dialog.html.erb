@@ -1,0 +1,43 @@
+<dialog id="extraction-dialog-<%= import.id %>" class="modal">
+  <div class="modal-box max-w-xl">
+    <h3 class="font-bold text-lg"><%= t('.extract_additional_data_from_this_import') %></h3>
+
+    <div class="prose prose-sm mt-4 text-base-content/80">
+      <p>
+        <%= t('.dawarich_originally_imported_your_file_as_raw_gps_points_the') %>
+      </p>
+      <ul>
+        <li><strong><%= t('.visits') %></strong> <%= t('.places_where_the_source_app_recorded_you_spending_time_with') %></li>
+        <li><strong><%= t('.tracks') %></strong> <%= t('.journeys_identified_between_those_visits_with_their_classified_transport') %></li>
+        <li><strong><%= t('.places') %></strong> <%= t('.the_named_places_home_work_frequent_restaurants_the_source_app') %></li>
+      </ul>
+      <p>
+        <%= t('.extract_to_add_html') %>
+      </p>
+    </div>
+
+    <%= form_with url: import_extraction_path(import), method: :post, data: { turbo_frame: "import-#{import.id}-extraction" } do |f| %>
+      <div class="form-control mt-4">
+        <label class="label cursor-pointer justify-start gap-3">
+          <%= f.check_box :trust_source, { checked: true, class: 'checkbox checkbox-primary' }, 'true', 'false' %>
+          <div>
+            <div class="label-text font-medium"><%= t('.trust_the_source_app_s_classification') %></div>
+            <div class="label-text-alt text-base-content/60">
+              <%= t('.when_checked_transportation_modes_driving_walking_cycling_transit_the_so') %>
+            </div>
+          </div>
+        </label>
+      </div>
+
+      <div class="modal-action">
+        <button type="button" class="btn btn-ghost"
+                data-action="click->import-extraction#close"
+                data-import-extraction-dialog-id-param="extraction-dialog-<%= import.id %>">
+          <%= t('.cancel') %>
+        </button>
+        <%= f.submit t('.extract'), class: 'btn btn-primary' %>
+      </div>
+    <% end %>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button><%= t('.close') %></button></form>
+</dialog>

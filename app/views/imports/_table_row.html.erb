@@ -11,59 +11,64 @@
         <div class="font-medium">
           <%= link_to import.name, import, class: 'link link-hover' %>
           <% if import.demo? %>
-            <span class="badge badge-accent badge-sm ml-1">Demo</span>
+            <span class="badge badge-accent badge-sm ml-1"><%= t('.demo') %></span>
           <% end %>
         </div>
-        <div class="text-xs text-base-content/50"><%= import.source&.humanize %></div>
+        <div class="text-xs text-base-content/50"><%= t("enums.import.source.#{import.source}") if import.source %></div>
       </div>
     </div>
   </td>
-  <td class="px-4 py-3 text-sm"><%= number_to_human_size(import.file&.byte_size) || 'N/A' %></td>
+  <td class="px-4 py-3 text-sm"><%= number_to_human_size(import.file&.byte_size) || t('common.not_available') %></td>
   <td class="px-4 py-3 text-right tabular-nums font-medium" data-points-count>
     <%= number_with_delimiter import.processed %>
     <% if import.doubles.to_i.positive? %>
       <div class="text-xs font-normal text-base-content/60 mt-0.5"
-           title="Points at coordinates and timestamps that already exist in your timeline were skipped to avoid duplicates.">
-        <%= number_with_delimiter(import.doubles) %> already imported
+           title="<%= t('.points_at_coordinates_and_timestamps_that_already_exist_in_your') %>">
+        <%= number_with_delimiter(import.doubles) %> <%= t('.already_imported') %>
       </div>
     <% end %>
   </td>
   <td class="px-4 py-3" data-status-display>
-    <%= status_badge(import) %>
+    <div class="flex flex-col gap-1 items-start">
+      <%= status_badge(import) %>
+      <% unless import.additional_data_extraction_not_attempted? || import.additional_data_extraction_unsupported? %>
+        <%= extraction_status_badge(import) %>
+      <% end %>
+    </div>
   </td>
   <td class="px-4 py-3 text-sm text-base-content/50"><%= human_datetime(import.created_at, local_assigns[:timezone]) %></td>
   <td class="px-4 py-3 text-right">
     <div class="flex items-center gap-1 justify-end">
       <% if import.deleting? && import.updated_at > 1.hour.ago %>
         <span class="loading loading-spinner loading-sm"></span>
-        <span class="text-xs text-base-content/50">Deleting...</span>
+        <span class="text-xs text-base-content/50"><%= t('.deleting') %></span>
       <% elsif import.deleting? %>
-        <span class="text-xs text-base-content/50">Deletion stalled</span>
-        <div class="tooltip tooltip-left" data-tip="Retry deletion">
-          <%= link_to import, data: { turbo_confirm: "Are you sure?", turbo_method: :delete }, class: "btn btn-ghost btn-xs text-error hover:bg-error/10" do %>
+        <span class="text-xs text-base-content/50"><%= t('.deletion_stalled') %></span>
+        <div class="tooltip tooltip-left" data-tip="<%= t('.retry_deletion') %>">
+          <%= link_to import, data: { turbo_confirm: t('.are_you_sure'), turbo_method: :delete }, class: "btn btn-ghost btn-xs text-error hover:bg-error/10" do %>
             <%= icon 'trash-2', class: 'w-4 h-4' %>
           <% end %>
         </div>
       <% else %>
-        <div class="tooltip" data-tip="View on map">
+        <div class="tooltip" data-tip="<%= t('.view_on_map') %>">
           <%= link_to preferred_map_path(import_id: import.id), class: 'btn btn-ghost btn-xs' do %>
             <%= icon 'map', class: 'w-4 h-4' %>
           <% end %>
         </div>
-        <div class="tooltip" data-tip="View points">
+        <div class="tooltip" data-tip="<%= t('.view_points') %>">
           <%= link_to points_path(import_id: import.id), class: 'btn btn-ghost btn-xs' do %>
             <%= icon 'grid-3x3', class: 'w-4 h-4' %>
           <% end %>
         </div>
         <% if import.file.present? %>
-          <div class="tooltip" data-tip="Download file">
+          <div class="tooltip" data-tip="<%= t('.download_file') %>">
             <%= link_to rails_blob_path(import.file, disposition: 'attachment'), class: "btn btn-ghost btn-xs", download: import.name do %>
               <%= icon 'arrow-big-down', class: 'w-4 h-4' %>
             <% end %>
           </div>
         <% end %>
-        <div class="tooltip tooltip-left" data-tip="Delete import">
-          <%= link_to import, data: { turbo_confirm: "Are you sure?", turbo_method: :delete }, class: "btn btn-ghost btn-xs text-error hover:bg-error/10" do %>
+        <div class="tooltip tooltip-left" data-tip="<%= t('.delete_import') %>">
+          <%= link_to import, data: { turbo_confirm: t('.are_you_sure'), turbo_method: :delete }, class: "btn btn-ghost btn-xs text-error hover:bg-error/10" do %>
             <%= icon 'trash-2', class: 'w-4 h-4' %>
           <% end %>
         </div>

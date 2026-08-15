@@ -343,11 +343,7 @@ export class TracksLayer extends BaseLayer {
    * @param {Array} segments - Array of segment data with mode, color, start_index, end_index
    */
   showSegments(trackFeature, segments) {
-    if (
-      !trackFeature ||
-      !trackFeature.geometry ||
-      trackFeature.geometry.type !== "LineString"
-    ) {
+    if (trackFeature?.geometry?.type !== "LineString") {
       return
     }
 
@@ -364,14 +360,19 @@ export class TracksLayer extends BaseLayer {
     // Create line features for each segment
     const segmentFeatures = segments
       .map((segment, idx) => {
-        const startIdx = Math.max(0, segment.start_index || 0)
-        const endIdx = Math.min(
-          coords.length - 1,
-          (segment.end_index || startIdx) + 1,
-        )
-
-        // Extract coordinates for this segment
-        const segmentCoords = coords.slice(startIdx, endIdx + 1)
+        // Prefer server-provided segment geometry (time-anchored segments);
+        // fall back to index slicing for legacy index-anchored segments.
+        let segmentCoords
+        if (segment.coordinates && segment.coordinates.length >= 2) {
+          segmentCoords = segment.coordinates
+        } else {
+          const startIdx = Math.max(0, segment.start_index || 0)
+          const endIdx = Math.min(
+            coords.length - 1,
+            (segment.end_index || startIdx) + 1,
+          )
+          segmentCoords = coords.slice(startIdx, endIdx + 1)
+        }
 
         // Need at least 2 points for a line
         if (segmentCoords.length < 2) {
@@ -531,7 +532,7 @@ export class TracksLayer extends BaseLayer {
    * @returns {Object|false} - The updated feature if successful, false otherwise
    */
   updateTrackFeature(trackFeature, options = {}) {
-    if (!trackFeature || !trackFeature.properties?.id) {
+    if (!trackFeature?.properties?.id) {
       console.warn("[TracksLayer] Cannot update track: invalid feature")
       return false
     }
@@ -544,7 +545,7 @@ export class TracksLayer extends BaseLayer {
 
     // Get current data
     const currentData = this.data || source._data
-    if (!currentData || !currentData.features) {
+    if (!currentData?.features) {
       console.warn("[TracksLayer] Cannot update track: no data")
       return false
     }

@@ -3,6 +3,50 @@
 require 'rails_helper'
 
 RSpec.describe User, type: :model do
+  describe '#preferred_locale' do
+    it 'normalizes a supported string locale' do
+      user = build(:user, settings: { 'locale' => ' FR ' })
+
+      expect(user.preferred_locale).to eq(:fr)
+    end
+
+    it 'treats malformed and unsupported locale values as unset' do
+      [false, 42, { 'language' => 'fr' }, %w[fr], 'xx'].each do |locale|
+        user = build(:user, settings: { 'locale' => locale })
+
+        expect { user.preferred_locale }.not_to raise_error
+        expect(user.preferred_locale).to be_nil
+      end
+    end
+
+    it 'treats a malformed settings container as unset' do
+      [false, []].each do |settings|
+        user = build(:user, settings:)
+
+        expect { user.preferred_locale }.not_to raise_error
+        expect(user.preferred_locale).to be_nil
+      end
+    end
+  end
+
+  describe '#persist_locale!' do
+    it 'normalizes a malformed settings container before saving the locale' do
+      user = create(:user)
+      user.update_column(:settings, [])
+
+      expect { user.reload.persist_locale!(:fr) }.not_to raise_error
+
+      expect(user.reload.settings).to eq('locale' => 'fr')
+      expect(user.preferred_locale).to eq(:fr)
+    end
+  end
+
+  describe 'visit detection v3 stamp' do
+    it 'marks new accounts as v3-native so confidence gating applies from day one' do
+      expect(create(:user).reload.visits_redetected_at).to be_present
+    end
+  end
+
   describe 'associations' do
     it { is_expected.to have_many(:imports).dependent(:destroy) }
     it { is_expected.to have_many(:stats) }
@@ -39,6 +83,22 @@ RSpec.describe User, type: :model do
 
     it 'has integer value 2 for family' do
       expect(User.plans['family']).to eq(2)
+    end
+  end
+
+  describe '#persist_locale!' do
+    it 'updates only the locale when its settings snapshot is stale' do
+      stale_user = create(:user)
+      User.where(id: stale_user.id).update_all(
+        settings: stale_user.settings.merge('concurrent_preference' => 'preserved')
+      )
+
+      stale_user.persist_locale!(:de)
+
+      expect(stale_user.reload.settings).to include(
+        'locale' => 'de',
+        'concurrent_preference' => 'preserved'
+      )
     end
   end
 
@@ -158,6 +218,50 @@ RSpec.describe User, type: :model do
 
       it 'returns the raw plan for a lite member whose family owner is not on the family plan' do
         owner = create(:user, plan: :pro, skip_auto_trial: true)
+        family = create(:family, creator: owner)
+        create(:family_membership, :owner, family: family, user: owner)
+        member = create(:user, plan: :lite, skip_auto_trial: true)
+        create(:family_membership, family: family, user: member)
+
+        expect(member.effective_plan).to eq(:lite)
+      end
+
+      it 'reverts members to their raw plan once the owner subscription lapses' do
+        owner = create(:user, plan: :family, skip_auto_trial: true, status: :inactive,
+                              active_until: 1.day.ago)
+        family = create(:family, creator: owner)
+        create(:family_membership, :owner, family: family, user: owner)
+        member = create(:user, plan: :lite, skip_auto_trial: true)
+        create(:family_membership, family: family, user: member)
+
+        expect(member.effective_plan).to eq(:lite)
+        expect(member.full_access?).to be false
+      end
+
+      it 'keeps members on family access while a cancelled owner is still inside the paid period' do
+        owner = create(:user, plan: :family, skip_auto_trial: true, status: :inactive,
+                              active_until: 10.days.from_now)
+        family = create(:family, creator: owner)
+        create(:family_membership, :owner, family: family, user: owner)
+        member = create(:user, plan: :lite, skip_auto_trial: true)
+        create(:family_membership, family: family, user: member)
+
+        expect(member.effective_plan).to eq(:family)
+      end
+
+      it 'grants members family access while the owner is on a trial' do
+        owner = create(:user, plan: :family, skip_auto_trial: true, status: :trial,
+                              active_until: 7.days.from_now)
+        family = create(:family, creator: owner)
+        create(:family_membership, :owner, family: family, user: owner)
+        member = create(:user, plan: :lite, skip_auto_trial: true)
+        create(:family_membership, family: family, user: member)
+
+        expect(member.effective_plan).to eq(:family)
+      end
+
+      it 'reverts members when the owner has no subscription window at all' do
+        owner = create(:user, plan: :family, skip_auto_trial: true, active_until: nil)
         family = create(:family, creator: owner)
         create(:family_membership, :owner, family: family, user: owner)
         member = create(:user, plan: :lite, skip_auto_trial: true)
@@ -1218,6 +1322,43 @@ subscription_source: :none)
       user = create(:user, first_name: 'Ada', last_name: 'Lovelace')
       expect(user.reload.first_name).to eq('Ada')
       expect(user.reload.last_name).to eq('Lovelace')
+    end
+  end
+
+  describe '#gps_noise_recheck_pending?' do
+    let(:job) { DataMigrations::RecalculateAnomaliesUserJob }
+    let(:user) { create(:user) }
+
+    def stamp(**pairs)
+      user.update!(settings: user.settings.merge(pairs.transform_keys(&:to_s)))
+    end
+
+    it 'is pending once the dispatcher has handed the account to a rebuild' do
+      stamp(job::QUEUED_SETTINGS_KEY => Time.current.iso8601)
+
+      expect(user.gps_noise_recheck_pending?).to be true
+    end
+
+    it 'is not pending once the rebuild has stamped the account' do
+      stamp(
+        job::QUEUED_SETTINGS_KEY => Time.current.iso8601,
+        job::RECALCULATED_SETTINGS_KEY => Time.current.iso8601
+      )
+
+      expect(user.gps_noise_recheck_pending?).to be false
+    end
+
+    it 'is not pending for an account the dispatcher never handed out' do
+      create(:point, user: user)
+
+      expect(user.gps_noise_recheck_pending?).to be false
+    end
+
+    it 'is not pending for an account the dispatcher settled without running it' do
+      now = Time.current.iso8601
+      stamp(job::QUEUED_SETTINGS_KEY => now, job::RECALCULATED_SETTINGS_KEY => now)
+
+      expect(user.gps_noise_recheck_pending?).to be false
     end
   end
 end

@@ -18,12 +18,15 @@ class Api::V1::PhotosController < ApiController
     render json: @photos, status: :ok
   rescue StandardError => e
     Rails.logger.error("Photo search failed: #{e.message}")
-    render json: { error: 'Failed to fetch photos' }, status: :bad_gateway
+    render json: { error: I18n.t('controllers.api.v1.photos.failed_to_fetch_photos') }, status: :bad_gateway
   end
 
   def thumbnail
     upstream = Photos::Thumbnail.new(current_api_user, params[:source], params[:id]).call
     handle_thumbnail_response(upstream)
+  rescue *Photos::ConnectionErrors::HANDLED => e
+    Rails.logger.error("Photo thumbnail fetch failed: #{e.message}")
+    render json: { error: I18n.t('controllers.api.v1.photos.failed_to_fetch_photos') }, status: :bad_gateway
   end
 
   private
@@ -41,7 +44,7 @@ class Api::V1::PhotosController < ApiController
   def thumbnail_error(response)
     return Immich::ResponseAnalyzer.new(response).error_message if params[:source] == 'immich'
 
-    'Failed to fetch thumbnail'
+    I18n.t('controllers.api.v1.photos.failed_to_fetch_thumbnail')
   end
 
   def integration_configured?
@@ -57,7 +60,11 @@ class Api::V1::PhotosController < ApiController
   end
 
   def unauthorized_integration
-    render json: { error: "#{params[:source]&.capitalize} integration not configured" },
+    error = I18n.t(
+      'controllers.api.v1.photos.capitalize_integration_not_configured',
+      source: params[:source]&.capitalize
+    )
+    render json: { error: error },
            status: :unauthorized
   end
 end

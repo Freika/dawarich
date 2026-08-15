@@ -60,9 +60,6 @@ Rails.application.routes.draw do
       end
     end
 
-    resources :maps, only: %i[index]
-    patch 'maps', to: 'maps#update'
-
     resource :two_factor, only: %i[show create destroy], controller: 'two_factor' do
       post :verify, on: :member
     end
@@ -96,7 +93,9 @@ Rails.application.routes.draw do
   get 'trial/resume', to: 'trial/resume#show', as: :trial_resume
   get 'trial/welcome', to: 'trial/welcome#show', as: :trial_welcome
 
-  resources :imports
+  resources :imports do
+    resource :extraction, only: %i[create destroy], controller: 'imports/extractions'
+  end
   resources :tracks, only: [] do
     resources :segments, controller: 'tracks/segments', only: %i[index update]
 
@@ -164,24 +163,24 @@ Rails.application.routes.draw do
   get  '/s/:id',         to: 'shared/links#show',     as: :public_shared_link
   post '/s/:id/unlock',  to: 'shared/links#unlock',   as: :unlock_public_shared_link
 
-  # Family management routes (only if feature is enabled)
-  if DawarichSettings.family_feature_enabled?
-    resource :family, only: %i[show new create edit update destroy] do
-      resources :invitations, except: %i[edit update], controller: 'family/invitations'
-      resources :members, only: %i[destroy], controller: 'family/memberships'
-      resources :location_requests, only: %i[show create], controller: 'family/location_requests' do
-        member do
-          patch :accept
-          patch :decline
-        end
+  # Family management routes. Always defined — per-user access is enforced by
+  # ApplicationController#ensure_family_feature_available!, since the routes are
+  # built at boot and cannot depend on the current user's plan.
+  resource :family, only: %i[show new create edit update destroy] do
+    resources :invitations, except: %i[edit update], controller: 'family/invitations'
+    resources :members, only: %i[destroy], controller: 'family/memberships'
+    resources :location_requests, only: %i[show create], controller: 'family/location_requests' do
+      member do
+        patch :accept
+        patch :decline
       end
-
-      patch 'location_sharing', to: 'family/location_sharing#update', as: :location_sharing
     end
 
-    get 'invitations/:token', to: 'family/invitations#show', as: :public_invitation
-    post 'family/memberships', to: 'family/memberships#create', as: :accept_family_invitation
+    patch 'location_sharing', to: 'family/location_sharing#update', as: :location_sharing
   end
+
+  get 'invitations/:token', to: 'family/invitations#show', as: :public_invitation
+  post 'family/memberships', to: 'family/memberships#create', as: :accept_family_invitation
 
   resources :points, only: %i[index] do
     collection do
@@ -265,7 +264,7 @@ Rails.application.routes.draw do
 
   # Map namespace with versioning
   namespace :map do
-    get '/v1', to: 'leaflet#index', as: :v1
+    get '/v1', to: redirect(path: '/map/v2')
     get '/v2', to: 'maplibre#index', as: :v2
     resources :timeline_feeds, only: [:index] do
       get :track_info, on: :member
@@ -275,7 +274,7 @@ Rails.application.routes.draw do
   end
 
   # Backward compatibility redirects
-  get '/map', to: 'map/leaflet#index'
+  get '/map', to: 'map/maplibre#index'
   get '/maps/v2', to: redirect('/map/v2')
 
   namespace :api do

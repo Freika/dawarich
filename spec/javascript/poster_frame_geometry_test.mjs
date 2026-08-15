@@ -1,11 +1,16 @@
 import assert from "node:assert/strict"
+import { readFile } from "node:fs/promises"
 import { test } from "node:test"
 
-import {
-  frameBounds,
-  frameCovers,
-  longitudeWithin,
-} from "../../app/javascript/poster_studio/render/frame_geometry.js"
+const source = await readFile(
+  new URL(
+    "../../app/javascript/poster_studio/render/frame_geometry.js",
+    import.meta.url,
+  ),
+  "utf8",
+)
+const moduleUrl = `data:text/javascript;base64,${Buffer.from(source).toString("base64")}`
+const { frameBounds, frameCovers, longitudeWithin } = await import(moduleUrl)
 
 test("latitude bounds follow the Mercator frame, not flat degrees", () => {
   const { south, north } = frameBounds(60, 5_000_000)

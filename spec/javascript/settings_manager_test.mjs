@@ -47,6 +47,7 @@ async function loadSettingsController(settingsManager, overrides = {}) {
     const LAYER_COLOR_DEFAULTS = ${JSON.stringify(LAYER_COLOR_DEFAULTS)}
     const SettingsManager = globalThis.__settingsManagerTestDouble
     const getMapStyle = globalThis.__settingsManagerGetMapStyle
+    const translate = (key) => key
     ${basemapUrlSource.replace(/^export /gm, "")}
   `
   const url = `data:text/javascript;base64,${Buffer.from(`${dependencies}\n${withoutImports}`).toString("base64")}`
@@ -71,7 +72,7 @@ test("vector tile URLs require z, x, and y placeholders", () => {
   assert.equal(SettingsManager.validVectorTilesUrl(""), true)
 })
 
-test("basemap URLs also accept raster XYZ and full style.json URLs", () => {
+test("basemap URLs also accept raster XYZ, style.json and suffixless style URLs", () => {
   assert.equal(
     SettingsManager.validVectorTilesUrl("https://t.example/{z}/{x}/{y}.png"),
     true,
@@ -82,6 +83,10 @@ test("basemap URLs also accept raster XYZ and full style.json URLs", () => {
   )
   assert.equal(
     SettingsManager.validVectorTilesUrl("https://t.example/basemap"),
+    true,
+  )
+  assert.equal(
+    SettingsManager.validVectorTilesUrl("//t.example/style.json"),
     false,
   )
 })

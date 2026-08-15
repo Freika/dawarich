@@ -55,7 +55,7 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
         let(:place) { create(:place, name: "Mum's house", name_locked_at: 1.day.ago) }
 
         it 'keeps the user-supplied name' do
-          expect { service.call }.not_to change { place.reload.name }
+          expect { service.call }.not_to(change { place.reload.name })
         end
 
         it 'still refreshes city and country' do
@@ -87,7 +87,7 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
         end
 
         it 'keeps the locked sibling name through the bulk upsert' do
-          expect { service.call }.not_to change { sibling.reload.name }
+          expect { service.call }.not_to(change { sibling.reload.name })
         end
 
         it 'still refreshes the locked sibling city' do
@@ -303,6 +303,35 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
 
         result = service.send(:place_name, data)
         expect(result).to eq('Test (Fast food restaurant)')
+      end
+
+      it 'omits generic boolean osm values from place names' do
+        data = {
+          'properties' => {
+            'name' => 'Gas Station',
+            'osm_value' => 'yes',
+            'postcode' => '10115',
+            'street' => 'Main Street'
+          }
+        }
+
+        result = service.send(:place_name, data)
+        expect(result).to eq('Gas Station')
+      end
+
+      it 'falls back to the address when Photon returns a generic name' do
+        data = {
+          'properties' => {
+            'name' => 'Yes',
+            'osm_value' => 'yes',
+            'postcode' => '10115',
+            'street' => 'Main Street',
+            'housenumber' => '42'
+          }
+        }
+
+        result = service.send(:place_name, data)
+        expect(result).to eq('10115 Main Street 42')
       end
     end
 

@@ -91,16 +91,23 @@ class Tracks::GeojsonSerializer
   def segments_for(track)
     return [] unless track.respond_to?(:track_segments)
 
-    segments = track.track_segments.to_a.sort_by(&:start_index)
+    segments = sorted_segments(track)
     return [] if segments.empty?
 
-    # Calculate cumulative start times from track start
+    # Cumulative fallback time for legacy index-anchored segments
     current_time = track.start_at
     segments.map do |segment|
       serialized = serialize_segment(segment, current_time)
-      # Move current_time forward by this segment's duration
       current_time += (segment.duration || 0).seconds
       serialized
+    end
+  end
+
+  # Segments of one track are era-homogeneous: either all time-anchored (new
+  # pipeline) or all index-anchored (legacy, pre-backfill).
+  def sorted_segments(track)
+    track.track_segments.to_a.sort_by do |segment|
+      segment.start_at ? segment.start_at.to_f : (segment.start_index || 0).to_f
     end
   end
 
@@ -116,8 +123,15 @@ class Tracks::GeojsonSerializer
       emoji: emoji_for_mode(segment.transportation_mode),
       color: color_for_mode(segment.transportation_mode),
       start_index: segment.start_index,
-      end_index: segment.end_index
+      end_index: segment.end_index,
+      coordinates: segment_coordinates(segment)
     }
+  end
+
+  def segment_coordinates(segment)
+    return nil unless segment.respond_to?(:path) && segment.path
+
+    segment.path.points.map { |point| [point.x, point.y] }
   end
 
   def segment_stats(segment)
@@ -130,6 +144,7 @@ class Tracks::GeojsonSerializer
   end
 
   def segment_times(segment, start_time)
+    return { start_time: segment.start_at.to_i, end_time: segment.end_at.to_i } if segment.start_at && segment.end_at
     return {} unless start_time
 
     end_time = start_time + (segment.duration || 0).seconds
@@ -142,17 +157,34 @@ class Tracks::GeojsonSerializer
   def mode_timeline_for(track)
     return [] unless track.respond_to?(:track_segments)
 
-    segments = track.track_segments.to_a.sort_by(&:start_index)
+    segments = sorted_segments(track)
     return [] if segments.empty?
 
+    return anchored_mode_timeline(segments) if segments.all?(&:start_at)
+
+    legacy_mode_timeline(track, segments)
+  end
+
+  def anchored_mode_timeline(segments)
+    segments.map do |segment|
+      {
+        start_time: segment.start_at.to_i,
+        end_time: segment.end_at.to_i,
+        emoji: emoji_for_mode(segment.transportation_mode)
+      }
+    end
+  end
+
+  # Index-proportional approximation for legacy segments not yet backfilled.
+  def legacy_mode_timeline(track, segments)
     track_start = track.start_at.to_f
     track_end = track.end_at.to_f
-    total_points = segments.last.end_index + 1
+    total_points = (segments.last.end_index || 0) + 1
     time_span = track_end - track_start
 
     segments.map do |segment|
-      seg_start = track_start + (segment.start_index.to_f / total_points) * time_span
-      seg_end = track_start + ((segment.end_index + 1).to_f / total_points) * time_span
+      seg_start = track_start + ((segment.start_index.to_f / total_points) * time_span)
+      seg_end = track_start + (((segment.end_index + 1).to_f / total_points) * time_span)
       {
         start_time: seg_start.to_i,
         end_time: seg_end.to_i,

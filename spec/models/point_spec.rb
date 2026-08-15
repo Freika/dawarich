@@ -82,6 +82,44 @@ RSpec.describe Point, type: :model do
         end
       end
     end
+
+    describe '.null_island' do
+      let(:user) { create(:user) }
+
+      let!(:exact_zero) do
+        create(:point, user: user, timestamp: 1.hour.ago.to_i, lonlat: 'POINT(0 0)')
+      end
+      # Google Timeline exports emit coordinates a fraction of a degree off zero
+      # instead of exact zeros; they are the same defect and must be caught.
+      let!(:near_zero) do
+        create(:point, user: user, timestamp: 2.hours.ago.to_i,
+                       lonlat: 'POINT(-0.009821517715778327 -0.0056462072163441235)')
+      end
+      let!(:real_location) do
+        create(:point, user: user, timestamp: 3.hours.ago.to_i, lonlat: 'POINT(13.405 52.52)')
+      end
+      # Gulf of Guinea is genuine ocean; only the immediate neighbourhood of the
+      # origin is treated as a broken coordinate.
+      let!(:far_from_zero) do
+        create(:point, user: user, timestamp: 4.hours.ago.to_i, lonlat: 'POINT(1.5 1.5)')
+      end
+
+      it 'includes points at exactly (0, 0)' do
+        expect(described_class.null_island).to include(exact_zero)
+      end
+
+      it 'includes points a fraction of a degree from (0, 0)' do
+        expect(described_class.null_island).to include(near_zero)
+      end
+
+      it 'excludes points at a real location' do
+        expect(described_class.null_island).not_to include(real_location)
+      end
+
+      it 'excludes points well outside the origin neighbourhood' do
+        expect(described_class.null_island).not_to include(far_from_zero)
+      end
+    end
   end
 
   describe 'methods' do

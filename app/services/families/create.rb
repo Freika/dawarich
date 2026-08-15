@@ -6,10 +6,12 @@ module Families
 
     attr_reader :user, :name, :family, :error_message
 
-    validates :name, presence: { message: 'Family name is required' }
+    validates :name, presence: {
+      message: ->(*) { I18n.t('services.families.create.family_name_is_required') }
+    }
     validates :name, length: {
       maximum: 50,
-      message: 'Family name must be 50 characters or less'
+      message: ->(*) { I18n.t('services.families.create.family_name_must_be_50_characters_or_less') }
     }
 
     def initialize(user:, name:)
@@ -48,12 +50,12 @@ module Families
 
     def validate_user_eligibility
       if user.in_family?
-        @error_message = 'You must leave your current family before creating a new one'
+        @error_message = I18n.t('services.families.create.you_must_leave_your_current_family_before_creating_a_new')
         return false
       end
 
       if user.created_family.present?
-        @error_message = 'You have already created a family. Each user can only create one family'
+        @error_message = I18n.t('services.families.create.you_have_already_created_a_family_each_user_can_only')
         return false
       end
 
@@ -63,12 +65,8 @@ module Families
     def validate_feature_access
       return true if can_create_family?
 
-      @error_message =
-        if DawarichSettings.self_hosted?
-          'Family feature is not available on this instance'
-        else
-          'Family feature requires an active subscription'
-        end
+      # Only reachable on cloud — self-hosted short-circuits in can_create_family?
+      @error_message = I18n.t('services.families.create.family_feature_requires_an_active_subscription')
 
       false
     end
@@ -92,12 +90,14 @@ module Families
     end
 
     def send_notification
-      Notification.create!(
-        user: user,
-        kind: :info,
-        title: 'Family Created',
-        content: "You've successfully created the family '#{family.name}'"
-      )
+      I18n.with_locale(user.locale) do
+        Notification.create!(
+          user: user,
+          kind: :info,
+          title: I18n.t('services.families.create.family_created'),
+          content: I18n.t('services.families.create.you_ve_successfully_created_the_family_name', name: family.name)
+        )
+      end
     rescue StandardError => e
       # Don't fail the entire operation if notification fails
       ExceptionReporter.call(e, "Unexpected error in Families::Create: #{e.message}")
@@ -108,17 +108,19 @@ module Families
         if family&.errors&.any?
           family.errors.full_messages.first
         else
-          "Failed to create family: #{error.message}"
+          I18n.t('services.families.create.failed_to_create_family', message: error.message)
         end
     end
 
     def handle_uniqueness_error(_error)
-      @error_message = 'A family with this name already exists for your account'
+      @error_message = I18n.t('services.families.create.a_family_with_this_name_already_exists_for_your_account')
     end
 
     def handle_generic_error(error)
       ExceptionReporter.call(error, "Unexpected error in Families::Create: #{error.message}")
-      @error_message = 'An unexpected error occurred while creating the family. Please try again'
+      @error_message = I18n.t(
+        'services.families.create.an_unexpected_error_occurred_while_creating_the_family_please_try'
+      )
     end
   end
 end
