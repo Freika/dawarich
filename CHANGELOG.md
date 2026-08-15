@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+
+### Fixed
+
+- User data exports no longer fail when a legacy place has no spatial coordinates. (#3344)
+
 ## [1.12.1] - 2026-08-13, Berlin
 
 ### Fixed

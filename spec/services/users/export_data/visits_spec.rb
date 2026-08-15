@@ -69,6 +69,22 @@ RSpec.describe Users::ExportData::Visits, type: :service do
         end
       end
 
+      context 'when a legacy place has no spatial coordinates' do
+        let!(:visit) do
+          place = create(:place, name: 'Legacy Place', longitude: 13.405, latitude: 52.52)
+          place.update_column(:lonlat, nil)
+
+          create(:visit, user: user, place: place, name: 'Legacy Visit')
+        end
+
+        it 'exports the stored latitude and longitude' do
+          expect(subject.first['place_reference']).to include(
+            'latitude' => '52.52',
+            'longitude' => '13.405'
+          )
+        end
+      end
+
       context 'when user has visits without places' do
         let!(:visit_without_place) do
           create(:visit,
