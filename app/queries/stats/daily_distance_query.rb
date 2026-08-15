@@ -1,13 +1,14 @@
 # frozen_string_literal: true
 
 class Stats::DailyDistanceQuery
-  DEFAULT_MINUTES_BETWEEN_ROUTES = 30
+  MIN_MINUTES_BETWEEN_ROUTES = 1
+  MAX_MINUTES_BETWEEN_ROUTES = 1440
 
-  def initialize(monthly_points, timespan, timezone = nil, minutes_between_routes: DEFAULT_MINUTES_BETWEEN_ROUTES)
+  def initialize(monthly_points, timespan, timezone = nil, minutes_between_routes: nil)
     @monthly_points = monthly_points
     @timespan = timespan
     @timezone = validate_timezone(timezone)
-    @time_gap_seconds = minutes_between_routes.to_i * 60
+    @time_gap_seconds = validate_minutes_between_routes(minutes_between_routes) * 60
   end
 
   def call
@@ -35,7 +36,7 @@ class Stats::DailyDistanceQuery
         FROM (#{monthly_points.to_sql}) AS points
         WINDOW w AS (
           PARTITION BY (to_timestamp(timestamp) AT TIME ZONE $1)::date
-          ORDER BY timestamp
+          ORDER BY timestamp, id
         )
       ),
       points_with_distances AS (
@@ -43,10 +44,11 @@ class Stats::DailyDistanceQuery
           local_date,
           CASE
             WHEN prev_lonlat IS NULL THEN 0
-            WHEN import_id IS NOT NULL
-              AND prev_import_id IS NOT NULL
-              AND import_id != prev_import_id THEN 0
-            WHEN (timestamp - prev_timestamp) > $4 THEN 0
+            WHEN (
+              import_id IS NULL
+              OR prev_import_id IS NULL
+              OR import_id != prev_import_id
+            ) AND (timestamp - prev_timestamp) > $4 THEN 0
             ELSE ST_Distance(lonlat::geography, prev_lonlat::geography)
           END AS segment_distance
         FROM ordered_points
@@ -83,6 +85,13 @@ class Stats::DailyDistanceQuery
       distance_meters = distance_by_day_map[day.day]&.fetch('distance_meters', 0) || 0
       [day.day, distance_meters.to_i]
     end
+  end
+
+  def validate_minutes_between_routes(minutes)
+    minutes = minutes.to_i
+    minutes = Users::SafeSettings::DEFAULT_VALUES['minutes_between_routes'].to_i unless minutes.positive?
+
+    minutes.clamp(MIN_MINUTES_BETWEEN_ROUTES, MAX_MINUTES_BETWEEN_ROUTES)
   end
 
   def validate_timezone(timezone)

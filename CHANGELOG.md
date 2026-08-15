@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Daily and monthly distance no longer counts the jump between two separately imported activities, or across a tracking gap longer than your "minutes between routes" setting. Points belonging to the same import are always treated as one continuous history, so sparse sources such as Google Timeline keep their full distance. Existing months keep their old numbers — run **Map v2 → Settings → Recalculate tracks & stats** once after upgrading to apply the fix to past months. #2689
+
 ## [1.7.7] - 2026-05-09
 
 ### ⚠️ Breaking changes
