@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [Unreleased]
+## [1.12.2] - 2026-08-15, Berlin
 
 ### Added
 
@@ -12,8 +12,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changed
 
-- Consolidated `points` table indexes: a new `(user_id, timestamp, lonlat)` unique index replaces three redundant indexes, roughly halving the write cost of every point. The index is built concurrently at boot during the upgrade; on instances with millions of points this can take several minutes — the app stays usable while it builds.
-- Automatic daily track generation no longer rebuilds a user's entire history when their tracks are missing and their history exceeds 100k points; such rebuilds now require explicitly running a backfill.
+- Consolidated `points` table indexes: a new `(user_id, timestamp, lonlat)` unique index replaces three redundant indexes, roughly halving the write cost of every point. The index is built by the boot-time migration; on instances with millions of points this can take several minutes, during which the container waits before serving requests. The `points` table itself stays fully usable while the index builds.
+- Automatic daily track generation no longer rebuilds a user's entire history when their tracks are missing and their history exceeds 100k points. On Dawarich Cloud such histories are backfilled automatically at a throttled rate; self-hosted instances still rebuild directly, as fast as their own hardware allows.
 
 ### Fixed
 
