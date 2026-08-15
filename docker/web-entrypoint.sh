@@ -68,6 +68,8 @@ if [ -d "/tmp/public_assets" ]; then
   rm -rf $APP_PATH/public/assets
   cp -r /tmp/public_assets/* $APP_PATH/public/
   echo "✅ Static assets synced!"
+else
+  echo "⚠️ /tmp/public_assets not found — static assets were NOT synced. The public volume may keep serving assets from a previous version."
 fi
 
 # Function to check and create a PostgreSQL database
