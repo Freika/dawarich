@@ -38,13 +38,19 @@ class Imports::Destroy
 
   def delete_points_in_batches
     total_deleted = 0
+    deleted_timestamps = []
 
     loop do
-      ids = @import.points.limit(BATCH_SIZE).pluck(:id)
-      break if ids.empty?
+      # delete_all returns no rows, so capture the timestamps BEFORE deleting —
+      # the tile epoch needs to know which years the deletion touched.
+      rows = @import.points.limit(BATCH_SIZE).pluck(:id, :timestamp)
+      break if rows.empty?
 
-      total_deleted += Point.where(id: ids).delete_all
+      deleted_timestamps.concat(rows.map(&:last))
+      total_deleted += Point.where(id: rows.map(&:first)).delete_all
     end
+
+    Points::TileEpoch.bump(@user.id, timestamps: deleted_timestamps) if total_deleted.positive?
 
     total_deleted
   end

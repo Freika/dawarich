@@ -54,6 +54,11 @@ class Points::AnomalyFilter
     count += filter_null_island
     count += filter_by_accuracy
     count += filter_by_speed
+    # Anomalies are excluded from vector tiles, so flipping the flag changes
+    # tile content without a point write. Bump only the window's years — this
+    # runs on every live-ingest batch, so a sentinel here would wipe the whole
+    # account's tile cache on the hottest path.
+    Points::TileEpoch.bump_range(@user_id, @start_time, @end_time) if count.positive?
     count
   end
 

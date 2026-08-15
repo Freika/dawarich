@@ -36,6 +36,7 @@ class GoogleMaps::SemanticHistoryImporter
       on_duplicate: :skip
     )
     # rubocop:enable Rails/SkipsModelValidations
+    Points::TileEpoch.bump(user_id, timestamps: records.map { |record| record[:timestamp] })
   rescue StandardError => e
     create_notification(I18n.t('services.google_maps.semantic_history_importer.batch_failed', message: e.message))
   end

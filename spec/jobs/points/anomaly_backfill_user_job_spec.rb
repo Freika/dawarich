@@ -44,6 +44,18 @@ RSpec.describe Points::AnomalyBackfillUserJob, type: :job do
       expect(described_class.new.perform(user.id, reset: true)).to be true
     end
 
+    it 'invalidates the tile epoch on clear, even when re-evaluation marks nothing' do
+      # Clearing un-hides points in tiles; AnomalyFilter's own bump only fires
+      # when it MARKS anomalies, so the all-clear outcome relies on this path.
+      allow_any_instance_of(Points::AnomalyFilter).to receive(:call).and_return(0)
+      before_component = Points::TileEpoch.etag_component(user.id, 0, Time.utc(2100, 1, 1).to_i)
+
+      described_class.new.perform(user.id, reset: true)
+
+      expect(Points::TileEpoch.etag_component(user.id, 0, Time.utc(2100, 1, 1).to_i))
+        .not_to eq(before_component)
+    end
+
     it 'runs the recalculation inline when asked to, keeping it on the caller queue' do
       described_class.new.perform(user.id, reset: true, rebuild: :inline)
 
