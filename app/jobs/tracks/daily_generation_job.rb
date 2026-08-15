@@ -63,11 +63,16 @@ class Tracks::DailyGenerationJob < ApplicationJob
     # should appear as fast as their own hardware allows.
     return false if DawarichSettings.self_hosted?
     return false if user.tracks.exists?
-    return false if user.points_count.to_i <= BOOTSTRAP_POINTS_LIMIT
+    # Sized from real rows, capped at the limit: points_count lags bulk
+    # imports (upsert_all skips callbacks; the counter is only corrected on a
+    # schedule), and a stale low read here would hand the user the very
+    # full-history rewrite this guard exists to prevent.
+    return false if user.points.limit(BOOTSTRAP_POINTS_LIMIT + 1).count <= BOOTSTRAP_POINTS_LIMIT
 
     newly_scheduled = Tracks::ThrottledBackfillJob.schedule(user)
     Rails.logger.info(
-      "Tracks::DailyGenerationJob: user #{user.id} has no tracks and #{user.points_count} points; " \
+      "Tracks::DailyGenerationJob: user #{user.id} has no tracks and more than " \
+      "#{BOOTSTRAP_POINTS_LIMIT} points; " \
       "throttled backfill #{newly_scheduled ? 'scheduled' : 'already in progress'}"
     )
 

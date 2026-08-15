@@ -117,7 +117,8 @@ RSpec.describe Tracks::DailyGenerationJob, type: :job do
       end
 
       before do
-        wiped_user.update!(points_count: described_class::BOOTSTRAP_POINTS_LIMIT + 1)
+        stub_const('Tracks::DailyGenerationJob::BOOTSTRAP_POINTS_LIMIT', 1)
+        wiped_user.update!(points_count: 1)
         allow(User).to receive(:active_or_trial)
           .and_return(User.where(id: [wiped_user.id]))
         allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
@@ -127,6 +128,11 @@ RSpec.describe Tracks::DailyGenerationJob, type: :job do
       it 'does not enqueue a full-history rebuild through the daily path' do
         expect { described_class.perform_now }.not_to \
           have_enqueued_job(Tracks::ParallelGeneratorJob)
+      end
+
+      it 'sizes the history from real points, not the counter cache bulk imports leave stale' do
+        expect { described_class.perform_now }.to \
+          have_enqueued_job(Tracks::ThrottledBackfillJob).with(wiped_user.id, nil)
       end
 
       it 'hands the user off to the throttled backfill walker' do
