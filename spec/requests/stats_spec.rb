@@ -53,6 +53,18 @@ RSpec.describe '/stats', type: :request do
 
           expect(Stats::CalculatingJob).to have_been_enqueued.with(user.id, '2024', '1')
         end
+
+        it 'rejects zero and out-of-range months without enqueueing work' do
+          %w[0 00 13 99].each do |month|
+            expect do
+              put update_year_month_stats_url(year: '2024', month:)
+            end.not_to have_enqueued_job(Stats::CalculatingJob)
+
+            expect(response).to redirect_to(stats_path)
+            expect(response).to have_http_status(:see_other)
+            expect(flash[:alert]).to eq('Select a valid month before updating statistics')
+          end
+        end
       end
 
       context 'when updating the whole year' do

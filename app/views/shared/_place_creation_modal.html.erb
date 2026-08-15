@@ -1,7 +1,7 @@
 <div data-controller="place-creation">
   <div class="modal z-[10000]" data-place-creation-target="modal">
     <div class="modal-box max-w-2xl">
-      <h3 class="font-bold text-lg mb-4" data-place-creation-target="modalTitle">Create New Place</h3>
+      <h3 class="font-bold text-lg mb-4" data-place-creation-target="modalTitle"><%= t('.create_new_place') %></h3>
 
       <%= form_with scope: :place, url: places_path, method: :post, data: {
         place_creation_target: "form",
@@ -16,10 +16,10 @@
         <div class="space-y-4">
           <div class="form-control">
             <label class="label">
-              <span class="label-text font-semibold">Place Name *</span>
+              <span class="label-text font-semibold"><%= t('.place_name') %></span>
             </label>
             <%= f.text_field :name,
-                placeholder: "Enter place name...",
+                placeholder: t('.enter_place_name'),
                 class: "input input-bordered w-full",
                 data: { place_creation_target: "nameInput" },
                 required: true %>
@@ -27,21 +27,21 @@
 
           <div class="form-control">
             <label class="label">
-              <span class="label-text font-semibold">Note</span>
+              <span class="label-text font-semibold"><%= t('.note') %></span>
             </label>
             <%= f.text_area :note,
-                placeholder: "Add a personal note about this place...",
+                placeholder: t('.add_a_personal_note_about_this_place'),
                 class: "textarea textarea-bordered w-full bg-base-100",
                 rows: 3,
                 data: { place_creation_target: "noteInput" } %>
             <label class="label">
-              <span class="label-text-alt">Optional - Add any notes or details about this place</span>
+              <span class="label-text-alt"><%= t('.optional_add_any_notes_or_details_about_this_place') %></span>
             </label>
           </div>
 
           <div class="form-control">
             <label class="label">
-              <span class="label-text font-semibold">Tags</span>
+              <span class="label-text font-semibold"><%= t('.tags') %></span>
             </label>
             <div class="flex flex-wrap gap-2" data-place-creation-target="tagCheckboxes">
               <% current_user.tags.ordered.each do |tag| %>
@@ -54,29 +54,29 @@
               <% end %>
             </div>
             <label class="label">
-              <span class="label-text-alt">Click tags to select them for this place</span>
+              <span class="label-text-alt"><%= t('.click_tags_to_select_them_for_this_place') %></span>
             </label>
           </div>
 
-          <div class="divider">Suggested Places</div>
+          <div class="divider"><%= t('.suggested_places') %></div>
 
           <div class="form-control">
             <label class="label">
-              <span class="label-text font-semibold">Nearby Places</span>
+              <span class="label-text font-semibold"><%= t('.nearby_places') %></span>
             </label>
             <div class="relative">
               <%# Turbo Frame for server-rendered nearby places %>
               <%= turbo_frame_tag "nearby-places", data: { place_creation_target: "nearbyFrame" } do %>
-                <p class="text-sm text-gray-500">Open modal to load nearby suggestions</p>
+                <p class="text-sm text-gray-500"><%= t('.open_modal_to_load_nearby_suggestions') %></p>
               <% end %>
             </div>
           </div>
         </div>
 
         <div class="modal-action">
-          <button type="button" class="btn btn-ghost" data-action="click->place-creation#close">Cancel</button>
-          <%= f.submit "Create Place", class: "btn btn-primary",
-              data: { place_creation_target: "submitButton", disable_with: "Saving..." } %>
+          <button type="button" class="btn btn-ghost" data-action="click->place-creation#close"><%= t('.cancel') %></button>
+          <%= f.submit t('.create_place'), class: "btn btn-primary",
+              data: { place_creation_target: "submitButton", disable_with: t('.saving') } %>
         </div>
       <% end %>
     </div>

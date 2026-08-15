@@ -32,6 +32,27 @@ RSpec.describe Visits::Create do
         expect(service.visit).to eq(first.visit)
       end
 
+      it 'resurrects a tombstoned visit when the user re-creates it at the same place and time' do
+        first = described_class.new(user, valid_params)
+        first.call
+        first.visit.soft_delete!
+
+        expect(service.call).to be_truthy
+        expect(service.visit.id).to eq(first.visit.id)
+        expect(service.visit.reload.deleted_at).to be_nil
+        expect(service.visit.status).to eq('confirmed')
+      end
+
+      it 'resurrects a declined (hidden but not tombstoned) visit on re-creation' do
+        first = described_class.new(user, valid_params)
+        first.call
+        first.visit.update!(status: :declined)
+
+        expect(service.call).to be_truthy
+        expect(service.visit.id).to eq(first.visit.id)
+        expect(service.visit.reload.status).to eq('confirmed')
+      end
+
       it 'creates a visit with correct attributes' do
         service.call
         visit = service.visit

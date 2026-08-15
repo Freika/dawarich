@@ -1,9 +1,9 @@
 <div class="hero min-h-content bg-base-200">
   <div class="hero-content flex-col lg:flex-row-reverse w-full my-10">
     <div class="text-center lg:text-left">
-      <h1 class="text-5xl font-bold text-base-content">Change your password</h1>
+      <h1 class="text-5xl font-bold text-base-content"><%= t('.change_your_password') %></h1>
       <p class="py-6 text-base-content opacity-70">
-        Enter your new password below.
+        <%= t('.enter_your_new_password_below') %>
       </p>
     </div>
     <div class="card flex-shrink-0 w-full max-w-sm shadow-2xl bg-base-100 px-5 py-5">
@@ -12,24 +12,24 @@
         <%= f.hidden_field :reset_password_token %>
 
         <div class="form-control">
-          <%= f.label :password, "New password", class: 'label' do %>
-            <span class="label-text">New password</span>
+          <%= f.label :password, t('.new_password'), class: 'label' do %>
+            <span class="label-text"><%= t('.new_password') %></span>
           <% end %>
           <% if @minimum_password_length %>
-            <em class="text-base-content opacity-60 text-sm">(<%= @minimum_password_length %> characters minimum)</em>
+            <em class="text-base-content opacity-60 text-sm">(<%= @minimum_password_length %> <%= t('.characters_minimum') %></em>
           <% end %>
           <%= f.password_field :password, autofocus: true, autocomplete: "new-password", class: 'input input-bordered w-full' %>
         </div>
 
         <div class="form-control">
           <%= f.label :password_confirmation, class: 'label' do %>
-            <span class="label-text">Confirm new password</span>
+            <span class="label-text"><%= t('.confirm_new_password') %></span>
           <% end %>
           <%= f.password_field :password_confirmation, autocomplete: "new-password", class: 'input input-bordered w-full' %>
         </div>
 
         <div class="form-control mt-6">
-          <%= f.submit "Change my password", class: 'btn btn-primary w-full' %>
+          <%= f.submit t('.change_my_password'), class: 'btn btn-primary w-full' %>
         </div>
       <% end %>
 

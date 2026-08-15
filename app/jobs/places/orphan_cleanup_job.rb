@@ -39,6 +39,10 @@ class Places::OrphanCleanupJob < ApplicationJob
       victim_ids = conn.exec_query(sql, 'OrphanCleanup victims', binds).rows.map { |r| r[0] }
       break if victim_ids.empty?
 
+      # Victims are only referenced by hidden visits (tombstones/declines);
+      # detach those so the FK allows the delete. Dedup survives via each
+      # visit's own points (Visit#center fallback).
+      Visit.where(place_id: victim_ids).update_all(place_id: nil)
       PlaceVisit.where(place_id: victim_ids).delete_all
       deleted = Place.where(id: victim_ids).delete_all
     end
@@ -55,10 +59,14 @@ class Places::OrphanCleanupJob < ApplicationJob
   end
 
   def victims_sql(user_predicate)
+    # Join only ACTIVE visits: a place kept alive solely by tombstoned or
+    # declined visits is still an orphan for the user-facing catalogue.
     <<~SQL.squish
       SELECT p.id
       FROM places p
       LEFT JOIN visits v   ON v.place_id = p.id
+                          AND v.deleted_at IS NULL
+                          AND v.status <> #{Visit.statuses[:declined]}
       LEFT JOIN taggings t ON t.taggable_id = p.id AND t.taggable_type = 'Place'
       WHERE #{user_predicate}
         AND p.source = #{Place.sources[:photon]}

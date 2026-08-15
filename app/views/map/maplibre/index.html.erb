@@ -1,4 +1,4 @@
-<% content_for :title, 'Map' %>
+<% content_for :title, t('.map') %>
 
 <%= render 'shared/map/date_navigation_v2', start_at: @start_at, end_at: @end_at %>
 
@@ -31,7 +31,7 @@
   <!-- Loading progress badge -->
   <div data-maps--maplibre-target="progressBadge" class="map-progress-badge">
     <span class="map-progress-badge-dot"></span>
-    <span data-maps--maplibre-target="progressBadgeText">Loading...</span>
+    <span data-maps--maplibre-target="progressBadgeText"><%= t('.loading') %></span>
   </div>
 
   <!-- Map-edge button cluster (top-right corner) -->
@@ -39,14 +39,8 @@
 
   <!-- Timeline map-corner overlays (shown only when Timeline tab is active; CSS handles visibility) -->
   <div class="timeline-map-overlay timeline-map-overlay--scope" data-timeline-feed-target="scopeBadge">
-    <span class="font-semibold">Pick a day</span>
+    <span class="font-semibold"><%= t('.pick_a_day') %></span>
   </div>
-  <div class="timeline-map-overlay timeline-map-overlay--legend">
-    <div><span class="visit-status-dot visit-status-dot--confirmed"></span> Confirmed</div>
-    <div><span class="visit-status-dot visit-status-dot--suggested"></span> Suggested</div>
-    <div><span class="visit-status-dot visit-status-dot--declined"></span> Declined</div>
-  </div>
-
   <!-- Settings panel -->
   <%= render 'map/maplibre/settings_panel' %>
 
@@ -65,8 +59,4 @@
   <!-- Place creation modal (shared) -->
   <%= render 'shared/place_creation_modal' %>
 
-  <% if current_user.full_access? %>
-    <!-- Residency day counter modal -->
-    <%= render 'map/maplibre/residency_modal' %>
-  <% end %>
 </div>

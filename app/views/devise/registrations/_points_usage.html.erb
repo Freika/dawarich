@@ -1,6 +1,8 @@
 <div class="space-y-3">
   <p class='text-sm text-base-content/70'>
-    You have used <span class="font-medium text-base-content"><%= number_with_delimiter(current_user.points_count.to_i) %></span> points of <span class="font-medium text-base-content"><%= number_with_delimiter(DawarichSettings::BASIC_PAID_PLAN_LIMIT) %></span> available.
+    <%= t('.summary_html',
+          used: content_tag(:span, number_with_delimiter(current_user.points_count.to_i), class: 'font-medium text-base-content'),
+          limit: content_tag(:span, number_with_delimiter(DawarichSettings::BASIC_PAID_PLAN_LIMIT), class: 'font-medium text-base-content')) %>
   </p>
   <progress class="progress progress-primary h-5 w-full" value="<%= current_user.points_count.to_i %>" max="<%= DawarichSettings::BASIC_PAID_PLAN_LIMIT %>"></progress>
 </div>

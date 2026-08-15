@@ -29,10 +29,10 @@
             <%= icon 'chevron-left' %>
           <% end %>
         </div>
-        <div class="w-full lg:w-2/12 tooltip tooltip-bottom" data-tip="Start date and time">
+        <div class="w-full lg:w-2/12 tooltip tooltip-bottom" data-tip="<%= t('.start_date_and_time') %>">
           <%= f.datetime_local_field :start_at, include_seconds: false, max: "9999-12-31T23:59", class: "input input-sm input-bordered hover:cursor-pointer hover:input-primary w-full", value: start_at %>
         </div>
-        <div class="w-full lg:w-2/12 tooltip tooltip-bottom" data-tip="End date and time">
+        <div class="w-full lg:w-2/12 tooltip tooltip-bottom" data-tip="<%= t('.end_date_and_time') %>">
           <%= f.datetime_local_field :end_at, include_seconds: false, max: "9999-12-31T23:59", class: "input input-sm input-bordered hover:cursor-pointer hover:input-primary w-full", value: end_at %>
         </div>
         <div class="w-full lg:w-1/12 tooltip tooltip-bottom" data-tip="<%= human_date(start_at + 1.day) %>">
@@ -42,24 +42,24 @@
         </div>
         <div class="w-full lg:w-1/12">
           <div class="flex flex-col space-y-2">
-            <%= f.submit "Search", class: "btn btn-sm btn-primary hover:btn-info w-full" %>
+            <%= f.submit t('.search'), class: "btn btn-sm btn-primary hover:btn-info w-full" %>
           </div>
         </div>
         <div class="w-full lg:w-1/12">
           <div class="flex flex-col space-y-2 text-center">
-            <%= link_to "Today",
+            <%= link_to t('.today'),
               map_v2_path(start_at: Time.current.beginning_of_day.iso8601, end_at: Time.current.end_of_day.iso8601, import_id: params[:import_id], panel: params[:panel]),
               class: "btn btn-sm border border-base-300 hover:btn-ghost w-full" %>
           </div>
         </div>
         <div class="w-full lg:w-2/12">
           <div class="flex flex-col space-y-2 text-center">
-            <%= link_to "Last 7 days", map_v2_path(start_at: 1.week.ago.beginning_of_day.iso8601, end_at: Time.current.end_of_day.iso8601, import_id: params[:import_id], panel: params[:panel]), class: "btn btn-sm border border-base-300 hover:btn-ghost w-full" %>
+            <%= link_to t('.last_7_days'), map_v2_path(start_at: 1.week.ago.beginning_of_day.iso8601, end_at: Time.current.end_of_day.iso8601, import_id: params[:import_id], panel: params[:panel]), class: "btn btn-sm border border-base-300 hover:btn-ghost w-full" %>
           </div>
         </div>
         <div class="w-full lg:w-2/12">
           <div class="flex flex-col space-y-2 text-center">
-            <%= link_to "Last month", map_v2_path(start_at: 1.month.ago.beginning_of_day.iso8601, end_at: Time.current.end_of_day.iso8601, import_id: params[:import_id], panel: params[:panel]), class: "btn btn-sm border border-base-300 hover:btn-ghost w-full" %>
+            <%= link_to t('.last_month'), map_v2_path(start_at: 1.month.ago.beginning_of_day.iso8601, end_at: Time.current.end_of_day.iso8601, import_id: params[:import_id], panel: params[:panel]), class: "btn btn-sm border border-base-300 hover:btn-ghost w-full" %>
           </div>
         </div>
         <div class="w-full lg:w-1/12 relative">
@@ -67,7 +67,7 @@
                       class: "btn btn-sm border border-base-300 hover:btn-ghost w-full flex-nowrap",
                       data: { turbo_frame: "share-link-modal", testid: "timeline-share-button" } do %>
             <%= icon 'share', class: 'w-4 h-4' %>
-            <span class="ml-1">Share</span>
+            <span class="ml-1"><%= t('.share') %></span>
           <% end %>
           <%= render "shared/map/share_indicator" %>
         </div>

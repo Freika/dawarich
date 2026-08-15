@@ -1,3 +1,4 @@
+import { translate } from "i18n"
 import { Toast } from "maps_maplibre/components/toast"
 import { getMarkerStrokeColor } from "../utils/marker_theme"
 import { BaseLayer } from "./base_layer"
@@ -6,6 +7,14 @@ import { BaseLayer } from "./base_layer"
  * Points layer for displaying individual location points
  * Supports dragging points to update their positions
  */
+/**
+ * A stored coordinate is usable only when it is neither nullish nor blank —
+ * legacy points with no lonlat serialize to an empty string.
+ */
+function storedOr(value, fallback) {
+  return value == null || value === "" ? fallback : value
+}
+
 export class PointsLayer extends BaseLayer {
   constructor(map, options = {}) {
     super(map, { id: "points", ...options })
@@ -147,6 +156,8 @@ export class PointsLayer extends BaseLayer {
       )
       if (feature) {
         feature.geometry.coordinates = [coords.lng, coords.lat]
+        feature.properties.latitude = coords.lat
+        feature.properties.longitude = coords.lng
         source.setData(data)
       }
     }
@@ -158,6 +169,10 @@ export class PointsLayer extends BaseLayer {
     const coords = e.lngLat
     const pointId = this.draggedFeature.properties.id
     const originalCoords = this.draggedFeature.geometry.coordinates
+    const originalPosition = {
+      latitude: this.draggedFeature.properties.latitude,
+      longitude: this.draggedFeature.properties.longitude,
+    }
     const wasDrag = this.hasMoved
 
     // Clean up drag state
@@ -206,10 +221,20 @@ export class PointsLayer extends BaseLayer {
         const feature = data.features.find((f) => f.properties.id === pointId)
         if (feature && originalCoords) {
           feature.geometry.coordinates = originalCoords
+          feature.properties.longitude = storedOr(
+            originalPosition.longitude,
+            originalCoords[0],
+          )
+          feature.properties.latitude = storedOr(
+            originalPosition.latitude,
+            originalCoords[1],
+          )
           source.setData(data)
         }
       }
-      Toast.error("Failed to update point position. Please try again.")
+      Toast.error(
+        translate("messages.failed_to_update_point_position_please_try_again"),
+      )
     }
 
     this.draggedFeature = null

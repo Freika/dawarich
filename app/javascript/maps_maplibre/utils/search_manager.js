@@ -3,6 +3,7 @@
  * Manages location search functionality for Maps V2
  */
 
+import { translate } from "i18n"
 import { LocationSearchService } from "../services/location_search_service.js"
 
 export class SearchManager {
@@ -98,7 +99,7 @@ export class SearchManager {
         this.displayResults(suggestions)
       } catch (error) {
         if (renderId !== this._activeRenderId) return
-        this.showError("Failed to fetch suggestions")
+        this.showError(translate("search.suggestions_failed"))
         console.error("SearchManager: Search error:", error)
       }
     }, this.debounceDelay)
@@ -138,7 +139,7 @@ export class SearchManager {
 
     const name = document.createElement("div")
     name.className = "font-medium text-sm"
-    name.textContent = suggestion.name || "Unknown location"
+    name.textContent = suggestion.name || translate("search.unknown_location")
 
     if (suggestion.address) {
       const address = document.createElement("div")
@@ -200,7 +201,7 @@ export class SearchManager {
     } catch (error) {
       if (renderId !== this._activeRenderId) return
       console.error("SearchManager: Failed to fetch visits:", error)
-      this.showError("Failed to load visits for this location")
+      this.showError(translate("search.visits_load_failed"))
     }
 
     // Dispatch custom event for other components
@@ -263,7 +264,7 @@ export class SearchManager {
     this.resultsContainer.innerHTML = `
       <div class="p-3 text-sm text-base-content/60 flex items-center gap-2">
         <span class="loading loading-spinner loading-sm"></span>
-        Searching...
+        ${translate("search.searching")}
       </div>
     `
     this.resultsContainer.classList.remove("hidden")
@@ -275,7 +276,7 @@ export class SearchManager {
   showNoResults() {
     this.resultsContainer.innerHTML = `
       <div class="p-3 text-sm text-base-content/60">
-        No locations found
+        ${translate("search.no_locations")}
       </div>
     `
     this.resultsContainer.classList.remove("hidden")
@@ -303,7 +304,7 @@ export class SearchManager {
       <div class="p-4 text-sm text-base-content/60">
         <div class="flex items-center gap-2 mb-2">
           <span class="loading loading-spinner loading-sm"></span>
-          <span class="font-medium">Searching for visits...</span>
+          <span class="font-medium">${translate("search.searching_for_visits")}</span>
         </div>
         <div class="text-xs">${this.escapeHtml(locationName)}</div>
       </div>
@@ -324,8 +325,8 @@ export class SearchManager {
       this.resultsContainer.innerHTML = `
         <div class="p-6 text-center text-base-content/60">
           <div class="text-3xl mb-3">📍</div>
-          <div class="text-sm font-medium">No visits found</div>
-          <div class="text-xs mt-1">No visits found for "${this.escapeHtml(location.name)}"</div>
+          <div class="text-sm font-medium">${translate("visits.none_found")}</div>
+          <div class="text-xs mt-1">${translate("visits.none_found_for", { query: this.escapeHtml(location.name) })}</div>
         </div>
       `
       this.resultsContainer.classList.remove("hidden")
@@ -335,8 +336,8 @@ export class SearchManager {
     // Display visits grouped by location
     let html = `
       <div class="p-4 border-b bg-base-200">
-        <div class="text-sm font-medium">Found ${visitsData.total_locations} location(s)</div>
-        <div class="text-xs text-base-content/60 mt-1">for "${this.escapeHtml(location.name)}"</div>
+        <div class="text-sm font-medium">${translate("search.locations_found", { count: visitsData.total_locations })}</div>
+        <div class="text-xs text-base-content/60 mt-1">${translate("search.for_query", { query: this.escapeHtml(location.name) })}</div>
       </div>
     `
 
@@ -373,7 +374,10 @@ export class SearchManager {
     const displayName =
       location.place_name ||
       location.address ||
-      `Location (${location.coordinates?.[0]?.toFixed(4)}, ${location.coordinates?.[1]?.toFixed(4)})`
+      translate("map_info.location_coordinates", {
+        latitude: location.coordinates?.[0]?.toFixed(4),
+        longitude: location.coordinates?.[1]?.toFixed(4),
+      })
 
     return `
       <div class="location-result border-b" data-location-index="${index}">
@@ -385,9 +389,9 @@ export class SearchManager {
               : ""
           }
           <div class="flex justify-between items-center mt-3">
-            <div class="text-xs text-primary">${location.total_visits} visit(s)</div>
+            <div class="text-xs text-primary">${translate("selection.visits", { count: location.total_visits })}</div>
             <div class="text-xs text-base-content/60">
-              first ${this.formatDateShort(firstVisit.date)}, last ${this.formatDateShort(lastVisit.date)}
+              ${translate("search.first_last", { first: this.formatDateShort(firstVisit.date), last: this.formatDateShort(lastVisit.date) })}
             </div>
           </div>
         </div>
@@ -402,7 +406,7 @@ export class SearchManager {
                    data-location-index="${index}" data-year="${year}">
                 <span class="text-sm font-medium">${year}</span>
                 <div class="flex items-center gap-2">
-                  <span class="text-xs text-primary">${yearVisits.length} visits</span>
+                  <span class="text-xs text-primary">${translate("selection.visits", { count: yearVisits.length })}</span>
                   <span class="year-arrow text-base-content/40 transition-transform">▶</span>
                 </div>
               </div>
@@ -414,7 +418,7 @@ export class SearchManager {
                        data-location-index="${index}" data-visit-index="${visits.indexOf(visit)}">
                     <div class="flex justify-between items-start">
                       <div>📍 ${this.formatDateTime(visit.date)}</div>
-                      <div class="text-xs text-base-content/60">${visit.duration_estimate || "N/A"}</div>
+                      <div class="text-xs text-base-content/60">${visit.duration_estimate || translate("common.not_available")}</div>
                     </div>
                   </div>
                 `,
@@ -509,7 +513,9 @@ export class SearchManager {
     const startTime = visitDetails.start_time || visit.date
     const endTime = visitDetails.end_time || visit.date
     const placeName =
-      location.place_name || location.address || "Unnamed Location"
+      location.place_name ||
+      location.address ||
+      translate("search.unnamed_location")
 
     // Open create visit modal
     this.openCreateVisitModal({
@@ -541,12 +547,12 @@ export class SearchManager {
       <input type="checkbox" id="${modalId}-toggle" class="modal-toggle" checked />
       <div class="modal" role="dialog">
         <div class="modal-box">
-          <h3 class="text-lg font-bold mb-4">Create Visit</h3>
+          <h3 class="text-lg font-bold mb-4">${translate("visits.create")}</h3>
 
           <form id="${modalId}-form">
             <div class="form-control mb-4">
               <label class="label">
-                <span class="label-text">Name</span>
+                <span class="label-text">${translate("common.name")}</span>
               </label>
               <input type="text" name="name" class="input input-bordered w-full"
                      value="${this.escapeHtml(visitData.name)}" required />
@@ -554,7 +560,7 @@ export class SearchManager {
 
             <div class="form-control mb-4">
               <label class="label">
-                <span class="label-text">Start Time</span>
+                <span class="label-text">${translate("visits.start_time")}</span>
               </label>
               <input type="datetime-local" name="started_at" class="input input-bordered w-full"
                      max="9999-12-31T23:59" value="${this.formatDateTimeForInput(visitData.started_at)}" required />
@@ -562,7 +568,7 @@ export class SearchManager {
 
             <div class="form-control mb-4">
               <label class="label">
-                <span class="label-text">End Time</span>
+                <span class="label-text">${translate("visits.end_time")}</span>
               </label>
               <input type="datetime-local" name="ended_at" class="input input-bordered w-full"
                      max="9999-12-31T23:59" value="${this.formatDateTimeForInput(visitData.ended_at)}" required />
@@ -572,9 +578,9 @@ export class SearchManager {
             <input type="hidden" name="longitude" value="${visitData.longitude}" />
 
             <div class="modal-action">
-              <button type="button" class="btn" data-action="close">Cancel</button>
+              <button type="button" class="btn" data-action="close">${translate("common.cancel")}</button>
               <button type="submit" class="btn btn-primary">
-                <span class="submit-text">Create Visit</span>
+                <span class="submit-text">${translate("visits.create")}</span>
                 <span class="loading loading-spinner loading-sm hidden"></span>
               </button>
             </div>
@@ -646,7 +652,7 @@ export class SearchManager {
       setTimeout(() => modal.remove(), 300)
 
       // Show success notification
-      this.showSuccessNotification("Visit created successfully!")
+      this.showSuccessNotification(translate("visits.created_without_name"))
 
       // Dispatch custom event for other components to react
       document.dispatchEvent(
@@ -659,7 +665,9 @@ export class SearchManager {
       )
     } catch (error) {
       console.error("Failed to create visit:", error)
-      this.showError(`Failed to create visit: ${error.message}`)
+      this.showError(
+        translate("visits.create_failed_with_error", { error: error.message }),
+      )
 
       // Re-enable submit button
       submitBtn.disabled = false
@@ -709,7 +717,7 @@ export class SearchManager {
    */
   formatDateShort(dateString) {
     const date = new Date(dateString)
-    return date.toLocaleDateString("en-US", {
+    return date.toLocaleDateString(document.documentElement.lang || undefined, {
       month: "short",
       day: "numeric",
       year: "numeric",
@@ -723,7 +731,7 @@ export class SearchManager {
    */
   formatDateTime(dateString) {
     const date = new Date(dateString)
-    return date.toLocaleString("en-US", {
+    return date.toLocaleString(document.documentElement.lang || undefined, {
       month: "short",
       day: "numeric",
       year: "numeric",

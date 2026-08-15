@@ -7,6 +7,15 @@ class Point < ApplicationRecord
 
   self.ignored_columns += %w[latitude longitude]
 
+  # Every ingest path upserts points and then counts the rows whose `xmax` is
+  # zero to tell inserts from updates. `xmax` is Postgres' `xid`, an OID the
+  # adapter has no type for, so returning it raw makes the adapter warn the
+  # first time each connection sees it. Casting to text keeps `to_i` working
+  # and the log quiet.
+  UPSERT_RETURNING_COLUMNS =
+    'id, xmax::text AS xmax, timestamp, ' \
+    'ST_X(lonlat::geometry) AS longitude, ST_Y(lonlat::geometry) AS latitude'
+
   belongs_to :import, optional: true, counter_cache: true
   belongs_to :visit, optional: true
   belongs_to :user
@@ -16,7 +25,7 @@ class Point < ApplicationRecord
   validates :timestamp, :lonlat, presence: true
   validates :lonlat, uniqueness: {
     scope: %i[timestamp user_id],
-    message: 'already has a point at this location and time for this user',
+    message: ->(*) { I18n.t('models.point.already_has_a_point_at_this_location_and_time_for') },
     index: true
   }
 
@@ -59,7 +68,7 @@ class Point < ApplicationRecord
   end
 
   # Build a key whose equivalence classes match the PostgreSQL UNIQUE index
-  # on (lonlat, timestamp, user_id). The raw lonlat WKT string from
+  # on (user_id, timestamp, lonlat). The raw lonlat WKT string from
   # Points::Params / Overland::Params can differ character-by-character for
   # points that collapse to the same geography(Point, 4326) double, so a
   # plain string `uniq` keeps both variants and the subsequent

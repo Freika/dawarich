@@ -15,12 +15,12 @@
       <div class="mb-6">
         <div class="flex items-start justify-between gap-3 mb-1">
           <h1 class="text-3xl font-bold leading-tight"><%= resource.name %></h1>
-          <span class="badge badge-success badge-sm shrink-0 gap-1" aria-label="Publicly shared">
-            <%= icon 'map-pin', class: 'w-3 h-3' %> Public
+          <span class="badge badge-success badge-sm shrink-0 gap-1" aria-label="<%= t('.publicly_shared') %>">
+            <%= icon 'map-pin', class: 'w-3 h-3' %> <%= t('.public') %>
           </span>
         </div>
         <p class="text-md text-base-content/60 mb-4">
-          <%= human_date(resource.started_at) %> &ndash; <%= human_date(resource.ended_at) %>
+          <%= human_date(resource.started_at) %> <%= t('.ndash') %> <%= human_date(resource.ended_at) %>
         </p>
 
         <% if trip.show_stats? %>
@@ -30,7 +30,7 @@
 
       <% if trip.description? %>
         <div class="mb-6">
-          <h3 class="text-lg font-semibold mb-2">Trip Notes</h3>
+          <h3 class="text-lg font-semibold mb-2"><%= t('.trip_notes') %></h3>
           <div class="prose max-w-none"><%= resource.description.body %></div>
         </div>
       <% end %>
@@ -42,7 +42,7 @@
                   data-shared-trip-map-target="replayToggleBtn"
                   data-action="click->shared-trip-map#toggleReplay">
             <%= icon 'play', class: 'w-4 h-4' %>
-            <span>Replay</span>
+            <span><%= t('.replay') %></span>
           </button>
         </div>
       <% end %>

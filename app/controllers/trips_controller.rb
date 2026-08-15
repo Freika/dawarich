@@ -38,7 +38,8 @@ class TripsController < ApplicationController
     @trip = current_user.trips.build(trip_params)
 
     if @trip.save
-      redirect_to @trip, notice: 'Trip was successfully created. Data is being calculated in the background.'
+      redirect_to @trip,
+                  notice: I18n.t('controllers.trips.trip_was_successfully_created_data_is_being_calculated_in_the')
     else
       render :new, status: :unprocessable_content
     end
@@ -47,7 +48,7 @@ class TripsController < ApplicationController
   def update
     if @trip.update(trip_params)
       @trip.adopt!
-      redirect_to @trip, notice: 'Trip was successfully updated.', status: :see_other
+      redirect_to @trip, notice: I18n.t('controllers.trips.trip_was_successfully_updated'), status: :see_other
     else
       render :edit, status: :unprocessable_content
     end
@@ -55,7 +56,7 @@ class TripsController < ApplicationController
 
   def destroy
     @trip.destroy!
-    redirect_to trips_url, notice: 'Trip was successfully destroyed.', status: :see_other
+    redirect_to trips_url, notice: I18n.t('controllers.trips.trip_was_successfully_destroyed'), status: :see_other
   end
 
   def recalculate
@@ -65,14 +66,14 @@ class TripsController < ApplicationController
                            .update_all(last_recalculated_at: Time.current)
 
     if affected.zero?
+      notice = I18n.t('controllers.trips.already_recalculating_this_page_will_update_when_it_s_done')
       respond_to do |format|
         format.turbo_stream do
-          render turbo_stream: stream_flash(:notice,
-                                            'Already recalculating — this page will update when it\'s done.')
+          render turbo_stream: stream_flash(:notice, notice)
         end
         format.html do
           redirect_to trip_path(@trip),
-                      notice: 'Already recalculating — this page will update when it\'s done.'
+                      notice: notice
         end
       end
       return
@@ -88,12 +89,15 @@ class TripsController < ApplicationController
           turbo_stream.replace('trip_recalculate_frame',
                                partial: 'trips/recalculate_button',
                                locals: { trip: @trip }),
-          stream_flash(:notice, 'Recalculating — the page will update automatically when it\'s ready.')
+          stream_flash(
+            :notice,
+            I18n.t('controllers.trips.recalculating_the_page_will_update_automatically_when_it_s_ready')
+          )
         ]
       end
       format.html do
         redirect_to trip_path(@trip),
-                    notice: 'Recalculating — the page will update automatically when it\'s ready.'
+                    notice: I18n.t('controllers.trips.recalculating_the_page_will_update_automatically_when_it_s_ready')
       end
     end
   end
@@ -105,7 +109,7 @@ class TripsController < ApplicationController
 
     unless EXPORTABLE_FORMATS.include?(file_format)
       redirect_to trip_path(@trip),
-                  alert: 'Unsupported export format. Choose GPX or GeoJSON.',
+                  alert: I18n.t('controllers.trips.unsupported_export_format_choose_gpx_or_geojson'),
                   status: :unprocessable_content
       return
     end
@@ -124,11 +128,11 @@ class TripsController < ApplicationController
     )
 
     redirect_to exports_url,
-                notice: "Trip export initiated. Check the Exports page when it's ready."
+                notice: I18n.t('controllers.trips.trip_export_initiated_check_the_exports_page_when_it_s')
   rescue StandardError => e
     ExceptionReporter.call(e)
     redirect_to trip_path(@trip),
-                alert: 'Export failed to initiate. Please try again.',
+                alert: I18n.t('controllers.trips.export_failed_to_initiate_please_try_again'),
                 status: :unprocessable_content
   end
 

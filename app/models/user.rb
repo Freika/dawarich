@@ -12,6 +12,11 @@ class User < ApplicationRecord
   # until their subscription source confirms a purchase.
   attr_accessor :skip_auto_trial
 
+  # Set by Omniauthable.from_omniauth. Post-create callbacks re-save the record,
+  # which clears `previously_new_record?`, so signup-vs-login can't be read off
+  # the record afterwards — the lookup has to tell us.
+  attr_accessor :oauth_newly_created
+
   devise :two_factor_authenticatable, :registerable,
          :recoverable, :rememberable, :validatable, :trackable,
          :lockable,
@@ -116,6 +121,49 @@ class User < ApplicationRecord
 
   def safe_settings
     Users::SafeSettings.new(settings, plan: plan)
+  end
+
+  # Old rows can carry a settings container that is not an object at all, so the
+  # value is normalized rather than trusted: ' FR ' and 'fr' both mean French,
+  # and anything that is not a shipped locale reads as unset.
+  def preferred_locale
+    return unless settings.is_a?(Hash)
+
+    value = settings['locale']
+    return unless value.is_a?(String)
+
+    locale = value.strip.downcase.to_sym
+    locale if I18n.available_locales.include?(locale)
+  end
+
+  def locale
+    preferred_locale || I18n.default_locale
+  end
+
+  # `update_all` keeps the write clear of whatever else the request is saving on
+  # this user. The CASE covers rows whose settings are null or not an object —
+  # `'[]'::jsonb || '{...}'::jsonb` appends an element instead of merging a key.
+  def persist_locale!(locale)
+    self.class.where(id: id).update_all(
+      ActiveRecord::Base.sanitize_sql_array(
+        [
+          "settings = CASE WHEN jsonb_typeof(settings) = 'object' THEN settings ELSE '{}'::jsonb END " \
+          "|| jsonb_build_object('locale', ?), updated_at = ?",
+          locale.to_s,
+          Time.current
+        ]
+      )
+    )
+
+    # `update_all` leaves this instance holding the old settings, and Devise
+    # keeps one instance for the whole session — without this, every later read
+    # of `preferred_locale` would report the language the user just replaced.
+    # The change is cleared so a subsequent `save` still writes only what the
+    # request itself touched.
+    self[:settings] = (settings.is_a?(Hash) ? settings : {}).merge('locale' => locale.to_s)
+    clear_attribute_changes([:settings])
+
+    locale
   end
 
   # Only accounts the migration actually handed to a rebuild are waiting on one.
@@ -355,6 +403,8 @@ class User < ApplicationRecord
   end
 
   def sanitize_input
+    return unless settings.is_a?(Hash)
+
     settings['immich_url']&.gsub!(%r{/+\z}, '')
     settings['photoprism_url']&.gsub!(%r{/+\z}, '')
     settings.try(:[], 'maps')&.try(:[], 'url')&.strip!

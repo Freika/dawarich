@@ -24,14 +24,14 @@ module StatsHelper
     countries = visited.count
     cities = visited.sum { _1['cities'].count }
 
-    "#{countries} countries, #{cities} cities"
+    I18n.t('helpers.stats.countries_and_cities', countries:, cities:)
   end
 
   def distance_traveled(user, stat)
     distance_unit = user.safe_settings.distance_unit
     value = Stat.convert_distance(stat.distance, distance_unit).round
 
-    "#{number_with_delimiter(value)} #{distance_unit}"
+    I18n.t('helpers.stats.distance', value: number_with_delimiter(value), unit: distance_unit)
   end
 
   def active_days(stat)
@@ -47,24 +47,28 @@ module StatsHelper
 
   def peak_day(stat)
     peak = stat.daily_distance.max_by { _1[1] }
-    return 'N/A' unless peak && peak[1].positive?
+    return I18n.t('common.not_available') unless peak && peak[1].positive?
 
     date = Date.new(stat.year, stat.month, peak[0])
     distance_unit = stat.user.safe_settings.distance_unit
 
     distance_value = Stat.convert_distance(peak[1], distance_unit).round
-    text = "#{date.strftime('%B %d')} (#{distance_value} #{distance_unit})"
+    text = I18n.t(
+      'helpers.stats.peak_day',
+      date: I18n.l(date, format: :month_day_padded),
+      distance: I18n.t('helpers.stats.distance', value: distance_value, unit: distance_unit)
+    )
 
     link_to text, preferred_map_path(start_at: date.beginning_of_day, end_at: date.end_of_day), class: 'underline'
   end
 
   def quietest_week(stat)
-    return 'N/A' if stat.daily_distance.empty?
+    return I18n.t('common.not_available') if stat.daily_distance.empty?
 
     distance_by_date = build_distance_by_date_hash(stat)
     quietest_start_date = find_quietest_week_start_date(stat, distance_by_date)
 
-    return 'N/A' unless quietest_start_date
+    return I18n.t('common.not_available') unless quietest_start_date
 
     format_week_range(quietest_start_date)
   end
@@ -139,8 +143,10 @@ module StatsHelper
 
   def format_week_range(start_date)
     end_date = start_date + 6.days
-    start_str = start_date.strftime('%b %d')
-    end_str = end_date.strftime('%b %d')
-    "#{start_str} - #{end_str}"
+    I18n.t(
+      'helpers.stats.week_range',
+      start_date: I18n.l(start_date, format: :short_month_day_padded),
+      end_date: I18n.l(end_date, format: :short_month_day_padded)
+    )
   end
 end

@@ -45,6 +45,7 @@
 
 # Ignore master key for decrypting credentials and more.
 /config/master.key
+/config/sprockets-manifest.json
 /coverage
 /node_modules
 
@@ -91,3 +92,6 @@ node_modules/
 .worktrees/
 .superpowers/
 .security-audit/
+
+.impeccable/
+DESIGN.md

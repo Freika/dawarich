@@ -60,9 +60,6 @@ Rails.application.routes.draw do
       end
     end
 
-    resources :maps, only: %i[index]
-    patch 'maps', to: 'maps#update'
-
     resource :two_factor, only: %i[show create destroy], controller: 'two_factor' do
       post :verify, on: :member
     end
@@ -267,7 +264,7 @@ Rails.application.routes.draw do
 
   # Map namespace with versioning
   namespace :map do
-    get '/v1', to: 'leaflet#index', as: :v1
+    get '/v1', to: redirect(path: '/map/v2')
     get '/v2', to: 'maplibre#index', as: :v2
     resources :timeline_feeds, only: [:index] do
       get :track_info, on: :member
@@ -277,7 +274,7 @@ Rails.application.routes.draw do
   end
 
   # Backward compatibility redirects
-  get '/map', to: 'map/leaflet#index'
+  get '/map', to: 'map/maplibre#index'
   get '/maps/v2', to: redirect('/map/v2')
 
   namespace :api do

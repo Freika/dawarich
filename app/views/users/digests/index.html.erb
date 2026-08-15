@@ -1,15 +1,15 @@
-<% content_for :title, 'Year-End Digests' %>
+<% content_for :title, t('.year_end_digests') %>
 
 <div class="max-w-screen-2xl mx-auto my-5 px-4">
   <div class="flex justify-between items-center mb-6 gap-8">
     <h1 class="text-3xl font-bold flex items-center gap-2">
-      <%= icon 'earth' %> Year-End Digests
+      <%= icon 'earth' %> <%= t('.year_end_digests') %>
     </h1>
 
     <% if @available_years.any? && current_user.active? %>
       <div class="dropdown dropdown-end">
         <label tabindex="0" class="btn btn-primary">
-          <%= icon 'calendar-plus-2' %> Generate Digest
+          <%= icon 'calendar-plus-2' %> <%= t('.generate_digest') %>
         </label>
         <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52">
           <% @available_years.each do |year| %>
@@ -28,12 +28,12 @@
     <div class="card bg-base-200 shadow-xl">
       <div class="card-body text-center py-12">
         <h2 class="text-xl font-semibold mb-2 flex items-center justify-center gap-2">
-          <%= icon 'earth' %>No Year-End Digests Yet
+          <%= icon 'earth' %><%= t('.no_year_end_digests_yet') %>
         </h2>
         <p class="text-gray-500 mb-4">
-          Year-end digests are automatically generated on January 1st each year.
+          <%= t('.year_end_digests_are_automatically_generated_on_january_1st_each') %>
           <% if @available_years.any? && current_user.active? %>
-            <br>Or you can manually generate one for a previous year.
+            <br><%= t('.or_you_can_manually_generate_one_for_a_previous_year') %>
           <% end %>
         </p>
       </div>
@@ -46,13 +46,13 @@
             <h2 class="card-title text-2xl justify-between">
               <%= link_to digest.year, users_digest_path(year: digest.year), class: 'hover:text-primary' %>
               <% if digest.sharing_enabled? %>
-                <span class="badge badge-success badge-sm">Shared</span>
+                <span class="badge badge-success badge-sm"><%= t('.shared') %></span>
               <% end %>
             </h2>
 
             <div class="stats stats-vertical shadow bg-base-100 mt-4 text-center">
               <div class="stat">
-                <div class="stat-title">Distance</div>
+                <div class="stat-title"><%= t('.distance') %></div>
                 <div class="stat-value text-primary text-lg">
                   <%= distance_with_unit(digest.distance, current_user.safe_settings.distance_unit) %>
                 </div>
@@ -60,20 +60,20 @@
 
               <div class="stat">
                 <div class="stat-value text-secondary text-lg"><%= digest.countries_count %></div>
-                <div class="stat-title">Countries</div>
+                <div class="stat-title"><%= t('.countries') %></div>
                 <% if digest.first_time_countries.any? %>
                   <div class="stat-desc text-success flex items-center gap-1 justify-center">
-                    <%= icon 'star' %> <%= digest.first_time_countries.count %> new
+                    <%= icon 'star' %> <%= digest.first_time_countries.count %> <%= t('.new') %>
                   </div>
                 <% end %>
               </div>
 
               <div class="stat">
                 <div class="stat-value text-accent text-lg"><%= digest.cities_count %></div>
-                <div class="stat-title">Cities</div>
+                <div class="stat-title"><%= t('.cities') %></div>
                 <% if digest.first_time_cities.any? %>
                   <div class="stat-desc text-success flex items-center gap-1 justify-center">
-                    <%= icon 'star' %> <%= digest.first_time_cities.count %> new
+                    <%= icon 'star' %> <%= digest.first_time_cities.count %> <%= t('.new') %>
                   </div>
                 <% end %>
               </div>
@@ -81,7 +81,7 @@
 
             <div class="card-actions justify-end mt-4">
               <%= link_to users_digest_path(year: digest.year), class: 'btn btn-primary btn-sm' do %>
-                View Details
+                <%= t('.view_details') %>
               <% end %>
             </div>
           </div>

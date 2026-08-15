@@ -1,7 +1,7 @@
-<% content_for :title, "Two-Factor Authentication" %>
+<% content_for :title, t('.two_factor_authentication') %>
 
 <div class="min-h-content w-full my-5">
-  <%= render 'shared/page_header', title: 'Two-Factor Authentication' %>
+  <%= render 'shared/page_header', title: t('.two_factor_authentication') %>
   <%= render 'settings/navigation' %>
 
   <div class="max-w-lg">
@@ -11,52 +11,51 @@
           <div class="flex items-center gap-3 mb-4">
             <%= icon 'shield-check', class: "text-success w-8 h-8" %>
             <div>
-              <h2 class="text-xl font-bold">2FA is enabled</h2>
-              <p class="text-sm text-base-content/70">Your account is protected with two-factor authentication.</p>
+              <h2 class="text-xl font-bold"><%= t('.fa_is_enabled') %></h2>
+              <p class="text-sm text-base-content/70"><%= t('.your_account_is_protected_with_two_factor_authentication') %></p>
             </div>
           </div>
 
           <div class="divider"></div>
 
           <p class="text-sm text-base-content/70 mb-4">
-            To disable 2FA, enter your password and a current authenticator code (or backup code).
+            <%= t('.to_disable_2fa_enter_your_password_and_a_current_authenticator') %>
           </p>
 
           <%= form_with url: settings_two_factor_path, method: :delete, data: { turbo: false }, class: "space-y-4" do |f| %>
             <div class="form-control">
               <%= f.label :password, class: 'label' do %>
-                <span class="label-text">Current password</span>
+                <span class="label-text"><%= t('.current_password') %></span>
               <% end %>
               <%= f.password_field :password, class: 'input input-bordered w-full', required: true, autocomplete: 'current-password' %>
             </div>
             <div class="form-control">
               <%= f.label :otp_attempt, class: 'label' do %>
-                <span class="label-text">Authenticator code or backup code</span>
+                <span class="label-text"><%= t('.authenticator_code_or_backup_code') %></span>
               <% end %>
               <%= f.text_field :otp_attempt, class: 'input input-bordered w-full', required: true, autocomplete: 'one-time-code', inputmode: 'text' %>
             </div>
             <div class="form-control">
-              <%= f.submit 'Disable 2FA', class: 'btn btn-error w-full' %>
+              <%= f.submit t('.disable_2fa'), class: 'btn btn-error w-full' %>
             </div>
           <% end %>
         <% else %>
           <div class="flex items-center gap-3 mb-4">
             <%= icon 'shield', class: "text-warning w-8 h-8" %>
             <div>
-              <h2 class="text-xl font-bold">2FA is not enabled</h2>
-              <p class="text-sm text-base-content/70">Add an extra layer of security to your account.</p>
+              <h2 class="text-xl font-bold"><%= t('.fa_is_not_enabled') %></h2>
+              <p class="text-sm text-base-content/70"><%= t('.add_an_extra_layer_of_security_to_your_account') %></p>
             </div>
           </div>
 
           <div class="divider"></div>
 
           <p class="text-sm text-base-content/70 mb-4">
-            Two-factor authentication adds an extra layer of security by requiring a code
-            from your authenticator app (Google Authenticator, Authy, etc.) when you sign in.
+            <%= t('.two_factor_authentication_adds_an_extra_layer_of_security_by') %>
           </p>
 
           <%= form_with url: settings_two_factor_path, method: :post, data: { turbo: false } do %>
-            <%= submit_tag 'Enable 2FA', class: 'btn btn-primary w-full' %>
+            <%= submit_tag t('.enable_2fa'), class: 'btn btn-primary w-full' %>
           <% end %>
         <% end %>
       </div>

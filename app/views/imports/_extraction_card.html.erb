@@ -3,72 +3,70 @@
     <div class="card-body">
       <div class="flex items-center gap-2 mb-2">
         <%= icon 'layer', class: 'w-5 h-5 text-base-content/60' %>
-        <h3 class="text-lg font-semibold">Additional data</h3>
+        <h3 class="text-lg font-semibold"><%= t('.additional_data') %></h3>
         <%= extraction_status_badge(import) %>
       </div>
 
       <% if import.additional_data_extraction_unsupported? %>
         <p class="text-sm text-base-content/70">
-          This import format doesn't carry visits, named places, or transportation modes,
-          so there's nothing additional to extract.
+          <%= t('.this_import_format_doesn_t_carry_visits_named_places_or') %>
         </p>
       <% elsif import.additional_data_extraction_completed? %>
         <% counts = import.extraction_counts %>
         <p class="text-sm text-base-content/70 mb-4">
-          Extracted
-          <strong><%= counts[:visits] || 0 %></strong> visits,
-          <strong><%= counts[:places] || 0 %></strong> places,
-          <strong><%= counts[:tracks] || 0 %></strong> tracks,
-          <strong><%= counts[:segments] || 0 %></strong> transportation-mode segments.
+          <%= t('.extracted') %>
+          <strong><%= counts[:visits] || 0 %></strong> <%= t('.visits') %>
+          <strong><%= counts[:places] || 0 %></strong> <%= t('.places') %>
+          <strong><%= counts[:tracks] || 0 %></strong> <%= t('.tracks') %>
+          <strong><%= counts[:segments] || 0 %></strong> <%= t('.transportation_mode_segments') %>
         </p>
         <div class="flex flex-wrap gap-2">
           <button class="btn btn-sm btn-outline"
                   data-action="click->import-extraction#open"
                   data-import-extraction-dialog-id-param="extraction-dialog-<%= import.id %>">
-            Re-extract
+            <%= t('.re_extract') %>
           </button>
           <%= render 'imports/extraction_remove_button', import: import %>
         </div>
       <% elsif import.additional_data_extraction_running? || import.additional_data_extraction_pending? %>
         <% if import.extraction_stalled? %>
           <p class="text-sm text-warning mb-2">
-            This extraction stopped responding. It's safe to start it again.
+            <%= t('.this_extraction_stopped_responding_it_s_safe_to_start_it') %>
           </p>
           <div class="flex flex-wrap gap-2">
             <button class="btn btn-sm btn-outline"
                     data-action="click->import-extraction#open"
                     data-import-extraction-dialog-id-param="extraction-dialog-<%= import.id %>">
-              Start over
+              <%= t('.start_over') %>
             </button>
             <%= render 'imports/extraction_remove_button', import: import %>
           </div>
         <% else %>
           <p class="text-sm text-base-content/70 flex items-center gap-2">
             <span class="loading loading-dots loading-sm shrink-0"></span>
-            <%= import.additional_data_extraction_running? ? 'Extracting…' : 'Queued…' %>
+            <%= import.additional_data_extraction_running? ? t('.extracting') : t('.queued') %>
           </p>
         <% end %>
       <% elsif import.additional_data_extraction_failed? %>
         <p class="text-sm text-error mb-2">
-          Extraction failed: <%= import.extraction_error_message %>
+          <%= t('.extraction_failed') %> <%= import.extraction_error_message %>
         </p>
         <div class="flex flex-wrap gap-2">
           <button class="btn btn-sm btn-outline"
                   data-action="click->import-extraction#open"
                   data-import-extraction-dialog-id-param="extraction-dialog-<%= import.id %>">
-            Retry extraction
+            <%= t('.retry_extraction') %>
           </button>
           <%= render 'imports/extraction_remove_button', import: import %>
         </div>
       <% else %>
         <p class="text-sm text-base-content/70 mb-4">
-          Dawarich originally imported your file as raw GPS points. Click below to also
-          extract visits, places, tracks, and transportation modes.
+          <%= t('.dawarich_originally_imported_your_file_as_raw_gps_points_click') %>
         </p>
         <button class="btn btn-sm btn-primary"
                 data-action="click->import-extraction#open"
                 data-import-extraction-dialog-id-param="extraction-dialog-<%= import.id %>">
-          Extract additional data
+          <%= t('.extract_additional_data') %>
         </button>
       <% end %>
     </div>

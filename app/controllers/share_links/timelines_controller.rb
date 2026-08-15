@@ -28,7 +28,8 @@ module ShareLinks
       {
         user: current_user,
         resource_type: :timeline,
-        name: "Timeline: #{start_date.iso8601} → #{end_date.iso8601}",
+        name: I18n.t('controllers.share_links.timelines.default_name', start_date: start_date.iso8601,
+end_date: end_date.iso8601),
         settings: SharedLink.default_settings_for(:timeline).merge(
           'start_date' => start_date.iso8601,
           'end_date'   => end_date.iso8601
@@ -65,11 +66,19 @@ module ShareLinks
     def default_name_from_params
       return nil unless params[:start_date].present? && params[:end_date].present?
 
-      "Timeline: #{params[:start_date]} → #{params[:end_date]}"
+      I18n.t(
+        'controllers.share_links.timelines.default_name',
+        start_date: params[:start_date],
+        end_date: params[:end_date]
+      )
     end
 
     def default_name_for(attrs)
-      "Timeline: #{attrs[:start_date]} → #{attrs[:end_date]}"
+      I18n.t(
+        'controllers.share_links.timelines.default_name',
+        start_date: attrs[:start_date],
+        end_date: attrs[:end_date]
+      )
     end
   end
 end
