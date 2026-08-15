@@ -639,5 +639,425 @@ RSpec.describe Points::AnomalyFilter do
         expect(after_zero.reload.anomaly).not_to be true
       end
     end
+
+    # iOS visit monitoring (Overland `action: visit`) reports a stay after it
+    # ended: the payload carries the visit centroid plus arrival and departure
+    # dates, but the point is stamped with its delivery time — minutes after
+    # departure, while the device is already moving away. The coordinate is
+    # right, its place in the timeline is not, so the track leaps to the
+    # centroid and back. No accuracy or speed gate can catch that.
+    context 'Pass 4: departed visit reports' do
+      let(:base_time) { 1.hour.ago.to_i }
+
+      def walk_point(offset, lat, lon)
+        create(:point, user: user, accuracy: 5, timestamp: base_time + offset,
+               latitude: lat, longitude: lon, lonlat: "POINT(#{lon} #{lat})")
+      end
+
+      let!(:walk) do
+        [walk_point(0, 51.3404, 12.3754),
+         walk_point(60, 51.3400, 12.3747),
+         walk_point(120, 51.3396, 12.3740)]
+      end
+
+      let!(:departed_report) do
+        create(:point, user: user, accuracy: 4, timestamp: base_time + 90,
+               latitude: 51.3418, longitude: 12.3790, lonlat: 'POINT(12.3790 51.3418)',
+               motion_data: { 'action' => 'visit' },
+               raw_data: { 'properties' => { 'action' => 'visit',
+                                             'arrival_date' => '2026-05-19T18:27:54Z',
+                                             'departure_date' => '2026-05-19T18:34:25Z' } })
+      end
+
+      let!(:arrival_report) do
+        create(:point, user: user, accuracy: 30, timestamp: base_time + 150,
+               latitude: 51.3395, longitude: 12.3739, lonlat: 'POINT(12.3739 51.3395)',
+               motion_data: { 'action' => 'visit' },
+               raw_data: { 'properties' => { 'action' => 'visit',
+                                             'arrival_date' => '2026-05-19T18:27:54Z',
+                                             'departure_date' => nil } })
+      end
+
+      let!(:archived_report) do
+        create(:point, user: user, accuracy: 10, timestamp: base_time + 180,
+               latitude: 51.3394, longitude: 12.3738, lonlat: 'POINT(12.3738 51.3394)',
+               motion_data: { 'action' => 'visit' },
+               raw_data: {}, raw_data_archived: true)
+      end
+
+      let!(:distant_future_report) do
+        create(:point, user: user, accuracy: 20, timestamp: base_time + 210,
+               latitude: 51.3393, longitude: 12.3737, lonlat: 'POINT(12.3737 51.3393)',
+               motion_data: { 'action' => 'visit' },
+               raw_data: { 'properties' => { 'action' => 'visit',
+                                             'arrival_date' => '2026-05-19T18:27:54Z',
+                                             'departure_date' => '4001-01-01T00:00:00Z' } })
+      end
+
+      let!(:archived_departed_report) do
+        create(:point, user: user, accuracy: 12, timestamp: base_time + 240,
+               latitude: 51.3392, longitude: 12.3736, lonlat: 'POINT(12.3736 51.3392)',
+               motion_data: { 'action' => 'visit', 'departure_date' => '2026-05-19T18:34:25Z' },
+               raw_data: {}, raw_data_archived: true)
+      end
+
+      let!(:departed_non_visit) do
+        create(:point, user: user, accuracy: 8, timestamp: base_time + 270,
+               latitude: 51.3391, longitude: 12.3735, lonlat: 'POINT(12.3735 51.3391)',
+               motion_data: { 'motion' => ['walking'] },
+               raw_data: { 'properties' => { 'departure_date' => '2026-05-19T18:34:25Z' } })
+      end
+
+      before { described_class.new(user.id, 2.hours.ago.to_i, Time.current.to_i).call }
+
+      it 'flags a departed visit report despite its perfect accuracy' do
+        expect(departed_report.reload.anomaly).to be true
+      end
+
+      it 'keeps an arrival report, which is delivered while the device is still there' do
+        expect(arrival_report.reload.anomaly).not_to be true
+      end
+
+      it 'keeps a visit report whose raw payload was archived, since it cannot be classified' do
+        expect(archived_report.reload.anomaly).not_to be true
+      end
+
+      it 'keeps a report whose departure date is the distant-future placeholder' do
+        expect(distant_future_report.reload.anomaly).not_to be true
+      end
+
+      it 'flags a departed report after archival when motion_data kept the departure date' do
+        expect(archived_departed_report.reload.anomaly).to be true
+      end
+
+      it 'keeps a non-visit point that happens to carry a departure date' do
+        expect(departed_non_visit.reload.anomaly).not_to be true
+      end
+
+      it 'persists the departure date into motion_data when flagging' do
+        expect(departed_report.reload.motion_data['departure_date']).to eq('2026-05-19T18:34:25Z')
+      end
+
+      it 'keeps the surrounding walk' do
+        walk.each { |point| expect(point.reload.anomaly).not_to be true }
+      end
+    end
+
+    # After a tracking gap the first fix often comes from cell towers with
+    # every CoreLocation sentinel set: speed -1, vertical accuracy -1 and a
+    # kilometre-scale radius. It lands wherever the tower is — far below the
+    # absurd-accuracy gate, yet nowhere near the route.
+    context 'Pass 5: cold-start sentinel fixes' do
+      let(:base_time) { 1.hour.ago.to_i }
+
+      let!(:cold_start) do
+        create(:point, user: user, accuracy: 1414, velocity: '-1', vertical_accuracy: -1,
+               timestamp: base_time, latitude: 51.3336, longitude: 12.3777,
+               lonlat: 'POINT(12.3777 51.3336)')
+      end
+
+      let!(:stationary_invalid_speed) do
+        create(:point, user: user, accuracy: 15, velocity: '-1', vertical_accuracy: -1,
+               timestamp: base_time + 60, latitude: 51.3355, longitude: 12.3742,
+               lonlat: 'POINT(12.3742 51.3355)')
+      end
+
+      let!(:coarse_with_valid_motion) do
+        create(:point, user: user, accuracy: 1500, velocity: '2', vertical_accuracy: 5,
+               timestamp: base_time + 120, latitude: 51.3356, longitude: 12.3743,
+               lonlat: 'POINT(12.3743 51.3356)')
+      end
+
+      let!(:at_the_gate) do
+        create(:point, user: user, accuracy: 500, velocity: '-1', vertical_accuracy: -1,
+               timestamp: base_time + 180, latitude: 51.3357, longitude: 12.3744,
+               lonlat: 'POINT(12.3744 51.3357)')
+      end
+
+      let!(:wifi_tier_sentinel) do
+        create(:point, user: user, accuracy: 165, velocity: '-1', vertical_accuracy: -1,
+               timestamp: base_time + 210, latitude: 51.3365, longitude: 12.3752,
+               lonlat: 'POINT(12.3752 51.3365)')
+      end
+
+      let!(:no_vertical_reading) do
+        create(:point, user: user, accuracy: 1500, velocity: '-1', vertical_accuracy: nil,
+               timestamp: base_time + 240, latitude: 51.3358, longitude: 12.3745,
+               lonlat: 'POINT(12.3745 51.3358)')
+      end
+
+      let!(:tower_run) do
+        3.times.map do |i|
+          create(:point, user: user, accuracy: 2000, velocity: '-1', vertical_accuracy: -1,
+                 timestamp: base_time + 300 + (i * 60),
+                 latitude: 51.3359 + (i * 0.0001), longitude: 12.3746 + (i * 0.0001),
+                 lonlat: "POINT(#{12.3746 + (i * 0.0001)} #{51.3359 + (i * 0.0001)})")
+        end
+      end
+
+      let!(:sentinel_without_accuracy) do
+        create(:point, user: user, accuracy: nil, velocity: '-1', vertical_accuracy: -1,
+               timestamp: base_time + 480, latitude: 51.3363, longitude: 12.3750,
+               lonlat: 'POINT(12.3750 51.3363)')
+      end
+
+      let!(:negative_speed_with_altitude) do
+        create(:point, user: user, accuracy: 1500, velocity: '-1', vertical_accuracy: 5,
+               timestamp: base_time + 540, latitude: 51.3364, longitude: 12.3751,
+               lonlat: 'POINT(12.3751 51.3364)')
+      end
+
+      before { described_class.new(user.id, 2.hours.ago.to_i, Time.current.to_i).call }
+
+      it 'flags the coarse fix whose motion fields are all sentinels' do
+        expect(cold_start.reload.anomaly).to be true
+      end
+
+      it 'keeps a sentinel fix whose radius is still tight' do
+        expect(stationary_invalid_speed.reload.anomaly).not_to be true
+      end
+
+      it 'keeps a coarse fix that carries valid motion data' do
+        expect(coarse_with_valid_motion.reload.anomaly).not_to be true
+      end
+
+      it 'keeps a sentinel fix exactly at the accuracy gate' do
+        expect(at_the_gate.reload.anomaly).not_to be true
+      end
+
+      it 'keeps a wifi-tier sentinel fix, which is positionally usable' do
+        expect(wifi_tier_sentinel.reload.anomaly).not_to be true
+      end
+
+      it 'keeps a coarse fix with no vertical accuracy reading at all' do
+        expect(no_vertical_reading.reload.anomaly).not_to be true
+      end
+
+      it 'flags an entire run of tower fixes, not only the first' do
+        expect(tower_run.map { |point| point.reload.anomaly }).to all(be(true))
+      end
+
+      it 'keeps a sentinel-shaped fix with no accuracy reading at all' do
+        expect(sentinel_without_accuracy.reload.anomaly).not_to be true
+      end
+
+      it 'keeps a coarse negative-speed fix whose vertical accuracy is valid' do
+        expect(negative_speed_with_altitude.reload.anomaly).not_to be true
+      end
+    end
+
+    # Reduced-accuracy permission and significant-change tracking produce
+    # nothing but coarse sentinel fixes. There the tower position is the only
+    # record there is, and a pass that erased it would blank the whole map.
+    context 'Pass 5: a history that is coarse all the way through' do
+      let(:base_time) { 1.hour.ago.to_i }
+
+      let!(:coarse_stream) do
+        5.times.map do |i|
+          create(:point, user: user, accuracy: 1800, velocity: '-1', vertical_accuracy: -1,
+                 timestamp: base_time + (i * 300),
+                 latitude: 51.34 + (i * 0.001), longitude: 12.37 + (i * 0.001),
+                 lonlat: "POINT(#{12.37 + (i * 0.001)} #{51.34 + (i * 0.001)})")
+        end
+      end
+
+      before { described_class.new(user.id, 2.hours.ago.to_i, Time.current.to_i).call }
+
+      it 'keeps every fix, since nothing better was ever available' do
+        coarse_stream.each { |point| expect(point.reload.anomaly).not_to be true }
+      end
+    end
+
+    # A second device on reduced-accuracy permission is coarse all the way
+    # through even when the account's other device tracks precisely. Each
+    # device is its own stream — the same rule the speed pass applies.
+    context 'Pass 5: a coarse-only device next to a precise one' do
+      let(:base_time) { 1.hour.ago.to_i }
+
+      let!(:precise_phone) do
+        3.times.map do |i|
+          create(:point, user: user, accuracy: 5, velocity: '1', vertical_accuracy: 5,
+                 tracker_id: 'iphone', timestamp: base_time + (i * 60),
+                 latitude: 51.3402 + (i * 0.0001), longitude: 12.3712,
+                 lonlat: "POINT(12.3712 #{51.3402 + (i * 0.0001)})")
+        end
+      end
+
+      let!(:coarse_watch) do
+        3.times.map do |i|
+          create(:point, user: user, accuracy: 1500, velocity: '-1', vertical_accuracy: -1,
+                 tracker_id: 'watch', timestamp: base_time + 30 + (i * 60),
+                 latitude: 51.3412 + (i * 0.001), longitude: 12.3722,
+                 lonlat: "POINT(12.3722 #{51.3412 + (i * 0.001)})")
+        end
+      end
+
+      before { described_class.new(user.id, 2.hours.ago.to_i, Time.current.to_i).call }
+
+      it 'keeps the coarse device intact' do
+        coarse_watch.each { |point| expect(point.reload.anomaly).not_to be true }
+      end
+
+      it 'leaves the precise device alone too' do
+        precise_phone.each { |point| expect(point.reload.anomaly).not_to be true }
+      end
+    end
+
+    context 'Pass 5: the only precise neighbour is itself an anomaly' do
+      let(:base_time) { 1.hour.ago.to_i }
+
+      let!(:flagged_neighbor) do
+        create(:point, user: user, accuracy: 10, velocity: '1', vertical_accuracy: 5,
+               timestamp: base_time, latitude: 51.3370, longitude: 12.3760,
+               lonlat: 'POINT(12.3760 51.3370)', anomaly: true)
+      end
+
+      let!(:orphan_sentinel) do
+        create(:point, user: user, accuracy: 1500, velocity: '-1', vertical_accuracy: -1,
+               timestamp: base_time + 60, latitude: 51.3380, longitude: 12.3770,
+               lonlat: 'POINT(12.3770 51.3380)')
+      end
+
+      before { described_class.new(user.id, 2.hours.ago.to_i, Time.current.to_i).call }
+
+      it 'keeps the sentinel fix, since flagged points cannot justify more flags' do
+        expect(orphan_sentinel.reload.anomaly).not_to be true
+      end
+    end
+
+    # A point can be flagged after realtime generation already baked it into a
+    # track: stored geometry and monthly distance keep the leap until both are
+    # rebuilt, and recalculation reads track.points, which a stale track_id
+    # would keep feeding.
+    context 'a departed visit report already baked into a track' do
+      let(:base_time) { 1.hour.ago.to_i }
+
+      let!(:walk) do
+        2.times.map do |i|
+          create(:point, user: user, accuracy: 5, timestamp: base_time + (i * 60),
+                 latitude: 51.3421 + (i * 0.0001), longitude: 12.3761,
+                 lonlat: "POINT(12.3761 #{51.3421 + (i * 0.0001)})")
+        end
+      end
+
+      let!(:baked_report) do
+        create(:point, user: user, accuracy: 6, timestamp: base_time + 90,
+               latitude: 51.3428, longitude: 12.3768, lonlat: 'POINT(12.3768 51.3428)',
+               motion_data: { 'action' => 'visit' },
+               raw_data: { 'properties' => { 'action' => 'visit',
+                                             'departure_date' => '2026-05-19T18:34:25Z' } })
+      end
+
+      let!(:track) do
+        create(:track, user: user,
+               start_at: Time.zone.at(base_time), end_at: Time.zone.at(base_time + 120)).tap do |t|
+          Point.where(id: walk.map(&:id) + [baked_report.id]).update_all(track_id: t.id)
+        end
+      end
+
+      def run_filter(**options)
+        described_class.new(user.id, 2.hours.ago.to_i, Time.current.to_i, **options).call
+      end
+
+      it 'detaches the flagged point from its track' do
+        run_filter
+        expect(baked_report.reload.track_id).to be_nil
+      end
+
+      it 'leaves the clean points attached' do
+        run_filter
+        walk.each { |point| expect(point.reload.track_id).to eq(track.id) }
+      end
+
+      it 'enqueues a recalculation for the affected track' do
+        expect { run_filter }.to have_enqueued_job(Tracks::RecalculateJob).with(track.id)
+      end
+
+      it 'enqueues a stats refresh for the affected month' do
+        time = Time.zone.at(baked_report.timestamp)
+
+        expect { run_filter }
+          .to have_enqueued_job(Stats::CalculatingJob).with(user.id, time.year, time.month)
+      end
+
+      it 'skips the dependent rebuilds when the caller rebuilds wholesale' do
+        expect { run_filter(invalidate_dependents: false) }
+          .not_to have_enqueued_job(Tracks::RecalculateJob)
+      end
+
+      it 'still flags and detaches the point when the rebuilds are skipped' do
+        run_filter(invalidate_dependents: false)
+
+        expect(baked_report.reload.anomaly).to be true
+        expect(baked_report.track_id).to be_nil
+      end
+    end
+
+    context 'both passes flag points in the same month' do
+      let(:base_time) { 1.hour.ago.to_i }
+
+      let!(:precise_context) do
+        3.times.map do |i|
+          create(:point, user: user, accuracy: 5, velocity: '1', vertical_accuracy: 5,
+                 timestamp: base_time + (i * 60),
+                 latitude: 51.3431 + (i * 0.0001), longitude: 12.3781,
+                 lonlat: "POINT(12.3781 #{51.3431 + (i * 0.0001)})")
+        end
+      end
+
+      let!(:departed_report) do
+        create(:point, user: user, accuracy: 6, timestamp: base_time + 30,
+               latitude: 51.3438, longitude: 12.3788, lonlat: 'POINT(12.3788 51.3438)',
+               motion_data: { 'action' => 'visit' },
+               raw_data: { 'properties' => { 'action' => 'visit',
+                                             'departure_date' => '2026-05-19T18:34:25Z' } })
+      end
+
+      let!(:tower_fix) do
+        create(:point, user: user, accuracy: 1500, velocity: '-1', vertical_accuracy: -1,
+               timestamp: base_time + 90, latitude: 51.3448, longitude: 12.3798,
+               lonlat: 'POINT(12.3798 51.3448)')
+      end
+
+      it 'enqueues one stats refresh for the shared month, not one per pass' do
+        time = Time.zone.at(departed_report.timestamp)
+
+        expect { described_class.new(user.id, 2.hours.ago.to_i, Time.current.to_i).call }
+          .to have_enqueued_job(Stats::CalculatingJob)
+          .with(user.id, time.year, time.month).exactly(:once)
+      end
+    end
+
+    # At ingest each batch is filtered alone, and a wake-up tower fix often
+    # arrives in a batch of one — its precise context only exists a few
+    # minutes later, in the next batch, whose window starts after it.
+    context 'Pass 5: a cold start that arrived in an earlier batch' do
+      let(:base_time) { 1.hour.ago.to_i }
+
+      let!(:earlier_tower_fix) do
+        create(:point, user: user, accuracy: 1500, velocity: '-1', vertical_accuracy: -1,
+               timestamp: base_time, latitude: 51.3350, longitude: 12.3730,
+               lonlat: 'POINT(12.3730 51.3350)')
+      end
+
+      let!(:later_precise) do
+        3.times.map do |i|
+          create(:point, user: user, accuracy: 8, velocity: '1', vertical_accuracy: 5,
+                 timestamp: base_time + 300 + (i * 60),
+                 latitude: 51.3352 + (i * 0.0001), longitude: 12.3732,
+                 lonlat: "POINT(12.3732 #{51.3352 + (i * 0.0001)})")
+        end
+      end
+
+      before { described_class.new(user.id, base_time + 300, Time.current.to_i).call }
+
+      it 'flags the fix even though it predates the window' do
+        expect(earlier_tower_fix.reload.anomaly).to be true
+      end
+
+      it 'leaves the precise batch alone' do
+        later_precise.each { |point| expect(point.reload.anomaly).not_to be true }
+      end
+    end
   end
 end

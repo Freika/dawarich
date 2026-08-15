@@ -17,7 +17,7 @@ class Points::AnomalyBackfillUserJob < ApplicationJob
       end
 
       step :filter_months, start: 0 do |step|
-        run_filter_in_monthly_chunks(user, step)
+        run_filter_in_monthly_chunks(user, step, invalidate_dependents: !reset)
       end
 
       true
@@ -59,7 +59,10 @@ class Points::AnomalyBackfillUserJob < ApplicationJob
     Rails.logger.info("[AnomalyBackfill] User #{user.id}: cleared #{cleared} anomaly flags before re-evaluation")
   end
 
-  def run_filter_in_monthly_chunks(user, step)
+  # invalidate_dependents mirrors the reset flow: a resetting run rebuilds
+  # tracks and stats wholesale afterwards, a non-resetting one has no rebuild
+  # coming and must let the filter queue its own.
+  def run_filter_in_monthly_chunks(user, step, invalidate_dependents:)
     populated_months = user.points
                            .distinct
                            .pluck(Arel.sql("date_trunc('month', to_timestamp(timestamp))"))
@@ -75,7 +78,9 @@ class Points::AnomalyBackfillUserJob < ApplicationJob
 
       chunk_end = (month_start + 1.month).to_i
 
-      marked = Points::AnomalyFilter.new(user.id, chunk_start, chunk_end).call
+      marked = Points::AnomalyFilter.new(
+        user.id, chunk_start, chunk_end, invalidate_dependents: invalidate_dependents
+      ).call
       Rails.logger.info(
         "[AnomalyBackfill] User #{user.id}: month #{index + 1}/#{total_months}, marked #{marked} anomalies"
       )

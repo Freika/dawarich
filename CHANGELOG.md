@@ -15,13 +15,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - The map no longer stays blank after an upgrade when the `dawarich_public` Docker volume still holds precompiled assets from an older version. The asset manifest now ships inside the app image instead of the public volume, the boot-time asset sync stages from inside the app directory (a tmpfs-mounted `/tmp` can no longer skip it), and the container logs a warning if the sync still cannot run. (#3346)
 - User data exports no longer fail when a legacy place has no spatial coordinates. (#3344)
+- The map no longer leaps to a just-left place or a phantom spot off your route: iOS visit reports delivered after departure and coarse cell-tower fixes without motion data are now filtered out as anomalies. Existing histories are re-evaluated automatically after the upgrade, and tracks and stats are rebuilt along the way.
 
 ## [1.12.1] - 2026-08-13, Berlin
 
 ### Fixed
 
 - Fix to recently added migrations that could fail on some self-hosted instances with a large number of visits. The migration now runs in smaller batches and is resumable if interrupted.
-
 
 ## [1.12.0] - 2026-08-11, Berlin
 
