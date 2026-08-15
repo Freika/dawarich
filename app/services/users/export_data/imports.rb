@@ -49,7 +49,7 @@ class Users::ExportData::Imports
       download_and_save_import_file(import, file_path)
       add_file_metadata_to_import(import, import_hash, sanitized_filename)
     rescue StandardError => e
-      ExceptionReporter.call(e)
+      ExceptionReporter.call(e) unless e.is_a?(Imports::SecureFileDownloader::EmptyFileError)
 
       import_hash['file_error'] = "Failed to download: #{e.message}"
     end

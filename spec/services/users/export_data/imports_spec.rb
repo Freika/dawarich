@@ -96,9 +96,29 @@ RSpec.describe Users::ExportData::Imports, type: :service do
       end
 
       it 'handles download errors gracefully' do
+        expect(ExceptionReporter).to receive(:call).with(instance_of(StandardError))
+
         import_data = subject.find { |i| i['name'] == 'Import with error file' }
 
         expect(import_data['file_error']).to eq('Failed to download: Download failed')
+      end
+    end
+
+    context 'when an attached import file is empty' do
+      let!(:import_with_file) do
+        import = create(:import, user: user, name: 'Import with empty file')
+        import.file.attach(create_blob(content: ''))
+        import
+      end
+
+      it 'keeps the file error without reporting the expected empty file' do
+        expect(ExceptionReporter).not_to receive(:call)
+
+        import_data = subject.first
+
+        expect(import_data['file_error']).to eq(
+          'Failed to download: Download completed but no content was received'
+        )
       end
     end
 
@@ -161,9 +181,9 @@ RSpec.describe Users::ExportData::Imports, type: :service do
 
   private
 
-  def create_blob(filename: 'test.txt', content_type: 'text/plain')
+  def create_blob(filename: 'test.txt', content_type: 'text/plain', content: 'test content')
     ActiveStorage::Blob.create_and_upload!(
-      io: StringIO.new('test content'),
+      io: StringIO.new(content),
       filename: filename,
       content_type: content_type
     )
