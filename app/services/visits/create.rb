@@ -60,7 +60,6 @@ module Visits
     def find_existing_place
       Place.joins('JOIN visits ON places.id = visits.place_id')
            .where(visits: { user: user })
-           .where(places: { user_id: user.id })
            .where(
              'ST_DWithin(places.lonlat::geography, ' \
              'ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography, ?)',

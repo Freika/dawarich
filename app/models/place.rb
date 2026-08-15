@@ -9,7 +9,7 @@ class Place < ApplicationRecord
 
   DEFAULT_NAME = 'Suggested place'
 
-  belongs_to :user, optional: true # Optional until Stage 2 NOT NULL
+  belongs_to :user
   has_many :visits, dependent: :nullify
   # Reader surfaces (drawers, serializers, stats) must never count tombstoned
   # or declined visits; eager-loadable so list endpoints avoid N+1 counts.
