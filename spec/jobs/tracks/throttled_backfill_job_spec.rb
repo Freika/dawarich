@@ -32,13 +32,21 @@ RSpec.describe Tracks::ThrottledBackfillJob, type: :job do
       it 'generates one slice anchored at the newest point, untracked only' do
         described_class.perform_now(user.id, nil)
 
-        expect(Tracks::ParallelGeneratorJob).to have_been_enqueued.with(
+        expect(Tracks::TimeChunkProcessorJob).to have_been_enqueued.with(
           user.id,
+          anything,
           hash_including(
             untracked_only: true,
-            end_at: Time.zone.at(newest_point.timestamp)
+            end_timestamp: newest_point.timestamp
           )
         )
+      end
+
+      it 'keeps the slice fan-out off the tracks queue' do
+        described_class.perform_now(user.id, nil)
+
+        expect(Tracks::TimeChunkProcessorJob).to have_been_enqueued.on_queue('low_priority')
+        expect(Tracks::TimeChunkProcessorJob).not_to have_been_enqueued.on_queue('tracks')
       end
 
       it 're-enqueues itself with the cursor moved below the slice' do
@@ -57,9 +65,10 @@ RSpec.describe Tracks::ThrottledBackfillJob, type: :job do
       it 'jumps the slice to the newest point below the cursor instead of walking empty windows' do
         described_class.perform_now(user.id, 100.days.ago.to_i)
 
-        expect(Tracks::ParallelGeneratorJob).to have_been_enqueued.with(
+        expect(Tracks::TimeChunkProcessorJob).to have_been_enqueued.with(
           user.id,
-          hash_including(end_at: Time.zone.at(ancient_point.timestamp))
+          anything,
+          hash_including(end_timestamp: ancient_point.timestamp)
         )
       end
     end
@@ -74,7 +83,7 @@ RSpec.describe Tracks::ThrottledBackfillJob, type: :job do
       it 'does not enqueue any generation and releases the dedup key' do
         described_class.perform_now(user.id, 300.days.ago.to_i)
 
-        expect(Tracks::ParallelGeneratorJob).not_to have_been_enqueued
+        expect(Tracks::TimeChunkProcessorJob).not_to have_been_enqueued
         expect(described_class).not_to have_been_enqueued
 
         key_exists = Sidekiq.redis { |redis| redis.exists(described_class.redis_key(user.id)) }

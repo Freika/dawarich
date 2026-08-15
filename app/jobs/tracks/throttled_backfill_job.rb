@@ -4,10 +4,13 @@
 # too large for Tracks::DailyGenerationJob's catch-up path (no tracks and more
 # than BOOTSTRAP_POINTS_LIMIT points). Walks the history newest-first, one
 # SLICE at a time, handing each slice to the existing parallel generator with
-# untracked_only so re-runs and overlaps never rewrite already-tracked points.
-# The per-user lock inside ParallelGeneratorJob serializes overlapping slices;
-# the pause between slices bounds the write rate to roughly one slice a minute
-# instead of enqueueing thousands of chunk jobs at once.
+# untracked_only so re-runs and overlaps never rewrite already-tracked points
+# (that flag, plus the tracks unique index, is what makes overlapping slices
+# safe — untracked_only skips the per-user lock), and with
+# job_queue: :low_priority so the chunk fan-out never competes with
+# Tracks::RealtimeGenerationJob on :tracks. The pause between slices bounds
+# the write rate to roughly one slice a minute instead of enqueueing thousands
+# of chunk jobs at once.
 class Tracks::ThrottledBackfillJob < ApplicationJob
   queue_as :low_priority
 
@@ -39,14 +42,14 @@ class Tracks::ThrottledBackfillJob < ApplicationJob
 
     slice_start = slice_end - SLICE.to_i
 
-    Tracks::ParallelGeneratorJob.perform_later(
-      user_id,
+    Tracks::ParallelGenerator.new(
+      user,
       start_at: Time.zone.at(slice_start),
       end_at: Time.zone.at(slice_end),
       mode: :bulk,
-      chunk_size: SLICE,
-      untracked_only: true
-    )
+      untracked_only: true,
+      job_queue: :low_priority
+    ).call
 
     refresh_key(user_id)
     self.class.set(wait: PAUSE).perform_later(user_id, slice_start)
