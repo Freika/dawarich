@@ -147,6 +147,7 @@ module UserFamily
     return Point.none if effective_start >= end_at
 
     scoped_points
+      .complete
       .where('timestamp >= ? AND timestamp <= ?', effective_start.to_i, end_at.to_i)
       .order(timestamp: :asc)
   end
@@ -157,7 +158,8 @@ module UserFamily
     return nil unless family_sharing_enabled?
 
     latest_point =
-      points.select(:lonlat, :timestamp)
+      points.complete
+            .select(:lonlat, :timestamp)
             .order(timestamp: :desc)
             .limit(1)
             .first

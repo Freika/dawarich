@@ -28,6 +28,21 @@ RSpec.describe Families::Locations do
       expect(result.first[:user_id]).to eq(other_user.id)
     end
 
+    # A point with a NULL timestamp sorts
+    # NULLS FIRST under ORDER BY timestamp DESC and
+    # used to become the "latest" point, and point.timestamp.to_i => 0
+    # rendered "Last seen: Jan 1, 1970" on the map instead of the real fix.
+    it 'ignores points with a nil timestamp when picking the latest' do
+      other_user.update_family_location_sharing!(true, duration: 'permanent')
+      real_point = create(:point, user: other_user, timestamp: 1.hour.ago.to_i)
+      create(:point, user: other_user, timestamp: 1.minute.ago.to_i).update_column(:timestamp, nil)
+
+      result = described_class.new(user).call
+      expect(result.length).to eq(1)
+      expect(result.first[:timestamp]).to eq(real_point.timestamp)
+      expect(result.first[:updated_at]).to eq(Time.zone.at(real_point.timestamp))
+    end
+
     context 'when the family feature is unavailable to the caller' do
       before { allow(DawarichSettings).to receive(:self_hosted?).and_return(false) }
 
