@@ -52,13 +52,15 @@ RSpec.describe GoogleMaps::PhoneTakeoutImporter do
         it 'creates points with correct data' do
           parser
 
-          expect(user.points[6].lat).to eq(27.696576)
-          expect(user.points[6].lon).to eq(-97.376949)
-          expect(user.points[6].timestamp).to eq(1_693_180_140)
+          points = user.points.order(:timestamp)
 
-          expect(user.points.last.lat).to eq(27.709617)
-          expect(user.points.last.lon).to eq(-97.375988)
-          expect(user.points.last.timestamp).to eq(1_693_180_320)
+          expect(points[6].lat).to eq(27.696576)
+          expect(points[6].lon).to eq(-97.376949)
+          expect(points[6].timestamp).to eq(1_693_180_140)
+
+          expect(points.last.lat).to eq(27.709617)
+          expect(points.last.lon).to eq(-97.375988)
+          expect(points.last.timestamp).to eq(1_693_180_320)
         end
       end
     end
@@ -118,13 +120,13 @@ RSpec.describe GoogleMaps::PhoneTakeoutImporter do
       it 'persists altitude, accuracy and velocity nested under rawSignals position' do
         parser
 
-raw_signal_point = Point.find_by(timestamp: DateTime.parse('2024-06-15T09:05:00.000Z').utc.to_i)
-expect(raw_signal_point).to be_present
+        raw_signal_point = Point.find_by(timestamp: DateTime.parse('2024-06-15T09:05:00.000Z').utc.to_i)
+        expect(raw_signal_point).to be_present
 
-expect(raw_signal_point.altitude).to eq(35.0)
-expect(raw_signal_point.altitude_decimal).to eq(35.0)
-expect(raw_signal_point.accuracy).to eq(15)
-expect(raw_signal_point.velocity).to eq('0.0')
+        expect(raw_signal_point.altitude).to eq(35.0)
+        expect(raw_signal_point.altitude_decimal).to eq(35.0)
+        expect(raw_signal_point.accuracy).to eq(15)
+        expect(raw_signal_point.velocity).to eq('0.0')
       end
 
       it 'does not persist raw_data for imported points' do
@@ -308,6 +310,40 @@ expect(raw_signal_point.velocity).to eq('0.0')
         expect(point.altitude).to eq(170.02)
         expect(point[:altitude]).to eq(170)
         expect(point.accuracy).to eq(20)
+      end
+    end
+
+    context 'when a rawSignals position omits the optional measurement fields' do
+      let(:json_data) do
+        {
+          'rawSignals' => [
+            {
+              'position' => {
+                'LatLng' => '52.8899352°, -2.2046753°',
+                'source' => 'CELL',
+                'timestamp' => '2026-07-06T12:11:11.000+01:00'
+              }
+            }
+          ]
+        }
+      end
+      let(:temp_file) do
+        f = Tempfile.new(['phone_takeout_raw_signals', '.json'])
+        f.write(json_data.to_json)
+        f.rewind
+        f
+      end
+      let(:import) { create(:import, user:, name: 'phone_takeout.json') }
+
+      after { temp_file.close! }
+
+      it 'still imports the point and leaves the missing fields nil' do
+        described_class.new(import, user.id, temp_file.path).call
+
+        point = user.points.sole
+        expect(point.altitude).to be_nil
+        expect(point.accuracy).to be_nil
+        expect(point.velocity).to be_nil
       end
     end
 
