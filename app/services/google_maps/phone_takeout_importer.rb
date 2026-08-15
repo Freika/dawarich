@@ -289,15 +289,19 @@ class GoogleMaps::PhoneTakeoutImporter
 
   def parse_raw_signals(raw_signals)
     raw_signals.flat_map do |segment|
-      next unless segment.dig('position', 'LatLng')
+      position = segment['position']
+      next unless position&.dig('LatLng')
 
-      coords = parse_coordinates(segment['position']['LatLng'])
+      coords = parse_coordinates(position['LatLng'])
       next if coords.nil?
 
       lat, lon, alt = coords
-      timestamp = DateTime.parse(segment['position']['timestamp']).utc.to_i
+      timestamp = DateTime.parse(position['timestamp']).utc.to_i
 
-      point_hash(lat, lon, timestamp, segment, altitude: alt)
+      # `position` — not the `segment` wrapper — is what carries altitudeMeters,
+      # accuracyMeters and speedMetersPerSecond in this format. Passing the
+      # wrapper made point_hash read those keys one level too high and drop them.
+      point_hash(lat, lon, timestamp, position, altitude: alt)
     end
   end
 

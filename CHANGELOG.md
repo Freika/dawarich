@@ -17,6 +17,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - User data exports no longer fail when a legacy place has no spatial coordinates. (#3344)
 - The Tracks layer toggle on the map now reflects your saved setting after a page reload; previously it always showed as off even though the setting was saved and tracks were loaded. (#736)
 - The map no longer leaps to a just-left place or a phantom spot off your route: iOS visit reports delivered after departure and coarse cell-tower fixes without motion data are now filtered out as anomalies. Existing histories are re-evaluated automatically after the upgrade, and tracks and stats are rebuilt along the way.
+- Google Timeline phone exports no longer lose altitude, accuracy and speed on points taken from the `rawSignals` section — those fields were read from the wrong nesting level and came back empty. Points already imported keep their empty values, and importing the same file again skips them; delete the old import first, then import the file again. (#3337)
+- Coarse `rawSignals` fixes with an accuracy radius above 10km are now flagged as anomalies on import, the same as points from every other source. They previously slipped through because their accuracy was never read.
+
 
 ## [1.12.1] - 2026-08-13, Berlin
 
