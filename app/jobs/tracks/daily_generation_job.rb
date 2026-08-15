@@ -58,6 +58,10 @@ class Tracks::DailyGenerationJob < ApplicationJob
   end
 
   def full_history_rebuild_blocked?(user)
+    # Self-hosted instances rebuild directly: the write-amplification risk this
+    # guard mitigates is a shared-database concern, and a self-hoster's history
+    # should appear as fast as their own hardware allows.
+    return false if DawarichSettings.self_hosted?
     return false if user.tracks.exists?
     return false if user.points_count.to_i <= BOOTSTRAP_POINTS_LIMIT
 
