@@ -25,6 +25,8 @@ class Tracks::DailyGenerationJob < ApplicationJob
   # daily-catch-up territory: without the guard, a wiped tracks table makes
   # start_timestamp fall back to the user's very first point and the daily job
   # rewrites track_id across the entire history (non-HOT updates × every index).
+  # Such users are handed to Tracks::ThrottledBackfillJob, which walks the
+  # history newest-first at a bounded rate.
   BOOTSTRAP_POINTS_LIMIT = 100_000
 
   def perform
@@ -56,13 +58,18 @@ class Tracks::DailyGenerationJob < ApplicationJob
   end
 
   def full_history_rebuild_blocked?(user)
+    # Self-hosted instances rebuild directly: the write-amplification risk this
+    # guard mitigates is a shared-database concern, and a self-hoster's history
+    # should appear as fast as their own hardware allows.
+    return false if DawarichSettings.self_hosted?
     return false if user.tracks.exists?
     return false if user.points_count.to_i <= BOOTSTRAP_POINTS_LIMIT
 
-    message = "user #{user.id} has no tracks and #{user.points_count} points; " \
-              'skipping full-history rebuild — run Tracks::BackfillGenerationJob explicitly'
-    Rails.logger.warn("Tracks::DailyGenerationJob: #{message}")
-    ExceptionReporter.call('Tracks::DailyGenerationJob full-history rebuild skipped', message)
+    newly_scheduled = Tracks::ThrottledBackfillJob.schedule(user)
+    Rails.logger.info(
+      "Tracks::DailyGenerationJob: user #{user.id} has no tracks and #{user.points_count} points; " \
+      "throttled backfill #{newly_scheduled ? 'scheduled' : 'already in progress'}"
+    )
 
     true
   end

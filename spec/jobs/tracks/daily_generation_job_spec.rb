@@ -120,18 +120,44 @@ RSpec.describe Tracks::DailyGenerationJob, type: :job do
         wiped_user.update!(points_count: described_class::BOOTSTRAP_POINTS_LIMIT + 1)
         allow(User).to receive(:active_or_trial)
           .and_return(User.where(id: [wiped_user.id]))
-        allow(ExceptionReporter).to receive(:call)
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        Sidekiq.redis { |redis| redis.del(Tracks::ThrottledBackfillJob.redis_key(wiped_user.id)) }
       end
 
-      it 'does not enqueue a full-history rebuild' do
+      it 'does not enqueue a full-history rebuild through the daily path' do
         expect { described_class.perform_now }.not_to \
           have_enqueued_job(Tracks::ParallelGeneratorJob)
       end
 
-      it 'reports the skipped rebuild so a backfill can be run explicitly' do
+      it 'hands the user off to the throttled backfill walker' do
+        expect { described_class.perform_now }.to \
+          have_enqueued_job(Tracks::ThrottledBackfillJob).with(wiped_user.id, nil)
+      end
+
+      it 'does not stack a second walker on the next daily run' do
         described_class.perform_now
 
-        expect(ExceptionReporter).to have_received(:call).at_least(:once)
+        expect { described_class.perform_now }.not_to \
+          have_enqueued_job(Tracks::ThrottledBackfillJob).twice
+      end
+
+      context 'when self-hosted' do
+        before do
+          allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+        end
+
+        it 'rebuilds directly without throttling' do
+          expect { described_class.perform_now }.to \
+            have_enqueued_job(Tracks::ParallelGeneratorJob).with(
+              wiped_user.id,
+              hash_including(mode: 'daily')
+            )
+        end
+
+        it 'does not schedule the throttled walker' do
+          expect { described_class.perform_now }.not_to \
+            have_enqueued_job(Tracks::ThrottledBackfillJob)
+        end
       end
     end
 
