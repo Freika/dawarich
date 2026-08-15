@@ -1,6 +1,19 @@
 import { BaseLayer } from "./base_layer"
 import { heatmapPaint } from "./heatmap_layer"
 
+// FNV-1a over the api key: a non-secret, non-reversible cache partitioner.
+// It keys URL-based caches (browser HTTP cache, MapLibre's tile cache) per
+// user — auth itself travels only in the Authorization header — and rotates
+// naturally when the api key rotates.
+function cachePartitioner(value) {
+  let hash = 0x811c9dc5
+  for (let i = 0; i < value.length; i++) {
+    hash ^= value.charCodeAt(i)
+    hash = Math.imul(hash, 0x01000193)
+  }
+  return (hash >>> 0).toString(16)
+}
+
 /**
  * Read-only vector-tile points layer for parity/performance validation.
  */
@@ -48,9 +61,24 @@ export class PointsMvtLayer extends BaseLayer {
     this._cacheBuster += 1
 
     const wasVisible = this.visible
+    const beforeId = this._layerAbove()
     this.remove()
-    this.add({ startAt: this.startAt, endAt: this.endAt })
+    this.add({ startAt: this.startAt, endAt: this.endAt }, beforeId)
     this.setVisibility(wasVisible)
+  }
+
+  // The id of the layer stacked directly above this one, so a remove+add
+  // cycle can put the sub-layers back where they were instead of on top.
+  _layerAbove() {
+    const styleLayers = this.map.getStyle?.()?.layers ?? []
+    const ownIds = new Set([PointsMvtLayer.HEATMAP_LAYER_ID, this.id])
+    let lastOwnIndex = -1
+    styleLayers.forEach((styleLayer, index) => {
+      if (ownIds.has(styleLayer.id)) lastOwnIndex = index
+    })
+    if (lastOwnIndex === -1 || lastOwnIndex + 1 >= styleLayers.length)
+      return null
+    return styleLayers[lastOwnIndex + 1].id
   }
 
   getSourceConfig() {
@@ -71,7 +99,18 @@ export class PointsMvtLayer extends BaseLayer {
         type: "heatmap",
         source: this.sourceId,
         "source-layer": "points",
-        paint: heatmapPaint(),
+        paint: {
+          ...heatmapPaint(),
+          // Decimated cells carry a count; a linear weight would clamp at
+          // count 5 and flatten the map, so scale logarithmically:
+          // 0.2 + 0.8·ln(count)/ln(5000) — a single point matches the classic
+          // 0.2, density grows monotonically, and ~5000 points saturate at 1.
+          "heatmap-weight": [
+            "min",
+            1,
+            ["+", 0.2, ["*", 0.094, ["ln", ["coalesce", ["get", "count"], 1]]]],
+          ],
+        },
       },
       {
         id: this.id,
@@ -100,10 +139,11 @@ export class PointsMvtLayer extends BaseLayer {
     }
 
     const wasVisible = this.visible
+    const beforeId = this._layerAbove()
     this.remove()
     this.startAt = nextStartAt
     this.endAt = nextEndAt
-    this.add(options)
+    this.add(options, beforeId)
     this.setVisibility(wasVisible)
   }
 
@@ -112,7 +152,8 @@ export class PointsMvtLayer extends BaseLayer {
 
     if (startAt) params.set("start_at", startAt)
     if (endAt) params.set("end_at", endAt)
-    if (this.apiKey) params.set("api_key", this.apiKey)
+    // Never the raw api key: the Bearer header authenticates (transformRequest)
+    if (this.apiKey) params.set("u", cachePartitioner(this.apiKey))
     if (this._cacheBuster) params.set("_", String(this._cacheBuster))
 
     const query = params.toString()
