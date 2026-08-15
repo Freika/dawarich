@@ -8,7 +8,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
-- Google Timeline phone exports no longer lose altitude, accuracy and speed on points taken from the `rawSignals` section — those fields were read from the wrong nesting level and came back empty. Points already imported keep their empty values; re-import the file to fill them in. (#3337)
+- Google Timeline phone exports no longer lose altitude, accuracy and speed on points taken from the `rawSignals` section — those fields were read from the wrong nesting level and came back empty. Points already imported keep their empty values, and importing the same file again skips them; delete the old import first, then import the file again. (#3337)
+- Coarse `rawSignals` fixes with an accuracy radius above 10km are now flagged as anomalies on import, the same as points from every other source. They previously slipped through because their accuracy was never read.
 
 ## [1.11.0] - 2026-08-02, Berlin
 
