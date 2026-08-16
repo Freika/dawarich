@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+
+### Added
+
+- The map has a new opt-in "Tiled rendering" beta in map settings: the points layer is drawn from vector tiles built by the database, so the browser only downloads what the current view needs. Dense areas arrive as aggregated markers carrying a point count — the heatmap weighs them accordingly — and long date ranges over large histories pan and zoom smoothly instead of stalling on one huge download. Point popups keep working, but dragging points to edit them is unavailable while tiled mode is on, and turning on Routes, Fog of War or Scratch map temporarily switches back to classic loading (the settings panel says which layer is blocking). Tiles are cached privately in the browser and refresh automatically when your location history changes, so the live trail can lag up to five minutes behind. (#2691)
+
 ## [1.12.1] - 2026-08-13, Berlin
 
 ### Fixed
