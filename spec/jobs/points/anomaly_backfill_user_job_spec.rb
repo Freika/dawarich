@@ -109,6 +109,32 @@ RSpec.describe Points::AnomalyBackfillUserJob, type: :job do
         described_class.new.perform(user.id)
       end.not_to have_enqueued_job(Users::RecalculateDataJob)
     end
+
+    it 'rebuilds affected tracks itself, since no wholesale rebuild follows' do
+      point = create(:point, user: user, accuracy: 6, timestamp: 30.minutes.ago.to_i,
+                     latitude: 51.3402, longitude: 12.3712, lonlat: 'POINT(12.3712 51.3402)',
+                     motion_data: { 'action' => 'visit',
+                                    'departure_date' => '2026-05-19T18:34:25Z' })
+      track = create(:track, user: user)
+      point.update_column(:track_id, track.id)
+
+      expect do
+        described_class.new.perform(user.id)
+      end.to have_enqueued_job(Tracks::RecalculateJob).with(track.id)
+    end
+
+    it 'routes its own rebuilds off :tracks so live tracking stays ahead' do
+      point = create(:point, user: user, accuracy: 6, timestamp: 30.minutes.ago.to_i,
+                     latitude: 51.3402, longitude: 12.3712, lonlat: 'POINT(12.3712 51.3402)',
+                     motion_data: { 'action' => 'visit',
+                                    'departure_date' => '2026-05-19T18:34:25Z' })
+      track = create(:track, user: user)
+      point.update_column(:track_id, track.id)
+
+      expect do
+        described_class.new.perform(user.id)
+      end.to have_enqueued_job(Tracks::RecalculateJob).on_queue('low_priority')
+    end
   end
 
   describe '#perform skips empty chunks for sparse data' do
@@ -127,9 +153,9 @@ RSpec.describe Points::AnomalyBackfillUserJob, type: :job do
 
     it 'invokes the AnomalyFilter once per populated month, not per 30-day chunk in the span' do
       filter_calls = 0
-      allow(Points::AnomalyFilter).to receive(:new).and_wrap_original do |original, *args|
+      allow(Points::AnomalyFilter).to receive(:new).and_wrap_original do |original, *args, **kwargs|
         filter_calls += 1
-        original.call(*args)
+        original.call(*args, **kwargs)
       end
 
       described_class.new.perform(sparse_user.id)

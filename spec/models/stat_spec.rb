@@ -33,12 +33,23 @@ RSpec.describe Stat, type: :model do
       context 'when there are points' do
         let!(:points) do
           create(:point, user:, lonlat: 'POINT(1 1)', timestamp: DateTime.new(year, 1, 1, 1))
-          create(:point, user:, lonlat: 'POINT(2 2)', timestamp: DateTime.new(year, 1, 1, 2))
+          create(:point, user:, lonlat: 'POINT(2 2)', timestamp: DateTime.new(year, 1, 1, 1, 10))
         end
 
         before { expected_distance[0][1] = 156_876 }
 
         it 'returns distance by day' do
+          expect(subject).to eq(expected_distance)
+        end
+      end
+
+      context 'when consecutive points are separated by more than the route gap' do
+        let!(:points) do
+          create(:point, user:, lonlat: 'POINT(1 1)', timestamp: DateTime.new(year, 1, 1, 1))
+          create(:point, user:, lonlat: 'POINT(2 2)', timestamp: DateTime.new(year, 1, 1, 2))
+        end
+
+        it 'excludes the jump across the gap' do
           expect(subject).to eq(expected_distance)
         end
       end

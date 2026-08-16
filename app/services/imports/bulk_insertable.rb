@@ -19,7 +19,7 @@ module Imports
 
       result = Point.upsert_all(
         unique_batch,
-        unique_by: %i[lonlat timestamp user_id],
+        unique_by: %i[user_id timestamp lonlat],
         returning: Arel.sql('id'),
         on_duplicate: :skip
       )

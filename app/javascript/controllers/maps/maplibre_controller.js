@@ -76,6 +76,7 @@ export default class extends Controller {
     "anomaliesToggle",
     "familyToggle",
     "flightsToggle",
+    "tracksToggle",
     // Speed-colored routes
     "routesOptions",
     "speedColoredToggle",

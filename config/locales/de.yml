@@ -954,7 +954,7 @@ de:
         min_2: 1min
         min_3: 90min
         min_4: 180min
-        time_threshold_for_route_splitting: Schwellenwert für die Routenteilung
+        time_threshold_for_route_splitting: Schwellenwert für die Routenteilung; Lücken über diesem Wert fließen auch nicht in die Distanzstatistik ein
         points_rendering_mode: Darstellungsmodus der Punkte
         raw_all_points: Rohdaten (alle Punkte)
         simplified_reduced_points: Vereinfacht (reduzierte Punkte)

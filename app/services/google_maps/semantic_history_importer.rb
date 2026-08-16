@@ -31,7 +31,7 @@ class GoogleMaps::SemanticHistoryImporter
 
     Point.upsert_all(
       records,
-      unique_by: %i[lonlat timestamp user_id],
+      unique_by: %i[user_id timestamp lonlat],
       returning: false,
       on_duplicate: :skip
     )

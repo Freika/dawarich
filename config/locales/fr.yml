@@ -1628,7 +1628,7 @@ fr:
         min_2: 1min
         min_3: 90min
         min_4: 180min
-        time_threshold_for_route_splitting: Seuil de temps pour la division des itinéraires
+        time_threshold_for_route_splitting: Seuil de temps pour la division des itinéraires ; les intervalles plus longs sont aussi exclus des statistiques de distance
         points_rendering_mode: Mode de rendu de points
         raw_all_points: Brut (tous les points)
         simplified_reduced_points: Simplifié (points réduits)

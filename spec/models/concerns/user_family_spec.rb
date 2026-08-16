@@ -184,6 +184,46 @@ RSpec.describe UserFamily do
     end
   end
 
+  describe '#latest_location_for_family' do
+    before { user.update_family_location_sharing!(true, duration: 'permanent') }
+
+    it 'returns nil when sharing is disabled' do
+      user.update_family_location_sharing!(false)
+      create(:point, user: user, timestamp: 1.hour.ago.to_i)
+      expect(user.latest_location_for_family).to be_nil
+    end
+
+    it 'returns nil when the user has no points' do
+      expect(user.latest_location_for_family).to be_nil
+    end
+
+    it 'returns the most recent point location' do
+      create(:point, user: user, timestamp: 3.hours.ago.to_i)
+      newest = create(:point, user: user, timestamp: 1.hour.ago.to_i)
+
+      result = user.latest_location_for_family
+      expect(result[:timestamp]).to eq(newest.timestamp)
+      expect(result[:updated_at]).to eq(Time.zone.at(newest.timestamp))
+    end
+
+    # A point with a NULL timestamp sorts
+    # NULLS FIRST under ORDER BY timestamp DESC and used to crash
+    # Time.zone.at(nil) with "can't convert NilClass into an exact number".
+    it 'ignores points with a nil timestamp and does not raise' do
+      timestamped = create(:point, user: user, timestamp: 1.hour.ago.to_i)
+      create(:point, user: user, timestamp: 1.minute.ago.to_i).update_column(:timestamp, nil)
+
+      result = nil
+      expect { result = user.latest_location_for_family }.not_to raise_error
+      expect(result[:timestamp]).to eq(timestamped.timestamp)
+    end
+
+    it 'returns nil when the only point has a nil timestamp' do
+      create(:point, user: user, timestamp: 1.hour.ago.to_i).update_column(:timestamp, nil)
+      expect(user.latest_location_for_family).to be_nil
+    end
+  end
+
   describe '#family_map_sharing_active?' do
     it 'is false when the user is not in a family' do
       expect(create(:user).family_map_sharing_active?).to be(false)
