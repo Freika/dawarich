@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+
+### Changed
+
+- Removed three superseded `points` indexes (the old dedup index and two composites) now that the consolidated `(user_id, timestamp, lonlat)` index from 1.12.2 serves their queries. The migration refuses to run unless that consolidated index is present and valid, and any other invalid leftover index is cleaned up first. Frees several gigabytes on large instances and further reduces the write cost of every point.
+
 ## [1.12.2] - 2026-08-15, Berlin
 
 ### Added
