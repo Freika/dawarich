@@ -3,7 +3,10 @@
 class DropSupersededPointsIndexes < ActiveRecord::Migration[8.0]
   disable_ddl_transaction!
 
+  REPLACEMENT_INDEX = 'index_points_on_user_id_timestamp_lonlat'
+
   def up
+    ensure_replacement_index_usable!
     drop_invalid_indexes_on_points!
 
     remove_index :points, name: 'index_points_on_lonlat_timestamp_user_id',
@@ -31,6 +34,34 @@ class DropSupersededPointsIndexes < ActiveRecord::Migration[8.0]
               if_not_exists: true
   end
 
+  def ensure_replacement_index_usable!
+    usable = connection.select_value(<<~SQL)
+      SELECT i.indisvalid
+      FROM pg_index i
+      JOIN pg_class c ON c.oid = i.indexrelid
+      JOIN pg_class t ON t.oid = i.indrelid
+      WHERE t.relname = 'points' AND c.relname = '#{REPLACEMENT_INDEX}'
+    SQL
+
+    return if usable
+
+    raise ActiveRecord::MigrationError, <<~MESSAGE
+      #{REPLACEMENT_INDEX} is missing or invalid on `points`.
+
+      Dropping the superseded indexes now would leave `points` with no unique
+      index on (user_id, timestamp, lonlat), which every point upsert relies on
+      for ON CONFLICT. All ingestion (OwnTracks, Overland, Traccar, imports)
+      would fail with "there is no unique or exclusion constraint matching the
+      ON CONFLICT specification", and duplicate protection would be lost.
+
+      Repair it first, then re-run this migration:
+
+        DROP INDEX CONCURRENTLY IF EXISTS #{REPLACEMENT_INDEX};
+        CREATE UNIQUE INDEX CONCURRENTLY #{REPLACEMENT_INDEX}
+          ON points (user_id, timestamp, lonlat);
+    MESSAGE
+  end
+
   def drop_invalid_indexes_on_points!
     invalid = connection.select_values(<<~SQL)
       SELECT c.relname
@@ -38,6 +69,7 @@ class DropSupersededPointsIndexes < ActiveRecord::Migration[8.0]
       JOIN pg_class c ON c.oid = i.indexrelid
       JOIN pg_class t ON t.oid = i.indrelid
       WHERE t.relname = 'points' AND NOT i.indisvalid
+        AND c.relname <> '#{REPLACEMENT_INDEX}'
     SQL
 
     invalid.each do |name|

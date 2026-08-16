@@ -14,11 +14,21 @@ RSpec.describe DropSupersededPointsIndexes, :non_transactional do
     ]
   end
 
-  after do
+  let(:replacement_index_name) { 'index_points_on_user_id_timestamp_lonlat' }
+
+  before do
     migration.down
   end
 
+  after do
+    migration.up
+  end
+
   describe '#up' do
+    it 'starts from a state where the superseded indexes actually exist' do
+      expect(points_index_names).to include(*superseded_index_names)
+    end
+
     it 'drops the three superseded indexes' do
       migration.up
 
@@ -28,7 +38,7 @@ RSpec.describe DropSupersededPointsIndexes, :non_transactional do
     it 'keeps the replacement unique index' do
       migration.up
 
-      expect(points_index_names).to include('index_points_on_user_id_timestamp_lonlat')
+      expect(points_index_names).to include(replacement_index_name)
     end
 
     it 'is idempotent when the indexes are already gone' do
@@ -63,6 +73,41 @@ RSpec.describe DropSupersededPointsIndexes, :non_transactional do
         expect(still_present).to be_nil
       end
     end
+
+    context 'when the replacement index is invalid' do
+      before do
+        connection.execute(<<~SQL)
+          UPDATE pg_index
+          SET indisvalid = false
+          WHERE indexrelid = '#{replacement_index_name}'::regclass
+        SQL
+      end
+
+      after do
+        connection.execute(<<~SQL)
+          UPDATE pg_index
+          SET indisvalid = true
+          WHERE indexrelid = '#{replacement_index_name}'::regclass
+        SQL
+      end
+
+      it 'refuses to run' do
+        expect { migration.up }
+          .to raise_error(ActiveRecord::MigrationError, /#{replacement_index_name}/)
+      end
+
+      it 'leaves the superseded indexes in place' do
+        suppress(ActiveRecord::MigrationError) { migration.up }
+
+        expect(points_index_names).to include(*superseded_index_names)
+      end
+
+      it 'does not sweep the replacement index away' do
+        suppress(ActiveRecord::MigrationError) { migration.up }
+
+        expect(points_index_names).to include(replacement_index_name)
+      end
+    end
   end
 
   describe '#down' do
@@ -71,6 +116,10 @@ RSpec.describe DropSupersededPointsIndexes, :non_transactional do
       migration.down
 
       expect(points_index_names).to include(*superseded_index_names)
+    end
+
+    it 'is idempotent when the indexes are already present' do
+      expect { migration.down }.not_to raise_error
     end
   end
 
