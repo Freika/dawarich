@@ -33,9 +33,8 @@ class Rack::Attack
   self.shared_links_viewer_limit = 120
   # Vector tiles fetch in bursts (10–30 per pan); ~250 uncached pans/hr.
   self.tiles_limit = 5_000
-  # Short-window companion: panning and rapid zoom sequences (MapLibre
-  # prefetches parent/child tiles) fit easily, sustained hammering of the
-  # DB-heaviest endpoint does not.
+  # Short-window companion: pans and rapid zooms fit easily; sustained
+  # hammering of the DB-heaviest endpoint does not.
   self.tiles_burst_limit = 300
 end
 

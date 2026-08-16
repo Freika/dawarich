@@ -18,10 +18,8 @@ import {
  * either is absent or blank, so the caller can fall back to the geometry.
  * `Number("")` is 0 and finite, so a plain isFinite check is not enough.
  */
-// A tiled feature can represent many merged points: it carries ONE arbitrary
-// member's id and coordinates, so presenting it as "the point under the
-// cursor" would mislead. Aggregate features (no id) and merged cells
-// (count > 1) get no popup.
+// A tiled feature can represent many merged points but carries ONE arbitrary
+// member's id/coords — aggregates (no id) and merged cells (count > 1) get no popup.
 export function shouldShowPointPopup(properties = {}) {
   if (properties.id == null) return false
   return (properties.count ?? 1) <= 1

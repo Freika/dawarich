@@ -1,20 +1,17 @@
 # frozen_string_literal: true
 
 # Per-user, per-year cache tokens that invalidate vector-tile ETags whenever
-# the user's points change. Tokens are opaque random values, NOT counters:
-# a reseeded token can never collide with a previously issued ETag, so Redis
-# eviction costs one refetch and can never serve stale content. Year bucketing
-# keeps historical tiles cached while live tracking only touches the current
-# year. All reads/writes are raw — Rails.cache.increment/fetch interact fatally
-# with redis_cache_store serialization, which is why counters were rejected.
-#
-# If Redis is unavailable, the cache store's failsafe makes these values
-# unstable, so ETags never match and every tile request degrades to a full
-# response: slower, never stale, never crashing.
+# the user's points change. Opaque random tokens, NOT counters, read/written
+# raw: Rails.cache.increment silently no-ops against redis_cache_store's
+# marshalled values, and an evicted counter would roll back into already-issued
+# ETags — a reseeded token never collides, so eviction costs one refetch, never
+# staleness. Year buckets keep historical tiles cached while live tracking only
+# touches the current year. If Redis is down, the failsafe makes tokens
+# unstable: every request refetches — slower, never stale, never crashing.
 class Points::TileEpoch
   KEY_PREFIX = 'points:tile_epoch'
-  # Bumped by writers that cannot cheaply know which years they touched;
-  # included in every etag_component so it invalidates all ranges.
+  # For writers that can't cheaply know which years they touched; part of every
+  # etag_component, so it invalidates all ranges.
   SENTINEL_YEAR = 'all'
   MIN_YEAR = 1970
   MAX_YEAR = 2100
@@ -26,9 +23,8 @@ class Points::TileEpoch
       log_bump_failure(user_id, e)
     end
 
-    # For writers that touch a known time WINDOW (not a list of rows): bumps
-    # every year the window covers, so multi-year interiors are not missed and
-    # the sentinel's whole-cache wipe is avoided on hot paths.
+    # For writers that touch a time WINDOW: bumps every covered year (interiors
+    # included), avoiding the sentinel's whole-cache wipe on hot paths.
     def bump_range(user_id, start_timestamp, end_timestamp)
       write_tokens(user_id, years_in_range(start_timestamp, end_timestamp))
     rescue StandardError => e
@@ -45,17 +41,14 @@ class Points::TileEpoch
 
     private
 
-    # Empty years (no timestamps, or an inverted/degenerate window) fail
-    # CLOSED via the sentinel: over-invalidation costs one refetch, a missed
-    # invalidation serves stale tiles indefinitely.
+    # Empty years (no timestamps, or a degenerate window) fail CLOSED via the
+    # sentinel: over-invalidation costs one refetch, a miss is stale forever.
     def write_tokens(user_id, years)
       years = [SENTINEL_YEAR] if years.empty?
       years.each { |year| Rails.cache.write(key(user_id, year), fresh_token, raw: true) }
     end
 
-    # Invalidation must never take down the write path it rides on; the cache
-    # store's failsafe already swallows connection errors, this guards the
-    # rest (including year derivation on unexpected input).
+    # Invalidation must never take down the write path it rides on.
     def log_bump_failure(user_id, error)
       Rails.logger.warn("TileEpoch bump failed for user #{user_id}: #{error.message}")
     end
@@ -64,9 +57,8 @@ class Points::TileEpoch
       "#{KEY_PREFIX}:#{user_id}:#{year}"
     end
 
-    # Timestamps are epoch integers; the year MUST be derived in UTC on both
-    # the bump and etag sides, or writes near Dec 31/Jan 1 land in one bucket
-    # while requests hash the other and the invalidation is missed.
+    # The year MUST be derived in UTC on both bump and etag sides, or writes
+    # near Dec 31/Jan 1 land in one bucket while reads hash the other.
     def years_from_timestamps(timestamps)
       timestamps.compact.map { |timestamp| utc_year(timestamp) }.uniq
     end
@@ -83,8 +75,7 @@ class Points::TileEpoch
       SecureRandom.hex(8)
     end
 
-    # A missing key is seeded (written back) so the ETag stays stable across
-    # repeated reads; a concurrent seed race just costs one extra refetch.
+    # Missing keys are written back so the ETag stays stable across reads.
     def seed(cache_key)
       fresh_token.tap { |token| Rails.cache.write(cache_key, token, raw: true) }
     end

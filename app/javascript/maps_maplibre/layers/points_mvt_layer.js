@@ -1,10 +1,8 @@
 import { BaseLayer } from "./base_layer"
 import { heatmapPaint } from "./heatmap_layer"
 
-// FNV-1a over the api key: a non-secret, non-reversible cache partitioner.
-// It keys URL-based caches (browser HTTP cache, MapLibre's tile cache) per
-// user — auth itself travels only in the Authorization header — and rotates
-// naturally when the api key rotates.
+// FNV-1a over the api key: a non-secret cache partitioner keying URL-based
+// caches per user — auth itself travels only in the Authorization header.
 function cachePartitioner(value) {
   let hash = 0x811c9dc5
   for (let i = 0; i < value.length; i++) {
@@ -101,10 +99,9 @@ export class PointsMvtLayer extends BaseLayer {
         "source-layer": "points",
         paint: {
           ...heatmapPaint(),
-          // Decimated cells carry a count; a linear weight would clamp at
-          // count 5 and flatten the map, so scale logarithmically:
-          // 0.2 + 0.8·ln(count)/ln(5000) — a single point matches the classic
-          // 0.2, density grows monotonically, and ~5000 points saturate at 1.
+          // A linear weight over cell counts clamps at count 5 and flattens
+          // the map — scale logarithmically: 0.2 + 0.8·ln(count)/ln(5000)
+          // (a single point = the classic 0.2, ~5000 points saturate at 1).
           "heatmap-weight": [
             "min",
             1,

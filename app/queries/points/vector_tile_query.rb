@@ -13,9 +13,8 @@ class Points::VectorTileQuery
   BUFFER = 256
   # Candidate rows must cover the ST_AsMVTGeom buffer, or markers clip at tile seams
   MARGIN = (BUFFER.to_f / EXTENT)
-  # Below this zoom the geodetic bounding box of the envelope no longer contains
-  # the planar rectangle, so the GiST prefilter is unusable and tiles switch to
-  # the aggregate regime: centroid + count per cell, no per-point attributes.
+  # Below this zoom the envelope's geodetic bbox no longer contains the planar
+  # rectangle — the GiST prefilter is unusable, tiles switch to centroid+count.
   MIN_PREFILTER_ZOOM = 5
   LAYER_NAME = 'points'
   TILE_PIXELS = 512
@@ -50,20 +49,16 @@ class Points::VectorTileQuery
     with_statement_timeout { |conn| conn.select_all(rows_sql).to_a }
   end
 
-  # Display-pixels per decimation cell on 512px tiles — coarser below z14 so a
-  # whole viewport stays within budget. Tiers come from the 1M-point benchmark
-  # (lib/perf/vector_tile_benchmark.rb, 2026-08-15): at 1px a dense-city z11
-  # tile carried 243k features / 13.5 MB; at 4px it stays ~15k / <1 MB, and a
-  # 4px cell is smaller than the 12px circle markers, so nothing visible is
-  # lost below z14.
+  # Display-pixels per decimation cell on 512px tiles. Tiers from the 1M-point
+  # benchmark (lib/perf/vector_tile_benchmark.rb): 1px put 243k features/13.5 MB
+  # in a dense z11 tile, 4px keeps it ~15k/<1 MB — and a 4px cell is smaller
+  # than the 12px circle markers, so nothing visible is lost below z14.
   def grid_px
     z < 14 ? 4 : 1
   end
 
-  # Strictly above the mathematical maximum of distinct grid cells in a
-  # margin-expanded tile: a pure bug-guard, never a legitimate truncator.
-  # (A reachable LIMIT would silently drop an arbitrary subset of cells —
-  # a visibly incomplete tile.)
+  # Strictly above the maximum distinct grid cells in a margin-expanded tile —
+  # a pure bug-guard; a reachable LIMIT would drop an arbitrary subset of cells.
   def tile_feature_limit
     cells_per_axis = ((TILE_PIXELS * (1 + (2 * MARGIN))) / grid_px).ceil + 1
     (cells_per_axis**2) + 1
@@ -73,9 +68,8 @@ class Points::VectorTileQuery
 
   attr_reader :scope, :z, :x, :y
 
-  # z, x, y are validated Integers and every other interpolated value is a
-  # program-computed numeric, so direct interpolation is injection-safe. The
-  # only user-influenced SQL is tile_scope, an ActiveRecord relation.
+  # z/x/y are validated Integers and every other interpolated value is program-
+  # computed — the only user-influenced SQL is the tile_scope relation.
   def tile_sql
     <<~SQL.squish
       #{with_clauses}
@@ -96,12 +90,10 @@ class Points::VectorTileQuery
     Point.sanitize_sql_array(["ST_AsMVT(features.*, ?, #{EXTENT}, 'geom')", LAYER_NAME])
   end
 
-  # Both regimes are one-pass hash aggregations — the benchmark showed a
-  # DISTINCT ON + window-count variant pays for a full sort of every candidate
-  # row (1.3s on a dense z11 tile) that GROUP BY avoids. MIN() keeps the
-  # representative deterministic (lowest id); for count = 1 cells every MIN is
-  # the point's exact value and the centroid IS the point, and for merged
-  # cells the popup is suppressed client-side, so mixed MINs are never shown.
+  # One-pass hash aggregation — a DISTINCT ON + window-count variant paid for a
+  # full sort (1.3s on a dense z11 tile). MIN() keeps the representative
+  # deterministic; count=1 cells are exact, and merged cells never show popups,
+  # so mixed MINs are invisible.
   def with_clauses
     <<~SQL
       WITH candidates AS (#{candidates_sql}),
@@ -137,11 +129,9 @@ class Points::VectorTileQuery
     branches.join(' UNION ALL ')
   end
 
-  # Web-mercator tiles at x = 0 / x = max have buffer bands beyond the
-  # antimeridian. The wrapped branch finds those points under a world-shifted
-  # envelope and translates them into the tile's frame, so edge tiles neither
-  # drop nor double seam points. Translation by the world width preserves grid
-  # alignment because the cell size divides the world width exactly.
+  # Edge tiles (x = 0/max) have buffer bands beyond the antimeridian: a wrapped
+  # branch finds those points and translates them into the tile's frame. The
+  # shift preserves grid alignment (cell size divides the world width exactly).
   def antimeridian_shift
     return 0 if z.zero?
 
@@ -185,11 +175,10 @@ class Points::VectorTileQuery
     "ST_Translate(#{geom}, #{-shift}, 0)"
   end
 
-  # ST_TileEnvelope clamps its margin at the world bound, so an edge tile has no
-  # buffer beyond the antimeridian at all. The wrapped branch therefore searches
-  # a hand-built seam band on the far side of the world instead; it stays inside
-  # the valid web-mercator domain, so its 4326 transform never carries |lon| > 180
-  # (a geography cast of such a polygon would wrap unpredictably).
+  # ST_TileEnvelope clamps its margin at the world bound — edge tiles get NO
+  # buffer past the antimeridian. The wrapped branch searches a hand-built seam
+  # band instead, kept inside the mercator domain so its 4326 transform never
+  # yields |lon| > 180 (a geography cast of that would wrap unpredictably).
   def margined_envelope(shift)
     return "ST_TileEnvelope(#{z}, #{x}, #{y}, margin => #{MARGIN})" if shift.zero?
 
