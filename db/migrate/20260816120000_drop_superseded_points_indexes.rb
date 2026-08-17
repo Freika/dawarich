@@ -6,8 +6,12 @@ class DropSupersededPointsIndexes < ActiveRecord::Migration[8.0]
   REPLACEMENT_INDEX = 'index_points_on_user_id_timestamp_lonlat'
 
   def up
-    ensure_replacement_index_usable!
+    # A nonzero lock_timeout aborts CONCURRENTLY's wait for concurrent
+    # transactions to finish, leaving the boot migration failed.
+    execute 'SET lock_timeout = 0'
+
     drop_invalid_indexes_on_points!
+    ensure_replacement_index_usable!
 
     remove_index :points, name: 'index_points_on_lonlat_timestamp_user_id',
                           algorithm: :concurrently, if_exists: true
@@ -18,6 +22,8 @@ class DropSupersededPointsIndexes < ActiveRecord::Migration[8.0]
   end
 
   def down
+    execute 'SET lock_timeout = 0'
+
     add_index :points, %i[lonlat timestamp user_id],
               unique: true,
               name: 'index_points_on_lonlat_timestamp_user_id',
@@ -35,18 +41,20 @@ class DropSupersededPointsIndexes < ActiveRecord::Migration[8.0]
   end
 
   def ensure_replacement_index_usable!
-    usable = connection.select_value(<<~SQL)
-      SELECT i.indisvalid
-      FROM pg_index i
-      JOIN pg_class c ON c.oid = i.indexrelid
-      JOIN pg_class t ON t.oid = i.indrelid
-      WHERE t.relname = 'points' AND c.relname = '#{REPLACEMENT_INDEX}'
-    SQL
+    usable = replacement_index_valid?
+
+    # An interrupted concurrent build leaves the index present but invalid,
+    # while `if_not_exists: true` lets its migration report success anyway.
+    if usable == false
+      repair_replacement_index!
+      usable = replacement_index_valid?
+    end
 
     return if usable
 
     raise ActiveRecord::MigrationError, <<~MESSAGE
-      #{REPLACEMENT_INDEX} is missing or invalid on `points`.
+      #{REPLACEMENT_INDEX} is missing on `points`, or invalid and could not be
+      rebuilt automatically.
 
       Dropping the superseded indexes now would leave `points` with no unique
       index on (user_id, timestamp, lonlat), which every point upsert relies on
@@ -60,6 +68,26 @@ class DropSupersededPointsIndexes < ActiveRecord::Migration[8.0]
         CREATE UNIQUE INDEX CONCURRENTLY #{REPLACEMENT_INDEX}
           ON points (user_id, timestamp, lonlat);
     MESSAGE
+  end
+
+  # true = valid, false = present but invalid, nil = absent
+  def replacement_index_valid?
+    connection.select_value(<<~SQL)
+      SELECT i.indisvalid
+      FROM pg_index i
+      JOIN pg_class c ON c.oid = i.indexrelid
+      JOIN pg_class t ON t.oid = i.indrelid
+      WHERE t.relname = 'points' AND c.relname = '#{REPLACEMENT_INDEX}'
+    SQL
+  end
+
+  def repair_replacement_index!
+    Rails.logger.info("Rebuilding invalid index on points: #{REPLACEMENT_INDEX}")
+    execute "REINDEX INDEX CONCURRENTLY #{connection.quote_table_name(REPLACEMENT_INDEX)}"
+  rescue ActiveRecord::StatementInvalid => e
+    # Fall through to the curated error: e.g. duplicate rows make the unique
+    # rebuild impossible without manual intervention.
+    Rails.logger.warn("Rebuilding #{REPLACEMENT_INDEX} failed: #{e.message}")
   end
 
   def drop_invalid_indexes_on_points!
