@@ -21,5 +21,37 @@ RSpec.describe Imports::Destroy do
 
       service.call
     end
+
+    context 'with points spanning several years' do
+      let!(:import) { create(:import, user: user) }
+
+      before do
+        [Time.utc(2022, 6, 1), Time.utc(2023, 6, 1), Time.utc(2024, 6, 1)].each do |moment|
+          6.times do |offset|
+            create(:point, user: user, import: import, timestamp: (moment + offset.days).to_i)
+          end
+        end
+      end
+
+      it 'invalidates the tile cache for every year it deleted from' do
+        window = [Time.utc(2022, 1, 1).to_i, Time.utc(2024, 12, 31).to_i]
+        before_component = Points::TileEpoch.etag_component(user.id, *window)
+
+        service.call
+
+        expect(Points::TileEpoch.etag_component(user.id, *window)).not_to eq(before_component)
+      end
+
+      it 'hands the epoch one timestamp per year rather than one per deleted point' do
+        received = nil
+        allow(Points::TileEpoch).to receive(:bump) do |_user_id, timestamps:|
+          received = timestamps
+        end
+
+        service.call
+
+        expect(received.size).to eq(3)
+      end
+    end
   end
 end

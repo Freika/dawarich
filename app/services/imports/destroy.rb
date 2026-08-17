@@ -38,7 +38,7 @@ class Imports::Destroy
 
   def delete_points_in_batches
     total_deleted = 0
-    deleted_timestamps = []
+    timestamp_per_year = {}
 
     loop do
       # delete_all returns no rows, so capture the timestamps BEFORE deleting —
@@ -46,11 +46,15 @@ class Imports::Destroy
       rows = @import.points.limit(BATCH_SIZE).pluck(:id, :timestamp)
       break if rows.empty?
 
-      deleted_timestamps.concat(rows.map(&:last))
+      # Collapsing to one timestamp per year keeps this bounded; a multi-million
+      # point import would otherwise hold every deleted timestamp in memory.
+      rows.each do |(_id, timestamp)|
+        timestamp_per_year[Points::TileEpoch.year_for(timestamp)] ||= timestamp
+      end
       total_deleted += Point.where(id: rows.map(&:first)).delete_all
     end
 
-    Points::TileEpoch.bump(@user.id, timestamps: deleted_timestamps) if total_deleted.positive?
+    Points::TileEpoch.bump(@user.id, timestamps: timestamp_per_year.values) if total_deleted.positive?
 
     total_deleted
   end

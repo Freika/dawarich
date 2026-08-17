@@ -31,6 +31,12 @@ class Points::TileEpoch
       log_bump_failure(user_id, e)
     end
 
+    # Exposed so batched writers can collapse their timestamps to one per year
+    # without holding every deleted row, and without a second year rule.
+    def year_for(timestamp)
+      utc_year(timestamp)
+    end
+
     def etag_component(user_id, start_timestamp, end_timestamp)
       years = years_in_range(start_timestamp, end_timestamp) + [SENTINEL_YEAR]
       keys = years.map { |year| key(user_id, year) }
