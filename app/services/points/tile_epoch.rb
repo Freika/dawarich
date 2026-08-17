@@ -23,14 +23,6 @@ class Points::TileEpoch
       log_bump_failure(user_id, e)
     end
 
-    # For writers that touch a time WINDOW: bumps every covered year (interiors
-    # included), avoiding the sentinel's whole-cache wipe on hot paths.
-    def bump_range(user_id, start_timestamp, end_timestamp)
-      write_tokens(user_id, years_in_range(start_timestamp, end_timestamp))
-    rescue StandardError => e
-      log_bump_failure(user_id, e)
-    end
-
     # Exposed so batched writers can collapse their timestamps to one per year
     # without holding every deleted row, and without a second year rule.
     def year_for(timestamp)

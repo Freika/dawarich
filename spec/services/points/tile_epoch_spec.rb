@@ -46,26 +46,6 @@ RSpec.describe Points::TileEpoch do
     end
   end
 
-  describe '.bump_range' do
-    it 'bumps interior years of a multi-year window, not just the endpoints' do
-      before_middle = component(Time.utc(2022, 1, 1), Time.utc(2022, 12, 31))
-
-      described_class.bump_range(user_id, Time.utc(2021, 6, 1).to_i, Time.utc(2023, 6, 1).to_i)
-
-      expect(component(Time.utc(2022, 1, 1), Time.utc(2022, 12, 31))).not_to eq(before_middle)
-    end
-  end
-
-  describe '.bump_range with a degenerate window' do
-    it 'fails closed via the sentinel instead of silently skipping the bump' do
-      before_value = component(Time.utc(2024, 1, 1), Time.utc(2024, 12, 31))
-
-      described_class.bump_range(user_id, Time.utc(2023, 1, 1).to_i, Time.utc(2021, 1, 1).to_i)
-
-      expect(component(Time.utc(2024, 1, 1), Time.utc(2024, 12, 31))).not_to eq(before_value)
-    end
-  end
-
   describe 'failure isolation' do
     it 'never raises out of bump when the cache write fails' do
       allow(Rails.cache).to receive(:write).and_raise(Redis::CannotConnectError)
