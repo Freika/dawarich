@@ -90,13 +90,23 @@ RSpec.describe 'Points::TileEpoch write-path integration' do
     end
   end
 
-  it 'covers the sentinel lookback, which reaches into the previous year' do
-    # The sentinel pass re-judges the hours before the caller's window, so a run
-    # just after New Year can flag points whose tiles live in the prior year.
+  it 'invalidates the previous year when the sentinel pass flags into it' do
+    # The sentinel pass re-judges the six hours before the caller's window, so a
+    # run just after New Year flags points whose tiles live in the prior year.
     start_time = Time.utc(2024, 1, 1, 2, 0, 0).to_i
     end_time = Time.utc(2024, 1, 1, 3, 0, 0).to_i
-    create(:point, user:, timestamp: start_time + 60, lonlat: 'POINT(0 0)',
-                   longitude: 0.0, latitude: 0.0)
+    sentinel_at = Time.utc(2023, 12, 31, 22, 0, 0).to_i
+
+    # A coarse cold-start fix, condemned by a precise neighbour from the same
+    # device — both sit in 2023, inside the lookback but outside the window.
+    sentinel = create(:point, user:, timestamp: sentinel_at, tracker_id: 'phone',
+                              accuracy: 1414, velocity: '-1', vertical_accuracy: -1,
+                              latitude: 51.3336, longitude: 12.3777,
+                              lonlat: 'POINT(12.3777 51.3336)')
+    create(:point, user:, timestamp: sentinel_at + 1800, tracker_id: 'phone',
+                   accuracy: 15, velocity: '2', vertical_accuracy: 5,
+                   latitude: 51.3355, longitude: 12.3742,
+                   lonlat: 'POINT(12.3742 51.3355)')
 
     prior_year = lambda {
       Points::TileEpoch.etag_component(
@@ -107,6 +117,7 @@ RSpec.describe 'Points::TileEpoch write-path integration' do
 
     Points::AnomalyFilter.new(user.id, start_time, end_time).call
 
+    expect(sentinel.reload.anomaly).to be true
     expect(prior_year.call).not_to eq(before_value)
   end
 
