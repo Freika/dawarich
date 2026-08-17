@@ -880,7 +880,7 @@ de:
         allow_dragging_points_to_correct_their_position_remembered_across_sessio: Erlaube das Ziehen von Punkten, um ihre Position zu korrigieren. Wird über Sitzungen hinweg gespeichert.
         tiled_rendering: "Gekachelte Darstellung"
         beta: "Beta"
-        tiled_rendering_description: "Zeichnet Punkte beim Bewegen der Karte aus Vektorkacheln, statt den gesamten Zeitraum vorab zu laden. Deutlich schneller bei langen Zeiträumen, solange Routen, Kartennebel und Rubbelkarte deaktiviert sind. Punktbearbeitung ist nicht verfügbar und die Live-Spur kann sich mit einigen Minuten Verzögerung aktualisieren."
+        tiled_rendering_description: "Zeichnet Punkte beim Bewegen der Karte aus Vektorkacheln, statt den gesamten Zeitraum vorab zu laden. Deutlich schneller bei langen Zeiträumen, solange Routen, Kartennebel und Rubbelkarte deaktiviert sind. Dichte Bereiche werden als zusammengefasste Marker mit Punktanzahl gezeichnet; zoome hinein, um sie wieder in einzeln anklickbare Punkte aufzuteilen. Punktbearbeitung ist nicht verfügbar und die Live-Spur kann sich mit einigen Minuten Verzögerung aktualisieren."
         routes: Routen
         show_connected_route_lines: Zeige verbundene Routenlinien
         color_by_speed: Farbe nach Geschwindigkeit
@@ -3717,6 +3717,7 @@ de:
           one: "Inaktiv, solange %{layers} aktiv ist — diese Ebene benötigt alle Punkte."
           other: "Inaktiv, solange %{layers} aktiv sind — diese Ebenen benötigen alle Punkte."
         editing_unavailable: "Bei gekachelter Darstellung nicht verfügbar — Vektorkacheln haben keine verschiebbaren Punkte"
+        failed: "Kartenkacheln konnten nicht geladen werden. Versuche einen kürzeren Zeitraum oder schalte die gekachelte Darstellung in den Karteneinstellungen aus."
         blockers:
           routes: "Routen"
           fog: "Kartennebel"

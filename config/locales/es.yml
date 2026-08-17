@@ -880,7 +880,7 @@ es:
         allow_dragging_points_to_correct_their_position_remembered_across_sessio: Permite arrastrar puntos para corregir su posición. Recordado a lo largo de sesiones.
         tiled_rendering: "Renderizado en teselas"
         beta: "Beta"
-        tiled_rendering_description: "Dibuja los puntos desde teselas vectoriales mientras te desplazas, en lugar de cargar todo el rango de fechas de antemano. Mucho más rápido en rangos largos mientras Rutas, Niebla de guerra y Mapa de pruebas están desactivados. La edición de puntos no está disponible y el rastro en vivo puede actualizarse con unos minutos de retraso."
+        tiled_rendering_description: "Dibuja los puntos desde teselas vectoriales mientras te desplazas, en lugar de cargar todo el rango de fechas de antemano. Mucho más rápido en rangos largos mientras Rutas, Niebla de guerra y Mapa de pruebas están desactivados. Las zonas densas se dibujan como marcadores agrupados que muestran un recuento de puntos; acércate para separarlos de nuevo en puntos individuales que puedes abrir. La edición de puntos no está disponible y el rastro en vivo puede actualizarse con unos minutos de retraso."
         routes: Rutas
         show_connected_route_lines: Muestra líneas de rutas conectadas
         color_by_speed: Color por velocidad
@@ -3662,6 +3662,7 @@ es:
           one: "Inactivo mientras %{layers} está activada — esa capa necesita todos los puntos."
           other: "Inactivo mientras %{layers} están activadas — esas capas necesitan todos los puntos."
         editing_unavailable: "No disponible con el renderizado en teselas: las teselas vectoriales no tienen puntos arrastrables"
+        failed: "No se pudieron cargar las teselas del mapa. Prueba con un intervalo de fechas más corto o desactiva el renderizado en teselas en los ajustes del mapa."
         blockers:
           routes: "Rutas"
           fog: "Niebla de guerra"

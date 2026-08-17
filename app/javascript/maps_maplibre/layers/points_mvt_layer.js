@@ -25,6 +25,44 @@ export class PointsMvtLayer extends BaseLayer {
     this._cacheBuster = 0
     // Heatmap rides the same source and same lifecycle, toggled independently
     this.heatmapVisible = options.heatmapVisible === true
+    this.onTileError = options.onTileError || null
+    this._tileErrorHandler = null
+    this._tileErrorReported = false
+  }
+
+  // A failed tile fetch (timeout, throttle, expired session) reaches the page
+  // only as a map `error` event. Unwatched, the layer just renders nothing and
+  // the classic layer is hidden — an empty map with no explanation.
+  add(data, beforeId = null) {
+    super.add(data, beforeId)
+    this._tileErrorReported = false
+    this._watchTileErrors()
+  }
+
+  remove() {
+    this._unwatchTileErrors()
+    super.remove()
+  }
+
+  _watchTileErrors() {
+    if (this._tileErrorHandler || !this.onTileError) return
+
+    this._tileErrorHandler = (event) => {
+      if (event?.sourceId !== this.sourceId) return
+      // One pan fails a whole screenful of tiles; report the episode once.
+      if (this._tileErrorReported) return
+
+      this._tileErrorReported = true
+      this.onTileError(event)
+    }
+    this.map.on("error", this._tileErrorHandler)
+  }
+
+  _unwatchTileErrors() {
+    if (!this._tileErrorHandler) return
+
+    this.map.off("error", this._tileErrorHandler)
+    this._tileErrorHandler = null
   }
 
   static HEATMAP_LAYER_ID = "points-mvt-heatmap"

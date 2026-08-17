@@ -37,9 +37,22 @@ function fakeMap(initialLayers = []) {
   const layers = [...initialLayers]
   const sources = new Set()
   const addLayerCalls = []
+  const listeners = {}
   return {
     layers,
     addLayerCalls,
+    on(event, callback) {
+      listeners[event] = [...(listeners[event] || []), callback]
+    },
+    off(event, callback) {
+      listeners[event] = (listeners[event] || []).filter((c) => c !== callback)
+    },
+    emit(event, payload) {
+      for (const callback of [...(listeners[event] || [])]) callback(payload)
+    },
+    listenerCount(event) {
+      return (listeners[event] || []).length
+    },
     addSource(id) {
       sources.add(id)
     },
@@ -289,4 +302,69 @@ test("shared heatmapPaint stays byte-identical for the classic layer", () => {
       0.6,
     ],
   })
+})
+
+test("surfaces a failed tile fetch instead of leaving the map silently empty", () => {
+  const map = fakeMap()
+  const reported = []
+  const layer = new PointsMvtLayer(map, {
+    onTileError: () => reported.push("failed"),
+  })
+  layer.add({})
+
+  map.emit("error", { sourceId: "points-mvt-source" })
+
+  assert.deepEqual(reported, ["failed"])
+})
+
+test("ignores errors raised by other sources", () => {
+  const map = fakeMap()
+  const reported = []
+  const layer = new PointsMvtLayer(map, {
+    onTileError: () => reported.push("failed"),
+  })
+  layer.add({})
+
+  map.emit("error", { sourceId: "basemap-source" })
+
+  assert.deepEqual(reported, [])
+})
+
+test("reports once per load, not once per failed tile", () => {
+  const map = fakeMap()
+  const reported = []
+  const layer = new PointsMvtLayer(map, {
+    onTileError: () => reported.push("failed"),
+  })
+  layer.add({})
+
+  for (let i = 0; i < 8; i++) {
+    map.emit("error", { sourceId: "points-mvt-source" })
+  }
+
+  assert.equal(reported.length, 1)
+})
+
+test("reports again after the layer reloads", () => {
+  const map = fakeMap()
+  const reported = []
+  const layer = new PointsMvtLayer(map, {
+    onTileError: () => reported.push("failed"),
+  })
+  layer.add({})
+  map.emit("error", { sourceId: "points-mvt-source" })
+
+  layer.update({ startAt: "2024-01-01T00:00", endAt: "2024-12-31T23:59" })
+  map.emit("error", { sourceId: "points-mvt-source" })
+
+  assert.equal(reported.length, 2)
+})
+
+test("stops listening for tile errors once removed", () => {
+  const map = fakeMap()
+  const layer = new PointsMvtLayer(map, { onTileError: () => {} })
+  layer.add({})
+  layer.remove()
+
+  assert.equal(map.listenerCount("error"), 0)
 })

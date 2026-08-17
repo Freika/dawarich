@@ -1,3 +1,5 @@
+import { translate } from "i18n"
+import { Toast } from "maps_maplibre/components/toast"
 import { AnomaliesLayer } from "maps_maplibre/layers/anomalies_layer"
 import { AreasLayer } from "maps_maplibre/layers/areas_layer"
 import { FamilyLayer } from "maps_maplibre/layers/family_layer"
@@ -476,6 +478,7 @@ export class LayerManager {
           this.settings.pointsVisible !== false &&
           tiledPointsActive(SettingsManager.getSettings()),
         apiKey: this.apiKey,
+        onTileError: () => Toast.error(translate("map.tiled_rendering.failed")),
         ...this.pointTileRange,
       })
       this.layers.pointsMvtLayer.add(this.pointTileRange)

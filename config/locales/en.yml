@@ -877,7 +877,7 @@ en:
         allow_dragging_points_to_correct_their_position_remembered_across_sessio: Allow dragging points to correct their position. Remembered across sessions.
         tiled_rendering: "Tiled rendering"
         beta: "Beta"
-        tiled_rendering_description: "Draws points from vector tiles as you pan instead of loading the whole date range up front. Much faster over long ranges while Routes, Fog of War, and Scratch map are off. Point editing is unavailable and the live trail may update with a few minutes' delay while this is on."
+        tiled_rendering_description: "Draws points from vector tiles as you pan instead of loading the whole date range up front. Much faster over long ranges while Routes, Fog of War, and Scratch map are off. Dense areas are drawn as merged markers showing a point count; zoom in to separate them back into individual points you can open. Point editing is unavailable and the live trail may update with a few minutes' delay while this is on."
         routes: Routes
         show_connected_route_lines: Show connected route lines
         color_by_speed: Color by speed
@@ -3689,6 +3689,7 @@ en:
           one: "Inactive while %{layers} is on — it needs the full point set."
           other: "Inactive while %{layers} are on — those need the full point set."
         editing_unavailable: "Not available with tiled rendering, vector tiles have no draggable points"
+        failed: "Could not load map tiles. Try a shorter date range, or turn off tiled rendering in map settings."
         blockers:
           routes: "Routes"
           fog: "Fog of War"
