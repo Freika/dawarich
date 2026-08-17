@@ -8,7 +8,7 @@ module OidcConfig
   DEFAULT_SCHEME = 'https'
 
   def self.enabled?(env = ENV)
-    env['OIDC_CLIENT_ID'].to_s.strip != '' && env['OIDC_CLIENT_SECRET'].to_s.strip != ''
+    env['OIDC_CLIENT_ID'].to_s.strip != '' && (env['OIDC_CLIENT_SECRET'].to_s.strip != '' || pkce_enabled?(env))
   end
 
   def self.build(env = ENV)
