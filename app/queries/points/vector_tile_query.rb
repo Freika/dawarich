@@ -13,9 +13,13 @@ class Points::VectorTileQuery
   BUFFER = 256
   # Candidate rows must cover the ST_AsMVTGeom buffer, or markers clip at tile seams
   MARGIN = (BUFFER.to_f / EXTENT)
-  # Below this zoom the envelope's geodetic bbox no longer contains the planar
-  # rectangle — the GiST prefilter is unusable, tiles switch to centroid+count.
-  MIN_PREFILTER_ZOOM = 5
+  # Below this zoom a tile spans at least half the world, and a geography bbox
+  # cannot express which way such a polygon wraps — the GiST prefilter would
+  # bound the wrong half, so z0/z1 fall back to a bare intersection.
+  MIN_PREFILTER_ZOOM = 2
+  # Below this zoom tiles carry no per-point attributes: features are
+  # centroid+count aggregates, so nothing can be popped up or identified.
+  MIN_POINT_ATTRIBUTE_ZOOM = 5
   LAYER_NAME = 'points'
   TILE_PIXELS = 512
   WEB_MERCATOR_WORLD = 40_075_016.685578488
@@ -119,6 +123,10 @@ class Points::VectorTileQuery
   end
 
   def point_regime?
+    z >= MIN_POINT_ATTRIBUTE_ZOOM
+  end
+
+  def prefilterable?
     z >= MIN_PREFILTER_ZOOM
   end
 
@@ -201,7 +209,7 @@ class Points::VectorTileQuery
 
   # lonlat is geography, so the planar test alone cannot use the GiST index
   def spatial_prefilter(shift)
-    return '' unless point_regime?
+    return '' unless prefilterable?
 
     "AND points.lonlat && ST_Transform(#{margined_envelope(shift)}, 4326)::geography"
   end

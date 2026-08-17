@@ -130,6 +130,38 @@ RSpec.describe Points::VectorTileQuery do
     end
   end
 
+  describe 'spatial prefilter' do
+    def executed_sql(z:, x:, y:) # rubocop:disable Naming/MethodParameterName
+      statements = []
+      collector = ->(_name, _start, _finish, _id, payload) { statements << payload[:sql] }
+
+      ActiveSupport::Notifications.subscribed(collector, 'sql.active_record') do
+        described_class.new(scope: user.points, z: z, x: x, y: y).feature_rows
+      end
+
+      statements.join("\n")
+    end
+
+    it 'prefilters on the geography index for tiles narrower than half the world' do
+      expect(executed_sql(z: 2, x: 2, y: 1)).to include('points.lonlat &&')
+    end
+
+    it 'still prefilters below the point-attribute tier' do
+      expect(executed_sql(z: 4, x: 8, y: 7)).to include('points.lonlat &&')
+    end
+
+    it 'omits the prefilter where a geography bbox cannot express the wrap' do
+      expect(executed_sql(z: 1, x: 1, y: 0)).not_to include('points.lonlat &&')
+    end
+
+    it 'returns every point in a low-zoom tile that the prefilter now bounds' do
+      create_point_at(10, 10)
+      create_point_at(2_000_000, 1_000_000)
+
+      expect(feature_rows(z: 2, x: 2, y: 1).sum { |row| row['count'].to_i }).to eq(2)
+    end
+  end
+
   describe 'antimeridian seam' do
     it 'keeps a point near +180 visible in the buffer of the x=0 edge tile' do
       lon = 179.9999
