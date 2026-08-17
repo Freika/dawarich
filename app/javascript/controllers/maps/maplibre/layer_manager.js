@@ -1,3 +1,4 @@
+import { shouldShowPointPopup } from "controllers/maps/maplibre/event_handlers"
 import { translate } from "i18n"
 import { Toast } from "maps_maplibre/components/toast"
 import { AnomaliesLayer } from "maps_maplibre/layers/anomalies_layer"
@@ -125,8 +126,15 @@ export class LayerManager {
     this.map.on("mouseleave", "points", () => {
       this.map.getCanvas().style.cursor = ""
     })
-    this.map.on("mouseenter", "points-mvt", () => {
-      this.map.getCanvas().style.cursor = "pointer"
+    // Merged cells carry no point to open, so they must not promise a click.
+    // mousemove, not mouseenter: clickable and merged features sit side by side
+    // in this layer, and mouseenter fires only on entering the layer as a whole.
+    this.map.on("mousemove", "points-mvt", (e) => {
+      this.map.getCanvas().style.cursor = shouldShowPointPopup(
+        e.features?.[0]?.properties,
+      )
+        ? "pointer"
+        : ""
     })
     this.map.on("mouseleave", "points-mvt", () => {
       this.map.getCanvas().style.cursor = ""
