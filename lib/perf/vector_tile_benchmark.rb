@@ -73,7 +73,7 @@ module Perf
             created_at: now, updated_at: now }
         end
         batch.uniq! { |r| [r[:lonlat], r[:timestamp], r[:user_id]] }
-        Point.insert_all(batch, unique_by: %i[lonlat timestamp user_id])
+        Point.insert_all(batch, unique_by: %i[user_id timestamp lonlat])
         seeded += batch.size
         print "\r#{seeded}/#{remaining}"
       end
