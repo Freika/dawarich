@@ -14,8 +14,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Consolidated `points` table indexes: a new `(user_id, timestamp, lonlat)` unique index replaces three redundant indexes, roughly halving the write cost of every point. The index is built by the boot-time migration; on instances with millions of points this can take several minutes, during which the container waits before serving requests. The `points` table itself stays fully usable while the index builds.
 - Automatic daily track generation no longer rebuilds a user's entire history when their tracks are missing and their history exceeds 100k points. On Dawarich Cloud such histories are backfilled automatically at a throttled rate; self-hosted instances still rebuild directly, as fast as their own hardware allows.
+- The nightly cache preheat now runs as one background job per user instead of a single job looping over every user. Its duration is bounded by the slowest individual user rather than by the sum of all of them, so one account with a large history no longer delays the preheat for everyone else.
 
 ### Fixed
+
+- Four scheduled jobs (app version check, cache preheat, family location request expiry, points counter correction) were queued onto `default` instead of the queues their job classes declare, so they competed with higher-priority work — the cache preheat in particular could hold up imports, track generation and stats for minutes at a time. They now run on `app_version_checking`, `cache`, `families` and `low_priority` respectively.
 
 - The map no longer stays blank after an upgrade when the `dawarich_public` Docker volume still holds precompiled assets from an older version. The asset manifest now ships inside the app image instead of the public volume, the boot-time asset sync stages from inside the app directory (a tmpfs-mounted `/tmp` can no longer skip it), and the container logs a warning if the sync still cannot run. (#3346)
 - User data exports no longer fail when a legacy place has no spatial coordinates. (#3344)
