@@ -1538,7 +1538,8 @@ fr:
           la traînée des points pour corriger leur position. Mémorisé entre sessions.
         tiled_rendering: "Rendu par tuiles"
         beta: "Bêta"
-        tiled_rendering_description: "Dessine les points à partir de tuiles vectorielles pendant le déplacement, au lieu de charger toute la plage de dates à l'avance. Beaucoup plus rapide sur les longues périodes tant que Itinéraires, Brouillard de guerre et Carte à gratter sont désactivés. Les zones denses sont dessinées sous forme de marqueurs fusionnés affichant un nombre de points ; zoomez pour les séparer à nouveau en points individuels que vous pouvez ouvrir. La modification des points est indisponible et la trace en direct peut s'actualiser avec quelques minutes de retard."
+        tiled_rendering_description: "Dessine les points à partir de tuiles vectorielles pendant le déplacement, au lieu de charger toute la plage de dates à l'avance."
+        tiled_rendering_caveats: "Les zones denses sont fusionnées en marqueurs avec un compteur — zoomez pour ouvrir les points individuels. La modification est indisponible et la trace en direct peut avoir quelques minutes de retard."
         routes: Itinéraires
         show_connected_route_lines: Afficher les lignes d'itinéraire connectées
         color_by_speed: Colorer par vitesse

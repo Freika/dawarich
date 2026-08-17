@@ -876,16 +876,20 @@ export class SettingsController {
       SettingsManager.getSetting("pointDraggingEnabled") === true &&
       !isGatedPlan(controller.userPlanValue)
 
+    // A hover tooltip cannot explain a disabled control to touch or keyboard,
+    // so the reason also renders as a line under the row.
+    if (controller.hasPointsEditUnavailableNoteTarget) {
+      const note = controller.pointsEditUnavailableNoteTarget
+      note.textContent = tiled
+        ? translate("map.tiled_rendering.editing_unavailable")
+        : ""
+      note.classList.toggle("hidden", !tiled)
+    }
+
     const label = input.closest("label")
     if (!label) return
     label.classList.toggle("opacity-40", tiled)
-    label.classList.toggle("tooltip", tiled)
     label.style.cursor = tiled ? "not-allowed" : ""
-    if (tiled) {
-      label.dataset.tip = translate("map.tiled_rendering.editing_unavailable")
-    } else {
-      delete label.dataset.tip
-    }
   }
 
   updateRouteOpacity(event) {
