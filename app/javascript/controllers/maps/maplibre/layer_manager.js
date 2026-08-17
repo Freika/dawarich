@@ -266,6 +266,9 @@ export class LayerManager {
     // layer keeps moving points. setEditMode, not disableDragging: add() arms
     // enableDragging on a timer that re-checks editModeEnabled.
     this.layers.pointsLayer?.setEditMode(false)
+    // Same reason: the tile-error listener is on the map, so an orphaned layer
+    // keeps reporting and the replacement adds a second one.
+    this.layers.pointsMvtLayer?._unwatchTileErrors()
     this.layers = {}
     this.eventHandlersSetup = false
   }
