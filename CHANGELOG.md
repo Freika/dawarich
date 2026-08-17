@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+### Added
+
+- New `point_sources` and `point_motions` reference tables deduplicate the device/importer metadata and motion payloads that were repeated on every point. A resumable background backfill links existing points to them and resolves missing country references; it runs automatically after upgrade in small batches and can be skipped with `SKIP_POINT_DIMENSION_BACKFILL=1`.
+
 ### Changed
 
 - Removed three superseded `points` indexes (the old dedup index and two composites) now that the consolidated `(user_id, timestamp, lonlat)` index from 1.12.2 serves their queries. The migration refuses to run unless that consolidated index is present and valid, and any other invalid leftover index is cleaned up first. Frees several gigabytes on large instances and further reduces the write cost of every point.
