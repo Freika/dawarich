@@ -52,6 +52,20 @@ RSpec.describe Imports::Destroy do
 
         expect(received.size).to eq(3)
       end
+
+      it 'keeps collapsing across batch boundaries, not just within one batch' do
+        stub_const('Imports::Destroy::BATCH_SIZE', 2)
+        received = nil
+        allow(Points::TileEpoch).to receive(:bump) do |_user_id, timestamps:|
+          received = timestamps
+        end
+
+        service.call
+
+        # 18 points over 9 batches still collapse to the 3 years they touched
+        expect(received.size).to eq(3)
+        expect(received.map { |ts| Time.at(ts).utc.year }).to match_array([2022, 2023, 2024])
+      end
     end
   end
 end

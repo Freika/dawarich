@@ -13,9 +13,11 @@ class Points::VectorTileQuery
   BUFFER = 256
   # Candidate rows must cover the ST_AsMVTGeom buffer, or markers clip at tile seams
   MARGIN = (BUFFER.to_f / EXTENT)
-  # Below this zoom a tile spans at least half the world, and a geography bbox
-  # cannot express which way such a polygon wraps — the GiST prefilter would
-  # bound the wrong half, so z0/z1 fall back to a bare intersection.
+  # The z0 world tile's geography bbox does not contain its own planar extent —
+  # measured against a 1.5-degree global grid it drops 27k points that the plain
+  # intersection keeps, so the prefilter must not run there. z1 measured clean,
+  # but each of its tiles still spans a full 180 degrees, where wrap direction
+  # is ambiguous in principle; the tier starts at z2 rather than rely on that.
   MIN_PREFILTER_ZOOM = 2
   # Below this zoom tiles carry no per-point attributes: features are
   # centroid+count aggregates, so nothing can be popped up or identified.

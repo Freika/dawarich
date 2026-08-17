@@ -121,7 +121,10 @@ async function transformRequestWithApiKey(apiKey) {
   return state.map.options.transformRequest
 }
 
-test("authorizes same-origin tile requests", async () => {
+test("authorizes same-origin tile requests", async (t) => {
+  t.after(() => {
+    delete globalThis.window
+  })
   const transformRequest = await transformRequestWithApiKey("secret-key")
 
   const result = transformRequest("/api/v1/tiles/points/1/2/3.mvt")
@@ -129,14 +132,29 @@ test("authorizes same-origin tile requests", async () => {
   assert.equal(result.headers.Authorization, "Bearer secret-key")
 })
 
-test("never sends the api key to a cross-origin tile path", async () => {
+test("never sends the api key to another origin", async (t) => {
+  t.after(() => {
+    delete globalThis.window
+  })
   const transformRequest = await transformRequestWithApiKey("secret-key")
 
-  const result = transformRequest(
+  // Every shape a hostile custom basemap or third-party style could produce
+  const foreign = [
     "https://evil.example/api/v1/tiles/points/1/2/3.mvt",
-  )
+    "//evil.example/api/v1/tiles/points/1/2/3.mvt",
+    "https://app.example@evil.example/api/v1/tiles/points/1/2/3.mvt",
+    "https://app.example.evil.example/api/v1/tiles/points/1/2/3.mvt",
+    "http://app.example/api/v1/tiles/points/1/2/3.mvt",
+    "https://app.example:8443/api/v1/tiles/points/1/2/3.mvt",
+  ]
 
-  assert.equal(result.headers, undefined)
+  for (const url of foreign) {
+    assert.equal(
+      transformRequest(url).headers,
+      undefined,
+      `api key leaked to ${url}`,
+    )
+  }
 })
 
 test("falls back from an unavailable initial custom style URL", async () => {
