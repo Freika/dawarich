@@ -19,7 +19,12 @@ const source = await readFile(
 const withoutImports = source.replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
 const combinedSource = `${basemapUrlSource}\n${withoutImports}`
 const moduleUrl = `data:text/javascript;base64,${Buffer.from(combinedSource).toString("base64")}`
-const { LAYER_COLOR_DEFAULTS, SettingsManager } = await import(moduleUrl)
+const {
+  bulkPointsRequired,
+  LAYER_COLOR_DEFAULTS,
+  SettingsManager,
+  tiledPointsActive,
+} = await import(moduleUrl)
 
 async function loadSettingsController(settingsManager, overrides = {}) {
   const controllerSource = await readFile(
@@ -40,6 +45,8 @@ async function loadSettingsController(settingsManager, overrides = {}) {
   }
   globalThis.__settingsManagerGetMapStyle =
     overrides.getMapStyle ?? (async () => ({}))
+  globalThis.__settingsManagerBulkPointsRequired = bulkPointsRequired
+  globalThis.__settingsManagerTiledPointsActive = tiledPointsActive
   const dependencies = `
     const Toast = globalThis.__settingsManagerToast
     const UpgradeBanner = {}
@@ -47,7 +54,9 @@ async function loadSettingsController(settingsManager, overrides = {}) {
     const LAYER_COLOR_DEFAULTS = ${JSON.stringify(LAYER_COLOR_DEFAULTS)}
     const SettingsManager = globalThis.__settingsManagerTestDouble
     const getMapStyle = globalThis.__settingsManagerGetMapStyle
-    const translate = (key) => key
+    const translate = globalThis.__settingsManagerTranslate ?? ((key) => key)
+    const bulkPointsRequired = globalThis.__settingsManagerBulkPointsRequired
+    const tiledPointsActive = globalThis.__settingsManagerTiledPointsActive
     ${basemapUrlSource.replace(/^export /gm, "")}
   `
   const url = `data:text/javascript;base64,${Buffer.from(`${dependencies}\n${withoutImports}`).toString("base64")}`
@@ -300,4 +309,141 @@ test("a stale style.load after the fallback does not double-reload", async () =>
   controller.map.emit("style.load")
 
   assert.deepEqual(restored, ["loadMapData"])
+})
+
+// Layer settings as _expandLayerSettings produces them: every layer key is an
+// explicit boolean, and the stock enabled_map_layers is ["Tracks","Heatmap"]
+function layerSettings(overrides = {}) {
+  return {
+    pointsVisible: true,
+    routesVisible: false,
+    heatmapEnabled: true,
+    fogEnabled: false,
+    scratchEnabled: false,
+    fogOfWarMode: "points",
+    ...overrides,
+  }
+}
+
+test("tiled rendering stays off until it is asked for", () => {
+  assert.equal(tiledPointsActive(layerSettings()), false)
+  assert.equal(
+    tiledPointsActive(layerSettings({ pointsTiledRendering: false })),
+    false,
+  )
+})
+
+test("the stock layer set does not block tiled rendering", () => {
+  // Heatmap ships enabled, so blocking on it would make the beta inert for
+  // everyone who never touched their layer settings
+  const settings = layerSettings({ pointsTiledRendering: true })
+
+  assert.equal(bulkPointsRequired(settings), false)
+  assert.equal(tiledPointsActive(settings), true)
+})
+
+test("heatmap still needs the bulk fetch when tiles were not asked for", () => {
+  assert.equal(bulkPointsRequired(layerSettings()), true)
+})
+
+test("layers that read the whole point set switch tiles back off", () => {
+  for (const blocker of [
+    { routesVisible: true },
+    { scratchEnabled: true },
+    { fogEnabled: true, fogOfWarMode: "points" },
+  ]) {
+    const settings = layerSettings({ pointsTiledRendering: true, ...blocker })
+
+    assert.equal(bulkPointsRequired(settings), true, JSON.stringify(blocker))
+    assert.equal(tiledPointsActive(settings), false, JSON.stringify(blocker))
+  }
+})
+
+test("hexagon fog fetches its own data, so it leaves tiles alone", () => {
+  const settings = layerSettings({
+    pointsTiledRendering: true,
+    fogEnabled: true,
+    fogOfWarMode: "hexagons",
+  })
+
+  assert.equal(bulkPointsRequired(settings), false)
+  assert.equal(tiledPointsActive(settings), true)
+})
+
+test("a missing routesVisible counts as routes being on", () => {
+  // needsPoints has always treated absent as visible, so the guard must agree
+  // rather than quietly skipping a fetch the routes layer depends on
+  const settings = { pointsTiledRendering: true, heatmapEnabled: false }
+
+  assert.equal(bulkPointsRequired(settings), true)
+  assert.equal(tiledPointsActive(settings), false)
+})
+
+test("the tiled-rendering inactive note is translated with plural forms", async () => {
+  const fixtures = {
+    "map.tiled_rendering.blockers.routes": "Routen",
+    "map.tiled_rendering.blockers.scratch": "Rubbelkarte",
+  }
+  const calls = []
+  globalThis.__settingsManagerTranslate = (key, values = {}) => {
+    calls.push({ key, values })
+    if (key === "map.tiled_rendering.inactive_note") {
+      const verb = values.count === 1 ? "ist" : "sind"
+      return `Inaktiv solange ${values.layers} ${verb} an`
+    }
+    return fixtures[key] ?? key
+  }
+
+  try {
+    const settingsFor = (overrides) => ({
+      pointsTiledRendering: true,
+      pointsVisible: true,
+      routesVisible: false,
+      heatmapEnabled: false,
+      fogEnabled: false,
+      scratchEnabled: false,
+      fogOfWarMode: "points",
+      ...overrides,
+    })
+    let settings = settingsFor({ routesVisible: true })
+    const settingsManager = {
+      getSettings: () => settings,
+      getSetting: () => false,
+      updateSetting: () => {},
+    }
+    const { SettingsController } = await loadSettingsController(settingsManager)
+    const note = {
+      textContent: "",
+      classList: {
+        toggle() {},
+      },
+    }
+    const controller = new SettingsController({
+      element: { querySelector: () => null },
+      hasPointsTiledInactiveNoteTarget: true,
+      pointsTiledInactiveNoteTarget: note,
+    })
+
+    controller.syncTiledRenderingNote()
+    let noteCall = calls.find(
+      (call) => call.key === "map.tiled_rendering.inactive_note",
+    )
+    assert.ok(noteCall, "inactive note must go through translate()")
+    assert.equal(noteCall.values.count, 1)
+    assert.equal(note.textContent, "Inaktiv solange Routen ist an")
+
+    calls.length = 0
+    settings = settingsFor({ routesVisible: true, scratchEnabled: true })
+    controller.syncTiledRenderingNote()
+    noteCall = calls.find(
+      (call) => call.key === "map.tiled_rendering.inactive_note",
+    )
+    assert.equal(noteCall.values.count, 2)
+    assert.equal(
+      note.textContent,
+      "Inaktiv solange Routen, Rubbelkarte sind an",
+    )
+  } finally {
+    delete globalThis.__settingsManagerTranslate
+  }
 })

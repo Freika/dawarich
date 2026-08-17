@@ -56,6 +56,9 @@ class Points::AnomalyBackfillUserJob < ApplicationJob
 
   def reset_existing_flags(user)
     cleared = user.points.where(anomaly: true).update_all(anomaly: false, updated_at: Time.current)
+    # Clearing un-hides points in vector tiles; the filter re-run only bumps
+    # when it MARKS anomalies, so the all-clear outcome must invalidate here.
+    Points::TileEpoch.bump(user.id) if cleared.positive?
     Rails.logger.info("[AnomalyBackfill] User #{user.id}: cleared #{cleared} anomaly flags before re-evaluation")
   end
 

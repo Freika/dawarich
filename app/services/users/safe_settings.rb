@@ -24,7 +24,7 @@ class Users::SafeSettings
     'live_map_enabled' => true,
     'route_opacity' => 0.6,
     # Layer colors: route fallback matches Map v1's blue, track color matches
-    # Tracks::GeojsonSerializer::DEFAULT_COLOR — keep them in sync.
+    # Tracks::GeojsonSerializer::DEFAULT_COLOR, keep them in sync.
     'route_color' => '#0000ff',
     'track_color' => '#6366F1',
     'immich_url' => nil,
@@ -65,7 +65,8 @@ class Users::SafeSettings
     'visit_radius_meters' => 100,
     'visit_min_points' => 3,
     'visit_min_duration_minutes' => 5,
-    'point_dragging_enabled' => false
+    'point_dragging_enabled' => false,
+    'points_tiled_rendering' => false
   }.freeze
 
   def initialize(settings = {}, plan: nil)
@@ -114,7 +115,8 @@ class Users::SafeSettings
       visit_radius_meters: visit_radius_meters,
       visit_min_points: visit_min_points,
       visit_min_duration_minutes: visit_min_duration_minutes,
-      point_dragging_enabled: point_dragging_enabled?
+      point_dragging_enabled: point_dragging_enabled?,
+      points_tiled_rendering: points_tiled_rendering?
     }
   end
 
@@ -321,6 +323,10 @@ class Users::SafeSettings
 
   def point_dragging_enabled?
     ActiveModel::Type::Boolean.new.cast(settings['point_dragging_enabled']) || false
+  end
+
+  def points_tiled_rendering?
+    ActiveModel::Type::Boolean.new.cast(settings['points_tiled_rendering']) || false
   end
 
   def visit_radius_meters

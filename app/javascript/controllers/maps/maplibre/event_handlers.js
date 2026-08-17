@@ -18,6 +18,13 @@ import {
  * either is absent or blank, so the caller can fall back to the geometry.
  * `Number("")` is 0 and finite, so a plain isFinite check is not enough.
  */
+// A tiled feature can represent many merged points but carries ONE arbitrary
+// member's id/coords — aggregates (no id) and merged cells (count > 1) get no popup.
+export function shouldShowPointPopup(properties = {}) {
+  if (properties.id == null) return false
+  return (properties.count ?? 1) <= 1
+}
+
 function storedCoordinates(properties) {
   const { latitude, longitude } = properties
   if (latitude == null || longitude == null) return null
@@ -77,6 +84,8 @@ export class EventHandlers {
     if (pointsLayer?.justDragged) return
 
     const feature = e.features[0]
+    if (!shouldShowPointPopup(feature.properties)) return
+
     const pointId = feature.properties.id
     const actions = pointId
       ? [
