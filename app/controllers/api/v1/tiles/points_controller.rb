@@ -11,13 +11,23 @@ class Api::V1::Tiles::PointsController < ApiController
     # Auth is header-only, so URL-keyed caches need Vary to keep users' tiles apart.
     response.headers['Vary'] = [response.headers['Vary'], 'Authorization'].compact.join(', ')
 
+    # A partial or unparsable range used to fall back to "now"/whole-account in
+    # the query: the caller silently got a different window than it asked for,
+    # over the one query shape that can never be cached. Asking for no range at
+    # all is still a deliberate, deterministic request for everything.
+    if range_requested? && !cacheable_range?
+      force_uncacheable_response
+      return render json: { error: 'Both start_at and end_at must be present and parsable' },
+                    status: :bad_request
+    end
+
     if cacheable_range?
       # Must precede fresh_when, or a 304 goes out without Cache-Control.
       expires_in 5.minutes, public: false
       fresh_when(etag: tile_etag, public: false)
       return if performed?
     else
-      # An unparsable range falls back to "now" in the query — caching would pin stale data.
+      # No range means an unbounded scan whose content moves as points arrive.
       force_uncacheable_response
     end
 
@@ -70,6 +80,10 @@ class Api::V1::Tiles::PointsController < ApiController
       params[:z], params[:x], params[:y],
       cacheable_start_at, cacheable_end_at
     ]
+  end
+
+  def range_requested?
+    params[:start_at].present? || params[:end_at].present?
   end
 
   def cacheable_range?

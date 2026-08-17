@@ -215,15 +215,11 @@ RSpec.describe 'Api::V1::Tiles::Points', type: :request do
         expect(response).to have_http_status(:not_modified)
       end
 
-      it 'stays no-store when the range is missing or malformed' do
+      it 'stays no-store when no range is requested at all' do
         # no-store forbids the browser from storing the response at all, which
         # kills conditional revalidation at the root. (Rack::ETag still stamps
         # an inert weak digest on 200 bodies — irrelevant with nothing stored.)
         get path, params: { api_key: user.api_key }
-        expect(response.headers['Cache-Control']).to include('no-store')
-        expect(response.headers['Cache-Control']).not_to include('max-age')
-
-        get path, params: { api_key: user.api_key, start_at: 'garbage', end_at: range[:end_at] }
         expect(response.headers['Cache-Control']).to include('no-store')
         expect(response.headers['Cache-Control']).not_to include('max-age')
       end
@@ -307,6 +303,30 @@ RSpec.describe 'Api::V1::Tiles::Points', type: :request do
       get path, params: { api_key: user.api_key }
 
       expect(response).to have_http_status(:no_content)
+    end
+
+    context 'when a requested range cannot be honored' do
+      it 'rejects a malformed bound instead of silently querying a different window' do
+        get path, params: { api_key: user.api_key, start_at: 'garbage',
+                            end_at: Time.utc(2024, 12, 31).to_i.to_s }
+
+        expect(response).to have_http_status(:bad_request)
+        expect(response.headers['Cache-Control']).to include('no-store')
+      end
+
+      it 'rejects a half-open range rather than serving an uncacheable scan' do
+        get path, params: { api_key: user.api_key, start_at: Time.utc(2024, 1, 1).to_i.to_s }
+
+        expect(response).to have_http_status(:bad_request)
+      end
+
+      it 'still serves a request that asks for no range at all' do
+        create(:point, user:, longitude: 0.0, latitude: 0.0, lonlat: 'POINT(0 0)')
+
+        get path, params: { api_key: user.api_key }
+
+        expect(response).to have_http_status(:ok)
+      end
     end
 
     it 'returns 400 for invalid tile coordinates' do
