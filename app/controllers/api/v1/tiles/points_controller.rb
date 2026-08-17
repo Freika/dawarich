@@ -86,8 +86,11 @@ class Api::V1::Tiles::PointsController < ApiController
     params[:start_at].present? || params[:end_at].present?
   end
 
+  # A reversed range parses fine but can never match a row, so without this it
+  # would be cached — an empty tile served under max-age for a live account.
   def cacheable_range?
-    cacheable_start_at.present? && cacheable_end_at.present?
+    cacheable_start_at.present? && cacheable_end_at.present? &&
+      cacheable_start_at <= cacheable_end_at
   end
 
   def cacheable_start_at

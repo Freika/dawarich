@@ -314,6 +314,26 @@ RSpec.describe 'Api::V1::Tiles::Points', type: :request do
         expect(response.headers['Cache-Control']).to include('no-store')
       end
 
+      it 'rejects a reversed range instead of caching an empty tile for it' do
+        create(:point, user:, longitude: 0.0, latitude: 0.0, lonlat: 'POINT(0 0)')
+
+        get path, params: { api_key: user.api_key,
+                            start_at: Time.utc(2024, 12, 31).to_i.to_s,
+                            end_at: Time.utc(2024, 1, 1).to_i.to_s }
+
+        expect(response).to have_http_status(:bad_request)
+        expect(response.headers['Cache-Control']).to include('no-store')
+        expect(response.headers['ETag']).to be_nil
+      end
+
+      it 'accepts a single-instant range where start equals end' do
+        get path, params: { api_key: user.api_key,
+                            start_at: Time.utc(2024, 6, 1).to_i.to_s,
+                            end_at: Time.utc(2024, 6, 1).to_i.to_s }
+
+        expect(response).not_to have_http_status(:bad_request)
+      end
+
       it 'rejects a half-open range rather than serving an uncacheable scan' do
         get path, params: { api_key: user.api_key, start_at: Time.utc(2024, 1, 1).to_i.to_s }
 
