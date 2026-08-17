@@ -53,18 +53,38 @@ RSpec.describe Imports::Destroy do
         expect(received.size).to eq(3)
       end
 
-      it 'keeps collapsing across batch boundaries, not just within one batch' do
+      it 'covers every deleted year across batches while collapsing within each' do
         stub_const('Imports::Destroy::BATCH_SIZE', 2)
-        received = nil
+        calls = []
         allow(Points::TileEpoch).to receive(:bump) do |_user_id, timestamps:|
-          received = timestamps
+          calls << timestamps
         end
 
         service.call
 
-        # 18 points over 9 batches still collapse to the 3 years they touched
-        expect(received.size).to eq(3)
-        expect(received.map { |ts| Time.at(ts).utc.year }).to match_array([2022, 2023, 2024])
+        calls.each do |timestamps|
+          years = timestamps.map { |ts| Time.at(ts).utc.year }
+          expect(years).to eq(years.uniq)
+        end
+        deleted_years = calls.flatten.map { |ts| Time.at(ts).utc.year }.uniq
+        expect(deleted_years).to match_array([2022, 2023, 2024])
+      end
+
+      it 'bumps each completed batch before the deletion finishes' do
+        stub_const('Imports::Destroy::BATCH_SIZE', 2)
+        bumps = 0
+        allow(Points::TileEpoch).to receive(:bump) { bumps += 1 }
+        batches = 0
+        allow(Point).to receive(:where).and_wrap_original do |original, *args|
+          if args.first.is_a?(Hash) && args.first.key?(:id)
+            batches += 1
+            raise ActiveRecord::QueryCanceled if batches == 3
+          end
+          original.call(*args)
+        end
+
+        expect { service.call }.to raise_error(ActiveRecord::QueryCanceled)
+        expect(bumps).to eq(2)
       end
     end
   end
