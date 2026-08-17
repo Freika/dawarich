@@ -90,6 +90,26 @@ RSpec.describe 'Points::TileEpoch write-path integration' do
     end
   end
 
+  it 'covers the sentinel lookback, which reaches into the previous year' do
+    # The sentinel pass re-judges the hours before the caller's window, so a run
+    # just after New Year can flag points whose tiles live in the prior year.
+    start_time = Time.utc(2024, 1, 1, 2, 0, 0).to_i
+    end_time = Time.utc(2024, 1, 1, 3, 0, 0).to_i
+    create(:point, user:, timestamp: start_time + 60, lonlat: 'POINT(0 0)',
+                   longitude: 0.0, latitude: 0.0)
+
+    prior_year = lambda {
+      Points::TileEpoch.etag_component(
+        user.id, Time.utc(2023, 1, 1).to_i, Time.utc(2023, 12, 31).to_i
+      )
+    }
+    before_value = prior_year.call
+
+    Points::AnomalyFilter.new(user.id, start_time, end_time).call
+
+    expect(prior_year.call).not_to eq(before_value)
+  end
+
   it 'bumps when DataMigrations::CleanupNullIslandJob flags null-island points' do
     create(:point, user:, timestamp: timestamp, lonlat: 'POINT(0 0)',
                    longitude: 0.0, latitude: 0.0)

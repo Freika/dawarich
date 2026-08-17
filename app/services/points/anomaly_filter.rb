@@ -97,7 +97,12 @@ class Points::AnomalyFilter
     # tile content without a point write. Bump only the window's years — this
     # runs on every live-ingest batch, so a sentinel here would wipe the whole
     # account's tile cache on the hottest path.
-    Points::TileEpoch.bump_range(@user_id, @start_time, @end_time) if count.positive?
+    # From the sentinel pass's start, not the caller's: that pass re-judges the
+    # hours before the window, so a run just after New Year can flag points
+    # whose tiles belong to the previous year and would otherwise 304 forever.
+    if count.positive?
+      Points::TileEpoch.bump_range(@user_id, @start_time - SENTINEL_PRECISE_NEIGHBOR_SECONDS, @end_time)
+    end
     enqueue_dependent_rebuilds if @invalidate_dependents && @flagged_for_rebuild.any?
     count
   end
