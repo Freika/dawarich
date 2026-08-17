@@ -43,7 +43,14 @@ export class MapInitializer {
       transformRequest: (url) => {
         const requestUrl = new URL(url, window.location.origin)
 
-        if (!requestUrl.pathname.startsWith("/api/v1/tiles/") || !apiKey) {
+        // The origin check is load-bearing: a custom basemap or a third-party
+        // style document can point a tile source at any host, and matching on
+        // the path alone would hand that host the user's api key.
+        if (
+          requestUrl.origin !== window.location.origin ||
+          !requestUrl.pathname.startsWith("/api/v1/tiles/") ||
+          !apiKey
+        ) {
           return { url: requestUrl.toString() }
         }
 

@@ -10,6 +10,10 @@ const basemapUrlSource = await readFile(
   "utf8",
 )
 
+// Date.now() collides when two loads land in the same millisecond, and the
+// cached module keeps the previous test's fakes.
+let moduleLoadCount = 0
+
 async function loadMapInitializer({ getMapStyle, Toast }) {
   const source = await readFile(
     new URL(
@@ -29,7 +33,8 @@ async function loadMapInitializer({ getMapStyle, Toast }) {
   globalThis.__mapInitializerGetMapStyle = getMapStyle
   globalThis.__mapInitializerToast = Toast
   const url = `data:text/javascript;base64,${Buffer.from(`${dependencies}\n${withoutImports}`).toString("base64")}`
-  return await import(`${url}#${Date.now()}`)
+  moduleLoadCount += 1
+  return await import(`${url}#${moduleLoadCount}`)
 }
 
 class FakeMap {
@@ -92,6 +97,47 @@ async function initializeWithCustomStyle({ emitOnConstruct } = {}) {
   await new Promise((resolve) => setImmediate(resolve))
   return state
 }
+
+async function transformRequestWithApiKey(apiKey) {
+  const state = { map: null }
+  globalThis.__mapInitializerMaplibre = {
+    Map: class extends FakeMap {
+      constructor(options) {
+        super(options)
+        state.map = this
+      }
+    },
+    NavigationControl: class {},
+    AttributionControl: class {},
+  }
+  const { MapInitializer } = await loadMapInitializer({
+    getMapStyle: async () => ({ version: 8, sources: {}, layers: [] }),
+    Toast: { error: () => {} },
+  })
+
+  globalThis.window = { location: { origin: "https://app.example" } }
+  await MapInitializer.initialize({}, {}, apiKey)
+
+  return state.map.options.transformRequest
+}
+
+test("authorizes same-origin tile requests", async () => {
+  const transformRequest = await transformRequestWithApiKey("secret-key")
+
+  const result = transformRequest("/api/v1/tiles/points/1/2/3.mvt")
+
+  assert.equal(result.headers.Authorization, "Bearer secret-key")
+})
+
+test("never sends the api key to a cross-origin tile path", async () => {
+  const transformRequest = await transformRequestWithApiKey("secret-key")
+
+  const result = transformRequest(
+    "https://evil.example/api/v1/tiles/points/1/2/3.mvt",
+  )
+
+  assert.equal(result.headers, undefined)
+})
 
 test("falls back from an unavailable initial custom style URL", async () => {
   const state = await initializeWithCustomStyle({
