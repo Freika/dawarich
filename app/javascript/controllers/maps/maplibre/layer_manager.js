@@ -489,6 +489,7 @@ export class LayerManager {
           this.settings.pointsVisible !== false &&
           tiledPointsActive(SettingsManager.getSettings()),
         apiKey: this.apiKey,
+        styleName: this.settings.mapStyle,
         onTileError: () => Toast.error(translate("map.tiled_rendering.failed")),
         ...this.pointTileRange,
       })

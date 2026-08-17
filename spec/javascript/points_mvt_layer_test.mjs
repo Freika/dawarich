@@ -23,10 +23,17 @@ const mvtSource = await readFile(
   ),
   "utf8",
 )
+const markerThemeSource = await readFile(
+  new URL(
+    "../../app/javascript/maps_maplibre/utils/marker_theme.js",
+    import.meta.url,
+  ),
+  "utf8",
+)
 
 const stripImports = (source) =>
   source.replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
-const combined = [baseLayerSource, heatmapSource, mvtSource]
+const combined = [baseLayerSource, heatmapSource, markerThemeSource, mvtSource]
   .map(stripImports)
   .join("\n")
 const moduleUrl = `data:text/javascript;base64,${Buffer.from(combined).toString("base64")}`
@@ -161,6 +168,32 @@ test("tiled heatmap weight scales with count: log-monotonic, classic at count 1"
   assert.ok(at(1) < at(50), "weight must grow from 1 to 50")
   assert.ok(at(50) < at(5000), "weight must grow from 50 to 5000")
   assert.ok(at(5000) <= 1, "weight must stay clamped at 1")
+})
+
+test("circle stroke follows the basemap marker theme like the classic layer", () => {
+  const stroke = (styleName) =>
+    new PointsMvtLayer(fakeMap(), { styleName })
+      .getLayerConfigs()
+      .find((config) => config.id === "points-mvt").paint["circle-stroke-color"]
+
+  assert.equal(stroke("light"), "#1e3a8a")
+  assert.equal(stroke("grayscale"), "#1e3a8a")
+  assert.equal(stroke("dark"), "#ffffff")
+})
+
+test("anyVisible reports heatmap-only, circles-only and fully hidden states", () => {
+  const layer = new PointsMvtLayer(fakeMap(), {})
+
+  layer.visible = false
+  layer.heatmapVisible = false
+  assert.equal(layer.anyVisible, false)
+
+  layer.heatmapVisible = true
+  assert.equal(layer.anyVisible, true)
+
+  layer.visible = true
+  layer.heatmapVisible = false
+  assert.equal(layer.anyVisible, true)
 })
 
 test("update() to a new range re-adds sub-layers at their original z-position", () => {

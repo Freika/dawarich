@@ -1,3 +1,4 @@
+import { getMarkerStrokeColor } from "../utils/marker_theme"
 import { BaseLayer } from "./base_layer"
 import { heatmapPaint } from "./heatmap_layer"
 
@@ -21,6 +22,7 @@ export class PointsMvtLayer extends BaseLayer {
     this.startAt = options.startAt || null
     this.endAt = options.endAt || null
     this.apiKey = options.apiKey || null
+    this.styleName = options.styleName
     this._tileUrl = null
     this._cacheBuster = 0
     // Heatmap rides the same source and same lifecycle, toggled independently
@@ -70,6 +72,12 @@ export class PointsMvtLayer extends BaseLayer {
   setHeatmapVisible(visible) {
     this.heatmapVisible = visible
     this._applyLayerVisibility(PointsMvtLayer.HEATMAP_LAYER_ID, visible)
+  }
+
+  // The circle and heatmap sub-layers toggle independently; anything keyed to
+  // "is this layer on screen" must consider both.
+  get anyVisible() {
+    return Boolean(this.visible || this.heatmapVisible)
   }
 
   // Sub-layers are toggled independently, so they cannot share BaseLayer's flag
@@ -156,7 +164,7 @@ export class PointsMvtLayer extends BaseLayer {
           "circle-color": "#3b82f6",
           "circle-radius": 6,
           "circle-stroke-width": 2,
-          "circle-stroke-color": "#ffffff",
+          "circle-stroke-color": getMarkerStrokeColor(this.styleName),
         },
       },
     ]

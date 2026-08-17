@@ -1915,7 +1915,7 @@ export default class extends Controller {
 
       // Cached tiles still contain the deleted point.
       const tiledLayer = this.layerManager.getLayer("points-mvt")
-      if (tiledLayer?.visible) tiledLayer.refresh()
+      if (tiledLayer?.anyVisible) tiledLayer.refresh()
 
       this.closeInfo()
       Toast.success(translate("messages.point_deleted_successfully"))
