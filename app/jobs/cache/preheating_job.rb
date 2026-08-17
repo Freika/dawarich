@@ -11,12 +11,21 @@ class Cache::PreheatingJob < ApplicationJob
   def perform
     preheat_country_borders
 
-    User.select(:id).find_in_batches(batch_size: BATCH_SIZE) do |batch|
+    target_users.find_in_batches(batch_size: BATCH_SIZE) do |batch|
       ActiveJob.perform_all_later(batch.map { |user| Cache::UserPreheatingJob.new(user.id) })
     end
   end
 
   private
+
+  # Self-hosted instances have no subscription lifecycle, so every user is
+  # worth preheating. On Cloud, warming caches for lapsed accounts that will
+  # never load a page is wasted queue time.
+  def target_users
+    scope = User.select(:id)
+
+    DawarichSettings.self_hosted? ? scope : scope.active_or_trial
+  end
 
   def preheat_country_borders
     Rails.cache.write(

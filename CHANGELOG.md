@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Consolidated `points` table indexes: a new `(user_id, timestamp, lonlat)` unique index replaces three redundant indexes, roughly halving the write cost of every point. The index is built by the boot-time migration; on instances with millions of points this can take several minutes, during which the container waits before serving requests. The `points` table itself stays fully usable while the index builds.
 - Automatic daily track generation no longer rebuilds a user's entire history when their tracks are missing and their history exceeds 100k points. On Dawarich Cloud such histories are backfilled automatically at a throttled rate; self-hosted instances still rebuild directly, as fast as their own hardware allows.
-- The nightly cache preheat now runs as one background job per user instead of a single job looping over every user. Its duration is bounded by the slowest individual user rather than by the sum of all of them, so one account with a large history no longer delays the preheat for everyone else.
+- The nightly cache preheat now runs as one background job per user instead of a single job looping over every user. Its duration is bounded by the slowest individual user rather than by the sum of all of them, so one account with a large history no longer delays the preheat for everyone else. On Dawarich Cloud it now only preheats active and trial accounts; self-hosted instances continue to preheat every user.
 
 ### Fixed
 
