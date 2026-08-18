@@ -9,6 +9,19 @@ RSpec.describe Points::TileEpoch do
     described_class.etag_component(user_id, start_time.to_i, end_time.to_i)
   end
 
+  describe 'key format' do
+    # ⛔ Live Cloud Redis holds keys in this exact format — a refactor that
+    # changes it silently invalidates (or worse, strands) every deployed epoch.
+    it 'pins the literal Redis key format' do
+      expect(described_class::KEY_PREFIX).to eq('points:tile_epoch')
+
+      described_class.bump(user_id, timestamps: [Time.utc(2024, 6, 1).to_i])
+
+      raw = Rails.cache.read("points:tile_epoch:#{user_id}:2024", raw: true)
+      expect(raw).to be_present
+    end
+  end
+
   describe '.etag_component' do
     it 'is stable across repeated reads for an untouched user' do
       first = component(Time.utc(2024, 1, 1), Time.utc(2024, 12, 31))

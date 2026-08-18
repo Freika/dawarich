@@ -37,6 +37,15 @@ class Track < ApplicationRecord
   after_update :broadcast_track_updated
   after_destroy :broadcast_track_destroyed
 
+  # Track tiles carry this row's geometry and properties, so any write must
+  # invalidate the tile epoch. Previous start/end years are collected in
+  # before_update (not read from saved_changes at commit time) because the
+  # recalculate_path_and_distance! callback performs a nested save that
+  # overwrites saved_changes before after_commit fires.
+  before_update :collect_tile_epoch_stamps
+  after_commit :bump_tile_epoch, on: %i[create destroy]
+  after_commit :flush_tile_epoch_stamps, on: :update
+
   scope :by_mode, ->(mode) { where(dominant_mode: mode) }
   scope :with_unknown_mode, -> { where(dominant_mode: :unknown) }
   scope :with_detected_mode, -> { where.not(dominant_mode: :unknown) }
@@ -62,11 +71,18 @@ class Track < ApplicationRecord
     ids = Array(ids).uniq
     return 0 if ids.empty?
 
-    owners = where(id: ids).pluck(:id, :user_id)
-    return 0 if owners.empty?
+    rows = where(id: ids).pluck(:id, :user_id, :start_at, :end_at)
+    return 0 if rows.empty?
 
+    owners = rows.map { |id, user_id, _, _| [id, user_id] }
     TrackSegment.where(track_id: ids).delete_all
     deleted = where(id: ids).delete_all
+    # delete_all skips after_commit, so the epoch bump (like the broadcast
+    # below) must be replayed explicitly or deleted tracks 304 forever.
+    rows.group_by { |_, user_id, _, _| user_id }.each do |user_id, user_rows|
+      stamps = user_rows.flat_map { |_, _, start_at, end_at| [start_at.to_i, end_at.to_i] }
+      Tracks::TileEpoch.bump(user_id, timestamps: stamps)
+    end
     broadcast_destroyed(owners)
     deleted
   end
@@ -259,6 +275,23 @@ class Track < ApplicationRecord
   end
 
   private
+
+  def bump_tile_epoch
+    Tracks::TileEpoch.bump_range(user_id, start_at.to_i, end_at.to_i)
+  end
+
+  def collect_tile_epoch_stamps
+    stamps = (@tile_epoch_stamps ||= [])
+    [start_at_was, end_at_was, start_at, end_at].compact.each { |time| stamps << time.to_i }
+  end
+
+  def flush_tile_epoch_stamps
+    stamps = @tile_epoch_stamps
+    @tile_epoch_stamps = nil
+    return bump_tile_epoch if stamps.blank?
+
+    Tracks::TileEpoch.bump(user_id, timestamps: stamps.uniq)
+  end
 
   def broadcast_track_created
     broadcast_track_update('created')
