@@ -90,12 +90,19 @@ function fogMap({ zoom = 10 } = {}) {
   const layers = []
   const sources = new Set()
   let sourceFeatures = []
+  let sourceLoaded = false
   return {
     layoutCalls,
     paintCalls,
     layers,
     setSourceFeatures(features) {
       sourceFeatures = features
+    },
+    setSourceLoaded(loaded) {
+      sourceLoaded = loaded
+    },
+    isSourceLoaded() {
+      return sourceLoaded
     },
     on(event, callback) {
       listeners[event] = [...(listeners[event] || []), callback]
@@ -187,16 +194,30 @@ test("tiled fog punches holes from the points MVT source after a refresh", () =>
   assert.ok(ctx.arcCalls.length >= 2)
 })
 
-test("an empty query retains the previous hole set (zoom-transition flicker guard)", () => {
+test("an empty query retains the previous hole set while the source is still loading", () => {
   const { map, fog } = buildFog()
   map.setSourceFeatures([{ geometry: { coordinates: [100, 100] } }])
   fog._refreshTiledPositions()
   assert.equal(fog.points.length, 1)
 
+  map.setSourceLoaded(false)
   map.setSourceFeatures([])
   fog._refreshTiledPositions()
 
   assert.equal(fog.points.length, 1)
+})
+
+test("a LOADED empty source clears stale holes (new date range with no points)", () => {
+  const { map, fog } = buildFog()
+  map.setSourceFeatures([{ geometry: { coordinates: [100, 100] } }])
+  fog._refreshTiledPositions()
+  assert.equal(fog.points.length, 1)
+
+  map.setSourceLoaded(true)
+  map.setSourceFeatures([])
+  fog._refreshTiledPositions()
+
+  assert.equal(fog.points.length, 0)
 })
 
 test("tiled hole radius is clamped to the decimation cell spacing", () => {
@@ -272,6 +293,11 @@ test("points MVT keep-alive hides via paint, not layout, so the source stays use
     (c) => c.layerId === "points-mvt" && c.property === "circle-radius",
   )
   assert.equal(paintRadius.at(-1).value, 0)
+  // Stroke width contributes to the hit radius — it must zero too.
+  const paintStroke = map.paintCalls.filter(
+    (c) => c.layerId === "points-mvt" && c.property === "circle-stroke-width",
+  )
+  assert.equal(paintStroke.at(-1).value, 0)
 
   layer.setSourceKeepAlive(false)
   const afterRelease = map.layoutCalls.filter((c) => c.layerId === "points-mvt")
@@ -280,4 +306,8 @@ test("points MVT keep-alive hides via paint, not layout, so the source stays use
     (c) => c.layerId === "points-mvt" && c.property === "circle-radius",
   )
   assert.equal(restoredRadius.at(-1).value, PointsMvtLayer.CIRCLE_RADIUS)
+  const restoredStroke = map.paintCalls.filter(
+    (c) => c.layerId === "points-mvt" && c.property === "circle-stroke-width",
+  )
+  assert.equal(restoredStroke.at(-1).value, PointsMvtLayer.CIRCLE_STROKE_WIDTH)
 })

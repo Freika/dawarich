@@ -168,7 +168,14 @@ export class FogLayer {
       }) ?? []
     // During zoom transitions placeholder tiles return nothing — keep the
     // previous hole set rather than flashing the cleared area back to black.
-    if (features.length === 0 && this.points.length > 0) return
+    // But a LOADED source that is genuinely empty (a date range with no points
+    // here) must clear the stale holes, or fog shows the previous range.
+    if (
+      features.length === 0 &&
+      this.points.length > 0 &&
+      this.map.isSourceLoaded?.(this.tiledSourceId) === false
+    )
+      return
 
     this.points = features
     this.render()

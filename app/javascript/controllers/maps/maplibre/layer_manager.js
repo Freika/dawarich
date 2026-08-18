@@ -293,6 +293,10 @@ export class LayerManager {
     this.layers.pointsMvtLayer?._unwatchTileErrors()
     this.layers.tracksMvtLayer?._unwatchTileErrors()
     this.layers.tracksMvtLayer?._unwatchEmptyTracks()
+    // Fog's canvas and its move/zoom/sourcedata listeners live on the map and
+    // container, not the style — orphaning the layer object leaks them all.
+    // remove() is idempotent and _addFogLayer builds a fresh layer afterwards.
+    this.layers.fogLayer?.remove()
     this.layers = {}
     this.eventHandlersSetup = false
   }

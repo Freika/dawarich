@@ -709,14 +709,15 @@ export class RoutesManager {
 
     this.layerManager.getLayer("tracks-mvt")?.setModes(modes.tracksMvt)
     this.layerManager.getLayer("routes")?.toggle(modes.classicRoutes)
-    this.layerManager.getLayer("tracks")?.toggle(modes.classicTracks)
+    // setMainVisibility, NOT toggle: the classic layer's selection/flow
+    // sub-layers must stay usable under tiled mode for the click flow.
+    this.layerManager.getLayer("tracks")?.setMainVisibility(modes.classicTracks)
 
-    const anomaliesLayer = this.layerManager.getLayer("anomalies")
-    if (anomaliesLayer && settings.anomaliesEnabled) {
-      anomaliesLayer.setTiled(
-        modes.anomaliesTiled,
-        this.layerManager.pointTileRange,
-      )
+    if (settings.anomaliesEnabled) {
+      // refreshAnomalies handles BOTH directions: it flips the source mode and,
+      // on the classic side, re-fetches the data setTiled alone would leave
+      // empty (a tiled-first session never populated the GeoJSON source).
+      this.refreshAnomalies({ enabled: true })
     }
 
     this.layerManager.getLayer("fog")?.setTiledSource(modes.fogTiled)

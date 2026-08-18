@@ -71,6 +71,8 @@ export class PointsMvtLayer extends BaseLayer {
 
   static CIRCLE_RADIUS = 6
 
+  static CIRCLE_STROKE_WIDTH = 2
+
   setHeatmapVisible(visible) {
     this.heatmapVisible = visible
     this._applyLayerVisibility(PointsMvtLayer.HEATMAP_LAYER_ID, visible)
@@ -109,9 +111,11 @@ export class PointsMvtLayer extends BaseLayer {
       this.map.setLayoutProperty(layerId, "visibility", "visible")
       this.map.setPaintProperty?.(layerId, "circle-opacity", 0)
       this.map.setPaintProperty?.(layerId, "circle-stroke-opacity", 0)
-      // Radius 0 as well: queryRenderedFeatures ignores paint opacity, so a
+      // Radius AND stroke width to 0: the circle hit test uses radius plus
+      // stroke width, and queryRenderedFeatures ignores paint opacity — a
       // merely-transparent layer stays clickable and cursor-reactive.
       this.map.setPaintProperty?.(layerId, "circle-radius", 0)
+      this.map.setPaintProperty?.(layerId, "circle-stroke-width", 0)
       this._paintHidden = true
       return
     }
@@ -122,6 +126,11 @@ export class PointsMvtLayer extends BaseLayer {
         layerId,
         "circle-radius",
         PointsMvtLayer.CIRCLE_RADIUS,
+      )
+      this.map.setPaintProperty?.(
+        layerId,
+        "circle-stroke-width",
+        PointsMvtLayer.CIRCLE_STROKE_WIDTH,
       )
       this._paintHidden = false
     }
@@ -196,7 +205,7 @@ export class PointsMvtLayer extends BaseLayer {
         paint: {
           "circle-color": "#3b82f6",
           "circle-radius": PointsMvtLayer.CIRCLE_RADIUS,
-          "circle-stroke-width": 2,
+          "circle-stroke-width": PointsMvtLayer.CIRCLE_STROKE_WIDTH,
           "circle-stroke-color": getMarkerStrokeColor(this.styleName),
         },
       },
