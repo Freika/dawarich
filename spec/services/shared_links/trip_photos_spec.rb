@@ -56,7 +56,6 @@ RSpec.describe SharedLinks::TripPhotos do
       owner,
       start_date: trip.started_at.iso8601,
       end_date: trip.ended_at.iso8601,
-      tag_ids: nil,
       album_id: 'album-1',
       sources: ['immich']
     ).and_return(instance_double(Photos::Search, call: found_photos))

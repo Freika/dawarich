@@ -4,15 +4,14 @@ class Immich::RequestPhotos
   include SslConfigurable
   include DayBoundable
 
-  attr_reader :user, :immich_api_base_url, :immich_api_key, :start_date, :end_date, :tag_ids, :album_id
+  attr_reader :user, :immich_api_base_url, :immich_api_key, :start_date, :end_date, :album_id
 
-  def initialize(user, start_date: '1970-01-01', end_date: nil, tag_ids: nil, album_id: nil, raise_on_connection_error: false)
+  def initialize(user, start_date: '1970-01-01', end_date: nil, album_id: nil, raise_on_connection_error: false)
     @user = user
     @immich_api_base_url = "#{user.safe_settings.immich_url}/api/search/metadata"
     @immich_api_key = user.safe_settings.immich_api_key
     @start_date = start_date
     @end_date = end_date
-    @tag_ids = Array(tag_ids).compact_blank
     @album_id = album_id.to_s.presence
     @raise_on_connection_error = raise_on_connection_error
   end
@@ -89,7 +88,6 @@ class Immich::RequestPhotos
       order: 'asc',
       withExif: true
     }
-    body[:tagIds] = tag_ids if tag_ids.present?
     body[:albumIds] = [album_id] if album_id.present?
 
     return body unless end_date
