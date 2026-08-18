@@ -27,10 +27,15 @@ Rack::Attack.enabled = false if Rails.env.test?
 # Configurable per-plan limits. Override in tests via Rack::Attack.api_rate_limits=
 class Rack::Attack
   class << self
-    attr_accessor :api_rate_limits, :shared_links_viewer_limit
+    attr_accessor :api_rate_limits, :shared_links_viewer_limit, :tiles_limit, :tiles_burst_limit
   end
   self.api_rate_limits = { 'lite' => 200, 'pro' => 1_000, 'family' => 1_000 }
   self.shared_links_viewer_limit = 120
+  # Vector tiles fetch in bursts (10–30 per pan); ~250 uncached pans/hr.
+  self.tiles_limit = 5_000
+  # Short-window companion: pans and rapid zooms fit easily; sustained
+  # hammering of the DB-heaviest endpoint does not.
+  self.tiles_burst_limit = 300
 end
 
 # Dynamic per-user rate limiting keyed by API token.
@@ -40,6 +45,9 @@ Rack::Attack.throttle('api/token',
                       limit: proc { |req| req.env['rack.attack.api_rate_limit'] || 1_000 },
                       period: 1.hour) do |req|
   next unless req.path.start_with?('/api/')
+  # Tiles burst 10–30 requests per map pan and would burn this quota in
+  # minutes; they run on their own api/tiles throttle below.
+  next if req.path.start_with?('/api/v1/tiles/')
   next if DawarichSettings.self_hosted?
 
   api_key = req.params['api_key'] || bearer_token(req.get_header('HTTP_AUTHORIZATION'))
@@ -52,6 +60,32 @@ Rack::Attack.throttle('api/token',
 
   req.env['rack.attack.api_rate_limit'] = Rack::Attack.api_rate_limits[user_plan] || 1_000
   api_key
+end
+
+# Vector tile requests, exempted from api/token above. Keyed by raw token —
+# no plan lookup, no DB query; browser caching absorbs most repeats anyway.
+Rack::Attack.throttle('api/tiles',
+                      limit: proc { Rack::Attack.tiles_limit },
+                      period: 1.hour) do |req|
+  next unless req.path.start_with?('/api/v1/tiles/')
+  next if DawarichSettings.self_hosted?
+
+  api_key = req.params['api_key'] || bearer_token(req.get_header('HTTP_AUTHORIZATION'))
+  next if api_key.blank?
+
+  "tiles:#{api_key}"
+end
+
+Rack::Attack.throttle('api/tiles_burst',
+                      limit: proc { Rack::Attack.tiles_burst_limit },
+                      period: 30.seconds) do |req|
+  next unless req.path.start_with?('/api/v1/tiles/')
+  next if DawarichSettings.self_hosted?
+
+  api_key = req.params['api_key'] || bearer_token(req.get_header('HTTP_AUTHORIZATION'))
+  next if api_key.blank?
+
+  "tiles_burst:#{api_key}"
 end
 
 # Points creation rate limit: 10,000 req/hr per API key.
@@ -292,6 +326,9 @@ Rack::Attack.throttled_responder = lambda do |request|
 
   headers = {
     'Content-Type' => 'application/json',
+    # 429s must never be cached — tiles are the dominant throttled URL shape
+    # and a heuristically-cached rejection would outlive the throttle window.
+    'Cache-Control' => 'no-store',
     'Retry-After' => (period - (now.to_i % period)).to_s
   }
 

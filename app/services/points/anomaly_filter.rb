@@ -93,6 +93,16 @@ class Points::AnomalyFilter
     count += filter_visit_reports
     count += filter_sentinel_fixes
     count += filter_by_speed
+    # Anomalies are excluded from vector tiles, so flipping the flag changes
+    # tile content without a point write. Bump only the window's years — this
+    # runs on every live-ingest batch, so a sentinel here would wipe the whole
+    # account's tile cache on the hottest path.
+    # Driven by what was actually flagged, not by the caller's window: the
+    # sentinel pass reaches back before @start_time, so a run just after New
+    # Year touches the previous year's tiles, which would otherwise 304
+    # forever. Reading the flagged rows keeps this exact even if another pass
+    # grows a lookback of its own. One timestamp per year is all the epoch needs.
+    bump_tile_epoch if @flagged_for_rebuild.any?
     enqueue_dependent_rebuilds if @invalidate_dependents && @flagged_for_rebuild.any?
     count
   end
@@ -211,6 +221,14 @@ class Points::AnomalyFilter
     @flagged_for_rebuild.concat(flagged)
 
     flagged.size
+  end
+
+  def bump_tile_epoch
+    timestamps = @flagged_for_rebuild.each_with_object({}) do |(_id, _track_id, timestamp), per_year|
+      per_year[Points::TileEpoch.year_for(timestamp)] ||= timestamp
+    end
+
+    Points::TileEpoch.bump(@user_id, timestamps: timestamps.values)
   end
 
   def enqueue_dependent_rebuilds

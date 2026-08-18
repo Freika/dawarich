@@ -101,6 +101,8 @@ class Api::V1::PointsController < ApiController
     point = current_api_user.points.find(params[:id])
 
     if point.update(lonlat: "POINT(#{point_params[:longitude]} #{point_params[:latitude]})")
+      Points::TileEpoch.bump(point.user_id, timestamps: [point.timestamp])
+
       if point.track_id.present?
         Rails.logger.info(
           "[PointsController] Point #{point.id} updated, enqueuing Tracks::RecalculateJob for track #{point.track_id}"
