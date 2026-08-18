@@ -90,8 +90,31 @@ export class PointsMvtLayer extends BaseLayer {
     )
   }
 
+  // ⛔ MapLibre loads NO tiles for a source whose layers are all layout-hidden
+  // (Style.update marks it unused and SourceCache evicts). Tiled fog reads
+  // this source via querySourceFeatures, so while fog depends on it the circle
+  // layer hides via PAINT (opacity 0) — isHidden() keys on layout visibility,
+  // keeping the source used and its tiles loading.
+  setSourceKeepAlive(keepAlive) {
+    this.sourceKeepAlive = keepAlive === true
+    this.setVisibility(this.visible)
+  }
+
   _applyLayerVisibility(layerId, visible) {
     if (!this.map.getLayer(layerId)) return
+
+    if (layerId === this.id && !visible && this.sourceKeepAlive) {
+      this.map.setLayoutProperty(layerId, "visibility", "visible")
+      this.map.setPaintProperty?.(layerId, "circle-opacity", 0)
+      this.map.setPaintProperty?.(layerId, "circle-stroke-opacity", 0)
+      this._paintHidden = true
+      return
+    }
+    if (layerId === this.id && this._paintHidden) {
+      this.map.setPaintProperty?.(layerId, "circle-opacity", 1)
+      this.map.setPaintProperty?.(layerId, "circle-stroke-opacity", 1)
+      this._paintHidden = false
+    }
 
     this.map.setLayoutProperty(
       layerId,

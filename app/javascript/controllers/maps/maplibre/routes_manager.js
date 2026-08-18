@@ -362,12 +362,20 @@ export class RoutesManager {
         fogLayer.toggle(true)
         return
       }
+      // Tiled mode: fog reads the points MVT source — no bulk load; keep the
+      // source alive even when the Points toggle is off.
+      if (tiledPointsActive(SettingsManager.getSettings())) {
+        this.layerManager.getLayer("points-mvt")?.setSourceKeepAlive(true)
+        if (fogLayer) fogLayer.toggle(true)
+        return
+      }
       await this.controller.mapDataManager.ensurePointsLoaded()
       if (fogLayer) fogLayer.toggle(true)
     }
 
     const hideFog = () => {
       if (fogLayer) fogLayer.toggle(false)
+      this.layerManager.getLayer("points-mvt")?.setSourceKeepAlive(false)
     }
 
     const intercepted = gatedToggle({

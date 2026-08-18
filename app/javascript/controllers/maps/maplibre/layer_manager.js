@@ -578,6 +578,9 @@ export class LayerManager {
   }
 
   _addFogLayer(pointsGeoJSON) {
+    const tiledFog =
+      tiledPointsActive(SettingsManager.getSettings()) &&
+      (this.settings.fogOfWarMode || "points") !== "hexagons"
     // Always create fog layer for backward compatibility
     if (!this.layers.fogLayer) {
       this.layers.fogLayer = new FogLayer(this.map, {
@@ -586,10 +589,16 @@ export class LayerManager {
         mode: this.settings.fogOfWarMode || "points",
         api: this.api,
         controller: this.controller,
+        tiledSource: tiledFog,
       })
       this.layers.fogLayer.add(pointsGeoJSON)
     } else {
       this.layers.fogLayer.update(pointsGeoJSON)
+    }
+    // Tiled fog reads the points MVT source — keep it loading even when the
+    // Points toggle is off (paint-based hiding, see PointsMvtLayer).
+    if (tiledFog && this.settings.fogEnabled) {
+      this.layers.pointsMvtLayer?.setSourceKeepAlive(true)
     }
   }
 }
