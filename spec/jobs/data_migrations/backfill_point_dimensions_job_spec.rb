@@ -63,5 +63,41 @@ RSpec.describe DataMigrations::BackfillPointDimensionsJob, type: :job do
 
       expect(described_class).not_to have_been_enqueued
     end
+
+    it 'hands off to the country backfill only once it has finished' do
+      stub_const("#{described_class}::BATCH_SIZE", 1)
+
+      expect { described_class.perform_now(Point.minimum(:id)) }.not_to \
+        have_enqueued_job(DataMigrations::BackfillPointCountryIdJob)
+
+      expect { described_class.perform_now(Point.maximum(:id)) }.to \
+        have_enqueued_job(DataMigrations::BackfillPointCountryIdJob)
+    end
+
+    it 'covers every point across a chained run over a gapped id range' do
+      stub_const("#{described_class}::BATCH_SIZE", 1)
+      hole = create(:point, user: user, tracker_id: 'gap-filler')
+      tail = create(:point, user: user, tracker_id: 'tail')
+      hole.delete
+
+      perform_enqueued_jobs(only: described_class) { described_class.perform_now }
+
+      expect(Point.where(source_id: nil)).to be_empty
+      expect(tail.reload.source_id).to be_present
+    end
+
+    it 'keeps walking when points are appended while the chain runs' do
+      stub_const("#{described_class}::BATCH_SIZE", 1)
+      last_id = Point.maximum(:id)
+
+      # The same cursor ends the chain before the append and continues it
+      # after, so only the newly appended point can account for the difference.
+      expect { described_class.perform_now(last_id) }.not_to have_enqueued_job(described_class)
+
+      create(:point, user: user, tracker_id: 'appended')
+
+      expect { described_class.perform_now(last_id) }.to \
+        have_enqueued_job(described_class).with(last_id + 1)
+    end
   end
 end
