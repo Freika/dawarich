@@ -694,6 +694,7 @@ export class RoutesManager {
       tiled,
     })
     this.controller.settingsController?.syncPointsEditAvailability()
+    this.controller.settingsController?.syncRouteSplittingAvailability()
     this.controller.settingsController?.syncTiledRenderingNote()
   }
 

@@ -877,7 +877,7 @@ en:
         allow_dragging_points_to_correct_their_position_remembered_across_sessio: Allow dragging points to correct their position. Remembered across sessions.
         tiled_rendering: "Tiled rendering"
         beta: "Beta"
-        tiled_rendering_description: "Draws points from vector tiles as you pan, so a long date range loads only what is in view."
+        tiled_rendering_description: "Draws points, routes, tracks, anomalies and fog from vector tiles as you pan, so a long date range loads only what is in view. Routes show your generated tracks, colored per track."
         tiled_rendering_caveats: "Dense areas merge into markers with a point count — zoom in to open individual points. Editing is unavailable and the live trail can lag a few minutes."
         routes: Routes
         show_connected_route_lines: Show connected route lines
@@ -3691,9 +3691,9 @@ en:
           other: "Inactive while %{layers} are on — those need the full point set."
         editing_unavailable: "Not available with tiled rendering, vector tiles have no draggable points"
         failed: "Could not load map tiles. Try a shorter date range, or turn off tiled rendering in map settings."
+        tracks_pending: "No tracks yet for this range — Routes show generated tracks, and yours are still being built."
+        splitting_unavailable: "Not used with tiled rendering — routes follow your generated tracks."
         blockers:
-          routes: "Routes"
-          fog: "Fog of War"
           scratch: "Scratch map"
       places_layer: Places Layer
       confirm_delete_point: Are you sure you want to delete this point?

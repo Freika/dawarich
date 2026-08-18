@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+
+### Changed
+
+- Tiled rendering (beta) now covers four more layers: Routes, Tracks, Anomalies and Fog of War all draw from vector tiles, so with tiles on only the Scratch map still needs the classic full download. Routes under tiled mode show your generated tracks — colored per track (speed coloring becomes a per-track average rather than a gradient along the line), with the route color and opacity settings still applying, while the route-splitting sliders have no effect and say so. An account whose tracks are still being generated sees a note instead of an empty map. Fog of War keeps working with the Points layer off, and anomaly markers keep their reason popups. Deleted or reclassified tracks drop out of cached tiles automatically.
+
 ## [1.13.0] - 2026-08-17, Berlin
 
 ### Added

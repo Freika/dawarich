@@ -107,6 +107,7 @@ export class SettingsController {
     })
 
     this.syncPointsEditAvailability()
+    this.syncRouteSplittingAvailability()
     this.syncTiledRenderingNote()
 
     // Show/hide visits search based on initial toggle state
@@ -846,12 +847,9 @@ export class SettingsController {
     note.classList.toggle("hidden", !inactive)
     if (!inactive) return
 
+    // Routes and fog ride tile sources now — Scratch map is the only layer
+    // left that needs the whole point set.
     const blockers = [
-      settings.routesVisible !== false &&
-        translate("map.tiled_rendering.blockers.routes"),
-      settings.fogEnabled &&
-        settings.fogOfWarMode !== "hexagons" &&
-        translate("map.tiled_rendering.blockers.fog"),
       settings.scratchEnabled &&
         translate("map.tiled_rendering.blockers.scratch"),
     ].filter(Boolean)
@@ -890,6 +888,33 @@ export class SettingsController {
     if (!label) return
     label.classList.toggle("opacity-40", tiled)
     label.style.cursor = tiled ? "not-allowed" : ""
+  }
+
+  // The route-splitting sliders shape the polylines the CLASSIC path builds
+  // from raw points; under tiled mode backend track boundaries replace client
+  // splitting entirely, so the inputs dim rather than silently no-op.
+  syncRouteSplittingAvailability() {
+    const controller = this.controller
+    const tiled = tiledPointsActive(SettingsManager.getSettings())
+
+    for (const name of ["metersBetweenRoutes", "minutesBetweenRoutes"]) {
+      const input = controller.element.querySelector(`input[name="${name}"]`)
+      if (!input) continue
+      input.disabled = tiled
+      const section = input.closest(".form-control")
+      if (section) {
+        section.classList.toggle("opacity-40", tiled)
+        section.style.cursor = tiled ? "not-allowed" : ""
+      }
+    }
+
+    if (controller.hasRouteSplittingUnavailableNoteTarget) {
+      const note = controller.routeSplittingUnavailableNoteTarget
+      note.textContent = tiled
+        ? translate("map.tiled_rendering.splitting_unavailable")
+        : ""
+      note.classList.toggle("hidden", !tiled)
+    }
   }
 
   updateRouteOpacity(event) {
