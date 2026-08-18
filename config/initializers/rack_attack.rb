@@ -31,11 +31,13 @@ class Rack::Attack
   end
   self.api_rate_limits = { 'lite' => 200, 'pro' => 1_000, 'family' => 1_000 }
   self.shared_links_viewer_limit = 120
-  # Vector tiles fetch in bursts (10–30 per pan); ~250 uncached pans/hr.
-  self.tiles_limit = 5_000
-  # Short-window companion: pans and rapid zooms fit easily; sustained
-  # hammering of the DB-heaviest endpoint does not.
-  self.tiles_burst_limit = 300
+  # Vector tiles fetch in bursts (10–30 per pan) and THREE sources (points,
+  # tracks, anomalies) share this key — sized for ~250 uncached pans/hr with
+  # all sources on.
+  self.tiles_limit = 15_000
+  # Short-window companion: pans and rapid zooms with all three sources fit
+  # easily; sustained hammering of the DB-heaviest endpoints does not.
+  self.tiles_burst_limit = 900
 end
 
 # Dynamic per-user rate limiting keyed by API token.

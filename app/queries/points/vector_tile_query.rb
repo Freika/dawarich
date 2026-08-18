@@ -29,11 +29,20 @@ class Points::VectorTileQuery
   # explicit transaction (see Visits::Detection::CandidateLoader for the pattern)
   QUERY_TIMEOUT_MS = 5_000
 
-  def initialize(scope:, z:, x:, y:) # rubocop:disable Naming/MethodParameterName
+  # Columns callers may add to tile properties (anomalies endpoint adds
+  # accuracy); an allowlist so the interpolated SQL stays program-controlled.
+  ALLOWED_EXTRA_COLUMNS = %i[accuracy].freeze
+
+  def initialize(scope:, z:, x:, y:, grid_px_override: nil, extra_property_columns: []) # rubocop:disable Naming/MethodParameterName
     @scope = scope
     @z = parse_integer(z)
     @x = parse_integer(x)
     @y = parse_integer(y)
+    @grid_px_override = grid_px_override
+    @extra_property_columns = extra_property_columns.map(&:to_sym)
+    return if (@extra_property_columns - ALLOWED_EXTRA_COLUMNS).empty?
+
+    raise ArgumentError, 'extra_property_columns outside allowlist'
   end
 
   def call
@@ -60,6 +69,8 @@ class Points::VectorTileQuery
   # in a dense z11 tile, 4px keeps it ~15k/<1 MB — and a 4px cell is smaller
   # than the 12px circle markers, so nothing visible is lost below z14.
   def grid_px
+    return @grid_px_override if @grid_px_override
+
     z < 14 ? 4 : 1
   end
 
@@ -117,10 +128,11 @@ class Points::VectorTileQuery
   def point_attribute_aggregates
     return '' unless point_regime?
 
+    extras = @extra_property_columns.map { |column| "MIN(#{column}) AS #{column}," }.join(' ')
     <<~SQL.squish
       MIN(id) AS id, MIN(timestamp) AS timestamp, MIN(battery) AS battery,
       MIN(altitude) AS altitude, MIN(velocity) AS velocity,
-      MIN(latitude) AS latitude, MIN(longitude) AS longitude,
+      MIN(latitude) AS latitude, MIN(longitude) AS longitude, #{extras}
     SQL
   end
 
@@ -155,11 +167,12 @@ class Points::VectorTileQuery
   def candidate_branch_sql(shift:)
     columns =
       if point_regime?
+        extras = @extra_property_columns.map { |column| "points.#{column} AS #{column}," }.join(' ')
         <<~SQL.squish
           points.id AS id, points.timestamp AS timestamp, points.battery AS battery,
           points.altitude AS altitude, points.velocity AS velocity,
           ST_Y(points.lonlat::geometry) AS latitude,
-          ST_X(points.lonlat::geometry) AS longitude,
+          ST_X(points.lonlat::geometry) AS longitude, #{extras}
         SQL
       else
         ''
@@ -230,7 +243,8 @@ class Points::VectorTileQuery
 
   def tile_scope
     scope.except(:select, :order, :includes, :preload, :eager_load)
-         .select(:id, :timestamp, :battery, :altitude, :velocity, :lonlat)
+         .select(:id, :timestamp, :battery, :altitude, :velocity, :lonlat,
+                 *@extra_property_columns)
   end
 
   def with_statement_timeout
