@@ -1,5 +1,5 @@
 # Base-Image for Ruby and Node.js
-FROM ruby:3.4.9-alpine
+FROM ruby:3.4.6-alpine
 
 ENV APP_PATH=/var/app
 ENV BUNDLE_VERSION=2.5.21
@@ -22,9 +22,6 @@ RUN apk -U add --no-cache \
     tzdata \
     less \
     yaml-dev \
-    libffi-dev \
-    linux-headers \
-    cmake \
     # gcompat for nokogiri on mac m1
     gcompat \
     && rm -rf /var/cache/apk/* \
@@ -41,3 +38,4 @@ USER root
 WORKDIR $APP_PATH
 
 EXPOSE $RAILS_PORT
+

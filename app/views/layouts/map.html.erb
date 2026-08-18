@@ -1,23 +1,19 @@
 <!DOCTYPE html>
-<html data-theme="<%= app_theme %>" data-self-hosted="<%= @self_hosted %>">
+<html lang="<%= I18n.locale %>" data-theme="<%= app_theme %>" data-self-hosted="<%= @self_hosted %>">
   <head>
     <title><%= full_title(yield(:title)) %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
     <%= render 'layouts/pwa_meta' %>
-    <link rel="preconnect" href="https://unpkg.com" crossorigin>
-    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
     <%= action_cable_meta_tag %>
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
 
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css"/>
 
     <%= stylesheet_link_tag "tailwind", "inter-font", "data-turbo-track": "reload" %>
     <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+    <%= javascript_translations %>
     <%= javascript_importmap_tags %>
     <%= yield :head_scripts %>
-    <%= javascript_include_tag "https://unpkg.com/protomaps-leaflet@5.0.0/dist/protomaps-leaflet.js", defer: true %>
 
     <%= render 'application/favicon' %>
     <%= Sentry.get_trace_propagation_meta.html_safe if Sentry.initialized? %>
@@ -52,11 +48,11 @@
     <% if user_signed_in? && current_user.imports.exists?(demo: true) %>
       <div id="demo-data-banner" class="fixed bottom-0 left-1/2 -translate-x-1/2 z-30 mb-[calc(1rem+env(safe-area-inset-bottom))]" data-controller="demo-banner">
         <div class="alert alert-info shadow-lg py-1.5 px-3 flex items-center gap-1.5 rounded-lg whitespace-nowrap text-sm">
-          <span class="font-medium" data-demo-banner-target="label">You're viewing demo data.</span>
+          <span class="font-medium" data-demo-banner-target="label"><%= t('.you_re_viewing_demo_data') %></span>
           <span data-demo-banner-target="loadingState" class="hidden">
             <span class="loading loading-spinner loading-xs text-info"></span>
           </span>
-          <%= button_to "Delete",
+          <%= button_to t('.delete'),
               demo_data_settings_onboarding_path,
               method: :delete,
               form: {

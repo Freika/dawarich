@@ -36,15 +36,18 @@ class ReverseGeocoding::Places::FetchData
 
     data = normalize_geocoder_data(reverse_geocoded_place.data)
 
-    place.update!(
-      name:       place_name(data),
+    attributes = {
       lonlat:     build_point_coordinates(data['geometry']['coordinates']),
       city:       data['properties']['city'],
       country:    data['properties']['country'],
       geodata:    data,
       source:     Place.sources[:photon],
       reverse_geocoded_at: Time.current
-    )
+    }
+    attributes[:name] = place_name(data) unless place.name_locked?
+
+    place.machine_named = true
+    place.update!(attributes)
   end
 
   def find_place(place_data, existing_places)
@@ -65,14 +68,34 @@ class ReverseGeocoding::Places::FetchData
   end
 
   def place_name(data)
-    name = data.dig('properties', 'name')
-    type = data.dig('properties', 'osm_value')&.capitalize&.gsub('_', ' ')
-    address = "#{data.dig('properties', 'postcode')} #{data.dig('properties', 'street')}"
+    name = meaningful_place_name(data.dig('properties', 'name'))
+    type = formatted_place_type(data.dig('properties', 'osm_value'))
+    address = "#{data.dig('properties', 'postcode')} #{data.dig('properties', 'street')}".strip
     address += " #{data.dig('properties', 'housenumber')}" if data.dig('properties', 'housenumber').present?
 
-    name ||= address
+    name ||= address.presence || Place::DEFAULT_NAME
+
+    return name if type.blank?
 
     "#{name} (#{type})"
+  end
+
+  def meaningful_place_name(value)
+    normalized = value.to_s.strip
+    return nil if generic_osm_value?(normalized)
+
+    normalized.presence
+  end
+
+  def formatted_place_type(value)
+    normalized = value.to_s.strip
+    return nil if generic_osm_value?(normalized)
+
+    normalized.capitalize.gsub('_', ' ').presence
+  end
+
+  def generic_osm_value?(value)
+    value.blank? || %w[yes no].include?(value.downcase)
   end
 
   def extract_osm_ids(places)
@@ -107,7 +130,7 @@ class ReverseGeocoding::Places::FetchData
   end
 
   def populate_place_attributes(place, data)
-    place.name = place_name(data)
+    place.name = place_name(data) unless place.name_locked?
     place.city = data['properties']['city']
     place.country = data['properties']['country']
     place.geodata = data
@@ -142,7 +165,7 @@ class ReverseGeocoding::Places::FetchData
 
     return unless places_to_update.any?
 
-    update_attributes = places_to_update.uniq(&:id).map do |place|
+    update_attributes = places_to_update.uniq(&:id).sort_by(&:id).map do |place|
       {
         id: place.id,
         name: place.name,

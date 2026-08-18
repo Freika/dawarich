@@ -1,85 +1,26 @@
-# AGENTS.md
+# Repository Guidelines
 
-## Zweck dieser Datei
+## Project Structure & Module Organization
+Dawarich is a Rails 8 monolith. Controllers, models, jobs, services, policies, and Stimulus/Turbo JS live in `app/`, while shared POROs sit in `lib/`. Configuration, credentials, and cron/Sidekiq settings live in `config/`; API documentation assets are in `swagger/`. Database migrations and seeds live in `db/`, Docker tooling sits in `docker/`, and docs or media live in `docs/` and `screenshots/`. Runtime artifacts in `storage/`, `tmp/`, and `log/` stay untracked.
 
-Diese Datei ist der zentrale Einstiegspunkt für KI-gestützte Entwicklungswerkzeuge wie OpenAI Codex, GitHub Copilot, Claude Code oder ähnliche Agenten.
+## Architecture & Key Services
+The stack pairs Rails 8 with PostgreSQL + PostGIS, Redis-backed Sidekiq, Devise/Pundit, Tailwind + DaisyUI, and MapLibre/Chartkick. Imports, exports, sharing, and trip analytics lean on PostGIS geometries plus workers, so queue anything non-trivial instead of blocking requests.
 
-Bevor du Änderungen an diesem Repository vornimmst, lies mindestens:
+## Build, Test, and Development Commands
+- `docker compose -f docker/docker-compose.yml up` — launches the full stack for smoke tests.
+- `bundle exec rails db:prepare` — create/migrate the PostGIS database.
+- `bundle exec bin/dev` and `bundle exec sidekiq` — start the web/Vite/Tailwind stack and workers locally.
+- `make test` — runs Playwright (`npx playwright test e2e --workers=1`) then `bundle exec rspec`.
+- `bundle exec rubocop` / `npx prettier --check app/javascript` — enforce formatting before commits.
 
-1. `AI/README.md`
-2. `AI/PROJECT.md`
+## Coding Style & Naming Conventions
+Use two-space indentation, snake_case filenames, and CamelCase classes. Keep Stimulus controllers under `app/javascript/controllers/*_controller.ts` so names match DOM `data-controller` hooks. Prefer service objects in `app/services/` for multi-step imports/exports, and let migrations named like `202405061210_add_indexes_to_events` manage schema changes. Follow Tailwind ordering conventions and avoid bespoke CSS unless necessary.
 
-## Projektüberblick
+## Testing Guidelines
+RSpec mirrors the app hierarchy inside `spec/` with files suffixed `_spec.rb`; rely on FactoryBot/FFaker for data, WebMock for HTTP, and SimpleCov for coverage. Browser journeys live in `e2e/` and should use `data-testid` selectors plus seeded demo data to reset state. Run `make test` before pushing and document intentional gaps when coverage dips.
 
-Dieses Repository enthält eine Entwicklungsvariante von Dawarich mit Erweiterungen rund um die Immich-Integration und die Darstellung bzw. Nachbearbeitung vorhandener Bilder.
+## Commit & Pull Request Guidelines
+Write short, imperative commit subjects (`Add globe_projection setting`) and include the PR/issue reference like `(#2138)` when relevant. Target `dev`, describe migrations, configs, and verification steps, and attach screenshots or curl examples for UI/API work. Link related Discussions for larger changes and request review from domain owners (imports, sharing, trips, etc.).
 
-Der aktuelle Projektordner heißt sinngemäß:
-
-```text
-dawarich-immich-tags-dev
-```
-
-Technischer Kontext:
-
-- Ruby on Rails
-- Sidekiq für Hintergrundjobs
-- PostgreSQL/PostGIS
-- Redis
-- Docker und Docker Compose
-- Immich als externe Bildquelle
-- Photon als lokale Reverse-Geocoding-Instanz
-
-## Arbeitsregeln für KI-Agenten
-
-### Vor jeder Änderung
-
-- Untersuche zuerst den vorhandenen Code und die bestehende Struktur.
-- Lies die einschlägigen Dateien vollständig, bevor du Änderungen vorschlägst.
-- Suche nach vorhandenen Services, Jobs, Modellen, Helpern und Tests, bevor du neue Strukturen anlegst.
-- Vermeide parallele oder doppelte Implementierungen.
-- Erhalte vorhandenes Verhalten, sofern die Aufgabe nicht ausdrücklich eine Änderung verlangt.
-
-### Änderungen
-
-- Bevorzuge kleine, nachvollziehbare Änderungen.
-- Änderungen am Dawarich-Kern nur dann, wenn keine saubere Erweiterung möglich ist.
-- Hintergrundverarbeitung gehört nach Möglichkeit in Sidekiq-Jobs oder vorhandene Jobstrukturen.
-- Keine Zugangsdaten, API-Schlüssel, Passwörter oder privaten URLs in Git eintragen.
-- Konfigurationen über Umgebungsvariablen oder bestehende Konfigurationsmechanismen vornehmen.
-- Bestehende Bilder müssen ausdrücklich berücksichtigt werden; eine Lösung darf nicht nur neu importierte Bilder bearbeiten, wenn die Aufgabe auch Altbestand umfasst.
-
-### Tests und Prüfung
-
-- Bestehende Tests zuerst ansehen.
-- Neue oder geänderte Logik möglichst mit Tests absichern.
-- Nach Änderungen mindestens die betroffenen Tests ausführen.
-- Bei Docker- oder Rails-Änderungen die tatsächlich verwendeten Container- und Servicenamen prüfen.
-- Keine erfolgreiche Ausführung behaupten, wenn sie nicht nachweislich getestet wurde.
-
-### Dokumentation
-
-- Relevante technische Entscheidungen in den Dateien unter `AI/` ergänzen.
-- Neue Umgebungsvariablen dokumentieren.
-- Manuelle Migrations-, Start- oder Reparaturschritte mit konkreten Befehlen dokumentieren.
-- Bei Workarounds klar kennzeichnen, ob es sich um eine vorläufige oder dauerhafte Lösung handelt.
-
-## Bekannte Rahmenbedingungen
-
-- Dawarich läuft in Docker.
-- Die Anwendung verwendet getrennte Container für Webanwendung und Sidekiq.
-- Immich ist bereits vorhanden und erreichbar.
-- Photon läuft lokal und soll nicht öffentlich veröffentlicht werden.
-- Das Projekt soll bestehende Bilder verarbeiten können, nicht ausschließlich neu hinzukommende Bilder.
-- Bei Shared-Links wurde ein Zusammenhang zwischen negativen Tagesdistanzen und fehlenden Bildern beobachtet. Dieser Fehler wurde separat untersucht und upstream gemeldet.
-
-## Kommunikationsstil bei Arbeiten im Repository
-
-Bei Vorschlägen oder Änderungen:
-
-1. Zuerst kurz erklären, was gefunden wurde.
-2. Dann den konkreten Änderungsvorschlag nennen.
-3. Die betroffenen Dateien aufführen.
-4. Die auszuführenden Befehle vollständig angeben.
-5. Abschließend beschreiben, wie das Ergebnis geprüft werden kann.
-
-Vermeide unvollständige Befehlsfragmente und unnötige Copy-and-Paste-Ketten. Bevorzuge vollständige, direkt ausführbare Blöcke.
+## Security & Configuration Tips
+Start from `.env.example` or `.env.template` and store secrets in encrypted Rails credentials; never commit files from `gps-env/` or real trace data. Rotate API keys, scrub sensitive coordinates in fixtures, and use the synthetic traces in `db/seeds.rb` when demonstrating imports.

@@ -3,10 +3,10 @@
     <div class="stat-value text-secondary">
       <%= number_with_delimiter @points_reverse_geocoded %>
     </div>
-    <div class="stat-title">Reverse geocoded points</div>
+    <div class="stat-title"><%= t('.reverse_geocoded_points') %></div>
     <div class="stat-title">
-      <span class="tooltip underline decoration-dotted" data-tip="Points that were reverse geocoded but had no data">
-        <%= number_with_delimiter @points_reverse_geocoded_without_data %> points without data
+      <span class="tooltip underline decoration-dotted" data-tip="<%= t('.points_that_were_reverse_geocoded_but_had_no_data') %>">
+        <%= number_with_delimiter @points_reverse_geocoded_without_data %> <%= t('.points_without_data') %>
       </span>
     </div>
   </div>
@@ -16,11 +16,11 @@
   <div class="stat-value text-warning underline hover:no-underline  hover:cursor-pointer" onclick="countries_visited.showModal()">
     <%= number_with_delimiter current_user.total_countries %>
   </div>
-  <div class="stat-title">Countries visited</div>
+  <div class="stat-title"><%= t('.countries_visited') %></div>
 
   <dialog id="countries_visited" class="modal">
     <div class="modal-box">
-      <h3 class="font-bold text-lg">Countries visited</h3>
+      <h3 class="font-bold text-lg"><%= t('.countries_visited') %></h3>
       <p class="py-4">
         <% current_user.countries_visited.each do |country| %>
           <p><%= country %></p>
@@ -28,7 +28,7 @@
       </p>
     </div>
     <form method="dialog" class="modal-backdrop">
-      <button>close</button>
+      <button><%= t('.close') %></button>
     </form>
   </dialog>
 </div>
@@ -37,10 +37,10 @@
   <div class="stat-value hover:cursor-pointer hover:no-underline underline" onclick="cities_visited.showModal()">
     <%= current_user.total_cities %>
   </div>
-  <div class="stat-title">Cities visited</div>
+  <div class="stat-title"><%= t('.cities_visited') %></div>
     <dialog id="cities_visited" class="modal">
       <div class="modal-box">
-        <h3 class="font-bold text-lg">Cities visited</h3>
+        <h3 class="font-bold text-lg"><%= t('.cities_visited') %></h3>
         <p class="py-4">
           <% current_user.cities_visited.each do |city| %>
             <p><%= city %></p>
@@ -48,7 +48,7 @@
         </p>
       </div>
       <form method="dialog" class="modal-backdrop">
-        <button>close</button>
+        <button><%= t('.close') %></button>
       </form>
     </dialog>
   </div>

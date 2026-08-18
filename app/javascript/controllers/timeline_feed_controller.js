@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { translate } from "i18n"
 
 /**
  * Timeline Feed Controller (Unified Timeline)
@@ -20,8 +21,6 @@ export default class extends Controller {
     "selectionForm",
     "selectionCount",
     "mergeButton",
-    "confirmForm",
-    "confirmButton",
     "deleteForm",
     "deleteButton",
   ]
@@ -88,8 +87,8 @@ export default class extends Controller {
     // without this the newly-rendered row wouldn't honor the active filters).
     // Also fire `visit:updated` whenever a visit row is replaced or removed
     // or the day frame is replaced — VisitsController emits these streams on
-    // confirm / rename / destroy / bulk actions, and the map's visits layer
-    // needs to refetch so its dots reflect the new state.
+    // edit / destroy / bulk actions, and the map's visits layer needs to
+    // refetch so its dots reflect the new state.
     this.boundStreamRender = (event) => {
       const target = event?.detail?.newStream?.getAttribute?.("target") || ""
       const action = event?.detail?.newStream?.getAttribute?.("action") || ""
@@ -446,11 +445,9 @@ export default class extends Controller {
       return
     }
 
-    // Don't trigger when activating a nested control: rename trigger span,
-    // submit button, form field, or the [data-controller="visit-name"]
-    // wrapper whose click opens the inline rename form.
+    // Don't trigger when activating a nested control: submit button, form
+    // field, or anything inside the inline visit editor.
     if (
-      event.target.closest("[data-controller='visit-name']") ||
       event.target.closest("button[type='submit']") ||
       event.target.closest("input") ||
       event.target.closest("form")
@@ -482,6 +479,16 @@ export default class extends Controller {
         },
       }),
     )
+  }
+
+  // Low-confidence rows are display-gated by CSS via a day-level class so
+  // the search/filter `hidden` mechanics stay untouched.
+  toggleLowConfidence(event) {
+    const button = event.currentTarget
+    const day = button.closest(".timeline-day")
+    if (!day) return
+    const open = day.classList.toggle("timeline-day--show-lowconf")
+    button.setAttribute("aria-expanded", String(open))
   }
 
   deselectVisit() {
@@ -630,8 +637,10 @@ export default class extends Controller {
     this.applyVisibility()
   }
 
+  // Built from whatever status checkboxes exist in the DOM. With none
+  // rendered (stateless visits), the empty detail filters nothing.
   readFilterDetail() {
-    const detail = { confirmed: false, suggested: false, declined: false }
+    const detail = {}
     const checkboxes = this.element.querySelectorAll(
       'input[type="checkbox"][data-status]',
     )
@@ -841,14 +850,6 @@ export default class extends Controller {
     return this.scopedQuery('[data-timeline-feed-target="mergeButton"]')
   }
 
-  activeConfirmForm() {
-    return this.scopedQuery('[data-timeline-feed-target="confirmForm"]')
-  }
-
-  activeConfirmButton() {
-    return this.scopedQuery('[data-timeline-feed-target="confirmButton"]')
-  }
-
   activeDeleteForm() {
     return this.scopedQuery('[data-timeline-feed-target="deleteForm"]')
   }
@@ -877,22 +878,30 @@ export default class extends Controller {
     const countEl = this.activeSelectionCount()
     if (countEl) {
       countEl.textContent = overCap
-        ? `${n} selected (max ${max})`
-        : `${n} selected`
+        ? translate("timeline.selected_with_max", { count: n, max })
+        : translate("timeline.selected", { count: n })
     }
     const mergeBtn = this.activeMergeButton()
     if (mergeBtn) {
       mergeBtn.disabled = n < 2 || overCap
-      mergeBtn.textContent = n >= 2 ? `Merge ${n}` : "Merge"
+      mergeBtn.textContent =
+        n >= 2
+          ? translate("timeline.merge_count", { count: n })
+          : translate("visits.merge")
     }
-    for (const [getter, label] of [
-      [this.activeConfirmButton.bind(this), "Confirm"],
-      [this.activeDeleteButton.bind(this), "Delete"],
+    for (const [getter, key] of [
+      [this.activeDeleteButton.bind(this), "common.delete"],
     ]) {
       const btn = getter()
       if (!btn) continue
       btn.disabled = n < 1 || overCap
-      btn.textContent = n >= 1 ? `${label} ${n}` : label
+      btn.textContent =
+        n >= 1
+          ? translate("timeline.action_count", {
+              action: translate(key),
+              count: n,
+            })
+          : translate(key)
     }
   }
 
@@ -901,14 +910,6 @@ export default class extends Controller {
       formGetter: this.activeSelectionForm.bind(this),
       buttonGetter: this.activeMergeButton.bind(this),
       minSelected: 2,
-    })
-  }
-
-  submitBulkConfirm(event) {
-    this.submitBulkAction(event, {
-      formGetter: this.activeConfirmForm.bind(this),
-      buttonGetter: this.activeConfirmButton.bind(this),
-      minSelected: 1,
     })
   }
 

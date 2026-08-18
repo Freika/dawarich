@@ -2,19 +2,17 @@
 
 class Api::V1::Auth::AppleController < Api::V1::Auth::BaseController
   PROVIDER = 'apple'
-  PROVIDER_LABEL = 'Sign in with Apple'
-
   def create
     claims =
       begin
         Auth::VerifyAppleToken.new(params[:id_token], nonce: params[:nonce]).call
       rescue Auth::VerifyAppleToken::InvalidToken => e
-        return render_auth_error("Apple token verification failed: #{e.message}")
+        return render_auth_error(I18n.t('controllers.api.v1.auth.apple.token_verification_failed', message: e.message))
       end
 
     user, created = Auth::FindOrCreateOauthUser.new(
       provider: PROVIDER,
-      provider_label: PROVIDER_LABEL,
+      provider_label: I18n.t('oauth_providers.sign_in_with_apple'),
       claims: claims,
       email_verified: email_verified?(claims)
     ).call
@@ -23,22 +21,18 @@ class Api::V1::Auth::AppleController < Api::V1::Auth::BaseController
   rescue Auth::FindOrCreateOauthUser::UnverifiedEmail
     render json: {
       error: 'email_not_verified',
-      message: 'Apple has not verified this email. Sign in with password and link from settings.'
+      message: I18n.t('controllers.api.v1.auth.apple.apple_has_not_verified_this_email_sign_in_with_password')
     }, status: :forbidden
   rescue Auth::FindOrCreateOauthUser::LinkVerificationSent
     render json: {
       error: 'verification_sent',
-      message: 'This email already has a Dawarich account. ' \
-               'We sent a confirmation link to that address — click it to link your Apple ID.'
+      message: I18n.t('controllers.api.v1.auth.apple.this_email_already_has_a_dawarich_account_we_sent_a')
     }, status: :accepted
   rescue Auth::FindOrCreateOauthUser::MissingOauthEmail => e
     Rails.logger.warn("apple.auth.missing_email uid=#{e.uid}")
     render json: {
       error: 'apple_email_missing',
-      message: "We couldn't find your existing account, and Apple didn't share your email " \
-               'with us this time. Apple only shares it once. Please go to ' \
-               'appleid.apple.com → Sign in with Apple, find Dawarich, choose ' \
-               '"Stop using Sign in with Apple", then try signing in again.'
+      message: I18n.t('controllers.api.v1.auth.apple.we_couldn_t_find_your_existing_account_and_apple_didn')
     }, status: :unprocessable_entity
   end
 

@@ -40,7 +40,7 @@ class Photoprism::ImportGeodata
   end
 
   def retrieve_photoprism_data
-    Photoprism::RequestPhotos.new(user, start_date:, end_date:).call
+    Photoprism::RequestPhotos.new(user, start_date:, end_date:, raise_on_connection_error: true).call
   end
 
   def parse_photoprism_data(photoprism_data)
@@ -75,13 +75,15 @@ class Photoprism::ImportGeodata
   end
 
   def create_import_failed_notification(import_name)
-    Notifications::Create.new(
-      user:,
-      kind: :info,
-      title: 'Import was not created',
-      content: "Import with the same name (#{import_name}) already exists. " \
-               'If you want to proceed, delete the existing import and try again.'
-    ).call
+    I18n.with_locale(user.locale) do
+      Notifications::Create.new(
+        user:,
+        kind: :info,
+        title: I18n.t('services.photoprism.import_geodata.import_was_not_created'),
+        content: I18n.t('services.photoprism.import_geodata.import_with_the_same_name_import_name_already_exists_if',
+                        import_name: import_name)
+      ).call
+    end
   end
 
   def file_name(photoprism_data_json)

@@ -64,6 +64,28 @@ RSpec.describe 'Api::V1::Settings', type: :request do
         expect(user.reload.timezone).to eq('UTC')
       end
 
+      it 'updates point_dragging_enabled' do
+        patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { point_dragging_enabled: true } }
+
+        expect(response).to have_http_status(:success)
+        expect(user.reload.safe_settings.point_dragging_enabled?).to be true
+      end
+
+      it 'returns point_dragging_enabled in the response' do
+        patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { point_dragging_enabled: true } }
+
+        expect(response.parsed_body['settings']['point_dragging_enabled']).to be true
+      end
+
+      it 'turns point_dragging_enabled back off' do
+        user.update!(settings: user.settings.merge('point_dragging_enabled' => true))
+
+        patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { point_dragging_enabled: false } }
+
+        expect(response).to have_http_status(:success)
+        expect(user.reload.safe_settings.point_dragging_enabled?).to be false
+      end
+
       it 'updates fog_of_war_mode' do
         patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { fog_of_war_mode: 'hexagons' } }
 
@@ -123,7 +145,108 @@ RSpec.describe 'Api::V1::Settings', type: :request do
               params: { settings: { maps_maplibre_tiles_url: 'https://tiles.example.com/{z}.mvt' } }
 
         expect(response).to have_http_status(:unprocessable_content)
-        expect(response.parsed_body['errors']).to include('Tile URL must include {z}, {x}, and {y} placeholders')
+        expect(response.parsed_body['errors'])
+          .to include(a_string_including('or be a MapLibre style URL'))
+        expect(user.reload.safe_settings.maps_maplibre_tiles_url).to be_nil
+      end
+
+      it 'accepts a raster XYZ maps_maplibre_tiles_url' do
+        patch "/api/v1/settings?api_key=#{api_key}",
+              params: {
+                settings: {
+                  maps_maplibre_tiles_url: 'https://api.maptiler.com/maps/hybrid/256/{z}/{x}/{y}.jpg?key=abc'
+                }
+              }
+
+        expect(response).to have_http_status(:success)
+        expect(user.reload.safe_settings.maps_maplibre_tiles_url)
+          .to eq('https://api.maptiler.com/maps/hybrid/256/{z}/{x}/{y}.jpg?key=abc')
+      end
+
+      it 'accepts a style URL whose path has no file extension' do
+        patch "/api/v1/settings?api_key=#{api_key}",
+              params: {
+                settings: { maps_maplibre_tiles_url: 'https://tiles.openfreemap.org/styles/liberty' }
+              }
+
+        expect(response).to have_http_status(:success)
+        expect(user.reload.safe_settings.maps_maplibre_tiles_url)
+          .to eq('https://tiles.openfreemap.org/styles/liberty')
+      end
+
+      it 'rejects a malformed tile template missing a placeholder' do
+        ['https://tiles.example.com/{Z}/{X}/{Y}',
+         'https://tiles.example.com/{z}/{x}',
+         'https://tiles.example.com/{z}/{x}/{y-1}',
+         'https://tiles.example.com/styles/{name}'].each do |tiles_url|
+          patch "/api/v1/settings?api_key=#{api_key}",
+                params: { settings: { maps_maplibre_tiles_url: tiles_url } }
+
+          expect(response).to have_http_status(:unprocessable_content)
+          expect(user.reload.safe_settings.maps_maplibre_tiles_url).to be_nil
+        end
+      end
+
+      it 'rejects a host that ends in a tile file extension' do
+        patch "/api/v1/settings?api_key=#{api_key}",
+              params: { settings: { maps_maplibre_tiles_url: 'https://foo.png' } }
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(user.reload.safe_settings.maps_maplibre_tiles_url).to be_nil
+      end
+
+      it 'rejects a placeholderless URL ending in a tile file extension' do
+        %w[png jpg jpeg webp mvt pbf].each do |extension|
+          patch "/api/v1/settings?api_key=#{api_key}",
+                params: { settings: { maps_maplibre_tiles_url: "https://tiles.example.com/basemap.#{extension}" } }
+
+          expect(response).to have_http_status(:unprocessable_content)
+          expect(user.reload.safe_settings.maps_maplibre_tiles_url).to be_nil
+        end
+      end
+
+      it 'accepts a full style URL ending in .json' do
+        patch "/api/v1/settings?api_key=#{api_key}",
+              params: {
+                settings: {
+                  maps_maplibre_tiles_url: 'https://api.maptiler.com/maps/streets/style.json?key=abc'
+                }
+              }
+
+        expect(response).to have_http_status(:success)
+        expect(user.reload.safe_settings.maps_maplibre_tiles_url)
+          .to eq('https://api.maptiler.com/maps/streets/style.json?key=abc')
+      end
+
+      it 'accepts a root-relative style URL served from this instance' do
+        patch "/api/v1/settings?api_key=#{api_key}",
+              params: { settings: { maps_maplibre_tiles_url: '/maps_maplibre/styles/mine.json' } }
+
+        expect(response).to have_http_status(:success)
+        expect(user.reload.safe_settings.maps_maplibre_tiles_url).to eq('/maps_maplibre/styles/mine.json')
+      end
+
+      it 'rejects a non-http style.json URL' do
+        patch "/api/v1/settings?api_key=#{api_key}",
+              params: { settings: { maps_maplibre_tiles_url: 'ftp://example.com/style.json' } }
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(user.reload.safe_settings.maps_maplibre_tiles_url).to be_nil
+      end
+
+      it 'rejects a protocol-relative style.json URL' do
+        patch "/api/v1/settings?api_key=#{api_key}",
+              params: { settings: { maps_maplibre_tiles_url: '//tiles.example.com/style.json' } }
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(user.reload.safe_settings.maps_maplibre_tiles_url).to be_nil
+      end
+
+      it 'rejects a maps_maplibre_tiles_url that is neither an XYZ tile URL nor a style document' do
+        patch "/api/v1/settings?api_key=#{api_key}",
+              params: { settings: { maps_maplibre_tiles_url: 'styles/liberty' } }
+
+        expect(response).to have_http_status(:unprocessable_content)
         expect(user.reload.safe_settings.maps_maplibre_tiles_url).to be_nil
       end
 
@@ -209,6 +332,14 @@ RSpec.describe 'Api::V1::Settings', type: :request do
           expect(response).to have_http_status(:success)
           expect(lite_user.reload.safe_settings.maps_maplibre_style).to eq('dark')
         end
+
+        it 'still persists point_dragging_enabled so it applies after an upgrade' do
+          patch "/api/v1/settings?api_key=#{lite_api_key}",
+                params: { settings: { point_dragging_enabled: true } }
+
+          expect(response).to have_http_status(:success)
+          expect(lite_user.reload.safe_settings.point_dragging_enabled?).to be true
+        end
       end
 
       it 'returns maps_maplibre_custom_theme in the settings payload' do
@@ -219,36 +350,12 @@ RSpec.describe 'Api::V1::Settings', type: :request do
         expect(theme['tokens']['bg']).to eq('#000000')
       end
 
-      it 'updates stay_max_gap_minutes' do
+      it 'ignores the retired stay_max_gap_minutes setting' do
         patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { stay_max_gap_minutes: 90 } }
 
         expect(response).to have_http_status(:success)
-        expect(user.reload.safe_settings.stay_max_gap_minutes).to eq(90)
-      end
-
-      it 'returns updated stay_max_gap_minutes in response' do
-        patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { stay_max_gap_minutes: 90 } }
-
-        expect(response.parsed_body['settings']['stay_max_gap_minutes']).to eq(90)
-      end
-
-      it 'clamps stay_max_gap_minutes above the maximum on read' do
-        patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { stay_max_gap_minutes: 1000 } }
-
-        expect(response.parsed_body['settings']['stay_max_gap_minutes']).to eq(720)
-      end
-
-      it 'clamps stay_max_gap_minutes below the minimum on read' do
-        patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { stay_max_gap_minutes: 1 } }
-
-        expect(response.parsed_body['settings']['stay_max_gap_minutes']).to eq(5)
-      end
-
-      it 'preserves stay_max_gap_minutes when a patch omits it' do
-        patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { stay_max_gap_minutes: 90 } }
-        patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { route_opacity: 0.3 } }
-
-        expect(user.reload.safe_settings.stay_max_gap_minutes).to eq(90)
+        expect(user.reload.settings['stay_max_gap_minutes']).to be_nil
+        expect(response.parsed_body['settings']).not_to have_key('stay_max_gap_minutes')
       end
 
       context 'when user is inactive' do
@@ -294,22 +401,15 @@ RSpec.describe 'Api::V1::Settings', type: :request do
       end
     end
 
-    context 'with transportation thresholds' do
-      let(:threshold_params) do
-        {
-          settings: {
-            transportation_thresholds: {
-              walking_max_speed: 8,
-              cycling_max_speed: 50
-            }
-          }
-        }
+    context 'with a changed transportation mode allowlist' do
+      let(:allowlist_params) do
+        { settings: { enabled_transportation_modes: %w[walking cycling driving] } }
       end
 
-      it 'triggers recalculation when thresholds change' do
+      it 'triggers reclassification' do
         expect do
-          patch "/api/v1/settings?api_key=#{api_key}", params: threshold_params
-        end.to have_enqueued_job(Tracks::TransportationModeRecalculationJob).with(user.id)
+          patch "/api/v1/settings?api_key=#{api_key}", params: allowlist_params
+        end.to have_enqueued_job(TransportationModes::UserReclassifyJob).with(user.id)
 
         expect(response).to have_http_status(:success)
         expect(response.parsed_body['recalculation_triggered']).to be true
@@ -321,7 +421,7 @@ RSpec.describe 'Api::V1::Settings', type: :request do
         end
 
         it 'returns locked status' do
-          patch "/api/v1/settings?api_key=#{api_key}", params: threshold_params
+          patch "/api/v1/settings?api_key=#{api_key}", params: allowlist_params
 
           expect(response).to have_http_status(:locked)
           expect(response.parsed_body['status']).to eq('locked')

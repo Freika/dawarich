@@ -1,0 +1,16 @@
+{
+  "steps": [
+    {
+      "id": 99001,
+      "name": "Tokyo, Japan",
+      "display_name": "Tokyo, Japan",
+      "location": {
+        "lat": 35.6762,
+        "lon": 139.6503,
+        "detail": "Shibuya"
+      },
+      "start_time": 1743501600,
+      "end_time": 1743512400
+    }
+  ]
+}

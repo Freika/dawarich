@@ -26,7 +26,7 @@ module ShareLinks
       {
         user: current_user,
         resource_type: :live,
-        name: 'Live location'
+        name: I18n.t('controllers.share_links.lives.default_name')
       }
     end
 
@@ -34,7 +34,7 @@ module ShareLinks
       {
         resource_type: :live,
         resource_id:   nil,
-        name:          create_params[:name].presence || 'Live location',
+        name:          create_params[:name].presence || I18n.t('controllers.share_links.lives.default_name'),
         magic_phrase:  create_params[:magic_phrase].presence,
         expires_at:    expiry_from(create_params[:expires_at]),
         settings:      SharedLink.default_settings_for(:live).merge(extracted_settings)

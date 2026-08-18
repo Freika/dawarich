@@ -11,7 +11,7 @@ module Visits
     end
 
     def call
-      return add_error('At least 2 visits must be selected for merging') if visits.length < 2
+      return add_error(I18n.t('services.visits.merge_service.minimum_visits')) if visits.length < 2
 
       merge_visits
     end

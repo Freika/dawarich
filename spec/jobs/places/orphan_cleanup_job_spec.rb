@@ -30,6 +30,19 @@ RSpec.describe Places::OrphanCleanupJob, type: :job do
       expect(Place.exists?(other_orphan.id)).to be(true)
     end
 
+    it 'sweeps places referenced only by tombstoned visits and detaches them' do
+      place = create(:place, user: user, source: :photon)
+      tombstone = create(:visit, user: user, place: place, area: nil, deleted_at: 1.day.ago)
+      kept = create(:place, user: user, source: :photon)
+      create(:visit, user: user, place: kept, area: nil)
+
+      described_class.new.perform(user.id)
+
+      expect(Place.exists?(place.id)).to be(false)
+      expect(tombstone.reload.place_id).to be_nil
+      expect(Place.exists?(kept.id)).to be(true)
+    end
+
     it 'is idempotent on second run' do
       orphan = create(:place, user: user, source: :photon)
       described_class.new.perform(user.id)

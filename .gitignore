@@ -45,6 +45,7 @@
 
 # Ignore master key for decrypting credentials and more.
 /config/master.key
+/config/sprockets-manifest.json
 /coverage
 /node_modules
 
@@ -72,6 +73,8 @@
 /config/credentials/staging.key
 /config/credentials/staging.yml.enc
 
+Makefile
+
 /db/*.sqlite3
 /db/*.sqlite3-shm
 /db/*.sqlite3-wal
@@ -89,3 +92,6 @@ node_modules/
 .worktrees/
 .superpowers/
 .security-audit/
+
+.impeccable/
+DESIGN.md

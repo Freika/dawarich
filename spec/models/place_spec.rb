@@ -9,6 +9,19 @@ RSpec.describe Place, type: :model do
     it { is_expected.to have_many(:suggested_visits).through(:place_visits) }
   end
 
+  describe '.linked_to_confirmed_visits' do
+    it 'excludes places linked only through tombstoned visits' do
+      user = create(:user)
+      alive_place = create(:place, user: user)
+      ghost_place = create(:place, user: user)
+      create(:visit, user: user, place: alive_place, status: 'confirmed', area: nil)
+      create(:visit, user: user, place: ghost_place, status: 'confirmed', deleted_at: 1.day.ago, area: nil)
+
+      expect(Place.linked_to_confirmed_visits(user)).to include(alive_place)
+      expect(Place.linked_to_confirmed_visits(user)).not_to include(ghost_place)
+    end
+  end
+
   describe 'destroying a place' do
     it 'nullifies place_id on associated visits, does not delete them' do
       user = create(:user)
@@ -157,12 +170,86 @@ RSpec.describe Place, type: :model do
       it 'returns the longitude' do
         expect(place.lon).to be_within(0.000001).of(13.0948638)
       end
+
+      context 'when a legacy place has no lonlat' do
+        it 'returns the longitude column as a Float' do
+          place.update_column(:lonlat, nil)
+
+          expect(place.reload.lon).to be_a(Float)
+          expect(place.reload.lon).to be_within(0.000001).of(13.0948638)
+        end
+      end
     end
 
     describe '#lat' do
       it 'returns the latitude' do
         expect(place.lat).to be_within(0.000001).of(54.2905245)
       end
+
+      context 'when a legacy place has no lonlat' do
+        it 'returns the latitude column as a Float' do
+          place.update_column(:lonlat, nil)
+
+          expect(place.reload.lat).to be_a(Float)
+          expect(place.reload.lat).to be_within(0.000001).of(54.2905245)
+        end
+      end
+    end
+  end
+
+  describe 'name locking' do
+    let(:place) { create(:place, name: Place::DEFAULT_NAME) }
+
+    it 'is unlocked when created' do
+      expect(place.name_locked?).to be(false)
+    end
+
+    it 'locks the name when it is renamed' do
+      expect { place.update!(name: "Mum's house") }
+        .to change { place.reload.name_locked? }.from(false).to(true)
+    end
+
+    it 'does not lock when another attribute changes' do
+      place.update!(city: 'Leipzig')
+
+      expect(place.reload.name_locked?).to be(false)
+    end
+
+    it 'does not lock a machine-named place' do
+      machine_place = build(:place, name: 'Photon Suggestion')
+      machine_place.machine_named = true
+      machine_place.save!
+
+      expect(machine_place.reload.name_locked?).to be(false)
+    end
+
+    it 'does not lock a place minted by detection' do
+      expect(create(:place, name: 'Photon Suggestion').name_locked?).to be(false)
+    end
+
+    it 'locks a place created with a user-supplied name' do
+      user_place = build(:place, name: "Mum's house")
+      user_place.user_named = true
+      user_place.save!
+
+      expect(user_place.reload.name_locked?).to be(true)
+    end
+
+    it 'clears the lock when the name is reset to the default' do
+      place.update!(name: "Mum's house")
+
+      expect { place.update!(name: Place::DEFAULT_NAME) }
+        .to change { place.reload.name_locked? }.from(true).to(false)
+    end
+
+    it 'keeps an existing lock when a machine write touches other attributes' do
+      place.update!(name: "Mum's house")
+      locked_at = place.reload.name_locked_at
+
+      place.machine_named = true
+      place.update!(city: 'Leipzig')
+
+      expect(place.reload.name_locked_at).to be_within(1.second).of(locked_at)
     end
   end
 end

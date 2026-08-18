@@ -15,6 +15,7 @@ class GoogleMaps::PhoneTakeoutImporter
   end
 
   BATCH_SIZE = 1000
+  MAX_TIE_OFFSET = 59
 
   def call
     path = resolve_file_path
@@ -45,6 +46,9 @@ class GoogleMaps::PhoneTakeoutImporter
     @first_semantic_start_time = nil
     @seen_first_semantic_segment = false
     @user_location_profile = nil
+    @assigned_timestamps = {}
+    @previous_tied_timestamp = nil
+    @tie_offset = 0
   end
 
   def stream_entries(path)
@@ -196,8 +200,9 @@ class GoogleMaps::PhoneTakeoutImporter
       start_time = DateTime.parse(data_point['startTime'])
       offset = point['durationMinutesOffsetFromStartTime']
 
-      timestamp = start_time
-      timestamp += offset.to_i.minutes if offset.present? && !offset.to_i.negative?
+      source_timestamp = start_time
+      source_timestamp += offset.to_i.minutes if offset.present? && !offset.to_i.negative?
+      timestamp = tie_break_timestamp(source_timestamp.to_i, lat, lon)
 
       point_hash(lat, lon, timestamp, data_point, altitude: alt)
     end
@@ -237,10 +242,22 @@ class GoogleMaps::PhoneTakeoutImporter
       next if coords.nil?
 
       lat, lon, alt = coords
-      timestamp = DateTime.parse(point['time']).utc.to_i
+      source_timestamp = DateTime.parse(point['time']).utc.to_i
+      timestamp = tie_break_timestamp(source_timestamp, lat, lon)
 
       point_hash(lat, lon, timestamp, segment, altitude: alt)
     end
+  end
+
+  def tie_break_timestamp(source_timestamp, lat, lon)
+    key = [source_timestamp, lat, lon]
+    return @assigned_timestamps[key] if @assigned_timestamps.key?(key)
+
+    @tie_offset = source_timestamp == @previous_tied_timestamp ? [@tie_offset + 1, MAX_TIE_OFFSET].min : 0
+    assigned = source_timestamp + @tie_offset
+    @assigned_timestamps[key] = assigned
+    @previous_tied_timestamp = source_timestamp
+    assigned
   end
 
   def parse_raw_array(raw_data)
@@ -272,15 +289,19 @@ class GoogleMaps::PhoneTakeoutImporter
 
   def parse_raw_signals(raw_signals)
     raw_signals.flat_map do |segment|
-      next unless segment.dig('position', 'LatLng')
+      position = segment['position']
+      next unless position&.dig('LatLng')
 
-      coords = parse_coordinates(segment['position']['LatLng'])
+      coords = parse_coordinates(position['LatLng'])
       next if coords.nil?
 
       lat, lon, alt = coords
-      timestamp = DateTime.parse(segment['position']['timestamp']).utc.to_i
+      timestamp = DateTime.parse(position['timestamp']).utc.to_i
 
-      point_hash(lat, lon, timestamp, segment, altitude: alt)
+      # `position` — not the `segment` wrapper — is what carries altitudeMeters,
+      # accuracyMeters and speedMetersPerSecond in this format. Passing the
+      # wrapper made point_hash read those keys one level too high and drop them.
+      point_hash(lat, lon, timestamp, position, altitude: alt)
     end
   end
 

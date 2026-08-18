@@ -25,10 +25,10 @@
     <div class="panel-header">
       <button class="btn btn-ghost btn-sm btn-circle"
               data-action="click->maps--maplibre#toggleSettings"
-              title="Close panel">
+              title="<%= t('.close_panel') %>">
         <%= icon 'x' %>
       </button>
-      <h3 class="panel-title" data-map-panel-target="title">Layers</h3>
+      <h3 class="panel-title" data-map-panel-target="title"><%= t('.layers') %></h3>
     </div>
 
     <!-- Panel Body -->
@@ -37,11 +37,11 @@
       <div class="tab-content" data-tab-content="search" data-map-panel-target="tabContent">
         <div class="form-control w-full">
           <label class="label">
-            <span class="label-text">Search for a place</span>
+            <span class="label-text"><%= t('.search_for_a_place') %></span>
           </label>
           <div class="relative">
             <input type="text"
-                   placeholder="Enter name of a place"
+                   placeholder="<%= t('.enter_name_of_a_place') %>"
                    class="input input-bordered w-full"
                    data-maps--maplibre-target="searchInput"
                    autocomplete="off" />
@@ -52,7 +52,7 @@
             </div>
           </div>
           <p class="text-xs text-base-content/60 mt-2">
-            Search for a location to find places you visited
+            <%= t('.search_for_a_location_to_find_places_you_visited') %>
           </p>
         </div>
       </div>
@@ -67,16 +67,22 @@
                      class="toggle toggle-primary"
                      data-maps--maplibre-target="pointsToggle"
                      data-action="change->maps--maplibre#togglePoints" />
-              <span class="label-text font-medium">Points</span>
+              <span class="label-text font-medium"><%= t('.points') %></span>
             </label>
-            <p class="text-sm text-base-content/60 ml-14">Show individual location points</p>
+            <p class="text-sm text-base-content/60 ml-14"><%= t('.show_individual_location_points') %></p>
             <label class="label cursor-pointer justify-start gap-3 ml-14 mt-1">
               <input type="checkbox"
                      class="toggle toggle-primary toggle-sm"
+                     data-maps--maplibre-target="pointsEditToggle"
                      data-action="change->maps--maplibre#togglePointsEditing" />
-              <span class="label-text">Edit points</span>
+              <span class="label-text"><%= t('.edit_points') %></span>
             </label>
-            <p class="text-sm text-base-content/60 ml-24">Allow dragging points to correct their position</p>
+            <% if current_user.plan_restricted? %>
+              <p class="text-sm text-base-content/60 ml-24"><%= t('.allow_dragging_points_to_correct_their_position') %></p>
+              <p class="text-xs text-warning ml-24 mt-1"><%= t('.editing_points_is_a_pro_feature_this_stays_on_for') %></p>
+            <% else %>
+              <p class="text-sm text-base-content/60 ml-24"><%= t('.allow_dragging_points_to_correct_their_position_remembered_across_sessio') %></p>
+            <% end %>
           </div>
 
           <div class="divider"></div>
@@ -88,16 +94,16 @@
                      class="toggle toggle-primary"
                      data-maps--maplibre-target="routesToggle"
                      data-action="change->maps--maplibre#toggleRoutes" />
-              <span class="label-text font-medium">Routes</span>
+              <span class="label-text font-medium"><%= t('.routes') %></span>
             </label>
-            <p class="text-sm text-base-content/60 ml-14">Show connected route lines</p>
+            <p class="text-sm text-base-content/60 ml-14"><%= t('.show_connected_route_lines') %></p>
           </div>
 
           <!-- Speed-Colored Routes Options (conditionally shown) -->
           <div class="ml-14 space-y-3" data-maps--maplibre-target="routesOptions" style="display: none;">
             <div class="form-control">
               <label class="label cursor-pointer py-2">
-                <span class="label-text text-sm">Color by speed</span>
+                <span class="label-text text-sm"><%= t('.color_by_speed') %></span>
                 <input type="checkbox"
                        class="toggle toggle-sm toggle-primary"
                        data-maps--maplibre-target="speedColoredToggle"
@@ -111,7 +117,7 @@
                       class="btn btn-sm btn-outline w-full"
                       data-action="click->maps--maplibre#openSpeedColorEditor">
                 <%= icon 'palette', class: 'h-4 w-4 mr-2' %>
-                Edit Color Gradient
+                <%= t('.edit_color_gradient') %>
               </button>
               <input type="hidden" data-maps--maplibre-target="speedColorScaleInput" value="" />
             </div>
@@ -126,9 +132,9 @@
                      class="toggle toggle-warning"
                      data-maps--maplibre-target="anomaliesToggle"
                      data-action="change->maps--maplibre#toggleAnomalies" />
-              <span class="label-text font-medium">Anomalies</span>
+              <span class="label-text font-medium"><%= t('.anomalies') %></span>
             </label>
-            <p class="text-sm text-base-content/60 ml-14">Show filtered GPS noise points</p>
+            <p class="text-sm text-base-content/60 ml-14"><%= t('.show_filtered_gps_noise_points') %></p>
           </div>
 
           <div class="divider"></div>
@@ -140,9 +146,9 @@
                      class="toggle toggle-primary"
                      data-maps--maplibre-target="tracksToggle"
                      data-action="change->maps--maplibre#toggleTracks" />
-              <span class="label-text font-medium">Tracks</span>
+              <span class="label-text font-medium"><%= t('.tracks') %></span>
             </label>
-            <p class="text-sm text-base-content/60 ml-14">Show backend-calculated tracks</p>
+            <p class="text-sm text-base-content/60 ml-14"><%= t('.show_backend_calculated_tracks') %></p>
           </div>
 
           <!-- Flights Layer -->
@@ -153,9 +159,9 @@
                        class="toggle toggle-primary"
                        data-maps--maplibre-target="flightsToggle"
                        data-action="change->maps--maplibre#toggleFlights" />
-                <span class="label-text font-medium">Flights</span>
+                <span class="label-text font-medium"><%= t('.flights') %></span>
               </label>
-              <p class="text-sm text-base-content/60 ml-14">Show AirTrail flights as arcs (hides overlapping GPS)</p>
+              <p class="text-sm text-base-content/60 ml-14"><%= t('.show_airtrail_flights_as_arcs_hides_overlapping_gps') %></p>
             </div>
           <% end %>
 
@@ -168,10 +174,10 @@
                      class="toggle toggle-primary"
                      data-maps--maplibre-target="heatmapToggle"
                      data-action="change->maps--maplibre#toggleHeatmap" />
-              <span class="label-text font-medium">Heatmap</span>
+              <span class="label-text font-medium"><%= t('.heatmap') %></span>
               <%= pro_badge_tag %>
             </label>
-            <p class="text-sm text-base-content/60 ml-14">Show density heatmap</p>
+            <p class="text-sm text-base-content/60 ml-14"><%= t('.show_density_heatmap') %></p>
           </div>
 
           <div class="divider"></div>
@@ -184,10 +190,10 @@
                      data-testid="hexagons-toggle"
                      data-maps--maplibre-target="hexagonsToggle"
                      data-action="change->maps--maplibre#toggleHexagons" />
-              <span class="label-text font-medium">Hexagons</span>
+              <span class="label-text font-medium"><%= t('.hexagons') %></span>
               <%= pro_badge_tag %>
             </label>
-            <p class="text-sm text-base-content/60 ml-14">Show point density as hexagonal cells</p>
+            <p class="text-sm text-base-content/60 ml-14"><%= t('.show_point_density_as_hexagonal_cells') %></p>
           </div>
 
           <div class="divider"></div>
@@ -199,24 +205,24 @@
                      class="toggle toggle-primary"
                      data-maps--maplibre-target="visitsToggle"
                      data-action="change->maps--maplibre#toggleVisits" />
-              <span class="label-text font-medium">Visits</span>
+              <span class="label-text font-medium"><%= t('.visits') %></span>
             </label>
-            <p class="text-sm text-base-content/60 ml-14">Show detected area visits</p>
+            <p class="text-sm text-base-content/60 ml-14"><%= t('.show_detected_area_visits') %></p>
           </div>
 
           <!-- Visits Search (conditionally shown) -->
           <div class="ml-14 space-y-2" data-maps--maplibre-target="visitsSearch" style="display: none;">
             <input type="text"
                    id="visits-search"
-                   placeholder="Filter by name..."
+                   placeholder="<%= t('.filter_by_name') %>"
                    class="input input-sm input-bordered w-full"
                    data-action="input->maps--maplibre#searchVisits" />
 
             <select class="select select-bordered w-full"
                     data-action="change->maps--maplibre#filterVisits">
-              <option value="all">All Visits</option>
-              <option value="confirmed">Confirmed Only</option>
-              <option value="suggested">Suggested Only</option>
+              <option value="all"><%= t('.all_visits') %></option>
+              <option value="confirmed"><%= t('.confirmed_only') %></option>
+              <option value="suggested"><%= t('.suggested_only') %></option>
             </select>
           </div>
 
@@ -229,9 +235,9 @@
                      class="toggle toggle-primary"
                      data-maps--maplibre-target="placesToggle"
                      data-action="change->maps--maplibre#togglePlaces" />
-              <span class="label-text font-medium">Places</span>
+              <span class="label-text font-medium"><%= t('.places') %></span>
             </label>
-            <p class="text-sm text-base-content/60 ml-14">Show your saved places</p>
+            <p class="text-sm text-base-content/60 ml-14"><%= t('.show_your_saved_places') %></p>
           </div>
 
           <!-- Places Tags (conditionally shown) -->
@@ -242,12 +248,12 @@
                        class="toggle toggle-sm"
                        data-maps--maplibre-target="enableAllPlaceTagsToggle"
                        data-action="change->maps--maplibre#toggleAllPlaceTags">
-                <span class="label-text text-sm">Enable All Tags</span>
+                <span class="label-text text-sm"><%= t('.enable_all_tags') %></span>
               </label>
             </div>
             <div class="form-control">
               <label class="label">
-                <span class="label-text text-sm">Filter by Tags</span>
+                <span class="label-text text-sm"><%= t('.filter_by_tags') %></span>
               </label>
               <div class="flex flex-wrap gap-2">
                 <!-- Untagged option -->
@@ -260,7 +266,7 @@
                   <span class="badge badge-sm badge-outline transition-all peer-checked:scale-105"
                         style="border-color: #94a3b8; color: #94a3b8;"
                         data-checked-style="background-color: #94a3b8; color: white;">
-                    🏷️ Untagged
+                    <%= t('.untagged') %>
                   </span>
                 </label>
 
@@ -280,7 +286,7 @@
                 <% end %>
               </div>
               <label class="label">
-                <span class="label-text-alt">Click tags to filter places</span>
+                <span class="label-text-alt"><%= t('.click_tags_to_filter_places') %></span>
               </label>
             </div>
           </div>
@@ -294,9 +300,9 @@
                      class="toggle toggle-primary"
                      data-maps--maplibre-target="photosToggle"
                      data-action="change->maps--maplibre#togglePhotos" />
-              <span class="label-text font-medium">Photos</span>
+              <span class="label-text font-medium"><%= t('.photos') %></span>
             </label>
-            <p class="text-sm text-base-content/60 ml-14">Show geotagged photos</p>
+            <p class="text-sm text-base-content/60 ml-14"><%= t('.show_geotagged_photos') %></p>
           </div>
 
           <div class="divider"></div>
@@ -308,9 +314,9 @@
                      class="toggle toggle-primary"
                      data-maps--maplibre-target="areasToggle"
                      data-action="change->maps--maplibre#toggleAreas" />
-              <span class="label-text font-medium">Areas</span>
+              <span class="label-text font-medium"><%= t('.areas') %></span>
             </label>
-            <p class="text-sm text-base-content/60 ml-14">Show defined areas</p>
+            <p class="text-sm text-base-content/60 ml-14"><%= t('.show_defined_areas') %></p>
           </div>
 
           <div class="divider"></div>
@@ -322,10 +328,10 @@
                      class="toggle toggle-primary"
                      data-maps--maplibre-target="fogToggle"
                      data-action="change->maps--maplibre#toggleFog" />
-              <span class="label-text font-medium">Fog of War</span>
+              <span class="label-text font-medium"><%= t('.fog_of_war') %></span>
               <%= pro_badge_tag %>
             </label>
-            <p class="text-sm text-base-content/60 ml-14">Show explored areas</p>
+            <p class="text-sm text-base-content/60 ml-14"><%= t('.show_explored_areas') %></p>
             <div class="flex gap-4 ml-14 mt-1">
               <label class="label cursor-pointer gap-2 py-0">
                 <input type="radio"
@@ -334,7 +340,7 @@
                        class="radio radio-sm"
                        <%= 'checked' if current_user.safe_settings.fog_of_war_mode == 'points' %>
                        data-action="change->maps--maplibre#updateFogMode" />
-                <span class="label-text text-sm">Per point</span>
+                <span class="label-text text-sm"><%= t('.per_point') %></span>
               </label>
               <label class="label cursor-pointer gap-2 py-0">
                 <input type="radio"
@@ -343,7 +349,7 @@
                        class="radio radio-sm"
                        <%= 'checked' if current_user.safe_settings.fog_of_war_mode == 'hexagons' %>
                        data-action="change->maps--maplibre#updateFogMode" />
-                <span class="label-text text-sm">Per hexagon</span>
+                <span class="label-text text-sm"><%= t('.per_hexagon') %></span>
               </label>
             </div>
           </div>
@@ -357,13 +363,13 @@
                      class="toggle toggle-primary"
                      data-maps--maplibre-target="scratchToggle"
                      data-action="change->maps--maplibre#toggleScratch" />
-              <span class="label-text font-medium">Scratch Map</span>
+              <span class="label-text font-medium"><%= t('.scratch_map') %></span>
               <%= pro_badge_tag %>
             </label>
-            <p class="text-sm text-base-content/60 ml-14">Show scratched countries</p>
+            <p class="text-sm text-base-content/60 ml-14"><%= t('.show_scratched_countries') %></p>
           </div>
 
-          <% if DawarichSettings.family_feature_enabled? %>
+          <% if family_feature_available? %>
             <div class="divider"></div>
 
             <!-- Family Members Layer -->
@@ -373,15 +379,15 @@
                        class="toggle toggle-primary"
                        data-maps--maplibre-target="familyToggle"
                        data-action="change->maps--maplibre#toggleFamily" />
-                <span class="label-text font-medium">Family Members</span>
+                <span class="label-text font-medium"><%= t('.family_members') %></span>
               </label>
-              <p class="text-sm text-base-content/60 ml-14">Show family member locations</p>
+              <p class="text-sm text-base-content/60 ml-14"><%= t('.show_family_member_locations') %></p>
             </div>
 
             <!-- Family Members List (conditionally shown) -->
             <div class="ml-14 space-y-2" data-maps--maplibre-target="familyMembersList" style="display: none;">
               <div class="text-xs text-base-content/60 mb-2">
-                Click to center on member
+                <%= t('.click_to_center_on_member') %>
               </div>
               <div data-maps--maplibre-target="familyMembersContainer" class="space-y-1">
                 <!-- Family members will be dynamically inserted here -->
@@ -401,29 +407,29 @@
             <summary class="collapse-title font-medium min-h-0 cursor-pointer">
               <span class="flex items-center gap-2">
               <%= icon 'palette', class: 'h-4 w-4 opacity-70 shrink-0' %>
-              Appearance
+              <%= t('.appearance') %>
               </span>
             </summary>
             <div class="collapse-content space-y-4">
               <% if current_user.plan_restricted? %>
-                <p class="text-xs text-warning">Custom map colors, layer colors, and vector tiles are Pro features — you can preview them here, but they won't be saved on the Lite plan.</p>
+                <p class="text-xs text-warning"><%= t('.custom_map_colors_layer_colors_and_vector_tiles_are_pro') %></p>
               <% end %>
               <div data-controller="map-theme-editor">
                 <!-- Map Style -->
                 <div class="form-control w-full">
                   <label class="label">
-                    <span class="label-text font-medium">Map Style</span>
+                    <span class="label-text font-medium"><%= t('.map_style') %></span>
                   </label>
                   <select class="select select-bordered w-full"
                           name="mapStyle"
                           data-map-theme-editor-target="styleSelect"
                           data-action="change->maps--maplibre#updateMapStyle change->map-theme-editor#styleChanged">
-                    <option value="light" selected>Light</option>
-                    <option value="dark">Dark</option>
-                    <option value="white">White</option>
-                    <option value="black">Black</option>
-                    <option value="grayscale">Grayscale</option>
-                    <option value="custom">Custom</option>
+                    <option value="light" selected><%= t('.light') %></option>
+                    <option value="dark"><%= t('.dark') %></option>
+                    <option value="white"><%= t('.white') %></option>
+                    <option value="black"><%= t('.black') %></option>
+                    <option value="grayscale"><%= t('.grayscale') %></option>
+                    <option value="custom"><%= t('.custom') %></option>
                   </select>
                 </div>
 
@@ -431,14 +437,14 @@
                      the map to the Custom style with that theme applied -->
                 <div class="mt-3 space-y-3">
                   <div>
-                    <span class="label-text text-sm">Color themes</span>
+                    <span class="label-text text-sm"><%= t('.color_themes') %></span>
                     <div class="grid grid-cols-6 gap-1.5 mt-1">
                       <% Array(@poster_themes).each do |theme| %>
                         <button type="button"
                                 class="w-full overflow-hidden rounded-md border border-base-300 ring-primary ring-offset-base-100 transition hover:scale-105 focus:outline-none focus-visible:ring-2"
                                 style="height: 32px; background-image: url('<%= asset_path("poster_themes/#{theme['key']}.webp") %>'); background-size: cover; background-position: center;"
                                 title="<%= theme['name'] %>"
-                                aria-label="<%= theme['name'] %> theme"
+                                aria-label="<%= t('.theme_aria_label', theme: theme['name']) %>"
                                 data-map-theme-editor-target="swatch"
                                 data-key="<%= theme['key'] %>"
                                 data-name="<%= theme['name'] %>"
@@ -450,13 +456,13 @@
 
                   <!-- Fine-tuning (shown when the Custom style is active) -->
                   <details class="hidden collapse collapse-arrow bg-base-100 rounded-lg" data-map-theme-editor-target="block">
-                    <summary class="collapse-title text-sm min-h-0 cursor-pointer select-none">Customize colors</summary>
+                    <summary class="collapse-title text-sm min-h-0 cursor-pointer select-none"><%= t('.customize_colors') %></summary>
                     <div class="collapse-content space-y-1">
                       <% [
-                        %w[bg Background], %w[water Water], %w[parks Parks],
-                        %w[buildings Buildings], %w[railway Railways], %w[boundaries Boundaries],
-                        ['road_motorway', 'Motorway roads'], ['road_primary', 'Primary roads'],
-                        ['road_residential', 'Residential roads'], ['road_default', 'Other roads']
+                        ['bg', t('.background')], ['water', t('.water')], ['parks', t('.parks')],
+                        ['buildings', t('.buildings')], ['railway', t('.railways')], ['boundaries', t('.boundaries')],
+                        ['road_motorway', t('.motorway_roads')], ['road_primary', t('.primary_roads')],
+                        ['road_residential', t('.residential_roads')], ['road_default', t('.other_roads')]
                       ].each do |token, token_label| %>
                         <label class="flex items-center gap-2">
                           <input type="color"
@@ -481,10 +487,10 @@
                      class="toggle toggle-primary"
                      data-maps--maplibre-target="globeToggle"
                      data-action="change->maps--maplibre#toggleGlobe" />
-              <span class="label-text font-medium">Globe View</span>
+              <span class="label-text font-medium"><%= t('.globe_view') %></span>
               <%= pro_badge_tag(preview: false) %>
             </label>
-            <p class="text-sm text-base-content/60 mt-1">Render map as a 3D globe (requires page reload)</p>
+            <p class="text-sm text-base-content/60 mt-1"><%= t('.render_map_as_a_3d_globe_requires_page_reload') %></p>
           </div>
 
           <div class="divider"></div>
@@ -492,7 +498,7 @@
           <!-- Route Opacity -->
           <div class="form-control w-full">
             <label class="label">
-              <span class="label-text font-medium">Route Opacity</span>
+              <span class="label-text font-medium"><%= t('.route_opacity') %></span>
               <span class="label-text-alt">%</span>
             </label>
             <input type="range"
@@ -516,14 +522,14 @@
           <!-- Layer Colors -->
           <div class="form-control w-full space-y-1">
             <label class="label">
-              <span class="label-text font-medium">Layer Colors</span>
+              <span class="label-text font-medium"><%= t('.layer_colors') %></span>
             </label>
             <label class="flex items-center gap-2">
               <input type="color"
                      name="routeColor"
                      class="h-7 w-9 cursor-pointer rounded border border-base-300 bg-base-100 p-0.5"
                      data-action="input->maps--maplibre#updateRouteColor">
-              <span class="label-text text-sm flex-1">Routes</span>
+              <span class="label-text text-sm flex-1"><%= t('.routes') %></span>
               <span class="text-xs opacity-60 tabular-nums" data-layer-color-value="routeColor"></span>
             </label>
             <label class="flex items-center gap-2">
@@ -531,14 +537,14 @@
                      name="trackColor"
                      class="h-7 w-9 cursor-pointer rounded border border-base-300 bg-base-100 p-0.5"
                      data-action="input->maps--maplibre#updateTrackColor">
-              <span class="label-text text-sm flex-1">Tracks</span>
+              <span class="label-text text-sm flex-1"><%= t('.tracks') %></span>
               <span class="text-xs opacity-60 tabular-nums" data-layer-color-value="trackColor"></span>
             </label>
             <button type="button"
                     class="btn btn-xs btn-ghost self-start"
                     data-action="click->maps--maplibre#resetLayerColors">
               <%= icon 'rotate-ccw', class: 'h-3 w-3' %>
-              Reset to defaults
+              <%= t('.reset_to_defaults') %>
             </button>
           </div>
 
@@ -547,7 +553,7 @@
           <!-- Distance Unit -->
           <div class="form-control">
             <label class="label">
-              <span class="label-text font-medium">Distance Unit</span>
+              <span class="label-text font-medium"><%= t('.distance_unit') %></span>
             </label>
             <div class="flex gap-4">
               <label class="label cursor-pointer gap-2 py-0">
@@ -556,7 +562,7 @@
                        value="km"
                        class="radio radio-sm radio-primary"
                        data-action="change->maps--maplibre#updateDistanceUnit" />
-                <span class="label-text text-sm">Kilometers</span>
+                <span class="label-text text-sm"><%= t('.kilometers') %></span>
               </label>
               <label class="label cursor-pointer gap-2 py-0">
                 <input type="radio"
@@ -564,24 +570,24 @@
                        value="mi"
                        class="radio radio-sm radio-primary"
                        data-action="change->maps--maplibre#updateDistanceUnit" />
-                <span class="label-text text-sm">Miles</span>
+                <span class="label-text text-sm"><%= t('.miles') %></span>
               </label>
             </div>
           </div>
 
           <div class="divider"></div>
 
-          <!-- Custom Vector Tiles -->
+          <!-- Custom Basemap -->
           <div class="form-control w-full">
             <label class="label">
-              <span class="label-text font-medium">Vector Tiles URL</span>
+              <span class="label-text font-medium"><%= t('.custom_basemap_url') %></span>
             </label>
             <input type="url"
                    name="vectorTilesUrl"
                    placeholder="https://tiles.example.com/{z}/{x}/{y}.mvt"
                    class="input input-bordered input-sm w-full"
                    data-action="change->maps--maplibre#updateVectorTilesUrl" />
-            <p class="text-xs text-base-content/60 mt-1">Serve the base map from your own Protomaps-schema vector tile server. Leave empty for the built-in tiles. Must include {z}, {x}, and {y}.</p>
+            <p class="text-xs text-base-content/60 mt-1"><%= t('.serve_the_base_map_from_your_own_source_accepts_protomaps') %></p>
           </div>
             </div>
           </details>
@@ -591,28 +597,28 @@
             <summary class="collapse-title font-medium min-h-0 cursor-pointer">
               <span class="flex items-center gap-2">
               <%= icon 'layer', class: 'h-4 w-4 opacity-70 shrink-0' %>
-              Base Map Layers <%= pro_badge_tag(preview: false) %>
+              <%= t('.base_map_layers') %> <%= pro_badge_tag(preview: false) %>
               </span>
             </summary>
             <div class="collapse-content space-y-1">
               <% if can_customize_layers %>
-                <p class="text-xs text-base-content/60 mb-2">Toggle base map elements. Changes apply immediately.</p>
+                <p class="text-xs text-base-content/60 mb-2"><%= t('.toggle_base_map_elements_changes_apply_immediately') %></p>
               <% else %>
-                <p class="text-xs text-warning mb-2">Pro feature — you can preview changes here, but they won't be saved on the Lite plan.</p>
+                <p class="text-xs text-warning mb-2"><%= t('.pro_feature_you_can_preview_changes_here_but_they_won') %></p>
               <% end %>
               <% hidden_categories = current_user.safe_settings.maps&.dig('hidden_tile_categories') || [] %>
               <% [
-                ['roads', 'Roads', 'Streets, highways, and paths', true],
-                ['road_labels', 'Road Labels', 'Street names and route shields', false],
-                ['rail', 'Railways', 'Train tracks and rail lines', true],
-                ['buildings', 'Buildings', 'Building footprints', true],
-                ['address_labels', 'Address Labels', 'Building numbers (visible at high zoom)', false],
-                ['pois', 'Points of Interest', 'Master toggle for all POI groups below', false],
-                ['place_labels', 'Place Names', 'Cities, neighborhoods, regions, and countries', false],
-                ['water_labels', 'Water Labels', 'Ocean, lake, and river names', false],
-                ['water', 'Water', 'Oceans, lakes, rivers, and streams', true],
-                ['landuse', 'Land Use', 'Parks, schools, hospitals, airports, etc.', true],
-                ['boundaries', 'Boundaries', 'Country and administrative borders', true],
+                ['roads', t('.roads'), t('.streets_highways_and_paths'), true],
+                ['road_labels', t('.road_labels'), t('.street_names_and_route_shields'), false],
+                ['rail', t('.railways'), t('.train_tracks_and_rail_lines'), true],
+                ['buildings', t('.buildings'), t('.building_footprints'), true],
+                ['address_labels', t('.address_labels'), t('.building_numbers_visible_at_high_zoom'), false],
+                ['pois', t('.points_of_interest'), t('.master_toggle_for_all_poi_groups_below'), false],
+                ['place_labels', t('.place_names'), t('.cities_neighborhoods_regions_and_countries'), false],
+                ['water_labels', t('.water_labels'), t('.ocean_lake_and_river_names'), false],
+                ['water', t('.water'), t('.oceans_lakes_rivers_and_streams'), true],
+                ['landuse', t('.land_use'), t('.parks_schools_hospitals_airports_etc'), true],
+                ['boundaries', t('.boundaries'), t('.country_and_administrative_borders'), true],
               ].each do |key, label, description, custom_supported| %>
                 <div class="form-control">
                   <label class="label cursor-pointer justify-start gap-3 py-1">
@@ -629,7 +635,7 @@
                   </label>
                 </div>
               <% end %>
-              <p class="text-xs text-base-content/60 mt-2">The Custom style draws no labels or points of interest — those toggles are disabled while it's active.</p>
+              <p class="text-xs text-base-content/60 mt-2"><%= t('.the_custom_style_draws_no_labels_or_points_of_interest') %></p>
             </div>
           </details>
 
@@ -637,25 +643,25 @@
             <summary class="collapse-title font-medium min-h-0 cursor-pointer">
               <span class="flex items-center gap-2">
               <%= icon 'map-pin', class: 'h-4 w-4 opacity-70 shrink-0' %>
-              Points of Interest <%= pro_badge_tag(preview: false) %>
+              <%= t('.points_of_interest') %> <%= pro_badge_tag(preview: false) %>
               </span>
             </summary>
             <div class="collapse-content space-y-1">
               <% if can_customize_layers %>
-                <p class="text-xs text-base-content/60 mb-2">Choose which POI categories appear on the map.</p>
+                <p class="text-xs text-base-content/60 mb-2"><%= t('.choose_which_poi_categories_appear_on_the_map') %></p>
               <% else %>
-                <p class="text-xs text-warning mb-2">Pro feature — you can preview changes here, but they won't be saved on the Lite plan.</p>
+                <p class="text-xs text-warning mb-2"><%= t('.pro_feature_you_can_preview_changes_here_but_they_won') %></p>
               <% end %>
               <% disabled_poi_groups = current_user.safe_settings.maps&.dig('disabled_poi_groups') || [] %>
               <% [
-                ['food_drink', 'Food & Drink', 'Restaurants, cafes, bars, bakeries, fast food'],
-                ['shopping', 'Shopping', 'Supermarkets, clothes, electronics, books, beauty'],
-                ['transport', 'Transport', 'Stations, bus stops, airports, fuel, parking'],
-                ['cycling', 'Cycling', 'Bike parking, rental, and repair stations'],
-                ['nature_leisure', 'Nature & Leisure', 'Parks, forests, beaches, playgrounds, stadiums'],
-                ['tourism', 'Tourism & Culture', 'Museums, theatres, attractions, viewpoints, hotels'],
-                ['services', 'Services & Civic', 'Post offices, libraries, schools, hospitals, police, banks'],
-                ['urban_amenities', 'Urban Amenities', 'Benches, toilets, drinking water, fountains, recycling, shelters'],
+                ['food_drink', t('.food_drink'), t('.restaurants_cafes_bars_bakeries_fast_food')],
+                ['shopping', t('.shopping'), t('.supermarkets_clothes_electronics_books_beauty')],
+                ['transport', t('.transport'), t('.stations_bus_stops_airports_fuel_parking')],
+                ['cycling', t('.cycling'), t('.bike_parking_rental_and_repair_stations')],
+                ['nature_leisure', t('.nature_leisure'), t('.parks_forests_beaches_playgrounds_stadiums')],
+                ['tourism', t('.tourism_culture'), t('.museums_theatres_attractions_viewpoints_hotels')],
+                ['services', t('.services_civic'), t('.post_offices_libraries_schools_hospitals_police_banks')],
+                ['urban_amenities', t('.urban_amenities'), t('.benches_toilets_drinking_water_fountains_recycling_shelters')],
               ].each do |key, label, description| %>
                 <div class="form-control">
                   <label class="label cursor-pointer justify-start gap-3 py-1">
@@ -678,7 +684,7 @@
             <summary class="collapse-title font-medium min-h-0 cursor-pointer">
               <span class="flex items-center gap-2">
               <%= icon 'route', class: 'h-4 w-4 opacity-70 shrink-0' %>
-              Routes
+              <%= t('.routes') %>
               <span class="badge badge-outline badge-warning badge-sm tooltip tooltip-left ml-auto mr-1 self-center hidden" data-dirty-badge></span>
               </span>
             </summary>
@@ -686,8 +692,8 @@
           <!-- Route Generation Settings -->
           <div class="form-control w-full">
             <label class="label">
-              <span class="label-text font-medium">Meters Between Routes</span>
-              <span class="label-text-alt" data-maps--maplibre-target="metersBetweenValue">500m</span>
+              <span class="label-text font-medium"><%= t('.meters_between_routes') %></span>
+              <span class="label-text-alt" data-maps--maplibre-target="metersBetweenValue"><%= t('units.meters_compact', value: 500) %></span>
             </label>
             <input type="range"
                    name="metersBetweenRoutes"
@@ -698,17 +704,17 @@
                    class="range range-sm"
                    data-action="input->maps--maplibre#updateMetersBetweenDisplay" />
             <div class="w-full flex justify-between text-xs px-2 mt-1">
-              <span>100m</span>
-              <span>2500m</span>
-              <span>5000m</span>
+              <span><%= t('units.meters_compact', value: 100) %></span>
+              <span><%= t('units.meters_compact', value: 2500) %></span>
+              <span><%= t('units.meters_compact', value: 5000) %></span>
             </div>
-            <p class="text-xs text-base-content/60 mt-1">Distance threshold for route splitting</p>
+            <p class="text-xs text-base-content/60 mt-1"><%= t('.distance_threshold_for_route_splitting') %></p>
           </div>
 
           <div class="form-control w-full">
             <label class="label">
-              <span class="label-text font-medium">Minutes Between Routes</span>
-              <span class="label-text-alt" data-maps--maplibre-target="minutesBetweenValue">60min</span>
+              <span class="label-text font-medium"><%= t('.minutes_between_routes') %></span>
+              <span class="label-text-alt" data-maps--maplibre-target="minutesBetweenValue"><%= t('.min') %></span>
             </label>
             <input type="range"
                    name="minutesBetweenRoutes"
@@ -719,11 +725,11 @@
                    class="range range-sm"
                    data-action="input->maps--maplibre#updateMinutesBetweenDisplay" />
             <div class="w-full flex justify-between text-xs px-2 mt-1">
-              <span>1min</span>
-              <span>90min</span>
-              <span>180min</span>
+              <span><%= t('.min_2') %></span>
+              <span><%= t('.min_3') %></span>
+              <span><%= t('.min_4') %></span>
             </div>
-            <p class="text-xs text-base-content/60 mt-1">Time threshold for route splitting</p>
+            <p class="text-xs text-base-content/60 mt-1"><%= t('.time_threshold_for_route_splitting') %></p>
           </div>
 
           <div class="divider"></div>
@@ -731,7 +737,7 @@
           <!-- Points Rendering Mode -->
           <div class="form-control w-full">
             <label class="label">
-              <span class="label-text font-medium">Points Rendering Mode</span>
+              <span class="label-text font-medium"><%= t('.points_rendering_mode') %></span>
             </label>
             <div class="flex flex-col gap-2">
               <label class="label cursor-pointer justify-start gap-3 py-1">
@@ -740,14 +746,14 @@
                        value="raw"
                        class="radio radio-primary radio-sm"
                        checked />
-                <span class="label-text">Raw (all points)</span>
+                <span class="label-text"><%= t('.raw_all_points') %></span>
               </label>
               <label class="label cursor-pointer justify-start gap-3 py-1">
                 <input type="radio"
                        name="pointsRenderingMode"
                        value="simplified"
                        class="radio radio-primary radio-sm" />
-                <span class="label-text">Simplified (reduced points)</span>
+                <span class="label-text"><%= t('.simplified_reduced_points') %></span>
               </label>
             </div>
           </div>
@@ -758,9 +764,9 @@
               <input type="checkbox"
                      name="speedColoredRoutes"
                      class="toggle toggle-primary" />
-              <span class="label-text font-medium">Speed-Colored Routes</span>
+              <span class="label-text font-medium"><%= t('.speed_colored_routes') %></span>
             </label>
-            <p class="text-sm text-base-content/60 mt-1">Color routes by speed</p>
+            <p class="text-sm text-base-content/60 mt-1"><%= t('.color_routes_by_speed') %></p>
           </div>
             </div>
           </details>
@@ -769,7 +775,7 @@
             <summary class="collapse-title font-medium min-h-0 cursor-pointer">
               <span class="flex items-center gap-2">
               <%= icon 'cloud-fog', class: 'h-4 w-4 opacity-70 shrink-0' %>
-              Fog of War
+              <%= t('.fog_of_war') %>
               <span class="badge badge-outline badge-warning badge-sm tooltip tooltip-left ml-auto mr-1 self-center hidden" data-dirty-badge></span>
               </span>
             </summary>
@@ -777,8 +783,8 @@
           <!-- Fog of War Settings -->
           <div class="form-control w-full">
             <label class="label">
-              <span class="label-text font-medium">Fog of War Radius</span>
-              <span class="label-text-alt" data-maps--maplibre-target="fogRadiusValue">1000m</span>
+              <span class="label-text font-medium"><%= t('.fog_of_war_radius') %></span>
+              <span class="label-text-alt" data-maps--maplibre-target="fogRadiusValue"><%= t('units.meters_compact', value: 1000) %></span>
             </label>
             <input type="range"
                    name="fogOfWarRadius"
@@ -789,16 +795,16 @@
                    class="range range-sm"
                    data-action="input->maps--maplibre#updateFogRadiusDisplay" />
             <div class="w-full flex justify-between text-xs px-2 mt-1">
-              <span>5m</span>
-              <span>1000m</span>
-              <span>2000m</span>
+              <span><%= t('units.meters_compact', value: 5) %></span>
+              <span><%= t('units.meters_compact', value: 1000) %></span>
+              <span><%= t('units.meters_compact', value: 2000) %></span>
             </div>
-            <p class="text-xs text-base-content/60 mt-1">Clear radius around visited points</p>
+            <p class="text-xs text-base-content/60 mt-1"><%= t('.clear_radius_around_visited_points') %></p>
           </div>
 
           <div class="form-control w-full">
             <label class="label">
-              <span class="label-text font-medium">Fog of War Threshold</span>
+              <span class="label-text font-medium"><%= t('.fog_of_war_threshold') %></span>
               <span class="label-text-alt" data-maps--maplibre-target="fogThresholdValue">1</span>
             </label>
             <input type="range"
@@ -814,7 +820,7 @@
               <span>5</span>
               <span>10</span>
             </div>
-            <p class="text-xs text-base-content/60 mt-1">Minimum points to clear fog</p>
+            <p class="text-xs text-base-content/60 mt-1"><%= t('.minimum_points_to_clear_fog') %></p>
           </div>
             </div>
           </details>
@@ -823,7 +829,7 @@
             <summary class="collapse-title font-medium min-h-0 cursor-pointer">
               <span class="flex items-center gap-2">
               <%= icon 'satellite', class: 'h-4 w-4 opacity-70 shrink-0' %>
-              GPS Noise Filtering
+              <%= t('.gps_noise_filtering') %>
               <span class="badge badge-outline badge-warning badge-sm tooltip tooltip-left ml-auto mr-1 self-center hidden" data-dirty-badge></span>
               </span>
             </summary>
@@ -835,47 +841,26 @@
                      name="gpsFilteringEnabled"
                      class="toggle toggle-primary"
                      data-maps--maplibre-target="gpsFilteringToggle" />
-              <span class="label-text font-medium">GPS Noise Filtering</span>
+              <span class="label-text font-medium"><%= t('.gps_noise_filtering') %></span>
             </label>
-            <p class="text-sm text-base-content/60 mt-1">Hide points whose reported accuracy exceeds the threshold below. Disable for trains, indoor, or weak-signal data.</p>
-          </div>
-
-          <div class="form-control w-full">
-            <label class="label">
-              <span class="label-text font-medium">Accuracy Threshold</span>
-              <span class="label-text-alt" data-maps--maplibre-target="gpsAccuracyThresholdValue">100m</span>
-            </label>
-            <input type="range"
-                   name="gpsAccuracyThreshold"
-                   min="50"
-                   max="1000"
-                   step="10"
-                   value="100"
-                   class="range range-sm"
-                   data-action="input->maps--maplibre#updateGpsAccuracyThresholdDisplay" />
-            <div class="w-full flex justify-between text-xs px-2 mt-1">
-              <span>50m</span>
-              <span>500m</span>
-              <span>1000m</span>
-            </div>
-            <p class="text-xs text-base-content/60 mt-1">Points with reported GPS accuracy worse than this are flagged as noise. Lower = stricter, higher = keeps more weak-signal data.</p>
+            <p class="text-sm text-base-content/60 mt-1"><%= t('.hide_readings_that_cannot_be_a_real_position_impossible_jumps') %></p>
           </div>
 
           <button type="button"
                   class="btn btn-sm btn-outline btn-block"
                   data-action="click->maps--maplibre#reapplyAnomalyFilter">
             <%= icon 'rotate-ccw' %>
-            Re-evaluate past data
+            <%= t('.re_evaluate_past_data') %>
           </button>
-          <p class="text-xs text-base-content/60 mt-1">Clears existing anomaly flags and re-runs the filter on all your points with the current settings. Tracks, stats, and digests will be rebuilt afterwards. Runs in the background.</p>
+          <p class="text-xs text-base-content/60 mt-1"><%= t('.clears_existing_anomaly_flags_and_re_runs_the_filter_on') %></p>
 
           <button type="button"
                   class="btn btn-sm btn-outline btn-block mt-2"
                   data-action="click->maps--maplibre#recalculateUserData">
             <%= icon 'refresh-ccw' %>
-            Recalculate tracks &amp; stats
+            <%= t('.recalculate_tracks_stats') %>
           </button>
-          <p class="text-xs text-base-content/60 mt-1">Rebuild tracks, stats, and digests from your current points without touching anomaly flags. Useful after changing route-splitting thresholds.</p>
+          <p class="text-xs text-base-content/60 mt-1"><%= t('.rebuild_tracks_stats_and_digests_from_your_current_points_without') %></p>
             </div>
           </details>
 
@@ -883,7 +868,7 @@
             <summary class="collapse-title font-medium min-h-0 cursor-pointer">
               <span class="flex items-center gap-2">
               <%= icon 'chart-column', class: 'h-4 w-4 opacity-70 shrink-0' %>
-              City Statistics
+              <%= t('.city_statistics') %>
               <span class="badge badge-outline badge-warning badge-sm tooltip tooltip-left ml-auto mr-1 self-center hidden" data-dirty-badge></span>
               </span>
             </summary>
@@ -891,8 +876,8 @@
           <!-- City Statistics Settings -->
           <div class="form-control w-full">
             <label class="label">
-              <span class="label-text font-medium">Min Minutes in City</span>
-              <span class="label-text-alt" data-maps--maplibre-target="minMinutesInCityValue">60 min</span>
+              <span class="label-text font-medium"><%= t('.min_minutes_in_city') %></span>
+              <span class="label-text-alt" data-maps--maplibre-target="minMinutesInCityValue"><%= t('.min_5') %></span>
             </label>
             <input type="range"
                    name="minMinutesSpentInCity"
@@ -903,17 +888,17 @@
                    class="range range-sm"
                    data-action="input->maps--maplibre#updateMinMinutesInCityDisplay" />
             <div class="w-full flex justify-between text-xs px-2 mt-1">
-              <span>5min</span>
-              <span>60min</span>
-              <span>120min</span>
+              <span><%= t('.min_6') %></span>
+              <span><%= t('.min') %></span>
+              <span><%= t('.min_7') %></span>
             </div>
-            <p class="text-xs text-base-content/60 mt-1">How long you must stay for a city to count in statistics</p>
+            <p class="text-xs text-base-content/60 mt-1"><%= t('.how_long_you_must_stay_for_a_city_to_count') %></p>
           </div>
 
           <div class="form-control w-full">
             <label class="label">
-              <span class="label-text font-medium">Max Gap Between Points</span>
-              <span class="label-text-alt" data-maps--maplibre-target="maxGapMinutesValue">120 min</span>
+              <span class="label-text font-medium"><%= t('.max_gap_between_points') %></span>
+              <span class="label-text-alt" data-maps--maplibre-target="maxGapMinutesValue"><%= t('.min_8') %></span>
             </label>
             <input type="range"
                    name="maxGapMinutesInCity"
@@ -924,36 +909,13 @@
                    class="range range-sm"
                    data-action="input->maps--maplibre#updateMaxGapMinutesDisplay" />
             <div class="w-full flex justify-between text-xs px-2 mt-1">
-              <span>30min</span>
-              <span>195min</span>
-              <span>360min</span>
+              <span><%= t('.min_9') %></span>
+              <span><%= t('.min_10') %></span>
+              <span><%= t('.min_11') %></span>
             </div>
-            <p class="text-xs text-base-content/60 mt-1">Max gap between points before assuming you left the city</p>
+            <p class="text-xs text-base-content/60 mt-1"><%= t('.max_gap_between_points_before_assuming_you_left_the_city') %></p>
           </div>
 
-          <div class="divider"></div>
-
-          <!-- Visit Detection Settings -->
-          <div class="form-control w-full">
-            <label class="label">
-              <span class="label-text font-medium">Visit Max Gap</span>
-              <span class="label-text-alt" data-maps--maplibre-target="stayMaxGapMinutesValue">60 min</span>
-            </label>
-            <input type="range"
-                   name="stayMaxGapMinutes"
-                   min="5"
-                   max="720"
-                   step="5"
-                   value="60"
-                   class="range range-sm"
-                   data-action="input->maps--maplibre#updateStayMaxGapMinutesDisplay" />
-            <div class="w-full flex justify-between text-xs px-2 mt-1">
-              <span>5min</span>
-              <span>360min</span>
-              <span>720min</span>
-            </div>
-            <p class="text-xs text-base-content/60 mt-1">Max time gap between points within one visit. Longer gaps (e.g. dead battery) split it into separate visits. Default 60.</p>
-          </div>
             </div>
           </details>
 
@@ -961,7 +923,7 @@
             <summary class="collapse-title font-medium min-h-0 cursor-pointer">
               <span class="flex items-center gap-2">
               <%= icon 'radio', class: 'h-4 w-4 opacity-70 shrink-0' %>
-              Live Mode
+              <%= t('.live_mode') %>
               </span>
             </summary>
             <div class="collapse-content space-y-4">
@@ -972,9 +934,9 @@
                      class="toggle toggle-primary"
                      data-action="change->maps--maplibre-realtime#toggleLiveMode"
                      data-maps--maplibre-realtime-target="liveModeToggle" />
-              <span class="label-text font-medium">Live Mode</span>
+              <span class="label-text font-medium"><%= t('.live_mode') %></span>
             </label>
-            <p class="text-sm text-base-content/60 mt-1">Show new points in real-time</p>
+            <p class="text-sm text-base-content/60 mt-1"><%= t('.show_new_points_in_real_time') %></p>
           </div>
             </div>
           </details>
@@ -982,7 +944,7 @@
           <!-- Update Button -->
           <button type="submit" class="btn btn-sm btn-primary btn-block">
             <%= icon 'save' %>
-            Apply Settings
+            <%= t('.apply_settings') %>
           </button>
 
           <!-- Reset Settings -->
@@ -990,7 +952,7 @@
                   class="btn btn-sm btn-outline btn-block"
                   data-action="click->maps--maplibre#resetSettings">
             <%= icon 'rotate-ccw' %>
-            Reset to Defaults
+            <%= t('.reset_to_defaults_2') %>
           </button>
 
           <div class="divider"></div>
@@ -1002,7 +964,7 @@
             <summary class="collapse-title font-medium min-h-0 cursor-pointer">
               <span class="flex items-center gap-2">
               <%= icon 'car', class: 'h-4 w-4 opacity-70 shrink-0' %>
-              Transportation Mode Detection
+              <%= t('.transportation_mode_detection') %>
               <span class="badge badge-outline badge-warning badge-sm tooltip tooltip-left ml-auto mr-1 self-center hidden" data-dirty-badge></span>
               </span>
             </summary>
@@ -1012,26 +974,25 @@
                    class="text-xs text-warning bg-warning/10 rounded p-2 mb-4 hidden"
                    data-maps--maplibre-target="transportationRecalculationAlert">
                 <span class="loading loading-spinner loading-xs"></span>
-                <span>Checking status...</span>
+                <span><%= t('.checking_status') %></span>
               </div>
 
               <!-- Locked Message -->
               <div role="alert"
                    class="text-xs text-info bg-info/10 rounded p-2 mb-4 hidden"
                    data-maps--maplibre-target="transportationLockedMessage">
-                <span>Settings are locked while recalculation is in progress.</span>
+                <span><%= t('.settings_are_locked_while_recalculation_is_in_progress') %></span>
               </div>
 
               <!-- Warning about recalculation -->
               <div class="text-xs text-warning bg-warning/10 rounded p-2 mb-4">
-                <strong>Note:</strong> Changing these thresholds will trigger a recalculation of transportation modes for all your tracks. This may take some time depending on how many tracks you have.
+                <strong><%= t('.note') %></strong> <%= t('.changing_these_thresholds_will_trigger_a_recalculation_of_transportation') %>
               </div>
 
               <fieldset class="form-control mb-4" data-testid="enabled-modes-fieldset">
-                <legend class="font-medium mb-1 text-sm">Detected modes</legend>
+                <legend class="font-medium mb-1 text-sm"><%= t('.detected_modes') %></legend>
                 <p class="text-xs text-base-content/60 mb-2">
-                  Disabled modes won't be detected. Existing tracks aren't affected
-                  until you press Re-classify below.
+                  <%= t('.disabled_modes_won_t_be_detected_existing_tracks_aren_t') %>
                 </p>
                 <div class="grid grid-cols-2 gap-1">
                   <% Track::TRANSPORTATION_MODES.keys.map(&:to_s).each do |mode| %>
@@ -1045,280 +1006,12 @@
                              data-action="change->maps--maplibre#markTransportationSettingsDirty"
                              data-testid="enabled-mode-<%= mode %>" />
                       <span class="text-sm">
-                        <%= mode_emoji(mode) %> <%= mode.titleize %>
+                        <%= mode_emoji(mode) %> <%= t("transportation_modes.#{mode}") %>
                       </span>
                     </label>
                   <% end %>
                 </div>
               </fieldset>
-
-              <!-- Expert Mode Toggle -->
-              <div class="form-control mb-4">
-                <label class="label cursor-pointer justify-start gap-3 py-1">
-                  <input type="checkbox"
-                         name="transportationExpertMode"
-                         class="toggle toggle-sm toggle-warning"
-                         data-dirty-ignore
-                         data-maps--maplibre-target="transportationExpertToggle"
-                         data-action="change->maps--maplibre#toggleTransportationExpertMode" />
-                  <span class="label-text text-sm">Expert Mode</span>
-                </label>
-                <p class="text-xs text-base-content/60 ml-14">Show advanced detection thresholds</p>
-              </div>
-
-              <!-- Basic Settings (always visible) -->
-              <div class="space-y-3" data-maps--maplibre-target="transportationBasicSettings">
-                <!-- Walking Max Speed -->
-                <div class="form-control w-full">
-                  <label class="label py-1">
-                    <span class="label-text text-sm">Walking max speed</span>
-                    <span class="label-text-alt" data-maps--maplibre-target="walkingMaxSpeedValue">7 km/h</span>
-                  </label>
-                  <input type="range"
-                         name="walkingMaxSpeed"
-                         min="3"
-                         max="15"
-                         step="1"
-                         value="7"
-                         class="range range-xs"
-                         data-maps--maplibre-target="walkingMaxSpeedInput"
-                         data-action="input->maps--maplibre#updateTransportationThresholdDisplay change->maps--maplibre#markTransportationSettingsDirty" />
-                  <div class="w-full flex justify-between text-xs px-1 mt-1 opacity-60">
-                    <span>3</span>
-                    <span>9</span>
-                    <span>15</span>
-                  </div>
-                </div>
-
-                <!-- Cycling Max Speed -->
-                <div class="form-control w-full">
-                  <label class="label py-1">
-                    <span class="label-text text-sm">Cycling max speed</span>
-                    <span class="label-text-alt" data-maps--maplibre-target="cyclingMaxSpeedValue">45 km/h</span>
-                  </label>
-                  <input type="range"
-                         name="cyclingMaxSpeed"
-                         min="20"
-                         max="70"
-                         step="5"
-                         value="45"
-                         class="range range-xs"
-                         data-maps--maplibre-target="cyclingMaxSpeedInput"
-                         data-action="input->maps--maplibre#updateTransportationThresholdDisplay change->maps--maplibre#markTransportationSettingsDirty" />
-                  <div class="w-full flex justify-between text-xs px-1 mt-1 opacity-60">
-                    <span>20</span>
-                    <span>45</span>
-                    <span>70</span>
-                  </div>
-                </div>
-
-                <!-- Driving Max Speed -->
-                <div class="form-control w-full">
-                  <label class="label py-1">
-                    <span class="label-text text-sm">Driving max speed</span>
-                    <span class="label-text-alt" data-maps--maplibre-target="drivingMaxSpeedValue">220 km/h</span>
-                  </label>
-                  <input type="range"
-                         name="drivingMaxSpeed"
-                         min="80"
-                         max="300"
-                         step="10"
-                         value="220"
-                         class="range range-xs"
-                         data-maps--maplibre-target="drivingMaxSpeedInput"
-                         data-action="input->maps--maplibre#updateTransportationThresholdDisplay change->maps--maplibre#markTransportationSettingsDirty" />
-                  <div class="w-full flex justify-between text-xs px-1 mt-1 opacity-60">
-                    <span>80</span>
-                    <span>190</span>
-                    <span>300</span>
-                  </div>
-                </div>
-
-                <!-- Flying Min Speed -->
-                <div class="form-control w-full">
-                  <label class="label py-1">
-                    <span class="label-text text-sm">Flying min speed</span>
-                    <span class="label-text-alt" data-maps--maplibre-target="flyingMinSpeedValue">150 km/h</span>
-                  </label>
-                  <input type="range"
-                         name="flyingMinSpeed"
-                         min="100"
-                         max="250"
-                         step="10"
-                         value="150"
-                         class="range range-xs"
-                         data-maps--maplibre-target="flyingMinSpeedInput"
-                         data-action="input->maps--maplibre#updateTransportationThresholdDisplay change->maps--maplibre#markTransportationSettingsDirty" />
-                  <div class="w-full flex justify-between text-xs px-1 mt-1 opacity-60">
-                    <span>100</span>
-                    <span>175</span>
-                    <span>250</span>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Expert Settings (hidden by default) -->
-              <div class="hidden space-y-3 mt-4" data-maps--maplibre-target="transportationExpertSettings">
-                <div class="divider text-xs my-2">Speed Thresholds</div>
-
-                <!-- Stationary Max Speed -->
-                <div class="form-control w-full">
-                  <label class="label py-1">
-                    <span class="label-text text-sm">Stationary max speed</span>
-                    <span class="label-text-alt" data-maps--maplibre-target="stationaryMaxSpeedValue">1 km/h</span>
-                  </label>
-                  <input type="range"
-                         name="stationaryMaxSpeed"
-                         min="0.5"
-                         max="5"
-                         step="0.5"
-                         value="1"
-                         class="range range-xs"
-                         data-maps--maplibre-target="stationaryMaxSpeedInput"
-                         data-action="input->maps--maplibre#updateTransportationThresholdDisplay change->maps--maplibre#markTransportationSettingsDirty" />
-                  <div class="w-full flex justify-between text-xs px-1 mt-1 opacity-60">
-                    <span>0.5</span>
-                    <span>2.5</span>
-                    <span>5</span>
-                  </div>
-                </div>
-
-                <!-- Train Min Speed -->
-                <div class="form-control w-full">
-                  <label class="label py-1">
-                    <span class="label-text text-sm">Train min speed</span>
-                    <span class="label-text-alt" data-maps--maplibre-target="trainMinSpeedValue">80 km/h</span>
-                  </label>
-                  <input type="range"
-                         name="trainMinSpeed"
-                         min="50"
-                         max="150"
-                         step="10"
-                         value="80"
-                         class="range range-xs"
-                         data-maps--maplibre-target="trainMinSpeedInput"
-                         data-action="input->maps--maplibre#updateTransportationThresholdDisplay change->maps--maplibre#markTransportationSettingsDirty" />
-                  <div class="w-full flex justify-between text-xs px-1 mt-1 opacity-60">
-                    <span>50</span>
-                    <span>100</span>
-                    <span>150</span>
-                  </div>
-                </div>
-
-                <div class="divider text-xs my-2">Acceleration Thresholds</div>
-
-                <!-- Running vs Cycling Acceleration -->
-                <div class="form-control w-full">
-                  <label class="label py-1">
-                    <span class="label-text text-sm">Running vs cycling accel</span>
-                    <span class="label-text-alt" data-maps--maplibre-target="runningVsCyclingAccelValue">0.25 m/s²</span>
-                  </label>
-                  <input type="range"
-                         name="runningVsCyclingAccel"
-                         min="0.1"
-                         max="0.8"
-                         step="0.05"
-                         value="0.25"
-                         class="range range-xs"
-                         data-maps--maplibre-target="runningVsCyclingAccelInput"
-                         data-action="input->maps--maplibre#updateTransportationThresholdDisplay change->maps--maplibre#markTransportationSettingsDirty" />
-                  <div class="w-full flex justify-between text-xs px-1 mt-1 opacity-60">
-                    <span>0.1</span>
-                    <span>0.45</span>
-                    <span>0.8</span>
-                  </div>
-                </div>
-
-                <!-- Cycling vs Driving Acceleration -->
-                <div class="form-control w-full">
-                  <label class="label py-1">
-                    <span class="label-text text-sm">Cycling vs driving accel</span>
-                    <span class="label-text-alt" data-maps--maplibre-target="cyclingVsDrivingAccelValue">0.4 m/s²</span>
-                  </label>
-                  <input type="range"
-                         name="cyclingVsDrivingAccel"
-                         min="0.2"
-                         max="1.0"
-                         step="0.05"
-                         value="0.4"
-                         class="range range-xs"
-                         data-maps--maplibre-target="cyclingVsDrivingAccelInput"
-                         data-action="input->maps--maplibre#updateTransportationThresholdDisplay change->maps--maplibre#markTransportationSettingsDirty" />
-                  <div class="w-full flex justify-between text-xs px-1 mt-1 opacity-60">
-                    <span>0.2</span>
-                    <span>0.6</span>
-                    <span>1.0</span>
-                  </div>
-                </div>
-
-                <div class="divider text-xs my-2">Segment Detection</div>
-
-                <!-- Min Segment Duration -->
-                <div class="form-control w-full">
-                  <label class="label py-1">
-                    <span class="label-text text-sm">Min segment duration</span>
-                    <span class="label-text-alt" data-maps--maplibre-target="minSegmentDurationValue">60 sec</span>
-                  </label>
-                  <input type="range"
-                         name="minSegmentDuration"
-                         min="10"
-                         max="180"
-                         step="10"
-                         value="60"
-                         class="range range-xs"
-                         data-maps--maplibre-target="minSegmentDurationInput"
-                         data-action="input->maps--maplibre#updateTransportationThresholdDisplay change->maps--maplibre#markTransportationSettingsDirty" />
-                  <div class="w-full flex justify-between text-xs px-1 mt-1 opacity-60">
-                    <span>10s</span>
-                    <span>95s</span>
-                    <span>180s</span>
-                  </div>
-                </div>
-
-                <!-- Time Gap Threshold -->
-                <div class="form-control w-full">
-                  <label class="label py-1">
-                    <span class="label-text text-sm">Time gap threshold</span>
-                    <span class="label-text-alt" data-maps--maplibre-target="timeGapThresholdValue">180 sec</span>
-                  </label>
-                  <input type="range"
-                         name="timeGapThreshold"
-                         min="30"
-                         max="600"
-                         step="30"
-                         value="180"
-                         class="range range-xs"
-                         data-maps--maplibre-target="timeGapThresholdInput"
-                         data-action="input->maps--maplibre#updateTransportationThresholdDisplay change->maps--maplibre#markTransportationSettingsDirty" />
-                  <div class="w-full flex justify-between text-xs px-1 mt-1 opacity-60">
-                    <span>30s</span>
-                    <span>315s</span>
-                    <span>600s</span>
-                  </div>
-                </div>
-
-                <!-- Min Flight Distance -->
-                <div class="form-control w-full">
-                  <label class="label py-1">
-                    <span class="label-text text-sm">Min flight distance</span>
-                    <span class="label-text-alt" data-maps--maplibre-target="minFlightDistanceValue">100 km</span>
-                  </label>
-                  <input type="range"
-                         name="minFlightDistanceKm"
-                         min="20"
-                         max="300"
-                         step="10"
-                         value="100"
-                         class="range range-xs"
-                         data-maps--maplibre-target="minFlightDistanceInput"
-                         data-action="input->maps--maplibre#updateTransportationThresholdDisplay change->maps--maplibre#markTransportationSettingsDirty" />
-                  <div class="w-full flex justify-between text-xs px-1 mt-1 opacity-60">
-                    <span>20</span>
-                    <span>160</span>
-                    <span>300</span>
-                  </div>
-                </div>
-              </div>
 
               <!-- Apply Button -->
               <div class="mt-4 pt-4 border-t border-base-300">
@@ -1327,11 +1020,11 @@
                         data-maps--maplibre-target="transportationApplyButton"
                         data-action="click->maps--maplibre#applyTransportationSettings"
                         disabled>
-                  Apply Settings
+                  <%= t('.apply_settings') %>
                 </button>
                 <p class="text-xs text-base-content/60 mt-2 text-center"
                    data-maps--maplibre-target="transportationDirtyMessage">
-                  Make changes to enable the Apply button
+                  <%= t('.make_changes_to_enable_the_apply_button') %>
                 </p>
               </div>
 
@@ -1341,7 +1034,7 @@
                     here, so any controls placed inside this <details> or after this
                     block are orphaned from outer-form submission. Keep the outer
                     submit button BEFORE the Transportation Mode <details>. %>
-                <%= button_to 'Re-classify my history',
+                <%= button_to t('.re_classify_my_history'),
                               tracks_recalculation_path,
                               method: :post,
                               disabled: Tracks::TransportationRecalculationStatus.new(current_user.id).in_progress?,
@@ -1349,8 +1042,7 @@
                               form: { data: { turbo_frame: '_top' } },
                               data: { testid: 'reclassify-history-button' } %>
                 <p class="text-xs text-base-content/60 mt-1">
-                  Re-runs auto-classification across all your tracks. Manually-corrected
-                  segments are kept. May take several minutes.
+                  <%= t('.re_runs_auto_classification_across_all_your_tracks_manually_corrected') %>
                 </p>
               </div>
             </div>
@@ -1367,40 +1059,19 @@
             <turbo-frame id="timeline-calendar-frame"
                          src="<%= calendar_map_timeline_feeds_path(month: initial_calendar_month(current_user)) %>"
                          loading="lazy">
-              <div class="text-center text-base-content/60 py-4 text-sm">Loading calendar…</div>
+              <div class="text-center text-base-content/60 py-4 text-sm"><%= t('.loading_calendar') %></div>
             </turbo-frame>
 
             <%# Heat legend %>
             <div class="timeline-rail__heat-legend">
-              <span>less</span>
+              <span><%= t('.less') %></span>
               <span class="heat-swatch heat-0"></span>
               <span class="heat-swatch heat-1"></span>
               <span class="heat-swatch heat-2"></span>
               <span class="heat-swatch heat-3"></span>
               <span class="heat-swatch heat-4"></span>
               <span class="heat-swatch heat-5"></span>
-              <span>more</span>
-            </div>
-
-            <%# Filter with counts %>
-            <div class="timeline-rail__section">
-              <div class="timeline-rail__section-label">Filter</div>
-              <label class="timeline-filter-row">
-                <input type="checkbox" class="checkbox checkbox-xs checkbox-success"
-                       data-status="confirmed" data-testid="filter-confirmed"
-                       data-action="change->timeline-feed#filterChanged" checked />
-                <span class="flex-1">Confirmed</span>
-                <%= render 'map/timeline_feeds/filter_count',
-                           status: 'confirmed', count: @status_counts&.dig('confirmed').to_i %>
-              </label>
-              <label class="timeline-filter-row">
-                <input type="checkbox" class="checkbox checkbox-xs checkbox-warning"
-                       data-status="suggested" data-testid="filter-suggested"
-                       data-action="change->timeline-feed#filterChanged" checked />
-                <span class="flex-1">Suggested</span>
-                <%= render 'map/timeline_feeds/filter_count',
-                           status: 'suggested', count: @status_counts&.dig('suggested').to_i %>
-              </label>
+              <span><%= t('.more') %></span>
             </div>
 
             <%# Search — filters the currently loaded day's visit rows by
@@ -1413,7 +1084,7 @@
               <%= icon 'search',
                        class: 'h-4 w-4 opacity-50 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none' %>
               <input type="text"
-                     placeholder="Search visits, places…"
+                     placeholder="<%= t('.search_visits_places') %>"
                      class="input input-sm input-bordered w-full pl-8"
                      autocomplete="off"
                      data-timeline-feed-target="searchInput"
@@ -1427,12 +1098,12 @@
             <% if @timeline_tags&.any? %>
               <div class="timeline-rail__section">
                 <div class="timeline-rail__section-header">
-                  <span class="timeline-rail__section-label">Tags</span>
-                  <%= link_to 'Manage', tags_path,
+                  <span class="timeline-rail__section-label"><%= t('.tags') %></span>
+                  <%= link_to t('.manage'), tags_path,
                               class: 'timeline-rail__section-link',
                               target: '_blank',
                               rel: 'noopener',
-                              title: 'Manage tags in a new tab',
+                              title: t('.manage_tags_in_a_new_tab'),
                               data: { testid: 'tags-manage-link' } %>
                 </div>
                 <div class="timeline-rail__tags">
@@ -1456,7 +1127,7 @@
           <div class="timeline-main">
             <turbo-frame id="timeline-feed-frame" data-timeline-feed-target="visitListFrame">
               <div class="timeline-main__empty">
-                Pick a day in the calendar to see visits.
+                <%= t('.pick_a_day_in_the_calendar_to_see_visits') %>
               </div>
             </turbo-frame>
           </div>
@@ -1472,14 +1143,14 @@
                     class="btn btn-sm btn-outline flex flex-col items-center gap-1 h-auto py-3"
                     data-action="click->maps--maplibre#startCreateVisit">
               <%= icon 'map-pin-check' %>
-              <span class="text-xs">Create Visit</span>
+              <span class="text-xs"><%= t('.create_visit') %></span>
             </button>
 
             <button type="button"
                     class="btn btn-sm btn-outline flex flex-col items-center gap-1 h-auto py-3"
                     data-action="click->maps--maplibre#startCreatePlace">
               <%= icon 'map-pin-plus' %>
-              <span class="text-xs">Create Place</span>
+              <span class="text-xs"><%= t('.create_place') %></span>
             </button>
 
             <button type="button"
@@ -1487,38 +1158,29 @@
                     data-maps--maplibre-target="selectAreaButton"
                     data-action="click->maps--maplibre#startSelectArea">
               <%= icon 'square-dashed-mouse-pointer' %>
-              <span class="text-xs">Select Area</span>
+              <span class="text-xs"><%= t('.select_area') %></span>
             </button>
 
             <button type="button"
                     class="btn btn-sm btn-outline flex flex-col items-center gap-1 h-auto py-3"
                     data-action="click->maps--maplibre#startCreateArea">
               <%= icon 'circle-plus' %>
-              <span class="text-xs">Create Area</span>
+              <span class="text-xs"><%= t('.create_area') %></span>
             </button>
 
             <button type="button"
                     class="btn btn-sm btn-outline flex flex-col items-center gap-1 h-auto py-3"
                     data-action="click->maps--maplibre#toggleReplay">
               <%= icon 'clock' %>
-              <span class="text-xs">Replay</span>
+              <span class="text-xs"><%= t('.replay') %></span>
             </button>
-
-            <% if current_user.full_access? %>
-              <button type="button"
-                      class="btn btn-sm btn-outline flex flex-col items-center gap-1 h-auto py-3"
-                      onclick="document.dispatchEvent(new CustomEvent('residency:open'))">
-                <%= icon 'calendar-range' %>
-                <span class="text-xs">Days / Country</span>
-              </button>
-            <% end %>
 
             <% if current_user.immich_integration_configured? && current_user.full_access? %>
               <button type="button"
                       class="btn btn-sm btn-outline flex flex-col items-center gap-1 h-auto py-3"
                       id="immich-enrich-toggle-btn">
                 <%= icon 'camera' %>
-                <span class="text-xs">Enrich Photos</span>
+                <span class="text-xs"><%= t('.enrich_photos') %></span>
               </button>
             <% end %>
           </div>
@@ -1535,9 +1197,9 @@
                   <div class="flex justify-between items-center mb-3">
                     <h4 class="card-title text-sm gap-2">
                       <%= icon 'camera', class: 'w-4 h-4 text-primary' %>
-                      Enrich Photos
+                      <%= t('.enrich_photos') %>
                     </h4>
-                    <button class="btn btn-ghost btn-xs btn-circle" data-action="click->maps--immich-enrich#toggle" title="Close">
+                    <button class="btn btn-ghost btn-xs btn-circle" data-action="click->maps--immich-enrich#toggle" title="<%= t('.close') %>">
                       <%= icon 'x', class: 'w-3 h-3' %>
                     </button>
                   </div>
@@ -1545,20 +1207,20 @@
                   <!-- Scan Form -->
                   <div data-maps--immich-enrich-target="scanForm">
                     <p class="text-xs text-base-content/60 mb-3">
-                      Match Immich photos without GPS to your location history.
+                      <%= t('.match_immich_photos_without_gps_to_your_location_history') %>
                     </p>
                     <div class="space-y-3">
                       <div class="grid grid-cols-2 gap-2">
                         <div class="form-control">
                           <label class="label py-0.5">
-                            <span class="label-text text-xs">From</span>
+                            <span class="label-text text-xs"><%= t('.from') %></span>
                           </label>
                           <input type="date" class="input input-bordered input-sm"
                                  data-maps--immich-enrich-target="startDate">
                         </div>
                         <div class="form-control">
                           <label class="label py-0.5">
-                            <span class="label-text text-xs">To</span>
+                            <span class="label-text text-xs"><%= t('.to') %></span>
                           </label>
                           <input type="date" class="input input-bordered input-sm"
                                  data-maps--immich-enrich-target="endDate">
@@ -1566,7 +1228,7 @@
                       </div>
                       <div class="form-control">
                         <label class="label py-0.5">
-                          <span class="label-text text-xs">Tolerance (minutes)</span>
+                          <span class="label-text text-xs"><%= t('.tolerance_minutes') %></span>
                         </label>
                         <input type="number" value="30" min="1" max="120"
                                class="input input-bordered input-sm"
@@ -1576,7 +1238,7 @@
                               data-action="click->maps--immich-enrich#scan"
                               data-maps--immich-enrich-target="scanButton">
                         <%= icon 'search', class: 'w-4 h-4' %>
-                        Scan for matches
+                        <%= t('.scan_for_matches') %>
                       </button>
                     </div>
                   </div>
@@ -1584,7 +1246,7 @@
                   <!-- Loading -->
                   <div class="hidden text-center py-6" data-maps--immich-enrich-target="loading">
                     <span class="loading loading-spinner loading-md text-primary"></span>
-                    <p class="text-xs text-base-content/60 mt-2" data-maps--immich-enrich-target="loadingText">Scanning Immich photos...</p>
+                    <p class="text-xs text-base-content/60 mt-2" data-maps--immich-enrich-target="loadingText"><%= t('.scanning_immich_photos') %></p>
                   </div>
 
                   <!-- Results -->
@@ -1592,7 +1254,7 @@
                     <div class="flex justify-between items-center mb-2">
                       <div class="text-xs font-medium text-base-content/70" data-maps--immich-enrich-target="resultsSummary"></div>
                       <label class="label cursor-pointer gap-1.5 py-0">
-                        <span class="label-text text-xs">All</span>
+                        <span class="label-text text-xs"><%= t('.all') %></span>
                         <input type="checkbox" class="checkbox checkbox-xs checkbox-primary" checked
                                data-action="change->maps--immich-enrich#toggleSelectAll"
                                data-maps--immich-enrich-target="selectAll">
@@ -1606,12 +1268,12 @@
                       <button class="btn btn-ghost btn-sm flex-1"
                               data-action="click->maps--immich-enrich#backToScan">
                         <%= icon 'arrow-left', class: 'w-3 h-3' %>
-                        Back
+                        <%= t('.back') %>
                       </button>
                       <button class="btn btn-primary btn-sm flex-1"
                               data-action="click->maps--immich-enrich#enrich"
                               data-maps--immich-enrich-target="enrichButton">
-                        Enrich
+                        <%= t('.enrich') %>
                       </button>
                     </div>
                   </div>
@@ -1626,7 +1288,7 @@
               <div class="card-body p-4">
                 <div class="flex justify-between items-start mb-2">
                   <h4 class="card-title text-base" data-maps--maplibre-target="infoTitle"></h4>
-                  <button class="btn btn-ghost btn-xs btn-circle" data-action="click->maps--maplibre#closeInfo" title="Close">✕</button>
+                  <button class="btn btn-ghost btn-xs btn-circle" data-action="click->maps--maplibre#closeInfo" title="<%= t('.close') %>">✕</button>
                 </div>
                 <div class="space-y-2 text-sm" data-maps--maplibre-target="infoContent">
                   <!-- Content will be dynamically inserted -->
@@ -1642,27 +1304,27 @@
           <template data-maps--maplibre-target="routeInfoTemplate">
             <div class="space-y-2">
               <div>
-                <span class="font-semibold">Start:</span>
+                <span class="font-semibold"><%= t('.start') %></span>
                 <span data-maps--maplibre-target="routeStartTime"></span>
               </div>
               <div>
-                <span class="font-semibold">End:</span>
+                <span class="font-semibold"><%= t('.end') %></span>
                 <span data-maps--maplibre-target="routeEndTime"></span>
               </div>
               <div>
-                <span class="font-semibold">Duration:</span>
+                <span class="font-semibold"><%= t('.duration') %></span>
                 <span data-maps--maplibre-target="routeDuration"></span>
               </div>
               <div>
-                <span class="font-semibold">Distance:</span>
+                <span class="font-semibold"><%= t('.distance') %></span>
                 <span data-maps--maplibre-target="routeDistance"></span>
               </div>
               <div data-maps--maplibre-target="routeSpeedContainer">
-                <span class="font-semibold">Avg Speed:</span>
+                <span class="font-semibold"><%= t('.avg_speed') %></span>
                 <span data-maps--maplibre-target="routeSpeed"></span>
               </div>
               <div>
-                <span class="font-semibold">Points:</span>
+                <span class="font-semibold"><%= t('.points_2') %></span>
                 <span data-maps--maplibre-target="routePoints"></span>
               </div>
             </div>
@@ -1676,7 +1338,7 @@
                       data-action="click->maps--maplibre#deleteSelectedPoints"
                       data-maps--maplibre-target="deletePointsButton">
                 <%= icon 'trash-2' %>
-                <span data-maps--maplibre-target="deleteButtonText">Delete Selected Points</span>
+                <span data-maps--maplibre-target="deleteButtonText"><%= t('.delete_selected_points') %></span>
               </button>
 
               <button type="button"
@@ -1684,7 +1346,7 @@
                       data-action="click->maps--maplibre#deleteSelectedAnomalies"
                       data-maps--maplibre-target="deleteAnomaliesButton">
                 <%= icon 'trash-2' %>
-                <span data-maps--maplibre-target="deleteAnomaliesButtonText">Delete Anomaly Points</span>
+                <span data-maps--maplibre-target="deleteAnomaliesButtonText"><%= t('.delete_anomaly_points') %></span>
               </button>
             <% end %>
 
@@ -1707,12 +1369,12 @@
           <div class="space-y-6">
             <!-- Community Section -->
             <div>
-              <h4 class="font-semibold text-base mb-3">Community</h4>
+              <h4 class="font-semibold text-base mb-3"><%= t('.community') %></h4>
               <div class="flex flex-col gap-2">
-                <a href="https://discord.gg/pHsBjpt5J8" target="_blank" class="link-hover text-sm">Discord</a>
+                <a href="https://discord.gg/pHsBjpt5J8" target="_blank" class="link-hover text-sm"><%= t('.discord') %></a>
                 <a href="https://x.com/freymakesstuff" target="_blank" class="link-hover text-sm">X</a>
-                <a href="https://github.com/Freika/dawarich" target="_blank" class="link-hover text-sm">Github</a>
-                <a href="https://mastodon.social/@dawarich" target="_blank" class="link-hover text-sm">Mastodon</a>
+                <a href="https://github.com/Freika/dawarich" target="_blank" class="link-hover text-sm"><%= t('.github') %></a>
+                <a href="https://mastodon.social/@dawarich" target="_blank" class="link-hover text-sm"><%= t('.mastodon') %></a>
               </div>
             </div>
 
@@ -1720,13 +1382,13 @@
 
             <!-- Docs Section -->
             <div>
-              <h4 class="font-semibold text-base mb-3">Docs</h4>
+              <h4 class="font-semibold text-base mb-3"><%= t('.docs') %></h4>
               <div class="flex flex-col gap-2">
-                <a href="https://dawarich.app/docs/intro" target="_blank" class="link-hover text-sm">Tutorial</a>
-                <a href="https://dawarich.app/docs/tutorials/import-existing-data" target="_blank" class="link-hover text-sm">Import existing data</a>
-                <a href="https://dawarich.app/docs/tutorials/export-your-data" target="_blank" class="link-hover text-sm">Exporting data</a>
-                <a href="https://dawarich.app/docs/FAQ" target="_blank" class="link-hover text-sm">FAQ</a>
-                <a href="https://dawarich.app/contact" target="_blank" class="link-hover text-sm">Contact</a>
+                <a href="https://dawarich.app/docs/intro" target="_blank" class="link-hover text-sm"><%= t('.tutorial') %></a>
+                <a href="https://dawarich.app/docs/tutorials/import-existing-data" target="_blank" class="link-hover text-sm"><%= t('.import_existing_data') %></a>
+                <a href="https://dawarich.app/docs/tutorials/export-your-data" target="_blank" class="link-hover text-sm"><%= t('.exporting_data') %></a>
+                <a href="https://dawarich.app/docs/FAQ" target="_blank" class="link-hover text-sm"><%= t('.faq') %></a>
+                <a href="https://dawarich.app/contact" target="_blank" class="link-hover text-sm"><%= t('.contact') %></a>
               </div>
             </div>
 
@@ -1734,13 +1396,13 @@
 
             <!-- More Section -->
             <div>
-              <h4 class="font-semibold text-base mb-3">More</h4>
+              <h4 class="font-semibold text-base mb-3"><%= t('.more_2') %></h4>
               <div class="flex flex-col gap-2">
-                <a href="https://dawarich.app/privacy-policy" target="_blank" class="link-hover text-sm">Privacy policy</a>
-                <a href="https://dawarich.app/terms-and-conditions" target="_blank" class="link-hover text-sm">Terms and Conditions</a>
-                <a href="https://dawarich.app/refund-policy" target="_blank" class="link-hover text-sm">Refund policy</a>
-                <a href="https://dawarich.app/impressum" target="_blank" class="link-hover text-sm">Impressum</a>
-                <a href="https://dawarich.app/blog" target="_blank" class="link-hover text-sm">Blog</a>
+                <a href="https://dawarich.app/privacy-policy" target="_blank" class="link-hover text-sm"><%= t('.privacy_policy') %></a>
+                <a href="https://dawarich.app/terms-and-conditions" target="_blank" class="link-hover text-sm"><%= t('.terms_and_conditions') %></a>
+                <a href="https://dawarich.app/refund-policy" target="_blank" class="link-hover text-sm"><%= t('.refund_policy') %></a>
+                <a href="https://dawarich.app/impressum" target="_blank" class="link-hover text-sm"><%= t('.impressum') %></a>
+                <a href="https://dawarich.app/blog" target="_blank" class="link-hover text-sm"><%= t('.blog') %></a>
               </div>
             </div>
           </div>
@@ -1750,4 +1412,3 @@
     </div>
   </div>
 </div>
-

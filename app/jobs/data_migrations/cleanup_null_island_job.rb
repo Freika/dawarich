@@ -10,7 +10,9 @@ class DataMigrations::CleanupNullIslandJob < ApplicationJob
 
     rows = user.points.null_island.pluck(:id, :timestamp, :track_id)
     track_ids = rows.filter_map(&:last).uniq
-    affected_months = rows.map do |_, timestamp, _|
+    affected_months = rows.filter_map do |_, timestamp, _|
+      next if timestamp.nil?
+
       time = Time.zone.at(timestamp)
       [time.year, time.month]
     end.uniq

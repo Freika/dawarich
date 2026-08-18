@@ -12,7 +12,8 @@ class Api::V1::Owntracks::PointsController < ApiController
     Rails.logger.error("Point creation failed: #{e.class}: #{e.message}")
     Sentry.capture_exception(e) if defined?(Sentry)
 
-    render json: { error: 'Point creation failed' }, status: :internal_server_error
+    render json: { error: I18n.t('controllers.api.v1.owntracks.points.point_creation_failed') },
+           status: :internal_server_error
   end
 
   private

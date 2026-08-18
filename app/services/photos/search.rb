@@ -103,11 +103,11 @@ class Photos::Search
   end
 
   def request_photoprism
-    Photoprism::RequestPhotos.new(
-      user,
-      start_date: start_date,
-      end_date: end_date
-    ).call.map { |asset| transform_asset(asset, 'photoprism') }.compact
+    service = Photoprism::RequestPhotos.new(user, start_date: start_date, end_date: end_date)
+    assets = service.call
+    errors << :photoprism if service.connection_failed?
+
+    assets.map { |asset| transform_asset(asset, 'photoprism') }.compact
   end
 
   def transform_asset(asset, source)

@@ -23,17 +23,18 @@ class Api::V1::DigestsController < ApiController
     year = params[:year].to_i
 
     unless valid_year?(year)
-      render json: { error: 'Invalid year' }, status: :unprocessable_entity
+      render json: { error: I18n.t('controllers.api.v1.digests.invalid_year') }, status: :unprocessable_entity
       return
     end
 
     if current_api_user.digests.yearly.exists?(year: year)
-      render json: { error: 'Digest already exists' }, status: :conflict
+      render json: { error: I18n.t('controllers.api.v1.digests.digest_already_exists') }, status: :conflict
       return
     end
 
     Users::Digests::Yearly::CalculatingJob.perform_later(current_api_user.id, year)
-    render json: { message: "Digest for #{year} is being generated" }, status: :accepted
+    render json: { message: I18n.t('controllers.api.v1.digests.digest_for_year_is_being_generated', year: year) },
+           status: :accepted
   end
 
   def destroy
