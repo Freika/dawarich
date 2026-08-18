@@ -703,6 +703,18 @@ export class EventHandlers {
         await this.controller.api.fetchTrackWithSegments(trackId)
       if (!trackFeature) return
 
+      // A click on an MVT track passes a per-tile fragment whose geometry is
+      // clipped and extent-quantized — useless for segment slicing. The fetch
+      // above returns the real linestring; prefer it for every visual.
+      const displayFeature = trackFeature.geometry ? trackFeature : fullFeature
+      if (displayFeature !== fullFeature) {
+        this.selectedTrackFeature = displayFeature
+        const highlightLayer = this.controller.layerManager.getLayer("tracks")
+        if (highlightLayer?.setSelectedTrack) {
+          highlightLayer.setSelectedTrack(displayFeature)
+        }
+      }
+
       let segments = []
       try {
         const props = trackFeature.properties
@@ -716,7 +728,7 @@ export class EventHandlers {
 
       const tracksLayer = this.controller.layerManager.getLayer("tracks")
       if (tracksLayer?.showSegments) {
-        tracksLayer.showSegments(fullFeature, segments)
+        tracksLayer.showSegments(displayFeature, segments)
         tracksLayer.setSegmentHoverCallback((segmentIndex) => {
           this._highlightSegmentOnMap(segmentIndex)
           this._dispatchSegmentHover(trackId, segments[segmentIndex]?.id)
@@ -727,7 +739,7 @@ export class EventHandlers {
         })
       }
 
-      this._createTrackSegmentMarkers(trackId, fullFeature, segments)
+      this._createTrackSegmentMarkers(trackId, displayFeature, segments)
     } catch (error) {
       console.error("Failed to load track segments:", error)
     }

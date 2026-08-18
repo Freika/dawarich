@@ -28,14 +28,21 @@ export class RoutesManager {
   async toggleRoutes(event) {
     const element = event.currentTarget
     const visible = element.checked
+    const tiled = tiledPointsActive(SettingsManager.getSettings())
 
-    if (visible) {
+    // Tiled mode serves Routes from track tiles — no bulk point set needed.
+    if (visible && !tiled) {
       await this.controller.mapDataManager.ensurePointsLoaded()
+    }
+
+    const tracksMvtLayer = this.layerManager.getLayer("tracks-mvt")
+    if (tiled && tracksMvtLayer) {
+      tracksMvtLayer.setModes({ routesVisible: visible })
     }
 
     const routesLayer = this.layerManager.getLayer("routes")
     if (routesLayer) {
-      routesLayer.toggle(visible)
+      routesLayer.toggle(visible && !tiled)
     }
 
     if (this.controller.hasRoutesOptionsTarget) {
@@ -61,6 +68,16 @@ export class RoutesManager {
         "hidden",
         !enabled,
       )
+    }
+
+    if (tiledPointsActive(SettingsManager.getSettings())) {
+      // Per-track approximation on the tile layer; no bulk routes to rebuild.
+      const tracksMvtLayer = this.layerManager.getLayer("tracks-mvt")
+      tracksMvtLayer?.setSpeedColoring(
+        enabled,
+        SettingsManager.getSetting("speedColorScale"),
+      )
+      return
     }
 
     await this.reloadRoutes()
@@ -541,6 +558,14 @@ export class RoutesManager {
   async toggleTracks(event) {
     const enabled = event.target.checked
     SettingsManager.updateSetting("tracksEnabled", enabled)
+
+    // Tiled mode serves tracks from tiles; the lazy bulk fetch below would
+    // download the same geometry a second time.
+    if (tiledPointsActive(SettingsManager.getSettings())) {
+      const tracksMvtLayer = this.layerManager.getLayer("tracks-mvt")
+      if (tracksMvtLayer) tracksMvtLayer.setModes({ tracksEnabled: enabled })
+      return
+    }
 
     try {
       const tracksLayer = this.layerManager.getLayer("tracks")

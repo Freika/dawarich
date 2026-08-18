@@ -16,6 +16,7 @@ import { RecentPointLayer } from "maps_maplibre/layers/recent_point_layer"
 import { ReplayMarkerLayer } from "maps_maplibre/layers/replay_marker_layer"
 import { RoutesLayer } from "maps_maplibre/layers/routes_layer"
 import { TracksLayer } from "maps_maplibre/layers/tracks_layer"
+import { TracksMvtLayer } from "maps_maplibre/layers/tracks_mvt_layer"
 import { VisitsLayer } from "maps_maplibre/layers/visits_layer"
 import { isGatedPlan } from "maps_maplibre/utils/layer_gate"
 import { lazyLoader } from "maps_maplibre/utils/lazy_loader"
@@ -78,6 +79,7 @@ export class LayerManager {
 
     this._addFamilyLayer()
     this._addAnomaliesLayer()
+    this._addTracksMvtLayer()
     this._addPointsMvtLayer()
     this._addPointsLayer(pointsGeoJSON)
     this._addRoutesHitLayer() // Add hit target layer after points, will be on top visually
@@ -113,6 +115,15 @@ export class LayerManager {
 
     // Track click handler (debug mode for segment visualization)
     this.map.on("click", "tracks", handlers.handleTrackClick)
+    // MVT track fragments carry the same id property; the click flow fetches
+    // the full geometry by id, so a clipped fragment is a valid entry point.
+    this.map.on("click", "tracks-mvt", handlers.handleTrackClick)
+    this.map.on("mouseenter", "tracks-mvt", () => {
+      this.map.getCanvas().style.cursor = "pointer"
+    })
+    this.map.on("mouseleave", "tracks-mvt", () => {
+      this.map.getCanvas().style.cursor = ""
+    })
 
     // Route handlers - use routes-hit layer for better interactivity
     this.map.on("click", "routes-hit", handlers.handleRouteClick)
@@ -248,9 +259,9 @@ export class LayerManager {
   updatePointTileRange(startAt, endAt) {
     this.pointTileRange = { startAt, endAt }
 
-    const layer = this.getLayer("points-mvt")
-    if (layer) {
-      layer.update(this.pointTileRange)
+    for (const layerName of ["points-mvt", "tracks-mvt"]) {
+      const layer = this.getLayer(layerName)
+      if (layer) layer.update(this.pointTileRange)
     }
   }
 
@@ -269,6 +280,8 @@ export class LayerManager {
     // Same reason: the tile-error listener is on the map, so an orphaned layer
     // keeps reporting and the replacement adds a second one.
     this.layers.pointsMvtLayer?._unwatchTileErrors()
+    this.layers.tracksMvtLayer?._unwatchTileErrors()
+    this.layers.tracksMvtLayer?._unwatchEmptyTracks()
     this.layers = {}
     this.eventHandlersSetup = false
   }
@@ -476,6 +489,33 @@ export class LayerManager {
       this.layers.pointsLayer.add(pointsGeoJSON)
     } else {
       this.layers.pointsLayer.update(pointsGeoJSON)
+    }
+  }
+
+  // Serves BOTH the Tracks and Routes toggles under tiled mode; added below
+  // the points layers so circles stay on top of track lines.
+  _addTracksMvtLayer() {
+    const settings = SettingsManager.getSettings()
+    const tiled = tiledPointsActive(settings)
+    if (!this.layers.tracksMvtLayer) {
+      this.layers.tracksMvtLayer = new TracksMvtLayer(this.map, {
+        tracksEnabled: tiled && this.settings.tracksEnabled === true,
+        routesVisible: tiled && this.settings.routesVisible !== false,
+        trackColor: SettingsManager.getSetting("trackColor"),
+        routeColor: SettingsManager.getSetting("routeColor"),
+        routeOpacity: SettingsManager.getSetting("routeOpacity"),
+        speedColoredRoutes:
+          SettingsManager.getSetting("speedColoredRoutes") === true,
+        speedColorScale: SettingsManager.getSetting("speedColorScale"),
+        apiKey: this.apiKey,
+        onTileError: () => Toast.error(translate("map.tiled_rendering.failed")),
+        onEmptyTracks: () =>
+          Toast.info(translate("map.tiled_rendering.tracks_pending")),
+        ...this.pointTileRange,
+      })
+      this.layers.tracksMvtLayer.add(this.pointTileRange)
+    } else {
+      this.layers.tracksMvtLayer.update(this.pointTileRange)
     }
   }
 

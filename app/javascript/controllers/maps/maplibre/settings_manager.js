@@ -900,6 +900,10 @@ export class SettingsController {
       this.map.setPaintProperty("routes", "line-opacity", opacity)
     }
 
+    // Under tiled mode the slider drives the track-tile line instead of
+    // silently no-oping against the unpopulated classic layer.
+    this.layerManager.getLayer("tracks-mvt")?.setRouteOpacity(opacity)
+
     SettingsManager.updateSetting("routeOpacity", opacity)
   }
 
