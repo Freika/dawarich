@@ -19,11 +19,17 @@ class Tracks::VectorTileQuery
   # Bounds the per-query cost; PgBouncer-safe because SET LOCAL runs inside an
   # explicit transaction (same pattern as Points::VectorTileQuery).
   QUERY_TIMEOUT_MS = 5_000
-  # Far above any account's tracks-per-tile; a pure bug-guard, never a truncator.
-  TRACKS_PER_TILE_LIMIT = 2_000
+  # Above any plausible tracks-in-one-tile count. The benchmark proved 2,000 is
+  # REACHABLE (a 3,400-track city account puts ~2,900 in its home tile), so the
+  # guard sits an order of magnitude above the densest measured case.
+  TRACKS_PER_TILE_LIMIT = 20_000
   # At and above this zoom the simplify call is skipped entirely — ST_AsMVTGeom's
   # extent quantization is the only reduction (running DP with tolerance 0 would
-  # still pay the full pass for nothing).
+  # still pay the full pass for nothing). Plain ST_Simplify, NOT
+  # PreserveTopology: real tracks self-cross, and the topology variant refuses
+  # to drop those vertices — benchmark measured 781 KB vs 110 KB on the dense
+  # z8 tile for identical visual output. A sub-pixel track collapsing to
+  # nothing at coarse zoom is correct, matching the points quantization.
   SIMPLIFY_SKIP_ZOOM = 14
 
   def initialize(scope:, z:, x:, y:) # rubocop:disable Naming/MethodParameterName
@@ -138,7 +144,7 @@ class Tracks::VectorTileQuery
     geom = 'ST_Transform(tracks.original_path, 3857)'
     return geom if z >= SIMPLIFY_SKIP_ZOOM
 
-    "ST_SimplifyPreserveTopology(#{geom}, #{simplify_tolerance})"
+    "ST_Simplify(#{geom}, #{simplify_tolerance})"
   end
 
   # One display pixel in meters at this zoom (Task 8 benchmark tunes the
