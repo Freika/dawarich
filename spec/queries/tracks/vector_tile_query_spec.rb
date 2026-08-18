@@ -130,6 +130,21 @@ RSpec.describe Tracks::VectorTileQuery do
       # The planar line from Tokyo to LA crosses the central-Europe tile —
       # exactly what classic GeoJSON rendering draws today. Documented artifact.
       expect(rows.size).to eq(1)
+
+      # Vertex VALUES, not mere presence: a future wrapped-branch attempt that
+      # translated the geometry would change these coordinates without changing
+      # the count. The clipped segment must run west-to-east across the whole
+      # tile at a roughly constant MVT y (the planar chord is near-horizontal).
+      coords = ActiveRecord::Base.connection.select_one(
+        Track.sanitize_sql_array(
+          ['SELECT ST_XMin(?::geometry) AS xmin, ST_XMax(?::geometry) AS xmax,
+                   ST_YMin(?::geometry) AS ymin, ST_YMax(?::geometry) AS ymax',
+           rows.first['geom'], rows.first['geom'], rows.first['geom'], rows.first['geom']]
+        )
+      )
+      expect(coords['xmin'].to_f).to be <= 0
+      expect(coords['xmax'].to_f).to be >= 4096
+      expect(coords['ymin'].to_f).to be_between(0, 4096)
     end
   end
 
@@ -138,8 +153,13 @@ RSpec.describe Tracks::VectorTileQuery do
       create_track_at([[10, 10], [500, 500]], dominant_mode: :driving)
 
       row = feature_rows(z: 10, x: 512, y: 511).first
-      serializer_scalar_keys = %w[id color start_at end_at distance avg_speed duration
-                                  dominant_mode dominant_mode_emoji]
+      # Derived from the serializer, not hardcoded: tiles must track its scalar
+      # contract so JS click/popup/animation flows stay source-agnostic. Array
+      # properties (mode_timeline, segments) cannot ride MVT — excluded.
+      serialized = Tracks::GeojsonSerializer.new(user.tracks.first).call
+      serializer_scalar_keys =
+        serialized[:features].first[:properties].keys.map(&:to_s) -
+        %w[mode_timeline segments]
 
       expect(row.keys).to match_array(serializer_scalar_keys + ['geom'])
       expect(row['start_at']).to match(/\A\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/)

@@ -33,12 +33,19 @@ class Points::VectorTileQuery
   # accuracy); an allowlist so the interpolated SQL stays program-controlled.
   ALLOWED_EXTRA_COLUMNS = %i[accuracy].freeze
 
-  def initialize(scope:, z:, x:, y:, grid_px_override: nil, extra_property_columns: []) # rubocop:disable Naming/MethodParameterName
+  def initialize(scope:, z:, x:, y:, grid_px_override: nil, extra_property_columns: [], # rubocop:disable Naming/MethodParameterName
+                 attributes_at_all_zooms: false)
     @scope = scope
     @z = parse_integer(z)
     @x = parse_integer(x)
     @y = parse_integer(y)
-    @grid_px_override = grid_px_override
+    @grid_px_override = grid_px_override.nil? ? nil : Integer(grid_px_override, exception: false)
+    if grid_px_override && !@grid_px_override&.positive?
+      raise ArgumentError,
+            'grid_px_override must be a positive Integer'
+    end
+
+    @attributes_at_all_zooms = attributes_at_all_zooms == true
     @extra_property_columns = extra_property_columns.map(&:to_sym)
     return if (@extra_property_columns - ALLOWED_EXTRA_COLUMNS).empty?
 
@@ -69,7 +76,10 @@ class Points::VectorTileQuery
   # in a dense z11 tile, 4px keeps it ~15k/<1 MB — and a 4px cell is smaller
   # than the 12px circle markers, so nothing visible is lost below z14.
   def grid_px
-    return @grid_px_override if @grid_px_override
+    # The override only applies where per-point popups exist — below the
+    # attribute zoom the benchmarked 4px tier keeps low-zoom tiles bounded
+    # (the tier exists because 1px put 243k features in a dense z11 tile).
+    return @grid_px_override if @grid_px_override && z >= MIN_POINT_ATTRIBUTE_ZOOM
 
     z < 14 ? 4 : 1
   end
@@ -137,7 +147,10 @@ class Points::VectorTileQuery
   end
 
   def point_regime?
-    z >= MIN_POINT_ATTRIBUTE_ZOOM
+    # attributes_at_all_zooms restores classic clickability for sparse scopes
+    # (anomalies): low-zoom features keep id/accuracy, and merged 4px cells
+    # carry count > 1 so the popup guard suppresses them honestly.
+    @attributes_at_all_zooms || z >= MIN_POINT_ATTRIBUTE_ZOOM
   end
 
   def prefilterable?

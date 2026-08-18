@@ -69,6 +69,8 @@ export class PointsMvtLayer extends BaseLayer {
 
   static HEATMAP_LAYER_ID = "points-mvt-heatmap"
 
+  static CIRCLE_RADIUS = 6
+
   setHeatmapVisible(visible) {
     this.heatmapVisible = visible
     this._applyLayerVisibility(PointsMvtLayer.HEATMAP_LAYER_ID, visible)
@@ -107,12 +109,20 @@ export class PointsMvtLayer extends BaseLayer {
       this.map.setLayoutProperty(layerId, "visibility", "visible")
       this.map.setPaintProperty?.(layerId, "circle-opacity", 0)
       this.map.setPaintProperty?.(layerId, "circle-stroke-opacity", 0)
+      // Radius 0 as well: queryRenderedFeatures ignores paint opacity, so a
+      // merely-transparent layer stays clickable and cursor-reactive.
+      this.map.setPaintProperty?.(layerId, "circle-radius", 0)
       this._paintHidden = true
       return
     }
     if (layerId === this.id && this._paintHidden) {
       this.map.setPaintProperty?.(layerId, "circle-opacity", 1)
       this.map.setPaintProperty?.(layerId, "circle-stroke-opacity", 1)
+      this.map.setPaintProperty?.(
+        layerId,
+        "circle-radius",
+        PointsMvtLayer.CIRCLE_RADIUS,
+      )
       this._paintHidden = false
     }
 
@@ -185,7 +195,7 @@ export class PointsMvtLayer extends BaseLayer {
         "source-layer": "points",
         paint: {
           "circle-color": "#3b82f6",
-          "circle-radius": 6,
+          "circle-radius": PointsMvtLayer.CIRCLE_RADIUS,
           "circle-stroke-width": 2,
           "circle-stroke-color": getMarkerStrokeColor(this.styleName),
         },

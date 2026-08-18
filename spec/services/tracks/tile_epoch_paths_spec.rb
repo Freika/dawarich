@@ -63,6 +63,57 @@ RSpec.describe 'Tracks::TileEpoch write paths' do
     expect(component(2024)).not_to eq(before)
   end
 
+  it 'bumps from Track#update_dominant_mode! despite update_column skipping callbacks' do
+    track = build_track
+    create(:track_segment, track:, transportation_mode: :driving, distance: 100, duration: 60)
+
+    before = component(2024)
+    track.update_dominant_mode!
+
+    expect(component(2024)).not_to eq(before)
+    expect(track.reload.dominant_mode).to eq('driving')
+  end
+
+  it 'bumps from ReclassifyTrackJob#recompute_dominant_mode despite update_column' do
+    track = build_track
+    create(:track_segment, track:, transportation_mode: :cycling, distance: 100, duration: 60)
+
+    before = component(2024)
+    TransportationModes::ReclassifyTrackJob.new.send(:recompute_dominant_mode, track)
+
+    expect(component(2024)).not_to eq(before)
+    expect(track.reload.dominant_mode).to eq('cycling')
+  end
+
+  it 'bumps when the parallel generator wipes a user\'s tracks via destroy_all' do
+    build_track
+    before = component(2024)
+
+    user.tracks.destroy_all
+
+    expect(component(2024)).not_to eq(before)
+  end
+
+  it 'invalidates INTERIOR years of a multi-year track on update' do
+    track = create(:track, user:,
+                          start_at: Time.utc(2023, 12, 30), end_at: Time.utc(2025, 1, 2))
+    before_2024 = component(2024)
+
+    track.update!(distance: 999)
+
+    expect(component(2024)).not_to eq(before_2024)
+  end
+
+  it 'invalidates INTERIOR years from delete_orphaned' do
+    track = create(:track, user:,
+                          start_at: Time.utc(2023, 12, 30), end_at: Time.utc(2025, 1, 2))
+    before_2024 = component(2024)
+
+    Track.delete_orphaned([track.id])
+
+    expect(component(2024)).not_to eq(before_2024)
+  end
+
   it 'bumps from TrackBuilder#update_dominant_mode despite update_column skipping callbacks' do
     track = build_track
     host = Class.new do

@@ -16,7 +16,9 @@ const start = source.indexOf("export function bulkPointsRequired")
 const end = source.indexOf("export class SettingsManager")
 const functions = source.slice(start, end)
 const moduleUrl = `data:text/javascript;base64,${Buffer.from(functions).toString("base64")}`
-const { bulkPointsRequired, tiledPointsActive } = await import(moduleUrl)
+const { bulkPointsRequired, tiledPointsActive, tiledLayerModes } = await import(
+  moduleUrl
+)
 
 test("with tiles requested, only Scratch map still forces the bulk download", () => {
   const tiled = { pointsTiledRendering: true }
@@ -69,4 +71,66 @@ test("tiledPointsActive requires the toggle AND no remaining blocker", () => {
     false,
   )
   assert.equal(tiledPointsActive({ routesVisible: false }), false)
+})
+
+test("tiledLayerModes re-points every tiled-aware layer for the ON direction", () => {
+  const modes = tiledLayerModes({
+    pointsTiledRendering: true,
+    routesVisible: true,
+    tracksEnabled: true,
+    fogEnabled: true,
+    fogOfWarMode: "points",
+  })
+
+  assert.equal(modes.tiled, true)
+  assert.deepEqual(modes.tracksMvt, {
+    tracksEnabled: true,
+    routesVisible: true,
+  })
+  assert.equal(modes.classicRoutes, false)
+  assert.equal(modes.classicTracks, false)
+  assert.equal(modes.anomaliesTiled, true)
+  assert.equal(modes.fogTiled, true)
+  assert.equal(modes.pointsSourceKeepAlive, true)
+})
+
+test("tiledLayerModes restores classic renderers for the OFF direction", () => {
+  const modes = tiledLayerModes({
+    pointsTiledRendering: false,
+    routesVisible: true,
+    tracksEnabled: true,
+    fogEnabled: true,
+    fogOfWarMode: "points",
+  })
+
+  assert.equal(modes.tiled, false)
+  assert.deepEqual(modes.tracksMvt, {
+    tracksEnabled: false,
+    routesVisible: false,
+  })
+  assert.equal(modes.classicRoutes, true)
+  assert.equal(modes.classicTracks, true)
+  assert.equal(modes.anomaliesTiled, false)
+  assert.equal(modes.fogTiled, false)
+  assert.equal(modes.pointsSourceKeepAlive, false)
+})
+
+test("hexagon fog never claims the tile source and fog-off releases keep-alive", () => {
+  const hexagons = tiledLayerModes({
+    pointsTiledRendering: true,
+    routesVisible: false,
+    fogEnabled: true,
+    fogOfWarMode: "hexagons",
+  })
+  assert.equal(hexagons.fogTiled, false)
+  assert.equal(hexagons.pointsSourceKeepAlive, false)
+
+  const fogOff = tiledLayerModes({
+    pointsTiledRendering: true,
+    routesVisible: false,
+    fogEnabled: false,
+    fogOfWarMode: "points",
+  })
+  assert.equal(fogOff.fogTiled, true)
+  assert.equal(fogOff.pointsSourceKeepAlive, false)
 })

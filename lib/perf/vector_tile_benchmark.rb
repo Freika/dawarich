@@ -71,6 +71,7 @@ module Perf
             distance: 10_000, avg_speed: rng.rand(3.0..120.0).round(2), duration: 7_200,
             tracker_id: "bench-#{i}", created_at: now, updated_at: now }
         end
+        # Bench DB only — deliberately skips callbacks and the tile-epoch bump.
         Track.insert_all(batch)
         print "\r#{[slice.last + 1, TOTAL_TRACKS].min}/#{TOTAL_TRACKS}"
       end

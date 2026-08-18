@@ -666,7 +666,8 @@ export class EventHandlers {
     if (!clickedFeature) return
 
     const properties = clickedFeature.properties
-    const fullFeature = this._getFullTrackFeature(properties) || clickedFeature
+    const classicFeature = this._getFullTrackFeature(properties)
+    const fullFeature = classicFeature || clickedFeature
     this.selectedTrackFeature = fullFeature
 
     // Keep the on-map highlight + segment visualization — those are visual
@@ -679,7 +680,11 @@ export class EventHandlers {
     } catch (err) {
       console.warn("[EventHandlers] Failed to highlight track:", err)
     }
-    this._loadTrackSegments(properties.id, fullFeature)
+    // Only a tile-source click lacks real geometry (classicFeature null means
+    // the classic tracks layer holds no data — the tiled case).
+    this._loadTrackSegments(properties.id, fullFeature, {
+      preferFetchedGeometry: !classicFeature,
+    })
 
     // Derive the day from the track's start. `start_at` comes from our own
     // serializer as an ISO8601 string — safe to slice the date portion.
@@ -699,7 +704,11 @@ export class EventHandlers {
    * Load track segments from API (lazy loading)
    * @private
    */
-  async _loadTrackSegments(trackId, fullFeature) {
+  async _loadTrackSegments(
+    trackId,
+    fullFeature,
+    { preferFetchedGeometry = false } = {},
+  ) {
     try {
       const trackFeature =
         await this.controller.api.fetchTrackWithSegments(trackId)
@@ -707,8 +716,12 @@ export class EventHandlers {
 
       // A click on an MVT track passes a per-tile fragment whose geometry is
       // clipped and extent-quantized — useless for segment slicing. The fetch
-      // above returns the real linestring; prefer it for every visual.
-      const displayFeature = trackFeature.geometry ? trackFeature : fullFeature
+      // above returns the real linestring; prefer it ONLY on that path so the
+      // classic flow keeps its already-loaded feature untouched.
+      const displayFeature =
+        preferFetchedGeometry && trackFeature.geometry
+          ? trackFeature
+          : fullFeature
       if (displayFeature !== fullFeature) {
         this.selectedTrackFeature = displayFeature
         const highlightLayer = this.controller.layerManager.getLayer("tracks")

@@ -26,9 +26,13 @@ class Api::V1::Tiles::AnomaliesController < ApiController
       z: params[:z],
       x: params[:x],
       y: params[:y],
-      # Anomalies are sparse by definition — the dense-tile decimation buys
-      # nothing and MIN(accuracy) on merged cells would mislabel popup reasons.
+      # Where popups exist (z >= attribute zoom), 1px cells keep anomalies
+      # unmerged so MIN(accuracy) can't mislabel a popup reason; below that the
+      # benchmarked 4px tier still bounds pathological all-anomaly accounts.
       grid_px_override: 1,
+      # Classic mode makes anomalies clickable at EVERY zoom — carry the
+      # attributes at low zoom too (sparse scope, cost is negligible).
+      attributes_at_all_zooms: true,
       # Popup reason branches on accuracy.
       extra_property_columns: [:accuracy]
     )

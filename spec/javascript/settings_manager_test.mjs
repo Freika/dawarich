@@ -452,3 +452,27 @@ test("the tiled-rendering inactive note is translated with plural forms", async 
     delete globalThis.__settingsManagerTranslate
   }
 })
+
+test("updateRouteOpacity drives the tiled tracks layer, not just the classic routes layer", async () => {
+  const settingsManager = {
+    getSettings: () => ({}),
+    getSetting: () => false,
+    updateSetting: () => {},
+  }
+  const { SettingsController } = await loadSettingsController(settingsManager)
+  const opacityCalls = []
+  const controller = new SettingsController({
+    element: { querySelector: () => null },
+    map: { getLayer: () => null },
+    layerManager: {
+      getLayer: (name) =>
+        name === "tracks-mvt"
+          ? { setRouteOpacity: (value) => opacityCalls.push(value) }
+          : null,
+    },
+  })
+
+  controller.updateRouteOpacity({ target: { value: "40" } })
+
+  assert.deepEqual(opacityCalls, [0.4])
+})

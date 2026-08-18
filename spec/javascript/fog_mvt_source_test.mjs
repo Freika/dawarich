@@ -223,6 +223,33 @@ test("map listeners detach on remove — including the previously leaked move/zo
   assert.equal(map.listenerCount("moveend"), 0)
 })
 
+test("update() under tiled mode refreshes from the source instead of clobbering the cache", () => {
+  const { map, fog } = buildFog()
+  map.setSourceFeatures([{ geometry: { coordinates: [100, 100] } }])
+  fog._refreshTiledPositions()
+  assert.equal(fog.points.length, 1)
+
+  // The fog-radius slider re-sends the stored (empty) classic collection.
+  fog.update({ type: "FeatureCollection", features: [] })
+
+  assert.equal(fog.points.length, 1)
+})
+
+test("setTiledSource flips the layer between classic data and the tile source in place", () => {
+  const { map, fog } = buildFog({ tiledSource: false })
+  assert.equal(map.listenerCount("sourcedata"), 0)
+
+  map.setSourceFeatures([{ geometry: { coordinates: [100, 100] } }])
+  fog.setTiledSource(true)
+
+  assert.equal(map.listenerCount("sourcedata"), 1)
+  assert.equal(fog.points.length, 1)
+
+  fog.setTiledSource(false)
+  assert.equal(map.listenerCount("sourcedata"), 0)
+  assert.equal(fog.points.length, 0)
+})
+
 test("points MVT keep-alive hides via paint, not layout, so the source stays used", () => {
   const map = fogMap()
   const layer = new PointsMvtLayer(map, { visible: true })
@@ -239,8 +266,18 @@ test("points MVT keep-alive hides via paint, not layout, so the source stays use
     (c) => c.layerId === "points-mvt" && c.property === "circle-opacity",
   )
   assert.equal(paintOpacity.at(-1).value, 0)
+  // Radius must zero too: queryRenderedFeatures ignores paint opacity, so a
+  // transparent-but-sized circle stays clickable.
+  const paintRadius = map.paintCalls.filter(
+    (c) => c.layerId === "points-mvt" && c.property === "circle-radius",
+  )
+  assert.equal(paintRadius.at(-1).value, 0)
 
   layer.setSourceKeepAlive(false)
   const afterRelease = map.layoutCalls.filter((c) => c.layerId === "points-mvt")
   assert.equal(afterRelease.at(-1).value, "none")
+  const restoredRadius = map.paintCalls.filter(
+    (c) => c.layerId === "points-mvt" && c.property === "circle-radius",
+  )
+  assert.equal(restoredRadius.at(-1).value, PointsMvtLayer.CIRCLE_RADIUS)
 })

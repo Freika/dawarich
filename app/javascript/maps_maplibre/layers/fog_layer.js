@@ -55,8 +55,32 @@ export class FogLayer {
 
   update(data) {
     this.data = data // Store for later updates
+    if (this.tiledSource) {
+      // Bulk data under tiles is empty or stale — the tile cache is
+      // authoritative. Clobbering this.points here painted the map solid
+      // black when the fog-radius slider re-sent the stored collection.
+      this._refreshTiledPositions()
+      return
+    }
     this.points = data.features || []
     this.render()
+  }
+
+  // The tiled toggle and fog-mode radio change this mid-session; the layer is
+  // NOT reconstructed, so the source mode must be switchable in place.
+  setTiledSource(enabled) {
+    const next = enabled === true
+    if (next === this.tiledSource) return
+
+    this.tiledSource = next
+    this._detachTiledHandlers()
+    if (next) {
+      if (this.canvas) this._attachTiledHandlers()
+      this._refreshTiledPositions()
+    } else {
+      this.points = this.data?.features || []
+      this.render()
+    }
   }
 
   createCanvas() {
@@ -89,20 +113,42 @@ export class FogLayer {
     this.map.on("zoomend", this._zoomEndHandler)
 
     if (this.tiledSource) {
-      // querySourceFeatures re-walks every loaded tile — far too heavy for the
-      // per-frame move/zoom path. Refresh the cached hole set only when the
-      // map settles or new tiles land, debounced; render() just draws it.
-      this._tiledRefreshHandler = () => this._scheduleTiledRefresh()
-      this._sourceDataHandler = (event) => {
-        if (event?.sourceId !== this.tiledSourceId) return
-        this._scheduleTiledRefresh()
-      }
-      this.map.on("moveend", this._tiledRefreshHandler)
-      this.map.on("zoomend", this._tiledRefreshHandler)
-      this.map.on("sourcedata", this._sourceDataHandler)
+      this._attachTiledHandlers()
     }
 
     this.resizeCanvas()
+  }
+
+  // querySourceFeatures re-walks every loaded tile — far too heavy for the
+  // per-frame move/zoom path. Refresh the cached hole set only when the map
+  // settles or new tiles land, debounced; render() just draws it.
+  _attachTiledHandlers() {
+    if (this._tiledRefreshHandler) return
+
+    this._tiledRefreshHandler = () => this._scheduleTiledRefresh()
+    this._sourceDataHandler = (event) => {
+      if (event?.sourceId !== this.tiledSourceId) return
+      this._scheduleTiledRefresh()
+    }
+    this.map.on("moveend", this._tiledRefreshHandler)
+    this.map.on("zoomend", this._tiledRefreshHandler)
+    this.map.on("sourcedata", this._sourceDataHandler)
+  }
+
+  _detachTiledHandlers() {
+    if (this._tiledRefreshHandler) {
+      this.map.off("moveend", this._tiledRefreshHandler)
+      this.map.off("zoomend", this._tiledRefreshHandler)
+      this._tiledRefreshHandler = null
+    }
+    if (this._sourceDataHandler) {
+      this.map.off("sourcedata", this._sourceDataHandler)
+      this._sourceDataHandler = null
+    }
+    if (this._tiledRefreshTimer) {
+      clearTimeout(this._tiledRefreshTimer)
+      this._tiledRefreshTimer = null
+    }
   }
 
   _scheduleTiledRefresh() {
@@ -333,19 +379,7 @@ export class FogLayer {
       this.map.off("resize", this._resizeHandler)
       this._resizeHandler = null
     }
-    if (this._tiledRefreshHandler) {
-      this.map.off("moveend", this._tiledRefreshHandler)
-      this.map.off("zoomend", this._tiledRefreshHandler)
-      this._tiledRefreshHandler = null
-    }
-    if (this._sourceDataHandler) {
-      this.map.off("sourcedata", this._sourceDataHandler)
-      this._sourceDataHandler = null
-    }
-    if (this._tiledRefreshTimer) {
-      clearTimeout(this._tiledRefreshTimer)
-      this._tiledRefreshTimer = null
-    }
+    this._detachTiledHandlers()
     this.map.off("zoomend", this._zoomEndHandler)
     if (this._zoomDebounceTimer) {
       clearTimeout(this._zoomDebounceTimer)

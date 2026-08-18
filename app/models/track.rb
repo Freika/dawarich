@@ -81,7 +81,8 @@ class Track < ApplicationRecord
     # below) must be replayed explicitly or deleted tracks 304 forever.
     rows.group_by { |_, user_id, _, _| user_id }.each do |user_id, user_rows|
       stamps = user_rows.flat_map { |_, _, start_at, end_at| [start_at.to_i, end_at.to_i] }
-      Tracks::TileEpoch.bump(user_id, timestamps: stamps)
+      # Range covers multi-year interiors; still one bump call per user.
+      Tracks::TileEpoch.bump_range(user_id, stamps.min, stamps.max)
     end
     broadcast_destroyed(owners)
     deleted
@@ -237,11 +238,13 @@ class Track < ApplicationRecord
 
   MOVING_DISTANCE_THRESHOLD_M = 50
 
+  # update_column skips after_commit, and dominant_mode is a tile property —
+  # bump the epoch explicitly or annotated tracks 304 with the old mode.
   def update_dominant_mode!
     segments = track_segments.reload
-    return update_column(:dominant_mode, :unknown) if segments.empty?
-
-    update_column(:dominant_mode, self.class.pick_dominant_mode(segments) || :unknown)
+    mode = segments.empty? ? :unknown : (self.class.pick_dominant_mode(segments) || :unknown)
+    update_column(:dominant_mode, mode)
+    Tracks::TileEpoch.bump_range(user_id, start_at.to_i, end_at.to_i)
   end
 
   def self.pick_dominant_mode(segments)
@@ -290,7 +293,9 @@ class Track < ApplicationRecord
     @tile_epoch_stamps = nil
     return bump_tile_epoch if stamps.blank?
 
-    Tracks::TileEpoch.bump(user_id, timestamps: stamps.uniq)
+    # Range, not per-stamp years: a multi-year track's INTERIOR years must
+    # invalidate too, or a moved track 304s inside them.
+    Tracks::TileEpoch.bump_range(user_id, stamps.min, stamps.max)
   end
 
   def broadcast_track_created

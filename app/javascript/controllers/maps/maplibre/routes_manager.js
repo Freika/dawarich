@@ -6,6 +6,7 @@ import { lazyLoader } from "maps_maplibre/utils/lazy_loader"
 import {
   bulkPointsRequired,
   SettingsManager,
+  tiledLayerModes,
   tiledPointsActive,
 } from "maps_maplibre/utils/settings_manager"
 
@@ -693,9 +694,35 @@ export class RoutesManager {
       enabled: Boolean(settings.heatmapEnabled),
       tiled,
     })
+    this._reapplyTiledAwareLayers(settings)
     this.controller.settingsController?.syncPointsEditAvailability()
     this.controller.settingsController?.syncRouteSplittingAvailability()
     this.controller.settingsController?.syncTiledRenderingNote()
+  }
+
+  // Tracks/routes/anomalies/fog read tiledPointsActive at construction — the
+  // beta toggle and the fog-mode radio change it mid-session, so every
+  // tiled-aware layer re-derives its renderer here (tiledLayerModes is the
+  // node-tested truth table).
+  _reapplyTiledAwareLayers(settings) {
+    const modes = tiledLayerModes(settings)
+
+    this.layerManager.getLayer("tracks-mvt")?.setModes(modes.tracksMvt)
+    this.layerManager.getLayer("routes")?.toggle(modes.classicRoutes)
+    this.layerManager.getLayer("tracks")?.toggle(modes.classicTracks)
+
+    const anomaliesLayer = this.layerManager.getLayer("anomalies")
+    if (anomaliesLayer && settings.anomaliesEnabled) {
+      anomaliesLayer.setTiled(
+        modes.anomaliesTiled,
+        this.layerManager.pointTileRange,
+      )
+    }
+
+    this.layerManager.getLayer("fog")?.setTiledSource(modes.fogTiled)
+    this.layerManager
+      .getLayer("points-mvt")
+      ?.setSourceKeepAlive(modes.pointsSourceKeepAlive)
   }
 
   // The tiled heatmap is a sub-layer of points-mvt, only one heatmap may draw

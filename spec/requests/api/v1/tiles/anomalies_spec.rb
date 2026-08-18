@@ -68,6 +68,30 @@ RSpec.describe 'Api::V1::Tiles::Anomalies', type: :request do
       end
     end
 
+    it 'keeps anomalies clickable at low zoom: attributes present below the point-attribute tier' do
+      create(:point, user:, longitude: 0.01, latitude: 0.01, lonlat: 'POINT(0.01 0.01)',
+                     anomaly: true, accuracy: 12_000)
+
+      get '/api/v1/tiles/anomalies/2/2/1.mvt', params: { api_key: user.api_key }
+
+      expect(response).to have_http_status(:ok)
+      body = response.body.b
+      expect(body).to include("\x1a\x02id".b, 'accuracy')
+    end
+
+    it 'wires the sparse-scope query configuration (1px cells, all-zoom attributes)' do
+      create(:point, user:, longitude: 0.01, latitude: 0.01, lonlat: 'POINT(0.01 0.01)', anomaly: true)
+
+      expect(Points::VectorTileQuery).to receive(:new)
+        .with(hash_including(grid_px_override: 1, attributes_at_all_zooms: true,
+                             extra_property_columns: [:accuracy]))
+        .and_call_original
+
+      get path, params: { api_key: user.api_key }
+
+      expect(response).to have_http_status(:ok)
+    end
+
     it 'returns 400 for invalid tile coordinates' do
       get '/api/v1/tiles/anomalies/2/9/0.mvt', params: { api_key: user.api_key }
 

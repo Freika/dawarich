@@ -41,16 +41,58 @@ RSpec.describe Points::VectorTileQuery do
     end
   end
 
+  describe 'grid_px_override below the attribute zoom' do
+    it 'keeps the benchmarked 4px tier where no popups exist, bounding low-zoom tiles' do
+      create_point_at(10, 10, anomaly: true)
+      create_point_at(40, 10, anomaly: true)
+
+      # z2 tile (2, 1) has its SW corner at the origin; 30m apart is far inside
+      # one 4px cell there, so the override must NOT split them.
+      rows = described_class.new(scope: user.points, z: 2, x: 2, y: 1,
+                                 grid_px_override: 1).feature_rows
+
+      expect(rows.size).to eq(1)
+    end
+  end
+
+  describe 'attributes_at_all_zooms' do
+    it 'carries per-point attributes below the attribute zoom for sparse scopes' do
+      create_point_at(10, 10, anomaly: true, accuracy: 11_000)
+
+      rows = described_class.new(scope: user.points, z: 2, x: 2, y: 1,
+                                 attributes_at_all_zooms: true,
+                                 extra_property_columns: [:accuracy]).feature_rows
+
+      expect(rows.first['id']).to be_present
+      expect(rows.first['accuracy'].to_i).to eq(11_000)
+    end
+  end
+
   describe 'extra_property_columns' do
-    it 'adds the requested column to tile properties without disturbing the default set' do
+    it 'adds the requested column while the default property set stays EXACTLY the points contract' do
       create_point_at(10, 10, anomaly: true, accuracy: 11_000)
 
       rows = described_class.new(scope: user.points, z: 10, x: 512, y: 511,
                                  extra_property_columns: [:accuracy]).feature_rows
+      default_rows = described_class.new(scope: user.points, z: 10, x: 512, y: 511).feature_rows
 
       expect(rows.first['accuracy'].to_i).to eq(11_000)
-      expect(rows.first).to have_key('id')
-      expect(rows.first).to have_key('timestamp')
+      # Full key-set pin: the shared query serves the live points endpoint —
+      # any drift in its default property set is a points regression.
+      expect(default_rows.first.keys)
+        .to match_array(%w[count id timestamp battery altitude velocity latitude longitude geom])
+      expect(rows.first.keys)
+        .to match_array(%w[count id timestamp battery altitude velocity latitude longitude accuracy geom])
+    end
+
+    it 'rejects columns outside the allowlist and non-integer grid overrides' do
+      expect do
+        described_class.new(scope: user.points, z: 10, x: 512, y: 511,
+                            extra_property_columns: [:raw_data])
+      end.to raise_error(ArgumentError)
+      expect do
+        described_class.new(scope: user.points, z: 10, x: 512, y: 511, grid_px_override: 'DROP')
+      end.to raise_error(ArgumentError)
     end
   end
 end

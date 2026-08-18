@@ -878,7 +878,7 @@ en:
         tiled_rendering: "Tiled rendering"
         beta: "Beta"
         tiled_rendering_description: "Draws points, routes, tracks, anomalies and fog from vector tiles as you pan, so a long date range loads only what is in view. Routes show your generated tracks, colored per track."
-        tiled_rendering_caveats: "Dense areas merge into markers with a point count — zoom in to open individual points. Editing is unavailable and the live trail can lag a few minutes."
+        tiled_rendering_caveats: "Active while Scratch map is off. Dense areas merge into markers with a point count — zoom in to open individual points. Point editing is unavailable, routes are colored per track (average speed, not a gradient), hovering a route no longer shows its popup — click a track instead — and the live trail can lag a few minutes."
         routes: Routes
         show_connected_route_lines: Show connected route lines
         color_by_speed: Color by speed
@@ -3691,7 +3691,7 @@ en:
           other: "Inactive while %{layers} are on — those need the full point set."
         editing_unavailable: "Not available with tiled rendering, vector tiles have no draggable points"
         failed: "Could not load map tiles. Try a shorter date range, or turn off tiled rendering in map settings."
-        tracks_pending: "No tracks yet for this range — Routes show generated tracks, and yours are still being built."
+        tracks_pending: "No tracks in this view. Routes under tiled rendering show your generated tracks — pan or widen the date range, or check back if your history was imported recently."
         splitting_unavailable: "Not used with tiled rendering — routes follow your generated tracks."
         blockers:
           scratch: "Scratch map"
