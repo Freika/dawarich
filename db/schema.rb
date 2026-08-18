@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_16_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_18_201239) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -517,6 +517,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_16_120000) do
     t.index ["demo"], name: "index_tracks_on_demo_true", where: "(demo = true)"
     t.index ["dominant_mode"], name: "index_tracks_on_dominant_mode"
     t.index ["import_id"], name: "idx_tracks_import_id_extracted", where: "(import_id IS NOT NULL)"
+    t.index ["original_path"], name: "index_tracks_on_original_path", using: :gist
     t.index ["user_id", "start_at"], name: "idx_tracks_user_id_start_at"
     t.index ["user_id", "tracker_id", "end_at"], name: "idx_tracks_user_tracker_end_at"
     t.index ["user_id"], name: "index_tracks_on_user_id"
