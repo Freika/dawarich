@@ -38,6 +38,18 @@ RSpec.describe Photos::Search do
       it 'fetches and transforms Immich photos' do
         expect(service.call).to eq([serialized_photo])
       end
+      it 'does not deduplicate distinct Immich assets without an id' do
+        first_photo = { 'type' => 'image', 'originalFileName' => 'first.jpg' }
+        second_photo = { 'type' => 'image', 'originalFileName' => 'second.jpg' }
+
+        allow_any_instance_of(Immich::RequestPhotos).to receive(:call)
+          .and_return([first_photo, second_photo])
+
+        allow_any_instance_of(Api::PhotoSerializer).to receive(:call)
+          .and_return({ source: 'immich' })
+
+        expect(service.call.size).to eq(2)
+      end
     end
 
     context 'when user has Photoprism integration configured' do

@@ -46,11 +46,16 @@ module SharedLinks
     private
 
     def valid_immich_url
-      base_url = link.user.safe_settings.immich_url.to_s.sub(%r{/+\z}, '')
-      uri = URI.parse(base_url)
+      uri = URI.parse(link.user.safe_settings.immich_url.to_s)
       return unless uri.is_a?(URI::HTTP) && uri.host.present?
 
-      base_url
+      uri.user = nil
+      uri.password = nil
+      uri.path = uri.path.to_s.sub(%r{/+\z}, '')
+      uri.query = nil
+      uri.fragment = nil
+
+      uri.to_s.sub(%r{/+\z}, '')
     rescue URI::InvalidURIError
       nil
     end

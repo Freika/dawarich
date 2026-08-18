@@ -33,6 +33,17 @@ RSpec.describe SharedLinks::PhotoAlbum do
     expect(album.photo_url('asset-456')).to be_nil
   end
 
+  it 'does not expose credentials from the configured Immich URL' do
+    user.update!(
+      settings: user.settings.merge(
+        'immich_url' => 'https://secret-user:secret-password@immich.example.com/'
+      )
+    )
+
+    expect(album.photo_url('asset-456'))
+      .to eq('https://immich.example.com/s/summer-public/photos/asset-456')
+  end
+
   it 'does not fall back to a private album URL for an invalid photo id' do
     expect(album.photo_url('not/a/valid/id')).to be_nil
   end

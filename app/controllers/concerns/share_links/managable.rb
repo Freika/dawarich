@@ -40,6 +40,13 @@ module ShareLinks
                status: :unprocessable_content
       else
         @share = nil
+        @immich_shared_links =
+          if current_user.immich_integration_configured?
+            Immich::SharedLinks.new(current_user).call
+          else
+            []
+          end
+
         render :new, status: :unprocessable_content, layout: !turbo_frame_request?
       end
     end

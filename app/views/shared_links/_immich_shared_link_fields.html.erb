@@ -1,6 +1,12 @@
 <% id_prefix = local_assigns.fetch(:id_prefix, 'shared-link') %>
 <% shared_links = Array(local_assigns[:immich_shared_links] || @immich_shared_links) %>
-
+<%
+  settings = @shared_link&.settings || {}
+  show_immich = ActiveModel::Type::Boolean.new.cast(settings['show_immich'])
+  show_photoprism = ActiveModel::Type::Boolean.new.cast(settings['show_photoprism'])
+  no_photos = !show_immich && !show_photoprism
+  selected_shared_link_id = settings['immich_shared_link_id'].to_s
+%>
 <%
   shared_link_options = shared_links.filter_map do |shared_link|
     shared_link_id = shared_link[:id] || shared_link['id']
@@ -38,7 +44,7 @@
 
   <label class="label cursor-pointer px-0">
     <span class="label-text">No photos</span>
-    <%= check_box_tag nil, '1', true,
+    <%= check_box_tag nil, '1', no_photos,
                       id: "#{id_prefix}_no_photos",
                       class: 'checkbox',
                       data: { no_photos_choice: true } %>
@@ -53,7 +59,7 @@
         <% end %>
       </span>
       <%= hidden_field_tag 'shared_link[settings][show_photoprism]', '0' %>
-      <%= check_box_tag 'shared_link[settings][show_photoprism]', '1', false,
+      <%= check_box_tag 'shared_link[settings][show_photoprism]', '1', show_photoprism,
                         id: "#{id_prefix}_show_photoprism",
                         class: 'toggle',
                         disabled: true,
@@ -73,7 +79,7 @@
         <% end %>
       </span>
       <%= hidden_field_tag 'shared_link[settings][show_immich]', '0' %>
-      <%= check_box_tag 'shared_link[settings][show_immich]', '1', false,
+      <%= check_box_tag 'shared_link[settings][show_immich]', '1', show_immich,
                         id: "#{id_prefix}_show_immich",
                         class: 'toggle',
                         disabled: true,
@@ -86,15 +92,14 @@
 
     <div class="mt-2" data-immich-shared-link-fields>
       <%= hidden_field_tag 'shared_link[settings][immich_shared_link_slug]',
-                           '',
+                           settings['immich_shared_link_slug'].to_s,
                            data: { immich_shared_link_slug: true } %>
       <%= hidden_field_tag 'shared_link[settings][photo_album_id]',
-                           '',
+                           settings['photo_album_id'].to_s,
                            data: { photo_album_id: true } %>
-      <%= hidden_field_tag 'shared_link[settings][photo_album_name]',
-                           '',
-                           data: { photo_album_name: true } %>
-
+       <%= hidden_field_tag 'shared_link[settings][photo_album_name]',
+                            settings['photo_album_name'].to_s,
+                            data: { photo_album_name: true } %>
       <label for="<%= "#{id_prefix}_immich_shared_link_id" %>"
              class="label-text text-sm">
         Immich shared link
@@ -104,7 +109,8 @@
                      options_for_select(
                        [['All photos / no shared link', '', {
                          data: { shared_link_slug: '', album_id: '', album_name: '' }
-                       }]] + shared_link_options
+                       }]] + shared_link_options,
+                       selected_shared_link_id
                      ),
                      id: "#{id_prefix}_immich_shared_link_id",
                      class: 'select select-bordered w-full mt-1',

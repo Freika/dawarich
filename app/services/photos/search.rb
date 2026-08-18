@@ -71,7 +71,7 @@ class Photos::Search
     end
 
     assets
-      .uniq { |asset| asset['id'] || asset[:id] }
+      .uniq { |asset| asset['id'] || asset[:id] || asset.object_id }
       .map { |asset| transform_asset(asset, 'immich') }
       .compact
   end
