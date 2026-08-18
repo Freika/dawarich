@@ -168,9 +168,15 @@ export class LayerManager {
     this.map.on("mouseleave", "places", () => {
       this.map.getCanvas().style.cursor = ""
     })
-    // Anomalies cursor handlers
-    this.map.on("mouseenter", "anomalies", () => {
-      this.map.getCanvas().style.cursor = "pointer"
+    // Anomalies cursor handlers — mousemove, not mouseenter: under tiled mode
+    // low-zoom aggregate cells (no id) sit beside clickable anomalies and must
+    // not promise a click (same rationale as the points-mvt handler above).
+    this.map.on("mousemove", "anomalies", (e) => {
+      this.map.getCanvas().style.cursor = shouldShowPointPopup(
+        e.features?.[0]?.properties,
+      )
+        ? "pointer"
+        : ""
     })
     this.map.on("mouseleave", "anomalies", () => {
       this.map.getCanvas().style.cursor = ""
@@ -262,6 +268,11 @@ export class LayerManager {
     for (const layerName of ["points-mvt", "tracks-mvt"]) {
       const layer = this.getLayer(layerName)
       if (layer) layer.update(this.pointTileRange)
+    }
+
+    const anomaliesLayer = this.getLayer("anomalies")
+    if (anomaliesLayer?.tiled) {
+      anomaliesLayer.setTiled(true, this.pointTileRange)
     }
   }
 
@@ -462,6 +473,9 @@ export class LayerManager {
         visible: false,
         apiClient: this.api,
         timezone: this.settings.timezone,
+        tiled: tiledPointsActive(SettingsManager.getSettings()),
+        apiKey: this.apiKey,
+        ...this.pointTileRange,
       })
       this.layers.anomaliesLayer.add({
         type: "FeatureCollection",

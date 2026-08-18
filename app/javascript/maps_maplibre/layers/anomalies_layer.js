@@ -7,14 +7,40 @@ import { BaseLayer } from "./base_layer"
  * Shows orange circle markers for points flagged as anomalies
  * Default state: OFF (hidden on load)
  */
+// FNV-1a cache partitioner, same non-secret scheme as the other tile layers —
+// auth travels only in the Authorization header via the map transformRequest.
+function anomalyCachePartitioner(value) {
+  let hash = 0x811c9dc5
+  for (let i = 0; i < value.length; i++) {
+    hash ^= value.charCodeAt(i)
+    hash = Math.imul(hash, 0x01000193)
+  }
+  return (hash >>> 0).toString(16)
+}
+
 export class AnomaliesLayer extends BaseLayer {
   constructor(map, options = {}) {
     super(map, { id: "anomalies", visible: false, ...options })
     this.apiClient = options.apiClient
     this.timezone = options.timezone || "UTC"
+    // Tiled mode replaces the self-paginating bulk fetch (the same unbounded
+    // download the points layer abandoned) with the anomalies tile endpoint.
+    this.tiled = options.tiled === true
+    this.apiKey = options.apiKey || null
+    this.startAt = options.startAt || null
+    this.endAt = options.endAt || null
   }
 
   getSourceConfig() {
+    if (this.tiled) {
+      return {
+        type: "vector",
+        tiles: [this._buildTileUrl()],
+        minzoom: 0,
+        maxzoom: 22,
+      }
+    }
+
     return {
       type: "geojson",
       data: this.data || {
@@ -24,20 +50,58 @@ export class AnomaliesLayer extends BaseLayer {
     }
   }
 
+  // Switches source mode in place (the source type is fixed at add time, so a
+  // mode change needs a remove/re-add cycle). Visibility survives the swap.
+  setTiled(tiled, { startAt, endAt } = {}) {
+    const nextTiled = tiled === true
+    const rangeChanged =
+      startAt !== undefined &&
+      (startAt !== this.startAt || endAt !== this.endAt)
+    if (nextTiled === this.tiled && !rangeChanged) return
+
+    this.tiled = nextTiled
+    if (startAt !== undefined) this.startAt = startAt
+    if (endAt !== undefined) this.endAt = endAt
+
+    if (!this.map.getSource(this.sourceId)) return
+
+    const wasVisible = this.visible
+    this.remove()
+    this.add(this.data || { type: "FeatureCollection", features: [] })
+    this.setVisibility(wasVisible)
+  }
+
+  _buildTileUrl() {
+    const params = new URLSearchParams()
+
+    if (this.startAt) params.set("start_at", this.startAt)
+    if (this.endAt) params.set("end_at", this.endAt)
+    // Never the raw api key: the Bearer header authenticates (transformRequest)
+    if (this.apiKey) params.set("u", anomalyCachePartitioner(this.apiKey))
+
+    const query = params.toString()
+    const path = "/api/v1/tiles/anomalies/{z}/{x}/{y}.mvt"
+
+    return query ? `${path}?${query}` : path
+  }
+
   getLayerConfigs() {
-    return [
-      {
-        id: this.id,
-        type: "circle",
-        source: this.sourceId,
-        paint: {
-          "circle-color": "#f97316",
-          "circle-radius": 6,
-          "circle-stroke-width": 2,
-          "circle-stroke-color": "#ea580c",
-        },
+    const config = {
+      id: this.id,
+      type: "circle",
+      source: this.sourceId,
+      paint: {
+        "circle-color": "#f97316",
+        "circle-radius": 6,
+        "circle-stroke-width": 2,
+        "circle-stroke-color": "#ea580c",
       },
-    ]
+    }
+    // The anomalies endpoint reuses the points tile query, so the MVT layer
+    // inside the tile is named 'points'.
+    if (this.tiled) config["source-layer"] = "points"
+
+    return [config]
   }
 
   /**

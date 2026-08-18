@@ -722,6 +722,18 @@ export class RoutesManager {
       return
     }
 
+    // Tiled mode: the anomalies tile endpoint serves the viewport on demand —
+    // no bulk pagination, no loading counter (tiles carry no total).
+    if (tiledPointsActive(SettingsManager.getSettings())) {
+      anomaliesLayer.setTiled(true, {
+        startAt: this.controller.startDateValue,
+        endAt: this.controller.endDateValue,
+      })
+      anomaliesLayer.show()
+      return
+    }
+    anomaliesLayer.setTiled(false)
+
     const fetchId = ++this._anomaliesFetchId
     this.controller.showProgress()
     this.controller.updateLoadingCounts({
