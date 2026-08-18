@@ -43,11 +43,12 @@ RSpec.describe Points::VectorTileQuery do
 
   describe 'grid_px_override below the attribute zoom' do
     it 'keeps the benchmarked 4px tier where no popups exist, bounding low-zoom tiles' do
+      # 30km apart: BETWEEN a z2 1px cell (~19.6km) and a z2 4px cell (~78km),
+      # so this fixture discriminates — the guard keeps them merged (4px tier),
+      # while an override honored at z2 would split them into two rows.
       create_point_at(10, 10, anomaly: true)
-      create_point_at(40, 10, anomaly: true)
+      create_point_at(30_010, 10, anomaly: true)
 
-      # z2 tile (2, 1) has its SW corner at the origin; 30m apart is far inside
-      # one 4px cell there, so the override must NOT split them.
       rows = described_class.new(scope: user.points, z: 2, x: 2, y: 1,
                                  grid_px_override: 1).feature_rows
 

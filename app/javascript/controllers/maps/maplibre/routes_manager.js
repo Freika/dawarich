@@ -583,31 +583,7 @@ export class RoutesManager {
         if (tracksLayer && tracksLayer.data?.features?.length > 0) {
           tracksLayer.show()
         } else {
-          // Fetch tracks from backend (lazy-load)
-          this.controller.showProgress()
-          this.controller.updateLoadingCounts({
-            counts: { tracks: 0 },
-            isComplete: false,
-          })
-
-          const api = this.controller.api
-          const startDate = this.controller.startDateValue
-          const endDate = this.controller.endDateValue
-
-          const tracksGeoJSON = await api.fetchTracks({
-            start_at: startDate,
-            end_at: endDate,
-          })
-
-          this.controller.updateLoadingCounts({
-            counts: { tracks: tracksGeoJSON.features.length },
-            isComplete: true,
-          })
-
-          if (tracksLayer) {
-            tracksLayer.update(tracksGeoJSON)
-            tracksLayer.show()
-          }
+          await this._lazyLoadClassicTracks(tracksLayer)
         }
       } else {
         if (tracksLayer) {
@@ -617,6 +593,31 @@ export class RoutesManager {
     } catch (error) {
       console.error("Failed to toggle tracks layer:", error)
       Toast.error(translate("messages.failed_to_load_tracks"))
+    }
+  }
+
+  // Classic tracks lazy-load, shared by the Tracks toggle and the tiled->
+  // classic renderer flip (a tiled-first session never populated the source).
+  async _lazyLoadClassicTracks(tracksLayer) {
+    this.controller.showProgress()
+    this.controller.updateLoadingCounts({
+      counts: { tracks: 0 },
+      isComplete: false,
+    })
+
+    const tracksGeoJSON = await this.controller.api.fetchTracks({
+      start_at: this.controller.startDateValue,
+      end_at: this.controller.endDateValue,
+    })
+
+    this.controller.updateLoadingCounts({
+      counts: { tracks: tracksGeoJSON.features.length },
+      isComplete: true,
+    })
+
+    if (tracksLayer) {
+      tracksLayer.update(tracksGeoJSON)
+      tracksLayer.show()
     }
   }
 
@@ -711,13 +712,38 @@ export class RoutesManager {
     this.layerManager.getLayer("routes")?.toggle(modes.classicRoutes)
     // setMainVisibility, NOT toggle: the classic layer's selection/flow
     // sub-layers must stay usable under tiled mode for the click flow.
-    this.layerManager.getLayer("tracks")?.setMainVisibility(modes.classicTracks)
+    const tracksLayer = this.layerManager.getLayer("tracks")
+    tracksLayer?.setMainVisibility(modes.classicTracks)
+    // Tiled-first sessions never populated the classic source (the bulk fetch
+    // is skipped under tiles) — refill once on the tiled->classic flip. The
+    // once-guard keeps a genuinely track-less account from refetching on
+    // every unrelated toggle.
+    if (
+      modes.classicTracks &&
+      tracksLayer &&
+      !tracksLayer.data?.features?.length &&
+      !this._classicTracksRefilled
+    ) {
+      this._classicTracksRefilled = true
+      this._lazyLoadClassicTracks(tracksLayer).catch((error) => {
+        console.error("Failed to refill classic tracks:", error)
+        Toast.error(translate("messages.failed_to_load_tracks"))
+      })
+    }
 
-    if (settings.anomaliesEnabled) {
-      // refreshAnomalies handles BOTH directions: it flips the source mode and,
-      // on the classic side, re-fetches the data setTiled alone would leave
-      // empty (a tiled-first session never populated the GeoJSON source).
-      this.refreshAnomalies({ enabled: true })
+    const anomaliesLayer = this.layerManager.getLayer("anomalies")
+    if (anomaliesLayer && settings.anomaliesEnabled) {
+      if (anomaliesLayer.tiled === modes.anomaliesTiled) {
+        // No renderer change — cheap range sync (no-ops when nothing changed).
+        anomaliesLayer.setTiled(
+          modes.anomaliesTiled,
+          this.layerManager.pointTileRange,
+        )
+      } else {
+        // Renderer flips: refreshAnomalies swaps the source mode and, on the
+        // classic side, re-fetches the data a tiled-first session never loaded.
+        this.refreshAnomalies({ enabled: true })
+      }
     }
 
     this.layerManager.getLayer("fog")?.setTiledSource(modes.fogTiled)
