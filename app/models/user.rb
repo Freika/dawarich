@@ -34,6 +34,7 @@ class User < ApplicationRecord
   has_many :visited_places, through: :visits, source: :place
   has_many :places,         dependent: :destroy
   has_many :tags,           dependent: :destroy
+  has_many :service_settings, dependent: :destroy
   has_many :trips,  dependent: :destroy
   has_many :tracks, dependent: :destroy
   has_many :flights, dependent: :destroy
@@ -43,6 +44,7 @@ class User < ApplicationRecord
   has_many :shared_links, dependent: :destroy
 
   after_create :create_api_key
+  after_create :seed_geocoding_settings_from_env
   after_commit :activate, on: :create, if: -> { DawarichSettings.self_hosted? && !skip_auto_trial }
   after_commit :start_trial, on: :create, if: -> { !DawarichSettings.self_hosted? && !skip_auto_trial }
   after_commit :trigger_creation_webhook, on: :create,
@@ -396,6 +398,13 @@ class User < ApplicationRecord
     self.api_key = SecureRandom.hex(32)
 
     save
+  end
+
+  def seed_geocoding_settings_from_env
+    Geocoding::SeedFromEnv.call(self)
+  rescue StandardError => e
+    Rails.logger.error("Failed to seed geocoding settings from ENV for user #{id}: #{e.class}: #{e.message}")
+    ExceptionReporter.call(e, 'Failed to seed geocoding settings from ENV')
   end
 
   def activate

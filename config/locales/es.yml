@@ -1,4 +1,12 @@
 es:
+  activerecord:
+    errors:
+      models:
+        service_setting:
+          host_required: "%{provider} needs a host. Enter your instance's hostname, for example photon.example.com."
+          host_invalid: 'The host must be a bare hostname with an optional port or path — no http:// prefix, no spaces.'
+          api_key_required: '%{provider} needs an API key.'
+          chibigeo_api_key_required: 'ChibiGeo needs an API key. The free Hobby plan includes 2,500 lookups per day — get your key at chibigeo.com.'
   language_name: Español
   language_flag: es
   auth:
@@ -1347,7 +1355,48 @@ es:
       residential_roads: Vías residenciales
       track: Trayecto
   settings:
+    geocoding:
+      show:
+        title: Geocoding
+        provider: Geocoding provider
+        provider_hint: The provider used for reverse geocoding your points and for place and location search.
+        intro: Geocoding turns coordinates into city and country names on your points and stats, and powers place and location search.
+        host_choice: Photon server
+        choice_chibigeo: ChibiGeo hosted service
+        choice_chibigeo_desc: 'Free tier: 2,500 lookups per day. Works out of the box — just add your API key.'
+        choice_komoot: komoot public server
+        choice_komoot_desc: Free shared instance, throttled to one request per second.
+        choice_custom: Custom host
+        choice_custom_desc: Your own Photon instance or another compatible server.
+        recommended: Recommended
+        https_locked: HTTPS is always on for this host.
+        chibigeo_message: ChibiGeo is a flat-rate, privacy-first geocoding service that works with Dawarich out of the box. An API key is required.
+        chibigeo_limits: The free Hobby plan includes 2,500 lookups per day at 1 request per second — hard caps, no overage.
+        chibigeo_key_link: Get your free API key
+        disabled: Disabled
+        env_managed_notice: Geocoding is currently managed by environment variables set by your instance operator. The settings below take effect only if those variables are removed.
+        host: Host
+        host_hint: Bare hostname with optional port, e.g. photon.example.com:2322
+        api_key: API key
+        api_key_hint: Leave blank to keep the saved key.
+        api_key_saved: A key is saved for this provider.
+        clear_api_key: Remove the saved API key
+        use_https: Use HTTPS
+        komoot_warning: photon.komoot.io is a shared public instance with strict rate limits. Requests are throttled to one per second, and bulk geocoding will be slow. Please consider hosting your own Photon instance.
+        save: Save
+        test: Test my provider
+        test_hint: Save your settings first, then test. The test runs one lookup against your own provider configuration, even when environment variables are active.
+      update:
+        updated: Geocoding settings updated.
+        disabled: Geocoding disabled.
+        invalid_provider: Unknown geocoding provider.
+      test:
+        not_configured: No geocoding provider is configured for your account. Save a provider first.
+        success: 'Success! Your provider resolved the test coordinates to: %{place}.'
+        empty: The provider responded but returned no results for the test coordinates.
+        failure: 'Test failed: %{error}'
     navigation:
+      geocoding: Geocoding
       general: General
       integrations: Integraciones
       map: Mapa

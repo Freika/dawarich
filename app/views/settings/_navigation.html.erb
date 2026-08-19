@@ -7,6 +7,7 @@
       <%= link_to t('.two_factor_authentication'), settings_two_factor_path, role: 'tab', class: "tab tab-lg #{active_tab?(settings_two_factor_path)}" %>
     <% end %>
     <% if DawarichSettings.self_hosted? %>
+      <%= link_to t('.geocoding'), settings_geocoding_path, role: 'tab', class: "tab tab-lg #{active_tab?(settings_geocoding_path)}" %>
       <% if current_user.admin? %>
         <%= link_to t('.users'), settings_users_path, role: 'tab', class: "tab tab-lg #{controller_path == 'settings/users' ? 'tab-active' : ''}" %>
       <% end %>
