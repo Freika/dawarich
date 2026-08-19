@@ -81,8 +81,7 @@ module Geocoding
     end
 
     def cache_digest
-      key_digest = api_key.present? ? Digest::SHA1.hexdigest(api_key) : ''
-      Digest::SHA1.hexdigest([source, provider, host, use_https, key_digest].join('|')).first(8)
+      Digest::SHA256.hexdigest([source, provider, host, use_https].join('|')).first(8)
     end
 
     def provider_display_name
