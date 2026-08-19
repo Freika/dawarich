@@ -59,4 +59,21 @@ RSpec.describe Immich::SharedLinks do
   it 'returns only album-based links with a public slug' do
     expect(service.call).to contain_exactly(payload.first)
   end
+
+  it 'returns cached links without making another request' do
+    expect(HTTParty).to receive(:get).once.and_return(response)
+
+    first_result = service.call
+    second_result = service.call
+
+    expect(second_result).to eq(first_result)
+  end
+
+  it 'returns a cached empty array without making another request' do
+    Rails.cache.write("immich-shared-links:user:#{user.id}", [])
+
+    expect(HTTParty).not_to receive(:get)
+
+    expect(service.call).to eq([])
+  end
 end

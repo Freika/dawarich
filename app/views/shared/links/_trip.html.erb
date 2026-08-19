@@ -127,15 +127,7 @@
        aria-label="Foto in Immich öffnen"
        title="Foto in Immich öffnen"
        data-shared-photo-immich>
-      <svg viewBox="0 0 48 48" role="img" aria-hidden="true" class="h-full w-full drop-shadow-sm">
-        <path fill="#FA2921" d="M24 3c5.2 0 7.1 5.2 5.1 10.2L24 24l-5.1-10.8C16.9 8.2 18.8 3 24 3Z"/>
-        <path fill="#ED79B5" d="M42.2 13.5c2.6 4.5-1 8.7-6.3 9.4L24 24l6.8-9.7c3.1-4.4 8.8-5.3 11.4-.8Z"/>
-        <path fill="#FFB400" d="M42.2 34.5c-2.6 4.5-8.3 3.6-11.4-.8L24 24l11.9 1.1c5.3.7 8.9 4.9 6.3 9.4Z"/>
-        <path fill="#1E83F7" d="M24 45c-5.2 0-7.1-5.2-5.1-10.2L24 24l5.1 10.8C31.1 39.8 29.2 45 24 45Z"/>
-        <path fill="#18C249" d="M5.8 34.5c-2.6-4.5 1-8.7 6.3-9.4L24 24l-6.8 9.7c-3.1 4.4-8.8 5.3-11.4.8Z"/>
-        <path fill="#8E59FF" d="M5.8 13.5c2.6-4.5 8.3-3.6 11.4.8L24 24l-11.9-1.1c-5.3-.7-8.9-4.9-6.3-9.4Z"/>
-        <circle cx="24" cy="24" r="5.5" fill="white"/>
-      </svg>
+      <%= inline_svg_tag "icons/immich.svg", class: "h-full w-full drop-shadow-sm" %>
     </a>
   <% end %>
 
@@ -149,19 +141,17 @@
     if (window.sharedTripPhotoLoaderInstalled) return;
     window.sharedTripPhotoLoaderInstalled = true;
 
-    const overlay = document.querySelector(
-      "[data-shared-photo-overlay]"
-    );
-
-    const preview = overlay?.querySelector(
-      "[data-shared-photo-preview]"
-    );
-
-    const immichLink = overlay?.querySelector(
-      "[data-shared-photo-immich]"
-    );
-
     const closePhoto = () => {
+      const overlay = document.querySelector(
+        "[data-shared-photo-overlay]"
+      );
+      const preview = overlay?.querySelector(
+        "[data-shared-photo-preview]"
+      );
+      const immichLink = overlay?.querySelector(
+        "[data-shared-photo-immich]"
+      );
+
       if (!overlay || !preview) return;
 
       overlay.classList.add("hidden");
@@ -173,6 +163,16 @@
     };
 
     const openPhoto = (image) => {
+      const overlay = document.querySelector(
+        "[data-shared-photo-overlay]"
+      );
+      const preview = overlay?.querySelector(
+        "[data-shared-photo-preview]"
+      );
+      const immichLink = overlay?.querySelector(
+        "[data-shared-photo-immich]"
+      );
+
       if (!overlay || !preview || !image?.src) return;
 
       preview.src = image.src;
@@ -235,6 +235,10 @@
         openPhoto(image);
         return;
       }
+
+      const overlay = document.querySelector(
+        "[data-shared-photo-overlay]"
+      );
 
       if (
         event.target.closest("[data-shared-photo-close]") ||

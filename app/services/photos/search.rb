@@ -6,7 +6,7 @@ class Photos::Search
   def self.cached(user, start_date: '1970-01-01', end_date: nil, album_id: nil, sources: nil,
                   expires_in: 1.minute)
     album_fingerprint = album_id.to_s.presence || 'all'
-    source_fingerprint = sources.nil? ? 'legacy' : Array(sources).compact_blank.sort.join('-').presence || 'none'
+    source_fingerprint = sources.nil? ? 'legacy' : Array(sources).compact_blank.map(&:to_s).sort.join('-').presence || 'none'
     key = [
       'photos_search', user.id, start_date, end_date, album_fingerprint, source_fingerprint
     ].join('/')

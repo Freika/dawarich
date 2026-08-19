@@ -11,7 +11,7 @@ class Immich::SharedLinks
 
   def call
     cached_links = Rails.cache.read(cache_key)
-    return cached_links if cached_links.present?
+    return cached_links unless cached_links.nil?
 
     result = fetch_shared_links
     return [] unless result[:success]
