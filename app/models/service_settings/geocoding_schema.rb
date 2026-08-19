@@ -2,13 +2,6 @@
 
 module ServiceSettings
   class GeocodingSchema
-    PROVIDERS = %w[photon geoapify nominatim locationiq].freeze
-    PROVIDER_NAMES = {
-      'photon' => 'Photon', 'geoapify' => 'Geoapify',
-      'nominatim' => 'Nominatim', 'locationiq' => 'LocationIQ'
-    }.freeze
-    HOST_REQUIRED = %w[photon nominatim].freeze
-    API_KEY_REQUIRED = %w[geoapify locationiq].freeze
     KOMOOT_HOST = 'photon.komoot.io'
     CHIBIGEO_HOST = 'app.chibigeo.com/v1/photon'
     CHIBIGEO_BARE_HOST = 'app.chibigeo.com'
@@ -39,7 +32,7 @@ module ServiceSettings
     end
 
     def paid?
-      API_KEY_REQUIRED.include?(setting.provider)
+      Geocoding::Providers.api_key_required?(setting.provider)
     end
 
     private
@@ -63,7 +56,7 @@ module ServiceSettings
     end
 
     def validate_provider
-      return if PROVIDERS.include?(setting.provider)
+      return if Geocoding::Providers::CHAIN.include?(setting.provider)
 
       setting.errors.add(:provider, :inclusion)
     end
@@ -71,18 +64,18 @@ module ServiceSettings
     def validate_host
       host = setting.config['host']
 
-      if HOST_REQUIRED.include?(setting.provider) && host.blank?
-        setting.errors.add(:base, :host_required, provider: provider_name)
+      if Geocoding::Providers.host_required?(setting.provider) && host.blank?
+        setting.errors.add(:base, :host_required, provider: Geocoding::Providers.name(setting.provider))
       elsif host.present? && !host.match?(HOST_FORMAT)
         setting.errors.add(:base, :host_invalid)
       end
     end
 
     def validate_api_key
-      return unless API_KEY_REQUIRED.include?(setting.provider)
+      return unless Geocoding::Providers.api_key_required?(setting.provider)
       return if setting.api_key.present?
 
-      setting.errors.add(:base, :api_key_required, provider: provider_name)
+      setting.errors.add(:base, :api_key_required, provider: Geocoding::Providers.name(setting.provider))
     end
 
     def validate_chibigeo_key
@@ -90,10 +83,6 @@ module ServiceSettings
       return if setting.api_key.present?
 
       setting.errors.add(:base, :chibigeo_api_key_required)
-    end
-
-    def provider_name
-      PROVIDER_NAMES.fetch(setting.provider, setting.provider.to_s)
     end
   end
 end

@@ -2,19 +2,8 @@
 
 module Geocoding
   class UserLookup
-    GEM_HANDLES = {
-      photon: :photon,
-      geoapify: :geoapify,
-      nominatim: :nominatim,
-      locationiq: :location_iq
-    }.freeze
-
-    def self.gem_handle(provider)
-      GEM_HANDLES.fetch(provider)
-    end
-
     def self.build(config)
-      lookup = Geocoder::Lookup.get(gem_handle(config.provider)).class.new
+      lookup = Geocoder::Lookup.get(Providers.gem_handle(config.provider)).class.new
       merged = merged_configuration(config)
       lookup.define_singleton_method(:configuration) { merged }
       lookup.singleton_class.send(:private, :configuration)
@@ -22,7 +11,7 @@ module Geocoding
     end
 
     def self.merged_configuration(config)
-      base = Geocoder.config_for_lookup(gem_handle(config.provider))
+      base = Geocoder.config_for_lookup(Providers.gem_handle(config.provider))
       base.merge(configuration_overrides(config, base))
     end
 

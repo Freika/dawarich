@@ -42,11 +42,10 @@ class ApplicationController < ActionController::Base
   # Memoized per request: the points list gates a toponym cell per rendered row;
   # one resolver lookup serves the whole page.
   def reverse_geocoding_enabled_for?(user)
-    key = user.is_a?(User) ? user.id : user
     @reverse_geocoding_enabled_for ||= {}
-    return @reverse_geocoding_enabled_for[key] if @reverse_geocoding_enabled_for.key?(key)
+    return @reverse_geocoding_enabled_for[user&.id] if @reverse_geocoding_enabled_for.key?(user&.id)
 
-    @reverse_geocoding_enabled_for[key] = Geocoding::Config.for(user).enabled?
+    @reverse_geocoding_enabled_for[user&.id] = Geocoding::Config.for(user).enabled?
   end
 
   # Where "back to the family" should land: the family page while the plan is

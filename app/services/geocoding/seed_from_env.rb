@@ -2,8 +2,6 @@
 
 module Geocoding
   class SeedFromEnv
-    PROVIDER_CHAIN = %w[photon geoapify nominatim locationiq].freeze
-
     def self.call(user)
       new(user).call
     end
@@ -58,7 +56,7 @@ module Geocoding
     def activate_chain_winner
       return if geocoding_settings.exists?(active: true)
 
-      winner = PROVIDER_CHAIN.lazy.filter_map { |provider| geocoding_settings.find_by(provider: provider) }.first
+      winner = Providers::CHAIN.lazy.filter_map { |provider| geocoding_settings.find_by(provider: provider) }.first
       winner&.activate!
     end
 

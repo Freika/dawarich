@@ -2,7 +2,6 @@
 
 module Geocoding
   class Config
-    PAID_PROVIDERS = %i[geoapify locationiq].freeze
     KOMOOT_HOST = 'photon.komoot.io'
 
     attr_reader :source, :provider, :host, :api_key, :use_https
@@ -77,7 +76,7 @@ module Geocoding
     end
 
     def paid_provider?
-      PAID_PROVIDERS.include?(provider)
+      provider.present? && Providers.api_key_required?(provider)
     end
 
     def cache_digest
@@ -85,7 +84,9 @@ module Geocoding
     end
 
     def provider_display_name
-      (provider || Geocoder.config.lookup).to_s.capitalize
+      return Providers.name(provider) if provider
+
+      Geocoder.config.lookup.to_s.capitalize
     end
   end
 end

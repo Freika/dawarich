@@ -127,6 +127,17 @@ RSpec.describe Geocoding::SeedFromEnv do
       expect(new_user.service_settings.count).to eq(0)
     end
 
+    it 'does not even invoke the seeder on cloud instances' do
+      stub_photon_env
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      allow(described_class).to receive(:call)
+
+      new_user = create(:user, skip_auto_trial: true)
+
+      expect(described_class).not_to have_received(:call)
+      expect(new_user.service_settings.count).to eq(0)
+    end
+
     it 'does not abort user creation when seeding raises' do
       stub_photon_env
       allow(described_class).to receive(:call).and_raise(StandardError, 'boom')

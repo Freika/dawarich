@@ -16,7 +16,7 @@ class Settings::GeocodingController < ApplicationController
   def update
     return disable_geocoding if params[:provider] == 'disabled'
 
-    unless ServiceSettings::GeocodingSchema::PROVIDERS.include?(params[:provider])
+    unless Geocoding::Providers::CHAIN.include?(params[:provider])
       return redirect_to settings_geocoding_path, alert: t('settings.geocoding.update.invalid_provider'),
                          status: :see_other
     end

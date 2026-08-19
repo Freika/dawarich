@@ -153,13 +153,14 @@
           <% end %>
         </div>
 
-        <% { 'geoapify' => { host: false }, 'nominatim' => { host: true }, 'locationiq' => { host: false } }.each do |provider, fields| %>
+        <% (Geocoding::Providers::CHAIN - ['photon']).each do |provider| %>
           <% setting = @settings_by_provider[provider] %>
+          <% with_host = Geocoding::Providers.host_required?(provider) %>
           <div class="rounded-lg border border-base-content/10 bg-base-100 p-5 space-y-4"
                data-geocoding-settings-target="fieldset"
                data-provider="<%= provider %>"
                <%= 'hidden' unless provider == active_provider %>>
-            <% if fields[:host] %>
+            <% if with_host %>
               <div class="form-control w-full max-w-md">
                 <label class="label"><span class="label-text font-medium"><%= t('.host') %></span></label>
                 <%= text_field_tag "#{provider}[host]", setting&.host,

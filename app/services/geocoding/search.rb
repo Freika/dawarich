@@ -2,9 +2,6 @@
 
 module Geocoding
   class Search
-    HOST_REQUIRED = %i[photon nominatim].freeze
-    API_KEY_REQUIRED = %i[geoapify locationiq].freeze
-
     def self.call(user:, query:, fallback_to_default: false, **options)
       config = Config.for(user)
 
@@ -32,7 +29,7 @@ module Geocoding
 
       geocoder_query = Geocoder::Query.new(
         query,
-        options.merge(lookup: UserLookup.gem_handle(config.provider))
+        options.merge(lookup: Providers.gem_handle(config.provider))
       )
       return [] if geocoder_query.blank?
 
@@ -40,8 +37,8 @@ module Geocoding
     end
 
     def self.required_fields_present?(config)
-      return false if HOST_REQUIRED.include?(config.provider) && config.host.blank?
-      return false if API_KEY_REQUIRED.include?(config.provider) && config.api_key.blank?
+      return false if Providers.host_required?(config.provider) && config.host.blank?
+      return false if Providers.api_key_required?(config.provider) && config.api_key.blank?
 
       true
     end
