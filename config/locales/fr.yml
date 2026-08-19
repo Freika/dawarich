@@ -1,13 +1,5 @@
 ---
 fr:
-  activerecord:
-    errors:
-      models:
-        service_setting:
-          host_required: "%{provider} needs a host. Enter your instance's hostname, for example photon.example.com."
-          host_invalid: 'The host must be a bare hostname with an optional port or path — no http:// prefix, no spaces.'
-          api_key_required: '%{provider} needs an API key.'
-          chibigeo_api_key_required: 'ChibiGeo needs an API key. The free Hobby plan includes 2,500 lookups per day — get your key at chibigeo.com.'
   language_name: "Français"
   language_flag: "fr"
   activerecord:
@@ -39,6 +31,12 @@ fr:
     models:
       user: Utilisateur
     errors:
+      models:
+        service_setting:
+          host_required: "%{provider} needs a host. Enter your instance's hostname, for example photon.example.com."
+          host_invalid: 'The host must be a bare hostname with an optional port or path — no http:// prefix, no spaces.'
+          api_key_required: '%{provider} needs an API key.'
+          chibigeo_api_key_required: 'ChibiGeo needs an API key. The free Hobby plan includes 2,500 lookups per day — get your key at chibigeo.com.'
       messages:
         record_invalid: 'La validation a échoué : %{errors}'
         restrict_dependent_destroy:
