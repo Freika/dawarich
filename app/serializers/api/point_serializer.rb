@@ -3,7 +3,7 @@
 class Api::PointSerializer
   EXCLUDED_ATTRIBUTES = %w[
     created_at updated_at visit_id import_id user_id raw_data
-    country_id
+    country_id source_id motion_id
   ].freeze
 
   def initialize(point)
