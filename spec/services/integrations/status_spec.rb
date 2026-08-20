@@ -105,6 +105,19 @@ RSpec.describe Integrations::Status do
 
         expect(status.status('geocoding')).to be_nil
       end
+
+      it 'memoizes the lookup so repeated calls run no further queries' do
+        create(:service_setting, user: user, provider: 'photon', active: true,
+                                 config: { 'host' => 'photon.example.com', 'connection_status' => 'ok' })
+        status.status('geocoding')
+
+        queries = 0
+        counter = ->(*) { queries += 1 }
+        ActiveSupport::Notifications.subscribed(counter, 'sql.active_record') do
+          expect(status.status('geocoding')).to eq(:connected)
+        end
+        expect(queries).to eq(0)
+      end
     end
   end
 end

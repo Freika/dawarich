@@ -23,6 +23,12 @@ RSpec.describe 'Settings::Integrations', type: :request do
       expect(user.settings['photoprism_skip_ssl_verification']).to eq(true)
     end
 
+    it 'redirects back to the pane that was saved' do
+      patch '/settings/integrations', params: params.merge(service: 'photoprism')
+
+      expect(response).to redirect_to(settings_integrations_path(service: 'photoprism'))
+    end
+
     it 'refreshes cached photos when requested' do
       Rails.cache.write("photos_#{user.id}_test", ['cached'])
       Rails.cache.write("photo_thumbnail_#{user.id}_immich_test", 'thumb')

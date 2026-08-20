@@ -32,9 +32,9 @@ class Settings::IntegrationsController < ApplicationController
   private
 
   def available_services
-    services = []
-    services << 'geocoding' if DawarichSettings.self_hosted?
-    services + Integrations::Status::PHOTO_SERVICES
+    return Integrations::Status::SERVICES if DawarichSettings.self_hosted?
+
+    Integrations::Status::PHOTO_SERVICES
   end
 
   def prepare_geocoding

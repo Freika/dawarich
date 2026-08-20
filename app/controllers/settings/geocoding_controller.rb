@@ -101,7 +101,6 @@ class Settings::GeocodingController < ApplicationController
     return unless setting
 
     setting.config['connection_status'] = status
-    setting.config['connection_checked_at'] = Time.current.iso8601
     setting.update_column(:config, setting.config)
   end
 end

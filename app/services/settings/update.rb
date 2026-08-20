@@ -13,7 +13,8 @@ class Settings::Update
 
   def call
     existing_settings = user.safe_settings.settings
-    updated_settings = existing_settings.merge(cast_boolean_params(settings_params))
+    params_hash = cast_boolean_params(settings_params)
+    updated_settings = existing_settings.merge(params_hash)
 
     immich_changed = settings_changed?(existing_settings, updated_settings, %w[immich_url immich_api_key])
     photoprism_changed = settings_changed?(existing_settings, updated_settings, %w[photoprism_url photoprism_api_key])
@@ -31,25 +32,28 @@ class Settings::Update
       }
     end
 
-    unless user.update(settings: updated_settings)
+    test_notices = []
+    alerts = []
+    statuses = {}
+    test_immich_connection(updated_settings, test_notices, alerts, statuses) if immich_changed
+    test_photoprism_connection(updated_settings, test_notices, alerts, statuses) if photoprism_changed
+    test_airtrail_connection(updated_settings, test_notices, alerts, statuses) if airtrail_changed
+
+    # The connection tests above take seconds; re-read settings so a write that
+    # landed in the meantime is not reverted by this save.
+    final_settings = user.reload.settings.merge(params_hash).merge(statuses)
+    unless user.update(settings: final_settings)
       return { success: false, notices: [], alerts: [I18n.t('services.settings.update.failed')] }
     end
 
     notices = [I18n.t('services.settings.update.updated')]
-    alerts = []
 
     if refresh_photos_cache
       Photos::CacheCleaner.new(user).call
       notices << I18n.t('services.settings.update.photo_cache_refreshed')
     end
 
-    statuses = {}
-    test_immich_connection(updated_settings, notices, alerts, statuses) if immich_changed
-    test_photoprism_connection(updated_settings, notices, alerts, statuses) if photoprism_changed
-    test_airtrail_connection(updated_settings, notices, alerts, statuses) if airtrail_changed
-    user.update(settings: user.settings.merge(statuses)) if statuses.any?
-
-    { success: true, notices: notices, alerts: alerts }
+    { success: true, notices: notices + test_notices, alerts: alerts }
   end
 
   private

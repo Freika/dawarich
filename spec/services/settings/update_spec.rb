@@ -160,6 +160,27 @@ RSpec.describe Settings::Update do
       end
     end
 
+    context 'when another process writes settings during the connection test' do
+      let(:settings_params) { { 'immich_url' => 'https://immich.test', 'immich_api_key' => 'new-key' } }
+      let(:service) { described_class.new(user, settings_params) }
+
+      before do
+        allow_any_instance_of(Immich::ConnectionTester).to receive(:call) do
+          concurrent_user = User.find(user.id)
+          concurrent_user.update!(settings: concurrent_user.settings.merge('concurrent_key' => 'kept'))
+          { success: true, message: 'Immich connection verified' }
+        end
+      end
+
+      it 'does not clobber the concurrent write' do
+        service.call
+
+        expect(user.reload.settings['concurrent_key']).to eq('kept')
+        expect(user.settings['immich_url']).to eq('https://immich.test')
+        expect(user.settings['immich_connection_status']).to eq('ok')
+      end
+    end
+
     context 'when immich settings have not changed' do
       let(:service) { described_class.new(user, settings_params) }
 

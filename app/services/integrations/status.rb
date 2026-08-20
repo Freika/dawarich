@@ -11,6 +11,7 @@ module Integrations
 
     def initialize(user)
       @user = user
+      @status = {}
     end
 
     def configured?(service)
@@ -25,6 +26,16 @@ module Integrations
 
     def status(service)
       service = service.to_s
+      return @status[service] if @status.key?(service)
+
+      @status[service] = resolve_status(service)
+    end
+
+    private
+
+    attr_reader :user
+
+    def resolve_status(service)
       return unless configured?(service)
 
       if service == 'geocoding'
@@ -33,10 +44,6 @@ module Integrations
         normalize(settings["#{service}_connection_status"])
       end
     end
-
-    private
-
-    attr_reader :user
 
     def settings
       @settings ||= user.safe_settings.settings
