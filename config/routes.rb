@@ -408,6 +408,12 @@ Rails.application.routes.draw do
             get :history
           end
         end
+        resources :location_requests, only: [:create] do
+          member do
+            post :accept
+            post :decline
+          end
+        end
       end
 
       resources :notes, only: %i[index show create update destroy]

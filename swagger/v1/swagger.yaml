@@ -1090,6 +1090,167 @@ paths:
           description: digest not found
         '401':
           description: unauthorized
+  "/api/v1/families/location_requests":
+    post:
+      summary: Creates a location sharing request for a family member
+      tags:
+      - Families
+      description: Sends a request asking a family member to share their location.
+        Requires the Family plan (any plan on self-hosted) and family membership.
+      parameters:
+      - name: Authorization
+        in: header
+        required: true
+        description: Bearer <API Key>
+        schema:
+          type: string
+      responses:
+        '201':
+          description: location request created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  request:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      target_user_id:
+                        type: integer
+                      expires_at:
+                        type: string
+        '404':
+          description: target not found in your family
+        '422':
+          description: target already sharing their location
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '429':
+          description: request cooldown active
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                target_user_id:
+                  type: integer
+                  description: ID of the family member to request location from
+              required:
+              - target_user_id
+  "/api/v1/families/location_requests/{id}/accept":
+    parameters:
+    - name: id
+      in: path
+      description: Location request ID
+      required: true
+      schema:
+        type: integer
+    post:
+      summary: Accepts a location sharing request
+      tags:
+      - Families
+      description: Accepts a pending location request and enables sharing for the
+        responder. Requires the Family plan (any plan on self-hosted) and family membership.
+      parameters:
+      - name: Authorization
+        in: header
+        required: true
+        description: Bearer <API Key>
+        schema:
+          type: string
+      responses:
+        '200':
+          description: request accepted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  status:
+                    type: string
+        '403':
+          description: not authorized to respond to this request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                duration:
+                  type: string
+                  enum:
+                  - 1h
+                  - 6h
+                  - 12h
+                  - 24h
+                  - permanent
+                  description: How long sharing stays on
+  "/api/v1/families/location_requests/{id}/decline":
+    parameters:
+    - name: id
+      in: path
+      description: Location request ID
+      required: true
+      schema:
+        type: integer
+    post:
+      summary: Declines a location sharing request
+      tags:
+      - Families
+      description: Declines a pending location request. Requires the Family plan (any
+        plan on self-hosted) and family membership.
+      parameters:
+      - name: Authorization
+        in: header
+        required: true
+        description: Bearer <API Key>
+        schema:
+          type: string
+      responses:
+        '200':
+          description: request declined
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  status:
+                    type: string
+        '403':
+          description: not authorized to respond to this request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
   "/api/v1/families/locations":
     get:
       summary: Retrieves family members' locations
