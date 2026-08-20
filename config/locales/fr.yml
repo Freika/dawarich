@@ -2126,7 +2126,6 @@ fr:
         empty: The provider responded but returned no results for the test coordinates.
         failure: 'Test failed: %{error}'
     navigation:
-      geocoding: Geocoding
       general: Général
       integrations: Intégrations
       map: Carte
@@ -2242,6 +2241,14 @@ fr:
         the_interface_emails_and_notifications_will_use_this_language: "L'interface, les e-mails et les notifications utiliseront cette langue."
     integrations:
       index:
+        services_nav: Services d'intégration
+        services:
+          geocoding: Géocodage
+          immich: Immich
+          photoprism: PhotoPrism
+          airtrail: AirTrail
+        status_connected: Connecté
+        status_failed: La dernière tentative de connexion a échoué
         immich_photoprism_integrations: Intégrations Immich & Photoprism
         connect_your_photo_management_tools_to_see_your_photos_on: Connectez vos outils
           de gestion de photos pour voir vos photos sur la carte. Les intégrations

@@ -1,0 +1,50 @@
+<div class="rounded-box border border-base-content/10 bg-base-200 max-w-3xl">
+  <%= form_for :settings, url: settings_integrations_path, method: :patch, data: { turbo_method: :patch, turbo: false } do |f| %>
+    <%= hidden_field_tag :service, 'immich' %>
+    <div class="card-body space-y-5">
+      <div class="flex items-center gap-3">
+        <%= integration_icon('immich', css: 'size-6') %>
+        <h2 class="text-xl font-semibold"><%= t('settings.integrations.index.immich_integration') %></h2>
+      </div>
+      <div class="form-control w-full max-w-md">
+        <%= f.label :immich_url, class: 'label' do %>
+          <span class="label-text font-medium"><%= t('settings.integrations.index.immich_url') %></span>
+        <% end %>
+        <%= f.url_field :immich_url, value: current_user.safe_settings.immich_url, class: 'input input-bordered w-full', placeholder: 'http://192.168.0.1:2283' %>
+        <span class="label-text-alt mt-1 text-base-content/60"><%= t('settings.integrations.index.the_base_url_of_your_immich_instance') %></span>
+      </div>
+      <div class="form-control w-full max-w-md">
+        <%= f.label :immich_api_key, class: 'label' do %>
+          <span class="label-text font-medium"><%= t('settings.integrations.index.immich_api_key') %></span>
+        <% end %>
+        <%= f.password_field :immich_api_key, value: current_user.safe_settings.immich_api_key, class: 'input input-bordered w-full', placeholder: t('settings.integrations.index.xxxxxxxxxxxxxx') %>
+        <span class="label-text-alt mt-1 text-base-content/60"><%= t('settings.integrations.index.found_in_your_immich_admin_panel_under_api_settings_required') %> <code class="text-xs"><%= t('settings.integrations.index.asset_read') %></code>, <code class="text-xs"><%= t('settings.integrations.index.asset_view') %></code><%= t('settings.integrations.index.and') %> <code class="text-xs"><%= t('settings.integrations.index.asset_update') %></code> <%= t('settings.integrations.index.for_photo_enrichment') %></span>
+      </div>
+      <div class="form-control">
+        <label class="label cursor-pointer justify-start gap-3">
+          <%= f.check_box :immich_skip_ssl_verification,
+              checked: current_user.safe_settings.immich_skip_ssl_verification,
+              class: 'toggle toggle-warning',
+              onchange: "document.getElementById('immich-ssl-warning').classList.toggle('hidden', !this.checked)" %>
+          <span class="label-text"><%= t('settings.integrations.index.skip_ssl_certificate_verification_self_signed_certificates') %></span>
+        </label>
+        <div id="immich-ssl-warning" class="alert alert-warning mt-2 <%= 'hidden' unless current_user.safe_settings.immich_skip_ssl_verification %>">
+          <%= icon 'triangle-alert' %>
+          <span>
+            <strong><%= t('settings.integrations.index.security_warning') %></strong> <%= t('settings.integrations.index.disabling_ssl_verification_makes_your_connection_vulnerable_to_man_in') %>
+          </span>
+        </div>
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <%= button_tag t('settings.integrations.index.refresh_photo_cache'),
+          name: 'refresh_photos_cache',
+          value: '1',
+          class: 'btn btn-sm btn-outline' %>
+        <span class="label-text-alt text-base-content/60"><%= t('settings.integrations.index.clears_cached_photo_metadata_and_thumbnails_for_all_integrations') %></span>
+      </div>
+      <div class="card-actions">
+        <%= f.submit t('settings.integrations.index.save_test_connection'), class: 'btn btn-primary' %>
+      </div>
+    </div>
+  <% end %>
+</div>

@@ -43,9 +43,11 @@ class Settings::Update
       notices << I18n.t('services.settings.update.photo_cache_refreshed')
     end
 
-    test_immich_connection(updated_settings, notices, alerts) if immich_changed
-    test_photoprism_connection(updated_settings, notices, alerts) if photoprism_changed
-    test_airtrail_connection(updated_settings, notices, alerts) if airtrail_changed
+    statuses = {}
+    test_immich_connection(updated_settings, notices, alerts, statuses) if immich_changed
+    test_photoprism_connection(updated_settings, notices, alerts, statuses) if photoprism_changed
+    test_airtrail_connection(updated_settings, notices, alerts, statuses) if airtrail_changed
+    user.update(settings: user.settings.merge(statuses)) if statuses.any?
 
     { success: true, notices: notices, alerts: alerts }
   end
@@ -67,30 +69,35 @@ class Settings::Update
     keys.any? { |key| existing_settings[key] != updated_settings[key] }
   end
 
-  def test_immich_connection(updated_settings, notices, alerts)
+  def test_immich_connection(updated_settings, notices, alerts, statuses)
     result = Immich::ConnectionTester.new(
       updated_settings['immich_url'],
       updated_settings['immich_api_key'],
       skip_ssl_verification: updated_settings['immich_skip_ssl_verification']
     ).call
-    result[:success] ? notices << result[:message] : alerts << result[:error]
+    record_result('immich', result, notices, alerts, statuses)
   end
 
-  def test_photoprism_connection(updated_settings, notices, alerts)
+  def test_photoprism_connection(updated_settings, notices, alerts, statuses)
     result = Photoprism::ConnectionTester.new(
       updated_settings['photoprism_url'],
       updated_settings['photoprism_api_key'],
       skip_ssl_verification: updated_settings['photoprism_skip_ssl_verification']
     ).call
-    result[:success] ? notices << result[:message] : alerts << result[:error]
+    record_result('photoprism', result, notices, alerts, statuses)
   end
 
-  def test_airtrail_connection(updated_settings, notices, alerts)
+  def test_airtrail_connection(updated_settings, notices, alerts, statuses)
     result = AirTrail::ConnectionTester.new(
       updated_settings['airtrail_url'],
       updated_settings['airtrail_api_key'],
       skip_ssl_verification: updated_settings['airtrail_skip_ssl_verification']
     ).call
+    record_result('airtrail', result, notices, alerts, statuses)
+  end
+
+  def record_result(service, result, notices, alerts, statuses)
     result[:success] ? notices << result[:message] : alerts << result[:error]
+    statuses["#{service}_connection_status"] = result[:success] ? 'ok' : 'failed'
   end
 end

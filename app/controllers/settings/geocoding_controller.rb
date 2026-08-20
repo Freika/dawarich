@@ -9,24 +9,23 @@ class Settings::GeocodingController < ApplicationController
   before_action :authenticate_user!
 
   def show
-    @settings_by_provider = geocoding_settings.index_by(&:provider)
-    @geocoding_config = Geocoding::Config.for(current_user)
+    redirect_to settings_integrations_path(service: 'geocoding')
   end
 
   def update
     return disable_geocoding if params[:provider] == 'disabled'
 
     unless Geocoding::Providers::CHAIN.include?(params[:provider])
-      return redirect_to settings_geocoding_path, alert: t('settings.geocoding.update.invalid_provider'),
+      return redirect_to geocoding_pane_path, alert: t('settings.geocoding.update.invalid_provider'),
                          status: :see_other
     end
 
     setting = upsert_setting
 
     if setting.errors.any?
-      redirect_to settings_geocoding_path, alert: setting.errors.full_messages.to_sentence, status: :see_other
+      redirect_to geocoding_pane_path, alert: setting.errors.full_messages.to_sentence, status: :see_other
     else
-      redirect_to settings_geocoding_path, notice: t('settings.geocoding.update.updated')
+      redirect_to geocoding_pane_path, notice: t('settings.geocoding.update.updated')
     end
   end
 
@@ -37,12 +36,16 @@ class Settings::GeocodingController < ApplicationController
       format.turbo_stream { render turbo_stream: stream_flash(type, message) }
       format.html do
         flash_key = type == :notice ? :notice : :alert
-        redirect_to settings_geocoding_path, flash_key => message
+        redirect_to geocoding_pane_path, flash_key => message
       end
     end
   end
 
   private
+
+  def geocoding_pane_path
+    settings_integrations_path(service: 'geocoding')
+  end
 
   def geocoding_settings
     current_user.service_settings.service_geocoding
@@ -50,7 +53,7 @@ class Settings::GeocodingController < ApplicationController
 
   def disable_geocoding
     geocoding_settings.update_all(active: false)
-    redirect_to settings_geocoding_path, notice: t('settings.geocoding.update.disabled')
+    redirect_to geocoding_pane_path, notice: t('settings.geocoding.update.disabled')
   end
 
   def upsert_setting
@@ -81,12 +84,24 @@ class Settings::GeocodingController < ApplicationController
 
     result = Geocoding::Search.with_config(config: config, query: TEST_COORDINATES, limit: 1).first
     if result
+      record_test_result('ok')
       place = [result.city, result.country].compact_blank.join(', ')
       [:notice, t('settings.geocoding.test.success', place: place.presence || result.address)]
     else
+      record_test_result('failed')
       [:error, t('settings.geocoding.test.empty')]
     end
   rescue StandardError => e
+    record_test_result('failed')
     [:error, t('settings.geocoding.test.failure', error: "#{e.class}: #{e.message}")]
+  end
+
+  def record_test_result(status)
+    setting = geocoding_settings.find_by(active: true)
+    return unless setting
+
+    setting.config['connection_status'] = status
+    setting.config['connection_checked_at'] = Time.current.iso8601
+    setting.update_column(:config, setting.config)
   end
 end

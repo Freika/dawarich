@@ -100,6 +100,12 @@ RSpec.describe Settings::Update do
           expect(result[:notices]).to include('Immich connection verified')
           expect(result[:alerts]).to be_empty
         end
+
+        it 'records the successful connection status' do
+          service.call
+
+          expect(user.reload.settings['immich_connection_status']).to eq('ok')
+        end
       end
 
       context 'when connection test fails' do
@@ -112,6 +118,12 @@ RSpec.describe Settings::Update do
           result = service.call
 
           expect(result[:alerts]).to include('Immich connection failed: 500')
+        end
+
+        it 'records the failed connection status' do
+          service.call
+
+          expect(user.reload.settings['immich_connection_status']).to eq('failed')
         end
       end
     end
@@ -161,6 +173,12 @@ RSpec.describe Settings::Update do
         expect(Immich::ConnectionTester).not_to receive(:new)
 
         service.call
+      end
+
+      it 'does not record a connection status' do
+        service.call
+
+        expect(user.reload.settings['immich_connection_status']).to be_nil
       end
     end
 

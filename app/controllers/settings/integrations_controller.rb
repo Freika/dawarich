@@ -7,6 +7,13 @@ class Settings::IntegrationsController < ApplicationController
 
   def index
     @pro_required = !current_user.full_access?
+    return if @pro_required
+
+    @services = available_services
+    @service = params[:service].presence_in(@services) || @services.first
+    @statuses = Integrations::Status.for(current_user)
+
+    prepare_geocoding if @service == 'geocoding'
   end
 
   def update
@@ -19,10 +26,21 @@ class Settings::IntegrationsController < ApplicationController
     flash[:notice] = result[:notices].join('. ') if result[:notices].any?
     flash[:alert] = result[:alerts].join('. ') if result[:alerts].any?
 
-    redirect_to settings_integrations_path
+    redirect_to settings_integrations_path(service: params[:service].presence)
   end
 
   private
+
+  def available_services
+    services = []
+    services << 'geocoding' if DawarichSettings.self_hosted?
+    services + Integrations::Status::PHOTO_SERVICES
+  end
+
+  def prepare_geocoding
+    @settings_by_provider = current_user.service_settings.service_geocoding.index_by(&:provider)
+    @geocoding_config = Geocoding::Config.for(current_user)
+  end
 
   def settings_params
     params.require(:settings).permit(
