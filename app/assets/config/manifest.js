@@ -6,3 +6,4 @@
 //= link_tree ../../javascript .js
 //= link_tree ../../../vendor/javascript .js
 //= link favicon/browserconfig.xml
+//= link icons/immich.svg
