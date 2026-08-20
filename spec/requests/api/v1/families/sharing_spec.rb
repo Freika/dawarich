@@ -34,10 +34,13 @@ RSpec.describe 'Api::V1::Families::Sharing', type: :request do
       expect(user.reload.family_sharing_enabled?).to be false
     end
 
-    it 'allows a lite-plan family member to update sharing' do
-      lite_member = create(:user)
-      create(:family_membership, user: lite_member, family: family, role: :member)
-      lite_member.update!(plan: :lite) if lite_member.respond_to?(:plan)
+    it 'allows a lite-plan family member to update sharing under cloud entitlements' do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      owner = create(:user, plan: :family, skip_auto_trial: true)
+      cloud_family = create(:family, creator: owner)
+      create(:family_membership, :owner, family: cloud_family, user: owner)
+      lite_member = create(:user, plan: :lite, skip_auto_trial: true)
+      create(:family_membership, family: cloud_family, user: lite_member)
 
       patch '/api/v1/families/sharing',
             params: { enabled: true, duration: 'permanent' },
