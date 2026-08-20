@@ -63,18 +63,36 @@
                   <% if has_note %>
                     <p class="whitespace-pre-wrap text-sm text-base-content/80"><%= note.body %></p>
                   <% end %>
+
                   <% if day_photos.any? %>
-                    <div class="grid grid-cols-3 gap-2 mt-3">
-                      <% day_photos.each do |photo| %>
-                        <div class="aspect-square overflow-hidden rounded-lg">
-                          <img src="<%= url_for(controller: 'api/v1/shared/photos', action: 'thumbnail', id: link.id, photo_id: photo[:id], source: photo[:source], only_path: true) %>"
-                               loading="lazy"
-                               alt=""
-                               class="h-full w-full object-cover">
+                    <div data-trip-day-photos>
+                      <div data-trip-day-photos-container></div>
+                  
+                      <template data-trip-day-photos-template>
+                        <div class="grid grid-cols-3 gap-2 mt-3">
+                          <% day_photos.each do |photo| %>
+                            <button type="button"
+                                    class="aspect-square overflow-hidden rounded-lg cursor-zoom-in"
+                                    data-shared-photo-lightbox>
+                              <img src="<%= url_for(controller: 'api/v1/shared/photos',
+                                                     action: 'thumbnail',
+                                                     id: link.id,
+                                                     photo_id: photo[:id],
+                                                     source: photo[:source],
+                                                     only_path: true) %>"
+                                   loading="lazy"
+                                   decoding="async"
+                                   alt="Foto vergrößern"
+                                   class="h-full w-full object-cover"
+                                   data-immich-url="<%= trip.immich_photo_url(photo) %>"
+                                   data-shared-photo-image>
+                            </button>
+                          <% end %>
                         </div>
-                      <% end %>
+                      </template>
                     </div>
                   <% end %>
+
                 </div>
               <% end %>
             <% else %>
@@ -88,3 +106,152 @@
     </div>
   </div>
 <% end %>
+<div class="hidden fixed inset-0 z-50 items-center justify-center bg-black/90 p-4"
+     data-shared-photo-overlay
+     role="dialog"
+     aria-modal="true"
+     aria-label="Fotoansicht">
+
+  <button type="button"
+          class="absolute right-4 top-4 flex h-12 w-12 items-center justify-center rounded-full bg-black/60 text-3xl text-white"
+          aria-label="Fotoansicht schließen"
+          data-shared-photo-close>
+    &times;
+  </button>
+
+  <% if trip.immich_shared_link? %>
+    <a href="#"
+       target="_blank"
+       rel="noopener noreferrer"
+       class="hidden absolute right-4 top-20 h-12 w-12 items-center justify-center rounded-full bg-black/60 p-2.5 opacity-60 shadow-lg transition-opacity hover:opacity-100 focus:opacity-100"
+       aria-label="Foto in Immich öffnen"
+       title="Foto in Immich öffnen"
+       data-shared-photo-immich>
+      <%= image_tag "icons/immich.svg", class: "h-full w-full drop-shadow-sm", alt: "" %>
+    </a>
+  <% end %>
+
+  <img src=""
+       alt=""
+       class="max-h-[95vh] max-w-[95vw] object-contain"
+       data-shared-photo-preview>
+</div>
+<script>
+  (() => {
+    if (window.sharedTripPhotoLoaderInstalled) return;
+    window.sharedTripPhotoLoaderInstalled = true;
+
+    const closePhoto = () => {
+      const overlay = document.querySelector(
+        "[data-shared-photo-overlay]"
+      );
+      const preview = overlay?.querySelector(
+        "[data-shared-photo-preview]"
+      );
+      const immichLink = overlay?.querySelector(
+        "[data-shared-photo-immich]"
+      );
+
+      if (!overlay || !preview) return;
+
+      overlay.classList.add("hidden");
+      overlay.classList.remove("flex");
+      preview.removeAttribute("src");
+      immichLink?.classList.add("hidden");
+      immichLink?.classList.remove("flex");
+      document.body.style.overflow = "";
+    };
+
+    const openPhoto = (image) => {
+      const overlay = document.querySelector(
+        "[data-shared-photo-overlay]"
+      );
+      const preview = overlay?.querySelector(
+        "[data-shared-photo-preview]"
+      );
+      const immichLink = overlay?.querySelector(
+        "[data-shared-photo-immich]"
+      );
+
+      if (!overlay || !preview || !image?.src) return;
+
+      preview.src = image.src;
+      preview.alt = image.alt || "Vergrößertes Foto";
+
+      if (immichLink) {
+        const immichUrl = image.dataset.immichUrl;
+        if (immichUrl) immichLink.href = immichUrl;
+        immichLink.classList.toggle("hidden", !immichUrl);
+        immichLink.classList.toggle("flex", Boolean(immichUrl));
+      }
+
+      overlay.classList.remove("hidden");
+      overlay.classList.add("flex");
+      document.body.style.overflow = "hidden";
+    };
+
+    document.addEventListener("toggle", (event) => {
+      const details = event.target;
+
+      if (!(details instanceof HTMLDetailsElement)) return;
+
+      const wrapper = details.querySelector(
+        "[data-trip-day-photos]"
+      );
+
+      if (!wrapper) return;
+
+      const container = wrapper.querySelector(
+        "[data-trip-day-photos-container]"
+      );
+
+      const template = wrapper.querySelector(
+        "[data-trip-day-photos-template]"
+      );
+
+      if (!container || !template) return;
+
+      if (details.open) {
+        if (!container.hasChildNodes()) {
+          container.appendChild(
+            template.content.cloneNode(true)
+          );
+        }
+      } else {
+        container.replaceChildren();
+      }
+    }, true);
+
+    document.addEventListener("click", (event) => {
+      const photoButton = event.target.closest(
+        "[data-shared-photo-lightbox]"
+      );
+
+      if (photoButton) {
+        const image = photoButton.querySelector(
+          "[data-shared-photo-image]"
+        );
+
+        openPhoto(image);
+        return;
+      }
+
+      const overlay = document.querySelector(
+        "[data-shared-photo-overlay]"
+      );
+
+      if (
+        event.target.closest("[data-shared-photo-close]") ||
+        event.target === overlay
+      ) {
+        closePhoto();
+      }
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        closePhoto();
+      }
+    });
+  })();
+</script>

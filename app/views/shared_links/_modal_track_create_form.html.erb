@@ -19,6 +19,9 @@
       <%= check_box_tag 'shared_link[settings][show_stats]', '1', false, class: 'checkbox' %>
     </label>
   </div>
+  <%= render 'shared_links/immich_shared_link_fields',
+             id_prefix: 'track',
+             immich_shared_links: @immich_shared_links %>
   <div class="modal-action">
     <%= link_to t('.cancel'), close_path, class: 'btn btn-ghost', data: { turbo_frame: '_top', action: 'share-link-modal#close' } %>
     <%= f.submit t('.create_share_link'), class: 'btn btn-primary' %>

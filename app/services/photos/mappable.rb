@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class Photos::Mappable
-  MAX_PHOTOS = 100
+  MAX_PHOTOS = 2000
 
   def initialize(photos, privacy_zones: [], max: MAX_PHOTOS)
     @photos = photos

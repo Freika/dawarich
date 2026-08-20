@@ -68,7 +68,16 @@ module Api
           range = photo_range
           return [] if range.nil?
 
-          Photos::Search.cached(link.user, start_date: range.first, end_date: range.last)
+          album = SharedLinks::PhotoAlbum.new(link)
+          sources = SharedLinks::PhotoSources.new(link).enabled
+
+          Photos::Search.cached(
+            link.user,
+            start_date: range.first,
+            end_date: range.last,
+            album_id: album.album_id,
+            sources: sources
+          )
         end
 
         def photo_range

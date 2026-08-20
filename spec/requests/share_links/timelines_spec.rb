@@ -18,6 +18,41 @@ RSpec.describe 'ShareLinks::Timelines', type: :request do
       expect(response.body).to include('2026-04-01')
       expect(response.body).to include('2026-04-14')
     end
+
+    it 'offers album-based Immich shared links with incomplete embedded album statistics' do
+      user.update!(
+        settings: user.settings.merge(
+          'immich_url' => 'https://immich.example.com',
+          'immich_api_key' => 'secret'
+        )
+      )
+      allow(Immich::SharedLinks).to receive(:new).with(user).and_return(
+        instance_double(
+          Immich::SharedLinks,
+          call: [
+            {
+              'id' => 'shared-1',
+              'slug' => 'summer-public',
+              'album' => {
+                'id' => 'album-1',
+                'albumName' => 'Summer',
+                'assetCount' => 0,
+                'startDate' => nil,
+                'endDate' => nil
+              }
+            }
+          ]
+        )
+      )
+
+      get new_share_links_timeline_path
+
+      page = Nokogiri::HTML(response.body)
+      option = page.at_css("select[name='shared_link[settings][immich_shared_link_id]'] option[value='shared-1']")
+      expect(option).to be_present
+      expect(option['data-shared-link-slug']).to eq('summer-public')
+      expect(option['data-album-id']).to eq('album-1')
+    end
   end
 
   describe 'POST /share_links/timeline' do
@@ -31,6 +66,30 @@ RSpec.describe 'ShareLinks::Timelines', type: :request do
       expect(link.settings['start_date']).to eq('2026-04-01')
       expect(link.settings['end_date']).to eq('2026-04-14')
       expect(link.resource_id).to be_nil
+    end
+
+    it 'stores the selected Immich shared link and its album filter' do
+      post share_links_timeline_path, params: {
+        shared_link: {
+          start_date: '2026-04-01',
+          end_date: '2026-04-14',
+          settings: {
+            show_immich: '1',
+            immich_shared_link_id: 'shared-1',
+            immich_shared_link_slug: 'summer-public',
+            photo_album_id: 'album-1',
+            photo_album_name: 'Summer'
+          }
+        }
+      }
+
+      settings = user.shared_links.where(resource_type: :timeline).last.settings
+      expect(settings).to include(
+        'immich_shared_link_id' => 'shared-1',
+        'immich_shared_link_slug' => 'summer-public',
+        'photo_album_id' => 'album-1',
+        'photo_album_name' => 'Summer'
+      )
     end
 
     it 'auto-revokes any existing active timeline share for this user' do
@@ -49,6 +108,65 @@ RSpec.describe 'ShareLinks::Timelines', type: :request do
         shared_link: { start_date: '2026-04-14', end_date: '2026-04-01' }
       }
       expect(response).to have_http_status(:unprocessable_content)
+    end
+    it 'preserves the selected Immich shared link after a validation error' do
+      user.update!(
+        settings: user.settings.merge(
+          'immich_url' => 'https://immich.example.com',
+          'immich_api_key' => 'secret'
+        )
+      )
+
+      allow(Immich::SharedLinks).to receive(:new).with(user).and_return(
+        instance_double(
+          Immich::SharedLinks,
+          call: [
+            {
+              'id' => 'shared-1',
+              'slug' => 'summer-public',
+              'album' => {
+                'id' => 'album-1',
+                'albumName' => 'Summer'
+              }
+            }
+          ]
+        )
+      )
+
+      post share_links_timeline_path, params: {
+        shared_link: {
+          start_date: '2026-04-14',
+          end_date: '2026-04-01',
+          settings: {
+            show_immich: '1',
+            show_photoprism: '0',
+            immich_shared_link_id: 'shared-1',
+            immich_shared_link_slug: 'summer-public',
+            photo_album_id: 'album-1',
+            photo_album_name: 'Summer'
+          }
+        }
+      }
+
+      expect(response).to have_http_status(:unprocessable_content)
+
+      page = Nokogiri::HTML(response.body)
+
+      immich_checkbox =
+        page.at_css("input[name='shared_link[settings][show_immich]'][value='1']")
+
+      expect(immich_checkbox).to be_present
+      expect(immich_checkbox['checked']).to eq('checked')
+
+      selected_option =
+        page.at_css("select[name='shared_link[settings][immich_shared_link_id]'] option[value='shared-1']")
+
+      expect(selected_option).to be_present
+      expect(selected_option['selected']).to eq('selected')
+
+      expect(
+        page.at_css("input[name='shared_link[settings][photo_album_id]']")['value']
+      ).to eq('album-1')
     end
   end
 

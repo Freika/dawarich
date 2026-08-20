@@ -33,7 +33,16 @@ module SharedLinks
       trip = @link.resource
       return [] if trip.nil?
 
-      Photos::Search.cached(@link.user, start_date: trip.started_at.iso8601, end_date: trip.ended_at.iso8601)
+      album = SharedLinks::PhotoAlbum.new(@link)
+      sources = SharedLinks::PhotoSources.new(@link).enabled
+
+      Photos::Search.cached(
+        @link.user,
+        start_date: trip.started_at.iso8601,
+        end_date: trip.ended_at.iso8601,
+        album_id: album.album_id,
+        sources: sources
+      )
     end
 
     def parse_date(raw, zone)

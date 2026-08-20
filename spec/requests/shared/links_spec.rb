@@ -114,6 +114,44 @@ RSpec.describe 'Shared::Links', type: :request do
       expect(img['src']).to include("/api/v1/shared/#{link.id}/photos/asset-9/thumbnail")
       expect(img['src']).to include('source=immich')
     end
+
+    it 'links an Immich album photo from the fullscreen overlay' do
+      owner.update!(settings: owner.settings.merge('immich_url' => 'https://immich.example.com'))
+      link = create(:shared_link, user: owner, resource_type: :trip, resource_id: trip.id,
+                                  settings: {
+                                    'show_days' => true,
+                                    'show_photos' => true,
+                                    'show_immich' => true,
+                                    'photo_album_id' => 'album-1',
+                                    'immich_shared_link_id' => 'shared-1',
+                                    'immich_shared_link_slug' => 'summer-public'
+                                  })
+      allow(SharedLinks::TripPhotos).to receive(:new).and_return(
+        instance_double(SharedLinks::TripPhotos,
+                        call: { Date.new(2026, 4, 1) => [{ id: 'asset-9', source: 'immich' }] })
+      )
+
+      get "/s/#{link.id}"
+
+      page = Nokogiri::HTML(response.body)
+      expect(page.at_css('[data-shared-photo-immich]')).to be_present
+      expect(page.at_css('[data-shared-photo-image]')['data-immich-url'])
+        .to eq('https://immich.example.com/s/summer-public/photos/asset-9')
+    end
+
+    it 'omits the Immich overlay link when no Immich shared link was selected' do
+      link = create(:shared_link, user: owner, resource_type: :trip, resource_id: trip.id,
+                                  settings: {
+                                    'show_days' => true,
+                                    'show_photos' => true,
+                                    'show_immich' => true,
+                                    'photo_album_id' => 'legacy-album'
+                                  })
+
+      get "/s/#{link.id}"
+
+      expect(Nokogiri::HTML(response.body).at_css('[data-shared-photo-immich]')).to be_nil
+    end
   end
 
   describe 'happy-path GET /s/:id for a track' do

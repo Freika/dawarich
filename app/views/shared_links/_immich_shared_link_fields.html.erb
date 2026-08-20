@@ -1,0 +1,214 @@
+<% id_prefix = local_assigns.fetch(:id_prefix, 'shared-link') %>
+<% shared_links = Array(local_assigns[:immich_shared_links] || @immich_shared_links) %>
+<%
+  settings = @shared_link&.settings || {}
+  show_immich = ActiveModel::Type::Boolean.new.cast(settings['show_immich'])
+  show_photoprism = ActiveModel::Type::Boolean.new.cast(settings['show_photoprism'])
+  no_photos = !show_immich && !show_photoprism
+  selected_shared_link_id = settings['immich_shared_link_id'].to_s
+%>
+<%
+  shared_link_options = shared_links.filter_map do |shared_link|
+    shared_link_id = shared_link[:id] || shared_link['id']
+    shared_link_slug = shared_link[:slug] || shared_link['slug']
+    album = shared_link[:album] || shared_link['album']
+    next unless album.is_a?(Hash)
+
+    album_id = album[:id] || album['id']
+    album_name = album[:album_name] || album['album_name'] || album[:albumName] || album['albumName']
+
+    next if shared_link_id.blank? || shared_link_slug.blank? || album_id.blank? || album_name.blank?
+
+    [
+      "#{album_name} (#{shared_link_slug})",
+      shared_link_id,
+      {
+        data: {
+          shared_link_slug: shared_link_slug,
+          album_id: album_id,
+          album_name: album_name,
+          show_photos: '1'
+        }
+      }
+    ]
+  end
+
+  shared_link_options.sort_by! { |option| option.first.to_s.downcase }
+%>
+<div class="form-control mt-4 rounded-lg border border-base-300 p-4"
+     data-photo-source-selector>
+  <span class="label-text font-semibold">Photos</span>
+
+  <%= hidden_field_tag 'shared_link[settings][show_photos]', '0',
+                       data: { photo_sources_show_photos: true } %>
+
+  <label class="label cursor-pointer px-0">
+    <span class="label-text">No photos</span>
+    <%= check_box_tag nil, '1', no_photos,
+                      id: "#{id_prefix}_no_photos",
+                      class: 'checkbox',
+                      data: { no_photos_choice: true } %>
+  </label>
+
+  <div class="mt-2 border-t border-base-300 pt-2">
+    <label class="label cursor-pointer px-0">
+      <span>
+        <span class="label-text font-medium">PhotoPrism</span>
+        <% unless current_user.photoprism_integration_configured? %>
+          <span class="block text-xs text-base-content/60">Not configured</span>
+        <% end %>
+      </span>
+      <%= hidden_field_tag 'shared_link[settings][show_photoprism]', '0' %>
+      <%= check_box_tag 'shared_link[settings][show_photoprism]', '1', show_photoprism,
+                        id: "#{id_prefix}_show_photoprism",
+                        class: 'toggle',
+                        disabled: true,
+                        data: {
+                          photo_source_choice: true,
+                          integration_configured: current_user.photoprism_integration_configured?
+                        } %>
+    </label>
+  </div>
+
+  <div class="mt-2 border-t border-base-300 pt-2">
+    <label class="label cursor-pointer px-0">
+      <span>
+        <span class="label-text font-medium">Immich</span>
+        <% unless current_user.immich_integration_configured? %>
+          <span class="block text-xs text-base-content/60">Not configured</span>
+        <% end %>
+      </span>
+      <%= hidden_field_tag 'shared_link[settings][show_immich]', '0' %>
+      <%= check_box_tag 'shared_link[settings][show_immich]', '1', show_immich,
+                        id: "#{id_prefix}_show_immich",
+                        class: 'toggle',
+                        disabled: true,
+                        data: {
+                          photo_source_choice: true,
+                          immich_choice: true,
+                          integration_configured: current_user.immich_integration_configured?
+                        } %>
+    </label>
+
+    <div class="mt-2" data-immich-shared-link-fields>
+      <%= hidden_field_tag 'shared_link[settings][immich_shared_link_slug]',
+                           settings['immich_shared_link_slug'].to_s,
+                           data: { immich_shared_link_slug: true } %>
+      <%= hidden_field_tag 'shared_link[settings][photo_album_id]',
+                           settings['photo_album_id'].to_s,
+                           data: { photo_album_id: true } %>
+       <%= hidden_field_tag 'shared_link[settings][photo_album_name]',
+                            settings['photo_album_name'].to_s,
+                            data: { photo_album_name: true } %>
+      <label for="<%= "#{id_prefix}_immich_shared_link_id" %>"
+             class="label-text text-sm">
+        Immich shared link
+      </label>
+
+      <%= select_tag 'shared_link[settings][immich_shared_link_id]',
+                     options_for_select(
+                       [['All photos / no shared link', '', {
+                         data: { shared_link_slug: '', album_id: '', album_name: '' }
+                       }]] + shared_link_options,
+                       selected_shared_link_id
+                     ),
+                     id: "#{id_prefix}_immich_shared_link_id",
+                     class: 'select select-bordered w-full mt-1',
+                     disabled: true,
+                     data: { immich_shared_link_choice: true } %>
+
+      <% if current_user.immich_integration_configured? && shared_link_options.empty? %>
+        <span class="label-text-alt mt-1">
+          No matching album-based Immich shared links were found.
+        </span>
+      <% else %>
+        <span class="label-text-alt mt-1">
+          The shared link's album limits the photos and enables the public Immich button.
+        </span>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<script>
+  (() => {
+    const syncPhotoSources = (wrapper) => {
+      const noPhotos = wrapper.querySelector("[data-no-photos-choice]");
+      const sources = Array.from(
+        wrapper.querySelectorAll("[data-photo-source-choice]")
+      );
+      const showPhotos = wrapper.querySelector(
+        "[data-photo-sources-show-photos]"
+      );
+      const immich = wrapper.querySelector("[data-immich-choice]");
+      const sharedLinkChoice = wrapper.querySelector(
+        "[data-immich-shared-link-choice]"
+      );
+      const sharedLinkSlug = wrapper.querySelector(
+        "[data-immich-shared-link-slug]"
+      );
+      const albumId = wrapper.querySelector(
+        "[data-photo-album-id]"
+      );
+      const albumName = wrapper.querySelector(
+        "[data-photo-album-name]"
+      );
+
+      if (!noPhotos || !showPhotos) return;
+
+      sources.forEach((source) => {
+        const configured = source.dataset.integrationConfigured === "true";
+        source.disabled = noPhotos.checked || !configured;
+        if (noPhotos.checked || !configured) source.checked = false;
+      });
+
+      const anySource = sources.some((source) => source.checked);
+      showPhotos.value = anySource ? "1" : "0";
+
+      if (sharedLinkChoice) {
+        sharedLinkChoice.disabled = !immich?.checked;
+      }
+
+      const selectedOption =
+        sharedLinkChoice?.options[sharedLinkChoice.selectedIndex];
+
+      const enabled = Boolean(immich?.checked);
+      const selectedSlug = selectedOption?.dataset.sharedLinkSlug || "";
+      const selectedAlbumId = selectedOption?.dataset.albumId || "";
+      const selectedAlbumName = selectedOption?.dataset.albumName || "";
+
+      if (sharedLinkSlug) sharedLinkSlug.value = enabled ? selectedSlug : "";
+      if (albumId) albumId.value = enabled ? selectedAlbumId : "";
+      if (albumName) albumName.value = enabled ? selectedAlbumName : "";
+    };
+
+    document
+      .querySelectorAll("[data-photo-source-selector]")
+      .forEach(syncPhotoSources);
+
+    if (window.sharedLinkPhotoSourceSelectorInstalled) return;
+
+    window.sharedLinkPhotoSourceSelectorInstalled = true;
+
+    document.addEventListener("change", (event) => {
+      const choice = event.target.closest(
+        "[data-no-photos-choice], [data-photo-source-choice], [data-immich-shared-link-choice]"
+      );
+
+      if (!choice) return;
+
+      const wrapper = choice.closest(
+        "[data-photo-source-selector]"
+      );
+
+      if (!wrapper) return;
+
+      const noPhotos = wrapper.querySelector("[data-no-photos-choice]");
+      if (choice.matches("[data-photo-source-choice]") && choice.checked) {
+        noPhotos.checked = false;
+      }
+
+      syncPhotoSources(wrapper);
+    });
+  })();
+</script>

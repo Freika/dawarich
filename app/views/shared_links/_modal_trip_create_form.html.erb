@@ -27,6 +27,9 @@
       </label>
     <% end %>
   </div>
+  <%= render 'shared_links/immich_shared_link_fields',
+             id_prefix: 'trip',
+             immich_shared_links: @immich_shared_links %>
   <div class="modal-action">
     <%= link_to t('.cancel'), close_path, class: 'btn btn-ghost', data: { turbo_frame: '_top', action: 'share-link-modal#close' } %>
     <%= f.submit t('.create_share_link'), class: 'btn btn-primary' %>

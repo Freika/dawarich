@@ -12,6 +12,12 @@ module ShareLinks
 
     def new
       @shared_link = SharedLink.new(build_attributes_for_new) unless @share
+      @immich_shared_links =
+        if current_user.immich_integration_configured?
+          Immich::SharedLinks.new(current_user).call
+        else
+          []
+        end
       render layout: false if turbo_frame_request?
     end
 
@@ -34,6 +40,13 @@ module ShareLinks
                status: :unprocessable_content
       else
         @share = nil
+        @immich_shared_links =
+          if current_user.immich_integration_configured?
+            Immich::SharedLinks.new(current_user).call
+          else
+            []
+          end
+
         render :new, status: :unprocessable_content, layout: !turbo_frame_request?
       end
     end
@@ -127,9 +140,64 @@ module ShareLinks
       raw = params.fetch(:shared_link, {})[:settings]
       return {} if raw.blank?
 
-      keys = %i[show_photos show_stats show_route show_countries show_description show_days show_day_notes]
-      permitted = raw.respond_to?(:permit) ? raw.permit(*keys) : raw.slice(*keys.map(&:to_s))
-      permitted.to_h.transform_values { |v| ActiveModel::Type::Boolean.new.cast(v) }
+      boolean_keys = %i[
+        show_photos
+        show_photoprism
+        show_immich
+        show_stats
+        show_route
+        show_countries
+        show_description
+        show_days
+        show_day_notes
+      ]
+
+      permitted =
+        if raw.respond_to?(:permit)
+          raw.permit(
+            *boolean_keys,
+            :photo_album_id,
+            :photo_album_name,
+            :immich_shared_link_id,
+            :immich_shared_link_slug
+          )
+        else
+          raw.slice(
+            *(
+              boolean_keys.map(&:to_s) +
+              %w[photo_album_id photo_album_name immich_shared_link_id immich_shared_link_slug]
+            )
+          )
+        end
+
+      values = permitted.to_h.stringify_keys
+
+      settings = boolean_keys.each_with_object({}) do |key, result|
+        string_key = key.to_s
+        next unless values.key?(string_key)
+
+        result[string_key] = ActiveModel::Type::Boolean.new.cast(values[string_key])
+      end
+
+      if values.key?('show_photoprism') || values.key?('show_immich')
+        settings['show_photoprism'] = false unless settings.key?('show_photoprism')
+        settings['show_immich'] = false unless settings.key?('show_immich')
+        settings['show_photos'] = settings['show_photoprism'] || settings['show_immich']
+      end
+
+      album_id = values['photo_album_id'].to_s.presence
+      album_name = values['photo_album_name'].to_s.presence
+      shared_link_id = values['immich_shared_link_id'].to_s.presence
+      shared_link_slug = values['immich_shared_link_slug'].to_s.presence
+
+      if settings['show_immich']
+        settings['photo_album_id'] = album_id if album_id
+        settings['photo_album_name'] = album_name if album_name
+        settings['immich_shared_link_id'] = shared_link_id if shared_link_id
+        settings['immich_shared_link_slug'] = shared_link_slug if shared_link_slug
+      end
+
+      settings
     end
 
     def broadcast_live_share_ended(share)
