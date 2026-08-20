@@ -12,16 +12,14 @@ class StatsQuery
 
     {
       total: user.points_count.to_i,
-      geocoded: cached_stats[:geocoded],
-      without_data: cached_stats[:without_data]
+      geocoded: cached_stats[:geocoded]
     }
   end
 
   def cached_points_geocoded_stats
-    # No index serves these filters since the 2026-08 points index
-    # consolidation; both are daily-cached counts that scan the user's rows
-    # via the (user_id, ...) composite index. The without_data count retires
-    # together with the geodata column.
+    # No index serves this filter since the 2026-08 points index consolidation;
+    # it is a daily-cached count that scans the user's rows via the
+    # (user_id, ...) composite index.
     geocoded_sql = ActiveRecord::Base.sanitize_sql_array(
       [
         <<~SQL.squish,
@@ -33,24 +31,7 @@ class StatsQuery
       ]
     )
 
-    without_data_sql = ActiveRecord::Base.sanitize_sql_array(
-      [
-        <<~SQL.squish,
-          SELECT COUNT(*) as without_data
-          FROM points
-          WHERE user_id = ? AND geodata = '{}'::jsonb
-        SQL
-        user.id
-      ]
-    )
-
-    geocoded_result = Point.connection.select_value(geocoded_sql)
-    without_data_result = Point.connection.select_value(without_data_sql)
-
-    {
-      geocoded: geocoded_result.to_i,
-      without_data: without_data_result.to_i
-    }
+    { geocoded: Point.connection.select_value(geocoded_sql).to_i }
   end
 
   private

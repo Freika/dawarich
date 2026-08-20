@@ -4,11 +4,6 @@
       <%= number_with_delimiter @points_reverse_geocoded %>
     </div>
     <div class="stat-title"><%= t('.reverse_geocoded_points') %></div>
-    <div class="stat-title">
-      <span class="tooltip underline decoration-dotted" data-tip="<%= t('.points_that_were_reverse_geocoded_but_had_no_data') %>">
-        <%= number_with_delimiter @points_reverse_geocoded_without_data %> <%= t('.points_without_data') %>
-      </span>
-    </div>
   </div>
 <% end %>
 

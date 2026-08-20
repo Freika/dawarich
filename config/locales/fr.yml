@@ -2761,11 +2761,9 @@ fr:
         other: "%{count} villes"
     reverse_geocoding_stats:
       reverse_geocoded_points: Points géocodés inverses
-      points_without_data: points sans données
       countries_visited: Pays visités
       close: Fermer
       cities_visited: Villes visitées
-      points_that_were_reverse_geocoded_but_had_no_data: Points qui ont été géocodés
         mais n'avaient pas de données
     stat:
       total_distance: Distance totale

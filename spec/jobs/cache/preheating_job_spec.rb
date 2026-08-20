@@ -58,12 +58,10 @@ RSpec.describe Cache::PreheatingJob do
 
       expect(user1_stats).to be_a(Hash)
       expect(user1_stats).to have_key(:geocoded)
-      expect(user1_stats).to have_key(:without_data)
       expect(user1_stats[:geocoded]).to eq(3)
 
       expect(user2_stats).to be_a(Hash)
       expect(user2_stats).to have_key(:geocoded)
-      expect(user2_stats).to have_key(:without_data)
       expect(user2_stats[:geocoded]).to eq(2)
     end
 
@@ -86,7 +84,7 @@ RSpec.describe Cache::PreheatingJob do
       expect { described_class.new.perform }.not_to raise_error
 
       cached_stats = Rails.cache.read("dawarich/user_#{user_no_points.id}_points_geocoded_stats")
-      expect(cached_stats).to eq({ geocoded: 0, without_data: 0 })
+      expect(cached_stats).to eq({ geocoded: 0 })
     end
   end
 end

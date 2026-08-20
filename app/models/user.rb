@@ -213,10 +213,6 @@ class User < ApplicationRecord
     StatsQuery.new(self).points_stats[:geocoded]
   end
 
-  def total_reverse_geocoded_points_without_data
-    points.where(geodata: {}).count
-  end
-
   def immich_integration_configured?
     settings['immich_url'].present? && settings['immich_api_key'].present?
   end

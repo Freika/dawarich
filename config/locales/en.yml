@@ -1889,11 +1889,9 @@ en:
         other: "%{count} cities"
     reverse_geocoding_stats:
       reverse_geocoded_points: Reverse geocoded points
-      points_without_data: points without data
       countries_visited: Countries visited
       close: close
       cities_visited: Cities visited
-      points_that_were_reverse_geocoded_but_had_no_data: Points that were reverse geocoded but had no data
     stat:
       total_distance: Total distance
       year_month: "%{year}/%{month}"

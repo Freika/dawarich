@@ -72,7 +72,6 @@ status: :see_other
 
     @points_total = points_stats[:total]
     @points_reverse_geocoded = points_stats[:geocoded]
-    @points_reverse_geocoded_without_data = points_stats[:without_data]
   end
 
   def precompute_year_distances

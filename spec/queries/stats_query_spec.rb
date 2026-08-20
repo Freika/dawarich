@@ -16,8 +16,7 @@ RSpec.describe StatsQuery do
         expect(points_stats).to eq(
           {
             total: 0,
-            geocoded: 0,
-            without_data: 0
+            geocoded: 0
           }
         )
       end
@@ -52,8 +51,7 @@ RSpec.describe StatsQuery do
         expect(points_stats).to eq(
           {
             total: 3,
-            geocoded: 2,
-            without_data: 1
+            geocoded: 2
           }
         )
       end
@@ -73,8 +71,7 @@ RSpec.describe StatsQuery do
           expect(points_stats).to eq(
             {
               total: 3,
-              geocoded: 2,
-              without_data: 1
+              geocoded: 2
             }
           )
         end
@@ -94,8 +91,7 @@ RSpec.describe StatsQuery do
         expect(points_stats).to eq(
           {
             total: 5,
-            geocoded: 5,
-            without_data: 0
+            geocoded: 5
           }
         )
       end
@@ -114,8 +110,7 @@ RSpec.describe StatsQuery do
         expect(points_stats).to eq(
           {
             total: 3,
-            geocoded: 3,
-            without_data: 3
+            geocoded: 3
           }
         )
       end
@@ -134,8 +129,7 @@ RSpec.describe StatsQuery do
         expect(points_stats).to eq(
           {
             total: 4,
-            geocoded: 0,
-            without_data: 0
+            geocoded: 0
           }
         )
       end
@@ -160,8 +154,8 @@ RSpec.describe StatsQuery do
       end
 
       it 'returns cached results on subsequent calls' do
-        # First call - should hit database and cache (two queries: geocoded + without_data)
-        expect(Point.connection).to receive(:select_value).twice.and_call_original
+        # First call - should hit database and cache (one query: geocoded)
+        expect(Point.connection).to receive(:select_value).once.and_call_original
         first_result = points_stats
 
         # Second call - should use cache, not hit database
