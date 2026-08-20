@@ -2660,6 +2660,8 @@ en:
           digest_already_exists: Digest already exists
           digest_for_year_is_being_generated: Digest for %{year} is being generated
         families:
+          location_requests:
+            not_found: Location request not found
           locations:
             start_at_and_end_at_are_required: start_at and end_at are required
             invalid_date_format: Invalid date format

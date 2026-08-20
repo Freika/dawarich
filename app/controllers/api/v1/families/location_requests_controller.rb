@@ -42,7 +42,7 @@ class Api::V1::Families::LocationRequestsController < ApiController
     request_record = Family::LocationRequest.where(family: current_api_user.family).find_by(id: params[:id])
 
     unless request_record
-      return render json: { error: I18n.t('controllers.api.v1.families.locations.user_is_not_part_of_a_family') },
+      return render json: { error: I18n.t('controllers.api.v1.families.location_requests.not_found') },
                     status: :not_found
     end
 

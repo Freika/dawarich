@@ -36,8 +36,7 @@ class Family::LocationRequestsController < ApplicationController
     if result.success?
       redirect_to family_path, notice: I18n.t('controllers.family.location_requests.location_sharing_enabled')
     else
-      alert = I18n.t('controllers.family.location_requests.this_request_has_expired_or_already_been_responded_to')
-      redirect_to family_path, alert: alert
+      redirect_to family_path, alert: result.payload[:message]
     end
   end
 
@@ -49,8 +48,7 @@ class Family::LocationRequestsController < ApplicationController
     if result.success?
       redirect_to family_path, notice: I18n.t('controllers.family.location_requests.location_request_declined')
     else
-      alert = I18n.t('controllers.family.location_requests.this_request_has_expired_or_already_been_responded_to')
-      redirect_to family_path, alert: alert
+      redirect_to family_path, alert: result.payload[:message]
     end
   end
 
