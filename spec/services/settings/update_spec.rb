@@ -181,6 +181,24 @@ RSpec.describe Settings::Update do
       end
     end
 
+    context 'when only the ssl verification toggle changes' do
+      let(:settings_params) { { 'immich_skip_ssl_verification' => '1' } }
+      let(:service) { described_class.new(user, settings_params) }
+
+      before do
+        user.update(settings: { 'immich_url' => 'https://immich.test', 'immich_api_key' => 'existing-key' })
+        allow_any_instance_of(Immich::ConnectionTester).to receive(:call)
+          .and_return({ success: true, message: 'Immich connection verified' })
+      end
+
+      it 'retests the connection and refreshes the recorded status' do
+        result = service.call
+
+        expect(result[:notices]).to include('Immich connection verified')
+        expect(user.reload.settings['immich_connection_status']).to eq('ok')
+      end
+    end
+
     context 'when immich settings have not changed' do
       let(:service) { described_class.new(user, settings_params) }
 

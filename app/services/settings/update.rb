@@ -16,9 +16,12 @@ class Settings::Update
     params_hash = cast_boolean_params(settings_params)
     updated_settings = existing_settings.merge(params_hash)
 
-    immich_changed = settings_changed?(existing_settings, updated_settings, %w[immich_url immich_api_key])
-    photoprism_changed = settings_changed?(existing_settings, updated_settings, %w[photoprism_url photoprism_api_key])
-    airtrail_changed = settings_changed?(existing_settings, updated_settings, %w[airtrail_url airtrail_api_key])
+    immich_changed = settings_changed?(existing_settings, updated_settings,
+                                       %w[immich_url immich_api_key immich_skip_ssl_verification])
+    photoprism_changed = settings_changed?(existing_settings, updated_settings,
+                                           %w[photoprism_url photoprism_api_key photoprism_skip_ssl_verification])
+    airtrail_changed = settings_changed?(existing_settings, updated_settings,
+                                         %w[airtrail_url airtrail_api_key airtrail_skip_ssl_verification])
 
     %w[immich_url photoprism_url airtrail_url].each do |key|
       next if updated_settings[key].blank?

@@ -203,6 +203,26 @@ RSpec.describe 'Settings::Geocoding', type: :request do
       expect(user.service_settings.service_geocoding.find_by(provider: 'photon').api_key).to be_nil
     end
 
+    it 'clears the recorded connection status when the configuration changes' do
+      create(:service_setting, :active, user: user,
+                               config: { 'host' => 'photon.mine.example.com', 'connection_status' => 'ok' })
+
+      patch settings_geocoding_path, params: { provider: 'photon', photon: { host: 'photon.other.example.com' } }
+
+      row = user.service_settings.service_geocoding.find_by(provider: 'photon')
+      expect(row.config['connection_status']).to be_nil
+    end
+
+    it 'keeps the recorded connection status when nothing changes' do
+      create(:service_setting, :active, user: user,
+                               config: { 'host' => 'photon.mine.example.com', 'connection_status' => 'ok' })
+
+      patch settings_geocoding_path, params: { provider: 'photon', photon: { host: 'photon.mine.example.com' } }
+
+      row = user.service_settings.service_geocoding.find_by(provider: 'photon')
+      expect(row.config['connection_status']).to eq('ok')
+    end
+
     it 'switches the active provider while keeping stored credentials' do
       create(:service_setting, :geoapify, :active, user: user, api_key: 'geo-key')
 

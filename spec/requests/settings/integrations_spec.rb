@@ -91,6 +91,24 @@ RSpec.describe 'Settings::Integrations', type: :request do
       end
     end
 
+    context 'when the airtrail host is unreachable' do
+      before do
+        stub_request(:get, 'https://airtrail.test/api/flight/list?scope=mine').to_raise(Errno::ECONNREFUSED)
+      end
+
+      it 'saves the settings and reports the failure instead of crashing' do
+        patch '/settings/integrations', params: {
+          settings: { 'airtrail_url' => 'https://airtrail.test', 'airtrail_api_key' => 'k' },
+          service: 'airtrail'
+        }
+
+        expect(response).to redirect_to(settings_integrations_path(service: 'airtrail'))
+        follow_redirect!
+        expect(flash[:alert]).to include('AirTrail')
+        expect(user.reload.settings['airtrail_connection_status']).to eq('failed')
+      end
+    end
+
     context 'when airtrail settings change' do
       let(:airtrail_url) { 'https://airtrail.test' }
 

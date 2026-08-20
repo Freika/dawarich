@@ -76,6 +76,8 @@ class Settings::GeocodingController < ApplicationController
     elsif provider_params[:api_key].present?
       setting.api_key = provider_params[:api_key]
     end
+
+    setting.config.delete('connection_status') if setting.changed?
   end
 
   def run_provider_test
