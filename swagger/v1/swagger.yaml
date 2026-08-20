@@ -1216,6 +1216,44 @@ paths:
                     description: URL to upgrade to the Family plan
         '401':
           description: unauthorized
+  "/api/v1/families/mine":
+    get:
+      summary: Retrieves the current user's family overview
+      tags:
+      - Families
+      description: Returns the family, all members with sharing state, the current
+        user's sharing settings, and active location requests. Requires the Family
+        plan (any plan on self-hosted) and family membership.
+      parameters:
+      - name: Authorization
+        in: header
+        required: true
+        description: Bearer <API Key>
+        schema:
+          type: string
+      responses:
+        '200':
+          description: family overview
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  family:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                  me:
+                    type: object
+                  members:
+                    type: array
+                    items:
+                      type: object
+                  location_requests:
+                    type: object
+        '404':
+          description: user not in a family
   "/api/v1/health":
     get:
       summary: Retrieves application status

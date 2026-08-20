@@ -401,6 +401,7 @@ Rails.application.routes.draw do
       end
 
       namespace :families do
+        resource :mine, only: [:show], controller: 'mine'
         resources :locations, only: [:index] do
           collection do
             get :history
