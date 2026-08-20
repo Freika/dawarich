@@ -402,6 +402,7 @@ Rails.application.routes.draw do
 
       namespace :families do
         resource :mine, only: [:show], controller: 'mine'
+        resource :sharing, only: [:update], controller: 'sharing'
         resources :locations, only: [:index] do
           collection do
             get :history
