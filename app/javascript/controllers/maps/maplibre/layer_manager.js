@@ -1,3 +1,6 @@
+import { shouldShowPointPopup } from "controllers/maps/maplibre/event_handlers"
+import { translate } from "i18n"
+import { Toast } from "maps_maplibre/components/toast"
 import { AnomaliesLayer } from "maps_maplibre/layers/anomalies_layer"
 import { AreasLayer } from "maps_maplibre/layers/areas_layer"
 import { FamilyLayer } from "maps_maplibre/layers/family_layer"
@@ -8,6 +11,7 @@ import { HexagonLayer } from "maps_maplibre/layers/hexagon_layer"
 import { PhotosLayer } from "maps_maplibre/layers/photos_layer"
 import { PlacesLayer } from "maps_maplibre/layers/places_layer"
 import { PointsLayer } from "maps_maplibre/layers/points_layer"
+import { PointsMvtLayer } from "maps_maplibre/layers/points_mvt_layer"
 import { RecentPointLayer } from "maps_maplibre/layers/recent_point_layer"
 import { ReplayMarkerLayer } from "maps_maplibre/layers/replay_marker_layer"
 import { RoutesLayer } from "maps_maplibre/layers/routes_layer"
@@ -16,7 +20,10 @@ import { VisitsLayer } from "maps_maplibre/layers/visits_layer"
 import { isGatedPlan } from "maps_maplibre/utils/layer_gate"
 import { lazyLoader } from "maps_maplibre/utils/lazy_loader"
 import { performanceMonitor } from "maps_maplibre/utils/performance_monitor"
-import { SettingsManager } from "maps_maplibre/utils/settings_manager"
+import {
+  SettingsManager,
+  tiledPointsActive,
+} from "maps_maplibre/utils/settings_manager"
 
 /**
  * Manages all map layers lifecycle and visibility
@@ -27,8 +34,10 @@ export class LayerManager {
     this.settings = settings
     this.api = api
     this.controller = controller
+    this.apiKey = controller?.apiKeyValue || null
     this.layers = {}
     this.eventHandlersSetup = false
+    this.pointTileRange = { startAt: null, endAt: null }
   }
 
   /**
@@ -69,6 +78,7 @@ export class LayerManager {
 
     this._addFamilyLayer()
     this._addAnomaliesLayer()
+    this._addPointsMvtLayer()
     this._addPointsLayer(pointsGeoJSON)
     this._addRoutesHitLayer() // Add hit target layer after points, will be on top visually
     this._addRecentPointLayer()
@@ -89,6 +99,7 @@ export class LayerManager {
 
     // Click handlers
     this.map.on("click", "points", handlers.handlePointClick)
+    this.map.on("click", "points-mvt", handlers.handlePointClick)
     this.map.on("click", "visits", handlers.handleVisitClick)
     this.map.on("click", "photos", handlers.handlePhotoClick)
     this.map.on("click", "places", handlers.handlePlaceClick)
@@ -113,6 +124,19 @@ export class LayerManager {
       this.map.getCanvas().style.cursor = "pointer"
     })
     this.map.on("mouseleave", "points", () => {
+      this.map.getCanvas().style.cursor = ""
+    })
+    // Merged cells carry no point to open, so they must not promise a click.
+    // mousemove, not mouseenter: clickable and merged features sit side by side
+    // in this layer, and mouseenter fires only on entering the layer as a whole.
+    this.map.on("mousemove", "points-mvt", (e) => {
+      this.map.getCanvas().style.cursor = shouldShowPointPopup(
+        e.features?.[0]?.properties,
+      )
+        ? "pointer"
+        : ""
+    })
+    this.map.on("mouseleave", "points-mvt", () => {
       this.map.getCanvas().style.cursor = ""
     })
     this.map.on("mouseenter", "visits", () => {
@@ -195,7 +219,7 @@ export class LayerManager {
    * Toggle layer visibility
    */
   toggleLayer(layerName) {
-    const layer = this.layers[`${layerName}Layer`]
+    const layer = this.getLayer(layerName)
     if (!layer) return null
 
     layer.toggle()
@@ -206,7 +230,10 @@ export class LayerManager {
    * Get layer instance
    */
   getLayer(layerName) {
-    return this.layers[`${layerName}Layer`]
+    return (
+      this.layers[`${layerName}Layer`] ||
+      this.layers[`${this._normalizeLayerName(layerName)}Layer`]
+    )
   }
 
   /**
@@ -215,7 +242,16 @@ export class LayerManager {
    * @param {object} layerInstance - Layer instance
    */
   registerLayer(layerName, layerInstance) {
-    this.layers[`${layerName}Layer`] = layerInstance
+    this.layers[`${this._normalizeLayerName(layerName)}Layer`] = layerInstance
+  }
+
+  updatePointTileRange(startAt, endAt) {
+    this.pointTileRange = { startAt, endAt }
+
+    const layer = this.getLayer("points-mvt")
+    if (layer) {
+      layer.update(this.pointTileRange)
+    }
   }
 
   /**
@@ -230,8 +266,17 @@ export class LayerManager {
     // layer keeps moving points. setEditMode, not disableDragging: add() arms
     // enableDragging on a timer that re-checks editModeEnabled.
     this.layers.pointsLayer?.setEditMode(false)
+    // Same reason: the tile-error listener is on the map, so an orphaned layer
+    // keeps reporting and the replacement adds a second one.
+    this.layers.pointsMvtLayer?._unwatchTileErrors()
     this.layers = {}
     this.eventHandlersSetup = false
+  }
+
+  _normalizeLayerName(layerName) {
+    return layerName.replace(/-([a-z])/g, (_match, letter) =>
+      letter.toUpperCase(),
+    )
   }
 
   // Private methods for individual layer management
@@ -256,7 +301,9 @@ export class LayerManager {
   _addHeatmapLayer(pointsGeoJSON) {
     if (!this.layers.heatmapLayer) {
       this.layers.heatmapLayer = new HeatmapLayer(this.map, {
-        visible: this.settings.heatmapEnabled,
+        visible:
+          this.settings.heatmapEnabled &&
+          !tiledPointsActive(SettingsManager.getSettings()),
       })
       this.layers.heatmapLayer.add(pointsGeoJSON)
     } else {
@@ -412,8 +459,10 @@ export class LayerManager {
 
   _addPointsLayer(pointsGeoJSON) {
     if (!this.layers.pointsLayer) {
+      const tiled = tiledPointsActive(SettingsManager.getSettings())
       this.layers.pointsLayer = new PointsLayer(this.map, {
-        visible: this.settings.pointsVisible !== false, // Default true unless explicitly false
+        // Only one points renderer draws at a time
+        visible: this.settings.pointsVisible !== false && !tiled,
         apiClient: this.api,
         layerManager: this,
         styleName: this.settings.mapStyle,
@@ -421,11 +470,32 @@ export class LayerManager {
         // when advanced settings are saved. Lite can't write points.
         editModeEnabled:
           SettingsManager.getSetting("pointDraggingEnabled") === true &&
+          !tiled &&
           !isGatedPlan(this.controller?.userPlanValue),
       })
       this.layers.pointsLayer.add(pointsGeoJSON)
     } else {
       this.layers.pointsLayer.update(pointsGeoJSON)
+    }
+  }
+
+  _addPointsMvtLayer() {
+    if (!this.layers.pointsMvtLayer) {
+      this.layers.pointsMvtLayer = new PointsMvtLayer(this.map, {
+        heatmapVisible:
+          Boolean(this.settings.heatmapEnabled) &&
+          tiledPointsActive(SettingsManager.getSettings()),
+        visible:
+          this.settings.pointsVisible !== false &&
+          tiledPointsActive(SettingsManager.getSettings()),
+        apiKey: this.apiKey,
+        styleName: this.settings.mapStyle,
+        onTileError: () => Toast.error(translate("map.tiled_rendering.failed")),
+        ...this.pointTileRange,
+      })
+      this.layers.pointsMvtLayer.add(this.pointTileRange)
+    } else {
+      this.layers.pointsMvtLayer.update(this.pointTileRange)
     }
   }
 

@@ -7,8 +7,10 @@ import {
 } from "maps_maplibre/utils/basemap_url"
 import { isGatedPlan } from "maps_maplibre/utils/layer_gate"
 import {
+  bulkPointsRequired,
   LAYER_COLOR_DEFAULTS,
   SettingsManager,
+  tiledPointsActive,
 } from "maps_maplibre/utils/settings_manager"
 import { getMapStyle } from "maps_maplibre/utils/style_manager"
 
@@ -62,6 +64,7 @@ export class SettingsController {
     const toggleMap = {
       pointsToggle: "pointsVisible",
       pointsEditToggle: "pointDraggingEnabled",
+      pointsTiledToggle: "pointsTiledRendering",
       routesToggle: "routesVisible",
       heatmapToggle: "heatmapEnabled",
       hexagonsToggle: "hexagonsEnabled",
@@ -102,6 +105,9 @@ export class SettingsController {
         }
       }
     })
+
+    this.syncPointsEditAvailability()
+    this.syncTiledRenderingNote()
 
     // Show/hide visits search based on initial toggle state
     if (controller.hasVisitsToggleTarget && controller.hasVisitsSearchTarget) {
@@ -815,6 +821,7 @@ export class SettingsController {
     }
 
     await SettingsManager.updateSetting("fogOfWarMode", mode)
+    await this.controller.routesManager?.reapplyPointsRenderer()
   }
 
   togglePointsEditing(event) {
@@ -823,6 +830,66 @@ export class SettingsController {
     this.layerManager.getLayer("points")?.setEditMode(enabled)
 
     SettingsManager.updateSetting("pointDraggingEnabled", enabled)
+  }
+
+  // Dim Edit points while tiled rendering is on. The saved preference survives.
+  // Tiles are pointless while another layer already needs the whole point set
+  syncTiledRenderingNote() {
+    const controller = this.controller
+    if (!controller.hasPointsTiledInactiveNoteTarget) return
+
+    const settings = SettingsManager.getSettings()
+    const note = controller.pointsTiledInactiveNoteTarget
+    const inactive =
+      settings.pointsTiledRendering === true && bulkPointsRequired(settings)
+
+    note.classList.toggle("hidden", !inactive)
+    if (!inactive) return
+
+    const blockers = [
+      settings.routesVisible !== false &&
+        translate("map.tiled_rendering.blockers.routes"),
+      settings.fogEnabled &&
+        settings.fogOfWarMode !== "hexagons" &&
+        translate("map.tiled_rendering.blockers.fog"),
+      settings.scratchEnabled &&
+        translate("map.tiled_rendering.blockers.scratch"),
+    ].filter(Boolean)
+
+    note.textContent = translate("map.tiled_rendering.inactive_note", {
+      layers: blockers.join(", "),
+      count: blockers.length,
+    })
+  }
+
+  syncPointsEditAvailability() {
+    const controller = this.controller
+    if (!controller.hasPointsEditToggleTarget) return
+
+    const input = controller.pointsEditToggleTarget
+    const tiled = tiledPointsActive(SettingsManager.getSettings())
+
+    // Keep the checkbox in step with the layer's real edit mode.
+    input.disabled = tiled
+    input.checked =
+      !tiled &&
+      SettingsManager.getSetting("pointDraggingEnabled") === true &&
+      !isGatedPlan(controller.userPlanValue)
+
+    // A hover tooltip cannot explain a disabled control to touch or keyboard,
+    // so the reason also renders as a line under the row.
+    if (controller.hasPointsEditUnavailableNoteTarget) {
+      const note = controller.pointsEditUnavailableNoteTarget
+      note.textContent = tiled
+        ? translate("map.tiled_rendering.editing_unavailable")
+        : ""
+      note.classList.toggle("hidden", !tiled)
+    }
+
+    const label = input.closest("label")
+    if (!label) return
+    label.classList.toggle("opacity-40", tiled)
+    label.style.cursor = tiled ? "not-allowed" : ""
   }
 
   updateRouteOpacity(event) {

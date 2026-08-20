@@ -23,12 +23,12 @@ airtrail_flight_import_job:
 app_version_checking_job:
   cron: "0 */6 * * *" # every 6 hours
   class: "AppVersionCheckingJob"
-  queue: default
+  queue: app_version_checking
 
 cache_preheating_job:
   cron: "0 0 * * *" # every day at 0:00
   class: "Cache::PreheatingJob"
-  queue: default
+  queue: cache
 
 daily_track_generation_job:
   cron: "0 */12 * * *" # every 12 hours (real-time generation handles most cases)
@@ -53,12 +53,12 @@ stale_jobs_recovery_job:
 family_location_requests_expiry_job:
   cron: "30 * * * *" # every hour at :30
   class: "Families::ExpireLocationRequestsJob"
-  queue: default
+  queue: families
 
 points_counter_correction_job:
   cron: "0 */6 * * *" # every 6 hours
   class: "Users::PointsCounterCorrectionJob"
-  queue: default
+  queue: low_priority
 
 lite_archival_warning_job:
   cron: "0 3 * * *" # every day at 03:00

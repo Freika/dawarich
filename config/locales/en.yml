@@ -875,6 +875,10 @@ en:
         allow_dragging_points_to_correct_their_position: Allow dragging points to correct their position.
         editing_points_is_a_pro_feature_this_stays_on_for: Editing points is a Pro feature — this stays on for the current session only, and moves aren't saved on the Lite plan.
         allow_dragging_points_to_correct_their_position_remembered_across_sessio: Allow dragging points to correct their position. Remembered across sessions.
+        tiled_rendering: "Tiled rendering"
+        beta: "Beta"
+        tiled_rendering_description: "Draws points from vector tiles as you pan, so a long date range loads only what is in view."
+        tiled_rendering_caveats: "Dense areas merge into markers with a point count — zoom in to open individual points. Editing is unavailable and the live trail can lag a few minutes."
         routes: Routes
         show_connected_route_lines: Show connected route lines
         color_by_speed: Color by speed
@@ -3679,6 +3683,16 @@ en:
       show_all_days: Show all days
       collapse_all_days: Collapse all days
     map:
+      tiled_rendering:
+        inactive_note:
+          one: "Inactive while %{layers} is on — it needs the full point set."
+          other: "Inactive while %{layers} are on — those need the full point set."
+        editing_unavailable: "Not available with tiled rendering, vector tiles have no draggable points"
+        failed: "Could not load map tiles. Try a shorter date range, or turn off tiled rendering in map settings."
+        blockers:
+          routes: "Routes"
+          fog: "Fog of War"
+          scratch: "Scratch map"
       places_layer: Places Layer
       confirm_delete_point: Are you sure you want to delete this point?
       confirm_delete_point_permanently: |-

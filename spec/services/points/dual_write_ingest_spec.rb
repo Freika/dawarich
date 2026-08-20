@@ -45,15 +45,22 @@ RSpec.describe 'dual-write ingest' do
   end
 
   describe Imports::BulkInsertable do
+    let(:import) { create(:import, user: user) }
+
+    # The concern expects its host to expose the import it is writing for —
+    # bulk_insert_points bumps the tile epoch off import.user_id.
     let(:importer) do
       Class.new do
         include Imports::BulkInsertable
 
+        attr_reader :import
+
+        def initialize(import) = @import = import
         def importer_name = 'spec'
         def record_batch_counters(*) = nil
         def on_bulk_insert_error(error) = raise(error)
         def run(batch) = bulk_insert_points(batch)
-      end.new
+      end.new(import)
     end
 
     let(:batch) do

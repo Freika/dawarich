@@ -47,6 +47,14 @@ RSpec.describe DropSupersededPointsIndexes, :non_transactional do
       expect { migration.up }.not_to raise_error
     end
 
+    it 'clears a restrictive session lock_timeout before touching indexes' do
+      connection.execute("SET lock_timeout = '5s'")
+
+      migration.up
+
+      expect(connection.select_value('SHOW lock_timeout')).to eq('0')
+    end
+
     context 'with a leftover invalid index' do
       let(:test_index_name) { 'tmp_test_orphan_points_idx' }
 
@@ -91,6 +99,37 @@ RSpec.describe DropSupersededPointsIndexes, :non_transactional do
         SQL
       end
 
+      it 'repairs the replacement index instead of refusing to run' do
+        migration.up
+
+        valid = connection.select_value(<<~SQL)
+          SELECT i.indisvalid
+          FROM pg_index i
+          JOIN pg_class c ON c.oid = i.indexrelid
+          WHERE c.relname = '#{replacement_index_name}'
+        SQL
+        expect(valid).to be(true)
+      end
+
+      it 'drops the superseded indexes after the repair' do
+        migration.up
+
+        expect(points_index_names).not_to include(*superseded_index_names)
+      end
+    end
+
+    context 'when the replacement index is missing' do
+      before do
+        connection.execute("DROP INDEX IF EXISTS #{replacement_index_name}")
+      end
+
+      after do
+        connection.execute(<<~SQL)
+          CREATE UNIQUE INDEX IF NOT EXISTS #{replacement_index_name}
+          ON points (user_id, timestamp, lonlat)
+        SQL
+      end
+
       it 'refuses to run' do
         expect { migration.up }
           .to raise_error(ActiveRecord::MigrationError, /#{replacement_index_name}/)
@@ -100,12 +139,6 @@ RSpec.describe DropSupersededPointsIndexes, :non_transactional do
         suppress(ActiveRecord::MigrationError) { migration.up }
 
         expect(points_index_names).to include(*superseded_index_names)
-      end
-
-      it 'does not sweep the replacement index away' do
-        suppress(ActiveRecord::MigrationError) { migration.up }
-
-        expect(points_index_names).to include(replacement_index_name)
       end
     end
   end

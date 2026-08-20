@@ -30,6 +30,10 @@ module Imports
       skipped  = unique_batch.length - inserted
       record_batch_counters(unique_batch.length, skipped)
 
+      if inserted.positive?
+        Points::TileEpoch.bump(import.user_id, timestamps: unique_batch.map { |record| record[:timestamp] })
+      end
+
       inserted
     rescue StandardError => e
       raise if atomic_bulk_insert?

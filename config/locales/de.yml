@@ -878,6 +878,10 @@ de:
         allow_dragging_points_to_correct_their_position: Erlaube das Ziehen von Punkten, um ihre Position zu korrigieren.
         editing_points_is_a_pro_feature_this_stays_on_for: Die Bearbeitung von Punkten ist eine Pro-Funktion — dies bleibt für die aktuelle Sitzung aktiv, und Bewegungen werden auf dem Lite-Plan nicht gespeichert.
         allow_dragging_points_to_correct_their_position_remembered_across_sessio: Erlaube das Ziehen von Punkten, um ihre Position zu korrigieren. Wird über Sitzungen hinweg gespeichert.
+        tiled_rendering: "Gekachelte Darstellung"
+        beta: "Beta"
+        tiled_rendering_description: "Zeichnet Punkte beim Bewegen der Karte aus Vektorkacheln, statt den gesamten Zeitraum vorab zu laden."
+        tiled_rendering_caveats: "Dichte Bereiche werden zu Markern mit Punktanzahl zusammengefasst — zoome hinein, um einzelne Punkte zu öffnen. Bearbeitung ist nicht verfügbar, die Live-Spur kann einige Minuten nachhängen."
         routes: Routen
         show_connected_route_lines: Zeige verbundene Routenlinien
         color_by_speed: Farbe nach Geschwindigkeit
@@ -3707,6 +3711,16 @@ de:
       show_all_days: Alle Tage anzeigen
       collapse_all_days: Alle Tage zusammenklappen
     map:
+      tiled_rendering:
+        inactive_note:
+          one: "Inaktiv, solange %{layers} aktiv ist — diese Ebene benötigt alle Punkte."
+          other: "Inaktiv, solange %{layers} aktiv sind — diese Ebenen benötigen alle Punkte."
+        editing_unavailable: "Bei gekachelter Darstellung nicht verfügbar — Vektorkacheln haben keine verschiebbaren Punkte"
+        failed: "Kartenkacheln konnten nicht geladen werden. Versuche einen kürzeren Zeitraum oder schalte die gekachelte Darstellung in den Karteneinstellungen aus."
+        blockers:
+          routes: "Routen"
+          fog: "Kartennebel"
+          scratch: "Rubbelkarte"
       places_layer: Ortsebene
       confirm_delete_point: Möchtest du diesen Punkt wirklich löschen?
       confirm_delete_point_permanently: |-

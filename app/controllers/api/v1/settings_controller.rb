@@ -79,7 +79,7 @@ class Api::V1::SettingsController < ApiController
       :maps_v2_style, :maps_maplibre_style, :maps_maplibre_tiles_url, :globe_projection,
       :min_minutes_spent_in_city, :max_gap_minutes_in_city,
       :gps_filtering_enabled,
-      :point_dragging_enabled,
+      :point_dragging_enabled, :points_tiled_rendering,
       enabled_map_layers: [],
       enabled_transportation_modes: [],
       maps_maplibre_custom_theme: [
