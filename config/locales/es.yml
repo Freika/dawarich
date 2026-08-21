@@ -1897,6 +1897,9 @@ es:
         one: "%{count} ciudad"
         other: "%{count} ciudades"
     reverse_geocoding_stats:
+      points_without_data: puntos sin datos
+      points_that_were_reverse_geocoded_but_had_no_data: Puntos que se geocodificaron inversamente pero no tenían datos
+      percent_of_total: "%{percent}%% de todos los puntos"
       reverse_geocoded_points: Puntos geocodificados inversamente
       countries_visited: Países visitados
       close: Cerrar

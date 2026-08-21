@@ -29,6 +29,7 @@ RSpec.describe Cache::UserPreheatingJob do
       stats = Rails.cache.read("dawarich/user_#{user.id}_points_geocoded_stats")
 
       expect(stats).to include(geocoded: 3)
+      expect(stats).to have_key(:without_data)
     end
 
     it 'preheats countries and cities visited' do
@@ -50,7 +51,7 @@ RSpec.describe Cache::UserPreheatingJob do
       expect { described_class.new.perform(user_without_points.id) }.not_to raise_error
 
       expect(Rails.cache.read("dawarich/user_#{user_without_points.id}_points_geocoded_stats"))
-        .to eq({ geocoded: 0 })
+        .to eq({ geocoded: 0, without_data: 0 })
     end
 
     context 'when the user no longer exists' do

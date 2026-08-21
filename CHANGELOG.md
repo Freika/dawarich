@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Removed the partial `points` index on `(user_id, timestamp) WHERE visit_id IS NULL` used by visit detection, which the consolidated `(user_id, timestamp, lonlat)` index now serves.
 - New points are linked to the `point_sources` reference table as they are written, by every ingest path — the API, OwnTracks, Overland, Traccar and every file importer. Previously only the one-off backfill filled that link, so anything recorded after it passed stayed unlinked.
-- The stats page no longer shows the "points without data" count alongside reverse geocoded points. It counted rows whose geocoding returned nothing, which says more about the geocoding provider than about your history.
+- The reverse geocoding panel now shows what share of your points have been geocoded, so progress towards 100% is readable at a glance instead of being a raw count you have to divide yourself. The "points without data" figure stays, but is hidden once it reaches zero, and it is now derived from whether the geocoder actually returned a city or country rather than from the stored raw response — so it keeps working on instances that do not store geocoding payloads. Instances with `STORE_GEODATA=false` no longer compute that count at all; the panel is hidden there, and until now the number was calculated for every user on every cache refresh and then discarded.
 
 ## [1.13.0] - 2026-08-17, Berlin
 
