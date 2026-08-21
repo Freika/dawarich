@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-# Seeds point_sources / point_motions from existing points and stamps
-# source_id / motion_id, one id-range batch per invocation, re-enqueueing
-# itself until the whole table is covered. Resumable from any cursor and
-# idempotent: seeding upserts by digest, stamping only touches NULL FKs.
+# Seeds point_sources from existing points and stamps source_id, one id-range
+# batch per invocation, re-enqueueing itself until the whole table is covered.
+# Resumable from any cursor and idempotent: seeding upserts by digest, stamping
+# only touches NULL FKs.
 class DataMigrations::BackfillPointDimensionsJob < ApplicationJob
   queue_as :data_migrations
 
@@ -48,8 +48,7 @@ class DataMigrations::BackfillPointDimensionsJob < ApplicationJob
 
     stamped = bounded do
       seed_sources(start_id, end_id)
-      seed_motions(start_id, end_id)
-      stamp_dimensions(start_id, end_id)
+      stamp_sources(start_id, end_id)
     end
 
     Rails.logger.info("[BackfillPointDimensions] stamped #{stamped} points in #{start_id}..#{end_id}")
@@ -109,43 +108,23 @@ class DataMigrations::BackfillPointDimensionsJob < ApplicationJob
     SQL
   end
 
-  def seed_motions(start_id, end_id)
-    execute_sanitized(<<~SQL.squish, start_id, end_id)
-      INSERT INTO point_motions (digest, motion_data, created_at, updated_at)
-      SELECT t.digest, t.motion_data, NOW(), NOW()
-      FROM (
-        SELECT DISTINCT #{PointMotion.digest_sql('points')} AS digest, motion_data
-        FROM points
-        WHERE id BETWEEN ? AND ?
-      ) t
-      WHERE NOT EXISTS (SELECT 1 FROM point_motions pm WHERE pm.digest = t.digest)
-      ON CONFLICT (digest) DO NOTHING
-    SQL
-  end
-
-  # One UPDATE for both dimensions. Stamping them separately rewrote every row
-  # twice, and on a fillfactor-100 table neither rewrite can be HOT, so each one
-  # re-adds the row to all of points' indexes. The join is inner because both
-  # seeds run first over the same id range and motion_data is NOT NULL, so every
-  # point the seeds saw has a matching row in both dimension tables. COALESCE
-  # keeps whatever an earlier partial pass already stamped.
+  # Stamping rewrites the row, and on a fillfactor-100 table the rewrite
+  # cannot be HOT, so each one re-adds the row to all of points' indexes. One
+  # pass, touching only rows that are still NULL.
   #
   # Under READ COMMITTED each statement takes its own snapshot, so a point
-  # committed into this id range after the seeds ran is visible here but was
-  # never seeded and matches neither dimension. The inner join skips it and it
+  # committed into this id range after the seed ran is visible here but was
+  # never seeded and matches no source row. The inner join skips it and it
   # stays NULL — which is why the backfill is documented as re-runnable rather
-  # than one-shot. Only the tail batches can see this, since earlier ranges are
-  # closed by the time the cursor passes them.
-  def stamp_dimensions(start_id, end_id)
+  # than one-shot. Only the tail batches can see this.
+  def stamp_sources(start_id, end_id)
     execute_sanitized(<<~SQL.squish, start_id, end_id).cmd_tuples
       UPDATE points p
-      SET source_id = COALESCE(p.source_id, ps.id),
-          motion_id = COALESCE(p.motion_id, pm.id)
-      FROM point_sources ps, point_motions pm
+      SET source_id = ps.id
+      FROM point_sources ps
       WHERE p.id BETWEEN ? AND ?
-        AND (p.source_id IS NULL OR p.motion_id IS NULL)
+        AND p.source_id IS NULL
         AND ps.digest = #{PointSource.digest_sql('p')}
-        AND pm.digest = #{PointMotion.digest_sql('p')}
     SQL
   end
 end

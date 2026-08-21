@@ -6,41 +6,40 @@ RSpec.describe DataMigrations::AddPointDimensionColumnsJob, type: :job do
   before { allow(DawarichSettings).to receive(:self_hosted?).and_return(true) }
 
   describe '#perform' do
-    # The columns already exist in the loaded schema, which is the state this
+    # The column already exists in the loaded schema, which is the state this
     # job is designed to tolerate: it is the boot migration's fallback and may
     # run after the ALTER has already landed.
-    it 'starts the backfill once the columns are in place' do
+    it 'starts the backfill once the column is in place' do
       expect { described_class.perform_now }.to \
         have_enqueued_job(DataMigrations::BackfillPointDimensionsJob)
     end
 
-    # The columns exist in the loaded schema, so this is the only example that
+    # The column exists in the loaded schema, so this is the only example that
     # reaches the ALTER at all. Dropping them here is safe: the surrounding
     # example transaction rolls the DDL back, and the column cache is reset
     # either way so no later example sees the gap.
-    it 'adds the columns when the boot migration could not' do
+    it 'adds the column when the boot migration could not' do
       connection = ActiveRecord::Base.connection
-      connection.execute('ALTER TABLE points DROP COLUMN source_id, DROP COLUMN motion_id')
+      connection.execute('ALTER TABLE points DROP COLUMN source_id')
       Point.reset_column_information
       expect(connection.column_exists?(:points, :source_id)).to be false
 
       described_class.perform_now
 
       expect(connection.column_exists?(:points, :source_id)).to be true
-      expect(connection.column_exists?(:points, :motion_id)).to be true
     ensure
       Point.reset_column_information
     end
 
-    it 'leaves existing columns alone instead of re-running the ALTER' do
+    it 'leaves an existing column alone instead of re-running the ALTER' do
       expect(ActiveRecord::Base.connection).not_to receive(:execute)
 
       described_class.perform_now
     end
 
-    it 'does not start the backfill while the columns are still missing' do
-      allow_any_instance_of(described_class).to receive(:columns_present?).and_return(false)
-      allow_any_instance_of(described_class).to receive(:add_columns)
+    it 'does not start the backfill while the column is still missing' do
+      allow_any_instance_of(described_class).to receive(:column_present?).and_return(false)
+      allow_any_instance_of(described_class).to receive(:add_column)
 
       expect { described_class.perform_now }.not_to \
         have_enqueued_job(DataMigrations::BackfillPointDimensionsJob)

@@ -35,39 +35,29 @@ class CreatePointDimensionTables < ActiveRecord::Migration[8.0]
     end
     add_index :point_sources, :digest, unique: true, if_not_exists: true
 
-    create_table :point_motions, id: :serial, if_not_exists: true do |t|
-      t.string :digest, limit: 32, null: false
-      t.jsonb :motion_data, null: false
-      t.timestamps
-    end
-    add_index :point_motions, :digest, unique: true, if_not_exists: true
-
-    add_dimension_columns
+    add_dimension_column
   end
 
   def down
-    execute 'ALTER TABLE points DROP COLUMN IF EXISTS source_id, DROP COLUMN IF EXISTS motion_id'
-    drop_table :point_motions, if_exists: true
+    execute 'ALTER TABLE points DROP COLUMN IF EXISTS source_id'
     drop_table :point_sources, if_exists: true
   end
 
   private
 
-  # Both columns go in one ALTER so the lock is taken once instead of twice, and
-  # so a rerun never sees only one of them present. SET LOCAL keeps the timeout
-  # on the same backend as the ALTER under PgBouncer transaction pooling; a bare
-  # SET can land on another connection and leave the ALTER unbounded.
-  def add_dimension_columns
+  # SET LOCAL keeps the timeout on the same backend as the ALTER under PgBouncer
+  # transaction pooling; a bare SET can land on another connection and leave the
+  # ALTER unbounded.
+  def add_dimension_column
     attempts = 0
 
     begin
       attempts += 1
       transaction do
         execute "SET LOCAL lock_timeout = '#{ADD_LOCK_TIMEOUT}'"
-        execute 'ALTER TABLE points ADD COLUMN IF NOT EXISTS source_id integer, ' \
-                'ADD COLUMN IF NOT EXISTS motion_id integer'
+        execute 'ALTER TABLE points ADD COLUMN IF NOT EXISTS source_id integer'
       end
-      Rails.logger.info '[CreatePointDimensionTables] source_id / motion_id added'
+      Rails.logger.info '[CreatePointDimensionTables] source_id added'
     rescue ActiveRecord::LockWaitTimeout, ActiveRecord::QueryAborted => e
       if attempts < ADD_MAX_ATTEMPTS
         Rails.logger.warn(
@@ -88,7 +78,7 @@ class CreatePointDimensionTables < ActiveRecord::Migration[8.0]
       # ranges at identical pace.
       Rails.logger.warn(
         "[CreatePointDimensionTables] could not acquire lock in #{ADD_MAX_ATTEMPTS} attempts; " \
-        'leaving the columns to DataMigrations::AddPointDimensionColumnsJob'
+        'leaving the column to DataMigrations::AddPointDimensionColumnsJob'
       )
     end
   end

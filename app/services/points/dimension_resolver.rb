@@ -1,12 +1,11 @@
 # frozen_string_literal: true
 
 module Points
-  # Resolves point_sources.id / point_motions.id for rows about to be inserted,
-  # so ingest dual-writes the dimension FKs alongside the legacy columns.
+  # Resolves point_sources.id for rows about to be inserted, so ingest
+  # dual-writes the dimension FK alongside the legacy columns.
   #
-  # The digests are computed in SQL, by the very same
-  # PointSource.digest_sql / PointMotion.digest_sql expressions the backfill
-  # uses. Recomputing them in Ruby would be a second implementation of a value
+  # The digest is computed in SQL, by the very same PointSource.digest_sql
+  # expression the backfill uses. Recomputing them in Ruby would be a second implementation of a value
   # that must match byte for byte forever: jsonb normalises key order and
   # spacing, integer-backed enums serialise as numbers rather than labels, and
   # the array columns default to `{}` rather than NULL. Any of those drifting
@@ -15,31 +14,23 @@ module Points
   class DimensionResolver
     # Columns whose value must be present on every row handed to upsert_all:
     # the writer requires a uniform key set across the batch.
-    STAMPED_KEYS = %i[source_id motion_id].freeze
-
     def initialize
       @source_cache = {}
-      @motion_cache = {}
     end
 
-    # Returns rows with :source_id / :motion_id filled in. A no-op until the
-    # columns exist — 20260816150000 can defer its ALTER to
+    # Returns rows with :source_id filled in. A no-op until the column exists — 20260816150000 can defer its ALTER to
     # DataMigrations::AddPointDimensionColumnsJob on a busy instance, and ingest
     # must keep working in that window.
     def stamp(rows)
       return rows unless self.class.columns_available?
 
-      rows.each do |row|
-        row[:source_id] = source_id_for(row)
-        row[:motion_id] = motion_id_for(row)
-      end
+      rows.each { |row| row[:source_id] = source_id_for(row) }
     end
 
     def self.columns_available?
       return @columns_available if defined?(@columns_available) && !Rails.env.test?
 
-      @columns_available =
-        Point.column_names.include?('source_id') && Point.column_names.include?('motion_id')
+      @columns_available = Point.column_names.include?('source_id')
     end
 
     def self.reset_column_availability!
@@ -52,13 +43,6 @@ module Points
       combo = PointSource::COMBO_COLUMNS.map { |column| normalize(column, row) }
 
       @source_cache.fetch(combo) { @source_cache[combo] = resolve_source(combo) }
-    end
-
-    def motion_id_for(row)
-      payload = row[:motion_data].presence || {}
-      json = payload.to_json
-
-      @motion_cache.fetch(json) { @motion_cache[json] = resolve_motion(json) }
     end
 
     # Enum-backed columns arrive as labels ("unplugged") from the API params but
@@ -90,10 +74,6 @@ module Points
       arrays  = combo[7, 2].map { |value| value&.to_json }
 
       get_or_create(source_sql, scalars + arrays)
-    end
-
-    def resolve_motion(json)
-      get_or_create(motion_sql, [json])
     end
 
     # One round trip: digest, insert-if-absent, then read back whichever row
@@ -144,26 +124,6 @@ module Points
           LIMIT 1
         SQL
       end
-    end
-
-    def motion_sql
-      @motion_sql ||= <<~SQL.squish
-        WITH v AS (
-          SELECT ?::jsonb AS motion_data
-        ), d AS (
-          SELECT v.*, #{PointMotion.digest_sql('v')} AS digest FROM v
-        ), ins AS (
-          INSERT INTO point_motions (digest, motion_data, created_at, updated_at)
-          SELECT d.digest, d.motion_data, NOW(), NOW() FROM d
-          WHERE NOT EXISTS (SELECT 1 FROM point_motions pm WHERE pm.digest = d.digest)
-          ON CONFLICT (digest) DO NOTHING
-          RETURNING id
-        )
-        SELECT id FROM ins
-        UNION ALL
-        SELECT pm.id FROM point_motions pm, d WHERE pm.digest = d.digest
-        LIMIT 1
-      SQL
     end
   end
 end

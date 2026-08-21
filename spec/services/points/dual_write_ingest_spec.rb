@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-# C4: every ingest path must stamp source_id/motion_id as it writes, or new
+# C4: every ingest path must stamp source_id as it writes, or new
 # points land behind the backfill cursor and stay unstamped forever.
 RSpec.describe 'dual-write ingest' do
   let(:user) { create(:user) }
@@ -28,12 +28,11 @@ RSpec.describe 'dual-write ingest' do
       }
     end
 
-    it 'stamps the dimension FKs on points created through the API' do
+    it 'stamps the dimension FK on points created through the API' do
       described_class.new(user, params).call
 
       point = user.points.order(:id).last
       expect(point.source_id).to be_present
-      expect(point.motion_id).to be_present
     end
 
     it 'points the FK at the row whose combo matches' do
@@ -72,11 +71,10 @@ RSpec.describe 'dual-write ingest' do
       ]
     end
 
-    it 'stamps the dimension FKs on imported points' do
+    it 'stamps the dimension FK on imported points' do
       importer.run(batch)
 
       expect(user.points.where(source_id: nil)).to be_empty
-      expect(user.points.where(motion_id: nil)).to be_empty
     end
 
     it 'shares one dimension row across a batch with one combo' do

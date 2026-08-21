@@ -9,7 +9,7 @@ class EnqueuePointDimensionBackfills < ActiveRecord::Migration[8.0]
     # the columns may still be missing here. Adding them is not optional and is
     # not gated: the job keeps retrying and applies the gates below before it
     # starts any backfill of its own.
-    unless columns_ready?
+    unless column_ready?
       enqueue(DataMigrations::AddPointDimensionColumnsJob)
       return
     end
@@ -31,8 +31,8 @@ class EnqueuePointDimensionBackfills < ActiveRecord::Migration[8.0]
 
   private
 
-  def columns_ready?
-    column_exists?(:points, :source_id) && column_exists?(:points, :motion_id)
+  def column_ready?
+    column_exists?(:points, :source_id)
   end
 
   # Nothing retries this: the migration is recorded as applied either way and

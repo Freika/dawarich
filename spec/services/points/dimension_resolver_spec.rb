@@ -47,18 +47,6 @@ RSpec.describe Points::DimensionResolver do
       expect(resolved).to eq(expected_id)
     end
 
-    it 'reuses the motion row the backfill created rather than adding a second' do
-      backfill!
-      seeded = PointMotion.count
-      expected_id = point.reload.motion_id
-
-      resolved = nil
-      expect { resolved = resolver.stamp([combo_attrs.dup]).first[:motion_id] }
-        .not_to change(PointMotion, :count).from(seeded)
-
-      expect(resolved).to eq(expected_id)
-    end
-
     # The reverse order matters too: ingest may see a combo before the backfill
     # cursor reaches the rows carrying it.
     it 'lets the backfill reuse a row ingest created first' do
@@ -120,15 +108,6 @@ RSpec.describe Points::DimensionResolver do
       expect(resolved_null).to eq(null_arrays.reload.source_id)
       expect(resolved_empty).to eq(empty_arrays.reload.source_id)
       expect(resolved_null).not_to eq(resolved_empty)
-    end
-
-    it 'treats a missing motion payload as the empty object the column defaults to' do
-      bare_point
-      backfill!
-
-      resolved = resolver.stamp([{ tracker_id: 'bare-device' }]).first[:motion_id]
-
-      expect(resolved).to eq(bare_point.reload.motion_id)
     end
   end
 

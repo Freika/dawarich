@@ -36,20 +36,9 @@ RSpec.describe EnqueuePointDimensionBackfills do
     expect(DataMigrations::BackfillPointDimensionsJob).not_to have_been_enqueued
   end
 
-  # Both halves of the guard are asserted separately: checking only source_id
-  # would let the migration drop the motion_id check without any example
-  # noticing, and the backfill would then stamp against a missing column.
-  it 'defers when only the motion column is missing' do
-    allow(migration).to receive(:column_exists?).with(:points, :source_id).and_return(true)
-    allow(migration).to receive(:column_exists?).with(:points, :motion_id).and_return(false)
-
-    expect { migration.up }.to have_enqueued_job(DataMigrations::AddPointDimensionColumnsJob)
-    expect(DataMigrations::BackfillPointDimensionsJob).not_to have_been_enqueued
-  end
-
   # The columns must land even on Cloud; only the backfill is gated. The job
   # re-applies the same gate, so nothing starts backfilling behind our back.
-  it 'still adds missing columns on Cloud even though the backfill is gated' do
+  it 'still adds the missing column on Cloud even though the backfill is gated' do
     allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
     allow(migration).to receive(:column_exists?).with(:points, :source_id).and_return(false)
 

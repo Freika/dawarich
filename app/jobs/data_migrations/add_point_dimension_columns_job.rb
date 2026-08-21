@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-# Fallback for the ALTER that adds points.source_id / points.motion_id when the
-# boot-time migration cannot win the lock race. Adding the columns from a job
+# Fallback for the ALTER that adds points.source_id when the boot-time
+# migration cannot win the lock race. Adding the column from a job
 # rather than aborting the migration keeps boot from crash-looping on a busy
 # instance, which is the failure DataMigrations::DropLegacyLatLonJob exists to
 # avoid for the mirror-image drop.
@@ -34,11 +34,10 @@ class DataMigrations::AddPointDimensionColumnsJob < ApplicationJob
   def self.log_exhaustion(error)
     Rails.logger.error(
       "[DataMigrations::AddPointDimensionColumns] gave up after #{MAX_ATTEMPTS} attempts " \
-      "(#{error.class}: #{error.message}); points.source_id / points.motion_id are still missing and the " \
-      'dimension backfill cannot start. Add them once traffic is quiet with: ' \
+      "(#{error.class}: #{error.message}); points.source_id is still missing and the " \
+      'dimension backfill cannot start. Add it once traffic is quiet with: ' \
       "BEGIN; SET LOCAL lock_timeout = '#{LOCK_TIMEOUT}'; " \
-      'ALTER TABLE points ADD COLUMN IF NOT EXISTS source_id integer, ' \
-      'ADD COLUMN IF NOT EXISTS motion_id integer; COMMIT;'
+      'ALTER TABLE points ADD COLUMN IF NOT EXISTS source_id integer; COMMIT;'
     )
   end
 
@@ -47,9 +46,9 @@ class DataMigrations::AddPointDimensionColumnsJob < ApplicationJob
   # chain on that path and cannot race a second one. The gate is the migration's
   # own, applied here too so a deferred upgrade behaves like a direct one.
   def perform
-    add_columns unless columns_present?
+    add_column unless column_present?
 
-    return unless columns_present?
+    return unless column_present?
     return unless self.class.backfill_allowed?
 
     DataMigrations::BackfillPointDimensionsJob.perform_later
@@ -57,22 +56,20 @@ class DataMigrations::AddPointDimensionColumnsJob < ApplicationJob
 
   private
 
-  def columns_present?
-    connection = ActiveRecord::Base.connection
-    connection.column_exists?(:points, :source_id) && connection.column_exists?(:points, :motion_id)
+  def column_present?
+    ActiveRecord::Base.connection.column_exists?(:points, :source_id)
   end
 
   # SET LOCAL keeps the timeout on the same backend as the ALTER under PgBouncer
   # transaction pooling; a bare SET can land on another connection and leave the
   # ALTER unbounded.
-  def add_columns
+  def add_column
     ActiveRecord::Base.transaction do
       ActiveRecord::Base.connection.execute("SET LOCAL lock_timeout = '#{LOCK_TIMEOUT}'")
       ActiveRecord::Base.connection.execute(
-        'ALTER TABLE points ADD COLUMN IF NOT EXISTS source_id integer, ' \
-        'ADD COLUMN IF NOT EXISTS motion_id integer'
+        'ALTER TABLE points ADD COLUMN IF NOT EXISTS source_id integer'
       )
     end
-    Rails.logger.info '[DataMigrations::AddPointDimensionColumns] source_id / motion_id added'
+    Rails.logger.info '[DataMigrations::AddPointDimensionColumns] source_id added'
   end
 end

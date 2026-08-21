@@ -21,11 +21,10 @@ RSpec.describe DataMigrations::BackfillPointDimensionsJob, type: :job do
       expect { described_class.perform_now }.to change(PointSource, :count).by(2)
     end
 
-    it 'stamps every point with its source and motion dimension' do
+    it 'stamps every point with its source dimension' do
       described_class.perform_now
 
       expect(Point.where(source_id: nil).count).to eq(0)
-      expect(Point.where(motion_id: nil).count).to eq(0)
     end
 
     it 'points with identical combos share one source row' do
@@ -35,19 +34,12 @@ RSpec.describe DataMigrations::BackfillPointDimensionsJob, type: :job do
       expect(watch_point.reload.source_id).not_to eq(phone_points.first.reload.source_id)
     end
 
-    it 'deduplicates motion payloads through the digest' do
-      described_class.perform_now
-
-      expect(PointMotion.count).to eq(2)
-      expect(phone_points.map { |p| p.reload.motion_id }.uniq.size).to eq(1)
-    end
-
     it 'is idempotent on re-run' do
       described_class.perform_now
-      stamped = Point.order(:id).pluck(:source_id, :motion_id)
+      stamped = Point.order(:id).pluck(:source_id)
 
       expect { described_class.perform_now }.not_to change(PointSource, :count)
-      expect(Point.order(:id).pluck(:source_id, :motion_id)).to eq(stamped)
+      expect(Point.order(:id).pluck(:source_id)).to eq(stamped)
     end
 
     it 'walks the id range in batches by re-enqueueing itself' do
