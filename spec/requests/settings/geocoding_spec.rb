@@ -22,8 +22,14 @@ RSpec.describe 'Settings::Geocoding', type: :request do
   end
 
   describe 'GET /settings/geocoding' do
-    it 'renders the provider settings page' do
+    it 'redirects the old geocoding settings path to the integrations pane' do
       get settings_geocoding_path
+
+      expect(response).to redirect_to(settings_integrations_path(service: 'geocoding'))
+    end
+
+    it 'renders the provider settings page' do
+      get settings_integrations_path(service: 'geocoding')
 
       expect(response).to have_http_status(:ok)
       expect(response.body).to include(I18n.t('settings.geocoding.show.provider'))
@@ -32,15 +38,16 @@ RSpec.describe 'Settings::Geocoding', type: :request do
     it 'is not available on non-self-hosted instances' do
       allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
 
-      get settings_geocoding_path
+      get settings_integrations_path(service: 'geocoding')
 
-      expect(response).not_to have_http_status(:ok)
+      expect(response.body).not_to include('data-testid="integration-geocoding"')
+      expect(response.body).not_to include(I18n.t('settings.geocoding.show.provider'))
     end
 
     it 'never echoes a stored api key' do
       row = create(:service_setting, :geoapify, :active, user: user, api_key: 'super-secret-key-value')
 
-      get settings_geocoding_path
+      get settings_integrations_path(service: 'geocoding')
 
       expect(row.api_key).to eq('super-secret-key-value')
       expect(response.body).not_to include('super-secret-key-value')
@@ -49,21 +56,22 @@ RSpec.describe 'Settings::Geocoding', type: :request do
     it 'shows the ENV-managed banner when ENV is set' do
       allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
 
-      get settings_geocoding_path
+      get settings_integrations_path(service: 'geocoding')
 
       expect(response.body).to include(I18n.t('settings.geocoding.show.env_managed_notice'))
     end
 
     it 'does not show the ENV-managed banner without ENV' do
-      get settings_geocoding_path
+      get settings_integrations_path(service: 'geocoding')
 
       expect(response.body).not_to include(I18n.t('settings.geocoding.show.env_managed_notice'))
     end
 
-    it 'links the geocoding tab in the settings navigation' do
-      get settings_geocoding_path
+    it 'lists geocoding in the integrations sidebar' do
+      get settings_integrations_path(service: 'geocoding')
 
-      expect(response.body).to include(I18n.t('settings.navigation.geocoding'))
+      expect(response.body).to include('data-testid="integration-geocoding"')
+      expect(response.body).to include(I18n.t('settings.integrations.index.services.geocoding'))
     end
 
     def photon_host_input(body)
@@ -71,7 +79,7 @@ RSpec.describe 'Settings::Geocoding', type: :request do
     end
 
     it 'prefills the photon host with ChibiGeo for fresh users' do
-      get settings_geocoding_path
+      get settings_integrations_path(service: 'geocoding')
 
       expect(photon_host_input(response.body)).to include('value="app.chibigeo.com/v1/photon"')
     end
@@ -79,7 +87,7 @@ RSpec.describe 'Settings::Geocoding', type: :request do
     it 'keeps a saved custom photon host instead of the ChibiGeo default' do
       create(:service_setting, :active, user: user, config: { 'host' => 'photon.mine.example.com' })
 
-      get settings_geocoding_path
+      get settings_integrations_path(service: 'geocoding')
 
       input = photon_host_input(response.body)
       expect(input).to include('value="photon.mine.example.com"')
@@ -87,7 +95,7 @@ RSpec.describe 'Settings::Geocoding', type: :request do
     end
 
     it 'offers an explicit three-way photon host choice with ChibiGeo preselected for fresh users' do
-      get settings_geocoding_path
+      get settings_integrations_path(service: 'geocoding')
 
       expect(response.body).to include(I18n.t('settings.geocoding.show.choice_chibigeo'))
       expect(response.body).to include(I18n.t('settings.geocoding.show.choice_komoot'))
@@ -99,7 +107,7 @@ RSpec.describe 'Settings::Geocoding', type: :request do
     it 'preselects the custom host choice when a custom host is saved' do
       create(:service_setting, :active, user: user, config: { 'host' => 'photon.mine.example.com' })
 
-      get settings_geocoding_path
+      get settings_integrations_path(service: 'geocoding')
 
       expect(response.body).to match(/value="custom"[^>]*checked/)
     end
@@ -107,13 +115,13 @@ RSpec.describe 'Settings::Geocoding', type: :request do
     it 'preselects the komoot choice when the komoot host is saved' do
       create(:service_setting, :active, user: user, config: { 'host' => 'photon.komoot.io' })
 
-      get settings_geocoding_path
+      get settings_integrations_path(service: 'geocoding')
 
       expect(response.body).to match(/value="komoot"[^>]*checked/)
     end
 
     it 'locks the HTTPS toggle for https-only hosts' do
-      get settings_geocoding_path
+      get settings_integrations_path(service: 'geocoding')
 
       toggle = response.body.scan(/<input[^>]*>/).find do |tag|
         tag.include?('name="photon[use_https]"') && tag.include?('type="checkbox"')
@@ -126,7 +134,7 @@ RSpec.describe 'Settings::Geocoding', type: :request do
     it 'leaves the HTTPS toggle adjustable for custom hosts' do
       create(:service_setting, :active, user: user, config: { 'host' => 'photon.mine.example.com' })
 
-      get settings_geocoding_path
+      get settings_integrations_path(service: 'geocoding')
 
       toggle = response.body.scan(/<input[^>]*>/).find do |tag|
         tag.include?('name="photon[use_https]"') && tag.include?('type="checkbox"')
@@ -136,7 +144,7 @@ RSpec.describe 'Settings::Geocoding', type: :request do
     end
 
     it 'offers a free ChibiGeo API key with a UTM-tagged link and the plan limits' do
-      get settings_geocoding_path
+      get settings_integrations_path(service: 'geocoding')
 
       expect(response.body).to include('utm_source=dawarich')
       expect(response.body).to include(I18n.t('settings.geocoding.show.chibigeo_limits'))
@@ -144,7 +152,7 @@ RSpec.describe 'Settings::Geocoding', type: :request do
     end
 
     it 'carries both the ChibiGeo panel and the komoot warning in the photon fieldset' do
-      get settings_geocoding_path
+      get settings_integrations_path(service: 'geocoding')
 
       expect(response.body).to include('data-geocoding-settings-target="chibigeoPanel"')
       expect(response.body).to include('data-geocoding-settings-target="komootWarning"')
@@ -156,7 +164,7 @@ RSpec.describe 'Settings::Geocoding', type: :request do
         "UPDATE service_settings SET credentials = 'garbage' WHERE id = #{row.id}"
       )
 
-      get settings_geocoding_path
+      get settings_integrations_path(service: 'geocoding')
 
       expect(response).to have_http_status(:ok)
     end
@@ -193,6 +201,26 @@ RSpec.describe 'Settings::Geocoding', type: :request do
       }
 
       expect(user.service_settings.service_geocoding.find_by(provider: 'photon').api_key).to be_nil
+    end
+
+    it 'clears the recorded connection status when the configuration changes' do
+      create(:service_setting, :active, user: user,
+                               config: { 'host' => 'photon.mine.example.com', 'connection_status' => 'ok' })
+
+      patch settings_geocoding_path, params: { provider: 'photon', photon: { host: 'photon.other.example.com' } }
+
+      row = user.service_settings.service_geocoding.find_by(provider: 'photon')
+      expect(row.config['connection_status']).to be_nil
+    end
+
+    it 'keeps the recorded connection status when nothing changes' do
+      create(:service_setting, :active, user: user,
+                               config: { 'host' => 'photon.mine.example.com', 'connection_status' => 'ok' })
+
+      patch settings_geocoding_path, params: { provider: 'photon', photon: { host: 'photon.mine.example.com' } }
+
+      row = user.service_settings.service_geocoding.find_by(provider: 'photon')
+      expect(row.config['connection_status']).to eq('ok')
     end
 
     it 'switches the active provider while keeping stored credentials' do
@@ -245,6 +273,16 @@ RSpec.describe 'Settings::Geocoding', type: :request do
       expect(response.body).to include('Leipzig')
     end
 
+    it 'records a successful test on the active setting' do
+      setting = create(:service_setting, :active, user: user, config: { 'host' => 'photon.mine.example.com' })
+      stub_request(:get, %r{https://photon\.mine\.example\.com/reverse})
+        .to_return(status: 200, body: photon_body, headers: { 'Content-Type' => 'application/json' })
+
+      post test_settings_geocoding_path, headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+
+      expect(setting.reload.config['connection_status']).to eq('ok')
+    end
+
     it 'reports a failure when the provider times out' do
       create(:service_setting, :active, user: user, config: { 'host' => 'photon.mine.example.com' })
       stub_request(:get, %r{https://photon\.mine\.example\.com/reverse}).to_timeout
@@ -253,6 +291,15 @@ RSpec.describe 'Settings::Geocoding', type: :request do
 
       expect(response).to have_http_status(:ok)
       expect(response.body).to include('Geocoder')
+    end
+
+    it 'records a failed test on the active setting' do
+      setting = create(:service_setting, :active, user: user, config: { 'host' => 'photon.mine.example.com' })
+      stub_request(:get, %r{https://photon\.mine\.example\.com/reverse}).to_timeout
+
+      post test_settings_geocoding_path, headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+
+      expect(setting.reload.config['connection_status']).to eq('failed')
     end
 
     it 'reports missing configuration' do

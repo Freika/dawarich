@@ -1393,7 +1393,6 @@ en:
         empty: The provider responded but returned no results for the test coordinates.
         failure: 'Test failed: %{error}'
     navigation:
-      geocoding: Geocoding
       general: General
       integrations: Integrations
       map: Map
@@ -1468,6 +1467,14 @@ en:
         save_changes: Save changes
     integrations:
       index:
+        services_nav: Integration services
+        services:
+          geocoding: Geocoding
+          immich: Immich
+          photoprism: PhotoPrism
+          airtrail: AirTrail
+        status_connected: Connected
+        status_failed: Last connection attempt failed
         immich_photoprism_integrations: Immich & Photoprism Integrations
         connect_your_photo_management_tools_to_see_your_photos_on: Connect your photo management tools to see your photos on the map. Immich and Photoprism integrations are available on the Pro plan.
         upgrade_to_pro: Upgrade to Pro

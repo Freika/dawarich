@@ -8,7 +8,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
-- Each user can now configure their own geocoding provider (Photon, Geoapify, Nominatim or LocationIQ) under Settings → Geocoding, used for reverse geocoding points and places as well as place and location search. For Photon there is an explicit server choice — the ChibiGeo hosted service (default, with a free 2,500-lookups/day tier and a link to get an API key), komoot's public server (with a rate-limit warning), or a custom host — and HTTPS is locked on for hosted servers. Credentials are stored encrypted, one provider is active at a time, and a "Test my provider" button runs a live lookup against the saved configuration. The `PHOTON_API_HOST`/`GEOAPIFY_API_KEY`/`NOMINATIM_API_HOST`/`LOCATIONIQ_API_KEY` environment variables keep working and take precedence as instance-wide configuration; on self-hosted instances an existing ENV configuration is copied into every user's settings once, so removing the variables later keeps geocoding running uninterrupted.
+- Each user can now configure their own geocoding provider (Photon, Geoapify, Nominatim or LocationIQ) under Settings → Integrations, used for reverse geocoding points and places as well as place and location search. For Photon there is an explicit server choice — the ChibiGeo hosted service (default, with a free 2,500-lookups/day tier and a link to get an API key), komoot's public server (with a rate-limit warning), or a custom host — and HTTPS is locked on for hosted servers. Credentials are stored encrypted, one provider is active at a time, and a "Test my provider" button runs a live lookup against the saved configuration. The `PHOTON_API_HOST`/`GEOAPIFY_API_KEY`/`NOMINATIM_API_HOST`/`LOCATIONIQ_API_KEY` environment variables keep working and take precedence as instance-wide configuration; on self-hosted instances an existing ENV configuration is copied into every user's settings once, so removing the variables later keeps geocoding running uninterrupted.
+
+### Changed
+
+- The Integrations settings page now shows one service at a time — Geocoding, Immich, PhotoPrism and AirTrail — chosen from a sidebar with each service's logo, instead of one long combined form. Every service in the sidebar carries a connection indicator: a green check when the last connection attempt succeeded, an orange alert when the service is configured but the last attempt failed, and nothing while it is not set up. Photo services record the result each time "Save & Test Connection" runs; the geocoding provider records it from its test button. Geocoding settings live here now instead of in their own settings tab, and the old address redirects. (#3393)
+
+### Fixed
+
+- Saving an AirTrail integration whose host is unreachable (connection refused, unresolvable hostname, TLS failure) no longer crashes the settings page — the settings are saved and the connection failure is reported in the flash message and the sidebar indicator instead. (#3393)
 
 ## [1.13.0] - 2026-08-17, Berlin
 

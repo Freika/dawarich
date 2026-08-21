@@ -1396,7 +1396,6 @@ es:
         empty: The provider responded but returned no results for the test coordinates.
         failure: 'Test failed: %{error}'
     navigation:
-      geocoding: Geocoding
       general: General
       integrations: Integraciones
       map: Mapa
@@ -1471,6 +1470,14 @@ es:
         save_changes: Guardar cambios
     integrations:
       index:
+        services_nav: Servicios de integración
+        services:
+          geocoding: Geocodificación
+          immich: Immich
+          photoprism: PhotoPrism
+          airtrail: AirTrail
+        status_connected: Conectado
+        status_failed: El último intento de conexión falló
         immich_photoprism_integrations: Integraciones Immich y Photoprism
         connect_your_photo_management_tools_to_see_your_photos_on: Conectar tus herramientas de gestión de fotos para ver tus fotos en el mapa. Las integraciones de Immich y Photoprism están disponibles en la versión Pro.
         upgrade_to_pro: Actualizar a Pro
