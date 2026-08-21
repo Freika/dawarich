@@ -2825,7 +2825,6 @@ fr:
       countries_visited: Pays visités
       close: Fermer
       cities_visited: Villes visitées
-        mais n'avaient pas de données
     stat:
       total_distance: Distance totale
       year_month: "%{year}/%{month}"

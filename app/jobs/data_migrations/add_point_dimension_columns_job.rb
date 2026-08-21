@@ -70,6 +70,12 @@ class DataMigrations::AddPointDimensionColumnsJob < ApplicationJob
         'ALTER TABLE points ADD COLUMN IF NOT EXISTS source_id integer'
       )
     end
+    # This process cached the pre-ALTER column set; without the reset the
+    # column_present? re-check below reads that stale cache and skips the
+    # backfill enqueue. Other processes re-check the catalog on their own
+    # via Points::DimensionResolver.columns_available?.
+    Point.reset_column_information
+    Points::DimensionResolver.reset_column_availability!
     Rails.logger.info '[DataMigrations::AddPointDimensionColumns] source_id added'
   end
 end

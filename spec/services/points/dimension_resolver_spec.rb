@@ -133,12 +133,60 @@ RSpec.describe Points::DimensionResolver do
     end
   end
 
+  describe 'failed resolutions' do
+    # The resolver lives for a whole import; remembering one lost race as
+    # "this combo has no id" would leave every later point of the same device
+    # unstamped.
+    it 'retries a combo whose resolution failed instead of caching the nil' do
+      failing = true
+      allow(ActiveRecord::Base.connection).to receive(:select_value).and_wrap_original do |m, *args|
+        failing && args.first.to_s.include?('point_sources') ? nil : m.call(*args)
+      end
+
+      expect(resolver.stamp([combo_attrs.dup]).first[:source_id]).to be_nil
+
+      failing = false
+      expect(resolver.stamp([combo_attrs.dup]).first[:source_id]).to be_present
+    end
+  end
+
   describe 'when the columns are not there yet' do
+    include ActiveSupport::Testing::TimeHelpers
+
     it 'leaves rows untouched so ingest survives a deferred ALTER' do
       allow(described_class).to receive(:columns_available?).and_return(false)
       rows = [combo_attrs.dup]
 
       expect(resolver.stamp(rows).first).not_to have_key(:source_id)
+    end
+
+    # Production semantics (memoisation + recheck throttle are bypassed in the
+    # test env): a "no" must expire once DataMigrations::AddPointDimensionColumnsJob
+    # lands the deferred ALTER in another process, or ingest here stays
+    # unstamped until a restart.
+    it 'starts stamping without a restart once the deferred ALTER lands' do
+      allow(Rails.env).to receive(:test?).and_return(false)
+      described_class.reset_column_availability!
+      connection = ActiveRecord::Base.connection
+      connection.execute('ALTER TABLE points DROP COLUMN source_id')
+      Point.reset_column_information
+
+      expect(described_class.columns_available?).to be false
+
+      connection.execute('ALTER TABLE points ADD COLUMN source_id integer')
+
+      # Inside the throttle window the cached answer stands...
+      expect(described_class.columns_available?).to be false
+
+      # ...and past it the recheck sees the column and refreshes the model's
+      # column cache, so stamping resumes in this process.
+      travel(described_class::COLUMN_RECHECK_INTERVAL + 1) do
+        expect(described_class.columns_available?).to be true
+      end
+      expect(Point.column_names).to include('source_id')
+    ensure
+      Point.reset_column_information
+      described_class.reset_column_availability!
     end
   end
 end

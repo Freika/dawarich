@@ -27,22 +27,66 @@ module Points
       rows.each { |row| row[:source_id] = source_id_for(row) }
     end
 
-    def self.columns_available?
-      return @columns_available if defined?(@columns_available) && !Rails.env.test?
+    # How long a process keeps believing the column is absent before asking
+    # the database again.
+    COLUMN_RECHECK_INTERVAL = 60
 
-      @columns_available = Point.column_names.include?('source_id')
+    # Only the positive answer is memoised. The negative one expires: on
+    # instances where 20260816150000 deferred the ALTER to
+    # DataMigrations::AddPointDimensionColumnsJob, the column appears
+    # mid-process in Sidekiq while web workers keep serving — a permanent "no"
+    # would leave ingest unstamped in every other process until restart.
+    # The check queries the catalog rather than Point.column_names because the
+    # model's column cache is exactly what goes stale in that window.
+    def self.columns_available?
+      return true if @columns_available && !Rails.env.test?
+      return false if recheck_throttled?
+
+      present = column_in_database?
+      # upsert_all validates keys against the model's cached column set, which
+      # predates the deferred ALTER in this process.
+      Point.reset_column_information if present && !Point.column_names.include?('source_id')
+      @columns_available = present
     end
 
     def self.reset_column_availability!
-      remove_instance_variable(:@columns_available) if defined?(@columns_available)
+      @columns_available = nil
+      @column_checked_at = nil
     end
+
+    def self.column_in_database?
+      ActiveRecord::Base.connection.select_value(<<~SQL.squish).present?
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = current_schema()
+          AND table_name = 'points' AND column_name = 'source_id'
+      SQL
+    end
+
+    def self.recheck_throttled?
+      return false if Rails.env.test?
+
+      now = Time.current
+      return true if @column_checked_at && now - @column_checked_at < COLUMN_RECHECK_INTERVAL
+
+      @column_checked_at = now
+      false
+    end
+    private_class_method :column_in_database?, :recheck_throttled?
 
     private
 
+    # Only a resolved id is cached. A nil from a lost race must stay uncached:
+    # the resolver is memoised for a whole import, so caching the failure would
+    # silently unstamp every later point sharing the combo.
     def source_id_for(row)
       combo = PointSource::COMBO_COLUMNS.map { |column| normalize(column, row) }
 
-      @source_cache.fetch(combo) { @source_cache[combo] = resolve_source(combo) }
+      cached = @source_cache[combo]
+      return cached if cached
+
+      id = resolve_source(combo)
+      @source_cache[combo] = id if id
+      id
     end
 
     # Enum-backed columns arrive as labels ("unplugged") from the API params but

@@ -78,6 +78,36 @@ RSpec.describe DataMigrations::BackfillPointDimensionsJob, type: :job do
       expect(tail.reload.source_id).to be_present
     end
 
+    # A statement_timeout usually means the batch is too big, not unlucky;
+    # retrying it identically ten times churns rolled-back work for an hour.
+    it 'halves the batch and retries the same cursor when a batch is aborted' do
+      allow_any_instance_of(described_class).to receive(:seed_sources)
+        .and_raise(ActiveRecord::QueryCanceled)
+      start_id = Point.minimum(:id)
+
+      expect { described_class.perform_now(start_id) }.to \
+        have_enqueued_job(described_class).with(start_id, described_class::BATCH_SIZE / 2)
+    end
+
+    it 'hands the smallest batch to the retry machinery instead of shrinking forever' do
+      allow_any_instance_of(described_class).to receive(:seed_sources)
+        .and_raise(ActiveRecord::QueryCanceled)
+      start_id = Point.minimum(:id)
+
+      # retry_on re-enqueues with the arguments unchanged — same cursor, same
+      # floor size — rather than the rescue enqueueing a smaller batch.
+      expect { described_class.perform_now(start_id, described_class::MIN_BATCH_SIZE) }.to \
+        have_enqueued_job(described_class).with(start_id, described_class::MIN_BATCH_SIZE)
+    end
+
+    it 'reports batch position so operators can tell running from stalled' do
+      allow(Rails.logger).to receive(:info).and_call_original
+
+      described_class.perform_now
+
+      expect(Rails.logger).to have_received(:info).with(/of id range/)
+    end
+
     it 'keeps walking when points are appended while the chain runs' do
       stub_const("#{described_class}::BATCH_SIZE", 1)
       last_id = Point.maximum(:id)

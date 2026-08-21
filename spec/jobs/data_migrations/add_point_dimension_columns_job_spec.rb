@@ -61,8 +61,19 @@ RSpec.describe DataMigrations::AddPointDimensionColumnsJob, type: :job do
     end
 
     it 'retries rather than giving up the first time it loses the lock' do
-      expect(described_class.rescue_handlers.map(&:first))
-        .to include('ActiveRecord::LockWaitTimeout', 'ActiveRecord::QueryAborted')
+      allow_any_instance_of(described_class).to receive(:column_present?).and_return(false)
+      allow_any_instance_of(described_class).to receive(:add_column)
+        .and_raise(ActiveRecord::LockWaitTimeout)
+
+      expect { described_class.perform_now }.to have_enqueued_job(described_class)
+    end
+
+    it 'retries an aborted attempt the same way' do
+      allow_any_instance_of(described_class).to receive(:column_present?).and_return(false)
+      allow_any_instance_of(described_class).to receive(:add_column)
+        .and_raise(ActiveRecord::QueryCanceled)
+
+      expect { described_class.perform_now }.to have_enqueued_job(described_class)
     end
   end
 end

@@ -8,6 +8,10 @@ class DataMigrations::BackfillPointDimensionsJob < ApplicationJob
   queue_as :data_migrations
 
   BATCH_SIZE = 50_000
+  # Floor for the halving below: a batch an eighth of the default that still
+  # cannot finish inside STATEMENT_TIMEOUT is not slow, it is stuck, and
+  # belongs to the retry clock and its exhaustion message.
+  MIN_BATCH_SIZE = 5_000
   PAUSE = 5.seconds
   # A batch blocked behind a long points transaction must give its worker and
   # its PgBouncer server connection back rather than wait indefinitely; Sidekiq
@@ -40,20 +44,20 @@ class DataMigrations::BackfillPointDimensionsJob < ApplicationJob
     )
   end
 
-  def perform(start_id = nil)
+  def perform(start_id = nil, batch_size = BATCH_SIZE)
     start_id ||= Point.minimum(:id)
     return if start_id.nil?
 
-    end_id = start_id + BATCH_SIZE - 1
+    end_id = start_id + batch_size - 1
 
     stamped = bounded do
       seed_sources(start_id, end_id)
       stamp_sources(start_id, end_id)
     end
 
-    Rails.logger.info("[BackfillPointDimensions] stamped #{stamped} points in #{start_id}..#{end_id}")
-
     max_id = Point.maximum(:id)
+    log_progress(stamped, start_id, end_id, max_id)
+
     if max_id.nil? || end_id >= max_id
       Rails.logger.info("[BackfillPointDimensions] completed at id #{end_id}")
       # The country backfill runs after this one rather than alongside it: both
@@ -65,9 +69,33 @@ class DataMigrations::BackfillPointDimensionsJob < ApplicationJob
     end
 
     self.class.set(wait: PAUSE).perform_later(end_id + 1)
+  # A statement_timeout on a batch is usually size, not luck: retrying the
+  # same range identically ten times churns rolled-back WAL and index writes
+  # for nearly an hour before the chain stops. Halve the range and try again
+  # from the same cursor; the successor batch returns to the default size.
+  # Only once the batch cannot shrink further does the error reach retry_on
+  # and, eventually, log_exhaustion.
+  rescue ActiveRecord::QueryAborted => e
+    raise if batch_size / 2 < MIN_BATCH_SIZE
+
+    Rails.logger.warn(
+      "[BackfillPointDimensions] batch #{start_id}..#{end_id} aborted (#{e.class}: #{e.message}); " \
+      "retrying from id #{start_id} at half size #{batch_size / 2}"
+    )
+    self.class.set(wait: PAUSE).perform_later(start_id, batch_size / 2)
   end
 
   private
+
+  # The chain runs for hours on a large table; without a per-batch position
+  # line the only way to tell running from stalled is Sidekiq internals.
+  def log_progress(stamped, start_id, end_id, max_id)
+    percent = max_id ? [end_id * 100.0 / max_id, 100].min.round(1) : 100
+    Rails.logger.info(
+      "[BackfillPointDimensions] stamped #{stamped} points in #{start_id}..#{end_id} " \
+      "(~#{percent}% of id range)"
+    )
+  end
 
   def bounded(&)
     ActiveRecord::Base.transaction do

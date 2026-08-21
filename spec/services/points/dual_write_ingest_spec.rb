@@ -43,6 +43,93 @@ RSpec.describe 'dual-write ingest' do
     end
   end
 
+  # The three live trackers each have their own creator calling
+  # archival_safe_upsert_all directly — none of them pass through
+  # Points::Create, so each must stamp for itself.
+  describe OwnTracks::PointCreator do
+    let(:params) do
+      OwnTracks::RecParser.new(File.read('spec/fixtures/files/owntracks/2024-03.rec')).call.first
+    end
+
+    it 'stamps the dimension FK on live OwnTracks points' do
+      described_class.new(params, user.id).call
+
+      expect(user.points.order(:id).last.source_id).to be_present
+    end
+  end
+
+  describe Traccar::PointCreator do
+    let(:params) do
+      {
+        device_id: 'iphone-frey',
+        location: {
+          timestamp: '2026-04-23T12:34:56Z',
+          latitude: 52.52, longitude: 13.405,
+          accuracy: 5, speed: 1.4, altitude: 42
+        },
+        battery: { level: 0.85, is_charging: true },
+        activity: { type: 'walking' }
+      }
+    end
+
+    it 'stamps the dimension FK on live Traccar points' do
+      described_class.new(params, user.id).call
+
+      expect(user.points.order(:id).last.source_id).to be_present
+    end
+  end
+
+  describe Overland::PointsCreator do
+    let(:params) { JSON.parse(File.read('spec/fixtures/files/overland/geodata.json')) }
+
+    it 'stamps the dimension FK on live Overland points' do
+      described_class.new(params, user.id).call
+
+      expect(user.points.where(source_id: nil)).to be_empty
+      expect(user.points.count).to be_positive
+    end
+  end
+
+  # Bypasses Imports::BulkInsertable with its own upsert_all.
+  describe GoogleMaps::SemanticHistoryImporter do
+    let(:import) { create(:import, user: user) }
+    let(:file_path) do
+      Rails.root.join('spec/fixtures/files/google/location-history/with_activitySegment_with_startLocation.json')
+    end
+
+    before do
+      import.file.attach(io: File.open(file_path), filename: 'semantic_history.json',
+                         content_type: 'application/json')
+    end
+
+    it 'stamps the dimension FK on Google semantic history points' do
+      described_class.new(import, user.id).call
+
+      expect(user.points.count).to be_positive
+      expect(user.points.where(source_id: nil)).to be_empty
+    end
+  end
+
+  # Bypasses Imports::BulkInsertable with its own upsert_all.
+  describe Users::ImportData::Points do
+    let(:points_data) do
+      [
+        { 'timestamp' => 1_640_995_200, 'lonlat' => 'POINT(13.4050 52.5200)',
+          'tracker_id' => 'restored-device' },
+        { 'timestamp' => 1_640_995_260, 'lonlat' => 'POINT(13.4060 52.5210)',
+          'tracker_id' => 'restored-device' }
+      ]
+    end
+
+    it 'stamps the dimension FK on points restored from a user data dump' do
+      described_class.new(user, points_data).call
+
+      expect(user.points.count).to eq(2)
+      expect(user.points.where(source_id: nil)).to be_empty
+      expect(user.points.pluck(:source_id).uniq.size).to eq(1)
+    end
+  end
+
   describe Imports::BulkInsertable do
     let(:import) { create(:import, user: user) }
 
