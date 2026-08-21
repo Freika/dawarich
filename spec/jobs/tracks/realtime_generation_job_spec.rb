@@ -133,7 +133,7 @@ RSpec.describe Tracks::RealtimeGenerationJob, type: :job do
       it 'reports the failure after bounded retries are exhausted' do
         allow(Rails.logger).to receive(:error)
         job = described_class.new(user.id)
-        job.exception_executions = { '[ActiveRecord::QueryCanceled]' => 2 }
+        job.exception_executions = { '[ActiveRecord::QueryCanceled, ActiveRecord::Deadlocked]' => 2 }
 
         expect { job.perform_now }.not_to have_enqueued_job(described_class)
 
@@ -141,6 +141,24 @@ RSpec.describe Tracks::RealtimeGenerationJob, type: :job do
           timeout_error,
           "Failed real-time track generation for user #{user.id} after retries"
         )
+      end
+    end
+
+    context 'when track generation deadlocks' do
+      let(:deadlock_error) { ActiveRecord::Deadlocked.new('deadlock detected') }
+
+      before do
+        generator = instance_double(Tracks::IncrementalGenerator)
+        allow(generator).to receive(:call).and_raise(deadlock_error)
+        allow(Tracks::IncrementalGenerator).to receive(:new).with(user).and_return(generator)
+        allow(ExceptionReporter).to receive(:call)
+      end
+
+      it 'retries the generation job without reporting the transient failure' do
+        expect { described_class.perform_now(user.id) }
+          .to have_enqueued_job(described_class).with(user.id)
+
+        expect(ExceptionReporter).not_to have_received(:call)
       end
     end
 

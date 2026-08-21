@@ -17,10 +17,13 @@
 class Tracks::RealtimeGenerationJob < ApplicationJob
   queue_as :tracks
 
-  retry_on ActiveRecord::QueryCanceled, wait: :polynomially_longer, attempts: 3 do |job, error|
+  retry_on ActiveRecord::QueryCanceled,
+           ActiveRecord::Deadlocked,
+           wait: :polynomially_longer,
+           attempts: 3 do |job, error|
     user_id = job.arguments.first
     Rails.logger.error(
-      "Tracks::RealtimeGenerationJob statement timeout retries exhausted user_id=#{user_id}: #{error.message}"
+      "Tracks::RealtimeGenerationJob database retries exhausted user_id=#{user_id}: #{error.message}"
     )
     ExceptionReporter.call(error, "Failed real-time track generation for user #{user_id} after retries")
   end
@@ -37,7 +40,7 @@ class Tracks::RealtimeGenerationJob < ApplicationJob
 
     # Enqueue reverse geocoding for recent ungeocoded points
     enqueue_reverse_geocoding(user)
-  rescue ActiveRecord::QueryCanceled
+  rescue ActiveRecord::QueryCanceled, ActiveRecord::Deadlocked
     raise
   rescue Tracks::PerUserLock::AcquisitionTimeout => e
     # Expected contention: another generation/visit job already holds this user's
