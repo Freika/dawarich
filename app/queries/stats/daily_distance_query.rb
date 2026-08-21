@@ -82,7 +82,7 @@ class Stats::DailyDistanceQuery
           END AS segment_distance
         FROM gapped_points gp
         LEFT JOIN LATERAL (
-          SELECT f.distance_km
+          SELECT SUM(f.distance_km) AS distance_km
           FROM flights f
           WHERE f.user_id = $5
             AND f.distance_km IS NOT NULL
@@ -90,8 +90,6 @@ class Stats::DailyDistanceQuery
             AND f.arrival_time IS NOT NULL
             AND f.departure_time < to_timestamp(gp.timestamp)
             AND f.arrival_time   > to_timestamp(gp.prev_timestamp)
-          ORDER BY f.departure_time
-          LIMIT 1
         ) flight ON gp.gap_excluded
       )
       SELECT
