@@ -63,6 +63,8 @@ module UserFamily
       existing_started_at = current_settings.dig('family', 'location_sharing', 'started_at')
       existing_share_history = current_settings.dig('family', 'location_sharing', 'share_history')
       existing_history_window = current_settings.dig('family', 'location_sharing', 'history_window')
+      existing_duration = current_settings.dig('family', 'location_sharing', 'duration')
+      existing_expires_at = current_settings.dig('family', 'location_sharing', 'expires_at')
 
       sharing_config = { 'enabled' => true }
       sharing_config['started_at'] = existing_started_at || Time.current.iso8601
@@ -82,6 +84,9 @@ module UserFamily
 
         sharing_config['expires_at'] = expiration_time.iso8601 if expiration_time
         sharing_config['duration'] = duration
+      elsif existing_duration.present?
+        sharing_config['duration'] = existing_duration
+        sharing_config['expires_at'] = existing_expires_at if existing_expires_at.present?
       end
 
       current_settings['family']['location_sharing'] = sharing_config

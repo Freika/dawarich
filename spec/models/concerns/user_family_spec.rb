@@ -72,6 +72,21 @@ RSpec.describe UserFamily do
     end
   end
 
+  describe '#update_family_location_sharing! preserves duration and expiry' do
+    it 'keeps the existing duration and expires_at when re-enabling without a duration' do
+      freeze_time do
+        user.update_family_location_sharing!(true, duration: '1h')
+        original_expires_at = user.family_sharing_expires_at
+
+        user.update_family_location_sharing!(true, share_history: true)
+
+        expect(user.family_share_history?).to be(true)
+        expect(user.family_sharing_duration).to eq('1h')
+        expect(user.family_sharing_expires_at).to be_within(1.second).of(original_expires_at)
+      end
+    end
+  end
+
   describe '#family_history_points' do
     let(:now) { Time.zone.local(2026, 3, 13, 12, 0, 0) }
 
