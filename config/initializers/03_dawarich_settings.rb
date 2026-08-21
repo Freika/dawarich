@@ -78,7 +78,7 @@ class DawarichSettings
 
     def features_for(user)
       {
-        reverse_geocoding: reverse_geocoding_enabled?,
+        reverse_geocoding: Geocoding::Config.for(user).enabled?,
         family: family_feature_available_for?(user)
       }
     end

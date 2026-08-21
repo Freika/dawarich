@@ -2,29 +2,14 @@
 
 module Places
   class NameFetcher
-    def self.lookup_attrs(lat, lon)
-      return nil unless DawarichSettings.reverse_geocoding_enabled?
-
-      result = Geocoder.search([lat, lon], units: :km, limit: 1, distance_sort: true).first
-      return nil if result.blank?
-
-      properties = result.data&.dig('properties')
-      return nil if properties.blank?
-
-      name = ::Visits::Names::Builder.build_from_properties(properties)
-
-      { name: name, city: properties['city'], country: properties['country'], geodata: result.data }
-    rescue StandardError => e
-      ExceptionReporter.call(e, "NameFetcher.lookup_attrs failed for #{lat},#{lon}")
-      nil
-    end
-
     def initialize(place)
       @place = place
     end
 
     def call
-      result = Geocoder.search([place.lat, place.lon], units: :km, limit: 1, distance_sort: true).first
+      result = Geocoding::Search.call(
+        user: place.user_id, query: [place.lat, place.lon], units: :km, limit: 1, distance_sort: true
+      ).first
       return nil if result.blank?
 
       properties = result.data&.dig('properties')

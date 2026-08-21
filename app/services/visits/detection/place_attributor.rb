@@ -82,10 +82,10 @@ module Visits
       end
 
       def reverse_lookup(stay)
-        return nil unless DawarichSettings.reverse_geocoding_enabled?
+        return nil unless Geocoding::Config.for(user).enabled?
 
-        result = Geocoder.search([stay[:center_lat], stay[:center_lon]],
-                                 limit: 1, distance_sort: true, units: :km).first
+        result = Geocoding::Search.call(user: user, query: [stay[:center_lat], stay[:center_lon]],
+                                        limit: 1, distance_sort: true, units: :km).first
         data = result&.data
         return nil if data.blank?
 

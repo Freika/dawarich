@@ -7,7 +7,8 @@ module Places
     CACHE_TTL = 1.hour
     GRID_PRECISION = 4
 
-    def initialize(latitude:, longitude:, radius: RADIUS_KM, limit: MAX_RESULTS, cache: false)
+    def initialize(user:, latitude:, longitude:, radius: RADIUS_KM, limit: MAX_RESULTS, cache: false)
+      @user = user
       @latitude = latitude.to_f
       @longitude = longitude.to_f
       @radius = radius
@@ -40,16 +41,22 @@ module Places
     end
 
     def reverse_geocoding_enabled?
-      DawarichSettings.reverse_geocoding_enabled?
+      geocoding_config.enabled?
+    end
+
+    def geocoding_config
+      @geocoding_config ||= Geocoding::Config.for(@user)
     end
 
     def cache_key
-      "places_nearby:#{@latitude.round(GRID_PRECISION)},#{@longitude.round(GRID_PRECISION)},r=#{@radius},l=#{@limit}"
+      "places_nearby:#{geocoding_config.cache_digest}:" \
+        "#{@latitude.round(GRID_PRECISION)},#{@longitude.round(GRID_PRECISION)},r=#{@radius},l=#{@limit}"
     end
 
     def fetch_and_format
-      results = Geocoder.search(
-        [@latitude, @longitude],
+      results = Geocoding::Search.call(
+        user: @user,
+        query: [@latitude, @longitude],
         limit: @limit,
         distance_sort: true,
         radius: @radius,

@@ -11,6 +11,10 @@ RSpec.describe ReverseGeocoding::Points::FetchData do
     pt.reload
   end
 
+  before do
+    allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
+  end
+
   context 'when Geocoder returns city and country' do
     let!(:germany) do
       Country.find_by(name: 'Germany') || create(:country, name: 'Germany', iso_a2: 'DE', iso_a3: 'DEU')
