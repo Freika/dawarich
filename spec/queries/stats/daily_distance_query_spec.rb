@@ -314,6 +314,79 @@ RSpec.describe Stats::DailyDistanceQuery do
       end
     end
 
+    context 'with a synced AirTrail flight covering a large real-time tracking gap' do
+      # No GPS signal during the flight (e.g. no wifi/cellular in the air),
+      # but AirTrail already knows the real distance for that leg.
+      let!(:point1) do
+        create(:point, user: user, lonlat: 'POINT(12.5211 55.7603)',
+               timestamp: DateTime.new(2021, 1, 1, 6, 0, 0).to_i)
+      end
+      let!(:point2) do
+        create(:point, user: user, lonlat: 'POINT(4.4960 52.1576)',
+               timestamp: DateTime.new(2021, 1, 1, 12, 0, 0).to_i)
+      end
+      let!(:flight) do
+        create(:flight, user: user,
+               departure_time: DateTime.new(2021, 1, 1, 6, 30, 0),
+               arrival_time: DateTime.new(2021, 1, 1, 8, 0, 0),
+               distance_km: 633.4)
+      end
+
+      subject do
+        described_class.new(monthly_points, timespan, 'Etc/UTC', minutes_between_routes: 30, user_id: user.id).call
+      end
+
+      it 'uses the flight distance instead of dropping the gap' do
+        day1_distance = subject.find { |day, _| day == 1 }&.last
+        expect(day1_distance).to eq(633_400)
+      end
+    end
+
+    context 'with a large real-time tracking gap and no matching flight' do
+      let!(:point1) do
+        create(:point, user: user, lonlat: 'POINT(12.5211 55.7603)',
+               timestamp: DateTime.new(2021, 1, 1, 6, 0, 0).to_i)
+      end
+      let!(:point2) do
+        create(:point, user: user, lonlat: 'POINT(4.4960 52.1576)',
+               timestamp: DateTime.new(2021, 1, 1, 12, 0, 0).to_i)
+      end
+
+      subject do
+        described_class.new(monthly_points, timespan, 'Etc/UTC', minutes_between_routes: 30, user_id: user.id).call
+      end
+
+      it 'still drops the gap' do
+        expect(subject.find { |day, _| day == 1 }&.last).to eq(0)
+      end
+    end
+
+    context 'with a large real-time tracking gap and a flight belonging to a different user' do
+      let!(:other_user) { create(:user) }
+      let!(:point1) do
+        create(:point, user: user, lonlat: 'POINT(12.5211 55.7603)',
+               timestamp: DateTime.new(2021, 1, 1, 6, 0, 0).to_i)
+      end
+      let!(:point2) do
+        create(:point, user: user, lonlat: 'POINT(4.4960 52.1576)',
+               timestamp: DateTime.new(2021, 1, 1, 12, 0, 0).to_i)
+      end
+      let!(:flight) do
+        create(:flight, user: other_user,
+               departure_time: DateTime.new(2021, 1, 1, 6, 30, 0),
+               arrival_time: DateTime.new(2021, 1, 1, 8, 0, 0),
+               distance_km: 633.4)
+      end
+
+      subject do
+        described_class.new(monthly_points, timespan, 'Etc/UTC', minutes_between_routes: 30, user_id: user.id).call
+      end
+
+      it 'does not borrow another user\'s flight distance' do
+        expect(subject.find { |day, _| day == 1 }&.last).to eq(0)
+      end
+    end
+
     context 'with a blank minutes_between_routes setting' do
       let!(:point1) do
         create(:point, user: user, lonlat: 'POINT(16.37 48.21)',

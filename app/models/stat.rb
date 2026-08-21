@@ -200,7 +200,8 @@ class Stat < ApplicationRecord
       monthly_points,
       timespan,
       user.timezone_iana,
-      minutes_between_routes: user.safe_settings.minutes_between_routes
+      minutes_between_routes: user.safe_settings.minutes_between_routes,
+      user_id: user.id
     ).call
   end
 

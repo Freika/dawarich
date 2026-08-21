@@ -5,11 +5,12 @@ class Stats::DailyDistanceQuery
   # snapshots rather than a continuous track.
   SNAPSHOT_IMPORT_SOURCES = %w[immich_api photoprism_api google_photos].freeze
 
-  def initialize(monthly_points, timespan, timezone = nil, minutes_between_routes: nil)
+  def initialize(monthly_points, timespan, timezone = nil, minutes_between_routes: nil, user_id: nil)
     @monthly_points = monthly_points
     @timespan = timespan
     @timezone = validate_timezone(timezone)
     @time_gap_seconds = validate_minutes_between_routes(minutes_between_routes) * 60
+    @user_id = user_id
   end
 
   def call
@@ -21,7 +22,7 @@ class Stats::DailyDistanceQuery
 
   private
 
-  attr_reader :monthly_points, :timespan, :timezone, :time_gap_seconds
+  attr_reader :monthly_points, :timespan, :timezone, :time_gap_seconds, :user_id
 
   def daily_distances(monthly_points)
     sql = <<~SQL.squish
@@ -47,21 +48,51 @@ class Stats::DailyDistanceQuery
           ORDER BY timestamp, id
         )
       ),
-      points_with_distances AS (
+      gapped_points AS (
         SELECT
           local_date,
-          CASE
-            WHEN prev_lonlat IS NULL THEN 0
-            WHEN (
+          timestamp,
+          lonlat,
+          prev_lonlat,
+          prev_timestamp,
+          (
+            prev_lonlat IS NOT NULL
+            AND (
               import_id IS NULL
               OR prev_import_id IS NULL
               OR import_id != prev_import_id
               OR snapshot_import
               OR prev_snapshot_import
-            ) AND (timestamp - prev_timestamp) > $4 THEN 0
-            ELSE ST_Distance(lonlat::geography, prev_lonlat::geography)
-          END AS segment_distance
+            )
+            AND (timestamp - prev_timestamp) > $4
+          ) AS gap_excluded
         FROM ordered_points
+      ),
+      points_with_distances AS (
+        SELECT
+          gp.local_date,
+          CASE
+            WHEN gp.prev_lonlat IS NULL THEN 0
+            /* A gap this long usually means the tracker lost signal (e.g. a
+               flight) rather than the points being unrelated. If a synced
+               AirTrail flight covers the gap, trust its known distance
+               instead of silently dropping it. */
+            WHEN gp.gap_excluded THEN COALESCE(flight.distance_km * 1000, 0)
+            ELSE ST_Distance(gp.lonlat::geography, gp.prev_lonlat::geography)
+          END AS segment_distance
+        FROM gapped_points gp
+        LEFT JOIN LATERAL (
+          SELECT f.distance_km
+          FROM flights f
+          WHERE f.user_id = $5
+            AND f.distance_km IS NOT NULL
+            AND f.departure_time IS NOT NULL
+            AND f.arrival_time IS NOT NULL
+            AND f.departure_time < to_timestamp(gp.timestamp)
+            AND f.arrival_time   > to_timestamp(gp.prev_timestamp)
+          ORDER BY f.departure_time
+          LIMIT 1
+        ) flight ON gp.gap_excluded
       )
       SELECT
         EXTRACT(day FROM local_date)::int AS day_of_month,
@@ -78,7 +109,8 @@ class Stats::DailyDistanceQuery
       ActiveRecord::Relation::QueryAttribute.new('timezone', timezone, ActiveRecord::Type::String.new),
       ActiveRecord::Relation::QueryAttribute.new('year', target.year, ActiveRecord::Type::Integer.new),
       ActiveRecord::Relation::QueryAttribute.new('month', target.month, ActiveRecord::Type::Integer.new),
-      ActiveRecord::Relation::QueryAttribute.new('time_gap_seconds', time_gap_seconds, ActiveRecord::Type::Integer.new)
+      ActiveRecord::Relation::QueryAttribute.new('time_gap_seconds', time_gap_seconds, ActiveRecord::Type::Integer.new),
+      ActiveRecord::Relation::QueryAttribute.new('user_id', user_id, ActiveRecord::Type::Integer.new)
     ]
 
     Stat.connection.exec_query(sql, 'DailyDistanceQuery', binds).to_a
