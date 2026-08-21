@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_16_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_19_120100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -404,6 +404,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_16_120000) do
     t.index ["user_id"], name: "index_posters_on_user_id"
   end
 
+  create_table "service_settings", force: :cascade do |t|
+    t.boolean "active", default: false, null: false
+    t.jsonb "config", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.text "credentials"
+    t.string "provider", null: false
+    t.integer "service", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["user_id", "service", "provider"], name: "index_service_settings_on_user_id_and_service_and_provider", unique: true
+    t.index ["user_id", "service"], name: "index_service_settings_on_user_service_active", unique: true, where: "active"
+    t.index ["user_id"], name: "index_service_settings_on_user_id"
+  end
+
   create_table "shared_links", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "expires_at"
@@ -646,6 +660,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_16_120000) do
   add_foreign_key "points", "visits"
   add_foreign_key "points_raw_data_archives", "users"
   add_foreign_key "posters", "users"
+  add_foreign_key "service_settings", "users"
   add_foreign_key "shared_links", "users", on_delete: :cascade
   add_foreign_key "stats", "users"
   add_foreign_key "taggings", "tags"

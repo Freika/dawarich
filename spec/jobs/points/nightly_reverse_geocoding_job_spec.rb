@@ -183,5 +183,34 @@ RSpec.describe Points::NightlyReverseGeocodingJob, type: :job do
         end
       end
     end
+
+    context 'when only per-user settings enable geocoding (no ENV)' do
+      before do
+        allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false)
+      end
+
+      let(:configured_user) { create(:user) }
+      let(:unconfigured_user) { create(:user) }
+
+      it 'enqueues geocoding only for points of configured users' do
+        create(:service_setting, :active, user: configured_user)
+        configured_point = create(:point, user: configured_user, reverse_geocoded_at: nil)
+        unconfigured_point = create(:point, user: unconfigured_user, reverse_geocoded_at: nil)
+
+        described_class.perform_now
+
+        expect(ReverseGeocodingJob).to have_been_enqueued.with('Point', configured_point.id, force: true)
+        expect(ReverseGeocodingJob).not_to have_been_enqueued.with('Point', unconfigured_point.id, force: true)
+      end
+
+      it 'returns early when nobody has an active setting' do
+        create(:point, user: unconfigured_user, reverse_geocoded_at: nil)
+        allow(Point).to receive(:not_reverse_geocoded)
+
+        described_class.perform_now
+
+        expect(Point).not_to have_received(:not_reverse_geocoded)
+      end
+    end
   end
 end

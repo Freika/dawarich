@@ -1,0 +1,225 @@
+# frozen_string_literal: true
+
+require 'rails_helper'
+
+RSpec.describe Geocoding::Search do
+  let(:user) { create(:user) }
+
+  let(:photon_body) do
+    {
+      type: 'FeatureCollection',
+      features: [
+        { type: 'Feature',
+          properties: { city: 'Leipzig', country: 'Germany', name: 'Testplatz' },
+          geometry: { type: 'Point', coordinates: [12.3712, 51.3402] } }
+      ]
+    }.to_json
+  end
+
+  before do
+    allow_any_instance_of(Geocoder::Lookup::Base).to receive(:cache).and_return(nil)
+  end
+
+  def stub_no_env
+    allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false)
+  end
+
+  def unstub_global_geocoder_stub
+    allow(Geocoder).to receive(:search).and_call_original
+  end
+
+  describe 'ENV mode' do
+    it 'delegates verbatim to Geocoder.search and produces the identical request' do
+      allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
+      unstub_global_geocoder_stub
+      urls = []
+      stub_request(:get, /nominatim\.openstreetmap\.org/)
+        .with { |req| urls << req.uri.to_s }
+        .to_return(status: 200, body: '{}', headers: { 'Content-Type' => 'application/json' })
+
+      described_class.call(user: user, query: [51.3402, 12.3712], limit: 1)
+      Geocoder.search([51.3402, 12.3712], limit: 1)
+
+      expect(urls.size).to eq(2)
+      expect(urls.first).to eq(urls.last)
+    end
+  end
+
+  describe 'disabled mode' do
+    before { stub_no_env }
+
+    it 'returns [] without any HTTP request' do
+      unstub_global_geocoder_stub
+
+      result = described_class.call(user: user, query: [51.3402, 12.3712])
+
+      expect(result).to eq([])
+      expect(WebMock).not_to have_requested(:get, /.*/)
+    end
+
+    it 'falls back to the default global lookup when fallback_to_default is set' do
+      unstub_global_geocoder_stub
+      stub_request(:get, /nominatim\.openstreetmap\.org/)
+        .to_return(status: 200, body: '[]', headers: { 'Content-Type' => 'application/json' })
+
+      described_class.call(user: user, query: 'Leipzig', fallback_to_default: true)
+
+      expect(WebMock).to have_requested(:get, /nominatim\.openstreetmap\.org/)
+    end
+  end
+
+  describe 'user mode' do
+    before { stub_no_env }
+
+    it 'sends photon requests to the user host with the X-Api-Key header over https' do
+      create(:service_setting, :active, user: user,
+                                        config: { 'host' => 'photon.mine.example.com', 'use_https' => true },
+                                        api_key: 'photon-key')
+      stub_request(:get, %r{https://photon\.mine\.example\.com/reverse})
+        .to_return(status: 200, body: photon_body, headers: { 'Content-Type' => 'application/json' })
+
+      results = described_class.call(user: user, query: [51.3402, 12.3712], limit: 1)
+
+      expect(results.first.city).to eq('Leipzig')
+      expect(results.first.country).to eq('Germany')
+      expect(WebMock).to(
+        have_requested(:get, %r{https://photon\.mine\.example\.com/reverse})
+          .with(headers: { 'X-Api-Key' => 'photon-key' })
+      )
+    end
+
+    it 'respects use_https false for photon' do
+      create(:service_setting, :active, user: user,
+                                        config: { 'host' => 'photon.mine.example.com', 'use_https' => false })
+      stub_request(:get, %r{http://photon\.mine\.example\.com/reverse})
+        .to_return(status: 200, body: photon_body, headers: { 'Content-Type' => 'application/json' })
+
+      described_class.call(user: user, query: [51.3402, 12.3712])
+
+      expect(WebMock).to have_requested(:get, %r{http://photon\.mine\.example\.com/reverse})
+    end
+
+    it 'sends the geoapify api key as a query param' do
+      create(:service_setting, :geoapify, :active, user: user, api_key: 'geo-key')
+      stub_request(:get, %r{https://api\.geoapify\.com/v1/geocode/reverse})
+        .to_return(status: 200, body: { features: [] }.to_json,
+                   headers: { 'Content-Type' => 'application/json' })
+
+      described_class.call(user: user, query: [51.3402, 12.3712])
+
+      expect(WebMock).to(
+        have_requested(:get, %r{https://api\.geoapify\.com/v1/geocode/reverse})
+          .with(query: hash_including('apiKey' => 'geo-key'))
+      )
+    end
+
+    it 'sends locationiq requests to the locationiq host with the key param' do
+      create(:service_setting, :locationiq, :active, user: user, api_key: 'liq-key')
+      stub_request(:get, %r{https://us1\.locationiq\.com/v1/reverse})
+        .to_return(status: 200, body: '{}', headers: { 'Content-Type' => 'application/json' })
+
+      described_class.call(user: user, query: [51.3402, 12.3712])
+
+      expect(WebMock).to(
+        have_requested(:get, %r{https://us1\.locationiq\.com/v1/reverse})
+          .with(query: hash_including('key' => 'liq-key'))
+      )
+    end
+
+    it 'sends nominatim requests to the user host with the configured scheme' do
+      create(:service_setting, :nominatim, :active, user: user,
+                                                    config: { 'host' => 'nominatim.mine.example.com',
+                                                              'use_https' => false })
+      stub_request(:get, %r{http://nominatim\.mine\.example\.com/reverse})
+        .to_return(status: 200, body: '{}', headers: { 'Content-Type' => 'application/json' })
+
+      described_class.call(user: user, query: [51.3402, 12.3712])
+
+      expect(WebMock).to have_requested(:get, %r{http://nominatim\.mine\.example\.com/reverse})
+    end
+
+    it 'passes per-query options through (limit, distance_sort)' do
+      create(:service_setting, :active, user: user, config: { 'host' => 'photon.mine.example.com' })
+      stub_request(:get, %r{https://photon\.mine\.example\.com/reverse})
+        .to_return(status: 200, body: photon_body, headers: { 'Content-Type' => 'application/json' })
+
+      described_class.call(user: user, query: [51.3402, 12.3712], limit: 7, distance_sort: true)
+
+      expect(WebMock).to(
+        have_requested(:get, %r{https://photon\.mine\.example\.com/reverse})
+          .with(query: hash_including('limit' => '7', 'distance_sort' => 'true'))
+      )
+    end
+
+    it 'leaves the global Geocoder config deep-unchanged' do
+      create(:service_setting, :active, user: user, config: { 'host' => 'photon.mine.example.com' },
+                                        api_key: 'photon-key')
+      stub_request(:get, %r{https://photon\.mine\.example\.com/reverse})
+        .to_return(status: 200, body: photon_body, headers: { 'Content-Type' => 'application/json' })
+
+      before_headers = Geocoder.config.http_headers.dup
+      before_dump = Marshal.dump(Geocoder.config.to_hash.except(:cache))
+
+      described_class.call(user: user, query: [51.3402, 12.3712])
+
+      expect(Geocoder.config.http_headers).to eq(before_headers)
+      expect(Geocoder.config.http_headers).not_to have_key('X-Api-Key')
+      expect(Marshal.dump(Geocoder.config.to_hash.except(:cache))).to eq(before_dump)
+    end
+
+    it 'returns [] for blank queries without any HTTP request' do
+      create(:service_setting, :active, user: user, config: { 'host' => 'photon.mine.example.com' })
+
+      expect(described_class.call(user: user, query: '')).to eq([])
+      expect(described_class.call(user: user, query: [nil, nil])).to eq([])
+      expect(WebMock).not_to have_requested(:get, /.*/)
+    end
+
+    it 'returns [] without HTTP when required fields are missing' do
+      row = create(:service_setting, :geoapify, :active, user: user)
+      ActiveRecord::Base.connection.execute(
+        "UPDATE service_settings SET credentials = NULL WHERE id = #{row.id}"
+      )
+
+      expect(described_class.call(user: user, query: [51.3402, 12.3712])).to eq([])
+      expect(WebMock).not_to have_requested(:get, /.*/)
+    end
+
+    it 'raises the same provider errors as ENV mode (always_raise inherited)' do
+      create(:service_setting, :active, user: user, config: { 'host' => 'photon.mine.example.com' })
+      stub_request(:get, %r{https://photon\.mine\.example\.com/reverse}).to_timeout
+
+      expect do
+        described_class.call(user: user, query: [51.3402, 12.3712])
+      end.to raise_error(Geocoder::LookupTimeout)
+    end
+
+    it 'runs two users with different providers back-to-back against their own hosts' do
+      other = create(:user)
+      create(:service_setting, :active, user: user, config: { 'host' => 'photon.a.example.com' })
+      create(:service_setting, :active, user: other, config: { 'host' => 'photon.b.example.com' })
+      stub_request(:get, %r{https://photon\.a\.example\.com/reverse})
+        .to_return(status: 200, body: photon_body, headers: { 'Content-Type' => 'application/json' })
+      stub_request(:get, %r{https://photon\.b\.example\.com/reverse})
+        .to_return(status: 200, body: photon_body, headers: { 'Content-Type' => 'application/json' })
+
+      described_class.call(user: user, query: [51.3402, 12.3712])
+      described_class.call(user: other, query: [51.3402, 12.3712])
+
+      expect(WebMock).to have_requested(:get, /photon\.a\.example\.com/).once
+      expect(WebMock).to have_requested(:get, /photon\.b\.example\.com/).once
+    end
+  end
+
+  describe 'gem seam canary' do
+    it 'still routes lookup configuration through Base#configuration' do
+      expect(Geocoder::Lookup::Photon.instance_method(:configuration).owner)
+        .to eq(Geocoder::Lookup::Base)
+
+      merged = Geocoder.config_for_lookup(:photon).merge({})
+
+      expect(merged).to be_a(Hash)
+      expect(merged).to respond_to(:api_key)
+    end
+  end
+end

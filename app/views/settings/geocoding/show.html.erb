@@ -1,0 +1,218 @@
+<% content_for :title, t('.title') %>
+
+<div class="min-h-content w-full my-5">
+  <%= render 'shared/page_header', title: t('.title') %>
+  <%= render 'settings/navigation' %>
+
+  <p class="text-base-content/60 max-w-2xl mb-6"><%= t('.intro') %></p>
+
+  <% if @geocoding_config.env_managed? %>
+    <div class="flex items-start gap-3 rounded-box border border-base-content/15 bg-base-200 p-4 mb-6 max-w-3xl">
+      <%= icon 'info', class: 'w-5 h-5 shrink-0 text-info mt-0.5' %>
+      <span class="text-sm"><%= t('.env_managed_notice') %></span>
+    </div>
+  <% end %>
+
+  <% active_provider = @settings_by_provider.values.find(&:active)&.provider || 'disabled' %>
+  <% chibigeo_host = ServiceSettings::GeocodingSchema::CHIBIGEO_HOST %>
+  <% chibigeo_bare_host = ServiceSettings::GeocodingSchema::CHIBIGEO_BARE_HOST %>
+  <% komoot_host = ServiceSettings::GeocodingSchema::KOMOOT_HOST %>
+  <% photon_setting = @settings_by_provider['photon'] %>
+  <% photon_host = photon_setting&.host || chibigeo_host %>
+  <% photon_bare_host = photon_host.split('/').first.to_s.split(':').first %>
+  <% photon_choice =
+       case photon_bare_host
+       when chibigeo_bare_host then 'chibigeo'
+       when komoot_host then 'komoot'
+       else 'custom'
+       end %>
+  <% photon_https_locked = PHOTON_HTTPS_ONLY_HOSTS.include?(photon_bare_host) %>
+
+  <div class="rounded-box border border-base-content/10 bg-base-200 max-w-3xl"
+       data-controller="geocoding-settings"
+       data-geocoding-settings-chibigeo-host-value="<%= chibigeo_host %>"
+       data-geocoding-settings-chibigeo-bare-host-value="<%= chibigeo_bare_host %>"
+       data-geocoding-settings-komoot-host-value="<%= komoot_host %>"
+       data-geocoding-settings-https-only-hosts-value="<%= PHOTON_HTTPS_ONLY_HOSTS.to_json %>">
+    <%= form_with url: settings_geocoding_path, method: :patch, data: { turbo: false } do |f| %>
+      <div class="card-body space-y-6">
+        <div class="form-control w-full max-w-md">
+          <%= f.label :provider, class: 'label' do %>
+            <span class="label-text font-medium"><%= t('.provider') %></span>
+          <% end %>
+          <%= f.select :provider,
+                       [[t('.disabled'), 'disabled'], %w[Photon photon], %w[Geoapify geoapify],
+                        %w[Nominatim nominatim], %w[LocationIQ locationiq]],
+                       { selected: active_provider },
+                       class: 'select select-bordered w-full',
+                       data: { geocoding_settings_target: 'select', action: 'change->geocoding-settings#providerChanged' } %>
+          <span class="label-text-alt mt-1 text-base-content/60"><%= t('.provider_hint') %></span>
+        </div>
+
+        <div class="rounded-lg border border-base-content/10 bg-base-100 p-5 space-y-4"
+             data-geocoding-settings-target="fieldset"
+             data-provider="photon"
+             <%= 'hidden' unless active_provider == 'photon' %>>
+          <div class="space-y-2" role="radiogroup" aria-label="<%= t('.host_choice') %>">
+            <span class="label-text font-medium"><%= t('.host_choice') %></span>
+            <% [
+              { value: 'chibigeo', title: t('.choice_chibigeo'), desc: t('.choice_chibigeo_desc'), badge: t('.recommended') },
+              { value: 'komoot', title: t('.choice_komoot'), desc: t('.choice_komoot_desc'), badge: nil },
+              { value: 'custom', title: t('.choice_custom'), desc: t('.choice_custom_desc'), badge: nil }
+            ].each do |option| %>
+              <label class="flex items-start gap-3 rounded-lg border p-3 cursor-pointer transition-colors
+                            <%= photon_choice == option[:value] ? 'border-primary/60' : 'border-base-content/10' %>">
+                <%= radio_button_tag 'photon_host_choice', option[:value], photon_choice == option[:value],
+                                     class: 'radio radio-primary radio-sm mt-0.5',
+                                     data: { geocoding_settings_target: 'hostChoice',
+                                             action: 'change->geocoding-settings#choiceChanged' } %>
+                <span class="flex-1">
+                  <span class="flex flex-wrap items-center gap-2">
+                    <span class="label-text font-medium"><%= option[:title] %></span>
+                    <% if option[:badge] %>
+                      <span class="badge badge-primary badge-outline badge-sm"><%= option[:badge] %></span>
+                    <% end %>
+                  </span>
+                  <span class="block text-sm text-base-content/60 mt-0.5"><%= option[:desc] %></span>
+                </span>
+              </label>
+            <% end %>
+          </div>
+
+          <div data-geocoding-settings-target="chibigeoPanel" <%= 'hidden' unless photon_choice == 'chibigeo' %>>
+            <div class="flex items-start gap-3 rounded-lg border border-base-content/15 bg-base-200 p-4">
+              <%= icon 'info', class: 'w-5 h-5 shrink-0 text-info mt-0.5' %>
+              <div class="text-sm space-y-1">
+                <p><%= t('.chibigeo_message') %></p>
+                <p><%= t('.chibigeo_limits') %></p>
+                <p>
+                  <%= link_to t('.chibigeo_key_link'),
+                              'https://chibigeo.com/docs/guides/dawarich?utm_source=dawarich&utm_medium=app&utm_campaign=geocoding_settings',
+                              target: '_blank', rel: 'noopener',
+                              class: 'link link-primary font-medium' %>
+                </p>
+              </div>
+            </div>
+          </div>
+          <div data-geocoding-settings-target="komootWarning" <%= 'hidden' unless photon_choice == 'komoot' %>>
+            <div class="flex items-start gap-3 rounded-lg border border-warning/40 bg-warning/10 p-4">
+              <%= icon 'triangle-alert', class: 'w-5 h-5 shrink-0 text-warning mt-0.5' %>
+              <span class="text-sm"><%= t('.komoot_warning') %></span>
+            </div>
+          </div>
+
+          <div data-geocoding-settings-target="customHostWrapper" <%= 'hidden' unless photon_choice == 'custom' %>>
+            <div class="form-control w-full max-w-md">
+              <label class="label"><span class="label-text font-medium"><%= t('.host') %></span></label>
+              <%= text_field_tag 'photon[host]', photon_host,
+                                 class: 'input input-bordered w-full',
+                                 placeholder: 'photon.example.com',
+                                 data: { geocoding_settings_target: 'hostInput',
+                                         action: 'input->geocoding-settings#hostChanged' } %>
+              <span class="label-text-alt mt-1 text-base-content/60"><%= t('.host_hint') %></span>
+            </div>
+          </div>
+
+          <div class="form-control">
+            <label class="label cursor-pointer justify-start gap-3">
+              <%= hidden_field_tag 'photon[use_https]', photon_https_locked ? '1' : '0',
+                                   data: { geocoding_settings_target: 'httpsHidden' } %>
+              <%= check_box_tag 'photon[use_https]', '1',
+                                photon_setting ? photon_setting.use_https : true,
+                                class: 'toggle toggle-primary',
+                                disabled: photon_https_locked,
+                                data: { geocoding_settings_target: 'httpsToggle' } %>
+              <span class="label-text"><%= t('.use_https') %></span>
+            </label>
+            <span class="label-text-alt text-base-content/60 ml-1"
+                  data-geocoding-settings-target="httpsLockedHint"
+                  <%= 'hidden' unless photon_https_locked %>><%= t('.https_locked') %></span>
+          </div>
+
+          <div class="form-control w-full max-w-md">
+            <label class="label"><span class="label-text font-medium"><%= t('.api_key') %></span></label>
+            <%= password_field_tag 'photon[api_key]', nil,
+                                   class: 'input input-bordered w-full',
+                                   autocomplete: 'off',
+                                   placeholder: photon_setting&.api_key.present? ? '••••••••' : '' %>
+            <span class="label-text-alt mt-1 text-base-content/60">
+              <% if photon_setting&.api_key.present? %>
+                <%= t('.api_key_saved') %> <%= t('.api_key_hint') %>
+              <% else %>
+                <%= t('.api_key_hint') %>
+              <% end %>
+            </span>
+          </div>
+          <% if photon_setting&.api_key.present? %>
+            <div class="form-control">
+              <label class="label cursor-pointer justify-start gap-3">
+                <%= check_box_tag 'photon[clear_api_key]', '1', false, class: 'checkbox checkbox-sm' %>
+                <span class="label-text"><%= t('.clear_api_key') %></span>
+              </label>
+            </div>
+          <% end %>
+        </div>
+
+        <% (Geocoding::Providers::CHAIN - ['photon']).each do |provider| %>
+          <% setting = @settings_by_provider[provider] %>
+          <% with_host = Geocoding::Providers.host_required?(provider) %>
+          <div class="rounded-lg border border-base-content/10 bg-base-100 p-5 space-y-4"
+               data-geocoding-settings-target="fieldset"
+               data-provider="<%= provider %>"
+               <%= 'hidden' unless provider == active_provider %>>
+            <% if with_host %>
+              <div class="form-control w-full max-w-md">
+                <label class="label"><span class="label-text font-medium"><%= t('.host') %></span></label>
+                <%= text_field_tag "#{provider}[host]", setting&.host,
+                                   class: 'input input-bordered w-full',
+                                   placeholder: "#{provider}.example.com" %>
+                <span class="label-text-alt mt-1 text-base-content/60"><%= t('.host_hint') %></span>
+              </div>
+              <div class="form-control">
+                <label class="label cursor-pointer justify-start gap-3">
+                  <%= hidden_field_tag "#{provider}[use_https]", '0' %>
+                  <%= check_box_tag "#{provider}[use_https]", '1', setting ? setting.use_https : true,
+                                    class: 'toggle toggle-primary' %>
+                  <span class="label-text"><%= t('.use_https') %></span>
+                </label>
+              </div>
+            <% end %>
+            <div class="form-control w-full max-w-md">
+              <label class="label"><span class="label-text font-medium"><%= t('.api_key') %></span></label>
+              <%= password_field_tag "#{provider}[api_key]", nil,
+                                     class: 'input input-bordered w-full',
+                                     autocomplete: 'off',
+                                     placeholder: setting&.api_key.present? ? '••••••••' : '' %>
+              <span class="label-text-alt mt-1 text-base-content/60">
+                <% if setting&.api_key.present? %>
+                  <%= t('.api_key_saved') %> <%= t('.api_key_hint') %>
+                <% else %>
+                  <%= t('.api_key_hint') %>
+                <% end %>
+              </span>
+            </div>
+            <% if setting&.api_key.present? %>
+              <div class="form-control">
+                <label class="label cursor-pointer justify-start gap-3">
+                  <%= check_box_tag "#{provider}[clear_api_key]", '1', false, class: 'checkbox checkbox-sm' %>
+                  <span class="label-text"><%= t('.clear_api_key') %></span>
+                </label>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+
+        <div class="card-actions">
+          <%= f.submit t('.save'), class: 'btn btn-primary' %>
+        </div>
+      </div>
+    <% end %>
+
+    <div class="border-t border-base-content/10 px-8 py-5">
+      <div class="flex flex-wrap items-center gap-4">
+        <%= button_to t('.test'), test_settings_geocoding_path, method: :post, class: 'btn btn-outline btn-sm' %>
+        <span class="text-sm text-base-content/60"><%= t('.test_hint') %></span>
+      </div>
+    </div>
+  </div>
+</div>

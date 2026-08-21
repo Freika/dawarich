@@ -18,7 +18,7 @@ class Visits::Suggest
     return visits if fresh.empty?
 
     create_visits_notification(user)
-    if DawarichSettings.reverse_geocoding_enabled?
+    if Geocoding::Config.for(user).enabled?
       fresh.filter_map(&:place_id).uniq.each do |place_id|
         ReverseGeocodingJob.perform_later('place', place_id)
       end

@@ -30,7 +30,7 @@ class ReverseGeocoding::Points::FetchData
   ].freeze
 
   def update_point_with_geocoding_data
-    response = Geocoder.search([point.lat, point.lon]).first
+    response = Geocoding::Search.call(user: point.user_id, query: [point.lat, point.lon]).first
 
     if response.blank?
       with_write_retry { point.update!(reverse_geocoded_at: Time.current) }
