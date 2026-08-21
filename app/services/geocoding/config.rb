@@ -17,7 +17,14 @@ module Geocoding
       return disabled_config if user_id.nil?
 
       setting = ServiceSetting.service_geocoding.find_by(user_id: user_id, active: true)
-      return disabled_config if setting.nil? || !setting.readable_credentials?
+      return disabled_config if setting.nil?
+
+      unless setting.readable_credentials?
+        Rails.logger.warn(
+          "Geocoding credentials for user #{user_id} cannot be decrypted; treating geocoding as disabled"
+        )
+        return disabled_config
+      end
 
       new(
         source: :user,
@@ -80,7 +87,7 @@ module Geocoding
     end
 
     def cache_digest
-      Digest::SHA256.hexdigest([source, provider, host, use_https].join('|')).first(8)
+      Digest::SHA256.hexdigest([source, provider, host, use_https].join('|'))
     end
 
     def provider_display_name

@@ -132,6 +132,19 @@ RSpec.describe Geocoding::Config do
       expect(described_class.for(user).enabled?).to be(false)
     end
 
+    it 'logs a warning when the active row credentials are unreadable' do
+      row = create(:service_setting, :geoapify, :active, user: user)
+      ActiveRecord::Base.connection.execute(
+        "UPDATE service_settings SET credentials = 'garbage' WHERE id = #{row.id}"
+      )
+
+      allow(Rails.logger).to receive(:warn)
+
+      described_class.for(user)
+
+      expect(Rails.logger).to have_received(:warn).with(/cannot be decrypted/)
+    end
+
     it 'accepts a bare user_id without loading the user' do
       create(:service_setting, :active, user: user)
 
@@ -199,6 +212,12 @@ RSpec.describe Geocoding::Config do
       create(:service_setting, :geoapify, :active, user: user)
 
       expect(described_class.for(user).cache_digest).not_to include('test-api-key')
+    end
+
+    it 'uses the full digest so configs cannot be aliased by crafted collisions' do
+      create(:service_setting, :active, user: user)
+
+      expect(described_class.for(user).cache_digest.length).to eq(64)
     end
   end
 
