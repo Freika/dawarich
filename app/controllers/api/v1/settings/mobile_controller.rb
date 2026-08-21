@@ -23,13 +23,21 @@ class Api::V1::Settings::MobileController < ApiController
 
   def update
     sanitized = sanitized_params
-    settings = current_api_user.settings || {}
-    existing = settings['mobile'] || {}
-    settings['mobile'] = existing
-                         .merge(sanitized)
-                         .merge('updated_at' => Time.current.iso8601)
 
-    if current_api_user.update(settings: settings)
+    # The settings column holds every section, so a read-merge-write here races
+    # any other write to the same row: two devices, or the web UI changing an
+    # unrelated section. The row lock makes the merge see the latest value.
+    updated = current_api_user.with_lock do
+      settings = current_api_user.settings || {}
+      existing = settings['mobile'] || {}
+      settings['mobile'] = existing
+                           .merge(sanitized)
+                           .merge('updated_at' => Time.current.iso8601)
+
+      current_api_user.update(settings: settings)
+    end
+
+    if updated
       Rails.logger.info(
         "Mobile settings updated for user #{current_api_user.id}: #{sanitized.keys.join(', ')}"
       )
