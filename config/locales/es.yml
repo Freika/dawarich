@@ -2665,6 +2665,8 @@ es:
           digest_already_exists: Resumen ya existe
           digest_for_year_is_being_generated: Está generando el resumen para %{year}.
         families:
+          location_requests:
+            not_found: Solicitud de ubicación no encontrada
           locations:
             start_at_and_end_at_are_required: start_at y end_at son obligatorios
             invalid_date_format: Formato de fecha no válido
@@ -3228,6 +3230,10 @@ es:
           email_has_been_removed_from_the_family_family_name: '%{email} ha sido eliminado de la familia "%{family_name}"'
           an_unexpected_error_occurred_while_removing_the_membership_please_try: Ocurrió un error inesperado al eliminar la membresía. Por favor, inténtalo de nuevo
           failed_to_leave: 'Falló dejar la familia: %{message}'
+      respond_to_location_request:
+        an_error_occurred: Se ha producido un error
+        not_authorized: No tienes autorización para responder a esta solicitud
+        no_longer_actionable: Esta solicitud ha caducado o ya ha sido respondida
       update_location_sharing:
         update_failed: Falló actualizar la configuración de seguimiento de ubicación
         unexpected_error: Ocurrió un error al actualizar el seguimiento de ubicación

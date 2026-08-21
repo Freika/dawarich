@@ -3597,6 +3597,8 @@ fr:
           digest_for_year_is_being_generated: Génération du récapitulatif pour %{year}
             en cours
         families:
+          location_requests:
+            not_found: Demande de localisation introuvable
           locations:
             start_at_and_end_at_are_required: start_at et end_at sont obligatoires
             invalid_date_format: Format de date non valide
@@ -4341,6 +4343,10 @@ fr:
             erreur inattendue est survenue lors de la suppression de l'adhésion. Veuillez
             essayer à nouveau.
           failed_to_leave: 'Impossible de quitter la famille : %{message}'
+      respond_to_location_request:
+        an_error_occurred: Une erreur s'est produite
+        not_authorized: Vous n'êtes pas autorisé à répondre à cette demande
+        no_longer_actionable: Cette demande a expiré ou a déjà reçu une réponse
       update_location_sharing:
         update_failed: Échec de mise à jour de la configuration de partage de localisation
         unexpected_error: Une erreur s'est produite lors de la mise à jour du partage
