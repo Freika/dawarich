@@ -1,0 +1,322 @@
+# frozen_string_literal: true
+
+require 'rails_helper'
+
+RSpec.describe 'Settings::Geocoding', type: :request do
+  let(:user) { create(:user) }
+
+  let(:photon_body) do
+    {
+      type: 'FeatureCollection',
+      features: [
+        { type: 'Feature',
+          properties: { city: 'Leipzig', country: 'Germany', name: 'Testplatz' },
+          geometry: { type: 'Point', coordinates: [12.3712, 51.3402] } }
+      ]
+    }.to_json
+  end
+
+  before do
+    allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false)
+    sign_in user
+  end
+
+  describe 'GET /settings/geocoding' do
+    it 'redirects the old geocoding settings path to the integrations pane' do
+      get settings_geocoding_path
+
+      expect(response).to redirect_to(settings_integrations_path(service: 'geocoding'))
+    end
+
+    it 'renders the provider settings page' do
+      get settings_integrations_path(service: 'geocoding')
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include(I18n.t('settings.geocoding.show.provider'))
+    end
+
+    it 'is not available on non-self-hosted instances' do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+
+      get settings_integrations_path(service: 'geocoding')
+
+      expect(response.body).not_to include('data-testid="integration-geocoding"')
+      expect(response.body).not_to include(I18n.t('settings.geocoding.show.provider'))
+    end
+
+    it 'never echoes a stored api key' do
+      row = create(:service_setting, :geoapify, :active, user: user, api_key: 'super-secret-key-value')
+
+      get settings_integrations_path(service: 'geocoding')
+
+      expect(row.api_key).to eq('super-secret-key-value')
+      expect(response.body).not_to include('super-secret-key-value')
+    end
+
+    it 'shows the ENV-managed banner when ENV is set' do
+      allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
+
+      get settings_integrations_path(service: 'geocoding')
+
+      expect(response.body).to include(I18n.t('settings.geocoding.show.env_managed_notice'))
+    end
+
+    it 'does not show the ENV-managed banner without ENV' do
+      get settings_integrations_path(service: 'geocoding')
+
+      expect(response.body).not_to include(I18n.t('settings.geocoding.show.env_managed_notice'))
+    end
+
+    it 'lists geocoding in the integrations sidebar' do
+      get settings_integrations_path(service: 'geocoding')
+
+      expect(response.body).to include('data-testid="integration-geocoding"')
+      expect(response.body).to include(I18n.t('settings.integrations.index.services.geocoding'))
+    end
+
+    def photon_host_input(body)
+      body.scan(/<input[^>]*>/).find { |tag| tag.include?('name="photon[host]"') }
+    end
+
+    it 'prefills the photon host with ChibiGeo for fresh users' do
+      get settings_integrations_path(service: 'geocoding')
+
+      expect(photon_host_input(response.body)).to include('value="app.chibigeo.com/v1/photon"')
+    end
+
+    it 'keeps a saved custom photon host instead of the ChibiGeo default' do
+      create(:service_setting, :active, user: user, config: { 'host' => 'photon.mine.example.com' })
+
+      get settings_integrations_path(service: 'geocoding')
+
+      input = photon_host_input(response.body)
+      expect(input).to include('value="photon.mine.example.com"')
+      expect(input).not_to include('app.chibigeo.com')
+    end
+
+    it 'offers an explicit three-way photon host choice with ChibiGeo preselected for fresh users' do
+      get settings_integrations_path(service: 'geocoding')
+
+      expect(response.body).to include(I18n.t('settings.geocoding.show.choice_chibigeo'))
+      expect(response.body).to include(I18n.t('settings.geocoding.show.choice_komoot'))
+      expect(response.body).to include(I18n.t('settings.geocoding.show.choice_custom'))
+      expect(response.body).to include(I18n.t('settings.geocoding.show.recommended'))
+      expect(response.body).to match(/value="chibigeo"[^>]*checked/)
+    end
+
+    it 'preselects the custom host choice when a custom host is saved' do
+      create(:service_setting, :active, user: user, config: { 'host' => 'photon.mine.example.com' })
+
+      get settings_integrations_path(service: 'geocoding')
+
+      expect(response.body).to match(/value="custom"[^>]*checked/)
+    end
+
+    it 'preselects the komoot choice when the komoot host is saved' do
+      create(:service_setting, :active, user: user, config: { 'host' => 'photon.komoot.io' })
+
+      get settings_integrations_path(service: 'geocoding')
+
+      expect(response.body).to match(/value="komoot"[^>]*checked/)
+    end
+
+    it 'locks the HTTPS toggle for https-only hosts' do
+      get settings_integrations_path(service: 'geocoding')
+
+      toggle = response.body.scan(/<input[^>]*>/).find do |tag|
+        tag.include?('name="photon[use_https]"') && tag.include?('type="checkbox"')
+      end
+      expect(toggle).to include('checked')
+      expect(toggle).to include('disabled')
+      expect(response.body).to include(I18n.t('settings.geocoding.show.https_locked'))
+    end
+
+    it 'leaves the HTTPS toggle adjustable for custom hosts' do
+      create(:service_setting, :active, user: user, config: { 'host' => 'photon.mine.example.com' })
+
+      get settings_integrations_path(service: 'geocoding')
+
+      toggle = response.body.scan(/<input[^>]*>/).find do |tag|
+        tag.include?('name="photon[use_https]"') && tag.include?('type="checkbox"')
+      end
+      expect(toggle).to be_present
+      expect(toggle).not_to include('disabled')
+    end
+
+    it 'offers a free ChibiGeo API key with a UTM-tagged link and the plan limits' do
+      get settings_integrations_path(service: 'geocoding')
+
+      expect(response.body).to include('utm_source=dawarich')
+      expect(response.body).to include(I18n.t('settings.geocoding.show.chibigeo_limits'))
+      expect(response.body).to include(I18n.t('settings.geocoding.show.chibigeo_key_link'))
+    end
+
+    it 'carries both the ChibiGeo panel and the komoot warning in the photon fieldset' do
+      get settings_integrations_path(service: 'geocoding')
+
+      expect(response.body).to include('data-geocoding-settings-target="chibigeoPanel"')
+      expect(response.body).to include('data-geocoding-settings-target="komootWarning"')
+    end
+
+    it 'renders even when stored credentials cannot be decrypted' do
+      row = create(:service_setting, :geoapify, :active, user: user)
+      ActiveRecord::Base.connection.execute(
+        "UPDATE service_settings SET credentials = 'garbage' WHERE id = #{row.id}"
+      )
+
+      get settings_integrations_path(service: 'geocoding')
+
+      expect(response).to have_http_status(:ok)
+    end
+  end
+
+  describe 'PATCH /settings/geocoding' do
+    it 'creates and activates a photon setting' do
+      patch settings_geocoding_path, params: {
+        provider: 'photon',
+        photon: { host: 'photon.mine.example.com', use_https: '1', api_key: 'new-key' }
+      }
+
+      row = user.service_settings.service_geocoding.find_by(provider: 'photon')
+      expect(row.active).to be(true)
+      expect(row.host).to eq('photon.mine.example.com')
+      expect(row.use_https).to be(true)
+      expect(row.api_key).to eq('new-key')
+    end
+
+    it 'keeps the stored api key when the field is blank' do
+      create(:service_setting, :geoapify, :active, user: user, api_key: 'keep-me')
+
+      patch settings_geocoding_path, params: { provider: 'geoapify', geoapify: { api_key: '' } }
+
+      expect(user.service_settings.service_geocoding.find_by(provider: 'geoapify').api_key).to eq('keep-me')
+    end
+
+    it 'clears an optional api key when requested' do
+      create(:service_setting, :active, user: user, api_key: 'old-key')
+
+      patch settings_geocoding_path, params: {
+        provider: 'photon',
+        photon: { host: 'photon.example.com', clear_api_key: '1' }
+      }
+
+      expect(user.service_settings.service_geocoding.find_by(provider: 'photon').api_key).to be_nil
+    end
+
+    it 'clears the recorded connection status when the configuration changes' do
+      create(:service_setting, :active, user: user,
+                               config: { 'host' => 'photon.mine.example.com', 'connection_status' => 'ok' })
+
+      patch settings_geocoding_path, params: { provider: 'photon', photon: { host: 'photon.other.example.com' } }
+
+      row = user.service_settings.service_geocoding.find_by(provider: 'photon')
+      expect(row.config['connection_status']).to be_nil
+    end
+
+    it 'keeps the recorded connection status when nothing changes' do
+      create(:service_setting, :active, user: user,
+                               config: { 'host' => 'photon.mine.example.com', 'connection_status' => 'ok' })
+
+      patch settings_geocoding_path, params: { provider: 'photon', photon: { host: 'photon.mine.example.com' } }
+
+      row = user.service_settings.service_geocoding.find_by(provider: 'photon')
+      expect(row.config['connection_status']).to eq('ok')
+    end
+
+    it 'switches the active provider while keeping stored credentials' do
+      create(:service_setting, :geoapify, :active, user: user, api_key: 'geo-key')
+
+      patch settings_geocoding_path, params: { provider: 'photon', photon: { host: 'photon.example.com' } }
+
+      expect(user.service_settings.service_geocoding.find_by(provider: 'photon').active).to be(true)
+      geoapify = user.service_settings.service_geocoding.find_by(provider: 'geoapify')
+      expect(geoapify.active).to be(false)
+      expect(geoapify.api_key).to eq('geo-key')
+    end
+
+    it 'deactivates everything when disabled is selected' do
+      create(:service_setting, :active, user: user)
+
+      patch settings_geocoding_path, params: { provider: 'disabled' }
+
+      expect(user.service_settings.service_geocoding.where(active: true)).to be_empty
+    end
+
+    it 'reports validation errors without saving' do
+      patch settings_geocoding_path, params: { provider: 'photon', photon: { host: '' } }
+
+      expect(user.service_settings.service_geocoding.find_by(provider: 'photon')).to be_nil
+      expect(flash[:alert]).to be_present
+    end
+
+    it 'rejects unknown providers' do
+      patch settings_geocoding_path, params: { provider: 'osm' }
+
+      expect(user.service_settings.count).to eq(0)
+      expect(flash[:alert]).to be_present
+    end
+  end
+
+  describe 'POST /settings/geocoding/test' do
+    before do
+      allow_any_instance_of(Geocoder::Lookup::Base).to receive(:cache).and_return(nil)
+    end
+
+    it 'reports the resolved place for a working provider' do
+      create(:service_setting, :active, user: user, config: { 'host' => 'photon.mine.example.com' })
+      stub_request(:get, %r{https://photon\.mine\.example\.com/reverse})
+        .to_return(status: 200, body: photon_body, headers: { 'Content-Type' => 'application/json' })
+
+      post test_settings_geocoding_path, headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include('Leipzig')
+    end
+
+    it 'records a successful test on the active setting' do
+      setting = create(:service_setting, :active, user: user, config: { 'host' => 'photon.mine.example.com' })
+      stub_request(:get, %r{https://photon\.mine\.example\.com/reverse})
+        .to_return(status: 200, body: photon_body, headers: { 'Content-Type' => 'application/json' })
+
+      post test_settings_geocoding_path, headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+
+      expect(setting.reload.config['connection_status']).to eq('ok')
+    end
+
+    it 'reports a failure when the provider times out' do
+      create(:service_setting, :active, user: user, config: { 'host' => 'photon.mine.example.com' })
+      stub_request(:get, %r{https://photon\.mine\.example\.com/reverse}).to_timeout
+
+      post test_settings_geocoding_path, headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include('Geocoder')
+    end
+
+    it 'records a failed test on the active setting' do
+      setting = create(:service_setting, :active, user: user, config: { 'host' => 'photon.mine.example.com' })
+      stub_request(:get, %r{https://photon\.mine\.example\.com/reverse}).to_timeout
+
+      post test_settings_geocoding_path, headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+
+      expect(setting.reload.config['connection_status']).to eq('failed')
+    end
+
+    it 'reports missing configuration' do
+      post test_settings_geocoding_path, headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+
+      expect(response.body).to include(I18n.t('settings.geocoding.test.not_configured'))
+    end
+
+    it 'tests the user row even when ENV is set' do
+      allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
+      create(:service_setting, :active, user: user, config: { 'host' => 'photon.mine.example.com' })
+      stub_request(:get, %r{https://photon\.mine\.example\.com/reverse})
+        .to_return(status: 200, body: photon_body, headers: { 'Content-Type' => 'application/json' })
+
+      post test_settings_geocoding_path, headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+
+      expect(WebMock).to have_requested(:get, %r{https://photon\.mine\.example\.com/reverse})
+    end
+  end
+end

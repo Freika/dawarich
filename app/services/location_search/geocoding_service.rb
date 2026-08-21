@@ -4,8 +4,9 @@ module LocationSearch
   class GeocodingService
     MAX_RESULTS = 10
 
-    def initialize(query)
+    def initialize(query, user:)
       @query = query
+      @user = user
     end
 
     def search
@@ -18,7 +19,7 @@ module LocationSearch
     end
 
     def provider_name
-      Geocoder.config.lookup.to_s.capitalize
+      Geocoding::Config.for(@user).provider_display_name
     end
 
     private
@@ -26,7 +27,7 @@ module LocationSearch
     attr_reader :query
 
     def perform_geocoding_search(query)
-      results = Geocoder.search(query, limit: MAX_RESULTS)
+      results = Geocoding::Search.call(user: @user, query: query, limit: MAX_RESULTS, fallback_to_default: true)
       return [] if results.blank?
 
       normalize_geocoding_results(results)

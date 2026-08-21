@@ -7,7 +7,8 @@ module Places
     MIN_QUERY_LENGTH = 2
     MAX_QUERY_LENGTH = 200
 
-    def initialize(query:, latitude:, longitude:, radius:, limit: MAX_RESULTS)
+    def initialize(user:, query:, latitude:, longitude:, radius:, limit: MAX_RESULTS)
+      @user = user
       @query = query.to_s.strip.first(MAX_QUERY_LENGTH)
       @latitude = latitude.to_f
       @longitude = longitude.to_f
@@ -16,7 +17,7 @@ module Places
     end
 
     def call
-      return [] unless DawarichSettings.reverse_geocoding_enabled?
+      return [] unless Geocoding::Config.for(@user).enabled?
       return [] if @query.length < MIN_QUERY_LENGTH
 
       fetch_and_filter
@@ -40,12 +41,13 @@ module Places
     end
 
     def fetch_and_filter
-      Geocoder.search(@query, limit: FETCH_LIMIT, bias: { latitude: @latitude, longitude: @longitude })
-              .map { |r| Places::PhotonResultFormatter.call(r, fallback_lat: @latitude, fallback_lon: @longitude) }
-              .filter_map { |place| within_radius(place) }
-              .sort_by { |place| place[:distance] }
-              .first(@limit)
-              .map { |place| place.except(:distance) }
+      Geocoding::Search
+        .call(user: @user, query: @query, limit: FETCH_LIMIT, bias: { latitude: @latitude, longitude: @longitude })
+        .map { |r| Places::PhotonResultFormatter.call(r, fallback_lat: @latitude, fallback_lon: @longitude) }
+        .filter_map { |place| within_radius(place) }
+        .sort_by { |place| place[:distance] }
+        .first(@limit)
+        .map { |place| place.except(:distance) }
     end
 
     def within_radius(place)

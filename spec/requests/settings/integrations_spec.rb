@@ -23,6 +23,12 @@ RSpec.describe 'Settings::Integrations', type: :request do
       expect(user.settings['photoprism_skip_ssl_verification']).to eq(true)
     end
 
+    it 'redirects back to the pane that was saved' do
+      patch '/settings/integrations', params: params.merge(service: 'photoprism')
+
+      expect(response).to redirect_to(settings_integrations_path(service: 'photoprism'))
+    end
+
     it 'refreshes cached photos when requested' do
       Rails.cache.write("photos_#{user.id}_test", ['cached'])
       Rails.cache.write("photo_thumbnail_#{user.id}_immich_test", 'thumb')
@@ -82,6 +88,24 @@ RSpec.describe 'Settings::Integrations', type: :request do
         expect(response).to redirect_to(settings_integrations_path)
         follow_redirect!
         expect(flash[:notice]).to include('Photoprism connection verified')
+      end
+    end
+
+    context 'when the airtrail host is unreachable' do
+      before do
+        stub_request(:get, 'https://airtrail.test/api/flight/list?scope=mine').to_raise(Errno::ECONNREFUSED)
+      end
+
+      it 'saves the settings and reports the failure instead of crashing' do
+        patch '/settings/integrations', params: {
+          settings: { 'airtrail_url' => 'https://airtrail.test', 'airtrail_api_key' => 'k' },
+          service: 'airtrail'
+        }
+
+        expect(response).to redirect_to(settings_integrations_path(service: 'airtrail'))
+        follow_redirect!
+        expect(flash[:alert]).to include('AirTrail')
+        expect(user.reload.settings['airtrail_connection_status']).to eq('failed')
       end
     end
 
@@ -151,6 +175,73 @@ RSpec.describe 'Settings::Integrations', type: :request do
         expect(response).to redirect_to(root_path)
         expect(flash[:notice]).to eq('Your account is not active.')
       end
+    end
+  end
+
+  describe 'GET /settings/integrations' do
+    let(:user) { create(:user) }
+
+    before { sign_in user }
+
+    def sidebar_link(body, service)
+      body[/<a[^>]*data-testid="integration-#{service}"[^>]*>/]
+    end
+
+    it 'lists every service in the sidebar on self-hosted instances' do
+      get settings_integrations_path
+
+      %w[geocoding immich photoprism airtrail].each do |service|
+        expect(response.body).to include(%(data-testid="integration-#{service}"))
+      end
+    end
+
+    it 'hides geocoding from the sidebar on non-self-hosted instances' do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+
+      get settings_integrations_path
+
+      expect(response.body).not_to include('data-testid="integration-geocoding"')
+      expect(response.body).to include('data-testid="integration-immich"')
+    end
+
+    it 'marks a service as connected after a successful connection' do
+      user.update!(settings: user.settings.merge('immich_url' => 'https://immich.test',
+                                                 'immich_api_key' => 'key',
+                                                 'immich_connection_status' => 'ok'))
+
+      get settings_integrations_path
+
+      expect(sidebar_link(response.body, 'immich')).to include('data-status="connected"')
+    end
+
+    it 'marks a configured service as failed after a failed connection' do
+      user.update!(settings: user.settings.merge('airtrail_url' => 'https://airtrail.test',
+                                                 'airtrail_api_key' => 'key',
+                                                 'airtrail_connection_status' => 'failed'))
+
+      get settings_integrations_path
+
+      expect(sidebar_link(response.body, 'airtrail')).to include('data-status="failed"')
+    end
+
+    it 'shows no status for an unconfigured service' do
+      get settings_integrations_path
+
+      expect(sidebar_link(response.body, 'photoprism')).not_to include('data-status')
+    end
+
+    it 'renders the pane for the selected service' do
+      get settings_integrations_path(service: 'photoprism')
+
+      expect(response.body).to include('name="settings[photoprism_url]"')
+      expect(response.body).not_to include('name="settings[immich_url]"')
+    end
+
+    it 'falls back to the first available service for unknown service params' do
+      get settings_integrations_path(service: 'bogus')
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include(I18n.t('settings.geocoding.show.provider'))
     end
   end
 end

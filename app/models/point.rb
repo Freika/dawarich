@@ -94,7 +94,7 @@ class Point < ApplicationRecord
   end
 
   def async_reverse_geocode(force: false)
-    return unless DawarichSettings.reverse_geocoding_enabled?
+    return unless Geocoding::Config.for(user_id).enabled?
 
     if force
       Sidekiq.redis { |r| r.del(self.class.geocode_dedup_key(id)) }

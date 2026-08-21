@@ -103,7 +103,7 @@ status: :see_other
 
   def build_stats
     columns = %i[id year month distance updated_at user_id]
-    columns << :toponyms if DawarichSettings.reverse_geocoding_enabled?
+    columns << :toponyms if Geocoding::Config.for(current_user).enabled?
 
     current_user.scoped_stats
                 .select(columns)
