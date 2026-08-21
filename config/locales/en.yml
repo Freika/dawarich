@@ -947,6 +947,8 @@ en:
         miles: Miles
         custom_basemap_url: Custom Basemap URL
         serve_the_base_map_from_your_own_source_accepts_protomaps: Serve the base map from your own source. Accepts Protomaps-schema vector tiles or raster XYZ tiles (both must include {z}, {x}, and {y}), or a full MapLibre style URL. Leave empty for the built-in tiles.
+        fill_gaps_with_the_default_basemap: Fill gaps with the default basemap
+        for_a_tileset_that_covers_only_part_of_the_world_areas_it_does_not_cover_are_drawn_from_dawarich_s_default_tile_server: For a tileset that covers only part of the world. Areas it doesn't cover are drawn from Dawarich's default tile server, so turning this on sends tile requests there.
         base_map_layers: Base Map Layers
         toggle_base_map_elements_changes_apply_immediately: Toggle base map elements. Changes apply immediately.
         pro_feature_you_can_preview_changes_here_but_they_won: Pro feature — you can preview changes here, but they won't be saved on the Lite plan.
@@ -3949,6 +3951,7 @@ en:
       invalid_tile_url: Tile URL must include {z}, {x}, and {y} placeholders, or be a MapLibre style URL
       layer_unavailable_custom_style: Not available with the Custom map style — it draws no labels or points of interest
       layer_unavailable_foreign_basemap: Not available with a custom raster or style basemap — these layers come from the built-in vector tiles
+      tiles_fallback_unavailable: Only available for {z}/{x}/{y} tile URLs — a MapLibre style URL replaces the whole basemap
       make_changes_to_apply: Make changes to enable the Apply button
       re_evaluation_queued: Re-evaluation queued. The map will update once the job finishes.
       recalculation_queued: Recalculation queued. You'll get a notification when it finishes.

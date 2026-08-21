@@ -163,6 +163,14 @@ export class SettingsController {
     )
     if (tilesUrlInput) tilesUrlInput.value = this.settings.vectorTilesUrl || ""
 
+    const tilesFallbackInput = controller.element.querySelector(
+      'input[name="tilesFallback"]',
+    )
+    if (tilesFallbackInput) {
+      tilesFallbackInput.checked = this.settings.tilesFallback === true
+    }
+    this.syncTilesFallbackAvailability()
+
     // Sync map style dropdown. Setting .value doesn't fire "change", so
     // notify the map-theme-editor controller separately — it shows/hides
     // the custom color block based on the synced style.
@@ -709,6 +717,7 @@ export class SettingsController {
         SettingsManager.getSetting("hiddenTileCategories") || [],
       disabledPoiGroups: SettingsManager.getSetting("disabledPoiGroups") || [],
       customTheme: SettingsManager.getSetting("customTheme"),
+      tilesFallback: SettingsManager.getSetting("tilesFallback") === true,
     }
   }
 
@@ -1047,7 +1056,41 @@ export class SettingsController {
     }
 
     SettingsManager.updateSetting("vectorTilesUrl", raw || null)
+    this.syncTilesFallbackAvailability()
     this.applyMapStyle(SettingsManager.getSetting("mapStyle"))
+  }
+
+  async updateTilesFallback(event) {
+    await SettingsManager.updateSetting("tilesFallback", event.target.checked)
+    this.applyMapStyle(SettingsManager.getSetting("mapStyle"))
+  }
+
+  /**
+   * The fallback only means something for XYZ tile URLs. A style document
+   * replaces the whole style, leaving nothing to draw the default basemap
+   * under, and with no custom URL there is nothing to fall back from.
+   */
+  syncTilesFallbackAvailability() {
+    const input = this.controller.element.querySelector(
+      'input[name="tilesFallback"]',
+    )
+    if (!input) return
+
+    const basemap = classifyBasemapUrl(
+      SettingsManager.getSetting("vectorTilesUrl"),
+    )
+    const unavailable = basemap !== "raster" && basemap !== "vector"
+    input.disabled = unavailable
+
+    const label = input.closest("label")
+    if (!label) return
+    label.classList.toggle("opacity-40", unavailable)
+    label.classList.toggle("tooltip", unavailable)
+    if (unavailable) {
+      label.dataset.tip = translate("settings.tiles_fallback_unavailable")
+    } else {
+      delete label.dataset.tip
+    }
   }
 
   /**
