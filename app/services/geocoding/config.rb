@@ -2,9 +2,9 @@
 
 module Geocoding
   class Config
-    KOMOOT_HOST = 'photon.komoot.io'
+    KOMOOT_HOST = Providers::KOMOOT_HOST
 
-    attr_reader :source, :provider, :host, :api_key, :use_https
+    attr_reader :source, :provider, :host, :api_key, :use_https, :rps
 
     def self.for(user)
       return env_config if DawarichSettings.reverse_geocoding_enabled?
@@ -31,8 +31,18 @@ module Geocoding
         provider: setting.provider.to_sym,
         host: setting.host,
         api_key: setting.api_key,
-        use_https: setting.use_https
+        use_https: setting.use_https,
+        rps: setting.rps
       )
+    end
+
+    # Stands in for the geocoder gem's own default lookup, which serves the
+    # no-provider-configured fallback. That default is public Nominatim, whose
+    # usage policy is one request a second.
+    FALLBACK_RPS = 1.0
+
+    def self.default_fallback
+      new(source: :fallback, provider: Geocoder.config.lookup, rps: FALLBACK_RPS)
     end
 
     def self.env_config
@@ -46,14 +56,14 @@ module Geocoding
     def self.env_provider_attributes
       if DawarichSettings.photon_enabled?
         { provider: :photon, host: PHOTON_API_HOST, api_key: PHOTON_API_KEY,
-          use_https: DawarichSettings.photon_use_https? }
+          use_https: DawarichSettings.photon_use_https?, rps: REVERSE_GEOCODING_RPS }
       elsif DawarichSettings.geoapify_enabled?
-        { provider: :geoapify, api_key: GEOAPIFY_API_KEY }
+        { provider: :geoapify, api_key: GEOAPIFY_API_KEY, rps: REVERSE_GEOCODING_RPS }
       elsif DawarichSettings.nominatim_enabled?
         { provider: :nominatim, host: NOMINATIM_API_HOST, api_key: NOMINATIM_API_KEY,
-          use_https: NOMINATIM_API_USE_HTTPS }
+          use_https: NOMINATIM_API_USE_HTTPS, rps: REVERSE_GEOCODING_RPS }
       elsif DawarichSettings.locationiq_enabled?
-        { provider: :locationiq, api_key: LOCATIONIQ_API_KEY }
+        { provider: :locationiq, api_key: LOCATIONIQ_API_KEY, rps: REVERSE_GEOCODING_RPS }
       else
         {}
       end
@@ -61,12 +71,15 @@ module Geocoding
 
     private_class_method :env_config, :disabled_config, :env_provider_attributes
 
-    def initialize(source:, provider: nil, host: nil, api_key: nil, use_https: true)
+    def initialize(source:, provider: nil, host: nil, api_key: nil, use_https: true, rps: nil)
       @source = source
       @provider = provider
       @host = host
       @api_key = api_key
       @use_https = use_https
+      # Normalized here rather than trusted from the caller so an ENV-managed
+      # instance obeys the same komoot pin and ChibiGeo clamp as a user row.
+      @rps = provider ? RateLimits.for(provider, host).normalize(rps) : nil
       freeze
     end
 
@@ -79,7 +92,7 @@ module Geocoding
     end
 
     def komoot?
-      provider == :photon && host.to_s.split(':').first == KOMOOT_HOST
+      Providers.komoot?(provider, host)
     end
 
     def paid_provider?

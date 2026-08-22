@@ -2,9 +2,9 @@
 
 module ServiceSettings
   class GeocodingSchema
-    KOMOOT_HOST = 'photon.komoot.io'
-    CHIBIGEO_HOST = 'app.chibigeo.com/v1/photon'
-    CHIBIGEO_BARE_HOST = 'app.chibigeo.com'
+    KOMOOT_HOST = Geocoding::Providers::KOMOOT_HOST
+    CHIBIGEO_HOST = Geocoding::Providers::CHIBIGEO_HOST
+    CHIBIGEO_BARE_HOST = Geocoding::Providers::CHIBIGEO_BARE_HOST
     HOST_FORMAT = %r{\A[a-z0-9_][a-z0-9._-]*(:\d+)?(/[a-z0-9._/-]*)?\z}
 
     def initialize(setting)
@@ -14,6 +14,7 @@ module ServiceSettings
     def normalize
       normalize_host
       force_https_only_hosts
+      normalize_rps
     end
 
     def validate
@@ -24,11 +25,11 @@ module ServiceSettings
     end
 
     def komoot?
-      setting.provider == 'photon' && bare_host == KOMOOT_HOST
+      Geocoding::Providers.komoot?(setting.provider, setting.config['host'])
     end
 
     def chibigeo?
-      setting.provider == 'photon' && bare_host == CHIBIGEO_BARE_HOST
+      Geocoding::Providers.chibigeo?(setting.provider, setting.config['host'])
     end
 
     def paid?
@@ -47,12 +48,24 @@ module ServiceSettings
       setting.config['host'] = normalized
     end
 
+    # Runs after normalize_host: the rate ceiling is decided by the host, so it
+    # has to be read in its canonical form.
+    def normalize_rps
+      rate = Geocoding::RateLimits.for(setting.provider, setting.config['host']).normalize(setting.config['rps'])
+
+      if rate.nil?
+        setting.config.delete('rps')
+      else
+        setting.config['rps'] = rate
+      end
+    end
+
     def force_https_only_hosts
       setting.config['use_https'] = true if PHOTON_HTTPS_ONLY_HOSTS.include?(bare_host)
     end
 
     def bare_host
-      setting.config['host'].to_s.split('/').first.to_s.split(':').first
+      Geocoding::Providers.bare_host(setting.config['host'])
     end
 
     def validate_provider

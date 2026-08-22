@@ -59,7 +59,9 @@ class Settings::GeocodingController < ApplicationController
   def upsert_setting
     provider = params[:provider]
     setting = geocoding_settings.find_or_initialize_by(provider: provider)
-    apply_provider_params(setting, params.fetch(provider, {}).permit(:host, :api_key, :use_https, :clear_api_key))
+    apply_provider_params(setting,
+                          params.fetch(provider, {})
+                                .permit(:host, :api_key, :use_https, :clear_api_key, :rps))
 
     setting.activate! if setting.errors.empty? && setting.save
     setting
@@ -70,6 +72,7 @@ class Settings::GeocodingController < ApplicationController
     if provider_params.key?(:use_https)
       setting.config['use_https'] = ActiveModel::Type::Boolean.new.cast(provider_params[:use_https])
     end
+    apply_rps(setting, provider_params)
 
     if ActiveModel::Type::Boolean.new.cast(provider_params[:clear_api_key])
       setting.api_key = nil
@@ -78,6 +81,21 @@ class Settings::GeocodingController < ApplicationController
     end
 
     setting.config.delete('connection_status') if setting.changed?
+  end
+
+  # Cast to the stored type before assigning so re-submitting an unchanged form
+  # does not read as an edit and wipe the recorded connection status. The model
+  # remains the authority on what the rate is allowed to be.
+  def apply_rps(setting, provider_params)
+    return unless provider_params.key?(:rps)
+
+    rate = provider_params[:rps].presence&.to_f
+
+    if rate
+      setting.config['rps'] = rate
+    else
+      setting.config.delete('rps')
+    end
   end
 
   def run_provider_test

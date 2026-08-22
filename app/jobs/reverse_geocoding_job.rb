@@ -11,8 +11,8 @@ class ReverseGeocodingJob < ApplicationJob
     config = Geocoding::Config.for(record.user_id)
     return unless config.enabled?
 
-    sleep 1 if config.komoot?
-
+    # Pacing lives in Geocoding::RateLimiter, one layer down: sleeping here
+    # only spaced out a single thread while the rest of the pool kept firing.
     data_fetcher(klass, id, force).call
   ensure
     release_dedup_key(klass, id, force)

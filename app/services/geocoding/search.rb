@@ -7,11 +7,15 @@ module Geocoding
 
       case config.source
       when :env
-        Geocoder.search(query, **options)
+        RateLimiter.throttle(config) { Geocoder.search(query, **options) }
       when :user
         user_mode_search(config, query, options)
       else
-        fallback_to_default ? Geocoder.search(query, **options) : []
+        # The gem default is public Nominatim, which publishes a hard 1 rps
+        # policy, so pace it like any other provider.
+        return [] unless fallback_to_default
+
+        RateLimiter.throttle(Config.default_fallback) { Geocoder.search(query, **options) }
       end
     end
 
@@ -33,7 +37,9 @@ module Geocoding
       )
       return [] if geocoder_query.blank?
 
-      UserLookup.build(config).search(geocoder_query)
+      # Deliberately after the early returns: a lookup that will not happen
+      # must not take a slot other callers are waiting for.
+      RateLimiter.throttle(config) { UserLookup.build(config).search(geocoder_query) }
     end
 
     def self.required_fields_present?(config)

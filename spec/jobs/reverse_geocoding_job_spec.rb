@@ -124,17 +124,8 @@ RSpec.describe ReverseGeocodingJob, type: :job do
       expect(ReverseGeocoding::Points::FetchData).not_to have_received(:new)
     end
 
-    it 'sleeps for komoot-configured owners' do
+    it 'does not block its own thread to pace komoot' do
       create(:service_setting, :active, user: owner, config: { 'host' => 'photon.komoot.io' })
-      allow(job).to receive(:sleep)
-
-      job.perform('Point', point.id)
-
-      expect(job).to have_received(:sleep).with(1)
-    end
-
-    it 'does not sleep for other photon hosts' do
-      create(:service_setting, :active, user: owner, config: { 'host' => 'photon.example.com' })
       allow(job).to receive(:sleep)
 
       job.perform('Point', point.id)

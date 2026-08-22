@@ -1384,6 +1384,10 @@ es:
         api_key_saved: A key is saved for this provider.
         clear_api_key: Remove the saved API key
         use_https: Use HTTPS
+        rps: Requests per second
+        rps_hint_custom: Leave blank for no limit. Set this to whatever your server or plan allows.
+        rps_hint_chibigeo: Match your ChibiGeo plan - Hobby 1, Self-Hoster 5, Builder 10, Scale 25. Asking for more than your plan allows only earns rejected lookups.
+        rps_hint_komoot: komoot enforces one request per second for everyone, so this is fixed.
         komoot_warning: photon.komoot.io is a shared public instance with strict rate limits. Requests are throttled to one per second, and bulk geocoding will be slow. Please consider hosting your own Photon instance.
         save: Save
         test: Test my provider

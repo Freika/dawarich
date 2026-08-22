@@ -222,4 +222,95 @@ RSpec.describe Geocoding::Search do
       expect(merged).to respond_to(:api_key)
     end
   end
+  describe 'rate limiting' do
+    before do
+      stub_no_env
+      Geocoding::RateLimiter.reset!
+      allow(Geocoding::RateLimiter).to receive(:sleep)
+    end
+
+    def stub_photon(host)
+      stub_request(:get, /#{Regexp.escape(host)}/)
+        .to_return(status: 200, body: photon_body, headers: { 'Content-Type' => 'application/json' })
+    end
+
+    it 'paces successive user-mode lookups' do
+      create(:service_setting, :active, user: user,
+                                        config: { 'host' => 'photon.rated.example.com', 'rps' => 5 })
+      stub_photon('photon.rated.example.com')
+
+      2.times { described_class.call(user: user, query: [51.3402, 12.3712]) }
+
+      expect(Geocoding::RateLimiter).to have_received(:sleep).with(be_within(0.05).of(0.2)).once
+    end
+
+    it 'paces komoot to one request a second however many workers are running' do
+      create(:service_setting, :active, user: user, config: { 'host' => 'photon.komoot.io' })
+      stub_photon('photon.komoot.io')
+
+      2.times { described_class.call(user: user, query: [51.3402, 12.3712]) }
+
+      expect(Geocoding::RateLimiter).to have_received(:sleep).with(be_within(0.05).of(1.0)).once
+    end
+
+    it 'does not pace a user who set no rate' do
+      create(:service_setting, :active, user: user, config: { 'host' => 'photon.rated.example.com' })
+      stub_photon('photon.rated.example.com')
+
+      2.times { described_class.call(user: user, query: [51.3402, 12.3712]) }
+
+      expect(Geocoding::RateLimiter).not_to have_received(:sleep)
+    end
+
+    it 'burns no slot on a lookup skipped for a blank query' do
+      create(:service_setting, :active, user: user,
+                                        config: { 'host' => 'photon.rated.example.com', 'rps' => 5 })
+      stub_photon('photon.rated.example.com')
+
+      2.times { described_class.call(user: user, query: '') }
+      described_class.call(user: user, query: [51.3402, 12.3712])
+
+      expect(Geocoding::RateLimiter).not_to have_received(:sleep)
+    end
+
+    it 'burns no slot when the provider config is incomplete' do
+      setting = create(:service_setting, :active, user: user,
+                                                  config: { 'host' => 'photon.rated.example.com', 'rps' => 5 })
+      setting.update_column(:config, setting.config.merge('host' => ''))
+
+      2.times { described_class.call(user: user, query: [51.3402, 12.3712]) }
+
+      expect(Geocoding::RateLimiter).not_to have_received(:sleep)
+    end
+
+    it 'paces the no-provider fallback to the public Nominatim policy' do
+      unstub_global_geocoder_stub
+      stub_request(:get, /nominatim\.openstreetmap\.org/)
+        .to_return(status: 200, body: '{}', headers: { 'Content-Type' => 'application/json' })
+
+      2.times { described_class.call(user: user, query: 'Leipzig', fallback_to_default: true) }
+
+      expect(Geocoding::RateLimiter).to have_received(:sleep).with(be_within(0.05).of(1.0)).once
+    end
+
+    it 'still returns nothing for a disabled config without the fallback' do
+      expect(described_class.call(user: user, query: 'Leipzig')).to eq([])
+      expect(Geocoding::RateLimiter).not_to have_received(:sleep)
+    end
+
+    it 'paces an ENV-managed instance too' do
+      allow(DawarichSettings).to receive_messages(reverse_geocoding_enabled?: true, photon_enabled?: true,
+                                                  photon_use_https?: true)
+      stub_const('PHOTON_API_HOST', 'photon.env.example.com')
+      stub_const('PHOTON_API_KEY', nil)
+      stub_const('REVERSE_GEOCODING_RPS', '5')
+      unstub_global_geocoder_stub
+      stub_request(:get, /nominatim\.openstreetmap\.org/)
+        .to_return(status: 200, body: '{}', headers: { 'Content-Type' => 'application/json' })
+
+      2.times { described_class.call(user: user, query: [51.3402, 12.3712]) }
+
+      expect(Geocoding::RateLimiter).to have_received(:sleep).with(be_within(0.05).of(0.2)).once
+    end
+  end
 end
