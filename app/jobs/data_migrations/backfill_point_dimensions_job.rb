@@ -35,12 +35,16 @@ class DataMigrations::BackfillPointDimensionsJob < ApplicationJob
     log_exhaustion(job, error)
   end
 
+  # The resume command carries the job's full arguments: a batch that
+  # exhausted its retries at a halved size must not be resumed at the default
+  # one, which would reproduce the very timeout the halving worked around.
   def self.log_exhaustion(job, error)
-    cursor = job.arguments.first
+    args = job.arguments.map(&:inspect).join(', ')
     Rails.logger.error(
-      "[BackfillPointDimensions] gave up on the batch from id #{cursor.inspect} after #{MAX_ATTEMPTS} attempts " \
+      "[BackfillPointDimensions] gave up on the batch from id #{job.arguments.first.inspect} " \
+      "after #{MAX_ATTEMPTS} attempts " \
       "(#{error.class}: #{error.message}); the backfill has stopped and points behind that cursor are unstamped. " \
-      "Resume with: DataMigrations::BackfillPointDimensionsJob.perform_later(#{cursor.inspect})"
+      "Resume with: DataMigrations::BackfillPointDimensionsJob.perform_later(#{args})"
     )
   end
 

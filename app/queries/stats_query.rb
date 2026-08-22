@@ -35,11 +35,14 @@ class StatsQuery
     # rewrite. ReverseGeocoding::Points::FetchData stamps reverse_geocoded_at
     # and leaves city/country_name/country_id untouched when the provider
     # returns nothing, so this says the same thing using columns that survive.
-    # country_name must be checked too: rows geocoded before the countries
-    # table existed carry a name but no country_id until
-    # DataMigrations::BackfillPointCountryIdJob derives it — they have data.
-    stats[:without_data] =
-      count_points('reverse_geocoded_at IS NOT NULL AND city IS NULL AND country_name IS NULL AND country_id IS NULL')
+    # Both country name columns must be checked too: rows from before
+    # country_name superseded the legacy country string carry a name in one of
+    # them but no country_id until DataMigrations::BackfillPointCountryIdJob
+    # derives it (from COALESCE of the same two columns) — they have data.
+    stats[:without_data] = count_points(
+      'reverse_geocoded_at IS NOT NULL AND city IS NULL ' \
+      'AND country_name IS NULL AND country IS NULL AND country_id IS NULL'
+    )
 
     stats
   end

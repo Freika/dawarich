@@ -100,6 +100,16 @@ RSpec.describe DataMigrations::BackfillPointDimensionsJob, type: :job do
         have_enqueued_job(described_class).with(start_id, described_class::MIN_BATCH_SIZE)
     end
 
+    it 'tells the operator to resume a halved batch at its halved size' do
+      allow(Rails.logger).to receive(:error)
+      job = described_class.new(42, described_class::MIN_BATCH_SIZE)
+
+      described_class.log_exhaustion(job, ActiveRecord::QueryCanceled.new('canceled'))
+
+      expect(Rails.logger).to have_received(:error)
+        .with(/perform_later\(42, #{described_class::MIN_BATCH_SIZE}\)/)
+    end
+
     it 'reports batch position so operators can tell running from stalled' do
       allow(Rails.logger).to receive(:info).and_call_original
 

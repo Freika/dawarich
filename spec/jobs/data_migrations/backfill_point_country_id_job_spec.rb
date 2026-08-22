@@ -84,5 +84,41 @@ RSpec.describe DataMigrations::BackfillPointCountryIdJob, type: :job do
       expect(legacy_point.reload.country_id).to eq(germany.id)
       expect(unknown_point.reload.country_id).to be_nil
     end
+
+    it 'halves the batch and retries the same cursor when a batch is aborted' do
+      allow_any_instance_of(described_class).to receive(:resolve_countries)
+        .and_raise(ActiveRecord::QueryCanceled)
+      start_id = Point.minimum(:id)
+
+      expect { described_class.perform_now(start_id) }.to \
+        have_enqueued_job(described_class).with(start_id, described_class::BATCH_SIZE / 2)
+    end
+
+    it 'hands the smallest batch to the retry machinery instead of shrinking forever' do
+      allow_any_instance_of(described_class).to receive(:resolve_countries)
+        .and_raise(ActiveRecord::QueryCanceled)
+      start_id = Point.minimum(:id)
+
+      expect { described_class.perform_now(start_id, described_class::MIN_BATCH_SIZE) }.to \
+        have_enqueued_job(described_class).with(start_id, described_class::MIN_BATCH_SIZE)
+    end
+
+    it 'reports batch position so operators can tell running from stalled' do
+      allow(Rails.logger).to receive(:info).and_call_original
+
+      described_class.perform_now
+
+      expect(Rails.logger).to have_received(:info).with(/of id range/)
+    end
+
+    it 'tells the operator to resume a halved batch at its halved size' do
+      allow(Rails.logger).to receive(:error)
+      job = described_class.new(42, described_class::MIN_BATCH_SIZE)
+
+      described_class.log_exhaustion(job, ActiveRecord::QueryCanceled.new('canceled'))
+
+      expect(Rails.logger).to have_received(:error)
+        .with(/perform_later\(42, #{described_class::MIN_BATCH_SIZE}\)/)
+    end
   end
 end

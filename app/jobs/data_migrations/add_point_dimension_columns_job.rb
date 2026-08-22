@@ -31,13 +31,17 @@ class DataMigrations::AddPointDimensionColumnsJob < ApplicationJob
     ENV['SKIP_POINT_DIMENSION_BACKFILL'].blank?
   end
 
+  # The ALTER alone is not enough: this job was also the chain's only starter
+  # on the deferred path, so the message must carry both manual steps —
+  # without the second one ingest self-heals but history stays unstamped.
   def self.log_exhaustion(error)
     Rails.logger.error(
       "[DataMigrations::AddPointDimensionColumns] gave up after #{MAX_ATTEMPTS} attempts " \
       "(#{error.class}: #{error.message}); points.source_id is still missing and the " \
       'dimension backfill cannot start. Add it once traffic is quiet with: ' \
       "BEGIN; SET LOCAL lock_timeout = '#{LOCK_TIMEOUT}'; " \
-      'ALTER TABLE points ADD COLUMN IF NOT EXISTS source_id integer; COMMIT;'
+      'ALTER TABLE points ADD COLUMN IF NOT EXISTS source_id integer; COMMIT; ' \
+      'then start the backfill with: DataMigrations::BackfillPointDimensionsJob.perform_later'
     )
   end
 

@@ -8,6 +8,10 @@ class DataMigrations::BackfillPointCountryIdJob < ApplicationJob
   queue_as :data_migrations
 
   BATCH_SIZE = 50_000
+  # Floor for the halving below, mirroring BackfillPointDimensionsJob: a batch
+  # an eighth of the default that still cannot finish inside STATEMENT_TIMEOUT
+  # is stuck, not slow, and belongs to the retry clock.
+  MIN_BATCH_SIZE = 5_000
   PAUSE = 5.seconds
   LOCK_TIMEOUT = '2s'
   STATEMENT_TIMEOUT = '5min'
@@ -24,35 +28,60 @@ class DataMigrations::BackfillPointCountryIdJob < ApplicationJob
     log_exhaustion(job, error)
   end
 
+  # The resume command carries the job's full arguments: a batch that
+  # exhausted its retries at a halved size must not be resumed at the default
+  # one, which would reproduce the very timeout the halving worked around.
   def self.log_exhaustion(job, error)
-    cursor = job.arguments.first
+    args = job.arguments.map(&:inspect).join(', ')
     Rails.logger.error(
-      "[BackfillPointCountryId] gave up on the batch from id #{cursor.inspect} after #{MAX_ATTEMPTS} attempts " \
+      "[BackfillPointCountryId] gave up on the batch from id #{job.arguments.first.inspect} " \
+      "after #{MAX_ATTEMPTS} attempts " \
       "(#{error.class}: #{error.message}); the backfill has stopped and points behind that cursor are unresolved. " \
-      "Resume with: DataMigrations::BackfillPointCountryIdJob.perform_later(#{cursor.inspect})"
+      "Resume with: DataMigrations::BackfillPointCountryIdJob.perform_later(#{args})"
     )
   end
 
-  def perform(start_id = nil)
+  def perform(start_id = nil, batch_size = BATCH_SIZE)
     start_id ||= Point.minimum(:id)
     return if start_id.nil?
 
-    end_id = start_id + BATCH_SIZE - 1
+    end_id = start_id + batch_size - 1
 
     resolved = bounded { resolve_countries(start_id, end_id) }
 
-    Rails.logger.info("[BackfillPointCountryId] resolved #{resolved} points in #{start_id}..#{end_id}")
-
     max_id = Point.maximum(:id)
+    log_progress(resolved, start_id, end_id, max_id)
+
     if max_id.nil? || end_id >= max_id
       Rails.logger.info("[BackfillPointCountryId] completed at id #{end_id}")
       return
     end
 
     self.class.set(wait: PAUSE).perform_later(end_id + 1)
+  # Mirrors BackfillPointDimensionsJob: a statement_timeout is usually size,
+  # not luck. Halve and retry from the same cursor; the successor batch
+  # returns to the default size, and only the smallest batch reaches retry_on.
+  rescue ActiveRecord::QueryAborted => e
+    raise if batch_size / 2 < MIN_BATCH_SIZE
+
+    Rails.logger.warn(
+      "[BackfillPointCountryId] batch #{start_id}..#{end_id} aborted (#{e.class}: #{e.message}); " \
+      "retrying from id #{start_id} at half size #{batch_size / 2}"
+    )
+    self.class.set(wait: PAUSE).perform_later(start_id, batch_size / 2)
   end
 
   private
+
+  # The chain runs for hours on a large table; the position line is what lets
+  # operators tell running from stalled.
+  def log_progress(resolved, start_id, end_id, max_id)
+    percent = max_id ? [end_id * 100.0 / max_id, 100].min.round(1) : 100
+    Rails.logger.info(
+      "[BackfillPointCountryId] resolved #{resolved} points in #{start_id}..#{end_id} " \
+      "(~#{percent}% of id range)"
+    )
+  end
 
   def bounded(&)
     ActiveRecord::Base.transaction do

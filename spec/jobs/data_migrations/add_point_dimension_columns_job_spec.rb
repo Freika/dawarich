@@ -68,6 +68,15 @@ RSpec.describe DataMigrations::AddPointDimensionColumnsJob, type: :job do
       expect { described_class.perform_now }.to have_enqueued_job(described_class)
     end
 
+    it 'gives the operator both manual steps when it gives up' do
+      allow(Rails.logger).to receive(:error)
+
+      described_class.log_exhaustion(ActiveRecord::LockWaitTimeout.new('lock'))
+
+      expect(Rails.logger).to have_received(:error)
+        .with(/ALTER TABLE points.*BackfillPointDimensionsJob\.perform_later/)
+    end
+
     it 'retries an aborted attempt the same way' do
       allow_any_instance_of(described_class).to receive(:column_present?).and_return(false)
       allow_any_instance_of(described_class).to receive(:add_column)
