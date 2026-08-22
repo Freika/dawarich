@@ -134,6 +134,34 @@ RSpec.describe 'Families Location Requests API', type: :request do
 
         run_test!
       end
+
+      response '404', 'location request not found' do
+        schema type: :object, properties: { error: { type: :string } }
+
+        let(:family) { create(:family, creator: user) }
+        let!(:membership) { create(:family_membership, :owner, family: family, user: user) }
+        let(:id) { 0 }
+        let(:body) { {} }
+
+        run_test!
+      end
+
+      response '422', 'request expired or already responded to' do
+        schema type: :object, properties: { message: { type: :string } }
+
+        let(:family) { create(:family, creator: user) }
+        let!(:membership) { create(:family_membership, family: family, user: user) }
+        let(:requester) { create(:user) }
+        let!(:requester_membership) { create(:family_membership, :owner, family: family, user: requester) }
+        let(:request_record) do
+          create(:family_location_request, requester: requester, target_user: user, family: family,
+                                           expires_at: 1.hour.ago)
+        end
+        let(:id) { request_record.id }
+        let(:body) { {} }
+
+        run_test!
+      end
     end
   end
 
@@ -175,6 +203,32 @@ RSpec.describe 'Families Location Requests API', type: :request do
         let!(:target_membership) { create(:family_membership, family: family, user: target) }
         let(:request_record) do
           create(:family_location_request, requester: user, target_user: target, family: family)
+        end
+        let(:id) { request_record.id }
+
+        run_test!
+      end
+
+      response '404', 'location request not found' do
+        schema type: :object, properties: { error: { type: :string } }
+
+        let(:family) { create(:family, creator: user) }
+        let!(:membership) { create(:family_membership, :owner, family: family, user: user) }
+        let(:id) { 0 }
+
+        run_test!
+      end
+
+      response '422', 'request expired or already responded to' do
+        schema type: :object, properties: { message: { type: :string } }
+
+        let(:family) { create(:family, creator: user) }
+        let!(:membership) { create(:family_membership, family: family, user: user) }
+        let(:requester) { create(:user) }
+        let!(:requester_membership) { create(:family_membership, :owner, family: family, user: requester) }
+        let(:request_record) do
+          create(:family_location_request, requester: requester, target_user: user, family: family,
+                                           status: :accepted, responded_at: Time.current)
         end
         let(:id) { request_record.id }
 

@@ -45,6 +45,19 @@ RSpec.describe 'Families Sharing API', type: :request do
         run_test!
       end
 
+      response '400', 'enabled parameter missing' do
+        schema type: :object, properties: { error: { type: :string } }
+
+        let(:body) { { share_history: true } }
+
+        before do
+          family = create(:family, creator: user)
+          create(:family_membership, :owner, family: family, user: user)
+        end
+
+        run_test!
+      end
+
       response '404', 'user not in a family' do
         let(:body) { { enabled: true } }
 

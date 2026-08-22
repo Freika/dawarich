@@ -1194,6 +1194,24 @@ paths:
                 properties:
                   message:
                     type: string
+        '404':
+          description: location request not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        '422':
+          description: request expired or already responded to
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
       requestBody:
         content:
           application/json:
@@ -1244,6 +1262,24 @@ paths:
                     type: string
         '403':
           description: not authorized to respond to this request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '404':
+          description: location request not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        '422':
+          description: request expired or already responded to
           content:
             application/json:
               schema:
@@ -1445,6 +1481,15 @@ paths:
                   duration:
                     type: string
                   message:
+                    type: string
+        '400':
+          description: enabled parameter missing
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
                     type: string
         '404':
           description: user not in a family

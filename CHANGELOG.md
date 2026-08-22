@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+
+### Added
+
+- The family feature is now reachable from the mobile apps: new API endpoints provide a family overview (`GET /api/v1/families/mine` — members, sharing state and pending location requests), update the current user's location sharing (`PATCH /api/v1/families/sharing`), and create, accept or decline location requests. The overview deliberately contains no coordinates — locations stay exclusively in the existing family locations endpoints, so privacy filtering lives in one place.
+
+### Fixed
+
+- Updating family location sharing settings without picking a duration no longer silently converts a time-boxed share into a permanent one, and once a timed share has lapsed, enabling sharing again re-arms it for the previously chosen duration instead of leaving it off while reporting success.
+
 ## [1.13.0] - 2026-08-17, Berlin
 
 ### Added
