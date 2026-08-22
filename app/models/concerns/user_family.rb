@@ -63,6 +63,8 @@ module UserFamily
       existing_started_at = current_settings.dig('family', 'location_sharing', 'started_at')
       existing_share_history = current_settings.dig('family', 'location_sharing', 'share_history')
       existing_history_window = current_settings.dig('family', 'location_sharing', 'history_window')
+      existing_duration = current_settings.dig('family', 'location_sharing', 'duration')
+      existing_expires_at = current_settings.dig('family', 'location_sharing', 'expires_at')
 
       sharing_config = { 'enabled' => true }
       sharing_config['started_at'] = existing_started_at || Time.current.iso8601
@@ -71,17 +73,14 @@ module UserFamily
       sharing_config['history_window'] = validated_window
 
       if duration.present?
-        expiration_time = case duration
-                          when '1h' then 1.hour.from_now
-                          when '6h' then 6.hours.from_now
-                          when '12h' then 12.hours.from_now
-                          when '24h' then 24.hours.from_now
-                          when 'permanent' then nil
-                          else duration.to_i.hours.from_now if duration.to_i.positive?
-                          end
+        expiration_time = sharing_expiration_time(duration)
 
         sharing_config['expires_at'] = expiration_time.iso8601 if expiration_time
         sharing_config['duration'] = duration
+      elsif existing_duration.present?
+        sharing_config['duration'] = existing_duration
+        carried_expiry = carried_sharing_expiry(existing_duration, existing_expires_at)
+        sharing_config['expires_at'] = carried_expiry.iso8601 if carried_expiry
       end
 
       current_settings['family']['location_sharing'] = sharing_config
@@ -177,6 +176,33 @@ module UserFamily
   end
 
   private
+
+  def sharing_expiration_time(duration)
+    case duration
+    when '1h' then 1.hour.from_now
+    when '6h' then 6.hours.from_now
+    when '12h' then 12.hours.from_now
+    when '24h' then 24.hours.from_now
+    when 'permanent' then nil
+    else duration.to_i.hours.from_now if duration.to_i.positive?
+    end
+  end
+
+  # Re-enabling without an explicit duration keeps a still-active expiry,
+  # but an already-lapsed one is re-armed from the preserved duration so the
+  # share stays time-boxed instead of silently staying off (or going permanent).
+  def carried_sharing_expiry(existing_duration, existing_expires_at)
+    return nil if existing_expires_at.blank?
+
+    existing_expiry = begin
+      Time.zone.parse(existing_expires_at)
+    rescue ArgumentError
+      nil
+    end
+    return existing_expiry if existing_expiry&.future?
+
+    sharing_expiration_time(existing_duration)
+  end
 
   def validate_history_window(window)
     VALID_HISTORY_WINDOWS.include?(window) ? window : DEFAULT_HISTORY_WINDOW
