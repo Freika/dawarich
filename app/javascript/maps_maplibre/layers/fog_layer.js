@@ -75,8 +75,11 @@ export class FogLayer {
     this.tiledSource = next
     this._detachTiledHandlers()
     if (next) {
-      if (this.canvas) this._attachTiledHandlers()
-      this._refreshTiledPositions()
+      // Hidden fog pays nothing: show() attaches the handlers and catches up.
+      if (this.canvas && this.visible) {
+        this._attachTiledHandlers()
+        this._refreshTiledPositions()
+      }
     } else {
       this.points = this.data?.features || []
       this.render()
@@ -112,7 +115,7 @@ export class FogLayer {
     this.map.on("resize", this._resizeHandler)
     this.map.on("zoomend", this._zoomEndHandler)
 
-    if (this.tiledSource) {
+    if (this.tiledSource && this.visible) {
       this._attachTiledHandlers()
     }
 
@@ -345,8 +348,10 @@ export class FogLayer {
       this.canvas.style.display = "block"
       this.render()
     }
-    // Tiles may have loaded while fog was hidden — pick them up immediately.
+    // Handlers only run while visible (hidden fog must not pay the tile
+    // walks); tiles may have loaded while hidden — catch up immediately.
     if (this.tiledSource) {
+      if (this.canvas) this._attachTiledHandlers()
       this._refreshTiledPositions()
     }
     if (this.mode === "hexagons") {
@@ -359,6 +364,7 @@ export class FogLayer {
     if (this.canvas) {
       this.canvas.style.display = "none"
     }
+    this._detachTiledHandlers()
   }
 
   toggle(visible = !this.visible) {

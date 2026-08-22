@@ -3628,6 +3628,7 @@ en:
       failed_to_load_photos: Failed to load photos
       failed_to_load_areas: Failed to load areas
       failed_to_load_tracks: Failed to load tracks
+      failed_to_load_track_details: Failed to load track details
       failed_to_load_flights: Failed to load flights
       failed_to_load_anomalies: Failed to load anomalies
       reloading_routes: Reloading routes...

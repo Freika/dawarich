@@ -92,6 +92,26 @@ test("a fetched track without geometry keeps the clicked feature", async () => {
   assert.deepEqual(selected, [])
 })
 
+test("a failed detail fetch on the tiled path surfaces a toast", async () => {
+  const fragment = { properties: { id: 7 }, geometry: { type: "LineString" } }
+  const toasts = []
+  globalThis.Toast = { error: (message) => toasts.push(message) }
+  globalThis.translate = (key) => key
+  const { handlers } = loadSegmentsHarness(null)
+  handlers.controller.api.fetchTrackWithSegments = async () => {
+    throw new Error("network down")
+  }
+
+  await handlers._loadTrackSegments(7, fragment, {
+    preferFetchedGeometry: true,
+  })
+  assert.deepEqual(toasts, ["messages.failed_to_load_track_details"])
+
+  toasts.length = 0
+  await handlers._loadTrackSegments(7, fragment)
+  assert.deepEqual(toasts, [])
+})
+
 test("a classic track click never swaps its already-loaded feature", async () => {
   const fragment = { properties: { id: 7 }, geometry: { type: "LineString" } }
   const fetched = {

@@ -3601,6 +3601,7 @@ es:
       failed_to_load_photos: No se pudo cargar las fotos
       failed_to_load_areas: No se pudo cargar los ámbitos
       failed_to_load_tracks: No se pudieron cargar los trayectos
+      failed_to_load_track_details: No se pudieron cargar los detalles del trayecto
       failed_to_load_flights: No se pudo cargar los vuelos
       failed_to_load_anomalies: No se pudo cargar las anomalías
       reloading_routes: Recargando rutas...

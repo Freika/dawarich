@@ -4849,6 +4849,7 @@ fr:
       failed_to_load_photos: Échec du chargement des photos
       failed_to_load_areas: Échec du chargement des zones
       failed_to_load_tracks: Échec du chargement des trajets
+      failed_to_load_track_details: Échec du chargement des détails du trajet
       failed_to_load_flights: Échec du chargement des vols
       failed_to_load_anomalies: Échec du chargement des anomalies
       reloading_routes: Rechargement des itinéraires...

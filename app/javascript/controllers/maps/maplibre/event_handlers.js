@@ -1,5 +1,6 @@
 import { translate } from "i18n"
 import maplibregl from "maplibre-gl"
+import { Toast } from "maps_maplibre/components/toast"
 import {
   formatDistance,
   formatSpeed,
@@ -755,6 +756,11 @@ export class EventHandlers {
       this._createTrackSegmentMarkers(trackId, displayFeature, segments)
     } catch (error) {
       console.error("Failed to load track segments:", error)
+      // Classic clicks already hold the real geometry — only the tiled path
+      // leaves the user on a clipped tile fragment, so only it warrants a toast.
+      if (preferFetchedGeometry) {
+        Toast.error(translate("messages.failed_to_load_track_details"))
+      }
     }
   }
 

@@ -27,6 +27,10 @@ class AddGistIndexToTracksOriginalPath < ActiveRecord::Migration[8.0]
               name: 'index_tracks_on_original_path',
               algorithm: :concurrently,
               if_not_exists: true
+  ensure
+    # No transaction here (disable_ddl_transaction!), so the SET above is
+    # session-level and would leak into later migrations on this connection.
+    execute 'RESET lock_timeout'
   end
 
   def down

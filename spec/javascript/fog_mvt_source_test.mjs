@@ -271,6 +271,21 @@ test("setTiledSource flips the layer between classic data and the tile source in
   assert.equal(fog.points.length, 0)
 })
 
+test("hidden fog attaches no tiled handlers until shown", () => {
+  const { map, fog } = buildFog({ visible: false })
+
+  assert.equal(map.listenerCount("sourcedata"), 0)
+  assert.equal(map.listenerCount("moveend"), 0)
+
+  fog.show()
+  assert.equal(map.listenerCount("sourcedata"), 1)
+  assert.equal(map.listenerCount("moveend"), 1)
+
+  fog.hide()
+  assert.equal(map.listenerCount("sourcedata"), 0)
+  assert.equal(map.listenerCount("moveend"), 0)
+})
+
 test("points MVT keep-alive hides via paint, not layout, so the source stays used", () => {
   const map = fogMap()
   const layer = new PointsMvtLayer(map, { visible: true })

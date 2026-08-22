@@ -3656,6 +3656,7 @@ de:
       failed_to_load_photos: Fotos konnten nicht geladen werden
       failed_to_load_areas: Gebiete konnten nicht geladen werden
       failed_to_load_tracks: Tracks konnten nicht geladen werden
+      failed_to_load_track_details: Track-Details konnten nicht geladen werden
       failed_to_load_flights: Flüge konnten nicht geladen werden
       failed_to_load_anomalies: Anomalien konnten nicht geladen werden
       reloading_routes: Route wird neu geladen...
