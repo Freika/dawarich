@@ -29,6 +29,12 @@ export function parseSpeedColorScale(encoded) {
     )
     .map(([speed, color]) => [Number(speed), color])
     .sort((a, b) => a[0] - b[0])
+    // MapLibre's interpolate requires strictly ascending stops — equal speeds
+    // (user-editable input) would throw at paint time; the last entry wins.
+    .filter(
+      ([speed], index, sorted) =>
+        index === sorted.length - 1 || speed !== sorted[index + 1][0],
+    )
 
   return stops.length >= 2 ? stops : null
 }
@@ -64,7 +70,6 @@ export class TracksMvtLayer extends BaseLayer {
     this.onTileError = options.onTileError || null
     this.onEmptyTracks = options.onEmptyTracks || null
     this._tileUrl = null
-    this._cacheBuster = 0
     this._tileErrorHandler = null
     this._tileErrorReported = false
     this._sourceDataHandler = null
@@ -118,7 +123,13 @@ export class TracksMvtLayer extends BaseLayer {
         this.map.querySourceFeatures?.(this.sourceId, {
           sourceLayer: "tracks",
         }) ?? []
-      if (features.length > 0) return
+      if (features.length > 0) {
+        // Tracks exist — the warning can never fire for this range, so stop
+        // paying for querySourceFeatures on every tile load (update() re-adds
+        // the layer on range changes, which re-arms the watcher).
+        this._unwatchEmptyTracks()
+        return
+      }
 
       this._emptyTracksReported = true
       this.onEmptyTracks()
@@ -204,6 +215,12 @@ export class TracksMvtLayer extends BaseLayer {
     this.map.setPaintProperty(this.id, "line-opacity", this._lineOpacity())
   }
 
+  setColors({ trackColor, routeColor } = {}) {
+    if (trackColor) this.trackColor = trackColor
+    if (routeColor) this.routeColor = routeColor
+    this._repaint()
+  }
+
   setSpeedColoring(enabled, scale = this.speedColorScale) {
     this.speedColoredRoutes = enabled === true
     this.speedColorScale = scale
@@ -214,17 +231,6 @@ export class TracksMvtLayer extends BaseLayer {
     if (!this.map.getLayer(this.id)) return
     this.map.setPaintProperty(this.id, "line-color", this._lineColor())
     this.map.setPaintProperty(this.id, "line-opacity", this._lineOpacity())
-  }
-
-  // MapLibre caches tiles by URL, so bump a nonce to force a re-fetch.
-  refresh() {
-    this._cacheBuster += 1
-
-    const wasVisible = this.visible
-    const beforeId = this._layerAbove()
-    this.remove()
-    this.add({ startAt: this.startAt, endAt: this.endAt }, beforeId)
-    this.setVisibility(wasVisible)
   }
 
   _layerAbove() {
@@ -265,7 +271,6 @@ export class TracksMvtLayer extends BaseLayer {
     if (endAt) params.set("end_at", endAt)
     // Never the raw api key: the Bearer header authenticates (transformRequest)
     if (this.apiKey) params.set("u", trackCachePartitioner(this.apiKey))
-    if (this._cacheBuster) params.set("_", String(this._cacheBuster))
 
     const query = params.toString()
     const path = "/api/v1/tiles/tracks/{z}/{x}/{y}.mvt"

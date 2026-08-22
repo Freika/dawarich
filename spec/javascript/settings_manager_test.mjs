@@ -476,3 +476,31 @@ test("updateRouteOpacity drives the tiled tracks layer, not just the classic rou
 
   assert.deepEqual(opacityCalls, [0.4])
 })
+
+test("color pickers drive the tiled tracks layer, not just the classic layers", async () => {
+  const settingsManager = {
+    getSettings: () => ({}),
+    getSetting: () => false,
+    updateSetting: () => {},
+  }
+  const { SettingsController } = await loadSettingsController(settingsManager)
+  const colorCalls = []
+  const controller = new SettingsController({
+    element: { querySelector: () => null },
+    map: { getLayer: () => null },
+    layerManager: {
+      getLayer: (name) =>
+        name === "tracks-mvt"
+          ? { setColors: (colors) => colorCalls.push(colors) }
+          : null,
+    },
+  })
+
+  controller.applyRouteColor("#123456")
+  controller.applyTrackColor("#abcdef")
+
+  assert.deepEqual(colorCalls, [
+    { routeColor: "#123456" },
+    { trackColor: "#abcdef" },
+  ])
+})

@@ -21,6 +21,11 @@ export class RoutesManager {
     this.layerManager = controller.layerManager
     this.settings = controller.settings
     this._anomaliesFetchId = 0
+    // Classic tracks data is stale whenever tiles have been driving rendering
+    // (bulk fetches are skipped and range changes never touch the classic
+    // source) — a tiled-first session starts stale.
+    this._classicTracksStale = tiledPointsActive(SettingsManager.getSettings())
+    this._classicTracksRefillInFlight = false
   }
 
   /**
@@ -580,7 +585,11 @@ export class RoutesManager {
       const tracksLayer = this.layerManager.getLayer("tracks")
 
       if (enabled) {
-        if (tracksLayer && tracksLayer.data?.features?.length > 0) {
+        if (
+          tracksLayer &&
+          tracksLayer.data?.features?.length > 0 &&
+          !this._classicTracksStale
+        ) {
           tracksLayer.show()
         } else {
           await this._lazyLoadClassicTracks(tracksLayer)
@@ -619,6 +628,7 @@ export class RoutesManager {
       tracksLayer.update(tracksGeoJSON)
       tracksLayer.show()
     }
+    this._classicTracksStale = false
   }
 
   /**
@@ -714,21 +724,25 @@ export class RoutesManager {
     // sub-layers must stay usable under tiled mode for the click flow.
     const tracksLayer = this.layerManager.getLayer("tracks")
     tracksLayer?.setMainVisibility(modes.classicTracks)
-    // Tiled-first sessions never populated the classic source (the bulk fetch
-    // is skipped under tiles) — refill once on the tiled->classic flip. The
-    // once-guard keeps a genuinely track-less account from refetching on
-    // every unrelated toggle.
+    if (modes.tiled) this._classicTracksStale = true
+    // Refetch once per tiled->classic flip (staleness, not emptiness: an
+    // empty first refill retries on the next flip once a throttled backfill
+    // has finished, while a track-less classic session never refetches).
     if (
       modes.classicTracks &&
       tracksLayer &&
-      !tracksLayer.data?.features?.length &&
-      !this._classicTracksRefilled
+      this._classicTracksStale &&
+      !this._classicTracksRefillInFlight
     ) {
-      this._classicTracksRefilled = true
-      this._lazyLoadClassicTracks(tracksLayer).catch((error) => {
-        console.error("Failed to refill classic tracks:", error)
-        Toast.error(translate("messages.failed_to_load_tracks"))
-      })
+      this._classicTracksRefillInFlight = true
+      this._lazyLoadClassicTracks(tracksLayer)
+        .catch((error) => {
+          console.error("Failed to refill classic tracks:", error)
+          Toast.error(translate("messages.failed_to_load_tracks"))
+        })
+        .finally(() => {
+          this._classicTracksRefillInFlight = false
+        })
     }
 
     this.layerManager.getLayer("fog")?.setTiledSource(modes.fogTiled)

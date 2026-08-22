@@ -978,12 +978,14 @@ export class SettingsController {
     if (this.map.getLayer("routes-base")) {
       this.map.setPaintProperty("routes-base", "line-color", color)
     }
+    this.layerManager.getLayer("tracks-mvt")?.setColors({ routeColor: color })
   }
 
   applyTrackColor(color) {
     if (this.map.getLayer("tracks")) {
       this.map.setPaintProperty("tracks", "line-color", color)
     }
+    this.layerManager.getLayer("tracks-mvt")?.setColors({ trackColor: color })
   }
 
   syncLayerColorLabel(key, color) {

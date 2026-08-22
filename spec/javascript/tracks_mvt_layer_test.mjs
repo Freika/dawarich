@@ -227,6 +227,59 @@ test("a populated source load never reports empty tracks", () => {
   assert.equal(reports, 0)
 })
 
+test("a populated source load detaches the empty-tracks watcher", () => {
+  let reports = 0
+  const { map } = buildLayer({
+    routesVisible: true,
+    onEmptyTracks: () => {
+      reports += 1
+    },
+  })
+
+  map.setSourceFeatures([{ id: 1 }])
+  map.emit("sourcedata", {
+    sourceId: "tracks-mvt-source",
+    isSourceLoaded: true,
+  })
+
+  assert.equal(map.listenerCount("sourcedata"), 0)
+
+  map.setSourceFeatures([])
+  map.emit("sourcedata", {
+    sourceId: "tracks-mvt-source",
+    isSourceLoaded: true,
+  })
+
+  assert.equal(reports, 0)
+})
+
+test("setColors repaints the line with the new colors", () => {
+  const routesOnly = buildLayer({ tracksEnabled: false, routesVisible: true })
+  routesOnly.layer.setColors({ routeColor: "#123456" })
+  const routeCall = routesOnly.map.paintCalls.findLast(
+    (c) => c.property === "line-color",
+  )
+  assert.equal(routeCall.value, "#123456")
+
+  const tracksOn = buildLayer({ tracksEnabled: true, routesVisible: false })
+  tracksOn.layer.setColors({ trackColor: "#abcdef" })
+  const trackCall = tracksOn.map.paintCalls.findLast(
+    (c) => c.property === "line-color",
+  )
+  assert.equal(trackCall.value, "#abcdef")
+})
+
+test("parseSpeedColorScale drops duplicate speed stops", () => {
+  const stops = parseSpeedColorScale(
+    "0:#111111|50:#222222|50:#333333|100:#444444",
+  )
+
+  assert.deepEqual(
+    stops.map(([speed]) => speed),
+    [0, 50, 100],
+  )
+})
+
 test("map-level listeners are torn down on remove", () => {
   const { map, layer } = buildLayer({
     onTileError: () => {},

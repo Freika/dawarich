@@ -49,6 +49,36 @@ test("disarms point dragging before orphaning the layers", () => {
   assert.deepEqual(seen, [false])
 })
 
+test("releases the tracks-mvt map listeners before orphaning the layers", () => {
+  // Both handlers (error + sourcedata) live on the map and survive setStyle —
+  // unreleased, each style change stacks another pair.
+  const seen = []
+  teardown({
+    tracksMvtLayer: {
+      _unwatchTileErrors: () => seen.push("errors"),
+      _unwatchEmptyTracks: () => seen.push("empty"),
+    },
+  })
+
+  assert.deepEqual(seen, ["errors", "empty"])
+})
+
+test("removes the fog layer before orphaning the layers", () => {
+  // Fog's canvas and move/zoom/sourcedata listeners live on the map and
+  // container — orphaning the object without remove() leaks them per style
+  // change.
+  let removed = 0
+  teardown({
+    fogLayer: {
+      remove: () => {
+        removed += 1
+      },
+    },
+  })
+
+  assert.equal(removed, 1)
+})
+
 test("tears down without any layers present", () => {
   assert.deepEqual(teardown({}).layers, {})
 })
