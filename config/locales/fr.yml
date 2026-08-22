@@ -1612,11 +1612,11 @@ fr:
         miles: Miles
         custom_basemap_url: URL de la carte de base personnalisée
         serve_the_base_map_from_your_own_source_accepts_protomaps: Fournir la carte
-        fill_gaps_with_the_default_basemap: Combler les lacunes avec le fond de carte par défaut
-        for_a_tileset_that_covers_only_part_of_the_world_areas_it_does_not_cover_are_drawn_from_dawarich_s_default_tile_server: Pour un jeu de tuiles qui ne couvre qu'une partie du monde. Les zones non couvertes sont chargées depuis le serveur de tuiles par défaut de Dawarich ; activer cette option y envoie donc des requêtes.
           de base depuis votre propre source. Accepte les tuiles vectorielles Protomaps
           ou les tuiles raster XYZ (toutes deux doivent inclure {z}, {x} et {y}),
           ou une URL complète du style MapLibre.
+        fill_gaps_with_the_default_basemap: Combler les lacunes avec le fond de carte par défaut
+        for_a_tileset_that_covers_only_part_of_the_world_areas_it_does_not_cover_are_drawn_from_dawarich_s_default_tile_server: Pour un jeu de tuiles qui ne couvre qu'une partie du monde. Les zones non couvertes sont chargées depuis le serveur de tuiles par défaut de Dawarich ; activer cette option y envoie donc des requêtes.
         base_map_layers: Couches de carte de base
         toggle_base_map_elements_changes_apply_immediately: Bascule des éléments de
           la carte de base. Les modifications s'appliquent immédiatement.
@@ -5202,8 +5202,8 @@ fr:
       layer_unavailable_custom_style: Non disponible avec le style de carte personnalisé
         — il n'affiche aucun libellé ni point d'intérêt
       layer_unavailable_foreign_basemap: Non disponible avec un fond de carte personnalisé
-      tiles_fallback_unavailable: Disponible uniquement pour les URL de tuiles {z}/{x}/{y} — une URL de style MapLibre remplace tout le fond de carte
         — ces couches proviennent des tuiles vectorielles intégrées
+      tiles_fallback_unavailable: Disponible uniquement pour les URL de tuiles {z}/{x}/{y} — une URL de style MapLibre remplace tout le fond de carte
       make_changes_to_apply: Modifiez les paramètres pour activer le bouton Appliquer
       re_evaluation_queued: La réévaluation a été planifiée. La carte se mettra à jour
         lorsqu'elle sera terminée.
