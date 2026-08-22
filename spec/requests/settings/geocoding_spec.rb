@@ -23,6 +23,7 @@ RSpec.describe 'Settings::Geocoding', type: :request do
   before do
     allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false)
     allow(Resolv).to receive(:getaddress).and_return('203.0.113.10')
+    allow(Socket).to receive(:getaddrinfo).and_return([])
     sign_in user
   end
 
@@ -413,6 +414,7 @@ RSpec.describe 'Settings::Geocoding', type: :request do
 
     it 'saves a host the web container cannot resolve' do
       allow(Resolv).to receive(:getaddress).with('photon.homelab.lan').and_raise(Resolv::ResolvError)
+      allow(Socket).to receive(:getaddrinfo).with('photon.homelab.lan', nil).and_raise(SocketError)
 
       patch settings_geocoding_path, params: {
         provider: 'photon',
@@ -420,6 +422,18 @@ RSpec.describe 'Settings::Geocoding', type: :request do
       }
 
       expect(user.service_settings.service_geocoding.find_by(provider: 'photon').active).to be(true)
+    end
+
+    it 'rejects a decimal-form IPv4 host' do
+      allow(Resolv).to receive(:getaddress).with('2130706433').and_raise(Resolv::ResolvError)
+
+      patch settings_geocoding_path, params: {
+        provider: 'photon',
+        photon: { host: '2130706433' }
+      }
+
+      expect(user.service_settings.service_geocoding.find_by(provider: 'photon')).to be_nil
+      expect(flash[:alert]).to be_present
     end
   end
 
@@ -478,7 +492,9 @@ RSpec.describe 'Settings::Geocoding', type: :request do
       setting = create(:service_setting, :active, user: user,
                                                   config: { 'host' => 'photon.mine.example.com',
                                                             'connection_status' => 'ok' })
-      allow(Geocoding::Search).to receive(:with_config).and_return(nil)
+      allow(Geocoding::Search).to receive(:with_config)
+        .with(hash_including(max_wait: Settings::GeocodingController::TEST_MAX_WAIT))
+        .and_return(nil)
 
       post test_settings_geocoding_path, headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
 

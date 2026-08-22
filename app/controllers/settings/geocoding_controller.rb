@@ -77,19 +77,27 @@ class Settings::GeocodingController < ApplicationController
 
   # An unresolvable host stays saveable: the web container may lack DNS for a
   # host the Sidekiq container can reach, and AirTrail treats the same case as
-  # a reported connection failure rather than a rejected save.
+  # a reported connection failure rather than a rejected save. Resolvability
+  # is probed with getaddrinfo because numeric IPv4 forms (decimal or hex)
+  # resolve there — and in the HTTP client — but not in Resolv, which the
+  # blocklist check uses.
   def verify_host_address(setting)
     host = setting.config['host']
     return if host.blank? || setting.komoot? || setting.chibigeo?
 
     scheme = setting.config['use_https'] == false ? 'http' : 'https'
-    url = "#{scheme}://#{host}"
-    Resolv.getaddress(URI.parse(url).host.to_s)
-    validate_integration_url!(url)
-  rescue Resolv::ResolvError, URI::InvalidURIError
-    nil
+    validate_integration_url!("#{scheme}://#{host}")
   rescue UrlValidatable::BlockedUrlError => e
+    return if unresolvable_host?(host)
+
     setting.errors.add(:base, :host_blocked, reason: e.message)
+  end
+
+  def unresolvable_host?(host)
+    Socket.getaddrinfo(URI.parse("https://#{host}").host.to_s, nil)
+    false
+  rescue SocketError, URI::InvalidURIError
+    true
   end
 
   def apply_provider_params(setting, provider_params)
