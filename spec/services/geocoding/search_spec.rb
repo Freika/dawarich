@@ -283,6 +283,21 @@ RSpec.describe Geocoding::Search do
       expect(Geocoding::RateLimiter).not_to have_received(:sleep)
     end
 
+    it 'paces the no-provider fallback to the public Nominatim policy' do
+      unstub_global_geocoder_stub
+      stub_request(:get, /nominatim\.openstreetmap\.org/)
+        .to_return(status: 200, body: '{}', headers: { 'Content-Type' => 'application/json' })
+
+      2.times { described_class.call(user: user, query: 'Leipzig', fallback_to_default: true) }
+
+      expect(Geocoding::RateLimiter).to have_received(:sleep).with(be_within(0.05).of(1.0)).once
+    end
+
+    it 'still returns nothing for a disabled config without the fallback' do
+      expect(described_class.call(user: user, query: 'Leipzig')).to eq([])
+      expect(Geocoding::RateLimiter).not_to have_received(:sleep)
+    end
+
     it 'paces an ENV-managed instance too' do
       allow(DawarichSettings).to receive_messages(reverse_geocoding_enabled?: true, photon_enabled?: true,
                                                   photon_use_https?: true)

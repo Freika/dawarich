@@ -109,6 +109,23 @@ RSpec.describe Geocoding::RateLimiter do
       expect(described_class).not_to have_received(:sleep)
     end
 
+    it 'still shares one bucket for komoot when a stale key is left over' do
+      # Switching the Photon host from ChibiGeo to komoot keeps the saved key,
+      # and komoot meters per IP - splitting on it would let one box exceed the
+      # published 1 rps.
+      described_class.throttle(config_for('photon.komoot.io', api_key: 'ck_alice_leftover')) { :ok }
+      described_class.throttle(config_for('photon.komoot.io', api_key: 'ck_bob_leftover')) { :ok }
+
+      expect(described_class).to have_received(:sleep).once
+    end
+
+    it 'does not split a custom self-hosted photon on a key' do
+      described_class.throttle(config_for('photon.mine.example.com', rps: 10, api_key: 'a')) { :ok }
+      described_class.throttle(config_for('photon.mine.example.com', rps: 10, api_key: 'b')) { :ok }
+
+      expect(described_class).to have_received(:sleep).once
+    end
+
     it 'still shares one bucket for a keyless host metered per ip' do
       2.times { described_class.throttle(config_for('photon.komoot.io')) { :ok } }
 

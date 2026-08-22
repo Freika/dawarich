@@ -46,5 +46,12 @@ module Geocoding
     def self.chibigeo?(provider, host)
       provider.to_s == 'photon' && bare_host(host) == CHIBIGEO_BARE_HOST
     end
+
+    # ChibiGeo, Geoapify and LocationIQ count requests against the API key.
+    # Komoot and a self-hosted Photon or Nominatim count against the caller's
+    # IP, so everyone on one instance shares their allowance.
+    def self.metered_per_key?(provider, host)
+      api_key_required?(provider) || chibigeo?(provider, host)
+    end
   end
 end

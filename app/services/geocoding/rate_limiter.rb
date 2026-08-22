@@ -63,6 +63,7 @@ module Geocoding
       end
 
       def key_digest(config)
+        return unless Providers.metered_per_key?(config.provider, config.host)
         return if config.api_key.blank?
 
         Digest::SHA256.hexdigest(config.api_key)[0, 12]
