@@ -30,6 +30,15 @@ module Geocoding
         MUTEX.synchronize { next_slots.clear }
       end
 
+      # Komoot meters per IP, so everyone pointed at it shares one bucket.
+      # Keyed providers - ChibiGeo, Geoapify, LocationIQ - meter per API key
+      # instead, so two users on one box with their own keys get their own
+      # allowance. The key is digested rather than used raw: bucket names end
+      # up in logs.
+      def key_for(config)
+        [config.provider, Providers.bare_host(config.host), key_digest(config)].compact.join(':')
+      end
+
       private
 
       def reserve(config)
@@ -53,8 +62,10 @@ module Geocoding
         @next_slots ||= {}
       end
 
-      def key_for(config)
-        "#{config.provider}:#{Providers.bare_host(config.host)}"
+      def key_digest(config)
+        return if config.api_key.blank?
+
+        Digest::SHA256.hexdigest(config.api_key)[0, 12]
       end
     end
   end

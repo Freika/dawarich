@@ -41,3 +41,14 @@ end
 Sidekiq.configure_client do |config|
   config.redis = { url: ENV['REDIS_URL'], db: ENV.fetch('RAILS_JOB_QUEUE_DB', 1) }
 end
+
+# Reverse geocoding paces itself by sleeping the calling thread
+# (Geocoding::RateLimiter), so cap how many of this process's threads can sit
+# parked there - a slow provider would otherwise put the whole pool to sleep and
+# starve imports, points and the priority queues.
+#
+# Written on every boot rather than only when it changes: sidekiq-limit_fetch
+# stores the value in Redis with no expiry, so an instance that once ran the old
+# komoot-only cap would keep that cap forever once the line setting it was
+# removed.
+Sidekiq::Queue['reverse_geocoding'].limit = ENV.fetch('REVERSE_GEOCODING_CONCURRENCY', 3).to_i if Sidekiq.server?

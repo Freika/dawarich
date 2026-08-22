@@ -36,6 +36,15 @@ module Geocoding
       )
     end
 
+    # Stands in for the geocoder gem's own default lookup, which serves the
+    # no-provider-configured fallback. That default is public Nominatim, whose
+    # usage policy is one request a second.
+    FALLBACK_RPS = 1.0
+
+    def self.default_fallback
+      new(source: :fallback, provider: Geocoder.config.lookup, rps: FALLBACK_RPS)
+    end
+
     def self.env_config
       new(source: :env, **env_provider_attributes)
     end

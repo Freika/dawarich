@@ -3,8 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe Geocoding::RateLimiter do
-  def config_for(host, rps: nil, provider: :photon)
-    Geocoding::Config.new(source: :user, provider: provider, host: host, rps: rps)
+  def config_for(host, rps: nil, provider: :photon, api_key: nil)
+    Geocoding::Config.new(source: :user, provider: provider, host: host, rps: rps, api_key: api_key)
   end
 
   let(:fast) { config_for('photon.example.com', rps: 10) }
@@ -84,20 +84,61 @@ RSpec.describe Geocoding::RateLimiter do
     end
   end
 
+  describe 'providers metered per api key' do
+    it 'gives two keys on the same host their own bucket' do
+      described_class.throttle(config_for('app.chibigeo.com/v1/photon', rps: 10, api_key: 'ck_alice')) { :ok }
+      described_class.throttle(config_for('app.chibigeo.com/v1/photon', rps: 10, api_key: 'ck_bob')) { :ok }
+
+      expect(described_class).not_to have_received(:sleep)
+    end
+
+    it 'keeps one bucket for two configs sharing a key' do
+      2.times do
+        described_class.throttle(config_for('app.chibigeo.com/v1/photon', rps: 10, api_key: 'ck_same')) do
+          :ok
+        end
+      end
+
+      expect(described_class).to have_received(:sleep).once
+    end
+
+    it 'separates host-less providers by key' do
+      described_class.throttle(config_for(nil, rps: 10, provider: :geoapify, api_key: 'alice')) { :ok }
+      described_class.throttle(config_for(nil, rps: 10, provider: :geoapify, api_key: 'bob')) { :ok }
+
+      expect(described_class).not_to have_received(:sleep)
+    end
+
+    it 'still shares one bucket for a keyless host metered per ip' do
+      2.times { described_class.throttle(config_for('photon.komoot.io')) { :ok } }
+
+      expect(described_class).to have_received(:sleep).once
+    end
+
+    it 'does not leak the api key into the bucket name' do
+      key = described_class.key_for(config_for('app.chibigeo.com/v1/photon', rps: 10, api_key: 'ck_secret'))
+
+      expect(key).not_to include('ck_secret')
+    end
+  end
+
   describe 'concurrent workers' do
     it 'hands every thread its own slot instead of letting two share one' do
       waits = Queue.new
       allow(described_class).to receive(:sleep) { |seconds| waits << seconds }
-      crawl = config_for('photon.example.com', rps: 1000)
+      crawl = config_for('photon.example.com', rps: 1)
 
       threads = 5.times.map { Thread.new { described_class.throttle(crawl) { :ok } } }
       threads.each(&:join)
 
       # Four threads wait (the first goes straight through), and no two waits
-      # land on the same slot: 1ms, 2ms, 3ms, 4ms in whatever order they queued.
+      # land on the same slot: 1s, 2s, 3s, 4s in whatever order they queued.
+      # A one second interval is chosen so thread scheduling cannot outrun it -
+      # at a millisecond interval a loaded runner drags the slot up to now and
+      # the waits collapse to zero.
       collected = Array.new(waits.size) { waits.pop }.sort
       expect(collected.size).to eq(4)
-      expect(collected.map { |w| (w * 1000).round }).to eq([1, 2, 3, 4])
+      expect(collected.map(&:round)).to eq([1, 2, 3, 4])
     end
   end
 end

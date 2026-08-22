@@ -297,4 +297,13 @@ RSpec.describe Geocoding::Config do
       expect(described_class.for(user).rps).to eq(25.0)
     end
   end
+
+  describe '.default_fallback' do
+    it 'paces the gem default at the public Nominatim policy' do
+      config = described_class.default_fallback
+
+      expect(config.provider).to eq(Geocoder.config.lookup)
+      expect(config.rps).to eq(1.0)
+    end
+  end
 end

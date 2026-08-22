@@ -11,7 +11,11 @@ module Geocoding
       when :user
         user_mode_search(config, query, options)
       else
-        fallback_to_default ? Geocoder.search(query, **options) : []
+        # The gem default is public Nominatim, which publishes a hard 1 rps
+        # policy, so pace it like any other provider.
+        return [] unless fallback_to_default
+
+        RateLimiter.throttle(Config.default_fallback) { Geocoder.search(query, **options) }
       end
     end
 
