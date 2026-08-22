@@ -58,6 +58,7 @@ module Places
         user: @user,
         query: [@latitude, @longitude],
         limit: @limit,
+        max_wait: Geocoding::RateLimiter::MAX_INTERACTIVE_WAIT,
         distance_sort: true,
         radius: @radius,
         units: :km

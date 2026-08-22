@@ -2,8 +2,14 @@
 
 class Settings::GeocodingController < ApplicationController
   include FlashStreamable
+  include UrlValidatable
 
   TEST_COORDINATES = [51.3402, 12.3712].freeze
+  SAFE_TEST_ERRORS = [
+    SocketError, Resolv::ResolvError, Timeout::Error, OpenSSL::SSL::SSLError,
+    Errno::ECONNREFUSED, Errno::ECONNRESET, Errno::EHOSTUNREACH, Errno::ENETUNREACH,
+    Geocoder::Error
+  ].freeze
 
   before_action :authenticate_self_hosted!
   before_action :authenticate_user!
@@ -63,8 +69,19 @@ class Settings::GeocodingController < ApplicationController
                           params.fetch(provider, {})
                                 .permit(:host, :api_key, :use_https, :clear_api_key, :rps))
 
+    verify_host_address(setting) if setting.valid?
     setting.activate! if setting.errors.empty? && setting.save
     setting
+  end
+
+  def verify_host_address(setting)
+    host = setting.config['host']
+    return if host.blank? || setting.komoot? || setting.chibigeo?
+
+    scheme = setting.config['use_https'] == false ? 'http' : 'https'
+    validate_integration_url!("#{scheme}://#{host}")
+  rescue UrlValidatable::BlockedUrlError => e
+    setting.errors.add(:base, :host_blocked, reason: e.message)
   end
 
   def apply_provider_params(setting, provider_params)
@@ -113,7 +130,14 @@ class Settings::GeocodingController < ApplicationController
     end
   rescue StandardError => e
     record_test_result('failed')
-    [:error, t('settings.geocoding.test.failure', error: "#{e.class}: #{e.message}")]
+    Rails.logger.error("Geocoding provider test failed: #{e.class}: #{e.message}")
+    [:error, t('settings.geocoding.test.failure', error: test_error_description(e))]
+  end
+
+  def test_error_description(error)
+    return "#{error.class}: #{error.message}" if SAFE_TEST_ERRORS.any? { |klass| error.is_a?(klass) }
+
+    error.class.name
   end
 
   def record_test_result(status)

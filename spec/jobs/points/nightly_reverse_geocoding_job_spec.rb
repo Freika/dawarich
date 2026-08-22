@@ -40,6 +40,22 @@ RSpec.describe Points::NightlyReverseGeocodingJob, type: :job do
       end
     end
 
+    context 'when geocoding runs on per-user settings' do
+      before do
+        allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false)
+      end
+
+      it 'resolves the geocoding config once per user, not per point' do
+        create(:service_setting, :active, user: user, config: { 'host' => 'photon.mine.example.com' })
+        create_list(:point, 3, user: user, reverse_geocoded_at: nil)
+        allow(Geocoding::Config).to receive(:for).and_call_original
+
+        described_class.perform_now
+
+        expect(Geocoding::Config).to have_received(:for).once
+      end
+    end
+
     context 'when reverse geocoding is enabled' do
       before do
         allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)

@@ -88,6 +88,20 @@ RSpec.describe Geocoding::Search do
       )
     end
 
+    it 'returns an empty result when the rate limiter cannot grant a slot in time' do
+      Geocoding::RateLimiter.reset!
+      create(:service_setting, :active, user: user,
+                                        config: { 'host' => 'photon.mine.example.com', 'rps' => 1 })
+      stub_request(:get, %r{https://photon\.mine\.example\.com/reverse})
+        .to_return(status: 200, body: photon_body, headers: { 'Content-Type' => 'application/json' })
+      described_class.call(user: user, query: [51.3402, 12.3712], limit: 1)
+
+      results = described_class.call(user: user, query: [51.3402, 12.3712], limit: 1, max_wait: 0.2)
+
+      expect(results).to eq([])
+      expect(WebMock).to have_requested(:get, %r{https://photon\.mine\.example\.com/reverse}).once
+    end
+
     it 'respects use_https false for photon' do
       create(:service_setting, :active, user: user,
                                         config: { 'host' => 'photon.mine.example.com', 'use_https' => false })
