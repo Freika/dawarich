@@ -1010,13 +1010,17 @@ export class SettingsController {
    * The Custom style draws no labels or POIs, so their toggles are
    * disabled while it's active, with a tooltip explaining why. A raster or
    * foreign-style basemap carries no Protomaps layers at all, so there every
-   * toggle goes dead, not just the unsupported ones.
+   * toggle goes dead, not just the unsupported ones — except under a raster
+   * basemap with the fallback on, where the default vector stack is composed
+   * underneath and the toggles still control what shows through the gaps.
    */
   syncStyleDependentToggles(styleName) {
     const basemap = classifyBasemapUrl(
       SettingsManager.getSetting("vectorTilesUrl"),
     )
-    const foreignBasemap = basemap === "raster" || basemap === "style"
+    const fallback = SettingsManager.getSetting("tilesFallback") === true
+    const foreignBasemap =
+      (basemap === "raster" && !fallback) || basemap === "style"
     const custom = styleName === "custom"
     const inputs = this.controller.element.querySelectorAll(
       "input[data-tile-category], input[data-poi-group]",
