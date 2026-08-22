@@ -951,7 +951,7 @@ es:
         custom_basemap_url: URL de mapa personalizado
         serve_the_base_map_from_your_own_source_accepts_protomaps: Servir el mapa base desde tu propia fuente. Acepta tiles vectoriales o raster XYZ (ambos deben incluir {z}, {x} y {y}), o una URL completa de estilo MapLibre. Deja vacío para las tiles integradas.
         fill_gaps_with_the_default_basemap: Rellenar los huecos con el mapa base predeterminado
-        for_a_tileset_that_covers_only_part_of_the_world_areas_it_does_not_cover_are_drawn_from_dawarich_s_default_tile_server: Para un conjunto de teselas que solo cubre parte del mundo. Las zonas que no cubre se dibujan desde el servidor de teselas predeterminado de Dawarich, así que activarlo envía peticiones allí.
+        uncovered_areas_are_drawn_from_dawarich_s_default_tile_server: Para un conjunto de teselas que solo cubre parte del mundo. Las zonas que no cubre se dibujan desde el servidor de teselas predeterminado de Dawarich, así que activarlo envía peticiones allí.
         base_map_layers: Capas del mapa base
         toggle_base_map_elements_changes_apply_immediately: Alternar elementos del mapa base. Los cambios se aplican inmediatamente.
         pro_feature_you_can_preview_changes_here_but_they_won: Característica Pro — puedes previsualizar los cambios aquí, pero no se guardarán en la versión Lite.

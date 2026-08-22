@@ -1616,7 +1616,7 @@ fr:
           ou les tuiles raster XYZ (toutes deux doivent inclure {z}, {x} et {y}),
           ou une URL complète du style MapLibre.
         fill_gaps_with_the_default_basemap: Combler les lacunes avec le fond de carte par défaut
-        for_a_tileset_that_covers_only_part_of_the_world_areas_it_does_not_cover_are_drawn_from_dawarich_s_default_tile_server: Pour un jeu de tuiles qui ne couvre qu'une partie du monde. Les zones non couvertes sont chargées depuis le serveur de tuiles par défaut de Dawarich ; activer cette option y envoie donc des requêtes.
+        uncovered_areas_are_drawn_from_dawarich_s_default_tile_server: Pour un jeu de tuiles qui ne couvre qu'une partie du monde. Les zones non couvertes sont chargées depuis le serveur de tuiles par défaut de Dawarich ; activer cette option y envoie donc des requêtes.
         base_map_layers: Couches de carte de base
         toggle_base_map_elements_changes_apply_immediately: Bascule des éléments de
           la carte de base. Les modifications s'appliquent immédiatement.

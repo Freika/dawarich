@@ -951,7 +951,7 @@ de:
         custom_basemap_url: Benutzerdefinierte Basiskarten-URL
         serve_the_base_map_from_your_own_source_accepts_protomaps: Verwende eine Basiskarte aus einer eigenen Quelle. Unterstützt werden Protomaps-Vektorkacheln oder Raster-XYZ-Kacheln (jeweils mit {z}, {x} und {y}) sowie vollständige MapLibre-Stil-URLs. Leer lassen, um die integrierten Kacheln zu verwenden.
         fill_gaps_with_the_default_basemap: Lücken mit der Standard-Basiskarte füllen
-        for_a_tileset_that_covers_only_part_of_the_world_areas_it_does_not_cover_are_drawn_from_dawarich_s_default_tile_server: Für Kachelsätze, die nur einen Teil der Welt abdecken. Nicht abgedeckte Gebiete werden vom Standard-Kachelserver von Dawarich geladen — diese Option sendet also Anfragen dorthin.
+        uncovered_areas_are_drawn_from_dawarich_s_default_tile_server: Für Kachelsätze, die nur einen Teil der Welt abdecken. Nicht abgedeckte Gebiete werden vom Standard-Kachelserver von Dawarich geladen — diese Option sendet also Anfragen dorthin.
         base_map_layers: Basiskartenebenen
         toggle_base_map_elements_changes_apply_immediately: Basiskarten-Elemente ein-/ausschalten. Änderungen werden sofort angewendet.
         pro_feature_you_can_preview_changes_here_but_they_won: Pro-Funktion — du kannst Änderungen hier vorschauen, aber sie werden auf dem Lite-Plan nicht gespeichert.
