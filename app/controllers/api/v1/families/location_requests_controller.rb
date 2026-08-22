@@ -1,9 +1,6 @@
 # frozen_string_literal: true
 
-class Api::V1::Families::LocationRequestsController < ApiController
-  before_action :ensure_family_feature_available!
-  before_action :ensure_user_in_family!
-
+class Api::V1::Families::LocationRequestsController < Api::V1::Families::BaseController
   def create
     target = current_api_user.family.members.find_by(id: params[:target_user_id])
 
@@ -54,12 +51,5 @@ class Api::V1::Families::LocationRequestsController < ApiController
     ).call
 
     render json: result.payload, status: result.status
-  end
-
-  def ensure_user_in_family!
-    return if current_api_user&.in_family?
-
-    render json: { error: I18n.t('controllers.api.v1.families.locations.user_is_not_part_of_a_family') },
-           status: :not_found
   end
 end
