@@ -16,9 +16,9 @@ class Tracks::VectorTileQuery
   LAYER_NAME = 'tracks'
   TILE_PIXELS = 512
   WEB_MERCATOR_WORLD = 40_075_016.685578488
-  # Bounds the per-query cost; PgBouncer-safe because SET LOCAL runs inside an
-  # explicit transaction (same pattern as Points::VectorTileQuery).
-  QUERY_TIMEOUT_MS = 5_000
+  # Bounds the per-query cost (VectorTileTimeout, ENV-overridable);
+  # PgBouncer-safe because SET LOCAL runs inside an explicit transaction
+  # (same pattern as Points::VectorTileQuery).
   # Above any plausible tracks-in-one-tile count. The benchmark proved 2,000 is
   # REACHABLE (a 3,400-track city account puts ~2,900 in its home tile), so the
   # guard sits an order of magnitude above the densest measured case.
@@ -166,7 +166,8 @@ class Tracks::VectorTileQuery
   def with_statement_timeout
     conn = Track.connection
     conn.transaction do
-      conn.exec_query("SET LOCAL statement_timeout = #{QUERY_TIMEOUT_MS}", 'TracksVectorTileQuery Timeout')
+      conn.exec_query("SET LOCAL statement_timeout = #{VectorTileTimeout.query_timeout_ms}",
+                      'TracksVectorTileQuery Timeout')
       yield conn
     end
   end

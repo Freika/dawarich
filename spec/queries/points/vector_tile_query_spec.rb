@@ -120,7 +120,7 @@ RSpec.describe Points::VectorTileQuery do
   describe 'statement timeout' do
     it 'cancels a query that exceeds QUERY_TIMEOUT_MS via a real statement_timeout' do
       create_point_at(10, 10)
-      stub_const('Points::VectorTileQuery::QUERY_TIMEOUT_MS', 50)
+      allow(VectorTileTimeout).to receive(:query_timeout_ms).and_return(50)
 
       slow_scope = user.points.where('(SELECT pg_sleep(0.3)) IS NOT NULL')
 

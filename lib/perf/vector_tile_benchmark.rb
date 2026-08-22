@@ -99,7 +99,7 @@ module Perf
       { z: zoom, x: x, y: y, ms: elapsed_ms, bytes: tile.bytesize,
         features: result.feature_count, timed_out: false }
     rescue ActiveRecord::QueryCanceled
-      { z: zoom, x: x, y: y, ms: Tracks::VectorTileQuery::QUERY_TIMEOUT_MS,
+      { z: zoom, x: x, y: y, ms: VectorTileTimeout.query_timeout_ms,
         bytes: 0, features: 0, timed_out: true }
     end
 
@@ -217,7 +217,7 @@ module Perf
       { z: zoom, x: x, y: y, ms: elapsed_ms, bytes: tile.bytesize,
         features: result.feature_count, timed_out: false }
     rescue ActiveRecord::QueryCanceled
-      { z: zoom, x: x, y: y, ms: Points::VectorTileQuery::QUERY_TIMEOUT_MS,
+      { z: zoom, x: x, y: y, ms: VectorTileTimeout.query_timeout_ms,
         bytes: 0, features: 0, timed_out: true }
     end
 

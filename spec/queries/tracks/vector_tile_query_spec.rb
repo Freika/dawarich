@@ -94,7 +94,7 @@ RSpec.describe Tracks::VectorTileQuery do
 
     it 'cancels queries exceeding the statement timeout' do
       create_track_at([[10, 10], [500, 500]])
-      stub_const('Tracks::VectorTileQuery::QUERY_TIMEOUT_MS', 50)
+      allow(VectorTileTimeout).to receive(:query_timeout_ms).and_return(50)
 
       slow_scope = user.tracks.where('(SELECT pg_sleep(0.3)) IS NOT NULL')
 
