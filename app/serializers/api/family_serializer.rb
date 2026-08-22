@@ -11,7 +11,9 @@ class Api::FamilySerializer
       me: me_payload,
       members: members_payload,
       location_requests: {
-        incoming: user.received_location_requests.active.map { |request| incoming_request(request) },
+        incoming: user.received_location_requests.active.includes(:requester).map do |request|
+          incoming_request(request)
+        end,
         outgoing: user.sent_location_requests.active.map { |request| outgoing_request(request) }
       }
     }
