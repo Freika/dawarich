@@ -2666,6 +2666,8 @@ en:
             start_at_and_end_at_are_required: start_at and end_at are required
             invalid_date_format: Invalid date format
             user_is_not_part_of_a_family: User is not part of a family
+          sharing:
+            missing_required_parameter_param: 'Missing required parameter: %{parameter}'
         imports:
           pending:
             an_error_occurred: An error occurred

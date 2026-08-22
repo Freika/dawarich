@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe 'Api::V1::Families::Sharing', type: :request do
+  include ActiveSupport::Testing::TimeHelpers
+
   let(:user) { create(:user) }
   let(:family) { create(:family, creator: user) }
   let!(:membership) { create(:family_membership, user: user, family: family, role: :owner) }
@@ -58,6 +60,33 @@ RSpec.describe 'Api::V1::Families::Sharing', type: :request do
             headers: { 'Authorization' => "Bearer #{solo.api_key}" }
 
       expect(response).to have_http_status(:not_found)
+    end
+
+    it 'returns 400 when enabled is missing' do
+      user.update_family_location_sharing!(true, duration: 'permanent')
+
+      patch '/api/v1/families/sharing',
+            params: { share_history: true },
+            headers: { 'Authorization' => "Bearer #{user.api_key}" }
+
+      expect(response).to have_http_status(:bad_request)
+      expect(user.reload.family_sharing_enabled?).to be true
+    end
+
+    it 're-arms an expired timed share and reports the new expiry' do
+      user.update_family_location_sharing!(true, duration: '1h')
+
+      travel 2.hours do
+        patch '/api/v1/families/sharing',
+              params: { enabled: true, share_history: true },
+              headers: { 'Authorization' => "Bearer #{user.api_key}" }
+
+        expect(response).to have_http_status(:ok)
+        json = JSON.parse(response.body)
+        expect(json['enabled']).to be true
+        expect(Time.zone.parse(json['expires_at'])).to be_future
+        expect(user.reload.family_sharing_enabled?).to be true
+      end
     end
   end
 end

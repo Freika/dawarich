@@ -3603,6 +3603,8 @@ fr:
             start_at_and_end_at_are_required: start_at et end_at sont obligatoires
             invalid_date_format: Format de date non valide
             user_is_not_part_of_a_family: L'utilisateur n'est pas membre d'une famille
+          sharing:
+            missing_required_parameter_param: 'Paramètre requis manquant : %{parameter}'
         imports:
           pending:
             an_error_occurred: Une erreur s'est produite

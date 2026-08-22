@@ -1,10 +1,9 @@
 # frozen_string_literal: true
 
-class Api::V1::Families::SharingController < ApiController
-  before_action :ensure_family_feature_available!
-  before_action :ensure_user_in_family!
-
+class Api::V1::Families::SharingController < Api::V1::Families::BaseController
   def update
+    params.require(:enabled)
+
     result = Families::UpdateLocationSharing.new(
       user: current_api_user,
       enabled: params[:enabled],
@@ -14,14 +13,8 @@ class Api::V1::Families::SharingController < ApiController
     ).call
 
     render json: result.payload, status: result.status
-  end
-
-  private
-
-  def ensure_user_in_family!
-    return if current_api_user&.in_family?
-
-    render json: { error: I18n.t('controllers.api.v1.families.locations.user_is_not_part_of_a_family') },
-           status: :not_found
+  rescue ActionController::ParameterMissing => e
+    error = I18n.t('controllers.api.v1.families.sharing.missing_required_parameter_param', parameter: e.param)
+    render json: { error: error }, status: :bad_request
   end
 end
