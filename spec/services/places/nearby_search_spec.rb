@@ -149,6 +149,17 @@ RSpec.describe Places::NearbySearch do
         expect(Geocoder).to have_received(:search).once
       end
 
+      it 'does not cache the empty result of a rate limiter skip' do
+        allow(Geocoding::RateLimiter).to receive(:throttle).and_return(nil)
+
+        expect(described_class.new(user: user, latitude: lat, longitude: lon, cache: true).call).to eq([])
+
+        allow(Geocoding::RateLimiter).to receive(:throttle).and_call_original
+        allow(Geocoder).to receive(:search).and_return([photon_result])
+
+        expect(described_class.new(user: user, latitude: lat, longitude: lon, cache: true).call.size).to eq(1)
+      end
+
       it 'does not cache the empty result of a handled provider error' do
         allow(Rails.logger).to receive(:warn)
         allow(Geocoder).to receive(:search).and_raise(Geocoder::InvalidRequest)

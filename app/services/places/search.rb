@@ -41,10 +41,13 @@ module Places
     end
 
     def fetch_and_filter
-      Geocoding::Search
-        .call(user: @user, query: @query, limit: FETCH_LIMIT,
-              max_wait: Geocoding::RateLimiter::MAX_INTERACTIVE_WAIT,
-              bias: { latitude: @latitude, longitude: @longitude })
+      results = Geocoding::Search
+                .call(user: @user, query: @query, limit: FETCH_LIMIT,
+                      max_wait: Geocoding::RateLimiter::MAX_INTERACTIVE_WAIT,
+                      bias: { latitude: @latitude, longitude: @longitude })
+      return [] if results.nil?
+
+      results
         .map { |r| Places::PhotonResultFormatter.call(r, fallback_lat: @latitude, fallback_lon: @longitude) }
         .filter_map { |place| within_radius(place) }
         .sort_by { |place| place[:distance] }

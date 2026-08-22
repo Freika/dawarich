@@ -399,6 +399,28 @@ RSpec.describe 'Settings::Geocoding', type: :request do
       expect(user.service_settings.service_geocoding.find_by(provider: 'photon')).to be_nil
       expect(flash[:alert]).to be_present
     end
+
+    it 'rejects a blocked nominatim host as well' do
+      allow(Resolv).to receive(:getaddress).with('169.254.169.254').and_return('169.254.169.254')
+
+      patch settings_geocoding_path, params: {
+        provider: 'nominatim',
+        nominatim: { host: '169.254.169.254' }
+      }
+
+      expect(user.service_settings.service_geocoding.find_by(provider: 'nominatim')).to be_nil
+    end
+
+    it 'saves a host the web container cannot resolve' do
+      allow(Resolv).to receive(:getaddress).with('photon.homelab.lan').and_raise(Resolv::ResolvError)
+
+      patch settings_geocoding_path, params: {
+        provider: 'photon',
+        photon: { host: 'photon.homelab.lan' }
+      }
+
+      expect(user.service_settings.service_geocoding.find_by(provider: 'photon').active).to be(true)
+    end
   end
 
   describe 'POST /settings/geocoding/test' do
@@ -450,6 +472,18 @@ RSpec.describe 'Settings::Geocoding', type: :request do
       post test_settings_geocoding_path, headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
 
       expect(response.body).to include(I18n.t('settings.geocoding.test.not_configured'))
+    end
+
+    it 'reports a busy rate limit without failing the connection test' do
+      setting = create(:service_setting, :active, user: user,
+                                                  config: { 'host' => 'photon.mine.example.com',
+                                                            'connection_status' => 'ok' })
+      allow(Geocoding::Search).to receive(:with_config).and_return(nil)
+
+      post test_settings_geocoding_path, headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+
+      expect(response.body).to include('rate limit is busy right now')
+      expect(setting.reload.config['connection_status']).to eq('ok')
     end
 
     it 'keeps the detail of a connection failure in the flash' do

@@ -67,6 +67,12 @@ RSpec.describe Places::Search do
       expect(described_class.new(user: user, query: 'a', latitude: lat, longitude: lon, radius: 1.0).call).to eq([])
     end
 
+    it 'returns an empty list when the rate limiter skips the lookup' do
+      allow(Geocoding::RateLimiter).to receive(:throttle).and_return(nil)
+
+      expect(described_class.new(user: user, query: 'Bravo', latitude: lat, longitude: lon, radius: 1.0).call).to eq([])
+    end
+
     it 'returns [] when reverse geocoding is disabled' do
       allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false)
       expect(described_class.new(user: user, query: 'cafe', latitude: lat, longitude: lon, radius: 1.0).call).to eq([])

@@ -20,7 +20,12 @@ module Places
       return [] unless reverse_geocoding_enabled?
       return [] if @latitude.zero? && @longitude.zero?
 
-      @cache ? Rails.cache.fetch(cache_key, expires_in: CACHE_TTL) { fetch_and_format } : fetch_and_format
+      results = if @cache
+                  Rails.cache.fetch(cache_key, expires_in: CACHE_TTL, skip_nil: true) { fetch_and_format }
+                else
+                  fetch_and_format
+                end
+      results || []
     rescue *ReverseGeocoding::ProviderErrors::SEARCH_HANDLED => e
       log_provider_error(e)
       []
@@ -63,6 +68,8 @@ module Places
         radius: @radius,
         units: :km
       )
+      return if results.nil?
+
       format_results(results)
     end
 

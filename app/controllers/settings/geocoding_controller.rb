@@ -5,6 +5,7 @@ class Settings::GeocodingController < ApplicationController
   include UrlValidatable
 
   TEST_COORDINATES = [51.3402, 12.3712].freeze
+  TEST_MAX_WAIT = 5.0
   SAFE_TEST_ERRORS = [
     SocketError, Resolv::ResolvError, Timeout::Error, OpenSSL::SSL::SSLError,
     Errno::ECONNREFUSED, Errno::ECONNRESET, Errno::EHOSTUNREACH, Errno::ENETUNREACH,
@@ -74,12 +75,19 @@ class Settings::GeocodingController < ApplicationController
     setting
   end
 
+  # An unresolvable host stays saveable: the web container may lack DNS for a
+  # host the Sidekiq container can reach, and AirTrail treats the same case as
+  # a reported connection failure rather than a rejected save.
   def verify_host_address(setting)
     host = setting.config['host']
     return if host.blank? || setting.komoot? || setting.chibigeo?
 
     scheme = setting.config['use_https'] == false ? 'http' : 'https'
-    validate_integration_url!("#{scheme}://#{host}")
+    url = "#{scheme}://#{host}"
+    Resolv.getaddress(URI.parse(url).host.to_s)
+    validate_integration_url!(url)
+  rescue Resolv::ResolvError, URI::InvalidURIError
+    nil
   rescue UrlValidatable::BlockedUrlError => e
     setting.errors.add(:base, :host_blocked, reason: e.message)
   end
@@ -119,7 +127,11 @@ class Settings::GeocodingController < ApplicationController
     config = Geocoding::Config.for_user_settings(current_user)
     return [:error, t('settings.geocoding.test.not_configured')] unless config.enabled?
 
-    result = Geocoding::Search.with_config(config: config, query: TEST_COORDINATES, limit: 1).first
+    result_set = Geocoding::Search.with_config(config: config, query: TEST_COORDINATES, limit: 1,
+                                               max_wait: TEST_MAX_WAIT)
+    return [:error, t('settings.geocoding.test.rate_limited')] if result_set.nil?
+
+    result = result_set.first
     if result
       record_test_result('ok')
       place = [result.city, result.country].compact_blank.join(', ')

@@ -1402,6 +1402,7 @@ es:
         success: 'Success! Your provider resolved the test coordinates to: %{place}.'
         empty: The provider responded but returned no results for the test coordinates.
         failure: 'Test failed: %{error}'
+        rate_limited: "The provider's rate limit is busy right now — try again in a moment."
     navigation:
       general: General
       integrations: Integraciones
