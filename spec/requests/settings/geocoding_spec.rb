@@ -3,6 +3,10 @@
 require 'rails_helper'
 
 RSpec.describe 'Settings::Geocoding', type: :request do
+  def photon_rps_field(body)
+    body.scan(/<input[^>]*>/).find { |tag| tag.include?('name="photon[rps]"') }
+  end
+
   let(:user) { create(:user) }
 
   let(:photon_body) do
@@ -143,6 +147,55 @@ RSpec.describe 'Settings::Geocoding', type: :request do
       expect(toggle).not_to include('disabled')
     end
 
+    it 'locks the rate field to one request per second on the komoot host' do
+      create(:service_setting, :active, user: user, config: { 'host' => 'photon.komoot.io' })
+
+      get settings_integrations_path(service: 'geocoding')
+
+      field = photon_rps_field(response.body)
+      expect(field).to include('disabled')
+      expect(field).to include('value="1.0"')
+      expect(response.body).to include(I18n.t('settings.geocoding.show.rps_hint_komoot'))
+    end
+
+    it 'offers the ChibiGeo plan range and starts on the free tier' do
+      get settings_integrations_path(service: 'geocoding')
+
+      field = photon_rps_field(response.body)
+      expect(field).not_to include('disabled')
+      expect(field).to include('min="1.0"')
+      expect(field).to include('max="25.0"')
+      expect(response.body).to include(I18n.t('settings.geocoding.show.rps_hint_chibigeo'))
+    end
+
+    it 'leaves the rate open and unset for a custom host' do
+      create(:service_setting, :active, user: user, config: { 'host' => 'photon.mine.example.com' })
+
+      get settings_integrations_path(service: 'geocoding')
+
+      field = photon_rps_field(response.body)
+      expect(field).not_to include('disabled')
+      expect(field).not_to include('value=')
+      expect(response.body).to include(I18n.t('settings.geocoding.show.rps_hint_custom'))
+    end
+
+    it 'shows the saved rate' do
+      create(:service_setting, :active, user: user,
+                                        config: { 'host' => 'photon.mine.example.com', 'rps' => 7 })
+
+      get settings_integrations_path(service: 'geocoding')
+
+      expect(photon_rps_field(response.body)).to include('value="7.0"')
+    end
+
+    it 'offers a rate field for the other providers too' do
+      get settings_integrations_path(service: 'geocoding')
+
+      expect(response.body).to include('name="nominatim[rps]"')
+      expect(response.body).to include('name="geoapify[rps]"')
+      expect(response.body).to include('name="locationiq[rps]"')
+    end
+
     it 'offers a free ChibiGeo API key with a UTM-tagged link and the plan limits' do
       get settings_integrations_path(service: 'geocoding')
 
@@ -221,6 +274,72 @@ RSpec.describe 'Settings::Geocoding', type: :request do
 
       row = user.service_settings.service_geocoding.find_by(provider: 'photon')
       expect(row.config['connection_status']).to eq('ok')
+    end
+
+    it 'saves a custom rate limit' do
+      patch settings_geocoding_path, params: {
+        provider: 'photon',
+        photon: { host: 'photon.mine.example.com', rps: '4' }
+      }
+
+      expect(user.service_settings.service_geocoding.find_by(provider: 'photon').rps).to eq(4.0)
+    end
+
+    it 'reads a blank rate as unlimited' do
+      create(:service_setting, :active, user: user, config: { 'host' => 'photon.mine.example.com', 'rps' => 4 })
+
+      patch settings_geocoding_path, params: {
+        provider: 'photon',
+        photon: { host: 'photon.mine.example.com', rps: '' }
+      }
+
+      expect(user.service_settings.service_geocoding.find_by(provider: 'photon').rps).to be_nil
+    end
+
+    it 'clamps a submitted chibigeo rate to the top public plan' do
+      patch settings_geocoding_path, params: {
+        provider: 'photon',
+        photon: { host: 'app.chibigeo.com/v1/photon', rps: '100', api_key: 'ck_test' }
+      }
+
+      expect(user.service_settings.service_geocoding.find_by(provider: 'photon').rps).to eq(25.0)
+    end
+
+    it 'pins komoot to one request per second even when the form is tampered with' do
+      patch settings_geocoding_path, params: {
+        provider: 'photon',
+        photon: { host: 'photon.komoot.io', rps: '50' }
+      }
+
+      expect(user.service_settings.service_geocoding.find_by(provider: 'photon').rps).to eq(1.0)
+    end
+
+    it 'keeps the recorded connection status when the rate is re-submitted unchanged' do
+      create(:service_setting, :active, user: user,
+                               config: { 'host' => 'photon.mine.example.com', 'rps' => 4,
+                                         'connection_status' => 'ok' })
+
+      patch settings_geocoding_path, params: {
+        provider: 'photon',
+        photon: { host: 'photon.mine.example.com', rps: '4.0' }
+      }
+
+      row = user.service_settings.service_geocoding.find_by(provider: 'photon')
+      expect(row.config['connection_status']).to eq('ok')
+    end
+
+    it 'clears the recorded connection status when the rate changes' do
+      create(:service_setting, :active, user: user,
+                               config: { 'host' => 'photon.mine.example.com', 'rps' => 4,
+                                         'connection_status' => 'ok' })
+
+      patch settings_geocoding_path, params: {
+        provider: 'photon',
+        photon: { host: 'photon.mine.example.com', rps: '9' }
+      }
+
+      row = user.service_settings.service_geocoding.find_by(provider: 'photon')
+      expect(row.config['connection_status']).to be_nil
     end
 
     it 'switches the active provider while keeping stored credentials' do

@@ -26,6 +26,10 @@ NOMINATIM_API_USE_HTTPS = ENV.fetch('NOMINATIM_API_USE_HTTPS', 'true') == 'true'
 LOCATIONIQ_API_KEY = ENV.fetch('LOCATIONIQ_API_KEY', nil)
 
 GEOAPIFY_API_KEY = ENV.fetch('GEOAPIFY_API_KEY', nil)
+# Requests per second ceiling for the ENV-managed provider above. Blank
+# means unlimited; komoot and ChibiGeo hosts are pinned or clamped
+# regardless of what is set here.
+REVERSE_GEOCODING_RPS = ENV.fetch('REVERSE_GEOCODING_RPS', nil)
 STORE_GEODATA = ENV.fetch('STORE_GEODATA', 'true') == 'true'
 # /Reverse geocoding settings
 

@@ -13,10 +13,6 @@ class DawarichSettings
       @photon_enabled ||= PHOTON_API_HOST.present?
     end
 
-    def photon_uses_komoot_io?
-      @photon_uses_komoot_io ||= PHOTON_API_HOST == 'photon.komoot.io'
-    end
-
     def photon_https_only_host?
       @photon_https_only_host ||= PHOTON_HTTPS_ONLY_HOSTS.include?(normalized_photon_host)
     end

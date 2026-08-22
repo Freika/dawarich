@@ -13,8 +13,7 @@ RSpec.describe Geocoding::Config do
     allow(DawarichSettings).to receive_messages(
       reverse_geocoding_enabled?: true,
       photon_enabled?: true,
-      photon_use_https?: https,
-      photon_uses_komoot_io?: host == 'photon.komoot.io'
+      photon_use_https?: https
     )
     stub_const('PHOTON_API_HOST', host)
     stub_const('PHOTON_API_KEY', key)
@@ -233,6 +232,69 @@ RSpec.describe Geocoding::Config do
       create(:service_setting, :geoapify, :active, user: user)
 
       expect(described_class.for(user).provider_display_name).to eq('Geoapify')
+    end
+  end
+  describe '#rps' do
+    it 'reads the rate from the active user row' do
+      stub_no_env
+      create(:service_setting, :active, user: user, config: { 'host' => 'photon.mine.example.com', 'rps' => 4 })
+
+      expect(described_class.for(user).rps).to eq(4.0)
+    end
+
+    it 'is nil when the user left the rate unset' do
+      stub_no_env
+      create(:service_setting, :active, user: user, config: { 'host' => 'photon.mine.example.com' })
+
+      expect(described_class.for(user).rps).to be_nil
+    end
+
+    it 'pins a komoot user row to one request per second' do
+      stub_no_env
+      create(:service_setting, :active, user: user, config: { 'host' => 'photon.komoot.io', 'rps' => 40 })
+
+      expect(described_class.for(user).rps).to eq(1.0)
+    end
+
+    it 'is nil when geocoding is disabled' do
+      stub_no_env
+
+      expect(described_class.for(user).rps).to be_nil
+    end
+
+    it 'reads the ENV rate for an ENV-managed instance' do
+      stub_photon_env
+      stub_const('REVERSE_GEOCODING_RPS', '5')
+
+      expect(described_class.for(user).rps).to eq(5.0)
+    end
+
+    it 'is nil for an ENV-managed instance that set no rate' do
+      stub_photon_env
+      stub_const('REVERSE_GEOCODING_RPS', nil)
+
+      expect(described_class.for(user).rps).to be_nil
+    end
+
+    it 'pins an ENV komoot host to one request per second whatever the ENV rate says' do
+      stub_photon_env(host: 'photon.komoot.io')
+      stub_const('REVERSE_GEOCODING_RPS', '40')
+
+      expect(described_class.for(user).rps).to eq(1.0)
+    end
+
+    it 'defaults an ENV chibigeo host to the free tier' do
+      stub_photon_env(host: 'app.chibigeo.com/v1/photon')
+      stub_const('REVERSE_GEOCODING_RPS', nil)
+
+      expect(described_class.for(user).rps).to eq(1.0)
+    end
+
+    it 'clamps an ENV rate that exceeds the chibigeo ceiling' do
+      stub_photon_env(host: 'app.chibigeo.com/v1/photon')
+      stub_const('REVERSE_GEOCODING_RPS', '100')
+
+      expect(described_class.for(user).rps).to eq(25.0)
     end
   end
 end

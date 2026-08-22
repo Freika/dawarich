@@ -246,4 +246,79 @@ RSpec.describe ServiceSetting do
       expect(build(:service_setting).paid?).to be(false)
     end
   end
+  describe 'geocoding rps' do
+    it 'reads the configured rate' do
+      setting = create(:service_setting, config: { 'host' => 'photon.example.com', 'rps' => 4 })
+
+      expect(setting.rps).to eq(4.0)
+    end
+
+    it 'is nil for a custom host with no rate set' do
+      expect(create(:service_setting).rps).to be_nil
+    end
+
+    it 'pins komoot to one request per second whatever was submitted' do
+      setting = create(:service_setting, config: { 'host' => 'photon.komoot.io', 'rps' => 50 })
+
+      expect(setting.rps).to eq(1.0)
+    end
+
+    it 'pins komoot to one request per second when nothing was submitted' do
+      setting = create(:service_setting, config: { 'host' => 'photon.komoot.io' })
+
+      expect(setting.rps).to eq(1.0)
+    end
+
+    it 'raises a chibigeo rate below the free tier up to the free tier' do
+      setting = create(:service_setting, config: { 'host' => 'app.chibigeo.com/v1/photon', 'rps' => 0.2 },
+                                         api_key: 'ck_test')
+
+      expect(setting.rps).to eq(1.0)
+    end
+
+    it 'lowers a chibigeo rate above the top public plan down to it' do
+      setting = create(:service_setting, config: { 'host' => 'app.chibigeo.com/v1/photon', 'rps' => 100 },
+                                         api_key: 'ck_test')
+
+      expect(setting.rps).to eq(25.0)
+    end
+
+    it 'keeps a chibigeo rate that matches a real plan' do
+      setting = create(:service_setting, config: { 'host' => 'app.chibigeo.com/v1/photon', 'rps' => 5 },
+                                         api_key: 'ck_test')
+
+      expect(setting.rps).to eq(5.0)
+    end
+
+    it 'defaults chibigeo to the free tier when nothing was submitted' do
+      setting = create(:service_setting, config: { 'host' => 'app.chibigeo.com/v1/photon' }, api_key: 'ck_test')
+
+      expect(setting.rps).to eq(1.0)
+    end
+
+    it 'clamps an absurd custom rate into the sanity range' do
+      setting = create(:service_setting, config: { 'host' => 'photon.example.com', 'rps' => 99_999 })
+
+      expect(setting.rps).to eq(Geocoding::RateLimits::CUSTOM_MAX)
+    end
+
+    it 'reads a blank submitted rate as unlimited' do
+      setting = create(:service_setting, config: { 'host' => 'photon.example.com', 'rps' => '' })
+
+      expect(setting.rps).to be_nil
+      expect(setting.config).not_to have_key('rps')
+    end
+
+    it 'survives a reload' do
+      setting = create(:service_setting, config: { 'host' => 'photon.example.com', 'rps' => '2.5' })
+
+      expect(setting.reload.rps).to eq(2.5)
+    end
+
+    it 'applies to providers other than photon' do
+      setting = create(:service_setting, :geoapify, config: { 'rps' => '5' })
+
+      expect(setting.rps).to eq(5.0)
+    end
+  end
 end

@@ -222,4 +222,84 @@ RSpec.describe Geocoding::Search do
       expect(merged).to respond_to(:api_key)
     end
   end
+  describe 'rate limiting' do
+    def slot_for(host, provider: :photon)
+      config = Geocoding::Config.new(source: :user, provider: provider, host: host)
+      Sidekiq.redis { |redis| redis.get(Geocoding::RateLimiter.key_for(config)) }
+    end
+
+    before do
+      stub_no_env
+      Sidekiq.redis do |redis|
+        redis.keys("#{Geocoding::RateLimiter::NAMESPACE}:*").each { |key| redis.del(key) }
+      end
+    end
+
+    it 'takes a slot for a user-mode lookup' do
+      create(:service_setting, :active, user: user,
+                                        config: { 'host' => 'photon.rated.example.com', 'rps' => 5 })
+      stub_request(:get, /photon\.rated\.example\.com/)
+        .to_return(status: 200, body: photon_body, headers: { 'Content-Type' => 'application/json' })
+
+      expect { described_class.call(user: user, query: [51.3402, 12.3712]) }
+        .to change { slot_for('photon.rated.example.com') }.from(nil)
+    end
+
+    it 'leaves the queue alone when the provider config is incomplete' do
+      setting = create(:service_setting, :active, user: user,
+                                                  config: { 'host' => 'photon.rated.example.com', 'rps' => 5 })
+      setting.update_column(:config, setting.config.merge('host' => ''))
+
+      described_class.call(user: user, query: [51.3402, 12.3712])
+
+      expect(slot_for('')).to be_nil
+    end
+
+    it 'leaves the queue alone when the query is blank' do
+      create(:service_setting, :active, user: user,
+                                        config: { 'host' => 'photon.rated.example.com', 'rps' => 5 })
+
+      described_class.call(user: user, query: '')
+
+      expect(slot_for('photon.rated.example.com')).to be_nil
+    end
+
+    it 'takes no slot when the user set no rate' do
+      create(:service_setting, :active, user: user, config: { 'host' => 'photon.rated.example.com' })
+      stub_request(:get, /photon\.rated\.example\.com/)
+        .to_return(status: 200, body: photon_body, headers: { 'Content-Type' => 'application/json' })
+
+      described_class.call(user: user, query: [51.3402, 12.3712])
+
+      expect(slot_for('photon.rated.example.com')).to be_nil
+    end
+
+    it 'paces komoot to one request a second however many workers are running' do
+      create(:service_setting, :active, user: user, config: { 'host' => 'photon.komoot.io' })
+      stub_request(:get, /photon\.komoot\.io/)
+        .to_return(status: 200, body: photon_body, headers: { 'Content-Type' => 'application/json' })
+      allow(Geocoding::RateLimiter).to receive(:sleep)
+
+      2.times { described_class.call(user: user, query: [51.3402, 12.3712]) }
+
+      expect(Geocoding::RateLimiter).to have_received(:sleep).with(be_within(0.05).of(1.0)).once
+    end
+
+    it 'takes a slot for an ENV-managed lookup' do
+      allow(DawarichSettings).to receive_messages(reverse_geocoding_enabled?: true, photon_enabled?: true,
+                                                  photon_use_https?: true)
+      stub_const('PHOTON_API_HOST', 'photon.env.example.com')
+      stub_const('PHOTON_API_KEY', nil)
+      stub_const('REVERSE_GEOCODING_RPS', '5')
+      unstub_global_geocoder_stub
+      # ENV mode hands the query to the globally configured Geocoder, which the
+      # test boot points at nominatim; the slot is still keyed on the resolved
+      # Dawarich config.
+      stub_request(:get, /nominatim\.openstreetmap\.org/)
+        .to_return(status: 200, body: '{}', headers: { 'Content-Type' => 'application/json' })
+
+      expect { described_class.call(user: user, query: [51.3402, 12.3712]) }
+        .to change { slot_for('photon.env.example.com') }.from(nil)
+    end
+  end
 end

@@ -25,13 +25,26 @@
      else 'custom'
      end %>
 <% photon_https_locked = PHOTON_HTTPS_ONLY_HOSTS.include?(photon_bare_host) %>
+<% rps_rules = {
+     'komoot' => Geocoding::RateLimits.for('photon', komoot_host),
+     'chibigeo' => Geocoding::RateLimits.for('photon', chibigeo_host),
+     'custom' => Geocoding::RateLimits.for('photon', 'photon.example.com')
+   } %>
+<% rps_bounds = rps_rules.transform_values { |rule| { min: rule.min, max: rule.max, locked: rule.locked } } %>
+<% rps_hints = {
+     'komoot' => t('settings.geocoding.show.rps_hint_komoot'),
+     'chibigeo' => t('settings.geocoding.show.rps_hint_chibigeo'),
+     'custom' => t('settings.geocoding.show.rps_hint_custom')
+   } %>
 
 <div class="rounded-box border border-base-content/10 bg-base-200 max-w-3xl"
      data-controller="geocoding-settings"
      data-geocoding-settings-chibigeo-host-value="<%= chibigeo_host %>"
      data-geocoding-settings-chibigeo-bare-host-value="<%= chibigeo_bare_host %>"
      data-geocoding-settings-komoot-host-value="<%= komoot_host %>"
-     data-geocoding-settings-https-only-hosts-value="<%= PHOTON_HTTPS_ONLY_HOSTS.to_json %>">
+     data-geocoding-settings-https-only-hosts-value="<%= PHOTON_HTTPS_ONLY_HOSTS.to_json %>"
+     data-geocoding-settings-rps-bounds-value="<%= rps_bounds.to_json %>"
+     data-geocoding-settings-rps-hints-value="<%= rps_hints.to_json %>">
   <%= form_with url: settings_geocoding_path, method: :patch, data: { turbo: false } do |f| %>
     <div class="card-body space-y-6">
       <div class="form-control w-full max-w-md">
@@ -128,6 +141,19 @@
         </div>
 
         <div class="form-control w-full max-w-md">
+          <label class="label"><span class="label-text font-medium"><%= t('settings.geocoding.show.rps') %></span></label>
+          <%= number_field_tag 'photon[rps]', photon_setting&.rps,
+                               class: 'input input-bordered w-full',
+                               step: 'any',
+                               min: rps_rules[photon_choice].min,
+                               max: rps_rules[photon_choice].max,
+                               disabled: rps_rules[photon_choice].locked,
+                               data: { geocoding_settings_target: 'rpsInput' } %>
+          <span class="label-text-alt mt-1 text-base-content/60"
+                data-geocoding-settings-target="rpsHint"><%= rps_hints[photon_choice] %></span>
+        </div>
+
+        <div class="form-control w-full max-w-md">
           <label class="label"><span class="label-text font-medium"><%= t('settings.geocoding.show.api_key') %></span></label>
           <%= password_field_tag 'photon[api_key]', nil,
                                  class: 'input input-bordered w-full',
@@ -175,6 +201,14 @@
               </label>
             </div>
           <% end %>
+          <% rule = Geocoding::RateLimits.for(provider, setting&.host) %>
+          <div class="form-control w-full max-w-md">
+            <label class="label"><span class="label-text font-medium"><%= t('settings.geocoding.show.rps') %></span></label>
+            <%= number_field_tag "#{provider}[rps]", setting&.rps,
+                                 class: 'input input-bordered w-full',
+                                 step: 'any', min: rule.min, max: rule.max %>
+            <span class="label-text-alt mt-1 text-base-content/60"><%= t('settings.geocoding.show.rps_hint_custom') %></span>
+          </div>
           <div class="form-control w-full max-w-md">
             <label class="label"><span class="label-text font-medium"><%= t('settings.geocoding.show.api_key') %></span></label>
             <%= password_field_tag "#{provider}[api_key]", nil,

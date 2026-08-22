@@ -50,6 +50,10 @@ class ServiceSetting < ApplicationRecord
     config.fetch('use_https', true)
   end
 
+  def rps
+    config['rps']
+  end
+
   def readable_credentials?
     credentials
     true

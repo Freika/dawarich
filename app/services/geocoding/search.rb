@@ -7,7 +7,7 @@ module Geocoding
 
       case config.source
       when :env
-        Geocoder.search(query, **options)
+        RateLimiter.throttle(config) { Geocoder.search(query, **options) }
       when :user
         user_mode_search(config, query, options)
       else
@@ -33,7 +33,9 @@ module Geocoding
       )
       return [] if geocoder_query.blank?
 
-      UserLookup.build(config).search(geocoder_query)
+      # Deliberately after the early returns: a lookup that will not happen
+      # must not take a slot other callers are waiting for.
+      RateLimiter.throttle(config) { UserLookup.build(config).search(geocoder_query) }
     end
 
     def self.required_fields_present?(config)
