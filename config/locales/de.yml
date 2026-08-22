@@ -950,6 +950,8 @@ de:
         miles: Meilen
         custom_basemap_url: Benutzerdefinierte Basiskarten-URL
         serve_the_base_map_from_your_own_source_accepts_protomaps: Verwende eine Basiskarte aus einer eigenen Quelle. Unterstützt werden Protomaps-Vektorkacheln oder Raster-XYZ-Kacheln (jeweils mit {z}, {x} und {y}) sowie vollständige MapLibre-Stil-URLs. Leer lassen, um die integrierten Kacheln zu verwenden.
+        fill_gaps_with_the_default_basemap: Lücken mit der Standard-Basiskarte füllen
+        uncovered_areas_are_drawn_from_dawarich_s_default_tile_server: Für Kachelsätze, die nur einen Teil der Welt abdecken. Nicht abgedeckte Gebiete werden vom Standard-Kachelserver von Dawarich geladen — diese Option sendet also Anfragen dorthin.
         base_map_layers: Basiskartenebenen
         toggle_base_map_elements_changes_apply_immediately: Basiskarten-Elemente ein-/ausschalten. Änderungen werden sofort angewendet.
         pro_feature_you_can_preview_changes_here_but_they_won: Pro-Funktion — du kannst Änderungen hier vorschauen, aber sie werden auf dem Lite-Plan nicht gespeichert.
@@ -2781,10 +2783,14 @@ de:
           digest_already_exists: Digest existiert bereits
           digest_for_year_is_being_generated: Digest für %{year} wird generiert
         families:
+          location_requests:
+            not_found: Standortanfrage nicht gefunden
           locations:
             start_at_and_end_at_are_required: start_at und end_at sind erforderlich
             invalid_date_format: Ungültiges Datum im Format
             user_is_not_part_of_a_family: Benutzer ist nicht Teil einer Familie
+          sharing:
+            missing_required_parameter_param: 'Fehlender erforderlicher Parameter: %{parameter}'
         imports:
           pending:
             an_error_occurred: Ein Fehler ist aufgetreten
@@ -3344,6 +3350,10 @@ de:
           email_has_been_removed_from_the_family_family_name: '%{email} wurde von der Familie "%{family_name}" entfernt'
           an_unexpected_error_occurred_while_removing_the_membership_please_try: Beim Entfernen der Mitgliedschaft ist ein unerwarteter Fehler aufgetreten. Bitte versuche es erneut
           failed_to_leave: 'Verlassen fehlgeschlagen: %{message}'
+      respond_to_location_request:
+        an_error_occurred: Ein Fehler ist aufgetreten
+        not_authorized: Du bist nicht berechtigt, auf diese Anfrage zu antworten
+        no_longer_actionable: Diese Anfrage ist abgelaufen oder wurde bereits beantwortet
       update_location_sharing:
         update_failed: Aktualisierung der Standortfreigabe fehlgeschlagen
         unexpected_error: Beim Aktualisieren der Standortfreigabe ist ein Fehler aufgetreten
@@ -3982,6 +3992,7 @@ de:
       invalid_tile_url: Tile-URL muss {z}, {x} und {y} Platzhalter enthalten oder eine MapLibre-Stil-URL sein
       layer_unavailable_custom_style: Nicht mit dem benutzerdefinierten Kartenstil verfügbar — es werden keine Beschriftungen oder Sehenswürdigkeiten gezeichnet
       layer_unavailable_foreign_basemap: Nicht mit einer benutzerdefinierten Raster- oder Stil-Basiskarte verfügbar — diese Ebenen stammen aus den integrierten Vektorkacheln
+      tiles_fallback_unavailable: Nur für {z}/{x}/{y}-Kachel-URLs verfügbar — eine MapLibre-Stil-URL ersetzt die gesamte Basiskarte
       make_changes_to_apply: Änderungen vornehmen, um den Anwenden-Button zu aktivieren
       re_evaluation_queued: Die erneute Prüfung wurde eingereiht. Die Karte wird aktualisiert, sobald die Aufgabe abgeschlossen ist.
       recalculation_queued: Die Neuberechnung wurde eingereiht. Du erhältst eine Benachrichtigung, sobald sie abgeschlossen ist.

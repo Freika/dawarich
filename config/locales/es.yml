@@ -950,6 +950,8 @@ es:
         miles: Millas
         custom_basemap_url: URL de mapa personalizado
         serve_the_base_map_from_your_own_source_accepts_protomaps: Servir el mapa base desde tu propia fuente. Acepta tiles vectoriales o raster XYZ (ambos deben incluir {z}, {x} y {y}), o una URL completa de estilo MapLibre. Deja vacío para las tiles integradas.
+        fill_gaps_with_the_default_basemap: Rellenar los huecos con el mapa base predeterminado
+        uncovered_areas_are_drawn_from_dawarich_s_default_tile_server: Para un conjunto de teselas que solo cubre parte del mundo. Las zonas que no cubre se dibujan desde el servidor de teselas predeterminado de Dawarich, así que activarlo envía peticiones allí.
         base_map_layers: Capas del mapa base
         toggle_base_map_elements_changes_apply_immediately: Alternar elementos del mapa base. Los cambios se aplican inmediatamente.
         pro_feature_you_can_preview_changes_here_but_they_won: Característica Pro — puedes previsualizar los cambios aquí, pero no se guardarán en la versión Lite.
@@ -2726,10 +2728,14 @@ es:
           digest_already_exists: Resumen ya existe
           digest_for_year_is_being_generated: Está generando el resumen para %{year}.
         families:
+          location_requests:
+            not_found: Solicitud de ubicación no encontrada
           locations:
             start_at_and_end_at_are_required: start_at y end_at son obligatorios
             invalid_date_format: Formato de fecha no válido
             user_is_not_part_of_a_family: El usuario no pertenece a ninguna familia
+          sharing:
+            missing_required_parameter_param: 'Falta el parámetro requerido: %{parameter}'
         imports:
           pending:
             an_error_occurred: Se ha producido un error
@@ -3289,6 +3295,10 @@ es:
           email_has_been_removed_from_the_family_family_name: '%{email} ha sido eliminado de la familia "%{family_name}"'
           an_unexpected_error_occurred_while_removing_the_membership_please_try: Ocurrió un error inesperado al eliminar la membresía. Por favor, inténtalo de nuevo
           failed_to_leave: 'Falló dejar la familia: %{message}'
+      respond_to_location_request:
+        an_error_occurred: Se ha producido un error
+        not_authorized: No tienes autorización para responder a esta solicitud
+        no_longer_actionable: Esta solicitud ha caducado o ya ha sido respondida
       update_location_sharing:
         update_failed: Falló actualizar la configuración de seguimiento de ubicación
         unexpected_error: Ocurrió un error al actualizar el seguimiento de ubicación
@@ -3926,6 +3936,7 @@ es:
       invalid_tile_url: La URL de teselas debe incluir los marcadores {z}, {x} e {y}, o ser una URL de estilo MapLibre
       layer_unavailable_custom_style: No disponible con el estilo de mapa personalizado — no dibuja etiquetas ni puntos de interés
       layer_unavailable_foreign_basemap: No disponible con un mapa base ráster o personalizado; estas capas proceden de las teselas vectoriales integradas
+      tiles_fallback_unavailable: Solo disponible para URLs de teselas {z}/{x}/{y}; una URL de estilo MapLibre reemplaza todo el mapa base
       make_changes_to_apply: Haz cambios para habilitar el botón Aplicar
       re_evaluation_queued: Se ha programado la reevaluación. El mapa se actualizará cuando termine.
       recalculation_queued: Se ha programado el recálculo. Recibirás una notificación cuando termine.

@@ -18,6 +18,7 @@ export const LAYER_COLOR_DEFAULTS = {
 const DEFAULT_SETTINGS = {
   mapStyle: "light",
   vectorTilesUrl: null,
+  tilesFallback: false,
   ...LAYER_COLOR_DEFAULTS,
   customTheme: {
     base: "noir",
@@ -88,6 +89,7 @@ const BACKEND_SETTINGS_MAP = {
   mapStyle: "maps_maplibre_style",
   customTheme: "maps_maplibre_custom_theme",
   vectorTilesUrl: "maps_maplibre_tiles_url",
+  tilesFallback: "maps_maplibre_tiles_fallback",
   routeColor: "route_color",
   trackColor: "track_color",
   enabledMapLayers: "enabled_map_layers",
@@ -279,6 +281,8 @@ export class SettingsManager {
             } else if (frontendKey === "globeProjection") {
               value = value === true || value === "true"
             } else if (frontendKey === "liveMapEnabled") {
+              value = value === true || value === "true"
+            } else if (frontendKey === "tilesFallback") {
               value = value === true || value === "true"
             }
 

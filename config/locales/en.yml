@@ -947,6 +947,8 @@ en:
         miles: Miles
         custom_basemap_url: Custom Basemap URL
         serve_the_base_map_from_your_own_source_accepts_protomaps: Serve the base map from your own source. Accepts Protomaps-schema vector tiles or raster XYZ tiles (both must include {z}, {x}, and {y}), or a full MapLibre style URL. Leave empty for the built-in tiles.
+        fill_gaps_with_the_default_basemap: Fill gaps with the default basemap
+        uncovered_areas_are_drawn_from_dawarich_s_default_tile_server: For a tileset that covers only part of the world. Areas it doesn't cover are drawn from Dawarich's default tile server, so turning this on sends tile requests there.
         base_map_layers: Base Map Layers
         toggle_base_map_elements_changes_apply_immediately: Toggle base map elements. Changes apply immediately.
         pro_feature_you_can_preview_changes_here_but_they_won: Pro feature — you can preview changes here, but they won't be saved on the Lite plan.
@@ -2721,10 +2723,14 @@ en:
           digest_already_exists: Digest already exists
           digest_for_year_is_being_generated: Digest for %{year} is being generated
         families:
+          location_requests:
+            not_found: Location request not found
           locations:
             start_at_and_end_at_are_required: start_at and end_at are required
             invalid_date_format: Invalid date format
             user_is_not_part_of_a_family: User is not part of a family
+          sharing:
+            missing_required_parameter_param: 'Missing required parameter: %{parameter}'
         imports:
           pending:
             an_error_occurred: An error occurred
@@ -3282,6 +3288,10 @@ en:
           email_has_been_removed_from_the_family_family_name: '%{email} has been removed from the family "%{family_name}"'
           an_unexpected_error_occurred_while_removing_the_membership_please_try: An unexpected error occurred while removing the membership. Please try again
           failed_to_leave: 'Failed to leave family: %{message}'
+      respond_to_location_request:
+        an_error_occurred: An error occurred
+        not_authorized: You are not authorized to respond to this request
+        no_longer_actionable: This request has expired or already been responded to
       update_location_sharing:
         update_failed: Failed to update location sharing setting
         unexpected_error: An error occurred while updating location sharing
@@ -3954,6 +3964,7 @@ en:
       invalid_tile_url: Tile URL must include {z}, {x}, and {y} placeholders, or be a MapLibre style URL
       layer_unavailable_custom_style: Not available with the Custom map style — it draws no labels or points of interest
       layer_unavailable_foreign_basemap: Not available with a custom raster or style basemap — these layers come from the built-in vector tiles
+      tiles_fallback_unavailable: Only available for {z}/{x}/{y} tile URLs — a MapLibre style URL replaces the whole basemap
       make_changes_to_apply: Make changes to enable the Apply button
       re_evaluation_queued: Re-evaluation queued. The map will update once the job finishes.
       recalculation_queued: Recalculation queued. You'll get a notification when it finishes.

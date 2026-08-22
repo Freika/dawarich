@@ -1615,6 +1615,8 @@ fr:
           de base depuis votre propre source. Accepte les tuiles vectorielles Protomaps
           ou les tuiles raster XYZ (toutes deux doivent inclure {z}, {x} et {y}),
           ou une URL complète du style MapLibre.
+        fill_gaps_with_the_default_basemap: Combler les lacunes avec le fond de carte par défaut
+        uncovered_areas_are_drawn_from_dawarich_s_default_tile_server: Pour un jeu de tuiles qui ne couvre qu'une partie du monde. Les zones non couvertes sont chargées depuis le serveur de tuiles par défaut de Dawarich ; activer cette option y envoie donc des requêtes.
         base_map_layers: Couches de carte de base
         toggle_base_map_elements_changes_apply_immediately: Bascule des éléments de
           la carte de base. Les modifications s'appliquent immédiatement.
@@ -3655,10 +3657,14 @@ fr:
           digest_for_year_is_being_generated: Génération du récapitulatif pour %{year}
             en cours
         families:
+          location_requests:
+            not_found: Demande de localisation introuvable
           locations:
             start_at_and_end_at_are_required: start_at et end_at sont obligatoires
             invalid_date_format: Format de date non valide
             user_is_not_part_of_a_family: L'utilisateur n'est pas membre d'une famille
+          sharing:
+            missing_required_parameter_param: 'Paramètre requis manquant : %{parameter}'
         imports:
           pending:
             an_error_occurred: Une erreur s'est produite
@@ -4399,6 +4405,10 @@ fr:
             erreur inattendue est survenue lors de la suppression de l'adhésion. Veuillez
             essayer à nouveau.
           failed_to_leave: 'Impossible de quitter la famille : %{message}'
+      respond_to_location_request:
+        an_error_occurred: Une erreur s'est produite
+        not_authorized: Vous n'êtes pas autorisé à répondre à cette demande
+        no_longer_actionable: Cette demande a expiré ou a déjà reçu une réponse
       update_location_sharing:
         update_failed: Échec de mise à jour de la configuration de partage de localisation
         unexpected_error: Une erreur s'est produite lors de la mise à jour du partage
@@ -5205,6 +5215,7 @@ fr:
         — il n'affiche aucun libellé ni point d'intérêt
       layer_unavailable_foreign_basemap: Non disponible avec un fond de carte personnalisé
         — ces couches proviennent des tuiles vectorielles intégrées
+      tiles_fallback_unavailable: Disponible uniquement pour les URL de tuiles {z}/{x}/{y} — une URL de style MapLibre remplace tout le fond de carte
       make_changes_to_apply: Modifiez les paramètres pour activer le bouton Appliquer
       re_evaluation_queued: La réévaluation a été planifiée. La carte se mettra à jour
         lorsqu'elle sera terminée.
