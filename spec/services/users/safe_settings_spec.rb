@@ -49,6 +49,7 @@ RSpec.describe Users::SafeSettings do
             enabled_map_layers: %w[Tracks Heatmap],
             maps_maplibre_style: 'light',
             maps_maplibre_tiles_url: nil,
+            maps_maplibre_tiles_fallback: false,
             maps_maplibre_custom_theme: {
               'base' => 'noir',
               'tokens' => {
@@ -131,6 +132,7 @@ RSpec.describe Users::SafeSettings do
             'enabled_map_layers' => %w[Points Routes Areas Photos],
             'maps_maplibre_style' => 'light',
             'maps_maplibre_tiles_url' => nil,
+            'maps_maplibre_tiles_fallback' => false,
             'maps_maplibre_custom_theme' => {
               'base' => 'noir',
               'tokens' => {
@@ -189,6 +191,7 @@ RSpec.describe Users::SafeSettings do
             enabled_map_layers: %w[Points Routes Areas Photos],
             maps_maplibre_style: 'light',
             maps_maplibre_tiles_url: nil,
+            maps_maplibre_tiles_fallback: false,
             maps_maplibre_custom_theme: {
               'base' => 'noir',
               'tokens' => {
@@ -848,6 +851,20 @@ RSpec.describe Users::SafeSettings do
 
     it 'is included in config' do
       expect(described_class.new.config[:maps_maplibre_custom_theme]['base']).to eq('noir')
+    end
+  end
+
+  describe '#maps_maplibre_tiles_fallback?' do
+    it 'defaults to false' do
+      expect(described_class.new.maps_maplibre_tiles_fallback?).to be false
+    end
+
+    it 'casts a stored string to a boolean' do
+      expect(described_class.new({ 'maps_maplibre_tiles_fallback' => 'true' }).maps_maplibre_tiles_fallback?).to be true
+    end
+
+    it 'is exposed in config' do
+      expect(described_class.new.config).to have_key(:maps_maplibre_tiles_fallback)
     end
   end
 

@@ -25,6 +25,7 @@ export class MapInitializer {
       disabledPoiGroups = [],
       customTheme = null,
       vectorTilesUrl = null,
+      tilesFallback = false,
     } = settings
 
     const style = await getMapStyle(mapStyle, {
@@ -32,6 +33,7 @@ export class MapInitializer {
       disabledPoiGroups,
       customTheme,
       vectorTilesUrl,
+      tilesFallback,
     })
 
     const mapOptions = {
