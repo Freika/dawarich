@@ -374,7 +374,6 @@ Rails.application.routes.draw do
       namespace :tiles do
         get 'points/:z/:x/:y.mvt', to: 'points#show', defaults: { format: :mvt }
         get 'tracks/:z/:x/:y.mvt', to: 'tracks#show', defaults: { format: :mvt }
-        get 'anomalies/:z/:x/:y.mvt', to: 'anomalies#show', defaults: { format: :mvt }
       end
 
       resources :photos, only: %i[index] do

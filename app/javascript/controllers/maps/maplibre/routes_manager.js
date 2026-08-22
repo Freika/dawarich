@@ -701,7 +701,7 @@ export class RoutesManager {
     this.controller.settingsController?.syncTiledRenderingNote()
   }
 
-  // Tracks/routes/anomalies/fog read tiledPointsActive at construction — the
+  // Tracks/routes/fog read tiledPointsActive at construction — the
   // beta toggle and the fog-mode radio change it mid-session, so every
   // tiled-aware layer re-derives its renderer here (tiledLayerModes is the
   // node-tested truth table).
@@ -729,21 +729,6 @@ export class RoutesManager {
         console.error("Failed to refill classic tracks:", error)
         Toast.error(translate("messages.failed_to_load_tracks"))
       })
-    }
-
-    const anomaliesLayer = this.layerManager.getLayer("anomalies")
-    if (anomaliesLayer && settings.anomaliesEnabled) {
-      if (anomaliesLayer.tiled === modes.anomaliesTiled) {
-        // No renderer change — cheap range sync (no-ops when nothing changed).
-        anomaliesLayer.setTiled(
-          modes.anomaliesTiled,
-          this.layerManager.pointTileRange,
-        )
-      } else {
-        // Renderer flips: refreshAnomalies swaps the source mode and, on the
-        // classic side, re-fetches the data a tiled-first session never loaded.
-        this.refreshAnomalies({ enabled: true })
-      }
     }
 
     this.layerManager.getLayer("fog")?.setTiledSource(modes.fogTiled)
@@ -784,18 +769,6 @@ export class RoutesManager {
       anomaliesLayer.hide()
       return
     }
-
-    // Tiled mode: the anomalies tile endpoint serves the viewport on demand —
-    // no bulk pagination, no loading counter (tiles carry no total).
-    if (tiledPointsActive(SettingsManager.getSettings())) {
-      anomaliesLayer.setTiled(true, {
-        startAt: this.controller.startDateValue,
-        endAt: this.controller.endDateValue,
-      })
-      anomaliesLayer.show()
-      return
-    }
-    anomaliesLayer.setTiled(false)
 
     const fetchId = ++this._anomaliesFetchId
     this.controller.showProgress()

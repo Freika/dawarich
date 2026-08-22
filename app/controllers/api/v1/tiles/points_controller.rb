@@ -4,8 +4,7 @@ class Api::V1::Tiles::PointsController < ApiController
   include TileCacheable
 
   # ETag material — bump when the tile SQL or its emitted properties change,
-  # so a deploy invalidates cached tiles. A change to the SHARED
-  # Points::VectorTileQuery SQL bumps this AND the anomalies version.
+  # so a deploy invalidates cached tiles.
   TILE_SCHEMA_VERSION = 1
 
   private

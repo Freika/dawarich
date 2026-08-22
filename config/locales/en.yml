@@ -885,7 +885,7 @@ en:
         allow_dragging_points_to_correct_their_position_remembered_across_sessio: Allow dragging points to correct their position. Remembered across sessions.
         tiled_rendering: "Tiled rendering"
         beta: "Beta"
-        tiled_rendering_description: "Draws points, routes, tracks, anomalies and fog from vector tiles as you pan, so a long date range loads only what is in view. Routes show your generated tracks, colored per track."
+        tiled_rendering_description: "Draws points, routes, tracks and fog from vector tiles as you pan, so a long date range loads only what is in view. Routes show your generated tracks, colored per track."
         tiled_rendering_caveats: "Active while Scratch map is off. Dense areas merge into markers with a point count — zoom in to open individual points. Point editing is unavailable, routes are colored per track (average speed, not a gradient), hovering a route no longer shows its popup — click a track instead — and the live trail can lag a few minutes."
         routes: Routes
         show_connected_route_lines: Show connected route lines

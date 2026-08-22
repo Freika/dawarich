@@ -164,22 +164,21 @@ RSpec.describe 'API Rate Limiting', type: :request do
       expect(response).to have_http_status(:too_many_requests)
     end
 
-    it 'covers tracks and anomalies tiles with the same throttle key as points' do
+    it 'covers tracks tiles with the same throttle key as points' do
       Rack::Attack.tiles_limit = 5
 
-      2.times { get '/api/v1/tiles/points/0/0/0.mvt', params: { api_key: user.api_key } }
-      2.times { get '/api/v1/tiles/tracks/0/0/0.mvt', params: { api_key: user.api_key } }
-      2.times { get '/api/v1/tiles/anomalies/0/0/0.mvt', params: { api_key: user.api_key } }
+      3.times { get '/api/v1/tiles/points/0/0/0.mvt', params: { api_key: user.api_key } }
+      3.times { get '/api/v1/tiles/tracks/0/0/0.mvt', params: { api_key: user.api_key } }
 
       expect(response).to have_http_status(:too_many_requests)
     end
 
-    it 'keeps a realistic three-source pan sequence under the shipped burst budget' do
-      # ~30 tiles/source/pan × 3 sources × 3 rapid pans = 270 requests in one
-      # burst window — must fit the raised (900) budget with headroom.
-      sources = %w[points tracks anomalies]
-      270.times do |i|
-        get "/api/v1/tiles/#{sources[i % 3]}/0/0/0.mvt", params: { api_key: user.api_key }
+    it 'keeps a realistic two-source pan sequence under the shipped burst budget' do
+      # ~30 tiles/source/pan × 2 sources × 3 rapid pans = 180 requests in one
+      # burst window — must fit the raised (600) budget with headroom.
+      sources = %w[points tracks]
+      180.times do |i|
+        get "/api/v1/tiles/#{sources[i % 2]}/0/0/0.mvt", params: { api_key: user.api_key }
       end
 
       expect(response).not_to have_http_status(:too_many_requests)

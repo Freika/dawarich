@@ -152,7 +152,6 @@ export function tiledLayerModes(settings = {}) {
     },
     classicRoutes: routesOn && !tiled,
     classicTracks: tracksOn && !tiled,
-    anomaliesTiled: tiled,
     fogTiled,
     pointsSourceKeepAlive: fogTiled && Boolean(settings.fogEnabled),
   }

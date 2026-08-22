@@ -1544,7 +1544,7 @@ fr:
           la traînée des points pour corriger leur position. Mémorisé entre sessions.
         tiled_rendering: "Rendu par tuiles"
         beta: "Bêta"
-        tiled_rendering_description: "Dessine les points, itinéraires, tracks, anomalies et brouillard à partir de tuiles vectorielles pendant le déplacement, au lieu de charger toute la plage de dates à l'avance. Les itinéraires affichent vos tracks générés, colorés par track."
+        tiled_rendering_description: "Dessine les points, itinéraires, tracks et brouillard à partir de tuiles vectorielles pendant le déplacement, au lieu de charger toute la plage de dates à l'avance. Les itinéraires affichent vos tracks générés, colorés par track."
         tiled_rendering_caveats: "Actif tant que la carte à gratter est désactivée. Les zones denses sont fusionnées en marqueurs avec un compteur — zoomez pour ouvrir les points individuels. La modification des points est indisponible, les itinéraires sont colorés par track (vitesse moyenne, pas un dégradé), l'info-bulle d'itinéraire au survol disparaît — cliquez sur un track — et la trace en direct peut avoir quelques minutes de retard."
         routes: Itinéraires
         show_connected_route_lines: Afficher les lignes d'itinéraire connectées

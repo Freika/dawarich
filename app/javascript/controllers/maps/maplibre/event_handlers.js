@@ -111,8 +111,6 @@ export class EventHandlers {
    */
   handleAnomalyClick(e) {
     const feature = e.features[0]
-    // Tiled aggregates below the attribute zoom carry no id — nothing to show.
-    if (!shouldShowPointPopup(feature?.properties)) return
     const anomaliesLayer = this.controller.layerManager.getLayer("anomalies")
     if (!anomaliesLayer) return
 
