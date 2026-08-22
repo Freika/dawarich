@@ -888,8 +888,8 @@ de:
         allow_dragging_points_to_correct_their_position_remembered_across_sessio: Erlaube das Ziehen von Punkten, um ihre Position zu korrigieren. Wird über Sitzungen hinweg gespeichert.
         tiled_rendering: "Gekachelte Darstellung"
         beta: "Beta"
-        tiled_rendering_description: "Zeichnet Punkte beim Bewegen der Karte aus Vektorkacheln, statt den gesamten Zeitraum vorab zu laden."
-        tiled_rendering_caveats: "Dichte Bereiche werden zu Markern mit Punktanzahl zusammengefasst — zoome hinein, um einzelne Punkte zu öffnen. Bearbeitung ist nicht verfügbar, die Live-Spur kann einige Minuten nachhängen."
+        tiled_rendering_description: "Zeichnet Punkte, Routen, Tracks und Kartennebel beim Bewegen der Karte aus Vektorkacheln, statt den gesamten Zeitraum vorab zu laden. Routen zeigen deine erzeugten Tracks, je Track eingefärbt."
+        tiled_rendering_caveats: "Aktiv, solange die Rubbelkarte aus ist. Dichte Bereiche werden zu Markern mit Punktanzahl zusammengefasst — zoome hinein, um einzelne Punkte zu öffnen. Punktbearbeitung ist nicht verfügbar, Routen werden je Track eingefärbt (Durchschnittsgeschwindigkeit statt Verlauf), das Routen-Popup beim Überfahren entfällt — klicke stattdessen auf einen Track — und die Live-Spur kann einige Minuten nachhängen."
         routes: Routen
         show_connected_route_lines: Zeige verbundene Routenlinien
         color_by_speed: Farbe nach Geschwindigkeit
@@ -3667,6 +3667,7 @@ de:
       failed_to_load_photos: Fotos konnten nicht geladen werden
       failed_to_load_areas: Gebiete konnten nicht geladen werden
       failed_to_load_tracks: Tracks konnten nicht geladen werden
+      failed_to_load_track_details: Track-Details konnten nicht geladen werden
       failed_to_load_flights: Flüge konnten nicht geladen werden
       failed_to_load_anomalies: Anomalien konnten nicht geladen werden
       reloading_routes: Route wird neu geladen...
@@ -3786,9 +3787,9 @@ de:
           other: "Inaktiv, solange %{layers} aktiv sind — diese Ebenen benötigen alle Punkte."
         editing_unavailable: "Bei gekachelter Darstellung nicht verfügbar — Vektorkacheln haben keine verschiebbaren Punkte"
         failed: "Kartenkacheln konnten nicht geladen werden. Versuche einen kürzeren Zeitraum oder schalte die gekachelte Darstellung in den Karteneinstellungen aus."
+        tracks_pending: "Keine Tracks in diesem Ausschnitt. Routen zeigen bei gekachelter Darstellung deine erzeugten Tracks — verschiebe die Karte, erweitere den Zeitraum oder schau nach einem frischen Import später wieder vorbei."
+        splitting_unavailable: "Bei gekachelter Darstellung ohne Wirkung — Routen folgen deinen erzeugten Tracks."
         blockers:
-          routes: "Routen"
-          fog: "Kartennebel"
           scratch: "Rubbelkarte"
       places_layer: Ortsebene
       confirm_delete_point: Möchtest du diesen Punkt wirklich löschen?

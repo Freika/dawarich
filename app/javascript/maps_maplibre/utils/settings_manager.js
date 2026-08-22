@@ -113,15 +113,20 @@ const BACKEND_SETTINGS_MAP = {
   liveMapEnabled: "live_map_enabled",
 }
 
-// Layers that can only be drawn from the full point set. Heatmap is absent
-// when tiles are requested because it can read the tiled source instead.
+// Layers that can only be drawn from the full point set. With tiles requested,
+// routes ride the tracks tile source, fog reads the points tile source, and
+// heatmap reads the tiled source — only Scratch map still needs everything.
 export function bulkPointsRequired(settings = {}) {
   const tiledRequested = settings.pointsTiledRendering === true
 
   return (
-    settings.routesVisible !== false ||
+    Boolean(settings.routesVisible !== false && !tiledRequested) ||
     Boolean(settings.heatmapEnabled && !tiledRequested) ||
-    Boolean(settings.fogEnabled && settings.fogOfWarMode !== "hexagons") ||
+    Boolean(
+      settings.fogEnabled &&
+        settings.fogOfWarMode !== "hexagons" &&
+        !tiledRequested,
+    ) ||
     Boolean(settings.scratchEnabled)
   )
 }
@@ -129,6 +134,29 @@ export function bulkPointsRequired(settings = {}) {
 // Tiles only save anything when nothing else already needs the full set
 export function tiledPointsActive(settings = {}) {
   return settings.pointsTiledRendering === true && !bulkPointsRequired(settings)
+}
+
+// The renderer each tiled-aware layer must use for the CURRENT settings.
+// Layers read tiledPointsActive once at construction; flipping the beta
+// toggle (or the fog mode) mid-session re-derives everything through this
+// single truth table so no layer is left on the wrong renderer.
+export function tiledLayerModes(settings = {}) {
+  const tiled = tiledPointsActive(settings)
+  const routesOn = settings.routesVisible !== false
+  const tracksOn = settings.tracksEnabled === true
+  const fogTiled = tiled && (settings.fogOfWarMode || "points") !== "hexagons"
+
+  return {
+    tiled,
+    tracksMvt: {
+      tracksEnabled: tiled && tracksOn,
+      routesVisible: tiled && routesOn,
+    },
+    classicRoutes: routesOn && !tiled,
+    classicTracks: tracksOn && !tiled,
+    fogTiled,
+    pointsSourceKeepAlive: fogTiled && Boolean(settings.fogEnabled),
+  }
 }
 
 export class SettingsManager {

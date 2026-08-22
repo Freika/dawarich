@@ -152,12 +152,17 @@ export class DataLoader {
     // until each one finishes. Tracks and photos load in parallel after the
     // core data resolves, but the badge must still wait for them — otherwise
     // the badge disappears while track lines are still painting on the map.
+    // Tiled mode serves tracks (and Routes) from the tracks MVT source — the
+    // bulk GeoJSON fetch would duplicate every byte the tiles already carry.
+    const tracksViaBulk =
+      this.settings.tracksEnabled && !tiledPointsActive(current)
+
     if (counter) {
       if (needsPoints) counter.expect("points")
       if (this.settings.visitsEnabled) counter.expect("visits")
       if (this.settings.placesEnabled) counter.expect("places")
       if (this.settings.areasEnabled) counter.expect("areas")
-      if (this.settings.tracksEnabled) counter.expect("tracks")
+      if (tracksViaBulk) counter.expect("tracks")
       if (this.settings.photosEnabled) counter.expect("photos")
       if (this.settings.flightsEnabled) counter.expect("flights")
     }
@@ -357,7 +362,7 @@ export class DataLoader {
     const backgroundPromises = []
 
     // Background: Fetch tracks
-    if (this.settings.tracksEnabled && onTracksLoaded) {
+    if (tracksViaBulk && onTracksLoaded) {
       console.log("[Tracks] Starting background fetch...")
       const tracksTask = this.api
         .fetchTracks({

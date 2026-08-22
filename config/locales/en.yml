@@ -885,8 +885,8 @@ en:
         allow_dragging_points_to_correct_their_position_remembered_across_sessio: Allow dragging points to correct their position. Remembered across sessions.
         tiled_rendering: "Tiled rendering"
         beta: "Beta"
-        tiled_rendering_description: "Draws points from vector tiles as you pan, so a long date range loads only what is in view."
-        tiled_rendering_caveats: "Dense areas merge into markers with a point count — zoom in to open individual points. Editing is unavailable and the live trail can lag a few minutes."
+        tiled_rendering_description: "Draws points, routes, tracks and fog from vector tiles as you pan, so a long date range loads only what is in view. Routes show your generated tracks, colored per track."
+        tiled_rendering_caveats: "Active while Scratch map is off. Dense areas merge into markers with a point count — zoom in to open individual points. Point editing is unavailable, routes are colored per track (average speed, not a gradient), hovering a route no longer shows its popup — click a track instead — and the live trail can lag a few minutes."
         routes: Routes
         show_connected_route_lines: Show connected route lines
         color_by_speed: Color by speed
@@ -3639,6 +3639,7 @@ en:
       failed_to_load_photos: Failed to load photos
       failed_to_load_areas: Failed to load areas
       failed_to_load_tracks: Failed to load tracks
+      failed_to_load_track_details: Failed to load track details
       failed_to_load_flights: Failed to load flights
       failed_to_load_anomalies: Failed to load anomalies
       reloading_routes: Reloading routes...
@@ -3758,9 +3759,9 @@ en:
           other: "Inactive while %{layers} are on — those need the full point set."
         editing_unavailable: "Not available with tiled rendering, vector tiles have no draggable points"
         failed: "Could not load map tiles. Try a shorter date range, or turn off tiled rendering in map settings."
+        tracks_pending: "No tracks in this view. Routes under tiled rendering show your generated tracks — pan or widen the date range, or check back if your history was imported recently."
+        splitting_unavailable: "Not used with tiled rendering — routes follow your generated tracks."
         blockers:
-          routes: "Routes"
-          fog: "Fog of War"
           scratch: "Scratch map"
       places_layer: Places Layer
       confirm_delete_point: Are you sure you want to delete this point?

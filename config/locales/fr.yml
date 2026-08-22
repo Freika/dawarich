@@ -1544,8 +1544,8 @@ fr:
           la traînée des points pour corriger leur position. Mémorisé entre sessions.
         tiled_rendering: "Rendu par tuiles"
         beta: "Bêta"
-        tiled_rendering_description: "Dessine les points à partir de tuiles vectorielles pendant le déplacement, au lieu de charger toute la plage de dates à l'avance."
-        tiled_rendering_caveats: "Les zones denses sont fusionnées en marqueurs avec un compteur — zoomez pour ouvrir les points individuels. La modification est indisponible et la trace en direct peut avoir quelques minutes de retard."
+        tiled_rendering_description: "Dessine les points, itinéraires, tracks et brouillard à partir de tuiles vectorielles pendant le déplacement, au lieu de charger toute la plage de dates à l'avance. Les itinéraires affichent vos tracks générés, colorés par track."
+        tiled_rendering_caveats: "Actif tant que la carte à gratter est désactivée. Les zones denses sont fusionnées en marqueurs avec un compteur — zoomez pour ouvrir les points individuels. La modification des points est indisponible, les itinéraires sont colorés par track (vitesse moyenne, pas un dégradé), l'info-bulle d'itinéraire au survol disparaît — cliquez sur un track — et la trace en direct peut avoir quelques minutes de retard."
         routes: Itinéraires
         show_connected_route_lines: Afficher les lignes d'itinéraire connectées
         color_by_speed: Colorer par vitesse
@@ -4859,6 +4859,7 @@ fr:
       failed_to_load_photos: Échec du chargement des photos
       failed_to_load_areas: Échec du chargement des zones
       failed_to_load_tracks: Échec du chargement des trajets
+      failed_to_load_track_details: Échec du chargement des détails du trajet
       failed_to_load_flights: Échec du chargement des vols
       failed_to_load_anomalies: Échec du chargement des anomalies
       reloading_routes: Rechargement des itinéraires...
@@ -4996,9 +4997,9 @@ fr:
           other: "Inactif tant que %{layers} sont activés — ces couches nécessitent tous les points."
         editing_unavailable: "Indisponible avec le rendu par tuiles : les tuiles vectorielles n'ont pas de points déplaçables"
         failed: "Impossible de charger les tuiles de la carte. Essayez une plage de dates plus courte ou désactivez le rendu par tuiles dans les paramètres de la carte."
+        tracks_pending: "Aucun track dans cette vue. Avec les tuiles, les itinéraires affichent vos tracks générés — déplacez la carte, élargissez la période ou revenez plus tard après un import récent."
+        splitting_unavailable: "Sans effet avec le rendu par tuiles — les itinéraires suivent vos tracks générés."
         blockers:
-          routes: "Itinéraires"
-          fog: "Brouillard de guerre"
           scratch: "Carte à gratter"
       places_layer: Couche de lieux
       confirm_delete_point: Voulez-vous vraiment supprimer ce point ?

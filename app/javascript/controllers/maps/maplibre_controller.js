@@ -65,6 +65,7 @@ export default class extends Controller {
     "pointsTiledToggle",
     "pointsTiledInactiveNote",
     "pointsEditUnavailableNote",
+    "routeSplittingUnavailableNote",
     "routesToggle",
     "heatmapToggle",
     "hexagonsToggle",
