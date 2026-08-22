@@ -12,11 +12,12 @@ DISTANCE_UNITS = {
 
 APP_VERSION = File.read('.app_version').strip
 
-# Reverse geocoding settings
+# Reverse geocoding settings. When set, these apply instance-wide and take
+# precedence over per-user provider settings (Settings -> Geocoding).
 PHOTON_API_HOST = ENV.fetch('PHOTON_API_HOST', nil)
 PHOTON_API_KEY = ENV.fetch('PHOTON_API_KEY', nil)
 PHOTON_API_USE_HTTPS = ENV.fetch('PHOTON_API_USE_HTTPS', 'false') == 'true'
-PHOTON_HTTPS_ONLY_HOSTS = %w[photon.dawarich.app photon.komoot.io].freeze
+PHOTON_HTTPS_ONLY_HOSTS = %w[photon.dawarich.app photon.komoot.io app.chibigeo.com].freeze
 
 NOMINATIM_API_HOST = ENV.fetch('NOMINATIM_API_HOST', nil)
 NOMINATIM_API_KEY = ENV.fetch('NOMINATIM_API_KEY', nil)

@@ -14,7 +14,7 @@
       }
     %>
   </td>
-  <% if DawarichSettings.reverse_geocoding_enabled? %>
+  <% if reverse_geocoding_enabled_for?(current_user) %>
     <td class="px-3 py-2 text-sm text-left text-base-content/60" style="overflow: visible;">
       <% props = point.geodata.is_a?(Hash) ? point.geodata['properties'] : nil %>
       <% if props.present? %>

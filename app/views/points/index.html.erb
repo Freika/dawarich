@@ -75,7 +75,7 @@
                   class: 'checkbox checkbox-xs'
                 %>
               </th>
-              <% if DawarichSettings.reverse_geocoding_enabled? %>
+              <% if reverse_geocoding_enabled_for?(current_user) %>
                 <th class="px-3 py-2.5 text-xs uppercase tracking-wider text-left text-base-content/50 w-4/12"><%= t('.address') %></th>
               <% end %>
               <th class="px-3 py-2.5 text-xs uppercase tracking-wider text-base-content/50 text-right w-1/12"><%= t('.speed') %></th>

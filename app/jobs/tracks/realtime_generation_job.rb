@@ -42,7 +42,7 @@ class Tracks::RealtimeGenerationJob < ApplicationJob
   private
 
   def enqueue_reverse_geocoding(user)
-    return unless DawarichSettings.reverse_geocoding_enabled?
+    return unless Geocoding::Config.for(user.id).enabled?
 
     user.points
         .not_reverse_geocoded

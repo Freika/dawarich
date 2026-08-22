@@ -83,6 +83,7 @@ class PlacesController < ApplicationController
     radius = params[:radius]&.to_f || 0.5
 
     results = Places::NearbySearch.new(
+      user: current_user,
       latitude: params[:latitude].to_f,
       longitude: params[:longitude].to_f,
       radius: radius,

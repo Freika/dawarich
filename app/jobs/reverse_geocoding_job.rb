@@ -5,9 +5,13 @@ class ReverseGeocodingJob < ApplicationJob
   sidekiq_options retry: 3
 
   def perform(klass, id, force: false)
-    return unless DawarichSettings.reverse_geocoding_enabled?
+    record = klass.to_s.classify.constantize.find_by(id: id)
+    return if record.nil?
 
-    rate_limit_for_photon_api
+    config = Geocoding::Config.for(record.user_id)
+    return unless config.enabled?
+
+    sleep 1 if config.komoot?
 
     data_fetcher(klass, id, force).call
   ensure
@@ -27,11 +31,5 @@ class ReverseGeocodingJob < ApplicationJob
 
   def data_fetcher(klass, id, force)
     "ReverseGeocoding::#{klass.pluralize.camelize}::FetchData".constantize.new(id, force: force)
-  end
-
-  def rate_limit_for_photon_api
-    return unless DawarichSettings.photon_enabled?
-
-    sleep 1 if DawarichSettings.photon_uses_komoot_io?
   end
 end
