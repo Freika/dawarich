@@ -215,10 +215,20 @@ export class LayerManager {
       const trackPointFeatures = this.map.getLayer("track-points")
         ? this.map.queryRenderedFeatures(e.point, { layers: ["track-points"] })
         : []
+      // Tiled tracks select via their own click handler — without them here a
+      // tiled-track click would deselect first and stay deselected whenever
+      // the async detail fetch fails.
+      const tiledTrackFeatures = this.map.getLayer("tracks-mvt")
+        ? this.map.queryRenderedFeatures(e.point, { layers: ["tracks-mvt"] })
+        : []
       if (routeFeatures.length === 0) {
         handlers.clearRouteSelection()
       }
-      if (trackFeatures.length === 0 && trackPointFeatures.length === 0) {
+      if (
+        trackFeatures.length === 0 &&
+        tiledTrackFeatures.length === 0 &&
+        trackPointFeatures.length === 0
+      ) {
         handlers.clearTrackSelection()
       }
     })
