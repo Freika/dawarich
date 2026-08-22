@@ -74,6 +74,23 @@ RSpec.describe 'Api::V1::Families::LocationRequests', type: :request do
 
       expect(response).to have_http_status(:forbidden)
     end
+
+    it 'returns 404 for an unknown request id' do
+      post '/api/v1/families/location_requests/0/accept',
+           headers: { 'Authorization' => "Bearer #{target.api_key}" }
+
+      expect(response).to have_http_status(:not_found)
+    end
+
+    it 'returns 422 for an expired request' do
+      request_record.update!(expires_at: 1.hour.ago)
+
+      post "/api/v1/families/location_requests/#{request_record.id}/accept",
+           headers: { 'Authorization' => "Bearer #{target.api_key}" }
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(target.reload.family_sharing_enabled?).to be false
+    end
   end
 
   describe 'POST /api/v1/families/location_requests/:id/decline' do
@@ -87,6 +104,15 @@ RSpec.describe 'Api::V1::Families::LocationRequests', type: :request do
 
       expect(response).to have_http_status(:ok)
       expect(request_record.reload).to be_declined
+    end
+
+    it 'returns 422 for an already responded request' do
+      request_record.update!(status: :declined, responded_at: Time.current)
+
+      post "/api/v1/families/location_requests/#{request_record.id}/decline",
+           headers: { 'Authorization' => "Bearer #{target.api_key}" }
+
+      expect(response).to have_http_status(:unprocessable_content)
     end
   end
 end
