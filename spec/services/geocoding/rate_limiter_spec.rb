@@ -10,8 +10,8 @@ RSpec.describe Geocoding::RateLimiter do
   let(:fast) { config_for('photon.example.com', rps: 10) }
 
   before do
+    described_class.reset!
     allow(described_class).to receive(:sleep)
-    Sidekiq.redis { |redis| redis.keys("#{described_class::NAMESPACE}:*").each { |key| redis.del(key) } }
   end
 
   describe '.throttle' do
@@ -25,15 +25,14 @@ RSpec.describe Geocoding::RateLimiter do
       expect(described_class).not_to have_received(:sleep)
     end
 
-    it 'does not wait for the first request in an empty bucket' do
+    it 'does not wait for the first request' do
       described_class.throttle(fast) { :ok }
 
       expect(described_class).not_to have_received(:sleep)
     end
 
     it 'spaces the next request by one interval' do
-      described_class.throttle(fast) { :ok }
-      described_class.throttle(fast) { :ok }
+      2.times { described_class.throttle(fast) { :ok } }
 
       expect(described_class).to have_received(:sleep).with(be_within(0.02).of(0.1)).once
     end
@@ -44,12 +43,14 @@ RSpec.describe Geocoding::RateLimiter do
       expect(described_class).to have_received(:sleep).with(be_within(0.02).of(0.2)).once
     end
 
-    it 'still runs the block when redis is unreachable' do
-      allow(Sidekiq).to receive(:redis).and_raise(Redis::CannotConnectError)
-      allow(Rails.logger).to receive(:warn)
+    it 'does not bank credit while a provider sits idle' do
+      quick = config_for('photon.example.com', rps: 100)
+      described_class.throttle(quick) { :ok }
+      Kernel.sleep(0.05)
 
-      expect(described_class.throttle(fast) { :ok }).to eq(:ok)
-      expect(Rails.logger).to have_received(:warn).with(/RateLimiter/)
+      described_class.throttle(quick) { :ok }
+
+      expect(described_class).not_to have_received(:sleep)
     end
   end
 
@@ -69,11 +70,8 @@ RSpec.describe Geocoding::RateLimiter do
     end
 
     it 'shares one bucket across everyone pointed at the same host' do
-      alice = config_for('photon.example.com', rps: 10)
-      bob = config_for('photon.example.com', rps: 10)
-
-      described_class.throttle(alice) { :ok }
-      described_class.throttle(bob) { :ok }
+      described_class.throttle(config_for('photon.example.com', rps: 10)) { :ok }
+      described_class.throttle(config_for('photon.example.com', rps: 10)) { :ok }
 
       expect(described_class).to have_received(:sleep).once
     end
@@ -86,48 +84,20 @@ RSpec.describe Geocoding::RateLimiter do
     end
   end
 
-  describe 'wait budget' do
-    let(:slow) { config_for('photon.example.com', rps: 0.5) }
+  describe 'concurrent workers' do
+    it 'hands every thread its own slot instead of letting two share one' do
+      waits = Queue.new
+      allow(described_class).to receive(:sleep) { |seconds| waits << seconds }
+      crawl = config_for('photon.example.com', rps: 1000)
 
-    it 'gives up its place in line rather than hanging a web request' do
-      allow(Sidekiq).to receive(:server?).and_return(false)
+      threads = 5.times.map { Thread.new { described_class.throttle(crawl) { :ok } } }
+      threads.each(&:join)
 
-      described_class.throttle(slow) { :ok }
-      before_slot = Sidekiq.redis { |redis| redis.get(described_class.key_for(slow)) }
-      expect(described_class.throttle(slow) { :ok }).to eq(:ok)
-      after_slot = Sidekiq.redis { |redis| redis.get(described_class.key_for(slow)) }
-
-      expect(described_class).not_to have_received(:sleep)
-      expect(after_slot).to eq(before_slot)
-    end
-
-    it 'waits out the interval inside a worker' do
-      allow(Sidekiq).to receive(:server?).and_return(true)
-
-      described_class.throttle(slow) { :ok }
-      described_class.throttle(slow) { :ok }
-
-      expect(described_class).to have_received(:sleep).with(be_within(0.05).of(2.0)).once
-    end
-
-    it 'warns when a worker has to wait a long time' do
-      allow(Sidekiq).to receive(:server?).and_return(true)
-      allow(Rails.logger).to receive(:warn)
-      crawl = config_for('photon.example.com', rps: 0.1)
-
-      3.times { described_class.throttle(crawl) { :ok } }
-
-      expect(Rails.logger).to have_received(:warn).with(/RateLimiter/).at_least(:once)
-    end
-  end
-
-  describe '.key_for' do
-    it 'expires the reservation so a stale slot cannot pin the bucket forever' do
-      described_class.throttle(fast) { :ok }
-
-      ttl = Sidekiq.redis { |redis| redis.ttl(described_class.key_for(fast)) }
-
-      expect(ttl).to be > 0
+      # Four threads wait (the first goes straight through), and no two waits
+      # land on the same slot: 1ms, 2ms, 3ms, 4ms in whatever order they queued.
+      collected = Array.new(waits.size) { waits.pop }.sort
+      expect(collected.size).to eq(4)
+      expect(collected.map { |w| (w * 1000).round }).to eq([1, 2, 3, 4])
     end
   end
 end
