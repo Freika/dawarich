@@ -1090,6 +1090,203 @@ paths:
           description: digest not found
         '401':
           description: unauthorized
+  "/api/v1/families/location_requests":
+    post:
+      summary: Creates a location sharing request for a family member
+      tags:
+      - Families
+      description: Sends a request asking a family member to share their location.
+        Requires the Family plan (any plan on self-hosted) and family membership.
+      parameters:
+      - name: Authorization
+        in: header
+        required: true
+        description: Bearer <API Key>
+        schema:
+          type: string
+      responses:
+        '201':
+          description: location request created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  request:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      target_user_id:
+                        type: integer
+                      expires_at:
+                        type: string
+        '404':
+          description: target not found in your family
+        '422':
+          description: target already sharing their location
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '429':
+          description: request cooldown active
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                target_user_id:
+                  type: integer
+                  description: ID of the family member to request location from
+              required:
+              - target_user_id
+  "/api/v1/families/location_requests/{id}/accept":
+    parameters:
+    - name: id
+      in: path
+      description: Location request ID
+      required: true
+      schema:
+        type: integer
+    post:
+      summary: Accepts a location sharing request
+      tags:
+      - Families
+      description: Accepts a pending location request and enables sharing for the
+        responder. Requires the Family plan (any plan on self-hosted) and family membership.
+      parameters:
+      - name: Authorization
+        in: header
+        required: true
+        description: Bearer <API Key>
+        schema:
+          type: string
+      responses:
+        '200':
+          description: request accepted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  status:
+                    type: string
+        '403':
+          description: not authorized to respond to this request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '404':
+          description: location request not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        '422':
+          description: request expired or already responded to
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                duration:
+                  type: string
+                  enum:
+                  - 1h
+                  - 6h
+                  - 12h
+                  - 24h
+                  - permanent
+                  description: How long sharing stays on
+  "/api/v1/families/location_requests/{id}/decline":
+    parameters:
+    - name: id
+      in: path
+      description: Location request ID
+      required: true
+      schema:
+        type: integer
+    post:
+      summary: Declines a location sharing request
+      tags:
+      - Families
+      description: Declines a pending location request. Requires the Family plan (any
+        plan on self-hosted) and family membership.
+      parameters:
+      - name: Authorization
+        in: header
+        required: true
+        description: Bearer <API Key>
+        schema:
+          type: string
+      responses:
+        '200':
+          description: request declined
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  status:
+                    type: string
+        '403':
+          description: not authorized to respond to this request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '404':
+          description: location request not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        '422':
+          description: request expired or already responded to
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
   "/api/v1/families/locations":
     get:
       summary: Retrieves family members' locations
@@ -1216,6 +1413,117 @@ paths:
                     description: URL to upgrade to the Family plan
         '401':
           description: unauthorized
+  "/api/v1/families/mine":
+    get:
+      summary: Retrieves the current user's family overview
+      tags:
+      - Families
+      description: Returns the family, all members with sharing state, the current
+        user's sharing settings, and active location requests. Requires the Family
+        plan (any plan on self-hosted) and family membership.
+      parameters:
+      - name: Authorization
+        in: header
+        required: true
+        description: Bearer <API Key>
+        schema:
+          type: string
+      responses:
+        '200':
+          description: family overview
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  family:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                  me:
+                    type: object
+                  members:
+                    type: array
+                    items:
+                      type: object
+                  location_requests:
+                    type: object
+        '404':
+          description: user not in a family
+  "/api/v1/families/sharing":
+    patch:
+      summary: Updates the current user's family location sharing
+      tags:
+      - Families
+      description: Enables or disables family location sharing for the current user,
+        with an optional expiration duration and history-sharing settings. Requires
+        the Family plan (any plan on self-hosted) and family membership.
+      parameters:
+      - name: Authorization
+        in: header
+        required: true
+        description: Bearer <API Key>
+        schema:
+          type: string
+      responses:
+        '200':
+          description: sharing settings updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  enabled:
+                    type: boolean
+                  duration:
+                    type: string
+                  message:
+                    type: string
+        '400':
+          description: enabled parameter missing
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        '404':
+          description: user not in a family
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                enabled:
+                  type: boolean
+                  description: Whether to enable or disable sharing
+                duration:
+                  type: string
+                  enum:
+                  - 1h
+                  - 6h
+                  - 12h
+                  - 24h
+                  - permanent
+                  description: How long sharing stays on
+                share_history:
+                  type: boolean
+                  description: Whether to also share location history
+                history_window:
+                  type: string
+                  enum:
+                  - 24h
+                  - 7d
+                  - 30d
+                  - all
+                  description: How far back shared history goes
+              required:
+              - enabled
   "/api/v1/health":
     get:
       summary: Retrieves application status

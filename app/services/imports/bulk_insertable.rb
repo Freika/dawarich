@@ -17,6 +17,8 @@ module Imports
       Rails.logger.info("[#{importer_name}] skipped #{zero_skipped} Null Island (0,0) points") if zero_skipped.positive?
       return 0 if unique_batch.empty?
 
+      dimension_resolver.stamp(unique_batch)
+
       result = Point.upsert_all(
         unique_batch,
         unique_by: %i[user_id timestamp lonlat],
@@ -39,6 +41,13 @@ module Imports
       on_bulk_insert_error(e)
       create_import_error_notification("Failed to process #{importer_name} data: #{e.message}")
       0
+    end
+
+    # Memoised across batches: one import usually carries a single
+    # device/importer combo, so the resolver's cache turns the whole run into
+    # one lookup instead of one per batch.
+    def dimension_resolver
+      @dimension_resolver ||= Points::DimensionResolver.new
     end
 
     # Importers that wrap the whole import in a transaction override this to true, so an

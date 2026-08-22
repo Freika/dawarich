@@ -324,6 +324,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_19_120100) do
     t.index ["user_id"], name: "index_places_on_user_id"
   end
 
+  create_table "point_sources", id: :serial, force: :cascade do |t|
+    t.integer "battery_status"
+    t.string "bssid"
+    t.integer "connection"
+    t.datetime "created_at", null: false
+    t.string "digest", limit: 32, null: false
+    t.text "in_regions", array: true
+    t.text "inrids", array: true
+    t.string "ssid"
+    t.string "topic"
+    t.string "tracker_id"
+    t.integer "trigger"
+    t.datetime "updated_at", null: false
+    t.index ["digest"], name: "index_point_sources_on_digest", unique: true
+  end
+
   create_table "points", force: :cascade do |t|
     t.integer "accuracy"
     t.integer "altitude"
@@ -353,6 +369,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_19_120100) do
     t.bigint "raw_data_archive_id"
     t.boolean "raw_data_archived", default: false, null: false
     t.datetime "reverse_geocoded_at"
+    t.integer "source_id"
     t.string "ssid"
     t.integer "timestamp"
     t.string "topic"
@@ -371,7 +388,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_19_120100) do
     t.index ["track_id", "timestamp"], name: "idx_points_track_id_timestamp"
     t.index ["user_id", "id"], name: "index_points_on_unarchived", where: "((raw_data_archived = false) AND (raw_data <> '{}'::jsonb))"
     t.index ["user_id", "timestamp", "lonlat"], name: "index_points_on_user_id_timestamp_lonlat", unique: true
-    t.index ["user_id", "timestamp"], name: "idx_points_user_visit_null_timestamp", where: "(visit_id IS NULL)"
     t.index ["user_id"], name: "idx_points_user_id_legacy_tracker", where: "((tracker_id)::text = ANY (ARRAY[('google-maps-timeline-export'::character varying)::text, ('google-maps-phone-timeline-export'::character varying)::text]))"
     t.index ["visit_id"], name: "index_points_on_visit_id"
   end

@@ -1950,12 +1950,13 @@ en:
         one: "%{count} city"
         other: "%{count} cities"
     reverse_geocoding_stats:
-      reverse_geocoded_points: Reverse geocoded points
       points_without_data: points without data
+      points_that_were_reverse_geocoded_but_had_no_data: Points that were reverse geocoded but had no data
+      percent_of_total: "%{percent}%% of all points"
+      reverse_geocoded_points: Reverse geocoded points
       countries_visited: Countries visited
       close: close
       cities_visited: Cities visited
-      points_that_were_reverse_geocoded_but_had_no_data: Points that were reverse geocoded but had no data
     stat:
       total_distance: Total distance
       year_month: "%{year}/%{month}"
@@ -2718,10 +2719,14 @@ en:
           digest_already_exists: Digest already exists
           digest_for_year_is_being_generated: Digest for %{year} is being generated
         families:
+          location_requests:
+            not_found: Location request not found
           locations:
             start_at_and_end_at_are_required: start_at and end_at are required
             invalid_date_format: Invalid date format
             user_is_not_part_of_a_family: User is not part of a family
+          sharing:
+            missing_required_parameter_param: 'Missing required parameter: %{parameter}'
         imports:
           pending:
             an_error_occurred: An error occurred
@@ -3279,6 +3284,10 @@ en:
           email_has_been_removed_from_the_family_family_name: '%{email} has been removed from the family "%{family_name}"'
           an_unexpected_error_occurred_while_removing_the_membership_please_try: An unexpected error occurred while removing the membership. Please try again
           failed_to_leave: 'Failed to leave family: %{message}'
+      respond_to_location_request:
+        an_error_occurred: An error occurred
+        not_authorized: You are not authorized to respond to this request
+        no_longer_actionable: This request has expired or already been responded to
       update_location_sharing:
         update_failed: Failed to update location sharing setting
         unexpected_error: An error occurred while updating location sharing

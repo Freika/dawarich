@@ -1955,12 +1955,13 @@ de:
         one: "%{count} Stadt"
         other: "%{count} Städte"
     reverse_geocoding_stats:
-      reverse_geocoded_points: Umgekehrte Geokodierungspunkte
       points_without_data: Punkte ohne Daten
+      points_that_were_reverse_geocoded_but_had_no_data: Punkte, die umgekehrt geokodiert wurden, aber keine Daten hatten
+      percent_of_total: "%{percent}%% aller Punkte"
+      reverse_geocoded_points: Umgekehrte Geokodierungspunkte
       countries_visited: Besuchte Länder
       close: schließen
       cities_visited: Besuchte Städte
-      points_that_were_reverse_geocoded_but_had_no_data: Punkte, die umgekehrt geokodiert wurden, aber keine Daten hatten
     stat:
       total_distance: Gesamte Entfernung
       year_month: "%{year}/%{month}"
@@ -2778,10 +2779,14 @@ de:
           digest_already_exists: Digest existiert bereits
           digest_for_year_is_being_generated: Digest für %{year} wird generiert
         families:
+          location_requests:
+            not_found: Standortanfrage nicht gefunden
           locations:
             start_at_and_end_at_are_required: start_at und end_at sind erforderlich
             invalid_date_format: Ungültiges Datum im Format
             user_is_not_part_of_a_family: Benutzer ist nicht Teil einer Familie
+          sharing:
+            missing_required_parameter_param: 'Fehlender erforderlicher Parameter: %{parameter}'
         imports:
           pending:
             an_error_occurred: Ein Fehler ist aufgetreten
@@ -3341,6 +3346,10 @@ de:
           email_has_been_removed_from_the_family_family_name: '%{email} wurde von der Familie "%{family_name}" entfernt'
           an_unexpected_error_occurred_while_removing_the_membership_please_try: Beim Entfernen der Mitgliedschaft ist ein unerwarteter Fehler aufgetreten. Bitte versuche es erneut
           failed_to_leave: 'Verlassen fehlgeschlagen: %{message}'
+      respond_to_location_request:
+        an_error_occurred: Ein Fehler ist aufgetreten
+        not_authorized: Du bist nicht berechtigt, auf diese Anfrage zu antworten
+        no_longer_actionable: Diese Anfrage ist abgelaufen oder wurde bereits beantwortet
       update_location_sharing:
         update_failed: Aktualisierung der Standortfreigabe fehlgeschlagen
         unexpected_error: Beim Aktualisieren der Standortfreigabe ist ein Fehler aufgetreten

@@ -2820,13 +2820,13 @@ fr:
         one: "%{count} ville"
         other: "%{count} villes"
     reverse_geocoding_stats:
-      reverse_geocoded_points: Points géocodés inverses
       points_without_data: points sans données
+      points_that_were_reverse_geocoded_but_had_no_data: Points qui ont été géocodés mais sans données
+      percent_of_total: "%{percent}%% de tous les points"
+      reverse_geocoded_points: Points géocodés inverses
       countries_visited: Pays visités
       close: Fermer
       cities_visited: Villes visitées
-      points_that_were_reverse_geocoded_but_had_no_data: Points qui ont été géocodés
-        mais n'avaient pas de données
     stat:
       total_distance: Distance totale
       year_month: "%{year}/%{month}"
@@ -3653,10 +3653,14 @@ fr:
           digest_for_year_is_being_generated: Génération du récapitulatif pour %{year}
             en cours
         families:
+          location_requests:
+            not_found: Demande de localisation introuvable
           locations:
             start_at_and_end_at_are_required: start_at et end_at sont obligatoires
             invalid_date_format: Format de date non valide
             user_is_not_part_of_a_family: L'utilisateur n'est pas membre d'une famille
+          sharing:
+            missing_required_parameter_param: 'Paramètre requis manquant : %{parameter}'
         imports:
           pending:
             an_error_occurred: Une erreur s'est produite
@@ -4397,6 +4401,10 @@ fr:
             erreur inattendue est survenue lors de la suppression de l'adhésion. Veuillez
             essayer à nouveau.
           failed_to_leave: 'Impossible de quitter la famille : %{message}'
+      respond_to_location_request:
+        an_error_occurred: Une erreur s'est produite
+        not_authorized: Vous n'êtes pas autorisé à répondre à cette demande
+        no_longer_actionable: Cette demande a expiré ou a déjà reçu une réponse
       update_location_sharing:
         update_failed: Échec de mise à jour de la configuration de partage de localisation
         unexpected_error: Une erreur s'est produite lors de la mise à jour du partage

@@ -88,6 +88,11 @@ class Users::ImportData::Points
 
     normalized_batch = normalize_point_keys(@buffer)
 
+    # Dual-write the dimension FK: the backfill only sweeps rows that exist
+    # when it passes. Stamped after key normalization so every row carries the
+    # key uniformly, as upsert_all requires.
+    dimension_resolver.stamp(normalized_batch)
+
     begin
       result = Point.upsert_all(
         normalized_batch,
@@ -116,6 +121,10 @@ class Users::ImportData::Points
     ensure
       @buffer.clear
     end
+  end
+
+  def dimension_resolver
+    @dimension_resolver ||= Points::DimensionResolver.new
   end
 
   def preload_reference_data

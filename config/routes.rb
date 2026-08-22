@@ -404,9 +404,17 @@ Rails.application.routes.draw do
       end
 
       namespace :families do
+        resource :mine, only: [:show], controller: 'mine'
+        resource :sharing, only: [:update], controller: 'sharing'
         resources :locations, only: [:index] do
           collection do
             get :history
+          end
+        end
+        resources :location_requests, only: [:create] do
+          member do
+            post :accept
+            post :decline
           end
         end
       end
