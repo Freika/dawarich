@@ -85,6 +85,18 @@ RSpec.describe UserFamily do
         expect(user.family_sharing_expires_at).to be_within(1.second).of(original_expires_at)
       end
     end
+
+    it 're-arms an expired timed share when re-enabling without a duration' do
+      user.update_family_location_sharing!(true, duration: '1h')
+
+      travel 2.hours do
+        user.update_family_location_sharing!(true, share_history: true)
+
+        expect(user.family_sharing_enabled?).to be(true)
+        expect(user.family_sharing_duration).to eq('1h')
+        expect(user.family_sharing_expires_at).to be_within(1.second).of(1.hour.from_now)
+      end
+    end
   end
 
   describe '#family_history_points' do
