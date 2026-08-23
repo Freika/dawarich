@@ -1235,7 +1235,7 @@ zh:
       no_tags: 无标签
       recent_visits: 最近到访
       rarr: →
-      on: 于
+      'on': 于
       no_visits_yet: 尚无到访记录
       rename: 重命名
       merge: 合并
