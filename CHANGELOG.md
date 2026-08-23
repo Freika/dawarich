@@ -6,8 +6,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Dawarich can now be used in Polish: pick it under Settings → General. Thanks @Kliiper for the translation! (#3357)
+
 ### Fixed
 
+- The action buttons in page headers — New trip, New import, New tag, Mark all as read and the rest — are now translated. They were asking for a key that no language file defines, so every language showed the English text.
+- The points page now counts its points in Polish, German and Spanish instead of falling back to an untranslated string.
 - A phone that replays a stale cached position after landing no longer bills the trip as dozens of instant intercontinental flights. Bursts of identical coordinates reached and left at impossible speed are now flagged however long they run, and monthly distance ignores any leg faster than 1,200 km/h. Stored anomaly flags, tracks and statistics are re-evaluated by a background job after upgrading; it runs on the lowest-priority queue and does not interrupt tracking, and your existing monthly totals will change once it reaches them. A track drawn through such a burst can still read longer than the day it belongs to, because the speed ceiling applies to distance totals rather than to stored tracks.
 
 ## [1.13.1] - 2026-08-22, Berlin
