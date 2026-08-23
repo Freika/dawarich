@@ -1,5 +1,5 @@
 <div class="rounded-box border border-base-content/10 bg-base-200 max-w-3xl">
-  <%= form_for :settings, url: settings_integrations_path, method: :patch, data: { turbo_method: :patch, turbo: false } do |f| %>
+  <%= form_with scope: :settings, url: settings_integrations_path, method: :patch, data: { turbo: false } do |f| %>
     <%= hidden_field_tag :service, 'airtrail' %>
     <div class="card-body space-y-5">
       <div class="flex items-center gap-3">
@@ -36,7 +36,12 @@
         </div>
       </div>
       <% if current_user.safe_settings.settings['airtrail_last_synced_at'].present? %>
-        <p class="label-text-alt text-base-content/60"><%= t('settings.integrations.index.last_synced') %> <%= current_user.safe_settings.settings['airtrail_last_synced_at'] %></p>
+        <% last_synced = begin
+             Time.zone.parse(current_user.safe_settings.settings['airtrail_last_synced_at'])
+           rescue ArgumentError
+             nil
+           end %>
+        <p class="label-text-alt text-base-content/60"><%= t('settings.integrations.index.last_synced') %> <%= last_synced ? l(last_synced, format: :long) : current_user.safe_settings.settings['airtrail_last_synced_at'] %></p>
       <% end %>
       <div class="card-actions">
         <%= f.submit t('settings.integrations.index.save_test_connection'), class: 'btn btn-primary' %>

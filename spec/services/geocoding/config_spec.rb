@@ -207,6 +207,13 @@ RSpec.describe Geocoding::Config do
       expect(described_class.for(user).cache_digest).to eq(described_class.for(user).cache_digest)
     end
 
+    it 'changes when the api key rotates' do
+      base = described_class.new(source: :user, provider: :photon, host: 'photon.example.com', api_key: 'old')
+      rotated = described_class.new(source: :user, provider: :photon, host: 'photon.example.com', api_key: 'new')
+
+      expect(base.cache_digest).not_to eq(rotated.cache_digest)
+    end
+
     it 'does not contain the raw api key' do
       create(:service_setting, :geoapify, :active, user: user)
 

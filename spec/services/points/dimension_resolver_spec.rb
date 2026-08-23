@@ -154,10 +154,16 @@ RSpec.describe Points::DimensionResolver do
     include ActiveSupport::Testing::TimeHelpers
 
     it 'leaves rows untouched so ingest survives a deferred ALTER' do
-      allow(described_class).to receive(:columns_available?).and_return(false)
+      connection = ActiveRecord::Base.connection
+      connection.execute('ALTER TABLE points DROP COLUMN source_id')
+      Point.reset_column_information
+      described_class.reset_column_availability!
       rows = [combo_attrs.dup]
 
       expect(resolver.stamp(rows).first).not_to have_key(:source_id)
+    ensure
+      Point.reset_column_information
+      described_class.reset_column_availability!
     end
 
     # Production semantics (memoisation + recheck throttle are bypassed in the

@@ -47,15 +47,16 @@ module Perf
     # 3 years. The seeded POINTS are uniform noise, so generating tracks from
     # them would produce starbursts — walks are the honest shape for cost.
     def seed_tracks(user)
-      return if user.tracks.count >= TOTAL_TRACKS
+      existing = user.tracks.count
+      return if existing >= TOTAL_TRACKS
 
-      puts "Seeding #{TOTAL_TRACKS} tracks..."
+      puts "Seeding #{TOTAL_TRACKS - existing} tracks..."
       rng = Random.new(43)
       now = Time.current
       base_ts = (now - YEARS.years).to_i
       span = now.to_i - base_ts
 
-      (0...TOTAL_TRACKS).each_slice(500) do |slice|
+      (existing...TOTAL_TRACKS).each_slice(500) do |slice|
         batch = slice.map do |i|
           roll = rng.rand
           lat = HOME_LAT + (rng.rand - 0.5) * (roll < 0.85 ? 0.12 : 4.0)

@@ -102,11 +102,13 @@ class DataMigrations::BackfillPointCountryIdJob < ApplicationJob
   # never rewritten twice. A name that matches no country stays NULL rather
   # than falling through to the legacy value, matching how the columns were
   # written: country_name superseded country.
+  # countries.name carries no unique index, so a duplicated name is resolved
+  # to the lowest id — deterministic across batches and reruns.
   def resolve_countries(start_id, end_id)
     execute_sanitized(<<~SQL.squish, start_id, end_id).cmd_tuples
       UPDATE points p
       SET country_id = c.id
-      FROM countries c
+      FROM (SELECT MIN(id) AS id, name FROM countries GROUP BY name) c
       WHERE p.id BETWEEN ? AND ?
         AND p.country_id IS NULL
         AND c.name = COALESCE(p.country_name, p.country)

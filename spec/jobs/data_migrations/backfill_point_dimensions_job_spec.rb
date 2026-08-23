@@ -81,8 +81,10 @@ RSpec.describe DataMigrations::BackfillPointDimensionsJob, type: :job do
     # A statement_timeout usually means the batch is too big, not unlucky;
     # retrying it identically ten times churns rolled-back work for an hour.
     it 'halves the batch and retries the same cursor when a batch is aborted' do
-      allow_any_instance_of(described_class).to receive(:seed_sources)
-        .and_raise(ActiveRecord::QueryCanceled)
+      connection = ActiveRecord::Base.connection
+      allow(connection).to receive(:execute).and_call_original
+      allow(connection).to receive(:execute)
+        .with(/INSERT INTO point_sources/).and_raise(ActiveRecord::QueryCanceled)
       start_id = Point.minimum(:id)
 
       expect { described_class.perform_now(start_id) }.to \
@@ -90,8 +92,10 @@ RSpec.describe DataMigrations::BackfillPointDimensionsJob, type: :job do
     end
 
     it 'hands the smallest batch to the retry machinery instead of shrinking forever' do
-      allow_any_instance_of(described_class).to receive(:seed_sources)
-        .and_raise(ActiveRecord::QueryCanceled)
+      connection = ActiveRecord::Base.connection
+      allow(connection).to receive(:execute).and_call_original
+      allow(connection).to receive(:execute)
+        .with(/INSERT INTO point_sources/).and_raise(ActiveRecord::QueryCanceled)
       start_id = Point.minimum(:id)
 
       # retry_on re-enqueues with the arguments unchanged — same cursor, same

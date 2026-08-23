@@ -12,9 +12,12 @@ class Families::RespondToLocationRequest
 
   def call
     return not_authorized_error unless request.target_user == responder
-    return not_actionable_error unless actionable?
 
-    decision == :accept ? accept! : decline!
+    request.with_lock do
+      return not_actionable_error unless actionable?
+
+      decision == :accept ? accept! : decline!
+    end
     Result.new(success?: true, payload: { success: true, status: request.status }, status: :ok)
   rescue StandardError => e
     ExceptionReporter.call(e, "Error in Families::RespondToLocationRequest: #{e.message}")
