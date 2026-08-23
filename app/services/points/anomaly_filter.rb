@@ -409,8 +409,7 @@ class Points::AnomalyFilter
     dwell = run.last.timestamp - run.first.timestamp
     return false if dwell > MAX_EXCURSION_SPAN_SECONDS
 
-    distance_meters(previous_point, run.first) > MIN_EXCURSION_METERS &&
-      distance_meters(run.last, next_point) > MIN_EXCURSION_METERS
+    departs_far_from?(run, previous_point, next_point)
   end
 
   # An excursion has to arrive or leave faster than any ground travel to be worth
