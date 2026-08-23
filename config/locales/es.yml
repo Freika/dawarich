@@ -2552,6 +2552,18 @@ es:
     boat: Barco
     motorcycle: Motocicleta
   helpers:
+    page_entries_info:
+      entry:
+        zero: resultados
+        one: resultado
+        other: resultados
+      one_page:
+        display_entries:
+          zero: No se encontraron resultados
+          one: Mostrando <b>1</b> %{entry_name}
+          other: Mostrando <b>%{count}</b> %{entry_name}
+      more_pages:
+        display_entries: Mostrando %{entry_name} <b>%{first}&nbsp;–&nbsp;%{last}</b> de un total de <b>%{total}</b>
     application:
       full_title: "%{page_title} | %{app_name} - Dawarich"
       expired: Vencido
