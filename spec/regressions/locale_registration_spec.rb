@@ -4,13 +4,13 @@ require 'rails_helper'
 
 RSpec.describe 'Locale registration', type: :request do
   it 'registers every shipped locale' do
-    expect(I18n.available_locales).to match_array(%i[en de es fr])
+    expect(I18n.available_locales).to match_array(%i[en de es fr ca])
   end
 
   it 'names every shipped locale in its own words' do
     names = I18n.available_locales.map { |locale| I18n.t('language_name', locale: locale) }
 
-    expect(names).to eq(%w[English Deutsch Español Français])
+    expect(names).to eq(%w[English Deutsch Español Français Català])
   end
 
   # Fallbacks are on in production, where a locale missing `language_name`

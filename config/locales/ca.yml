@@ -1,4 +1,13 @@
 ca:
+  activerecord:
+    errors:
+      models:
+        service_setting:
+          host_required: "%{provider} necessita un amfitrió. Introdueix el nom d'amfitrió de la teva instància, per exemple photon.example.com."
+          host_invalid: "L'amfitrió ha de ser un nom simple, amb un port o un camí opcionals: sense prefix http://, sense espais."
+          host_blocked: "Aquest amfitrió no es pot utilitzar: %{reason}"
+          api_key_required: "%{provider} necessita una clau d'API."
+          chibigeo_api_key_required: "ChibiGeo necessita una clau d'API. El pla gratuït Hobby inclou 2.500 cerques al dia; obtén la teva clau a chibigeo.com."
   language_name: Català
   language_flag: es-ct
   auth:
@@ -915,7 +924,7 @@ ca:
         show_family_member_locations: Mostra les ubicacions dels membres de la família
         click_to_center_on_member: Fes clic per centrar en el membre
         appearance: Aparença
-        custom_map_colors_layer_colors_and_vector_tiles_are_pro: Els colors de mapa personalitzats, els colors de capa i els tessel·les vectorials són funcions de Pro — les pots previsualitzar aquí, però no es desaran al pla Lite.
+        custom_map_colors_layer_colors_and_vector_tiles_are_pro: Els colors de mapa personalitzats, els colors de capa i les tessel·les vectorials són funcions de Pro — les pots previsualitzar aquí, però no es desaran al pla Lite.
         map_style: Estil del mapa
         light: Clar
         dark: Fosc
@@ -1111,6 +1120,12 @@ ca:
         train_tracks_and_rail_lines: Vies i línies de tren
         urban_amenities: Serveis urbans
         water_labels: Etiquetes d'aigua
+        tiled_rendering: "Renderitzat per tessel·les"
+        beta: "Beta"
+        tiled_rendering_description: "Dibuixa els punts, les rutes, els trajectes i la boira a partir de tessel·les vectorials mentre et desplaces, de manera que un interval de dates llarg només carrega el que es veu. Les rutes mostren els trajectes que has generat, acolorits per trajecte."
+        tiled_rendering_caveats: "Actiu mentre el Mapa de rascar està desactivat. Les zones denses s'agrupen en marcadors amb un recompte de punts: amplia per obrir els punts individualment. L'edició de punts no està disponible, les rutes s'acoloreixen per trajecte (velocitat mitjana, no un degradat), en passar el cursor per una ruta ja no se'n mostra la finestra emergent (fes clic en un trajecte) i el rastre en directe pot trigar uns minuts."
+        fill_gaps_with_the_default_basemap: "Omple els buits amb el mapa base predeterminat"
+        uncovered_areas_are_drawn_from_dawarich_s_default_tile_server: "Per a un conjunt de tessel·les que només cobreix una part del món. Les zones que no cobreix es dibuixen des del servidor de tessel·les predeterminat de Dawarich, de manera que, si ho actives, s'hi enviaran peticions de tessel·les."
       visit_creation_modal:
         create_new_visit: Crea una visita nova
         visit_name: Nom de la visita *
@@ -1453,6 +1468,14 @@ ca:
         save_test_connection: Desa i prova la connexió
         sync_now: Sincronitza ara
         settings: Configuració
+        services_nav: "Serveis d'integració"
+        services:
+          geocoding: "Geocodificació"
+          immich: "Immich"
+          photoprism: "PhotoPrism"
+          airtrail: "AirTrail"
+        status_connected: "Connectat"
+        status_failed: "L'últim intent de connexió ha fallat"
     subscriptions:
       index:
         hello_there: Hola!
@@ -1577,6 +1600,55 @@ ca:
         minimum_points_to_count_as_a_visit: Punts mínims perquè compti com a visita
         minimum_visit_duration_minutes: Durada mínima de la visita (minuts)
         save_settings: Desa la configuració
+    geocoding:
+      show:
+        title: "Geocodificació"
+        provider: "Proveïdor de geocodificació"
+        provider_hint: "El proveïdor que s'utilitza per a la geocodificació inversa dels teus punts i per a la cerca de llocs i ubicacions."
+        intro: "La geocodificació converteix les coordenades en noms de ciutat i de país als teus punts i estadístiques, i fa funcionar la cerca de llocs i ubicacions."
+        host_choice: "Servidor Photon"
+        choice_chibigeo: "Servei allotjat de ChibiGeo"
+        choice_chibigeo_desc: "Nivell gratuït: 2.500 cerques al dia. Funciona sense configuració; només cal que hi afegeixis la teva clau d'API."
+        choice_komoot: "Servidor públic de komoot"
+        choice_komoot_desc: "Instància compartida gratuïta, limitada a una petició per segon."
+        choice_custom: "Amfitrió personalitzat"
+        choice_custom_desc: "La teva pròpia instància de Photon o un altre servidor compatible."
+        recommended: "Recomanat"
+        https_locked: "L'HTTPS sempre està activat per a aquest amfitrió."
+        https_on: "Activat"
+        https_off: "Desactivat"
+        chibigeo_message: "ChibiGeo és un servei de geocodificació de tarifa plana i centrat en la privadesa creat per l'equip de Dawarich. Funciona amb Dawarich sense configuració. Cal una clau d'API."
+        chibigeo_limits: "El pla gratuït Hobby inclou 2.500 cerques al dia a 1 petició per segon: límits estrictes, sense excedents."
+        chibigeo_key_link: "Obtén la teva clau d'API gratuïta"
+        chibigeo_site_link: "Què és ChibiGeo?"
+        disabled: "Desactivat"
+        env_managed_notice: "Actualment la geocodificació la gestionen variables d'entorn definides per l'operador de la teva instància. La configuració següent només tindrà efecte si s'eliminen aquestes variables."
+        host: "Amfitrió"
+        host_hint: "Nom d'amfitrió simple amb port opcional, p. ex. photon.example.com:2322"
+        api_key: "Clau d'API"
+        api_key_hint: "Deixa-ho en blanc per mantenir la clau desada."
+        api_key_saved: "Hi ha una clau desada per a aquest proveïdor."
+        clear_api_key: "Elimina la clau d'API desada"
+        use_https: "Utilitza HTTPS"
+        rps: "Peticions per segon"
+        rps_hint_custom: "Deixa-ho en blanc per no posar-hi límit. Ajusta-ho al que permeti el teu servidor o el teu pla."
+        rps_hint_chibigeo: "Ajusta-ho al teu pla de ChibiGeo: Hobby 1, Self-Hoster 5, Builder 10, Scale 25. Demanar més del que permet el teu pla només genera cerques rebutjades."
+        rps_hint_komoot: "komoot imposa una petició per segon a tothom, així que aquest valor és fix."
+        komoot_warning: "photon.komoot.io és una instància pública compartida amb límits de peticions estrictes. Les peticions es limiten a una per segon i la geocodificació massiva serà lenta. Considera allotjar la teva pròpia instància de Photon."
+        komoot_no_api_key: "El servidor públic de komoot no accepta cap clau d'API; deixa-la sense definir."
+        save: "Desa"
+        test: "Prova el teu proveïdor"
+        test_hint: "Desa primer la configuració i després fes la prova. La prova executa una cerca amb la configuració del teu propi proveïdor, fins i tot quan hi ha variables d'entorn actives."
+      update:
+        updated: "S'ha actualitzat la configuració de geocodificació."
+        disabled: "S'ha desactivat la geocodificació."
+        invalid_provider: "Proveïdor de geocodificació desconegut."
+      test:
+        not_configured: "No hi ha cap proveïdor de geocodificació configurat al teu compte. Desa'n un primer."
+        success: "Fet! El teu proveïdor ha convertit les coordenades de prova en: %{place}."
+        empty: "El proveïdor ha respost, però no ha retornat cap resultat per a les coordenades de prova."
+        failure: "La prova ha fallat: %{error}"
+        rate_limited: "El límit de peticions del proveïdor està ocupat ara mateix; torna-ho a provar d'aquí a un moment."
   share_links:
     hubs:
       body:
@@ -1894,6 +1966,7 @@ ca:
       close: tanca
       cities_visited: Ciutats visitades
       points_that_were_reverse_geocoded_but_had_no_data: Punts que van tenir geocodificació inversa però sense dades
+      percent_of_total: "%{percent}%% de tots els punts"
     stat:
       total_distance: Distància total
       year_month: "%{year}/%{month}"
@@ -2660,6 +2733,10 @@ ca:
             start_at_and_end_at_are_required: Es requereixen start_at i end_at
             invalid_date_format: Format de data no vàlid
             user_is_not_part_of_a_family: L'usuari no forma part d'una família
+          location_requests:
+            not_found: "No s'ha trobat la sol·licitud d'ubicació"
+          sharing:
+            missing_required_parameter_param: "Falta un paràmetre obligatori: %{parameter}"
         imports:
           pending:
             an_error_occurred: S'ha produït un error
@@ -3225,6 +3302,10 @@ ca:
         enabled_for_hours:
           one: Compartició d'ubicació activada durant %{count} hora
           other: Compartició d'ubicació activada durant %{count} hores
+      respond_to_location_request:
+        an_error_occurred: "S'ha produït un error"
+        not_authorized: "No tens autorització per respondre a aquesta sol·licitud"
+        no_longer_actionable: "Aquesta sol·licitud ha caducat o ja s'hi ha respost"
     fit:
       importer:
         fit_parsing_error_message: 'Error en analitzar el FIT: %{message}'
@@ -3652,6 +3733,7 @@ ca:
       tourism_culture: Turisme i cultura
       services_civic: Serveis i civisme
       urban_amenities: Serveis urbans
+      failed_to_load_track_details: "No s'han pogut carregar els detalls del trajecte"
     common:
       add_row: Afegeix una fila
       and: i
@@ -3693,6 +3775,16 @@ ca:
         one: "%{distance} %{unit} | %{count} punt"
         other: "%{distance} %{unit} | %{count} punts"
       updating: Actualitzant el mapa...
+      tiled_rendering:
+        inactive_note:
+          one: "Inactiu mentre %{layers} està activat: necessita el conjunt complet de punts."
+          other: "Inactiu mentre %{layers} estan activats: necessiten el conjunt complet de punts."
+        editing_unavailable: "No disponible amb el renderitzat per tessel·les; les tessel·les vectorials no tenen punts arrossegables"
+        failed: "No s'han pogut carregar les tessel·les del mapa. Prova un interval de dates més curt o desactiva el renderitzat per tessel·les a la configuració del mapa."
+        tracks_pending: "No hi ha cap trajecte en aquesta vista. Amb el renderitzat per tessel·les, les rutes mostren els trajectes que has generat: desplaça't o amplia l'interval de dates, o torna-ho a mirar més tard si has importat l'historial fa poc."
+        splitting_unavailable: "No s'utilitza amb el renderitzat per tessel·les; les rutes segueixen els trajectes que has generat."
+        blockers:
+          scratch: "Mapa de rascar"
     replay:
       no_data_at_this_time: No hi ha dades en aquest moment
       pause: Pausa
@@ -3886,6 +3978,7 @@ ca:
         one: "%{count} sense desar"
         other: "%{count} sense desar"
       unsaved_transportation_changes: Tens canvis sense desar. Fes clic a Aplica per desar-los i recalcular.
+      tiles_fallback_unavailable: "Només disponible per a URL de tessel·les {z}/{x}/{y}; una URL d'estil de MapLibre substitueix tot el mapa base"
     upload:
       complete:
         one: "%{count} arxiu pujat correctament. Llest per enviar."
@@ -4011,7 +4104,7 @@ ca:
       tracks: Trajectes
       video: Vídeo
       area_number: "Àrea %{id}"
-      place_name_locked: "\U0001F512 Vas posar nom a aquest lloc, així que l'assignació automàtica de noms no el canviarà. Canvia'l a “Lloc suggerit” per tornar-lo a l'assignació automàtica."
+      place_name_locked: "\U0001F512 Vas posar nom a aquest lloc, així que l'assignació automàtica de noms no el canviarà. Canvia'l a “Suggested place” per tornar-lo a l'assignació automàtica."
     map_controls:
       add_visit: Afegeix una visita
       create_place: Crea un lloc
