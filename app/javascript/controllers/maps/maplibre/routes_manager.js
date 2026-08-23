@@ -208,9 +208,15 @@ export class RoutesManager {
     this.controller.speedColorScaleInputTarget.value = newScale
     SettingsManager.updateSetting("speedColorScale", newScale)
 
-    if (this.controller.speedColoredToggleTarget.checked) {
-      this.reloadRoutes()
+    if (!this.controller.speedColoredToggleTarget.checked) return
+
+    if (tiledPointsActive(SettingsManager.getSettings())) {
+      const tracksMvtLayer = this.layerManager.getLayer("tracks-mvt")
+      tracksMvtLayer?.setSpeedColoring(true, newScale)
+      return
     }
+
+    this.reloadRoutes()
   }
 
   /**
@@ -626,7 +632,9 @@ export class RoutesManager {
 
     if (tracksLayer) {
       tracksLayer.update(tracksGeoJSON)
-      tracksLayer.show()
+      if (SettingsManager.getSetting("tracksEnabled")) {
+        tracksLayer.show()
+      }
     }
     this._classicTracksStale = false
   }

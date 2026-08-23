@@ -23,6 +23,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Place and location search skip a busy geocoding rate limit instead of stalling the request; a skipped lookup is never cached as an empty answer.
 - The geocoding "Test my provider" button reports a busy rate limit honestly and no longer echoes internal error details.
 - Nightly and realtime reverse geocoding resolve each user's settings once instead of once per point.
+- Saving a new speed color scale now updates tiled tracks immediately.
+- Turning the Tracks layer off while it is still loading no longer shows it anyway.
+- The reverse-geocoding percentage follows the interface language's number format.
+- AirTrail's last-synced time is shown in the interface language and timezone.
+- A family location request can no longer be accepted and declined at the same time.
+- Double-submitting the geocoding provider form no longer fails.
+- Switching the Photon server to komoot now clears any API key you had saved, instead of sending it to a server that never asked for one.
+- Rotating a geocoding API key now refreshes cached place results instead of serving the previous key's answers for an hour.
+- The geocoding settings form lines its fields up on one width, credits ChibiGeo to the Dawarich team and links to it, and hides the API key field for the komoot server that takes none.
 
 ### Changed
 

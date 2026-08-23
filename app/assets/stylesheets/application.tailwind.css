@@ -294,6 +294,8 @@ html.dark em-emoji-picker {
   flex: 1 1 auto;
 }
 
-.page-header-row > :last-child {
+/* :not(:first-child) so a header with a title and no actions keeps the
+   shrinkable rule above instead of this one, which cannot shrink. */
+.page-header-row > :last-child:not(:first-child) {
   flex: 0 0 auto;
 }

@@ -74,12 +74,13 @@ RSpec.describe 'Tracks::TileEpoch write paths' do
     expect(track.reload.dominant_mode).to eq('driving')
   end
 
-  it 'bumps from ReclassifyTrackJob#recompute_dominant_mode despite update_column' do
+  it 'bumps from a track reclassification despite update_column' do
     track = build_track
-    create(:track_segment, track:, transportation_mode: :cycling, distance: 100, duration: 60)
+    create(:track_segment, track:, transportation_mode: :cycling, distance: 100, duration: 60,
+                           corrected_at: Time.current)
 
     before = component(2024)
-    TransportationModes::ReclassifyTrackJob.new.send(:recompute_dominant_mode, track)
+    TransportationModes::ReclassifyTrackJob.new.perform(track.id)
 
     expect(component(2024)).not_to eq(before)
     expect(track.reload.dominant_mode).to eq('cycling')

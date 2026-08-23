@@ -38,11 +38,17 @@ RSpec.describe DataMigrations::AddPointDimensionColumnsJob, type: :job do
     end
 
     it 'does not start the backfill while the column is still missing' do
-      allow_any_instance_of(described_class).to receive(:column_present?).and_return(false)
-      allow_any_instance_of(described_class).to receive(:add_column)
+      connection = ActiveRecord::Base.connection
+      connection.execute('ALTER TABLE points DROP COLUMN source_id')
+      Point.reset_column_information
+      allow(connection).to receive(:execute).and_call_original
+      allow(connection).to receive(:execute)
+        .with(/ADD COLUMN IF NOT EXISTS source_id/).and_return(nil)
 
       expect { described_class.perform_now }.not_to \
         have_enqueued_job(DataMigrations::BackfillPointDimensionsJob)
+    ensure
+      Point.reset_column_information
     end
 
     it 'adds the columns on Cloud but leaves the backfill for a chosen window' do

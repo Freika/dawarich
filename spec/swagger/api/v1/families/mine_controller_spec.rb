@@ -19,9 +19,73 @@ RSpec.describe 'Families Mine API', type: :request do
         schema type: :object,
                properties: {
                  family: { type: :object, properties: { name: { type: :string } } },
-                 me: { type: :object },
-                 members: { type: :array, items: { type: :object } },
-                 location_requests: { type: :object }
+                 me: {
+                   type: :object,
+                   properties: {
+                     user_id: { type: :integer },
+                     owner: { type: :boolean },
+                     sharing: {
+                       type: :object,
+                       properties: {
+                         enabled: { type: :boolean },
+                         duration: { type: :string, nullable: true },
+                         expires_at: { type: :string, nullable: true },
+                         started_at: { type: :string, nullable: true },
+                         share_history: { type: :boolean },
+                         history_window: { type: :string, nullable: true }
+                       }
+                     }
+                   }
+                 },
+                 members: {
+                   type: :array,
+                   items: {
+                     type: :object,
+                     properties: {
+                       user_id: { type: :integer },
+                       email: { type: :string },
+                       email_initial: { type: :string },
+                       owner: { type: :boolean },
+                       sharing_enabled: { type: :boolean },
+                       joined_at: { type: :string }
+                     }
+                   }
+                 },
+                 location_requests: {
+                   type: :object,
+                   properties: {
+                     incoming: {
+                       type: :array,
+                       items: {
+                         type: :object,
+                         properties: {
+                           id: { type: :integer },
+                           requester: {
+                             type: :object,
+                             properties: {
+                               user_id: { type: :integer },
+                               email: { type: :string }
+                             }
+                           },
+                           suggested_duration: { type: :string, nullable: true },
+                           expires_at: { type: :string },
+                           created_at: { type: :string }
+                         }
+                       }
+                     },
+                     outgoing: {
+                       type: :array,
+                       items: {
+                         type: :object,
+                         properties: {
+                           id: { type: :integer },
+                           target_user_id: { type: :integer },
+                           created_at: { type: :string }
+                         }
+                       }
+                     }
+                   }
+                 }
                }
 
         before do

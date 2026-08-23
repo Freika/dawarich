@@ -14,7 +14,7 @@ class ServiceSetting < ApplicationRecord
   validate :validate_by_schema
 
   def activate!
-    transaction do
+    user.with_lock do
       self.class.where(user_id: user_id, service: service).where.not(id: id).update_all(active: false)
       update!(active: true)
     end

@@ -100,7 +100,7 @@ module Geocoding
     end
 
     def cache_digest
-      Digest::SHA256.hexdigest([source, provider, host, use_https].join('|'))
+      Digest::SHA256.hexdigest([source, provider, host, use_https, api_key].join('|'))
     end
 
     def provider_display_name

@@ -32,6 +32,8 @@ RSpec.describe 'Families Sharing API', type: :request do
                  success: { type: :boolean },
                  enabled: { type: :boolean },
                  duration: { type: :string },
+                 expires_at: { type: :string, nullable: true },
+                 expires_at_formatted: { type: :string, nullable: true },
                  message: { type: :string }
                }
 
