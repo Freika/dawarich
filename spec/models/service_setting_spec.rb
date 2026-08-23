@@ -94,6 +94,17 @@ RSpec.describe ServiceSetting do
       expect(setting.use_https).to be(true)
     end
 
+    it 'drops a stored api key when the host becomes komoot' do
+      setting = build(:service_setting, config: { 'host' => 'app.chibigeo.com/v1/photon' })
+      setting.api_key = 'ck_secret'
+      setting.save!
+
+      setting.config['host'] = 'photon.komoot.io'
+      setting.save!
+
+      expect(setting.reload.api_key).to be_nil
+    end
+
     it 'forces https for the ChibiGeo host despite its path suffix' do
       setting = create(:service_setting, config: { 'host' => 'app.chibigeo.com/v1/photon', 'use_https' => false },
                                          api_key: 'ck_test')

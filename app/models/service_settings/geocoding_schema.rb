@@ -14,6 +14,7 @@ module ServiceSettings
     def normalize
       normalize_host
       force_https_only_hosts
+      drop_key_for_keyless_hosts
       normalize_rps
     end
 
@@ -62,6 +63,12 @@ module ServiceSettings
 
     def force_https_only_hosts
       setting.config['use_https'] = true if PHOTON_HTTPS_ONLY_HOSTS.include?(bare_host)
+    end
+
+    # komoot's public server takes no key, so one carried over from another
+    # host would be sent to a third party that never asked for it.
+    def drop_key_for_keyless_hosts
+      setting.api_key = nil if komoot?
     end
 
     def bare_host

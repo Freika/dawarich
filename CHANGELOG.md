@@ -29,6 +29,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - AirTrail's last-synced time is shown in the interface language and timezone.
 - A family location request can no longer be accepted and declined at the same time.
 - Double-submitting the geocoding provider form no longer fails.
+- Switching the Photon server to komoot now clears any API key you had saved, instead of sending it to a server that never asked for one.
+- Rotating a geocoding API key now refreshes cached place results instead of serving the previous key's answers for an hour.
+- The geocoding settings form lines its fields up on one width, credits ChibiGeo to the Dawarich team and links to it, and hides the API key field for the komoot server that takes none.
 
 ### Changed
 
