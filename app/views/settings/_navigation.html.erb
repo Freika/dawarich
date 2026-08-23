@@ -1,4 +1,4 @@
-<div class="mb-6 overflow-x-auto pb-1">
+<div class="mb-6 overflow-x-auto pb-1" data-controller="scroll-into-view">
   <div class="tabs tabs-boxed inline-flex min-w-max flex-nowrap">
     <%= link_to t('.general'), settings_general_index_path, role: 'tab', class: "tab tab-lg #{active_tab?(settings_general_index_path)}" %>
     <%= link_to t('.integrations'), settings_integrations_path, role: 'tab', class: "tab tab-lg #{active_tab?(settings_integrations_path)}" %>
