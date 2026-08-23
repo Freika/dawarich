@@ -48,7 +48,10 @@ module TransportationModes
     def recompute_dominant_mode(track)
       segments = track.track_segments.reload.to_a
       mode = segments.any? ? Track.pick_dominant_mode(segments) : :unknown
+      # update_column skips after_commit, and dominant_mode is a tile property —
+      # bump the epoch explicitly or reclassified tracks 304 with the old mode.
       track.update_column(:dominant_mode, mode || :unknown)
+      Tracks::TileEpoch.bump_range(track.user_id, track.start_at.to_i, track.end_at.to_i)
     end
 
     def report

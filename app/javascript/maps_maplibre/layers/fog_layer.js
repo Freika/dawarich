@@ -22,6 +22,15 @@ export class FogLayer {
     this.data = null // Store original data for updates
     this.hexBoundaries = []
     this.hexSource = new FogHexagonSource()
+    // Tiled mode: holes come from the points MVT source instead of a bulk
+    // GeoJSON — queried on settled events only (render stays a pure draw).
+    this.tiledSource = options.tiledSource === true
+    this.tiledSourceId = options.tiledSourceId || "points-mvt-source"
+    this._tiledRefreshTimer = null
+    this._tiledRefreshHandler = null
+    this._sourceDataHandler = null
+    this._renderHandler = null
+    this._resizeHandler = null
     this._hexFetchKey = null
     this._hexFetchPromise = null
     this._zoomDebounceTimer = null
@@ -46,8 +55,35 @@ export class FogLayer {
 
   update(data) {
     this.data = data // Store for later updates
+    if (this.tiledSource) {
+      // Bulk data under tiles is empty or stale — the tile cache is
+      // authoritative. Clobbering this.points here painted the map solid
+      // black when the fog-radius slider re-sent the stored collection.
+      this._refreshTiledPositions()
+      return
+    }
     this.points = data.features || []
     this.render()
+  }
+
+  // The tiled toggle and fog-mode radio change this mid-session; the layer is
+  // NOT reconstructed, so the source mode must be switchable in place.
+  setTiledSource(enabled) {
+    const next = enabled === true
+    if (next === this.tiledSource) return
+
+    this.tiledSource = next
+    this._detachTiledHandlers()
+    if (next) {
+      // Hidden fog pays nothing: show() attaches the handlers and catches up.
+      if (this.canvas && this.visible) {
+        this._attachTiledHandlers()
+        this._refreshTiledPositions()
+      }
+    } else {
+      this.points = this.data?.features || []
+      this.render()
+    }
   }
 
   createCanvas() {
@@ -69,13 +105,83 @@ export class FogLayer {
     const mapContainer = this.map.getContainer()
     mapContainer.appendChild(this.canvas)
 
-    // Update on map move/zoom/resize
-    this.map.on("move", () => this.render())
-    this.map.on("zoom", () => this.render())
-    this.map.on("resize", () => this.resizeCanvas())
+    // Update on map move/zoom/resize. Handlers are stored on `this` so
+    // remove() can actually detach them — an off() with a fresh arrow is a
+    // silent no-op that leaks a render loop per style change.
+    this._renderHandler = () => this.render()
+    this._resizeHandler = () => this.resizeCanvas()
+    this.map.on("move", this._renderHandler)
+    this.map.on("zoom", this._renderHandler)
+    this.map.on("resize", this._resizeHandler)
     this.map.on("zoomend", this._zoomEndHandler)
 
+    if (this.tiledSource && this.visible) {
+      this._attachTiledHandlers()
+    }
+
     this.resizeCanvas()
+  }
+
+  // querySourceFeatures re-walks every loaded tile — far too heavy for the
+  // per-frame move/zoom path. Refresh the cached hole set only when the map
+  // settles or new tiles land, debounced; render() just draws it.
+  _attachTiledHandlers() {
+    if (this._tiledRefreshHandler) return
+
+    this._tiledRefreshHandler = () => this._scheduleTiledRefresh()
+    this._sourceDataHandler = (event) => {
+      if (event?.sourceId !== this.tiledSourceId) return
+      this._scheduleTiledRefresh()
+    }
+    this.map.on("moveend", this._tiledRefreshHandler)
+    this.map.on("zoomend", this._tiledRefreshHandler)
+    this.map.on("sourcedata", this._sourceDataHandler)
+  }
+
+  _detachTiledHandlers() {
+    if (this._tiledRefreshHandler) {
+      this.map.off("moveend", this._tiledRefreshHandler)
+      this.map.off("zoomend", this._tiledRefreshHandler)
+      this._tiledRefreshHandler = null
+    }
+    if (this._sourceDataHandler) {
+      this.map.off("sourcedata", this._sourceDataHandler)
+      this._sourceDataHandler = null
+    }
+    if (this._tiledRefreshTimer) {
+      clearTimeout(this._tiledRefreshTimer)
+      this._tiledRefreshTimer = null
+    }
+  }
+
+  _scheduleTiledRefresh() {
+    if (this._tiledRefreshTimer) clearTimeout(this._tiledRefreshTimer)
+    this._tiledRefreshTimer = setTimeout(() => {
+      this._tiledRefreshTimer = null
+      this._refreshTiledPositions()
+    }, ZOOM_DEBOUNCE_MS)
+  }
+
+  _refreshTiledPositions() {
+    if (!this.tiledSource) return
+
+    const features =
+      this.map.querySourceFeatures?.(this.tiledSourceId, {
+        sourceLayer: "points",
+      }) ?? []
+    // During zoom transitions placeholder tiles return nothing — keep the
+    // previous hole set rather than flashing the cleared area back to black.
+    // But a LOADED source that is genuinely empty (a date range with no points
+    // here) must clear the stale holes, or fog shows the previous range.
+    if (
+      features.length === 0 &&
+      this.points.length > 0 &&
+      this.map.isSourceLoaded?.(this.tiledSourceId) === false
+    )
+      return
+
+    this.points = features
+    this.render()
   }
 
   resizeCanvas() {
@@ -112,13 +218,21 @@ export class FogLayer {
   }
 
   renderPointHoles() {
+    // Tiled features are decimation-cell centroids spaced grid_px display
+    // pixels apart — a hole radius below that spacing renders a travelled
+    // corridor as dots, so clamp to the cell spacing (4px below z14).
+    const minRadius = this.tiledSource ? (this.map.getZoom() < 14 ? 4 : 1) : 0
+
     this.points.forEach((feature) => {
       const coords = feature.geometry.coordinates
       const point = this.map.project(coords)
 
       // Calculate pixel radius based on zoom level
       const metersPerPixel = this.getMetersPerPixel(coords[1])
-      const radiusPixels = this.clearRadius / metersPerPixel
+      const radiusPixels = Math.max(
+        this.clearRadius / metersPerPixel,
+        minRadius,
+      )
 
       this.ctx.beginPath()
       this.ctx.arc(point.x, point.y, radiusPixels, 0, Math.PI * 2)
@@ -234,6 +348,12 @@ export class FogLayer {
       this.canvas.style.display = "block"
       this.render()
     }
+    // Handlers only run while visible (hidden fog must not pay the tile
+    // walks); tiles may have loaded while hidden — catch up immediately.
+    if (this.tiledSource) {
+      if (this.canvas) this._attachTiledHandlers()
+      this._refreshTiledPositions()
+    }
     if (this.mode === "hexagons") {
       this._ensureHexagons()
     }
@@ -244,6 +364,7 @@ export class FogLayer {
     if (this.canvas) {
       this.canvas.style.display = "none"
     }
+    this._detachTiledHandlers()
   }
 
   toggle(visible = !this.visible) {
@@ -261,10 +382,17 @@ export class FogLayer {
       this.ctx = null
     }
 
-    // Remove event listeners
-    this.map.off("move", this.render)
-    this.map.off("zoom", this.render)
-    this.map.off("resize", this.resizeCanvas)
+    // Remove event listeners via the stored references they were registered with
+    if (this._renderHandler) {
+      this.map.off("move", this._renderHandler)
+      this.map.off("zoom", this._renderHandler)
+      this._renderHandler = null
+    }
+    if (this._resizeHandler) {
+      this.map.off("resize", this._resizeHandler)
+      this._resizeHandler = null
+    }
+    this._detachTiledHandlers()
     this.map.off("zoomend", this._zoomEndHandler)
     if (this._zoomDebounceTimer) {
       clearTimeout(this._zoomDebounceTimer)

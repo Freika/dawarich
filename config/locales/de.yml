@@ -1,4 +1,13 @@
 de:
+  activerecord:
+    errors:
+      models:
+        service_setting:
+          host_required: "%{provider} needs a host. Enter your instance's hostname, for example photon.example.com."
+          host_invalid: 'The host must be a bare hostname with an optional port or path — no http:// prefix, no spaces.'
+          host_blocked: 'This host cannot be used: %{reason}'
+          api_key_required: '%{provider} needs an API key.'
+          chibigeo_api_key_required: 'ChibiGeo needs an API key. The free Hobby plan includes 2,500 lookups per day — get your key at chibigeo.com.'
   language_name: Deutsch
   language_flag: de
   auth:
@@ -878,6 +887,10 @@ de:
         allow_dragging_points_to_correct_their_position: Erlaube das Ziehen von Punkten, um ihre Position zu korrigieren.
         editing_points_is_a_pro_feature_this_stays_on_for: Die Bearbeitung von Punkten ist eine Pro-Funktion — dies bleibt für die aktuelle Sitzung aktiv, und Bewegungen werden auf dem Lite-Plan nicht gespeichert.
         allow_dragging_points_to_correct_their_position_remembered_across_sessio: Erlaube das Ziehen von Punkten, um ihre Position zu korrigieren. Wird über Sitzungen hinweg gespeichert.
+        tiled_rendering: "Gekachelte Darstellung"
+        beta: "Beta"
+        tiled_rendering_description: "Zeichnet Punkte, Routen, Tracks und Kartennebel beim Bewegen der Karte aus Vektorkacheln, statt den gesamten Zeitraum vorab zu laden. Routen zeigen deine erzeugten Tracks, je Track eingefärbt."
+        tiled_rendering_caveats: "Aktiv, solange die Rubbelkarte aus ist. Dichte Bereiche werden zu Markern mit Punktanzahl zusammengefasst — zoome hinein, um einzelne Punkte zu öffnen. Punktbearbeitung ist nicht verfügbar, Routen werden je Track eingefärbt (Durchschnittsgeschwindigkeit statt Verlauf), das Routen-Popup beim Überfahren entfällt — klicke stattdessen auf einen Track — und die Live-Spur kann einige Minuten nachhängen."
         routes: Routen
         show_connected_route_lines: Zeige verbundene Routenlinien
         color_by_speed: Farbe nach Geschwindigkeit
@@ -938,6 +951,8 @@ de:
         miles: Meilen
         custom_basemap_url: Benutzerdefinierte Basiskarten-URL
         serve_the_base_map_from_your_own_source_accepts_protomaps: Verwende eine Basiskarte aus einer eigenen Quelle. Unterstützt werden Protomaps-Vektorkacheln oder Raster-XYZ-Kacheln (jeweils mit {z}, {x} und {y}) sowie vollständige MapLibre-Stil-URLs. Leer lassen, um die integrierten Kacheln zu verwenden.
+        fill_gaps_with_the_default_basemap: Lücken mit der Standard-Basiskarte füllen
+        uncovered_areas_are_drawn_from_dawarich_s_default_tile_server: Für Kachelsätze, die nur einen Teil der Welt abdecken. Nicht abgedeckte Gebiete werden vom Standard-Kachelserver von Dawarich geladen — diese Option sendet also Anfragen dorthin.
         base_map_layers: Basiskartenebenen
         toggle_base_map_elements_changes_apply_immediately: Basiskarten-Elemente ein-/ausschalten. Änderungen werden sofort angewendet.
         pro_feature_you_can_preview_changes_here_but_they_won: Pro-Funktion — du kannst Änderungen hier vorschauen, aber sie werden auf dem Lite-Plan nicht gespeichert.
@@ -951,7 +966,7 @@ de:
         min_2: 1min
         min_3: 90min
         min_4: 180min
-        time_threshold_for_route_splitting: Schwellenwert für die Routenteilung
+        time_threshold_for_route_splitting: Schwellenwert für die Routenteilung; Lücken über diesem Wert fließen auch nicht in die Distanzstatistik ein
         points_rendering_mode: Darstellungsmodus der Punkte
         raw_all_points: Rohdaten (alle Punkte)
         simplified_reduced_points: Vereinfacht (reduzierte Punkte)
@@ -1343,6 +1358,55 @@ de:
       residential_roads: Wohnstraßen
       track: Track
   settings:
+    geocoding:
+      show:
+        title: Geocoding
+        provider: Geocoding provider
+        provider_hint: The provider used for reverse geocoding your points and for place and location search.
+        intro: Geocoding turns coordinates into city and country names on your points and stats, and powers place and location search.
+        host_choice: Photon server
+        choice_chibigeo: ChibiGeo hosted service
+        choice_chibigeo_desc: 'Free tier: 2,500 lookups per day. Works out of the box — just add your API key.'
+        choice_komoot: komoot public server
+        choice_komoot_desc: Free shared instance, throttled to one request per second.
+        choice_custom: Custom host
+        choice_custom_desc: Your own Photon instance or another compatible server.
+        recommended: Recommended
+        https_locked: HTTPS is always on for this host.
+        https_on: 'On'
+        https_off: 'Off'
+        chibigeo_message: ChibiGeo is a flat-rate, privacy-first geocoding service built by the Dawarich team. It works with Dawarich out of the box. An API key is required.
+        chibigeo_limits: The free Hobby plan includes 2,500 lookups per day at 1 request per second — hard caps, no overage.
+        chibigeo_key_link: Get your free API key
+        chibigeo_site_link: What is ChibiGeo?
+        disabled: Disabled
+        env_managed_notice: Geocoding is currently managed by environment variables set by your instance operator. The settings below take effect only if those variables are removed.
+        host: Host
+        host_hint: Bare hostname with optional port, e.g. photon.example.com:2322
+        api_key: API key
+        api_key_hint: Leave blank to keep the saved key.
+        api_key_saved: A key is saved for this provider.
+        clear_api_key: Remove the saved API key
+        use_https: Use HTTPS
+        rps: Requests per second
+        rps_hint_custom: Leave blank for no limit. Set this to whatever your server or plan allows.
+        rps_hint_chibigeo: Match your ChibiGeo plan - Hobby 1, Self-Hoster 5, Builder 10, Scale 25. Asking for more than your plan allows only earns rejected lookups.
+        rps_hint_komoot: komoot enforces one request per second for everyone, so this is fixed.
+        komoot_warning: photon.komoot.io is a shared public instance with strict rate limits. Requests are throttled to one per second, and bulk geocoding will be slow. Please consider hosting your own Photon instance.
+        komoot_no_api_key: The public komoot server takes no API key — leave it unset.
+        save: Save
+        test: Test my provider
+        test_hint: Save your settings first, then test. The test runs one lookup against your own provider configuration, even when environment variables are active.
+      update:
+        updated: Geocoding settings updated.
+        disabled: Geocoding disabled.
+        invalid_provider: Unknown geocoding provider.
+      test:
+        not_configured: No geocoding provider is configured for your account. Save a provider first.
+        success: 'Success! Your provider resolved the test coordinates to: %{place}.'
+        empty: The provider responded but returned no results for the test coordinates.
+        failure: 'Test failed: %{error}'
+        rate_limited: "The provider's rate limit is busy right now — try again in a moment."
     navigation:
       general: Allgemein
       integrations: Integrationen
@@ -1418,6 +1482,14 @@ de:
         save_changes: Änderungen speichern
     integrations:
       index:
+        services_nav: Integrationsdienste
+        services:
+          geocoding: Geocoding
+          immich: Immich
+          photoprism: PhotoPrism
+          airtrail: AirTrail
+        status_connected: Verbunden
+        status_failed: Letzter Verbindungsversuch fehlgeschlagen
         immich_photoprism_integrations: Immich & Photoprism-Integrationen
         connect_your_photo_management_tools_to_see_your_photos_on: Verbinde deine Foto-Management-Tools, um deine Fotos auf der Karte anzuzeigen. Immich- und Photoprism-Integrationen sind im Pro-Tarif verfügbar.
         upgrade_to_pro: Auf Pro upgraden
@@ -1893,12 +1965,13 @@ de:
         one: "%{count} Stadt"
         other: "%{count} Städte"
     reverse_geocoding_stats:
-      reverse_geocoded_points: Umgekehrte Geokodierungspunkte
       points_without_data: Punkte ohne Daten
+      points_that_were_reverse_geocoded_but_had_no_data: Punkte, die umgekehrt geokodiert wurden, aber keine Daten hatten
+      percent_of_total: "%{percent}%% aller Punkte"
+      reverse_geocoded_points: Umgekehrte Geokodierungspunkte
       countries_visited: Besuchte Länder
       close: schließen
       cities_visited: Besuchte Städte
-      points_that_were_reverse_geocoded_but_had_no_data: Punkte, die umgekehrt geokodiert wurden, aber keine Daten hatten
     stat:
       total_distance: Gesamte Entfernung
       year_month: "%{year}/%{month}"
@@ -2534,6 +2607,18 @@ de:
     boat: Schiff
     motorcycle: Motorrad
   helpers:
+    page_entries_info:
+      entry:
+        zero: Einträge
+        one: Eintrag
+        other: Einträge
+      one_page:
+        display_entries:
+          zero: Keine Einträge gefunden
+          one: <b>1</b> %{entry_name} wird angezeigt
+          other: <b>Alle %{count}</b> %{entry_name} werden angezeigt
+      more_pages:
+        display_entries: "%{entry_name} <b>%{first}&nbsp;–&nbsp;%{last}</b> von insgesamt <b>%{total}</b>"
     application:
       full_title: "%{page_title} | %{app_name}"
       expired: Abgelaufen
@@ -2716,10 +2801,14 @@ de:
           digest_already_exists: Digest existiert bereits
           digest_for_year_is_being_generated: Digest für %{year} wird generiert
         families:
+          location_requests:
+            not_found: Standortanfrage nicht gefunden
           locations:
             start_at_and_end_at_are_required: start_at und end_at sind erforderlich
             invalid_date_format: Ungültiges Datum im Format
             user_is_not_part_of_a_family: Benutzer ist nicht Teil einer Familie
+          sharing:
+            missing_required_parameter_param: 'Fehlender erforderlicher Parameter: %{parameter}'
         imports:
           pending:
             an_error_occurred: Ein Fehler ist aufgetreten
@@ -3279,6 +3368,10 @@ de:
           email_has_been_removed_from_the_family_family_name: '%{email} wurde von der Familie "%{family_name}" entfernt'
           an_unexpected_error_occurred_while_removing_the_membership_please_try: Beim Entfernen der Mitgliedschaft ist ein unerwarteter Fehler aufgetreten. Bitte versuche es erneut
           failed_to_leave: 'Verlassen fehlgeschlagen: %{message}'
+      respond_to_location_request:
+        an_error_occurred: Ein Fehler ist aufgetreten
+        not_authorized: Du bist nicht berechtigt, auf diese Anfrage zu antworten
+        no_longer_actionable: Diese Anfrage ist abgelaufen oder wurde bereits beantwortet
       update_location_sharing:
         update_failed: Aktualisierung der Standortfreigabe fehlgeschlagen
         unexpected_error: Beim Aktualisieren der Standortfreigabe ist ein Fehler aufgetreten
@@ -3596,6 +3689,7 @@ de:
       failed_to_load_photos: Fotos konnten nicht geladen werden
       failed_to_load_areas: Gebiete konnten nicht geladen werden
       failed_to_load_tracks: Tracks konnten nicht geladen werden
+      failed_to_load_track_details: Track-Details konnten nicht geladen werden
       failed_to_load_flights: Flüge konnten nicht geladen werden
       failed_to_load_anomalies: Anomalien konnten nicht geladen werden
       reloading_routes: Route wird neu geladen...
@@ -3709,6 +3803,16 @@ de:
       show_all_days: Alle Tage anzeigen
       collapse_all_days: Alle Tage zusammenklappen
     map:
+      tiled_rendering:
+        inactive_note:
+          one: "Inaktiv, solange %{layers} aktiv ist — diese Ebene benötigt alle Punkte."
+          other: "Inaktiv, solange %{layers} aktiv sind — diese Ebenen benötigen alle Punkte."
+        editing_unavailable: "Bei gekachelter Darstellung nicht verfügbar — Vektorkacheln haben keine verschiebbaren Punkte"
+        failed: "Kartenkacheln konnten nicht geladen werden. Versuche einen kürzeren Zeitraum oder schalte die gekachelte Darstellung in den Karteneinstellungen aus."
+        tracks_pending: "Keine Tracks in diesem Ausschnitt. Routen zeigen bei gekachelter Darstellung deine erzeugten Tracks — verschiebe die Karte, erweitere den Zeitraum oder schau nach einem frischen Import später wieder vorbei."
+        splitting_unavailable: "Bei gekachelter Darstellung ohne Wirkung — Routen folgen deinen erzeugten Tracks."
+        blockers:
+          scratch: "Rubbelkarte"
       places_layer: Ortsebene
       confirm_delete_point: Möchtest du diesen Punkt wirklich löschen?
       confirm_delete_point_permanently: |-
@@ -3907,6 +4011,7 @@ de:
       invalid_tile_url: Tile-URL muss {z}, {x} und {y} Platzhalter enthalten oder eine MapLibre-Stil-URL sein
       layer_unavailable_custom_style: Nicht mit dem benutzerdefinierten Kartenstil verfügbar — es werden keine Beschriftungen oder Sehenswürdigkeiten gezeichnet
       layer_unavailable_foreign_basemap: Nicht mit einer benutzerdefinierten Raster- oder Stil-Basiskarte verfügbar — diese Ebenen stammen aus den integrierten Vektorkacheln
+      tiles_fallback_unavailable: Nur für {z}/{x}/{y}-Kachel-URLs verfügbar — eine MapLibre-Stil-URL ersetzt die gesamte Basiskarte
       make_changes_to_apply: Änderungen vornehmen, um den Anwenden-Button zu aktivieren
       re_evaluation_queued: Die erneute Prüfung wurde eingereiht. Die Karte wird aktualisiert, sobald die Aufgabe abgeschlossen ist.
       recalculation_queued: Die Neuberechnung wurde eingereiht. Du erhältst eine Benachrichtigung, sobald sie abgeschlossen ist.

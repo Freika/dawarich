@@ -288,7 +288,7 @@ RSpec.describe 'Api::V1::Places', type: :request do
     it 'accepts custom radius and limit' do
       service_double = instance_double(Places::NearbySearch)
       allow(Places::NearbySearch).to receive(:new)
-        .with(latitude: 40.7128, longitude: -74.0060, radius: 1.0, limit: 5)
+        .with(user: user, latitude: 40.7128, longitude: -74.0060, radius: 1.0, limit: 5)
         .and_return(service_double)
       allow(service_double).to receive(:call).and_return([])
 

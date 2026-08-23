@@ -17,7 +17,7 @@ module Archivable
     before_save :reset_archival_on_raw_data_change
   end
 
-  UPSERT_CONFLICT_KEYS = %i[lonlat timestamp user_id].freeze
+  UPSERT_CONFLICT_KEYS = %i[user_id timestamp lonlat].freeze
   UPSERT_MAX_RETRIES = 3
   UPSERT_BACKOFF_BASE = 0.1
   UPSERT_BACKOFF_JITTER = 0.05
@@ -45,7 +45,7 @@ module Archivable
       set_clauses << '"updated_at" = CURRENT_TIMESTAMP' unless update_columns.include?(:updated_at)
       set_clauses.concat(archival_reset_clauses) if update_columns.include?(:raw_data)
 
-      with_write_contention_retry do
+      result = with_write_contention_retry do
         upsert_all(
           rows,
           unique_by: UPSERT_CONFLICT_KEYS,
@@ -53,6 +53,18 @@ module Archivable
           returning: returning
         )
       end
+
+      # Choke point for tile-cache invalidation: every bulk point creator
+      # (API, OwnTracks, Overland, Traccar) funnels through here, and raw
+      # upserts bypass the AR callbacks that could otherwise do this.
+      rows.group_by { |row| row[:user_id] || row['user_id'] }.each do |user_id, user_rows|
+        next if user_id.nil?
+
+        timestamps = user_rows.map { |row| row[:timestamp] || row['timestamp'] }
+        Points::TileEpoch.bump(user_id, timestamps: timestamps)
+      end
+
+      result
     end
 
     private

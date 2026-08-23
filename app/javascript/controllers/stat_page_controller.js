@@ -67,6 +67,7 @@ export default class extends BaseController {
     try {
       const style = await getMapStyle(getCurrentTheme(), {
         vectorTilesUrl: this.element.dataset.tilesUrl || null,
+        tilesFallback: this.element.dataset.tilesFallback === "true",
       })
       if (this.disconnected) return
 

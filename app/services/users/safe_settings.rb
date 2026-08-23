@@ -5,6 +5,9 @@ class Users::SafeSettings
 
   GATED_MAP_LAYERS = ['Heatmap', 'Fog of War', 'Scratch map'].freeze
 
+  MIN_MINUTES_BETWEEN_ROUTES = 1
+  MAX_MINUTES_BETWEEN_ROUTES = 1440
+
   FOG_OF_WAR_MODES = %w[points hexagons].freeze
 
   DEFAULT_VALUES = {
@@ -21,7 +24,7 @@ class Users::SafeSettings
     'live_map_enabled' => true,
     'route_opacity' => 0.6,
     # Layer colors: route fallback matches Map v1's blue, track color matches
-    # Tracks::GeojsonSerializer::DEFAULT_COLOR — keep them in sync.
+    # Tracks::GeojsonSerializer::DEFAULT_COLOR, keep them in sync.
     'route_color' => '#0000ff',
     'track_color' => '#6366F1',
     'immich_url' => nil,
@@ -39,6 +42,7 @@ class Users::SafeSettings
     'enabled_map_layers' => %w[Tracks Heatmap],
     'maps_maplibre_style' => 'light',
     'maps_maplibre_tiles_url' => nil,
+    'maps_maplibre_tiles_fallback' => false,
     'maps_maplibre_custom_theme' => {
       'base' => 'noir',
       'tokens' => {
@@ -62,7 +66,8 @@ class Users::SafeSettings
     'visit_radius_meters' => 100,
     'visit_min_points' => 3,
     'visit_min_duration_minutes' => 5,
-    'point_dragging_enabled' => false
+    'point_dragging_enabled' => false,
+    'points_tiled_rendering' => false
   }.freeze
 
   def initialize(settings = {}, plan: nil)
@@ -101,6 +106,7 @@ class Users::SafeSettings
       enabled_map_layers: enabled_map_layers,
       maps_maplibre_style: maps_maplibre_style,
       maps_maplibre_tiles_url: maps_maplibre_tiles_url,
+      maps_maplibre_tiles_fallback: maps_maplibre_tiles_fallback?,
       maps_maplibre_custom_theme: maps_maplibre_custom_theme,
       globe_projection: globe_projection,
       enabled_transportation_modes: enabled_transportation_modes,
@@ -111,7 +117,8 @@ class Users::SafeSettings
       visit_radius_meters: visit_radius_meters,
       visit_min_points: visit_min_points,
       visit_min_duration_minutes: visit_min_duration_minutes,
-      point_dragging_enabled: point_dragging_enabled?
+      point_dragging_enabled: point_dragging_enabled?,
+      points_tiled_rendering: points_tiled_rendering?
     }
   end
 
@@ -136,7 +143,10 @@ class Users::SafeSettings
   end
 
   def minutes_between_routes
-    settings['minutes_between_routes']
+    minutes = settings['minutes_between_routes'].to_i
+    minutes = DEFAULT_VALUES['minutes_between_routes'] unless minutes.positive?
+
+    minutes.clamp(MIN_MINUTES_BETWEEN_ROUTES, MAX_MINUTES_BETWEEN_ROUTES)
   end
 
   def time_threshold_minutes
@@ -245,6 +255,10 @@ class Users::SafeSettings
     settings['maps_maplibre_tiles_url']
   end
 
+  def maps_maplibre_tiles_fallback?
+    ActiveModel::Type::Boolean.new.cast(settings['maps_maplibre_tiles_fallback']) || false
+  end
+
   def globe_projection
     return false if lite?
 
@@ -315,6 +329,10 @@ class Users::SafeSettings
 
   def point_dragging_enabled?
     ActiveModel::Type::Boolean.new.cast(settings['point_dragging_enabled']) || false
+  end
+
+  def points_tiled_rendering?
+    ActiveModel::Type::Boolean.new.cast(settings['points_tiled_rendering']) || false
   end
 
   def visit_radius_meters

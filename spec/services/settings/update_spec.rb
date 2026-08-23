@@ -100,6 +100,12 @@ RSpec.describe Settings::Update do
           expect(result[:notices]).to include('Immich connection verified')
           expect(result[:alerts]).to be_empty
         end
+
+        it 'records the successful connection status' do
+          service.call
+
+          expect(user.reload.settings['immich_connection_status']).to eq('ok')
+        end
       end
 
       context 'when connection test fails' do
@@ -112,6 +118,12 @@ RSpec.describe Settings::Update do
           result = service.call
 
           expect(result[:alerts]).to include('Immich connection failed: 500')
+        end
+
+        it 'records the failed connection status' do
+          service.call
+
+          expect(user.reload.settings['immich_connection_status']).to eq('failed')
         end
       end
     end
@@ -148,6 +160,45 @@ RSpec.describe Settings::Update do
       end
     end
 
+    context 'when another process writes settings during the connection test' do
+      let(:settings_params) { { 'immich_url' => 'https://immich.test', 'immich_api_key' => 'new-key' } }
+      let(:service) { described_class.new(user, settings_params) }
+
+      before do
+        allow_any_instance_of(Immich::ConnectionTester).to receive(:call) do
+          concurrent_user = User.find(user.id)
+          concurrent_user.update!(settings: concurrent_user.settings.merge('concurrent_key' => 'kept'))
+          { success: true, message: 'Immich connection verified' }
+        end
+      end
+
+      it 'does not clobber the concurrent write' do
+        service.call
+
+        expect(user.reload.settings['concurrent_key']).to eq('kept')
+        expect(user.settings['immich_url']).to eq('https://immich.test')
+        expect(user.settings['immich_connection_status']).to eq('ok')
+      end
+    end
+
+    context 'when only the ssl verification toggle changes' do
+      let(:settings_params) { { 'immich_skip_ssl_verification' => '1' } }
+      let(:service) { described_class.new(user, settings_params) }
+
+      before do
+        user.update(settings: { 'immich_url' => 'https://immich.test', 'immich_api_key' => 'existing-key' })
+        allow_any_instance_of(Immich::ConnectionTester).to receive(:call)
+          .and_return({ success: true, message: 'Immich connection verified' })
+      end
+
+      it 'retests the connection and refreshes the recorded status' do
+        result = service.call
+
+        expect(result[:notices]).to include('Immich connection verified')
+        expect(user.reload.settings['immich_connection_status']).to eq('ok')
+      end
+    end
+
     context 'when immich settings have not changed' do
       let(:service) { described_class.new(user, settings_params) }
 
@@ -161,6 +212,12 @@ RSpec.describe Settings::Update do
         expect(Immich::ConnectionTester).not_to receive(:new)
 
         service.call
+      end
+
+      it 'does not record a connection status' do
+        service.call
+
+        expect(user.reload.settings['immich_connection_status']).to be_nil
       end
     end
 

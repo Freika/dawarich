@@ -17,7 +17,7 @@
     <%= f.text_field :name, class: "input input-bordered w-full", placeholder: t('.home_work_restaurant') %>
   </div>
 
-  <div class="grid grid-cols-2 gap-4">
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
     <!-- Emoji Picker -->
     <% default_emoji = tag.icon.presence || (tag.new_record? ? random_tag_emoji : '🏠') %>
     <div class="form-control" data-controller="emoji-picker" data-emoji-picker-auto-submit-value="false">
@@ -69,8 +69,8 @@
         </div>
 
         <!-- Custom Color Picker -->
-        <div class="flex items-center gap-3">
-          <label class="flex items-center gap-2 cursor-pointer group">
+        <div class="flex flex-wrap items-center gap-3">
+          <label class="flex items-center gap-2 cursor-pointer group min-w-0">
             <span class="text-sm font-medium"><%= t('.custom') %></span>
             <input type="color"
                    class="w-12 h-12 rounded-lg cursor-pointer border-2 border-base-300 hover:scale-105 transition-transform color-input"
@@ -80,7 +80,7 @@
           </label>
 
           <!-- Color Display -->
-          <div class="flex-1 flex items-center gap-2">
+          <div class="flex-1 min-w-0 flex items-center gap-2">
             <div class="w-8 h-8 rounded border-2 border-base-300"
                  data-color-picker-target="display"
                  style="background-color: <%= tag.color.presence || '#6ab0a4' %>;"></div>

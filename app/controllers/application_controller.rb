@@ -2,6 +2,7 @@
 
 class ApplicationController < ActionController::Base
   include Pundit::Authorization
+  include PartneroTrackable
 
   class_attribute :page_refresh_morphing, instance_accessor: false, default: false
 
@@ -15,7 +16,7 @@ class ApplicationController < ActionController::Base
 
   helper_method :current_user_safe_settings, :poster_ordering_enabled?, :family_feature_available?,
                 :current_user_features, :family_home_path, :locale_native_name, :locale_flag,
-                :suggested_locale, :locale_path, :morph_page_refreshes?
+                :suggested_locale, :locale_path, :morph_page_refreshes?, :reverse_geocoding_enabled_for?
 
   def morph_page_refreshes?
     self.class.page_refresh_morphing
@@ -36,6 +37,15 @@ class ApplicationController < ActionController::Base
 
   def family_feature_available?
     current_user_features[:family]
+  end
+
+  # Memoized per request: the points list gates a toponym cell per rendered row;
+  # one resolver lookup serves the whole page.
+  def reverse_geocoding_enabled_for?(user)
+    @reverse_geocoding_enabled_for ||= {}
+    return @reverse_geocoding_enabled_for[user&.id] if @reverse_geocoding_enabled_for.key?(user&.id)
+
+    @reverse_geocoding_enabled_for[user&.id] = Geocoding::Config.for(user).enabled?
   end
 
   # Where "back to the family" should land: the family page while the plan is

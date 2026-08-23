@@ -1,4 +1,13 @@
 en:
+  activerecord:
+    errors:
+      models:
+        service_setting:
+          host_required: "%{provider} needs a host. Enter your instance's hostname, for example photon.example.com."
+          host_invalid: 'The host must be a bare hostname with an optional port or path — no http:// prefix, no spaces.'
+          host_blocked: 'This host cannot be used: %{reason}'
+          api_key_required: '%{provider} needs an API key.'
+          chibigeo_api_key_required: 'ChibiGeo needs an API key. The free Hobby plan includes 2,500 lookups per day — get your key at chibigeo.com.'
   language_name: English
   language_flag: gb
   auth:
@@ -875,6 +884,10 @@ en:
         allow_dragging_points_to_correct_their_position: Allow dragging points to correct their position.
         editing_points_is_a_pro_feature_this_stays_on_for: Editing points is a Pro feature — this stays on for the current session only, and moves aren't saved on the Lite plan.
         allow_dragging_points_to_correct_their_position_remembered_across_sessio: Allow dragging points to correct their position. Remembered across sessions.
+        tiled_rendering: "Tiled rendering"
+        beta: "Beta"
+        tiled_rendering_description: "Draws points, routes, tracks and fog from vector tiles as you pan, so a long date range loads only what is in view. Routes show your generated tracks, colored per track."
+        tiled_rendering_caveats: "Active while Scratch map is off. Dense areas merge into markers with a point count — zoom in to open individual points. Point editing is unavailable, routes are colored per track (average speed, not a gradient), hovering a route no longer shows its popup — click a track instead — and the live trail can lag a few minutes."
         routes: Routes
         show_connected_route_lines: Show connected route lines
         color_by_speed: Color by speed
@@ -935,6 +948,8 @@ en:
         miles: Miles
         custom_basemap_url: Custom Basemap URL
         serve_the_base_map_from_your_own_source_accepts_protomaps: Serve the base map from your own source. Accepts Protomaps-schema vector tiles or raster XYZ tiles (both must include {z}, {x}, and {y}), or a full MapLibre style URL. Leave empty for the built-in tiles.
+        fill_gaps_with_the_default_basemap: Fill gaps with the default basemap
+        uncovered_areas_are_drawn_from_dawarich_s_default_tile_server: For a tileset that covers only part of the world. Areas it doesn't cover are drawn from Dawarich's default tile server, so turning this on sends tile requests there.
         base_map_layers: Base Map Layers
         toggle_base_map_elements_changes_apply_immediately: Toggle base map elements. Changes apply immediately.
         pro_feature_you_can_preview_changes_here_but_they_won: Pro feature — you can preview changes here, but they won't be saved on the Lite plan.
@@ -948,7 +963,7 @@ en:
         min_2: 1min
         min_3: 90min
         min_4: 180min
-        time_threshold_for_route_splitting: Time threshold for route splitting
+        time_threshold_for_route_splitting: Time threshold for route splitting; gaps longer than this are also left out of distance stats
         points_rendering_mode: Points Rendering Mode
         raw_all_points: Raw (all points)
         simplified_reduced_points: Simplified (reduced points)
@@ -1340,6 +1355,55 @@ en:
       residential_roads: Residential roads
       track: Track
   settings:
+    geocoding:
+      show:
+        title: Geocoding
+        provider: Geocoding provider
+        provider_hint: The provider used for reverse geocoding your points and for place and location search.
+        intro: Geocoding turns coordinates into city and country names on your points and stats, and powers place and location search.
+        host_choice: Photon server
+        choice_chibigeo: ChibiGeo hosted service
+        choice_chibigeo_desc: 'Free tier: 2,500 lookups per day. Works out of the box — just add your API key.'
+        choice_komoot: komoot public server
+        choice_komoot_desc: Free shared instance, throttled to one request per second.
+        choice_custom: Custom host
+        choice_custom_desc: Your own Photon instance or another compatible server.
+        recommended: Recommended
+        https_locked: HTTPS is always on for this host.
+        https_on: 'On'
+        https_off: 'Off'
+        chibigeo_message: ChibiGeo is a flat-rate, privacy-first geocoding service built by the Dawarich team. It works with Dawarich out of the box. An API key is required.
+        chibigeo_limits: The free Hobby plan includes 2,500 lookups per day at 1 request per second — hard caps, no overage.
+        chibigeo_key_link: Get your free API key
+        chibigeo_site_link: What is ChibiGeo?
+        disabled: Disabled
+        env_managed_notice: Geocoding is currently managed by environment variables set by your instance operator. The settings below take effect only if those variables are removed.
+        host: Host
+        host_hint: Bare hostname with optional port, e.g. photon.example.com:2322
+        api_key: API key
+        api_key_hint: Leave blank to keep the saved key.
+        api_key_saved: A key is saved for this provider.
+        clear_api_key: Remove the saved API key
+        use_https: Use HTTPS
+        rps: Requests per second
+        rps_hint_custom: Leave blank for no limit. Set this to whatever your server or plan allows.
+        rps_hint_chibigeo: Match your ChibiGeo plan - Hobby 1, Self-Hoster 5, Builder 10, Scale 25. Asking for more than your plan allows only earns rejected lookups.
+        rps_hint_komoot: komoot enforces one request per second for everyone, so this is fixed.
+        komoot_warning: photon.komoot.io is a shared public instance with strict rate limits. Requests are throttled to one per second, and bulk geocoding will be slow. Please consider hosting your own Photon instance.
+        komoot_no_api_key: The public komoot server takes no API key — leave it unset.
+        save: Save
+        test: Test my provider
+        test_hint: Save your settings first, then test. The test runs one lookup against your own provider configuration, even when environment variables are active.
+      update:
+        updated: Geocoding settings updated.
+        disabled: Geocoding disabled.
+        invalid_provider: Unknown geocoding provider.
+      test:
+        not_configured: No geocoding provider is configured for your account. Save a provider first.
+        success: 'Success! Your provider resolved the test coordinates to: %{place}.'
+        empty: The provider responded but returned no results for the test coordinates.
+        failure: 'Test failed: %{error}'
+        rate_limited: "The provider's rate limit is busy right now — try again in a moment."
     navigation:
       general: General
       integrations: Integrations
@@ -1415,6 +1479,14 @@ en:
         save_changes: Save changes
     integrations:
       index:
+        services_nav: Integration services
+        services:
+          geocoding: Geocoding
+          immich: Immich
+          photoprism: PhotoPrism
+          airtrail: AirTrail
+        status_connected: Connected
+        status_failed: Last connection attempt failed
         immich_photoprism_integrations: Immich & Photoprism Integrations
         connect_your_photo_management_tools_to_see_your_photos_on: Connect your photo management tools to see your photos on the map. Immich and Photoprism integrations are available on the Pro plan.
         upgrade_to_pro: Upgrade to Pro
@@ -1888,12 +1960,13 @@ en:
         one: "%{count} city"
         other: "%{count} cities"
     reverse_geocoding_stats:
-      reverse_geocoded_points: Reverse geocoded points
       points_without_data: points without data
+      points_that_were_reverse_geocoded_but_had_no_data: Points that were reverse geocoded but had no data
+      percent_of_total: "%{percent}%% of all points"
+      reverse_geocoded_points: Reverse geocoded points
       countries_visited: Countries visited
       close: close
       cities_visited: Cities visited
-      points_that_were_reverse_geocoded_but_had_no_data: Points that were reverse geocoded but had no data
     stat:
       total_distance: Total distance
       year_month: "%{year}/%{month}"
@@ -2656,10 +2729,14 @@ en:
           digest_already_exists: Digest already exists
           digest_for_year_is_being_generated: Digest for %{year} is being generated
         families:
+          location_requests:
+            not_found: Location request not found
           locations:
             start_at_and_end_at_are_required: start_at and end_at are required
             invalid_date_format: Invalid date format
             user_is_not_part_of_a_family: User is not part of a family
+          sharing:
+            missing_required_parameter_param: 'Missing required parameter: %{parameter}'
         imports:
           pending:
             an_error_occurred: An error occurred
@@ -3217,6 +3294,10 @@ en:
           email_has_been_removed_from_the_family_family_name: '%{email} has been removed from the family "%{family_name}"'
           an_unexpected_error_occurred_while_removing_the_membership_please_try: An unexpected error occurred while removing the membership. Please try again
           failed_to_leave: 'Failed to leave family: %{message}'
+      respond_to_location_request:
+        an_error_occurred: An error occurred
+        not_authorized: You are not authorized to respond to this request
+        no_longer_actionable: This request has expired or already been responded to
       update_location_sharing:
         update_failed: Failed to update location sharing setting
         unexpected_error: An error occurred while updating location sharing
@@ -3568,6 +3649,7 @@ en:
       failed_to_load_photos: Failed to load photos
       failed_to_load_areas: Failed to load areas
       failed_to_load_tracks: Failed to load tracks
+      failed_to_load_track_details: Failed to load track details
       failed_to_load_flights: Failed to load flights
       failed_to_load_anomalies: Failed to load anomalies
       reloading_routes: Reloading routes...
@@ -3681,6 +3763,16 @@ en:
       show_all_days: Show all days
       collapse_all_days: Collapse all days
     map:
+      tiled_rendering:
+        inactive_note:
+          one: "Inactive while %{layers} is on — it needs the full point set."
+          other: "Inactive while %{layers} are on — those need the full point set."
+        editing_unavailable: "Not available with tiled rendering, vector tiles have no draggable points"
+        failed: "Could not load map tiles. Try a shorter date range, or turn off tiled rendering in map settings."
+        tracks_pending: "No tracks in this view. Routes under tiled rendering show your generated tracks — pan or widen the date range, or check back if your history was imported recently."
+        splitting_unavailable: "Not used with tiled rendering — routes follow your generated tracks."
+        blockers:
+          scratch: "Scratch map"
       places_layer: Places Layer
       confirm_delete_point: Are you sure you want to delete this point?
       confirm_delete_point_permanently: |-
@@ -3879,6 +3971,7 @@ en:
       invalid_tile_url: Tile URL must include {z}, {x}, and {y} placeholders, or be a MapLibre style URL
       layer_unavailable_custom_style: Not available with the Custom map style — it draws no labels or points of interest
       layer_unavailable_foreign_basemap: Not available with a custom raster or style basemap — these layers come from the built-in vector tiles
+      tiles_fallback_unavailable: Only available for {z}/{x}/{y} tile URLs — a MapLibre style URL replaces the whole basemap
       make_changes_to_apply: Make changes to enable the Apply button
       re_evaluation_queued: Re-evaluation queued. The map will update once the job finishes.
       recalculation_queued: Recalculation queued. You'll get a notification when it finishes.

@@ -87,5 +87,21 @@ RSpec.describe DawarichSettings do
       expect(described_class.features_for(subscriber)[:family]).to be true
       expect(described_class.features_for(non_subscriber)[:family]).to be false
     end
+
+    it 'reports per-user reverse geocoding when no ENV provider is set' do
+      allow(described_class).to receive(:reverse_geocoding_enabled?).and_return(false)
+      configured = create(:user)
+      unconfigured = create(:user)
+      create(:service_setting, :active, user: configured)
+
+      expect(described_class.features_for(configured)[:reverse_geocoding]).to be true
+      expect(described_class.features_for(unconfigured)[:reverse_geocoding]).to be false
+    end
+
+    it 'reports reverse geocoding for everyone when ENV is set' do
+      allow(described_class).to receive(:reverse_geocoding_enabled?).and_return(true)
+
+      expect(described_class.features_for(create(:user))[:reverse_geocoding]).to be true
+    end
   end
 end

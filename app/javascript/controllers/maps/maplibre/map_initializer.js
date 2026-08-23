@@ -14,7 +14,7 @@ export class MapInitializer {
    * @param {Object} settings - Map settings (style, center, zoom)
    * @returns {Promise<maplibregl.Map>} The initialized map instance
    */
-  static async initialize(container, settings = {}) {
+  static async initialize(container, settings = {}, apiKey = null) {
     const {
       mapStyle = "streets",
       center = [0, 0],
@@ -25,6 +25,7 @@ export class MapInitializer {
       disabledPoiGroups = [],
       customTheme = null,
       vectorTilesUrl = null,
+      tilesFallback = false,
     } = settings
 
     const style = await getMapStyle(mapStyle, {
@@ -32,6 +33,7 @@ export class MapInitializer {
       disabledPoiGroups,
       customTheme,
       vectorTilesUrl,
+      tilesFallback,
     })
 
     const mapOptions = {
@@ -40,6 +42,27 @@ export class MapInitializer {
       center,
       zoom,
       attributionControl: false,
+      transformRequest: (url) => {
+        const requestUrl = new URL(url, window.location.origin)
+
+        // The origin check is load-bearing: a custom basemap or a third-party
+        // style document can point a tile source at any host, and matching on
+        // the path alone would hand that host the user's api key.
+        if (
+          requestUrl.origin !== window.location.origin ||
+          !requestUrl.pathname.startsWith("/api/v1/tiles/") ||
+          !apiKey
+        ) {
+          return { url: requestUrl.toString() }
+        }
+
+        return {
+          url: requestUrl.toString(),
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+          },
+        }
+      },
     }
 
     const map = new maplibregl.Map(mapOptions)

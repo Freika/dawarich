@@ -2,6 +2,11 @@ import { RoutesLayer } from "maps_maplibre/layers/routes_layer"
 import { pointsToGeoJSON } from "maps_maplibre/utils/geojson_transformers"
 import { createCircle } from "maps_maplibre/utils/geometry"
 import { performanceMonitor } from "maps_maplibre/utils/performance_monitor"
+import {
+  bulkPointsRequired,
+  SettingsManager,
+  tiledPointsActive,
+} from "maps_maplibre/utils/settings_manager"
 import { applySpeedColors } from "maps_maplibre/utils/speed_colors"
 
 /**
@@ -137,23 +142,27 @@ export class DataLoader {
     const counter = onUpdate ? new LoadingCounter(onUpdate) : null
 
     // Determine whether any layer that depends on points data is enabled
+    // Live cache, not this.settings: that snapshot misses layer toggles
+    const current = { ...this.settings, ...SettingsManager.getSettings() }
     const needsPoints =
-      this.settings.pointsVisible !== false ||
-      this.settings.routesVisible !== false ||
-      this.settings.heatmapEnabled ||
-      this.settings.fogEnabled ||
-      this.settings.scratchEnabled
+      (!tiledPointsActive(current) && current.pointsVisible !== false) ||
+      bulkPointsRequired(current)
 
     // Register every source that will be fetched so the badge stays visible
     // until each one finishes. Tracks and photos load in parallel after the
     // core data resolves, but the badge must still wait for them — otherwise
     // the badge disappears while track lines are still painting on the map.
+    // Tiled mode serves tracks (and Routes) from the tracks MVT source — the
+    // bulk GeoJSON fetch would duplicate every byte the tiles already carry.
+    const tracksViaBulk =
+      this.settings.tracksEnabled && !tiledPointsActive(current)
+
     if (counter) {
       if (needsPoints) counter.expect("points")
       if (this.settings.visitsEnabled) counter.expect("visits")
       if (this.settings.placesEnabled) counter.expect("places")
       if (this.settings.areasEnabled) counter.expect("areas")
-      if (this.settings.tracksEnabled) counter.expect("tracks")
+      if (tracksViaBulk) counter.expect("tracks")
       if (this.settings.photosEnabled) counter.expect("photos")
       if (this.settings.flightsEnabled) counter.expect("flights")
     }
@@ -353,7 +362,7 @@ export class DataLoader {
     const backgroundPromises = []
 
     // Background: Fetch tracks
-    if (this.settings.tracksEnabled && onTracksLoaded) {
+    if (tracksViaBulk && onTracksLoaded) {
       console.log("[Tracks] Starting background fetch...")
       const tracksTask = this.api
         .fetchTracks({
