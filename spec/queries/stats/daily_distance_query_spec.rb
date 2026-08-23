@@ -67,18 +67,11 @@ RSpec.describe Stats::DailyDistanceQuery do
       end
     end
 
-    # Anomaly detection cleans the data, but it cannot be relied on to catch
-    # every displaced fix, and a leg it misses is reported to the user as
-    # distance they travelled. A statistic should refuse to report a leg no
-    # vehicle could have flown regardless of what upstream filtering did.
-    # Observed on a GPX import that reported 55,646 km for one month, 44,044 km
-    # of which was fourteen instantaneous Heathrow-to-LAX hops.
     context 'with a leg no aircraft could have flown' do
       let!(:heathrow) do
         create(:point, user: user, lonlat: 'POINT(-0.4803 51.4693)',
                        timestamp: DateTime.new(2021, 1, 5, 12, 0, 0).to_i)
       end
-      # 8,780 km away, 15 seconds later: about 2,100,000 km/h.
       let!(:lax) do
         create(:point, user: user, lonlat: 'POINT(-118.4103 33.9429)',
                        timestamp: DateTime.new(2021, 1, 5, 12, 0, 15).to_i)
@@ -91,14 +84,11 @@ RSpec.describe Stats::DailyDistanceQuery do
       end
     end
 
-    # The guard on the rule above: the same 8,780 km covered in the time a real
-    # flight takes is ordinary long-haul travel and must still be counted.
     context 'with a genuine long-haul flight' do
       let!(:lax) do
         create(:point, user: user, lonlat: 'POINT(-118.4103 33.9429)',
                        timestamp: DateTime.new(2021, 1, 6, 0, 30, 0).to_i)
       end
-      # Same distance, 10 hours later: about 880 km/h.
       let!(:heathrow) do
         create(:point, user: user, lonlat: 'POINT(-0.4803 51.4693)',
                        timestamp: DateTime.new(2021, 1, 6, 10, 30, 0).to_i)

@@ -317,20 +317,11 @@ RSpec.describe Points::AnomalyFilter do
       end
     end
 
-    # A cached position is replayed verbatim: every reading in the burst carries
-    # byte-identical coordinates because nothing re-measured it. Real GPS always
-    # jitters, so a run that never moves at all, arrives impossibly fast and
-    # leaves impossibly fast is a stale fix being replayed — however long the
-    # burst runs. Observed on a real GPX import where a frozen Heathrow fix
-    # interleaved with live LAX fixes for 30 minutes after landing, billing 14
-    # Atlantic crossings (~44,000 km) to a single month.
     context 'Pass 2: a frozen cached fix replayed for longer than a displaced run' do
       let(:start_time) { 2.hours.ago.to_i }
       let(:end_time) { Time.current.to_i }
       let(:base_time) { 1.hour.ago.to_i }
-      # Live fixes at LAX, jittering as real GPS does.
       def lax(idx) = "POINT(#{-118.4103 + (idx * 0.0001)} #{33.9429 + (idx * 0.0001)})"
-      # The stale fix: identical every single time.
       let(:frozen) { 'POINT(-0.4803 51.4693)' }
 
       let!(:live_before) do
@@ -338,7 +329,6 @@ RSpec.describe Points::AnomalyFilter do
           create(:point, user: user, accuracy: 10, timestamp: base_time + (i * 15), lonlat: lax(i))
         end
       end
-      # Eight identical readings — beyond MAX_DISPLACED_RUN_POINTS.
       let!(:stale_burst) do
         (0..7).map do |i|
           create(:point, user: user, accuracy: 10, timestamp: base_time + 45 + (i * 15), lonlat: frozen)
@@ -361,10 +351,6 @@ RSpec.describe Points::AnomalyFilter do
       end
     end
 
-    # The guard on the rule above: length alone must never convict. A run of the
-    # same length, arriving and leaving just as impossibly, is kept when it
-    # actually moves — that is a genuine stay reached through bad data, not a
-    # position being replayed. Same shape as the frozen-fix case, one difference.
     context 'Pass 2: a long run that moves is not treated as a frozen fix' do
       let(:start_time) { 2.hours.ago.to_i }
       let(:end_time) { Time.current.to_i }
@@ -376,7 +362,6 @@ RSpec.describe Points::AnomalyFilter do
           create(:point, user: user, accuracy: 10, timestamp: base_time + (i * 15), lonlat: lax(i))
         end
       end
-      # Eight readings around Heathrow that drift like a real walk.
       let!(:moving_stay) do
         (0..7).map do |i|
           create(:point, user: user, accuracy: 10, timestamp: base_time + 45 + (i * 15),
