@@ -280,13 +280,14 @@ class Points::AnomalyFilter
 
     # Only check points in the main range (not context points)
     main_range_ids = main_points.map(&:id).to_set
+    frozen_ids = frozen_range_ids(points, chunk_start, chunk_end)
 
     # Each device is its own stream. Interleaving them by timestamp invents
     # journeys between devices that nobody made — the same reason track
     # generation groups by tracker_id (Tracks::TimeChunkProcessorJob).
     anomaly_ids = points.group_by { |point| point.tracker_id.to_s }.values.flat_map do |stream|
       displaced_run_ids(stream, speeds_by_point, threshold, main_range_ids) +
-        frozen_fix_run_ids(stream, speeds_by_point, threshold, frozen_range_ids(points, chunk_start, chunk_end))
+        frozen_fix_run_ids(stream, speeds_by_point, threshold, frozen_ids)
     end
 
     return 0 if anomaly_ids.empty?
@@ -383,7 +384,8 @@ class Points::AnomalyFilter
   end
 
   def frozen_with?(anchor, point)
-    distance_meters(anchor, point) <= FROZEN_FIX_EXTENT_METERS
+    anchor.accuracy == point.accuracy &&
+      distance_meters(anchor, point) <= FROZEN_FIX_EXTENT_METERS
   end
 
   # Impossible on both sides convicts on its own: nothing legitimate arrives and
@@ -459,12 +461,12 @@ class Points::AnomalyFilter
 
     main = Point.where(user_id: @user_id, timestamp: start_time..end_time)
                 .not_anomaly.order(:timestamp, :id)
-                .select(:id, :timestamp, :tracker_id, :lonlat).to_a
+                .select(:id, :timestamp, :tracker_id, :lonlat, :accuracy).to_a
 
     after_ctx = Point.where(user_id: @user_id).not_anomaly
                      .where('timestamp > ?', end_time)
                      .order(:timestamp, :id).limit(CONTEXT_POINTS)
-                     .select(:id, :timestamp, :tracker_id, :lonlat).to_a
+                     .select(:id, :timestamp, :tracker_id, :lonlat, :accuracy).to_a
 
     [before_ctx + main + after_ctx, main]
   end
@@ -473,7 +475,7 @@ class Points::AnomalyFilter
     scope = Point.where(user_id: @user_id).not_anomaly
                  .where('timestamp < ?', start_time)
                  .order(timestamp: :desc, id: :desc)
-                 .select(:id, :timestamp, :tracker_id, :lonlat)
+                 .select(:id, :timestamp, :tracker_id, :lonlat, :accuracy)
 
     widened = scope.where('timestamp >= ?', start_time - MAX_FROZEN_FIX_SPAN_SECONDS)
                    .limit(FROZEN_FIX_CONTEXT_POINTS).to_a

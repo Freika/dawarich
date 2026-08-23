@@ -351,6 +351,40 @@ RSpec.describe Points::AnomalyFilter do
       end
     end
 
+    context 'Pass 2: a frozen run no longer than a displaced run' do
+      let(:start_time) { 2.hours.ago.to_i }
+      let(:end_time) { Time.current.to_i }
+      let(:base_time) { 1.hour.ago.to_i }
+      def lax(idx) = "POINT(#{-118.4103 + (idx * 0.0001)} #{33.9429 + (idx * 0.0001)})"
+
+      let!(:live_before) do
+        (0..2).map do |i|
+          create(:point, user: user, accuracy: 10, timestamp: base_time + (i * 15), lonlat: lax(i))
+        end
+      end
+      let!(:stale_burst) do
+        (0..4).map do |i|
+          create(:point, user: user, accuracy: 10, timestamp: base_time + 45 + (i * 15),
+                         lonlat: 'POINT(-0.4803 51.4693)')
+        end
+      end
+      let!(:live_after) do
+        (0..2).map do |i|
+          create(:point, user: user, accuracy: 10, timestamp: base_time + 150 + (i * 15), lonlat: lax(i + 3))
+        end
+      end
+
+      before { described_class.new(user.id, start_time, end_time).call }
+
+      it 'is still caught by the displaced-run pass' do
+        stale_burst.each { |point| expect(point.reload.anomaly).to be true }
+      end
+
+      it 'leaves the live fixes alone' do
+        (live_before + live_after).each { |point| expect(point.reload.anomaly).not_to be true }
+      end
+    end
+
     context 'Pass 2: a frozen burst delivered as single-point live batches' do
       let(:start_time) { 3.hours.ago.to_i }
       let(:end_time) { Time.current.to_i }

@@ -8,7 +8,7 @@ class EnqueueFrozenFixAnomalyRecalculation < ActiveRecord::Migration[8.0]
   ].freeze
 
   def up
-    clear_previous_run
+    return if clear_previous_run.zero?
 
     DataMigrations::RecalculateAnomaliesJob.perform_later
   rescue NameError
@@ -33,6 +33,6 @@ class EnqueueFrozenFixAnomalyRecalculation < ActiveRecord::Migration[8.0]
           { keys: KEYS }
         ]
       )
-    )
+    ).cmd_tuples
   end
 end
