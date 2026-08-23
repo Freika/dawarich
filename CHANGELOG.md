@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- A phone that replays a stale cached position after landing no longer bills the trip as dozens of instant intercontinental flights. Bursts of identical coordinates reached and left at impossible speed are now flagged however long they run, and monthly distance ignores any leg faster than 1,200 km/h. Stored anomaly flags, tracks and statistics are re-evaluated by a background job after upgrading, so existing months change once it has run.
 - Saving family sharing settings without picking a duration no longer turns a timed share into a permanent one, and re-enabling a lapsed share restores its duration.
 - Each account can now pick its own geocoding provider — Photon, Geoapify, Nominatim or LocationIQ — under Settings → Integrations, with a button to test it. The `PHOTON_API_HOST`, `GEOAPIFY_API_KEY`, `NOMINATIM_API_HOST` and `LOCATIONIQ_API_KEY` variables keep working and take precedence.
 - A custom basemap that covers only part of the world can now fill the gaps with the built-in tiles. Turn on "Fill gaps with the default basemap" under Custom Basemap URL. It is off by default, because filling the gaps means requesting tiles from Dawarich's tile server.

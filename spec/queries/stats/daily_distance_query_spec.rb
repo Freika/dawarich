@@ -270,7 +270,7 @@ RSpec.describe Stats::DailyDistanceQuery do
                timestamp: DateTime.new(2021, 1, 1, 6, 1, 0).to_i)
       end
       let!(:point3) do
-        create(:point, user: user, lonlat: 'POINT(16.39 48.23)',
+        create(:point, user: user, lonlat: 'POINT(16.381 48.221)',
                timestamp: DateTime.new(2021, 1, 1, 6, 1, 0).to_i)
       end
 
@@ -278,7 +278,29 @@ RSpec.describe Stats::DailyDistanceQuery do
 
       it 'orders tied timestamps deterministically and sums both segments' do
         day1_distance = subject.find { |day, _| day == 1 }&.last
-        expect(day1_distance).to be_between(2_000, 3_500)
+        expect(day1_distance).to be_between(1_400, 1_600)
+      end
+    end
+
+    context 'with two points sharing a timestamp far enough apart to be a teleport' do
+      let!(:point1) do
+        create(:point, user: user, lonlat: 'POINT(16.37 48.21)',
+               timestamp: DateTime.new(2021, 1, 3, 6, 0, 0).to_i)
+      end
+      let!(:point2) do
+        create(:point, user: user, lonlat: 'POINT(16.38 48.22)',
+               timestamp: DateTime.new(2021, 1, 3, 6, 1, 0).to_i)
+      end
+      let!(:point3) do
+        create(:point, user: user, lonlat: 'POINT(13.405 52.52)',
+               timestamp: DateTime.new(2021, 1, 3, 6, 1, 0).to_i)
+      end
+
+      subject { described_class.new(monthly_points, timespan, 'Etc/UTC', minutes_between_routes: 30).call }
+
+      it 'counts the real segment and drops the instantaneous jump' do
+        day3_distance = subject.find { |day, _| day == 3 }&.last
+        expect(day3_distance).to be_between(1_000, 1_600)
       end
     end
 
