@@ -47,6 +47,9 @@ Rails.application.routes.draw do
 
     resources :background_jobs, only: %i[index create]
     patch 'background_jobs', to: 'background_jobs#update'
+    resource :geocoding, only: %i[show update], controller: 'geocoding' do
+      post :test
+    end
     resource :visits, only: %i[show update]
     resources :users, only: %i[index show create destroy edit update] do
       member do
@@ -368,6 +371,11 @@ Rails.application.routes.draw do
         get 'tracked_months', to: 'tracked_months#index'
       end
 
+      namespace :tiles do
+        get 'points/:z/:x/:y.mvt', to: 'points#show', defaults: { format: :mvt }
+        get 'tracks/:z/:x/:y.mvt', to: 'tracks#show', defaults: { format: :mvt }
+      end
+
       resources :photos, only: %i[index] do
         member do
           get 'thumbnail', constraints: { id: %r{[^/]+} }
@@ -397,9 +405,17 @@ Rails.application.routes.draw do
       end
 
       namespace :families do
+        resource :mine, only: [:show], controller: 'mine'
+        resource :sharing, only: [:update], controller: 'sharing'
         resources :locations, only: [:index] do
           collection do
             get :history
+          end
+        end
+        resources :location_requests, only: [:create] do
+          member do
+            post :accept
+            post :decline
           end
         end
       end

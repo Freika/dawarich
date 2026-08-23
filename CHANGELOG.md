@@ -6,8 +6,90 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Dawarich can now be used in Polish: pick it under Settings → General. Thanks @Kliiper for the translation! (#3357)
+
 ### Fixed
 
+- The action buttons in page headers — New trip, New import, New tag, Mark all as read and the rest — are now translated. They were asking for a key that no language file defines, so every language showed the English text.
+- The points page now counts its points in Polish, German and Spanish instead of falling back to an untranslated string.
+- A phone that replays a stale cached position after landing no longer bills the trip as dozens of instant intercontinental flights. Bursts of identical coordinates reached and left at impossible speed are now flagged however long they run, and monthly distance ignores any leg faster than 1,200 km/h. Stored anomaly flags, tracks and statistics are re-evaluated by a background job after upgrading; it runs on the lowest-priority queue and does not interrupt tracking, and your existing monthly totals will change once it reaches them. A track drawn through such a burst can still read longer than the day it belongs to, because the speed ceiling applies to distance totals rather than to stored tracks.
+
+## [1.13.1] - 2026-08-22, Berlin
+
+### Added
+
+- The mobile apps can now use the family feature: see who is in your family, who is sharing their location, and respond to location requests. New endpoints: `GET /api/v1/families/mine`, `PATCH /api/v1/families/sharing`, `POST /api/v1/families/location_requests`, and `POST /api/v1/families/location_requests/:id/accept` and `/decline`. The overview carries no coordinates — locations stay in the existing family locations endpoints.
+- Tracks are now served as vector tiles from `GET /api/v1/tiles/tracks/:z/:x/:y.mvt`.
+
+### Fixed
+
+- Saving family sharing settings without picking a duration no longer turns a timed share into a permanent one, and re-enabling a lapsed share restores its duration.
+- Each account can now pick its own geocoding provider — Photon, Geoapify, Nominatim or LocationIQ — under Settings → Integrations, with a button to test it. The `PHOTON_API_HOST`, `GEOAPIFY_API_KEY`, `NOMINATIM_API_HOST` and `LOCATIONIQ_API_KEY` variables keep working and take precedence.
+- A custom basemap that covers only part of the world can now fill the gaps with the built-in tiles. Turn on "Fill gaps with the default basemap" under Custom Basemap URL. It is off by default, because filling the gaps means requesting tiles from Dawarich's tile server.
+- Geocoding settings now take a requests-per-second limit, and lookups are paced to stay inside it, so a bulk backfill no longer floods a server that asked for one request a second. komoot is pinned to its published 1/s and ChibiGeo to your plan's limit. Set the same ceiling instance-wide with `REVERSE_GEOCODING_RPS`, and raise `REVERSE_GEOCODING_CONCURRENCY` if your provider has no limit worth respecting. (#3343)
+- Device and importer details are no longer repeated on every point, which noticeably shrinks large histories. Existing points are migrated by a background job after upgrading; on millions of points expect it to run for hours and the database to grow temporarily first. Nothing changes in the UI while it runs, and it can be re-run at any time to pick up rows it has not reached. Adding the linking column briefly locks `points` at startup; an instance with heavy write traffic that cannot get the lock defers the change to a background job, so booting still completes. To opt out, set `SKIP_POINT_DIMENSION_BACKFILL=1` before migrating, on every service including Sidekiq.
+- Saving an AirTrail integration with an unreachable host no longer crashes the settings page — the settings are saved and the connection failure is reported instead. (#3393)
+- Custom geocoding hosts are checked against the same blocked-address list as the photo integrations; unresolvable hosts can still be saved.
+- Place and location search skip a busy geocoding rate limit instead of stalling the request; a skipped lookup is never cached as an empty answer.
+- The geocoding "Test my provider" button reports a busy rate limit honestly and no longer echoes internal error details.
+- Nightly and realtime reverse geocoding resolve each user's settings once instead of once per point.
+- Saving a new speed color scale now updates tiled tracks immediately.
+- Turning the Tracks layer off while it is still loading no longer shows it anyway.
+- The reverse-geocoding percentage follows the interface language's number format.
+- AirTrail's last-synced time is shown in the interface language and timezone.
+- A family location request can no longer be accepted and declined at the same time.
+- Double-submitting the geocoding provider form no longer fails.
+- Switching the Photon server to komoot now clears any API key you had saved, instead of sending it to a server that never asked for one.
+- Rotating a geocoding API key now refreshes cached place results instead of serving the previous key's answers for an hour.
+- The geocoding settings form lines its fields up on one width, credits ChibiGeo to the Dawarich team and links to it, and hides the API key field for the komoot server that takes none.
+
+### Changed
+
+- Tiled rendering (beta) now covers Routes, Tracks and Fog of War, leaving only the Scratch map on the classic full download. Under tiles, routes are colored per track, the route-splitting sliders no longer apply, and clicking a track opens its details.
+- The vector tile query timeout is now configurable with `VECTOR_TILES_QUERY_TIMEOUT_MS` (default 5000 ms), for self-hosted instances where very large date ranges exceeded the old limit. (#3386)
+- The Integrations settings page shows one service at a time, picked from a sidebar, each with a connection indicator. Geocoding settings moved here from their own tab; the old address redirects. (#3393)
+- The reverse geocoding panel now shows what share of your points have been geocoded instead of a raw count you had to divide yourself, and hides the "points without data" figure once it reaches zero. Instances with `STORE_GEODATA=false` no longer compute that count at all.
+
+## [1.13.0] - 2026-08-17, Berlin
+
+### Added
+
+- The map has a new opt-in "Tiled rendering" beta in map settings: the points layer is drawn from vector tiles built by the database, so the browser only downloads what the current view needs. Dense areas arrive as aggregated markers carrying a point count — the heatmap weighs them accordingly — and long date ranges over large histories pan and zoom smoothly instead of stalling on one huge download. On a test account with 1 million points, opening the full three-year history classically pulls the whole range up front — 992 requests and roughly 590 MB of JSON, which crashed the browser tab a third of the way in; tiled rendering drew the same city view from 12 requests and 146 KB in a fraction of a second, and re-opening the map shortly after costs no requests at all. Individual points keep their popups, though a merged marker has no single point to open — zoom in to separate it. Dragging points to edit them is unavailable while tiled mode is on, and turning on Routes, Fog of War or Scratch map temporarily switches back to classic loading (the settings panel says which layer is blocking). Tiles are cached privately in the browser and refresh automatically when your location history changes, so the live trail can lag up to five minutes behind. (#2691)
+
+### Changed
+
+- Removed three superseded `points` indexes (the old dedup index and two composites) now that the consolidated `(user_id, timestamp, lonlat)` index from 1.12.2 serves their queries. The migration cleans up any invalid leftover index first, rebuilds the consolidated index automatically when an interrupted build left it invalid, and refuses to run only when it is missing entirely. Frees several gigabytes on large instances and further reduces the write cost of every point.
+- The nightly cache preheat now runs as one background job per user instead of a single job looping over every user. Its duration is bounded by the slowest individual user rather than by the sum of all of them, so one account with a large history no longer delays the preheat for everyone else. On Dawarich Cloud it now only preheats active and trial accounts; self-hosted instances continue to preheat every user.
+
+### Fixed
+
+- Four scheduled jobs (app version check, cache preheat, family location request expiry, points counter correction) were queued onto `default` instead of the queues their job classes declare, so they competed with higher-priority work — the cache preheat in particular could hold up imports, track generation and stats for minutes at a time. They now run on `app_version_checking`, `cache`, `families` and `low_priority` respectively.
+
+## [1.12.2] - 2026-08-15, Berlin
+
+### Added
+
+- Dawarich Cloud can now credit sign-ups to affiliate partners. Self-hosted instances are unaffected — both the tracking script and the attribution call stay off unless the Cloud-only `PARTNERO_PROGRAM_ID` and `PARTNERO_API_KEY` are set.
+
+### Changed
+
+- Consolidated `points` table indexes: a new `(user_id, timestamp, lonlat)` unique index replaces three redundant indexes, roughly halving the write cost of every point. The index is built by the boot-time migration; on instances with millions of points this can take several minutes, during which the container waits before serving requests. The `points` table itself stays fully usable while the index builds.
+- Automatic daily track generation no longer rebuilds a user's entire history when their tracks are missing and their history exceeds 100k points. On Dawarich Cloud such histories are backfilled automatically at a throttled rate; self-hosted instances still rebuild directly, as fast as their own hardware allows.
+
+### Fixed
+
+- The map no longer stays blank after an upgrade when the `dawarich_public` Docker volume still holds precompiled assets from an older version. The asset manifest now ships inside the app image instead of the public volume, the boot-time asset sync stages from inside the app directory (a tmpfs-mounted `/tmp` can no longer skip it), and the container logs a warning if the sync still cannot run. (#3346)
+- User data exports no longer fail when a legacy place has no spatial coordinates. (#3344)
+- The Tracks layer toggle on the map now reflects your saved setting after a page reload; previously it always showed as off even though the setting was saved and tracks were loaded. (#736)
+- The map no longer leaps to a just-left place or a phantom spot off your route: iOS visit reports delivered after departure and coarse cell-tower fixes without motion data are now filtered out as anomalies. Existing histories are re-evaluated automatically after the upgrade, and tracks and stats are rebuilt along the way.
+- The Family page no longer fails to load, and the family map no longer places a member at the wrong spot dated 1970, when someone's history contains legacy points missing a timestamp or coordinates. Such points are also left out of shared location history, and a member whose points are all incomplete is omitted from the map rather than shown somewhere wrong. (#3254)
+- Google Timeline phone exports no longer lose altitude, accuracy and speed on points taken from the `rawSignals` section — those fields were read from the wrong nesting level and came back empty. Points already imported keep their empty values, and importing the same file again skips them; delete the old import first, then import the file again. (#3337)
+- Coarse `rawSignals` fixes with an accuracy radius above 10km are now flagged as anomalies on import, the same as points from every other source. They previously slipped through because their accuracy was never read.
+- Daily and monthly distance no longer counts a jump across a tracking gap longer than your "minutes between routes" setting when the two points come from different imports, from live tracking, or from a photo integration (Immich, PhotoPrism, Google Photos). Points inside one imported file still count as continuous history regardless of gaps, so sparse sources such as Google Timeline keep their full distance. Existing months keep their old numbers — run **Map v2 → Settings → Recalculate tracks & stats** once after upgrading to apply the fix to past months. (#2689)
+- Every anomaly-filter pass now detaches the points it flags from their tracks and queues the affected tracks and months for a rebuild, so a point flagged after a track was already built no longer leaves a stale leap baked into the geometry. Rebuilds triggered by the anomaly backfill run on the low-priority queue so live tracking stays ahead.
+- A large history that produces no tracks is no longer re-walked by the throttled track backfill every day; a completed walk now backs off for a week before it can be scheduled again.
 - Every place is now permanently tied to an account at the database level. If your instance still had ownerless places left over from before the May 2026 ownership backfill, the upgrade now resolves them automatically instead of failing partway through `db:migrate`: each one is assigned to the account that visited it, and any that no account ever visited is deleted. The migration logs how many it assigned and deleted, and stops with a query listing the rows if anything is left unresolved.
 
 ## [1.12.1] - 2026-08-13, Berlin
@@ -15,7 +97,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 - Fix to recently added migrations that could fail on some self-hosted instances with a large number of visits. The migration now runs in smaller batches and is resumable if interrupted.
-
 
 ## [1.12.0] - 2026-08-11, Berlin
 

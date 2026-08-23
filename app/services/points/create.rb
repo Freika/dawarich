@@ -13,6 +13,11 @@ class Points::Create
 
     deduplicated_data = data.uniq { |point| Point.dedup_key(point) }
 
+    # Dual-write the dimension FKs alongside the legacy columns. The backfill
+    # only sweeps rows that exist when it passes; without this every new point
+    # would land unstamped behind the cursor.
+    Points::DimensionResolver.new.stamp(deduplicated_data)
+
     created_points = []
     inserted_count = 0
 

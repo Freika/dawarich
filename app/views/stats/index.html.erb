@@ -5,14 +5,14 @@
   <%= render layout: 'shared/page_header', locals: { title: t('.statistics') } do %>
     <% if Date.today >= Date.new(2025, 12, 31) %>
       <%= link_to users_digests_path, class: 'btn btn-outline btn-sm' do %>
-        <%= icon 'earth' %> <%= t('.year_end_digests') %>
+        <%= icon 'earth' %> <%= t('stats.index.year_end_digests') %>
       <% end %>
     <% end %>
   <% end %>
 
   <%= render 'shared/plan_data_window_alert', utm_content: 'stats_index' %>
 
-  <% cache [current_user.id, "stats_summary", I18n.locale, current_user.stats.maximum(:updated_at), @points_total, current_user.safe_settings.distance_unit, DawarichSettings.reverse_geocoding_enabled?], expires_in: 24.hours do %>
+  <% cache [current_user.id, "stats_summary", I18n.locale, current_user.stats.maximum(:updated_at), @points_total, current_user.safe_settings.distance_unit, reverse_geocoding_enabled_for?(current_user)], expires_in: 24.hours do %>
     <div class="stats stats-vertical lg:stats-horizontal shadow w-full bg-base-200 relative">
       <div class="stat text-center">
         <div class="stat-value text-primary">
@@ -28,7 +28,7 @@
         <div class="stat-title"><%= t('.geopoints_tracked') %></div>
       </div>
 
-    <% if DawarichSettings.reverse_geocoding_enabled? %>
+    <% if reverse_geocoding_enabled_for?(current_user) %>
       <%= render 'stats/reverse_geocoding_stats' %>
     <% else %>
       </div>
@@ -45,7 +45,7 @@
 
   <div class="mt-6 grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
     <% @stats.each do |year, stats| %>
-      <% cache [current_user.id, "stats_year_card", I18n.locale, year, stats.map(&:updated_at).max, current_user.safe_settings.distance_unit, DawarichSettings.reverse_geocoding_enabled?], expires_in: 24.hours do %>
+      <% cache [current_user.id, "stats_year_card", I18n.locale, year, stats.map(&:updated_at).max, current_user.safe_settings.distance_unit, reverse_geocoding_enabled_for?(current_user)], expires_in: 24.hours do %>
       <div class="card w-full bg-base-200 shadow-xl">
         <div class="card-body">
           <h2 class="card-title justify-between text-<%= header_colors[year % header_colors.size] %>">
@@ -61,7 +61,7 @@
           <p>
             <%= number_with_delimiter year_distance_stat(@year_distances[year], current_user).round %> <%= current_user.safe_settings.distance_unit %>
           </p>
-          <% if DawarichSettings.reverse_geocoding_enabled? %>
+          <% if reverse_geocoding_enabled_for?(current_user) %>
             <div class="card-actions justify-end">
               <% location_data = countries_and_cities_stat_for_year(year, stats) %>
               <%= link_to t('.countries_count_countries_cities_count_cities', countries_count: location_data[:countries_count], cities_count: location_data[:cities_count]),

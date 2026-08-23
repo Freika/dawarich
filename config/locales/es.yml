@@ -1,4 +1,13 @@
 es:
+  activerecord:
+    errors:
+      models:
+        service_setting:
+          host_required: "%{provider} needs a host. Enter your instance's hostname, for example photon.example.com."
+          host_invalid: 'The host must be a bare hostname with an optional port or path — no http:// prefix, no spaces.'
+          host_blocked: 'This host cannot be used: %{reason}'
+          api_key_required: '%{provider} needs an API key.'
+          chibigeo_api_key_required: 'ChibiGeo needs an API key. The free Hobby plan includes 2,500 lookups per day — get your key at chibigeo.com.'
   language_name: Español
   language_flag: es
   auth:
@@ -878,6 +887,10 @@ es:
         allow_dragging_points_to_correct_their_position: Permite arrastrar puntos para corregir su posición.
         editing_points_is_a_pro_feature_this_stays_on_for: Editar puntos es una función Pro — esto se queda activo solo durante la sesión actual, y no se guardan cambios en el plan Lite.
         allow_dragging_points_to_correct_their_position_remembered_across_sessio: Permite arrastrar puntos para corregir su posición. Recordado a lo largo de sesiones.
+        tiled_rendering: "Renderizado en teselas"
+        beta: "Beta"
+        tiled_rendering_description: "Dibuja puntos, rutas, tracks y niebla desde teselas vectoriales mientras te desplazas, en lugar de cargar todo el rango de fechas de antemano. Las rutas muestran tus tracks generados, coloreados por track."
+        tiled_rendering_caveats: "Activo mientras el mapa de pruebas está desactivado. Las zonas densas se agrupan en marcadores con un recuento — acércate para abrir puntos individuales. La edición de puntos no está disponible, las rutas se colorean por track (velocidad media, no un degradado), el globo de ruta al pasar el cursor desaparece — haz clic en un track — y el rastro en vivo puede retrasarse unos minutos."
         routes: Rutas
         show_connected_route_lines: Muestra líneas de rutas conectadas
         color_by_speed: Color por velocidad
@@ -938,6 +951,8 @@ es:
         miles: Millas
         custom_basemap_url: URL de mapa personalizado
         serve_the_base_map_from_your_own_source_accepts_protomaps: Servir el mapa base desde tu propia fuente. Acepta tiles vectoriales o raster XYZ (ambos deben incluir {z}, {x} y {y}), o una URL completa de estilo MapLibre. Deja vacío para las tiles integradas.
+        fill_gaps_with_the_default_basemap: Rellenar los huecos con el mapa base predeterminado
+        uncovered_areas_are_drawn_from_dawarich_s_default_tile_server: Para un conjunto de teselas que solo cubre parte del mundo. Las zonas que no cubre se dibujan desde el servidor de teselas predeterminado de Dawarich, así que activarlo envía peticiones allí.
         base_map_layers: Capas del mapa base
         toggle_base_map_elements_changes_apply_immediately: Alternar elementos del mapa base. Los cambios se aplican inmediatamente.
         pro_feature_you_can_preview_changes_here_but_they_won: Característica Pro — puedes previsualizar los cambios aquí, pero no se guardarán en la versión Lite.
@@ -951,7 +966,7 @@ es:
         min_2: 1min
         min_3: 90min
         min_4: 180min
-        time_threshold_for_route_splitting: Umbral de tiempo para la división de rutas
+        time_threshold_for_route_splitting: Umbral de tiempo para la división de rutas; los intervalos más largos también se excluyen de las estadísticas de distancia
         points_rendering_mode: Modo de renderizado de puntos
         raw_all_points: Crudo (todos los puntos)
         simplified_reduced_points: Simplificado (puntos reducidos)
@@ -1343,6 +1358,55 @@ es:
       residential_roads: Vías residenciales
       track: Trayecto
   settings:
+    geocoding:
+      show:
+        title: Geocoding
+        provider: Geocoding provider
+        provider_hint: The provider used for reverse geocoding your points and for place and location search.
+        intro: Geocoding turns coordinates into city and country names on your points and stats, and powers place and location search.
+        host_choice: Photon server
+        choice_chibigeo: ChibiGeo hosted service
+        choice_chibigeo_desc: 'Free tier: 2,500 lookups per day. Works out of the box — just add your API key.'
+        choice_komoot: komoot public server
+        choice_komoot_desc: Free shared instance, throttled to one request per second.
+        choice_custom: Custom host
+        choice_custom_desc: Your own Photon instance or another compatible server.
+        recommended: Recommended
+        https_locked: HTTPS is always on for this host.
+        https_on: 'On'
+        https_off: 'Off'
+        chibigeo_message: ChibiGeo is a flat-rate, privacy-first geocoding service built by the Dawarich team. It works with Dawarich out of the box. An API key is required.
+        chibigeo_limits: The free Hobby plan includes 2,500 lookups per day at 1 request per second — hard caps, no overage.
+        chibigeo_key_link: Get your free API key
+        chibigeo_site_link: What is ChibiGeo?
+        disabled: Disabled
+        env_managed_notice: Geocoding is currently managed by environment variables set by your instance operator. The settings below take effect only if those variables are removed.
+        host: Host
+        host_hint: Bare hostname with optional port, e.g. photon.example.com:2322
+        api_key: API key
+        api_key_hint: Leave blank to keep the saved key.
+        api_key_saved: A key is saved for this provider.
+        clear_api_key: Remove the saved API key
+        use_https: Use HTTPS
+        rps: Requests per second
+        rps_hint_custom: Leave blank for no limit. Set this to whatever your server or plan allows.
+        rps_hint_chibigeo: Match your ChibiGeo plan - Hobby 1, Self-Hoster 5, Builder 10, Scale 25. Asking for more than your plan allows only earns rejected lookups.
+        rps_hint_komoot: komoot enforces one request per second for everyone, so this is fixed.
+        komoot_warning: photon.komoot.io is a shared public instance with strict rate limits. Requests are throttled to one per second, and bulk geocoding will be slow. Please consider hosting your own Photon instance.
+        komoot_no_api_key: The public komoot server takes no API key — leave it unset.
+        save: Save
+        test: Test my provider
+        test_hint: Save your settings first, then test. The test runs one lookup against your own provider configuration, even when environment variables are active.
+      update:
+        updated: Geocoding settings updated.
+        disabled: Geocoding disabled.
+        invalid_provider: Unknown geocoding provider.
+      test:
+        not_configured: No geocoding provider is configured for your account. Save a provider first.
+        success: 'Success! Your provider resolved the test coordinates to: %{place}.'
+        empty: The provider responded but returned no results for the test coordinates.
+        failure: 'Test failed: %{error}'
+        rate_limited: "The provider's rate limit is busy right now — try again in a moment."
     navigation:
       general: General
       integrations: Integraciones
@@ -1418,6 +1482,14 @@ es:
         save_changes: Guardar cambios
     integrations:
       index:
+        services_nav: Servicios de integración
+        services:
+          geocoding: Geocodificación
+          immich: Immich
+          photoprism: PhotoPrism
+          airtrail: AirTrail
+        status_connected: Conectado
+        status_failed: El último intento de conexión falló
         immich_photoprism_integrations: Integraciones Immich y Photoprism
         connect_your_photo_management_tools_to_see_your_photos_on: Conectar tus herramientas de gestión de fotos para ver tus fotos en el mapa. Las integraciones de Immich y Photoprism están disponibles en la versión Pro.
         upgrade_to_pro: Actualizar a Pro
@@ -1893,12 +1965,13 @@ es:
         one: "%{count} ciudad"
         other: "%{count} ciudades"
     reverse_geocoding_stats:
-      reverse_geocoded_points: Puntos geocodificados inversamente
       points_without_data: puntos sin datos
+      points_that_were_reverse_geocoded_but_had_no_data: Puntos que se geocodificaron inversamente pero no tenían datos
+      percent_of_total: "%{percent}%% de todos los puntos"
+      reverse_geocoded_points: Puntos geocodificados inversamente
       countries_visited: Países visitados
       close: Cerrar
       cities_visited: Ciudades visitadas
-      points_that_were_reverse_geocoded_but_had_no_data: Puntos que se geocodificaron inversamente pero no tenían datos
     stat:
       total_distance: Distancia total
       year_month: "%{year}/%{month}"
@@ -2479,6 +2552,18 @@ es:
     boat: Barco
     motorcycle: Motocicleta
   helpers:
+    page_entries_info:
+      entry:
+        zero: resultados
+        one: resultado
+        other: resultados
+      one_page:
+        display_entries:
+          zero: No se encontraron resultados
+          one: Mostrando <b>1</b> %{entry_name}
+          other: Mostrando <b>%{count}</b> %{entry_name}
+      more_pages:
+        display_entries: Mostrando %{entry_name} <b>%{first}&nbsp;–&nbsp;%{last}</b> de un total de <b>%{total}</b>
     application:
       full_title: "%{page_title} | %{app_name} - Dawarich"
       expired: Vencido
@@ -2661,10 +2746,14 @@ es:
           digest_already_exists: Resumen ya existe
           digest_for_year_is_being_generated: Está generando el resumen para %{year}.
         families:
+          location_requests:
+            not_found: Solicitud de ubicación no encontrada
           locations:
             start_at_and_end_at_are_required: start_at y end_at son obligatorios
             invalid_date_format: Formato de fecha no válido
             user_is_not_part_of_a_family: El usuario no pertenece a ninguna familia
+          sharing:
+            missing_required_parameter_param: 'Falta el parámetro requerido: %{parameter}'
         imports:
           pending:
             an_error_occurred: Se ha producido un error
@@ -3224,6 +3313,10 @@ es:
           email_has_been_removed_from_the_family_family_name: '%{email} ha sido eliminado de la familia "%{family_name}"'
           an_unexpected_error_occurred_while_removing_the_membership_please_try: Ocurrió un error inesperado al eliminar la membresía. Por favor, inténtalo de nuevo
           failed_to_leave: 'Falló dejar la familia: %{message}'
+      respond_to_location_request:
+        an_error_occurred: Se ha producido un error
+        not_authorized: No tienes autorización para responder a esta solicitud
+        no_longer_actionable: Esta solicitud ha caducado o ya ha sido respondida
       update_location_sharing:
         update_failed: Falló actualizar la configuración de seguimiento de ubicación
         unexpected_error: Ocurrió un error al actualizar el seguimiento de ubicación
@@ -3541,6 +3634,7 @@ es:
       failed_to_load_photos: No se pudo cargar las fotos
       failed_to_load_areas: No se pudo cargar los ámbitos
       failed_to_load_tracks: No se pudieron cargar los trayectos
+      failed_to_load_track_details: No se pudieron cargar los detalles del trayecto
       failed_to_load_flights: No se pudo cargar los vuelos
       failed_to_load_anomalies: No se pudo cargar las anomalías
       reloading_routes: Recargando rutas...
@@ -3654,6 +3748,16 @@ es:
       show_all_days: Mostrar todos los días
       collapse_all_days: Colapsar todos los días
     map:
+      tiled_rendering:
+        inactive_note:
+          one: "Inactivo mientras %{layers} está activada — esa capa necesita todos los puntos."
+          other: "Inactivo mientras %{layers} están activadas — esas capas necesitan todos los puntos."
+        editing_unavailable: "No disponible con el renderizado en teselas: las teselas vectoriales no tienen puntos arrastrables"
+        failed: "No se pudieron cargar las teselas del mapa. Prueba con un intervalo de fechas más corto o desactiva el renderizado en teselas en los ajustes del mapa."
+        tracks_pending: "No hay tracks en esta vista. Con teselas, las rutas muestran tus tracks generados — desplaza el mapa, amplía el intervalo o vuelve más tarde si importaste hace poco."
+        splitting_unavailable: "Sin efecto con el renderizado en teselas — las rutas siguen tus tracks generados."
+        blockers:
+          scratch: "Mapa de pruebas"
       places_layer: Capa de lugares
       confirm_delete_point: "¿Seguro que quieres eliminar este punto?"
       confirm_delete_point_permanently: |-
@@ -3851,6 +3955,7 @@ es:
       invalid_tile_url: La URL de teselas debe incluir los marcadores {z}, {x} e {y}, o ser una URL de estilo MapLibre
       layer_unavailable_custom_style: No disponible con el estilo de mapa personalizado — no dibuja etiquetas ni puntos de interés
       layer_unavailable_foreign_basemap: No disponible con un mapa base ráster o personalizado; estas capas proceden de las teselas vectoriales integradas
+      tiles_fallback_unavailable: Solo disponible para URLs de teselas {z}/{x}/{y}; una URL de estilo MapLibre reemplaza todo el mapa base
       make_changes_to_apply: Haz cambios para habilitar el botón Aplicar
       re_evaluation_queued: Se ha programado la reevaluación. El mapa se actualizará cuando termine.
       recalculation_queued: Se ha programado el recálculo. Recibirás una notificación cuando termine.

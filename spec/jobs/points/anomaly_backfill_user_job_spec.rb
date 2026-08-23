@@ -44,6 +44,18 @@ RSpec.describe Points::AnomalyBackfillUserJob, type: :job do
       expect(described_class.new.perform(user.id, reset: true)).to be true
     end
 
+    it 'invalidates the tile epoch on clear, even when re-evaluation marks nothing' do
+      # Clearing un-hides points in tiles; AnomalyFilter's own bump only fires
+      # when it MARKS anomalies, so the all-clear outcome relies on this path.
+      allow_any_instance_of(Points::AnomalyFilter).to receive(:call).and_return(0)
+      before_component = Points::TileEpoch.etag_component(user.id, 0, Time.utc(2100, 1, 1).to_i)
+
+      described_class.new.perform(user.id, reset: true)
+
+      expect(Points::TileEpoch.etag_component(user.id, 0, Time.utc(2100, 1, 1).to_i))
+        .not_to eq(before_component)
+    end
+
     it 'runs the recalculation inline when asked to, keeping it on the caller queue' do
       described_class.new.perform(user.id, reset: true, rebuild: :inline)
 
@@ -97,6 +109,32 @@ RSpec.describe Points::AnomalyBackfillUserJob, type: :job do
         described_class.new.perform(user.id)
       end.not_to have_enqueued_job(Users::RecalculateDataJob)
     end
+
+    it 'rebuilds affected tracks itself, since no wholesale rebuild follows' do
+      point = create(:point, user: user, accuracy: 6, timestamp: 30.minutes.ago.to_i,
+                     latitude: 51.3402, longitude: 12.3712, lonlat: 'POINT(12.3712 51.3402)',
+                     motion_data: { 'action' => 'visit',
+                                    'departure_date' => '2026-05-19T18:34:25Z' })
+      track = create(:track, user: user)
+      point.update_column(:track_id, track.id)
+
+      expect do
+        described_class.new.perform(user.id)
+      end.to have_enqueued_job(Tracks::RecalculateJob).with(track.id)
+    end
+
+    it 'routes its own rebuilds off :tracks so live tracking stays ahead' do
+      point = create(:point, user: user, accuracy: 6, timestamp: 30.minutes.ago.to_i,
+                     latitude: 51.3402, longitude: 12.3712, lonlat: 'POINT(12.3712 51.3402)',
+                     motion_data: { 'action' => 'visit',
+                                    'departure_date' => '2026-05-19T18:34:25Z' })
+      track = create(:track, user: user)
+      point.update_column(:track_id, track.id)
+
+      expect do
+        described_class.new.perform(user.id)
+      end.to have_enqueued_job(Tracks::RecalculateJob).on_queue('low_priority')
+    end
   end
 
   describe '#perform skips empty chunks for sparse data' do
@@ -115,9 +153,9 @@ RSpec.describe Points::AnomalyBackfillUserJob, type: :job do
 
     it 'invokes the AnomalyFilter once per populated month, not per 30-day chunk in the span' do
       filter_calls = 0
-      allow(Points::AnomalyFilter).to receive(:new).and_wrap_original do |original, *args|
+      allow(Points::AnomalyFilter).to receive(:new).and_wrap_original do |original, *args, **kwargs|
         filter_calls += 1
-        original.call(*args)
+        original.call(*args, **kwargs)
       end
 
       described_class.new.perform(sparse_user.id)

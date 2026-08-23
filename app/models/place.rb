@@ -38,12 +38,15 @@ class Place < ApplicationRecord
     manual.or(linked_to_confirmed_visits(user)).or(tagged)
   }
 
+  # Legacy places predate the lonlat column and carry coordinates only in the
+  # decimal columns; to_f keeps their JSON serialization numeric — BigDecimal
+  # would encode as a string.
   def lon
-    lonlat.x
+    lonlat&.x || longitude.to_f
   end
 
   def lat
-    lonlat.y
+    lonlat&.y || latitude.to_f
   end
 
   def name_locked?

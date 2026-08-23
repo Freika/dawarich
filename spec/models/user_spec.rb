@@ -674,17 +674,6 @@ RSpec.describe User, type: :model do
       end
     end
 
-    describe '#total_reverse_geocoded_points_without_data' do
-      subject { user.total_reverse_geocoded_points_without_data }
-
-      let!(:reverse_geocoded_point) { create(:point, :reverse_geocoded, :with_geodata, user:) }
-      let!(:reverse_geocoded_point_without_data) { create(:point, :reverse_geocoded, user:, geodata: {}) }
-
-      it 'returns number of reverse geocoded points without data' do
-        expect(subject).to eq(1)
-      end
-    end
-
     describe '#years_tracked' do
       let!(:points) do
         [

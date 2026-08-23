@@ -25,6 +25,23 @@ RSpec.describe 'Map', type: :request do
 
         expect(response.body).not_to include('residency-content')
       end
+
+      it 'exposes the per-user reverse geocoding feature flag (no ENV)' do
+        allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false)
+        create(:service_setting, :active, user: user)
+
+        get map_path
+
+        expect(response.body).to include('reverse_geocoding&quot;:true')
+      end
+
+      it 'exposes a disabled reverse geocoding flag for unconfigured users (no ENV)' do
+        allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false)
+
+        get map_path
+
+        expect(response.body).to include('reverse_geocoding&quot;:false')
+      end
     end
 
     context 'when user not signed in' do

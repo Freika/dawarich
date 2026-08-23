@@ -6,7 +6,7 @@
 import { classifyBasemapUrl } from "maps_maplibre/utils/basemap_url"
 
 // Route fallback matches Map v1's blue; track color matches the backend
-// Tracks::GeojsonSerializer::DEFAULT_COLOR — keep them in sync.
+// Tracks::GeojsonSerializer::DEFAULT_COLOR, keep them in sync.
 export const LAYER_COLOR_DEFAULTS = {
   routeColor: "#0000ff",
   trackColor: "#6366F1",
@@ -18,6 +18,7 @@ export const LAYER_COLOR_DEFAULTS = {
 const DEFAULT_SETTINGS = {
   mapStyle: "light",
   vectorTilesUrl: null,
+  tilesFallback: false,
   ...LAYER_COLOR_DEFAULTS,
   customTheme: {
     base: "noir",
@@ -51,6 +52,7 @@ const DEFAULT_SETTINGS = {
   maxGapMinutesInCity: 120,
   gpsFilteringEnabled: true,
   pointDraggingEnabled: false,
+  pointsTiledRendering: false,
   enabledTransportationModes: [
     "unknown",
     "stationary",
@@ -87,6 +89,7 @@ const BACKEND_SETTINGS_MAP = {
   mapStyle: "maps_maplibre_style",
   customTheme: "maps_maplibre_custom_theme",
   vectorTilesUrl: "maps_maplibre_tiles_url",
+  tilesFallback: "maps_maplibre_tiles_fallback",
   routeColor: "route_color",
   trackColor: "track_color",
   enabledMapLayers: "enabled_map_layers",
@@ -104,9 +107,56 @@ const BACKEND_SETTINGS_MAP = {
   maxGapMinutesInCity: "max_gap_minutes_in_city",
   gpsFilteringEnabled: "gps_filtering_enabled",
   pointDraggingEnabled: "point_dragging_enabled",
+  pointsTiledRendering: "points_tiled_rendering",
   enabledTransportationModes: "enabled_transportation_modes",
   distance_unit: "distance_unit",
   liveMapEnabled: "live_map_enabled",
+}
+
+// Layers that can only be drawn from the full point set. With tiles requested,
+// routes ride the tracks tile source, fog reads the points tile source, and
+// heatmap reads the tiled source — only Scratch map still needs everything.
+export function bulkPointsRequired(settings = {}) {
+  const tiledRequested = settings.pointsTiledRendering === true
+
+  return (
+    Boolean(settings.routesVisible !== false && !tiledRequested) ||
+    Boolean(settings.heatmapEnabled && !tiledRequested) ||
+    Boolean(
+      settings.fogEnabled &&
+        settings.fogOfWarMode !== "hexagons" &&
+        !tiledRequested,
+    ) ||
+    Boolean(settings.scratchEnabled)
+  )
+}
+
+// Tiles only save anything when nothing else already needs the full set
+export function tiledPointsActive(settings = {}) {
+  return settings.pointsTiledRendering === true && !bulkPointsRequired(settings)
+}
+
+// The renderer each tiled-aware layer must use for the CURRENT settings.
+// Layers read tiledPointsActive once at construction; flipping the beta
+// toggle (or the fog mode) mid-session re-derives everything through this
+// single truth table so no layer is left on the wrong renderer.
+export function tiledLayerModes(settings = {}) {
+  const tiled = tiledPointsActive(settings)
+  const routesOn = settings.routesVisible !== false
+  const tracksOn = settings.tracksEnabled === true
+  const fogTiled = tiled && (settings.fogOfWarMode || "points") !== "hexagons"
+
+  return {
+    tiled,
+    tracksMvt: {
+      tracksEnabled: tiled && tracksOn,
+      routesVisible: tiled && routesOn,
+    },
+    classicRoutes: routesOn && !tiled,
+    classicTracks: tracksOn && !tiled,
+    fogTiled,
+    pointsSourceKeepAlive: fogTiled && Boolean(settings.fogEnabled),
+  }
 }
 
 export class SettingsManager {
@@ -252,11 +302,15 @@ export class SettingsManager {
               value = value === true || value === "true"
             } else if (frontendKey === "pointDraggingEnabled") {
               value = value === true || value === "true"
+            } else if (frontendKey === "pointsTiledRendering") {
+              value = value === true || value === "true"
             } else if (frontendKey === "speedColoredRoutes") {
               value = value === true || value === "true"
             } else if (frontendKey === "globeProjection") {
               value = value === true || value === "true"
             } else if (frontendKey === "liveMapEnabled") {
+              value = value === true || value === "true"
+            } else if (frontendKey === "tilesFallback") {
               value = value === true || value === "true"
             }
 
@@ -342,6 +396,8 @@ export class SettingsManager {
               value = Boolean(value)
             } else if (frontendKey === "pointDraggingEnabled") {
               value = Boolean(value)
+            } else if (frontendKey === "pointsTiledRendering") {
+              value = Boolean(value)
             }
 
             backendSettings[backendKey] = value
@@ -350,7 +406,7 @@ export class SettingsManager {
       )
 
       // distance_unit, tile categories, and POI groups live inside the
-      // nested `maps` hash on the backend — the API merges it so the V1
+      // nested `maps` hash on the backend, the API merges it so the V1
       // keys managed by the settings page survive.
       // biome-ignore lint/performance/noDelete: key must be absent, not undefined
       delete backendSettings.distance_unit

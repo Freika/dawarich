@@ -187,11 +187,29 @@ RSpec.describe Place, type: :model do
       it 'returns the longitude' do
         expect(place.lon).to be_within(0.000001).of(13.0948638)
       end
+
+      context 'when a legacy place has no lonlat' do
+        it 'returns the longitude column as a Float' do
+          place.update_column(:lonlat, nil)
+
+          expect(place.reload.lon).to be_a(Float)
+          expect(place.reload.lon).to be_within(0.000001).of(13.0948638)
+        end
+      end
     end
 
     describe '#lat' do
       it 'returns the latitude' do
         expect(place.lat).to be_within(0.000001).of(54.2905245)
+      end
+
+      context 'when a legacy place has no lonlat' do
+        it 'returns the latitude column as a Float' do
+          place.update_column(:lonlat, nil)
+
+          expect(place.reload.lat).to be_a(Float)
+          expect(place.reload.lat).to be_within(0.000001).of(54.2905245)
+        end
       end
     end
   end

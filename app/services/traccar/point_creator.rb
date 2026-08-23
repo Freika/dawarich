@@ -39,6 +39,9 @@ class Traccar::PointCreator
     created_points = []
 
     locations.each_slice(1000) do |batch|
+      # Dual-write the dimension FK: the backfill only sweeps rows that exist
+      # when it passes, and live tracker points land behind its cursor.
+      dimension_resolver.stamp(batch)
       result = Point.archival_safe_upsert_all(
         batch,
         returning: Arel.sql(RETURNING_COLUMNS)
@@ -47,5 +50,9 @@ class Traccar::PointCreator
     end
 
     created_points
+  end
+
+  def dimension_resolver
+    @dimension_resolver ||= Points::DimensionResolver.new
   end
 end

@@ -227,7 +227,12 @@ module Tracks::TrackBuilder
       )
     end
     mode = Track.pick_dominant_mode(segments)
-    track.update_column(:dominant_mode, mode) if mode
+    return unless mode
+
+    # update_column skips after_commit, and dominant_mode is a tile property —
+    # bump the epoch explicitly or reclassified tracks 304 with the old mode.
+    track.update_column(:dominant_mode, mode)
+    Tracks::TileEpoch.bump_range(track.user_id, track.start_at.to_i, track.end_at.to_i)
   end
 
   private
