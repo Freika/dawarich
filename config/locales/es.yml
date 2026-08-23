@@ -1373,9 +1373,12 @@ es:
         choice_custom_desc: Your own Photon instance or another compatible server.
         recommended: Recommended
         https_locked: HTTPS is always on for this host.
-        chibigeo_message: ChibiGeo is a flat-rate, privacy-first geocoding service that works with Dawarich out of the box. An API key is required.
+        https_on: 'On'
+        https_off: 'Off'
+        chibigeo_message: ChibiGeo is a flat-rate, privacy-first geocoding service built by the Dawarich team. It works with Dawarich out of the box. An API key is required.
         chibigeo_limits: The free Hobby plan includes 2,500 lookups per day at 1 request per second — hard caps, no overage.
         chibigeo_key_link: Get your free API key
+        chibigeo_site_link: What is ChibiGeo?
         disabled: Disabled
         env_managed_notice: Geocoding is currently managed by environment variables set by your instance operator. The settings below take effect only if those variables are removed.
         host: Host
@@ -1390,6 +1393,7 @@ es:
         rps_hint_chibigeo: Match your ChibiGeo plan - Hobby 1, Self-Hoster 5, Builder 10, Scale 25. Asking for more than your plan allows only earns rejected lookups.
         rps_hint_komoot: komoot enforces one request per second for everyone, so this is fixed.
         komoot_warning: photon.komoot.io is a shared public instance with strict rate limits. Requests are throttled to one per second, and bulk geocoding will be slow. Please consider hosting your own Photon instance.
+        komoot_no_api_key: The public komoot server takes no API key — leave it unset.
         save: Save
         test: Test my provider
         test_hint: Save your settings first, then test. The test runs one lookup against your own provider configuration, even when environment variables are active.
