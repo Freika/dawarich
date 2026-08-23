@@ -14,6 +14,7 @@ export default class extends Controller {
     "httpsLockedHint",
     "rpsInput",
     "rpsHint",
+    "apiKeyWrapper",
   ]
   static values = {
     chibigeoHost: String,
@@ -65,6 +66,10 @@ export default class extends Controller {
     const kind = this.hostKind()
     this.chibigeoPanelTarget.hidden = kind !== "chibigeo"
     this.komootWarningTarget.hidden = kind !== "komoot"
+    // komoot's public server takes no key; the field would only invite one.
+    if (this.hasApiKeyWrapperTarget) {
+      this.apiKeyWrapperTarget.hidden = kind === "komoot"
+    }
 
     const locked = this.httpsOnlyHostsValue.includes(this.bareHost())
     if (locked) this.httpsToggleTarget.checked = true

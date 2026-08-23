@@ -36,6 +36,10 @@
      'chibigeo' => t('settings.geocoding.show.rps_hint_chibigeo'),
      'custom' => t('settings.geocoding.show.rps_hint_custom')
    } %>
+<% field_measure = 'w-full' %>
+<% chibigeo_utm = 'utm_source=dawarich&utm_medium=app&utm_campaign=geocoding_settings' %>
+<% chibigeo_site_url = "https://chibigeo.com/?#{chibigeo_utm}" %>
+<% chibigeo_docs_url = "https://chibigeo.com/docs/guides/dawarich?#{chibigeo_utm}" %>
 
 <div class="rounded-box border border-base-content/10 bg-base-200 max-w-3xl"
      data-controller="geocoding-settings"
@@ -46,8 +50,8 @@
      data-geocoding-settings-rps-bounds-value="<%= rps_bounds.to_json %>"
      data-geocoding-settings-rps-hints-value="<%= rps_hints.to_json %>">
   <%= form_with url: settings_geocoding_path, method: :patch, data: { turbo: false } do |f| %>
-    <div class="card-body space-y-6">
-      <div class="form-control w-full max-w-md">
+    <div class="card-body space-y-8">
+      <div class="form-control <%= field_measure %>">
         <%= f.label :provider, class: 'label' do %>
           <span class="label-text font-medium"><%= t('settings.geocoding.show.provider') %></span>
         <% end %>
@@ -60,14 +64,16 @@
         <span class="label-text-alt mt-1 text-base-content/60"><%= t('settings.geocoding.show.provider_hint') %></span>
       </div>
 
-      <div class="rounded-lg border border-base-content/10 bg-base-100 p-5 space-y-4"
+      <div class="border-t border-base-content/10 pt-6 space-y-6"
            data-geocoding-settings-target="fieldset"
            data-provider="photon"
            <%= 'hidden' unless active_provider == 'photon' %>>
-        <div class="space-y-2" role="radiogroup" aria-label="<%= t('settings.geocoding.show.host_choice') %>">
-          <span class="label-text font-medium"><%= t('settings.geocoding.show.host_choice') %></span>
+        <div class="<%= field_measure %>" role="radiogroup" aria-label="<%= t('settings.geocoding.show.host_choice') %>">
+          <div class="label"><span class="label-text font-medium"><%= t('settings.geocoding.show.host_choice') %></span></div>
+          <div class="space-y-2">
           <% [
-            { value: 'chibigeo', title: t('settings.geocoding.show.choice_chibigeo'), desc: t('settings.geocoding.show.choice_chibigeo_desc'), badge: t('settings.geocoding.show.recommended') },
+            { value: 'chibigeo', title: t('settings.geocoding.show.choice_chibigeo'), desc: t('settings.geocoding.show.choice_chibigeo_desc'), badge: t('settings.geocoding.show.recommended'),
+              link: { label: t('settings.geocoding.show.chibigeo_site_link'), url: chibigeo_site_url } },
             { value: 'komoot', title: t('settings.geocoding.show.choice_komoot'), desc: t('settings.geocoding.show.choice_komoot_desc'), badge: nil },
             { value: 'custom', title: t('settings.geocoding.show.choice_custom'), desc: t('settings.geocoding.show.choice_custom_desc'), badge: nil }
           ].each do |option| %>
@@ -84,36 +90,46 @@
                     <span class="badge badge-primary badge-outline badge-sm"><%= option[:badge] %></span>
                   <% end %>
                 </span>
-                <span class="block text-sm text-base-content/60 mt-0.5"><%= option[:desc] %></span>
+                <span class="block text-sm text-base-content/60 mt-0.5">
+                  <%= option[:desc] %>
+                  <% if option[:link] %>
+                    <%= link_to option[:link][:label], option[:link][:url],
+                                target: '_blank', rel: 'noopener',
+                                class: 'link link-primary whitespace-nowrap' %>
+                  <% end %>
+                </span>
               </span>
             </label>
           <% end %>
+          </div>
         </div>
 
-        <div data-geocoding-settings-target="chibigeoPanel" <%= 'hidden' unless photon_choice == 'chibigeo' %>>
-          <div class="flex items-start gap-3 rounded-lg border border-base-content/15 bg-base-200 p-4">
+        <div class="<%= field_measure %>" data-geocoding-settings-target="chibigeoPanel" <%= 'hidden' unless photon_choice == 'chibigeo' %>>
+          <div class="flex items-start gap-3 rounded-lg border border-base-content/10 p-4">
             <%= icon 'info', class: 'w-5 h-5 shrink-0 text-info mt-0.5' %>
             <div class="text-sm space-y-1">
               <p><%= t('settings.geocoding.show.chibigeo_message') %></p>
               <p><%= t('settings.geocoding.show.chibigeo_limits') %></p>
-              <p>
-                <%= link_to t('settings.geocoding.show.chibigeo_key_link'),
-                            'https://chibigeo.com/docs/guides/dawarich?utm_source=dawarich&utm_medium=app&utm_campaign=geocoding_settings',
+              <p class="flex flex-wrap gap-x-4 gap-y-1">
+                <%= link_to t('settings.geocoding.show.chibigeo_key_link'), chibigeo_docs_url,
                             target: '_blank', rel: 'noopener',
                             class: 'link link-primary font-medium' %>
               </p>
             </div>
           </div>
         </div>
-        <div data-geocoding-settings-target="komootWarning" <%= 'hidden' unless photon_choice == 'komoot' %>>
+        <div class="<%= field_measure %>" data-geocoding-settings-target="komootWarning" <%= 'hidden' unless photon_choice == 'komoot' %>>
           <div class="flex items-start gap-3 rounded-lg border border-warning/40 bg-warning/10 p-4">
             <%= icon 'triangle-alert', class: 'w-5 h-5 shrink-0 text-warning mt-0.5' %>
-            <span class="text-sm"><%= t('settings.geocoding.show.komoot_warning') %></span>
+            <div class="text-sm space-y-1">
+              <p><%= t('settings.geocoding.show.komoot_warning') %></p>
+              <p><%= t('settings.geocoding.show.komoot_no_api_key') %></p>
+            </div>
           </div>
         </div>
 
         <div data-geocoding-settings-target="customHostWrapper" <%= 'hidden' unless photon_choice == 'custom' %>>
-          <div class="form-control w-full max-w-md">
+          <div class="form-control <%= field_measure %>">
             <label class="label"><span class="label-text font-medium"><%= t('settings.geocoding.show.host') %></span></label>
             <%= text_field_tag 'photon[host]', photon_host,
                                class: 'input input-bordered w-full',
@@ -124,36 +140,41 @@
           </div>
         </div>
 
-        <div class="form-control">
-          <label class="label cursor-pointer justify-start gap-3">
-            <%= hidden_field_tag 'photon[use_https]', photon_https_locked ? '1' : '0',
-                                 data: { geocoding_settings_target: 'httpsHidden' } %>
-            <%= check_box_tag 'photon[use_https]', '1',
-                              photon_setting ? photon_setting.use_https : true,
-                              class: 'toggle toggle-primary',
-                              disabled: photon_https_locked,
-                              data: { geocoding_settings_target: 'httpsToggle' } %>
-            <span class="label-text"><%= t('settings.geocoding.show.use_https') %></span>
-          </label>
-          <span class="label-text-alt text-base-content/60 ml-1"
-                data-geocoding-settings-target="httpsLockedHint"
-                <%= 'hidden' unless photon_https_locked %>><%= t('settings.geocoding.show.https_locked') %></span>
+        <div class="grid gap-4 sm:grid-cols-2 <%= field_measure %> items-start">
+          <div class="form-control">
+            <label class="label"><span class="label-text font-medium"><%= t('settings.geocoding.show.use_https') %></span></label>
+            <label class="input input-bordered flex items-center gap-3 cursor-pointer">
+              <%= hidden_field_tag 'photon[use_https]', photon_https_locked ? '1' : '0',
+                                   data: { geocoding_settings_target: 'httpsHidden' } %>
+              <%= check_box_tag 'photon[use_https]', '1',
+                                photon_setting ? photon_setting.use_https : true,
+                                class: 'toggle toggle-primary toggle-sm peer',
+                                disabled: photon_https_locked,
+                                data: { geocoding_settings_target: 'httpsToggle' } %>
+              <span class="text-sm text-base-content/70 peer-checked:hidden"><%= t('settings.geocoding.show.https_off') %></span>
+              <span class="text-sm text-base-content/70 hidden peer-checked:inline"><%= t('settings.geocoding.show.https_on') %></span>
+            </label>
+            <span class="label-text-alt mt-1 text-base-content/60"
+                  data-geocoding-settings-target="httpsLockedHint"
+                  <%= 'hidden' unless photon_https_locked %>><%= t('settings.geocoding.show.https_locked') %></span>
+          </div>
+
+          <div class="form-control">
+            <label class="label"><span class="label-text font-medium"><%= t('settings.geocoding.show.rps') %></span></label>
+            <%= number_field_tag 'photon[rps]', photon_setting&.rps,
+                                 class: 'input input-bordered w-full',
+                                 step: 'any',
+                                 min: rps_rules[photon_choice].min,
+                                 max: rps_rules[photon_choice].max,
+                                 disabled: rps_rules[photon_choice].locked,
+                                 data: { geocoding_settings_target: 'rpsInput' } %>
+            <span class="label-text-alt mt-1 text-base-content/60"
+                  data-geocoding-settings-target="rpsHint"><%= rps_hints[photon_choice] %></span>
+          </div>
         </div>
 
-        <div class="form-control w-full max-w-md">
-          <label class="label"><span class="label-text font-medium"><%= t('settings.geocoding.show.rps') %></span></label>
-          <%= number_field_tag 'photon[rps]', photon_setting&.rps,
-                               class: 'input input-bordered w-full',
-                               step: 'any',
-                               min: rps_rules[photon_choice].min,
-                               max: rps_rules[photon_choice].max,
-                               disabled: rps_rules[photon_choice].locked,
-                               data: { geocoding_settings_target: 'rpsInput' } %>
-          <span class="label-text-alt mt-1 text-base-content/60"
-                data-geocoding-settings-target="rpsHint"><%= rps_hints[photon_choice] %></span>
-        </div>
-
-        <div class="form-control w-full max-w-md">
+        <div data-geocoding-settings-target="apiKeyWrapper" class="form-control <%= field_measure %>"
+             <%= 'hidden' if photon_choice == 'komoot' %>>
           <label class="label"><span class="label-text font-medium"><%= t('settings.geocoding.show.api_key') %></span></label>
           <%= password_field_tag 'photon[api_key]', nil,
                                  class: 'input input-bordered w-full',
@@ -166,50 +187,54 @@
               <%= t('settings.geocoding.show.api_key_hint') %>
             <% end %>
           </span>
-        </div>
-        <% if photon_setting&.api_key.present? %>
-          <div class="form-control">
-            <label class="label cursor-pointer justify-start gap-3">
+          <% if photon_setting&.api_key.present? %>
+            <label class="label cursor-pointer justify-start gap-3 mt-2">
               <%= check_box_tag 'photon[clear_api_key]', '1', false, class: 'checkbox checkbox-sm' %>
               <span class="label-text"><%= t('settings.geocoding.show.clear_api_key') %></span>
             </label>
-          </div>
-        <% end %>
+          <% end %>
+        </div>
       </div>
 
       <% (Geocoding::Providers::CHAIN - ['photon']).each do |provider| %>
         <% setting = @settings_by_provider[provider] %>
         <% with_host = Geocoding::Providers.host_required?(provider) %>
-        <div class="rounded-lg border border-base-content/10 bg-base-100 p-5 space-y-4"
+        <div class="border-t border-base-content/10 pt-6 space-y-6"
              data-geocoding-settings-target="fieldset"
              data-provider="<%= provider %>"
              <%= 'hidden' unless provider == active_provider %>>
           <% if with_host %>
-            <div class="form-control w-full max-w-md">
+            <div class="form-control <%= field_measure %>">
               <label class="label"><span class="label-text font-medium"><%= t('settings.geocoding.show.host') %></span></label>
               <%= text_field_tag "#{provider}[host]", setting&.host,
                                  class: 'input input-bordered w-full',
                                  placeholder: "#{provider}.example.com" %>
               <span class="label-text-alt mt-1 text-base-content/60"><%= t('settings.geocoding.show.host_hint') %></span>
             </div>
-            <div class="form-control">
-              <label class="label cursor-pointer justify-start gap-3">
-                <%= hidden_field_tag "#{provider}[use_https]", '0' %>
-                <%= check_box_tag "#{provider}[use_https]", '1', setting ? setting.use_https : true,
-                                  class: 'toggle toggle-primary' %>
-                <span class="label-text"><%= t('settings.geocoding.show.use_https') %></span>
-              </label>
-            </div>
           <% end %>
           <% rule = Geocoding::RateLimits.for(provider, setting&.host) %>
-          <div class="form-control w-full max-w-md">
-            <label class="label"><span class="label-text font-medium"><%= t('settings.geocoding.show.rps') %></span></label>
-            <%= number_field_tag "#{provider}[rps]", setting&.rps,
-                                 class: 'input input-bordered w-full',
-                                 step: 'any', min: rule.min, max: rule.max %>
-            <span class="label-text-alt mt-1 text-base-content/60"><%= t('settings.geocoding.show.rps_hint_custom') %></span>
+          <div class="grid gap-4 sm:grid-cols-2 <%= field_measure %> items-start">
+            <% if with_host %>
+              <div class="form-control">
+                <label class="label"><span class="label-text font-medium"><%= t('settings.geocoding.show.use_https') %></span></label>
+                <label class="input input-bordered flex items-center gap-3 cursor-pointer">
+                  <%= hidden_field_tag "#{provider}[use_https]", '0' %>
+                  <%= check_box_tag "#{provider}[use_https]", '1', setting ? setting.use_https : true,
+                                    class: 'toggle toggle-primary toggle-sm peer' %>
+                  <span class="text-sm text-base-content/70 peer-checked:hidden"><%= t('settings.geocoding.show.https_off') %></span>
+                  <span class="text-sm text-base-content/70 hidden peer-checked:inline"><%= t('settings.geocoding.show.https_on') %></span>
+                </label>
+              </div>
+            <% end %>
+            <div class="form-control">
+              <label class="label"><span class="label-text font-medium"><%= t('settings.geocoding.show.rps') %></span></label>
+              <%= number_field_tag "#{provider}[rps]", setting&.rps,
+                                   class: 'input input-bordered w-full',
+                                   step: 'any', min: rule.min, max: rule.max %>
+              <span class="label-text-alt mt-1 text-base-content/60"><%= t('settings.geocoding.show.rps_hint_custom') %></span>
+            </div>
           </div>
-          <div class="form-control w-full max-w-md">
+          <div class="form-control <%= field_measure %>">
             <label class="label"><span class="label-text font-medium"><%= t('settings.geocoding.show.api_key') %></span></label>
             <%= password_field_tag "#{provider}[api_key]", nil,
                                    class: 'input input-bordered w-full',
@@ -222,19 +247,17 @@
                 <%= t('settings.geocoding.show.api_key_hint') %>
               <% end %>
             </span>
-          </div>
-          <% if setting&.api_key.present? %>
-            <div class="form-control">
-              <label class="label cursor-pointer justify-start gap-3">
+            <% if setting&.api_key.present? %>
+              <label class="label cursor-pointer justify-start gap-3 mt-2">
                 <%= check_box_tag "#{provider}[clear_api_key]", '1', false, class: 'checkbox checkbox-sm' %>
                 <span class="label-text"><%= t('settings.geocoding.show.clear_api_key') %></span>
               </label>
-            </div>
-          <% end %>
+            <% end %>
+          </div>
         </div>
       <% end %>
 
-      <div class="card-actions">
+      <div class="card-actions pt-2">
         <%= f.submit t('settings.geocoding.show.save'), class: 'btn btn-primary' %>
       </div>
     </div>
