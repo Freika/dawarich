@@ -5,6 +5,17 @@ class Stats::DailyDistanceQuery
   # snapshots rather than a continuous track.
   SNAPSHOT_IMPORT_SOURCES = %w[immich_api photoprism_api google_photos].freeze
 
+  # Fastest a leg may imply and still be counted, in m/s (1,200 km/h — above
+  # any airliner's cruise, with margin). Points::AnomalyFilter is what cleans
+  # displaced fixes, but it cannot catch every one, and a leg it misses is
+  # reported to the user as distance they travelled. Refusing to sum a leg no
+  # vehicle could have flown costs nothing real — a genuine long-haul flight
+  # is an order of magnitude below this — and stops one stale fix inflating a
+  # month. Pairs sharing a timestamp are left alone: they carry no elapsed time
+  # to derive a speed from, and an instantaneous displacement between them is
+  # already Points::AnomalyFilter::TELEPORT_METERS' question, not this one.
+  MAX_PLAUSIBLE_SPEED_MPS = 1_200 / 3.6
+
   def initialize(monthly_points, timespan, timezone = nil, minutes_between_routes: nil)
     @monthly_points = monthly_points
     @timespan = timespan
@@ -59,6 +70,9 @@ class Stats::DailyDistanceQuery
               OR snapshot_import
               OR prev_snapshot_import
             ) AND (timestamp - prev_timestamp) > $4 THEN 0
+            WHEN (timestamp - prev_timestamp) > 0
+              AND ST_Distance(lonlat::geography, prev_lonlat::geography) >
+                  (timestamp - prev_timestamp) * $5::double precision THEN 0
             ELSE ST_Distance(lonlat::geography, prev_lonlat::geography)
           END AS segment_distance
         FROM ordered_points
@@ -78,7 +92,9 @@ class Stats::DailyDistanceQuery
       ActiveRecord::Relation::QueryAttribute.new('timezone', timezone, ActiveRecord::Type::String.new),
       ActiveRecord::Relation::QueryAttribute.new('year', target.year, ActiveRecord::Type::Integer.new),
       ActiveRecord::Relation::QueryAttribute.new('month', target.month, ActiveRecord::Type::Integer.new),
-      ActiveRecord::Relation::QueryAttribute.new('time_gap_seconds', time_gap_seconds, ActiveRecord::Type::Integer.new)
+      ActiveRecord::Relation::QueryAttribute.new('time_gap_seconds', time_gap_seconds, ActiveRecord::Type::Integer.new),
+      ActiveRecord::Relation::QueryAttribute.new('max_speed_mps', MAX_PLAUSIBLE_SPEED_MPS,
+                                                 ActiveRecord::Type::Float.new)
     ]
 
     Stat.connection.exec_query(sql, 'DailyDistanceQuery', binds).to_a

@@ -16,6 +16,16 @@ class Points::AnomalyFilter
   # and flagging it wholesale would erase real history. Under-flagging a long
   # noise burst is the safer failure.
   MAX_DISPLACED_RUN_POINTS = 5
+  # How far a run may wander and still count as one frozen position. A cached
+  # fix repeats its coordinates exactly, so this is a tolerance for float
+  # round-tripping through PostGIS, not a cluster radius — anything that
+  # actually moves, however slightly, is a real reading and is kept.
+  FROZEN_FIX_EXTENT_METERS = 1
+  # Longest a frozen burst may run before it is read as a device genuinely
+  # parked somewhere rather than a position being replayed. A stale fix is
+  # flushed within minutes of the provider recovering; a phone left on a desk
+  # reports the same position for hours, and that is real history.
+  MAX_FROZEN_FIX_SPAN_SECONDS = 3_600
   # Accuracy radius beyond which a reading carries no usable position at all.
   # Deliberately far above any plausible GPS/wifi/cell error: a reported radius
   # is a confidence estimate, not proof the position is wrong. Google Timeline
@@ -282,7 +292,8 @@ class Points::AnomalyFilter
     # journeys between devices that nobody made — the same reason track
     # generation groups by tracker_id (Tracks::TimeChunkProcessorJob).
     anomaly_ids = points.group_by { |point| point.tracker_id.to_s }.values.flat_map do |stream|
-      displaced_run_ids(stream, speeds_by_point, threshold, main_range_ids)
+      displaced_run_ids(stream, speeds_by_point, threshold, main_range_ids) +
+        frozen_fix_run_ids(stream, speeds_by_point, threshold, main_range_ids)
     end
 
     return 0 if anomaly_ids.empty?
@@ -333,6 +344,60 @@ class Points::AnomalyFilter
     end
 
     displaced.to_a
+  end
+
+  # A cached position is replayed verbatim: every reading in the burst carries
+  # identical coordinates, because nothing re-measured it. Real GPS always
+  # jitters, so a run that never moves at all, is reached impossibly fast and
+  # left impossibly fast is a stale fix being replayed rather than a place
+  # anyone was — and that holds however long the burst runs.
+  #
+  # This is why it may exceed MAX_DISPLACED_RUN_POINTS. Run length is what
+  # protects a genuine stay in #displaced_run_ids; here immobility does that
+  # job instead, and does it better: a real stay moves, so it is kept no
+  # matter how impossible the hops either side of it look.
+  #
+  # Seen on a GPX import where a frozen Heathrow fix interleaved with live LAX
+  # fixes for 30 minutes after landing. The bursts ran 6 to 54 points, so every
+  # one of them outran the displaced-run bound, and the alternation billed 14
+  # Atlantic crossings — roughly 44,000 km — to a single month.
+  def frozen_fix_run_ids(stream, speeds_by_point, threshold, main_range_ids)
+    frozen = []
+
+    each_frozen_run(stream) do |run|
+      next unless both_legs_impossible?(run, speeds_by_point, threshold)
+
+      run.each { |point| frozen << point.id if main_range_ids.include?(point.id) }
+    end
+
+    frozen
+  end
+
+  # Walks maximal runs of points that never leave FROZEN_FIX_EXTENT_METERS of
+  # where the run started. Only runs that outlast the displaced-run bound and
+  # stay within the burst span are yielded — a device genuinely parked in one
+  # place reports the same position for hours, and that is real history.
+  # Bounded to runs with a fix either side, so every run yielded has both an
+  # incoming and an outgoing speed to be judged on.
+  def each_frozen_run(stream)
+    index = 1
+    last = stream.length - 1
+
+    while index < last
+      start = index
+      index += 1
+      index += 1 while index < last && frozen_with?(stream[start], stream[index])
+
+      run = stream[start...index]
+      next unless run.length > MAX_DISPLACED_RUN_POINTS
+      next if run.last.timestamp - run.first.timestamp > MAX_FROZEN_FIX_SPAN_SECONDS
+
+      yield(run)
+    end
+  end
+
+  def frozen_with?(anchor, point)
+    distance_meters(anchor, point) <= FROZEN_FIX_EXTENT_METERS
   end
 
   # Impossible on both sides convicts on its own: nothing legitimate arrives and
