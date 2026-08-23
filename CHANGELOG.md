@@ -8,7 +8,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
-- The mobile apps can now use the family feature: see who is in your family, who is sharing their location, and respond to location requests.
+- The mobile apps can now use the family feature: see who is in your family, who is sharing their location, and respond to location requests. New endpoints: `GET /api/v1/families/mine`, `PATCH /api/v1/families/sharing`, `POST /api/v1/families/location_requests`, and `POST /api/v1/families/location_requests/:id/accept` and `/decline`. The overview carries no coordinates — locations stay in the existing family locations endpoints.
+- Tracks are now served as vector tiles from `GET /api/v1/tiles/tracks/:z/:x/:y.mvt`.
 
 ### Fixed
 
