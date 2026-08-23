@@ -15,12 +15,23 @@ module Geocoding
   # process - the web server, or a second worker container - keeps its own
   # count, so the real rate can exceed the setting when both are geocoding at
   # once. Interactive lookups are rare enough for that to stay in the noise.
+  #
+  # An interactive caller passes max_wait: to bound how long its request
+  # thread may sleep. When the next free slot is further away than that, the
+  # slot is left untouched for callers that can wait, the block is skipped and
+  # throttle returns nil.
   class RateLimiter
     MUTEX = Mutex.new
+    MAX_INTERACTIVE_WAIT = 1.0
 
     class << self
-      def throttle(config)
-        wait = reserve(config)
+      def throttle(config, max_wait: nil)
+        wait = reserve(config, max_wait)
+        if wait.nil?
+          Rails.logger.info("[Geocoding::RateLimiter] Skipping #{config.provider} lookup: wait exceeds #{max_wait}s")
+          return
+        end
+
         sleep(wait) if wait.positive?
 
         yield
@@ -41,7 +52,7 @@ module Geocoding
 
       private
 
-      def reserve(config)
+      def reserve(config, max_wait)
         rate = config.rps
         return 0.0 if rate.nil? || rate <= 0
 
@@ -51,8 +62,11 @@ module Geocoding
         MUTEX.synchronize do
           now = Process.clock_gettime(Process::CLOCK_MONOTONIC)
           slot = [next_slots.fetch(key, now), now].max
+          wait = slot - now
+          break nil if max_wait && wait > max_wait
+
           next_slots[key] = slot + interval
-          slot - now
+          wait
         end
       end
 

@@ -35,6 +35,7 @@ fr:
         service_setting:
           host_required: "%{provider} needs a host. Enter your instance's hostname, for example photon.example.com."
           host_invalid: 'The host must be a bare hostname with an optional port or path — no http:// prefix, no spaces.'
+          host_blocked: 'This host cannot be used: %{reason}'
           api_key_required: '%{provider} needs an API key.'
           chibigeo_api_key_required: 'ChibiGeo needs an API key. The free Hobby plan includes 2,500 lookups per day — get your key at chibigeo.com.'
       messages:
@@ -2131,6 +2132,7 @@ fr:
         success: 'Success! Your provider resolved the test coordinates to: %{place}.'
         empty: The provider responded but returned no results for the test coordinates.
         failure: 'Test failed: %{error}'
+        rate_limited: "The provider's rate limit is busy right now — try again in a moment."
     navigation:
       general: Général
       integrations: Intégrations

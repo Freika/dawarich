@@ -27,7 +27,9 @@ module LocationSearch
     attr_reader :query
 
     def perform_geocoding_search(query)
-      results = Geocoding::Search.call(user: @user, query: query, limit: MAX_RESULTS, fallback_to_default: true)
+      results = Geocoding::Search.call(user: @user, query: query, limit: MAX_RESULTS,
+                                       max_wait: Geocoding::RateLimiter::MAX_INTERACTIVE_WAIT,
+                                       fallback_to_default: true)
       return [] if results.blank?
 
       normalize_geocoding_results(results)

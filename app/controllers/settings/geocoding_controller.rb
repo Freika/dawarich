@@ -2,8 +2,15 @@
 
 class Settings::GeocodingController < ApplicationController
   include FlashStreamable
+  include UrlValidatable
 
   TEST_COORDINATES = [51.3402, 12.3712].freeze
+  TEST_MAX_WAIT = 5.0
+  SAFE_TEST_ERRORS = [
+    SocketError, Resolv::ResolvError, Timeout::Error, OpenSSL::SSL::SSLError,
+    Errno::ECONNREFUSED, Errno::ECONNRESET, Errno::EHOSTUNREACH, Errno::ENETUNREACH,
+    Geocoder::Error
+  ].freeze
 
   before_action :authenticate_self_hosted!
   before_action :authenticate_user!
@@ -63,8 +70,34 @@ class Settings::GeocodingController < ApplicationController
                           params.fetch(provider, {})
                                 .permit(:host, :api_key, :use_https, :clear_api_key, :rps))
 
+    verify_host_address(setting) if setting.valid?
     setting.activate! if setting.errors.empty? && setting.save
     setting
+  end
+
+  # An unresolvable host stays saveable: the web container may lack DNS for a
+  # host the Sidekiq container can reach, and AirTrail treats the same case as
+  # a reported connection failure rather than a rejected save. Resolvability
+  # is probed with getaddrinfo because numeric IPv4 forms (decimal or hex)
+  # resolve there — and in the HTTP client — but not in Resolv, which the
+  # blocklist check uses.
+  def verify_host_address(setting)
+    host = setting.config['host']
+    return if host.blank? || setting.komoot? || setting.chibigeo?
+
+    scheme = setting.config['use_https'] == false ? 'http' : 'https'
+    validate_integration_url!("#{scheme}://#{host}")
+  rescue UrlValidatable::BlockedUrlError => e
+    return if unresolvable_host?(host)
+
+    setting.errors.add(:base, :host_blocked, reason: e.message)
+  end
+
+  def unresolvable_host?(host)
+    Socket.getaddrinfo(URI.parse("https://#{host}").host.to_s, nil)
+    false
+  rescue SocketError, URI::InvalidURIError
+    true
   end
 
   def apply_provider_params(setting, provider_params)
@@ -102,7 +135,11 @@ class Settings::GeocodingController < ApplicationController
     config = Geocoding::Config.for_user_settings(current_user)
     return [:error, t('settings.geocoding.test.not_configured')] unless config.enabled?
 
-    result = Geocoding::Search.with_config(config: config, query: TEST_COORDINATES, limit: 1).first
+    result_set = Geocoding::Search.with_config(config: config, query: TEST_COORDINATES, limit: 1,
+                                               max_wait: TEST_MAX_WAIT)
+    return [:error, t('settings.geocoding.test.rate_limited')] if result_set.nil?
+
+    result = result_set.first
     if result
       record_test_result('ok')
       place = [result.city, result.country].compact_blank.join(', ')
@@ -113,7 +150,14 @@ class Settings::GeocodingController < ApplicationController
     end
   rescue StandardError => e
     record_test_result('failed')
-    [:error, t('settings.geocoding.test.failure', error: "#{e.class}: #{e.message}")]
+    Rails.logger.error("Geocoding provider test failed: #{e.class}: #{e.message}")
+    [:error, t('settings.geocoding.test.failure', error: test_error_description(e))]
+  end
+
+  def test_error_description(error)
+    return "#{error.class}: #{error.message}" if SAFE_TEST_ERRORS.any? { |klass| error.is_a?(klass) }
+
+    error.class.name
   end
 
   def record_test_result(status)

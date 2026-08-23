@@ -42,11 +42,12 @@ class Tracks::RealtimeGenerationJob < ApplicationJob
   private
 
   def enqueue_reverse_geocoding(user)
-    return unless Geocoding::Config.for(user.id).enabled?
+    config = Geocoding::Config.for(user.id)
+    return unless config.enabled?
 
     user.points
         .not_reverse_geocoded
         .where('created_at > ?', 5.minutes.ago)
-        .find_each(&:async_reverse_geocode)
+        .find_each { |point| point.async_reverse_geocode(config: config) }
   end
 end

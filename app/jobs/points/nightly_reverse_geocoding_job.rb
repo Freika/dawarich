@@ -8,12 +8,13 @@ class Points::NightlyReverseGeocodingJob < ApplicationJob
     return if scope.nil?
 
     processed_user_ids = Set.new
-    enabled_by_user = Hash.new { |cache, user_id| cache[user_id] = Geocoding::Config.for(user_id).enabled? }
+    config_by_user = Hash.new { |cache, user_id| cache[user_id] = Geocoding::Config.for(user_id) }
 
     scope.find_each(batch_size: 1000) do |point|
-      next unless enabled_by_user[point.user_id]
+      config = config_by_user[point.user_id]
+      next unless config.enabled?
 
-      point.async_reverse_geocode(force: true)
+      point.async_reverse_geocode(force: true, config: config)
       processed_user_ids.add(point.user_id)
     end
 

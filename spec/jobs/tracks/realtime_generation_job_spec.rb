@@ -171,6 +171,16 @@ RSpec.describe Tracks::RealtimeGenerationJob, type: :job do
           .and have_enqueued_job(ReverseGeocodingJob).with('Point', recent_point.id, force: false)
       end
 
+      it 'resolves the geocoding config once for the whole batch' do
+        create_list(:point, 3, user: user, reverse_geocoded_at: nil)
+        reset_dedup_keys
+        allow(Geocoding::Config).to receive(:for).and_call_original
+
+        described_class.perform_now(user.id)
+
+        expect(Geocoding::Config).to have_received(:for).once
+      end
+
       it 'does not enqueue already-geocoded points' do
         create(:point, user: user, reverse_geocoded_at: 1.minute.ago)
         reset_dedup_keys

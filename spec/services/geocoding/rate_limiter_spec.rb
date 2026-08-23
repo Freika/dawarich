@@ -43,6 +43,32 @@ RSpec.describe Geocoding::RateLimiter do
       expect(described_class).to have_received(:sleep).with(be_within(0.02).of(0.2)).once
     end
 
+    it 'skips the block when the wait would exceed the budget' do
+      slow = config_for('photon.example.com', rps: 1)
+      described_class.throttle(slow) { :ok }
+
+      result = described_class.throttle(slow, max_wait: 0.5) { :never }
+
+      expect(result).to be_nil
+      expect(described_class).not_to have_received(:sleep)
+    end
+
+    it 'leaves the slot free for callers that can wait' do
+      slow = config_for('photon.example.com', rps: 1)
+      described_class.throttle(slow) { :ok }
+      described_class.throttle(slow, max_wait: 0.5) { :never }
+
+      described_class.throttle(slow) { :ok }
+
+      expect(described_class).to have_received(:sleep).with(be_within(0.05).of(1.0)).once
+    end
+
+    it 'runs the block when the wait fits the budget' do
+      2.times { described_class.throttle(fast) { :ok } }
+
+      expect(described_class.throttle(fast, max_wait: 0.5) { :ok }).to eq(:ok)
+    end
+
     it 'does not bank credit while a provider sits idle' do
       quick = config_for('photon.example.com', rps: 100)
       described_class.throttle(quick) { :ok }
