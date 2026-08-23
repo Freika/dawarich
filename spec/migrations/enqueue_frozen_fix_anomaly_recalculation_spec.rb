@@ -17,16 +17,19 @@ RSpec.describe EnqueueFrozenFixAnomalyRecalculation do
   end
 
   it 'hands the work to a background job instead of doing it inline' do
-    user = create(:user)
-    user.update!(settings: (user.settings || {}).merge(done_key => '2026-08-02T01:00:00Z'))
+    stamped_user
 
     expect { migration.up }.to have_enqueued_job(DataMigrations::RecalculateAnomaliesJob)
   end
 
-  it 'does not enqueue a second dispatcher when no previous run had to be cleared' do
+  it 'still sweeps an instance that carries no stamps from the previous run' do
     create(:user)
 
-    expect { migration.up }.not_to have_enqueued_job(DataMigrations::RecalculateAnomaliesJob)
+    expect { migration.up }.to have_enqueued_job(DataMigrations::RecalculateAnomaliesJob)
+  end
+
+  it 'runs without a wrapping transaction so stamps are committed before the job can see them' do
+    expect(described_class.disable_ddl_transaction).to be true
   end
 
   it 'clears the stamps left by the previous recalculation so the user is picked up again' do
@@ -68,8 +71,6 @@ RSpec.describe EnqueueFrozenFixAnomalyRecalculation do
   end
 
   it 'does not abort the migration when the job queue is unreachable' do
-    stamped_user
-
     allow(DataMigrations::RecalculateAnomaliesJob)
       .to receive(:perform_later).and_raise(StandardError, 'Connection refused')
 
@@ -77,8 +78,6 @@ RSpec.describe EnqueueFrozenFixAnomalyRecalculation do
   end
 
   it 'aborts on a missing constant instead of hiding a broken deploy' do
-    stamped_user
-
     allow(DataMigrations::RecalculateAnomaliesJob)
       .to receive(:perform_later).and_raise(NameError, 'uninitialized constant')
 
@@ -86,8 +85,6 @@ RSpec.describe EnqueueFrozenFixAnomalyRecalculation do
   end
 
   it 'logs how to start the recalculation by hand when enqueueing failed' do
-    stamped_user
-
     allow(DataMigrations::RecalculateAnomaliesJob)
       .to receive(:perform_later).and_raise(StandardError, 'Connection refused')
     allow(Rails.logger).to receive(:error)

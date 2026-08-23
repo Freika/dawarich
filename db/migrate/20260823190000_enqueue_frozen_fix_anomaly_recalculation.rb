@@ -1,38 +1,50 @@
 # frozen_string_literal: true
 
 class EnqueueFrozenFixAnomalyRecalculation < ActiveRecord::Migration[8.0]
-  KEYS = %w[
-    anomaly_rules_recalculation_queued_at
-    anomaly_rules_recalculated_at
-    anomaly_rules_recalculation_failed_at
-  ].freeze
+  # Sidekiq receives the job the moment perform_later runs, and a worker from
+  # the still-running old deployment can pop it before a wrapping migration
+  # transaction commits the stamp-clearing UPDATE. The dispatcher would then
+  # see every user still stamped, hand out nobody, and — having found no work
+  # — never reschedule itself: the fleet sweep silently never happens. Without
+  # the transaction the UPDATE is committed before the job exists.
+  disable_ddl_transaction!
 
   def up
-    return if clear_previous_run.zero?
-
-    DataMigrations::RecalculateAnomaliesJob.perform_later
-  rescue NameError
-    raise
-  rescue StandardError => e
-    Rails.logger.error(
-      "[EnqueueFrozenFixAnomalyRecalculation] could not enqueue the recalculation: #{e.class}: #{e.message}. " \
-      'Start it later with: DataMigrations::RecalculateAnomaliesJob.perform_later'
-    )
+    clear_completion_stamps
+    enqueue_recalculation
   end
 
   def down; end
 
   private
 
-  def clear_previous_run
-    execute(
-      ActiveRecord::Base.sanitize_sql_array(
-        [
-          "UPDATE users SET settings = COALESCE(settings, '{}'::jsonb) - ARRAY[:keys]::text[] " \
-          'WHERE settings ?| ARRAY[:keys]::text[]',
-          { keys: KEYS }
-        ]
-      )
-    ).cmd_tuples
+  def stamp_keys
+    [
+      DataMigrations::RecalculateAnomaliesUserJob::QUEUED_SETTINGS_KEY,
+      DataMigrations::RecalculateAnomaliesUserJob::RECALCULATED_SETTINGS_KEY,
+      DataMigrations::RecalculateAnomaliesUserJob::FAILED_SETTINGS_KEY
+    ]
+  end
+
+  def clear_completion_stamps
+    quoted = stamp_keys.map { |key| connection.quote(key) }.join(', ')
+
+    execute(<<~SQL.squish)
+      UPDATE users
+      SET settings = settings - ARRAY[#{quoted}]::text[]
+      WHERE settings ?| ARRAY[#{quoted}]::text[]
+    SQL
+  end
+
+  def enqueue_recalculation
+    DataMigrations::RecalculateAnomaliesJob.perform_later
+  rescue NameError
+    raise
+  rescue StandardError => e
+    Rails.logger.error(
+      '[EnqueueFrozenFixAnomalyRecalculation] could not enqueue the anomaly recalculation: ' \
+      "#{e.class}: #{e.message}. " \
+      'Start it later with: DataMigrations::RecalculateAnomaliesJob.perform_later'
+    )
   end
 end
