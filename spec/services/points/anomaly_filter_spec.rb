@@ -351,6 +351,36 @@ RSpec.describe Points::AnomalyFilter do
       end
     end
 
+    context 'Pass 2: a stationary run whose accuracy keeps being re-measured' do
+      let(:start_time) { 2.hours.ago.to_i }
+      let(:end_time) { Time.current.to_i }
+      let(:base_time) { 1.hour.ago.to_i }
+      def lax(idx) = "POINT(#{-118.4103 + (idx * 0.0001)} #{33.9429 + (idx * 0.0001)})"
+
+      let!(:live_before) do
+        (0..2).map do |i|
+          create(:point, user: user, accuracy: 10, timestamp: base_time + (i * 15), lonlat: lax(i))
+        end
+      end
+      let!(:indoor_stay) do
+        (0..7).map do |i|
+          create(:point, user: user, accuracy: 10 + i, timestamp: base_time + 45 + (i * 15),
+                         lonlat: 'POINT(-0.4803 51.4693)')
+        end
+      end
+      let!(:live_after) do
+        (0..2).map do |i|
+          create(:point, user: user, accuracy: 10, timestamp: base_time + 180 + (i * 15), lonlat: lax(i + 3))
+        end
+      end
+
+      before { described_class.new(user.id, start_time, end_time).call }
+
+      it 'keeps a run that is re-measured rather than replayed' do
+        indoor_stay.each { |point| expect(point.reload.anomaly).not_to be true }
+      end
+    end
+
     context 'Pass 2: a frozen run no longer than a displaced run' do
       let(:start_time) { 2.hours.ago.to_i }
       let(:end_time) { Time.current.to_i }
