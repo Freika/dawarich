@@ -1,20 +1,20 @@
-**User Guide: Importing GPS Coordinates from your photos into Dawarich**
+**用户指南：从照片中提取 GPS 坐标并导入 Dawarich**
 
-> [简体中文](zh-CN/How_to_extract_geodata_from_photos.md)
+> [English](../How_to_extract_geodata_from_photos.md)
 
-Introduction:
-This user guide provides step-by-step instructions on how to extract GPS coordinates from photos and import it into the Dawarich service.
-This process is useful for adding points of interest from memorable locations into Dawarich, especially when Google Location History is unavailable or was not initially enabled.
+简介：
+本指南将手把手教你如何从照片中提取 GPS 坐标，并将其导入 Dawarich 服务。
+当 Google 位置历史记录不可用，或者你当初没有开启它时，这个方法可以帮你把有纪念意义地点的照片，转换成位置点补充进 Dawarich。
 
-Requirements:
-- Mac OS operating system
-- exiftool software installed
-- exiftool template created
+前置要求：
+- Mac OS 操作系统
+- 已安装 exiftool 软件
+- 已创建 exiftool 模板
 
-Steps to Import GPS Coordinates into Dawarich:
+将 GPS 坐标导入 Dawarich 的步骤：
 
-1. Download and install exiftool from the [official website](https://exiftool.org/).
-2. Create an empty template text file, name it as `gpx.fmt` and paste the code provided below into it.
+1. 从[官方网站](https://exiftool.org/)下载并安装 exiftool。
+2. 新建一个空白模板文本文件，命名为 `gpx.fmt`，并将下面的代码粘贴进去。
 ```
 #------------------------------------------------------------------------------
 # File:         gpx.fmt
@@ -53,17 +53,17 @@ Steps to Import GPS Coordinates into Dawarich:
 #[TAIL]</trk>
 #[TAIL]</gpx>
 ```
-3. Create a separate directory for the photos from which you want to extract coordinates.
-4. Move the necessary photos and `gpx.fmt` template to this directory.
-5. Open Terminal and navigate to the directory containing the photos.
+3. 为要提取坐标的照片单独创建一个目录。
+4. 把需要的照片和 `gpx.fmt` 模板都移动到这个目录里。
+5. 打开终端，进入存放照片的目录。
 
-Command to Execute:
+执行以下命令：
 ```
 exiftool -if '$gpsdatetime' -fileOrder gpsdatetime -p ./gpx.fmt -d %Y-%m-%dT%H:%M:%SZ *JPG > output.gpx
 ```
 
-Note: Ensure that exiftool is properly installed on your system, and the file 'gpx.fmt' is located in the same directory as the photos.
+注意：请确保系统上已正确安装 exiftool，并且 `gpx.fmt` 文件和照片位于同一目录下。
 
-6. GPX-track based on photo's GPS-coordinates and dates will be placed as `output.gpx` file into the same directory.
-7. Go to Dawarich webpage, select Imports, click "New Import" button, select source — gpx and choose `output.gpx` file.
-8. After the import processed all GPX-points will be added to Dawarich map.
+6. 基于照片 GPS 坐标和拍摄时间生成的 GPX 轨迹会以 `output.gpx` 文件的形式保存在同一目录中。
+7. 打开 Dawarich 网页，进入"导入"页面，点击"新建导入"按钮，选择来源为 gpx，并选中 `output.gpx` 文件。
+8. 导入处理完成后，所有 GPX 轨迹点都会被添加到 Dawarich 地图上。
