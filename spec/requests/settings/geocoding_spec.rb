@@ -435,6 +435,18 @@ RSpec.describe 'Settings::Geocoding', type: :request do
       expect(user.service_settings.service_geocoding.find_by(provider: 'photon')).to be_nil
       expect(flash[:alert]).to be_present
     end
+
+    it 'calls a blocked numeric host blocked rather than unresolvable' do
+      allow(Resolv).to receive(:getaddress).with('2130706433').and_raise(Resolv::ResolvError)
+
+      patch settings_geocoding_path, params: {
+        provider: 'photon',
+        photon: { host: '2130706433' }
+      }
+
+      expect(flash[:alert]).to include(I18n.t('services.concerns.url_validatable.blocked_address'))
+      expect(flash[:alert]).not_to include('2130706433')
+    end
   end
 
   describe 'POST /settings/geocoding/test' do

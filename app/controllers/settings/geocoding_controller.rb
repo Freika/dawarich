@@ -90,7 +90,18 @@ class Settings::GeocodingController < ApplicationController
   rescue UrlValidatable::BlockedUrlError => e
     return if unresolvable_host?(host)
 
-    setting.errors.add(:base, :host_blocked, reason: e.message)
+    setting.errors.add(:base, :host_blocked, reason: blocked_reason(e, host))
+  end
+
+  # Resolv cannot read numeric IPv4 forms, so it reports them as unresolvable.
+  # getaddrinfo has already proven the host resolves by the time we get here,
+  # which makes that message wrong: the address is blocked, not unknown.
+  def blocked_reason(error, host)
+    resolver_message = I18n.t('services.concerns.url_validatable.unresolvable_host',
+                              host: URI.parse("https://#{host}").host.to_s)
+    return I18n.t('services.concerns.url_validatable.blocked_address') if error.message == resolver_message
+
+    error.message
   end
 
   def unresolvable_host?(host)
