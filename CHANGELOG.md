@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Every place is now permanently tied to an account at the database level. If your instance still had ownerless places left over from before the May 2026 ownership backfill, the upgrade now resolves them automatically instead of failing partway through `db:migrate`: each one is assigned to the account that visited it, and any that no account ever visited is deleted. The migration logs how many it assigned and deleted, and stops with a query listing the rows if anything is left unresolved.
+
 ## [1.12.1] - 2026-08-13, Berlin
 
 ### Fixed

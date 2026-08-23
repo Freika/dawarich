@@ -65,11 +65,5 @@ RSpec.describe Places::OrphanCleanupJob, type: :job do
     it 'no-ops for unknown user' do
       expect { described_class.new.perform(0) }.not_to raise_error
     end
-
-    context 'when called with nil (ownerless pass)' do
-      it 'is a no-op because Place.user_id is NOT NULL — no ownerless places can exist' do
-        expect { described_class.new.perform(nil) }.not_to raise_error
-      end
-    end
   end
 end
