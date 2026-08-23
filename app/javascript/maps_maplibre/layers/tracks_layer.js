@@ -32,6 +32,22 @@ export class TracksLayer extends BaseLayer {
     this.onSegmentLeave = null // Callback for segment leave events
   }
 
+  // Under tiled mode the MAIN track lines come from the tile layer, but the
+  // selection/flow/segment sub-layers still render the click->highlight flow —
+  // hide only the data layers, never the selection stack (a full toggle(false)
+  // would silently kill setSelectedTrack/showSegments).
+  setMainVisibility(visible) {
+    this.visible = visible
+    for (const layerId of [this.id]) {
+      if (!this.map.getLayer(layerId)) continue
+      this.map.setLayoutProperty(
+        layerId,
+        "visibility",
+        visible ? "visible" : "none",
+      )
+    }
+  }
+
   getSourceConfig() {
     return {
       type: "geojson",

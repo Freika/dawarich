@@ -346,16 +346,22 @@ test("heatmap still needs the bulk fetch when tiles were not asked for", () => {
   assert.equal(bulkPointsRequired(layerSettings()), true)
 })
 
-test("layers that read the whole point set switch tiles back off", () => {
-  for (const blocker of [
+test("only Scratch map still switches tiles back off — routes and fog ride tile sources now", () => {
+  const scratch = layerSettings({
+    pointsTiledRendering: true,
+    scratchEnabled: true,
+  })
+  assert.equal(bulkPointsRequired(scratch), true)
+  assert.equal(tiledPointsActive(scratch), false)
+
+  for (const rider of [
     { routesVisible: true },
-    { scratchEnabled: true },
     { fogEnabled: true, fogOfWarMode: "points" },
   ]) {
-    const settings = layerSettings({ pointsTiledRendering: true, ...blocker })
+    const settings = layerSettings({ pointsTiledRendering: true, ...rider })
 
-    assert.equal(bulkPointsRequired(settings), true, JSON.stringify(blocker))
-    assert.equal(tiledPointsActive(settings), false, JSON.stringify(blocker))
+    assert.equal(bulkPointsRequired(settings), false, JSON.stringify(rider))
+    assert.equal(tiledPointsActive(settings), true, JSON.stringify(rider))
   }
 })
 
@@ -370,18 +376,19 @@ test("hexagon fog fetches its own data, so it leaves tiles alone", () => {
   assert.equal(tiledPointsActive(settings), true)
 })
 
-test("a missing routesVisible counts as routes being on", () => {
+test("a missing routesVisible counts as routes being on in classic mode", () => {
   // needsPoints has always treated absent as visible, so the guard must agree
   // rather than quietly skipping a fetch the routes layer depends on
-  const settings = { pointsTiledRendering: true, heatmapEnabled: false }
+  assert.equal(bulkPointsRequired({ heatmapEnabled: false }), true)
 
-  assert.equal(bulkPointsRequired(settings), true)
-  assert.equal(tiledPointsActive(settings), false)
+  // Under tiled mode default-visible routes ride the tracks tile source
+  const tiled = { pointsTiledRendering: true, heatmapEnabled: false }
+  assert.equal(bulkPointsRequired(tiled), false)
+  assert.equal(tiledPointsActive(tiled), true)
 })
 
 test("the tiled-rendering inactive note is translated with plural forms", async () => {
   const fixtures = {
-    "map.tiled_rendering.blockers.routes": "Routen",
     "map.tiled_rendering.blockers.scratch": "Rubbelkarte",
   }
   const calls = []
@@ -405,7 +412,7 @@ test("the tiled-rendering inactive note is translated with plural forms", async 
       fogOfWarMode: "points",
       ...overrides,
     })
-    let settings = settingsFor({ routesVisible: true })
+    let settings = settingsFor({ scratchEnabled: true })
     const settingsManager = {
       getSettings: () => settings,
       getSetting: () => false,
@@ -425,25 +432,75 @@ test("the tiled-rendering inactive note is translated with plural forms", async 
     })
 
     controller.syncTiledRenderingNote()
-    let noteCall = calls.find(
+    const noteCall = calls.find(
       (call) => call.key === "map.tiled_rendering.inactive_note",
     )
     assert.ok(noteCall, "inactive note must go through translate()")
     assert.equal(noteCall.values.count, 1)
-    assert.equal(note.textContent, "Inaktiv solange Routen ist an")
+    assert.equal(note.textContent, "Inaktiv solange Rubbelkarte ist an")
 
+    // Routes no longer appear as a blocker — the note stays scratch-only
     calls.length = 0
     settings = settingsFor({ routesVisible: true, scratchEnabled: true })
     controller.syncTiledRenderingNote()
-    noteCall = calls.find(
+    const secondCall = calls.find(
       (call) => call.key === "map.tiled_rendering.inactive_note",
     )
-    assert.equal(noteCall.values.count, 2)
-    assert.equal(
-      note.textContent,
-      "Inaktiv solange Routen, Rubbelkarte sind an",
-    )
+    assert.equal(secondCall.values.count, 1)
+    assert.equal(note.textContent, "Inaktiv solange Rubbelkarte ist an")
   } finally {
     delete globalThis.__settingsManagerTranslate
   }
+})
+
+test("updateRouteOpacity drives the tiled tracks layer, not just the classic routes layer", async () => {
+  const settingsManager = {
+    getSettings: () => ({}),
+    getSetting: () => false,
+    updateSetting: () => {},
+  }
+  const { SettingsController } = await loadSettingsController(settingsManager)
+  const opacityCalls = []
+  const controller = new SettingsController({
+    element: { querySelector: () => null },
+    map: { getLayer: () => null },
+    layerManager: {
+      getLayer: (name) =>
+        name === "tracks-mvt"
+          ? { setRouteOpacity: (value) => opacityCalls.push(value) }
+          : null,
+    },
+  })
+
+  controller.updateRouteOpacity({ target: { value: "40" } })
+
+  assert.deepEqual(opacityCalls, [0.4])
+})
+
+test("color pickers drive the tiled tracks layer, not just the classic layers", async () => {
+  const settingsManager = {
+    getSettings: () => ({}),
+    getSetting: () => false,
+    updateSetting: () => {},
+  }
+  const { SettingsController } = await loadSettingsController(settingsManager)
+  const colorCalls = []
+  const controller = new SettingsController({
+    element: { querySelector: () => null },
+    map: { getLayer: () => null },
+    layerManager: {
+      getLayer: (name) =>
+        name === "tracks-mvt"
+          ? { setColors: (colors) => colorCalls.push(colors) }
+          : null,
+    },
+  })
+
+  controller.applyRouteColor("#123456")
+  controller.applyTrackColor("#abcdef")
+
+  assert.deepEqual(colorCalls, [
+    { routeColor: "#123456" },
+    { trackColor: "#abcdef" },
+  ])
 })

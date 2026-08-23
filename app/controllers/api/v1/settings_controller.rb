@@ -64,7 +64,7 @@ class Api::V1::SettingsController < ApiController
   # users play with these live, but nothing persists (self-hosted and Pro
   # users are unaffected — plan_restricted? is false for them).
   MAP_CUSTOMIZATION_KEYS = %i[maps_maplibre_custom_theme maps_maplibre_tiles_url
-                              route_color track_color].freeze
+                              maps_maplibre_tiles_fallback route_color track_color].freeze
   TILE_URL_PLACEHOLDERS = %w[{z} {x} {y}].freeze
   TILE_FILE_EXTENSIONS = %w[.png .jpg .jpeg .webp .mvt .pbf].freeze
   def settings_params
@@ -76,7 +76,8 @@ class Api::V1::SettingsController < ApiController
       :preferred_map_layer, :points_rendering_mode, :live_map_enabled,
       :immich_url, :immich_api_key, :photoprism_url, :photoprism_api_key,
       :speed_colored_routes, :speed_color_scale, :fog_of_war_threshold, :fog_of_war_mode,
-      :maps_v2_style, :maps_maplibre_style, :maps_maplibre_tiles_url, :globe_projection,
+      :maps_v2_style, :maps_maplibre_style, :maps_maplibre_tiles_url,
+      :maps_maplibre_tiles_fallback, :globe_projection,
       :min_minutes_spent_in_city, :max_gap_minutes_in_city,
       :gps_filtering_enabled,
       :point_dragging_enabled, :points_tiled_rendering,

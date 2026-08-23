@@ -32,6 +32,29 @@ RSpec.describe '/stats', type: :request do
 
         expect(response.status).to eq(200)
       end
+
+      context 'when only per-user settings enable geocoding (no ENV)' do
+        before do
+          allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false)
+          create(:stat, user:, year: 2024)
+        end
+
+        it 'renders the geocoding stats for a configured user' do
+          create(:service_setting, :active, user: user)
+
+          get stats_url
+
+          expect(response.status).to eq(200)
+          expect(response.body).to include(I18n.t('stats.reverse_geocoding_stats.reverse_geocoded_points'))
+        end
+
+        it 'renders for an unconfigured user without the geocoding stats' do
+          get stats_url
+
+          expect(response.status).to eq(200)
+          expect(response.body).not_to include(I18n.t('stats.reverse_geocoding_stats.reverse_geocoded_points'))
+        end
+      end
     end
 
     describe 'GET /show' do

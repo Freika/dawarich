@@ -69,6 +69,10 @@ export class PointsMvtLayer extends BaseLayer {
 
   static HEATMAP_LAYER_ID = "points-mvt-heatmap"
 
+  static CIRCLE_RADIUS = 6
+
+  static CIRCLE_STROKE_WIDTH = 2
+
   setHeatmapVisible(visible) {
     this.heatmapVisible = visible
     this._applyLayerVisibility(PointsMvtLayer.HEATMAP_LAYER_ID, visible)
@@ -90,8 +94,46 @@ export class PointsMvtLayer extends BaseLayer {
     )
   }
 
+  // ⛔ MapLibre loads NO tiles for a source whose layers are all layout-hidden
+  // (Style.update marks it unused and SourceCache evicts). Tiled fog reads
+  // this source via querySourceFeatures, so while fog depends on it the circle
+  // layer hides via PAINT (opacity 0) — isHidden() keys on layout visibility,
+  // keeping the source used and its tiles loading.
+  setSourceKeepAlive(keepAlive) {
+    this.sourceKeepAlive = keepAlive === true
+    this.setVisibility(this.visible)
+  }
+
   _applyLayerVisibility(layerId, visible) {
     if (!this.map.getLayer(layerId)) return
+
+    if (layerId === this.id && !visible && this.sourceKeepAlive) {
+      this.map.setLayoutProperty(layerId, "visibility", "visible")
+      this.map.setPaintProperty?.(layerId, "circle-opacity", 0)
+      this.map.setPaintProperty?.(layerId, "circle-stroke-opacity", 0)
+      // Radius AND stroke width to 0: the circle hit test uses radius plus
+      // stroke width, and queryRenderedFeatures ignores paint opacity — a
+      // merely-transparent layer stays clickable and cursor-reactive.
+      this.map.setPaintProperty?.(layerId, "circle-radius", 0)
+      this.map.setPaintProperty?.(layerId, "circle-stroke-width", 0)
+      this._paintHidden = true
+      return
+    }
+    if (layerId === this.id && this._paintHidden) {
+      this.map.setPaintProperty?.(layerId, "circle-opacity", 1)
+      this.map.setPaintProperty?.(layerId, "circle-stroke-opacity", 1)
+      this.map.setPaintProperty?.(
+        layerId,
+        "circle-radius",
+        PointsMvtLayer.CIRCLE_RADIUS,
+      )
+      this.map.setPaintProperty?.(
+        layerId,
+        "circle-stroke-width",
+        PointsMvtLayer.CIRCLE_STROKE_WIDTH,
+      )
+      this._paintHidden = false
+    }
 
     this.map.setLayoutProperty(
       layerId,
@@ -162,8 +204,8 @@ export class PointsMvtLayer extends BaseLayer {
         "source-layer": "points",
         paint: {
           "circle-color": "#3b82f6",
-          "circle-radius": 6,
-          "circle-stroke-width": 2,
+          "circle-radius": PointsMvtLayer.CIRCLE_RADIUS,
+          "circle-stroke-width": PointsMvtLayer.CIRCLE_STROKE_WIDTH,
           "circle-stroke-color": getMarkerStrokeColor(this.styleName),
         },
       },

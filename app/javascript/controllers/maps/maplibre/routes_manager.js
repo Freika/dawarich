@@ -6,6 +6,7 @@ import { lazyLoader } from "maps_maplibre/utils/lazy_loader"
 import {
   bulkPointsRequired,
   SettingsManager,
+  tiledLayerModes,
   tiledPointsActive,
 } from "maps_maplibre/utils/settings_manager"
 
@@ -20,6 +21,11 @@ export class RoutesManager {
     this.layerManager = controller.layerManager
     this.settings = controller.settings
     this._anomaliesFetchId = 0
+    // Classic tracks data is stale whenever tiles have been driving rendering
+    // (bulk fetches are skipped and range changes never touch the classic
+    // source) — a tiled-first session starts stale.
+    this._classicTracksStale = tiledPointsActive(SettingsManager.getSettings())
+    this._classicTracksRefillInFlight = false
   }
 
   /**
@@ -28,14 +34,21 @@ export class RoutesManager {
   async toggleRoutes(event) {
     const element = event.currentTarget
     const visible = element.checked
+    const tiled = tiledPointsActive(SettingsManager.getSettings())
 
-    if (visible) {
+    // Tiled mode serves Routes from track tiles — no bulk point set needed.
+    if (visible && !tiled) {
       await this.controller.mapDataManager.ensurePointsLoaded()
+    }
+
+    const tracksMvtLayer = this.layerManager.getLayer("tracks-mvt")
+    if (tiled && tracksMvtLayer) {
+      tracksMvtLayer.setModes({ routesVisible: visible })
     }
 
     const routesLayer = this.layerManager.getLayer("routes")
     if (routesLayer) {
-      routesLayer.toggle(visible)
+      routesLayer.toggle(visible && !tiled)
     }
 
     if (this.controller.hasRoutesOptionsTarget) {
@@ -61,6 +74,16 @@ export class RoutesManager {
         "hidden",
         !enabled,
       )
+    }
+
+    if (tiledPointsActive(SettingsManager.getSettings())) {
+      // Per-track approximation on the tile layer; no bulk routes to rebuild.
+      const tracksMvtLayer = this.layerManager.getLayer("tracks-mvt")
+      tracksMvtLayer?.setSpeedColoring(
+        enabled,
+        SettingsManager.getSetting("speedColorScale"),
+      )
+      return
     }
 
     await this.reloadRoutes()
@@ -185,9 +208,15 @@ export class RoutesManager {
     this.controller.speedColorScaleInputTarget.value = newScale
     SettingsManager.updateSetting("speedColorScale", newScale)
 
-    if (this.controller.speedColoredToggleTarget.checked) {
-      this.reloadRoutes()
+    if (!this.controller.speedColoredToggleTarget.checked) return
+
+    if (tiledPointsActive(SettingsManager.getSettings())) {
+      const tracksMvtLayer = this.layerManager.getLayer("tracks-mvt")
+      tracksMvtLayer?.setSpeedColoring(true, newScale)
+      return
     }
+
+    this.reloadRoutes()
   }
 
   /**
@@ -345,12 +374,20 @@ export class RoutesManager {
         fogLayer.toggle(true)
         return
       }
+      // Tiled mode: fog reads the points MVT source — no bulk load; keep the
+      // source alive even when the Points toggle is off.
+      if (tiledPointsActive(SettingsManager.getSettings())) {
+        this.layerManager.getLayer("points-mvt")?.setSourceKeepAlive(true)
+        if (fogLayer) fogLayer.toggle(true)
+        return
+      }
       await this.controller.mapDataManager.ensurePointsLoaded()
       if (fogLayer) fogLayer.toggle(true)
     }
 
     const hideFog = () => {
       if (fogLayer) fogLayer.toggle(false)
+      this.layerManager.getLayer("points-mvt")?.setSourceKeepAlive(false)
     }
 
     const intercepted = gatedToggle({
@@ -542,38 +579,26 @@ export class RoutesManager {
     const enabled = event.target.checked
     SettingsManager.updateSetting("tracksEnabled", enabled)
 
+    // Tiled mode serves tracks from tiles; the lazy bulk fetch below would
+    // download the same geometry a second time.
+    if (tiledPointsActive(SettingsManager.getSettings())) {
+      const tracksMvtLayer = this.layerManager.getLayer("tracks-mvt")
+      if (tracksMvtLayer) tracksMvtLayer.setModes({ tracksEnabled: enabled })
+      return
+    }
+
     try {
       const tracksLayer = this.layerManager.getLayer("tracks")
 
       if (enabled) {
-        if (tracksLayer && tracksLayer.data?.features?.length > 0) {
+        if (
+          tracksLayer &&
+          tracksLayer.data?.features?.length > 0 &&
+          !this._classicTracksStale
+        ) {
           tracksLayer.show()
         } else {
-          // Fetch tracks from backend (lazy-load)
-          this.controller.showProgress()
-          this.controller.updateLoadingCounts({
-            counts: { tracks: 0 },
-            isComplete: false,
-          })
-
-          const api = this.controller.api
-          const startDate = this.controller.startDateValue
-          const endDate = this.controller.endDateValue
-
-          const tracksGeoJSON = await api.fetchTracks({
-            start_at: startDate,
-            end_at: endDate,
-          })
-
-          this.controller.updateLoadingCounts({
-            counts: { tracks: tracksGeoJSON.features.length },
-            isComplete: true,
-          })
-
-          if (tracksLayer) {
-            tracksLayer.update(tracksGeoJSON)
-            tracksLayer.show()
-          }
+          await this._lazyLoadClassicTracks(tracksLayer)
         }
       } else {
         if (tracksLayer) {
@@ -584,6 +609,34 @@ export class RoutesManager {
       console.error("Failed to toggle tracks layer:", error)
       Toast.error(translate("messages.failed_to_load_tracks"))
     }
+  }
+
+  // Classic tracks lazy-load, shared by the Tracks toggle and the tiled->
+  // classic renderer flip (a tiled-first session never populated the source).
+  async _lazyLoadClassicTracks(tracksLayer) {
+    this.controller.showProgress()
+    this.controller.updateLoadingCounts({
+      counts: { tracks: 0 },
+      isComplete: false,
+    })
+
+    const tracksGeoJSON = await this.controller.api.fetchTracks({
+      start_at: this.controller.startDateValue,
+      end_at: this.controller.endDateValue,
+    })
+
+    this.controller.updateLoadingCounts({
+      counts: { tracks: tracksGeoJSON.features.length },
+      isComplete: true,
+    })
+
+    if (tracksLayer) {
+      tracksLayer.update(tracksGeoJSON)
+      if (SettingsManager.getSetting("tracksEnabled")) {
+        tracksLayer.show()
+      }
+    }
+    this._classicTracksStale = false
   }
 
   /**
@@ -660,8 +713,50 @@ export class RoutesManager {
       enabled: Boolean(settings.heatmapEnabled),
       tiled,
     })
+    this._reapplyTiledAwareLayers(settings)
     this.controller.settingsController?.syncPointsEditAvailability()
+    this.controller.settingsController?.syncRouteSplittingAvailability()
     this.controller.settingsController?.syncTiledRenderingNote()
+  }
+
+  // Tracks/routes/fog read tiledPointsActive at construction — the
+  // beta toggle and the fog-mode radio change it mid-session, so every
+  // tiled-aware layer re-derives its renderer here (tiledLayerModes is the
+  // node-tested truth table).
+  _reapplyTiledAwareLayers(settings) {
+    const modes = tiledLayerModes(settings)
+
+    this.layerManager.getLayer("tracks-mvt")?.setModes(modes.tracksMvt)
+    this.layerManager.getLayer("routes")?.toggle(modes.classicRoutes)
+    // setMainVisibility, NOT toggle: the classic layer's selection/flow
+    // sub-layers must stay usable under tiled mode for the click flow.
+    const tracksLayer = this.layerManager.getLayer("tracks")
+    tracksLayer?.setMainVisibility(modes.classicTracks)
+    if (modes.tiled) this._classicTracksStale = true
+    // Refetch once per tiled->classic flip (staleness, not emptiness: an
+    // empty first refill retries on the next flip once a throttled backfill
+    // has finished, while a track-less classic session never refetches).
+    if (
+      modes.classicTracks &&
+      tracksLayer &&
+      this._classicTracksStale &&
+      !this._classicTracksRefillInFlight
+    ) {
+      this._classicTracksRefillInFlight = true
+      this._lazyLoadClassicTracks(tracksLayer)
+        .catch((error) => {
+          console.error("Failed to refill classic tracks:", error)
+          Toast.error(translate("messages.failed_to_load_tracks"))
+        })
+        .finally(() => {
+          this._classicTracksRefillInFlight = false
+        })
+    }
+
+    this.layerManager.getLayer("fog")?.setTiledSource(modes.fogTiled)
+    this.layerManager
+      .getLayer("points-mvt")
+      ?.setSourceKeepAlive(modes.pointsSourceKeepAlive)
   }
 
   // The tiled heatmap is a sub-layer of points-mvt, only one heatmap may draw

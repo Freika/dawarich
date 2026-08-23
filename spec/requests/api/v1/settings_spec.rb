@@ -162,6 +162,18 @@ RSpec.describe 'Api::V1::Settings', type: :request do
           .to eq('https://tiles.example.com/{z}/{x}/{y}.mvt')
       end
 
+      it 'updates maps_maplibre_tiles_fallback' do
+        patch "/api/v1/settings?api_key=#{api_key}",
+              params: { settings: { maps_maplibre_tiles_fallback: true } }
+
+        expect(response).to have_http_status(:success)
+        expect(user.reload.safe_settings.maps_maplibre_tiles_fallback?).to be true
+      end
+
+      it 'defaults maps_maplibre_tiles_fallback to false so custom tiles stay the only source' do
+        expect(user.safe_settings.maps_maplibre_tiles_fallback?).to be false
+      end
+
       it 'rejects a maps_maplibre_tiles_url missing a coordinate placeholder' do
         patch "/api/v1/settings?api_key=#{api_key}",
               params: { settings: { maps_maplibre_tiles_url: 'https://tiles.example.com/{z}.mvt' } }
@@ -331,6 +343,7 @@ RSpec.describe 'Api::V1::Settings', type: :request do
                   settings: {
                     maps_maplibre_style: 'custom',
                     maps_maplibre_tiles_url: 'https://tiles.example.com/{z}/{x}/{y}.mvt',
+                    maps_maplibre_tiles_fallback: true,
                     route_color: '#123456',
                     track_color: '#654321',
                     maps_maplibre_custom_theme: { base: 'blueprint', tokens: { bg: '#111111' } }
@@ -342,6 +355,7 @@ RSpec.describe 'Api::V1::Settings', type: :request do
           settings = lite_user.reload.safe_settings
           expect(settings.maps_maplibre_style).to eq('light')
           expect(settings.maps_maplibre_tiles_url).to be_nil
+          expect(settings.maps_maplibre_tiles_fallback?).to be false
           expect(settings.route_color).to eq('#0000ff')
           expect(settings.track_color).to eq('#6366F1')
           expect(settings.maps_maplibre_custom_theme['base']).to eq('noir')

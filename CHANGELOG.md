@@ -4,6 +4,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.13.1] - 2026-08-22, Berlin
+
+### Added
+
+- The mobile apps can now use the family feature: see who is in your family, who is sharing their location, and respond to location requests. New endpoints: `GET /api/v1/families/mine`, `PATCH /api/v1/families/sharing`, `POST /api/v1/families/location_requests`, and `POST /api/v1/families/location_requests/:id/accept` and `/decline`. The overview carries no coordinates — locations stay in the existing family locations endpoints.
+- Tracks are now served as vector tiles from `GET /api/v1/tiles/tracks/:z/:x/:y.mvt`.
+
+### Fixed
+
+- Saving family sharing settings without picking a duration no longer turns a timed share into a permanent one, and re-enabling a lapsed share restores its duration.
+- Each account can now pick its own geocoding provider — Photon, Geoapify, Nominatim or LocationIQ — under Settings → Integrations, with a button to test it. The `PHOTON_API_HOST`, `GEOAPIFY_API_KEY`, `NOMINATIM_API_HOST` and `LOCATIONIQ_API_KEY` variables keep working and take precedence.
+- A custom basemap that covers only part of the world can now fill the gaps with the built-in tiles. Turn on "Fill gaps with the default basemap" under Custom Basemap URL. It is off by default, because filling the gaps means requesting tiles from Dawarich's tile server.
+- Geocoding settings now take a requests-per-second limit, and lookups are paced to stay inside it, so a bulk backfill no longer floods a server that asked for one request a second. komoot is pinned to its published 1/s and ChibiGeo to your plan's limit. Set the same ceiling instance-wide with `REVERSE_GEOCODING_RPS`, and raise `REVERSE_GEOCODING_CONCURRENCY` if your provider has no limit worth respecting. (#3343)
+- Device and importer details are no longer repeated on every point, which noticeably shrinks large histories. Existing points are migrated by a background job after upgrading; on millions of points expect it to run for hours and the database to grow temporarily first. Nothing changes in the UI while it runs, and it can be re-run at any time to pick up rows it has not reached. Adding the linking column briefly locks `points` at startup; an instance with heavy write traffic that cannot get the lock defers the change to a background job, so booting still completes. To opt out, set `SKIP_POINT_DIMENSION_BACKFILL=1` before migrating, on every service including Sidekiq.
+- Saving an AirTrail integration with an unreachable host no longer crashes the settings page — the settings are saved and the connection failure is reported instead. (#3393)
+- Custom geocoding hosts are checked against the same blocked-address list as the photo integrations; unresolvable hosts can still be saved.
+- Place and location search skip a busy geocoding rate limit instead of stalling the request; a skipped lookup is never cached as an empty answer.
+- The geocoding "Test my provider" button reports a busy rate limit honestly and no longer echoes internal error details.
+- Nightly and realtime reverse geocoding resolve each user's settings once instead of once per point.
+- Saving a new speed color scale now updates tiled tracks immediately.
+- Turning the Tracks layer off while it is still loading no longer shows it anyway.
+- The reverse-geocoding percentage follows the interface language's number format.
+- AirTrail's last-synced time is shown in the interface language and timezone.
+- A family location request can no longer be accepted and declined at the same time.
+- Double-submitting the geocoding provider form no longer fails.
+- Switching the Photon server to komoot now clears any API key you had saved, instead of sending it to a server that never asked for one.
+- Rotating a geocoding API key now refreshes cached place results instead of serving the previous key's answers for an hour.
+- The geocoding settings form lines its fields up on one width, credits ChibiGeo to the Dawarich team and links to it, and hides the API key field for the komoot server that takes none.
+
+### Changed
+
+- Tiled rendering (beta) now covers Routes, Tracks and Fog of War, leaving only the Scratch map on the classic full download. Under tiles, routes are colored per track, the route-splitting sliders no longer apply, and clicking a track opens its details.
+- The vector tile query timeout is now configurable with `VECTOR_TILES_QUERY_TIMEOUT_MS` (default 5000 ms), for self-hosted instances where very large date ranges exceeded the old limit. (#3386)
+- The Integrations settings page shows one service at a time, picked from a sidebar, each with a connection indicator. Geocoding settings moved here from their own tab; the old address redirects. (#3393)
+- The reverse geocoding panel now shows what share of your points have been geocoded instead of a raw count you had to divide yourself, and hides the "points without data" figure once it reaches zero. Instances with `STORE_GEODATA=false` no longer compute that count at all.
+
 ## [1.13.0] - 2026-08-17, Berlin
 
 ### Added

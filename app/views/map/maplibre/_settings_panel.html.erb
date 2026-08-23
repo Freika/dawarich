@@ -610,6 +610,15 @@
                    class="input input-bordered input-sm w-full"
                    data-action="change->maps--maplibre#updateVectorTilesUrl" />
             <p class="text-xs text-base-content/60 mt-1"><%= t('.serve_the_base_map_from_your_own_source_accepts_protomaps') %></p>
+
+            <label class="label cursor-pointer justify-start gap-2 mt-2 py-0">
+              <input type="checkbox"
+                     name="tilesFallback"
+                     class="checkbox checkbox-sm checkbox-primary"
+                     data-action="change->maps--maplibre#updateTilesFallback" />
+              <span class="label-text text-sm"><%= t('.fill_gaps_with_the_default_basemap') %></span>
+            </label>
+            <p class="text-xs text-base-content/60 mt-1"><%= t('.uncovered_areas_are_drawn_from_dawarich_s_default_tile_server') %></p>
           </div>
             </div>
           </details>
@@ -712,6 +721,7 @@
             </summary>
             <div class="collapse-content space-y-4">
           <!-- Route Generation Settings -->
+          <p class="text-xs text-warning hidden" data-maps--maplibre-target="routeSplittingUnavailableNote"></p>
           <div class="form-control w-full">
             <label class="label">
               <span class="label-text font-medium"><%= t('.meters_between_routes') %></span>

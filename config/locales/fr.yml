@@ -31,6 +31,13 @@ fr:
     models:
       user: Utilisateur
     errors:
+      models:
+        service_setting:
+          host_required: "%{provider} needs a host. Enter your instance's hostname, for example photon.example.com."
+          host_invalid: 'The host must be a bare hostname with an optional port or path — no http:// prefix, no spaces.'
+          host_blocked: 'This host cannot be used: %{reason}'
+          api_key_required: '%{provider} needs an API key.'
+          chibigeo_api_key_required: 'ChibiGeo needs an API key. The free Hobby plan includes 2,500 lookups per day — get your key at chibigeo.com.'
       messages:
         record_invalid: 'La validation a échoué : %{errors}'
         restrict_dependent_destroy:
@@ -1538,8 +1545,8 @@ fr:
           la traînée des points pour corriger leur position. Mémorisé entre sessions.
         tiled_rendering: "Rendu par tuiles"
         beta: "Bêta"
-        tiled_rendering_description: "Dessine les points à partir de tuiles vectorielles pendant le déplacement, au lieu de charger toute la plage de dates à l'avance."
-        tiled_rendering_caveats: "Les zones denses sont fusionnées en marqueurs avec un compteur — zoomez pour ouvrir les points individuels. La modification est indisponible et la trace en direct peut avoir quelques minutes de retard."
+        tiled_rendering_description: "Dessine les points, itinéraires, tracks et brouillard à partir de tuiles vectorielles pendant le déplacement, au lieu de charger toute la plage de dates à l'avance. Les itinéraires affichent vos tracks générés, colorés par track."
+        tiled_rendering_caveats: "Actif tant que la carte à gratter est désactivée. Les zones denses sont fusionnées en marqueurs avec un compteur — zoomez pour ouvrir les points individuels. La modification des points est indisponible, les itinéraires sont colorés par track (vitesse moyenne, pas un dégradé), l'info-bulle d'itinéraire au survol disparaît — cliquez sur un track — et la trace en direct peut avoir quelques minutes de retard."
         routes: Itinéraires
         show_connected_route_lines: Afficher les lignes d'itinéraire connectées
         color_by_speed: Colorer par vitesse
@@ -1609,6 +1616,8 @@ fr:
           de base depuis votre propre source. Accepte les tuiles vectorielles Protomaps
           ou les tuiles raster XYZ (toutes deux doivent inclure {z}, {x} et {y}),
           ou une URL complète du style MapLibre.
+        fill_gaps_with_the_default_basemap: Combler les lacunes avec le fond de carte par défaut
+        uncovered_areas_are_drawn_from_dawarich_s_default_tile_server: Pour un jeu de tuiles qui ne couvre qu'une partie du monde. Les zones non couvertes sont chargées depuis le serveur de tuiles par défaut de Dawarich ; activer cette option y envoie donc des requêtes.
         base_map_layers: Couches de carte de base
         toggle_base_map_elements_changes_apply_immediately: Bascule des éléments de
           la carte de base. Les modifications s'appliquent immédiatement.
@@ -2079,6 +2088,55 @@ fr:
       residential_roads: Routes résidentielles
       track: Tracé
   settings:
+    geocoding:
+      show:
+        title: Geocoding
+        provider: Geocoding provider
+        provider_hint: The provider used for reverse geocoding your points and for place and location search.
+        intro: Geocoding turns coordinates into city and country names on your points and stats, and powers place and location search.
+        host_choice: Photon server
+        choice_chibigeo: ChibiGeo hosted service
+        choice_chibigeo_desc: 'Free tier: 2,500 lookups per day. Works out of the box — just add your API key.'
+        choice_komoot: komoot public server
+        choice_komoot_desc: Free shared instance, throttled to one request per second.
+        choice_custom: Custom host
+        choice_custom_desc: Your own Photon instance or another compatible server.
+        recommended: Recommended
+        https_locked: HTTPS is always on for this host.
+        https_on: 'On'
+        https_off: 'Off'
+        chibigeo_message: ChibiGeo is a flat-rate, privacy-first geocoding service built by the Dawarich team. It works with Dawarich out of the box. An API key is required.
+        chibigeo_limits: The free Hobby plan includes 2,500 lookups per day at 1 request per second — hard caps, no overage.
+        chibigeo_key_link: Get your free API key
+        chibigeo_site_link: What is ChibiGeo?
+        disabled: Disabled
+        env_managed_notice: Geocoding is currently managed by environment variables set by your instance operator. The settings below take effect only if those variables are removed.
+        host: Host
+        host_hint: Bare hostname with optional port, e.g. photon.example.com:2322
+        api_key: API key
+        api_key_hint: Leave blank to keep the saved key.
+        api_key_saved: A key is saved for this provider.
+        clear_api_key: Remove the saved API key
+        use_https: Use HTTPS
+        rps: Requests per second
+        rps_hint_custom: Leave blank for no limit. Set this to whatever your server or plan allows.
+        rps_hint_chibigeo: Match your ChibiGeo plan - Hobby 1, Self-Hoster 5, Builder 10, Scale 25. Asking for more than your plan allows only earns rejected lookups.
+        rps_hint_komoot: komoot enforces one request per second for everyone, so this is fixed.
+        komoot_warning: photon.komoot.io is a shared public instance with strict rate limits. Requests are throttled to one per second, and bulk geocoding will be slow. Please consider hosting your own Photon instance.
+        komoot_no_api_key: The public komoot server takes no API key — leave it unset.
+        save: Save
+        test: Test my provider
+        test_hint: Save your settings first, then test. The test runs one lookup against your own provider configuration, even when environment variables are active.
+      update:
+        updated: Geocoding settings updated.
+        disabled: Geocoding disabled.
+        invalid_provider: Unknown geocoding provider.
+      test:
+        not_configured: No geocoding provider is configured for your account. Save a provider first.
+        success: 'Success! Your provider resolved the test coordinates to: %{place}.'
+        empty: The provider responded but returned no results for the test coordinates.
+        failure: 'Test failed: %{error}'
+        rate_limited: "The provider's rate limit is busy right now — try again in a moment."
     navigation:
       general: Général
       integrations: Intégrations
@@ -2195,6 +2253,14 @@ fr:
         the_interface_emails_and_notifications_will_use_this_language: "L'interface, les e-mails et les notifications utiliseront cette langue."
     integrations:
       index:
+        services_nav: Services d'intégration
+        services:
+          geocoding: Géocodage
+          immich: Immich
+          photoprism: PhotoPrism
+          airtrail: AirTrail
+        status_connected: Connecté
+        status_failed: La dernière tentative de connexion a échoué
         immich_photoprism_integrations: Intégrations Immich & Photoprism
         connect_your_photo_management_tools_to_see_your_photos_on: Connectez vos outils
           de gestion de photos pour voir vos photos sur la carte. Les intégrations
@@ -2764,13 +2830,13 @@ fr:
         one: "%{count} ville"
         other: "%{count} villes"
     reverse_geocoding_stats:
-      reverse_geocoded_points: Points géocodés inverses
       points_without_data: points sans données
+      points_that_were_reverse_geocoded_but_had_no_data: Points qui ont été géocodés mais sans données
+      percent_of_total: "%{percent}%% de tous les points"
+      reverse_geocoded_points: Points géocodés inverses
       countries_visited: Pays visités
       close: Fermer
       cities_visited: Villes visitées
-      points_that_were_reverse_geocoded_but_had_no_data: Points qui ont été géocodés
-        mais n'avaient pas de données
     stat:
       total_distance: Distance totale
       year_month: "%{year}/%{month}"
@@ -3597,10 +3663,14 @@ fr:
           digest_for_year_is_being_generated: Génération du récapitulatif pour %{year}
             en cours
         families:
+          location_requests:
+            not_found: Demande de localisation introuvable
           locations:
             start_at_and_end_at_are_required: start_at et end_at sont obligatoires
             invalid_date_format: Format de date non valide
             user_is_not_part_of_a_family: L'utilisateur n'est pas membre d'une famille
+          sharing:
+            missing_required_parameter_param: 'Paramètre requis manquant : %{parameter}'
         imports:
           pending:
             an_error_occurred: Une erreur s'est produite
@@ -4341,6 +4411,10 @@ fr:
             erreur inattendue est survenue lors de la suppression de l'adhésion. Veuillez
             essayer à nouveau.
           failed_to_leave: 'Impossible de quitter la famille : %{message}'
+      respond_to_location_request:
+        an_error_occurred: Une erreur s'est produite
+        not_authorized: Vous n'êtes pas autorisé à répondre à cette demande
+        no_longer_actionable: Cette demande a expiré ou a déjà reçu une réponse
       update_location_sharing:
         update_failed: Échec de mise à jour de la configuration de partage de localisation
         unexpected_error: Une erreur s'est produite lors de la mise à jour du partage
@@ -4795,6 +4869,7 @@ fr:
       failed_to_load_photos: Échec du chargement des photos
       failed_to_load_areas: Échec du chargement des zones
       failed_to_load_tracks: Échec du chargement des trajets
+      failed_to_load_track_details: Échec du chargement des détails du trajet
       failed_to_load_flights: Échec du chargement des vols
       failed_to_load_anomalies: Échec du chargement des anomalies
       reloading_routes: Rechargement des itinéraires...
@@ -4932,9 +5007,9 @@ fr:
           other: "Inactif tant que %{layers} sont activés — ces couches nécessitent tous les points."
         editing_unavailable: "Indisponible avec le rendu par tuiles : les tuiles vectorielles n'ont pas de points déplaçables"
         failed: "Impossible de charger les tuiles de la carte. Essayez une plage de dates plus courte ou désactivez le rendu par tuiles dans les paramètres de la carte."
+        tracks_pending: "Aucun track dans cette vue. Avec les tuiles, les itinéraires affichent vos tracks générés — déplacez la carte, élargissez la période ou revenez plus tard après un import récent."
+        splitting_unavailable: "Sans effet avec le rendu par tuiles — les itinéraires suivent vos tracks générés."
         blockers:
-          routes: "Itinéraires"
-          fog: "Brouillard de guerre"
           scratch: "Carte à gratter"
       places_layer: Couche de lieux
       confirm_delete_point: Voulez-vous vraiment supprimer ce point ?
@@ -5147,6 +5222,7 @@ fr:
         — il n'affiche aucun libellé ni point d'intérêt
       layer_unavailable_foreign_basemap: Non disponible avec un fond de carte personnalisé
         — ces couches proviennent des tuiles vectorielles intégrées
+      tiles_fallback_unavailable: Disponible uniquement pour les URL de tuiles {z}/{x}/{y} — une URL de style MapLibre remplace tout le fond de carte
       make_changes_to_apply: Modifiez les paramètres pour activer le bouton Appliquer
       re_evaluation_queued: La réévaluation a été planifiée. La carte se mettra à jour
         lorsqu'elle sera terminée.

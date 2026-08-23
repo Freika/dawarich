@@ -42,6 +42,7 @@ class Users::SafeSettings
     'enabled_map_layers' => %w[Tracks Heatmap],
     'maps_maplibre_style' => 'light',
     'maps_maplibre_tiles_url' => nil,
+    'maps_maplibre_tiles_fallback' => false,
     'maps_maplibre_custom_theme' => {
       'base' => 'noir',
       'tokens' => {
@@ -105,6 +106,7 @@ class Users::SafeSettings
       enabled_map_layers: enabled_map_layers,
       maps_maplibre_style: maps_maplibre_style,
       maps_maplibre_tiles_url: maps_maplibre_tiles_url,
+      maps_maplibre_tiles_fallback: maps_maplibre_tiles_fallback?,
       maps_maplibre_custom_theme: maps_maplibre_custom_theme,
       globe_projection: globe_projection,
       enabled_transportation_modes: enabled_transportation_modes,
@@ -251,6 +253,10 @@ class Users::SafeSettings
 
   def maps_maplibre_tiles_url
     settings['maps_maplibre_tiles_url']
+  end
+
+  def maps_maplibre_tiles_fallback?
+    ActiveModel::Type::Boolean.new.cast(settings['maps_maplibre_tiles_fallback']) || false
   end
 
   def globe_projection

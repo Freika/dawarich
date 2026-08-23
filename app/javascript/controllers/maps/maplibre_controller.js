@@ -65,6 +65,7 @@ export default class extends Controller {
     "pointsTiledToggle",
     "pointsTiledInactiveNote",
     "pointsEditUnavailableNote",
+    "routeSplittingUnavailableNote",
     "routesToggle",
     "heatmapToggle",
     "hexagonsToggle",
@@ -397,6 +398,7 @@ export default class extends Controller {
         disabledPoiGroups: this.settings.disabledPoiGroups || [],
         customTheme: this.settings.customTheme,
         vectorTilesUrl: this.settings.vectorTilesUrl,
+        tilesFallback: this.settings.tilesFallback === true,
         ...(lastView ? { center: lastView.center, zoom: lastView.zoom } : {}),
       },
       this.apiKeyValue,
@@ -1212,6 +1214,9 @@ export default class extends Controller {
   }
   updateVectorTilesUrl(event) {
     return this.settingsController.updateVectorTilesUrl(event)
+  }
+  updateTilesFallback(event) {
+    return this.settingsController.updateTilesFallback(event)
   }
   updateRouteColor(event) {
     return this.settingsController.updateRouteColor(event)

@@ -25,9 +25,9 @@ class Points::VectorTileQuery
   LAYER_NAME = 'points'
   TILE_PIXELS = 512
   WEB_MERCATOR_WORLD = 40_075_016.685578488
-  # Bounds the per-query cost; PgBouncer-safe because SET LOCAL runs inside an
-  # explicit transaction (see Visits::Detection::CandidateLoader for the pattern)
-  QUERY_TIMEOUT_MS = 5_000
+  # Bounds the per-query cost (VectorTileTimeout, ENV-overridable);
+  # PgBouncer-safe because SET LOCAL runs inside an explicit transaction
+  # (see Visits::Detection::CandidateLoader for the pattern)
 
   def initialize(scope:, z:, x:, y:) # rubocop:disable Naming/MethodParameterName
     @scope = scope
@@ -236,7 +236,8 @@ class Points::VectorTileQuery
   def with_statement_timeout
     conn = Point.connection
     conn.transaction do
-      conn.exec_query("SET LOCAL statement_timeout = #{QUERY_TIMEOUT_MS}", 'VectorTileQuery Timeout')
+      conn.exec_query("SET LOCAL statement_timeout = #{VectorTileTimeout.query_timeout_ms}",
+                      'VectorTileQuery Timeout')
       yield conn
     end
   end

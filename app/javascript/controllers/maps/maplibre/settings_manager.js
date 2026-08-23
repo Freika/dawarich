@@ -107,6 +107,7 @@ export class SettingsController {
     })
 
     this.syncPointsEditAvailability()
+    this.syncRouteSplittingAvailability()
     this.syncTiledRenderingNote()
 
     // Show/hide visits search based on initial toggle state
@@ -162,6 +163,14 @@ export class SettingsController {
       'input[name="vectorTilesUrl"]',
     )
     if (tilesUrlInput) tilesUrlInput.value = this.settings.vectorTilesUrl || ""
+
+    const tilesFallbackInput = controller.element.querySelector(
+      'input[name="tilesFallback"]',
+    )
+    if (tilesFallbackInput) {
+      tilesFallbackInput.checked = this.settings.tilesFallback === true
+    }
+    this.syncTilesFallbackAvailability()
 
     // Sync map style dropdown. Setting .value doesn't fire "change", so
     // notify the map-theme-editor controller separately — it shows/hides
@@ -709,6 +718,7 @@ export class SettingsController {
         SettingsManager.getSetting("hiddenTileCategories") || [],
       disabledPoiGroups: SettingsManager.getSetting("disabledPoiGroups") || [],
       customTheme: SettingsManager.getSetting("customTheme"),
+      tilesFallback: SettingsManager.getSetting("tilesFallback") === true,
     }
   }
 
@@ -846,12 +856,9 @@ export class SettingsController {
     note.classList.toggle("hidden", !inactive)
     if (!inactive) return
 
+    // Routes and fog ride tile sources now — Scratch map is the only layer
+    // left that needs the whole point set.
     const blockers = [
-      settings.routesVisible !== false &&
-        translate("map.tiled_rendering.blockers.routes"),
-      settings.fogEnabled &&
-        settings.fogOfWarMode !== "hexagons" &&
-        translate("map.tiled_rendering.blockers.fog"),
       settings.scratchEnabled &&
         translate("map.tiled_rendering.blockers.scratch"),
     ].filter(Boolean)
@@ -892,6 +899,33 @@ export class SettingsController {
     label.style.cursor = tiled ? "not-allowed" : ""
   }
 
+  // The route-splitting sliders shape the polylines the CLASSIC path builds
+  // from raw points; under tiled mode backend track boundaries replace client
+  // splitting entirely, so the inputs dim rather than silently no-op.
+  syncRouteSplittingAvailability() {
+    const controller = this.controller
+    const tiled = tiledPointsActive(SettingsManager.getSettings())
+
+    for (const name of ["metersBetweenRoutes", "minutesBetweenRoutes"]) {
+      const input = controller.element.querySelector(`input[name="${name}"]`)
+      if (!input) continue
+      input.disabled = tiled
+      const section = input.closest(".form-control")
+      if (section) {
+        section.classList.toggle("opacity-40", tiled)
+        section.style.cursor = tiled ? "not-allowed" : ""
+      }
+    }
+
+    if (controller.hasRouteSplittingUnavailableNoteTarget) {
+      const note = controller.routeSplittingUnavailableNoteTarget
+      note.textContent = tiled
+        ? translate("map.tiled_rendering.splitting_unavailable")
+        : ""
+      note.classList.toggle("hidden", !tiled)
+    }
+  }
+
   updateRouteOpacity(event) {
     const opacity = parseInt(event.target.value, 10) / 100
 
@@ -899,6 +933,10 @@ export class SettingsController {
     if (routesLayer && this.map.getLayer("routes")) {
       this.map.setPaintProperty("routes", "line-opacity", opacity)
     }
+
+    // Under tiled mode the slider drives the track-tile line instead of
+    // silently no-oping against the unpopulated classic layer.
+    this.layerManager.getLayer("tracks-mvt")?.setRouteOpacity(opacity)
 
     SettingsManager.updateSetting("routeOpacity", opacity)
   }
@@ -949,12 +987,14 @@ export class SettingsController {
     if (this.map.getLayer("routes-base")) {
       this.map.setPaintProperty("routes-base", "line-color", color)
     }
+    this.layerManager.getLayer("tracks-mvt")?.setColors({ routeColor: color })
   }
 
   applyTrackColor(color) {
     if (this.map.getLayer("tracks")) {
       this.map.setPaintProperty("tracks", "line-color", color)
     }
+    this.layerManager.getLayer("tracks-mvt")?.setColors({ trackColor: color })
   }
 
   syncLayerColorLabel(key, color) {
@@ -1001,13 +1041,17 @@ export class SettingsController {
    * The Custom style draws no labels or POIs, so their toggles are
    * disabled while it's active, with a tooltip explaining why. A raster or
    * foreign-style basemap carries no Protomaps layers at all, so there every
-   * toggle goes dead, not just the unsupported ones.
+   * toggle goes dead, not just the unsupported ones — except under a raster
+   * basemap with the fallback on, where the default vector stack is composed
+   * underneath and the toggles still control what shows through the gaps.
    */
   syncStyleDependentToggles(styleName) {
     const basemap = classifyBasemapUrl(
       SettingsManager.getSetting("vectorTilesUrl"),
     )
-    const foreignBasemap = basemap === "raster" || basemap === "style"
+    const fallback = SettingsManager.getSetting("tilesFallback") === true
+    const foreignBasemap =
+      (basemap === "raster" && !fallback) || basemap === "style"
     const custom = styleName === "custom"
     const inputs = this.controller.element.querySelectorAll(
       "input[data-tile-category], input[data-poi-group]",
@@ -1047,7 +1091,41 @@ export class SettingsController {
     }
 
     SettingsManager.updateSetting("vectorTilesUrl", raw || null)
+    this.syncTilesFallbackAvailability()
     this.applyMapStyle(SettingsManager.getSetting("mapStyle"))
+  }
+
+  async updateTilesFallback(event) {
+    await SettingsManager.updateSetting("tilesFallback", event.target.checked)
+    this.applyMapStyle(SettingsManager.getSetting("mapStyle"))
+  }
+
+  /**
+   * The fallback only means something for XYZ tile URLs. A style document
+   * replaces the whole style, leaving nothing to draw the default basemap
+   * under, and with no custom URL there is nothing to fall back from.
+   */
+  syncTilesFallbackAvailability() {
+    const input = this.controller.element.querySelector(
+      'input[name="tilesFallback"]',
+    )
+    if (!input) return
+
+    const basemap = classifyBasemapUrl(
+      SettingsManager.getSetting("vectorTilesUrl"),
+    )
+    const unavailable = basemap !== "raster" && basemap !== "vector"
+    input.disabled = unavailable
+
+    const label = input.closest("label")
+    if (!label) return
+    label.classList.toggle("opacity-40", unavailable)
+    label.classList.toggle("tooltip", unavailable)
+    if (unavailable) {
+      label.dataset.tip = translate("settings.tiles_fallback_unavailable")
+    } else {
+      delete label.dataset.tip
+    }
   }
 
   /**
