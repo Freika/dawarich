@@ -3,7 +3,7 @@
 class Stats::DailyDistanceQuery
   # Photo integrations sync a whole library as one import, so its points are
   # snapshots rather than a continuous track.
-  SNAPSHOT_IMPORT_SOURCES = %w[immich_api photoprism_api google_photos].freeze
+  SNAPSHOT_IMPORT_SOURCES = %w[immich_api photoprism_api google_photos mobile_photo_library].freeze
 
   def initialize(monthly_points, timespan, timezone = nil, minutes_between_routes: nil)
     @monthly_points = monthly_points

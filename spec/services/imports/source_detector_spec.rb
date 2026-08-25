@@ -9,6 +9,15 @@ RSpec.describe Imports::SourceDetector do
   let(:filename) { nil }
 
   describe '#detect_source' do
+    context 'with a Dawarich mobile photo library export' do
+      let(:file_content) { file_fixture('mobile_photo_library/import.json').read }
+      let(:filename) { 'dawarich-photo-library.json' }
+
+      it 'detects mobile_photo_library format' do
+        expect(detector.detect_source).to eq(:mobile_photo_library)
+      end
+    end
+
     context 'with Google Semantic History format' do
       let(:file_content) { file_fixture('google/semantic_history.json').read }
 

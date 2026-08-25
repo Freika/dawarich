@@ -52,6 +52,9 @@ class Api::V1::Settings::MobileController < ApiController
     {
       settings: mobile.except('updated_at'),
       updated_at: mobile['updated_at'],
+      capabilities: {
+        photo_library_import: { version: 1 }
+      },
       status: 'success'
     }
   end
