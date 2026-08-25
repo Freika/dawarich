@@ -6,6 +6,11 @@ class MobilePhotoLibrary::Importer
   include Imports::FileLoader
 
   BATCH_SIZE = 1000
+  # points.timestamp is int4 and points.altitude_decimal is decimal(10,2); a
+  # value past either raises inside the batch insert, and the shared rescue
+  # drops the whole slice, so one bad photo would cost every point beside it.
+  MAX_TIMESTAMP = 2_147_483_647
+  MAX_ALTITUDE = 99_999_999.99
   FORMAT_TYPE = 'DawarichPhotoLibrary'
   FORMAT_VERSION = 1
   TRACKER_ID = 'mobile-photo-library'
@@ -24,17 +29,28 @@ class MobilePhotoLibrary::Importer
     validate_payload!(payload)
 
     processed = 0
+    rejected = 0
     payload.fetch('points').each_slice(BATCH_SIZE) do |batch|
       records = batch.filter_map { |point| build_point(point) }
+      rejected += batch.length - records.length
       bulk_insert_points(records)
       processed += batch.length
       broadcast_import_progress(import, processed)
     end
+    log_rejected(rejected)
   ensure
     cleanup_temp_file
   end
 
   private
+
+  # A client sending, say, ISO-8601 timestamps would otherwise import nothing
+  # and report nothing, looking indistinguishable from an empty library.
+  def log_rejected(count)
+    return unless count.positive?
+
+    Rails.logger.info("[#{importer_name}] skipped #{count} points with unusable coordinates or timestamps")
+  end
 
   def validate_payload!(payload)
     valid = payload.is_a?(Hash) &&
@@ -54,7 +70,7 @@ class MobilePhotoLibrary::Importer
     timestamp = normalized_timestamp(point['timestamp'])
     return unless valid_coordinates?(latitude, longitude) && timestamp
 
-    altitude = number(point['altitude'])
+    altitude = in_range(number(point['altitude']), MAX_ALTITUDE)
     now = Time.current
     attributes = {
       lonlat: "POINT(#{longitude} #{latitude})",
@@ -82,7 +98,12 @@ class MobilePhotoLibrary::Importer
     return unless timestamp&.positive?
 
     timestamp /= 1000 if timestamp > 10_000_000_000
-    timestamp.to_i
+    timestamp = timestamp.to_i
+    timestamp if timestamp <= MAX_TIMESTAMP
+  end
+
+  def in_range(value, limit)
+    value if value && value.abs <= limit
   end
 
   def number(value)

@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Location data from your phone's photo library can now be imported: the mobile app exports the coordinates and timestamps recorded with your photos, and Dawarich adds them to your timeline as individual points rather than a continuous track.
+
 ## [1.13.1] - 2026-08-22, Berlin
 
 ### Added

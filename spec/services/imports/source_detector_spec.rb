@@ -16,6 +16,46 @@ RSpec.describe Imports::SourceDetector do
       it 'detects mobile_photo_library format' do
         expect(detector.detect_source).to eq(:mobile_photo_library)
       end
+
+      # Real exports are read from disk and truncated at MAX_DETECTION_BYTES, so
+      # they must go through new_from_file_header to exercise the path they take
+      # in production rather than the whole-string one.
+      context 'when a real export on disk exceeds the detection read limit' do
+        let(:payload) do
+          points = Array.new(400) do |i|
+            { timestamp: 1_718_447_400 + i, latitude: 48.1 + (i / 10_000.0), longitude: 11.5 }
+          end
+          JSON.generate(type: 'DawarichPhotoLibrary', version: 1, points:)
+        end
+
+        around do |example|
+          Tempfile.create(['photo-library', '.json']) do |file|
+            file.write(payload)
+            file.flush
+            @path = file.path
+            example.run
+          end
+        end
+
+        it 'detects the format from the truncated header' do
+          expect(payload.bytesize).to be > described_class::MAX_DETECTION_BYTES
+          expect(described_class.new_from_file_header(@path).detect_source).to eq(:mobile_photo_library)
+        end
+      end
+
+      context 'when the export declares an unsupported version' do
+        let(:file_content) do
+          JSON.generate(
+            type: 'DawarichPhotoLibrary',
+            version: 2,
+            points: [{ timestamp: 1_718_447_400, latitude: 48.1, longitude: 11.5 }]
+          )
+        end
+
+        it 'does not claim the format' do
+          expect(detector.detect_source).not_to eq(:mobile_photo_library)
+        end
+      end
     end
 
     context 'with Google Semantic History format' do

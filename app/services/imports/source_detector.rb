@@ -6,7 +6,10 @@ class Imports::SourceDetector
   DETECTION_RULES = {
     mobile_photo_library: {
       required_keys: %w[type version points],
-      required_values: { 'type' => 'DawarichPhotoLibrary', 'version' => 1 },
+      required_values: {
+        'type' => MobilePhotoLibrary::Importer::FORMAT_TYPE,
+        'version' => MobilePhotoLibrary::Importer::FORMAT_VERSION
+      },
       nested_patterns: [
         ['points', 0, 'timestamp'],
         ['points', 0, 'latitude'],
@@ -243,7 +246,10 @@ class Imports::SourceDetector
     content = read_for_raw_detection
     return nil if content.blank?
 
-    if content.include?('"DawarichPhotoLibrary"') && content.include?('"points"')
+    # Real exports exceed MAX_DETECTION_BYTES, so the structured rules cannot
+    # parse them and this branch has to carry the version check itself.
+    if content.include?(%("#{MobilePhotoLibrary::Importer::FORMAT_TYPE}")) && content.include?('"points"') &&
+       content.match?(/"version"\s*:\s*#{MobilePhotoLibrary::Importer::FORMAT_VERSION}\b/)
       :mobile_photo_library
     elsif content.include?('"semanticSegments"') &&
           (content.include?('"startTime"') || content.include?('"visit"') || content.include?('"activity"'))
