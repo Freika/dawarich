@@ -40,6 +40,16 @@ export class MapPageProvider {
     }
   }
 
+  // Timestamped points, for consumers that animate the track rather than
+  // draw it flat. The map loads points lazily, so this forces the fetch the
+  // poster path never needs.
+  async points() {
+    const controller = this.controller
+    if (!controller) return []
+    await controller.mapDataManager?.ensurePointsLoaded()
+    return controller._getLoadedPoints?.() ?? []
+  }
+
   fallbackBounds() {
     const bounds = this.controller?.map?.getBounds()
     if (!bounds) return null
@@ -125,11 +135,12 @@ export function buildTripGeojson({
 }
 
 export class TripProvider {
-  constructor({ geojson, startAt, endAt, title }) {
+  constructor({ geojson, startAt, endAt, title, points }) {
     this.geojson = geojson ?? EMPTY_COLLECTION
     this.startAt = startAt
     this.endAt = endAt
     this.title = title ?? ""
+    this.trackPoints = points ?? []
     this.supportsDateNavigation = false
   }
 
@@ -151,5 +162,9 @@ export class TripProvider {
 
   defaultTitle() {
     return this.title
+  }
+
+  async points() {
+    return this.trackPoints
   }
 }

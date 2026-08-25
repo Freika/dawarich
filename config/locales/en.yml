@@ -869,6 +869,7 @@ en:
         replay: Replay
         replay_points_for_the_current_date_range_r: Replay points for the current date range (R)
         poster_studio: Poster Studio
+        video_studio: Video Studio
         settings: Settings
         settings_s: Settings (S)
         links: Links
@@ -1286,6 +1287,45 @@ en:
       delete_selected: Delete Selected
       are_you_sure: Are you sure?
       select_all: Select all
+  route_videos:
+    route_video:
+      download: Download MP4
+      delete: Delete
+      delete_this_video: Delete this video?
+      re_render: Re-render
+      expired_on: Video file removed on %{date} to save space.
+      expired_hint: Its settings were kept — re-render to make it again.
+    studio:
+      video_studio: Video Studio
+      close_studio: Close the studio
+      name: Name
+      theme: Theme
+      route: Route
+      playback: Playback
+      reset: Reset
+      format: Format
+      format_portrait: Story · 9:16 (vertical)
+      format_landscape: Wide · 16:9 (widescreen)
+      format_square: Feed · 1:1 (square)
+      duration: Length
+      camera: Camera
+      camera_overview: Whole route
+      camera_follow: Follow the line
+      track_color: Route colour
+      track_width: Route width
+      units: Units
+      units_km: Kilometres
+      units_mi: Miles
+      hud_scale: Overlay size
+      watermark: Show dawarich.app on the video
+      recent_videos: Recent videos
+      videos_from_save_to_gallery_they_stay_here: Videos you saved from this studio. They stay here until you delete them, or retention removes the file.
+      rendered_on_your_device_nothing_leaves_the_browser_until_you_save: Rendered on your device — nothing leaves the browser until you save.
+      render_a_video: Render a video
+      keep_this_video_in_your_gallery: Keep this video in your gallery
+      cancel: Cancel
+      save_to_gallery: Save to gallery
+      render_video: Render video
   posters:
     poster:
       download_png: Download PNG
@@ -1654,6 +1694,12 @@ en:
       body:
         live_location: Live location
         time_period: Time period
+        make_something: Make something
+        make_something_intro: A link keeps sharing your data. These make a file you post once and nothing stays shared.
+        make_video: Route video
+        make_video_hint: An animated replay of this period, as an MP4.
+        make_poster: Map poster
+        make_poster_hint: A print-ready map of this period, as a PNG or PDF.
         shared: Shared
         your_live_location_is_shared_via_a_public_link: Your live location is shared via a public link.
       modal:
@@ -1675,6 +1721,10 @@ en:
   shared:
     flash_message:
       close: Close
+    studio_switcher:
+      studios: Studios
+      poster: Poster
+      video: Video
     footer:
       dawarich: Dawarich
     legal_footer:
@@ -2170,6 +2220,9 @@ en:
       delete_trip: Delete trip
       poster_unavailable: Available once the trip route is calculated
       create_poster: Create a poster of this trip
+      video: Video
+      video_unavailable: Available once the trip route is calculated
+      create_video: Create a replay video of this trip
       more_on_source: More on %{source}
     share_links:
       new:
@@ -2960,6 +3013,11 @@ en:
       failed_to_start_poster_generation: Failed to start poster generation.
       poster_deleted: Poster deleted.
       untitled: Untitled poster
+    route_videos:
+      untitled: Untitled video
+      saved: Video saved to your gallery.
+      failed_to_save: Failed to save the video.
+      deleted: Video deleted.
     settings:
       background_jobs:
         settings_updated: Settings updated
@@ -4145,6 +4203,24 @@ en:
       ended: "%{layer} preview ended."
       remaining: Previewing %{layer} — %{seconds}s remaining.
       started: Previewing %{layer} for %{seconds} seconds.
+    video:
+      open_failed: 'Video studio failed to open: %{error}'
+      save_failed: 'Failed to save the video: %{error}'
+      rendering: Rendering… %{percent}%
+      uploading: Uploading… %{percent}%
+      ready: Your video is ready — %{size} MB.
+      summary: "%{format} — %{width} × %{height} · Theme: %{theme} · %{seconds}s at 30 fps"
+      unsupported_browser: This browser cannot encode video. Try a current Chrome, Edge, Safari or Firefox.
+      stats:
+        distance: Distance
+        duration: Duration
+        avg_speed: Avg speed
+      hud:
+        day: DAY
+        distance: DISTANCE
+        of_total: OF TOTAL
+        tagline: PRIVATE LOCATION HISTORY
+        travelled_over: travelled over %{days} days
     poster:
       categories:
         print: Print

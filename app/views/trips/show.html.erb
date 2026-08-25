@@ -143,6 +143,15 @@
           <span class="hidden sm:inline"><%= t('.poster') %></span>
         </button>
 
+        <button type="button"
+                class="btn btn-sm btn-outline gap-1"
+                data-action="click->trip-maplibre#openVideoStudio"
+                title="<%= t(@trip.path.blank? ? '.video_unavailable' : '.create_video') %>"
+                <% if @trip.path.blank? %>disabled<% end %>>
+          <%= icon 'video', class: 'w-4 h-4' %>
+          <span class="hidden sm:inline"><%= t('.video') %></span>
+        </button>
+
         <%= render "trips/recalculate_button", trip: @trip %>
       </div>
 
@@ -242,3 +251,5 @@
 <%= render 'posters/studio',
            show_date_controls: false,
            date_range_label: "#{human_date(@trip.started_at)} – #{human_date(@trip.ended_at)}" %>
+
+<%= render 'route_videos/studio' %>
