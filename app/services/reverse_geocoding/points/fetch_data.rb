@@ -76,7 +76,16 @@ class ReverseGeocoding::Points::FetchData
     end
 
     country = Country.find_by(iso_a2: code.upcase) if code.present?
-    country || Country.matching_name(response.country)
+    country ||= Country.matching_name(response.country)
+
+    if country.nil?
+      Rails.logger.warn(
+        "[ReverseGeocoding] no country record for #{response.country.inspect}; " \
+        'add it to Countries::NameAliases if it is a known naming variant'
+      )
+    end
+
+    country
   end
 
   def with_write_retry

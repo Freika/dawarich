@@ -43,6 +43,41 @@ RSpec.describe ReverseGeocoding::Points::FetchData do
     end
   end
 
+  context 'when the ISO code and the name point at different countries' do
+    let!(:usa) { create(:country, name: 'United States of America', iso_a2: 'US', iso_a3: 'USA') }
+    let!(:germany) { create(:country, name: 'Germany', iso_a2: 'DE', iso_a3: 'DEU') }
+
+    before do
+      allow(Geocoder).to receive(:search).and_return(
+        [double(city: 'Berlin', country: 'United States', country_code: 'DE', data: {})]
+      )
+    end
+
+    it 'trusts the ISO code over the name' do
+      expect { fetch_data }.to change { point.reload.country_id }.from(nil).to(germany.id)
+    end
+  end
+
+  context 'when neither the code nor any name variant resolves' do
+    before do
+      allow(Geocoder).to receive(:search).and_return(
+        [double(city: 'Nowhere', country: 'Atlantis', data: {})]
+      )
+      allow(Rails.logger).to receive(:warn)
+    end
+
+    it 'flags the unresolved name so operators can extend the alias map' do
+      fetch_data
+
+      expect(Rails.logger).to have_received(:warn).with(/"Atlantis"/)
+    end
+
+    it 'still records the geocoding result' do
+      expect { fetch_data }.to change { point.reload.country_name }.to('Atlantis')
+      expect(point.reload.country_id).to be_nil
+    end
+  end
+
   context 'when Geocoder returns city and country' do
     let!(:germany) do
       Country.find_by(name: 'Germany') || create(:country, name: 'Germany', iso_a2: 'DE', iso_a3: 'DEU')

@@ -14,6 +14,11 @@ class EnqueueCountryAliasBackfill < ActiveRecord::Migration[8.0]
     # An empty point_sources means the dimension chain has not run here yet —
     # its own tail enqueues the country job with the aliases already in
     # place, and starting a second walker now would only contend with it.
+    # A chain still mid-walk passes this check, so that instance briefly runs
+    # this walker AND the chain-tail one. Accepted: both walks touch only
+    # rows whose country_id is still NULL, back off under lock contention,
+    # and the window requires upgrading again within hours of the previous
+    # upgrade's still-running backfill.
     return unless dimension_backfill_started?
 
     enqueue(DataMigrations::BackfillPointCountryIdJob)
