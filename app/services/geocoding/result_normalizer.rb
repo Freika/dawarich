@@ -26,6 +26,9 @@ module Geocoding
 
       data = data.deep_stringify_keys if data.is_a?(Hash)
 
+      # FeatureCollection responses (raw HTTP body) unwrap to their first feature.
+      return from_data(data['features'].first) if data['features'].is_a?(Array) && data['features'].first.is_a?(Hash)
+
       if data['properties'].is_a?(Hash)
         from_geojson(data)
       elsif data['address'].is_a?(Hash) || data['lat'].present? || data['display_name'].present?

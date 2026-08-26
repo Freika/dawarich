@@ -1,4 +1,5 @@
 import { translate } from "i18n"
+import { escapeHtml } from "../utils/geojson_transformers"
 
 /**
  * Visit card component for rendering individual visit cards in the side panel
@@ -65,7 +66,7 @@ export class VisitCard {
         <div class="card-body p-3">
           <!-- Visit Name -->
           <h3 class="card-title text-sm font-semibold mb-2">
-            ${visit.name || visit.place?.name || translate("visits.unnamed")}
+            ${escapeHtml(visit.name || visit.place?.name) || translate("visits.unnamed")}
           </h3>
 
           <!-- Date and Time -->

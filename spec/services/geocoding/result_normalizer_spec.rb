@@ -78,5 +78,20 @@ RSpec.describe Geocoding::ResultNormalizer do
       )
       expect(described_class.from_data(nil)).to eq(properties: {}, coords: nil)
     end
+
+    it 'unwraps a FeatureCollection to its first feature' do
+      raw = {
+        'type' => 'FeatureCollection',
+        'features' => [{
+          'type' => 'Feature',
+          'geometry' => { 'type' => 'Point', 'coordinates' => [9.5, 47.1] },
+          'properties' => { 'name' => 'Café', 'city' => 'Vaduz' }
+        }]
+      }
+
+      fields = described_class.from_data(raw)
+      expect(fields[:properties]['name']).to eq('Café')
+      expect(fields[:coords]).to eq([9.5, 47.1])
+    end
   end
 end
