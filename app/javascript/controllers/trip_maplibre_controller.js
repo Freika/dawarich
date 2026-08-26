@@ -422,7 +422,18 @@ export default class extends Controller {
       startAt: this.startedAtValue,
       endAt: this.endedAtValue,
       title: this.tripNameValue,
+      points: this.allPoints,
     })
+  }
+
+  // ===== Video studio =====
+
+  openVideoStudio() {
+    document.dispatchEvent(
+      new CustomEvent("video-studio:open", {
+        detail: { provider: this.posterProvider() },
+      }),
+    )
   }
 
   posterGeojson() {

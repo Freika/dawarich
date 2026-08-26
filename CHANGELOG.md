@@ -6,7 +6,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
-
 ### Changed
 
 - `PATCH /api/v1/settings/mobile` now takes a row lock around its read-merge-write, so a mobile settings change no longer discards a concurrent write to another settings section or from another device.
@@ -15,6 +14,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Dawarich can now be used in Polish: pick it under Settings → General. Thanks @Kliiper for the translation! (#3357)
 - API for getting geodata extracted from mobile phone photos
+- Route replay videos: the new Video Studio turns the route on your map — or a trip — into an animated MP4 with a live distance and date readout and a summary frame. Open it from the map's toolbar or a trip page, pick one of the 17 map themes, a vertical, widescreen or square format, and a length between 8 and 30 seconds. The video is rendered on your own device and never uploaded anywhere until you press "Save to gallery"; rendering needs a current Chrome, Edge, Safari or Firefox.
+- The video studio's preview shows the real overlay — dates, distance, progress and the summary chrome — drawn over the map before you render, with a slider to size it up or down.
+- The Share button on the map now also offers making a route video or a map poster, alongside the existing share links. The poster and video studios switch between each other in one click from their top-left corner.
+- Saved videos keep the settings they were made with, so a video whose file has been cleaned up can be rebuilt with one click. Video files are large, so by default only the 10 newest per account are kept and files older than 30 days are removed. Change that with `VIDEO_MAX_PER_USER` and `VIDEO_RETENTION_DAYS`, or set either to `0` to switch that limit off.
 
 ### Fixed
 

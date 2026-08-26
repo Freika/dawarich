@@ -420,6 +420,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_25_120000) do
     t.index ["user_id"], name: "index_posters_on_user_id"
   end
 
+  create_table "route_videos", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "expired_at"
+    t.string "name", null: false
+    t.jsonb "settings", default: {}, null: false
+    t.integer "status", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["user_id", "created_at"], name: "index_route_videos_on_user_id_and_created_at"
+  end
+
   create_table "service_settings", force: :cascade do |t|
     t.boolean "active", default: false, null: false
     t.jsonb "config", default: {}, null: false
@@ -677,6 +688,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_25_120000) do
   add_foreign_key "points", "visits"
   add_foreign_key "points_raw_data_archives", "users"
   add_foreign_key "posters", "users"
+  add_foreign_key "route_videos", "users"
   add_foreign_key "service_settings", "users"
   add_foreign_key "shared_links", "users", on_delete: :cascade
   add_foreign_key "stats", "users"
