@@ -42,10 +42,38 @@ module Visits
             geodata['features']
           elsif geodata['type'] == 'Feature' && geodata['properties'].is_a?(Hash)
             [geodata]
+          elsif flat_geodata?(geodata)
+            [pseudo_feature(geodata)]
           else
             []
           end
         end.compact
+      end
+
+      # Wraps Nominatim/LocationIQ flat geodata into the feature shape
+      # the name voting below expects.
+      def flat_geodata?(geodata)
+        geodata['address'].is_a?(Hash) || geodata['display_name'].present? || geodata['lat'].present?
+      end
+
+      def pseudo_feature(geodata)
+        address = geodata['address'] || {}
+
+        {
+          'type' => 'Feature',
+          'properties' => {
+            'type' => geodata['type'] || geodata['category'],
+            'name' => geodata['name'] || [address['road'], address['house_number']].compact.join(' ').presence,
+            'osm_key' => geodata['category'],
+            'osm_value' => geodata['type'] || geodata['addresstype'],
+            'street' => address['road'] || address['pedestrian'] || address['footway'],
+            'housenumber' => address['house_number'],
+            'city' => address['city'] || address['town'] || address['village'],
+            'state' => address['state'],
+            'country' => address['country'],
+            'postcode' => address['postcode']
+          }
+        }
       end
 
       def find_most_common_feature_type(features)

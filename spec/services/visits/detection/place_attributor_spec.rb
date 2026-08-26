@@ -99,6 +99,23 @@ RSpec.describe Visits::Detection::PlaceAttributor do
     expect(result[:name]).to eq('Café Pushkin')
   end
 
+  it 'promotes a Nominatim-shaped reverse result to a minted place' do
+    geocoder_result = double(data: {
+                               'lat' => lat0.to_s, 'lon' => lon0.to_s, 'name' => 'Café Pushkin',
+                               'category' => 'amenity', 'type' => 'cafe', 'osm_id' => 5,
+                               'osm_type' => 'node',
+                               'address' => { 'road' => 'Karlstraße', 'house_number' => '1',
+                                              'city' => 'Leipzig', 'country' => 'Germany' }
+                             })
+    allow(Geocoder).to receive(:search).and_return([geocoder_result])
+
+    result = nil
+    expect { result = attribute }.to change { Place.count }.by(1)
+
+    expect(result[:evidence]).to eq(:poi)
+    expect(result[:name]).to eq('Café Pushkin')
+  end
+
   it 'refuses venue evidence for a street-keyed feature, naming by street instead' do
     geocoder_result = double(data: {
                                'geometry' => { 'coordinates' => [lon0, lat0] },
