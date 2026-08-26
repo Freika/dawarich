@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+
 ### Changed
 
 - `PATCH /api/v1/settings/mobile` now takes a row lock around its read-merge-write, so a mobile settings change no longer discards a concurrent write to another settings section or from another device.
@@ -13,6 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 
 - Dawarich can now be used in Polish: pick it under Settings → General. Thanks @Kliiper for the translation! (#3357)
+- API for getting geodata extracted from mobile phone photos
 
 ### Fixed
 

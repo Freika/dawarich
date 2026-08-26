@@ -101,6 +101,7 @@ class Imports::Create
     when 'google_phone_takeout'         then GoogleMaps::PhoneTakeoutImporter
     when 'google_records'               then GoogleMaps::RecordsStorageImporter
     when 'google_photos'                then GooglePhotos::Importer
+    when 'mobile_photo_library'         then MobilePhotoLibrary::Importer
     when 'owntracks'                    then OwnTracks::Importer
     when 'gpx'                          then Gpx::TrackImporter
     when 'kml'                          then Kml::Importer

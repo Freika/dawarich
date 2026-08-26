@@ -133,6 +133,34 @@ RSpec.describe Stats::DailyDistanceQuery do
       end
     end
 
+    context 'with sparse points from a mobile photo library import' do
+      let(:import) { create(:import, user: user, source: :mobile_photo_library) }
+
+      let!(:point1) do
+        create(:point, user: user, import: import, lonlat: 'POINT(16.37 48.21)',
+               timestamp: DateTime.new(2021, 1, 1, 6, 0, 0).to_i)
+      end
+      let!(:point2) do
+        create(:point, user: user, import: import, lonlat: 'POINT(16.38 48.22)',
+               timestamp: DateTime.new(2021, 1, 1, 6, 1, 0).to_i)
+      end
+      let!(:point3) do
+        create(:point, user: user, import: import, lonlat: 'POINT(13.04 47.80)',
+               timestamp: DateTime.new(2021, 1, 1, 14, 0, 0).to_i)
+      end
+      let!(:point4) do
+        create(:point, user: user, import: import, lonlat: 'POINT(13.05 47.81)',
+               timestamp: DateTime.new(2021, 1, 1, 14, 1, 0).to_i)
+      end
+
+      subject { described_class.new(monthly_points, timespan, 'Etc/UTC', minutes_between_routes: 30).call }
+
+      it 'does not count the jump between photo clusters' do
+        day1_distance = subject.find { |day, _| day == 1 }&.last
+        expect(day1_distance).to be_between(2_000, 3_500)
+      end
+    end
+
     context 'with points from different imports a few minutes apart' do
       # A single history split across two upload files. The boundary between
       # them is continuous travel and must still be counted.
