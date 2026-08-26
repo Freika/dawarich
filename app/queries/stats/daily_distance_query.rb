@@ -5,6 +5,9 @@ class Stats::DailyDistanceQuery
   # snapshots rather than a continuous track.
   SNAPSHOT_IMPORT_SOURCES = %w[immich_api photoprism_api google_photos mobile_photo_library].freeze
 
+  MAX_PLAUSIBLE_SPEED_MPS = 1_200 / 3.6
+  TELEPORT_METERS = Points::AnomalyFilter::TELEPORT_METERS
+
   def initialize(monthly_points, timespan, timezone = nil, minutes_between_routes: nil)
     @monthly_points = monthly_points
     @timespan = timespan
@@ -47,21 +50,35 @@ class Stats::DailyDistanceQuery
           ORDER BY timestamp, id
         )
       ),
+      measured_points AS (
+        SELECT
+          local_date,
+          import_id,
+          prev_import_id,
+          snapshot_import,
+          prev_snapshot_import,
+          (timestamp - prev_timestamp) AS elapsed_seconds,
+          ST_Distance(lonlat::geography, prev_lonlat::geography) AS segment_meters
+        FROM ordered_points
+      ),
       points_with_distances AS (
         SELECT
           local_date,
           CASE
-            WHEN prev_lonlat IS NULL THEN 0
+            WHEN segment_meters IS NULL THEN 0
             WHEN (
               import_id IS NULL
               OR prev_import_id IS NULL
               OR import_id != prev_import_id
               OR snapshot_import
               OR prev_snapshot_import
-            ) AND (timestamp - prev_timestamp) > $4 THEN 0
-            ELSE ST_Distance(lonlat::geography, prev_lonlat::geography)
+            ) AND elapsed_seconds > $4 THEN 0
+            WHEN elapsed_seconds > 0
+              AND segment_meters > elapsed_seconds * $5::double precision THEN 0
+            WHEN elapsed_seconds = 0 AND segment_meters > $6::double precision THEN 0
+            ELSE segment_meters
           END AS segment_distance
-        FROM ordered_points
+        FROM measured_points
       )
       SELECT
         EXTRACT(day FROM local_date)::int AS day_of_month,
@@ -78,7 +95,11 @@ class Stats::DailyDistanceQuery
       ActiveRecord::Relation::QueryAttribute.new('timezone', timezone, ActiveRecord::Type::String.new),
       ActiveRecord::Relation::QueryAttribute.new('year', target.year, ActiveRecord::Type::Integer.new),
       ActiveRecord::Relation::QueryAttribute.new('month', target.month, ActiveRecord::Type::Integer.new),
-      ActiveRecord::Relation::QueryAttribute.new('time_gap_seconds', time_gap_seconds, ActiveRecord::Type::Integer.new)
+      ActiveRecord::Relation::QueryAttribute.new('time_gap_seconds', time_gap_seconds, ActiveRecord::Type::Integer.new),
+      ActiveRecord::Relation::QueryAttribute.new('max_speed_mps', MAX_PLAUSIBLE_SPEED_MPS,
+                                                 ActiveRecord::Type::Float.new),
+      ActiveRecord::Relation::QueryAttribute.new('teleport_meters', TELEPORT_METERS,
+                                                 ActiveRecord::Type::Float.new)
     ]
 
     Stat.connection.exec_query(sql, 'DailyDistanceQuery', binds).to_a

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_19_120100) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_25_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -315,7 +315,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_19_120100) do
     t.datetime "reverse_geocoded_at"
     t.integer "source", default: 0
     t.datetime "updated_at", null: false
-    t.bigint "user_id"
+    t.bigint "user_id", null: false
     t.index "(((geodata -> 'properties'::text) ->> 'osm_id'::text))", name: "index_places_on_geodata_osm_id"
     t.index "user_id, ((geodata ->> 'external_place_id'::text))", name: "idx_places_user_external_place_id", unique: true, where: "((geodata ->> 'external_place_id'::text) IS NOT NULL)"
     t.index ["demo"], name: "index_places_on_demo_true", where: "(demo = true)"

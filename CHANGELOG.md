@@ -6,9 +6,22 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+
+### Changed
+
+- `PATCH /api/v1/settings/mobile` now takes a row lock around its read-merge-write, so a mobile settings change no longer discards a concurrent write to another settings section or from another device.
+
 ### Added
 
-- Location data from your phone's photo library can now be imported: the mobile app exports the coordinates and timestamps recorded with your photos, and Dawarich adds them to your timeline as individual points rather than a continuous track.
+- Dawarich can now be used in Polish: pick it under Settings → General. Thanks @Kliiper for the translation! (#3357)
+- API for getting geodata extracted from mobile phone photos
+
+### Fixed
+
+- Points geocoded in a handful of countries — most notably the United States — were never linked to their country record, because geocoders name them differently than Dawarich's country dataset does ("United States" vs "United States of America"; also Serbia, Tanzania, Vatican City, the Palestinian territories, Congo-Brazzaville, Eswatini and Côte d'Ivoire). Reverse geocoding now bridges the naming difference (and prefers the ISO code where the geocoder provides one), and the country-linking backfill re-runs once on self-hosted instances to repair existing points.
+- The action buttons in page headers — New trip, New import, New tag, Mark all as read and the rest — are now translated. They were asking for a key that no language file defines, so every language showed the English text.
+- The points page now counts its points in Polish, German and Spanish instead of falling back to an untranslated string.
+- A phone that replays a stale cached position after landing no longer bills the trip as dozens of instant intercontinental flights. Bursts of identical coordinates reached and left at impossible speed are now flagged however long they run, and monthly distance ignores any leg faster than 1,200 km/h. Stored anomaly flags, tracks and statistics are re-evaluated by a background job after upgrading; it runs on the lowest-priority queue and does not interrupt tracking, and your existing monthly totals will change once it reaches them. A track drawn through such a burst can still read longer than the day it belongs to, because the speed ceiling applies to distance totals rather than to stored tracks.
 
 ## [1.13.1] - 2026-08-22, Berlin
 
@@ -84,6 +97,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Daily and monthly distance no longer counts a jump across a tracking gap longer than your "minutes between routes" setting when the two points come from different imports, from live tracking, or from a photo integration (Immich, PhotoPrism, Google Photos). Points inside one imported file still count as continuous history regardless of gaps, so sparse sources such as Google Timeline keep their full distance. Existing months keep their old numbers — run **Map v2 → Settings → Recalculate tracks & stats** once after upgrading to apply the fix to past months. (#2689)
 - Every anomaly-filter pass now detaches the points it flags from their tracks and queues the affected tracks and months for a rebuild, so a point flagged after a track was already built no longer leaves a stale leap baked into the geometry. Rebuilds triggered by the anomaly backfill run on the low-priority queue so live tracking stays ahead.
 - A large history that produces no tracks is no longer re-walked by the throttled track backfill every day; a completed walk now backs off for a week before it can be scheduled again.
+- Every place is now permanently tied to an account at the database level. If your instance still had ownerless places left over from before the May 2026 ownership backfill, the upgrade now resolves them automatically instead of failing partway through `db:migrate`: each one is assigned to the account that visited it, and any that no account ever visited is deleted. The migration logs how many it assigned and deleted, and stops with a query listing the rows if anything is left unresolved.
 
 ## [1.12.1] - 2026-08-13, Berlin
 

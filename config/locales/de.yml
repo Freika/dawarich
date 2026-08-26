@@ -2610,6 +2610,18 @@ de:
     boat: Schiff
     motorcycle: Motorrad
   helpers:
+    page_entries_info:
+      entry:
+        zero: Einträge
+        one: Eintrag
+        other: Einträge
+      one_page:
+        display_entries:
+          zero: Keine Einträge gefunden
+          one: <b>1</b> %{entry_name} wird angezeigt
+          other: <b>Alle %{count}</b> %{entry_name} werden angezeigt
+      more_pages:
+        display_entries: "%{entry_name} <b>%{first}&nbsp;–&nbsp;%{last}</b> von insgesamt <b>%{total}</b>"
     application:
       full_title: "%{page_title} | %{app_name}"
       expired: Abgelaufen

@@ -16,6 +16,9 @@ class Points::AnomalyFilter
   # and flagging it wholesale would erase real history. Under-flagging a long
   # noise burst is the safer failure.
   MAX_DISPLACED_RUN_POINTS = 5
+  FROZEN_FIX_EXTENT_METERS = 1
+  MAX_FROZEN_FIX_SPAN_SECONDS = 3_600
+  FROZEN_FIX_CONTEXT_POINTS = 240
   # Accuracy radius beyond which a reading carries no usable position at all.
   # Deliberately far above any plausible GPS/wifi/cell error: a reported radius
   # is a confidence estimate, not proof the position is wrong. Google Timeline
@@ -277,12 +280,14 @@ class Points::AnomalyFilter
 
     # Only check points in the main range (not context points)
     main_range_ids = main_points.map(&:id).to_set
+    frozen_ids = frozen_range_ids(points, chunk_start, chunk_end)
 
     # Each device is its own stream. Interleaving them by timestamp invents
     # journeys between devices that nobody made — the same reason track
     # generation groups by tracker_id (Tracks::TimeChunkProcessorJob).
     anomaly_ids = points.group_by { |point| point.tracker_id.to_s }.values.flat_map do |stream|
-      displaced_run_ids(stream, speeds_by_point, threshold, main_range_ids)
+      displaced_run_ids(stream, speeds_by_point, threshold, main_range_ids) +
+        frozen_fix_run_ids(stream, speeds_by_point, threshold, frozen_ids)
     end
 
     return 0 if anomaly_ids.empty?
@@ -335,6 +340,54 @@ class Points::AnomalyFilter
     displaced.to_a
   end
 
+  def frozen_range_ids(points, chunk_start, chunk_end)
+    lower = chunk_start - MAX_FROZEN_FIX_SPAN_SECONDS
+
+    points.each_with_object(Set.new) do |point, ids|
+      ids << point.id if point.timestamp >= lower && point.timestamp <= chunk_end
+    end
+  end
+
+  def frozen_fix_run_ids(stream, speeds_by_point, threshold, range_ids)
+    frozen = []
+
+    each_frozen_run(stream) do |run, previous_point, next_point|
+      next unless both_legs_impossible?(run, speeds_by_point, threshold)
+      next unless departs_far_from?(run, previous_point, next_point)
+
+      run.each { |point| frozen << point.id if range_ids.include?(point.id) }
+    end
+
+    frozen
+  end
+
+  def departs_far_from?(run, previous_point, next_point)
+    distance_meters(previous_point, run.first) > MIN_EXCURSION_METERS &&
+      distance_meters(run.last, next_point) > MIN_EXCURSION_METERS
+  end
+
+  def each_frozen_run(stream)
+    index = 1
+    last = stream.length - 1
+
+    while index < last
+      start = index
+      index += 1
+      index += 1 while index < last && frozen_with?(stream[start], stream[index])
+
+      run = stream[start...index]
+      next unless run.length > MAX_DISPLACED_RUN_POINTS
+      next if run.last.timestamp - run.first.timestamp > MAX_FROZEN_FIX_SPAN_SECONDS
+
+      yield(run, stream[start - 1], stream[index])
+    end
+  end
+
+  def frozen_with?(anchor, point)
+    anchor.accuracy == point.accuracy &&
+      distance_meters(anchor, point) <= FROZEN_FIX_EXTENT_METERS
+  end
+
   # Impossible on both sides convicts on its own: nothing legitimate arrives and
   # departs faster than any aircraft. This catches excursions with no detour to
   # measure — a straight-line hop where the timestamps themselves are wrong.
@@ -356,8 +409,7 @@ class Points::AnomalyFilter
     dwell = run.last.timestamp - run.first.timestamp
     return false if dwell > MAX_EXCURSION_SPAN_SECONDS
 
-    distance_meters(previous_point, run.first) > MIN_EXCURSION_METERS &&
-      distance_meters(run.last, next_point) > MIN_EXCURSION_METERS
+    departs_far_from?(run, previous_point, next_point)
   end
 
   # An excursion has to arrive or leave faster than any ground travel to be worth
@@ -404,21 +456,31 @@ class Points::AnomalyFilter
     # Tie order must match the per-device window in calculate_all_speeds
     # (ORDER BY timestamp, id), or points sharing a timestamp get speeds
     # attached to the wrong neighbour.
-    before_ctx = Point.where(user_id: @user_id).not_anomaly
-                      .where('timestamp < ?', start_time)
-                      .order(timestamp: :desc, id: :desc).limit(CONTEXT_POINTS)
-                      .select(:id, :timestamp, :tracker_id, :lonlat).to_a.reverse
+    before_ctx = before_context(start_time)
 
     main = Point.where(user_id: @user_id, timestamp: start_time..end_time)
                 .not_anomaly.order(:timestamp, :id)
-                .select(:id, :timestamp, :tracker_id, :lonlat).to_a
+                .select(:id, :timestamp, :tracker_id, :lonlat, :accuracy).to_a
 
     after_ctx = Point.where(user_id: @user_id).not_anomaly
                      .where('timestamp > ?', end_time)
                      .order(:timestamp, :id).limit(CONTEXT_POINTS)
-                     .select(:id, :timestamp, :tracker_id, :lonlat).to_a
+                     .select(:id, :timestamp, :tracker_id, :lonlat, :accuracy).to_a
 
     [before_ctx + main + after_ctx, main]
+  end
+
+  def before_context(start_time)
+    scope = Point.where(user_id: @user_id).not_anomaly
+                 .where('timestamp < ?', start_time)
+                 .order(timestamp: :desc, id: :desc)
+                 .select(:id, :timestamp, :tracker_id, :lonlat, :accuracy)
+
+    widened = scope.where('timestamp >= ?', start_time - MAX_FROZEN_FIX_SPAN_SECONDS)
+                   .limit(FROZEN_FIX_CONTEXT_POINTS).to_a
+    widened = scope.limit(CONTEXT_POINTS).to_a if widened.size < CONTEXT_POINTS
+
+    widened.reverse
   end
 
   # Single CTE query: compute distance and time diff for ALL consecutive pairs

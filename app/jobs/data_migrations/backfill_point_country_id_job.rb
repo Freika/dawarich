@@ -104,11 +104,26 @@ class DataMigrations::BackfillPointCountryIdJob < ApplicationJob
   # written: country_name superseded country.
   # countries.name carries no unique index, so a duplicated name is resolved
   # to the lowest id — deterministic across batches and reruns.
+  #
+  # The names relation carries each country under its seeded Natural Earth
+  # name AND its geocoder aliases ("United States" vs "United States of
+  # America") — without the aliases a third of a real-world points table
+  # stays unresolved.
   def resolve_countries(start_id, end_id)
     execute_sanitized(<<~SQL.squish, start_id, end_id).cmd_tuples
       UPDATE points p
       SET country_id = c.id
-      FROM (SELECT MIN(id) AS id, name FROM countries GROUP BY name) c
+      FROM (
+        SELECT MIN(id) AS id, name FROM (
+          SELECT countries.id, countries.name FROM countries
+          UNION ALL
+          SELECT countries.id, aliases.alias AS name
+          FROM countries
+          JOIN #{Countries::NameAliases.values_sql} AS aliases(alias, canonical)
+            ON countries.name = aliases.canonical
+        ) named
+        GROUP BY name
+      ) c
       WHERE p.id BETWEEN ? AND ?
         AND p.country_id IS NULL
         AND c.name = COALESCE(p.country_name, p.country)

@@ -43,6 +43,29 @@ RSpec.describe DataMigrations::BackfillPointCountryIdJob, type: :job do
       expect(blank_point.reload.country_id).to be_nil
     end
 
+    # Geocoders write OSM English names; the table is seeded with Natural
+    # Earth names. Without the alias bridge a third of a real-world points
+    # table stays unresolved ("United States" alone).
+    it 'resolves geocoder names that differ from the seeded Natural Earth ones' do
+      usa = create(:country, name: 'United States of America')
+      geocoder_named = unresolved_point(country_name: 'United States')
+
+      described_class.perform_now
+
+      expect(geocoder_named.reload.country_id).to eq(usa.id)
+    end
+
+    it 'resolves every alias of a country with several' do
+      palestine = create(:country, name: 'Palestine')
+      variants = ['Palestinian Territory', 'Palestinian Territories'].map do |name|
+        unresolved_point(country_name: name)
+      end
+
+      described_class.perform_now
+
+      expect(variants.map { |p| p.reload.country_id }).to all(eq(palestine.id))
+    end
+
     it 'does not overwrite an existing country_id' do
       other = create(:country, name: 'France')
       stamped = create(:point, user: user, country_name: 'Germany')

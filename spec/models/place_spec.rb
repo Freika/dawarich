@@ -4,9 +4,26 @@ require 'rails_helper'
 
 RSpec.describe Place, type: :model do
   describe 'associations' do
+    it { is_expected.to belong_to(:user) }
     it { is_expected.to have_many(:visits).dependent(:nullify) }
     it { is_expected.to have_many(:place_visits).dependent(:destroy) }
     it { is_expected.to have_many(:suggested_visits).through(:place_visits) }
+  end
+
+  describe 'user ownership' do
+    it 'refuses to save a place without a user' do
+      place = build(:place, user: nil)
+
+      expect(place).not_to be_valid
+      expect(place.errors[:user]).to be_present
+    end
+
+    it 'rejects a NULL user_id at the database level' do
+      place = create(:place, user: create(:user))
+
+      expect { place.update_columns(user_id: nil) }
+        .to raise_error(ActiveRecord::NotNullViolation)
+    end
   end
 
   describe '.linked_to_confirmed_visits' do
