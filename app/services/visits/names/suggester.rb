@@ -63,7 +63,7 @@ module Visits
           'type' => 'Feature',
           'properties' => {
             'type' => geodata['type'] || geodata['category'],
-            'name' => geodata['name'] || [address['road'], address['house_number']].compact.join(' ').presence,
+            'name' => geodata['name'].presence || [address['road'], address['house_number']].compact.join(' ').presence,
             'osm_key' => geodata['category'],
             'osm_value' => geodata['type'] || geodata['addresstype'],
             'street' => address['road'] || address['pedestrian'] || address['footway'],

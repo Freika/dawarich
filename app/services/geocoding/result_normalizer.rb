@@ -16,7 +16,12 @@ module Geocoding
     module_function
 
     def call(result)
-      data = result.data
+      from_data(result.data)
+    end
+
+    # Same normalization applied to a raw geocoder response hash (e.g. a
+    # point's stored geodata), without requiring a Geocoder result object.
+    def from_data(data)
       return { properties: {}, coords: nil } if data.blank?
 
       data = data.deep_stringify_keys if data.is_a?(Hash)
@@ -40,7 +45,7 @@ module Geocoding
 
       {
         properties: {
-          'name' => properties['name'],
+          'name' => properties['name'].presence,
           'street' => properties['street'],
           'housenumber' => properties['housenumber'],
           'city' => properties['city'],
@@ -61,7 +66,7 @@ module Geocoding
 
       {
         properties: {
-          'name' => data['name'],
+          'name' => data['name'].presence,
           'street' => address['road'] || address['pedestrian'] || address['footway'],
           'housenumber' => address['house_number'],
           'city' => address['city'] || address['town'] || address['village'] || address['municipality'],

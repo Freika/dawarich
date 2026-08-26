@@ -59,5 +59,24 @@ RSpec.describe Geocoding::ResultNormalizer do
     it 'returns empty fields for blank data' do
       expect(described_class.call(double(data: nil))).to eq(properties: {}, coords: nil)
     end
+
+    it 'normalizes raw geodata hashes via .from_data' do
+      raw = {
+        'place_id' => 42, 'lat' => '47.1', 'lon' => '9.5', 'name' => 'Café',
+        'category' => 'amenity', 'type' => 'cafe',
+        'address' => { 'road' => 'Städtle', 'house_number' => '1', 'city' => 'Vaduz',
+                       'country' => 'Liechtenstein', 'postcode' => '9490' }
+      }
+
+      expect(described_class.from_data(raw)).to eq(
+        properties: {
+          'name' => 'Café', 'street' => 'Städtle', 'housenumber' => '1', 'city' => 'Vaduz',
+          'country' => 'Liechtenstein', 'postcode' => '9490', 'osm_id' => nil, 'osm_type' => nil,
+          'osm_key' => 'amenity', 'osm_value' => 'cafe'
+        },
+        coords: [9.5, 47.1]
+      )
+      expect(described_class.from_data(nil)).to eq(properties: {}, coords: nil)
+    end
   end
 end
