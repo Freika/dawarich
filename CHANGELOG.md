@@ -6,12 +6,25 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- `PATCH /api/v1/settings/mobile` now takes a row lock around its read-merge-write, so a mobile settings change no longer discards a concurrent write to another settings section or from another device.
+
 ### Added
 
+- Dawarich can now be used in Polish: pick it under Settings → General. Thanks @Kliiper for the translation! (#3357)
+- API for getting geodata extracted from mobile phone photos
 - Route replay videos: the new Video Studio turns the route on your map — or a trip — into an animated MP4 with a live distance and date readout and a summary frame. Open it from the map's toolbar or a trip page, pick one of the 17 map themes, a vertical, widescreen or square format, and a length between 8 and 30 seconds. The video is rendered on your own device and never uploaded anywhere until you press "Save to gallery"; rendering needs a current Chrome, Edge, Safari or Firefox.
 - The video studio's preview shows the real overlay — dates, distance, progress and the summary chrome — drawn over the map before you render, with a slider to size it up or down.
 - The Share button on the map now also offers making a route video or a map poster, alongside the existing share links. The poster and video studios switch between each other in one click from their top-left corner.
 - Saved videos keep the settings they were made with, so a video whose file has been cleaned up can be rebuilt with one click. Video files are large, so by default only the 10 newest per account are kept and files older than 30 days are removed. Change that with `VIDEO_MAX_PER_USER` and `VIDEO_RETENTION_DAYS`, or set either to `0` to switch that limit off.
+
+### Fixed
+
+- Points geocoded in a handful of countries — most notably the United States — were never linked to their country record, because geocoders name them differently than Dawarich's country dataset does ("United States" vs "United States of America"; also Serbia, Tanzania, Vatican City, the Palestinian territories, Congo-Brazzaville, Eswatini and Côte d'Ivoire). Reverse geocoding now bridges the naming difference (and prefers the ISO code where the geocoder provides one), and the country-linking backfill re-runs once on self-hosted instances to repair existing points.
+- The action buttons in page headers — New trip, New import, New tag, Mark all as read and the rest — are now translated. They were asking for a key that no language file defines, so every language showed the English text.
+- The points page now counts its points in Polish, German and Spanish instead of falling back to an untranslated string.
+- A phone that replays a stale cached position after landing no longer bills the trip as dozens of instant intercontinental flights. Bursts of identical coordinates reached and left at impossible speed are now flagged however long they run, and monthly distance ignores any leg faster than 1,200 km/h. Stored anomaly flags, tracks and statistics are re-evaluated by a background job after upgrading; it runs on the lowest-priority queue and does not interrupt tracking, and your existing monthly totals will change once it reaches them. A track drawn through such a burst can still read longer than the day it belongs to, because the speed ceiling applies to distance totals rather than to stored tracks.
 
 ## [1.13.1] - 2026-08-22, Berlin
 
@@ -87,6 +100,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Daily and monthly distance no longer counts a jump across a tracking gap longer than your "minutes between routes" setting when the two points come from different imports, from live tracking, or from a photo integration (Immich, PhotoPrism, Google Photos). Points inside one imported file still count as continuous history regardless of gaps, so sparse sources such as Google Timeline keep their full distance. Existing months keep their old numbers — run **Map v2 → Settings → Recalculate tracks & stats** once after upgrading to apply the fix to past months. (#2689)
 - Every anomaly-filter pass now detaches the points it flags from their tracks and queues the affected tracks and months for a rebuild, so a point flagged after a track was already built no longer leaves a stale leap baked into the geometry. Rebuilds triggered by the anomaly backfill run on the low-priority queue so live tracking stays ahead.
 - A large history that produces no tracks is no longer re-walked by the throttled track backfill every day; a completed walk now backs off for a week before it can be scheduled again.
+- Every place is now permanently tied to an account at the database level. If your instance still had ownerless places left over from before the May 2026 ownership backfill, the upgrade now resolves them automatically instead of failing partway through `db:migrate`: each one is assigned to the account that visited it, and any that no account ever visited is deleted. The migration logs how many it assigned and deleted, and stops with a query listing the rows if anything is left unresolved.
 
 ## [1.12.1] - 2026-08-13, Berlin
 

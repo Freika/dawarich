@@ -30,6 +30,15 @@ describe 'Mobile Settings API', type: :request do
                    }
                  },
                  updated_at: { type: :string, nullable: true, example: '2026-07-01T10:00:00Z' },
+                 capabilities: {
+                   type: :object,
+                   properties: {
+                     photo_library_import: {
+                       type: :object,
+                       properties: { version: { type: :integer, example: 1 } }
+                     }
+                   }
+                 },
                  status: { type: :string, example: 'success' }
                }
 

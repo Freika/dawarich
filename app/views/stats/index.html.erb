@@ -5,7 +5,7 @@
   <%= render layout: 'shared/page_header', locals: { title: t('.statistics') } do %>
     <% if Date.today >= Date.new(2025, 12, 31) %>
       <%= link_to users_digests_path, class: 'btn btn-outline btn-sm' do %>
-        <%= icon 'earth' %> <%= t('.year_end_digests') %>
+        <%= icon 'earth' %> <%= t('stats.index.year_end_digests') %>
       <% end %>
     <% end %>
   <% end %>

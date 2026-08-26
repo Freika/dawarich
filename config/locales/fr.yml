@@ -1173,6 +1173,8 @@ fr:
       training_center_files_tcx: Fichier de centre d'entraînement (.tcx)
       csv: 'CSV :'
       location_data_csv: Données de localisation (.csv)
+      mobile_photo_library: 'Photothèque mobile :'
+      dawarich_mobile_app_export_json: Export de l'app Dawarich (.json)
       polarsteps: 'Polarsteps :'
       locations_json_json: fichier locations.json (.json)
       zip: 'ZIP :'
@@ -3576,6 +3578,7 @@ fr:
         fit: FIT
         polarsteps: Polarsteps
         google_photos: Google Photos
+        mobile_photo_library: Photothèque mobile
     place:
       source:
         manual: Manuel

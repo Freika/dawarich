@@ -67,6 +67,40 @@ RSpec.describe Stats::DailyDistanceQuery do
       end
     end
 
+    context 'with a leg no aircraft could have flown' do
+      let!(:heathrow) do
+        create(:point, user: user, lonlat: 'POINT(-0.4803 51.4693)',
+                       timestamp: DateTime.new(2021, 1, 5, 12, 0, 0).to_i)
+      end
+      let!(:lax) do
+        create(:point, user: user, lonlat: 'POINT(-118.4103 33.9429)',
+                       timestamp: DateTime.new(2021, 1, 5, 12, 0, 15).to_i)
+      end
+
+      subject { described_class.new(monthly_points, timespan, 'Etc/UTC').call }
+
+      it 'excludes the impossible leg from the day' do
+        expect(subject.find { |day, _| day == 5 }.last).to eq(0)
+      end
+    end
+
+    context 'with a genuine long-haul flight' do
+      let!(:lax) do
+        create(:point, user: user, lonlat: 'POINT(-118.4103 33.9429)',
+                       timestamp: DateTime.new(2021, 1, 6, 0, 30, 0).to_i)
+      end
+      let!(:heathrow) do
+        create(:point, user: user, lonlat: 'POINT(-0.4803 51.4693)',
+                       timestamp: DateTime.new(2021, 1, 6, 10, 30, 0).to_i)
+      end
+
+      subject { described_class.new(monthly_points, timespan, 'Etc/UTC', minutes_between_routes: 1000).call }
+
+      it 'counts the flight' do
+        expect(subject.find { |day, _| day == 6 }.last).to be > 8_000_000
+      end
+    end
+
     context 'with points from different imports separated by a long gap' do
       # Morning activity in Vienna and afternoon activity in Salzburg imported
       # as two separate GPX files. The cross-import jump must NOT be counted.
@@ -95,6 +129,34 @@ RSpec.describe Stats::DailyDistanceQuery do
       it 'counts both local activities but excludes the cross-city jump' do
         day1_distance = subject.find { |day, _| day == 1 }&.last
         # ~1.34km per activity; the Vienna->Salzburg jump is ~250km.
+        expect(day1_distance).to be_between(2_000, 3_500)
+      end
+    end
+
+    context 'with sparse points from a mobile photo library import' do
+      let(:import) { create(:import, user: user, source: :mobile_photo_library) }
+
+      let!(:point1) do
+        create(:point, user: user, import: import, lonlat: 'POINT(16.37 48.21)',
+               timestamp: DateTime.new(2021, 1, 1, 6, 0, 0).to_i)
+      end
+      let!(:point2) do
+        create(:point, user: user, import: import, lonlat: 'POINT(16.38 48.22)',
+               timestamp: DateTime.new(2021, 1, 1, 6, 1, 0).to_i)
+      end
+      let!(:point3) do
+        create(:point, user: user, import: import, lonlat: 'POINT(13.04 47.80)',
+               timestamp: DateTime.new(2021, 1, 1, 14, 0, 0).to_i)
+      end
+      let!(:point4) do
+        create(:point, user: user, import: import, lonlat: 'POINT(13.05 47.81)',
+               timestamp: DateTime.new(2021, 1, 1, 14, 1, 0).to_i)
+      end
+
+      subject { described_class.new(monthly_points, timespan, 'Etc/UTC', minutes_between_routes: 30).call }
+
+      it 'does not count the jump between photo clusters' do
+        day1_distance = subject.find { |day, _| day == 1 }&.last
         expect(day1_distance).to be_between(2_000, 3_500)
       end
     end
@@ -236,7 +298,7 @@ RSpec.describe Stats::DailyDistanceQuery do
                timestamp: DateTime.new(2021, 1, 1, 6, 1, 0).to_i)
       end
       let!(:point3) do
-        create(:point, user: user, lonlat: 'POINT(16.39 48.23)',
+        create(:point, user: user, lonlat: 'POINT(16.381 48.221)',
                timestamp: DateTime.new(2021, 1, 1, 6, 1, 0).to_i)
       end
 
@@ -244,7 +306,29 @@ RSpec.describe Stats::DailyDistanceQuery do
 
       it 'orders tied timestamps deterministically and sums both segments' do
         day1_distance = subject.find { |day, _| day == 1 }&.last
-        expect(day1_distance).to be_between(2_000, 3_500)
+        expect(day1_distance).to be_between(1_400, 1_600)
+      end
+    end
+
+    context 'with two points sharing a timestamp far enough apart to be a teleport' do
+      let!(:point1) do
+        create(:point, user: user, lonlat: 'POINT(16.37 48.21)',
+               timestamp: DateTime.new(2021, 1, 3, 6, 0, 0).to_i)
+      end
+      let!(:point2) do
+        create(:point, user: user, lonlat: 'POINT(16.38 48.22)',
+               timestamp: DateTime.new(2021, 1, 3, 6, 1, 0).to_i)
+      end
+      let!(:point3) do
+        create(:point, user: user, lonlat: 'POINT(13.405 52.52)',
+               timestamp: DateTime.new(2021, 1, 3, 6, 1, 0).to_i)
+      end
+
+      subject { described_class.new(monthly_points, timespan, 'Etc/UTC', minutes_between_routes: 30).call }
+
+      it 'counts the real segment and drops the instantaneous jump' do
+        day3_distance = subject.find { |day, _| day == 3 }&.last
+        expect(day3_distance).to be_between(1_000, 1_600)
       end
     end
 

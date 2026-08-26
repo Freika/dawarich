@@ -9,7 +9,7 @@
     <% if has_integrations %>
       <div class="join">
         <%= link_to new_import_path, class: "btn btn-primary btn-sm join-item" do %>
-          <%= icon 'circle-plus', class: 'w-4 h-4' %> <%= t('.new_import') %>
+          <%= icon 'circle-plus', class: 'w-4 h-4' %> <%= t('imports.index.new_import') %>
         <% end %>
         <div class="dropdown dropdown-end">
           <label tabindex="0" class="btn btn-primary btn-sm join-item">
@@ -18,15 +18,15 @@
           <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow-lg bg-base-100 rounded-lg w-52 mt-1 border border-base-300">
             <% if has_immich %>
               <li>
-                <%= link_to settings_background_jobs_path(job_name: 'start_immich_import'), data: { turbo_confirm: t('.are_you_sure'), turbo_method: :post } do %>
-                  <%= icon 'camera', class: 'w-4 h-4' %> <%= t('.import_from_immich') %>
+                <%= link_to settings_background_jobs_path(job_name: 'start_immich_import'), data: { turbo_confirm: t('imports.index.are_you_sure'), turbo_method: :post } do %>
+                  <%= icon 'camera', class: 'w-4 h-4' %> <%= t('imports.index.import_from_immich') %>
                 <% end %>
               </li>
             <% end %>
             <% if has_photoprism %>
               <li>
-                <%= link_to settings_background_jobs_path(job_name: 'start_photoprism_import'), data: { turbo_confirm: t('.are_you_sure'), turbo_method: :post } do %>
-                  <%= icon 'camera', class: 'w-4 h-4' %> <%= t('.import_from_photoprism') %>
+                <%= link_to settings_background_jobs_path(job_name: 'start_photoprism_import'), data: { turbo_confirm: t('imports.index.are_you_sure'), turbo_method: :post } do %>
+                  <%= icon 'camera', class: 'w-4 h-4' %> <%= t('imports.index.import_from_photoprism') %>
                 <% end %>
               </li>
             <% end %>
@@ -35,7 +35,7 @@
       </div>
     <% else %>
       <%= link_to new_import_path, class: "btn btn-primary btn-sm" do %>
-        <%= icon 'circle-plus', class: 'w-4 h-4' %> <%= t('.new_import') %>
+        <%= icon 'circle-plus', class: 'w-4 h-4' %> <%= t('imports.index.new_import') %>
       <% end %>
     <% end %>
   <% end %>
