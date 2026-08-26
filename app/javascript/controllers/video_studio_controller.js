@@ -17,6 +17,9 @@ import {
   formatFor,
   normalizeSettings,
   previewFitPadding,
+  provenanceOf,
+  rangeRestorePlan,
+  readProvenance,
 } from "video_studio/studio_state"
 import { buildStatRows, computeTrackStats } from "video_studio/video_stats"
 import Flash from "./flash_controller"
@@ -87,13 +90,7 @@ export default class extends Controller {
     this.element.classList.remove("hidden")
 
     try {
-      this.trackGeojson = this.provider.trackGeojson()
-      this.points = toVideoPoints(await this.provider.points())
-      this.stats = computeTrackStats(this.points)
-      this.clock = buildRouteClock(this.points)
-      if (this.hasRangeLabelTarget) {
-        this.rangeLabelTarget.textContent = this.dateRangeLabel()
-      }
+      await this.reloadTrack()
       if (!this.nameInputTarget.value) {
         this.nameInputTarget.value =
           this.provider.defaultTitle() || this.dateRangeLabel()
@@ -155,16 +152,57 @@ export default class extends Controller {
 
   // Re-seeds the studio from an expired video's stored recipe (option C: the
   // row outlives the blob, so the settings are enough to make it again).
-  restoreSettings(event) {
+  async restoreSettings(event) {
+    let raw = null
     try {
-      this.settings = normalizeSettings(
-        JSON.parse(event.currentTarget.dataset.settings),
-      )
+      raw = JSON.parse(event.currentTarget.dataset.settings)
+      this.settings = normalizeSettings(raw)
     } catch {
       this.settings = defaultSettings()
     }
     this.syncControls()
+    await this.restoreRange(readProvenance(raw))
     this.settingsChanged()
+  }
+
+  // Styling alone is not the recipe: a video made from a different date range
+  // has to bring that range back, or "re-render" quietly rebuilds whatever the
+  // page is showing now under the old video's looks.
+  async restoreRange(provenance) {
+    const plan = rangeRestorePlan(
+      provenance,
+      this.provider.dateRange(),
+      this.provider,
+    )
+    if (plan.action === "none") return
+
+    const warn = () => {
+      this.statusTarget.textContent = translate("video.range_mismatch", {
+        range: plan.range,
+      })
+    }
+    if (plan.action === "warn") return warn()
+
+    this.statusTarget.textContent = translate("video.restoring_range")
+    try {
+      await this.provider.applyDates(plan.start_at, plan.end_at)
+      await this.reloadTrack()
+      this.statusTarget.textContent = ""
+    } catch {
+      // A reload that never lands leaves the old track in place, which is the
+      // route the user did not ask for — say so rather than render it.
+      warn()
+    }
+  }
+
+  async reloadTrack() {
+    this.trackGeojson = this.provider.trackGeojson()
+    this.points = toVideoPoints(await this.provider.points())
+    this.stats = computeTrackStats(this.points)
+    this.clock = buildRouteClock(this.points)
+    if (this.hasRangeLabelTarget) {
+      this.rangeLabelTarget.textContent = this.dateRangeLabel()
+    }
   }
 
   async settingsChanged() {
@@ -366,6 +404,10 @@ export default class extends Controller {
 
   async render() {
     if (!this.style || this.rendering) return
+    if (this.points.length < 2) {
+      this.statusTarget.textContent = translate("video.empty_track")
+      return
+    }
     this.rendering = true
     this.clearResult()
     this.abortController = new AbortController()
@@ -419,7 +461,7 @@ export default class extends Controller {
       const stream = await saveVideo({
         blob: this.blob,
         name: this.nameInputTarget.value,
-        settings: this.settings,
+        settings: { ...this.settings, ...provenanceOf(this.provider) },
         uploadUrl: this.uploadUrlValue,
         createUrl: this.createUrlValue,
         onProgress: (ratio) => this.showProgress(ratio, "uploading"),

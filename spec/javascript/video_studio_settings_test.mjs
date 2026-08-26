@@ -22,8 +22,13 @@ const {
   formatFor,
   normalizeSettings,
   MAX_HUD_SCALE,
+  MAX_TRACK_WIDTH,
   MIN_HUD_SCALE,
+  MIN_TRACK_WIDTH,
   previewFitPadding,
+  provenanceOf,
+  rangeRestorePlan,
+  readProvenance,
   renderCssSize,
   RENDER_FIT_PADDING,
   VIDEO_FORMATS,
@@ -144,4 +149,141 @@ test("overlay size is clamped to the range the control offers", () => {
 
 test("a recipe with no overlay size gets the default", () => {
   assert.equal(normalizeSettings({}).hud_scale, defaultSettings().hud_scale)
+})
+
+// A recipe round-trips through FormData, which stringifies every value, so
+// the booleans come back as "true"/"false" rather than as booleans.
+test("a watermark switched off stays off through a stored recipe", () => {
+  assert.equal(normalizeSettings({ watermark: false }).watermark, false)
+  assert.equal(normalizeSettings({ watermark: "false" }).watermark, false)
+})
+
+test("a watermark left on stays on", () => {
+  assert.equal(normalizeSettings({ watermark: "true" }).watermark, true)
+  assert.equal(normalizeSettings({}).watermark, true)
+})
+
+test("track width is clamped to the range the control offers", () => {
+  assert.equal(
+    normalizeSettings({ track_width: 900 }).track_width,
+    MAX_TRACK_WIDTH,
+  )
+  assert.equal(
+    normalizeSettings({ track_width: 10 }).track_width,
+    MIN_TRACK_WIDTH,
+  )
+})
+
+// Legacy recipes held a 0.5-3.0 multiplier; a negative one would otherwise
+// scale to -500 and draw nothing.
+test("a negative legacy track width lands on the floor, not below it", () => {
+  assert.equal(
+    normalizeSettings({ track_width: -2 }).track_width,
+    MIN_TRACK_WIDTH,
+  )
+})
+
+test("provenance records the range and which surface the video came from", () => {
+  const trip = provenanceOf({
+    supportsDateNavigation: false,
+    dateRange: () => ({ startAt: "2026-06-14", endAt: "2026-06-16" }),
+  })
+  assert.deepEqual(trip, {
+    source: "trip",
+    start_at: "2026-06-14",
+    end_at: "2026-06-16",
+  })
+
+  const map = provenanceOf({
+    supportsDateNavigation: true,
+    dateRange: () => ({ startAt: "2026-06-14", endAt: "2026-06-16" }),
+  })
+  assert.equal(map.source, "map")
+})
+
+test("provenance survives a missing or broken provider", () => {
+  assert.deepEqual(provenanceOf(null), {
+    source: "map",
+    start_at: "",
+    end_at: "",
+  })
+})
+
+test("a stored recipe gives its provenance back", () => {
+  assert.deepEqual(
+    readProvenance({
+      theme: "noir",
+      source: "trip",
+      start_at: "2026-06-14",
+      end_at: "2026-06-16",
+    }),
+    { source: "trip", start_at: "2026-06-14", end_at: "2026-06-16" },
+  )
+})
+
+// Videos saved before provenance was recorded have no range at all; the
+// caller has to be able to tell that from a range that merely differs.
+test("a recipe with no provenance reports none", () => {
+  assert.equal(readProvenance({ theme: "noir" }), null)
+  assert.equal(readProvenance(null), null)
+})
+
+const MAP = { supportsDateNavigation: true }
+const TRIP = { supportsDateNavigation: false }
+const SHOWING = { startAt: "2026-06-01", endAt: "2026-06-02" }
+
+test("a recipe with no provenance leaves the range alone", () => {
+  assert.equal(rangeRestorePlan(null, SHOWING, MAP).action, "none")
+})
+
+test("a recipe already on screen needs no navigation", () => {
+  const plan = rangeRestorePlan(
+    { source: "map", start_at: SHOWING.startAt, end_at: SHOWING.endAt },
+    SHOWING,
+    MAP,
+  )
+  assert.equal(plan.action, "none")
+})
+
+test("a map recipe from another range navigates back to it", () => {
+  const plan = rangeRestorePlan(
+    { source: "map", start_at: "2026-05-01", end_at: "2026-05-09" },
+    SHOWING,
+    MAP,
+  )
+  assert.equal(plan.action, "navigate")
+  assert.equal(plan.start_at, "2026-05-01")
+  assert.equal(plan.end_at, "2026-05-09")
+})
+
+// A trip studio is locked to its own track, so there is nowhere to navigate
+// to — the user has to be told rather than handed the wrong route.
+test("a trip recipe warns instead of navigating", () => {
+  const plan = rangeRestorePlan(
+    { source: "trip", start_at: "2026-05-01", end_at: "2026-05-09" },
+    SHOWING,
+    TRIP,
+  )
+  assert.equal(plan.action, "warn")
+  assert.equal(plan.range, "2026-05-01 - 2026-05-09")
+})
+
+test("a map recipe opened inside a trip studio warns too", () => {
+  const plan = rangeRestorePlan(
+    { source: "map", start_at: "2026-05-01", end_at: "2026-05-09" },
+    SHOWING,
+    TRIP,
+  )
+  assert.equal(plan.action, "warn")
+})
+
+// The navigate plan carries the range too, so a failed navigation can fall
+// back to the same warning without recomputing it.
+test("a navigate plan still describes its range", () => {
+  const plan = rangeRestorePlan(
+    { source: "map", start_at: "2026-05-01", end_at: "" },
+    SHOWING,
+    MAP,
+  )
+  assert.equal(plan.range, "2026-05-01")
 })

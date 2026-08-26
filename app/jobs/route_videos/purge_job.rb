@@ -23,6 +23,7 @@ class RouteVideos::PurgeJob < ApplicationJob
     return if days.zero?
 
     RouteVideo.status_stored
+              .with_attached_file
               .where(created_at: ...days.days.ago)
               .find_each(batch_size: BATCH_SIZE, &:expire!)
   end
@@ -31,13 +32,7 @@ class RouteVideos::PurgeJob < ApplicationJob
     cap = DawarichSettings.video_max_per_user
     return if cap.zero?
 
-    user_ids_over_cap(cap).each do |user_id|
-      RouteVideo.status_stored
-                .where(user_id: user_id)
-                .newest_first
-                .offset(cap)
-                .each(&:expire!)
-    end
+    user_ids_over_cap(cap).each { |user_id| RouteVideo.expire_over_cap(user_id, cap) }
   end
 
   def user_ids_over_cap(cap)

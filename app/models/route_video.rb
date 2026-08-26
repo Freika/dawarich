@@ -16,9 +16,21 @@ class RouteVideo < ApplicationRecord
 
   has_one_attached :file
 
-  after_commit -> { file.purge_later if file.attached? }, on: :destroy
-
   scope :newest_first, -> { order(created_at: :desc) }
+
+  # The per-user cap is a rolling window rather than a wall: whoever is past it
+  # loses their oldest files, not their newest save. Shared by the nightly
+  # sweep and by the save that pushes a user over. Returns what it expired so
+  # the caller can redraw those cards.
+  def self.expire_over_cap(user_id, cap = DawarichSettings.video_max_per_user)
+    return [] unless cap.positive?
+
+    status_stored.with_attached_file
+                 .where(user_id: user_id)
+                 .newest_first
+                 .offset(cap)
+                 .each(&:expire!)
+  end
 
   # Drops the blob but keeps the recipe. Idempotent: an already expired video
   # stays expired, and a row whose blob is already gone still flips status.

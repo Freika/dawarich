@@ -429,7 +429,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_25_120000) do
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
     t.index ["user_id", "created_at"], name: "index_route_videos_on_user_id_and_created_at"
-    t.index ["user_id"], name: "index_route_videos_on_user_id"
   end
 
   create_table "service_settings", force: :cascade do |t|

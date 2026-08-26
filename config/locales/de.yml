@@ -1,4 +1,43 @@
 de:
+  route_videos:
+    route_video:
+      download: "MP4 herunterladen"
+      delete: "Löschen"
+      delete_this_video: "Dieses Video löschen?"
+      re_render: "Neu rendern"
+      expired_on: "Videodatei am %{date} entfernt, um Platz zu sparen."
+      expired_hint: "Die Einstellungen sind erhalten — neu rendern, um es erneut zu erstellen."
+    studio:
+      video_studio: "Video-Studio"
+      close_studio: "Studio schließen"
+      name: "Name"
+      theme: "Thema"
+      route: "Route"
+      playback: "Wiedergabe"
+      reset: "Zurücksetzen"
+      format: "Format"
+      format_portrait: "Story · 9:16 (hochkant)"
+      format_landscape: "Breit · 16:9 (Querformat)"
+      format_square: "Feed · 1:1 (quadratisch)"
+      duration: "Länge"
+      camera: "Kamera"
+      camera_overview: "Ganze Route"
+      camera_follow: "Der Linie folgen"
+      track_color: "Farbe des Tracks"
+      track_width: "Breite des Tracks"
+      units: "Einheiten"
+      units_km: "Kilometer"
+      units_mi: "Meilen"
+      hud_scale: "Größe der Einblendung"
+      watermark: "dawarich.app im Video zeigen"
+      recent_videos: "Letzte Videos"
+      videos_from_save_to_gallery_they_stay_here: "Videos, die du in diesem Studio gespeichert hast. Sie bleiben hier, bis du sie löschst oder die Aufbewahrung die Datei entfernt."
+      rendered_on_your_device_nothing_leaves_the_browser_until_you_save: "Auf deinem Gerät gerendert — bis zum Speichern verlässt nichts den Browser."
+      render_a_video: "Ein Video rendern"
+      keep_this_video_in_your_gallery: "Dieses Video in deiner Galerie behalten"
+      cancel: "Abbrechen"
+      save_to_gallery: "In Galerie speichern"
+      render_video: "Video rendern"
   activerecord:
     errors:
       models:
@@ -860,6 +899,7 @@ de:
         create_area: Gebiet erstellen
         creating: Wird erstellt...
       button_cluster:
+        video_studio: "Video-Studio"
         map_controls: Kartensteuerung
         timeline: Zeitleiste
         timeline_t: Zeitleiste (T)
@@ -1655,6 +1695,12 @@ de:
   share_links:
     hubs:
       body:
+        make_something: "Etwas erstellen"
+        make_something_intro: "Ein Link teilt deine Daten dauerhaft. Hiermit entsteht eine Datei, die du einmal postest — geteilt bleibt nichts."
+        make_video: "Routen-Video"
+        make_video_hint: "Eine animierte Wiedergabe dieses Zeitraums als MP4."
+        make_poster: "Karten-Poster"
+        make_poster_hint: "Eine druckfertige Karte dieses Zeitraums als PNG oder PDF."
         live_location: Live-Position
         time_period: Zeitraum
         shared: Geteilt
@@ -1676,6 +1722,10 @@ de:
       new:
         share_a_date_range: Ein Datum bereich teilen
   shared:
+    studio_switcher:
+      studios: "Studios"
+      poster: "Poster"
+      video: "Video"
     flash_message:
       close: Schließen
     footer:
@@ -2147,6 +2197,9 @@ de:
         delete_this_note: Diese Notiz löschen?
         update_note: Notiz aktualisieren
     show:
+      video: "Video"
+      video_unavailable: "Verfügbar, sobald die Reiseroute berechnet ist"
+      create_video: "Ein Wiedergabe-Video dieser Reise erstellen"
       loading_route_data: Route-Daten werden geladen...
       trip_path_is_being_calculated: Reisepfad wird berechnet...
       download_trip: Reise herunterladen
@@ -2764,6 +2817,12 @@ de:
     speed_kmh: "%{value} km/h"
     kilometers_suffix: " km"
   controllers:
+    route_videos:
+      untitled: "Video ohne Titel"
+      saved: "Video in deiner Galerie gespeichert."
+      failed_to_save: "Video konnte nicht gespeichert werden."
+      rejected_file: "Diese Datei konnte nicht als Video gespeichert werden."
+      deleted: "Video gelöscht."
     api:
       v1:
         areas:
@@ -3637,6 +3696,27 @@ de:
           one: "%{count} Monat"
           other: "%{count} Monate"
   javascript:
+    video:
+      open_failed: "Video-Studio konnte nicht geöffnet werden: %{error}"
+      save_failed: "Video konnte nicht gespeichert werden: %{error}"
+      rendering: "Rendern … %{percent} %"
+      uploading: "Hochladen … %{percent} %"
+      ready: "Dein Video ist fertig — %{size} MB."
+      summary: "%{format} — %{width} × %{height} · Thema: %{theme} · %{seconds} s mit 30 fps"
+      unsupported_browser: "Dieser Browser kann kein Video kodieren. Versuche ein aktuelles Chrome, Edge, Safari oder Firefox."
+      empty_track: "In diesem Zeitraum gibt es keine Route zum Animieren. Wähle einen Zeitraum mit mindestens zwei Punkten."
+      restoring_range: "Zeitraum wird wiederhergestellt, aus dem dieses Video entstand …"
+      range_mismatch: "Dieses Video entstand aus %{range}. Öffne diesen Zeitraum, um es exakt neu zu rendern — sonst bekommst du die Route, die gerade zu sehen ist."
+      stats:
+        distance: "Distanz"
+        duration: "Dauer"
+        avg_speed: "Ø Tempo"
+      hud:
+        day: "TAG"
+        distance: "DISTANZ"
+        of_total: "GESAMT"
+        tagline: "PRIVATE STANDORTHISTORIE"
+        travelled_over: "zurückgelegt in %{days} Tagen"
     messages:
       click_on_the_map_to_place_a_visit: Klicke auf die Karte, um einen Aufenthalt zu platzieren
       end_time_must_be_after_start_time: Endezeit muss nach Startzeit sein

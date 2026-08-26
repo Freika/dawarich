@@ -27,6 +27,9 @@ export const MIN_HUD_SCALE = 80
 export const MAX_HUD_SCALE = 140
 export const MIN_DURATION_SEC = 8
 export const MAX_DURATION_SEC = 30
+// Matches the track width slider in the studio rail.
+export const MIN_TRACK_WIDTH = 50
+export const MAX_TRACK_WIDTH = 300
 
 export function defaultSettings() {
   return {
@@ -70,13 +73,72 @@ export function normalizeSettings(raw) {
     follow_zoom: Number.isFinite(followZoom) ? followZoom : base.follow_zoom,
     track_color:
       typeof raw.track_color === "string" ? raw.track_color : base.track_color,
-    track_width: Number.isFinite(trackWidth) ? trackWidth : base.track_width,
+    track_width: Number.isFinite(trackWidth)
+      ? Math.min(MAX_TRACK_WIDTH, Math.max(MIN_TRACK_WIDTH, trackWidth))
+      : base.track_width,
     units: raw.units === "mi" ? "mi" : "km",
     hud_scale: Number.isFinite(hudScale)
       ? Math.min(MAX_HUD_SCALE, Math.max(MIN_HUD_SCALE, hudScale))
       : base.hud_scale,
-    watermark: raw.watermark !== false,
+    // FormData stringifies every value on the way to the server, so a stored
+    // recipe hands back "false" rather than false.
+    watermark: raw.watermark !== false && raw.watermark !== "false",
   }
+}
+
+// Which route a video was made from, stored alongside the styling so an
+// expired video re-renders the track it actually showed rather than whatever
+// the page happens to be displaying now.
+export function provenanceOf(provider) {
+  const { startAt, endAt } = provider?.dateRange?.() ?? {}
+  return {
+    source: provider?.supportsDateNavigation === false ? "trip" : "map",
+    start_at: startAt || "",
+    end_at: endAt || "",
+  }
+}
+
+// Null when the recipe predates provenance, which the caller has to tell
+// apart from a range that merely differs from the one on screen.
+export function readProvenance(raw) {
+  if (!raw || typeof raw !== "object") return null
+  const startAt = typeof raw.start_at === "string" ? raw.start_at : ""
+  const endAt = typeof raw.end_at === "string" ? raw.end_at : ""
+  if (!startAt && !endAt) return null
+
+  return {
+    source: raw.source === "trip" ? "trip" : "map",
+    start_at: startAt,
+    end_at: endAt,
+  }
+}
+
+// What a stored recipe's range means for the studio on screen: nothing to do,
+// navigate back to it, or say it cannot be reached. Kept pure so the decision
+// is testable without a map, a provider or a DOM.
+export function rangeRestorePlan(provenance, showing, provider) {
+  if (!provenance) return { action: "none" }
+  if (
+    provenance.start_at === showing.startAt &&
+    provenance.end_at === showing.endAt
+  ) {
+    return { action: "none" }
+  }
+
+  const range = [provenance.start_at, provenance.end_at]
+    .filter(Boolean)
+    .join(" - ")
+  const reachable =
+    provider?.supportsDateNavigation && provenance.source !== "trip"
+
+  return reachable
+    ? {
+        action: "navigate",
+        start_at: provenance.start_at,
+        end_at: provenance.end_at,
+        range,
+      }
+    : { action: "warn", range }
 }
 
 // Camera contract shared by the preview and the renderer. The renderer lays

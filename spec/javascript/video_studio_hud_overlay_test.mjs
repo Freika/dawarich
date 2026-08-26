@@ -69,7 +69,7 @@ function recordingContext() {
 const LABELS = {
   day: "TAG",
   distance: "DISTANZ",
-  ofTotal: "VON GESAMT",
+  ofTotal: "GESAMT",
   tagline: "PRIVATE STANDORTHISTORIE",
   travelledOver: (days) => `unterwegs an ${days} Tagen`,
 }
@@ -109,7 +109,7 @@ test("the replay chrome draws the supplied labels, not hardcoded English", () =>
 
   assert.ok(drawn.some((text) => text.startsWith("TAG ")))
   assert.ok(drawn.includes("DISTANZ"))
-  assert.ok(drawn.includes("VON GESAMT"))
+  assert.ok(drawn.includes("GESAMT"))
   assert.ok(!drawn.includes("DISTANCE"))
 })
 
@@ -339,7 +339,7 @@ function footerTexts(hudScale) {
 test("the credit is drawn at every overlay size the control offers", () => {
   for (let scale = MIN_HUD_SCALE; scale <= MAX_HUD_SCALE; scale += 5) {
     assert.ok(
-      footerTexts(scale / 100).includes("https://dawarich.app"),
+      footerTexts(scale / 100).some((text) => text === "https://dawarich.app"),
       `credit missing at ${scale}%`,
     )
   }
@@ -348,7 +348,7 @@ test("the credit is drawn at every overlay size the control offers", () => {
 test("the credit survives even past the control's ceiling", () => {
   // The row shrinks to fit rather than dropping the attribution, so a wider
   // fallback font cannot make the credit disappear.
-  assert.ok(footerTexts(2).includes("https://dawarich.app"))
+  assert.ok(footerTexts(2).some((text) => text === "https://dawarich.app"))
 })
 
 test("the footer dates are never dropped either", () => {

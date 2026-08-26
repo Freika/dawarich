@@ -79,4 +79,48 @@ RSpec.describe RouteVideo, type: :model do
       expect(user.route_videos.newest_first).to eq([newer, older])
     end
   end
+
+  describe '.expire_over_cap' do
+    let(:user) { create(:user) }
+
+    it 'keeps the newest up to the cap and expires the rest' do
+      allow(DawarichSettings).to receive(:video_max_per_user).and_return(2)
+      oldest = create(:route_video, :with_file, user: user, created_at: 3.days.ago)
+      middle = create(:route_video, :with_file, user: user, created_at: 2.days.ago)
+      newest = create(:route_video, :with_file, user: user, created_at: 1.day.ago)
+
+      described_class.expire_over_cap(user.id)
+
+      expect([newest.reload.status, middle.reload.status, oldest.reload.status])
+        .to eq(%w[stored stored expired])
+    end
+
+    it 'leaves a user sitting exactly at the cap alone' do
+      allow(DawarichSettings).to receive(:video_max_per_user).and_return(2)
+      videos = create_list(:route_video, 2, :with_file, user: user)
+
+      described_class.expire_over_cap(user.id)
+
+      expect(videos.map { |video| video.reload.status }).to all(eq('stored'))
+    end
+
+    it 'leaves other users alone' do
+      allow(DawarichSettings).to receive(:video_max_per_user).and_return(1)
+      theirs = create(:route_video, :with_file, user: create(:user), created_at: 3.days.ago)
+      create_list(:route_video, 2, :with_file, user: user)
+
+      described_class.expire_over_cap(user.id)
+
+      expect(theirs.reload).to be_status_stored
+    end
+
+    it 'does nothing when the cap is switched off' do
+      allow(DawarichSettings).to receive(:video_max_per_user).and_return(0)
+      videos = create_list(:route_video, 3, :with_file, user: user)
+
+      described_class.expire_over_cap(user.id)
+
+      expect(videos.map { |video| video.reload.status }).to all(eq('stored'))
+    end
+  end
 end

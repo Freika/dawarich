@@ -30,10 +30,19 @@ export async function createMp4Encoder({ width, height, fps }) {
   })
 
   let encodeError = null
+  let aborted = false
+  // Frames parked on backpressure wait for a "dequeue" that a dead or closed
+  // encoder will never fire, so an error or a cancel has to wake them too.
+  const parked = new Set()
+  const wake = () => {
+    for (const resume of [...parked]) resume()
+  }
+
   const encoder = new VideoEncoder({
     output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
     error: (error) => {
       encodeError = error
+      wake()
     },
   })
   encoder.configure(picked.config)
@@ -52,11 +61,23 @@ export async function createMp4Encoder({ width, height, fps }) {
       })
       encoder.encode(frame, { keyFrame: frameIndex % keyframeEvery === 0 })
       frame.close()
-      while (encoder.encodeQueueSize > MAX_ENCODE_QUEUE && !encodeError) {
+      while (
+        encoder.encodeQueueSize > MAX_ENCODE_QUEUE &&
+        !encodeError &&
+        !aborted
+      ) {
         await new Promise((resolve) => {
-          encoder.addEventListener("dequeue", resolve, { once: true })
+          const resume = () => {
+            parked.delete(resume)
+            encoder.removeEventListener("dequeue", resume)
+            resolve()
+          }
+          parked.add(resume)
+          encoder.addEventListener("dequeue", resume, { once: true })
         })
       }
+      if (encodeError) throw encodeError
+      if (aborted) throw new Error("Render cancelled")
     },
 
     async finalize() {
@@ -68,6 +89,8 @@ export async function createMp4Encoder({ width, height, fps }) {
     },
 
     abort() {
+      aborted = true
+      wake()
       try {
         if (encoder.state !== "closed") encoder.close()
       } catch {
