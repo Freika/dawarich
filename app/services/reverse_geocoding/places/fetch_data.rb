@@ -46,7 +46,7 @@ class ReverseGeocoding::Places::FetchData
 
     unless place.name_locked?
       attributes[:name] = place_name(data)
-      attributes[:source] = Place.sources[:photon]
+      attributes[:source] = :photon
     end
 
     place.machine_named = true

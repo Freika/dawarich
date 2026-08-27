@@ -31,7 +31,8 @@ RSpec.describe 'Curated places keep their manual source through reverse geocodin
 
   context 'when the user created and named the place' do
     let(:place) do
-      create(:place, user: user, name: 'Home', source: :manual, user_named: true)
+      create(:place, user: user, name: 'Home', source: :manual, user_named: true,
+                     latitude: 54.28, longitude: 13.08)
     end
 
     it 'keeps the manual source' do
@@ -39,14 +40,14 @@ RSpec.describe 'Curated places keep their manual source through reverse geocodin
       expect(place.reload).to be_manual
     end
 
-    it 'keeps the place ranked ahead of machine-minted neighbours' do
+    it 'outranks a machine-minted neighbour that sits closer to the visit' do
       create(:place, user: user, name: 'Greifswalder Chaussee 1', source: :photon,
-                     latitude: place.latitude, longitude: place.longitude)
+                     latitude: 54.280050, longitude: 13.080050)
 
       service.call
 
       found = Visits::PlaceFinder.new(user).find_or_create_place(
-        center_lat: place.latitude.to_f, center_lon: place.longitude.to_f, suggested_name: nil
+        center_lat: 54.280045, center_lon: 13.080045, suggested_name: nil
       )
 
       expect(found.id).to eq(place.id)
@@ -58,13 +59,11 @@ RSpec.describe 'Curated places keep their manual source through reverse geocodin
     end
   end
 
-  context 'when the place was minted by the detector' do
-    let(:place) { create(:place, user: user, name: Place::DEFAULT_NAME, source: :photon) }
+  context 'when the place is unlocked and still on the schema-default source' do
+    let(:place) { create(:place, user: user, name: Place::DEFAULT_NAME, source: :manual) }
 
-    it 'stays on the photon source' do
-      service.call
-
-      expect(place.reload).to be_photon
+    it 'is still stamped photon' do
+      expect { service.call }.to change { place.reload.source }.from('manual').to('photon')
     end
   end
 
