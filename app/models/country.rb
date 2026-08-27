@@ -10,7 +10,8 @@ class Country < ApplicationRecord
   def self.matching_name(name)
     return nil if name.blank?
 
-    find_by(name: Countries::NameAliases.canonical(name))
+    # Duplicate names resolve to the lowest id, matching the backfill's MIN(id).
+    where(name: Countries::NameAliases.canonical(name)).order(:id).first
   end
 
   def self.containing_point(lon, lat)

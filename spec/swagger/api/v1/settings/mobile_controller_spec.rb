@@ -143,6 +143,39 @@ describe 'Mobile Settings API', type: :request do
       }
 
       response '200', 'mobile settings updated' do
+        schema type: :object,
+               properties: {
+                 settings: {
+                   type: :object,
+                   properties: {
+                     tracking_mode: { type: :string, example: 'precise', enum: %w[precise significant] },
+                     tracking_visits: { type: :boolean, example: true },
+                     track_visits_independently: { type: :boolean, example: false },
+                     auto_start: { type: :boolean, example: true },
+                     distance_filter: { type: :number, example: 100 },
+                     time_filter: { type: :number, example: 10 },
+                     track_break: { type: :number, example: 30 },
+                     accuracy: { type: :number, example: 3 },
+                     show_background_location_indicator: { type: :boolean, example: true },
+                     upload_automatically: { type: :boolean, example: true },
+                     upload_all_on_tracking_stop: { type: :boolean, example: false },
+                     batch_size: { type: :number, example: 100 }
+                   }
+                 },
+                 updated_at: { type: :string, nullable: true, example: '2026-07-01T10:00:00Z' },
+                 capabilities: {
+                   type: :object,
+                   properties: {
+                     photo_library_import: {
+                       type: :object,
+                       properties: { version: { type: :integer, example: 1 } }
+                     }
+                   }
+                 },
+                 status: { type: :string, example: 'success' },
+                 message: { type: :string, example: 'Settings updated' }
+               }
+
         let(:api_key) { create(:user).api_key }
         let(:settings) { { settings: { tracking_mode: 'significant', batch_size: 50 } } }
 
