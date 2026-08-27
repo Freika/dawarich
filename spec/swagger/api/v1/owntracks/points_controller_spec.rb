@@ -36,6 +36,7 @@ describe 'OwnTracks Points API', type: :request do
       }
       tags 'Points'
       consumes 'application/json'
+      produces 'application/json'
       parameter name: :point, in: :body, schema: {
         type: :object,
         properties: {
@@ -70,6 +71,23 @@ description: 'Array of region names device is currently in' },
       parameter name: :api_key, in: :query, type: :string, required: true, description: 'API Key'
 
       response '200', 'Point created' do
+        schema type: :array,
+               description: 'OwnTracks messages for family members sharing their location',
+               items: {
+                 type: :object,
+                 properties: {
+                   _type: { type: :string, description: 'Message type, either "card" or "location"' },
+                   tid: { type: :string, description: 'Tracker ID identifying the family member' },
+                   name: { type: :string, description: 'Family member name, on card messages only' },
+                   lat: { type: :number, description: 'Latitude coordinate' },
+                   lon: { type: :number, description: 'Longitude coordinate' },
+                   tst: { type: :number, description: 'Timestamp in Unix epoch time' },
+                   batt: { type: :number, description: 'Device battery level (percentage)' },
+                   bs: { type: :number,
+                         description: 'Battery status (0=unknown, 1=unplugged, 2=charging, 3=full)' }
+                 }
+               }
+
         let(:file_path) { 'spec/fixtures/files/owntracks/2024-03.rec' }
         let(:file) { File.read(file_path) }
         let(:json) { OwnTracks::RecParser.new(file).call }
