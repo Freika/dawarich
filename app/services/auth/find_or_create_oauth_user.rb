@@ -3,6 +3,7 @@
 module Auth
   class FindOrCreateOauthUser
     class UnverifiedEmail < StandardError; end
+    class AccountPendingDeletion < StandardError; end
 
     class MissingOauthEmail < StandardError
       attr_reader :provider, :uid
@@ -43,11 +44,15 @@ module Auth
     end
 
     def call
-      by_identity = User.find_by(provider: @provider, uid: @uid)
+      by_identity = User.unscoped.find_by(provider: @provider, uid: @uid)
+      raise AccountPendingDeletion if by_identity&.deleted?
       return [by_identity, false] if by_identity
 
       if @email.present?
-        existing = User.find_by(email: @email)
+        # unscoped: the soft-delete default scope would hide a pending-deletion
+        # row and let the insert below fail on the unique email index instead.
+        existing = User.unscoped.find_by(email: @email)
+        raise AccountPendingDeletion if existing&.deleted?
         return handle_email_collision(existing) if existing
       end
 
@@ -64,11 +69,13 @@ module Auth
     # rescued and re-resolved idempotently: same (provider, uid) → log them in;
     # same email under a different identity → the normal collision flow.
     def recover_from_create_conflict(error)
-      by_identity = User.find_by(provider: @provider, uid: @uid)
+      by_identity = User.unscoped.find_by(provider: @provider, uid: @uid)
+      raise AccountPendingDeletion if by_identity&.deleted?
       return [by_identity, false] if by_identity
 
-      existing = @email.present? ? User.find_by(email: @email) : nil
+      existing = @email.present? ? User.unscoped.find_by(email: @email) : nil
       raise error if existing.nil?
+      raise AccountPendingDeletion if existing.deleted?
 
       handle_email_collision(existing)
     end
