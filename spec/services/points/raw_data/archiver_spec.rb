@@ -101,6 +101,35 @@ RSpec.describe Points::RawData::Archiver do
       expect { archiver.archive_user(user.id) }.not_to change(Points::RawDataArchive, :count)
     end
 
+    it 'skips a batch it cannot link and still archives the rest' do
+      stub_const('Points::RawData::Archiver::CHUNK_SIZE', 2)
+      ordered = old_points.sort_by(&:id)
+      stalled = ordered.first(2)
+      corrupted = false
+      allow(archiver).to receive(:verify_archive_full!).and_wrap_original do |method, archive, *args|
+        unless corrupted
+          corrupted = true
+          Point.where(id: stalled.map(&:id)).update_all(raw_data: { source: 'concurrent ingest' })
+        end
+        method.call(archive, *args)
+      end
+
+      archiver.archive_user(user.id)
+
+      expect(stalled.map { |point| point.reload.raw_data_archived }).to all(be false)
+      expect(ordered.drop(2).map { |point| point.reload.raw_data_archived }).to all(be true)
+    end
+
+    it 'reports a failure when a zero-link archive cannot be cleaned up' do
+      allow(archiver).to receive(:verify_archive_full!).and_wrap_original do |method, archive, *args|
+        Point.where(id: old_points.map(&:id)).update_all(raw_data: { source: 'concurrent ingest' })
+        method.call(archive, *args)
+      end
+      allow(archiver).to receive(:cleanup_failed_archive!)
+
+      expect(archiver.archive_user(user.id)[:failed]).to eq(1)
+    end
+
     it 'retries point flagging after write contention' do
       attempts = 0
       allow(Point).to receive(:sleep)
@@ -240,6 +269,12 @@ RSpec.describe Points::RawData::Archiver do
       expect do
         archiver.archive_specific_month(user.id, test_date.year, test_date.month)
       end.to change(Points::RawDataArchive, :count).by(1)
+    end
+
+    it 'reports how many points were actually linked' do
+      stats = archiver.archive_specific_month(user.id, test_date.year, test_date.month)
+
+      expect(stats).to include(processed: 1, archived: 3)
     end
 
     it 'creates archive with correct metadata' do
