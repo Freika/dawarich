@@ -1990,6 +1990,8 @@ ca:
       available_on_pro: Disponible a Pro
       upgrade_to_pro: Millora a Pro
     month:
+      flight_distance: Distància de vol
+      from_airtrail_not_counted_in_distance: D'AirTrail, no comptat a la distància
       monthly_digest: Resum mensual
       share: Comparteix
       distance_traveled: Distància recorreguda
@@ -2041,6 +2043,8 @@ ca:
       distance: Distància
       countries_count_countries_cities_count_cities: "%{countries_count} països, %{cities_count} ciutats"
     public_month:
+      flight_distance: Distància de vol
+      from_airtrail_not_counted_in_distance: D'AirTrail, no comptat a la distància
       monthly_digest: Resum mensual
       distance_traveled: Distància recorreguda
       total_distance_for_this_month: Distància total d'aquest mes
@@ -2321,6 +2325,7 @@ ca:
           other: "%{count} ciutats"
     digests_mailer:
       monthly_digest:
+        flights: Vols
         your: El teu
         in_review: en retrospectiva
         here_s_what_your_location_history_looked_like_last_month: Així és com va ser el teu historial d'ubicacions el mes passat.

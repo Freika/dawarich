@@ -247,5 +247,56 @@ RSpec.describe Stats::CalculateMonth do
         end
       end
     end
+
+    context 'with AirTrail flights in the month' do
+      let!(:point1) { create(:point, user: user, timestamp: DateTime.new(year, month, 5, 12).to_i) }
+      let!(:point2) do
+        create(:point, user: user, lonlat: 'POINT(13.5 52.5)', timestamp: DateTime.new(year, month, 5, 13).to_i)
+      end
+      let!(:flight) do
+        create(:flight, user: user, flight_date: Date.new(year, month, 5),
+                        departure_time: DateTime.new(year, month, 5, 15),
+                        arrival_time: DateTime.new(year, month, 5, 17), distance_km: 633.4)
+      end
+
+      it 'records the flight distance separately' do
+        calculate_stats
+
+        expect(Stat.last.flight_distance).to eq(633_400)
+      end
+
+      it 'leaves the tracked distance untouched' do
+        calculate_stats
+        distance_with_flight = Stat.last.distance
+
+        Flight.delete_all
+        described_class.new(user.id, year, month).call
+
+        expect(Stat.last.distance).to eq(distance_with_flight)
+        expect(distance_with_flight).to be < 633_400
+      end
+
+      it 'ignores flights belonging to another user' do
+        create(:flight, user: create(:user), flight_date: Date.new(year, month, 6), distance_km: 900.0)
+
+        calculate_stats
+
+        expect(Stat.last.flight_distance).to eq(633_400)
+      end
+    end
+
+    context 'when there are no points but the month has flights and an existing stat' do
+      let!(:stat) { create(:stat, user: user, year: year, month: month, distance: 5000, flight_distance: 1) }
+      let!(:flight) do
+        create(:flight, user: user, flight_date: Date.new(year, month, 5), distance_km: 633.4)
+      end
+
+      it 'keeps the flight distance current instead of zeroing it' do
+        calculate_stats
+
+        expect(stat.reload.flight_distance).to eq(633_400)
+        expect(stat.distance).to eq(0)
+      end
+    end
   end
 end

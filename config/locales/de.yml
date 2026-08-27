@@ -1995,6 +1995,8 @@ de:
       available_on_pro: Verfügbar auf Pro
       upgrade_to_pro: Auf Pro upgraden
     month:
+      flight_distance: Flugdistanz
+      from_airtrail_not_counted_in_distance: Aus AirTrail, nicht in der Distanz enthalten
       monthly_digest: Monatsrückblick
       share: Teilen
       distance_traveled: Gefahrene Strecke
@@ -2046,6 +2048,8 @@ de:
       distance: Distanz
       countries_count_countries_cities_count_cities: "%{countries_count} Länder, %{cities_count} Städte"
     public_month:
+      flight_distance: Flugdistanz
+      from_airtrail_not_counted_in_distance: Aus AirTrail, nicht in der Distanz enthalten
       monthly_digest: Monatlicher Überblick
       distance_traveled: Gesamtstrecke
       total_distance_for_this_month: Gesamtstrecke für diesen Monat
@@ -2326,6 +2330,7 @@ de:
           other: "%{count} Städte"
     digests_mailer:
       monthly_digest:
+        flights: Flüge
         your: Dein
         in_review: im Rückblick
         here_s_what_your_location_history_looked_like_last_month: Hier ist ein Überblick, wie dein Standortverlauf im letzten Monat aussah.

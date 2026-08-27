@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Trip note text now uses consistent left alignment on every line (#3104).
 
+## Added
+
+- AirTrail flights now show as their own figure on the monthly stats page and in the monthly digest. Flight distance is reported next to the distance Dawarich tracked rather than added into it, so neither number changes meaning.
+
 ## [1.14.0] - 2026-08-27, Berlin
 
 ### Changed
