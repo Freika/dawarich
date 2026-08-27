@@ -1990,6 +1990,8 @@ ca:
       available_on_pro: Disponible a Pro
       upgrade_to_pro: Millora a Pro
     month:
+      flight_distance: Distància de vol
+      from_airtrail_not_counted_in_distance: D'AirTrail, no comptat a la distància
       monthly_digest: Resum mensual
       share: Comparteix
       distance_traveled: Distància recorreguda
@@ -2041,6 +2043,8 @@ ca:
       distance: Distància
       countries_count_countries_cities_count_cities: "%{countries_count} països, %{cities_count} ciutats"
     public_month:
+      flight_distance: Distància de vol
+      from_airtrail_not_counted_in_distance: D'AirTrail, no comptat a la distància
       monthly_digest: Resum mensual
       distance_traveled: Distància recorreguda
       total_distance_for_this_month: Distància total d'aquest mes
@@ -2321,6 +2325,7 @@ ca:
           other: "%{count} ciutats"
     digests_mailer:
       monthly_digest:
+        flights: Vols
         your: El teu
         in_review: en retrospectiva
         here_s_what_your_location_history_looked_like_last_month: Així és com va ser el teu historial d'ubicacions el mes passat.
@@ -2777,6 +2782,7 @@ ca:
         areas:
           area_was_successfully_deleted: L'àrea s'ha suprimit correctament
         auth:
+          account_pending_deletion: S'està eliminant un compte amb aquest correu electrònic. Torna-ho a provar quan hagi acabat.
           apple:
             apple_has_not_verified_this_email_sign_in_with_password: Apple no ha verificat aquest correu electrònic. Inicia sessió amb contrasenya i vincula-ho des de la configuració.
             this_email_already_has_a_dawarich_account_we_sent_a: Aquest correu electrònic ja té un compte de Dawarich. Hem enviat un enllaç de confirmació a aquesta adreça — fes-hi clic per vincular el teu Apple ID.
@@ -3144,6 +3150,7 @@ ca:
       export_failed_to_initiate_please_try_again: L'exportació no s'ha pogut iniciar. Torna-ho a provar.
     users:
       apple_oauth:
+        account_pending_deletion: S'està eliminant un compte amb aquest correu electrònic. Torna-ho a provar quan hagi acabat.
         sign_in_with_apple_was_cancelled: S'ha cancel·lat l'inici de sessió amb Apple.
         sign_in_failed: "L'inici de sessió amb Apple ha fallat: %{message}"
         email_not_verified: El correu electrònic del teu Apple ID no està verificat. Verifica'l amb Apple i torna-ho a provar.
@@ -3161,6 +3168,7 @@ ca:
         year_end_digest_for_year_has_been_deleted: "El resum de fi d'any de %{year} s'ha suprimit"
         digest_not_found: Resum no trobat
       omniauth_callbacks:
+        account_pending_deletion: S'està eliminant un compte amb aquest correu electrònic. Torna-ho a provar quan hagi acabat.
         invalid_credentials: Credencials no vàlides. Comprova el teu nom d'usuari i contrasenya.
         connection_timeout: Temps d'espera de connexió excedit. Torna-ho a provar.
         security_error: S'ha detectat un error de seguretat. Torna-ho a provar.

@@ -1995,6 +1995,8 @@ de:
       available_on_pro: Verfügbar auf Pro
       upgrade_to_pro: Auf Pro upgraden
     month:
+      flight_distance: Flugdistanz
+      from_airtrail_not_counted_in_distance: Aus AirTrail, nicht in der Distanz enthalten
       monthly_digest: Monatsrückblick
       share: Teilen
       distance_traveled: Gefahrene Strecke
@@ -2046,6 +2048,8 @@ de:
       distance: Distanz
       countries_count_countries_cities_count_cities: "%{countries_count} Länder, %{cities_count} Städte"
     public_month:
+      flight_distance: Flugdistanz
+      from_airtrail_not_counted_in_distance: Aus AirTrail, nicht in der Distanz enthalten
       monthly_digest: Monatlicher Überblick
       distance_traveled: Gesamtstrecke
       total_distance_for_this_month: Gesamtstrecke für diesen Monat
@@ -2326,6 +2330,7 @@ de:
           other: "%{count} Städte"
     digests_mailer:
       monthly_digest:
+        flights: Flüge
         your: Dein
         in_review: im Rückblick
         here_s_what_your_location_history_looked_like_last_month: Hier ist ein Überblick, wie dein Standortverlauf im letzten Monat aussah.
@@ -2843,6 +2848,7 @@ de:
         areas:
           area_was_successfully_deleted: Der Bereich wurde erfolgreich gelöscht
         auth:
+          account_pending_deletion: Ein Konto mit dieser E-Mail-Adresse wird gerade gelöscht. Versuche es erneut, sobald das abgeschlossen ist.
           apple:
             apple_has_not_verified_this_email_sign_in_with_password: Apple hat diese E-Mail nicht verifiziert. Melde dich mit Passwort an und verknüpfe sie in den Einstellungen.
             this_email_already_has_a_dawarich_account_we_sent_a: Diese E-Mail hat bereits ein Dawarich-Konto. Wir haben einen Bestätigungslink an diese Adresse gesendet — klicke darauf, um deinen Apple-ID zu verknüpfen.
@@ -3204,6 +3210,7 @@ de:
       export_failed_to_initiate_please_try_again: Der Export konnte nicht gestartet werden. Bitte versuche es erneut.
     users:
       apple_oauth:
+        account_pending_deletion: Ein Konto mit dieser E-Mail-Adresse wird gerade gelöscht. Versuche es erneut, sobald das abgeschlossen ist.
         sign_in_with_apple_was_cancelled: Anmeldung mit Apple wurde abgebrochen.
         sign_in_failed: 'Apple-Anmeldung fehlgeschlagen: %{message}'
         email_not_verified: Die E-Mail-Adresse deiner Apple-ID ist nicht verifiziert. Verifiziere sie bei Apple und versuche es erneut.
@@ -3221,6 +3228,7 @@ de:
         year_end_digest_for_year_has_been_deleted: Jahresende-Zusammenfassung für %{year} wurde gelöscht
         digest_not_found: Zusammenfassung nicht gefunden
       omniauth_callbacks:
+        account_pending_deletion: Ein Konto mit dieser E-Mail-Adresse wird gerade gelöscht. Versuche es erneut, sobald das abgeschlossen ist.
         invalid_credentials: Ungültige Anmeldeinformationen. Bitte überprüfe deinen Benutzernamen und dein Passwort.
         connection_timeout: Verbindungstimeout. Bitte versuche es erneut.
         security_error: Sicherheitsfehler erkannt. Bitte versuche es erneut.

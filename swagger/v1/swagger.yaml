@@ -337,6 +337,17 @@ paths:
                     type: string
                   message:
                     type: string
+        '409':
+          description: account deletion is in progress
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
       requestBody:
         content:
           application/json:
@@ -389,6 +400,17 @@ paths:
                     nullable: true
         '401':
           description: google token verification failed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+        '409':
+          description: account deletion is in progress
           content:
             application/json:
               schema:
@@ -2988,6 +3010,39 @@ paths:
       responses:
         '200':
           description: Point created
+          content:
+            application/json:
+              schema:
+                type: array
+                description: OwnTracks messages for family members sharing their location
+                items:
+                  type: object
+                  properties:
+                    _type:
+                      type: string
+                      description: Message type, either "card" or "location"
+                    tid:
+                      type: string
+                      description: Tracker ID identifying the family member
+                    name:
+                      type: string
+                      description: Family member name, on card messages only
+                    lat:
+                      type: number
+                      description: Latitude coordinate
+                    lon:
+                      type: number
+                      description: Longitude coordinate
+                    tst:
+                      type: number
+                      description: Timestamp in Unix epoch time
+                    batt:
+                      type: number
+                      description: Device battery level (percentage)
+                    bs:
+                      type: number
+                      description: Battery status (0=unknown, 1=unplugged, 2=charging,
+                        3=full)
         '401':
           description: Unauthorized
       requestBody:

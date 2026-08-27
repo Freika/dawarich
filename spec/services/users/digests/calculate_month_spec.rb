@@ -114,5 +114,16 @@ RSpec.describe Users::Digests::CalculateMonth do
         expect(nz['minutes']).to eq(1_440)
       end
     end
+
+    context 'when the stat carries flight distance' do
+      let!(:stat) { create(:stat, user: user, year: year, month: month, distance: 12_345, flight_distance: 633_400) }
+
+      it 'copies it onto the digest without folding it into the tracked distance' do
+        digest = calculate_digest
+
+        expect(digest.flight_distance).to eq(633_400)
+        expect(digest.distance).to eq(12_345)
+      end
+    end
   end
 end

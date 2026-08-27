@@ -4,6 +4,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+
+## Added
+
+- OwnTracks in HTTP mode now shows your family members on its own map: every location upload is answered with the latest position of each family member sharing with you, so they appear as friends in the app alongside the Dawarich map.
+
+## Fixed
+
+- Track generation no longer reports a failure when its temporary progress session expires during finalization.
+- Trip distance recalculation no longer fails when the computed distance exceeds the 4-byte integer limit, which GPS noise on a long trip can produce.
+- Integration settings now show bounded connection errors instead of failing when an upstream service returns an oversized malformed response.
+- Enhanced import extraction now retries transient database deadlocks instead of failing immediately.
+- A malformed or truncated upload no longer returns a server error; the API now rejects it cleanly.
+- OAuth sign-in now shows clear retry guidance while an account with the same email is still being deleted.
+- Places you created and named yourself keep their manual attribution when reverse geocoding refreshes them, so they stay ranked ahead of auto-created address places and stay visible on the map (#3418).
+- The map control cluster keeps Search, Create and Settings on phone-sized screens instead of hiding them; on short viewports it scrolls within the map area rather than running off the bottom (#3421).
+- Trip note text now uses consistent left alignment on every line (#3104).
+- Existing saved places now appear in Map v2 visit searches and can be assigned to visits (#3083)
+- Orphaned track cleanup no longer removes a track that still owns points, and a database foreign key now backs that guarantee.
+- Raw data archival now rechecks each point under a row lock before linking it, preventing concurrent tracker updates from being attached to a stale archive snapshot. An archive that ends up matching no point is discarded, archival stops instead of re-reading points it cannot link, and restores ignore snapshots no longer linked to their source archive.
+- Google phone Timeline imports no longer fail when exports contain out-of-range altitude or accuracy metadata.
+
+## Added
+
+- AirTrail flights now show as their own figure on the monthly stats page and in the monthly digest. Flight distance is reported next to the distance Dawarich tracked rather than added into it, so neither number changes meaning.
+
 ## [1.14.0] - 2026-08-27, Berlin
 
 ### Changed
@@ -79,6 +105,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 - Four scheduled jobs (app version check, cache preheat, family location request expiry, points counter correction) were queued onto `default` instead of the queues their job classes declare, so they competed with higher-priority work — the cache preheat in particular could hold up imports, track generation and stats for minutes at a time. They now run on `app_version_checking`, `cache`, `families` and `low_priority` respectively.
+
+### Fixed
+
+- Track generation now retries when the cache connection pool is temporarily busy instead of dropping the job and reporting an error.
 
 ## [1.12.2] - 2026-08-15, Berlin
 
@@ -236,7 +266,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Points at exactly (0,0) — a common GPS glitch — are no longer accepted from any ingestion path (API, OwnTracks, Overland, Traccar, file imports) and no longer produce suggested visits at "Null Island". Existing (0,0) points are flagged as anomalies by a one-time cleanup that also removes visits placed at (0,0), tolerates legacy points without timestamps, and recalculates affected stats and tracks.
 - Point uploads from all ingestion paths (REST API, OwnTracks, Overland, Traccar) now retry transient statement and lock-wait timeouts, not just deadlocks, instead of failing the upload.
 - The DNS caching layer no longer crashes with a misleading `NoMethodError` when the SMTP server is not configured in the background worker, so email delivery surfaces the real configuration error instead. (#3038)
-
 
 ## [1.10.1] - 2026-07-19, Berlin
 

@@ -122,9 +122,13 @@ export class VisitPlaceSearch {
           return
         }
       }
-      await this.postJson(`/api/v1/visits/${this.visitId}/select_place`, {
-        photon: place,
-      })
+      if (place.id) {
+        await this.patchVisit({ place_id: place.id })
+      } else {
+        await this.postJson(`/api/v1/visits/${this.visitId}/select_place`, {
+          photon: place,
+        })
+      }
       this.done()
     } catch (_e) {
       this.renderError()

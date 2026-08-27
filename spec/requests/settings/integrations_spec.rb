@@ -112,13 +112,11 @@ RSpec.describe 'Settings::Integrations', type: :request do
     context 'when airtrail settings change' do
       let(:airtrail_url) { 'https://airtrail.test' }
 
-      before do
+      it 'persists settings and verifies the airtrail connection' do
         stub_request(:get, "#{airtrail_url}/api/flight/list?scope=mine")
           .to_return(status: 200, body: { success: true, flights: [] }.to_json,
                      headers: { 'Content-Type' => 'application/json' })
-      end
 
-      it 'persists settings and verifies the airtrail connection' do
         patch '/settings/integrations', params: {
           settings: { 'airtrail_url' => airtrail_url, 'airtrail_api_key' => 'k' }
         }
@@ -127,6 +125,19 @@ RSpec.describe 'Settings::Integrations', type: :request do
         follow_redirect!
         expect(flash[:notice]).to include('AirTrail connection verified')
         expect(user.reload.settings['airtrail_url']).to eq(airtrail_url)
+      end
+
+      it 'keeps malformed upstream responses within the flash cookie limit' do
+        stub_request(:get, "#{airtrail_url}/api/flight/list?scope=mine")
+          .to_return(status: 200, body: "<html>#{'x' * 12_000}")
+
+        patch '/settings/integrations', params: {
+          settings: { 'airtrail_url' => airtrail_url, 'airtrail_api_key' => 'k' }
+        }
+
+        expect(response).to redirect_to(settings_integrations_path)
+        expect(flash[:alert]).to start_with('AirTrail connection failed:')
+        expect(flash[:alert].bytesize).to be <= 512
       end
     end
 

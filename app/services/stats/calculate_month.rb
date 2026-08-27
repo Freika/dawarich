@@ -37,6 +37,7 @@ class Stats::CalculateMonth
       stat.assign_attributes(
         daily_distance: distance_by_day,
         distance: distance(distance_by_day),
+        flight_distance: flight_distance,
         toponyms: toponyms,
         h3_hex_ids: calculate_h3_hex_ids
       )
@@ -72,6 +73,10 @@ class Stats::CalculateMonth
     distance_by_day.sum { |day| day[1] }
   end
 
+  def flight_distance
+    Stats::FlightDistanceQuery.new(user, year, month).call
+  end
+
   def toponyms
     CountriesAndCities.new(
       points_in_local_month,
@@ -99,6 +104,7 @@ class Stats::CalculateMonth
     stat.update!(
       daily_distance: {},
       distance: 0,
+      flight_distance: flight_distance,
       toponyms: [],
       h3_hex_ids: {}
     )

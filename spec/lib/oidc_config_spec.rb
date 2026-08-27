@@ -23,6 +23,30 @@ RSpec.describe OidcConfig do
     it 'is false when client secret is missing' do
       expect(described_class.enabled?(base_env.merge('OIDC_CLIENT_SECRET' => nil))).to be false
     end
+
+    it 'is true when the secret is missing but PKCE is enabled' do
+      env = base_env.merge('OIDC_CLIENT_SECRET' => nil, 'OIDC_PKCE_ENABLED' => 'true')
+
+      expect(described_class.enabled?(env)).to be true
+    end
+
+    it 'is false when client id is missing even with PKCE enabled' do
+      env = base_env.merge('OIDC_CLIENT_ID' => '', 'OIDC_PKCE_ENABLED' => 'true')
+
+      expect(described_class.enabled?(env)).to be false
+    end
+  end
+
+  describe '.public_client?' do
+    it 'is true when PKCE is enabled without a client secret' do
+      env = base_env.merge('OIDC_CLIENT_SECRET' => nil, 'OIDC_PKCE_ENABLED' => 'true')
+
+      expect(described_class.public_client?(env)).to be true
+    end
+
+    it 'is false when a client secret is present' do
+      expect(described_class.public_client?(base_env.merge('OIDC_PKCE_ENABLED' => 'true'))).to be false
+    end
   end
 
   describe '.build' do
@@ -119,6 +143,26 @@ RSpec.describe OidcConfig do
           built = described_class.build(base_env.merge('OIDC_PKCE_ENABLED' => value))
           expect(built[:pkce]).to be(false), "expected pkce to be false when OIDC_PKCE_ENABLED=#{value.inspect}"
         end
+      end
+    end
+
+    context 'public client (PKCE without a client secret)' do
+      let(:public_env) { base_env.merge('OIDC_CLIENT_SECRET' => nil, 'OIDC_PKCE_ENABLED' => 'true') }
+
+      it 'sends no client authentication on the token request' do
+        expect(described_class.build(public_env)[:client_auth_method]).to eq(:none)
+      end
+
+      it 'leaves the client secret unset' do
+        expect(described_class.build(public_env)[:client_options][:secret]).to be_nil
+      end
+
+      it 'still enables PKCE' do
+        expect(described_class.build(public_env)[:pkce]).to be true
+      end
+
+      it 'keeps the default client authentication when a secret is present' do
+        expect(described_class.build(base_env)).not_to have_key(:client_auth_method)
       end
     end
   end

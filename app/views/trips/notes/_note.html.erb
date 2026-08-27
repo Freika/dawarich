@@ -1,8 +1,6 @@
 <turbo-frame id="note-<%= trip.id %>-<%= note.date %>">
   <div data-note-display="<%= note.date %>">
-    <div class="whitespace-pre-wrap text-sm text-base-content/80 mb-3">
-      <%= note.body %>
-    </div>
+    <div class="whitespace-pre-wrap text-sm text-base-content/80 mb-3"><%= note.body %></div>
     <div class="flex gap-2">
       <button class="btn btn-xs btn-ghost"
               data-action="click->trip-maplibre#showNoteForm"
