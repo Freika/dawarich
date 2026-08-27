@@ -147,6 +147,9 @@ class GoogleMaps::PhoneTakeoutImporter
 
   def point_hash(lat, lon, timestamp, raw_data, altitude: nil, activity_type: nil)
     altitude_value = altitude || raw_data['altitudeMeters']
+    altitude_decimal_supported = Point.altitude_decimal_supported?
+    altitude_decimal = decimal_metadata(:altitude_decimal, altitude_value) if altitude_decimal_supported
+    altitude_integer = integer_metadata(:altitude, altitude_value) if altitude_decimal || !altitude_decimal_supported
     motion_data = Points::MotionDataExtractor.from_google_phone_takeout(raw_data)
     motion_data['activity_type'] = activity_type if activity_type
 
@@ -154,12 +157,26 @@ class GoogleMaps::PhoneTakeoutImporter
       lonlat: "POINT(#{lon.to_f} #{lat.to_f})",
       timestamp:,
       motion_data: motion_data,
-      accuracy: raw_data['accuracyMeters'],
-      altitude: altitude_value,
+      accuracy: integer_metadata(:accuracy, raw_data['accuracyMeters']),
+      altitude: altitude_integer,
       velocity: raw_data['speedMetersPerSecond']
     }
-    attrs[:altitude_decimal] = altitude_value if Point.altitude_decimal_supported?
+    attrs[:altitude_decimal] = altitude_decimal if Point.altitude_decimal_supported?
     attrs
+  end
+
+  def integer_metadata(attribute, value)
+    Point.type_for_attribute(attribute.to_s).serialize(value)
+  rescue ActiveModel::RangeError
+    nil
+  end
+
+  def decimal_metadata(attribute, value)
+    decimal = Point.type_for_attribute(attribute.to_s).serialize(value)
+    column = Point.columns_hash.fetch(attribute.to_s)
+    limit = 10**(column.precision - column.scale)
+
+    decimal if decimal.nil? || decimal.abs < limit
   end
 
   def parse_visit_place_location(data_point)
