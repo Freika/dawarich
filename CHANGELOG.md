@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Fixed
 
+- Track generation no longer reports a failure when its temporary progress session expires during finalization.
 - Trip distance recalculation no longer fails when the computed distance exceeds the 4-byte integer limit, which GPS noise on a long trip can produce.
 - Integration settings now show bounded connection errors instead of failing when an upstream service returns an oversized malformed response.
 - Enhanced import extraction now retries transient database deadlocks instead of failing immediately.

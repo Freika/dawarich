@@ -59,9 +59,6 @@ class Tracks::BoundaryResolverJob < ApplicationJob
   end
 
   def finalize_session(_boundary_tracks_resolved)
-    session_data = session_manager.get_session_data
-    session_data['tracks_created']
-
     session_manager.mark_completed
   end
 
