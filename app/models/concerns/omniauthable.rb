@@ -8,7 +8,10 @@ module Omniauthable
       provider = access_token.provider.to_s
 
       if provider == 'openid_connect' && !oidc_auto_register_enabled?
-        return User.find_by(provider: provider, uid: access_token.uid.to_s)
+        user = User.unscoped.find_by(provider: provider, uid: access_token.uid.to_s)
+        raise Auth::FindOrCreateOauthUser::AccountPendingDeletion if user&.deleted?
+
+        return user
       end
 
       user, created = Auth::FindOrCreateOauthUser.new(

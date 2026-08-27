@@ -337,6 +337,17 @@ paths:
                     type: string
                   message:
                     type: string
+        '409':
+          description: account deletion is in progress
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
       requestBody:
         content:
           application/json:
@@ -389,6 +400,17 @@ paths:
                     nullable: true
         '401':
           description: google token verification failed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+        '409':
+          description: account deletion is in progress
           content:
             application/json:
               schema:
