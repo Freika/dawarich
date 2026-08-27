@@ -33,7 +33,7 @@ RSpec.describe 'Language setting', type: :request do
 
     flags = choices(response.body).map { |c| c.at_css('svg') }
     expect(flags).to all(be_present)
-    expect(flags.size).to eq(5)
+    expect(flags.size).to eq(6)
   end
 
   it 'marks the language the reader is already using' do

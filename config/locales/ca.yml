@@ -529,6 +529,8 @@ ca:
       training_center_files_tcx: Arxius Training Center (.tcx)
       csv: 'CSV:'
       location_data_csv: Dades d'ubicació (.csv)
+      mobile_photo_library: 'Biblioteca de fotos del mòbil:'
+      dawarich_mobile_app_export_json: Exportació de l'aplicació mòbil de Dawarich (.json)
       polarsteps: 'Polarsteps:'
       locations_json_json: locations.json (.json)
       zip: 'ZIP:'
@@ -869,6 +871,7 @@ ca:
         replay: Reproducció
         replay_points_for_the_current_date_range_r: Reprodueix els punts de l'interval de dates actual (R)
         poster_studio: Estudi de pòsters
+        video_studio: Estudi de vídeo
         settings: Configuració
         settings_s: Configuració (S)
         links: Enllaços
@@ -1286,6 +1289,45 @@ ca:
       delete_selected: Suprimeix els seleccionats
       are_you_sure: "Estàs segur?"
       select_all: Selecciona-ho tot
+  route_videos:
+    route_video:
+      download: Baixa l'MP4
+      delete: Suprimeix
+      delete_this_video: Suprimir aquest vídeo?
+      re_render: Torna a generar
+      expired_on: El fitxer del vídeo es va eliminar el %{date} per estalviar espai.
+      expired_hint: Se n'ha conservat la configuració — torna a generar-lo per refer-lo.
+    studio:
+      video_studio: Estudi de vídeo
+      close_studio: Tanca l'estudi
+      name: Nom
+      theme: Tema
+      route: Ruta
+      playback: Reproducció
+      reset: Restableix
+      format: Format
+      format_portrait: Story · 9:16 (vertical)
+      format_landscape: Ample · 16:9 (panoràmic)
+      format_square: Feed · 1:1 (quadrat)
+      duration: Durada
+      camera: Càmera
+      camera_overview: Tota la ruta
+      camera_follow: Segueix la línia
+      track_color: Color de la ruta
+      track_width: Gruix de la ruta
+      units: Unitats
+      units_km: Quilòmetres
+      units_mi: Milles
+      hud_scale: Mida de la superposició
+      watermark: Mostra dawarich.app al vídeo
+      recent_videos: Vídeos recents
+      videos_from_save_to_gallery_they_stay_here: Vídeos que has desat des d'aquest estudi. Es queden aquí fins que els suprimeixis o fins que la retenció n'elimini el fitxer.
+      rendered_on_your_device_nothing_leaves_the_browser_until_you_save: Es genera al teu dispositiu — res no surt del navegador fins que ho desis.
+      render_a_video: Genera un vídeo
+      keep_this_video_in_your_gallery: Conserva aquest vídeo a la teva galeria
+      cancel: Cancel·la
+      save_to_gallery: Desa a la galeria
+      render_video: Genera el vídeo
   posters:
     poster:
       download_png: Descarrega el PNG
@@ -1654,6 +1696,12 @@ ca:
       body:
         live_location: Ubicació en directe
         time_period: Període de temps
+        make_something: Crea alguna cosa
+        make_something_intro: Un enllaç continua compartint les teves dades. Amb això crees un fitxer que publiques un cop i no queda res compartit.
+        make_video: Vídeo de la ruta
+        make_video_hint: Una reproducció animada d'aquest període, com a MP4.
+        make_poster: Pòster del mapa
+        make_poster_hint: Un mapa d'aquest període llest per imprimir, com a PNG o PDF.
         shared: Compartit
         your_live_location_is_shared_via_a_public_link: La teva ubicació en directe es comparteix mitjançant un enllaç públic.
       modal:
@@ -1675,6 +1723,10 @@ ca:
   shared:
     flash_message:
       close: Tanca
+    studio_switcher:
+      studios: Estudis
+      poster: Pòster
+      video: Vídeo
     footer:
       dawarich: Dawarich
     legal_footer:
@@ -2170,6 +2222,9 @@ ca:
       delete_trip: Suprimeix el viatge
       poster_unavailable: Disponible un cop calculada la ruta del viatge
       create_poster: Crea un pòster d'aquest viatge
+      video: Vídeo
+      video_unavailable: Disponible un cop calculada la ruta del viatge
+      create_video: Crea un vídeo d'aquest viatge
       more_on_source: Més a %{source}
     share_links:
       new:
@@ -2505,6 +2560,7 @@ ca:
         fit: FIT
         polarsteps: Polarsteps
         google_photos: Google Photos
+        mobile_photo_library: Biblioteca de fotos del mòbil
     place:
       source:
         manual: Manual
@@ -2547,6 +2603,18 @@ ca:
     boat: Vaixell
     motorcycle: Motocicleta
   helpers:
+    page_entries_info:
+      entry:
+        zero: resultats
+        one: resultat
+        other: resultats
+      one_page:
+        display_entries:
+          zero: No s'ha trobat cap resultat
+          one: Es mostra <b>1</b> %{entry_name}
+          other: Es mostren <b>tots els %{count}</b> %{entry_name}
+      more_pages:
+        display_entries: Es mostren %{entry_name} <b>%{first}&nbsp;–&nbsp;%{last}</b> de <b>%{total}</b>
     application:
       full_title: "%{page_title} | %{app_name}"
       expired: Caducat
@@ -2960,6 +3028,12 @@ ca:
       failed_to_start_poster_generation: No s'ha pogut iniciar la generació del pòster.
       poster_deleted: Pòster suprimit.
       untitled: Pòster sense títol
+    route_videos:
+      untitled: Vídeo sense títol
+      saved: Vídeo desat a la teva galeria.
+      failed_to_save: No s'ha pogut desar el vídeo.
+      rejected_file: Aquest fitxer no s'ha pogut desar com a vídeo.
+      deleted: Vídeo suprimit.
     settings:
       background_jobs:
         settings_updated: Configuració actualitzada
@@ -4142,6 +4216,27 @@ ca:
       ended: "La previsualització de %{layer} ha finalitzat."
       remaining: "Previsualitzant %{layer} — %{seconds}s restants."
       started: "Previsualitzant %{layer} durant %{seconds} segons."
+    video:
+      open_failed: "No s'ha pogut obrir l'estudi de vídeo: %{error}"
+      save_failed: "No s'ha pogut desar el vídeo: %{error}"
+      rendering: Generant… %{percent}%
+      uploading: Pujant… %{percent}%
+      ready: El teu vídeo està a punt — %{size} MB.
+      summary: "%{format} — %{width} × %{height} · Tema: %{theme} · %{seconds}s a 30 fps"
+      unsupported_browser: Aquest navegador no pot codificar vídeo. Prova amb un Chrome, Edge, Safari o Firefox actual.
+      empty_track: Aquest interval no té cap ruta per animar. Tria un interval amb almenys dos punts.
+      restoring_range: Restaurant l'interval amb què es va fer aquest vídeo…
+      range_mismatch: Aquest vídeo es va fer amb %{range}. Obre aquest interval per tornar-lo a generar exactament igual — si no, obtindràs la ruta que es veu ara a la pantalla.
+      stats:
+        distance: Distància
+        duration: Durada
+        avg_speed: Velocitat mitjana
+      hud:
+        day: DIA
+        distance: DISTÀNCIA
+        of_total: DEL TOTAL
+        tagline: HISTORIAL D'UBICACIONS PRIVAT
+        travelled_over: recorreguts en %{days} dies
     poster:
       categories:
         print: Impressió

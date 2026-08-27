@@ -529,6 +529,8 @@ pl:
       training_center_files_tcx: Pliki Training Center (.tcx)
       csv: 'CSV:'
       location_data_csv: Dane lokalizacji (.csv)
+      mobile_photo_library: 'Mobilna biblioteka zdjęć:'
+      dawarich_mobile_app_export_json: Eksport z aplikacji mobilnej Dawarich (.json)
       polarsteps: 'Polarsteps:'
       locations_json_json: locations.json (.json)
       zip: 'ZIP:'
@@ -869,6 +871,7 @@ pl:
         replay: Odtwórz
         replay_points_for_the_current_date_range_r: Odtwórz punkty dla bieżącego zakresu dat (R)
         poster_studio: Studio plakatów
+        video_studio: Studio wideo
         settings: Ustawienia
         settings_s: Ustawienia (S)
         links: Linki
@@ -1286,6 +1289,45 @@ pl:
       delete_selected: Usuń zaznaczone
       are_you_sure: Czy na pewno chcesz kontynuować?
       select_all: Zaznacz wszystko
+  route_videos:
+    route_video:
+      download: Pobierz MP4
+      delete: Usuń
+      delete_this_video: Usunąć ten film?
+      re_render: Renderuj ponownie
+      expired_on: Plik filmu usunięto %{date}, aby zwolnić miejsce.
+      expired_hint: Ustawienia zostały zachowane — wyrenderuj ponownie, aby utworzyć go na nowo.
+    studio:
+      video_studio: Studio wideo
+      close_studio: Zamknij studio
+      name: Nazwa
+      theme: Motyw
+      route: Trasa
+      playback: Odtwarzanie
+      reset: Resetuj
+      format: Format
+      format_portrait: Story · 9:16 (pionowy)
+      format_landscape: Szeroki · 16:9 (panoramiczny)
+      format_square: Post · 1:1 (kwadrat)
+      duration: Długość
+      camera: Kamera
+      camera_overview: Cała trasa
+      camera_follow: Podążaj za linią
+      track_color: Kolor trasy
+      track_width: Grubość trasy
+      units: Jednostki
+      units_km: Kilometry
+      units_mi: Mile
+      hud_scale: Rozmiar nakładki
+      watermark: Pokazuj dawarich.app na filmie
+      recent_videos: Ostatnie filmy
+      videos_from_save_to_gallery_they_stay_here: Filmy zapisane z tego studia. Zostają tutaj, dopóki ich nie usuniesz albo plik nie zostanie usunięty automatycznie.
+      rendered_on_your_device_nothing_leaves_the_browser_until_you_save: Renderowane na Twoim urządzeniu — nic nie opuszcza przeglądarki, dopóki nie zapiszesz.
+      render_a_video: Wyrenderuj film
+      keep_this_video_in_your_gallery: Zachowaj ten film w swojej galerii
+      cancel: Anuluj
+      save_to_gallery: Zapisz w galerii
+      render_video: Renderuj film
   posters:
     poster:
       download_png: Pobierz PNG
@@ -1654,6 +1696,12 @@ pl:
       body:
         live_location: Lokalizacja na żywo
         time_period: Zakres czasu
+        make_something: Stwórz coś
+        make_something_intro: Link stale udostępnia Twoje dane. Tutaj powstaje plik, który publikujesz raz — i nic nie pozostaje udostępnione.
+        make_video: Film z trasy
+        make_video_hint: Animowana powtórka tego okresu jako plik MP4.
+        make_poster: Plakat z mapą
+        make_poster_hint: Gotowa do druku mapa tego okresu jako PNG lub PDF.
         shared: Udostępnione
         your_live_location_is_shared_via_a_public_link: Twoja lokalizacja na żywo jest udostępniana przez publiczny link.
       modal:
@@ -1675,6 +1723,10 @@ pl:
   shared:
     flash_message:
       close: Zamknij
+    studio_switcher:
+      studios: Studia
+      poster: Plakat
+      video: Film
     footer:
       dawarich: Dawarich
     legal_footer:
@@ -2170,6 +2222,9 @@ pl:
       delete_trip: Usuń podróż
       poster_unavailable: Dostępne po obliczeniu trasy podróży
       create_poster: Utwórz plakat tej podróży
+      video: Film
+      video_unavailable: Dostępne po obliczeniu trasy podróży
+      create_video: Utwórz film z tej podróży
       more_on_source: Więcej na %{source}
     share_links:
       new:
@@ -2560,6 +2615,7 @@ pl:
         fit: FIT
         polarsteps: Polarsteps
         google_photos: Google Photos
+        mobile_photo_library: Mobilna biblioteka zdjęć
     place:
       source:
         manual: Ręcznie
@@ -3027,6 +3083,12 @@ pl:
       failed_to_start_poster_generation: Nie udało się rozpocząć generowania plakatu.
       poster_deleted: Plakat usunięto.
       untitled: Plakat bez tytułu
+    route_videos:
+      untitled: Film bez tytułu
+      saved: Film zapisany w galerii.
+      failed_to_save: Nie udało się zapisać filmu.
+      rejected_file: Nie udało się zapisać tego pliku jako filmu.
+      deleted: Film usunięty.
     settings:
       background_jobs:
         settings_updated: Ustawienia zaktualizowano
@@ -4209,6 +4271,27 @@ pl:
       ended: Podgląd %{layer} zakończony.
       remaining: Podgląd %{layer} - pozostało %{seconds}s.
       started: Podgląd %{layer} przez %{seconds} sekund.
+    video:
+      open_failed: 'Nie udało się otworzyć studia wideo: %{error}'
+      save_failed: 'Nie udało się zapisać filmu: %{error}'
+      rendering: Renderowanie… %{percent}%
+      uploading: Przesyłanie… %{percent}%
+      ready: Twój film jest gotowy — %{size} MB.
+      summary: "%{format} — %{width} × %{height} · Motyw: %{theme} · %{seconds}s przy 30 kl./s"
+      unsupported_browser: Ta przeglądarka nie potrafi kodować wideo. Użyj aktualnej wersji Chrome, Edge, Safari lub Firefoksa.
+      empty_track: W tym zakresie nie ma trasy do animacji. Wybierz zakres z co najmniej dwoma punktami.
+      restoring_range: Przywracanie zakresu, z którego powstał ten film…
+      range_mismatch: Ten film powstał z zakresu %{range}. Otwórz ten zakres, aby wyrenderować go dokładnie tak samo — inaczej dostaniesz trasę widoczną teraz na ekranie.
+      stats:
+        distance: Dystans
+        duration: Czas trwania
+        avg_speed: Śr. prędkość
+      hud:
+        day: DZIEŃ
+        distance: DYSTANS
+        of_total: Z CAŁOŚCI
+        tagline: PRYWATNA HISTORIA LOKALIZACJI
+        travelled_over: przebyte w ciągu %{days} dni
     poster:
       categories:
         print: Druk
