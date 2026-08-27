@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Fixed
 
+- Track generation no longer reports a failure when its temporary progress session expires during finalization.
 - Places you created and named yourself keep their manual attribution when reverse geocoding refreshes them, so they stay ranked ahead of auto-created address places and stay visible on the map (#3418).
 - The map control cluster keeps Search, Create and Settings on phone-sized screens instead of hiding them; on short viewports it scrolls within the map area rather than running off the bottom (#3421).
 - Trip note text now uses consistent left alignment on every line (#3104).
