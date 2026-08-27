@@ -36,8 +36,8 @@ class Users::ExportData::Points
     Rails.logger.info "Streaming #{total_count} points to monthly files..."
     Rails.logger.debug "Starting export of #{total_count} points..."
 
-    user.points.find_in_batches(batch_size: BATCH_SIZE).with_index do |batch, _batch_index|
-      point_ids = batch.map(&:id)
+    user.points.in_batches(of: BATCH_SIZE) do |batch|
+      point_ids = batch.pluck(:id)
       batch_sql = ActiveRecord::Base.sanitize_sql_array([build_batch_query, point_ids])
       result = ActiveRecord::Base.connection.exec_query(batch_sql, 'Points Export Batch')
 

@@ -317,7 +317,7 @@ class User < ApplicationRecord
   def countries_visited_uncached
     countries = Set.new
 
-    stats.find_each do |stat|
+    stats.select(:id, :toponyms).find_each do |stat|
       toponyms = stat.toponyms
       next unless toponyms.is_a?(Array)
 
@@ -338,7 +338,7 @@ class User < ApplicationRecord
   def cities_visited_uncached
     cities = Set.new
 
-    stats.find_each do |stat|
+    stats.select(:id, :toponyms).find_each do |stat|
       toponyms = stat.toponyms
       next unless toponyms.is_a?(Array)
 

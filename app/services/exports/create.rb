@@ -35,10 +35,16 @@ class Exports::Create
   attr_reader :user, :export, :start_at, :end_at, :file_format
 
   def time_framed_points
-    user
-      .points
-      .select(Point.column_names - %w[raw_data])
-      .where(timestamp: start_at.to_i..end_at.to_i)
+    points = user.points.where(timestamp: start_at.to_i..end_at.to_i)
+
+    case file_format.to_sym
+    when :gpx
+      points.select(:id, :lonlat, :altitude, :altitude_decimal, :velocity, :timestamp, :course)
+    when :json
+      points.select(Point.column_names - %w[raw_data])
+    else
+      points
+    end
   end
 
   def build_export_tempfile
