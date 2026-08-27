@@ -119,6 +119,7 @@ class GoogleMaps::PhoneTakeoutImporter
     batch = @points_batch
     @points_batch = []
     bulk_insert_points(batch)
+    log_out_of_range_metadata
     @processed_points += batch.size
     broadcast_import_progress(import, @processed_points)
   end
@@ -146,6 +147,9 @@ class GoogleMaps::PhoneTakeoutImporter
   end
 
   def point_hash(lat, lon, timestamp, raw_data, altitude: nil, activity_type: nil)
+    safe_timestamp = integer_metadata(:timestamp, timestamp)
+    return if safe_timestamp.nil? && !timestamp.nil?
+
     altitude_value = altitude || raw_data['altitudeMeters']
     altitude_decimal_supported = Point.altitude_decimal_supported?
     altitude_decimal = decimal_metadata(:altitude_decimal, altitude_value) if altitude_decimal_supported
@@ -155,28 +159,43 @@ class GoogleMaps::PhoneTakeoutImporter
 
     attrs = {
       lonlat: "POINT(#{lon.to_f} #{lat.to_f})",
-      timestamp:,
+      timestamp: safe_timestamp,
       motion_data: motion_data,
       accuracy: integer_metadata(:accuracy, raw_data['accuracyMeters']),
       altitude: altitude_integer,
       velocity: raw_data['speedMetersPerSecond']
     }
-    attrs[:altitude_decimal] = altitude_decimal if Point.altitude_decimal_supported?
+    attrs[:altitude_decimal] = altitude_decimal if altitude_decimal_supported
     attrs
   end
 
   def integer_metadata(attribute, value)
     Point.type_for_attribute(attribute.to_s).serialize(value)
   rescue ActiveModel::RangeError
-    nil
+    discard_out_of_range(attribute)
   end
 
   def decimal_metadata(attribute, value)
     decimal = Point.type_for_attribute(attribute.to_s).serialize(value)
     column = Point.columns_hash.fetch(attribute.to_s)
     limit = 10**(column.precision - column.scale)
+    return decimal if decimal.nil? || decimal.abs < limit
 
-    decimal if decimal.nil? || decimal.abs < limit
+    discard_out_of_range(attribute)
+  end
+
+  def discard_out_of_range(attribute)
+    @out_of_range_metadata ||= Hash.new(0)
+    @out_of_range_metadata[attribute] += 1
+    nil
+  end
+
+  def log_out_of_range_metadata
+    return if @out_of_range_metadata.blank?
+
+    summary = @out_of_range_metadata.map { |attribute, count| "#{attribute}=#{count}" }.join(' ')
+    Rails.logger.warn("[#{importer_name}] discarded out-of-range values: #{summary}")
+    @out_of_range_metadata = nil
   end
 
   def parse_visit_place_location(data_point)

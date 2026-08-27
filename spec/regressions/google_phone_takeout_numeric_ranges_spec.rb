@@ -42,6 +42,25 @@ RSpec.describe 'Google phone takeout numeric metadata ranges' do
     expect(point.altitude).to be_nil
   end
 
+  it 'skips points whose timestamp exceeds the column range instead of failing the import' do
+    document = {
+      semanticSegments: [
+        {
+          startTime: '9999-12-31T23:59:59Z',
+          visit: { topCandidate: { placeLocation: { latLng: '48.8566,2.3522' } } }
+        },
+        {
+          startTime: '2024-06-15T11:00:00Z',
+          visit: { topCandidate: { placeLocation: { latLng: '48.8566,2.3522' } } }
+        }
+      ]
+    }
+
+    import_document(document)
+
+    expect(user.points.pluck(:timestamp)).to contain_exactly(Time.utc(2024, 6, 15, 11).to_i)
+  end
+
   def import_document(document)
     Tempfile.create(['phone-takeout-numeric-ranges', '.json']) do |file|
       file.write(JSON.generate(document))
