@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+## Added
+
+- Dawarich can now be used in Simplified Chinese: pick it under Settings → General. Thanks @AwHsR15 for the translation! (#3354)
+
 ## Fixed
 
 - Trip note text now uses consistent left alignment on every line (#3104).

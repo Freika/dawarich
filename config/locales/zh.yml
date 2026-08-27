@@ -537,6 +537,8 @@ zh:
       current_imports: 当前导入：
       select_one_or_multiple_files: 选择一个或多个文件
       files_will_be_uploaded_directly_to_storage_please_be_patient: 文件将直接上传到存储。上传时请耐心等待。
+      mobile_photo_library: 手机照片库：
+      dawarich_mobile_app_export_json: Dawarich 手机应用导出文件（.json）
     import:
       name: 名称
       imported_points: 导入的轨迹点
@@ -870,6 +872,7 @@ zh:
         settings: 设置
         settings_s: 设置 (S)
         links: 链接
+        video_studio: 视频工作室
       settings_panel:
         close_panel: 关闭面板
         layers: 图层
@@ -1120,6 +1123,12 @@ zh:
         train_tracks_and_rail_lines: 火车轨道和铁路线
         urban_amenities: 城市设施
         water_labels: 水域标签
+        tiled_rendering: 瓦片渲染
+        beta: 测试版
+        tiled_rendering_description: 在您平移时从矢量瓦片绘制点、路线、轨迹和迷雾，因此较长的日期范围只加载视图内的内容。路线显示您生成的轨迹，按轨迹着色。
+        tiled_rendering_caveats: 在刮刮地图关闭时生效。密集区域会合并为带点数的标记 — 放大即可展开单个点。点编辑不可用，路线按轨迹着色（平均速度，而非渐变），悬停路线不再显示弹窗 — 请改为点击轨迹，实时轨迹可能会延迟几分钟。
+        fill_gaps_with_the_default_basemap: 用默认底图填补空白区域
+        uncovered_areas_are_drawn_from_dawarich_s_default_tile_server: 适用于仅覆盖部分世界的瓦片集。未覆盖的区域将由 Dawarich 的默认瓦片服务器绘制，因此开启此项会向该服务器发送瓦片请求。
       visit_creation_modal:
         create_new_visit: 创建新到访记录
         visit_name: 到访记录名称 *
@@ -1467,6 +1476,14 @@ zh:
         save_test_connection: 保存并测试连接
         sync_now: 立即同步
         settings: 设置
+        services_nav: 集成服务
+        services:
+          geocoding: 地理编码
+          immich: Immich
+          photoprism: PhotoPrism
+          airtrail: AirTrail
+        status_connected: 已连接
+        status_failed: 上次连接尝试失败
     subscriptions:
       index:
         hello_there: 您好！
@@ -1593,6 +1610,55 @@ zh:
         minimum_points_to_count_as_a_visit: 计为一次到访所需的最少轨迹点数
         minimum_visit_duration_minutes: 最短到访持续时间（分钟）
         save_settings: 保存设置
+    geocoding:
+      show:
+        title: 地理编码
+        provider: 地理编码提供商
+        provider_hint: 用于对您的点进行反向地理编码以及地点和位置搜索的提供商。
+        intro: 地理编码将坐标转换为您的点和统计上的城市与国家名称，并为地点和位置搜索提供支持。
+        host_choice: Photon 服务器
+        choice_chibigeo: ChibiGeo 托管服务
+        choice_chibigeo_desc: 免费套餐：每天 2,500 次查询。开箱即用 — 只需添加您的 API 密钥。
+        choice_komoot: komoot 公共服务器
+        choice_komoot_desc: 免费的共享实例，限流为每秒一次请求。
+        choice_custom: 自定义主机
+        choice_custom_desc: 您自己的 Photon 实例或其他兼容的服务器。
+        recommended: 推荐
+        https_locked: 此主机始终启用 HTTPS。
+        https_on: 开启
+        https_off: 关闭
+        chibigeo_message: ChibiGeo 是由 Dawarich 团队打造的统一定价、隐私优先的地理编码服务。它与 Dawarich 开箱即用。需要 API 密钥。
+        chibigeo_limits: 免费的 Hobby 套餐每天包含 2,500 次查询，每秒 1 次请求 — 硬性上限，不可超额。
+        chibigeo_key_link: 获取您的免费 API 密钥
+        chibigeo_site_link: 什么是 ChibiGeo？
+        disabled: 已禁用
+        env_managed_notice: 地理编码目前由您的实例运营者设置的环境变量管理。仅在移除这些变量后，以下设置才会生效。
+        host: 主机
+        host_hint: 纯主机名，可带端口，例如 photon.example.com:2322
+        api_key: API 密钥
+        api_key_hint: 留空以保留已保存的密钥。
+        api_key_saved: 已为此提供商保存了一个密钥。
+        clear_api_key: 移除已保存的 API 密钥
+        use_https: 使用 HTTPS
+        rps: 每秒请求数
+        rps_hint_custom: 留空表示不限制。请根据您的服务器或套餐允许的数量设置。
+        rps_hint_chibigeo: 与您的 ChibiGeo 套餐保持一致 - Hobby 1、Self-Hoster 5、Builder 10、Scale 25。请求超过套餐允许的数量只会导致查询被拒绝。
+        rps_hint_komoot: komoot 对所有人强制每秒一次请求，因此此项固定。
+        komoot_warning: photon.komoot.io 是一个有严格速率限制的共享公共实例。请求被限流为每秒一次，批量地理编码会很慢。请考虑自行托管 Photon 实例。
+        komoot_no_api_key: komoot 公共服务器不需要 API 密钥 — 请留空。
+        save: 保存
+        test: 测试我的提供商
+        test_hint: 请先保存设置，然后再测试。即使环境变量处于启用状态，测试也会针对您自己的提供商配置执行一次查询。
+      update:
+        updated: 地理编码设置已更新。
+        disabled: 地理编码已禁用。
+        invalid_provider: 未知的地理编码提供商。
+      test:
+        not_configured: 您的帐户尚未配置地理编码提供商。请先保存一个提供商。
+        success: 成功！您的提供商将测试坐标解析为：%{place}。
+        empty: 提供商已响应，但未返回测试坐标的任何结果。
+        failure: 测试失败：%{error}
+        rate_limited: 提供商的速率限制当前繁忙 — 请稍后重试。
   share_links:
     hubs:
       body:
@@ -1600,6 +1666,12 @@ zh:
         time_period: 时间段
         shared: 共享
         your_live_location_is_shared_via_a_public_link: 您的实时位置通过公共链接共享。
+        make_something: 制作内容
+        make_something_intro: 链接会持续分享您的数据。以下方式生成一个文件，您发布一次即可，不会有任何内容保持共享状态。
+        make_video: 路线视频
+        make_video_hint: 此时段的动画回放，格式为 MP4。
+        make_poster: 地图海报
+        make_poster_hint: 此时段的可打印地图，格式为 PNG 或 PDF。
       modal:
         share: 共享
         close: 关闭
@@ -1813,6 +1885,10 @@ zh:
         your_lite_plan_includes_the_last_12_months_of_data: 您的 Lite 计划包含最近 12 个月的数据。
         upgrade_to_pro: 升级到 Pro
         dismiss: 关闭
+    studio_switcher:
+      studios: 工作室
+      poster: 海报
+      video: 视频
   shared_links:
     expires_field:
       expires_optional: 过期（可选）
@@ -1911,6 +1987,7 @@ zh:
       close: 关闭
       cities_visited: 到访过的城市
       points_that_were_reverse_geocoded_but_had_no_data: 已完成反向地理编码但没有数据的轨迹点
+      percent_of_total: 占所有点的 %{percent}%%
     stat:
       total_distance: 总距离
       year_month: "%{year}/%{month}"
@@ -2115,6 +2192,9 @@ zh:
       poster_unavailable: 行程路线计算完成后即可使用
       create_poster: 创建此行程的海报
       more_on_source: 来自 %{source} 的更多信息
+      video: 视频
+      video_unavailable: 行程路线计算完成后可用
+      create_video: 为此行程创建回放视频
     share_links:
       new:
         share_trip: 共享 %{trip}
@@ -2474,6 +2554,7 @@ zh:
         fit: FIT
         polarsteps: Polarsteps
         google_photos: Google 相册
+        mobile_photo_library: 手机照片库
     place:
       source:
         manual: 手动
@@ -2516,6 +2597,18 @@ zh:
     boat: 船
     motorcycle: 摩托车
   helpers:
+    page_entries_info:
+      entry:
+        zero: 条记录
+        one: 条记录
+        other: 条记录
+      one_page:
+        display_entries:
+          zero: 未找到任何记录
+          one: 正在显示 <b>1</b> %{entry_name}
+          other: 正在显示<b>全部 %{count}</b> %{entry_name}
+      more_pages:
+        display_entries: "正在显示第 <b>%{first}&nbsp;-&nbsp;%{last}</b> %{entry_name}，共 <b>%{total}</b>"
     application:
       full_title: "%{page_title} | %{app_name}"
       expired: 已过期
@@ -2704,6 +2797,10 @@ zh:
             start_at_and_end_at_are_required: 需要 start_at 和 end_at
             invalid_date_format: 日期格式无效
             user_is_not_part_of_a_family: 用户不属于某个家庭
+          location_requests:
+            not_found: 未找到位置请求
+          sharing:
+            missing_required_parameter_param: 缺少必需的参数：%{parameter}
         imports:
           pending:
             an_error_occurred: 发生错误
@@ -3117,6 +3214,12 @@ zh:
       bulk_removed:
         one: "%{count} 条到访记录已删除。您的轨迹点仍然保留。"
         other: "%{count} 条到访记录已删除。您的轨迹点仍然保留。"
+    route_videos:
+      untitled: 未命名视频
+      saved: 视频已保存到您的图库。
+      failed_to_save: 保存视频失败。
+      rejected_file: 该文件无法保存为视频。
+      deleted: 视频已删除。
   visit_statuses:
     suggested: 已建议
     confirmed: 已确认
@@ -3270,6 +3373,10 @@ zh:
         enabled_for_hours:
           one: 位置共享已启用，持续 %{count} 小时
           other: 位置共享已启用，持续 %{count} 小时
+      respond_to_location_request:
+        an_error_occurred: 发生错误
+        not_authorized: 您无权回应此请求
+        no_longer_actionable: 此请求已过期或已被回应
     fit:
       importer:
         fit_parsing_error_message: FIT 解析错误：%{message}
@@ -3711,6 +3818,7 @@ zh:
       tourism_culture: 旅游与文化
       services_civic: 服务与市政
       urban_amenities: 城市设施
+      failed_to_load_track_details: 加载轨迹详情失败
     common:
       add_row: 添加行
       and: 和
@@ -3752,6 +3860,16 @@ zh:
         one: "%{distance} %{unit} | %{count} 个轨迹点"
         other: "%{distance} %{unit} | %{count} 个轨迹点"
       updating: 正在更新地图...
+      tiled_rendering:
+        inactive_note:
+          one: '%{layers} 开启时不可用 — 它需要完整的点集。'
+          other: '%{layers} 开启时不可用 — 它们需要完整的点集。'
+        editing_unavailable: 瓦片渲染下不可用，矢量瓦片没有可拖动的点
+        failed: 无法加载地图瓦片。请尝试缩短日期范围，或在地图设置中关闭瓦片渲染。
+        tracks_pending: 此视图中没有轨迹。瓦片渲染下的路线显示您生成的轨迹 — 请平移地图或扩大日期范围，如果您的历史记录是最近导入的，请稍后再查看。
+        splitting_unavailable: 瓦片渲染下不使用 — 路线跟随您生成的轨迹。
+        blockers:
+          scratch: 刮刮地图
     replay:
       no_data_at_this_time: 此时无数据
       pause: 暂停
@@ -3945,6 +4063,7 @@ zh:
         one: "%{count} 项未保存"
         other: "%{count} 项未保存"
       unsaved_transportation_changes: 点击“应用”以保存并重新计算。
+      tiles_fallback_unavailable: 仅适用于 {z}/{x}/{y} 瓦片 URL — MapLibre 样式 URL 会替换整个底图
     upload:
       complete:
         one: "%{count} 个文件上传成功。准备提交。"
@@ -4070,7 +4189,7 @@ zh:
       tracks: 轨迹
       video: 视频
       area_number: 区域 %{id}
-      place_name_locked: 🔒 您已为此地点命名，自动命名不会更改它。将其重命名为“建议地点”即可交还自动命名。
+      place_name_locked: 🔒 您已为此地点命名，自动命名不会更改它。将其重命名为“Suggested place”即可交还自动命名。
     map_controls:
       add_visit: 添加一条到访记录
       create_place: 创建地点
@@ -4231,6 +4350,27 @@ zh:
       hours_short: "%{count}h"
       invalid_date: 无效日期
       minutes_short: "%{count}min"
+    video:
+      open_failed: 视频工作室打开失败：%{error}
+      save_failed: 保存视频失败：%{error}
+      rendering: 正在渲染… %{percent}%
+      uploading: 正在上传… %{percent}%
+      ready: 您的视频已就绪 — %{size} MB。
+      summary: '%{format} — %{width} × %{height} · 主题：%{theme} · %{seconds} 秒，30 fps'
+      unsupported_browser: 此浏览器无法编码视频。请尝试使用最新版 Chrome、Edge、Safari 或 Firefox。
+      empty_track: 此范围内没有可用于动画的路线。请选择至少包含两个点的范围。
+      restoring_range: 正在恢复此视频所用的范围…
+      range_mismatch: 此视频由 %{range} 制作。打开该范围可完全一致地重新渲染 — 否则将使用当前屏幕上的路线。
+      stats:
+        distance: 距离
+        duration: 持续时间
+        avg_speed: 平均速度
+      hud:
+        day: 天数
+        distance: 距离
+        of_total: 占总计
+        tagline: 私人位置历史
+        travelled_over: 历时 %{days} 天
   battery_statuses:
     unknown: 未知
     unplugged: 已拔出
@@ -4249,3 +4389,51 @@ zh:
       no_invitations: 没有待处理的邀请
       title: 家庭邀请
       view_invitation: 查看
+  activerecord:
+    errors:
+      models:
+        service_setting:
+          host_required: '%{provider} 需要一个主机。请输入您实例的主机名，例如 photon.example.com。'
+          host_invalid: 主机必须是纯主机名，可带端口或路径 — 不要 http:// 前缀，不要空格。
+          host_blocked: 无法使用此主机：%{reason}
+          api_key_required: '%{provider} 需要 API 密钥。'
+          chibigeo_api_key_required: ChibiGeo 需要 API 密钥。免费的 Hobby 套餐每天包含 2,500 次查询 — 请在 chibigeo.com 获取您的密钥。
+  route_videos:
+    route_video:
+      download: 下载 MP4
+      delete: 删除
+      delete_this_video: 删除此视频？
+      re_render: 重新渲染
+      expired_on: 视频文件已于 %{date} 移除以节省空间。
+      expired_hint: 其设置已保留 — 重新渲染即可再次生成。
+    studio:
+      video_studio: 视频工作室
+      close_studio: 关闭工作室
+      name: 名称
+      theme: 主题
+      route: 路线
+      playback: 播放
+      reset: 重置
+      format: 格式
+      format_portrait: 故事 · 9:16（竖向）
+      format_landscape: 宽屏 · 16:9（横向）
+      format_square: 信息流 · 1:1（方形）
+      duration: 时长
+      camera: 镜头
+      camera_overview: 整条路线
+      camera_follow: 跟随线路
+      track_color: 路线颜色
+      track_width: 路线宽度
+      units: 单位
+      units_km: 公里
+      units_mi: 英里
+      hud_scale: 叠加层大小
+      watermark: 在视频上显示 dawarich.app
+      recent_videos: 最近的视频
+      videos_from_save_to_gallery_they_stay_here: 您从此工作室保存的视频。它们会一直保留在这里，直到您删除，或保留策略移除文件。
+      rendered_on_your_device_nothing_leaves_the_browser_until_you_save: 在您的设备上渲染 — 在您保存之前，没有任何内容离开浏览器。
+      render_a_video: 渲染视频
+      keep_this_video_in_your_gallery: 将此视频保留在您的图库中
+      cancel: 取消
+      save_to_gallery: 保存到图库
+      render_video: 渲染视频

@@ -193,6 +193,8 @@
 
 ---
 
-## 关于本中文分支
+## 关于简体中文版
 
-本仓库（[dawarich-zh](https://github.com/AwHsR15/dawarich-zh)）是 [Freika/dawarich](https://github.com/Freika/dawarich) 的中文本地化分支，通过标准的 Rails I18n 机制新增了简体中文语言包（`config/locales/zh.yml` 等），在设置页即可切换为中文界面，不改动原有源码结构，便于持续同步上游更新。
+Dawarich 通过标准的 Rails I18n 机制内置了简体中文语言包（`config/locales/zh.yml` 等），无需额外配置。在「设置 → 通用」页面即可将界面切换为中文。
+
+本文档是 [README.md](README.md) 的中文翻译。如果两者内容不一致，请以英文版为准。
