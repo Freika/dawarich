@@ -39,6 +39,7 @@ class Exports::Create
       .points
       .select(Point.column_names - %w[raw_data])
       .where(timestamp: start_at.to_i..end_at.to_i)
+      .preload(:source)
   end
 
   def build_export_tempfile

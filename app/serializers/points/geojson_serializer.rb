@@ -6,9 +6,13 @@ class Points::GeojsonSerializer
   end
 
   def call
+    # The point serializer reads the device combo through each point's
+    # source; preloading keeps that one query per collection.
+    collection = points.respond_to?(:preload) ? points.preload(:source) : points
+
     {
       type: 'FeatureCollection',
-      features: points.map do |point|
+      features: collection.map do |point|
         {
           type: 'Feature',
           geometry: {

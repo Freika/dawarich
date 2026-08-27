@@ -12,6 +12,10 @@ module PointDimensionReads
 
   DIMENSION_ATTRIBUTES = PointSource::COMBO_COLUMNS
 
+  # Only the plain readers are overridden. Enum sugar — suffix predicates,
+  # *_before_type_cast, where(battery_status: ...) — still reads the legacy
+  # column, which dual-write keeps identical; the table rewrite that drops
+  # the columns must re-point those (no app call sites exist today).
   included do
     belongs_to :source, class_name: 'PointSource', optional: true
 
@@ -19,7 +23,10 @@ module PointDimensionReads
       define_method(attribute) do
         return super() unless has_attribute?(:source_id) && source_id
 
-        source ? source.public_send(attribute) : super()
+        # No fallback past this line: the SQL read paths treat any stamped
+        # row as dimension-served, and a dangling source_id must not read
+        # differently here than there.
+        source&.public_send(attribute)
       end
     end
   end

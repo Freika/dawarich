@@ -21,7 +21,9 @@ RSpec.describe 'points export/import round trip' do
   it 'restores stamped and unstamped points to the same effective values' do
     stamped = create(:point, user: user, timestamp: 1_700_000_000)
     stamped.update_columns(tracker_id: 'legacy-divergent', topic: nil, battery_status: 0)
-    stamp!(stamped, tracker_id: 'pixel-8', topic: 'owntracks/eugene/pixel',
+    # bssid stays NULL on the dimension while the legacy column carries a
+    # value: the round trip must preserve the dimension's NULL.
+    stamp!(stamped, tracker_id: 'pixel-8', topic: 'owntracks/eugene/pixel', bssid: nil,
                     battery_status: 'unplugged', inrids: %w[home], in_regions: %w[berlin])
     unstamped = create(:point, user: user, timestamp: 1_700_000_060)
     unstamped.update_columns(source_id: nil, tracker_id: 'legacy-device', connection: 1)
