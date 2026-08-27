@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Existing saved places now appear in Map v2 visit searches and can be assigned to visits (#3083)
 - Orphaned track cleanup no longer removes a track that still owns points, and a database foreign key now backs that guarantee.
 - Raw data archival now rechecks each point under a row lock before linking it, preventing concurrent tracker updates from being attached to a stale archive snapshot. An archive that ends up matching no point is discarded, archival stops instead of re-reading points it cannot link, and restores ignore snapshots no longer linked to their source archive.
+- Google phone Timeline imports no longer fail when exports contain out-of-range altitude or accuracy metadata.
 
 ## Added
 
