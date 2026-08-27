@@ -2837,6 +2837,7 @@ pl:
         areas:
           area_was_successfully_deleted: Obszar został pomyślnie usunięty
         auth:
+          account_pending_deletion: Konto z tym adresem e-mail jest właśnie usuwane. Spróbuj ponownie, gdy usuwanie się zakończy.
           apple:
             apple_has_not_verified_this_email_sign_in_with_password: Apple nie zweryfikowało tego adresu e-mail. Zaloguj się hasłem i połącz konto w ustawieniach.
             this_email_already_has_a_dawarich_account_we_sent_a: Ten adres e-mail ma już konto Dawarich. Wysłaliśmy link potwierdzający na ten adres - kliknij go, aby połączyć Apple ID.
@@ -3204,6 +3205,7 @@ pl:
       export_failed_to_initiate_please_try_again: Nie udało się rozpocząć eksportu. Spróbuj ponownie.
     users:
       apple_oauth:
+        account_pending_deletion: Konto z tym adresem e-mail jest właśnie usuwane. Spróbuj ponownie, gdy usuwanie się zakończy.
         sign_in_with_apple_was_cancelled: Logowanie przez Apple zostało anulowane.
         sign_in_failed: 'Logowanie Apple nie powiodło się: %{message}'
         email_not_verified: Adres e-mail Twojego Apple ID nie jest zweryfikowany. Zweryfikuj go w Apple i spróbuj ponownie.
@@ -3221,6 +3223,7 @@ pl:
         year_end_digest_for_year_has_been_deleted: Roczne podsumowanie za %{year} zostało usunięte
         digest_not_found: Nie znaleziono podsumowania
       omniauth_callbacks:
+        account_pending_deletion: Konto z tym adresem e-mail jest właśnie usuwane. Spróbuj ponownie, gdy usuwanie się zakończy.
         invalid_credentials: Nieprawidłowe dane logowania. Sprawdź nazwę użytkownika i hasło.
         connection_timeout: Przekroczono czas połączenia. Spróbuj ponownie.
         security_error: Wykryto błąd bezpieczeństwa. Spróbuj ponownie.
