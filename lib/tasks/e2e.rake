@@ -377,8 +377,8 @@ namespace :e2e do
     PlaceVisit.where(visit_id: user.visits.select(:id)).delete_all
     PlaceVisit.where(place_id: user.places.select(:id)).delete_all
     TrackSegment.where(track_id: Track.where(user_id: user.id).select(:id)).delete_all
-    Track.where(user_id: user.id).delete_all
     user.points.delete_all
+    Track.where(user_id: user.id).delete_all
     user.visits.delete_all
     user.places.destroy_all
     user.areas.delete_all if user.respond_to?(:areas)
