@@ -11,6 +11,10 @@ module OidcConfig
     env['OIDC_CLIENT_ID'].to_s.strip != '' && (env['OIDC_CLIENT_SECRET'].to_s.strip != '' || pkce_enabled?(env))
   end
 
+  def self.public_client?(env = ENV)
+    env['OIDC_CLIENT_SECRET'].to_s.strip == '' && pkce_enabled?(env)
+  end
+
   def self.build(env = ENV)
     return nil unless enabled?(env)
 
@@ -25,6 +29,8 @@ module OidcConfig
         redirect_uri: redirect_uri(env)
       }
     }
+
+    config[:client_auth_method] = :none if public_client?(env)
 
     issuer = normalize_issuer(env['OIDC_ISSUER'].to_s)
 
