@@ -105,9 +105,10 @@ class Users::ExportData::Points
   def build_full_query
     <<-SQL
       SELECT
-        p.id, p.battery_status, p.battery, p.timestamp, p.altitude, p.velocity, p.accuracy,
-        p.ping, p.tracker_id, p.topic, p.trigger, p.bssid, p.ssid, p.connection,
-        p.vertical_accuracy, p.mode, p.inrids, p.in_regions, p.raw_data,
+        p.id, CASE WHEN p.source_id IS NULL THEN p.battery_status ELSE ps.battery_status END AS battery_status, p.battery, p.timestamp, p.altitude, p.velocity, p.accuracy,
+        p.ping, CASE WHEN p.source_id IS NULL THEN p.tracker_id ELSE ps.tracker_id END AS tracker_id, CASE WHEN p.source_id IS NULL THEN p.topic ELSE ps.topic END AS topic, CASE WHEN p.source_id IS NULL THEN p.trigger ELSE ps.trigger END AS trigger, CASE WHEN p.source_id IS NULL THEN p.bssid ELSE ps.bssid END AS bssid, CASE WHEN p.source_id IS NULL THEN p.ssid ELSE ps.ssid END AS ssid,
+        CASE WHEN p.source_id IS NULL THEN p.connection ELSE ps.connection END AS connection,
+        p.vertical_accuracy, p.mode, CASE WHEN p.source_id IS NULL THEN p.inrids ELSE ps.inrids END AS inrids, CASE WHEN p.source_id IS NULL THEN p.in_regions ELSE ps.in_regions END AS in_regions, p.raw_data,
         p.city, p.country, p.geodata, p.reverse_geocoded_at, p.course,
         p.course_accuracy, p.external_track_id, p.created_at, p.updated_at,
         p.lonlat,
@@ -123,6 +124,7 @@ class Users::ExportData::Points
         v.started_at as visit_started_at,
         v.ended_at as visit_ended_at
       FROM points p
+      LEFT JOIN point_sources ps ON p.source_id = ps.id
       LEFT JOIN imports i ON p.import_id = i.id
       LEFT JOIN countries c ON p.country_id = c.id
       LEFT JOIN visits v ON p.visit_id = v.id
@@ -134,9 +136,10 @@ class Users::ExportData::Points
   def build_batch_query
     <<-SQL
       SELECT
-        p.id, p.battery_status, p.battery, p.timestamp, p.altitude, p.velocity, p.accuracy,
-        p.ping, p.tracker_id, p.topic, p.trigger, p.bssid, p.ssid, p.connection,
-        p.vertical_accuracy, p.mode, p.inrids, p.in_regions, p.raw_data,
+        p.id, CASE WHEN p.source_id IS NULL THEN p.battery_status ELSE ps.battery_status END AS battery_status, p.battery, p.timestamp, p.altitude, p.velocity, p.accuracy,
+        p.ping, CASE WHEN p.source_id IS NULL THEN p.tracker_id ELSE ps.tracker_id END AS tracker_id, CASE WHEN p.source_id IS NULL THEN p.topic ELSE ps.topic END AS topic, CASE WHEN p.source_id IS NULL THEN p.trigger ELSE ps.trigger END AS trigger, CASE WHEN p.source_id IS NULL THEN p.bssid ELSE ps.bssid END AS bssid, CASE WHEN p.source_id IS NULL THEN p.ssid ELSE ps.ssid END AS ssid,
+        CASE WHEN p.source_id IS NULL THEN p.connection ELSE ps.connection END AS connection,
+        p.vertical_accuracy, p.mode, CASE WHEN p.source_id IS NULL THEN p.inrids ELSE ps.inrids END AS inrids, CASE WHEN p.source_id IS NULL THEN p.in_regions ELSE ps.in_regions END AS in_regions, p.raw_data,
         p.city, p.country, p.geodata, p.reverse_geocoded_at, p.course,
         p.course_accuracy, p.external_track_id, p.created_at, p.updated_at,
         p.lonlat,
@@ -152,6 +155,7 @@ class Users::ExportData::Points
         v.started_at as visit_started_at,
         v.ended_at as visit_ended_at
       FROM points p
+      LEFT JOIN point_sources ps ON p.source_id = ps.id
       LEFT JOIN imports i ON p.import_id = i.id
       LEFT JOIN countries c ON p.country_id = c.id
       LEFT JOIN visits v ON p.visit_id = v.id
