@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Existing saved places now appear in Map v2 visit searches and can be assigned to visits (#3083)
 - Orphaned track cleanup no longer removes a track that still owns points, and a database foreign key now backs that guarantee.
 
+## Added
+
+- AirTrail flights now show as their own figure on the monthly stats page and in the monthly digest. Flight distance is reported next to the distance Dawarich tracked rather than added into it, so neither number changes meaning.
+
 ## [1.14.0] - 2026-08-27, Berlin
 
 ### Changed

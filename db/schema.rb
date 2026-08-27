@@ -86,6 +86,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_27_200100) do
     t.datetime "created_at", null: false
     t.bigint "distance", default: 0, null: false
     t.jsonb "first_time_visits", default: {}
+    t.bigint "flight_distance", default: 0, null: false
     t.integer "month"
     t.jsonb "monthly_distances", default: {}
     t.integer "period_type", default: 0, null: false
@@ -467,6 +468,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_27_200100) do
     t.datetime "created_at", null: false
     t.jsonb "daily_distance", default: {}
     t.bigint "distance", null: false
+    t.bigint "flight_distance", default: 0, null: false
     t.jsonb "h3_hex_ids", default: {}
     t.integer "month", null: false
     t.jsonb "sharing_settings", default: {}
