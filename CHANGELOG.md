@@ -13,6 +13,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## Fixed
 
 - Track generation no longer reports a failure when its temporary progress session expires during finalization.
+- Trip distance recalculation no longer fails when the computed distance exceeds the 4-byte integer limit, which GPS noise on a long trip can produce.
+- Integration settings now show bounded connection errors instead of failing when an upstream service returns an oversized malformed response.
+- Enhanced import extraction now retries transient database deadlocks instead of failing immediately.
+- A malformed or truncated upload no longer returns a server error; the API now rejects it cleanly.
+- OAuth sign-in now shows clear retry guidance while an account with the same email is still being deleted.
 - Places you created and named yourself keep their manual attribution when reverse geocoding refreshes them, so they stay ranked ahead of auto-created address places and stay visible on the map (#3418).
 - The map control cluster keeps Search, Create and Settings on phone-sized screens instead of hiding them; on short viewports it scrolls within the map area rather than running off the bottom (#3421).
 - Trip note text now uses consistent left alignment on every line (#3104).

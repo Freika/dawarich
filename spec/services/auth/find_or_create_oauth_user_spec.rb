@@ -103,6 +103,18 @@ RSpec.describe Auth::FindOrCreateOauthUser do
     end
   end
 
+  describe 'email collision with an account pending deletion' do
+    it 'raises AccountPendingDeletion instead of a validation error' do
+      existing = create(:user, email: 'deleted@example.com')
+      existing.mark_as_deleted!
+
+      expect do
+        build(provider: 'google_oauth2', provider_label: 'Google',
+              claims: { sub: 'deleted-google', email: 'deleted@example.com' }).call
+      end.to raise_error(Auth::FindOrCreateOauthUser::AccountPendingDeletion)
+    end
+  end
+
   describe 'missing email from apple (subsequent sign-in with no local record)' do
     it 'raises MissingOauthEmail instead of fabricating a synthetic address' do
       error = nil
@@ -123,6 +135,17 @@ RSpec.describe Auth::FindOrCreateOauthUser do
 
       expect(created).to be(true)
       expect(user.email).to eq('g-1@google.dawarich.app')
+    end
+  end
+
+  describe 'apple sign-in for an identity pending deletion' do
+    it 'raises AccountPendingDeletion even when Apple omits the email' do
+      existing = create(:user, provider: 'apple', uid: 'deleted-apple', email: 'deleted-apple@example.com')
+      existing.mark_as_deleted!
+
+      expect do
+        build(provider: 'apple', claims: { sub: 'deleted-apple', email: '' }).call
+      end.to raise_error(Auth::FindOrCreateOauthUser::AccountPendingDeletion)
     end
   end
 

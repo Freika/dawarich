@@ -3692,6 +3692,7 @@ fr:
         areas:
           area_was_successfully_deleted: L'aire a été supprimée avec succès
         auth:
+          account_pending_deletion: Un compte associé à cette adresse e-mail est en cours de suppression. Réessayez une fois la suppression terminée.
           apple:
             apple_has_not_verified_this_email_sign_in_with_password: Apple n'a pas
               vérifié cette adresse e-mail. Connectez-vous avec votre mot de passe,
@@ -4162,6 +4163,7 @@ fr:
         essayer à nouveau.
     users:
       apple_oauth:
+        account_pending_deletion: Un compte associé à cette adresse e-mail est en cours de suppression. Réessayez une fois la suppression terminée.
         sign_in_with_apple_was_cancelled: La connexion avec Apple a été annulée.
         sign_in_failed: 'Échec de la connexion Apple : %{message}'
         email_not_verified: Votre adresse e-mail Apple n'est pas vérifiée. Vérifiez-la
@@ -4190,6 +4192,7 @@ fr:
           a été supprimée
         digest_not_found: Synthèse non trouvée
       omniauth_callbacks:
+        account_pending_deletion: Un compte associé à cette adresse e-mail est en cours de suppression. Réessayez une fois la suppression terminée.
         invalid_credentials: Identifiants invalides. Veuillez vérifier votre nom d'utilisateur
           et votre mot de passe.
         connection_timeout: Délai de connexion expiré. Réessayez.
