@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Fixed
 
+- The map control cluster keeps Search, Create and Settings on phone-sized screens instead of hiding them; on short viewports it scrolls within the map area rather than running off the bottom (#3421).
 - Trip note text now uses consistent left alignment on every line (#3104).
 - Existing saved places now appear in Map v2 visit searches and can be assigned to visits (#3083)
 - Orphaned track cleanup no longer removes a track that still owns points, and a database foreign key now backs that guarantee.
