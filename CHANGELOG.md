@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## Fixed
 
 - Places you created and named yourself keep their manual attribution when reverse geocoding refreshes them, so they stay ranked ahead of auto-created address places and stay visible on the map (#3418).
+- The map control cluster keeps Search, Create and Settings on phone-sized screens instead of hiding them; on short viewports it scrolls within the map area rather than running off the bottom (#3421).
 - Trip note text now uses consistent left alignment on every line (#3104).
 - Existing saved places now appear in Map v2 visit searches and can be assigned to visits (#3083)
 - Orphaned track cleanup no longer removes a track that still owns points, and a database foreign key now backs that guarantee.
@@ -95,6 +96,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 - Four scheduled jobs (app version check, cache preheat, family location request expiry, points counter correction) were queued onto `default` instead of the queues their job classes declare, so they competed with higher-priority work — the cache preheat in particular could hold up imports, track generation and stats for minutes at a time. They now run on `app_version_checking`, `cache`, `families` and `low_priority` respectively.
+
+### Fixed
+
+- Track generation now retries when the cache connection pool is temporarily busy instead of dropping the job and reporting an error.
 
 ## [1.12.2] - 2026-08-15, Berlin
 
