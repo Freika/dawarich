@@ -25,6 +25,16 @@
     <div class="stat-desc"><%= x_than_average_distance(stat, @average_distance_this_year) %></div>
   </div>
 
+  <% if stat.flight_distance.positive? %>
+    <div class="stat place-items-center text-center">
+      <div class="stat-title flex items-center justify-center gap-1">
+        <%= icon 'plane' %> <%= t('.flight_distance') %>
+      </div>
+      <div class="stat-value text-info"><%= flight_distance_traveled(current_user, stat) %></div>
+      <div class="stat-desc"><%= t('.from_airtrail_not_counted_in_distance') %></div>
+    </div>
+  <% end %>
+
   <div class="stat place-items-center text-center">
     <div class="stat-title flex items-center justify-center gap-1">
       <%= icon 'calendar-check-2' %> <%= t('.active_days') %>
