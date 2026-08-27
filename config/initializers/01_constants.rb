@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'oidc_config'
+
 SELF_HOSTED = %w[true 1 yes on t].include?(ENV.fetch('SELF_HOSTED', 'true').to_s.delete(%q("')).strip.downcase)
 
 DISTANCE_UNITS = {
@@ -52,7 +54,7 @@ METRICS_PASSWORD = ENV.fetch('METRICS_PASSWORD', nil)
 OMNIAUTH_PROVIDERS =
   if SELF_HOSTED
     # Self-hosted: only OpenID Connect
-    ENV['OIDC_CLIENT_ID'].present? && ENV['OIDC_CLIENT_SECRET'].present? ? %i[openid_connect] : []
+    OidcConfig.enabled? ? %i[openid_connect] : []
   else
     # Cloud: only GitHub and Google
     providers = []
