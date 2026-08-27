@@ -41,7 +41,10 @@ class Exports::Create
     when :gpx
       points.select(:id, :lonlat, :altitude, :altitude_decimal, :velocity, :timestamp, :course)
     when :json
-      points.select(Point.column_names - %w[raw_data])
+      # The point serializer reads the device combo through each point's
+      # source; GPX never touches it, and its narrow select carries no
+      # source_id for a preload to use.
+      points.select(Point.column_names - %w[raw_data]).preload(:source)
     else
       points
     end

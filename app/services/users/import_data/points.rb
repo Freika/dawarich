@@ -193,6 +193,7 @@ class Users::ImportData::Points
     )
 
     ensure_lonlat_field(attributes, point_data)
+    deserialize_array_columns(attributes)
 
     attributes.delete('longitude')
     attributes.delete('latitude')
@@ -278,6 +279,18 @@ class Users::ImportData::Points
     else
       logger.debug "Visit not found for reference: #{visit_reference.inspect}"
       logger.debug "Available visits: #{visits_lookup.keys.inspect}"
+    end
+  end
+
+  # Export dumps carry the array columns as Postgres literals ('{home}'),
+  # which insert fine into the column but poison the dimension stamping:
+  # the resolver would wrap the string into a one-element array and mint a
+  # source row that matches nothing. Deserialize through the column's own
+  # type so old and new dumps alike arrive as real arrays.
+  def deserialize_array_columns(attributes)
+    %w[inrids in_regions].each do |column|
+      value = attributes[column]
+      attributes[column] = Point.type_for_attribute(column).deserialize(value) if value.is_a?(String)
     end
   end
 

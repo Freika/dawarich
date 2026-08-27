@@ -26,7 +26,10 @@ class Exports::PointGeojsonSerializer
 
     first = true
     points_scope.in_batches(of: BATCH_SIZE, order: :asc) do |batch|
-      batch.order(:timestamp).each do |point|
+      # Preload per batch: the point serializer reads the device combo
+      # through each point's source, and the batch relation does not carry
+      # the outer scope's preloads.
+      batch.order(:timestamp).preload(:source).each do |point|
         io.write(',') unless first
         first = false
 

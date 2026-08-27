@@ -4,6 +4,7 @@ class Point < ApplicationRecord
   include Nearable
   include Distanceable
   include Archivable
+  include PointDimensionReads
 
   self.ignored_columns += %w[latitude longitude]
 

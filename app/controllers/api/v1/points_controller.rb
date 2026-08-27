@@ -65,7 +65,9 @@ class Api::V1::PointsController < ApiController
     serialized_points = if slim_points?
                           Points::SlimCollectionQuery.new(points).call
                         else
-                          points.map { |point| point_serializer.new(point).call }
+                          # The serializer reads the device combo through each
+                          # point's source; preloading keeps that one query.
+                          points.preload(:source).map { |point| point_serializer.new(point).call }
                         end
 
     total_count = cache_count.to_i

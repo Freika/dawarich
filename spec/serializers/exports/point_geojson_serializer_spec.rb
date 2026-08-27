@@ -61,5 +61,27 @@ RSpec.describe Exports::PointGeojsonSerializer do
 
       expect(json['features']).to eq([])
     end
+
+    # The point serializer reads the device combo through each point's
+    # source; without the per-batch preload every stamped point costs its
+    # own dimension query across a whole export.
+    it 'loads the dimension in one query per batch, not one per point' do
+      3.times do |i|
+        point = create(:point, user: user, timestamp: 1_700_000_000 + i)
+        source = PointSource.create!(digest: format('%032x', i), tracker_id: "device-#{i}")
+        point.update_columns(source_id: source.id)
+      end
+
+      dimension_queries = []
+      callback = lambda do |_name, _started, _finished, _id, payload|
+        dimension_queries << payload[:sql] if payload[:sql].to_s.include?('point_sources')
+      end
+
+      ActiveSupport::Notifications.subscribed(callback, 'sql.active_record') do
+        described_class.new(user.points.order(:timestamp)).call.close!
+      end
+
+      expect(dimension_queries.size).to eq(1)
+    end
   end
 end
