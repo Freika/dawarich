@@ -393,6 +393,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_27_200100) do
     t.index ["visit_id"], name: "index_points_on_visit_id"
   end
 
+  create_table "points_post_ingest_batches", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "end_at", null: false
+    t.bigint "start_at", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["user_id", "start_at", "end_at"], name: "idx_on_user_id_start_at_end_at_0a7f816098", unique: true
+    t.index ["user_id"], name: "index_points_post_ingest_batches_on_user_id"
+  end
+
   create_table "points_raw_data_archives", force: :cascade do |t|
     t.datetime "archived_at", null: false
     t.integer "chunk_number", default: 1, null: false
@@ -689,6 +699,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_27_200100) do
   add_foreign_key "points", "tracks"
   add_foreign_key "points", "users"
   add_foreign_key "points", "visits"
+  add_foreign_key "points_post_ingest_batches", "users", on_delete: :cascade
   add_foreign_key "points_raw_data_archives", "users"
   add_foreign_key "posters", "users"
   add_foreign_key "route_videos", "users"

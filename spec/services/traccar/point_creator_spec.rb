@@ -68,6 +68,14 @@ RSpec.describe Traccar::PointCreator do
     expect(user.points_count).to eq(Point.where(user_id: user.id).count)
   end
 
+  it 'keeps the persisted point when Redis is unavailable during post-ingest scheduling' do
+    allow(Points::AnomalyFilterJob).to receive(:perform_later)
+      .and_raise(RedisClient::CannotConnectError, 'down')
+    allow(Rails.logger).to receive(:warn)
+
+    expect { call_service }.to change { Point.where(user:).count }.by(1)
+  end
+
   it 'does not inflate points_count on duplicate submissions' do
     call_service
     user.reload

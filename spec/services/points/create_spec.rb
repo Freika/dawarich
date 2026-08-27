@@ -75,6 +75,15 @@ RSpec.describe Points::Create do
         result = described_class.new(user, point_params).call
         expect(result).to eq(upsert_result)
       end
+
+      it 'returns the upsert result when Redis is unavailable during post-ingest scheduling' do
+        allow(Point).to receive(:archival_safe_upsert_all).and_return(upsert_result)
+        allow(Points::AnomalyFilterJob).to receive(:perform_later)
+          .and_raise(RedisClient::CannotConnectError, 'down')
+        allow(Rails.logger).to receive(:warn)
+
+        expect(described_class.new(user, point_params).call).to eq(upsert_result)
+      end
     end
 
     context 'with duplicate points' do

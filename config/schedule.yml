@@ -35,6 +35,11 @@ daily_track_generation_job:
   class: "Tracks::DailyGenerationJob"
   queue: tracks
 
+recover_point_post_ingest_batches_job:
+  cron: "* * * * *"
+  class: "Points::RecoverPostIngestBatchesJob"
+  queue: points
+
 nightly_reverse_geocoding_job:
   cron: "15 1 * * *" # every day at 01:15
   class: "Points::NightlyReverseGeocodingJob"

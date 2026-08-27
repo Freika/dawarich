@@ -33,11 +33,12 @@ class Points::Create
     if created_points.any?
       User.update_counters(user.id, points_count: inserted_count) if inserted_count.positive?
       timestamps = deduplicated_data.filter_map { |p| p[:timestamp]&.to_i }
-      Points::AnomalyFilterJob.perform_later(user.id, timestamps.min, timestamps.max) if timestamps.any?
-      Tracks::RealtimeDebouncer.new(user.id).trigger
-      Tracks::BackfillScheduler.new(user.id, timestamps).call
-      Visits::RealtimeDebouncer.new(user.id).trigger
-      Points::LiveBroadcaster.new(user.id, created_points, deduplicated_data).call
+      Points::PostIngestActions.new(
+        user_id: user.id,
+        timestamps:,
+        points: created_points,
+        payload: deduplicated_data
+      ).call
     end
 
     created_points

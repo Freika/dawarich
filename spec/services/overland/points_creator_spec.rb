@@ -48,6 +48,14 @@ RSpec.describe Overland::PointsCreator do
       expect(user.points_count).to eq(Point.where(user_id: user.id).count)
     end
 
+    it 'keeps persisted points when Redis is unavailable during post-ingest scheduling' do
+      allow(Points::AnomalyFilterJob).to receive(:perform_later)
+        .and_raise(RedisClient::CannotConnectError, 'down')
+      allow(Rails.logger).to receive(:warn)
+
+      expect { call_service }.to change { Point.where(user:).count }.by(1)
+    end
+
     it 'enqueues VisitSuggestingJob when reverse geocoding is enabled (regression for #1749)' do
       allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
 
