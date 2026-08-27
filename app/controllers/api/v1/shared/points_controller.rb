@@ -5,7 +5,10 @@ module Api
     module Shared
       class PointsController < BaseController
         MAX_POINTS = 10_000
-        LIVE_FRESHNESS_SECONDS = 15 * 60
+        # Configurable so distance-based location trackers (e.g. GPSlogger)
+        # that go quiet while stationary don't make a live share link say
+        # "location unknown" just because no point arrived in the last 15min.
+        LIVE_FRESHNESS_SECONDS = ENV.fetch('LIVE_SHARE_FRESHNESS_SECONDS', 15 * 60).to_i
 
         def index
           if link.resource_type.to_sym == :live
