@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Fixed
 
+- Enhanced import extraction now retries transient database deadlocks instead of failing immediately.
 - A malformed or truncated upload no longer returns a server error; the API now rejects it cleanly.
 - OAuth sign-in now shows clear retry guidance while an account with the same email is still being deleted.
 - Places you created and named yourself keep their manual attribution when reverse geocoding refreshes them, so they stay ranked ahead of auto-created address places and stay visible on the map (#3418).
