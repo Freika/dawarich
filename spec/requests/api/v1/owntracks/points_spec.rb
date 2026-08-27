@@ -82,6 +82,7 @@ RSpec.describe 'Api::V1::Owntracks::Points', type: :request do
         before do
           allow(OwnTracks::FriendsFormatter).to receive(:new).and_raise(StandardError, 'boom')
           allow(Rails.logger).to receive(:error)
+          allow(Sentry).to receive(:capture_exception)
         end
 
         it 'still accepts the point rather than making OwnTracks resend it' do
@@ -92,6 +93,7 @@ RSpec.describe 'Api::V1::Owntracks::Points', type: :request do
           expect(response).to have_http_status(:ok)
           expect(JSON.parse(response.body)).to eq([])
           expect(Rails.logger).to have_received(:error).with(/OwnTracks friends formatting failed/)
+          expect(Sentry).to have_received(:capture_exception)
         end
       end
 

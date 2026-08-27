@@ -92,9 +92,21 @@ description: 'Array of region names device is currently in' },
         let(:file) { File.read(file_path) }
         let(:json) { OwnTracks::RecParser.new(file).call }
         let(:point) { json.first }
-        let(:api_key) { create(:user).api_key }
+        let(:user) { create(:user) }
+        let(:family) { create(:family, creator: user) }
+        let(:relative) { create(:user) }
+        let(:api_key) do
+          create(:family_membership, family: family, user: user, role: :owner)
+          create(:family_membership, family: family, user: relative)
+          relative.update_family_location_sharing!(true, duration: 'permanent')
+          create(:point, user: relative, timestamp: 1.hour.ago.to_i)
 
-        run_test!
+          user.api_key
+        end
+
+        run_test! do |response|
+          expect(JSON.parse(response.body).map { _1['_type'] }).to eq(%w[card location])
+        end
       end
 
       response '401', 'Unauthorized' do

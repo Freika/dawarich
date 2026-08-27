@@ -9,11 +9,12 @@ class Families::Locations
 
   MAX_POINTS_PER_MEMBER = 5000
 
-  def call
+  def call(excluding: nil)
     return [] unless family_feature_available?
     return [] unless user.in_family?
 
     sharing_members = family_members_with_sharing_enabled
+    sharing_members = sharing_members.reject { _1.id == excluding } if excluding
     return [] unless sharing_members.any?
 
     build_family_locations(sharing_members)
@@ -37,6 +38,7 @@ class Families::Locations
 
   def family_members_with_sharing_enabled
     user.family.members
+        .includes(:family_membership)
         .select(&:family_sharing_enabled?)
   end
 

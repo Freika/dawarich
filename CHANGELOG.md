@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+## Added
+
+- OwnTracks in HTTP mode now shows your family members on its own map: every location upload is answered with the latest position of each family member sharing with you, so they appear as friends in the app alongside the Dawarich map.
+
 ## Fixed
 
 - Trip note text now uses consistent left alignment on every line (#3104).

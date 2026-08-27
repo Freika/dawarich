@@ -17,7 +17,7 @@ class OwnTracks::FriendsFormatter
   end
 
   def call
-    members = Families::Locations.new(user).call.reject { _1[:user_id] == user.id }
+    members = Families::Locations.new(user).call(excluding: user.id)
 
     members.flat_map { |member| [card_for(member), location_for(member)] }
   end
