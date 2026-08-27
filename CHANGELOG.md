@@ -95,6 +95,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Four scheduled jobs (app version check, cache preheat, family location request expiry, points counter correction) were queued onto `default` instead of the queues their job classes declare, so they competed with higher-priority work — the cache preheat in particular could hold up imports, track generation and stats for minutes at a time. They now run on `app_version_checking`, `cache`, `families` and `low_priority` respectively.
 
+### Fixed
+
+- Track generation now retries when the cache connection pool is temporarily busy instead of dropping the job and reporting an error.
+
 ## [1.12.2] - 2026-08-15, Berlin
 
 ### Added
