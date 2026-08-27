@@ -71,8 +71,6 @@ module Archivable
       order(Arel.sql('ST_X(lonlat::geometry), ST_Y(lonlat::geometry), timestamp, user_id'))
     end
 
-    private
-
     def with_write_contention_retry
       retries = 0
 
@@ -86,6 +84,8 @@ module Archivable
         retry
       end
     end
+
+    private
 
     def archival_reset_clauses
       table = connection.quote_table_name(table_name)

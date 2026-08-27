@@ -78,9 +78,32 @@ RSpec.describe Points::RawData::Archiver do
       expect(old_points.drop(1).map { |point| point.reload.raw_data_archive_id }).to all(eq(stale_archive_id))
     end
 
+    it 'stops re-fetching once a pass links no points' do
+      passes = 0
+      allow(archiver).to receive(:verify_archive_full!).and_wrap_original do |method, archive, *args|
+        passes += 1
+        raise 'archive_user kept re-fetching points it could not link' if passes > 3
+
+        Point.where(id: old_points.map(&:id)).update_all(raw_data: { pass: passes })
+        method.call(archive, *args)
+      end
+
+      expect { archiver.archive_user(user.id) }.not_to raise_error
+      expect(passes).to eq(1)
+    end
+
+    it 'discards an archive that ends up with no linked points' do
+      allow(archiver).to receive(:verify_archive_full!).and_wrap_original do |method, archive, *args|
+        Point.where(id: old_points.map(&:id)).update_all(raw_data: { source: 'concurrent ingest' })
+        method.call(archive, *args)
+      end
+
+      expect { archiver.archive_user(user.id) }.not_to change(Points::RawDataArchive, :count)
+    end
+
     it 'retries point flagging after write contention' do
       attempts = 0
-      allow(archiver).to receive(:sleep)
+      allow(Point).to receive(:sleep)
       allow(Point).to receive(:transaction).and_wrap_original do |method, *args, &block|
         attempts += 1
         raise ActiveRecord::Deadlocked if attempts == 1

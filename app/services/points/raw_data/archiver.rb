@@ -10,12 +10,6 @@ module Points
       SAFE_ARCHIVE_LAG = 2.months
       CHUNK_SIZE = 50_000
       FLAG_BATCH_SIZE = 5_000
-      FLAG_MAX_RETRIES = 3
-      FLAG_CONTENTION_ERRORS = [
-        ActiveRecord::Deadlocked,
-        ActiveRecord::LockWaitTimeout,
-        ActiveRecord::QueryCanceled
-      ].freeze
 
       def initialize
         @stats = { processed: 0, archived: 0, failed: 0 }
@@ -39,7 +33,16 @@ module Points
 
           break if rows.empty?
 
+          linked_before = @stats[:archived]
+
           break unless archive_month_groups(user_id, rows)
+
+          next unless @stats[:archived] == linked_before
+
+          Rails.logger.warn(
+            "Stopping archival for user #{user_id}: no points could be linked this pass"
+          )
+          break
         end
 
         @stats
@@ -118,6 +121,13 @@ module Points
         # Only flag points after verification succeeds, and only while their
         # raw_data still matches the snapshot stored in this archive.
         archived_count = flag_points_batched(point_ids, archive.id, compressed[:raw_data_checksums])
+
+        if archived_count.zero?
+          Rails.logger.warn("Discarding archive #{archive.id}: no points still matched the snapshot")
+          cleanup_failed_archive!(archive)
+
+          return 0
+        end
 
         report_metrics(archive, archived_count, compressed)
 
@@ -222,7 +232,7 @@ module Points
         total_flagged = 0
 
         point_ids.each_slice(FLAG_BATCH_SIZE) do |batch|
-          with_flag_contention_retry do
+          Point.with_write_contention_retry do
             Point.transaction do
               unchanged_ids = Point.raw_data_lock_order
                                    .where(id: batch, raw_data_archived: false, raw_data_archive_id: nil)
@@ -242,20 +252,6 @@ module Points
         end
 
         total_flagged
-      end
-
-      def with_flag_contention_retry
-        retries = 0
-
-        begin
-          yield
-        rescue *FLAG_CONTENTION_ERRORS => e
-          retries += 1
-          raise e if retries > FLAG_MAX_RETRIES
-
-          sleep(0.05 * retries)
-          retry
-        end
       end
 
       def create_archive_record(user_id, year, month, point_ids, encrypted, compressed)

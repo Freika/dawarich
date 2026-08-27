@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Trip note text now uses consistent left alignment on every line (#3104).
 - Existing saved places now appear in Map v2 visit searches and can be assigned to visits (#3083)
 - Orphaned track cleanup no longer removes a track that still owns points, and a database foreign key now backs that guarantee.
+- Raw data archival now rechecks each point under a row lock before linking it, preventing concurrent tracker updates from being attached to a stale archive snapshot. An archive that ends up matching no point is discarded, archival stops instead of re-reading points it cannot link, and restores ignore snapshots no longer linked to their source archive.
 
 ## Added
 
@@ -247,7 +248,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Point uploads from all ingestion paths (REST API, OwnTracks, Overland, Traccar) now retry transient statement and lock-wait timeouts, not just deadlocks, instead of failing the upload.
 - The DNS caching layer no longer crashes with a misleading `NoMethodError` when the SMTP server is not configured in the background worker, so email delivery surfaces the real configuration error instead. (#3038)
 
-
 ## [1.10.1] - 2026-07-19, Berlin
 
 ### Added
@@ -320,7 +320,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Re-evaluating anomalous points now refreshes the map immediately instead of occasionally serving a cached copy of the points until the next change.
 - Raw data archival: reading archived `raw_data` back works again (it silently returned nothing before), archive chunks are labeled with the points' actual month, archives are verified at write time, and the previously broken `points:raw_data:archive`/`archive_full` rake tasks work again.
 - Raw data archival, continued: re-importing a duplicate point with different `raw_data` now detaches it from its stale archive so the newer data can't be cleared away, and clearing archived data now waits out a 7-day cooling window. Restores are reported under the `restored` metric label instead of `removed` — update dashboards reading `points_total{operation="removed"}` accordingly.
-- Raw data archival now rechecks each point under a row lock before linking it, preventing concurrent tracker updates from being attached to a stale archive snapshot. Flagging retries database contention, and restores ignore snapshots no longer linked to their source archive.
 - User data exports now include archived `raw_data` as plain gzip files, so an export can be imported on a different instance (previously the archives were encrypted with the exporting instance's key and unreadable elsewhere).
 - Creating, updating, or deleting a user in Settings no longer shows a blank "HTTP ERROR 422" page when validation fails — the admin is redirected back with a message explaining what went wrong (e.g. password too short) (#3051)
 - Email delivery no longer times out with providers that use implicit TLS (SMTP port 465, e.g. many hosted mail services): set `SMTP_SSL=true` to enable it, and it is enabled automatically when `SMTP_PORT=465`. STARTTLS remains the default for all other ports (#3068)

@@ -65,6 +65,23 @@ RSpec.describe Points::RawData::Restorer do
       restorer.restore_to_database(user.id, 2024, 6)
     end
 
+    it 'retries a restore batch after write contention' do
+      archive
+      attempts = 0
+      allow(Point).to receive(:sleep)
+      allow(Point).to receive(:transaction).and_wrap_original do |method, *args, &block|
+        attempts += 1
+        raise ActiveRecord::Deadlocked if attempts == 1
+
+        method.call(*args, &block)
+      end
+
+      restorer.restore_to_database(user.id, 2024, 6)
+
+      expect(attempts).to be > 1
+      expect(archived_points.map { |point| point.reload.raw_data }).to all(eq({ 'lon' => 13.4, 'lat' => 52.5 }))
+    end
+
     it 'does not overwrite a point no longer linked to the archive' do
       archive
       changed_point = archived_points.first
