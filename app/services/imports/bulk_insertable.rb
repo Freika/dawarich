@@ -17,9 +17,11 @@ module Imports
       Rails.logger.info("[#{importer_name}] skipped #{zero_skipped} Null Island (0,0) points") if zero_skipped.positive?
       return 0 if unique_batch.empty?
 
+      dimension_resolver.stamp(unique_batch)
+
       result = Point.upsert_all(
         unique_batch,
-        unique_by: %i[lonlat timestamp user_id],
+        unique_by: %i[user_id timestamp lonlat],
         returning: Arel.sql('id'),
         on_duplicate: :skip
       )
@@ -28,6 +30,10 @@ module Imports
       skipped  = unique_batch.length - inserted
       record_batch_counters(unique_batch.length, skipped)
 
+      if inserted.positive?
+        Points::TileEpoch.bump(import.user_id, timestamps: unique_batch.map { |record| record[:timestamp] })
+      end
+
       inserted
     rescue StandardError => e
       raise if atomic_bulk_insert?
@@ -35,6 +41,13 @@ module Imports
       on_bulk_insert_error(e)
       create_import_error_notification("Failed to process #{importer_name} data: #{e.message}")
       0
+    end
+
+    # Memoised across batches: one import usually carries a single
+    # device/importer combo, so the resolver's cache turns the whole run into
+    # one lookup instead of one per batch.
+    def dimension_resolver
+      @dimension_resolver ||= Points::DimensionResolver.new
     end
 
     # Importers that wrap the whole import in a transaction override this to true, so an

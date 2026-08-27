@@ -9,7 +9,7 @@ class Place < ApplicationRecord
 
   DEFAULT_NAME = 'Suggested place'
 
-  belongs_to :user, optional: true # Optional until Stage 2 NOT NULL
+  belongs_to :user
   has_many :visits, dependent: :nullify
   # Reader surfaces (drawers, serializers, stats) must never count tombstoned
   # or declined visits; eager-loadable so list endpoints avoid N+1 counts.
@@ -38,12 +38,15 @@ class Place < ApplicationRecord
     manual.or(linked_to_confirmed_visits(user)).or(tagged)
   }
 
+  # Legacy places predate the lonlat column and carry coordinates only in the
+  # decimal columns; to_f keeps their JSON serialization numeric — BigDecimal
+  # would encode as a string.
   def lon
-    lonlat.x
+    lonlat&.x || longitude.to_f
   end
 
   def lat
-    lonlat.y
+    lonlat&.y || latitude.to_f
   end
 
   def name_locked?

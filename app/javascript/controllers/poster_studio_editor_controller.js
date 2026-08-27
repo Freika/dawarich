@@ -184,6 +184,16 @@ export default class extends Controller {
     this.element.classList.add("hidden")
   }
 
+  // Alternate view of the same track and date range; carry the provider so a
+  // trip-locked studio stays locked to that trip.
+  switchToVideo() {
+    const provider = this.provider
+    this.close()
+    document.dispatchEvent(
+      new CustomEvent("video-studio:open", { detail: { provider } }),
+    )
+  }
+
   teardown() {
     clearTimeout(this.restyleTimer)
     this.previewMap?.remove()

@@ -28,12 +28,14 @@ class User < ApplicationRecord
   has_many :stats,          dependent: :destroy
   has_many :exports,        dependent: :destroy
   has_many :posters,        dependent: :destroy
+  has_many :route_videos,   dependent: :destroy
   has_many :notifications,  dependent: :destroy
   has_many :areas,          dependent: :destroy
   has_many :visits,         dependent: :destroy
   has_many :visited_places, through: :visits, source: :place
   has_many :places,         dependent: :destroy
   has_many :tags,           dependent: :destroy
+  has_many :service_settings, dependent: :destroy
   has_many :trips,  dependent: :destroy
   has_many :tracks, dependent: :destroy
   has_many :flights, dependent: :destroy
@@ -43,6 +45,7 @@ class User < ApplicationRecord
   has_many :shared_links, dependent: :destroy
 
   after_create :create_api_key
+  after_create :seed_geocoding_settings_from_env, if: -> { DawarichSettings.self_hosted? }
   after_commit :activate, on: :create, if: -> { DawarichSettings.self_hosted? && !skip_auto_trial }
   after_commit :start_trial, on: :create, if: -> { !DawarichSettings.self_hosted? && !skip_auto_trial }
   after_commit :trigger_creation_webhook, on: :create,
@@ -211,10 +214,6 @@ class User < ApplicationRecord
 
   def total_reverse_geocoded_points
     StatsQuery.new(self).points_stats[:geocoded]
-  end
-
-  def total_reverse_geocoded_points_without_data
-    points.where(geodata: {}).count
   end
 
   def immich_integration_configured?
@@ -396,6 +395,13 @@ class User < ApplicationRecord
     self.api_key = SecureRandom.hex(32)
 
     save
+  end
+
+  def seed_geocoding_settings_from_env
+    Geocoding::SeedFromEnv.call(self)
+  rescue StandardError => e
+    Rails.logger.error("Failed to seed geocoding settings from ENV for user #{id}: #{e.class}: #{e.message}")
+    ExceptionReporter.call(e, 'Failed to seed geocoding settings from ENV')
   end
 
   def activate

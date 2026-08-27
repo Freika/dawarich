@@ -5,12 +5,12 @@
   <%= render 'settings/navigation' %>
 
   <% if @pro_required %>
-    <div class="card bg-base-200 shadow-xl">
+    <div class="rounded-box border border-base-content/10 bg-base-200">
       <div class="card-body text-center items-center py-12">
         <h2 class="text-2xl flex font-bold mb-2 items-center">
           <%= icon 'shield-check', class: 'mr-2 text-primary' %> <%= t('.immich_photoprism_integrations') %>
         </h2>
-        <p class="text-gray-600 mb-6 max-w-md">
+        <p class="text-base-content/60 mb-6 max-w-md">
           <%= t('.connect_your_photo_management_tools_to_see_your_photos_on') %>
         </p>
         <a href="<%= upgrade_url(utm_medium: 'settings', utm_content: 'integrations') %>"
@@ -20,170 +20,37 @@
       </div>
     </div>
   <% else %>
-    <div class="card bg-base-200 shadow-xl">
-      <%= form_for :settings, url: settings_integrations_path, method: :patch, data: { turbo_method: :patch, turbo: false } do |f| %>
-        <div class="card-body">
-          <div class="space-y-8 lg:grid lg:grid-cols-2 lg:gap-6 lg:space-y-0 animate-fade-in">
-            <div>
-              <h2 class="text-2xl font-bold mb-4 flex items-center">
-                <%= icon 'camera', class: 'mr-2 text-primary' %> <%= t('.immich_integration') %>
-              </h2>
-              <div class="bg-base-100 p-5 rounded-lg shadow-sm space-y-4">
-                <div class="form-control w-full">
-                  <%= f.label :immich_url, class: 'label' do %>
-                    <span class="label-text font-medium"><%= t('.immich_url') %></span>
-                  <% end %>
-                  <%= f.url_field :immich_url, value: current_user.safe_settings.immich_url, class: "input input-bordered w-full pr-10", placeholder: 'http://192.168.0.1:2283' %>
-                  <span class="label-text-alt mt-1"><%= t('.the_base_url_of_your_immich_instance') %></span>
-                </div>
-                <div class="form-control w-full">
-                  <%= f.label :immich_api_key, class: 'label' do %>
-                    <span class="label-text font-medium"><%= t('.immich_api_key') %></span>
-                  <% end %>
-                  <div class="relative">
-                    <%= f.password_field :immich_api_key, value: current_user.safe_settings.immich_api_key, class: "input input-bordered w-full pr-10", placeholder: t('.xxxxxxxxxxxxxx') %>
-                  </div>
-                  <span class="label-text-alt mt-1"><%= t('.found_in_your_immich_admin_panel_under_api_settings_required') %> <code class="text-xs"><%= t('.asset_read') %></code>, <code class="text-xs"><%= t('.asset_view') %></code><%= t('.and') %> <code class="text-xs"><%= t('.asset_update') %></code> <%= t('.for_photo_enrichment') %></span>
-                </div>
-                <div class="form-control">
-                  <label class="label cursor-pointer justify-start gap-3">
-                    <%= f.check_box :immich_skip_ssl_verification,
-                        checked: current_user.safe_settings.immich_skip_ssl_verification,
-                        class: "toggle toggle-warning",
-                        onchange: "document.getElementById('immich-ssl-warning').classList.toggle('hidden', !this.checked)" %>
-                    <span class="label-text"><%= t('.skip_ssl_certificate_verification_self_signed_certificates') %></span>
-                  </label>
-                  <div id="immich-ssl-warning" class="alert alert-warning mt-2 <%= 'hidden' unless current_user.safe_settings.immich_skip_ssl_verification %>">
-                    <%= icon 'triangle-alert'%>
-                    <span>
-                      <strong><%= t('.security_warning') %></strong> <%= t('.disabling_ssl_verification_makes_your_connection_vulnerable_to_man_in') %>
-                    </span>
-                  </div>
-                </div>
-                <div class="flex flex-wrap items-center gap-2">
-                  <%= button_tag t('.refresh_photo_cache'),
-                    name: 'refresh_photos_cache',
-                    value: '1',
-                    class: 'btn btn-sm btn-outline' %>
-                  <span class="label-text-alt"><%= t('.clears_cached_photo_metadata_and_thumbnails_for_all_integrations') %></span>
-                </div>
-              </div>
-            </div>
-            <div>
-              <h2 class="text-2xl font-bold mb-4 flex items-center">
-                <%= icon 'camera', class: 'mr-2 text-primary' %> <%= t('.photoprism_integration') %>
-              </h2>
-              <div class="bg-base-100 p-5 rounded-lg shadow-sm space-y-4">
-                <div class="form-control w-full">
-                  <%= f.label :photoprism_url, class: 'label' do %>
-                    <span class="label-text font-medium"><%= t('.photoprism_url') %></span>
-                  <% end %>
-                  <div class="relative">
-                    <%= f.url_field :photoprism_url, value: current_user.safe_settings.photoprism_url, class: "input input-bordered w-full pr-10", placeholder: 'http://192.168.0.1:2342' %>
-                  </div>
-                  <span class="label-text-alt mt-1"><%= t('.the_base_url_of_your_photoprism_instance') %></span>
-                </div>
-                <div class="form-control w-full">
-                  <%= f.label :photoprism_api_key, class: 'label' do %>
-                    <span class="label-text font-medium"><%= t('.photoprism_api_key') %></span>
-                  <% end %>
-                  <div class="relative">
-                    <%= f.password_field :photoprism_api_key, value: current_user.safe_settings.photoprism_api_key, class: "input input-bordered w-full pr-10", placeholder: t('.xxxxxxxxxxxxxx') %>
-                  </div>
-                  <span class="label-text-alt mt-1"><%= t('.found_in_your_photoprism_settings_under_library') %></span>
-                </div>
-                <div class="form-control">
-                  <label class="label cursor-pointer justify-start gap-3">
-                    <%= f.check_box :photoprism_skip_ssl_verification,
-                        checked: current_user.safe_settings.photoprism_skip_ssl_verification,
-                        class: "toggle toggle-warning",
-                        onchange: "document.getElementById('photoprism-ssl-warning').classList.toggle('hidden', !this.checked)" %>
-                    <span class="label-text"><%= t('.skip_ssl_certificate_verification_self_signed_certificates') %></span>
-                  </label>
-                  <div id="photoprism-ssl-warning" class="alert alert-warning mt-2 <%= 'hidden' unless current_user.safe_settings.photoprism_skip_ssl_verification %>">
-                    <%= icon 'triangle-alert'%>
-                    <span>
-                      <strong><%= t('.security_warning') %></strong> <%= t('.disabling_ssl_verification_makes_your_connection_vulnerable_to_man_in') %>
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
+    <div class="flex flex-col lg:flex-row gap-6 items-start">
+      <nav class="w-full lg:w-64 shrink-0 space-y-2" aria-label="<%= t('.services_nav') %>">
+        <% @services.each do |service| %>
+          <% active = service == @service %>
+          <%= link_to settings_integrations_path(service: service),
+                      class: "flex items-center gap-3 rounded-box border p-3 transition-colors " \
+                             "#{active ? 'border-primary/60 bg-base-200' : 'border-base-content/10 hover:border-base-content/25'}",
+                      aria: { current: active ? 'page' : nil },
+                      data: { testid: "integration-#{service}", status: @statuses.status(service) } do %>
+            <%= integration_icon(service) %>
+            <span class="font-medium flex-1 truncate"><%= t(".services.#{service}") %></span>
+            <%= integration_status_icon(@statuses.status(service)) %>
+          <% end %>
+        <% end %>
+      </nav>
 
-            <div class="lg:col-span-2">
-              <h2 class="text-2xl font-bold mb-4 flex items-center">
-                <%= icon 'plane', class: 'mr-2 text-primary' %> <%= t('.airtrail_integration') %>
-              </h2>
-              <div class="bg-base-100 p-5 rounded-lg shadow-sm space-y-4">
-                <div class="form-control w-full">
-                  <%= f.label :airtrail_url, class: 'label' do %>
-                    <span class="label-text font-medium"><%= t('.airtrail_url') %></span>
-                  <% end %>
-                  <%= f.url_field :airtrail_url, value: current_user.safe_settings.airtrail_url, class: "input input-bordered w-full pr-10", placeholder: 'https://airtrail.example.com' %>
-                  <span class="label-text-alt mt-1"><%= t('.the_base_url_of_your_airtrail_instance_your_flights_are') %></span>
-                </div>
-                <div class="form-control w-full">
-                  <%= f.label :airtrail_api_key, class: 'label' do %>
-                    <span class="label-text font-medium"><%= t('.airtrail_api_key') %></span>
-                  <% end %>
-                  <div class="relative">
-                    <%= f.password_field :airtrail_api_key, value: current_user.safe_settings.airtrail_api_key, class: "input input-bordered w-full pr-10", placeholder: t('.xxxxxxxxxxxxxx') %>
-                  </div>
-                  <span class="label-text-alt mt-1"><%= t('.create_an_api_key_in_airtrail_under_settings_rarr_security') %></span>
-                </div>
-                <div class="form-control">
-                  <label class="label cursor-pointer justify-start gap-3">
-                    <%= f.check_box :airtrail_skip_ssl_verification,
-                        checked: current_user.safe_settings.airtrail_skip_ssl_verification,
-                        class: "toggle toggle-warning",
-                        onchange: "document.getElementById('airtrail-ssl-warning').classList.toggle('hidden', !this.checked)" %>
-                    <span class="label-text"><%= t('.skip_ssl_certificate_verification_self_signed_certificates') %></span>
-                  </label>
-                  <div id="airtrail-ssl-warning" class="alert alert-warning mt-2 <%= 'hidden' unless current_user.safe_settings.airtrail_skip_ssl_verification %>">
-                    <%= icon 'triangle-alert'%>
-                    <span>
-                      <strong><%= t('.security_warning') %></strong> <%= t('.disabling_ssl_verification_makes_your_connection_vulnerable_to_man_in') %>
-                    </span>
-                  </div>
-                </div>
-                <% if current_user.safe_settings.settings['airtrail_last_synced_at'].present? %>
-                  <p class="label-text-alt"><%= t('.last_synced') %> <%= current_user.safe_settings.settings['airtrail_last_synced_at'] %></p>
-                <% end %>
-              </div>
-            </div>
-
-            <% unless DawarichSettings.self_hosted? || current_user.provider.blank? %>
-              <div class="lg:col-span-2">
-                <h2 class="text-2xl font-bold mb-4 flex items-center">
-                  <%= icon 'link', class: "text-primary mr-1" %> <%= t('.connected_accounts') %>
-                </h2>
-                <div class="bg-base-100 p-5 rounded-lg shadow-sm space-y-4">
-                  <p class="text-sm text-base-content/70">
-                    <%= t('.you_ve_connected_your_account_using_the_following_oauth_provider') %>
-                    <strong><%= current_user.provider.capitalize %></strong>
-                  </p>
-                </div>
-              </div>
-            <% end %>
-          </div>
-          <div class="card-actions justify-end mt-6">
-            <%= f.submit t('.save_test_connection'), class: "btn btn-primary" %>
-          </div>
-        </div>
-      <% end %>
+      <div class="flex-1 min-w-0 w-full">
+        <%= render "settings/integrations/#{@service}" %>
+      </div>
     </div>
 
-    <% if current_user.safe_settings.airtrail_url.present? %>
-      <div class="card bg-base-200 shadow-xl mt-6">
-        <div class="card-body flex-row items-center justify-between flex-wrap gap-3">
-          <div>
-            <h2 class="text-lg font-bold flex items-center">
-              <%= icon 'plane', class: 'mr-2 text-primary' %> <%= t('.sync_airtrail_flights') %>
-            </h2>
-            <span class="label-text-alt"><%= t('.flights_also_sync_automatically_once_a_day') %></span>
-          </div>
-          <%= button_to t('.sync_now'), settings_background_jobs_path(job_name: 'start_airtrail_import'),
-              method: :post, class: 'btn btn-primary btn-sm' %>
+    <% unless DawarichSettings.self_hosted? || current_user.provider.blank? %>
+      <div class="rounded-box border border-base-content/10 bg-base-200 mt-6 max-w-3xl">
+        <div class="card-body">
+          <h2 class="text-lg font-semibold flex items-center">
+            <%= icon 'link', class: 'text-primary mr-2 size-5' %> <%= t('.connected_accounts') %>
+          </h2>
+          <p class="text-sm text-base-content/60">
+            <%= t('.you_ve_connected_your_account_using_the_following_oauth_provider') %>
+            <strong><%= current_user.provider.capitalize %></strong>
+          </p>
         </div>
       </div>
     <% end %>

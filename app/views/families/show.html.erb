@@ -6,12 +6,12 @@
     <div class="flex items-center gap-2">
       <% if policy(@family).update? %>
         <%= link_to edit_family_path, class: "btn btn-outline btn-sm" do %>
-          <%= icon 'square-pen', class: 'w-4 h-4' %> <%= t('.edit') %>
+          <%= icon 'square-pen', class: 'w-4 h-4' %> <%= t('families.show.edit') %>
         <% end %>
       <% end %>
       <% if policy(@family).invite? && @family.can_add_members? %>
         <button class="btn btn-primary btn-sm" onclick="document.getElementById('invite-section').scrollIntoView({behavior:'smooth'})">
-          <%= icon 'circle-plus', class: 'w-4 h-4' %> <%= t('.invite') %>
+          <%= icon 'circle-plus', class: 'w-4 h-4' %> <%= t('families.show.invite') %>
         </button>
       <% end %>
     </div>

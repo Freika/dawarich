@@ -4,9 +4,26 @@ require 'rails_helper'
 
 RSpec.describe Place, type: :model do
   describe 'associations' do
+    it { is_expected.to belong_to(:user) }
     it { is_expected.to have_many(:visits).dependent(:nullify) }
     it { is_expected.to have_many(:place_visits).dependent(:destroy) }
     it { is_expected.to have_many(:suggested_visits).through(:place_visits) }
+  end
+
+  describe 'user ownership' do
+    it 'refuses to save a place without a user' do
+      place = build(:place, user: nil)
+
+      expect(place).not_to be_valid
+      expect(place.errors[:user]).to be_present
+    end
+
+    it 'rejects a NULL user_id at the database level' do
+      place = create(:place, user: create(:user))
+
+      expect { place.update_columns(user_id: nil) }
+        .to raise_error(ActiveRecord::NotNullViolation)
+    end
   end
 
   describe '.linked_to_confirmed_visits' do
@@ -170,11 +187,29 @@ RSpec.describe Place, type: :model do
       it 'returns the longitude' do
         expect(place.lon).to be_within(0.000001).of(13.0948638)
       end
+
+      context 'when a legacy place has no lonlat' do
+        it 'returns the longitude column as a Float' do
+          place.update_column(:lonlat, nil)
+
+          expect(place.reload.lon).to be_a(Float)
+          expect(place.reload.lon).to be_within(0.000001).of(13.0948638)
+        end
+      end
     end
 
     describe '#lat' do
       it 'returns the latitude' do
         expect(place.lat).to be_within(0.000001).of(54.2905245)
+      end
+
+      context 'when a legacy place has no lonlat' do
+        it 'returns the latitude column as a Float' do
+          place.update_column(:lonlat, nil)
+
+          expect(place.reload.lat).to be_a(Float)
+          expect(place.reload.lat).to be_within(0.000001).of(54.2905245)
+        end
       end
     end
   end

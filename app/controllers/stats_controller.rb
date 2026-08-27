@@ -72,6 +72,7 @@ status: :see_other
 
     @points_total = points_stats[:total]
     @points_reverse_geocoded = points_stats[:geocoded]
+    @points_reverse_geocoded_percentage = points_stats[:geocoded_percentage]
     @points_reverse_geocoded_without_data = points_stats[:without_data]
   end
 
@@ -102,7 +103,7 @@ status: :see_other
 
   def build_stats
     columns = %i[id year month distance updated_at user_id]
-    columns << :toponyms if DawarichSettings.reverse_geocoding_enabled?
+    columns << :toponyms if Geocoding::Config.for(current_user).enabled?
 
     current_user.scoped_stats
                 .select(columns)

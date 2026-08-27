@@ -29,15 +29,27 @@ class GoogleMaps::SemanticHistoryImporter
                    .reject { |record| Points::NullIsland.lonlat?(record[:lonlat]) }
     return if records.empty?
 
+    # Dual-write the dimension FK: the backfill only sweeps rows that exist
+    # when it passes. This importer bypasses Imports::BulkInsertable, so it
+    # stamps for itself.
+    dimension_resolver.stamp(records)
+
     Point.upsert_all(
       records,
-      unique_by: %i[lonlat timestamp user_id],
+      unique_by: %i[user_id timestamp lonlat],
       returning: false,
       on_duplicate: :skip
     )
     # rubocop:enable Rails/SkipsModelValidations
+    Points::TileEpoch.bump(user_id, timestamps: records.map { |record| record[:timestamp] })
   rescue StandardError => e
     create_notification(I18n.t('services.google_maps.semantic_history_importer.batch_failed', message: e.message))
+  end
+
+  # Memoised across batches: every point of one import shares a single
+  # topic/tracker_id combo, so the whole run costs one lookup.
+  def dimension_resolver
+    @dimension_resolver ||= Points::DimensionResolver.new
   end
 
   def prepare_point_data(point_data)

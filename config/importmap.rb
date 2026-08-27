@@ -16,6 +16,7 @@ pin '@hotwired/stimulus-loading', to: 'stimulus-loading.js', preload: true
 pin_all_from 'app/javascript/controllers', under: 'controllers'
 pin_all_from 'app/javascript/services', under: 'services'
 pin_all_from 'app/javascript/poster_studio', under: 'poster_studio'
+pin_all_from 'app/javascript/video_studio', under: 'video_studio'
 
 pin 'chartkick', to: 'chartkick.js'
 pin 'Chart.bundle', to: 'Chart.bundle.js'
@@ -28,3 +29,4 @@ pin 'emoji-mart' # @5.6.0
 pin 'maplibre-gl' # @5.12.0
 pin 'fflate' # @0.8.2
 pin 'h3-js' # @4.4.0
+pin 'mp4-muxer' # @5.2.2

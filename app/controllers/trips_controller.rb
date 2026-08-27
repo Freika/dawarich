@@ -2,7 +2,7 @@
 
 class TripsController < ApplicationController
   include FlashStreamable
-  include PosterStudioContext
+  include VideoStudioContext
 
   before_action :authenticate_user!
   before_action :authenticate_active_user!, only: %i[new create recalculate]
@@ -20,7 +20,7 @@ class TripsController < ApplicationController
     @photos_by_day = @trip.photos_by_day(@timezone)
     @day_notes = @trip.notes.index_by(&:date)
     @day_stats = compute_day_stats
-    load_poster_studio_context
+    load_video_studio_context
 
     return unless @trip.path.blank? || @trip.distance.blank? || @trip.visited_countries.blank?
 

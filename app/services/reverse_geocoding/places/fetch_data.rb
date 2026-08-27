@@ -8,7 +8,7 @@ class ReverseGeocoding::Places::FetchData
   end
 
   def call
-    unless DawarichSettings.reverse_geocoding_enabled?
+    unless Geocoding::Config.for(place.user_id).enabled?
       Rails.logger.warn('Reverse geocoding is not enabled')
 
       return
@@ -168,6 +168,7 @@ class ReverseGeocoding::Places::FetchData
     update_attributes = places_to_update.uniq(&:id).sort_by(&:id).map do |place|
       {
         id: place.id,
+        user_id: place.user_id,
         name: place.name,
         latitude: place.latitude,
         longitude: place.longitude,
@@ -200,8 +201,9 @@ class ReverseGeocoding::Places::FetchData
   end
 
   def geocoder_places
-    Geocoder.search(
-      [place.lat, place.lon],
+    Geocoding::Search.call(
+      user: place.user_id,
+      query: [place.lat, place.lon],
       limit: 10,
       distance_sort: true,
       radius: 1,

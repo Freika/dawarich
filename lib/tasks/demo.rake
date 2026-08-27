@@ -212,12 +212,12 @@ namespace :demo do
       rounded_lat = point.lat.round(5)
       rounded_lon = point.lon.round(5)
 
-      # Deliberately ownerless (no user_id): ownerless places are invisible to
-      # the user-scoped places API and immutable through app flows, so multiple
-      # e2e worker users can safely share these rows (visits reference them
-      # read-only). Scoping them per-user would surface ~100 extra "manual"
-      # places on the Places layer.
+      # Scoped to the seeding user: places.user_id is NOT NULL, so the previous
+      # ownerless rows shared across e2e worker seeds are no longer possible.
+      # Each seeded user now carries its own copy of these places, which does
+      # surface them on that user's Places layer.
       place = Place.find_or_initialize_by(
+        user: user,
         latitude: rounded_lat,
         longitude: rounded_lon
       )

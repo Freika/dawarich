@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_09_090100) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_25_120100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -315,13 +315,29 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_09_090100) do
     t.datetime "reverse_geocoded_at"
     t.integer "source", default: 0
     t.datetime "updated_at", null: false
-    t.bigint "user_id"
+    t.bigint "user_id", null: false
     t.index "(((geodata -> 'properties'::text) ->> 'osm_id'::text))", name: "index_places_on_geodata_osm_id"
     t.index "user_id, ((geodata ->> 'external_place_id'::text))", name: "idx_places_user_external_place_id", unique: true, where: "((geodata ->> 'external_place_id'::text) IS NOT NULL)"
     t.index ["demo"], name: "index_places_on_demo_true", where: "(demo = true)"
     t.index ["import_id"], name: "idx_places_import_id_extracted", where: "(import_id IS NOT NULL)"
     t.index ["lonlat"], name: "index_places_on_lonlat", using: :gist
     t.index ["user_id"], name: "index_places_on_user_id"
+  end
+
+  create_table "point_sources", id: :serial, force: :cascade do |t|
+    t.integer "battery_status"
+    t.string "bssid"
+    t.integer "connection"
+    t.datetime "created_at", null: false
+    t.string "digest", limit: 32, null: false
+    t.text "in_regions", array: true
+    t.text "inrids", array: true
+    t.string "ssid"
+    t.string "topic"
+    t.string "tracker_id"
+    t.integer "trigger"
+    t.datetime "updated_at", null: false
+    t.index ["digest"], name: "index_point_sources_on_digest", unique: true
   end
 
   create_table "points", force: :cascade do |t|
@@ -353,6 +369,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_09_090100) do
     t.bigint "raw_data_archive_id"
     t.boolean "raw_data_archived", default: false, null: false
     t.datetime "reverse_geocoded_at"
+    t.integer "source_id"
     t.string "ssid"
     t.integer "timestamp"
     t.string "topic"
@@ -366,18 +383,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_09_090100) do
     t.bigint "visit_id"
     t.index ["id"], name: "index_points_on_not_reverse_geocoded", where: "(reverse_geocoded_at IS NULL)"
     t.index ["import_id"], name: "index_points_on_import_id"
-    t.index ["lonlat", "timestamp", "user_id"], name: "index_points_on_lonlat_timestamp_user_id", unique: true
     t.index ["lonlat"], name: "index_points_on_lonlat", using: :gist
     t.index ["raw_data_archive_id"], name: "index_points_on_raw_data_archive_id"
     t.index ["track_id", "timestamp"], name: "idx_points_track_id_timestamp"
-    t.index ["track_id"], name: "index_points_on_track_id"
-    t.index ["user_id", "country_name"], name: "idx_points_user_country_name"
-    t.index ["user_id", "geodata"], name: "index_points_on_user_id_and_empty_geodata", where: "(geodata = '{}'::jsonb)"
     t.index ["user_id", "id"], name: "index_points_on_unarchived", where: "((raw_data_archived = false) AND (raw_data <> '{}'::jsonb))"
-    t.index ["user_id", "timestamp"], name: "idx_points_user_visit_null_timestamp", where: "(visit_id IS NULL)"
-    t.index ["user_id", "timestamp"], name: "index_points_on_user_id_and_timestamp", order: { timestamp: :desc }
+    t.index ["user_id", "timestamp", "lonlat"], name: "index_points_on_user_id_timestamp_lonlat", unique: true
     t.index ["user_id"], name: "idx_points_user_id_legacy_tracker", where: "((tracker_id)::text = ANY (ARRAY[('google-maps-timeline-export'::character varying)::text, ('google-maps-phone-timeline-export'::character varying)::text]))"
-    t.index ["user_id"], name: "index_points_on_user_id"
     t.index ["visit_id"], name: "index_points_on_visit_id"
   end
 
@@ -407,6 +418,31 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_09_090100) do
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
     t.index ["user_id"], name: "index_posters_on_user_id"
+  end
+
+  create_table "route_videos", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "expired_at"
+    t.string "name", null: false
+    t.jsonb "settings", default: {}, null: false
+    t.integer "status", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["user_id", "created_at"], name: "index_route_videos_on_user_id_and_created_at"
+  end
+
+  create_table "service_settings", force: :cascade do |t|
+    t.boolean "active", default: false, null: false
+    t.jsonb "config", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.text "credentials"
+    t.string "provider", null: false
+    t.integer "service", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["user_id", "service", "provider"], name: "index_service_settings_on_user_id_and_service_and_provider", unique: true
+    t.index ["user_id", "service"], name: "index_service_settings_on_user_service_active", unique: true, where: "active"
+    t.index ["user_id"], name: "index_service_settings_on_user_id"
   end
 
   create_table "shared_links", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -522,6 +558,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_09_090100) do
     t.index ["demo"], name: "index_tracks_on_demo_true", where: "(demo = true)"
     t.index ["dominant_mode"], name: "index_tracks_on_dominant_mode"
     t.index ["import_id"], name: "idx_tracks_import_id_extracted", where: "(import_id IS NOT NULL)"
+    t.index ["original_path"], name: "index_tracks_on_original_path", using: :gist
     t.index ["user_id", "start_at"], name: "idx_tracks_user_id_start_at"
     t.index ["user_id", "tracker_id", "end_at"], name: "idx_tracks_user_tracker_end_at"
     t.index ["user_id"], name: "index_tracks_on_user_id"
@@ -651,6 +688,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_09_090100) do
   add_foreign_key "points", "visits"
   add_foreign_key "points_raw_data_archives", "users"
   add_foreign_key "posters", "users"
+  add_foreign_key "route_videos", "users"
+  add_foreign_key "service_settings", "users"
   add_foreign_key "shared_links", "users", on_delete: :cascade
   add_foreign_key "stats", "users"
   add_foreign_key "taggings", "tags"

@@ -13,10 +13,6 @@ class DawarichSettings
       @photon_enabled ||= PHOTON_API_HOST.present?
     end
 
-    def photon_uses_komoot_io?
-      @photon_uses_komoot_io ||= PHOTON_API_HOST == 'photon.komoot.io'
-    end
-
     def photon_https_only_host?
       @photon_https_only_host ||= PHOTON_HTTPS_ONLY_HOSTS.include?(normalized_photon_host)
     end
@@ -78,13 +74,24 @@ class DawarichSettings
 
     def features_for(user)
       {
-        reverse_geocoding: reverse_geocoding_enabled?,
+        reverse_geocoding: Geocoding::Config.for(user).enabled?,
         family: family_feature_available_for?(user)
       }
     end
 
     def archive_raw_data_enabled?
       @archive_raw_data_enabled ||= ARCHIVE_RAW_DATA
+    end
+
+    # 0 (or a negative value) disables the age limit; videos then live until
+    # the per-user cap evicts them, or the user deletes them.
+    def video_retention_days
+      @video_retention_days ||= [VIDEO_RETENTION_DAYS, 0].max
+    end
+
+    # 0 (or a negative value) disables the per-user cap.
+    def video_max_per_user
+      @video_max_per_user ||= [VIDEO_MAX_PER_USER, 0].max
     end
 
     def two_factor_available?

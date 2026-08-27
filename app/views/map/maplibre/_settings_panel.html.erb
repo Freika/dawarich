@@ -70,19 +70,41 @@
               <span class="label-text font-medium"><%= t('.points') %></span>
             </label>
             <p class="text-sm text-base-content/60 ml-14"><%= t('.show_individual_location_points') %></p>
-            <label class="label cursor-pointer justify-start gap-3 ml-14 mt-1">
-              <input type="checkbox"
-                     class="toggle toggle-primary toggle-sm"
-                     data-maps--maplibre-target="pointsEditToggle"
-                     data-action="change->maps--maplibre#togglePointsEditing" />
-              <span class="label-text"><%= t('.edit_points') %></span>
-            </label>
-            <% if current_user.plan_restricted? %>
-              <p class="text-sm text-base-content/60 ml-24"><%= t('.allow_dragging_points_to_correct_their_position') %></p>
-              <p class="text-xs text-warning ml-24 mt-1"><%= t('.editing_points_is_a_pro_feature_this_stays_on_for') %></p>
-            <% else %>
-              <p class="text-sm text-base-content/60 ml-24"><%= t('.allow_dragging_points_to_correct_their_position_remembered_across_sessio') %></p>
-            <% end %>
+
+            <div class="ml-14 mt-3 space-y-3">
+              <div>
+                <label class="label cursor-pointer justify-start gap-3 py-0">
+                  <input type="checkbox"
+                         class="toggle toggle-primary toggle-sm"
+                         data-maps--maplibre-target="pointsEditToggle"
+                         data-action="change->maps--maplibre#togglePointsEditing" />
+                  <span class="label-text"><%= t('.edit_points') %></span>
+                </label>
+                <% if current_user.plan_restricted? %>
+                  <p class="text-sm text-base-content/60 ml-10 mt-1"><%= t('.allow_dragging_points_to_correct_their_position') %></p>
+                  <p class="text-xs text-warning ml-10 mt-1"><%= t('.editing_points_is_a_pro_feature_this_stays_on_for') %></p>
+                <% else %>
+                  <p class="text-sm text-base-content/60 ml-10 mt-1"><%= t('.allow_dragging_points_to_correct_their_position_remembered_across_sessio') %></p>
+                <% end %>
+                <%# A disabled control has to say why on the surface: the tooltip is invisible to touch and keyboard. %>
+                <p class="text-xs text-warning ml-10 mt-1 hidden"
+                   data-maps--maplibre-target="pointsEditUnavailableNote"></p>
+              </div>
+
+              <div>
+                <label class="label cursor-pointer justify-start gap-3 py-0">
+                  <input type="checkbox"
+                         class="toggle toggle-primary toggle-sm"
+                         data-maps--maplibre-target="pointsTiledToggle"
+                         data-action="change->maps--maplibre#togglePointsTiledRendering" />
+                  <span class="label-text"><%= t('.tiled_rendering') %></span>
+                  <span class="badge badge-sm badge-warning badge-outline"><%= t('.beta') %></span>
+                </label>
+                <p class="text-sm text-base-content/60 ml-10 mt-1"><%= t('.tiled_rendering_description') %></p>
+                <p class="text-xs text-base-content/50 ml-10 mt-1"><%= t('.tiled_rendering_caveats') %></p>
+                <p class="text-xs text-warning ml-10 mt-1 hidden" data-maps--maplibre-target="pointsTiledInactiveNote"></p>
+              </div>
+            </div>
           </div>
 
           <div class="divider"></div>
@@ -588,6 +610,15 @@
                    class="input input-bordered input-sm w-full"
                    data-action="change->maps--maplibre#updateVectorTilesUrl" />
             <p class="text-xs text-base-content/60 mt-1"><%= t('.serve_the_base_map_from_your_own_source_accepts_protomaps') %></p>
+
+            <label class="label cursor-pointer justify-start gap-2 mt-2 py-0">
+              <input type="checkbox"
+                     name="tilesFallback"
+                     class="checkbox checkbox-sm checkbox-primary"
+                     data-action="change->maps--maplibre#updateTilesFallback" />
+              <span class="label-text text-sm"><%= t('.fill_gaps_with_the_default_basemap') %></span>
+            </label>
+            <p class="text-xs text-base-content/60 mt-1"><%= t('.uncovered_areas_are_drawn_from_dawarich_s_default_tile_server') %></p>
           </div>
             </div>
           </details>
@@ -690,6 +721,7 @@
             </summary>
             <div class="collapse-content space-y-4">
           <!-- Route Generation Settings -->
+          <p class="text-xs text-warning hidden" data-maps--maplibre-target="routeSplittingUnavailableNote"></p>
           <div class="form-control w-full">
             <label class="label">
               <span class="label-text font-medium"><%= t('.meters_between_routes') %></span>

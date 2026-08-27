@@ -180,3 +180,122 @@ html.dark em-emoji-picker {
   border: none;
   border-radius: 0.5rem;
 }
+
+/* ===== Text resilience =====
+   The UI has to survive text that is longer than the English original:
+   translations (German compounds run 30-60% longer and offer no break
+   opportunity), user-supplied names, hostnames, hex values and emails.
+   These rules are the safety net; layout still has to opt into shrinking
+   with `min-w-0` wherever a flex or grid child holds text. */
+
+/* 1. A control grows to fit its label instead of clipping it.
+      DaisyUI pins .btn to a fixed `height`, so a label that wraps renders
+      outside the button's own background. Keep min-height (single-line
+      buttons are unchanged) but let the box grow. Circles and squares are
+      excluded — their fixed geometry is the point. */
+.btn:not(.btn-circle):not(.btn-square) {
+  height: auto;
+  padding-block: 0.4rem;
+}
+
+.btn-sm:not(.btn-circle):not(.btn-square) {
+  padding-block: 0.25rem;
+}
+
+.btn-xs:not(.btn-circle):not(.btn-square) {
+  padding-block: 0.125rem;
+}
+
+/* 2. A long word wraps instead of pushing its container wider than the
+      viewport. `break-word` only breaks words that cannot fit on a line
+      of their own, so normal prose is untouched.
+
+      Deliberately NOT paired with `min-width: 0` here: that belongs on the
+      flex/grid *child box* that should shrink, and blanket-applying it to
+      text elements collapses sized components (it turns a DaisyUI `.stats`
+      row into overlapping columns). Reach for `min-w-0` at the call site. */
+:where(
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6,
+    p,
+    li,
+    dd,
+    dt,
+    figcaption,
+    summary,
+    label,
+    .card-title,
+    .stat-title,
+    .stat-value,
+    .stat-desc,
+    .label-text,
+    .label-text-alt,
+    .badge,
+    .alert,
+    .tab,
+    .menu li > *
+  ) {
+  overflow-wrap: break-word;
+}
+
+/* 3. Table cells and definition values hold names, hosts and addresses the
+      user controls — never let those set the table's minimum width. */
+:where(td, th) {
+  overflow-wrap: break-word;
+}
+
+/* 4. Headings hyphenate, but only under protest.
+      This is load-bearing, not cosmetic: `overflow-wrap: break-word` lets a
+      word break during layout but does NOT lower the element's min-content
+      width, so a long heading still forces its flex/grid parent wider than
+      the viewport. Hyphenation does lower it. The character limits are what
+      keep it from looking cheap — never strand fewer than five characters,
+      so "Zusammenfassun-gen" is rejected and "Zusammen-fassungen" is used.
+      `balance` evens out the resulting lines. */
+:where(h1, h2, h3, h4, .card-title) {
+  text-wrap: balance;
+  hyphens: auto;
+  -webkit-hyphenate-limit-before: 5;
+  -webkit-hyphenate-limit-after: 5;
+  hyphenate-limit-chars: 12 5 5;
+}
+
+/* 5. Body copy below the tablet breakpoint does hyphenate — there the line is
+      short enough that a ragged edge costs more than a hyphen. The limits
+      forbid stranding fewer than four characters on either side, which is
+      what makes machine hyphenation look cheap. Needs a `lang` attribute to
+      pick the dictionary; the layout sets it from the user's locale. */
+@media (max-width: 640px) {
+  :where(p, .stat-title, .stat-desc, .label-text, .label-text-alt, dd, li) {
+    hyphens: auto;
+    -webkit-hyphenate-limit-before: 4;
+    -webkit-hyphenate-limit-after: 4;
+    hyphenate-limit-chars: 9 4 4;
+  }
+}
+
+/* 6. Header rows: title on the left, actions on the right. They must wrap
+      onto two lines rather than force the page to scroll sideways.
+      Use in place of a bare `flex justify-between items-center`. */
+.page-header-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+}
+
+.page-header-row > :first-child {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+/* :not(:first-child) so a header with a title and no actions keeps the
+   shrinkable rule above instead of this one, which cannot shrink. */
+.page-header-row > :last-child:not(:first-child) {
+  flex: 0 0 auto;
+}

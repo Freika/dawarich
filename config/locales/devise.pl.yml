@@ -1,0 +1,67 @@
+# Additional translations at https://github.com/heartcombo/devise/wiki/I18n
+
+pl:
+  devise:
+    confirmations:
+      confirmed: "Twój adres e-mail został pomyślnie potwierdzony."
+      send_instructions: "Za kilka minut otrzymasz wiadomość e-mail z instrukcją, jak potwierdzić swój adres e-mail."
+      send_paranoid_instructions: "Jeśli Twój adres e-mail istnieje w naszej bazie danych, za kilka minut otrzymasz wiadomość z instrukcją potwierdzenia adresu."
+    failure:
+      already_authenticated: "Jesteś już zalogowany."
+      inactive: "Twoje konto nie jest jeszcze aktywowane."
+      invalid: "Nieprawidłowy %{authentication_keys} lub hasło."
+      locked: "Twoje konto jest zablokowane."
+      last_attempt: "Masz jeszcze jedną próbę, zanim konto zostanie zablokowane."
+      not_found_in_database: "Nieprawidłowy %{authentication_keys} lub hasło."
+      timeout: "Twoja sesja wygasła. Zaloguj się ponownie, aby kontynuować."
+      unauthenticated: "Musisz się zalogować lub zarejestrować, aby kontynuować."
+      unconfirmed: "Musisz potwierdzić adres e-mail, aby kontynuować."
+      deleted: "Twoje konto zostało usunięte."
+    mailer:
+      confirmation_instructions:
+        subject: "Instrukcja potwierdzenia konta"
+      reset_password_instructions:
+        subject: "Instrukcja resetowania hasła"
+      unlock_instructions:
+        subject: "Instrukcja odblokowania konta"
+      email_changed:
+        subject: "Zmiana adresu e-mail"
+      password_change:
+        subject: "Zmiana hasła"
+    omniauth_callbacks:
+      failure: "Nie udało się uwierzytelnić za pomocą %{kind}, ponieważ: \"%{reason}\"."
+      success: "Pomyślnie uwierzytelniono za pomocą konta %{kind}."
+    passwords:
+      no_token: "Do tej strony możesz wejść tylko z linku w wiadomości dotyczącej resetowania hasła. Jeśli przeszedłeś z e-maila, upewnij się, że używasz pełnego adresu URL."
+      send_instructions: "Za kilka minut otrzymasz wiadomość e-mail z instrukcją resetowania hasła."
+      send_paranoid_instructions: "Jeśli Twój adres e-mail istnieje w naszej bazie danych, za kilka minut otrzymasz link do odzyskania hasła."
+      updated: "Twoje hasło zostało pomyślnie zmienione. Jesteś teraz zalogowany."
+      updated_not_active: "Twoje hasło zostało pomyślnie zmienione."
+    registrations:
+      destroyed: "Twoje konto zostało zaplanowane do usunięcia. Do zobaczenia!"
+      cannot_delete: "Nie możesz usunąć konta, dopóki jesteś właścicielem rodziny, która ma innych członków."
+      signed_up: "Witamy! Rejestracja zakończyła się pomyślnie."
+      signed_up_but_inactive: "Rejestracja zakończyła się pomyślnie, ale nie możemy Cię zalogować, ponieważ konto nie zostało jeszcze aktywowane."
+      signed_up_but_locked: "Rejestracja zakończyła się pomyślnie, ale nie możemy Cię zalogować, ponieważ konto jest zablokowane."
+      signed_up_but_unconfirmed: "Na Twój adres e-mail wysłano wiadomość z linkiem potwierdzającym. Kliknij link, aby aktywować konto."
+      update_needs_confirmation: "Konto zostało pomyślnie zaktualizowane, ale musimy potwierdzić Twój nowy adres e-mail. Sprawdź skrzynkę i kliknij link potwierdzający."
+      updated: "Konto zostało pomyślnie zaktualizowane."
+      updated_but_not_signed_in: "Konto zostało zaktualizowane, ale ponieważ hasło zostało zmienione, musisz zalogować się ponownie."
+    sessions:
+      signed_in: "Zalogowano pomyślnie."
+      signed_out: "Wylogowano pomyślnie."
+      already_signed_out: "Wylogowano pomyślnie."
+    unlocks:
+      send_instructions: "Za kilka minut otrzymasz wiadomość e-mail z instrukcją odblokowania konta."
+      send_paranoid_instructions: "Jeśli konto istnieje, za kilka minut otrzymasz wiadomość z instrukcją odblokowania."
+      unlocked: "Twoje konto zostało pomyślnie odblokowane. Zaloguj się, aby kontynuować."
+  errors:
+    messages:
+      already_confirmed: "został już potwierdzony, spróbuj się zalogować"
+      confirmation_period_expired: "musi zostać potwierdzony w ciągu %{period}, poproś o nowy link"
+      expired: "wygasł, poproś o nowy"
+      not_found: "nie znaleziono"
+      not_locked: "nie był zablokowany"
+      not_saved:
+        one: "1 błąd uniemożliwił zapisanie tego zasobu %{resource}:"
+        other: "%{count} błędów uniemożliwiło zapisanie tego zasobu %{resource}:"
