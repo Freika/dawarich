@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## Fixed
 
 - Trip note text now uses consistent left alignment on every line (#3104).
+- Existing saved places now appear in Map v2 visit searches and can be assigned to visits (#3083)
 
 ## [1.14.0] - 2026-08-27, Berlin
 
