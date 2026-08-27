@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [1.14.0] - 2026-08-27, Berlin
 
+### Added
+
+- Add an experimental read-only MCP Streamable HTTP endpoint at `/api/v1/mcp`, authenticated with the existing API key. MCP clients can inspect a bounded timeline and the user's latest visible location.
+
 ### Changed
 
 - `PATCH /api/v1/settings/mobile` now takes a row lock around its read-merge-write, so a mobile settings change no longer discards a concurrent write to another settings section or from another device.
