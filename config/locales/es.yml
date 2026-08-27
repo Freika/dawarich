@@ -2793,6 +2793,7 @@ es:
         areas:
           area_was_successfully_deleted: Área eliminada con éxito
         auth:
+          account_pending_deletion: Se está eliminando una cuenta con este correo electrónico. Vuelve a intentarlo cuando haya terminado.
           apple:
             apple_has_not_verified_this_email_sign_in_with_password: Apple no ha verificado este correo electrónico. Inicia sesión con contraseña y haz clic en el enlace desde ajustes.
             this_email_already_has_a_dawarich_account_we_sent_a: Este correo electrónico ya tiene una cuenta de Dawarich. Enviamos un enlace de confirmación a ese dirección — haz clic en él para vincular tu ID de Apple.
@@ -3154,6 +3155,7 @@ es:
       export_failed_to_initiate_please_try_again: No se pudo iniciar la exportación. Inténtalo de nuevo.
     users:
       apple_oauth:
+        account_pending_deletion: Se está eliminando una cuenta con este correo electrónico. Vuelve a intentarlo cuando haya terminado.
         sign_in_with_apple_was_cancelled: Cancelaste el inicio de sesión con Apple.
         sign_in_failed: 'Error al iniciar sesión con Apple: %{message}'
         email_not_verified: Tu correo electrónico de Apple no está verificado. Verifícalo con Apple y vuelve a intentarlo.
@@ -3171,6 +3173,7 @@ es:
         year_end_digest_for_year_has_been_deleted: La digestión anual para %{year} ha sido eliminada
         digest_not_found: Digesto no encontrado
       omniauth_callbacks:
+        account_pending_deletion: Se está eliminando una cuenta con este correo electrónico. Vuelve a intentarlo cuando haya terminado.
         invalid_credentials: Credenciales inválidas. Revisa tu nombre de usuario y contraseña.
         connection_timeout: Tiempo de conexión agotado. Intenta de nuevo.
         security_error: Error de seguridad detectado. Intenta de nuevo.
