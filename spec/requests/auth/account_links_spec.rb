@@ -27,11 +27,9 @@ RSpec.describe 'GET /auth/account_link', type: :request do
 
     before do
       allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
-      allow(DawarichSettings).to receive(:family_feature_enabled?).and_return(false)
       allow(DawarichSettings).to receive(:registration_enabled?).and_return(true)
       allow(DawarichSettings).to receive(:oidc_enabled?).and_return(false)
       stub_const('MANAGER_URL', 'https://manager.example.com')
-      Flipper.disable(:reverse_trial_signup)
     end
 
     it 'claims the ticket when the token link signs the user in' do
@@ -176,6 +174,14 @@ RSpec.describe 'OAuth account-link password challenge', type: :request do
       expect(response.body).to include(email)
     end
 
+    it 'renders complete French account-link instructions' do
+      trigger_collision
+      get auth_account_link_challenge_path(locale: 'fr')
+
+      expect(response.body).to include('Associer OpenID Connect à votre compte Dawarich')
+      expect(response.body).to include('Saisissez votre mot de passe pour y associer votre identité OpenID Connect')
+    end
+
     it 'redirects to sign-in when no pending link in session' do
       get auth_account_link_challenge_path
       expect(response).to redirect_to(new_user_session_path)
@@ -260,11 +266,9 @@ RSpec.describe 'OAuth account-link password challenge', type: :request do
 
     before do
       allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
-      allow(DawarichSettings).to receive(:family_feature_enabled?).and_return(false)
       allow(DawarichSettings).to receive(:registration_enabled?).and_return(true)
       allow(DawarichSettings).to receive(:oidc_enabled?).and_return(false)
       stub_const('MANAGER_URL', 'https://manager.example.com')
-      Flipper.disable(:reverse_trial_signup)
     end
 
     it 'claims the stashed ticket after successful password confirm' do

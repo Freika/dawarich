@@ -14,21 +14,20 @@ RSpec.describe 'dawarich places rake tasks' do
   end
 
   describe 'dawarich:cleanup_suggested_places' do
-    it 'enqueues OrphanCleanupJob for each user plus an ownerless pass' do
+    it 'enqueues one OrphanCleanupJob per user' do
       create(:user)
       create(:user)
       ActiveJob::Base.queue_adapter = :test
       ActiveJob::Base.queue_adapter.enqueued_jobs.clear
-      expected_count = User.count + 1 # per-user jobs + one ownerless (nil) pass
 
       Rake::Task['dawarich:cleanup_suggested_places'].invoke
 
       expect(ActiveJob::Base.queue_adapter.enqueued_jobs.count do |j|
         j[:job] == Places::OrphanCleanupJob
-      end).to eq(expected_count)
+      end).to eq(User.count)
     end
 
-    it 'enqueues exactly one ownerless (nil) OrphanCleanupJob pass' do
+    it 'never enqueues an ownerless (nil) pass' do
       create(:user)
       ActiveJob::Base.queue_adapter = :test
       ActiveJob::Base.queue_adapter.enqueued_jobs.clear
@@ -38,7 +37,7 @@ RSpec.describe 'dawarich places rake tasks' do
       ownerless_jobs = ActiveJob::Base.queue_adapter.enqueued_jobs.select do |j|
         j[:job] == Places::OrphanCleanupJob && j[:args] == [nil]
       end
-      expect(ownerless_jobs.size).to eq(1)
+      expect(ownerless_jobs).to be_empty
     end
   end
 

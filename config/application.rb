@@ -11,12 +11,16 @@ Bundler.require(*Rails.groups)
 module Dawarich
   class Application < Rails::Application
     # Initialize configuration defaults for originally generated Rails version.
-    config.load_defaults 8.0
+    config.load_defaults 8.1
 
     # Please, add to the `ignore` list any other `lib` subdirectories that do
     # not contain `.rb` files, or that should not be reloaded or eager loaded.
     # Common ones are `templates`, `generators`, or `middleware`, for example.
-    config.autoload_lib(ignore: %w[assets tasks])
+    config.autoload_lib(ignore: %w[assets tasks rubocop perf])
+
+    # No ActiveStorage variants are used anywhere (attachments are data files
+    # and pre-rendered poster images), so no image processor is installed.
+    config.active_storage.variant_processor = :disabled
 
     # Configuration for the application, engines, and railties goes here.
     #
@@ -24,6 +28,8 @@ module Dawarich
     # in config/environments, which are processed later.
     #
     config.time_zone = ENV.fetch('TIME_ZONE', 'Europe/Berlin')
+    config.i18n.available_locales = %i[en de es fr pl ca]
+    config.i18n.default_locale = :en
     # config.eager_load_paths << Rails.root.join("extras")
 
     # Don't generate system test files.

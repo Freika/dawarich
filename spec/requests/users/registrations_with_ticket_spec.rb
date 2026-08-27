@@ -5,11 +5,9 @@ require 'rails_helper'
 RSpec.describe 'Signup with pending import ticket' do
   before do
     allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
-    allow(DawarichSettings).to receive(:family_feature_enabled?).and_return(false)
     allow(DawarichSettings).to receive(:registration_enabled?).and_return(true)
     allow(DawarichSettings).to receive(:oidc_enabled?).and_return(false)
     stub_const('MANAGER_URL', 'https://manager.example.com')
-    Flipper.disable(:reverse_trial_signup)
   end
 
   let!(:pending) { create(:pending_import, :with_file) }
@@ -38,11 +36,8 @@ RSpec.describe 'Signup with pending import ticket' do
     end
 
     before do
-      Flipper.enable(:reverse_trial_signup)
       get "/users/sign_up?import_ticket=#{pending.claim_ticket}"
     end
-
-    after { Flipper.disable(:reverse_trial_signup) }
 
     it 'claims the import before redirecting to the manager checkout' do
       expect { post '/users', params: signup_params }

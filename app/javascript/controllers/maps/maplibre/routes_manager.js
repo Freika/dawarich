@@ -1,7 +1,14 @@
+import { translate } from "i18n"
 import { Toast } from "maps_maplibre/components/toast"
-import { gatedToggle } from "maps_maplibre/utils/layer_gate"
+import { pointsToGeoJSON } from "maps_maplibre/utils/geojson_transformers"
+import { gatedToggle, isGatedPlan } from "maps_maplibre/utils/layer_gate"
 import { lazyLoader } from "maps_maplibre/utils/lazy_loader"
-import { SettingsManager } from "maps_maplibre/utils/settings_manager"
+import {
+  bulkPointsRequired,
+  SettingsManager,
+  tiledLayerModes,
+  tiledPointsActive,
+} from "maps_maplibre/utils/settings_manager"
 
 /**
  * Manages routes-related operations for Maps V2
@@ -14,6 +21,11 @@ export class RoutesManager {
     this.layerManager = controller.layerManager
     this.settings = controller.settings
     this._anomaliesFetchId = 0
+    // Classic tracks data is stale whenever tiles have been driving rendering
+    // (bulk fetches are skipped and range changes never touch the classic
+    // source) — a tiled-first session starts stale.
+    this._classicTracksStale = tiledPointsActive(SettingsManager.getSettings())
+    this._classicTracksRefillInFlight = false
   }
 
   /**
@@ -22,14 +34,21 @@ export class RoutesManager {
   async toggleRoutes(event) {
     const element = event.currentTarget
     const visible = element.checked
+    const tiled = tiledPointsActive(SettingsManager.getSettings())
 
-    if (visible) {
+    // Tiled mode serves Routes from track tiles — no bulk point set needed.
+    if (visible && !tiled) {
       await this.controller.mapDataManager.ensurePointsLoaded()
+    }
+
+    const tracksMvtLayer = this.layerManager.getLayer("tracks-mvt")
+    if (tiled && tracksMvtLayer) {
+      tracksMvtLayer.setModes({ routesVisible: visible })
     }
 
     const routesLayer = this.layerManager.getLayer("routes")
     if (routesLayer) {
-      routesLayer.toggle(visible)
+      routesLayer.toggle(visible && !tiled)
     }
 
     if (this.controller.hasRoutesOptionsTarget) {
@@ -39,6 +58,7 @@ export class RoutesManager {
     }
 
     SettingsManager.updateSetting("routesVisible", visible)
+    await this.reapplyPointsRenderer()
   }
 
   /**
@@ -54,6 +74,16 @@ export class RoutesManager {
         "hidden",
         !enabled,
       )
+    }
+
+    if (tiledPointsActive(SettingsManager.getSettings())) {
+      // Per-track approximation on the tile layer; no bulk routes to rebuild.
+      const tracksMvtLayer = this.layerManager.getLayer("tracks-mvt")
+      tracksMvtLayer?.setSpeedColoring(
+        enabled,
+        SettingsManager.getSetting("speedColorScale"),
+      )
+      return
     }
 
     await this.reloadRoutes()
@@ -109,25 +139,25 @@ export class RoutesManager {
       <input type="checkbox" id="speed-color-editor-toggle" class="modal-toggle" />
       <div class="modal" role="dialog" data-speed-color-editor-target="modal">
         <div class="modal-box max-w-2xl">
-          <h3 class="text-lg font-bold mb-4">Edit Speed Color Gradient</h3>
+          <h3 class="text-lg font-bold mb-4">${translate("speed_gradient.title")}</h3>
 
           <div class="space-y-4">
             <!-- Gradient Preview -->
             <div class="form-control">
               <label class="label">
-                <span class="label-text font-medium">Preview</span>
+                <span class="label-text font-medium">${translate("speed_gradient.preview")}</span>
               </label>
               <div class="h-12 rounded-lg border-2 border-base-300"
                    data-speed-color-editor-target="preview"></div>
               <label class="label">
-                <span class="label-text-alt">This gradient will be applied to routes based on speed</span>
+                <span class="label-text-alt">${translate("speed_gradient.help")}</span>
               </label>
             </div>
 
             <!-- Color Stops List -->
             <div class="form-control">
               <label class="label">
-                <span class="label-text font-medium">Color Stops</span>
+                <span class="label-text font-medium">${translate("speed_gradient.color_stops")}</span>
               </label>
               <div class="space-y-2" data-speed-color-editor-target="stopsList"></div>
             </div>
@@ -139,7 +169,7 @@ export class RoutesManager {
               <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
               </svg>
-              Add Color Stop
+              ${translate("speed_gradient.add_stop")}
             </button>
           </div>
 
@@ -147,17 +177,17 @@ export class RoutesManager {
             <button type="button"
                     class="btn btn-ghost"
                     data-action="click->speed-color-editor#resetToDefault">
-              Reset to Default
+              ${translate("common.reset_to_default")}
             </button>
             <button type="button"
                     class="btn"
                     data-action="click->speed-color-editor#close">
-              Cancel
+              ${translate("common.cancel")}
             </button>
             <button type="button"
                     class="btn btn-primary"
                     data-action="click->speed-color-editor#save">
-              Save
+              ${translate("common.save")}
             </button>
           </div>
         </div>
@@ -178,25 +208,40 @@ export class RoutesManager {
     this.controller.speedColorScaleInputTarget.value = newScale
     SettingsManager.updateSetting("speedColorScale", newScale)
 
-    if (this.controller.speedColoredToggleTarget.checked) {
-      this.reloadRoutes()
+    if (!this.controller.speedColoredToggleTarget.checked) return
+
+    if (tiledPointsActive(SettingsManager.getSettings())) {
+      const tracksMvtLayer = this.layerManager.getLayer("tracks-mvt")
+      tracksMvtLayer?.setSpeedColoring(true, newScale)
+      return
     }
+
+    this.reloadRoutes()
   }
 
   /**
    * Reload routes layer
    */
   async reloadRoutes() {
-    this.controller.showLoading("Reloading routes...")
+    this.controller.showLoading(translate("messages.reloading_routes"))
 
     try {
+      // In simplified mode the points layer holds a thinned subset, so
+      // rebuild routes from the cached full point set. Otherwise the layer
+      // data is authoritative — it reflects point edits immediately.
+      const cachedPoints =
+        this.controller.mapDataManager?.lastLoadedData?.points
+      const useCachedPoints =
+        this.settings.pointsRenderingMode === "simplified" &&
+        cachedPoints?.length > 0
       const pointsLayer = this.layerManager.getLayer("points")
-      const points =
-        pointsLayer?.data?.features?.map((f) => ({
-          latitude: f.geometry.coordinates[1],
-          longitude: f.geometry.coordinates[0],
-          timestamp: f.properties.timestamp,
-        })) || []
+      const points = useCachedPoints
+        ? cachedPoints
+        : pointsLayer?.data?.features?.map((f) => ({
+            latitude: f.geometry.coordinates[1],
+            longitude: f.geometry.coordinates[0],
+            timestamp: f.properties.timestamp,
+          })) || []
 
       const { RoutesLayer } = await import("maps_maplibre/layers/routes_layer")
       const { applySpeedColors } = await import(
@@ -230,7 +275,7 @@ export class RoutesManager {
       if (routesLayer) routesLayer.update(routesGeoJSON)
     } catch (error) {
       console.error("Failed to reload routes:", error)
-      Toast.error("Failed to reload routes")
+      Toast.error(translate("messages.failed_to_reload_routes"))
     } finally {
       this.controller.hideLoading()
     }
@@ -241,15 +286,15 @@ export class RoutesManager {
    */
   async toggleHeatmap(event) {
     const toggle = event.target
-    const heatmapLayer = this.layerManager.getLayer("heatmap")
 
     const showHeatmap = async () => {
-      await this.controller.mapDataManager.ensurePointsLoaded()
-      if (heatmapLayer) heatmapLayer.show()
+      const tiled = tiledPointsActive(SettingsManager.getSettings())
+      if (!tiled) await this.controller.mapDataManager.ensurePointsLoaded()
+      this.applyHeatmapRenderer({ enabled: true, tiled })
     }
 
     const hideHeatmap = () => {
-      if (heatmapLayer) heatmapLayer.hide()
+      this.applyHeatmapRenderer({ enabled: false, tiled: false })
     }
 
     const intercepted = gatedToggle({
@@ -264,6 +309,7 @@ export class RoutesManager {
 
     const enabled = toggle.checked
     SettingsManager.updateSetting("heatmapEnabled", enabled)
+    await this.reapplyPointsRenderer()
 
     if (enabled) {
       await showHeatmap()
@@ -328,12 +374,20 @@ export class RoutesManager {
         fogLayer.toggle(true)
         return
       }
+      // Tiled mode: fog reads the points MVT source — no bulk load; keep the
+      // source alive even when the Points toggle is off.
+      if (tiledPointsActive(SettingsManager.getSettings())) {
+        this.layerManager.getLayer("points-mvt")?.setSourceKeepAlive(true)
+        if (fogLayer) fogLayer.toggle(true)
+        return
+      }
       await this.controller.mapDataManager.ensurePointsLoaded()
       if (fogLayer) fogLayer.toggle(true)
     }
 
     const hideFog = () => {
       if (fogLayer) fogLayer.toggle(false)
+      this.layerManager.getLayer("points-mvt")?.setSourceKeepAlive(false)
     }
 
     const intercepted = gatedToggle({
@@ -348,6 +402,7 @@ export class RoutesManager {
 
     const enabled = toggle.checked
     SettingsManager.updateSetting("fogEnabled", enabled)
+    await this.reapplyPointsRenderer()
 
     if (enabled) {
       await showFog()
@@ -371,11 +426,12 @@ export class RoutesManager {
           visible: true,
           apiClient: this.controller.api,
         })
-        const pointsLayer = this.layerManager.getLayer("points")
-        const pointsData = pointsLayer?.data || {
-          type: "FeatureCollection",
-          features: [],
-        }
+        // Scratch needs all points, so build from the full point set rather
+        // than the points layer, which may hold a simplified subset.
+        const allPoints = this.controller.mapDataManager?.lastLoadedData?.points
+        const pointsData = allPoints?.length
+          ? pointsToGeoJSON(allPoints)
+          : { type: "FeatureCollection", features: [] }
         await newScratchLayer.add(pointsData)
         this.layerManager.layers.scratchLayer = newScratchLayer
       } else {
@@ -400,6 +456,7 @@ export class RoutesManager {
 
     const enabled = toggle.checked
     SettingsManager.updateSetting("scratchEnabled", enabled)
+    await this.reapplyPointsRenderer()
 
     try {
       if (enabled) {
@@ -409,7 +466,7 @@ export class RoutesManager {
       }
     } catch (error) {
       console.error("Failed to toggle scratch layer:", error)
-      Toast.error("Failed to load scratch layer")
+      Toast.error(translate("messages.failed_to_load_scratch_layer"))
     }
   }
 
@@ -469,7 +526,7 @@ export class RoutesManager {
       }
     } catch (error) {
       console.error("Failed to toggle photos layer:", error)
-      Toast.error("Failed to load photos")
+      Toast.error(translate("messages.failed_to_load_photos"))
     }
   }
 
@@ -510,7 +567,7 @@ export class RoutesManager {
       }
     } catch (error) {
       console.error("Failed to toggle areas layer:", error)
-      Toast.error("Failed to load areas")
+      Toast.error(translate("messages.failed_to_load_areas"))
     }
   }
 
@@ -522,38 +579,26 @@ export class RoutesManager {
     const enabled = event.target.checked
     SettingsManager.updateSetting("tracksEnabled", enabled)
 
+    // Tiled mode serves tracks from tiles; the lazy bulk fetch below would
+    // download the same geometry a second time.
+    if (tiledPointsActive(SettingsManager.getSettings())) {
+      const tracksMvtLayer = this.layerManager.getLayer("tracks-mvt")
+      if (tracksMvtLayer) tracksMvtLayer.setModes({ tracksEnabled: enabled })
+      return
+    }
+
     try {
       const tracksLayer = this.layerManager.getLayer("tracks")
 
       if (enabled) {
-        if (tracksLayer && tracksLayer.data?.features?.length > 0) {
+        if (
+          tracksLayer &&
+          tracksLayer.data?.features?.length > 0 &&
+          !this._classicTracksStale
+        ) {
           tracksLayer.show()
         } else {
-          // Fetch tracks from backend (lazy-load)
-          this.controller.showProgress()
-          this.controller.updateLoadingCounts({
-            counts: { tracks: 0 },
-            isComplete: false,
-          })
-
-          const api = this.controller.api
-          const startDate = this.controller.startDateValue
-          const endDate = this.controller.endDateValue
-
-          const tracksGeoJSON = await api.fetchTracks({
-            start_at: startDate,
-            end_at: endDate,
-          })
-
-          this.controller.updateLoadingCounts({
-            counts: { tracks: tracksGeoJSON.features.length },
-            isComplete: true,
-          })
-
-          if (tracksLayer) {
-            tracksLayer.update(tracksGeoJSON)
-            tracksLayer.show()
-          }
+          await this._lazyLoadClassicTracks(tracksLayer)
         }
       } else {
         if (tracksLayer) {
@@ -562,8 +607,36 @@ export class RoutesManager {
       }
     } catch (error) {
       console.error("Failed to toggle tracks layer:", error)
-      Toast.error("Failed to load tracks")
+      Toast.error(translate("messages.failed_to_load_tracks"))
     }
+  }
+
+  // Classic tracks lazy-load, shared by the Tracks toggle and the tiled->
+  // classic renderer flip (a tiled-first session never populated the source).
+  async _lazyLoadClassicTracks(tracksLayer) {
+    this.controller.showProgress()
+    this.controller.updateLoadingCounts({
+      counts: { tracks: 0 },
+      isComplete: false,
+    })
+
+    const tracksGeoJSON = await this.controller.api.fetchTracks({
+      start_at: this.controller.startDateValue,
+      end_at: this.controller.endDateValue,
+    })
+
+    this.controller.updateLoadingCounts({
+      counts: { tracks: tracksGeoJSON.features.length },
+      isComplete: true,
+    })
+
+    if (tracksLayer) {
+      tracksLayer.update(tracksGeoJSON)
+      if (SettingsManager.getSetting("tracksEnabled")) {
+        tracksLayer.show()
+      }
+    }
+    this._classicTracksStale = false
   }
 
   /**
@@ -601,7 +674,7 @@ export class RoutesManager {
       this.controller.mapDataManager?.applyFlightMask()
     } catch (error) {
       console.error("Failed to toggle flights layer:", error)
-      Toast.error("Failed to load flights")
+      Toast.error(translate("messages.failed_to_load_flights"))
     }
   }
 
@@ -609,19 +682,99 @@ export class RoutesManager {
    * Toggle points layer visibility
    */
   async togglePoints(event) {
-    const element = event.currentTarget
-    const visible = element.checked
+    SettingsManager.updateSetting("pointsVisible", event.currentTarget.checked)
 
-    if (visible) {
+    await this.reapplyPointsRenderer()
+  }
+
+  // Bulk-set layers flip the guard mid-session, so the renderer must follow
+  async reapplyPointsRenderer() {
+    const settings = SettingsManager.getSettings()
+    const tiled = tiledPointsActive(settings)
+    const visible = this.controller.hasPointsToggleTarget
+      ? this.controller.pointsToggleTarget.checked
+      : settings.pointsVisible !== false
+
+    // Tiles have no draggable features, so editing follows the renderer
+    this.layerManager
+      .getLayer("points")
+      ?.setEditMode(
+        !tiled &&
+          settings.pointDraggingEnabled === true &&
+          !isGatedPlan(this.controller.userPlanValue),
+      )
+
+    await this.applyPointsRenderer({
+      visible,
+      tiled,
+      needsBulk: bulkPointsRequired(settings),
+    })
+    this.applyHeatmapRenderer({
+      enabled: Boolean(settings.heatmapEnabled),
+      tiled,
+    })
+    this._reapplyTiledAwareLayers(settings)
+    this.controller.settingsController?.syncPointsEditAvailability()
+    this.controller.settingsController?.syncRouteSplittingAvailability()
+    this.controller.settingsController?.syncTiledRenderingNote()
+  }
+
+  // Tracks/routes/fog read tiledPointsActive at construction — the
+  // beta toggle and the fog-mode radio change it mid-session, so every
+  // tiled-aware layer re-derives its renderer here (tiledLayerModes is the
+  // node-tested truth table).
+  _reapplyTiledAwareLayers(settings) {
+    const modes = tiledLayerModes(settings)
+
+    this.layerManager.getLayer("tracks-mvt")?.setModes(modes.tracksMvt)
+    this.layerManager.getLayer("routes")?.toggle(modes.classicRoutes)
+    // setMainVisibility, NOT toggle: the classic layer's selection/flow
+    // sub-layers must stay usable under tiled mode for the click flow.
+    const tracksLayer = this.layerManager.getLayer("tracks")
+    tracksLayer?.setMainVisibility(modes.classicTracks)
+    if (modes.tiled) this._classicTracksStale = true
+    // Refetch once per tiled->classic flip (staleness, not emptiness: an
+    // empty first refill retries on the next flip once a throttled backfill
+    // has finished, while a track-less classic session never refetches).
+    if (
+      modes.classicTracks &&
+      tracksLayer &&
+      this._classicTracksStale &&
+      !this._classicTracksRefillInFlight
+    ) {
+      this._classicTracksRefillInFlight = true
+      this._lazyLoadClassicTracks(tracksLayer)
+        .catch((error) => {
+          console.error("Failed to refill classic tracks:", error)
+          Toast.error(translate("messages.failed_to_load_tracks"))
+        })
+        .finally(() => {
+          this._classicTracksRefillInFlight = false
+        })
+    }
+
+    this.layerManager.getLayer("fog")?.setTiledSource(modes.fogTiled)
+    this.layerManager
+      .getLayer("points-mvt")
+      ?.setSourceKeepAlive(modes.pointsSourceKeepAlive)
+  }
+
+  // The tiled heatmap is a sub-layer of points-mvt, only one heatmap may draw
+  applyHeatmapRenderer({ enabled, tiled }) {
+    this.layerManager.getLayer("heatmap")?.toggle(enabled && !tiled)
+    this.layerManager
+      .getLayer("points-mvt")
+      ?.setHeatmapVisible(enabled && tiled)
+  }
+
+  // Only one renderer draws. Classic needs its GeoJSON, tiled fetches per tile.
+  async applyPointsRenderer({ visible, tiled, needsBulk = false }) {
+    if ((visible || needsBulk) && !tiled) {
       await this.controller.mapDataManager.ensurePointsLoaded()
     }
 
-    const pointsLayer = this.layerManager.getLayer("points")
-    if (pointsLayer) {
-      pointsLayer.toggle(visible)
-    }
-
-    SettingsManager.updateSetting("pointsVisible", visible)
+    this.layerManager.getLayer("points")?.toggle(visible && !tiled)
+    this.layerManager.getLayer("points-mvt")?.toggle(visible && tiled)
   }
 
   async toggleAnomalies(event) {
@@ -670,8 +823,18 @@ export class RoutesManager {
         counts: { anomalies: 0 },
         isComplete: true,
       })
-      Toast.error("Failed to load anomalies")
+      Toast.error(translate("messages.failed_to_load_anomalies"))
     }
+  }
+
+  // Beta renderer switch. The Points toggle still owns visibility.
+  async togglePointsTiledRendering(event) {
+    await SettingsManager.updateSetting(
+      "pointsTiledRendering",
+      event.currentTarget.checked,
+    )
+
+    await this.reapplyPointsRenderer()
   }
 
   /**

@@ -2,25 +2,21 @@
 <%= form_with model: SharedLink.new, url: paths[:create], method: :post,
               data: { turbo_frame: "share-link-modal" } do |f| %>
   <div class="form-control">
-    <label class="label"><span class="label-text">Magic phrase (optional)</span></label>
+    <label class="label"><span class="label-text"><%= t('.magic_phrase_optional') %></span></label>
     <%= f.text_field :magic_phrase, class: 'input input-bordered', value: SharedLink::PhraseGenerator.call %>
-    <span class="label-text-alt mt-1">Leave blank to share without a phrase, or use the auto-generated one.</span>
+    <span class="label-text-alt mt-1"><%= t('.leave_blank_to_share_without_a_phrase_or_use_the') %></span>
   </div>
+  <%= render 'shared_links/expires_field', f: f %>
   <div class="form-control mt-4">
-    <label class="label"><span class="label-text">Expires (optional)</span></label>
-    <%= f.date_field :expires_at, class: 'input input-bordered', min: Date.current.tomorrow, value: 7.days.from_now.to_date %>
-    <span class="label-text-alt mt-1">Leave blank for a link that never expires.</span>
-  </div>
-  <div class="form-control mt-4">
-    <span class="label-text font-semibold">What to include on the public page</span>
+    <span class="label-text font-semibold"><%= t('.what_to_include_on_the_public_page') %></span>
     <%
       sections = [
-        ['show_route',       'Route map',                              true],
-        ['show_stats',       'Stats & countries (distance, duration)', true],
-        ['show_days',        'Day-by-day breakdown',                   true],
-        ['show_day_notes',   'Per-day notes',                          false],
-        ['show_description', 'Trip description',                       true],
-        ['show_photos',      'Photos on map',                          false]
+        ['show_route',       t('.route_map'),                          true],
+        ['show_stats',       t('.stats_countries_distance_duration'), true],
+        ['show_days',        t('.day_by_day_breakdown'),                true],
+        ['show_day_notes',   t('.per_day_notes'),                      false],
+        ['show_description', t('.trip_description'),                   true],
+        ['show_photos',      t('.photos_on_map'),                      false]
       ]
     %>
     <% sections.each do |key, label, checked| %>
@@ -32,7 +28,7 @@
     <% end %>
   </div>
   <div class="modal-action">
-    <%= link_to 'Cancel', close_path, class: 'btn btn-ghost', data: { turbo_frame: '_top', action: 'share-link-modal#close' } %>
-    <%= f.submit 'Create share link', class: 'btn btn-primary' %>
+    <%= link_to t('.cancel'), close_path, class: 'btn btn-ghost', data: { turbo_frame: '_top', action: 'share-link-modal#close' } %>
+    <%= f.submit t('.create_share_link'), class: 'btn btn-primary' %>
   </div>
 <% end %>

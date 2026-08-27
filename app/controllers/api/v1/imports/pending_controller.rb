@@ -11,13 +11,38 @@ class Api::V1::Imports::PendingController < ApiController
 
   ALLOWED_EXTENSIONS = %w[.gpx .geojson .json .kml .kmz .rec .csv .tcx .fit .zip].freeze
   MAX_BYTE_SIZE = 100.megabytes
+  STORAGE_QUOTA_BYTES = 10.gigabytes
 
   def create
-    return render_error(:bad_request, 'Missing file') unless file_param.is_a?(ActionDispatch::Http::UploadedFile)
-    return render_error(:bad_request, 'Missing original_filename') if params[:original_filename].blank?
-    return render_error(:unprocessable_entity, 'File is empty') unless file_param.size.positive?
-    return render_error(:payload_too_large, 'File exceeds 100MB limit') if file_param.size > MAX_BYTE_SIZE
-    return render_error(:unprocessable_entity, "Unsupported file type '#{file_extension}'") unless allowed_extension?
+    unless file_param.is_a?(ActionDispatch::Http::UploadedFile)
+      return render_error(:bad_request,
+                          I18n.t('controllers.api.v1.imports.pending.missing_file'))
+    end
+    if params[:original_filename].blank?
+      return render_error(:bad_request,
+                          I18n.t('controllers.api.v1.imports.pending.missing_filename'))
+    end
+    unless file_param.size.positive?
+      return render_error(:unprocessable_entity,
+                          I18n.t('controllers.api.v1.imports.pending.empty_file'))
+    end
+    if file_param.size > MAX_BYTE_SIZE
+      return render_error(:payload_too_large,
+                          I18n.t('controllers.api.v1.imports.pending.file_too_large'))
+    end
+    unless allowed_extension?
+      return render_error(
+        :unprocessable_entity,
+        I18n.t('controllers.api.v1.imports.pending.unsupported_file_type', extension: file_extension)
+      )
+    end
+
+    quota_key = storage_quota_key
+    unless reserve_storage(file_param.size, quota_key)
+      return render_error(:too_many_requests, I18n.t('controllers.api.v1.imports.pending.storage_capacity_exceeded'))
+    end
+
+    storage_reservation = [file_param.size, quota_key]
 
     pending = PendingImport.new(
       original_filename: params[:original_filename],
@@ -38,9 +63,11 @@ class Api::V1::Imports::PendingController < ApiController
       claim_url: build_claim_url(pending.claim_ticket)
     }, status: :created
   rescue StandardError => e
+    release_storage(*storage_reservation) if storage_reservation
     Rails.logger.error("PendingImport create failed: #{e.message}")
     ExceptionReporter.call(e) if defined?(ExceptionReporter)
-    render json: { error: 'An error occurred' }, status: :internal_server_error
+    render json: { error: I18n.t('controllers.api.v1.imports.pending.an_error_occurred') },
+           status: :internal_server_error
   end
 
   private
@@ -61,6 +88,22 @@ class Api::V1::Imports::PendingController < ApiController
 
   def allowed_extension?
     ALLOWED_EXTENSIONS.include?(file_extension)
+  end
+
+  def reserve_storage(bytes, key)
+    used = Rails.cache.increment(key, bytes, expires_in: 2.days)
+    return true if used <= STORAGE_QUOTA_BYTES
+
+    Rails.cache.decrement(key, bytes)
+    false
+  end
+
+  def release_storage(bytes, key)
+    Rails.cache.decrement(key, bytes)
+  end
+
+  def storage_quota_key
+    "pending_imports/storage_bytes/#{Time.current.utc.to_date}"
   end
 
   def render_error(status, message)

@@ -34,11 +34,9 @@ RSpec.describe 'Users::Sessions OTP Challenge', type: :request do
 
       before do
         allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
-        allow(DawarichSettings).to receive(:family_feature_enabled?).and_return(false)
         allow(DawarichSettings).to receive(:registration_enabled?).and_return(true)
         allow(DawarichSettings).to receive(:oidc_enabled?).and_return(false)
         stub_const('MANAGER_URL', 'https://manager.example.com')
-        Flipper.disable(:reverse_trial_signup)
       end
 
       it 'claims the ticket after a successful 2FA sign-in' do

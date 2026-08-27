@@ -66,6 +66,47 @@ RSpec.describe '/trips', type: :request do
       expect(response.body).to include('Delete this trip')
     end
 
+    describe 'poster studio' do
+      it 'renders the studio without date controls' do
+        get trip_url(trip)
+
+        expect(response.body).to include('id="poster-studio"')
+        expect(response.body).not_to include('data-poster-studio-editor-target="dateStart"')
+      end
+
+      it 'passes the trip name to the map controller' do
+        get trip_url(trip)
+
+        expect(response.body).to include("data-trip-maplibre-trip-name-value=\"#{trip.name}\"")
+      end
+
+      it 'renders an enabled poster button when the path exists' do
+        get trip_url(trip)
+
+        button = Nokogiri::HTML(response.body).at_css('[data-trip-maplibre-target="posterBtn"]')
+        expect(button).to be_present
+        expect(button['disabled']).to be_nil
+      end
+
+      it 'renders a disabled poster button while the path is calculating' do
+        trip.update_columns(path: nil)
+
+        get trip_url(trip)
+
+        button = Nokogiri::HTML(response.body).at_css('[data-trip-maplibre-target="posterBtn"]')
+        expect(button['disabled']).to be_present
+        expect(button['title']).to eq('Available once the trip route is calculated')
+      end
+
+      it 'renders the poster gallery list' do
+        create(:poster, user:)
+
+        get trip_url(trip)
+
+        expect(response.body).to include('poster-gallery-list')
+      end
+    end
+
     context 'with photos grouped by day' do
       let(:photo) do
         { id: 7, url: '/api/v1/photos/7/thumbnail.jpg?api_key=x&source=immich',

@@ -13,10 +13,6 @@ class DawarichSettings
       @photon_enabled ||= PHOTON_API_HOST.present?
     end
 
-    def photon_uses_komoot_io?
-      @photon_uses_komoot_io ||= PHOTON_API_HOST == 'photon.komoot.io'
-    end
-
     def photon_https_only_host?
       @photon_https_only_host ||= PHOTON_HTTPS_ONLY_HOSTS.include?(normalized_photon_host)
     end
@@ -53,8 +49,20 @@ class DawarichSettings
       @store_geodata ||= STORE_GEODATA
     end
 
-    def family_feature_enabled?
-      @family_feature_enabled ||= self_hosted?
+    # Self-hosted instances grant the family feature to everyone. On cloud it is
+    # part of the Family subscription plan, so access follows the user's plan
+    # rather than the hosting mode.
+    #
+    # Deliberately not memoized: the answer depends on the user, and
+    # DawarichSettings is a process-wide singleton.
+    def family_feature_available_for?(user)
+      return true if self_hosted?
+      return false if user.nil?
+
+      # Entitlements models the rule: the plan holder gets the feature, and so
+      # does everyone in a family whose owner holds it. When the owner's plan
+      # lapses, the whole family drops back together.
+      user.entitlements.families?
     end
 
     # Returns true only for self-hosted OIDC (OpenID Connect) setups.
@@ -64,15 +72,26 @@ class DawarichSettings
       @oidc_enabled ||= self_hosted? && OMNIAUTH_PROVIDERS.include?(:openid_connect)
     end
 
-    def features
-      @features ||= {
-        reverse_geocoding: reverse_geocoding_enabled?,
-        family: family_feature_enabled?
+    def features_for(user)
+      {
+        reverse_geocoding: Geocoding::Config.for(user).enabled?,
+        family: family_feature_available_for?(user)
       }
     end
 
     def archive_raw_data_enabled?
       @archive_raw_data_enabled ||= ARCHIVE_RAW_DATA
+    end
+
+    # 0 (or a negative value) disables the age limit; videos then live until
+    # the per-user cap evicts them, or the user deletes them.
+    def video_retention_days
+      @video_retention_days ||= [VIDEO_RETENTION_DAYS, 0].max
+    end
+
+    # 0 (or a negative value) disables the per-user cap.
+    def video_max_per_user
+      @video_max_per_user ||= [VIDEO_MAX_PER_USER, 0].max
     end
 
     def two_factor_available?

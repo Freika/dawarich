@@ -34,11 +34,19 @@ RSpec.describe Posters::Generate do
 
     it 'renders with the poster distance, opacity, subtitle and track' do
       expect(Posters::NativeRenderer).to receive(:new).with(
-        poster: poster, track: track, distance: 6000, route_opacity: 0.6,
-        subtitle: '1 Apr 2026 – 30 Apr 2026'
+        poster: poster, track: track, distance: 6000, route_opacity: 1.0, route_width: 1.0,
+        subtitle: 'Apr 1, 2026 – Apr 30, 2026'
       ).and_return(renderer)
 
       run_generate
+    end
+
+    it 'localizes the subtitle dates' do
+      expect(Posters::NativeRenderer).to receive(:new).with(
+        hash_including(subtitle: '1 avr. 2026 – 30 avr. 2026')
+      ).and_return(renderer)
+
+      I18n.with_locale(:fr) { run_generate }
     end
 
     it 'records a render phase on the poster' do
@@ -62,15 +70,111 @@ RSpec.describe Posters::Generate do
     end
   end
 
-  context 'when the requested distance exceeds the limit' do
-    let(:poster) { create(:poster, settings: attributes_for(:poster)[:settings].merge('distance' => 150_000)) }
+  context 'when settings request a percentage track width' do
+    let(:poster) do
+      create(:poster, settings: attributes_for(:poster)[:settings].merge('route_width' => '250'))
+    end
 
     before { allow_any_instance_of(Posters::TrackBuilder).to receive(:call).and_return(track) }
 
-    it 'clamps the distance to 20km' do
-      expect(Posters::NativeRenderer).to receive(:new).with(hash_including(distance: 20_000)).and_return(renderer)
+    it 'passes the width as a multiplier' do
+      expect(Posters::NativeRenderer).to receive(:new).with(hash_including(route_width: 2.5)).and_return(renderer)
 
       run_generate
+    end
+  end
+
+  context 'when settings omit the track width' do
+    before { allow_any_instance_of(Posters::TrackBuilder).to receive(:call).and_return(track) }
+
+    it 'falls back to the unscaled width' do
+      expect(Posters::NativeRenderer).to receive(:new).with(hash_including(route_width: 1.0)).and_return(renderer)
+
+      run_generate
+    end
+  end
+
+  context 'when settings request a track width beyond the slider range' do
+    let(:poster) do
+      create(:poster, settings: attributes_for(:poster)[:settings].merge('route_width' => '900'))
+    end
+
+    before { allow_any_instance_of(Posters::TrackBuilder).to receive(:call).and_return(track) }
+
+    it 'clamps the width to the maximum multiplier' do
+      expect(Posters::NativeRenderer).to receive(:new).with(hash_including(route_width: 3.0)).and_return(renderer)
+
+      run_generate
+    end
+  end
+
+  context 'when settings request a track width below the slider range' do
+    let(:poster) do
+      create(:poster, settings: attributes_for(:poster)[:settings].merge('route_width' => '10'))
+    end
+
+    before { allow_any_instance_of(Posters::TrackBuilder).to receive(:call).and_return(track) }
+
+    it 'clamps the width to the minimum multiplier' do
+      expect(Posters::NativeRenderer).to receive(:new).with(hash_including(route_width: 0.5)).and_return(renderer)
+
+      run_generate
+    end
+  end
+
+  context 'when settings request a negative track width' do
+    let(:poster) do
+      create(:poster, settings: attributes_for(:poster)[:settings].merge('route_width' => '-50'))
+    end
+
+    before { allow_any_instance_of(Posters::TrackBuilder).to receive(:call).and_return(track) }
+
+    it 'falls back to the unscaled width' do
+      expect(Posters::NativeRenderer).to receive(:new).with(hash_including(route_width: 1.0)).and_return(renderer)
+
+      run_generate
+    end
+  end
+
+  context 'when the requested distance fits within the poster studio range' do
+    let(:poster) { create(:poster, settings: attributes_for(:poster)[:settings].merge('distance' => 2_924_948)) }
+
+    before { allow_any_instance_of(Posters::TrackBuilder).to receive(:call).and_return(track) }
+
+    it 'renders with the requested distance' do
+      expect(Posters::NativeRenderer).to receive(:new).with(hash_including(distance: 2_924_948)).and_return(renderer)
+
+      run_generate
+    end
+  end
+
+  context 'when the requested distance exceeds the poster studio limit' do
+    let(:poster) { create(:poster, settings: attributes_for(:poster)[:settings].merge('distance' => 6_000_000)) }
+
+    before { allow_any_instance_of(Posters::TrackBuilder).to receive(:call).and_return(track) }
+
+    it 'clamps the distance to 5,000km' do
+      expect(Posters::NativeRenderer).to receive(:new).with(hash_including(distance: 5_000_000)).and_return(renderer)
+
+      run_generate
+    end
+  end
+
+  context 'when a continent-wide frame is saved to the gallery' do
+    let(:poster) do
+      create(:poster, settings: attributes_for(:poster)[:settings].merge(
+        'lat' => '40.019826138511576', 'lon' => '17.87175149999996', 'distance' => '2924948'
+      ))
+    end
+    let(:track_through_rome) { { 'type' => 'MultiLineString', 'coordinates' => [[[12.49, 41.90], [12.50, 41.91]]] } }
+
+    before { allow_any_instance_of(Posters::TrackBuilder).to receive(:call).and_return(track_through_rome) }
+
+    it 'completes instead of reporting the track as outside the map area' do
+      run_generate
+
+      expect(poster.reload).to be_completed
+      expect(poster.settings['error']).to be_nil
     end
   end
 
@@ -113,6 +217,57 @@ RSpec.describe Posters::Generate do
 
       expect(poster.reload).to be_failed
       expect(poster.settings['error']).to match(/does not pass through/)
+    end
+  end
+
+  context 'when the poster frame straddles the antimeridian' do
+    let(:poster) do
+      create(:poster, settings: attributes_for(:poster)[:settings].merge(
+        'lat' => '-18.0', 'lon' => '178.0', 'distance' => '2000000'
+      ))
+    end
+    let(:track_across_the_dateline) do
+      { 'type' => 'MultiLineString', 'coordinates' => [[[-179.0, -18.0], [-178.9, -18.1]]] }
+    end
+
+    before { allow_any_instance_of(Posters::TrackBuilder).to receive(:call).and_return(track_across_the_dateline) }
+
+    it 'accepts a track three degrees east of the frame centre' do
+      run_generate
+
+      expect(poster.reload).to be_completed
+      expect(poster.settings['error']).to be_nil
+    end
+  end
+
+  context 'when a high-latitude frame is stretched by the Mercator projection' do
+    let(:poster) do
+      create(:poster, settings: attributes_for(:poster)[:settings].merge(
+        'lat' => '60.0', 'lon' => '10.0', 'distance' => '5000000'
+      ))
+    end
+
+    before { allow_any_instance_of(Posters::TrackBuilder).to receive(:call).and_return(track) }
+
+    context 'with a track inside the rendered frame but south of a flat-degree box' do
+      let(:track) { { 'type' => 'MultiLineString', 'coordinates' => [[[10.0, 42.0], [10.1, 42.1]]] } }
+
+      it 'accepts the track' do
+        run_generate
+
+        expect(poster.reload).to be_completed
+      end
+    end
+
+    context 'with a track north of the rendered frame but inside a flat-degree box' do
+      let(:track) { { 'type' => 'MultiLineString', 'coordinates' => [[[10.0, 73.0], [10.1, 73.1]]] } }
+
+      it 'rejects the track' do
+        run_generate
+
+        expect(poster.reload).to be_failed
+        expect(poster.settings['error']).to match(/does not pass through/)
+      end
     end
   end
 

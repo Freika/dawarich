@@ -56,7 +56,8 @@ module Tracks::TrackBuilder
   # but bad data is rarely useful.
   MAX_DISTANCE_METERS = 100_000_000
 
-  def create_track_from_points(points, pre_calculated_distance, tracker_id: nil)
+  def create_track_from_points(points, pre_calculated_distance, tracker_id: nil,
+                               skip_segment_detection: false)
     return nil if points.size < 2
 
     resolved_tracker_id = tracker_id || points.first.tracker_id
@@ -90,7 +91,7 @@ module Tracks::TrackBuilder
     ActiveRecord::Base.transaction(requires_new: true) do
       if track.save
         Point.where(id: points.map(&:id)).update_all(track_id: track.id)
-        detect_and_create_segments(track, points)
+        detect_and_create_segments(track, points) unless skip_segment_detection
         saved_track = track
       else
         Rails.logger.error "Failed to create track for user #{user.id}: #{track.errors.full_messages.join(', ')}"
@@ -198,13 +199,12 @@ module Tracks::TrackBuilder
     }
   end
 
-  def detect_and_create_segments(track, points)
+  def detect_and_create_segments(track, _points)
     safe_settings = Users::SafeSettings.new(user.settings || {})
     detector = TransportationModes::Detector.new(
-      track, points,
-      user_thresholds:        safe_settings.transportation_thresholds,
-      user_expert_thresholds: safe_settings.transportation_expert_thresholds,
-      enabled_modes:          safe_settings.enabled_transportation_modes
+      track,
+      enabled_modes: safe_settings.enabled_transportation_modes,
+      preserved: track.track_segments.manually_corrected.to_a
     )
     segment_data = detector.call
 
@@ -227,7 +227,12 @@ module Tracks::TrackBuilder
       )
     end
     mode = Track.pick_dominant_mode(segments)
-    track.update_column(:dominant_mode, mode) if mode
+    return unless mode
+
+    # update_column skips after_commit, and dominant_mode is a tile property —
+    # bump the epoch explicitly or reclassified tracks 304 with the old mode.
+    track.update_column(:dominant_mode, mode)
+    Tracks::TileEpoch.bump_range(track.user_id, track.start_at.to_i, track.end_at.to_i)
   end
 
   private

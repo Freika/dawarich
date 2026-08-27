@@ -3,109 +3,109 @@
   <div class="card-body p-5">
     <h2 class="card-title text-lg flex items-center gap-2">
       <%= icon 'book-open', class: 'w-5 h-5 text-primary' %>
-      Your Travel Story
+      <%= t('.your_travel_story') %>
     </h2>
-    <div class="text-sm text-base-content/60">Summer 2024</div>
+    <div class="text-sm text-base-content/60"><%= t('.summer_2024') %></div>
 
     <!-- Trip Summary -->
     <div class="flex items-center gap-4 mt-3 p-2 bg-base-300 rounded-lg text-sm">
       <div class="flex items-center gap-1">
         <%= icon 'calendar', class: 'w-4 h-4 text-info' %>
-        <span>June 15 - July 20</span>
+        <span><%= t('.june_15_july_20') %></span>
       </div>
       <div class="flex items-center gap-1">
         <%= icon 'clock', class: 'w-4 h-4' %>
-        <span class="font-medium">35 Days</span>
+        <span class="font-medium"><%= t('.days') %></span>
       </div>
       <div class="flex items-center gap-1">
         <%= icon 'route', class: 'w-4 h-4' %>
-        <span class="font-medium">4,230 km</span>
+        <span class="font-medium"><%= t('.230_km') %></span>
       </div>
     </div>
 
     <!-- Story Title -->
-    <div class="text-xl font-bold mt-4 text-info">"The Great European Road Trip"</div>
+    <div class="text-xl font-bold mt-4 text-info"><%= t('.the_great_european_road_trip') %></div>
 
     <!-- Story Content -->
     <div class="mt-3 text-sm space-y-3">
-      <p>You started in <span class="text-info font-medium">Berlin</span>, your home base. After a week of work, you headed south through <span class="text-info font-medium">Dresden</span> and <span class="text-info font-medium">Prague</span>, spending 3 days exploring the city of a hundred spires.</p>
-      <p>The journey continued through <span class="text-info font-medium">Vienna</span>, where you spent a weekend before crossing into Italy. You drove through the Alps, stopping at <span class="text-info font-medium">Lake Como</span> for two nights of swimming and pasta.</p>
-      <p><span class="text-info font-medium">Rome</span> welcomed you for 5 days of ancient history, then you traced the coast south to <span class="text-info font-medium">Amalfi</span>, with stops in Naples and Positano.</p>
+      <p><%= t('.you_started_in') %> <span class="text-info font-medium"><%= t('.berlin') %></span><%= t('.your_home_base_after_a_week_of_work_you_headed') %> <span class="text-info font-medium"><%= t('.dresden') %></span> <%= t('.and') %> <span class="text-info font-medium"><%= t('.prague') %></span><%= t('.spending_3_days_exploring_the_city_of_a_hundred_spires') %></p>
+      <p><%= t('.the_journey_continued_through') %> <span class="text-info font-medium"><%= t('.vienna') %></span><%= t('.where_you_spent_a_weekend_before_crossing_into_italy_you') %> <span class="text-info font-medium"><%= t('.lake_como') %></span> <%= t('.for_two_nights_of_swimming_and_pasta') %></p>
+      <p><span class="text-info font-medium"><%= t('.rome') %></span> <%= t('.welcomed_you_for_5_days_of_ancient_history_then_you') %> <span class="text-info font-medium"><%= t('.amalfi') %></span><%= t('.with_stops_in_naples_and_positano') %></p>
     </div>
 
     <!-- Journey Timeline -->
     <div class="mt-4 pt-4 border-t border-base-300">
-      <div class="text-sm font-medium mb-3">JOURNEY TIMELINE</div>
+      <div class="text-sm font-medium mb-3"><%= t('.journey_timeline') %></div>
       <div class="space-y-2">
         <div class="flex items-center gap-3 text-sm">
           <span class="w-3 h-3 bg-warning rounded-full"></span>
-          <span class="font-medium">Berlin</span>
-          <span class="text-base-content/60">DE</span>
-          <span class="flex-1 text-right text-base-content/60">Home base</span>
+          <span class="font-medium"><%= t('.berlin') %></span>
+          <span class="text-base-content/60"><%= t('.de') %></span>
+          <span class="flex-1 text-right text-base-content/60"><%= t('.home_base') %></span>
         </div>
         <div class="flex items-center gap-3 text-sm">
           <span class="w-3 h-3 bg-base-content/30 rounded-full border border-base-content/50"></span>
-          <span>Dresden</span>
-          <span class="text-base-content/60">DE</span>
-          <span class="flex-1 text-right text-base-content/60">Overnight</span>
+          <span><%= t('.dresden') %></span>
+          <span class="text-base-content/60"><%= t('.de') %></span>
+          <span class="flex-1 text-right text-base-content/60"><%= t('.overnight') %></span>
         </div>
         <div class="flex items-center gap-3 text-sm">
           <span class="w-3 h-3 bg-success rounded-full"></span>
-          <span>Prague</span>
-          <span class="text-base-content/60">CZ</span>
+          <span><%= t('.prague') %></span>
+          <span class="text-base-content/60"><%= t('.cz') %></span>
           <%= icon 'star', class: 'w-3 h-3 text-warning' %>
-          <span class="flex-1 text-right text-base-content/60">3 days exploring</span>
+          <span class="flex-1 text-right text-base-content/60"><%= t('.days_exploring') %></span>
         </div>
         <div class="flex items-center gap-3 text-sm">
           <span class="w-3 h-3 bg-base-content/30 rounded-full border border-base-content/50"></span>
-          <span>Vienna</span>
-          <span class="text-base-content/60">AT</span>
-          <span class="flex-1 text-right text-base-content/60">Weekend stay</span>
+          <span><%= t('.vienna') %></span>
+          <span class="text-base-content/60"><%= t('.at') %></span>
+          <span class="flex-1 text-right text-base-content/60"><%= t('.weekend_stay') %></span>
         </div>
         <div class="flex items-center gap-3 text-sm">
           <span class="w-3 h-3 bg-base-content/30 rounded-full border border-base-content/50"></span>
-          <span>Lake Como</span>
-          <span class="text-base-content/60">IT</span>
+          <span><%= t('.lake_como') %></span>
+          <span class="text-base-content/60"><%= t('.it') %></span>
           <%= icon 'star', class: 'w-3 h-3 text-warning' %>
-          <span class="flex-1 text-right text-base-content/60">Swimming & pasta</span>
+          <span class="flex-1 text-right text-base-content/60"><%= t('.swimming_pasta') %></span>
         </div>
         <div class="flex items-center gap-3 text-sm">
           <span class="w-3 h-3 bg-success rounded-full"></span>
-          <span>Rome</span>
-          <span class="text-base-content/60">IT</span>
+          <span><%= t('.rome') %></span>
+          <span class="text-base-content/60"><%= t('.it') %></span>
           <%= icon 'star', class: 'w-3 h-3 text-warning' %>
-          <span class="flex-1 text-right text-base-content/60">5 days of history</span>
+          <span class="flex-1 text-right text-base-content/60"><%= t('.days_of_history') %></span>
         </div>
         <div class="flex items-center gap-3 text-sm">
           <span class="w-3 h-3 bg-base-content/30 rounded-full border border-base-content/50"></span>
-          <span>Amalfi Coast</span>
-          <span class="text-base-content/60">IT</span>
+          <span><%= t('.amalfi_coast') %></span>
+          <span class="text-base-content/60"><%= t('.it') %></span>
           <%= icon 'star', class: 'w-3 h-3 text-warning' %>
-          <span class="flex-1 text-right text-base-content/60">Positano, Naples</span>
+          <span class="flex-1 text-right text-base-content/60"><%= t('.positano_naples') %></span>
         </div>
         <div class="flex items-center gap-3 text-sm">
           <span class="w-3 h-3 bg-base-content/30 rounded-full border border-base-content/50"></span>
-          <span>Florence</span>
-          <span class="text-base-content/60">IT</span>
-          <span class="flex-1 text-right text-base-content/60">Art & coffee</span>
+          <span><%= t('.florence') %></span>
+          <span class="text-base-content/60"><%= t('.it') %></span>
+          <span class="flex-1 text-right text-base-content/60"><%= t('.art_coffee') %></span>
         </div>
         <div class="flex items-center gap-3 text-sm">
           <span class="w-3 h-3 bg-base-content/30 rounded-full border border-base-content/50"></span>
-          <span>Milan</span>
-          <span class="text-base-content/60">IT</span>
-          <span class="flex-1 text-right text-base-content/60">Fashion district</span>
+          <span><%= t('.milan') %></span>
+          <span class="text-base-content/60"><%= t('.it') %></span>
+          <span class="flex-1 text-right text-base-content/60"><%= t('.fashion_district') %></span>
         </div>
         <div class="flex items-center gap-3 text-sm">
           <span class="w-3 h-3 bg-base-content/30 rounded-full border border-base-content/50"></span>
-          <span>Munich</span>
-          <span class="text-base-content/60">DE</span>
-          <span class="flex-1 text-right text-base-content/60">Beer gardens</span>
+          <span><%= t('.munich') %></span>
+          <span class="text-base-content/60"><%= t('.de') %></span>
+          <span class="flex-1 text-right text-base-content/60"><%= t('.beer_gardens') %></span>
         </div>
         <div class="flex items-center gap-3 text-sm">
           <span class="w-3 h-3 bg-warning rounded-full"></span>
-          <span class="font-medium">Berlin</span>
-          <span class="text-base-content/60">DE</span>
-          <span class="flex-1 text-right text-base-content/60">Back home</span>
+          <span class="font-medium"><%= t('.berlin') %></span>
+          <span class="text-base-content/60"><%= t('.de') %></span>
+          <span class="flex-1 text-right text-base-content/60"><%= t('.back_home') %></span>
         </div>
       </div>
     </div>
@@ -114,18 +114,18 @@
     <div class="grid grid-cols-3 gap-4 mt-4 pt-4 border-t border-base-300 text-center">
       <div>
         <div class="text-2xl font-bold text-info">4</div>
-        <div class="text-xs text-base-content/60">New countries</div>
-        <div class="text-xs text-info">CZ, AT, IT, FR</div>
+        <div class="text-xs text-base-content/60"><%= t('.new_countries') %></div>
+        <div class="text-xs text-info"><%= t('.cz_at_it_fr') %></div>
       </div>
       <div>
-        <div class="text-2xl font-bold text-info">890 km</div>
-        <div class="text-xs text-base-content/60">Longest drive</div>
-        <div class="text-xs text-info">Rome &rarr; Amalfi</div>
+        <div class="text-2xl font-bold text-info"><%= t('.km') %></div>
+        <div class="text-xs text-base-content/60"><%= t('.longest_drive') %></div>
+        <div class="text-xs text-info"><%= t('.rome_rarr_amalfi') %></div>
       </div>
       <div>
         <div class="text-2xl font-bold text-info">12</div>
-        <div class="text-xs text-base-content/60">Favorites marked</div>
-        <div class="text-xs text-info">places</div>
+        <div class="text-xs text-base-content/60"><%= t('.favorites_marked') %></div>
+        <div class="text-xs text-info"><%= t('.places') %></div>
       </div>
     </div>
   </div>

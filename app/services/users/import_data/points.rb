@@ -88,10 +88,15 @@ class Users::ImportData::Points
 
     normalized_batch = normalize_point_keys(@buffer)
 
+    # Dual-write the dimension FK: the backfill only sweeps rows that exist
+    # when it passes. Stamped after key normalization so every row carries the
+    # key uniformly, as upsert_all requires.
+    dimension_resolver.stamp(normalized_batch)
+
     begin
       result = Point.upsert_all(
         normalized_batch,
-        unique_by: %i[lonlat timestamp user_id],
+        unique_by: %i[user_id timestamp lonlat],
         returning: %w[id],
         on_duplicate: :skip
       )
@@ -99,6 +104,11 @@ class Users::ImportData::Points
 
       batch_created = result&.count.to_i
       @total_created += batch_created
+
+      if batch_created.positive?
+        timestamps = normalized_batch.map { |row| row['timestamp'] || row[:timestamp] }
+        Points::TileEpoch.bump(user.id, timestamps: timestamps)
+      end
 
       logger.debug(
         "Processed batch of #{@buffer.size} points, created #{batch_created}, total created: #{@total_created}"
@@ -111,6 +121,10 @@ class Users::ImportData::Points
     ensure
       @buffer.clear
     end
+  end
+
+  def dimension_resolver
+    @dimension_resolver ||= Points::DimensionResolver.new
   end
 
   def preload_reference_data

@@ -42,7 +42,6 @@ RUN apt-get update -qq \
     libyaml-dev \
     zlib1g-dev \
     libgeos-dev libgeos++-dev \
-    imagemagick \
     tzdata \
     less \
     libjemalloc2 libjemalloc-dev \
@@ -75,6 +74,10 @@ RUN if [ "$(uname -m)" = "x86_64" ]; then \
     echo "/usr/lib/aarch64-linux-gnu/libjemalloc.so.2" > /etc/ld.so.preload; \
     fi
 
+# Return freed pages to the OS quickly instead of holding them in the
+# allocator, and cap arena count — keeps idle RSS low on small hosts.
+ENV MALLOC_CONF="narenas:2,dirty_decay_ms:1000,muzzy_decay_ms:1000"
+
 # Enable YJIT
 ENV RUBY_YJIT_ENABLE=1
 
@@ -95,10 +98,15 @@ RUN bundle config set --local path 'vendor/bundle' \
 
 COPY ../. ./
 
+# Node deps (tailwind plugins like daisyui) are needed by assets:precompile.
+# Install them here so the build does not depend on a host-side `npm install`
+# having populated node_modules in the build context.
+RUN npm ci --no-audit --no-fund && rm -rf ~/.npm
+
 # Poster renderer dependencies — prebuilt maplibre-native binaries exist for
 # x64/arm64 only (Debian's Node 20 = ABI 115, which the release ships). On
-# armv7 the renderer is skipped; the POSTER_NATIVE_RENDERER feature simply
-# stays off there.
+# armv7 the renderer is skipped; server-side poster rendering is unavailable
+# there.
 RUN if [ "$(uname -m)" = "x86_64" ] || [ "$(uname -m)" = "aarch64" ]; then \
     cd vendor/poster_renderer \
     && npm ci --no-audit --no-fund \
@@ -113,11 +121,14 @@ RUN SECRET_KEY_BASE_DUMMY=1 bundle exec rake assets:precompile \
 RUN mkdir -p tmp/pids tmp/cache tmp/sockets \
     && chmod -R 777 tmp
 
-# Copy public directory to temp location for syncing with volume at runtime
-# This allows new static files to be added to the persistent volume
-RUN cp -r public /tmp/public_assets
+# Stage a pristine copy of public/ for the entrypoint to sync into the
+# persistent volume at runtime. Lives under the app dir, not /tmp, so
+# tmpfs-mounted /tmp cannot make the sync silently skip.
+RUN cp -r public $APP_PATH/public_dist
 
 # Copy entrypoint scripts and grant execution permissions
+COPY ./docker/entrypoint-env-guard.sh /usr/local/bin/entrypoint-env-guard.sh
+
 COPY ./docker/web-entrypoint.sh /usr/local/bin/web-entrypoint.sh
 RUN chmod +x /usr/local/bin/web-entrypoint.sh
 

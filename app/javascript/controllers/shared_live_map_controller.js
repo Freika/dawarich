@@ -1,5 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 import { createConsumer } from "@rails/actioncable"
+import { translate } from "i18n"
 import maplibregl from "maplibre-gl"
 import { RecentPointLayer } from "maps_maplibre/layers/recent_point_layer"
 import { getMapStyle } from "maps_maplibre/utils/style_manager"
@@ -67,7 +68,7 @@ export default class extends Controller {
     if (!res.ok) return
     const points = await res.json()
     if (!points.length) {
-      this.setStatus("Location unknown — waiting for an update…")
+      this.setStatus(translate("live_share.location_unknown"))
       return
     }
     const [lon, lat, ts] = points[0]
@@ -90,13 +91,13 @@ export default class extends Controller {
 
   handleMessage(data) {
     if (data.revoked) {
-      this.setStatus("This live share has ended.")
+      this.setStatus(translate("live_share.ended"))
       this.hideMarker()
       if (this.subscription) this.subscription.unsubscribe()
       return
     }
     if (data.masked) {
-      this.setStatus("Location hidden.")
+      this.setStatus(translate("live_share.location_hidden"))
       this.hideMarker()
       return
     }
@@ -251,12 +252,18 @@ export default class extends Controller {
   renderLastSeen() {
     if (!this.hasLastSeenTarget || this.lastSeenTs == null) return
     const seenAt = new Date(this.lastSeenTs * 1000)
-    this.lastSeenTarget.textContent = `Last seen: ${seenAt.toLocaleString()} (${this.relativeTime(this.lastSeenTs)})`
+    this.lastSeenTarget.textContent = translate("live_share.last_seen", {
+      date: seenAt.toLocaleString(document.documentElement.lang || undefined),
+      relative: this.relativeTime(this.lastSeenTs),
+    })
   }
 
   relativeTime(ts) {
     const diff = Math.floor(Date.now() / 1000) - Number(ts)
-    const rtf = new Intl.RelativeTimeFormat(undefined, { numeric: "always" })
+    const rtf = new Intl.RelativeTimeFormat(
+      document.documentElement.lang || undefined,
+      { numeric: "always" },
+    )
     if (diff < 60) return rtf.format(-diff, "second")
     if (diff < 3600) return rtf.format(-Math.floor(diff / 60), "minute")
     if (diff < 86400) return rtf.format(-Math.floor(diff / 3600), "hour")

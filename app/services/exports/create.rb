@@ -45,26 +45,31 @@ class Exports::Create
     case file_format.to_sym
     when :json then Exports::PointGeojsonSerializer.new(time_framed_points).call
     when :gpx  then Exports::PointGpxSerializer.new(time_framed_points, export.name).call
-    else raise ArgumentError, "Unsupported file format: #{file_format}"
+    else raise ArgumentError, I18n.t('services.exports.create.unsupported_file_format', format: file_format)
     end
   end
 
   def notify_export_finished
-    Notifications::Create.new(
-      user:,
-      kind: :info,
-      title: 'Export finished',
-      content: "Export \"#{export.name}\" successfully finished."
-    ).call
+    I18n.with_locale(user.locale) do
+      Notifications::Create.new(
+        user:,
+        kind: :info,
+        title: I18n.t('services.exports.create.export_finished'),
+        content: I18n.t('services.exports.create.export_name_successfully_finished', name: export.name)
+      ).call
+    end
   end
 
   def notify_export_failed(error)
-    Notifications::Create.new(
-      user:,
-      kind: :error,
-      title: 'Export failed',
-      content: "Export \"#{export.name}\" failed: #{error.message}, stacktrace: #{error.backtrace.join("\n")}"
-    ).call
+    I18n.with_locale(user.locale) do
+      Notifications::Create.new(
+        user:,
+        kind: :error,
+        title: I18n.t('services.exports.create.export_failed'),
+        content: I18n.t('services.exports.create.export_name_failed_message_stacktrace_n', name: export.name,
+                        message: error.message, backtrace: error.backtrace.join("\n"))
+      ).call
+    end
   end
 
   def attach_export_file(zipped_tempfile)

@@ -14,7 +14,7 @@ class Api::V1::Auth::SessionsController < Api::V1::Auth::BaseController
 
     authenticated = constant_time_authenticate(user, params[:password].to_s)
 
-    return render_auth_error('Invalid email or password') unless authenticated
+    return render_auth_error(I18n.t('controllers.api.v1.auth.sessions.invalid_credentials')) unless authenticated
 
     if DawarichSettings.two_factor_available? && user.otp_required_for_login?
       challenge_token = Auth::IssueOtpChallengeToken.new(user).call

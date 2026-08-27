@@ -13,6 +13,7 @@ RSpec.describe 'Api::V1::Settings::Mobile', type: :request do
       expect(response).to have_http_status(:success)
       expect(response.parsed_body['settings']).to eq({})
       expect(response.parsed_body['updated_at']).to be_nil
+      expect(response.parsed_body.dig('capabilities', 'photo_library_import', 'version')).to eq(1)
     end
 
     it 'returns stored mobile settings with updated_at' do
@@ -91,6 +92,17 @@ RSpec.describe 'Api::V1::Settings::Mobile', type: :request do
       mobile = user.reload.settings['mobile']
       expect(mobile['batch_size']).to eq(1000)
       expect(mobile['distance_filter']).to eq(1)
+    end
+
+    it 'ignores blank numeric values instead of clamping them to the minimum' do
+      patch "/api/v1/settings/mobile?api_key=#{api_key}",
+            params: { settings: { distance_filter: 50 } }
+      patch "/api/v1/settings/mobile?api_key=#{api_key}",
+            params: { settings: { batch_size: 20, distance_filter: '' } }
+
+      mobile = user.reload.settings['mobile']
+      expect(mobile['batch_size']).to eq(20)
+      expect(mobile['distance_filter']).to eq(50)
     end
 
     it 'casts boolean values' do

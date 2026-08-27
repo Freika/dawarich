@@ -5,21 +5,21 @@
   <div class="hero-content text-center relative w-full">
     <div class="max-w-md mt-5">
       <h1 class="text-4xl font-bold flex items-center justify-center gap-2">
-        <%= "#{icon month_icon(stat)} #{Date::MONTHNAMES[month]} #{year}".html_safe %>
+        <%= icon month_icon(stat) %> <%= l(Date.new(year, month, 1), format: :month_year) %>
       </h1>
-      <p class="py-4">Monthly Digest</p>
+      <p class="py-4"><%= t('.monthly_digest') %></p>
       <button class="btn btn-outline btn-sm text-neutral border-neutral hover:bg-white hover:text-primary"
               onclick="sharing_modal.showModal()">
-        <%= icon 'share' %> Share
+        <%= icon 'share' %> <%= t('.share') %>
       </button>
     </div>
   </div>
 </div>
 
-<div class="stats shadow shadow-lg mx-auto mb-8 w-full">
+<div class="stats stats-vertical lg:stats-horizontal shadow shadow-lg mx-auto mb-8 w-full">
   <div class="stat place-items-center text-center">
     <div class="stat-title flex items-center justify-center gap-1">
-      <%= icon 'map-plus' %> Distance traveled
+      <%= icon 'map-plus' %> <%= t('.distance_traveled') %>
     </div>
     <div class="stat-value text-success">~<%= distance_traveled(current_user, stat) %></div>
     <div class="stat-desc"><%= x_than_average_distance(stat, @average_distance_this_year) %></div>
@@ -27,7 +27,7 @@
 
   <div class="stat place-items-center text-center">
     <div class="stat-title flex items-center justify-center gap-1">
-      <%= icon 'calendar-check-2' %> Active days
+      <%= icon 'calendar-check-2' %> <%= t('.active_days') %>
     </div>
     <div class="stat-value text-secondary">
       <%= active_days(stat) %>
@@ -39,7 +39,7 @@
 
   <div class="stat place-items-center text-center">
     <div class="stat-title flex items-center justify-center gap-1">
-      <%= icon 'map-pin-plus' %> Countries visited
+      <%= icon 'map-pin-plus' %> <%= t('.countries_visited') %>
     </div>
     <div class="stat-value text-accent">
       <%= countries_visited(stat) %>
@@ -56,24 +56,25 @@
      data-api-key="<%= current_user.api_key %>"
      data-year="<%= year %>"
      data-month="<%= month %>"
-     data-self-hosted="<%= @self_hosted %>">
+     data-tiles-url="<%= current_user.safe_settings.maps_maplibre_tiles_url %>"
+     data-tiles-fallback="<%= current_user.safe_settings.maps_maplibre_tiles_fallback? %>">
   <div class="card-body">
-    <div class="flex justify-between items-center mb-4">
+    <div class="page-header-row mb-4">
       <h2 class="card-title">
         <%= icon 'map' %>
-        Map Summary
+        <%= t('.map_summary') %>
       </h2>
-      <div class="flex gap-2">
+      <div class="flex flex-wrap gap-2">
         <button class="btn btn-sm btn-outline btn-active" data-stat-page-target="heatmapBtn" data-action="click->stat-page#toggleHeatmap">
-          <%= icon 'flame' %> Heatmap
+          <%= icon 'flame' %> <%= t('.heatmap') %>
         </button>
         <button class="btn btn-sm btn-outline" data-stat-page-target="pointsBtn" data-action="click->stat-page#togglePoints">
-          <%= icon 'map-pin' %> Points
+          <%= icon 'map-pin' %> <%= t('.points') %>
         </button>
       </div>
     </div>
 
-    <!-- Leaflet Map Container -->
+    <!-- Map container -->
     <div class="w-full h-96 rounded-lg border border-base-300 relative overflow-hidden">
       <div id="monthly-stats-map" data-stat-page-target="map" class="w-full h-full"></div>
 
@@ -113,7 +114,7 @@
 <div class="card bg-base-100 shadow-xl mb-8">
   <div class="card-body">
     <h2 class="card-title">
-      <%= icon 'activity' %> Daily Activity
+      <%= icon 'activity' %> <%= t('.daily_activity') %>
     </h2>
     <div class="w-full h-48 bg-base-200 rounded-lg p-4 relative">
       <%= column_chart(
@@ -123,8 +124,8 @@
           id: "chart-month-daily-#{stat.year}-#{stat.month}",
           height: '200px',
           suffix: " #{current_user.safe_settings.distance_unit}",
-          xtitle: 'Day',
-          ytitle: 'Distance',
+          xtitle: t('.day'),
+          ytitle: t('.distance'),
           colors: [
             '#570df8', '#f000b8', '#ffea00',
             '#00d084', '#3abff8', '#ff5724',
@@ -149,7 +150,7 @@
         ) %>
     </div>
     <div class="text-sm opacity-70 text-center mt-2">
-      Peak day: <%= peak_day(stat) %> • Quietest week: <%= quietest_week(stat) %>
+      <%= t('.peak_day') %> <%= peak_day(stat) %> <%= t('.quietest_week') %> <%= quietest_week(stat) %>
     </div>
   </div>
 </div>
@@ -209,7 +210,7 @@
 <div class="card bg-base-100 shadow-xl mb-8">
   <div class="card-body">
     <h2 class="card-title">
-      <%= icon 'globe' %> Countries & Cities
+      <%= icon 'globe' %> <%= t('.countries_cities') %>
     </h2>
     <div class="space-y-4">
       <% visited_toponyms = stat.toponyms.select { |t| t['country'].present? && t['cities']&.any? } %>
@@ -226,7 +227,7 @@
             <div class="flex justify-between items-center">
               <span class="font-semibold"><%= country['country'] %></span>
               <span class="text-sm">
-                <%= pluralize(cities_count, 'city') %>
+                <%= t('.city_count', count: cities_count) %>
                 <% if progress_value > 0 %>
                   (<%= progress_value %>%)
                 <% end %>
@@ -237,7 +238,7 @@
         <% end %>
       <% else %>
         <div class="text-center text-gray-500">
-          <p>No location data available for this month</p>
+          <p><%= t('.no_location_data_available_for_this_month') %></p>
         </div>
       <% end %>
     </div>
@@ -245,7 +246,7 @@
     <div class="divider"></div>
 
     <div class="flex flex-wrap gap-2">
-      <span class="text-sm font-medium">Cities visited:</span>
+      <span class="text-sm font-medium"><%= t('.cities_visited') %></span>
       <% visited_toponyms.each do |country| %>
         <% country['cities'].each do |city| %>
           <div class="badge badge-outline"><%= city['city'] %></div>
@@ -312,9 +313,9 @@
 
 <!-- Action Buttons -->
 <div class="flex flex-wrap gap-4 mt-8 justify-center">
-  <a href="/stats/<%= year %>" class="btn btn-outline">← Back to <%= year %></a>
+  <a href="/stats/<%= year %>" class="btn btn-outline"><%= t('.back_to') %> <%= year %></a>
   <button class="btn btn-outline" onclick="sharing_modal.showModal()">
-    <%= icon 'share' %> Share
+    <%= icon 'share' %> <%= t('.share') %>
   </button>
 </div>
 

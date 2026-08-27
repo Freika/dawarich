@@ -1,5 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 import { MapInitializer } from "controllers/maps/maplibre/map_initializer"
+import { translate } from "i18n"
 import maplibregl from "maplibre-gl"
 import { DayRoutesLayer } from "maps_maplibre/layers/day_routes_layer"
 import { FlightsLayer } from "maps_maplibre/layers/flights_layer"
@@ -9,6 +10,7 @@ import { ReplayPanel } from "maps_maplibre/managers/replay_panel"
 import { ApiClient } from "maps_maplibre/services/api_client"
 import { featureToPhoto } from "maps_maplibre/utils/feature_to_photo"
 import { flightWindows } from "maps_maplibre/utils/flight_mask"
+import { buildTripGeojson, TripProvider } from "poster_studio/data/providers"
 import Flash from "./flash_controller"
 
 /**
@@ -22,6 +24,7 @@ export default class extends Controller {
     "daysAccordion",
     "expandAllBtn",
     "loadingIndicator",
+    "posterBtn",
     // Photos button
     "photosToggleBtn",
     // Flights button
@@ -56,6 +59,7 @@ export default class extends Controller {
     startedAt: String,
     endedAt: String,
     tripId: Number,
+    tripName: String,
     pathData: String,
     mapStyle: { type: String, default: "light" },
   }
@@ -362,14 +366,16 @@ export default class extends Controller {
         d.removeAttribute("open")
       }
       if (this.hasExpandAllBtnTarget) {
-        this.expandAllBtnTarget.textContent = "Show all days"
+        this.expandAllBtnTarget.textContent = translate("trip.show_all_days")
       }
     } else {
       for (const d of allDetails) {
         d.setAttribute("open", "")
       }
       if (this.hasExpandAllBtnTarget) {
-        this.expandAllBtnTarget.textContent = "Collapse all days"
+        this.expandAllBtnTarget.textContent = translate(
+          "trip.collapse_all_days",
+        )
       }
     }
 
@@ -398,6 +404,45 @@ export default class extends Controller {
     if (this.hasLoadingIndicatorTarget) {
       this.loadingIndicatorTarget.classList.toggle("hidden", !show)
     }
+  }
+
+  // ===== Poster studio =====
+
+  openPosterStudio() {
+    document.dispatchEvent(
+      new CustomEvent("poster-studio:open", {
+        detail: { provider: this.posterProvider() },
+      }),
+    )
+  }
+
+  posterProvider() {
+    return new TripProvider({
+      geojson: this.posterGeojson(),
+      startAt: this.startedAtValue,
+      endAt: this.endedAtValue,
+      title: this.tripNameValue,
+      points: this.allPoints,
+    })
+  }
+
+  // ===== Video studio =====
+
+  openVideoStudio() {
+    document.dispatchEvent(
+      new CustomEvent("video-studio:open", {
+        detail: { provider: this.posterProvider() },
+      }),
+    )
+  }
+
+  posterGeojson() {
+    return buildTripGeojson({
+      dayRouteCollections: this.dayRoutesLayer
+        ? [...this.dayRoutesLayer.dayRouteData.values()]
+        : [],
+      pathData: this.getPathData(),
+    })
   }
 
   // ===== Photos layer toggle (button-based) =====
@@ -493,7 +538,10 @@ export default class extends Controller {
         this.flightsGeoJSON = null
         this.flightsActive = false
         this._setButtonActive(this.flightsToggleBtnTarget, false)
-        Flash.show("error", "Could not load flights. Please try again.")
+        Flash.show(
+          "error",
+          translate("messages.could_not_load_flights_please_try_again"),
+        )
         return
       }
     }
@@ -504,7 +552,7 @@ export default class extends Controller {
       this.flightsGeoJSON = null
       this.flightsActive = false
       this._setButtonActive(this.flightsToggleBtnTarget, false)
-      Flash.show("notice", "No flights found for this trip.")
+      Flash.show("notice", translate("messages.no_flights_found_for_this_trip"))
       return
     }
 

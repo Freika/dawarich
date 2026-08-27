@@ -62,6 +62,16 @@ RSpec.describe Lite::ArchivalWarningJob, type: :job do
         expect(notification.title).to include('archive')
       end
 
+      it 'uses the recipient saved locale for the persisted notification' do
+        lite_user.update!(settings: { 'locale' => 'fr' })
+
+        I18n.with_locale(:en) { described_class.perform_now }
+
+        notification = Notification.find_by!(user: lite_user)
+        expect(notification.title).to eq('Vos données les plus anciennes seront archivées dans 30 jours')
+        expect(notification.content).to include('Votre plus ancien mois de données de localisation')
+      end
+
       it 'does not warn the same user twice for the 11-month threshold' do
         described_class.perform_now
         expect { described_class.perform_now }.not_to change(Notification, :count)
@@ -147,6 +157,37 @@ RSpec.describe Lite::ArchivalWarningJob, type: :job do
 
       it 'does not warn Pro users even if they have old data' do
         expect { described_class.perform_now }.not_to change(Notification, :count)
+      end
+    end
+
+    context 'when a Pro user with years of history is freshly downgraded to Lite' do
+      let!(:downgraded) { create(:user).tap { |u| u.update_column(:plan, User.plans[:pro]) } }
+
+      before do
+        create(:point, user: downgraded, timestamp: 14.months.ago.to_i)
+        downgraded.update!(plan: :lite)
+      end
+
+      it 'sends the archived notification on the first run' do
+        expect { described_class.perform_now }
+          .to change { Notification.where(user: downgraded).count }.by(1)
+
+        notification = Notification.where(user: downgraded).order(:created_at).last
+        expect(notification.title).to include('archived')
+      end
+
+      it 'does not enqueue the email when all thresholds are crossed at once' do
+        expect { described_class.perform_now }
+          .not_to have_enqueued_job(Users::MailerSendingJob)
+      end
+
+      it 'notifies again when the user upgrades and is downgraded again' do
+        described_class.perform_now
+        downgraded.update!(plan: :pro)
+        downgraded.update!(plan: :lite)
+
+        expect { described_class.perform_now }
+          .to change { Notification.where(user: downgraded).count }.by(1)
       end
     end
   end

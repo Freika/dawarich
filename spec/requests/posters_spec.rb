@@ -5,10 +5,7 @@ require 'rails_helper'
 RSpec.describe 'Posters', type: :request do
   let(:user) { create(:user) }
 
-  before do
-    Flipper.enable(:posters)
-    sign_in user
-  end
+  before { sign_in user }
 
   describe 'POST /posters' do
     let(:poster_attributes) do
@@ -59,14 +56,6 @@ RSpec.describe 'Posters', type: :request do
       poster = user.posters.last
       expect(poster.name).to eq('Untitled poster')
       expect(poster.settings['title']).to eq('')
-    end
-
-    it 'redirects when posters are not enabled' do
-      Flipper.disable(:posters)
-
-      post posters_path, params: { poster: poster_attributes }
-
-      expect(response).to redirect_to(root_path)
     end
   end
 

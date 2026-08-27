@@ -1,11 +1,13 @@
 {
+  "scripts": {
+    "test": "node --test spec/javascript/*_test.mjs"
+  },
   "dependencies": {
     "@hotwired/turbo-rails": "^8.0.21",
     "@rails/actiontext": "^8.0.0",
     "daisyui": "^4.7.3",
-    "leaflet": "^1.9.4",
     "maplibre-gl": "^5.13.0",
-    "postcss": "^8.5.15",
+    "postcss": "^8.5.26",
     "trix": "^2.1.19"
   },
   "engines": {

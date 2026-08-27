@@ -4,6 +4,7 @@ module Map
   class MaplibreController < ApplicationController
     include SafeTimestampParser
     include ImportTimeWindow
+    include VideoStudioContext
 
     before_action :authenticate_user!
     layout 'map'
@@ -13,59 +14,15 @@ module Map
       @end_at = parsed_end_at
       @import_id = import_record&.id
 
-      # Status counts shown in the Timeline tab's FILTER section — scoped to
-      # the calendar's currently-visible month so the numbers reflect "what
-      # you're looking at" rather than the user's lifetime totals.
-      summary = Timeline::MonthSummary.new(user: current_user, month: timeline_month).call
-      @status_counts = summary[:status_counts] || {}
-
-      # Pending-suggestion badge on the map-edge cluster — kept lifetime-scoped
-      # so the user sees their global review backlog at a glance, regardless
-      # of which month the calendar lands on.
-      @suggestions_pending_count = current_user.scoped_visits.suggested.count
-
       # Tag chips displayed in the rail; capped so the list doesn't explode.
       @timeline_tags = current_user.tags.order(:name).limit(8)
 
-      # Theme tokens power both the poster tab and the Appearance section's
-      # custom map colors, so they load regardless of the posters feature gate.
-      @poster_themes = local_poster_themes
-
-      return unless posters_enabled?
-
-      @recent_posters = current_user.posters.with_attached_image.order(created_at: :desc).limit(10)
+      # Theme tokens power both the poster studio and the Appearance section's
+      # custom map colors.
+      load_video_studio_context
     end
 
     private
-
-    # Poster theme tokens are vendored under public/poster_themes and read
-    # directly — they also power the map's custom-colour editor.
-    def local_poster_themes
-      Rails.cache.fetch('local_poster_themes', expires_in: 1.hour) do
-        Dir.glob(Rails.root.join('public/poster_themes/*.json')).sort.filter_map do |path|
-          data = JSON.parse(File.read(path))
-          data.merge('key' => File.basename(path, '.json'), 'route' => data['route'].presence || '#FF3B30')
-        rescue JSON::ParserError
-          nil
-        end
-      end
-    end
-
-    # Reuses the same month-resolution rule as the calendar helper so the
-    # filter pills are aligned with whatever month the calendar lands on
-    # (params[:date] > params[:start_at] > today in user's tz).
-    def timeline_month
-      tz = current_user.safe_settings.timezone.presence || 'UTC'
-      candidate = params[:date].presence || params[:start_at].presence
-      if candidate
-        parsed = begin
-          Date.parse(candidate)
-        rescue StandardError
-          nil
-        end
-      end
-      parsed || Time.use_zone(tz) { Date.current }
-    end
 
     def start_at
       return safe_timestamp(params[:start_at]) if params[:start_at].present?

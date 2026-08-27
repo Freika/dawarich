@@ -12,6 +12,11 @@ class User < ApplicationRecord
   # until their subscription source confirms a purchase.
   attr_accessor :skip_auto_trial
 
+  # Set by Omniauthable.from_omniauth. Post-create callbacks re-save the record,
+  # which clears `previously_new_record?`, so signup-vs-login can't be read off
+  # the record afterwards — the lookup has to tell us.
+  attr_accessor :oauth_newly_created
+
   devise :two_factor_authenticatable, :registerable,
          :recoverable, :rememberable, :validatable, :trackable,
          :lockable,
@@ -23,12 +28,14 @@ class User < ApplicationRecord
   has_many :stats,          dependent: :destroy
   has_many :exports,        dependent: :destroy
   has_many :posters,        dependent: :destroy
+  has_many :route_videos,   dependent: :destroy
   has_many :notifications,  dependent: :destroy
   has_many :areas,          dependent: :destroy
   has_many :visits,         dependent: :destroy
   has_many :visited_places, through: :visits, source: :place
   has_many :places,         dependent: :destroy
   has_many :tags,           dependent: :destroy
+  has_many :service_settings, dependent: :destroy
   has_many :trips,  dependent: :destroy
   has_many :tracks, dependent: :destroy
   has_many :flights, dependent: :destroy
@@ -38,11 +45,13 @@ class User < ApplicationRecord
   has_many :shared_links, dependent: :destroy
 
   after_create :create_api_key
+  after_create :seed_geocoding_settings_from_env, if: -> { DawarichSettings.self_hosted? }
   after_commit :activate, on: :create, if: -> { DawarichSettings.self_hosted? && !skip_auto_trial }
   after_commit :start_trial, on: :create, if: -> { !DawarichSettings.self_hosted? && !skip_auto_trial }
   after_commit :trigger_creation_webhook, on: :create,
                                             if: -> { !DawarichSettings.self_hosted? && skip_auto_trial }
   after_update :invalidate_plan_rate_limit_cache, if: :saved_change_to_plan?
+  after_update :reset_archival_warnings, if: :saved_change_to_plan?
 
   before_save :sanitize_input
 
@@ -117,6 +126,60 @@ class User < ApplicationRecord
     Users::SafeSettings.new(settings, plan: plan)
   end
 
+  # Old rows can carry a settings container that is not an object at all, so the
+  # value is normalized rather than trusted: ' FR ' and 'fr' both mean French,
+  # and anything that is not a shipped locale reads as unset.
+  def preferred_locale
+    return unless settings.is_a?(Hash)
+
+    value = settings['locale']
+    return unless value.is_a?(String)
+
+    locale = value.strip.downcase.to_sym
+    locale if I18n.available_locales.include?(locale)
+  end
+
+  def locale
+    preferred_locale || I18n.default_locale
+  end
+
+  # `update_all` keeps the write clear of whatever else the request is saving on
+  # this user. The CASE covers rows whose settings are null or not an object —
+  # `'[]'::jsonb || '{...}'::jsonb` appends an element instead of merging a key.
+  def persist_locale!(locale)
+    self.class.where(id: id).update_all(
+      ActiveRecord::Base.sanitize_sql_array(
+        [
+          "settings = CASE WHEN jsonb_typeof(settings) = 'object' THEN settings ELSE '{}'::jsonb END " \
+          "|| jsonb_build_object('locale', ?), updated_at = ?",
+          locale.to_s,
+          Time.current
+        ]
+      )
+    )
+
+    # `update_all` leaves this instance holding the old settings, and Devise
+    # keeps one instance for the whole session — without this, every later read
+    # of `preferred_locale` would report the language the user just replaced.
+    # The change is cleared so a subsequent `save` still writes only what the
+    # request itself touched.
+    self[:settings] = (settings.is_a?(Hash) ? settings : {}).merge('locale' => locale.to_s)
+    clear_attribute_changes([:settings])
+
+    locale
+  end
+
+  # Only accounts the migration actually handed to a rebuild are waiting on one.
+  # Deriving this from live state instead would report a permanent "pending" for
+  # anyone the dispatcher never picked up — no points at the time, filtering off
+  # at the time, or created after the migration ran.
+  def gps_noise_recheck_pending?
+    job = DataMigrations::RecalculateAnomaliesUserJob
+    return false if settings.blank?
+
+    settings[job::QUEUED_SETTINGS_KEY].present? && settings[job::RECALCULATED_SETTINGS_KEY].blank?
+  end
+
   # nil changelog_consent => user has not been shown the opt-in prompt yet.
   def changelog_prompt_pending?
     changelog_consent.nil?
@@ -153,10 +216,6 @@ class User < ApplicationRecord
     StatsQuery.new(self).points_stats[:geocoded]
   end
 
-  def total_reverse_geocoded_points_without_data
-    points.where(geodata: {}).count
-  end
-
   def immich_integration_configured?
     settings['immich_url'].present? && settings['immich_api_key'].present?
   end
@@ -167,17 +226,39 @@ class User < ApplicationRecord
 
   def years_tracked
     Rails.cache.fetch("dawarich/user_#{id}_years_tracked", expires_in: 1.day) do
-      # Use select_all for better performance with large datasets
-      sql = <<-SQL
-        SELECT DISTINCT
+      sql = <<~SQL
+        WITH RECURSIVE tracked_months AS (
+          SELECT MAX(timestamp) AS timestamp
+          FROM points
+          WHERE user_id = $1
+
+          UNION ALL
+
+          SELECT (
+            SELECT MAX(points.timestamp)
+            FROM points
+            WHERE points.user_id = $1
+              AND points.timestamp < EXTRACT(
+                EPOCH FROM DATE_TRUNC('month', TO_TIMESTAMP(tracked_months.timestamp))
+              )::bigint
+          )
+          FROM tracked_months
+          WHERE tracked_months.timestamp IS NOT NULL
+        )
+        SELECT
           EXTRACT(YEAR FROM TO_TIMESTAMP(timestamp)) AS year,
-          TO_CHAR(TO_TIMESTAMP(timestamp), 'Mon') AS month
-        FROM points
-        WHERE user_id = #{id}
-        ORDER BY year DESC, month ASC
+          TO_CHAR(TO_TIMESTAMP(timestamp), 'Mon') AS month,
+          EXTRACT(MONTH FROM TO_TIMESTAMP(timestamp)) AS month_number
+        FROM tracked_months
+        WHERE timestamp IS NOT NULL
+        ORDER BY year DESC, month_number ASC
       SQL
 
-      result = ActiveRecord::Base.connection.select_all(sql)
+      binds = [
+        ActiveRecord::Relation::QueryAttribute.new('user_id', id, ActiveRecord::Type::Integer.new)
+      ]
+
+      result = ActiveRecord::Base.connection.exec_query(sql, 'YearsTracked', binds)
 
       result
         .map { |r| [r['year'].to_i, r['month']] }
@@ -316,11 +397,20 @@ class User < ApplicationRecord
     save
   end
 
+  def seed_geocoding_settings_from_env
+    Geocoding::SeedFromEnv.call(self)
+  rescue StandardError => e
+    Rails.logger.error("Failed to seed geocoding settings from ENV for user #{id}: #{e.class}: #{e.message}")
+    ExceptionReporter.call(e, 'Failed to seed geocoding settings from ENV')
+  end
+
   def activate
     update(status: :active, active_until: 1000.years.from_now, plan: :pro)
   end
 
   def sanitize_input
+    return unless settings.is_a?(Hash)
+
     settings['immich_url']&.gsub!(%r{/+\z}, '')
     settings['photoprism_url']&.gsub!(%r{/+\z}, '')
     settings.try(:[], 'maps')&.try(:[], 'url')&.strip!
@@ -342,5 +432,15 @@ class User < ApplicationRecord
   def invalidate_plan_rate_limit_cache
     key = api_key_previously_was || api_key_was || api_key
     Rails.cache.delete("rack_attack/plan/#{key}") if key.present?
+  end
+
+  def reset_archival_warnings
+    # Atomic JSONB key removal at the SQL level so a concurrent settings write
+    # (e.g. the archival warning job's merge) is never clobbered by a stale
+    # full-column overwrite.
+    User.where(id: id).update_all(
+      "settings = COALESCE(settings, '{}'::jsonb) - 'archival_warnings' - 'lite_since'"
+    )
+    settings&.except!('archival_warnings', 'lite_since')
   end
 end

@@ -1,3 +1,5 @@
+import { translate } from "i18n"
+
 const DEBOUNCE_MS = 250
 const DEFAULT_RADIUS_KM = 1.0
 const MOVE_THRESHOLD_M = 100
@@ -88,7 +90,7 @@ export class VisitPlaceSearch {
 
     this.list.innerHTML = rows.length
       ? rows.join("")
-      : `<li class="px-3 py-2 text-xs text-base-content/60">No places found</li>`
+      : `<li class="px-3 py-2 text-xs text-base-content/60">${translate("places.none_found")}</li>`
 
     this.bindRows(places, areas, query)
   }
@@ -112,7 +114,9 @@ export class VisitPlaceSearch {
     try {
       if (distance > MOVE_THRESHOLD_M) {
         const move = window.confirm(
-          `This place is ~${Math.round(distance)} m from the visit. Move the visit here?`,
+          translate("places.confirm_move_visit", {
+            distance: Math.round(distance),
+          }),
         )
         if (!move) {
           return
@@ -129,7 +133,7 @@ export class VisitPlaceSearch {
 
   async selectArea(area) {
     try {
-      await this.patchVisit({ area_id: area.id })
+      await this.patchVisit({ area_id: area.id, status: "confirmed" })
       this.done()
     } catch (_e) {
       this.renderError()
@@ -146,7 +150,11 @@ export class VisitPlaceSearch {
           source: "manual",
         },
       })
-      await this.patchVisit({ place_id: created.id, name: created.name })
+      await this.patchVisit({
+        place_id: created.id,
+        name: created.name,
+        status: "confirmed",
+      })
       this.done()
     } catch (_e) {
       this.renderError()
@@ -204,7 +212,7 @@ export class VisitPlaceSearch {
   shellHtml() {
     return `
       <div class="visit-search-panel mt-2 border-t border-base-300 pt-2">
-        <input type="text" data-search-input placeholder="Search for a place…"
+        <input type="text" data-search-input placeholder="${translate("places.search_placeholder")}"
                maxlength="200"
                class="input input-bordered input-xs w-full mb-2"
                onclick="event.stopPropagation()">
@@ -233,7 +241,7 @@ export class VisitPlaceSearch {
       this.distanceMeters(area.latitude, area.longitude),
     )
     return `<li class="w-full"><a data-select-area="${idx}" onclick="event.stopPropagation()" class="${this.rowClass()}">
-      <span class="block truncate"><span class="badge badge-xs badge-secondary mr-1">Area</span>${this.escape(area.name)}</span>
+      <span class="block truncate"><span class="badge badge-xs badge-secondary mr-1">${translate("map_info.area")}</span>${this.escape(area.name)}</span>
       ${dist ? `<span class="block text-xs opacity-60 truncate">${this.escape(dist)}</span>` : ""}</a></li>`
   }
 
@@ -252,17 +260,17 @@ export class VisitPlaceSearch {
 
   createRow(query) {
     return `<li class="w-full"><a data-create-place onclick="event.stopPropagation()" class="${this.rowClass()} truncate">
-      + Create "<span class="font-medium">${this.escape(query)}</span>" here</a></li>`
+      ${translate("places.create_here", { name: `<span class="font-medium">${this.escape(query)}</span>` })}</a></li>`
   }
 
   renderLoading() {
     if (this.list)
-      this.list.innerHTML = `<li class="px-3 py-2 text-xs text-base-content/60">Searching…</li>`
+      this.list.innerHTML = `<li class="px-3 py-2 text-xs text-base-content/60">${translate("search.searching")}</li>`
   }
 
   renderError() {
     if (this.list)
-      this.list.innerHTML = `<li class="px-3 py-2 text-xs text-error">Search unavailable</li>`
+      this.list.innerHTML = `<li class="px-3 py-2 text-xs text-error">${translate("search.unavailable")}</li>`
   }
 
   escape(str) {

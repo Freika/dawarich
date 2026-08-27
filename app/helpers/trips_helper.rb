@@ -51,11 +51,11 @@ module TripsHelper
     end
 
     parts = []
-    parts << "#{years} year#{'s' if years != 1}" if years.positive?
-    parts << "#{months} month#{'s' if months != 1}" if months.positive?
-    parts << "#{days} day#{'s' if days != 1}" if days.positive?
-    parts << "#{hours} hour#{'s' if hours != 1}" if hours.positive?
-    parts = ['0 hours'] if parts.empty?
+    parts << I18n.t('helpers.trips.duration.years', count: years) if years.positive?
+    parts << I18n.t('helpers.trips.duration.months', count: months) if months.positive?
+    parts << I18n.t('helpers.trips.duration.days', count: days) if days.positive?
+    parts << I18n.t('helpers.trips.duration.hours', count: hours) if hours.positive?
+    parts = [I18n.t('helpers.trips.duration.hours', count: 0)] if parts.empty?
     parts.join(', ')
   end
 end

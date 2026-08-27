@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { translate } from "i18n"
 import { createMapChannel } from "maps_maplibre/channels/map_channel"
 import { Toast } from "maps_maplibre/components/toast"
 import { SettingsManager } from "maps_maplibre/utils/settings_manager"
@@ -84,8 +85,8 @@ export default class extends Controller {
     SettingsManager.updateSetting("liveMapEnabled", this.liveModeEnabled)
 
     const message = this.liveModeEnabled
-      ? "Live mode enabled"
-      : "Live mode disabled"
+      ? translate("live_map.enabled")
+      : translate("live_map.disabled")
     Toast.info(message)
   }
 
@@ -119,7 +120,7 @@ export default class extends Controller {
     this.connectedChannels.add(channelName)
 
     if (this.connectedChannels.size === 1) {
-      Toast.success("Connected to real-time updates")
+      Toast.success(translate("messages.connected_to_real_time_updates"))
       this.updateConnectionIndicator(true)
     }
   }
@@ -131,7 +132,7 @@ export default class extends Controller {
     this.connectedChannels.delete(channelName)
 
     if (this.connectedChannels.size === 0) {
-      Toast.warning("Disconnected from real-time updates")
+      Toast.warning(translate("messages.disconnected_from_real_time_updates"))
       this.updateConnectionIndicator(false)
     }
   }
@@ -211,6 +212,22 @@ export default class extends Controller {
       features,
     })
 
+    // Keep the cached full point set in sync — route rebuilds and the
+    // scratch layer read from it in simplified rendering mode.
+    const cachedPoints = mapsController.mapDataManager?.lastLoadedData?.points
+    if (cachedPoints) {
+      cachedPoints.push({
+        id: parseInt(id, 10),
+        latitude: parseFloat(lat),
+        longitude: parseFloat(lon),
+        timestamp: timestamp,
+        battery: parseFloat(battery) || null,
+        altitude: parseFloat(altitude) || null,
+        velocity: parseFloat(velocity) || null,
+        country_name: countryName || null,
+      })
+    }
+
     this.updateRecentPoint(parseFloat(lon), parseFloat(lat), {
       id: parseInt(id, 10),
       battery: parseFloat(battery) || null,
@@ -222,7 +239,7 @@ export default class extends Controller {
 
     this.zoomToPoint(parseFloat(lon), parseFloat(lat))
 
-    Toast.info("New location recorded")
+    Toast.info(translate("messages.new_location_recorded"))
   }
 
   /**

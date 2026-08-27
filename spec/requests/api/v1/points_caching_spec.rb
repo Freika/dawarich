@@ -45,6 +45,54 @@ RSpec.describe 'Api::V1::Points conditional GET caching', type: :request do
     expect(queries.none? { |sql| sql.include?('ST_Y') }).to be(true)
   end
 
+  it 'runs a single COUNT query per fresh request, reusing it for pagination headers' do
+    queries = []
+    callback = ->(_name, _start, _finish, _id, payload) { queries << payload[:sql] }
+    ActiveSupport::Notifications.subscribed(callback, 'sql.active_record') do
+      get "/api/v1/points?api_key=#{user.api_key}&#{range}"
+    end
+
+    expect(response).to have_http_status(:ok)
+    expect(response.headers['X-Total-Pages']).to eq('1')
+    expect(queries.count { |sql| sql.match?(/SELECT COUNT/i) }).to eq(1)
+  end
+
+  it 'reports pagination headers from the aggregate count' do
+    get "/api/v1/points?api_key=#{user.api_key}&#{range}&per_page=2"
+
+    expect(response.headers['X-Current-Page']).to eq('1')
+    expect(response.headers['X-Total-Pages']).to eq('2')
+  end
+
+  it 'falls back to the default page size when per_page is zero' do
+    get "/api/v1/points?api_key=#{user.api_key}&#{range}&per_page=0"
+
+    expect(response).to have_http_status(:ok)
+    expect(response.parsed_body.size).to eq(3)
+    expect(response.headers['X-Total-Pages']).to eq('1')
+  end
+
+  it 'falls back to the default page size when per_page is negative' do
+    get "/api/v1/points?api_key=#{user.api_key}&#{range}&per_page=-5"
+
+    expect(response).to have_http_status(:ok)
+    expect(response.parsed_body.size).to eq(3)
+    expect(response.headers['X-Total-Pages']).to eq('1')
+  end
+
+  it 'does not reuse an unfiltered ETag for an import-filtered request with identical aggregates' do
+    import = create(:import, user: user)
+    user.points.update_all(import_id: import.id)
+
+    get "/api/v1/points?api_key=#{user.api_key}&#{range}"
+    etag = response.headers['ETag']
+
+    get "/api/v1/points?api_key=#{user.api_key}&#{range}&import_id=#{import.id}",
+        headers: { 'If-None-Match' => etag }
+
+    expect(response).to have_http_status(:ok)
+  end
+
   it 'returns a fresh 200 when a new point arrives' do
     get "/api/v1/points?api_key=#{user.api_key}&#{range}"
     etag = response.headers['ETag']

@@ -3,6 +3,50 @@
 require 'rails_helper'
 
 RSpec.describe User, type: :model do
+  describe '#preferred_locale' do
+    it 'normalizes a supported string locale' do
+      user = build(:user, settings: { 'locale' => ' FR ' })
+
+      expect(user.preferred_locale).to eq(:fr)
+    end
+
+    it 'treats malformed and unsupported locale values as unset' do
+      [false, 42, { 'language' => 'fr' }, %w[fr], 'xx'].each do |locale|
+        user = build(:user, settings: { 'locale' => locale })
+
+        expect { user.preferred_locale }.not_to raise_error
+        expect(user.preferred_locale).to be_nil
+      end
+    end
+
+    it 'treats a malformed settings container as unset' do
+      [false, []].each do |settings|
+        user = build(:user, settings:)
+
+        expect { user.preferred_locale }.not_to raise_error
+        expect(user.preferred_locale).to be_nil
+      end
+    end
+  end
+
+  describe '#persist_locale!' do
+    it 'normalizes a malformed settings container before saving the locale' do
+      user = create(:user)
+      user.update_column(:settings, [])
+
+      expect { user.reload.persist_locale!(:fr) }.not_to raise_error
+
+      expect(user.reload.settings).to eq('locale' => 'fr')
+      expect(user.preferred_locale).to eq(:fr)
+    end
+  end
+
+  describe 'visit detection v3 stamp' do
+    it 'marks new accounts as v3-native so confidence gating applies from day one' do
+      expect(create(:user).reload.visits_redetected_at).to be_present
+    end
+  end
+
   describe 'associations' do
     it { is_expected.to have_many(:imports).dependent(:destroy) }
     it { is_expected.to have_many(:stats) }
@@ -39,6 +83,70 @@ RSpec.describe User, type: :model do
 
     it 'has integer value 2 for family' do
       expect(User.plans['family']).to eq(2)
+    end
+  end
+
+  describe '#persist_locale!' do
+    it 'updates only the locale when its settings snapshot is stale' do
+      stale_user = create(:user)
+      User.where(id: stale_user.id).update_all(
+        settings: stale_user.settings.merge('concurrent_preference' => 'preserved')
+      )
+
+      stale_user.persist_locale!(:de)
+
+      expect(stale_user.reload.settings).to include(
+        'locale' => 'de',
+        'concurrent_preference' => 'preserved'
+      )
+    end
+  end
+
+  describe 'archival warning reset on plan change' do
+    it 'clears archival warnings and stale lite_since when the plan leaves lite' do
+      user = create(:user, skip_auto_trial: true)
+      user.update_column(:plan, User.plans[:lite])
+      user.update_column(:settings, user.settings.merge(
+                                      'lite_since' => 1.day.ago.iso8601,
+                                      'archival_warnings' => { '11mo' => 1.day.ago.iso8601 }
+                                    ))
+
+      user.update!(plan: :pro)
+
+      expect(user.reload.settings).not_to have_key('lite_since')
+      expect(user.settings).not_to have_key('archival_warnings')
+    end
+
+    it 'resets stale archival warnings when re-entering lite without stamping lite_since' do
+      user = create(:user, skip_auto_trial: true)
+      user.update_column(:plan, User.plans[:pro])
+      user.update_column(:settings, user.settings.merge('archival_warnings' => { '12mo' => 1.year.ago.iso8601 }))
+
+      user.update!(plan: :lite)
+
+      expect(user.reload.settings).not_to have_key('archival_warnings')
+      expect(user.settings).not_to have_key('lite_since')
+    end
+
+    it 'preserves other settings keys when resetting' do
+      user = create(:user, skip_auto_trial: true)
+      user.update_column(:plan, User.plans[:pro])
+      user.update_column(:settings, user.settings.merge('maps' => { 'distance_unit' => 'km' },
+                                                        'archival_warnings' => { '11mo' => 1.day.ago.iso8601 }))
+
+      user.update!(plan: :lite)
+
+      expect(user.reload.settings).not_to have_key('archival_warnings')
+      expect(user.settings['maps']).to eq('distance_unit' => 'km')
+    end
+
+    it 'does not touch settings when the plan does not change' do
+      user = create(:user, skip_auto_trial: true)
+      user.update_column(:plan, User.plans[:lite])
+      user.update_column(:settings, user.settings.merge('archival_warnings' => { '11mo' => 1.day.ago.iso8601 }))
+
+      expect { user.update!(email: 'new-address@example.com') }
+        .not_to(change { user.reload.settings['archival_warnings'] })
     end
   end
 
@@ -110,6 +218,50 @@ RSpec.describe User, type: :model do
 
       it 'returns the raw plan for a lite member whose family owner is not on the family plan' do
         owner = create(:user, plan: :pro, skip_auto_trial: true)
+        family = create(:family, creator: owner)
+        create(:family_membership, :owner, family: family, user: owner)
+        member = create(:user, plan: :lite, skip_auto_trial: true)
+        create(:family_membership, family: family, user: member)
+
+        expect(member.effective_plan).to eq(:lite)
+      end
+
+      it 'reverts members to their raw plan once the owner subscription lapses' do
+        owner = create(:user, plan: :family, skip_auto_trial: true, status: :inactive,
+                              active_until: 1.day.ago)
+        family = create(:family, creator: owner)
+        create(:family_membership, :owner, family: family, user: owner)
+        member = create(:user, plan: :lite, skip_auto_trial: true)
+        create(:family_membership, family: family, user: member)
+
+        expect(member.effective_plan).to eq(:lite)
+        expect(member.full_access?).to be false
+      end
+
+      it 'keeps members on family access while a cancelled owner is still inside the paid period' do
+        owner = create(:user, plan: :family, skip_auto_trial: true, status: :inactive,
+                              active_until: 10.days.from_now)
+        family = create(:family, creator: owner)
+        create(:family_membership, :owner, family: family, user: owner)
+        member = create(:user, plan: :lite, skip_auto_trial: true)
+        create(:family_membership, family: family, user: member)
+
+        expect(member.effective_plan).to eq(:family)
+      end
+
+      it 'grants members family access while the owner is on a trial' do
+        owner = create(:user, plan: :family, skip_auto_trial: true, status: :trial,
+                              active_until: 7.days.from_now)
+        family = create(:family, creator: owner)
+        create(:family_membership, :owner, family: family, user: owner)
+        member = create(:user, plan: :lite, skip_auto_trial: true)
+        create(:family_membership, family: family, user: member)
+
+        expect(member.effective_plan).to eq(:family)
+      end
+
+      it 'reverts members when the owner has no subscription window at all' do
+        owner = create(:user, plan: :family, skip_auto_trial: true, active_until: nil)
         family = create(:family, creator: owner)
         create(:family_membership, :owner, family: family, user: owner)
         member = create(:user, plan: :lite, skip_auto_trial: true)
@@ -522,26 +674,30 @@ RSpec.describe User, type: :model do
       end
     end
 
-    describe '#total_reverse_geocoded_points_without_data' do
-      subject { user.total_reverse_geocoded_points_without_data }
-
-      let!(:reverse_geocoded_point) { create(:point, :reverse_geocoded, :with_geodata, user:) }
-      let!(:reverse_geocoded_point_without_data) { create(:point, :reverse_geocoded, user:, geodata: {}) }
-
-      it 'returns number of reverse geocoded points without data' do
-        expect(subject).to eq(1)
-      end
-    end
-
     describe '#years_tracked' do
       let!(:points) do
-        (1..3).map do |i|
-          create(:point, user:, timestamp: DateTime.new(2024, 1, 1, 5, 0, 0) + i.minutes)
+        [
+          DateTime.new(2024, 1, 1, 5, 0, 0),
+          DateTime.new(2024, 3, 1, 5, 0, 0),
+          DateTime.new(2023, 12, 1, 5, 0, 0)
+        ].flat_map do |month|
+          (1..3).map { |i| create(:point, user:, timestamp: month + i.minutes) }
         end
       end
 
-      it 'returns years tracked' do
-        expect(user.years_tracked).to eq([{ year: 2024, months: ['Jan'] }])
+      it 'returns only tracked months in calendar order for each year' do
+        expect(user.years_tracked).to eq([
+                                           { year: 2024, months: %w[Jan Mar] },
+                                           { year: 2023, months: ['Dec'] }
+                                         ])
+      end
+
+      context 'when the user has no points' do
+        let(:user_without_points) { create(:user) }
+
+        it 'returns an empty array' do
+          expect(user_without_points.years_tracked).to eq([])
+        end
       end
     end
 
@@ -1155,6 +1311,43 @@ subscription_source: :none)
       user = create(:user, first_name: 'Ada', last_name: 'Lovelace')
       expect(user.reload.first_name).to eq('Ada')
       expect(user.reload.last_name).to eq('Lovelace')
+    end
+  end
+
+  describe '#gps_noise_recheck_pending?' do
+    let(:job) { DataMigrations::RecalculateAnomaliesUserJob }
+    let(:user) { create(:user) }
+
+    def stamp(**pairs)
+      user.update!(settings: user.settings.merge(pairs.transform_keys(&:to_s)))
+    end
+
+    it 'is pending once the dispatcher has handed the account to a rebuild' do
+      stamp(job::QUEUED_SETTINGS_KEY => Time.current.iso8601)
+
+      expect(user.gps_noise_recheck_pending?).to be true
+    end
+
+    it 'is not pending once the rebuild has stamped the account' do
+      stamp(
+        job::QUEUED_SETTINGS_KEY => Time.current.iso8601,
+        job::RECALCULATED_SETTINGS_KEY => Time.current.iso8601
+      )
+
+      expect(user.gps_noise_recheck_pending?).to be false
+    end
+
+    it 'is not pending for an account the dispatcher never handed out' do
+      create(:point, user: user)
+
+      expect(user.gps_noise_recheck_pending?).to be false
+    end
+
+    it 'is not pending for an account the dispatcher settled without running it' do
+      now = Time.current.iso8601
+      stamp(job::QUEUED_SETTINGS_KEY => now, job::RECALCULATED_SETTINGS_KEY => now)
+
+      expect(user.gps_noise_recheck_pending?).to be false
     end
   end
 end

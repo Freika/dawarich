@@ -22,21 +22,26 @@ class ReverseGeocoding::Points::FetchData
 
   private
 
-  DEADLOCK_MAX_RETRIES = 3
+  WRITE_MAX_RETRIES = 3
+  WRITE_CONTENTION_ERRORS = [
+    ActiveRecord::Deadlocked,
+    ActiveRecord::LockWaitTimeout,
+    ActiveRecord::QueryCanceled
+  ].freeze
 
   def update_point_with_geocoding_data
-    response = Geocoder.search([point.lat, point.lon]).first
+    response = Geocoding::Search.call(user: point.user_id, query: [point.lat, point.lon]).first
 
     if response.blank?
-      with_deadlock_retry { point.update!(reverse_geocoded_at: Time.current) }
+      with_write_retry { point.update!(reverse_geocoded_at: Time.current) }
       return
     end
 
     return if response.data['error'].present?
 
-    country_record = Country.find_by(name: response.country) if response.country
+    country_record = find_country(response) if response.country
 
-    with_deadlock_retry do
+    with_write_retry do
       point.update!(
         city: response.city,
         country_name: response.country,
@@ -45,20 +50,53 @@ class ReverseGeocoding::Points::FetchData
         reverse_geocoded_at: Time.current
       )
     end
+  rescue *ReverseGeocoding::ProviderErrors::TRANSIENT => e
+    Rails.logger.warn("Reverse geocoding provider error for point #{point.id}: #{e.message}")
+  rescue OpenSSL::SSL::SSLError => e
+    if ReverseGeocoding::ProviderErrors.transient_tls?(e)
+      Rails.logger.warn("Reverse geocoding provider error for point #{point.id}: #{e.message}")
+    else
+      Rails.logger.error("Reverse geocoding error for point #{point.id}: #{e.message}")
+      ExceptionReporter.call(e)
+    end
   rescue StandardError => e
     Rails.logger.error("Reverse geocoding error for point #{point.id}: #{e.message}")
     ExceptionReporter.call(e)
   end
 
-  def with_deadlock_retry
+  # ISO code first: it is naming-scheme-proof, where the name match needs the
+  # alias map to bridge geocoder names and the seeded Natural Earth ones.
+  # Geocoder's Result::Base#country_code raises for lookups that don't carry
+  # a code, hence the rescue.
+  def find_country(response)
+    code = begin
+      response.country_code if response.respond_to?(:country_code)
+    rescue StandardError
+      nil
+    end
+
+    country = Country.find_by(iso_a2: code.upcase) if code.present?
+    country ||= Country.matching_name(response.country)
+
+    if country.nil?
+      Rails.logger.warn(
+        "[ReverseGeocoding] no country record for #{response.country.inspect}; " \
+        'add it to Countries::NameAliases if it is a known naming variant'
+      )
+    end
+
+    country
+  end
+
+  def with_write_retry
     retries = 0
     begin
       yield
-    rescue ActiveRecord::Deadlocked => e
+    rescue *WRITE_CONTENTION_ERRORS => e
       retries += 1
-      raise e if retries > DEADLOCK_MAX_RETRIES
+      raise e if retries > WRITE_MAX_RETRIES
 
-      sleep(0.1 * retries)
+      sleep((0.1 * retries) + (rand * 0.05))
       retry
     end
   end

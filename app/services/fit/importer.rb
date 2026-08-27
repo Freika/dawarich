@@ -24,12 +24,13 @@ class Fit::Importer
     begin
       activity = Fit4Ruby.read(path)
     rescue StandardError => e
-      import.update!(status: :failed, error_message: "FIT parsing error: #{e.message}")
+      import.update!(status: :failed,
+                     error_message: I18n.t('services.fit.importer.fit_parsing_error_message', message: e.message))
       return
     end
 
     unless activity
-      import.update!(status: :failed, error_message: 'No activities found in FIT file')
+      import.update!(status: :failed, error_message: I18n.t('services.fit.importer.no_activities_found_in_fit_file'))
       return
     end
 
@@ -91,12 +92,8 @@ class Fit::Importer
     lat = record.position_lat
     lon = record.position_long
 
-    raw_data = {}
-    raw_data['heart_rate'] = record.heart_rate if record.heart_rate
-    raw_data['cadence'] = record.cadence if record.cadence
-    raw_data['power'] = record.power if record.respond_to?(:power) && record.power
-    raw_data['temperature'] = record.temperature if record.respond_to?(:temperature) && record.temperature
-    raw_data['activity_type'] = activity_type if activity_type
+    motion_data = {}
+    motion_data['activity_type'] = activity_type if activity_type
 
     altitude_value = record.altitude&.to_f
 
@@ -107,7 +104,7 @@ class Fit::Importer
       velocity: extract_speed(record),
       user_id: user_id,
       import_id: import.id,
-      raw_data: raw_data,
+      motion_data: motion_data,
       created_at: Time.current,
       updated_at: Time.current
     }

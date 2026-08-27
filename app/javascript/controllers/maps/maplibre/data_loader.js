@@ -2,6 +2,11 @@ import { RoutesLayer } from "maps_maplibre/layers/routes_layer"
 import { pointsToGeoJSON } from "maps_maplibre/utils/geojson_transformers"
 import { createCircle } from "maps_maplibre/utils/geometry"
 import { performanceMonitor } from "maps_maplibre/utils/performance_monitor"
+import {
+  bulkPointsRequired,
+  SettingsManager,
+  tiledPointsActive,
+} from "maps_maplibre/utils/settings_manager"
 import { applySpeedColors } from "maps_maplibre/utils/speed_colors"
 
 /**
@@ -82,7 +87,8 @@ export class DataLoader {
       end_at: endDate,
     })
     const points = result.points
-    const pointsGeoJSON = pointsToGeoJSON(points)
+    const allPointsGeoJSON = pointsToGeoJSON(points)
+    const pointsGeoJSON = this.pointsGeoJSON(points, allPointsGeoJSON)
     let routesGeoJSON = RoutesLayer.pointsToRoutes(points, {
       distanceThresholdMeters: this.settings.metersBetweenRoutes || 500,
       timeThresholdMinutes: this.settings.minutesBetweenRoutes || 60,
@@ -98,7 +104,13 @@ export class DataLoader {
       routesGeoJSON = applySpeedColors(routesGeoJSON, points, speedColorScale)
     }
 
-    return { points, pointsGeoJSON, routesGeoJSON, routesBaseGeoJSON }
+    return {
+      points,
+      pointsGeoJSON,
+      allPointsGeoJSON,
+      routesGeoJSON,
+      routesBaseGeoJSON,
+    }
   }
 
   /**
@@ -130,23 +142,27 @@ export class DataLoader {
     const counter = onUpdate ? new LoadingCounter(onUpdate) : null
 
     // Determine whether any layer that depends on points data is enabled
+    // Live cache, not this.settings: that snapshot misses layer toggles
+    const current = { ...this.settings, ...SettingsManager.getSettings() }
     const needsPoints =
-      this.settings.pointsVisible !== false ||
-      this.settings.routesVisible !== false ||
-      this.settings.heatmapEnabled ||
-      this.settings.fogEnabled ||
-      this.settings.scratchEnabled
+      (!tiledPointsActive(current) && current.pointsVisible !== false) ||
+      bulkPointsRequired(current)
 
     // Register every source that will be fetched so the badge stays visible
     // until each one finishes. Tracks and photos load in parallel after the
     // core data resolves, but the badge must still wait for them — otherwise
     // the badge disappears while track lines are still painting on the map.
+    // Tiled mode serves tracks (and Routes) from the tracks MVT source — the
+    // bulk GeoJSON fetch would duplicate every byte the tiles already carry.
+    const tracksViaBulk =
+      this.settings.tracksEnabled && !tiledPointsActive(current)
+
     if (counter) {
       if (needsPoints) counter.expect("points")
       if (this.settings.visitsEnabled) counter.expect("visits")
       if (this.settings.placesEnabled) counter.expect("places")
       if (this.settings.areasEnabled) counter.expect("areas")
-      if (this.settings.tracksEnabled) counter.expect("tracks")
+      if (tracksViaBulk) counter.expect("tracks")
       if (this.settings.photosEnabled) counter.expect("photos")
       if (this.settings.flightsEnabled) counter.expect("flights")
     }
@@ -162,9 +178,10 @@ export class DataLoader {
             : null,
           onBatch: onLayerData
             ? (accumulatedPoints) => {
-                const geoJSON = pointsToGeoJSON(accumulatedPoints)
-                onLayerData("points", geoJSON)
-                onLayerData("heatmap", geoJSON)
+                // Stream raw points; simplification runs once on completion
+                const rawGeoJSON = pointsToGeoJSON(accumulatedPoints)
+                onLayerData("points", rawGeoJSON)
+                onLayerData("heatmap", rawGeoJSON)
                 if (counter) counter.update("points", accumulatedPoints.length)
               }
             : null,
@@ -283,7 +300,8 @@ export class DataLoader {
       // Transform points to GeoJSON
       performanceMonitor.mark("transform-geojson")
       data.points = points
-      data.pointsGeoJSON = pointsToGeoJSON(data.points)
+      const allPointsGeoJSON = pointsToGeoJSON(data.points)
+      data.pointsGeoJSON = this.pointsGeoJSON(data.points, allPointsGeoJSON)
       data.routesGeoJSON = RoutesLayer.pointsToRoutes(data.points, {
         distanceThresholdMeters: this.settings.metersBetweenRoutes || 500,
         timeThresholdMinutes: this.settings.minutesBetweenRoutes || 60,
@@ -310,10 +328,10 @@ export class DataLoader {
         onLayerData("routes-base", data.routesBaseGeoJSON)
         // Final points/heatmap update with complete dataset
         onLayerData("points", data.pointsGeoJSON)
-        onLayerData("heatmap", data.pointsGeoJSON)
-        // Fog and scratch need all points — update once
-        onLayerData("fog", data.pointsGeoJSON)
-        onLayerData("scratch", data.pointsGeoJSON)
+        // Heatmap, fog and scratch need all points
+        onLayerData("heatmap", allPointsGeoJSON)
+        onLayerData("fog", allPointsGeoJSON)
+        onLayerData("scratch", allPointsGeoJSON)
       }
     } else {
       data.points = []
@@ -344,7 +362,7 @@ export class DataLoader {
     const backgroundPromises = []
 
     // Background: Fetch tracks
-    if (this.settings.tracksEnabled && onTracksLoaded) {
+    if (tracksViaBulk && onTracksLoaded) {
       console.log("[Tracks] Starting background fetch...")
       const tracksTask = this.api
         .fetchTracks({
@@ -496,6 +514,7 @@ export class DataLoader {
           latitude: place.latitude,
           longitude: place.longitude,
           note: place.note,
+          nameLocked: Boolean(place.name_locked),
           // Stringify tags for MapLibre GL JS compatibility
           tags: JSON.stringify(place.tags || []),
           // Use first tag's color if available
@@ -533,6 +552,14 @@ export class DataLoader {
         }
       }),
     }
+  }
+
+  pointsGeoJSON(points, rawGeoJSON = null) {
+    if (this.settings.pointsRenderingMode !== "simplified") {
+      return rawGeoJSON || pointsToGeoJSON(points)
+    }
+
+    return pointsToGeoJSON(points, { simplified: true })
   }
 
   /**

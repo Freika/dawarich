@@ -15,11 +15,11 @@ class Families::UpdateLocationSharing
   def call
     return success_result if update_location_sharing
 
-    failure_result('Failed to update location sharing setting', :unprocessable_content)
+    failure_result(I18n.t('services.families.update_location_sharing.update_failed'), :unprocessable_content)
   rescue StandardError => e
     ExceptionReporter.call(e, "Error in Families::UpdateLocationSharing: #{e.message}")
 
-    failure_result('An error occurred while updating location sharing', :internal_server_error)
+    failure_result(I18n.t('services.families.update_location_sharing.unexpected_error'), :internal_server_error)
   end
 
   private
@@ -49,7 +49,7 @@ class Families::UpdateLocationSharing
 
     if enabled? && user.family_sharing_expires_at.present?
       payload[:expires_at] = user.family_sharing_expires_at.iso8601
-      payload[:expires_at_formatted] = user.family_sharing_expires_at.strftime('%b %d at %I:%M %p')
+      payload[:expires_at_formatted] = I18n.l(user.family_sharing_expires_at, format: :short_with_time)
     end
 
     Result.new(success?: true, payload: payload, status: :ok)
@@ -60,19 +60,19 @@ class Families::UpdateLocationSharing
   end
 
   def build_sharing_message
-    return 'Location sharing disabled' unless enabled?
+    return I18n.t('services.families.update_location_sharing.disabled') unless enabled?
 
     case duration_param
-    when '1h' then 'Location sharing enabled for 1 hour'
-    when '6h' then 'Location sharing enabled for 6 hours'
-    when '12h' then 'Location sharing enabled for 12 hours'
-    when '24h' then 'Location sharing enabled for 24 hours'
-    when 'permanent', nil then 'Location sharing enabled'
+    when '1h' then I18n.t('services.families.update_location_sharing.enabled_for_hours', count: 1)
+    when '6h' then I18n.t('services.families.update_location_sharing.enabled_for_hours', count: 6)
+    when '12h' then I18n.t('services.families.update_location_sharing.enabled_for_hours', count: 12)
+    when '24h' then I18n.t('services.families.update_location_sharing.enabled_for_hours', count: 24)
+    when 'permanent', nil then I18n.t('services.families.update_location_sharing.enabled')
     else
       if duration_param.to_i.positive?
-        "Location sharing enabled for #{duration_param.to_i} hours"
+        I18n.t('services.families.update_location_sharing.enabled_for_hours', count: duration_param.to_i)
       else
-        'Location sharing enabled'
+        I18n.t('services.families.update_location_sharing.enabled')
       end
     end
   end

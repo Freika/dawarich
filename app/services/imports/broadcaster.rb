@@ -13,7 +13,7 @@ module Imports::Broadcaster
       [import.user, :imports],
       target: ActionView::RecordIdentifier.dom_id(import),
       partial: 'imports/table_row',
-      locals: { import: import }
+      locals: { import: import, timezone: import.user.safe_settings.timezone }
     )
 
     @last_broadcast_at = Time.current
@@ -27,7 +27,7 @@ module Imports::Broadcaster
       [import.user, :imports],
       target: ActionView::RecordIdentifier.dom_id(import),
       partial: 'imports/table_row',
-      locals: { import: import }
+      locals: { import: import, timezone: import.user.safe_settings.timezone }
     )
   end
 

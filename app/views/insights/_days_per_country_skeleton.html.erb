@@ -1,0 +1,10 @@
+<%# Placeholder while the lazy days-per-country frame loads. Mirrors the
+    countries-left / heatmap-right split of the loaded content. %>
+<div class="flex flex-col lg:flex-row gap-6">
+  <div class="w-full lg:w-1/4 mb-6">
+    <%= render 'shared/skeleton_card', lines: 3 %>
+  </div>
+  <div class="w-full lg:w-3/4 mb-6">
+    <%= render 'shared/skeleton_card', lines: 4 %>
+  </div>
+</div>

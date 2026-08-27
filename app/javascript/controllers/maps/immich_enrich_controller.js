@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { translate } from "i18n"
 import maplibregl from "maplibre-gl"
 import Flash from "../flash_controller"
 
@@ -94,7 +95,7 @@ export default class extends Controller {
     const tolerance = (parseInt(this.toleranceTarget.value, 10) || 30) * 60
 
     if (!startDate || !endDate) {
-      Flash.show("error", "Please select a date range")
+      Flash.show("error", translate("messages.please_select_a_date_range"))
       return
     }
 
@@ -103,7 +104,7 @@ export default class extends Controller {
 
     this.scanning = true
     if (this.hasScanButtonTarget) this.scanButtonTarget.disabled = true
-    this.showLoading("Scanning Immich photos...")
+    this.showLoading(translate("immich.scanning"))
     this.removeMarkers()
 
     try {
@@ -129,7 +130,7 @@ export default class extends Controller {
       this.renderResults(data)
     } catch (error) {
       console.error("[Immich Enrich] Scan failed:", error)
-      Flash.show("error", "Failed to scan photos")
+      Flash.show("error", translate("messages.failed_to_scan_photos"))
       this.showScanForm()
     } finally {
       setTimeout(() => {
@@ -171,8 +172,8 @@ export default class extends Controller {
       this.resultsSummaryTarget.innerHTML = `
         <div class="text-center py-3">
           <div class="text-base-content/40 text-2xl mb-1">📷</div>
-          <div class="text-sm font-medium">${data.total_without_geodata} photos without GPS</div>
-          <div class="text-xs text-base-content/50">No matches found within tolerance</div>
+          <div class="text-sm font-medium">${translate("immich.photos_without_gps", { count: data.total_without_geodata })}</div>
+          <div class="text-xs text-base-content/50">${translate("immich.no_matches")}</div>
         </div>
       `
       this.matchListTarget.innerHTML = ""
@@ -181,7 +182,13 @@ export default class extends Controller {
       return
     }
 
-    this.resultsSummaryTarget.textContent = `${data.total_matched} of ${data.total_without_geodata} matched`
+    this.resultsSummaryTarget.textContent = translate(
+      "immich.matched_summary",
+      {
+        matched: data.total_matched,
+        total: data.total_without_geodata,
+      },
+    )
     this.matchListTarget.innerHTML = ""
 
     for (const [index, match] of this.matches.entries()) {
@@ -234,7 +241,7 @@ export default class extends Controller {
       </div>
       <a href="${immichPhotoUrl}" target="_blank" rel="noopener noreferrer"
          class="btn btn-ghost btn-xs btn-square flex-shrink-0 opacity-40 hover:opacity-100"
-         title="Open in Immich"
+         title="${translate("immich.open_in_immich")}"
          onclick="event.stopPropagation()">
         ${EXTERNAL_LINK_SVG}
       </a>
@@ -342,7 +349,9 @@ export default class extends Controller {
 
   updateEnrichButton() {
     const count = this.selectedCount()
-    this.enrichButtonTarget.textContent = `Enrich ${count} photo${count !== 1 ? "s" : ""}`
+    this.enrichButtonTarget.textContent = translate("immich.enrich_photos", {
+      count,
+    })
     this.enrichButtonTarget.disabled = count === 0
   }
 
@@ -386,11 +395,11 @@ export default class extends Controller {
     if (assets.length === 0) return
 
     const confirmed = window.confirm(
-      `Write GPS coordinates to ${assets.length} photo${assets.length !== 1 ? "s" : ""} in Immich? This will update their location metadata.`,
+      translate("immich.confirm_enrich", { count: assets.length }),
     )
     if (!confirmed) return
 
-    this.showLoading(`Enriching ${assets.length} photos...`)
+    this.showLoading(translate("immich.enriching", { count: assets.length }))
 
     try {
       const response = await fetch("/api/v1/immich/enrich", {
@@ -409,15 +418,18 @@ export default class extends Controller {
 
       const message =
         data.failed > 0
-          ? `Enriched ${data.enriched} photos. ${data.failed} failed.`
-          : `Successfully enriched ${data.enriched} photos!`
+          ? translate("immich.partially_enriched", {
+              enriched: data.enriched,
+              failed: data.failed,
+            })
+          : translate("immich.enriched", { count: data.enriched })
 
       Flash.show(data.failed > 0 ? "warning" : "notice", message)
       this.removeMarkers()
       this.showScanForm()
     } catch (error) {
       console.error("[Immich Enrich] Enrich failed:", error)
-      Flash.show("error", "Failed to enrich photos")
+      Flash.show("error", translate("messages.failed_to_enrich_photos"))
       this.showResults()
     }
   }
@@ -495,7 +507,10 @@ export default class extends Controller {
     const el = document.createElement("div")
     el.className = "immich-enrich-marker"
     this.applyMarkerStyle(el, match, selected, true)
-    el.title = `${match.filename} (${this.formatTimeDelta(match.time_delta_seconds)} delta)`
+    el.title = translate("immich.marker_title", {
+      filename: match.filename,
+      delta: this.formatTimeDelta(match.time_delta_seconds),
+    })
     return el
   }
 
@@ -591,7 +606,7 @@ export default class extends Controller {
 
   formatDatetime(isoString) {
     const d = new Date(isoString)
-    return d.toLocaleString("en-US", {
+    return d.toLocaleString(document.documentElement.lang || undefined, {
       year: "numeric",
       month: "short",
       day: "numeric",
@@ -601,9 +616,10 @@ export default class extends Controller {
   }
 
   formatTimeDelta(seconds) {
-    if (seconds < 60) return `${seconds}s`
+    if (seconds < 60)
+      return translate("immich.seconds_short", { count: seconds })
     const minutes = Math.round(seconds / 60)
-    return `${minutes}m`
+    return translate("immich.minutes_short", { count: minutes })
   }
 
   confidenceColor(timeDelta) {
