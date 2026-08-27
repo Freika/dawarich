@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Fixed
 
+- Places you created and named yourself keep their manual attribution when reverse geocoding refreshes them, so they stay ranked ahead of auto-created address places and stay visible on the map (#3418).
 - Trip note text now uses consistent left alignment on every line (#3104).
 - Existing saved places now appear in Map v2 visit searches and can be assigned to visits (#3083)
 - Orphaned track cleanup no longer removes a track that still owns points, and a database foreign key now backs that guarantee.
