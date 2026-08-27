@@ -165,4 +165,63 @@ RSpec.describe 'Existing places in visit search', type: :request do
 
     expect(JSON.parse(response.body).fetch('places').pluck('id')).not_to include(other_place.id)
   end
+
+  it 'omits machine-generated suggestion places' do
+    suggested = create(
+      :place,
+      user: user,
+      name: Place::DEFAULT_NAME,
+      source: :photon,
+      latitude: latitude,
+      longitude: longitude
+    )
+
+    get '/api/v1/places/search', params: { lat: latitude, lon: longitude }, headers: headers
+
+    expect(JSON.parse(response.body).fetch('places').pluck('id')).not_to include(suggested.id)
+  end
+
+  it 'keeps a photon place that is already linked to a confirmed visit' do
+    place = create(
+      :place,
+      user: user,
+      name: 'Confirmed Cafe',
+      source: :photon,
+      latitude: latitude,
+      longitude: longitude
+    )
+    create(:visit, user: user, place: place, status: :confirmed)
+
+    get '/api/v1/places/search', params: { lat: latitude, lon: longitude }, headers: headers
+
+    expect(JSON.parse(response.body).fetch('places').pluck('id')).to include(place.id)
+  end
+
+  it 'excludes nearby saved places that do not match the query' do
+    matching = create(
+      :place,
+      user: user,
+      name: 'Alpha Bakery',
+      source: :manual,
+      latitude: latitude + 0.002,
+      longitude: longitude
+    )
+    create(
+      :place,
+      user: user,
+      name: 'Beta Garage',
+      source: :manual,
+      latitude: latitude,
+      longitude: longitude
+    )
+
+    get '/api/v1/places/search',
+        params: { q: 'Alpha', lat: latitude, lon: longitude, radius: 1.0 },
+        headers: headers
+
+    names = JSON.parse(response.body).fetch('places').pluck('name')
+    expect(names).to include('Alpha Bakery')
+    expect(names).not_to include('Beta Garage')
+    expect(JSON.parse(response.body).fetch('places').pluck('id')).to include(matching.id)
+  end
 end
