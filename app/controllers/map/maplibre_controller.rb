@@ -4,7 +4,7 @@ module Map
   class MaplibreController < ApplicationController
     include SafeTimestampParser
     include ImportTimeWindow
-    include PosterStudioContext
+    include VideoStudioContext
 
     before_action :authenticate_user!
     layout 'map'
@@ -19,7 +19,7 @@ module Map
 
       # Theme tokens power both the poster studio and the Appearance section's
       # custom map colors.
-      load_poster_studio_context
+      load_video_studio_context
     end
 
     private

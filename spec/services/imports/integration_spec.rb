@@ -74,5 +74,17 @@ RSpec.describe 'Import format integration' do
       expect(import.reload).to be_completed
       expect(import.source).to eq('google_photos')
     end
+
+    it 'detects and routes a mobile photo library import' do
+      import = create(:import, user:, name: 'dawarich-photo-library.json')
+      file_path = Rails.root.join('spec/fixtures/files/mobile_photo_library/import.json')
+      import.file.attach(io: File.open(file_path), filename: 'dawarich-photo-library.json',
+                         content_type: 'application/json')
+
+      expect { Imports::Create.new(user, import).call }.to change { import.points.count }.by(2)
+
+      expect(import.reload).to be_completed
+      expect(import.source).to eq('mobile_photo_library')
+    end
   end
 end

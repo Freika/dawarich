@@ -13,10 +13,13 @@
      data-poster-studio-editor-print-order-url-value="<%= ENV.fetch('PRINT_ORDER_URL', 'https://prints.dawarich.app/api/orders') %>">
   <div class="flex h-full flex-col">
     <header class="flex items-center justify-between gap-4 border-b border-base-content/10 bg-base-200 px-4 py-2">
-      <h2 class="text-sm font-semibold tracking-wide flex items-center gap-2 shrink-0">
-        <%= icon 'map', class: 'h-4 w-4 opacity-70' %>
-        <%= t('.poster_studio') %>
-      </h2>
+      <div class="flex items-center gap-3 shrink-0">
+        <h2 class="text-sm font-semibold tracking-wide flex items-center gap-2">
+          <%= icon 'map', class: 'h-4 w-4 opacity-70' %>
+          <%= t('.poster_studio') %>
+        </h2>
+        <%= render 'shared/studio_switcher', current: :poster, controller_name: 'poster-studio-editor' %>
+      </div>
       <% if show_date_controls %>
         <div class="flex items-center gap-2 min-w-0">
           <input type="datetime-local" class="input input-bordered input-sm"

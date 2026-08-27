@@ -1,0 +1,21 @@
+<%# One-click switch between the poster and video studios. `current` is
+    :poster or :video; the other entry closes this studio and opens that one,
+    carrying the same provider so a trip-locked studio stays locked. %>
+<div class="join shrink-0" role="group" aria-label="<%= t('shared.studio_switcher.studios') %>">
+  <button type="button"
+          class="btn btn-xs join-item gap-1 <%= current == :poster ? 'btn-active' : 'btn-ghost' %>"
+          <%= 'aria-current="true"'.html_safe if current == :poster %>
+          data-action="<%= current == :poster ? '' : "#{controller_name}#switchToPoster" %>"
+          data-testid="studio-switch-poster">
+    <%= icon 'image', class: 'h-3.5 w-3.5' %>
+    <span class="hidden sm:inline"><%= t('shared.studio_switcher.poster') %></span>
+  </button>
+  <button type="button"
+          class="btn btn-xs join-item gap-1 <%= current == :video ? 'btn-active' : 'btn-ghost' %>"
+          <%= 'aria-current="true"'.html_safe if current == :video %>
+          data-action="<%= current == :video ? '' : "#{controller_name}#switchToVideo" %>"
+          data-testid="studio-switch-video">
+    <%= icon 'video', class: 'h-3.5 w-3.5' %>
+    <span class="hidden sm:inline"><%= t('shared.studio_switcher.video') %></span>
+  </button>
+</div>

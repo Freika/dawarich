@@ -66,6 +66,15 @@
     <%= icon 'image' %>
   </button>
 
+  <button type="button"
+          class="map-button-cluster__btn"
+          data-action="click->map-panel#openVideoStudio"
+          data-testid="map-button-video"
+          aria-label="<%= t('.video_studio') %>"
+          title="<%= t('.video_studio') %>">
+    <%= icon 'video' %>
+  </button>
+
   <div class="map-button-cluster__divider" aria-hidden="true"></div>
 
   <button type="button"

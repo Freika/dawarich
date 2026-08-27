@@ -317,6 +317,204 @@ RSpec.describe Points::AnomalyFilter do
       end
     end
 
+    context 'Pass 2: a frozen cached fix replayed for longer than a displaced run' do
+      let(:start_time) { 2.hours.ago.to_i }
+      let(:end_time) { Time.current.to_i }
+      let(:base_time) { 1.hour.ago.to_i }
+      def lax(idx) = "POINT(#{-118.4103 + (idx * 0.0001)} #{33.9429 + (idx * 0.0001)})"
+      let(:frozen) { 'POINT(-0.4803 51.4693)' }
+
+      let!(:live_before) do
+        (0..2).map do |i|
+          create(:point, user: user, accuracy: 10, timestamp: base_time + (i * 15), lonlat: lax(i))
+        end
+      end
+      let!(:stale_burst) do
+        (0..7).map do |i|
+          create(:point, user: user, accuracy: 10, timestamp: base_time + 45 + (i * 15), lonlat: frozen)
+        end
+      end
+      let!(:live_after) do
+        (0..2).map do |i|
+          create(:point, user: user, accuracy: 10, timestamp: base_time + 180 + (i * 15), lonlat: lax(i + 3))
+        end
+      end
+
+      before { described_class.new(user.id, start_time, end_time).call }
+
+      it 'flags the whole frozen burst' do
+        stale_burst.each { |point| expect(point.reload.anomaly).to be true }
+      end
+
+      it 'leaves the live fixes either side alone' do
+        (live_before + live_after).each { |point| expect(point.reload.anomaly).not_to be true }
+      end
+    end
+
+    context 'Pass 2: a stationary run whose accuracy keeps being re-measured' do
+      let(:start_time) { 2.hours.ago.to_i }
+      let(:end_time) { Time.current.to_i }
+      let(:base_time) { 1.hour.ago.to_i }
+      def lax(idx) = "POINT(#{-118.4103 + (idx * 0.0001)} #{33.9429 + (idx * 0.0001)})"
+
+      let!(:live_before) do
+        (0..2).map do |i|
+          create(:point, user: user, accuracy: 10, timestamp: base_time + (i * 15), lonlat: lax(i))
+        end
+      end
+      let!(:indoor_stay) do
+        (0..7).map do |i|
+          create(:point, user: user, accuracy: 10 + i, timestamp: base_time + 45 + (i * 15),
+                         lonlat: 'POINT(-0.4803 51.4693)')
+        end
+      end
+      let!(:live_after) do
+        (0..2).map do |i|
+          create(:point, user: user, accuracy: 10, timestamp: base_time + 180 + (i * 15), lonlat: lax(i + 3))
+        end
+      end
+
+      before { described_class.new(user.id, start_time, end_time).call }
+
+      it 'keeps a run that is re-measured rather than replayed' do
+        indoor_stay.each { |point| expect(point.reload.anomaly).not_to be true }
+      end
+    end
+
+    context 'Pass 2: a frozen run no longer than a displaced run' do
+      let(:start_time) { 2.hours.ago.to_i }
+      let(:end_time) { Time.current.to_i }
+      let(:base_time) { 1.hour.ago.to_i }
+      def lax(idx) = "POINT(#{-118.4103 + (idx * 0.0001)} #{33.9429 + (idx * 0.0001)})"
+
+      let!(:live_before) do
+        (0..2).map do |i|
+          create(:point, user: user, accuracy: 10, timestamp: base_time + (i * 15), lonlat: lax(i))
+        end
+      end
+      let!(:stale_burst) do
+        (0..4).map do |i|
+          create(:point, user: user, accuracy: 10, timestamp: base_time + 45 + (i * 15),
+                         lonlat: 'POINT(-0.4803 51.4693)')
+        end
+      end
+      let!(:live_after) do
+        (0..2).map do |i|
+          create(:point, user: user, accuracy: 10, timestamp: base_time + 150 + (i * 15), lonlat: lax(i + 3))
+        end
+      end
+
+      before { described_class.new(user.id, start_time, end_time).call }
+
+      it 'is still caught by the displaced-run pass' do
+        stale_burst.each { |point| expect(point.reload.anomaly).to be true }
+      end
+
+      it 'leaves the live fixes alone' do
+        (live_before + live_after).each { |point| expect(point.reload.anomaly).not_to be true }
+      end
+    end
+
+    context 'Pass 2: a frozen burst delivered as single-point live batches' do
+      let(:start_time) { 3.hours.ago.to_i }
+      let(:end_time) { Time.current.to_i }
+      let(:base_time) { 2.hours.ago.to_i }
+      def lax(idx) = "POINT(#{-118.4103 + (idx * 0.0001)} #{33.9429 + (idx * 0.0001)})"
+      let(:frozen) { 'POINT(-0.4803 51.4693)' }
+
+      let!(:live_before) do
+        (0..2).map do |i|
+          create(:point, user: user, accuracy: 10, timestamp: base_time + (i * 15), lonlat: lax(i))
+        end
+      end
+      let!(:stale_burst) do
+        (0..7).map do |i|
+          create(:point, user: user, accuracy: 10, timestamp: base_time + 45 + (i * 15), lonlat: frozen)
+        end
+      end
+      let!(:live_after) do
+        (0..2).map do |i|
+          create(:point, user: user, accuracy: 10, timestamp: base_time + 180 + (i * 15), lonlat: lax(i + 3))
+        end
+      end
+
+      before do
+        newest = live_after.last
+        described_class.new(user.id, newest.timestamp, newest.timestamp).call
+      end
+
+      it 'flags the burst that arrived in earlier batches' do
+        stale_burst.each { |point| expect(point.reload.anomaly).to be true }
+      end
+
+      it 'leaves the live fixes alone' do
+        (live_before + live_after).each { |point| expect(point.reload.anomaly).not_to be true }
+      end
+    end
+
+    context 'Pass 2: a frozen burst older than the re-judged window' do
+      let(:start_time) { 8.hours.ago.to_i }
+      let(:end_time) { Time.current.to_i }
+      let(:base_time) { 6.hours.ago.to_i }
+      def lax(idx) = "POINT(#{-118.4103 + (idx * 0.0001)} #{33.9429 + (idx * 0.0001)})"
+
+      let!(:live_before) do
+        (0..2).map do |i|
+          create(:point, user: user, accuracy: 10, timestamp: base_time + (i * 15), lonlat: lax(i))
+        end
+      end
+      let!(:stale_burst) do
+        (0..7).map do |i|
+          create(:point, user: user, accuracy: 10, timestamp: base_time + 45 + (i * 15),
+                         lonlat: 'POINT(-0.4803 51.4693)')
+        end
+      end
+      let!(:live_after) do
+        (0..2).map do |i|
+          create(:point, user: user, accuracy: 10, timestamp: base_time + 180 + (i * 15), lonlat: lax(i + 3))
+        end
+      end
+      let!(:much_later) do
+        create(:point, user: user, accuracy: 10, timestamp: base_time + 20_000, lonlat: lax(9))
+      end
+
+      before { described_class.new(user.id, much_later.timestamp, much_later.timestamp).call }
+
+      it 'leaves a burst beyond the lookback untouched' do
+        stale_burst.each { |point| expect(point.reload.anomaly).not_to be true }
+      end
+    end
+
+    context 'Pass 2: a long run that moves is not treated as a frozen fix' do
+      let(:start_time) { 2.hours.ago.to_i }
+      let(:end_time) { Time.current.to_i }
+      let(:base_time) { 1.hour.ago.to_i }
+      def lax(idx) = "POINT(#{-118.4103 + (idx * 0.0001)} #{33.9429 + (idx * 0.0001)})"
+
+      let!(:live_before) do
+        (0..2).map do |i|
+          create(:point, user: user, accuracy: 10, timestamp: base_time + (i * 15), lonlat: lax(i))
+        end
+      end
+      let!(:moving_stay) do
+        (0..7).map do |i|
+          create(:point, user: user, accuracy: 10, timestamp: base_time + 45 + (i * 15),
+                         lonlat: "POINT(#{-0.4803 + (i * 0.0009)} #{51.4693 + (i * 0.0009)})")
+        end
+      end
+      let!(:live_after) do
+        (0..2).map do |i|
+          create(:point, user: user, accuracy: 10, timestamp: base_time + 180 + (i * 15), lonlat: lax(i + 3))
+        end
+      end
+
+      before { described_class.new(user.id, start_time, end_time).call }
+
+      it 'keeps the run that moves' do
+        moving_stay.each { |point| expect(point.reload.anomaly).not_to be true }
+      end
+    end
+
     # The real shape of a stale cached position: it jumps hundreds of km away
     # and comes straight back. Only the arrival is impossibly fast — the return
     # leg looks merely plane-like — so a test requiring both sides to be extreme

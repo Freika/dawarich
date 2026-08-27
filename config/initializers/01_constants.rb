@@ -86,6 +86,14 @@ ALLOW_EMAIL_PASSWORD_LOGIN = ENV.fetch('ALLOW_EMAIL_PASSWORD_LOGIN', 'true') == 
 # Raw data archival setting
 ARCHIVE_RAW_DATA = ENV.fetch('ARCHIVE_RAW_DATA', 'false') == 'true'
 
+# Route video retention. Videos are rendered in the browser and stored as
+# Active Storage blobs (~17 MB per 15 s at 1080x1920), so an unbounded gallery
+# fills a self-hosted disk quickly. Both limits accept 0 to mean "no limit".
+# A blank value falls back to the default rather than parsing as 0 — an empty
+# env var must not silently disable retention.
+VIDEO_RETENTION_DAYS = ENV['VIDEO_RETENTION_DAYS'].presence&.to_i || 30
+VIDEO_MAX_PER_USER = ENV['VIDEO_MAX_PER_USER'].presence&.to_i || 10
+
 # chibichange "What's New" widget. Rendered only for users who explicitly
 # opt in (see User#changelog_consent). Self-hosters can point this at their
 # own chibichange instance.

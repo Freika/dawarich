@@ -28,6 +28,7 @@ class User < ApplicationRecord
   has_many :stats,          dependent: :destroy
   has_many :exports,        dependent: :destroy
   has_many :posters,        dependent: :destroy
+  has_many :route_videos,   dependent: :destroy
   has_many :notifications,  dependent: :destroy
   has_many :areas,          dependent: :destroy
   has_many :visits,         dependent: :destroy

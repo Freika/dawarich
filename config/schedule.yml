@@ -98,3 +98,9 @@ pending_imports_cleanup:
   class: "PendingImports::CleanupJob"
   queue: low_priority
   description: "Sweep expired or old-claimed pending imports"
+
+route_videos_purge_job:
+  cron: "45 3 * * *" # every day at 03:45 UTC
+  class: "RouteVideos::PurgeJob"
+  queue: route_videos
+  description: "Expire stored route videos past the retention window or per-user cap"

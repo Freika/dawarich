@@ -1,5 +1,44 @@
 ---
 fr:
+  route_videos:
+    route_video:
+      download: "Télécharger le MP4"
+      delete: "Supprimer"
+      delete_this_video: "Supprimer cette vidéo ?"
+      re_render: "Régénérer"
+      expired_on: "Fichier vidéo supprimé le %{date} pour économiser de l'espace."
+      expired_hint: "Ses réglages ont été conservés — régénérez pour la recréer."
+    studio:
+      video_studio: "Studio vidéo"
+      close_studio: "Fermer le studio"
+      name: "Nom"
+      theme: "Thème"
+      route: "Trajet"
+      playback: "Lecture"
+      reset: "Réinitialiser"
+      format: "Format"
+      format_portrait: "Story · 9:16 (vertical)"
+      format_landscape: "Large · 16:9 (panoramique)"
+      format_square: "Feed · 1:1 (carré)"
+      duration: "Durée"
+      camera: "Caméra"
+      camera_overview: "Trajet entier"
+      camera_follow: "Suivre le tracé"
+      track_color: "Couleur des trajets"
+      track_width: "Largeur des trajets"
+      units: "Unités"
+      units_km: "Kilomètres"
+      units_mi: "Miles"
+      hud_scale: "Taille de l'incrustation"
+      watermark: "Afficher dawarich.app sur la vidéo"
+      recent_videos: "Vidéos récentes"
+      videos_from_save_to_gallery_they_stay_here: "Les vidéos que vous avez enregistrées depuis ce studio. Elles restent ici jusqu'à ce que vous les supprimiez ou que la rétention efface le fichier."
+      rendered_on_your_device_nothing_leaves_the_browser_until_you_save: "Généré sur votre appareil — rien ne quitte le navigateur avant l'enregistrement."
+      render_a_video: "Générer une vidéo"
+      keep_this_video_in_your_gallery: "Conserver cette vidéo dans votre galerie"
+      cancel: "Annuler"
+      save_to_gallery: "Enregistrer dans la galerie"
+      render_video: "Générer la vidéo"
   language_name: "Français"
   language_flag: "fr"
   activerecord:
@@ -1134,6 +1173,8 @@ fr:
       training_center_files_tcx: Fichier de centre d'entraînement (.tcx)
       csv: 'CSV :'
       location_data_csv: Données de localisation (.csv)
+      mobile_photo_library: 'Photothèque mobile :'
+      dawarich_mobile_app_export_json: Export de l'app Dawarich (.json)
       polarsteps: 'Polarsteps :'
       locations_json_json: fichier locations.json (.json)
       zip: 'ZIP :'
@@ -1510,6 +1551,7 @@ fr:
         create_area: Créer un secteur
         creating: En création...
       button_cluster:
+        video_studio: "Studio vidéo"
         map_controls: Contrôles de la carte
         timeline: Chronologie
         timeline_t: Chronologie (T)
@@ -2023,7 +2065,7 @@ fr:
       today: Aujourd'hui
       last_7_days: Les 7 derniers jours
       last_month: Le mois dernier
-      close_studio: Fermer l'atelier
+      close_studio: Fermer le studio
       recenter: Recentrer
       drag_to_pan_scroll_to_zoom_the_frame_is_what: Faites glisser pour déplacer,
         faites défiler pour agrandir — c'est la fenêtre qui sera exportée.
@@ -2483,6 +2525,12 @@ fr:
   share_links:
     hubs:
       body:
+        make_something: "Créer quelque chose"
+        make_something_intro: "Un lien continue de partager vos données. Ceci crée un fichier que vous publiez une fois, sans rien laisser partagé."
+        make_video: "Vidéo du trajet"
+        make_video_hint: "Une relecture animée de cette période, au format MP4."
+        make_poster: "Affiche cartographique"
+        make_poster_hint: "Une carte prête à imprimer de cette période, en PNG ou PDF."
         live_location: Emplacement en temps réel
         time_period: Période de temps
         shared: Partagé
@@ -2507,6 +2555,10 @@ fr:
       new:
         share_a_date_range: Partager une plage de dates
   shared:
+    studio_switcher:
+      studios: "Studios"
+      poster: "Affiche"
+      video: "Vidéo"
     flash_message:
       close: Fermer
     footer:
@@ -3029,6 +3081,9 @@ fr:
         delete_this_note: Supprimer cette note ?
         update_note: Mettre à jour la note
     show:
+      video: "Vidéo"
+      video_unavailable: "Disponible une fois le trajet du voyage calculé"
+      create_video: "Créer une vidéo de relecture de ce voyage"
       loading_route_data: Chargement des données de route...
       trip_path_is_being_calculated: Calcul de l'itinéraire en cours...
       download_trip: Télécharger l'itinéraire
@@ -3523,6 +3578,7 @@ fr:
         fit: FIT
         polarsteps: Polarsteps
         google_photos: Google Photos
+        mobile_photo_library: Photothèque mobile
     place:
       source:
         manual: Manuel
@@ -3620,6 +3676,12 @@ fr:
     speed_kmh: "%{value} km/h"
     kilometers_suffix: " km"
   controllers:
+    route_videos:
+      untitled: "Vidéo sans titre"
+      saved: "Vidéo enregistrée dans votre galerie."
+      failed_to_save: "Échec de l'enregistrement de la vidéo."
+      rejected_file: "Ce fichier n'a pas pu être enregistré comme vidéo."
+      deleted: "Vidéo supprimée."
     api:
       v1:
         areas:
@@ -4791,6 +4853,27 @@ fr:
           other: "%{visits} sur %{ok_months} parmi %{months}. %{count} mois ont échoué ;
             réessayez après le délai de sécurité."
   javascript:
+    video:
+      open_failed: "Échec de l'ouverture du studio vidéo : %{error}"
+      save_failed: "Échec de l'enregistrement de la vidéo : %{error}"
+      rendering: "Génération… %{percent} %"
+      uploading: "Téléversement… %{percent} %"
+      ready: "Votre vidéo est prête — %{size} Mo."
+      summary: "%{format} — %{width} × %{height} · Thème : %{theme} · %{seconds} s à 30 fps"
+      unsupported_browser: "Ce navigateur ne peut pas encoder de vidéo. Essayez une version récente de Chrome, Edge, Safari ou Firefox."
+      empty_track: "Cette période n'a aucun trajet à animer. Choisissez une période avec au moins deux points."
+      restoring_range: "Restauration de la période d'origine de cette vidéo…"
+      range_mismatch: "Cette vidéo provient de %{range}. Ouvrez cette période pour la régénérer à l'identique — sinon vous obtiendrez le trajet actuellement affiché."
+      stats:
+        distance: "Distance"
+        duration: "Durée"
+        avg_speed: "Vitesse moy."
+      hud:
+        day: "JOUR"
+        distance: "DISTANCE"
+        of_total: "DU TOTAL"
+        tagline: "HISTORIQUE DE LOCALISATION PRIVÉ"
+        travelled_over: "parcouru en %{days} jours"
     loading_sources:
       anomalies:
         one: "%{formatted_count} anomalie"
