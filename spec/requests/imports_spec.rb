@@ -72,6 +72,48 @@ RSpec.describe 'Imports', type: :request do
     end
   end
 
+  describe 'GET /imports/:id/download' do
+    let(:user) { create(:user) }
+    let(:import) { create(:import, user:, name: 'renamed-import.gpx') }
+
+    before do
+      import.file.attach(
+        io: StringIO.new('file contents'),
+        filename: 'original-import.gpx.zip',
+        content_type: 'application/zip'
+      )
+    end
+
+    context 'when user is logged in' do
+      before { sign_in user }
+
+      it 'downloads the file using the current import name' do
+        get download_import_path(import)
+        follow_redirect!
+
+        expect(response).to have_http_status(:ok)
+        expect(response.headers['Content-Disposition']).to include('filename="renamed-import.gpx"')
+      end
+
+      it 'prevents downloading another user\'s import' do
+        sign_in create(:user)
+
+        get download_import_path(import)
+
+        expect(response).to redirect_to(root_path)
+        expect(flash[:alert]).to eq('You are not authorized to perform this action.')
+      end
+    end
+
+    context 'when user is not logged in' do
+      it 'redirects to login' do
+        get download_import_path(import)
+
+        expect(response).to redirect_to(new_user_session_path)
+      end
+    end
+  end
+
   describe 'GET /imports/new' do
     let(:user) { create(:user) }
 

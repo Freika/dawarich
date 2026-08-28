@@ -10,8 +10,8 @@ class ImportsController < ApplicationController
 
   before_action :authenticate_user!
   before_action :authenticate_active_user!, only: %i[create]
-  before_action :set_import, only: %i[show edit update destroy]
-  before_action :authorize_import, only: %i[show edit update destroy]
+  before_action :set_import, only: %i[show edit update destroy download]
+  before_action :authorize_import, only: %i[show edit update destroy download]
   before_action :validate_points_limit, only: %i[new create]
 
   after_action :verify_authorized, except: %i[index]
@@ -27,6 +27,10 @@ class ImportsController < ApplicationController
   end
 
   def show; end
+
+  def download
+    redirect_to @import.file.url(filename: @import.name, disposition: :attachment), allow_other_host: true
+  end
 
   def edit; end
 

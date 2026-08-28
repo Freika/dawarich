@@ -62,7 +62,7 @@
         </div>
         <% if import.file.present? %>
           <div class="tooltip" data-tip="<%= t('.download_file') %>">
-            <%= link_to rails_blob_path(import.file, disposition: 'attachment'), class: "btn btn-ghost btn-xs", download: import.name do %>
+            <%= link_to download_import_path(import), class: "btn btn-ghost btn-xs" do %>
               <%= icon 'arrow-big-down', class: 'w-4 h-4' %>
             <% end %>
           </div>
