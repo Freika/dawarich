@@ -88,10 +88,15 @@ class Users::ImportData::Points
 
     normalized_batch = normalize_point_keys(@buffer)
 
+    # Dual-write the dimension FK: the backfill only sweeps rows that exist
+    # when it passes. Stamped after key normalization so every row carries the
+    # key uniformly, as upsert_all requires.
+    dimension_resolver.stamp(normalized_batch)
+
     begin
       result = Point.upsert_all(
         normalized_batch,
-        unique_by: %i[lonlat timestamp user_id],
+        unique_by: %i[user_id timestamp lonlat],
         returning: %w[id],
         on_duplicate: :skip
       )
@@ -99,6 +104,11 @@ class Users::ImportData::Points
 
       batch_created = result&.count.to_i
       @total_created += batch_created
+
+      if batch_created.positive?
+        timestamps = normalized_batch.map { |row| row['timestamp'] || row[:timestamp] }
+        Points::TileEpoch.bump(user.id, timestamps: timestamps)
+      end
 
       logger.debug(
         "Processed batch of #{@buffer.size} points, created #{batch_created}, total created: #{@total_created}"
@@ -111,6 +121,10 @@ class Users::ImportData::Points
     ensure
       @buffer.clear
     end
+  end
+
+  def dimension_resolver
+    @dimension_resolver ||= Points::DimensionResolver.new
   end
 
   def preload_reference_data
@@ -179,6 +193,7 @@ class Users::ImportData::Points
     )
 
     ensure_lonlat_field(attributes, point_data)
+    deserialize_array_columns(attributes)
 
     attributes.delete('longitude')
     attributes.delete('latitude')
@@ -264,6 +279,18 @@ class Users::ImportData::Points
     else
       logger.debug "Visit not found for reference: #{visit_reference.inspect}"
       logger.debug "Available visits: #{visits_lookup.keys.inspect}"
+    end
+  end
+
+  # Export dumps carry the array columns as Postgres literals ('{home}'),
+  # which insert fine into the column but poison the dimension stamping:
+  # the resolver would wrap the string into a one-element array and mint a
+  # source row that matches nothing. Deserialize through the column's own
+  # type so old and new dumps alike arrive as real arrays.
+  def deserialize_array_columns(attributes)
+    %w[inrids in_regions].each do |column|
+      value = attributes[column]
+      attributes[column] = Point.type_for_attribute(column).deserialize(value) if value.is_a?(String)
     end
   end
 

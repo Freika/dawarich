@@ -8,7 +8,8 @@ class BulkVisitsSuggestingJob < ApplicationJob
 
   # Passing timespan of more than 3 years somehow results in duplicated Places
   def perform(start_at: 1.day.ago.beginning_of_day, end_at: 1.day.ago.end_of_day, user_ids: [], user_id: nil)
-    return unless DawarichSettings.reverse_geocoding_enabled?
+    return unless DawarichSettings.reverse_geocoding_enabled? ||
+                  ServiceSetting.service_geocoding.where(active: true).exists?
 
     user_ids = (Array(user_ids) | Array(user_id)).compact
     users = user_ids.any? ? User.active.where(id: user_ids) : User.active
@@ -18,6 +19,7 @@ class BulkVisitsSuggestingJob < ApplicationJob
     time_chunks = Visits::TimeChunks.new(start_at:, end_at:).call
 
     users.active.find_each do |user|
+      next unless Geocoding::Config.for(user.id).enabled?
       next unless user.safe_settings.visits_suggestions_enabled?
       next unless user.points_count&.positive?
 

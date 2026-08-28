@@ -174,6 +174,60 @@ RSpec.describe Tracks::BoundaryDetector do
   end
 
   describe 'private methods' do
+    describe '#adjacent_existing_tracks' do
+      def tracks_queries_during
+        queries = []
+        subscriber = ActiveSupport::Notifications.subscribe('sql.active_record') do |*, payload|
+          queries << payload[:sql] if payload[:sql].to_s.include?('FROM "tracks"')
+        end
+        yield
+        queries
+      ensure
+        ActiveSupport::Notifications.unsubscribe(subscriber)
+      end
+
+      let(:base) { 6.hours.ago }
+
+      let!(:recent_tracks) do
+        Array.new(60) do |i|
+          create(:track, user: user,
+                         created_at: 5.minutes.ago,
+                         start_at: base + (i * 10).minutes,
+                         end_at: base + ((i * 10) + 5).minutes)
+        end
+      end
+
+      it 'bounds the OR conditions in each query regardless of recent track count' do
+        queries = tracks_queries_during do
+          detector.send(:adjacent_existing_tracks, recent_tracks).to_a
+        end
+
+        expect(queries).not_to be_empty
+        expect(queries.map { |sql| sql.scan(/ OR /).size }.max).to be <= 80
+      end
+
+      it 'does not build a NOT IN list over every recent track id' do
+        queries = tracks_queries_during do
+          detector.send(:adjacent_existing_tracks, recent_tracks).to_a
+        end
+
+        expect(queries).not_to be_empty
+        expect(queries.select { |sql| sql.include?('NOT IN') }).to be_empty
+      end
+
+      it 'still finds an older adjacent track and excludes the recent ones' do
+        older = create(:track, user: user,
+                               created_at: 12.hours.ago,
+                               start_at: base - 20.minutes,
+                               end_at: base - 1.minute)
+
+        result = detector.send(:adjacent_existing_tracks, recent_tracks)
+
+        expect(result.map(&:id)).to include(older.id)
+        expect(result.map(&:id)).not_to include(*recent_tracks.map(&:id))
+      end
+    end
+
     describe '#find_connected_tracks' do
       let!(:base_track) { create(:track, user: user, start_at: 2.hours.ago, end_at: 1.5.hours.ago) }
       let!(:connected_track) { create(:track, user: user, start_at: 1.hour.ago, end_at: 30.minutes.ago) }

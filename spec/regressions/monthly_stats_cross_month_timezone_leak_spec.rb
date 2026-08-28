@@ -59,8 +59,10 @@ RSpec.describe 'Monthly stats bucketing for points near month boundary in non-UT
     let(:tz) { 'Europe/Berlin' }
     let(:user) { create(:user, settings: { 'timezone' => tz }) }
 
-    let!(:before_dst) { create_point(user, 13.4, 52.5, Time.utc(2026, 3, 29, 0, 30, 0)) }
-    let!(:after_dst) { create_point(user, 13.41, 52.51, Time.utc(2026, 3, 29, 2, 30, 0)) }
+    # 20 minutes apart, straddling the 01:00 UTC spring-forward: a wider gap
+    # than minutes_between_routes would be two routes and carry no distance.
+    let!(:before_dst) { create_point(user, 13.4, 52.5, Time.utc(2026, 3, 29, 0, 50, 0)) }
+    let!(:after_dst) { create_point(user, 13.41, 52.51, Time.utc(2026, 3, 29, 1, 10, 0)) }
 
     it 'buckets both DST-spanning points into March day 29 with non-zero distance' do
       stat = calculate_and_load(user, 2026, 3)
@@ -100,7 +102,7 @@ RSpec.describe 'Monthly stats bucketing for points near month boundary in non-UT
     let(:user) { create(:user, settings: { 'timezone' => tz }) }
 
     let!(:point_utc_april_1_local_march_31_a) { create_point(user, -118.24, 34.05, Time.utc(2026, 4, 1, 5, 0, 0)) }
-    let!(:point_utc_april_1_local_march_31_b) { create_point(user, -118.25, 34.06, Time.utc(2026, 4, 1, 6, 0, 0)) }
+    let!(:point_utc_april_1_local_march_31_b) { create_point(user, -118.25, 34.06, Time.utc(2026, 4, 1, 5, 20, 0)) }
 
     it 'attributes both UTC-April points to local March 31 (LA PDT) with non-zero distance' do
       stat = calculate_and_load(user, 2026, 3)

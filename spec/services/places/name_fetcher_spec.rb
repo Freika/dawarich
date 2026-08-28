@@ -68,6 +68,36 @@ RSpec.describe Places::NameFetcher do
         service.call
       end
 
+      context 'when the name is locked by the user' do
+        let(:place) do
+          create(
+            :place,
+            name: "Mum's house",
+            name_locked_at: 1.day.ago,
+            city: nil,
+            country: nil,
+            geodata: {},
+            lonlat: 'POINT(10.0 10.0)'
+          )
+        end
+
+        it 'keeps the user-supplied name' do
+          expect { service.call }.not_to change(place, :name)
+        end
+
+        it 'still refreshes city and country' do
+          expect { service.call }.to change(place, :city).from(nil).to('New York')
+        end
+
+        it 'propagates the locked name to visits still using the default name' do
+          visit = create(:visit, place: place, user: place.user, name: Place::DEFAULT_NAME)
+
+          service.call
+
+          expect(visit.reload.name).to eq("Mum's house")
+        end
+      end
+
       context 'when DawarichSettings.store_geodata? is enabled' do
         before do
           allow(DawarichSettings).to receive(:store_geodata?).and_return(true)
@@ -138,6 +168,34 @@ RSpec.describe Places::NameFetcher do
         result = service.call
         expect(result).to eq(place)
         expect(result.name).to eq('Central Park, New York')
+      end
+    end
+
+    context 'when the geocoder provider times out' do
+      before do
+        allow(ExceptionReporter).to receive(:call)
+        allow(Rails.logger).to receive(:warn)
+        allow(Geocoder).to receive(:search).and_raise(Geocoder::LookupTimeout.new('execution expired'))
+      end
+
+      it 'returns nil without reporting an application exception' do
+        expect(service.call).to be_nil
+        expect(ExceptionReporter).not_to have_received(:call)
+        expect(Rails.logger).to have_received(:warn).with(/Geocoding provider error in NameFetcher/)
+      end
+    end
+
+    context 'when geocoding fails unexpectedly' do
+      let(:error) { StandardError.new('unexpected failure') }
+
+      before do
+        allow(ExceptionReporter).to receive(:call)
+        allow(Geocoder).to receive(:search).and_raise(error)
+      end
+
+      it 'reports the application exception' do
+        expect(service.call).to be_nil
+        expect(ExceptionReporter).to have_received(:call).with(error)
       end
     end
 
@@ -218,64 +276,6 @@ RSpec.describe Places::NameFetcher do
         expect(place.city).to be_nil
         expect(place.country).to be_nil
       end
-    end
-  end
-
-  describe '.lookup_attrs' do
-    let(:lat) { 52.5126 }
-    let(:lon) { 13.4012 }
-
-    let(:photon_result) do
-      double(
-        'photon_result',
-        data: {
-          'properties' => {
-            'name' => 'Café Bravo', 'city' => 'Berlin', 'country' => 'Germany',
-            'osm_key' => 'amenity', 'osm_value' => 'cafe', 'type' => 'house'
-          },
-          'geometry' => { 'coordinates' => [lon, lat] }
-        }
-      )
-    end
-
-    before do
-      allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
-    end
-
-    it 'returns name/city/country/geodata hash when Photon resolves' do
-      allow(Geocoder).to receive(:search).and_return([photon_result])
-
-      attrs = described_class.lookup_attrs(lat, lon)
-
-      expect(attrs).to include(name: be_present, city: 'Berlin', country: 'Germany')
-      expect(attrs[:geodata]).to eq(photon_result.data)
-    end
-
-    it 'returns nil when reverse geocoding is disabled' do
-      allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false)
-
-      expect(described_class.lookup_attrs(lat, lon)).to be_nil
-    end
-
-    it 'returns nil when Photon returns no results' do
-      allow(Geocoder).to receive(:search).and_return([])
-
-      expect(described_class.lookup_attrs(lat, lon)).to be_nil
-    end
-
-    it 'returns nil when properties are blank' do
-      empty = double('photon_result', data: { 'properties' => {} })
-      allow(Geocoder).to receive(:search).and_return([empty])
-
-      expect(described_class.lookup_attrs(lat, lon)).to be_nil
-    end
-
-    it 'rescues StandardError and returns nil' do
-      allow(Geocoder).to receive(:search).and_raise(StandardError, 'photon down')
-      allow(ExceptionReporter).to receive(:call)
-
-      expect(described_class.lookup_attrs(lat, lon)).to be_nil
-      expect(ExceptionReporter).to have_received(:call)
     end
   end
 end

@@ -4,6 +4,7 @@ class Api::V1::PointsController < ApiController
   include SafeTimestampParser
 
   BULK_DESTROY_MAX = 5_000
+  MAX_PER_PAGE = 10_000
 
   before_action :authenticate_active_api_user!, only: %i[create update destroy bulk_destroy reapply_anomaly_filter]
   before_action :require_write_api!, only: %i[update destroy bulk_destroy reapply_anomaly_filter]
@@ -31,7 +32,10 @@ class Api::V1::PointsController < ApiController
     if params[:min_longitude].present? && params[:max_longitude].present? &&
        params[:min_latitude].present? && params[:max_latitude].present?
       bbox = parse_bbox(params)
-      return render(json: { error: 'Invalid bounding box' }, status: :bad_request) unless bbox
+      unless bbox
+        return render(json: { error: I18n.t('controllers.api.v1.points.invalid_bounding_box') },
+                      status: :bad_request)
+      end
 
       envelope = 'ST_MakeEnvelope(?, ?, ?, ?, 4326)'
       points = points.where(
@@ -52,6 +56,7 @@ class Api::V1::PointsController < ApiController
 
     per_page = params[:per_page].to_i
     per_page = 100 unless per_page.positive?
+    per_page = [per_page, MAX_PER_PAGE].min
     points = points
              .order(timestamp: order)
              .page(params[:page])
@@ -60,7 +65,9 @@ class Api::V1::PointsController < ApiController
     serialized_points = if slim_points?
                           Points::SlimCollectionQuery.new(points).call
                         else
-                          points.map { |point| point_serializer.new(point).call }
+                          # The serializer reads the device combo through each
+                          # point's source; preloading keeps that one query.
+                          points.preload(:source).map { |point| point_serializer.new(point).call }
                         end
 
     total_count = cache_count.to_i
@@ -87,12 +94,19 @@ class Api::V1::PointsController < ApiController
     sanitized = points.map { |row| row.to_h.except('xmax') }
 
     render json: { data: sanitized }
+  rescue StandardError => e
+    Rails.logger.error("Point creation failed: #{e.class}: #{e.message}")
+    Sentry.capture_exception(e) if defined?(Sentry)
+
+    render json: { error: I18n.t('controllers.api.v1.points.point_creation_failed') }, status: :internal_server_error
   end
 
   def update
     point = current_api_user.points.find(params[:id])
 
     if point.update(lonlat: "POINT(#{point_params[:longitude]} #{point_params[:latitude]})")
+      Points::TileEpoch.bump(point.user_id, timestamps: [point.timestamp])
+
       if point.track_id.present?
         Rails.logger.info(
           "[PointsController] Point #{point.id} updated, enqueuing Tracks::RecalculateJob for track #{point.track_id}"
@@ -107,76 +121,41 @@ class Api::V1::PointsController < ApiController
   end
 
   def destroy
-    point = current_api_user.points.find(params[:id])
-    affected_track_id = point.track_id
-    point.destroy
-    User.update_counters(current_api_user.id, points_count: -1)
+    point = current_api_user.points.without_raw_data.find(params[:id])
+    Points::Destroyer.new(current_api_user, point.id).call
 
-    if affected_track_id.present?
-      Rails.logger.info(
-        "[PointsController] Point #{point.id} destroyed, " \
-        "enqueuing Tracks::RecalculateJob for track #{affected_track_id}"
-      )
-      Tracks::RecalculateJob.perform_later(affected_track_id)
-    end
-
-    render json: { message: 'Point deleted successfully' }
+    render json: { message: I18n.t('controllers.api.v1.points.point_deleted_successfully') }
   end
 
   def bulk_destroy
     point_ids = bulk_destroy_params[:point_ids]
 
-    render json: { error: 'No points selected' }, status: :unprocessable_entity and return if point_ids.blank?
+    if point_ids.blank?
+      render json: { error: I18n.t('controllers.api.v1.points.no_points_selected') },
+             status: :unprocessable_entity and return
+    end
 
     if point_ids.size > BULK_DESTROY_MAX
       render json: {
-        error: "Too many points selected. Maximum is #{BULK_DESTROY_MAX} per request.",
+        error: I18n.t('controllers.api.v1.points.too_many_points_selected_maximum_is_bulk_destroy_max_per',
+                      limit: BULK_DESTROY_MAX),
         limit: BULK_DESTROY_MAX,
         requested: point_ids.size
       }, status: :unprocessable_entity and return
     end
 
-    affected_track_ids = nil
-    destroyed = nil
+    destroyed = Points::Destroyer.new(current_api_user, point_ids).call
 
-    ActiveRecord::Base.transaction do
-      affected_track_ids = current_api_user.points
-                                           .where(id: point_ids)
-                                           .where.not(track_id: nil)
-                                           .distinct
-                                           .pluck(:track_id)
-      destroyed = current_api_user.points.where(id: point_ids).destroy_all
-    end
-
-    deleted_count = destroyed.count
-
-    if deleted_count.positive?
-      User.update_counters(current_api_user.id, points_count: -deleted_count)
-
-      destroyed
-        .map { |p| Time.zone.at(p.timestamp) }
-        .map { |ts| [ts.year, ts.month] }
-        .uniq
-        .each { |year, month| Stats::CalculatingJob.perform_later(current_api_user.id, year, month) }
-    end
-
-    if affected_track_ids.any?
-      Rails.logger.info(
-        "[PointsController] bulk_destroy deleted #{deleted_count} points, " \
-        "enqueuing Tracks::RecalculateJob for #{affected_track_ids.size} tracks: " \
-        "#{affected_track_ids.inspect}"
-      )
-      affected_track_ids.each { |track_id| Tracks::RecalculateJob.perform_later(track_id) }
-    end
-
-    render json: { message: 'Points were successfully destroyed', count: deleted_count }, status: :ok
+    message = I18n.t('controllers.api.v1.points.points_were_successfully_destroyed')
+    render json: { message: message, count: destroyed.count },
+           status: :ok
   end
 
   def reapply_anomaly_filter
     pending_key = "anomaly_backfill_pending:#{current_api_user.id}"
     if Rails.cache.read(pending_key)
       return render(
-        json: { error: 'Anomaly re-evaluation already in progress.' },
+        json: { error: I18n.t('controllers.api.v1.points.anomaly_re_evaluation_already_in_progress') },
         status: :conflict
       )
     end
@@ -185,7 +164,7 @@ class Api::V1::PointsController < ApiController
     Points::AnomalyBackfillUserJob.perform_later(current_api_user.id, reset: true)
 
     render json: {
-      message: 'Re-evaluation queued. Existing anomaly flags will be cleared and recomputed.'
+      message: I18n.t('controllers.api.v1.points.re_evaluation_queued_existing_anomaly_flags_will_be_cleared_and')
     }, status: :accepted
   end
 

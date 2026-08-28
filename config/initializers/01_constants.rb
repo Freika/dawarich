@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
-SELF_HOSTED = ENV.fetch('SELF_HOSTED', 'true') == 'true'
+require 'oidc_config'
+
+SELF_HOSTED = %w[true 1 yes on t].include?(ENV.fetch('SELF_HOSTED', 'true').to_s.delete(%q("')).strip.downcase)
 
 DISTANCE_UNITS = {
   km: 1000,    # to meters
@@ -12,11 +14,12 @@ DISTANCE_UNITS = {
 
 APP_VERSION = File.read('.app_version').strip
 
-# Reverse geocoding settings
+# Reverse geocoding settings. When set, these apply instance-wide and take
+# precedence over per-user provider settings (Settings -> Geocoding).
 PHOTON_API_HOST = ENV.fetch('PHOTON_API_HOST', nil)
 PHOTON_API_KEY = ENV.fetch('PHOTON_API_KEY', nil)
 PHOTON_API_USE_HTTPS = ENV.fetch('PHOTON_API_USE_HTTPS', 'false') == 'true'
-PHOTON_HTTPS_ONLY_HOSTS = %w[photon.dawarich.app photon.komoot.io].freeze
+PHOTON_HTTPS_ONLY_HOSTS = %w[photon.dawarich.app photon.komoot.io app.chibigeo.com].freeze
 
 NOMINATIM_API_HOST = ENV.fetch('NOMINATIM_API_HOST', nil)
 NOMINATIM_API_KEY = ENV.fetch('NOMINATIM_API_KEY', nil)
@@ -25,6 +28,10 @@ NOMINATIM_API_USE_HTTPS = ENV.fetch('NOMINATIM_API_USE_HTTPS', 'true') == 'true'
 LOCATIONIQ_API_KEY = ENV.fetch('LOCATIONIQ_API_KEY', nil)
 
 GEOAPIFY_API_KEY = ENV.fetch('GEOAPIFY_API_KEY', nil)
+# Requests per second ceiling for the ENV-managed provider above. Blank
+# means unlimited; komoot and ChibiGeo hosts are pinned or clamped
+# regardless of what is set here.
+REVERSE_GEOCODING_RPS = ENV.fetch('REVERSE_GEOCODING_RPS', nil)
 STORE_GEODATA = ENV.fetch('STORE_GEODATA', 'true') == 'true'
 # /Reverse geocoding settings
 
@@ -47,7 +54,7 @@ METRICS_PASSWORD = ENV.fetch('METRICS_PASSWORD', nil)
 OMNIAUTH_PROVIDERS =
   if SELF_HOSTED
     # Self-hosted: only OpenID Connect
-    ENV['OIDC_CLIENT_ID'].present? && ENV['OIDC_CLIENT_SECRET'].present? ? %i[openid_connect] : []
+    OidcConfig.enabled? ? %i[openid_connect] : []
   else
     # Cloud: only GitHub and Google
     providers = []
@@ -80,6 +87,14 @@ ALLOW_EMAIL_PASSWORD_LOGIN = ENV.fetch('ALLOW_EMAIL_PASSWORD_LOGIN', 'true') == 
 
 # Raw data archival setting
 ARCHIVE_RAW_DATA = ENV.fetch('ARCHIVE_RAW_DATA', 'false') == 'true'
+
+# Route video retention. Videos are rendered in the browser and stored as
+# Active Storage blobs (~17 MB per 15 s at 1080x1920), so an unbounded gallery
+# fills a self-hosted disk quickly. Both limits accept 0 to mean "no limit".
+# A blank value falls back to the default rather than parsing as 0 — an empty
+# env var must not silently disable retention.
+VIDEO_RETENTION_DAYS = ENV['VIDEO_RETENTION_DAYS'].presence&.to_i || 30
+VIDEO_MAX_PER_USER = ENV['VIDEO_MAX_PER_USER'].presence&.to_i || 10
 
 # chibichange "What's New" widget. Rendered only for users who explicitly
 # opt in (see User#changelog_consent). Self-hosters can point this at their

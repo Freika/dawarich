@@ -8,10 +8,13 @@ module Omniauthable
       provider = access_token.provider.to_s
 
       if provider == 'openid_connect' && !oidc_auto_register_enabled?
-        return User.find_by(provider: provider, uid: access_token.uid.to_s)
+        user = User.unscoped.find_by(provider: provider, uid: access_token.uid.to_s)
+        raise Auth::FindOrCreateOauthUser::AccountPendingDeletion if user&.deleted?
+
+        return user
       end
 
-      user, _created = Auth::FindOrCreateOauthUser.new(
+      user, created = Auth::FindOrCreateOauthUser.new(
         provider: provider,
         provider_label: omniauth_provider_label(provider),
         claims: { sub: access_token.uid.to_s, email: access_token.info&.email.to_s },
@@ -19,6 +22,8 @@ module Omniauthable
         name_attrs: omniauth_name_attrs(access_token),
         on_email_collision: :raise_only
       ).call
+
+      user&.oauth_newly_created = created
 
       user
     end

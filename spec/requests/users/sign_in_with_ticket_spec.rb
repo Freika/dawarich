@@ -5,11 +5,9 @@ require 'rails_helper'
 RSpec.describe 'Sign-in with stashed pending import ticket' do
   before do
     allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
-    allow(DawarichSettings).to receive(:family_feature_enabled?).and_return(false)
     allow(DawarichSettings).to receive(:registration_enabled?).and_return(true)
     allow(DawarichSettings).to receive(:oidc_enabled?).and_return(false)
     stub_const('MANAGER_URL', 'https://manager.example.com')
-    Flipper.disable(:reverse_trial_signup)
   end
 
   let!(:pending) { create(:pending_import, :with_file) }

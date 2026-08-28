@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class Traccar::PointCreator
-  RETURNING_COLUMNS = 'id, xmax, timestamp, ST_X(lonlat::geometry) AS longitude, ST_Y(lonlat::geometry) AS latitude'
+  RETURNING_COLUMNS = Point::UPSERT_RETURNING_COLUMNS
 
   attr_reader :params, :user_id
 
@@ -16,6 +16,7 @@ class Traccar::PointCreator
 
     payload = parsed.merge(user_id:)
     return [] if payload[:lonlat].nil? || payload[:timestamp].nil?
+    return [] if Points::NullIsland.lonlat?(payload[:lonlat])
 
     result = upsert_points([payload])
     if result.any?
@@ -38,6 +39,9 @@ class Traccar::PointCreator
     created_points = []
 
     locations.each_slice(1000) do |batch|
+      # Dual-write the dimension FK: the backfill only sweeps rows that exist
+      # when it passes, and live tracker points land behind its cursor.
+      dimension_resolver.stamp(batch)
       result = Point.archival_safe_upsert_all(
         batch,
         returning: Arel.sql(RETURNING_COLUMNS)
@@ -46,5 +50,9 @@ class Traccar::PointCreator
     end
 
     created_points
+  end
+
+  def dimension_resolver
+    @dimension_resolver ||= Points::DimensionResolver.new
   end
 end

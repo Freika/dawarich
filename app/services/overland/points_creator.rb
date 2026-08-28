@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class Overland::PointsCreator
-  RETURNING_COLUMNS = 'id, xmax, timestamp, ST_X(lonlat::geometry) AS longitude, ST_Y(lonlat::geometry) AS latitude'
+  RETURNING_COLUMNS = Point::UPSERT_RETURNING_COLUMNS
 
   attr_reader :params, :user_id
 
@@ -16,7 +16,7 @@ class Overland::PointsCreator
 
     payload = data
               .compact
-              .reject { |location| location[:lonlat].nil? || location[:timestamp].nil? }
+              .reject { |location| unusable_location?(location) }
               .map { |location| location.merge(user_id:) }
               .uniq { |location| Point.dedup_key(location) }
 
@@ -37,10 +37,18 @@ class Overland::PointsCreator
 
   private
 
+  def unusable_location?(location)
+    location[:lonlat].nil? || location[:timestamp].nil? ||
+      Points::NullIsland.lonlat?(location[:lonlat])
+  end
+
   def upsert_points(locations)
     created_points = []
 
     locations.each_slice(1000) do |batch|
+      # Dual-write the dimension FK: the backfill only sweeps rows that exist
+      # when it passes, and live tracker points land behind its cursor.
+      dimension_resolver.stamp(batch)
       result = Point.archival_safe_upsert_all(
         batch,
         returning: Arel.sql(RETURNING_COLUMNS)
@@ -49,5 +57,9 @@ class Overland::PointsCreator
     end
 
     created_points
+  end
+
+  def dimension_resolver
+    @dimension_resolver ||= Points::DimensionResolver.new
   end
 end

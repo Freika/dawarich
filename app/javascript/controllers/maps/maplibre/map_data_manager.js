@@ -1,3 +1,4 @@
+import { translate } from "i18n"
 import maplibregl from "maplibre-gl"
 import { Toast } from "maps_maplibre/components/toast"
 import { UpgradeBanner } from "maps_maplibre/components/upgrade_banner"
@@ -48,6 +49,8 @@ export class MapDataManager {
     let data = null
 
     try {
+      this.layerManager.updatePointTileRange(startDate, endDate)
+
       // 1. Initialize all layers with empty data for correct z-ordering
       await this._setupLayers({
         pointsGeoJSON: EMPTY_GEOJSON,
@@ -157,7 +160,9 @@ export class MapDataManager {
       if (showLoading) {
         this.controller.hideProgress()
       }
-      Toast.error("Failed to load location data. Please try again.")
+      Toast.error(
+        translate("messages.failed_to_load_location_data_please_try_again"),
+      )
       throw error
     } finally {
       const duration = performanceMonitor.measure("load-map-data")
@@ -215,11 +220,16 @@ export class MapDataManager {
         isComplete: false,
       })
 
-      const { points, pointsGeoJSON, routesGeoJSON, routesBaseGeoJSON } =
-        await this.dataLoader.fetchPointsData(
-          this.controller.startDateValue,
-          this.controller.endDateValue,
-        )
+      const {
+        points,
+        pointsGeoJSON,
+        allPointsGeoJSON,
+        routesGeoJSON,
+        routesBaseGeoJSON,
+      } = await this.dataLoader.fetchPointsData(
+        this.controller.startDateValue,
+        this.controller.endDateValue,
+      )
 
       if (!this.lastLoadedData) this.lastLoadedData = {}
       this.lastLoadedData.points = points
@@ -228,11 +238,12 @@ export class MapDataManager {
       this.lastLoadedData.routesBaseGeoJSON = routesBaseGeoJSON
 
       this._updateLayerBySource("points", pointsGeoJSON)
-      this._updateLayerBySource("heatmap", pointsGeoJSON)
+      // Heatmap, fog and scratch need all points
+      this._updateLayerBySource("heatmap", allPointsGeoJSON)
       this._updateLayerBySource("routes", routesGeoJSON)
       this._updateLayerBySource("routes-base", routesBaseGeoJSON)
-      this._updateLayerBySource("fog", pointsGeoJSON)
-      this._updateLayerBySource("scratch", pointsGeoJSON)
+      this._updateLayerBySource("fog", allPointsGeoJSON)
+      this._updateLayerBySource("scratch", allPointsGeoJSON)
 
       this.controller.updateLoadingCounts({
         counts: { points: points.length },
@@ -507,7 +518,9 @@ export class MapDataManager {
 
     if (startDate < twelveMonthsAgo) {
       UpgradeBanner.show({
-        message: "Your Lite plan includes the last 12 months of data.",
+        message: translate(
+          "messages.your_lite_plan_includes_the_last_12_months_of_data",
+        ),
         upgradeUrl: this.controller.upgradeUrlValue,
         utmContent: "data_retention",
       })

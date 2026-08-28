@@ -148,6 +148,19 @@ RSpec.describe Immich::EnrichScan do
           :latitude, :longitude, :time_delta_seconds, :match_method
         )
       end
+
+      it 'selects only fields required for temporal matching' do
+        queries = []
+        callback = ->(_name, _start, _finish, _id, payload) { queries << payload[:sql] }
+
+        ActiveSupport::Notifications.subscribed(callback, 'sql.active_record') { service.call }
+
+        point_query = queries.find { |sql| sql.include?('FROM "points"') }
+        expect(point_query).to include(
+          '"points"."id"', '"points"."timestamp"', '"points"."lonlat"'
+        )
+        expect(point_query).not_to include('"points".*', 'raw_data', 'geodata', 'motion_data')
+      end
     end
 
     context 'when no Dawarich points exist in the time range' do

@@ -15,7 +15,9 @@ module Visits
     def call
       with_dedup_lock do
         place = find_by_name_and_proximity || create_place
-        @visit.update!(place_id: place.id, name: place.name)
+        place.update!(name_locked_at: Time.current) unless place.name_locked?
+        # Picking a place is asserting the visit — no separate confirm step.
+        @visit.update!(place_id: place.id, name: place.name, status: :confirmed)
         place
       end
     end
@@ -56,7 +58,8 @@ module Visits
         city: @photon[:city],
         country: @photon[:country],
         geodata: DawarichSettings.store_geodata? ? (@photon[:geodata] || {}) : {},
-        source: :photon
+        source: :photon,
+        user_named: true
       )
     end
   end

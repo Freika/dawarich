@@ -2,7 +2,7 @@
   <% if tag.errors.any? %>
     <div class="alert alert-error">
       <div>
-        <h3 class="font-bold"><%= pluralize(tag.errors.count, "error") %> prohibited this tag from being saved:</h3>
+        <h3 class="font-bold"><%= t('.errors_prohibited_save', count: tag.errors.count) %></h3>
         <ul class="list-disc list-inside">
           <% tag.errors.full_messages.each do |message| %>
             <li><%= message %></li>
@@ -14,10 +14,10 @@
 
   <div class="form-control">
     <%= f.label :name, class: "label" %>
-    <%= f.text_field :name, class: "input input-bordered w-full", placeholder: "Home, Work, Restaurant..." %>
+    <%= f.text_field :name, class: "input input-bordered w-full", placeholder: t('.home_work_restaurant') %>
   </div>
 
-  <div class="grid grid-cols-2 gap-4">
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
     <!-- Emoji Picker -->
     <% default_emoji = tag.icon.presence || (tag.new_record? ? random_tag_emoji : '🏠') %>
     <div class="form-control" data-controller="emoji-picker" data-emoji-picker-auto-submit-value="false">
@@ -40,7 +40,7 @@
         <%= f.hidden_field :icon, value: default_emoji, data: { emoji_picker_target: "input" } %>
       </div>
       <label class="label">
-        <span class="label-text-alt">Click to select an emoji</span>
+        <span class="label-text-alt"><%= t('.click_to_select_an_emoji') %></span>
       </label>
     </div>
 
@@ -69,9 +69,9 @@
         </div>
 
         <!-- Custom Color Picker -->
-        <div class="flex items-center gap-3">
-          <label class="flex items-center gap-2 cursor-pointer group">
-            <span class="text-sm font-medium">Custom:</span>
+        <div class="flex flex-wrap items-center gap-3">
+          <label class="flex items-center gap-2 cursor-pointer group min-w-0">
+            <span class="text-sm font-medium"><%= t('.custom') %></span>
             <input type="color"
                    class="w-12 h-12 rounded-lg cursor-pointer border-2 border-base-300 hover:scale-105 transition-transform color-input"
                    value="<%= tag.color.presence || '#6ab0a4' %>"
@@ -80,7 +80,7 @@
           </label>
 
           <!-- Color Display -->
-          <div class="flex-1 flex items-center gap-2">
+          <div class="flex-1 min-w-0 flex items-center gap-2">
             <div class="w-8 h-8 rounded border-2 border-base-300"
                  data-color-picker-target="display"
                  style="background-color: <%= tag.color.presence || '#6ab0a4' %>;"></div>
@@ -94,7 +94,7 @@
       <%= f.hidden_field :color, value: tag.color.presence || '#6ab0a4', data: { color_picker_target: "input" } %>
 
       <label class="label">
-        <span class="label-text-alt">Choose from swatches or pick a custom color</span>
+        <span class="label-text-alt"><%= t('.choose_from_swatches_or_pick_a_custom_color') %></span>
       </label>
     </div>
   </div>
@@ -103,7 +103,7 @@
   <div data-controller="privacy-radius">
     <div class="form-control">
       <label class="label cursor-pointer">
-        <span class="label-text font-semibold"><%= icon 'lock-open', class: "inline-block w-4" %> Privacy Zone</span>
+        <span class="label-text font-semibold"><%= icon 'lock-open', class: "inline-block w-4" %> <%= t('.privacy_zone') %></span>
         <input type="checkbox"
                class="toggle toggle-error"
                data-privacy-radius-target="toggle"
@@ -111,13 +111,13 @@
                <%= 'checked' if tag.privacy_radius_meters.present? %>>
       </label>
       <label class="label">
-        <span class="label-text-alt">Hide map data around places with this tag</span>
+        <span class="label-text-alt"><%= t('.hide_map_data_around_places_with_this_tag') %></span>
       </label>
     </div>
 
     <div class="form-control <%= 'hidden' unless tag.privacy_radius_meters.present? %>"
          data-privacy-radius-target="radiusInput">
-      <%= f.label :privacy_radius_meters, "Privacy Radius", class: "label" %>
+      <%= f.label :privacy_radius_meters, t('.privacy_radius'), class: "label" %>
       <div class="flex flex-col gap-2">
         <input type="range"
                min="50"
@@ -128,18 +128,18 @@
                data-privacy-radius-target="slider"
                data-action="input->privacy-radius#updateFromSlider">
         <div class="flex justify-between text-xs px-2">
-          <span>50m</span>
+          <span><%= t('units.meters_compact', value: 50) %></span>
           <span class="font-semibold" data-privacy-radius-target="label">
             <%= tag.privacy_radius_meters || 1000 %>m
           </span>
-          <span>5000m</span>
+          <span><%= t('units.meters_compact', value: 5000) %></span>
         </div>
         <%= f.hidden_field :privacy_radius_meters,
             value: tag.privacy_radius_meters,
             data: { privacy_radius_target: "field" } %>
       </div>
       <label class="label">
-        <span class="label-text-alt">Data within this radius will be hidden from the map</span>
+        <span class="label-text-alt"><%= t('.data_within_this_radius_will_be_hidden_from_the_map') %></span>
       </label>
     </div>
   </div>
@@ -147,7 +147,7 @@
   <div class="form-control mt-6">
     <div class="flex gap-2">
       <%= f.submit class: "btn btn-primary" %>
-      <%= link_to "Cancel", tags_path, class: "btn btn-ghost" %>
+      <%= link_to t('.cancel'), tags_path, class: "btn btn-ghost" %>
     </div>
   </div>
 <% end %>

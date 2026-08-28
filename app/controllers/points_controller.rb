@@ -29,15 +29,14 @@ class PointsController < ApplicationController
 
     if point_ids.blank?
       redirect_to points_url(preserved_params),
-                  alert: 'No points selected.',
+                  alert: I18n.t('controllers.points.no_points_selected'),
                   status: :see_other and return
     end
 
-    deleted_count = current_user.points.where(id: point_ids).destroy_all.count
-    User.update_counters(current_user.id, points_count: -deleted_count) if deleted_count.positive?
+    Points::Destroyer.new(current_user, point_ids).call
 
     redirect_to points_url(preserved_params),
-                notice: 'Points were successfully destroyed.',
+                notice: I18n.t('controllers.points.points_were_successfully_destroyed'),
                 status: :see_other
   end
 

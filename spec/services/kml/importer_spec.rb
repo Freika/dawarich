@@ -238,6 +238,70 @@ RSpec.describe Kml::Importer do
       end
     end
 
+    context 'when file has raw ampersands in text fields' do
+      let(:file) { Tempfile.new(['raw_ampersand', '.kml']) }
+      let(:file_path) { file.path }
+
+      before do
+        file.write(<<~XML)
+          <?xml version="1.0" encoding="UTF-8"?>
+          <kml xmlns="http://www.opengis.net/kml/2.2">
+            <Document>
+              <Placemark>
+                <name>Fish & Chips</name>
+                <TimeStamp><when>2024-01-15T12:00:00Z</when></TimeStamp>
+                <Point>
+                  <coordinates>-122.0841,37.4220,10</coordinates>
+                </Point>
+              </Placemark>
+            </Document>
+          </kml>
+        XML
+        file.close
+      end
+
+      after do
+        file.unlink
+      end
+
+      it 'creates points' do
+        expect { parser }.to change(Point, :count).by(1)
+      end
+    end
+
+    context 'when KMZ archive contains KML with raw ampersands' do
+      let(:import) { create(:import, user:, name: 'test.kmz', source: 'kml') }
+      let(:kml_body) do
+        <<~KML
+          <?xml version="1.0" encoding="UTF-8"?>
+          <kml xmlns="http://www.opengis.net/kml/2.2">
+            <Document>
+              <Placemark>
+                <name>Fish & Chips</name>
+                <TimeStamp><when>2024-01-15T12:00:00Z</when></TimeStamp>
+                <Point><coordinates>-122.0841,37.4220,10</coordinates></Point>
+              </Placemark>
+            </Document>
+          </kml>
+        KML
+      end
+      let(:file_path) do
+        path = Rails.root.join('tmp', "ampersand_kmz_#{SecureRandom.hex(4)}.kmz").to_s
+        buffer = Zip::OutputStream.write_buffer do |zip|
+          zip.put_next_entry('doc.kml')
+          zip.write(kml_body)
+        end
+        File.binwrite(path, buffer.string)
+        path
+      end
+
+      after { File.delete(file_path) if File.exist?(file_path) }
+
+      it 'creates points' do
+        expect { parser }.to change(Point, :count).by(1)
+      end
+    end
+
     context 'when import fails' do
       let(:file_path) { Rails.root.join('spec/fixtures/files/kml/points_with_timestamps.kml').to_s }
 

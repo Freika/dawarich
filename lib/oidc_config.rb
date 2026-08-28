@@ -8,7 +8,11 @@ module OidcConfig
   DEFAULT_SCHEME = 'https'
 
   def self.enabled?(env = ENV)
-    env['OIDC_CLIENT_ID'].to_s.strip != '' && env['OIDC_CLIENT_SECRET'].to_s.strip != ''
+    env['OIDC_CLIENT_ID'].to_s.strip != '' && (env['OIDC_CLIENT_SECRET'].to_s.strip != '' || pkce_enabled?(env))
+  end
+
+  def self.public_client?(env = ENV)
+    env['OIDC_CLIENT_SECRET'].to_s.strip == '' && pkce_enabled?(env)
   end
 
   def self.build(env = ENV)
@@ -26,8 +30,12 @@ module OidcConfig
       }
     }
 
-    if env['OIDC_ISSUER'].to_s.strip != ''
-      config[:issuer] = normalize_issuer(env['OIDC_ISSUER'])
+    config[:client_auth_method] = :none if public_client?(env)
+
+    issuer = normalize_issuer(env['OIDC_ISSUER'].to_s)
+
+    if issuer != ''
+      config[:issuer] = issuer
       config[:discovery] = true
     elsif env['OIDC_HOST'].to_s.strip != ''
       config[:client_options].merge!(manual_endpoints(env))
@@ -38,9 +46,16 @@ module OidcConfig
 
   # Discovery expects the bare issuer; the gem appends the well-known path
   # itself. Configs pasting the full discovery URL would otherwise request a
-  # doubled path and fail with an opaque NoMethodError.
+  # doubled path and fail with an opaque NoMethodError. An issuer identifier
+  # carries no fragment, so anything after "#" is a pasting artefact too.
   def self.normalize_issuer(issuer)
-    issuer.strip.sub(%r{/\.well-known/openid-configuration/?\z}, '')
+    normalized = issuer.strip
+    fragment = normalized.slice!(/#.*\z/m)
+    normalized = normalized.strip.sub(%r{/\.well-known/openid-configuration/?\z}, '')
+
+    return normalized unless fragment.to_s.start_with?('#.well-known', '#/.well-known')
+
+    normalized.sub(%r{\A([a-z][a-z0-9+.-]*://[^/]+)/\z}i, '\1')
   end
 
   def self.pkce_enabled?(env = ENV)

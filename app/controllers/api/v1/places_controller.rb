@@ -3,10 +3,12 @@
 module Api
   module V1
     class PlacesController < ApiController
+      CO_LOCATED_THRESHOLD_METERS = 50
+
       before_action :set_place, only: %i[show update destroy]
 
       def index
-        @places = current_api_user.places.includes(:tags, :visits)
+        @places = current_api_user.places.includes(:tags, :active_visits)
 
         if params[:tag_ids].present?
           tag_ids = Array(params[:tag_ids])
@@ -20,7 +22,7 @@ module Api
             tagged_ids = current_api_user.places.with_tags(numeric_tag_ids).pluck(:id)
             untagged_ids = current_api_user.places.without_tags.pluck(:id)
             combined_ids = (tagged_ids + untagged_ids).uniq
-            @places = current_api_user.places.includes(:tags, :visits).where(id: combined_ids)
+            @places = current_api_user.places.includes(:tags, :active_visits).where(id: combined_ids)
           elsif numeric_tag_ids.any?
             # Only tagged places with ANY of the selected tags (OR logic)
             @places = @places.with_tags(numeric_tag_ids)
@@ -69,10 +71,11 @@ module Api
 
       def create
         @place = current_api_user.places.build(place_params.except(:tag_ids))
+        @place.user_named = true
 
         if @place.save
           add_tags if tag_ids.present?
-          @place = current_api_user.places.includes(:tags, :visits).find(@place.id)
+          @place = current_api_user.places.includes(:tags, :active_visits).find(@place.id)
 
           render json: serialize_place(@place), status: :created
         else
@@ -83,7 +86,7 @@ module Api
       def update
         if @place.update(place_params)
           set_tags if params[:place][:tag_ids]
-          @place = current_api_user.places.includes(:tags, :visits).find(@place.id)
+          @place = current_api_user.places.includes(:tags, :active_visits).find(@place.id)
 
           render json: serialize_place(@place)
         else
@@ -99,10 +102,12 @@ module Api
 
       def nearby
         unless params[:latitude].present? && params[:longitude].present?
-          return render json: { error: 'latitude and longitude are required' }, status: :bad_request
+          return render json: { error: I18n.t('controllers.api.v1.places.latitude_and_longitude_are_required') },
+                        status: :bad_request
         end
 
         results = Places::NearbySearch.new(
+          user: current_api_user,
           latitude: params[:latitude].to_f,
           longitude: params[:longitude].to_f,
           radius: params[:radius]&.to_f || 0.5,
@@ -114,25 +119,39 @@ module Api
 
       def search
         unless params[:lat].present? && params[:lon].present?
-          return render json: { error: 'lat and lon are required' }, status: :bad_request
+          return render json: { error: I18n.t('controllers.api.v1.places.lat_and_lon_are_required') },
+                        status: :bad_request
         end
 
         lat = params[:lat].to_f
         lon = params[:lon].to_f
         unless lat.between?(-90, 90) && lon.between?(-180, 180)
-          return render json: { error: 'Invalid coordinates' }, status: :bad_request
+          return render json: { error: I18n.t('controllers.api.v1.places.invalid_coordinates') }, status: :bad_request
         end
 
         radius = [[params[:radius]&.to_f || 1.0, 0.01].max, 5.0].min
         limit = [[params[:limit]&.to_i || 10, 1].max, 50].min
         query = params[:q].to_s.strip
 
-        places =
+        external_places =
           if query.length >= 2
-            Places::Search.new(query: query, latitude: lat, longitude: lon, radius: radius, limit: limit).call
+            Places::Search.new(user: current_api_user, query: query, latitude: lat, longitude: lon,
+                               radius: radius, limit: limit).call
           else
-            Places::NearbySearch.new(latitude: lat, longitude: lon, radius: radius, limit: limit, cache: true).call
+            Places::NearbySearch.new(user: current_api_user, latitude: lat, longitude: lon,
+                                     radius: radius, limit: limit, cache: true).call
           end
+
+        user_places = Places::UserSearch.new(
+          user: current_api_user, latitude: lat, longitude: lon, radius: radius, limit: limit, query: query
+        ).call
+        user_places_by_name = user_places.group_by { |place| place[:name].to_s.strip.downcase }
+        external_places.reject! do |place|
+          co_located_saved_place?(place, user_places_by_name)
+        end
+        places = (user_places + external_places)
+                 .sort_by { |place| distance_from_query(place, lat, lon) }
+                 .first(limit)
 
         areas = Areas::Nearby.new(
           user: current_api_user, latitude: lat, longitude: lon, radius: radius, query: query
@@ -143,8 +162,37 @@ module Api
 
       private
 
+      def distance_from_query(place, latitude, longitude)
+        return Float::INFINITY if place[:latitude].nil? || place[:longitude].nil?
+
+        distance = Geocoder::Calculations.distance_between(
+          [latitude, longitude],
+          [place[:latitude], place[:longitude]],
+          units: :km
+        )
+        distance.is_a?(Numeric) && distance.finite? ? distance : Float::INFINITY
+      end
+
+      def co_located_saved_place?(external, user_places_by_name)
+        return false if external[:latitude].nil? || external[:longitude].nil?
+
+        matches = user_places_by_name[external[:name].to_s.strip.downcase]
+        return false if matches.blank?
+
+        matches.any? do |place|
+          next false if place[:latitude].nil? || place[:longitude].nil?
+
+          distance = Geocoder::Calculations.distance_between(
+            [external[:latitude], external[:longitude]],
+            [place[:latitude], place[:longitude]],
+            units: :km
+          )
+          distance.is_a?(Numeric) && distance.finite? && (distance * 1000) <= CO_LOCATED_THRESHOLD_METERS
+        end
+      end
+
       def set_place
-        @place = current_api_user.places.includes(:tags, :visits).find(params[:id])
+        @place = current_api_user.places.includes(:tags, :active_visits).find(params[:id])
       end
 
       def place_params
@@ -179,7 +227,8 @@ module Api
           note: place.note,
           icon: place.tags.first&.icon,
           color: place.tags.first&.color,
-          visits_count: place.visits.size,
+          visits_count: place.active_visits.size,
+          name_locked: place.name_locked?,
           created_at: place.created_at,
           tags: place.tags.map do |tag|
             {

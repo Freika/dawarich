@@ -3,6 +3,13 @@
 require 'rails_helper'
 
 RSpec.describe '/trips', type: :request do
+  def capture_sql(&block)
+    queries = []
+    callback = ->(_name, _start, _finish, _id, payload) { queries << payload[:sql] }
+    ActiveSupport::Notifications.subscribed(callback, 'sql.active_record', &block)
+    queries
+  end
+
   let(:valid_attributes) do
     {
       name: 'Summer Vacation 2024',
@@ -53,6 +60,14 @@ RSpec.describe '/trips', type: :request do
       expect(response).to be_successful
     end
 
+    it 'does not load the unused raw point coordinate projection' do
+      queries = capture_sql { get trip_url(trip) }
+
+      expect(
+        queries.none? { |sql| sql.include?('ST_Y(lonlat::geometry)') && sql.include?('"points"."battery"') }
+      ).to be(true)
+    end
+
     it 'renders the recalculate button' do
       get trip_url(trip)
 
@@ -64,6 +79,47 @@ RSpec.describe '/trips', type: :request do
 
       expect(response.body).to include(edit_trip_path(trip))
       expect(response.body).to include('Delete this trip')
+    end
+
+    describe 'poster studio' do
+      it 'renders the studio without date controls' do
+        get trip_url(trip)
+
+        expect(response.body).to include('id="poster-studio"')
+        expect(response.body).not_to include('data-poster-studio-editor-target="dateStart"')
+      end
+
+      it 'passes the trip name to the map controller' do
+        get trip_url(trip)
+
+        expect(response.body).to include("data-trip-maplibre-trip-name-value=\"#{trip.name}\"")
+      end
+
+      it 'renders an enabled poster button when the path exists' do
+        get trip_url(trip)
+
+        button = Nokogiri::HTML(response.body).at_css('[data-trip-maplibre-target="posterBtn"]')
+        expect(button).to be_present
+        expect(button['disabled']).to be_nil
+      end
+
+      it 'renders a disabled poster button while the path is calculating' do
+        trip.update_columns(path: nil)
+
+        get trip_url(trip)
+
+        button = Nokogiri::HTML(response.body).at_css('[data-trip-maplibre-target="posterBtn"]')
+        expect(button['disabled']).to be_present
+        expect(button['title']).to eq('Available once the trip route is calculated')
+      end
+
+      it 'renders the poster gallery list' do
+        create(:poster, user:)
+
+        get trip_url(trip)
+
+        expect(response.body).to include('poster-gallery-list')
+      end
     end
 
     context 'with photos grouped by day' do
@@ -159,6 +215,14 @@ RSpec.describe '/trips', type: :request do
       get edit_trip_url(trip)
 
       expect(response).to be_successful
+    end
+
+    it 'does not load the unused raw point coordinate projection' do
+      queries = capture_sql { get edit_trip_url(trip) }
+
+      expect(
+        queries.none? { |sql| sql.include?('ST_Y(lonlat::geometry)') && sql.include?('"points"."battery"') }
+      ).to be(true)
     end
   end
 

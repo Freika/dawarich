@@ -12,14 +12,14 @@ module PlacesHelper
   #   location_line: 'City, Country' (blank parts omitted)
   # }
   def place_dwell_stats(place)
-    total_minutes = place.visits.sum(:duration).to_i
-    visit_count = place.visits.size
+    total_minutes = place.active_visits.sum(:duration).to_i
+    visit_count = place.active_visits.size
     avg_minutes = visit_count.positive? ? (total_minutes / visit_count) : 0
 
     {
       visit_count: visit_count,
       total_hours: (total_minutes / 60.0).round(1),
-      avg_label: "#{avg_minutes / 60}h #{avg_minutes % 60}m",
+      avg_label: I18n.t('units.hours_minutes_compact', hours: avg_minutes / 60, minutes: avg_minutes % 60),
       primary_tag: place.tags.first,
       location_line: [place.city, place.country].compact_blank.join(', ')
     }
@@ -29,10 +29,10 @@ module PlacesHelper
   def place_visit_time_range(visit)
     duration = visit.duration.to_i
     {
-      start_label: visit.started_at.strftime('%H:%M'),
-      end_label: visit.ended_at.strftime('%H:%M'),
-      date_label: visit.started_at.strftime('%Y-%m-%d'),
-      duration_label: "#{duration / 60}h #{duration % 60}m"
+      start_label: I18n.l(visit.started_at, format: :hour_minute),
+      end_label: I18n.l(visit.ended_at, format: :hour_minute),
+      date_label: I18n.l(visit.started_at.to_date, format: :iso),
+      duration_label: I18n.t('units.hours_minutes_compact', hours: duration / 60, minutes: duration % 60)
     }
   end
 end

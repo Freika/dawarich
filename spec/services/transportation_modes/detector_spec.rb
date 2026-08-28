@@ -4,134 +4,75 @@ require 'rails_helper'
 
 RSpec.describe TransportationModes::Detector do
   let(:user) { create(:user) }
-  let(:track) { create(:track, user: user) }
 
-  describe '#call' do
-    context 'when track has fewer than 2 points' do
-      let(:points) { [build(:point, user: user, timestamp: 1000)] }
+  def create_track_with_trip(legs, seed: 42)
+    trip = TransportationTraceGenerator.trip(
+      legs: legs, start_time: Time.zone.parse('2026-01-05 09:00 UTC'), seed: seed
+    )
+    track = create(:track, user: user,
+                           start_at: Time.zone.at(trip[:points].first[:timestamp]),
+                           end_at: Time.zone.at(trip[:points].last[:timestamp]))
+    now = Time.current
+    Point.insert_all(trip[:points].map do |p|
+      { user_id: user.id, track_id: track.id, timestamp: p[:timestamp],
+        lonlat: "SRID=4326;POINT(#{p[:lon]} #{p[:lat]})",
+        accuracy: p[:accuracy], velocity: p[:velocity].to_s,
+        created_at: now, updated_at: now }
+    end)
+    [track, trip]
+  end
 
-      it 'returns default unknown segment' do
-        detector = described_class.new(track, points)
-        segments = detector.call
+  it 'detects a mixed walk-drive trip as time-anchored segments' do
+    track, trip = create_track_with_trip(
+      [{ mode: :walking, duration_s: 300, dt_s: 5 }, { mode: :driving, duration_s: 600, dt_s: 5 }]
+    )
+    segments = described_class.new(track).call
 
-        expect(segments.length).to eq(1)
-        expect(segments[0][:mode]).to eq(:unknown)
-        expect(segments[0][:source]).to eq('default')
-      end
-    end
+    expect(segments.map { |s| s[:mode] }).to eq(%i[walking driving])
+    expect(segments.first[:start_at].to_i).to eq(trip[:points].first[:timestamp])
+    expect(segments.last[:end_at].to_i).to eq(trip[:points].last[:timestamp])
+    expect(segments.first[:path_wkt]).to start_with('LINESTRING')
+    boundary = trip[:labels].first[:end_ts]
+    expect(segments.first[:end_at].to_i).to be_within(60).of(boundary)
+  end
 
-    context 'when track duration is very short' do
-      let(:points) do
-        [
-          build(:point, user: user, timestamp: 1000, velocity: '10'),
-          build(:point, user: user, timestamp: 1010, velocity: '10') # 10 seconds
-        ]
-      end
+  it 'respects enabled_modes' do
+    track, = create_track_with_trip([{ mode: :running, duration_s: 600, dt_s: 5 }])
+    segments = described_class.new(track, enabled_modes: %i[walking cycling driving]).call
+    expect(segments.map { |s| s[:mode] }.uniq - %i[walking cycling driving]).to be_empty
+  end
 
-      it 'returns default unknown segment' do
-        detector = described_class.new(track, points)
-        segments = detector.call
+  it 'leaves preserved corrected ranges un-overlapped' do
+    track, trip = create_track_with_trip(
+      [{ mode: :walking, duration_s: 300, dt_s: 5 }, { mode: :driving, duration_s: 600, dt_s: 5 }]
+    )
+    mid = trip[:points][60][:timestamp]
+    preserved = create(:track_segment, track: track, transportation_mode: :bus,
+                                       start_index: nil, end_index: nil,
+                                       start_at: Time.zone.at(mid), end_at: Time.zone.at(mid + 120),
+                                       corrected_at: Time.current)
 
-        expect(segments.length).to eq(1)
-        expect(segments[0][:mode]).to eq(:unknown)
-      end
-    end
-
-    context 'when points have source activity data' do
-      let(:points) do
-        [
-          build(:point, user: user, timestamp: 1000, raw_data: {
-                  'properties' => { 'motion' => ['driving'] }
-                }),
-          build(:point, user: user, timestamp: 1100, raw_data: {
-                  'properties' => { 'motion' => ['driving'] }
-                })
-        ]
-      end
-
-      it 'uses source data extractor' do
-        detector = described_class.new(track, points)
-        segments = detector.call
-
-        expect(segments.length).to eq(1)
-        expect(segments[0][:mode]).to eq(:driving)
-        expect(segments[0][:source]).to eq('overland')
-      end
-    end
-
-    context 'when points have no source activity data' do
-      let(:points) do
-        [
-          build(:point, user: user, timestamp: 1000, velocity: '1.5',
-            lonlat: 'POINT(13.404954 52.520008)'),
-          build(:point, user: user, timestamp: 1060, velocity: '1.5',
-            lonlat: 'POINT(13.405054 52.520108)'),
-          build(:point, user: user, timestamp: 1120, velocity: '1.5',
-            lonlat: 'POINT(13.405154 52.520208)')
-        ]
-      end
-
-      it 'falls back to movement analyzer' do
-        detector = described_class.new(track, points)
-        segments = detector.call
-
-        expect(segments).not_to be_empty
-        expect(segments[0][:source]).to eq('inferred')
-      end
-    end
-
-    context 'integration: multi-mode track' do
-      let(:points) do
-        # Simulate walking, then driving, then walking
-        walking_points = (0..5).map do |i|
-          build(:point, user: user,
-            timestamp: 1000 + (i * 60),
-            velocity: '1.5', # ~5.4 km/h
-            lonlat: "POINT(13.#{404_954 + i} 52.#{520_008 + i})",
-            raw_data: { 'properties' => { 'motion' => ['walking'] } })
-        end
-
-        driving_points = (6..15).map do |i|
-          build(:point, user: user,
-            timestamp: 1000 + (i * 60),
-            velocity: '15', # ~54 km/h
-            lonlat: "POINT(13.#{404_954 + i * 10} 52.#{520_008 + i * 10})",
-            raw_data: { 'properties' => { 'motion' => ['driving'] } })
-        end
-
-        walking_points + driving_points
-      end
-
-      it 'detects multiple segments' do
-        detector = described_class.new(track, points)
-        segments = detector.call
-
-        modes = segments.map { |s| s[:mode] }
-        expect(modes).to include(:walking)
-        expect(modes).to include(:driving)
-      end
+    segments = described_class.new(track, preserved: [preserved]).call
+    segments.each do |seg|
+      overlap = [seg[:start_at].to_i, mid].max < [seg[:end_at].to_i, mid + 120].min
+      expect(overlap).to be(false)
     end
   end
 
-  describe 'enabled_modes pass-through' do
-    it 'forwards enabled_modes to MovementAnalyzer' do
-      points = (0..4).map do |i|
-        build(:point,
-              user: user,
-              timestamp: 1000 + (i * 60),
-              velocity: '1.4',
-              lonlat: "POINT(13.404954 #{52.520008 + (i * 0.0001)})")
-      end
-      received_kwargs = nil
-      allow(TransportationModes::MovementAnalyzer).to receive(:new).and_wrap_original do |original, *args, **kwargs|
-        received_kwargs = kwargs
-        original.call(*args, **kwargs)
-      end
+  it 'returns a single unknown segment for degenerate tracks' do
+    track = create(:track, user: user)
+    segments = described_class.new(track).call
+    expect(segments.size).to eq(1)
+    expect(segments.first[:mode]).to eq(:unknown)
+    expect(segments.first[:source]).to eq('default')
+  end
 
-      detector = described_class.new(track, points, enabled_modes: %i[walking cycling])
-      detector.call
+  it 'falls back to unknown when a pipeline stage raises' do
+    track, = create_track_with_trip([{ mode: :walking, duration_s: 300, dt_s: 5 }])
+    allow(TransportationModes::FeatureExtractor).to receive(:call).and_raise(StandardError, 'boom')
 
-      expect(received_kwargs).to include(enabled_modes: %i[walking cycling])
-    end
+    segments = described_class.new(track).call
+    expect(segments.size).to eq(1)
+    expect(segments.first[:mode]).to eq(:unknown)
   end
 end

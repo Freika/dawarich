@@ -17,6 +17,42 @@ def bearer_token(header)
   match && match[1]
 end
 
+# Rack::Attack runs ahead of the middleware that turns a malformed body into a
+# 400, so an unparseable request would otherwise escape these throttles as a 500.
+# Fall back to the query string, which parses independently of the body.
+UNPARSEABLE_BODY_ERRORS = [
+  Rack::Multipart::Error,
+  Rack::Multipart::EmptyContentError,
+  Rack::Multipart::MissingInputError,
+  Rack::Multipart::BoundaryTooLongError,
+  Rack::Multipart::MultipartPartLimitError,
+  Rack::Multipart::MultipartTotalPartLimitError,
+  Rack::QueryParser::ParamsTooDeepError,
+  Rack::QueryParser::InvalidParameterError,
+  Rack::QueryParser::ParameterTypeError,
+  Rack::QueryParser::QueryLimitError,
+  EOFError
+].freeze
+
+# Every throttle that reads params must go through this. Deliberately not
+# logged: a malformed-body flood would flood the log with it.
+def safe_params(request)
+  request.params
+rescue *UNPARSEABLE_BODY_ERRORS
+  safe_query(request)
+end
+
+# The query string can be malformed on its own; a throttle must not raise here.
+def safe_query(request)
+  request.GET
+rescue *UNPARSEABLE_BODY_ERRORS
+  {}
+end
+
+def request_api_key(request)
+  safe_params(request)['api_key'] || bearer_token(request.get_header('HTTP_AUTHORIZATION'))
+end
+
 # Disabled in the test environment so request specs aren't throttled by
 # accumulated counters across examples (login throttle is 5/min by IP,
 # 20/min by email — easy to trip when many specs hit /users/sign_in).
@@ -27,10 +63,17 @@ Rack::Attack.enabled = false if Rails.env.test?
 # Configurable per-plan limits. Override in tests via Rack::Attack.api_rate_limits=
 class Rack::Attack
   class << self
-    attr_accessor :api_rate_limits, :shared_links_viewer_limit
+    attr_accessor :api_rate_limits, :shared_links_viewer_limit, :tiles_limit, :tiles_burst_limit
   end
   self.api_rate_limits = { 'lite' => 200, 'pro' => 1_000, 'family' => 1_000 }
   self.shared_links_viewer_limit = 120
+  # Vector tiles fetch in bursts (10–30 per pan) and TWO sources (points,
+  # tracks) share this key — sized for ~250 uncached pans/hr with both
+  # sources on.
+  self.tiles_limit = 10_000
+  # Short-window companion: pans and rapid zooms with both sources fit
+  # easily; sustained hammering of the DB-heaviest endpoints does not.
+  self.tiles_burst_limit = 600
 end
 
 # Dynamic per-user rate limiting keyed by API token.
@@ -40,9 +83,12 @@ Rack::Attack.throttle('api/token',
                       limit: proc { |req| req.env['rack.attack.api_rate_limit'] || 1_000 },
                       period: 1.hour) do |req|
   next unless req.path.start_with?('/api/')
+  # Tiles burst 10–30 requests per map pan and would burn this quota in
+  # minutes; they run on their own api/tiles throttle below.
+  next if req.path.start_with?('/api/v1/tiles/')
   next if DawarichSettings.self_hosted?
 
-  api_key = req.params['api_key'] || bearer_token(req.get_header('HTTP_AUTHORIZATION'))
+  api_key = request_api_key(req)
   next if api_key.blank?
 
   user_plan = Rails.cache.fetch("rack_attack/plan/#{api_key}", expires_in: 2.minutes) do
@@ -52,6 +98,32 @@ Rack::Attack.throttle('api/token',
 
   req.env['rack.attack.api_rate_limit'] = Rack::Attack.api_rate_limits[user_plan] || 1_000
   api_key
+end
+
+# Vector tile requests, exempted from api/token above. Keyed by raw token —
+# no plan lookup, no DB query; browser caching absorbs most repeats anyway.
+Rack::Attack.throttle('api/tiles',
+                      limit: proc { Rack::Attack.tiles_limit },
+                      period: 1.hour) do |req|
+  next unless req.path.start_with?('/api/v1/tiles/')
+  next if DawarichSettings.self_hosted?
+
+  api_key = request_api_key(req)
+  next if api_key.blank?
+
+  "tiles:#{api_key}"
+end
+
+Rack::Attack.throttle('api/tiles_burst',
+                      limit: proc { Rack::Attack.tiles_burst_limit },
+                      period: 30.seconds) do |req|
+  next unless req.path.start_with?('/api/v1/tiles/')
+  next if DawarichSettings.self_hosted?
+
+  api_key = request_api_key(req)
+  next if api_key.blank?
+
+  "tiles_burst:#{api_key}"
 end
 
 # Points creation rate limit: 10,000 req/hr per API key.
@@ -66,7 +138,7 @@ Rack::Attack.throttle('api/points_creation', limit: 10_000, period: 1.hour) do |
   next unless req.post? && POINTS_CREATION_PATHS.include?(req.path)
   next if DawarichSettings.self_hosted?
 
-  api_key = req.params['api_key'] || bearer_token(req.get_header('HTTP_AUTHORIZATION'))
+  api_key = request_api_key(req)
   next if api_key.blank?
 
   "points_creation:#{api_key}"
@@ -85,7 +157,7 @@ Rack::Attack.throttle('api/heavy_recompute', limit: 5, period: 1.hour) do |req|
   next unless req.post? && HEAVY_RECOMPUTE_PATHS.include?(req.path)
   next if DawarichSettings.self_hosted?
 
-  api_key = req.params['api_key'] || bearer_token(req.get_header('HTTP_AUTHORIZATION'))
+  api_key = request_api_key(req)
   next if api_key.blank?
 
   "heavy_recompute:#{api_key}"
@@ -95,7 +167,7 @@ end
 Rack::Attack.throttle('logins/email', limit: 5, period: 1.minute) do |req|
   next unless req.path == '/users/sign_in' && req.post?
 
-  req.params.dig('user', 'email')&.downcase&.strip
+  safe_params(req).dig('user', 'email')&.downcase&.strip
 end
 
 Rack::Attack.throttle('logins/ip', limit: 20, period: 1.minute) do |req|
@@ -112,7 +184,7 @@ Rack::Attack.throttle('logins/api_email', limit: 5, period: 1.minute) do |req|
   next if DawarichSettings.self_hosted?
   next unless req.path == '/api/v1/auth/login' && req.post?
 
-  req.params['email']&.to_s&.downcase&.strip
+  safe_params(req)['email']&.to_s&.downcase&.strip
 end
 
 Rack::Attack.throttle('logins/api_ip', limit: 20, period: 1.minute) do |req|
@@ -165,7 +237,7 @@ Rack::Attack.throttle('api/auth/otp_challenge_token', limit: 5, period: 15.minut
   next if DawarichSettings.self_hosted?
 
   if req.path == '/api/v1/auth/otp_challenge' && req.post?
-    token = req.params['challenge_token'].to_s
+    token = safe_params(req)['challenge_token'].to_s
     Digest::SHA256.hexdigest(token)[0, 32] if token.present?
   end
 end
@@ -213,7 +285,7 @@ Rack::Attack.throttle('api/users/two_factor_sensitive', limit: 5, period: 15.min
   next unless req.post? || req.delete?
   next unless SENSITIVE_2FA_PATHS.include?(req.path)
 
-  api_key = req.params['api_key'] || bearer_token(req.get_header('HTTP_AUTHORIZATION'))
+  api_key = request_api_key(req)
   next if api_key.blank?
 
   "two_factor_sensitive:#{api_key}"
@@ -263,7 +335,7 @@ Rack::Attack.throttle('shared_links/cable',
                       period: 1.minute) do |req|
   next if DawarichSettings.self_hosted?
 
-  req.ip if req.path == '/cable' && req.params['share_id'].present?
+  req.ip if req.path == '/cable' && safe_params(req)['share_id'].present?
 end
 
 # Magic-phrase unlock attempts: 5 per (IP, link) per 5 minutes.
@@ -282,7 +354,7 @@ end
 
 # Companion throttle for the signup claim path that consumes ?import_ticket=.
 Rack::Attack.throttle('imports/claim attempts', limit: 30, period: 1.hour) do |req|
-  req.ip if req.get? && req.path.start_with?('/users/sign_up') && req.params['import_ticket'].present?
+  req.ip if req.get? && req.path.start_with?('/users/sign_up') && safe_params(req)['import_ticket'].present?
 end
 
 Rack::Attack.throttled_responder = lambda do |request|
@@ -292,6 +364,9 @@ Rack::Attack.throttled_responder = lambda do |request|
 
   headers = {
     'Content-Type' => 'application/json',
+    # 429s must never be cached — tiles are the dominant throttled URL shape
+    # and a heuristically-cached rejection would outlive the throttle window.
+    'Cache-Control' => 'no-store',
     'Retry-After' => (period - (now.to_i % period)).to_s
   }
 

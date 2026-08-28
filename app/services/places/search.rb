@@ -7,7 +7,8 @@ module Places
     MIN_QUERY_LENGTH = 2
     MAX_QUERY_LENGTH = 200
 
-    def initialize(query:, latitude:, longitude:, radius:, limit: MAX_RESULTS)
+    def initialize(user:, query:, latitude:, longitude:, radius:, limit: MAX_RESULTS)
+      @user = user
       @query = query.to_s.strip.first(MAX_QUERY_LENGTH)
       @latitude = latitude.to_f
       @longitude = longitude.to_f
@@ -16,24 +17,42 @@ module Places
     end
 
     def call
-      return [] unless DawarichSettings.reverse_geocoding_enabled?
+      return [] unless Geocoding::Config.for(@user).enabled?
       return [] if @query.length < MIN_QUERY_LENGTH
 
       fetch_and_filter
+    rescue *ReverseGeocoding::ProviderErrors::SEARCH_HANDLED => e
+      log_provider_error(e)
+      []
     rescue StandardError => e
-      ExceptionReporter.call(e, "Places::Search failed for '#{@query}' near #{@latitude},#{@longitude}")
+      if ReverseGeocoding::ProviderErrors.transient_tls?(e)
+        log_provider_error(e)
+      else
+        Rails.logger.error("Place search failed: #{e.class}: #{e.message}")
+        ExceptionReporter.call(e, 'Places::Search failed')
+      end
       []
     end
 
     private
 
+    def log_provider_error(error)
+      Rails.logger.warn("Place search provider error: #{error.class} (query length: #{@query.length})")
+    end
+
     def fetch_and_filter
-      Geocoder.search(@query, limit: FETCH_LIMIT, bias: { latitude: @latitude, longitude: @longitude })
-              .map { |r| Places::PhotonResultFormatter.call(r, fallback_lat: @latitude, fallback_lon: @longitude) }
-              .filter_map { |place| within_radius(place) }
-              .sort_by { |place| place[:distance] }
-              .first(@limit)
-              .map { |place| place.except(:distance) }
+      results = Geocoding::Search
+                .call(user: @user, query: @query, limit: FETCH_LIMIT,
+                      max_wait: Geocoding::RateLimiter::MAX_INTERACTIVE_WAIT,
+                      bias: { latitude: @latitude, longitude: @longitude })
+      return [] if results.nil?
+
+      results
+        .map { |r| Places::PhotonResultFormatter.call(r, fallback_lat: @latitude, fallback_lon: @longitude) }
+        .filter_map { |place| within_radius(place) }
+        .sort_by { |place| place[:distance] }
+        .first(@limit)
+        .map { |place| place.except(:distance) }
     end
 
     def within_radius(place)

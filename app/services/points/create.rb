@@ -13,15 +13,18 @@ class Points::Create
 
     deduplicated_data = data.uniq { |point| Point.dedup_key(point) }
 
+    # Dual-write the dimension FKs alongside the legacy columns. The backfill
+    # only sweeps rows that exist when it passes; without this every new point
+    # would land unstamped behind the cursor.
+    Points::DimensionResolver.new.stamp(deduplicated_data)
+
     created_points = []
     inserted_count = 0
 
     deduplicated_data.each_slice(1000) do |location_batch|
       result = Point.archival_safe_upsert_all(
         location_batch,
-        returning: Arel.sql(
-          'id, xmax, timestamp, ST_X(lonlat::geometry) AS longitude, ST_Y(lonlat::geometry) AS latitude'
-        )
+        returning: Arel.sql(Point::UPSERT_RETURNING_COLUMNS)
       )
       inserted_count += result.count { |row| row['xmax'].to_i.zero? }
       created_points.concat(result)

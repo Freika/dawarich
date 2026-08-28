@@ -18,7 +18,7 @@ module RuboCop
 
         def on_send(node)
           check_query_symbols(node) if QUERY_METHODS.include?(node.method_name) && node.receiver
-          check_reader_call(node)   if LAT_LON.include?(node.method_name)         && node.receiver
+          check_reader_call(node)   if LAT_LON.include?(node.method_name) && node.receiver
         end
 
         private
@@ -46,7 +46,8 @@ module RuboCop
           if receiver.lvar_type?
             name = receiver.children.first
             return add_offense(node, message: MSG_READER) if name == :point
-            return add_offense(node, message: MSG_READER) if in_points_iteration_block?(receiver)
+
+            add_offense(node, message: MSG_READER) if in_points_iteration_block?(receiver)
           elsif receiver.send_type? && receiver.method_name == :point && receiver.receiver.nil?
             add_offense(node, message: MSG_READER)
           end

@@ -17,7 +17,7 @@ jobs:
       github.event.workflow_run.event == 'release'
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
 
       - name: Get release info
         id: version

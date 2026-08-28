@@ -1,21 +1,21 @@
-<% content_for :title, 'Trips' %>
+<% content_for :title, t('.trips') %>
 
 <div class="w-full my-5">
   <div id="trips" class="min-w-full">
-    <%= render layout: 'shared/page_header', locals: { title: 'Trips' } do %>
+    <%= render layout: 'shared/page_header', locals: { title: t('.trips') } do %>
       <%= link_to new_trip_path, class: 'btn btn-primary btn-sm' do %>
-        <%= icon 'circle-plus', class: 'w-4 h-4' %> New trip
+        <%= icon 'circle-plus', class: 'w-4 h-4' %> <%= t('trips.index.new_trip') %>
       <% end %>
     <% end %>
 
     <% if @trips.empty? %>
       <div class="text-center py-16 px-8 bg-base-200 rounded-xl border-2 border-dashed border-base-300">
-        <h3 class="text-xl font-bold mb-3">No trips yet</h3>
+        <h3 class="text-xl font-bold mb-3"><%= t('.no_trips_yet') %></h3>
         <p class="text-base-content/50 mb-6 max-w-sm mx-auto">
-          Create your first trip to see your journeys visualized with maps, photos, and stats.
+          <%= t('.create_your_first_trip_to_see_your_journeys_visualized_with') %>
         </p>
         <%= link_to new_trip_path, class: 'btn btn-primary' do %>
-          <%= icon 'circle-plus', class: 'w-4 h-4' %> Create your first trip
+          <%= icon 'circle-plus', class: 'w-4 h-4' %> <%= t('.create_your_first_trip') %>
         <% end %>
       </div>
     <% else %>

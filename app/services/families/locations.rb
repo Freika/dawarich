@@ -9,18 +9,19 @@ class Families::Locations
 
   MAX_POINTS_PER_MEMBER = 5000
 
-  def call
-    return [] unless family_feature_enabled?
+  def call(excluding: nil)
+    return [] unless family_feature_available?
     return [] unless user.in_family?
 
     sharing_members = family_members_with_sharing_enabled
+    sharing_members = sharing_members.reject { _1.id == excluding } if excluding
     return [] unless sharing_members.any?
 
     build_family_locations(sharing_members)
   end
 
   def history(start_at:, end_at:)
-    return [] unless family_feature_enabled?
+    return [] unless family_feature_available?
     return [] unless user.in_family?
 
     sharing_members = family_members_with_sharing_enabled
@@ -31,18 +32,19 @@ class Families::Locations
 
   private
 
-  def family_feature_enabled?
-    DawarichSettings.family_feature_enabled?
+  def family_feature_available?
+    DawarichSettings.family_feature_available_for?(user)
   end
 
   def family_members_with_sharing_enabled
     user.family.members
+        .includes(:family_membership)
         .select(&:family_sharing_enabled?)
   end
 
   def build_family_locations(sharing_members)
     latest_points =
-      sharing_members.map { _1.points.order(timestamp: :desc).first }.compact
+      sharing_members.map { _1.points.without_raw_data.complete.order(timestamp: :desc).first }.compact
 
     latest_points.map do |point|
       {
@@ -51,8 +53,8 @@ class Families::Locations
         email_initial: point.user.email.first.upcase,
         latitude: point.lat,
         longitude: point.lon,
-        timestamp: point.timestamp.to_i,
-        updated_at: Time.zone.at(point.timestamp.to_i),
+        timestamp: point.timestamp,
+        updated_at: Time.zone.at(point.timestamp),
         battery: point.battery,
         battery_status: point.battery_status
       }

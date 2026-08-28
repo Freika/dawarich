@@ -1,84 +1,84 @@
 <%
   entries = Array(day[:entries])
-  suggested_count = day[:summary][:suggested_count].to_i
-  total_visits   = day_total_visits_count(day)
-  total_tracks   = entries.count { |e| e[:type] != 'visit' && e[:track_id].present? }
   moving_minutes = day[:summary][:time_moving_minutes].to_i
-  total_distance = day[:summary][:total_distance]
   distance_unit  = day[:summary][:distance_unit]
+  mode_distances = day[:summary][:mode_distances] || {}
 %>
 <div class="timeline-day" data-day="<%= day[:date] %>" data-bounds="<%= day_bounds_json(day) %>">
   <div class="timeline-day-header">
     <%= render 'map/timeline_feeds/day_nav', date: day[:date] %>
     <div class="timeline-day-header__meta">
-      <%= pluralize(day_total_visits_count(day), 'visit') %>
+      <%= t('.visit_count', count: day_total_visits_count(day)) %>
       <% if day_total_visits_count(day) >= 2 %>
         <button type="button"
                 class="day-select-toggle"
                 data-testid="day-select-toggle"
                 data-action="click->timeline-feed#enterSelection">
-          Select
+          <%= t('.select') %>
         </button>
       <% end %>
     </div>
   </div>
 
-  <%= render partial: 'map/timeline_feeds/day_banner',
-             locals: { date: day[:date], suggested_count: suggested_count } %>
-
-  <dl class="timeline-day-rollup">
-    <div>
-      <dt>Visits</dt>
-      <dd><%= total_visits %></dd>
+  <%# One summary line for the whole day: how you moved, and for how long.
+      Total distance, visit count, and the moving/stationary bar were all
+      restatements of information already on screen. %>
+  <% if mode_distances.any? || moving_minutes.positive? %>
+    <div class="timeline-day-modes">
+      <% mode_distances.each do |mode, dist| %>
+        <span class="mode-chip">
+          <%= icon mode_icon_name(mode), class: 'mode-chip__icon' %>
+          <span class="sr-only"><%= t("transportation_modes.#{mode}") %></span>
+          <%= dist %> <%= distance_unit %>
+        </span>
+      <% end %>
+      <% if moving_minutes.positive? %>
+        <span class="mode-chip mode-chip--muted"><%= t('.moving_duration', duration: format_duration_short(moving_minutes * 60)) %></span>
+      <% end %>
     </div>
-    <div>
-      <dt>Tracks</dt>
-      <dd><%= total_tracks %></dd>
-    </div>
-    <% if total_distance.to_f.positive? %>
-      <div>
-        <dt>Distance</dt>
-        <dd><%= total_distance %> <%= distance_unit %></dd>
-      </div>
-    <% end %>
-    <% if moving_minutes.positive? %>
-      <div>
-        <dt>Moving</dt>
-        <dd><%= format_duration_short(moving_minutes * 60) %></dd>
-      </div>
-    <% end %>
-  </dl>
-
-  <%= render partial: 'map/timeline_feeds/day_summary', locals: { summary: day[:summary] } %>
+  <% end %>
 
   <%= render partial: 'map/timeline_feeds/selection_bar' %>
 
   <% if entries.present? %>
     <ol class="timeline-entries">
-      <% entries.each do |entry| %>
-        <% if entry[:type] == 'visit' %>
+      <% timeline_entries_with_gaps(entries).each do |entry| %>
+        <% case entry[:type] %>
+        <% when 'visit' %>
           <%= render partial: 'map/timeline_feeds/visit_entry', locals: { entry: entry, day: day } %>
+        <% when 'gap' %>
+          <%= render partial: 'map/timeline_feeds/gap_entry', locals: { entry: entry } %>
         <% else %>
           <%= render partial: 'map/timeline_feeds/journey_entry', locals: { entry: entry } %>
         <% end %>
       <% end %>
     </ol>
+    <% low_count = entries.count { |e| e[:type] == 'visit' && visit_entry_low_confidence?(e) } %>
+    <% if low_count.positive? %>
+      <button type="button"
+              class="timeline-lowconf-toggle"
+              data-testid="lowconf-toggle"
+              data-action="click->timeline-feed#toggleLowConfidence"
+              aria-expanded="false">
+        <%= t('.low_confidence_stops', count: low_count) %>
+      </button>
+    <% end %>
     <%# Shown by timeline_feed_controller#applyVisibility when every visit row
         is hidden by an active search/filter/tag combo — otherwise the "N visits"
         header contradicts the empty list and users think data is missing. %>
     <div class="timeline-entries-empty-filtered hidden"
          data-timeline-feed-target="emptyFiltered">
       <p class="text-sm text-base-content/70">
-        No visits match the current search or filter.
+        <%= t('.no_visits_match_the_current_search_or_filter') %>
       </p>
       <button type="button"
               class="btn btn-ghost btn-xs"
               data-action="click->timeline-feed#clearVisitFilters">
-        Clear search & filters
+        <%= t('.clear_search_filters') %>
       </button>
     </div>
   <% else %>
-    <p class="text-center text-sm text-base-content/60 py-6">No visits tracked this day.</p>
+    <p class="text-center text-sm text-base-content/60 py-6"><%= t('.no_visits_tracked_this_day') %></p>
   <% end %>
 
   <footer class="timeline-day-footer">
@@ -86,8 +86,8 @@
             class="btn btn-ghost btn-xs btn-square"
             data-action="click->timeline-feed#navigateDay"
             data-direction="prev"
-            title="Previous day"
-            aria-label="Previous day">
+            title="<%= t('.previous_day') %>"
+            aria-label="<%= t('.previous_day') %>">
       <%= icon 'chevron-left', class: 'w-4 h-4' %>
     </button>
 
@@ -95,8 +95,8 @@
             class="btn btn-ghost btn-xs btn-square"
             data-action="click->timeline-feed#navigateDay"
             data-direction="next"
-            title="Next day"
-            aria-label="Next day">
+            title="<%= t('.next_day') %>"
+            aria-label="<%= t('.next_day') %>">
       <%= icon 'chevron-right', class: 'w-4 h-4' %>
     </button>
   </footer>

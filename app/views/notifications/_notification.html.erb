@@ -1,9 +1,9 @@
 <div role="<%= notification.kind %>" class="<%= notification.kind %> shadow-lg p-5 flex justify-between items-center mb-4 rounded-lg bg-base-200" id="<%= dom_id notification %>">
-  <div class="flex-1">
+  <div class="flex-1 min-w-0 [overflow-wrap:anywhere]">
     <h3 class="font-bold text-xl">
       <%= link_to notification.title, notification, class: "link hover:no-underline #{notification_link_color(notification)}" %>
     </h3>
-    <div class="text-sm text-gray-500"><%= time_ago_in_words notification.created_at %> ago</div>
+    <div class="text-sm text-gray-500"><%= t('common.time_ago', time: relative_distance_in_words(notification.created_at)) %></div>
 
     <% if params[:action] == 'show' %>
       <div class="mt-2">
@@ -11,7 +11,7 @@
 
         <% if notification.error? %>
           <div class="mt-2">
-            Please, when reporting a bug to <a href="https://github.com/Freika/dawarich/issues" class="link hover:no-underline text-blue-600">Github Issues</a>, don't forget to include logs from <code>dawarich_app</code> and <code>dawarich_sidekiq</code> docker containers. Thank you!
+            <%= t('.please_when_reporting_a_bug_to') %> <a href="https://github.com/Freika/dawarich/issues" class="link hover:no-underline text-blue-600"><%= t('.github_issues') %></a><%= t('.don_t_forget_to_include_logs_from') %> <code><%= t('.dawarich_app') %></code> <%= t('.and') %> <code><%= t('.dawarich_sidekiq') %></code> <%= t('.docker_containers_thank_you') %>
           </div>
         <% end %>
       </div>

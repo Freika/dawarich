@@ -19,6 +19,19 @@ RSpec.describe 'Map v2 (maplibre)', type: :request do
 
       expect(response.body).to include('Blueprint')
     end
+
+    it 'renders the studio date controls on the map page' do
+      get map_v2_path
+
+      expect(response.body).to include('data-poster-studio-editor-target="dateStart"')
+    end
+
+    it 'defaults the track opacity slider to 100%' do
+      get map_v2_path
+
+      slider = Nokogiri::HTML(response.body).at_css('[data-poster-studio-editor-target="trackOpacity"]')
+      expect(slider['value']).to eq('100')
+    end
   end
 
   describe 'print ordering' do
@@ -51,6 +64,14 @@ RSpec.describe 'Map v2 (maplibre)', type: :request do
 
     it 'renders the order section when the poster_ordering flag is enabled' do
       Flipper.enable(:poster_ordering)
+
+      get map_v2_path
+
+      expect(response.body).to include('Order a printed poster')
+    end
+
+    it 'renders the order section on an instance carrying no flag at all' do
+      Flipper.remove(:poster_ordering)
 
       get map_v2_path
 

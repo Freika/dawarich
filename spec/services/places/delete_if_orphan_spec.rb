@@ -39,6 +39,17 @@ RSpec.describe Places::DeleteIfOrphan do
       expect(Place.exists?(place.id)).to be(true)
     end
 
+    it 'deletes a photon place referenced only by hidden visits and detaches them' do
+      place = create(:place, user: user, source: :photon)
+      tombstone = create(:visit, user: user, place: place, area: nil, deleted_at: 1.day.ago)
+      declined = create(:visit, user: user, place: place, area: nil, status: :declined)
+
+      expect(described_class.call(place.id)).to be(true)
+      expect(Place.exists?(place.id)).to be(false)
+      expect(tombstone.reload.place_id).to be_nil
+      expect(declined.reload.place_id).to be_nil
+    end
+
     it 'keeps places with tags' do
       place = create(:place, user: user, source: :photon)
       tag = create(:tag, user: user)

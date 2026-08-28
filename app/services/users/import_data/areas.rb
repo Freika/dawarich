@@ -78,7 +78,6 @@ class Users::ImportData::Areas
 
     existing_areas_lookup = {}
     user.areas.select(:name, :latitude, :longitude).each do |area| # rubocop:disable Dawarich/PointsLatLonAccess
-
       key = [area.name, area.latitude.to_f, area.longitude.to_f]
       existing_areas_lookup[key] = true
     end

@@ -97,6 +97,25 @@ RSpec.describe Fit::Importer do
       end
     end
 
+    context 'with a FIT activity that omits the device_info section' do
+      let(:file_path) do
+        path = Rails.root.join('tmp', "test_without_device_info_#{SecureRandom.hex(4)}.fit").to_s
+        generate_fit_fixture_without_device_info(path)
+        path
+      end
+
+      after { File.delete(file_path) if File.exist?(file_path) }
+
+      it 'imports its GPS records without inventing persisted device data' do
+        expect do
+          described_class.new(import, user.id, file_path).call
+        end.to change { user.points.count }.by(3)
+
+        expect(import.reload).not_to be_failed
+        expect(Fit4Ruby.read(file_path).device_infos).to be_empty
+      end
+    end
+
     context 'with ActiveStorage file (nil file_path)' do
       let(:temp_path) { fit_fixture_path }
       let(:downloader) { instance_double(Imports::SecureFileDownloader, download_to_temp_file: temp_path) }
@@ -145,6 +164,22 @@ RSpec.describe Fit::Importer do
         info.instance_variable_set(:@garmin_product, 'fenix3')
         info.instance_variable_set(:@serial_number, nil)
         expect { info.check(0) }.not_to raise_error
+      end
+
+      it 'temporarily tolerates an activity with no device_info section' do
+        activity = Fit4Ruby::Activity.new(timestamp: Time.current, total_timer_time: 60)
+
+        expect { activity.check }.not_to raise_error
+        expect(activity.device_infos).to be_empty
+      end
+
+      it 'leaves existing device_info entries untouched when they are present' do
+        activity = Fit4Ruby::Activity.new(timestamp: Time.current, total_timer_time: 60)
+        activity.new_device_info(timestamp: Time.current, device_index: 0)
+        activity.new_device_info(timestamp: Time.current, device_index: 1)
+
+        expect { activity.check }.not_to raise_error
+        expect(activity.device_infos.size).to eq(2)
       end
     end
   end

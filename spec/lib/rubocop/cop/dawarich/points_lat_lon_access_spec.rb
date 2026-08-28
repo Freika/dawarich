@@ -5,7 +5,6 @@ require 'rubocop/rspec/support'
 require_relative '../../../../../lib/rubocop/cop/dawarich/points_lat_lon_access'
 
 RSpec.describe RuboCop::Cop::Dawarich::PointsLatLonAccess, :config do
-
   describe 'symbol args in AR query methods' do
     it 'flags pluck(:latitude, :longitude)' do
       expect_offense(<<~RUBY)

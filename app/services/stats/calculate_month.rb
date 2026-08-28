@@ -37,6 +37,7 @@ class Stats::CalculateMonth
       stat.assign_attributes(
         daily_distance: distance_by_day,
         distance: distance(distance_by_day),
+        flight_distance: flight_distance,
         toponyms: toponyms,
         h3_hex_ids: calculate_h3_hex_ids
       )
@@ -72,6 +73,10 @@ class Stats::CalculateMonth
     distance_by_day.sum { |day| day[1] }
   end
 
+  def flight_distance
+    Stats::FlightDistanceQuery.new(user, year, month).call
+  end
+
   def toponyms
     CountriesAndCities.new(
       points_in_local_month,
@@ -81,12 +86,15 @@ class Stats::CalculateMonth
   end
 
   def create_stats_update_failed_notification(user, error)
-    Notifications::Create.new(
-      user:,
-      kind: :error,
-      title: 'Stats update failed',
-      content: "#{error.message}, stacktrace: #{error.backtrace.join("\n")}"
-    ).call
+    I18n.with_locale(user.locale) do
+      Notifications::Create.new(
+        user:,
+        kind: :error,
+        title: I18n.t('services.stats.calculate_month.stats_update_failed'),
+        content: I18n.t('services.stats.calculate_month.message_stacktrace_n', message: error.message,
+                        backtrace: error.backtrace.join("\n"))
+      ).call
+    end
   end
 
   def reset_month_stats(year, month)
@@ -96,6 +104,7 @@ class Stats::CalculateMonth
     stat.update!(
       daily_distance: {},
       distance: 0,
+      flight_distance: flight_distance,
       toponyms: [],
       h3_hex_ids: {}
     )

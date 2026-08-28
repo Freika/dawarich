@@ -43,8 +43,8 @@ class InsightsController < ApplicationController
   private
 
   def set_available_years
-    @available_years = current_user.stats.distinct.pluck(:year).sort.reverse
-    scoped_years = current_user.scoped_stats.distinct.pluck(:year)
+    @available_years = current_user.stats.where(month: 1..12).distinct.pluck(:year).sort.reverse
+    scoped_years = current_user.scoped_stats.where(month: 1..12).distinct.pluck(:year)
     @locked_years = current_user.plan_restricted? ? (@available_years - scoped_years).to_set : Set.new
   end
 
@@ -55,16 +55,18 @@ class InsightsController < ApplicationController
   end
 
   def load_year_stats
+    scoped_stats = current_user.scoped_stats.where(month: 1..12)
+
     if @all_time
-      @year_stats = current_user.scoped_stats.order(year: :desc, month: :desc)
+      @year_stats = scoped_stats.order(year: :desc, month: :desc)
       @previous_year_stats = Stat.none
-      @display_label = 'All Time'
+      @display_label = I18n.t('controllers.insights.all_time')
     else
       @selected_year = @selected_year.to_i
       @previous_year = @selected_year - 1
-      @year_stats = current_user.scoped_stats.where(year: @selected_year).order(:month)
-      @previous_year_stats = current_user.scoped_stats.where(year: @previous_year).order(:month)
-      @display_label = "#{@selected_year} Overview"
+      @year_stats = scoped_stats.where(year: @selected_year).order(:month)
+      @previous_year_stats = scoped_stats.where(year: @previous_year).order(:month)
+      @display_label = I18n.t('controllers.insights.year_overview', year: @selected_year)
     end
   end
 

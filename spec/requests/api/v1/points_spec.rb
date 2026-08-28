@@ -245,6 +245,21 @@ RSpec.describe 'Api::V1::Points', type: :request do
       expect(json_response.first['timestamp']).to be_an_instance_of(Integer)
     end
 
+    context 'when the upsert exhausts deadlock retries' do
+      before do
+        allow(Points::Create).to receive(:new).and_raise(ActiveRecord::Deadlocked, 'deadlock detected')
+        allow(Rails.logger).to receive(:error)
+      end
+
+      it 'logs the failure and returns a JSON error with a 500 status' do
+        post "/api/v1/points?api_key=#{user.api_key}", params: point_params
+
+        expect(response).to have_http_status(:internal_server_error)
+        expect(JSON.parse(response.body)).to include('error')
+        expect(Rails.logger).to have_received(:error).with(/Point creation failed: ActiveRecord::Deadlocked/)
+      end
+    end
+
     context 'when user is inactive' do
       before do
         user.update(status: :inactive, active_until: 1.day.ago)
@@ -293,6 +308,17 @@ RSpec.describe 'Api::V1::Points', type: :request do
           params: { point: { latitude: 1.0, longitude: 1.1 } }
 
       expect(response).to have_http_status(:success)
+    end
+
+    it 'invalidates the tile epoch for the moved point' do
+      point = points.first
+      range = [point.timestamp - 1.day.to_i, point.timestamp + 1.day.to_i]
+      before_component = Points::TileEpoch.etag_component(user.id, *range)
+
+      put "/api/v1/points/#{point.id}?api_key=#{user.api_key}",
+          params: { point: { latitude: 1.0, longitude: 1.1 } }
+
+      expect(Points::TileEpoch.etag_component(user.id, *range)).not_to eq(before_component)
     end
 
     context 'when user is inactive' do
@@ -365,6 +391,26 @@ RSpec.describe 'Api::V1::Points', type: :request do
         expect do
           delete "/api/v1/points/#{trackless_point.id}?api_key=#{user.api_key}"
         end.not_to have_enqueued_job(Tracks::RecalculateJob)
+      end
+
+      it 'enqueues a stats recalculation for the point month' do
+        expect do
+          delete "/api/v1/points/#{trackless_point.id}?api_key=#{user.api_key}"
+        end.to have_enqueued_job(Stats::CalculatingJob)
+          .with(user.id, Time.zone.at(trackless_point.timestamp).year, Time.zone.at(trackless_point.timestamp).month)
+      end
+    end
+
+    context 'when recalculating stats' do
+      let(:track) { create(:track, user: user) }
+      let!(:tracked_point) do
+        create(:point, user: user, track: track, timestamp: Time.zone.local(2024, 5, 10, 12).to_i)
+      end
+
+      it 'enqueues a stats recalculation for the point month' do
+        expect do
+          delete "/api/v1/points/#{tracked_point.id}?api_key=#{user.api_key}"
+        end.to have_enqueued_job(Stats::CalculatingJob).with(user.id, 2024, 5)
       end
     end
 
