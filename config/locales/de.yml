@@ -3117,6 +3117,8 @@ de:
         verified_thank_you_for_supporting_dawarich_via_platform: Verifiziert! Danke für deine Unterstützung von Dawarich über %{platform}.
         not_found_in_supporter_list_make_sure_you_re_using: Nicht in der Unterstützerliste gefunden. Stelle sicher, dass du dieselbe E-Mail-Adresse oder GitHub-Nutzername verwendest, wie dein Spenden-Plattform.
         smtp_not_configured: Der E-Mail-Versand über SMTP ist nicht konfiguriert. Konfiguriere die selbst gehosteten SMTP-Einstellungen, um E-Mail-Präferenzen festzulegen.
+        smtp_not_configured_html: 'Der E-Mail-Versand über SMTP ist nicht konfiguriert. Konfiguriere %{link}, um E-Mail-Präferenzen festzulegen.'
+        smtp_not_configured_link: die selbst gehosteten SMTP-Einstellungen
         test_email_sent: Test-E-Mail an %{email} gesendet. Prüfe deinen Posteingang (und den Spam-Ordner).
         test_email_failed: 'Test-E-Mail fehlgeschlagen: %{error}'
       onboardings:

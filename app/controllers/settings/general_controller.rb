@@ -69,7 +69,7 @@ class Settings::GeneralController < ApplicationController
   private
 
   def run_email_test
-    return [:alert, t('controllers.settings.general.smtp_not_configured')] if ENV['SMTP_SERVER'].blank?
+    return [:alert, t('controllers.settings.general.smtp_not_configured')] unless DawarichSettings.email_configured?
 
     message = UsersMailer.with(user: current_user).test_email.message
     message.raise_delivery_errors = true

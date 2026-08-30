@@ -3112,6 +3112,8 @@ pl:
         verified_thank_you_for_supporting_dawarich_via_platform: Zweryfikowano! Dziękujemy za wspieranie Dawarich przez %{platform}.
         not_found_in_supporter_list_make_sure_you_re_using: Nie znaleziono na liście wspierających. Upewnij się, że używasz tego samego e-maila lub loginu GitHub co na platformie wsparcia.
         smtp_not_configured: Wysyłanie e-maili przez SMTP nie jest skonfigurowane. Skonfiguruj ustawienia SMTP dla self-hostingu, aby ustawić preferencje e-mail.
+        smtp_not_configured_html: 'Wysyłanie e-maili przez SMTP nie jest skonfigurowane. Skonfiguruj %{link}, aby ustawić preferencje e-mail.'
+        smtp_not_configured_link: ustawienia SMTP dla self-hostingu
         test_email_sent: Testowy e-mail wysłano na adres %{email}. Sprawdź swoją skrzynkę odbiorczą (i folder spam).
         test_email_failed: 'Nie udało się wysłać testowego e-maila: %{error}'
       onboardings:

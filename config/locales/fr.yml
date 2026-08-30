@@ -4037,6 +4037,8 @@ fr:
           des donateurs. Assurez-vous d'utiliser la même adresse e-mail ou le même
           nom d'utilisateur GitHub que votre plateforme de dons.
         smtp_not_configured: L'envoi d'e-mails via SMTP n'est pas configuré. Configurez les paramètres SMTP auto-hébergés pour définir vos préférences d'e-mail.
+        smtp_not_configured_html: L'envoi d'e-mails via SMTP n'est pas configuré. Configurez %{link} pour définir vos préférences d'e-mail.
+        smtp_not_configured_link: les paramètres SMTP auto-hébergés
         test_email_sent: E-mail de test envoyé à %{email}. Vérifiez votre boîte de
           réception (et le dossier spam).
         test_email_failed: "L'e-mail de test a échoué : %{error}"

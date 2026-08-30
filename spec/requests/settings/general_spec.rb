@@ -11,6 +11,11 @@ RSpec.describe 'settings/general', type: :request do
     end
 
     describe 'GET /index' do
+      before do
+        allow(ENV).to receive(:[]).and_call_original
+        allow(ENV).to receive(:[]).with('SMTP_SERVER').and_return('smtp.example.com')
+      end
+
       it 'returns a success response' do
         get settings_general_index_url
 
@@ -23,6 +28,17 @@ RSpec.describe 'settings/general', type: :request do
         expect(response.body).to include('id="email-digests"')
         expect(response.body).to include('name="monthly_digest_emails_enabled"')
         expect(response.body).to include('name="yearly_digest_emails_enabled"')
+      end
+
+      it 'shows a not-configured notice instead of preferences when SMTP is unset' do
+        allow(ENV).to receive(:[]).with('SMTP_SERVER').and_return(nil)
+
+        get settings_general_index_url
+
+        expect(response.body).to include('Email sending via SMTP is not configured')
+        expect(response.body).to include('https://dawarich.app/docs/self-hosting/configuration/smtp/')
+        expect(response.body).not_to include('name="monthly_digest_emails_enabled"')
+        expect(response.body).not_to include('name="news_emails_enabled"')
       end
     end
 

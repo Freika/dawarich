@@ -3062,6 +3062,8 @@ es:
         verified_thank_you_for_supporting_dawarich_via_platform: Verificado! ¡Gracias por apoyar a Dawarich mediante %{platform}!
         not_found_in_supporter_list_make_sure_you_re_using: No encontrado en la lista de apoyo. Asegúrate de que estás utilizando el mismo correo electrónico o nombre de usuario de GitHub que tu plataforma de donación.
         smtp_not_configured: El envío de correo electrónico mediante SMTP no está configurado. Configura los ajustes SMTP de autoalojamiento para establecer las preferencias de correo electrónico.
+        smtp_not_configured_html: 'El envío de correo electrónico mediante SMTP no está configurado. Configura %{link} para establecer las preferencias de correo electrónico.'
+        smtp_not_configured_link: los ajustes SMTP de autoalojamiento
         test_email_sent: Correo de prueba enviado a %{email}. Revisa tu bandeja de entrada (y la carpeta de spam).
         test_email_failed: 'El correo de prueba falló: %{error}'
       onboardings:

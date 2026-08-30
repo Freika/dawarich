@@ -3045,6 +3045,8 @@ en:
         verified_thank_you_for_supporting_dawarich_via_platform: Verified! Thank you for supporting Dawarich via %{platform}.
         not_found_in_supporter_list_make_sure_you_re_using: Not found in supporter list. Make sure you're using the same email or GitHub username as your donation platform.
         smtp_not_configured: Email sending via SMTP is not configured. Configure self-hosted SMTP settings in order to set email preferences.
+        smtp_not_configured_html: 'Email sending via SMTP is not configured. Configure %{link} in order to set email preferences.'
+        smtp_not_configured_link: self-hosted SMTP settings
         test_email_sent: Test email sent to %{email}. Check your inbox (and spam folder).
         test_email_failed: 'Test email failed: %{error}'
       onboardings:

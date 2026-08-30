@@ -3057,6 +3057,8 @@ ca:
         verified_thank_you_for_supporting_dawarich_via_platform: "Verificat! Gràcies per donar suport a Dawarich a través de %{platform}."
         not_found_in_supporter_list_make_sure_you_re_using: No s'ha trobat a la llista de col·laboradors. Assegura't d'utilitzar el mateix correu electrònic o nom d'usuari de GitHub que a la teva plataforma de donació.
         smtp_not_configured: L'enviament de correu electrònic mitjançant SMTP no està configurat. Configura els paràmetres SMTP d'autoallotjament per establir les preferències de correu electrònic.
+        smtp_not_configured_html: L'enviament de correu electrònic mitjançant SMTP no està configurat. Configura %{link} per establir les preferències de correu electrònic.
+        smtp_not_configured_link: els paràmetres SMTP d'autoallotjament
         test_email_sent: Correu de prova enviat a %{email}. Comprova la teva bústia d'entrada (i la carpeta de correu no desitjat).
         test_email_failed: 'El correu de prova ha fallat: %{error}'
       onboardings:
