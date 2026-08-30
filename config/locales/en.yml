@@ -1270,6 +1270,23 @@ en:
       places: Places
       delete: Delete
       are_you_sure_deleting_a_place_will_result_in_deleting: Are you sure? Deleting a place will result in deleting all visits for this place.
+    show:
+      coordinates: Coordinates
+      city: City
+      country: Country
+      created_at: Created at
+      updated_at: Updated at
+      tags: Tags
+      no_tags: No tags
+      visits: Visits
+      visit_name: Name
+      visit_date: Date
+      visit_time: Time
+      visit_duration: Duration
+      edit_name: Edit name
+      edit_note: Edit note
+      edit_tags: Edit tags
+      cancel: Cancel
   points:
     address:
       address: 'Address:'
