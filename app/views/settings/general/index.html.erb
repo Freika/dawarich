@@ -54,6 +54,17 @@
                     </div>
                   </label>
                 </div>
+
+                <% if DawarichSettings.self_hosted? %>
+                  <div class="border-t border-base-content/10 pt-4">
+                    <div class="flex flex-wrap items-center gap-3">
+                      <%= link_to t('.send_test_email'), settings_test_email_path,
+                                  data: { turbo: true, turbo_method: :post },
+                                  class: 'btn btn-outline btn-sm' %>
+                      <span class="text-sm text-base-content/70"><%= t('.test_email_hint') %></span>
+                    </div>
+                  </div>
+                <% end %>
               </div>
             </div>
 

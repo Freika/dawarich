@@ -1514,6 +1514,8 @@ es:
         receive_an_annual_summary_on_january_2nd_with_your_year: Recibir un resumen anual el 2 de enero con tu año en revisión.
         news_updates: Noticias y actualizaciones
         receive_occasional_emails_about_new_features_and_important_updates: Recibir correos electrónicos ocasionales sobre nuevas características y actualizaciones importantes.
+        send_test_email: Enviar correo de prueba
+        test_email_hint: Envía un mensaje de prueba al correo electrónico de tu cuenta para verificar la configuración SMTP
         timezone: Zona horaria
         your_timezone: Tu zona horaria
         all_dates_and_times_will_be_displayed_in_this_timezone: Todos los fechas y horas se mostrarán en esta zona horaria.
@@ -2484,6 +2486,9 @@ es:
       the_lock_will_automatically_lift_after_30_minutes_no_action: El bloqueo se levantará automáticamente después de 30 minutos. Si has sido tú, no tienes que hacer nada.
       didn_t_recognise_this_activity_someone_may_be_trying_to: "¿No reconoces esta actividad? Es posible que alguien esté intentando acceder a tu cuenta. Te recomendamos restablecer tu contraseña de inmediato."
       reset_your_password_2: 'Reinicia tu contraseña:'
+    test_email:
+      body: Si puedes leer esto, la configuración SMTP de tu instancia funciona.
+      sent_at: Enviado el
     welcome:
       welcome_to_dawarich: "¡Te damos la bienvenida a Dawarich!"
       hi: Hola
@@ -3056,6 +3061,9 @@ es:
         please_enter_an_email_address_or_github_username: Por favor, introduce una dirección de correo electrónico o un nombre de usuario de GitHub
         verified_thank_you_for_supporting_dawarich_via_platform: Verificado! ¡Gracias por apoyar a Dawarich mediante %{platform}!
         not_found_in_supporter_list_make_sure_you_re_using: No encontrado en la lista de apoyo. Asegúrate de que estás utilizando el mismo correo electrónico o nombre de usuario de GitHub que tu plataforma de donación.
+        smtp_not_configured: El envío de correo electrónico mediante SMTP no está configurado. Configura los ajustes SMTP de autoalojamiento para establecer las preferencias de correo electrónico.
+        test_email_sent: Correo de prueba enviado a %{email}. Revisa tu bandeja de entrada (y la carpeta de spam).
+        test_email_failed: 'El correo de prueba falló: %{error}'
       onboardings:
         demo_data_loaded: Datos de demostración cargados.
         demo_data_is_already_loaded: Los datos de demostración ya están cargados.
@@ -3263,6 +3271,8 @@ es:
         subject: Confirma la eliminación de la cuenta de Dawarich
       otp_account_locked:
         subject: La cuenta de Dawarich está temporalmente bloqueada
+      test_email:
+        subject: Correo de prueba de Dawarich
       digests:
         year_end:
           subject: Tu %{year} Año en Resumen - Dawarich

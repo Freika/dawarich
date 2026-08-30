@@ -41,6 +41,7 @@ Rails.application.routes.draw do
     resources :general, only: [:index]
     patch 'general', to: 'general#update'
     post 'general/verify_supporter', to: 'general#verify_supporter', as: :verify_supporter
+    post 'general/test_email', to: 'general#test_email', as: :test_email
 
     resources :integrations, only: [:index]
     patch 'integrations', to: 'integrations#update'

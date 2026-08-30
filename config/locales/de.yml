@@ -1514,6 +1514,8 @@ de:
         receive_an_annual_summary_on_january_2nd_with_your_year: Erhalte eine jährliche Zusammenfassung am 2. Januar mit einem Überblick über dein Jahr.
         news_updates: Nachrichten & Updates
         receive_occasional_emails_about_new_features_and_important_updates: Erhalte gelegentliche E-Mails zu neuen Funktionen und wichtigen Updates
+        send_test_email: Test-E-Mail senden
+        test_email_hint: Sendet eine Testnachricht an die E-Mail-Adresse deines Kontos, um die SMTP-Einstellungen zu überprüfen
         timezone: Zeitzone
         your_timezone: Deine Zeitzone
         all_dates_and_times_will_be_displayed_in_this_timezone: Alle Daten und Uhrzeiten werden in dieser Zeitzone angezeigt
@@ -2484,6 +2486,9 @@ de:
       the_lock_will_automatically_lift_after_30_minutes_no_action: Die Sperre wird nach 30 Minuten automatisch aufgehoben. Wenn du das warst, musst du nichts unternehmen.
       didn_t_recognise_this_activity_someone_may_be_trying_to: Warst du das nicht? Möglicherweise versucht jemand, auf dein Konto zuzugreifen. Wir empfehlen dir, dein Passwort sofort zurückzusetzen.
       reset_your_password_2: 'Passwort zurücksetzen:'
+    test_email:
+      body: Wenn du dies lesen kannst, funktioniert die SMTP-Konfiguration deiner Instanz.
+      sent_at: Gesendet um
     welcome:
       welcome_to_dawarich: Willkommen bei Dawarich!
       hi: Hallo
@@ -3111,6 +3116,9 @@ de:
         please_enter_an_email_address_or_github_username: Gib bitte eine E-Mail-Adresse oder GitHub-Nutzername ein
         verified_thank_you_for_supporting_dawarich_via_platform: Verifiziert! Danke für deine Unterstützung von Dawarich über %{platform}.
         not_found_in_supporter_list_make_sure_you_re_using: Nicht in der Unterstützerliste gefunden. Stelle sicher, dass du dieselbe E-Mail-Adresse oder GitHub-Nutzername verwendest, wie dein Spenden-Plattform.
+        smtp_not_configured: Der E-Mail-Versand über SMTP ist nicht konfiguriert. Konfiguriere die selbst gehosteten SMTP-Einstellungen, um E-Mail-Präferenzen festzulegen.
+        test_email_sent: Test-E-Mail an %{email} gesendet. Prüfe deinen Posteingang (und den Spam-Ordner).
+        test_email_failed: 'Test-E-Mail fehlgeschlagen: %{error}'
       onboardings:
         demo_data_loaded: Demo-Daten geladen.
         demo_data_is_already_loaded: Demo-Daten sind bereits geladen.
@@ -3318,6 +3326,8 @@ de:
         subject: Bestätige die Löschung deines Dawarich-Kontos
       otp_account_locked:
         subject: Dawarich-Konto vorübergehend gesperrt
+      test_email:
+        subject: Dawarich Test-E-Mail
       digests:
         year_end:
           subject: Dein %{year} Jahresrückblick – Dawarich

@@ -1,9 +1,12 @@
 # frozen_string_literal: true
 
 class Settings::GeneralController < ApplicationController
+  include FlashStreamable
+
   self.page_refresh_morphing = true
 
   before_action :authenticate_user!
+  before_action :authenticate_self_hosted!, only: :test_email
 
   def index; end
 
@@ -17,6 +20,18 @@ class Settings::GeneralController < ApplicationController
       redirect_to settings_general_index_path, notice: I18n.t('controllers.settings.general.settings_updated')
     else
       redirect_to settings_general_index_path, alert: I18n.t('controllers.settings.general.failed_to_update_settings')
+    end
+  end
+
+  def test_email
+    type, message = run_email_test
+
+    respond_to do |format|
+      format.turbo_stream { render turbo_stream: stream_flash(type, message) }
+      format.html do
+        flash_key = type == :notice ? :notice : :alert
+        redirect_to settings_general_index_path, flash_key => message
+      end
     end
   end
 
@@ -52,6 +67,27 @@ class Settings::GeneralController < ApplicationController
   end
 
   private
+
+  def run_email_test
+    return [:alert, t('controllers.settings.general.smtp_not_configured')] if ENV['SMTP_SERVER'].blank?
+
+    message = UsersMailer.with(user: current_user).test_email.message
+    message.raise_delivery_errors = true
+    message.deliver
+    [:notice, t('controllers.settings.general.test_email_sent', email: current_user.email)]
+  rescue StandardError => e
+    Rails.logger.error("Test email delivery failed: #{e.class}: #{e.message}")
+    [:alert, t('controllers.settings.general.test_email_failed', error: test_email_error_description(e))]
+  end
+
+  def test_email_error_description(error)
+    safe = error.is_a?(SocketError) || error.is_a?(Timeout::Error) ||
+           error.is_a?(OpenSSL::SSL::SSLError) || error.is_a?(SystemCallError) ||
+           error.is_a?(ArgumentError) ||
+           error.class.name.start_with?('Net::SMTP')
+
+    safe ? "#{error.class}: #{error.message}" : error.class.name
+  end
 
   # Written here rather than left to the locale around_action: that one saves
   # with `update_all`, which the `current_user.save` below would overwrite with

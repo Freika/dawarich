@@ -1511,6 +1511,8 @@ pl:
         receive_an_annual_summary_on_january_2nd_with_your_year: Otrzymuj roczne podsumowanie 2 stycznia z przeglądem całego roku.
         news_updates: Aktualności i nowości
         receive_occasional_emails_about_new_features_and_important_updates: Otrzymuj okazjonalne wiadomości o nowych funkcjach i ważnych aktualizacjach
+        send_test_email: Wyślij testowego e-maila
+        test_email_hint: Wysyła testową wiadomość na adres e-mail Twojego konta, aby zweryfikować ustawienia SMTP
         timezone: Strefa czasowa
         your_timezone: Twoja strefa czasowa
         all_dates_and_times_will_be_displayed_in_this_timezone: Wszystkie daty i godziny będą wyświetlane w tej strefie czasowej
@@ -2479,6 +2481,9 @@ pl:
       the_lock_will_automatically_lift_after_30_minutes_no_action: Blokada zostanie automatycznie zdjęta po 30 minutach. Jeśli to była Twoja aktywność, nie musisz nic robić.
       didn_t_recognise_this_activity_someone_may_be_trying_to: Nie rozpoznajesz tej aktywności? Ktoś może próbować uzyskać dostęp do Twojego konta. Zalecamy natychmiastową zmianę hasła.
       reset_your_password_2: 'Zmień hasło:'
+    test_email:
+      body: Jeśli możesz to przeczytać, konfiguracja SMTP Twojej instancji działa.
+      sent_at: Wysłano
     welcome:
       welcome_to_dawarich: Witamy w Dawarich!
       hi: Cześć
@@ -3106,6 +3111,9 @@ pl:
         please_enter_an_email_address_or_github_username: Podaj adres e-mail lub nazwę użytkownika GitHub
         verified_thank_you_for_supporting_dawarich_via_platform: Zweryfikowano! Dziękujemy za wspieranie Dawarich przez %{platform}.
         not_found_in_supporter_list_make_sure_you_re_using: Nie znaleziono na liście wspierających. Upewnij się, że używasz tego samego e-maila lub loginu GitHub co na platformie wsparcia.
+        smtp_not_configured: Wysyłanie e-maili przez SMTP nie jest skonfigurowane. Skonfiguruj ustawienia SMTP dla self-hostingu, aby ustawić preferencje e-mail.
+        test_email_sent: Testowy e-mail wysłano na adres %{email}. Sprawdź swoją skrzynkę odbiorczą (i folder spam).
+        test_email_failed: 'Nie udało się wysłać testowego e-maila: %{error}'
       onboardings:
         demo_data_loaded: Dane demo zostały załadowane.
         demo_data_is_already_loaded: Dane demo są już załadowane.
@@ -3311,6 +3319,8 @@ pl:
         subject: Potwierdź usunięcie konta Dawarich
       otp_account_locked:
         subject: Konto Dawarich zostało tymczasowo zablokowane
+      test_email:
+        subject: Testowy e-mail Dawarich
       digests:
         year_end:
           subject: Twoje podsumowanie roku %{year} - Dawarich
