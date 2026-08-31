@@ -10,11 +10,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Starting a Family plan now creates your family automatically, with location sharing on, and the family page walks you through inviting your first member.
 - Family members you invite are set up on the Pro plan for as long as your plan runs, and are emailed an explanation when it ends. Changing your own plan does not cut them off early: they keep access until the period you have already paid for runs out.
-- OwnTracks in HTTP mode now shows your family members on its own map: every location upload is answered with the latest position of each family member sharing with you, so they appear as friends in the app alongside the Dawarich map.
 
 ## Fixed
 
 - Invited family members are no longer sent to the subscription checkout when signing up on the web or in the mobile app.
+
+## Added
+
+- OwnTracks in HTTP mode now shows your family members on its own map: every location upload is answered with the latest position of each family member sharing with you, so they appear as friends in the app alongside the Dawarich map.
+
+## Fixed
+
 - Track generation no longer reports a failure when its temporary progress session expires during finalization.
 - Trip distance recalculation no longer fails when the computed distance exceeds the 4-byte integer limit, which GPS noise on a long trip can produce.
 - Integration settings now show bounded connection errors instead of failing when an upstream service returns an oversized malformed response.
