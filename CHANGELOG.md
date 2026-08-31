@@ -6,21 +6,29 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
-## Added
+### Added
 
 - Starting a Family plan now creates your family automatically, with location sharing on, and the family page walks you through inviting your first member.
 - Family members you invite are set up on the Pro plan for as long as your plan runs, and are emailed an explanation when it ends. Changing your own plan does not cut them off early: they keep access until the period you have already paid for runs out.
 
-## Fixed
+### Fixed
 
 - Invited family members are no longer sent to the subscription checkout when signing up on the web or in the mobile app.
 
-## Added
+## [1.14.1] - 2026-08-31, Berlin
+
+### Changed
+
+- Point reads — the API responses, the map's point payloads and the user-data export — now serve the device and importer metadata (tracker, topic, connection, battery state and friends) through the `point_sources` reference table on rows linked to it, with the original columns still serving unlinked rows. Payloads are unchanged; this is groundwork for slimming the points table itself.
+
+### Added
 
 - OwnTracks in HTTP mode now shows your family members on its own map: every location upload is answered with the latest position of each family member sharing with you, so they appear as friends in the app alongside the Dawarich map.
+- AirTrail flights now show as their own figure on the monthly stats page and in the monthly digest. Flight distance is reported next to the distance Dawarich tracked rather than added into it, so neither number changes meaning.
 
-## Fixed
+### Fixed
 
+- Importing a user-data export no longer mis-stores the OwnTracks region columns (`inrids`, `in_regions`): the export writes them in Postgres array notation, and the importer previously passed that notation through, which also linked such points to a device signature that matched nothing.
 - Track generation no longer reports a failure when its temporary progress session expires during finalization.
 - Trip distance recalculation no longer fails when the computed distance exceeds the 4-byte integer limit, which GPS noise on a long trip can produce.
 - Integration settings now show bounded connection errors instead of failing when an upstream service returns an oversized malformed response.
@@ -34,10 +42,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Orphaned track cleanup no longer removes a track that still owns points, and a database foreign key now backs that guarantee.
 - Raw data archival now rechecks each point under a row lock before linking it, preventing concurrent tracker updates from being attached to a stale archive snapshot. An archive that ends up matching no point is discarded, archival stops instead of re-reading points it cannot link, and restores ignore snapshots no longer linked to their source archive.
 - Google phone Timeline imports no longer fail when exports contain out-of-range altitude or accuracy metadata.
-
-## Added
-
-- AirTrail flights now show as their own figure on the monthly stats page and in the monthly digest. Flight distance is reported next to the distance Dawarich tracked rather than added into it, so neither number changes meaning.
 
 ## [1.14.0] - 2026-08-27, Berlin
 
