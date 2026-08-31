@@ -3441,12 +3441,15 @@ en:
     imports:
       bulk_insertable:
         importer_name_import_error: "%{importer_name} Import Error"
+      geojson_importer:
+        points_skipped_title: Import skipped points without timestamps
+        points_skipped: 'Your file %{name} contained %{skipped} points without timestamps; they were skipped. GeoJSON points need a "timestamp" property or a fourth [lon, lat, altitude, time] coordinate value to be imported.'
       create:
         import_post_processing_incomplete: Import post-processing incomplete
         import_completed_with_no_new_points: Import completed with no new points
         import_completed_with_no_points: Import completed with no points
         import_failed: Import failed
-        zero_points_with_timestamps: Your file %{name} imported 0 points. No location points with timestamps were found. GPX and KML imports require a per-point &lt;time&gt;/&lt;when&gt; value for each coordinate.
+        zero_points_with_timestamps: Your file %{name} imported 0 points. No location points with timestamps were found. GPX, KML and GeoJSON imports require a per-point time value (&lt;time&gt;, &lt;when&gt;, or a timestamp property).
         zero_points: Your file %{name} imported 0 points. No new location points were found in this file.
         import_failed_self_hosted: 'Import "%{name}" failed: %{message}, stacktrace: %{backtrace}'
         import_failed_cloud: 'Import "%{name}" failed, please contact us at hi@dawarich.com'

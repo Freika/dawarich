@@ -35,7 +35,7 @@ RSpec.describe 'Imports surface zero points with no timestamps', type: :request 
       expect(notification.kind).to eq('warning')
       expect(notification.content).to include('no_timestamps.gpx')
       expect(notification.content).to include('0 points')
-      expect(notification.content).to include('&lt;time&gt;/&lt;when&gt;')
+      expect(notification.content).to include('&lt;time&gt;')
     end
 
     it 'uses the user language when the import runs in the background' do
@@ -50,13 +50,13 @@ RSpec.describe 'Imports surface zero points with no timestamps', type: :request 
       expect(notification.title).to eq('Importation terminée sans point')
       expect(notification.content).to include('sans_horodatage.gpx')
       expect(notification.content).to include("n'a importé aucun point")
-      expect(notification.content).to include('&lt;time&gt;/&lt;when&gt;')
+      expect(notification.content).to include('&lt;time&gt;')
 
       sign_in user
       get notification_url(notification)
 
       rendered_notification = Nokogiri::HTML(response.body).at_css("#notification_#{notification.id}")
-      expect(rendered_notification.text).to include('<time>/<when>')
+      expect(rendered_notification.text).to include('<time>')
     end
   end
 
