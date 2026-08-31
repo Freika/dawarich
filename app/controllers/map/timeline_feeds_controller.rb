@@ -28,6 +28,8 @@ module Map
 
     def calendar
       month = params[:month].presence || Date.current.strftime('%Y-%m')
+      return head :bad_request unless month.is_a?(String) && month.match?(/\A[1-9]\d{3}-(?:0[1-9]|1[0-2])\z/)
+
       @summary = Timeline::MonthSummary.new(user: current_user, month: month).call
 
       respond_to do |format|

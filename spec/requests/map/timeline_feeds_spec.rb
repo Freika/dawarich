@@ -181,6 +181,18 @@ RSpec.describe 'Map::TimelineFeeds', type: :request do
         expect(response.body).to include('data-action="click->timeline-feed#selectDay"')
       end
 
+      it 'returns bad request for an invalid month' do
+        get calendar_map_timeline_feeds_path(month: '1/14/20')
+
+        expect(response).to have_http_status(:bad_request)
+      end
+
+      it 'returns bad request for a nested month parameter' do
+        get calendar_map_timeline_feeds_path(month: { value: '2026-04' })
+
+        expect(response).to have_http_status(:bad_request)
+      end
+
       it 'applies heat-N class to each cell' do
         get calendar_map_timeline_feeds_path(month: '2026-04')
 
