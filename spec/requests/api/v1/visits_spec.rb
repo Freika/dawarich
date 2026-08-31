@@ -624,6 +624,51 @@ RSpec.describe 'Api::V1::Visits', type: :request do
       end
     end
 
+    context 'at the batch size boundary' do
+      it 'accepts exactly BATCH_MAX visits' do
+        payloads = Array.new(Api::V1::VisitsController::BATCH_MAX) { |i| visit_payload(i) }
+
+        post '/api/v1/visits/batch', params: { visits: payloads }, headers: auth_headers, as: :json
+
+        expect(response).to have_http_status(:ok)
+        expect(JSON.parse(response.body)['created_count']).to eq(Api::V1::VisitsController::BATCH_MAX)
+      end
+    end
+
+    context 'when an entry ends before it starts' do
+      it 'reports that entry as failed and keeps the rest' do
+        bad = visit_payload(3).merge(started_at: '2023-12-05T10:00:00Z', ended_at: '2023-12-05T09:00:00Z')
+
+        post '/api/v1/visits/batch',
+             params: { visits: [visit_payload(0), bad] }, headers: auth_headers, as: :json
+
+        json_response = JSON.parse(response.body)
+        expect(json_response['results'].pluck('status')).to eq(%w[created failed])
+        expect(json_response['failed_count']).to eq(1)
+      end
+    end
+
+    context 'with a confirmed visit in the batch' do
+      it 'still locks the place name' do
+        post '/api/v1/visits/batch',
+             params: { visits: [visit_payload(0, name: 'Home', status: 'confirmed')] },
+             headers: auth_headers, as: :json
+
+        expect(user.places.reload.pluck(:name_locked_at)).to all(be_present)
+      end
+    end
+
+    context 'when many entries in one batch are rejected' do
+      it 'reports at most one exception for the whole batch' do
+        expect(ExceptionReporter).to receive(:call).at_most(:once)
+
+        payloads = Array.new(5) { |i| visit_payload(i, name: '') }
+        post '/api/v1/visits/batch', params: { visits: payloads }, headers: auth_headers, as: :json
+
+        expect(JSON.parse(response.body)['failed_count']).to eq(5)
+      end
+    end
+
     context 'without authentication' do
       it 'returns unauthorized' do
         post '/api/v1/visits/batch', params: { visits: [visit_payload(0)] }, as: :json

@@ -113,12 +113,14 @@ class Api::V1::VisitsController < ApiController
     end
 
     results = submitted.each_with_index.map { |attributes, index| create_batched_visit(attributes, index) }
+    failed_count = results.count { |result| result[:status] == 'failed' }
+    report_batch_failures(failed_count, submitted.size)
 
     render json: {
       results: results,
       created_count: results.count { |result| result[:status] == 'created' },
       duplicate_count: results.count { |result| result[:status] == 'duplicate' },
-      failed_count: results.count { |result| result[:status] == 'failed' }
+      failed_count: failed_count
     }
   end
 
@@ -164,13 +166,23 @@ class Api::V1::VisitsController < ApiController
     params.require(:visit).permit(:name, :place_id, :area_id, :status, :latitude, :longitude, :started_at, :ended_at)
   end
 
+  def report_batch_failures(failed_count, submitted_count)
+    return unless failed_count.positive?
+
+    ExceptionReporter.call(
+      "Visits batch rejected #{failed_count} of #{submitted_count} entries",
+      'Batch visit creation rejected entries'
+    )
+  end
+
   def create_batched_visit(attributes, index)
     unless attributes.is_a?(ActionController::Parameters)
       return { index: index, status: 'failed',
                error: I18n.t('controllers.api.v1.visits.invalid_visit_payload') }
     end
 
-    service = Visits::Create.new(current_api_user, attributes.permit(*BATCH_VISIT_ATTRIBUTES))
+    service = Visits::Create.new(current_api_user, attributes.permit(*BATCH_VISIT_ATTRIBUTES),
+                                 report_exceptions: false)
 
     if service.call
       { index: index, status: service.duplicate? ? 'duplicate' : 'created',

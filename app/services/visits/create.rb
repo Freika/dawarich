@@ -4,9 +4,10 @@ module Visits
   class Create
     attr_reader :user, :params, :errors, :visit
 
-    def initialize(user, params)
+    def initialize(user, params, report_exceptions: true)
       @user = user
       @params = params.respond_to?(:with_indifferent_access) ? params.with_indifferent_access : params
+      @report_exceptions = report_exceptions
       @visit = nil
       @errors = nil
       @duplicate = false
@@ -35,13 +36,13 @@ module Visits
 
       @visit || false
     rescue ActiveRecord::RecordInvalid => e
-      ExceptionReporter.call(e, "Failed to create visit: #{e.message}")
+      report_exception(e, "Failed to create visit: #{e.message}")
 
       @errors = "Failed to create visit: #{e.message}"
 
       false
     rescue StandardError => e
-      ExceptionReporter.call(e, "Failed to create visit: #{e.message}")
+      report_exception(e, "Failed to create visit: #{e.message}")
 
       @errors = "Failed to create visit: #{e.message}"
       false
@@ -52,6 +53,12 @@ module Visits
     end
 
     private
+
+    def report_exception(error, message)
+      return unless @report_exceptions
+
+      ExceptionReporter.call(error, message)
+    end
 
     def revivable?(visit)
       return false if suggested?
@@ -165,7 +172,7 @@ module Visits
         machine_named: suggested?
       )
     rescue ActiveRecord::RecordInvalid => e
-      ExceptionReporter.call(e, "Failed to create place: #{e.message}")
+      report_exception(e, "Failed to create place: #{e.message}")
       nil
     end
 
@@ -176,7 +183,7 @@ module Visits
 
       Places::NameFetchingJob.perform_later(@created_place.id)
     rescue StandardError => e
-      ExceptionReporter.call(e, "Failed to enqueue place name fetching: #{e.message}")
+      report_exception(e, "Failed to enqueue place name fetching: #{e.message}")
     end
 
     def suggested?

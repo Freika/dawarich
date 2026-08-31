@@ -274,10 +274,37 @@ RSpec.describe Visits::Create do
         described_class.new(user, valid_params.merge(started_at: 'garbage')).call
       end
 
+      it 'refuses an ended_at that precedes started_at' do
+        service = described_class.new(user, valid_params.merge(ended_at: '2023-12-01T09:00:00Z'))
+
+        expect(service.call).to be(false)
+        expect(service.errors).to be_present
+      end
+
+      it 'creates no visit when ended_at precedes started_at' do
+        expect do
+          described_class.new(user, valid_params.merge(ended_at: '2023-12-01T09:00:00Z')).call
+        end.not_to(change { Visit.count })
+      end
+
       it 'does not create a visit when timestamps are unusable' do
         expect do
           described_class.new(user, valid_params.merge(started_at: 'garbage')).call
         end.not_to(change { Visit.count })
+      end
+    end
+
+    context 'when exception reporting is suppressed' do
+      it 'stays silent for a rejected record' do
+        expect(ExceptionReporter).not_to receive(:call)
+
+        described_class.new(user, valid_params.merge(name: ''), report_exceptions: false).call
+      end
+
+      it 'still reports by default' do
+        expect(ExceptionReporter).to receive(:call).at_least(:once)
+
+        described_class.new(user, valid_params.merge(name: '')).call
       end
     end
 
