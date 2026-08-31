@@ -698,6 +698,7 @@ fr:
       created: Créé
   families:
     getting_started:
+      members_lose_access_when_your_plan_ends: "Tant que votre offre est active, toutes les personnes que vous ajoutez ont un accès complet. Quand elle prend fin, le leur aussi."
       invite_title: "Ajoutez le premier membre de votre famille"
       invite_body: "Votre famille est prête. Toutes les personnes que vous ajoutez voient où sont les autres, et chacune garde sa propre carte privée."
       seats: "%{used} places sur %{total} utilisées"

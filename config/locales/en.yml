@@ -211,6 +211,7 @@ en:
       created: Created
   families:
     getting_started:
+      members_lose_access_when_your_plan_ends: "While your plan is active, everyone you add gets full access. When it ends, theirs ends too."
       invite_title: "Add your first family member"
       invite_body: "Your family is ready. Everyone you add can see where the others are, and each of them keeps their own private map."
       seats: "%{used} of %{total} seats used"

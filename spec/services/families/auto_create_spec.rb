@@ -56,6 +56,12 @@ RSpec.describe Families::AutoCreate do
       expect(user.reload.family_share_history?).to be false
     end
 
+    it 'records the paid family period on the family' do
+      service.call
+
+      expect(user.reload.family.access_until).to be_within(1.second).of(user.active_until)
+    end
+
     it 'notifies the owner' do
       expect { service.call }.to change(user.notifications, :count).by(1)
     end

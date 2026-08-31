@@ -252,6 +252,7 @@ de:
       created: Erstellt
   families:
     getting_started:
+      members_lose_access_when_your_plan_ends: "Solange dein Tarif aktiv ist, haben alle, die du hinzufügst, vollen Zugriff. Endet er, endet auch ihrer."
       invite_title: "Füge dein erstes Familienmitglied hinzu"
       invite_body: "Deine Familie ist bereit. Alle, die du hinzufügst, sehen, wo die anderen sind, und behalten dabei ihre eigene private Karte."
       seats: "%{used} von %{total} Plätzen belegt"

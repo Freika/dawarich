@@ -211,6 +211,7 @@ pl:
       created: Utworzono
   families:
     getting_started:
+      members_lose_access_when_your_plan_ends: "Dopóki Twój plan jest aktywny, każda dodana osoba ma pełny dostęp. Gdy się skończy, ich dostęp też."
       invite_title: "Dodaj pierwszego członka rodziny"
       invite_body: "Twoja rodzina jest gotowa. Każda dodana osoba widzi, gdzie są pozostali, a przy tym zachowuje własną prywatną mapę."
       seats: "Zajęte miejsca: %{used} z %{total}"

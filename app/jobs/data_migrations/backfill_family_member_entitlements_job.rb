@@ -14,7 +14,7 @@ class DataMigrations::BackfillFamilyMemberEntitlementsJob < ApplicationJob
 
     Family.find_in_batches(batch_size: BATCH_SIZE) do |batch|
       batch.each do |family|
-        Families::SyncMembers.new(family: family).call
+        Families::SyncMembers.new(family: family, notify: false).call
         total += 1
       end
     end

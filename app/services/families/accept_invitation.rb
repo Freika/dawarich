@@ -65,11 +65,23 @@ module Families
     end
 
     def validate_family_plan
-      return true if DawarichSettings.family_feature_available_for?(invitation.family.owner)
+      return true if family_plan_live?
 
       @error_message = I18n.t('services.families.accept_invitation.this_family_s_plan_is_no_longer_active')
 
       false
+    end
+
+    def family_plan_live?
+      return true if DawarichSettings.self_hosted?
+
+      family = invitation.family
+      return family.access_until.future? if family.access_until
+
+      owner = family.owner
+      return false unless owner&.family?
+
+      owner.active_until&.future? || false
     end
 
     def validate_family_capacity

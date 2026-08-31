@@ -211,6 +211,7 @@ ca:
       created: Creat
   families:
     getting_started:
+      members_lose_access_when_your_plan_ends: "Mentre el teu pla estigui actiu, tothom qui hi afegeixis té accés complet. Quan s'acabi, el seu també."
       invite_title: "Afegeix el primer membre de la teva família"
       invite_body: "La teva família ja està a punt. Tothom qui hi afegeixis pot veure on són els altres, i cadascú conserva el seu mapa privat."
       seats: "%{used} de %{total} places ocupades"

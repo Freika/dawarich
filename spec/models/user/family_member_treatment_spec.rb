@@ -62,12 +62,11 @@ RSpec.describe 'Family members are treated as entitled users', type: :model do
       expect(member.reload.can_subscribe?).to be true
     end
 
-    it 'emails the member an explanation' do
+    it 'notifies the member' do
       member
 
       expect { lapse_the_owner }
-        .to have_enqueued_job(ActionMailer::MailDeliveryJob)
-        .with('FamilyMailer', 'plan_lapsed', 'deliver_now', hash_including(args: [member, family]))
+        .to have_enqueued_job(Families::LapseNotificationJob).with(member.id, family.id)
     end
   end
 

@@ -23,6 +23,9 @@
             <p class="text-xs text-base-content/50 mt-2">
               <%= t('.seats', used: family.member_count, total: Family::MAX_MEMBERS) %>
             </p>
+            <p class="text-xs text-base-content/50 mt-1">
+              <%= t('.members_lose_access_when_your_plan_ends') %>
+            </p>
           <% end %>
         <% else %>
           <h2 class="text-lg font-semibold mb-1"><%= t('.sharing_title') %></h2>

@@ -11,13 +11,15 @@ module Families
     def call
       return false unless eligible?
 
-      created = Families::Create.new(user: user, name: default_name, notify: false).call
-      return false unless created
+      ActiveRecord::Base.transaction do
+        raise ActiveRecord::Rollback unless Families::Create.new(user: user, name: default_name, notify: false).call
 
-      enable_owner_sharing
-      notify_owner
+        enable_owner_sharing
+        Families::SyncMembers.new(family: user.reload.family).call
+        notify_owner
+      end
 
-      true
+      user.reload.in_family?
     end
 
     private

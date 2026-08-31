@@ -252,6 +252,7 @@ es:
       created: Creado
   families:
     getting_started:
+      members_lose_access_when_your_plan_ends: "Mientras tu plan esté activo, todas las personas que añadas tienen acceso completo. Cuando termine, el suyo también."
       invite_title: "Añade a tu primer familiar"
       invite_body: "Tu familia está lista. Todas las personas que añadas pueden ver dónde están las demás, y cada una conserva su propio mapa privado."
       seats: "%{used} de %{total} plazas usadas"

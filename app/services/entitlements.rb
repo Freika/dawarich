@@ -19,7 +19,10 @@ class Entitlements
   def inherited_family_access?
     return false unless @user.in_family?
 
-    owner = @user.family&.owner
+    family = @user.family
+    return family.access_until.future? if family&.access_until
+
+    owner = family&.owner
     return false unless owner&.family?
 
     owner.active_until&.future? || false

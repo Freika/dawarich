@@ -49,7 +49,7 @@ RSpec.describe Families::SyncMembers do
     end
 
     it 'does not email anyone' do
-      expect { service.call }.not_to have_enqueued_job(ActionMailer::MailDeliveryJob)
+      expect { service.call }.not_to have_enqueued_job(Families::LapseNotificationJob)
     end
 
     it 'leaves the owner untouched' do
@@ -74,27 +74,38 @@ RSpec.describe Families::SyncMembers do
       expect(member.reload.active_until).to be_past
     end
 
-    it 'emails the member an explanation' do
+    it 'notifies the member' do
       expect { service.call }
-        .to have_enqueued_job(ActionMailer::MailDeliveryJob)
-        .with('FamilyMailer', 'plan_lapsed', 'deliver_now', hash_including(args: [member, family]))
+        .to have_enqueued_job(Families::LapseNotificationJob).with(member.id, family.id)
     end
 
-    it 'only emails once across repeated syncs' do
-      service.call
+    it 'stays quiet once the member has already been notified' do
+      Families::LapseNotice.mark(member)
 
       expect { described_class.new(family: family.reload).call }
-        .not_to have_enqueued_job(ActionMailer::MailDeliveryJob)
+        .not_to have_enqueued_job(Families::LapseNotificationJob)
     end
 
-    it 'emails again after access is restored and lapses a second time' do
-      service.call
+    it 'notifies again after access is restored and lapses a second time' do
+      Families::LapseNotice.mark(member)
       owner.update!(status: :active, active_until: 30.days.from_now)
       described_class.new(family: family.reload).call
       owner.update!(status: :inactive, active_until: 1.day.ago)
 
       expect { described_class.new(family: family.reload).call }
-        .to have_enqueued_job(ActionMailer::MailDeliveryJob)
+        .to have_enqueued_job(Families::LapseNotificationJob)
+    end
+
+    it 'sends nothing when the caller asks for a silent sync' do
+      expect { described_class.new(family: family, notify: false).call }
+        .not_to have_enqueued_job(Families::LapseNotificationJob)
+    end
+
+    it 'still marks a silent sync notified so it is not emailed later' do
+      described_class.new(family: family, notify: false).call
+
+      expect { described_class.new(family: family.reload).call }
+        .not_to have_enqueued_job(Families::LapseNotificationJob)
     end
   end
 
