@@ -388,6 +388,21 @@ ca:
         decline: Rebutja
         back_to_family: Torna a la família
   family_mailer:
+    plan_lapsed:
+      the_family_plan_has_ended: "El pla Family ha finalitzat"
+      hi: "Hola"
+      family_plan_ended_html: "El pla Family de Dawarich de <strong>%{family}</strong> ja no és actiu, així que el teu accés a través seu ha finalitzat."
+      family_plan_ended_text: "El pla Family de Dawarich de %{family} ja no és actiu, així que el teu accés a través seu ha finalitzat."
+      what_this_means: "Què vol dir això"
+      your_data_is_safe_and_still_yours: "Les teves dades estan segures i continuen sent teves."
+      you_can_no_longer_see_your_family_on_the_map: "Ja no pots veure la teva família al mapa."
+      your_location_is_no_longer_shared_with_them: "La teva ubicació ja no es comparteix amb ells."
+      tracking_and_uploads_are_paused_until_a_plan_is_active: "El seguiment i les pujades estan en pausa fins que hi hagi un pla actiu."
+      what_you_can_do: "Què pots fer:"
+      ask_the_owner_to_renew_html: "Demana a %{owner} que renovi el pla Family, o contracta el teu propi pla."
+      ask_the_owner_to_renew_text: "Demana a %{owner} que renovi el pla Family, o contracta el teu propi pla."
+      get_your_own_plan: "Contractar el meu propi pla"
+      nothing_is_deleted_your_history_is_waiting_when_you_come_back: "No s'esborra res. El teu historial t'espera quan tornis."
     invitation:
       you_ve_been_invited_to_join_a_family: T'han convidat a unir-te a una família!
       hi_there: Hola!
@@ -3239,6 +3254,8 @@ ca:
     declined: rebutjada
   mailers:
     family:
+      plan_lapsed:
+        subject: "👪 El pla Family de %{family} ha finalitzat"
       invitation:
         subject: "🎉 T'han convidat a unir-te a %{family} a Dawarich!"
       location_request:

@@ -41,13 +41,14 @@ RSpec.describe 'Family invitees are never sent to checkout', type: :request do
     it 'releases them from the payment gate' do
       post accept_family_invitation_path(token: invitation.token)
 
-      expect(invitee.reload).to be_inactive
+      expect(invitee.reload).to be_active
     end
 
-    it 'puts them on lite so a lapsed owner drops them correctly' do
+    it 'puts them on the pro plan for the owner billing period' do
       post accept_family_invitation_path(token: invitation.token)
 
-      expect(invitee.reload).to be_lite
+      expect(invitee.reload).to be_pro
+      expect(invitee.reload.active_until).to be_within(1.second).of(owner.active_until)
     end
 
     it 'gives them family access' do

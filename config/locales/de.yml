@@ -430,6 +430,21 @@ de:
         decline: Ablehnen
         back_to_family: Zur Familie
   family_mailer:
+    plan_lapsed:
+      the_family_plan_has_ended: "Der Family-Tarif ist beendet"
+      hi: "Hallo"
+      family_plan_ended_html: "Der Dawarich-Family-Tarif für <strong>%{family}</strong> ist nicht mehr aktiv, damit endet auch dein Zugang darüber."
+      family_plan_ended_text: "Der Dawarich-Family-Tarif für %{family} ist nicht mehr aktiv, damit endet auch dein Zugang darüber."
+      what_this_means: "Was das bedeutet"
+      your_data_is_safe_and_still_yours: "Deine Daten sind sicher und gehören weiterhin dir."
+      you_can_no_longer_see_your_family_on_the_map: "Du siehst deine Familie nicht mehr auf der Karte."
+      your_location_is_no_longer_shared_with_them: "Dein Standort wird nicht mehr mit ihnen geteilt."
+      tracking_and_uploads_are_paused_until_a_plan_is_active: "Aufzeichnung und Uploads pausieren, bis wieder ein Tarif aktiv ist."
+      what_you_can_do: "Was du tun kannst:"
+      ask_the_owner_to_renew_html: "Bitte %{owner}, den Family-Tarif zu verlängern, oder starte deinen eigenen Tarif."
+      ask_the_owner_to_renew_text: "Bitte %{owner}, den Family-Tarif zu verlängern, oder starte deinen eigenen Tarif."
+      get_your_own_plan: "Eigenen Tarif holen"
+      nothing_is_deleted_your_history_is_waiting_when_you_come_back: "Es wird nichts gelöscht. Deine Historie wartet auf dich, wenn du zurückkommst."
     invitation:
       you_ve_been_invited_to_join_a_family: Du wurdest eingeladen, einer Familie beizutreten!
       hi_there: Hallo!
@@ -3301,6 +3316,8 @@ de:
     declined: abgelehnt
   mailers:
     family:
+      plan_lapsed:
+        subject: "👪 Der Family-Tarif für %{family} ist beendet"
       invitation:
         subject: "\U0001F389 Du wurdest eingeladen, der Familie %{family} auf Dawarich beizutreten!"
       location_request:

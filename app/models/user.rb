@@ -52,6 +52,7 @@ class User < ApplicationRecord
                                             if: -> { !DawarichSettings.self_hosted? && skip_auto_trial }
   after_update :invalidate_plan_rate_limit_cache, if: :saved_change_to_plan?
   after_update_commit :enqueue_family_auto_creation, if: :saved_change_to_plan?
+  after_update_commit :enqueue_family_member_sync, if: :saved_change_to_subscription_state?
   after_update :reset_archival_warnings, if: :saved_change_to_plan?
 
   before_save :sanitize_input
@@ -62,17 +63,7 @@ class User < ApplicationRecord
   attribute :admin, :boolean, default: false
   attribute :points_count, :integer, default: 0
 
-  scope :active_or_trial, lambda {
-    where(status: %i[active trial]).or(where(id: inheriting_family_access))
-  }
-  scope :inheriting_family_access, lambda {
-    Family::Membership.where(
-      family_id: Family.joins(:creator)
-                       .where(users: { plan: plans[:family] })
-                       .where(users: { active_until: Time.current.. })
-                       .select(:id)
-    ).select(:user_id)
-  }
+  scope :active_or_trial, -> { where(status: %i[active trial]) }
 
   enum :status, { inactive: 0, active: 1, trial: 2, pending_payment: 3 }
   # prefix: :sub_source — the `none` value would otherwise generate a
@@ -280,13 +271,7 @@ class User < ApplicationRecord
   end
 
   def can_subscribe?
-    return false if inherits_family_access?
-
     (trial? || !active_until&.future?) && !DawarichSettings.self_hosted?
-  end
-
-  def inherits_family_access?
-    !family_owner? && entitlements.inherited_family_access?
   end
 
   def auto_converting_trial?
@@ -446,10 +431,23 @@ class User < ApplicationRecord
     Users::CreationWebhookJob.perform_later(id)
   end
 
+  def saved_change_to_subscription_state?
+    saved_change_to_plan? || saved_change_to_status? || saved_change_to_active_until?
+  end
+
+  def enqueue_family_member_sync
+    return if DawarichSettings.self_hosted?
+
+    owned_family_id = Family::Membership.where(user_id: id, role: :owner).pick(:family_id)
+    return if owned_family_id.blank?
+
+    Families::MemberSyncJob.perform_later(owned_family_id)
+  end
+
   def enqueue_family_auto_creation
     return if DawarichSettings.self_hosted?
     return unless family?
-    return if in_family?
+    return if Family::Membership.exists?(user_id: id)
 
     Families::AutoCreationJob.perform_later(id)
   end

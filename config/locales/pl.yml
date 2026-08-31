@@ -388,6 +388,21 @@ pl:
         decline: Odrzuć
         back_to_family: Powrót do rodziny
   family_mailer:
+    plan_lapsed:
+      the_family_plan_has_ended: "Plan Family dobiegł końca"
+      hi: "Cześć"
+      family_plan_ended_html: "Plan Dawarich Family dla <strong>%{family}</strong> nie jest już aktywny, więc Twój dostęp przez niego się zakończył."
+      family_plan_ended_text: "Plan Dawarich Family dla %{family} nie jest już aktywny, więc Twój dostęp przez niego się zakończył."
+      what_this_means: "Co to oznacza"
+      your_data_is_safe_and_still_yours: "Twoje dane są bezpieczne i nadal należą do Ciebie."
+      you_can_no_longer_see_your_family_on_the_map: "Nie widzisz już swojej rodziny na mapie."
+      your_location_is_no_longer_shared_with_them: "Twoja lokalizacja nie jest już im udostępniana."
+      tracking_and_uploads_are_paused_until_a_plan_is_active: "Śledzenie i wysyłanie danych są wstrzymane, dopóki plan nie będzie znów aktywny."
+      what_you_can_do: "Co możesz zrobić:"
+      ask_the_owner_to_renew_html: "Poproś %{owner} o odnowienie planu Family albo wykup własny plan."
+      ask_the_owner_to_renew_text: "Poproś %{owner} o odnowienie planu Family albo wykup własny plan."
+      get_your_own_plan: "Wykup własny plan"
+      nothing_is_deleted_your_history_is_waiting_when_you_come_back: "Nic nie jest usuwane. Twoja historia czeka, gdy wrócisz."
     invitation:
       you_ve_been_invited_to_join_a_family: Otrzymałeś zaproszenie do rodziny!
       hi_there: Cześć!
@@ -3294,6 +3309,8 @@ pl:
     declined: odrzucona
   mailers:
     family:
+      plan_lapsed:
+        subject: "👪 Plan Family dla %{family} dobiegł końca"
       invitation:
         subject: "\U0001F389 Otrzymujesz zaproszenie do rodziny %{family} w Dawarich!"
       location_request:

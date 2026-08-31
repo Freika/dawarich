@@ -910,6 +910,21 @@ fr:
         decline: Refuser
         back_to_family: Retour à la famille
   family_mailer:
+    plan_lapsed:
+      the_family_plan_has_ended: "L'offre Family a pris fin"
+      hi: "Bonjour"
+      family_plan_ended_html: "L'offre Dawarich Family de <strong>%{family}</strong> n'est plus active, votre accès via cette offre a donc pris fin."
+      family_plan_ended_text: "L'offre Dawarich Family de %{family} n'est plus active, votre accès via cette offre a donc pris fin."
+      what_this_means: "Ce que cela signifie"
+      your_data_is_safe_and_still_yours: "Vos données sont en sécurité et vous appartiennent toujours."
+      you_can_no_longer_see_your_family_on_the_map: "Vous ne voyez plus votre famille sur la carte."
+      your_location_is_no_longer_shared_with_them: "Votre position n'est plus partagée avec eux."
+      tracking_and_uploads_are_paused_until_a_plan_is_active: "Le suivi et les envois sont en pause jusqu'à ce qu'une offre soit de nouveau active."
+      what_you_can_do: "Ce que vous pouvez faire :"
+      ask_the_owner_to_renew_html: "Demandez à %{owner} de renouveler l'offre Family, ou souscrivez votre propre offre."
+      ask_the_owner_to_renew_text: "Demandez à %{owner} de renouveler l'offre Family, ou souscrivez votre propre offre."
+      get_your_own_plan: "Souscrire ma propre offre"
+      nothing_is_deleted_your_history_is_waiting_when_you_come_back: "Rien n'est supprimé. Votre historique vous attend à votre retour."
     invitation:
       you_ve_been_invited_to_join_a_family: Vous avez été invité à rejoindre une famille
         !
@@ -4285,6 +4300,8 @@ fr:
     declined: refusé
   mailers:
     family:
+      plan_lapsed:
+        subject: "👪 L'offre Family de %{family} a pris fin"
       invitation:
         subject: "\U0001F389 Vous avez été invité à rejoindre %{family} sur Dawarich
           !"

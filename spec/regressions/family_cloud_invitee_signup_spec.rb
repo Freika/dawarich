@@ -7,6 +7,7 @@ RSpec.describe 'Family invitee signup on cloud', type: :request do
     allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
     stub_const('MANAGER_URL', 'https://manager.example.test')
     stub_const('ALLOW_EMAIL_PASSWORD_REGISTRATION', true)
+    ActiveJob::Base.queue_adapter = :test
   end
 
   let(:owner) { create(:user, plan: :family, status: :trial, active_until: 7.days.from_now) }
@@ -40,10 +41,10 @@ RSpec.describe 'Family invitee signup on cloud', type: :request do
       expect(response).to redirect_to(family_path)
     end
 
-    it 'leaves the invitee inactive rather than pending payment' do
+    it 'activates the invitee rather than demanding payment' do
       register_invitee
 
-      expect(User.find_by(email: invitation.email)).to be_inactive
+      expect(User.find_by(email: invitation.email)).to be_active
     end
 
     it 'signs the invitee in' do
@@ -64,23 +65,36 @@ RSpec.describe 'Family invitee signup on cloud', type: :request do
       expect(User.find_by(email: invitation.email).entitlements).to be_families
     end
 
-    it 'does not grant the invitee their own trial' do
+    it 'puts the invitee on the pro plan' do
       register_invitee
 
-      expect(User.find_by(email: invitation.email).active_until).to be_nil
+      expect(User.find_by(email: invitation.email)).to be_pro
     end
 
-    it 'puts the invitee on the lite plan so a lapsed owner drops them to lite' do
+    it 'marks the invitee active for the owner billing period' do
       register_invitee
 
-      expect(User.find_by(email: invitation.email)).to be_lite
+      invitee = User.find_by(email: invitation.email)
+      expect(invitee).to be_active
+      expect(invitee.active_until).to be_within(1.second).of(owner.active_until)
     end
 
-    it 'revokes inherited access once the owner lapses' do
+    it 'gives the invitee no subscription of their own' do
       register_invitee
-      owner.update!(status: :inactive, active_until: 1.day.ago)
 
-      expect(User.find_by(email: invitation.email).entitlements.effective_plan).to eq(:lite)
+      expect(User.find_by(email: invitation.email)).to be_sub_source_none
+    end
+
+    it 'lapses the invitee once the owner lapses' do
+      register_invitee
+
+      perform_enqueued_jobs(only: Families::MemberSyncJob) do
+        owner.update!(status: :inactive, active_until: 1.day.ago)
+      end
+
+      invitee = User.find_by(email: invitation.email)
+      expect(invitee).to be_inactive
+      expect(invitee.active_until).to be_past
     end
   end
 

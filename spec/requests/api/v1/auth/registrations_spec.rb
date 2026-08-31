@@ -125,10 +125,10 @@ RSpec.describe 'POST /api/v1/auth/register', type: :request do
         .to change { family.reload.members.count }.from(1).to(2)
     end
 
-    it 'leaves the invitee inactive rather than pending payment' do
+    it 'activates the invitee rather than demanding payment' do
       post '/api/v1/auth/register', params: invitee_params
 
-      expect(User.find_by(email: invitation.email)).to be_inactive
+      expect(User.find_by(email: invitation.email)).to be_active
     end
 
     it 'reports the family plan the invitee inherits' do
@@ -137,10 +137,10 @@ RSpec.describe 'POST /api/v1/auth/register', type: :request do
       expect(JSON.parse(response.body)['effective_plan']).to eq('family')
     end
 
-    it 'puts the invitee on the lite plan underneath the inherited access' do
+    it 'puts the invitee on the pro plan' do
       post '/api/v1/auth/register', params: invitee_params
 
-      expect(User.find_by(email: invitation.email)).to be_lite
+      expect(User.find_by(email: invitation.email)).to be_pro
     end
 
     it 'marks the invitation accepted' do

@@ -388,6 +388,21 @@ en:
         decline: Decline
         back_to_family: Back to Family
   family_mailer:
+    plan_lapsed:
+      the_family_plan_has_ended: "The family plan has ended"
+      hi: "Hi"
+      family_plan_ended_html: "The Dawarich Family plan for <strong>%{family}</strong> is no longer active, so your access through it has ended."
+      family_plan_ended_text: "The Dawarich Family plan for %{family} is no longer active, so your access through it has ended."
+      what_this_means: "What this means"
+      your_data_is_safe_and_still_yours: "Your data is safe and still yours."
+      you_can_no_longer_see_your_family_on_the_map: "You can no longer see your family on the map."
+      your_location_is_no_longer_shared_with_them: "Your location is no longer shared with them."
+      tracking_and_uploads_are_paused_until_a_plan_is_active: "Tracking and uploads are paused until a plan is active again."
+      what_you_can_do: "What you can do:"
+      ask_the_owner_to_renew_html: "Ask %{owner} to renew the Family plan, or start your own plan."
+      ask_the_owner_to_renew_text: "Ask %{owner} to renew the Family plan, or start your own plan."
+      get_your_own_plan: "Get your own plan"
+      nothing_is_deleted_your_history_is_waiting_when_you_come_back: "Nothing is deleted. Your history is waiting for you when you come back."
     invitation:
       you_ve_been_invited_to_join_a_family: You've been invited to join a family!
       hi_there: Hi there!
@@ -3227,6 +3242,8 @@ en:
     declined: declined
   mailers:
     family:
+      plan_lapsed:
+        subject: "👪 The Family plan for %{family} has ended"
       invitation:
         subject: "\U0001F389 You've been invited to join %{family} on Dawarich!"
       location_request:

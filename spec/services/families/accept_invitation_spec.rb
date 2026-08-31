@@ -71,15 +71,23 @@ RSpec.describe Families::AcceptInvitation do
         create(:family_membership, :owner, family: family, user: owner)
       end
 
-      it 'grants full access immediately upon joining without changing the stored plan' do
+      it 'grants full access immediately upon joining' do
         expect(invitee.full_access?).to be false
 
         service.call
         invitee.reload
 
-        expect(invitee.plan).to eq('lite')
         expect(invitee.full_access?).to be true
         expect(invitee.plan_restricted?).to be false
+      end
+
+      it 'puts the joining member on the owner plan and billing period' do
+        service.call
+        invitee.reload
+
+        expect(invitee.plan).to eq('pro')
+        expect(invitee).to be_active
+        expect(invitee.active_until).to be_within(1.second).of(owner.active_until)
       end
     end
 
