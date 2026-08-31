@@ -210,6 +210,18 @@ pl:
       status: Status
       created: Utworzono
   families:
+    getting_started:
+      members_lose_access_when_your_plan_ends: "Dopóki Twój plan jest aktywny, każda dodana osoba ma pełny dostęp. Gdy się skończy, ich dostęp też."
+      invite_title: "Dodaj pierwszego członka rodziny"
+      invite_body: "Twoja rodzina jest gotowa. Każda dodana osoba widzi, gdzie są pozostali, a przy tym zachowuje własną prywatną mapę."
+      seats: "Zajęte miejsca: %{used} z %{total}"
+      trial_ends_on: "Twój okres próbny Family kończy się %{date}"
+      sharing_title: "Zacznij udostępniać swoją lokalizację"
+      sharing_body: "Rodzina jeszcze Cię nie widzi. Włącz udostępnianie poniżej, a potem zainstaluj aplikację, aby Twoja lokalizacja była aktualna."
+      app_title: "Pobierz aplikację"
+      app_body: "Udostępnianie lokalizacji działa najlepiej z telefonu, który masz przy sobie."
+      email_address: "Adres e-mail"
+      invite: "Zaproś"
     location_sharing_toggle:
       live_location: 'Lokalizacja na żywo:'
       always: Zawsze
@@ -294,17 +306,6 @@ pl:
       always: zawsze
       for_duration: przez %{duration}
       sharing_status: Udostępnianie przez %{duration}
-    index:
-      have_an_invitation: Masz zaproszenie?
-      if_someone_has_invited_you_to_join_their_family_you: Jeśli ktoś zaprosił Cię do swojej rodziny, powinieneś otrzymać e-mail z linkiem do zaproszenia.
-      check_your_email_for_an_invitation_link_that_looks_like: 'Sprawdź e-mail pod kątem linku do zaproszenia w stylu:'
-      family_management: Zarządzanie rodziną
-      create_family: Utwórz swoją rodzinę
-      description: Utwórz rodzinę lub dołącz do istniejącej, aby udostępniać dane lokalizacji bliskim.
-      have_invitation: Masz zaproszenie?
-      invitation_help: 'Sprawdź e-mail pod kątem linku do zaproszenia w stylu:'
-      invitation_instructions: Jeśli ktoś zaprosił Cię do swojej rodziny, powinieneś otrzymać e-mail z linkiem do zaproszenia.
-      title: Zarządzanie rodziną
     new:
       choose_a_name_that_all_family_members_will_recognize_like: Wybierz nazwę, którą rozpoznają wszyscy członkowie rodziny, np. „Rodzina Kowalskich” albo „Nasza grupa podróżnicza”.
       what_happens_next: Co dalej?
@@ -388,6 +389,21 @@ pl:
         decline: Odrzuć
         back_to_family: Powrót do rodziny
   family_mailer:
+    plan_lapsed:
+      the_family_plan_has_ended: "Plan Family dobiegł końca"
+      hi: "Cześć"
+      family_plan_ended_html: "Plan Dawarich Family dla <strong>%{family}</strong> nie jest już aktywny, więc Twój dostęp przez niego się zakończył."
+      family_plan_ended_text: "Plan Dawarich Family dla %{family} nie jest już aktywny, więc Twój dostęp przez niego się zakończył."
+      what_this_means: "Co to oznacza"
+      your_data_is_safe_and_still_yours: "Twoje dane są bezpieczne i nadal należą do Ciebie."
+      you_can_no_longer_see_your_family_on_the_map: "Nie widzisz już swojej rodziny na mapie."
+      your_location_is_no_longer_shared_with_them: "Twoja lokalizacja nie jest już im udostępniana."
+      tracking_and_uploads_are_paused_until_a_plan_is_active: "Śledzenie i wysyłanie danych są wstrzymane, dopóki plan nie będzie znów aktywny."
+      what_you_can_do: "Co możesz zrobić:"
+      ask_the_owner_to_renew_html: "Poproś %{owner} o odnowienie planu Family albo wykup własny plan."
+      ask_the_owner_to_renew_text: "Poproś %{owner} o odnowienie planu Family albo wykup własny plan."
+      get_your_own_plan: "Wykup własny plan"
+      nothing_is_deleted_your_history_is_waiting_when_you_come_back: "Nic nie jest usuwane. Twoja historia czeka, gdy wrócisz."
     invitation:
       you_ve_been_invited_to_join_a_family: Otrzymałeś zaproszenie do rodziny!
       hi_there: Cześć!
@@ -807,6 +823,8 @@ pl:
       dawarich_logo: Logo Dawarich
   map:
     onboarding_modal:
+      invite_your_family: "Zaproś swoją rodzinę"
+      add_your_family_and_see_each_other_on_the_map: "Dodaj swoją rodzinę i zobaczcie się na mapie."
       welcome_to_dawarich: Witamy w Dawarich!
       your_map_starts_with_your_next_step_literally: Twoja mapa zaczyna się od kolejnego kroku - dosłownie.
       start_tracking_now: Zacznij śledzić teraz
@@ -3295,6 +3313,8 @@ pl:
     declined: odrzucona
   mailers:
     family:
+      plan_lapsed:
+        subject: "👪 Plan Family dla %{family} dobiegł końca"
       invitation:
         subject: "\U0001F389 Otrzymujesz zaproszenie do rodziny %{family} w Dawarich!"
       location_request:
@@ -3374,6 +3394,10 @@ pl:
         export_name_failed_message_stacktrace_n: 'Eksport "%{name}" nie powiódł się: %{message}, stacktrace: %{backtrace}'
         unsupported_file_format: 'Nieobsługiwany format pliku: %{format}'
     families:
+      auto_create:
+        default_name: Moja rodzina
+        notification_title: Twój plan Family jest gotowy
+        notification_content: 'Przygotowaliśmy dla Ciebie "%{name}". Zaproś maksymalnie %{seats} osób, a zobaczycie się na mapie.'
       accept_invitation:
         you_must_leave_your_current_family_before_joining_a_new: Musisz opuścić obecną rodzinę, zanim dołączysz do nowej.
         this_invitation_is_no_longer_valid_or_has_expired: To zaproszenie nie jest już ważne lub wygasło.

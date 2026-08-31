@@ -6,11 +6,15 @@ RSpec.describe 'map/_onboarding_modal', type: :view do
   let(:user) { create(:user) }
 
   before do
-    allow(view).to receive_messages(
-      user_signed_in?: true,
-      current_user: user,
-      onboarding_modal_showable?: true
-    )
+    without_partial_double_verification do
+      allow(view).to receive_messages(
+        user_signed_in?: true,
+        current_user: user,
+        onboarding_modal_showable?: true,
+        family_feature_available?: false,
+        family_home_path: '/family'
+      )
+    end
   end
 
   def rendered_modal
@@ -39,5 +43,17 @@ RSpec.describe 'map/_onboarding_modal', type: :view do
     expect(html).to include('Start tracking now')
     expect(html).to include('I have data')
     expect(html).to include('demo data')
+  end
+
+  it 'hides the family path without the family plan' do
+    expect(rendered_modal).not_to include('Invite your family')
+  end
+
+  it 'offers the family path with the family plan' do
+    without_partial_double_verification do
+      allow(view).to receive(:family_feature_available?).and_return(true)
+    end
+
+    expect(rendered_modal).to include('Invite your family')
   end
 end

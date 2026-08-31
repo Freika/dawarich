@@ -30,7 +30,7 @@ class Family::InvitationsController < ApplicationController
 
     # Warns the invitee up front instead of letting them click Accept only to
     # be refused by the plan validation in Families::AcceptInvitation.
-    @family_plan_active = DawarichSettings.family_feature_available_for?(@invitation.family.owner)
+    @family_plan_active = @invitation.family.access_live?
   end
 
   def create

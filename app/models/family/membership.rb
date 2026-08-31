@@ -23,6 +23,8 @@ class Family::Membership < ApplicationRecord
   end
 
   def cleanup_on_departure
+    revoke_inherited_subscription
+
     # Disable location sharing for departing user
     user.update_family_location_sharing!(false) if user.family_sharing_enabled?
 
@@ -33,5 +35,13 @@ class Family::Membership < ApplicationRecord
       .update_all(status: Family::LocationRequest.statuses[:expired], updated_at: Time.current)
   rescue StandardError => e
     ExceptionReporter.call(e, "Error cleaning up on family departure: #{e.message}")
+  end
+
+  def revoke_inherited_subscription
+    return if DawarichSettings.self_hosted?
+    return if owner?
+    return if user.own_subscription_live?
+
+    user.update!(plan: :lite, status: :inactive, active_until: nil)
   end
 end

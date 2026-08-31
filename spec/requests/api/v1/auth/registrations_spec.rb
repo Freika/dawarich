@@ -102,4 +102,65 @@ RSpec.describe 'POST /api/v1/auth/register', type: :request do
         .not_to have_enqueued_job(Users::CreationWebhookJob)
     end
   end
+
+  describe 'registering with a family invitation token' do
+    let(:owner) { create(:user, plan: :family, status: :trial, active_until: 7.days.from_now) }
+    let(:family) { create(:family, creator: owner) }
+    let!(:owner_membership) { create(:family_membership, :owner, user: owner, family: family) }
+    let(:invitation) do
+      create(:family_invitation, family: family, invited_by: owner, email: 'invitee@example.com')
+    end
+
+    let(:invitee_params) do
+      {
+        email: invitation.email,
+        password: 'secret123456',
+        password_confirmation: 'secret123456',
+        invitation_token: invitation.token
+      }
+    end
+
+    it 'joins the invitee to the family' do
+      expect { post '/api/v1/auth/register', params: invitee_params }
+        .to change { family.reload.members.count }.from(1).to(2)
+    end
+
+    it 'activates the invitee rather than demanding payment' do
+      post '/api/v1/auth/register', params: invitee_params
+
+      expect(User.find_by(email: invitation.email)).to be_active
+    end
+
+    it 'reports the family plan the invitee inherits' do
+      post '/api/v1/auth/register', params: invitee_params
+
+      expect(JSON.parse(response.body)['effective_plan']).to eq('family')
+    end
+
+    it 'puts the invitee on the pro plan' do
+      post '/api/v1/auth/register', params: invitee_params
+
+      expect(User.find_by(email: invitation.email)).to be_pro
+    end
+
+    it 'marks the invitation accepted' do
+      post '/api/v1/auth/register', params: invitee_params
+
+      expect(invitation.reload).to be_accepted
+    end
+
+    it 'still requires payment when the token is unusable' do
+      invitation.update!(status: :cancelled)
+
+      post '/api/v1/auth/register', params: invitee_params
+
+      expect(User.find_by(email: invitation.email)).to be_pending_payment
+    end
+
+    it 'still requires payment when the token belongs to a different email' do
+      post '/api/v1/auth/register', params: invitee_params.merge(email: 'someone.else@example.com')
+
+      expect(User.find_by(email: 'someone.else@example.com')).to be_pending_payment
+    end
+  end
 end

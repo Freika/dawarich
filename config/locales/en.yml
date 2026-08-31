@@ -210,6 +210,18 @@ en:
       status: Status
       created: Created
   families:
+    getting_started:
+      members_lose_access_when_your_plan_ends: "While your plan is active, everyone you add gets full access. When it ends, theirs ends too."
+      invite_title: "Add your first family member"
+      invite_body: "Your family is ready. Everyone you add can see where the others are, and each of them keeps their own private map."
+      seats: "%{used} of %{total} seats used"
+      trial_ends_on: "Your Family trial ends on %{date}"
+      sharing_title: "Start sharing your location"
+      sharing_body: "Your family cannot see you yet. Turn sharing on below, then install the app so your location stays up to date."
+      app_title: "Get the app"
+      app_body: "Location sharing works best from the phone in your pocket."
+      email_address: "Email address"
+      invite: "Invite"
     location_sharing_toggle:
       live_location: 'Live location:'
       always: Always
@@ -294,17 +306,6 @@ en:
       always: always
       for_duration: for %{duration}
       sharing_status: Sharing %{duration}
-    index:
-      have_an_invitation: Have an invitation?
-      if_someone_has_invited_you_to_join_their_family_you: If someone has invited you to join their family, you should have received an email with an invitation link.
-      check_your_email_for_an_invitation_link_that_looks_like: 'Check your email for an invitation link that looks like:'
-      family_management: Family Management
-      create_family: Create Your Family
-      description: Create or join a family to share your location data with loved ones.
-      have_invitation: Have an invitation?
-      invitation_help: 'Check your email for an invitation link that looks like:'
-      invitation_instructions: If someone has invited you to join their family, you should have received an email with an invitation link.
-      title: Family Management
     new:
       choose_a_name_that_all_family_members_will_recognize_like: Choose a name that all family members will recognize, like "The Smith Family" or "Our Travel Group".
       what_happens_next: What happens next?
@@ -388,6 +389,21 @@ en:
         decline: Decline
         back_to_family: Back to Family
   family_mailer:
+    plan_lapsed:
+      the_family_plan_has_ended: "The family plan has ended"
+      hi: "Hi"
+      family_plan_ended_html: "The Dawarich Family plan for <strong>%{family}</strong> is no longer active, so your access through it has ended."
+      family_plan_ended_text: "The Dawarich Family plan for %{family} is no longer active, so your access through it has ended."
+      what_this_means: "What this means"
+      your_data_is_safe_and_still_yours: "Your data is safe and still yours."
+      you_can_no_longer_see_your_family_on_the_map: "You can no longer see your family on the map."
+      your_location_is_no_longer_shared_with_them: "Your location is no longer shared with them."
+      tracking_and_uploads_are_paused_until_a_plan_is_active: "Tracking and uploads are paused until a plan is active again."
+      what_you_can_do: "What you can do:"
+      ask_the_owner_to_renew_html: "Ask %{owner} to renew the Family plan, or start your own plan."
+      ask_the_owner_to_renew_text: "Ask %{owner} to renew the Family plan, or start your own plan."
+      get_your_own_plan: "Get your own plan"
+      nothing_is_deleted_your_history_is_waiting_when_you_come_back: "Nothing is deleted. Your history is waiting for you when you come back."
     invitation:
       you_ve_been_invited_to_join_a_family: You've been invited to join a family!
       hi_there: Hi there!
@@ -807,6 +823,8 @@ en:
       dawarich_logo: Dawarich logo
   map:
     onboarding_modal:
+      invite_your_family: "Invite your family"
+      add_your_family_and_see_each_other_on_the_map: "Add your family and see each other on the map."
       welcome_to_dawarich: Welcome to Dawarich!
       your_map_starts_with_your_next_step_literally: Your map starts with your next step — literally.
       start_tracking_now: Start tracking now
@@ -3228,6 +3246,8 @@ en:
     declined: declined
   mailers:
     family:
+      plan_lapsed:
+        subject: "👪 The Family plan for %{family} has ended"
       invitation:
         subject: "\U0001F389 You've been invited to join %{family} on Dawarich!"
       location_request:
@@ -3307,6 +3327,10 @@ en:
         export_name_failed_message_stacktrace_n: 'Export "%{name}" failed: %{message}, stacktrace: %{backtrace}'
         unsupported_file_format: 'Unsupported file format: %{format}'
     families:
+      auto_create:
+        default_name: My Family
+        notification_title: Your Family plan is ready
+        notification_content: 'We set up "%{name}" for you. Invite up to %{seats} people and you will see each other on the map.'
       accept_invitation:
         you_must_leave_your_current_family_before_joining_a_new: You must leave your current family before joining a new one.
         this_invitation_is_no_longer_valid_or_has_expired: This invitation is no longer valid or has expired.

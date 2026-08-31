@@ -23,6 +23,7 @@ module Families
 
       ActiveRecord::Base.transaction do
         create_membership
+        settle_new_member
         update_invitation
         send_notifications
       end
@@ -64,11 +65,15 @@ module Families
     end
 
     def validate_family_plan
-      return true if DawarichSettings.family_feature_available_for?(invitation.family.owner)
+      return true if family_plan_live?
 
       @error_message = I18n.t('services.families.accept_invitation.this_family_s_plan_is_no_longer_active')
 
       false
+    end
+
+    def family_plan_live?
+      invitation.family.access_live?
     end
 
     def validate_family_capacity
@@ -87,6 +92,12 @@ module Families
         user: user,
         role: :member
       )
+    end
+
+    def settle_new_member
+      return if DawarichSettings.self_hosted?
+
+      Families::SyncMembers.new(family: invitation.family).call
     end
 
     def update_invitation

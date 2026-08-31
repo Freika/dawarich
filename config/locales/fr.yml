@@ -697,6 +697,18 @@ fr:
       status: Statut
       created: Créé
   families:
+    getting_started:
+      members_lose_access_when_your_plan_ends: "Tant que votre offre est active, toutes les personnes que vous ajoutez ont un accès complet. Quand elle prend fin, le leur aussi."
+      invite_title: "Ajoutez le premier membre de votre famille"
+      invite_body: "Votre famille est prête. Toutes les personnes que vous ajoutez voient où sont les autres, et chacune garde sa propre carte privée."
+      seats: "%{used} places sur %{total} utilisées"
+      trial_ends_on: "Votre essai Family se termine le %{date}"
+      sharing_title: "Commencez à partager votre position"
+      sharing_body: "Votre famille ne peut pas encore vous voir. Activez le partage ci-dessous, puis installez l'application pour que votre position reste à jour."
+      app_title: "Installez l'application"
+      app_body: "Le partage de position fonctionne mieux depuis le téléphone dans votre poche."
+      email_address: "Adresse e-mail"
+      invite: "Inviter"
     location_sharing_toggle:
       live_location: 'Localisation en temps réel :'
       always: Toujours
@@ -797,22 +809,6 @@ fr:
       always: toujours
       for_duration: pour %{duration}
       sharing_status: Partage de %{duration}
-    index:
-      have_an_invitation: Avez-vous une invitation ?
-      if_someone_has_invited_you_to_join_their_family_you: Si quelqu'un vous a invité
-        à rejoindre sa famille, vous devriez avoir reçu un e-mail avec un lien d'invitation.
-      check_your_email_for_an_invitation_link_that_looks_like: 'Vérifiez votre boîte
-        aux lettres pour un lien d''invitation qui ressemble à ceci :'
-      family_management: Gestion de la famille
-      create_family: Créez votre famille
-      description: Créez ou rejoignez une famille pour partager vos données de localisation
-        avec vos proches.
-      have_invitation: Avez-vous une invitation ?
-      invitation_help: 'Vérifiez votre boîte aux lettres pour un lien d''invitation
-        qui ressemble à ceci :'
-      invitation_instructions: Si quelqu'un vous a invité à rejoindre sa famille,
-        vous devriez avoir reçu un e-mail avec un lien d'invitation.
-      title: Gestion de la famille
     new:
       choose_a_name_that_all_family_members_will_recognize_like: Choisissez un nom
         que tous les membres de votre famille reconnaîtront, comme « La famille Smith
@@ -915,6 +911,21 @@ fr:
         decline: Refuser
         back_to_family: Retour à la famille
   family_mailer:
+    plan_lapsed:
+      the_family_plan_has_ended: "L'offre Family a pris fin"
+      hi: "Bonjour"
+      family_plan_ended_html: "L'offre Dawarich Family de <strong>%{family}</strong> n'est plus active, votre accès via cette offre a donc pris fin."
+      family_plan_ended_text: "L'offre Dawarich Family de %{family} n'est plus active, votre accès via cette offre a donc pris fin."
+      what_this_means: "Ce que cela signifie"
+      your_data_is_safe_and_still_yours: "Vos données sont en sécurité et vous appartiennent toujours."
+      you_can_no_longer_see_your_family_on_the_map: "Vous ne voyez plus votre famille sur la carte."
+      your_location_is_no_longer_shared_with_them: "Votre position n'est plus partagée avec eux."
+      tracking_and_uploads_are_paused_until_a_plan_is_active: "Le suivi et les envois sont en pause jusqu'à ce qu'une offre soit de nouveau active."
+      what_you_can_do: "Ce que vous pouvez faire :"
+      ask_the_owner_to_renew_html: "Demandez à %{owner} de renouveler l'offre Family, ou souscrivez votre propre offre."
+      ask_the_owner_to_renew_text: "Demandez à %{owner} de renouveler l'offre Family, ou souscrivez votre propre offre."
+      get_your_own_plan: "Souscrire ma propre offre"
+      nothing_is_deleted_your_history_is_waiting_when_you_come_back: "Rien n'est supprimé. Votre historique vous attend à votre retour."
     invitation:
       you_ve_been_invited_to_join_a_family: Vous avez été invité à rejoindre une famille
         !
@@ -1486,6 +1497,8 @@ fr:
       dawarich_logo: Logo Dawarich
   map:
     onboarding_modal:
+      invite_your_family: "Invitez votre famille"
+      add_your_family_and_see_each_other_on_the_map: "Ajoutez votre famille et voyez-vous sur la carte."
       welcome_to_dawarich: Bienvenue chez Dawarich !
       your_map_starts_with_your_next_step_literally: Votre carte commence par votre
         prochain pas — littéralement.
@@ -4291,6 +4304,8 @@ fr:
     declined: refusé
   mailers:
     family:
+      plan_lapsed:
+        subject: "👪 L'offre Family de %{family} a pris fin"
       invitation:
         subject: "\U0001F389 Vous avez été invité à rejoindre %{family} sur Dawarich
           !"
@@ -4389,6 +4404,10 @@ fr:
           trace d''exécution : %{backtrace}'
         unsupported_file_format: 'Format de fichier non pris en charge : %{format}'
     families:
+      auto_create:
+        default_name: Ma famille
+        notification_title: Votre offre Family est prête
+        notification_content: "Nous avons créé « %{name} » pour vous. Invitez jusqu'à %{seats} personnes et vous vous verrez sur la carte."
       accept_invitation:
         you_must_leave_your_current_family_before_joining_a_new: Vous devez quitter
           votre famille actuelle avant de rejoindre une nouvelle.
