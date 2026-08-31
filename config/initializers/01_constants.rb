@@ -31,6 +31,7 @@ GEOAPIFY_API_KEY = ENV.fetch('GEOAPIFY_API_KEY', nil)
 # regardless of what is set here.
 REVERSE_GEOCODING_RPS = ENV.fetch('REVERSE_GEOCODING_RPS', nil)
 STORE_GEODATA = ENV.fetch('STORE_GEODATA', 'true') == 'true'
+GEOCODER_TIMEOUT = ENV.fetch('GEOCODER_TIMEOUT', 5).to_i
 # /Reverse geocoding settings
 
 SENTRY_DSN = ENV.fetch('SENTRY_DSN', nil)
