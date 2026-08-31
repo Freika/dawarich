@@ -15,6 +15,7 @@ module Visits
 
     def call
       return false unless timestamps_usable?
+      return false unless coordinates_usable?
 
       result = ActiveRecord::Base.transaction do
         place = find_or_create_place
@@ -29,9 +30,7 @@ module Visits
     rescue ActiveRecord::RecordNotUnique
       @duplicate = true
       @visit = existing_visit
-      # Re-creating a visit over its own tombstone (or an old decline) is an
-      # explicit undo: revive the row instead of returning it still hidden.
-      @visit.update!(deleted_at: nil, status: :confirmed) if @visit && (@visit.soft_deleted? || @visit.declined?)
+      @visit.update!(deleted_at: nil, status: :confirmed) if @visit && revivable?(@visit)
       @errors = 'Failed to create visit: duplicate visit' unless @visit
 
       @visit || false
@@ -53,6 +52,46 @@ module Visits
     end
 
     private
+
+    def revivable?(visit)
+      return false if suggested?
+
+      visit.soft_deleted? || visit.declined?
+    end
+
+    def coordinates_usable?
+      if latitude.nil? || longitude.nil?
+        @errors = 'Failed to create visit: invalid coordinates'
+        return false
+      end
+
+      unless latitude.between?(-90, 90) && longitude.between?(-180, 180)
+        @errors = 'Failed to create visit: coordinates out of range'
+        return false
+      end
+
+      true
+    end
+
+    def latitude
+      return @latitude if defined?(@latitude)
+
+      @latitude = parse_coordinate(params[:latitude])
+    end
+
+    def longitude
+      return @longitude if defined?(@longitude)
+
+      @longitude = parse_coordinate(params[:longitude])
+    end
+
+    def parse_coordinate(value)
+      return nil if value.blank?
+
+      Float(value)
+    rescue ArgumentError, TypeError
+      nil
+    end
 
     def timestamps_usable?
       if started_at.nil? || ended_at.nil?
@@ -110,21 +149,17 @@ module Visits
            .where(
              'ST_DWithin(places.lonlat::geography, ' \
              'ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography, ?)',
-             params[:longitude].to_f, params[:latitude].to_f, 100
+             longitude, latitude, 100
            ).first
     end
 
     def create_new_place
-      place_name = params[:name]
-      lat_f = params[:latitude].to_f
-      lon_f = params[:longitude].to_f
-
       @created_place = Place.create!(
         user: user,
-        name: place_name,
-        latitude: lat_f,
-        longitude: lon_f,
-        lonlat: "POINT(#{lon_f} #{lat_f})",
+        name: params[:name],
+        latitude: latitude,
+        longitude: longitude,
+        lonlat: "POINT(#{longitude} #{latitude})",
         source: :manual,
         user_named: !suggested?,
         machine_named: suggested?
@@ -140,6 +175,8 @@ module Visits
       return unless Geocoding::Config.for(user).enabled?
 
       Places::NameFetchingJob.perform_later(@created_place.id)
+    rescue StandardError => e
+      ExceptionReporter.call(e, "Failed to enqueue place name fetching: #{e.message}")
     end
 
     def suggested?

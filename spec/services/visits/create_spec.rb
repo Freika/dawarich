@@ -243,6 +243,15 @@ RSpec.describe Visits::Create do
 
         expect { service.call }.not_to have_enqueued_job(Places::NameFetchingJob)
       end
+
+      it 'does not enqueue for a place the rolled-back transaction discarded' do
+        visits_association = user.visits
+        allow(user).to receive(:visits).and_return(visits_association)
+        allow(visits_association).to receive(:create!).and_raise(ActiveRecord::RecordInvalid.new(Visit.new))
+        service = described_class.new(user, valid_params.merge(status: 'suggested'))
+
+        expect { service.call }.not_to have_enqueued_job(Places::NameFetchingJob)
+      end
     end
 
     context 'when timestamps are unusable' do
@@ -287,6 +296,90 @@ RSpec.describe Visits::Create do
         service.call
 
         expect(service).to be_duplicate
+      end
+    end
+
+    context 'when the place name fetch cannot be enqueued' do
+      before do
+        allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
+        allow(Places::NameFetchingJob).to receive(:perform_later).and_raise(RedisClient::ConnectionError)
+      end
+
+      it 'still reports the committed visit as created' do
+        service = described_class.new(user, valid_params.merge(status: 'suggested'))
+
+        expect(service.call).to be_truthy
+        expect(service.visit).to be_persisted
+      end
+
+      it 'keeps the visit even though the job could not be queued' do
+        service = described_class.new(user, valid_params.merge(status: 'suggested'))
+
+        expect { service.call }.to change { user.visits.count }.by(1)
+      end
+    end
+
+    context 'when coordinates are unusable' do
+      it 'refuses a missing latitude instead of creating a place at Null Island' do
+        service = described_class.new(user, valid_params.merge(latitude: nil))
+
+        expect(service.call).to be(false)
+        expect(service.errors).to be_present
+      end
+
+      it 'refuses a non-numeric longitude' do
+        service = described_class.new(user, valid_params.merge(longitude: 'east'))
+
+        expect(service.call).to be(false)
+      end
+
+      it 'refuses an out-of-range latitude' do
+        service = described_class.new(user, valid_params.merge(latitude: 91.0))
+
+        expect(service.call).to be(false)
+      end
+
+      it 'creates no place when coordinates are unusable' do
+        expect do
+          described_class.new(user, valid_params.merge(latitude: nil)).call
+        end.not_to(change { Place.count })
+      end
+    end
+
+    context 'when a machine retry replays a visit the user removed' do
+      let(:suggested_params) { valid_params.merge(status: 'suggested') }
+
+      it 'does not resurrect a visit the user deleted' do
+        first = described_class.new(user, suggested_params)
+        first.call
+        first.visit.soft_delete!
+
+        service = described_class.new(user, suggested_params)
+        service.call
+
+        expect(first.visit.reload.deleted_at).to be_present
+      end
+
+      it 'does not un-decline a visit the user declined' do
+        first = described_class.new(user, suggested_params)
+        first.call
+        first.visit.update!(status: :declined)
+
+        service = described_class.new(user, suggested_params)
+        service.call
+
+        expect(first.visit.reload.status).to eq('declined')
+      end
+
+      it 'still resurrects when a person re-creates the visit explicitly' do
+        first = described_class.new(user, valid_params)
+        first.call
+        first.visit.soft_delete!
+
+        service = described_class.new(user, valid_params)
+        service.call
+
+        expect(first.visit.reload.deleted_at).to be_nil
       end
     end
 
