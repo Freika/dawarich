@@ -3,6 +3,8 @@
 class Families::LapseNotificationJob < ApplicationJob
   queue_as :families
 
+  self.enqueue_after_transaction_commit = true
+
   def perform(user_id, family_id)
     user = User.find_by(id: user_id)
     family = Family.find_by(id: family_id)
