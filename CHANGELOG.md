@@ -6,12 +6,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
-## Added
+### Changed
+
+- Point reads — the API responses, the map's point payloads and the user-data export — now serve the device and importer metadata (tracker, topic, connection, battery state and friends) through the `point_sources` reference table on rows linked to it, with the original columns still serving unlinked rows. Payloads are unchanged; this is groundwork for slimming the points table itself.
+
+### Added
 
 - OwnTracks in HTTP mode now shows your family members on its own map: every location upload is answered with the latest position of each family member sharing with you, so they appear as friends in the app alongside the Dawarich map.
+- AirTrail flights now show as their own figure on the monthly stats page and in the monthly digest. Flight distance is reported next to the distance Dawarich tracked rather than added into it, so neither number changes meaning.
 
-## Fixed
+### Fixed
 
+- Importing a user-data export no longer mis-stores the OwnTracks region columns (`inrids`, `in_regions`): the export writes them in Postgres array notation, and the importer previously passed that notation through, which also linked such points to a device signature that matched nothing.
 - Track generation no longer reports a failure when its temporary progress session expires during finalization.
 - Trip distance recalculation no longer fails when the computed distance exceeds the 4-byte integer limit, which GPS noise on a long trip can produce.
 - Integration settings now show bounded connection errors instead of failing when an upstream service returns an oversized malformed response.
@@ -26,15 +32,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Raw data archival now rechecks each point under a row lock before linking it, preventing concurrent tracker updates from being attached to a stale archive snapshot. An archive that ends up matching no point is discarded, archival stops instead of re-reading points it cannot link, and restores ignore snapshots no longer linked to their source archive.
 - Google phone Timeline imports no longer fail when exports contain out-of-range altitude or accuracy metadata.
 
-## Added
-
-- AirTrail flights now show as their own figure on the monthly stats page and in the monthly digest. Flight distance is reported next to the distance Dawarich tracked rather than added into it, so neither number changes meaning.
-
 ## [1.14.0] - 2026-08-27, Berlin
 
 ### Changed
 
-- Point reads — the API responses, the map's point payloads and the user-data export — now serve the device and importer metadata (tracker, topic, connection, battery state and friends) through the `point_sources` reference table on rows linked to it, with the original columns still serving unlinked rows. Payloads are unchanged; this is groundwork for slimming the points table itself.
 - `PATCH /api/v1/settings/mobile` now takes a row lock around its read-merge-write, so a mobile settings change no longer discards a concurrent write to another settings section or from another device.
 
 ### Added
@@ -48,7 +49,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
-- Importing a user-data export no longer mis-stores the OwnTracks region columns (`inrids`, `in_regions`): the export writes them in Postgres array notation, and the importer previously passed that notation through, which also linked such points to a device signature that matched nothing.
 - Points geocoded in a handful of countries — most notably the United States — were never linked to their country record, because geocoders name them differently than Dawarich's country dataset does ("United States" vs "United States of America"; also Serbia, Tanzania, Vatican City, the Palestinian territories, Congo-Brazzaville, Eswatini and Côte d'Ivoire). Reverse geocoding now bridges the naming difference (and prefers the ISO code where the geocoder provides one), and the country-linking backfill re-runs once on self-hosted instances to repair existing points.
 - The action buttons in page headers — New trip, New import, New tag, Mark all as read and the rest — are now translated. They were asking for a key that no language file defines, so every language showed the English text.
 - The points page now counts its points in Polish, German and Spanish instead of falling back to an untranslated string.
