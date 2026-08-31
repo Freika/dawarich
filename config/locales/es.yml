@@ -251,6 +251,17 @@ es:
       status: Estado
       created: Creado
   families:
+    getting_started:
+      invite_title: "Añade a tu primer familiar"
+      invite_body: "Tu familia está lista. Todas las personas que añadas pueden ver dónde están las demás, y cada una conserva su propio mapa privado."
+      seats: "%{used} de %{total} plazas usadas"
+      trial_ends_on: "Tu prueba de Family termina el %{date}"
+      sharing_title: "Empieza a compartir tu ubicación"
+      sharing_body: "Tu familia todavía no puede verte. Activa el uso compartido abajo e instala la aplicación para que tu ubicación siga actualizada."
+      app_title: "Consigue la aplicación"
+      app_body: "Compartir la ubicación funciona mejor desde el teléfono que llevas encima."
+      email_address: "Dirección de correo electrónico"
+      invite: "Invitar"
     location_sharing_toggle:
       live_location: 'Ubicación en vivo: '
       always: Siempre
@@ -336,17 +347,6 @@ es:
       always: siempre
       for_duration: por %{duration}
       sharing_status: Compartiendo %{duration}
-    index:
-      have_an_invitation: "¿Tienes una invitación?"
-      if_someone_has_invited_you_to_join_their_family_you: Si alguien te ha invitado a unirte a su familia, deberías haber recibido un correo electrónico con un enlace de invitación.
-      check_your_email_for_an_invitation_link_that_looks_like: 'Revisa tu correo electrónico para buscar un enlace de invitación que se parezca a:'
-      family_management: Gestión de Familia
-      create_family: Crear Tu Familia
-      description: Crea o únete a una familia para compartir tus datos de ubicación con los tuyos.
-      have_invitation: "¿Tienes una invitación?"
-      invitation_help: 'Revisa tu correo electrónico para buscar un enlace de invitación que se parezca a:'
-      invitation_instructions: Si alguien te ha invitado a unirte a su familia, deberías haber recibido un correo electrónico con un enlace de invitación.
-      title: Gestión de Familia
     new:
       choose_a_name_that_all_family_members_will_recognize_like: Elige un nombre que todos los miembros de la familia reconocerán, como "La Familia Smith" o "Nuestro Grupo de Viaje".
       what_happens_next: "¿Qué sucede a continuación?"
@@ -849,6 +849,8 @@ es:
       dawarich_logo: Logo de Dawarich
   map:
     onboarding_modal:
+      invite_your_family: "Invita a tu familia"
+      add_your_family_and_see_each_other_on_the_map: "Añade a tu familia y os veréis en el mapa."
       welcome_to_dawarich: "¡Te damos la bienvenida a Dawarich!"
       your_map_starts_with_your_next_step_literally: Tu mapa comienza con tu próximo paso — literalmente.
       start_tracking_now: Comienza a rastrear ahora
@@ -3323,6 +3325,10 @@ es:
         export_name_failed_message_stacktrace_n: 'La exportación "%{name}" ha fallado: %{message}, stacktrace: %{backtrace}'
         unsupported_file_format: 'Formato de archivo no soportado: %{format}'
     families:
+      auto_create:
+        default_name: Mi familia
+        notification_title: Tu plan Family está listo
+        notification_content: 'Hemos creado "%{name}" para ti. Invita hasta %{seats} personas y os veréis en el mapa.'
       accept_invitation:
         you_must_leave_your_current_family_before_joining_a_new: Debes dejar tu familia actual antes de unirte a una nueva.
         this_invitation_is_no_longer_valid_or_has_expired: Esta invitación ya no es válida o ha expirado.

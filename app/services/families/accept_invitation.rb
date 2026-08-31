@@ -23,6 +23,7 @@ module Families
 
       ActiveRecord::Base.transaction do
         create_membership
+        settle_unpaid_member
         update_invitation
         send_notifications
       end
@@ -87,6 +88,19 @@ module Families
         user: user,
         role: :member
       )
+    end
+
+    def settle_unpaid_member
+      return if DawarichSettings.self_hosted?
+      return unless never_subscribed?
+
+      user.update!(status: :inactive, plan: :lite)
+    end
+
+    def never_subscribed?
+      return true if user.pending_payment?
+
+      user.inactive? && user.sub_source_none?
     end
 
     def update_invitation

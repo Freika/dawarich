@@ -36,7 +36,7 @@ class Users::RegistrationsController < Devise::RegistrationsController
       # the reverse-trial redirect below never consults the sign-up path, and
       # the ticket must not outlive the signup that owns it. It runs after
       # each flash decision so the "Importing..." notice isn't overwritten.
-      if @signup_variant == 'reverse_trial'
+      if @signup_variant == 'reverse_trial' && !@invitation_accepted
         resource.update!(status: :pending_payment)
         claim_pending_import_for(resource)
         redirect_to manager_checkout_url(resource), allow_other_host: true
@@ -227,6 +227,7 @@ class Users::RegistrationsController < Devise::RegistrationsController
     )
 
     if service.call
+      @invitation_accepted = true
       flash[:notice] =
         I18n.t('controllers.users.registrations.welcome_to_name_you_re_now_part_of_the_family',
                name: @invitation.family.name)

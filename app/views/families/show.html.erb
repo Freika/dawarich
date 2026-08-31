@@ -21,6 +21,11 @@
     <%= t('.members_created', count: @member_count, date: l(@family.created_at.to_date, format: :month_year)) %>
   </div>
 
+  <%= render 'families/getting_started',
+        family: @family,
+        user: current_user,
+        pending_invitations: @pending_invitations %>
+
   <%# Main layout: Map + Sidebar %>
   <div class="flex flex-col lg:flex-row gap-4" style="min-height: 500px;"
        data-controller="family-map"
@@ -60,7 +65,14 @@
       <div class="border border-base-300 rounded-xl overflow-hidden">
         <div class="bg-base-200 px-4 py-2.5">
           <h3 class="text-xs font-medium uppercase tracking-wider text-base-content/50">
-            <%= t('.members') %> <span class="text-base-content/30">(<%= @members.count %>)</span>
+            <%= t('.members') %>
+            <span class="text-base-content/30">
+              <% if DawarichSettings.self_hosted? %>
+                (<%= @members.count %>)
+              <% else %>
+                <%= t('families.getting_started.seats', used: @members.count, total: Family::MAX_MEMBERS) %>
+              <% end %>
+            </span>
           </h3>
         </div>
         <div class="divide-y divide-base-200">

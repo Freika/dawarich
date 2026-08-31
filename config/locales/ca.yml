@@ -210,6 +210,17 @@ ca:
       status: Estat
       created: Creat
   families:
+    getting_started:
+      invite_title: "Afegeix el primer membre de la teva família"
+      invite_body: "La teva família ja està a punt. Tothom qui hi afegeixis pot veure on són els altres, i cadascú conserva el seu mapa privat."
+      seats: "%{used} de %{total} places ocupades"
+      trial_ends_on: "La teva prova de Family acaba el %{date}"
+      sharing_title: "Comença a compartir la teva ubicació"
+      sharing_body: "La teva família encara no et pot veure. Activa la compartició a sota i instal·la l'aplicació perquè la teva ubicació es mantingui actualitzada."
+      app_title: "Obtén l'aplicació"
+      app_body: "Compartir la ubicació funciona millor des del telèfon que portes a sobre."
+      email_address: "Adreça electrònica"
+      invite: "Convida"
     location_sharing_toggle:
       live_location: 'Ubicació en directe:'
       always: Sempre
@@ -294,17 +305,6 @@ ca:
       always: sempre
       for_duration: durant %{duration}
       sharing_status: Compartint %{duration}
-    index:
-      have_an_invitation: Tens una invitació?
-      if_someone_has_invited_you_to_join_their_family_you: Si algú t'ha convidat a unir-te a la seva família, hauries d'haver rebut un correu electrònic amb un enllaç d'invitació.
-      check_your_email_for_an_invitation_link_that_looks_like: 'Comprova el teu correu electrònic per veure si hi ha un enllaç d''invitació semblant a:'
-      family_management: Gestió de la família
-      create_family: Crea la teva família
-      description: Crea o uneix-te a una família per compartir les teves dades d'ubicació amb els teus éssers estimats.
-      have_invitation: Tens una invitació?
-      invitation_help: 'Comprova el teu correu electrònic per veure si hi ha un enllaç d''invitació semblant a:'
-      invitation_instructions: Si algú t'ha convidat a unir-te a la seva família, hauries d'haver rebut un correu electrònic amb un enllaç d'invitació.
-      title: Gestió de la família
     new:
       choose_a_name_that_all_family_members_will_recognize_like: "Tria un nom que tots els membres de la família reconeguin, com \"La família Smith\" o \"El nostre grup de viatge\"."
       what_happens_next: Què passa a continuació?
@@ -807,6 +807,8 @@ ca:
       dawarich_logo: Logotip de Dawarich
   map:
     onboarding_modal:
+      invite_your_family: "Convida la teva família"
+      add_your_family_and_see_each_other_on_the_map: "Afegeix la teva família i veieu-vos al mapa."
       welcome_to_dawarich: Benvingut/da a Dawarich!
       your_map_starts_with_your_next_step_literally: El teu mapa comença amb el teu proper pas — literalment.
       start_tracking_now: Comença a fer el seguiment ara
@@ -3316,6 +3318,10 @@ ca:
         export_name_failed_message_stacktrace_n: 'L''exportació "%{name}" ha fallat: %{message}, traça: %{backtrace}'
         unsupported_file_format: 'Format d''arxiu no compatible: %{format}'
     families:
+      auto_create:
+        default_name: La meva família
+        notification_title: El teu pla Family ja està a punt
+        notification_content: 'Hem creat "%{name}" per a tu. Convida fins a %{seats} persones i us veureu al mapa.'
       accept_invitation:
         you_must_leave_your_current_family_before_joining_a_new: Has d'abandonar la teva família actual abans d'unir-te a una de nova.
         this_invitation_is_no_longer_valid_or_has_expired: Aquesta invitació ja no és vàlida o ha caducat.

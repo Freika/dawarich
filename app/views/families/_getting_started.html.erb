@@ -1,0 +1,57 @@
+<% invite_step = policy(family).invite? && family.member_count == 1 && pending_invitations.empty? %>
+<% sharing_step = !invite_step && !user.family_sharing_enabled? %>
+
+<div id="family-getting-started-slot">
+<% if invite_step || sharing_step %>
+  <div id="family-getting-started" class="border border-primary/30 bg-primary/5 rounded-xl p-5 mb-4">
+    <div class="flex flex-col lg:flex-row lg:items-start gap-5">
+      <div class="flex-1 min-w-0">
+        <% if invite_step %>
+          <h2 class="text-lg font-semibold mb-1"><%= t('.invite_title') %></h2>
+          <p class="text-sm text-base-content/70 mb-3"><%= t('.invite_body') %></p>
+
+          <%= form_with model: [family, Family::Invitation.new], url: family_invitations_path(family), local: true do |form| %>
+            <div class="flex flex-wrap gap-2">
+              <%= form.email_field :email,
+                    placeholder: t('.email_address'),
+                    class: "input input-bordered input-sm flex-1 min-w-0" %>
+              <%= form.submit t('.invite'), class: "btn btn-primary btn-sm" %>
+            </div>
+          <% end %>
+
+          <% unless DawarichSettings.self_hosted? %>
+            <p class="text-xs text-base-content/50 mt-2">
+              <%= t('.seats', used: family.member_count, total: Family::MAX_MEMBERS) %>
+            </p>
+          <% end %>
+        <% else %>
+          <h2 class="text-lg font-semibold mb-1"><%= t('.sharing_title') %></h2>
+          <p class="text-sm text-base-content/70"><%= t('.sharing_body') %></p>
+        <% end %>
+
+        <% if user.family_owner? && user.trial? && user.active_until.present? %>
+          <p class="text-xs text-base-content/60 mt-3">
+            <%= icon 'clock', class: 'w-3.5 h-3.5 inline' %>
+            <%= t('.trial_ends_on', date: l(user.active_until.to_date, format: :long)) %>
+          </p>
+        <% end %>
+      </div>
+
+      <div class="lg:w-64 lg:border-l lg:border-primary/20 lg:pl-5">
+        <h3 class="text-sm font-medium mb-1"><%= t('.app_title') %></h3>
+        <p class="text-xs text-base-content/60 mb-3"><%= t('.app_body') %></p>
+        <div class="flex flex-wrap items-center gap-2">
+          <%= link_to 'https://apps.apple.com/de/app/dawarich/id6739544999',
+                class: 'inline-block', target: '_blank', rel: 'noopener' do %>
+            <%= image_tag 'Download_on_the_App_Store_Badge_US-UK_RGB_blk_092917.svg', class: 'h-[34px]' %>
+          <% end %>
+          <%= link_to 'https://play.google.com/store/apps/details?id=app.dawarich.Dawarich',
+                class: 'inline-block', target: '_blank', rel: 'noopener' do %>
+            <%= image_tag 'GetItOnGooglePlay_Badge_Web_color_English.svg', class: 'h-[34px]' %>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+<% end %>
+</div>

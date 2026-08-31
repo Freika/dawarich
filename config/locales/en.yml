@@ -210,6 +210,17 @@ en:
       status: Status
       created: Created
   families:
+    getting_started:
+      invite_title: "Add your first family member"
+      invite_body: "Your family is ready. Everyone you add can see where the others are, and each of them keeps their own private map."
+      seats: "%{used} of %{total} seats used"
+      trial_ends_on: "Your Family trial ends on %{date}"
+      sharing_title: "Start sharing your location"
+      sharing_body: "Your family cannot see you yet. Turn sharing on below, then install the app so your location stays up to date."
+      app_title: "Get the app"
+      app_body: "Location sharing works best from the phone in your pocket."
+      email_address: "Email address"
+      invite: "Invite"
     location_sharing_toggle:
       live_location: 'Live location:'
       always: Always
@@ -294,17 +305,6 @@ en:
       always: always
       for_duration: for %{duration}
       sharing_status: Sharing %{duration}
-    index:
-      have_an_invitation: Have an invitation?
-      if_someone_has_invited_you_to_join_their_family_you: If someone has invited you to join their family, you should have received an email with an invitation link.
-      check_your_email_for_an_invitation_link_that_looks_like: 'Check your email for an invitation link that looks like:'
-      family_management: Family Management
-      create_family: Create Your Family
-      description: Create or join a family to share your location data with loved ones.
-      have_invitation: Have an invitation?
-      invitation_help: 'Check your email for an invitation link that looks like:'
-      invitation_instructions: If someone has invited you to join their family, you should have received an email with an invitation link.
-      title: Family Management
     new:
       choose_a_name_that_all_family_members_will_recognize_like: Choose a name that all family members will recognize, like "The Smith Family" or "Our Travel Group".
       what_happens_next: What happens next?
@@ -807,6 +807,8 @@ en:
       dawarich_logo: Dawarich logo
   map:
     onboarding_modal:
+      invite_your_family: "Invite your family"
+      add_your_family_and_see_each_other_on_the_map: "Add your family and see each other on the map."
       welcome_to_dawarich: Welcome to Dawarich!
       your_map_starts_with_your_next_step_literally: Your map starts with your next step — literally.
       start_tracking_now: Start tracking now
@@ -3304,6 +3306,10 @@ en:
         export_name_failed_message_stacktrace_n: 'Export "%{name}" failed: %{message}, stacktrace: %{backtrace}'
         unsupported_file_format: 'Unsupported file format: %{format}'
     families:
+      auto_create:
+        default_name: My Family
+        notification_title: Your Family plan is ready
+        notification_content: 'We set up "%{name}" for you. Invite up to %{seats} people and you will see each other on the map.'
       accept_invitation:
         you_must_leave_your_current_family_before_joining_a_new: You must leave your current family before joining a new one.
         this_invitation_is_no_longer_valid_or_has_expired: This invitation is no longer valid or has expired.
