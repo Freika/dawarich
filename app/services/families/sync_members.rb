@@ -13,10 +13,16 @@ module Families
       return false if DawarichSettings.self_hosted?
       return false if family.blank?
 
+      to_notify = []
+
       family.with_lock do
         refresh_access_until
-        syncable_members.each { |member| granted? ? grant(member) : lapse(member) }
+        syncable_members.each do |member|
+          granted? ? grant(member) : to_notify << lapse(member)
+        end
       end
+
+      to_notify.compact.each { |member| Families::LapseNotificationJob.perform_later(member.id, family.id) }
 
       true
     end
@@ -55,9 +61,10 @@ module Families
     def lapse(member)
       member.skip_family_sync = true
       member.update!(plan: :lite, status: :inactive, active_until: family.access_until)
-      return if Families::LapseNotice.notified?(member)
+      return nil if Families::LapseNotice.notified?(member)
+      return Families::LapseNotice.mark(member) && nil unless @notify
 
-      @notify ? Families::LapseNotificationJob.perform_later(member.id, family.id) : Families::LapseNotice.mark(member)
+      member
     end
   end
 end

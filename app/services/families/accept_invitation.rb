@@ -73,15 +73,7 @@ module Families
     end
 
     def family_plan_live?
-      return true if DawarichSettings.self_hosted?
-
-      family = invitation.family
-      return family.access_until.future? if family.access_until
-
-      owner = family.owner
-      return false unless owner&.family?
-
-      owner.active_until&.future? || false
+      invitation.family.access_live?
     end
 
     def validate_family_capacity

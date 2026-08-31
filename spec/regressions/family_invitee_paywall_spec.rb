@@ -67,7 +67,10 @@ RSpec.describe 'Family invitees are never sent to checkout', type: :request do
   end
 
   describe 'a paying subscriber who joins a family' do
-    let(:invitee) { create(:user, plan: :pro, status: :active, active_until: 1.year.from_now, skip_auto_trial: true) }
+    let(:invitee) do
+      create(:user, plan: :pro, status: :active, active_until: 1.year.from_now,
+                    subscription_source: :paddle, skip_auto_trial: true)
+    end
 
     before { sign_in invitee }
 
@@ -75,7 +78,21 @@ RSpec.describe 'Family invitees are never sent to checkout', type: :request do
       post accept_family_invitation_path(token: invitation.token)
 
       expect(invitee.reload).to be_pro
-      expect(invitee).to be_active
+      expect(invitee.reload).to be_active
+    end
+
+    it 'keeps their own billing period rather than the family one' do
+      own_period = invitee.active_until
+
+      post accept_family_invitation_path(token: invitation.token)
+
+      expect(invitee.reload.active_until).to be_within(1.second).of(own_period)
+    end
+
+    it 'keeps their own subscription source' do
+      post accept_family_invitation_path(token: invitation.token)
+
+      expect(invitee.reload).to be_sub_source_paddle
     end
   end
 end
