@@ -9,9 +9,9 @@ gem 'activerecord-postgis-adapter', '11.1.1'
 # https://meta.discourse.org/t/cant-rebuild-due-to-aws-sdk-gem-bump-and-new-aws-data-integrity-protections/354217/40
 gem 'addressable', '>= 2.9.0'
 gem 'apple_id', '~> 1.2'
-gem 'aws-sdk-core', '~> 3.252', require: false
-gem 'aws-sdk-kms', '~> 1.129', require: false
-gem 'aws-sdk-s3', '~> 1.226', require: false
+gem 'aws-sdk-core', '~> 3.254', require: false
+gem 'aws-sdk-kms', '~> 1.130', require: false
+gem 'aws-sdk-s3', '~> 1.229', require: false
 gem 'bcrypt', '>= 3.1.22'
 gem 'bootsnap', require: false
 gem 'chartkick'
@@ -62,10 +62,10 @@ gem 'rgeo-geojson'
 gem 'rqrcode', '~> 3.2'
 gem 'rswag-api'
 gem 'rswag-ui'
-gem 'rubyzip', '~> 3.4'
+gem 'rubyzip', '~> 3.5'
 gem 'sentry-rails', '>= 5.27.0'
 gem 'sentry-ruby'
-gem 'sidekiq', '8.1.6' # Pin to 8.0.x - sidekiq 8.1+ requires connection_pool 3.0+ breaking Rails
+gem 'sidekiq', '8.1.7' # Pin to 8.0.x - sidekiq 8.1+ requires connection_pool 3.0+ breaking Rails
 gem 'sidekiq-cron', '>= 2.4.0'
 gem 'sidekiq-limit_fetch'
 gem 'sprockets-rails'
