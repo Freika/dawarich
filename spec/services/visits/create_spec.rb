@@ -190,6 +190,30 @@ RSpec.describe Visits::Create do
       end
     end
 
+    context 'place name locking' do
+      it 'locks the place name when the visit is confirmed' do
+        service = described_class.new(user, valid_params)
+        service.call
+
+        expect(service.visit.place.name_locked_at).to be_present
+      end
+
+      it 'leaves the place name unlocked when the visit is suggested' do
+        service = described_class.new(user, valid_params.merge(status: 'suggested'))
+        service.call
+
+        expect(service.visit.place.name_locked_at).to be_nil
+      end
+
+      it 'lets reverse geocoding rename a place created from a suggested visit' do
+        service = described_class.new(user, valid_params.merge(status: 'suggested'))
+        service.call
+        place = service.visit.place
+
+        expect(place.name_locked?).to be(false)
+      end
+    end
+
     context 'when place creation fails' do
       subject(:service) { described_class.new(user, valid_params) }
 

@@ -2976,6 +2976,8 @@ de:
           failed_to_delete_visit: Aufenthalt konnte nicht gelöscht werden
           visit_not_found: Aufenthalt nicht gefunden
           failed_to_create_visit: Aufenthalt konnte nicht erstellt werden
+          no_visits_provided: "Keine Aufenthalte übermittelt"
+          too_many_visits_maximum_is_limit_per_batch: "Zu viele Aufenthalte, maximal %{limit} pro Stapel"
       record_not_found: Datensatz nicht gefunden
       complete_your_subscription_to_continue: Fertige dein Abonnement ab, um fortzufahren.
       this_feature_requires_a_pro_plan: Diese Funktion erfordert ein Pro-Abonnement.

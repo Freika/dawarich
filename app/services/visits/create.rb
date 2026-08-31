@@ -80,11 +80,16 @@ module Visits
         longitude: lon_f,
         lonlat: "POINT(#{lon_f} #{lat_f})",
         source: :manual,
-        user_named: true
+        user_named: !suggested?,
+        machine_named: suggested?
       )
     rescue ActiveRecord::RecordInvalid => e
       ExceptionReporter.call(e, "Failed to create place: #{e.message}")
       nil
+    end
+
+    def suggested?
+      params[:status].to_s == 'suggested'
     end
 
     def create_visit(place)

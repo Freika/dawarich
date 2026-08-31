@@ -452,4 +452,126 @@ RSpec.describe 'Api::V1::Visits', type: :request do
       end
     end
   end
+  describe 'POST /api/v1/visits/batch' do
+    def visit_payload(offset_hours, name: 'Visit', status: 'suggested')
+      {
+        name: name,
+        latitude: 52.52 + (offset_hours / 1000.0),
+        longitude: 13.405 + (offset_hours / 1000.0),
+        started_at: (Time.zone.parse('2023-12-01T10:00:00Z') + offset_hours.hours).iso8601,
+        ended_at: (Time.zone.parse('2023-12-01T11:00:00Z') + offset_hours.hours).iso8601,
+        status: status
+      }
+    end
+
+    context 'with a valid batch' do
+      let(:params) { { visits: [visit_payload(0, name: 'Home'), visit_payload(3, name: 'Office')] } }
+
+      it 'creates every visit in one request' do
+        expect do
+          post '/api/v1/visits/batch', params: params, headers: auth_headers, as: :json
+        end.to change { user.visits.count }.by(2)
+
+        expect(response).to have_http_status(:ok)
+      end
+
+      it 'returns a result per submitted visit, in order, with its index' do
+        post '/api/v1/visits/batch', params: params, headers: auth_headers, as: :json
+
+        json_response = JSON.parse(response.body)
+        expect(json_response['results'].pluck('index')).to eq([0, 1])
+        expect(json_response['results'].pluck('status')).to eq(%w[created created])
+        expect(json_response['results'].map { |result| result.dig('visit', 'name') }).to eq(%w[Home Office])
+      end
+
+      it 'reports created and failed counts' do
+        post '/api/v1/visits/batch', params: params, headers: auth_headers, as: :json
+
+        json_response = JSON.parse(response.body)
+        expect(json_response['created_count']).to eq(2)
+        expect(json_response['failed_count']).to eq(0)
+      end
+
+      it 'leaves place names unlocked for suggested visits' do
+        post '/api/v1/visits/batch', params: params, headers: auth_headers, as: :json
+
+        expect(user.places.reload.pluck(:name_locked_at)).to all(be_nil)
+      end
+
+      it 'assigns every visit to the authenticated user' do
+        post '/api/v1/visits/batch', params: params, headers: auth_headers, as: :json
+
+        expect(user.visits.count).to eq(2)
+        expect(other_user.visits.count).to eq(0)
+      end
+
+      it 'does not duplicate visits when the same batch is replayed' do
+        post '/api/v1/visits/batch', params: params, headers: auth_headers, as: :json
+
+        expect do
+          post '/api/v1/visits/batch', params: params, headers: auth_headers, as: :json
+        end.not_to(change { user.visits.count })
+
+        expect(JSON.parse(response.body)['created_count']).to eq(2)
+      end
+    end
+
+    context 'when one visit in the batch is invalid' do
+      let(:params) do
+        { visits: [visit_payload(0, name: 'Home'), visit_payload(3, name: ''), visit_payload(6, name: 'Office')] }
+      end
+
+      it 'still creates the valid visits' do
+        expect do
+          post '/api/v1/visits/batch', params: params, headers: auth_headers, as: :json
+        end.to change { user.visits.count }.by(2)
+      end
+
+      it 'marks only the offending index as failed' do
+        post '/api/v1/visits/batch', params: params, headers: auth_headers, as: :json
+
+        json_response = JSON.parse(response.body)
+        expect(json_response['results'].pluck('status')).to eq(%w[created failed created])
+        expect(json_response['results'][1]['error']).to be_present
+        expect(json_response['created_count']).to eq(2)
+        expect(json_response['failed_count']).to eq(1)
+      end
+    end
+
+    context 'with an invalid envelope' do
+      it 'rejects a missing visits key' do
+        post '/api/v1/visits/batch', params: {}, headers: auth_headers, as: :json
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(JSON.parse(response.body)['error']).to be_present
+      end
+
+      it 'rejects an empty visits array' do
+        post '/api/v1/visits/batch', params: { visits: [] }, headers: auth_headers, as: :json
+
+        expect(response).to have_http_status(:unprocessable_content)
+      end
+
+      it 'rejects a batch over the maximum size' do
+        oversized = { visits: Array.new(Api::V1::VisitsController::BATCH_MAX + 1) { |i| visit_payload(i) } }
+
+        expect do
+          post '/api/v1/visits/batch', params: oversized, headers: auth_headers, as: :json
+        end.not_to(change { Visit.count })
+
+        expect(response).to have_http_status(:unprocessable_content)
+        json_response = JSON.parse(response.body)
+        expect(json_response['limit']).to eq(Api::V1::VisitsController::BATCH_MAX)
+        expect(json_response['requested']).to eq(Api::V1::VisitsController::BATCH_MAX + 1)
+      end
+    end
+
+    context 'without authentication' do
+      it 'returns unauthorized' do
+        post '/api/v1/visits/batch', params: { visits: [visit_payload(0)] }, as: :json
+
+        expect(response).to have_http_status(:unauthorized)
+      end
+    end
+  end
 end

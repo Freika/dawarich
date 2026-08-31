@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Api::V1::VisitsController < ApiController
+  BATCH_MAX = 100
+
   def index
     visits = Visits::Finder.new(current_api_user, params).call
 
@@ -93,6 +95,31 @@ class Api::V1::VisitsController < ApiController
     end
   end
 
+  def batch
+    submitted = batch_params[:visits]
+
+    if submitted.blank?
+      return render json: { error: I18n.t('controllers.api.v1.visits.no_visits_provided') },
+                    status: :unprocessable_content
+    end
+
+    if submitted.size > BATCH_MAX
+      return render json: {
+        error: I18n.t('controllers.api.v1.visits.too_many_visits_maximum_is_limit_per_batch', limit: BATCH_MAX),
+        limit: BATCH_MAX,
+        requested: submitted.size
+      }, status: :unprocessable_content
+    end
+
+    results = submitted.each_with_index.map { |attributes, index| create_batched_visit(attributes, index) }
+
+    render json: {
+      results: results,
+      created_count: results.count { |result| result[:status] == 'created' },
+      failed_count: results.count { |result| result[:status] == 'failed' }
+    }
+  end
+
   def bulk_update
     service = Visits::BulkUpdate.new(
       current_api_user,
@@ -133,6 +160,23 @@ class Api::V1::VisitsController < ApiController
 
   def visit_params
     params.require(:visit).permit(:name, :place_id, :area_id, :status, :latitude, :longitude, :started_at, :ended_at)
+  end
+
+  def batch_params
+    params.permit(
+      visits: %i[name place_id area_id status latitude longitude started_at ended_at]
+    )
+  end
+
+  def create_batched_visit(attributes, index)
+    service = Visits::Create.new(current_api_user, attributes)
+
+    if service.call
+      { index: index, status: 'created', visit: Api::VisitSerializer.new(service.visit).call }
+    else
+      { index: index, status: 'failed',
+        error: service.errors || I18n.t('controllers.api.v1.visits.failed_to_create_visit') }
+    end
   end
 
   def merge_params
