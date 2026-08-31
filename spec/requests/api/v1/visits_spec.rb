@@ -669,6 +669,37 @@ RSpec.describe 'Api::V1::Visits', type: :request do
       end
     end
 
+    context 'when reporting rejected entries' do
+      it 'groups every batch under the same report regardless of how many failed' do
+        reported = []
+        allow(ExceptionReporter).to receive(:call) { |subject, _| reported << subject }
+
+        post '/api/v1/visits/batch',
+             params: { visits: Array.new(2) { |i| visit_payload(i, name: '') } },
+             headers: auth_headers, as: :json
+        post '/api/v1/visits/batch',
+             params: { visits: Array.new(4) { |i| visit_payload(i + 10, name: '') } },
+             headers: auth_headers, as: :json
+
+        expect(reported.uniq.size).to eq(1)
+      end
+    end
+
+    context 'when a replayed entry matches a visit the user deleted' do
+      it 'reports it as a duplicate without handing back the tombstoned visit' do
+        payload = visit_payload(0, name: 'Home')
+
+        post '/api/v1/visits/batch', params: { visits: [payload] }, headers: auth_headers, as: :json
+        user.visits.last.update!(deleted_at: Time.current)
+
+        post '/api/v1/visits/batch', params: { visits: [payload] }, headers: auth_headers, as: :json
+
+        result = JSON.parse(response.body)['results'].first
+        expect(result['status']).to eq('duplicate')
+        expect(result['visit']).to be_nil
+      end
+    end
+
     context 'without authentication' do
       it 'returns unauthorized' do
         post '/api/v1/visits/batch', params: { visits: [visit_payload(0)] }, as: :json

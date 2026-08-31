@@ -169,10 +169,8 @@ class Api::V1::VisitsController < ApiController
   def report_batch_failures(failed_count, submitted_count)
     return unless failed_count.positive?
 
-    ExceptionReporter.call(
-      "Visits batch rejected #{failed_count} of #{submitted_count} entries",
-      'Batch visit creation rejected entries'
-    )
+    Rails.logger.warn("Visits batch rejected #{failed_count} of #{submitted_count} entries")
+    ExceptionReporter.call('Batch visit creation rejected entries', 'Visits batch had rejected entries')
   end
 
   def create_batched_visit(attributes, index)
@@ -185,8 +183,9 @@ class Api::V1::VisitsController < ApiController
                                  report_exceptions: false)
 
     if service.call
-      { index: index, status: service.duplicate? ? 'duplicate' : 'created',
-        visit: Api::VisitSerializer.new(service.visit).call }
+      result = { index: index, status: service.duplicate? ? 'duplicate' : 'created' }
+      result[:visit] = Api::VisitSerializer.new(service.visit).call unless service.visit.soft_deleted?
+      result
     else
       { index: index, status: 'failed',
         error: service.errors || I18n.t('controllers.api.v1.visits.failed_to_create_visit') }
