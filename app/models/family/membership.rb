@@ -40,7 +40,7 @@ class Family::Membership < ApplicationRecord
   def revoke_inherited_subscription
     return if DawarichSettings.self_hosted?
     return if owner?
-    return unless user.sub_source_none?
+    return if user.own_subscription_live?
 
     user.update!(plan: :lite, status: :inactive, active_until: nil)
   end

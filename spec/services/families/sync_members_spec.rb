@@ -71,6 +71,10 @@ RSpec.describe Families::SyncMembers do
       expect(member.reload).to be_active
     end
 
+    it 'does not re-enqueue a sync for its own writes' do
+      expect { service.call }.not_to have_enqueued_job(Families::MemberSyncJob)
+    end
+
     it 'leaves the owner untouched' do
       expect { service.call }.not_to(change { owner.reload.attributes.slice('status', 'plan', 'active_until') })
     end
@@ -91,6 +95,15 @@ RSpec.describe Families::SyncMembers do
       service.call
 
       expect(member.reload.active_until).to be_past
+    end
+
+    it 'settles on a stable date rather than churning the row' do
+      service.call
+      first = member.reload.active_until
+
+      described_class.new(family: family.reload).call
+
+      expect(member.reload.active_until).to eq(first)
     end
 
     it 'drops the member back to the free tier' do
@@ -170,12 +183,21 @@ RSpec.describe Families::SyncMembers do
       add_member(plan: :pro, status: :active, active_until: 1.year.from_now, subscription_source: :paddle)
     end
 
-    it 'is brought back onto the family plan once they no longer pay themselves' do
-      member.update!(subscription_source: :none)
+    it 'is brought back onto the family plan once their own subscription lapses' do
+      member.update!(status: :inactive, active_until: 1.day.ago)
 
       described_class.new(family: family.reload).call
 
+      expect(member.reload).to be_active
       expect(member.reload.active_until).to be_within(1.second).of(family.reload.access_until)
+    end
+
+    it 'is marked as having no subscription of their own once mirrored' do
+      member.update!(status: :inactive, active_until: 1.day.ago)
+
+      described_class.new(family: family.reload).call
+
+      expect(member.reload).to be_sub_source_none
     end
 
     it 'triggers a sync from their own subscription change' do

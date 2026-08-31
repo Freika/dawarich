@@ -40,24 +40,24 @@ module Families
 
     def syncable_members
       family.members.includes(:family_membership).reject do |member|
-        member == owner || !member.sub_source_none?
+        member == owner || member.own_subscription_live?
       end
     end
 
     def grant(member)
-      member.update!(plan: :pro, status: :active, active_until: family.access_until)
+      member.skip_family_sync = true
+      member.update!(
+        plan: :pro, status: :active, active_until: family.access_until, subscription_source: :none
+      )
       Families::LapseNotice.clear(member)
     end
 
     def lapse(member)
-      member.update!(plan: :lite, status: :inactive, active_until: lapsed_until)
+      member.skip_family_sync = true
+      member.update!(plan: :lite, status: :inactive, active_until: family.access_until)
       return if Families::LapseNotice.notified?(member)
 
       @notify ? Families::LapseNotificationJob.perform_later(member.id, family.id) : Families::LapseNotice.mark(member)
-    end
-
-    def lapsed_until
-      [family.access_until, Time.current].compact.min
     end
   end
 end

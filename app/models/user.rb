@@ -12,6 +12,8 @@ class User < ApplicationRecord
   # until their subscription source confirms a purchase.
   attr_accessor :skip_auto_trial
 
+  attr_accessor :skip_family_sync
+
   # Set by Omniauthable.from_omniauth. Post-create callbacks re-save the record,
   # which clears `previously_new_record?`, so signup-vs-login can't be read off
   # the record afterwards — the lookup has to tell us.
@@ -270,6 +272,13 @@ class User < ApplicationRecord
     end
   end
 
+  def own_subscription_live?
+    return false if sub_source_none?
+    return false unless active? || trial?
+
+    active_until&.future? || false
+  end
+
   def can_subscribe?
     (trial? || !active_until&.future?) && !DawarichSettings.self_hosted?
   end
@@ -437,6 +446,7 @@ class User < ApplicationRecord
 
   def enqueue_family_member_sync
     return if DawarichSettings.self_hosted?
+    return if skip_family_sync
 
     family_id = Family::Membership.where(user_id: id).pick(:family_id)
     return if family_id.blank?

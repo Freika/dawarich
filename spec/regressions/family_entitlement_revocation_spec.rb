@@ -44,6 +44,25 @@ RSpec.describe 'Family entitlement revocation', type: :model do
     end
   end
 
+  describe 'a member whose own subscription has already lapsed' do
+    let!(:member) do
+      add_member(plan: :pro, status: :inactive, active_until: 1.day.ago, subscription_source: :paddle)
+    end
+
+    it 'is still mirrored onto the family plan' do
+      Families::SyncMembers.new(family: family.reload).call
+
+      expect(member.reload).to be_active
+    end
+
+    it 'is revoked again when they leave' do
+      Families::SyncMembers.new(family: family.reload).call
+      Family::Membership.find_by(user_id: member.id).destroy!
+
+      expect(member.reload.active_until).to be_nil
+    end
+  end
+
   describe 'a member who pays for themselves' do
     let!(:member) do
       add_member(plan: :pro, status: :active, active_until: 2.years.from_now, subscription_source: :paddle)
