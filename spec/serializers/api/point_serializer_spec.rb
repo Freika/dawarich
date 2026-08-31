@@ -16,6 +16,21 @@ RSpec.describe Api::PointSerializer do
       end
     end
 
+    context 'when the point is stamped with a dimension row' do
+      before do
+        source = PointSource.create!(digest: 'a' * 32, tracker_id: 'dimension-device',
+                                     connection: 'wifi')
+        point.update_columns(source_id: source.id, tracker_id: 'legacy-device', connection: 0)
+        point.reload
+      end
+
+      it 'emits the device combo from the dimension, under the same keys' do
+        expect(serializer['tracker_id']).to eq('dimension-device')
+        expect(serializer['connection']).to eq('wifi')
+        expect(serializer.keys).to eq(expected_json.keys)
+      end
+    end
+
     it 'returns JSON with correct attributes' do
       expect(serializer.to_json).to eq(expected_json.to_json)
     end

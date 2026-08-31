@@ -1990,6 +1990,8 @@ en:
       available_on_pro: Available on Pro
       upgrade_to_pro: Upgrade to Pro
     month:
+      flight_distance: Flight distance
+      from_airtrail_not_counted_in_distance: From AirTrail, not counted in distance
       monthly_digest: Monthly Digest
       share: Share
       distance_traveled: Distance traveled
@@ -2041,6 +2043,8 @@ en:
       distance: Distance
       countries_count_countries_cities_count_cities: "%{countries_count} countries, %{cities_count} cities"
     public_month:
+      flight_distance: Flight distance
+      from_airtrail_not_counted_in_distance: From AirTrail, not counted in distance
       monthly_digest: Monthly Digest
       distance_traveled: Distance traveled
       total_distance_for_this_month: Total distance for this month
@@ -2321,6 +2325,7 @@ en:
           other: "%{count} cities"
     digests_mailer:
       monthly_digest:
+        flights: Flights
         your: Your
         in_review: in review
         here_s_what_your_location_history_looked_like_last_month: Here's what your location history looked like last month.
@@ -2765,6 +2770,7 @@ en:
         areas:
           area_was_successfully_deleted: Area was successfully deleted
         auth:
+          account_pending_deletion: An account with this email is being deleted. Try again once that has finished.
           apple:
             apple_has_not_verified_this_email_sign_in_with_password: Apple has not verified this email. Sign in with password and link from settings.
             this_email_already_has_a_dawarich_account_we_sent_a: This email already has a Dawarich account. We sent a confirmation link to that address — click it to link your Apple ID.
@@ -3135,6 +3141,7 @@ en:
         sign_in_with_apple_was_cancelled: Sign in with Apple was cancelled.
         sign_in_failed: 'Apple sign-in failed: %{message}'
         email_not_verified: Your Apple ID email is not verified. Verify it with Apple, then try again.
+        account_pending_deletion: An account with this email is being deleted. Try again once that has finished.
         missing_email: Apple didn't share your email this time and we couldn't find your existing account. Visit appleid.apple.com → Sign in with Apple → Dawarich → Stop using Sign in with Apple, then try again.
         did_not_complete: Sign in with Apple did not complete. Please try again.
         state_mismatch: Sign in with Apple state mismatch — please try again.
@@ -3159,6 +3166,7 @@ en:
         oidc_account_requires_administrator: Your account must be created by an administrator before you can sign in with OIDC. Please contact your administrator.
         account_creation_failed: Unable to create your account. Please try again or contact support.
         email_not_verified: Your %{provider} email is not verified. Verify it with the provider, then try again — or sign in with your existing password.
+        account_pending_deletion: An account with this email is being deleted. Try again once that has finished.
       otp_challenge:
         session_expired_please_sign_in_again: Session expired. Please sign in again.
         signed_in_successfully: Signed in successfully.

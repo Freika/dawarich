@@ -587,6 +587,20 @@ RSpec.describe User, type: :model do
       it 'excludes drive-through countries with no qualifying cities' do
         expect(subject).not_to include('Belgium')
       end
+
+      it 'selects only fields required for toponym aggregation' do
+        queries = []
+        callback = ->(_name, _start, _finish, _id, payload) { queries << payload[:sql] }
+
+        ActiveSupport::Notifications.subscribed(callback, 'sql.active_record') do
+          user.countries_visited
+        end
+
+        row_query = queries.find { |sql| sql.include?('FROM "stats"') }
+        expect(row_query).to include('"stats"."id", "stats"."toponyms"')
+        expect(row_query).not_to include('"stats".*')
+        expect(row_query).not_to include('h3_hex_ids')
+      end
     end
 
     describe '#cities_visited' do
@@ -610,6 +624,20 @@ RSpec.describe User, type: :model do
 
       it 'excludes nil and empty city names' do
         expect(subject).not_to include(nil, '')
+      end
+
+      it 'selects only fields required for toponym aggregation' do
+        queries = []
+        callback = ->(_name, _start, _finish, _id, payload) { queries << payload[:sql] }
+
+        ActiveSupport::Notifications.subscribed(callback, 'sql.active_record') do
+          user.cities_visited
+        end
+
+        row_query = queries.find { |sql| sql.include?('FROM "stats"') }
+        expect(row_query).to include('"stats"."id", "stats"."toponyms"')
+        expect(row_query).not_to include('"stats".*')
+        expect(row_query).not_to include('h3_hex_ids')
       end
     end
 

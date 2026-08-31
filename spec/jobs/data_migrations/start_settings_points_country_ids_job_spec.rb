@@ -29,6 +29,21 @@ RSpec.describe DataMigrations::StartSettingsPointsCountryIdsJob, type: :job do
         have_enqueued_job(DataMigrations::SetPointsCountryIdsJob)
         .with(point_with_country.id)
     end
+
+    it 'selects only point IDs while enqueueing' do
+      queries = []
+      callback = ->(_name, _start, _finish, _id, payload) { queries << payload[:sql] }
+
+      ActiveSupport::Notifications.subscribed(callback, 'sql.active_record') do
+        described_class.perform_now
+      end
+
+      point_queries = queries.select { |sql| sql.include?('FROM "points"') }
+      expect(point_queries).not_to be_empty
+      expect(point_queries).to all(include('"points"."id"'))
+      expect(point_queries).to all(satisfy { |sql| !sql.include?('"points"."accuracy"') })
+      expect(point_queries).to all(satisfy { |sql| !sql.include?('"points"."lonlat"') })
+    end
   end
 
   describe 'queue' do

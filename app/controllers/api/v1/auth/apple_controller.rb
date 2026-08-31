@@ -28,6 +28,11 @@ class Api::V1::Auth::AppleController < Api::V1::Auth::BaseController
       error: 'verification_sent',
       message: I18n.t('controllers.api.v1.auth.apple.this_email_already_has_a_dawarich_account_we_sent_a')
     }, status: :accepted
+  rescue Auth::FindOrCreateOauthUser::AccountPendingDeletion
+    render json: {
+      error: 'account_pending_deletion',
+      message: I18n.t('controllers.api.v1.auth.account_pending_deletion')
+    }, status: :conflict
   rescue Auth::FindOrCreateOauthUser::MissingOauthEmail => e
     Rails.logger.warn("apple.auth.missing_email uid=#{e.uid}")
     render json: {

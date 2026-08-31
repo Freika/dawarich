@@ -424,6 +424,15 @@
   padding: 6px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
   transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  max-height: calc(100% - 24px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+
+.map-button-cluster::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 
 .maps-maplibre-container.panel-open ~ .map-button-cluster {
@@ -462,6 +471,7 @@
   position: relative;
   width: 40px;
   height: 40px;
+  flex: none;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -530,6 +540,7 @@
 
 .map-button-cluster__divider {
   height: 1px;
+  flex: none;
   background: oklch(var(--bc) / 0.1);
   margin: 2px 4px;
 }
@@ -550,14 +561,4 @@
   text-align: center;
   border: 1.5px solid oklch(var(--b1));
   white-space: nowrap;
-}
-
-/* Mobile — collapse to Timeline + Layers + overflow */
-@media (max-width: 640px) {
-  .map-button-cluster__btn[data-tab="search"],
-  .map-button-cluster__btn[data-tab="tools"],
-  .map-button-cluster__btn[data-tab="settings"],
-  .map-button-cluster__divider {
-    display: none;
-  }
 }

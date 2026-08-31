@@ -496,3 +496,21 @@ Warnings are deduped via `settings['archival_warnings']` JSONB on the user recor
 - **Discord**: https://discord.gg/pHsBjpt5J8
 - **Changelog**: See CHANGELOG.md for version history
 - **Development Setup**: See DEVELOPMENT.md
+
+## Agent skills
+
+Notes for AI agents working in this repo.
+
+### Pull requests are not all on GitHub
+
+`gh pr list` does **not** show every open pull request for this project — a portion are reviewed on a separate, maintainer-only forge, and the two sets only partially overlap. Never conclude the PR queue is empty or fully triaged from GitHub alone; ask a maintainer if you need the full picture. External contributors should open PRs on GitHub as normal.
+
+### Triage labels
+
+Use only labels this repo already has — check with `gh label list --repo Freika/dawarich`. It has no `needs-triage` / `ready-for-agent` style vocabulary; an untriaged issue simply carries no state label.
+
+⛔ Never probe whether a label exists by trying to apply it. `gh issue edit --add-label` validates the name, but the raw REST endpoint (`POST /repos/{owner}/{repo}/issues/{n}/labels`) **silently creates** a missing label and applies it, permanently polluting the label set. Read with `gh label list`, and ask before creating any new label.
+
+### Domain docs
+
+This file is the authoritative architecture and conventions reference. There is no `CONTEXT.md` and no `docs/adr/` — if a skill expects them, proceed without them rather than creating them upfront. Domain vocabulary lives in `app/models/` and `app/services/`; use those names (`Point`, `Track`, `Visit`, `Place`, `Area`, `Trip`, `Stat`, `Import`) rather than synonyms.

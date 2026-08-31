@@ -60,10 +60,13 @@ class Tracks::TimeChunkProcessorJob < ApplicationJob
   end
 
   def load_chunk_points
+    # tracker_id reads through each point's source; preloading keeps the
+    # per-chunk grouping at one dimension query instead of one per point.
     relation = user.points
                    .not_anomaly
                    .where(timestamp: chunk_data[:buffer_start_timestamp]..chunk_data[:buffer_end_timestamp])
                    .order(:timestamp)
+                   .preload(:source)
     relation = relation.where(track_id: nil) if chunk_data[:untracked_only]
     relation
   end
