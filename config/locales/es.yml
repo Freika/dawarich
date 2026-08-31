@@ -3460,6 +3460,9 @@ es:
     imports:
       bulk_insertable:
         importer_name_import_error: "%{importer_name} Error de importación"
+      geojson_importer:
+        points_skipped_title: La importación omitió puntos sin marca de tiempo
+        points_skipped: 'Tu archivo %{name} contenía %{skipped} puntos sin marca de tiempo; se omitieron. Los puntos GeoJSON necesitan una propiedad "timestamp" o un cuarto valor de coordenada [lon, lat, altitude, time] para ser importados.'
       create:
         import_post_processing_incomplete: Importación post-procesada incompleta
         import_completed_with_no_new_points: Importación completada sin puntos nuevos
@@ -3470,7 +3473,7 @@ es:
         source_missing: La fuente de importación no puede estar vacía
         unsupported_source: 'Fuente no soportada: %{source}'
         zip_unclassified: No se pudo clasificar el contenido del archivo ZIP; puede que esté dañado
-        zero_points_with_timestamps: "Tu archivo %{name} importó 0 puntos. No se encontraron puntos de ubicación con marcas de tiempo. Las importaciones GPX y KML necesitan un valor &lt;time&gt;/&lt;when&gt; por cada coordenada."
+        zero_points_with_timestamps: "Tu archivo %{name} importó 0 puntos. No se encontraron puntos de ubicación con marcas de tiempo. Las importaciones GPX, KML y GeoJSON necesitan un valor de tiempo por cada coordenada (&lt;time&gt;, &lt;when&gt; o una propiedad timestamp)."
         zero_points: "Tu archivo %{name} importó 0 puntos. No se encontraron puntos de ubicación nuevos en este archivo."
         import_failed_self_hosted: "La importación \"%{name}\" falló: %{message}, traza: %{backtrace}"
         import_failed_cloud: "La importación \"%{name}\" falló, contáctanos en hi@dawarich.com"

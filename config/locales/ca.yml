@@ -3453,12 +3453,15 @@ ca:
     imports:
       bulk_insertable:
         importer_name_import_error: "Error d'importació de %{importer_name}"
+      geojson_importer:
+        points_skipped_title: La importació ha omès punts sense marca de temps
+        points_skipped: 'El teu fitxer %{name} contenia %{skipped} punts sense marca de temps; s''han omès. Els punts GeoJSON necessiten una propietat "timestamp" o un quart valor de coordenada [lon, lat, altitude, time] per ser importats.'
       create:
         import_post_processing_incomplete: El postprocessament de la importació no s'ha completat
         import_completed_with_no_new_points: La importació ha finalitzat sense punts nous
         import_completed_with_no_points: La importació ha finalitzat sense punts
         import_failed: La importació ha fallat
-        zero_points_with_timestamps: "El teu arxiu %{name} ha importat 0 punts. No s'ha trobat cap punt d'ubicació amb marca de temps. Les importacions de GPX i KML requereixen un valor &lt;time&gt;/&lt;when&gt; per a cada coordenada."
+        zero_points_with_timestamps: "El teu arxiu %{name} ha importat 0 punts. No s'ha trobat cap punt d'ubicació amb marca de temps. Les importacions de GPX, KML i GeoJSON requereixen un valor de temps per a cada coordenada (&lt;time&gt;, &lt;when&gt; o una propietat timestamp)."
         zero_points: "El teu arxiu %{name} ha importat 0 punts. No s'ha trobat cap punt d'ubicació nou en aquest arxiu."
         import_failed_self_hosted: 'La importació "%{name}" ha fallat: %{message}, traça: %{backtrace}'
         import_failed_cloud: 'La importació "%{name}" ha fallat, contacta amb nosaltres a hi@dawarich.com'

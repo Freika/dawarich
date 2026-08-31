@@ -115,5 +115,69 @@ RSpec.describe Geojson::Importer do
         expect { invalid_utf8_service.call }.to change { Point.count }.by(1)
       end
     end
+
+    context 'when the file contains features without timestamps' do
+      let(:mixed_geojson) do
+        {
+          type: 'FeatureCollection',
+          features: [
+            { type: 'Feature', geometry: { type: 'Point', coordinates: [12.3712, 51.3402] },
+              properties: { timestamp: 1_709_287_200 } },
+            { type: 'Feature', geometry: { type: 'Point', coordinates: [12.3812, 51.3502] },
+              properties: { name: 'no time here' } },
+            { type: 'Feature', geometry: { type: 'LineString',
+                                           coordinates: [[12.39, 51.36], [12.40, 51.37], [12.41, 51.38]] },
+              properties: {} }
+          ]
+        }.to_json
+      end
+
+      def with_tempfile(content)
+        Tempfile.create(['timeless', '.geojson']) do |file|
+          file.write(content)
+          file.flush
+          yield file.path
+        end
+      end
+
+      it 'imports only the points that carry a timestamp' do
+        with_tempfile(mixed_geojson) do |path|
+          expect { described_class.new(import, user.id, path).call }.to change { Point.count }.by(1)
+        end
+      end
+
+      it 'never persists a point without a timestamp' do
+        with_tempfile(mixed_geojson) do |path|
+          described_class.new(import, user.id, path).call
+        end
+
+        expect(Point.where(timestamp: nil).count).to eq(0)
+      end
+
+      it 'records the skipped count on the import' do
+        with_tempfile(mixed_geojson) do |path|
+          described_class.new(import, user.id, path).call
+        end
+
+        expect(import.reload.raw_data['skipped_timeless']).to eq(4)
+      end
+
+      it 'notifies the user how many points were skipped and why' do
+        with_tempfile(mixed_geojson) do |path|
+          expect { described_class.new(import, user.id, path).call }
+            .to change { user.notifications.count }.by(1)
+        end
+
+        notification = user.notifications.last
+        expect(notification.kind).to eq('warning')
+        expect(notification.content).to include('4')
+      end
+    end
+
+    context 'when every feature carries a timestamp' do
+      it 'creates no skip notification' do
+        expect { call_service }.not_to(change { user.notifications.count })
+      end
+    end
   end
 end

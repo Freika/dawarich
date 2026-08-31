@@ -3508,12 +3508,15 @@ pl:
     imports:
       bulk_insertable:
         importer_name_import_error: Błąd importu %{importer_name}
+      geojson_importer:
+        points_skipped_title: Import pominął punkty bez znacznika czasu
+        points_skipped: 'Twój plik %{name} zawierał %{skipped} punktów bez znacznika czasu; zostały pominięte. Punkty GeoJSON wymagają właściwości "timestamp" lub czwartej wartości współrzędnej [lon, lat, altitude, time], aby zostały zaimportowane.'
       create:
         import_post_processing_incomplete: Końcowe przetwarzanie importu nie zostało ukończone
         import_completed_with_no_new_points: Import zakończony bez nowych punktów
         import_completed_with_no_points: Import zakończony bez punktów
         import_failed: Import nie powiódł się
-        zero_points_with_timestamps: Plik %{name} zaimportował 0 punktów. Nie znaleziono punktów lokalizacji ze znacznikami czasu. Import GPX i KML wymaga wartości &lt;time&gt;/&lt;when&gt; dla każdego punktu.
+        zero_points_with_timestamps: Plik %{name} zaimportował 0 punktów. Nie znaleziono punktów lokalizacji ze znacznikami czasu. Import GPX, KML i GeoJSON wymaga wartości czasu dla każdego punktu (&lt;time&gt;, &lt;when&gt; lub właściwości timestamp).
         zero_points: Plik %{name} zaimportował 0 punktów. Nie znaleziono w nim nowych punktów lokalizacji.
         import_failed_self_hosted: 'Import "%{name}" nie powiódł się: %{message}, stacktrace: %{backtrace}'
         import_failed_cloud: 'Import "%{name}" nie powiódł się, skontaktuj się z nami: hi@dawarich.com'

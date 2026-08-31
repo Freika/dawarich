@@ -4558,14 +4558,18 @@ fr:
     imports:
       bulk_insertable:
         importer_name_import_error: Erreur d'importation %{importer_name}
+      geojson_importer:
+        points_skipped_title: L'import a ignoré des points sans horodatage
+        points_skipped: 'Votre fichier %{name} contenait %{skipped} points sans horodatage ; ils ont été ignorés. Les points GeoJSON nécessitent une propriété "timestamp" ou une quatrième valeur de coordonnée [lon, lat, altitude, time] pour être importés.'
       create:
         import_post_processing_incomplete: Traitement post-importation incomplet
         import_completed_with_no_new_points: Importation terminée sans nouveau point
         import_completed_with_no_points: Importation terminée sans point
         import_failed: L'importation a échoué
         zero_points_with_timestamps: Votre fichier « %{name} » n'a importé aucun point.
-          Aucun point de localisation horodaté n'a été trouvé. Les importations GPX
-          et KML exigent une valeur &lt;time&gt;/&lt;when&gt; pour chaque coordonnée.
+          Aucun point de localisation horodaté n'a été trouvé. Les importations GPX,
+          KML et GeoJSON exigent une valeur de temps pour chaque coordonnée (&lt;time&gt;,
+          &lt;when&gt; ou une propriété timestamp).
         zero_points: Votre fichier « %{name} » n'a importé aucun point. Aucun nouveau
           point de localisation n'a été trouvé dans ce fichier.
         import_failed_self_hosted: 'L''importation « %{name} » a échoué : %{message},
