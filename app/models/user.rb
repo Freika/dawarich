@@ -438,10 +438,10 @@ class User < ApplicationRecord
   def enqueue_family_member_sync
     return if DawarichSettings.self_hosted?
 
-    owned_family_id = Family::Membership.where(user_id: id, role: :owner).pick(:family_id)
-    return if owned_family_id.blank?
+    family_id = Family::Membership.where(user_id: id).pick(:family_id)
+    return if family_id.blank?
 
-    Families::MemberSyncJob.perform_later(owned_family_id)
+    Families::MemberSyncJob.perform_later(family_id)
   end
 
   def enqueue_family_auto_creation

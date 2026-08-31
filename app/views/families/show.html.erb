@@ -205,6 +205,11 @@
                       class: "btn btn-primary btn-sm" %>
               </div>
             <% end %>
+            <% unless DawarichSettings.self_hosted? %>
+              <p class="text-xs text-base-content/50 mt-2">
+                <%= t('families.getting_started.members_lose_access_when_your_plan_ends') %>
+              </p>
+            <% end %>
           </div>
         <% elsif policy(@family).invite? %>
           <div class="px-4 py-3 border-t border-base-200">

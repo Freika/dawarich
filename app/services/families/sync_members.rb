@@ -13,8 +13,10 @@ module Families
       return false if DawarichSettings.self_hosted?
       return false if family.blank?
 
-      refresh_access_until
-      syncable_members.each { |member| granted? ? grant(member) : lapse(member) }
+      family.with_lock do
+        refresh_access_until
+        syncable_members.each { |member| granted? ? grant(member) : lapse(member) }
+      end
 
       true
     end
@@ -27,6 +29,7 @@ module Families
 
     def refresh_access_until
       return unless owner&.family?
+      return if owner.active_until.blank?
 
       family.update!(access_until: owner.active_until)
     end
@@ -47,7 +50,7 @@ module Families
     end
 
     def lapse(member)
-      member.update!(status: :inactive, active_until: lapsed_until)
+      member.update!(plan: :lite, status: :inactive, active_until: lapsed_until)
       return if Families::LapseNotice.notified?(member)
 
       @notify ? Families::LapseNotificationJob.perform_later(member.id, family.id) : Families::LapseNotice.mark(member)

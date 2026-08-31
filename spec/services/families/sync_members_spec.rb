@@ -52,6 +52,25 @@ RSpec.describe Families::SyncMembers do
       expect { service.call }.not_to have_enqueued_job(Families::LapseNotificationJob)
     end
 
+    it 'keeps the paid period when a callback arrives without a date' do
+      service.call
+      paid_until = family.reload.access_until
+      owner.update!(active_until: nil)
+
+      described_class.new(family: family.reload).call
+
+      expect(family.reload.access_until).to be_within(1.second).of(paid_until)
+    end
+
+    it 'does not lapse members over a callback without a date' do
+      service.call
+      owner.update!(active_until: nil)
+
+      described_class.new(family: family.reload).call
+
+      expect(member.reload).to be_active
+    end
+
     it 'leaves the owner untouched' do
       expect { service.call }.not_to(change { owner.reload.attributes.slice('status', 'plan', 'active_until') })
     end
@@ -72,6 +91,12 @@ RSpec.describe Families::SyncMembers do
       service.call
 
       expect(member.reload.active_until).to be_past
+    end
+
+    it 'drops the member back to the free tier' do
+      service.call
+
+      expect(member.reload).to be_lite
     end
 
     it 'notifies the member' do
@@ -137,6 +162,25 @@ RSpec.describe Families::SyncMembers do
       service.call
 
       expect(member.reload).to be_inactive
+    end
+  end
+
+  describe 'a member whose own subscription lapses' do
+    let!(:member) do
+      add_member(plan: :pro, status: :active, active_until: 1.year.from_now, subscription_source: :paddle)
+    end
+
+    it 'is brought back onto the family plan once they no longer pay themselves' do
+      member.update!(subscription_source: :none)
+
+      described_class.new(family: family.reload).call
+
+      expect(member.reload.active_until).to be_within(1.second).of(family.reload.access_until)
+    end
+
+    it 'triggers a sync from their own subscription change' do
+      expect { member.update!(status: :inactive, active_until: 1.day.ago) }
+        .to have_enqueued_job(Families::MemberSyncJob).with(family.id)
     end
   end
 

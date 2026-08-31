@@ -66,7 +66,7 @@ RSpec.describe 'Family members are treated as entitled users', type: :model do
       member
 
       expect { lapse_the_owner }
-        .to have_enqueued_job(Families::LapseNotificationJob).with(member.id, family.id)
+        .to have_enqueued_job(Families::LapseNotificationJob).with(member.id, family.id).at_least(:once)
     end
   end
 

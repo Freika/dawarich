@@ -8,12 +8,24 @@ class Families::LapseNotificationJob < ApplicationJob
     family = Family.find_by(id: family_id)
 
     return unless user && family
+    return unless claim(user)
 
-    user.with_lock do
-      next if Families::LapseNotice.notified?(user)
-
+    begin
       FamilyMailer.plan_lapsed(user, family).deliver_now
+    rescue StandardError
+      Families::LapseNotice.clear(user)
+      raise
+    end
+  end
+
+  private
+
+  def claim(user)
+    user.with_lock do
+      next false if Families::LapseNotice.notified?(user)
+
       Families::LapseNotice.mark(user)
+      true
     end
   end
 end

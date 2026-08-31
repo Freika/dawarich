@@ -48,6 +48,21 @@ RSpec.describe 'Family getting started panel', type: :request do
     end
   end
 
+  describe 'the standing invite form' do
+    let(:member) { create(:user) }
+    let!(:member_membership) { create(:family_membership, user: member, family: family) }
+
+    before { sign_in owner }
+
+    it 'keeps warning the owner that members lose access with the plan' do
+      get family_path
+
+      expect(response.body).to include(
+        I18n.t('families.getting_started.members_lose_access_when_your_plan_ends')
+      )
+    end
+  end
+
   describe 'once the family has another member' do
     let(:member) { create(:user) }
     let!(:member_membership) { create(:family_membership, user: member, family: family) }

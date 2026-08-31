@@ -92,6 +92,27 @@ RSpec.describe Families::AutoCreate do
     end
   end
 
+  describe 'when a step after creation fails' do
+    before do
+      allow(Families::SyncMembers).to receive(:new).and_raise(ActiveRecord::StatementInvalid, 'boom')
+    end
+
+    it 'leaves no half-built family behind' do
+      expect { suppress(ActiveRecord::StatementInvalid) { service.call } }.not_to change(Family, :count)
+    end
+
+    it 'lets a later retry create it cleanly' do
+      begin
+        service.call
+      rescue ActiveRecord::StatementInvalid
+        nil
+      end
+      allow(Families::SyncMembers).to receive(:new).and_call_original
+
+      expect { described_class.new(user: user.reload).call }.to change(Family, :count).by(1)
+    end
+  end
+
   describe 'when a family should not be created' do
     it 'skips a user who already owns a family' do
       family = create(:family, creator: user)
