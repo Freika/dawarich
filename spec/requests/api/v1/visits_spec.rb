@@ -512,7 +512,9 @@ RSpec.describe 'Api::V1::Visits', type: :request do
           post '/api/v1/visits/batch', params: params, headers: auth_headers, as: :json
         end.not_to(change { user.visits.count })
 
-        expect(JSON.parse(response.body)['created_count']).to eq(2)
+        json_response = JSON.parse(response.body)
+        expect(json_response['created_count']).to eq(0)
+        expect(json_response['duplicate_count']).to eq(2)
       end
     end
 
@@ -563,6 +565,62 @@ RSpec.describe 'Api::V1::Visits', type: :request do
         json_response = JSON.parse(response.body)
         expect(json_response['limit']).to eq(Api::V1::VisitsController::BATCH_MAX)
         expect(json_response['requested']).to eq(Api::V1::VisitsController::BATCH_MAX + 1)
+      end
+    end
+
+    context 'when visits is not an array' do
+      it 'rejects an object whose keys are permitted attributes' do
+        post '/api/v1/visits/batch', params: { visits: { name: 'Home' } }, headers: auth_headers, as: :json
+
+        expect(response).to have_http_status(:unprocessable_content)
+      end
+
+      it 'rejects a string' do
+        post '/api/v1/visits/batch', params: { visits: 'Home' }, headers: auth_headers, as: :json
+
+        expect(response).to have_http_status(:unprocessable_content)
+      end
+    end
+
+    context 'when the batch contains a non-object element' do
+      let(:params) { { visits: [visit_payload(0, name: 'Home'), 'junk', visit_payload(6, name: 'Office')] } }
+
+      it 'keeps every submitted position addressable by index' do
+        post '/api/v1/visits/batch', params: params, headers: auth_headers, as: :json
+
+        json_response = JSON.parse(response.body)
+        expect(json_response['results'].pluck('index')).to eq([0, 1, 2])
+        expect(json_response['results'].pluck('status')).to eq(%w[created failed created])
+      end
+
+      it 'still creates the well-formed visits' do
+        expect do
+          post '/api/v1/visits/batch', params: params, headers: auth_headers, as: :json
+        end.to change { user.visits.count }.by(2)
+      end
+    end
+
+    context 'when a batch is replayed' do
+      let(:params) { { visits: [visit_payload(0, name: 'Home')] } }
+
+      it 'reports the second run as a duplicate rather than created' do
+        post '/api/v1/visits/batch', params: params, headers: auth_headers, as: :json
+        post '/api/v1/visits/batch', params: params, headers: auth_headers, as: :json
+
+        json_response = JSON.parse(response.body)
+        expect(json_response['results'].pluck('status')).to eq(%w[duplicate])
+        expect(json_response['created_count']).to eq(0)
+        expect(json_response['duplicate_count']).to eq(1)
+      end
+
+      it 'reports two identical entries in one batch as one created and one duplicate' do
+        post '/api/v1/visits/batch',
+             params: { visits: [visit_payload(0, name: 'Home'), visit_payload(0, name: 'Home')] },
+             headers: auth_headers, as: :json
+
+        json_response = JSON.parse(response.body)
+        expect(json_response['created_count']).to eq(1)
+        expect(json_response['duplicate_count']).to eq(1)
       end
     end
 

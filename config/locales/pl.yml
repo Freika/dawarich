@@ -2966,6 +2966,7 @@ pl:
           visit_not_found: Nie znaleziono wizyty
           failed_to_create_visit: Nie udało się utworzyć wizyty
           no_visits_provided: "Nie przekazano żadnych wizyt"
+          invalid_visit_payload: "Wpis wizyty musi być obiektem"
           too_many_visits_maximum_is_limit_per_batch: "Zbyt wiele wizyt, maksymalnie %{limit} na partię"
       record_not_found: Nie znaleziono rekordu
       complete_your_subscription_to_continue: Dokończ subskrypcję, aby kontynuować.

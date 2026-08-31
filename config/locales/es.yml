@@ -2922,6 +2922,7 @@ es:
           visit_not_found: No se encontró la visita
           failed_to_create_visit: No se pudo crear la visita
           no_visits_provided: "No se proporcionaron visitas"
+          invalid_visit_payload: "La entrada de visita debe ser un objeto"
           too_many_visits_maximum_is_limit_per_batch: "Demasiadas visitas, el máximo es %{limit} por lote"
       record_not_found: Registro no encontrado
       complete_your_subscription_to_continue: Completa tu suscripción para continuar.

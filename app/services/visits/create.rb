@@ -9,17 +9,25 @@ module Visits
       @params = params.respond_to?(:with_indifferent_access) ? params.with_indifferent_access : params
       @visit = nil
       @errors = nil
+      @duplicate = false
+      @created_place = nil
     end
 
     def call
-      ActiveRecord::Base.transaction do
+      return false unless timestamps_usable?
+
+      result = ActiveRecord::Base.transaction do
         place = find_or_create_place
         return false unless place
 
-        visit = create_visit(place)
-        visit
+        create_visit(place)
       end
+
+      enqueue_name_fetching
+
+      result
     rescue ActiveRecord::RecordNotUnique
+      @duplicate = true
       @visit = existing_visit
       # Re-creating a visit over its own tombstone (or an old decline) is an
       # explicit undo: revive the row instead of returning it still hidden.
@@ -40,7 +48,45 @@ module Visits
       false
     end
 
+    def duplicate?
+      @duplicate
+    end
+
     private
+
+    def timestamps_usable?
+      if started_at.nil? || ended_at.nil?
+        @errors = 'Failed to create visit: invalid timestamps'
+        return false
+      end
+
+      if ended_at < started_at
+        @errors = 'Failed to create visit: ended_at is before started_at'
+        return false
+      end
+
+      true
+    end
+
+    def started_at
+      return @started_at if defined?(@started_at)
+
+      @started_at = parse_time(params[:started_at])
+    end
+
+    def ended_at
+      return @ended_at if defined?(@ended_at)
+
+      @ended_at = parse_time(params[:ended_at])
+    end
+
+    def parse_time(value)
+      return nil if value.blank?
+
+      Time.zone.parse(value.to_s)
+    rescue ArgumentError
+      nil
+    end
 
     def find_or_create_place
       existing_place = find_existing_place
@@ -54,7 +100,7 @@ module Visits
       place = find_existing_place
       return nil unless place
 
-      user.visits.find_by(place_id: place.id, started_at: Time.zone.parse(params[:started_at]))
+      user.visits.find_by(place_id: place.id, started_at: started_at)
     end
 
     def find_existing_place
@@ -73,7 +119,7 @@ module Visits
       lat_f = params[:latitude].to_f
       lon_f = params[:longitude].to_f
 
-      Place.create!(
+      @created_place = Place.create!(
         user: user,
         name: place_name,
         latitude: lat_f,
@@ -88,13 +134,19 @@ module Visits
       nil
     end
 
+    def enqueue_name_fetching
+      return unless suggested?
+      return if @created_place.nil?
+      return unless Geocoding::Config.for(user).enabled?
+
+      Places::NameFetchingJob.perform_later(@created_place.id)
+    end
+
     def suggested?
       params[:status].to_s == 'suggested'
     end
 
     def create_visit(place)
-      started_at = Time.zone.parse(params[:started_at])
-      ended_at = Time.zone.parse(params[:ended_at])
       duration_minutes = ((ended_at - started_at) / 60).to_i
 
       @visit = user.visits.create!(

@@ -6207,12 +6207,15 @@ paths:
                           type: string
                           enum:
                           - created
+                          - duplicate
                           - failed
                         visit:
                           type: object
                         error:
                           type: string
                   created_count:
+                    type: integer
+                  duplicate_count:
                     type: integer
                   failed_count:
                     type: integer

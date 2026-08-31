@@ -2,6 +2,7 @@
 
 class Api::V1::VisitsController < ApiController
   BATCH_MAX = 100
+  BATCH_VISIT_ATTRIBUTES = %i[name status latitude longitude started_at ended_at].freeze
 
   def index
     visits = Visits::Finder.new(current_api_user, params).call
@@ -96,9 +97,9 @@ class Api::V1::VisitsController < ApiController
   end
 
   def batch
-    submitted = batch_params[:visits]
+    submitted = params[:visits]
 
-    if submitted.blank?
+    unless submitted.is_a?(Array) && submitted.any?
       return render json: { error: I18n.t('controllers.api.v1.visits.no_visits_provided') },
                     status: :unprocessable_content
     end
@@ -116,6 +117,7 @@ class Api::V1::VisitsController < ApiController
     render json: {
       results: results,
       created_count: results.count { |result| result[:status] == 'created' },
+      duplicate_count: results.count { |result| result[:status] == 'duplicate' },
       failed_count: results.count { |result| result[:status] == 'failed' }
     }
   end
@@ -162,17 +164,17 @@ class Api::V1::VisitsController < ApiController
     params.require(:visit).permit(:name, :place_id, :area_id, :status, :latitude, :longitude, :started_at, :ended_at)
   end
 
-  def batch_params
-    params.permit(
-      visits: %i[name place_id area_id status latitude longitude started_at ended_at]
-    )
-  end
-
   def create_batched_visit(attributes, index)
-    service = Visits::Create.new(current_api_user, attributes)
+    unless attributes.is_a?(ActionController::Parameters)
+      return { index: index, status: 'failed',
+               error: I18n.t('controllers.api.v1.visits.invalid_visit_payload') }
+    end
+
+    service = Visits::Create.new(current_api_user, attributes.permit(*BATCH_VISIT_ATTRIBUTES))
 
     if service.call
-      { index: index, status: 'created', visit: Api::VisitSerializer.new(service.visit).call }
+      { index: index, status: service.duplicate? ? 'duplicate' : 'created',
+        visit: Api::VisitSerializer.new(service.visit).call }
     else
       { index: index, status: 'failed',
         error: service.errors || I18n.t('controllers.api.v1.visits.failed_to_create_visit') }

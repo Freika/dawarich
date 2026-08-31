@@ -443,13 +443,14 @@ describe 'Visits API', type: :request do
                      type: :object,
                      properties: {
                        index: { type: :integer },
-                       status: { type: :string, enum: %w[created failed] },
+                       status: { type: :string, enum: %w[created duplicate failed] },
                        visit: { type: :object },
                        error: { type: :string }
                      }
                    }
                  },
                  created_count: { type: :integer },
+                 duplicate_count: { type: :integer },
                  failed_count: { type: :integer }
                }
 

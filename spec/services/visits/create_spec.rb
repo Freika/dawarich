@@ -214,6 +214,82 @@ RSpec.describe Visits::Create do
       end
     end
 
+    context 'geocoding a machine-named place' do
+      before { allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true) }
+
+      it 'enqueues Places::NameFetchingJob for a place created from a suggested visit' do
+        service = described_class.new(user, valid_params.merge(status: 'suggested'))
+
+        expect { service.call }.to have_enqueued_job(Places::NameFetchingJob).with(an_instance_of(Integer))
+      end
+
+      it 'does not enqueue for a confirmed visit, whose name the user asserted' do
+        service = described_class.new(user, valid_params)
+
+        expect { service.call }.not_to have_enqueued_job(Places::NameFetchingJob)
+      end
+
+      it 'does not enqueue when an existing place is reused' do
+        existing = create(:place, user: user, latitude: 52.52, longitude: 13.405, lonlat: 'POINT(13.405 52.52)')
+        create(:visit, user: user, place: existing)
+        service = described_class.new(user, valid_params.merge(status: 'suggested'))
+
+        expect { service.call }.not_to have_enqueued_job(Places::NameFetchingJob)
+      end
+
+      it 'does not enqueue when reverse geocoding is disabled' do
+        allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false)
+        service = described_class.new(user, valid_params.merge(status: 'suggested'))
+
+        expect { service.call }.not_to have_enqueued_job(Places::NameFetchingJob)
+      end
+    end
+
+    context 'when timestamps are unusable' do
+      it 'fails cleanly on an unparseable started_at instead of raising' do
+        service = described_class.new(user, valid_params.merge(started_at: 'not-a-timestamp'))
+
+        expect(service.call).to be(false)
+        expect(service.errors).to be_present
+      end
+
+      it 'fails cleanly on a missing ended_at' do
+        service = described_class.new(user, valid_params.merge(ended_at: nil))
+
+        expect(service.call).to be(false)
+      end
+
+      it 'does not report an exception for a malformed timestamp' do
+        expect(ExceptionReporter).not_to receive(:call)
+
+        described_class.new(user, valid_params.merge(started_at: 'garbage')).call
+      end
+
+      it 'does not create a visit when timestamps are unusable' do
+        expect do
+          described_class.new(user, valid_params.merge(started_at: 'garbage')).call
+        end.not_to(change { Visit.count })
+      end
+    end
+
+    context 'reporting whether the visit was newly created' do
+      it 'is not a duplicate on first creation' do
+        service = described_class.new(user, valid_params)
+        service.call
+
+        expect(service).not_to be_duplicate
+      end
+
+      it 'flags a replayed visit as a duplicate' do
+        described_class.new(user, valid_params).call
+
+        service = described_class.new(user, valid_params)
+        service.call
+
+        expect(service).to be_duplicate
+      end
+    end
+
     context 'when place creation fails' do
       subject(:service) { described_class.new(user, valid_params) }
 
