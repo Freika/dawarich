@@ -33,7 +33,7 @@ RSpec.describe 'Geocoder timeout with real loopback fake geocoder server' do
               name: 'Brandenburg Gate',
               city: 'Berlin',
               country: 'Germany',
-              osm_id: 99999
+              osm_id: 99_999
             }
           }
         ]
@@ -54,7 +54,7 @@ RSpec.describe 'Geocoder timeout with real loopback fake geocoder server' do
               name: 'Reverse Test Place',
               city: 'Berlin',
               country: 'Germany',
-              osm_id: 88888
+              osm_id: 88_888
             }
           }
         ]

@@ -38,7 +38,10 @@ RSpec.describe Places::NameFetcher do
     context 'when geocoding is successful' do
       it 'calls Geocoder with correct parameters' do
         expect(Geocoder).to receive(:search)
-          .with([place.lat, place.lon], hash_including(units: :km, limit: 1, distance_sort: true, timeout: REVERSE_GEOCODING_TIMEOUT))
+          .with(
+            [place.lat, place.lon],
+            hash_including(units: :km, limit: 1, distance_sort: true, timeout: REVERSE_GEOCODING_TIMEOUT)
+          )
           .and_return([geocoder_result])
 
         service.call

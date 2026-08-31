@@ -109,7 +109,9 @@ RSpec.describe Geocoding::Search do
         .to_return(status: 200, body: photon_body, headers: { 'Content-Type' => 'application/json' })
       described_class.with_config(config: config, query: [51.3402, 12.3712], timeout: 5, limit: 1)
 
-      result = described_class.with_config(config: config, query: [51.3402, 12.3712], timeout: 5, limit: 1, max_wait: 0.2)
+      result = described_class.with_config(
+        config: config, query: [51.3402, 12.3712], timeout: 5, limit: 1, max_wait: 0.2
+      )
 
       expect(result).to be_nil
     end
