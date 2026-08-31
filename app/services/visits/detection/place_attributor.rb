@@ -85,6 +85,7 @@ module Visits
         return nil unless Geocoding::Config.for(user).enabled?
 
         result = Geocoding::Search.call(user: user, query: [stay[:center_lat], stay[:center_lon]],
+                                        timeout: REVERSE_GEOCODING_TIMEOUT,
                                         limit: 1, distance_sort: true, units: :km).first
         data = result&.data
         return nil if data.blank?

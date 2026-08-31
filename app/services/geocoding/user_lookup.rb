@@ -2,17 +2,19 @@
 
 module Geocoding
   class UserLookup
-    def self.build(config)
+    def self.build(config, timeout: nil)
       lookup = Geocoder::Lookup.get(Providers.gem_handle(config.provider)).class.new
-      merged = merged_configuration(config)
+      merged = merged_configuration(config, timeout: timeout)
       lookup.define_singleton_method(:configuration) { merged }
       lookup.singleton_class.send(:private, :configuration)
       lookup
     end
 
-    def self.merged_configuration(config)
+    def self.merged_configuration(config, timeout: nil)
       base = Geocoder.config_for_lookup(Providers.gem_handle(config.provider))
-      base.merge(configuration_overrides(config, base))
+      overrides = configuration_overrides(config, base)
+      overrides[:timeout] = timeout if timeout.present?
+      base.merge(overrides)
     end
 
     def self.configuration_overrides(config, base)

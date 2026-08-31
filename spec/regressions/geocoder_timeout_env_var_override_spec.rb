@@ -29,7 +29,12 @@ RSpec.describe 'Geocoder timeout with real loopback fake geocoder server' do
           {
             type: 'Feature',
             geometry: { type: 'Point', coordinates: [13.4012, 52.5126] },
-            properties: { name: 'Test Place', osm_id: 99999 }
+            properties: {
+              name: 'Brandenburg Gate',
+              city: 'Berlin',
+              country: 'Germany',
+              osm_id: 99999
+            }
           }
         ]
       }.to_json
@@ -45,7 +50,12 @@ RSpec.describe 'Geocoder timeout with real loopback fake geocoder server' do
           {
             type: 'Feature',
             geometry: { type: 'Point', coordinates: [13.4012, 52.5126] },
-            properties: { name: 'Reverse Test Place', osm_id: 88888 }
+            properties: {
+              name: 'Reverse Test Place',
+              city: 'Berlin',
+              country: 'Germany',
+              osm_id: 88888
+            }
           }
         ]
       }.to_json
@@ -74,7 +84,7 @@ RSpec.describe 'Geocoder timeout with real loopback fake geocoder server' do
     allow(Rails.logger).to receive(:warn)
   end
 
-  describe 'Real HTTP socket timeout vs successful response against fake geocoder' do
+  describe 'Real HTTP socket timeout vs successful response' do
     it 'times out with Geocoder::LookupTimeout when fake server latency exceeds the configured timeout' do
       with_fake_geocoder(response_delay: 0.4) do |port|
         Geocoder.configure(
@@ -86,7 +96,7 @@ RSpec.describe 'Geocoder timeout with real loopback fake geocoder server' do
         )
 
         expect do
-          Geocoder.search('Berlin')
+          Geocoder.search('Berlin', timeout: 0.1)
         end.to raise_error(Geocoder::LookupTimeout)
       end
     end
@@ -101,21 +111,28 @@ RSpec.describe 'Geocoder timeout with real loopback fake geocoder server' do
           cache: nil
         )
 
-        results = Geocoder.search('Berlin')
+        results = Geocoder.search('Berlin', timeout: 2.0)
 
         expect(results).not_to be_empty
-        expect(results.first.data.dig('properties', 'name')).to eq('Test Place')
+        expect(results.first.data.dig('properties', 'name')).to eq('Brandenburg Gate')
       end
     end
 
-    it 'gracefully catches real HTTP socket timeout in Places::Search without raising uncaught errors' do
+    it 'strictly raises ArgumentError when timeout keyword argument is omitted' do
+      expect do
+        Geocoding::Search.call(user: user, query: [lat, lon])
+      end.to raise_error(ArgumentError, /missing keyword: :?timeout/)
+    end
+  end
+
+  describe 'Multi-callsite timeout behavior across Dawarich' do
+    it 'gracefully catches socket timeout in Places::Search (forward search)' do
+      stub_const('FORWARD_GEOCODING_TIMEOUT', 0.1)
+
       with_fake_geocoder(response_delay: 0.4) do |port|
         Geocoder.configure(
-          lookup: :photon,
-          photon: { host: "127.0.0.1:#{port}" },
-          use_https: false,
-          timeout: 0.1,
-          cache: nil
+          lookup: :photon, photon: { host: "127.0.0.1:#{port}" },
+          use_https: false, timeout: 0.1, cache: nil
         )
 
         results = Places::Search.new(user: user, query: 'Test Place', latitude: lat, longitude: lon, radius: 5.0).call
@@ -125,20 +142,68 @@ RSpec.describe 'Geocoder timeout with real loopback fake geocoder server' do
       end
     end
 
-    it 'gracefully catches real HTTP socket timeout in Places::NearbySearch without raising uncaught errors' do
+    it 'gracefully catches socket timeout in LocationSearch::GeocodingService (forward search)' do
+      stub_const('FORWARD_GEOCODING_TIMEOUT', 0.1)
+
       with_fake_geocoder(response_delay: 0.4) do |port|
         Geocoder.configure(
-          lookup: :photon,
-          photon: { host: "127.0.0.1:#{port}" },
-          use_https: false,
-          timeout: 0.1,
-          cache: nil
+          lookup: :photon, photon: { host: "127.0.0.1:#{port}" },
+          use_https: false, timeout: 0.1, cache: nil
         )
 
-        results = Places::NearbySearch.new(user: user, latitude: lat, longitude: lon).call
+        results = LocationSearch::GeocodingService.new('Berlin', user: user).search
 
         expect(results).to eq([])
         expect(ExceptionReporter).not_to have_received(:call)
+      end
+    end
+
+    it 'gracefully catches socket timeout in Places::NearbySearch (reverse geocoding)' do
+      stub_const('REVERSE_GEOCODING_TIMEOUT', 0.1)
+
+      with_fake_geocoder(response_delay: 0.4) do |port|
+        Geocoder.configure(
+          lookup: :photon, photon: { host: "127.0.0.1:#{port}" },
+          use_https: false, timeout: 0.1, cache: nil
+        )
+
+        results = Places::NearbySearch.new(user: user, latitude: lat, longitude: lon, cache: false).call
+
+        expect(results).to eq([])
+        expect(ExceptionReporter).not_to have_received(:call)
+      end
+    end
+
+    it 'gracefully catches socket timeout in Places::NameFetcher (reverse geocoding)' do
+      stub_const('REVERSE_GEOCODING_TIMEOUT', 0.1)
+      place = create(:place, user: user, latitude: lat, longitude: lon, name: 'Default Name')
+
+      with_fake_geocoder(response_delay: 0.4) do |port|
+        Geocoder.configure(
+          lookup: :photon, photon: { host: "127.0.0.1:#{port}" },
+          use_https: false, timeout: 0.1, cache: nil
+        )
+
+        result = Places::NameFetcher.new(place).call
+
+        expect(result).to be_nil
+        expect(ExceptionReporter).not_to have_received(:call)
+      end
+    end
+
+    it 'gracefully catches socket timeout in ReverseGeocoding::Points::FetchData (reverse geocoding)' do
+      stub_const('REVERSE_GEOCODING_TIMEOUT', 0.1)
+      point = create(:point, user: user, latitude: lat, longitude: lon)
+
+      with_fake_geocoder(response_delay: 0.4) do |port|
+        Geocoder.configure(
+          lookup: :photon, photon: { host: "127.0.0.1:#{port}" },
+          use_https: false, timeout: 0.1, cache: nil
+        )
+
+        expect do
+          ReverseGeocoding::Points::FetchData.new(point.id).call
+        end.not_to raise_error
       end
     end
   end

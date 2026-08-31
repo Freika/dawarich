@@ -2,7 +2,6 @@
 
 settings = {
   debug_mode: true,
-  timeout: GEOCODER_TIMEOUT,
   units: :km,
   cache: Redis.new(url: ENV['REDIS_URL'], db: ENV.fetch('RAILS_CACHE_DB', 0)),
   always_raise: :all,

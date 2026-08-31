@@ -147,6 +147,7 @@ class Settings::GeocodingController < ApplicationController
     return [:error, t('settings.geocoding.test.not_configured')] unless config.enabled?
 
     result_set = Geocoding::Search.with_config(config: config, query: TEST_COORDINATES, limit: 1,
+                                               timeout: FORWARD_GEOCODING_TIMEOUT,
                                                max_wait: TEST_MAX_WAIT)
     return [:error, t('settings.geocoding.test.rate_limited')] if result_set.nil?
 
