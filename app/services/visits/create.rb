@@ -183,7 +183,7 @@ module Visits
 
       Places::NameFetchingJob.perform_later(@created_place.id)
     rescue StandardError => e
-      report_exception(e, "Failed to enqueue place name fetching: #{e.message}")
+      ExceptionReporter.call(e, "Failed to enqueue place name fetching: #{e.message}")
     end
 
     def suggested?

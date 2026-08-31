@@ -301,6 +301,15 @@ RSpec.describe Visits::Create do
         described_class.new(user, valid_params.merge(name: ''), report_exceptions: false).call
       end
 
+      it 'still reports a queue outage, which is infrastructure and not bad input' do
+        allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
+        allow(Places::NameFetchingJob).to receive(:perform_later).and_raise(RedisClient::ConnectionError)
+
+        expect(ExceptionReporter).to receive(:call).at_least(:once)
+
+        described_class.new(user, valid_params.merge(status: 'suggested'), report_exceptions: false).call
+      end
+
       it 'still reports by default' do
         expect(ExceptionReporter).to receive(:call).at_least(:once)
 
