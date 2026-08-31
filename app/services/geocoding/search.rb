@@ -44,6 +44,8 @@ module Geocoding
       )
       return [] if geocoder_query.blank?
 
+      # Deliberately after the early returns: a lookup that will not happen
+      # must not take a slot other callers are waiting for.
       RateLimiter.throttle(config, max_wait: max_wait) do
         UserLookup.build(config, timeout: timeout).search(geocoder_query)
       end
