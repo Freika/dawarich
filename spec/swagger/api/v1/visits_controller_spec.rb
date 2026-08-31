@@ -390,4 +390,85 @@ describe 'Visits API', type: :request do
       end
     end
   end
+  path '/api/v1/visits/batch' do
+    post 'Create visits in batch' do
+      tags 'Visits'
+      consumes 'application/json'
+      produces 'application/json'
+      parameter name: :Authorization, in: :header, type: :string, required: true, description: 'Bearer token'
+      parameter name: :batch, in: :body, schema: {
+        type: :object,
+        properties: {
+          visits: {
+            type: :array,
+            maxItems: Api::V1::VisitsController::BATCH_MAX,
+            items: {
+              type: :object,
+              properties: {
+                name: { type: :string },
+                latitude: { type: :number },
+                longitude: { type: :number },
+                started_at: { type: :string, format: 'date-time' },
+                ended_at: { type: :string, format: 'date-time' },
+                status: { type: :string, enum: %w[suggested confirmed declined] }
+              },
+              required: %w[name latitude longitude started_at ended_at]
+            }
+          }
+        },
+        required: %w[visits]
+      }
+
+      response '200', 'batch processed' do
+        let(:batch) do
+          {
+            visits: [
+              {
+                name: 'Home',
+                latitude: 52.52,
+                longitude: 13.405,
+                started_at: '2023-12-01T10:00:00Z',
+                ended_at: '2023-12-01T12:00:00Z',
+                status: 'suggested'
+              }
+            ]
+          }
+        end
+
+        schema type: :object,
+               properties: {
+                 results: {
+                   type: :array,
+                   items: {
+                     type: :object,
+                     properties: {
+                       index: { type: :integer },
+                       status: { type: :string, enum: %w[created duplicate failed] },
+                       visit: { type: :object },
+                       error: { type: :string }
+                     }
+                   }
+                 },
+                 created_count: { type: :integer },
+                 duplicate_count: { type: :integer },
+                 failed_count: { type: :integer }
+               }
+
+        run_test!
+      end
+
+      response '422', 'invalid request' do
+        let(:batch) { { visits: [] } }
+
+        run_test!
+      end
+
+      response '401', 'unauthorized' do
+        let(:Authorization) { 'Bearer invalid-token' }
+        let(:batch) { { visits: [] } }
+
+        run_test!
+      end
+    end
+  end
 end

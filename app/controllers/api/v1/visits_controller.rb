@@ -1,6 +1,9 @@
 # frozen_string_literal: true
 
 class Api::V1::VisitsController < ApiController
+  BATCH_MAX = 100
+  BATCH_VISIT_ATTRIBUTES = %i[name status latitude longitude started_at ended_at].freeze
+
   def index
     visits = Visits::Finder.new(current_api_user, params).call
 
@@ -93,6 +96,34 @@ class Api::V1::VisitsController < ApiController
     end
   end
 
+  def batch
+    submitted = params[:visits]
+
+    unless submitted.is_a?(Array) && submitted.any?
+      return render json: { error: I18n.t('controllers.api.v1.visits.no_visits_provided') },
+                    status: :unprocessable_content
+    end
+
+    if submitted.size > BATCH_MAX
+      return render json: {
+        error: I18n.t('controllers.api.v1.visits.too_many_visits_maximum_is_limit_per_batch', limit: BATCH_MAX),
+        limit: BATCH_MAX,
+        requested: submitted.size
+      }, status: :unprocessable_content
+    end
+
+    results = submitted.each_with_index.map { |attributes, index| create_batched_visit(attributes, index) }
+    failed_count = results.count { |result| result[:status] == 'failed' }
+    report_batch_failures(failed_count, submitted.size)
+
+    render json: {
+      results: results,
+      created_count: results.count { |result| result[:status] == 'created' },
+      duplicate_count: results.count { |result| result[:status] == 'duplicate' },
+      failed_count: failed_count
+    }
+  end
+
   def bulk_update
     service = Visits::BulkUpdate.new(
       current_api_user,
@@ -133,6 +164,32 @@ class Api::V1::VisitsController < ApiController
 
   def visit_params
     params.require(:visit).permit(:name, :place_id, :area_id, :status, :latitude, :longitude, :started_at, :ended_at)
+  end
+
+  def report_batch_failures(failed_count, submitted_count)
+    return unless failed_count.positive?
+
+    Rails.logger.warn("Visits batch rejected #{failed_count} of #{submitted_count} entries")
+    ExceptionReporter.call('Batch visit creation rejected entries', 'Visits batch had rejected entries')
+  end
+
+  def create_batched_visit(attributes, index)
+    unless attributes.is_a?(ActionController::Parameters)
+      return { index: index, status: 'failed',
+               error: I18n.t('controllers.api.v1.visits.invalid_visit_payload') }
+    end
+
+    service = Visits::Create.new(current_api_user, attributes.permit(*BATCH_VISIT_ATTRIBUTES),
+                                 report_exceptions: false)
+
+    if service.call
+      result = { index: index, status: service.duplicate? ? 'duplicate' : 'created' }
+      result[:visit] = Api::VisitSerializer.new(service.visit).call unless service.visit.soft_deleted?
+      result
+    else
+      { index: index, status: 'failed',
+        error: service.errors || I18n.t('controllers.api.v1.visits.failed_to_create_visit') }
+    end
   end
 
   def merge_params

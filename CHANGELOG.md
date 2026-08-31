@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.14.2]
+
+### Added
+
+- The API now accepts visits in batches: `POST /api/v1/visits/batch` takes up to 100 visits in one request and reports each one's outcome separately, so a single rejected visit no longer costs the whole sync. The mobile apps previously had to send one request per detected visit.
+
+### Fixed
+
+- Places created from a suggested visit now get their real address. Visits detected on a phone arrive with a generated name such as "Visited place"; that name is no longer locked, reverse geocoding is queued for the new place, and the resolved address now replaces the generated name on the visit as well as the place.
+
 ## [1.14.1] - 2026-08-31, Berlin
 
 ### Changed

@@ -18,6 +18,7 @@ module Places
       name = ::Visits::Names::Builder.build_from_properties(properties)
 
       ActiveRecord::Base.transaction do
+        previous_name = place.name
         place.machine_named = true
         place.name = name if name.present? && !place.name_locked?
         place.city = properties['city'] if properties['city'].present?
@@ -26,7 +27,10 @@ module Places
         place.save!
 
         propagated_name = place.name
-        place.visits.where(name: Place::DEFAULT_NAME).update_all(name: propagated_name) if propagated_name.present?
+        if propagated_name.present?
+          stale_names = [Place::DEFAULT_NAME, previous_name].uniq - [propagated_name]
+          place.visits.where(name: stale_names).update_all(name: propagated_name) if stale_names.any?
+        end
 
         place
       end
