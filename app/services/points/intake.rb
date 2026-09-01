@@ -10,7 +10,7 @@ module Points
 
     def initialize(user_id, payloads)
       @user_id = user_id
-      @payloads = Array.wrap(payloads)
+      @payloads = payloads
     end
 
     def call

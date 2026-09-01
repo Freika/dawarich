@@ -22,10 +22,14 @@ RSpec.describe Points::Intake do
       expect(intake.first).to include('id', 'timestamp', 'longitude', 'latitude')
     end
 
-    it 'stamps user_id onto payloads that arrive without one' do
-      intake
+    it 'writes under the caller, not the user_id a payload carries' do
+      other_user = create(:user)
+      foreign = payloads.map { |payload| payload.merge(user_id: other_user.id) }
 
-      expect(Point.where(user_id: user.id).count).to eq(2)
+      described_class.call(user_id: user.id, payloads: foreign)
+
+      expect(Point.where(user: other_user)).to be_empty
+      expect(Point.where(user:).count).to eq(2)
     end
 
     it 'stamps the dimension FK as it writes' do
@@ -144,12 +148,17 @@ RSpec.describe Points::Intake do
       expect(debouncer).to have_received(:trigger)
     end
 
-    it 'broadcasts the arrival' do
+    it 'broadcasts the upserted rows with the payloads they came from' do
       broadcaster = instance_double(Points::LiveBroadcaster, call: nil)
       allow(Points::LiveBroadcaster).to receive(:new).and_return(broadcaster)
 
-      intake
+      rows = intake
 
+      expect(Points::LiveBroadcaster).to have_received(:new).with(
+        user.id,
+        rows,
+        [hash_including(timestamp: 1_760_000_000), hash_including(timestamp: 1_760_000_060)]
+      )
       expect(broadcaster).to have_received(:call)
     end
 
@@ -166,6 +175,18 @@ RSpec.describe Points::Intake do
         intake
 
         expect(Tracks::RealtimeDebouncer).not_to have_received(:new)
+      end
+    end
+
+    context 'when the upsert returns no rows' do
+      before { allow(Point).to receive(:archival_safe_upsert_all).and_return([]) }
+
+      it 'returns an empty array' do
+        expect(intake).to eq([])
+      end
+
+      it 'enqueues no anomaly filter' do
+        expect { intake }.not_to have_enqueued_job(Points::AnomalyFilterJob)
       end
     end
   end
