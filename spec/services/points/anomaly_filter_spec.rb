@@ -3,7 +3,6 @@
 require 'rails_helper'
 
 RSpec.describe Points::AnomalyFilter do
-
   def tracker(name)
     @trackers ||= {}
     @trackers[name] ||= PointSource.find_or_create_by!(

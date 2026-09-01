@@ -128,8 +128,8 @@ RSpec.describe 'Flyovers excluded from visited-country statistics' do
     it 'still attributes them to their country (does not exclude as flyover)' do
       stat = user.stats.find_by(year: legacy_year, month: legacy_month)
       countries = stat.toponyms.select { |t| t['cities'].is_a?(Array) && t['cities'].any? }
-                      .map { |t| t['country'] }
-                      .compact
+                               .map { |t| t['country'] }
+                               .compact
       expect(countries).to include('France')
     end
   end

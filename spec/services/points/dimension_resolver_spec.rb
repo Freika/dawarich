@@ -79,7 +79,6 @@ RSpec.describe Points::DimensionResolver do
       expect(row[:battery]).to eq(80)
       expect(row[:velocity]).to eq(12.5)
     end
-
   end
 
   describe 'reuse' do

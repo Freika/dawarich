@@ -339,7 +339,6 @@ RSpec.describe Users::ExportData::Points, type: :service do
         end
       end
 
-
       it 'logs progress for monthly mode' do
         create_list(:point, 3, user: user)
 
