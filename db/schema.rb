@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_31_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_01_100000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -410,6 +410,34 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_31_120000) do
     t.index ["user_id", "year", "month", "chunk_number"], name: "index_raw_data_archives_uniqueness", unique: true
     t.index ["user_id", "year", "month"], name: "index_points_raw_data_archives_on_user_id_and_year_and_month"
     t.index ["user_id"], name: "index_points_raw_data_archives_on_user_id"
+  end
+
+  create_table "points_v2", id: :bigint, default: -> { "nextval('points_id_seq'::regclass)" }, force: :cascade do |t|
+    t.integer "accuracy"
+    t.float "altitude", limit: 24
+    t.boolean "anomaly"
+    t.integer "battery", limit: 2
+    t.string "city"
+    t.integer "country_id"
+    t.float "course", limit: 24
+    t.float "course_accuracy", limit: 24
+    t.datetime "created_at", null: false
+    t.jsonb "geodata", default: {}, null: false
+    t.bigint "import_id"
+    t.geography "lonlat", limit: {srid: 4326, type: "st_point", geographic: true}
+    t.jsonb "motion_data", default: {}, null: false
+    t.jsonb "raw_data", default: {}
+    t.bigint "raw_data_archive_id"
+    t.boolean "raw_data_archived", default: false, null: false
+    t.datetime "reverse_geocoded_at"
+    t.integer "source_id"
+    t.bigint "timestamp", null: false
+    t.bigint "track_id"
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.float "velocity", limit: 24
+    t.integer "vertical_accuracy"
+    t.bigint "visit_id"
   end
 
   create_table "posters", force: :cascade do |t|
