@@ -14,14 +14,14 @@ class PointSerializer
     point.attributes.except(*EXCLUDED_ATTRIBUTES).tap do |attributes|
       attributes['latitude'] = point.lat.to_s
       attributes['longitude'] = point.lon.to_s
-      # Read through the model's override so we surface the precise
-      # decimal value when `altitude_decimal` is populated, not the
-      # truncated integer column.
       attributes['altitude'] = point.altitude
-      # The device/importer combo reads through point_sources on stamped
-      # rows: `attributes` alone would emit the raw legacy columns, which
-      # the table rewrite drops. Re-assigning existing keys keeps the
-      # payload's key order, so the output stays byte-identical.
+      # The scratch map reads properties.country_name; the key is computed
+      # through the countries table since the column was dropped.
+      attributes['country_name'] = point.country_name
+      # velocity stayed a string on the wire when the column went numeric.
+      attributes['velocity'] = point.velocity&.to_s
+      # The device/importer combo lives on point_sources; `attributes` alone
+      # no longer carries these keys at all.
       PointDimensionReads::DIMENSION_ATTRIBUTES.each do |attribute|
         attributes[attribute] = point.public_send(attribute)
       end

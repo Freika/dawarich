@@ -13,6 +13,10 @@ RSpec.describe Api::PointSerializer do
         attributes['latitude'] = point.lat.to_s
         attributes['longitude'] = point.lon.to_s
         attributes['country_name'] = point.country_name
+        attributes['velocity'] = point.velocity&.to_s
+        PointDimensionReads::DIMENSION_ATTRIBUTES.each do |attribute|
+          attributes[attribute] = point.public_send(attribute)
+        end
       end
     end
 
@@ -20,7 +24,7 @@ RSpec.describe Api::PointSerializer do
       before do
         source = PointSource.create!(digest: 'a' * 32, tracker_id: 'dimension-device',
                                      connection: 'wifi')
-        point.update_columns(source_id: source.id, tracker_id: 'legacy-device', connection: 0)
+        point.update_columns(source_id: source.id)
         point.reload
       end
 
