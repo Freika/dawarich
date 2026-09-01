@@ -3,16 +3,20 @@
 module EnhancedImport
   module Writers
     class PlaceWriter
-      def initialize(user, import)
+      def initialize(user, import, source: :photon)
         @user = user
         @import = import
+        @source = source
       end
 
       NEARBY_METERS = 75
 
       def upsert(extracted)
         existing = find_by_external_id(extracted) || find_nearby(extracted)
-        return [existing, false] if existing
+        if existing
+          attach_tag(existing, extracted)
+          return [existing, false]
+        end
 
         place = Place.create!(
           user_id: @user.id,
@@ -21,9 +25,10 @@ module EnhancedImport
           latitude: extracted.latitude,
           longitude: extracted.longitude,
           lonlat: "POINT(#{extracted.longitude} #{extracted.latitude})",
-          source: :photon,
+          source: @source,
           geodata: build_geodata(extracted)
         )
+        attach_tag(place, extracted)
         [place, true]
       rescue ActiveRecord::RecordNotUnique
         existing = Place.where(user_id: @user.id)
@@ -33,6 +38,28 @@ module EnhancedImport
       end
 
       private
+
+      def attach_tag(place, extracted)
+        return if extracted.tag_name.blank?
+
+        tag = existing_tag(extracted.tag_name)
+        return if tag&.privacy_zone?
+
+        tag ||= create_tag(extracted)
+        return if tag.nil?
+
+        place.add_tag(tag)
+      end
+
+      def existing_tag(name)
+        @user.tags.where('LOWER(tags.name) = ?', name.downcase).first
+      end
+
+      def create_tag(extracted)
+        @user.tags.create!(name: extracted.tag_name, color: extracted.tag_color)
+      rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique
+        existing_tag(extracted.tag_name)
+      end
 
       def find_by_external_id(extracted)
         Place.where(user_id: @user.id)

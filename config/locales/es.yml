@@ -2587,6 +2587,7 @@ es:
       source:
         manual: Manual
         photon: Photon
+        gpx_waypoint: 'Waypoint GPX'
     shared_link:
       resource_type:
         trip: Viaje

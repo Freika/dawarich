@@ -58,9 +58,9 @@ RSpec.describe EnhancedImport::ExtractJob do
     end
 
     it 'returns silently for an unsupported source' do
-      gpx_import = create(:import, user: user, source: :gpx)
-      expect { described_class.new.perform(gpx_import.id) }.not_to raise_error
-      expect(gpx_import.reload.additional_data_extraction_status).not_to eq('running')
+      kml_import = create(:import, user: user, source: :kml)
+      expect { described_class.new.perform(kml_import.id) }.not_to raise_error
+      expect(kml_import.reload.additional_data_extraction_status).not_to eq('running')
     end
 
     it 'returns silently when the import has been deleted' do

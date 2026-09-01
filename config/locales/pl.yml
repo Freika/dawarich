@@ -2643,6 +2643,7 @@ pl:
       source:
         manual: Ręcznie
         photon: Photon
+        gpx_waypoint: 'Punkt trasy GPX'
     shared_link:
       resource_type:
         trip: Podróż

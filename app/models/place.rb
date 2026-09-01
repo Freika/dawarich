@@ -26,16 +26,17 @@ class Place < ApplicationRecord
   validates :name, presence: true, length: { maximum: 255 }
   validates :lonlat, presence: true
 
-  enum :source, { manual: 0, photon: 1 }
+  enum :source, { manual: 0, photon: 1, gpx_waypoint: 2 }
 
   scope :for_user, ->(user) { where(user: user) }
   scope :ordered, -> { order(:name) }
   scope :linked_to_confirmed_visits, lambda { |user|
     where(id: user.visits.active.confirmed.where.not(place_id: nil).select(:place_id))
   }
+  scope :imported, -> { where(source: sources[:gpx_waypoint]) }
   scope :tagged, -> { where(id: Tagging.where(taggable_type: 'Place').select(:taggable_id)) }
   scope :map_visible, lambda { |user|
-    manual.or(linked_to_confirmed_visits(user)).or(tagged)
+    manual.or(imported).or(linked_to_confirmed_visits(user)).or(tagged)
   }
 
   # Legacy places predate the lonlat column and carry coordinates only in the

@@ -3601,6 +3601,7 @@ fr:
       source:
         manual: Manuel
         photon: Photon
+        gpx_waypoint: 'Point de repère GPX'
     shared_link:
       resource_type:
         trip: Voyage

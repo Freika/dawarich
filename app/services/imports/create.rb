@@ -125,6 +125,7 @@ class Imports::Create
   def notify_if_all_skipped(import)
     import.reload
     return unless import.points.count.zero?
+    return if awaiting_place_extraction?(import)
 
     if import.doubles.to_i.positive?
       I18n.with_locale(import.user.locale) do
@@ -146,6 +147,13 @@ class Imports::Create
         )
       end
     end
+  end
+
+  def awaiting_place_extraction?(import)
+    return false unless import.additional_data_extraction_supported?
+    return false unless import.raw_data&.dig('waypoints_seen').to_i.positive?
+
+    !import.additional_data_extraction_completed?
   end
 
   def zero_points_content(import)

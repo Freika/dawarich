@@ -2642,6 +2642,7 @@ de:
       source:
         manual: Manuell
         photon: Photon
+        gpx_waypoint: 'GPX-Wegpunkt'
     shared_link:
       resource_type:
         trip: Reise
