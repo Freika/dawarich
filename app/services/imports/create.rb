@@ -149,11 +149,24 @@ class Imports::Create
   end
 
   def zero_points_content(import)
-    waypoints = import.raw_data&.dig('waypoints_seen').to_i
+    trackless_gpx_content(import) || generic_zero_points_content(import)
+  end
 
-    if waypoints.positive?
-      I18n.t('services.imports.create.zero_points_waypoints_only', name: import.name, waypoints: waypoints)
-    elsif import.gpx? || import.kml? || import.geojson?
+  def trackless_gpx_content(import)
+    data = import.raw_data || {}
+    return if data['trackpoints_seen'].to_i.positive?
+
+    if data['waypoints_seen'].to_i.positive?
+      I18n.t('services.imports.create.zero_points_waypoints_only',
+             name: import.name, count: data['waypoints_seen'].to_i)
+    elsif data['route_points_seen'].to_i.positive?
+      I18n.t('services.imports.create.zero_points_route_only',
+             name: import.name, count: data['route_points_seen'].to_i)
+    end
+  end
+
+  def generic_zero_points_content(import)
+    if import.gpx? || import.kml? || import.geojson?
       I18n.t('services.imports.create.zero_points_with_timestamps', name: import.name)
     else
       I18n.t('services.imports.create.zero_points', name: import.name)

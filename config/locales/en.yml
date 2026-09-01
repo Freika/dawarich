@@ -3450,7 +3450,12 @@ en:
         import_completed_with_no_points: Import completed with no points
         import_failed: Import failed
         zero_points_with_timestamps: Your file %{name} imported 0 points. No location points with timestamps were found. GPX, KML and GeoJSON imports require a per-point time value (&lt;time&gt;, &lt;when&gt;, or a timestamp property).
-        zero_points_waypoints_only: 'Your file %{name} imported 0 points. It contains %{waypoints} waypoints (favourites or saved places) but no recorded track. Dawarich currently imports tracks only.'
+        zero_points_waypoints_only:
+          one: 'Your file %{name} imported 0 points. It contains %{count} waypoint (a favorite or saved place) but no recorded track. Dawarich currently imports tracks only.'
+          other: 'Your file %{name} imported 0 points. It contains %{count} waypoints (favorites or saved places) but no recorded track. Dawarich currently imports tracks only.'
+        zero_points_route_only:
+          one: 'Your file %{name} imported 0 points. It contains a planned route with %{count} point, but no recorded track. Dawarich imports recorded tracks, not planned routes.'
+          other: 'Your file %{name} imported 0 points. It contains a planned route with %{count} points, but no recorded track. Dawarich imports recorded tracks, not planned routes.'
         zero_points: Your file %{name} imported 0 points. No new location points were found in this file.
         import_failed_self_hosted: 'Import "%{name}" failed: %{message}, stacktrace: %{backtrace}'
         import_failed_cloud: 'Import "%{name}" failed, please contact us at hi@dawarich.com'
