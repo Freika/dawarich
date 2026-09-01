@@ -3468,6 +3468,12 @@ es:
         unsupported_source: 'Fuente no soportada: %{source}'
         zip_unclassified: No se pudo clasificar el contenido del archivo ZIP; puede que esté dañado
         zero_points_with_timestamps: "Tu archivo %{name} importó 0 puntos. No se encontraron puntos de ubicación con marcas de tiempo. Las importaciones GPX, KML y GeoJSON necesitan un valor de tiempo por cada coordenada (&lt;time&gt;, &lt;when&gt; o una propiedad timestamp)."
+        zero_points_waypoints_only:
+          one: 'Tu archivo %{name} importó 0 puntos. Contiene %{count} waypoint (un favorito o lugar guardado) pero ninguna ruta grabada. Dawarich actualmente solo importa rutas grabadas.'
+          other: 'Tu archivo %{name} importó 0 puntos. Contiene %{count} waypoints (favoritos o lugares guardados) pero ninguna ruta grabada. Dawarich actualmente solo importa rutas grabadas.'
+        zero_points_route_only:
+          one: 'Tu archivo %{name} importó 0 puntos. Contiene una ruta planificada de %{count} punto, pero ninguna ruta grabada. Dawarich importa rutas grabadas, no rutas planificadas.'
+          other: 'Tu archivo %{name} importó 0 puntos. Contiene una ruta planificada de %{count} puntos, pero ninguna ruta grabada. Dawarich importa rutas grabadas, no rutas planificadas.'
         zero_points: "Tu archivo %{name} importó 0 puntos. No se encontraron puntos de ubicación nuevos en este archivo."
         import_failed_self_hosted: "La importación \"%{name}\" falló: %{message}, traza: %{backtrace}"
         import_failed_cloud: "La importación \"%{name}\" falló, contáctanos en hi@dawarich.com"
@@ -3747,6 +3753,7 @@ es:
       failed_to_reload_routes: No se pudo recargar las rutas
       failed_to_load_scratch_layer: No se pudo cargar la capa de borrador
       failed_to_load_photos: No se pudo cargar las fotos
+      some_photo_sources_unavailable: "Algunas fuentes de fotos no están disponibles: %{sources}"
       failed_to_load_areas: No se pudo cargar los ámbitos
       failed_to_load_tracks: No se pudieron cargar los trayectos
       failed_to_load_track_details: No se pudieron cargar los detalles del trayecto

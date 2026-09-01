@@ -3511,6 +3511,12 @@ pl:
         import_completed_with_no_points: Import zakończony bez punktów
         import_failed: Import nie powiódł się
         zero_points_with_timestamps: Plik %{name} zaimportował 0 punktów. Nie znaleziono punktów lokalizacji ze znacznikami czasu. Import GPX, KML i GeoJSON wymaga wartości czasu dla każdego punktu (&lt;time&gt;, &lt;when&gt; lub właściwości timestamp).
+        zero_points_waypoints_only:
+          one: 'Twój plik %{name} zaimportował 0 punktów. Zawiera %{count} punkt nawigacyjny (ulubione lub zapisane miejsce), ale nie zawiera zarejestrowanej trasy. Dawarich obecnie importuje tylko zarejestrowane trasy.'
+          other: 'Twój plik %{name} zaimportował 0 punktów. Zawiera %{count} punktów nawigacyjnych (ulubione lub zapisane miejsca), ale nie zawiera zarejestrowanej trasy. Dawarich obecnie importuje tylko zarejestrowane trasy.'
+        zero_points_route_only:
+          one: 'Twój plik %{name} zaimportował 0 punktów. Zawiera zaplanowaną trasę z %{count} punktem, ale nie zawiera zarejestrowanej trasy. Dawarich importuje zarejestrowane trasy, a nie zaplanowane.'
+          other: 'Twój plik %{name} zaimportował 0 punktów. Zawiera zaplanowaną trasę z %{count} punktami, ale nie zawiera zarejestrowanej trasy. Dawarich importuje zarejestrowane trasy, a nie zaplanowane.'
         zero_points: Plik %{name} zaimportował 0 punktów. Nie znaleziono w nim nowych punktów lokalizacji.
         import_failed_self_hosted: 'Import "%{name}" nie powiódł się: %{message}, stacktrace: %{backtrace}'
         import_failed_cloud: 'Import "%{name}" nie powiódł się, skontaktuj się z nami: hi@dawarich.com'
@@ -3805,6 +3811,7 @@ pl:
       failed_to_reload_routes: Nie udało się odświeżyć tras
       failed_to_load_scratch_layer: Nie udało się załadować warstwy scratch
       failed_to_load_photos: Nie udało się załadować zdjęć
+      some_photo_sources_unavailable: "Niektóre źródła zdjęć są niedostępne: %{sources}"
       failed_to_load_areas: Nie udało się załadować obszarów
       failed_to_load_tracks: Nie udało się załadować odcinków
       failed_to_load_track_details: Nie udało się wczytać szczegółów odcinka
