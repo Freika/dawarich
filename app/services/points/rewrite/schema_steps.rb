@@ -72,9 +72,24 @@ module Points
       # whose parent vanished anyway (v1 without the FK) is detached and the
       # validation retried once before giving up with the offending key.
       def validate_foreign_keys(table: 'points')
-        unvalidated_foreign_keys(table).each do |name, column, parent_table|
+        pending = unvalidated_foreign_keys(table)
+        return if pending.empty?
+
+        rows = connection.select_value(
+          "SELECT reltuples::bigint FROM pg_class WHERE oid = #{connection.quote(table)}::regclass"
+        ).to_i
+        Rails.logger.info(
+          "[RewritePointsV2] validating #{pending.size} foreign keys on #{table} " \
+          "(~#{[rows, 0].max} rows each, roughly #{[(rows * pending.size / 5_000_000.0).ceil, 1].max} min; " \
+          'the app stays readable and writable meanwhile)'
+        )
+        pending.each do |name, column, parent_table|
           validate_foreign_key(table, name, column, parent_table)
         end
+      end
+
+      def foreign_key_on?(column, table: 'points')
+        foreign_key_on(column, table: table)
       end
 
       # DROP CONSTRAINT on a foreign key takes ACCESS EXCLUSIVE on the parent
@@ -125,27 +140,26 @@ module Points
         validate_foreign_key(table, name, column, parent_table, retried: true)
       end
 
+      # Collisions are cleared BEFORE the build: a failed unique build costs a
+      # full sort of the table, the bump costs one scan.
       def build_unique_index(ddl)
-        passes = 0
-        begin
-          connection.transaction(requires_new: true) { connection.execute(ddl) }
-        rescue ActiveRecord::RecordNotUnique => e
-          passes += 1
-          moved = passes <= MAX_COLLISION_PASSES ? connection.exec_update(Sql.bump_synthesized_collisions) : 0
-          if moved.zero?
-            Rails.logger.error(
-              "[RewritePointsV2] #{UNIQUE_INDEX} cannot be built: #{e.message.lines.first.strip} " \
-              'Two legacy rows share (user_id, timestamp, lonlat); fix the duplicate in points ' \
-              'and re-run the migration (the copy is kept).'
-            )
-            raise
-          end
+        MAX_COLLISION_PASSES.times do |pass|
+          moved = connection.exec_update(Sql.bump_synthesized_collisions)
+          break if moved.zero?
 
           Rails.logger.warn(
-            "[RewritePointsV2] moved #{moved} synthesized timestamps off real rows (pass #{passes})"
+            "[RewritePointsV2] moved #{moved} synthesized timestamps off colliding rows (pass #{pass + 1})"
           )
-          retry
         end
+
+        connection.execute(ddl)
+      rescue ActiveRecord::RecordNotUnique => e
+        Rails.logger.error(
+          "[RewritePointsV2] #{UNIQUE_INDEX} cannot be built: #{e.message.lines.first.strip} " \
+          'Rows still share (user_id, timestamp, lonlat) after moving synthesized timestamps; ' \
+          'fix the rows named in the error in points and re-run the migration (the copy is kept).'
+        )
+        raise
       end
 
       def unbounded

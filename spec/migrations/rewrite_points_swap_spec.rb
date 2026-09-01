@@ -190,6 +190,53 @@ RSpec.describe RewritePointsToV2, :non_transactional do
     expect(connection.select_value('SELECT track_id FROM points WHERE "timestamp" = 1700000670')).to be_nil
   end
 
+  it 'resumes a rollback whose key re-add timed out' do
+    seed_v1_point(timestamp: 1_700_000_675)
+    migration.up
+    allow_any_instance_of(Points::Rewrite::SchemaSteps).to receive(:sleep)
+    allow(connection).to receive(:execute).and_wrap_original do |original, *args, **kwargs|
+      raise ActiveRecord::LockWaitTimeout, 'lock timeout' if args.first.include?('fk_points_v1_visit')
+
+      original.call(*args, **kwargs)
+    end
+
+    expect { migration.down }.to raise_error(ActiveRecord::LockWaitTimeout)
+    expect(connection.column_exists?(:points, :country_name)).to be(true)
+
+    allow(connection).to receive(:execute).and_call_original
+    expect { migration.down }.not_to raise_error
+
+    v1_fk_targets = connection.select_values(
+      "SELECT confrelid::regclass::text FROM pg_constraint WHERE conrelid = 'points'::regclass AND contype = 'f'"
+    )
+    expect(v1_fk_targets).to match_array(%w[points_raw_data_archives tracks users visits])
+  end
+
+  it 'repairs the keys on the next migrate when a rollback failed before the rename' do
+    seed_v1_point(timestamp: 1_700_000_676)
+    migration.up
+    allow(migration).to receive(:sleep)
+    allow(connection).to receive(:execute).and_wrap_original do |original, *args, **kwargs|
+      if args.first.include?('ALTER TABLE points RENAME TO points_v2')
+        raise ActiveRecord::LockWaitTimeout, 'lock timeout'
+      end
+
+      original.call(*args, **kwargs)
+    end
+
+    expect { migration.down }.to raise_error(ActiveRecord::LockWaitTimeout)
+    expect(connection.column_exists?(:points, :country_name)).to be(false)
+
+    allow(connection).to receive(:execute).and_call_original
+    expect { migration.up }.not_to raise_error
+
+    states = connection.select_rows(
+      "SELECT conname, convalidated FROM pg_constraint WHERE conrelid = 'points'::regclass AND contype = 'f'"
+    ).to_h
+    expect(states.keys).to match_array(%w[fk_points_raw_data_archive fk_points_track fk_points_user fk_points_visit])
+    expect(states.values).to all(be(true))
+  end
+
   it 'validates the foreign keys after the swap even when a parent vanished during the copy' do
     track = create(:track, user: user)
     connection.execute(<<~SQL)

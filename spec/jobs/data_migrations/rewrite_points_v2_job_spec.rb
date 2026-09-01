@@ -365,6 +365,32 @@ RSpec.describe DataMigrations::RewritePointsV2Job, :non_transactional do
       expect(timestamps.uniq.size).to eq(2)
     end
 
+    it 'separates two overlapping runs of six same-place synthesized rows in one go' do
+      6.times do
+        connection.execute(<<~SQL)
+          INSERT INTO points ("timestamp", user_id, lonlat, created_at, updated_at)
+          VALUES (NULL, #{user.id}, 'POINT(12.3712 51.3402)', '2026-04-15 10:00:06', '2026-04-15 10:00:06')
+        SQL
+      end
+      6.times do
+        connection.execute(<<~SQL)
+          INSERT INTO points ("timestamp", user_id, lonlat, created_at, updated_at)
+          VALUES (NULL, #{user.id}, 'POINT(12.3712 51.3402)', '2026-04-15 10:00:00', '2026-04-15 10:00:00')
+        SQL
+      end
+      allow(Rails.logger).to receive(:warn).and_call_original
+
+      expect { described_class.perform_now }.not_to raise_error
+
+      timestamps = connection.select_values(
+        "SELECT \"timestamp\" FROM points_v2 WHERE user_id = #{user.id} ORDER BY 1"
+      )
+      expect(timestamps.size).to eq(12)
+      expect(timestamps.uniq.size).to eq(12)
+      expect(Rails.logger).to have_received(:warn).with(/pass 1\)/).once
+      expect(Rails.logger).not_to have_received(:warn).with(/pass 2\)/)
+    end
+
     it 'keeps a moved timestamp when finish runs again after the index exists' do
       anchor = Time.utc(2026, 4, 15, 10)
       connection.execute(<<~SQL)

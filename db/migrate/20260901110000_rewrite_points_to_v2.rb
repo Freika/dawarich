@@ -20,13 +20,17 @@ class RewritePointsToV2 < ActiveRecord::Migration[8.0]
   SWAP_LOCK_TIMEOUT = '2s'
   SWAP_MAX_ATTEMPTS = 3
   ROWS_PER_MINUTE = 1_000_000
-  V1_FOREIGN_KEYS = [
-    'ALTER TABLE points ADD CONSTRAINT fk_points_v1_user FOREIGN KEY (user_id) REFERENCES users(id) NOT VALID',
-    'ALTER TABLE points ADD CONSTRAINT fk_points_v1_track FOREIGN KEY (track_id) REFERENCES tracks(id) NOT VALID',
-    'ALTER TABLE points ADD CONSTRAINT fk_points_v1_visit FOREIGN KEY (visit_id) REFERENCES visits(id) NOT VALID',
-    'ALTER TABLE points ADD CONSTRAINT fk_points_v1_raw_data_archive FOREIGN KEY (raw_data_archive_id) ' \
-    'REFERENCES points_raw_data_archives(id) ON DELETE RESTRICT NOT VALID'
-  ].freeze
+  V1_FOREIGN_KEYS = {
+    'user_id' =>
+      'ALTER TABLE points ADD CONSTRAINT fk_points_v1_user FOREIGN KEY (user_id) REFERENCES users(id) NOT VALID',
+    'track_id' =>
+      'ALTER TABLE points ADD CONSTRAINT fk_points_v1_track FOREIGN KEY (track_id) REFERENCES tracks(id) NOT VALID',
+    'visit_id' =>
+      'ALTER TABLE points ADD CONSTRAINT fk_points_v1_visit FOREIGN KEY (visit_id) REFERENCES visits(id) NOT VALID',
+    'raw_data_archive_id' =>
+      'ALTER TABLE points ADD CONSTRAINT fk_points_v1_raw_data_archive FOREIGN KEY (raw_data_archive_id) ' \
+      'REFERENCES points_raw_data_archives(id) ON DELETE RESTRICT NOT VALID'
+  }.freeze
 
   def up
     # A boot interrupted after the swap resumes here.
@@ -53,27 +57,24 @@ class RewritePointsToV2 < ActiveRecord::Migration[8.0]
   # deletion) and no data or secondary indexes (the next migrate copies from
   # scratch, and a clean copy beats upserting through eight indexes); the
   # restored v1 table gets its four keys back as NOT VALID.
+  #
+  # State-driven so an interrupted rollback can simply be run again: the
+  # rename happens only while the legacy table still exists, and each v1 key
+  # is added only when its column has none.
   def down
-    unless table_exists?(:points_legacy_d)
+    if table_exists?(:points_legacy_d)
+      schema_steps.drop_foreign_keys('points')
+      with_lock_retries('rename the v1 table back in') { restore_v1_tables! }
+      clear_caches
+    elsif !(v1_points? && table_exists?(:points_v2))
       raise ActiveRecord::IrreversibleMigration, 'points_legacy_d is gone - cannot restore v1'
     end
 
-    schema_steps.drop_foreign_keys('points')
+    V1_FOREIGN_KEYS.each do |column, ddl|
+      next if schema_steps.foreign_key_on?(column, table: 'points')
 
-    connection.transaction do
-      execute("SET LOCAL lock_timeout = '#{SWAP_LOCK_TIMEOUT}'")
-      execute('SET LOCAL statement_timeout = 0')
-      execute('ALTER TABLE points RENAME TO points_v2')
-      rename_indexes_of('points_v2') { |name| name.sub('points', 'points_v2')[0, 63] }
-      drop_secondary_indexes_of('points_v2')
-      execute('TRUNCATE points_v2')
-      execute('ALTER TABLE points_legacy_d RENAME TO points')
-      rename_indexes_of('points') { |name| name.sub('_legacy_d', '') }
-      execute('ALTER SEQUENCE points_id_seq OWNED BY points.id')
+      schema_steps.with_lock_timeout { execute(ddl) }
     end
-    clear_caches
-
-    V1_FOREIGN_KEYS.each { |ddl| schema_steps.with_lock_timeout { execute(ddl) } }
     Rails.logger.info('[RewritePointsToV2] rolled back to the v1 table; the next migrate copies from scratch')
   end
 
@@ -100,29 +101,49 @@ class RewritePointsToV2 < ActiveRecord::Migration[8.0]
     )
   end
 
-  # Both steps are idempotent, so a boot interrupted here just runs them again.
+  # Every step is idempotent, so a boot interrupted here just runs them
+  # again; re-adding missing keys also repairs a rollback that failed after
+  # dropping them.
   def finish_after_swap
     schema_steps.drop_foreign_keys('points_legacy_d') if table_exists?(:points_legacy_d)
+    schema_steps.with_lock_timeout { schema_steps.add_foreign_keys(table: 'points') }
     schema_steps.validate_foreign_keys
+  end
+
+  def swap_with_retries
+    with_lock_retries('complete the swap on points') { swap! }
   end
 
   # A lock wait or a deadlock (the in-swap ADD CONSTRAINT wants the parent
   # tables while visit or track creation holds one and wants points) is
-  # transient: back off and try the whole swap again.
-  def swap_with_retries
+  # transient: back off and try the whole step again.
+  def with_lock_retries(label)
     attempts = 0
     begin
       attempts += 1
-      swap!
+      yield
     rescue ActiveRecord::LockWaitTimeout, ActiveRecord::Deadlocked => e
       if attempts < SWAP_MAX_ATTEMPTS
         sleep(attempts)
         retry
       end
       raise e.class,
-            '[RewritePointsToV2] could not complete the swap on points after ' \
-            "#{SWAP_MAX_ATTEMPTS} attempts (#{e.message.lines.first.strip}). Re-run the migration " \
-            '(the copy is already done; only the instant swap remains).'
+            "[RewritePointsToV2] could not #{label} after #{SWAP_MAX_ATTEMPTS} attempts " \
+            "(#{e.message.lines.first.strip}). Re-run the migration; every step so far is kept."
+    end
+  end
+
+  def restore_v1_tables!
+    connection.transaction do
+      execute("SET LOCAL lock_timeout = '#{SWAP_LOCK_TIMEOUT}'")
+      execute('SET LOCAL statement_timeout = 0')
+      execute('ALTER TABLE points RENAME TO points_v2')
+      rename_indexes_of('points_v2') { |name| name.sub('points', 'points_v2')[0, 63] }
+      drop_secondary_indexes_of('points_v2')
+      execute('TRUNCATE points_v2')
+      execute('ALTER TABLE points_legacy_d RENAME TO points')
+      rename_indexes_of('points') { |name| name.sub('_legacy_d', '') }
+      execute('ALTER SEQUENCE points_id_seq OWNED BY points.id')
     end
   end
 
