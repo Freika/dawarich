@@ -24,7 +24,18 @@ module Points
     def stamp(rows)
       return rows unless self.class.columns_available?
 
-      rows.each { |row| row[:source_id] = source_id_for(row) }
+      rows.each do |row|
+        row[:source_id] = source_id_for(row)
+        strip_combo_keys(row)
+      end
+    end
+
+    # The combo lives on the dimension only: leaving the keys in the hash
+    # would crash the upsert now that the legacy columns are gone.
+    COMBO_KEYS = PointSource::COMBO_COLUMNS.flat_map { |c| [c, c.to_sym] }.freeze
+
+    def strip_combo_keys(row)
+      COMBO_KEYS.each { |key| row.delete(key) }
     end
 
     # How long a process keeps believing the column is absent before asking
@@ -108,7 +119,10 @@ module Points
 
         value.nil? ? nil : Array(value)
       when 'connection', 'trigger', 'battery_status'
-        value.nil? ? nil : Point.type_for_attribute(column).serialize(value)
+        # The enum declarations moved to PointSource when Release D dropped
+        # the legacy columns; the mappings are byte-identical to Point's old
+        # ones (pinned by spec).
+        value.nil? ? nil : PointSource.type_for_attribute(column).serialize(value)
       else value
       end
     end

@@ -23,7 +23,8 @@ RSpec.describe OwnTracks::FriendsFormatter do
 
     context 'when a family member shares their location' do
       let!(:point) do
-        create(:point, user: other_user, timestamp: 1.hour.ago.to_i, battery: 87, battery_status: :charging)
+        create(:point, user: other_user, timestamp: 1.hour.ago.to_i, battery: 87,
+               source: create(:point_source, digest: SecureRandom.hex(16), battery_status: :charging))
       end
 
       before { other_user.update_family_location_sharing!(true, duration: 'permanent') }
@@ -55,7 +56,7 @@ RSpec.describe OwnTracks::FriendsFormatter do
       end
 
       it 'omits keys it has no value for instead of emitting nulls' do
-        point.update!(battery: nil, battery_status: nil)
+        point.update!(battery: nil, source: nil)
 
         expect(payload.last).not_to have_key(:batt)
         expect(payload.flat_map(&:values)).to all(be_present)
@@ -81,7 +82,8 @@ RSpec.describe OwnTracks::FriendsFormatter do
         full: 3
       }.each do |status, expected_code|
         it "maps #{status} to OwnTracks bs #{expected_code}" do
-          create(:point, user: other_user, timestamp: 1.hour.ago.to_i, battery_status: status)
+          create(:point, user: other_user, timestamp: 1.hour.ago.to_i,
+                 source: create(:point_source, digest: SecureRandom.hex(16), battery_status: status))
 
           expect(payload.last[:bs]).to eq(expected_code)
         end

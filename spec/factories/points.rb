@@ -2,33 +2,21 @@
 
 FactoryBot.define do
   factory :point do
-    battery_status  { 1 }
-    ping            { 'MyString' }
     battery         { 1 }
-    topic           { 'MyString' }
     altitude        { 1 }
     velocity        { 0 }
-    trigger         { 1 }
-    bssid           { 'MyString' }
-    ssid            { 'MyString' }
-    connection      { 1 }
     vertical_accuracy { 1 }
     accuracy { 1 }
     # Sequential timestamps: the model validates uniqueness of (user, lonlat,
     # timestamp), and rand(1_000) produced birthday-paradox collisions whenever
     # a spec created several same-coordinate points ("usually red" CI).
     sequence(:timestamp) { |n| DateTime.new(2024, 5, 1).to_i + (n % 100_000) * 10 }
-    mode            { 1 }
-    inrids          { 'MyString' }
-    in_regions      { 'MyString' }
     raw_data        { '' }
-    tracker_id      { 'MyString' }
     import_id       { '' }
     city            { nil }
     reverse_geocoded_at { nil }
     course          { nil }
     course_accuracy { nil }
-    external_track_id { nil }
     lonlat { "POINT(#{longitude} #{latitude})" }
     user
     country_id { nil }
@@ -63,18 +51,15 @@ FactoryBot.define do
           country.iso_a3 = iso_a3
           country.geom = 'MULTIPOLYGON (((0 0, 1 0, 1 1, 0 1, 0 0)))'
         end
-        point.update_columns(
-          country: evaluator.country,
-          country_name: evaluator.country,
-          country_id: country_obj.id
-        )
+        point.update_columns(country_id: country_obj.id)
       elsif evaluator.country
-        point.update_columns(
-          country: evaluator.country.name,
-          country_name: evaluator.country.name,
-          country_id: evaluator.country.id
-        )
+        point.update_columns(country_id: evaluator.country.id)
       end
+    end
+
+    # Device/importer context lives on the point_sources dimension.
+    trait :with_source do
+      source factory: %i[point_source]
     end
 
     trait :with_known_location do
@@ -111,7 +96,7 @@ FactoryBot.define do
 
       after(:build) do |point, _evaluator|
         # Only set country if not already set by transient attribute
-        unless point.read_attribute(:country)
+        unless point.country_id
           country_name = FFaker::Address.country
           country_obj = Country.find_or_create_by(name: country_name) do |country|
             iso_a2, iso_a3 = Countries::IsoCodeMapper.fallback_codes_from_country_name(country_name)
@@ -119,9 +104,7 @@ FactoryBot.define do
             country.iso_a3 = iso_a3
             country.geom = 'MULTIPOLYGON (((0 0, 1 0, 1 1, 0 1, 0 0)))'
           end
-          point.write_attribute(:country, country_name) # Set the legacy string attribute
-          point.write_attribute(:country_name, country_name) # Set the new string attribute
-          point.country_id = country_obj.id # Set the association
+          point.country_id = country_obj.id
         end
       end
     end

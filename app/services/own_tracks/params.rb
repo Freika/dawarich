@@ -16,7 +16,6 @@ class OwnTracks::Params
     attrs = {
       lonlat:             "POINT(#{params[:lon]} #{params[:lat]})",
       battery:            params[:batt],
-      ping:               params[:p],
       altitude:           altitude_value,
       accuracy:           params[:acc],
       vertical_accuracy:  params[:vac],
