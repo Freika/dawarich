@@ -16,6 +16,7 @@ module EnhancedImport
 
       def translate(&block)
         return enum_for(:translate) unless block_given?
+        return if import.gpx_without_waypoints?
 
         stream_file do |io|
           seek_to_document_start(io)
@@ -32,7 +33,8 @@ module EnhancedImport
       end
 
       class WptStreamHandler < Nokogiri::XML::SAX::Document
-        CAPTURED_FIELDS = %w[name type color].freeze
+        DIRECT_FIELDS = %w[name type].freeze
+        NESTED_FIELDS = %w[color].freeze
 
         def initialize(&block)
           super()
@@ -40,6 +42,7 @@ module EnhancedImport
           @attrs = nil
           @fields = {}
           @field = nil
+          @depth = 0
           @text = +''
         end
 
@@ -48,14 +51,22 @@ module EnhancedImport
             @attrs = attrs.each_with_object({}) { |a, h| h[a.localname] = a.value }
             @fields = {}
             @field = nil
+            @depth = 0
             return
           end
 
           return if @attrs.nil?
-          return unless CAPTURED_FIELDS.include?(name)
+
+          @depth += 1
+          return if @field
+          return unless capturable?(name)
 
           @field = name
           @text = +''
+        end
+
+        def capturable?(name)
+          (DIRECT_FIELDS.include?(name) && @depth == 1) || NESTED_FIELDS.include?(name)
         end
 
         def characters(string)
@@ -68,14 +79,19 @@ module EnhancedImport
             @attrs = nil
             @fields = {}
             @field = nil
+            @depth = 0
             return
           end
 
-          return unless @field == name
+          return if @attrs.nil?
 
-          @fields[name] = @text.strip
-          @field = nil
-          @text = +''
+          if @field == name
+            @fields[name] = @text.strip
+            @field = nil
+            @text = +''
+          end
+
+          @depth -= 1
         end
 
         private
@@ -121,6 +137,7 @@ module EnhancedImport
           return unless hex.match?(/\A[0-9a-f]+\z/)
 
           case hex.length
+          when 3 then "##{hex.chars.map { |c| c * 2 }.join}"
           when 6 then "##{hex}"
           when 8 then "##{hex[2, 6]}"
           end

@@ -493,6 +493,7 @@ pl:
     extraction_card:
       additional_data: Dodatkowe dane
       this_import_format_doesn_t_carry_visits_named_places_or: Ten format importu nie zawiera wizyt, nazwanych miejsc ani trybów transportu, więc nie ma dodatkowych danych do wyodrębnienia.
+      this_gpx_file_holds_no_waypoints: 'Ten plik GPX zawiera tylko zarejestrowane punkty trasy, więc nie ma punktów orientacyjnych do zaimportowania jako miejsca.'
       extracted: Wyodrębniono
       visits: wizyty,
       places: miejsca,

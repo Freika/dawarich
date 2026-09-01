@@ -1106,6 +1106,7 @@ fr:
       this_import_format_doesn_t_carry_visits_named_places_or: Ce format d'importation
         ne contient pas de visites, de lieux nommés ou de modes de transport, il n'y
         a donc rien à extraire en plus.
+      this_gpx_file_holds_no_waypoints: "Ce fichier GPX ne contient que des points de trace enregistrés, il n'y a donc aucun point de repère à importer comme lieux."
       extracted: Extraits
       visits: visites,
       places: lieux,

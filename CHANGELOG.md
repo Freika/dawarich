@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
-- GPX waypoints are now imported as places. Favourites exported from OsmAnd+ and similar apps (`favourites.gpx`) previously imported as nothing at all, because Dawarich only read recorded tracks. Each waypoint becomes a place, its category becomes a tag, and re-importing an updated file will not duplicate anything — so the import watcher can keep a favourites file in sync. Waypoints never become timeline points, so they do not affect your distance or statistics. (#1261)
+- GPX waypoints are now imported as places, so a `favourites.gpx` exported from OsmAnd+ and similar apps no longer imports as nothing at all. Each waypoint's category becomes a tag, re-importing an updated file does not duplicate anything, and waypoints never become timeline points, so they do not affect your distance or statistics. (#1261)
 - The API now accepts visits in batches: `POST /api/v1/visits/batch` takes up to 100 visits in one request and reports each one's outcome separately, so a single rejected visit no longer costs the whole sync. The mobile apps previously had to send one request per detected visit.
 
 ### Fixed

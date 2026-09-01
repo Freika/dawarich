@@ -535,6 +535,7 @@ de:
     extraction_card:
       additional_data: Zusätzliche Daten
       this_import_format_doesn_t_carry_visits_named_places_or: Dieses Importformat enthält keine Aufenthalte, benannten Orte oder Verkehrsmittel, also gibt es nichts zusätzlich zu extrahieren.
+      this_gpx_file_holds_no_waypoints: 'Diese GPX-Datei enthält nur aufgezeichnete Trackpunkte, also gibt es keine Wegpunkte, die als Orte importiert werden könnten.'
       extracted: Extrahiert
       visits: Aufenthalte,
       places: Orte,
