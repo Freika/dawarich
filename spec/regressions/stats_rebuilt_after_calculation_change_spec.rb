@@ -121,13 +121,24 @@ RSpec.describe 'Stats rebuilt after the calculation changes' do
         .to change { user.reload.stats_swept_at }.from(nil)
     end
 
-    it 'spreads repairs over a window instead of one burst' do
+    it 'spreads repairs across the jitter window instead of one burst' do
       (1..5).each { |month| stale_stat(month) }
 
       Stats::BulkCalculator.new(user.id).call
 
       waits = enqueued_jobs.select { |job| job[:job] == Stats::CalculatingJob }.map { |job| job[:at] }
-      expect(waits.compact).not_to be_empty
+
+      expect(waits).to all(be_present)
+      expect(waits.max - Time.current.to_f).to be <= Stats::BulkCalculator::REPAIR_JITTER.to_i
+    end
+
+    it 'does not delay a month that has genuinely new points' do
+      create(:point, user: user, timestamp: Time.current.to_i)
+
+      Stats::BulkCalculator.new(user.id).call
+
+      waits = enqueued_jobs.select { |job| job[:job] == Stats::CalculatingJob }.map { |job| job[:at] }
+      expect(waits).to all(be_nil)
     end
 
     it 'sends a just-scheduled month to the back of the queue' do

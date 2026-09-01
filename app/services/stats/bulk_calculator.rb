@@ -30,7 +30,7 @@ module Stats
     def stale_months
       Stat.where(user_id:)
           .where(calculation_version: ...CalculateMonth::CALCULATION_VERSION)
-          .order(:updated_at)
+          .order(:updated_at, :id)
           .limit(STALE_STATS_PER_RUN)
           .pluck(:year, :month)
     end
