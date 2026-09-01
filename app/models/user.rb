@@ -56,6 +56,7 @@ class User < ApplicationRecord
   after_update_commit :enqueue_family_auto_creation, if: :saved_change_to_plan?
   after_update_commit :enqueue_family_member_sync, if: :saved_change_to_subscription_state?
   after_update :reset_archival_warnings, if: :saved_change_to_plan?
+  after_update :mark_stats_for_rebucketing, if: :saved_change_to_timezone_setting?
 
   before_save :sanitize_input
 
@@ -401,6 +402,18 @@ class User < ApplicationRecord
   end
 
   private
+
+  def saved_change_to_timezone_setting?
+    return false unless saved_change_to_settings?
+
+    before, after = saved_change_to_settings
+
+    before.to_h['timezone'] != after.to_h['timezone']
+  end
+
+  def mark_stats_for_rebucketing
+    stats.update_all(calculation_version: 0)
+  end
 
   def create_api_key
     self.api_key = SecureRandom.hex(32)

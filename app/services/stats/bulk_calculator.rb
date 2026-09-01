@@ -2,12 +2,17 @@
 
 module Stats
   class BulkCalculator
+    STALE_STATS_PER_RUN = 5
+
     def initialize(user_id)
       @user_id = user_id
     end
 
     def call
-      schedule_calculations(fetch_months)
+      new_months = months_with_new_points
+
+      schedule_calculations(new_months)
+      schedule_repairs(stale_months - new_months)
     end
 
     private
@@ -18,7 +23,15 @@ module Stats
       @user ||= User.find(user_id)
     end
 
-    def fetch_months
+    def stale_months
+      Stat.where(user_id:)
+          .where(calculation_version: ...CalculateMonth::CALCULATION_VERSION)
+          .order(Arel.sql('RANDOM()'))
+          .limit(STALE_STATS_PER_RUN)
+          .pluck(:year, :month)
+    end
+
+    def months_with_new_points
       last_calculated_at = Stat.where(user_id:).maximum(:updated_at)
       last_calculated_at ||= DateTime.new(1970, 1, 1)
 
@@ -39,6 +52,12 @@ module Stats
     def schedule_calculations(months)
       months.each do |year, month|
         Stats::CalculatingJob.perform_later(user_id, year, month)
+      end
+    end
+
+    def schedule_repairs(months)
+      months.each do |year, month|
+        Stats::CalculatingJob.perform_later(user_id, year, month, notify_on_failure: false)
       end
     end
   end
