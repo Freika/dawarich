@@ -36,12 +36,13 @@ module LocationSearch
           ST_Y(p.lonlat::geometry) as latitude,
           ST_X(p.lonlat::geometry) as longitude,
           p.city,
-          p.country,
+          countries.name as country,
           p.altitude,
           p.accuracy,
           ST_Distance(p.lonlat, search_point.geom) as distance_meters,
           TO_TIMESTAMP(p.timestamp) as recorded_at
-        FROM points p, search_point
+        FROM points p
+        LEFT JOIN countries ON countries.id = p.country_id, search_point
         WHERE p.user_id = ?
           AND ST_DWithin(p.lonlat, search_point.geom, ?)
           #{date_filter_sql}

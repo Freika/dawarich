@@ -99,11 +99,11 @@ RSpec.describe 'Points::TileEpoch write-path integration' do
 
     # A coarse cold-start fix, condemned by a precise neighbour from the same
     # device — both sit in 2023, inside the lookback but outside the window.
-    sentinel = create(:point, user:, timestamp: sentinel_at, tracker_id: 'phone',
-                              accuracy: 1414, velocity: '-1', vertical_accuracy: -1,
+    sentinel = create(:point, user:, timestamp: sentinel_at, source: create(:point_source, digest: SecureRandom.hex(16), tracker_id: 'phone'),
+                              accuracy: 1414, velocity: -1, vertical_accuracy: -1,
                               latitude: 51.3336, longitude: 12.3777,
                               lonlat: 'POINT(12.3777 51.3336)')
-    create(:point, user:, timestamp: sentinel_at + 1800, tracker_id: 'phone',
+    create(:point, user:, timestamp: sentinel_at + 1800, source: create(:point_source, digest: SecureRandom.hex(16), tracker_id: 'phone'),
                    accuracy: 15, velocity: '2', vertical_accuracy: 5,
                    latitude: 51.3355, longitude: 12.3742,
                    lonlat: 'POINT(12.3742 51.3355)')

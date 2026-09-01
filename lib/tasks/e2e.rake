@@ -15,6 +15,29 @@
 #   bin/seed_e2e
 
 namespace :e2e do
+  # Points carry their device context on the point_sources dimension since the
+  # v2 rewrite; seeds resolve a source the same way ingest does so digests stay
+  # byte-compatible with real data.
+  def seed_tracker_source_id(tracker_id)
+    @seed_tracker_sources ||= {}
+    @seed_tracker_sources[tracker_id] ||= begin
+      row = { tracker_id: tracker_id }
+      Points::DimensionResolver.new.stamp([row])
+      row[:source_id]
+    end
+  end
+
+  def seed_country_id(name)
+    return nil if name.blank?
+
+    @seed_countries ||= {}
+    @seed_countries[name] ||= Country.find_or_create_by!(name: name) do |country|
+      iso_a2, iso_a3 = Countries::IsoCodeMapper.fallback_codes_from_country_name(name)
+      country.iso_a2 = iso_a2
+      country.iso_a3 = iso_a3
+      country.geom = 'MULTIPOLYGON (((0 0, 1 0, 1 1, 0 1, 0 0)))'
+    end.id
+  end
   E2E_USER_EMAILS = %w[
     demo@dawarich.app
     lite@dawarich.app
@@ -190,7 +213,7 @@ namespace :e2e do
     user = User.find_by!(email: ENV.fetch('E2E_SEED_EMAIL', 'demo@dawarich.app'))
     base_day = Time.zone.parse('2025-10-15')
 
-    user.points.where(tracker_id: %w[e2e-anomaly e2e-backbone]).delete_all
+    user.points.joins(:source).where(point_sources: { tracker_id: %w[e2e-anomaly e2e-backbone] }).delete_all
 
     E2E_TRIP_BACKBONE_FIXTURE.each do |row|
       ts = (base_day + (row[:hour] * 3600).to_i.seconds).to_i
@@ -201,8 +224,8 @@ namespace :e2e do
         lonlat: "POINT(#{row[:lon]} #{row[:lat]})",
         timestamp: ts,
         anomaly: false,
-        tracker_id: 'e2e-backbone',
-        country_name: row[:country]
+        source_id: seed_tracker_source_id('e2e-backbone'),
+        country_id: seed_country_id(row[:country])
       )
     end
 
@@ -215,26 +238,26 @@ namespace :e2e do
         lonlat: "POINT(#{row[:lon]} #{row[:lat]})",
         timestamp: ts,
         anomaly: true,
-        tracker_id: 'e2e-anomaly',
-        country_name: row[:country]
+        source_id: seed_tracker_source_id('e2e-anomaly'),
+        country_id: seed_country_id(row[:country])
       )
     end
 
-    count = user.points.where(tracker_id: 'e2e-anomaly').count
+    count = user.points.joins(:source).where(point_sources: { tracker_id: 'e2e-anomaly' }).count
     puts "  ↪ planted #{count} anomaly points (#{count == E2E_ANOMALY_FIXTURE.size ? 'ok' : 'MISMATCH'})"
 
     # The #2630 polluter lives OUTSIDE the shared anomaly bbox (and under its
     # own tracker_id) so the destructive area-selection specs that delete the
     # ANOMALY_COORDS cluster never consume it mid-run. Keep in sync with
     # POLLUTER_COORD in e2e-dawarich-playwright/v2/helpers/anomaly.js.
-    user.points.where(tracker_id: 'e2e-anomaly-polluter').delete_all
+    user.points.joins(:source).where(point_sources: { tracker_id: 'e2e-anomaly-polluter' }).delete_all
     polluter_ts = (base_day + (16 * 3600).seconds).to_i
     polluter = user.points.create!(
       lonlat: 'POINT(13.7 52.7)',
       timestamp: polluter_ts,
       anomaly: true,
-      tracker_id: 'e2e-anomaly-polluter',
-      country_name: 'Germany'
+      source_id: seed_tracker_source_id('e2e-anomaly-polluter'),
+      country_id: seed_country_id('Germany')
     )
     day_start = base_day.to_i
     day_end   = (base_day + 1.day).to_i
@@ -322,7 +345,7 @@ namespace :e2e do
   # tracker_id before re-creating.
   def _seed_fixture_track(user, tracker_id:, start_at:, end_at:)
     user.tracks.where(tracker_id: tracker_id).destroy_all
-    user.points.where(tracker_id: tracker_id).delete_all
+    user.points.joins(:source).where(point_sources: { tracker_id: tracker_id }).delete_all
 
     point_count = 15
     span_seconds = (end_at - start_at).to_i
@@ -339,7 +362,7 @@ namespace :e2e do
       points << user.points.create!(
         lonlat: "POINT(#{lon} #{lat})",
         timestamp: ts,
-        tracker_id: tracker_id,
+        source_id: seed_tracker_source_id(tracker_id),
         anomaly: false
       )
     end

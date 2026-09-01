@@ -43,7 +43,6 @@ RSpec.describe Points::Params do
           }
         }.with_indifferent_access,
         user_id:            user.id,
-        altitude_decimal:   0
       }
     end
 

@@ -72,7 +72,6 @@ class Gpx::TrackImporter
     {
       lonlat: "POINT(#{point['lon'].to_d} #{point['lat'].to_d})",
       altitude: elevation,
-      altitude_decimal: elevation,
       timestamp: Time.zone.parse(point['time']).utc.to_i,
       tracker_id: tracker_id,
       import_id: import.id,
