@@ -493,6 +493,7 @@ pl:
     extraction_card:
       additional_data: Dodatkowe dane
       this_import_format_doesn_t_carry_visits_named_places_or: Ten format importu nie zawiera wizyt, nazwanych miejsc ani trybów transportu, więc nie ma dodatkowych danych do wyodrębnienia.
+      this_gpx_file_holds_no_waypoints: 'Ten plik GPX zawiera tylko zarejestrowane punkty trasy, więc nie ma punktów orientacyjnych do zaimportowania jako miejsca.'
       extracted: Wyodrębniono
       visits: wizyty,
       places: miejsca,
@@ -1006,12 +1007,6 @@ pl:
         min_6: 5 min
         min_7: 120 min
         how_long_you_must_stay_for_a_city_to_count: Jak długo musisz pozostać, aby miasto zostało uwzględnione w statystykach
-        max_gap_between_points: Maksymalna przerwa między punktami
-        min_8: 120 min
-        min_9: 30 min
-        min_10: 195 min
-        min_11: 360 min
-        max_gap_between_points_before_assuming_you_left_the_city: Maksymalna przerwa między punktami, po której uznajemy, że opuściłeś miasto
         min_12: 720 min
         live_mode: Tryb na żywo
         show_new_points_in_real_time: Pokaż nowe punkty w czasie rzeczywistym
@@ -2643,6 +2638,7 @@ pl:
       source:
         manual: Ręcznie
         photon: Photon
+        gpx_waypoint: 'Punkt trasy GPX'
     shared_link:
       resource_type:
         trip: Podróż
@@ -3517,6 +3513,12 @@ pl:
         import_completed_with_no_points: Import zakończony bez punktów
         import_failed: Import nie powiódł się
         zero_points_with_timestamps: Plik %{name} zaimportował 0 punktów. Nie znaleziono punktów lokalizacji ze znacznikami czasu. Import GPX, KML i GeoJSON wymaga wartości czasu dla każdego punktu (&lt;time&gt;, &lt;when&gt; lub właściwości timestamp).
+        zero_points_waypoints_only:
+          one: 'Twój plik %{name} zaimportował 0 punktów. Zawiera %{count} punkt nawigacyjny (ulubione lub zapisane miejsce), ale nie zawiera zarejestrowanej trasy. Dawarich obecnie importuje tylko zarejestrowane trasy.'
+          other: 'Twój plik %{name} zaimportował 0 punktów. Zawiera %{count} punktów nawigacyjnych (ulubione lub zapisane miejsca), ale nie zawiera zarejestrowanej trasy. Dawarich obecnie importuje tylko zarejestrowane trasy.'
+        zero_points_route_only:
+          one: 'Twój plik %{name} zaimportował 0 punktów. Zawiera zaplanowaną trasę z %{count} punktem, ale nie zawiera zarejestrowanej trasy. Dawarich importuje zarejestrowane trasy, a nie zaplanowane.'
+          other: 'Twój plik %{name} zaimportował 0 punktów. Zawiera zaplanowaną trasę z %{count} punktami, ale nie zawiera zarejestrowanej trasy. Dawarich importuje zarejestrowane trasy, a nie zaplanowane.'
         zero_points: Plik %{name} zaimportował 0 punktów. Nie znaleziono w nim nowych punktów lokalizacji.
         import_failed_self_hosted: 'Import "%{name}" nie powiódł się: %{message}, stacktrace: %{backtrace}'
         import_failed_cloud: 'Import "%{name}" nie powiódł się, skontaktuj się z nami: hi@dawarich.com'
@@ -3811,6 +3813,7 @@ pl:
       failed_to_reload_routes: Nie udało się odświeżyć tras
       failed_to_load_scratch_layer: Nie udało się załadować warstwy scratch
       failed_to_load_photos: Nie udało się załadować zdjęć
+      some_photo_sources_unavailable: "Niektóre źródła zdjęć są niedostępne: %{sources}"
       failed_to_load_areas: Nie udało się załadować obszarów
       failed_to_load_tracks: Nie udało się załadować odcinków
       failed_to_load_track_details: Nie udało się wczytać szczegółów odcinka
