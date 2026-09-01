@@ -163,6 +163,7 @@ RSpec.describe RewritePointsToV2, :non_transactional do
     )
     expect(v2_fks).to eq(0)
     expect(v1_fk_targets).to match_array(%w[points_raw_data_archives tracks users visits])
+    expect(connection.select_value('SELECT COUNT(*) FROM points_v2').to_i).to eq(0)
     expect { Track.find(track.id).destroy! }.not_to raise_error
     expect(connection.select_value('SELECT track_id FROM points WHERE "timestamp" = 1700000670')).to be_nil
   end
@@ -222,10 +223,19 @@ RSpec.describe RewritePointsToV2, :non_transactional do
   it 'lands a write that blocked on the swap lock in the new table', threads: 2 do
     seed_v1_point(timestamp: 1_700_000_700)
     locked = Queue.new
+    writer_blocked = false
     allow(migration).to receive(:lock_points!).and_wrap_original do |original, *args|
       original.call(*args)
       locked << true
-      sleep 0.5
+      50.times do
+        break if writer_blocked
+
+        writer_blocked = connection.select_value(<<~SQL).to_i.positive?
+          SELECT COUNT(*) FROM pg_stat_activity
+          WHERE wait_event_type = 'Lock' AND query LIKE 'INSERT INTO points%'
+        SQL
+        sleep 0.1
+      end
     end
     writer = Thread.new do
       locked.pop
@@ -240,9 +250,51 @@ RSpec.describe RewritePointsToV2, :non_transactional do
     migration.up
     writer.join
 
+    expect(writer_blocked).to be(true)
     expect(connection.select_value('SELECT COUNT(*) FROM points WHERE "timestamp" = 1700000800').to_i).to eq(1)
     expect(connection.select_value('SELECT COUNT(*) FROM points_legacy_d WHERE "timestamp" = 1700000800').to_i)
       .to eq(0)
+  end
+
+  it 'nulls references whose parent vanished when v1 carried no such key, then validates' do
+    connection.execute('ALTER TABLE points DROP CONSTRAINT fk_rails_v1_points_tracks')
+    connection.execute('ALTER TABLE points DROP CONSTRAINT fk_rails_v1_points_visits')
+    track = create(:track, user: user)
+    visit = create(:visit, user: user, area: create(:area, user: user))
+    connection.execute(<<~SQL)
+      INSERT INTO points ("timestamp", user_id, track_id, visit_id, lonlat, created_at, updated_at)
+      VALUES (1700000710, #{user.id}, #{track.id}, #{visit.id}, 'POINT(12.3712 51.3402)', NOW(), NOW())
+    SQL
+    connection.execute("DELETE FROM tracks WHERE id = #{track.id}")
+    connection.execute("DELETE FROM visits WHERE id = #{visit.id}")
+
+    expect { migration.up }.not_to raise_error
+
+    row = connection.select_one('SELECT track_id, visit_id FROM points WHERE "timestamp" = 1700000710')
+    expect(row.values).to all(be_nil)
+    unvalidated = connection.select_value(
+      "SELECT COUNT(*) FROM pg_constraint WHERE conrelid = 'points'::regclass AND contype = 'f' AND NOT convalidated"
+    ).to_i
+    expect(unvalidated).to eq(0)
+  end
+
+  it 'survives an orphan row that is updated during the copy window on a v1 without the key' do
+    connection.execute('ALTER TABLE points DROP CONSTRAINT fk_rails_v1_points_tracks')
+    track = create(:track, user: user)
+    orphan_id = connection.select_value(<<~SQL)
+      INSERT INTO points ("timestamp", user_id, track_id, lonlat, created_at, updated_at)
+      VALUES (1700000720, #{user.id}, #{track.id}, 'POINT(12.3712 51.3402)', NOW(), NOW())
+      RETURNING id
+    SQL
+    connection.execute("DELETE FROM tracks WHERE id = #{track.id}")
+    DataMigrations::RewritePointsV2Job.new.run_phases_through_copy
+    connection.execute("UPDATE points SET city = 'Leipzig' WHERE id = #{orphan_id}")
+
+    expect { migration.up }.not_to raise_error
+
+    row = connection.select_one("SELECT track_id, city FROM points WHERE id = #{orphan_id}")
+    expect(row['track_id']).to be_nil
+    expect(row['city']).to eq('Leipzig')
   end
 
   it 'logs the row estimate and the expected duration before starting' do

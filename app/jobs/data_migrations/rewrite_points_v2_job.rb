@@ -39,17 +39,15 @@ class DataMigrations::RewritePointsV2Job < ApplicationJob
     copy_range_walk(batch_size)
   end
 
-  # Foreign keys go in NOT VALID and only after the drain: a parent deleted
-  # during the copy is still referenced by v2 until its captured nullify is
-  # replayed, and validation (a full scan) belongs after the swap, when v2 is
-  # the FK-enforced table row for row.
+  # No foreign keys here: they are added inside the swap after the final
+  # drain (a parent deleted during the copy is still referenced by v2 until
+  # its captured nullify is replayed) and validated once v2 is live.
   def finish
     return unless rewrite_applicable?
 
     unbounded { connection.execute(Points::Rewrite::Sql.synthesis_upsert) }
-    unbounded { schema_steps.add_indexes }
+    schema_steps.add_indexes
     capture.drain_fully
-    unbounded { schema_steps.add_foreign_keys }
   end
 
   private
@@ -145,9 +143,9 @@ class DataMigrations::RewritePointsV2Job < ApplicationJob
     end
   end
 
-  # Synthesis and index builds must be allowed to run for as long as they
-  # take: a role- or server-level statement_timeout would cancel them on
-  # every boot with nothing to halve.
+  # Synthesis must be allowed to run for as long as it takes: a role- or
+  # server-level statement_timeout would cancel it on every boot with nothing
+  # to halve.
   def unbounded
     connection.transaction do
       connection.execute('SET LOCAL statement_timeout = 0')

@@ -5,18 +5,21 @@
 # transaction drains the last captured changes under ACCESS EXCLUSIVE, so a
 # write that raced the copy either lands in the drained delta or blocks on
 # the lock and re-resolves to the new table after commit (Postgres
-# invalidates cached plans on DDL).
+# invalidates cached plans on DDL). The foreign keys go in NOT VALID inside
+# that same transaction, after the drain, and are validated once the new
+# table is live; the legacy table loses its keys the same way.
 #
-# Cloud pre-runs the job + swap manually in a window; this migration then
-# sees the v2 shape and no-ops. Self-hosted runs it unattended on boot: the
-# copy is resumable, so a container restart mid-walk continues rather than
-# starting over, and a lost lock race retries without wedging boot.
+# Cloud pre-runs the job manually in a window; this migration then sees the
+# v2 shape and only finishes the post-swap steps. Self-hosted runs it
+# unattended on boot: the copy is resumable, so a container restart mid-walk
+# continues rather than starting over, and a lost lock race retries without
+# wedging boot.
 class RewritePointsToV2 < ActiveRecord::Migration[8.0]
   disable_ddl_transaction!
 
   SWAP_LOCK_TIMEOUT = '2s'
   SWAP_MAX_ATTEMPTS = 3
-
+  ROWS_PER_MINUTE = 1_000_000
   V1_FOREIGN_KEYS = [
     'ALTER TABLE points ADD CONSTRAINT fk_points_v1_user FOREIGN KEY (user_id) REFERENCES users(id) NOT VALID',
     'ALTER TABLE points ADD CONSTRAINT fk_points_v1_track FOREIGN KEY (track_id) REFERENCES tracks(id) NOT VALID',
@@ -26,8 +29,8 @@ class RewritePointsToV2 < ActiveRecord::Migration[8.0]
   ].freeze
 
   def up
-    # A boot interrupted between the swap and the validation scans resumes here.
-    return schema_steps.validate_foreign_keys unless v1_points?
+    # A boot interrupted after the swap resumes here.
+    return finish_after_swap unless v1_points?
 
     raise 'points_v2 is missing - CreatePointsV2 (20260901100000) must run first' unless table_exists?(:points_v2)
 
@@ -38,7 +41,7 @@ class RewritePointsToV2 < ActiveRecord::Migration[8.0]
     job.finish
 
     swap_with_retries
-    schema_steps.validate_foreign_keys
+    finish_after_swap
     Rails.logger.info(
       '[RewritePointsToV2] swap complete. The old table is kept as points_legacy_d ' \
       'for rollback; it will be dropped in a follow-up release (or manually: ' \
@@ -46,26 +49,32 @@ class RewritePointsToV2 < ActiveRecord::Migration[8.0]
     )
   end
 
-  # The v2 table keeps no foreign keys while it sits idle (they would block
-  # every parent deletion), and the restored v1 table gets its four back as
-  # NOT VALID so the app runs with referential integrity again.
+  # The idle v2 table keeps no foreign keys (they would block every parent
+  # deletion) and no data or secondary indexes (the next migrate copies from
+  # scratch, and a clean copy beats upserting through eight indexes); the
+  # restored v1 table gets its four keys back as NOT VALID.
   def down
     unless table_exists?(:points_legacy_d)
       raise ActiveRecord::IrreversibleMigration, 'points_legacy_d is gone - cannot restore v1'
     end
+
+    schema_steps.drop_foreign_keys('points')
 
     connection.transaction do
       execute("SET LOCAL lock_timeout = '#{SWAP_LOCK_TIMEOUT}'")
       execute('SET LOCAL statement_timeout = 0')
       execute('ALTER TABLE points RENAME TO points_v2')
       rename_indexes_of('points_v2') { |name| name.sub('points', 'points_v2')[0, 63] }
-      drop_foreign_keys_of('points_v2')
+      drop_secondary_indexes_of('points_v2')
+      execute('TRUNCATE points_v2')
       execute('ALTER TABLE points_legacy_d RENAME TO points')
       rename_indexes_of('points') { |name| name.sub('_legacy_d', '') }
-      V1_FOREIGN_KEYS.each { |ddl| execute(ddl) }
       execute('ALTER SEQUENCE points_id_seq OWNED BY points.id')
     end
     clear_caches
+
+    V1_FOREIGN_KEYS.each { |ddl| schema_steps.with_lock_timeout { execute(ddl) } }
+    Rails.logger.info('[RewritePointsToV2] rolled back to the v1 table; the next migrate copies from scratch')
   end
 
   private
@@ -78,8 +87,6 @@ class RewritePointsToV2 < ActiveRecord::Migration[8.0]
     @schema_steps ||= Points::Rewrite::SchemaSteps.new(connection)
   end
 
-  ROWS_PER_MINUTE = 1_000_000
-
   def log_preflight
     size = connection.select_value("SELECT pg_size_pretty(pg_total_relation_size('points'))")
     rows = connection.select_value("SELECT reltuples::bigint FROM pg_class WHERE oid = 'points'::regclass").to_i
@@ -91,6 +98,12 @@ class RewritePointsToV2 < ActiveRecord::Migration[8.0]
       'verified from here. If the copy fails on disk-full, free space and restart - the walk ' \
       'resumes from its cursor.'
     )
+  end
+
+  # Both steps are idempotent, so a boot interrupted here just runs them again.
+  def finish_after_swap
+    schema_steps.drop_foreign_keys('points_legacy_d') if table_exists?(:points_legacy_d)
+    schema_steps.validate_foreign_keys
   end
 
   def swap_with_retries
@@ -124,11 +137,10 @@ class RewritePointsToV2 < ActiveRecord::Migration[8.0]
 
       execute('ALTER TABLE points RENAME TO points_legacy_d')
       rename_indexes_of('points_legacy_d') { |name| "#{name}_legacy_d"[0, 63] }
-      drop_foreign_keys_of('points_legacy_d')
 
       execute('ALTER TABLE points_v2 RENAME TO points')
       rename_indexes_of('points') { |name| name.sub('_v2', '') }
-      rename_constraints_of('points', from: '_v2', to: '')
+      schema_steps.add_foreign_keys(table: 'points')
       execute('ALTER SEQUENCE points_id_seq OWNED BY points.id')
     end
     clear_caches
@@ -136,17 +148,6 @@ class RewritePointsToV2 < ActiveRecord::Migration[8.0]
 
   def lock_points!
     execute('LOCK TABLE points IN ACCESS EXCLUSIVE MODE')
-  end
-
-  # The legacy table only exists for rollback; keeping its foreign keys would
-  # block every track, visit, archive and user deletion for the retention window.
-  def drop_foreign_keys_of(table)
-    connection.select_values(<<~SQL).each do |constraint|
-      SELECT conname FROM pg_constraint
-      WHERE conrelid = #{connection.quote(table)}::regclass AND contype = 'f'
-    SQL
-      execute(%(ALTER TABLE #{table} DROP CONSTRAINT "#{constraint}"))
-    end
   end
 
   def rename_indexes_of(table)
@@ -160,17 +161,11 @@ class RewritePointsToV2 < ActiveRecord::Migration[8.0]
     end
   end
 
-  def rename_constraints_of(table, from:, to:)
-    names = connection.select_values(<<~SQL)
-      SELECT conname FROM pg_constraint
-      WHERE conrelid = #{connection.quote(table)}::regclass AND conname LIKE 'fk\\_points%'
+  def drop_secondary_indexes_of(table)
+    connection.select_values(<<~SQL).each { |index| execute(%(DROP INDEX "#{index}")) }
+      SELECT indexname FROM pg_indexes
+      WHERE tablename = #{connection.quote(table)} AND indexname <> '#{table}_pkey'
     SQL
-    names.each do |constraint|
-      target = from.empty? ? constraint.sub('fk_points_', "fk_points#{to}_") : constraint.sub(from, to)
-      next if target == constraint || names.include?(target)
-
-      execute(%(ALTER TABLE #{table} RENAME CONSTRAINT "#{constraint}" TO "#{target}"))
-    end
   end
 
   # Only the connection-level cache: touching Point here would load the

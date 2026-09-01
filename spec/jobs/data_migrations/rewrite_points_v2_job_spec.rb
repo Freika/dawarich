@@ -169,8 +169,8 @@ RSpec.describe DataMigrations::RewritePointsV2Job, :non_transactional do
     end
   end
 
-  describe 'indexes and foreign keys' do
-    it 'builds the v2 index set and the four foreign keys' do
+  describe 'indexes' do
+    it 'builds the v2 index set and leaves the foreign keys to the swap' do
       create(:point, user: user, timestamp: 1_700_002_000)
 
       described_class.perform_now
@@ -186,42 +186,30 @@ RSpec.describe DataMigrations::RewritePointsV2Job, :non_transactional do
       )
       expect(index_names).not_to include('idx_points_v2_user_id_legacy_tracker')
 
-      fk_targets = connection.select_values(<<~SQL)
-        SELECT confrelid::regclass::text
-        FROM pg_constraint
-        WHERE conrelid = 'points_v2'::regclass AND contype = 'f'
-      SQL
-      expect(fk_targets).to match_array(%w[points_raw_data_archives tracks users visits])
-    end
-
-    it 'detaches points whose track or visit is gone before adding the foreign keys' do
-      connection.execute('ALTER TABLE points DROP CONSTRAINT fk_rails_v1_points_visits')
-      track = create(:track, user: user)
-      visit = create(:visit, user: user, area: create(:area, user: user))
-      orphan = create(:point, user: user, timestamp: 1_700_003_000, track_id: track.id, visit_id: visit.id)
-      kept = create(:point, user: user, timestamp: 1_700_003_100, track_id: track.id)
-      connection.execute("DELETE FROM visits WHERE id = #{visit.id}")
-
-      described_class.perform_now
-
-      expect(v2_row(orphan.id)['visit_id']).to be_nil
-      expect(v2_row(orphan.id)['track_id']).to eq(track.id)
-      expect(v2_row(kept.id)['track_id']).to eq(track.id)
-    end
-
-    it 'detaches points whose track was deleted underneath them' do
-      connection.execute('ALTER TABLE points DROP CONSTRAINT fk_rails_v1_points_tracks')
-      track = create(:track, user: user)
-      orphan = create(:point, user: user, timestamp: 1_700_004_000, track_id: track.id)
-      connection.execute("DELETE FROM tracks WHERE id = #{track.id}")
-
-      described_class.perform_now
-
-      expect(v2_row(orphan.id)['track_id']).to be_nil
-      track_fk_count = connection.select_value(
-        "SELECT COUNT(*) FROM pg_constraint WHERE conname = 'fk_points_v2_track'"
+      fk_count = connection.select_value(
+        "SELECT COUNT(*) FROM pg_constraint WHERE conrelid = 'points_v2'::regclass AND contype = 'f'"
       ).to_i
-      expect(track_fk_count).to eq(1)
+      expect(fk_count).to eq(0)
+    end
+
+    it 'commits each index on its own so an interrupted build keeps what it finished' do
+      create(:point, user: user, timestamp: 1_700_002_100)
+      built = false
+      allow(connection).to receive(:execute).and_wrap_original do |original, *args, **kwargs|
+        if !built && args.first.include?('CREATE INDEX IF NOT EXISTS idx_points_v2_track_id_timestamp')
+          built = true
+          raise ActiveRecord::QueryCanceled, 'canceling statement due to user request'
+        end
+        original.call(*args, **kwargs)
+      end
+
+      expect { described_class.new.finish }.to raise_error(ActiveRecord::QueryCanceled)
+
+      index_names = connection.select_values(
+        "SELECT indexname FROM pg_indexes WHERE tablename = 'points_v2'"
+      )
+      expect(index_names).to include('index_points_v2_on_lonlat', 'index_points_v2_on_user_id_timestamp_lonlat')
+      expect(index_names).not_to include('idx_points_v2_track_id_timestamp')
     end
   end
 
@@ -273,19 +261,6 @@ RSpec.describe DataMigrations::RewritePointsV2Job, :non_transactional do
 
       expect(ids.map { |id| v2_row(id) }).to all(be_present)
     end
-
-    it 'adds the foreign keys NOT VALID and leaves validation to the swap' do
-      create(:point, user: user, timestamp: 1_700_061_000)
-
-      described_class.perform_now
-
-      states = connection.select_rows(
-        "SELECT conname, convalidated FROM pg_constraint WHERE conrelid = 'points_v2'::regclass AND contype = 'f'"
-      ).to_h
-      expect(states.keys).to match_array(%w[fk_points_v2_raw_data_archive fk_points_v2_track
-                                            fk_points_v2_user fk_points_v2_visit])
-      expect(states.values).to all(be(false))
-    end
   end
 
   describe 'the drain' do
@@ -314,20 +289,23 @@ RSpec.describe DataMigrations::RewritePointsV2Job, :non_transactional do
         slow_writer.execute('BEGIN')
         insert_v1_point(slow_writer, 1_700_050_000)
         insert_v1_point(connection, 1_700_050_001)
+        consumed = []
         allow(connection).to receive(:execute).and_wrap_original do |original, *args, **kwargs|
-          if !committed && args.first.lstrip.start_with?('DELETE FROM points_v2_changes')
+          if !committed && args.first.lstrip.start_with?('INSERT INTO points_v2')
             committed = true
             slow_writer.execute('COMMIT')
           end
           original.call(*args, **kwargs)
         end
 
-        Points::Rewrite::ChangeCapture.new(connection).drain_fully
+        capture = Points::Rewrite::ChangeCapture.new(connection)
+        3.times { consumed << capture.drain_batch }
       ensure
         slow_writer.execute('ROLLBACK') unless committed
         ActiveRecord::Base.connection_pool.checkin(slow_writer)
       end
 
+      expect(consumed).to eq([1, 1, 0])
       timestamps = connection.select_values('SELECT "timestamp" FROM points_v2 ORDER BY 1')
       expect(timestamps).to include(1_700_050_000, 1_700_050_001)
     end

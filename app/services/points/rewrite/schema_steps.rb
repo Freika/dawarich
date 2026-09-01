@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
-# Index and constraint DDL for points_v2, plus the rename choreography the
-# swap migration executes. Indexes carry v1's set minus
-# idx_points_user_id_legacy_tracker (its predicate column is dropped and its
-# only consumers are retired); they are built AFTER the copy under _v2 names
-# and renamed to the canonical v1 names inside the swap transaction, so the
-# post-swap schema is name-identical to v1.
+# Index and constraint DDL for the points rewrite. Indexes carry v1's set
+# minus idx_points_user_id_legacy_tracker (its predicate column is dropped and
+# its only consumers are retired); they are built AFTER the copy under _v2
+# names and renamed to the canonical v1 names inside the swap transaction, so
+# the post-swap schema is name-identical to v1. Foreign keys are added inside
+# the swap, after the final drain, and validated afterwards.
 module Points
   module Rewrite
     class SchemaSteps
@@ -34,11 +34,11 @@ module Points
       MAX_COLLISION_PASSES = 5
 
       FOREIGN_KEYS = {
-        'fk_points_v2_raw_data_archive' =>
+        'fk_points_raw_data_archive' =>
           { column: 'raw_data_archive_id', table: 'points_raw_data_archives', on_delete: 'RESTRICT' },
-        'fk_points_v2_track' => { column: 'track_id', table: 'tracks', detach: true },
-        'fk_points_v2_user' => { column: 'user_id', table: 'users' },
-        'fk_points_v2_visit' => { column: 'visit_id', table: 'visits', detach: true }
+        'fk_points_track' => { column: 'track_id', table: 'tracks' },
+        'fk_points_user' => { column: 'user_id', table: 'users' },
+        'fk_points_visit' => { column: 'visit_id', table: 'visits' }
       }.freeze
       LOCK_TIMEOUT = '2s'
       LOCK_ATTEMPTS = 3
@@ -49,21 +49,21 @@ module Points
 
       attr_reader :connection
 
+      # One transaction per index: an interrupted phase keeps what it built,
+      # and no snapshot pins xmin on the live database for the whole phase.
       def add_indexes
         INDEXES.each do |name, ddl|
-          name == UNIQUE_INDEX ? build_unique_index(ddl) : connection.execute(ddl)
+          unbounded { name == UNIQUE_INDEX ? build_unique_index(ddl) : connection.execute(ddl) }
         end
       end
 
-      # NOT VALID only: a brief lock on the referenced live table, no scan.
-      # Validation happens after the swap (validate_foreign_keys), when the
-      # drained v2 is the FK-enforced table row for row.
-      def add_foreign_keys
-        FOREIGN_KEYS.each do |name, fk|
-          next if foreign_key_on(fk[:column])
+      # NOT VALID is instant. Meant for the swap transaction, after the final
+      # drain, so no captured write is ever replayed against these keys.
+      def add_foreign_keys(table: 'points')
+        FOREIGN_KEYS.each do |name, definition|
+          next if foreign_key_on(definition[:column], table: table)
 
-          detach_orphans(fk[:column], fk[:table]) if fk[:detach]
-          with_lock_timeout { connection.execute(add_foreign_key_sql(name, fk)) }
+          connection.execute(add_foreign_key_sql(table, name, definition))
         end
       end
 
@@ -74,6 +74,31 @@ module Points
       def validate_foreign_keys(table: 'points')
         unvalidated_foreign_keys(table).each do |name, column, parent_table|
           validate_foreign_key(table, name, column, parent_table)
+        end
+      end
+
+      # DROP CONSTRAINT on a foreign key takes ACCESS EXCLUSIVE on the parent
+      # (its RI trigger goes too), so each drop gets its own lock-bounded
+      # transaction with retries instead of riding inside the swap.
+      def drop_foreign_keys(table)
+        foreign_key_names(table).each do |name|
+          with_lock_timeout { connection.execute(%(ALTER TABLE #{table} DROP CONSTRAINT "#{name}")) }
+        end
+      end
+
+      def with_lock_timeout
+        attempts = 0
+        begin
+          attempts += 1
+          connection.transaction(requires_new: true) do
+            connection.execute("SET LOCAL lock_timeout = '#{LOCK_TIMEOUT}'")
+            yield
+          end
+        rescue ActiveRecord::LockWaitTimeout
+          raise if attempts >= LOCK_ATTEMPTS
+
+          sleep(attempts)
+          retry
         end
       end
 
@@ -91,28 +116,8 @@ module Points
         end
 
         Rails.logger.warn("[RewritePointsV2] #{name}: detaching rows whose #{parent_table} row is gone")
-        unbounded { detach_orphans(column, parent_table, table: table, force: true) }
+        unbounded { detach_orphans(table, column, parent_table) }
         validate_foreign_key(table, name, column, parent_table, retried: true)
-      end
-
-      def unvalidated_foreign_keys(table)
-        connection.select_rows(<<~SQL)
-          SELECT c.conname, a.attname, c.confrelid::regclass::text
-          FROM pg_constraint c
-          JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = ANY (c.conkey)
-          WHERE c.conrelid = #{connection.quote(table)}::regclass
-            AND c.contype = 'f'
-            AND NOT c.convalidated
-            AND c.conname LIKE 'fk\\_points%'
-          ORDER BY c.conname
-        SQL
-      end
-
-      def unbounded
-        connection.transaction(requires_new: true) do
-          connection.execute('SET LOCAL statement_timeout = 0')
-          yield
-        end
       end
 
       def build_unique_index(ddl)
@@ -138,61 +143,57 @@ module Points
         end
       end
 
-      def foreign_key_on(column)
-        row = connection.select_one(<<~SQL)
-          SELECT c.conname, c.convalidated
+      def unbounded
+        connection.transaction(requires_new: true) do
+          connection.execute('SET LOCAL statement_timeout = 0')
+          yield
+        end
+      end
+
+      def foreign_key_on(column, table:)
+        connection.select_value(<<~SQL).present?
+          SELECT c.conname
           FROM pg_constraint c
           JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = ANY (c.conkey)
-          WHERE c.conrelid = 'points_v2'::regclass
+          WHERE c.conrelid = #{connection.quote(table)}::regclass
             AND c.contype = 'f'
             AND a.attname = #{connection.quote(column)}
           LIMIT 1
         SQL
-        row && { name: row['conname'], validated: row['convalidated'] }
       end
 
-      def add_foreign_key_sql(name, definition)
+      def foreign_key_names(table)
+        connection.select_values(<<~SQL)
+          SELECT conname FROM pg_constraint
+          WHERE conrelid = #{connection.quote(table)}::regclass AND contype = 'f'
+          ORDER BY conname
+        SQL
+      end
+
+      def unvalidated_foreign_keys(table)
+        connection.select_rows(<<~SQL)
+          SELECT c.conname, a.attname, c.confrelid::regclass::text
+          FROM pg_constraint c
+          JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = ANY (c.conkey)
+          WHERE c.conrelid = #{connection.quote(table)}::regclass
+            AND c.contype = 'f'
+            AND NOT c.convalidated
+            AND c.conname LIKE 'fk\\_points%'
+          ORDER BY c.conname
+        SQL
+      end
+
+      def add_foreign_key_sql(table, name, definition)
         on_delete = definition[:on_delete] ? " ON DELETE #{definition[:on_delete]}" : ''
-        "ALTER TABLE points_v2 ADD CONSTRAINT #{name} FOREIGN KEY (#{definition[:column]}) " \
+        "ALTER TABLE #{table} ADD CONSTRAINT #{name} FOREIGN KEY (#{definition[:column]}) " \
           "REFERENCES #{definition[:table]}(id)#{on_delete} NOT VALID"
       end
 
-      def with_lock_timeout
-        attempts = 0
-        begin
-          attempts += 1
-          connection.transaction(requires_new: true) do
-            connection.execute("SET LOCAL lock_timeout = '#{LOCK_TIMEOUT}'")
-            yield
-          end
-        rescue ActiveRecord::LockWaitTimeout
-          raise if attempts >= LOCK_ATTEMPTS
-
-          sleep(attempts)
-          retry
-        end
-      end
-
-      def detach_orphans(column, parent_table, table: 'points_v2', force: false)
-        return if !force && legacy_reference_validated?(column, parent_table)
-
+      def detach_orphans(table, column, parent_table)
         connection.execute(<<~SQL)
           UPDATE #{table} SET #{column} = NULL
           WHERE #{column} IS NOT NULL
             AND NOT EXISTS (SELECT 1 FROM #{parent_table} parent WHERE parent.id = #{table}.#{column})
-        SQL
-      end
-
-      def legacy_reference_validated?(column, parent_table)
-        connection.select_value(<<~SQL).to_i.positive?
-          SELECT COUNT(*)
-          FROM pg_constraint c
-          JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = ANY (c.conkey)
-          WHERE c.conrelid = 'points'::regclass
-            AND c.contype = 'f'
-            AND c.convalidated
-            AND c.confrelid = #{connection.quote(parent_table)}::regclass
-            AND a.attname = #{connection.quote(column)}
         SQL
       end
     end
