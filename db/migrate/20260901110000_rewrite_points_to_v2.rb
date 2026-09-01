@@ -17,8 +17,17 @@ class RewritePointsToV2 < ActiveRecord::Migration[8.0]
   SWAP_LOCK_TIMEOUT = '2s'
   SWAP_MAX_ATTEMPTS = 3
 
+  V1_FOREIGN_KEYS = [
+    'ALTER TABLE points ADD CONSTRAINT fk_points_v1_user FOREIGN KEY (user_id) REFERENCES users(id) NOT VALID',
+    'ALTER TABLE points ADD CONSTRAINT fk_points_v1_track FOREIGN KEY (track_id) REFERENCES tracks(id) NOT VALID',
+    'ALTER TABLE points ADD CONSTRAINT fk_points_v1_visit FOREIGN KEY (visit_id) REFERENCES visits(id) NOT VALID',
+    'ALTER TABLE points ADD CONSTRAINT fk_points_v1_raw_data_archive FOREIGN KEY (raw_data_archive_id) ' \
+    'REFERENCES points_raw_data_archives(id) ON DELETE RESTRICT NOT VALID'
+  ].freeze
+
   def up
-    return unless v1_points?
+    # A boot interrupted between the swap and the validation scans resumes here.
+    return schema_steps.validate_foreign_keys unless v1_points?
 
     raise 'points_v2 is missing - CreatePointsV2 (20260901100000) must run first' unless table_exists?(:points_v2)
 
@@ -29,6 +38,7 @@ class RewritePointsToV2 < ActiveRecord::Migration[8.0]
     job.finish
 
     swap_with_retries
+    schema_steps.validate_foreign_keys
     Rails.logger.info(
       '[RewritePointsToV2] swap complete. The old table is kept as points_legacy_d ' \
       'for rollback; it will be dropped in a follow-up release (or manually: ' \
@@ -36,6 +46,9 @@ class RewritePointsToV2 < ActiveRecord::Migration[8.0]
     )
   end
 
+  # The v2 table keeps no foreign keys while it sits idle (they would block
+  # every parent deletion), and the restored v1 table gets its four back as
+  # NOT VALID so the app runs with referential integrity again.
   def down
     unless table_exists?(:points_legacy_d)
       raise ActiveRecord::IrreversibleMigration, 'points_legacy_d is gone - cannot restore v1'
@@ -46,9 +59,10 @@ class RewritePointsToV2 < ActiveRecord::Migration[8.0]
       execute('SET LOCAL statement_timeout = 0')
       execute('ALTER TABLE points RENAME TO points_v2')
       rename_indexes_of('points_v2') { |name| name.sub('points', 'points_v2')[0, 63] }
-      rename_constraints_of('points_v2', from: '', to: '_v2')
+      drop_foreign_keys_of('points_v2')
       execute('ALTER TABLE points_legacy_d RENAME TO points')
       rename_indexes_of('points') { |name| name.sub('_legacy_d', '') }
+      V1_FOREIGN_KEYS.each { |ddl| execute(ddl) }
       execute('ALTER SEQUENCE points_id_seq OWNED BY points.id')
     end
     clear_caches
@@ -58,6 +72,10 @@ class RewritePointsToV2 < ActiveRecord::Migration[8.0]
 
   def v1_points?
     column_exists?(:points, :country_name)
+  end
+
+  def schema_steps
+    @schema_steps ||= Points::Rewrite::SchemaSteps.new(connection)
   end
 
   ROWS_PER_MINUTE = 1_000_000

@@ -257,22 +257,34 @@ RSpec.describe DataMigrations::RewritePointsV2Job, :non_transactional do
       expect(Rails.logger).to have_received(:warn).with(/retrying at 2/)
     end
 
-    it 'validates a foreign key an interrupted run left NOT VALID' do
-      create(:point, user: user, timestamp: 1_700_060_000)
-      job = described_class.new
-      job.run_phases_through_copy
-      connection.execute(
-        'ALTER TABLE points_v2 ADD CONSTRAINT fk_points_v2_user ' \
-        'FOREIGN KEY (user_id) REFERENCES users(id) NOT VALID'
-      )
+    it 'retries a batch that waited on a lock instead of failing the run' do
+      ids = (1..3).map { |i| create(:point, user: user, timestamp: 1_700_060_000 + i).id }
+      waited = false
+      allow(connection).to receive(:execute).and_wrap_original do |original, *args, **kwargs|
+        if !waited && args.first.include?('INSERT INTO points_v2') && args.first.include?('BETWEEN')
+          waited = true
+          raise ActiveRecord::LockWaitTimeout, 'canceling statement due to lock timeout'
+        end
+        original.call(*args, **kwargs)
+      end
+      allow_any_instance_of(described_class).to receive(:sleep)
 
-      job.finish
+      described_class.new.run_phases_through_copy
 
-      invalid = connection.select_value(
-        "SELECT COUNT(*) FROM pg_constraint WHERE conrelid = 'points_v2'::regclass " \
-        'AND contype = \'f\' AND NOT convalidated'
-      ).to_i
-      expect(invalid).to eq(0)
+      expect(ids.map { |id| v2_row(id) }).to all(be_present)
+    end
+
+    it 'adds the foreign keys NOT VALID and leaves validation to the swap' do
+      create(:point, user: user, timestamp: 1_700_061_000)
+
+      described_class.perform_now
+
+      states = connection.select_rows(
+        "SELECT conname, convalidated FROM pg_constraint WHERE conrelid = 'points_v2'::regclass AND contype = 'f'"
+      ).to_h
+      expect(states.keys).to match_array(%w[fk_points_v2_raw_data_archive fk_points_v2_track
+                                            fk_points_v2_user fk_points_v2_visit])
+      expect(states.values).to all(be(false))
     end
   end
 
@@ -338,6 +350,47 @@ RSpec.describe DataMigrations::RewritePointsV2Job, :non_transactional do
       expect(timestamps.size).to eq(2)
       expect(timestamps.uniq.size).to eq(2)
       expect(timestamps).to include(anchor.to_i + 1)
+    end
+
+    it 'moves a run of same-place synthesized rows past a real row in one go' do
+      anchor = Time.utc(2026, 4, 15, 10)
+      connection.execute(<<~SQL)
+        INSERT INTO points ("timestamp", user_id, lonlat, created_at, updated_at) VALUES
+          (NULL, #{user.id}, 'POINT(12.3712 51.3402)', '2026-04-15 10:00:00', '2026-04-15 10:00:00'),
+          (NULL, #{user.id}, 'POINT(12.3712 51.3402)', '2026-04-15 10:00:00', '2026-04-15 10:00:00'),
+          (NULL, #{user.id}, 'POINT(12.3712 51.3402)', '2026-04-15 10:00:00', '2026-04-15 10:00:00'),
+          (#{anchor.to_i + 1}, #{user.id}, 'POINT(12.3712 51.3402)', '2026-04-15 10:00:00', '2026-04-15 10:00:00')
+      SQL
+
+      expect { described_class.perform_now }.not_to raise_error
+
+      timestamps = connection.select_values(
+        "SELECT \"timestamp\" FROM points_v2 WHERE user_id = #{user.id} ORDER BY 1"
+      )
+      expect(timestamps.size).to eq(4)
+      expect(timestamps.uniq.size).to eq(4)
+    end
+
+    it 'keeps a moved timestamp when finish runs again after the index exists' do
+      anchor = Time.utc(2026, 4, 15, 10)
+      connection.execute(<<~SQL)
+        INSERT INTO points ("timestamp", user_id, lonlat, created_at, updated_at) VALUES
+          (NULL, #{user.id}, 'POINT(12.3712 51.3402)', '2026-04-15 10:00:00', '2026-04-15 10:00:00'),
+          (#{anchor.to_i + 1}, #{user.id}, 'POINT(12.3712 51.3402)', '2026-04-15 10:00:00', '2026-04-15 10:00:00')
+      SQL
+      job = described_class.new
+      job.run_phases_through_copy
+      job.finish
+      moved = connection.select_values(
+        "SELECT \"timestamp\" FROM points_v2 WHERE user_id = #{user.id} ORDER BY 1"
+      )
+
+      expect { job.finish }.not_to raise_error
+
+      again = connection.select_values(
+        "SELECT \"timestamp\" FROM points_v2 WHERE user_id = #{user.id} ORDER BY 1"
+      )
+      expect(again).to eq(moved)
     end
   end
 

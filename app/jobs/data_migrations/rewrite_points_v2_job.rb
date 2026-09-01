@@ -18,6 +18,7 @@ class DataMigrations::RewritePointsV2Job < ApplicationJob
   MIN_BATCH_SIZE = 5_000
   LOCK_TIMEOUT = '2s'
   STATEMENT_TIMEOUT = '5min'
+  LOCK_WAIT_ATTEMPTS = 3
 
   def perform(batch_size = BATCH_SIZE)
     return unless rewrite_applicable?
@@ -38,13 +39,17 @@ class DataMigrations::RewritePointsV2Job < ApplicationJob
     copy_range_walk(batch_size)
   end
 
+  # Foreign keys go in NOT VALID and only after the drain: a parent deleted
+  # during the copy is still referenced by v2 until its captured nullify is
+  # replayed, and validation (a full scan) belongs after the swap, when v2 is
+  # the FK-enforced table row for row.
   def finish
     return unless rewrite_applicable?
 
     unbounded { connection.execute(Points::Rewrite::Sql.synthesis_upsert) }
     unbounded { schema_steps.add_indexes }
-    schema_steps.add_foreign_keys
     capture.drain_fully
+    unbounded { schema_steps.add_foreign_keys }
   end
 
   private
@@ -106,12 +111,20 @@ class DataMigrations::RewritePointsV2Job < ApplicationJob
   def walk_ranges(from, upto, batch_size)
     size = batch_size
     cursor = from
+    lock_waits = 0
 
     while cursor <= upto
       batch_end = [cursor + size - 1, upto].min
       begin
         bounded { yield(cursor, batch_end) }
         cursor = batch_end + 1
+        lock_waits = 0
+      rescue ActiveRecord::LockWaitTimeout
+        lock_waits += 1
+        raise if lock_waits > LOCK_WAIT_ATTEMPTS
+
+        Rails.logger.warn("[RewritePointsV2] batch #{cursor}..#{batch_end} waited on a lock, retry #{lock_waits}")
+        sleep(lock_waits)
       rescue ActiveRecord::QueryAborted
         raise if size <= MIN_BATCH_SIZE
 

@@ -55,24 +55,65 @@ module Points
         end
       end
 
-      # NOT VALID takes only a brief lock on the referenced live table; the
-      # validation scan afterwards holds SHARE UPDATE EXCLUSIVE on points_v2
-      # and ROW SHARE on the parent, so tracks/users/visits stay writable.
+      # NOT VALID only: a brief lock on the referenced live table, no scan.
+      # Validation happens after the swap (validate_foreign_keys), when the
+      # drained v2 is the FK-enforced table row for row.
       def add_foreign_keys
         FOREIGN_KEYS.each do |name, fk|
-          existing = foreign_key_on(fk[:column])
-          if existing.nil?
-            detach_orphans(fk[:column], fk[:table]) if fk[:detach]
-            with_lock_timeout { connection.execute(add_foreign_key_sql(name, fk)) }
-            existing = { name: name, validated: false }
-          end
-          next if existing[:validated]
+          next if foreign_key_on(fk[:column])
 
-          connection.execute(%(ALTER TABLE points_v2 VALIDATE CONSTRAINT "#{existing[:name]}"))
+          detach_orphans(fk[:column], fk[:table]) if fk[:detach]
+          with_lock_timeout { connection.execute(add_foreign_key_sql(name, fk)) }
+        end
+      end
+
+      # VALIDATE takes SHARE UPDATE EXCLUSIVE on the table and ROW SHARE on
+      # the parent, so a live `points` stays readable and writable. A row
+      # whose parent vanished anyway (v1 without the FK) is detached and the
+      # validation retried once before giving up with the offending key.
+      def validate_foreign_keys(table: 'points')
+        unvalidated_foreign_keys(table).each do |name, column, parent_table|
+          validate_foreign_key(table, name, column, parent_table)
         end
       end
 
       private
+
+      def validate_foreign_key(table, name, column, parent_table, retried: false)
+        unbounded { connection.execute(%(ALTER TABLE #{table} VALIDATE CONSTRAINT "#{name}")) }
+      rescue ActiveRecord::InvalidForeignKey => e
+        if retried
+          Rails.logger.error(
+            "[RewritePointsV2] #{name} on #{table} cannot be validated: #{e.message.lines.first.strip} " \
+            'Fix the dangling reference in points and re-run the migration.'
+          )
+          raise
+        end
+
+        Rails.logger.warn("[RewritePointsV2] #{name}: detaching rows whose #{parent_table} row is gone")
+        unbounded { detach_orphans(column, parent_table, table: table, force: true) }
+        validate_foreign_key(table, name, column, parent_table, retried: true)
+      end
+
+      def unvalidated_foreign_keys(table)
+        connection.select_rows(<<~SQL)
+          SELECT c.conname, a.attname, c.confrelid::regclass::text
+          FROM pg_constraint c
+          JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = ANY (c.conkey)
+          WHERE c.conrelid = #{connection.quote(table)}::regclass
+            AND c.contype = 'f'
+            AND NOT c.convalidated
+            AND c.conname LIKE 'fk\\_points%'
+          ORDER BY c.conname
+        SQL
+      end
+
+      def unbounded
+        connection.transaction(requires_new: true) do
+          connection.execute('SET LOCAL statement_timeout = 0')
+          yield
+        end
+      end
 
       def build_unique_index(ddl)
         passes = 0
@@ -132,13 +173,13 @@ module Points
         end
       end
 
-      def detach_orphans(column, parent_table)
-        return if legacy_reference_validated?(column, parent_table)
+      def detach_orphans(column, parent_table, table: 'points_v2', force: false)
+        return if !force && legacy_reference_validated?(column, parent_table)
 
         connection.execute(<<~SQL)
-          UPDATE points_v2 SET #{column} = NULL
+          UPDATE #{table} SET #{column} = NULL
           WHERE #{column} IS NOT NULL
-            AND NOT EXISTS (SELECT 1 FROM #{parent_table} parent WHERE parent.id = points_v2.#{column})
+            AND NOT EXISTS (SELECT 1 FROM #{parent_table} parent WHERE parent.id = #{table}.#{column})
         SQL
       end
 

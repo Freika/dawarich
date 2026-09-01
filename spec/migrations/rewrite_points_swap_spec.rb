@@ -146,6 +146,61 @@ RSpec.describe RewritePointsToV2, :non_transactional do
     expect(fk_columns).to match_array(%w[raw_data_archive_id track_id user_id visit_id])
   end
 
+  it 'lets a rolled-back instance delete tracks and keeps referential integrity on v1' do
+    track = create(:track, user: user)
+    connection.execute(<<~SQL)
+      INSERT INTO points ("timestamp", user_id, track_id, lonlat, created_at, updated_at)
+      VALUES (1700000670, #{user.id}, #{track.id}, 'POINT(12.3712 51.3402)', NOW(), NOW())
+    SQL
+    migration.up
+    migration.down
+
+    v2_fks = connection.select_value(
+      "SELECT COUNT(*) FROM pg_constraint WHERE conrelid = 'points_v2'::regclass AND contype = 'f'"
+    ).to_i
+    v1_fk_targets = connection.select_values(
+      "SELECT confrelid::regclass::text FROM pg_constraint WHERE conrelid = 'points'::regclass AND contype = 'f'"
+    )
+    expect(v2_fks).to eq(0)
+    expect(v1_fk_targets).to match_array(%w[points_raw_data_archives tracks users visits])
+    expect { Track.find(track.id).destroy! }.not_to raise_error
+    expect(connection.select_value('SELECT track_id FROM points WHERE "timestamp" = 1700000670')).to be_nil
+  end
+
+  it 'validates the foreign keys after the swap even when a parent vanished during the copy' do
+    track = create(:track, user: user)
+    connection.execute(<<~SQL)
+      INSERT INTO points ("timestamp", user_id, track_id, lonlat, created_at, updated_at)
+      VALUES (1700000680, #{user.id}, #{track.id}, 'POINT(12.3712 51.3402)', NOW(), NOW())
+    SQL
+    DataMigrations::RewritePointsV2Job.new.run_phases_through_copy
+    Track.find(track.id).destroy!
+
+    expect { migration.up }.not_to raise_error
+
+    expect(connection.select_value('SELECT track_id FROM points WHERE "timestamp" = 1700000680')).to be_nil
+    unvalidated = connection.select_value(
+      "SELECT COUNT(*) FROM pg_constraint WHERE conrelid = 'points'::regclass AND contype = 'f' AND NOT convalidated"
+    ).to_i
+    expect(unvalidated).to eq(0)
+  end
+
+  it 'finishes an interrupted validation on the next boot' do
+    seed_v1_point(timestamp: 1_700_000_690)
+    migration.up
+    connection.execute(<<~SQL)
+      ALTER TABLE points DROP CONSTRAINT fk_points_user;
+      ALTER TABLE points ADD CONSTRAINT fk_points_user FOREIGN KEY (user_id) REFERENCES users(id) NOT VALID;
+    SQL
+
+    migration.up
+
+    validated = connection.select_value(
+      "SELECT convalidated FROM pg_constraint WHERE conrelid = 'points'::regclass AND conname = 'fk_points_user'"
+    )
+    expect(validated).to be(true)
+  end
+
   it 'drops the legacy table\'s foreign keys so parents can be deleted during the retention window' do
     track = create(:track, user: user)
     connection.execute(<<~SQL)

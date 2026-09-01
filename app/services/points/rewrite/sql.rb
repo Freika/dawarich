@@ -57,6 +57,8 @@ module Points
       # ONE global pass over every NULL-timestamp row. The row_number MUST
       # span the whole set: restarting it per batch reproduces the collision
       # the offset exists to avoid (imports sharing created_at seconds).
+      # Insert-only: a row already in v2 keeps its timestamp, so a resume after
+      # the unique index moved a colliding row cannot move it back.
       def synthesis_upsert
         <<~SQL
           INSERT INTO points_v2 (#{column_list})
@@ -69,21 +71,25 @@ module Points
             FROM points
             WHERE "timestamp" IS NULL
           ) n ON n.id = p.id
-          ON CONFLICT (id) DO UPDATE SET #{conflict_update}
+          WHERE NOT EXISTS (SELECT 1 FROM points_v2 v WHERE v.id = p.id)
+          ON CONFLICT (id) DO NOTHING
         SQL
       end
 
       # A synthesized timestamp can land on a real row's (user, timestamp,
-      # lonlat); each pass moves the synthesized side forward by one second.
+      # lonlat). Each pass moves every colliding synthesized row past the
+      # user's whole synthesized run, so rows that share a lonlat cannot
+      # chase each other one second at a time.
       def bump_synthesized_collisions
         <<~SQL
           WITH synthesized AS (
-            SELECT v.id, v.user_id, v."timestamp", (v.lonlat::geometry)::bytea AS lonlat_bytes
+            SELECT v.id, v.user_id, v."timestamp", (v.lonlat::geometry)::bytea AS lonlat_bytes,
+                   COUNT(*) OVER (PARTITION BY v.user_id) AS run_length
             FROM points_v2 v
             JOIN points p ON p.id = v.id
             WHERE p."timestamp" IS NULL
           ), colliding AS (
-            SELECT s.id
+            SELECT s.id, s.run_length
             FROM synthesized s
             JOIN points_v2 o
               ON o.user_id = s.user_id
@@ -91,8 +97,9 @@ module Points
              AND (o.lonlat::geometry)::bytea = s.lonlat_bytes
              AND o.id <> s.id
           )
-          UPDATE points_v2 SET "timestamp" = "timestamp" + 1
-          WHERE id IN (SELECT id FROM colliding)
+          UPDATE points_v2 SET "timestamp" = points_v2."timestamp" + colliding.run_length
+          FROM colliding
+          WHERE points_v2.id = colliding.id
         SQL
       end
 
