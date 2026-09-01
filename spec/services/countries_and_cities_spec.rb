@@ -150,6 +150,122 @@ RSpec.describe CountriesAndCities do
         end
       end
 
+      context 'when a flight separates two stays in the same city' do
+        let(:kwargs) { { min_minutes_spent_in_city: 60 } }
+
+        let(:points) do
+          [
+            create(:point, city: 'Berlin', country: 'Germany', timestamp:),
+            create(:point, city: 'Berlin', country: 'Germany', timestamp: timestamp + 30.minutes),
+            create(:point, city: 'Berlin', country: 'Germany', velocity: '250',
+                           timestamp: timestamp + 3.hours),
+            create(:point, city: 'Berlin', country: 'Germany', velocity: '250',
+                           timestamp: timestamp + 5.hours),
+            create(:point, city: 'Berlin', country: 'Germany', timestamp: timestamp + 20.hours),
+            create(:point, city: 'Berlin', country: 'Germany', timestamp: timestamp + 21.hours)
+          ]
+        end
+
+        it 'does not credit the time spent in the air to the city' do
+          expect(countries_and_cities.first.cities.first.stayed_for).to eq(90)
+        end
+      end
+
+      context 'when sparse sampling catches one point over another city mid-flight' do
+        let(:kwargs) { { min_minutes_spent_in_city: 60 } }
+
+        let(:points) do
+          [
+            create(:point, city: 'Berlin', country: 'Germany', timestamp:),
+            create(:point, city: 'Berlin', country: 'Germany', timestamp: timestamp + 30.minutes),
+            create(:point, city: 'Paris', country: 'France', velocity: '250',
+                           timestamp: timestamp + 3.hours),
+            create(:point, city: 'Berlin', country: 'Germany', timestamp: timestamp + 20.hours),
+            create(:point, city: 'Berlin', country: 'Germany', timestamp: timestamp + 21.hours)
+          ]
+        end
+
+        it 'bridges the trip rather than risk dropping the stay on one sample' do
+          cities = countries_and_cities.flat_map(&:cities)
+
+          expect(cities.map(&:city)).to eq(['Berlin'])
+          expect(cities.first.stayed_for).to eq(1260)
+        end
+      end
+
+      context 'when every point is in transit' do
+        let(:kwargs) { { min_minutes_spent_in_city: 1 } }
+
+        let(:points) do
+          [
+            create(:point, city: 'Berlin', country: 'Germany', velocity: '250', timestamp:),
+            create(:point, city: 'Berlin', country: 'Germany', velocity: '250',
+                           timestamp: timestamp + 1.hour),
+            create(:point, city: 'Berlin', country: 'Germany', velocity: '250',
+                           timestamp: timestamp + 2.hours)
+          ]
+        end
+
+        it 'credits no city at all' do
+          expect(countries_and_cities).to be_empty
+        end
+      end
+
+      context 'when a lone velocity spike interrupts a stay' do
+        let(:kwargs) { { min_minutes_spent_in_city: 60 } }
+
+        let(:points) do
+          [
+            create(:point, city: 'Berlin', country: 'Germany', timestamp:),
+            create(:point, city: 'Berlin', country: 'Germany', timestamp: timestamp + 30.minutes),
+            create(:point, city: 'Berlin', country: 'Germany', velocity: '250',
+                           timestamp: timestamp + 3.hours),
+            create(:point, city: 'Berlin', country: 'Germany', timestamp: timestamp + 20.hours),
+            create(:point, city: 'Berlin', country: 'Germany', timestamp: timestamp + 21.hours)
+          ]
+        end
+
+        it 'does not let one bad reading break the stay apart' do
+          expect(countries_and_cities.first.cities.first.stayed_for).to eq(1260)
+        end
+      end
+
+      context 'when an ungeocoded stretch separates two stays in the same city' do
+        let(:kwargs) { { min_minutes_spent_in_city: 60 } }
+
+        let(:points) do
+          [
+            create(:point, city: 'Berlin', country: 'Germany', timestamp:),
+            create(:point, city: 'Berlin', country: 'Germany', timestamp: timestamp + 30.minutes),
+            create(:point, city: nil, country: nil, timestamp: timestamp + 3.hours),
+            create(:point, city: 'Berlin', country: 'Germany', timestamp: timestamp + 20.hours),
+            create(:point, city: 'Berlin', country: 'Germany', timestamp: timestamp + 21.hours)
+          ]
+        end
+
+        it 'treats the ungeocoded points as silence rather than as leaving' do
+          expect(countries_and_cities.first.cities.first.stayed_for).to eq(1260)
+        end
+      end
+
+      context 'when a gap sits exactly on the bridge cap' do
+        let(:kwargs) { { min_minutes_spent_in_city: 60 } }
+
+        let(:points) do
+          [
+            create(:point, city: 'Berlin', country: 'Germany', timestamp:),
+            create(:point, city: 'Berlin', country: 'Germany', timestamp: timestamp + 7.days)
+          ]
+        end
+
+        it 'bridges the silence rather than splitting it' do
+          cities = countries_and_cities.first.cities
+
+          expect(cities.map(&:city)).to eq(['Berlin'])
+          expect(cities.first.stayed_for).to eq(7 * 24 * 60)
+        end
+      end
+
       context 'when a gap exceeds the bridge cap' do
         let(:kwargs) { { min_minutes_spent_in_city: 60 } }
 
@@ -164,6 +280,29 @@ RSpec.describe CountriesAndCities do
 
         it 'splits the runs rather than crediting the whole gap' do
           expect(countries_and_cities.first.cities).to be_empty
+        end
+      end
+
+      context 'when points share a timestamp at a city boundary' do
+        let(:kwargs) { { min_minutes_spent_in_city: 1 } }
+
+        let(:points) do
+          [
+            create(:point, city: 'Berlin', country: 'Germany', timestamp:),
+            create(:point, city: 'Berlin', country: 'Germany', timestamp: timestamp + 100.minutes),
+            create(:point, city: 'Munich', country: 'Germany', timestamp: timestamp + 100.minutes),
+            create(:point, city: 'Berlin', country: 'Germany', timestamp: timestamp + 100.minutes),
+            create(:point, city: 'Berlin', country: 'Germany', timestamp: timestamp + 200.minutes)
+          ]
+        end
+
+        it 'credits the same duration regardless of input order' do
+          durations = Array.new(20) do
+            described_class.new(points.shuffle, **kwargs)
+                           .call.first.cities.find { |city| city.city == 'Berlin' }&.stayed_for
+          end
+
+          expect(durations.uniq).to eq([200])
         end
       end
 

@@ -82,10 +82,10 @@ RSpec.describe Users::SettingsUpdater do
 
     context 'when the city threshold changes' do
       it 'recalculates existing stats so the new value is reflected' do
-        expect(Stats::EnqueueFullRecalculation).to receive(:new).with(user).and_call_original
-        allow_any_instance_of(Stats::EnqueueFullRecalculation).to receive(:call)
+        allow(user).to receive(:years_tracked).and_return([{ year: 2026, months: %w[Mar] }])
 
-        described_class.new(user, 'min_minutes_spent_in_city' => 15).call
+        expect { described_class.new(user, 'min_minutes_spent_in_city' => 15).call }
+          .to have_enqueued_job(Stats::CalculatingJob).with(user.id, 2026, 3)
       end
 
       it 'does not recalculate when the value is unchanged' do
@@ -94,6 +94,34 @@ RSpec.describe Users::SettingsUpdater do
         expect(Stats::EnqueueFullRecalculation).not_to receive(:new)
 
         described_class.new(user, 'min_minutes_spent_in_city' => 15).call
+      end
+
+      it 'does not recalculate when a user with no stored value is sent the default' do
+        user.update!(settings: user.settings.except('min_minutes_spent_in_city'))
+        allow(user).to receive(:years_tracked).and_return([{ year: 2026, months: %w[Mar] }])
+
+        expect { described_class.new(user, 'min_minutes_spent_in_city' => 60).call }
+          .not_to have_enqueued_job(Stats::CalculatingJob)
+      end
+
+      it 'recalculates when a blank value drops the effective threshold' do
+        allow(user).to receive(:years_tracked).and_return([{ year: 2026, months: %w[Mar] }])
+
+        expect { described_class.new(user, 'min_minutes_spent_in_city' => '').call }
+          .to have_enqueued_job(Stats::CalculatingJob).with(user.id, 2026, 3)
+      end
+
+      it 'triggers reclassification and stats recalculation independently' do
+        allow(user).to receive(:years_tracked).and_return([{ year: 2026, months: %w[Mar] }])
+
+        expect do
+          described_class.new(user,
+                              'enabled_transportation_modes' => %w[walking cycling],
+                              'min_minutes_spent_in_city' => 15).call
+        end.to have_enqueued_job(TransportationModes::UserReclassifyJob).with(user.id)
+                                                                        .and have_enqueued_job(Stats::CalculatingJob).with(
+                                                                          user.id, 2026, 3
+                                                                        )
       end
 
       it 'does not recalculate for unrelated settings' do

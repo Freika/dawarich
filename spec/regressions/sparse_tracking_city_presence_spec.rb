@@ -36,8 +36,6 @@ RSpec.describe 'City presence under sparse tracking' do
   end
 
   context 'when the reporting cadence crosses what used to be the gap threshold' do
-    let(:user) { create(:user, settings: { 'timezone' => tz, 'min_minutes_spent_in_city' => 5 }) }
-
     it 'does not fall off a cliff between adjacent cadences' do
       credited = [60, 119, 120, 121, 180].map do |cadence|
         traveller = create(:user, settings: { 'timezone' => tz, 'min_minutes_spent_in_city' => 5 })

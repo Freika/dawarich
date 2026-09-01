@@ -6,7 +6,8 @@ class CountriesAndCities
 
   FLYOVER_VELOCITY_THRESHOLD_KMH = 500
   MS_TO_KMH = 3.6
-  BRIDGE_CAP_SECONDS = 7 * 24 * 60 * 60
+  BRIDGE_CAP_SECONDS = Visits::Detection::Policy::BRIDGE_CAP_S
+  MIN_TRANSIT_RUN_POINTS = 2
 
   def initialize(points, min_minutes_spent_in_city: 60)
     @points = points
@@ -24,15 +25,29 @@ class CountriesAndCities
 
   attr_reader :points, :min_minutes_spent_in_city
 
-  def tracked_points
-    @tracked_points ||=
-      points
-      .reject { |point| point[:country_name].nil? || point[:city].nil? || flyover?(point) }
-      .sort_by { |point| point[:timestamp] }
+  def ordered_points
+    @ordered_points ||= points.sort_by { |point| [point[:timestamp], point[:id].to_i] }
   end
 
   def presence_runs
-    tracked_points
+    segments_between_transits.flat_map { |segment| runs_within(segment) }
+  end
+
+  def segments_between_transits
+    ordered_points
+      .chunk { |point| flyover?(point) }
+      .each_with_object([[]]) do |(flyover, chunk), segments|
+        if !flyover
+          segments.last.concat(chunk)
+        elsif chunk.size >= MIN_TRANSIT_RUN_POINTS
+          segments << []
+        end
+      end
+  end
+
+  def runs_within(segment)
+    segment
+      .reject { |point| point[:country_name].nil? || point[:city].nil? }
       .slice_when { |previous, current| separate_runs?(previous, current) }
       .map { |run_points| build_run(run_points) }
   end
@@ -86,7 +101,7 @@ class CountriesAndCities
 
   def country_names_by_id
     @country_names_by_id ||= begin
-      ids = tracked_points.filter_map { |point| point[:country_id] }.uniq
+      ids = points.filter_map { |point| point[:country_id] }.uniq
       ids.any? ? Country.where(id: ids).pluck(:id, :name).to_h : {}
     end
   end

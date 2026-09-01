@@ -15,7 +15,7 @@ module Users
       @user = user
       @settings_params = settings_params
       @old_enabled_modes = user.settings[MODES_KEY]&.dup
-      @old_city_threshold = user.settings[CITY_THRESHOLD_KEY]
+      @old_city_threshold = normalized_city_threshold(user.settings[CITY_THRESHOLD_KEY])
     end
 
     def call
@@ -104,13 +104,17 @@ module Users
 
     def trigger_city_stats_recalculation
       return unless city_threshold_param_present?
-      return if @old_city_threshold.to_s == @user.settings[CITY_THRESHOLD_KEY].to_s
+      return if @old_city_threshold == normalized_city_threshold(@user.settings[CITY_THRESHOLD_KEY])
 
       Stats::EnqueueFullRecalculation.new(@user).call
     end
 
     def city_threshold_param_present?
       @settings_params.key?(CITY_THRESHOLD_KEY) || @settings_params.key?(CITY_THRESHOLD_KEY.to_sym)
+    end
+
+    def normalized_city_threshold(value)
+      (value || Users::SafeSettings::DEFAULT_VALUES[CITY_THRESHOLD_KEY]).to_i
     end
 
     def status_manager

@@ -11,8 +11,10 @@ class Api::V1::Countries::VisitedCitiesController < ApiController
 
     points = current_api_user
              .points
-             .without_raw_data
+             .not_anomaly
+             .select(:id, :timestamp, :city, :country_name, :country_id, :velocity)
              .where(timestamp: start_at..end_at)
+             .order(timestamp: :asc)
 
     render json: {
       data: CountriesAndCities.new(
