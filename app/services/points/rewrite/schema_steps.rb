@@ -94,7 +94,7 @@ module Points
             connection.execute("SET LOCAL lock_timeout = '#{LOCK_TIMEOUT}'")
             yield
           end
-        rescue ActiveRecord::LockWaitTimeout
+        rescue ActiveRecord::LockWaitTimeout, ActiveRecord::Deadlocked
           raise if attempts >= LOCK_ATTEMPTS
 
           sleep(attempts)
@@ -107,10 +107,15 @@ module Points
       def validate_foreign_key(table, name, column, parent_table, retried: false)
         unbounded { connection.execute(%(ALTER TABLE #{table} VALIDATE CONSTRAINT "#{name}")) }
       rescue ActiveRecord::InvalidForeignKey => e
-        if retried
+        if retried || column == 'user_id'
+          remedy = if column == 'user_id'
+                     'Points whose user is gone must be deleted by hand'
+                   else
+                     'Fix the dangling reference in points'
+                   end
           Rails.logger.error(
             "[RewritePointsV2] #{name} on #{table} cannot be validated: #{e.message.lines.first.strip} " \
-            'Fix the dangling reference in points and re-run the migration.'
+            "#{remedy}, then re-run the migration."
           )
           raise
         end

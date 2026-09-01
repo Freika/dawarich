@@ -349,6 +349,22 @@ RSpec.describe DataMigrations::RewritePointsV2Job, :non_transactional do
       expect(timestamps.uniq.size).to eq(4)
     end
 
+    it 'separates two synthesized rows that meet because a lower id carries a later created_at' do
+      connection.execute(<<~SQL)
+        INSERT INTO points ("timestamp", user_id, lonlat, created_at, updated_at) VALUES
+          (NULL, #{user.id}, 'POINT(12.3712 51.3402)', '2026-04-15 10:00:01', '2026-04-15 10:00:01'),
+          (NULL, #{user.id}, 'POINT(12.3712 51.3402)', '2026-04-15 10:00:00', '2026-04-15 10:00:00')
+      SQL
+
+      expect { described_class.perform_now }.not_to raise_error
+
+      timestamps = connection.select_values(
+        "SELECT \"timestamp\" FROM points_v2 WHERE user_id = #{user.id} ORDER BY 1"
+      )
+      expect(timestamps.size).to eq(2)
+      expect(timestamps.uniq.size).to eq(2)
+    end
+
     it 'keeps a moved timestamp when finish runs again after the index exists' do
       anchor = Time.utc(2026, 4, 15, 10)
       connection.execute(<<~SQL)

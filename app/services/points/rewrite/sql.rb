@@ -77,9 +77,10 @@ module Points
       end
 
       # A synthesized timestamp can land on a real row's (user, timestamp,
-      # lonlat). Each pass moves every colliding synthesized row past the
-      # user's whole synthesized run, so rows that share a lonlat cannot
-      # chase each other one second at a time.
+      # lonlat), or two synthesized rows can meet when a lower id carries a
+      # later created_at. Each pass moves every colliding synthesized row past
+      # the user's whole synthesized run, plus its rank inside its own
+      # collision set, so neither kind can chase the other.
       def bump_synthesized_collisions
         <<~SQL
           WITH synthesized AS (
@@ -89,17 +90,21 @@ module Points
             JOIN points p ON p.id = v.id
             WHERE p."timestamp" IS NULL
           ), colliding AS (
-            SELECT s.id, s.run_length
+            SELECT DISTINCT s.id, s.user_id, s."timestamp", s.lonlat_bytes, s.run_length
             FROM synthesized s
             JOIN points_v2 o
               ON o.user_id = s.user_id
              AND o."timestamp" = s."timestamp"
              AND (o.lonlat::geometry)::bytea = s.lonlat_bytes
              AND o.id <> s.id
+          ), shifts AS (
+            SELECT id,
+                   run_length + ROW_NUMBER() OVER (PARTITION BY user_id, "timestamp", lonlat_bytes ORDER BY id) - 1 AS shift
+            FROM colliding
           )
-          UPDATE points_v2 SET "timestamp" = points_v2."timestamp" + colliding.run_length
-          FROM colliding
-          WHERE points_v2.id = colliding.id
+          UPDATE points_v2 SET "timestamp" = points_v2."timestamp" + shifts.shift
+          FROM shifts
+          WHERE points_v2.id = shifts.id
         SQL
       end
 

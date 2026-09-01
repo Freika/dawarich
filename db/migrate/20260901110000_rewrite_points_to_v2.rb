@@ -106,20 +106,23 @@ class RewritePointsToV2 < ActiveRecord::Migration[8.0]
     schema_steps.validate_foreign_keys
   end
 
+  # A lock wait or a deadlock (the in-swap ADD CONSTRAINT wants the parent
+  # tables while visit or track creation holds one and wants points) is
+  # transient: back off and try the whole swap again.
   def swap_with_retries
     attempts = 0
     begin
       attempts += 1
       swap!
-    rescue ActiveRecord::LockWaitTimeout
+    rescue ActiveRecord::LockWaitTimeout, ActiveRecord::Deadlocked => e
       if attempts < SWAP_MAX_ATTEMPTS
         sleep(attempts)
         retry
       end
-      raise ActiveRecord::LockWaitTimeout,
-            '[RewritePointsToV2] could not win the ACCESS EXCLUSIVE race on points after ' \
-            "#{SWAP_MAX_ATTEMPTS} attempts. Re-run the migration (the copy is already done; " \
-            'only the instant swap remains).'
+      raise e.class,
+            '[RewritePointsToV2] could not complete the swap on points after ' \
+            "#{SWAP_MAX_ATTEMPTS} attempts (#{e.message.lines.first.strip}). Re-run the migration " \
+            '(the copy is already done; only the instant swap remains).'
     end
   end
 

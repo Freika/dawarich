@@ -105,6 +105,28 @@ RSpec.describe RewritePointsToV2, :non_transactional do
     ).to_i).to eq(0)
   end
 
+  it 'retries the swap after a deadlock with visit or track creation' do
+    seed_v1_point(timestamp: 1_700_000_450)
+    deadlocked = false
+    allow(migration).to receive(:sleep)
+    allow_any_instance_of(Points::Rewrite::SchemaSteps).to receive(:add_foreign_keys).and_wrap_original do |m, *a, **kw|
+      unless deadlocked
+        deadlocked = true
+        raise ActiveRecord::Deadlocked, 'PG::TRDeadlockDetected: ERROR:  deadlock detected'
+      end
+      m.call(*a, **kw)
+    end
+
+    expect { migration.up }.not_to raise_error
+
+    expect(deadlocked).to be(true)
+    expect(connection.column_exists?(:points, :country_name)).to be(false)
+    fk_names = connection.select_values(
+      "SELECT conname FROM pg_constraint WHERE conrelid = 'points'::regclass AND contype = 'f'"
+    )
+    expect(fk_names).to match_array(%w[fk_points_raw_data_archive fk_points_track fk_points_user fk_points_visit])
+  end
+
   it 'is a no-op on second run' do
     seed_v1_point(timestamp: 1_700_000_500)
     migration.up
