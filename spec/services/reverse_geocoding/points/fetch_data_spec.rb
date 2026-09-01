@@ -123,7 +123,8 @@ RSpec.describe ReverseGeocoding::Points::FetchData do
       it 'calls Geocoder' do
         fetch_data
 
-        expect(Geocoder).to have_received(:search).with([point.lat, point.lon])
+        expect(Geocoder).to have_received(:search)
+          .with([point.lat, point.lon], hash_including(timeout: REVERSE_GEOCODING_TIMEOUT))
       end
 
       described_class::WRITE_CONTENTION_ERRORS.each do |error_class|
