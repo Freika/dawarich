@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe 'Stats rebuilt after the calculation changes' do
+  include ActiveSupport::Testing::TimeHelpers
+
   let(:user) { create(:user, status: :active) }
 
   def stale_stat(month)
@@ -106,14 +108,32 @@ RSpec.describe 'Stats rebuilt after the calculation changes' do
   end
 
   describe 'the repair path and the new-points watermark' do
-    it 'does not let a repair rebuild swallow the next window' do
+    it 'starts the next window where the last sweep stopped, not after a repair write' do
       stale_stat(12)
+
+      first_sweep = Time.current
+      travel_to(first_sweep) { Stats::BulkCalculator.new(user.id).call }
+
+      Stat.where(user: user).update_all(updated_at: first_sweep + 30.minutes)
+
+      windows = []
+      allow(Point.connection).to receive(:select_rows).and_wrap_original do |orig, sql, *rest|
+        windows << sql
+        orig.call(sql, *rest)
+      end
+
+      travel_to(first_sweep + 1.hour) { Stats::BulkCalculator.new(user.id).call }
+
+      expect(windows.last).to include(first_sweep.to_i.to_s)
+    end
+
+    it 'leaves stats.updated_at alone when it merely defers a month' do
+      stale_stat(12)
+      before = Stat.find_by(user: user, year: 2025, month: 12).updated_at
+
       Stats::BulkCalculator.new(user.id).call
-      swept = user.reload.stats_swept_at
 
-      Stat.where(user: user).update_all(updated_at: 1.hour.from_now)
-
-      expect(user.reload.stats_swept_at).to eq(swept)
+      expect(Stat.find_by(user: user, year: 2025, month: 12).updated_at).to eq(before)
     end
 
     it 'records its own high-water mark rather than deriving it from stat rows' do
@@ -130,6 +150,7 @@ RSpec.describe 'Stats rebuilt after the calculation changes' do
 
       expect(waits).to all(be_present)
       expect(waits.max - Time.current.to_f).to be <= Stats::BulkCalculator::REPAIR_JITTER.to_i
+      expect(waits.max - waits.min).to be > 1.second
     end
 
     it 'does not delay a month that has genuinely new points' do

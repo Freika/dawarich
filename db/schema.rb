@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_01_203451) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_01_204555) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -473,6 +473,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_01_203451) do
     t.bigint "flight_distance", default: 0, null: false
     t.jsonb "h3_hex_ids", default: {}
     t.integer "month", null: false
+    t.datetime "repair_deferred_at"
     t.jsonb "sharing_settings", default: {}
     t.uuid "sharing_uuid"
     t.jsonb "toponyms"

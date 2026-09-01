@@ -30,7 +30,7 @@ module Stats
     def stale_months
       Stat.where(user_id:)
           .where(calculation_version: ...CalculateMonth::CALCULATION_VERSION)
-          .order(:updated_at, :id)
+          .order(Arel.sql('repair_deferred_at ASC NULLS FIRST'), :id)
           .limit(STALE_STATS_PER_RUN)
           .pluck(:year, :month)
     end
@@ -74,7 +74,7 @@ module Stats
 
     def defer_repaired(months)
       months.each do |year, month|
-        Stat.where(user_id:, year:, month:).update_all(updated_at: Time.current)
+        Stat.where(user_id:, year:, month:).update_all(repair_deferred_at: Time.current)
       end
     end
   end

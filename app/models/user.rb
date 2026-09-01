@@ -412,7 +412,16 @@ class User < ApplicationRecord
   end
 
   def mark_stats_for_rebucketing
-    stats.update_all(calculation_version: 0)
+    months = stats.pluck(:year, :month)
+    return if months.empty?
+
+    stats.update_all(calculation_version: 0, repair_deferred_at: Time.current)
+
+    months.each do |year, month|
+      Stats::CalculatingJob
+        .set(wait: rand(0..Stats::BulkCalculator::REPAIR_JITTER.to_i).seconds)
+        .perform_later(id, year, month, notify_on_failure: false)
+    end
   end
 
   def create_api_key
