@@ -493,6 +493,7 @@ en:
     extraction_card:
       additional_data: Additional data
       this_import_format_doesn_t_carry_visits_named_places_or: This import format doesn't carry visits, named places, or transportation modes, so there's nothing additional to extract.
+      this_gpx_file_holds_no_waypoints: 'This GPX file holds only recorded track points, so there are no waypoints to import as places.'
       extracted: Extracted
       visits: visits,
       places: places,
@@ -2582,6 +2583,7 @@ en:
       source:
         manual: Manual
         photon: Photon
+        gpx_waypoint: 'GPX waypoint'
     shared_link:
       resource_type:
         trip: Trip

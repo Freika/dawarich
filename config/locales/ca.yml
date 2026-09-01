@@ -493,6 +493,7 @@ ca:
     extraction_card:
       additional_data: Dades addicionals
       this_import_format_doesn_t_carry_visits_named_places_or: Aquest format d'importació no inclou visites, llocs amb nom ni mitjans de transport, així que no hi ha res addicional a extreure.
+      this_gpx_file_holds_no_waypoints: 'Aquest fitxer GPX només conté punts de traça enregistrats, així que no hi ha punts de referència per importar com a llocs.'
       extracted: Extret
       visits: visites,
       places: llocs,
@@ -2582,6 +2583,7 @@ ca:
       source:
         manual: Manual
         photon: Photon
+        gpx_waypoint: 'Punt de referència GPX'
     shared_link:
       resource_type:
         trip: Viatge
