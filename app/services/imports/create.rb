@@ -151,7 +151,10 @@ class Imports::Create
 
   def awaiting_place_extraction?(import)
     return false unless import.additional_data_extraction_supported?
-    return false unless import.raw_data&.dig('waypoints_seen').to_i.positive?
+
+    data = import.raw_data || {}
+    return false if data['trackpoints_seen'].to_i.positive?
+    return false unless data['waypoints_seen'].to_i.positive?
 
     !import.additional_data_extraction_completed?
   end
