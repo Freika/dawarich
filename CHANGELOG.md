@@ -10,8 +10,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - The API now accepts visits in batches: `POST /api/v1/visits/batch` takes up to 100 visits in one request and reports each one's outcome separately, so a single rejected visit no longer costs the whole sync. The mobile apps previously had to send one request per detected visit.
 
+### Changed
+
+- The "Max Gap Between Points" setting has been removed. It existed to compensate for the city-duration bug fixed below, and its lowest values were the ones that hid cities; how long a tracking silence still counts as staying put is now handled consistently for everyone: a silence of up to seven days that starts and ends in the same city counts as time spent there, unless points recorded in between show you moving at flight speed, which ends the stay. "Min Minutes in City" is unchanged.
+
 ### Fixed
 
+- Cities where you stayed but your phone reported infrequently are counted again. Time spent in a city was measured from how often your device sent points rather than from how long you were there, so a stationary phone saving battery could be credited no time at all and drop the city — including your home city — from statistics and from the map's visited-cities view. Recalculated months will generally show higher numbers than before. **Existing months keep their old numbers until recalculated: press "Update stats" on the Stats page.** (#2207)
+- Changing "Min Minutes in City" now recalculates your existing statistics, instead of leaving old numbers in place until you refreshed them by hand (#2207).
 - A GPX file holding only waypoints (such as an OsmAnd+ `favourites.gpx`) now says so when it imports 0 points, instead of reporting that the file lacks per-point timestamps. That advice was wrong: OsmAnd waypoints do carry a time, and adding more timestamps never helped. (#1261)
 - Shared link addresses are now always three words. One hyphenated entry in the word list could produce a four-word address.
 - Photos are now matched to a trip or map range on the photo's UTC timestamp rather than its local wall-clock time. Previously a trip could hide photos taken in its final hours, drop one taken exactly on its start or end boundary, or — when it began or ended near midnight — lose photos before they were even fetched. A photo with a missing or unreadable timestamp is now skipped instead of failing the whole fetch. (#1137)

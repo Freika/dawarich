@@ -59,7 +59,6 @@ class Users::SafeSettings
     'supporter_github_username' => nil,
     'show_supporter_badge' => true,
     'min_minutes_spent_in_city' => 60,
-    'max_gap_minutes_in_city' => 120,
     # GPS noise filtering (Points::AnomalyFilter)
     'gps_filtering_enabled' => true,
     'timezone' => ENV.fetch('TIME_ZONE', 'UTC'),
@@ -111,7 +110,6 @@ class Users::SafeSettings
       globe_projection: globe_projection,
       enabled_transportation_modes: enabled_transportation_modes,
       min_minutes_spent_in_city: min_minutes_spent_in_city,
-      max_gap_minutes_in_city: max_gap_minutes_in_city,
       gps_filtering_enabled: gps_filtering_enabled?,
       timezone: timezone,
       visit_radius_meters: visit_radius_meters,
@@ -306,10 +304,6 @@ class Users::SafeSettings
 
   def min_minutes_spent_in_city
     (settings['min_minutes_spent_in_city'] || DEFAULT_VALUES['min_minutes_spent_in_city']).to_i
-  end
-
-  def max_gap_minutes_in_city
-    (settings['max_gap_minutes_in_city'] || DEFAULT_VALUES['max_gap_minutes_in_city']).to_i
   end
 
   def timezone
