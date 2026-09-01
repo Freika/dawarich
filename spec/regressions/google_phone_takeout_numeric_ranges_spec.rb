@@ -25,7 +25,7 @@ RSpec.describe 'Google phone takeout numeric metadata ranges' do
     expect(point.altitude).to be_nil
   end
 
-  it 'imports points when altitude exceeds the decimal column range' do
+  it 'imports points when altitude exceeds the altitude limit' do
     document = {
       semanticSegments: [
         {
@@ -42,7 +42,7 @@ RSpec.describe 'Google phone takeout numeric metadata ranges' do
     expect(point.altitude).to be_nil
   end
 
-  it 'skips points whose timestamp exceeds the column range instead of failing the import' do
+  it 'keeps points whose timestamp exceeds the old 32-bit range now that timestamp is bigint' do
     document = {
       semanticSegments: [
         {
@@ -56,19 +56,22 @@ RSpec.describe 'Google phone takeout numeric metadata ranges' do
       ]
     }
 
-    import_document(document)
+    import_document(document, expected_points: 2)
 
-    expect(user.points.pluck(:timestamp)).to contain_exactly(Time.utc(2024, 6, 15, 11).to_i)
+    expect(user.points.pluck(:timestamp)).to contain_exactly(
+      Time.utc(9999, 12, 31, 23, 59, 59).to_i,
+      Time.utc(2024, 6, 15, 11).to_i
+    )
   end
 
-  def import_document(document)
+  def import_document(document, expected_points: 1)
     Tempfile.create(['phone-takeout-numeric-ranges', '.json']) do |file|
       file.write(JSON.generate(document))
       file.flush
 
       expect do
         GoogleMaps::PhoneTakeoutImporter.new(import, user.id, file.path).call
-      end.to change { Point.count }.by(1)
+      end.to change { Point.count }.by(expected_points)
     end
   end
 end

@@ -56,14 +56,15 @@ RSpec.describe 'Enhanced import keeps extracted tracks on a single device' do
       expect(created).to be true
       expect(track).to be_present
 
-      tracker_ids = Point.where(track_id: track.id).distinct.pluck(:tracker_id)
+      tracker_ids = Point.where(track_id: track.id).distinct.joins(:source).pluck('point_sources.tracker_id')
       expect(tracker_ids).to eq(['phone'])
     end
 
     it 'leaves the other device\'s points unassigned' do
       track, = result
 
-      tablet_points = Point.where(user_id: user.id, import_id: import.id, tracker_id: 'tablet')
+      tablet_points = Point.where(user_id: user.id, import_id: import.id)
+                           .joins(:source).where(point_sources: { tracker_id: 'tablet' })
       expect(tablet_points.pluck(:track_id).uniq).to eq([nil])
       expect(tablet_points.count).to eq(3)
       expect(track.id).to be_present

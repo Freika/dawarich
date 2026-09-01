@@ -21,7 +21,7 @@ RSpec.describe 'Google records.json import scopes tracker_id by device_tag' do
   it 'tags points from distinct device_tags with distinct tracker_ids' do
     run_import
 
-    tracker_ids = Point.where(import_id: import.id).pluck(:tracker_id).uniq
+    tracker_ids = Point.where(import_id: import.id).joins(:source).pluck('point_sources.tracker_id').uniq
     expect(tracker_ids).to contain_exactly(
       'google-records-device-1111111111',
       'google-records-device-2222222222',
@@ -32,7 +32,8 @@ RSpec.describe 'Google records.json import scopes tracker_id by device_tag' do
   it 'falls back to the per-import tracker_id when device_tag is missing' do
     run_import
 
-    fallback_count = Point.where(import_id: import.id, tracker_id: "google-records-#{import.id}").count
+    fallback_count = Point.where(import_id: import.id)
+                          .joins(:source).where(point_sources: { tracker_id: "google-records-#{import.id}" }).count
     expect(fallback_count).to eq(1)
   end
 

@@ -33,7 +33,6 @@ class OwnTracks::Params
       motion_data:        Points::MotionDataExtractor.from_owntracks(params)
     }
     attrs[:raw_data] = params.deep_stringify_keys if @include_raw_data
-    attrs[:altitude_decimal] = altitude_value if Point.altitude_decimal_supported?
     attrs
   end
 

@@ -24,13 +24,16 @@ RSpec.describe DataMigrations::RewritePointsV2Job, :non_transactional do
   end
 
   before do
+    PointsV1Schema.install_v1_points
     ensure_v2_table
     teardown_rewrite_artifacts
-    Point.delete_all
     PointSource.delete_all
   end
 
-  after { teardown_rewrite_artifacts }
+  after do
+    teardown_rewrite_artifacts
+    PointsV1Schema.restore_real_points
+  end
 
   def v2_row(id)
     connection.select_all("SELECT * FROM points_v2 WHERE id = #{id.to_i}").first

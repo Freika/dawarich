@@ -30,7 +30,6 @@ class Overland::Params
         motion_data:        Points::MotionDataExtractor.from_overland_properties(point[:properties]),
         raw_data:           point
       }
-      attrs[:altitude_decimal] = altitude_value if Point.altitude_decimal_supported?
       attrs
     end.compact
   end

@@ -37,12 +37,10 @@ class DataMigrations::BackfillAltitudeUserJob < ApplicationJob
 
       break if points.empty?
 
-      updates = points.filter_map { |point| build_update(point) }
+      updates = points.filter_map { |point| build_update(point) }.to_h
 
       if updates.any?
-        update_cols = [:altitude]
-        update_cols << :altitude_decimal if Point.altitude_decimal_supported?
-        Point.upsert_all(updates, unique_by: :id, update_only: update_cols)
+        Points::BatchUpdate.column(:altitude, updates, cast: 'real')
         stats[:updated] += updates.size
       end
 
@@ -74,20 +72,18 @@ class DataMigrations::BackfillAltitudeUserJob < ApplicationJob
   def process_archive(archive, batch_size, stats)
     return unless archive.file.attached?
 
-    updates = []
+    updates = {}
 
     stream_archive_lines(archive) do |line|
       data = JSON.parse(line)
       altitude = Points::AltitudeExtractor.from_raw_data(data['raw_data'])
       next if altitude.nil?
 
-      update = { id: data['id'], altitude: altitude }
-      update[:altitude_decimal] = altitude if Point.altitude_decimal_supported?
-      updates << update
+      updates[data['id']] = altitude
 
       if updates.size >= batch_size
         flush_updates(updates, stats)
-        updates = []
+        updates = {}
       end
     end
 
@@ -95,21 +91,18 @@ class DataMigrations::BackfillAltitudeUserJob < ApplicationJob
   end
 
   def flush_updates(updates, stats)
-    point_ids = updates.map { |u| u[:id] }
-    existing = Point.where(id: point_ids).pluck(:id, :altitude).to_h
+    existing = Point.where(id: updates.keys).pluck(:id, :altitude).to_h
 
-    meaningful_updates = updates.select do |u|
-      next false unless existing.key?(u[:id])
+    meaningful_updates = updates.select do |id, altitude|
+      next false unless existing.key?(id)
 
-      current = existing[u[:id]]
-      current.nil? || current.to_d != BigDecimal(u[:altitude].to_s)
+      current = existing[id]
+      current.nil? || current.to_d != BigDecimal(altitude.to_s)
     end
 
     return unless meaningful_updates.any?
 
-    update_cols = [:altitude]
-    update_cols << :altitude_decimal if Point.altitude_decimal_supported?
-    Point.upsert_all(meaningful_updates, unique_by: :id, update_only: update_cols)
+    Points::BatchUpdate.column(:altitude, meaningful_updates, cast: 'real')
     stats[:archived] += meaningful_updates.size
   end
 
@@ -118,9 +111,7 @@ class DataMigrations::BackfillAltitudeUserJob < ApplicationJob
     return nil if altitude.nil?
     return nil if point.altitude.present? && point.altitude.to_d == BigDecimal(altitude.to_s)
 
-    update = { id: point.id, altitude: altitude }
-    update[:altitude_decimal] = altitude if Point.altitude_decimal_supported?
-    update
+    [point.id, altitude]
   end
 
   def stream_archive_lines(archive, &block)

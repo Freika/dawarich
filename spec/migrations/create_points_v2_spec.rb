@@ -41,8 +41,11 @@ RSpec.describe CreatePointsV2, :non_transactional do
     ]
   end
 
+  before { PointsV1Schema.install_v1_points }
+
   after do
     connection.execute('DROP TABLE IF EXISTS points_v2')
+    PointsV1Schema.restore_real_points
   end
 
   def column_rows

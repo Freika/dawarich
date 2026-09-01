@@ -24,7 +24,7 @@ class Traccar::Params
 
     altitude_value = coords[:altitude]
 
-    attrs = {
+    {
       lonlat:         "POINT(#{lon} #{lat})",
       timestamp:      parsed_timestamp,
       altitude:       altitude_value,
@@ -36,8 +36,6 @@ class Traccar::Params
       motion_data:    Points::MotionDataExtractor.from_traccar(payload),
       raw_data:       payload.deep_stringify_keys
     }
-    attrs[:altitude_decimal] = altitude_value if Point.column_names.include?('altitude_decimal')
-    attrs
   end
 
   private

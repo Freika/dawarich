@@ -54,16 +54,6 @@ class Point < ApplicationRecord
     select(column_names - ['raw_data'])
   end
 
-  # Memoized at class-load to avoid `Point.column_names.include?` lookups on
-  # every row during bulk imports (importer params files call this thousands
-  # of times per batch). The constant evaluates once per process; if the
-  # schema changes mid-process (e.g. dev migration), restart Rails.
-  ALTITUDE_DECIMAL_SUPPORTED = column_names.include?('altitude_decimal')
-
-  def self.altitude_decimal_supported?
-    ALTITUDE_DECIMAL_SUPPORTED
-  end
-
   # Build a key whose equivalence classes match the PostgreSQL UNIQUE index
   # on (user_id, timestamp, lonlat). The raw lonlat WKT string from
   # Points::Params / Overland::Params can differ character-by-character for

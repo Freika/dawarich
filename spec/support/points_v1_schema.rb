@@ -87,6 +87,7 @@ module PointsV1Schema
       ALTER SEQUENCE IF EXISTS points_id_seq OWNED BY NONE;
       DROP TABLE IF EXISTS points CASCADE;
       DROP TABLE IF EXISTS points_legacy_d CASCADE;
+      DROP TABLE IF EXISTS points_v2 CASCADE;
       ALTER TABLE points_spec_backup RENAME TO points;
       CREATE SEQUENCE IF NOT EXISTS points_id_seq;
       ALTER TABLE points ALTER COLUMN id SET DEFAULT nextval('points_id_seq');

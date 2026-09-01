@@ -38,7 +38,7 @@ class GooglePhotos::Importer
 
     altitude = number(geodata['altitude'])
     now = Time.current
-    attrs = {
+    {
       lonlat: "POINT(#{geodata.fetch('longitude')} #{geodata.fetch('latitude')})",
       timestamp:,
       altitude:,
@@ -49,8 +49,6 @@ class GooglePhotos::Importer
       created_at: now,
       updated_at: now
     }
-    attrs[:altitude_decimal] = altitude if Point.altitude_decimal_supported?
-    attrs
   end
 
   def extract_geodata(sidecar)

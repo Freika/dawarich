@@ -23,6 +23,7 @@ FactoryBot.define do
 
     transient do
       country { nil }
+      tracker_id { nil }
       # Sequential coordinates for the same reason as timestamps above:
       # FFaker::Geolocation draws from only ~66 values per axis, which
       # collides with the (user, lonlat, timestamp) uniqueness validation
@@ -58,6 +59,14 @@ FactoryBot.define do
     end
 
     # Device/importer context lives on the point_sources dimension.
+    after(:build) do |point, evaluator|
+      next if evaluator.tracker_id.nil? || point.source_id
+
+      row = { tracker_id: evaluator.tracker_id }
+      Points::DimensionResolver.new.stamp([row])
+      point.source_id = row[:source_id]
+    end
+
     trait :with_source do
       source factory: %i[point_source]
     end
