@@ -3,6 +3,13 @@
 require 'rails_helper'
 
 RSpec.describe Points::AnomalyFilter do
+
+  def tracker(name)
+    @trackers ||= {}
+    @trackers[name] ||= PointSource.find_or_create_by!(
+      digest: Digest::MD5.hexdigest("spec-tracker-#{name}")
+    ) { |source| source.tracker_id = name }
+  end
   let(:user) { create(:user) }
   let(:start_time) { 1.hour.ago.to_i }
   let(:end_time) { Time.current.to_i }
@@ -85,7 +92,7 @@ RSpec.describe Points::AnomalyFilter do
       let!(:drive) do
         # ~0.05 degrees north per step, 5 minutes apart: roughly 65 km/h.
         (0..6).map do |i|
-          create(:point, user: user, tracker_id: 'google-maps-timeline-export',
+          create(:point, user: user, source: tracker('google-maps-timeline-export'),
                          accuracy: i.zero? || i == 6 ? 20 : 3_000,
                          timestamp: base_time + (i * 300),
                          lonlat: "POINT(13.24 #{52.76 + (i * 0.05)})")
@@ -154,22 +161,22 @@ RSpec.describe Points::AnomalyFilter do
       # Declared first so it sorts ahead of the outlier under (timestamp, id):
       # it becomes the outlier's predecessor in a globally ordered stream.
       let!(:other_device_point) do
-        create(:point, user: user, tracker_id: 'phone', accuracy: 10,
+        create(:point, user: user, source: tracker('phone'), accuracy: 10,
                        timestamp: base_time + 120,
                        lonlat: "POINT(#{base_lon} #{base_lat})")
       end
       let!(:before_point) do
-        create(:point, user: user, tracker_id: 'web', accuracy: 10,
+        create(:point, user: user, source: tracker('web'), accuracy: 10,
                        timestamp: base_time,
                        lonlat: "POINT(#{base_lon} #{base_lat})")
       end
       let!(:spike) do
-        create(:point, user: user, tracker_id: 'web', accuracy: 10,
+        create(:point, user: user, source: tracker('web'), accuracy: 10,
                        timestamp: base_time + 120,
                        lonlat: "POINT(#{base_lon + 10.0} #{base_lat + 10.0})")
       end
       let!(:after_point) do
-        create(:point, user: user, tracker_id: 'web', accuracy: 10,
+        create(:point, user: user, source: tracker('web'), accuracy: 10,
                        timestamp: base_time + 240,
                        lonlat: "POINT(#{base_lon + 0.0002} #{base_lat + 0.0002})")
       end
@@ -197,22 +204,22 @@ RSpec.describe Points::AnomalyFilter do
       # order from the cross-device context above. Both orders must resolve
       # the same way — only the spike is convicted.
       let!(:spike) do
-        create(:point, user: user, tracker_id: 'phone', accuracy: 10,
+        create(:point, user: user, source: tracker('phone'), accuracy: 10,
                        timestamp: base_time + 120,
                        lonlat: "POINT(#{base_lon + 10.0} #{base_lat + 10.0})")
       end
       let!(:tied_good) do
-        create(:point, user: user, tracker_id: 'phone', accuracy: 10,
+        create(:point, user: user, source: tracker('phone'), accuracy: 10,
                        timestamp: base_time + 120,
                        lonlat: "POINT(#{base_lon + 0.0001} #{base_lat + 0.0001})")
       end
       let!(:before_point) do
-        create(:point, user: user, tracker_id: 'phone', accuracy: 10,
+        create(:point, user: user, source: tracker('phone'), accuracy: 10,
                        timestamp: base_time,
                        lonlat: "POINT(#{base_lon} #{base_lat})")
       end
       let!(:after_point) do
-        create(:point, user: user, tracker_id: 'phone', accuracy: 10,
+        create(:point, user: user, source: tracker('phone'), accuracy: 10,
                        timestamp: base_time + 240,
                        lonlat: "POINT(#{base_lon + 0.0002} #{base_lat + 0.0002})")
       end
@@ -1075,7 +1082,7 @@ RSpec.describe Points::AnomalyFilter do
       let!(:precise_phone) do
         3.times.map do |i|
           create(:point, user: user, accuracy: 5, velocity: '1', vertical_accuracy: 5,
-                 tracker_id: 'iphone', timestamp: base_time + (i * 60),
+                 source: tracker('iphone'), timestamp: base_time + (i * 60),
                  latitude: 51.3402 + (i * 0.0001), longitude: 12.3712,
                  lonlat: "POINT(12.3712 #{51.3402 + (i * 0.0001)})")
         end
@@ -1084,7 +1091,7 @@ RSpec.describe Points::AnomalyFilter do
       let!(:coarse_watch) do
         3.times.map do |i|
           create(:point, user: user, accuracy: 1500, velocity: '-1', vertical_accuracy: -1,
-                 tracker_id: 'watch', timestamp: base_time + 30 + (i * 60),
+                 source: tracker('watch'), timestamp: base_time + 30 + (i * 60),
                  latitude: 51.3412 + (i * 0.001), longitude: 12.3722,
                  lonlat: "POINT(12.3722 #{51.3412 + (i * 0.001)})")
         end

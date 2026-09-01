@@ -20,36 +20,37 @@ RSpec.describe Users::ExportData::Points, type: :service do
       let!(:country) { create(:country, name: 'United States', iso_a2: 'US', iso_a3: 'USA') }
       let!(:place) { create(:place) }
       let!(:visit) { create(:visit, user: user, place: place, name: 'Work Visit') }
-      let(:point_with_relationships) do
-        create(:point,
-               user: user,
-               import: import,
-               country: country,
-               visit: visit,
-               battery_status: :charging,
-               battery: 85,
-               timestamp: 1_640_995_200,
-               altitude: 100,
-               velocity: '25.5',
-               accuracy: 5,
-               ping: 'test-ping',
+      let(:device_source) do
+        create(:point_source,
                tracker_id: 'tracker-123',
                topic: 'owntracks/user/device',
                trigger: :manual_event,
                bssid: 'aa:bb:cc:dd:ee:ff',
                ssid: 'TestWiFi',
                connection: :wifi,
-               vertical_accuracy: 3,
-               mode: 2,
+               battery_status: :charging,
                inrids: %w[region1 region2],
-               in_regions: %w[home work],
+               in_regions: %w[home work])
+      end
+      let(:point_with_relationships) do
+        create(:point,
+               user: user,
+               import: import,
+               country: country,
+               visit: visit,
+               source: device_source,
+               battery: 85,
+               timestamp: 1_640_995_200,
+               altitude: 100,
+               velocity: 25.5,
+               accuracy: 5,
+               vertical_accuracy: 3,
                raw_data: { 'test' => 'data' },
                city: 'New York',
                geodata: { 'address' => '123 Main St' },
                reverse_geocoded_at: Time.current,
                course: 45.5,
                course_accuracy: 2.5,
-               external_track_id: 'ext-123',
                longitude: -74.006,
                latitude: 40.7128,
                lonlat: 'POINT(-74.006 40.7128)')
@@ -61,7 +62,7 @@ RSpec.describe Users::ExportData::Points, type: :service do
                     longitude: -73.9857,
                     latitude: 40.7484,
                     lonlat: 'POINT(-73.9857 40.7484)')
-        pt.update_columns(country_id: nil, country_name: nil)
+        pt.update_columns(country_id: nil)
         pt.reload
       end
 
@@ -76,16 +77,15 @@ RSpec.describe Users::ExportData::Points, type: :service do
       end
 
       it 'includes all point attributes for point with relationships' do
-        point_data = subject.find { |p| p['external_track_id'] == 'ext-123' }
+        point_data = subject.find { |p| p['timestamp'] == 1_640_995_200 }
 
         expect(point_data).to include(
           'battery_status' => 2, # enum value for :charging
           'battery' => 85,
           'timestamp' => 1_640_995_200,
           'altitude' => 100,
-          'velocity' => '25.5',
+          'velocity' => 25.5,
           'accuracy' => 5,
-          'ping' => 'test-ping',
           'tracker_id' => 'tracker-123',
           'topic' => 'owntracks/user/device',
           'trigger' => 5, # enum value for :manual_event
@@ -93,7 +93,6 @@ RSpec.describe Users::ExportData::Points, type: :service do
           'ssid' => 'TestWiFi',
           'connection' => 1, # enum value for :wifi
           'vertical_accuracy' => 3,
-          'mode' => 2,
           'inrids' => '{region1,region2}', # PostgreSQL array format
           'in_regions' => '{home,work}', # PostgreSQL array format
           'raw_data' => '{"test": "data"}', # JSON string
@@ -101,7 +100,6 @@ RSpec.describe Users::ExportData::Points, type: :service do
           'geodata' => '{"address": "123 Main St"}', # JSON string
           'course' => 45.5,
           'course_accuracy' => 2.5,
-          'external_track_id' => 'ext-123',
           'longitude' => -74.006,
           'latitude' => 40.7128
         )
@@ -112,7 +110,7 @@ RSpec.describe Users::ExportData::Points, type: :service do
       end
 
       it 'includes import reference when point has import' do
-        point_data = subject.find { |p| p['external_track_id'] == 'ext-123' }
+        point_data = subject.find { |p| p['timestamp'] == 1_640_995_200 }
 
         expect(point_data['import_reference']).to eq({
                                                        'name' => 'Test Import',
@@ -122,7 +120,7 @@ RSpec.describe Users::ExportData::Points, type: :service do
       end
 
       it 'includes country info when point has country' do
-        point_data = subject.find { |p| p['external_track_id'] == 'ext-123' }
+        point_data = subject.find { |p| p['timestamp'] == 1_640_995_200 }
 
         # Since we're using LEFT JOIN and the country is properly associated,
         # this should work, but let's check if it's actually being set
@@ -139,7 +137,7 @@ RSpec.describe Users::ExportData::Points, type: :service do
       end
 
       it 'includes visit reference when point has visit' do
-        point_data = subject.find { |p| p['external_track_id'] == 'ext-123' }
+        point_data = subject.find { |p| p['timestamp'] == 1_640_995_200 }
 
         expect(point_data['visit_reference']).to eq({
                                                       'name' => 'Work Visit',
@@ -149,7 +147,7 @@ RSpec.describe Users::ExportData::Points, type: :service do
       end
 
       it 'does not include relationships for points without them' do
-        point_data = subject.find { |p| p['external_track_id'].nil? }
+        point_data = subject.find { |p| p['timestamp'] == 1_640_995_260 }
 
         expect(point_data['import_reference']).to be_nil
         expect(point_data['country_info']).to be_nil
@@ -157,12 +155,12 @@ RSpec.describe Users::ExportData::Points, type: :service do
       end
 
       it 'correctly extracts longitude and latitude from lonlat geometry' do
-        point1 = subject.find { |p| p['external_track_id'] == 'ext-123' }
+        point1 = subject.find { |p| p['timestamp'] == 1_640_995_200 }
 
         expect(point1['longitude']).to eq(-74.006)
         expect(point1['latitude']).to eq(40.7128)
 
-        point2 = subject.find { |p| p['external_track_id'].nil? }
+        point2 = subject.find { |p| p['timestamp'] == 1_640_995_260 }
         expect(point2['longitude']).to eq(-73.9857)
         expect(point2['latitude']).to eq(40.7484)
       end
@@ -180,14 +178,16 @@ RSpec.describe Users::ExportData::Points, type: :service do
 
     context 'when points have null values' do
       let!(:point_with_nulls) do
-        create(:point, user: user, inrids: nil, in_regions: nil)
+        create(:point, user: user, source: create(:point_source, inrids: nil, in_regions: nil))
       end
 
-      it 'handles null values gracefully' do
+      # NULL and [] digest differently on the dimension, so the export must
+      # NOT flatten one into the other - the round trip depends on it.
+      it 'preserves null arrays as null' do
         point_data = subject.first
 
-        expect(point_data['inrids']).to eq([])
-        expect(point_data['in_regions']).to eq([])
+        expect(point_data['inrids']).to be_nil
+        expect(point_data['in_regions']).to be_nil
       end
     end
 
@@ -218,17 +218,17 @@ RSpec.describe Users::ExportData::Points, type: :service do
 
     context 'when points have missing coordinate data' do
       let!(:point_with_lonlat) do
-        create(:point, user: user, lonlat: 'POINT(10.0 50.0)', external_track_id: 'lonlat-only')
+        create(:point, user: user, lonlat: 'POINT(10.0 50.0)', timestamp: 1_650_000_000)
       end
 
       let!(:point_without_coordinates) do
-        point = create(:point, user: user, external_track_id: 'no-coords')
+        point = create(:point, user: user, timestamp: 1_650_000_060)
         point.update_columns(lonlat: nil)
         point
       end
 
       it 'derives longitude / latitude from lonlat in the export payload' do
-        point_data = subject.find { |p| p['external_track_id'] == 'lonlat-only' }
+        point_data = subject.find { |p| p['timestamp'] == 1_650_000_000 }
 
         expect(point_data).to be_present
         expect(point_data['lonlat']).to be_present
@@ -237,7 +237,7 @@ RSpec.describe Users::ExportData::Points, type: :service do
       end
 
       it 'skips points without any coordinate data' do
-        point_data = subject.find { |p| p['external_track_id'] == 'no-coords' }
+        point_data = subject.find { |p| p['timestamp'] == 1_650_000_060 }
 
         expect(point_data).to be_nil
       end
@@ -257,13 +257,13 @@ RSpec.describe Users::ExportData::Points, type: :service do
 
       context 'with points from different months' do
         let!(:point_jan2022) do
-          create(:point, user: user, timestamp: Time.utc(2022, 1, 15).to_i, external_track_id: 'jan-2022')
+          create(:point, user: user, timestamp: Time.utc(2022, 1, 15).to_i)
         end
         let!(:point_jun2022) do
-          create(:point, user: user, timestamp: Time.utc(2022, 6, 20).to_i, external_track_id: 'jun-2022')
+          create(:point, user: user, timestamp: Time.utc(2022, 6, 20).to_i)
         end
         let!(:point_jan2023) do
-          create(:point, user: user, timestamp: Time.utc(2023, 1, 5).to_i, external_track_id: 'jan-2023')
+          create(:point, user: user, timestamp: Time.utc(2023, 1, 5).to_i)
         end
 
         it 'returns array of relative file paths' do
@@ -292,7 +292,7 @@ RSpec.describe Users::ExportData::Points, type: :service do
           expect(lines.size).to eq(1)
 
           point_data = JSON.parse(lines.first)
-          expect(point_data['external_track_id']).to eq('jan-2022')
+          expect(point_data['timestamp']).to eq(Time.utc(2022, 1, 15).to_i)
         end
 
         it 'groups points correctly by month' do
@@ -339,20 +339,6 @@ RSpec.describe Users::ExportData::Points, type: :service do
         end
       end
 
-      context 'with point missing timestamp' do
-        let!(:point_no_timestamp) do
-          point = create(:point, user: user, external_track_id: 'no-timestamp')
-          point.update_columns(timestamp: nil)
-          point
-        end
-
-        it 'groups point into unknown directory' do
-          result = monthly_service.call
-
-          expect(result).to include('points/unknown/unknown.jsonl')
-          expect(File.exist?(output_directory.join('unknown', 'unknown.jsonl'))).to be true
-        end
-      end
 
       it 'logs progress for monthly mode' do
         create_list(:point, 3, user: user)
