@@ -10,8 +10,8 @@ RSpec.describe 'Map::Residency', type: :request do
       before do
         sign_in user
         create(:stat, user:, year: 2026, month: 3, distance: 1000)
-        create(:point, user:, country_name: 'Germany', timestamp: Time.zone.local(2026, 3, 4, 12).to_i)
-        create(:point, user:, country_name: 'Czechia', timestamp: Time.zone.local(2026, 3, 6, 12).to_i)
+        create(:point, user:, country: 'Germany', timestamp: Time.zone.local(2026, 3, 4, 12).to_i)
+        create(:point, user:, country: 'Czechia', timestamp: Time.zone.local(2026, 3, 6, 12).to_i)
       end
 
       it 'renders a countries card and a heatmap card side by side' do

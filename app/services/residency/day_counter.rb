@@ -120,16 +120,15 @@ module Residency
         sql = <<~SQL.squish
           SELECT
             DATE(to_timestamp(timestamp) AT TIME ZONE 'UTC') as point_date,
-            country_name,
+            countries.name as country_name,
             COUNT(*) as point_count
           FROM points
+          JOIN countries ON countries.id = points.country_id
           WHERE user_id = $1
             AND timestamp >= $2
             AND timestamp <= $3
-            AND country_name IS NOT NULL
-            AND country_name != ''
             AND (anomaly IS NOT TRUE)
-          GROUP BY point_date, country_name
+          GROUP BY point_date, countries.name
           ORDER BY point_date
         SQL
 
