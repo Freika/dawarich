@@ -90,9 +90,10 @@ class Stats::CalculateMonth
   end
 
   def report_failure(error)
-    Rails.logger.error(
-      "Stats::CalculateMonth failed for user #{user.id} #{year}-#{month}: #{error.class}: #{error.message}"
-    )
+    message = "Stats::CalculateMonth failed for user #{user.id} #{year}-#{month}"
+
+    Rails.logger.error("#{message}: #{error.class}: #{error.message}")
+    ExceptionReporter.call(error, message)
 
     create_stats_update_failed_notification(user, error) if notify_on_failure
   end

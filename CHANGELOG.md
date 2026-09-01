@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Shared link addresses are now always three words. One hyphenated entry in the word list could produce a four-word address.
 - Places created from a suggested visit now get their real address. Visits detected on a phone arrive with a generated name such as "Visited place"; that name is no longer locked, reverse geocoding is queued for the new place, and the resolved address now replaces the generated name on the visit as well as the place.
-- Monthly and daily stats saved before v1.3.0 are now rebuilt automatically, so historical distances reflect your timezone without a manual **Update all stats**. Changing your timezone also rebuilds them from then on. #2069
+- Stored monthly and daily stats are now rebuilt automatically after a calculation change, so historical distances no longer need a manual **Update all stats**. Changing your timezone rebuilds them too. #2069
 
 ## [1.14.1] - 2026-08-31, Berlin
 
