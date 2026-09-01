@@ -36,4 +36,28 @@ RSpec.describe 'Stats are rebucketed when the user changes timezone' do
       user.save
     end.to change { stat.reload.calculation_version }.to(0)
   end
+
+  describe 'ordering against the transaction' do
+    it 'marks the months stale inside the transaction' do
+      ActiveRecord::Base.transaction do
+        user.settings['timezone'] = 'America/New_York'
+        user.save!
+
+        expect(stat.reload.calculation_version).to eq(0)
+      end
+    end
+
+    it 'does not enqueue the rebuild until the timezone write has committed' do
+      enqueued_inside = nil
+
+      ActiveRecord::Base.transaction do
+        user.settings['timezone'] = 'America/New_York'
+        user.save!
+        enqueued_inside = enqueued_jobs.count { |job| job[:job] == Stats::CalculatingJob }
+      end
+
+      expect(enqueued_inside).to eq(0)
+      expect(enqueued_jobs.count { |job| job[:job] == Stats::CalculatingJob }).to eq(1)
+    end
+  end
 end
