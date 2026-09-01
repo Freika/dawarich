@@ -38,7 +38,7 @@ RSpec.describe 'Api::V1::Residency', type: :request do
         (1..3).each do |day|
           create(:point,
                  user:,
-                 country_name: 'Germany',
+                 country: 'Germany',
                  timestamp: Time.zone.local(2025, 1, day, 12, 0).to_i)
         end
 
@@ -46,7 +46,7 @@ RSpec.describe 'Api::V1::Residency', type: :request do
         (10..11).each do |day|
           create(:point,
                  user:,
-                 country_name: 'France',
+                 country: 'France',
                  timestamp: Time.zone.local(2025, 1, day, 12, 0).to_i)
         end
       end

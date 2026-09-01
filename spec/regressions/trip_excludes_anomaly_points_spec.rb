@@ -11,16 +11,16 @@ RSpec.describe 'Trip path and distance respect the anomaly filter', type: :model
   context 'with a mix of valid and anomaly points in the window' do
     before do
       create(:point, user: user, timestamp: (trip_start + 10.minutes).to_i,
-                     longitude: 13.40, latitude: 52.50, country_name: 'Germany', anomaly: false)
+                     longitude: 13.40, latitude: 52.50, country: 'Germany', anomaly: false)
       create(:point, user: user, timestamp: (trip_start + 20.minutes).to_i,
-                     longitude: 13.41, latitude: 52.51, country_name: 'Germany', anomaly: nil)
+                     longitude: 13.41, latitude: 52.51, country: 'Germany', anomaly: nil)
       create(:point, user: user, timestamp: (trip_start + 30.minutes).to_i,
-                     longitude: 13.42, latitude: 52.52, country_name: 'Germany', anomaly: false)
+                     longitude: 13.42, latitude: 52.52, country: 'Germany', anomaly: false)
 
       create(:point, user: user, timestamp: (trip_start + 25.minutes).to_i,
-                     longitude: 2.35, latitude: 48.85, country_name: 'France', anomaly: true)
+                     longitude: 2.35, latitude: 48.85, country: 'France', anomaly: true)
       create(:point, user: user, timestamp: (trip_start + 35.minutes).to_i,
-                     longitude: -0.13, latitude: 51.50, country_name: 'United Kingdom', anomaly: true)
+                     longitude: -0.13, latitude: 51.50, country: 'United Kingdom', anomaly: true)
     end
 
     describe '#points' do
@@ -57,9 +57,9 @@ RSpec.describe 'Trip path and distance respect the anomaly filter', type: :model
   context 'when every point in the window is an anomaly' do
     before do
       create(:point, user: user, timestamp: (trip_start + 10.minutes).to_i,
-                     longitude: 2.35, latitude: 48.85, country_name: 'France', anomaly: true)
+                     longitude: 2.35, latitude: 48.85, country: 'France', anomaly: true)
       create(:point, user: user, timestamp: (trip_start + 20.minutes).to_i,
-                     longitude: -0.13, latitude: 51.50, country_name: 'United Kingdom', anomaly: true)
+                     longitude: -0.13, latitude: 51.50, country: 'United Kingdom', anomaly: true)
     end
 
     it 'returns no points and produces empty geometry' do

@@ -9,7 +9,7 @@ RSpec.describe 'Start Reverse Geocoding force-reruns already-geocoded points',
   let(:user) { create(:user) }
   let!(:already_geocoded_points) do
     create_list(:point, 3, user: user, reverse_geocoded_at: 1.day.ago,
-                           city: 'Old City', country_name: 'Old Country')
+                           city: 'Old City', country: 'Old Country')
   end
 
   before do

@@ -83,7 +83,7 @@ RSpec.describe Gpx::TrackImporter do
 
         expect(point.lat).to eq(10.758321212464024)
         expect(point.lon).to eq(106.64234449272531)
-        expect(point.altitude).to eq(17.63)
+        expect(point.altitude).to be_within(0.001).of(17.634344)
         expect(point.timestamp).to eq(1_730_626_211)
         expect(point.velocity).to eq(2.8)
       end

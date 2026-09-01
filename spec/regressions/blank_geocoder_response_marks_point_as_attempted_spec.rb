@@ -9,7 +9,7 @@ RSpec.describe 'Blank geocoder response marks the point as attempted' do
 
   let(:point) do
     pt = create(:point)
-    pt.update_columns(country_id: nil, country_name: nil, city: nil)
+    pt.update_columns(country_id: nil, country: nil, city: nil)
     pt.reload
   end
 
