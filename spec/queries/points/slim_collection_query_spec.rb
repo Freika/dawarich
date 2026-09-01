@@ -52,6 +52,15 @@ RSpec.describe Points::SlimCollectionQuery do
     expect(result.first).to eq(Api::SlimPointSerializer.new(point.reload).call)
   end
 
+  it 'keeps velocity a string on the wire, as the full payload does' do
+    point = create(:point, user: user, velocity: 12.5)
+    unknown = create(:point, user: user, velocity: nil)
+
+    result = described_class.new(user.points.where(id: [point.id, unknown.id]).order(:id)).call
+
+    expect(result.map { |row| row[:velocity] }).to eq(['12.5', nil])
+  end
+
   it 'preserves the relation order' do
     p1 = create(:point, user: user, timestamp: 100)
     p2 = create(:point, user: user, timestamp: 200)

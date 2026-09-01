@@ -62,6 +62,12 @@ module PointsV1Schema
     CREATE INDEX idx_points_user_id_legacy_tracker ON points (user_id)
       WHERE tracker_id::text = ANY (ARRAY['google-maps-timeline-export'::text,
                                           'google-maps-phone-timeline-export'::text]);
+    ALTER TABLE points
+      ADD CONSTRAINT fk_rails_v1_points_users FOREIGN KEY (user_id) REFERENCES users(id),
+      ADD CONSTRAINT fk_rails_v1_points_tracks FOREIGN KEY (track_id) REFERENCES tracks(id),
+      ADD CONSTRAINT fk_rails_v1_points_visits FOREIGN KEY (visit_id) REFERENCES visits(id),
+      ADD CONSTRAINT fk_rails_v1_points_archives FOREIGN KEY (raw_data_archive_id)
+        REFERENCES points_raw_data_archives(id) ON DELETE RESTRICT;
   SQL
 
   module_function
@@ -71,9 +77,12 @@ module PointsV1Schema
   # Swaps whatever `points` currently is aside and installs a v1-shaped one.
   # Always pair with restore_real_points in an ensure block.
   def install_v1_points
+    # A leftover backup means an earlier example was killed before restoring;
+    # put the real table back first instead of dropping it as stale.
+    restore_real_points if connection.table_exists?('points_spec_backup')
+
     connection.execute(<<~SQL)
       ALTER SEQUENCE IF EXISTS points_id_seq OWNED BY NONE;
-      DROP TABLE IF EXISTS points_spec_backup CASCADE;
       ALTER TABLE points RENAME TO points_spec_backup;
       CREATE SEQUENCE IF NOT EXISTS points_id_seq;
     SQL

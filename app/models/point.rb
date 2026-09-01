@@ -33,6 +33,11 @@ class Point < ApplicationRecord
   # battery_status/trigger/connection live on point_sources since Release D
   # dropped the legacy columns; PointSource declares the enums (identical
   # mappings) and PointDimensionReads serves the labels through :source.
+  # Ignoring the dropped columns keeps column_names identical whether a
+  # process booted against the old or the new table: a Sidekiq that cached
+  # v1 columns during the copy would otherwise SELECT them after the swap.
+  self.ignored_columns += PointSource::COMBO_COLUMNS +
+                          %w[country_name country mode external_track_id ping altitude_decimal]
 
   scope :reverse_geocoded, -> { where.not(reverse_geocoded_at: nil) }
   scope :not_reverse_geocoded, -> { where(reverse_geocoded_at: nil) }

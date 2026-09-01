@@ -73,6 +73,29 @@ module Points
         SQL
       end
 
+      # A synthesized timestamp can land on a real row's (user, timestamp,
+      # lonlat); each pass moves the synthesized side forward by one second.
+      def bump_synthesized_collisions
+        <<~SQL
+          WITH synthesized AS (
+            SELECT v.id, v.user_id, v."timestamp", (v.lonlat::geometry)::bytea AS lonlat_bytes
+            FROM points_v2 v
+            JOIN points p ON p.id = v.id
+            WHERE p."timestamp" IS NULL
+          ), colliding AS (
+            SELECT s.id
+            FROM synthesized s
+            JOIN points_v2 o
+              ON o.user_id = s.user_id
+             AND o."timestamp" = s."timestamp"
+             AND (o.lonlat::geometry)::bytea = s.lonlat_bytes
+             AND o.id <> s.id
+          )
+          UPDATE points_v2 SET "timestamp" = "timestamp" + 1
+          WHERE id IN (SELECT id FROM colliding)
+        SQL
+      end
+
       # The C backfill's seed/stamp pair, scoped to still-unstamped rows so
       # SKIP_POINT_DIMENSION_BACKFILL installs upgrade in one shot. Digest
       # byte-parity with ingest comes from sharing PointSource.digest_sql.

@@ -103,6 +103,7 @@ RSpec.describe 'Api::V1::Points', type: :request do
 
         json_response.each do |point|
           expect(point.keys).to eq(%w[id latitude longitude timestamp velocity country_name tracker_id])
+          expect(point['velocity']).to be_a(String).or be_nil
         end
       end
     end

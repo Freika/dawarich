@@ -26,7 +26,7 @@ class Points::SlimCollectionQuery
           latitude: lat.to_s,
           longitude: lon.to_s,
           timestamp: timestamp,
-          velocity: velocity,
+          velocity: velocity&.to_s,
           country_name: country_name,
           tracker_id: tracker_id
         }

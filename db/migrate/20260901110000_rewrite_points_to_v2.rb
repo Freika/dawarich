@@ -46,6 +46,7 @@ class RewritePointsToV2 < ActiveRecord::Migration[8.0]
       execute('SET LOCAL statement_timeout = 0')
       execute('ALTER TABLE points RENAME TO points_v2')
       rename_indexes_of('points_v2') { |name| name.sub('points', 'points_v2')[0, 63] }
+      rename_constraints_of('points_v2', from: '', to: '_v2')
       execute('ALTER TABLE points_legacy_d RENAME TO points')
       rename_indexes_of('points') { |name| name.sub('_legacy_d', '') }
       execute('ALTER SEQUENCE points_id_seq OWNED BY points.id')
@@ -59,13 +60,18 @@ class RewritePointsToV2 < ActiveRecord::Migration[8.0]
     column_exists?(:points, :country_name)
   end
 
+  ROWS_PER_MINUTE = 1_000_000
+
   def log_preflight
     size = connection.select_value("SELECT pg_size_pretty(pg_total_relation_size('points'))")
+    rows = connection.select_value("SELECT reltuples::bigint FROM pg_class WHERE oid = 'points'::regclass").to_i
+    minutes = rows.negative? ? 'unknown' : (rows.to_f / ROWS_PER_MINUTE).ceil
     Rails.logger.info(
-      "[RewritePointsToV2] rewriting points (#{size} incl. indexes). The database volume " \
-      'needs roughly that much free space; Postgres usually runs in another container, so ' \
-       'this cannot be verified from here. If the copy fails on disk-full, free space and ' \
-      'restart - the walk resumes from its cursor.'
+      "[RewritePointsToV2] rewriting points: ~#{rows.negative? ? '?' : rows} rows, #{size} incl. indexes; " \
+      "expect roughly #{minutes} min at ~1M rows/min (progress lines follow). The database volume " \
+      "needs roughly #{size} free; Postgres usually runs in another container, so this cannot be " \
+      'verified from here. If the copy fails on disk-full, free space and restart - the walk ' \
+      'resumes from its cursor.'
     )
   end
 
@@ -92,7 +98,7 @@ class RewritePointsToV2 < ActiveRecord::Migration[8.0]
     connection.transaction do
       execute("SET LOCAL lock_timeout = '#{SWAP_LOCK_TIMEOUT}'")
       execute('SET LOCAL statement_timeout = 0')
-      execute('LOCK TABLE points IN ACCESS EXCLUSIVE MODE')
+      lock_points!
 
       capture.drain_fully if capture.pending_count.positive? || capture.installed?
       capture.drop
@@ -100,13 +106,29 @@ class RewritePointsToV2 < ActiveRecord::Migration[8.0]
 
       execute('ALTER TABLE points RENAME TO points_legacy_d')
       rename_indexes_of('points_legacy_d') { |name| "#{name}_legacy_d"[0, 63] }
+      drop_foreign_keys_of('points_legacy_d')
 
       execute('ALTER TABLE points_v2 RENAME TO points')
       rename_indexes_of('points') { |name| name.sub('_v2', '') }
-      rename_constraints_of('points')
+      rename_constraints_of('points', from: '_v2', to: '')
       execute('ALTER SEQUENCE points_id_seq OWNED BY points.id')
     end
     clear_caches
+  end
+
+  def lock_points!
+    execute('LOCK TABLE points IN ACCESS EXCLUSIVE MODE')
+  end
+
+  # The legacy table only exists for rollback; keeping its foreign keys would
+  # block every track, visit, archive and user deletion for the retention window.
+  def drop_foreign_keys_of(table)
+    connection.select_values(<<~SQL).each do |constraint|
+      SELECT conname FROM pg_constraint
+      WHERE conrelid = #{connection.quote(table)}::regclass AND contype = 'f'
+    SQL
+      execute(%(ALTER TABLE #{table} DROP CONSTRAINT "#{constraint}"))
+    end
   end
 
   def rename_indexes_of(table)
@@ -120,12 +142,16 @@ class RewritePointsToV2 < ActiveRecord::Migration[8.0]
     end
   end
 
-  def rename_constraints_of(table)
-    connection.select_values(<<~SQL).each do |constraint|
+  def rename_constraints_of(table, from:, to:)
+    names = connection.select_values(<<~SQL)
       SELECT conname FROM pg_constraint
-      WHERE conrelid = #{connection.quote(table)}::regclass AND conname LIKE '%\\_v2\\_%'
+      WHERE conrelid = #{connection.quote(table)}::regclass AND conname LIKE 'fk\\_points%'
     SQL
-      execute(%(ALTER TABLE #{table} RENAME CONSTRAINT "#{constraint}" TO "#{constraint.sub('_v2', '')}"))
+    names.each do |constraint|
+      target = from.empty? ? constraint.sub('fk_points_', "fk_points#{to}_") : constraint.sub(from, to)
+      next if target == constraint || names.include?(target)
+
+      execute(%(ALTER TABLE #{table} RENAME CONSTRAINT "#{constraint}" TO "#{target}"))
     end
   end
 

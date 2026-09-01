@@ -36,15 +36,22 @@ namespace :points_v2 do
     require Rails.root.join('db/migrate/20260901100000_create_points_v2.rb')
     CreatePointsV2.new.up
 
-    started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-    DataMigrations::RewritePointsV2Job.new.run_phases_through_copy
-    DataMigrations::RewritePointsV2Job.new.finish
-    elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
+    begin
+      started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      DataMigrations::RewritePointsV2Job.new.run_phases_through_copy
+      DataMigrations::RewritePointsV2Job.new.finish
+      elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
 
-    copied = connection.select_value('SELECT COUNT(*) FROM points_v2').to_i
-    rate = (copied / elapsed).round
-    minutes_per_million = 1_000_000.0 / rate / 60
-    puts "copied #{copied} rows in #{elapsed.round(1)}s — #{rate} rows/sec " \
-         "(~#{minutes_per_million.round(1)} min per 1M points)"
+      copied = connection.select_value('SELECT COUNT(*) FROM points_v2').to_i
+      rate = (copied / elapsed).round
+      minutes_per_million = 1_000_000.0 / rate / 60
+      puts "copied #{copied} rows in #{elapsed.round(1)}s — #{rate} rows/sec " \
+           "(~#{minutes_per_million.round(1)} min per 1M points)"
+    ensure
+      Points::Rewrite::ChangeCapture.new(connection).drop
+      connection.execute('DROP TABLE IF EXISTS points_v2_rewrite_state; DROP TABLE IF EXISTS points_v2 CASCADE')
+      connection.execute("DELETE FROM points WHERE tracker_id = 'bench-tracker'")
+      puts 'benchmark artifacts removed (trigger, points_v2, state table, seeded rows)'
+    end
   end
 end

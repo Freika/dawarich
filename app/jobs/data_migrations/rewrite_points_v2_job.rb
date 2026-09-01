@@ -3,8 +3,8 @@
 # Release D: the online rewrite of `points` into points_v2. Phases, all
 # idempotent and resumable via the one-row points_v2_rewrite_state table:
 #
-#   capture  — install the change-capture trigger (live ingest never pauses)
 #   stamp    — seed + stamp dimensions for rows the C backfill never reached
+#   capture  — install the change-capture trigger (live ingest never pauses)
 #   copy     — id-range walk through the transform upsert (NULL-ts skipped)
 #   synthesize — ONE global NULL-timestamp synthesis pass
 #   finalize — indexes + foreign keys, then drain captured changes
@@ -16,6 +16,8 @@ class DataMigrations::RewritePointsV2Job < ApplicationJob
 
   BATCH_SIZE = 50_000
   MIN_BATCH_SIZE = 5_000
+  LOCK_TIMEOUT = '2s'
+  STATEMENT_TIMEOUT = '5min'
 
   def perform(batch_size = BATCH_SIZE)
     return unless rewrite_applicable?
@@ -31,16 +33,16 @@ class DataMigrations::RewritePointsV2Job < ApplicationJob
     return unless rewrite_applicable?
 
     ensure_state_table
-    capture.install
     stamp_dimensions(batch_size)
+    capture.install
     copy_range_walk(batch_size)
   end
 
   def finish
     return unless rewrite_applicable?
 
-    connection.execute(Points::Rewrite::Sql.synthesis_upsert)
-    schema_steps.add_indexes
+    unbounded { connection.execute(Points::Rewrite::Sql.synthesis_upsert) }
+    unbounded { schema_steps.add_indexes }
     schema_steps.add_foreign_keys
     capture.drain_fully
   end
@@ -108,7 +110,7 @@ class DataMigrations::RewritePointsV2Job < ApplicationJob
     while cursor <= upto
       batch_end = [cursor + size - 1, upto].min
       begin
-        yield(cursor, batch_end)
+        bounded { yield(cursor, batch_end) }
         cursor = batch_end + 1
       rescue ActiveRecord::QueryAborted
         raise if size <= MIN_BATCH_SIZE
@@ -116,6 +118,27 @@ class DataMigrations::RewritePointsV2Job < ApplicationJob
         size = [size / 2, MIN_BATCH_SIZE].max
         Rails.logger.warn("[RewritePointsV2] batch aborted, retrying at #{size}")
       end
+    end
+  end
+
+  # One batch = one transaction with the C backfills' timeout discipline, so
+  # a stuck statement halves the batch instead of hanging boot, and the copy
+  # cursor only advances together with the rows it covers.
+  def bounded
+    connection.transaction do
+      connection.execute("SET LOCAL lock_timeout = '#{LOCK_TIMEOUT}'")
+      connection.execute("SET LOCAL statement_timeout = '#{STATEMENT_TIMEOUT}'")
+      yield
+    end
+  end
+
+  # Synthesis and index builds must be allowed to run for as long as they
+  # take: a role- or server-level statement_timeout would cancel them on
+  # every boot with nothing to halve.
+  def unbounded
+    connection.transaction do
+      connection.execute('SET LOCAL statement_timeout = 0')
+      yield
     end
   end
 

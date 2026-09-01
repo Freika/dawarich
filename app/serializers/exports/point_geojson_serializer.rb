@@ -29,7 +29,7 @@ class Exports::PointGeojsonSerializer
       # Preload per batch: the point serializer reads the device combo
       # through each point's source, and the batch relation does not carry
       # the outer scope's preloads.
-      batch.order(:timestamp).preload(:source).each do |point|
+      batch.order(:timestamp).preload(:source, :country).each do |point|
         io.write(',') unless first
         first = false
 

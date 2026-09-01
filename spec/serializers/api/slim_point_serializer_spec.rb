@@ -6,14 +6,14 @@ RSpec.describe Api::SlimPointSerializer do
   describe '#call' do
     subject(:serializer) { described_class.new(point).call }
 
-    let!(:point) { create(:point, :with_known_location) }
+    let!(:point) { create(:point, :with_known_location, velocity: 12.5) }
     let(:expected_json) do
       {
         id:           point.id,
         latitude:     point.lat.to_s,
         longitude:    point.lon.to_s,
         timestamp:    point.timestamp,
-        velocity:     point.velocity,
+        velocity:     '12.5',
         country_name: point.country_name,
         tracker_id:   point.tracker_id
       }

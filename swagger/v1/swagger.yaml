@@ -3834,10 +3834,6 @@ paths:
                       type: number
                       nullable: true
                       description: Battery status code
-                    ping:
-                      type: number
-                      nullable: true
-                      description: Ping value
                     battery:
                       type: number
                       nullable: true
@@ -3858,9 +3854,9 @@ paths:
                       type: number
                       description: Longitude coordinate
                     velocity:
-                      type: number
+                      type: string
                       nullable: true
-                      description: Velocity in km/h
+                      description: Velocity in km/h, serialized as a string
                     trigger:
                       type: string
                       nullable: true
@@ -3891,10 +3887,6 @@ paths:
                     latitude:
                       type: number
                       description: Latitude coordinate
-                    mode:
-                      type: number
-                      nullable: true
-                      description: Tracking mode
                     inrids:
                       type: array
                       items:
@@ -3921,10 +3913,9 @@ paths:
                       type: string
                       nullable: true
                       description: Reverse-geocoded city name
-                    country:
+                    country_name:
                       type: string
-                      nullable: true
-                      description: Reverse-geocoded country name
+                      description: Reverse-geocoded country name, empty when unknown
                     created_at:
                       type: string
                       format: date-time

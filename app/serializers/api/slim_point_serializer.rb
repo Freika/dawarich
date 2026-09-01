@@ -11,7 +11,7 @@ class Api::SlimPointSerializer
       latitude:     point.lat.to_s,
       longitude:    point.lon.to_s,
       timestamp:    point.timestamp,
-      velocity:     point.velocity,
+      velocity:     point.velocity&.to_s,
       country_name: point.country_name,
       tracker_id:   point.tracker_id
     }
