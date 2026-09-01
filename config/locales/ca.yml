@@ -3462,6 +3462,12 @@ ca:
         import_completed_with_no_points: La importació ha finalitzat sense punts
         import_failed: La importació ha fallat
         zero_points_with_timestamps: "El teu arxiu %{name} ha importat 0 punts. No s'ha trobat cap punt d'ubicació amb marca de temps. Les importacions de GPX, KML i GeoJSON requereixen un valor de temps per a cada coordenada (&lt;time&gt;, &lt;when&gt; o una propietat timestamp)."
+        zero_points_waypoints_only:
+          one: 'El teu fitxer %{name} ha importat 0 punts. Conté %{count} waypoint (un preferit o lloc desat) però cap ruta enregistrada. Dawarich actualment només importa rutes enregistrades.'
+          other: 'El teu fitxer %{name} ha importat 0 punts. Conté %{count} waypoints (preferits o llocs desats) però cap ruta enregistrada. Dawarich actualment només importa rutes enregistrades.'
+        zero_points_route_only:
+          one: 'El teu fitxer %{name} ha importat 0 punts. Conté una ruta planificada de %{count} punt, però cap ruta enregistrada. Dawarich importa rutes enregistrades, no rutes planificades.'
+          other: 'El teu fitxer %{name} ha importat 0 punts. Conté una ruta planificada de %{count} punts, però cap ruta enregistrada. Dawarich importa rutes enregistrades, no rutes planificades.'
         zero_points: "El teu arxiu %{name} ha importat 0 punts. No s'ha trobat cap punt d'ubicació nou en aquest arxiu."
         import_failed_self_hosted: 'La importació "%{name}" ha fallat: %{message}, traça: %{backtrace}'
         import_failed_cloud: 'La importació "%{name}" ha fallat, contacta amb nosaltres a hi@dawarich.com'

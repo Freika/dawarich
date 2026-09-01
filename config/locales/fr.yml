@@ -4570,6 +4570,12 @@ fr:
           Aucun point de localisation horodaté n'a été trouvé. Les importations GPX,
           KML et GeoJSON exigent une valeur de temps pour chaque coordonnée (&lt;time&gt;,
           &lt;when&gt; ou une propriété timestamp).
+        zero_points_waypoints_only:
+          one: 'Votre fichier %{name} a importé 0 point. Il contient %{count} point de repère (un favori ou lieu enregistré) mais aucune trace enregistrée. Dawarich n''importe actuellement que les traces.'
+          other: 'Votre fichier %{name} a importé 0 point. Il contient %{count} points de repère (favoris ou lieux enregistrés) mais aucune trace enregistrée. Dawarich n''importe actuellement que les traces.'
+        zero_points_route_only:
+          one: 'Votre fichier %{name} a importé 0 point. Il contient un itinéraire planifié de %{count} point, mais aucune trace enregistrée. Dawarich importe les traces enregistrées, pas les itinéraires planifiés.'
+          other: 'Votre fichier %{name} a importé 0 point. Il contient un itinéraire planifié de %{count} points, mais aucune trace enregistrée. Dawarich importe les traces enregistrées, pas les itinéraires planifiés.'
         zero_points: Votre fichier « %{name} » n'a importé aucun point. Aucun nouveau
           point de localisation n'a été trouvé dans ce fichier.
         import_failed_self_hosted: 'L''importation « %{name} » a échoué : %{message},

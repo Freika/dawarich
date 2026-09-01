@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- A GPX file holding only waypoints (such as an OsmAnd+ `favourites.gpx`) now says so when it imports 0 points, instead of reporting that the file lacks per-point timestamps. That advice was wrong: OsmAnd waypoints do carry a time, and adding more timestamps never helped. (#1261)
 - Shared link addresses are now always three words. One hyphenated entry in the word list could produce a four-word address.
 - Photos are now matched to a trip or map range on the photo's UTC timestamp rather than its local wall-clock time. Previously a trip could hide photos taken in its final hours, drop one taken exactly on its start or end boundary, or — when it began or ended near midnight — lose photos before they were even fetched. A photo with a missing or unreadable timestamp is now skipped instead of failing the whole fetch. (#1137)
 - A photo layer that fails to load now tells you so instead of quietly showing nothing. An unreachable or erroring Immich or PhotoPrism was previously indistinguishable from simply having no photos in range; when one of several sources fails, the photos that were retrieved are still shown alongside a warning. (#1137)
