@@ -142,14 +142,24 @@ module Points
         end
       end
 
+      # A real UPDATE, not upsert_all: Postgres checks NOT NULL on the
+      # proposed insert tuple BEFORE resolving the conflict, so a partial
+      # upsert dies on v2's `timestamp NOT NULL` - and an id that no longer
+      # exists must not resurrect as a hollow point anyway.
       def batch_update_points(entries)
-        updates = entries.map do |id, raw_data|
-          { id: id, raw_data: raw_data, raw_data_archived: false, raw_data_archive_id: nil }
+        connection = ActiveRecord::Base.connection
+        values = entries.map do |id, raw_data|
+          "(#{id.to_i}, #{connection.quote(raw_data.to_json)}::jsonb)"
         end
 
-        Point.upsert_all(updates, unique_by: :id,
-                          update_only: %i[raw_data raw_data_archived raw_data_archive_id])
-        # rubocop:enable Rails/SkipsModelValidations
+        connection.execute(<<~SQL)
+          UPDATE points
+          SET raw_data = v.raw_data,
+              raw_data_archived = false,
+              raw_data_archive_id = NULL
+          FROM (VALUES #{values.join(', ')}) AS v(id, raw_data)
+          WHERE points.id = v.id
+        SQL
       end
 
       def restore_archive_to_cache(archive, cache_key_prefix)

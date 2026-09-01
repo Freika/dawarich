@@ -11,8 +11,8 @@ RSpec.describe Users::Digests::Monthly::CalculatingJob, type: :job do
     before do
       day_1 = Time.zone.local(year, month, 1, 10, 0, 0).to_i
       day_2 = Time.zone.local(year, month, 2, 10, 0, 0).to_i
-      create(:point, user: user, timestamp: day_1, country_name: 'Spain', city: 'Madrid')
-      create(:point, user: user, timestamp: day_2, country_name: 'Spain', city: 'Madrid')
+      create(:point, user: user, timestamp: day_1, country: 'Spain', city: 'Madrid')
+      create(:point, user: user, timestamp: day_2, country: 'Spain', city: 'Madrid')
 
       create(:stat, user: user, year: year, month: month, distance: 12_345,
                     toponyms: [{ 'country' => 'Spain',

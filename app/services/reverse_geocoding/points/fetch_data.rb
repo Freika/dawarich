@@ -44,7 +44,6 @@ class ReverseGeocoding::Points::FetchData
     with_write_retry do
       point.update!(
         city: response.city,
-        country_name: response.country,
         country_id: country_record&.id,
         geodata: DawarichSettings.store_geodata? ? response.data : {},
         reverse_geocoded_at: Time.current

@@ -31,17 +31,12 @@ class StatsQuery
     stats = { geocoded: count_points('reverse_geocoded_at IS NOT NULL') }
     return stats unless DawarichSettings.store_geodata?
 
-    # Deliberately not `geodata = '{}'`: geodata is dropped in the points table
-    # rewrite. ReverseGeocoding::Points::FetchData stamps reverse_geocoded_at
-    # and leaves city/country_name/country_id untouched when the provider
-    # returns nothing, so this says the same thing using columns that survive.
-    # Both country name columns must be checked too: rows from before
-    # country_name superseded the legacy country string carry a name in one of
-    # them but no country_id until DataMigrations::BackfillPointCountryIdJob
-    # derives it (from COALESCE of the same two columns) — they have data.
+    # "Geocoded but empty-handed": FetchData stamps reverse_geocoded_at and
+    # leaves city/country_id untouched when the provider returns nothing.
+    # city and country_id are the only per-point geodata carriers since the
+    # v2 rewrite dropped the name columns.
     stats[:without_data] = count_points(
-      'reverse_geocoded_at IS NOT NULL AND city IS NULL ' \
-      'AND country_name IS NULL AND country IS NULL AND country_id IS NULL'
+      'reverse_geocoded_at IS NOT NULL AND city IS NULL AND country_id IS NULL'
     )
 
     stats

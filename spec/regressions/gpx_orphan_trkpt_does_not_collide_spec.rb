@@ -38,7 +38,7 @@ RSpec.describe 'GPX orphan <trkpt> before any <trk> gets a distinct tracker_id' 
   it 'orphan trkpt does not share tracker_id with the first real segment' do
     Gpx::TrackImporter.new(import, user.id, gpx_path).call
 
-    tracker_ids = Point.where(import_id: import.id).pluck(:tracker_id).uniq
+    tracker_ids = Point.where(import_id: import.id).joins(:source).pluck('point_sources.tracker_id').uniq
     expect(tracker_ids.size).to eq(2)
     expect(tracker_ids).to include("import-#{import.id}-orphan")
   end

@@ -146,16 +146,15 @@ module Users
         sql = <<~SQL
           SELECT
             DATE(to_timestamp(timestamp) AT TIME ZONE 'UTC') as point_date,
-            country_name,
+            countries.name as country_name,
             MIN(timestamp) as min_timestamp,
             MAX(timestamp) as max_timestamp
           FROM points
+          JOIN countries ON countries.id = points.country_id
           WHERE user_id = #{user.id}
             AND timestamp >= #{start_of_year.to_i}
             AND timestamp <= #{end_of_year.to_i}
-            AND country_name IS NOT NULL
-            AND country_name != ''
-          GROUP BY point_date, country_name
+          GROUP BY point_date, countries.name
           ORDER BY point_date, min_timestamp
         SQL
 

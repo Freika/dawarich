@@ -91,8 +91,7 @@ RSpec.describe Exports::Create do
         point_query = queries.find { |sql| sql.include?('FROM "points"') && sql.include?('"points"."lonlat"') }
         expect(point_query).to include(
           '"points"."id"', '"points"."lonlat"', '"points"."altitude"',
-          '"points"."altitude_decimal"', '"points"."velocity"',
-          '"points"."timestamp"', '"points"."course"'
+          '"points"."velocity"', '"points"."timestamp"', '"points"."course"'
         )
         expect(point_query).not_to include('raw_data', 'geodata', 'motion_data')
       end

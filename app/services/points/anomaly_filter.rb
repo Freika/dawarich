@@ -193,12 +193,14 @@ class Points::AnomalyFilter
                            timestamp: (@start_time - SENTINEL_PRECISE_NEIGHBOR_SECONDS)..@end_time)
                     .not_anomaly
                     .where(vertical_accuracy: ...0)
-                    .where("velocity LIKE '-%'")
+                    .where(velocity: ...0)
                     .where('accuracy > ?', SENTINEL_ACCURACY_METERS)
                     .where(
                       'EXISTS (SELECT 1 FROM points precise ' \
                       'WHERE precise.user_id = points.user_id ' \
-                      'AND precise.tracker_id IS NOT DISTINCT FROM points.tracker_id ' \
+                      'AND (SELECT ps.tracker_id FROM point_sources ps WHERE ps.id = precise.source_id) ' \
+                      'IS NOT DISTINCT FROM ' \
+                      '(SELECT ps.tracker_id FROM point_sources ps WHERE ps.id = points.source_id) ' \
                       'AND precise.timestamp BETWEEN points.timestamp - :window AND points.timestamp + :window ' \
                       'AND precise.accuracy <= :radius ' \
                       'AND precise.anomaly IS NOT TRUE ' \
@@ -460,12 +462,14 @@ class Points::AnomalyFilter
 
     main = Point.where(user_id: @user_id, timestamp: start_time..end_time)
                 .not_anomaly.order(:timestamp, :id)
-                .select(:id, :timestamp, :tracker_id, :lonlat, :accuracy).to_a
+                .select(:id, :timestamp, :source_id, :lonlat, :accuracy)
+                .preload(:source).to_a
 
     after_ctx = Point.where(user_id: @user_id).not_anomaly
                      .where('timestamp > ?', end_time)
                      .order(:timestamp, :id).limit(CONTEXT_POINTS)
-                     .select(:id, :timestamp, :tracker_id, :lonlat, :accuracy).to_a
+                     .select(:id, :timestamp, :source_id, :lonlat, :accuracy)
+                     .preload(:source).to_a
 
     [before_ctx + main + after_ctx, main]
   end
@@ -474,11 +478,11 @@ class Points::AnomalyFilter
     scope = Point.where(user_id: @user_id).not_anomaly
                  .where('timestamp < ?', start_time)
                  .order(timestamp: :desc, id: :desc)
-                 .select(:id, :timestamp, :tracker_id, :lonlat, :accuracy)
+                 .select(:id, :timestamp, :source_id, :lonlat, :accuracy)
 
     widened = scope.where('timestamp >= ?', start_time - MAX_FROZEN_FIX_SPAN_SECONDS)
-                   .limit(FROZEN_FIX_CONTEXT_POINTS).to_a
-    widened = scope.limit(CONTEXT_POINTS).to_a if widened.size < CONTEXT_POINTS
+                   .limit(FROZEN_FIX_CONTEXT_POINTS).preload(:source).to_a
+    widened = scope.limit(CONTEXT_POINTS).preload(:source).to_a if widened.size < CONTEXT_POINTS
 
     widened.reverse
   end
@@ -491,13 +495,15 @@ class Points::AnomalyFilter
 
     sql = <<~SQL
       WITH ordered_points AS (
-        SELECT id, lonlat, timestamp,
-               LAG(id)        OVER per_device AS prev_id,
-               LAG(lonlat)    OVER per_device AS prev_lonlat,
-               LAG(timestamp) OVER per_device AS prev_timestamp
+        SELECT points.id, points.lonlat, points.timestamp,
+               LAG(points.id)        OVER per_device AS prev_id,
+               LAG(points.lonlat)    OVER per_device AS prev_lonlat,
+               LAG(points.timestamp) OVER per_device AS prev_timestamp
         FROM points
-        WHERE id = ANY(ARRAY[#{ids_literal}])
-        WINDOW per_device AS (PARTITION BY COALESCE(tracker_id, '') ORDER BY timestamp, id)
+        LEFT JOIN point_sources ps ON ps.id = points.source_id
+        WHERE points.id = ANY(ARRAY[#{ids_literal}])
+        WINDOW per_device AS (PARTITION BY COALESCE(ps.tracker_id, '')
+                              ORDER BY points.timestamp, points.id)
       )
       SELECT id, prev_id,
              ST_Distance(lonlat::geography, prev_lonlat::geography) AS meters,

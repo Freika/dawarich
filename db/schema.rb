@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_31_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_01_110000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -344,43 +344,28 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_31_120000) do
 
   create_table "points", force: :cascade do |t|
     t.integer "accuracy"
-    t.integer "altitude"
-    t.decimal "altitude_decimal", precision: 10, scale: 2
+    t.float "altitude", limit: 24
     t.boolean "anomaly"
-    t.integer "battery"
-    t.integer "battery_status"
-    t.string "bssid"
+    t.integer "battery", limit: 2
     t.string "city"
-    t.integer "connection"
-    t.string "country"
-    t.bigint "country_id"
-    t.string "country_name"
-    t.decimal "course", precision: 8, scale: 5
-    t.decimal "course_accuracy", precision: 8, scale: 5
+    t.integer "country_id"
+    t.float "course", limit: 24
+    t.float "course_accuracy", limit: 24
     t.datetime "created_at", null: false
-    t.string "external_track_id"
     t.jsonb "geodata", default: {}, null: false
     t.bigint "import_id"
-    t.text "in_regions", default: [], array: true
-    t.text "inrids", default: [], array: true
     t.geography "lonlat", limit: {srid: 4326, type: "st_point", geographic: true}
-    t.integer "mode"
     t.jsonb "motion_data", default: {}, null: false
-    t.string "ping"
     t.jsonb "raw_data", default: {}
     t.bigint "raw_data_archive_id"
     t.boolean "raw_data_archived", default: false, null: false
     t.datetime "reverse_geocoded_at"
     t.integer "source_id"
-    t.string "ssid"
-    t.integer "timestamp"
-    t.string "topic"
+    t.bigint "timestamp", null: false
     t.bigint "track_id"
-    t.string "tracker_id"
-    t.integer "trigger"
     t.datetime "updated_at", null: false
-    t.bigint "user_id"
-    t.string "velocity"
+    t.bigint "user_id", null: false
+    t.float "velocity", limit: 24
     t.integer "vertical_accuracy"
     t.bigint "visit_id"
     t.index ["id"], name: "index_points_on_not_reverse_geocoded", where: "(reverse_geocoded_at IS NULL)"
@@ -390,7 +375,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_31_120000) do
     t.index ["track_id", "timestamp"], name: "idx_points_track_id_timestamp"
     t.index ["user_id", "id"], name: "index_points_on_unarchived", where: "((raw_data_archived = false) AND (raw_data <> '{}'::jsonb))"
     t.index ["user_id", "timestamp", "lonlat"], name: "index_points_on_user_id_timestamp_lonlat", unique: true
-    t.index ["user_id"], name: "idx_points_user_id_legacy_tracker", where: "((tracker_id)::text = ANY (ARRAY[('google-maps-timeline-export'::character varying)::text, ('google-maps-phone-timeline-export'::character varying)::text]))"
     t.index ["visit_id"], name: "index_points_on_visit_id"
   end
 
@@ -686,10 +670,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_31_120000) do
   add_foreign_key "pending_imports", "users", column: "claimed_by_user_id", on_delete: :nullify
   add_foreign_key "place_visits", "places"
   add_foreign_key "place_visits", "visits"
-  add_foreign_key "points", "points_raw_data_archives", column: "raw_data_archive_id", on_delete: :restrict
-  add_foreign_key "points", "tracks"
-  add_foreign_key "points", "users"
-  add_foreign_key "points", "visits"
+  add_foreign_key "points", "points_raw_data_archives", column: "raw_data_archive_id", name: "fk_points_raw_data_archive", on_delete: :restrict
+  add_foreign_key "points", "tracks", name: "fk_points_track"
+  add_foreign_key "points", "users", name: "fk_points_user"
+  add_foreign_key "points", "visits", name: "fk_points_visit"
   add_foreign_key "points_raw_data_archives", "users"
   add_foreign_key "posters", "users"
   add_foreign_key "route_videos", "users"

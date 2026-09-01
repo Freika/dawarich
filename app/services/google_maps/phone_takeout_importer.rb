@@ -16,6 +16,7 @@ class GoogleMaps::PhoneTakeoutImporter
 
   BATCH_SIZE = 1000
   MAX_TIE_OFFSET = 59
+  ALTITUDE_LIMIT = 10**8
 
   def call
     path = resolve_file_path
@@ -150,23 +151,17 @@ class GoogleMaps::PhoneTakeoutImporter
     safe_timestamp = integer_metadata(:timestamp, timestamp)
     return if safe_timestamp.nil? && !timestamp.nil?
 
-    altitude_value = altitude || raw_data['altitudeMeters']
-    altitude_decimal_supported = Point.altitude_decimal_supported?
-    altitude_decimal = decimal_metadata(:altitude_decimal, altitude_value) if altitude_decimal_supported
-    altitude_integer = integer_metadata(:altitude, altitude_value) if altitude_decimal || !altitude_decimal_supported
     motion_data = Points::MotionDataExtractor.from_google_phone_takeout(raw_data)
     motion_data['activity_type'] = activity_type if activity_type
 
-    attrs = {
+    {
       lonlat: "POINT(#{lon.to_f} #{lat.to_f})",
       timestamp: safe_timestamp,
       motion_data: motion_data,
       accuracy: integer_metadata(:accuracy, raw_data['accuracyMeters']),
-      altitude: altitude_integer,
+      altitude: altitude_metadata(altitude || raw_data['altitudeMeters']),
       velocity: raw_data['speedMetersPerSecond']
     }
-    attrs[:altitude_decimal] = altitude_decimal if altitude_decimal_supported
-    attrs
   end
 
   def integer_metadata(attribute, value)
@@ -175,13 +170,11 @@ class GoogleMaps::PhoneTakeoutImporter
     discard_out_of_range(attribute)
   end
 
-  def decimal_metadata(attribute, value)
-    decimal = Point.type_for_attribute(attribute.to_s).serialize(value)
-    column = Point.columns_hash.fetch(attribute.to_s)
-    limit = 10**(column.precision - column.scale)
-    return decimal if decimal.nil? || decimal.abs < limit
+  def altitude_metadata(value)
+    altitude = Point.type_for_attribute('altitude').serialize(value)
+    return altitude if altitude.nil? || altitude.abs < ALTITUDE_LIMIT
 
-    discard_out_of_range(attribute)
+    discard_out_of_range(:altitude)
   end
 
   def discard_out_of_range(attribute)

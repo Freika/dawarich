@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.15.0] - UNRELEASED
+
+### Changed
+
+- **The `points` table has been rewritten into its normalized v2 shape.** This is the big one of the storage program: 15 legacy columns are gone (the device/importer context — `tracker_id`, `topic`, `ssid`, `bssid`, `connection`, `trigger`, `battery_status`, `inrids`, `in_regions` — now lives solely on the `point_sources` dimension; `country_name`/`country` are replaced by the `countries` table via `country_id`; `mode`, `ping`, `external_track_id` were dead; `altitude_decimal` merged into `altitude`), six columns changed type (`timestamp` is now `bigint` — Y2038-safe — and NOT NULL, `velocity`/`course`/`course_accuracy`/`altitude` are `real`, `battery` is `smallint`, `country_id` is `integer`), and the row layout is alignment-ordered. Typical space saving on a large instance: roughly half of the points heap and indexes.
+- **The migration rewrites the whole table on first boot after upgrading.** Ingest keeps running during the copy (live writes are captured and replayed); expect roughly 1 minute per 1M points on NVMe hardware, and free disk space of about the current size of your `points` table (check with `SELECT pg_size_pretty(pg_total_relation_size('points'));`). If the copy is interrupted — restart, disk full, anything — it resumes from where it stopped. Instances that skipped or never finished the 1.13 dimension backfill (`SKIP_POINT_DIMENSION_BACKFILL`) are handled: the rewrite stamps missing dimension rows itself.
+- The old table is kept as `points_legacy_d` as a rollback safety net; the NEXT release drops it automatically. To reclaim the space earlier: `DROP TABLE points_legacy_d;`.
+- Points without timestamps (historically importable from timeless GeoJSON) are assigned synthetic timestamps anchored at their import time, making them visible on the timeline for the first time.
+- API: `GET /api/v1/points` payloads no longer contain the always-empty keys `mode`, `ping`, `external_track_id`, `country`, and `altitude_decimal` (its value lives in `altitude`, which is now always a JSON number). Everything else is unchanged: the device keys (`tracker_id`, `battery_status`, …) and `country_name` still flow, and `velocity` stays a string.
+
 ## [1.14.2]
 
 ### Added

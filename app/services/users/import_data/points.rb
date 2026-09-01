@@ -211,19 +211,14 @@ class Users::ImportData::Points
     attributes['created_at'] = Time.current
     attributes['updated_at'] = Time.current
 
-    # Stage 1 of altitude integer→decimal migration: ensure altitude_decimal
-    # is populated alongside altitude when importing legacy dumps that only
-    # include the integer column.
-    if Point.altitude_decimal_supported? &&
-       attributes['altitude_decimal'].blank? && attributes['altitude'].present?
-      attributes['altitude_decimal'] = attributes['altitude']
-    end
-
     resolve_import_reference(attributes, point_data['import_reference'])
     resolve_country_reference(attributes, point_data['country_info'])
     resolve_visit_reference(attributes, point_data['visit_reference'])
 
-    result = attributes.slice(*Point.column_names).symbolize_keys
+    # Combo keys survive the allowlist so the dimension resolver can stamp
+    # them into point_sources at flush time (it strips them before upsert);
+    # they are payload data from every pre-D and post-D export alike.
+    result = attributes.slice(*(Point.column_names + PointSource::COMBO_COLUMNS)).symbolize_keys
 
     logger.debug "Prepared point attributes: #{result.slice(:lonlat, :timestamp, :import_id, :country_id, :visit_id)}"
     result
@@ -299,7 +294,10 @@ class Users::ImportData::Points
   def deserialize_array_columns(attributes)
     %w[inrids in_regions].each do |column|
       value = attributes[column]
-      attributes[column] = Point.type_for_attribute(column).deserialize(value) if value.is_a?(String)
+      # The array columns live on point_sources since Release D; Point no
+      # longer knows their type, so a Point-based deserialize would pass the
+      # PG literal ('{home}') through and poison the dimension digest.
+      attributes[column] = PointSource.type_for_attribute(column).deserialize(value) if value.is_a?(String)
     end
   end
 

@@ -52,7 +52,7 @@ class Trip < ApplicationRecord
   end
 
   def calculate_countries
-    self.visited_countries = points.pluck(:country_name).uniq.compact
+    self.visited_countries = points.joins(:country).reorder(nil).distinct.pluck('countries.name')
   end
 
   private

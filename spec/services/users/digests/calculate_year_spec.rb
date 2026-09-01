@@ -85,10 +85,10 @@ RSpec.describe Users::Digests::CalculateYear do
         # Feb 1: single country day (France) -> full 1440 minutes
         feb_1_10am = Time.zone.local(2024, 2, 1, 10, 0, 0).to_i
 
-        create(:point, user: user, timestamp: jan_1_10am, country_name: 'Germany', city: 'Berlin')
-        create(:point, user: user, timestamp: jan_1_11am, country_name: 'Germany', city: 'Berlin')
-        create(:point, user: user, timestamp: jan_1_12pm, country_name: 'Germany', city: 'Munich')
-        create(:point, user: user, timestamp: feb_1_10am, country_name: 'France', city: 'Paris')
+        create(:point, user: user, timestamp: jan_1_10am, country: 'Germany', city: 'Berlin')
+        create(:point, user: user, timestamp: jan_1_11am, country: 'Germany', city: 'Berlin')
+        create(:point, user: user, timestamp: jan_1_12pm, country: 'Germany', city: 'Munich')
+        create(:point, user: user, timestamp: feb_1_10am, country: 'France', city: 'Paris')
 
         countries = calculate_digest.time_spent_by_location['countries']
         cities = calculate_digest.time_spent_by_location['cities']
@@ -120,7 +120,7 @@ RSpec.describe Users::Digests::CalculateYear do
           3.times do |day|
             3.times do |hour|
               timestamp = mar_start + (day * 24 * 60 * 60) + (hour * 60 * 60)
-              create(:point, user: user, timestamp: timestamp, country_name: 'Germany', city: 'Berlin')
+              create(:point, user: user, timestamp: timestamp, country: 'Germany', city: 'Berlin')
             end
           end
 
@@ -128,7 +128,7 @@ RSpec.describe Users::Digests::CalculateYear do
           3.times do |day|
             3.times do |hour|
               timestamp = jul_start + (day * 24 * 60 * 60) + (hour * 60 * 60)
-              create(:point, user: user, timestamp: timestamp, country_name: 'Germany', city: 'Munich')
+              create(:point, user: user, timestamp: timestamp, country: 'Germany', city: 'Munich')
             end
           end
 
@@ -165,9 +165,9 @@ RSpec.describe Users::Digests::CalculateYear do
           point_2 = Time.zone.local(2024, 1, 1, 12, 0, 0).to_i  # 2 hours later
           point_3 = Time.zone.local(2024, 1, 1, 18, 0, 0).to_i  # 6 hours later
 
-          create(:point, user: user, timestamp: point_1, country_name: 'Germany')
-          create(:point, user: user, timestamp: point_2, country_name: 'Germany')
-          create(:point, user: user, timestamp: point_3, country_name: 'Germany')
+          create(:point, user: user, timestamp: point_1, country: 'Germany')
+          create(:point, user: user, timestamp: point_2, country: 'Germany')
+          create(:point, user: user, timestamp: point_3, country: 'Germany')
 
           digest = calculate_digest
           germany = digest.time_spent_by_location['countries'].find { |c| c['name'] == 'Germany' }
@@ -186,10 +186,10 @@ RSpec.describe Users::Digests::CalculateYear do
           point_3 = Time.zone.local(2024, 1, 1, 11, 0, 0).to_i   # Now in France
           point_4 = Time.zone.local(2024, 1, 1, 11, 30, 0).to_i  # Still in France
 
-          create(:point, user: user, timestamp: point_1, country_name: 'Germany')
-          create(:point, user: user, timestamp: point_2, country_name: 'Germany')
-          create(:point, user: user, timestamp: point_3, country_name: 'France')
-          create(:point, user: user, timestamp: point_4, country_name: 'France')
+          create(:point, user: user, timestamp: point_1, country: 'Germany')
+          create(:point, user: user, timestamp: point_2, country: 'Germany')
+          create(:point, user: user, timestamp: point_3, country: 'France')
+          create(:point, user: user, timestamp: point_4, country: 'France')
 
           digest = calculate_digest
           countries = digest.time_spent_by_location['countries']
@@ -218,10 +218,10 @@ RSpec.describe Users::Digests::CalculateYear do
           jan_1_10am = Time.zone.local(2024, 1, 1, 10, 0, 0).to_i # Border crossing
           jan_1_11am = Time.zone.local(2024, 1, 1, 11, 0, 0).to_i
 
-          create(:point, user: user, timestamp: jan_1_8am, country_name: 'France')
-          create(:point, user: user, timestamp: jan_1_9am, country_name: 'France')
-          create(:point, user: user, timestamp: jan_1_10am, country_name: 'Germany')
-          create(:point, user: user, timestamp: jan_1_11am, country_name: 'Germany')
+          create(:point, user: user, timestamp: jan_1_8am, country: 'France')
+          create(:point, user: user, timestamp: jan_1_9am, country: 'France')
+          create(:point, user: user, timestamp: jan_1_10am, country: 'Germany')
+          create(:point, user: user, timestamp: jan_1_11am, country: 'Germany')
 
           digest = calculate_digest
           countries = digest.time_spent_by_location['countries']

@@ -13,7 +13,7 @@ RSpec.describe 'Flyovers excluded from visited-country statistics' do
     [0, 30, 70, 90].map do |minute_offset|
       create(:point, user: user, import: import,
                      timestamp: base_ts + minute_offset.minutes,
-                     city: 'Berlin', country_name: 'Germany',
+                     city: 'Berlin', country: 'Germany',
                      altitude: 50, velocity: '5',
                      lonlat: 'POINT(13.404954 52.520008)')
     end
@@ -24,7 +24,7 @@ RSpec.describe 'Flyovers excluded from visited-country statistics' do
     [0, 30, 70, 90].map do |minute_offset|
       create(:point, user: user, import: import,
                      timestamp: start + minute_offset.minutes,
-                     city: 'La Paz', country_name: 'Bolivia',
+                     city: 'La Paz', country: 'Bolivia',
                      altitude: 3640, velocity: '1',
                      lonlat: 'POINT(-68.1193 -16.4897)')
     end
@@ -35,7 +35,7 @@ RSpec.describe 'Flyovers excluded from visited-country statistics' do
     [0, 30, 70, 90].map do |minute_offset|
       create(:point, user: user, import: import,
                      timestamp: start + minute_offset.minutes,
-                     city: 'Lyon', country_name: 'France',
+                     city: 'Lyon', country: 'France',
                      altitude: 200, velocity: '80',
                      lonlat: 'POINT(4.8357 45.7640)')
     end
@@ -46,7 +46,7 @@ RSpec.describe 'Flyovers excluded from visited-country statistics' do
     (0..240).step(5).map do |minute_offset|
       create(:point, user: user, import: import,
                      timestamp: flyover_start + minute_offset.minutes,
-                     city: 'Moscow', country_name: 'Russia',
+                     city: 'Moscow', country: 'Russia',
                      altitude: 11_000, velocity: '250',
                      lonlat: 'POINT(37.6173 55.7558)')
     end
@@ -58,7 +58,7 @@ RSpec.describe 'Flyovers excluded from visited-country statistics' do
       (0..30).step(5).map do |minute_offset|
         create(:point, user: user, import: import,
                        timestamp: flyover_start + (idx * 35 + minute_offset).minutes,
-                       city: city, country_name: 'Kazakhstan',
+                       city: city, country: 'Kazakhstan',
                        altitude: 11_500, velocity: '255',
                        lonlat: "POINT(#{60 + idx} #{50 + idx * 0.5})")
       end
@@ -70,7 +70,7 @@ RSpec.describe 'Flyovers excluded from visited-country statistics' do
     (0..240).step(5).map do |minute_offset|
       create(:point, user: user, import: import,
                      timestamp: flight_start + minute_offset.minutes,
-                     city: 'Reykjavik', country_name: 'Iceland',
+                     city: 'Reykjavik', country: 'Iceland',
                      altitude: 0, velocity: '240',
                      lonlat: 'POINT(-21.9426 64.1466)')
     end
@@ -115,7 +115,7 @@ RSpec.describe 'Flyovers excluded from visited-country statistics' do
       [0, 30, 70, 90].map do |minute_offset|
         create(:point, user: user, import: legacy_import,
                        timestamp: legacy_base_ts + minute_offset.minutes,
-                       city: 'Paris', country_name: 'France',
+                       city: 'Paris', country: 'France',
                        altitude: 35, velocity: nil,
                        lonlat: 'POINT(2.3522 48.8566)')
       end
@@ -128,8 +128,8 @@ RSpec.describe 'Flyovers excluded from visited-country statistics' do
     it 'still attributes them to their country (does not exclude as flyover)' do
       stat = user.stats.find_by(year: legacy_year, month: legacy_month)
       countries = stat.toponyms.select { |t| t['cities'].is_a?(Array) && t['cities'].any? }
-                      .map { |t| t['country'] }
-                      .compact
+                               .map { |t| t['country'] }
+                               .compact
       expect(countries).to include('France')
     end
   end

@@ -58,7 +58,7 @@ RSpec.describe 'GPX multi-track import does not merge tracks into one' do
   end
 
   it 'tags each <trk> with its own synthetic tracker_id, not just per <trkseg>' do
-    tracker_ids = Point.where(import_id: import.id).pluck(:tracker_id).uniq
+    tracker_ids = Point.where(import_id: import.id).joins(:source).pluck('point_sources.tracker_id').uniq
     expect(tracker_ids.size).to eq(2)
     expect(tracker_ids).to all(start_with('gpx-'))
     expect(tracker_ids).to all(end_with('-seg-0'))
@@ -75,7 +75,7 @@ RSpec.describe 'GPX multi-track import does not merge tracks into one' do
     Tracks::IncrementalGenerator.new(user).call
 
     user.tracks.each do |track|
-      tracker_ids_in_track = track.points.pluck(:tracker_id).uniq
+      tracker_ids_in_track = track.points.joins(:source).pluck('point_sources.tracker_id').uniq
       expect(tracker_ids_in_track.size).to eq(1)
       expect(tracker_ids_in_track.first).to eq(track.tracker_id)
     end

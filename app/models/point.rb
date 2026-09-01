@@ -30,14 +30,9 @@ class Point < ApplicationRecord
     index: true
   }
 
-  enum :battery_status, { unknown: 0, unplugged: 1, charging: 2, full: 3, connected_not_charging: 4, discharging: 5 },
-       suffix: true
-  enum :trigger, {
-    unknown: 0, background_event: 1, circular_region_event: 2, beacon_event: 3,
-    report_location_message_event: 4, manual_event: 5, timer_based_event: 6,
-    settings_monitoring_event: 7
-  }, suffix: true
-  enum :connection, { mobile: 0, wifi: 1, offline: 2, unknown: 4 }, suffix: true
+  # battery_status/trigger/connection live on point_sources since Release D
+  # dropped the legacy columns; PointSource declares the enums (identical
+  # mappings) and PointDimensionReads serves the labels through :source.
 
   scope :reverse_geocoded, -> { where.not(reverse_geocoded_at: nil) }
   scope :not_reverse_geocoded, -> { where(reverse_geocoded_at: nil) }
@@ -57,16 +52,6 @@ class Point < ApplicationRecord
 
   def self.without_raw_data
     select(column_names - ['raw_data'])
-  end
-
-  # Memoized at class-load to avoid `Point.column_names.include?` lookups on
-  # every row during bulk imports (importer params files call this thousands
-  # of times per batch). The constant evaluates once per process; if the
-  # schema changes mid-process (e.g. dev migration), restart Rails.
-  ALTITUDE_DECIMAL_SUPPORTED = column_names.include?('altitude_decimal')
-
-  def self.altitude_decimal_supported?
-    ALTITUDE_DECIMAL_SUPPORTED
   end
 
   # Build a key whose equivalence classes match the PostgreSQL UNIQUE index
@@ -131,33 +116,10 @@ class Point < ApplicationRecord
     Country.containing_point(lon, lat)
   end
 
+  # The physical column was dropped in Release D; the name stays as the
+  # serializer contract (the scratch map reads properties.country_name).
   def country_name
-    # TODO: Remove the country column in the future.
-    read_attribute(:country_name) || country&.name || self[:country] || ''
-  end
-
-  # Stage 1 of the altitude integer→decimal migration: prefer the new
-  # `altitude_decimal` column when it carries a value, fall back to the
-  # legacy integer `altitude` column otherwise. Writes always update the
-  # decimal column so new data is full-precision; the integer column gets
-  # the truncated value via the underlying attribute.
-  #
-  # `has_attribute?` guards against MissingAttributeError when the record
-  # was loaded with a partial `.select(...)` that omitted altitude_decimal
-  # (e.g. the altitude backfill job uses `.select(:id, :altitude, :raw_data)`
-  # for streaming-friendly memory usage).
-  def altitude
-    if has_attribute?(:altitude_decimal)
-      decimal = self[:altitude_decimal]
-      return decimal if decimal.present?
-    end
-
-    self[:altitude] if has_attribute?(:altitude)
-  end
-
-  def altitude=(value)
-    self[:altitude] = value if has_attribute?(:altitude)
-    self[:altitude_decimal] = value if has_attribute?(:altitude_decimal)
+    country&.name || ''
   end
 
   private

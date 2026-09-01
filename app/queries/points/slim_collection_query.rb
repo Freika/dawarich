@@ -15,15 +15,10 @@ class Points::SlimCollectionQuery
         Arel.sql('ST_X(points.lonlat::geometry)'),
         Arel.sql('points.timestamp'),
         Arel.sql('points.velocity'),
-        # Precedence mirrors Point#country_name exactly; collapsing onto the
-        # countries join alone happens when the rewrite drops both columns.
-        Arel.sql("COALESCE(points.country_name, countries.name, points.country, '')"),
-        # A stamped row reads the dimension exclusively, NULLs included —
-        # COALESCE would resurrect legacy values the writer cleared. The
-        # legacy arm serves only unstamped rows and goes away with the
-        # legacy columns in the table rewrite.
-        Arel.sql('CASE WHEN points.source_id IS NULL THEN points.tracker_id ' \
-                 'ELSE point_sources.tracker_id END')
+        # Mirrors Point#country_name: the association is the only source
+        # since the rewrite dropped the per-point name columns.
+        Arel.sql("COALESCE(countries.name, '')"),
+        Arel.sql('point_sources.tracker_id')
       )
       .map do |id, lat, lon, timestamp, velocity, country_name, tracker_id|
         {

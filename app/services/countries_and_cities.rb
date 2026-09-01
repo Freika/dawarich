@@ -15,8 +15,9 @@ class CountriesAndCities
 
   def call
     points
-      .reject { |point| point[:country_name].nil? || point[:city].nil? || flyover?(point) }
+      .reject { |point| point[:country_id].nil? || point[:city].nil? || flyover?(point) }
       .group_by { |point| canonical_country_name(point) }
+      .reject { |country, _| country.nil? }
       .transform_values { |country_points| process_country_points(country_points) }
       .map { |country, cities| CountryData.new(country: country, cities: cities) }
   end
@@ -29,11 +30,11 @@ class CountriesAndCities
     (point[:velocity].to_f * MS_TO_KMH) > FLYOVER_VELOCITY_THRESHOLD_KMH
   end
 
+  # The per-point name columns are gone since the v2 rewrite; the countries
+  # table is the only naming authority. A dangling country_id groups under
+  # nil and is dropped above.
   def canonical_country_name(point)
-    country_id = point[:country_id]
-    return point[:country_name] if country_id.blank?
-
-    country_names_by_id[country_id] || point[:country_name]
+    country_names_by_id[point[:country_id]]
   end
 
   def country_names_by_id

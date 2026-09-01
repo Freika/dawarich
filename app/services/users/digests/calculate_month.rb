@@ -114,8 +114,9 @@ module Users
         user.points
             .without_raw_data
             .where('timestamp >= ? AND timestamp <= ?', start_of_month.to_i, end_of_month.to_i)
-            .where.not(country_name: [nil, ''])
-            .select(:country_name, :timestamp)
+            .where.not(country_id: nil)
+            .select(:country_id, :timestamp)
+            .preload(:country)
             .order(timestamp: :asc)
       end
 

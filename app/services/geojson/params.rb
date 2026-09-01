@@ -49,7 +49,7 @@ class Geojson::Params
     properties = feature[:properties]
     altitude_value = altitude(feature)
 
-    attrs = {
+    {
       lonlat:             "POINT(#{feature[:geometry][:coordinates][0]} #{feature[:geometry][:coordinates][1]})",
       battery_status:     properties[:battery_state],
       battery:            battery(properties),
@@ -63,8 +63,6 @@ class Geojson::Params
       course:             find_field(properties, :heading),
       motion_data:        Points::MotionDataExtractor.from_overland_properties(properties)
     }
-    attrs[:altitude_decimal] = altitude_value if Point.altitude_decimal_supported?
-    attrs
   end
 
   def build_line_point(point)

@@ -15,7 +15,6 @@ RSpec.describe OwnTracks::Params do
       {
         lonlat: 'POINT(13.332 52.225)',
         battery: 94,
-        ping: 100.266,
         altitude: 36,
         accuracy: 10,
         vertical_accuracy: 4,
@@ -53,8 +52,7 @@ RSpec.describe OwnTracks::Params do
           'inrids' => ['5f1d1b'],
           'inregions' => ['home'],
           '_http' => true
-        },
-        altitude_decimal: 36
+        }
       }
     end
 

@@ -85,7 +85,7 @@ RSpec.describe Users::Digests::CalculateMonth do
 
       it "groups a UTC-late-May 31 point into the user's local-day grouping for May" do
         utc_in_may = Time.zone.parse('2024-05-31 06:00:00 UTC')
-        create(:point, user: user, country_name: 'New Zealand',
+        create(:point, user: user, country: 'New Zealand',
                        timestamp: utc_in_may.to_i,
                        latitude: -36.85, longitude: 174.76)
 
@@ -98,12 +98,12 @@ RSpec.describe Users::Digests::CalculateMonth do
 
       it "uses the user's timezone (not the server zone) when grouping points by date" do
         june_in_user_tz = Time.zone.parse('2024-05-31 14:00:00 UTC')
-        create(:point, user: user, country_name: 'New Zealand',
+        create(:point, user: user, country: 'New Zealand',
                        timestamp: june_in_user_tz.to_i,
                        latitude: -36.85, longitude: 174.76)
 
         utc_in_may = Time.zone.parse('2024-05-30 02:00:00 UTC')
-        create(:point, user: user, country_name: 'New Zealand',
+        create(:point, user: user, country: 'New Zealand',
                        timestamp: utc_in_may.to_i,
                        latitude: -36.85, longitude: 174.76)
 

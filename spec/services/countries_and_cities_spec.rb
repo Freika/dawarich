@@ -190,10 +190,7 @@ RSpec.describe CountriesAndCities do
             create(:point, city: 'Dar es Salaam', country: country, timestamp:),
             create(:point, city: 'Dar es Salaam', country: country, timestamp: timestamp + 10.minutes),
             create(:point, city: 'Dar es Salaam', country: country, timestamp: timestamp + 20.minutes)
-          ].tap do |pts|
-            # Simulate geocoder returning a different spelling for the same country
-            pts.last.update_column(:country_name, 'United Republic of Tanzania')
-          end
+          ]
         end
 
         it 'groups them under the canonical country name' do
@@ -211,14 +208,15 @@ RSpec.describe CountriesAndCities do
         let(:points) do
           (0..3).map do |i|
             create(:point, city: 'Unknown City', timestamp: timestamp + (i * 10).minutes).tap do |p|
-              p.update_columns(country_name: 'Somewhere', country_id: nil)
+              p.update_columns(country_id: nil)
             end
           end
         end
 
-        it 'falls back to raw country_name' do
-          result = countries_and_cities
-          expect(result.map(&:country)).to eq(['Somewhere'])
+        # The countries table is the only naming authority since the v2
+        # rewrite; a point without a resolved country carries no name at all.
+        it 'excludes them from the toponyms' do
+          expect(countries_and_cities).to eq([])
         end
       end
     end

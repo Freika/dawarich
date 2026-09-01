@@ -6,9 +6,8 @@ class MobilePhotoLibrary::Importer
   include Imports::FileLoader
 
   BATCH_SIZE = 1000
-  # points.timestamp is int4 and points.altitude_decimal is decimal(10,2); a
-  # value past either raises inside the batch insert, and the shared rescue
-  # drops the whole slice, so one bad photo would cost every point beside it.
+  # Sanity bounds for photo metadata: the batch insert's shared rescue drops
+  # the whole slice, so one absurd value would cost every point beside it.
   MAX_TIMESTAMP = 2_147_483_647
   MAX_ALTITUDE = 99_999_999.99
   FORMAT_TYPE = 'DawarichPhotoLibrary'
@@ -72,7 +71,7 @@ class MobilePhotoLibrary::Importer
 
     altitude = in_range(number(point['altitude']), MAX_ALTITUDE)
     now = Time.current
-    attributes = {
+    {
       lonlat: "POINT(#{longitude} #{latitude})",
       timestamp:,
       altitude:,
@@ -83,8 +82,6 @@ class MobilePhotoLibrary::Importer
       created_at: now,
       updated_at: now
     }
-    attributes[:altitude_decimal] = altitude if Point.altitude_decimal_supported?
-    attributes
   end
 
   def valid_coordinates?(latitude, longitude)
