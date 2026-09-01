@@ -3747,6 +3747,7 @@ en:
       failed_to_reload_routes: Failed to reload routes
       failed_to_load_scratch_layer: Failed to load scratch layer
       failed_to_load_photos: Failed to load photos
+      some_photo_sources_unavailable: "Some photo sources are unavailable: %{sources}"
       failed_to_load_areas: Failed to load areas
       failed_to_load_tracks: Failed to load tracks
       failed_to_load_track_details: Failed to load track details

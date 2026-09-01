@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 - Shared link addresses are now always three words. One hyphenated entry in the word list could produce a four-word address.
+- Photos are now matched to a trip or map range on the photo's UTC timestamp rather than its local wall-clock time. Previously a trip could hide photos taken in its final hours, drop one taken exactly on its start or end boundary, or — when it began or ended near midnight — lose photos before they were even fetched. A photo with a missing or unreadable timestamp is now skipped instead of failing the whole fetch. (#1137)
+- A photo layer that fails to load now tells you so instead of quietly showing nothing. An unreachable or erroring Immich or PhotoPrism was previously indistinguishable from simply having no photos in range; when one of several sources fails, the photos that were retrieved are still shown alongside a warning. (#1137)
 - Places created from a suggested visit now get their real address. Visits detected on a phone arrive with a generated name such as "Visited place"; that name is no longer locked, reverse geocoding is queued for the new place, and the resolved address now replaces the generated name on the visit as well as the place.
 
 ## [1.14.1] - 2026-08-31, Berlin

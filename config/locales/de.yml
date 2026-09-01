@@ -3808,6 +3808,7 @@ de:
       failed_to_reload_routes: Route konnte nicht neu geladen werden
       failed_to_load_scratch_layer: Rubbelkartenebene konnte nicht geladen werden
       failed_to_load_photos: Fotos konnten nicht geladen werden
+      some_photo_sources_unavailable: "Einige Fotoquellen sind nicht verfügbar: %{sources}"
       failed_to_load_areas: Gebiete konnten nicht geladen werden
       failed_to_load_tracks: Tracks konnten nicht geladen werden
       failed_to_load_track_details: Track-Details konnten nicht geladen werden

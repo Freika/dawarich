@@ -3811,6 +3811,7 @@ pl:
       failed_to_reload_routes: Nie udało się odświeżyć tras
       failed_to_load_scratch_layer: Nie udało się załadować warstwy scratch
       failed_to_load_photos: Nie udało się załadować zdjęć
+      some_photo_sources_unavailable: "Niektóre źródła zdjęć są niedostępne: %{sources}"
       failed_to_load_areas: Nie udało się załadować obszarów
       failed_to_load_tracks: Nie udało się załadować odcinków
       failed_to_load_track_details: Nie udało się wczytać szczegółów odcinka

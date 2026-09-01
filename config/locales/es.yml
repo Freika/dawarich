@@ -3753,6 +3753,7 @@ es:
       failed_to_reload_routes: No se pudo recargar las rutas
       failed_to_load_scratch_layer: No se pudo cargar la capa de borrador
       failed_to_load_photos: No se pudo cargar las fotos
+      some_photo_sources_unavailable: "Algunas fuentes de fotos no están disponibles: %{sources}"
       failed_to_load_areas: No se pudo cargar los ámbitos
       failed_to_load_tracks: No se pudieron cargar los trayectos
       failed_to_load_track_details: No se pudieron cargar los detalles del trayecto
