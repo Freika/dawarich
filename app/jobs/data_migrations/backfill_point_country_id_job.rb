@@ -42,6 +42,11 @@ class DataMigrations::BackfillPointCountryIdJob < ApplicationJob
   end
 
   def perform(start_id = nil, batch_size = BATCH_SIZE)
+    unless ActiveRecord::Base.connection.column_exists?(:points, :country_name)
+      Rails.logger.info('[BackfillPointCountryId] points is already v2-shaped - nothing to backfill')
+      return
+    end
+
     start_id ||= Point.minimum(:id)
     return if start_id.nil?
 

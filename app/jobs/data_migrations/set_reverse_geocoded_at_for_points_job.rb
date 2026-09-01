@@ -9,7 +9,7 @@ class DataMigrations::SetReverseGeocodedAtForPointsJob < ApplicationJob
     Point.where.not(geodata: {})
          .where(reverse_geocoded_at: nil)
          .in_batches(of: 10_000) do |relation|
-           relation.update_all(reverse_geocoded_at: timestamp)
+      relation.update_all(reverse_geocoded_at: timestamp)
       # rubocop:enable Rails/SkipsModelValidations
     end
   end

@@ -8,6 +8,11 @@ class DataMigrations::BackfillCountryNameJob < ApplicationJob
   BATCH_SIZE = 1000
 
   def perform(batch_size: BATCH_SIZE)
+    unless ActiveRecord::Base.connection.column_exists?(:points, :country_name)
+      Rails.logger.info('[BackfillCountryName] points is already v2-shaped - nothing to backfill')
+      return
+    end
+
     Rails.logger.info('Starting country_name backfill job')
 
     processed_count = 0
