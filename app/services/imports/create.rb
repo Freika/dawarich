@@ -149,7 +149,11 @@ class Imports::Create
   end
 
   def zero_points_content(import)
-    if import.gpx? || import.kml? || import.geojson?
+    waypoints = import.raw_data&.dig('waypoints_seen').to_i
+
+    if waypoints.positive?
+      I18n.t('services.imports.create.zero_points_waypoints_only', name: import.name, waypoints: waypoints)
+    elsif import.gpx? || import.kml? || import.geojson?
       I18n.t('services.imports.create.zero_points_with_timestamps', name: import.name)
     else
       I18n.t('services.imports.create.zero_points', name: import.name)

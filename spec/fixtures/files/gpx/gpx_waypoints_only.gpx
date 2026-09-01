@@ -1,0 +1,23 @@
+<?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
+<gpx version="1.1" creator="OsmAnd~" xmlns="http://www.topografix.com/GPX/1/1" xmlns:osmand="https://osmand.net">
+  <metadata>
+    <name>favourites</name>
+  </metadata>
+  <wpt lat="51.3402000" lon="12.3712000">
+    <name>Leipzig Hauptbahnhof</name>
+    <type>Transport</type>
+    <extensions>
+      <osmand:icon>special_trekking</osmand:icon>
+      <osmand:background>circle</osmand:background>
+      <osmand:color>#eecc22ff</osmand:color>
+    </extensions>
+  </wpt>
+  <wpt lat="51.3397000" lon="12.3731000">
+    <name>Augustusplatz</name>
+    <type>Sights</type>
+  </wpt>
+  <wpt lat="51.3369000" lon="12.3750000">
+    <name>Cafe Riquet</name>
+    <type>Food</type>
+  </wpt>
+</gpx>
