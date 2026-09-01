@@ -1725,13 +1725,6 @@ fr:
         min_7: 120min
         how_long_you_must_stay_for_a_city_to_count: Combien de temps vous devez rester
           dans une ville pour qu'elle soit comptée dans les statistiques
-        max_gap_between_points: Écart maximal entre les points
-        min_8: 120 min
-        min_9: 30min
-        min_10: 195min
-        min_11: 360min
-        max_gap_between_points_before_assuming_you_left_the_city: Écart maximal entre
-          les points avant de considérer que vous avez quitté la ville
         min_12: 720min
         live_mode: Mode en direct
         show_new_points_in_real_time: Afficher les nouveaux points en temps réel

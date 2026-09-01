@@ -1006,12 +1006,6 @@ en:
         min_6: 5min
         min_7: 120min
         how_long_you_must_stay_for_a_city_to_count: How long you must stay for a city to count in statistics
-        max_gap_between_points: Max Gap Between Points
-        min_8: 120 min
-        min_9: 30min
-        min_10: 195min
-        min_11: 360min
-        max_gap_between_points_before_assuming_you_left_the_city: Max gap between points before assuming you left the city
         min_12: 720min
         live_mode: Live Mode
         show_new_points_in_real_time: Show new points in real-time

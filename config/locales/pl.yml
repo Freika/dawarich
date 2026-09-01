@@ -1006,12 +1006,6 @@ pl:
         min_6: 5 min
         min_7: 120 min
         how_long_you_must_stay_for_a_city_to_count: Jak długo musisz pozostać, aby miasto zostało uwzględnione w statystykach
-        max_gap_between_points: Maksymalna przerwa między punktami
-        min_8: 120 min
-        min_9: 30 min
-        min_10: 195 min
-        min_11: 360 min
-        max_gap_between_points_before_assuming_you_left_the_city: Maksymalna przerwa między punktami, po której uznajemy, że opuściłeś miasto
         min_12: 720 min
         live_mode: Tryb na żywo
         show_new_points_in_real_time: Pokaż nowe punkty w czasie rzeczywistym

@@ -24,7 +24,7 @@ RSpec.describe CountriesAndCities do
       ]
     end
 
-    context 'when min_minutes_spent_in_city is 5 (regression for issue #2207)' do
+    context 'when min_minutes_spent_in_city is 5' do
       let(:kwargs) { { min_minutes_spent_in_city: 5 } }
 
       let(:points) do
@@ -101,31 +101,88 @@ RSpec.describe CountriesAndCities do
         end
       end
 
-      context 'when points have a gap larger than threshold (passing through)' do
-        let(:kwargs) { { min_minutes_spent_in_city: 60, max_gap_minutes: 120 } }
+      context 'when tracking falls silent while the user stays in one city' do
+        let(:kwargs) { { min_minutes_spent_in_city: 60 } }
 
         let(:points) do
           [
-            # User in Berlin at 9:00, leaves, returns at 11:30
             create(:point, city: 'Berlin', country: 'Germany', timestamp:),
             create(:point, city: 'Berlin', country: 'Germany', timestamp: timestamp + 15.minutes),
-            # 135-minute gap here (user left the city, exceeds 120-min default)
             create(:point, city: 'Berlin', country: 'Germany', timestamp: timestamp + 150.minutes),
             create(:point, city: 'Berlin', country: 'Germany', timestamp: timestamp + 160.minutes)
           ]
         end
 
-        it 'only counts time between consecutive points within threshold' do
-          # 15 min (0->15) + 10 min (150->160) = 25 minutes
-          # Since 25 < 60, Berlin should be filtered out
+        it 'treats the silence as continued presence' do
           expect(countries_and_cities).to eq(
             [
               CountriesAndCities::CountryData.new(
                 country: 'Germany',
-                cities: []
+                cities: [
+                  CountriesAndCities::CityData.new(
+                    city: 'Berlin', points: 4, timestamp: (timestamp + 160.minutes).to_i, stayed_for: 160
+                  )
+                ]
               )
             ]
           )
+        end
+      end
+
+      context 'when the same city is revisited with another city in between' do
+        let(:kwargs) { { min_minutes_spent_in_city: 60 } }
+
+        let(:points) do
+          [
+            create(:point, city: 'Leipzig', country: 'Germany', timestamp:),
+            create(:point, city: 'Leipzig', country: 'Germany', timestamp: timestamp + 10.minutes),
+            create(:point, city: 'Berlin', country: 'Germany', timestamp: timestamp + 3.hours),
+            create(:point, city: 'Berlin', country: 'Germany', timestamp: timestamp + 9.hours),
+            create(:point, city: 'Leipzig', country: 'Germany', timestamp: timestamp + 20.hours),
+            create(:point, city: 'Leipzig', country: 'Germany', timestamp: timestamp + 20.hours + 10.minutes)
+          ]
+        end
+
+        it 'keeps the short stops apart instead of spanning them' do
+          cities = countries_and_cities.first.cities.map(&:city)
+
+          expect(cities).to eq(['Berlin'])
+        end
+      end
+
+      context 'when a gap exceeds the bridge cap' do
+        let(:kwargs) { { min_minutes_spent_in_city: 60 } }
+
+        let(:points) do
+          [
+            create(:point, city: 'Berlin', country: 'Germany', timestamp:),
+            create(:point, city: 'Berlin', country: 'Germany', timestamp: timestamp + 10.minutes),
+            create(:point, city: 'Berlin', country: 'Germany', timestamp: timestamp + 8.days),
+            create(:point, city: 'Berlin', country: 'Germany', timestamp: timestamp + 8.days + 10.minutes)
+          ]
+        end
+
+        it 'splits the runs rather than crediting the whole gap' do
+          expect(countries_and_cities.first.cities).to be_empty
+        end
+      end
+
+      context 'when a city holds a single point' do
+        let(:kwargs) { { min_minutes_spent_in_city: 1 } }
+
+        let(:points) do
+          [
+            create(:point, city: 'Berlin', country: 'Germany', timestamp:),
+            create(:point, city: 'Munich', country: 'Germany', timestamp: timestamp + 3.hours),
+            create(:point, city: 'Hamburg', country: 'Germany', timestamp: timestamp + 6.hours),
+            create(:point, city: 'Hamburg', country: 'Germany', timestamp: timestamp + 8.hours)
+          ]
+        end
+
+        it 'credits it no duration' do
+          cities = countries_and_cities.first.cities
+
+          expect(cities.map(&:city)).to eq(['Hamburg'])
         end
       end
 

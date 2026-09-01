@@ -1000,12 +1000,6 @@ ca:
         min_6: 5 min
         min_7: 120 min
         how_long_you_must_stay_for_a_city_to_count: Quant de temps has de romandre perquè una ciutat compti a les estadístiques
-        max_gap_between_points: Interval màxim entre punts
-        min_8: 120 min
-        min_9: 30 min
-        min_10: 195 min
-        min_11: 360 min
-        max_gap_between_points_before_assuming_you_left_the_city: Interval màxim entre punts abans de suposar que vas sortir de la ciutat
         min_12: 720 min
         live_mode: Mode en directe
         show_new_points_in_real_time: Mostra els punts nous en temps real

@@ -79,5 +79,28 @@ RSpec.describe Users::SettingsUpdater do
         expect(user.reload.settings['timezone']).not_to eq('Not/AZone')
       end
     end
+
+    context 'when the city threshold changes' do
+      it 'recalculates existing stats so the new value is reflected' do
+        expect(Stats::EnqueueFullRecalculation).to receive(:new).with(user).and_call_original
+        allow_any_instance_of(Stats::EnqueueFullRecalculation).to receive(:call)
+
+        described_class.new(user, 'min_minutes_spent_in_city' => 15).call
+      end
+
+      it 'does not recalculate when the value is unchanged' do
+        user.update!(settings: user.settings.merge('min_minutes_spent_in_city' => 15))
+
+        expect(Stats::EnqueueFullRecalculation).not_to receive(:new)
+
+        described_class.new(user, 'min_minutes_spent_in_city' => 15).call
+      end
+
+      it 'does not recalculate for unrelated settings' do
+        expect(Stats::EnqueueFullRecalculation).not_to receive(:new)
+
+        described_class.new(user, 'route_opacity' => 0.7).call
+      end
+    end
   end
 end
