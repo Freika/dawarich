@@ -32,6 +32,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Invited family members are no longer sent to the subscription checkout when signing up on the web or in the mobile app.
 - A GeoJSON file whose points carry no timestamp is now rejected at import with an explanation, instead of storing points that no date range could ever return.
 - Restoring a user-data export no longer reports success while importing nothing. An archive carrying a point column this version no longer has aborted every batch; unknown columns are now ignored and the points are restored.
+- The poster studio now draws your route when tiled rendering is on. It never asked the map to load the route data, and under tiled rendering nothing else does, so the preview came up empty and Save was blocked with "No location data in this date range" even though the range had plenty.
 
 ## [1.14.1] - 2026-08-31, Berlin
 
