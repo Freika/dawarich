@@ -162,6 +162,7 @@ export default class extends Controller {
       if (!this.subtitleInputTarget.value)
         this.subtitleInputTarget.value = this.dateRangeLabel()
       this.seedDateInputs()
+      await this.provider.ensureTrackLoaded()
 
       this.resizeFrame()
       await this.loadFonts()
@@ -518,6 +519,7 @@ export default class extends Controller {
     this.setStatus(translate("poster.loading_tracks"))
     try {
       await this.provider.applyDates(start, end)
+      await this.provider.ensureTrackLoaded()
 
       if (subtitleWasAuto)
         this.subtitleInputTarget.value = this.dateRangeLabel()
