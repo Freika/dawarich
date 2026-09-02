@@ -85,7 +85,7 @@ RSpec.describe 'Api::V1::Families::Locations', type: :request do
     # not actually revoke access.
     before do
       allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
-      user.update!(plan: :lite, status: :inactive, active_until: 1.day.ago)
+      user.update!(plan: :family, status: :inactive, active_until: 1.day.ago)
       family.update!(access_until: 1.day.ago)
     end
 

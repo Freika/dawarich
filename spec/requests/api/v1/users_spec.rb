@@ -54,14 +54,18 @@ RSpec.describe 'Api::V1::Users', type: :request do
         expect(body['resume_url']).to be_present
       end
     end
+
     describe 'features' do
-      it 'exposes the feature flags at the top level, not inside subscription' do
+      it 'exposes the feature flags at the top level, alongside subscription' do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+
         get '/api/v1/users/me', headers: headers
 
         json = JSON.parse(response.body, symbolize_names: true)
 
         expect(json[:features].keys).to match_array(%i[family reverse_geocoding])
-        expect(json.dig(:subscription, :features)).to be_nil
+        expect(json[:subscription]).to be_present
+        expect(json[:subscription].keys).not_to include(:features)
       end
 
       context 'when self-hosted' do
