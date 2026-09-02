@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Places created from a suggested visit now get their real address. Visits detected on a phone arrive with a generated name such as "Visited place"; that name is no longer locked, reverse geocoding is queued for the new place, and the resolved address now replaces the generated name on the visit as well as the place.
 - Stats recalculation no longer stops for every remaining user when one user's stats fail to calculate.
 - Route videos now play forwards. When the map was showing Tracks rather than Routes, the video studio drew the day in the order the tracks API returns them — newest first — so the route animated from evening back to morning while the clock counted forwards.
+- The video studio now draws your route when tiled rendering is on. It read the map's route data a moment before loading it, and under tiled rendering nothing else fills that in, so the video came out as a bare map with the distance and clock still running over it.
 
 ## [1.14.1] - 2026-08-31, Berlin
 
