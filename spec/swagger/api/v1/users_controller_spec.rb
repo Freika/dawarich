@@ -10,7 +10,8 @@ describe 'Users API', type: :request do
     get 'Returns the current user' do
       tags 'Users'
       consumes 'application/json'
-      security [bearer_auth: []]
+      produces 'application/json'
+      security [{ bearer_auth: [] }]
       parameter name: 'Authorization', in: :header, type: :string, required: true,
                 description: 'Bearer token in the format: Bearer {api_key}'
 
@@ -49,6 +50,13 @@ describe 'Users API', type: :request do
                      },
                      admin: { type: :boolean }
                    }
+                 },
+                 features: {
+                   type: :object,
+                   properties: {
+                     family: { type: :boolean },
+                     reverse_geocoding: { type: :boolean }
+                   }
                  }
                }
 
@@ -69,7 +77,7 @@ describe 'Users API', type: :request do
                   'immediately when the correct password is supplied.'
       consumes 'application/json'
       produces 'application/json'
-      security [bearer_auth: []]
+      security [{ bearer_auth: [] }]
       parameter name: 'Authorization', in: :header, type: :string, required: true,
                 description: 'Bearer token in the format: Bearer {api_key}'
       parameter name: :payload, in: :body, required: false, schema: {

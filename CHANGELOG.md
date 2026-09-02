@@ -9,9 +9,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 
 - The API now accepts visits in batches: `POST /api/v1/visits/batch` takes up to 100 visits in one request and reports each one's outcome separately, so a single rejected visit no longer costs the whole sync. The mobile apps previously had to send one request per detected visit.
+- `GET /api/v1/users/me` now returns a top-level `features` object, and `GET /api/v1/families/mine` answers `200` with `lapsed: true` when a family membership outlives its entitlement. Clients can now tell "never had family sharing" apart from "the subscription ran out" and offer renewal to the owner.
 
 ### Fixed
 
+- A Family plan owner whose subscription lapsed kept family sharing access. Entitlement now follows the subscription's expiry for the plan holder, as it already did for the other members.
 - Shared link addresses are now always three words. One hyphenated entry in the word list could produce a four-word address.
 - Places created from a suggested visit now get their real address. Visits detected on a phone arrive with a generated name such as "Visited place"; that name is no longer locked, reverse geocoding is queued for the new place, and the resolved address now replaces the generated name on the visit as well as the place.
 

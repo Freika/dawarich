@@ -10,14 +10,17 @@ RSpec.describe 'Families Mine API', type: :request do
     get 'Retrieves the current user\'s family overview' do
       tags 'Families'
       description 'Returns the family, all members with sharing state, the current user\'s sharing settings, ' \
-                  'and active location requests. Requires the Family plan (any plan on self-hosted) and ' \
-                  'family membership.'
+                  'and active location requests. Requires family membership. A member whose entitlement ' \
+                  'has lapsed still gets 200, with `lapsed: true` and a reduced payload carrying only the ' \
+                  'family name and the user\'s role — `members` and `location_requests` are omitted. ' \
+                  'A user who is neither entitled nor in a family gets 403.'
       produces 'application/json'
       parameter name: :Authorization, in: :header, type: :string, required: true, description: 'Bearer <API Key>'
 
       response '200', 'family overview' do
         schema type: :object,
                properties: {
+                 lapsed: { type: :boolean },
                  family: { type: :object, properties: { name: { type: :string } } },
                  me: {
                    type: :object,
@@ -97,6 +100,14 @@ RSpec.describe 'Families Mine API', type: :request do
       end
 
       response '404', 'user not in a family' do
+        before { allow(DawarichSettings).to receive(:self_hosted?).and_return(true) }
+
+        run_test!
+      end
+
+      response '403', 'user is neither entitled nor in a family' do
+        before { allow(DawarichSettings).to receive(:self_hosted?).and_return(false) }
+
         run_test!
       end
     end
