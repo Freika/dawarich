@@ -2,7 +2,7 @@
 
 module Integrations
   class Status
-    PHOTO_SERVICES = %w[immich photoprism airtrail].freeze
+    PHOTO_SERVICES = %w[immich photoprism airtrail teslamate].freeze
     SERVICES = (%w[geocoding] + PHOTO_SERVICES).freeze
 
     def self.for(user)
@@ -19,6 +19,8 @@ module Integrations
 
       if service == 'geocoding'
         geocoding_config.enabled?
+      elsif service == 'teslamate'
+        settings['teslamate_url'].present?
       else
         settings["#{service}_url"].present? && settings["#{service}_api_key"].present?
       end

@@ -37,6 +37,12 @@ class Users::SafeSettings
     'airtrail_api_key' => nil,
     'airtrail_skip_ssl_verification' => false,
     'airtrail_last_synced_at' => nil,
+    'teslamate_url' => nil,
+    'teslamate_username' => nil,
+    'teslamate_password' => nil,
+    'teslamate_api_token' => nil,
+    'teslamate_skip_ssl_verification' => false,
+    'teslamate_last_synced_at' => nil,
     'maps' => { 'distance_unit' => 'km' },
     'visits_suggestions_enabled' => 'true',
     'enabled_map_layers' => %w[Tracks Heatmap],
@@ -205,6 +211,26 @@ class Users::SafeSettings
 
   def airtrail_skip_ssl_verification
     ActiveModel::Type::Boolean.new.cast(settings['airtrail_skip_ssl_verification'])
+  end
+
+  def teslamate_url
+    settings['teslamate_url']
+  end
+
+  def teslamate_username
+    settings['teslamate_username']
+  end
+
+  def teslamate_password
+    settings['teslamate_password']
+  end
+
+  def teslamate_api_token
+    settings['teslamate_api_token']
+  end
+
+  def teslamate_skip_ssl_verification
+    ActiveModel::Type::Boolean.new.cast(settings['teslamate_skip_ssl_verification'])
   end
 
   def maps

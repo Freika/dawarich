@@ -53,6 +53,15 @@ RSpec.describe '/settings/background_jobs', type: :request do
             end.to have_enqueued_job(EnqueueBackgroundJob)
           end
         end
+        context 'when job name is start_teslamate_sync' do
+          it 'queues the sync and returns to the TeslaMate pane' do
+            expect do
+              post settings_background_jobs_url, params: { job_name: 'start_teslamate_sync' }
+            end.to have_enqueued_job(EnqueueBackgroundJob).with('start_teslamate_sync', user.id)
+
+            expect(response).to redirect_to(settings_integrations_path(service: 'teslamate'))
+          end
+        end
       end
 
       context 'when user is an admin' do

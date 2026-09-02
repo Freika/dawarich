@@ -1543,6 +1543,7 @@ de:
           immich: Immich
           photoprism: PhotoPrism
           airtrail: AirTrail
+          teslamate: TeslaMate
         status_connected: Verbunden
         status_failed: Letzter Verbindungsversuch fehlgeschlagen
         immich_photoprism_integrations: Immich & Photoprism-Integrationen
@@ -1572,6 +1573,15 @@ de:
         the_base_url_of_your_airtrail_instance_your_flights_are: Die Basis-URL deiner AirTrail-Instanz. Deine Flüge werden als Bögen auf der Karte angezeigt.
         airtrail_api_key: AirTrail-API-Schlüssel
         create_an_api_key_in_airtrail_under_settings_rarr_security: Erstelle einen API-Schlüssel in AirTrail unter Einstellungen → Sicherheit.
+        teslamate_integration: TeslaMate-Integration
+        teslamate_url: TeslaMateApi-URL
+        the_base_url_of_your_teslamateapi_instance: Die Basis-URL deiner TeslaMateApi-Instanz.
+        teslamate_username: HTTP-Basic-Benutzername (optional)
+        teslamate_password: HTTP-Basic-Passwort (optional)
+        teslamate_api_token: Bearer-Token (optional)
+        teslamate_authentication_help: Verwende Basic-Authentifizierung für einen geschützten Reverse-Proxy oder ein Bearer-Token für einen kompatiblen Proxy oder Fork. Die Lese-Endpunkte der regulären TeslaMateApi verwenden API_TOKEN nicht.
+        sync_teslamate_drives: TeslaMate-Fahrten synchronisieren
+        teslamate_sync_help: Abgeschlossene Fahrten werden einmal täglich automatisch synchronisiert. Aktuelle Fahrten und Parkpositionen sind über TeslaMateApi nicht verfügbar.
         last_synced: 'Letzte Synchronisation:'
         connected_accounts: Verknüpfte Konten
         you_ve_connected_your_account_using_the_following_oauth_provider: 'Du hast dein Konto über folgenden OAuth-Anbieter verknüpft:'
@@ -3372,6 +3382,11 @@ de:
     trip:
       must_be_after_start_date: muss nach start_date sein
   services:
+    tesla_mate:
+      connection_tester:
+        teslamate_connection_verified: TeslaMateApi-Verbindung bestätigt
+        teslamate_url_is_missing: TeslaMateApi-URL fehlt
+        teslamate_connection_failed_message: 'TeslaMateApi-Verbindung fehlgeschlagen: %{message}'
     air_trail:
       connection_tester:
         airtrail_connection_verified: AirTrail-Verbindung bestätigt
@@ -3682,6 +3697,10 @@ de:
         weekday_preference: Du reist mehr an Werktagen als an Wochenenden
         with_suggestion: "%{insight} %{suggestion}"
   jobs:
+    tesla_mate:
+      sync_job:
+        teslamate_sync_failed: TeslaMateApi-Synchronisation fehlgeschlagen
+        your_teslamate_sync_failed: 'Deine TeslaMateApi-Synchronisation ist mit folgendem Fehler fehlgeschlagen: %{message}. Prüfe deine Integrationseinstellungen und versuche es erneut.'
     air_trail:
       import_flights_job:
         airtrail_sync_failed: AirTrail-Synchronisation fehlgeschlagen
