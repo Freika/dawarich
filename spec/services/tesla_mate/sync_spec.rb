@@ -48,7 +48,10 @@ RSpec.describe TeslaMate::Sync do
     imperial = user.points.find_by!(tracker_id: 'teslamate-car-2')
     expect(imperial.velocity.to_f).to be_within(0.000_001).of(4.4704)
     expect(imperial.battery).to eq(70)
-    expect(user.reload.settings['teslamate_last_synced_at']).to eq('2026-09-02T12:00:00Z')
+    expect(user.reload.settings).to include(
+      'teslamate_last_synced_at' => '2026-09-02T12:00:00Z',
+      'teslamate_last_synced_url' => base_url
+    )
   end
 
   it 'keeps successful drive points but withholds the checkpoint when another drive fails' do
@@ -76,7 +79,7 @@ RSpec.describe TeslaMate::Sync do
     first_page = Array.new(100) { |index| { drive_id: index + 1 } }
     stub_request(:get, "#{base_url}/api/v1/cars")
       .to_return(status: 200, body: { data: { cars: [{ car_id: 1 }] } }.to_json)
-    stub_request(:get, "#{base_url}/api/v1/cars/1/drives")
+    stub_request(:get, %r{#{base_url}/api/v1/cars/1/drives\?})
       .with(query: hash_including('page' => '1', 'show' => '100'))
       .to_return(status: 200, body: {
         data: { drives: first_page, units: { unit_of_length: 'km' } }
@@ -97,7 +100,10 @@ RSpec.describe TeslaMate::Sync do
   end
 
   it 'overlaps the prior checkpoint while freezing the new sync cutoff' do
-    user.update!(settings: user.settings.merge('teslamate_last_synced_at' => '2026-09-01T12:00:00Z'))
+    user.update!(settings: user.settings.merge(
+      'teslamate_last_synced_at' => '2026-09-01T12:00:00Z',
+      'teslamate_last_synced_url' => base_url
+    ))
     stub_request(:get, "#{base_url}/api/v1/cars")
       .to_return(status: 200, body: { data: { cars: [{ car_id: 1 }] } }.to_json)
     query = {
@@ -112,6 +118,105 @@ RSpec.describe TeslaMate::Sync do
     travel_to(Time.zone.parse('2026-09-02 12:00:00 UTC')) { described_class.new(user).call }
 
     expect(drive_page).to have_been_requested.once
+  end
+
+  it 'ignores a checkpoint from another TeslaMateApi source' do
+    user.update!(settings: user.settings.merge(
+      'teslamate_last_synced_at' => '2026-09-01T12:00:00Z',
+      'teslamate_last_synced_url' => 'https://teslamate-old.example'
+    ))
+    stub_request(:get, "#{base_url}/api/v1/cars")
+      .to_return(status: 200, body: { data: { cars: [{ car_id: 1 }] } }.to_json)
+    drive_page = stub_request(:get, "#{base_url}/api/v1/cars/1/drives")
+                 .with(
+                   query: {
+                     'page' => '1', 'show' => '100',
+                     'endDate' => '2026-09-02T12:00:00Z'
+                   }
+                 )
+                 .to_return(status: 200, body: { data: { drives: nil } }.to_json)
+
+    travel_to(Time.zone.parse('2026-09-02 12:00:00 UTC')) { described_class.new(user).call }
+
+    expect(drive_page).to have_been_requested.once
+    expect(user.reload.settings['teslamate_last_synced_url']).to eq(base_url)
+  end
+
+  it 'does not write an old source checkpoint after the URL changes during a sync' do
+    new_url = 'https://teslamate-new.example'
+    stub_request(:get, "#{base_url}/api/v1/cars")
+      .to_return(status: 200, body: { data: { cars: [{ car_id: 1 }] } }.to_json)
+    stub_request(:get, %r{#{base_url}/api/v1/cars/1/drives\?})
+      .to_return do
+        user.reload.update!(settings: user.settings.merge('teslamate_url' => new_url))
+        { status: 200, body: { data: { drives: nil } }.to_json }
+      end
+
+    described_class.new(user).call
+
+    expect(user.reload.settings['teslamate_url']).to eq(new_url)
+    expect(user.settings['teslamate_last_synced_at']).to be_nil
+    expect(user.settings['teslamate_last_synced_url']).to be_nil
+  end
+
+  it 'coalesces historical follow-up work without broadcasting imported positions' do
+    stub_request(:get, "#{base_url}/api/v1/cars")
+      .to_return(status: 200, body: { data: { cars: [{ car_id: 1 }] } }.to_json)
+    stub_request(:get, %r{#{base_url}/api/v1/cars/1/drives\?})
+      .to_return(status: 200, body: {
+        data: { drives: [{ drive_id: 11 }, { drive_id: 12 }], units: { unit_of_length: 'km' } }
+      }.to_json)
+    stub_drive(car_id: 1, drive_id: 11, unit: 'km', detail: {
+                 detail_id: 111, date: '2026-09-01T10:00:00Z',
+                 latitude: 52.52, longitude: 13.405, speed: 10
+               })
+    stub_drive(car_id: 1, drive_id: 12, unit: 'km', detail: {
+                 detail_id: 112, date: '2026-09-01T11:00:00Z',
+                 latitude: 52.53, longitude: 13.415, speed: 20
+               })
+    realtime = instance_double(Tracks::RealtimeDebouncer, trigger: nil)
+    backfill = instance_double(Tracks::BackfillScheduler, call: nil)
+    allow(Tracks::RealtimeDebouncer).to receive(:new).with(user.id).and_return(realtime)
+    allow(Tracks::BackfillScheduler).to receive(:new).with(
+      user.id,
+      [Time.iso8601('2026-09-01T10:00:00Z').to_i, Time.iso8601('2026-09-01T11:00:00Z').to_i]
+    ).and_return(backfill)
+    allow(Points::LiveBroadcaster).to receive(:new)
+    allow(Visits::RealtimeDebouncer).to receive(:new)
+
+    expect { described_class.new(user).call }
+      .to have_enqueued_job(Points::AnomalyFilterJob)
+      .with(user.id, Time.iso8601('2026-09-01T10:00:00Z').to_i,
+            Time.iso8601('2026-09-01T11:00:00Z').to_i)
+      .exactly(:once)
+
+    expect(Tracks::RealtimeDebouncer).to have_received(:new).once
+    expect(Tracks::BackfillScheduler).to have_received(:new).once
+    expect(Points::LiveBroadcaster).not_to have_received(:new)
+    expect(Visits::RealtimeDebouncer).not_to have_received(:new)
+  end
+
+  it 'stops fetching drive details after the operation failure budget is spent' do
+    stub_request(:get, "#{base_url}/api/v1/cars")
+      .to_return(status: 200, body: { data: { cars: [{ car_id: 1 }] } }.to_json)
+    stub_request(:get, %r{#{base_url}/api/v1/cars/1/drives\?})
+      .to_return(status: 200, body: {
+        data: { drives: (1..5).map { |drive_id| { drive_id: drive_id } },
+                units: { unit_of_length: 'km' } }
+      }.to_json)
+    requests = (1..5).index_with do |drive_id|
+      stub_request(:get, "#{base_url}/api/v1/cars/1/drives/#{drive_id}")
+        .to_return(status: 200, body: { error: 'database unavailable' }.to_json)
+    end
+
+    expect { described_class.new(user).call }
+      .to raise_error(TeslaMate::Sync::IncompleteError, /drive 3/)
+
+    expect(requests.fetch(1)).to have_been_requested.once
+    expect(requests.fetch(2)).to have_been_requested.once
+    expect(requests.fetch(3)).to have_been_requested.once
+    expect(requests.fetch(4)).not_to have_been_requested
+    expect(requests.fetch(5)).not_to have_been_requested
   end
 
   it 'skips malformed position rows without discarding valid rows from the drive' do

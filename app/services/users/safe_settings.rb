@@ -43,6 +43,7 @@ class Users::SafeSettings
     'teslamate_api_token' => nil,
     'teslamate_skip_ssl_verification' => false,
     'teslamate_last_synced_at' => nil,
+    'teslamate_last_synced_url' => nil,
     'maps' => { 'distance_unit' => 'km' },
     'visits_suggestions_enabled' => 'true',
     'enabled_map_layers' => %w[Tracks Heatmap],

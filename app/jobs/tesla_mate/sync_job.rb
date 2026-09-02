@@ -3,16 +3,26 @@
 module TeslaMate
   class SyncJob < ApplicationJob
     queue_as :imports
+    sidekiq_options retry: false
+
+    retry_on TeslaMate::Client::Error, wait: :polynomially_longer, attempts: 3 do |job, error|
+      job.report_failure(error)
+    end
 
     def perform(user_id)
       user = find_user_or_skip(user_id) || return
 
-      TeslaMate::Sync.new(user).call
-    rescue TeslaMate::Client::Error => e
-      ExceptionReporter.call(e, "TeslaMateApi sync failed for user #{user_id}")
-      notify_sync_failed(user, e)
+      ActiveRecord::Base.with_advisory_lock("teslamate-sync:#{user.id}", timeout_seconds: 0) do
+        TeslaMate::Sync.new(user).call
+      end
+    end
 
-      raise e
+    def report_failure(error)
+      user_id = arguments.first
+      user = User.find_by(id: user_id)
+
+      ExceptionReporter.call(error, "TeslaMateApi sync failed for user #{user_id}")
+      notify_sync_failed(user, error) if user
     end
 
     private

@@ -4,12 +4,14 @@ module TeslaMate
   class Sync
     PAGE_SIZE = 100
     OVERLAP = 7.days
+    MAX_REQUEST_FAILURES = 3
 
     class IncompleteError < TeslaMate::Client::Error; end
 
     def initialize(user)
       @user = user
       @settings = user.safe_settings
+      @source_url = @settings.teslamate_url
     end
 
     def call
@@ -19,10 +21,14 @@ module TeslaMate
       failures = []
       counts = { cars: 0, drives: 0, points: 0, skipped_points: 0 }
 
-      client.cars.each do |car|
-        car_id = car['car_id']
-        counts[:cars] += 1
-        sync_car(car_id, cutoff, counts, failures)
+      begin
+        client.cars.each do |car|
+          car_id = car['car_id']
+          counts[:cars] += 1
+          sync_car(car_id, cutoff, counts, failures)
+        end
+      ensure
+        finalize_historical_import
       end
 
       raise IncompleteError, incomplete_message(failures) if failures.any?
@@ -50,15 +56,20 @@ module TeslaMate
         result = client.drives(car_id, page: page, show: PAGE_SIZE,
                                start_date: sync_start, end_date: cutoff)
         result[:drives].each do |drive|
-          sync_drive(car_id, drive['drive_id'], result[:units], counts, failures)
+          next if sync_drive(car_id, drive['drive_id'], result[:units], counts, failures)
+
+          stop_if_failure_budget_spent(failures)
         end
 
         break if result[:drives].length < PAGE_SIZE
 
         page += 1
       end
+    rescue IncompleteError
+      raise
     rescue TeslaMate::Client::Error => e
       failures << "car #{car_id}, page #{page}: #{e.message}"
+      stop_if_failure_budget_spent(failures)
     end
 
     def sync_drive(car_id, drive_id, list_units, counts, failures)
@@ -76,11 +87,18 @@ module TeslaMate
         point_payload(detail, car_id, drive_id, result[:units].presence || list_units)
       end
       counts[:skipped_points] += Array(details).length - payloads.length
-      Points::Intake.call(user_id: @user.id, payloads: payloads.sort_by { |payload| payload[:timestamp] })
+      rows = Points::Intake.call(
+        user_id: @user.id,
+        payloads: payloads.sort_by { |payload| payload[:timestamp] },
+        mode: :bulk
+      )
+      record_imported_range(rows)
       counts[:drives] += 1
       counts[:points] += payloads.length
+      true
     rescue TeslaMate::Client::Error => e
       failures << "car #{car_id}, drive #{drive_id}: #{e.message}"
+      false
     end
 
     def point_payload(detail, car_id, drive_id, units)
@@ -138,6 +156,8 @@ module TeslaMate
     end
 
     def sync_start
+      return unless @settings.settings['teslamate_last_synced_url'] == @source_url
+
       value = @settings.settings['teslamate_last_synced_at']
       Time.iso8601(value) - OVERLAP if value.present?
     rescue ArgumentError
@@ -145,10 +165,40 @@ module TeslaMate
     end
 
     def record_synced_at(cutoff)
-      User.where(id: @user.id).update_all(
-        ["settings = jsonb_set(settings, '{teslamate_last_synced_at}', to_jsonb(?::text)), updated_at = ?",
-         cutoff.iso8601, Time.current]
-      )
+      User.where(id: @user.id)
+          .where("settings ->> 'teslamate_url' = ?", @source_url)
+          .update_all(
+            [
+              "settings = jsonb_set(jsonb_set(settings, '{teslamate_last_synced_at}', " \
+              "to_jsonb(?::text)), '{teslamate_last_synced_url}', to_jsonb(?::text)), updated_at = ?",
+              cutoff.iso8601, @source_url, Time.current
+            ]
+          )
+    end
+
+    def record_imported_range(rows)
+      timestamps = rows.filter_map do |row|
+        row['timestamp'].to_i if row['xmax'].to_i.zero?
+      end
+      return if timestamps.empty?
+
+      bounds = timestamps.minmax
+      @imported_range ||= bounds
+      @imported_range = [[@imported_range.first, bounds.first].min, [@imported_range.last, bounds.last].max]
+    end
+
+    def finalize_historical_import
+      return unless @imported_range
+
+      Points::AnomalyFilterJob.perform_later(@user.id, *@imported_range)
+      Tracks::RealtimeDebouncer.new(@user.id).trigger
+      Tracks::BackfillScheduler.new(@user.id, @imported_range).call
+    end
+
+    def stop_if_failure_budget_spent(failures)
+      return if failures.length < MAX_REQUEST_FAILURES
+
+      raise IncompleteError, incomplete_message(failures)
     end
 
     def incomplete_message(failures)

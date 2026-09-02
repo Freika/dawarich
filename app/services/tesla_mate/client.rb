@@ -8,15 +8,20 @@ module TeslaMate
     class RetryableResponseError < StandardError; end
 
     RETRY_DELAYS = [0.05, 0.1].freeze
+    DEFAULT_TIMEOUT = 30
+    DEFAULT_MAX_ATTEMPTS = RETRY_DELAYS.length + 1
     RETRYABLE_ERRORS = (Photos::ConnectionErrors::RETRYABLE + [RetryableResponseError]).freeze
     HANDLED_ERRORS = (Photos::ConnectionErrors::HANDLED + [RetryableResponseError]).freeze
 
-    def initialize(url, username: nil, password: nil, api_token: nil, skip_ssl_verification: false)
+    def initialize(url, username: nil, password: nil, api_token: nil, skip_ssl_verification: false,
+                   timeout: DEFAULT_TIMEOUT, max_attempts: DEFAULT_MAX_ATTEMPTS)
       @url = url.to_s.chomp('/')
       @username = username
       @password = password
       @api_token = api_token
       @skip_ssl_verification = skip_ssl_verification
+      @timeout = timeout
+      @max_attempts = max_attempts
     end
 
     def cars
@@ -74,15 +79,15 @@ module TeslaMate
       attempts = 0
 
       begin
+        attempts += 1
         response = HTTParty.get("#{@url}#{path}", request_options.merge(query: query).compact)
         raise RetryableResponseError, "TeslaMateApi responded with #{response.code}" if response.code.to_i >= 500
 
         response
       rescue *RETRYABLE_ERRORS
-        raise if attempts >= RETRY_DELAYS.length
+        raise if attempts >= @max_attempts
 
-        sleep(RETRY_DELAYS.fetch(attempts))
-        attempts += 1
+        sleep(RETRY_DELAYS.fetch(attempts - 1, RETRY_DELAYS.last))
         retry
       end
     end
@@ -104,7 +109,7 @@ module TeslaMate
     def request_options
       options = {
         headers: { 'Accept' => 'application/json' },
-        timeout: 30
+        timeout: @timeout
       }
 
       if @username.present?

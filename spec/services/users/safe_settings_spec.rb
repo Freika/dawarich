@@ -132,6 +132,7 @@ RSpec.describe Users::SafeSettings do
             'teslamate_api_token' => nil,
             'teslamate_skip_ssl_verification' => false,
             'teslamate_last_synced_at' => nil,
+            'teslamate_last_synced_url' => nil,
             'maps' => { 'distance_unit' => 'km', 'name' => 'custom', 'url' => 'https://custom.example.com' },
             'visits_suggestions_enabled' => false,
             'enabled_map_layers' => %w[Points Routes Areas Photos],

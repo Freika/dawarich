@@ -15,6 +15,14 @@ RSpec.describe TeslaMate::Client do
     expect(a_request(:get, "#{base_url}/api/v1/cars")).to have_been_made.twice
   end
 
+  it 'honors a one-attempt request budget' do
+    request = stub_request(:get, "#{base_url}/api/v1/cars").to_raise(Errno::ECONNRESET)
+
+    expect { described_class.new(base_url, max_attempts: 1).cars }
+      .to raise_error(TeslaMate::Client::Error)
+    expect(request).to have_been_requested.once
+  end
+
   it 'uses Basic authentication in preference to a bearer token' do
     request = stub_request(:get, "#{base_url}/api/v1/cars")
               .with(basic_auth: %w[proxy secret])

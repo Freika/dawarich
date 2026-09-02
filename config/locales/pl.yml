@@ -1573,6 +1573,7 @@ pl:
         teslamate_integration: Integracja TeslaMateApi
         teslamate_url: URL TeslaMateApi
         the_base_url_of_your_teslamateapi_instance: Bazowy URL Twojej instancji TeslaMateApi.
+        teslamate_setup_guide: Instrukcja konfiguracji (TeslaMateApi v1.25.0 lub nowszy)
         teslamate_username: Nazwa użytkownika HTTP Basic (opcjonalnie)
         teslamate_password: Hasło HTTP Basic (opcjonalnie)
         teslamate_api_token: Token Bearer (opcjonalnie)

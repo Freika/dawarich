@@ -290,6 +290,8 @@ RSpec.describe 'Settings::Integrations', type: :request do
 
       expect(response.body).to include('name="settings[teslamate_url]"')
       expect(response.body).to include('TeslaMateApi Integration')
+      expect(response.body).to include('https://github.com/tobiasehlert/teslamateapi#how-to-run-it')
+      expect(response.body).to include('man-in-the-middle attacks')
     end
 
     it 'falls back to the first available service for unknown service params' do

@@ -14,6 +14,7 @@ class Settings::Update
   def call
     existing_settings = user.safe_settings.settings
     params_hash = cast_boolean_params(settings_params)
+    reset_teslamate_checkpoint(params_hash, existing_settings)
     updated_settings = existing_settings.merge(params_hash)
 
     immich_changed = settings_changed?(existing_settings, updated_settings,
@@ -81,6 +82,14 @@ class Settings::Update
 
   def settings_changed?(existing_settings, updated_settings, keys)
     keys.any? { |key| existing_settings[key] != updated_settings[key] }
+  end
+
+  def reset_teslamate_checkpoint(params, existing_settings)
+    return unless params.key?('teslamate_url')
+    return if params['teslamate_url'] == existing_settings['teslamate_url']
+
+    params['teslamate_last_synced_at'] = nil
+    params['teslamate_last_synced_url'] = nil
   end
 
   def test_immich_connection(updated_settings, notices, alerts, statuses)

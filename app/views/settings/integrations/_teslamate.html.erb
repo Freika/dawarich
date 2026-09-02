@@ -11,7 +11,12 @@
           <span class="label-text font-medium"><%= t('settings.integrations.index.teslamate_url') %></span>
         <% end %>
         <%= f.url_field :teslamate_url, value: current_user.safe_settings.teslamate_url, class: 'input input-bordered w-full', placeholder: 'https://teslamateapi.example.com' %>
-        <span class="label-text-alt mt-1 text-base-content/60"><%= t('settings.integrations.index.the_base_url_of_your_teslamateapi_instance') %></span>
+        <span class="label-text-alt mt-1 text-base-content/60">
+          <%= t('settings.integrations.index.the_base_url_of_your_teslamateapi_instance') %>
+          <%= link_to t('settings.integrations.index.teslamate_setup_guide'),
+              'https://github.com/tobiasehlert/teslamateapi#how-to-run-it',
+              target: '_blank', rel: 'noopener', class: 'link' %>
+        </span>
       </div>
       <div class="grid gap-4 md:grid-cols-2">
         <div class="form-control w-full">
@@ -32,9 +37,16 @@
         <label class="label cursor-pointer justify-start gap-3">
           <%= f.check_box :teslamate_skip_ssl_verification,
               checked: current_user.safe_settings.teslamate_skip_ssl_verification,
-              class: 'toggle toggle-warning' %>
+              class: 'toggle toggle-warning',
+              onchange: "document.getElementById('teslamate-ssl-warning').classList.toggle('hidden', !this.checked)" %>
           <span class="label-text"><%= t('settings.integrations.index.skip_ssl_certificate_verification_self_signed_certificates') %></span>
         </label>
+        <div id="teslamate-ssl-warning" class="alert alert-warning mt-2 <%= 'hidden' unless current_user.safe_settings.teslamate_skip_ssl_verification %>">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          <span>
+            <strong><%= t('settings.integrations.index.security_warning') %></strong> <%= t('settings.integrations.index.disabling_ssl_verification_makes_your_connection_vulnerable_to_man_in') %>
+          </span>
+        </div>
       </div>
       <div class="card-actions">
         <%= f.submit t('settings.integrations.index.save_test_connection'), class: 'btn btn-primary' %>

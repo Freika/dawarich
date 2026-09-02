@@ -8,7 +8,9 @@ module TeslaMate
         username: username,
         password: password,
         api_token: api_token,
-        skip_ssl_verification: skip_ssl_verification
+        skip_ssl_verification: skip_ssl_verification,
+        timeout: 5,
+        max_attempts: 1
       }
     end
 
