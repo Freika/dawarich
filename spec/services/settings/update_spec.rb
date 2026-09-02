@@ -39,7 +39,9 @@ RSpec.describe Settings::Update do
         user.update!(settings: user.settings.merge(
           'teslamate_url' => 'https://teslamate-old.test',
           'teslamate_last_synced_at' => '2026-09-01T12:00:00Z',
-          'teslamate_last_synced_url' => 'https://teslamate-old.test'
+          'teslamate_last_synced_url' => 'https://teslamate-old.test',
+          'teslamate_processing_pending' => true,
+          'teslamate_processing_pending_url' => 'https://teslamate-old.test'
         ))
         allow(Resolv).to receive(:getaddress).with('teslamate-new.test').and_return('93.184.216.34')
         allow_any_instance_of(TeslaMate::ConnectionTester).to receive(:call)
@@ -53,6 +55,8 @@ RSpec.describe Settings::Update do
         expect(settings['teslamate_url']).to eq('https://teslamate-new.test')
         expect(settings['teslamate_last_synced_at']).to be_nil
         expect(settings['teslamate_last_synced_url']).to be_nil
+        expect(settings['teslamate_processing_pending']).to be(false)
+        expect(settings['teslamate_processing_pending_url']).to be_nil
       end
     end
 

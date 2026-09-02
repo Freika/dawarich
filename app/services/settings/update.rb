@@ -90,6 +90,8 @@ class Settings::Update
 
     params['teslamate_last_synced_at'] = nil
     params['teslamate_last_synced_url'] = nil
+    params['teslamate_processing_pending'] = false
+    params['teslamate_processing_pending_url'] = nil
   end
 
   def test_immich_connection(updated_settings, notices, alerts, statuses)

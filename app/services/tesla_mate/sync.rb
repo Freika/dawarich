@@ -12,10 +12,13 @@ module TeslaMate
       @user = user
       @settings = user.safe_settings
       @source_url = @settings.teslamate_url
+      @recovering_processing = @settings.settings['teslamate_processing_pending'] &&
+                               @settings.settings['teslamate_processing_pending_url'] == @source_url
     end
 
     def call
       return { skipped: true } if @settings.teslamate_url.blank?
+      return { skipped: true } unless mark_processing_pending
 
       cutoff = Time.current.utc
       failures = []
@@ -29,6 +32,7 @@ module TeslaMate
         end
       ensure
         finalize_historical_import
+        clear_processing_pending
       end
 
       raise IncompleteError, incomplete_message(failures) if failures.any?
@@ -177,9 +181,8 @@ module TeslaMate
     end
 
     def record_imported_range(rows)
-      timestamps = rows.filter_map do |row|
-        row['timestamp'].to_i if row['xmax'].to_i.zero?
-      end
+      relevant_rows = @recovering_processing ? rows : rows.select { |row| row['xmax'].to_i.zero? }
+      timestamps = relevant_rows.map { |row| row['timestamp'].to_i }
       return if timestamps.empty?
 
       bounds = timestamps.minmax
@@ -193,6 +196,31 @@ module TeslaMate
       Points::AnomalyFilterJob.perform_later(@user.id, *@imported_range)
       Tracks::RealtimeDebouncer.new(@user.id).trigger
       Tracks::BackfillScheduler.new(@user.id, @imported_range).call
+    end
+
+    def mark_processing_pending
+      User.where(id: @user.id)
+          .where("settings ->> 'teslamate_url' = ?", @source_url)
+          .update_all(
+            [
+              "settings = jsonb_set(jsonb_set(settings, '{teslamate_processing_pending}', 'true'::jsonb), " \
+              "'{teslamate_processing_pending_url}', to_jsonb(?::text)), updated_at = ?",
+              @source_url, Time.current
+            ]
+          ).positive?
+    end
+
+    def clear_processing_pending
+      User.where(id: @user.id)
+          .where("settings ->> 'teslamate_url' = ?", @source_url)
+          .where("settings ->> 'teslamate_processing_pending_url' = ?", @source_url)
+          .update_all(
+            [
+              "settings = jsonb_set(jsonb_set(settings, '{teslamate_processing_pending}', 'false'::jsonb), " \
+              "'{teslamate_processing_pending_url}', 'null'::jsonb), updated_at = ?",
+              Time.current
+            ]
+          )
     end
 
     def stop_if_failure_budget_spent(failures)

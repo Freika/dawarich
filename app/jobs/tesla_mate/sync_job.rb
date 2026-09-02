@@ -5,7 +5,7 @@ module TeslaMate
     queue_as :imports
     sidekiq_options retry: false
 
-    retry_on TeslaMate::Client::Error, wait: :polynomially_longer, attempts: 3 do |job, error|
+    retry_on StandardError, wait: :polynomially_longer, attempts: 3 do |job, error|
       job.report_failure(error)
     end
 

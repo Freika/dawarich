@@ -38,7 +38,7 @@ RSpec.describe TeslaMate::SyncJob, type: :job do
     allow(TeslaMate::Sync).to receive(:new).with(user).and_return(sync)
     allow(ExceptionReporter).to receive(:call)
     job = described_class.new(user.id)
-    job.exception_executions = { '[TeslaMate::Client::Error]' => 2 }
+    job.exception_executions = { '[StandardError]' => 2 }
 
     expect { job.perform_now }.not_to have_enqueued_job(described_class)
 
@@ -55,6 +55,18 @@ RSpec.describe TeslaMate::SyncJob, type: :job do
     expect(TeslaMate::Sync).not_to receive(:new)
 
     described_class.perform_now(user.id)
+  end
+
+  it 'retries an unexpected database failure within the same bounded policy' do
+    user = create(:user)
+    sync = instance_double(TeslaMate::Sync)
+    allow(sync).to receive(:call).and_raise(ActiveRecord::ConnectionNotEstablished, 'database unavailable')
+    allow(TeslaMate::Sync).to receive(:new).with(user).and_return(sync)
+
+    expect { described_class.perform_now(user.id) }
+      .to have_enqueued_job(described_class).with(user.id)
+
+    expect(user.notifications).to be_empty
   end
 
   it 'disables Sidekiq retries outside the three Active Job attempts' do

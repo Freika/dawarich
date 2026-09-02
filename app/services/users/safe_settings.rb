@@ -44,6 +44,8 @@ class Users::SafeSettings
     'teslamate_skip_ssl_verification' => false,
     'teslamate_last_synced_at' => nil,
     'teslamate_last_synced_url' => nil,
+    'teslamate_processing_pending' => false,
+    'teslamate_processing_pending_url' => nil,
     'maps' => { 'distance_unit' => 'km' },
     'visits_suggestions_enabled' => 'true',
     'enabled_map_layers' => %w[Tracks Heatmap],

@@ -4,11 +4,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [1.14.2] - 2026-09-02, Berlin
+## [Unreleased]
 
 ### Added
 
 - TeslaMateApi can now sync completed-drive positions from every configured car into Dawarich, manually or once a day. The integration supports reverse-proxy Basic authentication, optional bearer tokens, self-signed certificates, bounded retries, source-specific incremental checkpoints, serialized syncs, and idempotent historical imports that do not move live maps backwards.
+
+## [1.14.2] - 2026-09-02, Berlin
+
+### Added
+
 - GPX waypoints are now imported as places, so a `favourites.gpx` exported from OsmAnd+ and similar apps no longer imports as nothing at all. Each waypoint's category becomes a tag, re-importing an updated file does not duplicate anything, and waypoints never become timeline points, so they do not affect your distance or statistics. (#1261)
 - The API now accepts visits in batches: `POST /api/v1/visits/batch` takes up to 100 visits in one request and reports each one's outcome separately, so a single rejected visit no longer costs the whole sync. The mobile apps previously had to send one request per detected visit.
 - Starting a Family plan now creates your family automatically, with location sharing on, and the family page walks you through inviting your first member.
