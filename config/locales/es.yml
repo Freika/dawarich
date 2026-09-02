@@ -1543,7 +1543,7 @@ es:
           immich: Immich
           photoprism: PhotoPrism
           airtrail: AirTrail
-          teslamate: TeslaMate
+          teslamate: TeslaMateApi
         status_connected: Conectado
         status_failed: El último intento de conexión falló
         immich_photoprism_integrations: Integraciones Immich y Photoprism
@@ -1573,14 +1573,14 @@ es:
         the_base_url_of_your_airtrail_instance_your_flights_are: La URL base de tu instancia de AirTrail. Tus vuelos se muestran como arcos en el mapa.
         airtrail_api_key: Clave API de AirTrail
         create_an_api_key_in_airtrail_under_settings_rarr_security: Crea una clave API en AirTrail bajo Ajustes → Seguridad.
-        teslamate_integration: Integración de TeslaMate
+        teslamate_integration: Integración de TeslaMateApi
         teslamate_url: URL de TeslaMateApi
         the_base_url_of_your_teslamateapi_instance: La URL base de tu instancia de TeslaMateApi.
         teslamate_username: Usuario HTTP Basic (opcional)
         teslamate_password: Contraseña HTTP Basic (opcional)
         teslamate_api_token: Token Bearer (opcional)
         teslamate_authentication_help: Usa autenticación Basic para un proxy inverso protegido o un token Bearer para un proxy o fork compatible. Los endpoints de lectura de TeslaMateApi estándar no usan API_TOKEN.
-        sync_teslamate_drives: Sincronizar trayectos de TeslaMate
+        sync_teslamate_drives: Sincronizar trayectos de TeslaMateApi
         teslamate_sync_help: Los trayectos completados se sincronizan automáticamente una vez al día. Los trayectos actuales y las posiciones estacionadas no están disponibles mediante TeslaMateApi.
         last_synced: 'Última sincronización:'
         connected_accounts: Cuentas conectadas

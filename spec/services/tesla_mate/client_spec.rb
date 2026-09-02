@@ -47,4 +47,20 @@ RSpec.describe TeslaMate::Client do
     expect { described_class.new(base_url).cars }
       .to raise_error(TeslaMate::Client::Error, /invalid response/)
   end
+
+  it 'rejects non-positive pagination values before making a request' do
+    expect do
+      described_class.new(base_url).drives(1, page: 0, show: 100, end_date: Time.current)
+    end.to raise_error(TeslaMate::Client::Error, /page must be a positive integer/)
+
+    expect(a_request(:get, %r{#{base_url}/api/v1/cars/1/drives})).not_to have_been_made
+  end
+
+  it 'rejects non-integral pagination values before making a request' do
+    expect do
+      described_class.new(base_url).drives(1, page: 1.5, show: 100, end_date: Time.current)
+    end.to raise_error(TeslaMate::Client::Error, /page must be a positive integer/)
+
+    expect(a_request(:get, %r{#{base_url}/api/v1/cars/1/drives})).not_to have_been_made
+  end
 end

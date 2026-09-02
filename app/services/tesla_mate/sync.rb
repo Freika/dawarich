@@ -132,6 +132,8 @@ module TeslaMate
       case unit
       when 'km' then value / 3.6
       when 'mi' then value * 0.44704
+      else
+        raise TeslaMate::Client::Error, "unsupported length unit: #{unit.presence || 'missing'}"
       end
     end
 

@@ -137,6 +137,20 @@ RSpec.describe TeslaMate::Sync do
     expect(user.points.count).to eq(1)
   end
 
+  it 'fails without advancing the checkpoint when speed units are unknown' do
+    stub_request(:get, "#{base_url}/api/v1/cars")
+      .to_return(status: 200, body: { data: { cars: [{ car_id: 1 }] } }.to_json)
+    stub_drives(car_id: 1, drive_id: 11, unit: 'parsecs')
+    stub_drive(car_id: 1, drive_id: 11, unit: 'parsecs', detail: {
+                 detail_id: 111, date: '2026-09-01T10:00:00Z',
+                 latitude: 52.52, longitude: 13.405, speed: 36
+               })
+
+    expect { described_class.new(user).call }
+      .to raise_error(TeslaMate::Sync::IncompleteError, /unsupported length unit: parsecs/)
+    expect(user.reload.settings['teslamate_last_synced_at']).to be_nil
+  end
+
   def stub_drives(car_id:, drive_id:, unit:)
     stub_request(:get, %r{#{base_url}/api/v1/cars/#{car_id}/drives})
       .to_return(status: 200, body: {

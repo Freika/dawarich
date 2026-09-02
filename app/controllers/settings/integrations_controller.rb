@@ -40,7 +40,7 @@ class Settings::IntegrationsController < ApplicationController
   def available_services
     return Integrations::Status::SERVICES if DawarichSettings.self_hosted?
 
-    Integrations::Status::PHOTO_SERVICES
+    Integrations::Status::EXTERNAL_SERVICES
   end
 
   def prepare_geocoding

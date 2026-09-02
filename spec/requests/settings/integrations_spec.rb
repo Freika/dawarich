@@ -289,6 +289,7 @@ RSpec.describe 'Settings::Integrations', type: :request do
       get settings_integrations_path(service: 'teslamate')
 
       expect(response.body).to include('name="settings[teslamate_url]"')
+      expect(response.body).to include('TeslaMateApi Integration')
     end
 
     it 'falls back to the first available service for unknown service params' do

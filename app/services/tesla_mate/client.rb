@@ -30,7 +30,11 @@ module TeslaMate
     end
 
     def drives(car_id, page:, show:, end_date:, start_date: nil)
-      query = { page: page, show: show, endDate: end_date.iso8601 }
+      query = {
+        page: positive_integer(page, 'page'),
+        show: positive_integer(show, 'show'),
+        endDate: end_date.iso8601
+      }
       query[:startDate] = start_date.iso8601 if start_date
       body = get("/api/v1/cars/#{positive_id(car_id)}/drives", query: query)
       raise Error, 'TeslaMateApi response did not contain drives data' unless body['data'].key?('drives')
@@ -84,12 +88,17 @@ module TeslaMate
     end
 
     def positive_id(value)
-      id = Integer(value)
-      raise Error, 'TeslaMateApi resource ID must be positive' unless id.positive?
+      positive_integer(value, 'resource ID')
+    end
 
-      id
+    def positive_integer(value, label)
+      integer = Integer(value)
+      valid_numeric = !value.is_a?(Numeric) || value == integer
+      raise Error, "TeslaMateApi #{label} must be a positive integer" unless valid_numeric && integer.positive?
+
+      integer
     rescue ArgumentError, TypeError
-      raise Error, 'TeslaMateApi resource ID must be a positive integer'
+      raise Error, "TeslaMateApi #{label} must be a positive integer"
     end
 
     def request_options

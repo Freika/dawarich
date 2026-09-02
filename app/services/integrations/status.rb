@@ -2,8 +2,8 @@
 
 module Integrations
   class Status
-    PHOTO_SERVICES = %w[immich photoprism airtrail teslamate].freeze
-    SERVICES = (%w[geocoding] + PHOTO_SERVICES).freeze
+    EXTERNAL_SERVICES = %w[immich photoprism airtrail teslamate].freeze
+    SERVICES = (%w[geocoding] + EXTERNAL_SERVICES).freeze
 
     def self.for(user)
       new(user)

@@ -1512,14 +1512,14 @@ ca:
         the_base_url_of_your_airtrail_instance_your_flights_are: La URL base de la teva instància d'AirTrail. Els teus vols es mostren com a arcs al mapa.
         airtrail_api_key: Clau API d'AirTrail
         create_an_api_key_in_airtrail_under_settings_rarr_security: Crea una clau API a AirTrail a Configuració → Seguretat.
-        teslamate_integration: Integració amb TeslaMate
+        teslamate_integration: Integració amb TeslaMateApi
         teslamate_url: URL de TeslaMateApi
         the_base_url_of_your_teslamateapi_instance: La URL base de la teva instància de TeslaMateApi.
         teslamate_username: Nom d'usuari HTTP Basic (opcional)
         teslamate_password: Contrasenya HTTP Basic (opcional)
         teslamate_api_token: Token Bearer (opcional)
         teslamate_authentication_help: Utilitza autenticació Basic per a un servidor intermediari invers protegit, o un token Bearer per a un servidor intermediari o fork compatible. Els endpoints de lectura del TeslaMateApi canònic no utilitzen l'API_TOKEN.
-        sync_teslamate_drives: Sincronitza els trajectes de TeslaMate
+        sync_teslamate_drives: Sincronitza els trajectes de TeslaMateApi
         teslamate_sync_help: Els trajectes completats se sincronitzen automàticament una vegada al dia. Els trajectes actuals i les posicions d'estacionament no estan disponibles mitjançant TeslaMateApi.
         last_synced: 'Última sincronització:'
         connected_accounts: Comptes connectats
@@ -1538,7 +1538,7 @@ ca:
           immich: "Immich"
           photoprism: "PhotoPrism"
           airtrail: "AirTrail"
-          teslamate: "TeslaMate"
+          teslamate: "TeslaMateApi"
         status_connected: "Connectat"
         status_failed: "L'últim intent de connexió ha fallat"
     subscriptions:
