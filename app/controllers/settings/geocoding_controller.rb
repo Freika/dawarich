@@ -20,6 +20,15 @@ class Settings::GeocodingController < ApplicationController
   end
 
   def update
+    # Geocoding is an Instance setting once the resolver owns it, so this form
+    # has nothing left to write. Refusing is the point: accepting input and
+    # parking it is the behaviour this change exists to remove.
+    if InstanceSettings.enabled?
+      return redirect_to geocoding_pane_path,
+                         alert: t('settings.geocoding.update.instance_managed'),
+                         status: :see_other
+    end
+
     return disable_geocoding if params[:provider] == 'disabled'
 
     unless Geocoding::Providers::CHAIN.include?(params[:provider])
@@ -143,7 +152,11 @@ class Settings::GeocodingController < ApplicationController
   end
 
   def run_provider_test
-    config = Geocoding::Config.for_user_settings(current_user)
+    config = if InstanceSettings.enabled?
+               Geocoding::Config.for(current_user)
+             else
+               Geocoding::Config.for_user_settings(current_user)
+             end
     return [:error, t('settings.geocoding.test.not_configured')] unless config.enabled?
 
     result_set = Geocoding::Search.with_config(config: config, query: TEST_COORDINATES, limit: 1,

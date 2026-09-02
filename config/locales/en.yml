@@ -1,4 +1,20 @@
 en:
+  admin:
+    settings:
+      show:
+        title: "Instance settings"
+        intro: "These settings apply to this whole instance. A setting supplied by an environment variable is shown read-only: remove the variable to edit it here."
+        save: "Save settings"
+        secret_set: "A value is stored"
+        pinned_hint: "Pinned by %{variable}"
+        clear_secret: "Clear the stored value"
+      update:
+        saved: "Settings saved."
+        pinned: "Refused: pinned by %{variables}."
+      source:
+        env: "from environment"
+        stored: "stored here"
+        default: "default"
   activerecord:
     errors:
       models:
@@ -1417,6 +1433,7 @@ en:
   settings:
     geocoding:
       show:
+        instance_managed_notice: "Geocoding is managed for this whole instance. An administrator can change it in Instance settings."
         title: Geocoding
         provider: Geocoding provider
         provider_hint: The provider used for reverse geocoding your points and for place and location search.
@@ -1455,6 +1472,7 @@ en:
         test: Test my provider
         test_hint: Save your settings first, then test. The test runs one lookup against your own provider configuration, even when environment variables are active.
       update:
+        instance_managed: "Geocoding is managed for this whole instance and cannot be changed here."
         updated: Geocoding settings updated.
         disabled: Geocoding disabled.
         invalid_provider: Unknown geocoding provider.

@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 
 - The API now accepts visits in batches: `POST /api/v1/visits/batch` takes up to 100 visits in one request and reports each one's outcome separately, so a single rejected visit no longer costs the whole sync. The mobile apps previously had to send one request per detected visit.
+- Geocoding is now configured for the whole instance rather than per user, and admins can change it in Instance settings without a redeploy. Environment variables still win: a variable that is set pins its value, and the field is shown read-only beside the variable's name.
 
 ### Fixed
 

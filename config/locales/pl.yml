@@ -1,4 +1,20 @@
 pl:
+  admin:
+    settings:
+      show:
+        title: "Ustawienia instancji"
+        intro: "Te ustawienia dotyczą całej instancji. Ustawienie pochodzące ze zmiennej środowiskowej jest wyświetlane tylko do odczytu: usuń zmienną, aby edytować je tutaj."
+        save: "Zapisz ustawienia"
+        secret_set: "Wartość jest zapisana"
+        pinned_hint: "Ustalone przez %{variable}"
+        clear_secret: "Usuń zapisaną wartość"
+      update:
+        saved: "Ustawienia zapisane."
+        pinned: "Odrzucono: ustalone przez %{variables}."
+      source:
+        env: "ze środowiska"
+        stored: "zapisane tutaj"
+        default: "domyślne"
   activerecord:
     errors:
       models:
@@ -1417,6 +1433,7 @@ pl:
   settings:
     geocoding:
       show:
+        instance_managed_notice: "Geokodowanie jest zarządzane dla całej instancji. Administrator może je zmienić w ustawieniach instancji."
         title: Geokodowanie
         provider: Dostawca geokodowania
         provider_hint: Dostawca używany do odwrotnego geokodowania Twoich punktów oraz do wyszukiwania miejsc i lokalizacji.
@@ -1455,6 +1472,7 @@ pl:
         test: Przetestuj dostawcę
         test_hint: Najpierw zapisz ustawienia, a potem przetestuj. Test wykonuje jedno zapytanie do Twojej własnej konfiguracji dostawcy, nawet gdy aktywne są zmienne środowiskowe.
       update:
+        instance_managed: "Geokodowanie jest zarządzane dla całej instancji i nie można go tutaj zmienić."
         updated: Zaktualizowano ustawienia geokodowania.
         disabled: Geokodowanie wyłączone.
         invalid_provider: Nieznany dostawca geokodowania.

@@ -52,6 +52,10 @@ RSpec.configure do |config|
   config.before do
     ActiveJob::Base.queue_adapter = :test
     allow(DawarichSettings).to receive(:store_geodata?).and_return(true)
+    # The resolver memoises a snapshot on the module with a 30s TTL, which
+    # otherwise survives the transactional rollback between examples and serves
+    # rows that no longer exist.
+    InstanceSettings::Resolver.reset!
     # Disable OIDC by default in tests to prevent OIDC-only mode from blocking tests
     allow(DawarichSettings).to receive(:oidc_enabled?).and_return(false)
   end

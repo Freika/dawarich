@@ -1,4 +1,20 @@
 es:
+  admin:
+    settings:
+      show:
+        title: "Ajustes de la instancia"
+        intro: "Estos ajustes se aplican a toda la instancia. Un ajuste definido por una variable de entorno se muestra en modo de solo lectura: elimina la variable para editarlo aquí."
+        save: "Guardar ajustes"
+        secret_set: "Hay un valor guardado"
+        pinned_hint: "Fijado por %{variable}"
+        clear_secret: "Borrar el valor guardado"
+      update:
+        saved: "Ajustes guardados."
+        pinned: "Rechazado: fijado por %{variables}."
+      source:
+        env: "desde el entorno"
+        stored: "guardado aquí"
+        default: "predeterminado"
   route_videos:
     route_video:
       download: "Descargar MP4"
@@ -1420,6 +1436,7 @@ es:
   settings:
     geocoding:
       show:
+        instance_managed_notice: "La geocodificación se gestiona para toda la instancia. Un administrador puede cambiarla en los ajustes de la instancia."
         title: Geocoding
         provider: Geocoding provider
         provider_hint: The provider used for reverse geocoding your points and for place and location search.
@@ -1458,6 +1475,7 @@ es:
         test: Test my provider
         test_hint: Save your settings first, then test. The test runs one lookup against your own provider configuration, even when environment variables are active.
       update:
+        instance_managed: "La geocodificación se gestiona para toda la instancia y no se puede cambiar aquí."
         updated: Geocoding settings updated.
         disabled: Geocoding disabled.
         invalid_provider: Unknown geocoding provider.

@@ -1,4 +1,20 @@
 de:
+  admin:
+    settings:
+      show:
+        title: "Instanz-Einstellungen"
+        intro: "Diese Einstellungen gelten für die gesamte Instanz. Eine Einstellung, die über eine Umgebungsvariable gesetzt ist, wird schreibgeschützt angezeigt: Entferne die Variable, um sie hier zu bearbeiten."
+        save: "Einstellungen speichern"
+        secret_set: "Ein Wert ist hinterlegt"
+        pinned_hint: "Festgelegt durch %{variable}"
+        clear_secret: "Gespeicherten Wert löschen"
+      update:
+        saved: "Einstellungen gespeichert."
+        pinned: "Abgelehnt: festgelegt durch %{variables}."
+      source:
+        env: "aus der Umgebung"
+        stored: "hier gespeichert"
+        default: "Standard"
   route_videos:
     route_video:
       download: "MP4 herunterladen"
@@ -1420,6 +1436,7 @@ de:
   settings:
     geocoding:
       show:
+        instance_managed_notice: "Die Geokodierung wird für die gesamte Instanz verwaltet. Eine Administratorin oder ein Administrator kann sie in den Instanz-Einstellungen ändern."
         title: Geocoding
         provider: Geocoding provider
         provider_hint: The provider used for reverse geocoding your points and for place and location search.
@@ -1458,6 +1475,7 @@ de:
         test: Test my provider
         test_hint: Save your settings first, then test. The test runs one lookup against your own provider configuration, even when environment variables are active.
       update:
+        instance_managed: "Die Geokodierung wird für die gesamte Instanz verwaltet und kann hier nicht geändert werden."
         updated: Geocoding settings updated.
         disabled: Geocoding disabled.
         invalid_provider: Unknown geocoding provider.

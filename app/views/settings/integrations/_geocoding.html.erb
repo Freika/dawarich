@@ -4,7 +4,12 @@
 </div>
 <p class="text-base-content/60 max-w-2xl mb-6"><%= t('settings.geocoding.show.intro') %></p>
 
-<% if @geocoding_config.env_managed? %>
+<% if InstanceSettings.enabled? %>
+  <div class="flex items-start gap-3 rounded-box border border-base-content/15 bg-base-200 p-4 mb-6 max-w-3xl">
+    <%= icon 'info', class: 'w-5 h-5 shrink-0 text-info mt-0.5' %>
+    <span class="text-sm"><%= t('settings.geocoding.show.instance_managed_notice') %></span>
+  </div>
+<% elsif @geocoding_config.env_managed? %>
   <div class="flex items-start gap-3 rounded-box border border-base-content/15 bg-base-200 p-4 mb-6 max-w-3xl">
     <%= icon 'info', class: 'w-5 h-5 shrink-0 text-info mt-0.5' %>
     <span class="text-sm"><%= t('settings.geocoding.show.env_managed_notice') %></span>

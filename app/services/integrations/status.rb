@@ -54,7 +54,11 @@ module Integrations
     end
 
     def geocoding_status
-      return if geocoding_config.env_managed?
+      return if geocoding_config.pinned?
+      # Instance-managed geocoding records no per-user connection status. The
+      # leftover pre-migration row belongs to a provider the instance may no
+      # longer use, so showing its badge would be worse than showing none.
+      return if InstanceSettings.enabled?
 
       setting = user.service_settings.service_geocoding.find_by(active: true)
       normalize(setting&.config&.fetch('connection_status', nil))
