@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Stats recalculation no longer stops for every remaining user when one user's stats fail to calculate.
 - Hourly stats recalculation no longer fails outright for users whose time zone is stored as a descriptive name such as "Eastern Time (US & Canada)" — the value the settings page offers. The sweep now converts it to a zone Postgres understands before bucketing points into months.
 - Route videos now play forwards. When the map was showing Tracks rather than Routes, the video studio drew the day in the order the tracks API returns them — newest first — so the route animated from evening back to morning while the clock counted forwards.
+- The video studio now draws your route when tiled rendering is on. It read the map's route data a moment before loading it, and under tiled rendering nothing else fills that in, so the video came out as a bare map with the distance and clock still running over it.
 - Invited family members are no longer sent to the subscription checkout when signing up on the web or in the mobile app.
 - A GeoJSON file whose points carry no timestamp is now rejected at import with an explanation, instead of storing points that no date range could ever return.
 - Restoring a user-data export no longer reports success while importing nothing. An archive carrying a point column this version no longer has aborted every batch; unknown columns are now ignored and the points are restored.
