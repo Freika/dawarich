@@ -99,9 +99,10 @@ module EnhancedImport
         def emit
           return if @attrs.nil?
 
-          latitude = @attrs['lat']
-          longitude = @attrs['lon']
-          return if latitude.blank? || longitude.blank?
+          latitude = coordinate(@attrs['lat'])
+          longitude = coordinate(@attrs['lon'])
+          return if latitude.nil? || longitude.nil?
+          return if Points::NullIsland.coordinates?(longitude, latitude)
 
           category = @fields['type'].presence
 
@@ -109,14 +110,22 @@ module EnhancedImport
             Extracted::Place.new(
               external_place_id: identity(@fields['name'], latitude, longitude),
               name: @fields['name'].presence,
-              latitude: latitude.to_f,
-              longitude: longitude.to_f,
+              latitude: latitude,
+              longitude: longitude,
               semantic_type: category,
               geodata_extras: {},
               tag_name: category,
               tag_color: normalized_color(@fields['color'])
             )
           )
+        end
+
+        def coordinate(value)
+          return nil if value.blank?
+
+          Float(value)
+        rescue ArgumentError, TypeError
+          nil
         end
 
         def identity(name, latitude, longitude)

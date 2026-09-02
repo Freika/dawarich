@@ -216,4 +216,14 @@ RSpec.describe Families::SyncMembers do
         .not_to(change { member.reload.attributes.slice('status', 'plan', 'active_until') })
     end
   end
+
+  describe 'the marker that identifies an inherited grant' do
+    let!(:member) { add_member(subscription_source: :paddle, active_until: 1.day.ago) }
+
+    it 'stamps a granted member as having no subscription of their own' do
+      service.call
+
+      expect(member.reload).to be_sub_source_none
+    end
+  end
 end

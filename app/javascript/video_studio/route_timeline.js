@@ -5,15 +5,42 @@
 import { haversineDistance } from "video_studio/geo"
 import { smoothSegmentCoords } from "video_studio/path_smoothing"
 
+// Feature order is playback order here, but only the routes feed arrives
+// chronologically: /api/v1/tracks orders start_at DESC (Tracks::IndexQuery),
+// and the serializer maps that order straight through, so an unsorted tracks
+// collection animates the route backwards. Tracks carry an ISO start_at,
+// routes carry unix-second startTime; a feed with any untimed feature keeps
+// the order it came in with.
+function startTimeOf(feature) {
+  const raw = feature?.properties?.start_at ?? feature?.properties?.startTime
+  if (raw == null) return null
+  if (typeof raw === "number") return Number.isFinite(raw) ? raw : null
+  const parsed = Date.parse(raw)
+  return Number.isNaN(parsed) ? null : parsed
+}
+
+function chronological(features) {
+  const timed = features.map((feature) => ({
+    feature,
+    startedAt: startTimeOf(feature),
+  }))
+  if (timed.some(({ startedAt }) => startedAt === null)) return features
+  return timed
+    .sort((a, b) => a.startedAt - b.startedAt)
+    .map(({ feature }) => feature)
+}
+
 export function buildRouteTimeline(trackGeojson, { smooth = false } = {}) {
   const entries = []
   let totalDistance = 0
-  const features = trackGeojson?.features ?? []
+  const features = chronological(
+    (trackGeojson?.features ?? []).filter(
+      (feature) => feature?.geometry?.type === "LineString",
+    ),
+  )
   let seg = 0
   for (const feature of features) {
-    const geometry = feature?.geometry
-    if (geometry?.type !== "LineString") continue
-    let coordinates = geometry.coordinates ?? []
+    let coordinates = feature.geometry.coordinates ?? []
     if (coordinates.length < 2) continue
     if (smooth) coordinates = smoothSegmentCoords(coordinates)
     for (let i = 0; i < coordinates.length; i += 1) {

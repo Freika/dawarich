@@ -6,6 +6,7 @@ import { loadThemeTokens } from "poster_studio/data/theme_loader"
 import { trackBounds } from "poster_studio/ui/preview"
 import { ensureHudFonts } from "video_studio/hud_fonts"
 import { drawHud } from "video_studio/hud_overlay"
+import { loadTrack } from "video_studio/load_track"
 import { isVideoExportSupported } from "video_studio/mp4_encoder"
 import { toVideoPoints } from "video_studio/points"
 import { buildRouteClock } from "video_studio/route_clock"
@@ -196,8 +197,9 @@ export default class extends Controller {
   }
 
   async reloadTrack() {
-    this.trackGeojson = this.provider.trackGeojson()
-    this.points = toVideoPoints(await this.provider.points())
+    const { trackGeojson, points } = await loadTrack(this.provider)
+    this.trackGeojson = trackGeojson
+    this.points = toVideoPoints(points)
     this.stats = computeTrackStats(this.points)
     this.clock = buildRouteClock(this.points)
     if (this.hasRangeLabelTarget) {
