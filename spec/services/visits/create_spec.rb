@@ -287,6 +287,19 @@ RSpec.describe Visits::Create do
         end.not_to(change { Visit.count })
       end
 
+      it 'rejects an ended_at equal to started_at before it reaches the model' do
+        service = described_class.new(user, valid_params.merge(ended_at: valid_params[:started_at]))
+
+        expect(service.call).to be(false)
+        expect(service.errors).to eq('Failed to create visit: ended_at must be after started_at')
+      end
+
+      it 'reports no exception when started_at and ended_at are equal' do
+        expect(ExceptionReporter).not_to receive(:call)
+
+        described_class.new(user, valid_params.merge(ended_at: valid_params[:started_at])).call
+      end
+
       it 'does not create a visit when timestamps are unusable' do
         expect do
           described_class.new(user, valid_params.merge(started_at: 'garbage')).call

@@ -4,12 +4,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [1.14.2]
+## [1.14.2] - 2026-09-02, Berlin
 
 ### Added
 
 - GPX waypoints are now imported as places, so a `favourites.gpx` exported from OsmAnd+ and similar apps no longer imports as nothing at all. Each waypoint's category becomes a tag, re-importing an updated file does not duplicate anything, and waypoints never become timeline points, so they do not affect your distance or statistics. (#1261)
 - The API now accepts visits in batches: `POST /api/v1/visits/batch` takes up to 100 visits in one request and reports each one's outcome separately, so a single rejected visit no longer costs the whole sync. The mobile apps previously had to send one request per detected visit.
+- Starting a Family plan now creates your family automatically, with location sharing on, and the family page walks you through inviting your first member.
+- Family members you invite are set up on the Pro plan for as long as your plan runs, and are emailed an explanation when it ends. Changing your own plan does not cut them off early: they keep access until the period you have already paid for runs out.
 
 ### Changed
 
@@ -25,8 +27,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - A photo layer that fails to load now tells you so instead of quietly showing nothing. An unreachable or erroring Immich or PhotoPrism was previously indistinguishable from simply having no photos in range; when one of several sources fails, the photos that were retrieved are still shown alongside a warning. (#1137)
 - Places created from a suggested visit now get their real address. Visits detected on a phone arrive with a generated name such as "Visited place"; that name is no longer locked, reverse geocoding is queued for the new place, and the resolved address now replaces the generated name on the visit as well as the place.
 - Stats recalculation no longer stops for every remaining user when one user's stats fail to calculate.
+- Hourly stats recalculation no longer fails outright for users whose time zone is stored as a descriptive name such as "Eastern Time (US & Canada)" — the value the settings page offers. The sweep now converts it to a zone Postgres understands before bucketing points into months.
 - Route videos now play forwards. When the map was showing Tracks rather than Routes, the video studio drew the day in the order the tracks API returns them — newest first — so the route animated from evening back to morning while the clock counted forwards.
 - The video studio now draws your route when tiled rendering is on. It read the map's route data a moment before loading it, and under tiled rendering nothing else fills that in, so the video came out as a bare map with the distance and clock still running over it.
+- Invited family members are no longer sent to the subscription checkout when signing up on the web or in the mobile app.
+- A GeoJSON file whose points carry no timestamp is now rejected at import with an explanation, instead of storing points that no date range could ever return.
+- Restoring a user-data export no longer reports success while importing nothing. An archive carrying a point column this version no longer has aborted every batch; unknown columns are now ignored and the points are restored.
+- The poster studio now draws your route when tiled rendering is on. It never asked the map to load the route data, and under tiled rendering nothing else does, so the preview came up empty and Save was blocked with "No location data in this date range" even though the range had plenty.
 
 ## [1.14.1] - 2026-08-31, Berlin
 
@@ -35,15 +42,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Point reads — the API responses, the map's point payloads and the user-data export — now serve the device and importer metadata (tracker, topic, connection, battery state and friends) through the `point_sources` reference table on rows linked to it, with the original columns still serving unlinked rows. Payloads are unchanged; this is groundwork for slimming the points table itself.
 
 ### Added
-
-- Starting a Family plan now creates your family automatically, with location sharing on, and the family page walks you through inviting your first member.
-- Family members you invite are set up on the Pro plan for as long as your plan runs, and are emailed an explanation when it ends. Changing your own plan does not cut them off early: they keep access until the period you have already paid for runs out.
-
-## Fixed
-
-- Invited family members are no longer sent to the subscription checkout when signing up on the web or in the mobile app.
-
-## Added
 
 - OwnTracks in HTTP mode now shows your family members on its own map: every location upload is answered with the latest position of each family member sharing with you, so they appear as friends in the app alongside the Dawarich map.
 - AirTrail flights now show as their own figure on the monthly stats page and in the monthly digest. Flight distance is reported next to the distance Dawarich tracked rather than added into it, so neither number changes meaning.
