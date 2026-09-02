@@ -2,12 +2,21 @@
 
 module Stats
   class BulkCalculator
+    STALE_STATS_PER_RUN = 5
+    REPAIR_JITTER = 55.minutes
+
     def initialize(user_id)
       @user_id = user_id
     end
 
     def call
-      schedule_calculations(fetch_months)
+      swept_until = Time.current
+      new_months = months_with_new_points(swept_until)
+
+      schedule_calculations(new_months)
+      schedule_repairs(stale_months - new_months)
+
+      user.update_column(:stats_swept_at, swept_until)
     end
 
     private
@@ -18,12 +27,17 @@ module Stats
       @user ||= User.find(user_id)
     end
 
-    def fetch_months
-      last_calculated_at = Stat.where(user_id:).maximum(:updated_at)
-      last_calculated_at ||= DateTime.new(1970, 1, 1)
+    def stale_months
+      Stat.where(user_id:)
+          .where(calculation_version: ...CalculateMonth::CALCULATION_VERSION)
+          .order(Arel.sql('repair_deferred_at ASC NULLS FIRST'), :id)
+          .limit(STALE_STATS_PER_RUN)
+          .pluck(:year, :month)
+    end
 
-      start_ts = last_calculated_at.to_i
-      end_ts = Time.current.to_i
+    def months_with_new_points(swept_until)
+      start_ts = watermark.to_i
+      end_ts = swept_until.to_i
 
       sql = Point.sanitize_sql_array([
                                        'SELECT DISTINCT ' \
@@ -36,9 +50,31 @@ module Stats
       Point.connection.select_rows(sql).map { |y, m| [y.to_i, m.to_i] }
     end
 
+    def watermark
+      user.stats_swept_at ||
+        Stat.where(user_id:).maximum(:updated_at) ||
+        DateTime.new(1970, 1, 1)
+    end
+
     def schedule_calculations(months)
       months.each do |year, month|
         Stats::CalculatingJob.perform_later(user_id, year, month)
+      end
+    end
+
+    def schedule_repairs(months)
+      months.each do |year, month|
+        Stats::CalculatingJob
+          .set(wait: rand(0..REPAIR_JITTER.to_i).seconds)
+          .perform_later(user_id, year, month, notify_on_failure: false)
+      end
+
+      defer_repaired(months)
+    end
+
+    def defer_repaired(months)
+      months.each do |year, month|
+        Stat.where(user_id:, year:, month:).update_all(repair_deferred_at: Time.current)
       end
     end
   end

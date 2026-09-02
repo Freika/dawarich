@@ -16,7 +16,7 @@ RSpec.describe Stats::CalculatingJob, type: :job do
     it 'calls Stats::CalculateMonth service' do
       subject
 
-      expect(Stats::CalculateMonth).to have_received(:new).with(user.id, 2024, 1)
+      expect(Stats::CalculateMonth).to have_received(:new).with(user.id, 2024, 1, notify_on_failure: true)
     end
 
     context 'when Stats::CalculateMonth raises an error' do
