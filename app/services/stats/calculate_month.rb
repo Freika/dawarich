@@ -54,9 +54,8 @@ class Stats::CalculateMonth
     @points = user
               .points
               .not_anomaly
-              .without_raw_data
               .where(timestamp: start_timestamp..end_timestamp)
-              .select(:lonlat, :timestamp, :city, :country_name, :country_id, :velocity)
+              .select(:id, :lonlat, :timestamp, :city, :country_name, :country_id, :velocity)
               .order(timestamp: :asc)
   end
 
@@ -80,8 +79,7 @@ class Stats::CalculateMonth
   def toponyms
     CountriesAndCities.new(
       points_in_local_month,
-      min_minutes_spent_in_city: user.safe_settings.min_minutes_spent_in_city,
-      max_gap_minutes: user.safe_settings.max_gap_minutes_in_city
+      min_minutes_spent_in_city: user.safe_settings.min_minutes_spent_in_city
     ).call
   end
 

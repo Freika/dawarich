@@ -210,6 +210,18 @@ pl:
       status: Status
       created: Utworzono
   families:
+    getting_started:
+      members_lose_access_when_your_plan_ends: "Dopóki Twój plan jest aktywny, każda dodana osoba ma pełny dostęp. Gdy się skończy, ich dostęp też."
+      invite_title: "Dodaj pierwszego członka rodziny"
+      invite_body: "Twoja rodzina jest gotowa. Każda dodana osoba widzi, gdzie są pozostali, a przy tym zachowuje własną prywatną mapę."
+      seats: "Zajęte miejsca: %{used} z %{total}"
+      trial_ends_on: "Twój okres próbny Family kończy się %{date}"
+      sharing_title: "Zacznij udostępniać swoją lokalizację"
+      sharing_body: "Rodzina jeszcze Cię nie widzi. Włącz udostępnianie poniżej, a potem zainstaluj aplikację, aby Twoja lokalizacja była aktualna."
+      app_title: "Pobierz aplikację"
+      app_body: "Udostępnianie lokalizacji działa najlepiej z telefonu, który masz przy sobie."
+      email_address: "Adres e-mail"
+      invite: "Zaproś"
     location_sharing_toggle:
       live_location: 'Lokalizacja na żywo:'
       always: Zawsze
@@ -294,17 +306,6 @@ pl:
       always: zawsze
       for_duration: przez %{duration}
       sharing_status: Udostępnianie przez %{duration}
-    index:
-      have_an_invitation: Masz zaproszenie?
-      if_someone_has_invited_you_to_join_their_family_you: Jeśli ktoś zaprosił Cię do swojej rodziny, powinieneś otrzymać e-mail z linkiem do zaproszenia.
-      check_your_email_for_an_invitation_link_that_looks_like: 'Sprawdź e-mail pod kątem linku do zaproszenia w stylu:'
-      family_management: Zarządzanie rodziną
-      create_family: Utwórz swoją rodzinę
-      description: Utwórz rodzinę lub dołącz do istniejącej, aby udostępniać dane lokalizacji bliskim.
-      have_invitation: Masz zaproszenie?
-      invitation_help: 'Sprawdź e-mail pod kątem linku do zaproszenia w stylu:'
-      invitation_instructions: Jeśli ktoś zaprosił Cię do swojej rodziny, powinieneś otrzymać e-mail z linkiem do zaproszenia.
-      title: Zarządzanie rodziną
     new:
       choose_a_name_that_all_family_members_will_recognize_like: Wybierz nazwę, którą rozpoznają wszyscy członkowie rodziny, np. „Rodzina Kowalskich” albo „Nasza grupa podróżnicza”.
       what_happens_next: Co dalej?
@@ -388,6 +389,21 @@ pl:
         decline: Odrzuć
         back_to_family: Powrót do rodziny
   family_mailer:
+    plan_lapsed:
+      the_family_plan_has_ended: "Plan Family dobiegł końca"
+      hi: "Cześć"
+      family_plan_ended_html: "Plan Dawarich Family dla <strong>%{family}</strong> nie jest już aktywny, więc Twój dostęp przez niego się zakończył."
+      family_plan_ended_text: "Plan Dawarich Family dla %{family} nie jest już aktywny, więc Twój dostęp przez niego się zakończył."
+      what_this_means: "Co to oznacza"
+      your_data_is_safe_and_still_yours: "Twoje dane są bezpieczne i nadal należą do Ciebie."
+      you_can_no_longer_see_your_family_on_the_map: "Nie widzisz już swojej rodziny na mapie."
+      your_location_is_no_longer_shared_with_them: "Twoja lokalizacja nie jest już im udostępniana."
+      tracking_and_uploads_are_paused_until_a_plan_is_active: "Śledzenie i wysyłanie danych są wstrzymane, dopóki plan nie będzie znów aktywny."
+      what_you_can_do: "Co możesz zrobić:"
+      ask_the_owner_to_renew_html: "Poproś %{owner} o odnowienie planu Family albo wykup własny plan."
+      ask_the_owner_to_renew_text: "Poproś %{owner} o odnowienie planu Family albo wykup własny plan."
+      get_your_own_plan: "Wykup własny plan"
+      nothing_is_deleted_your_history_is_waiting_when_you_come_back: "Nic nie jest usuwane. Twoja historia czeka, gdy wrócisz."
     invitation:
       you_ve_been_invited_to_join_a_family: Otrzymałeś zaproszenie do rodziny!
       hi_there: Cześć!
@@ -477,6 +493,7 @@ pl:
     extraction_card:
       additional_data: Dodatkowe dane
       this_import_format_doesn_t_carry_visits_named_places_or: Ten format importu nie zawiera wizyt, nazwanych miejsc ani trybów transportu, więc nie ma dodatkowych danych do wyodrębnienia.
+      this_gpx_file_holds_no_waypoints: 'Ten plik GPX zawiera tylko zarejestrowane punkty trasy, więc nie ma punktów orientacyjnych do zaimportowania jako miejsca.'
       extracted: Wyodrębniono
       visits: wizyty,
       places: miejsca,
@@ -807,6 +824,8 @@ pl:
       dawarich_logo: Logo Dawarich
   map:
     onboarding_modal:
+      invite_your_family: "Zaproś swoją rodzinę"
+      add_your_family_and_see_each_other_on_the_map: "Dodaj swoją rodzinę i zobaczcie się na mapie."
       welcome_to_dawarich: Witamy w Dawarich!
       your_map_starts_with_your_next_step_literally: Twoja mapa zaczyna się od kolejnego kroku - dosłownie.
       start_tracking_now: Zacznij śledzić teraz
@@ -988,12 +1007,6 @@ pl:
         min_6: 5 min
         min_7: 120 min
         how_long_you_must_stay_for_a_city_to_count: Jak długo musisz pozostać, aby miasto zostało uwzględnione w statystykach
-        max_gap_between_points: Maksymalna przerwa między punktami
-        min_8: 120 min
-        min_9: 30 min
-        min_10: 195 min
-        min_11: 360 min
-        max_gap_between_points_before_assuming_you_left_the_city: Maksymalna przerwa między punktami, po której uznajemy, że opuściłeś miasto
         min_12: 720 min
         live_mode: Tryb na żywo
         show_new_points_in_real_time: Pokaż nowe punkty w czasie rzeczywistym
@@ -2625,6 +2638,7 @@ pl:
       source:
         manual: Ręcznie
         photon: Photon
+        gpx_waypoint: 'Punkt trasy GPX'
     shared_link:
       resource_type:
         trip: Podróż
@@ -2965,6 +2979,9 @@ pl:
           failed_to_delete_visit: Nie udało się usunąć wizyty
           visit_not_found: Nie znaleziono wizyty
           failed_to_create_visit: Nie udało się utworzyć wizyty
+          no_visits_provided: "Nie przekazano żadnych wizyt"
+          invalid_visit_payload: "Wpis wizyty musi być obiektem"
+          too_many_visits_maximum_is_limit_per_batch: "Zbyt wiele wizyt, maksymalnie %{limit} na partię"
       record_not_found: Nie znaleziono rekordu
       complete_your_subscription_to_continue: Dokończ subskrypcję, aby kontynuować.
       this_feature_requires_a_pro_plan: Ta funkcja wymaga planu Pro.
@@ -3292,6 +3309,8 @@ pl:
     declined: odrzucona
   mailers:
     family:
+      plan_lapsed:
+        subject: "👪 Plan Family dla %{family} dobiegł końca"
       invitation:
         subject: "\U0001F389 Otrzymujesz zaproszenie do rodziny %{family} w Dawarich!"
       location_request:
@@ -3371,6 +3390,10 @@ pl:
         export_name_failed_message_stacktrace_n: 'Eksport "%{name}" nie powiódł się: %{message}, stacktrace: %{backtrace}'
         unsupported_file_format: 'Nieobsługiwany format pliku: %{format}'
     families:
+      auto_create:
+        default_name: Moja rodzina
+        notification_title: Twój plan Family jest gotowy
+        notification_content: 'Przygotowaliśmy dla Ciebie "%{name}". Zaproś maksymalnie %{seats} osób, a zobaczycie się na mapie.'
       accept_invitation:
         you_must_leave_your_current_family_before_joining_a_new: Musisz opuścić obecną rodzinę, zanim dołączysz do nowej.
         this_invitation_is_no_longer_valid_or_has_expired: To zaproszenie nie jest już ważne lub wygasło.
@@ -3481,12 +3504,21 @@ pl:
     imports:
       bulk_insertable:
         importer_name_import_error: Błąd importu %{importer_name}
+      geojson_importer:
+        points_skipped_title: Import pominął punkty bez znacznika czasu
+        points_skipped: 'Twój plik %{name} zawierał %{skipped} punktów bez znacznika czasu; zostały pominięte. Punkty GeoJSON wymagają właściwości "timestamp" lub czwartej wartości współrzędnej [lon, lat, altitude, time], aby zostały zaimportowane.'
       create:
         import_post_processing_incomplete: Końcowe przetwarzanie importu nie zostało ukończone
         import_completed_with_no_new_points: Import zakończony bez nowych punktów
         import_completed_with_no_points: Import zakończony bez punktów
         import_failed: Import nie powiódł się
-        zero_points_with_timestamps: Plik %{name} zaimportował 0 punktów. Nie znaleziono punktów lokalizacji ze znacznikami czasu. Import GPX i KML wymaga wartości &lt;time&gt;/&lt;when&gt; dla każdego punktu.
+        zero_points_with_timestamps: Plik %{name} zaimportował 0 punktów. Nie znaleziono punktów lokalizacji ze znacznikami czasu. Import GPX, KML i GeoJSON wymaga wartości czasu dla każdego punktu (&lt;time&gt;, &lt;when&gt; lub właściwości timestamp).
+        zero_points_waypoints_only:
+          one: 'Twój plik %{name} zaimportował 0 punktów. Zawiera %{count} punkt nawigacyjny (ulubione lub zapisane miejsce), ale nie zawiera zarejestrowanej trasy. Dawarich obecnie importuje tylko zarejestrowane trasy.'
+          other: 'Twój plik %{name} zaimportował 0 punktów. Zawiera %{count} punktów nawigacyjnych (ulubione lub zapisane miejsca), ale nie zawiera zarejestrowanej trasy. Dawarich obecnie importuje tylko zarejestrowane trasy.'
+        zero_points_route_only:
+          one: 'Twój plik %{name} zaimportował 0 punktów. Zawiera zaplanowaną trasę z %{count} punktem, ale nie zawiera zarejestrowanej trasy. Dawarich importuje zarejestrowane trasy, a nie zaplanowane.'
+          other: 'Twój plik %{name} zaimportował 0 punktów. Zawiera zaplanowaną trasę z %{count} punktami, ale nie zawiera zarejestrowanej trasy. Dawarich importuje zarejestrowane trasy, a nie zaplanowane.'
         zero_points: Plik %{name} zaimportował 0 punktów. Nie znaleziono w nim nowych punktów lokalizacji.
         import_failed_self_hosted: 'Import "%{name}" nie powiódł się: %{message}, stacktrace: %{backtrace}'
         import_failed_cloud: 'Import "%{name}" nie powiódł się, skontaktuj się z nami: hi@dawarich.com'
@@ -3781,6 +3813,7 @@ pl:
       failed_to_reload_routes: Nie udało się odświeżyć tras
       failed_to_load_scratch_layer: Nie udało się załadować warstwy scratch
       failed_to_load_photos: Nie udało się załadować zdjęć
+      some_photo_sources_unavailable: "Niektóre źródła zdjęć są niedostępne: %{sources}"
       failed_to_load_areas: Nie udało się załadować obszarów
       failed_to_load_tracks: Nie udało się załadować odcinków
       failed_to_load_track_details: Nie udało się wczytać szczegółów odcinka

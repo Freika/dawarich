@@ -68,6 +68,39 @@ RSpec.describe Places::NameFetcher do
         service.call
       end
 
+      context 'when a device-named place gets a real address' do
+        let(:place) do
+          create(
+            :place,
+            name: 'Visited place',
+            city: nil,
+            country: nil,
+            geodata: {},
+            lonlat: 'POINT(10.0 10.0)'
+          )
+        end
+
+        it 'renames the place' do
+          expect { service.call }.to change { place.reload.name }.from('Visited place').to('Central Park, New York')
+        end
+
+        it 'propagates the new name to a visit that carried the old place name' do
+          visit = create(:visit, place: place, user: place.user, name: 'Visited place')
+
+          service.call
+
+          expect(visit.reload.name).to eq('Central Park, New York')
+        end
+
+        it 'leaves a visit the user renamed independently alone' do
+          visit = create(:visit, place: place, user: place.user, name: 'Dentist')
+
+          service.call
+
+          expect(visit.reload.name).to eq('Dentist')
+        end
+      end
+
       context 'when the name is locked by the user' do
         let(:place) do
           create(

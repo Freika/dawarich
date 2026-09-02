@@ -18,7 +18,7 @@ RSpec.describe 'Api::V1::Users', type: :request do
 
       json = JSON.parse(response.body, symbolize_names: true)
 
-      expect(json.keys).to eq([:user])
+      expect(json.keys).to match_array(%i[user features])
       expect(json[:user].keys).to match_array(
         %i[email theme created_at updated_at settings]
       )
@@ -52,6 +52,66 @@ RSpec.describe 'Api::V1::Users', type: :request do
         body = JSON.parse(response.body)
         expect(body['error']).to eq('payment_required')
         expect(body['resume_url']).to be_present
+      end
+    end
+    describe 'features' do
+      it 'exposes the feature flags at the top level, not inside subscription' do
+        get '/api/v1/users/me', headers: headers
+
+        json = JSON.parse(response.body, symbolize_names: true)
+
+        expect(json[:features].keys).to match_array(%i[family reverse_geocoding])
+        expect(json.dig(:subscription, :features)).to be_nil
+      end
+
+      context 'when self-hosted' do
+        before { allow(DawarichSettings).to receive(:self_hosted?).and_return(true) }
+
+        it 'grants the family feature regardless of plan' do
+          user.update!(plan: :lite)
+
+          get '/api/v1/users/me', headers: headers
+
+          json = JSON.parse(response.body, symbolize_names: true)
+          expect(json[:features][:family]).to be true
+          expect(json[:subscription]).to be_nil
+        end
+      end
+
+      context 'when on cloud' do
+        before { allow(DawarichSettings).to receive(:self_hosted?).and_return(false) }
+
+        it 'withholds the family feature from a user without the plan' do
+          user.update!(plan: :pro)
+
+          get '/api/v1/users/me', headers: headers
+
+          json = JSON.parse(response.body, symbolize_names: true)
+          expect(json[:features][:family]).to be false
+        end
+
+        it 'grants the family feature to a user holding the family plan' do
+          user.update!(plan: :family)
+
+          get '/api/v1/users/me', headers: headers
+
+          json = JSON.parse(response.body, symbolize_names: true)
+          expect(json[:features][:family]).to be true
+        end
+
+        it 'grants the family feature to a member inheriting it from the family owner' do
+          owner = create(:user, plan: :family, active_until: 1.year.from_now)
+          family = create(:family, creator: owner)
+          create(:family_membership, user: owner, family: family, role: :owner)
+          create(:family_membership, user: user, family: family, role: :member)
+          family.update!(access_until: 1.year.from_now)
+          user.update!(plan: :pro)
+
+          get '/api/v1/users/me', headers: headers
+
+          json = JSON.parse(response.body, symbolize_names: true)
+          expect(json[:features][:family]).to be true
+        end
       end
     end
   end

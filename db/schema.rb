@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_27_210000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_01_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -127,6 +127,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_27_210000) do
   end
 
   create_table "families", force: :cascade do |t|
+    t.datetime "access_until"
     t.datetime "created_at", null: false
     t.bigint "creator_id", null: false
     t.string "name", limit: 50, null: false

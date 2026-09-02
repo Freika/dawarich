@@ -30,7 +30,7 @@ module Stats
                                        'EXTRACT(YEAR FROM to_timestamp(timestamp) AT TIME ZONE ?)::int AS year, ' \
                                        'EXTRACT(MONTH FROM to_timestamp(timestamp) AT TIME ZONE ?)::int AS month ' \
                                        'FROM points WHERE user_id = ? AND timestamp BETWEEN ? AND ?',
-                                       user.timezone, user.timezone, user_id, start_ts, end_ts
+                                       user.timezone_iana, user.timezone_iana, user_id, start_ts, end_ts
                                      ])
 
       Point.connection.select_rows(sql).map { |y, m| [y.to_i, m.to_i] }
