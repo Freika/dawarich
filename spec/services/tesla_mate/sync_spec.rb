@@ -232,6 +232,47 @@ RSpec.describe TeslaMate::Sync do
     )
   end
 
+  it 'retains recovery state when intake fails after persisting points' do
+    timestamp = Time.iso8601('2026-09-01T10:00:00Z').to_i
+    stub_request(:get, "#{base_url}/api/v1/cars")
+      .to_return(status: 200, body: { data: { cars: [{ car_id: 1 }] } }.to_json)
+    stub_drives(car_id: 1, drive_id: 11, unit: 'km')
+    stub_drive(car_id: 1, drive_id: 11, unit: 'km', detail: {
+                 detail_id: 111, date: '2026-09-01T10:00:00Z',
+                 latitude: 52.52, longitude: 13.405, speed: 10
+               })
+    intake_calls = 0
+    allow(Points::Intake).to receive(:call).and_wrap_original do |original, **arguments|
+      rows = original.call(**arguments)
+      intake_calls += 1
+      raise 'counter update failed' if intake_calls == 1
+
+      rows
+    end
+    backfill = instance_double(Tracks::BackfillScheduler, call: nil)
+    allow(Tracks::RealtimeDebouncer).to receive(:new)
+      .with(user.id).and_return(instance_double(Tracks::RealtimeDebouncer, trigger: nil))
+    allow(Tracks::BackfillScheduler).to receive(:new).with(user.id, [timestamp, timestamp]).and_return(backfill)
+
+    expect { described_class.new(user).call }.to raise_error('counter update failed')
+
+    expect(user.points.count).to eq(1)
+    expect(user.reload.settings).to include(
+      'teslamate_processing_pending' => true,
+      'teslamate_processing_pending_url' => base_url
+    )
+
+    expect { described_class.new(user.reload).call }
+      .to have_enqueued_job(Points::AnomalyFilterJob).with(user.id, timestamp, timestamp)
+
+    expect(Tracks::BackfillScheduler).to have_received(:new).once
+    expect(user.reload.settings).to include(
+      'teslamate_processing_pending' => false,
+      'teslamate_processing_pending_url' => nil,
+      'teslamate_last_synced_url' => base_url
+    )
+  end
+
   it 'stops fetching drive details after the operation failure budget is spent' do
     stub_request(:get, "#{base_url}/api/v1/cars")
       .to_return(status: 200, body: { data: { cars: [{ car_id: 1 }] } }.to_json)

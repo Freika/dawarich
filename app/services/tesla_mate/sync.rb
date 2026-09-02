@@ -23,6 +23,7 @@ module TeslaMate
       cutoff = Time.current.utc
       failures = []
       counts = { cars: 0, drives: 0, points: 0, skipped_points: 0 }
+      import_completed = false
 
       begin
         client.cars.each do |car|
@@ -30,9 +31,10 @@ module TeslaMate
           counts[:cars] += 1
           sync_car(car_id, cutoff, counts, failures)
         end
+        import_completed = true
       ensure
         finalize_historical_import
-        clear_processing_pending
+        clear_processing_pending if import_completed
       end
 
       raise IncompleteError, incomplete_message(failures) if failures.any?
