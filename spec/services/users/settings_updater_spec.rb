@@ -79,5 +79,56 @@ RSpec.describe Users::SettingsUpdater do
         expect(user.reload.settings['timezone']).not_to eq('Not/AZone')
       end
     end
+
+    context 'when the city threshold changes' do
+      it 'recalculates existing stats so the new value is reflected' do
+        allow(user).to receive(:years_tracked).and_return([{ year: 2026, months: %w[Mar] }])
+
+        expect { described_class.new(user, 'min_minutes_spent_in_city' => 15).call }
+          .to have_enqueued_job(Stats::CalculatingJob).with(user.id, 2026, 3)
+      end
+
+      it 'does not recalculate when the value is unchanged' do
+        user.update!(settings: user.settings.merge('min_minutes_spent_in_city' => 15))
+
+        expect(Stats::EnqueueFullRecalculation).not_to receive(:new)
+
+        described_class.new(user, 'min_minutes_spent_in_city' => 15).call
+      end
+
+      it 'does not recalculate when a user with no stored value is sent the default' do
+        user.update!(settings: user.settings.except('min_minutes_spent_in_city'))
+        allow(user).to receive(:years_tracked).and_return([{ year: 2026, months: %w[Mar] }])
+
+        expect { described_class.new(user, 'min_minutes_spent_in_city' => 60).call }
+          .not_to have_enqueued_job(Stats::CalculatingJob)
+      end
+
+      it 'recalculates when a blank value drops the effective threshold' do
+        allow(user).to receive(:years_tracked).and_return([{ year: 2026, months: %w[Mar] }])
+
+        expect { described_class.new(user, 'min_minutes_spent_in_city' => '').call }
+          .to have_enqueued_job(Stats::CalculatingJob).with(user.id, 2026, 3)
+      end
+
+      it 'triggers reclassification and stats recalculation independently' do
+        allow(user).to receive(:years_tracked).and_return([{ year: 2026, months: %w[Mar] }])
+
+        expect do
+          described_class.new(user,
+                              'enabled_transportation_modes' => %w[walking cycling],
+                              'min_minutes_spent_in_city' => 15).call
+        end.to have_enqueued_job(TransportationModes::UserReclassifyJob).with(user.id)
+                                                                        .and have_enqueued_job(Stats::CalculatingJob).with(
+                                                                          user.id, 2026, 3
+                                                                        )
+      end
+
+      it 'does not recalculate for unrelated settings' do
+        expect(Stats::EnqueueFullRecalculation).not_to receive(:new)
+
+        described_class.new(user, 'route_opacity' => 0.7).call
+      end
+    end
   end
 end

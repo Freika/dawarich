@@ -1122,6 +1122,7 @@ fr:
       this_import_format_doesn_t_carry_visits_named_places_or: Ce format d'importation
         ne contient pas de visites, de lieux nommés ou de modes de transport, il n'y
         a donc rien à extraire en plus.
+      this_gpx_file_holds_no_waypoints: "Ce fichier GPX ne contient que des points de trace enregistrés, il n'y a donc aucun point de repère à importer comme lieux."
       extracted: Extraits
       visits: visites,
       places: lieux,
@@ -1741,13 +1742,6 @@ fr:
         min_7: 120min
         how_long_you_must_stay_for_a_city_to_count: Combien de temps vous devez rester
           dans une ville pour qu'elle soit comptée dans les statistiques
-        max_gap_between_points: Écart maximal entre les points
-        min_8: 120 min
-        min_9: 30min
-        min_10: 195min
-        min_11: 360min
-        max_gap_between_points_before_assuming_you_left_the_city: Écart maximal entre
-          les points avant de considérer que vous avez quitté la ville
         min_12: 720min
         live_mode: Mode en direct
         show_new_points_in_real_time: Afficher les nouveaux points en temps réel
@@ -3619,6 +3613,7 @@ fr:
       source:
         manual: Manuel
         photon: Photon
+        gpx_waypoint: 'Point de repère GPX'
     shared_link:
       resource_type:
         trip: Voyage
@@ -4588,6 +4583,12 @@ fr:
           Aucun point de localisation horodaté n'a été trouvé. Les importations GPX,
           KML et GeoJSON exigent une valeur de temps pour chaque coordonnée (&lt;time&gt;,
           &lt;when&gt; ou une propriété timestamp).
+        zero_points_waypoints_only:
+          one: 'Votre fichier %{name} a importé 0 point. Il contient %{count} point de repère (un favori ou lieu enregistré) mais aucune trace enregistrée. Dawarich n''importe actuellement que les traces.'
+          other: 'Votre fichier %{name} a importé 0 point. Il contient %{count} points de repère (favoris ou lieux enregistrés) mais aucune trace enregistrée. Dawarich n''importe actuellement que les traces.'
+        zero_points_route_only:
+          one: 'Votre fichier %{name} a importé 0 point. Il contient un itinéraire planifié de %{count} point, mais aucune trace enregistrée. Dawarich importe les traces enregistrées, pas les itinéraires planifiés.'
+          other: 'Votre fichier %{name} a importé 0 point. Il contient un itinéraire planifié de %{count} points, mais aucune trace enregistrée. Dawarich importe les traces enregistrées, pas les itinéraires planifiés.'
         zero_points: Votre fichier « %{name} » n'a importé aucun point. Aucun nouveau
           point de localisation n'a été trouvé dans ce fichier.
         import_failed_self_hosted: 'L''importation « %{name} » a échoué : %{message},
@@ -5002,6 +5003,7 @@ fr:
       failed_to_reload_routes: Échec du rechargement des itinéraires
       failed_to_load_scratch_layer: Échec du chargement de la carte à gratter
       failed_to_load_photos: Échec du chargement des photos
+      some_photo_sources_unavailable: "Certaines sources de photos sont indisponibles : %{sources}"
       failed_to_load_areas: Échec du chargement des zones
       failed_to_load_tracks: Échec du chargement des trajets
       failed_to_load_track_details: Échec du chargement des détails du trajet

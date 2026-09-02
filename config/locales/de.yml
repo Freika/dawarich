@@ -551,6 +551,7 @@ de:
     extraction_card:
       additional_data: Zusätzliche Daten
       this_import_format_doesn_t_carry_visits_named_places_or: Dieses Importformat enthält keine Aufenthalte, benannten Orte oder Verkehrsmittel, also gibt es nichts zusätzlich zu extrahieren.
+      this_gpx_file_holds_no_waypoints: 'Diese GPX-Datei enthält nur aufgezeichnete Trackpunkte, also gibt es keine Wegpunkte, die als Orte importiert werden könnten.'
       extracted: Extrahiert
       visits: Aufenthalte,
       places: Orte,
@@ -1064,12 +1065,6 @@ de:
         min_6: 5 min
         min_7: 120 min
         how_long_you_must_stay_for_a_city_to_count: Wie lange du in einer Stadt bleiben musst, damit sie in den Statistiken gezählt wird
-        max_gap_between_points: Max. Zeitabstand zwischen Punkten
-        min_8: 120 min
-        min_9: 30 min
-        min_10: 195 min
-        min_11: 360 min
-        max_gap_between_points_before_assuming_you_left_the_city: Maximaler Zeitabstand zwischen Punkten, bevor angenommen wird, dass du die Stadt verlassen hast
         min_12: 720 min
         live_mode: Live-Modus
         show_new_points_in_real_time: Neue Punkte in Echtzeit anzeigen
@@ -2660,6 +2655,7 @@ de:
       source:
         manual: Manuell
         photon: Photon
+        gpx_waypoint: 'GPX-Wegpunkt'
     shared_link:
       resource_type:
         trip: Reise
@@ -3547,6 +3543,12 @@ de:
         unsupported_source: 'Nicht unterstützte Quelle: %{source}'
         zip_unclassified: Zip-Inhalt konnte nicht klassifiziert werden – Datei könnte beschädigt sein
         zero_points_with_timestamps: "Deine Datei %{name} hat 0 Punkte importiert. Es wurden keine Standortpunkte mit Zeitstempeln gefunden. GPX-, KML- und GeoJSON-Importe benötigen für jede Koordinate einen eigenen Zeitwert (&lt;time&gt;, &lt;when&gt; oder eine timestamp-Eigenschaft)."
+        zero_points_waypoints_only:
+          one: 'Deine Datei %{name} hat 0 Punkte importiert. Sie enthält %{count} Wegpunkt (einen Favoriten oder gespeicherten Ort), aber keine aufgezeichnete Strecke. Dawarich importiert derzeit nur Strecken.'
+          other: 'Deine Datei %{name} hat 0 Punkte importiert. Sie enthält %{count} Wegpunkte (Favoriten oder gespeicherte Orte), aber keine aufgezeichnete Strecke. Dawarich importiert derzeit nur Strecken.'
+        zero_points_route_only:
+          one: 'Deine Datei %{name} hat 0 Punkte importiert. Sie enthält eine geplante Route mit %{count} Punkt, aber keine aufgezeichnete Strecke. Dawarich importiert aufgezeichnete Strecken, keine geplanten Routen.'
+          other: 'Deine Datei %{name} hat 0 Punkte importiert. Sie enthält eine geplante Route mit %{count} Punkten, aber keine aufgezeichnete Strecke. Dawarich importiert aufgezeichnete Strecken, keine geplanten Routen.'
         zero_points: "Deine Datei %{name} hat 0 Punkte importiert. In dieser Datei wurden keine neuen Standortpunkte gefunden."
         import_failed_self_hosted: "Import \"%{name}\" fehlgeschlagen: %{message}, Stacktrace: %{backtrace}"
         import_failed_cloud: "Import \"%{name}\" fehlgeschlagen, bitte kontaktiere uns unter hi@dawarich.com"
@@ -3826,6 +3828,7 @@ de:
       failed_to_reload_routes: Route konnte nicht neu geladen werden
       failed_to_load_scratch_layer: Rubbelkartenebene konnte nicht geladen werden
       failed_to_load_photos: Fotos konnten nicht geladen werden
+      some_photo_sources_unavailable: "Einige Fotoquellen sind nicht verfügbar: %{sources}"
       failed_to_load_areas: Gebiete konnten nicht geladen werden
       failed_to_load_tracks: Tracks konnten nicht geladen werden
       failed_to_load_track_details: Track-Details konnten nicht geladen werden

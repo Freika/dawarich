@@ -11,14 +11,15 @@ class Api::V1::Countries::VisitedCitiesController < ApiController
 
     points = current_api_user
              .points
-             .without_raw_data
+             .not_anomaly
+             .select(:id, :timestamp, :city, :country_name, :country_id, :velocity)
              .where(timestamp: start_at..end_at)
+             .order(timestamp: :asc)
 
     render json: {
       data: CountriesAndCities.new(
         points,
-        min_minutes_spent_in_city: current_api_user.safe_settings.min_minutes_spent_in_city,
-        max_gap_minutes: current_api_user.safe_settings.max_gap_minutes_in_city
+        min_minutes_spent_in_city: current_api_user.safe_settings.min_minutes_spent_in_city
       ).call
     }
   end

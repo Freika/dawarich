@@ -509,6 +509,7 @@ en:
     extraction_card:
       additional_data: Additional data
       this_import_format_doesn_t_carry_visits_named_places_or: This import format doesn't carry visits, named places, or transportation modes, so there's nothing additional to extract.
+      this_gpx_file_holds_no_waypoints: 'This GPX file holds only recorded track points, so there are no waypoints to import as places.'
       extracted: Extracted
       visits: visits,
       places: places,
@@ -1022,12 +1023,6 @@ en:
         min_6: 5min
         min_7: 120min
         how_long_you_must_stay_for_a_city_to_count: How long you must stay for a city to count in statistics
-        max_gap_between_points: Max Gap Between Points
-        min_8: 120 min
-        min_9: 30min
-        min_10: 195min
-        min_11: 360min
-        max_gap_between_points_before_assuming_you_left_the_city: Max gap between points before assuming you left the city
         min_12: 720min
         live_mode: Live Mode
         show_new_points_in_real_time: Show new points in real-time
@@ -2606,6 +2601,7 @@ en:
       source:
         manual: Manual
         photon: Photon
+        gpx_waypoint: 'GPX waypoint'
     shared_link:
       resource_type:
         trip: Trip
@@ -3468,6 +3464,12 @@ en:
         import_completed_with_no_points: Import completed with no points
         import_failed: Import failed
         zero_points_with_timestamps: Your file %{name} imported 0 points. No location points with timestamps were found. GPX, KML and GeoJSON imports require a per-point time value (&lt;time&gt;, &lt;when&gt;, or a timestamp property).
+        zero_points_waypoints_only:
+          one: 'Your file %{name} imported 0 points. It contains %{count} waypoint (a favorite or saved place) but no recorded track. Dawarich currently imports tracks only.'
+          other: 'Your file %{name} imported 0 points. It contains %{count} waypoints (favorites or saved places) but no recorded track. Dawarich currently imports tracks only.'
+        zero_points_route_only:
+          one: 'Your file %{name} imported 0 points. It contains a planned route with %{count} point, but no recorded track. Dawarich imports recorded tracks, not planned routes.'
+          other: 'Your file %{name} imported 0 points. It contains a planned route with %{count} points, but no recorded track. Dawarich imports recorded tracks, not planned routes.'
         zero_points: Your file %{name} imported 0 points. No new location points were found in this file.
         import_failed_self_hosted: 'Import "%{name}" failed: %{message}, stacktrace: %{backtrace}'
         import_failed_cloud: 'Import "%{name}" failed, please contact us at hi@dawarich.com'
@@ -3765,6 +3767,7 @@ en:
       failed_to_reload_routes: Failed to reload routes
       failed_to_load_scratch_layer: Failed to load scratch layer
       failed_to_load_photos: Failed to load photos
+      some_photo_sources_unavailable: "Some photo sources are unavailable: %{sources}"
       failed_to_load_areas: Failed to load areas
       failed_to_load_tracks: Failed to load tracks
       failed_to_load_track_details: Failed to load track details

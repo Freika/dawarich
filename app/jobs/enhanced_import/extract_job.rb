@@ -80,7 +80,7 @@ module EnhancedImport
     def process_stream(import)
       counts = Hash.new(0)
       user = import.user
-      place_writer = Writers::PlaceWriter.new(user, import)
+      place_writer = Writers::PlaceWriter.new(user, import, source: place_source_for(import))
       visit_writer = Writers::VisitWriter.new(user, import)
       track_writer = Writers::TrackWriter.new(user, import)
       segment_writer = Writers::SegmentWriter.new
@@ -113,6 +113,10 @@ module EnhancedImport
       end
 
       counts
+    end
+
+    def place_source_for(import)
+      import.gpx? ? :gpx_waypoint : :photon
     end
 
     def trust_source?(import)

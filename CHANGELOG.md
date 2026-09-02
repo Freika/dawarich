@@ -8,13 +8,24 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
+- GPX waypoints are now imported as places, so a `favourites.gpx` exported from OsmAnd+ and similar apps no longer imports as nothing at all. Each waypoint's category becomes a tag, re-importing an updated file does not duplicate anything, and waypoints never become timeline points, so they do not affect your distance or statistics. (#1261)
 - The API now accepts visits in batches: `POST /api/v1/visits/batch` takes up to 100 visits in one request and reports each one's outcome separately, so a single rejected visit no longer costs the whole sync. The mobile apps previously had to send one request per detected visit.
 - Geocoding is now configured for the whole instance rather than per user, and admins can change it in Instance settings without a redeploy. Environment variables still win: a variable that is set pins its value, and the field is shown read-only beside the variable's name.
 
+### Changed
+
+- The "Max Gap Between Points" setting has been removed. It existed to compensate for the city-duration bug fixed below, and its lowest values were the ones that hid cities; how long a tracking silence still counts as staying put is now handled consistently for everyone: a silence of up to seven days that starts and ends in the same city counts as time spent there, unless points recorded in between show you moving at flight speed, which ends the stay. "Min Minutes in City" is unchanged.
+
 ### Fixed
 
+- Cities where you stayed but your phone reported infrequently are counted again. Time spent in a city was measured from how often your device sent points rather than from how long you were there, so a stationary phone saving battery could be credited no time at all and drop the city — including your home city — from statistics and from the map's visited-cities view. Recalculated months will generally show higher numbers than before. **Existing months keep their old numbers until recalculated: press "Update stats" on the Stats page.** (#2207)
+- Changing "Min Minutes in City" now recalculates your existing statistics, instead of leaving old numbers in place until you refreshed them by hand (#2207).
+- A GPX file holding only waypoints (such as an OsmAnd+ `favourites.gpx`) now says so when it imports 0 points, instead of reporting that the file lacks per-point timestamps. That advice was wrong: OsmAnd waypoints do carry a time, and adding more timestamps never helped. (#1261)
 - Shared link addresses are now always three words. One hyphenated entry in the word list could produce a four-word address.
+- Photos are now matched to a trip or map range on the photo's UTC timestamp rather than its local wall-clock time. Previously a trip could hide photos taken in its final hours, drop one taken exactly on its start or end boundary, or — when it began or ended near midnight — lose photos before they were even fetched. A photo with a missing or unreadable timestamp is now skipped instead of failing the whole fetch. (#1137)
+- A photo layer that fails to load now tells you so instead of quietly showing nothing. An unreachable or erroring Immich or PhotoPrism was previously indistinguishable from simply having no photos in range; when one of several sources fails, the photos that were retrieved are still shown alongside a warning. (#1137)
 - Places created from a suggested visit now get their real address. Visits detected on a phone arrive with a generated name such as "Visited place"; that name is no longer locked, reverse geocoding is queued for the new place, and the resolved address now replaces the generated name on the visit as well as the place.
+- Stats recalculation no longer stops for every remaining user when one user's stats fail to calculate.
 
 ## [1.14.1] - 2026-08-31, Berlin
 

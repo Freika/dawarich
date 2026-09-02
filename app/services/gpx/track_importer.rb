@@ -27,7 +27,7 @@ class Gpx::TrackImporter
 
   def call
     batch = []
-    each_trkpt do |point_hash, tracker_id|
+    handler = each_trkpt do |point_hash, tracker_id|
       data = prepare_point(point_hash, tracker_id)
       next unless data
 
@@ -38,6 +38,7 @@ class Gpx::TrackImporter
       batch = []
     end
     flush(batch) unless batch.empty?
+    record_element_counts(handler)
   ensure
     cleanup_temp_file
   end
@@ -50,7 +51,19 @@ class Gpx::TrackImporter
       seek_to_document_start(io)
       handler = TrkptStreamHandler.new(import.id, import.name, &block)
       Nokogiri::XML::SAX::Parser.new(handler).parse(io)
+      handler
     end
+  end
+
+  def record_element_counts(handler)
+    counts = {
+      'waypoints_seen' => handler.waypoint_count,
+      'trackpoints_seen' => handler.trackpoint_count,
+      'route_points_seen' => handler.route_point_count
+    }.select { |_, value| value.positive? }
+    return if counts.empty?
+
+    import.update!(raw_data: (import.raw_data || {}).merge(counts))
   end
 
   def seek_to_document_start(io)
@@ -98,11 +111,16 @@ class Gpx::TrackImporter
   end
 
   class TrkptStreamHandler < Nokogiri::XML::SAX::Document
+    attr_reader :waypoint_count, :trackpoint_count, :route_point_count
+
     def initialize(import_id, import_name, &block)
       super()
       @import_id = import_id
       @import_name = import_name
       @callback = block
+      @waypoint_count = 0
+      @trackpoint_count = 0
+      @route_point_count = 0
       @stack = nil
       @text = +''
       @trk_index = -1
@@ -126,6 +144,12 @@ class Gpx::TrackImporter
       when 'trkseg'
         @seg_index += 1
         return
+      when 'wpt'
+        @waypoint_count += 1
+        return
+      when 'rtept'
+        @route_point_count += 1
+        return
       end
 
       if @capturing_trk_field
@@ -142,6 +166,7 @@ class Gpx::TrackImporter
 
       attrs_h = attrs.each_with_object({}) { |a, h| h[a.localname] = a.value }
       if name == 'trkpt' && @stack.nil?
+        @trackpoint_count += 1
         @stack = [attrs_h]
         @text = +''
       elsif @stack
