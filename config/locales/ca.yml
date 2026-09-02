@@ -1,4 +1,20 @@
 ca:
+  admin:
+    settings:
+      show:
+        title: "Configuració de la instància"
+        intro: "Aquesta configuració s'aplica a tota la instància. Un paràmetre definit per una variable d'entorn es mostra només de lectura: elimina la variable per editar-lo aquí."
+        save: "Desa la configuració"
+        secret_set: "Hi ha un valor desat"
+        pinned_hint: "Fixat per %{variable}"
+        clear_secret: "Esborra el valor desat"
+      update:
+        saved: "Configuració desada."
+        pinned: "Rebutjat: fixat per %{variables}."
+      source:
+        env: "de l'entorn"
+        stored: "desat aquí"
+        default: "predeterminat"
   activerecord:
     errors:
       models:
@@ -1657,6 +1673,7 @@ ca:
         save_settings: Desa la configuració
     geocoding:
       show:
+        instance_managed_notice: "La geocodificació es gestiona per a tota la instància. Un administrador pot canviar-la a la configuració de la instància."
         title: "Geocodificació"
         provider: "Proveïdor de geocodificació"
         provider_hint: "El proveïdor que s'utilitza per a la geocodificació inversa dels teus punts i per a la cerca de llocs i ubicacions."
@@ -1695,6 +1712,7 @@ ca:
         test: "Prova el teu proveïdor"
         test_hint: "Desa primer la configuració i després fes la prova. La prova executa una cerca amb la configuració del teu propi proveïdor, fins i tot quan hi ha variables d'entorn actives."
       update:
+        instance_managed: "La geocodificació es gestiona per a tota la instància i no es pot canviar aquí."
         updated: "S'ha actualitzat la configuració de geocodificació."
         disabled: "S'ha desactivat la geocodificació."
         invalid_provider: "Proveïdor de geocodificació desconegut."

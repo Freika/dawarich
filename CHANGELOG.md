@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - GPX waypoints are now imported as places, so a `favourites.gpx` exported from OsmAnd+ and similar apps no longer imports as nothing at all. Each waypoint's category becomes a tag, re-importing an updated file does not duplicate anything, and waypoints never become timeline points, so they do not affect your distance or statistics. (#1261)
 - The API now accepts visits in batches: `POST /api/v1/visits/batch` takes up to 100 visits in one request and reports each one's outcome separately, so a single rejected visit no longer costs the whole sync. The mobile apps previously had to send one request per detected visit.
+- Geocoding is now configured for the whole instance rather than per user, and admins can change it in Instance settings without a redeploy. Environment variables still win: a variable that is set pins its value, and the field is shown read-only beside the variable's name.
 
 ### Changed
 

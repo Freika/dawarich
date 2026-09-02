@@ -1,5 +1,21 @@
 ---
 fr:
+  admin:
+    settings:
+      show:
+        title: "Paramètres de l'instance"
+        intro: "Ces paramètres s'appliquent à toute l'instance. Un paramètre fourni par une variable d'environnement est affiché en lecture seule : supprimez la variable pour le modifier ici."
+        save: "Enregistrer les paramètres"
+        secret_set: "Une valeur est enregistrée"
+        pinned_hint: "Fixé par %{variable}"
+        clear_secret: "Effacer la valeur enregistrée"
+      update:
+        saved: "Paramètres enregistrés."
+        pinned: "Refusé : fixé par %{variables}."
+      source:
+        env: "depuis l'environnement"
+        stored: "enregistré ici"
+        default: "par défaut"
   route_videos:
     route_video:
       download: "Télécharger le MP4"
@@ -2139,6 +2155,7 @@ fr:
   settings:
     geocoding:
       show:
+        instance_managed_notice: "Le géocodage est géré pour toute l'instance. Un administrateur peut le modifier dans les paramètres de l'instance."
         title: Geocoding
         provider: Geocoding provider
         provider_hint: The provider used for reverse geocoding your points and for place and location search.
@@ -2177,6 +2194,7 @@ fr:
         test: Test my provider
         test_hint: Save your settings first, then test. The test runs one lookup against your own provider configuration, even when environment variables are active.
       update:
+        instance_managed: "Le géocodage est géré pour toute l'instance et ne peut pas être modifié ici."
         updated: Geocoding settings updated.
         disabled: Geocoding disabled.
         invalid_provider: Unknown geocoding provider.

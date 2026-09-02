@@ -29,6 +29,10 @@ Rails.application.routes.draw do
 
   authenticate :user, ->(u) { u.admin? } do
     mount Flipper::UI.app(Flipper) => '/admin/flipper'
+
+    namespace :admin do
+      resource :settings, only: %i[show update]
+    end
   end
 
   # We want to return a nice error message if the user is not authorized to access Sidekiq

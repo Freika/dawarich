@@ -6,10 +6,62 @@ module Geocoding
 
     attr_reader :source, :provider, :host, :api_key, :use_https, :rps
 
+    # Geocoding is an Instance setting: one provider serves everyone on a
+    # deployment. Behind the flag it resolves that way. With the flag off the
+    # historical ENV-or-per-user split is preserved byte for byte, which is the
+    # rollback path if the rerouting misbehaves on someone's instance.
     def self.for(user)
+      return resolved_config if InstanceSettings.enabled?
+
       return env_config if DawarichSettings.reverse_geocoding_enabled?
 
       for_user_settings(user)
+    end
+
+    def self.resolved_config
+      attributes = resolved_provider_attributes
+      return disabled_config if attributes.blank?
+
+      new(**attributes)
+    end
+
+    # Walks the same provider chain as the ENV path, but each candidate carries
+    # the source that supplied it so the admin page can say whether a value is
+    # Pinned by a variable or merely stored.
+    def self.resolved_provider_attributes
+      rps = InstanceSettings::Resolver.value(:reverse_geocoding_rps)
+
+      photon_host = InstanceSettings::Resolver.get(:photon_api_host)
+      if photon_host.value.present?
+        return { source: photon_host.source, provider: :photon, host: photon_host.value,
+                 api_key: InstanceSettings::Resolver.value(:photon_api_key),
+                 use_https: resolved_photon_use_https(photon_host.value), rps: rps }
+      end
+
+      geoapify_key = InstanceSettings::Resolver.get(:geoapify_api_key)
+      if geoapify_key.value.present?
+        return { source: geoapify_key.source, provider: :geoapify, api_key: geoapify_key.value, rps: rps }
+      end
+
+      nominatim_host = InstanceSettings::Resolver.get(:nominatim_api_host)
+      if nominatim_host.value.present?
+        return { source: nominatim_host.source, provider: :nominatim, host: nominatim_host.value,
+                 api_key: InstanceSettings::Resolver.value(:nominatim_api_key),
+                 use_https: InstanceSettings::Resolver.value(:nominatim_api_use_https), rps: rps }
+      end
+
+      locationiq_key = InstanceSettings::Resolver.get(:locationiq_api_key)
+      return {} if locationiq_key.value.blank?
+
+      { source: locationiq_key.source, provider: :locationiq, api_key: locationiq_key.value, rps: rps }
+    end
+
+    # Hosts that only ever answer over TLS force it on regardless of the flag,
+    # matching DawarichSettings.photon_use_https?.
+    def self.resolved_photon_use_https(host)
+      return true if PHOTON_HTTPS_ONLY_HOSTS.include?(Providers.bare_host(host))
+
+      InstanceSettings::Resolver.value(:photon_api_use_https)
     end
 
     def self.for_user_settings(user)
@@ -69,7 +121,8 @@ module Geocoding
       end
     end
 
-    private_class_method :env_config, :disabled_config, :env_provider_attributes
+    private_class_method :env_config, :disabled_config, :env_provider_attributes,
+                         :resolved_provider_attributes, :resolved_photon_use_https
 
     def initialize(source:, provider: nil, host: nil, api_key: nil, use_https: true, rps: nil)
       @source = source
@@ -87,8 +140,16 @@ module Geocoding
       source != :none
     end
 
-    def env_managed?
+    def pinned?
       source == :env
+    end
+
+    # Retained so the settings view and the integrations status service keep
+    # reading the same question they always asked.
+    alias env_managed? pinned?
+
+    def stored?
+      source == :stored
     end
 
     def komoot?

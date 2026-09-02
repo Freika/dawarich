@@ -1,0 +1,57 @@
+<%
+  definition = InstanceSettings::Registry.fetch(setting.key)
+  field_id = "instance_settings_#{setting.key}"
+  field_name = "instance_settings[#{setting.key}]"
+  # A stored secret is never echoed back into the page; the operator replaces it
+  # or leaves it alone.
+  displayed = definition.secret? ? nil : setting.value
+%>
+<div class="form-control">
+  <label class="label" for="<%= field_id %>">
+    <span class="label-text font-medium"><%= definition.env_var %></span>
+    <span class="label-text-alt text-base-content/60">
+      <%= t("admin.settings.source.#{setting.source}") %>
+    </span>
+  </label>
+
+  <% if definition.kind == :boolean %>
+    <%# A hidden field cannot be disabled, so a pinned boolean would post on
+        every save and be refused. STORE_GEODATA is set in docker/.env.example,
+        i.e. pinned on most real deployments. %>
+    <% unless setting.pinned? %>
+      <input type="hidden" name="<%= field_name %>" value="false">
+    <% end %>
+    <input type="checkbox"
+           id="<%= field_id %>"
+           name="<%= field_name %>"
+           value="true"
+           class="toggle"
+           <%= 'checked' if setting.value %>
+           <%= 'disabled' if setting.pinned? %>>
+  <% else %>
+    <input type="<%= definition.secret? ? 'password' : 'text' %>"
+           id="<%= field_id %>"
+           name="<%= field_name %>"
+           value="<%= displayed %>"
+           autocomplete="off"
+           class="input input-bordered w-full"
+           placeholder="<%= definition.secret? && setting.value.present? ? t('admin.settings.show.secret_set') : '' %>"
+           <%= 'disabled' if setting.pinned? %>>
+  <% end %>
+
+  <% if definition.secret? && setting.value.present? && !setting.pinned? %>
+    <label class="label cursor-pointer justify-start gap-2" for="<%= field_id %>_clear">
+      <input type="checkbox" id="<%= field_id %>_clear" class="checkbox checkbox-sm"
+             name="instance_settings_clear[<%= setting.key %>]" value="1">
+      <span class="label-text-alt"><%= t('admin.settings.show.clear_secret') %></span>
+    </label>
+  <% end %>
+
+  <% if setting.pinned? %>
+    <label class="label" for="<%= field_id %>">
+      <span class="label-text-alt text-base-content/60">
+        <%= t('admin.settings.show.pinned_hint', variable: definition.env_var) %>
+      </span>
+    </label>
+  <% end %>
+</div>
