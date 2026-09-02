@@ -105,4 +105,58 @@ RSpec.describe EnhancedImport::Writers::PlaceWriter do
       expect(place.tags.map(&:name)).to include('Food')
     end
   end
+
+  describe 'tag resolution' do
+    def racing_tags
+      tags = user.tags
+      allow(user).to receive(:tags).and_return(tags)
+      allow(tags).to receive(:create!) do
+        create(:tag, user: user, name: 'Food', privacy_radius_meters: 100)
+        raise ActiveRecord::RecordNotUnique, 'tags name unique'
+      end
+      tags
+    end
+
+    it 'looks a shared tag up once for a run of waypoints' do
+      create(:tag, user: user, name: 'Food')
+      run = next_run
+
+      lookups = 0
+      subscriber = ActiveSupport::Notifications.subscribe('sql.active_record') do |*, payload|
+        lookups += 1 if payload[:sql].to_s.include?('LOWER(tags.name)')
+      end
+
+      3.times { |i| run.upsert(extracted(identity: "gpx:shared#{i}", name: "Place #{i}")) }
+
+      ActiveSupport::Notifications.unsubscribe(subscriber)
+
+      expect(lookups).to eq(1)
+    end
+
+    it 'never attaches an existing privacy-zone tag' do
+      create(:tag, user: user, name: 'Food', privacy_radius_meters: 100)
+
+      place, = writer.upsert(extracted)
+
+      expect(place.reload.tags).to be_empty
+    end
+
+    it 'never attaches a privacy-zone tag that appeared while the tag was being created' do
+      racing_tags
+
+      place, = writer.upsert(extracted)
+
+      expect(user.tags.find_by(name: 'Food')).to be_privacy_zone
+      expect(place.reload.tags).to be_empty
+    end
+
+    it 'keeps the tag the race revealed instead of retrying the create for later waypoints' do
+      tags = racing_tags
+
+      writer.upsert(extracted(identity: 'gpx:race1', name: 'One'))
+      writer.upsert(extracted(identity: 'gpx:race2', name: 'Two'))
+
+      expect(tags).to have_received(:create!).once
+    end
+  end
 end
