@@ -6,6 +6,8 @@ class VisitSuggestingJob < ApplicationJob
   queue_as :visit_suggesting
   sidekiq_options retry: false
 
+  retry_on ActiveRecord::ConnectionFailed, wait: :polynomially_longer, attempts: 4
+
   # Passing timespan of more than 3 years somehow results in duplicated Places
   def perform(user_id:, start_at:, end_at:)
     release_debounce_key(user_id)
