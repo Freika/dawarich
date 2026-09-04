@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- The Add User form now displays and enforces the configured password length before submission (#2688).
 - Pages no longer wait for GitHub when checking for a newer version; update checks now run only in the background (#3485).
 
 ## [1.14.2] - 2026-09-02, Berlin
