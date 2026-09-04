@@ -112,19 +112,28 @@ class Stats::CalculateMonth
   end
 
   def reset_month_stats(year, month)
-    stat = Stat.find_by(year:, month:, user:)
-    return unless stat
+    Stat.transaction do
+      stat = Stat.lock.find_by(year:, month:, user:)
+      return unless stat
 
-    stat.update!(
-      daily_distance: {},
-      distance: 0,
-      flight_distance: flight_distance,
-      toponyms: [],
-      h3_hex_ids: {},
-      calculation_version: CALCULATION_VERSION
-    )
+      # Points may arrive after the initial empty check while another calculation
+      # finishes. Recheck under the same lock before clearing its result.
+      if points.exists?
+        update_month_stats(year, month)
+        return
+      end
 
-    Cache::InvalidateUserCaches.new(user.id, year: year).call
+      stat.update!(
+        daily_distance: {},
+        distance: 0,
+        flight_distance: flight_distance,
+        toponyms: [],
+        h3_hex_ids: {},
+        calculation_version: CALCULATION_VERSION
+      )
+
+      Cache::InvalidateUserCaches.new(user.id, year: year).call
+    end
   end
 
   def calculate_h3_hex_ids
