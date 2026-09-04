@@ -117,8 +117,8 @@ class Stats::CalculateMonth
       return unless stat
 
       # Points may arrive after the initial empty check while another calculation
-      # finishes. Recheck under the same lock before clearing its result.
-      if points.exists?
+      # finishes. Recheck under the same lock without the earlier query cache.
+      if Point.uncached { points.exists? }
         update_month_stats(year, month)
         return
       end

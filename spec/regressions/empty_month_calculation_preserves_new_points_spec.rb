@@ -30,7 +30,7 @@ RSpec.describe 'Empty monthly calculation after historical points arrive', type:
     old = Thread.new do
       ActiveRecord::Base.connection_pool.with_connection do |connection|
         old_pid = connection.select_value('SELECT pg_backend_pid()')
-        calculator.call
+        ActiveRecord::Base.cache { calculator.call }
       end
     end
     expect(empty_read.wait(10)).to be(true)
@@ -51,6 +51,7 @@ RSpec.describe 'Empty monthly calculation after historical points arrive', type:
     clear_enqueued_jobs
     Stats::BulkCalculator.new(owner.id).call
     repairs = enqueued_jobs.count { |job| job[:job] == Stats::CalculatingJob }
+    stat.reload
     expect(stat.toponyms.present? || repairs.positive?).to be(true),
                                                            'Previously recovered historical country/city data was erased and no repair remains eligible'
   ensure
