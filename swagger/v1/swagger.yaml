@@ -1716,7 +1716,9 @@ paths:
       tags:
       - Immich
       description: Pushes latitude/longitude updates for the supplied Immich asset
-        IDs back to the user's Immich instance.
+        IDs back to the user's Immich instance. Accepted updates are returned as pending;
+        background verification reports saved coordinates or actionable warnings through
+        notifications.
       parameters:
       - name: api_key
         in: query
@@ -1726,7 +1728,7 @@ paths:
           type: string
       responses:
         '200':
-          description: enrich completed
+          description: updates submitted
           content:
             application/json:
               schema:
