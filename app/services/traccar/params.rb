@@ -84,10 +84,10 @@ class Traccar::Params
   end
 
   def battery_level
-    level = battery[:level]
+    level = form_payload? ? raw_payload[:batt] : battery[:level]
     return nil if level.nil?
 
-    value = (level.to_f * 100).to_i
+    value = form_payload? ? level.to_i : (level.to_f * 100).to_i
     value.positive? ? value : nil
   end
 
@@ -108,7 +108,7 @@ class Traccar::Params
   end
 
   def normalize_protocol(input)
-    return input unless input[:location].blank? && input[:lat].present? && input[:lon].present?
+    return input unless form_payload?
 
     {
       device_id: input[:id],
@@ -123,9 +123,12 @@ class Traccar::Params
         event: input[:alarm]
       },
       battery: {
-        level: input[:batt].present? ? input[:batt].to_f / 100 : nil,
         is_charging: ActiveModel::Type::Boolean.new.cast(input[:charge])
       }.compact
     }
+  end
+
+  def form_payload?
+    raw_payload[:location].blank? && raw_payload[:lat].present? && raw_payload[:lon].present?
   end
 end

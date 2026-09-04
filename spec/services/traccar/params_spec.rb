@@ -199,6 +199,14 @@ RSpec.describe Traccar::Params do
 
         expect(params[:battery_status]).to eq('unknown')
       end
+
+      [29, 57, 58].each do |percentage|
+        it "preserves a reported battery percentage of #{percentage}" do
+          input[:batt] = percentage.to_s
+
+          expect(params[:battery]).to eq(percentage)
+        end
+      end
     end
   end
 end
