@@ -730,7 +730,7 @@ de:
       available_on_pro: Verfügbar auf Pro
       upgrade_to_pro: Auf Pro upgraden
     stats_row:
-      total_distance: GESAMTSTrecke
+      total_distance: Gesamtstrecke
       all_tracked_history: Alle verfolgten Historie
       vs: vs
       in: in
@@ -752,9 +752,9 @@ de:
         other: "Aufenthalte"
     travel_patterns:
       when_do_you_travel: Wann reist du?
-      time_of_day_distribution: ZEIT DES TAGES VERTEILUNG
-      day_of_week: TAG DES WOCHENENDES
-      seasonality: SEASONALITÄT
+      time_of_day_distribution: TAGESZEIT
+      day_of_week: WOCHENTAG
+      seasonality: SAISONALITÄT
       insight: Erkenntnis
     travel_story:
       your_travel_story: Deine Reiseerzählung
@@ -809,7 +809,7 @@ de:
     year_comparison:
       your_journey: 'Deine Reise:'
       vs: vs
-      distance: STrecke
+      distance: Strecke
       countries: Länder
       days_traveling: Tagen unterwegs
       days: Tage (
