@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+
+### Fixed
+
+- The Add User form now displays and enforces the configured password length before submission (#2688).
+
 ## [1.14.2] - 2026-09-02, Berlin
 
 ### Added

@@ -116,7 +116,8 @@
         <%= f.label :password do %>
           <%= t('.password') %>
         <% end %>
-        <%= f.password_field :password, autofocus: true, autocomplete: "new-password", class: "input input-bordered", minlength: 6 %>
+        <%= f.password_field :password, autofocus: true, autocomplete: "new-password", class: "input input-bordered", minlength: Devise.password_length.min, maxlength: Devise.password_length.max, required: true, aria: { describedby: "create-user-password-hint" } %>
+        <p id="create-user-password-hint" class="text-sm text-base-content/70 mt-1"><%= t('devise.registrations.new.characters_minimum', count: Devise.password_length.min) %></p>
       </div>
       <div class="form-control mt-5">
         <%= f.submit t('.create'), class: "btn btn-primary" %>
