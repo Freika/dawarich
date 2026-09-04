@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+
+### Fixed
+
+- Pages no longer wait for GitHub when checking for a newer version; update checks now run only in the background (#3485).
+
 ## [1.14.2] - 2026-09-02, Berlin
 
 ### Added
