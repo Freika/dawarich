@@ -38,21 +38,13 @@ class Immich::VerifyEnrichmentJob < ApplicationJob
 
   def finish(notification, confirmed, unconfirmed)
     I18n.with_locale(notification.user.locale) do
-      notification.update!(
+      notification.update_with_broadcast!(
         title: I18n.t('services.immich.enrich_photos.result_title'),
         content: result_message(confirmed, unconfirmed),
         kind: unconfirmed.positive? ? :warning : :info,
         read_at: nil
       )
     end
-    notification.broadcast_replace_to(
-      [notification.user, :notifications], target: "notification_#{notification.id}",
-      partial: 'notifications/navbar_item', locals: { notification: }
-    )
-    notification.broadcast_replace_to(
-      [notification.user, :notifications], target: 'notifications-badge',
-      partial: 'notifications/badge', locals: { count: notification.user.notifications.unread.count }
-    )
   end
 
   def result_message(confirmed, unconfirmed)

@@ -3484,6 +3484,15 @@ pl:
         immich_api_key_missing_permission_asset_view: 'Klucz API Immich nie ma uprawnienia: asset.view'
         immich_thumbnail_check_failed_code: 'Sprawdzenie miniatury Immich nie powiodło się: %{code}'
       enrich_photos:
+        checking_title: "Sprawdzanie aktualizacji lokalizacji w Immich"
+        checking: "Wysłano %{count} aktualizacji lokalizacji do Immich. Trwa sprawdzanie, czy współrzędne zostały zapisane."
+        result_title: "Wyniki aktualizacji lokalizacji w Immich"
+        confirmed:
+          one: "Potwierdzono zapisaną lokalizację dla %{count} zdjęcia."
+          other: "Potwierdzono zapisane lokalizacje dla %{count} zdjęć."
+          few: "Potwierdzono zapisane lokalizacje dla %{count} zdjęć."
+          many: "Potwierdzono zapisane lokalizacje dla %{count} zdjęć."
+        unconfirmed: "Niepotwierdzone aktualizacje lokalizacji: %{count}. Immich może nadal przetwarzać zmiany. Sprawdź zadania metadanych i uprawnienie asset.read klucza API. W bibliotekach zewnętrznych Immich musi mieć możliwość zapisywania plików pomocniczych XMP: montowanie tylko do odczytu lub uprawnienia plików mogą uniemożliwić zapis. Po rozwiązaniu problemu wyszukaj zdjęcia ponownie przed kolejną próbą."
         http_code_message: 'HTTP %{code}: %{message}'
       enrich_scan:
         failed_to_fetch_photos_from_immich: Nie udało się pobrać zdjęć z Immich
@@ -4185,6 +4194,7 @@ pl:
       no_matches: Nie znaleziono dopasowań w zakresie tolerancji
       open_in_immich: Otwórz w Immich
       partially_enriched: Uzupełniono %{enriched} zdjęć. Dla %{failed} nie udało się.
+      pending_enrichment: "Wysłano %{count} aktualizacji lokalizacji do Immich; %{failed} nie udało się wysłać. Otrzymasz powiadomienie po sprawdzeniu zapisanych współrzędnych."
       photos_without_gps:
         one: "%{count} zdjęcie bez GPS"
         other: "%{count} zdjęć bez GPS"

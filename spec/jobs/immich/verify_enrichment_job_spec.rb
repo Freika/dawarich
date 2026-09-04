@@ -30,7 +30,7 @@ RSpec.describe Immich::VerifyEnrichmentJob, type: :job do
     end
 
     expect(notification.reload).to be_warning
-    expect(notification.content).to include('Could not confirm saved locations for 1 photos', 'read-only', 'XMP')
+    expect(notification.content).to include('Location updates still unconfirmed: 1', 'read-only', 'XMP')
     expect(WebMock).to have_requested(:get, "#{url}/api/assets/asset-1").times(3)
   end
 
@@ -65,7 +65,8 @@ RSpec.describe Immich::VerifyEnrichmentJob, type: :job do
       described_class.perform_later(notification.id, batch, url)
     end
 
-    expect(notification.reload.content).to include('Confirmed saved locations for 20 photos', 'for 1 photos')
+    expect(notification.reload.content).to include('Confirmed saved locations for 20 photos',
+                                                   'Location updates still unconfirmed: 1')
     expect(WebMock).to have_requested(:get, "#{url}/api/assets/asset-0").times(3)
     expect(WebMock).to have_requested(:get, "#{url}/api/assets/asset-20").once
   end

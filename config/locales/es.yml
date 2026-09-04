@@ -3436,6 +3436,13 @@ es:
         immich_api_key_missing_permission_asset_view: A la clave API de Immich le falta el permiso asset.view
         immich_thumbnail_check_failed_code: 'Falló el chequeo de miniatura en Immich: %{code}'
       enrich_photos:
+        checking_title: "Comprobando las actualizaciones de ubicación de Immich"
+        checking: "Se enviaron %{count} actualizaciones de ubicación a Immich. Comprobando si se guardaron las coordenadas."
+        result_title: "Resultados de las actualizaciones de ubicación de Immich"
+        confirmed:
+          one: "Ubicación guardada confirmada para %{count} foto."
+          other: "Ubicaciones guardadas confirmadas para %{count} fotos."
+        unconfirmed: "Actualizaciones de ubicación aún sin confirmar: %{count}. Es posible que Immich siga procesando los cambios. Comprueba sus tareas de metadatos y el permiso asset.read de tu clave API. En las bibliotecas externas, Immich debe poder escribir archivos auxiliares XMP: los montajes de solo lectura o los permisos de archivos pueden impedir que se guarden. Una vez resuelto, vuelve a buscar antes de reintentarlo."
         http_code_message: 'HTTP %{code}: %{message}'
       enrich_scan:
         failed_to_fetch_photos_from_immich: Falló obtener fotos desde Immich
@@ -4126,6 +4133,7 @@ es:
       no_matches: No se encontraron coincidencias dentro del umbral de tolerancia
       open_in_immich: Abrir en Immich
       partially_enriched: Mejorada %{enriched} fotos. %{failed} falló.
+      pending_enrichment: "Se enviaron %{count} actualizaciones de ubicación a Immich; %{failed} no se pudieron enviar. Recibirás una notificación cuando se comprueben las coordenadas guardadas."
       photos_without_gps:
         one: "%{count} foto sin GPS"
         other: "%{count} fotos sin GPS"
