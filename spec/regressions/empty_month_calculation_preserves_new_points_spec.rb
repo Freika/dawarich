@@ -53,7 +53,7 @@ RSpec.describe 'Empty monthly calculation after historical points arrive', type:
     repairs = enqueued_jobs.count { |job| job[:job] == Stats::CalculatingJob }
     stat.reload
     expect(stat.toponyms.present? || repairs.positive?).to be(true),
-                                                           'Previously recovered historical country/city data was erased and no repair remains eligible'
+                                                           'Recovered data was erased without a pending repair'
   ensure
     release_old&.count_down
     old&.join(20)
