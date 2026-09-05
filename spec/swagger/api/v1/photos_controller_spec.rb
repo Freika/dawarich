@@ -78,7 +78,7 @@ RSpec.describe 'Api::V1::PhotosController', type: :request do
 
   before do
     stub_request(:post, "#{user.settings['immich_url']}/api/search/metadata")
-      .to_return(status: 200, body: immich_data)
+      .to_return(status: 200, body: immich_data, headers: { 'Content-Type' => 'application/json' })
 
     stub_request(
       :get,
