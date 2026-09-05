@@ -37,7 +37,7 @@ RSpec.describe Geocoding::Search do
         .with { |req| urls << req.uri.to_s }
         .to_return(status: 200, body: '{}', headers: { 'Content-Type' => 'application/json' })
 
-      described_class.call(user: user, query: [51.3402, 12.3712], limit: 1)
+      described_class.call(user: user, query: [51.3402, 12.3712], timeout: 5, limit: 1)
       Geocoder.search([51.3402, 12.3712], limit: 1)
 
       expect(urls.size).to eq(2)
@@ -51,7 +51,7 @@ RSpec.describe Geocoding::Search do
     it 'returns [] without any HTTP request' do
       unstub_global_geocoder_stub
 
-      result = described_class.call(user: user, query: [51.3402, 12.3712])
+      result = described_class.call(user: user, query: [51.3402, 12.3712], timeout: 5)
 
       expect(result).to eq([])
       expect(WebMock).not_to have_requested(:get, /.*/)
@@ -62,7 +62,7 @@ RSpec.describe Geocoding::Search do
       stub_request(:get, /nominatim\.openstreetmap\.org/)
         .to_return(status: 200, body: '[]', headers: { 'Content-Type' => 'application/json' })
 
-      described_class.call(user: user, query: 'Leipzig', fallback_to_default: true)
+      described_class.call(user: user, query: 'Leipzig', timeout: 5, fallback_to_default: true)
 
       expect(WebMock).to have_requested(:get, /nominatim\.openstreetmap\.org/)
     end
@@ -78,7 +78,7 @@ RSpec.describe Geocoding::Search do
       stub_request(:get, %r{https://photon\.mine\.example\.com/reverse})
         .to_return(status: 200, body: photon_body, headers: { 'Content-Type' => 'application/json' })
 
-      results = described_class.call(user: user, query: [51.3402, 12.3712], limit: 1)
+      results = described_class.call(user: user, query: [51.3402, 12.3712], timeout: 5, limit: 1)
 
       expect(results.first.city).to eq('Leipzig')
       expect(results.first.country).to eq('Germany')
@@ -94,9 +94,9 @@ RSpec.describe Geocoding::Search do
                                         config: { 'host' => 'photon.mine.example.com', 'rps' => 1 })
       stub_request(:get, %r{https://photon\.mine\.example\.com/reverse})
         .to_return(status: 200, body: photon_body, headers: { 'Content-Type' => 'application/json' })
-      described_class.call(user: user, query: [51.3402, 12.3712], limit: 1)
+      described_class.call(user: user, query: [51.3402, 12.3712], timeout: 5, limit: 1)
 
-      results = described_class.call(user: user, query: [51.3402, 12.3712], limit: 1, max_wait: 0.2)
+      results = described_class.call(user: user, query: [51.3402, 12.3712], timeout: 5, limit: 1, max_wait: 0.2)
 
       expect(results).to be_nil
       expect(WebMock).to have_requested(:get, %r{https://photon\.mine\.example\.com/reverse}).once
@@ -107,9 +107,11 @@ RSpec.describe Geocoding::Search do
       config = Geocoding::Config.new(source: :user, provider: :photon, host: 'photon.mine.example.com', rps: 1)
       stub_request(:get, %r{https://photon\.mine\.example\.com/reverse})
         .to_return(status: 200, body: photon_body, headers: { 'Content-Type' => 'application/json' })
-      described_class.with_config(config: config, query: [51.3402, 12.3712], limit: 1)
+      described_class.with_config(config: config, query: [51.3402, 12.3712], timeout: 5, limit: 1)
 
-      result = described_class.with_config(config: config, query: [51.3402, 12.3712], limit: 1, max_wait: 0.2)
+      result = described_class.with_config(
+        config: config, query: [51.3402, 12.3712], timeout: 5, limit: 1, max_wait: 0.2
+      )
 
       expect(result).to be_nil
     end
@@ -120,7 +122,7 @@ RSpec.describe Geocoding::Search do
       stub_request(:get, %r{http://photon\.mine\.example\.com/reverse})
         .to_return(status: 200, body: photon_body, headers: { 'Content-Type' => 'application/json' })
 
-      described_class.call(user: user, query: [51.3402, 12.3712])
+      described_class.call(user: user, query: [51.3402, 12.3712], timeout: 5)
 
       expect(WebMock).to have_requested(:get, %r{http://photon\.mine\.example\.com/reverse})
     end
@@ -131,7 +133,7 @@ RSpec.describe Geocoding::Search do
         .to_return(status: 200, body: { features: [] }.to_json,
                    headers: { 'Content-Type' => 'application/json' })
 
-      described_class.call(user: user, query: [51.3402, 12.3712])
+      described_class.call(user: user, query: [51.3402, 12.3712], timeout: 5)
 
       expect(WebMock).to(
         have_requested(:get, %r{https://api\.geoapify\.com/v1/geocode/reverse})
@@ -144,7 +146,7 @@ RSpec.describe Geocoding::Search do
       stub_request(:get, %r{https://us1\.locationiq\.com/v1/reverse})
         .to_return(status: 200, body: '{}', headers: { 'Content-Type' => 'application/json' })
 
-      described_class.call(user: user, query: [51.3402, 12.3712])
+      described_class.call(user: user, query: [51.3402, 12.3712], timeout: 5)
 
       expect(WebMock).to(
         have_requested(:get, %r{https://us1\.locationiq\.com/v1/reverse})
@@ -159,7 +161,7 @@ RSpec.describe Geocoding::Search do
       stub_request(:get, %r{http://nominatim\.mine\.example\.com/reverse})
         .to_return(status: 200, body: '{}', headers: { 'Content-Type' => 'application/json' })
 
-      described_class.call(user: user, query: [51.3402, 12.3712])
+      described_class.call(user: user, query: [51.3402, 12.3712], timeout: 5)
 
       expect(WebMock).to have_requested(:get, %r{http://nominatim\.mine\.example\.com/reverse})
     end
@@ -169,7 +171,7 @@ RSpec.describe Geocoding::Search do
       stub_request(:get, %r{https://photon\.mine\.example\.com/reverse})
         .to_return(status: 200, body: photon_body, headers: { 'Content-Type' => 'application/json' })
 
-      described_class.call(user: user, query: [51.3402, 12.3712], limit: 7, distance_sort: true)
+      described_class.call(user: user, query: [51.3402, 12.3712], timeout: 5, limit: 7, distance_sort: true)
 
       expect(WebMock).to(
         have_requested(:get, %r{https://photon\.mine\.example\.com/reverse})
@@ -186,7 +188,7 @@ RSpec.describe Geocoding::Search do
       before_headers = Geocoder.config.http_headers.dup
       before_dump = Marshal.dump(Geocoder.config.to_hash.except(:cache))
 
-      described_class.call(user: user, query: [51.3402, 12.3712])
+      described_class.call(user: user, query: [51.3402, 12.3712], timeout: 5)
 
       expect(Geocoder.config.http_headers).to eq(before_headers)
       expect(Geocoder.config.http_headers).not_to have_key('X-Api-Key')
@@ -196,8 +198,8 @@ RSpec.describe Geocoding::Search do
     it 'returns [] for blank queries without any HTTP request' do
       create(:service_setting, :active, user: user, config: { 'host' => 'photon.mine.example.com' })
 
-      expect(described_class.call(user: user, query: '')).to eq([])
-      expect(described_class.call(user: user, query: [nil, nil])).to eq([])
+      expect(described_class.call(user: user, query: '', timeout: 5)).to eq([])
+      expect(described_class.call(user: user, query: [nil, nil], timeout: 5)).to eq([])
       expect(WebMock).not_to have_requested(:get, /.*/)
     end
 
@@ -207,7 +209,7 @@ RSpec.describe Geocoding::Search do
         "UPDATE service_settings SET credentials = NULL WHERE id = #{row.id}"
       )
 
-      expect(described_class.call(user: user, query: [51.3402, 12.3712])).to eq([])
+      expect(described_class.call(user: user, query: [51.3402, 12.3712], timeout: 5)).to eq([])
       expect(WebMock).not_to have_requested(:get, /.*/)
     end
 
@@ -216,7 +218,7 @@ RSpec.describe Geocoding::Search do
       stub_request(:get, %r{https://photon\.mine\.example\.com/reverse}).to_timeout
 
       expect do
-        described_class.call(user: user, query: [51.3402, 12.3712])
+        described_class.call(user: user, query: [51.3402, 12.3712], timeout: 5)
       end.to raise_error(Geocoder::LookupTimeout)
     end
 
@@ -229,8 +231,8 @@ RSpec.describe Geocoding::Search do
       stub_request(:get, %r{https://photon\.b\.example\.com/reverse})
         .to_return(status: 200, body: photon_body, headers: { 'Content-Type' => 'application/json' })
 
-      described_class.call(user: user, query: [51.3402, 12.3712])
-      described_class.call(user: other, query: [51.3402, 12.3712])
+      described_class.call(user: user, query: [51.3402, 12.3712], timeout: 5)
+      described_class.call(user: other, query: [51.3402, 12.3712], timeout: 5)
 
       expect(WebMock).to have_requested(:get, /photon\.a\.example\.com/).once
       expect(WebMock).to have_requested(:get, /photon\.b\.example\.com/).once
@@ -248,6 +250,7 @@ RSpec.describe Geocoding::Search do
       expect(merged).to respond_to(:api_key)
     end
   end
+
   describe 'rate limiting' do
     before do
       stub_no_env
@@ -265,7 +268,7 @@ RSpec.describe Geocoding::Search do
                                         config: { 'host' => 'photon.rated.example.com', 'rps' => 5 })
       stub_photon('photon.rated.example.com')
 
-      2.times { described_class.call(user: user, query: [51.3402, 12.3712]) }
+      2.times { described_class.call(user: user, query: [51.3402, 12.3712], timeout: 5) }
 
       expect(Geocoding::RateLimiter).to have_received(:sleep).with(be_within(0.05).of(0.2)).once
     end
@@ -274,7 +277,7 @@ RSpec.describe Geocoding::Search do
       create(:service_setting, :active, user: user, config: { 'host' => 'photon.komoot.io' })
       stub_photon('photon.komoot.io')
 
-      2.times { described_class.call(user: user, query: [51.3402, 12.3712]) }
+      2.times { described_class.call(user: user, query: [51.3402, 12.3712], timeout: 5) }
 
       expect(Geocoding::RateLimiter).to have_received(:sleep).with(be_within(0.05).of(1.0)).once
     end
@@ -283,7 +286,7 @@ RSpec.describe Geocoding::Search do
       create(:service_setting, :active, user: user, config: { 'host' => 'photon.rated.example.com' })
       stub_photon('photon.rated.example.com')
 
-      2.times { described_class.call(user: user, query: [51.3402, 12.3712]) }
+      2.times { described_class.call(user: user, query: [51.3402, 12.3712], timeout: 5) }
 
       expect(Geocoding::RateLimiter).not_to have_received(:sleep)
     end
@@ -293,8 +296,8 @@ RSpec.describe Geocoding::Search do
                                         config: { 'host' => 'photon.rated.example.com', 'rps' => 5 })
       stub_photon('photon.rated.example.com')
 
-      2.times { described_class.call(user: user, query: '') }
-      described_class.call(user: user, query: [51.3402, 12.3712])
+      2.times { described_class.call(user: user, query: '', timeout: 5) }
+      described_class.call(user: user, query: [51.3402, 12.3712], timeout: 5)
 
       expect(Geocoding::RateLimiter).not_to have_received(:sleep)
     end
@@ -304,7 +307,7 @@ RSpec.describe Geocoding::Search do
                                                   config: { 'host' => 'photon.rated.example.com', 'rps' => 5 })
       setting.update_column(:config, setting.config.merge('host' => ''))
 
-      2.times { described_class.call(user: user, query: [51.3402, 12.3712]) }
+      2.times { described_class.call(user: user, query: [51.3402, 12.3712], timeout: 5) }
 
       expect(Geocoding::RateLimiter).not_to have_received(:sleep)
     end
@@ -314,13 +317,13 @@ RSpec.describe Geocoding::Search do
       stub_request(:get, /nominatim\.openstreetmap\.org/)
         .to_return(status: 200, body: '{}', headers: { 'Content-Type' => 'application/json' })
 
-      2.times { described_class.call(user: user, query: 'Leipzig', fallback_to_default: true) }
+      2.times { described_class.call(user: user, query: 'Leipzig', timeout: 5, fallback_to_default: true) }
 
       expect(Geocoding::RateLimiter).to have_received(:sleep).with(be_within(0.05).of(1.0)).once
     end
 
     it 'still returns nothing for a disabled config without the fallback' do
-      expect(described_class.call(user: user, query: 'Leipzig')).to eq([])
+      expect(described_class.call(user: user, query: 'Leipzig', timeout: 5)).to eq([])
       expect(Geocoding::RateLimiter).not_to have_received(:sleep)
     end
 
@@ -334,7 +337,7 @@ RSpec.describe Geocoding::Search do
       stub_request(:get, /nominatim\.openstreetmap\.org/)
         .to_return(status: 200, body: '{}', headers: { 'Content-Type' => 'application/json' })
 
-      2.times { described_class.call(user: user, query: [51.3402, 12.3712]) }
+      2.times { described_class.call(user: user, query: [51.3402, 12.3712], timeout: 5) }
 
       expect(Geocoding::RateLimiter).to have_received(:sleep).with(be_within(0.05).of(0.2)).once
     end

@@ -8,7 +8,12 @@ module Places
 
     def call
       result = Geocoding::Search.call(
-        user: place.user_id, query: [place.lat, place.lon], units: :km, limit: 1, distance_sort: true
+        user: place.user_id,
+        query: [place.lat, place.lon],
+        timeout: REVERSE_GEOCODING_TIMEOUT,
+        units: :km,
+        limit: 1,
+        distance_sort: true
       ).first
       return nil if result.blank?
 

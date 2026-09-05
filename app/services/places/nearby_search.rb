@@ -62,6 +62,7 @@ module Places
       results = Geocoding::Search.call(
         user: @user,
         query: [@latitude, @longitude],
+        timeout: REVERSE_GEOCODING_TIMEOUT,
         limit: @limit,
         max_wait: Geocoding::RateLimiter::MAX_INTERACTIVE_WAIT,
         distance_sort: true,
