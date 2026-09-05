@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Track generation now refreshes surviving partial tracks from their assigned points, correcting stale time ranges, distance and elevation after buffered chunks overlap. Public links and manual transportation corrections are preserved. (#3209)
 - Traccar latitude/longitude form uploads now save points, including Unix timestamps in seconds or milliseconds. Payloads that cannot be stored return an error instead of a false success; repeated valid uploads remain safe. (#3299)
 ## Unreleased
 
