@@ -5579,6 +5579,7 @@ fr:
       loading_tracks: Chargement des trajets pour la nouvelle plage…
       no_location_data: Aucune donnée de localisation dans cette plage de dates —
         choisissez une plage avec des trajets dans la barre de date ci-dessus.
+      gallery_without_flights: "Les affiches de la galerie utilisent les trajets GPS sans les vols. Le téléchargement conserve la vue actuelle."
       no_tracks_in_frame: Aucun trajet dans le cadre — déplacez ou agrandissez la carte
         sur votre itinéraire pour l'enregistrer dans la galerie.
       queued: En file d’attente — enregistrement récent sur le serveur…
