@@ -11,6 +11,11 @@ RSpec.describe 'settings/general', type: :request do
     end
 
     describe 'GET /index' do
+      before do
+        allow(ENV).to receive(:[]).and_call_original
+        allow(ENV).to receive(:[]).with('SMTP_SERVER').and_return('smtp.example.com')
+      end
+
       it 'returns a success response' do
         get settings_general_index_url
 
@@ -23,6 +28,17 @@ RSpec.describe 'settings/general', type: :request do
         expect(response.body).to include('id="email-digests"')
         expect(response.body).to include('name="monthly_digest_emails_enabled"')
         expect(response.body).to include('name="yearly_digest_emails_enabled"')
+      end
+
+      it 'shows a not-configured notice instead of preferences when SMTP is unset' do
+        allow(ENV).to receive(:[]).with('SMTP_SERVER').and_return(nil)
+
+        get settings_general_index_url
+
+        expect(response.body).to include('Email sending via SMTP is not configured')
+        expect(response.body).to include('https://dawarich.app/docs/self-hosting/configuration/smtp/')
+        expect(response.body).not_to include('name="monthly_digest_emails_enabled"')
+        expect(response.body).not_to include('name="news_emails_enabled"')
       end
     end
 
@@ -114,6 +130,91 @@ RSpec.describe 'settings/general', type: :request do
 
         expect(response).to redirect_to(settings_general_index_path)
         expect(user.reload.settings['timezone']).to eq('UTC')
+      end
+    end
+
+    describe 'POST /test_email' do
+      around do |example|
+        original_from = UsersMailer.default_params[:from]
+        UsersMailer.default from: 'hi@dawarich.app'
+        example.run
+      ensure
+        UsersMailer.default from: original_from
+      end
+
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+        allow(ENV).to receive(:[]).and_call_original
+        allow(ENV).to receive(:[]).with('SMTP_SERVER').and_return('smtp.example.com')
+        ActionMailer::Base.deliveries.clear
+      end
+
+      it 'delivers a test email to the current user' do
+        expect do
+          post settings_test_email_path
+        end.to change { ActionMailer::Base.deliveries.size }.by(1)
+
+        expect(ActionMailer::Base.deliveries.last.to).to include(user.email)
+        expect(response).to redirect_to(settings_general_index_path)
+        expect(flash[:notice]).to include(user.email)
+      end
+
+      it 'shows an alert when SMTP is not configured' do
+        allow(ENV).to receive(:[]).with('SMTP_SERVER').and_return(nil)
+
+        post settings_test_email_path
+
+        expect(ActionMailer::Base.deliveries).to be_empty
+        expect(response).to redirect_to(settings_general_index_path)
+        expect(flash[:alert]).to be_present
+      end
+
+      it 'shows an alert with the error when delivery fails' do
+        allow_any_instance_of(Mail::Message).to receive(:deliver)
+          .and_raise(Net::SMTPAuthenticationError.new('authentication failed'))
+
+        post settings_test_email_path
+
+        expect(response).to redirect_to(settings_general_index_path)
+        expect(flash[:alert]).to include('Net::SMTPAuthenticationError')
+      end
+
+      it 'responds with turbo stream when requested' do
+        post settings_test_email_path, headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+
+        expect(response.media_type).to eq('text/vnd.turbo-stream.html')
+        expect(response.body).to include(user.email)
+      end
+
+      it 'renders the button as a Turbo POST link' do
+        get settings_general_index_path
+
+        link = response.body.scan(/<a[^>]*settings\/general\/test_email[^>]*>/).first
+        expect(link).to be_present
+        expect(link).to include('data-turbo="true"')
+        expect(link).to include('data-turbo-method="post"')
+        expect(response.body).to include(
+          '>Sends a test message to your account email to verify SMTP settings</span>'
+        )
+      end
+
+      context 'when not self-hosted' do
+        before do
+          allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        end
+
+        it 'is not authorized' do
+          post settings_test_email_path
+
+          expect(ActionMailer::Base.deliveries).to be_empty
+          expect(response).to redirect_to(root_path)
+        end
+
+        it 'does not render the test email button' do
+          get settings_general_index_path
+
+          expect(response.body).not_to include('test_email')
+        end
       end
     end
 

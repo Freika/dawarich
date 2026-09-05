@@ -1475,6 +1475,8 @@ ca:
         receive_an_annual_summary_on_january_2nd_with_your_year: Rep un resum anual el 2 de gener amb el teu any en retrospectiva.
         news_updates: Notícies i actualitzacions
         receive_occasional_emails_about_new_features_and_important_updates: Rep correus electrònics ocasionals sobre noves funcions i actualitzacions importants
+        send_test_email: Envia un correu de prova
+        test_email_hint: Envia un missatge de prova al correu electrònic del teu compte per verificar els paràmetres SMTP
         timezone: Fus horari
         your_timezone: El teu fus horari
         all_dates_and_times_will_be_displayed_in_this_timezone: Totes les dates i hores es mostraran en aquest fus horari
@@ -2492,6 +2494,9 @@ ca:
       the_lock_will_automatically_lift_after_30_minutes_no_action: El bloqueig es desactivarà automàticament d'aquí a 30 minuts. No cal fer res si has estat tu.
       didn_t_recognise_this_activity_someone_may_be_trying_to: No reconeixes aquesta activitat? És possible que algú estigui intentant accedir al teu compte. Et recomanem restablir la teva contrasenya immediatament.
       reset_your_password_2: 'Restableix la teva contrasenya:'
+    test_email:
+      body: Si pots llegir això, la configuració SMTP de la teva instància funciona.
+      sent_at: Enviat el
     welcome:
       welcome_to_dawarich: Benvingut/da a Dawarich!
       hi: Hola
@@ -3068,6 +3073,11 @@ ca:
         please_enter_an_email_address_or_github_username: Introdueix una adreça de correu electrònic o un nom d'usuari de GitHub
         verified_thank_you_for_supporting_dawarich_via_platform: "Verificat! Gràcies per donar suport a Dawarich a través de %{platform}."
         not_found_in_supporter_list_make_sure_you_re_using: No s'ha trobat a la llista de col·laboradors. Assegura't d'utilitzar el mateix correu electrònic o nom d'usuari de GitHub que a la teva plataforma de donació.
+        smtp_not_configured: L'enviament de correu electrònic mitjançant SMTP no està configurat. Configura els paràmetres SMTP d'autoallotjament per establir les preferències de correu electrònic.
+        smtp_not_configured_html: L'enviament de correu electrònic mitjançant SMTP no està configurat. Configura %{link} per establir les preferències de correu electrònic.
+        smtp_not_configured_link: els paràmetres SMTP d'autoallotjament
+        test_email_sent: Correu de prova enviat a %{email}. Comprova la teva bústia d'entrada (i la carpeta de correu no desitjat).
+        test_email_failed: 'El correu de prova ha fallat: %{error}'
       onboardings:
         demo_data_loaded: Dades de demostració carregades.
         demo_data_is_already_loaded: Les dades de demostració ja estan carregades.
@@ -3275,6 +3285,8 @@ ca:
         subject: Confirma la supressió del compte de Dawarich
       otp_account_locked:
         subject: Compte de Dawarich bloquejat temporalment
+      test_email:
+        subject: Correu de prova de Dawarich
       digests:
         year_end:
           subject: El teu any %{year} en retrospectiva - Dawarich

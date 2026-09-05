@@ -2287,6 +2287,9 @@ fr:
         receive_occasional_emails_about_new_features_and_important_updates: Recevoir
           des emails occasionnels sur les nouvelles fonctionnalités et les mises à
           jour importantes
+        send_test_email: Envoyer un e-mail de test
+        test_email_hint: Envoie un message de test à l'adresse e-mail de votre compte
+          pour vérifier les paramètres SMTP
         timezone: Fuseau horaire
         your_timezone: Votre fuseau horaire
         all_dates_and_times_will_be_displayed_in_this_timezone: Toutes les dates et
@@ -3517,6 +3520,9 @@ fr:
         cette activité ? Quelqu'un pourrait essayer d'accéder à votre compte. Nous
         recommandons de réinitialiser votre mot de passe immédiatement.
       reset_your_password_2: 'Réinitialisez votre mot de passe :'
+    test_email:
+      body: Si vous pouvez lire ceci, la configuration SMTP de votre instance fonctionne.
+      sent_at: Envoyé le
     welcome:
       welcome_to_dawarich: Bienvenue chez Dawarich !
       hi: Bonjour
@@ -4041,6 +4047,12 @@ fr:
         not_found_in_supporter_list_make_sure_you_re_using: Non trouvé dans la liste
           des donateurs. Assurez-vous d'utiliser la même adresse e-mail ou le même
           nom d'utilisateur GitHub que votre plateforme de dons.
+        smtp_not_configured: L'envoi d'e-mails via SMTP n'est pas configuré. Configurez les paramètres SMTP auto-hébergés pour définir vos préférences d'e-mail.
+        smtp_not_configured_html: L'envoi d'e-mails via SMTP n'est pas configuré. Configurez %{link} pour définir vos préférences d'e-mail.
+        smtp_not_configured_link: les paramètres SMTP auto-hébergés
+        test_email_sent: E-mail de test envoyé à %{email}. Vérifiez votre boîte de
+          réception (et le dossier spam).
+        test_email_failed: "L'e-mail de test a échoué : %{error}"
       onboardings:
         demo_data_loaded: Données de démo chargées.
         demo_data_is_already_loaded: Les données de démo sont déjà chargées.
@@ -4322,6 +4334,8 @@ fr:
         subject: Confirmez la suppression du compte Dawarich
       otp_account_locked:
         subject: Compte Dawarich verrouillé temporairement
+      test_email:
+        subject: E-mail de test Dawarich
       digests:
         year_end:
           subject: Bilan annuel %{year} — Dawarich

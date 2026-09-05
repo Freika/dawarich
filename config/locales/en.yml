@@ -1524,6 +1524,8 @@ en:
         receive_an_annual_summary_on_january_2nd_with_your_year: Receive an annual summary on January 2nd with your year in review.
         news_updates: News & Updates
         receive_occasional_emails_about_new_features_and_important_updates: Receive occasional emails about new features and important updates
+        send_test_email: Send test email
+        test_email_hint: Sends a test message to your account email to verify SMTP settings
         timezone: Timezone
         your_timezone: Your timezone
         all_dates_and_times_will_be_displayed_in_this_timezone: All dates and times will be displayed in this timezone
@@ -2492,6 +2494,9 @@ en:
       the_lock_will_automatically_lift_after_30_minutes_no_action: The lock will automatically lift after 30 minutes. No action is required if this was you.
       didn_t_recognise_this_activity_someone_may_be_trying_to: Didn't recognise this activity? Someone may be trying to access your account. We recommend resetting your password immediately.
       reset_your_password_2: 'Reset your password:'
+    test_email:
+      body: If you can read this, your instance's SMTP configuration works.
+      sent_at: Sent at
     welcome:
       welcome_to_dawarich: Welcome to Dawarich!
       hi: Hi
@@ -3056,6 +3061,11 @@ en:
         please_enter_an_email_address_or_github_username: Please enter an email address or GitHub username
         verified_thank_you_for_supporting_dawarich_via_platform: Verified! Thank you for supporting Dawarich via %{platform}.
         not_found_in_supporter_list_make_sure_you_re_using: Not found in supporter list. Make sure you're using the same email or GitHub username as your donation platform.
+        smtp_not_configured: Email sending via SMTP is not configured. Configure self-hosted SMTP settings in order to set email preferences.
+        smtp_not_configured_html: 'Email sending via SMTP is not configured. Configure %{link} in order to set email preferences.'
+        smtp_not_configured_link: self-hosted SMTP settings
+        test_email_sent: Test email sent to %{email}. Check your inbox (and spam folder).
+        test_email_failed: 'Test email failed: %{error}'
       onboardings:
         demo_data_loaded: Demo data loaded.
         demo_data_is_already_loaded: Demo data is already loaded.
@@ -3263,6 +3273,8 @@ en:
         subject: Confirm Dawarich account deletion
       otp_account_locked:
         subject: Dawarich account temporarily locked
+      test_email:
+        subject: Dawarich test email
       digests:
         year_end:
           subject: Your %{year} Year in Review - Dawarich

@@ -14,6 +14,7 @@
               <h2 class="text-2xl font-bold mb-4 flex items-center">
                 <%= icon 'mail', class: "text-primary mr-2" %> <%= t('.email_preferences') %>
               </h2>
+              <% if DawarichSettings.email_configured? %>
               <div class="bg-base-100 p-5 rounded-lg shadow-sm space-y-4">
                 <div class="form-control">
                   <label class="label cursor-pointer justify-start gap-4">
@@ -54,7 +55,28 @@
                     </div>
                   </label>
                 </div>
+
+                <% if DawarichSettings.self_hosted? %>
+                  <div class="border-t border-base-content/10 pt-4">
+                    <div class="flex flex-wrap items-center gap-3">
+                      <%= link_to t('.send_test_email'), settings_test_email_path,
+                                  data: { turbo: true, turbo_method: :post },
+                                  class: 'btn btn-outline btn-sm' %>
+                      <span class="text-sm text-base-content/70"><%= t('.test_email_hint') %></span>
+                    </div>
+                  </div>
+                <% end %>
               </div>
+              <% else %>
+                <div class="bg-base-100 p-5 rounded-lg shadow-sm">
+                  <p class="text-sm text-base-content/70">
+                    <%= t('controllers.settings.general.smtp_not_configured_html',
+                          link: link_to(t('controllers.settings.general.smtp_not_configured_link'),
+                                        'https://dawarich.app/docs/self-hosting/configuration/smtp/',
+                                        target: '_blank', rel: 'noopener', class: 'link link-primary')) %>
+                  </p>
+                </div>
+              <% end %>
             </div>
 
             <!-- Language Section -->
