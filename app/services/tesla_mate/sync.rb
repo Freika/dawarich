@@ -27,7 +27,10 @@ module TeslaMate
 
       begin
         client.cars.each do |car|
-          break if point_limit_reached?
+          if point_limit_reached?
+            @quota_truncated = true
+            break
+          end
 
           car_id = car['car_id']
           counts[:cars] += 1
@@ -41,7 +44,7 @@ module TeslaMate
 
       raise IncompleteError, incomplete_message(failures) if failures.any?
 
-      record_synced_at(cutoff)
+      record_synced_at(cutoff) unless @quota_truncated
       counts
     end
 
@@ -64,14 +67,21 @@ module TeslaMate
         result = client.drives(car_id, page: page, show: PAGE_SIZE,
                                start_date: sync_start, end_date: cutoff)
         result[:drives].each do |drive|
-          break if point_limit_reached?
+          if point_limit_reached?
+            @quota_truncated = true
+            break
+          end
 
           next if sync_drive(car_id, drive['drive_id'], result[:units], counts, failures)
 
           stop_if_failure_budget_spent(failures)
         end
 
-        break if point_limit_reached? || result[:drives].length < PAGE_SIZE
+        if point_limit_reached?
+          @quota_truncated = true if result[:drives].length == PAGE_SIZE
+          break
+        end
+        break if result[:drives].length < PAGE_SIZE
 
         page += 1
       end
@@ -216,7 +226,35 @@ module TeslaMate
     def payloads_within_point_limit(payloads)
       return payloads if DawarichSettings.self_hosted?
 
-      payloads.first(point_slots_remaining)
+      existing_keys = existing_point_keys(payloads).index_with(true)
+      slots = point_slots_remaining
+
+      payloads.select do |payload|
+        key = point_key(payload)
+        next true if existing_keys[key]
+
+        if slots.positive?
+          existing_keys[key] = true
+          slots -= 1
+          true
+        else
+          @quota_truncated = true
+          false
+        end
+      end
+    end
+
+    def existing_point_keys(payloads)
+      timestamps = payloads.map { |payload| payload[:timestamp] }.uniq
+      return [] if timestamps.empty?
+
+      Point.where(user_id: @user.id, timestamp: timestamps)
+           .pluck(:timestamp, Arel.sql('ST_X(lonlat::geometry)'), Arel.sql('ST_Y(lonlat::geometry)'))
+           .map { |timestamp, lon, lat| [lon.to_f, lat.to_f, timestamp.to_i, @user.id] }
+    end
+
+    def point_key(payload)
+      Point.dedup_key(payload.merge(user_id: @user.id))
     end
 
     def consume_point_slots(rows)

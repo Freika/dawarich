@@ -236,6 +236,11 @@ RSpec.describe TeslaMate::Sync do
   it 'stops a Cloud import at the remaining point quota' do
     stub_const('DawarichSettings::BASIC_PAID_PLAN_LIMIT', 10)
     allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+    previous_checkpoint = '2026-08-25T12:00:00Z'
+    user.update!(settings: user.settings.merge(
+      'teslamate_last_synced_at' => previous_checkpoint,
+      'teslamate_last_synced_url' => base_url
+    ))
     user.update_columns(plan: User.plans[:pro], active_until: 1.day.from_now, points_count: 9)
     stub_request(:get, "#{base_url}/api/v1/cars")
       .to_return(status: 200, body: { data: { cars: [{ car_id: 1 }] } }.to_json)
@@ -256,6 +261,34 @@ RSpec.describe TeslaMate::Sync do
     expect(user.points.count).to eq(1)
     expect(user.reload.points_count).to eq(10)
     expect(result).to include(points: 1, skipped_points: 1)
+    expect(user.settings['teslamate_last_synced_at']).to eq(previous_checkpoint)
+  end
+
+  it 'does not let an overlapping duplicate consume the remaining Cloud quota' do
+    stub_const('DawarichSettings::BASIC_PAID_PLAN_LIMIT', 10)
+    allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+    duplicate_time = Time.iso8601('2026-09-01T10:00:00Z').to_i
+    create(:point, user: user, timestamp: duplicate_time, lonlat: 'POINT(13.405 52.52)')
+    user.update_columns(plan: User.plans[:pro], active_until: 1.day.from_now, points_count: 9)
+    stub_request(:get, "#{base_url}/api/v1/cars")
+      .to_return(status: 200, body: { data: { cars: [{ car_id: 1 }] } }.to_json)
+    stub_drives(car_id: 1, drive_id: 11, unit: 'km')
+    stub_request(:get, "#{base_url}/api/v1/cars/1/drives/11")
+      .to_return(status: 200, body: {
+        data: {
+          drive: { drive_details: [
+            { detail_id: 111, date: '2026-09-01T10:00:00Z', latitude: 52.52, longitude: 13.405 },
+            { detail_id: 112, date: '2026-09-01T10:01:00Z', latitude: 52.53, longitude: 13.415 }
+          ] },
+          units: { unit_of_length: 'km' }
+        }
+      }.to_json)
+
+    result = described_class.new(user).call
+
+    expect(user.points.count).to eq(2)
+    expect(user.reload.points_count).to eq(10)
+    expect(result).to include(points: 2, skipped_points: 0)
   end
 
   it 'retains recovery state when intake fails after persisting points' do
