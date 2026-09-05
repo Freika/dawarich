@@ -1543,6 +1543,7 @@ es:
           immich: Immich
           photoprism: PhotoPrism
           airtrail: AirTrail
+          teslamate: TeslaMateApi
         status_connected: Conectado
         status_failed: El último intento de conexión falló
         immich_photoprism_integrations: Integraciones Immich y Photoprism
@@ -1572,6 +1573,16 @@ es:
         the_base_url_of_your_airtrail_instance_your_flights_are: La URL base de tu instancia de AirTrail. Tus vuelos se muestran como arcos en el mapa.
         airtrail_api_key: Clave API de AirTrail
         create_an_api_key_in_airtrail_under_settings_rarr_security: Crea una clave API en AirTrail bajo Ajustes → Seguridad.
+        teslamate_integration: Integración de TeslaMateApi
+        teslamate_url: URL de TeslaMateApi
+        the_base_url_of_your_teslamateapi_instance: La URL base de tu instancia de TeslaMateApi.
+        teslamate_setup_guide: Guía de configuración (TeslaMateApi v1.25.0 o posterior)
+        teslamate_username: Usuario HTTP Basic (opcional)
+        teslamate_password: Contraseña HTTP Basic (opcional)
+        teslamate_api_token: Token Bearer (opcional)
+        teslamate_authentication_help: Usa autenticación Basic para un proxy inverso protegido o un token Bearer para un proxy o fork compatible. Los endpoints de lectura de TeslaMateApi estándar no usan API_TOKEN.
+        sync_teslamate_drives: Sincronizar trayectos de TeslaMateApi
+        teslamate_sync_help: Los trayectos completados se sincronizan automáticamente una vez al día. Los trayectos actuales y las posiciones estacionadas no están disponibles mediante TeslaMateApi.
         last_synced: 'Última sincronización:'
         connected_accounts: Cuentas conectadas
         you_ve_connected_your_account_using_the_following_oauth_provider: 'Has conectado tu cuenta utilizando el siguiente proveedor de OAuth:'
@@ -3317,6 +3328,11 @@ es:
     trip:
       must_be_after_start_date: debe estar después de la fecha de inicio
   services:
+    tesla_mate:
+      connection_tester:
+        teslamate_connection_verified: Se ha verificado la conexión con TeslaMateApi
+        teslamate_url_is_missing: Falta la URL de TeslaMateApi
+        teslamate_connection_failed_message: 'La conexión con TeslaMateApi falló: %{message}'
     air_trail:
       connection_tester:
         airtrail_connection_verified: Se ha verificado la conexión con AirTrail
@@ -3634,6 +3650,10 @@ es:
         weekday_preference: Viajas más en días laborables que en fines de semana
         with_suggestion: "%{insight} %{suggestion}"
   jobs:
+    tesla_mate:
+      sync_job:
+        teslamate_sync_failed: Sincronización de TeslaMateApi fallida
+        your_teslamate_sync_failed: 'Tu sincronización de TeslaMateApi ha fallado con el error: %{message}. Revisa los ajustes de la integración y vuelve a intentarlo.'
     air_trail:
       import_flights_job:
         airtrail_sync_failed: Sincronización de AirTrail fallida

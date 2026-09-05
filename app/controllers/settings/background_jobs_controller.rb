@@ -1,10 +1,13 @@
 # frozen_string_literal: true
 
 class Settings::BackgroundJobsController < ApplicationController
+  CLOUD_ALLOWED_JOBS = %w[
+    start_immich_import start_photoprism_import start_airtrail_import start_teslamate_sync
+  ].freeze
+
   before_action :authenticate_user!
   before_action :authenticate_self_hosted!, unless: lambda {
-    action_name == 'create' &&
-      %w[start_immich_import start_photoprism_import start_airtrail_import].include?(params[:job_name])
+    action_name == 'create' && CLOUD_ALLOWED_JOBS.include?(params[:job_name])
   }
 
   def index; end
@@ -32,6 +35,8 @@ class Settings::BackgroundJobsController < ApplicationController
         imports_path
       when 'start_airtrail_import'
         settings_integrations_path
+      when 'start_teslamate_sync'
+        settings_integrations_path(service: 'teslamate')
       else
         settings_background_jobs_path
       end

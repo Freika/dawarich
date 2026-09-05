@@ -141,6 +141,43 @@ RSpec.describe 'Settings::Integrations', type: :request do
       end
     end
 
+    context 'when TeslaMateApi settings change' do
+      let(:teslamate_url) { 'https://teslamate.test' }
+
+      before do
+        allow(Resolv).to receive(:getaddress).with('teslamate.test').and_return('93.184.216.34')
+      end
+
+      it 'persists settings and verifies the cars endpoint' do
+        stub_request(:get, "#{teslamate_url}/api/v1/cars")
+          .to_return(status: 200, body: { data: { cars: [] } }.to_json,
+                     headers: { 'Content-Type' => 'application/json' })
+
+        patch '/settings/integrations', params: {
+          settings: {
+            'teslamate_url' => teslamate_url,
+            'teslamate_username' => 'proxy-user',
+            'teslamate_password' => 'proxy-password',
+            'teslamate_api_token' => 'proxy-token',
+            'teslamate_skip_ssl_verification' => '1'
+          },
+          service: 'teslamate'
+        }
+
+        expect(response).to redirect_to(settings_integrations_path(service: 'teslamate'))
+        follow_redirect!
+        expect(flash[:notice]).to include('TeslaMateApi connection verified')
+        expect(user.reload.settings).to include(
+          'teslamate_url' => teslamate_url,
+          'teslamate_username' => 'proxy-user',
+          'teslamate_password' => 'proxy-password',
+          'teslamate_api_token' => 'proxy-token',
+          'teslamate_skip_ssl_verification' => true,
+          'teslamate_connection_status' => 'ok'
+        )
+      end
+    end
+
     context 'when user is on Lite plan (Cloud)' do
       before do
         allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
@@ -246,6 +283,15 @@ RSpec.describe 'Settings::Integrations', type: :request do
 
       expect(response.body).to include('name="settings[photoprism_url]"')
       expect(response.body).not_to include('name="settings[immich_url]"')
+    end
+
+    it 'renders the TeslaMateApi settings pane' do
+      get settings_integrations_path(service: 'teslamate')
+
+      expect(response.body).to include('name="settings[teslamate_url]"')
+      expect(response.body).to include('TeslaMateApi Integration')
+      expect(response.body).to include('https://github.com/tobiasehlert/teslamateapi#how-to-run-it')
+      expect(response.body).to include('man-in-the-middle attacks')
     end
 
     it 'falls back to the first available service for unknown service params' do

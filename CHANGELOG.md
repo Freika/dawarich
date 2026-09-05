@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- TeslaMateApi can now sync completed-drive positions from every configured car into Dawarich, manually or once a day. The integration supports reverse-proxy Basic authentication, optional bearer tokens, self-signed certificates, bounded retries, source-specific incremental checkpoints, serialized syncs, and idempotent historical imports that do not move live maps backwards.
 ### Fixed
 
 - Immich photo enrichment now checks saved coordinates in the background and explains unconfirmed updates, including read-only external library and XMP permission problems (#3065).
