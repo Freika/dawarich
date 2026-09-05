@@ -37,6 +37,7 @@ module Timeline
       @segment_stats = load_segment_stats(tracks)
 
       @visit_point_counts = Point.where(visit_id: visits.map(&:id)).group(:visit_id).count
+      @visit_point_centers = load_point_centers(visits.select { |visit| needs_point_center?(visit) })
 
       days = group_by_day(visits, tracks)
       build_days(days)
@@ -55,6 +56,7 @@ module Timeline
         status: visit.status,
         confidence_band: visit.confidence_band,
         place_id: visit.place_id,
+        center: point_center_for(visit),
         point_count: point_count_for(visit),
         tags: build_tags(visit.place),
         started_at: visit.started_at.iso8601,
@@ -90,6 +92,30 @@ module Timeline
       return @visit_point_counts.fetch(visit.id, 0) if @visit_point_counts
 
       visit.points.count
+    end
+
+    # Preserve the existing place/area/suggestion precedence. Only visits that
+    # have none need a GPS fallback; aggregate those points in SQL rather than
+    # instantiating every Point (or issuing one query per timeline row).
+    def needs_point_center?(visit)
+      visit.place.nil? && visit.area.nil? && (!visit.suggested? || visit.suggested_places.empty?)
+    end
+
+    def load_point_centers(visits)
+      return {} if visits.empty?
+
+      user.scoped_points.where(visit_id: visits.map(&:id)).group(:visit_id)
+          .pluck(:visit_id, Arel.sql('AVG(ST_Y(lonlat::geometry))'), Arel.sql('AVG(ST_X(lonlat::geometry))'))
+          .each_with_object({}) do |(id, lat, lng), centers|
+        centers[id] = { lat: lat, lng: lng } if lat && lng
+      end
+    end
+
+    def point_center_for(visit)
+      return nil unless needs_point_center?(visit)
+      return @visit_point_centers[visit.id] if @visit_point_centers
+
+      load_point_centers([visit])[visit.id]
     end
 
     def fetch_tracks
@@ -314,10 +340,13 @@ module Timeline
       lngs = []
 
       visits.each do |visit|
-        next unless visit.place
-
-        lats << visit.place.lat
-        lngs << visit.place.lon
+        if visit.place
+          lats << visit.place.lat
+          lngs << visit.place.lon
+        elsif (center = point_center_for(visit))
+          lats << center[:lat]
+          lngs << center[:lng]
+        end
       end
 
       track_extent = tracks_extent(tracks)

@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Restore Timeline map centering and place search for visits that have GPS points but no attached place, area, or suggestions.
+
 - Traccar latitude/longitude form uploads now save points, including Unix timestamps in seconds or milliseconds. Payloads that cannot be stored return an error instead of a false success; repeated valid uploads remain safe. (#3299)
 ## Unreleased
 
