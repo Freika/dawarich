@@ -17,6 +17,45 @@ RSpec.describe TeslaMate::SyncJob, type: :job do
     expect { described_class.perform_now(-1) }.not_to raise_error
   end
 
+  context 'when hosted on Dawarich Cloud' do
+    before { allow(DawarichSettings).to receive(:self_hosted?).and_return(false) }
+
+    it 'syncs active users with integration access below the point limit' do
+      user = create(:user, plan: :pro, active_until: 1.day.from_now, skip_auto_trial: true)
+      sync = instance_double(TeslaMate::Sync, call: { points: 0 })
+      allow(TeslaMate::Sync).to receive(:new).with(user).and_return(sync)
+
+      described_class.perform_now(user.id)
+
+      expect(sync).to have_received(:call)
+    end
+
+    it 'skips users whose subscription has expired' do
+      user = create(:user, plan: :pro, active_until: 1.minute.ago, skip_auto_trial: true)
+
+      expect(TeslaMate::Sync).not_to receive(:new)
+
+      described_class.perform_now(user.id)
+    end
+
+    it 'skips users without integration access' do
+      user = create(:user, plan: :lite, active_until: 1.day.from_now, skip_auto_trial: true)
+
+      expect(TeslaMate::Sync).not_to receive(:new)
+
+      described_class.perform_now(user.id)
+    end
+
+    it 'skips users who have reached the point limit' do
+      stub_const('DawarichSettings::BASIC_PAID_PLAN_LIMIT', 10)
+      user = create(:user, plan: :pro, active_until: 1.day.from_now, points_count: 10, skip_auto_trial: true)
+
+      expect(TeslaMate::Sync).not_to receive(:new)
+
+      described_class.perform_now(user.id)
+    end
+  end
+
   it 'retries an incomplete sync without notifying on the first failure' do
     user = create(:user)
     sync = instance_double(TeslaMate::Sync)

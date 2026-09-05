@@ -108,7 +108,7 @@ RSpec.describe 'Stats rebuilt after the calculation changes' do
   end
 
   describe 'the repair path and the new-points watermark' do
-    it 'starts the next window where the last sweep stopped, not after a repair write' do
+    it 'overlaps the next window from the last sweep, not from a repair write' do
       stale_stat(12)
 
       first_sweep = Time.current
@@ -124,7 +124,8 @@ RSpec.describe 'Stats rebuilt after the calculation changes' do
 
       travel_to(first_sweep + 1.hour) { Stats::BulkCalculator.new(user.id).call }
 
-      expect(windows.last).to include(first_sweep.to_i.to_s)
+      expected_start = (first_sweep - Stats::BulkCalculator::SWEEP_OVERLAP).to_i
+      expect(windows.last).to include(expected_start.to_s)
     end
 
     it 'leaves stats.updated_at alone when it merely defers a month' do
@@ -160,6 +161,21 @@ RSpec.describe 'Stats rebuilt after the calculation changes' do
 
       waits = enqueued_jobs.select { |job| job[:job] == Stats::CalculatingJob }.map { |job| job[:at] }
       expect(waits).to all(be_nil)
+    end
+
+    it 'rechecks the overlap when a point commits while the watermark advances' do
+      first_sweep = Time.current
+      user.update_column(:stats_swept_at, first_sweep - 1.hour)
+
+      travel_to(first_sweep) { Stats::BulkCalculator.new(user.id).call }
+      create(:point, user: user, timestamp: (first_sweep - 1.second).to_i)
+      clear_enqueued_jobs
+
+      travel_to(first_sweep + 1.hour) { Stats::BulkCalculator.new(user.id).call }
+
+      expect(enqueued_jobs).to include(
+        hash_including(job: Stats::CalculatingJob, args: [user.id, first_sweep.year, first_sweep.month])
+      )
     end
 
     it 'sends a just-scheduled month to the back of the queue' do

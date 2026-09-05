@@ -11,6 +11,7 @@ module TeslaMate
 
     def perform(user_id)
       user = find_user_or_skip(user_id) || return
+      return unless sync_allowed?(user)
 
       ActiveRecord::Base.with_advisory_lock("teslamate-sync:#{user.id}", timeout_seconds: 0) do
         TeslaMate::Sync.new(user).call
@@ -26,6 +27,14 @@ module TeslaMate
     end
 
     private
+
+    def sync_allowed?(user)
+      return true if DawarichSettings.self_hosted?
+
+      user.active_until&.future? &&
+        user.entitlements.integrations? &&
+        !PointsLimitExceeded.new(user).call
+    end
 
     def notify_sync_failed(user, error)
       I18n.with_locale(user.locale) do

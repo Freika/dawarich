@@ -37,6 +37,13 @@ RSpec.describe 'Stats are rebucketed when the user changes timezone' do
     end.to change { stat.reload.calculation_version }.to(0)
   end
 
+  it 'accepts a settings hash after a legacy non-object value' do
+    user.update_column(:settings, 'legacy')
+
+    expect { user.update!(settings: { 'timezone' => 'Etc/UTC' }) }
+      .to change { stat.reload.calculation_version }.to(0)
+  end
+
   describe 'ordering against the transaction' do
     it 'marks the months stale inside the transaction' do
       ActiveRecord::Base.transaction do

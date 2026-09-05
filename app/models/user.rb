@@ -409,7 +409,10 @@ class User < ApplicationRecord
 
     before, after = saved_change_to_settings
 
-    before.to_h['timezone'] != after.to_h['timezone']
+    before_timezone = before['timezone'] if before.is_a?(Hash)
+    after_timezone = after['timezone'] if after.is_a?(Hash)
+
+    before_timezone != after_timezone
   end
 
   def mark_stats_for_rebucketing

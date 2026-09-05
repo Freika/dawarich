@@ -4,6 +4,7 @@ module Stats
   class BulkCalculator
     STALE_STATS_PER_RUN = 5
     REPAIR_JITTER = 55.minutes
+    SWEEP_OVERLAP = 5.minutes
 
     def initialize(user_id)
       @user_id = user_id
@@ -36,7 +37,7 @@ module Stats
     end
 
     def months_with_new_points(swept_until)
-      start_ts = watermark.to_i
+      start_ts = (watermark - SWEEP_OVERLAP).to_i
       end_ts = swept_until.to_i
 
       sql = Point.sanitize_sql_array([
