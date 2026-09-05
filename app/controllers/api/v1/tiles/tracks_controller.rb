@@ -5,25 +5,44 @@ class Api::V1::Tiles::TracksController < ApiController
 
   # ETag material — bump when Tracks::VectorTileQuery's SQL or its emitted
   # properties change.
-  TILE_SCHEMA_VERSION = 1
+  TILE_SCHEMA_VERSION = 2
+
+  rescue_from Tracks::SpeedVectorTileQuery::FeatureLimitError do
+    force_uncacheable_response
+    render json: { error: 'Too many route segments in this tile. Zoom in or shorten the date range.' },
+           status: :service_unavailable
+  end
 
   private
 
   def tile_schema_version
-    TILE_SCHEMA_VERSION
+    [TILE_SCHEMA_VERSION, speed_coloring?]
   end
 
   def tile_epoch_component
-    Tracks::TileEpoch.etag_component(current_api_user.id, cacheable_start_at, cacheable_end_at)
+    tracks_epoch = Tracks::TileEpoch.etag_component(current_api_user.id, cacheable_start_at, cacheable_end_at)
+    return tracks_epoch unless speed_coloring?
+
+    # Overlap semantics render whole tracks, including their portions outside
+    # the requested dates. Point edits in those portions must invalidate too.
+    first_at, last_at = filtered_tracks.pick(Arel.sql('MIN(start_at), MAX(end_at)'))
+    [tracks_epoch, Points::TileEpoch.etag_component(current_api_user.id, first_at, last_at)]
   end
 
   def tile_query
-    Tracks::VectorTileQuery.new(
+    options = {
       scope: filtered_tracks,
       z: params[:z],
       x: params[:x],
       y: params[:y]
-    )
+    }
+    return Tracks::VectorTileQuery.new(**options) unless speed_coloring?
+
+    Tracks::SpeedVectorTileQuery.new(points_scope: current_api_user.scoped_points, **options)
+  end
+
+  def speed_coloring?
+    params[:speed_coloring] == 'true'
   end
 
   def filtered_tracks

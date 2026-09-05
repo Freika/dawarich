@@ -147,9 +147,9 @@ test("speed coloring produces an interpolate expression clamped to the classic s
 
   const expression = layer._lineColor()
   assert.ok(Array.isArray(expression))
-  assert.equal(expression[0], "interpolate")
+  assert.equal(expression[0], "step")
   const flattened = JSON.stringify(expression)
-  assert.ok(flattened.includes("avg_speed"))
+  assert.ok(flattened.includes("segment_speed"))
   assert.ok(flattened.includes('"min",150'))
   assert.ok(flattened.includes("#00ff00"))
 })
@@ -162,6 +162,30 @@ test("an invalid speed scale falls back to flat color", () => {
   })
 
   assert.equal(layer._lineColor(), "#6366F1")
+})
+
+test("speed toggles replace tile data while preserving the selected dates and layer order", () => {
+  const { map, layer } = buildLayer({
+    tracksEnabled: false,
+    routesVisible: true,
+  })
+  map.addLayer({ id: "points-above-routes" })
+  const originalUrl = layer._tileUrl
+
+  layer.setSpeedColoring(true, "0:#00ff00|150:#ff0000")
+
+  assert.ok(layer._tileUrl.includes("speed_coloring=true"))
+  assert.ok(layer._tileUrl.includes("2024-01-01"))
+  assert.deepEqual(map.layers, ["tracks-mvt", "points-above-routes"])
+  assert.equal(layer.visible, true)
+  const speedUrl = layer._tileUrl
+
+  layer.setSpeedColoring(true, "0:#0000ff|150:#ffffff")
+  assert.equal(layer._tileUrl, speedUrl)
+
+  layer.setSpeedColoring(false)
+  assert.equal(layer._tileUrl, originalUrl)
+  assert.equal(layer._lineColor(), "#0000ff")
 })
 
 test("parseSpeedColorScale decodes and sorts the encoded stops", () => {
