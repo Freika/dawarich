@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class Stats::CalculateMonth
-  CALCULATION_VERSION = 2
+  CALCULATION_VERSION = 1
 
   def initialize(user_id, year, month, notify_on_failure: true)
     @user = User.find(user_id)
@@ -35,9 +35,8 @@ class Stats::CalculateMonth
   def update_month_stats(year, month)
     Stat.transaction do
       stat = Stat.find_or_create_by!(year:, month:, user:) { |record| record.distance = 0 }
-      # Serialize recalculation with geocoding invalidation for this month.
-      # A geocoder finishing during this calculation must leave the month stale.
       stat.lock!
+      pending = Stats::GeocodedDays.snapshot_month(user, year, month)
       distance_by_day = stat.distance_by_day
 
       stat.assign_attributes(
@@ -51,7 +50,10 @@ class Stats::CalculateMonth
 
       stat.save!
 
-      Cache::InvalidateUserCaches.new(user.id, year: year).call
+      ActiveRecord.after_all_transactions_commit do
+        Cache::InvalidateUserCaches.new(user.id, year: year).call
+        Stats::GeocodedDays.acknowledge(pending)
+      end
     end
   end
 

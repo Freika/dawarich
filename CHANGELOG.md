@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Immich photo enrichment now checks saved coordinates in the background and explains unconfirmed updates, including read-only external library and XMP permission problems (#3065).
 - Hovering a transportation segment in the map timeline now animates only that segment and restores the existing track highlight on exit. (#3497)
 - Public trip galleries include photos beyond the first hundred, load each day's images when expanded, and no longer show a misleading separator before daily distances. (#3232)
-- Historical country and city statistics refresh after reverse geocoding, with bounded monthly repairs and protection against concurrent recalculation (#3499).
+- Historical country and city statistics refresh after reverse geocoding without recalculating distances or map coverage; missed updates are repaired gradually (#3499).
 - Track generation now refreshes surviving partial tracks from their assigned points, correcting stale time ranges, distance and elevation after buffered chunks overlap. Public links and manual transportation corrections are preserved. (#3209)
 - Trip Poster Studio previews and downloads now include enabled AirTrail flight arcs and preserve the map’s existing GPS masking. Video and server-rendered gallery posters retain their existing GPS source. (#3330)
 - Idle background workers no longer repeatedly write locks for empty queues to Redis; newly queued work is picked up within the normal two-second polling interval. (#3315)
