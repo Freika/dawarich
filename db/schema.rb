@@ -98,12 +98,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_01_204555) do
     t.jsonb "travel_patterns", default: {}
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
+    t.integer "week"
     t.integer "year", null: false
     t.jsonb "year_over_year", default: {}
     t.index ["period_type"], name: "index_digests_on_period_type"
     t.index ["sharing_uuid"], name: "index_digests_on_sharing_uuid", unique: true
     t.index ["user_id", "year", "month", "period_type"], name: "index_digests_on_user_year_month_period_type", unique: true
-    t.index ["user_id", "year", "period_type"], name: "index_digests_on_user_year_period_type_monthless", unique: true, where: "(month IS NULL)"
+    t.index ["user_id", "year", "period_type"], name: "index_digests_on_user_year_period_type_yearly", unique: true, where: "((month IS NULL) AND (period_type <> 2))"
+    t.index ["user_id", "year", "week", "period_type"], name: "index_digests_on_user_year_week_weekly", unique: true, where: "(period_type = 2)"
     t.index ["user_id"], name: "index_digests_on_user_id"
     t.index ["year"], name: "index_digests_on_year"
   end

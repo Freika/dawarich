@@ -218,6 +218,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Days per Country moved from the map's Create tab to the Insights page as a pair of cards, following the year you pick at the top of the page.
 - After upgrading, restart the app once migrations have run — until then, deleting a visit looks like it worked without saving. A background backfill converts existing track segments to time-based anchoring; progress is visible under Background jobs settings.
 
+### Changed
+
+- Welcome and feature-tour emails for Dawarich Cloud accounts are now sent by the subscription service rather than the app. Self-hosted instances never sent these emails and are unaffected.
+
 ### Fixed
 
 - The "someone joined your family" email no longer fails to send.

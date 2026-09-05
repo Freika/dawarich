@@ -459,9 +459,6 @@ class User < ApplicationRecord
   def start_trial
     update(status: :trial, active_until: 7.days.from_now)
 
-    Users::MailerSendingJob.perform_later(id, 'welcome')
-    Users::MailerSendingJob.set(wait: 2.days).perform_later(id, 'explore_features')
-
     Users::CreationWebhookJob.perform_later(id)
   end
 
