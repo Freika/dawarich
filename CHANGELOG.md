@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Simplified Chinese now covers every user-facing string added in this release.
 - A Family plan owner whose subscription lapsed kept family sharing access. Entitlement now follows the subscription's expiry for the plan holder, as it already did for the other members.
 - Historical country and city statistics refresh after reverse geocoding without recalculating distances or map coverage; missed updates are repaired gradually (#3499).
 - Stored monthly and daily stats are now rebuilt automatically after a calculation change, so historical distances no longer need a manual **Update all stats**. Changing your timezone rebuilds them too. (#2069)
