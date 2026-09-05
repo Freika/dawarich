@@ -7,11 +7,13 @@ class ImportsController < ApplicationController
   self.page_refresh_morphing = true
 
   SORTABLE_COLUMNS = %w[name status created_at processed byte_size].freeze
+  CLIENT_WRAPPED_METADATA_KEY = 'dawarich_client_wrapped'
+  ORIGINAL_FILENAME_METADATA_KEY = 'dawarich_original_filename'
 
   before_action :authenticate_user!
   before_action :authenticate_active_user!, only: %i[create]
-  before_action :set_import, only: %i[show edit update destroy]
-  before_action :authorize_import, only: %i[show edit update destroy]
+  before_action :set_import, only: %i[show edit update destroy download]
+  before_action :authorize_import, only: %i[show edit update destroy download]
   before_action :validate_points_limit, only: %i[new create]
 
   after_action :verify_authorized, except: %i[index]
@@ -27,6 +29,22 @@ class ImportsController < ApplicationController
   end
 
   def show; end
+
+  def download
+    return redirect_to_stored_file unless wrapped_file_candidate?
+
+    archive_path = Imports::SecureFileDownloader.new(@import.file).download_to_temp_file
+    archive = Archive::Unzipper.inspect_archive(archive_path)
+
+    return redirect_to_stored_file unless wrapped_archive?(archive)
+
+    extracted_path = Archive::Unzipper.extract_single(archive_path)
+    stream_extracted_file(extracted_path, archive_path)
+    extracted_path = archive_path = nil
+  ensure
+    cleanup_download_file(extracted_path)
+    cleanup_download_file(archive_path)
+  end
 
   def edit; end
 
@@ -126,18 +144,111 @@ status: :unprocessable_content and return
     ExceptionReporter.call(error)
   end
 
-  def create_import_from_signed_id(signed_id)
+  def create_import_from_signed_id(item)
+    descriptor = upload_descriptor(item)
+    signed_id = descriptor.fetch('signed_id')
     Rails.logger.debug "Creating import from signed ID: #{signed_id[0..20]}..."
 
     blob = ActiveStorage::Blob.find_signed(signed_id)
+    original_filename = verified_original_filename(blob, descriptor)
+    mark_client_wrapped(blob, original_filename.present?) if descriptor.key?('client_wrapped')
 
-    import_name = generate_unique_import_name(blob.filename.to_s)
+    import_name = generate_unique_import_name(original_filename || blob.filename.to_s)
     import = current_user.imports.build(name: import_name)
     import.file.attach(blob)
 
     import.save!
 
     import
+  end
+
+  def upload_descriptor(item)
+    parsed = JSON.parse(item.to_s)
+    return parsed if parsed.is_a?(Hash) && parsed['signed_id'].present?
+
+    { 'signed_id' => item.to_s }
+  rescue JSON::ParserError
+    { 'signed_id' => item.to_s }
+  end
+
+  def verified_original_filename(blob, descriptor)
+    return unless ActiveModel::Type::Boolean.new.cast(descriptor['client_wrapped'])
+
+    original_filename = File.basename(descriptor['original_filename'].to_s)
+    return if original_filename.blank?
+    return unless blob.filename.to_s == "#{original_filename}.zip"
+
+    original_filename
+  end
+
+  def mark_client_wrapped(blob, wrapped)
+    metadata = blob.metadata.merge(CLIENT_WRAPPED_METADATA_KEY => wrapped)
+    metadata[ORIGINAL_FILENAME_METADATA_KEY] = blob.filename.to_s.delete_suffix('.zip') if wrapped
+    blob.update!(metadata:)
+  end
+
+  def wrapped_file_candidate?
+    metadata = @import.file.blob.metadata
+    return metadata[CLIENT_WRAPPED_METADATA_KEY] if metadata.key?(CLIENT_WRAPPED_METADATA_KEY)
+
+    legacy_wrapped_filename.present?
+  end
+
+  def wrapped_archive?(archive)
+    return false unless archive.kind == :single_entry
+
+    expected_filename = @import.file.blob.metadata[ORIGINAL_FILENAME_METADATA_KEY] || legacy_wrapped_filename
+    archive.entry_name == expected_filename
+  end
+
+  def legacy_wrapped_filename
+    filename = @import.file.blob.filename.to_s
+    return unless filename.end_with?('.zip')
+
+    inner_filename = filename.delete_suffix('.zip')
+    return unless Imports::ZipExtractor::SUPPORTED_EXTENSIONS.include?(File.extname(inner_filename).downcase)
+
+    inner_filename
+  end
+
+  def redirect_to_stored_file(filename: @import.name)
+    redirect_to @import.file.url(filename:, disposition: :attachment), allow_other_host: true
+  end
+
+  def stream_extracted_file(extracted_path, archive_path)
+    filename = extracted_download_filename
+    send_file_headers!(
+      filename:,
+      type: Marcel::MimeType.for(Pathname.new(extracted_path), name: filename),
+      disposition: :attachment
+    )
+    self.status = :ok
+
+    stream = Enumerator.new do |output|
+      File.open(extracted_path, 'rb') do |file|
+        while (chunk = file.read(64.kilobytes))
+          output << chunk
+        end
+      end
+    ensure
+      cleanup_download_file(extracted_path)
+      cleanup_download_file(archive_path)
+    end
+
+    self.response_body = Rack::BodyProxy.new(stream) do
+      cleanup_download_file(extracted_path)
+      cleanup_download_file(archive_path)
+    end
+  end
+
+  def cleanup_download_file(path)
+    File.unlink(path) if path && File.exist?(path)
+  end
+
+  def extracted_download_filename
+    return @import.name unless @import.name == @import.file.blob.filename.to_s
+
+    @import.file.blob.metadata[ORIGINAL_FILENAME_METADATA_KEY] || legacy_wrapped_filename
   end
 
   def generate_unique_import_name(original_name)

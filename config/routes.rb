@@ -97,6 +97,7 @@ Rails.application.routes.draw do
   get 'trial/welcome', to: 'trial/welcome#show', as: :trial_welcome
 
   resources :imports do
+    get :download, on: :member
     resource :extraction, only: %i[create destroy], controller: 'imports/extractions'
   end
   resources :tracks, only: [] do
