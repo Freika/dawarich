@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Immich photo enrichment now checks saved coordinates in the background and explains unconfirmed updates, including read-only external library and XMP permission problems (#3065).
 - Hovering a transportation segment in the map timeline now animates only that segment and restores the existing track highlight on exit. (#3497)
 - Public trip galleries include photos beyond the first hundred, load each day's images when expanded, and no longer show a misleading separator before daily distances. (#3232)
 - Historical country and city statistics refresh after reverse geocoding, with bounded monthly repairs and protection against concurrent recalculation (#3499).

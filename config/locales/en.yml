@@ -3417,6 +3417,13 @@ en:
         immich_api_key_missing_permission_asset_view: 'Immich API key missing permission: asset.view'
         immich_thumbnail_check_failed_code: 'Immich thumbnail check failed: %{code}'
       enrich_photos:
+        checking_title: Checking Immich location updates
+        checking: "Submitted %{count} location updates to Immich. Checking whether the coordinates were saved."
+        result_title: Immich location update results
+        confirmed:
+          one: "Confirmed the saved location for %{count} photo."
+          other: "Confirmed saved locations for %{count} photos."
+        unconfirmed: "Location updates still unconfirmed: %{count}. Immich may still be processing the updates. Check its metadata jobs and your API key's asset.read permission. For external libraries, check that Immich can write XMP sidecar files: read-only mounts or file permissions can prevent saving. Once resolved, scan again before retrying."
         http_code_message: 'HTTP %{code}: %{message}'
       enrich_scan:
         failed_to_fetch_photos_from_immich: Failed to fetch photos from Immich
@@ -4121,6 +4128,7 @@ en:
       no_matches: No matches found within tolerance
       open_in_immich: Open in Immich
       partially_enriched: Enriched %{enriched} photos. %{failed} failed.
+      pending_enrichment: "Submitted %{count} location updates to Immich; %{failed} failed to send. You will receive a notification after the saved coordinates are checked."
       photos_without_gps:
         one: "%{count} photo without GPS"
         other: "%{count} photos without GPS"

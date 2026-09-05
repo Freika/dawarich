@@ -3491,6 +3491,13 @@ de:
         immich_api_key_missing_permission_asset_view: 'Immich-API-Schlüssel fehlt Berechtigung: asset.view'
         immich_thumbnail_check_failed_code: 'Immich-Thumbnail-Prüfung fehlgeschlagen: %{code}'
       enrich_photos:
+        checking_title: "Immich-Standortaktualisierungen werden geprüft"
+        checking: "%{count} Standortaktualisierungen an Immich gesendet. Es wird geprüft, ob die Koordinaten gespeichert wurden."
+        result_title: "Ergebnisse der Immich-Standortaktualisierung"
+        confirmed:
+          one: "Der gespeicherte Standort für %{count} Foto wurde bestätigt."
+          other: "Gespeicherte Standorte für %{count} Fotos wurden bestätigt."
+        unconfirmed: "Noch nicht bestätigte Standortaktualisierungen: %{count}. Immich verarbeitet die Änderungen möglicherweise noch. Prüfe die Metadatenaufträge und die Berechtigung asset.read deines API-Schlüssels. Bei externen Bibliotheken muss Immich XMP-Begleitdateien schreiben können: Schreibgeschützte Einbindungen oder Dateiberechtigungen können das Speichern verhindern. Suche nach der Behebung erneut, bevor du es noch einmal versuchst."
         http_code_message: 'HTTP %{code}: %{message}'
       enrich_scan:
         failed_to_fetch_photos_from_immich: Fehler beim Abrufen der Fotos von Immich
@@ -4182,6 +4189,7 @@ de:
       no_matches: Keine Übereinstimmungen innerhalb der Toleranz gefunden
       open_in_immich: In Immich öffnen
       partially_enriched: "%{enriched} Fotos bereichert. %{failed} fehlgeschlagen."
+      pending_enrichment: "%{count} Standortaktualisierungen an Immich gesendet; %{failed} konnten nicht gesendet werden. Du erhältst nach der Prüfung der gespeicherten Koordinaten eine Benachrichtigung."
       photos_without_gps:
         one: "%{count} Foto ohne GPS"
         other: "%{count} Fotos ohne GPS"

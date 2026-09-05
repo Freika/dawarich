@@ -4531,6 +4531,13 @@ fr:
         immich_thumbnail_check_failed_code: 'Vérification de miniature Immich échouée :
           %{code}'
       enrich_photos:
+        checking_title: "Vérification des mises à jour de localisation Immich"
+        checking: "%{count} mises à jour de localisation envoyées à Immich. Vérification de l’enregistrement des coordonnées."
+        result_title: "Résultats des mises à jour de localisation Immich"
+        confirmed:
+          one: "Localisation enregistrée confirmée pour %{count} photo."
+          other: "Localisations enregistrées confirmées pour %{count} photos."
+        unconfirmed: "Mises à jour de localisation non confirmées : %{count}. Immich traite peut-être encore les modifications. Vérifiez ses tâches de métadonnées et l’autorisation asset.read de votre clé API. Pour les bibliothèques externes, Immich doit pouvoir écrire les fichiers annexes XMP : un montage en lecture seule ou les permissions des fichiers peuvent empêcher l’enregistrement. Après correction, relancez la recherche avant de réessayer."
         http_code_message: 'HTTP %{code} : %{message}'
       enrich_scan:
         failed_to_fetch_photos_from_immich: Impossible de récupérer les photos d'Immich
@@ -5399,6 +5406,7 @@ fr:
       no_matches: Aucune correspondance trouvée dans la tolérance
       open_in_immich: Ouvrir dans Immich
       partially_enriched: 'Photos enrichies : %{enriched}. Échecs : %{failed}'
+      pending_enrichment: "%{count} mises à jour de localisation envoyées à Immich ; %{failed} envois ont échoué. Une notification vous informera après la vérification des coordonnées enregistrées."
       photos_without_gps:
         one: "%{count} photo sans GPS"
         other: "%{count} photos sans GPS"
