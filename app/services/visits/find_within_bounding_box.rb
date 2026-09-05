@@ -22,21 +22,24 @@ module Visits
     end
 
     def call
-      relation = user.scoped_visits
-                     .left_outer_joins(:place, :area)
-                     .includes(:place, :area)
-                     .references(:place, :area)
-                     .where(
-                       "(#{PLACE_INSIDE}) OR (#{AREA_INSIDE})",
-                       sw_lng, sw_lat, ne_lng, ne_lat,
-                       sw_lng, sw_lat, ne_lng, ne_lat
-                     )
+      # Apply the same dates and visibility scope to the GPS aggregate as to
+      # the result. In particular, do not scan unrelated historical visits.
+      visits = user.scoped_visits
+      visits = visits.where(started_at: start_at..end_at) if start_at && end_at
+      unlocated = visits.where(place_id: nil, area_id: nil)
+      point_centers_inside = Visits::PointCenters.new(user, visit_ids: unlocated.select(:id))
+                                                 .within_bounds(sw_lng: sw_lng, sw_lat: sw_lat,
+                                                                ne_lng: ne_lng, ne_lat: ne_lat)
+      relation = visits.left_outer_joins(:place, :area)
+                       .includes(:place, :area)
+                       .references(:place, :area)
+      located = relation.where(
+        "(#{PLACE_INSIDE}) OR (#{AREA_INSIDE})",
+        sw_lng, sw_lat, ne_lng, ne_lat,
+        sw_lng, sw_lat, ne_lng, ne_lat
+      )
 
-      # Filter by started_at only — mirrors Visits::FindInTime; adding an
-      # ended_at predicate silently drops boundary-crossing visits.
-      relation = relation.where(started_at: start_at..end_at) if start_at && end_at
-
-      relation.order(started_at: :desc)
+      located.or(relation.where(id: point_centers_inside)).order(started_at: :desc)
     end
 
     private

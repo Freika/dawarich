@@ -104,11 +104,7 @@ module Timeline
     def load_point_centers(visits)
       return {} if visits.empty?
 
-      user.scoped_points.where(visit_id: visits.map(&:id)).group(:visit_id)
-          .pluck(:visit_id, Arel.sql('AVG(ST_Y(lonlat::geometry))'), Arel.sql('AVG(ST_X(lonlat::geometry))'))
-          .each_with_object({}) do |(id, lat, lng), centers|
-        centers[id] = { lat: lat, lng: lng } if lat && lng
-      end
+      Visits::PointCenters.new(user, visit_ids: visits.map(&:id)).call
     end
 
     def point_center_for(visit)
