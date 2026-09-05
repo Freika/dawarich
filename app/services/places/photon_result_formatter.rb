@@ -1,16 +1,19 @@
 # frozen_string_literal: true
 
 module Places
+  # Flattens a geocoder result into the select_place-compatible shape.
+  # Name kept for compatibility; extraction is provider-agnostic.
   module PhotonResultFormatter
     module_function
 
     def call(result, fallback_lat: nil, fallback_lon: nil)
-      properties = result.data['properties'] || {}
-      coordinates = result.data.dig('geometry', 'coordinates') || [fallback_lon, fallback_lat]
+      fields = Geocoding::ResultNormalizer.call(result)
+      properties = fields[:properties]
+      coordinates = fields[:coords] || [fallback_lon, fallback_lat]
 
       {
         id: nil,
-        name: extract_name(result.data),
+        name: extract_name(properties),
         latitude: coordinates[1],
         longitude: coordinates[0],
         osm_id: properties['osm_id'],
@@ -27,8 +30,7 @@ module Places
       }
     end
 
-    def extract_name(data)
-      properties = data['properties'] || {}
+    def extract_name(properties)
       properties['name'] ||
         [properties['street'], properties['housenumber']].compact.join(' ').presence ||
         properties['city'] ||

@@ -86,14 +86,9 @@ module Visits
 
         result = Geocoding::Search.call(user: user, query: [stay[:center_lat], stay[:center_lon]],
                                         limit: 1, distance_sort: true, units: :km).first
-        data = result&.data
-        return nil if data.blank?
+        return nil if result.blank?
 
-        data = data.deep_stringify_keys if data.is_a?(Hash)
-        {
-          properties: data['properties'] || data.dig('features', 0, 'properties'),
-          coords: data.dig('geometry', 'coordinates') || data.dig('features', 0, 'geometry', 'coordinates')
-        }
+        Geocoding::ResultNormalizer.call(result)
       rescue StandardError => e
         Rails.logger.warn("[Visits::Detection::PlaceAttributor] reverse lookup failed: #{e.class}: #{e.message}")
         nil
