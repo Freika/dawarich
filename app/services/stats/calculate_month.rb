@@ -1,6 +1,9 @@
 # frozen_string_literal: true
 
 class Stats::CalculateMonth
+  # Version 2 was used by #3509 for geocoding refresh scheduling and may
+  # exist in deployed databases. Reserve it permanently; the next change
+  # to calculation semantics must use version 3 or higher.
   CALCULATION_VERSION = 1
 
   def initialize(user_id, year, month, notify_on_failure: true)
