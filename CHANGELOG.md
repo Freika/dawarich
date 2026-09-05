@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Trip Poster Studio previews and downloads now include enabled AirTrail flight arcs and preserve the map’s existing GPS masking. Video and server-rendered gallery posters retain their existing GPS source. (#3330)
+
 - Traccar latitude/longitude form uploads now save points, including Unix timestamps in seconds or milliseconds. Payloads that cannot be stored return an error instead of a false success; repeated valid uploads remain safe. (#3299)
 ## Unreleased
 
