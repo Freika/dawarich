@@ -77,7 +77,7 @@ export class RoutesManager {
     }
 
     if (tiledPointsActive(SettingsManager.getSettings())) {
-      // Per-track approximation on the tile layer; no bulk routes to rebuild.
+      // Reload speed segments through the tile source; keep the date range.
       const tracksMvtLayer = this.layerManager.getLayer("tracks-mvt")
       tracksMvtLayer?.setSpeedColoring(
         enabled,
