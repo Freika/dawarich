@@ -9,7 +9,7 @@ import { ReplayManager } from "maps_maplibre/managers/replay_manager"
 import { ReplayPanel } from "maps_maplibre/managers/replay_panel"
 import { ApiClient } from "maps_maplibre/services/api_client"
 import { featureToPhoto } from "maps_maplibre/utils/feature_to_photo"
-import { flightWindows } from "maps_maplibre/utils/flight_mask"
+import { flightWindows, maskLines } from "maps_maplibre/utils/flight_mask"
 import { buildTripGeojson, TripProvider } from "poster_studio/data/providers"
 import Flash from "./flash_controller"
 
@@ -417,8 +417,22 @@ export default class extends Controller {
   }
 
   posterProvider() {
+    const geojson = this.posterGeojson()
+    // Keep the GPS snapshot for video, including switches between studios.
+    const posterGeojson =
+      this.flightsActive && this.flightsLayer?.visible
+        ? {
+            type: "FeatureCollection",
+            features: [
+              ...maskLines(geojson, flightWindows(this.flightsGeoJSON))
+                .features,
+              ...(this.flightsLayer.data?.features ?? []),
+            ],
+          }
+        : geojson
     return new TripProvider({
-      geojson: this.posterGeojson(),
+      geojson,
+      posterGeojson,
       startAt: this.startedAtValue,
       endAt: this.endedAtValue,
       title: this.tripNameValue,

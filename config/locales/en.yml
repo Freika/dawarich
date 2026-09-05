@@ -908,8 +908,8 @@ en:
         allow_dragging_points_to_correct_their_position_remembered_across_sessio: Allow dragging points to correct their position. Remembered across sessions.
         tiled_rendering: "Tiled rendering"
         beta: "Beta"
-        tiled_rendering_description: "Draws points, routes, tracks and fog from vector tiles as you pan, so a long date range loads only what is in view. Routes show your generated tracks, colored per track."
-        tiled_rendering_caveats: "Active while Scratch map is off. Dense areas merge into markers with a point count — zoom in to open individual points. Point editing is unavailable, routes are colored per track (average speed, not a gradient), hovering a route no longer shows its popup — click a track instead — and the live trail can lag a few minutes."
+        tiled_rendering_description: "Draws points, routes, tracks and fog from vector tiles as you pan, so a long date range loads only what is in view. Routes show your generated tracks. Zoom in to see the speed of each segment."
+        tiled_rendering_caveats: "Active while Scratch map is off. Dense areas merge into markers with a point count — zoom in to open individual points. Point editing is unavailable, hovering a route no longer shows its popup — click a track instead — and the live trail can lag a few minutes."
         routes: Routes
         show_connected_route_lines: Show connected route lines
         color_by_speed: Color by speed
@@ -1540,6 +1540,7 @@ en:
           immich: Immich
           photoprism: PhotoPrism
           airtrail: AirTrail
+          teslamate: TeslaMateApi
         status_connected: Connected
         status_failed: Last connection attempt failed
         immich_photoprism_integrations: Immich & Photoprism Integrations
@@ -1569,6 +1570,16 @@ en:
         the_base_url_of_your_airtrail_instance_your_flights_are: The base URL of your AirTrail instance. Your flights are shown as arcs on the map.
         airtrail_api_key: AirTrail API Key
         create_an_api_key_in_airtrail_under_settings_rarr_security: Create an API key in AirTrail under Settings → Security.
+        teslamate_integration: TeslaMateApi Integration
+        teslamate_url: TeslaMateApi URL
+        the_base_url_of_your_teslamateapi_instance: The base URL of your TeslaMateApi instance.
+        teslamate_setup_guide: Setup guide (TeslaMateApi v1.25.0 or newer)
+        teslamate_username: HTTP Basic username (optional)
+        teslamate_password: HTTP Basic password (optional)
+        teslamate_api_token: Bearer token (optional)
+        teslamate_authentication_help: Use Basic authentication for a protected reverse proxy, or a bearer token for a compatible proxy or fork. Canonical TeslaMateApi read endpoints do not use its API_TOKEN.
+        sync_teslamate_drives: Sync TeslaMateApi drives
+        teslamate_sync_help: Completed drives sync automatically once a day. Current drives and parked positions are not available through TeslaMateApi.
         last_synced: 'Last synced:'
         connected_accounts: Connected Accounts
         you_ve_connected_your_account_using_the_following_oauth_provider: 'You''ve connected your account using the following OAuth provider:'
@@ -3298,6 +3309,11 @@ en:
     trip:
       must_be_after_start_date: must be after start date
   services:
+    tesla_mate:
+      connection_tester:
+        teslamate_connection_verified: TeslaMateApi connection verified
+        teslamate_url_is_missing: TeslaMateApi URL is missing
+        teslamate_connection_failed_message: 'TeslaMateApi connection failed: %{message}'
     air_trail:
       connection_tester:
         airtrail_connection_verified: AirTrail connection verified
@@ -3417,6 +3433,13 @@ en:
         immich_api_key_missing_permission_asset_view: 'Immich API key missing permission: asset.view'
         immich_thumbnail_check_failed_code: 'Immich thumbnail check failed: %{code}'
       enrich_photos:
+        checking_title: Checking Immich location updates
+        checking: "Submitted %{count} location updates to Immich. Checking whether the coordinates were saved."
+        result_title: Immich location update results
+        confirmed:
+          one: "Confirmed the saved location for %{count} photo."
+          other: "Confirmed saved locations for %{count} photos."
+        unconfirmed: "Location updates still unconfirmed: %{count}. Immich may still be processing the updates. Check its metadata jobs and your API key's asset.read permission. For external libraries, check that Immich can write XMP sidecar files: read-only mounts or file permissions can prevent saving. Once resolved, scan again before retrying."
         http_code_message: 'HTTP %{code}: %{message}'
       enrich_scan:
         failed_to_fetch_photos_from_immich: Failed to fetch photos from Immich
@@ -3608,6 +3631,10 @@ en:
         weekday_preference: You travel more on weekdays than weekends
         with_suggestion: "%{insight} %{suggestion}"
   jobs:
+    tesla_mate:
+      sync_job:
+        teslamate_sync_failed: TeslaMateApi sync failed
+        your_teslamate_sync_failed: 'Your TeslaMateApi sync failed with error: %{message}. Check your integration settings and try again.'
     air_trail:
       import_flights_job:
         airtrail_sync_failed: AirTrail sync failed
@@ -4121,6 +4148,7 @@ en:
       no_matches: No matches found within tolerance
       open_in_immich: Open in Immich
       partially_enriched: Enriched %{enriched} photos. %{failed} failed.
+      pending_enrichment: "Submitted %{count} location updates to Immich; %{failed} failed to send. You will receive a notification after the saved coordinates are checked."
       photos_without_gps:
         one: "%{count} photo without GPS"
         other: "%{count} photos without GPS"
@@ -4307,6 +4335,7 @@ en:
       loading: Loading…
       loading_tracks: Loading tracks for the new range…
       no_location_data: No location data in this date range — pick a range with tracks in the date bar above.
+      gallery_without_flights: "Gallery posters use GPS routes without flight overlays. Download preserves the current view."
       no_tracks_in_frame: No tracks inside the frame — move or zoom the map over your route to save to the gallery.
       queued: Queued — rendering server-side into Recent posters…
       rendering: Rendering %{width} × %{height}px…

@@ -26,6 +26,8 @@ export class TracksLayer extends BaseLayer {
     this.animationActive = false
     this.segmentsActive = false
     this.selectedTrackLength = 0 // meters
+    this.selectedFeature = null
+    this.selectionRevision = 0
     this.flowTrackColor = "#ff0000"
 
     this.onSegmentHover = null // Callback for segment hover events
@@ -146,15 +148,18 @@ export class TracksLayer extends BaseLayer {
    * Set selected track for highlighting
    * @param {Object|null} feature - Track feature or null to clear
    */
-  setSelectedTrack(feature) {
+  setSelectedTrack(feature, { preserveSegments = false } = {}) {
     if (!this.map) return
 
     const selectionSource = this.map.getSource(this.selectionSourceId)
     if (!selectionSource) return
 
+    this.selectedFeature = feature || null
+    this.selectionRevision += 1
+
     if (feature) {
       this.flowTrackColor = feature.properties?.color || "#ff0000"
-      this.segmentsActive = false
+      if (!preserveSegments) this.segmentsActive = false
       this.selectedTrackLength = this._computeLineLength(
         feature.geometry?.coordinates || [],
       )
@@ -170,7 +175,7 @@ export class TracksLayer extends BaseLayer {
       }
     } else {
       this._stopFlowAnimation()
-      this.segmentsActive = false
+      if (!preserveSegments) this.segmentsActive = false
       this.selectedTrackLength = 0
       selectionSource.setData({ type: "FeatureCollection", features: [] })
 

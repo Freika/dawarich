@@ -56,6 +56,8 @@ class User < ApplicationRecord
   after_update_commit :enqueue_family_auto_creation, if: :saved_change_to_plan?
   after_update_commit :enqueue_family_member_sync, if: :saved_change_to_subscription_state?
   after_update :reset_archival_warnings, if: :saved_change_to_plan?
+  after_update :mark_stats_for_rebucketing, if: :saved_change_to_timezone_setting?
+  after_update_commit :enqueue_stats_rebuild, if: :saved_change_to_timezone_setting?
 
   before_save :sanitize_input
 
@@ -401,6 +403,33 @@ class User < ApplicationRecord
   end
 
   private
+
+  def saved_change_to_timezone_setting?
+    return false unless saved_change_to_settings?
+
+    before, after = saved_change_to_settings
+
+    before.to_h['timezone'] != after.to_h['timezone']
+  end
+
+  def mark_stats_for_rebucketing
+    @stats_months_to_rebuild = stats.pluck(:year, :month)
+    return if @stats_months_to_rebuild.empty?
+
+    stats.update_all(calculation_version: 0, repair_deferred_at: Time.current)
+  end
+
+  def enqueue_stats_rebuild
+    months = @stats_months_to_rebuild
+    @stats_months_to_rebuild = nil
+    return if months.blank?
+
+    months.each do |year, month|
+      Stats::CalculatingJob
+        .set(wait: rand(0..Stats::BulkCalculator::REPAIR_JITTER.to_i).seconds)
+        .perform_later(id, year, month, notify_on_failure: false)
+    end
+  end
 
   def create_api_key
     self.api_key = SecureRandom.hex(32)
