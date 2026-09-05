@@ -27,10 +27,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - The video studio now draws your route when tiled rendering is on. It read the map's route data a moment before loading it, and under tiled rendering nothing else fills that in, so the video came out as a bare map with the distance and clock still running over it.
 - The poster studio now draws your route when tiled rendering is on. It never asked the map to load the route data, and under tiled rendering nothing else does, so the preview came up empty and Save was blocked with "No location data in this date range" even though the range had plenty.
 - The Add User form now displays and enforces the configured password length before submission (#2688).
-- Pages no longer wait for GitHub when checking for a newer version; update checks now run only in the background (#3485).
+- Pages no longer wait for GitHub when checking for a newer version; update checks now run only in the background and ignore stale releases cached before an upgrade (#3485).
 - Idle background workers no longer repeatedly write locks for empty queues to Redis; newly queued work is picked up within the normal two-second polling interval. (#3315)
-- TeslaMate syncs now stop when a Cloud account loses integration access or reaches its point limit.
-- Hourly statistics sweeps no longer miss points saved while the sweep watermark advances.
+- TeslaMate syncs now stop when a Cloud account loses integration access or reaches its point limit, and imported historical months refresh their statistics.
+- Hourly statistics sweeps no longer miss delayed points or points saved while the sweep watermark advances.
 - Users with legacy non-object settings can save new settings without an error.
 
 ## [1.14.2] - 2026-09-02, Berlin

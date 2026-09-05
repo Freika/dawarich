@@ -37,18 +37,25 @@ module Stats
     end
 
     def months_with_new_points(swept_until)
-      start_ts = (watermark - SWEEP_OVERLAP).to_i
-      end_ts = swept_until.to_i
+      field, start_at, end_at = sweep_window(swept_until)
 
       sql = Point.sanitize_sql_array([
                                        'SELECT DISTINCT ' \
                                        'EXTRACT(YEAR FROM to_timestamp(timestamp) AT TIME ZONE ?)::int AS year, ' \
                                        'EXTRACT(MONTH FROM to_timestamp(timestamp) AT TIME ZONE ?)::int AS month ' \
-                                       'FROM points WHERE user_id = ? AND timestamp BETWEEN ? AND ?',
-                                       user.timezone_iana, user.timezone_iana, user_id, start_ts, end_ts
+                                       "FROM points WHERE user_id = ? AND #{field} BETWEEN ? AND ?",
+                                       user.timezone_iana, user.timezone_iana, user_id, start_at, end_at
                                      ])
 
       Point.connection.select_rows(sql).map { |y, m| [y.to_i, m.to_i] }
+    end
+
+    def sweep_window(swept_until)
+      if user.stats_swept_at
+        ['created_at', user.stats_swept_at - SWEEP_OVERLAP, swept_until]
+      else
+        ['timestamp', watermark.to_i, swept_until.to_i]
+      end
     end
 
     def watermark

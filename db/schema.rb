@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_01_204555) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_05_140000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -388,6 +388,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_01_204555) do
     t.index ["lonlat"], name: "index_points_on_lonlat", using: :gist
     t.index ["raw_data_archive_id"], name: "index_points_on_raw_data_archive_id"
     t.index ["track_id", "timestamp"], name: "idx_points_track_id_timestamp"
+    t.index ["user_id", "created_at"], name: "index_points_on_user_id_and_created_at"
     t.index ["user_id", "id"], name: "index_points_on_unarchived", where: "((raw_data_archived = false) AND (raw_data <> '{}'::jsonb))"
     t.index ["user_id", "timestamp", "lonlat"], name: "index_points_on_user_id_timestamp_lonlat", unique: true
     t.index ["user_id"], name: "idx_points_user_id_legacy_tracker", where: "((tracker_id)::text = ANY (ARRAY[('google-maps-timeline-export'::character varying)::text, ('google-maps-phone-timeline-export'::character varying)::text]))"

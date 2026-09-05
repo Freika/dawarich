@@ -33,7 +33,7 @@ RSpec.describe CheckAppVersion do
       context 'when latest version is older' do
         before { stub_const('APP_VERSION', '1.1.0') }
 
-        it { is_expected.to be true }
+        it { is_expected.to be false }
       end
 
       context 'when in production' do

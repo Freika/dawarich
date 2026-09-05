@@ -27,6 +27,8 @@ module TeslaMate
 
       begin
         client.cars.each do |car|
+          break if point_limit_reached?
+
           car_id = car['car_id']
           counts[:cars] += 1
           sync_car(car_id, cutoff, counts, failures)
@@ -62,12 +64,14 @@ module TeslaMate
         result = client.drives(car_id, page: page, show: PAGE_SIZE,
                                start_date: sync_start, end_date: cutoff)
         result[:drives].each do |drive|
+          break if point_limit_reached?
+
           next if sync_drive(car_id, drive['drive_id'], result[:units], counts, failures)
 
           stop_if_failure_budget_spent(failures)
         end
 
-        break if result[:drives].length < PAGE_SIZE
+        break if point_limit_reached? || result[:drives].length < PAGE_SIZE
 
         page += 1
       end
@@ -89,15 +93,17 @@ module TeslaMate
         raise TeslaMate::Client::Error, 'TeslaMateApi response did not contain drive details'
       end
 
-      payloads = Array(details).filter_map do |detail|
+      valid_payloads = Array(details).filter_map do |detail|
         point_payload(detail, car_id, drive_id, result[:units].presence || list_units)
       end
+      payloads = payloads_within_point_limit(valid_payloads)
       counts[:skipped_points] += Array(details).length - payloads.length
       rows = Points::Intake.call(
         user_id: @user.id,
         payloads: payloads.sort_by { |payload| payload[:timestamp] },
         mode: :bulk
       )
+      consume_point_slots(rows)
       record_imported_range(rows)
       counts[:drives] += 1
       counts[:points] += payloads.length
@@ -187,6 +193,12 @@ module TeslaMate
       timestamps = relevant_rows.map { |row| row['timestamp'].to_i }
       return if timestamps.empty?
 
+      imported_months = timestamps.map do |timestamp|
+        time = Time.zone.at(timestamp).in_time_zone(@user.timezone_iana)
+        [time.year, time.month]
+      end
+      @imported_months = Array(@imported_months) | imported_months
+
       bounds = timestamps.minmax
       @imported_range ||= bounds
       @imported_range = [[@imported_range.first, bounds.first].min, [@imported_range.last, bounds.last].max]
@@ -198,6 +210,31 @@ module TeslaMate
       Points::AnomalyFilterJob.perform_later(@user.id, *@imported_range)
       Tracks::RealtimeDebouncer.new(@user.id).trigger
       Tracks::BackfillScheduler.new(@user.id, @imported_range).call
+      @imported_months.each { |year, month| Stats::CalculatingJob.perform_later(@user.id, year, month) }
+    end
+
+    def payloads_within_point_limit(payloads)
+      return payloads if DawarichSettings.self_hosted?
+
+      payloads.first(point_slots_remaining)
+    end
+
+    def consume_point_slots(rows)
+      return if DawarichSettings.self_hosted?
+
+      inserted = rows.count { |row| row['xmax'].to_i.zero? }
+      @point_slots_remaining = [point_slots_remaining - inserted, 0].max
+    end
+
+    def point_limit_reached?
+      !DawarichSettings.self_hosted? && point_slots_remaining.zero?
+    end
+
+    def point_slots_remaining
+      @point_slots_remaining ||= begin
+        points_count = User.where(id: @user.id).pick(:points_count).to_i
+        [@user.entitlements.points_limit - points_count, 0].max
+      end
     end
 
     def mark_processing_pending

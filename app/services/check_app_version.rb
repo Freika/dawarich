@@ -11,7 +11,7 @@ class CheckAppVersion
     return false if Rails.env.production?
 
     cached_version = Rails.cache.read(VERSION_CACHE_KEY)
-    cached_version.present? && cached_version != APP_VERSION
+    cached_version.present? && Gem::Version.new(cached_version) > Gem::Version.new(APP_VERSION)
   rescue StandardError
     false
   end

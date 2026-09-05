@@ -190,6 +190,7 @@ RSpec.describe TeslaMate::Sync do
             Time.iso8601('2026-09-01T11:00:00Z').to_i)
       .exactly(:once)
 
+    expect(Stats::CalculatingJob).to have_been_enqueued.with(user.id, 2026, 9).exactly(:once)
     expect(Tracks::RealtimeDebouncer).to have_received(:new).once
     expect(Tracks::BackfillScheduler).to have_received(:new).once
     expect(Points::LiveBroadcaster).not_to have_received(:new)
@@ -230,6 +231,31 @@ RSpec.describe TeslaMate::Sync do
       'teslamate_processing_pending_url' => nil,
       'teslamate_last_synced_url' => base_url
     )
+  end
+
+  it 'stops a Cloud import at the remaining point quota' do
+    stub_const('DawarichSettings::BASIC_PAID_PLAN_LIMIT', 10)
+    allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+    user.update_columns(plan: User.plans[:pro], active_until: 1.day.from_now, points_count: 9)
+    stub_request(:get, "#{base_url}/api/v1/cars")
+      .to_return(status: 200, body: { data: { cars: [{ car_id: 1 }] } }.to_json)
+    stub_drives(car_id: 1, drive_id: 11, unit: 'km')
+    stub_request(:get, "#{base_url}/api/v1/cars/1/drives/11")
+      .to_return(status: 200, body: {
+        data: {
+          drive: { drive_details: [
+            { detail_id: 111, date: '2026-09-01T10:00:00Z', latitude: 52.52, longitude: 13.405 },
+            { detail_id: 112, date: '2026-09-01T10:01:00Z', latitude: 52.53, longitude: 13.415 }
+          ] },
+          units: { unit_of_length: 'km' }
+        }
+      }.to_json)
+
+    result = described_class.new(user).call
+
+    expect(user.points.count).to eq(1)
+    expect(user.reload.points_count).to eq(10)
+    expect(result).to include(points: 1, skipped_points: 1)
   end
 
   it 'retains recovery state when intake fails after persisting points' do

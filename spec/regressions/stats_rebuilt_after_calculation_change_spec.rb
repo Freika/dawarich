@@ -124,8 +124,8 @@ RSpec.describe 'Stats rebuilt after the calculation changes' do
 
       travel_to(first_sweep + 1.hour) { Stats::BulkCalculator.new(user.id).call }
 
-      expected_start = (first_sweep - Stats::BulkCalculator::SWEEP_OVERLAP).to_i
-      expect(windows.last).to include(expected_start.to_s)
+      expected_start = (first_sweep - Stats::BulkCalculator::SWEEP_OVERLAP).to_fs(:db)
+      expect(windows.last).to include(expected_start)
     end
 
     it 'leaves stats.updated_at alone when it merely defers a month' do
@@ -163,12 +163,12 @@ RSpec.describe 'Stats rebuilt after the calculation changes' do
       expect(waits).to all(be_nil)
     end
 
-    it 'rechecks the overlap when a point commits while the watermark advances' do
+    it 'rechecks arrivals whose point timestamp predates the overlap' do
       first_sweep = Time.current
       user.update_column(:stats_swept_at, first_sweep - 1.hour)
 
       travel_to(first_sweep) { Stats::BulkCalculator.new(user.id).call }
-      create(:point, user: user, timestamp: (first_sweep - 1.second).to_i)
+      create(:point, user: user, timestamp: (first_sweep - 6.minutes).to_i)
       clear_enqueued_jobs
 
       travel_to(first_sweep + 1.hour) { Stats::BulkCalculator.new(user.id).call }
