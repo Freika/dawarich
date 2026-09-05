@@ -950,8 +950,8 @@ es:
         allow_dragging_points_to_correct_their_position_remembered_across_sessio: Permite arrastrar puntos para corregir su posición. Recordado a lo largo de sesiones.
         tiled_rendering: "Renderizado en teselas"
         beta: "Beta"
-        tiled_rendering_description: "Dibuja puntos, rutas, tracks y niebla desde teselas vectoriales mientras te desplazas, en lugar de cargar todo el rango de fechas de antemano. Las rutas muestran tus tracks generados, coloreados por track."
-        tiled_rendering_caveats: "Activo mientras el mapa de pruebas está desactivado. Las zonas densas se agrupan en marcadores con un recuento — acércate para abrir puntos individuales. La edición de puntos no está disponible, las rutas se colorean por track (velocidad media, no un degradado), el globo de ruta al pasar el cursor desaparece — haz clic en un track — y el rastro en vivo puede retrasarse unos minutos."
+        tiled_rendering_description: "Dibuja puntos, rutas, tracks y niebla desde teselas vectoriales mientras te desplazas, en lugar de cargar todo el rango de fechas de antemano. Las rutas muestran tus tracks generados. Acércate para ver la velocidad de cada segmento."
+        tiled_rendering_caveats: "Activo mientras el mapa de pruebas está desactivado. Las zonas densas se agrupan en marcadores con un recuento — acércate para abrir puntos individuales. La edición de puntos no está disponible, el globo de ruta al pasar el cursor desaparece — haz clic en un track — y el rastro en vivo puede retrasarse unos minutos."
         routes: Rutas
         show_connected_route_lines: Muestra líneas de rutas conectadas
         color_by_speed: Color por velocidad
@@ -3452,6 +3452,13 @@ es:
         immich_api_key_missing_permission_asset_view: A la clave API de Immich le falta el permiso asset.view
         immich_thumbnail_check_failed_code: 'Falló el chequeo de miniatura en Immich: %{code}'
       enrich_photos:
+        checking_title: "Comprobando las actualizaciones de ubicación de Immich"
+        checking: "Se enviaron %{count} actualizaciones de ubicación a Immich. Comprobando si se guardaron las coordenadas."
+        result_title: "Resultados de las actualizaciones de ubicación de Immich"
+        confirmed:
+          one: "Ubicación guardada confirmada para %{count} foto."
+          other: "Ubicaciones guardadas confirmadas para %{count} fotos."
+        unconfirmed: "Actualizaciones de ubicación aún sin confirmar: %{count}. Es posible que Immich siga procesando los cambios. Comprueba sus tareas de metadatos y el permiso asset.read de tu clave API. En las bibliotecas externas, Immich debe poder escribir archivos auxiliares XMP: los montajes de solo lectura o los permisos de archivos pueden impedir que se guarden. Una vez resuelto, vuelve a buscar antes de reintentarlo."
         http_code_message: 'HTTP %{code}: %{message}'
       enrich_scan:
         failed_to_fetch_photos_from_immich: Falló obtener fotos desde Immich
@@ -4146,6 +4153,7 @@ es:
       no_matches: No se encontraron coincidencias dentro del umbral de tolerancia
       open_in_immich: Abrir en Immich
       partially_enriched: Mejorada %{enriched} fotos. %{failed} falló.
+      pending_enrichment: "Se enviaron %{count} actualizaciones de ubicación a Immich; %{failed} no se pudieron enviar. Recibirás una notificación cuando se comprueben las coordenadas guardadas."
       photos_without_gps:
         one: "%{count} foto sin GPS"
         other: "%{count} fotos sin GPS"
@@ -4311,6 +4319,7 @@ es:
       loading: Cargando…
       loading_tracks: Cargando trayectos para el nuevo intervalo…
       no_location_data: No hay datos de ubicación en este intervalo; selecciona uno que contenga trayectos en la barra de fechas superior.
+      gallery_without_flights: "Los pósteres de la galería usan rutas GPS sin vuelos. La descarga conserva la vista actual."
       no_tracks_in_frame: No hay trayectos dentro del marco; mueve o amplía el mapa sobre tu ruta para guardarlo en la galería.
       queued: Pendiente — renderizando servidor-side a posteres recientes…
       rendering: Renderizando %{width} × %{height}px…

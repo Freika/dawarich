@@ -908,8 +908,8 @@ en:
         allow_dragging_points_to_correct_their_position_remembered_across_sessio: Allow dragging points to correct their position. Remembered across sessions.
         tiled_rendering: "Tiled rendering"
         beta: "Beta"
-        tiled_rendering_description: "Draws points, routes, tracks and fog from vector tiles as you pan, so a long date range loads only what is in view. Routes show your generated tracks, colored per track."
-        tiled_rendering_caveats: "Active while Scratch map is off. Dense areas merge into markers with a point count — zoom in to open individual points. Point editing is unavailable, routes are colored per track (average speed, not a gradient), hovering a route no longer shows its popup — click a track instead — and the live trail can lag a few minutes."
+        tiled_rendering_description: "Draws points, routes, tracks and fog from vector tiles as you pan, so a long date range loads only what is in view. Routes show your generated tracks. Zoom in to see the speed of each segment."
+        tiled_rendering_caveats: "Active while Scratch map is off. Dense areas merge into markers with a point count — zoom in to open individual points. Point editing is unavailable, hovering a route no longer shows its popup — click a track instead — and the live trail can lag a few minutes."
         routes: Routes
         show_connected_route_lines: Show connected route lines
         color_by_speed: Color by speed
@@ -3433,6 +3433,13 @@ en:
         immich_api_key_missing_permission_asset_view: 'Immich API key missing permission: asset.view'
         immich_thumbnail_check_failed_code: 'Immich thumbnail check failed: %{code}'
       enrich_photos:
+        checking_title: Checking Immich location updates
+        checking: "Submitted %{count} location updates to Immich. Checking whether the coordinates were saved."
+        result_title: Immich location update results
+        confirmed:
+          one: "Confirmed the saved location for %{count} photo."
+          other: "Confirmed saved locations for %{count} photos."
+        unconfirmed: "Location updates still unconfirmed: %{count}. Immich may still be processing the updates. Check its metadata jobs and your API key's asset.read permission. For external libraries, check that Immich can write XMP sidecar files: read-only mounts or file permissions can prevent saving. Once resolved, scan again before retrying."
         http_code_message: 'HTTP %{code}: %{message}'
       enrich_scan:
         failed_to_fetch_photos_from_immich: Failed to fetch photos from Immich
@@ -4141,6 +4148,7 @@ en:
       no_matches: No matches found within tolerance
       open_in_immich: Open in Immich
       partially_enriched: Enriched %{enriched} photos. %{failed} failed.
+      pending_enrichment: "Submitted %{count} location updates to Immich; %{failed} failed to send. You will receive a notification after the saved coordinates are checked."
       photos_without_gps:
         one: "%{count} photo without GPS"
         other: "%{count} photos without GPS"
@@ -4327,6 +4335,7 @@ en:
       loading: Loading…
       loading_tracks: Loading tracks for the new range…
       no_location_data: No location data in this date range — pick a range with tracks in the date bar above.
+      gallery_without_flights: "Gallery posters use GPS routes without flight overlays. Download preserves the current view."
       no_tracks_in_frame: No tracks inside the frame — move or zoom the map over your route to save to the gallery.
       queued: Queued — rendering server-side into Recent posters…
       rendering: Rendering %{width} × %{height}px…

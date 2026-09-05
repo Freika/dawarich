@@ -143,8 +143,9 @@ export function buildTripGeojson({
 }
 
 export class TripProvider {
-  constructor({ geojson, startAt, endAt, title, points }) {
+  constructor({ geojson, posterGeojson, startAt, endAt, title, points }) {
     this.geojson = geojson ?? EMPTY_COLLECTION
+    this.posterGeometry = posterGeojson ?? this.geojson
     this.startAt = startAt
     this.endAt = endAt
     this.title = title ?? ""
@@ -158,6 +159,11 @@ export class TripProvider {
 
   trackGeojson() {
     return this.geojson
+  }
+
+  // Posters can include visible flight arcs; video still animates GPS points.
+  posterGeojson() {
+    return this.posterGeometry
   }
 
   dateRange() {

@@ -55,7 +55,7 @@ RSpec.describe 'Imports surface zero points with no timestamps', type: :request 
       sign_in user
       get notification_url(notification)
 
-      rendered_notification = Nokogiri::HTML(response.body).at_css("#notification_#{notification.id}")
+      rendered_notification = Nokogiri::HTML(response.body).at_css("#detail_notification_#{notification.id}")
       expect(rendered_notification.text).to include('<time>')
     end
   end

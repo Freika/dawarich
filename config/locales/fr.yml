@@ -1601,8 +1601,8 @@ fr:
           la traînée des points pour corriger leur position. Mémorisé entre sessions.
         tiled_rendering: "Rendu par tuiles"
         beta: "Bêta"
-        tiled_rendering_description: "Dessine les points, itinéraires, tracks et brouillard à partir de tuiles vectorielles pendant le déplacement, au lieu de charger toute la plage de dates à l'avance. Les itinéraires affichent vos tracks générés, colorés par track."
-        tiled_rendering_caveats: "Actif tant que la carte à gratter est désactivée. Les zones denses sont fusionnées en marqueurs avec un compteur — zoomez pour ouvrir les points individuels. La modification des points est indisponible, les itinéraires sont colorés par track (vitesse moyenne, pas un dégradé), l'info-bulle d'itinéraire au survol disparaît — cliquez sur un track — et la trace en direct peut avoir quelques minutes de retard."
+        tiled_rendering_description: "Dessine les points, itinéraires, tracks et brouillard à partir de tuiles vectorielles pendant le déplacement, au lieu de charger toute la plage de dates à l'avance. Les itinéraires affichent vos tracks générés. Zoomez pour voir la vitesse de chaque segment."
+        tiled_rendering_caveats: "Actif tant que la carte à gratter est désactivée. Les zones denses sont fusionnées en marqueurs avec un compteur — zoomez pour ouvrir les points individuels. La modification des points est indisponible, l'info-bulle d'itinéraire au survol disparaît — cliquez sur un track — et la trace en direct peut avoir quelques minutes de retard."
         routes: Itinéraires
         show_connected_route_lines: Afficher les lignes d'itinéraire connectées
         color_by_speed: Colorer par vitesse
@@ -4547,6 +4547,13 @@ fr:
         immich_thumbnail_check_failed_code: 'Vérification de miniature Immich échouée :
           %{code}'
       enrich_photos:
+        checking_title: "Vérification des mises à jour de localisation Immich"
+        checking: "%{count} mises à jour de localisation envoyées à Immich. Vérification de l’enregistrement des coordonnées."
+        result_title: "Résultats des mises à jour de localisation Immich"
+        confirmed:
+          one: "Localisation enregistrée confirmée pour %{count} photo."
+          other: "Localisations enregistrées confirmées pour %{count} photos."
+        unconfirmed: "Mises à jour de localisation non confirmées : %{count}. Immich traite peut-être encore les modifications. Vérifiez ses tâches de métadonnées et l’autorisation asset.read de votre clé API. Pour les bibliothèques externes, Immich doit pouvoir écrire les fichiers annexes XMP : un montage en lecture seule ou les permissions des fichiers peuvent empêcher l’enregistrement. Après correction, relancez la recherche avant de réessayer."
         http_code_message: 'HTTP %{code} : %{message}'
       enrich_scan:
         failed_to_fetch_photos_from_immich: Impossible de récupérer les photos d'Immich
@@ -5419,6 +5426,7 @@ fr:
       no_matches: Aucune correspondance trouvée dans la tolérance
       open_in_immich: Ouvrir dans Immich
       partially_enriched: 'Photos enrichies : %{enriched}. Échecs : %{failed}'
+      pending_enrichment: "%{count} mises à jour de localisation envoyées à Immich ; %{failed} envois ont échoué. Une notification vous informera après la vérification des coordonnées enregistrées."
       photos_without_gps:
         one: "%{count} photo sans GPS"
         other: "%{count} photos sans GPS"
@@ -5599,6 +5607,7 @@ fr:
       loading_tracks: Chargement des trajets pour la nouvelle plage…
       no_location_data: Aucune donnée de localisation dans cette plage de dates —
         choisissez une plage avec des trajets dans la barre de date ci-dessus.
+      gallery_without_flights: "Les affiches de la galerie utilisent les trajets GPS sans les vols. Le téléchargement conserve la vue actuelle."
       no_tracks_in_frame: Aucun trajet dans le cadre — déplacez ou agrandissez la carte
         sur votre itinéraire pour l'enregistrer dans la galerie.
       queued: En file d’attente — enregistrement récent sur le serveur…

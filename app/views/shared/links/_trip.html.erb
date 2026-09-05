@@ -55,7 +55,7 @@
             <% has_note = trip.show_day_notes? && note&.body.present? %>
             <% day_photos = trip.photos_for(day) %>
             <% if has_note || day_photos.any? %>
-              <%= tag.details class: "collapse collapse-arrow bg-base-200 rounded-lg#{trip.interactive_class}", data: trip.row_data(day_key) do %>
+              <%= tag.details class: "collapse collapse-arrow bg-base-200 rounded-lg#{trip.interactive_class}", data: trip.gallery_row_data(day_key) do %>
                 <summary class="collapse-title flex items-center gap-2 text-sm font-medium min-h-0 cursor-pointer">
                   <%= render "shared/links/trip_day_header", day: day, day_key: day_key %>
                 </summary>
@@ -64,16 +64,19 @@
                     <p class="whitespace-pre-wrap text-sm text-base-content/80"><%= note.body %></p>
                   <% end %>
                   <% if day_photos.any? %>
-                    <div class="grid grid-cols-3 gap-2 mt-3">
-                      <% day_photos.each do |photo| %>
-                        <div class="aspect-square overflow-hidden rounded-lg">
-                          <img src="<%= url_for(controller: 'api/v1/shared/photos', action: 'thumbnail', id: link.id, photo_id: photo[:id], source: photo[:source], only_path: true) %>"
-                               loading="lazy"
-                               alt=""
-                               class="h-full w-full object-cover">
-                        </div>
-                      <% end %>
-                    </div>
+                    <template data-lazy-gallery-target="template">
+                      <div class="grid grid-cols-3 gap-2 mt-3">
+                        <% day_photos.each do |photo| %>
+                          <div class="aspect-square overflow-hidden rounded-lg">
+                            <img src="<%= url_for(controller: 'api/v1/shared/photos', action: 'thumbnail', id: link.id, photo_id: photo[:id], source: photo[:source], only_path: true) %>"
+                                 loading="lazy"
+                                 alt=""
+                                 class="h-full w-full object-cover">
+                          </div>
+                        <% end %>
+                      </div>
+                    </template>
+                    <div data-lazy-gallery-target="content"></div>
                   <% end %>
                 </div>
               <% end %>
