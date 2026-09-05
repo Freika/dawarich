@@ -56,6 +56,7 @@ module Tracks
 
     def reprocess_track!(track, fallback: true)
       Track.transaction do
+        track.lock!
         preserved = track.track_segments.manually_corrected.to_a
         track.track_segments.auto_classified.delete_all
 

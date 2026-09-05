@@ -30,7 +30,7 @@ class CascadeTrackSegmentDeletes < ActiveRecord::Migration[8.0]
         connection.execute("SET LOCAL lock_timeout = '#{LOCK_TIMEOUT}'")
         yield
       end
-    rescue ActiveRecord::LockWaitTimeout
+    rescue ActiveRecord::LockWaitTimeout, ActiveRecord::Deadlocked
       raise if attempts >= MAX_ATTEMPTS
 
       sleep(attempts * 5)

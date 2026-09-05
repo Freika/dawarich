@@ -57,8 +57,7 @@ class Users::Destroy
       user.trips.find_each(&:destroy!)
       user.trip_sources.delete_all
 
-      # Delete track_segments and video_exports BEFORE tracks (both have FK to tracks)
-      TrackSegment.where(track_id: user.tracks.select(:id)).delete_all
+      # Delete video_exports BEFORE tracks (it has an FK to tracks)
       delete_video_exports_for(user)
       user.tracks.delete_all
 

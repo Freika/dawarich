@@ -14,7 +14,8 @@ RSpec.describe CascadeTrackSegmentDeletes do
     allow(migration).to receive(:sleep)
     allow(migration).to receive(:remove_foreign_key) do
       attempts += 1
-      raise ActiveRecord::LockWaitTimeout, 'lock timeout' if attempts < 3
+      raise ActiveRecord::LockWaitTimeout, 'lock timeout' if attempts == 1
+      raise ActiveRecord::Deadlocked, 'deadlock' if attempts == 2
     end
     allow(migration).to receive(:add_foreign_key)
 
@@ -39,7 +40,8 @@ RSpec.describe ValidateCascadingTrackSegmentForeignKey do
     allow(migration).to receive(:sleep)
     allow(migration).to receive(:validate_foreign_key) do
       attempts += 1
-      raise ActiveRecord::LockWaitTimeout, 'lock timeout' if attempts < 3
+      raise ActiveRecord::LockWaitTimeout, 'lock timeout' if attempts == 1
+      raise ActiveRecord::Deadlocked, 'deadlock' if attempts == 2
     end
 
     migration.up

@@ -455,7 +455,7 @@ RSpec.describe Users::Destroy do
       let!(:track) { create(:track, user:) }
       let!(:segment) { create(:track_segment, track:) }
 
-      it 'deletes track_segments before tracks to respect foreign key constraints' do
+      it 'deletes track segments through the track foreign-key cascade' do
         user_id = user.id
         track_id = track.id
         segment_id = segment.id
