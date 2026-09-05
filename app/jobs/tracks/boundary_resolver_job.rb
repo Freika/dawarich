@@ -54,7 +54,13 @@ class Tracks::BoundaryResolverJob < ApplicationJob
 
   def resolve_boundary_tracks
     Tracks::PerUserLock.with_user_lock(user.id) do
-      Tracks::BoundaryDetector.new(user).resolve_cross_chunk_tracks
+      resolved = Tracks::BoundaryDetector.new(user).resolve_cross_chunk_tracks
+      result = Tracks::MetadataRefresher.new(user).call
+      data = session_manager.get_session_data
+      if data
+        session_manager.update_session(metadata: (data['metadata'] || {}).merge('track_metadata_refresh' => result))
+      end
+      resolved
     end
   end
 
