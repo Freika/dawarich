@@ -189,6 +189,121 @@ RSpec.describe 'Settings::Integrations', type: :request do
     end
   end
 
+  describe 'POST /settings/integrations/import_flights' do
+    let(:user) { create(:user) }
+    let(:json_body) { file_fixture('air_trail/export_v3.json').read }
+
+    before { sign_in user }
+
+    it 'enqueues a flight import job for a valid JSON file' do
+      file = Rack::Test::UploadedFile.new(
+        StringIO.new(json_body),
+        'application/json',
+        original_filename: 'airtrail.json'
+      )
+
+      expect do
+        post settings_import_flights_integrations_path, params: { file: file, format: 'auto' }
+      end.to change(ActiveStorage::Blob, :count).by(1)
+         .and have_enqueued_job(Flights::ImportFromFileJob).with(user.id, kind_of(Integer), nil)
+
+      blob = ActiveStorage::Blob.last
+      expect(blob.download).to eq(json_body)
+      expect(blob.filename.to_s).to eq('airtrail.json')
+
+      expect(response).to redirect_to(settings_integrations_path(service: 'airtrail'))
+      follow_redirect!
+      expect(flash[:notice]).to include('Flight import started')
+    end
+
+    it 'passes an explicit format to the job' do
+      file = Rack::Test::UploadedFile.new(
+        StringIO.new(json_body),
+        'application/json',
+        original_filename: 'airtrail.json'
+      )
+
+      expect do
+        post settings_import_flights_integrations_path, params: { file: file, format: 'airtrail_json' }
+      end.to have_enqueued_job(Flights::ImportFromFileJob).with(user.id, kind_of(Integer), 'airtrail_json')
+    end
+
+    it 'rejects a missing file' do
+      post settings_import_flights_integrations_path
+
+      expect(response).to redirect_to(settings_integrations_path(service: 'airtrail'))
+      follow_redirect!
+      expect(flash[:alert]).to include('Please select')
+    end
+
+    it 'rejects unsupported files' do
+      file = Rack::Test::UploadedFile.new(
+        StringIO.new('not a flight export'),
+        'application/pdf',
+        original_filename: 'flights.pdf'
+      )
+
+      post settings_import_flights_integrations_path, params: { file: file }
+
+      expect(response).to redirect_to(settings_integrations_path(service: 'airtrail'))
+      follow_redirect!
+      expect(flash[:alert]).to include('Invalid file')
+    end
+
+    it 'requires authentication' do
+      sign_out user
+
+      post settings_import_flights_integrations_path
+
+      expect(response).to redirect_to(new_user_session_path)
+    end
+
+    it 'renders a generic Import flights from file section' do
+      get settings_integrations_path(service: 'airtrail')
+
+      expect(response.body).to include('Import flights from file')
+      expect(response.body).to include('Auto-detect')
+      expect(response.body).to include('AirTrail JSON')
+      expect(response.body).to include('FlightDiary CSV')
+    end
+
+    it 'enqueues a flight import job for a FlightDiary CSV file' do
+      csv_body = file_fixture('flight_diary/export.csv').read
+      file = Rack::Test::UploadedFile.new(
+        StringIO.new(csv_body),
+        'text/csv',
+        original_filename: 'flightdiary.csv'
+      )
+
+      expect do
+        post settings_import_flights_integrations_path, params: { file: file, format: 'auto' }
+      end.to change(ActiveStorage::Blob, :count).by(1)
+         .and have_enqueued_job(Flights::ImportFromFileJob).with(user.id, kind_of(Integer), nil)
+
+      expect(ActiveStorage::Blob.last.download).to eq(csv_body)
+    end
+
+    context 'when user is on Lite plan (Cloud)' do
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        user.update_column(:plan, User.plans[:lite])
+      end
+
+      it 'redirects with pro required alert' do
+        file = Rack::Test::UploadedFile.new(
+          StringIO.new(json_body),
+          'application/json',
+          original_filename: 'airtrail.json'
+        )
+
+        post settings_import_flights_integrations_path, params: { file: file }
+
+        expect(response).to redirect_to(root_path)
+        expect(flash[:alert]).to include('Pro plan')
+      end
+    end
+  end
+
   describe 'GET /settings/integrations' do
     let(:user) { create(:user) }
 

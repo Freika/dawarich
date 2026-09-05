@@ -187,7 +187,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_01_204555) do
     t.string "date_precision", default: "day", null: false
     t.datetime "departure_time"
     t.float "distance_km"
-    t.integer "external_id", null: false
+    t.bigint "external_id", null: false
     t.date "flight_date"
     t.string "flight_number"
     t.string "from_code"

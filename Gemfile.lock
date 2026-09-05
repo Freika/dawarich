@@ -90,6 +90,7 @@ GEM
     addressable (2.9.0)
       public_suffix (>= 2.0.2, < 8.0)
     aes_key_wrap (1.1.0)
+    airports (1.13.0)
     anyway_config (2.8.0)
       ruby-next-core (~> 1.0)
     apple_id (1.6.4)
@@ -726,6 +727,7 @@ PLATFORMS
 DEPENDENCIES
   activerecord-postgis-adapter (= 11.1.1)
   addressable (>= 2.9.0)
+  airports (~> 1.13)
   apple_id (~> 1.2)
   aws-sdk-core (~> 3.252)
   aws-sdk-kms (~> 1.129)
