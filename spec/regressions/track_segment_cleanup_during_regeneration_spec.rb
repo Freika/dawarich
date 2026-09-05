@@ -9,6 +9,10 @@ RSpec.describe 'Track segment cleanup during track regeneration' do
   let!(:segment) { create(:track_segment, track:) }
   let(:generator) { Tracks::ParallelGenerator.new(user, mode: :bulk) }
 
+  it 'relies on the parent-first database cascade for segment cleanup' do
+    expect(Track.reflect_on_association(:track_segments).options[:dependent]).to be_nil
+  end
+
   it 'removes segments created while their track is being destroyed' do
     target_id = track.id
     callback = lambda do
