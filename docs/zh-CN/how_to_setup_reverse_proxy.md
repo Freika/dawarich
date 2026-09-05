@@ -1,13 +1,13 @@
-## Setting up reverse proxy
+## 配置反向代理
 
-> [简体中文](zh-CN/how_to_setup_reverse_proxy.md)
+> [English](../how_to_setup_reverse_proxy.md)
 
-### Environment Variable
-To make Dawarich work with a reverse proxy, you need to ensure the APPLICATION_HOSTS environment variable is set to include the domain name that the reverse proxy will use.
-For example, if your Dawarich instance is supposed to be on the domain name timeline.mydomain.com, then include "timeline.mydomain.com" in this environment variable.
-Make sure to exclude "http://" or "https://" from the environment variable. ⚠️ The webpage will not work if you do include http:// or https:// in the variable. ⚠️
+### 环境变量
+要让 Dawarich 配合反向代理正常工作，需要确保 `APPLICATION_HOSTS` 环境变量中包含了反向代理将要使用的域名。
+例如，如果你的 Dawarich 实例打算部署在域名 timeline.mydomain.com 下，就需要在这个环境变量中包含 "timeline.mydomain.com"。
+注意：环境变量中不要包含 "http://" 或 "https://"。⚠️ 如果变量中包含了 http:// 或 https://，网页将无法正常工作。⚠️
 
-At the time of writing this, the way to set the environment variable is to edit the docker-compose.yml file. Find all APPLICATION_HOSTS entries in the docker-compose.yml file and make sure to include your domain name. Example:
+在编写本文档时，设置该环境变量的方式是编辑 docker-compose.yml 文件。找到文件中所有 APPLICATION_HOSTS 条目，确保其中包含了你的域名。示例：
 
 ```yaml
 dawarich_app:
@@ -16,7 +16,7 @@ dawarich_app:
     ...
     environment:
       ...
-      APPLICATION_HOSTS: "yourhost.com,www.yourhost.com,127.0.0.1" <-- Edit this
+      APPLICATION_HOSTS: "yourhost.com,www.yourhost.com,127.0.0.1" <-- 在这里修改
 ```
 
 ```yaml
@@ -26,17 +26,17 @@ dawarich_sidekiq:
     ...
     environment:
       ...
-      APPLICATION_HOSTS: "yourhost.com,www.yourhost.com,127.0.0.1" <-- Edit this
+      APPLICATION_HOSTS: "yourhost.com,www.yourhost.com,127.0.0.1" <-- 在这里修改
       ...
 ```
 
-For a Synology install, refer to **[Synology Install Tutorial](How_to_install_Dawarich_on_Synology.md)**. In this page, it is explained how to set the APPLICATION_HOSTS environment variable.
+如果是在群晖上安装，请参考**[群晖安装教程](How_to_install_Dawarich_on_Synology.md)**，里面说明了如何设置 APPLICATION_HOSTS 环境变量。
 
-### Virtual Host
+### 虚拟主机
 
-Now that the app works with a domain name, the server needs to be set up to use a reverse proxy. Usually, this is done by setting it up in the virtual host configuration.
+让应用支持域名访问之后，还需要在服务器上配置反向代理，通常是在虚拟主机配置中完成的。
 
-Below are examples of reverse proxy configurations.
+下面是一些反向代理配置示例。
 
 ### Nginx
 ```nginx
@@ -92,7 +92,7 @@ server {
 
 ### Apache2
 
-For Apache2, you might need to enable some modules. Start by entering the following commands so the example configuration below works without any problems.
+使用 Apache2 时，你可能需要启用一些模块。请先执行以下命令，这样下面的示例配置才能正常工作。
 
 ```
 sudo a2enmod proxy
@@ -101,7 +101,7 @@ sudo a2enmod headers
 sudo a2enmod brotli
 ```
 
-With the above commands entered, the configuration below should work properly.
+执行完上面的命令后，下面的配置就可以正常工作了。
 
 ```apache
 <VirtualHost *:80>
@@ -131,19 +131,19 @@ With the above commands entered, the configuration below should work properly.
 ```
 
 ### Caddy
-Here is the minimum Caddy config you will need to front Dawarich with.  Please keep in mind that if you are running Caddy separately from your Dawarich stack, you'll need to have a network that is shared between them.
+下面是让 Caddy 作为 Dawarich 前置代理所需的最小配置。请注意，如果你的 Caddy 和 Dawarich 服务栈是分开运行的，需要为它们配置一个共享网络。
 
-First, create the Docker network that will be used between the stacks, if needed:
+首先，如果需要的话，创建服务栈之间要用到的 Docker 网络：
 ```
 docker network create frontend
 ```
 
-Second, create a Docker network for Dawarich to use as the backend network:
+然后，为 Dawarich 创建一个作为后端网络使用的 Docker 网络：
 ```
 docker network create dawarich
 ```
 
-Adjust the following part of your Dawarich docker-compose.yaml, so that the web app is exposed to your new network and the backend Dawarich network:
+按如下方式调整你的 Dawarich docker-compose.yaml，让 web 应用同时暴露在新建的网络和 Dawarich 后端网络中：
 ```yaml
 networks:
   dawarich:
@@ -153,7 +153,7 @@ services:
   ...
 ```
 
-Lastly, edit your Caddy config as needed:
+最后，按需编辑你的 Caddy 配置：
 ```caddy
 {
 	http_port 80
@@ -171,8 +171,8 @@ timeline.example.com {
 }
 
 ```
-timeline.example.com is an example, use your own (sub) domain.
+timeline.example.com 只是示例，请替换成你自己的（子）域名。
 
 ---
 
-Please note that the above configurations are just examples and that they contain the minimum configuration needed to make the reverse proxy work properly. Feel free to adjust the configuration to your own needs.
+请注意，以上配置仅为示例，只包含让反向代理正常工作所需的最小配置。请根据自己的实际需求自行调整。

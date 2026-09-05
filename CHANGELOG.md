@@ -28,6 +28,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Traccar latitude/longitude form uploads now save points, including Unix timestamps in seconds or milliseconds. Payloads that cannot be stored return an error instead of a false success; repeated valid uploads remain safe. (#3299)
 ## Unreleased
 
+## Added
+
+- Dawarich can now be used in Simplified Chinese: pick it under Settings → General. Thanks @AwHsR15 for the translation! (#3354)
+
+## Fixed
 ### Fixed
 
 - The Add User form now displays and enforces the configured password length before submission (#2688).
