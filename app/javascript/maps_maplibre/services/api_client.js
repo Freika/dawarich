@@ -574,11 +574,12 @@ export class ApiClient {
    * @param {number|string} trackId - The track ID
    * @returns {Promise<Object>} GeoJSON Feature with segments
    */
-  async fetchTrackWithSegments(trackId) {
+  async fetchTrackWithSegments(trackId, { signal } = {}) {
     const url = `${this.baseURL}/tracks/${trackId}`
 
     const response = await fetch(url, {
       headers: this.getHeaders(),
+      signal,
     })
 
     if (!response.ok) {

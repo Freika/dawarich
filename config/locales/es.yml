@@ -950,8 +950,8 @@ es:
         allow_dragging_points_to_correct_their_position_remembered_across_sessio: Permite arrastrar puntos para corregir su posición. Recordado a lo largo de sesiones.
         tiled_rendering: "Renderizado en teselas"
         beta: "Beta"
-        tiled_rendering_description: "Dibuja puntos, rutas, tracks y niebla desde teselas vectoriales mientras te desplazas, en lugar de cargar todo el rango de fechas de antemano. Las rutas muestran tus tracks generados, coloreados por track."
-        tiled_rendering_caveats: "Activo mientras el mapa de pruebas está desactivado. Las zonas densas se agrupan en marcadores con un recuento — acércate para abrir puntos individuales. La edición de puntos no está disponible, las rutas se colorean por track (velocidad media, no un degradado), el globo de ruta al pasar el cursor desaparece — haz clic en un track — y el rastro en vivo puede retrasarse unos minutos."
+        tiled_rendering_description: "Dibuja puntos, rutas, tracks y niebla desde teselas vectoriales mientras te desplazas, en lugar de cargar todo el rango de fechas de antemano. Las rutas muestran tus tracks generados. Acércate para ver la velocidad de cada segmento."
+        tiled_rendering_caveats: "Activo mientras el mapa de pruebas está desactivado. Las zonas densas se agrupan en marcadores con un recuento — acércate para abrir puntos individuales. La edición de puntos no está disponible, el globo de ruta al pasar el cursor desaparece — haz clic en un track — y el rastro en vivo puede retrasarse unos minutos."
         routes: Rutas
         show_connected_route_lines: Muestra líneas de rutas conectadas
         color_by_speed: Color por velocidad
@@ -4299,6 +4299,7 @@ es:
       loading: Cargando…
       loading_tracks: Cargando trayectos para el nuevo intervalo…
       no_location_data: No hay datos de ubicación en este intervalo; selecciona uno que contenga trayectos en la barra de fechas superior.
+      gallery_without_flights: "Los pósteres de la galería usan rutas GPS sin vuelos. La descarga conserva la vista actual."
       no_tracks_in_frame: No hay trayectos dentro del marco; mueve o amplía el mapa sobre tu ruta para guardarlo en la galería.
       queued: Pendiente — renderizando servidor-side a posteres recientes…
       rendering: Renderizando %{width} × %{height}px…

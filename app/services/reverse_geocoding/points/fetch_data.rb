@@ -42,13 +42,18 @@ class ReverseGeocoding::Points::FetchData
     country_record = find_country(response) if response.country
 
     with_write_retry do
-      point.update!(
-        city: response.city,
-        country_name: response.country,
-        country_id: country_record&.id,
-        geodata: DawarichSettings.store_geodata? ? response.data : {},
-        reverse_geocoded_at: Time.current
-      )
+      Point.transaction do
+        point.update!(
+          city: response.city,
+          country_name: response.country,
+          country_id: country_record&.id,
+          geodata: DawarichSettings.store_geodata? ? response.data : {},
+          reverse_geocoded_at: Time.current
+        )
+        if point.saved_change_to_city? || point.saved_change_to_country_name? || point.saved_change_to_country_id?
+          Stats::InvalidateGeocodedMonth.call(point)
+        end
+      end
     end
   rescue *ReverseGeocoding::ProviderErrors::TRANSIENT => e
     Rails.logger.warn("Reverse geocoding provider error for point #{point.id}: #{e.message}")
