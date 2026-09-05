@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Hovering a transportation segment in the map timeline now animates only that segment and restores the existing track highlight on exit. (#3497)
 - Public trip galleries include photos beyond the first hundred, load each day's images when expanded, and no longer show a misleading separator before daily distances. (#3232)
 - Historical country and city statistics refresh after reverse geocoding, with bounded monthly repairs and protection against concurrent recalculation (#3499).
 - Track generation now refreshes surviving partial tracks from their assigned points, correcting stale time ranges, distance and elevation after buffered chunks overlap. Public links and manual transportation corrections are preserved. (#3209)
