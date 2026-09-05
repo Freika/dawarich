@@ -76,6 +76,21 @@ module Csv
       columns[:longitude] ||= find_header_by_substring(headers, 'longitude')
       columns[:timestamp] ||= find_header_by_substring(headers, 'timestamp')
 
+      # Some GPS logger exports (e.g. "DATE" + "TIME" columns) split date and
+      # time-of-day across two separate columns rather than one combined
+      # timestamp field. The generic :timestamp alias list matches "time"
+      # before "date" (since both are valid solo-column aliases), so without
+      # this, the date column is silently discarded and every point gets
+      # today's date with only the time-of-day preserved. When distinct date
+      # and time columns both exist, prefer combining them.
+      normalized = headers.map { |h| h.to_s.downcase.strip }
+      date_idx = normalized.index('date')
+      time_idx = normalized.index('time')
+      if date_idx && time_idx && date_idx != time_idx
+        columns[:timestamp_date] = date_idx
+        columns[:timestamp_time] = time_idx
+      end
+
       columns
     end
 
