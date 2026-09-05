@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Speed coloring in tiled maps now reflects individual route segments when zoomed in, instead of the average speed of the whole track. Segment speeds are rounded to the nearest km/h to keep long date ranges compact. (Refs #3425)
+
 - Traccar latitude/longitude form uploads now save points, including Unix timestamps in seconds or milliseconds. Payloads that cannot be stored return an error instead of a false success; repeated valid uploads remain safe. (#3299)
 ## Unreleased
 
