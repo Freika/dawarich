@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class Stats::CalculateMonth
-  CALCULATION_VERSION = 1
+  CALCULATION_VERSION = 2
 
   def initialize(user_id, year, month, notify_on_failure: true)
     @user = User.find(user_id)
@@ -34,7 +34,10 @@ class Stats::CalculateMonth
 
   def update_month_stats(year, month)
     Stat.transaction do
-      stat = Stat.find_or_initialize_by(year:, month:, user:)
+      stat = Stat.find_or_create_by!(year:, month:, user:) { |record| record.distance = 0 }
+      # Serialize recalculation with geocoding invalidation for this month.
+      # A geocoder finishing during this calculation must leave the month stale.
+      stat.lock!
       distance_by_day = stat.distance_by_day
 
       stat.assign_attributes(
@@ -109,19 +112,28 @@ class Stats::CalculateMonth
   end
 
   def reset_month_stats(year, month)
-    stat = Stat.find_by(year:, month:, user:)
-    return unless stat
+    Stat.transaction do
+      stat = Stat.lock.find_by(year:, month:, user:)
+      return unless stat
 
-    stat.update!(
-      daily_distance: {},
-      distance: 0,
-      flight_distance: flight_distance,
-      toponyms: [],
-      h3_hex_ids: {},
-      calculation_version: CALCULATION_VERSION
-    )
+      # Points may arrive after the initial empty check while another calculation
+      # finishes. Recheck under the same lock without the earlier query cache.
+      if Point.uncached { points.exists? }
+        update_month_stats(year, month)
+        return
+      end
 
-    Cache::InvalidateUserCaches.new(user.id, year: year).call
+      stat.update!(
+        daily_distance: {},
+        distance: 0,
+        flight_distance: flight_distance,
+        toponyms: [],
+        h3_hex_ids: {},
+        calculation_version: CALCULATION_VERSION
+      )
+
+      Cache::InvalidateUserCaches.new(user.id, year: year).call
+    end
   end
 
   def calculate_h3_hex_ids
