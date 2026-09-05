@@ -908,8 +908,8 @@ pl:
         allow_dragging_points_to_correct_their_position_remembered_across_sessio: Pozwala przeciągać punkty, aby poprawić ich pozycję. Zapamiętywane między sesjami.
         tiled_rendering: Renderowanie kafelkowe
         beta: Beta
-        tiled_rendering_description: Rysuje punkty, trasy, odcinki i nieodkryty obszar z kafelków wektorowych podczas przesuwania mapy, dzięki czemu długi zakres dat wczytuje tylko to, co widać. Trasy pokazują wygenerowane odcinki, kolorowane osobno dla każdego z nich.
-        tiled_rendering_caveats: Aktywne, gdy warstwa Odkryte kraje jest wyłączona. W gęstych obszarach punkty łączą się w znaczniki z licznikiem punktów — przybliż, aby otworzyć pojedyncze punkty. Edycja punktów jest niedostępna, trasy są kolorowane osobno dla każdego odcinka (średnia prędkość, nie gradient), najechanie na trasę nie pokazuje już dymka — zamiast tego kliknij odcinek — a ślad na żywo może opóźniać się o kilka minut.
+        tiled_rendering_description: Rysuje punkty, trasy, odcinki i nieodkryty obszar z kafelków wektorowych podczas przesuwania mapy, dzięki czemu długi zakres dat wczytuje tylko to, co widać. Trasy pokazują wygenerowane odcinki. Przybliż mapę, aby zobaczyć prędkość każdego segmentu.
+        tiled_rendering_caveats: Aktywne, gdy warstwa Odkryte kraje jest wyłączona. W gęstych obszarach punkty łączą się w znaczniki z licznikiem punktów — przybliż, aby otworzyć pojedyncze punkty. Edycja punktów jest niedostępna, najechanie na trasę nie pokazuje już dymka — zamiast tego kliknij odcinek — a ślad na żywo może opóźniać się o kilka minut.
         routes: Trasy
         show_connected_route_lines: Pokaż połączone linie tras
         color_by_speed: Koloruj według prędkości
