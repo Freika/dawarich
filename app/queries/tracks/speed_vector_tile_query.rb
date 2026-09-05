@@ -28,6 +28,8 @@ class Tracks::SpeedVectorTileQuery < Tracks::VectorTileQuery
     z < MIN_SPEED_ZOOM ? super : MAX_SPEED_FEATURES_PER_TILE + 1
   end
 
+  # Collect before MVT quantization: its bbox fast-path can otherwise discard
+  # every meter-spaced segment of a long visible walking route at low zoom.
   # Materialize only the small per-segment geometry before the grouping sort;
   # otherwise PostgreSQL carries full original_path copies into that sort.
   def with_clauses
@@ -40,20 +42,24 @@ class Tracks::SpeedVectorTileQuery < Tracks::VectorTileQuery
       ), geometries AS MATERIALIZED (
         SELECT tracks.id,
           ROUND(segments.segment_speed::numeric)::double precision AS segment_speed,
-          ST_AsMVTGeom(
-            ST_Transform(COALESCE(segments.path, tracks.original_path), 3857),
-            ST_TileEnvelope(#{z}, #{x}, #{y}), #{EXTENT}, #{BUFFER}, true
-          ) AS geom
+          COALESCE(segments.path, tracks.original_path) AS geom
         FROM candidates AS tracks
         LEFT JOIN LATERAL (#{segments_sql}) AS segments ON true
       ), grouped_segments AS (
         SELECT id, segment_speed, ST_Collect(geom) AS geom
-        FROM geometries WHERE geom IS NOT NULL
+        FROM geometries
+        WHERE ST_Intersects(geom, ST_Transform(#{margined_envelope}, 4326))
         GROUP BY id, segment_speed
-        LIMIT #{tile_feature_limit}
+      ), projected AS MATERIALIZED (
+        SELECT id, segment_speed,
+          ST_AsMVTGeom(ST_Transform(geom, 3857), ST_TileEnvelope(#{z}, #{x}, #{y}),
+                       #{EXTENT}, #{BUFFER}, true) AS geom
+        FROM grouped_segments
       ), features AS (
-        SELECT #{property_columns}, grouped_segments.segment_speed, grouped_segments.geom
-        FROM grouped_segments JOIN candidates AS tracks USING (id)
+        SELECT #{property_columns}, projected.segment_speed, projected.geom
+        FROM projected JOIN candidates AS tracks USING (id)
+        WHERE projected.geom IS NOT NULL
+        LIMIT #{tile_feature_limit}
       )
     SQL
   end

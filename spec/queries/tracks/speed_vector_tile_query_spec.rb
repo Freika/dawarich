@@ -78,6 +78,22 @@ RSpec.describe Tracks::SpeedVectorTileQuery do
     expect(rows.first['segment_speed']).to be_nil
   end
 
+  it 'preserves a visible walking route whose individual segments are smaller than a tile pixel' do
+    longitudes = (0..600).map { |index| 0.001 + (index * 0.00001) }
+    path = "LINESTRING(#{longitudes.map { |longitude| "#{longitude} 0.001" }.join(', ')})"
+    track = create(:track, user:, original_path: path, start_at:, end_at: start_at + 600)
+    Point.insert_all!(longitudes.each_with_index.map do |longitude, index|
+      { user_id: user.id, track_id: track.id, timestamp: start_at.to_i + index,
+        lonlat: "POINT(#{longitude} 0.001)", created_at: start_at, updated_at: start_at }
+    end)
+
+    rows = query(z: 8, x: 128, y: 127).feature_rows
+
+    expect(rows.size).to eq(1)
+    expect(rows.first['segment_speed']).to eq(4)
+    expect(query(z: 8, x: 128, y: 127).call.tile).to be_present
+  end
+
   it 'uses the flat overview below the classic speed-color zoom threshold' do
     track_with_points(longitudes: [0.001, 0.02, 0.03])
 
