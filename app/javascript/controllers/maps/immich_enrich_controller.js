@@ -417,12 +417,17 @@ export default class extends Controller {
       }
 
       const message =
-        data.failed > 0
-          ? translate("immich.partially_enriched", {
-              enriched: data.enriched,
+        data.pending > 0
+          ? translate("immich.pending_enrichment", {
+              count: data.pending,
               failed: data.failed,
             })
-          : translate("immich.enriched", { count: data.enriched })
+          : data.failed > 0
+            ? translate("immich.partially_enriched", {
+                enriched: data.enriched,
+                failed: data.failed,
+              })
+            : translate("immich.enriched", { count: data.enriched })
 
       Flash.show(data.failed > 0 ? "warning" : "notice", message)
       this.removeMarkers()

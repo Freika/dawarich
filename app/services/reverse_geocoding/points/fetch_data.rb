@@ -49,6 +49,11 @@ class ReverseGeocoding::Points::FetchData
         geodata: DawarichSettings.store_geodata? ? response.data : {},
         reverse_geocoded_at: Time.current
       )
+      if point.saved_change_to_city? || point.saved_change_to_country_name? || point.saved_change_to_country_id?
+        user_id = point.user_id
+        timestamp = point.timestamp
+        ActiveRecord.after_all_transactions_commit { Stats::GeocodedDays.mark(user_id, timestamp) }
+      end
     end
   rescue *ReverseGeocoding::ProviderErrors::TRANSIENT => e
     Rails.logger.warn("Reverse geocoding provider error for point #{point.id}: #{e.message}")

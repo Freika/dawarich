@@ -19,7 +19,10 @@ class Entitlements
   def inherited_family_access?
     return false unless @user.in_family?
 
-    owner = @user.family&.owner
+    family = @user.family
+    return family.access_until.future? if family&.access_until
+
+    owner = family&.owner
     return false unless owner&.family?
 
     owner.active_until&.future? || false
@@ -50,7 +53,10 @@ class Entitlements
   end
 
   def families?
-    self_hosted? || effective_plan == :family
+    return true if self_hosted?
+    return true if inherited_family_access?
+
+    @user.family? && (@user.active_until&.future? || false)
   end
 
   def data_window

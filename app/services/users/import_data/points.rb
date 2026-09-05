@@ -15,6 +15,7 @@ class Users::ImportData::Points
     @total_created = 0
     @processed_count = 0
     @skipped_count = 0
+    @failed_count = 0
     @preloaded = false
 
     @imports_lookup = {}
@@ -63,6 +64,12 @@ class Users::ImportData::Points
       "Points import completed. Created: #{@total_created}. " \
       "Processed #{@processed_count} valid points, skipped #{@skipped_count}."
     )
+
+    if @failed_count.positive?
+      logger.error(
+        "Points import had failures. Failed to insert #{@failed_count} of #{@processed_count} prepared points."
+      )
+    end
     @total_created
   end
 
@@ -114,10 +121,12 @@ class Users::ImportData::Points
         "Processed batch of #{@buffer.size} points, created #{batch_created}, total created: #{@total_created}"
       )
     rescue StandardError => e
+      @failed_count += @buffer.size
       logger.error "Failed to process point batch: #{e.message}"
       logger.error "Batch size: #{@buffer.size}"
       logger.error "First point in failed batch: #{@buffer.first.inspect}"
       logger.error "Backtrace: #{e.backtrace.first(5).join('\n')}"
+      ExceptionReporter.call(e, 'Failed to process point batch')
     ensure
       @buffer.clear
     end
@@ -193,6 +202,7 @@ class Users::ImportData::Points
     )
 
     ensure_lonlat_field(attributes, point_data)
+    deserialize_array_columns(attributes)
 
     attributes.delete('longitude')
     attributes.delete('latitude')
@@ -213,7 +223,7 @@ class Users::ImportData::Points
     resolve_country_reference(attributes, point_data['country_info'])
     resolve_visit_reference(attributes, point_data['visit_reference'])
 
-    result = attributes.symbolize_keys
+    result = attributes.slice(*Point.column_names).symbolize_keys
 
     logger.debug "Prepared point attributes: #{result.slice(:lonlat, :timestamp, :import_id, :country_id, :visit_id)}"
     result
@@ -278,6 +288,18 @@ class Users::ImportData::Points
     else
       logger.debug "Visit not found for reference: #{visit_reference.inspect}"
       logger.debug "Available visits: #{visits_lookup.keys.inspect}"
+    end
+  end
+
+  # Export dumps carry the array columns as Postgres literals ('{home}'),
+  # which insert fine into the column but poison the dimension stamping:
+  # the resolver would wrap the string into a one-element array and mint a
+  # source row that matches nothing. Deserialize through the column's own
+  # type so old and new dumps alike arrive as real arrays.
+  def deserialize_array_columns(attributes)
+    %w[inrids in_regions].each do |column|
+      value = attributes[column]
+      attributes[column] = Point.type_for_attribute(column).deserialize(value) if value.is_a?(String)
     end
   end
 

@@ -210,6 +210,18 @@ en:
       status: Status
       created: Created
   families:
+    getting_started:
+      members_lose_access_when_your_plan_ends: "While your plan is active, everyone you add gets full access. When it ends, theirs ends too."
+      invite_title: "Add your first family member"
+      invite_body: "Your family is ready. Everyone you add can see where the others are, and each of them keeps their own private map."
+      seats: "%{used} of %{total} seats used"
+      trial_ends_on: "Your Family trial ends on %{date}"
+      sharing_title: "Start sharing your location"
+      sharing_body: "Your family cannot see you yet. Turn sharing on below, then install the app so your location stays up to date."
+      app_title: "Get the app"
+      app_body: "Location sharing works best from the phone in your pocket."
+      email_address: "Email address"
+      invite: "Invite"
     location_sharing_toggle:
       live_location: 'Live location:'
       always: Always
@@ -294,17 +306,6 @@ en:
       always: always
       for_duration: for %{duration}
       sharing_status: Sharing %{duration}
-    index:
-      have_an_invitation: Have an invitation?
-      if_someone_has_invited_you_to_join_their_family_you: If someone has invited you to join their family, you should have received an email with an invitation link.
-      check_your_email_for_an_invitation_link_that_looks_like: 'Check your email for an invitation link that looks like:'
-      family_management: Family Management
-      create_family: Create Your Family
-      description: Create or join a family to share your location data with loved ones.
-      have_invitation: Have an invitation?
-      invitation_help: 'Check your email for an invitation link that looks like:'
-      invitation_instructions: If someone has invited you to join their family, you should have received an email with an invitation link.
-      title: Family Management
     new:
       choose_a_name_that_all_family_members_will_recognize_like: Choose a name that all family members will recognize, like "The Smith Family" or "Our Travel Group".
       what_happens_next: What happens next?
@@ -388,6 +389,21 @@ en:
         decline: Decline
         back_to_family: Back to Family
   family_mailer:
+    plan_lapsed:
+      the_family_plan_has_ended: "The family plan has ended"
+      hi: "Hi"
+      family_plan_ended_html: "The Dawarich Family plan for <strong>%{family}</strong> is no longer active, so your access through it has ended."
+      family_plan_ended_text: "The Dawarich Family plan for %{family} is no longer active, so your access through it has ended."
+      what_this_means: "What this means"
+      your_data_is_safe_and_still_yours: "Your data is safe and still yours."
+      you_can_no_longer_see_your_family_on_the_map: "You can no longer see your family on the map."
+      your_location_is_no_longer_shared_with_them: "Your location is no longer shared with them."
+      tracking_and_uploads_are_paused_until_a_plan_is_active: "Tracking and uploads are paused until a plan is active again."
+      what_you_can_do: "What you can do:"
+      ask_the_owner_to_renew_html: "Ask %{owner} to renew the Family plan, or start your own plan."
+      ask_the_owner_to_renew_text: "Ask %{owner} to renew the Family plan, or start your own plan."
+      get_your_own_plan: "Get your own plan"
+      nothing_is_deleted_your_history_is_waiting_when_you_come_back: "Nothing is deleted. Your history is waiting for you when you come back."
     invitation:
       you_ve_been_invited_to_join_a_family: You've been invited to join a family!
       hi_there: Hi there!
@@ -477,6 +493,7 @@ en:
     extraction_card:
       additional_data: Additional data
       this_import_format_doesn_t_carry_visits_named_places_or: This import format doesn't carry visits, named places, or transportation modes, so there's nothing additional to extract.
+      this_gpx_file_holds_no_waypoints: 'This GPX file holds only recorded track points, so there are no waypoints to import as places.'
       extracted: Extracted
       visits: visits,
       places: places,
@@ -807,6 +824,8 @@ en:
       dawarich_logo: Dawarich logo
   map:
     onboarding_modal:
+      invite_your_family: "Invite your family"
+      add_your_family_and_see_each_other_on_the_map: "Add your family and see each other on the map."
       welcome_to_dawarich: Welcome to Dawarich!
       your_map_starts_with_your_next_step_literally: Your map starts with your next step — literally.
       start_tracking_now: Start tracking now
@@ -889,8 +908,8 @@ en:
         allow_dragging_points_to_correct_their_position_remembered_across_sessio: Allow dragging points to correct their position. Remembered across sessions.
         tiled_rendering: "Tiled rendering"
         beta: "Beta"
-        tiled_rendering_description: "Draws points, routes, tracks and fog from vector tiles as you pan, so a long date range loads only what is in view. Routes show your generated tracks, colored per track."
-        tiled_rendering_caveats: "Active while Scratch map is off. Dense areas merge into markers with a point count — zoom in to open individual points. Point editing is unavailable, routes are colored per track (average speed, not a gradient), hovering a route no longer shows its popup — click a track instead — and the live trail can lag a few minutes."
+        tiled_rendering_description: "Draws points, routes, tracks and fog from vector tiles as you pan, so a long date range loads only what is in view. Routes show your generated tracks. Zoom in to see the speed of each segment."
+        tiled_rendering_caveats: "Active while Scratch map is off. Dense areas merge into markers with a point count — zoom in to open individual points. Point editing is unavailable, hovering a route no longer shows its popup — click a track instead — and the live trail can lag a few minutes."
         routes: Routes
         show_connected_route_lines: Show connected route lines
         color_by_speed: Color by speed
@@ -988,12 +1007,6 @@ en:
         min_6: 5min
         min_7: 120min
         how_long_you_must_stay_for_a_city_to_count: How long you must stay for a city to count in statistics
-        max_gap_between_points: Max Gap Between Points
-        min_8: 120 min
-        min_9: 30min
-        min_10: 195min
-        min_11: 360min
-        max_gap_between_points_before_assuming_you_left_the_city: Max gap between points before assuming you left the city
         min_12: 720min
         live_mode: Live Mode
         show_new_points_in_real_time: Show new points in real-time
@@ -1527,6 +1540,7 @@ en:
           immich: Immich
           photoprism: PhotoPrism
           airtrail: AirTrail
+          teslamate: TeslaMateApi
         status_connected: Connected
         status_failed: Last connection attempt failed
         immich_photoprism_integrations: Immich & Photoprism Integrations
@@ -1556,6 +1570,16 @@ en:
         the_base_url_of_your_airtrail_instance_your_flights_are: The base URL of your AirTrail instance. Your flights are shown as arcs on the map.
         airtrail_api_key: AirTrail API Key
         create_an_api_key_in_airtrail_under_settings_rarr_security: Create an API key in AirTrail under Settings → Security.
+        teslamate_integration: TeslaMateApi Integration
+        teslamate_url: TeslaMateApi URL
+        the_base_url_of_your_teslamateapi_instance: The base URL of your TeslaMateApi instance.
+        teslamate_setup_guide: Setup guide (TeslaMateApi v1.25.0 or newer)
+        teslamate_username: HTTP Basic username (optional)
+        teslamate_password: HTTP Basic password (optional)
+        teslamate_api_token: Bearer token (optional)
+        teslamate_authentication_help: Use Basic authentication for a protected reverse proxy, or a bearer token for a compatible proxy or fork. Canonical TeslaMateApi read endpoints do not use its API_TOKEN.
+        sync_teslamate_drives: Sync TeslaMateApi drives
+        teslamate_sync_help: Completed drives sync automatically once a day. Current drives and parked positions are not available through TeslaMateApi.
         last_synced: 'Last synced:'
         connected_accounts: Connected Accounts
         you_ve_connected_your_account_using_the_following_oauth_provider: 'You''ve connected your account using the following OAuth provider:'
@@ -1990,6 +2014,8 @@ en:
       available_on_pro: Available on Pro
       upgrade_to_pro: Upgrade to Pro
     month:
+      flight_distance: Flight distance
+      from_airtrail_not_counted_in_distance: From AirTrail, not counted in distance
       monthly_digest: Monthly Digest
       share: Share
       distance_traveled: Distance traveled
@@ -2041,6 +2067,8 @@ en:
       distance: Distance
       countries_count_countries_cities_count_cities: "%{countries_count} countries, %{cities_count} cities"
     public_month:
+      flight_distance: Flight distance
+      from_airtrail_not_counted_in_distance: From AirTrail, not counted in distance
       monthly_digest: Monthly Digest
       distance_traveled: Distance traveled
       total_distance_for_this_month: Total distance for this month
@@ -2321,6 +2349,7 @@ en:
           other: "%{count} cities"
     digests_mailer:
       monthly_digest:
+        flights: Flights
         your: Your
         in_review: in review
         here_s_what_your_location_history_looked_like_last_month: Here's what your location history looked like last month.
@@ -2565,6 +2594,7 @@ en:
       source:
         manual: Manual
         photon: Photon
+        gpx_waypoint: 'GPX waypoint'
     shared_link:
       resource_type:
         trip: Trip
@@ -2765,6 +2795,7 @@ en:
         areas:
           area_was_successfully_deleted: Area was successfully deleted
         auth:
+          account_pending_deletion: An account with this email is being deleted. Try again once that has finished.
           apple:
             apple_has_not_verified_this_email_sign_in_with_password: Apple has not verified this email. Sign in with password and link from settings.
             this_email_already_has_a_dawarich_account_we_sent_a: This email already has a Dawarich account. We sent a confirmation link to that address — click it to link your Apple ID.
@@ -2892,6 +2923,9 @@ en:
           failed_to_delete_visit: Failed to delete visit
           visit_not_found: Visit not found
           failed_to_create_visit: Failed to create visit
+          no_visits_provided: "No visits provided"
+          invalid_visit_payload: "Visit entry must be an object"
+          too_many_visits_maximum_is_limit_per_batch: "Too many visits selected, maximum is %{limit} per batch"
       record_not_found: Record not found
       complete_your_subscription_to_continue: Complete your subscription to continue.
       this_feature_requires_a_pro_plan: This feature requires a Pro plan.
@@ -3135,6 +3169,7 @@ en:
         sign_in_with_apple_was_cancelled: Sign in with Apple was cancelled.
         sign_in_failed: 'Apple sign-in failed: %{message}'
         email_not_verified: Your Apple ID email is not verified. Verify it with Apple, then try again.
+        account_pending_deletion: An account with this email is being deleted. Try again once that has finished.
         missing_email: Apple didn't share your email this time and we couldn't find your existing account. Visit appleid.apple.com → Sign in with Apple → Dawarich → Stop using Sign in with Apple, then try again.
         did_not_complete: Sign in with Apple did not complete. Please try again.
         state_mismatch: Sign in with Apple state mismatch — please try again.
@@ -3159,6 +3194,7 @@ en:
         oidc_account_requires_administrator: Your account must be created by an administrator before you can sign in with OIDC. Please contact your administrator.
         account_creation_failed: Unable to create your account. Please try again or contact support.
         email_not_verified: Your %{provider} email is not verified. Verify it with the provider, then try again — or sign in with your existing password.
+        account_pending_deletion: An account with this email is being deleted. Try again once that has finished.
       otp_challenge:
         session_expired_please_sign_in_again: Session expired. Please sign in again.
         signed_in_successfully: Signed in successfully.
@@ -3217,6 +3253,8 @@ en:
     declined: declined
   mailers:
     family:
+      plan_lapsed:
+        subject: "👪 The Family plan for %{family} has ended"
       invitation:
         subject: "\U0001F389 You've been invited to join %{family} on Dawarich!"
       location_request:
@@ -3271,6 +3309,11 @@ en:
     trip:
       must_be_after_start_date: must be after start date
   services:
+    tesla_mate:
+      connection_tester:
+        teslamate_connection_verified: TeslaMateApi connection verified
+        teslamate_url_is_missing: TeslaMateApi URL is missing
+        teslamate_connection_failed_message: 'TeslaMateApi connection failed: %{message}'
     air_trail:
       connection_tester:
         airtrail_connection_verified: AirTrail connection verified
@@ -3296,6 +3339,10 @@ en:
         export_name_failed_message_stacktrace_n: 'Export "%{name}" failed: %{message}, stacktrace: %{backtrace}'
         unsupported_file_format: 'Unsupported file format: %{format}'
     families:
+      auto_create:
+        default_name: My Family
+        notification_title: Your Family plan is ready
+        notification_content: 'We set up "%{name}" for you. Invite up to %{seats} people and you will see each other on the map.'
       accept_invitation:
         you_must_leave_your_current_family_before_joining_a_new: You must leave your current family before joining a new one.
         this_invitation_is_no_longer_valid_or_has_expired: This invitation is no longer valid or has expired.
@@ -3386,6 +3433,13 @@ en:
         immich_api_key_missing_permission_asset_view: 'Immich API key missing permission: asset.view'
         immich_thumbnail_check_failed_code: 'Immich thumbnail check failed: %{code}'
       enrich_photos:
+        checking_title: Checking Immich location updates
+        checking: "Submitted %{count} location updates to Immich. Checking whether the coordinates were saved."
+        result_title: Immich location update results
+        confirmed:
+          one: "Confirmed the saved location for %{count} photo."
+          other: "Confirmed saved locations for %{count} photos."
+        unconfirmed: "Location updates still unconfirmed: %{count}. Immich may still be processing the updates. Check its metadata jobs and your API key's asset.read permission. For external libraries, check that Immich can write XMP sidecar files: read-only mounts or file permissions can prevent saving. Once resolved, scan again before retrying."
         http_code_message: 'HTTP %{code}: %{message}'
       enrich_scan:
         failed_to_fetch_photos_from_immich: Failed to fetch photos from Immich
@@ -3406,12 +3460,21 @@ en:
     imports:
       bulk_insertable:
         importer_name_import_error: "%{importer_name} Import Error"
+      geojson_importer:
+        points_skipped_title: Import skipped points without timestamps
+        points_skipped: 'Your file %{name} contained %{skipped} points without timestamps; they were skipped. GeoJSON points need a "timestamp" property or a fourth [lon, lat, altitude, time] coordinate value to be imported.'
       create:
         import_post_processing_incomplete: Import post-processing incomplete
         import_completed_with_no_new_points: Import completed with no new points
         import_completed_with_no_points: Import completed with no points
         import_failed: Import failed
-        zero_points_with_timestamps: Your file %{name} imported 0 points. No location points with timestamps were found. GPX and KML imports require a per-point &lt;time&gt;/&lt;when&gt; value for each coordinate.
+        zero_points_with_timestamps: Your file %{name} imported 0 points. No location points with timestamps were found. GPX, KML and GeoJSON imports require a per-point time value (&lt;time&gt;, &lt;when&gt;, or a timestamp property).
+        zero_points_waypoints_only:
+          one: 'Your file %{name} imported 0 points. It contains %{count} waypoint (a favorite or saved place) but no recorded track. Dawarich currently imports tracks only.'
+          other: 'Your file %{name} imported 0 points. It contains %{count} waypoints (favorites or saved places) but no recorded track. Dawarich currently imports tracks only.'
+        zero_points_route_only:
+          one: 'Your file %{name} imported 0 points. It contains a planned route with %{count} point, but no recorded track. Dawarich imports recorded tracks, not planned routes.'
+          other: 'Your file %{name} imported 0 points. It contains a planned route with %{count} points, but no recorded track. Dawarich imports recorded tracks, not planned routes.'
         zero_points: Your file %{name} imported 0 points. No new location points were found in this file.
         import_failed_self_hosted: 'Import "%{name}" failed: %{message}, stacktrace: %{backtrace}'
         import_failed_cloud: 'Import "%{name}" failed, please contact us at hi@dawarich.com'
@@ -3568,6 +3631,10 @@ en:
         weekday_preference: You travel more on weekdays than weekends
         with_suggestion: "%{insight} %{suggestion}"
   jobs:
+    tesla_mate:
+      sync_job:
+        teslamate_sync_failed: TeslaMateApi sync failed
+        your_teslamate_sync_failed: 'Your TeslaMateApi sync failed with error: %{message}. Check your integration settings and try again.'
     air_trail:
       import_flights_job:
         airtrail_sync_failed: AirTrail sync failed
@@ -3709,6 +3776,7 @@ en:
       failed_to_reload_routes: Failed to reload routes
       failed_to_load_scratch_layer: Failed to load scratch layer
       failed_to_load_photos: Failed to load photos
+      some_photo_sources_unavailable: "Some photo sources are unavailable: %{sources}"
       failed_to_load_areas: Failed to load areas
       failed_to_load_tracks: Failed to load tracks
       failed_to_load_track_details: Failed to load track details
@@ -4080,6 +4148,7 @@ en:
       no_matches: No matches found within tolerance
       open_in_immich: Open in Immich
       partially_enriched: Enriched %{enriched} photos. %{failed} failed.
+      pending_enrichment: "Submitted %{count} location updates to Immich; %{failed} failed to send. You will receive a notification after the saved coordinates are checked."
       photos_without_gps:
         one: "%{count} photo without GPS"
         other: "%{count} photos without GPS"
@@ -4266,6 +4335,7 @@ en:
       loading: Loading…
       loading_tracks: Loading tracks for the new range…
       no_location_data: No location data in this date range — pick a range with tracks in the date bar above.
+      gallery_without_flights: "Gallery posters use GPS routes without flight overlays. Download preserves the current view."
       no_tracks_in_frame: No tracks inside the frame — move or zoom the map over your route to save to the gallery.
       queued: Queued — rendering server-side into Recent posters…
       rendering: Rendering %{width} × %{height}px…

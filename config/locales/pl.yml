@@ -210,6 +210,18 @@ pl:
       status: Status
       created: Utworzono
   families:
+    getting_started:
+      members_lose_access_when_your_plan_ends: "Dopóki Twój plan jest aktywny, każda dodana osoba ma pełny dostęp. Gdy się skończy, ich dostęp też."
+      invite_title: "Dodaj pierwszego członka rodziny"
+      invite_body: "Twoja rodzina jest gotowa. Każda dodana osoba widzi, gdzie są pozostali, a przy tym zachowuje własną prywatną mapę."
+      seats: "Zajęte miejsca: %{used} z %{total}"
+      trial_ends_on: "Twój okres próbny Family kończy się %{date}"
+      sharing_title: "Zacznij udostępniać swoją lokalizację"
+      sharing_body: "Rodzina jeszcze Cię nie widzi. Włącz udostępnianie poniżej, a potem zainstaluj aplikację, aby Twoja lokalizacja była aktualna."
+      app_title: "Pobierz aplikację"
+      app_body: "Udostępnianie lokalizacji działa najlepiej z telefonu, który masz przy sobie."
+      email_address: "Adres e-mail"
+      invite: "Zaproś"
     location_sharing_toggle:
       live_location: 'Lokalizacja na żywo:'
       always: Zawsze
@@ -294,17 +306,6 @@ pl:
       always: zawsze
       for_duration: przez %{duration}
       sharing_status: Udostępnianie przez %{duration}
-    index:
-      have_an_invitation: Masz zaproszenie?
-      if_someone_has_invited_you_to_join_their_family_you: Jeśli ktoś zaprosił Cię do swojej rodziny, powinieneś otrzymać e-mail z linkiem do zaproszenia.
-      check_your_email_for_an_invitation_link_that_looks_like: 'Sprawdź e-mail pod kątem linku do zaproszenia w stylu:'
-      family_management: Zarządzanie rodziną
-      create_family: Utwórz swoją rodzinę
-      description: Utwórz rodzinę lub dołącz do istniejącej, aby udostępniać dane lokalizacji bliskim.
-      have_invitation: Masz zaproszenie?
-      invitation_help: 'Sprawdź e-mail pod kątem linku do zaproszenia w stylu:'
-      invitation_instructions: Jeśli ktoś zaprosił Cię do swojej rodziny, powinieneś otrzymać e-mail z linkiem do zaproszenia.
-      title: Zarządzanie rodziną
     new:
       choose_a_name_that_all_family_members_will_recognize_like: Wybierz nazwę, którą rozpoznają wszyscy członkowie rodziny, np. „Rodzina Kowalskich” albo „Nasza grupa podróżnicza”.
       what_happens_next: Co dalej?
@@ -388,6 +389,21 @@ pl:
         decline: Odrzuć
         back_to_family: Powrót do rodziny
   family_mailer:
+    plan_lapsed:
+      the_family_plan_has_ended: "Plan Family dobiegł końca"
+      hi: "Cześć"
+      family_plan_ended_html: "Plan Dawarich Family dla <strong>%{family}</strong> nie jest już aktywny, więc Twój dostęp przez niego się zakończył."
+      family_plan_ended_text: "Plan Dawarich Family dla %{family} nie jest już aktywny, więc Twój dostęp przez niego się zakończył."
+      what_this_means: "Co to oznacza"
+      your_data_is_safe_and_still_yours: "Twoje dane są bezpieczne i nadal należą do Ciebie."
+      you_can_no_longer_see_your_family_on_the_map: "Nie widzisz już swojej rodziny na mapie."
+      your_location_is_no_longer_shared_with_them: "Twoja lokalizacja nie jest już im udostępniana."
+      tracking_and_uploads_are_paused_until_a_plan_is_active: "Śledzenie i wysyłanie danych są wstrzymane, dopóki plan nie będzie znów aktywny."
+      what_you_can_do: "Co możesz zrobić:"
+      ask_the_owner_to_renew_html: "Poproś %{owner} o odnowienie planu Family albo wykup własny plan."
+      ask_the_owner_to_renew_text: "Poproś %{owner} o odnowienie planu Family albo wykup własny plan."
+      get_your_own_plan: "Wykup własny plan"
+      nothing_is_deleted_your_history_is_waiting_when_you_come_back: "Nic nie jest usuwane. Twoja historia czeka, gdy wrócisz."
     invitation:
       you_ve_been_invited_to_join_a_family: Otrzymałeś zaproszenie do rodziny!
       hi_there: Cześć!
@@ -477,6 +493,7 @@ pl:
     extraction_card:
       additional_data: Dodatkowe dane
       this_import_format_doesn_t_carry_visits_named_places_or: Ten format importu nie zawiera wizyt, nazwanych miejsc ani trybów transportu, więc nie ma dodatkowych danych do wyodrębnienia.
+      this_gpx_file_holds_no_waypoints: 'Ten plik GPX zawiera tylko zarejestrowane punkty trasy, więc nie ma punktów orientacyjnych do zaimportowania jako miejsca.'
       extracted: Wyodrębniono
       visits: wizyty,
       places: miejsca,
@@ -807,6 +824,8 @@ pl:
       dawarich_logo: Logo Dawarich
   map:
     onboarding_modal:
+      invite_your_family: "Zaproś swoją rodzinę"
+      add_your_family_and_see_each_other_on_the_map: "Dodaj swoją rodzinę i zobaczcie się na mapie."
       welcome_to_dawarich: Witamy w Dawarich!
       your_map_starts_with_your_next_step_literally: Twoja mapa zaczyna się od kolejnego kroku - dosłownie.
       start_tracking_now: Zacznij śledzić teraz
@@ -889,8 +908,8 @@ pl:
         allow_dragging_points_to_correct_their_position_remembered_across_sessio: Pozwala przeciągać punkty, aby poprawić ich pozycję. Zapamiętywane między sesjami.
         tiled_rendering: Renderowanie kafelkowe
         beta: Beta
-        tiled_rendering_description: Rysuje punkty, trasy, odcinki i nieodkryty obszar z kafelków wektorowych podczas przesuwania mapy, dzięki czemu długi zakres dat wczytuje tylko to, co widać. Trasy pokazują wygenerowane odcinki, kolorowane osobno dla każdego z nich.
-        tiled_rendering_caveats: Aktywne, gdy warstwa Odkryte kraje jest wyłączona. W gęstych obszarach punkty łączą się w znaczniki z licznikiem punktów — przybliż, aby otworzyć pojedyncze punkty. Edycja punktów jest niedostępna, trasy są kolorowane osobno dla każdego odcinka (średnia prędkość, nie gradient), najechanie na trasę nie pokazuje już dymka — zamiast tego kliknij odcinek — a ślad na żywo może opóźniać się o kilka minut.
+        tiled_rendering_description: Rysuje punkty, trasy, odcinki i nieodkryty obszar z kafelków wektorowych podczas przesuwania mapy, dzięki czemu długi zakres dat wczytuje tylko to, co widać. Trasy pokazują wygenerowane odcinki. Przybliż mapę, aby zobaczyć prędkość każdego segmentu.
+        tiled_rendering_caveats: Aktywne, gdy warstwa Odkryte kraje jest wyłączona. W gęstych obszarach punkty łączą się w znaczniki z licznikiem punktów — przybliż, aby otworzyć pojedyncze punkty. Edycja punktów jest niedostępna, najechanie na trasę nie pokazuje już dymka — zamiast tego kliknij odcinek — a ślad na żywo może opóźniać się o kilka minut.
         routes: Trasy
         show_connected_route_lines: Pokaż połączone linie tras
         color_by_speed: Koloruj według prędkości
@@ -988,12 +1007,6 @@ pl:
         min_6: 5 min
         min_7: 120 min
         how_long_you_must_stay_for_a_city_to_count: Jak długo musisz pozostać, aby miasto zostało uwzględnione w statystykach
-        max_gap_between_points: Maksymalna przerwa między punktami
-        min_8: 120 min
-        min_9: 30 min
-        min_10: 195 min
-        min_11: 360 min
-        max_gap_between_points_before_assuming_you_left_the_city: Maksymalna przerwa między punktami, po której uznajemy, że opuściłeś miasto
         min_12: 720 min
         live_mode: Tryb na żywo
         show_new_points_in_real_time: Pokaż nowe punkty w czasie rzeczywistym
@@ -1527,6 +1540,7 @@ pl:
           immich: Immich
           photoprism: PhotoPrism
           airtrail: AirTrail
+          teslamate: TeslaMateApi
         status_connected: Połączono
         status_failed: Ostatnia próba połączenia nie powiodła się
         immich_photoprism_integrations: Integracje Immich i Photoprism
@@ -1556,6 +1570,16 @@ pl:
         the_base_url_of_your_airtrail_instance_your_flights_are: Bazowy URL Twojej instancji AirTrail. Loty są pokazywane na mapie jako łuki.
         airtrail_api_key: Klucz API AirTrail
         create_an_api_key_in_airtrail_under_settings_rarr_security: Utwórz klucz API w AirTrail w Ustawienia → Security.
+        teslamate_integration: Integracja TeslaMateApi
+        teslamate_url: URL TeslaMateApi
+        the_base_url_of_your_teslamateapi_instance: Bazowy URL Twojej instancji TeslaMateApi.
+        teslamate_setup_guide: Instrukcja konfiguracji (TeslaMateApi v1.25.0 lub nowszy)
+        teslamate_username: Nazwa użytkownika HTTP Basic (opcjonalnie)
+        teslamate_password: Hasło HTTP Basic (opcjonalnie)
+        teslamate_api_token: Token Bearer (opcjonalnie)
+        teslamate_authentication_help: Użyj uwierzytelniania Basic dla chronionego reverse proxy lub tokenu Bearer dla zgodnego proxy albo forka. Standardowe endpointy odczytu TeslaMateApi nie używają API_TOKEN.
+        sync_teslamate_drives: Synchronizuj przejazdy TeslaMateApi
+        teslamate_sync_help: Zakończone przejazdy synchronizują się automatycznie raz dziennie. Bieżące przejazdy i pozycje podczas postoju nie są dostępne przez TeslaMateApi.
         last_synced: 'Ostatnia synchronizacja:'
         connected_accounts: Połączone konta
         you_ve_connected_your_account_using_the_following_oauth_provider: 'Połączyłeś konto przy użyciu następującego dostawcy OAuth:'
@@ -1990,6 +2014,8 @@ pl:
       available_on_pro: Dostępne w planie Pro
       upgrade_to_pro: Przejdź na Pro
     month:
+      flight_distance: Dystans lotów
+      from_airtrail_not_counted_in_distance: Z AirTrail, nieliczony do dystansu
       monthly_digest: Podsumowanie miesięczne
       share: Udostępnij
       distance_traveled: Przebyty dystans
@@ -2041,6 +2067,8 @@ pl:
       distance: Dystans
       countries_count_countries_cities_count_cities: "%{countries_count} krajów, %{cities_count} miast"
     public_month:
+      flight_distance: Dystans lotów
+      from_airtrail_not_counted_in_distance: Z AirTrail, nieliczony do dystansu
       monthly_digest: Podsumowanie miesięczne
       distance_traveled: Przebyty dystans
       total_distance_for_this_month: Całkowity dystans w tym miesiącu
@@ -2321,6 +2349,7 @@ pl:
           other: "%{count} miast"
     digests_mailer:
       monthly_digest:
+        flights: Loty
         your: Twoje
         in_review: podsumowanie
         here_s_what_your_location_history_looked_like_last_month: Tak wyglądała historia Twojej lokalizacji w poprzednim miesiącu.
@@ -2620,6 +2649,7 @@ pl:
       source:
         manual: Ręcznie
         photon: Photon
+        gpx_waypoint: 'Punkt trasy GPX'
     shared_link:
       resource_type:
         trip: Podróż
@@ -2832,6 +2862,7 @@ pl:
         areas:
           area_was_successfully_deleted: Obszar został pomyślnie usunięty
         auth:
+          account_pending_deletion: Konto z tym adresem e-mail jest właśnie usuwane. Spróbuj ponownie, gdy usuwanie się zakończy.
           apple:
             apple_has_not_verified_this_email_sign_in_with_password: Apple nie zweryfikowało tego adresu e-mail. Zaloguj się hasłem i połącz konto w ustawieniach.
             this_email_already_has_a_dawarich_account_we_sent_a: Ten adres e-mail ma już konto Dawarich. Wysłaliśmy link potwierdzający na ten adres - kliknij go, aby połączyć Apple ID.
@@ -2959,6 +2990,9 @@ pl:
           failed_to_delete_visit: Nie udało się usunąć wizyty
           visit_not_found: Nie znaleziono wizyty
           failed_to_create_visit: Nie udało się utworzyć wizyty
+          no_visits_provided: "Nie przekazano żadnych wizyt"
+          invalid_visit_payload: "Wpis wizyty musi być obiektem"
+          too_many_visits_maximum_is_limit_per_batch: "Zbyt wiele wizyt, maksymalnie %{limit} na partię"
       record_not_found: Nie znaleziono rekordu
       complete_your_subscription_to_continue: Dokończ subskrypcję, aby kontynuować.
       this_feature_requires_a_pro_plan: Ta funkcja wymaga planu Pro.
@@ -3199,6 +3233,7 @@ pl:
       export_failed_to_initiate_please_try_again: Nie udało się rozpocząć eksportu. Spróbuj ponownie.
     users:
       apple_oauth:
+        account_pending_deletion: Konto z tym adresem e-mail jest właśnie usuwane. Spróbuj ponownie, gdy usuwanie się zakończy.
         sign_in_with_apple_was_cancelled: Logowanie przez Apple zostało anulowane.
         sign_in_failed: 'Logowanie Apple nie powiodło się: %{message}'
         email_not_verified: Adres e-mail Twojego Apple ID nie jest zweryfikowany. Zweryfikuj go w Apple i spróbuj ponownie.
@@ -3216,6 +3251,7 @@ pl:
         year_end_digest_for_year_has_been_deleted: Roczne podsumowanie za %{year} zostało usunięte
         digest_not_found: Nie znaleziono podsumowania
       omniauth_callbacks:
+        account_pending_deletion: Konto z tym adresem e-mail jest właśnie usuwane. Spróbuj ponownie, gdy usuwanie się zakończy.
         invalid_credentials: Nieprawidłowe dane logowania. Sprawdź nazwę użytkownika i hasło.
         connection_timeout: Przekroczono czas połączenia. Spróbuj ponownie.
         security_error: Wykryto błąd bezpieczeństwa. Spróbuj ponownie.
@@ -3284,6 +3320,8 @@ pl:
     declined: odrzucona
   mailers:
     family:
+      plan_lapsed:
+        subject: "👪 Plan Family dla %{family} dobiegł końca"
       invitation:
         subject: "\U0001F389 Otrzymujesz zaproszenie do rodziny %{family} w Dawarich!"
       location_request:
@@ -3338,6 +3376,11 @@ pl:
     trip:
       must_be_after_start_date: musi być po dacie rozpoczęcia
   services:
+    tesla_mate:
+      connection_tester:
+        teslamate_connection_verified: Połączenie TeslaMateApi zweryfikowane
+        teslamate_url_is_missing: Brakuje URL TeslaMateApi
+        teslamate_connection_failed_message: 'Połączenie TeslaMateApi nie powiodło się: %{message}'
     air_trail:
       connection_tester:
         airtrail_connection_verified: Połączenie AirTrail zweryfikowane
@@ -3363,6 +3406,10 @@ pl:
         export_name_failed_message_stacktrace_n: 'Eksport "%{name}" nie powiódł się: %{message}, stacktrace: %{backtrace}'
         unsupported_file_format: 'Nieobsługiwany format pliku: %{format}'
     families:
+      auto_create:
+        default_name: Moja rodzina
+        notification_title: Twój plan Family jest gotowy
+        notification_content: 'Przygotowaliśmy dla Ciebie "%{name}". Zaproś maksymalnie %{seats} osób, a zobaczycie się na mapie.'
       accept_invitation:
         you_must_leave_your_current_family_before_joining_a_new: Musisz opuścić obecną rodzinę, zanim dołączysz do nowej.
         this_invitation_is_no_longer_valid_or_has_expired: To zaproszenie nie jest już ważne lub wygasło.
@@ -3453,6 +3500,15 @@ pl:
         immich_api_key_missing_permission_asset_view: 'Klucz API Immich nie ma uprawnienia: asset.view'
         immich_thumbnail_check_failed_code: 'Sprawdzenie miniatury Immich nie powiodło się: %{code}'
       enrich_photos:
+        checking_title: "Sprawdzanie aktualizacji lokalizacji w Immich"
+        checking: "Wysłano %{count} aktualizacji lokalizacji do Immich. Trwa sprawdzanie, czy współrzędne zostały zapisane."
+        result_title: "Wyniki aktualizacji lokalizacji w Immich"
+        confirmed:
+          one: "Potwierdzono zapisaną lokalizację dla %{count} zdjęcia."
+          other: "Potwierdzono zapisane lokalizacje dla %{count} zdjęć."
+          few: "Potwierdzono zapisane lokalizacje dla %{count} zdjęć."
+          many: "Potwierdzono zapisane lokalizacje dla %{count} zdjęć."
+        unconfirmed: "Niepotwierdzone aktualizacje lokalizacji: %{count}. Immich może nadal przetwarzać zmiany. Sprawdź zadania metadanych i uprawnienie asset.read klucza API. W bibliotekach zewnętrznych Immich musi mieć możliwość zapisywania plików pomocniczych XMP: montowanie tylko do odczytu lub uprawnienia plików mogą uniemożliwić zapis. Po rozwiązaniu problemu wyszukaj zdjęcia ponownie przed kolejną próbą."
         http_code_message: 'HTTP %{code}: %{message}'
       enrich_scan:
         failed_to_fetch_photos_from_immich: Nie udało się pobrać zdjęć z Immich
@@ -3473,12 +3529,21 @@ pl:
     imports:
       bulk_insertable:
         importer_name_import_error: Błąd importu %{importer_name}
+      geojson_importer:
+        points_skipped_title: Import pominął punkty bez znacznika czasu
+        points_skipped: 'Twój plik %{name} zawierał %{skipped} punktów bez znacznika czasu; zostały pominięte. Punkty GeoJSON wymagają właściwości "timestamp" lub czwartej wartości współrzędnej [lon, lat, altitude, time], aby zostały zaimportowane.'
       create:
         import_post_processing_incomplete: Końcowe przetwarzanie importu nie zostało ukończone
         import_completed_with_no_new_points: Import zakończony bez nowych punktów
         import_completed_with_no_points: Import zakończony bez punktów
         import_failed: Import nie powiódł się
-        zero_points_with_timestamps: Plik %{name} zaimportował 0 punktów. Nie znaleziono punktów lokalizacji ze znacznikami czasu. Import GPX i KML wymaga wartości &lt;time&gt;/&lt;when&gt; dla każdego punktu.
+        zero_points_with_timestamps: Plik %{name} zaimportował 0 punktów. Nie znaleziono punktów lokalizacji ze znacznikami czasu. Import GPX, KML i GeoJSON wymaga wartości czasu dla każdego punktu (&lt;time&gt;, &lt;when&gt; lub właściwości timestamp).
+        zero_points_waypoints_only:
+          one: 'Twój plik %{name} zaimportował 0 punktów. Zawiera %{count} punkt nawigacyjny (ulubione lub zapisane miejsce), ale nie zawiera zarejestrowanej trasy. Dawarich obecnie importuje tylko zarejestrowane trasy.'
+          other: 'Twój plik %{name} zaimportował 0 punktów. Zawiera %{count} punktów nawigacyjnych (ulubione lub zapisane miejsca), ale nie zawiera zarejestrowanej trasy. Dawarich obecnie importuje tylko zarejestrowane trasy.'
+        zero_points_route_only:
+          one: 'Twój plik %{name} zaimportował 0 punktów. Zawiera zaplanowaną trasę z %{count} punktem, ale nie zawiera zarejestrowanej trasy. Dawarich importuje zarejestrowane trasy, a nie zaplanowane.'
+          other: 'Twój plik %{name} zaimportował 0 punktów. Zawiera zaplanowaną trasę z %{count} punktami, ale nie zawiera zarejestrowanej trasy. Dawarich importuje zarejestrowane trasy, a nie zaplanowane.'
         zero_points: Plik %{name} zaimportował 0 punktów. Nie znaleziono w nim nowych punktów lokalizacji.
         import_failed_self_hosted: 'Import "%{name}" nie powiódł się: %{message}, stacktrace: %{backtrace}'
         import_failed_cloud: 'Import "%{name}" nie powiódł się, skontaktuj się z nami: hi@dawarich.com'
@@ -3635,6 +3700,10 @@ pl:
         weekday_preference: Podróżujesz częściej w dni robocze niż w weekendy
         with_suggestion: "%{insight} %{suggestion}"
   jobs:
+    tesla_mate:
+      sync_job:
+        teslamate_sync_failed: Synchronizacja TeslaMateApi nie powiodła się
+        your_teslamate_sync_failed: 'Synchronizacja TeslaMateApi nie powiodła się z błędem: %{message}. Sprawdź ustawienia integracji i spróbuj ponownie.'
     air_trail:
       import_flights_job:
         airtrail_sync_failed: Synchronizacja AirTrail nie powiodła się
@@ -3773,6 +3842,7 @@ pl:
       failed_to_reload_routes: Nie udało się odświeżyć tras
       failed_to_load_scratch_layer: Nie udało się załadować warstwy scratch
       failed_to_load_photos: Nie udało się załadować zdjęć
+      some_photo_sources_unavailable: "Niektóre źródła zdjęć są niedostępne: %{sources}"
       failed_to_load_areas: Nie udało się załadować obszarów
       failed_to_load_tracks: Nie udało się załadować odcinków
       failed_to_load_track_details: Nie udało się wczytać szczegółów odcinka
@@ -4144,6 +4214,7 @@ pl:
       no_matches: Nie znaleziono dopasowań w zakresie tolerancji
       open_in_immich: Otwórz w Immich
       partially_enriched: Uzupełniono %{enriched} zdjęć. Dla %{failed} nie udało się.
+      pending_enrichment: "Wysłano %{count} aktualizacji lokalizacji do Immich; %{failed} nie udało się wysłać. Otrzymasz powiadomienie po sprawdzeniu zapisanych współrzędnych."
       photos_without_gps:
         one: "%{count} zdjęcie bez GPS"
         other: "%{count} zdjęć bez GPS"
@@ -4330,6 +4401,7 @@ pl:
       loading: Ładowanie…
       loading_tracks: Ładowanie tras dla nowego zakresu…
       no_location_data: Brak danych lokalizacji w tym zakresie dat - wybierz zakres z trasami na pasku daty powyżej.
+      gallery_without_flights: "Plakaty w galerii używają tras GPS bez lotów. Pobranie zachowuje bieżący widok."
       no_tracks_in_frame: Brak tras w ramce - przesuń lub przybliż mapę nad trasą, aby zapisać do galerii.
       queued: W kolejce - renderowanie po stronie serwera do sekcji Ostatnie plakaty…
       rendering: Renderowanie %{width} × %{height}px…

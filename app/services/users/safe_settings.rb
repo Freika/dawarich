@@ -37,6 +37,15 @@ class Users::SafeSettings
     'airtrail_api_key' => nil,
     'airtrail_skip_ssl_verification' => false,
     'airtrail_last_synced_at' => nil,
+    'teslamate_url' => nil,
+    'teslamate_username' => nil,
+    'teslamate_password' => nil,
+    'teslamate_api_token' => nil,
+    'teslamate_skip_ssl_verification' => false,
+    'teslamate_last_synced_at' => nil,
+    'teslamate_last_synced_url' => nil,
+    'teslamate_processing_pending' => false,
+    'teslamate_processing_pending_url' => nil,
     'maps' => { 'distance_unit' => 'km' },
     'visits_suggestions_enabled' => 'true',
     'enabled_map_layers' => %w[Tracks Heatmap],
@@ -59,7 +68,6 @@ class Users::SafeSettings
     'supporter_github_username' => nil,
     'show_supporter_badge' => true,
     'min_minutes_spent_in_city' => 60,
-    'max_gap_minutes_in_city' => 120,
     # GPS noise filtering (Points::AnomalyFilter)
     'gps_filtering_enabled' => true,
     'timezone' => ENV.fetch('TIME_ZONE', 'UTC'),
@@ -111,7 +119,6 @@ class Users::SafeSettings
       globe_projection: globe_projection,
       enabled_transportation_modes: enabled_transportation_modes,
       min_minutes_spent_in_city: min_minutes_spent_in_city,
-      max_gap_minutes_in_city: max_gap_minutes_in_city,
       gps_filtering_enabled: gps_filtering_enabled?,
       timezone: timezone,
       visit_radius_meters: visit_radius_meters,
@@ -207,6 +214,26 @@ class Users::SafeSettings
 
   def airtrail_skip_ssl_verification
     ActiveModel::Type::Boolean.new.cast(settings['airtrail_skip_ssl_verification'])
+  end
+
+  def teslamate_url
+    settings['teslamate_url']
+  end
+
+  def teslamate_username
+    settings['teslamate_username']
+  end
+
+  def teslamate_password
+    settings['teslamate_password']
+  end
+
+  def teslamate_api_token
+    settings['teslamate_api_token']
+  end
+
+  def teslamate_skip_ssl_verification
+    ActiveModel::Type::Boolean.new.cast(settings['teslamate_skip_ssl_verification'])
   end
 
   def maps
@@ -306,10 +333,6 @@ class Users::SafeSettings
 
   def min_minutes_spent_in_city
     (settings['min_minutes_spent_in_city'] || DEFAULT_VALUES['min_minutes_spent_in_city']).to_i
-  end
-
-  def max_gap_minutes_in_city
-    (settings['max_gap_minutes_in_city'] || DEFAULT_VALUES['max_gap_minutes_in_city']).to_i
   end
 
   def timezone

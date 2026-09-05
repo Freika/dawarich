@@ -46,13 +46,7 @@ status: :see_other
   end
 
   def update_all
-    current_user.years_tracked.each do |year|
-      year[:months].each do |month|
-        Stats::CalculatingJob.perform_later(
-          current_user.id, year[:year], Date::ABBR_MONTHNAMES.index(month)
-        )
-      end
-    end
+    Stats::EnqueueFullRecalculation.new(current_user).call
 
     redirect_to stats_path, notice: I18n.t('controllers.stats.stats_are_being_updated'), status: :see_other
   end

@@ -41,10 +41,13 @@ class ReverseGeocoding::Places::FetchData
       city:       data['properties']['city'],
       country:    data['properties']['country'],
       geodata:    data,
-      source:     Place.sources[:photon],
       reverse_geocoded_at: Time.current
     }
-    attributes[:name] = place_name(data) unless place.name_locked?
+
+    unless place.name_locked?
+      attributes[:name] = place_name(data)
+      attributes[:source] = :photon
+    end
 
     place.machine_named = true
     place.update!(attributes)
@@ -130,11 +133,14 @@ class ReverseGeocoding::Places::FetchData
   end
 
   def populate_place_attributes(place, data)
-    place.name = place_name(data) unless place.name_locked?
+    unless place.name_locked?
+      place.name = place_name(data)
+      place.source = :photon
+    end
+
     place.city = data['properties']['city']
     place.country = data['properties']['country']
     place.geodata = data
-    place.source = :photon
 
     return if place.lonlat.present?
 

@@ -331,6 +331,7 @@ Rails.application.routes.draw do
         collection do
           post 'merge', to: 'visits#merge'
           post 'bulk_update', to: 'visits#bulk_update'
+          post 'batch', to: 'visits#batch'
         end
       end
       resource :plan, only: [:show], controller: 'plan'

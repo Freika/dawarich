@@ -7,6 +7,7 @@ class Api::FamilySerializer
 
   def call
     {
+      lapsed: false,
       family: { name: family.name },
       me: me_payload,
       members: members_payload,

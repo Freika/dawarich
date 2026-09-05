@@ -64,6 +64,22 @@
               </p>
             </div>
           </button>
+          <%# Path D: Family %>
+          <% if family_feature_available? || current_user.in_family? %>
+            <%= link_to family_home_path,
+                  class: "card bg-base-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer text-left border-2 border-transparent hover:border-info sm:col-span-2",
+                  data: { action: "onboarding-modal#dismiss" } do %>
+              <div class="card-body p-5">
+                <div class="flex items-center gap-2 mb-2">
+                  <%= icon 'users', class: 'w-6 h-6 text-info' %>
+                  <h4 class="text-lg font-semibold"><%= t('.invite_your_family') %></h4>
+                </div>
+                <p class="text-sm text-base-content/70">
+                  <%= t(".add_your_family_and_see_each_other_on_the_map") %>
+                </p>
+              </div>
+            <% end %>
+          <% end %>
         </div>
 
         <div class="text-center mt-6">

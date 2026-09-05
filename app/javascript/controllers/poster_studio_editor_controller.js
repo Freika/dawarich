@@ -162,6 +162,7 @@ export default class extends Controller {
       if (!this.subtitleInputTarget.value)
         this.subtitleInputTarget.value = this.dateRangeLabel()
       this.seedDateInputs()
+      await this.provider.ensureTrackLoaded()
 
       this.resizeFrame()
       await this.loadFonts()
@@ -518,6 +519,7 @@ export default class extends Controller {
     this.setStatus(translate("poster.loading_tracks"))
     try {
       await this.provider.applyDates(start, end)
+      await this.provider.ensureTrackLoaded()
 
       if (subtitleWasAuto)
         this.subtitleInputTarget.value = this.dateRangeLabel()
@@ -845,16 +847,26 @@ export default class extends Controller {
   // both guards here so Save to gallery can't queue a doomed poster.
   syncSaveAvailability() {
     if (!this.hasSaveButtonTarget || !this.previewMap) return
-    const coords = collectCoords(this.trackGeojson)
+    // Gallery renders are rebuilt server-side from GPS, without flight overlays.
+    const coords = collectCoords(this.provider?.trackGeojson())
     let reason = null
     if (coords.length === 0) {
       reason = translate("poster.no_location_data")
     } else if (!this.frameCoversTrack(coords)) {
       reason = translate("poster.no_tracks_in_frame")
     }
-    const message =
+    const posterGeometry = this.provider?.posterGeojson?.()
+    const overlayNotice =
+      posterGeometry && posterGeometry !== this.provider.trackGeojson()
+        ? translate("poster.gallery_without_flights")
+        : null
+    const message = [
       reason ||
-      (this.frameIsClamped() ? translate("poster.frame_too_wide") : null)
+        (this.frameIsClamped() ? translate("poster.frame_too_wide") : null),
+      overlayNotice,
+    ]
+      .filter(Boolean)
+      .join(" ")
     this.saveButtonTarget.disabled = Boolean(reason)
     this.saveNoticeTarget.textContent = message || ""
     this.saveNoticeTarget.classList.toggle("hidden", !message)
@@ -885,6 +897,7 @@ export default class extends Controller {
 
   get trackGeojson() {
     return (
+      this.provider?.posterGeojson?.() ??
       this.provider?.trackGeojson() ?? {
         type: "FeatureCollection",
         features: [],

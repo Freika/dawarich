@@ -337,6 +337,17 @@ paths:
                     type: string
                   message:
                     type: string
+        '409':
+          description: account deletion is in progress
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
       requestBody:
         content:
           application/json:
@@ -389,6 +400,17 @@ paths:
                     nullable: true
         '401':
           description: google token verification failed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+        '409':
+          description: account deletion is in progress
           content:
             application/json:
               schema:
@@ -1418,9 +1440,12 @@ paths:
       summary: Retrieves the current user's family overview
       tags:
       - Families
-      description: Returns the family, all members with sharing state, the current
-        user's sharing settings, and active location requests. Requires the Family
-        plan (any plan on self-hosted) and family membership.
+      description: 'Returns the family, all members with sharing state, the current
+        user''s sharing settings, and active location requests. Requires family membership.
+        A member whose entitlement has lapsed still gets 200, with `lapsed: true`
+        and a reduced payload carrying only the family name and the user''s role —
+        `members` and `location_requests` are omitted. A user who is neither entitled
+        nor in a family gets 403.'
       parameters:
       - name: Authorization
         in: header
@@ -1436,6 +1461,8 @@ paths:
               schema:
                 type: object
                 properties:
+                  lapsed:
+                    type: boolean
                   family:
                     type: object
                     properties:
@@ -1521,6 +1548,8 @@ paths:
                               type: string
         '404':
           description: user not in a family
+        '403':
+          description: user is neither entitled nor in a family
   "/api/v1/families/sharing":
     patch:
       summary: Updates the current user's family location sharing
@@ -1694,7 +1723,9 @@ paths:
       tags:
       - Immich
       description: Pushes latitude/longitude updates for the supplied Immich asset
-        IDs back to the user's Immich instance.
+        IDs back to the user's Immich instance. Accepted updates are returned as pending;
+        background verification reports saved coordinates or actionable warnings through
+        notifications.
       parameters:
       - name: api_key
         in: query
@@ -1704,7 +1735,7 @@ paths:
           type: string
       responses:
         '200':
-          description: enrich completed
+          description: updates submitted
           content:
             application/json:
               schema:
@@ -2988,6 +3019,39 @@ paths:
       responses:
         '200':
           description: Point created
+          content:
+            application/json:
+              schema:
+                type: array
+                description: OwnTracks messages for family members sharing their location
+                items:
+                  type: object
+                  properties:
+                    _type:
+                      type: string
+                      description: Message type, either "card" or "location"
+                    tid:
+                      type: string
+                      description: Tracker ID identifying the family member
+                    name:
+                      type: string
+                      description: Family member name, on card messages only
+                    lat:
+                      type: number
+                      description: Latitude coordinate
+                    lon:
+                      type: number
+                      description: Longitude coordinate
+                    tst:
+                      type: number
+                      description: Timestamp in Unix epoch time
+                    batt:
+                      type: number
+                      description: Device battery level (percentage)
+                    bs:
+                      type: number
+                      description: Battery status (0=unknown, 1=unplugged, 2=charging,
+                        3=full)
         '401':
           description: Unauthorized
       requestBody:
@@ -5060,6 +5124,8 @@ paths:
           description: Point created
         '401':
           description: Unauthorized
+        '422':
+          description: Point rejected
       requestBody:
         content:
           application/json:
@@ -5622,6 +5688,75 @@ paths:
       responses:
         '200':
           description: user found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      email:
+                        type: string
+                      created_at:
+                        type: string
+                        format: date-time
+                      updated_at:
+                        type: string
+                        format: date-time
+                      api_key:
+                        type: string
+                      theme:
+                        type: string
+                      settings:
+                        type: object
+                        properties:
+                          maps:
+                            type: object
+                          fog_of_war_meters:
+                            type: integer
+                          meters_between_routes:
+                            type: integer
+                          preferred_map_layer:
+                            type: string
+                          speed_colored_routes:
+                            type: boolean
+                          points_rendering_mode:
+                            type: string
+                          minutes_between_routes:
+                            type: integer
+                          time_threshold_minutes:
+                            type: integer
+                          merge_threshold_minutes:
+                            type: integer
+                          live_map_enabled:
+                            type: boolean
+                          route_opacity:
+                            type: number
+                          immich_url:
+                            type: string
+                            nullable: true
+                          photoprism_url:
+                            type: string
+                            nullable: true
+                          visits_suggestions_enabled:
+                            type: boolean
+                          speed_color_scale:
+                            type: string
+                            nullable: true
+                          fog_of_war_threshold:
+                            type: integer
+                      admin:
+                        type: boolean
+                  features:
+                    type: object
+                    properties:
+                      family:
+                        type: boolean
+                      reverse_geocoding:
+                        type: boolean
         '401':
           description: unauthorized
     delete:
@@ -6121,6 +6256,91 @@ paths:
               required:
               - visit_ids
               - status
+  "/api/v1/visits/batch":
+    post:
+      summary: Create visits in batch
+      tags:
+      - Visits
+      parameters:
+      - name: Authorization
+        in: header
+        required: true
+        description: Bearer token
+        schema:
+          type: string
+      responses:
+        '200':
+          description: batch processed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        index:
+                          type: integer
+                        status:
+                          type: string
+                          enum:
+                          - created
+                          - duplicate
+                          - failed
+                        visit:
+                          type: object
+                        error:
+                          type: string
+                  created_count:
+                    type: integer
+                  duplicate_count:
+                    type: integer
+                  failed_count:
+                    type: integer
+        '422':
+          description: invalid request
+        '401':
+          description: unauthorized
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                visits:
+                  type: array
+                  maxItems: 100
+                  items:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      latitude:
+                        type: number
+                      longitude:
+                        type: number
+                      started_at:
+                        type: string
+                        format: date-time
+                      ended_at:
+                        type: string
+                        format: date-time
+                      status:
+                        type: string
+                        enum:
+                        - suggested
+                        - confirmed
+                        - declined
+                    required:
+                    - name
+                    - latitude
+                    - longitude
+                    - started_at
+                    - ended_at
+              required:
+              - visits
 servers:
 - url: http://{defaultHost}
   variables:

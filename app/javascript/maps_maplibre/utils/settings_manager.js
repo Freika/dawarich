@@ -49,7 +49,6 @@ const DEFAULT_SETTINGS = {
   speedColorScale: "0:#00ff00|15:#00ffff|30:#ff00ff|50:#ffff00|100:#ff3300",
   globeProjection: false,
   minMinutesSpentInCity: 60,
-  maxGapMinutesInCity: 120,
   gpsFilteringEnabled: true,
   pointDraggingEnabled: false,
   pointsTiledRendering: false,
@@ -104,7 +103,6 @@ const BACKEND_SETTINGS_MAP = {
   speedColorScale: "speed_color_scale",
   globeProjection: "globe_projection",
   minMinutesSpentInCity: "min_minutes_spent_in_city",
-  maxGapMinutesInCity: "max_gap_minutes_in_city",
   gpsFilteringEnabled: "gps_filtering_enabled",
   pointDraggingEnabled: "point_dragging_enabled",
   pointsTiledRendering: "points_tiled_rendering",
@@ -293,11 +291,6 @@ export class SettingsManager {
                 value,
                 DEFAULT_SETTINGS.minMinutesSpentInCity,
               )
-            } else if (frontendKey === "maxGapMinutesInCity") {
-              value = SettingsManager._parseIntOr(
-                value,
-                DEFAULT_SETTINGS.maxGapMinutesInCity,
-              )
             } else if (frontendKey === "gpsFilteringEnabled") {
               value = value === true || value === "true"
             } else if (frontendKey === "pointDraggingEnabled") {
@@ -384,8 +377,7 @@ export class SettingsManager {
               frontendKey === "fogOfWarThreshold" ||
               frontendKey === "metersBetweenRoutes" ||
               frontendKey === "minutesBetweenRoutes" ||
-              frontendKey === "minMinutesSpentInCity" ||
-              frontendKey === "maxGapMinutesInCity"
+              frontendKey === "minMinutesSpentInCity"
             ) {
               value = parseInt(value, 10).toString()
             } else if (frontendKey === "speedColoredRoutes") {

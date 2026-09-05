@@ -27,10 +27,11 @@ class Tracks::SessionManager
     }
 
     Rails.cache.write(cache_key, session_data, expires_in: DEFAULT_TTL)
-    # Initialize counters atomically using Redis SET
-    Rails.cache.redis.with do |redis|
-      redis.set(counter_key('completed_chunks'), 0, ex: DEFAULT_TTL.to_i)
-      redis.set(counter_key('tracks_created'), 0, ex: DEFAULT_TTL.to_i)
+    with_cache_connection_retry do
+      Rails.cache.redis.with do |redis|
+        redis.set(counter_key('completed_chunks'), 0, ex: DEFAULT_TTL.to_i)
+        redis.set(counter_key('tracks_created'), 0, ex: DEFAULT_TTL.to_i)
+      end
     end
 
     self
@@ -172,6 +173,19 @@ class Tracks::SessionManager
   end
 
   private
+
+  def with_cache_connection_retry
+    attempts = 0
+
+    begin
+      yield
+    rescue ConnectionPool::TimeoutError
+      attempts += 1
+      retry if attempts < 3
+
+      raise
+    end
+  end
 
   def cache_key
     "#{CACHE_KEY_PREFIX}:user:#{user_id}:session:#{session_id}"

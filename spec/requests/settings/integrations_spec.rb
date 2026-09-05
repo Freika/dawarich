@@ -112,13 +112,11 @@ RSpec.describe 'Settings::Integrations', type: :request do
     context 'when airtrail settings change' do
       let(:airtrail_url) { 'https://airtrail.test' }
 
-      before do
+      it 'persists settings and verifies the airtrail connection' do
         stub_request(:get, "#{airtrail_url}/api/flight/list?scope=mine")
           .to_return(status: 200, body: { success: true, flights: [] }.to_json,
                      headers: { 'Content-Type' => 'application/json' })
-      end
 
-      it 'persists settings and verifies the airtrail connection' do
         patch '/settings/integrations', params: {
           settings: { 'airtrail_url' => airtrail_url, 'airtrail_api_key' => 'k' }
         }
@@ -127,6 +125,56 @@ RSpec.describe 'Settings::Integrations', type: :request do
         follow_redirect!
         expect(flash[:notice]).to include('AirTrail connection verified')
         expect(user.reload.settings['airtrail_url']).to eq(airtrail_url)
+      end
+
+      it 'keeps malformed upstream responses within the flash cookie limit' do
+        stub_request(:get, "#{airtrail_url}/api/flight/list?scope=mine")
+          .to_return(status: 200, body: "<html>#{'x' * 12_000}")
+
+        patch '/settings/integrations', params: {
+          settings: { 'airtrail_url' => airtrail_url, 'airtrail_api_key' => 'k' }
+        }
+
+        expect(response).to redirect_to(settings_integrations_path)
+        expect(flash[:alert]).to start_with('AirTrail connection failed:')
+        expect(flash[:alert].bytesize).to be <= 512
+      end
+    end
+
+    context 'when TeslaMateApi settings change' do
+      let(:teslamate_url) { 'https://teslamate.test' }
+
+      before do
+        allow(Resolv).to receive(:getaddress).with('teslamate.test').and_return('93.184.216.34')
+      end
+
+      it 'persists settings and verifies the cars endpoint' do
+        stub_request(:get, "#{teslamate_url}/api/v1/cars")
+          .to_return(status: 200, body: { data: { cars: [] } }.to_json,
+                     headers: { 'Content-Type' => 'application/json' })
+
+        patch '/settings/integrations', params: {
+          settings: {
+            'teslamate_url' => teslamate_url,
+            'teslamate_username' => 'proxy-user',
+            'teslamate_password' => 'proxy-password',
+            'teslamate_api_token' => 'proxy-token',
+            'teslamate_skip_ssl_verification' => '1'
+          },
+          service: 'teslamate'
+        }
+
+        expect(response).to redirect_to(settings_integrations_path(service: 'teslamate'))
+        follow_redirect!
+        expect(flash[:notice]).to include('TeslaMateApi connection verified')
+        expect(user.reload.settings).to include(
+          'teslamate_url' => teslamate_url,
+          'teslamate_username' => 'proxy-user',
+          'teslamate_password' => 'proxy-password',
+          'teslamate_api_token' => 'proxy-token',
+          'teslamate_skip_ssl_verification' => true,
+          'teslamate_connection_status' => 'ok'
+        )
       end
     end
 
@@ -235,6 +283,15 @@ RSpec.describe 'Settings::Integrations', type: :request do
 
       expect(response.body).to include('name="settings[photoprism_url]"')
       expect(response.body).not_to include('name="settings[immich_url]"')
+    end
+
+    it 'renders the TeslaMateApi settings pane' do
+      get settings_integrations_path(service: 'teslamate')
+
+      expect(response.body).to include('name="settings[teslamate_url]"')
+      expect(response.body).to include('TeslaMateApi Integration')
+      expect(response.body).to include('https://github.com/tobiasehlert/teslamateapi#how-to-run-it')
+      expect(response.body).to include('man-in-the-middle attacks')
     end
 
     it 'falls back to the first available service for unknown service params' do

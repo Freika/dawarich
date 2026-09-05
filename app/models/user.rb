@@ -12,6 +12,8 @@ class User < ApplicationRecord
   # until their subscription source confirms a purchase.
   attr_accessor :skip_auto_trial
 
+  attr_accessor :skip_family_sync
+
   # Set by Omniauthable.from_omniauth. Post-create callbacks re-save the record,
   # which clears `previously_new_record?`, so signup-vs-login can't be read off
   # the record afterwards — the lookup has to tell us.
@@ -51,7 +53,11 @@ class User < ApplicationRecord
   after_commit :trigger_creation_webhook, on: :create,
                                             if: -> { !DawarichSettings.self_hosted? && skip_auto_trial }
   after_update :invalidate_plan_rate_limit_cache, if: :saved_change_to_plan?
+  after_update_commit :enqueue_family_auto_creation, if: :saved_change_to_plan?
+  after_update_commit :enqueue_family_member_sync, if: :saved_change_to_subscription_state?
   after_update :reset_archival_warnings, if: :saved_change_to_plan?
+  after_update :mark_stats_for_rebucketing, if: :saved_change_to_timezone_setting?
+  after_update_commit :enqueue_stats_rebuild, if: :saved_change_to_timezone_setting?
 
   before_save :sanitize_input
 
@@ -268,6 +274,13 @@ class User < ApplicationRecord
     end
   end
 
+  def own_subscription_live?
+    return false if sub_source_none?
+    return false unless active? || trial?
+
+    active_until&.future? || false
+  end
+
   def can_subscribe?
     (trial? || !active_until&.future?) && !DawarichSettings.self_hosted?
   end
@@ -317,7 +330,7 @@ class User < ApplicationRecord
   def countries_visited_uncached
     countries = Set.new
 
-    stats.find_each do |stat|
+    stats.select(:id, :toponyms).find_each do |stat|
       toponyms = stat.toponyms
       next unless toponyms.is_a?(Array)
 
@@ -338,7 +351,7 @@ class User < ApplicationRecord
   def cities_visited_uncached
     cities = Set.new
 
-    stats.find_each do |stat|
+    stats.select(:id, :toponyms).find_each do |stat|
       toponyms = stat.toponyms
       next unless toponyms.is_a?(Array)
 
@@ -391,6 +404,33 @@ class User < ApplicationRecord
 
   private
 
+  def saved_change_to_timezone_setting?
+    return false unless saved_change_to_settings?
+
+    before, after = saved_change_to_settings
+
+    before.to_h['timezone'] != after.to_h['timezone']
+  end
+
+  def mark_stats_for_rebucketing
+    @stats_months_to_rebuild = stats.pluck(:year, :month)
+    return if @stats_months_to_rebuild.empty?
+
+    stats.update_all(calculation_version: 0, repair_deferred_at: Time.current)
+  end
+
+  def enqueue_stats_rebuild
+    months = @stats_months_to_rebuild
+    @stats_months_to_rebuild = nil
+    return if months.blank?
+
+    months.each do |year, month|
+      Stats::CalculatingJob
+        .set(wait: rand(0..Stats::BulkCalculator::REPAIR_JITTER.to_i).seconds)
+        .perform_later(id, year, month, notify_on_failure: false)
+    end
+  end
+
   def create_api_key
     self.api_key = SecureRandom.hex(32)
 
@@ -427,6 +467,28 @@ class User < ApplicationRecord
 
   def trigger_creation_webhook
     Users::CreationWebhookJob.perform_later(id)
+  end
+
+  def saved_change_to_subscription_state?
+    saved_change_to_plan? || saved_change_to_status? || saved_change_to_active_until?
+  end
+
+  def enqueue_family_member_sync
+    return if DawarichSettings.self_hosted?
+    return if skip_family_sync
+
+    family_id = Family::Membership.where(user_id: id).pick(:family_id)
+    return if family_id.blank?
+
+    Families::MemberSyncJob.perform_later(family_id)
+  end
+
+  def enqueue_family_auto_creation
+    return if DawarichSettings.self_hosted?
+    return unless family?
+    return if Family::Membership.exists?(user_id: id)
+
+    Families::AutoCreationJob.perform_later(id)
   end
 
   def invalidate_plan_rate_limit_cache

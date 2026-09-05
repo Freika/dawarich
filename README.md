@@ -182,10 +182,10 @@ Check the documentation on the [website](https://dawarich.app/docs/environment-v
 
 As you could probably guess, I like statistics.
 
-<a href="https://star-history.com/#Freika/dawarich&Date">
+<a href="https://star-history.dera.page/#Freika/dawarich&Date">
  <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=Freika/dawarich&type=Date&theme=dark" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=Freika/dawarich&type=Date" />
-   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=Freika/dawarich&type=Date" />
+   <source media="(prefers-color-scheme: dark)" srcset="https://star-history.dera.page/svg?repos=Freika/dawarich&type=Date&theme=dark" />
+   <source media="(prefers-color-scheme: light)" srcset="https://star-history.dera.page/svg?repos=Freika/dawarich&type=Date" />
+   <img alt="Star History Chart" src="https://star-history.dera.page/svg?repos=Freika/dawarich&type=Date" />
  </picture>
 </a>

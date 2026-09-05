@@ -210,6 +210,18 @@ ca:
       status: Estat
       created: Creat
   families:
+    getting_started:
+      members_lose_access_when_your_plan_ends: "Mentre el teu pla estigui actiu, tothom qui hi afegeixis té accés complet. Quan s'acabi, el seu també."
+      invite_title: "Afegeix el primer membre de la teva família"
+      invite_body: "La teva família ja està a punt. Tothom qui hi afegeixis pot veure on són els altres, i cadascú conserva el seu mapa privat."
+      seats: "%{used} de %{total} places ocupades"
+      trial_ends_on: "La teva prova de Family acaba el %{date}"
+      sharing_title: "Comença a compartir la teva ubicació"
+      sharing_body: "La teva família encara no et pot veure. Activa la compartició a sota i instal·la l'aplicació perquè la teva ubicació es mantingui actualitzada."
+      app_title: "Obtén l'aplicació"
+      app_body: "Compartir la ubicació funciona millor des del telèfon que portes a sobre."
+      email_address: "Adreça electrònica"
+      invite: "Convida"
     location_sharing_toggle:
       live_location: 'Ubicació en directe:'
       always: Sempre
@@ -294,17 +306,6 @@ ca:
       always: sempre
       for_duration: durant %{duration}
       sharing_status: Compartint %{duration}
-    index:
-      have_an_invitation: Tens una invitació?
-      if_someone_has_invited_you_to_join_their_family_you: Si algú t'ha convidat a unir-te a la seva família, hauries d'haver rebut un correu electrònic amb un enllaç d'invitació.
-      check_your_email_for_an_invitation_link_that_looks_like: 'Comprova el teu correu electrònic per veure si hi ha un enllaç d''invitació semblant a:'
-      family_management: Gestió de la família
-      create_family: Crea la teva família
-      description: Crea o uneix-te a una família per compartir les teves dades d'ubicació amb els teus éssers estimats.
-      have_invitation: Tens una invitació?
-      invitation_help: 'Comprova el teu correu electrònic per veure si hi ha un enllaç d''invitació semblant a:'
-      invitation_instructions: Si algú t'ha convidat a unir-te a la seva família, hauries d'haver rebut un correu electrònic amb un enllaç d'invitació.
-      title: Gestió de la família
     new:
       choose_a_name_that_all_family_members_will_recognize_like: "Tria un nom que tots els membres de la família reconeguin, com \"La família Smith\" o \"El nostre grup de viatge\"."
       what_happens_next: Què passa a continuació?
@@ -388,6 +389,21 @@ ca:
         decline: Rebutja
         back_to_family: Torna a la família
   family_mailer:
+    plan_lapsed:
+      the_family_plan_has_ended: "El pla Family ha finalitzat"
+      hi: "Hola"
+      family_plan_ended_html: "El pla Family de Dawarich de <strong>%{family}</strong> ja no és actiu, així que el teu accés a través seu ha finalitzat."
+      family_plan_ended_text: "El pla Family de Dawarich de %{family} ja no és actiu, així que el teu accés a través seu ha finalitzat."
+      what_this_means: "Què vol dir això"
+      your_data_is_safe_and_still_yours: "Les teves dades estan segures i continuen sent teves."
+      you_can_no_longer_see_your_family_on_the_map: "Ja no pots veure la teva família al mapa."
+      your_location_is_no_longer_shared_with_them: "La teva ubicació ja no es comparteix amb ells."
+      tracking_and_uploads_are_paused_until_a_plan_is_active: "El seguiment i les pujades estan en pausa fins que hi hagi un pla actiu."
+      what_you_can_do: "Què pots fer:"
+      ask_the_owner_to_renew_html: "Demana a %{owner} que renovi el pla Family, o contracta el teu propi pla."
+      ask_the_owner_to_renew_text: "Demana a %{owner} que renovi el pla Family, o contracta el teu propi pla."
+      get_your_own_plan: "Contractar el meu propi pla"
+      nothing_is_deleted_your_history_is_waiting_when_you_come_back: "No s'esborra res. El teu historial t'espera quan tornis."
     invitation:
       you_ve_been_invited_to_join_a_family: T'han convidat a unir-te a una família!
       hi_there: Hola!
@@ -477,6 +493,7 @@ ca:
     extraction_card:
       additional_data: Dades addicionals
       this_import_format_doesn_t_carry_visits_named_places_or: Aquest format d'importació no inclou visites, llocs amb nom ni mitjans de transport, així que no hi ha res addicional a extreure.
+      this_gpx_file_holds_no_waypoints: 'Aquest fitxer GPX només conté punts de traça enregistrats, així que no hi ha punts de referència per importar com a llocs.'
       extracted: Extret
       visits: visites,
       places: llocs,
@@ -807,6 +824,8 @@ ca:
       dawarich_logo: Logotip de Dawarich
   map:
     onboarding_modal:
+      invite_your_family: "Convida la teva família"
+      add_your_family_and_see_each_other_on_the_map: "Afegeix la teva família i veieu-vos al mapa."
       welcome_to_dawarich: Benvingut/da a Dawarich!
       your_map_starts_with_your_next_step_literally: El teu mapa comença amb el teu proper pas — literalment.
       start_tracking_now: Comença a fer el seguiment ara
@@ -982,12 +1001,6 @@ ca:
         min_6: 5 min
         min_7: 120 min
         how_long_you_must_stay_for_a_city_to_count: Quant de temps has de romandre perquè una ciutat compti a les estadístiques
-        max_gap_between_points: Interval màxim entre punts
-        min_8: 120 min
-        min_9: 30 min
-        min_10: 195 min
-        min_11: 360 min
-        max_gap_between_points_before_assuming_you_left_the_city: Interval màxim entre punts abans de suposar que vas sortir de la ciutat
         min_12: 720 min
         live_mode: Mode en directe
         show_new_points_in_real_time: Mostra els punts nous en temps real
@@ -1125,8 +1138,8 @@ ca:
         water_labels: Etiquetes d'aigua
         tiled_rendering: "Renderitzat per tessel·les"
         beta: "Beta"
-        tiled_rendering_description: "Dibuixa els punts, les rutes, els trajectes i la boira a partir de tessel·les vectorials mentre et desplaces, de manera que un interval de dates llarg només carrega el que es veu. Les rutes mostren els trajectes que has generat, acolorits per trajecte."
-        tiled_rendering_caveats: "Actiu mentre el Mapa de rascar està desactivat. Les zones denses s'agrupen en marcadors amb un recompte de punts: amplia per obrir els punts individualment. L'edició de punts no està disponible, les rutes s'acoloreixen per trajecte (velocitat mitjana, no un degradat), en passar el cursor per una ruta ja no se'n mostra la finestra emergent (fes clic en un trajecte) i el rastre en directe pot trigar uns minuts."
+        tiled_rendering_description: "Dibuixa els punts, les rutes, els trajectes i la boira a partir de tessel·les vectorials mentre et desplaces, de manera que un interval de dates llarg només carrega el que es veu. Les rutes mostren els trajectes que has generat. Amplia per veure la velocitat de cada segment."
+        tiled_rendering_caveats: "Actiu mentre el Mapa de rascar està desactivat. Les zones denses s'agrupen en marcadors amb un recompte de punts: amplia per obrir els punts individualment. L'edició de punts no està disponible, en passar el cursor per una ruta ja no se'n mostra la finestra emergent (fes clic en un trajecte) i el rastre en directe pot trigar uns minuts."
         fill_gaps_with_the_default_basemap: "Omple els buits amb el mapa base predeterminat"
         uncovered_areas_are_drawn_from_dawarich_s_default_tile_server: "Per a un conjunt de tessel·les que només cobreix una part del món. Les zones que no cobreix es dibuixen des del servidor de tessel·les predeterminat de Dawarich, de manera que, si ho actives, s'hi enviaran peticions de tessel·les."
       visit_creation_modal:
@@ -1499,6 +1512,16 @@ ca:
         the_base_url_of_your_airtrail_instance_your_flights_are: La URL base de la teva instància d'AirTrail. Els teus vols es mostren com a arcs al mapa.
         airtrail_api_key: Clau API d'AirTrail
         create_an_api_key_in_airtrail_under_settings_rarr_security: Crea una clau API a AirTrail a Configuració → Seguretat.
+        teslamate_integration: Integració amb TeslaMateApi
+        teslamate_url: URL de TeslaMateApi
+        the_base_url_of_your_teslamateapi_instance: La URL base de la teva instància de TeslaMateApi.
+        teslamate_setup_guide: Guia de configuració (TeslaMateApi v1.25.0 o posterior)
+        teslamate_username: Nom d'usuari HTTP Basic (opcional)
+        teslamate_password: Contrasenya HTTP Basic (opcional)
+        teslamate_api_token: Token Bearer (opcional)
+        teslamate_authentication_help: Utilitza autenticació Basic per a un servidor intermediari invers protegit, o un token Bearer per a un servidor intermediari o fork compatible. Els endpoints de lectura del TeslaMateApi canònic no utilitzen l'API_TOKEN.
+        sync_teslamate_drives: Sincronitza els trajectes de TeslaMateApi
+        teslamate_sync_help: Els trajectes completats se sincronitzen automàticament una vegada al dia. Els trajectes actuals i les posicions d'estacionament no estan disponibles mitjançant TeslaMateApi.
         last_synced: 'Última sincronització:'
         connected_accounts: Comptes connectats
         you_ve_connected_your_account_using_the_following_oauth_provider: 'Has connectat el teu compte fent servir el proveïdor OAuth següent:'
@@ -1516,6 +1539,7 @@ ca:
           immich: "Immich"
           photoprism: "PhotoPrism"
           airtrail: "AirTrail"
+          teslamate: "TeslaMateApi"
         status_connected: "Connectat"
         status_failed: "L'últim intent de connexió ha fallat"
     subscriptions:
@@ -1990,6 +2014,8 @@ ca:
       available_on_pro: Disponible a Pro
       upgrade_to_pro: Millora a Pro
     month:
+      flight_distance: Distància de vol
+      from_airtrail_not_counted_in_distance: D'AirTrail, no comptat a la distància
       monthly_digest: Resum mensual
       share: Comparteix
       distance_traveled: Distància recorreguda
@@ -2041,6 +2067,8 @@ ca:
       distance: Distància
       countries_count_countries_cities_count_cities: "%{countries_count} països, %{cities_count} ciutats"
     public_month:
+      flight_distance: Distància de vol
+      from_airtrail_not_counted_in_distance: D'AirTrail, no comptat a la distància
       monthly_digest: Resum mensual
       distance_traveled: Distància recorreguda
       total_distance_for_this_month: Distància total d'aquest mes
@@ -2321,6 +2349,7 @@ ca:
           other: "%{count} ciutats"
     digests_mailer:
       monthly_digest:
+        flights: Vols
         your: El teu
         in_review: en retrospectiva
         here_s_what_your_location_history_looked_like_last_month: Així és com va ser el teu historial d'ubicacions el mes passat.
@@ -2565,6 +2594,7 @@ ca:
       source:
         manual: Manual
         photon: Photon
+        gpx_waypoint: 'Punt de referència GPX'
     shared_link:
       resource_type:
         trip: Viatge
@@ -2777,6 +2807,7 @@ ca:
         areas:
           area_was_successfully_deleted: L'àrea s'ha suprimit correctament
         auth:
+          account_pending_deletion: S'està eliminant un compte amb aquest correu electrònic. Torna-ho a provar quan hagi acabat.
           apple:
             apple_has_not_verified_this_email_sign_in_with_password: Apple no ha verificat aquest correu electrònic. Inicia sessió amb contrasenya i vincula-ho des de la configuració.
             this_email_already_has_a_dawarich_account_we_sent_a: Aquest correu electrònic ja té un compte de Dawarich. Hem enviat un enllaç de confirmació a aquesta adreça — fes-hi clic per vincular el teu Apple ID.
@@ -2904,6 +2935,9 @@ ca:
           failed_to_delete_visit: No s'ha pogut suprimir la visita
           visit_not_found: Visita no trobada
           failed_to_create_visit: No s'ha pogut crear la visita
+          no_visits_provided: "No s'ha proporcionat cap visita"
+          invalid_visit_payload: "L'entrada de visita ha de ser un objecte"
+          too_many_visits_maximum_is_limit_per_batch: "Massa visites, el màxim és %{limit} per lot"
       record_not_found: Registre no trobat
       complete_your_subscription_to_continue: Completa la teva subscripció per continuar.
       this_feature_requires_a_pro_plan: Aquesta funció requereix el pla Pro.
@@ -3144,6 +3178,7 @@ ca:
       export_failed_to_initiate_please_try_again: L'exportació no s'ha pogut iniciar. Torna-ho a provar.
     users:
       apple_oauth:
+        account_pending_deletion: S'està eliminant un compte amb aquest correu electrònic. Torna-ho a provar quan hagi acabat.
         sign_in_with_apple_was_cancelled: S'ha cancel·lat l'inici de sessió amb Apple.
         sign_in_failed: "L'inici de sessió amb Apple ha fallat: %{message}"
         email_not_verified: El correu electrònic del teu Apple ID no està verificat. Verifica'l amb Apple i torna-ho a provar.
@@ -3161,6 +3196,7 @@ ca:
         year_end_digest_for_year_has_been_deleted: "El resum de fi d'any de %{year} s'ha suprimit"
         digest_not_found: Resum no trobat
       omniauth_callbacks:
+        account_pending_deletion: S'està eliminant un compte amb aquest correu electrònic. Torna-ho a provar quan hagi acabat.
         invalid_credentials: Credencials no vàlides. Comprova el teu nom d'usuari i contrasenya.
         connection_timeout: Temps d'espera de connexió excedit. Torna-ho a provar.
         security_error: S'ha detectat un error de seguretat. Torna-ho a provar.
@@ -3229,6 +3265,8 @@ ca:
     declined: rebutjada
   mailers:
     family:
+      plan_lapsed:
+        subject: "👪 El pla Family de %{family} ha finalitzat"
       invitation:
         subject: "🎉 T'han convidat a unir-te a %{family} a Dawarich!"
       location_request:
@@ -3283,6 +3321,11 @@ ca:
     trip:
       must_be_after_start_date: ha de ser posterior a la data d'inici
   services:
+    tesla_mate:
+      connection_tester:
+        teslamate_connection_verified: Connexió amb TeslaMateApi verificada
+        teslamate_url_is_missing: Falta la URL de TeslaMateApi
+        teslamate_connection_failed_message: 'La connexió amb TeslaMateApi ha fallat: %{message}'
     air_trail:
       connection_tester:
         airtrail_connection_verified: Connexió amb AirTrail verificada
@@ -3308,6 +3351,10 @@ ca:
         export_name_failed_message_stacktrace_n: 'L''exportació "%{name}" ha fallat: %{message}, traça: %{backtrace}'
         unsupported_file_format: 'Format d''arxiu no compatible: %{format}'
     families:
+      auto_create:
+        default_name: La meva família
+        notification_title: El teu pla Family ja està a punt
+        notification_content: 'Hem creat "%{name}" per a tu. Convida fins a %{seats} persones i us veureu al mapa.'
       accept_invitation:
         you_must_leave_your_current_family_before_joining_a_new: Has d'abandonar la teva família actual abans d'unir-te a una de nova.
         this_invitation_is_no_longer_valid_or_has_expired: Aquesta invitació ja no és vàlida o ha caducat.
@@ -3398,6 +3445,13 @@ ca:
         immich_api_key_missing_permission_asset_view: 'A la clau API d''Immich li falta el permís: asset.view'
         immich_thumbnail_check_failed_code: 'La comprovació de la miniatura d''Immich ha fallat: %{code}'
       enrich_photos:
+        checking_title: "Comprovant les actualitzacions d’ubicació d’Immich"
+        checking: "S’han enviat %{count} actualitzacions d’ubicació a Immich. S’està comprovant si s’han desat les coordenades."
+        result_title: "Resultats de les actualitzacions d’ubicació d’Immich"
+        confirmed:
+          one: "Ubicació desada confirmada per a %{count} foto."
+          other: "Ubicacions desades confirmades per a %{count} fotos."
+        unconfirmed: "Actualitzacions d’ubicació encara sense confirmar: %{count}. Pot ser que Immich encara estigui processant els canvis. Comprova les tasques de metadades i el permís asset.read de la clau API. A les biblioteques externes, Immich ha de poder escriure fitxers auxiliars XMP: els muntatges de només lectura o els permisos dels fitxers poden impedir que es desin. Un cop resolt, torna a cercar abans de reintentar-ho."
         http_code_message: 'HTTP %{code}: %{message}'
       enrich_scan:
         failed_to_fetch_photos_from_immich: No s'han pogut obtenir les fotos d'Immich
@@ -3418,12 +3472,21 @@ ca:
     imports:
       bulk_insertable:
         importer_name_import_error: "Error d'importació de %{importer_name}"
+      geojson_importer:
+        points_skipped_title: La importació ha omès punts sense marca de temps
+        points_skipped: 'El teu fitxer %{name} contenia %{skipped} punts sense marca de temps; s''han omès. Els punts GeoJSON necessiten una propietat "timestamp" o un quart valor de coordenada [lon, lat, altitude, time] per ser importats.'
       create:
         import_post_processing_incomplete: El postprocessament de la importació no s'ha completat
         import_completed_with_no_new_points: La importació ha finalitzat sense punts nous
         import_completed_with_no_points: La importació ha finalitzat sense punts
         import_failed: La importació ha fallat
-        zero_points_with_timestamps: "El teu arxiu %{name} ha importat 0 punts. No s'ha trobat cap punt d'ubicació amb marca de temps. Les importacions de GPX i KML requereixen un valor &lt;time&gt;/&lt;when&gt; per a cada coordenada."
+        zero_points_with_timestamps: "El teu arxiu %{name} ha importat 0 punts. No s'ha trobat cap punt d'ubicació amb marca de temps. Les importacions de GPX, KML i GeoJSON requereixen un valor de temps per a cada coordenada (&lt;time&gt;, &lt;when&gt; o una propietat timestamp)."
+        zero_points_waypoints_only:
+          one: 'El teu fitxer %{name} ha importat 0 punts. Conté %{count} waypoint (un preferit o lloc desat) però cap ruta enregistrada. Dawarich actualment només importa rutes enregistrades.'
+          other: 'El teu fitxer %{name} ha importat 0 punts. Conté %{count} waypoints (preferits o llocs desats) però cap ruta enregistrada. Dawarich actualment només importa rutes enregistrades.'
+        zero_points_route_only:
+          one: 'El teu fitxer %{name} ha importat 0 punts. Conté una ruta planificada de %{count} punt, però cap ruta enregistrada. Dawarich importa rutes enregistrades, no rutes planificades.'
+          other: 'El teu fitxer %{name} ha importat 0 punts. Conté una ruta planificada de %{count} punts, però cap ruta enregistrada. Dawarich importa rutes enregistrades, no rutes planificades.'
         zero_points: "El teu arxiu %{name} ha importat 0 punts. No s'ha trobat cap punt d'ubicació nou en aquest arxiu."
         import_failed_self_hosted: 'La importació "%{name}" ha fallat: %{message}, traça: %{backtrace}'
         import_failed_cloud: 'La importació "%{name}" ha fallat, contacta amb nosaltres a hi@dawarich.com'
@@ -3580,6 +3643,10 @@ ca:
         weekday_preference: Viatges més entre setmana que els caps de setmana
         with_suggestion: "%{insight} %{suggestion}"
   jobs:
+    tesla_mate:
+      sync_job:
+        teslamate_sync_failed: La sincronització amb TeslaMateApi ha fallat
+        your_teslamate_sync_failed: 'La sincronització amb TeslaMateApi ha fallat amb l''error: %{message}. Comprova la configuració de la integració i torna-ho a provar.'
     air_trail:
       import_flights_job:
         airtrail_sync_failed: La sincronització amb AirTrail ha fallat
@@ -3718,6 +3785,7 @@ ca:
       failed_to_reload_routes: No s'han pogut tornar a carregar les rutes
       failed_to_load_scratch_layer: No s'ha pogut carregar la capa de mapa de rascar
       failed_to_load_photos: No s'han pogut carregar les fotos
+      some_photo_sources_unavailable: "Algunes fonts de fotos no estan disponibles: %{sources}"
       failed_to_load_areas: No s'han pogut carregar les àrees
       failed_to_load_tracks: No s'han pogut carregar els trajectes
       failed_to_load_flights: No s'han pogut carregar els vols
@@ -4089,6 +4157,7 @@ ca:
       no_matches: No s'ha trobat cap coincidència dins de la tolerància
       open_in_immich: Obre a Immich
       partially_enriched: "S'han enriquit %{enriched} fotos. %{failed} han fallat."
+      pending_enrichment: "S’han enviat %{count} actualitzacions d’ubicació a Immich; %{failed} no s’han pogut enviar. Rebràs una notificació després de comprovar les coordenades desades."
       photos_without_gps:
         one: "%{count} foto sense GPS"
         other: "%{count} fotos sense GPS"
@@ -4275,6 +4344,7 @@ ca:
       loading: Carregant…
       loading_tracks: Carregant trajectes per al nou interval…
       no_location_data: No hi ha dades d'ubicació en aquest interval de dates — tria un interval amb trajectes a la barra de dates de dalt.
+      gallery_without_flights: "Els pòsters de la galeria utilitzen rutes GPS sense vols. La baixada conserva la vista actual."
       no_tracks_in_frame: No hi ha trajectes dins del marc — mou o fes zoom al mapa sobre la teva ruta per desar-la a la galeria.
       queued: A la cua — generant-se al servidor a Pòsters recents…
       rendering: Generant %{width} × %{height}px…

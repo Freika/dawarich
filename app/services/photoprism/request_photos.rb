@@ -100,7 +100,7 @@ class Photoprism::RequestPhotos
 
   def request_params(offset = 0)
     params = offset.zero? ? default_params : default_params.merge(offset: offset)
-    params[:before] = (end_date.to_date + 1.day).iso8601 if end_date.present?
+    params[:before] = (utc_date(end_date) + 1.day).iso8601 if end_date.present?
     params
   end
 
@@ -109,9 +109,15 @@ class Photoprism::RequestPhotos
       q: '',
       public: true,
       quality: 3,
-      after: start_date.to_date.iso8601,
+      after: utc_date(start_date).iso8601,
       count: 1000
     }
+  end
+
+  # Photoprism filters after/before on the UTC TakenAt date, while the bounds it
+  # is given arrive rendered in the application time zone.
+  def utc_date(value)
+    value.to_datetime.utc.to_date
   end
 
   # A bare date names a whole day, so an end bound written that way has to
@@ -122,8 +128,22 @@ class Photoprism::RequestPhotos
     range_end = range_end.end_of_day if date_only?(end_date)
 
     data.flatten.select do |photo|
-      DateTime.parse(photo['TakenAtLocal']).between?(range_start, range_end)
+      taken_at = parse_taken_at(photo)
+      next false if taken_at.nil?
+
+      taken_at.between?(range_start, range_end)
     end
+  end
+
+  # TakenAtLocal is wall-clock time in the photo's own zone, serialised with a
+  # trailing Z, so only TakenAt is comparable to an absolute bound.
+  def parse_taken_at(photo)
+    value = photo['TakenAt'].presence || photo['TakenAtLocal'].presence
+    return if value.blank?
+
+    DateTime.parse(value)
+  rescue ArgumentError, TypeError
+    nil
   end
 
   def cache_preview_token(headers)

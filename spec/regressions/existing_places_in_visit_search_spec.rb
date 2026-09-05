@@ -1,0 +1,227 @@
+# frozen_string_literal: true
+
+require 'rails_helper'
+
+RSpec.describe 'Existing places in visit search', type: :request do
+  let(:user) { create(:user) }
+  let(:headers) { { 'Authorization' => "Bearer #{user.api_key}" } }
+  let(:latitude) { 52.437 }
+  let(:longitude) { 13.539 }
+
+  before do
+    allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
+    allow(Geocoder).to receive(:search).and_return([])
+  end
+
+  it 'finds and assigns a saved place by name' do
+    place = create(
+      :place,
+      user: user,
+      name: 'Home',
+      source: :manual,
+      latitude: latitude + 0.1,
+      longitude: longitude + 0.1
+    )
+    visit = create(:visit, user: user)
+
+    get '/api/v1/places/search',
+        params: { q: 'Home', lat: latitude, lon: longitude, radius: 1.0 },
+        headers: headers
+
+    result = JSON.parse(response.body).fetch('places').find { |candidate| candidate['id'] == place.id }
+    expect(result).to include('name' => 'Home', 'source' => 'manual')
+
+    patch "/api/v1/visits/#{visit.id}", params: { visit: { place_id: result['id'] } }, headers: headers
+
+    expect(response).to have_http_status(:ok)
+    expect(visit.reload.place).to eq(place)
+  end
+
+  it 'returns nearby saved places without a query when reverse geocoding is disabled' do
+    allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false)
+    place = create(
+      :place,
+      user: user,
+      name: 'Local Place',
+      source: :manual,
+      latitude: latitude,
+      longitude: longitude
+    )
+
+    get '/api/v1/places/search', params: { lat: latitude, lon: longitude }, headers: headers
+
+    expect(JSON.parse(response.body).fetch('places')).to include(include('id' => place.id, 'name' => 'Local Place'))
+  end
+
+  it 'preserves separate geocoder results that share a name' do
+    results = [
+      { id: nil, name: 'Coffee Shop', latitude: latitude, longitude: longitude, source: 'photon' },
+      { id: nil, name: 'Coffee Shop', latitude: latitude + 0.001, longitude: longitude, source: 'photon' }
+    ]
+    search = instance_double(Places::Search, call: results)
+    allow(Places::Search).to receive(:new).and_return(search)
+
+    get '/api/v1/places/search',
+        params: { q: 'Coffee', lat: latitude, lon: longitude },
+        headers: headers
+
+    expect(JSON.parse(response.body).fetch('places').count { |place| place['name'] == 'Coffee Shop' }).to eq(2)
+  end
+
+  it 'keeps a nearby geocoder result when a saved place with the same name is far away' do
+    create(
+      :place,
+      user: user,
+      name: 'Office',
+      source: :manual,
+      latitude: latitude + 0.1,
+      longitude: longitude + 0.1
+    )
+    results = [
+      { id: nil, name: 'Office', latitude: latitude, longitude: longitude, source: 'photon' }
+    ]
+    search = instance_double(Places::Search, call: results)
+    allow(Places::Search).to receive(:new).and_return(search)
+
+    get '/api/v1/places/search',
+        params: { q: 'Office', lat: latitude, lon: longitude },
+        headers: headers
+
+    places = JSON.parse(response.body).fetch('places')
+    expect(places).to include(include('name' => 'Office', 'source' => 'photon'))
+  end
+
+  it 'surfaces a nearby geocoder result even when saved places fill every result slot' do
+    ['Park One', 'Park Two'].each_with_index do |name, index|
+      create(
+        :place,
+        user: user,
+        name: name,
+        source: :manual,
+        latitude: latitude + (0.001 * (index + 1)),
+        longitude: longitude
+      )
+    end
+    create(
+      :place,
+      user: user,
+      name: 'Park Three',
+      source: :manual,
+      latitude: latitude + 0.01,
+      longitude: longitude
+    )
+    results = [
+      { id: nil, name: 'Park Cafe', latitude: latitude + 0.005, longitude: longitude, source: 'photon' }
+    ]
+    search = instance_double(Places::Search, call: results)
+    allow(Places::Search).to receive(:new).and_return(search)
+
+    get '/api/v1/places/search',
+        params: { q: 'Park', lat: latitude, lon: longitude, radius: 1.0, limit: 3 },
+        headers: headers
+
+    places = JSON.parse(response.body).fetch('places')
+    expect(places.length).to eq(3)
+    expect(places).to include(include('name' => 'Park Cafe', 'source' => 'photon'))
+  end
+
+  it 'suppresses a geocoder result co-located with a saved place of the same name' do
+    create(
+      :place,
+      user: user,
+      name: 'Cafe',
+      source: :manual,
+      latitude: latitude,
+      longitude: longitude
+    )
+    results = [
+      { id: nil, name: 'Cafe', latitude: latitude, longitude: longitude, source: 'photon' }
+    ]
+    search = instance_double(Places::Search, call: results)
+    allow(Places::Search).to receive(:new).and_return(search)
+
+    get '/api/v1/places/search',
+        params: { q: 'Cafe', lat: latitude, lon: longitude },
+        headers: headers
+
+    places = JSON.parse(response.body).fetch('places')
+    expect(places.count { |place| place['name'] == 'Cafe' }).to eq(1)
+    expect(places).not_to include(include('name' => 'Cafe', 'source' => 'photon'))
+  end
+
+  it 'does not expose another users saved places' do
+    other_place = create(
+      :place,
+      user: create(:user),
+      name: 'Private Home',
+      source: :manual,
+      latitude: latitude,
+      longitude: longitude
+    )
+
+    get '/api/v1/places/search',
+        params: { q: 'Private Home', lat: latitude, lon: longitude },
+        headers: headers
+
+    expect(JSON.parse(response.body).fetch('places').pluck('id')).not_to include(other_place.id)
+  end
+
+  it 'omits machine-generated suggestion places' do
+    suggested = create(
+      :place,
+      user: user,
+      name: Place::DEFAULT_NAME,
+      source: :photon,
+      latitude: latitude,
+      longitude: longitude
+    )
+
+    get '/api/v1/places/search', params: { lat: latitude, lon: longitude }, headers: headers
+
+    expect(JSON.parse(response.body).fetch('places').pluck('id')).not_to include(suggested.id)
+  end
+
+  it 'keeps a photon place that is already linked to a confirmed visit' do
+    place = create(
+      :place,
+      user: user,
+      name: 'Confirmed Cafe',
+      source: :photon,
+      latitude: latitude,
+      longitude: longitude
+    )
+    create(:visit, user: user, place: place, status: :confirmed)
+
+    get '/api/v1/places/search', params: { lat: latitude, lon: longitude }, headers: headers
+
+    expect(JSON.parse(response.body).fetch('places').pluck('id')).to include(place.id)
+  end
+
+  it 'excludes nearby saved places that do not match the query' do
+    matching = create(
+      :place,
+      user: user,
+      name: 'Alpha Bakery',
+      source: :manual,
+      latitude: latitude + 0.002,
+      longitude: longitude
+    )
+    create(
+      :place,
+      user: user,
+      name: 'Beta Garage',
+      source: :manual,
+      latitude: latitude,
+      longitude: longitude
+    )
+
+    get '/api/v1/places/search',
+        params: { q: 'Alpha', lat: latitude, lon: longitude, radius: 1.0 },
+        headers: headers
+
+    names = JSON.parse(response.body).fetch('places').pluck('name')
+    expect(names).to include('Alpha Bakery')
+    expect(names).not_to include('Beta Garage')
+    expect(JSON.parse(response.body).fetch('places').pluck('id')).to include(matching.id)
+  end
+end
