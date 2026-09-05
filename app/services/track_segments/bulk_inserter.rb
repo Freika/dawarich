@@ -14,19 +14,26 @@ module TrackSegments
     def call
       return [] if segment_data.empty?
 
-      TrackSegment.insert_all(rows, unique_by: 'idx_track_segments_track_start_at_unique')
-      segment_data
+      inserted = Track.transaction do
+        current_track = Track.lock.find_by(id: track.id)
+        next false unless current_track
+
+        TrackSegment.insert_all(rows(current_track), unique_by: 'idx_track_segments_track_start_at_unique')
+        true
+      end
+
+      inserted ? segment_data : []
     end
 
     private
 
     attr_reader :track, :segment_data
 
-    def rows
+    def rows(current_track)
       now = Time.current
       segment_data.map do |data|
         {
-          track_id: track.id,
+          track_id: current_track.id,
           transportation_mode: TrackSegment.transportation_modes.fetch(data[:mode].to_s),
           start_at: data[:start_at],
           end_at: data[:end_at],

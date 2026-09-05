@@ -70,5 +70,12 @@ RSpec.describe TrackSegments::BulkInserter do
     it 'returns empty array for empty input' do
       expect(described_class.call(track, [])).to eq([])
     end
+
+    it 'skips insertion when the loaded track was deleted' do
+      track.destroy!
+
+      expect(described_class.call(track, segment_data)).to eq([])
+      expect(TrackSegment.where(track_id: track.id)).to be_empty
+    end
   end
 end
