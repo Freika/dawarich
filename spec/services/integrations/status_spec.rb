@@ -43,6 +43,12 @@ RSpec.describe Integrations::Status do
 
       expect(status.configured?('geocoding')).to be true
     end
+
+    it 'treats TeslaMateApi as configured with only its URL' do
+      user.update!(settings: user.settings.merge('teslamate_url' => 'https://teslamate.example'))
+
+      expect(described_class.for(user).configured?('teslamate')).to be(true)
+    end
   end
 
   describe '#status' do

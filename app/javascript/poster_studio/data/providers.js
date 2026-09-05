@@ -40,13 +40,21 @@ export class MapPageProvider {
     }
   }
 
+  // The map loads points lazily and the poster never needs the points
+  // themselves — but that same load is what builds the routes GeoJSON and
+  // fills the routes layer. Under tiled rendering the bulk points and tracks
+  // fetches are both skipped, so nothing else fills it and a studio that only
+  // draws the track still has to force the load.
+  async ensureTrackLoaded() {
+    await this.controller?.mapDataManager?.ensurePointsLoaded()
+  }
+
   // Timestamped points, for consumers that animate the track rather than
-  // draw it flat. The map loads points lazily, so this forces the fetch the
-  // poster path never needs.
+  // draw it flat.
   async points() {
     const controller = this.controller
     if (!controller) return []
-    await controller.mapDataManager?.ensurePointsLoaded()
+    await this.ensureTrackLoaded()
     return controller._getLoadedPoints?.() ?? []
   }
 
@@ -135,8 +143,9 @@ export function buildTripGeojson({
 }
 
 export class TripProvider {
-  constructor({ geojson, startAt, endAt, title, points }) {
+  constructor({ geojson, posterGeojson, startAt, endAt, title, points }) {
     this.geojson = geojson ?? EMPTY_COLLECTION
+    this.posterGeometry = posterGeojson ?? this.geojson
     this.startAt = startAt
     this.endAt = endAt
     this.title = title ?? ""
@@ -152,6 +161,11 @@ export class TripProvider {
     return this.geojson
   }
 
+  // Posters can include visible flight arcs; video still animates GPS points.
+  posterGeojson() {
+    return this.posterGeometry
+  }
+
   dateRange() {
     return { startAt: this.startAt, endAt: this.endAt }
   }
@@ -163,6 +177,9 @@ export class TripProvider {
   defaultTitle() {
     return this.title
   }
+
+  // Nothing to load: a trip hands the studio its geojson up front.
+  async ensureTrackLoaded() {}
 
   async points() {
     return this.trackPoints

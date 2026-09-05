@@ -1601,8 +1601,8 @@ fr:
           la traînée des points pour corriger leur position. Mémorisé entre sessions.
         tiled_rendering: "Rendu par tuiles"
         beta: "Bêta"
-        tiled_rendering_description: "Dessine les points, itinéraires, tracks et brouillard à partir de tuiles vectorielles pendant le déplacement, au lieu de charger toute la plage de dates à l'avance. Les itinéraires affichent vos tracks générés, colorés par track."
-        tiled_rendering_caveats: "Actif tant que la carte à gratter est désactivée. Les zones denses sont fusionnées en marqueurs avec un compteur — zoomez pour ouvrir les points individuels. La modification des points est indisponible, les itinéraires sont colorés par track (vitesse moyenne, pas un dégradé), l'info-bulle d'itinéraire au survol disparaît — cliquez sur un track — et la trace en direct peut avoir quelques minutes de retard."
+        tiled_rendering_description: "Dessine les points, itinéraires, tracks et brouillard à partir de tuiles vectorielles pendant le déplacement, au lieu de charger toute la plage de dates à l'avance. Les itinéraires affichent vos tracks générés. Zoomez pour voir la vitesse de chaque segment."
+        tiled_rendering_caveats: "Actif tant que la carte à gratter est désactivée. Les zones denses sont fusionnées en marqueurs avec un compteur — zoomez pour ouvrir les points individuels. La modification des points est indisponible, l'info-bulle d'itinéraire au survol disparaît — cliquez sur un track — et la trace en direct peut avoir quelques minutes de retard."
         routes: Itinéraires
         show_connected_route_lines: Afficher les lignes d'itinéraire connectées
         color_by_speed: Colorer par vitesse
@@ -2308,6 +2308,7 @@ fr:
           immich: Immich
           photoprism: PhotoPrism
           airtrail: AirTrail
+          teslamate: TeslaMateApi
         status_connected: Connecté
         status_failed: La dernière tentative de connexion a échoué
         immich_photoprism_integrations: Intégrations Immich & Photoprism
@@ -2351,6 +2352,16 @@ fr:
         airtrail_api_key: Clé API AirTrail
         create_an_api_key_in_airtrail_under_settings_rarr_security: Créez une clé
           API dans AirTrail sous Paramètres → Sécurité.
+        teslamate_integration: Intégration TeslaMateApi
+        teslamate_url: URL TeslaMateApi
+        the_base_url_of_your_teslamateapi_instance: L'adresse de base de votre instance TeslaMateApi.
+        teslamate_setup_guide: Guide d'installation (TeslaMateApi v1.25.0 ou version ultérieure)
+        teslamate_username: Nom d'utilisateur HTTP Basic (facultatif)
+        teslamate_password: Mot de passe HTTP Basic (facultatif)
+        teslamate_api_token: Jeton Bearer (facultatif)
+        teslamate_authentication_help: Utilisez l'authentification Basic pour un proxy inverse protégé ou un jeton Bearer pour un proxy ou fork compatible. Les endpoints de lecture du TeslaMateApi standard n'utilisent pas API_TOKEN.
+        sync_teslamate_drives: Synchroniser les trajets TeslaMateApi
+        teslamate_sync_help: Les trajets terminés sont synchronisés automatiquement une fois par jour. Les trajets en cours et les positions de stationnement ne sont pas disponibles via TeslaMateApi.
         last_synced: 'Dernière synchronisation :'
         connected_accounts: Comptes connectés
         you_ve_connected_your_account_using_the_following_oauth_provider: 'Vous avez
@@ -4370,6 +4381,11 @@ fr:
     trip:
       must_be_after_start_date: doit se situer après la date de début
   services:
+    tesla_mate:
+      connection_tester:
+        teslamate_connection_verified: Connexion TeslaMateApi vérifiée
+        teslamate_url_is_missing: L'URL TeslaMateApi est manquante
+        teslamate_connection_failed_message: 'Échec de la connexion TeslaMateApi : %{message}'
     air_trail:
       connection_tester:
         airtrail_connection_verified: Connexion AirTrail vérifiée
@@ -4531,6 +4547,13 @@ fr:
         immich_thumbnail_check_failed_code: 'Vérification de miniature Immich échouée :
           %{code}'
       enrich_photos:
+        checking_title: "Vérification des mises à jour de localisation Immich"
+        checking: "%{count} mises à jour de localisation envoyées à Immich. Vérification de l’enregistrement des coordonnées."
+        result_title: "Résultats des mises à jour de localisation Immich"
+        confirmed:
+          one: "Localisation enregistrée confirmée pour %{count} photo."
+          other: "Localisations enregistrées confirmées pour %{count} photos."
+        unconfirmed: "Mises à jour de localisation non confirmées : %{count}. Immich traite peut-être encore les modifications. Vérifiez ses tâches de métadonnées et l’autorisation asset.read de votre clé API. Pour les bibliothèques externes, Immich doit pouvoir écrire les fichiers annexes XMP : un montage en lecture seule ou les permissions des fichiers peuvent empêcher l’enregistrement. Après correction, relancez la recherche avant de réessayer."
         http_code_message: 'HTTP %{code} : %{message}'
       enrich_scan:
         failed_to_fetch_photos_from_immich: Impossible de récupérer les photos d'Immich
@@ -4796,6 +4819,10 @@ fr:
         weekday_preference: Vous voyagez plus en semaine que les week-ends
         with_suggestion: "%{insight} %{suggestion}"
   jobs:
+    tesla_mate:
+      sync_job:
+        teslamate_sync_failed: La synchronisation TeslaMateApi a échoué
+        your_teslamate_sync_failed: 'Votre synchronisation TeslaMateApi a échoué avec l''erreur : %{message}. Vérifiez vos paramètres d''intégration et réessayez.'
     air_trail:
       import_flights_job:
         airtrail_sync_failed: La synchronisation AirTrail a échoué
@@ -5399,6 +5426,7 @@ fr:
       no_matches: Aucune correspondance trouvée dans la tolérance
       open_in_immich: Ouvrir dans Immich
       partially_enriched: 'Photos enrichies : %{enriched}. Échecs : %{failed}'
+      pending_enrichment: "%{count} mises à jour de localisation envoyées à Immich ; %{failed} envois ont échoué. Une notification vous informera après la vérification des coordonnées enregistrées."
       photos_without_gps:
         one: "%{count} photo sans GPS"
         other: "%{count} photos sans GPS"
@@ -5579,6 +5607,7 @@ fr:
       loading_tracks: Chargement des trajets pour la nouvelle plage…
       no_location_data: Aucune donnée de localisation dans cette plage de dates —
         choisissez une plage avec des trajets dans la barre de date ci-dessus.
+      gallery_without_flights: "Les affiches de la galerie utilisent les trajets GPS sans les vols. Le téléchargement conserve la vue actuelle."
       no_tracks_in_frame: Aucun trajet dans le cadre — déplacez ou agrandissez la carte
         sur votre itinéraire pour l'enregistrer dans la galerie.
       queued: En file d’attente — enregistrement récent sur le serveur…

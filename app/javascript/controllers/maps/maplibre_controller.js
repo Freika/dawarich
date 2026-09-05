@@ -2,6 +2,7 @@ import { Controller } from "@hotwired/stimulus"
 import { formatNumber, translate } from "i18n"
 import { Toast } from "maps_maplibre/components/toast"
 import { ReplayPanel } from "maps_maplibre/managers/replay_panel"
+import { TimelineSegmentHover } from "maps_maplibre/managers/timeline_segment_hover"
 import { ApiClient } from "maps_maplibre/services/api_client"
 import { CleanupHelper } from "maps_maplibre/utils/cleanup_helper"
 import { featureToPhoto } from "maps_maplibre/utils/feature_to_photo"
@@ -263,6 +264,10 @@ export default class extends Controller {
       this.boundHandleEntryDeselect,
     )
 
+    this.timelineSegmentHover = new TimelineSegmentHover(this, () =>
+      SettingsManager.getSetting("tracksEnabled"),
+    )
+
     // SPA date-range change from the Timeline calendar — refetch all enabled
     // layers for the new start/end without tearing down the map instance.
     this.boundHandleDateNavigated = this.handleTimelineDateNavigated.bind(this)
@@ -357,6 +362,7 @@ export default class extends Controller {
     this.settingsController?.stopRecalculationPolling()
     this.searchManager?.destroy()
     this.visitsManager?.destroy()
+    this.timelineSegmentHover?.destroy()
     this.eventHandlers?.destroy()
     cancelAllPreviews()
     if (this._persistView) this.map?.off("moveend", this._persistView)

@@ -1,0 +1,4439 @@
+zh:
+  language_name: 简体中文
+  language_flag: cn
+  auth:
+    account_links:
+      challenge:
+        link_provider_to_your_dawarich_account: 将 %{provider} 关联到您的 Dawarich 帐户
+        existing_account_link_instructions_html: 我们找到了 %{email} 的现有 Dawarich 帐户。输入您的密码，将您的 %{provider} 身份链接到该帐户并登录。
+        link: 关联
+        to_your_dawarich_account: 到您的 Dawarich 帐户
+        we_found_an_existing_dawarich_account_for: 我们找到了现有 Dawarich 帐户
+        enter_your_password_to_link_your: 。输入您的密码，将您的
+        identity_to_that_account_and_sign_in: 身份关联到该帐户并登录。
+        current_password: 当前密码
+        or: 或
+        forgot_your_password: 忘记密码了吗？
+        email_me_a_confirmation_link_instead: 改为通过邮件向我发送确认链接
+        reset_it: 重置
+        go_back_to_sign_in: 返回登录
+        confirm_account_linking: 确认关联帐户
+        link_provider_and_sign_in: 关联 %{provider} 并登录
+  devise:
+    confirmations:
+      new:
+        resend_confirmation: 重新发送确认
+        enter_your_email_address_and_we_ll_resend_the_confirmation: 输入您的邮箱，我们将重新发送确认说明。
+        email: 邮箱
+        resend_confirmation_instructions: 重新发送确认说明
+    mailer:
+      confirmation_instructions:
+        welcome: 欢迎
+        you_can_confirm_your_account_email_through_the_link_below: 您可以通过以下链接确认您的帐户邮箱：
+        confirm_my_account: 确认我的帐户
+      email_changed:
+        hello: 您好
+        we_re_contacting_you_to_notify_you_that_your_email: 我们通知您，您的邮箱正在更改为
+        we_re_contacting_you_to_notify_you_that_your_email_2: 我们通知您，您的邮箱已更改为
+      password_change:
+        hello: 您好
+        we_re_contacting_you_to_notify_you_that_your_password: 我们通知您，您的密码已更改。
+      reset_password_instructions:
+        hello: 您好
+        someone_has_requested_a_link_to_change_your_password_you: 有人请求更改您的密码。您可以通过下面的链接进行操作。
+        if_you_didn_t_request_this_please_ignore_this_email: 如果您未请求此操作，请忽略此邮件。
+        your_password_won_t_change_until_you_access_the_link: 在您点击上面的链接并设置新密码之前，您的密码不会更改。
+        change_my_password: 更改我的密码
+      unlock_instructions:
+        hello: 您好
+        your_account_has_been_locked_due_to_an_excessive_number: 由于登录尝试失败次数过多，您的帐户已被锁定。
+        click_the_link_below_to_unlock_your_account: 点击下面的链接解锁您的帐户：
+        unlock_my_account: 解锁我的帐户
+    passwords:
+      edit:
+        change_your_password: 更改您的密码
+        enter_your_new_password_below: 在下面输入您的新密码。
+        new_password: 新密码
+        characters_minimum: 个字符（最少）
+        confirm_new_password: 确认新密码
+        change_my_password: 更改我的密码
+      new:
+        forgot_your_password: 忘记密码？
+        enter_your_email_address_and_we_ll_send_you_instructions: 输入您的邮箱，我们将向您发送重置密码的说明。
+        email: 邮箱
+        send_me_reset_password_instructions: 向我发送重置密码说明
+    registrations:
+      api_key:
+        current_api_key: 当前 API 密钥
+        docs: 文档：
+        scan_with_dawarich_app: 使用 Dawarich 应用扫描
+        usage_examples: 使用示例
+        dawarich_ios_or_android_app: Dawarich iOS 或 Android 应用
+        provide_your_instance_url: 提供您的实例 URL：
+        and_provide_your_api_key: 并提供您的 API 密钥：
+        owntracks: OwnTracks
+        overland: Overland
+        api_documentation: API 文档
+        generate_new_api_key: 生成新的 API 密钥
+        are_you_sure_this_will_invalidate_the_current_api_key: 确定吗？此操作将使当前 API 密钥失效。
+      points_usage:
+        summary_html: 您已使用 %{used} 个轨迹点，共可用 %{limit} 个。
+      edit:
+        account_settings: 帐户设置
+        profile: 个人资料
+        update_your_email_address_and_password_from_one_place: 在同一个地方更新您的邮箱和密码。
+        connected_with: 已与
+        email: 邮箱
+        currently_waiting_confirmation_for: 当前等待确认：
+        new_password: 新密码
+        leave_blank_to_keep_the_current_one: （留空以保留当前密码）
+        characters_minimum: 个字符（最少）
+        password_confirmation: 密码确认
+        current_password: 当前密码
+        required_to_confirm_your_changes: （确认更改时需要）
+        import_your_data: 导入您的数据
+        upload_a_zip_file_containing_your_exported_dawarich_data_to: 上传包含已导出 Dawarich 数据的 ZIP 文件，即可恢复您的轨迹点、行程和设置。
+        select_zip_archive: 选择 ZIP 压缩包
+        file_will_be_uploaded_directly_to_storage_please_be_patient: 文件将直接上传到存储。上传时请耐心等待。
+        cancel: 取消
+        close: 关闭
+        trial_status: 试用状态
+        your_trial_period_ends_at: 您的试用期将于
+        plan_usage: 计划用量
+        subscription: 订阅
+        your_signup_isn_t_complete_yet_finish_setting_up_your: 您的注册尚未完成 - 请完成订阅设置以开始试用。
+        change_plan_update_your_payment_method_or_cancel_your_subscription: 在 Manager 上更改计划、更新付款方式或取消订阅。
+        manage_your_subscription_change_plan_or_update_billing_on_manager: 在 Manager 上管理订阅、更改计划或更新账单。
+        api_access: API 访问
+        use_your_api_key_for_clients_imports_and_external_integrations: API 密钥可用于客户端、导入和外部集成。
+        data_tools: 数据工具
+        export_a_backup_or_restore_a_previous_archive: 导出备份或恢复以前的存档。
+        import_my_data: 导入我的数据
+        danger_zone: 危险区域
+        deleting_your_account_is_permanent_and_removes_all_your_data: 删除您的帐户是永久性操作，且会删除您的所有数据。
+        cancel_my_account: 注销我的帐户
+        delete_your_account: 删除您的帐户
+        this_is_permanent_and_removes_all_your_data_this_cannot: 此操作是永久性的，将删除您的所有数据，且无法撤销。
+        this_is_permanent_and_removes_all_your_data_this_cannot_2: 此操作是永久性的，将删除您的所有数据，且无法撤销。我们会向您的邮箱发送确认链接 — 只有点击该链接后，您的帐户才会被删除。
+        type_your_email: 输入您的邮箱（
+        to_confirm: ）进行确认
+        enter_your_current_password_to_confirm: 输入您当前的密码进行确认
+        save_changes: 保存更改
+        import_data: 导入数据
+        manage_subscription: 管理订阅
+        subscribe: 订阅
+        export_my_data: 导出我的数据
+        are_you_sure_you_want_to_export_your_data: 您确定要导出数据吗？
+        account: 帐户
+        importing: 正在导入...
+        delete_my_account: 删除我的帐户
+        email_me_the_confirmation_link: 通过邮件向我发送确认链接
+      new:
+        join_family: 加入 %{family}！
+        you_ve_been_invited_by: 邀请人：
+        to_join_their_family_create_your_account_to_accept_the: 邀请您加入他们的家庭。创建您的帐户以接受邀请并开始共享位置数据。
+        almost_there: 就快完成了！
+        only_a_few_steps_left_until_you_get_control_over: 只需几步即可掌控您的位置数据！
+        create_your_account: 创建您的帐户
+        configure_your_mobile_app: 配置您的移动应用
+        start_tracking_your_location_data_securely: 开始安全地记录您的位置数据
+        ellipsis: …
+        you_re_beautiful: 你很漂亮！
+        invitation_email_notice: 您的邮箱 (%{email}) 将用于此帐户
+        email: 邮箱
+        password: 密码
+        characters_minimum: 最少 %{count} 个字符
+        password_confirmation: 密码确认
+        how_do_you_plan_to_use_dawarich: 您打算如何使用 Dawarich？
+        i_want_to_use_the_cloud_version: 我想使用云版本
+        i_m_self_hosting_and_exploring_the_demo: 我在自托管，正在探索演示功能
+        create_account_join_family: 创建帐户并加入家庭
+        sign_up: 注册
+    sessions:
+      new:
+        sign_in_to_join_family: 登录以加入 %{family}！
+        you_ve_been_invited_by: 邀请人：
+        to_join_their_family_sign_in_to_your_account_to: 加入他们的家庭。登录您的帐户以接受邀请。
+        don_t_have_an_account_yet: 还没有帐户？
+        login_now: 立即登录
+        and_take_control_over_your_location_data: 并掌控您的位置数据。
+        email: 邮箱
+        password: 密码
+        remember_me: 记住我
+        sign_in_using_your_organization_s_identity_provider: 使用您组织的身份提供商登录
+        create_one_here: 在此处创建一个
+        sign_in_accept_invitation: 登录并接受邀请
+        log_in: 登录
+      otp_challenge:
+        two_factor_authentication: 双重验证
+        enter_the_6_digit_code_from_your_authenticator_app_to: 请输入身份验证器应用中的 6 位代码以继续。
+        authentication_code: 验证码
+        you_can_also_use_a_backup_code: 您还可以使用备份代码。
+        verify: 验证
+        back_to_login: 返回登录
+    shared:
+      links:
+        log_in: 登录
+        register: 注册
+        forgot_your_password: 忘记密码？
+        didn_t_receive_confirmation_instructions: 未收到确认说明？
+        didn_t_receive_unlock_instructions: 没有收到解锁说明？
+    unlocks:
+      new:
+        resend_unlock_instructions: 重新发送解锁说明
+        enter_your_email_address_and_we_ll_send_you_instructions: 输入您的邮箱，我们将向您发送解锁帐户的说明。
+        email: 邮箱
+  exports:
+    table_row:
+      middot: ·
+      download_file: 下载文件
+      delete_export: 删除导出
+      are_you_sure: 您确定吗？
+    index:
+      no_exports_yet: 尚无导出
+      exports_are_created_from_the: 导出在
+      page_select_a_date_range_and_export_to_geojson_or: 页面中创建。选择日期范围并导出为 GeoJSON 或 GPX。
+      go_to_points: 轨迹点
+      actions: 操作
+      exports: 导出
+      points: 轨迹点
+      name: 名称
+      status: 状态
+      created: 已创建
+  families:
+    location_sharing_toggle:
+      live_location: 实时位置：
+      always: 始终
+      hour: 1 小时
+      hours: 6 小时
+      hours_2: 12 小时
+      hours_3: 24 小时
+      expires_in: 有效期
+      location_history: 位置历史记录：
+      last_24_hours: 过去 24 小时
+      last_7_days: 过去 7 天
+      last_30_days: 过去 30 天
+      since_sharing_started: 自共享开启以来
+      a_separate_setting_from_live_location_when_on_family_can: 这是一项独立于实时位置的设置。启用后，家人可以在地图（v2）上查看您最近的轨迹，而不仅仅是您当前的位置。只有您启用该功能后记录的轨迹点才会被共享。
+      expires_in_time: 有效期 %{time}
+    edit:
+      delete_family: 删除家庭
+      are_you_sure_you_want_to_delete_this_family_this: 您确定要删除该家庭吗？此操作无法撤销。
+      back_to_family: ← 返回家庭
+      members: 成员
+      cancel: 取消
+      editing_family: 编辑家庭
+      member_count:
+        one: "%{count} 名成员"
+        other: "%{count} 名成员"
+      back: ← 返回家庭
+      created_on: 创建于
+      creator: 创建者
+      error_title: 您提交的内容存在问题：
+      family_info: 家庭信息
+      last_updated: 最后更新
+      members_count: 成员
+      name_help: 选择所有家庭成员都能识别的名称。
+      save_changes: 保存更改
+      title: 编辑家庭
+    lapsed:
+      family_plan_no_longer_active: 家庭计划不再有效
+      your_family_plan_is_no_longer_active_so_family_features: 您的家庭计划已失效，所有人的家庭功能均已暂停。您的家庭和成员将被保留 — 续订即可恢复全部功能。
+      your_family_s_plan_is_no_longer_active_so_family: 您所在家庭的计划已失效，家庭功能已暂停。家庭所有者续订后即可恢复，您无需自行订阅。
+      members: 成员
+      remove: 移除
+      your_location_sharing: 您的位置共享
+      delete_family: 删除家庭
+      leave_family: 离开家庭
+      renew_family_plan: 续订家庭计划
+      view_pending_invitations: 查看待处理的邀请
+      delete_this_family_this_cannot_be_undone: 删除此家庭吗？此操作无法撤销。
+      are_you_sure_you_want_to_leave_this_family: 您确定要离开这个家庭吗？
+      family: 家庭
+      remove_email_from_the_family: 从家庭中移除 %{email} 吗？
+    show:
+      edit: 编辑
+      invite: 邀请
+      members_middot_created: 成员 · 创建于
+      no_family_members_are_sharing_their_location: 没有家庭成员共享其位置
+      your_sharing: 您的共享
+      members: 成员
+      owner: 所有者
+      you: 您
+      sharing: 共享
+      middot: ·
+      ago: 之前
+      not_sharing: 不共享
+      requested: 已请求
+      remove: 移除
+      invitations: 邀请
+      invited: 已邀请
+      ago_middot_expires: 之前 · 有效期
+      family_at_capacity: 家庭已满（%{count}/%{max} 名成员）
+      leave_family: 离开家庭
+      delete_family: 删除家庭
+      request: 请求
+      cancel_this_invitation: 取消此邀请吗？
+      email_address: 邮箱地址
+      are_you_sure_you_want_to_leave_this_family: 您确定要离开这个家庭吗？
+      delete_this_family_this_cannot_be_undone: 删除此家庭吗？此操作无法撤销。
+      remove_email_from_the_family: 从家庭中移除 %{email}？
+      members_created:
+        one: "%{count} 名成员 · 创建于 %{date}"
+        other: "%{count} 名成员 · 创建于 %{date}"
+      invited_ago_expires: 于 %{ago} 前邀请 · %{date} 到期
+      always: 始终
+      for_duration: 持续 %{duration}
+      sharing_status: 共享 %{duration}
+    index:
+      have_an_invitation: 有邀请吗？
+      if_someone_has_invited_you_to_join_their_family_you: 如果有人邀请您加入他们的家庭，您应该会收到一封带有邀请链接的邮件。
+      check_your_email_for_an_invitation_link_that_looks_like: 检查您的邮箱中是否有如下所示的邀请链接：
+      family_management: 家庭管理
+      create_family: 创建您的家庭
+      description: 创建或加入家庭，与亲人共享您的位置数据。
+      have_invitation: 有邀请吗？
+      invitation_help: 检查您的邮箱中是否有如下所示的邀请链接：
+      invitation_instructions: 如果有人邀请您加入他们的家庭，您应该已收到一封包含邀请链接的电子邮件。
+      title: 家庭管理
+    new:
+      choose_a_name_that_all_family_members_will_recognize_like: 选择所有家庭成员都能识别的名称，例如“史密斯一家”或“我们的旅行团体”。
+      what_happens_next: 接下来会发生什么？
+      back: ← 返回
+      new_family: 新家庭
+      create_family: 创建家庭
+      description: 创建家庭以与亲人共享您的位置数据。
+      error_title: 您提交的内容存在问题：
+      name_help: 选择所有家庭成员都能识别的名称，例如“史密斯一家”或“我们的旅行团体”。
+      title: 创建您的家庭
+      upgrade_cta: 升级到家庭计划
+      upgrade_description: 创建家庭需要家庭计划。升级后可邀请最多 5 名成员并共享完整访问权限。
+      upgrade_title: 需要家庭计划
+      what_happens_1: 您将成为家庭所有者
+      what_happens_2: 您可以邀请其他人加入您的家庭
+      what_happens_3: 家庭成员可以查看共享位置数据
+      what_happens_4: 您可以管理家庭设置和成员
+      what_happens_title: 接下来会发生什么？
+    navbar_indicator:
+      location_shared: 正在与您的家人共享位置
+      location_not_shared: 未与您的家人共享位置
+    form:
+      create: 创建家庭
+      name: 家庭名称
+      name_placeholder: 输入家庭名称
+  family:
+    invitations:
+      show:
+        join: 加入
+        you_ve_been_invited_by: 邀请人：
+        to_join_their_family_create_your_account_to_accept_the: 邀请您加入他们的家庭。创建您的帐户以接受邀请并开始共享位置数据。
+        your_email: 您的邮箱（
+        will_be_used_for_this_account: ) 将用于此帐户
+        what_benefits_does_joining_a_family_bring: 加入家庭会带来哪些好处？
+        share_location_data: 共享位置数据
+        share_your_location_history_with_family_members_and_see_where: 与家人共享您的位置历史记录，随时查看他们的位置
+        track_your_location_history: 记录您的位置历史记录
+        access_interactive_maps_and_personal_travel_statistics: 访问交互式地图和个人旅行统计数据
+        stay_connected: 保持联系
+        keep_track_of_your_loved_ones_travels_and_adventures_in: 实时关注亲人的旅行与冒险
+        full_control_privacy: 完全控制和隐私
+        you_control_what_and_how_long_you_share_and_can: 您可以控制共享内容和共享时长，并可随时离开家庭。
+        invitation_details: 邀请详情
+        family: 家庭：
+        invited_by: 邀请者：
+        your_email_2: 您的邮箱：
+        expires: 到期：
+        this_family_s_plan_is_currently_inactive_you_can_accept: 该家庭的计划当前已失效。家庭所有者续订后，您就可以接受邀请。
+        accept_invitation_join_family: ✓ 接受邀请并加入家庭
+        logged_in_as: 当前登录为
+        logout: 注销
+        create_account_join_family: 创建帐户并加入家庭 →
+        already_have_an_account: 已有帐户？
+        sign_in_to_accept_invitation: 登录以接受邀请
+        not_interested_you_can_simply_close_this_page: 不感兴趣？您只需关闭此页面即可。
+      index:
+        invited: 已邀请
+        expires: 到期
+        view: 查看
+        are_you_sure_you_want_to_cancel_this_invitation: 您确定要取消此邀请吗？
+        cancel: 取消
+    location_requests:
+      show:
+        location_request: 位置请求
+        requested_by: 请求人：
+        requested: 已请求
+        ago: 之前
+        expires: 到期
+        from_now: 从现在起
+        share_location_for: 共享位置
+        hour: 1 小时
+        hours: 6 小时
+        hours_2: 12 小时
+        hours_3: 24 小时
+        permanently: 永久
+        expired: 已过期
+        accepted: 已接受
+        declined: 已拒绝
+        responded: 已回复
+        accept_share_location: 接受并共享位置
+        decline: 拒绝
+        back_to_family: 返回家庭
+  family_mailer:
+    invitation:
+      you_ve_been_invited_to_join_a_family: 您已被邀请加入家庭！
+      hi_there: 您好！
+      invited_by_family_html: <strong>%{email}</strong> 邀请您加入 Dawarich
+        上的“<strong>%{family}</strong>”家庭。
+      invited_by_family_text: "%{email} 邀请您加入 Dawarich 上的“%{family}”大家庭。"
+      by_joining_this_family_you_ll_be_able_to: 加入此家庭后，您将能够：
+      share_your_current_location_with_family_members: 与家庭成员共享您的当前位置
+      see_the_current_location_of_other_family_members: 查看其他家庭成员的当前位置
+      stay_connected_with_your_loved_ones: 与您所爱的人保持联系
+      control_your_privacy_with_full_sharing_controls: 通过完整的共享控制掌控您的隐私
+      important: ⏰ 重要提示：
+      this_invitation_will_expire_in_7_days: 此邀请将在 7 天后过期。
+      if_you_don_t_have_a_dawarich_account_yet_you: 如果您还没有 Dawarich 帐户，您可以在接受邀请后创建一个帐户。
+      if_you_didn_t_expect_this_invitation_you_can_safely: 如果您没有预料到会收到此邀请，可以放心忽略此邮件。
+      best_regards: 此致，
+      evgenii_from_dawarich: 来自 Dawarich 的 Evgenii
+      accept_invitation: 接受邀请
+      share_your_current_location_with_family_members_2: • 与家庭成员共享您的当前位置
+      see_the_current_location_of_other_family_members_2: • 查看其他家庭成员的当前位置
+      stay_connected_with_your_loved_ones_2: • 与亲人保持联系
+      control_your_privacy_with_full_sharing_controls_2: • 通过完整的共享控制掌控您的隐私
+      accept_your_invitation_here: 在此处接受您的邀请：
+      important_this_invitation_will_expire_in_7_days: 重要提示：此邀请将在 7 天后过期。
+    location_request:
+      location_request: 位置请求
+      hi_there: 您好！
+      is_requesting_your_location_on_dawarich: 正在 Dawarich 上请求共享您的位置。
+      you_can_review_this_request_and_choose_to_accept_or: 您可以查看此请求并选择接受或拒绝。如果接受，可以选择共享位置的时长（1 小时、6 小时、12 小时、24 小时或永久）。
+      important: ⏰ 重要提示：
+      this_request_will_expire_in_24_hours_if_not_acted: 如果未处理，此请求将在 24 小时后过期。
+      if_you_don_t_want_to_share_your_location_simply: 如果您不想共享您的位置，只需忽略或拒绝此请求即可。
+      best_regards: 此致，
+      evgenii_from_dawarich: 来自 Dawarich 的 Evgenii
+      location_request_hi_there: 位置请求 ================ 您好！
+      is_requesting_your_location_on_dawarich_you_can_review_this:
+        正在 Dawarich 上请求共享您的位置。您可以查看此请求并选择接受或拒绝。如果接受，可以选择共享位置的时长（1 小时、6 小时、12
+        小时、24 小时或永久）。查看请求：
+      important_this_request_will_expire_in_24_hours_if_not: ⏰ 重要提示：如果未处理，此请求将在 24 小时后过期。如果您不想共享位置，只需忽略或拒绝此请求即可。此致，Dawarich 的 Evgenii
+      view_request: 查看请求
+      you_can_review_this_request_and_choose_to_accept_or_2: 您可以查看此请求并选择接受或拒绝。
+      if_you_accept_you_can_select_how_long_to_share: 如果您接受，可以选择共享位置的时长（1 小时、6 小时、12 小时、24 小时或永久）。
+      view_request_2: 查看请求：
+      important_this_request_will_expire_in_24_hours_if_not_2: ⏰ 重要提示：如果未处理，此请求将在 24 小时后过期。
+    member_joined:
+      great_news_someone_joined_your_family: 🎉 好消息！有人加入了您的家庭！
+      hi: 您好
+      member_joined_family_html: 我们很高兴地通知您，<strong>%{email}</strong> 刚刚加入了您在 Dawarich
+        上的“<strong>%{family}</strong>”家庭！
+      member_joined_family_text: 我们很高兴地通知您，%{email} 刚刚加入了您在 Dawarich 上的“%{family}”家庭！
+      see_current_location_html: 查看 <strong>%{email}</strong> 的当前位置（如果他们已启用共享）
+      see_current_location_text: 查看 %{email} 的当前位置（如果他们已启用共享）
+      share_location_with_html: 与 <strong>%{email}</strong> 共享您的位置
+      share_location_with_text: 与 %{email} 共享您的位置
+      member_count_html:
+        one: 您的家庭现在有 <strong>%{count}</strong> 名成员。
+        other: 您的家庭现在有 <strong>%{count}</strong> 名成员。
+      member_count:
+        one: 您的家庭现在有 %{count} 名成员。
+        other: 您的家庭现在有 %{count} 名成员。
+      now_you_can: 现在您可以：
+      stay_connected_with_your_growing_family: 与成长中的家庭保持联系
+      manage_family_members_and_settings_from_your_family_page: 从家庭页面管理家庭成员和设置
+      tip: 💡 提示：
+      you_can_manage_your_family_members_and_privacy_settings_at: 您可以随时从家庭仪表板管理您的家庭成员和隐私设置。
+      best_regards: 此致，
+      evgenii_from_dawarich: Dawarich 的 Evgenii
+      great_news_someone_joined_your_family_2: 好消息！有人加入了您的家庭！
+      stay_connected_with_your_growing_family_2: • 与成长中的家庭保持联系
+      manage_family_members_and_settings_from_your_family_page_2: • 从家庭页面管理家庭成员和设置
+      tip_you_can_manage_your_family_members_and_privacy_settings: 提示：您可以随时从家庭仪表板管理家庭成员和隐私设置。
+  home:
+    index:
+      dawarich: Dawarich
+      the_only_location_history_tracker_you_ll_ever_need: 您唯一需要的位置历史记录工具。
+      or: 或
+      location_history_visualisation: 位置历史记录可视化
+      effortlessly_import_your_location_history_from_google_maps_timeline_and:
+        轻松从 Google 地图时间线和 OwnTracks
+        导入您的位置历史记录。在交互式地图上查看您的旅程，并通过热图、轨迹点、连接线等可自定义图层直观呈现。
+      comprehensive_travel_statistics: 全面的旅行统计数据
+      gain_insights_into_your_travel_patterns_with_detailed_statistics_track: 通过详细统计深入了解您的出行模式：查看到访过的国家和城市数量、旅行总距离，并按年份和月份拆分数据，清晰掌握您的旅程。
+      self_hosted_and_private: 自托管且私密
+      maintain_complete_control_over_your_data_with_our_self_hosted: 借助我们的自托管解决方案，您可以完全掌控自己的数据。Dawarich 确保您的位置历史记录私密安全，让您在享受强大追踪系统全部功能的同时安心无忧。
+      find_more_on: 更多信息请访问
+      the_website: 官方网站
+      or_check_out_the: ，或查看
+      source_code: 源代码
+      on_github: ，在 GitHub 上。
+      sign_up: 注册
+      sign_in: 登录
+  imports:
+    extraction_card:
+      additional_data: 附加数据
+      this_import_format_doesn_t_carry_visits_named_places_or: 此导入格式不包含到访记录、命名地点或交通方式，因此无需提取其他内容。
+      extracted: 已提取
+      visits: 到访记录、
+      places: 地点、
+      tracks: 轨迹、
+      transportation_mode_segments: 交通方式分段。
+      re_extract: 重新提取
+      this_extraction_stopped_responding_it_s_safe_to_start_it: 此提取已停止响应。您可以放心重新开始。
+      start_over: 重新开始
+      extraction_failed: 提取失败：
+      retry_extraction: 重试提取
+      dawarich_originally_imported_your_file_as_raw_gps_points_click: Dawarich 最初将您的文件作为原始 GPS 轨迹点导入。点击下方按钮，还可以提取到访记录、地点、轨迹和交通方式。
+      extract_additional_data: 提取附加数据
+      extracting: 正在提取…
+      queued: 已排队…
+    extraction_dialog:
+      extract_additional_data_from_this_import: 从此导入中提取附加数据
+      dawarich_originally_imported_your_file_as_raw_gps_points_the: Dawarich 最初将您的文件作为原始 GPS 轨迹点导入。该文件还包含：
+      visits: 到访记录
+      places_where_the_source_app_recorded_you_spending_time_with: — 源应用记录您停留的位置，以及开始和结束时间。
+      tracks: 轨迹
+      journeys_identified_between_those_visits_with_their_classified_transport: — 这些到访记录之间的行程，以及其分类交通方式（驾车、步行、骑行、公共交通等）。
+      places: 地点
+      the_named_places_home_work_frequent_restaurants_the_source_app: — 源应用为您的到访记录关联的命名地点（家、工作地点、常去的餐厅）。
+      extract: 提取
+      extract_to_add_html: 点击 <strong>提取</strong> 即可将此数据添加到您的 Dawarich
+        帐户。现有轨迹点不会被修改。Dawarich 从您的轨迹点中检测到的到访记录和地点将与导入数据一同保留。
+      trust_the_source_app_s_classification: 信任源应用的分类
+      when_checked_transportation_modes_driving_walking_cycling_transit_the_so: 选中后，源应用分配的交通模式（驾车、步行、骑行、公共交通）将保持原样。取消选中后，Dawarich 将使用您的设置重新运行自己的检测程序。
+      cancel: 取消
+      close: 关闭
+    extraction_remove_button:
+      remove_extracted_data: 删除提取的数据
+      remove_the_visits_places_and_tracks_this_extraction_created_your: 删除此提取创建的到访记录、地点和轨迹吗？您导入的 GPS 轨迹点将被保留。
+    form:
+      supported_import_formats: 支持的导入格式
+      google_maps: Google 地图：
+      records_json_semantic_history_phone_takeout_json: Records.json、语义历史记录、手机 Takeout (.json)
+      google_photos: Google 照片：
+      takeout_metadata_sidecars_json: Takeout 元数据附属文件 (.json)
+      gpx: GPX：
+      track_files_gpx: 轨迹文件 (.gpx)
+      geojson: GeoJSON：
+      feature_collections_json_geojson: 要素集合（.json、.geojson）
+      owntracks: OwnTracks：
+      recorder_files_rec: Recorder 文件 (.rec)
+      kml: KML：
+      kml_files_kml_kmz: KML 文件（.kml、.kmz）
+      fit: FIT：
+      garmin_activity_files_fit: Garmin 活动文件（.fit）
+      tcx: TCX：
+      training_center_files_tcx: Training Center 文件（.tcx）
+      csv: CSV：
+      location_data_csv: 位置数据 (.csv)
+      polarsteps: Polarsteps：
+      locations_json_json: locations.json (.json)
+      zip: ZIP：
+      archives_containing_any_of_the_above_zip: 包含上述任何内容的压缩包 (.zip)
+      file_format_is_automatically_detected_during_upload: 上传过程中会自动检测文件格式。
+      for_files_larger_than_200mb_consider_compressing_them_into_a: 对于大于 200MB 的文件，建议先压缩为 ZIP 压缩包再上传，可显著缩短上传时间并避免连接超时。
+      trial_limitations_max_5_imports_10mb_per_file: 试用限制：最多 5 次导入，每个文件 10MB。
+      current_imports: 当前导入：
+      select_one_or_multiple_files: 选择一个或多个文件
+      files_will_be_uploaded_directly_to_storage_please_be_patient: 文件将直接上传到存储。上传时请耐心等待。
+      mobile_photo_library: 手机照片库：
+      dawarich_mobile_app_export_json: Dawarich 手机应用导出文件（.json）
+    import:
+      name: 名称
+      imported_points: 导入的轨迹点
+      created_at: 创建于
+      show_this_import: 显示此导入
+      edit_this_import: 编辑此导入
+    table_row:
+      demo: 演示
+      points_at_coordinates_and_timestamps_that_already_exist_in_your: 与时间线中已有轨迹点的坐标和时间戳重复的点已跳过，以避免重复。
+      already_imported: 已导入
+      deleting: 正在删除...
+      deletion_stalled: 删除已停滞
+      retry_deletion: 重试删除
+      are_you_sure: 你确定吗？
+      view_on_map: 在地图上查看
+      view_points: 查看轨迹点
+      download_file: 下载文件
+      delete_import: 删除导入
+    edit:
+      editing_import: 编辑导入
+      back_to_imports: 返回导入
+    index:
+      new_import: 新建导入
+      file_size: 文件大小
+      import_from_immich: 从 Immich 导入
+      import_from_photoprism: 从 Photoprism 导入
+      no_imports_yet: 尚无导入
+      import_your_location_data_from_google_maps_timeline_gpx_files: 从 Google 地图时间线、GPX 文件、OwnTracks 等来源导入位置数据，即可开始记录。
+      create_your_first_import: 创建您的第一个导入
+      actions: 操作
+      imports: 导入
+      are_you_sure: 您确定吗？
+      name: 名称
+      points: 轨迹点
+      status: 状态
+      created: 已创建
+    new:
+      back_to_imports: 返回导入
+      google_timeline_file_too_large: Google 时间线文件太大？
+      your_data_never_leaves_your_browser: — 您的数据永远不会离开您的浏览器。
+      new_import: 新建导入
+      split_it_with_our_free_private_tool: 使用我们免费的私密工具拆分文件
+      new_import_2: 新导入
+    show:
+      edit_this_import: 编辑此导入
+      destroy_this_import: 删除此导入
+      are_you_sure_this_action_will_delete_all_points_imported: 您确定吗？此操作将删除使用此文件导入的所有轨迹点
+      back_to_imports: 返回导入
+      import: 导入
+  insights:
+    activity_breakdown:
+      activity_breakdown: 活动构成
+      no_activity_data_available_for_this_period: 此期间没有可用的活动数据
+      driving: 驾驶
+      walking: 步行
+      stationary: 静止
+      cycling: 骑行
+      flying: 飞行
+      train: 火车
+      running: 跑步
+      bus: 公交
+      boat: 船
+      motorcycle: 摩托车
+    activity_heatmap:
+      activity_overview: 活动概览
+      active_days: 活跃天数
+      less: 更少
+      more: 更多
+      mon: 周一
+      wed: 周三
+      fri: 周五
+    activity_streak:
+      activity_streak: 连续活动记录
+      current: 当前
+      day:
+        one: 天
+        other: 天
+      longest_streak: 最长连续记录
+    header:
+      insights: 洞察
+      your_personal_movement_analytics_and_travel_patterns: 您的个人运动数据分析和出行模式
+      by_year: 按年份
+      overview: 概述
+      all_time: 全部时间
+    location_clusters:
+      top_visited_locations: 到访次数最多的地点
+      total_time: 总时间
+      visit_count:
+        one: 次到访
+        other: 次到访
+      no_visit_data_available_for_this_period: 此期间没有可用的到访数据。
+      confirmed_visits_will_appear_here: 已确认的到访记录将显示在此处。
+    monthly_digest:
+      total_distance: 总距离
+      active_days: 活跃天数
+      countries: 国家/地区
+      cities: 城市
+      weekly_pattern: 每周模式
+      top_locations: 热门地点
+      no_location_data: 无位置数据
+      first_visits: 首次到访
+      country: 国家/地区
+      city: 城市
+      no_new_places_this_month: 本月没有新地点
+      vs_previous_month: 与上月对比
+      distance: 距离
+      countries_2: 国家/地区
+      monthly_digest: 每月摘要
+      select_a_month_to_view_its_digest: 选择一个月查看其摘要：
+    movement_wellness:
+      movement_wellness: 运动与健康
+      active_time: 活动时间
+      walking: 步行
+      total: 总计
+      running: 跑步
+      cycling: 骑行
+      driving: 驾驶
+      no_activity_data_available_for_this_period: 此期间没有可用的活动数据
+      sedentary_vs_active: 久坐与活动
+      in_transport: 交通途中
+      stationary: 静止
+      active_movement: 主动运动
+      ratio: 比率：
+      active_vs_sedentary: 活动与久坐
+      no_movement_data_available_for_this_period: 此期间没有可用的运动数据。
+      track_data_with_transportation_modes_will_appear_here: 此处将显示带交通方式的轨迹数据。
+    pro_locked_card:
+      available_on_pro: Pro 版可用
+      upgrade_to_pro: 升级到 Pro
+    stats_row:
+      total_distance: 总距离
+      all_tracked_history: 已记录的全部历史记录
+      vs: 与
+      in: 在
+      this_year: 今年
+      countries: 国家/地区
+      new_vs: 新增对比
+      cities: 城市
+      days_traveling: 旅行天数
+      active_days_this_year: 今年的活跃天数
+      no_stats_data_available: 没有可用的统计数据
+      stats_are_calculated_from_your_tracked_points: 。统计数据基于您的轨迹点计算。
+    top_visited_locations:
+      top_visited_locations: 到访次数最多的地点
+      total_time: 总时间
+      visit_count:
+        one: 次到访
+        other: 次到访
+      no_visit_data_available_for_this_period: 此期间没有可用的到访数据。
+      confirmed_visits_will_appear_here: 已确认的到访记录将显示在此处。
+    travel_patterns:
+      when_do_you_travel: 您什么时候旅行？
+      time_of_day_distribution: 时段分布
+      day_of_week: 星期几
+      seasonality: 季节性
+      insight: 洞察
+    travel_story:
+      your_travel_story: 您的旅行故事
+      summer_2024: 2024 年夏季
+      june_15_july_20: 6 月 15 日 - 7 月 20 日
+      days: 35 天
+      230_km: 4,230 公里
+      the_great_european_road_trip: “伟大的欧洲公路之旅”
+      you_started_in: 您从
+      berlin: 柏林
+      your_home_base_after_a_week_of_work_you_headed: ，这是您的大本营。工作一周后，您一路南下，穿过
+      dresden: 德累斯顿
+      and: 和
+      prague: 布拉格
+      spending_3_days_exploring_the_city_of_a_hundred_spires: ，用 3 天时间探索这座百塔之城。
+      the_journey_continued_through: 旅程继续经过
+      vienna: 维也纳
+      where_you_spent_a_weekend_before_crossing_into_italy_you: ，在进入意大利前，您在这里度过了一个周末。随后驾车穿越阿尔卑斯山，经停
+      lake_como: 科莫湖
+      for_two_nights_of_swimming_and_pasta: ，逗留两晚，游泳并享用意面。
+      rome: 罗马
+      welcomed_you_for_5_days_of_ancient_history_then_you: 用 5 天古代历史之旅迎接您，随后您沿海岸一路南下，抵达
+      amalfi: 阿马尔菲
+      with_stops_in_naples_and_positano: ，经停那不勒斯和波西塔诺。
+      journey_timeline: 旅程时间线
+      de: DE
+      home_base: 大本营
+      overnight: 过夜
+      cz: CZ
+      days_exploring: 3 天探索
+      at: 在
+      weekend_stay: 周末住宿
+      it: IT
+      swimming_pasta: 游泳与意大利面
+      days_of_history: 5 天历史记录
+      amalfi_coast: 阿马尔菲海岸
+      positano_naples: 波西塔诺、那不勒斯
+      florence: 佛罗伦萨
+      art_coffee: 艺术与咖啡
+      milan: 米兰
+      fashion_district: 时尚区
+      munich: 慕尼黑
+      beer_gardens: 啤酒花园
+      back_home: 回家
+      new_countries: 新国家
+      cz_at_it_fr: CZ、AT、IT、FR
+      km: 890 公里
+      longest_drive: 最长的车程
+      rome_rarr_amalfi: 罗马 → 阿马尔菲
+      favorites_marked: 已标记的收藏夹
+      places: 个地点
+    year_comparison:
+      your_journey: 您的旅程：
+      vs: 与
+      distance: 距离
+      countries: 国家
+      days_traveling: 旅行天数
+      days: 天（
+      days_2: 天
+      biggest_month: 最活跃月份
+    details:
+      year_comparison: 年份比较
+      activity_breakdown: 活动构成
+      location_clusters: 位置集群
+      monthly_digest: 每月摘要
+      travel_patterns: 旅行模式
+      movement_wellness: 运动与健康
+    index:
+      geodata_insights_bull_powered_by_your_location_history: 地理数据洞察 • 基于您的位置历史记录
+      total_distance: 总距离
+      countries: 国家/地区
+      cities: 城市
+      days_traveling: 旅行天数
+      activity_heatmap: 活动热图
+      activity_streak: 连续活动记录
+      year_comparison: 年份比较
+      activity_breakdown: 活动构成
+      location_clusters: 位置集群
+      monthly_digest: 每月摘要
+      travel_patterns: 出行模式
+      movement_wellness: 运动与健康
+      insights: 洞察
+  kaminari:
+    first_page:
+      laquo: «
+    last_page:
+      raquo_raquo: »»
+    next_page:
+      raquo: »
+    paginator:
+      pager: 寻呼机
+    prev_page:
+      laquo: «
+  layouts:
+    map:
+      you_re_viewing_demo_data: 您正在查看演示数据。
+      delete: 删除
+    shared:
+      dawarich: Dawarich
+      try_dawarich_cloud: 试用 Dawarich 云
+      shared_with_dawarich: 与 Dawarich 共享
+      map_your_own_journeys: 在地图上呈现您的旅程。
+      dawarich_turns_your_own_location_history_into_maps_worth_sharing: Dawarich 将您的位置历史记录变成值得分享的地图 — 开源、可自托管、数据归您所有。
+      see_how_it_works: 了解其工作原理
+      open_source: 开源
+      self_hostable: 自托管
+      managed_cloud_no_setup: 托管云 — 无需设置
+      shared_on_dawarich: 在 Dawarich 上共享
+      dawarich_logo: Dawarich 徽标
+  map:
+    onboarding_modal:
+      welcome_to_dawarich: 欢迎使用 Dawarich！
+      your_map_starts_with_your_next_step_literally: 您的地图从您的下一步开始 — 字面意义上的。
+      start_tracking_now: 立即开始记录
+      minutes: 2 分钟
+      get_the_app_scan_a_qr_code_and_watch_your: 下载应用，扫描二维码，今天就能看到您的第一个轨迹点出现在地图上。
+      i_have_data: 我有数据
+      import_google_takeout_gpx_kml_geojson_or_owntracks_files: 导入 Google Takeout、GPX、KML、GeoJSON 或 OwnTracks 文件。
+      explore_with_demo_data: 使用演示数据进行探索
+      load_sample_location_data_3_days_in_berlin_to_see: 加载示例位置数据（柏林 3 天），看看您的地图会是什么样子。您可以随时删除它。
+      skip_for_now: 暂时跳过
+      import_your_data: 导入您的数据
+      supported_formats: 支持的格式
+      google_maps: Google 地图：
+      records_json_semantic_history_phone_takeout_json: Records.json、语义历史记录、手机 Takeout (.json)
+      gpx: GPX：
+      track_files_gpx: 轨迹文件 (.gpx)
+      geojson: GeoJSON：
+      feature_collections_json: 要素集合 (.json)
+      owntracks: OwnTracks：
+      recorder_files_rec: Recorder 文件 (.rec)
+      kml: KML：
+      kml_files_kml_kmz: KML 文件（.kml、.kmz）
+      file_format_is_automatically_detected_during_upload: 上传期间自动检测文件格式。
+      trial_limitations_max_5_imports_10mb_per_file_current_imports: 试用限制：最多 5 次导入，每个文件 10MB。当前导入：
+      select_one_or_multiple_files: 选择一个或多个文件
+      files_will_be_uploaded_directly_to_storage_please_be_patient: 文件将直接上传到存储。上传时请耐心等待。
+      start_tracking: 开始记录
+      download_the_app: 下载应用
+      scan_qr_code_to_connect: 扫描二维码以连接
+      scan_this_qr_code_with_the_dawarich_app_to_automatically: 使用 Dawarich 应用扫描此二维码，自动配置连接。
+      or: 或
+      grab_your_api_key_from: 请前往
+      and_follow_the: 获取 API 密钥并按照
+      have_old_location_history_like_a_google_takeout_tracking_works: 有旧的位置历史记录（比如 Google Takeout）？跟踪立即生效 — 您可以随时导入历史记录
+      import_your_history_anytime: 随时导入历史记录
+      got_it_let_s_start: 好的，开始吧！
+      close: 关闭
+      import_files: 导入文件
+      settings: 设置
+      setup_guide: 设置指南
+    maplibre:
+      area_creation_modal:
+        create_new_area: 创建新区域
+        area_name: 区域名称 *
+        radius: 半径
+        meters: 米
+        cancel: 取消
+        e_g_home_office_gym: 例如家庭、办公室、健身房...
+        radius_in_meters: 半径（米）
+        create_area: 创建区域
+        creating: 创建...
+      button_cluster:
+        map_controls: 地图控件
+        timeline: 时间线
+        timeline_t: 时间线 (T)
+        layers: 图层
+        layers_l: 图层 (L)
+        search: 搜索
+        search_2: 搜索 (/)
+        create: 创建
+        create_c: 创建 (C)
+        replay: 重播
+        replay_points_for_the_current_date_range_r: 重播当前日期范围内的轨迹点 (R)
+        poster_studio: 海报工作室
+        settings: 设置
+        settings_s: 设置 (S)
+        links: 链接
+        video_studio: 视频工作室
+      settings_panel:
+        close_panel: 关闭面板
+        layers: 图层
+        search_for_a_place: 搜索地点
+        enter_name_of_a_place: 输入地点名称
+        search_for_a_location_to_find_places_you_visited: 搜索位置以查找您到访过的地点
+        points: 轨迹点
+        show_individual_location_points: 显示各个轨迹点
+        edit_points: 编辑轨迹点
+        allow_dragging_points_to_correct_their_position: 允许拖动轨迹点来修正位置。
+        editing_points_is_a_pro_feature_this_stays_on_for: 编辑轨迹点是一项 Pro 功能，仅在当前会话中生效，且移动不会保存在 Lite 计划中。
+        allow_dragging_points_to_correct_their_position_remembered_across_sessio: 允许拖动轨迹点来修正位置。此设置会跨会话保留。
+        routes: 路线
+        show_connected_route_lines: 显示连通的路线
+        color_by_speed: 按速度着色
+        edit_color_gradient: 编辑颜色渐变
+        anomalies: 异常
+        show_filtered_gps_noise_points: 显示过滤后的 GPS 噪声点
+        tracks: 轨迹
+        show_backend_calculated_tracks: 显示后端计算的轨迹
+        flights: 航班
+        show_airtrail_flights_as_arcs_hides_overlapping_gps: 显示 AirTrail 飞行轨迹为弧线（隐藏重叠的 GPS）
+        heatmap: 热图
+        show_density_heatmap: 显示密度热图
+        hexagons: 六边形
+        show_point_density_as_hexagonal_cells: 以六边形单元显示轨迹点密度
+        visits: 到访记录
+        show_detected_area_visits: 显示检测到的区域到访记录
+        filter_by_name: 按名称筛选...
+        all_visits: 所有到访记录
+        confirmed_only: 仅已确认
+        suggested_only: 仅建议
+        places: 地点
+        show_your_saved_places: 显示您保存的地点
+        enable_all_tags: 启用所有标签
+        filter_by_tags: 按标签筛选
+        untagged: 🏷️ 未标记
+        click_tags_to_filter_places: 点击标签以筛选地点
+        photos: 照片
+        show_geotagged_photos: 显示地理标记照片
+        areas: 区域
+        show_defined_areas: 显示已定义的区域
+        fog_of_war: 战争迷雾
+        show_explored_areas: 显示探索过的区域
+        per_point: 按轨迹点
+        per_hexagon: 按六边形
+        scratch_map: 刮刮地图
+        show_scratched_countries: 显示已刮开的国家/地区
+        family_members: 家庭成员
+        show_family_member_locations: 显示家庭成员位置
+        click_to_center_on_member: 点击以家庭成员为中心
+        appearance: 外观
+        custom_map_colors_layer_colors_and_vector_tiles_are_pro: 自定义地图颜色、图层颜色和矢量瓦片是 Pro 功能 — 您可以在此预览，但在 Lite 计划下不会保存。
+        map_style: 地图样式
+        light: 浅色
+        dark: 深色
+        white: 白色
+        black: 黑色
+        grayscale: 灰度
+        custom: 自定义
+        color_themes: 颜色主题
+        customize_colors: 自定义颜色
+        globe_view: 地球视图
+        render_map_as_a_3d_globe_requires_page_reload: 将地图渲染为 3D 地球视图（需要重新加载页面）
+        route_opacity: 路线不透明度
+        layer_colors: 图层颜色
+        reset_to_defaults: 重置为默认值
+        distance_unit: 距离单位
+        kilometers: 公里
+        miles: 英里
+        custom_basemap_url: 自定义底图 URL
+        serve_the_base_map_from_your_own_source_accepts_protomaps: 从您自己的源提供底图。接受
+          Protomaps 架构的矢量瓦片或栅格 XYZ 瓦片（两者都必须包含 {z}、{x} 和 {y}），或完整的 MapLibre 样式
+          URL。留空则使用内置瓦片。
+        base_map_layers: 底图图层
+        toggle_base_map_elements_changes_apply_immediately: 切换底图元素。更改立即生效。
+        pro_feature_you_can_preview_changes_here_but_they_won: Pro 功能 — 您可以在此预览更改，但在 Lite 计划下不会保存。
+        the_custom_style_draws_no_labels_or_points_of_interest: 自定义样式不绘制标签或兴趣点 — 该样式启用时这些开关会被禁用。
+        points_of_interest: 兴趣点
+        choose_which_poi_categories_appear_on_the_map: 选择地图上显示的 POI 类别。
+        meters_between_routes: 路线间隔（米）
+        distance_threshold_for_route_splitting: 路线拆分距离阈值
+        minutes_between_routes: 路线间隔（分钟）
+        min: 60 分钟
+        min_2: 1 分钟
+        min_3: 90 分钟
+        min_4: 180 分钟
+        time_threshold_for_route_splitting: 路线拆分的时间阈值
+        points_rendering_mode: 轨迹点渲染模式
+        raw_all_points: 原始（所有轨迹点）
+        simplified_reduced_points: 简化（减少轨迹点）
+        speed_colored_routes: 按速度着色的路线
+        color_routes_by_speed: 按速度为路线着色
+        fog_of_war_radius: 战争迷雾半径
+        clear_radius_around_visited_points: 到访轨迹点周围的清除半径
+        fog_of_war_threshold: 战争迷雾阈值
+        minimum_points_to_clear_fog: 清除迷雾所需的最少轨迹点
+        gps_noise_filtering: GPS 噪声过滤
+        hide_readings_that_cannot_be_a_real_position_impossible_jumps: 隐藏不可能为真实位置的读数 — 如不可能的跳跃、损坏的坐标。禁用后显示每个原始轨迹点。
+        re_evaluate_past_data: 重新评估过去的数据
+        clears_existing_anomaly_flags_and_re_runs_the_filter_on: 清除现有异常标记，并使用当前设置对所有轨迹点重新运行过滤器。之后将重建轨迹、统计数据和摘要，整个过程在后台运行。
+        recalculate_tracks_stats: 重新计算轨迹和统计数据
+        rebuild_tracks_stats_and_digests_from_your_current_points_without: 根据当前轨迹点重建轨迹、统计数据和摘要，且不触碰异常标记。在更改路线拆分阈值后很有用。
+        city_statistics: 城市统计数据
+        min_minutes_in_city: 城市最短停留分钟数
+        min_5: 60 分钟
+        min_6: 5 分钟
+        min_7: 120 分钟
+        how_long_you_must_stay_for_a_city_to_count: 您必须在某个城市停留多长时间才能计入统计数据
+        max_gap_between_points: 轨迹点之间的最大间隔
+        min_8: 120 分钟
+        min_9: 30 分钟
+        min_10: 195 分钟
+        min_11: 360 分钟
+        max_gap_between_points_before_assuming_you_left_the_city: 轨迹点之间的最大间隔（超过此间隔即认为您已离开城市）
+        min_12: 720 分钟
+        live_mode: 实时模式
+        show_new_points_in_real_time: 实时显示新轨迹点
+        apply_settings: 应用设置
+        reset_to_defaults_2: 重置为默认值
+        transportation_mode_detection: 交通方式检测
+        checking_status: 正在检查状态...
+        settings_are_locked_while_recalculation_is_in_progress: 重新计算进行期间，设置会被锁定。
+        note: 注意：
+        changing_these_thresholds_will_trigger_a_recalculation_of_transportation: 更改这些阈值将触发对所有轨迹的交通方式重新计算，可能需要一些时间，具体取决于轨迹数量。
+        detected_modes: 已检测到的模式
+        disabled_modes_won_t_be_detected_existing_tracks_aren_t: 不会检测到禁用模式。在您点击下面的“重新分类”之前，现有轨迹不会受到影响。
+        expert_mode: 专家模式
+        show_advanced_detection_thresholds: 显示高级检测阈值
+        walking_max_speed: 步行最大速度
+        km_h: 7 公里/小时
+        cycling_max_speed: 骑行最大速度
+        km_h_2: 45 公里/小时
+        driving_max_speed: 行驶最高速度
+        km_h_3: 220 公里/小时
+        flying_min_speed: 飞行最低速度
+        km_h_4: 150 公里/小时
+        speed_thresholds: 速度阈值
+        stationary_max_speed: 静止最高速度
+        km_h_5: 1 公里/小时
+        train_min_speed: 列车最低速度
+        km_h_6: 80 公里/小时
+        acceleration_thresholds: 加速度阈值
+        running_vs_cycling_accel: 跑步与骑行加速度
+        cycling_vs_driving_accel: 骑行与驾驶加速度
+        segment_detection: 分段检测
+        min_segment_duration: 分段最短时长
+        sec: 60 秒
+        time_gap_threshold: 时间间隔阈值
+        sec_2: 180 秒
+        min_flight_distance: 最短飞行距离
+        km: 100 公里
+        make_changes_to_enable_the_apply_button: 请先进行更改，以启用“应用”按钮
+        re_runs_auto_classification_across_all_your_tracks_manually_corrected: 将重新对所有轨迹运行自动分类。手动更正过的分段会保留。可能需要几分钟。
+        loading_calendar: 正在加载日历…
+        less: 更少
+        more: 更多
+        filter: 筛选
+        confirmed: 已确认
+        suggested: 建议
+        search_visits_places: 搜索到访记录、地点…
+        tags: 标签
+        pick_a_day_in_the_calendar_to_see_visits: 在日历中选择一天以查看到访记录。
+        create_visit: 创建到访记录
+        create_place: 创建地点
+        select_area: 选择区域
+        create_area: 创建区域
+        replay: 重播
+        enrich_photos: 为照片补充 GPS 坐标
+        close: 关闭
+        match_immich_photos_without_gps_to_your_location_history: 将不带 GPS 的 Immich 照片与您的位置历史记录相匹配。
+        from: 从
+        to: 到
+        tolerance_minutes: 容差（分钟）
+        scan_for_matches: 扫描匹配
+        scanning_immich_photos: 扫描 Immich 照片...
+        all: 全部
+        back: 返回
+        enrich: 补充 GPS 坐标
+        start: 开始：
+        end: 结束：
+        duration: 持续时间：
+        distance: 距离：
+        avg_speed: 平均速度：
+        points_2: 轨迹点：
+        delete_selected_points: 删除所选轨迹点
+        delete_anomaly_points: 删除异常轨迹点
+        community: 社区
+        discord: Discord
+        github: Github
+        mastodon: Mastodon
+        docs: 文档
+        tutorial: 教程
+        import_existing_data: 导入现有数据
+        exporting_data: 导出数据
+        faq: 常见问题
+        contact: 联系方式
+        more_2: 更多
+        privacy_policy: 隐私政策
+        terms_and_conditions: 条款和条件
+        refund_policy: 退款政策
+        impressum: 法律声明
+        blog: 博客
+        re_classify_my_history: 重新分类我的历史记录
+        manage: 管理
+        manage_tags_in_a_new_tab: 在新选项卡中管理标签
+        roads: 道路
+        streets_highways_and_paths: 街道、高速公路和小径
+        railways: 铁路
+        buildings: 建筑物
+        building_numbers_visible_at_high_zoom: 建筑编号（高缩放级别时可见）
+        cities_neighborhoods_regions_and_countries: 城市、社区、地区和国家
+        ocean_lake_and_river_names: 海洋、湖泊和河流名称
+        water: 水域
+        oceans_lakes_rivers_and_streams: 海洋、湖泊、河流和溪流
+        parks_schools_hospitals_airports_etc: 公园、学校、医院、机场等
+        boundaries: 边界
+        food_drink: 饮食
+        restaurants_cafes_bars_bakeries_fast_food: 餐厅、咖啡馆、酒吧、面包店、快餐
+        shopping: 购物
+        supermarkets_clothes_electronics_books_beauty: 超市、服装、电子产品、书籍、美容
+        transport: 交通
+        stations_bus_stops_airports_fuel_parking: 车站、巴士站、机场、加油站、停车场
+        cycling: 骑行
+        bike_parking_rental_and_repair_stations: 自行车停放、租赁和维修站
+        nature_leisure: 自然与休闲
+        parks_forests_beaches_playgrounds_stadiums: 公园、森林、海滩、游乐场、体育场
+        tourism_culture: 旅游与文化
+        museums_theatres_attractions_viewpoints_hotels: 博物馆、剧院、景点、观景点、酒店
+        services_civic: 服务与市政
+        post_offices_libraries_schools_hospitals_police_banks: 邮局、图书馆、学校、医院、警察、银行
+        benches_toilets_drinking_water_fountains_recycling_shelters: 长凳、厕所、饮用水、喷泉、回收站、避难所
+        theme_aria_label: "%{theme} 主题"
+        address_labels: 地址标签
+        background: 背景
+        building_footprints: 建筑轮廓
+        country_and_administrative_borders: 国家和行政边界
+        land_use: 土地使用
+        master_toggle_for_all_poi_groups_below: 以下所有 POI 组的主开关
+        motorway_roads: 高速公路
+        other_roads: 其他道路
+        parks: 公园
+        place_names: 地名
+        primary_roads: 主要道路
+        residential_roads: 住宅道路
+        road_labels: 道路标签
+        street_names_and_route_shields: 街道名称和路线标识
+        train_tracks_and_rail_lines: 火车轨道和铁路线
+        urban_amenities: 城市设施
+        water_labels: 水域标签
+        tiled_rendering: 瓦片渲染
+        beta: 测试版
+        tiled_rendering_description: 在您平移时从矢量瓦片绘制点、路线、轨迹和迷雾，因此较长的日期范围只加载视图内的内容。路线显示您生成的轨迹，按轨迹着色。
+        tiled_rendering_caveats: 在刮刮地图关闭时生效。密集区域会合并为带点数的标记 — 放大即可展开单个点。点编辑不可用，路线按轨迹着色（平均速度，而非渐变），悬停路线不再显示弹窗 — 请改为点击轨迹，实时轨迹可能会延迟几分钟。
+        fill_gaps_with_the_default_basemap: 用默认底图填补空白区域
+        uncovered_areas_are_drawn_from_dawarich_s_default_tile_server: 适用于仅覆盖部分世界的瓦片集。未覆盖的区域将由 Dawarich 的默认瓦片服务器绘制，因此开启此项会向该服务器发送瓦片请求。
+      visit_creation_modal:
+        create_new_visit: 创建新到访记录
+        visit_name: 到访记录名称 *
+        enter_visit_name: 输入到访记录名称...
+        start_time: 开始时间 *
+        end_time: 结束时间 *
+        cancel: 取消
+        create_visit: 创建到访记录
+      webgl_error:
+        webgl_is_not_available: WebGL 不可用
+        map_v2_requires_webgl_to_render_maps_please_enable_hardware: Map v2 需要使用 WebGL 渲染地图。请在浏览器设置中启用硬件加速，或尝试其他浏览器。
+      index:
+        loading: 正在加载...
+        pick_a_day: 选择一天
+        map: 地图
+    residency:
+      show:
+        countries: 国家/地区
+        days_per_country: 每个国家/地区的天数
+        distinct_days_with_at_least_one_tracked_point_per_country: 统计每个国家/地区至少有一个轨迹点的不同天数。这不是税务建议。
+        days: 天
+        mon: 周一
+        wed: 周三
+        fri: 周五
+        more: 更多
+        stay_periods: 停留时段
+        exceeds_183_day_threshold_common_in_many_tax_jurisdictions: 超过许多税务辖区常见的 183 天阈值。
+        no_country_data_for: 暂无以下国家/地区的数据：
+        points_need_reverse_geocoding_to_detect_countries: 需要先对轨迹点进行反向地理编码，才能检测国家/地区。
+    timeline_feeds:
+      calendar:
+        has_suggested_visits: 已生成建议到访
+        next_month: 下个月
+        previous_month: 上个月
+      day:
+        select: 选择
+        moving_duration: 移动 %{duration}
+        low_confidence_stops:
+          one: "%{count} 个低置信度停留点"
+          other: "%{count} 个低置信度停留点"
+        no_visits_match_the_current_search_or_filter: 没有到访记录符合当前搜索或筛选条件。
+        clear_search_filters: 清除搜索与筛选
+        no_visits_tracked_this_day: 当天没有记录到到访记录。
+        previous_day: 前一天
+        next_day: 后一天
+        visit_count:
+          one: "%{count} 条到访记录"
+          other: "%{count} 条到访记录"
+      day_nav:
+        previous_day: 前一天
+        next_day: 第二天
+      feed:
+        no_visits_tracked_this_day: 当天没有记录到到访记录。
+        visits_are_auto_detected_daily_from_your_location_data: 系统每天根据您的位置数据自动检测到访记录。
+      gap_entry:
+        untracked: "%{duration} 无记录"
+      journey_entry:
+        continued_from: 从
+        arrived: ，已到达
+        middot: ·
+        continued_from_date_arrived: 从 %{date} 继续，已到达
+        duration_moving: 移动 %{duration}
+      selection_bar:
+        selected: 已选择 0 项
+        cancel: 取消
+        combine_the_selected_visits_into_one: 将所选到访记录合并为一条
+        merge: 合并
+        remove_the_visit_grouping_your_location_points_stay: 删除到访记录分组（您的轨迹点会保留）
+        delete: 删除
+      track_info:
+        track: "轨迹 #"
+        dist: 距离
+        avg: 平均
+        show_points: 显示轨迹点
+        replay: 重播
+        share: 共享
+        unknown: 未知
+      visit_entry:
+        select_visit_for_merge: 选择要合并的到访记录
+        all_day: 全天
+        pts: 轨迹点
+        unnamed_visit: 未命名到访记录
+        edit: 编辑
+        name: 名称
+        save: 保存
+        attached_place: 关联的地点
+        delete: 删除
+        delete_this_visit_your_location_points_stay: 删除本次到访记录吗？您的轨迹点会保留。
+  notifications:
+    notification:
+      ago: 前
+      please_when_reporting_a_bug_to: 请在向
+      github_issues: GitHub Issues
+      don_t_forget_to_include_logs_from: 报告错误时，不要忘记包含来自
+      dawarich_app: dawarich_app
+      and: 和
+      dawarich_sidekiq: dawarich_sidekiq
+      docker_containers_thank_you: docker 容器。谢谢！
+    index:
+      notifications: 通知
+      mark_all_as_read: 将全部标记为已读
+      delete_all: 删除所有
+      are_you_sure_you_want_to_delete_all_notifications: 您确定要删除所有通知吗？
+    show:
+      back_to_notifications: 返回通知
+      destroy_this_notification: 删除此通知
+      are_you_sure: 您确定吗？
+  places:
+    drawer:
+      source: 来源：
+      total_hours: 总小时数
+      avg_dwell: 平均停留时间
+      no_tags: 无标签
+      recent_visits: 最近到访
+      rarr: →
+      'on': 于
+      no_visits_yet: 尚无到访记录
+      rename: 重命名
+      merge: 合并
+      notes: 备注
+      save: 保存
+      delete: 删除
+      delete_this_place_this_cannot_be_undone: 删除此地点？此操作无法撤销。
+      manual_name_title: 您为此地点命名，因此自动命名不会更改它。将其重命名为“%{default_name}”即可交还自动命名。
+      visit_count:
+        one: "%{count} 次到访"
+        other: "%{count} 次到访"
+    nearby_places:
+      no_nearby_places_found: 未找到附近地点
+      load_more_search_up_to_distance_m: 加载更多（最多搜索到 %{distance}m）
+    index:
+      hello_there: 您好！
+      here_you_ll_find_your_places_created_by_visits_suggestion: 您可以在这里找到通过到访建议流程创建的地点，但目前还没有。
+      name: 名称
+      created_at: 创建于
+      coordinates: 坐标
+      actions: 操作
+      timeline: 时间线
+      places: 地点
+      delete: 删除
+      are_you_sure_deleting_a_place_will_result_in_deleting: 确定吗？删除地点将同时删除该地点的所有到访记录。
+  points:
+    address:
+      address: 地址：
+    index:
+      all_imports: 全部导入
+      export: 导出
+      geojson: GeoJSON
+      gpx: GPX
+      address: 地址
+      speed: 速度
+      coordinates: 坐标
+      recorded_at: 记录时间
+      points: 轨迹点
+      search: 搜索
+      export_as_geojson: 导出为 GeoJSON？
+      export_as_gpx: 导出为 GPX？
+      delete_selected: 删除所选
+      are_you_sure: 确定吗？
+      select_all: 选择全部
+  posters:
+    poster:
+      download_png: 下载 PNG
+      download_pdf: 下载 PDF
+      delete: 删除
+      delete_this_poster: 删除此海报？
+    studio:
+      poster_studio: 海报工作室
+      load: 加载
+      today: 今天
+      last_7_days: 过去 7 天
+      last_month: 上个月
+      close_studio: 关闭工作室
+      recenter: 居中
+      drag_to_pan_scroll_to_zoom_the_frame_is_what: 拖动可平移，滚动可缩放 — 导出的是画面中的内容。
+      layout: 布局
+      theme: 主题
+      customize_colors: 自定义颜色
+      text: 文本
+      show_text: 显示文本
+      title: 标题
+      berlin: Berlin
+      subtitle: 副标题
+      germany: 德国
+      coordinates_line: 坐标线
+      font: 字体
+      layers: 图层
+      track_opacity: 轨迹透明度
+      track_width: 轨迹宽度
+      recent_posters: 最近的海报
+      server_rendered_posters_from_save_to_gallery_they_stay_here: 通过“保存到图库”在服务器端渲染的海报 — 它们会跨会话保留在这里。
+      export_a_file: 导出文件
+      format: 格式
+      png: PNG
+      pdf: PDF
+      print_dpi: 打印 DPI
+      download: 下载
+      render_this_area_server_side_as_the_classic_3_4: 在服务器端将此区域渲染为经典的 3:4 打印海报并将其保留在最近的海报中
+      save_to_gallery: 保存到图库
+      order_a_print: 订购打印版
+      order_a_printed_poster: 订购打印海报
+      free_eu_shipping: 欧盟地区免费配送
+      choose_a_print_size: 选择打印尺寸
+      cancel: 取消
+      pay_via_stripe: · 通过 Stripe 付款
+      printed_by_gelato_exactly_as_previewed_made_to_order_so: 由 Gelato 按预览效果打印。因属于按单定制，一旦开始生产，法定的 14 天撤销权即不再适用（§312g Abs. 2 Nr. 1 BGB）。
+      order_this_poster: 订购此海报
+      back: 返回
+      preparing_poster: 1. 准备海报
+      uploading_poster: 2. 上传海报
+      continue_to_order: 3. 继续下单
+      continue_to_payment: 继续付款
+      checkout_not_working_open_your_order_page: 无法结账？打开您的订单页面
+      close: 关闭
+      roads: 道路
+      water: 水
+      parks_land_use: 公园和土地使用
+      buildings: 建筑物
+      railways: 铁路
+      boundaries: 边界
+      theme_aria_label: "%{theme} 主题"
+      background: 背景
+      motorway_roads: 高速公路
+      other_roads: 其他道路
+      parks: 公园
+      primary_roads: 主要道路
+      residential_roads: 住宅道路
+      track: 轨迹
+  settings:
+    navigation:
+      general: 常规
+      integrations: 集成
+      map: 地图
+      visits: 到访记录
+      two_factor_authentication: 双重验证
+      users: 用户
+      background_jobs: 后台任务
+    background_jobs:
+      index:
+        spamming_many_new_jobs_at_once_is_a_bad_idea: 同时启动大量新任务并非明智之举。请等待任务完成，或提前清理队列。
+        gps_noise_detection_changed_in_this_release_so_your_existing:
+          GPS
+          噪声检测在本版本中有所更改，因此您的现有轨迹点已排入队列进行一次性重新检查。轨迹、统计数据和摘要会根据检查结果重建；历史记录较多时可能需要一些时间
+          — 完成后，某些轨迹点可能会在地图上出现或消失。不会删除任何轨迹点，且该检查在最低优先级队列中运行，因此其他任务始终优先。
+        start_reverse_geocoding: 开始反向地理编码
+        this_job_will_re_run_reverse_geocoding_process_for_all: 此任务将重新为数据库中的所有轨迹点运行反向地理编码。根据轨迹点数量，可能需要几天甚至几周！
+        continue_reverse_geocoding: 继续反向地理编码
+        this_job_will_process_reverse_geocoding_for_all_points_that: 此任务将为所有尚无地理编码数据的轨迹点执行反向地理编码。
+        background_jobs_dashboard: 后台任务仪表板
+        this_will_open_the_background_jobs_dashboard_in_a_new: 这将在新选项卡中打开后台任务仪表板。
+        visits_suggestions: 到访建议
+        enable_or_disable_visits_suggestions_it_s_a_background_task:
+          启用或禁用到访建议。这是每天午夜运行的后台任务。如果您不想收到到访建议，或者使用的是自带到访建议功能的 Dawarich iOS
+          应用，可以将其禁用。
+        background_jobs: 后台任务
+        start_job: 启动任务
+        are_you_sure: 您确定吗？
+        open_dashboard: 打开仪表板
+        disable: 禁用
+        enable: 启用
+    general:
+      changelog_consent:
+        what_s_new_notices: 新增功能通知
+        a_what_s_new_notice_is_shown_when_a_new: 新 Dawarich 版本发布时会显示“新增功能”通知，包括安全修复。该通知从
+        which_like_any_web_request_sees_your_ip_address_browser: 与任何网络请求一样，该服务会看到您的 IP 地址、浏览器、页面 URL 以及您的 Dawarich 版本，但绝不会获取您的帐户、邮箱或位置。
+        get_a_what_s_new_notice_when_a_new_dawarich: 当新 Dawarich 版本发布时接收“新增功能”通知，包括安全修复。该通知从
+        turn_off_notices: 关闭通知
+        turn_on_notices: 打开通知
+      supporter_status:
+        supporter_status: 支持者状态
+        thank_you_for_supporting_dawarich: 感谢您支持 Dawarich
+        email_used_for_patreon_github_ko_fi: 用于 Patreon/GitHub/Ko-fi 的电子邮件
+        github_username_for_github_sponsors_with_a_private_email: GitHub 用户名（适用于使用私密邮箱的 GitHub Sponsors 用户）
+        not_found_in_supporter_list_make_sure_you_re_using: 未在支持者列表中找到。请确保使用的邮箱或 GitHub 用户名与捐赠平台一致。
+        how_to_support_dawarich: 如何支持 Dawarich
+        dawarich_is_a_free_and_open_source_project_your_support: Dawarich 是一个免费的开源项目。您的支持有助于支付托管成本、资助开发并保持项目的活力。您可以通过以下任何平台支持我们：
+        patreon: Patreon
+        github_sponsors: GitHub 赞助商
+        ko_fi: Ko-fi
+        supporter_benefits: 支持者权益
+        access_to_reverse_geocoding_api_see_patreon_tier: 访问反向地理编码 API（请参阅 Patreon 赞助档位）
+        mention_in_github_releases: 在 GitHub Releases 中提及
+        supporter_badge_displayed_in_the_navbar: 导航栏中显示的支持者徽章
+        supporter_example_com: supporter@example.com
+        octocat: octocat
+        verify: 验证
+        supporter_thanks: 感谢您支持 Dawarich%{platform}！
+        supporter_platform: ，通过 %{platform}
+      index:
+        language: 语言
+        your_language: 您的语言
+        the_interface_emails_and_notifications_will_use_this_language: 界面、邮件和通知将使用此语言。
+        email_preferences: 邮件偏好设置
+        monthly_digest_emails: 每月摘要邮件
+        summary_of_your_last_month_sent_on_the_2nd: 上个月的摘要，于 2 日发送。
+        year_end_digest_emails: 年终摘要邮件
+        receive_an_annual_summary_on_january_2nd_with_your_year: 1 月 2 日接收年度摘要，内含您的年度回顾。
+        news_updates: 新闻与更新
+        receive_occasional_emails_about_new_features_and_important_updates: 偶尔接收关于新功能和重要更新的邮件
+        timezone: 时区
+        your_timezone: 您的时区
+        all_dates_and_times_will_be_displayed_in_this_timezone: 所有日期和时间都将显示在该时区中
+        supporter_badge: 支持者徽章
+        show_supporter_badge_in_navbar: 在导航栏中显示支持者徽章
+        display_a_gem_icon_next_to_your_profile_to_show: 在个人资料旁显示宝石图标，用于标识您的支持者身份
+        general_settings: 常规设置
+        save_changes: 保存更改
+    integrations:
+      index:
+        immich_photoprism_integrations: Immich 和 Photoprism 集成
+        connect_your_photo_management_tools_to_see_your_photos_on: 连接您的照片管理工具，即可在地图上查看您的照片。Immich 和 PhotoPrism 集成在 Pro 计划中可用。
+        upgrade_to_pro: 升级到 Pro
+        immich_integration: Immich 集成
+        immich_url: Immich URL
+        the_base_url_of_your_immich_instance: Immich 实例的基础 URL
+        immich_api_key: Immich API 密钥
+        found_in_your_immich_admin_panel_under_api_settings_required: 可在 Immich 管理面板的 API 设置下找到。所需权限：
+        asset_read: asset.read
+        asset_view: asset.view
+        and: 和
+        asset_update: asset.update
+        for_photo_enrichment: （用于为照片补充 GPS 坐标）。
+        skip_ssl_certificate_verification_self_signed_certificates: 跳过 SSL 证书验证（自签名证书）
+        security_warning: 安全警告：
+        disabling_ssl_verification_makes_your_connection_vulnerable_to_man_in: 禁用 SSL 验证会使您的连接容易受到中间人攻击。仅对您在本地网络上信任的自签名证书启用此功能。
+        clears_cached_photo_metadata_and_thumbnails_for_all_integrations: 清除所有集成的缓存照片元数据和缩略图。
+        photoprism_integration: Photoprism 集成
+        photoprism_url: Photoprism URL
+        the_base_url_of_your_photoprism_instance: Photoprism 实例的基础 URL
+        photoprism_api_key: Photoprism API 密钥
+        found_in_your_photoprism_settings_under_library: 可在 PhotoPrism 设置的“图库”下找到
+        airtrail_integration: AirTrail 集成
+        airtrail_url: AirTrail URL
+        the_base_url_of_your_airtrail_instance_your_flights_are: AirTrail 实例的基础 URL。您的航班在地图上显示为弧线。
+        airtrail_api_key: AirTrail API 密钥
+        create_an_api_key_in_airtrail_under_settings_rarr_security: 在 AirTrail 的“设置 → 安全”中创建 API 密钥。
+        last_synced: 上次同步：
+        connected_accounts: 已连接帐户
+        you_ve_connected_your_account_using_the_following_oauth_provider: 您已使用以下 OAuth 提供商连接您的帐户：
+        sync_airtrail_flights: 同步 AirTrail 航班
+        flights_also_sync_automatically_once_a_day: 航班也会每天自动同步一次。
+        user_settings: 用户设置
+        xxxxxxxxxxxxxx: xxxxxxxxxxxxxx
+        refresh_photo_cache: 刷新照片缓存
+        save_test_connection: 保存并测试连接
+        sync_now: 立即同步
+        settings: 设置
+        services_nav: 集成服务
+        services:
+          geocoding: 地理编码
+          immich: Immich
+          photoprism: PhotoPrism
+          airtrail: AirTrail
+        status_connected: 已连接
+        status_failed: 上次连接尝试失败
+    subscriptions:
+      index:
+        hello_there: 您好！
+        you_are_currently_subscribed_to_dawarich_hurray: 您目前已订阅 Dawarich，太棒了！
+        your_subscription_will_be_valid_for_the_next: 您的订阅将在接下来的
+        you_are_currently_not_subscribed_to_dawarich_how_about_we: 您目前尚未订阅 Dawarich。要不要现在订阅？
+        manage_subscription: 管理订阅
+        subscriptions: 订阅
+    two_factor:
+      backup_codes:
+        save_your_backup_codes: 保存您的备份代码
+        store_these_codes_in_a_safe_place_each_code_can: 请将这些代码存放在安全的地方。每个代码只能使用一次。如果您无法使用身份验证器应用，可以用这些代码登录。
+        two_factor_authentication_enabled: 双重验证已启用
+        done: 完成
+        backup_codes: 备份代码
+      show:
+        fa_is_enabled: 2FA 已启用
+        your_account_is_protected_with_two_factor_authentication: 您的帐户已启用双重验证保护。
+        to_disable_2fa_enter_your_password_and_a_current_authenticator: 要禁用 2FA，请输入您的密码和当前验证码（或备用代码）。
+        current_password: 当前密码
+        authenticator_code_or_backup_code: 身份验证器代码或备用代码
+        fa_is_not_enabled: 2FA 未启用
+        add_an_extra_layer_of_security_to_your_account: 为您的帐户多加一层安全保障。
+        two_factor_authentication_adds_an_extra_layer_of_security_by: 登录时需要输入身份验证器应用（Google Authenticator、Authy 等）生成的代码，为您多加一层安全保障。
+        two_factor_authentication: 双重验证
+        disable_2fa: 禁用 2FA
+        enable_2fa: 启用 2FA
+      verify:
+        scan_qr_code: 扫描二维码
+        scan_this_qr_code_with_your_authenticator_app_google_authenticator: 使用身份验证器应用（Google Authenticator、Authy 等）扫描此二维码。
+        can_t_scan_enter_the_code_manually: 无法扫描？手动输入代码
+        verify_setup: 验证设置
+        enter_the_6_digit_code_from_your_authenticator_app_to: 请输入身份验证器应用中的 6 位代码以验证设置。
+        set_up_two_factor_authentication: 设置双重验证
+        verification_code: 验证码
+        verify_and_enable: 验证并启用
+    users:
+      edit:
+        editing_user: 编辑用户
+        email: 邮箱
+        password: 密码
+        leave_blank_to_keep_current: （留空则保持当前状态）
+        admin: 管理员
+        status: 状态
+        update: 更新
+      index:
+        user_registration: 用户注册
+        allow_new_users_to_register_via_email_and_password: 允许新用户通过邮箱和密码注册
+        add_new_user: 添加新用户
+        search_by_email: 按邮箱搜索...
+        search: 搜索
+        email: 电子邮件
+        role: 角色
+        status: 状态
+        points: 轨迹点
+        last_sign_in: 最后登录
+        created_at: 创建于
+        admin: 管理员
+        user: 用户
+        active: 启用
+        inactive: 已停用
+        trial: 试用
+        never: 从不
+        delete: 删除
+        create_a_new_user: 创建新用户！
+        password: 密码
+        close: 关闭
+        delete_user: 删除用户
+        are_you_sure_you_want_to_delete: 确定要删除
+        this_will_permanently_remove_their_account_and_all_associated_data: 吗？这将永久删除该用户的帐户和所有相关数据，此操作无法撤销。
+        cancel: 取消
+        users_management: 用户管理
+        clear: 清除
+        edit: 编辑
+        create: 创建
+        users: 用户
+      show:
+        user_details: 用户详细信息
+        admin: 管理员
+        user: 用户
+        active: 启用
+        inactive: 已停用
+        trial: 试用
+        data_overview: 数据概览
+        points: 轨迹点
+        tracks: 轨迹
+        imports: 导入
+        exports: 导出
+        areas: 区域
+        sign_in_history: 登录历史记录
+        total_sign_ins: 登录总数
+        last_sign_in: 上次登录
+        never: 从不
+        last_sign_in_ip: 上次登录 IP
+        current_sign_in_ip: 当前登录 IP
+        account_created: 帐户已创建
+        api_key: API 密钥
+        copy: 复制
+        actions: 操作
+        edit: 编辑
+        back_to_users: 返回用户
+        regenerate_api_key: 重新生成 API 密钥
+        are_you_sure_this_will_invalidate_the_current_api_key: 确定吗？此操作将使当前 API 密钥失效。
+        send_password_reset_email: 发送密码重置邮件
+        edit_user: 编辑用户
+        user_email: 用户：%{email}
+    visits:
+      redetect_panel:
+        re_run_detection_on_full_history: 对完整历史记录重新运行检测
+        replaces_all_suggested_visits_across_your_entire_history_with_fresh:
+          将使用上述设置，用全新的检测结果替换整个历史记录中的所有建议到访记录。已确认的到访记录和您命名的地点会保留。小型帐户通常几分钟即可完成；多年历史记录可能需要
+          30-60 分钟，并会暂时增加服务器负载。
+        on_the_lite_plan_re_detection_covers_your_visible_12: 在 Lite 计划中，重新检测仅覆盖可见的 12 个月时间范围。
+        available_again_at: 可再次使用时间：
+        replace_all_suggested_visits_across_your_full_history_confirmed_visits: 将替换整个历史记录中的所有建议到访记录。已确认的到访记录会保留。继续？
+      show:
+        tune_how_dawarich_decides_where_you_actually_were: 调整 Dawarich 判断您实际位置的方式
+        these_settings_control_how_the_app_groups_your_gps_points: 这些设置控制应用如何将 GPS 轨迹点分组为到访记录。
+        points_within_this_radius_are_treated_as_the_same_visit: 此半径内的轨迹点会被视为同一次到访。默认值为 100。
+        lower_more_visits_suggested_including_brief_stops_default_3: 数值越低，建议的到访记录越多（包括短暂停留）。默认值为 3。
+        skip_stops_shorter_than_this_raise_to_ignore_short_drive: 跳过短于此时间的停留。调高可忽略短暂路过；调低可捕捉短暂的办事停留。默认值为 5。
+        visit_detection: 到访检测
+        visit_radius_meters: 到访半径（米）
+        minimum_points_to_count_as_a_visit: 计为一次到访所需的最少轨迹点数
+        minimum_visit_duration_minutes: 最短到访持续时间（分钟）
+        save_settings: 保存设置
+    geocoding:
+      show:
+        title: 地理编码
+        provider: 地理编码提供商
+        provider_hint: 用于对您的点进行反向地理编码以及地点和位置搜索的提供商。
+        intro: 地理编码将坐标转换为您的点和统计上的城市与国家名称，并为地点和位置搜索提供支持。
+        host_choice: Photon 服务器
+        choice_chibigeo: ChibiGeo 托管服务
+        choice_chibigeo_desc: 免费套餐：每天 2,500 次查询。开箱即用 — 只需添加您的 API 密钥。
+        choice_komoot: komoot 公共服务器
+        choice_komoot_desc: 免费的共享实例，限流为每秒一次请求。
+        choice_custom: 自定义主机
+        choice_custom_desc: 您自己的 Photon 实例或其他兼容的服务器。
+        recommended: 推荐
+        https_locked: 此主机始终启用 HTTPS。
+        https_on: 开启
+        https_off: 关闭
+        chibigeo_message: ChibiGeo 是由 Dawarich 团队打造的统一定价、隐私优先的地理编码服务。它与 Dawarich 开箱即用。需要 API 密钥。
+        chibigeo_limits: 免费的 Hobby 套餐每天包含 2,500 次查询，每秒 1 次请求 — 硬性上限，不可超额。
+        chibigeo_key_link: 获取您的免费 API 密钥
+        chibigeo_site_link: 什么是 ChibiGeo？
+        disabled: 已禁用
+        env_managed_notice: 地理编码目前由您的实例运营者设置的环境变量管理。仅在移除这些变量后，以下设置才会生效。
+        host: 主机
+        host_hint: 纯主机名，可带端口，例如 photon.example.com:2322
+        api_key: API 密钥
+        api_key_hint: 留空以保留已保存的密钥。
+        api_key_saved: 已为此提供商保存了一个密钥。
+        clear_api_key: 移除已保存的 API 密钥
+        use_https: 使用 HTTPS
+        rps: 每秒请求数
+        rps_hint_custom: 留空表示不限制。请根据您的服务器或套餐允许的数量设置。
+        rps_hint_chibigeo: 与您的 ChibiGeo 套餐保持一致 - Hobby 1、Self-Hoster 5、Builder 10、Scale 25。请求超过套餐允许的数量只会导致查询被拒绝。
+        rps_hint_komoot: komoot 对所有人强制每秒一次请求，因此此项固定。
+        komoot_warning: photon.komoot.io 是一个有严格速率限制的共享公共实例。请求被限流为每秒一次，批量地理编码会很慢。请考虑自行托管 Photon 实例。
+        komoot_no_api_key: komoot 公共服务器不需要 API 密钥 — 请留空。
+        save: 保存
+        test: 测试我的提供商
+        test_hint: 请先保存设置，然后再测试。即使环境变量处于启用状态，测试也会针对您自己的提供商配置执行一次查询。
+      update:
+        updated: 地理编码设置已更新。
+        disabled: 地理编码已禁用。
+        invalid_provider: 未知的地理编码提供商。
+      test:
+        not_configured: 您的帐户尚未配置地理编码提供商。请先保存一个提供商。
+        success: 成功！您的提供商将测试坐标解析为：%{place}。
+        empty: 提供商已响应，但未返回测试坐标的任何结果。
+        failure: 测试失败：%{error}
+        rate_limited: 提供商的速率限制当前繁忙 — 请稍后重试。
+  share_links:
+    hubs:
+      body:
+        live_location: 实时位置
+        time_period: 时间段
+        shared: 共享
+        your_live_location_is_shared_via_a_public_link: 您的实时位置通过公共链接共享。
+        make_something: 制作内容
+        make_something_intro: 链接会持续分享您的数据。以下方式生成一个文件，您发布一次即可，不会有任何内容保持共享状态。
+        make_video: 路线视频
+        make_video_hint: 此时段的动画回放，格式为 MP4。
+        make_poster: 地图海报
+        make_poster_hint: 此时段的可打印地图，格式为 PNG 或 PDF。
+      modal:
+        share: 共享
+        close: 关闭
+      shared_list:
+        copy_link: 复制链接
+        open_in_new_tab: 在新选项卡中打开
+        revoke_link: 撤销链接
+        revoke_this_link_it_will_stop_working_immediately: 撤销此链接吗？它将立即停止工作。
+        revoke: 撤销
+    lives:
+      new:
+        share_your_live_location: 共享您的实时位置
+        your_live_location_is_shared_via_a_public_link: 您的实时位置通过公共链接共享。
+    timelines:
+      new:
+        share_a_date_range: 共享日期范围
+  shared:
+    flash_message:
+      close: 关闭
+    footer:
+      dawarich: Dawarich
+    legal_footer:
+      dawarich: Dawarich
+      made_and_hosted_in_europe: 在 🇪🇺 欧洲制作并托管
+      copyright: 版权所有 ©
+      zeitflow_ug: ZeitFlow UG
+      community: 社区
+      discord: Discord
+      github: GitHub
+      mastodon: Mastodon
+      docs: 文档
+      tutorial: 教程
+      import_existing_data: 导入现有数据
+      exporting_data: 导出数据
+      faq: 常见问题
+      contact: 联系方式
+      more: 更多
+      privacy_policy: 隐私政策
+      terms_and_conditions: 条款和条件
+      refund_policy: 退款政策
+      impressum: 法律声明
+      blog: 博客
+    locale_suggestion:
+      message: Dawarich 也提供英语版本。
+      switch: 切换到英语
+      dismiss: 关闭
+    navbar:
+      family: 家庭
+      my_data: 我的数据
+      help: 帮助
+      dawarich: Dawarich
+      dawarich_logo: Dawarich 徽标
+      get_started: 开始使用
+      finish_setting_up_your_account: 完成帐户设置
+      finish_signup: 完成注册
+      trial_expired: 试用已过期
+      trial_expired_2: 试用已过期 🥺
+      remaining: 剩余
+      changelog_prompt:
+        stay_up_to_date: 及时了解更新？
+        get_a_what_s_new_notice_when_a_new_dawarich: 当新 Dawarich 版本发布时接收“新增功能”通知，包括安全修复。该通知从
+        like_any_web_request_that_host_sees_your_ip_address: 与任何网络请求一样，该服务会看到您的 IP
+          地址、浏览器、页面 URL 和您的 Dawarich 版本，但绝不会看到您的帐户、邮箱或位置。您可以随时更改此设置。
+        no_thanks: 不用了
+        yes_notify_me: 是，请通知我
+      help_links:
+        need_help_ping_us: 需要帮助吗？联系我们！
+        x_twitter: X (Twitter)
+        mastodon: Mastodon
+        email: 邮箱
+        forum: 论坛
+        discord: Discord
+      version_indicator:
+        nbsp:  !
+        new_version_available_check_out_github_releases: 新版本上线！查看 GitHub Releases！
+      map: 地图
+      trips: 行程
+      stats: 统计数据
+      insights_sup_sup_html: 洞察<sup>α</sup>
+      family_sup_sup_html: 家庭<sup>α</sup>
+      points: 轨迹点
+      places: 地点
+      imports: 导入
+      exports: 导出
+      tags: 标签
+      open_navigation_menu: 打开导航菜单
+      subscribe: 订阅
+      account: 帐户
+      settings: 设置
+      subscription: 订阅
+      logout: 注销
+      see_all: 查看全部
+      you_re_an_admin_harry: 您是管理员了，哈利！
+      dawarich_supporter: Dawarich 支持者
+      login: 登录
+      register: 注册
+      trial_ends_in: 您的试用将于 %{time} 后结束
+      theme_toggle:
+        dark_mode: 深色模式
+        light_mode: 浅色模式
+      days_remaining:
+        one: 剩余 %{count} 天
+        other: 剩余 %{count} 天
+    place_creation_modal:
+      create_new_place: 创建新地点
+      place_name: 地点名称 *
+      note: 备注
+      optional_add_any_notes_or_details_about_this_place: 可选 — 添加有关此地点的一些备注或详细信息
+      tags: 标签
+      click_tags_to_select_them_for_this_place: 点击标签即可为此地点选择标签
+      suggested_places: 建议地点
+      nearby_places: 附近地点
+      open_modal_to_load_nearby_suggestions: 打开弹窗以加载附近建议
+      cancel: 取消
+      enter_place_name: 输入地点名称...
+      add_a_personal_note_about_this_place: 添加有关此地点的个人备注...
+      create_place: 创建地点
+      saving: 正在保存...
+    plan_data_window_alert:
+      your_lite_plan_includes_the_last_12_months_of_data: 您的 Lite 计划包含最近 12 个月的数据。升级到 Pro 即可访问完整历史记录。
+      upgrade_to_pro: 升级到 Pro
+      close: 关闭
+    replay_panel:
+      close_replay: 关闭重播
+      times: ×
+      previous_day: 前一天
+      larr: ←
+      no_data_loaded: 未加载数据
+      next_day: 下一天
+      rarr: →
+      no_data: 无数据
+      play_pause: 播放/暂停
+      play_or_pause_replay: 播放或暂停重播
+      recenter_follow_marker: 重新居中并跟随标记
+      recenter_and_follow_the_marker: 重新居中并跟随标记
+      replay_speed: 重播速度
+      previous_point: 上一个轨迹点
+      point_1_of_1: 第 1 个轨迹点，共 1 个
+      next_point: 下一个轨迹点
+      replay_scrubber_time_of_day: 重播进度条 — 时刻
+    sharing_link:
+      sharing_link: 共享链接
+      copy: 复制
+      share_this_link_to_allow_others_to_view_your_stats: 共享此链接以允许其他人查看您的统计数据
+    sharing_modal:
+      sharing_settings: 共享设置
+      share_your_monthly_stats_publicly_with_friends_and_family_public: 与朋友和家人公开分享您的每月统计数据。公共统计数据共享在 Pro 计划中可用。
+      upgrade_to_pro: 升级到 Pro
+      enable_public_access: 启用公共访问
+      allow_others_to_view_this_monthly_digest_auto_saves_on: 允许其他人查看此月度摘要 • 更改时自动保存
+      link_expiration: 链接过期
+      privacy_protection: 隐私保护
+      exact_coordinates_are_hidden: • 精确坐标会被隐藏
+      personal_information_is_not_included: • 不包含个人信息
+      done: 完成
+    links:
+      live:
+        live: ● 实时
+        connecting: 正在连接…
+      missing_resource:
+        this_share_is_no_longer_available: 此共享不再可用
+        the_original_content_was_removed_by_the_owner: 原始内容已被所有者删除。
+      timeline:
+        shared_on_dawarich: · 共享于 Dawarich
+        days_shared_on_dawarich:
+          one: "%{count} 天 · 共享于 Dawarich"
+          other: "%{count} 天 · 共享于 Dawarich"
+      track:
+        distance: 距离
+        duration: 持续时间
+        avg_speed: 平均速度
+        elevation_gain: 累计爬升
+        elevation_loss: 累计下降
+      trip:
+        publicly_shared: 公开共享
+        public: 公开
+        ndash: –
+        trip_notes: 行程备注
+        replay: 重播
+      trip_day_header:
+        middot: ·
+        no_data: 无数据
+      unsupported:
+        this_share_type_is_no_longer_supported: 不再支持此共享类型
+        the_link_may_have_been_created_by_a_newer_or: 该链接可能是由较新或较旧版本的 Dawarich 创建的。
+      not_found:
+        this_shared_link_is_no_longer_available: 此共享链接不再可用
+        the_owner_may_have_revoked_the_link_or_it_may: 所有者可能已撤销该链接或该链接已过期。
+        not_found_dawarich: 未找到 — Dawarich
+      phrase_prompt:
+        enter_the_magic_phrase: 输入魔法短语
+        this_shared_link_is_protected_ask_the_owner_for_the: 此共享链接受保护。请向所有者询问该短语。
+        magic_phrase: 魔法短语
+        unlock: 解锁
+        enter_phrase_dawarich: 输入短语 — Dawarich
+      show:
+        name_shared_on_dawarich: "%{name} — 在 Dawarich 上共享"
+        shared_from_dawarich: 从 Dawarich 共享
+    map:
+      date_navigation_v2:
+        share: 共享
+        start_date_and_time: 开始日期和时间
+        end_date_and_time: 结束日期和时间
+        search: 搜索
+        today: 今天
+        last_7_days: 过去 7 天
+        last_month: 上个月
+      share_indicator:
+        live_location_is_being_shared: 正在共享实时位置
+      upgrade_banner:
+        your_lite_plan_includes_the_last_12_months_of_data: 您的 Lite 计划包含最近 12 个月的数据。
+        upgrade_to_pro: 升级到 Pro
+        dismiss: 关闭
+    studio_switcher:
+      studios: 工作室
+      poster: 海报
+      video: 视频
+  shared_links:
+    expires_field:
+      expires_optional: 过期（可选）
+      stays_active_through_the_end_of_the_day_before_the: 有效期持续到所选日期前一天结束。
+      defaults_to_one_week_from_today_leave_blank_for_a: 默认为自今天起一周。留空则链接永不过期。
+    modal:
+      anyone_with_the_link_will_be_able_to_view_this: 任何知道该链接的人都可以查看此内容。
+      close: 关闭
+    modal_active:
+      sharing: 共享
+      public: 公共
+      public_link: 公共链接
+      copy_link: 复制链接
+      copy_public_link: 复制公共链接
+      magic_phrase: 魔法短语
+      copy_magic_phrase: 复制魔法短语
+      last_viewed: 上次查看
+      ago: 前
+      not_viewed_yet: 尚未查看
+      regenerate_url: 重新生成 URL
+      regenerate_phrase: 重新生成短语
+      revoke: 撤销
+      open_in_new_tab: 在新选项卡中打开
+      generate_a_new_url_the_current_url_will_stop_working: 生成新的 URL？当前的 URL 将停止工作。
+      generate_a_new_phrase: 生成新短语？
+      revoke_this_link_it_will_stop_working_immediately: 撤销这个链接吗？它将立即停止工作。
+      view_count:
+        one: "%{count} 次查看"
+        other: "%{count} 次查看"
+    modal_live_create_form:
+      current_location_in_real_time: 实时当前位置
+      this_shares_your_location_with_anyone_html: 这会与任何知道该链接的人共享您的 %{location}，直到该链接过期或您撤销该链接。
+      magic_phrase_optional: 魔法短语（可选）
+      leave_blank_to_share_without_a_phrase_or_use_the: 留空则无需短语即可共享，或使用自动生成的短语。
+      share_the_route: 共享路线
+      also_show_the_path_travelled_since_this_link_was_created: 还显示自创建此链接以来经过的路线。
+      cancel: 取消
+      create_share_link: 创建共享链接
+    modal_timeline_create_form:
+      start_date: 开始日期
+      end_date: 结束日期
+      magic_phrase_optional: 魔法短语（可选）
+      leave_blank_to_share_without_a_phrase_or_use_the: 留空则无需短语即可共享，或使用自动生成的短语。
+      show_photos: 显示照片
+      cancel: 取消
+      create_share_link: 创建共享链接
+    modal_track_create_form:
+      magic_phrase_optional: 魔法短语（可选）
+      leave_blank_to_share_without_a_phrase_or_use_the: 留空则无需短语即可共享，或使用自动生成的短语。
+      show_photos: 显示照片
+      show_stats: 显示统计数据
+      cancel: 取消
+      create_share_link: 创建共享链接
+    modal_trip_create_form:
+      magic_phrase_optional: 魔法短语（可选）
+      leave_blank_to_share_without_a_phrase_or_use_the: 留空则无需短语即可共享，或使用自动生成的短语。
+      what_to_include_on_the_public_page: 公共页面上应包含的内容
+      cancel: 取消
+      create_share_link: 创建共享链接
+      stats_countries_distance_duration: 统计数据和国家/地区（距离、持续时间）
+      day_by_day_breakdown: 逐日明细
+      per_day_notes: 每日备注
+      photos_on_map: 地图上的照片
+      route_map: 路线图
+      trip_description: 行程描述
+  stats:
+    locked_year_card:
+      available_on_pro: 在 Pro 上可用
+      upgrade_to_pro: 升级到 Pro
+    month:
+      monthly_digest: 每月摘要
+      share: 共享
+      distance_traveled: 行驶距离
+      active_days: 活跃天数
+      countries_visited: 到访过的国家
+      map_summary: 地图摘要
+      heatmap: 热图
+      points: 轨迹点
+      daily_activity: 每日活动
+      peak_day: 高峰日：
+      quietest_week: • 最不活跃的一周：
+      countries_cities: 国家和城市
+      no_location_data_available_for_this_month: 本月没有可用的位置数据
+      cities_visited: 到访过的城市：
+      back_to: ← 返回
+      day: 日
+      distance: 距离
+      month_year_monthly_digest: "%{month} %{year} 每月摘要"
+      city_count:
+        one: "%{count} 个城市"
+        other: "%{count} 个城市"
+    reverse_geocoding_stats:
+      reverse_geocoded_points: 已反向地理编码的轨迹点
+      points_without_data: 无数据的轨迹点
+      countries_visited: 到访过的国家
+      close: 关闭
+      cities_visited: 到访过的城市
+      points_that_were_reverse_geocoded_but_had_no_data: 已完成反向地理编码但没有数据的轨迹点
+      percent_of_total: 占所有点的 %{percent}%%
+    stat:
+      total_distance: 总距离
+      year_month: "%{year}/%{month}"
+    year:
+      map: "[地图]"
+      days: 天数
+      distance: 距离
+    index:
+      year_end_digests: 年终摘要
+      total_distance: 总距离
+      geopoints_tracked: 记录的轨迹点
+      all_stats_data_above_except_for_total_distance_and_number: 除总距离和记录的轨迹点数量外，上述所有统计数据都会每天更新
+      last_update: 最后更新：
+      countries_and_cities_visited_in: 在
+      no_specific_cities_recorded: 没有记录具体城市
+      statistics: 统计数据
+      update_stats: 更新统计数据
+      map: "[地图]"
+      days: 天
+      distance: 距离
+      countries_count_countries_cities_count_cities: "%{countries_count} 个国家/地区、%{cities_count} 个城市"
+    public_month:
+      monthly_digest: 每月摘要
+      distance_traveled: 行驶距离
+      total_distance_for_this_month: 本月总距离
+      active_days: 活跃天数
+      days_with_tracked_activity: 有记录活动的天数
+      countries_visited: 到访过的国家
+      different_countries: 不同的国家/地区
+      location_hexagons: 位置六边形
+      loading_hexagons: 正在加载六边形...
+      daily_activity: 每日活动
+      peak_day: 高峰日：
+      quietest_week: • 最安静的一周：
+      countries_cities: 国家和城市
+      cities: 个城市
+      cities_visited: 到访过的城市：
+      more: 更多
+      powered_by: 由
+      dawarich: Dawarich
+      your_personal_memories_mapper: ，您的个人记忆地图工具。
+      day: 天
+      distance: 距离
+    show:
+      statistics_for_year_year: "%{year} 年的统计数据"
+  tags:
+    form:
+      prohibited_this_tag_from_being_saved: 导致此标签无法保存：
+      click_to_select_an_emoji: 点击以选择表情符号
+      custom: 自定义：
+      choose_from_swatches_or_pick_a_custom_color: 从色板中选择或自定义颜色
+      privacy_zone: 隐私区域
+      hide_map_data_around_places_with_this_tag: 隐藏带有此标签的地点周围的地图数据
+      data_within_this_radius_will_be_hidden_from_the_map: 此半径内的数据将在地图上隐藏
+      home_work_restaurant: 家庭、工作、餐厅...
+      privacy_radius: 隐私半径
+      cancel: 取消
+      errors_prohibited_save:
+        one: 有 %{count} 个错误导致此标签无法保存：
+        other: 有 %{count} 个错误导致此标签无法保存：
+    edit:
+      edit_tag: 编辑标签
+      update_your_tag_details: 更新标签详细信息
+    index:
+      new_tag: 新标签
+      icon: 图标
+      name: 名称
+      color: 颜色
+      places: 地点
+      actions: 操作
+      no_tags_yet: 尚无标签
+      create_tags_to_organize_your_places_and_add_privacy_zones: 创建标签来整理您的地点并添加隐私区域。
+      create_your_first_tag: 创建您的第一个标签
+      tags: 标签
+      edit_tag: 编辑标签
+      delete_tag: 删除标签
+      are_you_sure: 您确定吗？
+    new:
+      new_tag: 新标签
+      create_a_new_tag_to_organize_your_places: 创建新标签来整理您的地点
+  tracks:
+    segments:
+      segment_row:
+        manually_corrected: 手动更正
+        restore_auto_detection: 恢复自动检测
+        transportation_mode_currently: 交通方式（当前为 %{mode}）
+        reset_to_auto_detected_mode: 重置为自动检测模式
+        edited_ago: "%{time} 前编辑"
+        detection_confidence: 检测置信度
+        confidence_percent: "%{percent}%"
+      legs:
+        stop_duration: 停留 · %{duration}
+        transfer: 换乘
+        moving: 移动中
+        mode_unclear: 模式不明确 — 检测置信度过低，无法认定具体模式
+        short_segments:
+          one: 1 个短分段
+          other: "%{count} 个短分段"
+      list:
+        all_segments: 全部分段（%{count}）
+      index:
+        no_segments_for_this_track_yet: 该轨迹尚无分段。
+    share_links:
+      new:
+        this_track_is_shared_via_a_public_link: 该轨迹通过公共链接共享。
+        share_track: 共享 %{track}
+  trial:
+    resume:
+      show:
+        finish_setting_up_your_account: 完成帐户设置
+        your_account_is_almost_ready_to_start_tracking_your_location: 您的帐户即将准备就绪。要开始记录位置数据，请完成订阅结算。7 天免费试用期间不会收取任何费用 — 在试用期结束前随时取消即可，不会产生账单。
+        resume_checkout: 继续结算
+        or_delete_my_account: 或删除我的帐户
+        are_you_sure_this_cannot_be_undone: 您确定吗？此操作无法撤销。
+  trips:
+    countries:
+      middot: ·
+      mdash: "&mdash;"
+      country_count:
+        one: "%{count} 国家/地区"
+        other: "%{count} 国家/地区"
+    distance:
+      calculating: 正在计算...
+    form:
+      prohibited_this_trip_from_being_saved: 导致此行程无法保存：
+      errors_prohibited_save:
+        one: 有 %{count} 个错误导致此行程无法保存：
+        other: 有 %{count} 个错误导致此行程无法保存：
+    recalculate_button:
+      recalculating_hellip: 正在重新计算…
+      recalculate: 重新计算
+      recalculation_failed_try_again: 重新计算失败 — 重试。
+      recalculate_this_trip_s_path_distance_and_countries_from_your: 根据您的最新轨迹点重新计算此行程的路径、距离和国家/地区？
+    trip:
+      no_points_found: 未找到轨迹点
+      calculating: 正在计算...
+      ndash: –
+      country_count:
+        one: "%{count} 国家/地区"
+        other: "%{count} 国家/地区"
+      day_count:
+        one: "%{count} 天"
+        other: "%{count} 天"
+    edit:
+      back_to_trips: 返回行程
+      editing_trip: 编辑行程
+      show_this_trip: 显示此行程
+    index:
+      new_trip: 新行程
+      no_trips_yet: 尚无行程
+      create_your_first_trip_to_see_your_journeys_visualized_with: 创建您的第一个行程，通过地图、照片和统计数据直观查看您的旅程。
+      create_your_first_trip: 创建您的第一个行程
+      trips: 行程
+    new:
+      back_to_trips: 返回行程
+      new_trip: 新行程
+    notes:
+      empty:
+        add_note: + 添加备注
+        write_your_notes_for_this_day: 写下今天的备注...
+        save_note: 保存备注
+        cancel: 取消
+      form:
+        write_your_notes_for_this_day: 写下今天的备注...
+        cancel: 取消
+        update_note: 更新备注
+        save_note: 保存备注
+      note:
+        edit: 编辑
+        write_your_notes_for_this_day: 写下今天的备注...
+        cancel: 取消
+        delete: 删除
+        delete_this_note: 删除此备注吗？
+        update_note: 更新备注
+    show:
+      loading_route_data: 正在加载路线数据...
+      trip_path_is_being_calculated: 正在计算行程路径...
+      download_trip: 下载行程
+      currently_shared: 当前共享
+      public: 公共
+      ndash: –
+      toggle_photo_markers_on_map: 在地图上切换照片标记
+      photos: 照片
+      toggle_airtrail_flights_on_map: 在地图上切换 AirTrail 航班
+      flights: 航班
+      replay_the_trip: 重播行程
+      replay: 重播
+      show_all_days: 显示所有日期
+      poster: 海报
+      middot: ·
+      text: < 1
+      no_data: 无数据
+      trip_notes: 行程备注
+      more_on: 更多信息
+      back_to_trips: 返回行程
+      gpx: GPX
+      geojson: GeoJSON
+      edit_trip: 编辑行程
+      share_trip: 共享行程
+      delete_this_trip_this_cannot_be_undone: 删除此行程？此操作无法撤销。
+      delete_trip: 删除行程
+      poster_unavailable: 行程路线计算完成后即可使用
+      create_poster: 创建此行程的海报
+      more_on_source: 来自 %{source} 的更多信息
+      video: 视频
+      video_unavailable: 行程路线计算完成后可用
+      create_video: 为此行程创建回放视频
+    share_links:
+      new:
+        share_trip: 共享 %{trip}
+        trip_is_shared_via_a_public_link: "%{trip} 通过公共链接共享。"
+  users:
+    digests:
+      index:
+        year_end_digests: 年终摘要
+        generate_digest: 生成摘要
+        no_year_end_digests_yet: 尚无年终摘要
+        year_end_digests_are_automatically_generated_on_january_1st_each: 年终摘要于每年 1 月 1 日自动生成。
+        or_you_can_manually_generate_one_for_a_previous_year: 或者您也可以手动为往年生成一份。
+        shared: 共享
+        distance: 距离
+        countries: 国家
+        new: 新增
+        cities: 城市
+        view_details: 查看详细信息
+      public_year:
+        year_in_review: 年度回顾
+        year_year_in_review: "%{year} 年度回顾"
+        your_journey_by_the_numbers: 您的旅程，用数字说话
+        distance_traveled: 行驶距离
+        countries_visited: 到访过的国家
+        cities_explored: 探索的城市
+        first_time_visits: 首次到访
+        new_countries: 新国家
+        new_cities: 新城市
+        more: 更多
+        year_by_month: 按月份
+        where_they_spent_the_most_time: 他们花费最多时间的地方
+        countries_cities: 国家和城市
+        cities: 城市
+        cities_visited: 到访过的城市：
+        all_time_stats: 全部时间统计
+        total_distance: 总距离
+        track_your_own_adventures_with: 使用
+        dawarich: Dawarich
+        your_personal_memories_mapper: — 您的个人记忆地图工具。
+        month: 月份
+        distance: 距离
+        first_time_count:
+          one: "%{count} 次首次到访"
+          other: "%{count} 次首次到访"
+      show:
+        year_in_review: 年度回顾
+        your_journey_by_the_numbers: 您的旅程，按数字
+        share: 共享
+        distance_traveled: 行驶距离
+        compared_to: 相比
+        countries: 国家
+        cities: 城市
+        first_time_visits: 首次到访
+        new_countries: 新国家
+        new_cities: 新城市
+        more: 更多
+        your_year_month_by_month: 您的年度，逐月呈现
+        where_you_spent_the_most_time: 您花费最多时间的地方
+        no_tracking_data: 没有记录数据
+        track_more_in: 在
+        to_see_a_fuller_picture_of_your_travels: ，以更全面地了解您的旅行！
+        countries_cities: 国家和城市
+        no_location_data_available: 无可用位置数据
+        all_time_stats: 全部时间统计数据
+        countries_visited: 到访过的国家
+        cities_explored: 探索过的城市
+        total_distance: 总距离
+        want_more_insights: 想要更多洞察？
+        upgrade_to_pro_to_see_your_full_year_in_review: 升级到 Pro 即可查看完整的年度回顾，包括每月明细、详细的城市和国家排名、交通分析以及全部时间统计。
+        upgrade_to_pro: 升级到 Pro
+        back_to_all_digests: 返回所有摘要
+        delete: 删除
+        sharing_settings: 共享设置
+        enable_public_access: 启用公共访问
+        allow_others_to_view_this_year_end_digest_auto_saves: 允许其他人查看此年终摘要 • 更改时自动保存
+        link_expiration: 链接到期
+        privacy_protection: 隐私保护
+        exact_coordinates_are_hidden: • 精确坐标会被隐藏
+        personal_information_is_not_included: • 不包含个人信息
+        done: 完成
+        month: 月份
+        distance: 距离
+        year_year_in_review: "%{year} 年度回顾"
+        are_you_sure_you_want_to_delete_the_year_digest: 您确定要删除 %{year} 摘要吗？此操作无法撤销。
+        first_time_count:
+          one: "%{count} 次首次到访"
+          other: "%{count} 次首次到访"
+        day_count:
+          one: "%{count} 天"
+          other: "%{count} 天"
+        city_count:
+          one: "%{count} 城市"
+          other: "%{count} 城市"
+    digests_mailer:
+      monthly_digest:
+        your: 您的
+        in_review: 回顾
+        here_s_what_your_location_history_looked_like_last_month: 以下是您上个月的位置记录。
+        overview: 概述
+        distance: 距离
+        active_days: 活跃天数
+        countries: 国家/地区
+        cities: 城市
+        weekly_pattern: 每周模式
+        daily_distance: 每日距离
+        top_countries: 热门国家/地区
+        top_cities: 热门城市
+        first_visits_this_month: 本月首次到访
+        vs_previous_month: 与上个月相比
+        view_full_insights_rarr: 查看完整洞察 →
+        you_re_receiving_this_because_monthly_digest_emails_are_on: 您收到此邮件是因为您的帐户已开启每月摘要邮件。
+        manage_email_preferences: 管理邮件偏好
+        in_review_here_s_what_your_location_history_looked_like: 回顾 ────────────────────────── 以下是您上个月的位置历史记录。概览 距离
+        new_country: （新国家/地区）
+        new_city: （新城市）
+        vs_previous_month_distance: 与上个月相比 距离
+        view_full_insights: → 查看完整洞察：
+        you_re_receiving_this_because_monthly_digest_emails_are_on_2: ───────────────────────────────────────── 您收到此邮件是因为每月摘要邮件已开启。管理邮件偏好：
+        weekday_totals: "@weekday_totals、"
+        reject_zero: .reject(&:zero?)
+        presence_0: .presence || [0]
+        you_re_receiving_this_because_monthly_digest_emails_are_on_3: 您收到此邮件是因为每月摘要邮件已开启。
+        manage_email_preferences_2: 管理邮件偏好：
+        month_year_in_review: 您的 %{month} %{year} 回顾
+        new_country_line: → %{country}（新国家/地区）
+        new_city_line: → %{city}（新城市）
+      year_end_digest:
+        year_in_review_title: 您的 %{year} 年度回顾
+        year_at_a_glance: 以下是您的 %{year} 概览。
+        the_numbers: 关键数据
+        distance: 距离
+        countries: 国家/地区
+        cities: 城市
+        activity_heatmap: 活动热图
+        none_light_moderate_high_peak: · 无 ░ 轻度 ▒ 中度 ▓ 高 █ 峰值
+        monthly_distance: 每月距离
+        top_countries: 热门国家/地区
+        vs_previous_year: 与上一年相比
+        view_full_insights_rarr: 查看完整洞察 →
+        share_your_year_rarr: 分享您的年度 →
+        you_re_receiving_this_because_yearly_digest_emails_are_on: 您收到此邮件是因为您的帐户已开启年度摘要邮件。
+        manage_email_preferences: 管理邮件偏好
+        view_full_insights: -> 查看完整洞察：
+        share_your_year: -> 分享您的年度：
+        you_re_receiving_this_because_yearly_digest_emails_are_on_3: 您收到此邮件是因为年度摘要邮件已开启。
+        manage_email_preferences_2: 管理邮件偏好：
+  users_mailer:
+    account_destroy_confirmation:
+      confirm_account_deletion: 确认帐户删除
+      hi: 您好
+      we_received_a_request_to_delete_your_dawarich_account: 我们收到了删除您的 Dawarich 帐户的请求。
+      this_is_your_last_chance_to_stop_the_deletion: 这是您停止删除的最后机会。
+      once_confirmed_all_your_location_history_tracks_areas_visits_trips: 确认后，您的所有位置历史记录、轨迹、区域、到访记录、行程和家庭关系都将被永久删除。
+      permanently_delete_my_account: 永久删除我的帐户
+      didn_t_request_this: 未请求此操作？
+      ignore_this_email_the_link_expires_in_1_hour_and: 请忽略此邮件 — 链接将在 1 小时后过期，您的帐户不会受到影响。如果您不断收到此类邮件，请立即更改密码。
+      if_you_have_an_active_apple_or_google_subscription_remember: 如果您有有效的 Apple 或 Google 订阅，请记得在相应平台的设置中取消订阅，以免继续扣费。
+      link: 链接：
+      confirm_account_deletion_hi: 确认删除帐户
+      we_received_a_request_to_delete_your_dawarich_account_this: 您好，我们收到了删除您的
+        Dawarich
+        帐户的请求。这是您停止删除的最后机会。确认后，您的所有位置历史记录、轨迹、区域、到访记录、行程和家庭关系都将被永久删除。永久删除我的帐户：
+      didn_t_request_this_ignore_this_email_the_link_expires: 未请求此操作？请忽略此邮件 — 链接将在 1
+        小时后过期，您的帐户不会受到任何影响。如果您不断收到此类邮件，请立即更改密码。如果您有有效的 Apple 或 Google
+        订阅，请记得在相应平台的设置中取消订阅，以免继续扣费。
+      we_received_a_request_to_delete_your_dawarich_account_this_2:
+        我们收到删除您的 Dawarich
+        帐户的请求。这是您停止删除的最后机会。确认后，您的所有位置历史记录、轨迹、区域、到访记录、行程和家庭关系都将被永久删除。
+      permanently_delete_my_account_2: 永久删除我的帐户：
+      didn_t_request_this_ignore_this_email_the_link_expires_2: 未请求此操作？请忽略此邮件 — 链接将在 1 小时后过期，您的帐户不会受到任何影响。如果您不断收到此类邮件，请立即更改密码。
+    archival_approaching:
+      your_data_history_is_filling_up: 您的数据历史记录即将存满
+      hi: 您好
+      this_is_evgenii_from_dawarich: ，我是来自 Dawarich 的 Evgenii。
+      heads_up: 注意：
+      your_oldest_location_data_will_be_archived_in_about: 您最早的位置数据将于约
+      weeks: 2 周
+      on_the_lite_plan_your_most_recent_12_months_of: 在 Lite 计划中，您最近 12
+        个月的数据仍可完全搜索和交互。更早的数据会被存档 — 随时可以导出，但不会出现在您的地图、搜索、统计数据或时间线重播中。
+      upgrade_to_pro_to_keep_your_full_history: 升级到 Pro 以保留完整历史记录：
+      unlimited_searchable_history_every_month_every_year: 无限可搜索历史记录 — 每月、每年
+      heatmap_fog_of_war_and_globe_view: 热图、战争迷雾和地球视图
+      full_write_api_access: 完整写入 API 访问
+      immich_and_photoprism_integrations: Immich 和 PhotoPrism 集成
+      upgrade_to_pro: 升级到 Pro
+      your_data_is_always_yours_pro_simply_makes_all_of: 您的数据始终属于您 — Pro 只是让全部数据都可在应用内搜索和交互。
+      questions_drop_me_a_message_at_hi_dawarich_app_or: 有疑问吗？请发送邮件到 hi@dawarich.app，或直接回复此邮件。
+      best_regards: 此致，
+      evgenii_from_dawarich: 来自 Dawarich 的 Evgenii
+      your_data_history_is_filling_up_hi: 您的数据历史记录即将存满 您好
+      this_is_evgenii_from_dawarich_heads_up_your_oldest_location:
+        ，我是来自 Dawarich 的 Evgenii。注意：您最早的位置数据将于约 2 周后被存档。在 Lite 计划中，您最近 12
+        个月的数据仍可完全搜索和交互。更早的数据会被存档 — 随时可以导出，但不会出现在您的地图、搜索、统计数据或时间线重播中。升级到 Pro
+        即可保留完整历史记录： - 无限可搜索的历史记录 — 每个月、每一年 - 热图、战争迷雾和地球视图 - 完整写入 API 访问 - Immich
+        和 PhotoPrism 集成 立即升级：
+      your_data_is_always_yours_pro_simply_makes_all_of_2: 您的数据始终属于您 — Pro
+        只是让全部数据都可在应用内搜索和交互。有疑问？请发送邮件到 hi@dawarich.app，或直接回复此邮件。此致，来自 Dawarich 的
+        Evgenii
+      heads_up_your_oldest_location_data_will_be_archived_in: 注意：您最早的位置数据将于约 2 周后被存档。
+      unlimited_searchable_history_every_month_every_year_2: "- 无限可搜索的历史记录 — 每月、每年"
+      heatmap_fog_of_war_and_globe_view_2: "- 热图、战争迷雾和地球视图"
+      full_write_api_access_2: "- 完整写入 API 访问"
+      immich_and_photoprism_integrations_2: "- Immich 和 PhotoPrism 集成"
+      upgrade_now: 立即升级：
+    explore_features:
+      explore_dawarich_features: 探索 Dawarich 功能
+      hi: 您好
+      this_is_evgenii_from_dawarich: ，我是来自 Dawarich 的 Evgenii。
+      you_re_now_2_days_into_your_dawarich_trial_i: 您的 Dawarich 试用已进入第 2 天！希望您喜欢记录位置数据。
+      here_are_some_powerful_features_you_might_want_to_explore: 以下是您可能想要探索的一些强大功能：
+      reliving_your_travels: ✈️ 重温您的旅行
+      revisit_your_past_journeys_with_detailed_maps_and_insights: 通过详细的地图和洞察重温您过去的旅程。
+      statistics_analytics: 📊 统计与分析
+      view_detailed_insights_about_distances_traveled_and_time_spent_in: 查看行驶距离和在不同地点停留时间的详细洞察。
+      interactive_maps: 🗺️ 交互式地图
+      visualize_your_tracks_on_beautiful_maps_with_different_layers_and: 在带有多种图层和样式选项的精美地图上查看您的轨迹。
+      places_visits: 📍 地点和到访记录
+      discover_the_places_you_ve_visited_and_get_automatic_visit: 发现您到访过的地点，并自动检测经常到访的地点。
+      data_export: 📤 数据导出
+      export_your_location_data_in_multiple_formats_gpx_geojson_for: 以多种格式（GPX、GeoJSON）导出您的位置数据，用于备份或与其他应用配合使用。
+      continue_exploring: 继续探索
+      you_have: 您还有
+      days: 5 天
+      left_in_your_trial_make_the_most_of_it: 。充分利用它！
+      best_regards: 此致，
+      evgenii_from_dawarich: 来自 Dawarich 的 Evgenii
+      explore_dawarich_features_hi: 探索 Dawarich 功能 您好
+      this_is_evgenii_from_dawarich_you_re_now_2_days: ，我是来自 Dawarich 的 Evgenii。您的
+        Dawarich 试用已进入第 2 天！希望您喜欢记录位置数据。以下是一些值得探索的强大功能： ✈️ 重温您的旅行
+        通过详细的地图和洞察重温过去的旅程。 📊 统计与分析 查看行驶距离和在不同地点停留时间的详细洞察。 🗺️ 交互式地图
+        在拥有多种图层和样式选项的精美地图上查看您的轨迹。 📍 地点和到访记录 发现您到访过的地点，并自动检测经常到访的地点。 📤 数据导出
+        以多种格式（GPX、GeoJSON）导出位置数据，用于备份或与其他应用配合使用。继续探索：https://my.dawarich.app
+        您的试用期还剩 5 天。充分利用它！此致，来自 Dawarich 的 Evgenii
+      continue_exploring_https_my_dawarich_app: 继续探索：https://my.dawarich.app
+      you_have_5_days_left_in_your_trial_make_the: 您的试用期还剩 5 天。充分利用它！
+    oauth_account_link:
+      confirm_account_link: 确认关联帐户
+      hi: 您好
+      account_link_request_html: 有人（希望是您）正在尝试将 <strong>%{provider}</strong> 登录关联到您的
+        Dawarich 帐户。点击下面的按钮后，该登录方式今后即可访问此帐户。
+      account_link_request_text: 有人（希望是您）正在尝试将 %{provider} 登录关联到您的 Dawarich 帐户。点击下面的链接后，该登录方式今后即可访问此帐户。
+      link: 链接
+      didn_t_request_this: 未请求此操作？
+      ignore_this_email_the_link_expires_in_15_minutes_and: 请忽略此邮件 — 链接将在 15 分钟后过期，您的帐户不会发生任何更改。如果您不断收到此类邮件，请更改密码。
+      link_2: 链接：
+      didn_t_request_this_ignore_this_email_the_link_expires: 未请求此操作？请忽略此邮件 — 链接将在 15 分钟后过期，您的帐户不会发生任何更改。如果您不断收到此类邮件，请更改密码。
+    otp_account_locked:
+      account_temporarily_locked: 帐户暂时锁定
+      hi: 您好
+      your_dawarich_account_has_been: 您的 Dawarich 帐户已被暂时锁定
+      temporarily_locked: 暂时锁定
+      because_10_consecutive_failed_two_factor_authentication_attempts_were_de: ，因为检测到连续 10 次失败的双重验证尝试。
+      the_lock_will_automatically_lift_after: 锁定将在
+      minutes: 30 分钟
+      no_action_is_required_if_this_was_you: 。如果这是您本人操作，无需采取任何措施。
+      didn_t_recognise_this_activity: 无法识别此活动？
+      someone_may_be_trying_to_access_your_account_we_recommend: 有人可能正在尝试访问您的帐户。我们建议立即重置您的密码。
+      reset_your_password: 重置您的密码
+      if_you_need_further_assistance_contact_us_at: 如果您需要进一步帮助，请通过
+      security_dawarich_app: security@dawarich.app
+      account_temporarily_locked_hi: 帐户暂时锁定
+      your_dawarich_account_has_been_temporarily_locked_because_10_consecutive:
+        您好，您的 Dawarich 帐户已被暂时锁定，因为检测到连续 10 次失败的双重验证尝试。锁定将在 30
+        分钟后自动解除。如果是您本人操作，则无需任何操作。不是您本人的操作？有人可能正在尝试访问您的帐户。我们建议立即重置密码。重置您的密码：
+      if_you_need_further_assistance_contact_us_at_security_dawarich: 如果您需要进一步帮助，请通过 security@dawarich.app 联系我们。
+      your_dawarich_account_has_been_temporarily_locked_because_10_consecutive_2: 您的 Dawarich 帐户已被暂时锁定，因为检测到连续 10 次失败的双重验证尝试。
+      the_lock_will_automatically_lift_after_30_minutes_no_action: 30 分钟后锁定将自动解除。如果是您本人操作，则无需任何操作。
+      didn_t_recognise_this_activity_someone_may_be_trying_to: 不是您本人的操作？有人可能正在尝试访问您的帐户。我们建议立即重置密码。
+      reset_your_password_2: 重置密码：
+    welcome:
+      welcome_to_dawarich: 欢迎使用 Dawarich！
+      hi: 您好
+      this_is_evgenii_from_dawarich: ，我是来自 Dawarich 的 Evgenii。
+      welcome_to_dawarich_i_m_excited_to_have_you_on: 欢迎来到 Dawarich！很高兴您加入我们。
+      your_7_day_free_trial_has_started_during_this_time: 您的 7 天免费试用期已开始。在此期间，您可以：
+      track_your_location_data: 记录您的位置数据
+      view_your_movement_patterns_on_beautiful_maps: 在精美地图上查看您的出行模式
+      analyze_your_travel_statistics: 分析您的旅行统计数据
+      export_your_data_in_various_formats: 以各种格式导出您的数据
+      start_exploring_dawarich: 开始探索 Dawarich
+      if_you_have_any_questions_feel_free_to_drop_me: 如果您有任何疑问，请随时发送邮件到 hi@dawarich.app，或直接回复此邮件。
+      happy_tracking: 记录愉快！
+      evgenii_from_dawarich: Dawarich 的 Evgenii
+      welcome_to_dawarich_hi: 欢迎来到 Dawarich！您好
+      this_is_evgenii_from_dawarich_welcome_to_dawarich_i_m: ，我是来自 Dawarich 的
+        Evgenii。欢迎来到 Dawarich！很高兴您加入我们。您的 7 天免费试用已开始。在此期间，您可以： - 记录您的位置数据 -
+        在精美地图上查看您的出行模式 - 分析您的旅行统计数据 - 以各种格式导出您的数据 开始探索
+        Dawarich：https://my.dawarich.app 如果您有任何疑问，请随时发送邮件到
+        hi@dawarich.app，或直接回复此邮件。记录愉快！来自 Dawarich 的 Evgenii
+      track_your_location_data_2: "- 记录您的位置数据"
+      view_your_movement_patterns_on_beautiful_maps_2: "- 在精美地图上查看您的出行模式"
+      analyze_your_travel_statistics_2: "- 分析您的旅行统计数据"
+      export_your_data_in_various_formats_2: "- 以各种格式导出您的数据"
+      start_exploring_dawarich_https_my_dawarich_app: 开始探索 Dawarich：https://my.dawarich.app
+  visits:
+    buttons:
+      confirm: 确认
+      delete: 删除
+      delete_this_visit_your_location_points_stay: 删除本次到访记录吗？您的轨迹点会保留。
+  date:
+    formats:
+      month_name: "%B"
+      month_year: "%Y年%B"
+      short_month_day: "%m月%-d日"
+      short_month_day_padded: "%m月%d日"
+      medium: "%Y年%m月%-d日"
+      medium_padded: "%Y年%m月%d日"
+      long: "%Y年%m月%d日"
+      weekday_month_day: "%A %m月%-d日"
+      short_month_day_weekday: "%m月%-d日 %A"
+      short_weekday_month_day: "%a %m月%-d日"
+      iso: "%Y-%m-%d"
+      day_month_year: "%Y年%m月%-d日"
+      day_month_year_abbreviated: "%Y年%m月%-d日"
+      month_day: "%m月%-d日"
+      month_day_padded: "%m月%d日"
+      month_day_year: "%Y年%m月%-d日"
+      day_year: "%Y年%-m月%-d日"
+      abbreviated_month_name: "%b"
+  time:
+    formats:
+      hour_minute: "%H:%M"
+      long_with_time: "%Y年%m月%d日 %H:%M"
+      human: "%Y年%m月%-d日 %H:%M"
+      human_with_seconds: "%Y年%m月%-d日 %H:%M:%S"
+      short_with_time: "%m月%d日 %H:%M"
+  common:
+    app_name: Dawarich
+    not_available: 不适用
+    time_ago: "%{time}前"
+    time_from_now: "%{time}后"
+  enums:
+    user:
+      status:
+        inactive: 已停用
+        active: 启用
+        trial: 试用版
+        pending_payment: 待付款
+    export:
+      file_type:
+        points: 轨迹点
+        user_data: 用户数据
+    import:
+      source:
+        google_semantic_history: Google 语义历史记录
+        owntracks: OwnTracks
+        google_records: Google 记录
+        google_phone_takeout: Google 手机导出
+        gpx: GPX
+        immich_api: Immich API
+        geojson: GeoJSON
+        photoprism_api: PhotoPrism API
+        user_data_archive: 用户数据存档
+        kml: KML
+        csv: CSV
+        tcx: TCX
+        fit: FIT
+        polarsteps: Polarsteps
+        google_photos: Google 相册
+        mobile_photo_library: 手机照片库
+    place:
+      source:
+        manual: 手动
+        photon: Photon
+    shared_link:
+      resource_type:
+        trip: 行程
+        track: 轨迹
+        timeline: 时间轴
+        live: 实时
+  photo_sources:
+    immich: Immich
+    photoprism: PhotoPrism
+  supporter_platforms:
+    github: GitHub
+    patreon: Patreon
+    ko_fi: Ko-fi
+  transportation_verbs:
+    unknown: 出行
+    stationary: 停留
+    walking: 步行
+    running: 跑步
+    cycling: 骑行
+    driving: 开车
+    bus: 乘公交
+    train: 乘火车
+    flying: 乘坐飞机
+    boat: 乘船
+    motorcycle: 骑摩托
+  transportation_modes:
+    unknown: 未知
+    stationary: 静止
+    walking: 步行
+    running: 跑步
+    cycling: 骑行
+    driving: 驾驶
+    bus: 公交
+    train: 火车
+    flying: 飞行
+    boat: 船
+    motorcycle: 摩托车
+  helpers:
+    page_entries_info:
+      entry:
+        zero: 条记录
+        one: 条记录
+        other: 条记录
+      one_page:
+        display_entries:
+          zero: 未找到任何记录
+          one: 正在显示 <b>1</b> %{entry_name}
+          other: 正在显示<b>全部 %{count}</b> %{entry_name}
+      more_pages:
+        display_entries: "正在显示第 <b>%{first}&nbsp;-&nbsp;%{last}</b> %{entry_name}，共 <b>%{total}</b>"
+    application:
+      full_title: "%{page_title} | %{app_name}"
+      expired: 已过期
+      days_left:
+        one: 还剩 %{count} 天
+        other: 还剩 %{count} 天
+      finish_signup: 完成注册
+      resume: 恢复
+      subscribe: 订阅
+      pro_preview: 在 Pro 上可用 — 点击预览
+      pro_only: 在 Pro 上可用
+      pro_badge: Pro
+    timeline:
+      unnamed: 未命名
+    datetime_formatting:
+      expires_on: 于 %{date} 到期
+    insights:
+      monthly_digest: 每月摘要
+      monthly_digest_title: "%{month} %{year} 摘要"
+      minute_count:
+        one: "%{count} 分钟"
+        other: "%{count} 分钟"
+      day_count:
+        one: "%{count} 天"
+        other: "%{count} 天"
+      hour_count:
+        one: "%{count} 小时"
+        other: "%{count} 小时"
+    users:
+      digests:
+        distance_with_unit: "%{distance} %{unit}"
+        moon_distance: 这是到月球距离的 %{percentage}%！
+        earth_circumference: 这是地球周长的 %{percentage}%！
+      digests_mailer:
+        same: → 相同
+        new: ↑ 新
+    trips:
+      duration:
+        years:
+          one: "%{count} 年"
+          other: "%{count} 年"
+        months:
+          one: "%{count} 月"
+          other: "%{count} 月"
+        days:
+          one: "%{count} 天"
+          other: "%{count} 天"
+        hours:
+          one: "%{count} 小时"
+          other: "%{count} 小时"
+    stats:
+      countries_and_cities: "%{countries} 个国家/地区、%{cities} 个城市"
+      distance: "%{value} %{unit}"
+      peak_day: "%{date} (%{distance})"
+      week_range: "%{start_date} - %{end_date}"
+    stats_comparison:
+      same_as_previous_month: 与上个月相同
+      distance:
+        more: 比今年平均值高 %{percentage}%
+        less: 比今年平均值低 %{percentage}%
+      active_days:
+        more:
+          one: 比上个月多 %{count} 天
+          other: 比上个月多 %{count} 天
+        less:
+          one: 比上个月少 %{count} 天
+          other: 比上个月少 %{count} 天
+      countries:
+        more:
+          one: 比上个月多 %{count} 个国家/地区
+          other: 比上个月多 %{count} 个国家/地区
+        less:
+          one: 比上个月少 %{count} 个国家/地区
+          other: 比上个月少 %{count} 个国家/地区
+    imports:
+      extraction_status:
+        not_attempted: 未提取
+        pending: 已排队
+        running: 正在提取
+        completed: 已提取
+        failed: 失败
+        unsupported: 不可用
+    posters:
+      render_phases:
+        fetching_data: 正在获取地图数据…
+        drawing_map: 绘制地图…
+        drawing_route: 绘制路线…
+        saving: 正在保存图像…
+        queued: 已排队…
+    shared_links:
+      date_ranges:
+        same_month: "%{start_date}–%{end_date}"
+        same_year: "%{start_date} – %{end_date}"
+        different_years: "%{start_date} – %{end_date}"
+      timeline_subtitle: "%{range} 通过公共链接共享。"
+      trip_subtitle: "%{trip} 通过公共链接共享。"
+      track: 轨迹
+      track_label: "%{mode} · %{date} · %{distance} %{unit}"
+    tracks:
+      segments:
+        mode_disabled: "%{mode}（在设置中禁用）"
+  calendar:
+    weekday_initials:
+      - 一
+      - 二
+      - 三
+      - 四
+      - 五
+      - 六
+      - 日
+    abbreviated_weekdays:
+      - 周一
+      - 周二
+      - 周三
+      - 周四
+      - 周五
+      - 周六
+      - 周日
+  oauth_providers:
+    google: Google
+    github: GitHub
+    apple: Apple
+    sign_in_with_google: 使用 Google 登录
+    sign_in_with_github: 使用 GitHub 登录
+    sign_in_with_apple: 使用 Apple 登录
+    sign_in_with_provider: 使用 %{provider} 登录
+    openid_connect: OpenID Connect
+  statuses:
+    completed: 已完成
+    processing: 正在处理
+    created: 已创建
+    failed: 失败
+    deleting: 正在删除
+    suggested: 建议
+    confirmed: 已确认
+    declined: 已拒绝
+  units:
+    meters: "%{value} m"
+    meters_compact: "%{value}m"
+    kilometers: "%{value} km"
+    miles: "%{value} mi"
+    minutes: "%{value} 分钟"
+    hours_minutes_compact: "%{hours}h %{minutes}m"
+    days_hours_compact: "%{days}d %{hours}h"
+    days_compact: "%{value}d"
+    minutes_compact: "%{value}m"
+    minutes_word_compact: "%{value}min"
+    hours_compact: "%{value}h"
+    seconds_compact: "%{value}s"
+    feet: "%{value} 英尺"
+    meters_per_second_squared: "%{value} 米/秒²"
+    miles_per_hour: 英里/小时
+    kilometers_per_hour: 公里/小时
+    speed_mph: "%{value} 英里/小时"
+    speed_kmh: "%{value} 公里/小时"
+    kilometers_suffix: 公里
+  controllers:
+    api:
+      v1:
+        areas:
+          area_was_successfully_deleted: 区域已成功删除
+        auth:
+          apple:
+            apple_has_not_verified_this_email_sign_in_with_password: Apple 尚未验证此邮箱。请使用密码登录，并在设置中完成关联。
+            this_email_already_has_a_dawarich_account_we_sent_a: 此邮箱已有 Dawarich 帐户。我们已向该邮箱发送确认链接，点击即可关联您的 Apple ID。
+            we_couldn_t_find_your_existing_account_and_apple_didn: 我们找不到您现有的帐户，而且 Apple
+              这次没有将您的邮箱分享给我们。Apple 只会分享一次。请前往 appleid.apple.com → 使用 Apple 登录，找到
+              Dawarich，选择“停止使用 Apple 登录”，然后再次尝试登录。
+            token_verification_failed: Apple 令牌验证失败：%{message}
+          google:
+            google_has_not_verified_this_email_sign_in_with_password: Google 尚未验证此邮箱。请使用密码登录，并在设置中完成关联。
+            this_email_already_has_a_dawarich_account_we_sent_a: 此邮箱已有 Dawarich 帐户。我们已向该邮箱发送确认链接，点击即可关联您的 Google 登录。
+            token_verification_failed: Google 令牌验证失败：%{message}
+          otp_challenges:
+            invalid_challenge: 验证请求无效或已过期：%{message}
+            account_locked: 由于 2FA 验证失败次数过多，帐户已被暂时锁定。您可以使用备用代码，等待 30 分钟，或重置密码。
+            invalid_two_factor_code: 双重验证码无效
+          sessions:
+            invalid_credentials: 邮箱或密码不正确
+        digests:
+          invalid_year: 年份无效
+          digest_already_exists: 摘要已存在
+          digest_for_year_is_being_generated: 正在生成 %{year} 的摘要
+        families:
+          locations:
+            start_at_and_end_at_are_required: 需要 start_at 和 end_at
+            invalid_date_format: 日期格式无效
+            user_is_not_part_of_a_family: 用户不属于某个家庭
+          location_requests:
+            not_found: 未找到位置请求
+          sharing:
+            missing_required_parameter_param: 缺少必需的参数：%{parameter}
+        imports:
+          pending:
+            an_error_occurred: 发生错误
+            missing_file: 缺少文件
+            missing_filename: 缺少原始文件名
+            empty_file: 文件为空
+            file_too_large: 文件超过 100MB 限制
+            unsupported_file_type: 不支持的文件类型“%{extension}”
+            storage_capacity_exceeded: 超过待导入存储容量
+          missing_required_parameter_file: 缺少必需参数：file
+          an_error_occurred_while_processing_the_import: 处理导入时出错
+          unsupported_file_type_ext_allowed_join: 不支持的文件类型“%{ext}”。允许：%{allowed}
+        locations:
+          coordinates_lat_lon_are_required: 需要坐标（纬度、经度）
+          search_failed_please_try_again: 搜索失败。请重试。
+          invalid_coordinates_lat_must_be_90_90_lon_must_be: 无效坐标：纬度必须为 -90..90，经度必须为 -180..180
+          search_query_too_long_max_200_characters: 搜索内容过长（最多 200 个字符）
+        maps:
+          hexagons:
+            missing_required_parameter_param: 缺少必需参数：%{parameter}
+            shared_stats_not_found_or_no_longer_available: 未找到共享统计信息或不再可用
+            invalid_date_format: 日期格式无效
+            failed_to_generate_hexagon_grid: 生成六边形网格失败
+        notes:
+          note_was_successfully_deleted: 备注已成功删除
+        overland:
+          batches:
+            batch_creation_failed: 批量创建失败
+        owntracks:
+          points:
+            point_creation_failed: 轨迹点创建失败
+        photos:
+          failed_to_fetch_photos: 获取照片失败
+          capitalize_integration_not_configured: "%{source} 集成未配置"
+          failed_to_fetch_thumbnail: 获取缩略图失败
+        places:
+          latitude_and_longitude_are_required: 需要纬度和经度
+          lat_and_lon_are_required: 需要纬度和经度
+          invalid_coordinates: 坐标无效
+        points:
+          invalid_bounding_box: 边界框无效
+          point_creation_failed: 轨迹点创建失败
+          point_deleted_successfully: 轨迹点删除成功
+          no_points_selected: 未选择轨迹点
+          too_many_points_selected_maximum_is_bulk_destroy_max_per: 选择的轨迹点过多。每次请求最多 %{limit} 个。
+          points_were_successfully_destroyed: 轨迹点已成功删除
+          anomaly_re_evaluation_already_in_progress: 异常重新评估已在进行中。
+          re_evaluation_queued_existing_anomaly_flags_will_be_cleared_and: 重新评估已加入队列。现有的异常标记将被清除并重新计算。
+        recalculations:
+          invalid_year: 年份无效
+          recalculation_already_in_progress_for_this_user: 该用户的重新计算已在进行中。
+          recalculation_queued_tracks_stats_and_digests_will_be_regenerated_in: 重新计算已加入队列。轨迹、统计数据和摘要将在后台重新生成。
+        settings:
+          mobile:
+            settings_updated: 设置已更新
+            something_went_wrong: 出了点问题
+          something_went_wrong: 出了点问题
+          settings_updated: 设置已更新
+          tile_url_error: 瓦片 URL 必须包含 {z}、{x} 和 {y} 占位符，或者是 MapLibre 样式 URL
+        subscriptions:
+          configuration_error: 配置错误
+          invalid_webhook_secret: 无效的 Webhook 密钥
+          missing_event_id: 缺少 event_id
+          stale_event: 事件已过期
+          subscription_updated_successfully: 订阅已成功更新
+          failed_to_verify_subscription_update: 无法验证订阅更新。
+          invalid_subscription_data_received: 收到无效的订阅数据。
+        timeline:
+          start_at_and_end_at_are_required: 需要 start_at 和 end_at
+          date_range_cannot_exceed_max_range_days_days: 日期范围不能超过 %{max_days} 天
+        traccar:
+          points:
+            point_creation_failed: 轨迹点创建失败
+        users:
+          destroy:
+            cannot_delete: 您是某个家庭的所有者，该家庭还有其他成员。删除帐户前，请先转移所有权或移除成员。
+            deletion_scheduled: 您的帐户已安排删除。
+            request_sent: "%{message} 如果您有有效的 Apple 或 Google 订阅，请在相应平台的设置中取消订阅，以免继续扣费。"
+          two_factor:
+            disable_2fa_first_to_re_provision_the_secret: 请先禁用 2FA，再重新配置密钥。
+            two_factor_authentication_disabled: 双重验证已禁用
+            provide_a_valid_two_factor_code_or_backup_code_to: 请提供有效的双重验证码（或备用代码）以禁用 2FA。
+            provide_your_current_password: 请输入您当前的密码。
+          configuration_error: 配置错误
+          invalid_webhook_secret: 无效的 Webhook 密钥
+          ids_is_required: 需要 ids
+        visits:
+          possible_places:
+            visit_not_found: 未找到到访记录
+          select_place:
+            visit_not_found: 未找到到访记录
+          invalid_place: 无效地点
+          invalid_area: 无效区域
+          at_least_2_visits_must_be_selected_for_merging: 至少需要选择 2 条到访记录才能合并
+          one_or_more_visits_not_found: 未找到一条或多条到访记录
+          count_visits_updated_successfully: "%{count} 条到访记录更新成功"
+          failed_to_delete_visit: 删除到访记录失败
+          visit_not_found: 未找到到访记录
+          failed_to_create_visit: 无法创建到访记录
+      record_not_found: 未找到记录
+      complete_your_subscription_to_continue: 请先完成订阅，然后继续。
+      this_feature_requires_a_pro_plan: 此功能需要 Pro 计划。
+      write_api_access_requires_a_pro_plan_your_data_was: 写入 API 访问需要 Pro 计划。您的数据未被修改。
+      user_account_is_not_active_or_has_been_deleted: 用户帐户未激活或已被删除
+      user_account_is_not_active: 用户帐户未激活
+      user_subscription_is_not_active: 用户订阅未激活
+      missing_required_parameters_join: 缺少必需参数：%{parameters}
+      points_limit_exceeded: 超出轨迹点限制
+    application:
+      your_account_is_not_active: 您的帐户未激活。
+      please_sign_in_to_continue: 请登录以继续。
+      you_need_to_sign_in_first: 您需要先登录。
+      this_feature_requires_a_pro_plan: 此功能需要 Pro 计划。
+      your_account_has_been_deleted: 您的帐户已被删除。
+      you_are_not_authorized_to_perform_this_action: 您无权执行此操作。
+      family_plan_required: 此功能需要家庭计划。
+    areas:
+      created: 区域创建成功！
+      updated: 区域更新成功！
+    auth:
+      account_links:
+        this_link_has_already_been_used: 该链接已被使用。
+        link_invalid_or_expired: 链接无效或过期。
+        provider_is_now_linked_to_your_account: "%{provider} 现已关联到您的帐户。"
+        no_pending_account_link: 没有待处理的帐户关联。
+        account_no_longer_exists: 帐户不再存在。
+        too_many_invalid_attempts_start_the_linking_flow_again: 无效尝试次数过多。请重新开始关联流程。
+        pending_is_now_linked_to_your_account: "%{pending} 现已关联到您的帐户。"
+        linked_sign_in_with_two_factor: "%{provider} 现已关联到您的帐户。请使用密码和 2FA 验证码登录以继续。"
+        incorrect_password: 密码不正确。
+        confirmation_link_sent: 我们已向 %{email} 发送确认链接。点击即可关联您的帐户。
+        already_linked_to_different_identity: 此帐户已关联到不同的 %{provider} 身份。
+      ios:
+        authentication_successful_you_can_close_this_window: 验证成功！您可以关闭此窗口。
+        ios_authentication_successful: iOS 身份验证成功
+    concerns:
+      share_links:
+        managable:
+          created: 已创建共享链接。
+          deleted: 共享链接已删除。
+          revoked: 分享链接已撤销。
+          url_regenerated: URL 重新生成。
+          magic_phrase_regenerated: 魔法短语已重新生成。
+          no_active_share_link: 当前没有共享链接。
+      account_deletion_confirmable:
+        confirm_with_email: 输入您的邮箱地址以确认删除。
+        confirm_with_password: 请输入当前密码以删除您的帐户。
+      pending_import_claimable:
+        expired: 您的导入链接已过期或已被使用。您可以从仪表板重新上传。
+        importing: 正在导入 %{filename}... 您很快就会在仪表板中看到它。
+        queue_failed: 您的导入无法加入队列。请从仪表板上传文件。
+    exports:
+      export_was_successfully_initiated_please_wait_until_it_s_finished: 导出已成功启动。请等待完成。
+      export_failed_to_initiate_please_try_again: 导出启动失败。请重试。
+      export_was_successfully_destroyed: 导出已成功删除。
+    families:
+      family_created_successfully: 家庭创建成功！
+      family_updated_successfully: 家庭更新成功！
+      cannot_delete_family_with_members_remove_all_members_first: 无法删除包含成员的家庭。请先移除所有成员。
+      family_deleted_successfully: 家庭删除成功！
+      you_are_not_in_a_family: 您不在任何家庭中
+      failed_to_create_family: 无法创建家庭
+    family:
+      invitations:
+        this_invitation_has_expired: 此邀请已过期。
+        this_invitation_is_no_longer_valid: 此邀请不再有效。
+        invitation_sent_successfully: 邀请发送成功！
+        invitation_cancelled: 邀请已取消
+        failed_to_cancel_invitation_please_try_again: 无法取消邀请。请重试
+        an_unexpected_error_occurred_while_cancelling_the_invitation: 取消邀请时发生意外错误
+        you_are_not_in_a_family: 您不在任何家庭中
+        failed_to_send_invitation: 发送邀请失败
+      location_requests:
+        user_not_found_in_your_family: 在您的家庭中找不到用户
+        location_request_sent_successfully: 位置请求发送成功
+        this_request_has_expired_or_already_been_responded_to: 此请求已过期或已被处理
+        location_sharing_enabled: 位置共享已启用
+        location_request_declined: 位置请求已被拒绝
+        you_are_not_authorized_to_view_this_request: 您无权查看此请求
+        you_must_be_part_of_a_family: 您必须是某个家庭的成员
+      location_sharing:
+        user_is_not_part_of_a_family: 用户不属于任何家庭
+      memberships:
+        welcome_to_the_family: 欢迎加入家庭！
+        an_unexpected_error_occurred_please_try_again_later: 发生意外错误。请稍后重试
+        you_have_left_the_family: 您已离开家庭
+        email_has_been_removed_from_the_family: "%{email} 已从家庭中删除"
+        you_are_not_in_a_family: 您不在任何家庭中
+        unable_to_accept_invitation: 无法接受邀请
+        invitation_expired: 此邀请不再有效或已过期
+        invitation_processed: 此邀请已被处理
+        invitation_email_mismatch: 此邀请不是发送到您的邮箱的
+        not_authorized_to_accept: 您无权接受此邀请
+        failed_to_remove_member: 移除成员失败
+    imports:
+      extractions:
+        extraction_queued: 提取任务已加入队列。
+        removing_extracted_data: 正在删除提取的数据…
+      import_was_successfully_updated: 导入已成功更新。
+      no_files_were_selected_for_upload: 未选择上传文件
+      no_valid_file_references_were_found_please_upload_files_using: 未找到有效文件。请使用文件选择器上传。
+      size_files_are_queued_to_be_imported_in_background: "%{size} 个文件已加入后台导入队列"
+      import_is_being_deleted: 正在删除导入。
+      points_limit_exceeded: 超出轨迹点限制
+    insights:
+      all_time: 全部时间
+      year_overview: "%{year} 概述"
+    notifications:
+      all_notifications_marked_as_read: 所有通知已标记为已读。
+      all_notifications_where_successfully_destroyed: 所有通知已成功删除。
+      notification_was_successfully_destroyed: 通知已成功删除。
+    places:
+      place_was_successfully_destroyed: 地点已成功删除。
+      created: 地点创建成功！
+      updated: 地点更新成功！
+    points:
+      no_points_selected: 未选择轨迹点。
+      points_were_successfully_destroyed: 轨迹点已成功删除。
+    posters:
+      poster_generation_started_this_takes_about_a_minute: 已开始生成海报，大约需要一分钟。
+      failed_to_start_poster_generation: 无法启动海报生成。
+      poster_deleted: 海报已删除。
+      untitled: 无标题海报
+    settings:
+      background_jobs:
+        settings_updated: 设置已更新
+        settings_could_not_be_updated: 设置无法更新
+        job_was_successfully_created: 任务已成功创建。
+      general:
+        settings_updated: 设置已更新
+        failed_to_update_settings: 无法更新设置
+        please_enter_an_email_address_or_github_username: 请输入邮箱地址或 GitHub 用户名
+        verified_thank_you_for_supporting_dawarich_via_platform: 已验证！感谢您通过 %{platform} 支持 Dawarich。
+        not_found_in_supporter_list_make_sure_you_re_using: 未在支持者列表中找到。请确保使用的邮箱或 GitHub 用户名与捐赠平台一致。
+      onboardings:
+        demo_data_loaded: 演示数据已加载。
+        demo_data_is_already_loaded: 演示数据已加载。
+        something_went_wrong_loading_demo_data: 加载演示数据时出错。
+        demo_data_removed: 演示数据已删除。
+        no_demo_data_found: 未找到演示数据。
+        something_went_wrong_removing_demo_data: 删除演示数据时出错。
+      two_factor:
+        incorrect_password: 密码不正确。
+        provide_a_valid_two_factor_code_or_backup_code_to: 请提供有效的双重验证码（或备用代码）以禁用 2FA。
+        two_factor_authentication_disabled: 双重验证已禁用。
+        two_factor_authentication_is_not_configured_on_this_instance: 此实例未配置双重验证。
+        invalid_verification_code: 验证码无效。请再试一次。
+      users:
+        user_was_successfully_updated: 用户已成功更新。
+        user_could_not_be_updated_to_sentence: 无法更新用户：%{errors}
+        user_was_successfully_created: 用户已成功创建
+        user_could_not_be_created_to_sentence: 无法创建用户：%{errors}
+        cannot_delete_account_while_being_owner_of_a_family_which: 您是某个拥有其他成员的家庭的所有者，无法删除帐户。
+        user_deletion_has_been_initiated_the_account_will_be_fully: 用户删除已启动。该帐户将很快被完全删除。
+        api_key_has_been_regenerated: API 密钥已重新生成。
+        password_reset_email_has_been_sent: 密码重置电子邮件已发送。
+        user_registration_has_been_status: 用户注册已%{status}。
+        your_data_is_being_exported_you_will_receive_a_notification: 正在导出您的数据。准备就绪后，您将收到通知。
+        please_select_a_zip_archive_to_import: 请选择要导入的 ZIP 压缩包。
+        your_data_import_has_been_started_you_will_receive_a: 您的数据导入已开始。完成后您将收到通知。
+        failed_to_start_import_please_try_again: 无法开始导入。请重试。
+        an_error_occurred_while_starting_the_import_please_try_again: 开始导入时发生错误。请再试一次。
+        please_upload_a_valid_zip_file: 请上传有效的 ZIP 文件。
+        cannot_remove_last_admin_role: 无法移除最后一位管理员用户的管理员角色。
+        cannot_disable_last_admin: 无法禁用最后一个管理员用户。
+      visits:
+        visit_detection_settings_updated: 到访记录检测设置已更新
+    share_links:
+      lives:
+        default_name: 实时位置
+      timelines:
+        default_name: 时间线：%{start_date} → %{end_date}
+    shared:
+      digests:
+        shared_digest_not_found_or_no_longer_available: 未找到共享摘要或已失效
+        failed_to_update_sharing_settings: 无法更新共享设置
+        sharing_enabled: 已成功启用共享
+        sharing_disabled: 已成功禁用共享
+        auto_saved: 已自动保存
+      links:
+        incorrect_phrase: 该短语无效。再试一次。
+      stats:
+        shared_stats_not_found_or_no_longer_available: 未找到共享统计信息或已失效
+        failed_to_update_sharing_settings: 无法更新共享设置
+        sharing_enabled: 已成功启用共享
+        sharing_disabled: 已成功禁用共享
+        auto_saved: 已自动保存
+    stats:
+      whole_year: 整个 %{year}
+      month_of_year: "%{year} 年 %{month}"
+      invalid_period: 请先选择有效的月份，再更新统计数据
+      stats_for_target_are_being_updated: "%{target} 的统计数据正在更新"
+      stats_are_being_updated: 统计数据正在更新
+    tags:
+      tag_was_successfully_created: 标签已成功创建。
+      tag_was_successfully_updated: 标签已成功更新。
+      tag_was_successfully_deleted: 标签已成功删除。
+    tracks:
+      recalculations:
+        re_classification_already_running: 重新分类已在运行
+        re_classification_started_your_tracks_will_update_over_the_next: 重新分类已开始 — 您的轨迹将在接下来的几分钟内更新
+      segments:
+        segment_updated: 轨迹段已更新
+        mode_not_enabled: 您的设置中未启用该模式
+        update_failed: 无法更新轨迹段
+        reprocess_failed: 重新检测失败 — 您的更正已保留
+      share_links:
+        not_found: 未找到
+    trial:
+      welcome:
+        link_invalid_please_sign_in: 链接无效。请登录。
+        another_user_is_already_signed_in: 已有其他用户登录。
+        this_welcome_link_has_already_been_used: 此欢迎链接已被使用。
+        link_invalid_or_expired_please_sign_in: 链接无效或过期。请登录。
+        account_no_longer_exists_please_sign_up_again: 帐户不再存在。请重新注册。
+        trial_active_until: 欢迎使用 Dawarich — 您的 7 天免费试用期将持续到 %{date}。
+        trial_activating: 欢迎使用 Dawarich — 您的试用正在激活中。
+    trips:
+      notes:
+        invalid_date: 无效日期
+      share_links:
+        not_found: 未找到
+        default_name: 行程：%{trip}
+      trip_was_successfully_created_data_is_being_calculated_in_the: 行程创建成功。数据正在后台计算。
+      trip_was_successfully_updated: 行程已成功更新。
+      trip_was_successfully_destroyed: 行程已成功删除。
+      already_recalculating_this_page_will_update_when_it_s_done: 正在重新计算 — 完成后此页面将自动更新。
+      recalculating_the_page_will_update_automatically_when_it_s_ready: 正在重新计算 — 完成后页面将自动更新。
+      unsupported_export_format_choose_gpx_or_geojson: 导出格式不受支持。选择 GPX 或 GeoJSON。
+      trip_export_initiated_check_the_exports_page_when_it_s: 行程导出已启动。完成后请查看“导出”页面。
+      export_failed_to_initiate_please_try_again: 导出启动失败。请重试。
+    users:
+      apple_oauth:
+        sign_in_with_apple_was_cancelled: Apple 登录已取消。
+        sign_in_failed: Apple 登录失败：%{message}
+        email_not_verified: 您的 Apple ID 邮箱尚未验证。请先在 Apple 处完成验证，然后重试。
+        missing_email: Apple 这次没有将您的邮箱分享给我们，我们也找不到您现有的帐户。请访问 appleid.apple.com → 使用
+          Apple 登录 → Dawarich → 停止使用“使用 Apple 登录”，然后重试。
+        did_not_complete: Apple 登录未完成。请重试。
+        state_mismatch: 登录时 Apple 状态不匹配 — 请重试。
+      destroy_confirmations:
+        this_deletion_link_has_already_been_used: 该删除链接已被使用。
+        deletion_link_invalid_or_expired: 删除链接无效或已过期。
+        cannot_delete_account_while_you_own_a_family_with_other: 您拥有的家庭还有其他成员，因此无法删除帐户。请先转移所有权或移除成员。
+        your_account_has_been_scheduled_for_deletion_we_are_sorry: 您的帐户已安排删除。很遗憾您要离开。
+      digests:
+        year_end_digest_for_year_is_being_generated_check_back: 正在生成 %{year} 的年终摘要。请稍后再来查看！
+        invalid_year_selected: 选择的年份无效
+        year_end_digest_for_year_has_been_deleted: "%{year} 的年终摘要已被删除"
+        digest_not_found: 未找到摘要
+      omniauth_callbacks:
+        invalid_credentials: 凭据无效。请检查您的用户名和密码。
+        connection_timeout: 连接超时。请再试一次。
+        security_error: 检测到安全错误。请再试一次。
+        provider_unavailable: 无法连接到身份验证提供商。请联系您的管理员。
+        provider_configuration_error: 身份验证提供商配置错误。请联系您的管理员。
+        unknown_error: 未知错误
+        authentication_failed: 身份验证失败：%{detail}
+        oidc_account_requires_administrator: 您必须先由管理员创建帐户，才能使用 OIDC 登录。请联系您的管理员。
+        account_creation_failed: 无法创建您的帐户。请重试或联系支持人员。
+        email_not_verified: 您的 %{provider} 邮箱尚未验证。请先在服务提供方完成验证，然后重试，或使用现有密码登录。
+      otp_challenge:
+        session_expired_please_sign_in_again: 会话已过期。请重新登录。
+        signed_in_successfully: 登录成功。
+        account_temporarily_locked_due_to_too_many_failed_2fa_attempts: 由于 2FA 验证失败次数过多，帐户已被暂时锁定。您可以使用备用代码，等待 30 分钟，或重置密码。
+        too_many_invalid_two_factor_codes_please_sign_in_again: 无效的双重验证码次数过多。请重新登录。
+        invalid_two_factor_code: 双重验证码无效。
+      registrations:
+        your_account_has_been_scheduled_for_deletion: 您的帐户已安排删除。
+        email_password_registration_is_disabled_please_use_oidc_to_sign: 电子邮件/密码注册已禁用。请使用 OIDC 登录。
+        registration_is_not_available_please_contact_your_administrator_for_acce: 注册不可用。请联系您的管理员以获取访问权限。
+        welcome_to_name_you_re_now_part_of_the_family: 欢迎加入 %{name}！您现在已成为这个家庭的一员。
+        account_created_successfully_but_there_was_an_issue_accepting_the: 帐户创建成功，但接受邀请时出现问题：%{error_message}
+        account_created_successfully_but_there_was_an_issue_accepting_the_2: 帐户创建成功，但接受邀请时出现问题。请再次尝试接受邀请。
+      sessions:
+        email_password_login_is_disabled_please_use_oidc_to_sign: 邮箱/密码登录已禁用。请使用 OIDC 登录。
+    visits:
+      redetections:
+        re_detect_ran_recently_try_again_in_an_hour: 最近已运行过重新检测。请一小时后重试。
+        re_detection_queued_we_ll_notify_you_when_it_finishes: 重新检测已加入队列。完成后我们会通知您。
+      failed_to_update_visits: 更新到访记录失败。
+      bulk_updated:
+        confirmed:
+          one: "%{count} 条到访记录已确认。"
+          other: "%{count} 条到访记录已确认。"
+        declined:
+          one: "%{count} 条到访记录已拒绝。"
+          other: "%{count} 条到访记录已拒绝。"
+        suggested:
+          one: "%{count} 条到访记录已标记为建议。"
+          other: "%{count} 条到访记录已标记为建议。"
+      no_matching_visits: 未找到匹配的到访记录。
+      select_visit_to_delete: 请至少选择一条要删除的到访记录。
+      failed_to_delete_visits: 删除到访记录失败。
+      invalid_place: 无效地点
+      invalid_area: 无效区域
+      failed_to_update_visit: 更新到访记录失败。
+      select_visits_to_merge: 请至少选择 2 条到访记录进行合并。
+      visits_must_share_day: 到访记录必须属于同一天。
+      failed_to_merge_visits: 合并到访记录失败。
+      unsupported_source_status: 不受支持的源状态。
+      visit_updated:
+        confirmed: 到访记录已确认。
+        declined: 到访记录已拒绝。
+        suggested: 到访记录已标记为建议。
+      visits_merged: 到访记录已合并。
+      visit_removed: 到访记录已删除。您的轨迹点仍然保留。
+      too_many_visits: 您一次最多可更新 %{count} 条到访记录。请缩小选择范围后重试。
+      missing_visits: 部分到访记录已不在此处 — 可能是在其他标签页中被修改的。请刷新后重试。
+      plan_window_visits: 部分到访记录超出 Lite 计划的 12 个月时间范围。升级到 Pro 即可管理更早的数据。
+      bulk_removed:
+        one: "%{count} 条到访记录已删除。您的轨迹点仍然保留。"
+        other: "%{count} 条到访记录已删除。您的轨迹点仍然保留。"
+    route_videos:
+      untitled: 未命名视频
+      saved: 视频已保存到您的图库。
+      failed_to_save: 保存视频失败。
+      rejected_file: 该文件无法保存为视频。
+      deleted: 视频已删除。
+  visit_statuses:
+    suggested: 已建议
+    confirmed: 已确认
+    declined: 已拒绝
+  mailers:
+    family:
+      invitation:
+        subject: 🎉 您已被邀请加入 Dawarich 上的 %{family}！
+      location_request:
+        subject: 📍 %{requester} 正在 Dawarich 上请求您的位置
+      member_joined:
+        subject: 👪 %{user} 已加入您在 Dawarich 上的 %{family} 家庭！
+    users:
+      welcome:
+        subject: 欢迎来到 Dawarich！
+      explore_features:
+        subject: 探索 Dawarich 功能！
+      archival_approaching:
+        subject: 保留您的完整历史记录 — 升级到 Pro
+      oauth_account_link:
+        subject: 确认将 %{provider} 关联到您的 Dawarich 帐户
+      account_destroy_confirmation:
+        subject: 确认 Dawarich 帐户删除
+      otp_account_locked:
+        subject: Dawarich 帐户暂时锁定
+      digests:
+        year_end:
+          subject: 您的 %{year} 年度回顾 - Dawarich
+        monthly:
+          subject: 您的 %{month} %{year} 回顾 — Dawarich
+  models:
+    family:
+      location_request:
+        cannot_request_your_own_location: 无法请求您自己的位置
+    import:
+      is_too_large_trial_users_can_only_upload_files_up: 太大。试用用户最多只能上传 10MB 的文件。
+      trial_users_can_only_create_up_to_5_imports_please: 试用用户最多只能创建 5 次导入。请订阅以导入更多文件。
+    note:
+      has_already_been_taken: 已被使用
+      must_be_within_the_trip_date_range: 必须在行程日期范围内
+      must_belong_to_the_same_user: 必须属于同一用户
+    point:
+      already_has_a_point_at_this_location_and_time_for: 该用户在此位置和时间已有一个轨迹点
+    points:
+      raw_data_archive:
+        must_contain_expected_count_and_actual_count: 必须包含 expected_count 和 actual_count
+    shared_link:
+      is_required_for_this_resource_type: 此资源类型必填
+      must_be_blank_for_this_resource_type: 此资源类型必须为空
+      must_be_in_the_future: 必须是未来时间
+      must_include_start_date_and_end_date_for_timeline_shares: 必须包含时间线共享的 start_date 和 end_date
+      start_date_and_end_date_must_be_parseable_as_dates: start_date 和 end_date 必须可解析为日期
+      end_date_must_be_on_or_after_start_date: end_date 必须在 start_date 当天或之后
+    tag:
+      must_be_an_emoji_or_symbol_not_a_letter: 必须是表情符号或符号，而不是字母
+    track_segment:
+      must_be_greater_than_or_equal_to_start_index: 必须大于或等于 start_index
+    trip:
+      must_be_after_start_date: 必须在开始日期之后
+  services:
+    air_trail:
+      connection_tester:
+        airtrail_connection_verified: AirTrail 连接已验证
+        airtrail_url_is_missing: AirTrail URL 缺失
+        airtrail_api_key_is_missing: AirTrail API 密钥缺失
+        airtrail_connection_failed_message: AirTrail 连接失败：%{message}
+    concerns:
+      url_validatable:
+        invalid_scheme: 无效的 URL 方案：%{scheme}
+        host_required: URL 必须包含主机
+        embedded_credentials: URL 不得嵌入凭据（用户：pass@host）
+        blocked_address: URL 解析为被阻止的地址
+        invalid_format: 无效的 URL 格式
+        unresolvable_host: 无法解析主机名：%{host}
+    csv:
+      detector:
+        required_columns_missing: 无法检测所需的列：纬度、经度、时间戳。检测到的表头必须包含三者的可识别别名。
+    exports:
+      create:
+        export_finished: 导出已完成
+        export_name_successfully_finished: 导出“%{name}”已成功完成。
+        export_failed: 导出失败
+        export_name_failed_message_stacktrace_n: 导出“%{name}”失败：%{message}，堆栈跟踪：%{backtrace}
+        unsupported_file_format: 不支持的文件格式：%{format}
+    families:
+      accept_invitation:
+        you_must_leave_your_current_family_before_joining_a_new: 您必须先离开当前的家庭，然后才能加入新的家庭。
+        this_invitation_is_no_longer_valid_or_has_expired: 此邀请不再有效或已过期。
+        this_invitation_is_not_for_your_email_address: 此邀请不是发送到您的邮箱的。
+        this_family_s_plan_is_no_longer_active: 该家庭的计划已失效。
+        this_family_has_reached_the_maximum_number_of_members: 该家庭已达到最大成员数。
+        welcome_to_family: 欢迎加入家庭！
+        you_ve_joined_the_family_name: 您已加入“%{name}”家庭
+        new_family_member: 新家庭成员！
+        email_has_joined_your_family: "%{email} 已加入您的家庭"
+        an_unexpected_error_occurred_while_joining_the_family_please_try: 加入家庭时发生意外错误。请重试
+        failed_to_join: 无法加入家庭：%{message}
+      create:
+        family_name_is_required: 需要填写家庭名称
+        family_name_must_be_50_characters_or_less: 家庭名称不得超过 50 个字符
+        you_must_leave_your_current_family_before_creating_a_new: 在创建新家庭之前，您必须离开当前家庭
+        you_have_already_created_a_family_each_user_can_only: 您已创建家庭。每个用户只能创建一个家庭
+        family_feature_requires_an_active_subscription: 家庭功能需要有效订阅
+        family_created: 家庭已创建
+        you_ve_successfully_created_the_family_name: 您已成功创建家庭“%{name}”
+        a_family_with_this_name_already_exists_for_your_account: 您的帐户已存在同名家庭
+        an_unexpected_error_occurred_while_creating_the_family_please_try: 创建家庭时发生意外错误。请重试
+        failed_to_create_family: 无法创建家庭：%{message}
+      create_location_request:
+        an_error_occurred: 发生错误
+        location_request: 位置请求
+        safe_email_is_requesting_your_location_link: "%{email} 正在请求您的位置。 %{link}"
+        users_must_be_in_the_same_family: 用户必须属于同一家庭
+        target_user_is_already_sharing_their_location: 目标用户已共享其位置
+        request_cooldown_active_please_wait_before_requesting_again: 请求冷却期已激活。请稍候再试。
+        view_request: 查看请求
+      invite:
+        invitation_sent: 已发送邀请
+        failed_to_send_invitation_email_please_try_again_later: 发送邀请邮件失败。请稍后重试
+        an_unexpected_error_occurred_while_sending_the_invitation_please_try: 发送邀请时发生意外错误。请重试
+        failed_to_send_invitation: 无法发送邀请
+        owner_required: 您必须是家庭所有者才能发送邀请
+        family_full: 家庭已满
+        user_already_in_family: 用户已在家庭中
+        invitation_already_sent: 邀请已发送至该邮箱
+        sent_self_hosted: 如果 SMTP 配置正确，家庭邀请已发送至 %{email}。如果您不使用 SMTP，请从家庭页面复制邀请链接并手动共享。
+        sent: 家庭邀请已发送至 %{email}
+        failed_to_create: 无法创建邀请：%{message}
+      memberships:
+        destroy:
+          user_is_not_currently_in_a_family: 用户当前不属于任何家庭。
+          family_owners_cannot_remove_their_own_membership_to_leave_the: 家庭所有者无法移除自己的成员资格。要离开家庭，请直接删除家庭。
+          only_family_owners_can_remove_other_members: 只有家庭所有者才能移除其他成员。
+          cannot_remove_members_from_a_different_family: 无法移除其他家庭的成员。
+          cannot_remove_the_family_owner_the_owner_must_delete_the: 无法移除家庭所有者。所有者必须删除该家庭或自行离开。
+          left_family: 离开家庭
+          you_ve_left_the_family_family_name: 您已离开家庭“%{family_name}”
+          family_member_left: 家庭成员离开
+          email_has_left_the_family_family_name: "%{email} 已离开家庭“%{family_name}”"
+          removed_from_family: 已从家庭中移除
+          you_have_been_removed_from_the_family_family_name_by: 您已被 %{email} 从家庭“%{family_name}”中删除
+          member_removed: 成员已移除
+          email_has_been_removed_from_the_family_family_name: "%{email} 已从家庭“%{family_name}”中移除"
+          an_unexpected_error_occurred_while_removing_the_membership_please_try: 移除成员资格时发生意外错误。请重试
+          failed_to_leave: 无法离开家庭：%{message}
+      update_location_sharing:
+        update_failed: 无法更新位置共享设置
+        unexpected_error: 更新位置共享时出错
+        disabled: 位置共享已禁用
+        enabled: 位置共享已启用
+        enabled_for_hours:
+          one: 位置共享已启用，持续 %{count} 小时
+          other: 位置共享已启用，持续 %{count} 小时
+      respond_to_location_request:
+        an_error_occurred: 发生错误
+        not_authorized: 您无权回应此请求
+        no_longer_actionable: 此请求已过期或已被回应
+    fit:
+      importer:
+        fit_parsing_error_message: FIT 解析错误：%{message}
+        no_activities_found_in_fit_file: 在 FIT 文件中找不到活动
+    google_maps:
+      semantic_history_importer:
+        google_maps_timeline_import_error: Google 地图时间线导入错误
+        batch_failed: 无法处理位置批次：%{message}
+    immich:
+      connection_tester:
+        immich_connection_verified: Immich 连接已验证
+        immich_url_is_missing: Immich URL 缺失
+        immich_api_key_is_missing: Immich API 密钥缺失
+        immich_connection_failed_message: Immich 连接失败：%{message}
+        immich_connection_failed_code: Immich 连接失败：%{code}
+        immich_api_key_missing_permission_asset_view: Immich API 密钥缺少权限：asset.view
+        immich_thumbnail_check_failed_code: Immich 缩略图检查失败：%{code}
+      enrich_photos:
+        http_code_message: HTTP %{code}：%{message}
+      enrich_scan:
+        failed_to_fetch_photos_from_immich: 无法从 Immich 获取照片
+      import_geodata:
+        import_was_not_created: 未创建导入
+        import_with_the_same_name_import_name_already_exists_if: 同名导入（%{import_name}）已存在。如需继续，请先删除现有导入，然后重试。
+      response_validator:
+        request_failed_code: 请求失败：%{code}
+        expected_json_got_content_type: 需要 JSON，已得到 %{content_type}
+        invalid_json_response: 无效的 JSON 响应
+        invalid_json: 无效的 JSON
+      configuration:
+        api_key_missing: Immich API 密钥缺失
+        url_missing: Immich URL 缺失
+      response_analyzer:
+        permission_missing: Immich API 密钥缺少权限：asset.view
+        thumbnail_failed: 无法获取缩略图
+    imports:
+      bulk_insertable:
+        importer_name_import_error: "%{importer_name} 导入错误"
+      create:
+        import_post_processing_incomplete: 导入后处理未完成
+        import_completed_with_no_new_points: 导入已完成，无新轨迹点
+        import_completed_with_no_points: 导入已完成，无轨迹点
+        import_failed: 导入失败
+        zero_points_with_timestamps: 您的文件 %{name} 导入了 0 个轨迹点。未找到带有时间戳的轨迹点。GPX 和 KML
+          导入要求每个坐标都包含 &lt;time&gt;/&lt;when&gt; 值。
+        zero_points: 您的文件 %{name} 导入了 0 个轨迹点。未在该文件中找到新的轨迹点。
+        import_failed_self_hosted: 导入“%{name}”失败：%{message}，堆栈跟踪：%{backtrace}
+        import_failed_cloud: 导入“%{name}”失败，请通过 hi@dawarich.com 联系我们
+        your_import_name_finished_and_all_points_were_saved_but: 您的导入“%{name}”已完成，所有轨迹点均已保存，但
+          %{step} 步骤失败。统计数据、轨迹或到访建议可能缺失或过期。您可以到“设置”中触发重新计算。
+        your_file_name_contained_raw_points_points_all_of_which: 您的文件 %{name} 包含
+          %{raw_points}
+          个轨迹点，这些轨迹点都已以相同的坐标和时间戳存在于您的时间线中，因此未导入任何内容。如果这并非预期情况，请删除该日期范围内的现有轨迹点后重新导入。
+        source_missing: 导入源不能为空
+        unsupported_source: 不受支持的源：%{source}
+        zip_unclassified: 无法识别 ZIP 内容 — 文件可能已损坏
+      source_detector:
+        amazon_order: 这是 Amazon 订单导出文件，不是位置数据。Dawarich 从 Google Takeout、OwnTracks、GPX
+          等来源导入位置历史记录。
+        apple_plist: 不支持 Apple 二进制 plist (.plist) 文件。
+        ds_store: 这是 macOS Finder 元数据文件 (.DS_Store)，而不是数据文件。请上传您的实际位置导出。
+        empty_file: 上传的文件为空（0 字节）。
+        empty_json: 上传的文件不包含数据（空 JSON 对象或数组）。
+        encrypted_timeline: 您的 Google 时间线数据已加密。打开 Google 地图应用，在设置中关闭时间线加密，然后重新导出数据。
+        google_settings: 该文件包含您的 Google 地图设置，而不是位置数据。在 Google Takeout
+          中查找“Records.json”或“Timeline/”内的文件。
+        gzip: Gzip 压缩文件 (.gz) 不会自动解压缩。请解压该文件并重新上传内容。
+        heic: HEIC 图像文件不受支持。照片不包含位置历史记录；通过 Immich 或 PhotoPrism 集成连接您的照片库以导入照片位置。
+        html_page: 这是 HTML 页面（通常是 Google Takeout 中的“archive_browser.html”），不是数据文件。请打开
+          Takeout 压缩包，找到其中的 .json 或 .kml 文件。
+        jpeg: 不支持 JPEG 图像文件。照片不包含位置历史记录；通过 Immich 或 PhotoPrism 集成连接您的照片库以导入照片位置。
+        json_fragment: 上传的文件似乎是 JSON 文件的截断或损坏片段（它不以“{”或“[”开头）。请重新导出并上传原始完整文件。
+        my_activity: 这是 Google“我的活动”日志（搜索和地图活动），而不是您的位置历史记录。在 Google Takeout
+          中查找“Records.json”或“Timeline/”内的文件。
+        office_document: 不支持 Microsoft Office 文档 (Word/Excel)。请上传您的位置数据文件。
+        pdf: 不支持 PDF 文件。请打开 PDF，找到其中实际的位置数据文件。
+        place_feedback: 这是 Google 地图地点反馈文件（地图问答答案，例如“这个地点是否开放？”），而不是您的位置历史记录。在 Google
+          Takeout 中查找“Records.json”或“Timeline/”内的文件。
+        png: 不支持 PNG 图像文件。请上传您的位置数据文件（.json、.gpx、.kml 等）。
+        rar: RAR 压缩包不受支持。请解压压缩包并上传其中的数据文件。
+        saved_places: 这是 Google 保存的地点/地理编码文件，而不是您的位置历史记录。在 Google Takeout
+          中查找“Records.json”或“Timeline/”内的文件。
+        snapchat_export: 这似乎是 Snapchat 数据导出，不是位置数据。Dawarich 从 Google
+          Takeout、OwnTracks、GPX 等来源导入位置历史记录。
+        timeline_edits: Google 时间线编辑格式尚不受支持。请上传 Records.json 或 Google Takeout 的
+          Timeline/ 文件夹内的文件。
+        unknown_format: 无法检测文件格式
+      watcher:
+        unsupported_source: 不支持的源：%{source}
+        unsupported_source_without_name: 不支持的源
+    maps:
+      bounds_calculator:
+        no_data_found_for_the_specified_date_range: 未找到指定日期范围的数据
+        invalid_date: 无效的日期格式：%{value}
+        no_date_range: 未指定日期范围
+        no_user: 未找到用户
+    photoprism:
+      connection_tester:
+        photoprism_connection_verified: Photoprism 连接已验证
+        photoprism_url_is_missing: Photoprism URL 缺失
+        photoprism_api_key_is_missing: Photoprism API 密钥缺失
+        photoprism_connection_failed_message: Photoprism 连接失败：%{message}
+        photoprism_connection_failed_code: Photoprism 连接失败：%{code}
+      import_geodata:
+        import_was_not_created: 未创建导入
+        import_with_the_same_name_import_name_already_exists_if: 同名导入（%{import_name}）已存在。如需继续，请先删除现有导入，然后重试。
+      response_validator:
+        request_failed_code: 请求失败：%{code}
+        expected_json_got_content_type: 期望收到 JSON，但收到的是 %{content_type}
+        invalid_json_response: JSON 响应无效
+      configuration:
+        api_key_missing: Photoprism API 密钥缺失
+        url_missing: Photoprism URL 缺失
+    points:
+      raw_data:
+        verifier:
+          file_not_attached: 文件未附加
+          file_download_failed_message: 文件下载失败：%{message}
+          file_is_empty: 文件为空
+          decryption_failed_message: 解密失败：%{message}
+          content_checksum_mismatch: 内容校验和不匹配
+          point_count_mismatch_expected_point_count_found_count: 轨迹点数不匹配：预期 %{point_count} 个，实际 %{count} 个
+          point_ids_checksum_mismatch: 轨迹点 ID 校验和不匹配
+          decompression_parsing_failed_message: 解压缩/解析失败：%{message}
+          raw_data_mismatch_detected_in_count_point_s_first_mismatch: 在 %{count} 个轨迹点中检测到原始数据不匹配。首个不匹配：轨迹点 %{point_id}
+    settings:
+      update:
+        not_allowed: "%{setting} 不允许：%{message}"
+        failed: 设置无法更新
+        updated: 设置已更新
+        photo_cache_refreshed: 照片缓存已刷新
+    stats:
+      calculate_month:
+        stats_update_failed: 统计信息更新失败
+        message_stacktrace_n: "%{message}，堆栈跟踪：%{backtrace}"
+    users:
+      destroy:
+        cannot_delete_user_who_owns_a_family_with_other_members: 无法删除拥有其他成员的家庭的用户
+      export_data:
+        export_completed: 导出已完成
+        your_data_export_has_been_processed_successfully_summary_you_can: 您的数据导出已成功处理（%{summary}）。您可以在导出页面下载。
+      import_data:
+        data_import_completed: 数据导入完成
+        your_data_has_been_imported_successfully_summary: 您的数据已成功导入（%{summary}）。
+        data_import_failed: 数据导入失败
+        your_data_import_failed_with_error_message_please_check_the: 您的数据导入失败：%{message}。请检查压缩包格式后重试。
+        unknown_export_format: 未知导出格式：manifest.json 和 data.json 均未找到
+        unsupported_format_version: 不支持的导出格式版本：%{version}
+        v1_handler:
+          data_file_missing: 压缩包中未找到数据文件：data.json
+          invalid_json: 数据文件中的 JSON 格式无效：%{message}
+          read_failed: 无法读取 JSON 数据：%{message}
+        v2_handler:
+          manifest_missing: 压缩包中找不到清单文件：manifest.json
+      settings_updater:
+        enable_at_least_one_transportation_mode: 至少启用一种交通方式
+        recalculation_in_progress: 正在重新计算交通方式，请等待完成。
+    visits:
+      suggest:
+        error_suggesting_visits_message: 生成到访建议时出错：%{message}
+        new_visits_suggested: 已生成新的到访建议
+        error_suggesting_visits: 生成到访建议时出错
+        new_visits_suggested_message: 已根据您 %{start_at} 至 %{end_at} 的位置数据生成了新的到访建议。您可以在<a
+          href="%{url}" class="link">时间线</a>页面中查看。
+      merge_service:
+        minimum_visits: 至少需要选择 2 条到访记录才能合并
+      bulk_destroy:
+        database_error: 数据库错误：请重试。
+        none_found: 未找到匹配的到访记录
+        none_selected: 未选择到访记录
+        too_many_selected: 选择的到访记录过多（最多 %{max} 条）
+      bulk_update:
+        invalid_status: 无效状态
+        none_found: 未找到匹配的到访记录
+        none_selected: 未选择到访记录
+    posters:
+      generate:
+        failed: 海报生成失败。请稍后重试。
+        no_location_data: 未找到选定时间段内的位置数据。
+        track_outside_area: 您的轨迹未经过所选地图区域。请重新将地图居中或调整日期。
+    gpx:
+      track_importer:
+        parse_error: GPX 解析错误：%{message}
+    insights:
+      travel_insight_generator:
+        active_day: "%{day} 是您最活跃的出行日"
+        days:
+          friday: 星期五
+          monday: 星期一
+          saturday: 星期六
+          sunday: 星期日
+          thursday: 星期四
+          tuesday: 星期二
+          wednesday: 星期三
+        early_start_suggestion: 早出发似乎很适合您！
+        peak_season: "%{season} 是您的出行高峰季"
+        peak_time: 您最常在 %{period} 出行
+        seasons:
+          fall: 秋季
+          spring: 春季
+          summer: 夏季
+          winter: 冬季
+        sentence: "%{insights}。"
+        sunset_suggestion: 考虑在日落时分来一次驾车之旅，开启您的下一次冒险。
+        time_periods:
+          afternoon: 下午（12pm-6pm）
+          evening: 晚上（6pm-12am）
+          morning: 早上（6am-12pm）
+          night: 晚上（12am-6am）
+        weekend_suggestion: 您的周末就是用来探索的！
+        weekday_preference: 您在工作日出行的次数比周末多
+        with_suggestion: "%{insight} %{suggestion}"
+  jobs:
+    air_trail:
+      import_flights_job:
+        airtrail_sync_failed: AirTrail 同步失败
+        your_airtrail_flight_sync_failed_with_error_message_check_your: 您的 AirTrail 航班同步失败：%{message}。请检查 AirTrail 设置后重试。
+    data_migrations:
+      recalculate_anomalies_user_job:
+        gps_noise_re_check_finished: GPS 噪声重新检查已完成
+        rules_recheck_finished: 根据本版本中引入的噪声规则重新检查您的轨迹点，并根据结果重建您的轨迹、统计数据和摘要。有些轨迹点可能会在地图上出现或消失，但没有轨迹点被删除。
+    lite:
+      archival_warning_job:
+        your_oldest_data_will_archive_in_30_days: 您最早的数据将于 30 天后存档
+        your_oldest_month_of_location_data_will_be_archived_soon: 您最早一个月的位置数据即将被存档。升级到 Pro 即可随时搜索完整的历史记录。
+        data_has_been_archived: 数据已存档
+        month_of_location_data_has_been_archived_your_archived: 已有 1 个月的位置数据被存档。您可以在任何时候导出存档数据。升级到 Pro 即可在应用内重新查看和交互使用。
+    stale_jobs_recovery_job:
+      export_timed_out_after_being_stuck_in_processing: 导出在处理过程中卡住后超时
+      export_failed: 导出失败
+      export_name_was_stuck_in_processing_and_has_been_marked: 导出“%{name}”在处理过程中卡住并已标记为失败。
+      import_timed_out_after_being_stuck_in_processing: 导入在处理过程中卡住后超时
+      import_failed: 导入失败
+      import_name_was_stuck_in_processing_and_has_been_marked: 导入“%{name}”被卡在处理中并已被标记为失败。
+    stats:
+      calculating_job:
+        stats_update_failed: 统计更新失败
+        message_stacktrace_n: "%{message}，堆栈跟踪：%{backtrace}"
+    users:
+      digests:
+        monthly:
+          calculating_job:
+            monthly_digest_calculation_failed: 每月摘要计算失败
+            message_stacktrace_backtrace: "%{message}，堆栈跟踪：%{backtrace}"
+        yearly:
+          calculating_job:
+            year_end_digest: 年终摘要
+            period_label_calculation_failed: "%{period_label} 计算失败"
+            message_stacktrace_backtrace: "%{message}，堆栈跟踪：%{backtrace}"
+      import_data_job:
+        data_import_failed: 数据导入失败
+        your_data_import_failed_with_error_message_please_check_the: 您的数据导入失败，出现错误：%{message}。请检查存档格式并重试。
+      recalculate_data_job:
+        data_recalculation_busy: 数据重新计算正在进行中
+        another_recalculation_is_already_running_please_try_again_in_a: 已有重新计算正在运行。请几分钟后再试。
+        data_recalculation_completed: 数据重新计算已完成
+        year_count:
+          one: "%{count} 年"
+          other: "%{count} 年"
+        stats_tracks_and_digests_have_been_recalculated_for_year_label: 已重新计算 %{year_label} 的统计数据、轨迹和摘要。
+        data_recalculation_failed: 数据重新计算失败
+        message_stacktrace_n: "%{message}，堆栈跟踪：%{backtrace}"
+    visits:
+      full_history_redetect_job:
+        visit_re_detection_busy: 到访记录重新检测正在进行
+        another_re_detection_is_already_running_try_again_in_a: 已有重新检测正在运行。请几分钟后再试。
+        visit_re_detection: 到访记录重新检测
+        no_points_to_re_detect: 没有要重新检测的轨迹点。
+        visit_re_detection_complete: 到访记录重新检测已完成
+        visits_count:
+          one: "%{count} 条到访记录"
+          other: "%{count} 条到访记录"
+        months_count:
+          one: "%{count} 月"
+          other: "%{count} 月"
+        visits_created_visits_across_size_months: 在 %{months} 个月内生成 %{visits} 条到访记录。
+        visit_re_detection_partially_complete: 到访记录重新检测部分完成
+        visit_re_detection_failed: 到访记录重新检测失败
+        visits_created_visits_across_ok_months_of_size_months_size:
+          one: 在 %{months} 个月中的 %{ok_months} 个月内生成 %{visits} 条到访记录。1 个月失败；请在冷却期后重新运行以重试。
+          other: 在 %{months} 个月中的 %{ok_months} 个月内生成 %{visits} 条到访记录。%{count}
+            个月失败；请在冷却期后重新运行以重试。
+  javascript:
+    loading_sources:
+      anomalies:
+        one: "%{formatted_count} 异常"
+        other: "%{formatted_count} 异常"
+      areas:
+        one: "%{formatted_count} 区域"
+        other: "%{formatted_count} 区域"
+      family:
+        one: "%{formatted_count} 名家庭成员"
+        other: "%{formatted_count} 名家庭成员"
+      flights:
+        one: "%{formatted_count} 航班"
+        other: "%{formatted_count} 航班"
+      hexagons:
+        one: "%{formatted_count} 六边形"
+        other: "%{formatted_count} 六边形"
+      photos:
+        one: "%{formatted_count} 张照片"
+        other: "%{formatted_count} 张照片"
+      places:
+        one: "%{formatted_count} 地点"
+        other: "%{formatted_count} 地点"
+      points:
+        one: "%{formatted_count} 个轨迹点"
+        other: "%{formatted_count} 个轨迹点"
+      tracks:
+        one: "%{formatted_count} 条轨迹"
+        other: "%{formatted_count} 条轨迹"
+      visits:
+        one: "%{formatted_count} 条到访记录"
+        other: "%{formatted_count} 条到访记录"
+    messages:
+      click_on_the_map_to_place_a_visit: 点击地图以添加到访记录
+      end_time_must_be_after_start_time: 结束时间必须晚于开始时间
+      network_error_failed_to_create_visit: 网络错误：创建到访记录失败
+      failed_to_copy_please_copy_manually: 复制失败。请手动复制。
+      copied_to_clipboard: 已复制到剪贴板！
+      location_sharing_has_expired: 位置共享已过期
+      invalid_tile_url_reverting_to_openstreetmap: 瓦片 URL 无效，已恢复为 OpenStreetMap。
+      please_select_a_date_range: 请选择日期范围
+      failed_to_scan_photos: 扫描照片失败
+      failed_to_enrich_photos: 为照片补充 GPS 坐标失败
+      draw_a_rectangle_on_the_map_to_select_points: 在地图上绘制矩形以选择轨迹点
+      fetching_data_in_selected_area: 正在获取所选区域中的数据...
+      no_data_found_in_selected_area: 在所选区域中未找到数据
+      failed_to_fetch_data_in_selected_area: 无法在所选区域中获取数据
+      visit_confirmed: 到访记录已确认
+      failed_to_confirm_visit: 无法确认到访记录
+      visit_deleted: 到访记录已删除
+      failed_to_delete_visit: 无法删除到访记录
+      select_at_least_2_visits_to_merge: 选择至少 2 条到访记录进行合并
+      merging_visits: 正在合并到访记录...
+      visits_merged_successfully: 到访记录合并成功
+      failed_to_merge_visits: 合并到访记录失败
+      confirming_visits: 正在确认到访记录...
+      failed_to_confirm_visits: 无法确认到访记录
+      deleting_visits: 正在删除到访记录...
+      failed_to_delete_visits: 删除到访记录失败
+      selection_cancelled: 选择已取消
+      no_anomaly_points_in_selection: 所选范围中没有异常轨迹点
+      deleting_anomaly_points: 正在删除异常轨迹点...
+      no_points_selected: 未选择轨迹点
+      deleting_points: 正在删除轨迹点...
+      anomaly_point: 异常轨迹点
+      failed_to_load_location_data_please_try_again: 加载位置数据失败。请重试。
+      click_on_the_map_to_place_a_place: 点击地图放置地点
+      failed_to_reload_routes: 无法重新加载路线
+      failed_to_load_scratch_layer: 无法加载刮刮图层
+      failed_to_load_photos: 无法加载照片
+      failed_to_load_areas: 无法加载区域
+      failed_to_load_tracks: 无法加载轨迹
+      failed_to_load_flights: 无法加载航班
+      failed_to_load_anomalies: 无法加载异常轨迹点
+      reloading_routes: 正在重新加载路线...
+      cannot_update_recalculation_is_already_in_progress: 无法更新：重新计算已在进行中
+      transportation_settings_saved: 已保存交通设置
+      globe_view_will_be_applied_after_page_reload: 重新加载页面后将应用地球视图
+      settings_updated_successfully: 设置已成功更新
+      reloading_map_data_with_new_settings: 正在使用新设置重新加载地图数据...
+      api_key_not_available_please_reload_the_page: API 密钥不可用；请重新加载页面。
+      could_not_queue_re_evaluation_please_try_again: 无法将重新评估加入队列。请重试。
+      could_not_queue_recalculation_please_try_again: 无法将重新计算加入队列。请重试。
+      click_on_the_map_to_place_a_visit_esc_to: 点击地图以添加到访记录（Esc 取消）
+      visit_creation_modal_not_available: 到访记录创建模式不可用
+      visit_creation_controller_not_available: 到访记录创建控制器不可用
+      area_drawer_controller_not_available: 区域抽屉控制器不可用
+      area_created_successfully: 区域创建成功！
+      failed_to_reload_areas: 无法重新加载区域
+      family_feature_not_available: 家庭功能不可用
+      failed_to_load_family_members: 无法加载家庭成员
+      centered_on_family_member: 已定位到家庭成员
+      failed_to_load_visit_details: 无法加载到访记录详细信息
+      failed_to_load_area_details: 无法加载区域详细信息
+      point_deleted_successfully: 轨迹点已成功删除
+      failed_to_delete_point: 无法删除轨迹点
+      deleting_area: 正在删除区域...
+      area_deleted_successfully: 区域删除成功
+      failed_to_delete_area: 无法删除区域
+      failed_to_load_place_details: 无法加载地点详细信息
+      connected_to_real_time_updates: 已连接到实时更新
+      disconnected_from_real_time_updates: 已与实时更新断开连接
+      new_location_recorded: 已记录新位置
+      error_saving_layer_preferences: 保存图层偏好设置时出错
+      failed_to_update_settings: 无法更新设置
+      at_least_one_gradient_stop_is_required: 至少需要一个渐变色标。
+      failed_to_load_demo_data_please_try_again: 加载演示数据失败。请重试。
+      could_not_load_flights_please_try_again: 无法加载航班。请重试。
+      no_flights_found_for_this_trip: 未找到此行程的航班。
+      please_select_and_upload_files_first: 请先选择并上传文件
+      please_select_a_valid_zip_file: 请选择一个有效的 ZIP 文件。
+      failed_to_fetch_photos: 无法获取照片
+      failed_to_fetch_photos_after_multiple_attempts: 多次尝试后无法获取照片
+      place_deleted_successfully: 地点已成功删除
+      failed_to_delete_place: 无法删除地点
+      failed_to_load_visits_in_selected_area: 无法加载所选区域的到访记录
+      no_valid_point_ids_found: 未找到有效的轨迹点 ID
+      failed_to_delete_points_please_try_again: 无法删除轨迹点。请重试。
+      at_least_2_visits_must_be_selected_for_merging: 必须选择至少 2 条到访记录进行合并
+      no_visits_selected: 未选择到访记录
+      visit_confirmed_successfully: 到访记录已成功确认
+      visit_declined_successfully: 到访记录已成功拒绝
+      failed_to_decline_visit: 无法拒绝到访记录
+      failed_to_load_possible_places: 无法加载可能的地点
+      please_select_a_valid_location: 请选择有效位置
+      visit_updated_successfully: 到访记录更新成功
+      failed_to_update_visit: 更新到访记录失败
+      visit_deleted_successfully: 到访记录删除成功
+      failed_to_update_point_position_please_try_again: 更新轨迹点位置失败。请重试。
+      failed_to_load_track_points: 加载轨迹点失败
+      point_updated_track_will_be_recalculated: 轨迹点已更新，轨迹将重新计算。
+      delete: 删除
+      edit: 编辑
+      your_lite_plan_includes_the_last_12_months_of_data: 您的 Lite 计划包含最近 12 个月的数据。
+      globe_view_is_a_pro_feature: 地球视图是 Pro 版功能。
+      map_styles: 地图样式
+      untagged: 未标记
+      suggested: 建议
+      confirmed: 已确认
+      layers: 图层
+      points: 轨迹点
+      routes: 路线
+      tracks: 轨迹
+      heatmap: 热图
+      fog_of_war: 战争迷雾
+      scratch_map: 刮刮地图
+      areas: 区域
+      photos: 照片
+      visits: 到访记录
+      places: 地点
+      family_members: 家庭成员
+      food_drink: 饮食
+      shopping: 购物
+      transport: 交通
+      cycling: 骑行
+      nature_leisure: 自然与休闲
+      tourism_culture: 旅游与文化
+      services_civic: 服务与市政
+      urban_amenities: 城市设施
+      failed_to_load_track_details: 加载轨迹详情失败
+    common:
+      add_row: 添加行
+      and: 和
+      cancel: 取消
+      close: 关闭
+      save: 保存
+      confirm: 确认
+      delete: 删除
+      decline: 拒绝
+      dismiss: 关闭
+      close_panel: 关闭面板
+      name: 名称
+      not_available: 不适用
+      reset_to_default: 重置为默认值
+      settings: 设置
+      unknown: 未知
+      unknown_error: 未知错误
+      update: 更新
+      upgrade_to_pro: 升级到 Pro
+      expired: 已过期
+      loading: 正在加载...
+      creating: 正在创建...
+    trip:
+      show_all_days: 显示所有日期
+      collapse_all_days: 折叠所有日期
+    map:
+      places_layer: 地点图层
+      confirm_delete_point: 您确定要删除该轨迹点吗？
+      confirm_delete_point_permanently: |-
+        删除此轨迹点吗？
+
+        此操作无法撤销。
+      edit_speed_color_scale: 编辑速度色标
+      failed_to_update_point_position: 更新轨迹点位置失败。请重试。
+      display: 显示
+      layer_preferences_failed: 无法保存图层偏好设置：%{error}
+      preferred_layer_updated: 首选地图图层已更新为：%{layer}
+      stats_summary:
+        one: "%{distance} %{unit} | %{count} 个轨迹点"
+        other: "%{distance} %{unit} | %{count} 个轨迹点"
+      updating: 正在更新地图...
+      tiled_rendering:
+        inactive_note:
+          one: '%{layers} 开启时不可用 — 它需要完整的点集。'
+          other: '%{layers} 开启时不可用 — 它们需要完整的点集。'
+        editing_unavailable: 瓦片渲染下不可用，矢量瓦片没有可拖动的点
+        failed: 无法加载地图瓦片。请尝试缩短日期范围，或在地图设置中关闭瓦片渲染。
+        tracks_pending: 此视图中没有轨迹。瓦片渲染下的路线显示您生成的轨迹 — 请平移地图或扩大日期范围，如果您的历史记录是最近导入的，请稍后再查看。
+        splitting_unavailable: 瓦片渲染下不使用 — 路线跟随您生成的轨迹。
+        blockers:
+          scratch: 刮刮地图
+    replay:
+      no_data_at_this_time: 此时无数据
+      pause: 暂停
+      replay: 重播
+      day_count: 第 %{current} 天，共 %{total} 天
+      point_count: 第 %{current} 个轨迹点，共 %{total} 个
+      speed: "%{speed} 公里/小时"
+      no_data: 无数据
+    places:
+      create_new: 创建新地点
+      edit: 编辑地点
+      confirm_delete: 您确定要删除此地点吗？
+      search_placeholder: 搜索地点…
+      confirm_move_visit: 该地点距离到访记录位置约 %{distance} 米。要将到访记录移到这里吗？
+      create_here: + 在此创建“%{name}”
+      created: 地点“%{name}”创建成功！
+      filter_by_tag: 按标签筛选
+      no_tags: 尚未创建标签
+      none_found: 未找到地点
+      open_for_suggestions: 打开弹窗以加载附近的建议
+      show_all: 显示所有地点
+      untagged: 未标记的地点
+      updated: 地点“%{name}”更新成功！
+      create: 创建地点
+      update: 更新地点
+      click_map_to_add: 点击地图添加地点
+    demo:
+      removing_data: 正在删除演示数据…
+      already_loaded: 演示数据已加载
+      confirm_delete: |-
+        删除所有演示数据吗？
+
+        这将删除演示轨迹点、到访记录、地点、标签、轨迹以及布拉格行程。
+
+        您的真实数据（包括您导入、编辑、确认或自行创建的内容）不会受到影响。
+      creating: 创建您的演示数据…
+      creating_help: 将生成一个月的柏林记录数据以及布拉格周末行程，大约需要一秒钟。
+    visits:
+      add_new: 添加新到访记录
+      create_new: 创建新到访记录
+      create: 创建到访记录
+      create_failed: 创建到访记录失败
+      create_failed_with_error: 创建到访记录失败：%{error}
+      created: 到访记录“%{name}”创建成功！
+      created_without_name: 到访记录创建成功！
+      current_location: 当前位置
+      delete: 删除到访记录
+      details: 到访记录详细信息
+      edit: 编辑到访记录
+      enable_layers_help: 从地图控件启用“建议到访”或“已确认到访”图层以查看到访记录。
+      end_time: 结束时间
+      found:
+        one: 找到 %{count} 条到访记录
+        other: 找到 %{count} 条到访记录
+      loading: 正在加载到访记录...
+      update: 更新到访记录
+      recent: 最近到访
+      name: 到访记录名称
+      no_data_loaded: 未加载到访数据
+      none_found: 未找到到访记录
+      none_found_for: 未找到与“%{query}”相关的到访记录
+      none_in_timeframe: 在所选时间范围内未找到到访记录
+      selected:
+        one: 已选择 %{count} 条到访记录
+        other: 已选择 %{count} 条到访记录
+      start_time: 开始时间
+      cancel_selection: 取消选择
+      loading_error: 加载到访记录时出错
+      merge: 合并
+      enter_name: 输入到访记录名称
+      confirm_delete_keep_points: 删除此到访记录吗？您的轨迹点会保留。
+      end_after_start: 结束时间必须晚于开始时间
+      network_create_error: 网络错误：无法创建到访记录
+      bulk_status_failed:
+        confirmed: 无法确认到访记录
+        declined: 无法拒绝到访记录
+        suggested: 无法将到访记录标记为建议
+      bulk_status_updated:
+        confirmed:
+          one: "%{count} 条到访记录已成功确认"
+          other: "%{count} 条到访记录已成功确认"
+        declined:
+          one: "%{count} 条到访记录已成功拒绝"
+          other: "%{count} 条到访记录已成功拒绝"
+        suggested:
+          one: "%{count} 条到访记录已标记为建议"
+          other: "%{count} 条到访记录已标记为建议"
+      confirm_delete_count_keep_points:
+        one: 删除 %{count} 条到访记录吗？您的轨迹点会保留。
+        other: 删除 %{count} 条到访记录吗？您的轨迹点会保留。
+      confirm_delete_permanently: 您确定要删除这条到访记录吗？此操作无法撤销。
+      confirm_merge:
+        one: 将 %{count} 条到访记录合并为一条？
+        other: 将 %{count} 条到访记录合并为一条？
+      confirmed_count:
+        one: 已确认 %{count} 条到访记录
+        other: 已确认 %{count} 条到访记录
+      deleted_count:
+        one: 已删除 %{count} 条到访记录
+        other: 已删除 %{count} 条到访记录
+      status_failed:
+        confirmed: 无法确认到访记录
+        declined: 无法拒绝到访记录
+        suggested: 无法将到访记录标记为建议
+      status_updated:
+        confirmed: 到访记录确认成功
+        declined: 到访记录已成功拒绝
+        suggested: 到访记录已标记为建议
+      unnamed: 未命名到访记录
+    sharing:
+      expires_in: 有效期 %{time}
+      hours_minutes_remaining: 剩余 %{hours}h %{minutes}m
+      minutes_remaining: 剩余 %{minutes}m
+      link_copied: 链接已复制！
+    areas:
+      edit: 编辑区域
+      create_new: 创建新区域
+      enter_name: 输入区域名称
+      confirm_delete: 您确定要删除该区域吗？
+      confirm_delete_named: |-
+        删除区域“%{name}”吗？
+
+        此操作无法撤销。
+      deleted: 区域已成功删除！
+      new: 新区域
+      save: 保存区域
+      update: 更新区域
+      create: 创建区域
+    search:
+      locations: 搜索位置
+      locations_placeholder: 搜索位置...
+      failed: 搜索失败
+      finding_suggestions: 正在查找建议...
+      first_last: 首次 %{first}，最近 %{last}
+      for_query: 关于“%{query}”
+      locations_found:
+        one: 找到 %{count} 个位置
+        other: 找到 %{count} 个位置
+      no_locations: 未找到位置
+      results: 结果
+      searching: 正在搜索…
+      searching_for: 正在搜索“%{query}”...
+      searching_for_visits: 正在搜索到访记录...
+      searching_visits_to: 正在搜索前往
+      suggestions: 建议
+      suggestions_failed: 无法获取建议
+      unavailable: 搜索不可用
+      unknown_location: 未知位置
+      unnamed_location: 未命名位置
+      visits_load_failed: 无法加载此位置的到访记录
+      locations_failed: 搜索位置失败。请重试。
+    settings:
+      transportation_recalculation_completed: 交通方式重新计算完成！
+      confirm_reset: 将所有设置重置为默认值？这将重新加载页面。
+      confirm_globe_reload: 地球视图需要重新加载页面才能生效。现在重新加载？
+      changed_fields: 更改：%{fields}
+      confirm_reapply_anomaly_filter: |-
+        此操作会修改现有数据，且可能运行较长时间。
+
+        • 所有现有异常标记都会被清除，并根据当前设置重新计算。
+        • 随后将重建轨迹、统计数据和摘要。
+        • 根据轨迹点数量，此操作可能需要几分钟；拥有多年历史记录时可能更久。
+        • 重建期间，地图上的轨迹和统计数据可能暂时不完整。
+
+        继续吗？
+      confirm_recalculate_user_data: |-
+        此操作可能运行较长时间，并会重建派生数据。
+
+        • 将根据当前轨迹点和设置，从头重新生成轨迹、统计数据和摘要。
+        • 现有轨迹和统计数据会被替换；您在轨迹上手动调整的内容也会被覆盖。
+        • 根据历史记录，此操作可能需要几分钟；完成后您会收到通知。
+
+        继续吗？
+      confirm_transportation_recalculation: |-
+        应用这些更改后，系统会重新计算您所有轨迹的交通方式。
+
+        根据轨迹数量，此过程可能需要一些时间；完成前设置会被锁定。
+
+        要继续吗？
+      custom_style_load_failed: 无法加载自定义地图样式；恢复到默认样式。
+      invalid_tile_url: 瓦片 URL 必须包含 {z}、{x} 和 {y} 占位符，或者是 MapLibre 样式 URL
+      layer_unavailable_custom_style: 不适用于自定义地图样式 — 它不会绘制标签或兴趣点
+      layer_unavailable_foreign_basemap: 不适用于自定义栅格或样式底图 — 这些图层来自内置矢量瓦片
+      make_changes_to_apply: 请先进行更改，以启用“应用”按钮
+      re_evaluation_queued: 重新评估已加入队列。任务完成后，地图将更新。
+      recalculation_queued: 重新计算已加入队列。完成后您会收到通知。
+      transportation_recalculation_failed: 重新计算失败：%{error}
+      transportation_recalculation_progress: 正在重新计算交通方式...（%{processed}/%{total} 条轨迹，%{progress}%）
+      transportation_recalculation_started: 设置已保存。正在重新计算所有轨迹的交通方式...
+      unsaved_count:
+        one: "%{count} 项未保存"
+        other: "%{count} 项未保存"
+      unsaved_transportation_changes: 点击“应用”以保存并重新计算。
+      tiles_fallback_unavailable: 仅适用于 {z}/{x}/{y} 瓦片 URL — MapLibre 样式 URL 会替换整个底图
+    upload:
+      complete:
+        one: "%{count} 个文件上传成功。准备提交。"
+        other: "%{count} 个文件上传成功。准备提交。"
+      compression_failed: 无法压缩 %{name}，按原样上传。
+      error: 上传 %{name} 时出错：%{error}
+      file_size_limit: 超出文件大小限制。试用用户最多只能上传 10MB 的文件。
+      import_limit: 试用用户最多只能创建 %{count} 次导入。
+      none_uploaded: 没有文件上传成功。请重试。
+      preparing:
+        one: 正在准备 %{count} 个文件上传...
+        other: 正在准备 %{count} 个文件上传...
+      progress: 上传进度
+      unsupported_type: 不支持的文件类型：%{names}。支持的格式：%{accepted}。
+      uploading:
+        one: 正在上传 %{count} 个文件，请稍候...
+        other: 正在上传 %{count} 个文件，请稍候...
+    immich:
+      confirm_enrich:
+        one: 要将 GPS 坐标写入 Immich 中的 %{count} 张照片吗？这将更新照片的位置元数据。
+        other: 要将 GPS 坐标写入 Immich 中的 %{count} 张照片吗？这将更新照片的位置元数据。
+      enrich_photos:
+        one: 为 %{count} 张照片补充 GPS 坐标
+        other: 为 %{count} 张照片补充 GPS 坐标
+      enriched:
+        one: 已成功为 %{count} 张照片补充 GPS 坐标！
+        other: 已成功为 %{count} 张照片补充 GPS 坐标！
+      enriching:
+        one: 正在为 %{count} 张照片补充 GPS 坐标...
+        other: 正在为 %{count} 张照片补充 GPS 坐标...
+      marker_title: "%{filename}（%{delta} 时间差）"
+      matched_summary: 已匹配 %{matched}/%{total} 张照片
+      minutes_short: "%{count}m"
+      no_matches: 在容差范围内未找到匹配项
+      open_in_immich: 在 Immich 中打开
+      partially_enriched: 已为 %{enriched} 张照片补充 GPS 坐标，另有 %{failed} 张失败。
+      photos_without_gps:
+        one: "%{count} 张没有 GPS 坐标的照片"
+        other: "%{count} 张没有 GPS 坐标的照片"
+      scanning: 正在扫描 Immich 照片...
+      seconds_short: "%{count}s"
+    selection:
+      anomaly_points_deleted:
+        one: 已删除 %{count} 个异常轨迹点
+        other: 已删除 %{count} 个异常轨迹点
+      confirm_delete_anomaly_points:
+        one: 确定要删除 %{count} 个异常轨迹点吗？此操作无法撤销。
+        other: 确定要删除 %{count} 个异常轨迹点吗？此操作无法撤销。
+      confirm_delete_points:
+        one: 确定要从位置历史记录中永久删除 %{count} 个轨迹点吗？此操作无法撤销。
+        other: 确定要从位置历史记录中永久删除 %{count} 个轨迹点吗？此操作无法撤销。
+      delete_anomaly_points:
+        one: 删除 %{count} 个异常轨迹点
+        other: 删除 %{count} 个异常轨迹点
+      delete_points:
+        one: 删除 %{count} 个轨迹点
+        other: 删除 %{count} 个轨迹点
+      delete_points_failed: 删除轨迹点失败。请重试。
+      delete_points_label: 删除轨迹点
+      enabled: 已启用选择模式。点击并拖动以选择区域。
+      map_refresh_failed: 地图未刷新。重新加载页面以查看更新后的轨迹点。
+      no_points_deleted: 未删除任何轨迹点，它们可能已被删除。
+      points:
+        one: "%{count} 个轨迹点"
+        other: "%{count} 个轨迹点"
+      points_deleted:
+        one: 已成功删除 %{count} 个轨迹点
+        other: 已成功删除 %{count} 个轨迹点
+      selected: 已选择 %{items}
+      too_many_points: 轨迹点过多（%{requested}）。请画一个较小的区域；每次最多删除 %{limit} 个。
+      too_many_selected_points: 选择的轨迹点过多（%{requested}）。请画一个较小的区域；每次最多删除 %{limit} 个。
+      visits:
+        one: "%{count} 条到访记录"
+        other: "%{count} 条到访记录"
+      visits_in_area: 区域内到访记录（%{count}）
+      write_api_requires_pro: 写入 API 需要 Pro
+    map_info:
+      altitude: 海拔
+      area: 区域
+      average_speed: 平均速度
+      battery: 电池
+      center: 中心
+      coordinates: 坐标
+      current_speed: 当前速度
+      distance: 距离
+      duration: 持续时间
+      duration_hours_minutes: "%{hours}h %{minutes}m"
+      duration_minutes: "%{minutes}m"
+      email: 邮箱
+      end: 结束
+      h3_index: H3 索引
+      id: ID
+      latitude: 纬度
+      location: 位置
+      location_coordinates: 位置（%{latitude}、%{longitude}）
+      location_data: 位置数据
+      location_point: 位置点
+      longitude: 经度
+      meters:
+        one: "%{count} 米"
+        other: "%{count} 米"
+      mode: 模式
+      photo: 照片
+      place: 地点
+      points: 轨迹点
+      radius: 半径
+      reason: 原因
+      route_information: 路线信息
+      routes: 路线
+      selected_point: 选定的轨迹点
+      show_points: 显示轨迹点
+      show_points_help: 启用后可查看并拖动轨迹点以编辑轨迹
+      source: 来源
+      speed: 速度
+      start: 开始
+      status: 状态
+      taken: 拍摄
+      time: 时间
+      time_range: 时间范围
+      timestamp: 时间戳
+      total_distance: 总距离
+      track_number: "轨迹 #%{id}"
+      tracks: 轨迹
+      video: 视频
+      area_number: 区域 %{id}
+      place_name_locked: 🔒 您已为此地点命名，自动命名不会更改它。将其重命名为“Suggested place”即可交还自动命名。
+    map_controls:
+      add_visit: 添加一条到访记录
+      create_place: 创建地点
+      place_marker_mode: 点击地图放置标记（点击取消）
+      select_area: 选择区域
+      toggle_footer: 切换页脚可见性
+      toggle_panel: 切换面板
+      toggle_visits_drawer: 切换到访记录抽屉
+    map_styles:
+      black: 黑色
+      dark: 深色
+      grayscale: 灰度
+      light: 浅色
+      white: 白色
+    family:
+      loaded_members:
+        one: 已加载 %{count} 名家庭成员
+        other: 已加载 %{count} 名家庭成员
+      member: 家庭成员
+      none_sharing: 没有家庭成员共享位置
+      sharing_since:
+        one: 自 %{date} 起共享（%{count} 天历史记录）
+        other: 自 %{date} 起共享（%{count} 天历史记录）
+      sharing_disabled: 未与您的家人共享位置
+      sharing_enabled: 正在与您的家人共享位置
+      locations_updated:
+        one: 家庭位置已更新（%{count} 名成员）
+        other: 家庭位置已更新（%{count} 名成员）
+      refresh_failed: 无法刷新家庭位置
+    hexagons:
+      limit_warning: 仅显示此范围内前 100,000 个轨迹点 — 缩小日期范围可查看更多细节。
+      load_failed: 无法加载六边形：%{error}
+      points: <strong>%{count}</strong> 个轨迹点
+    layer_preview:
+      ended: "%{layer} 预览已结束。"
+      remaining: 预览 %{layer} — 剩余 %{seconds} 秒。
+      started: 预览 %{layer} %{seconds} 秒。
+    poster:
+      categories:
+        print: 打印
+        social: 社交
+        wallpaper: 壁纸
+      export_failed: 海报导出失败：%{error}
+      open_failed: 海报工作室无法打开：%{error}
+      order_summary: "%{layout} 海报 — %{price}"
+      theme_load_failed: 无法加载主题：%{error}
+      theme_preset_failed: 加载主题预设失败：%{error}
+      layouts:
+        print-a5: A5 纵向
+        print-a4: A4 纵向
+        print-a3: A3 纵向
+        print-a2: A2 纵向
+        print-a1: A1 纵向
+        print-a0: A0 纵向
+        print-30x40: 30 × 40 厘米
+        print-50x70: 50 × 70 厘米
+        print-70x100: 70 × 100 厘米
+        print-letter: Letter（美国）
+        print-a4-landscape: A4 横向
+        print-a3-landscape: A3 横向
+        social-ig-square: Instagram 方形
+        social-ig-portrait: Instagram 纵向
+        social-story: 快拍 (9:16)
+        social-x-header: X 横幅
+        social-youtube-thumb: YouTube 缩略图
+        wallpaper-fhd: 桌面全高清
+        wallpaper-4k: 桌面 4K
+        wallpaper-ultrawide: 桌面超宽
+        wallpaper-phone: 手机
+        wallpaper-tablet: 平板电脑
+      frame_too_wide: 此视图比最大的海报区域还宽 — 保存的海报会比预览放大更多。
+      load: 加载
+      loading: 正在加载…
+      loading_tracks: 正在加载新范围的轨迹…
+      no_location_data: 此日期范围内没有位置数据 — 请在顶部的日期栏中选择包含轨迹的日期范围。
+      no_tracks_in_frame: 画面中没有轨迹 — 请移动或缩放地图，让路线进入画面后保存到图库。
+      queued: 已排队 — 正在服务器端渲染，完成后将出现在“最近的海报”中…
+      rendering: 正在渲染 %{width} × %{height}px…
+      saved: 已保存
+      saved_at_dpi: 已按 %{dpi} dpi 保存（设备 GL 上限）
+      untitled: 无标题海报
+      order_errors:
+        connection: 无法访问订单服务 - 请检查您的连接。
+        generic: 订单上传失败 - 请重试。
+        not_pdf: 导出未生成有效的 PDF — 请重试。
+        payment_unavailable: 付款服务暂时不可用 — 请稍后重试。
+        too_large: 导出的 PDF 太大（最大 50 MB）。降低 DPI 上限或缩小。
+        unknown_sku: 此格式目前不可订购。
+        unreadable: 无法读取导出的 PDF — 请重试。
+        wrong_size: 导出的 PDF 与所选格式不匹配 — 请重试。
+    legacy_settings:
+      edit_colors: 编辑颜色
+      fog_radius: 战争迷雾半径
+      fog_threshold: 战争迷雾阈值
+      live_map: 实时地图
+      merge_threshold: 合并阈值（分钟）
+      meters_between_routes: 路线间隔（米）
+      minutes_between_routes: 路线间隔（分钟）
+      points_rendering_mode: 轨迹点渲染模式
+      raw: 原始
+      route_opacity: 路线不透明度（%）
+      simplified: 简化
+      speed_color_scale: 速度色标
+      speed_colored_routes: 按速度着色的路线
+      time_threshold: 时间阈值（分钟）
+    calendar_panel:
+      loading_visited_places: 正在加载到访过的地点...
+      loading_years: 正在加载年份...
+      no_data: 无可用数据
+      no_places_visited: 在此期间没有到访任何地点
+      select_year: 选择年份
+      visited_cities: 到访过的城市
+      visited_places_error: 加载到访过的地点时出错
+      whole_year: 全年
+      years_error: 加载年份时出错
+    live_share:
+      ended: 此实时共享已结束。
+      last_seen: 最后在线：%{date} (%{relative})
+      last_seen_short: 最后在线
+      location_hidden: 位置已隐藏。
+      location_unknown: 位置未知 — 等待更新…
+    speed_gradient:
+      add_stop: 添加渐变色标
+      color: 颜色
+      color_stops: 渐变色标
+      help: 该渐变将根据速度应用于路线
+      preview: 预览
+      speed: 速度（公里/小时）
+      title: 编辑速度渐变
+    stats:
+      no_location_data: "%{date} 没有可用的位置数据"
+      location_data_load_failed: 无法加载位置数据
+      map_initialization_failed: 无法初始化地图
+    anomalies:
+      impossible_speed: 已过滤：相邻轨迹点之间出现不可能的速度
+      low_accuracy: 已过滤：精度过低（%{accuracy}m，阈值 %{threshold}m）
+    live_map:
+      disabled: 实时模式已禁用
+      enabled: 实时模式已启用
+    map_panel:
+      layers: 地图图层
+      links: 链接
+      search: 搜索
+      settings: 设置
+      timeline: 时间线
+      tools: 工具
+    activity:
+      no_activity: 无活动
+    datetime:
+      start_before_end: 开始日期必须早于结束日期
+    timeline:
+      action_count: "%{action} %{count}"
+      merge_count: 合并 %{count}
+      selected: 已选择 %{count} 项
+      selected_with_max: 已选择 %{count} 项（最多 %{max} 项）
+    time:
+      days_short: "%{count}d"
+      hours_short: "%{count}h"
+      invalid_date: 无效日期
+      minutes_short: "%{count}min"
+    video:
+      open_failed: 视频工作室打开失败：%{error}
+      save_failed: 保存视频失败：%{error}
+      rendering: 正在渲染… %{percent}%
+      uploading: 正在上传… %{percent}%
+      ready: 您的视频已就绪 — %{size} MB。
+      summary: '%{format} — %{width} × %{height} · 主题：%{theme} · %{seconds} 秒，30 fps'
+      unsupported_browser: 此浏览器无法编码视频。请尝试使用最新版 Chrome、Edge、Safari 或 Firefox。
+      empty_track: 此范围内没有可用于动画的路线。请选择至少包含两个点的范围。
+      restoring_range: 正在恢复此视频所用的范围…
+      range_mismatch: 此视频由 %{range} 制作。打开该范围可完全一致地重新渲染 — 否则将使用当前屏幕上的路线。
+      stats:
+        distance: 距离
+        duration: 持续时间
+        avg_speed: 平均速度
+      hud:
+        day: 天数
+        distance: 距离
+        of_total: 占总计
+        tagline: 私人位置历史
+        travelled_over: 历时 %{days} 天
+  battery_statuses:
+    unknown: 未知
+    unplugged: 已拔出
+    charging: 正在充电
+    full: 已充满
+    connected_not_charging: 未充电
+    discharging: 正在放电
+  family_invitations:
+    index:
+      back_to_family: 返回家庭
+      cancel: 取消
+      cancel_confirm: 您确定要取消此邀请吗？
+      copy_link: 复制链接
+      expires_on: 到期
+      invited_on: 已邀请
+      no_invitations: 没有待处理的邀请
+      title: 家庭邀请
+      view_invitation: 查看
+  activerecord:
+    errors:
+      models:
+        service_setting:
+          host_required: '%{provider} 需要一个主机。请输入您实例的主机名，例如 photon.example.com。'
+          host_invalid: 主机必须是纯主机名，可带端口或路径 — 不要 http:// 前缀，不要空格。
+          host_blocked: 无法使用此主机：%{reason}
+          api_key_required: '%{provider} 需要 API 密钥。'
+          chibigeo_api_key_required: ChibiGeo 需要 API 密钥。免费的 Hobby 套餐每天包含 2,500 次查询 — 请在 chibigeo.com 获取您的密钥。
+  route_videos:
+    route_video:
+      download: 下载 MP4
+      delete: 删除
+      delete_this_video: 删除此视频？
+      re_render: 重新渲染
+      expired_on: 视频文件已于 %{date} 移除以节省空间。
+      expired_hint: 其设置已保留 — 重新渲染即可再次生成。
+    studio:
+      video_studio: 视频工作室
+      close_studio: 关闭工作室
+      name: 名称
+      theme: 主题
+      route: 路线
+      playback: 播放
+      reset: 重置
+      format: 格式
+      format_portrait: 故事 · 9:16（竖向）
+      format_landscape: 宽屏 · 16:9（横向）
+      format_square: 信息流 · 1:1（方形）
+      duration: 时长
+      camera: 镜头
+      camera_overview: 整条路线
+      camera_follow: 跟随线路
+      track_color: 路线颜色
+      track_width: 路线宽度
+      units: 单位
+      units_km: 公里
+      units_mi: 英里
+      hud_scale: 叠加层大小
+      watermark: 在视频上显示 dawarich.app
+      recent_videos: 最近的视频
+      videos_from_save_to_gallery_they_stay_here: 您从此工作室保存的视频。它们会一直保留在这里，直到您删除，或保留策略移除文件。
+      rendered_on_your_device_nothing_leaves_the_browser_until_you_save: 在您的设备上渲染 — 在您保存之前，没有任何内容离开浏览器。
+      render_a_video: 渲染视频
+      keep_this_video_in_your_gallery: 将此视频保留在您的图库中
+      cancel: 取消
+      save_to_gallery: 保存到图库
+      render_video: 渲染视频

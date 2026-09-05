@@ -1,5 +1,7 @@
 ## Setting up reverse proxy
 
+> [简体中文](zh-CN/how_to_setup_reverse_proxy.md)
+
 ### Environment Variable
 To make Dawarich work with a reverse proxy, you need to ensure the APPLICATION_HOSTS environment variable is set to include the domain name that the reverse proxy will use.
 For example, if your Dawarich instance is supposed to be on the domain name timeline.mydomain.com, then include "timeline.mydomain.com" in this environment variable.

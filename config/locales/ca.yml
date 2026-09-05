@@ -1138,8 +1138,8 @@ ca:
         water_labels: Etiquetes d'aigua
         tiled_rendering: "Renderitzat per tessel·les"
         beta: "Beta"
-        tiled_rendering_description: "Dibuixa els punts, les rutes, els trajectes i la boira a partir de tessel·les vectorials mentre et desplaces, de manera que un interval de dates llarg només carrega el que es veu. Les rutes mostren els trajectes que has generat, acolorits per trajecte."
-        tiled_rendering_caveats: "Actiu mentre el Mapa de rascar està desactivat. Les zones denses s'agrupen en marcadors amb un recompte de punts: amplia per obrir els punts individualment. L'edició de punts no està disponible, les rutes s'acoloreixen per trajecte (velocitat mitjana, no un degradat), en passar el cursor per una ruta ja no se'n mostra la finestra emergent (fes clic en un trajecte) i el rastre en directe pot trigar uns minuts."
+        tiled_rendering_description: "Dibuixa els punts, les rutes, els trajectes i la boira a partir de tessel·les vectorials mentre et desplaces, de manera que un interval de dates llarg només carrega el que es veu. Les rutes mostren els trajectes que has generat. Amplia per veure la velocitat de cada segment."
+        tiled_rendering_caveats: "Actiu mentre el Mapa de rascar està desactivat. Les zones denses s'agrupen en marcadors amb un recompte de punts: amplia per obrir els punts individualment. L'edició de punts no està disponible, en passar el cursor per una ruta ja no se'n mostra la finestra emergent (fes clic en un trajecte) i el rastre en directe pot trigar uns minuts."
         fill_gaps_with_the_default_basemap: "Omple els buits amb el mapa base predeterminat"
         uncovered_areas_are_drawn_from_dawarich_s_default_tile_server: "Per a un conjunt de tessel·les que només cobreix una part del món. Les zones que no cobreix es dibuixen des del servidor de tessel·les predeterminat de Dawarich, de manera que, si ho actives, s'hi enviaran peticions de tessel·les."
       visit_creation_modal:
@@ -1512,6 +1512,16 @@ ca:
         the_base_url_of_your_airtrail_instance_your_flights_are: La URL base de la teva instància d'AirTrail. Els teus vols es mostren com a arcs al mapa.
         airtrail_api_key: Clau API d'AirTrail
         create_an_api_key_in_airtrail_under_settings_rarr_security: Crea una clau API a AirTrail a Configuració → Seguretat.
+        teslamate_integration: Integració amb TeslaMateApi
+        teslamate_url: URL de TeslaMateApi
+        the_base_url_of_your_teslamateapi_instance: La URL base de la teva instància de TeslaMateApi.
+        teslamate_setup_guide: Guia de configuració (TeslaMateApi v1.25.0 o posterior)
+        teslamate_username: Nom d'usuari HTTP Basic (opcional)
+        teslamate_password: Contrasenya HTTP Basic (opcional)
+        teslamate_api_token: Token Bearer (opcional)
+        teslamate_authentication_help: Utilitza autenticació Basic per a un servidor intermediari invers protegit, o un token Bearer per a un servidor intermediari o fork compatible. Els endpoints de lectura del TeslaMateApi canònic no utilitzen l'API_TOKEN.
+        sync_teslamate_drives: Sincronitza els trajectes de TeslaMateApi
+        teslamate_sync_help: Els trajectes completats se sincronitzen automàticament una vegada al dia. Els trajectes actuals i les posicions d'estacionament no estan disponibles mitjançant TeslaMateApi.
         last_synced: 'Última sincronització:'
         connected_accounts: Comptes connectats
         you_ve_connected_your_account_using_the_following_oauth_provider: 'Has connectat el teu compte fent servir el proveïdor OAuth següent:'
@@ -1529,6 +1539,7 @@ ca:
           immich: "Immich"
           photoprism: "PhotoPrism"
           airtrail: "AirTrail"
+          teslamate: "TeslaMateApi"
         status_connected: "Connectat"
         status_failed: "L'últim intent de connexió ha fallat"
     subscriptions:
@@ -3310,6 +3321,11 @@ ca:
     trip:
       must_be_after_start_date: ha de ser posterior a la data d'inici
   services:
+    tesla_mate:
+      connection_tester:
+        teslamate_connection_verified: Connexió amb TeslaMateApi verificada
+        teslamate_url_is_missing: Falta la URL de TeslaMateApi
+        teslamate_connection_failed_message: 'La connexió amb TeslaMateApi ha fallat: %{message}'
     air_trail:
       connection_tester:
         airtrail_connection_verified: Connexió amb AirTrail verificada
@@ -3429,6 +3445,13 @@ ca:
         immich_api_key_missing_permission_asset_view: 'A la clau API d''Immich li falta el permís: asset.view'
         immich_thumbnail_check_failed_code: 'La comprovació de la miniatura d''Immich ha fallat: %{code}'
       enrich_photos:
+        checking_title: "Comprovant les actualitzacions d’ubicació d’Immich"
+        checking: "S’han enviat %{count} actualitzacions d’ubicació a Immich. S’està comprovant si s’han desat les coordenades."
+        result_title: "Resultats de les actualitzacions d’ubicació d’Immich"
+        confirmed:
+          one: "Ubicació desada confirmada per a %{count} foto."
+          other: "Ubicacions desades confirmades per a %{count} fotos."
+        unconfirmed: "Actualitzacions d’ubicació encara sense confirmar: %{count}. Pot ser que Immich encara estigui processant els canvis. Comprova les tasques de metadades i el permís asset.read de la clau API. A les biblioteques externes, Immich ha de poder escriure fitxers auxiliars XMP: els muntatges de només lectura o els permisos dels fitxers poden impedir que es desin. Un cop resolt, torna a cercar abans de reintentar-ho."
         http_code_message: 'HTTP %{code}: %{message}'
       enrich_scan:
         failed_to_fetch_photos_from_immich: No s'han pogut obtenir les fotos d'Immich
@@ -3620,6 +3643,10 @@ ca:
         weekday_preference: Viatges més entre setmana que els caps de setmana
         with_suggestion: "%{insight} %{suggestion}"
   jobs:
+    tesla_mate:
+      sync_job:
+        teslamate_sync_failed: La sincronització amb TeslaMateApi ha fallat
+        your_teslamate_sync_failed: 'La sincronització amb TeslaMateApi ha fallat amb l''error: %{message}. Comprova la configuració de la integració i torna-ho a provar.'
     air_trail:
       import_flights_job:
         airtrail_sync_failed: La sincronització amb AirTrail ha fallat
@@ -4130,6 +4157,7 @@ ca:
       no_matches: No s'ha trobat cap coincidència dins de la tolerància
       open_in_immich: Obre a Immich
       partially_enriched: "S'han enriquit %{enriched} fotos. %{failed} han fallat."
+      pending_enrichment: "S’han enviat %{count} actualitzacions d’ubicació a Immich; %{failed} no s’han pogut enviar. Rebràs una notificació després de comprovar les coordenades desades."
       photos_without_gps:
         one: "%{count} foto sense GPS"
         other: "%{count} fotos sense GPS"
@@ -4316,6 +4344,7 @@ ca:
       loading: Carregant…
       loading_tracks: Carregant trajectes per al nou interval…
       no_location_data: No hi ha dades d'ubicació en aquest interval de dates — tria un interval amb trajectes a la barra de dates de dalt.
+      gallery_without_flights: "Els pòsters de la galeria utilitzen rutes GPS sense vols. La baixada conserva la vista actual."
       no_tracks_in_frame: No hi ha trajectes dins del marc — mou o fes zoom al mapa sobre la teva ruta per desar-la a la galeria.
       queued: A la cua — generant-se al servidor a Pòsters recents…
       rendering: Generant %{width} × %{height}px…

@@ -14,6 +14,7 @@ class Settings::Update
   def call
     existing_settings = user.safe_settings.settings
     params_hash = cast_boolean_params(settings_params)
+    reset_teslamate_checkpoint(params_hash, existing_settings)
     updated_settings = existing_settings.merge(params_hash)
 
     immich_changed = settings_changed?(existing_settings, updated_settings,
@@ -22,8 +23,14 @@ class Settings::Update
                                            %w[photoprism_url photoprism_api_key photoprism_skip_ssl_verification])
     airtrail_changed = settings_changed?(existing_settings, updated_settings,
                                          %w[airtrail_url airtrail_api_key airtrail_skip_ssl_verification])
+    teslamate_changed = settings_changed?(
+      existing_settings,
+      updated_settings,
+      %w[teslamate_url teslamate_username teslamate_password teslamate_api_token
+         teslamate_skip_ssl_verification]
+    )
 
-    %w[immich_url photoprism_url airtrail_url].each do |key|
+    %w[immich_url photoprism_url airtrail_url teslamate_url].each do |key|
       next if updated_settings[key].blank?
 
       validate_integration_url!(updated_settings[key])
@@ -41,6 +48,7 @@ class Settings::Update
     test_immich_connection(updated_settings, test_notices, alerts, statuses) if immich_changed
     test_photoprism_connection(updated_settings, test_notices, alerts, statuses) if photoprism_changed
     test_airtrail_connection(updated_settings, test_notices, alerts, statuses) if airtrail_changed
+    test_teslamate_connection(updated_settings, test_notices, alerts, statuses) if teslamate_changed
 
     # The connection tests above take seconds; re-read settings so a write that
     # landed in the meantime is not reverted by this save.
@@ -62,7 +70,7 @@ class Settings::Update
   private
 
   BOOLEAN_KEYS = %w[immich_skip_ssl_verification photoprism_skip_ssl_verification
-                    airtrail_skip_ssl_verification].freeze
+                    airtrail_skip_ssl_verification teslamate_skip_ssl_verification].freeze
 
   def cast_boolean_params(params)
     params.to_h.tap do |h|
@@ -74,6 +82,16 @@ class Settings::Update
 
   def settings_changed?(existing_settings, updated_settings, keys)
     keys.any? { |key| existing_settings[key] != updated_settings[key] }
+  end
+
+  def reset_teslamate_checkpoint(params, existing_settings)
+    return unless params.key?('teslamate_url')
+    return if params['teslamate_url'] == existing_settings['teslamate_url']
+
+    params['teslamate_last_synced_at'] = nil
+    params['teslamate_last_synced_url'] = nil
+    params['teslamate_processing_pending'] = false
+    params['teslamate_processing_pending_url'] = nil
   end
 
   def test_immich_connection(updated_settings, notices, alerts, statuses)
@@ -101,6 +119,17 @@ class Settings::Update
       skip_ssl_verification: updated_settings['airtrail_skip_ssl_verification']
     ).call
     record_result('airtrail', result, notices, alerts, statuses)
+  end
+
+  def test_teslamate_connection(updated_settings, notices, alerts, statuses)
+    result = TeslaMate::ConnectionTester.new(
+      updated_settings['teslamate_url'],
+      username: updated_settings['teslamate_username'],
+      password: updated_settings['teslamate_password'],
+      api_token: updated_settings['teslamate_api_token'],
+      skip_ssl_verification: updated_settings['teslamate_skip_ssl_verification']
+    ).call
+    record_result('teslamate', result, notices, alerts, statuses)
   end
 
   def record_result(service, result, notices, alerts, statuses)

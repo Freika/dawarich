@@ -4,6 +4,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.14.3] - 2026-09-05, Berlin
+
+### Added
+
+- Dawarich can now be used in Simplified Chinese: pick it under Settings → General. Thanks @AwHsR15 for the translation! (#3354)
+- TeslaMateApi can now sync completed-drive positions from every configured car into Dawarich, manually or once a day. The integration supports reverse-proxy Basic authentication, optional bearer tokens, self-signed certificates, bounded retries, source-specific incremental checkpoints, serialized syncs, and idempotent historical imports that do not move live maps backwards.
+- `GET /api/v1/users/me` now returns a top-level `features` object, and `GET /api/v1/families/mine` answers `200` with `lapsed: true` when a family membership outlives its entitlement. Clients can now tell "never had family sharing" apart from "the subscription ran out" and offer renewal to the owner.
+
+### Fixed
+
+- Simplified Chinese now covers every user-facing string added in this release.
+- A Family plan owner whose subscription lapsed kept family sharing access. Entitlement now follows the subscription's expiry for the plan holder, as it already did for the other members.
+- Historical country and city statistics refresh after reverse geocoding without recalculating distances or map coverage; missed updates are repaired gradually (#3499).
+- Stored monthly and daily stats are now rebuilt automatically after a calculation change, so historical distances no longer need a manual **Update all stats**. Changing your timezone rebuilds them too. (#2069)
+- Track generation now refreshes surviving partial tracks from their assigned points, correcting stale time ranges, distance and elevation after buffered chunks overlap. Public links and manual transportation corrections are preserved. (#3209)
+- Traccar latitude/longitude form uploads now save points, including Unix timestamps in seconds or milliseconds. Payloads that cannot be stored return an error instead of a false success; repeated valid uploads remain safe. (#3299)
+- Immich photo enrichment now checks saved coordinates in the background and explains unconfirmed updates, including read-only external library and XMP permission problems (#3065).
+- Public trip galleries include photos beyond the first hundred, load each day's images when expanded, and no longer show a misleading separator before daily distances. (#3232)
+- Speed coloring in tiled maps now reflects individual route segments when zoomed in, instead of the average speed of the whole track. Segment speeds are rounded to the nearest km/h to keep long date ranges compact. (#3425)
+- Hovering a transportation segment in the map timeline now animates only that segment and restores the existing track highlight on exit. (#3497)
+- Trip Poster Studio previews and downloads now include enabled AirTrail flight arcs and preserve the map’s existing GPS masking. Video and server-rendered gallery posters retain their existing GPS source. (#3330)
+- The video studio now draws your route when tiled rendering is on. It read the map's route data a moment before loading it, and under tiled rendering nothing else fills that in, so the video came out as a bare map with the distance and clock still running over it.
+- The poster studio now draws your route when tiled rendering is on. It never asked the map to load the route data, and under tiled rendering nothing else does, so the preview came up empty and Save was blocked with "No location data in this date range" even though the range had plenty.
+- The Add User form now displays and enforces the configured password length before submission (#2688).
+- Pages no longer wait for GitHub when checking for a newer version; update checks now run only in the background and ignore stale releases cached before an upgrade (#3485).
+- Idle background workers no longer repeatedly write locks for empty queues to Redis; newly queued work is picked up within the normal two-second polling interval. (#3315)
+- TeslaMate syncs now stop when a Cloud account loses integration access or reaches its point limit, and imported historical months refresh their statistics.
+- Hourly statistics sweeps no longer miss delayed points or points saved while the sweep watermark advances.
+- Users with legacy non-object settings can save new settings without an error.
+
 ## [1.14.2] - 2026-09-02, Berlin
 
 ### Added

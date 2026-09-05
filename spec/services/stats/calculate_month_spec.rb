@@ -81,7 +81,7 @@ RSpec.describe Stats::CalculateMonth do
 
         context 'when there is an error' do
           before do
-            allow(Stat).to receive(:find_or_initialize_by).and_raise(StandardError)
+            allow(Stats::DailyDistanceQuery).to receive(:new).and_raise(StandardError)
           end
 
           it 'does not create stats' do

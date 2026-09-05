@@ -191,6 +191,27 @@ RSpec.describe Points::Intake do
     end
   end
 
+  describe 'bulk intake' do
+    subject(:bulk_intake) { described_class.call(user_id: user.id, payloads: payloads, mode: :bulk) }
+
+    it 'persists and counts points without triggering realtime arrival work' do
+      allow(Points::LiveBroadcaster).to receive(:new)
+      allow(Tracks::RealtimeDebouncer).to receive(:new)
+      allow(Tracks::BackfillScheduler).to receive(:new)
+      allow(Visits::RealtimeDebouncer).to receive(:new)
+
+      expect { bulk_intake }
+        .to change { user.points.count }.by(2)
+        .and change { user.reload.points_count }.by(2)
+
+      expect(Points::AnomalyFilterJob).not_to have_been_enqueued
+      expect(Points::LiveBroadcaster).not_to have_received(:new)
+      expect(Tracks::RealtimeDebouncer).not_to have_received(:new)
+      expect(Tracks::BackfillScheduler).not_to have_received(:new)
+      expect(Visits::RealtimeDebouncer).not_to have_received(:new)
+    end
+  end
+
   def many_payloads(count)
     Array.new(count) do |i|
       { lonlat: "POINT(#{13.4 + (i / 100_000.0)} 52.5)", timestamp: 1_760_000_000 + i, tracker_id: 'bulk' }

@@ -1,5 +1,7 @@
 # How to install Dawarich on Synology using Docker
 
+> [简体中文](zh-CN/How_to_install_Dawarich_on_Synology.md)
+
 # Preparation
 
 ## Container manager
