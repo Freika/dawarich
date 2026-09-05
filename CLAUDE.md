@@ -51,7 +51,6 @@ This file contains essential information for Claude to work effectively with the
 - `activerecord-postgis-adapter` - PostgreSQL PostGIS support
 - `geocoder` - Geocoding services
 - `rgeo` - Ruby Geometric Library
-- `gpx` - GPX file processing
 - `parallel` - Parallel processing
 - `sidekiq` - Background job processing
 - `chartkick` - Chart generation
@@ -259,7 +258,6 @@ See `.env.template` for available configuration options including:
 - **JS/CSS Linting**: Biome (formatting, lint, import sorting)
 - **Security**: Brakeman, bundler-audit
 - **Dependencies**: Strong Migrations for safe database changes
-- **Performance**: Stackprof for profiling
 
 ### Commands
 ```bash
