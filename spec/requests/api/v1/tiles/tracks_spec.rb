@@ -14,6 +14,21 @@ RSpec.describe 'Api::V1::Tiles::Tracks', type: :request do
   end
 
   describe 'GET /show' do
+    it 'provides segment speeds when speed coloring is requested' do
+      track = create_track_near_origin(user,
+                                       original_path: 'LINESTRING(0.001 0.001, 0.002 0.001, 0.0021 0.001)')
+      [0.001, 0.002, 0.0021].each_with_index do |longitude, index|
+        create(:point, user:, track:, longitude:, latitude: 0.001,
+                       timestamp: track.start_at.to_i + (index * 10))
+      end
+
+      get '/api/v1/tiles/tracks/15/16384/16383.mvt',
+          params: { api_key: user.api_key, speed_coloring: 'true' }
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body.b).to include('segment_speed')
+    end
+
     it 'returns a vector tile with the serializer-matching property set' do
       create_track_near_origin(user, dominant_mode: :driving)
 
@@ -47,6 +62,34 @@ RSpec.describe 'Api::V1::Tiles::Tracks', type: :request do
 
     describe 'caching lifecycle' do
       let(:range) { { start_at: '2024-01-01T00:00:00Z', end_at: '2024-12-31T23:59:59Z' } }
+
+      it 'separates speed tiles and invalidates them when their points change' do
+        track = create_track_near_origin(user,
+                                         original_path: 'LINESTRING(0.001 0.001, 0.002 0.001)')
+        create(:point, user:, track:, longitude: 0.001, latitude: 0.001, timestamp: track.start_at.to_i)
+        endpoint = create(:point, user:, track:, longitude: 0.002, latitude: 0.001,
+                                  timestamp: track.start_at.to_i + 10)
+        tile_path = '/api/v1/tiles/tracks/15/16384/16383.mvt'
+        get tile_path, params: range.merge(api_key: user.api_key)
+        flat_etag = response.headers['ETag']
+
+        params = range.merge(api_key: user.api_key, speed_coloring: 'true')
+        get tile_path, params:, headers: { 'If-None-Match' => flat_etag }
+        expect(response).to have_http_status(:ok)
+        speed_etag = response.headers['ETag']
+        original_tile = response.body.b
+
+        get tile_path, params:, headers: { 'If-None-Match' => speed_etag }
+        expect(response).to have_http_status(:not_modified)
+
+        patch "/api/v1/points/#{endpoint.id}",
+              params: { api_key: user.api_key, point: { longitude: 0.0011, latitude: 0.001 } }
+        expect(response).to have_http_status(:ok)
+        get tile_path, params:, headers: { 'If-None-Match' => speed_etag }
+
+        expect(response).to have_http_status(:ok)
+        expect(response.body.b).not_to eq(original_tile)
+      end
 
       it 'serves cacheable responses, honors ETags, and invalidates on track writes' do
         create_track_near_origin

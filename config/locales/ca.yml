@@ -1138,8 +1138,8 @@ ca:
         water_labels: Etiquetes d'aigua
         tiled_rendering: "Renderitzat per tessel·les"
         beta: "Beta"
-        tiled_rendering_description: "Dibuixa els punts, les rutes, els trajectes i la boira a partir de tessel·les vectorials mentre et desplaces, de manera que un interval de dates llarg només carrega el que es veu. Les rutes mostren els trajectes que has generat, acolorits per trajecte."
-        tiled_rendering_caveats: "Actiu mentre el Mapa de rascar està desactivat. Les zones denses s'agrupen en marcadors amb un recompte de punts: amplia per obrir els punts individualment. L'edició de punts no està disponible, les rutes s'acoloreixen per trajecte (velocitat mitjana, no un degradat), en passar el cursor per una ruta ja no se'n mostra la finestra emergent (fes clic en un trajecte) i el rastre en directe pot trigar uns minuts."
+        tiled_rendering_description: "Dibuixa els punts, les rutes, els trajectes i la boira a partir de tessel·les vectorials mentre et desplaces, de manera que un interval de dates llarg només carrega el que es veu. Les rutes mostren els trajectes que has generat. Amplia per veure la velocitat de cada segment."
+        tiled_rendering_caveats: "Actiu mentre el Mapa de rascar està desactivat. Les zones denses s'agrupen en marcadors amb un recompte de punts: amplia per obrir els punts individualment. L'edició de punts no està disponible, en passar el cursor per una ruta ja no se'n mostra la finestra emergent (fes clic en un trajecte) i el rastre en directe pot trigar uns minuts."
         fill_gaps_with_the_default_basemap: "Omple els buits amb el mapa base predeterminat"
         uncovered_areas_are_drawn_from_dawarich_s_default_tile_server: "Per a un conjunt de tessel·les que només cobreix una part del món. Les zones que no cobreix es dibuixen des del servidor de tessel·les predeterminat de Dawarich, de manera que, si ho actives, s'hi enviaran peticions de tessel·les."
       visit_creation_modal:
