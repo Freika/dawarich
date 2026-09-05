@@ -950,8 +950,8 @@ de:
         allow_dragging_points_to_correct_their_position_remembered_across_sessio: Erlaube das Ziehen von Punkten, um ihre Position zu korrigieren. Wird über Sitzungen hinweg gespeichert.
         tiled_rendering: "Gekachelte Darstellung"
         beta: "Beta"
-        tiled_rendering_description: "Zeichnet Punkte, Routen, Tracks und Kartennebel beim Bewegen der Karte aus Vektorkacheln, statt den gesamten Zeitraum vorab zu laden. Routen zeigen deine erzeugten Tracks, je Track eingefärbt."
-        tiled_rendering_caveats: "Aktiv, solange die Rubbelkarte aus ist. Dichte Bereiche werden zu Markern mit Punktanzahl zusammengefasst — zoome hinein, um einzelne Punkte zu öffnen. Punktbearbeitung ist nicht verfügbar, Routen werden je Track eingefärbt (Durchschnittsgeschwindigkeit statt Verlauf), das Routen-Popup beim Überfahren entfällt — klicke stattdessen auf einen Track — und die Live-Spur kann einige Minuten nachhängen."
+        tiled_rendering_description: "Zeichnet Punkte, Routen, Tracks und Kartennebel beim Bewegen der Karte aus Vektorkacheln, statt den gesamten Zeitraum vorab zu laden. Routen zeigen deine erzeugten Tracks. Zoome hinein, um die Geschwindigkeit einzelner Abschnitte zu sehen."
+        tiled_rendering_caveats: "Aktiv, solange die Rubbelkarte aus ist. Dichte Bereiche werden zu Markern mit Punktanzahl zusammengefasst — zoome hinein, um einzelne Punkte zu öffnen. Punktbearbeitung ist nicht verfügbar, das Routen-Popup beim Überfahren entfällt — klicke stattdessen auf einen Track — und die Live-Spur kann einige Minuten nachhängen."
         routes: Routen
         show_connected_route_lines: Zeige verbundene Routenlinien
         color_by_speed: Farbe nach Geschwindigkeit
@@ -4347,6 +4347,7 @@ de:
       loading: Lade…
       loading_tracks: Lade Tracks für den neuen Bereich…
       no_location_data: Keine Standortdaten in diesem Zeitraum — wähle einen Zeitraum mit Tracks in der Zeitleiste oben aus.
+      gallery_without_flights: "Galerieposter verwenden GPS-Routen ohne Fluglinien. Der Download behält die aktuelle Ansicht bei."
       no_tracks_in_frame: Keine Tracks im Rahmen — verschiebe oder zoome die Karte über deinen Weg, um sie in die Galerie zu speichern.
       queued: In der Warteschlange — wird auf der Serverseite in Recent Posters gerendert…
       rendering: Rendere %{width} × %{height}px…
