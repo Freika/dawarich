@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Public trip galleries include photos beyond the first hundred, load each day's images when expanded, and no longer show a misleading separator before daily distances. (#3232)
 - Historical country and city statistics refresh after reverse geocoding, with bounded monthly repairs and protection against concurrent recalculation (#3499).
 - Track generation now refreshes surviving partial tracks from their assigned points, correcting stale time ranges, distance and elevation after buffered chunks overlap. Public links and manual transportation corrections are preserved. (#3209)
 - Trip Poster Studio previews and downloads now include enabled AirTrail flight arcs and preserve the map’s existing GPS masking. Video and server-rendered gallery posters retain their existing GPS source. (#3330)

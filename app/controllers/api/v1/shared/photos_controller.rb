@@ -32,30 +32,36 @@ module Api
         # Geotagged photos in the shared window, capped so a long trip doesn't
         # flood the map with markers (and the browser with thumbnail requests).
         def mappable_photos
-          photos = capped_geotagged(fetch_photos)
-          Rails.cache.write(allowed_ids_cache_key, allowed_ids_for(photos), expires_in: 10.minutes)
-          photos
+          photos = geotagged_photos(fetch_photos)
+          Rails.cache.write(allowed_ids_cache_key, allowed_ids_for(authorized_photos(photos)), expires_in: 10.minutes)
+          photos.first(Photos::Mappable::MAX_PHOTOS)
         end
 
         # Cache the id set so each thumbnail request validates against it instead
         # of re-running the (expensive) photo search on every single thumbnail.
         def allowed_photo?(photo_id, source)
           ids = Rails.cache.fetch(allowed_ids_cache_key, expires_in: 10.minutes) do
-            allowed_ids_for(capped_geotagged(fetch_photos))
+            allowed_ids_for(authorized_photos(geotagged_photos(fetch_photos)))
           end
-          ids.include?("#{source}:#{photo_id}")
+          ids.key?("#{source}:#{photo_id}")
         end
 
-        def capped_geotagged(photos)
-          ::Photos::Mappable.new(photos, privacy_zones: privacy_zones).call
+        def geotagged_photos(photos)
+          ::Photos::Mappable.new(photos, privacy_zones: privacy_zones, max: nil).call
         end
 
         def allowed_ids_for(photos)
-          photos.map { |p| "#{p[:source]}:#{p[:id]}" }
+          photos.to_h { |p| ["#{p[:source]}:#{p[:id]}", true] }
+        end
+
+        def authorized_photos(photos)
+          return photos if link.resource_type.to_sym == :trip
+
+          photos.first(Photos::Mappable::MAX_PHOTOS)
         end
 
         def allowed_ids_cache_key
-          "shared_link/#{link.id}/photo_ids/#{privacy_zones_fingerprint}"
+          "shared_link/#{link.id}/photo_ids/v2/#{privacy_zones_fingerprint}"
         end
 
         def privacy_zones_fingerprint
