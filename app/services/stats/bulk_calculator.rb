@@ -51,9 +51,13 @@ module Stats
     end
 
     def watermark
-      user.stats_swept_at ||
-        Stat.where(user_id:).maximum(:updated_at) ||
-        DateTime.new(1970, 1, 1)
+      return user.stats_swept_at if user.stats_swept_at
+
+      fallback = Arel.sql(<<~SQL.squish)
+        COALESCE(users.stats_swept_at,
+          (SELECT MAX(stats.updated_at) FROM stats WHERE stats.user_id = users.id))
+      SQL
+      User.uncached { User.where(id: user_id).pick(fallback) } || DateTime.new(1970, 1, 1)
     end
 
     def schedule_calculations(months)
