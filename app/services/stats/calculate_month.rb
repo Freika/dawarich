@@ -1,10 +1,13 @@
 # frozen_string_literal: true
 
 class Stats::CalculateMonth
-  def initialize(user_id, year, month)
+  CALCULATION_VERSION = 1
+
+  def initialize(user_id, year, month, notify_on_failure: true)
     @user = User.find(user_id)
     @year = year.to_i
     @month = month.to_i
+    @notify_on_failure = notify_on_failure
   end
 
   def call
@@ -16,12 +19,12 @@ class Stats::CalculateMonth
 
     update_month_stats(year, month)
   rescue StandardError => e
-    create_stats_update_failed_notification(user, e)
+    report_failure(e)
   end
 
   private
 
-  attr_reader :user, :year, :month
+  attr_reader :user, :year, :month, :notify_on_failure
 
   def start_timestamp = (DateTime.new(year, month, 1) - 2.days).to_i
 
@@ -39,7 +42,8 @@ class Stats::CalculateMonth
         distance: distance(distance_by_day),
         flight_distance: flight_distance,
         toponyms: toponyms,
-        h3_hex_ids: calculate_h3_hex_ids
+        h3_hex_ids: calculate_h3_hex_ids,
+        calculation_version: CALCULATION_VERSION
       )
 
       stat.save!
@@ -83,6 +87,15 @@ class Stats::CalculateMonth
     ).call
   end
 
+  def report_failure(error)
+    message = "Stats::CalculateMonth failed for user #{user.id} #{year}-#{month}"
+
+    Rails.logger.error("#{message}: #{error.class}: #{error.message}")
+    ExceptionReporter.call(error, message)
+
+    create_stats_update_failed_notification(user, error) if notify_on_failure
+  end
+
   def create_stats_update_failed_notification(user, error)
     I18n.with_locale(user.locale) do
       Notifications::Create.new(
@@ -104,7 +117,8 @@ class Stats::CalculateMonth
       distance: 0,
       flight_distance: flight_distance,
       toponyms: [],
-      h3_hex_ids: {}
+      h3_hex_ids: {},
+      calculation_version: CALCULATION_VERSION
     )
 
     Cache::InvalidateUserCaches.new(user.id, year: year).call

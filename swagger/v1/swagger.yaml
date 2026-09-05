@@ -5115,6 +5115,8 @@ paths:
           description: Point created
         '401':
           description: Unauthorized
+        '422':
+          description: Point rejected
       requestBody:
         content:
           application/json:
