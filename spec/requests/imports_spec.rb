@@ -125,6 +125,29 @@ RSpec.describe 'Imports', type: :request do
       end
     end
 
+    context 'when a genuine multi-entry legacy zip import has been renamed' do
+      let(:import) { create(:import, user:, name: 'original.gpx.zip') }
+      let(:zip_path) { create_zip('a.gpx' => gpx_content, 'b.gpx' => gpx_content) }
+
+      before do
+        import.file.purge
+        import.file.attach(io: File.open(zip_path), filename: 'original.gpx.zip', content_type: 'application/zip')
+        import.update!(name: 'renamed.gpx.zip')
+        sign_in user
+      end
+
+      it 'downloads the intact zip using the current import name' do
+        get download_import_path(import)
+        follow_redirect!
+
+        expect(response).to have_http_status(:ok)
+        expect(response.body.b).to start_with(Archive::Unzipper::ZIP_MAGIC)
+        expect(response.body.b).to eq(File.binread(zip_path))
+        expect(response.headers['Content-Disposition']).to include('filename="renamed.gpx.zip"')
+        expect(response.headers['Content-Disposition']).not_to include('original.gpx.zip')
+      end
+    end
+
     context 'when the import is a legacy unmarked KML wrapper' do
       let(:import) { create(:import, user:, name: 'route.kml.zip') }
       let(:kml_content) { '<kml><Document><name>Route</name></Document></kml>' }

@@ -36,7 +36,7 @@ class ImportsController < ApplicationController
     archive_path = Imports::SecureFileDownloader.new(@import.file).download_to_temp_file
     archive = Archive::Unzipper.inspect_archive(archive_path)
 
-    return redirect_to_stored_file(filename: @import.file.blob.filename.to_s) unless wrapped_archive?(archive)
+    return redirect_to_stored_file unless wrapped_archive?(archive)
 
     extracted_path = Archive::Unzipper.extract_single(archive_path)
     stream_extracted_file(extracted_path, archive_path)
