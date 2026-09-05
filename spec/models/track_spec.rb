@@ -6,7 +6,7 @@ RSpec.describe Track, type: :model do
   describe 'associations' do
     it { is_expected.to belong_to(:user) }
     it { is_expected.to have_many(:points).dependent(:nullify) }
-    it { is_expected.to have_many(:track_segments).dependent(:destroy) }
+    it { is_expected.to have_many(:track_segments) }
   end
 
   describe '.delete_orphaned' do

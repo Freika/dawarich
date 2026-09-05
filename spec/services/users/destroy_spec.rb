@@ -385,7 +385,9 @@ RSpec.describe Users::Destroy do
 
     context 'when deletion fails' do
       before do
-        allow(user.points).to receive(:delete_all).and_raise(StandardError, 'Database constraint violation')
+        points = user.points
+        allow(points).to receive(:delete_all).and_raise(StandardError, 'Database constraint violation')
+        allow(user).to receive(:points).and_return(points)
       end
 
       it 'lets the exception propagate to the caller' do

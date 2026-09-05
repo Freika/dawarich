@@ -74,15 +74,20 @@ module EnhancedImport
       # A re-extraction may flip "trust the source app's classification", so the
       # existing segments are rebuilt to match whichever side the user picked.
       def rebuild_segments(track, skip_segment_detection)
-        track.track_segments.destroy_all
+        Track.transaction do
+          current_track = Track.lock.find_by(id: track.id)
+          next unless current_track
 
-        unless skip_segment_detection
-          points = track.points.order(:timestamp).to_a
-          detect_and_create_segments(track, points) if points.size >= 2
+          current_track.track_segments.destroy_all
+
+          unless skip_segment_detection
+            points = current_track.points.order(:timestamp).to_a
+            detect_and_create_segments(current_track, points) if points.size >= 2
+          end
+
+          current_track.update_dominant_mode!
+          current_track
         end
-
-        track.update_dominant_mode!
-        track
       end
 
       # Track generation runs against the same import; claiming a point that

@@ -103,11 +103,16 @@ module EnhancedImport
           )
           counts[:tracks] += 1 if track
           if track && source_segments_take_over
-            item.segments.each do |segment|
-              written_segment, = segment_writer.upsert(track, segment)
-              counts[:segments] += 1 if written_segment
+            Track.transaction do
+              current_track = Track.lock.find_by(id: track.id)
+              next unless current_track
+
+              item.segments.each do |segment|
+                written_segment, = segment_writer.upsert(current_track, segment)
+                counts[:segments] += 1 if written_segment
+              end
+              current_track.update_dominant_mode!
             end
-            track.update_dominant_mode!
           end
         end
       end
