@@ -13,6 +13,13 @@ RSpec.describe Tracks::GeojsonSerializer do
   end
 
   describe '#call' do
+    it 'identifies detailed segments by the same persisted IDs as their timeline rows' do
+      segment = create(:track_segment, track: track)
+      feature = described_class.new(track, include_segments: true).call[:features].first
+
+      expect(feature[:properties][:segments].map { |item| item[:id] }).to eq([segment.id])
+    end
+
     it 'returns a FeatureCollection structure' do
       result = described_class.new([track]).call
 
