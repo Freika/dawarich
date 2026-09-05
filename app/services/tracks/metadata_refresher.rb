@@ -53,7 +53,7 @@ module Tracks
         # Lock current members as well: parallel chunk processors do not take
         # the finalizer's per-user lock and can otherwise remove these points
         # while the dependent statistics are being rebuilt.
-        points = track.points.order(:id).lock.to_a.sort_by(&:timestamp)
+        points = track.points.select(:id, :timestamp, :altitude).order(:id).lock.to_a.sort_by(&:timestamp)
         next :insufficient_points if points.size < 2
 
         start_at = Time.zone.at(points.first.timestamp)
