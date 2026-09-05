@@ -1,5 +1,5 @@
 <% times = visit_entry_times(entry); all_day = visit_entry_all_day?(entry) %>
-<% coords = entry[:place] || entry[:area] || entry[:suggested_places]&.first %>
+<% coords = entry[:place] || entry[:area] || entry[:suggested_places]&.first || entry[:center] %>
 <% name_parts = visit_entry_name_parts(entry) %>
 <%# A visit renders the same regardless of detection status — showing it is
     asserting it. The only affordance is Edit: rename, re-attach a place,

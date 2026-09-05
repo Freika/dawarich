@@ -17,8 +17,9 @@ class Api::V1::VisitsController < ApiController
       response.set_header('X-Total-Count', visits.total_count.to_s)
     end
 
+    point_centers = visit_point_centers(visits)
     serialized_visits = visits.map do |visit|
-      Api::VisitSerializer.new(visit).call
+      Api::VisitSerializer.new(visit, point_center: point_centers[visit.id]).call
     end
 
     render json: serialized_visits
@@ -26,7 +27,7 @@ class Api::V1::VisitsController < ApiController
 
   def show
     visit = current_api_user.scoped_visits.find(params[:id])
-    render json: Api::VisitSerializer.new(visit).call
+    render json: serialize_visit(visit)
   end
 
   def create
@@ -35,7 +36,7 @@ class Api::V1::VisitsController < ApiController
     result = service.call
 
     if result
-      render json: Api::VisitSerializer.new(service.visit).call
+      render json: serialize_visit(service.visit)
     else
       error_message = service.errors || I18n.t('controllers.api.v1.visits.failed_to_create_visit')
       render json: { error: error_message }, status: :unprocessable_content
@@ -65,7 +66,7 @@ class Api::V1::VisitsController < ApiController
 
     visit = update_visit(visit, area: area)
 
-    render json: Api::VisitSerializer.new(visit).call
+    render json: serialize_visit(visit)
   end
 
   def merge
@@ -90,7 +91,7 @@ class Api::V1::VisitsController < ApiController
     merged_visit = service.call
 
     if merged_visit&.persisted?
-      render json: Api::VisitSerializer.new(merged_visit).call, status: :ok
+      render json: serialize_visit(merged_visit), status: :ok
     else
       render json: { error: service.errors.join(', ') }, status: :unprocessable_content
     end
@@ -162,6 +163,17 @@ class Api::V1::VisitsController < ApiController
 
   private
 
+  def visit_point_centers(visits)
+    ids = visits.select { |visit| visit.place.nil? && visit.area.nil? }.map(&:id)
+    return {} if ids.empty?
+
+    Visits::PointCenters.new(current_api_user, visit_ids: ids).call
+  end
+
+  def serialize_visit(visit)
+    Api::VisitSerializer.new(visit, point_center: visit_point_centers([visit])[visit.id]).call
+  end
+
   def visit_params
     params.require(:visit).permit(:name, :place_id, :area_id, :status, :latitude, :longitude, :started_at, :ended_at)
   end
@@ -184,7 +196,7 @@ class Api::V1::VisitsController < ApiController
 
     if service.call
       result = { index: index, status: service.duplicate? ? 'duplicate' : 'created' }
-      result[:visit] = Api::VisitSerializer.new(service.visit).call unless service.visit.soft_deleted?
+      result[:visit] = serialize_visit(service.visit) unless service.visit.soft_deleted?
       result
     else
       { index: index, status: 'failed',
