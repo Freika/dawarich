@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Idle background workers no longer repeatedly write locks for empty queues to Redis; newly queued work is picked up within the normal two-second polling interval. (#3315)
+
 - Traccar latitude/longitude form uploads now save points, including Unix timestamps in seconds or milliseconds. Payloads that cannot be stored return an error instead of a false success; repeated valid uploads remain safe. (#3299)
 ## Unreleased
 
