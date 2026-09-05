@@ -14,11 +14,11 @@ RSpec.describe 'Geocoded historical statistics', :non_transactional do
     Country.where.not(id: country_ids).delete_all
   end
   before do
-    Sidekiq.redis { |r| r.del(Stats::GeocodedDays::PENDING_KEY, Stats::GeocodedDays::VERSIONS_KEY) }
+    clear_geocoded_days
   end
 
   after do
-    Sidekiq.redis { |r| r.del(Stats::GeocodedDays::PENDING_KEY, Stats::GeocodedDays::VERSIONS_KEY) }
+    clear_geocoded_days
   end
 
   it 'refreshes a historical month after geocoding without per-point statistics SQL' do
@@ -51,7 +51,7 @@ RSpec.describe 'Geocoded historical statistics', :non_transactional do
     create(:point, user: user, timestamp: Time.utc(2014, 6, 15, 12).to_i,
                    city: 'Berlin', country: 'Germany', reverse_geocoded_at: Time.current, velocity: 0)
     stat = create(:stat, user: user, year: 2014, month: 6, toponyms: [])
-    Sidekiq.redis { |r| r.set(Stats::ToponymsRefreshJob::CURSOR_KEY, stat.id - 1) }
+    Sidekiq.redis { |r| r.set(Stats::ToponymsRefresh::CURSOR_KEY, stat.id - 1) }
     Stats::ToponymsRefreshJob.perform_now
     expect(stat.reload.toponyms.first['country']).to eq('Germany')
   end

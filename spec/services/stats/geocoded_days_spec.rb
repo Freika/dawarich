@@ -7,8 +7,8 @@ RSpec.describe Stats::GeocodedDays do
   let(:user) { create(:user, settings: { 'timezone' => 'Asia/Tokyo' }) }
   let(:timestamp) { Time.utc(2014, 12, 31, 23, 30).to_i }
 
-  before { Sidekiq.redis { |r| r.del(described_class::PENDING_KEY, described_class::VERSIONS_KEY) } }
-  after { Sidekiq.redis { |r| r.del(described_class::PENDING_KEY, described_class::VERSIONS_KEY) } }
+  before { clear_geocoded_days }
+  after { clear_geocoded_days }
 
   it 'coalesces points without postponing a continuously changing day forever' do
     described_class.mark(user.id, timestamp)

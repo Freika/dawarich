@@ -19,9 +19,11 @@ RSpec.describe 'Geocoded statistics commit recovery', :non_transactional, thread
   let(:stat) { create(:stat, user: user, year: 2014, month: 6, toponyms: []) }
 
   before do
+    clear_geocoded_days
     Sidekiq.redis do |r|
-      r.del(Stats::GeocodedDays::PENDING_KEY, Stats::GeocodedDays::VERSIONS_KEY,
-            Stats::ToponymsRefreshJob::TURN_KEY, Stats::ToponymsRefreshJob::CURSOR_KEY)
+      r.del(
+        Stats::ToponymsRefresh::TURN_KEY, Stats::ToponymsRefresh::CURSOR_KEY
+      )
     end
     allow(Geocoding::Search).to receive(:call).and_return([
                                                             double(city: 'Berlin', country: 'Germany',
@@ -30,7 +32,7 @@ RSpec.describe 'Geocoded statistics commit recovery', :non_transactional, thread
   end
 
   after do
-    Sidekiq.redis { |r| r.del(Stats::GeocodedDays::PENDING_KEY, Stats::GeocodedDays::VERSIONS_KEY) }
+    clear_geocoded_days
     Stat.where(user_id: user.id).delete_all
   end
 
@@ -99,7 +101,7 @@ RSpec.describe 'Geocoded statistics commit recovery', :non_transactional, thread
   it 'excludes a second worker while another connection holds the global refresh lock' do
     stat.id
     ReverseGeocoding::Points::FetchData.new(point.id).call
-    lock = Stats::ToponymsRefreshJob::LOCK_ID
+    lock = Stats::ToponymsRefresh::LOCK_ID
     connection = ActiveRecord::Base.connection
     connection.execute("SELECT pg_advisory_lock(#{lock})")
     travel 61.minutes do

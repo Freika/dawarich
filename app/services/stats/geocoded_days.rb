@@ -3,28 +3,16 @@
 module Stats
   class GeocodedDays
     PENDING_KEY = 'stats:geocoded_days:pending'
-    VERSIONS_KEY = 'stats:geocoded_days:versions'
+    VERSION_KEY_PREFIX = 'stats:geocoded_days:version'
     DELAY = 1.hour
-    MARK_SCRIPT = <<~LUA
-      redis.call('HSET', KEYS[2], ARGV[1], ARGV[2])
-      redis.call('ZADD', KEYS[1], 'NX', ARGV[3], ARGV[1])
-      return 1
-    LUA
-    ACK_SCRIPT = <<~LUA
-      if redis.call('HGET', KEYS[2], ARGV[1]) == ARGV[2] then
-        redis.call('HDEL', KEYS[2], ARGV[1])
-        redis.call('ZREM', KEYS[1], ARGV[1])
-        return 1
-      end
-      redis.call('ZADD', KEYS[1], 'XX', ARGV[3], ARGV[1])
-      return 0
-    LUA
 
     def self.mark(user_id, timestamp)
       member = "#{user_id}:#{Time.at(timestamp).utc.to_date.iso8601}"
       Sidekiq.redis do |redis|
-        redis.call('EVAL', MARK_SCRIPT, 2, PENDING_KEY, VERSIONS_KEY,
-                   member, SecureRandom.uuid, (Time.current + DELAY).to_i)
+        redis.multi do |transaction|
+          transaction.call('SET', version_key(member), SecureRandom.uuid)
+          transaction.call('ZADD', PENDING_KEY, 'NX', (Time.current + DELAY).to_i, member)
+        end
       end
     end
 
@@ -54,7 +42,16 @@ module Stats
 
       Sidekiq.redis do |redis|
         entries.each do |member, version|
-          redis.call('EVAL', ACK_SCRIPT, 2, PENDING_KEY, VERSIONS_KEY, member, version, (Time.current + DELAY).to_i)
+          key = version_key(member)
+          result = redis.multi(watch: [key]) do |transaction|
+            if redis.call('GET', key) == version
+              transaction.call('DEL', key)
+              transaction.call('ZREM', PENDING_KEY, member)
+            else
+              transaction.call('ZADD', PENDING_KEY, 'XX', (Time.current + DELAY).to_i, member)
+            end
+          end
+          redis.call('ZADD', PENDING_KEY, 'XX', (Time.current + DELAY).to_i, member) unless result
         end
       end
     end
@@ -74,8 +71,13 @@ module Stats
     def self.snapshot(redis, members)
       return {} if members.empty?
 
-      members.zip(redis.call('HMGET', VERSIONS_KEY, *members)).to_h.compact
+      keys = members.map { |member| version_key(member) }
+      members.zip(redis.call('MGET', *keys)).to_h.compact
     end
-    private_class_method :snapshot
+
+    def self.version_key(member)
+      "#{VERSION_KEY_PREFIX}:#{member}"
+    end
+    private_class_method :snapshot, :version_key
   end
 end

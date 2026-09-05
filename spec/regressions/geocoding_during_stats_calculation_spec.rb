@@ -14,8 +14,8 @@ RSpec.describe 'Geocoding during monthly calculation', :non_transactional, threa
     Country.where.not(id: country_ids).delete_all
   end
 
-  before { Sidekiq.redis { |r| r.del(Stats::GeocodedDays::PENDING_KEY, Stats::GeocodedDays::VERSIONS_KEY) } }
-  after { Sidekiq.redis { |r| r.del(Stats::GeocodedDays::PENDING_KEY, Stats::GeocodedDays::VERSIONS_KEY) } }
+  before { clear_geocoded_days }
+  after { clear_geocoded_days }
 
   it 'does not block geocoding or lose changes committed after the monthly snapshot' do
     user = create(:user, settings: { 'timezone' => 'Etc/UTC', 'min_minutes_spent_in_city' => 0 })
