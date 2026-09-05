@@ -1440,9 +1440,12 @@ paths:
       summary: Retrieves the current user's family overview
       tags:
       - Families
-      description: Returns the family, all members with sharing state, the current
-        user's sharing settings, and active location requests. Requires the Family
-        plan (any plan on self-hosted) and family membership.
+      description: 'Returns the family, all members with sharing state, the current
+        user''s sharing settings, and active location requests. Requires family membership.
+        A member whose entitlement has lapsed still gets 200, with `lapsed: true`
+        and a reduced payload carrying only the family name and the user''s role —
+        `members` and `location_requests` are omitted. A user who is neither entitled
+        nor in a family gets 403.'
       parameters:
       - name: Authorization
         in: header
@@ -1458,6 +1461,8 @@ paths:
               schema:
                 type: object
                 properties:
+                  lapsed:
+                    type: boolean
                   family:
                     type: object
                     properties:
@@ -1543,6 +1548,8 @@ paths:
                               type: string
         '404':
           description: user not in a family
+        '403':
+          description: user is neither entitled nor in a family
   "/api/v1/families/sharing":
     patch:
       summary: Updates the current user's family location sharing
@@ -5681,6 +5688,75 @@ paths:
       responses:
         '200':
           description: user found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      email:
+                        type: string
+                      created_at:
+                        type: string
+                        format: date-time
+                      updated_at:
+                        type: string
+                        format: date-time
+                      api_key:
+                        type: string
+                      theme:
+                        type: string
+                      settings:
+                        type: object
+                        properties:
+                          maps:
+                            type: object
+                          fog_of_war_meters:
+                            type: integer
+                          meters_between_routes:
+                            type: integer
+                          preferred_map_layer:
+                            type: string
+                          speed_colored_routes:
+                            type: boolean
+                          points_rendering_mode:
+                            type: string
+                          minutes_between_routes:
+                            type: integer
+                          time_threshold_minutes:
+                            type: integer
+                          merge_threshold_minutes:
+                            type: integer
+                          live_map_enabled:
+                            type: boolean
+                          route_opacity:
+                            type: number
+                          immich_url:
+                            type: string
+                            nullable: true
+                          photoprism_url:
+                            type: string
+                            nullable: true
+                          visits_suggestions_enabled:
+                            type: boolean
+                          speed_color_scale:
+                            type: string
+                            nullable: true
+                          fog_of_war_threshold:
+                            type: integer
+                      admin:
+                        type: boolean
+                  features:
+                    type: object
+                    properties:
+                      family:
+                        type: boolean
+                      reverse_geocoding:
+                        type: boolean
         '401':
           description: unauthorized
     delete:

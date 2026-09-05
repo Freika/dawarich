@@ -115,4 +115,32 @@ RSpec.describe 'Api::V1::Families::LocationRequests', type: :request do
       expect(response).to have_http_status(:unprocessable_content)
     end
   end
+
+  describe 'when the Entitlement has lapsed' do
+    let!(:pending_request) do
+      create(:family_location_request, requester: requester, target_user: target, family: family)
+    end
+
+    before do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      requester.update!(plan: :family, status: :inactive, active_until: 1.day.ago)
+      target.update!(plan: :lite, status: :inactive, active_until: 1.day.ago)
+      family.update!(access_until: 1.day.ago)
+    end
+
+    it 'refuses to create a location request' do
+      post '/api/v1/families/location_requests',
+           params: { target_user_id: target.id },
+           headers: { 'Authorization' => "Bearer #{requester.api_key}" }
+
+      expect(response).to have_http_status(:forbidden)
+    end
+
+    it 'refuses to accept a pending location request' do
+      post "/api/v1/families/location_requests/#{pending_request.id}/accept",
+           headers: { 'Authorization' => "Bearer #{target.api_key}" }
+
+      expect(response).to have_http_status(:forbidden)
+    end
+  end
 end

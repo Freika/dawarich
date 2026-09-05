@@ -78,7 +78,7 @@ RSpec.describe 'Api::V1::Families::Mine', type: :request do
       end
 
       it 'marks a lapsed Family owner as the owner, so the client can offer renewal' do
-        user.update!(plan: :lite, status: :inactive, active_until: 1.day.ago)
+        user.update!(plan: :family, status: :inactive, active_until: 1.day.ago)
 
         get '/api/v1/families/mine', headers: { 'Authorization' => "Bearer #{user.api_key}" }
 
@@ -89,6 +89,10 @@ RSpec.describe 'Api::V1::Families::Mine', type: :request do
     end
 
     it 'reports an active Family member as not lapsed' do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      user.update!(plan: :family, active_until: 1.year.from_now)
+      family.update!(access_until: 1.year.from_now)
+
       get '/api/v1/families/mine', headers: { 'Authorization' => "Bearer #{member.api_key}" }
 
       expect(JSON.parse(response.body)['lapsed']).to be false
