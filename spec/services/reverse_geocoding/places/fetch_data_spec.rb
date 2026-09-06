@@ -38,10 +38,13 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
 
         expect(Geocoder).to have_received(:search).with(
           [place.lat, place.lon],
-          limit: 10,
-          distance_sort: true,
-          radius: 1,
-          units: :km
+          hash_including(
+            limit: 10,
+            distance_sort: true,
+            radius: 1,
+            units: :km,
+            timeout: REVERSE_GEOCODING_TIMEOUT
+          )
         )
       end
 

@@ -28,6 +28,7 @@ module LocationSearch
 
     def perform_geocoding_search(query)
       results = Geocoding::Search.call(user: @user, query: query, limit: MAX_RESULTS,
+                                       timeout: FORWARD_GEOCODING_TIMEOUT,
                                        max_wait: Geocoding::RateLimiter::MAX_INTERACTIVE_WAIT,
                                        fallback_to_default: true)
       return [] if results.blank?

@@ -43,6 +43,7 @@ module Places
     def fetch_and_filter
       results = Geocoding::Search
                 .call(user: @user, query: @query, limit: FETCH_LIMIT,
+                      timeout: FORWARD_GEOCODING_TIMEOUT,
                       max_wait: Geocoding::RateLimiter::MAX_INTERACTIVE_WAIT,
                       bias: { latitude: @latitude, longitude: @longitude })
       return [] if results.nil?

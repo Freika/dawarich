@@ -210,6 +210,7 @@ class ReverseGeocoding::Places::FetchData
     Geocoding::Search.call(
       user: place.user_id,
       query: [place.lat, place.lon],
+      timeout: REVERSE_GEOCODING_TIMEOUT,
       limit: 10,
       distance_sort: true,
       radius: 1,

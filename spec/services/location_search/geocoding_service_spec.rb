@@ -53,7 +53,8 @@ RSpec.describe LocationSearch::GeocodingService do
       end
 
       it 'limits results to MAX_RESULTS' do
-        expect(Geocoder).to receive(:search).with(query, limit: 10)
+        expect(Geocoder).to receive(:search)
+          .with(query, hash_including(limit: 10, timeout: FORWARD_GEOCODING_TIMEOUT))
 
         service.search
       end
