@@ -147,6 +147,27 @@ RSpec.describe Imports::Create do
       end
     end
 
+    context 'when a GPX file contains malformed XML' do
+      let(:import) { create(:import, user:, source: 'gpx', status: 'created') }
+
+      before do
+        import.file.attach(
+          io: StringIO.new('<gpx><trk><name>invalid ]]> content</name></trk></gpx>'),
+          filename: 'malformed.gpx',
+          content_type: 'application/gpx+xml'
+        )
+        allow(ExceptionReporter).to receive(:call)
+      end
+
+      it 'fails the import without reporting an application exception' do
+        service.call
+
+        expect(import.reload).to be_failed
+        expect(import.error_message).to include("GPX parse error: Sequence ']]>' not allowed in content")
+        expect(ExceptionReporter).not_to have_received(:call)
+      end
+    end
+
     context 'when a FIT file contains a non-activity profile' do
       let(:import) { create(:import, user:, source: 'fit', status: 'created') }
 

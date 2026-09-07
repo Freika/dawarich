@@ -8,6 +8,8 @@ class Gpx::TrackImporter
   include Imports::BulkInsertable
   include Imports::FileLoader
 
+  class InvalidXmlError < Nokogiri::XML::SyntaxError; end
+
   BATCH_SIZE = 1000
   XML_BOMS = [
     "\xEF\xBB\xBF".b,
@@ -228,7 +230,7 @@ class Gpx::TrackImporter
         end
       return unless fatal
 
-      raise Nokogiri::XML::SyntaxError, I18n.t('services.gpx.track_importer.parse_error', message: fatal)
+      raise InvalidXmlError, I18n.t('services.gpx.track_importer.parse_error', message: fatal)
     end
 
     def end_element_namespace(name, _prefix = nil, _uri = nil)
