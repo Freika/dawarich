@@ -12,6 +12,8 @@ module TransportationModes
       geojson
     ].freeze
 
+    NEAREST_POINT_WINDOW_SECONDS = 60
+
     def initialize(import)
       @import = import
     end
@@ -66,21 +68,30 @@ module TransportationModes
       return unless file_content
 
       data = JSON.parse(file_content)
-      return unless data.is_a?(Hash)
 
-      locations = data['locations']
-      return unless locations.is_a?(Array)
+      raw_signals =
+        case data
+        when Hash  then data['rawSignals']
+        when Array then data
+        end
+      return unless raw_signals.is_a?(Array)
 
-      locations.each do |location|
-        next unless location['activityRecord']
+      sorted_points = @import.points.order(:timestamp).to_a
+      return if sorted_points.empty?
 
-        timestamp = parse_timestamp(location)
+      raw_signals.each do |signal|
+        next unless signal.is_a?(Hash)
+
+        activity_record = signal['activityRecord']
+        next unless activity_record.is_a?(Hash)
+
+        timestamp = parse_timestamp_value(activity_record['timestamp'])
         next unless timestamp
 
-        point = @import.points.find_by(timestamp: timestamp)
+        point = nearest_point(sorted_points, timestamp)
         next unless point
 
-        update_point_activity(point, location['activityRecord'])
+        update_point_activity(point, activity_record)
       end
     rescue JSON::ParserError => e
       Rails.logger.error "Failed to parse import #{@import.id}: #{e.message}"
@@ -118,9 +129,15 @@ module TransportationModes
       nil
     end
 
-    def parse_timestamp(location)
-      ts = location['timestamp'] || location['timestampMs']
-      parse_timestamp_value(ts)
+    def nearest_point(sorted_points, timestamp)
+      idx = sorted_points.bsearch_index { |p| p.timestamp > timestamp } || sorted_points.length
+
+      before_point = idx.positive? ? sorted_points[idx - 1] : nil
+      after_point  = idx < sorted_points.length ? sorted_points[idx] : nil
+
+      candidates = [before_point, after_point].compact
+      candidates = candidates.select { |p| (p.timestamp - timestamp).abs <= NEAREST_POINT_WINDOW_SECONDS }
+      candidates.min_by { |p| (p.timestamp - timestamp).abs }
     end
 
     def parse_segment_timestamp(timestamp)
