@@ -2,6 +2,7 @@
 
 require 'rails_helper'
 require 'geocoder/results/photon'
+require 'geocoder/results/geoapify'
 
 RSpec.describe Places::Search do
   before do
@@ -129,6 +130,34 @@ RSpec.describe Places::Search do
       results = described_class.new(user: user, query: 'xx', latitude: lat, longitude: lon, radius: 5.0).call
 
       expect(results.map { |r| r[:name] }).to eq(%w[Nearest Farther])
+    end
+
+    describe 'Geoapify results (datasource-nested OSM metadata)' do
+      let(:geoapify_result) do
+        instance_double(
+          Geocoder::Result::Geoapify,
+          data: {
+            'type' => 'Feature',
+            'geometry' => { 'type' => 'Point', 'coordinates' => [lon, lat] },
+            'properties' => {
+              'name' => 'Madison Square Garden', 'city' => 'New York',
+              'country' => 'United States', 'lon' => lon, 'lat' => lat,
+              'result_type' => 'building',
+              'datasource' => { 'sourcename' => 'openstreetmap', 'osm_type' => 'W', 'osm_id' => 138_141_251 }
+            }
+          },
+          latitude: lat, longitude: lon, address: 'Madison Square Garden'
+        )
+      end
+
+      it 'surfaces osm_id and osm_type from datasource in the suggestion payload' do
+        allow(Geocoder).to receive(:search).and_return([geoapify_result])
+
+        results = described_class.new(user: user, query: 'msg', latitude: lat, longitude: lon, radius: 1.0).call
+
+        expect(results.first[:osm_id]).to eq(138_141_251)
+        expect(results.first[:osm_type]).to eq('W')
+      end
     end
 
     it 'returns [] for a query shorter than 2 chars' do
