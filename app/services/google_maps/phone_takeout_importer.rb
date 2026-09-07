@@ -48,6 +48,7 @@ class GoogleMaps::PhoneTakeoutImporter
     @assigned_timestamps = {}
     @previous_tied_timestamp = nil
     @tie_offset = 0
+    @last_assigned = nil
   end
 
   def stream_entries(path)
@@ -286,9 +287,18 @@ class GoogleMaps::PhoneTakeoutImporter
     key = [source_timestamp, lat, lon]
     return @assigned_timestamps[key] if @assigned_timestamps.key?(key)
 
-    @tie_offset = source_timestamp == @previous_tied_timestamp ? [@tie_offset + 1, MAX_TIE_OFFSET].min : 0
+    @tie_offset =
+      if source_timestamp == @previous_tied_timestamp
+        [@tie_offset + 1, MAX_TIE_OFFSET].min
+      elsif @last_assigned && source_timestamp <= @last_assigned
+        [@last_assigned + 1 - source_timestamp, MAX_TIE_OFFSET].min
+      else
+        0
+      end
+
     assigned = source_timestamp + @tie_offset
     @assigned_timestamps[key] = assigned
+    @last_assigned = assigned
     @previous_tied_timestamp = source_timestamp
     assigned
   end
