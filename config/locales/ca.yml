@@ -2811,11 +2811,13 @@ ca:
           apple:
             apple_has_not_verified_this_email_sign_in_with_password: Apple no ha verificat aquest correu electrònic. Inicia sessió amb contrasenya i vincula-ho des de la configuració.
             this_email_already_has_a_dawarich_account_we_sent_a: Aquest correu electrònic ja té un compte de Dawarich. Hem enviat un enllaç de confirmació a aquesta adreça — fes-hi clic per vincular el teu Apple ID.
+            verification_rate_limited: Ja s'ha enviat un enllaç de verificació a aquesta adreça recentment. Comprova la teva safata d'entrada o espera abans de tornar-ho a provar.
             we_couldn_t_find_your_existing_account_and_apple_didn: "No hem pogut trobar el teu compte existent, i Apple no ens ha compartit el teu correu electrònic aquesta vegada. Apple només el comparteix una vegada. Ves a appleid.apple.com → Iniciar sessió amb Apple, busca Dawarich, tria \"Deixa de fer servir Iniciar sessió amb Apple\" i torna-ho a provar."
             token_verification_failed: 'La verificació del token d''Apple ha fallat: %{message}'
           google:
             google_has_not_verified_this_email_sign_in_with_password: Google no ha verificat aquest correu electrònic. Inicia sessió amb contrasenya i vincula-ho des de la configuració.
             this_email_already_has_a_dawarich_account_we_sent_a: Aquest correu electrònic ja té un compte de Dawarich. Hem enviat un enllaç de confirmació a aquesta adreça — fes-hi clic per vincular el teu inici de sessió de Google.
+            verification_rate_limited: Ja s'ha enviat un enllaç de verificació a aquesta adreça recentment. Comprova la teva safata d'entrada o espera abans de tornar-ho a provar.
             token_verification_failed: 'La verificació del token de Google ha fallat: %{message}'
           otp_challenges:
             invalid_challenge: 'Repte no vàlid o caducat: %{message}'
@@ -2970,6 +2972,7 @@ ca:
         linked_sign_in_with_two_factor: "%{provider} ja està vinculat al teu compte. Inicia sessió amb la teva contrasenya i el codi d'A2F per continuar."
         incorrect_password: Contrasenya incorrecta.
         confirmation_link_sent: "Hem enviat un enllaç de confirmació a %{email}. Fes-hi clic per vincular el teu compte."
+        account_link_rate_limited: Ja s'ha enviat un enllaç de confirmació recentment. Comprova la teva safata d'entrada o espera abans de sol·licitar-ne un altre.
         already_linked_to_different_identity: Aquest compte ja està vinculat a una identitat de %{provider} diferent.
       ios:
         authentication_successful_you_can_close_this_window: Autenticació correcta! Pots tancar aquesta finestra.

@@ -2866,11 +2866,13 @@ pl:
           apple:
             apple_has_not_verified_this_email_sign_in_with_password: Apple nie zweryfikowało tego adresu e-mail. Zaloguj się hasłem i połącz konto w ustawieniach.
             this_email_already_has_a_dawarich_account_we_sent_a: Ten adres e-mail ma już konto Dawarich. Wysłaliśmy link potwierdzający na ten adres - kliknij go, aby połączyć Apple ID.
+            verification_rate_limited: Link weryfikacyjny został niedawno wysłany na ten adres. Sprawdź swoją skrzynkę odbiorczą lub poczekaj przed ponowną próbą.
             we_couldn_t_find_your_existing_account_and_apple_didn: Nie znaleźliśmy Twojego istniejącego konta, a Apple tym razem nie udostępniło adresu e-mail. Apple udostępnia go tylko raz. Wejdź na appleid.apple.com → Sign in with Apple, znajdź Dawarich, wybierz "Stop using Sign in with Apple", a potem spróbuj zalogować się ponownie.
             token_verification_failed: 'Weryfikacja tokenu Apple nie powiodła się: %{message}'
           google:
             google_has_not_verified_this_email_sign_in_with_password: Google nie zweryfikowało tego adresu e-mail. Zaloguj się hasłem i połącz konto w ustawieniach.
             this_email_already_has_a_dawarich_account_we_sent_a: Ten adres e-mail ma już konto Dawarich. Wysłaliśmy link potwierdzający na ten adres - kliknij go, aby połączyć logowanie Google.
+            verification_rate_limited: Link weryfikacyjny został niedawno wysłany na ten adres. Sprawdź swoją skrzynkę odbiorczą lub poczekaj przed ponowną próbą.
             token_verification_failed: 'Weryfikacja tokenu Google nie powiodła się: %{message}'
           otp_challenges:
             invalid_challenge: 'Nieprawidłowe lub wygasłe wyzwanie: %{message}'
@@ -3025,6 +3027,7 @@ pl:
         linked_sign_in_with_two_factor: "%{provider} jest teraz połączony z Twoim kontem. Zaloguj się hasłem i kodem 2FA, aby kontynuować."
         incorrect_password: Nieprawidłowe hasło.
         confirmation_link_sent: Wysłaliśmy link potwierdzający na adres %{email}. Kliknij go, aby połączyć konto.
+        account_link_rate_limited: Link potwierdzający został niedawno wysłany. Sprawdź swoją skrzynkę odbiorczą lub poczekaj przed złożeniem kolejnego żądania.
         already_linked_to_different_identity: To konto jest już połączone z inną tożsamością %{provider}.
       ios:
         authentication_successful_you_can_close_this_window: Uwierzytelnianie zakończone sukcesem! Możesz zamknąć to okno.

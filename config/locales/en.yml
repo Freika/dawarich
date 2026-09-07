@@ -2799,11 +2799,13 @@ en:
           apple:
             apple_has_not_verified_this_email_sign_in_with_password: Apple has not verified this email. Sign in with password and link from settings.
             this_email_already_has_a_dawarich_account_we_sent_a: This email already has a Dawarich account. We sent a confirmation link to that address — click it to link your Apple ID.
+            verification_rate_limited: A verification link was already sent to that address recently. Check your inbox or wait before trying again.
             we_couldn_t_find_your_existing_account_and_apple_didn: We couldn't find your existing account, and Apple didn't share your email with us this time. Apple only shares it once. Please go to appleid.apple.com → Sign in with Apple, find Dawarich, choose "Stop using Sign in with Apple", then try signing in again.
             token_verification_failed: 'Apple token verification failed: %{message}'
           google:
             google_has_not_verified_this_email_sign_in_with_password: Google has not verified this email. Sign in with password and link from settings.
             this_email_already_has_a_dawarich_account_we_sent_a: This email already has a Dawarich account. We sent a confirmation link to that address — click it to link your Google sign-in.
+            verification_rate_limited: A verification link was already sent to that address recently. Check your inbox or wait before trying again.
             token_verification_failed: 'Google token verification failed: %{message}'
           otp_challenges:
             invalid_challenge: 'Invalid or expired challenge: %{message}'
@@ -2958,6 +2960,7 @@ en:
         linked_sign_in_with_two_factor: "%{provider} is now linked to your account. Sign in with your password and 2FA code to continue."
         incorrect_password: Incorrect password.
         confirmation_link_sent: We sent a confirmation link to %{email}. Click it to link your account.
+        account_link_rate_limited: A confirmation link was already sent recently. Check your inbox or wait before requesting another.
         already_linked_to_different_identity: This account is already linked to a different %{provider} identity.
       ios:
         authentication_successful_you_can_close_this_window: Authentication successful! You can close this window.

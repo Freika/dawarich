@@ -16,12 +16,13 @@ module Auth
     end
 
     class LinkVerificationSent < StandardError
-      attr_reader :user, :provider, :uid
+      attr_reader :user, :provider, :uid, :rate_limited
 
-      def initialize(user:, provider:, uid:)
+      def initialize(user:, provider:, uid:, rate_limited: false)
         @user = user
         @provider = provider
         @uid = uid
+        @rate_limited = rate_limited
         super('OAuth account link verification required for existing email')
       end
     end
@@ -91,8 +92,8 @@ module Auth
         return [existing, false]
       end
 
-      send_verification_email(existing) if @on_email_collision == :send_email
-      raise LinkVerificationSent.new(user: existing, provider: @provider, uid: @uid)
+      rate_limited = (@on_email_collision == :send_email) && send_verification_email(existing) == :rate_limited
+      raise LinkVerificationSent.new(user: existing, provider: @provider, uid: @uid, rate_limited: rate_limited)
     end
 
     def auto_link_allowed?
@@ -106,7 +107,7 @@ module Auth
         expires_in: LINK_EMAIL_RATE_LIMIT_WINDOW,
         unless_exist: true
       )
-      return unless acquired
+      return :rate_limited unless acquired
 
       token = Auth::IssueAccountLinkToken.new(
         existing_user, provider: @provider, uid: @uid
@@ -122,6 +123,7 @@ module Auth
         provider_label: @provider_label,
         link_url: link_url
       )
+      :sent
     end
 
     def default_mailer_host

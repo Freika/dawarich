@@ -94,6 +94,26 @@ RSpec.describe 'POST /api/v1/auth/google', type: :request do
         expect(existing.reload.provider).to be_nil
         expect(existing.reload.uid).to be_nil
       end
+
+      it 'rate-limited retry returns 429 verification_rate_limited with Retry-After and no second mailer' do
+        # First collision seeds the rate-limit key and returns the genuine 202.
+        post '/api/v1/auth/google', params: { id_token: 'fake_token' }
+        expect(response).to have_http_status(:accepted)
+
+        expect do
+          post '/api/v1/auth/google', params: { id_token: 'fake_token' }
+        end.not_to have_enqueued_job(Users::MailerSendingJob)
+
+        expect(response).to have_http_status(:too_many_requests)
+        expect(response.headers['Retry-After']).to eq(
+          Auth::FindOrCreateOauthUser::LINK_EMAIL_RATE_LIMIT_WINDOW.to_i.to_s
+        )
+        body = JSON.parse(response.body)
+        expect(body['error']).to eq('verification_rate_limited')
+        expect(body['message']).to be_present
+        expect(existing.reload.provider).to be_nil
+        expect(existing.reload.uid).to be_nil
+      end
     end
 
     # PR-A: the legacy silent-link path (Flipper-gated in PR-B) is removed.
