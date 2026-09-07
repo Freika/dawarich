@@ -30,7 +30,7 @@ class Users::ImportData::RawDataArchives
         archives_created += 1
 
         files_restored += 1 if archive_data['file_name'] && restore_archive_file(archive_record, archive_data)
-      rescue ActiveRecord::RecordInvalid => e
+      rescue ActiveRecord::RecordInvalid, ActiveModel::UnknownAttributeError => e
         Rails.logger.warn "Skipping invalid raw data archive: #{e.message}"
         next
       end
@@ -54,7 +54,7 @@ class Users::ImportData::RawDataArchives
 
   def create_archive_record(archive_data)
     attributes = archive_data.except(
-      'file_name', 'original_filename', 'content_type'
+      'file_name', 'original_filename', 'content_type', 'file_error'
     )
 
     user.raw_data_archives.create!(attributes)

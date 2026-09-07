@@ -121,5 +121,105 @@ RSpec.describe Users::ImportData::RawDataArchives, type: :service do
         expect { service.call }.not_to(change { user.raw_data_archives.count })
       end
     end
+
+    context 'with file_error in archive data' do
+      let(:archives_data) do
+        [
+          {
+            'year' => 2024,
+            'month' => 6,
+            'chunk_number' => 1,
+            'point_count' => 100,
+            'point_ids_checksum' => Digest::SHA256.hexdigest('1,2,3'),
+            'archived_at' => '2024-07-01T00:00:00Z',
+            'metadata' => { 'format_version' => 1, 'expected_count' => 100, 'actual_count' => 100 },
+            'file_name' => 'raw_data_archive_2024_06_1.jsonl.gz',
+            'file_error' => 'Failed to export archive file: blob missing from storage'
+          }
+        ]
+      end
+
+      it 'creates the archive (file_error stripped) and does not try to restore the file' do
+        service = described_class.new(user, archives_data, files_directory)
+
+        archives_created, files_restored = service.call
+
+        expect(archives_created).to eq(1)
+        expect(files_restored).to eq(0)
+        expect(user.raw_data_archives.count).to eq(1)
+      end
+
+      it 'does not raise and does not roll back when the file was not exported' do
+        archives_data.first.delete('file_name')
+
+        service = described_class.new(user, archives_data, files_directory)
+
+        expect { service.call }.not_to raise_error
+        expect(user.raw_data_archives.count).to eq(1)
+      end
+    end
+
+    context 'with a file_error row alongside valid archive rows' do
+      let(:valid_row) do
+        {
+          'year' => 2024,
+          'month' => 7,
+          'chunk_number' => 1,
+          'point_count' => 100,
+          'point_ids_checksum' => Digest::SHA256.hexdigest('1,2,3'),
+          'archived_at' => '2024-07-01T00:00:00Z',
+          'metadata' => { 'format_version' => 1, 'expected_count' => 100, 'actual_count' => 100 }
+        }
+      end
+
+      let(:file_error_row) do
+        {
+          'year' => 2024,
+          'month' => 6,
+          'chunk_number' => 1,
+          'point_count' => 100,
+          'point_ids_checksum' => Digest::SHA256.hexdigest('4,5,6'),
+          'archived_at' => '2024-07-01T00:00:00Z',
+          'metadata' => { 'format_version' => 1, 'expected_count' => 100, 'actual_count' => 100 },
+          'file_error' => 'Failed to export archive file: blob missing from storage'
+        }
+      end
+
+      it 'imports every valid row and the file_error row without aborting the batch' do
+        archives_data = [valid_row, file_error_row, valid_row.merge('month' => 8)]
+        service = described_class.new(user, archives_data, files_directory)
+
+        expect { service.call }.not_to raise_error
+        expect(user.raw_data_archives.count).to eq(3)
+      end
+    end
+
+    context 'when an archive row carries an unknown attribute' do
+      let(:valid_row) do
+        {
+          'year' => 2024,
+          'month' => 7,
+          'chunk_number' => 1,
+          'point_count' => 100,
+          'point_ids_checksum' => Digest::SHA256.hexdigest('1,2,3'),
+          'archived_at' => '2024-07-01T00:00:00Z',
+          'metadata' => { 'format_version' => 1, 'expected_count' => 100, 'actual_count' => 100 }
+        }
+      end
+
+      let(:bad_row) do
+        valid_row.merge('month' => 6, 'bogus_column' => 'no such column on Points::RawDataArchive')
+      end
+
+      it 'skips the bad row and still imports the surrounding valid rows' do
+        archives_data = [valid_row, bad_row, valid_row.merge('month' => 8)]
+        service = described_class.new(user, archives_data, files_directory)
+
+        result = nil
+        expect { result = service.call }.not_to raise_error
+        expect(result).to eq([2, 0])
+        expect(user.raw_data_archives.count).to eq(2)
+      end
+    end
   end
 end
