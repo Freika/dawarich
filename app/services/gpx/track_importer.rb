@@ -28,19 +28,21 @@ class Gpx::TrackImporter
   end
 
   def call
-    batch = []
-    handler = each_trkpt do |point_hash, tracker_id|
-      data = prepare_point(point_hash, tracker_id)
-      next unless data
-
-      batch << data
-      next if batch.size < BATCH_SIZE
-
-      flush(batch)
+    ActiveRecord::Base.transaction do
       batch = []
+      handler = each_trkpt do |point_hash, tracker_id|
+        data = prepare_point(point_hash, tracker_id)
+        next unless data
+
+        batch << data
+        next if batch.size < BATCH_SIZE
+
+        flush(batch)
+        batch = []
+      end
+      flush(batch) unless batch.empty?
+      record_element_counts(handler)
     end
-    flush(batch) unless batch.empty?
-    record_element_counts(handler)
   ensure
     cleanup_temp_file
   end
@@ -85,6 +87,10 @@ class Gpx::TrackImporter
   def flush(batch)
     inserted = bulk_insert_points(batch)
     broadcast_import_progress(import, inserted)
+  end
+
+  def atomic_bulk_insert?
+    true
   end
 
   def prepare_point(point, tracker_id)

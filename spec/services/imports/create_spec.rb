@@ -149,10 +149,11 @@ RSpec.describe Imports::Create do
 
     context 'when a GPX file contains malformed XML' do
       let(:import) { create(:import, user:, source: 'gpx', status: 'created') }
+      let(:gpx) { '<gpx><trk><name>invalid ]]> content</name></trk></gpx>' }
 
       before do
         import.file.attach(
-          io: StringIO.new('<gpx><trk><name>invalid ]]> content</name></trk></gpx>'),
+          io: StringIO.new(gpx),
           filename: 'malformed.gpx',
           content_type: 'application/gpx+xml'
         )
@@ -165,6 +166,32 @@ RSpec.describe Imports::Create do
         expect(import.reload).to be_failed
         expect(import.error_message).to include("GPX parse error: Sequence ']]>' not allowed in content")
         expect(ExceptionReporter).not_to have_received(:call)
+      end
+
+      context 'after a point batch has been flushed' do
+        let(:gpx) do
+          points = 1_000.times.map do |index|
+            <<~POINT
+              <trkpt lat="#{37 + (index / 10_000.0)}" lon="#{-3 - (index / 10_000.0)}">
+                <time>#{(Time.utc(2024, 1, 1) + index).iso8601}</time>
+              </trkpt>
+            POINT
+          end.join
+
+          <<~GPX
+            <gpx xmlns="http://www.topografix.com/GPX/1/1">
+              <trk><trkseg>
+                #{points}
+          GPX
+        end
+
+        it 'does not retain a partial location history' do
+          service.call
+
+          expect(import.reload).to be_failed
+          expect(Point.where(import_id: import.id)).to be_empty
+          expect(ExceptionReporter).not_to have_received(:call)
+        end
       end
     end
 
