@@ -34,10 +34,30 @@ UNPARSEABLE_BODY_ERRORS = [
   EOFError
 ].freeze
 
-# Every throttle that reads params must go through this. Deliberately not
-# logged: a malformed-body flood would flood the log with it.
+# Cheap params access: query string + form-encoded body only. rack-attack runs
+# on Rack::Request, whose #params (GET.merge(POST)) parses only
+# application/x-www-form-urlencoded and multipart/form-data bodies — it never
+# parses application/json (ActionDispatch::ParamsParser does that later in the
+# stack). Use safe_body_params for throttles that key on a field sent in a JSON
+# request body, otherwise the discriminator returns nil for JSON clients and
+# the throttle is silently bypassed. Deliberately not logged: a malformed-body
+# flood would flood the log with it.
 def safe_params(request)
   request.params
+rescue *UNPARSEABLE_BODY_ERRORS
+  safe_query(request)
+end
+
+# Like safe_params, but also parses an application/json body, which Rack::Request
+# ignores. Required for throttles keyed on a JSON body field (API login email,
+# OTP challenge token): rack-attack runs before ActionDispatch::ParamsParser, so
+# the JSON body must be read and parsed here. The body is rewound and the parsed
+# result memoised on env so multiple throttles in one request share a single
+# read and the controller still sees the body.
+def safe_body_params(request)
+  return safe_params(request) unless json_request?(request)
+
+  safe_query(request).merge(parse_json_body(read_body_once(request)))
 rescue *UNPARSEABLE_BODY_ERRORS
   safe_query(request)
 end
@@ -46,6 +66,32 @@ end
 def safe_query(request)
   request.GET
 rescue *UNPARSEABLE_BODY_ERRORS
+  {}
+end
+
+def json_request?(request)
+  request.media_type == 'application/json'
+end
+
+# Reads the body once per request, rewinding so downstream middleware and the
+# controller still see it. Memoised on env because several throttles run per
+# request and the body is a stream that can only be consumed once.
+def read_body_once(request)
+  request.env['rack.attack.parsed_body'] ||=
+    begin
+      body = request.body.read
+      request.body.rewind
+      body
+    end
+end
+
+# Always returns a Hash: a JSON array/scalar body has no string-key lookup, so
+# it is treated the same as an unparseable body (fall back to the query string).
+def parse_json_body(raw)
+  return {} if raw.blank?
+
+  JSON.parse(raw).then { |parsed| parsed.is_a?(Hash) ? parsed : {} }
+rescue JSON::ParserError
   {}
 end
 
@@ -190,7 +236,7 @@ Rack::Attack.throttle('logins/api_email', limit: 5, period: 1.minute) do |req|
   next if DawarichSettings.self_hosted?
   next unless throttle_path(req) == '/api/v1/auth/login' && req.post?
 
-  safe_params(req)['email']&.to_s&.downcase&.strip
+  safe_body_params(req)['email']&.to_s&.downcase&.strip
 end
 
 Rack::Attack.throttle('logins/api_ip', limit: 20, period: 1.minute) do |req|
@@ -243,7 +289,7 @@ Rack::Attack.throttle('api/auth/otp_challenge_token', limit: 5, period: 15.minut
   next if DawarichSettings.self_hosted?
 
   if throttle_path(req) == '/api/v1/auth/otp_challenge' && req.post?
-    token = safe_params(req)['challenge_token'].to_s
+    token = safe_body_params(req)['challenge_token'].to_s
     Digest::SHA256.hexdigest(token)[0, 32] if token.present?
   end
 end
