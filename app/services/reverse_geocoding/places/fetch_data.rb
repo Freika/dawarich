@@ -36,17 +36,25 @@ class ReverseGeocoding::Places::FetchData
 
     data = normalize_geocoder_data(reverse_geocoded_place.data)
 
+    preserved_identity = (place.geodata || {}).slice('external_place_id', 'semantic_type')
+    geodata =
+      if DawarichSettings.store_geodata?
+        data.merge(preserved_identity)
+      else
+        preserved_identity
+      end
+
     attributes = {
       lonlat:     build_point_coordinates(data['geometry']['coordinates']),
       city:       data['properties']['city'],
       country:    data['properties']['country'],
-      geodata:    data,
+      geodata:    geodata,
       reverse_geocoded_at: Time.current
     }
 
     unless place.name_locked?
       attributes[:name] = place_name(data)
-      attributes[:source] = :photon
+      attributes[:source] = :photon unless place.gpx_waypoint?
     end
 
     place.machine_named = true
