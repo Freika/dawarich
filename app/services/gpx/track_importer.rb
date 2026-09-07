@@ -43,6 +43,9 @@ class Gpx::TrackImporter
       flush(batch) unless batch.empty?
       record_element_counts(handler)
     end
+  rescue InvalidXmlError
+    import.reload
+    raise
   ensure
     cleanup_temp_file
   end

@@ -189,6 +189,9 @@ RSpec.describe Imports::Create do
           service.call
 
           expect(import.reload).to be_failed
+          expect(import.processed).to eq(0)
+          expect(import.raw_points).to eq(0)
+          expect(import.doubles).to eq(0)
           expect(Point.where(import_id: import.id)).to be_empty
           expect(ExceptionReporter).not_to have_received(:call)
         end
