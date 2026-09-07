@@ -36,6 +36,38 @@ RSpec.describe 'POST /api/v1/auth/login', type: :request do
     expect(response).to have_http_status(:unauthorized)
   end
 
+  describe 'email whitespace/case normalisation on lookup' do
+    # Mirrors Devise's `config.strip_whitespace_keys = [:email]` and the
+    # `logins/api_email` Rack::Attack throttle's `downcase.strip` key, so the
+    # controller's lookup must strip *and* downcase the param the same way.
+
+    it 'logs in when the email has leading/trailing whitespace' do
+      post '/api/v1/auth/login',
+           params: { email: '  me@example.com  ', password: 'secret123456' }
+      expect(response).to have_http_status(:ok)
+      body = JSON.parse(response.body)
+      expect(body['api_key']).to eq(user.api_key)
+      expect(body['user_id']).to eq(user.id)
+    end
+
+    it 'still runs a bcrypt comparison on the padded unknown-email path' do
+      # The constant-time dummy-password comparison must still fire when the
+      # (stripped) lookup misses, so padded unknown emails don't leak account
+      # existence through response timing.
+      expect(BCrypt::Password).to receive(:new).and_call_original.at_least(:once)
+      post '/api/v1/auth/login',
+           params: { email: '  no-such-user@example.com  ', password: 'whatever' }
+      expect(response).to have_http_status(:unauthorized)
+    end
+
+    it 'still returns 401 when the email param is missing or blank' do
+      post '/api/v1/auth/login', params: { password: 'secret123456' }
+      expect(response).to have_http_status(:unauthorized)
+      post '/api/v1/auth/login', params: { email: '   ', password: 'secret123456' }
+      expect(response).to have_http_status(:unauthorized)
+    end
+  end
+
   describe 'shared API middleware' do
     # BaseController inherits from ApiController, so the version header and
     # rate-limit header pipeline are applied consistently across all API
