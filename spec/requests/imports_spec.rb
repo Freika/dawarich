@@ -425,7 +425,7 @@ RSpec.describe 'Imports', type: :request do
   describe 'GET /imports/:id/edit' do
     context 'when user is logged in' do
       let(:user) { create(:user) }
-      let(:import) { create(:import, user:) }
+      let(:import) { create(:import, user:, source: :gpx) }
 
       before { sign_in user }
 
@@ -433,6 +433,15 @@ RSpec.describe 'Imports', type: :request do
         get edit_import_path(import)
 
         expect(response).to have_http_status(200)
+      end
+
+      it 'renders a source dropdown bound to import[source]' do
+        get edit_import_path(import)
+
+        expect(response.body).to include('name="import[source]"')
+        Import.sources.each_key do |source|
+          expect(response.body).to include("value=\"#{source}\"")
+        end
       end
     end
   end
@@ -449,6 +458,16 @@ RSpec.describe 'Imports', type: :request do
 
         expect(import.reload.name).to eq('New Name')
         expect(response).to redirect_to(imports_path)
+      end
+
+      it 'updates the import source' do
+        import.update!(source: :gpx)
+
+        patch import_path(import), params: { import: { source: 'owntracks' } }
+
+        expect(import.reload.source).to eq('owntracks')
+        expect(response).to redirect_to(imports_path)
+        expect(flash[:notice]).to eq(I18n.t('controllers.imports.import_was_successfully_updated'))
       end
     end
   end

@@ -110,7 +110,7 @@ status: :unprocessable_content and return
   end
 
   def import_params
-    params.require(:import).permit(:name, files: [])
+    params.require(:import).permit(:name, :source, files: [])
   end
 
   def extract_raw_files
