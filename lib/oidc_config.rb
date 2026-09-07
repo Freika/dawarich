@@ -77,11 +77,21 @@ module OidcConfig
     {
       host: env['OIDC_HOST'],
       scheme: env.fetch('OIDC_SCHEME', DEFAULT_SCHEME),
-      port: env.fetch('OIDC_PORT', DEFAULT_PORT).to_i,
+      port: parse_port(env['OIDC_PORT']),
       authorization_endpoint: env.fetch('OIDC_AUTHORIZATION_ENDPOINT', DEFAULT_AUTHORIZATION_ENDPOINT),
       token_endpoint: env.fetch('OIDC_TOKEN_ENDPOINT', DEFAULT_TOKEN_ENDPOINT),
       userinfo_endpoint: env.fetch('OIDC_USERINFO_ENDPOINT', DEFAULT_USERINFO_ENDPOINT)
     }
   end
   private_class_method :manual_endpoints
+
+  def self.parse_port(value)
+    port_str = value.to_s.strip
+    return DEFAULT_PORT if port_str.empty?
+
+    Integer(port_str, 10)
+  rescue ArgumentError
+    DEFAULT_PORT
+  end
+  private_class_method :parse_port
 end
