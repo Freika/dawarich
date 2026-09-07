@@ -310,6 +310,8 @@ RSpec.describe Users::Digests::CalculateYear do
     end
 
     context 'when the user is on the Lite cloud plan' do
+      include ActiveSupport::Testing::TimeHelpers
+
       let(:user) { create(:user, :lite_plan) }
       let(:year) { Time.current.year }
 
@@ -329,6 +331,63 @@ RSpec.describe Users::Digests::CalculateYear do
         digest = described_class.new(user.id, year).call
 
         expect(digest.all_time_stats['total_distance']).to eq('5000')
+      end
+    end
+
+    context 'when a Lite user requests a boundary year straddling the 12-month window' do
+      include ActiveSupport::Testing::TimeHelpers
+
+      let(:user) { create(:user, :lite_plan) }
+      let(:year) { 2025 }
+
+      around { |example| travel_to(Time.utc(2026, 9, 6, 12)) { example.run } }
+
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+
+        create(:stat, user: user, year: year, month: 1, distance: 1_000, toponyms: [
+                 { 'country' => 'France', 'cities' => [{ 'city' => 'Paris', 'stayed_for' => 1440 }] }
+               ])
+        create(:stat, user: user, year: year, month: 12, distance: 1_000, toponyms: [
+                 { 'country' => 'Russia', 'cities' => [{ 'city' => 'Moscow', 'stayed_for' => 1440 }] }
+               ])
+
+        # Raw points: two out-of-window (Jan, France) and two in-window (Dec, Russia)
+        create(:point, user: user, timestamp: Time.utc(2025, 1, 1, 10, 0).to_i,
+                        country_name: 'France', city: 'Paris')
+        create(:point, user: user, timestamp: Time.utc(2025, 1, 2, 10, 0).to_i,
+                        country_name: 'France', city: 'Paris')
+        create(:point, user: user, timestamp: Time.utc(2025, 12, 1, 10, 0).to_i,
+                        country_name: 'Russia', city: 'Moscow')
+        create(:point, user: user, timestamp: Time.utc(2025, 12, 2, 10, 0).to_i,
+                        country_name: 'Russia', city: 'Moscow')
+      end
+
+      it 'scopes time_spent_by_location countries to the in-window subset' do
+        digest = described_class.new(user.id, year).call
+
+        countries = digest.time_spent_by_location['countries'].map { |c| c['name'] }
+
+        expect(countries).to contain_exactly('Russia')
+        expect(countries).not_to include('France')
+      end
+
+      it 'keeps time_spent_by_location countries consistent with toponyms' do
+        digest = described_class.new(user.id, year).call
+
+        toponym_countries = digest.toponyms.map { |t| t['country'] }
+        time_spent_countries = digest.time_spent_by_location['countries'].map { |c| c['name'] }
+
+        expect(toponym_countries).to contain_exactly('Russia')
+        expect(time_spent_countries).to all(be_in(toponym_countries))
+      end
+
+      it 'keeps seasonality consistent with the scoped monthly_distances' do
+        digest = described_class.new(user.id, year).call
+
+        # March (France, out of window) must be 0; spring (Mar-May) must be 0
+        expect(digest.monthly_distances['3']).to eq('0')
+        expect(digest.travel_patterns['seasonality']['spring']).to eq(0)
       end
     end
   end
