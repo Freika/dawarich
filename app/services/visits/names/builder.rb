@@ -4,6 +4,11 @@ module Visits
   module Names
     # Builds descriptive names for places from geodata features
     class Builder
+      # Keys that may carry a feature's category, in provider precedence:
+      # `type` for normalized Nominatim/LocationIQ data, `osm_value` for raw
+      # Photon features, `result_type` for raw Geoapify features.
+      FEATURE_TYPE_KEYS = %w[type osm_value result_type].freeze
+
       def self.build_from_properties(properties)
         return nil if properties.blank?
 
@@ -53,16 +58,19 @@ module Visits
 
       def find_feature
         features.find do |f|
-          f.dig('properties', 'type') == feature_type &&
-            f.dig('properties', 'name') == name
-        end || find_feature_by_osm_value
-      end
-
-      def find_feature_by_osm_value
-        features.find do |f|
-          f.dig('properties', 'osm_value') == feature_type &&
+          feature_type_for(f) == feature_type &&
             f.dig('properties', 'name') == name
         end
+      end
+
+      # Reads a feature's category from whichever provider key it carries
+      # (see Visits::Names::Suggester#feature_type_for). Photon carries
+      # `osm_value` and Geoapify carries `result_type`; normalized data
+      # carries `type`.
+      def feature_type_for(feature)
+        props = feature['properties'].is_a?(Hash) ? feature['properties'] : {}
+        FEATURE_TYPE_KEYS.each { |key| return props[key] if props.key?(key) }
+        nil
       end
 
       def properties
