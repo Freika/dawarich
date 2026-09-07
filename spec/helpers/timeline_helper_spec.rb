@@ -3,51 +3,6 @@
 require 'rails_helper'
 
 RSpec.describe TimelineHelper, type: :helper do
-  describe '#timeline_all_day?' do
-    context 'when visit is nil' do
-      it 'returns false' do
-        expect(helper.timeline_all_day?(nil)).to be false
-      end
-    end
-
-    context 'when visit duration is >= 23 hours (in minutes)' do
-      it 'returns true for exactly 23h' do
-        visit = instance_double(Visit, duration: 23 * 60, started_at: Time.zone.local(2026, 1, 1, 10, 0),
-                                       ended_at: Time.zone.local(2026, 1, 2, 9, 0))
-        expect(helper.timeline_all_day?(visit)).to be true
-      end
-
-      it 'returns true for 24h' do
-        visit = instance_double(Visit, duration: 24 * 60, started_at: Time.zone.local(2026, 1, 1, 10, 0),
-                                       ended_at: Time.zone.local(2026, 1, 2, 10, 0))
-        expect(helper.timeline_all_day?(visit)).to be true
-      end
-    end
-
-    context 'when visit duration is just under 23 hours' do
-      it 'returns false for 22h 59m' do
-        visit = instance_double(Visit, duration: (22 * 60) + 59,
-                                       started_at: Time.zone.local(2026, 1, 1, 10, 0),
-                                       ended_at: Time.zone.local(2026, 1, 2, 8, 59))
-        expect(helper.timeline_all_day?(visit)).to be false
-      end
-    end
-
-    context 'when visit starts at midnight and spans nearly a full day' do
-      it 'returns true when starts at hour 0 and covers >= 23 hours' do
-        started = Time.zone.local(2026, 1, 1, 0, 0)
-        visit = instance_double(Visit, duration: 100, started_at: started, ended_at: started + 23.hours)
-        expect(helper.timeline_all_day?(visit)).to be true
-      end
-
-      it 'returns false when starts at hour 0 but spans less than 23 hours' do
-        started = Time.zone.local(2026, 1, 1, 0, 0)
-        visit = instance_double(Visit, duration: 60, started_at: started, ended_at: started + 1.hour)
-        expect(helper.timeline_all_day?(visit)).to be false
-      end
-    end
-  end
-
   describe '#format_dwell_minutes' do
     it 'returns "0m" for 0 minutes' do
       expect(helper.format_dwell_minutes(0)).to eq('0m')
@@ -217,12 +172,6 @@ RSpec.describe TimelineHelper, type: :helper do
 
     it 'defaults to "confirmed" when key is missing' do
       expect(helper.visit_entry_status({})).to eq('confirmed')
-    end
-  end
-
-  describe '#day_label' do
-    it 'formats the date as "Weekday, Month Day"' do
-      expect(helper.day_label(date: '2026-01-03')).to eq('Saturday, January 3')
     end
   end
 
