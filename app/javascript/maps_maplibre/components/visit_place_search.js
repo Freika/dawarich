@@ -130,8 +130,8 @@ export class VisitPlaceSearch {
         })
       }
       this.done()
-    } catch (_e) {
-      this.renderError()
+    } catch (error) {
+      this.renderError(error.message)
     }
   }
 
@@ -139,8 +139,8 @@ export class VisitPlaceSearch {
     try {
       await this.patchVisit({ area_id: area.id, status: "confirmed" })
       this.done()
-    } catch (_e) {
-      this.renderError()
+    } catch (error) {
+      this.renderError(error.message)
     }
   }
 
@@ -160,8 +160,8 @@ export class VisitPlaceSearch {
         status: "confirmed",
       })
       this.done()
-    } catch (_e) {
-      this.renderError()
+    } catch (error) {
+      this.renderError(error.message)
     }
   }
 
@@ -187,8 +187,12 @@ export class VisitPlaceSearch {
       },
       body: JSON.stringify(body),
     })
-    if (!res.ok) throw new Error(`${method} ${url} failed with ${res.status}`)
-    return res.json()
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok)
+      throw new Error(
+        data.error || `${method} ${url} failed with ${res.status}`,
+      )
+    return data
   }
 
   distanceMeters(lat2, lon2) {
@@ -272,9 +276,9 @@ export class VisitPlaceSearch {
       this.list.innerHTML = `<li class="px-3 py-2 text-xs text-base-content/60">${translate("search.searching")}</li>`
   }
 
-  renderError() {
+  renderError(message = translate("search.unavailable")) {
     if (this.list)
-      this.list.innerHTML = `<li class="px-3 py-2 text-xs text-error">${translate("search.unavailable")}</li>`
+      this.list.innerHTML = `<li class="px-3 py-2 text-xs text-error">${this.escape(message)}</li>`
   }
 
   escape(str) {

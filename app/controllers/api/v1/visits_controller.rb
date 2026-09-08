@@ -65,9 +65,15 @@ class Api::V1::VisitsController < ApiController
       end
     end
 
-    visit = update_visit(visit, area: area)
+    unless update_visit(visit, area: area)
+      return render json: { error: visit.errors.full_messages.to_sentence }, status: :unprocessable_content
+    end
 
     render json: Api::VisitSerializer.new(visit).call
+  rescue ActiveRecord::RecordNotUnique => e
+    raise unless e.message.include?(Visit::DUPLICATE_PLACE_START_INDEX)
+
+    render json: { error: Visit::DUPLICATE_PLACE_START_ERROR }, status: :unprocessable_content
   end
 
   def merge
@@ -218,8 +224,6 @@ class Api::V1::VisitsController < ApiController
       visit.name = area.name
     end
 
-    visit.save!
-
-    visit
+    visit.save
   end
 end
