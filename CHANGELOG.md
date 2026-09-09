@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.15.1] - Unreleased
+
+### Fixed
+
+- SMTP delivery now falls back to IPv4 when an SMTP host's IPv6 address is unreachable (#3591).
+
 ## [1.15.0] - 2026-09-20, Berlin
 
 ### Added

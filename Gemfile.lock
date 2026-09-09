@@ -504,9 +504,6 @@ GEM
       io-console (~> 0.5)
     request_store (1.7.0)
       rack (>= 1.4)
-    resolv (0.7.2)
-    resolv-replace (0.2.0)
-      resolv
     responders (3.2.1)
       actionpack (>= 7.0)
       railties (>= 7.0)
@@ -768,7 +765,6 @@ DEPENDENCIES
   rails (~> 8.1.3)
   rails_icons
   redis
-  resolv-replace (~> 0.2.0)
   rexml
   rgeo
   rgeo-activerecord (~> 8.1.0)
